@@ -73,7 +73,7 @@ const TeacherProspects = () => {
   };
 
   return (
-    <div className="min-h-screen p-8" style={{ backgroundColor: "#f2f4f6" }}>
+    <div style={{ backgroundColor: "#f2f4f6", margin: -32, padding: 32, minHeight: "calc(100vh)" }}>
       <div className="flex items-center justify-between mb-2">
         <h1 className="text-3xl font-bold" style={{ color: "#003c7e" }}>Teacher Prospects</h1>
         <Button

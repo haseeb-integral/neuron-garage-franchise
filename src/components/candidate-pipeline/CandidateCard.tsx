@@ -5,6 +5,7 @@ interface Props {
   candidate: Candidate;
   onDragStart: (id: number) => void;
   onClick: () => void;
+  compact?: boolean;
 }
 
 const avatarColor = (name: string) => {
@@ -14,7 +15,31 @@ const avatarColor = (name: string) => {
   return palette[h];
 };
 
-export function CandidateCard({ candidate, onDragStart, onClick }: Props) {
+export function CandidateCard({ candidate, onDragStart, onClick, compact = false }: Props) {
+  if (compact) {
+    return (
+      <div
+        draggable
+        onDragStart={() => onDragStart(candidate.id)}
+        onClick={onClick}
+        className="bg-white rounded-md px-2 py-1.5 mb-1.5 cursor-pointer hover:shadow-md transition-shadow flex items-center gap-2"
+        style={{ border: "1px solid #dee2e6" }}
+      >
+        <div
+          className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[9px] font-semibold text-white"
+          style={{ backgroundColor: avatarColor(candidate.assignedTo) }}
+          title={candidate.assignedTo}
+        >
+          {candidate.assignedTo[0]}
+        </div>
+        <div className="text-xs font-semibold flex-1 truncate" style={{ color: "#212529" }}>
+          {candidate.name}
+        </div>
+        <FitScoreBadge score={candidate.fitScore} />
+      </div>
+    );
+  }
+
   return (
     <div
       draggable

@@ -46,13 +46,13 @@ const CandidatePipeline = () => {
   };
 
   return (
-    <div style={{ backgroundColor: "#f2f4f6", margin: -32, padding: 32, minHeight: "calc(100vh)" }}>
-      <div className="flex items-center justify-between mb-2">
-        <h1 className="text-3xl font-bold" style={{ color: "#003c7e" }}>Candidate Pipeline</h1>
+    <div className="-mx-4 md:-mx-8 -my-4 md:-my-8 px-4 md:px-8 py-4 md:py-8 min-h-screen" style={{ backgroundColor: "#f2f4f6" }}>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
+        <h1 className="text-2xl md:text-3xl font-bold" style={{ color: "#003c7e" }}>Candidate Pipeline</h1>
         <Button
           onClick={() => toast.info("Open Teacher Prospects to promote a candidate")}
-          className="text-white"
-          style={{ backgroundColor: "#fd7e14" }}
+          className="text-white w-full sm:w-auto"
+          style={{ backgroundColor: "#fd7e14", minHeight: 44 }}
         >
           <UserPlus size={16} /> Promote from Prospect
         </Button>

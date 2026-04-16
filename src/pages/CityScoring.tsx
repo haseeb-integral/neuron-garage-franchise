@@ -48,8 +48,8 @@ const CityScoring = () => {
   const compareCities = sampleCities.filter(c => selectedForCompare.includes(c.id));
 
   return (
-    <div style={{ backgroundColor: '#f2f4f6', margin: -32, padding: 32, minHeight: 'calc(100vh)' }}>
-      <h1 className="text-2xl font-bold mb-6" style={{ color: '#003c7e' }}>City Scoring</h1>
+    <div className="-mx-4 md:-mx-8 -my-4 md:-my-8 px-4 md:px-8 py-4 md:py-8 min-h-screen" style={{ backgroundColor: '#f2f4f6' }}>
+      <h1 className="text-2xl md:text-3xl font-bold mb-6" style={{ color: '#003c7e' }}>City Scoring</h1>
 
       <StatCards cities={filtered} nonRegOnly={nonRegOnly} onToggleNonReg={setNonRegOnly} />
       <FilterBar
@@ -57,18 +57,19 @@ const CityScoring = () => {
         onStateChange={setStateFilter} onTierChange={setTierFilter} onMinScoreChange={setMinScore}
       />
 
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
         <p className="text-sm" style={{ color: '#6c757d' }}>{filtered.length} cities found</p>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             variant={compareMode ? "default" : "outline"}
             size="sm"
             onClick={() => { setCompareMode(!compareMode); setSelectedForCompare([]); }}
+            style={{ minHeight: 44 }}
           >
             <GitCompare size={14} className="mr-1" /> {compareMode ? "Cancel Compare" : "Compare"}
           </Button>
           {compareMode && selectedForCompare.length === 2 && (
-            <Button size="sm" className="text-white" style={{ backgroundColor: '#fd7e14' }} onClick={() => setCompareOpen(true)}>
+            <Button size="sm" className="text-white" style={{ backgroundColor: '#fd7e14', minHeight: 44 }} onClick={() => setCompareOpen(true)}>
               Compare Selected
             </Button>
           )}

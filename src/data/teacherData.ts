@@ -31,7 +31,7 @@ export const sampleTeachers: TeacherProspect[] = [
     yearsExperience: 8, hasSummerCampExp: true,
     aiReasoning: "Strong STEM background with 8 years of teaching. Has led summer camps at YMCA. Active community presence and shows entrepreneurial interest in side projects.",
     tags: ["STEM", "Camp Lead"], notes: "" },
-  { id: 2, cityId: 1, name: "Marcus Johnson", school: "Pioneer Heritage Middle", city: "Frisco", state: "TX",
+  { id: 2, cityId: 1, name: "Marcus Johnson", school: "Pioneer Heritage Elementary", city: "Frisco", state: "TX",
     email: "mjohnson@friscoisd.org", phone: "(469) 555-0188", linkedin: "linkedin.com/in/marcusj",
     fitScore: 85, tag: "High Potential", enrichmentStatus: "Enriched", gradeLevel: "6-8",
     yearsExperience: 12, hasSummerCampExp: true,
@@ -51,7 +51,7 @@ export const sampleTeachers: TeacherProspect[] = [
     tags: [], notes: "" },
 
   // Plano, TX (cityId: 2)
-  { id: 5, cityId: 2, name: "Amanda Rodriguez", school: "Plano West Senior High", city: "Plano", state: "TX",
+  { id: 5, cityId: 2, name: "Amanda Rodriguez", school: "Plano West Elementary", city: "Plano", state: "TX",
     email: "arodriguez@pisd.edu", phone: "(972) 555-0312", linkedin: "linkedin.com/in/amandarodriguez",
     fitScore: 88, tag: "High Potential", enrichmentStatus: "Enriched", gradeLevel: "6-8",
     yearsExperience: 10, hasSummerCampExp: true,
@@ -63,13 +63,13 @@ export const sampleTeachers: TeacherProspect[] = [
     yearsExperience: 7, hasSummerCampExp: true,
     aiReasoning: "Experienced primary teacher with camp counselor history. Moderate interest in business ownership signals.",
     tags: [], notes: "" },
-  { id: 7, cityId: 2, name: "Lisa Nguyen", school: "Haggard Middle", city: "Plano", state: "TX",
+  { id: 7, cityId: 2, name: "Lisa Nguyen", school: "Haggard Elementary", city: "Plano", state: "TX",
     email: "lnguyen@pisd.edu", phone: "(972) 555-0388", linkedin: "linkedin.com/in/lisanguyen",
     fitScore: 81, tag: "High Potential", enrichmentStatus: "Pending", gradeLevel: "6-8",
     yearsExperience: 9, hasSummerCampExp: true,
     aiReasoning: "STEM specialist with strong network. Recently posted about wanting to make broader impact beyond classroom.",
     tags: ["STEM"], notes: "" },
-  { id: 8, cityId: 2, name: "Michael O'Brien", school: "Bowman Middle", city: "Plano", state: "TX",
+  { id: 8, cityId: 2, name: "Michael O'Brien", school: "Bowman Elementary", city: "Plano", state: "TX",
     email: "mobrien@pisd.edu", phone: "(972) 555-0401", linkedin: "linkedin.com/in/mikeobrien",
     fitScore: 55, tag: "Follow-Up", enrichmentStatus: "Pending", gradeLevel: "3-5",
     yearsExperience: 4, hasSummerCampExp: false,
@@ -89,7 +89,7 @@ export const sampleTeachers: TeacherProspect[] = [
     yearsExperience: 6, hasSummerCampExp: true,
     aiReasoning: "Solid camp experience and good community standing. Worth a deeper conversation about long-term goals.",
     tags: [], notes: "" },
-  { id: 11, cityId: 3, name: "Rebecca Foster", school: "Ramblewood Middle", city: "Coral Springs", state: "FL",
+  { id: 11, cityId: 3, name: "Rebecca Foster", school: "Ramblewood Elementary", city: "Coral Springs", state: "FL",
     email: "rfoster@browardschools.com", phone: "(954) 555-0589", linkedin: "linkedin.com/in/rebeccafoster",
     fitScore: 83, tag: "High Potential", enrichmentStatus: "Pending", gradeLevel: "6-8",
     yearsExperience: 11, hasSummerCampExp: true,
@@ -106,7 +106,7 @@ export const sampleTeachers: TeacherProspect[] = [
 export function generateProspectsForCity(cityId: number, city: string, state: string, startId: number): TeacherProspect[] {
   const firstNames = ["Emily", "Daniel", "Sophia", "Ryan", "Olivia"];
   const lastNames = ["Anderson", "Martinez", "Lee", "Walker", "Hall"];
-  const schools = [`${city} Elementary`, `${city} Middle School`, `${city} Heritage`, `${city} Pioneer`, `${city} Oaks`];
+  const schools = [`${city} Elementary`, `${city} Heights Elementary`, `${city} Heritage Elementary`, `${city} Pioneer Elementary`, `${city} Oaks Elementary`];
   const grades: GradeLevel[] = ["K-2", "3-5", "6-8"];
   const tags: TeacherTag[] = ["High Potential", "Follow-Up", "Untagged"];
 

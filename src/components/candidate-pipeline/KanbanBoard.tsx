@@ -33,10 +33,19 @@ export function KanbanBoard({
     const el = colRefs.current[stageId];
     const scroller = scrollRef.current;
     if (!el || !scroller) return;
-    const elRect = el.getBoundingClientRect();
-    const scrollerRect = scroller.getBoundingClientRect();
-    const left = scroller.scrollLeft + (elRect.left - scrollerRect.left) - 12;
-    scroller.scrollTo({ left, behavior: "smooth" });
+
+    el.scrollIntoView({
+      behavior: "smooth",
+      inline: "start",
+      block: "nearest",
+    });
+
+    requestAnimationFrame(() => {
+      const elRect = el.getBoundingClientRect();
+      const scrollerRect = scroller.getBoundingClientRect();
+      const left = scroller.scrollLeft + (elRect.left - scrollerRect.left) - 12;
+      scroller.scrollTo({ left, behavior: "smooth" });
+    });
   };
 
   return (

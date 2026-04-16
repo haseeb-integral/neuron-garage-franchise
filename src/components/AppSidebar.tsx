@@ -1,6 +1,5 @@
 import { Home, Map, Users, Kanban, ClipboardCheck } from "lucide-react";
-import { NavLink } from "react-router-dom";
-import { useLocation } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import logo from "@/assets/neuron-garage-logo.png";
 
 const navItems = [
@@ -11,7 +10,12 @@ const navItems = [
   { title: "Onboarding", url: "/onboarding", icon: ClipboardCheck },
 ];
 
-export function AppSidebar() {
+interface Props {
+  variant?: "fixed" | "drawer";
+  onNavigate?: () => void;
+}
+
+export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
   const location = useLocation();
 
   const isActive = (url: string) => {
@@ -19,8 +23,13 @@ export function AppSidebar() {
     return location.pathname.startsWith(url);
   };
 
+  const containerClass =
+    variant === "fixed"
+      ? "fixed left-0 top-0 h-screen w-60 flex flex-col z-40"
+      : "h-full w-full flex flex-col";
+
   return (
-    <aside className="fixed left-0 top-0 h-screen w-60 flex flex-col z-50" style={{ backgroundColor: '#003c7e' }}>
+    <aside className={containerClass} style={{ backgroundColor: "#003c7e" }}>
       <div className="px-5 py-5 flex items-center gap-3">
         <img src={logo} alt="Neuron Garage" className="w-10 h-10" />
         <span className="text-white text-lg font-bold tracking-tight">Neuron Garage</span>
@@ -34,15 +43,17 @@ export function AppSidebar() {
               key={item.title}
               to={item.url}
               end={item.url === "/"}
-              className="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors"
+              onClick={onNavigate}
+              className="group flex items-center gap-3 px-3 rounded-lg text-sm transition-colors"
               style={{
-                backgroundColor: active ? 'rgba(255,255,255,0.10)' : 'transparent',
-                borderLeft: active ? '3px solid #fd7e14' : '3px solid transparent',
-                color: active ? '#ffffff' : 'rgba(255,255,255,0.60)',
+                minHeight: 44,
+                backgroundColor: active ? "rgba(255,255,255,0.10)" : "transparent",
+                borderLeft: active ? "3px solid #fd7e14" : "3px solid transparent",
+                color: active ? "#ffffff" : "rgba(255,255,255,0.60)",
                 fontWeight: active ? 600 : 400,
               }}
-              onMouseEnter={(e) => { if (!active) e.currentTarget.style.color = 'rgba(255,255,255,0.85)'; }}
-              onMouseLeave={(e) => { if (!active) e.currentTarget.style.color = 'rgba(255,255,255,0.60)'; }}
+              onMouseEnter={(e) => { if (!active) e.currentTarget.style.color = "rgba(255,255,255,0.85)"; }}
+              onMouseLeave={(e) => { if (!active) e.currentTarget.style.color = "rgba(255,255,255,0.60)"; }}
             >
               <item.icon size={18} />
               <span>{item.title}</span>

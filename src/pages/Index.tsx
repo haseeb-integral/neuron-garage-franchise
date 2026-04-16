@@ -11,8 +11,11 @@ const stats = [
 const Dashboard = () => {
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-3" style={{ color: '#343a40' }}>Dashboard</h1>
-      <Separator className="mb-6" style={{ backgroundColor: '#e9ecef' }} />
+      <h1 className="text-2xl font-bold" style={{ color: '#343a40' }}>Dashboard</h1>
+      <p className="text-sm text-slate-500 mt-1">
+        Welcome to the Neuron Garage Franchise Acquisition System — your AI-powered platform for finding and onboarding the right franchisees.
+      </p>
+      <Separator className="my-6" style={{ backgroundColor: '#e9ecef' }} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
         {stats.map((stat) => (
@@ -104,13 +107,11 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
-
-      <div className="bg-white p-6 shadow-sm" style={{ borderRadius: 8, border: '1px solid #f0f0f0' }}>
-        <p style={{ color: '#343a40' }}>
-          Welcome to the Neuron Garage Franchise Acquisition System — your AI-powered platform for finding and onboarding the right franchisees.
-        </p>
-      </div>
     </div>
+  );
+};
+
+export default Dashboard;
   );
 };
 

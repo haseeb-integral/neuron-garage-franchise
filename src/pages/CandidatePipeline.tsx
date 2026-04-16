@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { UserPlus } from "lucide-react";
+import { UserPlus, Rows3, Rows2, Minimize2 } from "lucide-react";
 import { toast } from "sonner";
 import { sampleCandidates, Candidate, StageId, STAGES } from "@/data/pipelineData";
 import { KanbanBoard } from "@/components/candidate-pipeline/KanbanBoard";
@@ -10,6 +10,8 @@ import { CandidateDetailPanel } from "@/components/candidate-pipeline/CandidateD
 const CandidatePipeline = () => {
   const [candidates, setCandidates] = useState<Candidate[]>(sampleCandidates);
   const [active, setActive] = useState<Candidate | null>(null);
+  const [compact, setCompact] = useState(false);
+  const [collapsed, setCollapsed] = useState<Set<StageId>>(new Set());
 
   const handleStageChange = (id: number, stage: StageId) => {
     const stageLabel = STAGES.find((s) => s.id === stage)?.label ?? stage;
@@ -22,6 +24,25 @@ const CandidatePipeline = () => {
   const handleUpdate = (updated: Candidate) => {
     setCandidates((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
     setActive(updated);
+  };
+
+  const toggleCollapse = (stageId: StageId) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(stageId)) next.delete(stageId);
+      else next.add(stageId);
+      return next;
+    });
+  };
+
+  const collapseEmpty = () => {
+    const next = new Set<StageId>();
+    STAGES.forEach((s) => {
+      const count = candidates.filter((c) => c.stage === s.id).length;
+      if (count === 0 || s.id === "disqualified") next.add(s.id);
+    });
+    setCollapsed(next);
+    toast.success("Collapsed empty & Disqualified columns");
   };
 
   return (
@@ -43,10 +64,60 @@ const CandidatePipeline = () => {
 
       <PipelineAnalyticsBar candidates={candidates} />
 
+      {/* Toolbar: density + collapse */}
+      <div className="flex items-center justify-between mb-3 bg-white rounded-lg px-3 py-2" style={{ border: "1px solid #dee2e6" }}>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium" style={{ color: "#6c757d" }}>Density:</span>
+          <div className="flex rounded-md overflow-hidden" style={{ border: "1px solid #dee2e6" }}>
+            <button
+              onClick={() => setCompact(false)}
+              className="px-2 py-1 text-xs font-medium flex items-center gap-1"
+              style={{
+                backgroundColor: !compact ? "#003c7e" : "#ffffff",
+                color: !compact ? "#ffffff" : "#495057",
+              }}
+            >
+              <Rows3 size={12} /> Comfortable
+            </button>
+            <button
+              onClick={() => setCompact(true)}
+              className="px-2 py-1 text-xs font-medium flex items-center gap-1"
+              style={{
+                backgroundColor: compact ? "#003c7e" : "#ffffff",
+                color: compact ? "#ffffff" : "#495057",
+              }}
+            >
+              <Rows2 size={12} /> Compact
+            </button>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {collapsed.size > 0 && (
+            <button
+              onClick={() => setCollapsed(new Set())}
+              className="text-xs font-medium px-2 py-1 rounded-md hover:bg-[#f1f3f5]"
+              style={{ color: "#003c7e" }}
+            >
+              Expand all
+            </button>
+          )}
+          <button
+            onClick={collapseEmpty}
+            className="text-xs font-medium px-2 py-1 rounded-md hover:bg-[#f1f3f5] flex items-center gap-1"
+            style={{ color: "#495057" }}
+          >
+            <Minimize2 size={12} /> Collapse empty
+          </button>
+        </div>
+      </div>
+
       <KanbanBoard
         candidates={candidates}
         onStageChange={handleStageChange}
         onCardClick={setActive}
+        collapsed={collapsed}
+        onToggleCollapse={toggleCollapse}
+        compact={compact}
       />
 
       <CandidateDetailPanel

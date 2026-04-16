@@ -72,19 +72,19 @@ const Onboarding = () => {
   const stalled = franchisees.filter((f) => f.status !== "on_track").length;
 
   return (
-    <div className="min-h-screen p-6" style={{ backgroundColor: "#f2f4f6" }}>
+    <div className="-mx-4 md:-mx-8 -my-4 md:-my-8 px-4 md:px-8 py-4 md:py-8 min-h-screen" style={{ backgroundColor: "#f2f4f6" }}>
       <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold" style={{ color: "#003c7e" }}>Onboarding</h1>
+            <h1 className="text-2xl md:text-3xl font-bold" style={{ color: "#003c7e" }}>Onboarding</h1>
             <p className="text-sm mt-1" style={{ color: "#6c757d" }}>
               Guide new franchisees through the 7-step qualification & onboarding journey.
             </p>
           </div>
           <Button
             onClick={addNew}
-            className="text-white"
-            style={{ backgroundColor: "#fd7e14" }}
+            className="text-white w-full sm:w-auto"
+            style={{ backgroundColor: "#fd7e14", minHeight: 44 }}
           >
             <Plus size={16} /> New Onboarding
           </Button>

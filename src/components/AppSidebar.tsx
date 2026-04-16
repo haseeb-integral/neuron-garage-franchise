@@ -34,11 +34,15 @@ export function AppSidebar() {
               key={item.title}
               to={item.url}
               end={item.url === "/"}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
+              className="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors"
               style={{
-                backgroundColor: active ? '#004ea4' : 'transparent',
-                color: active ? '#4ba0ff' : 'rgba(255,255,255,0.75)',
+                backgroundColor: active ? 'rgba(255,255,255,0.10)' : 'transparent',
+                borderLeft: active ? '3px solid #fd7e14' : '3px solid transparent',
+                color: active ? '#ffffff' : 'rgba(255,255,255,0.60)',
+                fontWeight: active ? 600 : 400,
               }}
+              onMouseEnter={(e) => { if (!active) e.currentTarget.style.color = 'rgba(255,255,255,0.85)'; }}
+              onMouseLeave={(e) => { if (!active) e.currentTarget.style.color = 'rgba(255,255,255,0.60)'; }}
             >
               <item.icon size={18} />
               <span>{item.title}</span>

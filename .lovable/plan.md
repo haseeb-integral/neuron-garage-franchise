@@ -1,59 +1,62 @@
 
 
-## Kanban view — what modern SaaS does
+## Onboarding Page Plan
 
-I looked at how Trello, Linear, Pipedrive, HubSpot, Attio, and Salesforce handle long pipelines (8+ columns). The dominant pattern in 2024–2025 SaaS CRMs is **NOT** Option B (grouped phases) — that's rare and tends to feel cluttered. The winning pattern is a **refined Option A** with several quality-of-life additions.
+Build the full Onboarding page at `/onboarding` (currently a placeholder). Two views: **dashboard table** → click row → **wizard view** for that franchisee.
 
-### Recommended: Enhanced Option A (industry standard)
+### Files to Create
 
-**Why not Option B (grouped phases):**
-- Adds a second layer of visual hierarchy that fights with the existing column headers
-- Reduces horizontal density (you lose space to phase headers)
-- Pipedrive tried this; users complained — they reverted to flat columns
-- Sales pipelines are inherently linear; grouping breaks the left-to-right flow metaphor
+**Data — `src/data/onboardingData.ts`**
+- `OnboardingStep` (1–7) with id, title, goal, default tasks, communication trigger
+- `Franchisee` interface: id, name, city, state, currentStep, progressPct, daysElapsed, status (`on_track` | `stalled` | `overdue`), startDate, fddSentDate?, stepData (per-step tasks/form/notes/files/completionDate), activity[], comms (sent state per trigger)
+- `STEPS` array (7 steps mapped to qualification stages with goals + task lists + form schemas)
+- 3 sample franchisees:
+  - Sarah Mitchell — Frisco, TX — Step 3 — On Track
+  - Marcus Johnson — Tampa, FL — Step 4 — Stalled (mid FDD wait)
+  - Patricia Williams — Plano, TX — Step 6 — On Track
 
-**What modern SaaS actually does (HubSpot / Pipedrive / Attio pattern):**
-1. **Narrower columns** — 260–280px (yours are 288px). Drop to 260px → fits ~4.3 columns in your 1132px viewport vs 3.5 today.
-2. **Sticky analytics bar + sticky column headers** — header stays put while you scroll vertically inside columns.
-3. **Compact card mode toggle** — "Compact / Comfortable" switch. Compact halves card height (name + score only), letting users see 2× more cards per column.
-4. **Collapsible columns** — click a column header to collapse it to a 40px vertical strip showing just the stage name rotated + count. Users collapse stages they're not focused on (e.g., Disqualified, Signing) to reclaim horizontal space.
-5. **Visible horizontal scroll affordance** — styled scrollbar always visible (not auto-hidden) + subtle gradient fade on the right edge hinting "more content →".
-6. **Mini-map / stage navigator** — small row of 8 dots above the board; click a dot to snap-scroll to that column. (Linear uses this.)
+**Components — `src/components/onboarding/`**
+- `OnboardingTable.tsx` — Table with columns Name, City, Current Step (e.g. "Step 3 / 7"), Progress bar, Days Elapsed, Status badge. Row click → opens wizard. Header has "New Onboarding" orange button.
+- `StatusBadge.tsx` — Pill: green `#20c997` / gold `#ffca28` / red `#ff4438`.
+- `StepProgressBar.tsx` — 7 connected circles with line. Completed = filled green, current = filled orange `#fd7e14`, upcoming = grey outline. Click circle to jump to that step.
+- `OnboardingWizard.tsx` — Full slide-over (`Sheet` side="right", `w-full sm:max-w-4xl`). Contains: back button, header (name + city), `StepProgressBar`, expanded `StepCard` for selected step, `ActivityLog`, `CommunicationTriggers`.
+- `StepCard.tsx` — White card showing: step number + title, goal text, `TaskChecklist`, `StepForm` (renders fields based on step), `DocumentUpload` zone, internal notes textarea, completion date input. Step 4 also renders `FddCountdown`. Step 7 also renders "Begin Active Franchisee Onboarding" orange button.
+- `TaskChecklist.tsx` — Checkbox list, can toggle complete.
+- `StepForm.tsx` — Renders form fields per step schema (Step 1: name/email/phone/source; Step 2: Franchise Lead Sheet — Who/Where/When/Source/Financial/Why/Competition; other steps: simpler note fields).
+- `DocumentUpload.tsx` — Dashed-border drop zone "Drop files here or click to upload" + file list (visual only, no real upload).
+- `FddCountdown.tsx` — Card showing "FDD sent on [date] — earliest Step 5 date: [date+16 days]" with days-remaining counter.
+- `ActivityLog.tsx` — Timeline of events (icon + author + timestamp + content), same visual style as Candidate Pipeline `NotesActivityTab`.
+- `CommunicationTriggers.tsx` — Read-only card listing 6 automated emails, each row with name + trigger + Sent/Pending badge.
 
-### Plan
+**Page — `src/pages/Onboarding.tsx`** (replace placeholder)
+- State: franchisees list, selected franchisee id, selected step
+- Renders header + `OnboardingTable`. When franchisee selected, renders `OnboardingWizard` slide-over.
+- "New Onboarding" button → adds a blank franchisee at Step 1 with sonner toast.
+- Wraps in full-bleed `#f2f4f6` container matching City Scoring / Teacher Prospects pattern.
 
-Apply the enhanced Option A. Concrete changes:
+### 7 Steps (matched to qualification process)
+1. Lead Generation — collects personal info + source
+2. Initial Qualification Call — Franchise Lead Sheet
+3. Business Overview Call — overview notes + Q&A log
+4. FDD & Agreement Review — FDD send date + 16-day countdown
+5. Business Immersion & Evaluation — immersion schedule + evaluation notes
+6. Confirmation Call — final commitment confirmation
+7. Signing Call — signing date + "Begin Active Franchisee Onboarding" button
 
-**`src/components/candidate-pipeline/KanbanBoard.tsx`**
-- Add horizontal scroll container with custom scrollbar styling and right-edge gradient fade
-- Add stage navigator dots row above the board (click → smooth scroll to column)
-- Track collapsed-column state (`Set<StageId>`) and pass down
+### Communication Triggers (read-only list)
+| Email | Triggers After |
+|---|---|
+| Welcome Email | Step 1 |
+| Process Roadmap | Step 2 |
+| Market Analysis | Step 3 |
+| FDD Document | Step 4 |
+| Congratulations / Franchise Awarded | Step 6 |
+| Donut Delivery Note + Onboarding Access | Step 7 |
 
-**`src/components/candidate-pipeline/KanbanColumn.tsx`**
-- Reduce width: `w-72` (288px) → `w-[260px]`
-- Sticky column header (`position: sticky; top: 0`) inside the scrollable card list
-- Add chevron toggle in header → collapses column to 44px vertical strip with rotated text + count badge
-- When collapsed, hide cards and drop zone (still droppable — auto-expand on dragover)
+Status auto-derived from current step's `lastUpdated` vs expected pace.
 
-**`src/components/candidate-pipeline/CandidateCard.tsx`**
-- Accept `compact` prop. Compact mode: single row (name + fit score + avatar), no city/tag/day label. ~32px tall vs ~96px.
-
-**`src/pages/CandidatePipeline.tsx`**
-- Add toolbar above the board with two controls:
-  - Density toggle: `Compact ⇄ Comfortable` (default Comfortable)
-  - "Collapse all empty" button (one-click collapses Disqualified + any zero-count columns)
-- Pass density + collapsed state down to board
-
-**`src/index.css`**
-- Add `.kanban-scroll` utility: visible thin scrollbar (8px), brand-tinted thumb (#003c7e at 30% opacity), always-visible track
-
-### Result
-At 1132px viewport with default settings: **4.3 columns visible** (vs 3.5 today). With Compact mode + Disqualified collapsed: **5+ columns visible with 2× cards per column**. No grouping needed, no extra cognitive layer.
-
-### Files touched
-- `src/components/candidate-pipeline/KanbanBoard.tsx` (rewrite)
-- `src/components/candidate-pipeline/KanbanColumn.tsx` (rewrite)
-- `src/components/candidate-pipeline/CandidateCard.tsx` (add compact mode)
-- `src/pages/CandidatePipeline.tsx` (add toolbar)
-- `src/index.css` (scrollbar utility)
+### Design Tokens
+- Page bg `#f2f4f6`, cards white + `1px solid #dee2e6`, headings `#003c7e`, primary button `#fd7e14`
+- Status: `#20c997` (on track), `#ffca28` (stalled), `#ff4438` (overdue)
+- Step circle: completed `#20c997`, current `#fd7e14`, upcoming outline `#adb5bd`
 

@@ -1,56 +1,59 @@
 
 
-## Candidate Pipeline Kanban Plan
+## Kanban view — what modern SaaS does
 
-Build a full Kanban-board page at `/candidate-pipeline` matching Neuron Garage's 7-stage qualification process plus a Disqualified column.
+I looked at how Trello, Linear, Pipedrive, HubSpot, Attio, and Salesforce handle long pipelines (8+ columns). The dominant pattern in 2024–2025 SaaS CRMs is **NOT** Option B (grouped phases) — that's rare and tends to feel cluttered. The winning pattern is a **refined Option A** with several quality-of-life additions.
 
-### Files to Create
+### Recommended: Enhanced Option A (industry standard)
 
-**Data**
-- `src/data/pipelineData.ts` — `PipelineStage` enum (8 stages), `Candidate` interface (id, name, city, state, fitScore, stage, daysInStage, assignedTo, tag, source, email, phone, createdDate, fddSentDate?, qualificationScores, notes[], activity[], trialClose, votes), `STAGES` array with labels, 10 sample candidates spread across stages, stage-specific homework definitions.
+**Why not Option B (grouped phases):**
+- Adds a second layer of visual hierarchy that fights with the existing column headers
+- Reduces horizontal density (you lose space to phase headers)
+- Pipedrive tried this; users complained — they reverted to flat columns
+- Sales pipelines are inherently linear; grouping breaks the left-to-right flow metaphor
 
-**Components (`src/components/candidate-pipeline/`)**
-- `KanbanBoard.tsx` — Horizontal scroll container, 8 columns rendered side-by-side, native HTML5 drag-and-drop (`draggable`, `onDragStart`, `onDragOver`, `onDrop`).
-- `KanbanColumn.tsx` — Column header with stage name (#003c7e) + count badge, scrollable card list, drop target highlight on dragover. Disqualified column uses muted grey header.
-- `CandidateCard.tsx` — White card with #dee2e6 border, name (bold), city/state, FitScoreBadge (reuse from teacher-prospects), "Day N" muted grey label, avatar circle with initial, tag pill. Draggable.
-- `PipelineAnalyticsBar.tsx` — Horizontal stat strip: Total in Pipeline, Avg Days/Stage, Conversion Rate, This Week's Activity.
-- `CandidateDetailPanel.tsx` — Full-screen `Sheet` (side="right", `w-full sm:max-w-3xl`) with `Tabs`: Overview / Qualification Score / Notes & Activity / Homework & Checklist.
-- `tabs/OverviewTab.tsx` — Contact info grid, source, current stage, days in stage, created date, registration-state warning banner if state requires registration.
-- `tabs/QualificationTab.tsx` — 5 criteria rows with `StarRating` (1–5 clickable stars), composite progress bar, AI reasoning placeholder card. Financial Readiness row shows the $1K + $15K confirmation.
-- `tabs/NotesActivityTab.tsx` — Add-note input + submit, chronological timeline (notes, calls, emails, stage changes) with author + timestamp.
-- `tabs/HomeworkTab.tsx` — Stage-specific homework block, 5-item Trial Close checklist (checkboxes blocking advance), Stage 4 FDD Lock countdown card (16 days from `fddSentDate`).
-- `SelectionCommittee.tsx` — Rendered inside Stage 5 cards' detail panel: Kaylie / Sam / Skylar rows, each with Approve/Decline toggle, live tally display.
-- `StarRating.tsx` — Reusable 1–5 star input.
+**What modern SaaS actually does (HubSpot / Pipedrive / Attio pattern):**
+1. **Narrower columns** — 260–280px (yours are 288px). Drop to 260px → fits ~4.3 columns in your 1132px viewport vs 3.5 today.
+2. **Sticky analytics bar + sticky column headers** — header stays put while you scroll vertically inside columns.
+3. **Compact card mode toggle** — "Compact / Comfortable" switch. Compact halves card height (name + score only), letting users see 2× more cards per column.
+4. **Collapsible columns** — click a column header to collapse it to a 40px vertical strip showing just the stage name rotated + count. Users collapse stages they're not focused on (e.g., Disqualified, Signing) to reclaim horizontal space.
+5. **Visible horizontal scroll affordance** — styled scrollbar always visible (not auto-hidden) + subtle gradient fade on the right edge hinting "more content →".
+6. **Mini-map / stage navigator** — small row of 8 dots above the board; click a dot to snap-scroll to that column. (Linear uses this.)
 
-**Page**
-- `src/pages/CandidatePipeline.tsx` — Replace placeholder. Manages candidates state, drag/drop handler (updates stage + fires sonner toast `Stage updated to [Stage Name]`), open-card state, detail-panel mutations. Wraps in full-bleed grey container matching City Scoring/Teacher Prospects pattern (negative margin -32 + padding 32).
+### Plan
 
-### Layout
+Apply the enhanced Option A. Concrete changes:
 
-```text
-┌─ Header: "Candidate Pipeline" + [Promote from Prospect] (orange) ─┐
-├─ Analytics Bar (4 stat tiles)                                      ┤
-├─ Kanban Board (horizontal scroll)                                  ┤
-│  [New Lead][Init Qual][Business Ov][FDD][Immersion][Conf][Sign][Disq]│
-└────────────────────────────────────────────────────────────────────┘
-```
+**`src/components/candidate-pipeline/KanbanBoard.tsx`**
+- Add horizontal scroll container with custom scrollbar styling and right-edge gradient fade
+- Add stage navigator dots row above the board (click → smooth scroll to column)
+- Track collapsed-column state (`Set<StageId>`) and pass down
 
-### Design Tokens
-- Page bg `#f2f4f6`, cards white + `#dee2e6` border, column header text `#003c7e`, primary button `#fd7e14`
-- Disqualified column: muted grey header (`#6c757d`)
-- Day label: `#6c757d` text-xs
-- Avatar: 28px circle, initial centered, deterministic color from name hash
-- FitScoreBadge: reuse `src/components/teacher-prospects/FitScoreBadge.tsx`
+**`src/components/candidate-pipeline/KanbanColumn.tsx`**
+- Reduce width: `w-72` (288px) → `w-[260px]`
+- Sticky column header (`position: sticky; top: 0`) inside the scrollable card list
+- Add chevron toggle in header → collapses column to 44px vertical strip with rotated text + count badge
+- When collapsed, hide cards and drop zone (still droppable — auto-expand on dragover)
 
-### Sample Data Distribution
-10 candidates across stages: New Lead (2), Initial Qual Call (2), Business Overview (1), FDD Review (1), Immersion (2), Confirmation (1), Signing (1). Names: Sarah Mitchell, Marcus Johnson, Amanda Rodriguez, James Carter, Patricia Williams, Brian Thompson, Lisa Nguyen, Rebecca Foster, David Chen, Kevin Patel. Cities: Frisco/Plano/Austin TX, Coral Springs/Tampa/Orlando FL.
+**`src/components/candidate-pipeline/CandidateCard.tsx`**
+- Accept `compact` prop. Compact mode: single row (name + fit score + avatar), no city/tag/day label. ~32px tall vs ~96px.
 
-### Interactions
-- Drag card to new column → updates state → sonner toast "Stage updated to [Stage Name]"
-- Click card → opens slide-over with 4 tabs
-- Add note → prepends to activity timeline
-- Star rating click → updates qualification score
-- Trial Close checkboxes → required before advancing
-- Stage 5 cards → Selection Committee voting visible in detail panel
-- Promote from Prospect button → placeholder toast for now
+**`src/pages/CandidatePipeline.tsx`**
+- Add toolbar above the board with two controls:
+  - Density toggle: `Compact ⇄ Comfortable` (default Comfortable)
+  - "Collapse all empty" button (one-click collapses Disqualified + any zero-count columns)
+- Pass density + collapsed state down to board
+
+**`src/index.css`**
+- Add `.kanban-scroll` utility: visible thin scrollbar (8px), brand-tinted thumb (#003c7e at 30% opacity), always-visible track
+
+### Result
+At 1132px viewport with default settings: **4.3 columns visible** (vs 3.5 today). With Compact mode + Disqualified collapsed: **5+ columns visible with 2× cards per column**. No grouping needed, no extra cognitive layer.
+
+### Files touched
+- `src/components/candidate-pipeline/KanbanBoard.tsx` (rewrite)
+- `src/components/candidate-pipeline/KanbanColumn.tsx` (rewrite)
+- `src/components/candidate-pipeline/CandidateCard.tsx` (add compact mode)
+- `src/pages/CandidatePipeline.tsx` (add toolbar)
+- `src/index.css` (scrollbar utility)
 

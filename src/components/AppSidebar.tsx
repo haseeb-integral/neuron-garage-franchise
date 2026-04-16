@@ -1,6 +1,7 @@
 import { Home, Map, Users, Kanban, ClipboardCheck } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useLocation } from "react-router-dom";
+import logo from "@/assets/neuron-garage-logo.png";
 
 const navItems = [
   { title: "Dashboard", url: "/", icon: Home },
@@ -20,8 +21,9 @@ export function AppSidebar() {
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-60 flex flex-col z-50" style={{ backgroundColor: '#003c7e' }}>
-      <div className="px-5 py-6">
-        <h1 className="text-white text-lg font-bold tracking-tight">🧠 Neuron Garage</h1>
+      <div className="px-5 py-5 flex items-center gap-3">
+        <img src={logo} alt="Neuron Garage" className="w-10 h-10" />
+        <span className="text-white text-lg font-bold tracking-tight">Neuron Garage</span>
       </div>
 
       <nav className="flex-1 flex flex-col gap-1 px-3">

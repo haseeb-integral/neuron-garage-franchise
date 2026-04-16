@@ -48,8 +48,8 @@ const CityScoring = () => {
   const compareCities = sampleCities.filter(c => selectedForCompare.includes(c.id));
 
   return (
-    <div style={{ backgroundColor: '#f2f4f6', margin: -32, padding: 32, minHeight: 'calc(100vh)' }}>
-      <h1 className="text-2xl font-bold mb-6" style={{ color: '#003c7e' }}>City Scoring</h1>
+    <div className="-mx-4 md:-mx-8 -my-4 md:-my-8 px-4 md:px-8 py-4 md:py-8 min-h-screen" style={{ backgroundColor: '#f2f4f6' }}>
+      <h1 className="text-2xl md:text-3xl font-bold mb-6" style={{ color: '#003c7e' }}>City Scoring</h1>
 
       <StatCards cities={filtered} nonRegOnly={nonRegOnly} onToggleNonReg={setNonRegOnly} />
       <FilterBar

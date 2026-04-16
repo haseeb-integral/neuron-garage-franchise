@@ -1,10 +1,94 @@
-import { PlaceholderPage } from "@/components/PlaceholderPage";
+import { useState, useMemo } from "react";
+import { sampleCities, CityData } from "@/data/cityData";
+import { StatCards } from "@/components/city-scoring/StatCards";
+import { FilterBar } from "@/components/city-scoring/FilterBar";
+import { CityTable } from "@/components/city-scoring/CityTable";
+import { CityDetailDrawer } from "@/components/city-scoring/CityDetailDrawer";
+import { ScoringWeights } from "@/components/city-scoring/ScoringWeights";
+import { CompareModal } from "@/components/city-scoring/CompareModal";
+import { Button } from "@/components/ui/button";
+import { GitCompare } from "lucide-react";
 
-const CityScoring = () => (
-  <PlaceholderPage
-    title="City Scoring"
-    description="Score and rank cities based on demographics, competition, and market potential to find the best franchise locations."
-  />
-);
+const CityScoring = () => {
+  const [nonRegOnly, setNonRegOnly] = useState(true);
+  const [stateFilter, setStateFilter] = useState("All");
+  const [tierFilter, setTierFilter] = useState("All");
+  const [minScore, setMinScore] = useState(0);
+  const [selectedCity, setSelectedCity] = useState<CityData | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [compareMode, setCompareMode] = useState(false);
+  const [selectedForCompare, setSelectedForCompare] = useState<number[]>([]);
+  const [compareOpen, setCompareOpen] = useState(false);
+  const [weights, setWeights] = useState<Record<string, number>>({
+    summerCampDemand: 20, schoolDensity: 15, childPopulation: 20,
+    dualIncomeFamilies: 15, stemJobs: 15, competitionScore: 15,
+  });
+
+  const filtered = useMemo(() => {
+    return sampleCities.filter(c => {
+      if (nonRegOnly && !c.isNonRegistration) return false;
+      if (stateFilter !== "All" && c.state !== stateFilter) return false;
+      if (tierFilter !== "All" && c.tier !== tierFilter) return false;
+      if (c.compositeScore < minScore) return false;
+      return true;
+    });
+  }, [nonRegOnly, stateFilter, tierFilter, minScore]);
+
+  const handleSelectCity = (city: CityData) => {
+    setSelectedCity(city);
+    setDrawerOpen(true);
+  };
+
+  const handleToggleCompare = (id: number) => {
+    setSelectedForCompare(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : prev.length < 2 ? [...prev, id] : prev
+    );
+  };
+
+  const compareCities = sampleCities.filter(c => selectedForCompare.includes(c.id));
+
+  return (
+    <div style={{ backgroundColor: '#f2f4f6', margin: -32, padding: 32, minHeight: 'calc(100vh)' }}>
+      <h1 className="text-2xl font-bold mb-6" style={{ color: '#003c7e' }}>City Scoring</h1>
+
+      <StatCards cities={filtered} nonRegOnly={nonRegOnly} onToggleNonReg={setNonRegOnly} />
+      <FilterBar
+        stateFilter={stateFilter} tierFilter={tierFilter} minScore={minScore}
+        onStateChange={setStateFilter} onTierChange={setTierFilter} onMinScoreChange={setMinScore}
+      />
+
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-sm" style={{ color: '#6c757d' }}>{filtered.length} cities found</p>
+        <div className="flex gap-2">
+          <Button
+            variant={compareMode ? "default" : "outline"}
+            size="sm"
+            onClick={() => { setCompareMode(!compareMode); setSelectedForCompare([]); }}
+          >
+            <GitCompare size={14} className="mr-1" /> {compareMode ? "Cancel Compare" : "Compare"}
+          </Button>
+          {compareMode && selectedForCompare.length === 2 && (
+            <Button size="sm" className="text-white" style={{ backgroundColor: '#fd7e14' }} onClick={() => setCompareOpen(true)}>
+              Compare Selected
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <CityTable
+        cities={filtered}
+        onSelectCity={handleSelectCity}
+        compareMode={compareMode}
+        selectedForCompare={selectedForCompare}
+        onToggleCompare={handleToggleCompare}
+      />
+
+      <ScoringWeights weights={weights} onChangeWeight={(k, v) => setWeights(prev => ({ ...prev, [k]: v }))} />
+
+      <CityDetailDrawer city={selectedCity} open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      <CompareModal open={compareOpen} onClose={() => setCompareOpen(false)} cities={compareCities} />
+    </div>
+  );
+};
 
 export default CityScoring;

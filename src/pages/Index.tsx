@@ -32,6 +32,79 @@ const Dashboard = () => {
         ))}
       </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-8">
+        {/* Pipeline Snapshot */}
+        <div className="bg-white p-6 shadow-sm" style={{ borderRadius: 8, border: '1px solid #f0f0f0' }}>
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold" style={{ color: '#1a1a2e' }}>Pipeline Snapshot</h2>
+            <p className="text-xs" style={{ color: '#6c757d' }}>Candidates by stage</p>
+          </div>
+          {(() => {
+            const pipeline = [
+              { stage: 'New Lead', count: 12 },
+              { stage: 'Initial Qual', count: 9 },
+              { stage: 'Business Overview', count: 7 },
+              { stage: 'FDD Review', count: 5 },
+              { stage: 'Immersion', count: 4 },
+              { stage: 'Confirmation', count: 3 },
+              { stage: 'Signing', count: 2 },
+              { stage: 'Disqualified', count: 6 },
+            ];
+            const max = Math.max(...pipeline.map((p) => p.count));
+            return (
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between text-[11px] font-medium" style={{ color: '#6c757d' }}>
+                  <span>Stage</span>
+                  <span>Candidates</span>
+                </div>
+                {pipeline.map((p) => (
+                  <div key={p.stage} className="flex items-center gap-3">
+                    <div className="w-32 text-xs shrink-0" style={{ color: '#343a40' }}>{p.stage}</div>
+                    <div className="flex-1 h-6 rounded-sm overflow-hidden" style={{ backgroundColor: '#f3f4f6' }}>
+                      <div
+                        className="h-full rounded-sm transition-all"
+                        style={{ width: `${(p.count / max) * 100}%`, backgroundColor: '#fd7e14' }}
+                      />
+                    </div>
+                    <div className="w-6 text-right text-xs font-semibold" style={{ color: '#1a1a2e' }}>{p.count}</div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* Recent Activity */}
+        <div className="bg-white p-6 shadow-sm flex flex-col" style={{ borderRadius: 8, border: '1px solid #f0f0f0' }}>
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold" style={{ color: '#1a1a2e' }}>Recent Activity</h2>
+            <p className="text-xs" style={{ color: '#6c757d' }}>Latest events across the system</p>
+          </div>
+          <div className="space-y-3 overflow-y-auto pr-1" style={{ maxHeight: 320 }}>
+            {[
+              { text: 'Sarah Mitchell moved to FDD Review', time: '12 min ago' },
+              { text: 'New prospect imported for Austin, TX', time: '1 hr ago' },
+              { text: 'Marcus Johnson flagged as Overdue', time: '3 hr ago' },
+              { text: 'Patricia Williams completed Business Immersion', time: 'Yesterday' },
+              { text: 'City score recalculated for Plano, TX (Tier A)', time: 'Yesterday' },
+              { text: '4 new teacher prospects added in Frisco, TX', time: '2 days ago' },
+            ].map((evt, i, arr) => (
+              <div
+                key={i}
+                className="flex items-start gap-3 pb-3"
+                style={{ borderBottom: i < arr.length - 1 ? '1px solid #f0f0f0' : 'none' }}
+              >
+                <div className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: '#fd7e14' }} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm" style={{ color: '#343a40' }}>{evt.text}</p>
+                  <p className="text-xs mt-0.5" style={{ color: '#6c757d' }}>{evt.time}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <div className="bg-white p-6 shadow-sm" style={{ borderRadius: 8, border: '1px solid #f0f0f0' }}>
         <p style={{ color: '#343a40' }}>
           Welcome to the Neuron Garage Franchise Acquisition System — your AI-powered platform for finding and onboarding the right franchisees.

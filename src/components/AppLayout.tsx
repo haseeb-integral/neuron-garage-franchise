@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { AppSidebar } from "./AppSidebar";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Menu } from "lucide-react";
 import logo from "@/assets/neuron-garage-logo.png";
 
@@ -23,9 +22,7 @@ export function AppLayout() {
       {/* Mobile drawer */}
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="left" className="p-0 w-60 border-r-0" style={{ backgroundColor: "#003c7e" }}>
-          <VisuallyHidden>
-            <SheetTitle>Navigation</SheetTitle>
-          </VisuallyHidden>
+          <SheetTitle className="sr-only">Navigation</SheetTitle>
           <AppSidebar variant="drawer" onNavigate={closeDrawer} />
         </SheetContent>
       </Sheet>

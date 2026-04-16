@@ -31,11 +31,12 @@ export function KanbanBoard({
 
   const scrollToStage = (stageId: StageId) => {
     const el = colRefs.current[stageId];
-    if (el && scrollRef.current) {
-      const scroller = scrollRef.current;
-      const left = el.offsetLeft - 12;
-      scroller.scrollTo({ left, behavior: "smooth" });
-    }
+    const scroller = scrollRef.current;
+    if (!el || !scroller) return;
+    const elRect = el.getBoundingClientRect();
+    const scrollerRect = scroller.getBoundingClientRect();
+    const left = scroller.scrollLeft + (elRect.left - scrollerRect.left) - 12;
+    scroller.scrollTo({ left, behavior: "smooth" });
   };
 
   return (

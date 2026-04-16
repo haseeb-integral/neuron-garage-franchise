@@ -62,3 +62,24 @@
     font-family: 'Inter', sans-serif;
   }
 }
+
+@layer utilities {
+  .kanban-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 60, 126, 0.3) rgba(0, 60, 126, 0.08);
+  }
+  .kanban-scroll::-webkit-scrollbar {
+    height: 10px;
+  }
+  .kanban-scroll::-webkit-scrollbar-track {
+    background: rgba(0, 60, 126, 0.08);
+    border-radius: 8px;
+  }
+  .kanban-scroll::-webkit-scrollbar-thumb {
+    background: rgba(0, 60, 126, 0.3);
+    border-radius: 8px;
+  }
+  .kanban-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 60, 126, 0.5);
+  }
+}

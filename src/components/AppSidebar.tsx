@@ -3,11 +3,11 @@ import { NavLink, useLocation } from "react-router-dom";
 import logo from "@/assets/neuron-garage-logo.png";
 
 const navItems = [
-  { title: "Dashboard", url: "/", icon: Home },
-  { title: "City Scoring", url: "/city-scoring", icon: Map },
-  { title: "Teacher Prospects", url: "/teacher-prospects", icon: Users },
-  { title: "Candidate Pipeline", url: "/candidate-pipeline", icon: Kanban },
-  { title: "Onboarding", url: "/onboarding", icon: ClipboardCheck },
+  { title: "Dashboard", url: "/", icon: Home, tourId: "nav-dashboard" },
+  { title: "City Scoring", url: "/city-scoring", icon: Map, tourId: "nav-city-scoring" },
+  { title: "Teacher Prospects", url: "/teacher-prospects", icon: Users, tourId: "nav-teacher-prospects" },
+  { title: "Candidate Pipeline", url: "/candidate-pipeline", icon: Kanban, tourId: "nav-candidate-pipeline" },
+  { title: "Onboarding", url: "/onboarding", icon: ClipboardCheck, tourId: "nav-onboarding" },
 ];
 
 interface Props {
@@ -44,6 +44,7 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
               to={item.url}
               end={item.url === "/"}
               onClick={onNavigate}
+              data-tour={item.tourId}
               className="group flex items-center gap-3 px-3 rounded-lg text-sm transition-colors"
               style={{
                 minHeight: 44,

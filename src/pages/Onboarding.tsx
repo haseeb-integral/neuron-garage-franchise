@@ -5,6 +5,7 @@ import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
 import { Button } from "@/components/ui/button";
 import { Plus, Users, TrendingUp, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { JourneyBar } from "@/components/JourneyBar";
 
 const buildEmptyStepData = () => {
   const out: Record<number, Franchisee["stepData"][number]> = {} as Franchisee["stepData"];
@@ -89,6 +90,8 @@ const Onboarding = () => {
             <Plus size={16} /> New Onboarding
           </Button>
         </div>
+
+        <JourneyBar />
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatCard icon={Users} label="Active Onboardings" value={total} color="#003c7e" />

@@ -8,6 +8,7 @@ import { ScoringWeights } from "@/components/city-scoring/ScoringWeights";
 import { CompareModal } from "@/components/city-scoring/CompareModal";
 import { Button } from "@/components/ui/button";
 import { GitCompare } from "lucide-react";
+import { JourneyBar } from "@/components/JourneyBar";
 
 const CityScoring = () => {
   const [nonRegOnly, setNonRegOnly] = useState(true);

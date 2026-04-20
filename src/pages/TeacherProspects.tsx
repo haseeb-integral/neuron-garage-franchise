@@ -10,6 +10,7 @@ import { TeacherTable } from "@/components/teacher-prospects/TeacherTable";
 import { TeacherDetailPanel } from "@/components/teacher-prospects/TeacherDetailPanel";
 import { BulkActionBar } from "@/components/teacher-prospects/BulkActionBar";
 import { OutreachIntelligence } from "@/components/teacher-prospects/OutreachIntelligence";
+import { JourneyBar } from "@/components/JourneyBar";
 
 const TeacherProspects = () => {
   const [prospects, setProspects] = useState<TeacherProspect[]>(sampleTeachers);
@@ -88,6 +89,8 @@ const TeacherProspects = () => {
         Discover and evaluate potential franchisee candidates from the teaching community.
       </p>
       <div className="h-px mb-6" style={{ backgroundColor: "#dee2e6" }} />
+
+      <JourneyBar />
 
       <TeacherFilterBar
         cities={cities}

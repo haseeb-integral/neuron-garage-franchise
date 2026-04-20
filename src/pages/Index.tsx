@@ -1,5 +1,6 @@
 import { Globe, Users, Filter, Rocket } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { JourneyBar } from "@/components/JourneyBar";
 
 const stats = [
   { title: "Total Cities Scored", value: 0, icon: Globe },
@@ -16,6 +17,8 @@ const Dashboard = () => {
         Welcome to the Neuron Garage Franchise Acquisition System — your AI-powered platform for finding and onboarding the right franchisees.
       </p>
       <Separator className="my-6" style={{ backgroundColor: '#e9ecef' }} />
+
+      <JourneyBar />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
         {stats.map((stat) => (

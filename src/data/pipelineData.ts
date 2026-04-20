@@ -145,7 +145,7 @@ export const sampleCandidates: Candidate[] = [
   {
     id: 5, name: "Patricia Williams", city: "Tampa", state: "FL",
     email: "patricia.w@email.com", phone: "(813) 555-0156",
-    fitScore: 84, stage: "business_overview", daysInStage: 5,
+    fitScore: 84, stage: "signing", daysInStage: 5,
     assignedTo: "Sam", tag: "High Potential", source: "Referral",
     createdDate: "2025-04-01",
     qualificationScores: { teaching: 5, leadership: 4, financial: 4, marketFit: 4, cultureFit: 5 },

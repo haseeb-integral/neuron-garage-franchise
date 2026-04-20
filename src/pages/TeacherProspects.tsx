@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 import { toast } from "sonner";
@@ -18,8 +19,14 @@ const TeacherProspects = () => {
   const [active, setActive] = useState<TeacherProspect | null>(null);
   const [selected, setSelected] = useState<number[]>([]);
 
+  const [searchParams] = useSearchParams();
   const [search, setSearch] = useState("");
-  const [cityFilter, setCityFilter] = useState("All");
+  const [cityFilter, setCityFilter] = useState(searchParams.get("city") ?? "All");
+
+  useEffect(() => {
+    const city = searchParams.get("city");
+    if (city) setCityFilter(city);
+  }, [searchParams]);
   const [tagFilter, setTagFilter] = useState("All");
   const [gradeFilter, setGradeFilter] = useState("All");
   const [enrichmentFilter, setEnrichmentFilter] = useState("All");

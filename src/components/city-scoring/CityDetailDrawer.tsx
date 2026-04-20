@@ -3,8 +3,10 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { TierBadge } from "./TierBadge";
-import { Download } from "lucide-react";
+import { Download, ArrowRight } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 interface Props {
   city: CityData | null;
@@ -23,8 +25,15 @@ const breakdownLabels: Record<string, string> = {
 
 export function CityDetailDrawer({ city, open, onClose }: Props) {
   const [notes, setNotes] = useState(city?.notes ?? "");
+  const navigate = useNavigate();
 
   if (!city) return null;
+
+  const handleFindTeachers = () => {
+    onClose();
+    navigate(`/teacher-prospects?city=${encodeURIComponent(city.city)}`);
+    toast.success(`Showing prospects for ${city.city}, ${city.state}.`);
+  };
 
   return (
     <Sheet open={open} onOpenChange={v => !v && onClose()}>
@@ -70,7 +79,15 @@ export function CityDetailDrawer({ city, open, onClose }: Props) {
           <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Add notes about this city..." rows={3} />
         </div>
 
-        <Button className="w-full text-white" style={{ backgroundColor: '#fd7e14' }} onClick={() => {}}>
+        <Button
+          className="w-full text-white font-semibold mb-2"
+          style={{ backgroundColor: '#fd7e14', minHeight: 44 }}
+          onClick={handleFindTeachers}
+        >
+          Find Teachers in this City <ArrowRight size={14} className="ml-2" />
+        </Button>
+
+        <Button variant="outline" className="w-full" onClick={() => {}}>
           <Download size={14} className="mr-2" /> Download PDF Report
         </Button>
       </SheetContent>

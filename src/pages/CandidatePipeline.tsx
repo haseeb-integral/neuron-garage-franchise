@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { UserPlus, Rows3, Rows2, Minimize2 } from "lucide-react";
 import { toast } from "sonner";
@@ -7,12 +8,43 @@ import { KanbanBoard } from "@/components/candidate-pipeline/KanbanBoard";
 import { PipelineAnalyticsBar } from "@/components/candidate-pipeline/PipelineAnalyticsBar";
 import { CandidateDetailPanel } from "@/components/candidate-pipeline/CandidateDetailPanel";
 import { PageHeader } from "@/components/PageHeader";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { buildFranchiseeFromCandidate, queueOnboarding } from "@/data/onboardingStore";
 
 const CandidatePipeline = () => {
+  const navigate = useNavigate();
   const [candidates, setCandidates] = useState<Candidate[]>(sampleCandidates);
   const [active, setActive] = useState<Candidate | null>(null);
   const [compact, setCompact] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<StageId>>(new Set());
+  const [confirmCandidate, setConfirmCandidate] = useState<Candidate | null>(null);
+
+  const handleStartOnboarding = (c: Candidate) => setConfirmCandidate(c);
+
+  const confirmStartOnboarding = () => {
+    if (!confirmCandidate) return;
+    const franchisee = buildFranchiseeFromCandidate({
+      name: confirmCandidate.name,
+      city: confirmCandidate.city,
+      state: confirmCandidate.state,
+      email: confirmCandidate.email,
+      phone: confirmCandidate.phone,
+    });
+    queueOnboarding(franchisee);
+    const name = confirmCandidate.name;
+    setConfirmCandidate(null);
+    toast.success(`Onboarding started for ${name}.`);
+    navigate("/onboarding");
+  };
 
   const handleStageChange = (id: number, stage: StageId) => {
     const stageLabel = STAGES.find((s) => s.id === stage)?.label ?? stage;
@@ -115,6 +147,7 @@ const CandidatePipeline = () => {
         candidates={candidates}
         onStageChange={handleStageChange}
         onCardClick={setActive}
+        onStartOnboarding={handleStartOnboarding}
         collapsed={collapsed}
         onToggleCollapse={toggleCollapse}
         compact={compact}
@@ -125,6 +158,29 @@ const CandidatePipeline = () => {
         onClose={() => setActive(null)}
         onUpdate={handleUpdate}
       />
+
+      <AlertDialog open={!!confirmCandidate} onOpenChange={(v) => !v && setConfirmCandidate(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Start onboarding for {confirmCandidate?.name}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will create a new onboarding record with the default 7 steps for this candidate.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmStartOnboarding}
+              className="text-white"
+              style={{ backgroundColor: "#fd7e14" }}
+            >
+              Start Onboarding
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

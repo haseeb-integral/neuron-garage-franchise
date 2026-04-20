@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Franchisee, SAMPLE_FRANCHISEES, STEPS } from "@/data/onboardingData";
 import { OnboardingTable } from "@/components/onboarding/OnboardingTable";
 import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, Users, TrendingUp, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
+import { consumePendingOnboardings, onOnboardingAdded } from "@/data/onboardingStore";
 
 const buildEmptyStepData = () => {
   const out: Record<number, Franchisee["stepData"][number]> = {} as Franchisee["stepData"];
@@ -23,6 +24,18 @@ const buildEmptyStepData = () => {
 const Onboarding = () => {
   const [franchisees, setFranchisees] = useState<Franchisee[]>(SAMPLE_FRANCHISEES);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Pick up any onboardings queued from other pages (e.g. Candidate Pipeline)
+  useEffect(() => {
+    const drain = () => {
+      const pending = consumePendingOnboardings();
+      if (pending.length > 0) {
+        setFranchisees((prev) => [...pending, ...prev]);
+      }
+    };
+    drain();
+    return onOnboardingAdded(drain);
+  }, []);
 
   const selected = franchisees.find((f) => f.id === selectedId) ?? null;
 

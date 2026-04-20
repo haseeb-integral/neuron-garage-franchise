@@ -6,6 +6,7 @@ interface Props {
   candidates: Candidate[];
   onStageChange: (id: number, stage: StageId) => void;
   onCardClick: (c: Candidate) => void;
+  onStartOnboarding: (c: Candidate) => void;
   collapsed: Set<StageId>;
   onToggleCollapse: (stageId: StageId) => void;
   compact: boolean;
@@ -15,6 +16,7 @@ export function KanbanBoard({
   candidates,
   onStageChange,
   onCardClick,
+  onStartOnboarding,
   collapsed,
   onToggleCollapse,
   compact,
@@ -96,6 +98,7 @@ export function KanbanBoard({
                 onDragStart={setDraggingId}
                 onDrop={handleDrop}
                 onCardClick={onCardClick}
+                onStartOnboarding={onStartOnboarding}
                 collapsed={collapsed.has(stage.id)}
                 onToggleCollapse={onToggleCollapse}
                 compact={compact}

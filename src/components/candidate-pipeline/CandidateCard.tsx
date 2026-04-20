@@ -1,10 +1,13 @@
 import { Candidate } from "@/data/pipelineData";
 import { FitScoreBadge } from "@/components/teacher-prospects/FitScoreBadge";
+import { ArrowRight } from "lucide-react";
+import { MouseEvent } from "react";
 
 interface Props {
   candidate: Candidate;
   onDragStart: (id: number) => void;
   onClick: () => void;
+  onStartOnboarding?: (candidate: Candidate) => void;
   compact?: boolean;
 }
 
@@ -15,7 +18,12 @@ const avatarColor = (name: string) => {
   return palette[h];
 };
 
-export function CandidateCard({ candidate, onDragStart, onClick, compact = false }: Props) {
+export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboarding, compact = false }: Props) {
+  const showStartOnboarding = candidate.stage === "signing" && !!onStartOnboarding;
+  const handleStart = (e: MouseEvent) => {
+    e.stopPropagation();
+    onStartOnboarding?.(candidate);
+  };
   if (compact) {
     return (
       <div
@@ -73,6 +81,15 @@ export function CandidateCard({ candidate, onDragStart, onClick, compact = false
           </div>
         </div>
       </div>
+      {showStartOnboarding && (
+        <button
+          onClick={handleStart}
+          className="mt-2 w-full text-white text-xs font-semibold rounded-md px-2 py-1.5 flex items-center justify-center gap-1 hover:opacity-90 transition-opacity"
+          style={{ backgroundColor: "#fd7e14" }}
+        >
+          Start Onboarding <ArrowRight size={12} />
+        </button>
+      )}
     </div>
   );
 }

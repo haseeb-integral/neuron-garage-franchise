@@ -1,10 +1,13 @@
 import { Candidate } from "@/data/pipelineData";
 import { FitScoreBadge } from "@/components/teacher-prospects/FitScoreBadge";
+import { ArrowRight } from "lucide-react";
+import { MouseEvent } from "react";
 
 interface Props {
   candidate: Candidate;
   onDragStart: (id: number) => void;
   onClick: () => void;
+  onStartOnboarding?: (candidate: Candidate) => void;
   compact?: boolean;
 }
 
@@ -15,7 +18,12 @@ const avatarColor = (name: string) => {
   return palette[h];
 };
 
-export function CandidateCard({ candidate, onDragStart, onClick, compact = false }: Props) {
+export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboarding, compact = false }: Props) {
+  const showStartOnboarding = candidate.stage === "signing" && !!onStartOnboarding;
+  const handleStart = (e: MouseEvent) => {
+    e.stopPropagation();
+    onStartOnboarding?.(candidate);
+  };
   if (compact) {
     return (
       <div

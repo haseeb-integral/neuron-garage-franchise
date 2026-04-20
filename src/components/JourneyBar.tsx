@@ -12,9 +12,8 @@ export function JourneyBar() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // On dashboard ("/"), default current step to 1 (City Scoring)
-  const activePath =
-    location.pathname === "/" ? "/city-scoring" : location.pathname;
+  // Dashboard ("/") is an overview, not a workflow step — no step is "current" there
+  const activePath = location.pathname;
 
   return (
     <nav

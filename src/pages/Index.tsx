@@ -12,15 +12,11 @@ const stats = [
 const Dashboard = () => {
   return (
     <div>
-      <h1 className="text-2xl font-bold" style={{ color: '#343a40' }}>Dashboard</h1>
-      <p className="text-sm text-slate-500 mt-1">
+      <h1 className="text-2xl md:text-3xl font-bold" style={{ color: '#003c7e' }}>Dashboard</h1>
+      <p className="text-sm mt-1 mb-6" style={{ color: '#6c757d' }}>
         Welcome to the Neuron Garage Franchise Acquisition System — your AI-powered platform for finding and onboarding the right franchisees.
       </p>
-      <Separator className="my-6" style={{ backgroundColor: '#e9ecef' }} />
 
-      <p className="text-xs font-medium mb-2" style={{ color: '#6c757d' }}>
-        Your 4-step workflow
-      </p>
       <JourneyBar />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">

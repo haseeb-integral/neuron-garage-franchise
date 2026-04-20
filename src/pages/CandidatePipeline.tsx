@@ -6,6 +6,7 @@ import { sampleCandidates, Candidate, StageId, STAGES } from "@/data/pipelineDat
 import { KanbanBoard } from "@/components/candidate-pipeline/KanbanBoard";
 import { PipelineAnalyticsBar } from "@/components/candidate-pipeline/PipelineAnalyticsBar";
 import { CandidateDetailPanel } from "@/components/candidate-pipeline/CandidateDetailPanel";
+import { JourneyBar } from "@/components/JourneyBar";
 
 const CandidatePipeline = () => {
   const [candidates, setCandidates] = useState<Candidate[]>(sampleCandidates);
@@ -61,6 +62,8 @@ const CandidatePipeline = () => {
         Track and manage franchise candidates through every stage of the qualification process.
       </p>
       <div className="h-px mb-6" style={{ backgroundColor: "#dee2e6" }} />
+
+      <JourneyBar />
 
       <PipelineAnalyticsBar candidates={candidates} />
 

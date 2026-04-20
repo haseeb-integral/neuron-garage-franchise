@@ -1,6 +1,6 @@
 import { Globe, Users, Filter, Rocket } from "lucide-react";
 
-import { JourneyBar } from "@/components/JourneyBar";
+import { PageHeader } from "@/components/PageHeader";
 
 const stats = [
   { title: "Total Cities Scored", value: 0, icon: Globe },
@@ -12,12 +12,10 @@ const stats = [
 const Dashboard = () => {
   return (
     <div>
-      <h1 className="text-2xl md:text-3xl font-bold" style={{ color: '#003c7e' }}>Dashboard</h1>
-      <p className="text-sm mt-1 mb-6" style={{ color: '#6c757d' }}>
-        Welcome to the Neuron Garage Franchise Acquisition System — your AI-powered platform for finding and onboarding the right franchisees.
-      </p>
-
-      <JourneyBar />
+      <PageHeader
+        title="Dashboard"
+        subtitle="Welcome to the Neuron Garage Franchise Acquisition System — your AI-powered platform for finding and onboarding the right franchisees."
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
         {stats.map((stat) => (

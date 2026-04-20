@@ -2,10 +2,10 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 
 const STEPS = [
-  { num: 1, label: "City Scoring", path: "/city-scoring" },
-  { num: 2, label: "Teacher Prospects", path: "/teacher-prospects" },
-  { num: 3, label: "Candidate Pipeline", path: "/candidate-pipeline" },
-  { num: 4, label: "Onboarding", path: "/onboarding" },
+  { num: 1, label: "City Scoring", path: "/city-scoring", count: "10 cities" },
+  { num: 2, label: "Teacher Prospects", path: "/teacher-prospects", count: "42 prospects" },
+  { num: 3, label: "Candidate Pipeline", path: "/candidate-pipeline", count: "10 candidates" },
+  { num: 4, label: "Onboarding", path: "/onboarding", count: "3 active" },
 ];
 
 export function JourneyBar() {
@@ -52,6 +52,15 @@ export function JourneyBar() {
                   }}
                 >
                   {step.label}
+                </span>
+                <span
+                  className="text-[11px] font-semibold rounded-full px-2 py-0.5 whitespace-nowrap"
+                  style={{
+                    backgroundColor: isActive ? "#fd7e14" : "#e9ecef",
+                    color: isActive ? "#ffffff" : "#495057",
+                  }}
+                >
+                  {step.count}
                 </span>
               </button>
               {idx < STEPS.length - 1 && (

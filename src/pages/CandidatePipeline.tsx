@@ -21,10 +21,30 @@ import {
 import { buildFranchiseeFromCandidate, queueOnboarding } from "@/data/onboardingStore";
 
 const CandidatePipeline = () => {
+  const navigate = useNavigate();
   const [candidates, setCandidates] = useState<Candidate[]>(sampleCandidates);
   const [active, setActive] = useState<Candidate | null>(null);
   const [compact, setCompact] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<StageId>>(new Set());
+  const [confirmCandidate, setConfirmCandidate] = useState<Candidate | null>(null);
+
+  const handleStartOnboarding = (c: Candidate) => setConfirmCandidate(c);
+
+  const confirmStartOnboarding = () => {
+    if (!confirmCandidate) return;
+    const franchisee = buildFranchiseeFromCandidate({
+      name: confirmCandidate.name,
+      city: confirmCandidate.city,
+      state: confirmCandidate.state,
+      email: confirmCandidate.email,
+      phone: confirmCandidate.phone,
+    });
+    queueOnboarding(franchisee);
+    const name = confirmCandidate.name;
+    setConfirmCandidate(null);
+    toast.success(`Onboarding started for ${name}.`);
+    navigate("/onboarding");
+  };
 
   const handleStageChange = (id: number, stage: StageId) => {
     const stageLabel = STAGES.find((s) => s.id === stage)?.label ?? stage;

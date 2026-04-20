@@ -50,7 +50,10 @@ const CityScoring = () => {
 
   return (
     <div className="-mx-4 md:-mx-8 -my-4 md:-my-8 px-4 md:px-8 py-4 md:py-8 min-h-screen" style={{ backgroundColor: '#f2f4f6' }}>
-      <h1 className="text-2xl md:text-3xl font-bold mb-4" style={{ color: '#003c7e' }}>City Scoring</h1>
+      <h1 className="text-2xl md:text-3xl font-bold" style={{ color: '#003c7e' }}>City Scoring</h1>
+      <p className="text-sm mt-1 mb-6" style={{ color: '#6c757d' }}>
+        Analyze and rank U.S. cities to find the best markets for new Neuron Garage franchises.
+      </p>
 
       <JourneyBar />
 

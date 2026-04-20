@@ -85,10 +85,9 @@ const TeacherProspects = () => {
           <Search size={16} /> Find Prospects
         </Button>
       </div>
-      <p className="mb-6" style={{ color: "#6c757d" }}>
+      <p className="text-sm mt-1 mb-6" style={{ color: "#6c757d" }}>
         Discover and evaluate potential franchisee candidates from the teaching community.
       </p>
-      <div className="h-px mb-6" style={{ backgroundColor: "#dee2e6" }} />
 
       <JourneyBar />
 

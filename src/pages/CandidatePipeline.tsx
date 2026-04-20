@@ -58,10 +58,9 @@ const CandidatePipeline = () => {
           <UserPlus size={16} /> Promote from Prospect
         </Button>
       </div>
-      <p className="mb-6" style={{ color: "#6c757d" }}>
+      <p className="text-sm mt-1 mb-6" style={{ color: "#6c757d" }}>
         Track and manage franchise candidates through every stage of the qualification process.
       </p>
-      <div className="h-px mb-6" style={{ backgroundColor: "#dee2e6" }} />
 
       <JourneyBar />
 

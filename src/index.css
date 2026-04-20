@@ -83,3 +83,86 @@
     background: rgba(0, 60, 126, 0.5);
   }
 }
+
+/* ===== Driver.js (guided tour) brand styling ===== */
+.ng-driver-popover.driver-popover {
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #dee2e6;
+  box-shadow: 0 12px 32px rgba(0, 60, 126, 0.18);
+  padding: 18px 18px 16px;
+  max-width: 340px;
+  font-family: 'Inter', sans-serif;
+}
+.ng-driver-popover .driver-popover-title {
+  color: #003c7e;
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 6px;
+}
+.ng-driver-popover .driver-popover-description {
+  color: #495057;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.ng-driver-popover .driver-popover-footer {
+  margin-top: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.ng-driver-popover .driver-popover-progress-text {
+  color: #6c757d;
+  font-size: 12px;
+}
+.ng-driver-popover .driver-popover-navigation-btns {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.ng-driver-popover .driver-popover-next-btn {
+  background: #fd7e14 !important;
+  color: #ffffff !important;
+  border: none !important;
+  text-shadow: none !important;
+  padding: 8px 14px !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  cursor: pointer;
+  box-shadow: none !important;
+}
+.ng-driver-popover .driver-popover-next-btn:hover {
+  background: #e8710f !important;
+}
+.ng-driver-popover .driver-popover-prev-btn {
+  background: transparent !important;
+  color: #495057 !important;
+  border: 1px solid #dee2e6 !important;
+  text-shadow: none !important;
+  padding: 8px 12px !important;
+  border-radius: 8px !important;
+  font-weight: 500 !important;
+  font-size: 13px !important;
+  box-shadow: none !important;
+}
+.ng-driver-popover .driver-popover-close-btn {
+  color: #6c757d !important;
+  background: transparent !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  text-decoration: underline;
+  padding: 6px 4px !important;
+  width: auto !important;
+  height: auto !important;
+  position: static !important;
+  order: -1;
+}
+.ng-driver-popover .driver-popover-close-btn::before {
+  content: "Skip tour";
+}
+.ng-driver-popover .driver-popover-close-btn svg,
+.ng-driver-popover .driver-popover-close-btn > * {
+  display: none !important;
+}

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { UserPlus, Rows3, Rows2, Minimize2 } from "lucide-react";
 import { toast } from "sonner";
@@ -7,6 +8,17 @@ import { KanbanBoard } from "@/components/candidate-pipeline/KanbanBoard";
 import { PipelineAnalyticsBar } from "@/components/candidate-pipeline/PipelineAnalyticsBar";
 import { CandidateDetailPanel } from "@/components/candidate-pipeline/CandidateDetailPanel";
 import { PageHeader } from "@/components/PageHeader";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { buildFranchiseeFromCandidate, queueOnboarding } from "@/data/onboardingStore";
 
 const CandidatePipeline = () => {
   const [candidates, setCandidates] = useState<Candidate[]>(sampleCandidates);

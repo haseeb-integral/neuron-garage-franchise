@@ -22,24 +22,25 @@ const Dashboard = () => {
 
       {/* Next Action card */}
       <div
-        className="bg-white p-5 mb-6 flex flex-col md:flex-row md:items-center gap-4 shadow-sm"
+        className="bg-white px-5 py-3.5 mb-6 flex flex-col md:flex-row md:items-center gap-4 shadow-sm"
         style={{
           borderRadius: 8,
           border: '1px solid #f0f0f0',
           borderLeft: '3px solid #fd7e14',
         }}
       >
-        <div className="p-3 rounded-lg shrink-0" style={{ backgroundColor: '#fff4ec' }}>
-          <Zap size={22} style={{ color: '#fd7e14' }} />
+        <div className="p-2.5 rounded-lg shrink-0" style={{ backgroundColor: '#fff4ec' }}>
+          <Zap size={20} style={{ color: '#fd7e14' }} />
         </div>
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 md:basis-[65%] md:flex-grow-0 md:flex-shrink">
           <p className="text-base font-semibold" style={{ color: '#1a1a2e' }}>
             Welcome back, Sam. Here's your next step:
           </p>
-          <p className="text-sm mt-1" style={{ color: '#6c757d' }}>
+          <p className="text-sm mt-0.5" style={{ color: '#6c757d' }}>
             You have 3 A‑tier cities ready for prospecting. Find teachers in Frisco, TX to keep the pipeline moving.
           </p>
         </div>
+        <div className="md:flex-1" />
         <button
           onClick={() => navigate('/teacher-prospects?city=Frisco')}
           className="text-white font-semibold px-4 py-2 rounded-md flex items-center gap-2 shrink-0 hover:opacity-90 transition-opacity w-full md:w-auto justify-center"

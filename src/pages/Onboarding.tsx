@@ -5,7 +5,7 @@ import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
 import { Button } from "@/components/ui/button";
 import { Plus, Users, TrendingUp, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-import { JourneyBar } from "@/components/JourneyBar";
+import { PageHeader } from "@/components/PageHeader";
 
 const buildEmptyStepData = () => {
   const out: Record<number, Franchisee["stepData"][number]> = {} as Franchisee["stepData"];
@@ -74,26 +74,22 @@ const Onboarding = () => {
 
   return (
     <div className="-mx-4 md:-mx-8 -my-4 md:-my-8 px-4 md:px-8 py-4 md:py-8 min-h-screen" style={{ backgroundColor: "#f2f4f6" }}>
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold" style={{ color: "#003c7e" }}>Onboarding</h1>
-            <p className="text-sm mt-1" style={{ color: "#6c757d" }}>
-              Guide new franchisees through the 7-step qualification & onboarding journey.
-            </p>
-          </div>
-          <Button
-            onClick={addNew}
-            className="text-white w-full sm:w-auto"
-            style={{ backgroundColor: "#fd7e14", minHeight: 44 }}
-          >
-            <Plus size={16} /> New Onboarding
-          </Button>
-        </div>
+      <div className="max-w-7xl mx-auto">
+        <PageHeader
+          title="Onboarding"
+          subtitle="Guide new franchisees through the 7-step qualification & onboarding journey."
+          action={
+            <Button
+              onClick={addNew}
+              className="text-white w-full sm:w-auto"
+              style={{ backgroundColor: "#fd7e14", minHeight: 44 }}
+            >
+              <Plus size={16} /> New Onboarding
+            </Button>
+          }
+        />
 
-        <JourneyBar />
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <StatCard icon={Users} label="Active Onboardings" value={total} color="#003c7e" />
           <StatCard icon={TrendingUp} label="On Track" value={onTrack} color="#20c997" />
           <StatCard icon={AlertTriangle} label="Needs Attention" value={stalled} color="#ff4438" />

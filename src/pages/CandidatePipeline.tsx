@@ -6,7 +6,7 @@ import { sampleCandidates, Candidate, StageId, STAGES } from "@/data/pipelineDat
 import { KanbanBoard } from "@/components/candidate-pipeline/KanbanBoard";
 import { PipelineAnalyticsBar } from "@/components/candidate-pipeline/PipelineAnalyticsBar";
 import { CandidateDetailPanel } from "@/components/candidate-pipeline/CandidateDetailPanel";
-import { JourneyBar } from "@/components/JourneyBar";
+import { PageHeader } from "@/components/PageHeader";
 
 const CandidatePipeline = () => {
   const [candidates, setCandidates] = useState<Candidate[]>(sampleCandidates);
@@ -48,21 +48,19 @@ const CandidatePipeline = () => {
 
   return (
     <div className="-mx-4 md:-mx-8 -my-4 md:-my-8 px-4 md:px-8 py-4 md:py-8 min-h-screen" style={{ backgroundColor: "#f2f4f6" }}>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
-        <h1 className="text-2xl md:text-3xl font-bold" style={{ color: "#003c7e" }}>Candidate Pipeline</h1>
-        <Button
-          onClick={() => toast.info("Open Teacher Prospects to promote a candidate")}
-          className="text-white w-full sm:w-auto"
-          style={{ backgroundColor: "#fd7e14", minHeight: 44 }}
-        >
-          <UserPlus size={16} /> Promote from Prospect
-        </Button>
-      </div>
-      <p className="text-sm mt-1 mb-6" style={{ color: "#6c757d" }}>
-        Track and manage franchise candidates through every stage of the qualification process.
-      </p>
-
-      <JourneyBar />
+      <PageHeader
+        title="Candidate Pipeline"
+        subtitle="Track and manage franchise candidates through every stage of the qualification process."
+        action={
+          <Button
+            onClick={() => toast.info("Open Teacher Prospects to promote a candidate")}
+            className="text-white w-full sm:w-auto"
+            style={{ backgroundColor: "#fd7e14", minHeight: 44 }}
+          >
+            <UserPlus size={16} /> Promote from Prospect
+          </Button>
+        }
+      />
 
       <PipelineAnalyticsBar candidates={candidates} />
 

@@ -8,7 +8,7 @@ import { ScoringWeights } from "@/components/city-scoring/ScoringWeights";
 import { CompareModal } from "@/components/city-scoring/CompareModal";
 import { Button } from "@/components/ui/button";
 import { GitCompare } from "lucide-react";
-import { JourneyBar } from "@/components/JourneyBar";
+import { PageHeader } from "@/components/PageHeader";
 
 const CityScoring = () => {
   const [nonRegOnly, setNonRegOnly] = useState(true);
@@ -50,12 +50,10 @@ const CityScoring = () => {
 
   return (
     <div className="-mx-4 md:-mx-8 -my-4 md:-my-8 px-4 md:px-8 py-4 md:py-8 min-h-screen" style={{ backgroundColor: '#f2f4f6' }}>
-      <h1 className="text-2xl md:text-3xl font-bold" style={{ color: '#003c7e' }}>City Scoring</h1>
-      <p className="text-sm mt-1 mb-6" style={{ color: '#6c757d' }}>
-        Analyze and rank U.S. cities to find the best markets for new Neuron Garage franchises.
-      </p>
-
-      <JourneyBar />
+      <PageHeader
+        title="City Scoring"
+        subtitle="Analyze and rank U.S. cities to find the best markets for new Neuron Garage franchises."
+      />
 
       <StatCards cities={filtered} nonRegOnly={nonRegOnly} onToggleNonReg={setNonRegOnly} />
       <FilterBar

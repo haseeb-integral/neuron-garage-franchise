@@ -10,7 +10,7 @@ import { TeacherTable } from "@/components/teacher-prospects/TeacherTable";
 import { TeacherDetailPanel } from "@/components/teacher-prospects/TeacherDetailPanel";
 import { BulkActionBar } from "@/components/teacher-prospects/BulkActionBar";
 import { OutreachIntelligence } from "@/components/teacher-prospects/OutreachIntelligence";
-import { JourneyBar } from "@/components/JourneyBar";
+import { PageHeader } from "@/components/PageHeader";
 
 const TeacherProspects = () => {
   const [prospects, setProspects] = useState<TeacherProspect[]>(sampleTeachers);
@@ -75,21 +75,19 @@ const TeacherProspects = () => {
 
   return (
     <div className="-mx-4 md:-mx-8 -my-4 md:-my-8 px-4 md:px-8 py-4 md:py-8 min-h-screen" style={{ backgroundColor: "#f2f4f6" }}>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
-        <h1 className="text-2xl md:text-3xl font-bold" style={{ color: "#003c7e" }}>Teacher Prospects</h1>
-        <Button
-          onClick={() => setFindOpen(true)}
-          className="text-white w-full sm:w-auto"
-          style={{ backgroundColor: "#fd7e14", minHeight: 44 }}
-        >
-          <Search size={16} /> Find Prospects
-        </Button>
-      </div>
-      <p className="text-sm mt-1 mb-6" style={{ color: "#6c757d" }}>
-        Discover and evaluate potential franchisee candidates from the teaching community.
-      </p>
-
-      <JourneyBar />
+      <PageHeader
+        title="Teacher Prospects"
+        subtitle="Discover and evaluate potential franchisee candidates from the teaching community."
+        action={
+          <Button
+            onClick={() => setFindOpen(true)}
+            className="text-white w-full sm:w-auto"
+            style={{ backgroundColor: "#fd7e14", minHeight: 44 }}
+          >
+            <Search size={16} /> Find Prospects
+          </Button>
+        }
+      />
 
       <TeacherFilterBar
         cities={cities}

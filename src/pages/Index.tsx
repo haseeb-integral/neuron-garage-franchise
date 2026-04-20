@@ -1,5 +1,5 @@
 import { Globe, Users, Filter, Rocket } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
+
 import { JourneyBar } from "@/components/JourneyBar";
 
 const stats = [

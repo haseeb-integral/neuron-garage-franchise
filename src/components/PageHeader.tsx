@@ -15,15 +15,17 @@ interface PageHeaderProps {
 export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
   return (
     <>
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-2">
-        <h1 className="text-2xl md:text-3xl font-bold" style={{ color: "#003c7e" }}>
-          {title}
-        </h1>
-        {action}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
+        <div className="min-w-0">
+          <h1 className="text-2xl md:text-3xl font-bold" style={{ color: "#003c7e" }}>
+            {title}
+          </h1>
+          <p className="text-sm mt-1" style={{ color: "#6c757d" }}>
+            {subtitle}
+          </p>
+        </div>
+        {action && <div className="shrink-0">{action}</div>}
       </div>
-      <p className="text-sm mt-1 mb-6" style={{ color: "#6c757d" }}>
-        {subtitle}
-      </p>
       <JourneyBar />
     </>
   );

@@ -147,6 +147,7 @@ const CandidatePipeline = () => {
         candidates={candidates}
         onStageChange={handleStageChange}
         onCardClick={setActive}
+        onStartOnboarding={handleStartOnboarding}
         collapsed={collapsed}
         onToggleCollapse={toggleCollapse}
         compact={compact}
@@ -157,6 +158,29 @@ const CandidatePipeline = () => {
         onClose={() => setActive(null)}
         onUpdate={handleUpdate}
       />
+
+      <AlertDialog open={!!confirmCandidate} onOpenChange={(v) => !v && setConfirmCandidate(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Start onboarding for {confirmCandidate?.name}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will create a new onboarding record with the default 7 steps for this candidate.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmStartOnboarding}
+              className="text-white"
+              style={{ backgroundColor: "#fd7e14" }}
+            >
+              Start Onboarding
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

@@ -81,6 +81,15 @@ export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboardi
           </div>
         </div>
       </div>
+      {showStartOnboarding && (
+        <button
+          onClick={handleStart}
+          className="mt-2 w-full text-white text-xs font-semibold rounded-md px-2 py-1.5 flex items-center justify-center gap-1 hover:opacity-90 transition-opacity"
+          style={{ backgroundColor: "#fd7e14" }}
+        >
+          Start Onboarding <ArrowRight size={12} />
+        </button>
+      )}
     </div>
   );
 }

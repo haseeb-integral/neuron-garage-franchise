@@ -37,7 +37,7 @@ export function CityDetailDrawer({ city, open, onClose }: Props) {
 
   return (
     <Sheet open={open} onOpenChange={v => !v && onClose()}>
-      <SheetContent className="w-[400px] sm:w-[400px] overflow-y-auto" style={{ backgroundColor: '#ffffff' }}>
+      <SheetContent className="w-full sm:max-w-[420px] overflow-y-auto" style={{ backgroundColor: '#ffffff' }}>
         <SheetHeader className="mb-4">
           <SheetTitle className="flex items-center gap-3" style={{ color: '#003c7e' }}>
             {city.city}, {city.state} <TierBadge tier={city.tier} />

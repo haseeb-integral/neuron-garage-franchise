@@ -49,8 +49,9 @@ export function TeacherTable({ prospects, selected, onToggleSelect, onToggleAll,
   );
 
   return (
-    <div className="bg-white rounded-lg overflow-hidden" style={{ border: "1px solid #dee2e6" }}>
-      <Table>
+    <div className="bg-white rounded-lg" style={{ border: "1px solid #dee2e6" }}>
+      <div className="overflow-x-auto rounded-lg">
+        <Table>
         <TableHeader>
           <TableRow>
             <TableHead className="w-10">
@@ -120,6 +121,7 @@ export function TeacherTable({ prospects, selected, onToggleSelect, onToggleAll,
           )}
         </TableBody>
       </Table>
+      </div>
     </div>
   );
 }

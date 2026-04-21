@@ -36,8 +36,9 @@ export function CityTable({ cities, onSelectCity, compareMode, selectedForCompar
   );
 
   return (
-    <div className="bg-white rounded-lg overflow-hidden mb-6" style={{ border: '1px solid #dee2e6' }}>
-      <Table>
+    <div className="bg-white rounded-lg mb-6" style={{ border: '1px solid #dee2e6' }}>
+      <div className="overflow-x-auto rounded-lg">
+        <Table>
         <TableHeader>
           <TableRow>
             {compareMode && <TableHead className="w-10" />}
@@ -98,6 +99,7 @@ export function CityTable({ cities, onSelectCity, compareMode, selectedForCompar
           ))}
         </TableBody>
       </Table>
+      </div>
     </div>
   );
 }

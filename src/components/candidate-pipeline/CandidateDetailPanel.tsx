@@ -60,12 +60,14 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate }: Props) {
         </SheetHeader>
 
         <Tabs defaultValue="overview" className="mt-6">
-          <TabsList className="grid grid-cols-4 w-full">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="qualification">Qualification</TabsTrigger>
-            <TabsTrigger value="notes">Notes & Activity</TabsTrigger>
-            <TabsTrigger value="homework">Homework</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto -mx-1 px-1">
+            <TabsList className="inline-flex sm:grid sm:grid-cols-4 sm:w-full w-max">
+              <TabsTrigger value="overview" className="whitespace-nowrap">Overview</TabsTrigger>
+              <TabsTrigger value="qualification" className="whitespace-nowrap">Qualification</TabsTrigger>
+              <TabsTrigger value="notes" className="whitespace-nowrap">Notes & Activity</TabsTrigger>
+              <TabsTrigger value="homework" className="whitespace-nowrap">Homework</TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="overview">
             <OverviewTab candidate={candidate} />

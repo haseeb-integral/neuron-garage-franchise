@@ -23,11 +23,12 @@ export function CompareModal({ open, onClose, cities }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl w-[calc(100vw-2rem)] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle style={{ color: '#003c7e' }}>City Comparison</DialogTitle>
         </DialogHeader>
-        <div className="grid grid-cols-3 gap-4 text-sm">
+        <div className="overflow-x-auto -mx-2 px-2">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 text-sm min-w-[480px]">
           <div />
           <div className="text-center font-semibold" style={{ color: '#343a40' }}>
             {a.city}, {a.state} <div className="mt-1 flex justify-center"><TierBadge tier={a.tier} /></div>

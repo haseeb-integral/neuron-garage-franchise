@@ -1,5 +1,5 @@
 import { PageHeader } from "@/components/PageHeader";
-import { Map, Users, Kanban, ClipboardCheck, Lightbulb, Target, Sparkles, ArrowRight } from "lucide-react";
+import { Map, Users, Kanban, ClipboardCheck, Lightbulb, Target, Sparkles, ArrowRight, type LucideIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Section = ({ id, children }: { id: string; children: React.ReactNode }) => (
@@ -18,7 +18,7 @@ const FeatureCard = ({
   link,
   linkLabel,
 }: {
-  icon: React.ComponentType<{ size?: number; color?: string }>;
+  icon: LucideIcon;
   step: string;
   title: string;
   purpose: string;

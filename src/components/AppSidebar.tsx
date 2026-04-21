@@ -1,4 +1,4 @@
-import { Home, Map, Users, Kanban, ClipboardCheck } from "lucide-react";
+import { Home, Map, Users, Kanban, ClipboardCheck, BookOpen } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import logo from "@/assets/neuron-garage-logo.png";
 
@@ -9,6 +9,8 @@ const navItems = [
   { title: "Candidate Pipeline", url: "/candidate-pipeline", icon: Kanban, tourId: "nav-candidate-pipeline" },
   { title: "Onboarding", url: "/onboarding", icon: ClipboardCheck, tourId: "nav-onboarding" },
 ];
+
+const footerItem = { title: "User's Guide", url: "/user-guide", icon: BookOpen };
 
 interface Props {
   variant?: "fixed" | "drawer";
@@ -62,6 +64,31 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
           );
         })}
       </nav>
+
+      <div className="px-3 pb-4 pt-2 mt-auto" style={{ borderTop: "1px solid rgba(255,255,255,0.10)" }}>
+        {(() => {
+          const active = isActive(footerItem.url);
+          return (
+            <NavLink
+              to={footerItem.url}
+              onClick={onNavigate}
+              className="group flex items-center gap-3 px-3 rounded-lg text-sm transition-colors mt-3"
+              style={{
+                minHeight: 44,
+                backgroundColor: active ? "rgba(255,255,255,0.10)" : "transparent",
+                borderLeft: active ? "3px solid #fd7e14" : "3px solid transparent",
+                color: active ? "#ffffff" : "rgba(255,255,255,0.60)",
+                fontWeight: active ? 600 : 400,
+              }}
+              onMouseEnter={(e) => { if (!active) e.currentTarget.style.color = "rgba(255,255,255,0.85)"; }}
+              onMouseLeave={(e) => { if (!active) e.currentTarget.style.color = "rgba(255,255,255,0.60)"; }}
+            >
+              <footerItem.icon size={18} />
+              <span>{footerItem.title}</span>
+            </NavLink>
+          );
+        })()}
+      </div>
     </aside>
   );
 }

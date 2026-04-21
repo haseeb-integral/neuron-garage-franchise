@@ -105,11 +105,13 @@ export function OnboardingWizard({ franchisee, open, onClose, onUpdate }: Props)
             </div>
             <div className="shrink-0"><StatusBadge status={franchisee.status} /></div>
           </div>
-          <div className="overflow-x-auto -mx-2 px-2"><StepProgressBar
-            currentStep={franchisee.currentStep}
-            selectedStep={selectedStep}
-            onSelect={setSelectedStep}
-          />
+          <div className="overflow-x-auto -mx-2 px-2">
+            <StepProgressBar
+              currentStep={franchisee.currentStep}
+              selectedStep={selectedStep}
+              onSelect={setSelectedStep}
+            />
+          </div>
         </div>
 
         <div className="p-6 space-y-5">

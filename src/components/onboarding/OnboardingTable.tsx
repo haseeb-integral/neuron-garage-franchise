@@ -51,6 +51,13 @@ export function OnboardingTable({ franchisees, onSelect }: Props) {
               </TableRow>
             );
           })}
+          {franchisees.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={7} className="text-center py-8" style={{ color: "#adb5bd" }}>
+                No franchisees in onboarding yet. Start one from the Candidate Pipeline.
+              </TableCell>
+            </TableRow>
+          )}
         </TableBody>
       </Table>
       </div>

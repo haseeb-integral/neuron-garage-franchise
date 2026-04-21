@@ -97,6 +97,13 @@ export function CityTable({ cities, onSelectCity, compareMode, selectedForCompar
               <TableCell><StickyNote size={14} style={{ color: '#adb5bd' }} /></TableCell>
             </TableRow>
           ))}
+          {sorted.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={compareMode ? 12 : 11} className="text-center py-8" style={{ color: '#adb5bd' }}>
+                No cities match your filters.
+              </TableCell>
+            </TableRow>
+          )}
         </TableBody>
       </Table>
       </div>

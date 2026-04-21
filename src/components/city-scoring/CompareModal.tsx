@@ -63,6 +63,7 @@ export function CompareModal({ open, onClose, cities }: Props) {
             </div>
           ))}
         </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

@@ -96,20 +96,22 @@ export function OnboardingWizard({ franchisee, open, onClose, onUpdate }: Props)
           <Button variant="ghost" size="sm" onClick={onClose} className="mb-2 -ml-2">
             <ArrowLeft size={14} /> Back to dashboard
           </Button>
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-bold" style={{ color: "#003c7e" }}>{franchisee.name}</h2>
-              <p className="text-sm" style={{ color: "#6c757d" }}>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+            <div className="min-w-0">
+              <h2 className="text-xl sm:text-2xl font-bold" style={{ color: "#003c7e" }}>{franchisee.name}</h2>
+              <p className="text-xs sm:text-sm break-words" style={{ color: "#6c757d" }}>
                 {franchisee.city}, {franchisee.state} · {franchisee.email} · {franchisee.daysElapsed} days in pipeline
               </p>
             </div>
-            <StatusBadge status={franchisee.status} />
+            <div className="shrink-0"><StatusBadge status={franchisee.status} /></div>
           </div>
-          <StepProgressBar
-            currentStep={franchisee.currentStep}
-            selectedStep={selectedStep}
-            onSelect={setSelectedStep}
-          />
+          <div className="overflow-x-auto -mx-2 px-2">
+            <StepProgressBar
+              currentStep={franchisee.currentStep}
+              selectedStep={selectedStep}
+              onSelect={setSelectedStep}
+            />
+          </div>
         </div>
 
         <div className="p-6 space-y-5">

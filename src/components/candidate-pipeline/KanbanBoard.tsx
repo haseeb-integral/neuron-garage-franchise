@@ -53,7 +53,7 @@ export function KanbanBoard({
   return (
     <div>
       {/* Stage navigator dots */}
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-1">
         <span className="text-xs font-medium" style={{ color: "#6c757d" }}>Jump to:</span>
         {STAGES.map((s) => {
           const count = candidates.filter((c) => c.stage === s.id).length;

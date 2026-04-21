@@ -10,7 +10,7 @@ interface Props {
 export function StepProgressBar({ currentStep, selectedStep, onSelect }: Props) {
   return (
     <div className="w-full py-4">
-      <div className="flex items-start justify-between relative">
+      <div className="flex items-start justify-between relative min-w-[560px]">
         {STEPS.map((s, idx) => {
           const isCompleted = s.id < currentStep;
           const isCurrent = s.id === currentStep;

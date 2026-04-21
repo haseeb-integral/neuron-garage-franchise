@@ -11,8 +11,9 @@ interface Props {
 
 export function OnboardingTable({ franchisees, onSelect }: Props) {
   return (
-    <div className="bg-white rounded-lg overflow-hidden" style={{ border: "1px solid #dee2e6" }}>
-      <Table>
+    <div className="bg-white rounded-lg" style={{ border: "1px solid #dee2e6" }}>
+      <div className="overflow-x-auto rounded-lg">
+        <Table>
         <TableHeader>
           <TableRow style={{ backgroundColor: "#f8f9fa" }}>
             <TableHead style={{ color: "#003c7e" }}>Name</TableHead>
@@ -52,6 +53,7 @@ export function OnboardingTable({ franchisees, onSelect }: Props) {
           })}
         </TableBody>
       </Table>
+      </div>
     </div>
   );
 }

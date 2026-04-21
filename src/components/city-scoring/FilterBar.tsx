@@ -43,11 +43,11 @@ export function FilterBar({ stateFilter, tierFilter, minScore, onStateChange, on
         <span className="text-sm font-medium whitespace-nowrap" style={{ color: '#343a40' }}>Min Score: {minScore}</span>
         <Slider value={[minScore]} onValueChange={([v]) => onMinScoreChange(v)} max={100} step={1} className="w-[120px]" />
       </div>
-      <div className="flex gap-2 ml-auto">
-        <Button className="h-9 text-white" style={{ backgroundColor: '#fd7e14' }} onClick={() => {}}>
+      <div className="flex flex-wrap gap-2 w-full sm:w-auto sm:ml-auto">
+        <Button className="h-9 text-white flex-1 sm:flex-none" style={{ backgroundColor: '#fd7e14' }} onClick={() => {}}>
           <RefreshCw size={14} className="mr-1" /> Refresh Data
         </Button>
-        <Button variant="outline" className="h-9" onClick={() => {}}>
+        <Button variant="outline" className="h-9 flex-1 sm:flex-none" onClick={() => {}}>
           <Download size={14} className="mr-1" /> Export CSV
         </Button>
       </div>

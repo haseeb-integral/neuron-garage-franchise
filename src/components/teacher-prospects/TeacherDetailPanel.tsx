@@ -47,7 +47,7 @@ export function TeacherDetailPanel({ prospect, onClose, onUpdate, onPromote, onM
 
   return (
     <Sheet open={!!prospect} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="bg-white p-0 sm:max-w-[450px] w-[450px] overflow-y-auto">
+      <SheetContent side="right" className="bg-white p-0 w-full sm:max-w-[450px] overflow-y-auto">
         <SheetHeader className="p-6 pb-4 border-b" style={{ borderColor: "#dee2e6" }}>
           <SheetTitle className="text-2xl" style={{ color: "#003c7e" }}>{prospect.name}</SheetTitle>
           <p className="text-sm" style={{ color: "#6c757d" }}>{prospect.school}</p>

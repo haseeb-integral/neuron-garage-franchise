@@ -49,8 +49,9 @@ export function TeacherTable({ prospects, selected, onToggleSelect, onToggleAll,
   );
 
   return (
-    <div className="bg-white rounded-lg overflow-hidden" style={{ border: "1px solid #dee2e6" }}>
-      <Table>
+    <div className="bg-white rounded-lg" style={{ border: "1px solid #dee2e6" }}>
+      <div className="overflow-x-auto rounded-lg">
+        <Table>
         <TableHeader>
           <TableRow>
             <TableHead className="w-10">
@@ -64,7 +65,7 @@ export function TeacherTable({ prospects, selected, onToggleSelect, onToggleAll,
             <SortHeader label="Fit Score" k="fitScore" />
             <TableHead className="text-xs" style={{ color: "#6c757d" }}>Tag</TableHead>
             <TableHead className="text-xs" style={{ color: "#6c757d" }}>Enrichment</TableHead>
-            <TableHead className="text-xs" style={{ color: "#6c757d" }}>Action</TableHead>
+            <TableHead className="text-xs hidden md:table-cell" style={{ color: "#6c757d" }}>Action</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -99,7 +100,7 @@ export function TeacherTable({ prospects, selected, onToggleSelect, onToggleAll,
                   </span>
                 )}
               </TableCell>
-              <TableCell onClick={e => e.stopPropagation()}>
+              <TableCell onClick={e => e.stopPropagation()} className="hidden md:table-cell">
                 <Button
                   size="sm"
                   className="text-white h-7 text-xs"
@@ -120,6 +121,7 @@ export function TeacherTable({ prospects, selected, onToggleSelect, onToggleAll,
           )}
         </TableBody>
       </Table>
+      </div>
     </div>
   );
 }

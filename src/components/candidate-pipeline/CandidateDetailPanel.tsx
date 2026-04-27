@@ -44,16 +44,36 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate }: Props) {
     });
   };
 
+  const avatarColor = (name: string) => {
+    const palette = ["#003c7e", "#fd7e14", "#20c997", "#6f42c1", "#e83e8c", "#17a2b8"];
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = (h + name.charCodeAt(i)) % palette.length;
+    return palette[h];
+  };
+
   return (
     <Sheet open={!!candidate} onOpenChange={(o) => !o && onClose()}>
       <SheetContent side="right" className="w-full sm:max-w-3xl overflow-y-auto" style={{ backgroundColor: "#f2f4f6" }}>
         <SheetHeader>
-          <div className="flex items-start justify-between pr-8">
-            <div>
-              <SheetTitle style={{ color: "#003c7e" }} className="text-2xl">{candidate.name}</SheetTitle>
-              <p className="text-sm mt-1" style={{ color: "#6c757d" }}>
-                {candidate.city}, {candidate.state} · {candidate.email}
-              </p>
+          <div className="flex items-start justify-between pr-8 gap-3">
+            <div className="flex items-start gap-3 min-w-0">
+              <div
+                className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-semibold text-white mt-1"
+                style={{ backgroundColor: avatarColor(candidate.assignedTo) }}
+                title={`Owned by ${candidate.assignedTo}`}
+                aria-label={`Owned by ${candidate.assignedTo}`}
+              >
+                {candidate.assignedTo[0]}
+              </div>
+              <div className="min-w-0">
+                <SheetTitle style={{ color: "#003c7e" }} className="text-2xl truncate">{candidate.name}</SheetTitle>
+                <p className="text-sm mt-1" style={{ color: "#6c757d" }}>
+                  {candidate.city}, {candidate.state} · {candidate.email}
+                </p>
+                <p className="text-[11px] mt-0.5" style={{ color: "#adb5bd" }}>
+                  Owner: {candidate.assignedTo}
+                </p>
+              </div>
             </div>
             <FitScoreBadge score={candidate.fitScore} />
           </div>

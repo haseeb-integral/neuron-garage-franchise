@@ -18,12 +18,21 @@ const avatarColor = (name: string) => {
   return palette[h];
 };
 
+const daysBorderColor = (days: number) => {
+  if (days <= 3) return "#20c997"; // green - fresh
+  if (days <= 7) return "#fd7e14"; // amber - watch
+  return "#dc3545"; // red - stalled
+};
+
 export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboarding, compact = false }: Props) {
   const showStartOnboarding = candidate.stage === "signing" && !!onStartOnboarding;
   const handleStart = (e: MouseEvent) => {
     e.stopPropagation();
     onStartOnboarding?.(candidate);
   };
+  const borderLeft = `3px solid ${daysBorderColor(candidate.daysInStage)}`;
+  const ownerLabel = `Owned by ${candidate.assignedTo}`;
+
   if (compact) {
     return (
       <div
@@ -31,12 +40,13 @@ export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboardi
         onDragStart={() => onDragStart(candidate.id)}
         onClick={onClick}
         className="bg-white rounded-md px-2 py-1.5 mb-1.5 cursor-pointer hover:shadow-md transition-shadow flex items-center gap-2"
-        style={{ border: "1px solid #dee2e6" }}
+        style={{ border: "1px solid #dee2e6", borderLeft }}
       >
         <div
           className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[9px] font-semibold text-white"
           style={{ backgroundColor: avatarColor(candidate.assignedTo) }}
-          title={candidate.assignedTo}
+          title={ownerLabel}
+          aria-label={ownerLabel}
         >
           {candidate.assignedTo[0]}
         </div>
@@ -54,7 +64,7 @@ export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboardi
       onDragStart={() => onDragStart(candidate.id)}
       onClick={onClick}
       className="bg-white rounded-lg p-3 mb-2 cursor-pointer hover:shadow-md transition-shadow"
-      style={{ border: "1px solid #dee2e6" }}
+      style={{ border: "1px solid #dee2e6", borderLeft }}
     >
       <div className="flex items-start justify-between mb-2">
         <div className="font-semibold text-sm" style={{ color: "#212529" }}>{candidate.name}</div>
@@ -75,7 +85,8 @@ export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboardi
           <div
             className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold text-white"
             style={{ backgroundColor: avatarColor(candidate.assignedTo) }}
-            title={candidate.assignedTo}
+            title={ownerLabel}
+            aria-label={ownerLabel}
           >
             {candidate.assignedTo[0]}
           </div>

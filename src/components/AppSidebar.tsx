@@ -1,6 +1,8 @@
-import { Home, Map, Users, Kanban, ClipboardCheck } from "lucide-react";
+import { Home, Map, Users, Kanban, ClipboardCheck, BookOpen, ChevronLeft, ChevronRight } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import logo from "@/assets/neuron-garage-logo.png";
+import { useSidebarCollapsed } from "@/lib/sidebarState";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const navItems = [
   { title: "Dashboard", url: "/", icon: Home, tourId: "nav-dashboard" },
@@ -10,6 +12,8 @@ const navItems = [
   { title: "Onboarding", url: "/onboarding", icon: ClipboardCheck, tourId: "nav-onboarding" },
 ];
 
+const footerItem = { title: "User's Guide", url: "/user-guide", icon: BookOpen };
+
 interface Props {
   variant?: "fixed" | "drawer";
   onNavigate?: () => void;
@@ -17,6 +21,11 @@ interface Props {
 
 export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
   const location = useLocation();
+  const [collapsed, setCollapsed] = useSidebarCollapsed();
+
+  // Drawer (mobile) is always expanded
+  const isCollapsed = variant === "fixed" && collapsed;
+  const widthClass = isCollapsed ? "w-16" : "w-60";
 
   const isActive = (url: string) => {
     if (url === "/") return location.pathname === "/";
@@ -25,43 +34,86 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
 
   const containerClass =
     variant === "fixed"
-      ? "fixed left-0 top-0 h-screen w-60 flex flex-col z-40"
+      ? `fixed left-0 top-0 h-screen ${widthClass} flex flex-col z-40 transition-[width] duration-200`
       : "h-full w-full flex flex-col";
 
-  return (
-    <aside className={containerClass} style={{ backgroundColor: "#003c7e" }}>
-      <div className="px-5 py-5 flex items-center gap-3">
-        <img src={logo} alt="Neuron Garage" className="w-10 h-10" />
-        <span className="text-white text-lg font-bold tracking-tight">Neuron Garage</span>
-      </div>
+  const renderLink = (item: typeof navItems[number] | typeof footerItem, withTour = false) => {
+    const active = isActive(item.url);
+    const link = (
+      <NavLink
+        key={item.title}
+        to={item.url}
+        end={item.url === "/"}
+        onClick={onNavigate}
+        data-tour={withTour ? (item as typeof navItems[number]).tourId : undefined}
+        className={`group flex items-center rounded-lg text-sm transition-colors ${
+          isCollapsed ? "justify-center px-0" : "gap-3 px-3"
+        }`}
+        style={{
+          minHeight: 44,
+          backgroundColor: active ? "rgba(255,255,255,0.10)" : "transparent",
+          borderLeft: active && !isCollapsed ? "3px solid #fd7e14" : "3px solid transparent",
+          color: active ? "#ffffff" : "rgba(255,255,255,0.60)",
+          fontWeight: active ? 600 : 400,
+        }}
+        onMouseEnter={(e) => { if (!active) e.currentTarget.style.color = "rgba(255,255,255,0.85)"; }}
+        onMouseLeave={(e) => { if (!active) e.currentTarget.style.color = "rgba(255,255,255,0.60)"; }}
+      >
+        <item.icon size={18} style={{ color: active && isCollapsed ? "#fd7e14" : undefined }} />
+        {!isCollapsed && <span>{item.title}</span>}
+      </NavLink>
+    );
 
-      <nav className="flex-1 flex flex-col gap-1 px-3">
-        {navItems.map((item) => {
-          const active = isActive(item.url);
-          return (
-            <NavLink
-              key={item.title}
-              to={item.url}
-              end={item.url === "/"}
-              onClick={onNavigate}
-              data-tour={item.tourId}
-              className="group flex items-center gap-3 px-3 rounded-lg text-sm transition-colors"
-              style={{
-                minHeight: 44,
-                backgroundColor: active ? "rgba(255,255,255,0.10)" : "transparent",
-                borderLeft: active ? "3px solid #fd7e14" : "3px solid transparent",
-                color: active ? "#ffffff" : "rgba(255,255,255,0.60)",
-                fontWeight: active ? 600 : 400,
-              }}
-              onMouseEnter={(e) => { if (!active) e.currentTarget.style.color = "rgba(255,255,255,0.85)"; }}
-              onMouseLeave={(e) => { if (!active) e.currentTarget.style.color = "rgba(255,255,255,0.60)"; }}
-            >
-              <item.icon size={18} />
-              <span>{item.title}</span>
-            </NavLink>
-          );
-        })}
-      </nav>
-    </aside>
+    if (!isCollapsed) return link;
+
+    return (
+      <Tooltip key={item.title} delayDuration={150}>
+        <TooltipTrigger asChild>{link}</TooltipTrigger>
+        <TooltipContent side="right" sideOffset={8}>{item.title}</TooltipContent>
+      </Tooltip>
+    );
+  };
+
+  return (
+    <TooltipProvider>
+      <aside className={containerClass} style={{ backgroundColor: "#003c7e" }}>
+        <div className={`py-5 flex items-center ${isCollapsed ? "justify-center px-2" : "px-5 gap-3"}`}>
+          <img src={logo} alt="Neuron Garage" className="w-10 h-10 flex-shrink-0" />
+          {!isCollapsed && (
+            <span className="text-white text-lg font-bold tracking-tight">Neuron Garage</span>
+          )}
+        </div>
+
+        {/* Collapse toggle (desktop only) */}
+        {variant === "fixed" && (
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="mx-3 mb-3 flex items-center justify-center rounded-md transition-colors"
+            style={{
+              minHeight: 28,
+              backgroundColor: "rgba(255,255,255,0.06)",
+              color: "rgba(255,255,255,0.7)",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.12)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.06)"; }}
+          >
+            {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+          </button>
+        )}
+
+        <nav className="flex-1 flex flex-col gap-1 px-3">
+          {navItems.map((item) => renderLink(item, true))}
+        </nav>
+
+        <div
+          className="px-3 pb-4 pt-2 mt-auto"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.10)" }}
+        >
+          {renderLink(footerItem)}
+        </div>
+      </aside>
+    </TooltipProvider>
   );
 }

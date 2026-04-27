@@ -5,10 +5,12 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { HelpCircle, Menu } from "lucide-react";
 import logo from "@/assets/neuron-garage-logo.png";
 import { maybeStartTourOnFirstVisit, startTour } from "@/lib/tour";
+import { useSidebarCollapsed } from "@/lib/sidebarState";
 
 export function AppLayout() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
+  const [collapsed] = useSidebarCollapsed();
 
   // Close drawer on route change
   const closeDrawer = () => setOpen(false);
@@ -34,7 +36,7 @@ export function AppLayout() {
       </Sheet>
 
       <main
-        className="flex-1 min-h-screen md:ml-60 p-4 md:p-8 relative"
+        className={`flex-1 min-h-screen ${collapsed ? "md:ml-16" : "md:ml-60"} p-4 md:p-8 relative transition-[margin] duration-200`}
         style={{ backgroundColor: "#ffffff" }}
       >
         {/* Desktop help icon (top-right) */}

@@ -1,62 +1,102 @@
+## Goals
 
+Address four things together so the Candidate Pipeline (and the rest of the app) feels tighter and safer:
 
-## Onboarding Page Plan
+1. Reclaim screen space with a collapsible sidebar (CurbWaste-style icon rail).
+2. Borrow a couple of small, useful UX patterns from the CurbWaste screenshot — without disturbing the existing system.
+3. Decide on avatars next to names (keep, but make them meaningful).
+4. Add a guard rail so cards don't get moved between stages by an accidental drop.
 
-Build the full Onboarding page at `/onboarding` (currently a placeholder). Two views: **dashboard table** → click row → **wizard view** for that franchisee.
+---
 
-### Files to Create
+## 1. Collapsible sidebar (icon rail)
 
-**Data — `src/data/onboardingData.ts`**
-- `OnboardingStep` (1–7) with id, title, goal, default tasks, communication trigger
-- `Franchisee` interface: id, name, city, state, currentStep, progressPct, daysElapsed, status (`on_track` | `stalled` | `overdue`), startDate, fddSentDate?, stepData (per-step tasks/form/notes/files/completionDate), activity[], comms (sent state per trigger)
-- `STEPS` array (7 steps mapped to qualification stages with goals + task lists + form schemas)
-- 3 sample franchisees:
-  - Sarah Mitchell — Frisco, TX — Step 3 — On Track
-  - Marcus Johnson — Tampa, FL — Step 4 — Stalled (mid FDD wait)
-  - Patricia Williams — Plano, TX — Step 6 — On Track
+**Current:** Sidebar is a fixed 240 px navy panel on desktop. Always full-width. Eats a lot of horizontal real estate on the Kanban board.
 
-**Components — `src/components/onboarding/`**
-- `OnboardingTable.tsx` — Table with columns Name, City, Current Step (e.g. "Step 3 / 7"), Progress bar, Days Elapsed, Status badge. Row click → opens wizard. Header has "New Onboarding" orange button.
-- `StatusBadge.tsx` — Pill: green `#20c997` / gold `#ffca28` / red `#ff4438`.
-- `StepProgressBar.tsx` — 7 connected circles with line. Completed = filled green, current = filled orange `#fd7e14`, upcoming = grey outline. Click circle to jump to that step.
-- `OnboardingWizard.tsx` — Full slide-over (`Sheet` side="right", `w-full sm:max-w-4xl`). Contains: back button, header (name + city), `StepProgressBar`, expanded `StepCard` for selected step, `ActivityLog`, `CommunicationTriggers`.
-- `StepCard.tsx` — White card showing: step number + title, goal text, `TaskChecklist`, `StepForm` (renders fields based on step), `DocumentUpload` zone, internal notes textarea, completion date input. Step 4 also renders `FddCountdown`. Step 7 also renders "Begin Active Franchisee Onboarding" orange button.
-- `TaskChecklist.tsx` — Checkbox list, can toggle complete.
-- `StepForm.tsx` — Renders form fields per step schema (Step 1: name/email/phone/source; Step 2: Franchise Lead Sheet — Who/Where/When/Source/Financial/Why/Competition; other steps: simpler note fields).
-- `DocumentUpload.tsx` — Dashed-border drop zone "Drop files here or click to upload" + file list (visual only, no real upload).
-- `FddCountdown.tsx` — Card showing "FDD sent on [date] — earliest Step 5 date: [date+16 days]" with days-remaining counter.
-- `ActivityLog.tsx` — Timeline of events (icon + author + timestamp + content), same visual style as Candidate Pipeline `NotesActivityTab`.
-- `CommunicationTriggers.tsx` — Read-only card listing 6 automated emails, each row with name + trigger + Sent/Pending badge.
+**Change:**
+- Convert `AppSidebar` + `AppLayout` to support two states:
+  - **Expanded:** 240 px (current look — logo + label + nav text).
+  - **Collapsed:** ~64 px icon rail (logo mark only, icons centered, labels hidden, active orange left-border preserved, tooltip on hover showing the label).
+- Add a small chevron toggle button at the top of the sidebar (just under the logo, right-aligned). Clicking it flips state.
+- Persist the choice in `localStorage` (`ng:sidebar-collapsed`) so it survives reloads.
+- Update the main content offset: `md:ml-60` becomes dynamic (`md:ml-60` when expanded, `md:ml-16` when collapsed) via a CSS variable or a context value.
+- The "User's Guide" footer link gets the same icon-only treatment when collapsed (icon centered, tooltip = "User's Guide").
+- Mobile drawer behavior is unchanged (still full-width slide-in via Sheet).
 
-**Page — `src/pages/Onboarding.tsx`** (replace placeholder)
-- State: franchisees list, selected franchisee id, selected step
-- Renders header + `OnboardingTable`. When franchisee selected, renders `OnboardingWizard` slide-over.
-- "New Onboarding" button → adds a blank franchisee at Step 1 with sonner toast.
-- Wraps in full-bleed `#f2f4f6` container matching City Scoring / Teacher Prospects pattern.
+**Visual reference:** The thin navy icon rail in the CurbWaste screenshot — small square icons, no labels, single accent for active.
 
-### 7 Steps (matched to qualification process)
-1. Lead Generation — collects personal info + source
-2. Initial Qualification Call — Franchise Lead Sheet
-3. Business Overview Call — overview notes + Q&A log
-4. FDD & Agreement Review — FDD send date + 16-day countdown
-5. Business Immersion & Evaluation — immersion schedule + evaluation notes
-6. Confirmation Call — final commitment confirmation
-7. Signing Call — signing date + "Begin Active Franchisee Onboarding" button
+## 2. CurbWaste-inspired UX additions (Candidate Pipeline only)
 
-### Communication Triggers (read-only list)
-| Email | Triggers After |
-|---|---|
-| Welcome Email | Step 1 |
-| Process Roadmap | Step 2 |
-| Market Analysis | Step 3 |
-| FDD Document | Step 4 |
-| Congratulations / Franchise Awarded | Step 6 |
-| Donut Delivery Note + Onboarding Access | Step 7 |
+Two small, non-disruptive borrowings — chosen because they map cleanly to features we already have:
 
-Status auto-derived from current step's `lastUpdated` vs expected pace.
+**a. Quick filter chip row above the board.**
+Right now we only have the "Jump to stage" dot row. Add a slim filter strip just above it with chips for:
+- **Owner** (Kaylie / Sam / Skylar / All)
+- **Tag** (High Potential / Active / Follow-Up / Qualified)
+- **Fit score** (90+ / 75+ / All)
+- A small "Clear" link when any filter is active.
 
-### Design Tokens
-- Page bg `#f2f4f6`, cards white + `1px solid #dee2e6`, headings `#003c7e`, primary button `#fd7e14`
-- Status: `#20c997` (on track), `#ffca28` (stalled), `#ff4438` (overdue)
-- Step circle: completed `#20c997`, current `#fd7e14`, upcoming outline `#adb5bd`
+Filters narrow the cards shown in each column (column counts update accordingly). No new data, no schema change — purely a client-side filter on `candidates`.
 
+**b. Status legend strip in the page header** (mirrors CurbWaste's "Pending / In Progress / Completed / Unable to Complete" row). For us, this becomes a one-line legend explaining the orange left-border on cards = days-in-stage health (green ≤3 days, amber 4–7, red 8+). We already color-code implicitly; making it explicit teaches new staff what they're looking at.
+
+**Skipped on purpose** (would disturb the existing system):
+- The "Driver schedule / Date / Hauler" top toolbar — our pipeline isn't time-of-day based.
+- The checkbox-per-card bulk select pattern — we don't have bulk actions defined for candidates yet, and adding them is its own feature.
+
+## 3. Avatars next to names — keep, but upgrade
+
+**Decision: keep them, they're useful** — they show *who owns* the candidate (Kaylie / Sam / Skylar), which is exactly the kind of at-a-glance info a Kanban benefits from. Removing them would lose information.
+
+**Polish:**
+- Keep the colored circle with the owner's first initial (current implementation is good).
+- Add the same owner avatar in the **Detail Panel header** and on the **Onboarding table** "Assigned To" column for consistency across the four modules.
+- Add an `aria-label` and visible tooltip ("Owned by Kaylie") so it's not just decorative.
+- No photographic avatars — initials-on-color is faster, keeps the prototype data-free, and matches the existing flat aesthetic.
+
+## 4. Drag-and-drop guard rail
+
+**Current behavior:** Drop a card into any column → stage updates instantly with a toast. Easy to do by accident, no undo.
+
+**New behavior — three layers:**
+
+1. **Confirm dialog on stage change.** When a card is dropped in a *different* column, show an `AlertDialog`:
+   > "Move *Sarah Mitchell* from **Initial Qualification** to **FDD Review**?"
+   > [Cancel] [Move]
+   - Dropping in the same column does nothing (no dialog, no toast).
+   - Cancel = card snaps back, no state change.
+
+2. **Extra-strong confirm for Disqualified.** If the destination is `disqualified`, the dialog copy becomes destructive-style ("This will mark the candidate as disqualified.") with a red confirm button.
+
+3. **Undo toast.** After a confirmed move, the success toast gets an "Undo" action (`sonner` supports this) that reverts the stage for ~6 seconds. Covers the case where the user confirms but then realizes the mistake.
+
+A small "Drag to move • drop to confirm" hint sits under the density toolbar so first-time users know the gesture is safe.
+
+---
+
+## Files touched
+
+**Sidebar / layout**
+- `src/components/AppSidebar.tsx` — collapse/expand state, icon-only rendering, tooltip on hover.
+- `src/components/AppLayout.tsx` — read collapsed state, swap `md:ml-60` ↔ `md:ml-16`, render correct sidebar width.
+- (optional small) `src/lib/sidebarState.ts` — tiny helper for `localStorage` get/set + a custom event so layout and sidebar stay in sync without a full context.
+
+**Pipeline UX**
+- `src/pages/CandidatePipeline.tsx` — add filter strip state, legend strip, drag-confirm dialog, undo toast.
+- `src/components/candidate-pipeline/KanbanBoard.tsx` — accept `pendingMove` props; on drop, call up to page instead of committing immediately.
+- `src/components/candidate-pipeline/KanbanColumn.tsx` — same, just pass through.
+- `src/components/candidate-pipeline/CandidateCard.tsx` — add tooltip / aria-label to avatar; add days-in-stage colored left border (green/amber/red).
+
+**Avatar consistency**
+- `src/components/candidate-pipeline/CandidateDetailPanel.tsx` — show owner avatar in header.
+- `src/components/onboarding/OnboardingTable.tsx` — show owner avatar in the assigned-to cell.
+
+No data model changes, no new dependencies, no breaking changes to other pages.
+
+---
+
+## Out of scope (call-outs)
+
+- Bulk-select / batch actions on candidate cards — would be a separate feature.
+- Date/time scheduling on cards — our pipeline is stage-based, not time-of-day.
+- Photographic avatars — initials-on-color is the right choice for this prototype.

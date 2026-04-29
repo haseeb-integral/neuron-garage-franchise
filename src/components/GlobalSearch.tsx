@@ -100,7 +100,7 @@ export function GlobalSearch() {
             }
           }}
           placeholder="Search candidates, prospects, cities…"
-          className="w-full rounded-md py-2 pl-9 pr-3 text-sm focus:outline-none focus:ring-2"
+          className="w-full h-9 rounded-md py-0 pl-9 pr-3 text-sm focus:outline-none focus:ring-2"
           style={{
             backgroundColor: "#f8f9fa",
             border: "1px solid #dee2e6",

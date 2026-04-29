@@ -77,31 +77,32 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
   return (
     <TooltipProvider>
       <aside className={containerClass} style={{ backgroundColor: "#003c7e" }}>
-        <div className={`py-5 flex items-center ${isCollapsed ? "justify-center px-2" : "px-5 gap-3"}`}>
-          <img src={logo} alt="Neuron Garage" className="w-10 h-10 flex-shrink-0" />
-          {!isCollapsed && (
-            <span className="text-white text-lg font-bold tracking-tight">Neuron Garage</span>
+        <div className={`py-5 flex items-center ${isCollapsed ? "flex-col gap-3 px-2" : "px-5 gap-3"}`}>
+          <div className={`flex items-center gap-3 ${isCollapsed ? "" : "flex-1 min-w-0"}`}>
+            <img src={logo} alt="Neuron Garage" className="w-10 h-10 flex-shrink-0" />
+            {!isCollapsed && (
+              <span className="text-white text-lg font-bold tracking-tight truncate">Neuron Garage</span>
+            )}
+          </div>
+          {variant === "fixed" && (
+            <button
+              onClick={() => setCollapsed(!collapsed)}
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              className="flex items-center justify-center rounded-md transition-colors flex-shrink-0"
+              style={{
+                width: 26,
+                height: 26,
+                backgroundColor: "rgba(255,255,255,0.06)",
+                color: "rgba(255,255,255,0.75)",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.16)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.06)"; }}
+            >
+              {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+            </button>
           )}
         </div>
-
-        {/* Collapse toggle (desktop only) */}
-        {variant === "fixed" && (
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className="mx-3 mb-3 flex items-center justify-center rounded-md transition-colors"
-            style={{
-              minHeight: 28,
-              backgroundColor: "rgba(255,255,255,0.06)",
-              color: "rgba(255,255,255,0.7)",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.12)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.06)"; }}
-          >
-            {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-          </button>
-        )}
 
         <nav className="flex-1 flex flex-col gap-1 px-3">
           {navItems.map((item) => renderLink(item, true))}

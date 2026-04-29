@@ -7,6 +7,7 @@ import { QualificationTab } from "./tabs/QualificationTab";
 import { NotesActivityTab } from "./tabs/NotesActivityTab";
 import { HomeworkTab } from "./tabs/HomeworkTab";
 import { SelectionCommittee } from "./SelectionCommittee";
+import { CandidateAvatar } from "@/components/ui/CandidateAvatar";
 
 interface Props {
   candidate: Candidate | null;
@@ -57,14 +58,12 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate }: Props) {
         <SheetHeader>
           <div className="flex items-start justify-between pr-8 gap-3">
             <div className="flex items-start gap-3 min-w-0">
-              <div
-                className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-semibold text-white mt-1"
-                style={{ backgroundColor: avatarColor(candidate.assignedTo) }}
-                title={`Owned by ${candidate.assignedTo}`}
-                aria-label={`Owned by ${candidate.assignedTo}`}
-              >
-                {candidate.assignedTo[0]}
-              </div>
+              <CandidateAvatar
+                name={candidate.name}
+                photoUrl={candidate.photoUrl}
+                size={48}
+                className="mt-1"
+              />
               <div className="min-w-0">
                 <SheetTitle style={{ color: "#003c7e" }} className="text-2xl truncate">{candidate.name}</SheetTitle>
                 <p className="text-sm mt-1" style={{ color: "#6c757d" }}>

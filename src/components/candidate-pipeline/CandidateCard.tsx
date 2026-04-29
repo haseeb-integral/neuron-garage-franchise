@@ -60,12 +60,12 @@ export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboardi
       className="bg-white rounded-lg p-3 mb-2 cursor-pointer hover:shadow-md transition-shadow"
       style={{ border: "1px solid #dee2e6", borderLeft }}
     >
-      <div className="flex items-start justify-between mb-2 gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <CandidateAvatar name={candidate.name} photoUrl={candidate.photoUrl} size={24} />
-          <div className="min-w-0">
+      <div className="flex items-center justify-between mb-2 gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <CandidateAvatar name={candidate.name} photoUrl={candidate.photoUrl} size={28} />
+          <div className="min-w-0 flex flex-col justify-center">
             <div className="font-semibold text-sm truncate leading-tight" style={{ color: "#212529" }}>{candidate.name}</div>
-            <div className="text-[11px] truncate" style={{ color: "#6c757d" }}>
+            <div className="text-[11px] truncate leading-tight mt-0.5" style={{ color: "#6c757d" }}>
               {candidate.city}, {candidate.state}
             </div>
           </div>

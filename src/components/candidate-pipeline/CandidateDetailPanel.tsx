@@ -45,12 +45,7 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate }: Props) {
     });
   };
 
-  const avatarColor = (name: string) => {
-    const palette = ["#003c7e", "#fd7e14", "#20c997", "#6f42c1", "#e83e8c", "#17a2b8"];
-    let h = 0;
-    for (let i = 0; i < name.length; i++) h = (h + name.charCodeAt(i)) % palette.length;
-    return palette[h];
-  };
+
 
   return (
     <Sheet open={!!candidate} onOpenChange={(o) => !o && onClose()}>

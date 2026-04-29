@@ -1,6 +1,7 @@
-import { Home, Map, Users, Kanban, ClipboardCheck, BookOpen, ChevronLeft, ChevronRight } from "lucide-react";
-import { NavLink, useLocation } from "react-router-dom";
+import { Home, Map, Users, Kanban, ClipboardCheck, BookOpen, ChevronLeft, ChevronRight, LogOut } from "lucide-react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import logo from "@/assets/neuron-garage-logo.png";
+import { useAuth } from "@/contexts/AuthContext";
 import { useSidebarCollapsed } from "@/lib/sidebarState";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -21,7 +22,17 @@ interface Props {
 
 export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { profile, user, role, signOut } = useAuth();
   const [collapsed, setCollapsed] = useSidebarCollapsed();
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/auth", { replace: true });
+  };
+
+  const displayName = profile?.full_name || profile?.email || user?.email || "Account";
+  const initials = (displayName.match(/\b\w/g) || []).slice(0, 2).join("").toUpperCase() || "U";
 
   // Drawer (mobile) is always expanded
   const isCollapsed = variant === "fixed" && collapsed;
@@ -109,10 +120,51 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
         </nav>
 
         <div
-          className="px-3 pb-4 pt-2 mt-auto"
+          className="px-3 pb-4 pt-2 mt-auto flex flex-col gap-1"
           style={{ borderTop: "1px solid rgba(255,255,255,0.10)" }}
         >
           {renderLink(footerItem)}
+
+          {/* User info + Logout */}
+          {!isCollapsed && (
+            <div
+              className="flex items-center gap-2 px-3 py-2 rounded-lg mt-1"
+              style={{ backgroundColor: "rgba(255,255,255,0.05)" }}
+            >
+              <div
+                className="flex items-center justify-center rounded-full text-xs font-semibold flex-shrink-0"
+                style={{ width: 28, height: 28, backgroundColor: "#fd7e14", color: "#fff" }}
+              >
+                {initials}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs text-white truncate font-medium">{displayName}</div>
+                {role && (
+                  <div className="text-[10px] uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.55)" }}>
+                    {role}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={handleLogout}
+            aria-label="Log out"
+            title="Log out"
+            className={`group flex items-center rounded-lg text-sm transition-colors ${
+              isCollapsed ? "justify-center px-0" : "gap-3 px-3"
+            }`}
+            style={{
+              minHeight: 40,
+              color: "rgba(255,255,255,0.60)",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "rgba(255,255,255,0.95)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(255,255,255,0.60)"; }}
+          >
+            <LogOut size={18} />
+            {!isCollapsed && <span>Log out</span>}
+          </button>
         </div>
       </aside>
     </TooltipProvider>

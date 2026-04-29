@@ -6,7 +6,7 @@ import { HelpCircle, Menu } from "lucide-react";
 import logo from "@/assets/neuron-garage-logo.png";
 import { maybeStartTourOnFirstVisit, startTour } from "@/lib/tour";
 import { useDefaultCollapsedForRoute, useSidebarCollapsed } from "@/lib/sidebarState";
-import { GlobalSearch } from "./GlobalSearch";
+
 
 export function AppLayout() {
   const [open, setOpen] = useState(false);

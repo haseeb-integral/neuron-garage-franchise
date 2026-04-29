@@ -1,5 +1,8 @@
+import { useRef } from "react";
 import { Candidate, STAGES, stateRequiresRegistration } from "@/data/pipelineData";
-import { AlertTriangle, Mail, Phone, MapPin, Calendar, User, Tag } from "lucide-react";
+import { AlertTriangle, Mail, Phone, MapPin, Calendar, User, Tag, Camera } from "lucide-react";
+import { CandidateAvatar } from "@/components/ui/CandidateAvatar";
+import { toast } from "sonner";
 
 interface Props {
   candidate: Candidate;
@@ -8,6 +11,17 @@ interface Props {
 export function OverviewTab({ candidate }: Props) {
   const stage = STAGES.find((s) => s.id === candidate.stage);
   const needsReg = stateRequiresRegistration(candidate.state);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePickPhoto = () => fileInputRef.current?.click();
+  const handleFileChosen = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    toast.info("Photo upload coming soon", {
+      description: "We'll save it to the candidate record once Lovable Cloud is enabled.",
+    });
+    e.target.value = "";
+  };
 
   const rows = [
     { icon: Mail, label: "Email", value: candidate.email },

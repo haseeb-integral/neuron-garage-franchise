@@ -7,6 +7,7 @@ import { AppLayout } from "./components/AppLayout";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import Index from "./pages/Index";
 import CityScoring from "./pages/CityScoring";
 import TeacherProspects from "./pages/TeacherProspects";
@@ -26,6 +27,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route
               element={
                 <ProtectedRoute>

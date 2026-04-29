@@ -8,8 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import logo from "@/assets/neuron-garage-logo.png";
+
+const resetSchema = z.object({
+  email: z.string().trim().email("Enter a valid email").max(255),
+});
 
 const loginSchema = z.object({
   email: z.string().trim().email("Enter a valid email").max(255),
@@ -28,10 +33,34 @@ export default function Auth() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotSubmitting, setForgotSubmitting] = useState(false);
 
   useEffect(() => {
     document.title = "Sign in · Neuron Garage";
   }, []);
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsed = resetSchema.safeParse({ email: forgotEmail });
+    if (!parsed.success) {
+      toast.error(parsed.error.errors[0].message);
+      return;
+    }
+    setForgotSubmitting(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setForgotSubmitting(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Check your inbox for a password reset link.");
+    setForgotOpen(false);
+    setForgotEmail("");
+  };
 
   if (!loading && session) {
     return <Navigate to="/" replace />;
@@ -114,6 +143,13 @@ export default function Auth() {
                   <Button type="submit" className="w-full" disabled={submitting}>
                     {submitting ? "Signing in…" : "Log in"}
                   </Button>
+                  <button
+                    type="button"
+                    onClick={() => { setForgotEmail(email); setForgotOpen(true); }}
+                    className="block w-full text-center text-xs text-muted-foreground hover:text-foreground hover:underline"
+                  >
+                    Forgot password?
+                  </button>
                 </form>
               </TabsContent>
 
@@ -140,6 +176,38 @@ export default function Auth() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset your password</DialogTitle>
+            <DialogDescription>
+              Enter your email and we'll send you a link to set a new password.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleForgotPassword} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="forgot-email">Email</Label>
+              <Input
+                id="forgot-email"
+                type="email"
+                autoComplete="email"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setForgotOpen(false)} disabled={forgotSubmitting}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={forgotSubmitting}>
+                {forgotSubmitting ? "Sending…" : "Send reset link"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

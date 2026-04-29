@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { UserPlus, Rows3, Rows2, Minimize2, Filter, X } from "lucide-react";
 import { toast } from "sonner";
@@ -32,12 +32,24 @@ interface PendingMove {
 
 const CandidatePipeline = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [candidates, setCandidates] = useState<Candidate[]>(sampleCandidates);
   const [active, setActive] = useState<Candidate | null>(null);
   const [compact, setCompact] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<StageId>>(new Set());
   const [confirmCandidate, setConfirmCandidate] = useState<Candidate | null>(null);
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
+
+  // Open detail panel when arriving via global search (?candidate=ID)
+  useEffect(() => {
+    const id = searchParams.get("candidate");
+    if (!id) return;
+    const found = candidates.find((c) => c.id === Number(id));
+    if (found) setActive(found);
+    searchParams.delete("candidate");
+    setSearchParams(searchParams, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   // Filters
   const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>("all");

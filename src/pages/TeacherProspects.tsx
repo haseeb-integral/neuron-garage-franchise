@@ -19,14 +19,21 @@ const TeacherProspects = () => {
   const [active, setActive] = useState<TeacherProspect | null>(null);
   const [selected, setSelected] = useState<number[]>([]);
 
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
   const [cityFilter, setCityFilter] = useState(searchParams.get("city") ?? "All");
 
   useEffect(() => {
     const city = searchParams.get("city");
     if (city) setCityFilter(city);
-  }, [searchParams]);
+    const prospectId = searchParams.get("prospect");
+    if (prospectId) {
+      const found = prospects.find((p) => p.id === Number(prospectId));
+      if (found) setActive(found);
+      searchParams.delete("prospect");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, prospects, setSearchParams]);
   const [tagFilter, setTagFilter] = useState("All");
   const [gradeFilter, setGradeFilter] = useState("All");
   const [enrichmentFilter, setEnrichmentFilter] = useState("All");

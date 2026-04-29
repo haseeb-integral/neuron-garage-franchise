@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { sampleCities, CityData } from "@/data/cityData";
 import { StatCards } from "@/components/city-scoring/StatCards";
 import { FilterBar } from "@/components/city-scoring/FilterBar";
@@ -11,6 +12,7 @@ import { GitCompare } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 
 const CityScoring = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [nonRegOnly, setNonRegOnly] = useState(true);
   const [stateFilter, setStateFilter] = useState("All");
   const [tierFilter, setTierFilter] = useState("All");
@@ -24,6 +26,21 @@ const CityScoring = () => {
     summerCampDemand: 20, schoolDensity: 15, childPopulation: 20,
     dualIncomeFamilies: 15, stemJobs: 15, competitionScore: 15,
   });
+
+  // Open city drawer when arriving via global search (?city=ID)
+  useEffect(() => {
+    const id = searchParams.get("city");
+    if (!id) return;
+    const found = sampleCities.find((c) => c.id === Number(id));
+    if (found) {
+      setSelectedCity(found);
+      setDrawerOpen(true);
+      setNonRegOnly(false); // ensure city is visible if filter would hide it
+    }
+    searchParams.delete("city");
+    setSearchParams(searchParams, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const filtered = useMemo(() => {
     return sampleCities.filter(c => {

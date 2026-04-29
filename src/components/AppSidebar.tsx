@@ -120,10 +120,51 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
         </nav>
 
         <div
-          className="px-3 pb-4 pt-2 mt-auto"
+          className="px-3 pb-4 pt-2 mt-auto flex flex-col gap-1"
           style={{ borderTop: "1px solid rgba(255,255,255,0.10)" }}
         >
           {renderLink(footerItem)}
+
+          {/* User info + Logout */}
+          {!isCollapsed && (
+            <div
+              className="flex items-center gap-2 px-3 py-2 rounded-lg mt-1"
+              style={{ backgroundColor: "rgba(255,255,255,0.05)" }}
+            >
+              <div
+                className="flex items-center justify-center rounded-full text-xs font-semibold flex-shrink-0"
+                style={{ width: 28, height: 28, backgroundColor: "#fd7e14", color: "#fff" }}
+              >
+                {initials}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs text-white truncate font-medium">{displayName}</div>
+                {role && (
+                  <div className="text-[10px] uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.55)" }}>
+                    {role}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={handleLogout}
+            aria-label="Log out"
+            title="Log out"
+            className={`group flex items-center rounded-lg text-sm transition-colors ${
+              isCollapsed ? "justify-center px-0" : "gap-3 px-3"
+            }`}
+            style={{
+              minHeight: 40,
+              color: "rgba(255,255,255,0.60)",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "rgba(255,255,255,0.95)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(255,255,255,0.60)"; }}
+          >
+            <LogOut size={18} />
+            {!isCollapsed && <span>Log out</span>}
+          </button>
         </div>
       </aside>
     </TooltipProvider>

@@ -1,6 +1,7 @@
-import { Home, Map, Users, Kanban, ClipboardCheck, BookOpen, ChevronLeft, ChevronRight } from "lucide-react";
-import { NavLink, useLocation } from "react-router-dom";
+import { Home, Map, Users, Kanban, ClipboardCheck, BookOpen, ChevronLeft, ChevronRight, LogOut } from "lucide-react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import logo from "@/assets/neuron-garage-logo.png";
+import { useAuth } from "@/contexts/AuthContext";
 import { useSidebarCollapsed } from "@/lib/sidebarState";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -21,7 +22,17 @@ interface Props {
 
 export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { profile, user, role, signOut } = useAuth();
   const [collapsed, setCollapsed] = useSidebarCollapsed();
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/auth", { replace: true });
+  };
+
+  const displayName = profile?.full_name || profile?.email || user?.email || "Account";
+  const initials = (displayName.match(/\b\w/g) || []).slice(0, 2).join("").toUpperCase() || "U";
 
   // Drawer (mobile) is always expanded
   const isCollapsed = variant === "fixed" && collapsed;

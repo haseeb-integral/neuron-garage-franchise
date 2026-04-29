@@ -62,7 +62,7 @@ export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboardi
     >
       <div className="flex items-start justify-between mb-2 gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          <CandidateAvatar name={candidate.name} photoUrl={candidate.photoUrl} size={28} />
+          <CandidateAvatar name={candidate.name} photoUrl={candidate.photoUrl} size={24} />
           <div className="min-w-0">
             <div className="font-semibold text-sm truncate leading-tight" style={{ color: "#212529" }}>{candidate.name}</div>
             <div className="text-[11px] truncate" style={{ color: "#6c757d" }}>

@@ -6,7 +6,7 @@ import { HelpCircle, Menu } from "lucide-react";
 import logo from "@/assets/neuron-garage-logo.png";
 import { maybeStartTourOnFirstVisit, startTour } from "@/lib/tour";
 import { useDefaultCollapsedForRoute, useSidebarCollapsed } from "@/lib/sidebarState";
-import { GlobalSearch } from "./GlobalSearch";
+
 
 export function AppLayout() {
   const [open, setOpen] = useState(false);
@@ -41,36 +41,7 @@ export function AppLayout() {
 
       <main
         className={`flex-1 min-h-screen ${collapsed ? "md:ml-16" : "md:ml-60"} transition-[margin] duration-200`}
-        style={{ backgroundColor: "#ffffff" }}
       >
-        {/* Desktop top bar with global search — transparent, blends into the page */}
-        <div className="hidden md:flex items-center justify-end gap-3 px-6 h-12 pt-3">
-          <GlobalSearch />
-          <button
-            onClick={() => startTour()}
-            aria-label="Restart guided tour"
-            title="Restart guided tour"
-            className="flex items-center justify-center rounded-full transition-colors flex-shrink-0"
-            style={{
-              width: 32,
-              height: 32,
-              backgroundColor: "transparent",
-              border: "1px solid #dee2e6",
-              color: "#6c757d",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "#fd7e14";
-              e.currentTarget.style.borderColor = "#fd7e14";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "#6c757d";
-              e.currentTarget.style.borderColor = "#dee2e6";
-            }}
-          >
-            <HelpCircle size={16} />
-          </button>
-        </div>
-
         {/* Mobile top bar */}
         <div className="md:hidden flex items-center justify-between px-4 py-3 border-b" style={{ backgroundColor: "#003c7e", borderColor: "rgba(255,255,255,0.1)" }}>
           <button
@@ -95,7 +66,7 @@ export function AppLayout() {
           </button>
         </div>
 
-        <div className="p-4 md:px-8 md:pt-2 md:pb-8">
+        <div className="p-4 md:p-8">
           <Outlet key={location.pathname} />
         </div>
       </main>

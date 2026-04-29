@@ -77,11 +77,11 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
   return (
     <TooltipProvider>
       <aside className={containerClass} style={{ backgroundColor: "#003c7e" }}>
-        <div className={`py-5 flex items-center ${isCollapsed ? "flex-col gap-3 px-2" : "px-5 gap-3"}`}>
-          <div className={`flex items-center gap-3 ${isCollapsed ? "" : "flex-1 min-w-0"}`}>
-            <img src={logo} alt="Neuron Garage" className="w-10 h-10 flex-shrink-0" />
+        <div className={`py-5 flex items-center ${isCollapsed ? "flex-col gap-3 px-2" : "pl-4 pr-2 gap-2"}`}>
+          <div className={`flex items-center gap-2 ${isCollapsed ? "" : "flex-1 min-w-0"}`}>
+            <img src={logo} alt="Neuron Garage" className="w-8 h-8 flex-shrink-0" />
             {!isCollapsed && (
-              <span className="text-white text-lg font-bold tracking-tight truncate">Neuron Garage</span>
+              <span className="text-white text-base font-bold tracking-tight truncate">Neuron Garage</span>
             )}
           </div>
           {variant === "fixed" && (

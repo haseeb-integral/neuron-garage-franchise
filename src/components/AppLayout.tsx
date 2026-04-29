@@ -43,40 +43,32 @@ export function AppLayout() {
         className={`flex-1 min-h-screen ${collapsed ? "md:ml-16" : "md:ml-60"} transition-[margin] duration-200`}
         style={{ backgroundColor: "#ffffff" }}
       >
-        {/* Desktop top header bar with global search */}
-        <div
-          className="hidden md:flex items-center justify-between px-6 h-14 sticky top-0 z-30"
-          style={{ backgroundColor: "#ffffff", borderBottom: "1px solid #dee2e6" }}
-        >
-          <div className="flex-1" />
-          <div className="flex-1 flex justify-center">
-            <GlobalSearch />
-          </div>
-          <div className="flex-1 flex justify-end">
-            <button
-              onClick={() => startTour()}
-              aria-label="Restart guided tour"
-              title="Restart guided tour"
-              className="flex items-center justify-center rounded-full transition-colors"
-              style={{
-                width: 36,
-                height: 36,
-                backgroundColor: "#ffffff",
-                border: "1px solid #dee2e6",
-                color: "#6c757d",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = "#fd7e14";
-                e.currentTarget.style.borderColor = "#fd7e14";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = "#6c757d";
-                e.currentTarget.style.borderColor = "#dee2e6";
-              }}
-            >
-              <HelpCircle size={18} />
-            </button>
-          </div>
+        {/* Desktop top bar with global search — transparent, blends into the page */}
+        <div className="hidden md:flex items-center justify-end gap-3 px-6 h-12 pt-3">
+          <GlobalSearch />
+          <button
+            onClick={() => startTour()}
+            aria-label="Restart guided tour"
+            title="Restart guided tour"
+            className="flex items-center justify-center rounded-full transition-colors flex-shrink-0"
+            style={{
+              width: 32,
+              height: 32,
+              backgroundColor: "transparent",
+              border: "1px solid #dee2e6",
+              color: "#6c757d",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = "#fd7e14";
+              e.currentTarget.style.borderColor = "#fd7e14";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = "#6c757d";
+              e.currentTarget.style.borderColor = "#dee2e6";
+            }}
+          >
+            <HelpCircle size={16} />
+          </button>
         </div>
 
         {/* Mobile top bar */}
@@ -103,7 +95,7 @@ export function AppLayout() {
           </button>
         </div>
 
-        <div className="p-4 md:p-8">
+        <div className="p-4 md:px-8 md:pt-2 md:pb-8">
           <Outlet key={location.pathname} />
         </div>
       </main>

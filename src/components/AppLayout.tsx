@@ -5,12 +5,16 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { HelpCircle, Menu } from "lucide-react";
 import logo from "@/assets/neuron-garage-logo.png";
 import { maybeStartTourOnFirstVisit, startTour } from "@/lib/tour";
-import { useSidebarCollapsed } from "@/lib/sidebarState";
+import { useDefaultCollapsedForRoute, useSidebarCollapsed } from "@/lib/sidebarState";
+import { GlobalSearch } from "./GlobalSearch";
 
 export function AppLayout() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
   const [collapsed] = useSidebarCollapsed();
+
+  // Default-collapsed when first visiting Candidate Pipeline (so all 7 columns fit).
+  useDefaultCollapsedForRoute(["/candidate-pipeline"]);
 
   // Close drawer on route change
   const closeDrawer = () => setOpen(false);
@@ -36,36 +40,47 @@ export function AppLayout() {
       </Sheet>
 
       <main
-        className={`flex-1 min-h-screen ${collapsed ? "md:ml-16" : "md:ml-60"} p-4 md:p-8 relative transition-[margin] duration-200`}
+        className={`flex-1 min-h-screen ${collapsed ? "md:ml-16" : "md:ml-60"} transition-[margin] duration-200`}
         style={{ backgroundColor: "#ffffff" }}
       >
-        {/* Desktop help icon (top-right) */}
-        <button
-          onClick={() => startTour()}
-          aria-label="Restart guided tour"
-          title="Restart guided tour"
-          className="hidden md:flex items-center justify-center rounded-full absolute top-4 right-4 z-30 transition-colors"
-          style={{
-            width: 36,
-            height: 36,
-            backgroundColor: "#ffffff",
-            border: "1px solid #dee2e6",
-            color: "#6c757d",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = "#fd7e14";
-            e.currentTarget.style.borderColor = "#fd7e14";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = "#6c757d";
-            e.currentTarget.style.borderColor = "#dee2e6";
-          }}
+        {/* Desktop top header bar with global search */}
+        <div
+          className="hidden md:flex items-center justify-between px-6 h-14 sticky top-0 z-30"
+          style={{ backgroundColor: "#ffffff", borderBottom: "1px solid #dee2e6" }}
         >
-          <HelpCircle size={18} />
-        </button>
+          <div className="flex-1" />
+          <div className="flex-1 flex justify-center">
+            <GlobalSearch />
+          </div>
+          <div className="flex-1 flex justify-end">
+            <button
+              onClick={() => startTour()}
+              aria-label="Restart guided tour"
+              title="Restart guided tour"
+              className="flex items-center justify-center rounded-full transition-colors"
+              style={{
+                width: 36,
+                height: 36,
+                backgroundColor: "#ffffff",
+                border: "1px solid #dee2e6",
+                color: "#6c757d",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = "#fd7e14";
+                e.currentTarget.style.borderColor = "#fd7e14";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "#6c757d";
+                e.currentTarget.style.borderColor = "#dee2e6";
+              }}
+            >
+              <HelpCircle size={18} />
+            </button>
+          </div>
+        </div>
 
         {/* Mobile top bar */}
-        <div className="md:hidden flex items-center justify-between mb-4 -mx-4 -mt-4 px-4 py-3 border-b" style={{ backgroundColor: "#003c7e", borderColor: "rgba(255,255,255,0.1)" }}>
+        <div className="md:hidden flex items-center justify-between px-4 py-3 border-b" style={{ backgroundColor: "#003c7e", borderColor: "rgba(255,255,255,0.1)" }}>
           <button
             onClick={() => setOpen(true)}
             aria-label="Open navigation menu"
@@ -88,7 +103,9 @@ export function AppLayout() {
           </button>
         </div>
 
-        <Outlet key={location.pathname} />
+        <div className="p-4 md:p-8">
+          <Outlet key={location.pathname} />
+        </div>
       </main>
     </div>
   );

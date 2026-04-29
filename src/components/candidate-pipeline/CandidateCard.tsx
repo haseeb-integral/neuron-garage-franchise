@@ -1,5 +1,6 @@
 import { Candidate } from "@/data/pipelineData";
 import { FitScoreBadge } from "@/components/teacher-prospects/FitScoreBadge";
+import { CandidateAvatar } from "@/components/ui/CandidateAvatar";
 import { ArrowRight } from "lucide-react";
 import { MouseEvent } from "react";
 
@@ -42,14 +43,7 @@ export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboardi
         className="bg-white rounded-md px-2 py-1.5 mb-1.5 cursor-pointer hover:shadow-md transition-shadow flex items-center gap-2"
         style={{ border: "1px solid #dee2e6", borderLeft }}
       >
-        <div
-          className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[9px] font-semibold text-white"
-          style={{ backgroundColor: avatarColor(candidate.assignedTo) }}
-          title={ownerLabel}
-          aria-label={ownerLabel}
-        >
-          {candidate.assignedTo[0]}
-        </div>
+        <CandidateAvatar name={candidate.name} photoUrl={candidate.photoUrl} size={20} />
         <div className="text-xs font-semibold flex-1 truncate" style={{ color: "#212529" }}>
           {candidate.name}
         </div>
@@ -66,12 +60,17 @@ export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboardi
       className="bg-white rounded-lg p-3 mb-2 cursor-pointer hover:shadow-md transition-shadow"
       style={{ border: "1px solid #dee2e6", borderLeft }}
     >
-      <div className="flex items-start justify-between mb-2">
-        <div className="font-semibold text-sm" style={{ color: "#212529" }}>{candidate.name}</div>
+      <div className="flex items-start justify-between mb-2 gap-2">
+        <div className="flex items-start gap-2 min-w-0">
+          <CandidateAvatar name={candidate.name} photoUrl={candidate.photoUrl} size={40} />
+          <div className="min-w-0">
+            <div className="font-semibold text-sm truncate" style={{ color: "#212529" }}>{candidate.name}</div>
+            <div className="text-xs mt-0.5" style={{ color: "#6c757d" }}>
+              {candidate.city}, {candidate.state}
+            </div>
+          </div>
+        </div>
         <FitScoreBadge score={candidate.fitScore} />
-      </div>
-      <div className="text-xs mb-2" style={{ color: "#6c757d" }}>
-        {candidate.city}, {candidate.state}
       </div>
       <div className="flex items-center justify-between">
         <span

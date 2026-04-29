@@ -70,6 +70,8 @@ export interface Candidate {
   source: string;
   createdDate: string;
   fddSentDate?: string;
+  /** Optional candidate portrait URL. When set, CandidateAvatar renders the image; otherwise initials. */
+  photoUrl?: string;
   qualificationScores: QualificationScores;
   activity: ActivityEntry[];
   trialClose: TrialClose;

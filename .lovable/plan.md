@@ -1,102 +1,84 @@
-## Goals
 
-Address four things together so the Candidate Pipeline (and the rest of the app) feels tighter and safer:
+## F1 — Candidate Avatars (initials now, photo later)
 
-1. Reclaim screen space with a collapsible sidebar (CurbWaste-style icon rail).
-2. Borrow a couple of small, useful UX patterns from the CurbWaste screenshot — without disturbing the existing system.
-3. Decide on avatars next to names (keep, but make them meaningful).
-4. Add a guard rail so cards don't get moved between stages by an accidental drop.
+**New shared component:** `src/components/ui/CandidateAvatar.tsx`
+- Props: `name`, `photoUrl?`, `size?` (default **40**), `title?`.
+- Perfectly round (`border-radius: 50%`).
+- Initials = first-name initial + last-name initial, uppercase, bold white.
+- Background color is deterministic from `name` using a hash → navy/teal/slate palette only:
+  `#003c7e, #0d4f8b, #1a5fa3, #17506b, #1f6f8b, #2c7a7b, #274060, #3b5998, #4a6fa5, #475569` (no red/green so status semantics stay clean).
+- If `photoUrl` is provided, render `<img class="object-cover w-full h-full">` inside the same circle. Falls back to initials on `onError`.
 
----
+**Sizes used:**
+- Compact density card: **20px** (per your note).
+- Normal card (top-right): **40px**.
+- Detail panel header: **48px**.
 
-## 1. Collapsible sidebar (icon rail)
+**Data model:** Add optional `photoUrl?: string` to `Candidate` in `src/data/pipelineData.ts`. No values populated yet.
 
-**Current:** Sidebar is a fixed 240 px navy panel on desktop. Always full-width. Eats a lot of horizontal real estate on the Kanban board.
+**Where the photo gets uploaded later:**
+Best place = **Candidate Detail Panel → Overview tab**, by clicking the avatar. Same pattern as Slack / Linear / Notion — most "guess-able". For now I'll add a small "Upload photo" link beneath a 64px avatar at the top of the Overview tab (file input is wired but stores nothing — placeholder until a backend exists). When real upload exists, setting `candidate.photoUrl` makes the avatar render the image everywhere automatically (card + detail panel + any future table).
 
-**Change:**
-- Convert `AppSidebar` + `AppLayout` to support two states:
-  - **Expanded:** 240 px (current look — logo + label + nav text).
-  - **Collapsed:** ~64 px icon rail (logo mark only, icons centered, labels hidden, active orange left-border preserved, tooltip on hover showing the label).
-- Add a small chevron toggle button at the top of the sidebar (just under the logo, right-aligned). Clicking it flips state.
-- Persist the choice in `localStorage` (`ng:sidebar-collapsed`) so it survives reloads.
-- Update the main content offset: `md:ml-60` becomes dynamic (`md:ml-60` when expanded, `md:ml-16` when collapsed) via a CSS variable or a context value.
-- The "User's Guide" footer link gets the same icon-only treatment when collapsed (icon centered, tooltip = "User's Guide").
-- Mobile drawer behavior is unchanged (still full-width slide-in via Sheet).
+**Owner indicator on the card:** the existing 24px owner-initial circle in the bottom-right of the card stays as-is so you can still see who owns the candidate at a glance. The new candidate avatar replaces the inline initial in the top-right area of the card layout.
 
-**Visual reference:** The thin navy icon rail in the CurbWaste screenshot — small square icons, no labels, single accent for active.
-
-## 2. CurbWaste-inspired UX additions (Candidate Pipeline only)
-
-Two small, non-disruptive borrowings — chosen because they map cleanly to features we already have:
-
-**a. Quick filter chip row above the board.**
-Right now we only have the "Jump to stage" dot row. Add a slim filter strip just above it with chips for:
-- **Owner** (Kaylie / Sam / Skylar / All)
-- **Tag** (High Potential / Active / Follow-Up / Qualified)
-- **Fit score** (90+ / 75+ / All)
-- A small "Clear" link when any filter is active.
-
-Filters narrow the cards shown in each column (column counts update accordingly). No new data, no schema change — purely a client-side filter on `candidates`.
-
-**b. Status legend strip in the page header** (mirrors CurbWaste's "Pending / In Progress / Completed / Unable to Complete" row). For us, this becomes a one-line legend explaining the orange left-border on cards = days-in-stage health (green ≤3 days, amber 4–7, red 8+). We already color-code implicitly; making it explicit teaches new staff what they're looking at.
-
-**Skipped on purpose** (would disturb the existing system):
-- The "Driver schedule / Date / Hauler" top toolbar — our pipeline isn't time-of-day based.
-- The checkbox-per-card bulk select pattern — we don't have bulk actions defined for candidates yet, and adding them is its own feature.
-
-## 3. Avatars next to names — keep, but upgrade
-
-**Decision: keep them, they're useful** — they show *who owns* the candidate (Kaylie / Sam / Skylar), which is exactly the kind of at-a-glance info a Kanban benefits from. Removing them would lose information.
-
-**Polish:**
-- Keep the colored circle with the owner's first initial (current implementation is good).
-- Add the same owner avatar in the **Detail Panel header** and on the **Onboarding table** "Assigned To" column for consistency across the four modules.
-- Add an `aria-label` and visible tooltip ("Owned by Kaylie") so it's not just decorative.
-- No photographic avatars — initials-on-color is faster, keeps the prototype data-free, and matches the existing flat aesthetic.
-
-## 4. Drag-and-drop guard rail
-
-**Current behavior:** Drop a card into any column → stage updates instantly with a toast. Easy to do by accident, no undo.
-
-**New behavior — three layers:**
-
-1. **Confirm dialog on stage change.** When a card is dropped in a *different* column, show an `AlertDialog`:
-   > "Move *Sarah Mitchell* from **Initial Qualification** to **FDD Review**?"
-   > [Cancel] [Move]
-   - Dropping in the same column does nothing (no dialog, no toast).
-   - Cancel = card snaps back, no state change.
-
-2. **Extra-strong confirm for Disqualified.** If the destination is `disqualified`, the dialog copy becomes destructive-style ("This will mark the candidate as disqualified.") with a red confirm button.
-
-3. **Undo toast.** After a confirmed move, the success toast gets an "Undo" action (`sonner` supports this) that reverts the stage for ~6 seconds. Covers the case where the user confirms but then realizes the mistake.
-
-A small "Drag to move • drop to confirm" hint sits under the density toolbar so first-time users know the gesture is safe.
+**Files edited:**
+- New `src/components/ui/CandidateAvatar.tsx`
+- Edit `src/data/pipelineData.ts` (add optional `photoUrl`)
+- Edit `src/components/candidate-pipeline/CandidateCard.tsx` (use CandidateAvatar at top-right; 20px in compact, 40px in normal)
+- Edit `src/components/candidate-pipeline/CandidateDetailPanel.tsx` (use CandidateAvatar at 48px in header)
+- Edit `src/components/candidate-pipeline/tabs/OverviewTab.tsx` (add 64px avatar + "Upload photo" placeholder)
 
 ---
 
-## Files touched
+## F2 — Global Search Bar
 
-**Sidebar / layout**
-- `src/components/AppSidebar.tsx` — collapse/expand state, icon-only rendering, tooltip on hover.
-- `src/components/AppLayout.tsx` — read collapsed state, swap `md:ml-60` ↔ `md:ml-16`, render correct sidebar width.
-- (optional small) `src/lib/sidebarState.ts` — tiny helper for `localStorage` get/set + a custom event so layout and sidebar stay in sync without a full context.
+**New component:** `src/components/GlobalSearch.tsx`
+- ~440px wide centered input, light bg `#f8f9fa`, border `#dee2e6`, search icon left, placeholder "Search candidates, prospects, cities…".
+- On non-empty query, dropdown shows up to 3 grouped sections, max 5 each:
+  - **Candidates** (from `sampleCandidates`) — sub-label `"{Stage label} stage"`
+  - **Teacher Prospects** (from `sampleTeachers`) — sub-label `"{city}, {state} · Score {fitScore}"`
+  - **Cities** (from `sampleCities`) — sub-label `"Score: {compositeScore} · Tier {tier}"`
+- Match: simple `name.toLowerCase().includes(query)`.
+- Click navigates and opens the relevant detail:
+  - Candidate → `/candidate-pipeline?candidate={id}`
+  - Prospect → `/teacher-prospects?prospect={id}`
+  - City → `/city-scoring?city={id}`
+- Escape closes; click-outside closes; arrow keys not required for v1.
+- Hidden below `md` (mobile keeps the existing top bar untouched).
 
-**Pipeline UX**
-- `src/pages/CandidatePipeline.tsx` — add filter strip state, legend strip, drag-confirm dialog, undo toast.
-- `src/components/candidate-pipeline/KanbanBoard.tsx` — accept `pendingMove` props; on drop, call up to page instead of committing immediately.
-- `src/components/candidate-pipeline/KanbanColumn.tsx` — same, just pass through.
-- `src/components/candidate-pipeline/CandidateCard.tsx` — add tooltip / aria-label to avatar; add days-in-stage colored left border (green/amber/red).
+**Header integration:** `src/components/AppLayout.tsx`
+- Add a thin top header bar inside `<main>` on desktop hosting `GlobalSearch` (centered) with the existing help icon kept on the right. Keeps page padding intact below.
 
-**Avatar consistency**
-- `src/components/candidate-pipeline/CandidateDetailPanel.tsx` — show owner avatar in header.
-- `src/components/onboarding/OnboardingTable.tsx` — show owner avatar in the assigned-to cell.
-
-No data model changes, no new dependencies, no breaking changes to other pages.
+**Detail-panel auto-open hooks (small additions):**
+- `CandidatePipeline.tsx` — read `?candidate=` and call `setActive(found)`.
+- `TeacherProspects.tsx` — read `?prospect=` and call `setActive(found)`.
+- `CityScoring.tsx` — read `?city=` (id) and open the drawer with the matching city.
 
 ---
 
-## Out of scope (call-outs)
+## F3 — Sidebar Collapse Refinements
 
-- Bulk-select / batch actions on candidate cards — would be a separate feature.
-- Date/time scheduling on cards — our pipeline is stage-based, not time-of-day.
-- Photographic avatars — initials-on-color is the right choice for this prototype.
+The collapse mechanic, persistence (`ng:sidebar-collapsed`), 64px icon rail, and tooltips already exist. Refinements:
+
+1. **Move the toggle into the sidebar header row**, right-aligned next to the logo (matches the Jira pattern in your screenshot). Left-arrow when expanded, right-arrow when collapsed. Remove the standalone toggle row currently below the logo.
+2. **Smooth transition** — already 200ms on width and main margin; verify it stays smooth.
+3. **Pipeline page default-collapsed:**
+   - Add a second `localStorage` key `ng:sidebar-user-set` that flips to `"1"` the first time the user clicks the toggle.
+   - Add a small `useDefaultCollapsedForRoute()` helper used in `AppLayout`. On `/candidate-pipeline`, if `ng:sidebar-user-set` is unset, force the sidebar to collapsed so all 7 Kanban columns are visible. Once the user toggles even once, their preference is honored everywhere.
+
+No icon, color, link, or Journey Bar changes.
+
+**Files edited:**
+- New `src/components/GlobalSearch.tsx`
+- Edit `src/components/AppLayout.tsx` (header row hosting GlobalSearch + apply default-collapsed for `/candidate-pipeline`)
+- Edit `src/components/AppSidebar.tsx` (move toggle into header row)
+- Edit `src/lib/sidebarState.ts` (add `userSet` flag + `useDefaultCollapsedForRoute` helper)
+- Edit `src/pages/CandidatePipeline.tsx`, `src/pages/TeacherProspects.tsx`, `src/pages/CityScoring.tsx` (open detail from query param)
+
+---
+
+## Summary
+
+- F1 gives every candidate a real circular avatar (40px normal / 20px compact / 48px panel) with deterministic navy-slate-teal colors, ready to swap in a photo via `photoUrl` — uploadable later from the Overview tab by clicking the avatar.
+- F2 adds a centered Jira-style global search in the header with grouped Candidates / Prospects / Cities results that deep-link into the right detail panel.
+- F3 keeps the existing collapsible sidebar but moves the toggle into the header (left/right arrow), and defaults to collapsed on the Candidate Pipeline page until the user expresses a preference.

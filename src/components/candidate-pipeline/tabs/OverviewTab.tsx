@@ -1,5 +1,8 @@
+import { useRef } from "react";
 import { Candidate, STAGES, stateRequiresRegistration } from "@/data/pipelineData";
-import { AlertTriangle, Mail, Phone, MapPin, Calendar, User, Tag } from "lucide-react";
+import { AlertTriangle, Mail, Phone, MapPin, Calendar, User, Tag, Camera } from "lucide-react";
+import { CandidateAvatar } from "@/components/ui/CandidateAvatar";
+import { toast } from "sonner";
 
 interface Props {
   candidate: Candidate;
@@ -8,6 +11,17 @@ interface Props {
 export function OverviewTab({ candidate }: Props) {
   const stage = STAGES.find((s) => s.id === candidate.stage);
   const needsReg = stateRequiresRegistration(candidate.state);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePickPhoto = () => fileInputRef.current?.click();
+  const handleFileChosen = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    toast.info("Photo upload coming soon", {
+      description: "We'll save it to the candidate record once Lovable Cloud is enabled.",
+    });
+    e.target.value = "";
+  };
 
   const rows = [
     { icon: Mail, label: "Email", value: candidate.email },
@@ -20,6 +34,47 @@ export function OverviewTab({ candidate }: Props) {
 
   return (
     <div className="space-y-4 pt-4">
+      {/* Photo / avatar block */}
+      <div
+        className="bg-white rounded-lg p-4 flex items-center gap-4"
+        style={{ border: "1px solid #dee2e6" }}
+      >
+        <button
+          onClick={handlePickPhoto}
+          className="relative group rounded-full focus:outline-none"
+          aria-label="Upload candidate photo"
+          title="Click to upload photo"
+        >
+          <CandidateAvatar name={candidate.name} photoUrl={candidate.photoUrl} size={64} />
+          <span
+            className="absolute inset-0 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+            style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+          >
+            <Camera size={20} className="text-white" />
+          </span>
+        </button>
+        <div className="min-w-0">
+          <div className="text-sm font-semibold" style={{ color: "#003c7e" }}>{candidate.name}</div>
+          <button
+            onClick={handlePickPhoto}
+            className="text-xs font-medium mt-1 hover:underline"
+            style={{ color: "#003c7e" }}
+          >
+            {candidate.photoUrl ? "Change photo" : "Upload photo"}
+          </button>
+          <div className="text-[11px] mt-0.5" style={{ color: "#adb5bd" }}>
+            JPG or PNG. Auto-fits to circle.
+          </div>
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/png,image/jpeg"
+          className="hidden"
+          onChange={handleFileChosen}
+        />
+      </div>
+
       {needsReg && (
         <div
           className="flex items-start gap-2 p-3 rounded-lg"

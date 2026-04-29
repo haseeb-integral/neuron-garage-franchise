@@ -170,11 +170,12 @@ const CandidatePipeline = () => {
         subtitle="Track and manage franchise candidates through every stage of the qualification process."
         action={
           <Button
+            size="sm"
             onClick={() => toast.info("Open Teacher Prospects to promote a candidate")}
             className="text-white w-full sm:w-auto"
-            style={{ backgroundColor: "#fd7e14", minHeight: 44 }}
+            style={{ backgroundColor: "#fd7e14" }}
           >
-            <UserPlus size={16} /> Promote from Prospect
+            <UserPlus size={14} /> Promote from Prospect
           </Button>
         }
       />

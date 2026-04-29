@@ -93,11 +93,12 @@ const Onboarding = () => {
           subtitle="Guide new franchisees through the 7-step qualification & onboarding journey."
           action={
             <Button
+              size="sm"
               onClick={addNew}
               className="text-white w-full sm:w-auto"
-              style={{ backgroundColor: "#fd7e14", minHeight: 44 }}
+              style={{ backgroundColor: "#fd7e14" }}
             >
-              <Plus size={16} /> New Onboarding
+              <Plus size={14} /> New Onboarding
             </Button>
           }
         />

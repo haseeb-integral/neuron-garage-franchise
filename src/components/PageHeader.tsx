@@ -27,7 +27,7 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
             {subtitle}
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0 flex-wrap lg:flex-nowrap lg:justify-end">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap lg:flex-nowrap lg:justify-end [&_button]:h-9 [&_a]:h-9">
           <div className="hidden md:block w-full sm:w-[240px] lg:w-[260px]">
             <GlobalSearch />
           </div>
@@ -38,8 +38,8 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
             title="Restart guided tour"
             className="hidden md:flex items-center justify-center rounded-full transition-colors flex-shrink-0"
             style={{
-              width: 32,
-              height: 32,
+              width: 36,
+              height: 36,
               backgroundColor: "transparent",
               border: "1px solid #dee2e6",
               color: "#6c757d",

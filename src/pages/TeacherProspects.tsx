@@ -94,11 +94,12 @@ const TeacherProspects = () => {
         subtitle="Discover and evaluate potential franchisee candidates from the teaching community."
         action={
           <Button
+            size="sm"
             onClick={() => setFindOpen(true)}
             className="text-white w-full sm:w-auto"
-            style={{ backgroundColor: "#fd7e14", minHeight: 44 }}
+            style={{ backgroundColor: "#fd7e14" }}
           >
-            <Search size={16} /> Find Prospects
+            <Search size={14} /> Find Prospects
           </Button>
         }
       />

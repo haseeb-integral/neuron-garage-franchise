@@ -27,8 +27,8 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
             {subtitle}
           </p>
         </div>
-        <div className="flex items-center gap-3 shrink-0 flex-wrap lg:flex-nowrap lg:justify-end">
-          <div className="hidden md:block w-full sm:w-[360px]">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap lg:flex-nowrap lg:justify-end">
+          <div className="hidden md:block w-full sm:w-[240px] lg:w-[260px]">
             <GlobalSearch />
           </div>
           {action}

@@ -95,7 +95,7 @@ export function AppLayout() {
           </button>
         </div>
 
-        <div className="p-4 md:p-8">
+        <div className="p-4 md:px-8 md:pt-2 md:pb-8">
           <Outlet key={location.pathname} />
         </div>
       </main>

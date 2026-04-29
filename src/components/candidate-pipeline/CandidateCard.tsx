@@ -61,11 +61,11 @@ export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboardi
       style={{ border: "1px solid #dee2e6", borderLeft }}
     >
       <div className="flex items-start justify-between mb-2 gap-2">
-        <div className="flex items-start gap-2 min-w-0">
-          <CandidateAvatar name={candidate.name} photoUrl={candidate.photoUrl} size={40} />
+        <div className="flex items-center gap-2 min-w-0">
+          <CandidateAvatar name={candidate.name} photoUrl={candidate.photoUrl} size={28} />
           <div className="min-w-0">
-            <div className="font-semibold text-sm truncate" style={{ color: "#212529" }}>{candidate.name}</div>
-            <div className="text-xs mt-0.5" style={{ color: "#6c757d" }}>
+            <div className="font-semibold text-sm truncate leading-tight" style={{ color: "#212529" }}>{candidate.name}</div>
+            <div className="text-[11px] truncate" style={{ color: "#6c757d" }}>
               {candidate.city}, {candidate.state}
             </div>
           </div>

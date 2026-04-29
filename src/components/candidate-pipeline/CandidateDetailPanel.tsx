@@ -56,7 +56,7 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate }: Props) {
               <CandidateAvatar
                 name={candidate.name}
                 photoUrl={candidate.photoUrl}
-                size={48}
+                size={40}
                 className="mt-1"
               />
               <div className="min-w-0">

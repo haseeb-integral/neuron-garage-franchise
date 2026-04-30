@@ -21,10 +21,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { buildFranchiseeFromCandidate, queueOnboarding } from "@/data/onboardingStore";
+import { FIT_TAGS, FitTag } from "@/constants/fitTags";
 
 type OwnerFilter = string; // "all" or a user email
 interface TeamMember { email: string; firstName: string; }
-type TagFilter = "all" | "High Potential" | "Active" | "Follow-Up" | "Qualified";
+type TagFilter = "all" | FitTag;
 type FitFilter = "all" | "90" | "75";
 
 interface PendingMove {
@@ -452,7 +453,7 @@ const CandidatePipeline = () => {
 
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-[11px] font-medium" style={{ color: "#6c757d" }}>Tag:</span>
-          {(["all", "High Potential", "Active", "Follow-Up", "Qualified"] as TagFilter[]).map((t) => (
+          {(["all", ...FIT_TAGS] as TagFilter[]).map((t) => (
             <button
               key={t}
               onClick={() => setTagFilter(t)}

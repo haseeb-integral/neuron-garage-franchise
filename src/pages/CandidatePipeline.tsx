@@ -166,15 +166,19 @@ const CandidatePipeline = () => {
   }, []);
 
   // Open detail panel when arriving via global search (?candidate=ID)
+  // ID may be the DB uuid (from global search) or numeric local id.
   useEffect(() => {
     const id = searchParams.get("candidate");
-    if (!id) return;
-    const found = candidates.find((c) => c.id === Number(id));
-    if (found) setActive(found);
+    if (!id || candidates.length === 0) return;
+    const found = candidates.find(
+      (c: any) => c.dbId === id || String(c.id) === id,
+    );
+    if (!found) return;
+    setActive(found);
     searchParams.delete("candidate");
     setSearchParams(searchParams, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [searchParams, candidates]);
 
   // Filters
   const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>("all");

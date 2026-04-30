@@ -39,9 +39,6 @@ export function ActivityLog({ activity }: Props) {
             </div>
           );
         })}
-        {sorted.length === 0 && (
-          <p className="text-sm text-center py-4" style={{ color: "#6c757d" }}>No activity yet.</p>
-        )}
       </div>
     </div>
   );

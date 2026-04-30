@@ -8,6 +8,7 @@ import { QualificationTab } from "./tabs/QualificationTab";
 import { NotesActivityTab } from "./tabs/NotesActivityTab";
 import { StageHistoryTab } from "./tabs/StageHistoryTab";
 import { HomeworkTab } from "./tabs/HomeworkTab";
+import { CommitteeVotesTab } from "./tabs/CommitteeVotesTab";
 import { SelectionCommittee } from "./SelectionCommittee";
 import { CandidateAvatar } from "@/components/ui/CandidateAvatar";
 
@@ -77,13 +78,14 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate }: Props) {
 
         <Tabs defaultValue="overview" className="mt-6">
           <div className="overflow-x-auto -mx-1 px-1">
-            <TabsList className="inline-flex sm:grid sm:grid-cols-6 sm:w-full w-max">
+            <TabsList className="inline-flex sm:grid sm:grid-cols-7 sm:w-full w-max">
               <TabsTrigger value="overview" className="whitespace-nowrap">Overview</TabsTrigger>
               <TabsTrigger value="lead-sheet" className="whitespace-nowrap">Lead Sheet</TabsTrigger>
               <TabsTrigger value="qualification" className="whitespace-nowrap">Qualification</TabsTrigger>
               <TabsTrigger value="notes" className="whitespace-nowrap">Notes & Activity</TabsTrigger>
               <TabsTrigger value="stage-history" className="whitespace-nowrap">Stage History</TabsTrigger>
               <TabsTrigger value="homework" className="whitespace-nowrap">Homework</TabsTrigger>
+              <TabsTrigger value="committee" className="whitespace-nowrap">Committee Votes</TabsTrigger>
             </TabsList>
           </div>
 
@@ -104,6 +106,9 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate }: Props) {
           </TabsContent>
           <TabsContent value="homework">
             <HomeworkTab candidate={candidate} onTrialCloseChange={handleTrialClose} />
+          </TabsContent>
+          <TabsContent value="committee">
+            <CommitteeVotesTab candidate={candidate} />
           </TabsContent>
         </Tabs>
 

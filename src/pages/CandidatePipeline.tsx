@@ -47,6 +47,8 @@ const CandidatePipeline = () => {
   const [confirmCandidate, setConfirmCandidate] = useState<Candidate | null>(null);
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
   const [pendingIncompleteCount, setPendingIncompleteCount] = useState<number>(0);
+  const [disqualifyTarget, setDisqualifyTarget] = useState<{ candidate: Candidate; fromStage: StageId } | null>(null);
+  const [disqualifyReason, setDisqualifyReason] = useState<string>("");
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [newOpen, setNewOpen] = useState(false);
   const [metrics, setMetrics] = useState({
@@ -271,20 +273,39 @@ const CandidatePipeline = () => {
     const candidate = candidates.find((c) => c.id === id);
     if (!candidate) return;
     if (candidate.stage === toStage) return; // same column = no-op
+    const dbId = (candidate as any).dbId as string | undefined;
 
-    // Soft gate: moving INTO confirmation requires Trial Close checklist
-    let incomplete = 0;
-    if (toStage === "confirmation") {
-      const dbId = (candidate as any).dbId as string | undefined;
-      if (dbId) {
-        const { count } = await supabase
-          .from("candidate_checklist_items")
-          .select("id", { count: "exact", head: true })
-          .eq("candidate_id", dbId)
-          .eq("stage", "confirmation" as any)
-          .eq("is_completed", false);
-        incomplete = count ?? 0;
+    // Disqualified: open dedicated reason modal instead of generic confirm
+    if (toStage === "disqualified") {
+      setDisqualifyTarget({ candidate, fromStage: candidate.stage });
+      return;
+    }
+
+    // Signing prerequisite: must have passed through Confirmation at least once
+    if (toStage === "signing" && dbId) {
+      const { count, error } = await supabase
+        .from("candidate_stage_history")
+        .select("id", { count: "exact", head: true })
+        .eq("candidate_id", dbId)
+        .eq("to_stage", "confirmation" as any);
+      if (!error && (count ?? 0) === 0) {
+        toast.error("Signing requires Confirmation first", {
+          description: "To move a candidate to Signing, they must first pass through Confirmation.",
+        });
+        return;
       }
+    }
+
+    // Hard gate: moving INTO confirmation requires Trial Close checklist
+    let incomplete = 0;
+    if (toStage === "confirmation" && dbId) {
+      const { count } = await supabase
+        .from("candidate_checklist_items")
+        .select("id", { count: "exact", head: true })
+        .eq("candidate_id", dbId)
+        .eq("stage", "confirmation" as any)
+        .eq("is_completed", false);
+      incomplete = count ?? 0;
     }
     setPendingIncompleteCount(incomplete);
     setPendingMove({ candidate, fromStage: candidate.stage, toStage });
@@ -299,6 +320,8 @@ const CandidatePipeline = () => {
   const confirmStageMove = async () => {
     if (!pendingMove) return;
     const { candidate, fromStage, toStage } = pendingMove;
+    const overrideNote =
+      toStage === "confirmation" && pendingIncompleteCount > 0 ? "confirmation_override" : null;
     const fromLabel = STAGES.find((s) => s.id === fromStage)?.short ?? fromStage;
     const toLabel = STAGES.find((s) => s.id === toStage)?.short ?? toStage;
     const previousDays = candidate.daysInStage;
@@ -336,7 +359,7 @@ const CandidatePipeline = () => {
       from_stage: uiStageToDb[fromStage] as any,
       to_stage: uiStageToDb[toStage] as any,
       changed_by: changedBy,
-      notes: null,
+      notes: overrideNote,
     });
     if (histErr) {
       // Non-fatal: stage already updated. Warn but keep state.
@@ -374,6 +397,59 @@ const CandidatePipeline = () => {
     });
   };
 
+  const submitDisqualify = async () => {
+    if (!disqualifyTarget) return;
+    const reason = disqualifyReason.trim();
+    if (!reason) {
+      toast.error("Please enter a disqualification reason.");
+      return;
+    }
+    const { candidate, fromStage } = disqualifyTarget;
+    const previousDays = candidate.daysInStage;
+    const dbId = (candidate as any).dbId as string | undefined;
+
+    // Optimistic UI
+    applyStageMove(candidate.id, "disqualified");
+    setDisqualifyTarget(null);
+    setDisqualifyReason("");
+
+    if (!dbId) {
+      toast.error("Missing DB id; change not persisted.");
+      return;
+    }
+
+    const { data: sess } = await supabase.auth.getUser();
+    const changedBy = sess?.user?.email ?? "unknown";
+
+    const { error: updErr } = await supabase
+      .from("candidates")
+      .update({ current_stage: "disqualified" as any, status: "disqualified" })
+      .eq("id", dbId);
+
+    if (updErr) {
+      setCandidates((prev) =>
+        prev.map((c) => (c.id === candidate.id ? { ...c, stage: fromStage, daysInStage: previousDays } : c)),
+      );
+      toast.error(`Failed to disqualify ${candidate.name}: ${updErr.message}`);
+      return;
+    }
+
+    const { error: histErr } = await supabase.from("candidate_stage_history").insert({
+      candidate_id: dbId,
+      from_stage: uiStageToDb[fromStage] as any,
+      to_stage: "disqualified" as any,
+      changed_by: changedBy,
+      notes: reason,
+    });
+    if (histErr) {
+      toast.warning(`Disqualified, but history not logged: ${histErr.message}`);
+    }
+
+    computeMetrics();
+    qc.invalidateQueries({ queryKey: ["candidates"] });
+    toast.success(`Disqualified ${candidate.name}`, { description: reason });
+  };
+
   const handleUpdate = (updated: Candidate) => {
     setCandidates((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
     setActive(updated);
@@ -398,7 +474,6 @@ const CandidatePipeline = () => {
     toast.success("Collapsed empty & Disqualified columns");
   };
 
-  const isDisqMove = pendingMove?.toStage === "disqualified";
   const isChecklistGate = pendingMove?.toStage === "confirmation" && pendingIncompleteCount > 0;
   const fromLabel = pendingMove ? STAGES.find((s) => s.id === pendingMove.fromStage)?.label : "";
   const toLabel = pendingMove ? STAGES.find((s) => s.id === pendingMove.toStage)?.label : "";
@@ -612,23 +687,14 @@ const CandidatePipeline = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>
               {isChecklistGate
-                ? "Trial Close checklist not complete"
-                : isDisqMove
-                  ? `Disqualify ${pendingMove?.candidate.name}?`
-                  : `Move ${pendingMove?.candidate.name}?`}
+                ? "Checklist required for Confirmation"
+                : `Move ${pendingMove?.candidate.name}?`}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {isChecklistGate ? (
                 <>
-                  There {pendingIncompleteCount === 1 ? "is" : "are"}{" "}
-                  <strong>{pendingIncompleteCount}</strong> unchecked item
-                  {pendingIncompleteCount === 1 ? "" : "s"} on the Trial Close checklist for{" "}
-                  <strong>{pendingMove?.candidate.name}</strong>. Are you sure you want to move them into Confirmation?
-                </>
-              ) : isDisqMove ? (
-                <>
-                  This will mark the candidate as <strong>Disqualified</strong> and remove them from active stages.
-                  You can undo this immediately from the toast.
+                  All Trial Close items must be completed before moving this candidate into Confirmation.
+                  You can override in special cases.
                 </>
               ) : (
                 <>
@@ -642,9 +708,50 @@ const CandidatePipeline = () => {
             <AlertDialogAction
               onClick={confirmStageMove}
               className="text-white"
-              style={{ backgroundColor: isDisqMove || isChecklistGate ? "#dc3545" : "#003c7e" }}
+              style={{ backgroundColor: isChecklistGate ? "#dc3545" : "#003c7e" }}
             >
-              {isChecklistGate ? "Move anyway" : isDisqMove ? "Disqualify" : "Move"}
+              {isChecklistGate ? "Override & Move" : "Move"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Disqualification reason modal */}
+      <AlertDialog
+        open={!!disqualifyTarget}
+        onOpenChange={(v) => {
+          if (!v) {
+            setDisqualifyTarget(null);
+            setDisqualifyReason("");
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Disqualify {disqualifyTarget?.candidate.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Provide a short reason. This will be recorded in stage history.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-2">
+            <textarea
+              autoFocus
+              value={disqualifyReason}
+              onChange={(e) => setDisqualifyReason(e.target.value)}
+              placeholder="e.g. Insufficient capital, declined offer, lost interest…"
+              rows={3}
+              className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2"
+              style={{ borderColor: "#dee2e6" }}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={submitDisqualify}
+              className="text-white"
+              style={{ backgroundColor: "#dc3545" }}
+            >
+              Disqualify
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

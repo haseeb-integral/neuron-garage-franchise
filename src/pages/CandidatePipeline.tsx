@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { UserPlus, Rows3, Rows2, Minimize2, Filter, X } from "lucide-react";
+import { UserPlus, Rows3, Rows2, Minimize2, Filter, X, Plus } from "lucide-react";
+import { NewCandidateModal } from "@/components/candidate-pipeline/NewCandidateModal";
 import { toast } from "sonner";
 import { Candidate, StageId, STAGES } from "@/data/pipelineData";
 import { supabase } from "@/integrations/supabase/client";
@@ -43,6 +44,7 @@ const CandidatePipeline = () => {
   const [confirmCandidate, setConfirmCandidate] = useState<Candidate | null>(null);
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [newOpen, setNewOpen] = useState(false);
   const [metrics, setMetrics] = useState({
     totalInPipeline: 0,
     hotLeads: 0,
@@ -72,6 +74,46 @@ const CandidatePipeline = () => {
     confirmation: "confirmation",
     signing: "signing",
     disqualified: "disqualified",
+  };
+
+  const mapRowToCandidate = (r: any, idx: number): Candidate => {
+    const fullName = `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim();
+    const created = r.created_at ? new Date(r.created_at) : new Date();
+    const days = Math.max(0, Math.floor((Date.now() - created.getTime()) / (1000 * 60 * 60 * 24)));
+    return {
+      id: idx,
+      name: fullName || r.email,
+      city: r.city ?? "",
+      state: r.state ?? "",
+      email: r.email ?? "",
+      phone: r.phone ?? "",
+      fitScore: r.fit_score ?? 0,
+      stage: dbStageToUi[r.current_stage] ?? "new_lead",
+      daysInStage: days,
+      assignedTo: r.assigned_to ?? "",
+      tag: r.fit_tag ?? "Untagged",
+      source: "—",
+      createdDate: r.created_at ?? new Date().toISOString(),
+      qualificationScores: { teaching: 0, leadership: 0, financial: 0, marketFit: 0, cultureFit: 0 },
+      activity: [],
+      trialClose: {
+        answeredQuestions: false,
+        prospectSummarized: false,
+        askedToMoveForward: false,
+        scheduledNextCall: false,
+        assignedHomework: false,
+      },
+      votes: { Kaylie: null, Sam: null, Skylar: null },
+      dbId: r.id,
+    } as unknown as Candidate;
+  };
+
+  const handleCandidateCreated = (row: any) => {
+    setCandidates((prev) => {
+      const nextId = (prev.reduce((m, c) => Math.max(m, c.id), 0) || 0) + 1;
+      return [mapRowToCandidate(row, nextId), ...prev];
+    });
+    computeMetrics();
   };
 
   const computeMetrics = async () => {
@@ -348,14 +390,24 @@ const CandidatePipeline = () => {
         title="Candidate Pipeline"
         subtitle="Track and manage franchise candidates through every stage of the qualification process."
         action={
-          <Button
-            size="sm"
-            onClick={() => toast.info("Open Teacher Prospects to promote a candidate")}
-            className="text-white w-full sm:w-auto"
-            style={{ backgroundColor: "#fd7e14" }}
-          >
-            <UserPlus size={14} /> Promote from Prospect
-          </Button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => navigate("/teacher-prospects")}
+              className="w-full sm:w-auto"
+            >
+              <UserPlus size={14} /> Promote from Prospect
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => setNewOpen(true)}
+              className="text-white w-full sm:w-auto"
+              style={{ backgroundColor: "#fd7e14" }}
+            >
+              <Plus size={14} /> New Candidate
+            </Button>
+          </div>
         }
       />
 
@@ -580,6 +632,13 @@ const CandidatePipeline = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <NewCandidateModal
+        open={newOpen}
+        onOpenChange={setNewOpen}
+        teamMembers={teamMembers}
+        onCreated={handleCandidateCreated}
+      />
     </div>
   );
 };

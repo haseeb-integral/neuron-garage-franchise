@@ -27,7 +27,7 @@ function maskEmail(email: string): string {
   return `${user[0]}••••@${domain}`;
 }
 
-export function TeacherTable({ prospects, selected, onToggleSelect, onToggleAll, onRowClick, onPromote }: Props) {
+export function TeacherTable({ prospects, selected, onToggleSelect, onToggleAll, onRowClick, onPromote, promotedIds, promotingId }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("fitScore");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 

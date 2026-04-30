@@ -107,6 +107,9 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate }: Props) {
           <TabsContent value="homework">
             <HomeworkTab candidate={candidate} onTrialCloseChange={handleTrialClose} />
           </TabsContent>
+          <TabsContent value="committee">
+            <CommitteeVotesTab candidate={candidate} />
+          </TabsContent>
         </Tabs>
 
         {candidate.stage === "immersion" && (

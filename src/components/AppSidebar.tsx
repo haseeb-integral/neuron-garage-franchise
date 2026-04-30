@@ -1,9 +1,17 @@
-import { Home, Map, Users, Kanban, ClipboardCheck, BookOpen, ChevronLeft, ChevronRight, LogOut, Shield } from "lucide-react";
+import { Home, Map, Users, Kanban, ClipboardCheck, BookOpen, ChevronLeft, ChevronRight, LogOut, Settings, ChevronsUpDown } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import logo from "@/assets/neuron-garage-logo.png";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSidebarCollapsed } from "@/lib/sidebarState";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const navItems = [
   { title: "Dashboard", url: "/", icon: Home, tourId: "nav-dashboard" },
@@ -117,7 +125,6 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
 
         <nav className="flex-1 flex flex-col gap-1 px-3">
           {navItems.map((item) => renderLink(item, true))}
-          {role === "admin" && renderLink({ title: "Users", url: "/users", icon: Shield, tourId: "nav-users" }, true)}
         </nav>
 
         <div
@@ -126,46 +133,66 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
         >
           {renderLink(footerItem)}
 
-          {/* User info + Logout */}
-          {!isCollapsed && (
-            <div
-              className="flex items-center gap-2 px-3 py-2 rounded-lg mt-1"
-              style={{ backgroundColor: "rgba(255,255,255,0.05)" }}
-            >
-              <div
-                className="flex items-center justify-center rounded-full text-xs font-semibold flex-shrink-0"
-                style={{ width: 28, height: 28, backgroundColor: "#fd7e14", color: "#fff" }}
+          {/* User menu (dropdown) */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                aria-label="Open account menu"
+                className={`flex items-center rounded-lg mt-1 transition-colors w-full ${
+                  isCollapsed ? "justify-center p-2" : "gap-2 px-3 py-2"
+                }`}
+                style={{ backgroundColor: "rgba(255,255,255,0.05)" }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.10)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.05)"; }}
               >
-                {initials}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-xs text-white truncate font-medium">{displayName}</div>
-                {role && (
-                  <div className="text-[10px] uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.55)" }}>
-                    {role}
-                  </div>
+                <div
+                  className="flex items-center justify-center rounded-full text-xs font-semibold flex-shrink-0"
+                  style={{ width: 28, height: 28, backgroundColor: "#fd7e14", color: "#fff" }}
+                >
+                  {initials}
+                </div>
+                {!isCollapsed && (
+                  <>
+                    <div className="min-w-0 flex-1 text-left">
+                      <div className="text-xs text-white truncate font-medium">{displayName}</div>
+                      {role && (
+                        <div className="text-[10px] uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.55)" }}>
+                          {role}
+                        </div>
+                      )}
+                    </div>
+                    <ChevronsUpDown size={14} style={{ color: "rgba(255,255,255,0.55)" }} />
+                  </>
                 )}
-              </div>
-            </div>
-          )}
-
-          <button
-            onClick={handleLogout}
-            aria-label="Log out"
-            title="Log out"
-            className={`group flex items-center rounded-lg text-sm transition-colors ${
-              isCollapsed ? "justify-center px-0" : "gap-3 px-3"
-            }`}
-            style={{
-              minHeight: 40,
-              color: "rgba(255,255,255,0.60)",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = "rgba(255,255,255,0.95)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(255,255,255,0.60)"; }}
-          >
-            <LogOut size={18} />
-            {!isCollapsed && <span>Log out</span>}
-          </button>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="end" className="w-56">
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm font-medium truncate">{displayName}</span>
+                  {(profile?.email || user?.email) && (
+                    <span className="text-xs text-muted-foreground truncate">
+                      {profile?.email || user?.email}
+                    </span>
+                  )}
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {role === "admin" && (
+                <>
+                  <DropdownMenuItem onClick={() => { navigate("/settings/team"); onNavigate?.(); }}>
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Team members</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </aside>
     </TooltipProvider>

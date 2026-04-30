@@ -149,10 +149,11 @@ export function TeacherDetailPanel({ prospect, onClose, onUpdate, onPromote, onM
           <div className="flex gap-2 pt-2">
             <Button
               className="flex-1 text-white"
-              style={{ backgroundColor: "#fd7e14" }}
+              style={{ backgroundColor: isPromoted ? "#adb5bd" : "#fd7e14" }}
+              disabled={isPromoted || isPromoting}
               onClick={() => onPromote(prospect)}
             >
-              Promote to Pipeline
+              {isPromoted ? "Promoted ✓" : isPromoting ? "Promoting…" : "Promote to Pipeline"}
             </Button>
             <Button
               variant="outline"

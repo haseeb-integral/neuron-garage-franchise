@@ -45,9 +45,9 @@ const CandidatePipeline = () => {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [metrics, setMetrics] = useState({
     totalInPipeline: 0,
-    avgDaysPerStage: 0,
+    hotLeads: 0,
     conversionRate: 0,
-    thisWeekActivity: 0,
+    newThisWeek: 0,
   });
 
   // DB enum stage -> local UI StageId
@@ -75,39 +75,30 @@ const CandidatePipeline = () => {
   };
 
   const computeMetrics = async () => {
-    // Pull candidates + history in parallel
-    const [{ data: cands }, { data: hist }] = await Promise.all([
-      supabase.from("candidates").select("id, current_stage, status, created_at"),
-      supabase.from("candidate_stage_history").select("candidate_id, changed_at"),
-    ]);
+    const { data: cands } = await supabase
+      .from("candidates")
+      .select("id, current_stage, status, fit_score, created_at");
     const all = cands ?? [];
-    const active = all.filter((c: any) => c.status !== "disqualified" && c.current_stage !== "disqualified");
+    const active = all.filter(
+      (c: any) => c.status !== "disqualified" && c.current_stage !== "disqualified",
+    );
     const totalEver = all.length;
-
-    // Last activity per candidate (max changed_at)
-    const lastByCand: Record<string, string> = {};
-    (hist ?? []).forEach((h: any) => {
-      const prev = lastByCand[h.candidate_id];
-      if (!prev || new Date(h.changed_at) > new Date(prev)) lastByCand[h.candidate_id] = h.changed_at;
-    });
-
     const dayMs = 1000 * 60 * 60 * 24;
     const now = Date.now();
-    const days = active.map((c: any) => {
-      const ref = lastByCand[c.id] ?? c.created_at;
-      return Math.max(0, Math.floor((now - new Date(ref).getTime()) / dayMs));
-    });
-    const avgDays = days.length ? Math.round(days.reduce((a, b) => a + b, 0) / days.length) : 0;
+    const weekAgo = now - 7 * dayMs;
+
+    const hot = active.filter((c: any) => (c.fit_score ?? 0) >= 80).length;
     const signing = all.filter((c: any) => c.current_stage === "signing").length;
     const conv = totalEver > 0 ? Math.round((signing / totalEver) * 100) : 0;
-    const weekAgo = now - 7 * dayMs;
-    const thisWeek = (hist ?? []).filter((h: any) => new Date(h.changed_at).getTime() >= weekAgo).length;
+    const newWeek = all.filter(
+      (c: any) => new Date(c.created_at).getTime() >= weekAgo,
+    ).length;
 
     setMetrics({
       totalInPipeline: active.length,
-      avgDaysPerStage: avgDays,
+      hotLeads: hot,
       conversionRate: conv,
-      thisWeekActivity: thisWeek,
+      newThisWeek: newWeek,
     });
   };
 
@@ -366,9 +357,9 @@ const CandidatePipeline = () => {
 
       <PipelineAnalyticsBar
         totalInPipeline={metrics.totalInPipeline}
-        avgDaysPerStage={metrics.avgDaysPerStage}
+        hotLeads={metrics.hotLeads}
         conversionRate={metrics.conversionRate}
-        thisWeekActivity={metrics.thisWeekActivity}
+        newThisWeek={metrics.newThisWeek}
       />
 
       {/* Filter strip */}

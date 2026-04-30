@@ -1,19 +1,54 @@
+import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { sampleCities } from "@/data/cityData";
+import { sampleTeachers } from "@/data/teacherData";
 
-const STEPS = [
-  { num: 1, label: "City Scoring", path: "/city-scoring", count: "10 cities" },
-  { num: 2, label: "Teacher Prospects", path: "/teacher-prospects", count: "42 prospects" },
-  { num: 3, label: "Candidate Pipeline", path: "/candidate-pipeline", count: "10 candidates" },
-  { num: 4, label: "Onboarding", path: "/onboarding", count: "3 active" },
-];
+interface Step {
+  num: number;
+  label: string;
+  path: string;
+  count: string;
+}
 
 export function JourneyBar() {
   const navigate = useNavigate();
   const location = useLocation();
-
-  // Dashboard ("/") is an overview, not a workflow step — no step is "current" there
   const activePath = location.pathname;
+
+  const [candidateCount, setCandidateCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const { count } = await supabase
+        .from("candidates")
+        .select("id", { count: "exact", head: true })
+        .neq("current_stage", "disqualified");
+      if (mounted && typeof count === "number") setCandidateCount(count);
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // City Scoring & Teacher Prospects still render from local mock data,
+  // so the journey bar mirrors that source until they get DB tables.
+  const cityCount = sampleCities?.length ?? 10;
+  const prospectCount = sampleTeachers?.length ?? 42;
+
+  const steps: Step[] = [
+    { num: 1, label: "City Scoring", path: "/city-scoring", count: `${cityCount} cities` },
+    { num: 2, label: "Teacher Prospects", path: "/teacher-prospects", count: `${prospectCount} prospects` },
+    {
+      num: 3,
+      label: "Candidate Pipeline",
+      path: "/candidate-pipeline",
+      count: candidateCount === null ? "…" : `${candidateCount} candidates`,
+    },
+    { num: 4, label: "Onboarding", path: "/onboarding", count: "Active" },
+  ];
 
   return (
     <nav
@@ -22,7 +57,7 @@ export function JourneyBar() {
       style={{ border: "1px solid #dee2e6" }}
     >
       <ol className="flex items-center gap-1 md:gap-2 min-w-max">
-        {STEPS.map((step, idx) => {
+        {steps.map((step, idx) => {
           const isActive = step.path === activePath;
           return (
             <li key={step.num} className="flex items-center gap-1 md:gap-2">
@@ -62,12 +97,8 @@ export function JourneyBar() {
                   {step.count}
                 </span>
               </button>
-              {idx < STEPS.length - 1 && (
-                <ChevronRight
-                  size={16}
-                  style={{ color: "#adb5bd" }}
-                  aria-hidden="true"
-                />
+              {idx < steps.length - 1 && (
+                <ChevronRight size={16} style={{ color: "#adb5bd" }} aria-hidden="true" />
               )}
             </li>
           );

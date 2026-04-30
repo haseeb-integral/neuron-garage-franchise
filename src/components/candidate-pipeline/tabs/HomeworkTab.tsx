@@ -1,23 +1,29 @@
+import { useEffect, useState } from "react";
 import { Candidate, STAGE_HOMEWORK, TrialClose } from "@/data/pipelineData";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Lock, BookOpen } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface Props {
   candidate: Candidate;
   onTrialCloseChange: (key: keyof TrialClose, value: boolean) => void;
 }
 
-const TRIAL_ITEMS: { key: keyof TrialClose; label: string }[] = [
-  { key: "answeredQuestions", label: "Answered all questions" },
-  { key: "prospectSummarized", label: "Prospect summarized key takeaways" },
-  { key: "askedToMoveForward", label: "Asked if they want to move forward" },
-  { key: "scheduledNextCall", label: "Scheduled next call" },
-  { key: "assignedHomework", label: "Assigned homework" },
-];
+interface ChecklistItem {
+  id: string;
+  label: string;
+  is_completed: boolean;
+  completed_at: string | null;
+  completed_by: string | null;
+}
 
 export function HomeworkTab({ candidate, onTrialCloseChange }: Props) {
+  const dbId = (candidate as any).dbId as string | undefined;
   const homework = STAGE_HOMEWORK[candidate.stage] ?? [];
   const showFddLock = candidate.stage === "fdd_review" && candidate.fddSentDate;
+  const [items, setItems] = useState<ChecklistItem[]>([]);
+  const [loading, setLoading] = useState(false);
 
   let daysRemaining = 0;
   if (showFddLock && candidate.fddSentDate) {
@@ -25,6 +31,71 @@ export function HomeworkTab({ candidate, onTrialCloseChange }: Props) {
     const unlock = sent + 16 * 24 * 60 * 60 * 1000;
     daysRemaining = Math.max(0, Math.ceil((unlock - Date.now()) / (24 * 60 * 60 * 1000)));
   }
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!dbId) {
+      setItems([]);
+      return;
+    }
+    setLoading(true);
+    (async () => {
+      const { data, error } = await supabase
+        .from("candidate_checklist_items")
+        .select("id, label, is_completed, completed_at, completed_by")
+        .eq("candidate_id", dbId)
+        .eq("stage", candidate.stage as any)
+        .order("created_at", { ascending: true });
+      if (cancelled) return;
+      if (error) {
+        console.error("Failed to load checklist", error);
+        toast.error("Couldn't load checklist", { description: error.message });
+        setItems([]);
+      } else {
+        setItems(data ?? []);
+      }
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [dbId, candidate.stage]);
+
+  const handleToggle = async (item: ChecklistItem, checked: boolean) => {
+    if (!dbId) return;
+    const previous = items;
+    // Optimistic
+    setItems((prev) =>
+      prev.map((i) =>
+        i.id === item.id
+          ? {
+              ...i,
+              is_completed: checked,
+              completed_at: checked ? new Date().toISOString() : null,
+            }
+          : i,
+      ),
+    );
+
+    const { data: sess } = await supabase.auth.getUser();
+    const email = sess?.user?.email ?? null;
+
+    const { error } = await supabase
+      .from("candidate_checklist_items")
+      .update({
+        is_completed: checked,
+        completed_at: checked ? new Date().toISOString() : null,
+        completed_by: checked ? email : null,
+      })
+      .eq("id", item.id);
+
+    if (error) {
+      setItems(previous);
+      toast.error("Couldn't update item", { description: error.message });
+    }
+  };
+
+  const showDbChecklist = candidate.stage === "confirmation" && !!dbId;
 
   return (
     <div className="space-y-4 pt-4">
@@ -70,17 +141,45 @@ export function HomeworkTab({ candidate, onTrialCloseChange }: Props) {
         <p className="text-xs mb-3" style={{ color: "#6c757d" }}>
           All items must be checked before advancing to next stage.
         </p>
-        <div className="space-y-2">
-          {TRIAL_ITEMS.map((item) => (
-            <label key={item.key} className="flex items-center gap-2 cursor-pointer">
-              <Checkbox
-                checked={candidate.trialClose[item.key]}
-                onCheckedChange={(v) => onTrialCloseChange(item.key, !!v)}
-              />
-              <span className="text-sm">{item.label}</span>
-            </label>
-          ))}
-        </div>
+
+        {showDbChecklist ? (
+          loading ? (
+            <p className="text-xs" style={{ color: "#6c757d" }}>Loading…</p>
+          ) : items.length === 0 ? (
+            <p className="text-xs" style={{ color: "#6c757d" }}>No checklist items for this stage yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {items.map((item) => (
+                <label key={item.id} className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox
+                    checked={item.is_completed}
+                    onCheckedChange={(v) => handleToggle(item, !!v)}
+                  />
+                  <span className="text-sm">{item.label}</span>
+                </label>
+              ))}
+            </div>
+          )
+        ) : (
+          // Fallback: legacy in-memory trial close (used outside Confirmation / mock data)
+          <div className="space-y-2">
+            {([
+              { key: "answeredQuestions" as const, label: "Answered all questions" },
+              { key: "prospectSummarized" as const, label: "Prospect summarized key takeaways" },
+              { key: "askedToMoveForward" as const, label: "Asked if they want to move forward" },
+              { key: "scheduledNextCall" as const, label: "Scheduled next call" },
+              { key: "assignedHomework" as const, label: "Assigned homework" },
+            ]).map((item) => (
+              <label key={item.key} className="flex items-center gap-2 cursor-pointer">
+                <Checkbox
+                  checked={candidate.trialClose[item.key]}
+                  onCheckedChange={(v) => onTrialCloseChange(item.key, !!v)}
+                />
+                <span className="text-sm">{item.label}</span>
+              </label>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 import { toast } from "sonner";
@@ -20,6 +20,7 @@ import { useQueryClient } from "@tanstack/react-query";
 const TeacherProspects = () => {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [prospects, setProspects] = useState<TeacherProspect[]>(sampleTeachers);
   const [findOpen, setFindOpen] = useState(false);
   const [active, setActive] = useState<TeacherProspect | null>(null);
@@ -144,7 +145,13 @@ const TeacherProspects = () => {
     setPromotedIds((prev) => new Set(prev).add(p.id));
     setPromotingId(null);
     qc.invalidateQueries({ queryKey: ["candidates"] });
-    toast.success("Promoted to Candidate Pipeline");
+    toast.success("Promoted to Candidate Pipeline", {
+      description: `${p.name} is now in New Lead.`,
+      action: {
+        label: "View in pipeline",
+        onClick: () => navigate(`/candidate-pipeline?candidate=${inserted.id}`),
+      },
+    });
   };
 
   const handleMarkNotFit = (p: TeacherProspect) => {

@@ -14,6 +14,8 @@ interface Props {
   onToggleAll: () => void;
   onRowClick: (p: TeacherProspect) => void;
   onPromote: (p: TeacherProspect) => void;
+  promotedIds?: Set<number>;
+  promotingId?: number | null;
 }
 
 type SortKey = "name" | "school" | "city" | "fitScore";
@@ -25,7 +27,7 @@ function maskEmail(email: string): string {
   return `${user[0]}••••@${domain}`;
 }
 
-export function TeacherTable({ prospects, selected, onToggleSelect, onToggleAll, onRowClick, onPromote }: Props) {
+export function TeacherTable({ prospects, selected, onToggleSelect, onToggleAll, onRowClick, onPromote, promotedIds, promotingId }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("fitScore");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
@@ -101,14 +103,26 @@ export function TeacherTable({ prospects, selected, onToggleSelect, onToggleAll,
                 )}
               </TableCell>
               <TableCell onClick={e => e.stopPropagation()} className="hidden md:table-cell">
-                <Button
-                  size="sm"
-                  className="text-white h-7 text-xs"
-                  style={{ backgroundColor: "#fd7e14" }}
-                  onClick={() => onPromote(p)}
-                >
-                  Promote
-                </Button>
+                {promotedIds?.has(p.id) ? (
+                  <Button
+                    size="sm"
+                    disabled
+                    className="h-7 text-xs"
+                    style={{ backgroundColor: "#e9ecef", color: "#6c757d" }}
+                  >
+                    Promoted ✓
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="text-white h-7 text-xs"
+                    style={{ backgroundColor: "#fd7e14" }}
+                    disabled={promotingId === p.id}
+                    onClick={() => onPromote(p)}
+                  >
+                    {promotingId === p.id ? "Promoting…" : "Promote"}
+                  </Button>
+                )}
               </TableCell>
             </TableRow>
           ))}

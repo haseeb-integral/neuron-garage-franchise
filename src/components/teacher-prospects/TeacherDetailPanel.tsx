@@ -14,9 +14,11 @@ interface Props {
   onUpdate: (p: TeacherProspect) => void;
   onPromote: (p: TeacherProspect) => void;
   onMarkNotFit: (p: TeacherProspect) => void;
+  isPromoted?: boolean;
+  isPromoting?: boolean;
 }
 
-export function TeacherDetailPanel({ prospect, onClose, onUpdate, onPromote, onMarkNotFit }: Props) {
+export function TeacherDetailPanel({ prospect, onClose, onUpdate, onPromote, onMarkNotFit, isPromoted, isPromoting }: Props) {
   const [tags, setTags] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [newTag, setNewTag] = useState("");
@@ -147,10 +149,11 @@ export function TeacherDetailPanel({ prospect, onClose, onUpdate, onPromote, onM
           <div className="flex gap-2 pt-2">
             <Button
               className="flex-1 text-white"
-              style={{ backgroundColor: "#fd7e14" }}
+              style={{ backgroundColor: isPromoted ? "#adb5bd" : "#fd7e14" }}
+              disabled={isPromoted || isPromoting}
               onClick={() => onPromote(prospect)}
             >
-              Promote to Pipeline
+              {isPromoted ? "Promoted ✓" : isPromoting ? "Promoting…" : "Promote to Pipeline"}
             </Button>
             <Button
               variant="outline"

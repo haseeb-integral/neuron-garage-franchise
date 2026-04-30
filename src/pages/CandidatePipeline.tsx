@@ -293,18 +293,20 @@ const CandidatePipeline = () => {
       return;
     }
 
-    // Signing prerequisite: must have passed through Confirmation at least once
+    // Signing prerequisite: must currently be in Confirmation OR have passed through it before
     if (toStage === "signing" && dbId) {
-      const { count, error } = await supabase
-        .from("candidate_stage_history")
-        .select("id", { count: "exact", head: true })
-        .eq("candidate_id", dbId)
-        .eq("to_stage", "confirmation" as any);
-      if (!error && (count ?? 0) === 0) {
-        toast.error("Signing requires Confirmation first", {
-          description: "To move a candidate to Signing, they must first pass through Confirmation.",
-        });
-        return;
+      if (candidate.stage !== "confirmation") {
+        const { count, error } = await supabase
+          .from("candidate_stage_history")
+          .select("id", { count: "exact", head: true })
+          .eq("candidate_id", dbId)
+          .eq("to_stage", "confirmation" as any);
+        if (!error && (count ?? 0) === 0) {
+          toast.error("Signing requires Confirmation first", {
+            description: "To move a candidate to Signing, they must first pass through Confirmation.",
+          });
+          return;
+        }
       }
     }
 

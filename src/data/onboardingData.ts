@@ -48,6 +48,13 @@ export interface Franchisee {
   stepData: Record<number, StepData>;
   activity: ActivityEvent[];
   comms: CommStatus[];
+  // Onboarding-wide fields (apply to whole record, not a single step)
+  globalFiles?: { id: string; name: string; size: string }[];
+  globalNotes?: string;
+  // Origin metadata
+  isLinked?: boolean;          // true when started from a candidate
+  candidateDbId?: string;      // candidates.id when linked
+  leadSource?: string;         // editable on Step 1 for both linked & manual
 }
 
 export const STEPS: StepDefinition[] = [

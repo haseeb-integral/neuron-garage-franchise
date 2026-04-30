@@ -16,10 +16,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 const TeacherProspects = () => {
+  const { user } = useAuth();
   const [prospects, setProspects] = useState<TeacherProspect[]>(sampleTeachers);
   const [findOpen, setFindOpen] = useState(false);
   const [active, setActive] = useState<TeacherProspect | null>(null);
   const [selected, setSelected] = useState<number[]>([]);
+  const [promotedIds, setPromotedIds] = useState<Set<number>>(new Set());
+  const [promotingId, setPromotingId] = useState<number | null>(null);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");

@@ -184,6 +184,44 @@ export type Database = {
           },
         ]
       }
+      candidate_votes: {
+        Row: {
+          candidate_id: string
+          comment: string | null
+          created_at: string
+          id: string
+          updated_at: string
+          vote: Database["public"]["Enums"]["candidate_vote_value"]
+          voter: string
+        }
+        Insert: {
+          candidate_id: string
+          comment?: string | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+          vote: Database["public"]["Enums"]["candidate_vote_value"]
+          voter: string
+        }
+        Update: {
+          candidate_id?: string
+          comment?: string | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+          vote?: Database["public"]["Enums"]["candidate_vote_value"]
+          voter?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_votes_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidates: {
         Row: {
           assigned_to: string | null
@@ -311,6 +349,7 @@ export type Database = {
         | "confirmation"
         | "signing"
         | "disqualified"
+      candidate_vote_value: "approve" | "needs_info" | "reject"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -449,6 +488,7 @@ export const Constants = {
         "signing",
         "disqualified",
       ],
+      candidate_vote_value: ["approve", "needs_info", "reject"],
     },
   },
 } as const

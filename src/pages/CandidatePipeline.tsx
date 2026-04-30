@@ -21,7 +21,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { buildFranchiseeFromCandidate, queueOnboarding } from "@/data/onboardingStore";
 
-type OwnerFilter = "all" | "Kaylie" | "Sam" | "Skylar";
+type OwnerFilter = string; // "all" or a user email
+interface TeamMember { email: string; firstName: string; }
 type TagFilter = "all" | "High Potential" | "Active" | "Follow-Up" | "Qualified";
 type FitFilter = "all" | "90" | "75";
 

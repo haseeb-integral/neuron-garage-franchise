@@ -2,9 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { CITIES } from "@/data/cityData";
-import { TEACHERS } from "@/data/teacherData";
-import { listOnboardingFranchisees } from "@/data/onboardingStore";
+import { sampleCities } from "@/data/cityData";
+import { sampleTeachers } from "@/data/teacherData";
 
 interface Step {
   num: number;
@@ -19,12 +18,9 @@ export function JourneyBar() {
   const activePath = location.pathname;
 
   const [candidateCount, setCandidateCount] = useState<number | null>(null);
-  const [onboardingCount, setOnboardingCount] = useState<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
-
-    // Live: candidates from DB (exclude disqualified)
     (async () => {
       const { count } = await supabase
         .from("candidates")
@@ -32,24 +28,15 @@ export function JourneyBar() {
         .neq("current_stage", "disqualified");
       if (mounted && typeof count === "number") setCandidateCount(count);
     })();
-
-    // Onboarding still uses local store
-    try {
-      const list = listOnboardingFranchisees?.() ?? [];
-      if (mounted) setOnboardingCount(list.length);
-    } catch {
-      // store not available — leave null and fall back to static
-    }
-
     return () => {
       mounted = false;
     };
   }, []);
 
-  // City Scoring & Teacher Prospects pages still use local mock data,
-  // so derive counts from the same source the pages render from.
-  const cityCount = CITIES?.length ?? 10;
-  const prospectCount = TEACHERS?.length ?? 42;
+  // City Scoring & Teacher Prospects still render from local mock data,
+  // so the journey bar mirrors that source until they get DB tables.
+  const cityCount = sampleCities?.length ?? 10;
+  const prospectCount = sampleTeachers?.length ?? 42;
 
   const steps: Step[] = [
     { num: 1, label: "City Scoring", path: "/city-scoring", count: `${cityCount} cities` },
@@ -60,12 +47,7 @@ export function JourneyBar() {
       path: "/candidate-pipeline",
       count: candidateCount === null ? "…" : `${candidateCount} candidates`,
     },
-    {
-      num: 4,
-      label: "Onboarding",
-      path: "/onboarding",
-      count: onboardingCount === null ? "—" : `${onboardingCount} active`,
-    },
+    { num: 4, label: "Onboarding", path: "/onboarding", count: "Active" },
   ];
 
   return (

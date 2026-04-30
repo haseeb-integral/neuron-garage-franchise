@@ -597,16 +597,33 @@ const CandidatePipeline = () => {
       />
 
       {/* Drag-drop confirm */}
-      <AlertDialog open={!!pendingMove} onOpenChange={(v) => !v && setPendingMove(null)}>
+      <AlertDialog
+        open={!!pendingMove}
+        onOpenChange={(v) => {
+          if (!v) {
+            setPendingMove(null);
+            setPendingIncompleteCount(0);
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {isDisqMove
-                ? `Disqualify ${pendingMove?.candidate.name}?`
-                : `Move ${pendingMove?.candidate.name}?`}
+              {isChecklistGate
+                ? "Trial Close checklist not complete"
+                : isDisqMove
+                  ? `Disqualify ${pendingMove?.candidate.name}?`
+                  : `Move ${pendingMove?.candidate.name}?`}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {isDisqMove ? (
+              {isChecklistGate ? (
+                <>
+                  There {pendingIncompleteCount === 1 ? "is" : "are"}{" "}
+                  <strong>{pendingIncompleteCount}</strong> unchecked item
+                  {pendingIncompleteCount === 1 ? "" : "s"} on the Trial Close checklist for{" "}
+                  <strong>{pendingMove?.candidate.name}</strong>. Are you sure you want to move them into Confirmation?
+                </>
+              ) : isDisqMove ? (
                 <>
                   This will mark the candidate as <strong>Disqualified</strong> and remove them from active stages.
                   You can undo this immediately from the toast.
@@ -623,9 +640,9 @@ const CandidatePipeline = () => {
             <AlertDialogAction
               onClick={confirmStageMove}
               className="text-white"
-              style={{ backgroundColor: isDisqMove ? "#dc3545" : "#003c7e" }}
+              style={{ backgroundColor: isDisqMove || isChecklistGate ? "#dc3545" : "#003c7e" }}
             >
-              {isDisqMove ? "Disqualify" : "Move"}
+              {isChecklistGate ? "Move anyway" : isDisqMove ? "Disqualify" : "Move"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

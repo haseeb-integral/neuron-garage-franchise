@@ -1,21 +1,21 @@
 interface Props {
   totalInPipeline: number;
-  avgDaysPerStage: number;
+  hotLeads: number;
   conversionRate: number;
-  thisWeekActivity: number;
+  newThisWeek: number;
 }
 
 export function PipelineAnalyticsBar({
   totalInPipeline,
-  avgDaysPerStage,
+  hotLeads,
   conversionRate,
-  thisWeekActivity,
+  newThisWeek,
 }: Props) {
   const stats = [
     { label: "Total in Pipeline", value: totalInPipeline },
-    { label: "Avg Days per Stage", value: avgDaysPerStage },
+    { label: "Hot Leads (Fit ≥ 80)", value: hotLeads },
     { label: "Conversion Rate", value: `${conversionRate}%` },
-    { label: "This Week's Activity", value: thisWeekActivity },
+    { label: "New This Week", value: newThisWeek },
   ];
 
   return (

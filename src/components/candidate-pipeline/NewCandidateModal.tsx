@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { STAGES, StageId } from "@/data/pipelineData";
-import { FIT_TAGS, FitTag, DEFAULT_FIT_TAG } from "@/constants/fitTags";
+import { deriveFitTag } from "@/utils/fitScore";
 import {
   Dialog,
   DialogContent,
@@ -60,10 +60,7 @@ const schema = z.object({
   assigned_to: z.string().min(1, "Required"),
   initial_stage: z.string().min(1, "Required"),
   fit_score: z.number().int().min(0).max(100),
-  fit_tag: z.enum(FIT_TAGS),
 });
-
-
 
 type FormState = {
   first_name: string;
@@ -75,7 +72,6 @@ type FormState = {
   assigned_to: string;
   initial_stage: StageId;
   fit_score: number;
-  fit_tag: FitTag;
 };
 
 const blank = (defaultOwner: string): FormState => ({
@@ -88,7 +84,6 @@ const blank = (defaultOwner: string): FormState => ({
   assigned_to: defaultOwner,
   initial_stage: "new_lead",
   fit_score: 50,
-  fit_tag: DEFAULT_FIT_TAG,
 });
 
 export function NewCandidateModal({ open, onOpenChange, teamMembers, onCreated }: Props) {
@@ -137,7 +132,7 @@ export function NewCandidateModal({ open, onOpenChange, teamMembers, onCreated }
         state: form.state.trim().toUpperCase(),
         current_stage: dbStage as any,
         fit_score: form.fit_score,
-        fit_tag: form.fit_tag,
+        fit_tag: deriveFitTag(form.fit_score),
         status: "active",
         assigned_to: form.assigned_to,
       })
@@ -294,27 +289,10 @@ export function NewCandidateModal({ open, onOpenChange, teamMembers, onCreated }
               value={form.fit_score}
               onChange={(e) => set("fit_score", Number(e.target.value))}
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              Tag will be set to <strong>{deriveFitTag(form.fit_score)}</strong> based on this score.
+            </p>
             {fieldErr("fit_score")}
-          </div>
-
-          <div>
-            <Label>Fit Tag</Label>
-            <Select
-              value={form.fit_tag}
-              onValueChange={(v) => set("fit_tag", v as FitTag)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {FIT_TAGS.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {t}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {fieldErr("fit_tag")}
           </div>
         </div>
 

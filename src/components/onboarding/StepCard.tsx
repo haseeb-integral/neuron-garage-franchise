@@ -1,28 +1,29 @@
 import { Franchisee, STEPS, StepData } from "@/data/onboardingData";
 import { TaskChecklist } from "./TaskChecklist";
 import { StepForm } from "./StepForm";
-import { DocumentUpload } from "./DocumentUpload";
 import { FddCountdown } from "./FddCountdown";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Sparkles } from "lucide-react";
-import { toast } from "sonner";
+import { CheckCircle2, Sparkles, ExternalLink, Lock } from "lucide-react";
+import { Link } from "react-router-dom";
 
 interface Props {
   franchisee: Franchisee;
   stepId: number;
   data: StepData;
   onUpdate: (patch: Partial<StepData>) => void;
+  onUpdateFranchisee: (patch: Partial<Franchisee>) => void;
   onCompleteStep: () => void;
   onBeginActiveOnboarding: () => void;
 }
 
-export function StepCard({ franchisee, stepId, data, onUpdate, onCompleteStep, onBeginActiveOnboarding }: Props) {
+export function StepCard({ franchisee, stepId, data, onUpdate, onUpdateFranchisee, onCompleteStep, onBeginActiveOnboarding }: Props) {
   const step = STEPS.find((s) => s.id === stepId)!;
   const isCurrent = stepId === franchisee.currentStep;
   const isCompleted = stepId < franchisee.currentStep;
+  const isLinked = !!franchisee.isLinked;
 
   const toggleTask = (id: string) => {
     onUpdate({ tasks: data.tasks.map((t) => (t.id === id ? { ...t, done: !t.done } : t)) });
@@ -30,15 +31,6 @@ export function StepCard({ franchisee, stepId, data, onUpdate, onCompleteStep, o
 
   const setForm = (key: string, value: string) => {
     onUpdate({ form: { ...data.form, [key]: value } });
-  };
-
-  const addFile = (name: string, size: string) => {
-    onUpdate({ files: [...data.files, { id: `${Date.now()}-${name}`, name, size }] });
-    toast.success(`Uploaded ${name}`);
-  };
-
-  const removeFile = (id: string) => {
-    onUpdate({ files: data.files.filter((f) => f.id !== id) });
   };
 
   return (
@@ -70,17 +62,68 @@ export function StepCard({ franchisee, stepId, data, onUpdate, onCompleteStep, o
 
       <TaskChecklist tasks={data.tasks} onToggle={toggleTask} />
 
-      <StepForm step={step} values={data.form} onChange={setForm} />
+      {/* Step 1: Contact details — linked = read-only contact + editable Lead Source; manual = editable everything except name */}
+      {stepId === 1 && (
+        <div>
+          <h4 className="text-sm font-semibold mb-3" style={{ color: "#003c7e" }}>Step Details</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <ContactField
+              label="Full Name"
+              value={franchisee.name}
+              readOnly
+            />
+            <ContactField
+              label="Email"
+              type="email"
+              value={franchisee.email}
+              readOnly={isLinked}
+              onChange={(v) => onUpdateFranchisee({ email: v })}
+            />
+            <ContactField
+              label="Phone"
+              type="tel"
+              value={franchisee.phone}
+              readOnly={isLinked}
+              onChange={(v) => onUpdateFranchisee({ phone: v })}
+            />
+            <ContactField
+              label="Lead Source"
+              placeholder="e.g. Franchise Expo, Referral, Inbound web…"
+              value={franchisee.leadSource ?? ""}
+              onChange={(v) => onUpdateFranchisee({ leadSource: v })}
+            />
+          </div>
+          {isLinked && (
+            <p className="text-xs mt-2 flex items-center gap-1" style={{ color: "#6c757d" }}>
+              <Lock size={11} /> Contact info is synced from the linked candidate record.
+            </p>
+          )}
+        </div>
+      )}
 
-      <DocumentUpload files={data.files} onAdd={addFile} onRemove={removeFile} />
+      {/* Step 2: link to Candidate Lead Sheet (linked only). No duplicate form. */}
+      {stepId === 2 && isLinked && franchisee.candidateDbId && (
+        <Link
+          to={`/candidate-pipeline?candidate=${franchisee.candidateDbId}`}
+          className="inline-flex items-center gap-1.5 text-sm font-medium hover:underline"
+          style={{ color: "#003c7e" }}
+        >
+          View Candidate Lead Sheet <ExternalLink size={13} />
+        </Link>
+      )}
+
+      {/* Other steps with formFields */}
+      {stepId !== 1 && stepId !== 2 && step.formFields.length > 0 && (
+        <StepForm step={step} values={data.form} onChange={setForm} />
+      )}
 
       <div>
-        <h4 className="text-sm font-semibold mb-2" style={{ color: "#003c7e" }}>Internal Notes</h4>
+        <h4 className="text-sm font-semibold mb-2" style={{ color: "#003c7e" }}>Step Notes</h4>
         <Textarea
           value={data.notes}
           onChange={(e) => onUpdate({ notes: e.target.value })}
           rows={3}
-          placeholder="Notes visible only to internal team..."
+          placeholder="Brief notes about this step…"
         />
       </div>
 
@@ -117,6 +160,38 @@ export function StepCard({ franchisee, stepId, data, onUpdate, onCompleteStep, o
             <Sparkles size={16} /> Begin Active Franchisee Onboarding
           </Button>
         </div>
+      )}
+    </div>
+  );
+}
+
+function ContactField({
+  label, value, onChange, readOnly, type = "text", placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange?: (v: string) => void;
+  readOnly?: boolean;
+  type?: string;
+  placeholder?: string;
+}) {
+  return (
+    <div>
+      <Label className="text-xs mb-1 block" style={{ color: "#495057" }}>{label}</Label>
+      {readOnly ? (
+        <div
+          className="h-10 px-3 py-2 rounded-md text-sm flex items-center"
+          style={{ backgroundColor: "#f8f9fa", border: "1px solid #e9ecef", color: value ? "#212529" : "#adb5bd" }}
+        >
+          {value || "—"}
+        </div>
+      ) : (
+        <Input
+          type={type}
+          value={value}
+          placeholder={placeholder}
+          onChange={(e) => onChange?.(e.target.value)}
+        />
       )}
     </div>
   );

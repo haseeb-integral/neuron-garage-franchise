@@ -95,9 +95,8 @@ const CandidatePipeline = () => {
             assignedHomework: false,
           },
           votes: { Kaylie: null, Sam: null, Skylar: null },
-          // @ts-expect-error stash db uuid for later wiring
-          __dbId: r.id,
-        } as Candidate;
+          dbId: r.id,
+        } as unknown as Candidate;
       });
       setCandidates(mapped);
       setLoading(false);

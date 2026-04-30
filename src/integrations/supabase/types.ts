@@ -14,6 +14,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      candidate_profiles: {
+        Row: {
+          additional_notes: string | null
+          background: string | null
+          candidate_id: string
+          created_at: string
+          liquid_capital: number | null
+          location_preferences: string | null
+          motivation: string | null
+          net_worth: number | null
+          partner_involved: boolean
+          timeline: string | null
+          updated_at: string
+        }
+        Insert: {
+          additional_notes?: string | null
+          background?: string | null
+          candidate_id: string
+          created_at?: string
+          liquid_capital?: number | null
+          location_preferences?: string | null
+          motivation?: string | null
+          net_worth?: number | null
+          partner_involved?: boolean
+          timeline?: string | null
+          updated_at?: string
+        }
+        Update: {
+          additional_notes?: string | null
+          background?: string | null
+          candidate_id?: string
+          created_at?: string
+          liquid_capital?: number | null
+          location_preferences?: string | null
+          motivation?: string | null
+          net_worth?: number | null
+          partner_involved?: boolean
+          timeline?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_profiles_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: true
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidate_stage_history: {
         Row: {
           candidate_id: string

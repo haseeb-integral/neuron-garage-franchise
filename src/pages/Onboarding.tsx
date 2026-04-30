@@ -8,6 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { NewOnboardingModal } from "@/components/onboarding/NewOnboardingModal";
+import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
+import { Franchisee, STEPS } from "@/data/onboardingData";
 
 type DbStatus = "on_track" | "stalled" | "overdue" | "completed";
 

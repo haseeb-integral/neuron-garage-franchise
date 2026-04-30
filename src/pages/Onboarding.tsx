@@ -180,6 +180,8 @@ const Onboarding = () => {
                     <TableRow
                       key={r.id}
                       data-onboarding-id={r.id}
+                      onClick={() => setActiveFranchisee(buildFranchiseeFromRow(r))}
+                      className="cursor-pointer"
                       style={isFlash ? { backgroundColor: "#fff3cd", transition: "background-color 0.6s ease" } : undefined}
                     >
                       <TableCell className="font-semibold" style={{ color: "#003c7e" }}>{r.franchisee_name}</TableCell>

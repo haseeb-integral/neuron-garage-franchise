@@ -61,33 +61,21 @@ export const STEPS: StepDefinition[] = [
       "Send Welcome Email",
       "Assign to franchise development rep",
     ],
-    formFields: [
-      { key: "fullName", label: "Full Name", type: "text" },
-      { key: "email", label: "Email", type: "email" },
-      { key: "phone", label: "Phone", type: "tel" },
-      { key: "source", label: "Lead Source", type: "text" },
-    ],
+    // Step 1 uses a custom contact block (see StepCard); no generic form fields here.
+    formFields: [],
     commTrigger: "Welcome Email",
   },
   {
     id: 2,
     title: "Initial Qualification Call",
-    goal: "Complete the Franchise Lead Sheet and confirm baseline fit.",
+    goal: "Confirm baseline fit on a 30-minute call. Detailed Lead Sheet lives on the candidate record.",
     defaultTasks: [
       "Schedule 30-min qualification call",
-      "Complete Franchise Lead Sheet",
+      "Confirm fit on Lead Sheet basics",
       "Send Process Roadmap email",
       "Log call notes",
     ],
-    formFields: [
-      { key: "who", label: "Who (background, family, work history)", type: "textarea" },
-      { key: "where", label: "Where (target market/cities)", type: "textarea" },
-      { key: "when", label: "When (target launch timeline)", type: "text" },
-      { key: "source", label: "Source (how they heard about us)", type: "text" },
-      { key: "financial", label: "Financial (liquid + net worth)", type: "textarea" },
-      { key: "why", label: "Why (motivation to franchise)", type: "textarea" },
-      { key: "competition", label: "Competition (other concepts considered)", type: "textarea" },
-    ],
+    formFields: [],
     commTrigger: "Process Roadmap",
   },
   {
@@ -100,11 +88,7 @@ export const STEPS: StepDefinition[] = [
       "Answer financial model questions",
       "Send Market Analysis email",
     ],
-    formFields: [
-      { key: "overviewNotes", label: "Overview Call Notes", type: "textarea" },
-      { key: "questions", label: "Key Questions Raised", type: "textarea" },
-      { key: "nextStepDate", label: "Next Step Scheduled", type: "date" },
-    ],
+    formFields: [],
     commTrigger: "Market Analysis",
   },
   {
@@ -119,8 +103,6 @@ export const STEPS: StepDefinition[] = [
     ],
     formFields: [
       { key: "fddSentDate", label: "FDD Sent Date", type: "date" },
-      { key: "legalQADate", label: "Legal Q&A Session", type: "date" },
-      { key: "fddNotes", label: "Review Notes", type: "textarea" },
     ],
     commTrigger: "FDD Document",
   },
@@ -137,7 +119,6 @@ export const STEPS: StepDefinition[] = [
     formFields: [
       { key: "immersionStart", label: "Immersion Start", type: "date" },
       { key: "immersionEnd", label: "Immersion End", type: "date" },
-      { key: "evaluation", label: "Evaluation Notes", type: "textarea" },
     ],
   },
   {
@@ -151,9 +132,7 @@ export const STEPS: StepDefinition[] = [
       "Send Congratulations / Franchise Awarded email",
     ],
     formFields: [
-      { key: "confirmationDate", label: "Confirmation Date", type: "date" },
       { key: "territory", label: "Awarded Territory", type: "text" },
-      { key: "confirmationNotes", label: "Confirmation Notes", type: "textarea" },
     ],
     commTrigger: "Congratulations / Franchise Awarded",
   },
@@ -170,7 +149,6 @@ export const STEPS: StepDefinition[] = [
     formFields: [
       { key: "signingDate", label: "Signing Date", type: "date" },
       { key: "feeCollected", label: "Initial Fee Collected", type: "text" },
-      { key: "signingNotes", label: "Signing Notes", type: "textarea" },
     ],
     commTrigger: "Donut Delivery Note + Onboarding Access",
   },

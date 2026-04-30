@@ -474,7 +474,6 @@ const CandidatePipeline = () => {
     toast.success("Collapsed empty & Disqualified columns");
   };
 
-  const isDisqMove = pendingMove?.toStage === "disqualified";
   const isChecklistGate = pendingMove?.toStage === "confirmation" && pendingIncompleteCount > 0;
   const fromLabel = pendingMove ? STAGES.find((s) => s.id === pendingMove.fromStage)?.label : "";
   const toLabel = pendingMove ? STAGES.find((s) => s.id === pendingMove.toStage)?.label : "";

@@ -12,6 +12,8 @@ import { TeacherDetailPanel } from "@/components/teacher-prospects/TeacherDetail
 import { BulkActionBar } from "@/components/teacher-prospects/BulkActionBar";
 import { OutreachIntelligence } from "@/components/teacher-prospects/OutreachIntelligence";
 import { PageHeader } from "@/components/PageHeader";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const TeacherProspects = () => {
   const [prospects, setProspects] = useState<TeacherProspect[]>(sampleTeachers);

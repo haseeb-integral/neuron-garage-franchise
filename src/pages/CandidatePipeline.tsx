@@ -320,6 +320,8 @@ const CandidatePipeline = () => {
   const confirmStageMove = async () => {
     if (!pendingMove) return;
     const { candidate, fromStage, toStage } = pendingMove;
+    const overrideNote =
+      toStage === "confirmation" && pendingIncompleteCount > 0 ? "confirmation_override" : null;
     const fromLabel = STAGES.find((s) => s.id === fromStage)?.short ?? fromStage;
     const toLabel = STAGES.find((s) => s.id === toStage)?.short ?? toStage;
     const previousDays = candidate.daysInStage;
@@ -357,7 +359,7 @@ const CandidatePipeline = () => {
       from_stage: uiStageToDb[fromStage] as any,
       to_stage: uiStageToDb[toStage] as any,
       changed_by: changedBy,
-      notes: null,
+      notes: overrideNote,
     });
     if (histErr) {
       // Non-fatal: stage already updated. Warn but keep state.

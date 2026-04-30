@@ -239,25 +239,75 @@ const CandidatePipeline = () => {
     );
   };
 
-  const confirmStageMove = () => {
+  const confirmStageMove = async () => {
     if (!pendingMove) return;
     const { candidate, fromStage, toStage } = pendingMove;
     const fromLabel = STAGES.find((s) => s.id === fromStage)?.short ?? fromStage;
     const toLabel = STAGES.find((s) => s.id === toStage)?.short ?? toStage;
     const previousDays = candidate.daysInStage;
+    const dbId = (candidate as any).dbId as string | undefined;
 
+    // Optimistic UI
     applyStageMove(candidate.id, toStage);
     setPendingMove(null);
+
+    if (!dbId) {
+      toast.error("Missing DB id; change not persisted.");
+      return;
+    }
+
+    const { data: sess } = await supabase.auth.getUser();
+    const changedBy = sess?.user?.email ?? "unknown";
+
+    const { error: updErr } = await supabase
+      .from("candidates")
+      .update({ current_stage: uiStageToDb[toStage] as any })
+      .eq("id", dbId);
+
+    if (updErr) {
+      // rollback
+      setCandidates((prev) =>
+        prev.map((c) => (c.id === candidate.id ? { ...c, stage: fromStage, daysInStage: previousDays } : c)),
+      );
+      toast.error(`Failed to move ${candidate.name}: ${updErr.message}`);
+      return;
+    }
+
+    const { error: histErr } = await supabase.from("candidate_stage_history").insert({
+      candidate_id: dbId,
+      from_stage: uiStageToDb[fromStage] as any,
+      to_stage: uiStageToDb[toStage] as any,
+      changed_by: changedBy,
+      notes: null,
+    });
+    if (histErr) {
+      // Non-fatal: stage already updated. Warn but keep state.
+      toast.warning(`Stage saved, but history not logged: ${histErr.message}`);
+    }
+
+    computeMetrics();
 
     toast.success(`Moved ${candidate.name} → ${toLabel}`, {
       description: `From ${fromLabel}`,
       duration: 6000,
       action: {
         label: "Undo",
-        onClick: () => {
+        onClick: async () => {
           setCandidates((prev) =>
             prev.map((c) => (c.id === candidate.id ? { ...c, stage: fromStage, daysInStage: previousDays } : c)),
           );
+          await supabase
+            .from("candidates")
+            .update({ current_stage: uiStageToDb[fromStage] as any })
+            .eq("id", dbId);
+          await supabase.from("candidate_stage_history").insert({
+            candidate_id: dbId,
+            from_stage: uiStageToDb[toStage] as any,
+            to_stage: uiStageToDb[fromStage] as any,
+            changed_by: changedBy,
+            notes: "undo",
+          });
+          computeMetrics();
           toast.info(`Reverted ${candidate.name} to ${fromLabel}`);
         },
       },

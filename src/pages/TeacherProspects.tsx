@@ -14,7 +14,7 @@ import { OutreachIntelligence } from "@/components/teacher-prospects/OutreachInt
 import { PageHeader } from "@/components/PageHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { coerceFitTag } from "@/constants/fitTags";
+import { deriveFitTag } from "@/utils/fitScore";
 
 const TeacherProspects = () => {
   const { user } = useAuth();
@@ -112,7 +112,7 @@ const TeacherProspects = () => {
         state: p.state,
         current_stage: "new_lead",
         fit_score: p.fitScore ?? 0,
-        fit_tag: coerceFitTag(p.tag),
+        fit_tag: deriveFitTag(p.fitScore ?? 0),
         status: "active",
         assigned_to: user?.email ?? null,
       })

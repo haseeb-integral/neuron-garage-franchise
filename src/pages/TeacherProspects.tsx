@@ -113,7 +113,7 @@ const TeacherProspects = () => {
         fit_score: p.fitScore ?? 0,
         fit_tag: p.tag ?? "Untagged",
         status: "active",
-        assigned_to: null,
+        assigned_to: user?.email ?? null,
       })
       .select("id")
       .single();

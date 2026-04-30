@@ -1,104 +1,62 @@
-## Part A — Fix the size mismatch (search vs. action buttons) — implement now
+# Add 3 admins + admin Users page (Option B — temp passwords shown on screen)
 
-### The root cause
-- `GlobalSearch` input height ≈ **36px** (`py-2` + `text-sm`).
-- Page action buttons (`Promote from Prospect`, `Compare Cities`, `Add Franchisee`, `Find Prospects`) use the default shadcn `Button` size = **40px** (`h-10`), and on Candidate Pipeline an inline `minHeight: 44` pushes it to **44px**.
-- The help icon button is **32px** round.
+## Part 1 — Seed admins via migration
 
-So the row visually contains three different heights: 32 / 36 / 40–44. The buttons dominate, making the search bar look small.
+Insert 3 users as admins. Temp password for all: `NeuronGarage2026!`. They reset via "Forgot password?".
 
-### Standard fix — pick one shared control height: **36px** (matches the search)
-This is the standard pattern (Linear, Notion, Vercel, shadcn "sm" size = 36px). The search bar stays as the baseline; everything aligned to it shrinks to match.
+| Email | Name |
+|---|---|
+| samreed512@gmail.com | Sam Reed |
+| sam.reed@neurongarage.com | Sam Reed |
+| kaylie@neurongarage.com | Kaylie Reed |
 
-### Concrete changes
+The migration is idempotent: if any already exist it just promotes them to admin. Same `auth.users` + `auth.identities` pattern used for Brett/Haseeb. Profiles are auto-created by the existing `handle_new_user` trigger; the migration also forces `role = 'admin'` (removes any default 'manager' row first).
 
-1. **`src/components/PageHeader.tsx`**
-   - Make the help icon button **36×36** (was 32×32) so it aligns with search + buttons.
-   - Wrap the `action` slot so any `Button` inside is forced to `size="sm"` height. Easiest: change the action wrapper to `[&_button]:h-9` (36px) so all action buttons in the header row inherit the same height regardless of what the page passes in.
+## Part 2 — Edge function `admin-create-user`
 
-2. **`src/pages/CandidatePipeline.tsx`** — `Promote from Prospect` button
-   - Add `size="sm"` and remove the `minHeight: 44` inline style.
-   - Reduce icon to `size={14}`.
+Server-side function (uses service role key) that:
+1. Verifies caller's JWT and that they have the `admin` role (via `has_role` RPC)
+2. Validates email
+3. Generates a random 16-char temp password
+4. Calls `supabase.auth.admin.createUser({ email, password, email_confirm: true })`
+5. Sets profile `full_name`
+6. Sets role (admin or manager)
+7. Returns `{ user_id, email, temp_password, role }` to the caller
 
-3. **`src/pages/CityScoring.tsx`** — `Compare Cities` button (and any sibling header actions)
-   - Add `size="sm"`; ensure no inline height override.
+Runs with `verify_jwt = false` per Lovable convention (JWT validated in code).
 
-4. **`src/pages/TeacherProspects.tsx`** — `Find Prospects` button
-   - Add `size="sm"`.
+## Part 3 — Admin Users page (`/users`)
 
-5. **`src/pages/Onboarding.tsx`** — `Add Franchisee` button
-   - Add `size="sm"`.
+New page, admin-only (hidden from sidebar for managers, blocked at the route).
 
-6. **`src/components/GlobalSearch.tsx`**
-   - No height change needed (already 36px), but tighten to `h-9` explicitly so it's locked to 36px regardless of font metrics: replace `py-2` with `h-9 py-0`.
+**Features:**
+- Table of all users: email, full name, role, created date
+- "Add user" button → modal with: email, full name (optional), role (admin/manager)
+- After successful create, modal switches to a "credentials" view showing:
+  - Email
+  - Temporary password (copy button)
+  - Web app URL: `https://neuron-garage-franchise.lovable.app` (copy button)
+  - Big note: "Send these to the user. They should change their password on first login via Forgot password."
+  - "Copy all as message" button → copies a ready-to-paste message
+- Per-row actions:
+  - Change role (admin ⇄ manager) — admins only, can't demote yourself
+  - "Send password reset email" — calls `resetPasswordForEmail` so user gets the standard reset link
 
-### Result
-Single 36px row for search + action buttons + help icon, balanced spacing, consistent with shadcn/Linear conventions. Mobile (`min-h-44` for tap targets) is preserved by only touching the **header row** buttons, not the in-page CTAs (kanban toolbar, filter chips, dialog actions are unchanged).
+**Files:**
+- `supabase/migrations/<timestamp>_seed_admins_sam_kaylie.sql` (new)
+- `supabase/functions/admin-create-user/index.ts` (new)
+- `src/pages/Users.tsx` (new)
+- `src/App.tsx` (add `/users` route inside ProtectedRoute)
+- `src/components/AppSidebar.tsx` (add "Users" nav item, only when `role === 'admin'`)
 
----
+## Email sending — short answer
 
-## Part B — Login system plan (separate, for review)
+You asked: *"is there any way to let send password default or temporary going forward to emails we will add?"*
 
-### Purpose
-Neuron Garage is an internal tool for franchise scouts and operators. The data (candidates, teacher PII, city scoring, onboarding documents) is sensitive — it must not be publicly accessible. A login system gates the app and gives every action an owner.
+Today there is **no email infra wired up**, so we can't auto-email new users yet. Option B handles this by **showing you the temp password + login URL on screen** right after creation so you can paste them into a message (Slack/email/text) yourself. Takes ~10 seconds per new user.
 
-### What it will have
+When you're ready to make it fully automatic (email goes straight to the new user with a "Set your password" link), we add a sender domain (one-time DNS setup, ~5 min) and the function will email them directly. Just say the word and I'll do that as a follow-up.
 
-**1. Authentication (powered by Lovable Cloud)**
-- **Email + password** sign-in (primary, since this is an internal team tool).
-- **Google sign-in** (optional, for staff with Google Workspace accounts).
-- Forgot-password flow with a `/reset-password` page.
-- Session persistence across reloads; auto-logout on token expiry.
+## After approval
 
-**2. User profile**
-A `profiles` table linked to `auth.users`:
-- `full_name`, `avatar_url`, `job_title` (e.g. "Franchise Scout"), `phone`.
-- Auto-created on signup via DB trigger.
-- Editable from a "My Profile" page.
-
-**3. Roles (separate `user_roles` table — never on profiles)**
-Three roles:
-- `admin` — full access, can invite/remove users, manage roles, see all data.
-- `manager` — full data access, can reassign owners (Kaylie/Sam/Skylar), can start onboardings.
-- `scout` — read/write candidates and prospects assigned to them; read-only for others.
-
-Role checks via a `has_role(user_id, role)` security-definer function (RLS-safe pattern).
-
-**4. UI pieces**
-- `/login` and `/signup` pages (signup may be invite-only — admin sends invite link).
-- **Top-right user menu** (replaces the current empty space): circular avatar with initials → dropdown with: name + email, "My Profile", "Team & Roles" (admins only), "Sign out".
-- Avatar appears in `PageHeader` to the right of the help icon.
-- Route guard: unauthenticated users get redirected to `/login`. The `AppLayout` becomes auth-protected.
-
-**5. Audit trail (small but valuable)**
-- "Assigned to" dropdowns on candidates/prospects pull from real users (not hardcoded Kaylie/Sam/Skylar).
-- Every stage move, note, and onboarding action records `created_by = auth.uid()`.
-- Activity timelines show real user names + avatars.
-
-**6. Security posture**
-- Row-Level Security on every table.
-- Scouts only see candidates where `assigned_to = auth.uid()` OR `is_public_in_team = true`.
-- Managers/admins bypass via `has_role()`.
-- Leaked-password check (HIBP) enabled.
-
-### What this replaces in the current app
-- Hardcoded owners (`"Kaylie" | "Sam" | "Skylar"`) → real users from `profiles`.
-- The static "Jennifer C." mock avatar in your reference → the actual signed-in user.
-- Toasts like "Moved by you" become real attribution.
-
-### Phasing suggestion
-- **Phase 1 (MVP):** Email/password auth + profiles + top-right avatar menu + route guard. No roles yet — everyone is effectively an admin.
-- **Phase 2:** Roles + RLS + real "assigned to" dropdowns wired to users.
-- **Phase 3:** Google sign-in, invite flow, audit attribution in activity timelines.
-
-### Open questions before I build it
-1. Is signup **open** (anyone with the link can register) or **invite-only** (admin sends invites)?
-2. Do you want **Google sign-in** in Phase 1, or email/password only to start?
-3. Should the three current owners (Kaylie, Sam, Skylar) be **seeded as initial users**, or wiped and replaced?
-4. Confirm the three-role model (`admin` / `manager` / `scout`) — or do you want a different breakdown?
-
----
-
-**On approval I will:**
-- Immediately implement Part A (size fix across PageHeader + 4 pages + GlobalSearch).
-- Wait for your answers on the 4 questions in Part B before building the login system.
+I'll execute all three parts in one go, then confirm the 3 admin accounts are seeded and the Users page works.

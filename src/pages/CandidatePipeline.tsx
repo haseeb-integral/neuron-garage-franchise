@@ -44,6 +44,7 @@ const CandidatePipeline = () => {
   const [confirmCandidate, setConfirmCandidate] = useState<Candidate | null>(null);
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [newOpen, setNewOpen] = useState(false);
   const [metrics, setMetrics] = useState({
     totalInPipeline: 0,
     hotLeads: 0,

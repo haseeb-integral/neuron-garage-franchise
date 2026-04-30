@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import { Search } from "lucide-react";
-import { sampleCandidates, STAGES } from "@/data/pipelineData";
+import { Search, Loader2 } from "lucide-react";
+import { STAGES } from "@/data/pipelineData";
 import { sampleTeachers } from "@/data/teacherData";
 import { sampleCities } from "@/data/cityData";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ResultItem {
   key: string;
@@ -12,40 +14,98 @@ interface ResultItem {
   onSelect: () => void;
 }
 
+interface DbCandidate {
+  id: string;
+  first_name: string;
+  last_name: string;
+  city: string | null;
+  state: string | null;
+  current_stage: string;
+}
+
 export function GlobalSearch() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [dbCandidates, setDbCandidates] = useState<DbCandidate[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
 
-  // Close on outside click
+  // Close on outside click (account for portal-rendered dropdown)
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
-      if (!containerRef.current?.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (containerRef.current?.contains(t)) return;
+      const dd = document.getElementById("global-search-dropdown");
+      if (dd?.contains(t)) return;
+      setOpen(false);
     };
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
+  // Position the dropdown under the input (fixed), and reposition on scroll/resize
+  useLayoutEffect(() => {
+    if (!open) return;
+    const update = () => {
+      const el = inputRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    };
+    update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+  }, [open]);
+
+  // Debounced DB candidate search
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) {
+      setDbCandidates([]);
+      return;
+    }
+    setLoading(true);
+    const handle = setTimeout(async () => {
+      const { data, error } = await supabase
+        .from("candidates")
+        .select("id, first_name, last_name, city, state, current_stage")
+        .or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,email.ilike.%${q}%`)
+        .limit(8);
+      if (!error && data) setDbCandidates(data as DbCandidate[]);
+      setLoading(false);
+    }, 200);
+    return () => clearTimeout(handle);
+  }, [query]);
+
   const groups = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return null;
 
-    const candidateMatches: ResultItem[] = sampleCandidates
-      .filter((c) => c.name.toLowerCase().includes(q))
-      .slice(0, 5)
-      .map((c) => {
-        const stageLabel = STAGES.find((s) => s.id === c.stage)?.short ?? c.stage;
-        return {
-          key: `c-${c.id}`,
-          label: c.name,
-          sub: `${stageLabel} stage · ${c.city}, ${c.state}`,
-          onSelect: () => navigate(`/candidate-pipeline?candidate=${c.id}`),
-        };
-      });
+    const candidateMatches: ResultItem[] = dbCandidates.map((c) => {
+      const stageLabel =
+        STAGES.find((s) => s.id === (c.current_stage as any))?.short ?? c.current_stage;
+      const name = `${c.first_name} ${c.last_name}`.trim();
+      const loc = [c.city, c.state].filter(Boolean).join(", ");
+      return {
+        key: `c-${c.id}`,
+        label: name,
+        sub: `${stageLabel} stage${loc ? ` · ${loc}` : ""}`,
+        onSelect: () => navigate(`/candidate-pipeline?candidate=${c.id}`),
+      };
+    });
+
+    // De-dupe teacher prospects whose name already appears as a candidate
+    const candNames = new Set(candidateMatches.map((c) => c.label.toLowerCase()));
 
     const prospectMatches: ResultItem[] = sampleTeachers
-      .filter((p) => p.name.toLowerCase().includes(q))
+      .filter((p) => p.name.toLowerCase().includes(q) && !candNames.has(p.name.toLowerCase()))
       .slice(0, 5)
       .map((p) => ({
         key: `p-${p.id}`,
@@ -55,7 +115,10 @@ export function GlobalSearch() {
       }));
 
     const cityMatches: ResultItem[] = sampleCities
-      .filter((c) => c.city.toLowerCase().includes(q))
+      .filter(
+        (c) =>
+          c.city.toLowerCase().includes(q) || c.state.toLowerCase().includes(q),
+      )
       .slice(0, 5)
       .map((c) => ({
         key: `city-${c.id}`,
@@ -65,7 +128,7 @@ export function GlobalSearch() {
       }));
 
     return { candidateMatches, prospectMatches, cityMatches };
-  }, [query, navigate]);
+  }, [query, dbCandidates, navigate]);
 
   const totalCount = groups
     ? groups.candidateMatches.length + groups.prospectMatches.length + groups.cityMatches.length
@@ -77,6 +140,57 @@ export function GlobalSearch() {
     setOpen(false);
   };
 
+  const dropdown =
+    open && query.trim() && pos
+      ? createPortal(
+          <div
+            id="global-search-dropdown"
+            className="rounded-md shadow-lg overflow-hidden"
+            style={{
+              position: "fixed",
+              top: pos.top,
+              left: pos.left,
+              width: pos.width,
+              maxHeight: "min(60vh, 480px)",
+              backgroundColor: "#ffffff",
+              border: "1px solid #dee2e6",
+              zIndex: 9999,
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            {loading && (!groups || totalCount === 0) ? (
+              <div
+                className="px-3 py-4 text-sm text-center flex items-center justify-center gap-2"
+                style={{ color: "#6c757d" }}
+              >
+                <Loader2 size={14} className="animate-spin" />
+                Searching…
+              </div>
+            ) : !groups || totalCount === 0 ? (
+              <div className="px-3 py-4 text-sm text-center" style={{ color: "#6c757d" }}>
+                No results for "{query}"
+              </div>
+            ) : (
+              <div className="overflow-y-auto py-1" style={{ flex: 1 }}>
+                <ResultGroup
+                  title="Candidates"
+                  items={groups.candidateMatches}
+                  onSelect={handleSelect}
+                />
+                <ResultGroup
+                  title="Teacher Prospects"
+                  items={groups.prospectMatches}
+                  onSelect={handleSelect}
+                />
+                <ResultGroup title="Cities" items={groups.cityMatches} onSelect={handleSelect} />
+              </div>
+            )}
+          </div>,
+          document.body,
+        )
+      : null;
+
   return (
     <div ref={containerRef} className="relative w-full max-w-[440px]">
       <div className="relative">
@@ -86,6 +200,7 @@ export function GlobalSearch() {
           style={{ color: "#6c757d" }}
         />
         <input
+          ref={inputRef}
           type="text"
           value={query}
           onChange={(e) => {
@@ -109,25 +224,7 @@ export function GlobalSearch() {
           }}
         />
       </div>
-
-      {open && groups && query.trim() && (
-        <div
-          className="absolute left-0 right-0 mt-1 rounded-md shadow-lg z-50 overflow-hidden"
-          style={{ backgroundColor: "#ffffff", border: "1px solid #dee2e6" }}
-        >
-          {totalCount === 0 ? (
-            <div className="px-3 py-4 text-sm text-center" style={{ color: "#6c757d" }}>
-              No results for "{query}"
-            </div>
-          ) : (
-            <div className="max-h-[420px] overflow-y-auto py-1">
-              <ResultGroup title="Candidates" items={groups.candidateMatches} onSelect={handleSelect} />
-              <ResultGroup title="Teacher Prospects" items={groups.prospectMatches} onSelect={handleSelect} />
-              <ResultGroup title="Cities" items={groups.cityMatches} onSelect={handleSelect} />
-            </div>
-          )}
-        </div>
-      )}
+      {dropdown}
     </div>
   );
 }
@@ -156,8 +253,12 @@ function ResultGroup({
           onClick={() => onSelect(item)}
           className="w-full text-left px-3 py-2 hover:bg-[#f1f3f5] flex flex-col"
         >
-          <span className="text-sm font-medium" style={{ color: "#212529" }}>{item.label}</span>
-          <span className="text-xs" style={{ color: "#6c757d" }}>{item.sub}</span>
+          <span className="text-sm font-medium" style={{ color: "#212529" }}>
+            {item.label}
+          </span>
+          <span className="text-xs" style={{ color: "#6c757d" }}>
+            {item.sub}
+          </span>
         </button>
       ))}
     </div>

@@ -1,4 +1,4 @@
-import { Home, Map, Users, Kanban, ClipboardCheck, BookOpen, ChevronLeft, ChevronRight, LogOut } from "lucide-react";
+import { Home, Map, Users, Kanban, ClipboardCheck, BookOpen, ChevronLeft, ChevronRight, LogOut, Shield } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import logo from "@/assets/neuron-garage-logo.png";
 import { useAuth } from "@/contexts/AuthContext";
@@ -117,6 +117,7 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
 
         <nav className="flex-1 flex flex-col gap-1 px-3">
           {navItems.map((item) => renderLink(item, true))}
+          {role === "admin" && renderLink({ title: "Users", url: "/users", icon: Shield, tourId: "nav-users" }, true)}
         </nav>
 
         <div

@@ -14,6 +14,7 @@ import TeacherProspects from "./pages/TeacherProspects";
 import CandidatePipeline from "./pages/CandidatePipeline";
 import Onboarding from "./pages/Onboarding";
 import Spec from "./pages/Spec";
+import Users from "./pages/Users";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const App = () => (
               <Route path="/teacher-prospects" element={<TeacherProspects />} />
               <Route path="/candidate-pipeline" element={<CandidatePipeline />} />
               <Route path="/onboarding" element={<Onboarding />} />
+              <Route path="/users" element={<Users />} />
               <Route path="/spec" element={<Spec />} />
             </Route>
             <Route path="*" element={<NotFound />} />

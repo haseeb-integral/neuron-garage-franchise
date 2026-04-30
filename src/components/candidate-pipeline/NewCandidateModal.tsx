@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { STAGES, StageId } from "@/data/pipelineData";
+import { FIT_TAGS, FitTag, DEFAULT_FIT_TAG } from "@/constants/fitTags";
 import {
   Dialog,
   DialogContent,
@@ -48,7 +49,6 @@ const uiStageToDb: Record<StageId, string> = {
 };
 
 const ACTIVE_STAGES = STAGES.filter((s) => s.id !== "disqualified");
-const FIT_TAGS = ["High Potential", "Follow-Up", "Not a Fit"] as const;
 
 const schema = z.object({
   first_name: z.string().trim().min(1, "Required").max(60),
@@ -63,6 +63,8 @@ const schema = z.object({
   fit_tag: z.enum(FIT_TAGS),
 });
 
+
+
 type FormState = {
   first_name: string;
   last_name: string;
@@ -73,7 +75,7 @@ type FormState = {
   assigned_to: string;
   initial_stage: StageId;
   fit_score: number;
-  fit_tag: (typeof FIT_TAGS)[number];
+  fit_tag: FitTag;
 };
 
 const blank = (defaultOwner: string): FormState => ({
@@ -86,7 +88,7 @@ const blank = (defaultOwner: string): FormState => ({
   assigned_to: defaultOwner,
   initial_stage: "new_lead",
   fit_score: 50,
-  fit_tag: "Follow-Up",
+  fit_tag: DEFAULT_FIT_TAG,
 });
 
 export function NewCandidateModal({ open, onOpenChange, teamMembers, onCreated }: Props) {
@@ -299,7 +301,7 @@ export function NewCandidateModal({ open, onOpenChange, teamMembers, onCreated }
             <Label>Fit Tag</Label>
             <Select
               value={form.fit_tag}
-              onValueChange={(v) => set("fit_tag", v as (typeof FIT_TAGS)[number])}
+              onValueChange={(v) => set("fit_tag", v as FitTag)}
             >
               <SelectTrigger>
                 <SelectValue />

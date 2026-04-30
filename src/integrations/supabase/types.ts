@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      candidate_checklist_items: {
+        Row: {
+          candidate_id: string
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          id: string
+          is_completed: boolean
+          label: string
+          stage: Database["public"]["Enums"]["candidate_stage"]
+        }
+        Insert: {
+          candidate_id: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          label: string
+          stage: Database["public"]["Enums"]["candidate_stage"]
+        }
+        Update: {
+          candidate_id?: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          label?: string
+          stage?: Database["public"]["Enums"]["candidate_stage"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_checklist_items_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidate_profiles: {
         Row: {
           additional_notes: string | null
@@ -253,6 +294,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      seed_confirmation_checklist: {
+        Args: { _candidate_id: string }
+        Returns: undefined
       }
     }
     Enums: {

@@ -46,6 +46,7 @@ const CandidatePipeline = () => {
   const [collapsed, setCollapsed] = useState<Set<StageId>>(new Set());
   const [confirmCandidate, setConfirmCandidate] = useState<Candidate | null>(null);
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
+  const [pendingIncompleteCount, setPendingIncompleteCount] = useState<number>(0);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [newOpen, setNewOpen] = useState(false);
   const [metrics, setMetrics] = useState({
@@ -266,10 +267,26 @@ const CandidatePipeline = () => {
   };
 
   // Drag-drop guard rail: ask user to confirm any cross-stage move
-  const handleStageDrop = (id: number, toStage: StageId) => {
+  const handleStageDrop = async (id: number, toStage: StageId) => {
     const candidate = candidates.find((c) => c.id === id);
     if (!candidate) return;
     if (candidate.stage === toStage) return; // same column = no-op
+
+    // Soft gate: moving INTO confirmation requires Trial Close checklist
+    let incomplete = 0;
+    if (toStage === "confirmation") {
+      const dbId = (candidate as any).dbId as string | undefined;
+      if (dbId) {
+        const { count } = await supabase
+          .from("candidate_checklist_items")
+          .select("id", { count: "exact", head: true })
+          .eq("candidate_id", dbId)
+          .eq("stage", "confirmation" as any)
+          .eq("is_completed", false);
+        incomplete = count ?? 0;
+      }
+    }
+    setPendingIncompleteCount(incomplete);
     setPendingMove({ candidate, fromStage: candidate.stage, toStage });
   };
 
@@ -290,6 +307,7 @@ const CandidatePipeline = () => {
     // Optimistic UI
     applyStageMove(candidate.id, toStage);
     setPendingMove(null);
+    setPendingIncompleteCount(0);
 
     if (!dbId) {
       toast.error("Missing DB id; change not persisted.");
@@ -381,6 +399,7 @@ const CandidatePipeline = () => {
   };
 
   const isDisqMove = pendingMove?.toStage === "disqualified";
+  const isChecklistGate = pendingMove?.toStage === "confirmation" && pendingIncompleteCount > 0;
   const fromLabel = pendingMove ? STAGES.find((s) => s.id === pendingMove.fromStage)?.label : "";
   const toLabel = pendingMove ? STAGES.find((s) => s.id === pendingMove.toStage)?.label : "";
 
@@ -580,16 +599,33 @@ const CandidatePipeline = () => {
       />
 
       {/* Drag-drop confirm */}
-      <AlertDialog open={!!pendingMove} onOpenChange={(v) => !v && setPendingMove(null)}>
+      <AlertDialog
+        open={!!pendingMove}
+        onOpenChange={(v) => {
+          if (!v) {
+            setPendingMove(null);
+            setPendingIncompleteCount(0);
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {isDisqMove
-                ? `Disqualify ${pendingMove?.candidate.name}?`
-                : `Move ${pendingMove?.candidate.name}?`}
+              {isChecklistGate
+                ? "Trial Close checklist not complete"
+                : isDisqMove
+                  ? `Disqualify ${pendingMove?.candidate.name}?`
+                  : `Move ${pendingMove?.candidate.name}?`}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {isDisqMove ? (
+              {isChecklistGate ? (
+                <>
+                  There {pendingIncompleteCount === 1 ? "is" : "are"}{" "}
+                  <strong>{pendingIncompleteCount}</strong> unchecked item
+                  {pendingIncompleteCount === 1 ? "" : "s"} on the Trial Close checklist for{" "}
+                  <strong>{pendingMove?.candidate.name}</strong>. Are you sure you want to move them into Confirmation?
+                </>
+              ) : isDisqMove ? (
                 <>
                   This will mark the candidate as <strong>Disqualified</strong> and remove them from active stages.
                   You can undo this immediately from the toast.
@@ -606,9 +642,9 @@ const CandidatePipeline = () => {
             <AlertDialogAction
               onClick={confirmStageMove}
               className="text-white"
-              style={{ backgroundColor: isDisqMove ? "#dc3545" : "#003c7e" }}
+              style={{ backgroundColor: isDisqMove || isChecklistGate ? "#dc3545" : "#003c7e" }}
             >
-              {isDisqMove ? "Disqualify" : "Move"}
+              {isChecklistGate ? "Move anyway" : isDisqMove ? "Disqualify" : "Move"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

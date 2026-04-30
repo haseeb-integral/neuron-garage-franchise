@@ -364,7 +364,12 @@ const CandidatePipeline = () => {
         }
       />
 
-      <PipelineAnalyticsBar candidates={candidates} />
+      <PipelineAnalyticsBar
+        totalInPipeline={metrics.totalInPipeline}
+        avgDaysPerStage={metrics.avgDaysPerStage}
+        conversionRate={metrics.conversionRate}
+        thisWeekActivity={metrics.thisWeekActivity}
+      />
 
       {/* Filter strip */}
       <div className="bg-white rounded-lg px-3 py-2 mb-3 flex flex-wrap items-center gap-x-3 gap-y-2" style={{ border: "1px solid #dee2e6" }}>

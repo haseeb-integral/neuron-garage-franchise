@@ -54,6 +54,7 @@ export type Database = {
       }
       candidates: {
         Row: {
+          assigned_to: string | null
           city: string
           created_at: string
           current_stage: Database["public"]["Enums"]["candidate_stage"]
@@ -70,6 +71,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          assigned_to?: string | null
           city?: string
           created_at?: string
           current_stage?: Database["public"]["Enums"]["candidate_stage"]
@@ -86,6 +88,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          assigned_to?: string | null
           city?: string
           created_at?: string
           current_stage?: Database["public"]["Enums"]["candidate_stage"]

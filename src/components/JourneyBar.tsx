@@ -1,9 +1,8 @@
-import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { sampleCities } from "@/data/cityData";
 import { sampleTeachers } from "@/data/teacherData";
+import { useCandidateCount } from "@/hooks/useCandidateCount";
 
 interface Step {
   num: number;
@@ -17,21 +16,7 @@ export function JourneyBar() {
   const location = useLocation();
   const activePath = location.pathname;
 
-  const [candidateCount, setCandidateCount] = useState<number | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      const { count } = await supabase
-        .from("candidates")
-        .select("id", { count: "exact", head: true })
-        .neq("current_stage", "disqualified");
-      if (mounted && typeof count === "number") setCandidateCount(count);
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  const { count: candidateCount } = useCandidateCount();
 
   // City Scoring & Teacher Prospects still render from local mock data,
   // so the journey bar mirrors that source until they get DB tables.

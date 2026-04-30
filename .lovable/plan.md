@@ -1,64 +1,76 @@
-## Plan: New Candidate button + modal on Candidate Pipeline
+## Diagnosis first
 
-### Button placement (recommendation)
+The "10 candidates" badge is actually correct right now — your DB has 11 candidates total, 10 active and not disqualified, which is exactly what step 3 counts (`status = 'active' AND current_stage != 'disqualified'`).
 
-The current header `action` slot renders an orange **"Promote from Prospect"** button that today only fires a toast — it's a dead-end. Standard SaaS pattern (Linear, Pipedrive, HubSpot, Trello) is **one primary "+ New" CTA in the top-right of the header**, with secondary actions either demoted or removed.
+The real problem you're sensing is a **freshness** problem, not a wrong-number problem:
 
-**Recommended layout in the header action slot:**
+- `JourneyBar` fetches the count **once on mount** in a `useEffect([])`.
+- It lives inside `AppLayout`, which doesn't re-mount when you navigate between pages (React Router keeps the layout mounted).
+- So if you add a candidate via "+ New Candidate", promote one from Teacher Prospects, delete one, or change a stage to/from Disqualified, the badge stays stale until a hard refresh.
+- Same pattern will bite you for "12 prospects" once that moves off mock data, and for "Active" on Onboarding.
 
-```text
-[ Promote from Prospect ]  [ + New Candidate ]
-   secondary (outline)        primary (orange #fd7e14)
+## What gold-standard SaaS apps do (Linear, Notion, Vercel, Stripe, Supabase studio)
+
+Three layers, used together:
+
+1. **Server-state cache with invalidation** — TanStack Query (React Query) is the de-facto standard. Counts/lists are cached by a key (e.g. `["candidates","count"]`); any mutation calls `queryClient.invalidateQueries(...)` so every component reading that key refetches automatically.
+2. **Realtime push for cross-tab / cross-user freshness** — Supabase Realtime (or websockets generally). A `postgres_changes` subscription on the `candidates` table invalidates the same query key when another user (or another tab) changes data.
+3. **Refetch on window focus + light polling as a safety net** — React Query does this by default (`refetchOnWindowFocus: true`). Polling every 30–60s is the belt-and-suspenders fallback.
+
+This pattern is what the Supabase team itself recommends in their docs and what shows up consistently in r/reactjs and r/Supabase threads about "counts going stale."
+
+## Plan
+
+### 1. Add TanStack Query (if not already wired)
+
+Confirm `@tanstack/react-query` is installed and a `QueryClientProvider` wraps the app in `src/App.tsx`. If missing, add it with sane defaults:
+- `staleTime: 30_000`
+- `refetchOnWindowFocus: true`
+
+### 2. Create a single source of truth for the candidate count
+
+New hook `src/hooks/useCandidateCount.ts`:
+- `useQuery({ queryKey: ["candidates","count"], queryFn: ... })` that runs the same `select("id", { count: "exact", head: true }).neq("current_stage","disqualified")` query.
+- Subscribes to Supabase Realtime `postgres_changes` on `public.candidates` (INSERT / UPDATE / DELETE) and calls `queryClient.invalidateQueries({ queryKey: ["candidates","count"] })` on every event.
+- Returns `{ count, isLoading }`.
+
+### 3. Replace the local fetch in `JourneyBar`
+
+Swap the `useEffect` + `useState` block for `const { count } = useCandidateCount();`. JourneyBar becomes a dumb consumer.
+
+### 4. Invalidate on local mutations (instant feedback, no waiting on Realtime)
+
+In every place that already writes to `candidates`, after a successful insert/update/delete call:
+```ts
+queryClient.invalidateQueries({ queryKey: ["candidates"] });
+```
+Touch points:
+- `NewCandidateModal` (after insert)
+- `TeacherProspects` Promote handler (after insert)
+- `CandidatePipeline` stage moves and any delete/update paths
+- Anywhere `candidate_stage_history` is written that implies a stage change
+
+This gives the user sub-second feedback in the same tab; Realtime covers other tabs/users.
+
+### 5. Enable Realtime on the `candidates` table
+
+One-line SQL migration so `postgres_changes` actually fires:
+```sql
+ALTER PUBLICATION supabase_realtime ADD TABLE public.candidates;
 ```
 
-- Keep "Promote from Prospect" but restyle it as a secondary outline button that navigates to `/teacher-prospects` (currently it just toasts, which is broken UX).
-- Add **"+ New Candidate"** as the primary orange button on the right — same orange (`#fd7e14`) and `size="sm"` as the existing "Find Prospects" button on the Teacher Prospects page so the two pages feel consistent.
-- On mobile both stack full-width like today.
+### 6. Apply the same pattern to the other journey steps later (out of scope for this step, but keep the hook shape consistent so we just add `useProspectCount`, `useOnboardingCount` later when those tables exist).
 
-If you'd rather keep things minimal, I can drop "Promote from Prospect" entirely and leave only "+ New Candidate" — that's actually the cleaner pattern. Let me know in feedback if you prefer that; default in this plan is to keep both with the restyle above.
+## Out of scope for this change
 
-### What gets built
+- Teacher Prospects count and Onboarding "Active" pill stay as-is until they have real tables.
+- No changes to stages, metrics cards, filters, or qualification scoring.
+- No styling changes to JourneyBar.
 
-**1. New file: `src/components/candidate-pipeline/NewCandidateModal.tsx`**
+## Outcome
 
-Controlled `<Dialog>` modal containing the form. Props: `open`, `onOpenChange`, `teamMembers` (passed from parent so we don't refetch), `onCreated(candidate)` callback.
-
-Fields:
-- First Name * (text)
-- Last Name * (text)
-- Email * (text, email validation)
-- Phone (text, optional)
-- City * (text)
-- State * (text, maxLength 2, uppercased on blur)
-- Assigned To * (Select, options = team members from `profiles`)
-- Initial Stage * (Select, 7 active stages, default `new_lead`)
-- Fit Score (number 0–100, default 50)
-- Fit Tag (Select: High Potential / Follow-Up / Not a Fit, default Follow-Up)
-
-Validation with **zod** + react-hook-form (already in deps, used elsewhere). Inline error messages under each field.
-
-Submit handler:
-1. Insert into `candidates` with all fields, `status: 'active'`, `current_stage` mapped through existing `uiStageToDb` map.
-2. Insert into `candidate_stage_history`: `from_stage: null`, `to_stage: <chosen db stage>`, `changed_by: user.email`, `notes: 'Manually added'`.
-3. On success: toast "Candidate added successfully", close modal, call `onCreated` with the inserted row so the parent can optimistically prepend it to `candidates` state — card appears immediately in the right column. Also call `computeMetrics()`.
-4. On error: toast error, keep modal open.
-
-**2. Edit `src/pages/CandidatePipeline.tsx`**
-
-- Import the new modal and add `const [newOpen, setNewOpen] = useState(false)`.
-- Replace the single `action` button with a small flex container holding the restyled "Promote from Prospect" (now `variant="outline"`, navigates to `/teacher-prospects`) and the new orange "+ New Candidate" button that opens the modal.
-- Add `<NewCandidateModal open={newOpen} onOpenChange={setNewOpen} teamMembers={teamMembers} onCreated={handleCandidateCreated} />` at the bottom of the page (next to the existing dialogs).
-- Implement `handleCandidateCreated(row)` that maps the inserted DB row through the same shape used in the initial fetch (reuse the mapping logic — extract it into a small helper at top of file) and prepends to `candidates` state, then calls `computeMetrics()`.
-
-### Technical details
-
-- Stage dropdown options come from `STAGES` filtered to exclude `disqualified` (7 active stages). Labels use `s.label`, values use `s.id`, and we translate to DB enum via the existing `uiStageToDb` map already in the page.
-- Team member list reuses the `teamMembers` state already loaded for the Owner filter — no extra DB call.
-- Email uniqueness: the existing `candidates` table doesn't appear to have a unique constraint on email (the Promote flow handles duplicates by message-sniffing). We'll do the same defensive check: if insert errors mention "duplicate" / "unique", show a friendly "A candidate with this email already exists" toast.
-- No schema changes required.
-- No changes to board layout, filters, drawer, metrics strip, or Teacher Prospects.
-
-### Files touched
-
-- `src/pages/CandidatePipeline.tsx` (edit — header action slot, add modal, add handler)
-- `src/components/candidate-pipeline/NewCandidateModal.tsx` (create)
+After this:
+- Add a candidate via "+ New Candidate" → step 3 badge updates immediately without refresh.
+- Promote from Teacher Prospects → badge updates immediately.
+- Another teammate adds/deletes a candidate in their browser → your badge updates within ~1s via Realtime.
+- Tab in background for an hour, come back → React Query refetches on focus, badge corrects itself even if Realtime missed an event.

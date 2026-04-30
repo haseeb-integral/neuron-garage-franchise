@@ -6,6 +6,7 @@ import { NewCandidateModal } from "@/components/candidate-pipeline/NewCandidateM
 import { toast } from "sonner";
 import { Candidate, StageId, STAGES } from "@/data/pipelineData";
 import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { KanbanBoard } from "@/components/candidate-pipeline/KanbanBoard";
 import { PipelineAnalyticsBar } from "@/components/candidate-pipeline/PipelineAnalyticsBar";
 import { CandidateDetailPanel } from "@/components/candidate-pipeline/CandidateDetailPanel";
@@ -36,6 +37,7 @@ interface PendingMove {
 
 const CandidatePipeline = () => {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -324,6 +326,7 @@ const CandidatePipeline = () => {
     }
 
     computeMetrics();
+    qc.invalidateQueries({ queryKey: ["candidates"] });
 
     toast.success(`Moved ${candidate.name} → ${toLabel}`, {
       description: `From ${fromLabel}`,
@@ -346,6 +349,7 @@ const CandidatePipeline = () => {
             notes: "undo",
           });
           computeMetrics();
+          qc.invalidateQueries({ queryKey: ["candidates"] });
           toast.info(`Reverted ${candidate.name} to ${fromLabel}`);
         },
       },

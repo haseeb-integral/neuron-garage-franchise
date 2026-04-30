@@ -15,9 +15,11 @@ import { PageHeader } from "@/components/PageHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { deriveFitTag } from "@/utils/fitScore";
+import { useQueryClient } from "@tanstack/react-query";
 
 const TeacherProspects = () => {
   const { user } = useAuth();
+  const qc = useQueryClient();
   const [prospects, setProspects] = useState<TeacherProspect[]>(sampleTeachers);
   const [findOpen, setFindOpen] = useState(false);
   const [active, setActive] = useState<TeacherProspect | null>(null);
@@ -141,6 +143,7 @@ const TeacherProspects = () => {
 
     setPromotedIds((prev) => new Set(prev).add(p.id));
     setPromotingId(null);
+    qc.invalidateQueries({ queryKey: ["candidates"] });
     toast.success("Promoted to Candidate Pipeline");
   };
 

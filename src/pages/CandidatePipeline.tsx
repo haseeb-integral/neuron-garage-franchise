@@ -267,10 +267,26 @@ const CandidatePipeline = () => {
   };
 
   // Drag-drop guard rail: ask user to confirm any cross-stage move
-  const handleStageDrop = (id: number, toStage: StageId) => {
+  const handleStageDrop = async (id: number, toStage: StageId) => {
     const candidate = candidates.find((c) => c.id === id);
     if (!candidate) return;
     if (candidate.stage === toStage) return; // same column = no-op
+
+    // Soft gate: moving INTO confirmation requires Trial Close checklist
+    let incomplete = 0;
+    if (toStage === "confirmation") {
+      const dbId = (candidate as any).dbId as string | undefined;
+      if (dbId) {
+        const { count } = await supabase
+          .from("candidate_checklist_items")
+          .select("id", { count: "exact", head: true })
+          .eq("candidate_id", dbId)
+          .eq("stage", "confirmation" as any)
+          .eq("is_completed", false);
+        incomplete = count ?? 0;
+      }
+    }
+    setPendingIncompleteCount(incomplete);
     setPendingMove({ candidate, fromStage: candidate.stage, toStage });
   };
 

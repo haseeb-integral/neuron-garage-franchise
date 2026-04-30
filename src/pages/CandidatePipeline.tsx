@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { buildFranchiseeFromCandidate, queueOnboarding } from "@/data/onboardingStore";
+import { startOnboardingForCandidate } from "@/lib/onboardingService";
 import { FIT_TAGS, FitTag } from "@/constants/fitTags";
 
 type OwnerFilter = string; // "all" or a user email
@@ -252,20 +252,32 @@ const CandidatePipeline = () => {
 
   const handleStartOnboarding = (c: Candidate) => setConfirmCandidate(c);
 
-  const confirmStartOnboarding = () => {
+  const confirmStartOnboarding = async () => {
     if (!confirmCandidate) return;
-    const franchisee = buildFranchiseeFromCandidate({
-      name: confirmCandidate.name,
-      city: confirmCandidate.city,
-      state: confirmCandidate.state,
-      email: confirmCandidate.email,
-      phone: confirmCandidate.phone,
-    });
-    queueOnboarding(franchisee);
-    const name = confirmCandidate.name;
+    const candidate = confirmCandidate;
+    const dbId = (candidate as any).dbId as string | undefined;
+    if (!dbId) {
+      toast.error("This candidate is not yet saved to the database.");
+      setConfirmCandidate(null);
+      return;
+    }
     setConfirmCandidate(null);
-    toast.success(`Onboarding started for ${name}.`);
-    navigate("/onboarding");
+    try {
+      const { id, alreadyExisted } = await startOnboardingForCandidate({
+        candidateId: dbId,
+        franchiseeName: candidate.name,
+        city: candidate.city,
+        state: candidate.state,
+      });
+      if (alreadyExisted) {
+        toast.message(`${candidate.name} already has an onboarding record. Opening it.`);
+      } else {
+        toast.success(`Onboarding started for ${candidate.name}.`);
+      }
+      navigate(`/onboarding?highlight=${id}`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to start onboarding");
+    }
   };
 
   // Drag-drop guard rail: ask user to confirm any cross-stage move

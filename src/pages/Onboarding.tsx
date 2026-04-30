@@ -1,89 +1,99 @@
-import { useEffect, useState } from "react";
-import { Franchisee, SAMPLE_FRANCHISEES, STEPS } from "@/data/onboardingData";
-import { OnboardingTable } from "@/components/onboarding/OnboardingTable";
-import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Plus, Users, TrendingUp, AlertTriangle } from "lucide-react";
+import { Plus, Users, TrendingUp, AlertTriangle, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
-import { consumePendingOnboardings, onOnboardingAdded } from "@/data/onboardingStore";
+import { supabase } from "@/integrations/supabase/client";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Progress } from "@/components/ui/progress";
+import { NewOnboardingModal } from "@/components/onboarding/NewOnboardingModal";
 
-const buildEmptyStepData = () => {
-  const out: Record<number, Franchisee["stepData"][number]> = {} as Franchisee["stepData"];
-  STEPS.forEach((s) => {
-    out[s.id] = {
-      tasks: s.defaultTasks.map((t, i) => ({ id: `t-${s.id}-${i}-${Date.now()}`, label: t, done: false })),
-      form: {},
-      files: [],
-      notes: "",
-    };
-  });
-  return out;
+type DbStatus = "on_track" | "stalled" | "overdue" | "completed";
+
+interface OnboardingRow {
+  id: string;
+  candidate_id: string | null;
+  franchisee_name: string;
+  city: string;
+  state: string;
+  status: DbStatus;
+  current_step_index: number;
+  total_steps: number;
+  created_at: string;
+}
+
+const statusConfig: Record<DbStatus, { label: string; bg: string; color: string }> = {
+  on_track:  { label: "On Track",        bg: "#d1f5e7", color: "#0d6e4f" },
+  stalled:   { label: "Needs Attention", bg: "#ffe9d4", color: "#a85b00" },
+  overdue:   { label: "Overdue",         bg: "#fde0de", color: "#a3251a" },
+  completed: { label: "Completed",       bg: "#e9ecef", color: "#495057" },
+};
+
+const daysSince = (iso: string) => {
+  const ms = Date.now() - new Date(iso).getTime();
+  return Math.max(0, Math.floor(ms / (1000 * 60 * 60 * 24)));
 };
 
 const Onboarding = () => {
-  const [franchisees, setFranchisees] = useState<Franchisee[]>(SAMPLE_FRANCHISEES);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [rows, setRows] = useState<OnboardingRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newOpen, setNewOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const highlightId = searchParams.get("highlight");
+  const [flashId, setFlashId] = useState<string | null>(null);
 
-  // Pick up any onboardings queued from other pages (e.g. Candidate Pipeline)
-  useEffect(() => {
-    const drain = () => {
-      const pending = consumePendingOnboardings();
-      if (pending.length > 0) {
-        setFranchisees((prev) => [...pending, ...prev]);
-      }
-    };
-    drain();
-    return onOnboardingAdded(drain);
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("onboarding_records")
+      .select("id, candidate_id, franchisee_name, city, state, status, current_step_index, total_steps, created_at")
+      .order("created_at", { ascending: false });
+    if (error) {
+      toast.error(error.message);
+    } else {
+      setRows((data ?? []) as OnboardingRow[]);
+    }
+    setLoading(false);
   }, []);
 
-  const selected = franchisees.find((f) => f.id === selectedId) ?? null;
+  useEffect(() => { load(); }, [load]);
 
-  const updateFranchisee = (updated: Franchisee) => {
-    setFranchisees((prev) => prev.map((f) => (f.id === updated.id ? updated : f)));
+  // Highlight a row when arriving via ?highlight=<id>
+  useEffect(() => {
+    if (!highlightId || rows.length === 0) return;
+    const exists = rows.some((r) => r.id === highlightId);
+    if (!exists) return;
+    setFlashId(highlightId);
+    // scroll into view
+    requestAnimationFrame(() => {
+      const el = document.querySelector<HTMLElement>(`[data-onboarding-id="${highlightId}"]`);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    const t = setTimeout(() => {
+      setFlashId(null);
+      // clear param so it doesn't re-flash on revisit
+      const next = new URLSearchParams(searchParams);
+      next.delete("highlight");
+      setSearchParams(next, { replace: true });
+    }, 2400);
+    return () => clearTimeout(t);
+  }, [highlightId, rows, searchParams, setSearchParams]);
+
+  const stats = useMemo(() => {
+    const active = rows.filter((r) => r.status !== "completed").length;
+    const onTrack = rows.filter((r) => r.status === "on_track").length;
+    const needsAttention = rows.filter((r) => r.status === "stalled" || r.status === "overdue").length;
+    return { active, onTrack, needsAttention };
+  }, [rows]);
+
+  const handleCreated = (id: string) => {
+    load().then(() => {
+      const next = new URLSearchParams(searchParams);
+      next.set("highlight", id);
+      setSearchParams(next, { replace: true });
+    });
   };
-
-  const addNew = () => {
-    const id = `f-${Date.now()}`;
-    const today = new Date().toISOString().slice(0, 10);
-    const newF: Franchisee = {
-      id,
-      name: "New Prospect",
-      city: "—",
-      state: "—",
-      email: "",
-      phone: "",
-      currentStep: 1,
-      daysElapsed: 0,
-      status: "on_track",
-      startDate: today,
-      stepData: buildEmptyStepData(),
-      activity: [
-        {
-          id: `a-${Date.now()}`,
-          type: "note",
-          author: "System",
-          timestamp: new Date().toISOString().slice(0, 16).replace("T", " "),
-          content: "Onboarding started.",
-        },
-      ],
-      comms: [
-        { key: "welcome", name: "Welcome Email", triggerLabel: "After Step 1", sent: false },
-        { key: "roadmap", name: "Process Roadmap", triggerLabel: "After Step 2", sent: false },
-        { key: "market", name: "Market Analysis", triggerLabel: "After Step 3", sent: false },
-        { key: "fdd", name: "FDD Document", triggerLabel: "After Step 4", sent: false },
-        { key: "awarded", name: "Congratulations / Franchise Awarded", triggerLabel: "After Step 6", sent: false },
-        { key: "donut", name: "Donut Delivery Note + Onboarding Access", triggerLabel: "After Step 7", sent: false },
-      ],
-    };
-    setFranchisees((prev) => [newF, ...prev]);
-    setSelectedId(id);
-    toast.success("New onboarding started");
-  };
-
-  const total = franchisees.length;
-  const onTrack = franchisees.filter((f) => f.status === "on_track").length;
-  const stalled = franchisees.filter((f) => f.status !== "on_track").length;
 
   return (
     <div className="-mx-4 md:-mx-8 -my-4 md:-my-8 px-4 md:px-8 py-4 md:py-8 min-h-screen" style={{ backgroundColor: "#f2f4f6" }}>
@@ -94,7 +104,7 @@ const Onboarding = () => {
           action={
             <Button
               size="sm"
-              onClick={addNew}
+              onClick={() => setNewOpen(true)}
               className="text-white w-full sm:w-auto"
               style={{ backgroundColor: "#fd7e14" }}
             >
@@ -104,18 +114,84 @@ const Onboarding = () => {
         />
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          <StatCard icon={Users} label="Active Onboardings" value={total} color="#003c7e" />
-          <StatCard icon={TrendingUp} label="On Track" value={onTrack} color="#20c997" />
-          <StatCard icon={AlertTriangle} label="Needs Attention" value={stalled} color="#ff4438" />
+          <StatCard icon={Users} label="Active Onboardings" value={stats.active} color="#003c7e" />
+          <StatCard icon={TrendingUp} label="On Track" value={stats.onTrack} color="#20c997" />
+          <StatCard icon={AlertTriangle} label="Needs Attention" value={stats.needsAttention} color="#ff4438" />
         </div>
 
-        <OnboardingTable franchisees={franchisees} onSelect={setSelectedId} />
+        <div className="bg-white rounded-lg" style={{ border: "1px solid #dee2e6" }}>
+          <div className="overflow-x-auto rounded-lg">
+            <Table>
+              <TableHeader>
+                <TableRow style={{ backgroundColor: "#f8f9fa" }}>
+                  <TableHead style={{ color: "#003c7e" }}>Name</TableHead>
+                  <TableHead style={{ color: "#003c7e" }}>City</TableHead>
+                  <TableHead style={{ color: "#003c7e" }}>Current Step</TableHead>
+                  <TableHead style={{ color: "#003c7e" }} className="w-[200px]">Progress</TableHead>
+                  <TableHead style={{ color: "#003c7e" }}>Days Elapsed</TableHead>
+                  <TableHead style={{ color: "#003c7e" }}>Status</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((r) => {
+                  const denom = Math.max(1, r.total_steps - 1);
+                  const pct = Math.round((r.current_step_index / denom) * 100);
+                  const status = statusConfig[r.status] ?? statusConfig.on_track;
+                  const isFlash = flashId === r.id;
+                  return (
+                    <TableRow
+                      key={r.id}
+                      data-onboarding-id={r.id}
+                      style={isFlash ? { backgroundColor: "#fff3cd", transition: "background-color 0.6s ease" } : undefined}
+                    >
+                      <TableCell className="font-semibold" style={{ color: "#003c7e" }}>{r.franchisee_name}</TableCell>
+                      <TableCell>{r.city}{r.state ? `, ${r.state}` : ""}</TableCell>
+                      <TableCell>
+                        <span className="text-sm font-medium">Step {r.current_step_index + 1} / {r.total_steps}</span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Progress value={pct} className="h-2" />
+                          <span className="text-xs font-medium w-10" style={{ color: "#6c757d" }}>{pct}%</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>{daysSince(r.created_at)} days</TableCell>
+                      <TableCell>
+                        <span
+                          className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold"
+                          style={{ backgroundColor: status.bg, color: status.color }}
+                        >
+                          {status.label}
+                        </span>
+                      </TableCell>
+                      <TableCell><ChevronRight size={16} style={{ color: "#adb5bd" }} /></TableCell>
+                    </TableRow>
+                  );
+                })}
+                {!loading && rows.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8" style={{ color: "#adb5bd" }}>
+                      No franchisees in onboarding yet. Start one from the Candidate Pipeline.
+                    </TableCell>
+                  </TableRow>
+                )}
+                {loading && (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8" style={{ color: "#adb5bd" }}>
+                      Loading...
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
 
-        <OnboardingWizard
-          franchisee={selected}
-          open={!!selected}
-          onClose={() => setSelectedId(null)}
-          onUpdate={updateFranchisee}
+        <NewOnboardingModal
+          open={newOpen}
+          onOpenChange={setNewOpen}
+          onCreated={handleCreated}
         />
       </div>
     </div>

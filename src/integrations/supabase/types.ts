@@ -276,6 +276,94 @@ export type Database = {
         }
         Relationships: []
       }
+      onboarding_records: {
+        Row: {
+          candidate_id: string | null
+          city: string
+          created_at: string
+          current_step_index: number
+          franchisee_name: string
+          id: string
+          state: string
+          status: string
+          total_steps: number
+          updated_at: string
+        }
+        Insert: {
+          candidate_id?: string | null
+          city?: string
+          created_at?: string
+          current_step_index?: number
+          franchisee_name: string
+          id?: string
+          state?: string
+          status?: string
+          total_steps?: number
+          updated_at?: string
+        }
+        Update: {
+          candidate_id?: string | null
+          city?: string
+          created_at?: string
+          current_step_index?: number
+          franchisee_name?: string
+          id?: string
+          state?: string
+          status?: string
+          total_steps?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_records_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onboarding_steps: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_completed: boolean
+          onboarding_id: string
+          step_index: number
+          title: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_completed?: boolean
+          onboarding_id: string
+          step_index: number
+          title: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_completed?: boolean
+          onboarding_id?: string
+          step_index?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_steps_onboarding_id_fkey"
+            columns: ["onboarding_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string

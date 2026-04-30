@@ -42,6 +42,13 @@ const CandidatePipeline = () => {
   const [collapsed, setCollapsed] = useState<Set<StageId>>(new Set());
   const [confirmCandidate, setConfirmCandidate] = useState<Candidate | null>(null);
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [metrics, setMetrics] = useState({
+    totalInPipeline: 0,
+    avgDaysPerStage: 0,
+    conversionRate: 0,
+    thisWeekActivity: 0,
+  });
 
   // DB enum stage -> local UI StageId
   const dbStageToUi: Record<string, StageId> = {
@@ -53,6 +60,55 @@ const CandidatePipeline = () => {
     confirmation: "confirmation",
     signing: "signing",
     disqualified: "disqualified",
+  };
+
+  // UI StageId -> DB enum stage
+  const uiStageToDb: Record<StageId, string> = {
+    new_lead: "new_lead",
+    initial_qual: "initial_qualification",
+    business_overview: "business_overview",
+    fdd_review: "fdd_review",
+    immersion: "immersion",
+    confirmation: "confirmation",
+    signing: "signing",
+    disqualified: "disqualified",
+  };
+
+  const computeMetrics = async () => {
+    // Pull candidates + history in parallel
+    const [{ data: cands }, { data: hist }] = await Promise.all([
+      supabase.from("candidates").select("id, current_stage, status, created_at"),
+      supabase.from("candidate_stage_history").select("candidate_id, changed_at"),
+    ]);
+    const all = cands ?? [];
+    const active = all.filter((c: any) => c.status !== "disqualified" && c.current_stage !== "disqualified");
+    const totalEver = all.length;
+
+    // Last activity per candidate (max changed_at)
+    const lastByCand: Record<string, string> = {};
+    (hist ?? []).forEach((h: any) => {
+      const prev = lastByCand[h.candidate_id];
+      if (!prev || new Date(h.changed_at) > new Date(prev)) lastByCand[h.candidate_id] = h.changed_at;
+    });
+
+    const dayMs = 1000 * 60 * 60 * 24;
+    const now = Date.now();
+    const days = active.map((c: any) => {
+      const ref = lastByCand[c.id] ?? c.created_at;
+      return Math.max(0, Math.floor((now - new Date(ref).getTime()) / dayMs));
+    });
+    const avgDays = days.length ? Math.round(days.reduce((a, b) => a + b, 0) / days.length) : 0;
+    const signing = all.filter((c: any) => c.current_stage === "signing").length;
+    const conv = totalEver > 0 ? Math.round((signing / totalEver) * 100) : 0;
+    const weekAgo = now - 7 * dayMs;
+    const thisWeek = (hist ?? []).filter((h: any) => new Date(h.changed_at).getTime() >= weekAgo).length;
+
+    setMetrics({
+      totalInPipeline: active.length,
+      avgDaysPerStage: avgDays,
+      conversionRate: conv,
+      thisWeekActivity: thisWeek,
+    });
   };
 
   useEffect(() => {

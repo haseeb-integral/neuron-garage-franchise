@@ -397,6 +397,59 @@ const CandidatePipeline = () => {
     });
   };
 
+  const submitDisqualify = async () => {
+    if (!disqualifyTarget) return;
+    const reason = disqualifyReason.trim();
+    if (!reason) {
+      toast.error("Please enter a disqualification reason.");
+      return;
+    }
+    const { candidate, fromStage } = disqualifyTarget;
+    const previousDays = candidate.daysInStage;
+    const dbId = (candidate as any).dbId as string | undefined;
+
+    // Optimistic UI
+    applyStageMove(candidate.id, "disqualified");
+    setDisqualifyTarget(null);
+    setDisqualifyReason("");
+
+    if (!dbId) {
+      toast.error("Missing DB id; change not persisted.");
+      return;
+    }
+
+    const { data: sess } = await supabase.auth.getUser();
+    const changedBy = sess?.user?.email ?? "unknown";
+
+    const { error: updErr } = await supabase
+      .from("candidates")
+      .update({ current_stage: "disqualified" as any, status: "disqualified" })
+      .eq("id", dbId);
+
+    if (updErr) {
+      setCandidates((prev) =>
+        prev.map((c) => (c.id === candidate.id ? { ...c, stage: fromStage, daysInStage: previousDays } : c)),
+      );
+      toast.error(`Failed to disqualify ${candidate.name}: ${updErr.message}`);
+      return;
+    }
+
+    const { error: histErr } = await supabase.from("candidate_stage_history").insert({
+      candidate_id: dbId,
+      from_stage: uiStageToDb[fromStage] as any,
+      to_stage: "disqualified" as any,
+      changed_by: changedBy,
+      notes: reason,
+    });
+    if (histErr) {
+      toast.warning(`Disqualified, but history not logged: ${histErr.message}`);
+    }
+
+    computeMetrics();
+    qc.invalidateQueries({ queryKey: ["candidates"] });
+    toast.success(`Disqualified ${candidate.name}`, { description: reason });
+  };
+
   const handleUpdate = (updated: Candidate) => {
     setCandidates((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
     setActive(updated);

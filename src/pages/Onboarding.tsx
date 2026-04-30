@@ -232,6 +232,13 @@ const Onboarding = () => {
           onOpenChange={setNewOpen}
           onCreated={handleCreated}
         />
+
+        <OnboardingWizard
+          franchisee={activeFranchisee}
+          open={!!activeFranchisee}
+          onClose={() => setActiveFranchisee(null)}
+          onUpdate={(f) => setActiveFranchisee(f)}
+        />
       </div>
     </div>
   );

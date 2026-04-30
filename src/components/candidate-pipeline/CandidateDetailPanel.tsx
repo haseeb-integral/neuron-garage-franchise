@@ -78,14 +78,14 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate }: Props) {
 
         <Tabs defaultValue="overview" className="mt-6">
           <div className="overflow-x-auto -mx-1 px-1">
-            <TabsList className="inline-flex sm:grid sm:grid-cols-7 sm:w-full w-max">
-              <TabsTrigger value="overview" className="whitespace-nowrap">Overview</TabsTrigger>
-              <TabsTrigger value="lead-sheet" className="whitespace-nowrap">Lead Sheet</TabsTrigger>
-              <TabsTrigger value="qualification" className="whitespace-nowrap">Qualification</TabsTrigger>
-              <TabsTrigger value="notes" className="whitespace-nowrap">Notes & Activity</TabsTrigger>
-              <TabsTrigger value="stage-history" className="whitespace-nowrap">Stage History</TabsTrigger>
-              <TabsTrigger value="homework" className="whitespace-nowrap">Homework</TabsTrigger>
-              <TabsTrigger value="committee" className="whitespace-nowrap">Committee Votes</TabsTrigger>
+            <TabsList className="inline-flex w-max gap-1 h-auto p-1">
+              <TabsTrigger value="overview" className="whitespace-nowrap px-3">Overview</TabsTrigger>
+              <TabsTrigger value="lead-sheet" className="whitespace-nowrap px-3">Lead Sheet</TabsTrigger>
+              <TabsTrigger value="qualification" className="whitespace-nowrap px-3">Qualification</TabsTrigger>
+              <TabsTrigger value="notes" className="whitespace-nowrap px-3">Notes &amp; Activity</TabsTrigger>
+              <TabsTrigger value="stage-history" className="whitespace-nowrap px-3">Stage History</TabsTrigger>
+              <TabsTrigger value="homework" className="whitespace-nowrap px-3">Homework</TabsTrigger>
+              <TabsTrigger value="committee" className="whitespace-nowrap px-3">Committee Votes</TabsTrigger>
             </TabsList>
           </div>
 

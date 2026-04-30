@@ -157,6 +157,18 @@ const CandidatePipeline = () => {
       });
       setCandidates(mapped);
       setLoading(false);
+
+      // Load team members for Owner filter
+      const { data: profs } = await supabase.from("profiles").select("email, full_name");
+      if (mounted && profs) {
+        const tm: TeamMember[] = profs.map((p: any) => ({
+          email: p.email,
+          firstName: (p.full_name ?? p.email)?.split(/[\s@]/)[0] || p.email,
+        }));
+        setTeamMembers(tm);
+      }
+
+      computeMetrics();
     })();
     return () => { mounted = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps

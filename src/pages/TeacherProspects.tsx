@@ -143,6 +143,7 @@ const TeacherProspects = () => {
 
     setPromotedIds((prev) => new Set(prev).add(p.id));
     setPromotingId(null);
+    qc.invalidateQueries({ queryKey: ["candidates"] });
     toast.success("Promoted to Candidate Pipeline");
   };
 

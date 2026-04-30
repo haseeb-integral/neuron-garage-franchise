@@ -103,14 +103,26 @@ export function TeacherTable({ prospects, selected, onToggleSelect, onToggleAll,
                 )}
               </TableCell>
               <TableCell onClick={e => e.stopPropagation()} className="hidden md:table-cell">
-                <Button
-                  size="sm"
-                  className="text-white h-7 text-xs"
-                  style={{ backgroundColor: "#fd7e14" }}
-                  onClick={() => onPromote(p)}
-                >
-                  Promote
-                </Button>
+                {promotedIds?.has(p.id) ? (
+                  <Button
+                    size="sm"
+                    disabled
+                    className="h-7 text-xs"
+                    style={{ backgroundColor: "#e9ecef", color: "#6c757d" }}
+                  >
+                    Promoted ✓
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="text-white h-7 text-xs"
+                    style={{ backgroundColor: "#fd7e14" }}
+                    disabled={promotingId === p.id}
+                    onClick={() => onPromote(p)}
+                  >
+                    {promotingId === p.id ? "Promoting…" : "Promote"}
+                  </Button>
+                )}
               </TableCell>
             </TableRow>
           ))}

@@ -3,7 +3,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { UserPlus, Rows3, Rows2, Minimize2, Filter, X } from "lucide-react";
 import { toast } from "sonner";
-import { sampleCandidates, Candidate, StageId, STAGES } from "@/data/pipelineData";
+import { Candidate, StageId, STAGES } from "@/data/pipelineData";
+import { supabase } from "@/integrations/supabase/client";
 import { KanbanBoard } from "@/components/candidate-pipeline/KanbanBoard";
 import { PipelineAnalyticsBar } from "@/components/candidate-pipeline/PipelineAnalyticsBar";
 import { CandidateDetailPanel } from "@/components/candidate-pipeline/CandidateDetailPanel";
@@ -33,12 +34,76 @@ interface PendingMove {
 const CandidatePipeline = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [candidates, setCandidates] = useState<Candidate[]>(sampleCandidates);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [loading, setLoading] = useState(true);
   const [active, setActive] = useState<Candidate | null>(null);
   const [compact, setCompact] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<StageId>>(new Set());
   const [confirmCandidate, setConfirmCandidate] = useState<Candidate | null>(null);
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
+
+  // DB enum stage -> local UI StageId
+  const dbStageToUi: Record<string, StageId> = {
+    new_lead: "new_lead",
+    initial_qualification: "initial_qual",
+    business_overview: "business_overview",
+    fdd_review: "fdd_review",
+    immersion: "immersion",
+    confirmation: "confirmation",
+    signing: "signing",
+    disqualified: "disqualified",
+  };
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const { data, error } = await supabase
+        .from("candidates")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (!mounted) return;
+      if (error) {
+        toast.error("Failed to load candidates");
+        setLoading(false);
+        return;
+      }
+      const mapped: Candidate[] = (data ?? []).map((r: any, idx: number) => {
+        const fullName = `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim();
+        const created = r.created_at ? new Date(r.created_at) : new Date();
+        const days = Math.max(0, Math.floor((Date.now() - created.getTime()) / (1000 * 60 * 60 * 24)));
+        return {
+          id: idx + 1, // local numeric id for legacy UI; real uuid kept in __dbId
+          name: fullName || r.email,
+          city: r.city ?? "",
+          state: r.state ?? "",
+          email: r.email ?? "",
+          phone: r.phone ?? "",
+          fitScore: r.fit_score ?? 0,
+          stage: dbStageToUi[r.current_stage] ?? "new_lead",
+          daysInStage: days,
+          assignedTo: "Kaylie",
+          tag: r.fit_tag ?? "Untagged",
+          source: "—",
+          createdDate: r.created_at ?? new Date().toISOString(),
+          qualificationScores: { teaching: 0, leadership: 0, financial: 0, marketFit: 0, cultureFit: 0 },
+          activity: [],
+          trialClose: {
+            answeredQuestions: false,
+            prospectSummarized: false,
+            askedToMoveForward: false,
+            scheduledNextCall: false,
+            assignedHomework: false,
+          },
+          votes: { Kaylie: null, Sam: null, Skylar: null },
+          dbId: r.id,
+        } as unknown as Candidate;
+      });
+      setCandidates(mapped);
+      setLoading(false);
+    })();
+    return () => { mounted = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Open detail panel when arriving via global search (?candidate=ID)
   useEffect(() => {

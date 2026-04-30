@@ -14,6 +14,95 @@ export type Database = {
   }
   public: {
     Tables: {
+      candidate_stage_history: {
+        Row: {
+          candidate_id: string
+          changed_at: string
+          changed_by: string | null
+          from_stage: Database["public"]["Enums"]["candidate_stage"] | null
+          id: string
+          notes: string | null
+          to_stage: Database["public"]["Enums"]["candidate_stage"]
+        }
+        Insert: {
+          candidate_id: string
+          changed_at?: string
+          changed_by?: string | null
+          from_stage?: Database["public"]["Enums"]["candidate_stage"] | null
+          id?: string
+          notes?: string | null
+          to_stage: Database["public"]["Enums"]["candidate_stage"]
+        }
+        Update: {
+          candidate_id?: string
+          changed_at?: string
+          changed_by?: string | null
+          from_stage?: Database["public"]["Enums"]["candidate_stage"] | null
+          id?: string
+          notes?: string | null
+          to_stage?: Database["public"]["Enums"]["candidate_stage"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_stage_history_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      candidates: {
+        Row: {
+          city: string
+          created_at: string
+          current_stage: Database["public"]["Enums"]["candidate_stage"]
+          email: string
+          first_name: string
+          fit_score: number
+          fit_tag: string
+          id: string
+          last_name: string
+          phone: string | null
+          prospect_id: string | null
+          state: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          city?: string
+          created_at?: string
+          current_stage?: Database["public"]["Enums"]["candidate_stage"]
+          email: string
+          first_name: string
+          fit_score?: number
+          fit_tag?: string
+          id?: string
+          last_name: string
+          phone?: string | null
+          prospect_id?: string | null
+          state?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          city?: string
+          created_at?: string
+          current_stage?: Database["public"]["Enums"]["candidate_stage"]
+          email?: string
+          first_name?: string
+          fit_score?: number
+          fit_tag?: string
+          id?: string
+          last_name?: string
+          phone?: string | null
+          prospect_id?: string | null
+          state?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -74,6 +163,15 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "manager"
+      candidate_stage:
+        | "new_lead"
+        | "initial_qualification"
+        | "business_overview"
+        | "fdd_review"
+        | "immersion"
+        | "confirmation"
+        | "signing"
+        | "disqualified"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -202,6 +300,16 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "manager"],
+      candidate_stage: [
+        "new_lead",
+        "initial_qualification",
+        "business_overview",
+        "fdd_review",
+        "immersion",
+        "confirmation",
+        "signing",
+        "disqualified",
+      ],
     },
   },
 } as const

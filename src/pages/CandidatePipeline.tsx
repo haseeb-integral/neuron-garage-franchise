@@ -390,14 +390,24 @@ const CandidatePipeline = () => {
         title="Candidate Pipeline"
         subtitle="Track and manage franchise candidates through every stage of the qualification process."
         action={
-          <Button
-            size="sm"
-            onClick={() => toast.info("Open Teacher Prospects to promote a candidate")}
-            className="text-white w-full sm:w-auto"
-            style={{ backgroundColor: "#fd7e14" }}
-          >
-            <UserPlus size={14} /> Promote from Prospect
-          </Button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => navigate("/teacher-prospects")}
+              className="w-full sm:w-auto"
+            >
+              <UserPlus size={14} /> Promote from Prospect
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => setNewOpen(true)}
+              className="text-white w-full sm:w-auto"
+              style={{ backgroundColor: "#fd7e14" }}
+            >
+              <Plus size={14} /> New Candidate
+            </Button>
+          </div>
         }
       />
 

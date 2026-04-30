@@ -47,6 +47,8 @@ const CandidatePipeline = () => {
   const [confirmCandidate, setConfirmCandidate] = useState<Candidate | null>(null);
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
   const [pendingIncompleteCount, setPendingIncompleteCount] = useState<number>(0);
+  const [disqualifyTarget, setDisqualifyTarget] = useState<{ candidate: Candidate; fromStage: StageId } | null>(null);
+  const [disqualifyReason, setDisqualifyReason] = useState<string>("");
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [newOpen, setNewOpen] = useState(false);
   const [metrics, setMetrics] = useState({

@@ -349,6 +349,7 @@ const CandidatePipeline = () => {
             notes: "undo",
           });
           computeMetrics();
+          qc.invalidateQueries({ queryKey: ["candidates"] });
           toast.info(`Reverted ${candidate.name} to ${fromLabel}`);
         },
       },

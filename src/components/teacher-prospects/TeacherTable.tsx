@@ -14,6 +14,8 @@ interface Props {
   onToggleAll: () => void;
   onRowClick: (p: TeacherProspect) => void;
   onPromote: (p: TeacherProspect) => void;
+  promotedIds?: Set<number>;
+  promotingId?: number | null;
 }
 
 type SortKey = "name" | "school" | "city" | "fitScore";

@@ -76,7 +76,45 @@ const CandidatePipeline = () => {
     disqualified: "disqualified",
   };
 
-  const computeMetrics = async () => {
+  const mapRowToCandidate = (r: any, idx: number): Candidate => {
+    const fullName = `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim();
+    const created = r.created_at ? new Date(r.created_at) : new Date();
+    const days = Math.max(0, Math.floor((Date.now() - created.getTime()) / (1000 * 60 * 60 * 24)));
+    return {
+      id: idx,
+      name: fullName || r.email,
+      city: r.city ?? "",
+      state: r.state ?? "",
+      email: r.email ?? "",
+      phone: r.phone ?? "",
+      fitScore: r.fit_score ?? 0,
+      stage: dbStageToUi[r.current_stage] ?? "new_lead",
+      daysInStage: days,
+      assignedTo: r.assigned_to ?? "",
+      tag: r.fit_tag ?? "Untagged",
+      source: "—",
+      createdDate: r.created_at ?? new Date().toISOString(),
+      qualificationScores: { teaching: 0, leadership: 0, financial: 0, marketFit: 0, cultureFit: 0 },
+      activity: [],
+      trialClose: {
+        answeredQuestions: false,
+        prospectSummarized: false,
+        askedToMoveForward: false,
+        scheduledNextCall: false,
+        assignedHomework: false,
+      },
+      votes: { Kaylie: null, Sam: null, Skylar: null },
+      dbId: r.id,
+    } as unknown as Candidate;
+  };
+
+  const handleCandidateCreated = (row: any) => {
+    setCandidates((prev) => {
+      const nextId = (prev.reduce((m, c) => Math.max(m, c.id), 0) || 0) + 1;
+      return [mapRowToCandidate(row, nextId), ...prev];
+    });
+    computeMetrics();
+  };
     const { data: cands } = await supabase
       .from("candidates")
       .select("id, current_stage, status, fit_score, created_at");

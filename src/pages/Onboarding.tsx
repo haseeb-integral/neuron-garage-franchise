@@ -196,7 +196,7 @@ const Onboarding = () => {
                     <TableRow
                       key={r.id}
                       data-onboarding-id={r.id}
-                      onClick={() => setActiveFranchisee(buildFranchiseeFromRow(r))}
+                      onClick={async () => setActiveFranchisee(await buildFranchiseeFromRow(r))}
                       className="cursor-pointer"
                       style={isFlash ? { backgroundColor: "#fff3cd", transition: "background-color 0.6s ease" } : undefined}
                     >

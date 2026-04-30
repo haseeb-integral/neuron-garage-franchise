@@ -307,6 +307,7 @@ const CandidatePipeline = () => {
     // Optimistic UI
     applyStageMove(candidate.id, toStage);
     setPendingMove(null);
+    setPendingIncompleteCount(0);
 
     if (!dbId) {
       toast.error("Missing DB id; change not persisted.");

@@ -45,7 +45,7 @@ interface Row {
   created_at: string;
 }
 
-export default function Users() {
+export default function TeamMembers() {
   const { role: currentRole, user, loading: authLoading } = useAuth();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,7 +67,7 @@ export default function Users() {
   } | null>(null);
 
   useEffect(() => {
-    document.title = "Users · Neuron Garage";
+    document.title = "Team members · Neuron Garage";
   }, []);
 
   const load = async () => {
@@ -180,7 +180,7 @@ Please log in and change your password using the "Forgot password?" link on the 
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Users</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Team members</h1>
           <p className="text-sm text-muted-foreground">Manage team members and their roles.</p>
         </div>
         <Button onClick={() => setOpen(true)}>

@@ -14,9 +14,11 @@ interface Props {
   onUpdate: (p: TeacherProspect) => void;
   onPromote: (p: TeacherProspect) => void;
   onMarkNotFit: (p: TeacherProspect) => void;
+  isPromoted?: boolean;
+  isPromoting?: boolean;
 }
 
-export function TeacherDetailPanel({ prospect, onClose, onUpdate, onPromote, onMarkNotFit }: Props) {
+export function TeacherDetailPanel({ prospect, onClose, onUpdate, onPromote, onMarkNotFit, isPromoted, isPromoting }: Props) {
   const [tags, setTags] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [newTag, setNewTag] = useState("");

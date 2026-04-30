@@ -64,6 +64,47 @@ export type Database = {
           },
         ]
       }
+      candidate_qualification: {
+        Row: {
+          candidate_id: string
+          composite_score: number
+          culture_fit: number
+          financial_readiness: number
+          leadership: number
+          market_fit: number
+          teaching_experience: number
+          updated_at: string
+        }
+        Insert: {
+          candidate_id: string
+          composite_score?: number
+          culture_fit?: number
+          financial_readiness?: number
+          leadership?: number
+          market_fit?: number
+          teaching_experience?: number
+          updated_at?: string
+        }
+        Update: {
+          candidate_id?: string
+          composite_score?: number
+          culture_fit?: number
+          financial_readiness?: number
+          leadership?: number
+          market_fit?: number
+          teaching_experience?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_qualification_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: true
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidate_stage_history: {
         Row: {
           candidate_id: string

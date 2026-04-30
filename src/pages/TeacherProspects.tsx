@@ -195,6 +195,8 @@ const TeacherProspects = () => {
         onToggleAll={toggleAll}
         onRowClick={setActive}
         onPromote={handlePromote}
+        promotedIds={promotedIds}
+        promotingId={promotingId}
       />
 
       <OutreachIntelligence />
@@ -207,6 +209,8 @@ const TeacherProspects = () => {
         onUpdate={handleUpdate}
         onPromote={handlePromote}
         onMarkNotFit={handleMarkNotFit}
+        isPromoted={active ? promotedIds.has(active.id) : false}
+        isPromoting={active ? promotingId === active.id : false}
       />
     </div>
   );

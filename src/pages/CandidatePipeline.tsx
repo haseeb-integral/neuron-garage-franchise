@@ -115,6 +115,8 @@ const CandidatePipeline = () => {
     });
     computeMetrics();
   };
+
+  const computeMetrics = async () => {
     const { data: cands } = await supabase
       .from("candidates")
       .select("id, current_stage, status, fit_score, created_at");

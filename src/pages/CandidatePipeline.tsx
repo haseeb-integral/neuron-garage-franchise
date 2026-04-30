@@ -46,6 +46,7 @@ const CandidatePipeline = () => {
   const [collapsed, setCollapsed] = useState<Set<StageId>>(new Set());
   const [confirmCandidate, setConfirmCandidate] = useState<Candidate | null>(null);
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
+  const [pendingIncompleteCount, setPendingIncompleteCount] = useState<number>(0);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [newOpen, setNewOpen] = useState(false);
   const [metrics, setMetrics] = useState({

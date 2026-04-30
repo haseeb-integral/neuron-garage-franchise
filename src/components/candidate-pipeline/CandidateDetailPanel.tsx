@@ -8,6 +8,7 @@ import { QualificationTab } from "./tabs/QualificationTab";
 import { NotesActivityTab } from "./tabs/NotesActivityTab";
 import { StageHistoryTab } from "./tabs/StageHistoryTab";
 import { HomeworkTab } from "./tabs/HomeworkTab";
+import { CommitteeVotesTab } from "./tabs/CommitteeVotesTab";
 import { SelectionCommittee } from "./SelectionCommittee";
 import { CandidateAvatar } from "@/components/ui/CandidateAvatar";
 

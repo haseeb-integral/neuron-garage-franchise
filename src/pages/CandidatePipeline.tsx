@@ -138,7 +138,7 @@ const CandidatePipeline = () => {
           fitScore: r.fit_score ?? 0,
           stage: dbStageToUi[r.current_stage] ?? "new_lead",
           daysInStage: days,
-          assignedTo: "Kaylie",
+          assignedTo: r.assigned_to ?? "",
           tag: r.fit_tag ?? "Untagged",
           source: "—",
           createdDate: r.created_at ?? new Date().toISOString(),

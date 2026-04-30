@@ -149,7 +149,7 @@ const TeacherProspects = () => {
       description: `${p.name} is now in New Lead.`,
       action: {
         label: "View in pipeline",
-        onClick: () => navigate(`/candidate-pipeline?highlight=${inserted.id}`),
+        onClick: () => navigate(`/candidate-pipeline?candidate=${inserted.id}`),
       },
     });
   };

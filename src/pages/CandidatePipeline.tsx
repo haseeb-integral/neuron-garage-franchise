@@ -632,6 +632,13 @@ const CandidatePipeline = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <NewCandidateModal
+        open={newOpen}
+        onOpenChange={setNewOpen}
+        teamMembers={teamMembers}
+        onCreated={handleCandidateCreated}
+      />
     </div>
   );
 };

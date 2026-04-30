@@ -44,6 +44,41 @@ const Onboarding = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const highlightId = searchParams.get("highlight");
   const [flashId, setFlashId] = useState<string | null>(null);
+  const [activeFranchisee, setActiveFranchisee] = useState<Franchisee | null>(null);
+
+  const buildFranchiseeFromRow = (r: OnboardingRow): Franchisee => {
+    const stepData: Franchisee["stepData"] = {} as Franchisee["stepData"];
+    STEPS.forEach((s) => {
+      stepData[s.id] = {
+        tasks: s.defaultTasks.map((t, i) => ({ id: `t-${r.id}-${s.id}-${i}`, label: t, done: s.id < (r.current_step_index + 1) })),
+        form: {},
+        files: [],
+        notes: "",
+      };
+    });
+    return {
+      id: r.id,
+      name: r.franchisee_name,
+      city: r.city,
+      state: r.state,
+      email: "",
+      phone: "",
+      currentStep: Math.min(7, Math.max(1, r.current_step_index + 1)),
+      daysElapsed: daysSince(r.created_at),
+      status: (r.status === "completed" ? "on_track" : r.status) as Franchisee["status"],
+      startDate: r.created_at.slice(0, 10),
+      stepData,
+      activity: [],
+      comms: [
+        { key: "welcome", name: "Welcome Email", triggerLabel: "After Step 1", sent: false },
+        { key: "roadmap", name: "Process Roadmap", triggerLabel: "After Step 2", sent: false },
+        { key: "market", name: "Market Analysis", triggerLabel: "After Step 3", sent: false },
+        { key: "fdd", name: "FDD Document", triggerLabel: "After Step 4", sent: false },
+        { key: "awarded", name: "Congratulations / Franchise Awarded", triggerLabel: "After Step 6", sent: false },
+        { key: "donut", name: "Donut Delivery Note + Onboarding Access", triggerLabel: "After Step 7", sent: false },
+      ],
+    };
+  };
 
   const load = useCallback(async () => {
     setLoading(true);

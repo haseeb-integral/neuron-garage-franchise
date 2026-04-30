@@ -1,25 +1,21 @@
-import { Candidate } from "@/data/pipelineData";
-
 interface Props {
-  candidates: Candidate[];
+  totalInPipeline: number;
+  avgDaysPerStage: number;
+  conversionRate: number;
+  thisWeekActivity: number;
 }
 
-export function PipelineAnalyticsBar({ candidates }: Props) {
-  const active = candidates.filter((c) => c.stage !== "disqualified");
-  const total = active.length;
-  const avgDays = total > 0 ? Math.round(active.reduce((s, c) => s + c.daysInStage, 0) / total) : 0;
-  const qualified = candidates.filter((c) => c.stage === "signing").length;
-  const conversion = total > 0 ? Math.round((qualified / candidates.length) * 100) : 0;
-  const thisWeek = candidates.reduce(
-    (s, c) => s + c.activity.filter((a) => a.timestamp >= "2025-04-09").length,
-    0,
-  );
-
+export function PipelineAnalyticsBar({
+  totalInPipeline,
+  avgDaysPerStage,
+  conversionRate,
+  thisWeekActivity,
+}: Props) {
   const stats = [
-    { label: "Total in Pipeline", value: total },
-    { label: "Avg Days per Stage", value: avgDays },
-    { label: "Conversion Rate", value: `${conversion}%` },
-    { label: "This Week's Activity", value: thisWeek },
+    { label: "Total in Pipeline", value: totalInPipeline },
+    { label: "Avg Days per Stage", value: avgDaysPerStage },
+    { label: "Conversion Rate", value: `${conversionRate}%` },
+    { label: "This Week's Activity", value: thisWeekActivity },
   ];
 
   return (

@@ -21,7 +21,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { buildFranchiseeFromCandidate, queueOnboarding } from "@/data/onboardingStore";
 
-type OwnerFilter = "all" | "Kaylie" | "Sam" | "Skylar";
+type OwnerFilter = string; // "all" or a user email
+interface TeamMember { email: string; firstName: string; }
 type TagFilter = "all" | "High Potential" | "Active" | "Follow-Up" | "Qualified";
 type FitFilter = "all" | "90" | "75";
 
@@ -41,6 +42,13 @@ const CandidatePipeline = () => {
   const [collapsed, setCollapsed] = useState<Set<StageId>>(new Set());
   const [confirmCandidate, setConfirmCandidate] = useState<Candidate | null>(null);
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [metrics, setMetrics] = useState({
+    totalInPipeline: 0,
+    avgDaysPerStage: 0,
+    conversionRate: 0,
+    thisWeekActivity: 0,
+  });
 
   // DB enum stage -> local UI StageId
   const dbStageToUi: Record<string, StageId> = {
@@ -52,6 +60,55 @@ const CandidatePipeline = () => {
     confirmation: "confirmation",
     signing: "signing",
     disqualified: "disqualified",
+  };
+
+  // UI StageId -> DB enum stage
+  const uiStageToDb: Record<StageId, string> = {
+    new_lead: "new_lead",
+    initial_qual: "initial_qualification",
+    business_overview: "business_overview",
+    fdd_review: "fdd_review",
+    immersion: "immersion",
+    confirmation: "confirmation",
+    signing: "signing",
+    disqualified: "disqualified",
+  };
+
+  const computeMetrics = async () => {
+    // Pull candidates + history in parallel
+    const [{ data: cands }, { data: hist }] = await Promise.all([
+      supabase.from("candidates").select("id, current_stage, status, created_at"),
+      supabase.from("candidate_stage_history").select("candidate_id, changed_at"),
+    ]);
+    const all = cands ?? [];
+    const active = all.filter((c: any) => c.status !== "disqualified" && c.current_stage !== "disqualified");
+    const totalEver = all.length;
+
+    // Last activity per candidate (max changed_at)
+    const lastByCand: Record<string, string> = {};
+    (hist ?? []).forEach((h: any) => {
+      const prev = lastByCand[h.candidate_id];
+      if (!prev || new Date(h.changed_at) > new Date(prev)) lastByCand[h.candidate_id] = h.changed_at;
+    });
+
+    const dayMs = 1000 * 60 * 60 * 24;
+    const now = Date.now();
+    const days = active.map((c: any) => {
+      const ref = lastByCand[c.id] ?? c.created_at;
+      return Math.max(0, Math.floor((now - new Date(ref).getTime()) / dayMs));
+    });
+    const avgDays = days.length ? Math.round(days.reduce((a, b) => a + b, 0) / days.length) : 0;
+    const signing = all.filter((c: any) => c.current_stage === "signing").length;
+    const conv = totalEver > 0 ? Math.round((signing / totalEver) * 100) : 0;
+    const weekAgo = now - 7 * dayMs;
+    const thisWeek = (hist ?? []).filter((h: any) => new Date(h.changed_at).getTime() >= weekAgo).length;
+
+    setMetrics({
+      totalInPipeline: active.length,
+      avgDaysPerStage: avgDays,
+      conversionRate: conv,
+      thisWeekActivity: thisWeek,
+    });
   };
 
   useEffect(() => {
@@ -81,7 +138,7 @@ const CandidatePipeline = () => {
           fitScore: r.fit_score ?? 0,
           stage: dbStageToUi[r.current_stage] ?? "new_lead",
           daysInStage: days,
-          assignedTo: "Kaylie",
+          assignedTo: r.assigned_to ?? "",
           tag: r.fit_tag ?? "Untagged",
           source: "—",
           createdDate: r.created_at ?? new Date().toISOString(),
@@ -100,6 +157,18 @@ const CandidatePipeline = () => {
       });
       setCandidates(mapped);
       setLoading(false);
+
+      // Load team members for Owner filter
+      const { data: profs } = await supabase.from("profiles").select("email, full_name");
+      if (mounted && profs) {
+        const tm: TeamMember[] = profs.map((p: any) => ({
+          email: p.email,
+          firstName: (p.full_name ?? p.email)?.split(/[\s@]/)[0] || p.email,
+        }));
+        setTeamMembers(tm);
+      }
+
+      computeMetrics();
     })();
     return () => { mounted = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -170,25 +239,75 @@ const CandidatePipeline = () => {
     );
   };
 
-  const confirmStageMove = () => {
+  const confirmStageMove = async () => {
     if (!pendingMove) return;
     const { candidate, fromStage, toStage } = pendingMove;
     const fromLabel = STAGES.find((s) => s.id === fromStage)?.short ?? fromStage;
     const toLabel = STAGES.find((s) => s.id === toStage)?.short ?? toStage;
     const previousDays = candidate.daysInStage;
+    const dbId = (candidate as any).dbId as string | undefined;
 
+    // Optimistic UI
     applyStageMove(candidate.id, toStage);
     setPendingMove(null);
+
+    if (!dbId) {
+      toast.error("Missing DB id; change not persisted.");
+      return;
+    }
+
+    const { data: sess } = await supabase.auth.getUser();
+    const changedBy = sess?.user?.email ?? "unknown";
+
+    const { error: updErr } = await supabase
+      .from("candidates")
+      .update({ current_stage: uiStageToDb[toStage] as any })
+      .eq("id", dbId);
+
+    if (updErr) {
+      // rollback
+      setCandidates((prev) =>
+        prev.map((c) => (c.id === candidate.id ? { ...c, stage: fromStage, daysInStage: previousDays } : c)),
+      );
+      toast.error(`Failed to move ${candidate.name}: ${updErr.message}`);
+      return;
+    }
+
+    const { error: histErr } = await supabase.from("candidate_stage_history").insert({
+      candidate_id: dbId,
+      from_stage: uiStageToDb[fromStage] as any,
+      to_stage: uiStageToDb[toStage] as any,
+      changed_by: changedBy,
+      notes: null,
+    });
+    if (histErr) {
+      // Non-fatal: stage already updated. Warn but keep state.
+      toast.warning(`Stage saved, but history not logged: ${histErr.message}`);
+    }
+
+    computeMetrics();
 
     toast.success(`Moved ${candidate.name} → ${toLabel}`, {
       description: `From ${fromLabel}`,
       duration: 6000,
       action: {
         label: "Undo",
-        onClick: () => {
+        onClick: async () => {
           setCandidates((prev) =>
             prev.map((c) => (c.id === candidate.id ? { ...c, stage: fromStage, daysInStage: previousDays } : c)),
           );
+          await supabase
+            .from("candidates")
+            .update({ current_stage: uiStageToDb[fromStage] as any })
+            .eq("id", dbId);
+          await supabase.from("candidate_stage_history").insert({
+            candidate_id: dbId,
+            from_stage: uiStageToDb[toStage] as any,
+            to_stage: uiStageToDb[fromStage] as any,
+            changed_by: changedBy,
+            notes: "undo",
+          });
+          computeMetrics();
           toast.info(`Reverted ${candidate.name} to ${fromLabel}`);
         },
       },
@@ -245,7 +364,12 @@ const CandidatePipeline = () => {
         }
       />
 
-      <PipelineAnalyticsBar candidates={candidates} />
+      <PipelineAnalyticsBar
+        totalInPipeline={metrics.totalInPipeline}
+        avgDaysPerStage={metrics.avgDaysPerStage}
+        conversionRate={metrics.conversionRate}
+        thisWeekActivity={metrics.thisWeekActivity}
+      />
 
       {/* Filter strip */}
       <div className="bg-white rounded-lg px-3 py-2 mb-3 flex flex-wrap items-center gap-x-3 gap-y-2" style={{ border: "1px solid #dee2e6" }}>
@@ -256,16 +380,27 @@ const CandidatePipeline = () => {
 
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-[11px] font-medium" style={{ color: "#6c757d" }}>Owner:</span>
-          {(["all", "Kaylie", "Sam", "Skylar"] as OwnerFilter[]).map((o) => (
-            <button
-              key={o}
-              onClick={() => setOwnerFilter(o)}
-              className={chipBase}
-              style={ownerFilter === o ? chipActive : chipInactive}
-            >
-              {o === "all" ? "All" : o}
-            </button>
-          ))}
+          <button
+            onClick={() => setOwnerFilter("all")}
+            className={chipBase}
+            style={ownerFilter === "all" ? chipActive : chipInactive}
+          >
+            All
+          </button>
+          {teamMembers.map((m) => {
+            const cap = m.firstName.charAt(0).toUpperCase() + m.firstName.slice(1);
+            return (
+              <button
+                key={m.email}
+                onClick={() => setOwnerFilter(m.email)}
+                className={chipBase}
+                style={ownerFilter === m.email ? chipActive : chipInactive}
+                title={m.email}
+              >
+                {cap}
+              </button>
+            );
+          })}
         </div>
 
         <div className="flex items-center gap-1.5 flex-wrap">

@@ -380,16 +380,27 @@ const CandidatePipeline = () => {
 
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-[11px] font-medium" style={{ color: "#6c757d" }}>Owner:</span>
-          {(["all", "Kaylie", "Sam", "Skylar"] as OwnerFilter[]).map((o) => (
-            <button
-              key={o}
-              onClick={() => setOwnerFilter(o)}
-              className={chipBase}
-              style={ownerFilter === o ? chipActive : chipInactive}
-            >
-              {o === "all" ? "All" : o}
-            </button>
-          ))}
+          <button
+            onClick={() => setOwnerFilter("all")}
+            className={chipBase}
+            style={ownerFilter === "all" ? chipActive : chipInactive}
+          >
+            All
+          </button>
+          {teamMembers.map((m) => {
+            const cap = m.firstName.charAt(0).toUpperCase() + m.firstName.slice(1);
+            return (
+              <button
+                key={m.email}
+                onClick={() => setOwnerFilter(m.email)}
+                className={chipBase}
+                style={ownerFilter === m.email ? chipActive : chipInactive}
+                title={m.email}
+              >
+                {cap}
+              </button>
+            );
+          })}
         </div>
 
         <div className="flex items-center gap-1.5 flex-wrap">

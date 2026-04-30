@@ -5,9 +5,12 @@ import { StepProgressBar } from "./StepProgressBar";
 import { StepCard } from "./StepCard";
 import { ActivityLog } from "./ActivityLog";
 import { CommunicationTriggers } from "./CommunicationTriggers";
+import { DocumentUpload } from "./DocumentUpload";
 import { StatusBadge } from "./StatusBadge";
+import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface Props {
   franchisee: Franchisee | null;
@@ -32,6 +35,10 @@ export function OnboardingWizard({ franchisee, open, onClose, onUpdate }: Props)
       ...franchisee,
       stepData: { ...franchisee.stepData, [selectedStep]: { ...data, ...patch } },
     });
+  };
+
+  const updateFranchisee = (patch: Partial<Franchisee>) => {
+    onUpdate({ ...franchisee, ...patch });
   };
 
   const completeStep = () => {
@@ -85,6 +92,15 @@ export function OnboardingWizard({ franchisee, open, onClose, onUpdate }: Props)
     onUpdate({ ...franchisee, activity: newActivity, comms: updatedComms });
   };
 
+  const addGlobalFile = (name: string, size: string) => {
+    const files = [...(franchisee.globalFiles ?? []), { id: `${Date.now()}-${name}`, name, size }];
+    onUpdate({ ...franchisee, globalFiles: files });
+    toast.success(`Uploaded ${name}`);
+  };
+  const removeGlobalFile = (id: string) => {
+    onUpdate({ ...franchisee, globalFiles: (franchisee.globalFiles ?? []).filter((f) => f.id !== id) });
+  };
+
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent
@@ -100,7 +116,10 @@ export function OnboardingWizard({ franchisee, open, onClose, onUpdate }: Props)
             <div className="min-w-0">
               <h2 className="text-xl sm:text-2xl font-bold" style={{ color: "#003c7e" }}>{franchisee.name}</h2>
               <p className="text-xs sm:text-sm break-words" style={{ color: "#6c757d" }}>
-                {franchisee.city}, {franchisee.state} · {franchisee.email} · {franchisee.daysElapsed} days in pipeline
+                {franchisee.city}{franchisee.state ? `, ${franchisee.state}` : ""}
+                {franchisee.email ? ` · ${franchisee.email}` : ""}
+                {" · "}{franchisee.daysElapsed} days in pipeline
+                {franchisee.isLinked ? " · Linked to candidate" : " · Manual entry"}
               </p>
             </div>
             <div className="shrink-0"><StatusBadge status={franchisee.status} /></div>
@@ -120,10 +139,35 @@ export function OnboardingWizard({ franchisee, open, onClose, onUpdate }: Props)
             stepId={selectedStep}
             data={data}
             onUpdate={updateStepData}
+            onUpdateFranchisee={updateFranchisee}
             onCompleteStep={completeStep}
             onBeginActiveOnboarding={beginActiveOnboarding}
           />
-          <ActivityLog activity={franchisee.activity} />
+
+          {/* Global onboarding-wide blocks */}
+          <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #dee2e6" }}>
+            <DocumentUpload
+              files={franchisee.globalFiles ?? []}
+              onAdd={addGlobalFile}
+              onRemove={removeGlobalFile}
+            />
+          </div>
+
+          <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #dee2e6" }}>
+            <h4 className="text-sm font-semibold mb-2" style={{ color: "#003c7e" }}>Internal Notes</h4>
+            <p className="text-xs mb-2" style={{ color: "#6c757d" }}>
+              Visible only to internal team — applies to the whole onboarding.
+            </p>
+            <Textarea
+              value={franchisee.globalNotes ?? ""}
+              onChange={(e) => updateFranchisee({ globalNotes: e.target.value })}
+              rows={4}
+              placeholder="Notes about this franchisee's overall onboarding…"
+            />
+          </div>
+
+          {franchisee.activity.length > 0 && <ActivityLog activity={franchisee.activity} />}
+
           <CommunicationTriggers comms={franchisee.comms} />
         </div>
       </SheetContent>

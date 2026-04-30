@@ -46,7 +46,18 @@ const Onboarding = () => {
   const [flashId, setFlashId] = useState<string | null>(null);
   const [activeFranchisee, setActiveFranchisee] = useState<Franchisee | null>(null);
 
-  const buildFranchiseeFromRow = (r: OnboardingRow): Franchisee => {
+  const buildFranchiseeFromRow = async (r: OnboardingRow): Promise<Franchisee> => {
+    let email = "";
+    let phone = "";
+    if (r.candidate_id) {
+      const { data: cand } = await supabase
+        .from("candidates")
+        .select("email, phone")
+        .eq("id", r.candidate_id)
+        .maybeSingle();
+      email = cand?.email ?? "";
+      phone = cand?.phone ?? "";
+    }
     const stepData: Franchisee["stepData"] = {} as Franchisee["stepData"];
     STEPS.forEach((s) => {
       stepData[s.id] = {
@@ -61,8 +72,8 @@ const Onboarding = () => {
       name: r.franchisee_name,
       city: r.city,
       state: r.state,
-      email: "",
-      phone: "",
+      email,
+      phone,
       currentStep: Math.min(7, Math.max(1, r.current_step_index + 1)),
       daysElapsed: daysSince(r.created_at),
       status: (r.status === "completed" ? "on_track" : r.status) as Franchisee["status"],
@@ -77,6 +88,11 @@ const Onboarding = () => {
         { key: "awarded", name: "Congratulations / Franchise Awarded", triggerLabel: "After Step 6", sent: false },
         { key: "donut", name: "Donut Delivery Note + Onboarding Access", triggerLabel: "After Step 7", sent: false },
       ],
+      isLinked: !!r.candidate_id,
+      candidateDbId: r.candidate_id ?? undefined,
+      globalFiles: [],
+      globalNotes: "",
+      leadSource: "",
     };
   };
 
@@ -180,7 +196,7 @@ const Onboarding = () => {
                     <TableRow
                       key={r.id}
                       data-onboarding-id={r.id}
-                      onClick={() => setActiveFranchisee(buildFranchiseeFromRow(r))}
+                      onClick={async () => setActiveFranchisee(await buildFranchiseeFromRow(r))}
                       className="cursor-pointer"
                       style={isFlash ? { backgroundColor: "#fff3cd", transition: "background-color 0.6s ease" } : undefined}
                     >

@@ -89,6 +89,7 @@ const blank = (defaultOwner: string): FormState => ({
 
 export function NewCandidateModal({ open, onOpenChange, teamMembers, onCreated }: Props) {
   const { user } = useAuth();
+  const qc = useQueryClient();
   const [form, setForm] = useState<FormState>(blank(user?.email ?? ""));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -160,6 +161,7 @@ export function NewCandidateModal({ open, onOpenChange, teamMembers, onCreated }
     });
 
     setSubmitting(false);
+    qc.invalidateQueries({ queryKey: ["candidates"] });
     toast.success("Candidate added successfully");
     onCreated(inserted);
     reset();

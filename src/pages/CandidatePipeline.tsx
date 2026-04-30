@@ -688,23 +688,14 @@ const CandidatePipeline = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>
               {isChecklistGate
-                ? "Trial Close checklist not complete"
-                : isDisqMove
-                  ? `Disqualify ${pendingMove?.candidate.name}?`
-                  : `Move ${pendingMove?.candidate.name}?`}
+                ? "Checklist required for Confirmation"
+                : `Move ${pendingMove?.candidate.name}?`}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {isChecklistGate ? (
                 <>
-                  There {pendingIncompleteCount === 1 ? "is" : "are"}{" "}
-                  <strong>{pendingIncompleteCount}</strong> unchecked item
-                  {pendingIncompleteCount === 1 ? "" : "s"} on the Trial Close checklist for{" "}
-                  <strong>{pendingMove?.candidate.name}</strong>. Are you sure you want to move them into Confirmation?
-                </>
-              ) : isDisqMove ? (
-                <>
-                  This will mark the candidate as <strong>Disqualified</strong> and remove them from active stages.
-                  You can undo this immediately from the toast.
+                  All Trial Close items must be completed before moving this candidate into Confirmation.
+                  You can override in special cases.
                 </>
               ) : (
                 <>
@@ -718,9 +709,50 @@ const CandidatePipeline = () => {
             <AlertDialogAction
               onClick={confirmStageMove}
               className="text-white"
-              style={{ backgroundColor: isDisqMove || isChecklistGate ? "#dc3545" : "#003c7e" }}
+              style={{ backgroundColor: isChecklistGate ? "#dc3545" : "#003c7e" }}
             >
-              {isChecklistGate ? "Move anyway" : isDisqMove ? "Disqualify" : "Move"}
+              {isChecklistGate ? "Override & Move" : "Move"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Disqualification reason modal */}
+      <AlertDialog
+        open={!!disqualifyTarget}
+        onOpenChange={(v) => {
+          if (!v) {
+            setDisqualifyTarget(null);
+            setDisqualifyReason("");
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Disqualify {disqualifyTarget?.candidate.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Provide a short reason. This will be recorded in stage history.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-2">
+            <textarea
+              autoFocus
+              value={disqualifyReason}
+              onChange={(e) => setDisqualifyReason(e.target.value)}
+              placeholder="e.g. Insufficient capital, declined offer, lost interest…"
+              rows={3}
+              className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2"
+              style={{ borderColor: "#dee2e6" }}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={submitDisqualify}
+              className="text-white"
+              style={{ backgroundColor: "#dc3545" }}
+            >
+              Disqualify
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

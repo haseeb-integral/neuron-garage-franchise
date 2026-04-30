@@ -271,20 +271,39 @@ const CandidatePipeline = () => {
     const candidate = candidates.find((c) => c.id === id);
     if (!candidate) return;
     if (candidate.stage === toStage) return; // same column = no-op
+    const dbId = (candidate as any).dbId as string | undefined;
 
-    // Soft gate: moving INTO confirmation requires Trial Close checklist
-    let incomplete = 0;
-    if (toStage === "confirmation") {
-      const dbId = (candidate as any).dbId as string | undefined;
-      if (dbId) {
-        const { count } = await supabase
-          .from("candidate_checklist_items")
-          .select("id", { count: "exact", head: true })
-          .eq("candidate_id", dbId)
-          .eq("stage", "confirmation" as any)
-          .eq("is_completed", false);
-        incomplete = count ?? 0;
+    // Disqualified: open dedicated reason modal instead of generic confirm
+    if (toStage === "disqualified") {
+      setDisqualifyTarget({ candidate, fromStage: candidate.stage });
+      return;
+    }
+
+    // Signing prerequisite: must have passed through Confirmation at least once
+    if (toStage === "signing" && dbId) {
+      const { count, error } = await supabase
+        .from("candidate_stage_history")
+        .select("id", { count: "exact", head: true })
+        .eq("candidate_id", dbId)
+        .eq("to_stage", "confirmation" as any);
+      if (!error && (count ?? 0) === 0) {
+        toast.error("Signing requires Confirmation first", {
+          description: "To move a candidate to Signing, they must first pass through Confirmation.",
+        });
+        return;
       }
+    }
+
+    // Hard gate: moving INTO confirmation requires Trial Close checklist
+    let incomplete = 0;
+    if (toStage === "confirmation" && dbId) {
+      const { count } = await supabase
+        .from("candidate_checklist_items")
+        .select("id", { count: "exact", head: true })
+        .eq("candidate_id", dbId)
+        .eq("stage", "confirmation" as any)
+        .eq("is_completed", false);
+      incomplete = count ?? 0;
     }
     setPendingIncompleteCount(incomplete);
     setPendingMove({ candidate, fromStage: candidate.stage, toStage });

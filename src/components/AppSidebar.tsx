@@ -30,7 +30,7 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
   const [collapsed, setCollapsed] = useSidebarCollapsed();
 
   const isCollapsed = variant === "fixed" && collapsed;
-  const widthClass = isCollapsed ? "w-16" : "w-[280px]";
+  const widthClass = isCollapsed ? "w-16" : "w-[248px]";
 
   const isActive = (url: string) => {
     if (url === "/") return location.pathname === "/";
@@ -52,14 +52,14 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
         onClick={onNavigate}
         data-tour={withTour && "tourId" in item ? item.tourId : undefined}
         className={`group flex items-center rounded-xl transition-all ${
-          isCollapsed ? "justify-center px-0" : "gap-5 px-6"
+          isCollapsed ? "justify-center px-0" : "gap-4 px-4"
         }`}
         style={{
-          minHeight: isCollapsed ? 44 : 58,
+          minHeight: isCollapsed ? 42 : 50,
           backgroundColor: active ? "#0757ff" : "transparent",
           color: active ? "#ffffff" : "#14233b",
-          fontSize: isCollapsed ? 14 : 18,
-          fontWeight: active ? 700 : 500,
+          fontSize: isCollapsed ? 14 : 15,
+          fontWeight: active ? 700 : 550,
           boxShadow: active ? "0 8px 18px rgba(7, 87, 255, 0.14)" : "none",
         }}
         onMouseEnter={(e) => {
@@ -75,7 +75,7 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
           }
         }}
       >
-        <item.icon size={isCollapsed ? 19 : 26} strokeWidth={active ? 2.1 : 1.9} />
+        <item.icon size={isCollapsed ? 18 : 22} strokeWidth={active ? 2.1 : 1.9} />
         {!isCollapsed && <span className="whitespace-nowrap">{item.title}</span>}
       </NavLink>
     );
@@ -100,14 +100,14 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
           boxShadow: "8px 0 24px rgba(15, 23, 42, 0.025)",
         }}
       >
-        <div className={`flex items-start ${isCollapsed ? "flex-col gap-3 px-2 py-4" : "gap-3 px-7 pb-8 pt-7"}`}>
-          <div className={`flex items-center gap-3 ${isCollapsed ? "justify-center w-full" : "flex-1 min-w-0"}`}>
-            <img src={logo} alt="Neuron Garage" className={`${isCollapsed ? "h-9 w-9" : "h-14 w-14"} flex-shrink-0 object-contain`} />
+        <div className={`flex items-start ${isCollapsed ? "flex-col gap-3 px-2 py-4" : "gap-2 px-4 pb-6 pt-5"}`}>
+          <div className={`flex items-center gap-2.5 ${isCollapsed ? "justify-center w-full" : "flex-1 min-w-0"}`}>
+            <img src={logo} alt="Neuron Garage" className={`${isCollapsed ? "h-9 w-9" : "h-11 w-11"} flex-shrink-0 object-contain`} />
             {!isCollapsed && (
               <div className="min-w-0 leading-none">
-                <div className="text-[24px] font-black uppercase leading-[0.92] tracking-[0.08em] text-[#07142f]">Neuron</div>
-                <div className="text-[24px] font-black uppercase leading-[0.92] tracking-[0.08em] text-[#07142f]">Garage</div>
-                <div className="mt-2 text-[15px] font-bold uppercase leading-none tracking-[0.30em] text-[#0757ff]">Franchise</div>
+                <div className="text-[17px] font-black uppercase leading-[0.95] tracking-[0.08em] text-[#07142f]">Neuron</div>
+                <div className="text-[17px] font-black uppercase leading-[0.95] tracking-[0.08em] text-[#07142f]">Garage</div>
+                <div className="mt-1.5 text-[11px] font-bold uppercase leading-none tracking-[0.30em] text-[#0757ff]">Franchise</div>
               </div>
             )}
           </div>
@@ -118,8 +118,8 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
               title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
               className="flex items-center justify-center rounded-xl transition-colors flex-shrink-0"
               style={{
-                width: isCollapsed ? 34 : 50,
-                height: isCollapsed ? 34 : 50,
+                width: isCollapsed ? 34 : 38,
+                height: isCollapsed ? 34 : 38,
                 backgroundColor: "#ffffff",
                 border: "1px solid #d8e2ef",
                 color: "#14233b",
@@ -134,18 +134,18 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
                 e.currentTarget.style.color = "#14233b";
               }}
             >
-              {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={24} />}
+              {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={19} />}
             </button>
           )}
         </div>
 
-        <nav className={`flex flex-col ${isCollapsed ? "gap-2 px-2" : "gap-7 px-6"}`}>
+        <nav className={`flex flex-col ${isCollapsed ? "gap-2 px-2" : "gap-3 px-4"}`}>
           {primaryNavItems.map((item) => renderLink(item, true))}
         </nav>
 
-        <div className={`${isCollapsed ? "mx-3 my-5" : "mx-7 my-9"} h-px bg-[#d8e2ef]`} />
+        <div className={`${isCollapsed ? "mx-3 my-5" : "mx-4 my-6"} h-px bg-[#d8e2ef]`} />
 
-        <nav className={`flex flex-col ${isCollapsed ? "gap-2 px-2" : "gap-7 px-6"}`}>
+        <nav className={`flex flex-col ${isCollapsed ? "gap-2 px-2" : "gap-3 px-4"}`}>
           {utilityNavItems.map((item) => renderLink(item))}
         </nav>
       </aside>

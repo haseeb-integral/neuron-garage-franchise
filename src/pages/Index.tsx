@@ -59,18 +59,20 @@ const Dashboard = () => {
           <>
             <Button
               type="button"
-              className="h-10 rounded-xl bg-[#174be8] px-4 text-sm font-bold text-white shadow-sm hover:bg-[#0f3fd0]"
+              className="inline-flex h-9 items-center justify-center rounded-lg bg-[#174be8] px-4 text-sm font-bold leading-none text-white shadow-sm hover:bg-[#0f3fd0]"
+              style={{ minHeight: 36 }}
             >
-              <Download className="mr-2 h-4 w-4" />
-              Export Report
+              <Download className="mr-2 h-4 w-4 shrink-0" />
+              <span className="leading-none">Export Report</span>
             </Button>
             <Button
               type="button"
               variant="outline"
-              className="h-10 rounded-xl border-[#d8e2ef] bg-white px-4 text-sm font-semibold text-[#26364d] hover:bg-[#f3f7ff]"
+              className="inline-flex h-9 items-center justify-center rounded-lg border-[#d8e2ef] bg-white px-4 text-sm font-semibold leading-none text-[#26364d] hover:bg-[#f3f7ff]"
+              style={{ minHeight: 36 }}
             >
-              <CalendarDays className="mr-2 h-4 w-4 text-[#526078]" />
-              May 12 – Jun 11, 2026
+              <CalendarDays className="mr-2 h-4 w-4 shrink-0 text-[#526078]" />
+              <span className="leading-none">May 12 – Jun 11, 2026</span>
             </Button>
           </>
         }
@@ -78,11 +80,7 @@ const Dashboard = () => {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {kpis.map((stat) => (
-          <div
-            key={stat.title}
-            className="rounded-2xl bg-white p-4 shadow-sm"
-            style={{ border: "1px solid #d8e2ef" }}
-          >
+          <div key={stat.title} className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: "1px solid #d8e2ef" }}>
             <div className="flex items-center gap-4">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: stat.bg, color: stat.color }}>
                 <stat.icon size={26} />
@@ -93,9 +91,7 @@ const Dashboard = () => {
               </div>
             </div>
             <div className="mt-4 flex items-center gap-5 text-sm">
-              <span className="flex items-center gap-1 font-bold text-[#16a34a]">
-                <TrendingUp size={14} /> {stat.delta}
-              </span>
+              <span className="flex items-center gap-1 font-bold text-[#16a34a]"><TrendingUp size={14} /> {stat.delta}</span>
               <span className="text-[#526078]">{stat.compare}</span>
             </div>
           </div>
@@ -105,56 +101,29 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.05fr_1fr_1.12fr]">
         <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: "1px solid #d8e2ef" }}>
           <div className="mb-3 flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-black text-[#07142f]">Pipeline Snapshot</h2>
-              <p className="text-xs text-[#526078]">Candidates by stage</p>
-            </div>
+            <div><h2 className="text-lg font-black text-[#07142f]">Pipeline Snapshot</h2><p className="text-xs text-[#526078]">Candidates by stage</p></div>
             <Button variant="outline" className="h-8 rounded-lg border-[#d8e2ef] px-3 text-xs font-semibold">All Stages</Button>
           </div>
           <div className="space-y-2.5">
-            <div className="grid grid-cols-[130px_1fr_42px_46px] items-center gap-3 text-[11px] font-bold text-[#526078]">
-              <span>Stage</span>
-              <span />
-              <span className="text-right">Candidates</span>
-              <span className="text-right">% Total</span>
-            </div>
+            <div className="grid grid-cols-[130px_1fr_42px_46px] items-center gap-3 text-[11px] font-bold text-[#526078]"><span>Stage</span><span /><span className="text-right">Candidates</span><span className="text-right">% Total</span></div>
             {pipeline.map((p) => (
               <div key={p.stage} className="grid grid-cols-[130px_1fr_42px_46px] items-center gap-3 text-xs">
                 <span className="font-semibold text-[#26364d]">{p.stage}</span>
-                <div className="h-3 overflow-hidden rounded-full bg-[#edf1f6]">
-                  <div className="h-full rounded-full bg-[#174be8]" style={{ width: `${(p.count / maxPipeline) * 100}%` }} />
-                </div>
-                <span className="text-right font-bold text-[#07142f]">{p.count}</span>
-                <span className="text-right font-bold text-[#26364d]">{p.percent}%</span>
+                <div className="h-3 overflow-hidden rounded-full bg-[#edf1f6]"><div className="h-full rounded-full bg-[#174be8]" style={{ width: `${(p.count / maxPipeline) * 100}%` }} /></div>
+                <span className="text-right font-bold text-[#07142f]">{p.count}</span><span className="text-right font-bold text-[#26364d]">{p.percent}%</span>
               </div>
             ))}
-            <div className="mt-2 grid grid-cols-[130px_1fr_42px_46px] items-center gap-3 border-t border-[#eef2f6] pt-3 text-sm font-black text-[#07142f]">
-              <span>Total Candidates</span>
-              <span />
-              <span className="text-right">48</span>
-              <span className="text-right">100%</span>
-            </div>
+            <div className="mt-2 grid grid-cols-[130px_1fr_42px_46px] items-center gap-3 border-t border-[#eef2f6] pt-3 text-sm font-black text-[#07142f]"><span>Total Candidates</span><span /><span className="text-right">48</span><span className="text-right">100%</span></div>
           </div>
         </section>
 
         <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: "1px solid #d8e2ef" }}>
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-black text-[#07142f]">Recent Activity</h2>
-              <p className="text-xs text-[#526078]">Latest events across the system</p>
-            </div>
-            <button className="text-xs font-bold text-[#174be8] hover:underline">View All</button>
-          </div>
+          <div className="mb-3 flex items-start justify-between gap-3"><div><h2 className="text-lg font-black text-[#07142f]">Recent Activity</h2><p className="text-xs text-[#526078]">Latest events across the system</p></div><button className="text-xs font-bold text-[#174be8] hover:underline">View All</button></div>
           <div className="space-y-1">
             {recentActivity.map((evt, i) => (
               <div key={i} className="flex items-start gap-3 border-b border-[#eef2f6] py-2 last:border-b-0">
-                <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: evt.bg, color: evt.color }}>
-                  <evt.icon size={13} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-bold text-[#26364d]">{evt.text}</p>
-                  <p className="text-[11px] text-[#526078]">{evt.location}</p>
-                </div>
+                <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: evt.bg, color: evt.color }}><evt.icon size={13} /></div>
+                <div className="min-w-0 flex-1"><p className="truncate text-xs font-bold text-[#26364d]">{evt.text}</p><p className="text-[11px] text-[#526078]">{evt.location}</p></div>
                 <span className="shrink-0 text-[11px] text-[#526078]">{evt.time}</span>
               </div>
             ))}
@@ -165,26 +134,10 @@ const Dashboard = () => {
           <h2 className="mb-4 text-lg font-black text-[#07142f]">Next Best Actions</h2>
           <div className="space-y-1">
             {nextActions.map((action, i) => (
-              <button
-                key={i}
-                onClick={() => {
-                  if (i === 0) navigate("/candidate-pipeline");
-                  if (i === 1) navigate("/onboarding");
-                  if (i === 2) navigate("/city-scoring");
-                  if (i === 3) navigate("/teacher-prospects");
-                }}
-                className="flex w-full items-center gap-3 rounded-xl border-b border-[#eef2f6] px-1 py-3 text-left transition-colors last:border-b-0 hover:bg-[#f8fbff]"
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: action.bg, color: action.color }}>
-                  <action.icon size={18} />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-xs font-bold text-[#26364d]">{action.text}</span>
-                  <span className="block text-[11px] text-[#526078]">{action.sub}</span>
-                </span>
-                <span className="rounded-full px-3 py-1 text-xs font-bold" style={{ backgroundColor: action.pill, color: action.pillText }}>
-                  {action.priority}
-                </span>
+              <button key={i} onClick={() => { if (i === 0) navigate("/candidate-pipeline"); if (i === 1) navigate("/onboarding"); if (i === 2) navigate("/city-scoring"); if (i === 3) navigate("/teacher-prospects"); }} className="flex w-full items-center gap-3 rounded-xl border-b border-[#eef2f6] px-1 py-3 text-left transition-colors last:border-b-0 hover:bg-[#f8fbff]">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: action.bg, color: action.color }}><action.icon size={18} /></span>
+                <span className="min-w-0 flex-1"><span className="block truncate text-xs font-bold text-[#26364d]">{action.text}</span><span className="block text-[11px] text-[#526078]">{action.sub}</span></span>
+                <span className="rounded-full px-3 py-1 text-xs font-bold" style={{ backgroundColor: action.pill, color: action.pillText }}>{action.priority}</span>
                 <ArrowRight className="h-4 w-4 shrink-0 text-[#526078]" />
               </button>
             ))}
@@ -193,26 +146,13 @@ const Dashboard = () => {
       </div>
 
       <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: "1px solid #d8e2ef" }}>
-        <div className="mb-3 flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-black text-[#07142f]">Insights at a Glance</h2>
-            <p className="text-xs text-[#526078]">Key metrics over time</p>
-          </div>
-          <Button variant="outline" className="h-8 rounded-lg border-[#d8e2ef] px-3 text-xs font-semibold">Last 6 Months</Button>
-        </div>
+        <div className="mb-3 flex items-start justify-between gap-3"><div><h2 className="text-lg font-black text-[#07142f]">Insights at a Glance</h2><p className="text-xs text-[#526078]">Key metrics over time</p></div><Button variant="outline" className="h-8 rounded-lg border-[#d8e2ef] px-3 text-xs font-semibold">Last 6 Months</Button></div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {insights.map((item) => (
             <div key={item.title} className="border-r border-[#eef2f6] pr-4 last:border-r-0">
               <p className="text-xs font-semibold text-[#526078]">{item.title}</p>
-              <div className="mt-2 flex items-end gap-3">
-                <span className="text-2xl font-black text-[#07142f]">{item.value}</span>
-                <span className="flex items-center gap-1 text-xs font-bold text-[#16a34a]">
-                  <TrendingUp size={12} /> {item.delta}
-                </span>
-              </div>
-              <svg viewBox="0 0 120 34" className="mt-2 h-8 w-full text-[#174be8]" fill="none" aria-hidden="true">
-                <path d="M2 26 L18 23 L34 25 L50 18 L66 21 L82 8 L100 15 L118 13" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <div className="mt-2 flex items-end gap-3"><span className="text-2xl font-black text-[#07142f]">{item.value}</span><span className="flex items-center gap-1 text-xs font-bold text-[#16a34a]"><TrendingUp size={12} /> {item.delta}</span></div>
+              <svg viewBox="0 0 120 34" className="mt-2 h-8 w-full text-[#174be8]" fill="none" aria-hidden="true"><path d="M2 26 L18 23 L34 25 L50 18 L66 21 L82 8 L100 15 L118 13" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </div>
           ))}
         </div>

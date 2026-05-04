@@ -30,7 +30,7 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
   const [collapsed, setCollapsed] = useSidebarCollapsed();
 
   const isCollapsed = variant === "fixed" && collapsed;
-  const widthClass = isCollapsed ? "w-16" : "w-56";
+  const widthClass = isCollapsed ? "w-16" : "w-[280px]";
 
   const isActive = (url: string) => {
     if (url === "/") return location.pathname === "/";
@@ -51,31 +51,32 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
         end={item.url === "/"}
         onClick={onNavigate}
         data-tour={withTour && "tourId" in item ? item.tourId : undefined}
-        className={`group flex items-center rounded-lg text-sm transition-all ${
-          isCollapsed ? "justify-center px-0" : "gap-3 px-3"
+        className={`group flex items-center rounded-xl transition-all ${
+          isCollapsed ? "justify-center px-0" : "gap-5 px-6"
         }`}
         style={{
-          minHeight: 38,
-          backgroundColor: active ? "#0b4f9f" : "transparent",
-          color: active ? "#ffffff" : "#26364d",
+          minHeight: isCollapsed ? 44 : 58,
+          backgroundColor: active ? "#0757ff" : "transparent",
+          color: active ? "#ffffff" : "#14233b",
+          fontSize: isCollapsed ? 14 : 18,
           fontWeight: active ? 700 : 500,
-          boxShadow: active ? "0 6px 14px rgba(11, 79, 159, 0.10)" : "none",
+          boxShadow: active ? "0 8px 18px rgba(7, 87, 255, 0.14)" : "none",
         }}
         onMouseEnter={(e) => {
           if (!active) {
-            e.currentTarget.style.backgroundColor = "#f3f7ff";
-            e.currentTarget.style.color = "#0b4f9f";
+            e.currentTarget.style.backgroundColor = "#f7faff";
+            e.currentTarget.style.color = "#0757ff";
           }
         }}
         onMouseLeave={(e) => {
           if (!active) {
             e.currentTarget.style.backgroundColor = "transparent";
-            e.currentTarget.style.color = "#26364d";
+            e.currentTarget.style.color = "#14233b";
           }
         }}
       >
-        <item.icon size={17} />
-        {!isCollapsed && <span>{item.title}</span>}
+        <item.icon size={isCollapsed ? 19 : 26} strokeWidth={active ? 2.1 : 1.9} />
+        {!isCollapsed && <span className="whitespace-nowrap">{item.title}</span>}
       </NavLink>
     );
 
@@ -95,18 +96,18 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
         className={containerClass}
         style={{
           backgroundColor: "#ffffff",
-          borderRight: "1px solid #e3eaf3",
-          boxShadow: "6px 0 18px rgba(15, 23, 42, 0.025)",
+          borderRight: "1px solid #e4eaf3",
+          boxShadow: "8px 0 24px rgba(15, 23, 42, 0.025)",
         }}
       >
-        <div className={`py-4 flex items-start ${isCollapsed ? "flex-col gap-2 px-2" : "pl-3 pr-2 gap-2"}`}>
-          <div className={`flex items-center gap-2 ${isCollapsed ? "justify-center w-full" : "flex-1 min-w-0"}`}>
-            <img src={logo} alt="Neuron Garage" className="w-8 h-8 flex-shrink-0 object-contain" />
+        <div className={`flex items-start ${isCollapsed ? "flex-col gap-3 px-2 py-4" : "gap-3 px-7 pb-8 pt-7"}`}>
+          <div className={`flex items-center gap-3 ${isCollapsed ? "justify-center w-full" : "flex-1 min-w-0"}`}>
+            <img src={logo} alt="Neuron Garage" className={`${isCollapsed ? "h-9 w-9" : "h-14 w-14"} flex-shrink-0 object-contain`} />
             {!isCollapsed && (
               <div className="min-w-0 leading-none">
-                <div className="text-[13px] font-black uppercase tracking-[0.08em] text-[#07142f]">Neuron</div>
-                <div className="text-[13px] font-black uppercase tracking-[0.08em] text-[#07142f]">Garage</div>
-                <div className="mt-0.5 text-[9px] font-bold uppercase tracking-[0.30em] text-[#174be8]">Franchise</div>
+                <div className="text-[24px] font-black uppercase leading-[0.92] tracking-[0.08em] text-[#07142f]">Neuron</div>
+                <div className="text-[24px] font-black uppercase leading-[0.92] tracking-[0.08em] text-[#07142f]">Garage</div>
+                <div className="mt-2 text-[15px] font-bold uppercase leading-none tracking-[0.30em] text-[#0757ff]">Franchise</div>
               </div>
             )}
           </div>
@@ -115,35 +116,36 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
               onClick={() => setCollapsed(!collapsed)}
               aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
               title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              className="flex items-center justify-center rounded-lg transition-colors flex-shrink-0"
+              className="flex items-center justify-center rounded-xl transition-colors flex-shrink-0"
               style={{
-                width: 30,
-                height: 30,
+                width: isCollapsed ? 34 : 50,
+                height: isCollapsed ? 34 : 50,
                 backgroundColor: "#ffffff",
                 border: "1px solid #d8e2ef",
-                color: "#546179",
+                color: "#14233b",
+                boxShadow: "0 4px 10px rgba(15, 23, 42, 0.03)",
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "#f3f7ff";
-                e.currentTarget.style.color = "#0b4f9f";
+                e.currentTarget.style.backgroundColor = "#f7faff";
+                e.currentTarget.style.color = "#0757ff";
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.backgroundColor = "#ffffff";
-                e.currentTarget.style.color = "#546179";
+                e.currentTarget.style.color = "#14233b";
               }}
             >
-              {collapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
+              {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={24} />}
             </button>
           )}
         </div>
 
-        <nav className="flex flex-col gap-1 px-2.5">
+        <nav className={`flex flex-col ${isCollapsed ? "gap-2 px-2" : "gap-7 px-6"}`}>
           {primaryNavItems.map((item) => renderLink(item, true))}
         </nav>
 
-        <div className="mx-3 my-4 h-px bg-[#d8e2ef]" />
+        <div className={`${isCollapsed ? "mx-3 my-5" : "mx-7 my-9"} h-px bg-[#d8e2ef]`} />
 
-        <nav className="flex flex-col gap-1 px-2.5">
+        <nav className={`flex flex-col ${isCollapsed ? "gap-2 px-2" : "gap-7 px-6"}`}>
           {utilityNavItems.map((item) => renderLink(item))}
         </nav>
       </aside>

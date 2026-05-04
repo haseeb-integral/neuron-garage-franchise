@@ -20,11 +20,6 @@ interface PageHeaderProps {
   action?: ReactNode;
 }
 
-/**
- * Shared page header: top row for global search/account controls,
- * second row for page title/actions, then the journey bar.
- * Keeps existing GlobalSearch functionality intact.
- */
 export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
   const navigate = useNavigate();
   const { profile, user, role, signOut } = useAuth();
@@ -38,15 +33,15 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
 
   return (
     <>
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <div className="hidden md:block w-full max-w-[720px] [&_input]:h-10">
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <div className="hidden md:block w-full max-w-[690px] [&_input]:h-10">
           <GlobalSearch />
         </div>
 
         <div className="ml-auto flex items-center gap-3">
           <button
             type="button"
-            className="relative hidden h-9 w-9 items-center justify-center rounded-full border border-[#d8e2ef] bg-white text-[#526078] transition-colors hover:bg-[#f3f7ff] hover:text-[#0b4f9f] md:flex"
+            className="relative hidden h-9 w-9 items-center justify-center rounded-full border border-[#d8e2ef] bg-white text-[#526078] transition-colors hover:bg-[#f3f7ff] hover:text-[#174be8] md:flex"
             aria-label="Notifications"
           >
             <Bell size={17} />
@@ -59,7 +54,7 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
             onClick={() => startTour()}
             aria-label="Restart guided tour"
             title="Restart guided tour"
-            className="hidden h-9 w-9 items-center justify-center rounded-full border border-[#d8e2ef] bg-white text-[#526078] transition-colors hover:bg-[#f3f7ff] hover:text-[#0b4f9f] md:flex"
+            className="hidden h-9 w-9 items-center justify-center rounded-full border border-[#d8e2ef] bg-white text-[#526078] transition-colors hover:bg-[#f3f7ff] hover:text-[#174be8] md:flex"
           >
             <HelpCircle size={17} />
           </button>
@@ -108,7 +103,7 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
 
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
-          <h1 className="text-2xl md:text-[28px] font-black leading-tight tracking-tight" style={{ color: "#07142f" }}>
+          <h1 className="text-2xl md:text-[29px] font-black leading-tight tracking-tight" style={{ color: "#07142f" }}>
             {title}
           </h1>
           <p className="text-sm mt-0.5" style={{ color: "#526078" }}>
@@ -117,7 +112,7 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
         </div>
 
         {action && (
-          <div className="flex shrink-0 flex-wrap items-center gap-2 lg:flex-nowrap lg:justify-end [&_button]:h-10 [&_a]:h-10">
+          <div className="flex shrink-0 flex-wrap items-center gap-3 lg:flex-nowrap lg:justify-end [&_button]:h-10 [&_a]:h-10">
             {action}
           </div>
         )}

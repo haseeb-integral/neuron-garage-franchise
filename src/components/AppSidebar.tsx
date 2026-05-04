@@ -1,19 +1,10 @@
-import { Home, Map, Users, Kanban, ClipboardCheck, BookOpen, ChevronLeft, ChevronRight, LogOut, Settings, ChevronsUpDown } from "lucide-react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { Home, Map, Users, Kanban, ClipboardCheck, BookOpen, ChevronLeft, ChevronRight, Settings } from "lucide-react";
+import { NavLink, useLocation } from "react-router-dom";
 import logo from "@/assets/neuron-garage-logo.png";
-import { useAuth } from "@/contexts/AuthContext";
 import { useSidebarCollapsed } from "@/lib/sidebarState";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
-const navItems = [
+const primaryNavItems = [
   { title: "Dashboard", url: "/", icon: Home, tourId: "nav-dashboard" },
   { title: "City Scoring", url: "/city-scoring", icon: Map, tourId: "nav-city-scoring" },
   { title: "Teacher Prospects", url: "/teacher-prospects", icon: Users, tourId: "nav-teacher-prospects" },
@@ -21,26 +12,22 @@ const navItems = [
   { title: "Onboarding", url: "/onboarding", icon: ClipboardCheck, tourId: "nav-onboarding" },
 ];
 
-const footerItem = { title: "User's Guide", url: "/user-guide", icon: BookOpen };
+const utilityNavItems = [
+  { title: "Team Members", url: "/settings/team", icon: Users },
+  { title: "Settings", url: "/settings/team", icon: Settings },
+  { title: "User's Guide", url: "/user-guide", icon: BookOpen },
+];
 
 interface Props {
   variant?: "fixed" | "drawer";
   onNavigate?: () => void;
 }
 
+type NavItem = (typeof primaryNavItems)[number] | (typeof utilityNavItems)[number];
+
 export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
   const location = useLocation();
-  const navigate = useNavigate();
-  const { profile, user, role, signOut } = useAuth();
   const [collapsed, setCollapsed] = useSidebarCollapsed();
-
-  const handleLogout = async () => {
-    await signOut();
-    navigate("/auth", { replace: true });
-  };
-
-  const displayName = profile?.full_name || profile?.email || user?.email || "Account";
-  const initials = (displayName.match(/\b\w/g) || []).slice(0, 2).join("").toUpperCase() || "U";
 
   // Drawer (mobile) is always expanded
   const isCollapsed = variant === "fixed" && collapsed;
@@ -56,7 +43,7 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
       ? `fixed left-0 top-0 h-screen ${widthClass} flex flex-col z-40 transition-[width] duration-200`
       : "h-full w-full flex flex-col";
 
-  const renderLink = (item: typeof navItems[number] | typeof footerItem, withTour = false) => {
+  const renderLink = (item: NavItem, withTour = false) => {
     const active = isActive(item.url);
     const link = (
       <NavLink
@@ -64,21 +51,31 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
         to={item.url}
         end={item.url === "/"}
         onClick={onNavigate}
-        data-tour={withTour ? (item as typeof navItems[number]).tourId : undefined}
-        className={`group flex items-center rounded-lg text-sm transition-colors ${
+        data-tour={withTour && "tourId" in item ? item.tourId : undefined}
+        className={`group flex items-center rounded-xl text-sm transition-all ${
           isCollapsed ? "justify-center px-0" : "gap-3 px-3"
         }`}
         style={{
           minHeight: 44,
-          backgroundColor: active ? "rgba(255,255,255,0.10)" : "transparent",
-          borderLeft: active && !isCollapsed ? "3px solid #fd7e14" : "3px solid transparent",
-          color: active ? "#ffffff" : "rgba(255,255,255,0.60)",
-          fontWeight: active ? 600 : 400,
+          backgroundColor: active ? "#174be8" : "transparent",
+          color: active ? "#ffffff" : "#26364d",
+          fontWeight: active ? 700 : 500,
+          boxShadow: active ? "0 10px 20px rgba(23, 75, 232, 0.14)" : "none",
         }}
-        onMouseEnter={(e) => { if (!active) e.currentTarget.style.color = "rgba(255,255,255,0.85)"; }}
-        onMouseLeave={(e) => { if (!active) e.currentTarget.style.color = "rgba(255,255,255,0.60)"; }}
+        onMouseEnter={(e) => {
+          if (!active) {
+            e.currentTarget.style.backgroundColor = "#f3f7ff";
+            e.currentTarget.style.color = "#174be8";
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!active) {
+            e.currentTarget.style.backgroundColor = "transparent";
+            e.currentTarget.style.color = "#26364d";
+          }
+        }}
       >
-        <item.icon size={18} style={{ color: active && isCollapsed ? "#fd7e14" : undefined }} />
+        <item.icon size={18} />
         {!isCollapsed && <span>{item.title}</span>}
       </NavLink>
     );
@@ -95,12 +92,23 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
 
   return (
     <TooltipProvider>
-      <aside className={containerClass} style={{ backgroundColor: "#003c7e" }}>
-        <div className={`py-5 flex items-center ${isCollapsed ? "flex-col gap-3 px-2" : "pl-4 pr-2 gap-2"}`}>
-          <div className={`flex items-center gap-2 ${isCollapsed ? "" : "flex-1 min-w-0"}`}>
-            <img src={logo} alt="Neuron Garage" className="w-8 h-8 flex-shrink-0" />
+      <aside
+        className={containerClass}
+        style={{
+          backgroundColor: "#ffffff",
+          borderRight: "1px solid #e3eaf3",
+          boxShadow: "8px 0 24px rgba(15, 23, 42, 0.03)",
+        }}
+      >
+        <div className={`py-5 flex items-start ${isCollapsed ? "flex-col gap-3 px-2" : "pl-4 pr-3 gap-2"}`}>
+          <div className={`flex items-center gap-2 ${isCollapsed ? "justify-center w-full" : "flex-1 min-w-0"}`}>
+            <img src={logo} alt="Neuron Garage" className="w-10 h-10 flex-shrink-0 object-contain" />
             {!isCollapsed && (
-              <span className="text-white text-base font-bold tracking-tight truncate">Neuron Garage</span>
+              <div className="min-w-0 leading-none">
+                <div className="text-[15px] font-black uppercase tracking-[0.08em] text-[#07142f]">Neuron</div>
+                <div className="text-[15px] font-black uppercase tracking-[0.08em] text-[#07142f]">Garage</div>
+                <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.32em] text-[#174be8]">Franchise</div>
+              </div>
             )}
           </div>
           {variant === "fixed" && (
@@ -108,92 +116,37 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
               onClick={() => setCollapsed(!collapsed)}
               aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
               title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              className="flex items-center justify-center rounded-md transition-colors flex-shrink-0"
+              className="flex items-center justify-center rounded-xl transition-colors flex-shrink-0"
               style={{
-                width: 26,
-                height: 26,
-                backgroundColor: "rgba(255,255,255,0.06)",
-                color: "rgba(255,255,255,0.75)",
+                width: 34,
+                height: 34,
+                backgroundColor: "#ffffff",
+                border: "1px solid #d8e2ef",
+                color: "#546179",
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.16)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.06)"; }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "#f3f7ff";
+                e.currentTarget.style.color = "#174be8";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "#ffffff";
+                e.currentTarget.style.color = "#546179";
+              }}
             >
-              {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+              {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
             </button>
           )}
         </div>
 
-        <nav className="flex-1 flex flex-col gap-1 px-3">
-          {navItems.map((item) => renderLink(item, true))}
+        <nav className="flex flex-col gap-1 px-3">
+          {primaryNavItems.map((item) => renderLink(item, true))}
         </nav>
 
-        <div
-          className="px-3 pb-4 pt-2 mt-auto flex flex-col gap-1"
-          style={{ borderTop: "1px solid rgba(255,255,255,0.10)" }}
-        >
-          {renderLink(footerItem)}
+        <div className="mx-4 my-5 h-px bg-[#d8e2ef]" />
 
-          {/* User menu (dropdown) */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                aria-label="Open account menu"
-                className={`flex items-center rounded-lg mt-1 transition-colors w-full ${
-                  isCollapsed ? "justify-center p-2" : "gap-2 px-3 py-2"
-                }`}
-                style={{ backgroundColor: "rgba(255,255,255,0.05)" }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.10)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.05)"; }}
-              >
-                <div
-                  className="flex items-center justify-center rounded-full text-xs font-semibold flex-shrink-0"
-                  style={{ width: 28, height: 28, backgroundColor: "#fd7e14", color: "#fff" }}
-                >
-                  {initials}
-                </div>
-                {!isCollapsed && (
-                  <>
-                    <div className="min-w-0 flex-1 text-left">
-                      <div className="text-xs text-white truncate font-medium">{displayName}</div>
-                      {role && (
-                        <div className="text-[10px] uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.55)" }}>
-                          {role}
-                        </div>
-                      )}
-                    </div>
-                    <ChevronsUpDown size={14} style={{ color: "rgba(255,255,255,0.55)" }} />
-                  </>
-                )}
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent side="top" align="end" className="w-56">
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-sm font-medium truncate">{displayName}</span>
-                  {(profile?.email || user?.email) && (
-                    <span className="text-xs text-muted-foreground truncate">
-                      {profile?.email || user?.email}
-                    </span>
-                  )}
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {role === "admin" && (
-                <>
-                  <DropdownMenuItem onClick={() => { navigate("/settings/team"); onNavigate?.(); }}>
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Team members</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                </>
-              )}
-              <DropdownMenuItem onClick={handleLogout}>
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <nav className="flex flex-col gap-1 px-3">
+          {utilityNavItems.map((item) => renderLink(item))}
+        </nav>
       </aside>
     </TooltipProvider>
   );

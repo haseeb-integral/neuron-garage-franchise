@@ -17,9 +17,6 @@ export function JourneyBar() {
   const activePath = location.pathname;
 
   const { count: candidateCount } = useCandidateCount();
-
-  // City Scoring & Teacher Prospects still render from local mock data,
-  // so the journey bar mirrors that source until they get DB tables.
   const cityCount = sampleCities?.length ?? 10;
   const prospectCount = sampleTeachers?.length ?? 42;
 
@@ -38,43 +35,43 @@ export function JourneyBar() {
   return (
     <nav
       aria-label="Journey progress"
-      className="bg-white rounded-2xl px-3 py-2.5 md:px-4 mb-4 overflow-x-auto shadow-sm"
+      className="bg-white rounded-xl px-2.5 py-1.5 md:px-3 mb-3 overflow-x-auto shadow-sm"
       style={{ border: "1px solid #d8e2ef" }}
     >
-      <ol className="flex items-center justify-between gap-2 min-w-max">
+      <ol className="flex items-center justify-between gap-1.5 min-w-max">
         {steps.map((step, idx) => {
           const isActive = step.path === activePath;
           return (
-            <li key={step.num} className="flex flex-1 items-center gap-2">
+            <li key={step.num} className="flex flex-1 items-center gap-1.5">
               <button
                 onClick={() => navigate(step.path)}
-                className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl transition-colors hover:bg-[#f3f7ff]"
-                style={{ minHeight: 36 }}
+                className="flex items-center gap-2 px-2 py-1 rounded-lg transition-colors hover:bg-[#f3f7ff]"
+                style={{ minHeight: 30 }}
                 aria-current={isActive ? "step" : undefined}
               >
                 <span
-                  className="flex items-center justify-center rounded-full text-xs font-bold"
+                  className="flex items-center justify-center rounded-full text-[11px] font-bold"
                   style={{
-                    width: 24,
-                    height: 24,
+                    width: 21,
+                    height: 21,
                     backgroundColor: isActive ? "#eaf1ff" : "#eef2f6",
-                    color: isActive ? "#174be8" : "#526078",
+                    color: isActive ? "#0b4f9f" : "#526078",
                     border: isActive ? "1px solid #bfd3ff" : "1px solid transparent",
                   }}
                 >
                   {step.num}
                 </span>
                 <span
-                  className="text-xs md:text-sm whitespace-nowrap"
+                  className="text-xs whitespace-nowrap"
                   style={{
-                    color: isActive ? "#174be8" : "#26364d",
+                    color: isActive ? "#0b4f9f" : "#26364d",
                     fontWeight: isActive ? 800 : 650,
                   }}
                 >
                   {step.label}
                 </span>
                 <span
-                  className="text-[11px] font-semibold rounded-full px-2 py-0.5 whitespace-nowrap"
+                  className="text-[10px] font-semibold rounded-full px-1.5 py-0.5 whitespace-nowrap"
                   style={{
                     backgroundColor: step.label === "Onboarding" && step.count === "Active" ? "#e7f7ed" : "#eef2f6",
                     color: step.label === "Onboarding" && step.count === "Active" ? "#16834a" : "#344256",
@@ -84,7 +81,7 @@ export function JourneyBar() {
                 </span>
               </button>
               {idx < steps.length - 1 && (
-                <ChevronRight size={16} style={{ color: "#8e9aab" }} aria-hidden="true" />
+                <ChevronRight size={14} style={{ color: "#8e9aab" }} aria-hidden="true" />
               )}
             </li>
           );

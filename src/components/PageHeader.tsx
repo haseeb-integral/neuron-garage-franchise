@@ -21,8 +21,8 @@ interface PageHeaderProps {
 }
 
 /**
- * Shared page header: global search + account controls, then title/action row + JourneyBar.
- * Keeps existing GlobalSearch functionality while giving the app a consistent modern shell.
+ * Shared page header: compact title/action row + global search/account controls + JourneyBar.
+ * Keeps existing GlobalSearch functionality while preserving a dense dashboard view.
  */
 export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
   const navigate = useNavigate();
@@ -37,18 +37,31 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
 
   return (
     <>
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <div className="hidden md:block w-full max-w-[720px]">
-          <GlobalSearch />
+      <div className="mb-3 flex items-start justify-between gap-4">
+        <div className="min-w-0 pt-1">
+          <h1 className="text-2xl md:text-[28px] font-black leading-tight tracking-tight" style={{ color: "#07142f" }}>
+            {title}
+          </h1>
+          <p className="text-sm mt-0.5" style={{ color: "#526078" }}>
+            {subtitle}
+          </p>
         </div>
-        <div className="ml-auto flex items-center gap-3">
+        <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+          <div className="hidden md:block w-full max-w-[420px] lg:max-w-[500px] xl:max-w-[560px] [&_input]:h-9">
+            <GlobalSearch />
+          </div>
+          {action && (
+            <div className="flex items-center gap-2 shrink-0 flex-wrap lg:flex-nowrap [&_button]:h-9 [&_a]:h-9">
+              {action}
+            </div>
+          )}
           <button
             type="button"
-            className="relative hidden h-9 w-9 items-center justify-center rounded-full border border-[#d8e2ef] bg-white text-[#526078] transition-colors hover:bg-[#f3f7ff] hover:text-[#174be8] md:flex"
+            className="relative hidden h-8 w-8 items-center justify-center rounded-full border border-[#d8e2ef] bg-white text-[#526078] transition-colors hover:bg-[#f3f7ff] hover:text-[#0b4f9f] md:flex"
             aria-label="Notifications"
           >
-            <Bell size={17} />
-            <span className="absolute -right-0.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#174be8] px-1 text-[10px] font-bold text-white">
+            <Bell size={15} />
+            <span className="absolute -right-0.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#0b4f9f] px-1 text-[10px] font-bold text-white">
               3
             </span>
           </button>
@@ -56,19 +69,19 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
             onClick={() => startTour()}
             aria-label="Restart guided tour"
             title="Restart guided tour"
-            className="hidden h-9 w-9 items-center justify-center rounded-full border border-[#d8e2ef] bg-white text-[#526078] transition-colors hover:bg-[#f3f7ff] hover:text-[#174be8] md:flex"
+            className="hidden h-8 w-8 items-center justify-center rounded-full border border-[#d8e2ef] bg-white text-[#526078] transition-colors hover:bg-[#f3f7ff] hover:text-[#0b4f9f] md:flex"
           >
-            <HelpCircle size={17} />
+            <HelpCircle size={15} />
           </button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 rounded-full px-2 py-1 transition-colors hover:bg-[#f3f7ff]" aria-label="Open account menu">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#174be8] text-sm font-bold text-white">
+              <button className="flex items-center gap-2 rounded-full px-1.5 py-0.5 transition-colors hover:bg-[#f3f7ff]" aria-label="Open account menu">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0b4f9f] text-sm font-bold text-white">
                   {initials}
                 </span>
                 <span className="hidden text-left md:block">
                   <span className="block text-sm font-bold leading-4 text-[#07142f]">{displayName.split("@")[0]}</span>
-                  {role && <span className="block text-[11px] uppercase leading-4 tracking-wide text-[#526078]">{role}</span>}
+                  {role && <span className="block text-[10px] uppercase leading-3 tracking-wide text-[#526078]">{role}</span>}
                 </span>
               </button>
             </DropdownMenuTrigger>
@@ -100,22 +113,6 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-      </div>
-
-      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3 mb-4">
-        <div className="min-w-0">
-          <h1 className="text-2xl md:text-3xl font-black tracking-tight" style={{ color: "#07142f" }}>
-            {title}
-          </h1>
-          <p className="text-sm mt-1" style={{ color: "#526078" }}>
-            {subtitle}
-          </p>
-        </div>
-        {action && (
-          <div className="flex items-center gap-2 shrink-0 flex-wrap lg:flex-nowrap lg:justify-end [&_button]:h-10 [&_a]:h-10">
-            {action}
-          </div>
-        )}
       </div>
       <JourneyBar />
     </>

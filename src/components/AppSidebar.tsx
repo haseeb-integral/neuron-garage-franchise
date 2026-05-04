@@ -52,14 +52,14 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
         onClick={onNavigate}
         data-tour={withTour && "tourId" in item ? item.tourId : undefined}
         className={`group flex items-center rounded-xl transition-all ${
-          isCollapsed ? "justify-center px-0" : "gap-4 px-4"
+          isCollapsed ? "justify-center px-0" : "gap-3.5 px-4"
         }`}
         style={{
-          minHeight: isCollapsed ? 42 : 50,
+          minHeight: isCollapsed ? 42 : 48,
           backgroundColor: active ? "#0757ff" : "transparent",
           color: active ? "#ffffff" : "#14233b",
-          fontSize: isCollapsed ? 14 : 15,
-          fontWeight: active ? 700 : 550,
+          fontSize: isCollapsed ? 14 : 14,
+          fontWeight: active ? 700 : 500,
           boxShadow: active ? "0 8px 18px rgba(7, 87, 255, 0.14)" : "none",
         }}
         onMouseEnter={(e) => {
@@ -75,7 +75,7 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
           }
         }}
       >
-        <item.icon size={isCollapsed ? 18 : 22} strokeWidth={active ? 2.1 : 1.9} />
+        <item.icon size={isCollapsed ? 18 : 20} strokeWidth={active ? 2.1 : 1.9} />
         {!isCollapsed && <span className="whitespace-nowrap">{item.title}</span>}
       </NavLink>
     );

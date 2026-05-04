@@ -57,23 +57,22 @@ const Dashboard = () => {
         subtitle="Overview of your franchise acquisition and onboarding performance."
         action={
           <>
-            <Button
+            <button
               type="button"
-              className="inline-flex h-9 items-center justify-center rounded-lg bg-[#174be8] px-4 text-sm font-bold leading-none text-white shadow-sm hover:bg-[#0f3fd0]"
-              style={{ minHeight: 36 }}
+              className="inline-flex items-center justify-center bg-[#174be8] font-semibold text-white shadow-sm transition-colors hover:bg-[#0f3fd0]"
+              style={{ height: 34, minHeight: 34, paddingLeft: 18, paddingRight: 18, borderRadius: 8, fontSize: 13, lineHeight: "13px" }}
             >
-              <Download className="mr-2 h-4 w-4 shrink-0" />
-              <span className="leading-none">Export Report</span>
-            </Button>
-            <Button
+              <Download className="mr-2 shrink-0" size={15} />
+              <span>Export Report</span>
+            </button>
+            <button
               type="button"
-              variant="outline"
-              className="inline-flex h-9 items-center justify-center rounded-lg border-[#d8e2ef] bg-white px-4 text-sm font-semibold leading-none text-[#26364d] hover:bg-[#f3f7ff]"
-              style={{ minHeight: 36 }}
+              className="inline-flex items-center justify-center border border-[#d8e2ef] bg-white font-semibold text-[#26364d] transition-colors hover:bg-[#f3f7ff]"
+              style={{ height: 34, minHeight: 34, paddingLeft: 16, paddingRight: 16, borderRadius: 8, fontSize: 13, lineHeight: "13px" }}
             >
-              <CalendarDays className="mr-2 h-4 w-4 shrink-0 text-[#526078]" />
-              <span className="leading-none">May 12 – Jun 11, 2026</span>
-            </Button>
+              <CalendarDays className="mr-2 shrink-0 text-[#526078]" size={15} />
+              <span>May 12 – Jun 11, 2026</span>
+            </button>
           </>
         }
       />

@@ -41,11 +41,12 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
         <div className="ml-auto flex items-center gap-3">
           <button
             type="button"
-            className="relative hidden h-9 w-9 items-center justify-center rounded-full border border-[#d8e2ef] bg-white text-[#526078] transition-colors hover:bg-[#f3f7ff] hover:text-[#174be8] md:flex"
+            className="relative hidden items-center justify-center rounded-full border border-[#d8e2ef] bg-white text-[#526078] transition-colors hover:bg-[#f3f7ff] hover:text-[#174be8] md:flex"
             aria-label="Notifications"
+            style={{ width: 34, height: 34, minWidth: 34, minHeight: 34 }}
           >
-            <Bell size={17} />
-            <span className="absolute -right-0.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#174be8] px-1 text-[10px] font-bold text-white">
+            <Bell size={16} />
+            <span className="absolute -right-0.5 -top-1 flex min-w-4 items-center justify-center rounded-full bg-[#174be8] px-1 text-[10px] font-bold text-white" style={{ height: 16 }}>
               3
             </span>
           </button>
@@ -54,15 +55,16 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
             onClick={() => startTour()}
             aria-label="Restart guided tour"
             title="Restart guided tour"
-            className="hidden h-9 w-9 items-center justify-center rounded-full border border-[#d8e2ef] bg-white text-[#526078] transition-colors hover:bg-[#f3f7ff] hover:text-[#174be8] md:flex"
+            className="hidden items-center justify-center rounded-full border border-[#d8e2ef] bg-white text-[#526078] transition-colors hover:bg-[#f3f7ff] hover:text-[#174be8] md:flex"
+            style={{ width: 34, height: 34, minWidth: 34, minHeight: 34 }}
           >
-            <HelpCircle size={17} />
+            <HelpCircle size={16} />
           </button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-2 rounded-full px-2 py-1 transition-colors hover:bg-[#f3f7ff]" aria-label="Open account menu">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#174be8] text-sm font-bold text-white">
+                <span className="flex items-center justify-center rounded-full bg-[#174be8] text-sm font-bold text-white" style={{ width: 34, height: 34, minWidth: 34, minHeight: 34 }}>
                   {initials}
                 </span>
                 <span className="hidden text-left md:block">
@@ -112,7 +114,7 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
         </div>
 
         {action && (
-          <div className="flex shrink-0 flex-wrap items-center gap-3 lg:flex-nowrap lg:justify-end [&_button]:h-10 [&_a]:h-10">
+          <div className="flex shrink-0 flex-wrap items-center gap-3 lg:flex-nowrap lg:justify-end">
             {action}
           </div>
         )}

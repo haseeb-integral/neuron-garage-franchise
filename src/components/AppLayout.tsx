@@ -22,7 +22,7 @@ export function AppLayout() {
   }, []);
 
   return (
-    <div className="min-h-screen flex bg-[#f5f8fc]">
+    <div className="min-h-screen flex bg-white">
       <div className="hidden md:block">
         <AppSidebar />
       </div>
@@ -35,7 +35,7 @@ export function AppLayout() {
       </Sheet>
 
       <main
-        className={`flex-1 min-h-screen ${collapsed ? "md:ml-16" : "md:ml-56"} transition-[margin] duration-200`}
+        className={`flex-1 min-h-screen bg-white ${collapsed ? "md:ml-16" : "md:ml-56"} transition-[margin] duration-200`}
       >
         <div className="md:hidden flex items-center justify-between px-4 py-3 border-b bg-white border-[#d8e2ef]">
           <button
@@ -60,7 +60,7 @@ export function AppLayout() {
           </button>
         </div>
 
-        <div className="p-3 md:p-4 lg:p-5">
+        <div className="p-3 md:px-7 md:py-4 lg:px-8 lg:py-5">
           <Outlet key={location.pathname} />
         </div>
       </main>

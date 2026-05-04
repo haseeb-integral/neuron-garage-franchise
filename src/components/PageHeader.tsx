@@ -1,8 +1,8 @@
 import { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
+import { ChevronDown, HelpCircle, LogOut, Settings, Bell } from "lucide-react";
 import { JourneyBar } from "@/components/JourneyBar";
 import { GlobalSearch } from "@/components/GlobalSearch";
-import { HelpCircle, LogOut, Settings, Bell } from "lucide-react";
 import { startTour } from "@/lib/tour";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -34,19 +34,19 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
   return (
     <>
       <div className="mb-5 flex items-center justify-between gap-4">
-        <div className="hidden md:block w-full max-w-[690px] [&_input]:h-10">
+        <div className="hidden md:block w-full max-w-[760px]">
           <GlobalSearch />
         </div>
 
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-4">
           <button
             type="button"
-            className="relative hidden items-center justify-center rounded-full border border-[#d8e2ef] bg-white text-[#526078] transition-colors hover:bg-[#f3f7ff] hover:text-[#174be8] md:flex"
+            className="relative hidden items-center justify-center rounded-full bg-white text-[#526078] transition-colors hover:bg-[#f3f7ff] hover:text-[#174be8] md:flex"
             aria-label="Notifications"
-            style={{ width: 34, height: 34, minWidth: 34, minHeight: 34 }}
+            style={{ width: 32, height: 32, minWidth: 32, minHeight: 32 }}
           >
-            <Bell size={16} />
-            <span className="absolute -right-0.5 -top-1 flex min-w-4 items-center justify-center rounded-full bg-[#174be8] px-1 text-[10px] font-bold text-white" style={{ height: 16 }}>
+            <Bell size={18} strokeWidth={1.9} />
+            <span className="absolute -right-1 -top-1 flex items-center justify-center rounded-full bg-[#174be8] text-[10px] font-bold text-white" style={{ width: 17, height: 17 }}>
               3
             </span>
           </button>
@@ -55,22 +55,23 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
             onClick={() => startTour()}
             aria-label="Restart guided tour"
             title="Restart guided tour"
-            className="hidden items-center justify-center rounded-full border border-[#d8e2ef] bg-white text-[#526078] transition-colors hover:bg-[#f3f7ff] hover:text-[#174be8] md:flex"
-            style={{ width: 34, height: 34, minWidth: 34, minHeight: 34 }}
+            className="hidden items-center justify-center rounded-full bg-white text-[#526078] transition-colors hover:bg-[#f3f7ff] hover:text-[#174be8] md:flex"
+            style={{ width: 32, height: 32, minWidth: 32, minHeight: 32 }}
           >
-            <HelpCircle size={16} />
+            <HelpCircle size={18} strokeWidth={1.9} />
           </button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 rounded-full px-2 py-1 transition-colors hover:bg-[#f3f7ff]" aria-label="Open account menu">
-                <span className="flex items-center justify-center rounded-full bg-[#174be8] text-sm font-bold text-white" style={{ width: 34, height: 34, minWidth: 34, minHeight: 34 }}>
+              <button className="flex items-center gap-2.5 rounded-full px-1.5 py-1 transition-colors hover:bg-[#f3f7ff]" aria-label="Open account menu">
+                <span className="flex items-center justify-center rounded-full bg-[#174be8] text-sm font-bold text-white" style={{ width: 36, height: 36, minWidth: 36, minHeight: 36 }}>
                   {initials}
                 </span>
                 <span className="hidden text-left md:block">
                   <span className="block text-sm font-bold leading-4 text-[#07142f]">{displayName.split("@")[0]}</span>
                   {role && <span className="block text-[11px] uppercase leading-4 tracking-wide text-[#526078]">{role}</span>}
                 </span>
+                <ChevronDown className="hidden h-4 w-4 text-[#526078] md:block" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent side="bottom" align="end" className="w-56">

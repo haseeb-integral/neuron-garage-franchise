@@ -33,7 +33,6 @@ export function GlobalSearch() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
 
-  // Close on outside click (account for portal-rendered dropdown)
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       const t = e.target as Node;
@@ -46,7 +45,6 @@ export function GlobalSearch() {
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  // Position the dropdown under the input (fixed), and reposition on scroll/resize
   useLayoutEffect(() => {
     if (!open) return;
     const update = () => {
@@ -64,7 +62,6 @@ export function GlobalSearch() {
     };
   }, [open]);
 
-  // Debounced DB candidate search
   useEffect(() => {
     const q = query.trim();
     if (!q) {
@@ -89,8 +86,7 @@ export function GlobalSearch() {
     if (!q) return null;
 
     const candidateMatches: ResultItem[] = dbCandidates.map((c) => {
-      const stageLabel =
-        STAGES.find((s) => s.id === (c.current_stage as any))?.short ?? c.current_stage;
+      const stageLabel = STAGES.find((s) => s.id === (c.current_stage as any))?.short ?? c.current_stage;
       const name = `${c.first_name} ${c.last_name}`.trim();
       const loc = [c.city, c.state].filter(Boolean).join(", ");
       return {
@@ -101,7 +97,6 @@ export function GlobalSearch() {
       };
     });
 
-    // De-dupe teacher prospects whose name already appears as a candidate
     const candNames = new Set(candidateMatches.map((c) => c.label.toLowerCase()));
 
     const prospectMatches: ResultItem[] = sampleTeachers
@@ -115,10 +110,7 @@ export function GlobalSearch() {
       }));
 
     const cityMatches: ResultItem[] = sampleCities
-      .filter(
-        (c) =>
-          c.city.toLowerCase().includes(q) || c.state.toLowerCase().includes(q),
-      )
+      .filter((c) => c.city.toLowerCase().includes(q) || c.state.toLowerCase().includes(q))
       .slice(0, 5)
       .map((c) => ({
         key: `city-${c.id}`,
@@ -130,9 +122,7 @@ export function GlobalSearch() {
     return { candidateMatches, prospectMatches, cityMatches };
   }, [query, dbCandidates, navigate]);
 
-  const totalCount = groups
-    ? groups.candidateMatches.length + groups.prospectMatches.length + groups.cityMatches.length
-    : 0;
+  const totalCount = groups ? groups.candidateMatches.length + groups.prospectMatches.length + groups.cityMatches.length : 0;
 
   const handleSelect = (item: ResultItem) => {
     item.onSelect();
@@ -140,65 +130,49 @@ export function GlobalSearch() {
     setOpen(false);
   };
 
-  const dropdown =
-    open && query.trim() && pos
-      ? createPortal(
-          <div
-            id="global-search-dropdown"
-            className="rounded-md shadow-lg overflow-hidden"
-            style={{
-              position: "fixed",
-              top: pos.top,
-              left: pos.left,
-              width: pos.width,
-              maxHeight: "min(60vh, 480px)",
-              backgroundColor: "#ffffff",
-              border: "1px solid #dee2e6",
-              zIndex: 9999,
-              display: "flex",
-              flexDirection: "column",
-            }}
-          >
-            {loading && (!groups || totalCount === 0) ? (
-              <div
-                className="px-3 py-4 text-sm text-center flex items-center justify-center gap-2"
-                style={{ color: "#6c757d" }}
-              >
-                <Loader2 size={14} className="animate-spin" />
-                Searching…
-              </div>
-            ) : !groups || totalCount === 0 ? (
-              <div className="px-3 py-4 text-sm text-center" style={{ color: "#6c757d" }}>
-                No results for "{query}"
-              </div>
-            ) : (
-              <div className="overflow-y-auto py-1" style={{ flex: 1 }}>
-                <ResultGroup
-                  title="Candidates"
-                  items={groups.candidateMatches}
-                  onSelect={handleSelect}
-                />
-                <ResultGroup
-                  title="Teacher Prospects"
-                  items={groups.prospectMatches}
-                  onSelect={handleSelect}
-                />
-                <ResultGroup title="Cities" items={groups.cityMatches} onSelect={handleSelect} />
-              </div>
-            )}
-          </div>,
-          document.body,
-        )
-      : null;
+  const dropdown = open && query.trim() && pos
+    ? createPortal(
+        <div
+          id="global-search-dropdown"
+          className="rounded-xl shadow-lg overflow-hidden"
+          style={{
+            position: "fixed",
+            top: pos.top,
+            left: pos.left,
+            width: pos.width,
+            maxHeight: "min(60vh, 480px)",
+            backgroundColor: "#ffffff",
+            border: "1px solid #d8e2ef",
+            zIndex: 9999,
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          {loading && (!groups || totalCount === 0) ? (
+            <div className="px-3 py-4 text-sm text-center flex items-center justify-center gap-2" style={{ color: "#6c757d" }}>
+              <Loader2 size={14} className="animate-spin" />
+              Searching…
+            </div>
+          ) : !groups || totalCount === 0 ? (
+            <div className="px-3 py-4 text-sm text-center" style={{ color: "#6c757d" }}>
+              No results for "{query}"
+            </div>
+          ) : (
+            <div className="overflow-y-auto py-1" style={{ flex: 1 }}>
+              <ResultGroup title="Candidates" items={groups.candidateMatches} onSelect={handleSelect} />
+              <ResultGroup title="Teacher Prospects" items={groups.prospectMatches} onSelect={handleSelect} />
+              <ResultGroup title="Cities" items={groups.cityMatches} onSelect={handleSelect} />
+            </div>
+          )}
+        </div>,
+        document.body,
+      )
+    : null;
 
   return (
-    <div ref={containerRef} className="relative w-full max-w-[440px]">
+    <div ref={containerRef} className="relative w-full">
       <div className="relative">
-        <Search
-          size={16}
-          className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-          style={{ color: "#6c757d" }}
-        />
+        <Search size={17} className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#6c757d" }} />
         <input
           ref={inputRef}
           type="text"
@@ -214,13 +188,14 @@ export function GlobalSearch() {
               (e.currentTarget as HTMLInputElement).blur();
             }
           }}
-          placeholder="Search candidates, prospects, cities…"
-          className="w-full h-9 rounded-md py-0 pl-9 pr-3 text-sm focus:outline-none focus:ring-2"
+          placeholder="Search candidates, prospects, cities, teachers..."
+          className="w-full rounded-xl py-0 pl-11 pr-4 text-sm focus:outline-none focus:ring-2"
           style={{
-            backgroundColor: "#f8f9fa",
-            border: "1px solid #dee2e6",
+            height: 40,
+            backgroundColor: "#ffffff",
+            border: "1px solid #d8e2ef",
             color: "#212529",
-            ["--tw-ring-color" as never]: "#003c7e",
+            ["--tw-ring-color" as never]: "#174be8",
           }}
         />
       </div>
@@ -229,36 +204,17 @@ export function GlobalSearch() {
   );
 }
 
-function ResultGroup({
-  title,
-  items,
-  onSelect,
-}: {
-  title: string;
-  items: ResultItem[];
-  onSelect: (i: ResultItem) => void;
-}) {
+function ResultGroup({ title, items, onSelect }: { title: string; items: ResultItem[]; onSelect: (i: ResultItem) => void }) {
   if (items.length === 0) return null;
   return (
     <div className="py-1">
-      <div
-        className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wide"
-        style={{ color: "#6c757d" }}
-      >
+      <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wide" style={{ color: "#6c757d" }}>
         {title}
       </div>
       {items.map((item) => (
-        <button
-          key={item.key}
-          onClick={() => onSelect(item)}
-          className="w-full text-left px-3 py-2 hover:bg-[#f1f3f5] flex flex-col"
-        >
-          <span className="text-sm font-medium" style={{ color: "#212529" }}>
-            {item.label}
-          </span>
-          <span className="text-xs" style={{ color: "#6c757d" }}>
-            {item.sub}
-          </span>
+        <button key={item.key} onClick={() => onSelect(item)} className="w-full text-left px-3 py-2 hover:bg-[#f1f3f5] flex flex-col">
+          <span className="text-sm font-medium" style={{ color: "#212529" }}>{item.label}</span>
+          <span className="text-xs" style={{ color: "#6c757d" }}>{item.sub}</span>
         </button>
       ))}
     </div>

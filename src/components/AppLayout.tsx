@@ -28,14 +28,14 @@ export function AppLayout() {
       </div>
 
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="left" className="p-0 w-[280px] border-r-0 bg-white">
+        <SheetContent side="left" className="p-0 w-[248px] border-r-0 bg-white">
           <SheetTitle className="sr-only">Navigation</SheetTitle>
           <AppSidebar variant="drawer" onNavigate={closeDrawer} />
         </SheetContent>
       </Sheet>
 
       <main
-        className={`flex-1 min-h-screen bg-white ${collapsed ? "md:ml-16" : "md:ml-[280px]"} transition-[margin] duration-200`}
+        className={`flex-1 min-h-screen bg-white ${collapsed ? "md:ml-16" : "md:ml-[248px]"} transition-[margin] duration-200`}
       >
         <div className="md:hidden flex items-center justify-between px-4 py-3 border-b bg-white border-[#d8e2ef]">
           <button

@@ -617,26 +617,28 @@ const CityScoring = () => {
             </Button>
           </div>
 
-          <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
+          <div className="rounded-lg bg-white border border-[#eef2f7] p-3 flex-1">
             <h4 className="text-xs font-bold text-[#07142f] mb-2">Market Snapshot</h4>
-            <div
-              className="relative h-28 rounded border border-[#eef2f7] mb-2 overflow-hidden"
-              style={{
-                backgroundColor: "#f1f6fc",
-                backgroundImage:
-                  "linear-gradient(to right, #e3ecf7 1px, transparent 1px), linear-gradient(to bottom, #e3ecf7 1px, transparent 1px)",
-                backgroundSize: "16px 16px",
-              }}
-            >
-              <MapPin size={16} className="absolute text-[#174be8]" style={{ top: "30%", left: "40%" }} fill="#174be8" />
-              <MapPin size={12} className="absolute text-[#0ea66e]" style={{ top: "55%", left: "22%" }} fill="#0ea66e" />
-              <MapPin size={12} className="absolute text-[#0ea66e]" style={{ top: "20%", left: "65%" }} fill="#0ea66e" />
-              <MapPin size={12} className="absolute text-[#e11d48]" style={{ top: "65%", left: "70%" }} fill="#e11d48" />
-            </div>
-            <div className="space-y-1 text-[10px] text-[#14233b]">
-              <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#174be8]" /> Selected Market</div>
-              <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#0ea66e]" /> Nearby Markets</div>
-              <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#e11d48]" /> Higher Competition</div>
+            <div className="grid grid-cols-[1fr_auto] gap-3 items-center">
+              <div
+                className="relative h-24 rounded border border-[#eef2f7] overflow-hidden"
+                style={{
+                  backgroundColor: "#f1f6fc",
+                  backgroundImage:
+                    "linear-gradient(to right, #e3ecf7 1px, transparent 1px), linear-gradient(to bottom, #e3ecf7 1px, transparent 1px)",
+                  backgroundSize: "16px 16px",
+                }}
+              >
+                <MapPin size={16} className="absolute text-[#174be8]" style={{ top: "30%", left: "40%" }} fill="#174be8" />
+                <MapPin size={12} className="absolute text-[#0ea66e]" style={{ top: "55%", left: "22%" }} fill="#0ea66e" />
+                <MapPin size={12} className="absolute text-[#0ea66e]" style={{ top: "20%", left: "65%" }} fill="#0ea66e" />
+                <MapPin size={12} className="absolute text-[#e11d48]" style={{ top: "65%", left: "70%" }} fill="#e11d48" />
+              </div>
+              <div className="space-y-1.5 text-[10px] text-[#14233b] whitespace-nowrap">
+                <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#174be8]" /> Selected Market</div>
+                <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#0ea66e]" /> Nearby Markets</div>
+                <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#e11d48]" /> Higher Competition</div>
+              </div>
             </div>
           </div>
         </div>

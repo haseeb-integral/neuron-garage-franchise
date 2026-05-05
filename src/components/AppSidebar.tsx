@@ -51,14 +51,14 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
         end={item.url === "/"}
         onClick={onNavigate}
         data-tour={withTour && "tourId" in item ? item.tourId : undefined}
-        className={`group flex items-center rounded-xl transition-all ${
-          isCollapsed ? "justify-center px-0" : "gap-3 px-3.5"
+        className={`group flex items-center rounded-lg transition-all ${
+          isCollapsed ? "justify-center px-0" : "gap-3 px-3"
         }`}
         style={{
-          minHeight: isCollapsed ? 40 : 44,
+          minHeight: isCollapsed ? 36 : 38,
           backgroundColor: active ? "#174be8" : "transparent",
           color: active ? "#ffffff" : "#14233b",
-          fontSize: 13,
+          fontSize: 13.5,
           fontWeight: active ? 600 : 500,
           boxShadow: "none",
         }}

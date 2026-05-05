@@ -77,7 +77,7 @@ export function JourneyBar() {
                 </span>
               </button>
               {idx < steps.length - 1 && (
-                <ChevronRight size={14} className="ml-auto" style={{ color: "#c3ccd9" }} aria-hidden="true" />
+                <ChevronRight size={14} style={{ color: "#c3ccd9" }} aria-hidden="true" />
               )}
             </li>
           );

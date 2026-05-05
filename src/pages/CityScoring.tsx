@@ -335,12 +335,25 @@ const CityScoring = () => {
 
       {/* Scoring Weights */}
       <div className="mb-4 rounded-lg bg-white border border-[#eef2f7] p-4">
-        <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="mb-3 flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-3 flex-wrap">
             <h3 className="text-sm font-bold text-[#07142f]">Scoring Weights</h3>
             <span className="text-xs text-[#526078]">Total Weight: <span className={totalWeight === 100 ? "text-[#0ea66e] font-medium" : "text-[#ea580c] font-medium"}>{totalWeight}%</span></span>
+            {totalWeight !== 100 && (
+              <span className="text-[11px] text-[#ea580c]">Weights must total 100% to apply scoring.</span>
+            )}
           </div>
-          <button onClick={resetWeights} className="text-xs font-medium text-[#174be8] hover:underline">Reset to Default</button>
+          <div className="flex items-center gap-3">
+            <button onClick={resetWeights} className="text-xs font-medium text-[#174be8] hover:underline">Reset to Default</button>
+            <Button
+              size="sm"
+              disabled={totalWeight !== 100}
+              onClick={applyWeights}
+              className="h-7 bg-[#174be8] hover:bg-[#1240c9] text-white text-[11px] px-3 disabled:opacity-50"
+            >
+              Apply Weights
+            </Button>
+          </div>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {CATEGORIES.map((cat) => {

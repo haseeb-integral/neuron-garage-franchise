@@ -538,17 +538,17 @@ const CityScoring = () => {
 
             <div className="min-w-0 border-l border-[#eef2f7] pl-4">
               <p className="mb-2.5 text-[13px] font-semibold text-[#07142f]">Key Market Signals</p>
-              <div className="flex flex-col gap-y-2.5">
+              <div className="flex flex-col gap-y-2.5 min-w-0">
                 {sigRows.map((r) => {
                   const Icon = r.icon;
                   return (
-                    <div key={r.label} className="grid grid-cols-[14px_1fr_auto] items-center gap-x-2 text-[10.5px] min-w-0">
-                      <Icon size={12} className="text-[#3160ff] flex-shrink-0" />
-                      <span className="text-[#526078] leading-tight truncate">{r.label}</span>
-                      <span className="font-semibold text-[#07142f] tabular-nums text-right">{r.value}</span>
-                      <span className="col-span-3 col-start-2 -mt-1 text-[10px] text-right text-[#8794ab] truncate">
-                        <span className={`font-medium ${r.deltaClass}`}>{r.delta}</span>
-                      </span>
+                    <div key={r.label} className="flex items-start gap-2 text-[10.5px] min-w-0">
+                      <Icon size={12} className="text-[#3160ff] flex-shrink-0 mt-0.5" />
+                      <span className="text-[#526078] leading-tight flex-1 min-w-0 truncate">{r.label}</span>
+                      <div className="flex flex-col items-end flex-shrink-0 leading-tight">
+                        <span className="font-semibold text-[#07142f] tabular-nums">{r.value}</span>
+                        <span className={`text-[9.5px] font-medium ${r.deltaClass}`}>{r.delta}</span>
+                      </div>
                     </div>
                   );
                 })}

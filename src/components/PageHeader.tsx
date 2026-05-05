@@ -33,20 +33,20 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
 
   return (
     <>
-      <div className="mb-5 flex items-center justify-between gap-4">
+      <div className="mb-4 flex items-center justify-between gap-4">
         <div className="hidden md:block w-full max-w-[760px]">
           <GlobalSearch />
         </div>
 
-        <div className="ml-auto flex items-center gap-4">
+        <div className="ml-auto flex items-center gap-3">
           <button
             type="button"
-            className="relative hidden items-center justify-center rounded-full bg-white text-[#526078] transition-colors hover:bg-[#f3f7ff] hover:text-[#174be8] md:flex"
+            className="relative hidden items-center justify-center rounded-full bg-white text-[#526078] transition-colors hover:bg-[#f7faff] hover:text-[#174be8] md:flex"
             aria-label="Notifications"
-            style={{ width: 32, height: 32, minWidth: 32, minHeight: 32 }}
+            style={{ width: 30, height: 30, minWidth: 30, minHeight: 30 }}
           >
-            <Bell size={18} strokeWidth={1.9} />
-            <span className="absolute -right-1 -top-1 flex items-center justify-center rounded-full bg-[#174be8] text-[10px] font-bold text-white" style={{ width: 17, height: 17 }}>
+            <Bell size={17} strokeWidth={1.85} />
+            <span className="absolute -right-1 -top-1 flex items-center justify-center rounded-full bg-[#174be8] text-[10px] font-bold text-white" style={{ width: 16, height: 16 }}>
               3
             </span>
           </button>
@@ -55,21 +55,21 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
             onClick={() => startTour()}
             aria-label="Restart guided tour"
             title="Restart guided tour"
-            className="hidden items-center justify-center rounded-full bg-white text-[#526078] transition-colors hover:bg-[#f3f7ff] hover:text-[#174be8] md:flex"
-            style={{ width: 32, height: 32, minWidth: 32, minHeight: 32 }}
+            className="hidden items-center justify-center rounded-full bg-white text-[#526078] transition-colors hover:bg-[#f7faff] hover:text-[#174be8] md:flex"
+            style={{ width: 30, height: 30, minWidth: 30, minHeight: 30 }}
           >
-            <HelpCircle size={18} strokeWidth={1.9} />
+            <HelpCircle size={17} strokeWidth={1.85} />
           </button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2.5 rounded-full px-1.5 py-1 transition-colors hover:bg-[#f3f7ff]" aria-label="Open account menu">
-                <span className="flex items-center justify-center rounded-full bg-[#174be8] text-sm font-bold text-white" style={{ width: 36, height: 36, minWidth: 36, minHeight: 36 }}>
+              <button className="flex items-center gap-2 rounded-full px-1 py-0.5 transition-colors hover:bg-[#f7faff]" aria-label="Open account menu">
+                <span className="flex items-center justify-center rounded-full bg-[#174be8] text-sm font-bold text-white" style={{ width: 34, height: 34, minWidth: 34, minHeight: 34 }}>
                   {initials}
                 </span>
                 <span className="hidden text-left md:block">
-                  <span className="block text-sm font-bold leading-4 text-[#07142f]">{displayName.split("@")[0]}</span>
-                  {role && <span className="block text-[11px] uppercase leading-4 tracking-wide text-[#526078]">{role}</span>}
+                  <span className="block text-[13px] font-bold leading-4 text-[#07142f]">{displayName.split("@")[0]}</span>
+                  {role && <span className="block text-[10px] uppercase leading-3 tracking-wide text-[#526078]">{role}</span>}
                 </span>
                 <ChevronDown className="hidden h-4 w-4 text-[#526078] md:block" />
               </button>
@@ -104,9 +104,9 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
         </div>
       </div>
 
-      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+      <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
-          <h1 className="text-2xl md:text-[29px] font-black leading-tight tracking-tight" style={{ color: "#07142f" }}>
+          <h1 className="text-2xl md:text-[28px] font-black leading-tight tracking-tight" style={{ color: "#07142f" }}>
             {title}
           </h1>
           <p className="text-sm mt-0.5" style={{ color: "#526078" }}>

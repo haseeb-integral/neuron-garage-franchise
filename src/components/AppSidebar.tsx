@@ -55,11 +55,11 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
           isCollapsed ? "justify-center px-0" : "gap-3 px-3"
         }`}
         style={{
-          minHeight: isCollapsed ? 36 : 38,
-          backgroundColor: active ? "#174be8" : "transparent",
+          minHeight: isCollapsed ? 32 : 34,
+          backgroundColor: active ? "#1f5bff" : "transparent",
           color: active ? "#ffffff" : "#14233b",
-          fontSize: 13.5,
-          fontWeight: active ? 500 : 500,
+          fontSize: 13,
+          fontWeight: active ? 500 : 450,
           boxShadow: "none",
         }}
         onMouseEnter={(e) => {

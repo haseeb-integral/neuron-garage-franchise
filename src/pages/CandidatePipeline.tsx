@@ -802,6 +802,7 @@ const CandidatePipeline = () => {
         teamMembers={teamMembers}
         onCreated={handleCandidateCreated}
       />
+      </div>
     </div>
   );
 };

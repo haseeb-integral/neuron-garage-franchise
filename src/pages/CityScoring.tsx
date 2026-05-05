@@ -397,9 +397,9 @@ const CityScoring = () => {
       </div>
 
       {/* Three-column layout */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[0.94fr_1.6fr_0.72fr]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[0.92fr_1.5fr_0.92fr] items-start">
         {/* Left: Ranked Markets */}
-        <div className="min-w-0 rounded-lg bg-white border border-[#eef2f7] p-3">
+        <div className="min-w-0 rounded-lg bg-white border border-[#eef2f7] p-3 self-start">
           <div className="mb-3 flex items-center justify-between">
             <div>
               <h3 className="text-sm font-bold text-[#07142f]">Ranked Markets</h3>
@@ -425,7 +425,7 @@ const CityScoring = () => {
                 <div
                   key={c.id}
                   onClick={() => setSelectedId(c.id)}
-                  className={`grid grid-cols-[20px_24px_1fr_60px_50px_30px] items-center gap-2 px-2 py-2 text-xs cursor-pointer border-b border-[#f3f5f9] last:border-0 ${isSel ? "bg-[#eaf0ff]" : "hover:bg-[#f7faff]"}`}
+                  className={`grid grid-cols-[20px_24px_1fr_60px_50px_30px] items-center gap-2 px-2 py-1.5 text-xs cursor-pointer border-b border-[#f3f5f9] last:border-0 ${isSel ? "bg-[#eaf0ff]" : "hover:bg-[#f7faff]"}`}
                 >
                   <Checkbox checked={isCmp} onCheckedChange={() => toggleCompare(c.id)} onClick={(e) => e.stopPropagation()} />
                   <span className="text-[#526078]">{i + 1}</span>
@@ -540,11 +540,11 @@ const CityScoring = () => {
                 {sigRows.map((r) => {
                   const Icon = r.icon;
                   return (
-                    <div key={r.label} className="grid grid-cols-[16px_minmax(0,1fr)_80px_126px] items-center gap-2 text-[11px]">
-                      <Icon size={15} className="text-[#3160ff] flex-shrink-0" />
-                      <span className="truncate text-[#526078]">{r.label}</span>
-                      <span className="font-semibold text-[#07142f]">{r.value}</span>
-                      <span className={`truncate text-right text-[11px] font-medium ${r.deltaClass}`}>{r.delta}</span>
+                    <div key={r.label} className="grid grid-cols-[14px_minmax(0,1fr)_auto_auto] items-center gap-x-2 text-[10.5px]">
+                      <Icon size={13} className="text-[#3160ff] flex-shrink-0" />
+                      <span className="text-[#526078] leading-tight">{r.label}</span>
+                      <span className="font-semibold text-[#07142f] whitespace-nowrap">{r.value}</span>
+                      <span className={`whitespace-nowrap text-right font-medium ${r.deltaClass}`}>{r.delta}</span>
                     </div>
                   );
                 })}
@@ -569,7 +569,7 @@ const CityScoring = () => {
         </div>
 
         {/* Right column */}
-        <div className="col-span-12 lg:col-span-3 space-y-3">
+        <div className="min-w-0 space-y-3 self-start">
           {showNearby && (
             <div className="rounded-lg bg-white border border-[#eef2f7] p-3 self-start">
               <div className="mb-2 flex items-center justify-between">
@@ -592,7 +592,7 @@ const CityScoring = () => {
               <h4 className="text-xs font-bold text-[#07142f]">Source Data</h4>
               <button className="text-[10px] font-medium text-[#174be8] hover:underline">View All</button>
             </div>
-            <div className="grid grid-cols-1 gap-1">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1">
               {SOURCES.map((s) => {
                 const Icon = s.icon;
                 return (
@@ -608,7 +608,7 @@ const CityScoring = () => {
           <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
             <h4 className="text-xs font-bold text-[#07142f] mb-1">Market Research Report</h4>
             <p className="text-[10px] text-[#8794ab] mb-2">Comprehensive PDF report with data, insights, recommendations, and competitor analysis.</p>
-            <Button className="w-full h-8 bg-[#174be8] hover:bg-[#1240c9] text-white text-[11px] font-medium" onClick={() => toast.success("Generating PDF report…")}>
+            <Button variant="outline" className="w-full h-8 border-[#dbe4f2] text-[#2250eb] text-[11px] font-medium" onClick={() => toast.success("Generating PDF report…")}>
               Generate PDF Report
             </Button>
           </div>

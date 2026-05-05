@@ -38,11 +38,11 @@ export function JourneyBar() {
       className="bg-white rounded-xl px-4 py-2.5 md:px-5 mb-3"
       style={{ border: "1px solid #eef2f7", boxShadow: "none" }}
     >
-      <ol className="flex items-center justify-between gap-2 w-full">
+      <ol className="flex items-center gap-2 w-full">
         {steps.map((step, idx) => {
           const isActive = step.path === activePath;
           return (
-            <li key={step.num} className="flex flex-1 items-center gap-2 min-w-0">
+            <li key={step.num} className="flex items-center gap-2 min-w-0">
               <button
                 onClick={() => navigate(step.path)}
                 className="flex items-center gap-2.5 px-1.5 py-1 rounded-lg transition-colors hover:bg-[#f7faff] min-w-0"

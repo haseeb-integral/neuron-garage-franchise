@@ -240,10 +240,10 @@ const CityScoring = () => {
       </div>
 
       {/* Title row + model controls */}
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+      <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-[#07142f]">City Search</h1>
-          <p className="text-sm text-[#526078] mt-0.5">
+          <h1 className="text-xl font-black tracking-tight text-[#07142f]">City Search</h1>
+          <p className="text-xs text-[#526078] mt-0.5">
             Discover and score the best cities, suburbs, and metros for Neuron Garage franchises.
           </p>
         </div>

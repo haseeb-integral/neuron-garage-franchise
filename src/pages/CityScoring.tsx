@@ -418,7 +418,7 @@ const CityScoring = () => {
               <span>Score</span>
               <span className="text-right">Tier</span>
             </div>
-            {filtered.slice(0, 5).map((c, i) => {
+            {filtered.slice(0, 8).map((c, i) => {
               const isSel = c.id === selectedId;
               const isCmp = selectedForCompare.includes(c.id);
               return (

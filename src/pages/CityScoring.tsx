@@ -556,24 +556,24 @@ const CityScoring = () => {
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-[1.45fr_0.82fr_1fr_1fr] gap-2">
-            <Button onClick={handleFindTeachers} className="h-10 bg-[#174be8] hover:bg-[#1240c9] text-white gap-2 px-3 font-medium text-[10.5px] whitespace-nowrap">
-              Find Teachers in This Market <ArrowRight size={14} />
+          <div className="mt-4 grid grid-cols-[1.5fr_0.78fr_1.05fr_1.1fr] gap-2">
+            <Button onClick={handleFindTeachers} className="h-9 min-w-0 bg-[#174be8] hover:bg-[#1240c9] text-white gap-1.5 px-2 font-medium text-[10.5px] whitespace-nowrap">
+              Find Teachers in This Market <ArrowRight size={12} />
             </Button>
-            <Button variant="outline" className="h-10 border-[#dbe4f2] text-[#2250eb] gap-1.5 px-3 font-medium text-[10.5px] whitespace-nowrap">
-              <GitCompare size={14} /> Compare
+            <Button variant="outline" className="h-9 min-w-0 border-[#dbe4f2] text-[#2250eb] gap-1 px-2 font-medium text-[10.5px] whitespace-nowrap">
+              <GitCompare size={12} /> Compare
             </Button>
-            <Button variant="outline" className="h-10 border-[#dbe4f2] text-[#2250eb] gap-1.5 px-3 font-medium text-[10.5px] whitespace-nowrap">
-              <FileText size={14} /> Generate Report
+            <Button variant="outline" className="h-9 min-w-0 border-[#dbe4f2] text-[#2250eb] gap-1 px-2 font-medium text-[10.5px] whitespace-nowrap">
+              <FileText size={12} /> Generate Report
             </Button>
-            <Button variant="outline" className="h-10 border-[#dbe4f2] text-[#2250eb] gap-1.5 px-3 font-medium text-[10.5px] whitespace-nowrap" onClick={() => setDetailDrawerOpen(true)}>
-              <Eye size={14} /> View Full Details
+            <Button variant="outline" className="h-9 min-w-0 border-[#dbe4f2] text-[#2250eb] gap-1 px-2 font-medium text-[10.5px] whitespace-nowrap" onClick={() => setDetailDrawerOpen(true)}>
+              <Eye size={12} /> View Full Details
             </Button>
           </div>
         </div>
 
         {/* Right column */}
-        <div className="min-w-0 space-y-3 self-start">
+        <div className="min-w-0 space-y-3 flex flex-col">
           {showNearby && (
             <div className="rounded-lg bg-white border border-[#eef2f7] p-3 self-start">
               <div className="mb-2 flex items-center justify-between">

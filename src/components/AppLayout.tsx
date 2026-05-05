@@ -27,13 +27,13 @@ export function AppLayout() {
       </div>
 
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="left" className="p-0 w-[248px] border-r-0 bg-white">
+        <SheetContent side="left" className="p-0 w-[220px] border-r-0 bg-white">
           <SheetTitle className="sr-only">Navigation</SheetTitle>
           <AppSidebar variant="drawer" onNavigate={closeDrawer} />
         </SheetContent>
       </Sheet>
 
-      <main className={`flex-1 min-h-screen bg-white ${collapsed ? "md:ml-16" : "md:ml-[248px]"} transition-[margin] duration-200`}>
+      <main className={`flex-1 min-h-screen bg-white ${collapsed ? "md:ml-16" : "md:ml-[220px]"} transition-[margin] duration-200`}>
         <div className="md:hidden flex items-center justify-between px-4 py-3 border-b bg-white border-[#eef2f7]">
           <button
             onClick={() => setOpen(true)}
@@ -57,7 +57,7 @@ export function AppLayout() {
           </button>
         </div>
 
-        <div className="p-3 md:px-7 md:py-3 lg:px-8 lg:py-3">
+        <div className="p-3 md:px-5 md:py-3 lg:px-6 lg:py-3">
           <Outlet key={location.pathname} />
         </div>
       </main>

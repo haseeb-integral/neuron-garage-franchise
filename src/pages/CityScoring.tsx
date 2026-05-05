@@ -301,6 +301,7 @@ const CityScoring = () => {
                   onValueChange={([v]) => setWeights((w) => ({ ...w, [cat.key]: v }))}
                   max={50}
                   step={1}
+                  className="[&>span:first-child]:bg-[#eaf0ff] [&>span:first-child]:h-1.5 [&_[role=slider]]:h-3.5 [&_[role=slider]]:w-3.5 [&_[role=slider]]:border-[#174be8] [&_[role=slider]]:bg-white [&>span:first-child_span]:bg-[#174be8]"
                 />
                 <p className="text-[11px] text-[#8794ab] leading-snug">{cat.description}</p>
                 {customCount > 0 && (

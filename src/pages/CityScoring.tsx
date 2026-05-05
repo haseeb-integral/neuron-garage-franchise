@@ -540,11 +540,11 @@ const CityScoring = () => {
                 {sigRows.map((r) => {
                   const Icon = r.icon;
                   return (
-                    <div key={r.label} className="grid grid-cols-[16px_minmax(0,1fr)_80px_126px] items-center gap-2 text-[11px]">
-                      <Icon size={15} className="text-[#3160ff] flex-shrink-0" />
-                      <span className="truncate text-[#526078]">{r.label}</span>
-                      <span className="font-semibold text-[#07142f]">{r.value}</span>
-                      <span className={`truncate text-right text-[11px] font-medium ${r.deltaClass}`}>{r.delta}</span>
+                    <div key={r.label} className="grid grid-cols-[14px_minmax(0,1fr)_auto_auto] items-center gap-x-2 text-[10.5px]">
+                      <Icon size={13} className="text-[#3160ff] flex-shrink-0" />
+                      <span className="text-[#526078] leading-tight">{r.label}</span>
+                      <span className="font-semibold text-[#07142f] whitespace-nowrap">{r.value}</span>
+                      <span className={`whitespace-nowrap text-right font-medium ${r.deltaClass}`}>{r.delta}</span>
                     </div>
                   );
                 })}

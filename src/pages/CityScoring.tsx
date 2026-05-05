@@ -554,9 +554,6 @@ const CityScoring = () => {
           <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
             <h4 className="text-xs font-bold text-[#07142f] mb-1">Market Research Report</h4>
             <p className="text-[10px] text-[#8794ab] mb-2">Comprehensive PDF report with data, insights, recommendations, and competitor analysis.</p>
-            <div className="h-16 rounded bg-gradient-to-br from-[#f7faff] to-[#eaf0ff] border border-[#eef2f7] mb-2 flex items-center justify-center">
-              <FileText size={24} className="text-[#174be8]/40" />
-            </div>
             <Button className="w-full h-8 bg-[#174be8] hover:bg-[#1240c9] text-white text-[11px] font-medium" onClick={() => toast.success("Generating PDF report…")}>
               Generate PDF Report
             </Button>
@@ -564,8 +561,19 @@ const CityScoring = () => {
 
           <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
             <h4 className="text-xs font-bold text-[#07142f] mb-2">Market Snapshot</h4>
-            <div className="h-24 rounded bg-[#eef4fb] border border-[#eef2f7] flex items-center justify-center mb-2">
-              <MapPin size={20} className="text-[#174be8]/40" />
+            <div
+              className="relative h-28 rounded border border-[#eef2f7] mb-2 overflow-hidden"
+              style={{
+                backgroundColor: "#f1f6fc",
+                backgroundImage:
+                  "linear-gradient(to right, #e3ecf7 1px, transparent 1px), linear-gradient(to bottom, #e3ecf7 1px, transparent 1px)",
+                backgroundSize: "16px 16px",
+              }}
+            >
+              <MapPin size={16} className="absolute text-[#174be8]" style={{ top: "30%", left: "40%" }} fill="#174be8" />
+              <MapPin size={12} className="absolute text-[#0ea66e]" style={{ top: "55%", left: "22%" }} fill="#0ea66e" />
+              <MapPin size={12} className="absolute text-[#0ea66e]" style={{ top: "20%", left: "65%" }} fill="#0ea66e" />
+              <MapPin size={12} className="absolute text-[#e11d48]" style={{ top: "65%", left: "70%" }} fill="#e11d48" />
             </div>
             <div className="space-y-1 text-[10px] text-[#14233b]">
               <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#174be8]" /> Selected Market</div>

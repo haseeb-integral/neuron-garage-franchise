@@ -575,7 +575,7 @@ const CityScoring = () => {
         {/* Right column */}
         <div className="min-w-0 space-y-3 flex flex-col">
           {showNearby && (
-            <div className="rounded-lg bg-white border border-[#eef2f7] p-3 self-start">
+            <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
               <div className="mb-2 flex items-center justify-between">
                 <h4 className="text-[13px] font-semibold text-[#07142f]">Nearby Markets</h4>
                 <button className="text-[10px] font-medium text-[#174be8] hover:underline">View All</button>
@@ -584,7 +584,7 @@ const CityScoring = () => {
                 {NEARBY_MARKETS.map((m) => (
                   <div key={m.name} className="flex items-center justify-between gap-2 text-[11px]">
                     <span className="flex min-w-0 items-center gap-1.5 text-[#14233b]"><MapPin size={11} className="flex-shrink-0 text-[#8794ab]" /> <span className="truncate">{m.name}</span></span>
-                    <span className="font-semibold text-[#07142f]">{m.score}</span>
+                    <span className="inline-flex items-center justify-center min-w-[28px] h-5 rounded-md bg-[#e6f7ef] text-[#0ea66e] text-[10.5px] font-bold px-1.5">{m.score}</span>
                   </div>
                 ))}
               </div>

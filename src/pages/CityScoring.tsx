@@ -153,7 +153,43 @@ const CityScoring = () => {
   };
 
   const toggleCompare = (id: number) => {
-    setSelectedForCompare((p) => p.includes(id) ? p.filter((i) => i !== id) : [...p, id]);
+    setSelectedForCompare((p) => {
+      if (p.includes(id)) return p.filter((i) => i !== id);
+      if (p.length >= 4) {
+        toast.error("You can compare up to 4 markets at a time");
+        return p;
+      }
+      return [...p, id];
+    });
+  };
+
+  const buildCsvDownload = () => {
+    const rows = [
+      ["Rank", "Market", "State", "Tier", "Composite Score", "Population", "Competitors"],
+      ...filtered.map((c, i) => [String(i + 1), c.city, c.state, c.tier, String(c.compositeScore), String(c.population), String(c.competitorCount)]),
+    ];
+    const csv = rows.map((r) => r.map((v) => `"${v.replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ranked-markets-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Ranked markets exported as CSV");
+  };
+
+  const openCompare = () => {
+    if (selectedForCompare.length < 2) {
+      toast.error("Select at least 2 markets to compare");
+      return;
+    }
+    setCompareOpen(true);
+  };
+
+  const applyWeights = () => {
+    if (totalWeight !== 100) return;
+    toast.success("Sample scores recalculated.");
   };
 
   const handleFindTeachers = () => {

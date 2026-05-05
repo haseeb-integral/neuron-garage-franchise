@@ -725,7 +725,29 @@ const CityScoring = () => {
         onSave={(c) => setCustomCriteria((prev) => [...prev, c])}
       />
 
-      <CityDetailDrawer city={selected} open={detailDrawerOpen} onClose={() => setDetailDrawerOpen(false)} />
+      <MarketDetailDrawer
+        market={selected}
+        open={detailDrawerOpen}
+        onClose={() => setDetailDrawerOpen(false)}
+        categoryScores={detailCategoryScores}
+        customCriteria={customCriteria}
+        onFindTeachers={() => { setDetailDrawerOpen(false); handleFindTeachers(); }}
+        onGenerateReport={() => { setDetailDrawerOpen(false); setReportOpen(true); }}
+        onExport={buildCsvDownload}
+      />
+
+      <MarketCompareModal
+        open={compareOpen}
+        onClose={() => setCompareOpen(false)}
+        markets={sampleCities.filter((c) => selectedForCompare.includes(c.id)).slice(0, 4)}
+      />
+
+      <MarketReportModal
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        market={selected}
+        categoryScores={detailCategoryScores}
+      />
     </div>
   );
 };

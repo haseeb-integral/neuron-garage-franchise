@@ -540,15 +540,15 @@ const CityScoring = () => {
 
             <div className="border-l border-[#eef2f7] pl-5">
               <p className="mb-2.5 text-[13px] font-semibold text-[#07142f]">Key Market Signals</p>
-              <div className="space-y-2.5">
+              <div className="grid grid-cols-1 gap-y-2">
                 {sigRows.map((r) => {
                   const Icon = r.icon;
                   return (
-                    <div key={r.label} className="grid grid-cols-[14px_minmax(0,1fr)_auto_auto] items-center gap-x-2 text-[10.5px]">
+                    <div key={r.label} className="grid grid-cols-[16px_minmax(0,1.3fr)_auto_minmax(0,1.1fr)] items-center gap-x-2.5 text-[11px]">
                       <Icon size={13} className="text-[#3160ff] flex-shrink-0" />
-                      <span className="text-[#526078] leading-tight">{r.label}</span>
-                      <span className="font-semibold text-[#07142f] whitespace-nowrap">{r.value}</span>
-                      <span className={`whitespace-nowrap text-right font-medium ${r.deltaClass}`}>{r.delta}</span>
+                      <span className="text-[#526078] leading-tight truncate">{r.label}</span>
+                      <span className="font-semibold text-[#07142f] tabular-nums whitespace-nowrap text-right">{r.value}</span>
+                      <span className={`whitespace-nowrap text-right text-[10.5px] font-medium ${r.deltaClass}`}>{r.delta}</span>
                     </div>
                   );
                 })}

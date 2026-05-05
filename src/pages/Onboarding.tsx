@@ -149,8 +149,8 @@ const Onboarding = () => {
   };
 
   return (
-    <div className="-mx-4 md:-mx-8 -my-4 md:-my-8 px-4 md:px-8 py-4 md:py-8 min-h-screen" style={{ backgroundColor: "#f2f4f6" }}>
-      <div className="max-w-7xl mx-auto">
+    <div className="-mx-3 md:-mx-5 lg:-mx-6 -my-3 px-3 md:px-5 lg:px-6 py-3 min-h-screen" style={{ backgroundColor: "#f2f4f6" }}>
+      <div className="max-w-[1280px] mx-auto w-full">
         <PageHeader
           title="Onboarding"
           subtitle="Guide new franchisees through the 7-step qualification & onboarding journey."
@@ -166,7 +166,7 @@ const Onboarding = () => {
           }
         />
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
           <StatCard icon={Users} label="Active Onboardings" value={stats.active} color="#003c7e" />
           <StatCard icon={TrendingUp} label="On Track" value={stats.onTrack} color="#20c997" />
           <StatCard icon={AlertTriangle} label="Needs Attention" value={stats.needsAttention} color="#ff4438" />
@@ -270,7 +270,7 @@ function StatCard({ icon: Icon, label, value, color }: { icon: typeof Users; lab
         <Icon size={18} style={{ color }} />
       </div>
       <div>
-        <div className="text-2xl font-bold" style={{ color: "#003c7e" }}>{value}</div>
+        <div className="text-xl font-bold" style={{ color: "#003c7e" }}>{value}</div>
         <div className="text-xs" style={{ color: "#6c757d" }}>{label}</div>
       </div>
     </div>

@@ -51,7 +51,7 @@ const Dashboard = () => {
   const maxPipeline = Math.max(...pipeline.map((p) => p.count));
 
   return (
-    <div className="space-y-4">
+    <div className="max-w-[1280px] mx-auto w-full space-y-4">
       <PageHeader
         title="Dashboard"
         subtitle="Overview of your franchise acquisition and onboarding performance."
@@ -86,7 +86,7 @@ const Dashboard = () => {
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-bold text-[#26364d]">{stat.title}</p>
-                <p className="mt-1 text-3xl font-black leading-none text-[#07142f]">{stat.value}</p>
+                <p className="mt-1 text-2xl font-black leading-none text-[#07142f]">{stat.value}</p>
               </div>
             </div>
             <div className="mt-4 flex items-center gap-5 text-sm">
@@ -150,7 +150,7 @@ const Dashboard = () => {
           {insights.map((item) => (
             <div key={item.title} className="border-r border-[#eef2f6] pr-4 last:border-r-0">
               <p className="text-xs font-semibold text-[#526078]">{item.title}</p>
-              <div className="mt-2 flex items-end gap-3"><span className="text-2xl font-black text-[#07142f]">{item.value}</span><span className="flex items-center gap-1 text-xs font-bold text-[#16a34a]"><TrendingUp size={12} /> {item.delta}</span></div>
+              <div className="mt-2 flex items-end gap-3"><span className="text-xl font-black text-[#07142f]">{item.value}</span><span className="flex items-center gap-1 text-xs font-bold text-[#16a34a]"><TrendingUp size={12} /> {item.delta}</span></div>
               <svg viewBox="0 0 120 34" className="mt-2 h-8 w-full text-[#174be8]" fill="none" aria-hidden="true"><path d="M2 26 L18 23 L34 25 L50 18 L66 21 L82 8 L100 15 L118 13" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </div>
           ))}

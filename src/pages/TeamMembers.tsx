@@ -177,7 +177,7 @@ Temporary password: ${c.temp_password}
 Please log in and change your password using the "Forgot password?" link on the sign-in page.`;
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-5 max-w-[1280px] mx-auto w-full space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Team members</h1>

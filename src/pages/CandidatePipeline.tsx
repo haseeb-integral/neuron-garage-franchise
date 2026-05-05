@@ -498,7 +498,8 @@ const CandidatePipeline = () => {
   const chipInactive = { backgroundColor: "#ffffff", color: "#495057", border: "1px solid #dee2e6" };
 
   return (
-    <div className="-mx-4 md:-mx-8 -my-4 md:-my-8 px-4 md:px-8 py-4 md:py-8 min-h-screen" style={{ backgroundColor: "#f2f4f6" }}>
+    <div className="-mx-3 md:-mx-5 lg:-mx-6 -my-3 px-3 md:px-5 lg:px-6 py-3 min-h-screen" style={{ backgroundColor: "#f2f4f6" }}>
+      <div className="max-w-[1400px] mx-auto w-full">
       <PageHeader
         title="Candidate Pipeline"
         subtitle="Track and manage franchise candidates through every stage of the qualification process."

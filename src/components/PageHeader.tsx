@@ -41,12 +41,12 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
         <div className="ml-auto flex items-center gap-3">
           <button
             type="button"
-            className="relative hidden items-center justify-center rounded-full bg-white text-[#526078] transition-colors hover:bg-[#f7faff] hover:text-[#174be8] md:flex"
+            className="relative hidden items-center justify-center rounded-full bg-white text-[#526078] transition-colors hover:bg-[#f3f6fb] hover:text-[#174be8] md:flex"
             aria-label="Notifications"
-            style={{ width: 30, height: 30, minWidth: 30, minHeight: 30 }}
+            style={{ width: 36, height: 36, minWidth: 36, minHeight: 36, border: "1px solid #eef2f7" }}
           >
-            <Bell size={17} strokeWidth={1.85} />
-            <span className="absolute -right-1 -top-1 flex items-center justify-center rounded-full bg-[#174be8] text-[10px] font-bold text-white" style={{ width: 16, height: 16 }}>
+            <Bell size={16} strokeWidth={1.75} />
+            <span className="absolute -right-0.5 -top-0.5 flex items-center justify-center rounded-full bg-[#e11d48] text-[9px] font-bold text-white" style={{ width: 14, height: 14 }}>
               3
             </span>
           </button>
@@ -55,10 +55,10 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
             onClick={() => startTour()}
             aria-label="Restart guided tour"
             title="Restart guided tour"
-            className="hidden items-center justify-center rounded-full bg-white text-[#526078] transition-colors hover:bg-[#f7faff] hover:text-[#174be8] md:flex"
-            style={{ width: 30, height: 30, minWidth: 30, minHeight: 30 }}
+            className="hidden items-center justify-center rounded-full bg-white text-[#526078] transition-colors hover:bg-[#f3f6fb] hover:text-[#174be8] md:flex"
+            style={{ width: 36, height: 36, minWidth: 36, minHeight: 36, border: "1px solid #eef2f7" }}
           >
-            <HelpCircle size={17} strokeWidth={1.85} />
+            <HelpCircle size={16} strokeWidth={1.75} />
           </button>
 
           <DropdownMenu>

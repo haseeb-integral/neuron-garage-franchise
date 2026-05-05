@@ -51,7 +51,7 @@ const Dashboard = () => {
   const maxPipeline = Math.max(...pipeline.map((p) => p.count));
 
   return (
-    <div className="max-w-[1280px] mx-auto w-full space-y-4">
+    <div className="max-w-[1280px] mx-auto w-full space-y-3">
       <PageHeader
         title="Dashboard"
         subtitle="Overview of your franchise acquisition and onboarding performance."
@@ -77,19 +77,19 @@ const Dashboard = () => {
         }
       />
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {kpis.map((stat) => (
-          <div key={stat.title} className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: "1px solid #d8e2ef" }}>
-            <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: stat.bg, color: stat.color }}>
-                <stat.icon size={26} />
+          <div key={stat.title} className="rounded-2xl bg-white p-3 shadow-sm" style={{ border: "1px solid #d8e2ef" }}>
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: stat.bg, color: stat.color }}>
+                <stat.icon size={22} />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-bold text-[#26364d]">{stat.title}</p>
-                <p className="mt-1 text-2xl font-black leading-none text-[#07142f]">{stat.value}</p>
+                <p className="text-xs font-bold text-[#26364d]">{stat.title}</p>
+                <p className="mt-1 text-xl font-black leading-none text-[#07142f]">{stat.value}</p>
               </div>
             </div>
-            <div className="mt-4 flex items-center gap-5 text-sm">
+            <div className="mt-3 flex items-center gap-4 text-xs">
               <span className="flex items-center gap-1 font-bold text-[#16a34a]"><TrendingUp size={14} /> {stat.delta}</span>
               <span className="text-[#526078]">{stat.compare}</span>
             </div>
@@ -97,7 +97,7 @@ const Dashboard = () => {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.05fr_1fr_1.12fr]">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.05fr_1fr_1.12fr]">
         <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: "1px solid #d8e2ef" }}>
           <div className="mb-3 flex items-start justify-between gap-3">
             <div><h2 className="text-lg font-black text-[#07142f]">Pipeline Snapshot</h2><p className="text-xs text-[#526078]">Candidates by stage</p></div>
@@ -146,7 +146,7 @@ const Dashboard = () => {
 
       <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: "1px solid #d8e2ef" }}>
         <div className="mb-3 flex items-start justify-between gap-3"><div><h2 className="text-lg font-black text-[#07142f]">Insights at a Glance</h2><p className="text-xs text-[#526078]">Key metrics over time</p></div><Button variant="outline" className="h-8 rounded-lg border-[#d8e2ef] px-3 text-xs font-semibold">Last 6 Months</Button></div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
           {insights.map((item) => (
             <div key={item.title} className="border-r border-[#eef2f6] pr-4 last:border-r-0">
               <p className="text-xs font-semibold text-[#526078]">{item.title}</p>

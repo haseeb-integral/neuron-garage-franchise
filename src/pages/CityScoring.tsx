@@ -500,7 +500,9 @@ const CityScoring = () => {
                   onClick={() => setSelectedId(c.id)}
                   className={`grid grid-cols-[16px_14px_minmax(0,1fr)_46px_72px_18px] items-center gap-x-2 px-1 py-3 text-[11px] cursor-pointer border-b border-[#f3f5f9] last:border-0 ${isSel ? "bg-[#eaf0ff]" : "hover:bg-[#f7faff]"}`}
                 >
-                  <Checkbox checked={isCmp} onCheckedChange={() => toggleCompare(c.id)} onClick={(e) => e.stopPropagation()} />
+                  <span className={compareMode ? "rounded ring-2 ring-[#174be8] ring-offset-1 ring-offset-white" : ""}>
+                    <Checkbox checked={isCmp} onCheckedChange={() => toggleCompare(c.id)} onClick={(e) => e.stopPropagation()} />
+                  </span>
                   <span className="text-[#526078]">{i + 1}</span>
                   <div className="min-w-0">
                     <div className="truncate font-semibold text-[#07142f]">{c.city}, {c.state === "Texas" ? "TX" : c.state === "Florida" ? "FL" : c.state}</div>

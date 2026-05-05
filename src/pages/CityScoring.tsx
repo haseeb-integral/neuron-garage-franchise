@@ -445,24 +445,34 @@ const CityScoring = () => {
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div className="flex flex-col items-center justify-center rounded-lg border border-[#eef2f7] p-3">
-              <p className="text-[10px] text-[#8794ab] uppercase tracking-wide">Overall Score</p>
-              <div className="relative mt-1 flex items-end">
-                <span className="text-3xl font-black text-[#07142f]">{selected.compositeScore}</span>
-                <span className="text-xs text-[#8794ab] mb-1">/100</span>
-              </div>
-              <div className="mt-2 h-1.5 w-full rounded-full bg-[#eef2f7]">
-                <div className="h-full rounded-full bg-[#0ea66e]" style={{ width: `${selected.compositeScore}%` }} />
-              </div>
-              <p className="mt-1.5 text-[11px] font-medium text-[#0ea66e]">Excellent Opportunity</p>
+          {/* Gauge + meta */}
+          <div className="grid grid-cols-[170px_1fr] gap-4 mb-3 items-start">
+            {/* Semicircle gauge */}
+            <div className="flex flex-col items-center">
+              <svg viewBox="0 0 120 70" className="w-[160px] h-[92px]">
+                <path d="M10,65 A50,50 0 0,1 110,65" fill="none" stroke="#eef2f7" strokeWidth="10" strokeLinecap="round" />
+                <path
+                  d="M10,65 A50,50 0 0,1 110,65"
+                  fill="none"
+                  stroke="#0ea66e"
+                  strokeWidth="10"
+                  strokeLinecap="round"
+                  strokeDasharray={`${(selected.compositeScore / 100) * 157} 157`}
+                />
+                <text x="60" y="55" textAnchor="middle" className="fill-[#07142f]" style={{ fontSize: 22, fontWeight: 800 }}>{selected.compositeScore}</text>
+                <text x="60" y="66" textAnchor="middle" className="fill-[#8794ab]" style={{ fontSize: 7 }}>/100</text>
+              </svg>
+              <p className="-mt-2 text-[11px] font-semibold text-[#0ea66e]">Excellent Opportunity</p>
             </div>
+            {/* Meta grid */}
             <div className="text-xs space-y-1.5">
-              <div className="flex items-center justify-between"><span className="text-[#8794ab]">Tier</span><span className="rounded-full bg-[#e6f7ef] text-[#0ea66e] px-2 py-0.5 text-[10px] font-bold">{selected.tier} (Tier 1)</span></div>
-              <div className="flex items-center justify-between"><span className="text-[#8794ab]">Market Type</span><span className="rounded-full bg-[#eaf0ff] text-[#174be8] px-2 py-0.5 text-[10px] font-medium">Suburb</span></div>
-              <div className="flex items-center justify-between"><span className="text-[#8794ab]">Metro Area</span><span className="text-[#07142f] font-medium">Dallas-Fort Worth, TX</span></div>
-              <div className="flex items-center justify-between"><span className="text-[#8794ab]">County</span><span className="text-[#07142f] font-medium">Collin County</span></div>
-              <div className="pt-2">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                <div className="flex items-center justify-between"><span className="text-[#8794ab]">Tier</span><span className="rounded-full bg-[#e6f7ef] text-[#0ea66e] px-2 py-0.5 text-[10px] font-bold">{selected.tier} (Tier 1)</span></div>
+                <div className="flex items-center justify-between"><span className="text-[#8794ab]">Market Type</span><span className="rounded-full bg-[#eaf0ff] text-[#174be8] px-2 py-0.5 text-[10px] font-medium">Suburb</span></div>
+                <div className="flex items-center justify-between"><span className="text-[#8794ab]">Metro Area</span><span className="text-[#07142f] font-medium text-right">Dallas-Fort Worth, TX</span></div>
+                <div className="flex items-center justify-between"><span className="text-[#8794ab]">County</span><span className="text-[#07142f] font-medium">Collin County</span></div>
+              </div>
+              <div className="pt-1.5">
                 <p className="text-[10px] uppercase tracking-wide text-[#8794ab]">Market Summary</p>
                 <p className="text-[11px] text-[#14233b] leading-snug mt-0.5">Affluent, rapidly growing suburb with strong demand for premium youth education and enrichment programs.</p>
               </div>

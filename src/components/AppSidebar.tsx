@@ -75,7 +75,7 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
           }
         }}
       >
-        <item.icon size={isCollapsed ? 17 : 18} strokeWidth={active ? 2.1 : 1.9} />
+        <item.icon size={isCollapsed ? 17 : 18} strokeWidth={active ? 2 : 1.8} />
         {!isCollapsed && <span className="whitespace-nowrap">{item.title}</span>}
       </NavLink>
     );

@@ -439,11 +439,22 @@ const CityScoring = () => {
           </Select>
         </div>
         <label className="flex items-center gap-2 h-9">
-          <Checkbox checked={nonRegOnly} onCheckedChange={(v) => setNonRegOnly(!!v)} />
+          <Checkbox
+            checked={nonRegOnly}
+            onCheckedChange={(v) => {
+              const on = !!v;
+              setNonRegOnly(on);
+              if (on) toast.success("Non-registration state filter applied to available sample data.");
+            }}
+          />
           <span className="text-xs text-[#14233b] whitespace-nowrap">Non-Registration States Only</span>
         </label>
         <div className="ml-auto h-9 flex items-end">
-          <Button variant="outline" className="h-9 border-[#e5eaf2] text-[#14233b] gap-1.5 font-normal" onClick={() => toast.success("Data refreshed")}>
+          <Button
+            variant="outline"
+            className="h-9 border-[#e5eaf2] text-[#14233b] gap-1.5 font-normal"
+            onClick={() => toast.success("Sample data refreshed. Live source refresh will be connected later.")}
+          >
             <RefreshCw size={14} /> Refresh Data
           </Button>
         </div>
@@ -458,10 +469,19 @@ const CityScoring = () => {
               <h3 className="text-sm font-bold text-[#07142f]">Ranked Markets</h3>
               <p className="text-[11px] text-[#8794ab]">({filtered.length} markets found)</p>
             </div>
-            <button className="flex items-center gap-1 text-xs font-medium text-[#174be8] hover:underline">
+            <button
+              onClick={openCompare}
+              disabled={selectedForCompare.length < 2}
+              className="flex items-center gap-1 text-xs font-medium text-[#174be8] hover:underline disabled:text-[#8794ab] disabled:no-underline disabled:cursor-not-allowed"
+            >
               <GitCompare size={12} /> Compare ({selectedForCompare.length})
             </button>
           </div>
+          {compareMode && (
+            <div className="mb-2 rounded-md bg-[#eaf0ff] border border-[#cfdcff] px-2 py-1.5 text-[11px] text-[#174be8]">
+              Compare mode on — select 2 to 4 markets, then click Compare.
+            </div>
+          )}
           <div className="overflow-hidden flex-1">
             <div className="grid grid-cols-[16px_14px_minmax(0,1fr)_46px_72px_18px] items-center gap-x-2 px-1 py-2 text-[9.5px] uppercase tracking-wide text-[#8794ab] border-b border-[#eef2f7]">
               <span></span>

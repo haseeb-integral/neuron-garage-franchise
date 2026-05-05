@@ -569,7 +569,7 @@ const CityScoring = () => {
         </div>
 
         {/* Right column */}
-        <div className="col-span-12 lg:col-span-3 space-y-3">
+        <div className="min-w-0 space-y-3 self-start">
           {showNearby && (
             <div className="rounded-lg bg-white border border-[#eef2f7] p-3 self-start">
               <div className="mb-2 flex items-center justify-between">

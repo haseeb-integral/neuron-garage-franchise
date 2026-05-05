@@ -459,17 +459,17 @@ const CityScoring = () => {
 
         {/* Center: Selected Market Detail */}
         <div className="min-w-0 rounded-lg bg-white border border-[#eef2f7] p-4">
-          <div className="flex items-start justify-between gap-3 mb-4">
+          <div className="mb-3 flex items-start justify-between gap-3">
             <h2 className="text-[18px] leading-none font-bold text-[#07142f]">{selected.city}, {selected.state === "Texas" ? "TX" : selected.state === "Florida" ? "FL" : selected.state}</h2>
             <button className="flex items-center gap-1 text-[11px] font-medium text-[#174be8] hover:underline whitespace-nowrap">
               <Star size={12} /> Add to Watchlist
             </button>
           </div>
 
-          <div className="grid grid-cols-[184px_1fr] gap-5 items-start">
+          <div className="grid grid-cols-[176px_1fr] gap-4 items-start">
             <div className="flex flex-col items-center text-center pt-1">
-              <p className="mb-2 text-[12px] font-semibold text-[#3a4c72]">Overall Score</p>
-              <svg viewBox="0 0 200 120" className="h-[124px] w-[188px] max-w-full">
+              <p className="mb-1.5 text-[12px] font-semibold text-[#3a4c72]">Overall Score</p>
+              <svg viewBox="0 0 200 120" className="h-[116px] w-[176px] max-w-full">
                 <path d="M25 92 A75 75 0 0 1 175 92" fill="none" stroke="#e7ebf3" strokeWidth="14" strokeLinecap="round" />
                 <path
                   d="M25 92 A75 75 0 0 1 175 92"
@@ -479,15 +479,15 @@ const CityScoring = () => {
                   strokeLinecap="round"
                   strokeDasharray={`${(detailScore / 100) * 236} 236`}
                 />
-                <text x="100" y="76" textAnchor="middle" className="fill-[#07142f]" style={{ fontSize: 34, fontWeight: 800 }}>{detailScore}</text>
+                <text x="100" y="76" textAnchor="middle" className="fill-[#07142f]" style={{ fontSize: 32, fontWeight: 800 }}>{detailScore}</text>
                 <text x="100" y="102" textAnchor="middle" className="fill-[#7e8aa3]" style={{ fontSize: 12, fontWeight: 600 }}>/100</text>
               </svg>
-              <p className="-mt-3 text-[15px] font-semibold text-[#0ea66e]">Excellent Opportunity</p>
+              <p className="-mt-2 text-[14px] font-semibold text-[#0ea66e]">Excellent Opportunity</p>
             </div>
 
-            <div className="space-y-4 pt-1">
-              <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-[11px]">
-                <div className="space-y-4">
+            <div className="space-y-3 pt-1">
+              <div className="grid grid-cols-2 gap-x-5 gap-y-3 text-[11px]">
+                <div className="space-y-3">
                   <div className="grid grid-cols-[70px_1fr] items-center gap-3">
                     <span className="text-[#6b7a96]">Tier</span>
                     <span className="w-fit rounded-full bg-[#e6f7ef] px-2.5 py-1 text-[11px] font-semibold leading-none text-[#0ea66e]">{selected.tier} (Tier 1)</span>
@@ -497,7 +497,7 @@ const CityScoring = () => {
                     <span className="font-semibold leading-5 text-[#07142f]">Dallas-Fort Worth, TX</span>
                   </div>
                 </div>
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div className="grid grid-cols-[84px_1fr] items-center gap-3">
                     <span className="text-[#6b7a96]">Market Type</span>
                     <span className="w-fit rounded-full bg-[#eef3ff] px-2.5 py-1 text-[11px] font-medium leading-none text-[#174be8]">Suburb</span>
@@ -510,16 +510,16 @@ const CityScoring = () => {
               </div>
 
               <div>
-                <p className="mb-1.5 text-[12px] font-semibold text-[#3a4c72]">Market Summary</p>
-                <p className="max-w-[420px] text-[13px] leading-6 text-[#14233b]">Affluent, rapidly growing suburb with strong demand for premium youth education and enrichment programs.</p>
+                <p className="mb-1 text-[12px] font-semibold text-[#3a4c72]">Market Summary</p>
+                <p className="max-w-[420px] text-[12px] leading-5 text-[#14233b]">Affluent, rapidly growing suburb with strong demand for premium youth education and enrichment programs.</p>
               </div>
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-[1fr_1.12fr] gap-6 border-t border-[#eef2f7] pt-4">
+          <div className="mt-3 grid grid-cols-[1fr_1.08fr] gap-5 border-t border-[#eef2f7] pt-3.5">
             <div>
-              <p className="mb-3 text-[13px] font-semibold text-[#07142f]">Category Scores</p>
-              <div className="space-y-2.5">
+              <p className="mb-2.5 text-[13px] font-semibold text-[#07142f]">Category Scores</p>
+              <div className="space-y-2">
                 {CATEGORIES.map((cat) => (
                   <div key={cat.key}>
                     <div className="mb-1 flex items-center justify-between gap-3 text-[12px]">
@@ -534,13 +534,13 @@ const CityScoring = () => {
               </div>
             </div>
 
-            <div className="border-l border-[#eef2f7] pl-6">
-              <p className="mb-3 text-[13px] font-semibold text-[#07142f]">Key Market Signals</p>
-              <div className="space-y-3">
+            <div className="border-l border-[#eef2f7] pl-5">
+              <p className="mb-2.5 text-[13px] font-semibold text-[#07142f]">Key Market Signals</p>
+              <div className="space-y-2.5">
                 {sigRows.map((r) => {
                   const Icon = r.icon;
                   return (
-                    <div key={r.label} className="grid grid-cols-[18px_minmax(0,1fr)_84px_140px] items-center gap-2 text-[12px]">
+                    <div key={r.label} className="grid grid-cols-[16px_minmax(0,1fr)_80px_126px] items-center gap-2 text-[11px]">
                       <Icon size={15} className="text-[#3160ff] flex-shrink-0" />
                       <span className="truncate text-[#526078]">{r.label}</span>
                       <span className="font-semibold text-[#07142f]">{r.value}</span>
@@ -552,17 +552,17 @@ const CityScoring = () => {
             </div>
           </div>
 
-          <div className="mt-5 grid grid-cols-[1.55fr_0.9fr_1.08fr_1.08fr] gap-2.5">
-            <Button onClick={handleFindTeachers} className="h-11 bg-[#174be8] hover:bg-[#1240c9] text-white gap-2 px-3 font-medium text-[11px] whitespace-nowrap">
+          <div className="mt-4 grid grid-cols-[1.45fr_0.82fr_1fr_1fr] gap-2">
+            <Button onClick={handleFindTeachers} className="h-10 bg-[#174be8] hover:bg-[#1240c9] text-white gap-2 px-3 font-medium text-[10.5px] whitespace-nowrap">
               Find Teachers in This Market <ArrowRight size={14} />
             </Button>
-            <Button variant="outline" className="h-11 border-[#dbe4f2] text-[#2250eb] gap-1.5 px-3 font-medium text-[11px] whitespace-nowrap">
+            <Button variant="outline" className="h-10 border-[#dbe4f2] text-[#2250eb] gap-1.5 px-3 font-medium text-[10.5px] whitespace-nowrap">
               <GitCompare size={14} /> Compare
             </Button>
-            <Button variant="outline" className="h-11 border-[#dbe4f2] text-[#2250eb] gap-1.5 px-3 font-medium text-[11px] whitespace-nowrap">
+            <Button variant="outline" className="h-10 border-[#dbe4f2] text-[#2250eb] gap-1.5 px-3 font-medium text-[10.5px] whitespace-nowrap">
               <FileText size={14} /> Generate Report
             </Button>
-            <Button variant="outline" className="h-11 border-[#dbe4f2] text-[#2250eb] gap-1.5 px-3 font-medium text-[11px] whitespace-nowrap" onClick={() => setDetailDrawerOpen(true)}>
+            <Button variant="outline" className="h-10 border-[#dbe4f2] text-[#2250eb] gap-1.5 px-3 font-medium text-[10.5px] whitespace-nowrap" onClick={() => setDetailDrawerOpen(true)}>
               <Eye size={14} /> View Full Details
             </Button>
           </div>

@@ -51,14 +51,14 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
         end={item.url === "/"}
         onClick={onNavigate}
         data-tour={withTour && "tourId" in item ? item.tourId : undefined}
-        className={`group flex items-center rounded-xl transition-all ${
-          isCollapsed ? "justify-center px-0" : "gap-3 px-3.5"
+        className={`group flex items-center rounded-lg transition-all ${
+          isCollapsed ? "justify-center px-0" : "gap-3 px-3"
         }`}
         style={{
-          minHeight: isCollapsed ? 40 : 44,
+          minHeight: isCollapsed ? 36 : 38,
           backgroundColor: active ? "#174be8" : "transparent",
           color: active ? "#ffffff" : "#14233b",
-          fontSize: 13,
+          fontSize: 13.5,
           fontWeight: active ? 600 : 500,
           boxShadow: "none",
         }}
@@ -75,7 +75,7 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
           }
         }}
       >
-        <item.icon size={isCollapsed ? 17 : 18} strokeWidth={active ? 2 : 1.8} />
+        <item.icon size={isCollapsed ? 17 : 17} strokeWidth={active ? 2.1 : 1.75} />
         {!isCollapsed && <span className="whitespace-nowrap">{item.title}</span>}
       </NavLink>
     );
@@ -96,8 +96,8 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
         className={containerClass}
         style={{
           backgroundColor: "#ffffff",
-          borderRight: "1px solid #e4eaf3",
-          boxShadow: "8px 0 24px rgba(15, 23, 42, 0.025)",
+          borderRight: "1px solid #eef2f7",
+          boxShadow: "none",
         }}
       >
         <div className={`flex items-start ${isCollapsed ? "flex-col gap-3 px-2 py-4" : "gap-2 px-3.5 pb-5 pt-4"}`}>

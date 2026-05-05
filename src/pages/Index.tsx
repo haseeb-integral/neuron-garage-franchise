@@ -59,10 +59,10 @@ const Dashboard = () => {
           <>
             <button
               type="button"
-              className="inline-flex items-center justify-center bg-[#174be8] font-semibold text-white shadow-sm transition-colors hover:bg-[#0f3fd0]"
-              style={{ height: 34, minHeight: 34, paddingLeft: 18, paddingRight: 18, borderRadius: 8, fontSize: 13, lineHeight: "13px" }}
+              className="inline-flex items-center justify-center bg-[#174be8] text-white transition-colors hover:bg-[#0f3fd0]"
+              style={{ height: 36, minHeight: 36, paddingLeft: 16, paddingRight: 16, borderRadius: 8, fontSize: 13, fontWeight: 500, lineHeight: "13px", boxShadow: "none" }}
             >
-              <Download className="mr-2 shrink-0" size={15} />
+              <Download className="mr-2 shrink-0" size={15} strokeWidth={1.9} />
               <span>Export Report</span>
             </button>
             <button

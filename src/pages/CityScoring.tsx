@@ -488,22 +488,24 @@ const CityScoring = () => {
             </div>
 
             <div className="space-y-2.5 pt-1 min-w-0">
-              <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-[11px] min-w-0">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-[#6b7a96] flex-shrink-0">Tier</span>
-                  <span className="w-fit rounded-full bg-[#e6f7ef] px-2 py-0.5 text-[10.5px] font-semibold leading-tight text-[#0ea66e]">{selected.tier} (Tier 1)</span>
+              <div className="text-[11px] space-y-1.5 min-w-0">
+                <div className="flex items-center gap-x-4 gap-y-1.5 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[#6b7a96]">Tier</span>
+                    <span className="rounded-full bg-[#e6f7ef] px-2 py-0.5 text-[10.5px] font-semibold leading-tight text-[#0ea66e]">{selected.tier} (Tier 1)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[#6b7a96]">Market Type</span>
+                    <span className="rounded-full bg-[#eef3ff] px-2 py-0.5 text-[10.5px] font-medium leading-tight text-[#174be8]">Suburb</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-[#6b7a96] flex-shrink-0">Market Type</span>
-                  <span className="w-fit rounded-full bg-[#eef3ff] px-2 py-0.5 text-[10.5px] font-medium leading-tight text-[#174be8]">Suburb</span>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-[#6b7a96] w-[78px] flex-shrink-0">Metro Area</span>
+                  <span className="font-semibold text-[#07142f]">Dallas-Fort Worth, TX</span>
                 </div>
-                <div className="flex items-baseline gap-2 min-w-0">
-                  <span className="text-[#6b7a96] flex-shrink-0">Metro Area</span>
-                  <span className="font-semibold text-[#07142f] truncate">Dallas-Fort Worth, TX</span>
-                </div>
-                <div className="flex items-baseline gap-2 min-w-0">
-                  <span className="text-[#6b7a96] flex-shrink-0">County</span>
-                  <span className="font-semibold text-[#07142f] truncate">Collin County</span>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-[#6b7a96] w-[78px] flex-shrink-0">County</span>
+                  <span className="font-semibold text-[#07142f]">Collin County</span>
                 </div>
               </div>
 

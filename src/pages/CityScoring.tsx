@@ -409,23 +409,23 @@ const CityScoring = () => {
               <GitCompare size={12} /> Compare ({selectedForCompare.length})
             </button>
           </div>
-          <div className="overflow-hidden">
-            <div className="grid grid-cols-[18px_22px_minmax(0,1fr)_56px_78px_24px] items-center gap-2 px-2 py-1.5 text-[10px] uppercase tracking-wide text-[#8794ab] border-b border-[#eef2f7]">
+          <div className="overflow-hidden flex-1">
+            <div className="grid grid-cols-[18px_18px_minmax(0,1fr)_58px_84px_22px] items-center gap-x-3 px-1 py-2 text-[10px] uppercase tracking-wide text-[#8794ab] border-b border-[#eef2f7]">
               <span></span>
               <span>Rank</span>
               <span>Market</span>
               <span>Type</span>
               <span>Score</span>
-              <span>Tier</span>
+              <span className="text-right">Tier</span>
             </div>
-            {filtered.map((c, i) => {
+            {filtered.slice(0, 5).map((c, i) => {
               const isSel = c.id === selectedId;
               const isCmp = selectedForCompare.includes(c.id);
               return (
                 <div
                   key={c.id}
                   onClick={() => setSelectedId(c.id)}
-                  className={`grid grid-cols-[18px_22px_minmax(0,1fr)_56px_78px_24px] items-center gap-2 px-2 py-2 text-xs cursor-pointer border-b border-[#f3f5f9] last:border-0 ${isSel ? "bg-[#eaf0ff]" : "hover:bg-[#f7faff]"}`}
+                  className={`grid grid-cols-[18px_18px_minmax(0,1fr)_58px_84px_22px] items-center gap-x-3 px-1 py-3 text-xs cursor-pointer border-b border-[#f3f5f9] last:border-0 ${isSel ? "bg-[#eaf0ff]" : "hover:bg-[#f7faff]"}`}
                 >
                   <Checkbox checked={isCmp} onCheckedChange={() => toggleCompare(c.id)} onClick={(e) => e.stopPropagation()} />
                   <span className="text-[#526078]">{i + 1}</span>
@@ -433,29 +433,27 @@ const CityScoring = () => {
                     <div className="truncate font-semibold text-[#07142f]">{c.city}, {c.state === "Texas" ? "TX" : c.state === "Florida" ? "FL" : c.state}</div>
                     <div className="truncate text-[10px] text-[#8794ab]">{c.population > 200000 ? "Travis County" : "Collin County"}</div>
                   </div>
-                  <span className="inline-block self-center w-fit rounded-full bg-[#eaf0ff] text-[#174be8] text-[10px] font-medium px-1.5 py-0.5">
+                  <span className="inline-block self-center w-fit rounded-full bg-[#eaf0ff] text-[#174be8] text-[10px] font-medium px-2 py-0.5">
                     {c.population > 200000 ? "Metro" : "Suburb"}
                   </span>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[#07142f] font-semibold">{c.compositeScore}</span>
-                    <div className="h-1.5 w-12 rounded-full bg-[#eef2f7]">
+                    <span className="text-[#07142f] font-semibold tabular-nums">{c.compositeScore}</span>
+                    <div className="h-1.5 flex-1 rounded-full bg-[#eef2f7]">
                       <div className="h-full rounded-full bg-[#0ea66e]" style={{ width: `${c.compositeScore}%` }} />
                     </div>
                   </div>
-                  <span className={`flex items-center justify-center rounded-full text-[10px] font-bold text-white`} style={{ width: 18, height: 18, backgroundColor: c.tier === "A" ? "#0ea66e" : c.tier === "B" ? "#174be8" : c.tier === "C" ? "#b8860b" : "#ea580c" }}>{c.tier}</span>
+                  <span className={`justify-self-end flex items-center justify-center rounded-full text-[10px] font-bold text-white`} style={{ width: 20, height: 20, backgroundColor: c.tier === "A" ? "#0ea66e" : c.tier === "B" ? "#174be8" : c.tier === "C" ? "#b8860b" : "#ea580c" }}>{c.tier}</span>
                 </div>
               );
             })}
           </div>
           <div className="mt-3 flex items-center justify-between text-[11px] text-[#8794ab]">
-            <span>Showing 1 to {Math.min(filtered.length, 25)} of 238 results</span>
+            <span>Showing 1 to {Math.min(filtered.length, 5)} of {filtered.length} results</span>
             <div className="flex items-center gap-1">
               <button className="px-1.5 h-6 rounded border border-[#eef2f7] text-[#526078]">‹</button>
               <button className="px-2 h-6 rounded bg-[#174be8] text-white font-medium">1</button>
               <button className="px-2 h-6 rounded border border-[#eef2f7] text-[#14233b]">2</button>
               <button className="px-2 h-6 rounded border border-[#eef2f7] text-[#14233b]">3</button>
-              <span className="px-1 text-[#8794ab]">…</span>
-              <button className="px-2 h-6 rounded border border-[#eef2f7] text-[#14233b]">10</button>
               <button className="px-1.5 h-6 rounded border border-[#eef2f7] text-[#526078]">›</button>
             </div>
           </div>
@@ -538,17 +536,19 @@ const CityScoring = () => {
               </div>
             </div>
 
-            <div className="border-l border-[#eef2f7] pl-5">
+            <div className="min-w-0 border-l border-[#eef2f7] pl-4">
               <p className="mb-2.5 text-[13px] font-semibold text-[#07142f]">Key Market Signals</p>
-              <div className="grid grid-cols-1 gap-y-2">
+              <div className="flex flex-col gap-y-2.5">
                 {sigRows.map((r) => {
                   const Icon = r.icon;
                   return (
-                    <div key={r.label} className="grid grid-cols-[16px_minmax(0,1.3fr)_auto_minmax(0,1.1fr)] items-center gap-x-2.5 text-[11px]">
-                      <Icon size={13} className="text-[#3160ff] flex-shrink-0" />
+                    <div key={r.label} className="grid grid-cols-[14px_1fr_auto] items-center gap-x-2 text-[10.5px] min-w-0">
+                      <Icon size={12} className="text-[#3160ff] flex-shrink-0" />
                       <span className="text-[#526078] leading-tight truncate">{r.label}</span>
-                      <span className="font-semibold text-[#07142f] tabular-nums whitespace-nowrap text-right">{r.value}</span>
-                      <span className={`whitespace-nowrap text-right text-[10.5px] font-medium ${r.deltaClass}`}>{r.delta}</span>
+                      <span className="font-semibold text-[#07142f] tabular-nums text-right">{r.value}</span>
+                      <span className="col-span-3 col-start-2 -mt-1 text-[10px] text-right text-[#8794ab] truncate">
+                        <span className={`font-medium ${r.deltaClass}`}>{r.delta}</span>
+                      </span>
                     </div>
                   );
                 })}
@@ -556,18 +556,18 @@ const CityScoring = () => {
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-[1.5fr_0.78fr_1.05fr_1.1fr] gap-2">
-            <Button onClick={handleFindTeachers} className="h-9 min-w-0 bg-[#174be8] hover:bg-[#1240c9] text-white gap-1.5 px-2 font-medium text-[10.5px] whitespace-nowrap">
-              Find Teachers in This Market <ArrowRight size={12} />
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button onClick={handleFindTeachers} className="h-9 flex-1 min-w-0 bg-[#174be8] hover:bg-[#1240c9] text-white gap-1.5 px-3 font-medium text-[11px]">
+              <span className="truncate">Find Teachers in This Market</span> <ArrowRight size={12} className="flex-shrink-0" />
             </Button>
-            <Button variant="outline" className="h-9 min-w-0 border-[#dbe4f2] text-[#2250eb] gap-1 px-2 font-medium text-[10.5px] whitespace-nowrap">
+            <Button variant="outline" className="h-9 min-w-0 border-[#dbe4f2] text-[#2250eb] gap-1 px-2.5 font-medium text-[11px]">
               <GitCompare size={12} /> Compare
             </Button>
-            <Button variant="outline" className="h-9 min-w-0 border-[#dbe4f2] text-[#2250eb] gap-1 px-2 font-medium text-[10.5px] whitespace-nowrap">
-              <FileText size={12} /> Generate Report
+            <Button variant="outline" className="h-9 min-w-0 border-[#dbe4f2] text-[#2250eb] gap-1 px-2.5 font-medium text-[11px]">
+              <FileText size={12} /> Report
             </Button>
-            <Button variant="outline" className="h-9 min-w-0 border-[#dbe4f2] text-[#2250eb] gap-1 px-2 font-medium text-[10.5px] whitespace-nowrap" onClick={() => setDetailDrawerOpen(true)}>
-              <Eye size={12} /> View Full Details
+            <Button variant="outline" className="h-9 min-w-0 border-[#dbe4f2] text-[#2250eb] gap-1 px-2.5 font-medium text-[11px]" onClick={() => setDetailDrawerOpen(true)}>
+              <Eye size={12} /> Details
             </Button>
           </div>
         </div>

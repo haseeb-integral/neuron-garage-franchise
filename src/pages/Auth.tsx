@@ -222,7 +222,7 @@ export default function Auth() {
               <div className="text-xl font-black tracking-tight text-[#003c7e]">Neuron Garage</div>
             </div>
 
-            <Card className="rounded-3xl border-[#d8e2ef] bg-white/95 shadow-2xl shadow-blue-950/5">
+            <Card className="rounded-3xl border-[#eef2f7] bg-white/95 shadow-2xl shadow-blue-950/5">
               <CardHeader className="px-6 pb-1 pt-5 sm:px-7">
                 <CardTitle className="text-2xl font-black tracking-tight text-[#07142f]">
                   {isLogin ? "Welcome Back" : "Create Account"}
@@ -381,7 +381,7 @@ export default function Auth() {
               </CardContent>
             </Card>
 
-            <Card className="mt-3 rounded-2xl border-[#d8e2ef] bg-white/95 shadow-xl shadow-blue-950/5">
+            <Card className="mt-3 rounded-2xl border-[#eef2f7] bg-white/95 shadow-xl shadow-blue-950/5">
               <CardContent className="px-7 py-4 text-center sm:px-9">
                 <h2 className="text-base font-bold text-[#07142f]">
                   {isLogin ? "New to Neuron Garage Franchise?" : "Already have an account?"}
@@ -401,17 +401,15 @@ export default function Auth() {
             </Card>
           </div>
 
-          <footer className="flex flex-col items-center justify-between gap-3 border-t border-[#dbe3ee] pt-3 text-xs text-[#65748c] sm:flex-row">
+          <footer className="flex flex-col items-center justify-between gap-2 border-t border-[#eef2f7] pt-4 text-[12px] text-[#65748c] sm:flex-row">
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-[#174be8]" />
-              Your data is protected with enterprise-grade security.
+              <span>Your data is protected with enterprise-grade security.</span>
             </div>
-            <div className="flex flex-wrap items-center justify-center gap-3">
+            <div className="flex items-center gap-5">
               <span>© 2026 Neuron Garage Franchise. All rights reserved.</span>
-              <span className="hidden sm:inline">•</span>
-              <span>Privacy Policy</span>
-              <span>•</span>
-              <span>Terms of Service</span>
+              <a href="#" className="hover:text-[#174be8]">Privacy Policy</a>
+              <a href="#" className="hover:text-[#174be8]">Terms of Service</a>
             </div>
           </footer>
         </main>

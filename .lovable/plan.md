@@ -1,52 +1,38 @@
-## Goal
+## Issues confirmed against the mockups
 
-Make `/auth` and `/` (Dashboard) visually match the approved mockups when viewed in Chrome at 100% zoom on an ~1100px-wide preview, with minimal vertical scrolling and no "magnified" feel. Layout/density only — no backend, auth logic, or routing changes.
+1. **Card borders are too dark/heavy.** All cards use `border: 1px solid #d8e2ef` (a fairly saturated blue-grey). The mockup uses a near-invisible hairline (~`#eef2f7` / `#edf1f7`).
+2. **Login screen footer is messy.** Current footer wraps "© 2026 …", "Privacy Policy", "Terms of Service" as plain spans separated by "•" bullets. In the mockup they're on a single right-aligned row with comfortable spacing, no bullets, and Privacy/Terms are link-styled. The top border line is also too dark and the padding is uneven vs the mockup.
+3. **Sidebar active state mismatch.** Active item is `#0757ff` with a heavy `boxShadow` (`0 8px 18px rgba(7,87,255,0.14)`) and weight jumps from 500 → 700. The mockup uses a flat blue pill (`#174be8`), no glow/shadow, same font weight as inactive items, slightly smaller text.
+4. **Dashboard background:** confirmed white (`AppLayout` wraps everything in `bg-white`). No change needed; will note this in the response.
 
-## Root causes (confirmed from code)
+## Changes (layout/visual only — no logic touched)
 
-1. **Auth screen feels magnified**
-   - `Auth.tsx` uses `text-4xl xl:text-5xl` headline, `text-3xl` card title, `h-12 text-base` inputs, `h-12 text-base` Sign In button, large `Mail/Lock` icons (`h-5 w-5`), `py-6` card padding, and a tall illustration block (`min-h-[330px]`) — combined this overflows 779px height and looks oversized.
-   - The mockup uses noticeably smaller type: ~28px headline, ~22px card title, ~40px inputs.
+### A. Soften all card borders globally on the affected pages
+Replace `border: "1px solid #d8e2ef"` (and Tailwind `border-[#d8e2ef]`) with a lighter token `#eef2f7` on these files where cards/sections are styled inline:
+- `src/pages/Index.tsx` (KPI cards, Pipeline, Recent Activity, Next Best Actions, Insights)
+- `src/pages/Auth.tsx` (main card + "Create Account" card + footer top border + provider buttons)
+- `src/pages/CityScoring.tsx`, `src/pages/TeacherProspects.tsx`, `src/pages/CandidatePipeline.tsx`, `src/pages/Onboarding.tsx`, `src/pages/TeamMembers.tsx` — same swap on outer card containers only.
+- `src/components/PageHeader.tsx` button border (`#d8e2ef` → `#e4eaf2`).
 
-2. **Dashboard requires scrolling at 1100px**
-   - The KPI grid only goes 4-up at `xl` (≥1280px). At 1100px viewport with 220px sidebar (≈880px content), it falls back to `sm:grid-cols-2` → 2×2 KPIs, doubling vertical height.
-   - The 3-column middle row also only activates at `xl`, so at 1100px Pipeline / Recent Activity / Next Best Actions stack vertically.
-   - Net effect: ~4 stacked bands instead of the mockup's 4 horizontal bands.
+Keep border width at 1px (already slim). Just lighten the colour.
 
-3. **Breakpoint mismatch overall** — the layout was tuned for ≥1280px content width, but the actual content area at 1100px viewport is ~880px.
+### B. Login footer (`src/pages/Auth.tsx` lines 404–416)
+Rewrite to match mockup:
+- Top border: `border-[#dbe3ee]` → `border-[#eef2f7]`.
+- Layout: `flex items-center justify-between` (no `flex-col` on small screens beyond `sm:`), padding `pt-3` → `pt-4`, font `text-xs` → `text-[12px]` with `text-[#65748c]`.
+- Right cluster: replace `•` separator spans with three plain spans separated by left margin (`gap-5`); render "Privacy Policy" and "Terms of Service" as `<a>` styled with `hover:text-[#174be8]`.
+- Remove the shield icon prefix duplication if needed; mockup keeps the shield on the left.
 
-## Plan
+### C. Sidebar active state (`src/components/AppSidebar.tsx`)
+In `renderLink`:
+- `backgroundColor: active ? "#174be8" : "transparent"` (was `#0757ff`).
+- Remove the `boxShadow` for active.
+- `fontWeight: 600` for active (was 700); inactive stays 500.
+- `fontSize: 13` (unchanged).
+- Reduce icon strokeWidth difference: `strokeWidth={active ? 2 : 1.8}`.
 
-### A. Lower the breakpoints so the dashboard is horizontal at 1100px
-File: `src/pages/Index.tsx`
-- KPI row: `grid-cols-1 sm:grid-cols-2 xl:grid-cols-4` → `grid-cols-2 lg:grid-cols-4` (always 2-up on mobile, 4-up from `lg` 1024px).
-- Middle 3-column row: `xl:grid-cols-[1.05fr_1fr_1.12fr]` → `lg:grid-cols-[1.05fr_1fr_1.12fr]`.
-- Insights row: `lg:grid-cols-5` stays, but add `md:grid-cols-3` fallback.
-- Tighten KPI card: `p-4` → `p-3`, icon box `h-14 w-14` → `h-11 w-11`, icon size 26 → 22, value `text-2xl` → `text-xl`, top margin `mt-4` → `mt-3`.
-- Tighten section cards: `p-4` → `p-3`, inner `space-y-2.5` → `space-y-1.5`, pipeline bar `h-3` → `h-2.5`, row gap `mb-3` → `mb-2`.
-- Vertical rhythm: outer `space-y-4` → `space-y-3`.
+### D. Verification
+After changes, capture `/auth` and `/` at 1100×779 and compare against the two uploaded mockups.
 
-### B. Compact Auth screen to match mockup
-File: `src/pages/Auth.tsx`
-- Headline: `text-4xl xl:text-5xl` → `text-3xl xl:text-[34px]`, subtitle `text-lg` → `text-base`.
-- Card title: `text-3xl` → `text-2xl`; description `text-base` → `text-sm`.
-- Card padding: `pt-6 pb-6` → `pt-5 pb-5`, side `px-7 sm:px-9` → `px-6 sm:px-7`.
-- Inputs: `h-12 text-base` → `h-10 text-sm`, icons `h-5 w-5` → `h-4 w-4`, icon offset `left-4` → `left-3`, input `pl-12` → `pl-10`.
-- Sign In button: `h-12 text-base` → `h-10 text-sm`.
-- Form spacing: `space-y-4` → `space-y-3`, label/input gap `space-y-1.5` → `space-y-1`.
-- Left illustration block: `min-h-[330px]` → `min-h-[260px]`, header logo `h-12 w-12` → `h-10 w-10`, brand text `text-2xl` → `text-xl`, vertical padding `py-6` → `py-5`.
-- "or continue with" divider margin `my-5` → `my-4`; provider buttons height ~36px.
-- "Create Account" footer card: tighten padding so the whole right column fits ~720px tall.
-
-### C. Verify
-Use the browser tools to load `/auth` at 1100×779 and `/` at 1100×779 (after sign-in). Confirm:
-- Auth: both columns fit without page scroll; headline/inputs match mockup proportions.
-- Dashboard: KPI row is 4-up; Pipeline / Recent Activity / Next Best Actions are side-by-side; Insights row visible after only a small scroll (mockup is also slightly taller than viewport — full no-scroll is not realistic without removing the Insights band).
-
-## Out of scope (not touched)
-
-Supabase, RLS, edge functions, auth logic, routes, env vars, sidebar/journey-bar structure, global search, other pages (CityScoring / Pipeline / Onboarding / Team / Prospects keep current density from previous pass).
-
-## Honest expectation
-
-The Dashboard mockup itself is ~960px tall at the rendered width — even perfectly compacted, the Insights band will sit just below the fold at 779px and need a tiny scroll. Going further would require either dropping a section or shrinking type below readable sizes, which I do not recommend without your sign-off.
+## Out of scope
+Supabase, auth logic, routes, sidebar structure, journey bar, dashboard content, global search.

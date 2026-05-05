@@ -67,7 +67,7 @@ const Dashboard = () => {
             </button>
             <button
               type="button"
-              className="inline-flex items-center justify-center border border-[#d8e2ef] bg-white font-semibold text-[#26364d] transition-colors hover:bg-[#f3f7ff]"
+              className="inline-flex items-center justify-center border border-[#eef2f7] bg-white font-semibold text-[#26364d] transition-colors hover:bg-[#f3f7ff]"
               style={{ height: 34, minHeight: 34, paddingLeft: 16, paddingRight: 16, borderRadius: 8, fontSize: 13, lineHeight: "13px" }}
             >
               <CalendarDays className="mr-2 shrink-0 text-[#526078]" size={15} />
@@ -79,7 +79,7 @@ const Dashboard = () => {
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {kpis.map((stat) => (
-          <div key={stat.title} className="rounded-2xl bg-white p-3 shadow-sm" style={{ border: "1px solid #d8e2ef" }}>
+          <div key={stat.title} className="rounded-2xl bg-white p-3 shadow-sm" style={{ border: "1px solid #eef2f7" }}>
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: stat.bg, color: stat.color }}>
                 <stat.icon size={22} />
@@ -98,10 +98,10 @@ const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.05fr_1fr_1.12fr]">
-        <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: "1px solid #d8e2ef" }}>
+        <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: "1px solid #eef2f7" }}>
           <div className="mb-3 flex items-start justify-between gap-3">
             <div><h2 className="text-lg font-black text-[#07142f]">Pipeline Snapshot</h2><p className="text-xs text-[#526078]">Candidates by stage</p></div>
-            <Button variant="outline" className="h-8 rounded-lg border-[#d8e2ef] px-3 text-xs font-semibold">All Stages</Button>
+            <Button variant="outline" className="h-8 rounded-lg border-[#eef2f7] px-3 text-xs font-semibold">All Stages</Button>
           </div>
           <div className="space-y-2.5">
             <div className="grid grid-cols-[130px_1fr_42px_46px] items-center gap-3 text-[11px] font-bold text-[#526078]"><span>Stage</span><span /><span className="text-right">Candidates</span><span className="text-right">% Total</span></div>
@@ -116,7 +116,7 @@ const Dashboard = () => {
           </div>
         </section>
 
-        <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: "1px solid #d8e2ef" }}>
+        <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: "1px solid #eef2f7" }}>
           <div className="mb-3 flex items-start justify-between gap-3"><div><h2 className="text-lg font-black text-[#07142f]">Recent Activity</h2><p className="text-xs text-[#526078]">Latest events across the system</p></div><button className="text-xs font-bold text-[#174be8] hover:underline">View All</button></div>
           <div className="space-y-1">
             {recentActivity.map((evt, i) => (
@@ -129,7 +129,7 @@ const Dashboard = () => {
           </div>
         </section>
 
-        <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: "1px solid #d8e2ef" }}>
+        <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: "1px solid #eef2f7" }}>
           <h2 className="mb-4 text-lg font-black text-[#07142f]">Next Best Actions</h2>
           <div className="space-y-1">
             {nextActions.map((action, i) => (
@@ -144,8 +144,8 @@ const Dashboard = () => {
         </section>
       </div>
 
-      <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: "1px solid #d8e2ef" }}>
-        <div className="mb-3 flex items-start justify-between gap-3"><div><h2 className="text-lg font-black text-[#07142f]">Insights at a Glance</h2><p className="text-xs text-[#526078]">Key metrics over time</p></div><Button variant="outline" className="h-8 rounded-lg border-[#d8e2ef] px-3 text-xs font-semibold">Last 6 Months</Button></div>
+      <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: "1px solid #eef2f7" }}>
+        <div className="mb-3 flex items-start justify-between gap-3"><div><h2 className="text-lg font-black text-[#07142f]">Insights at a Glance</h2><p className="text-xs text-[#526078]">Key metrics over time</p></div><Button variant="outline" className="h-8 rounded-lg border-[#eef2f7] px-3 text-xs font-semibold">Last 6 Months</Button></div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
           {insights.map((item) => (
             <div key={item.title} className="border-r border-[#eef2f6] pr-4 last:border-r-0">

@@ -56,11 +56,11 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
         }`}
         style={{
           minHeight: isCollapsed ? 40 : 44,
-          backgroundColor: active ? "#0757ff" : "transparent",
+          backgroundColor: active ? "#174be8" : "transparent",
           color: active ? "#ffffff" : "#14233b",
-          fontSize: isCollapsed ? 13 : 13,
-          fontWeight: active ? 700 : 500,
-          boxShadow: active ? "0 8px 18px rgba(7, 87, 255, 0.14)" : "none",
+          fontSize: 13,
+          fontWeight: active ? 600 : 500,
+          boxShadow: "none",
         }}
         onMouseEnter={(e) => {
           if (!active) {
@@ -75,7 +75,7 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
           }
         }}
       >
-        <item.icon size={isCollapsed ? 17 : 18} strokeWidth={active ? 2.1 : 1.9} />
+        <item.icon size={isCollapsed ? 17 : 18} strokeWidth={active ? 2 : 1.8} />
         {!isCollapsed && <span className="whitespace-nowrap">{item.title}</span>}
       </NavLink>
     );
@@ -121,7 +121,7 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
                 width: isCollapsed ? 32 : 34,
                 height: isCollapsed ? 32 : 34,
                 backgroundColor: "#ffffff",
-                border: "1px solid #d8e2ef",
+                border: "1px solid #eef2f7",
                 color: "#14233b",
                 boxShadow: "0 4px 10px rgba(15, 23, 42, 0.03)",
               }}
@@ -143,7 +143,7 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
           {primaryNavItems.map((item) => renderLink(item, true))}
         </nav>
 
-        <div className={`${isCollapsed ? "mx-3 my-5" : "mx-3.5 my-5"} h-px bg-[#d8e2ef]`} />
+        <div className={`${isCollapsed ? "mx-3 my-5" : "mx-3.5 my-5"} h-px bg-[#eef2f7]`} />
 
         <nav className={`flex flex-col ${isCollapsed ? "gap-2 px-2" : "gap-2.5 px-3.5"}`}>
           {utilityNavItems.map((item) => renderLink(item))}

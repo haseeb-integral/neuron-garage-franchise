@@ -1,68 +1,105 @@
-## Scope
-UI-only refinement of `src/pages/CityScoring.tsx`. No backend, route, auth, or data changes. Match the attached mockup at ~1100px preview width.
+## Goal
+Make the `/city-scoring` screen match the attached mockups much more closely at the current preview width, with special focus on:
+- Ranked Markets spacing and pagination density
+- Frisco detail card button fit
+- Key Market Signals column alignment and overflow
+- Equal visual height between the left and adjacent columns
 
-## Changes (single file: `src/pages/CityScoring.tsx`)
+## Root cause
+The current problems come from a few layout decisions inside `src/pages/CityScoring.tsx`:
 
-### 1. Ranked Markets card (lines 402–458)
-- Widen left column proportions: change main grid from `lg:grid-cols-[0.92fr_1.5fr_0.92fr]` to `lg:grid-cols-[1fr_1.5fr_0.85fr]` so the left card has more breathing room and the right column stays compact.
-- Update row template to `grid-cols-[18px_22px_minmax(0,1fr)_56px_72px_24px]` for both header and rows so Score column has room for a wider mini-bar.
-- Bump row vertical padding from `py-1.5` to `py-2` for cleaner spacing.
-- Change Type pill to use `inline-block self-center` to avoid stretching.
-- Increase mini score bar from `w-7 h-1` to `w-12 h-1.5` so it doesn't look squeezed.
-- Rebuild pagination to mockup style (1, 2, 3, …, 10 with chevrons):
-  ```tsx
-  <div className="flex items-center gap-1">
-    <button className="px-1.5 h-6 rounded border border-[#eef2f7] text-[#526078]">‹</button>
-    <button className="px-2 h-6 rounded bg-[#174be8] text-white">1</button>
-    <button className="px-2 h-6 rounded border border-[#eef2f7]">2</button>
-    <button className="px-2 h-6 rounded border border-[#eef2f7]">3</button>
-    <span className="px-1 text-[#8794ab]">…</span>
-    <button className="px-2 h-6 rounded border border-[#eef2f7]">10</button>
-    <button className="px-1.5 h-6 rounded border border-[#eef2f7] text-[#526078]">›</button>
-  </div>
-  ```
-- Update result count to mockup-style copy:
-  `Showing 1 to {Math.min(filtered.length, 25)} of 238 results` (kept dynamic page-size, total uses 238 to mirror mockup behavior).
+1. **Ranked Markets is trying to show too much vertical content**
+   - The card currently renders all filtered rows, plus a large footer (`Showing 1 to 25...` and `...10` pagination).
+   - That makes the left card taller than intended and forces tighter row spacing to compensate.
+   - The row grid also gives the Market, Type, Score, and Tier columns very little breathing room, so the content feels cramped compared with the mockup.
 
-### 2. Frisco detail card — action buttons (lines 555–568)
-- Buttons row currently overflows because `View Full Details` is too wide for its track. Rebalance to `grid-cols-[1.55fr_0.78fr_1.05fr_1.1fr]`, add `min-w-0` to each button, drop icon size to 12, and reduce horizontal padding to `px-2`. This keeps all 4 buttons inside the card border at 1100px.
+2. **The Frisco action row uses rigid grid tracks with `whitespace-nowrap` buttons**
+   - The four buttons are placed in fixed fractional columns.
+   - At ~1091px viewport width, the button labels plus icons plus padding exceed the available width.
+   - Because the labels are forced onto one line, the longest button (`Find Teachers in This Market`) pushes against the card border instead of shrinking gracefully.
 
-### 3. Key Market Signals — proper aligned mini-table (lines 538–552)
-- Lift the row template to a fixed 4-col grid so every row aligns identically:
-  ```tsx
-  <div className="grid grid-cols-[16px_minmax(0,1.4fr)_auto_auto] items-center gap-x-2.5 text-[11px] py-0.5">
-    <Icon size={13} className="text-[#3160ff]" />
-    <span className="text-[#526078] truncate">{r.label}</span>
-    <span className="font-semibold text-[#07142f] tabular-nums whitespace-nowrap text-right pr-1">{r.value}</span>
-    <span className={`whitespace-nowrap text-right text-[10.5px] font-medium ${r.deltaClass}`}>{r.delta}</span>
-  </div>
-  ```
-- Wrap rows in a parent `grid grid-cols-1 gap-y-2` for consistent vertical rhythm.
+3. **Key Market Signals is overflowing because its grid is over-constrained**
+   - The current row template gives the label, value, and delta columns competing width demands.
+   - The value and delta are both effectively protected from wrapping, while the label is still too narrow.
+   - On this viewport, the total minimum width of those columns is larger than the space available, so text alignment breaks and content presses toward the card edge.
 
-### 4. Nearby Markets — boxed score badges (lines 580–585)
-- Replace the plain `<span>{m.score}</span>` with a small badge:
-  ```tsx
-  <span className="inline-flex items-center justify-center min-w-[28px] h-5 rounded-md bg-[#e6f7ef] text-[#0ea66e] text-[10.5px] font-bold px-1.5">
-    {m.score}
-  </span>
-  ```
+4. **The current implementation solved some issues visually but not structurally**
+   - Earlier tweaks adjusted padding and column widths, but the underlying composition is still too rigid for this viewport.
+   - The mockup works because it is more selective about how much content is shown and allocates clearer column roles inside each mini-table.
 
-### 5. Market Snapshot — legend on right of map (lines 616–637)
-- Restructure inside of card: wrap map + legend in `grid grid-cols-[1fr_auto] gap-3 items-center`. Map keeps its current styling (slightly narrower); legend becomes a vertical stack on the right with the 3 colored dots and labels (`text-[10.5px]`, `space-y-1.5`).
+## Plan
 
-### 6. Bottom alignment of three columns
-- Remove `self-start` from the right column wrapper (line 572) so the right stack stretches to align with the tallest sibling.
-- Add a small bottom spacer/padding on the Ranked Markets card to bring its bottom edge close to the Frisco card.
-- Net: at 1100px the three columns end on visually similar lines, matching mockup.
+### 1. Rebuild the Ranked Markets card to match the mockup density
+Update the left card so it behaves like a compact summary panel rather than a full long list.
 
-### 7. Preserved as-is
-Top header, scoring weights, filter bar, three-column structure, Find Teachers behavior, Source Data card, Market Research Report card content, drawers, all data wiring, pagination logic (no state added — visual buttons are presentational, matching current behavior).
+Changes:
+- Show only the first **5 ranked markets** in the visible card instead of the full list.
+- Update footer copy to **`Showing 1 to 5 of X results`**.
+- Simplify pagination to the compact format the user asked for, without forcing a `10` button.
+- Widen the Market and Score breathing room so columns feel separated like the mockup.
+- Increase horizontal spacing between columns and slightly soften row density so the card no longer looks stacked/crammed.
+- Keep the visual style from the mockup: checkbox, rank, two-line market label, type pill, score number + green bar, tier circle.
 
-## Acceptance
-- Ranked Markets rows breathe; score bars are wider; pagination shows `‹ 1 2 3 … 10 ›`; result text reads "Showing 1 to N of 238 results".
-- All 4 Frisco buttons fit inside the card border at 1100px.
-- Key Market Signals rows align cleanly across icon / label / value / delta.
-- Nearby Markets scores appear as green boxed badges.
-- Market Snapshot legend sits to the right of the map.
-- Bottoms of the three main columns end on visually aligned lines.
-- App compiles cleanly; no functional/backend changes.
+Result:
+- Left card height comes down and aligns better with the center/right column height.
+- The row layout looks calmer and closer to the screenshot.
+
+### 2. Make the Frisco header/action area fit cleanly within the card
+Refactor the action buttons row so it no longer depends on rigid fixed fractions that fail at this width.
+
+Changes:
+- Replace the current 4-track rigid grid with a more forgiving layout designed for the exact labels in the mockup.
+- Give the primary CTA slightly more width priority than the secondary buttons.
+- Reduce internal horizontal padding where needed.
+- Keep icon sizing small and consistent.
+- Ensure no button text crosses the card border.
+
+Result:
+- `Find Teachers in This Market` stays fully inside the card.
+- `View Full Details` no longer slips or crowds the edge.
+
+### 3. Rebuild Key Market Signals as a proper 4-column mini-table
+Instead of squeezing text into a nearly equalized grid, give each part of the row a clear job.
+
+Target structure:
+- Column 1: icon
+- Column 2: label
+- Column 3: metric value
+- Column 4: delta / note
+
+Changes:
+- Increase the available width for the label column.
+- Keep value and delta aligned consistently across all rows.
+- Remove the overflow pressure by using a row structure closer to the mockup, with better column ratios and controlled text behavior.
+- Match the mockup’s clearer spacing, font sizing, and row rhythm.
+- Ensure labels remain readable and not clipped.
+
+Result:
+- The section reads like a clean data table.
+- No text pushes outside the card border.
+- Rows align visually from top to bottom like the mockup.
+
+### 4. Fine-tune the Frisco detail card spacing to match the screenshot
+After the structural fixes above, adjust spacing details so the card feels closer to the reference.
+
+Changes:
+- Slightly rebalance the gauge/info area spacing.
+- Keep the Market Summary width and line breaks close to the mockup.
+- Adjust divider spacing between Category Scores and Key Market Signals.
+- Make sure the lower action row sits with enough breathing room below the content.
+
+### 5. QA against the user’s two attached mockups
+After implementation, verify specifically at the current preview width that:
+- Ranked Markets shows only 5 items in the visible card
+- Footer reads `Showing 1 to 5 of X results`
+- Left card height is much closer to adjacent column height
+- Ranked Markets columns are no longer squeezed together
+- `Find Teachers in This Market` fits fully inside the button/card
+- Key Market Signals stays inside the card with clean alignment
+- The visual spacing matches the screenshots much more closely
+
+## Technical notes
+- File to update: `src/pages/CityScoring.tsx`
+- No backend, auth, route, or data-model changes
+- This is a UI/layout refactor only
+- Main code change is to replace overly rigid grid track definitions with width allocations that match the mockup and current viewport constraints

@@ -592,7 +592,7 @@ const CityScoring = () => {
               <h4 className="text-xs font-bold text-[#07142f]">Source Data</h4>
               <button className="text-[10px] font-medium text-[#174be8] hover:underline">View All</button>
             </div>
-            <div className="grid grid-cols-1 gap-1">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1">
               {SOURCES.map((s) => {
                 const Icon = s.icon;
                 return (

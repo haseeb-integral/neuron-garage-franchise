@@ -418,7 +418,7 @@ const CityScoring = () => {
               <span>Score</span>
               <span className="text-right">Tier</span>
             </div>
-            {filtered.slice(0, 5).map((c, i) => {
+            {filtered.slice(0, 8).map((c, i) => {
               const isSel = c.id === selectedId;
               const isCmp = selectedForCompare.includes(c.id);
               return (
@@ -448,12 +448,14 @@ const CityScoring = () => {
             })}
           </div>
           <div className="mt-3 flex items-center justify-between text-[11px] text-[#8794ab]">
-            <span>Showing 1 to {Math.min(filtered.length, 5)} of {filtered.length} results</span>
+            <span>Showing 1 to {Math.min(filtered.length, 8)} of 238 results</span>
             <div className="flex items-center gap-1">
               <button className="px-1.5 h-6 rounded border border-[#eef2f7] text-[#526078]">‹</button>
               <button className="px-2 h-6 rounded bg-[#174be8] text-white font-medium">1</button>
               <button className="px-2 h-6 rounded border border-[#eef2f7] text-[#14233b]">2</button>
               <button className="px-2 h-6 rounded border border-[#eef2f7] text-[#14233b]">3</button>
+              <span className="px-1 text-[#8794ab]">…</span>
+              <button className="px-2 h-6 rounded border border-[#eef2f7] text-[#14233b]">30</button>
               <button className="px-1.5 h-6 rounded border border-[#eef2f7] text-[#526078]">›</button>
             </div>
           </div>

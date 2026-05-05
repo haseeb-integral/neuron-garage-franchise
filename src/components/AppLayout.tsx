@@ -16,9 +16,10 @@ export function AppLayout() {
 
   const closeDrawer = () => setOpen(false);
 
-  useEffect(() => {
-    maybeStartTourOnFirstVisit();
-  }, []);
+  // Auto-tour disabled for now; can be re-enabled later by restoring this effect.
+  // useEffect(() => {
+  //   maybeStartTourOnFirstVisit();
+  // }, []);
 
   return (
     <div className="min-h-screen flex bg-white">

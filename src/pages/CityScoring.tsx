@@ -425,7 +425,7 @@ const CityScoring = () => {
                 <div
                   key={c.id}
                   onClick={() => setSelectedId(c.id)}
-                  className={`grid grid-cols-[20px_24px_1fr_60px_50px_30px] items-center gap-2 px-2 py-2 text-xs cursor-pointer border-b border-[#f3f5f9] last:border-0 ${isSel ? "bg-[#eaf0ff]" : "hover:bg-[#f7faff]"}`}
+                  className={`grid grid-cols-[20px_24px_1fr_60px_50px_30px] items-center gap-2 px-2 py-1.5 text-xs cursor-pointer border-b border-[#f3f5f9] last:border-0 ${isSel ? "bg-[#eaf0ff]" : "hover:bg-[#f7faff]"}`}
                 >
                   <Checkbox checked={isCmp} onCheckedChange={() => toggleCompare(c.id)} onClick={(e) => e.stopPropagation()} />
                   <span className="text-[#526078]">{i + 1}</span>

@@ -18,7 +18,9 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { sampleCities, CityData } from "@/data/cityData";
 import { AddCriteriaDrawer } from "@/components/city-scoring/AddCriteriaDrawer";
-import { CityDetailDrawer } from "@/components/city-scoring/CityDetailDrawer";
+import { MarketDetailDrawer } from "@/components/city-scoring/MarketDetailDrawer";
+import { MarketCompareModal } from "@/components/city-scoring/MarketCompareModal";
+import { MarketReportModal } from "@/components/city-scoring/MarketReportModal";
 import { toast } from "sonner";
 
 type CategoryKey =
@@ -114,6 +116,8 @@ const CityScoring = () => {
   const [selectedId, setSelectedId] = useState<number>(sampleCities[0]?.id ?? 1);
   const [selectedForCompare, setSelectedForCompare] = useState<number[]>([]);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
+  const [compareOpen, setCompareOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
 
   // Open city via global search ?city=ID
   useEffect(() => {
@@ -149,7 +153,43 @@ const CityScoring = () => {
   };
 
   const toggleCompare = (id: number) => {
-    setSelectedForCompare((p) => p.includes(id) ? p.filter((i) => i !== id) : [...p, id]);
+    setSelectedForCompare((p) => {
+      if (p.includes(id)) return p.filter((i) => i !== id);
+      if (p.length >= 4) {
+        toast.error("You can compare up to 4 markets at a time");
+        return p;
+      }
+      return [...p, id];
+    });
+  };
+
+  const buildCsvDownload = () => {
+    const rows = [
+      ["Rank", "Market", "State", "Tier", "Composite Score", "Population", "Competitors"],
+      ...filtered.map((c, i) => [String(i + 1), c.city, c.state, c.tier, String(c.compositeScore), String(c.population), String(c.competitorCount)]),
+    ];
+    const csv = rows.map((r) => r.map((v) => `"${v.replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ranked-markets-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Ranked markets exported as CSV");
+  };
+
+  const openCompare = () => {
+    if (selectedForCompare.length < 2) {
+      toast.error("Select at least 2 markets to compare");
+      return;
+    }
+    setCompareOpen(true);
+  };
+
+  const applyWeights = () => {
+    if (totalWeight !== 100) return;
+    toast.success("Sample scores recalculated.");
   };
 
   const handleFindTeachers = () => {
@@ -203,10 +243,10 @@ const CityScoring = () => {
             className="pl-9 h-10 bg-white border-[#e5eaf2] text-sm"
           />
         </div>
-        <Button variant="outline" className="h-10 border-[#e5eaf2] text-[#14233b] gap-2 font-normal">
+        <Button variant="outline" className="h-10 border-[#e5eaf2] text-[#14233b] gap-2 font-normal" onClick={buildCsvDownload}>
           <Download size={15} /> Export Source Data
         </Button>
-        <Button className="h-10 bg-[#174be8] hover:bg-[#1240c9] text-white gap-2 font-medium">
+        <Button className="h-10 bg-[#174be8] hover:bg-[#1240c9] text-white gap-2 font-medium" onClick={() => setReportOpen(true)}>
           <FileText size={15} /> Generate Market Report
         </Button>
         <button
@@ -295,12 +335,25 @@ const CityScoring = () => {
 
       {/* Scoring Weights */}
       <div className="mb-4 rounded-lg bg-white border border-[#eef2f7] p-4">
-        <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="mb-3 flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-3 flex-wrap">
             <h3 className="text-sm font-bold text-[#07142f]">Scoring Weights</h3>
             <span className="text-xs text-[#526078]">Total Weight: <span className={totalWeight === 100 ? "text-[#0ea66e] font-medium" : "text-[#ea580c] font-medium"}>{totalWeight}%</span></span>
+            {totalWeight !== 100 && (
+              <span className="text-[11px] text-[#ea580c]">Weights must total 100% to apply scoring.</span>
+            )}
           </div>
-          <button onClick={resetWeights} className="text-xs font-medium text-[#174be8] hover:underline">Reset to Default</button>
+          <div className="flex items-center gap-3">
+            <button onClick={resetWeights} className="text-xs font-medium text-[#174be8] hover:underline">Reset to Default</button>
+            <Button
+              size="sm"
+              disabled={totalWeight !== 100}
+              onClick={applyWeights}
+              className="h-7 bg-[#174be8] hover:bg-[#1240c9] text-white text-[11px] px-3 disabled:opacity-50"
+            >
+              Apply Weights
+            </Button>
+          </div>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {CATEGORIES.map((cat) => {
@@ -386,11 +439,22 @@ const CityScoring = () => {
           </Select>
         </div>
         <label className="flex items-center gap-2 h-9">
-          <Checkbox checked={nonRegOnly} onCheckedChange={(v) => setNonRegOnly(!!v)} />
+          <Checkbox
+            checked={nonRegOnly}
+            onCheckedChange={(v) => {
+              const on = !!v;
+              setNonRegOnly(on);
+              if (on) toast.success("Non-registration state filter applied to available sample data.");
+            }}
+          />
           <span className="text-xs text-[#14233b] whitespace-nowrap">Non-Registration States Only</span>
         </label>
         <div className="ml-auto h-9 flex items-end">
-          <Button variant="outline" className="h-9 border-[#e5eaf2] text-[#14233b] gap-1.5 font-normal" onClick={() => toast.success("Data refreshed")}>
+          <Button
+            variant="outline"
+            className="h-9 border-[#e5eaf2] text-[#14233b] gap-1.5 font-normal"
+            onClick={() => toast.success("Sample data refreshed. Live source refresh will be connected later.")}
+          >
             <RefreshCw size={14} /> Refresh Data
           </Button>
         </div>
@@ -405,10 +469,19 @@ const CityScoring = () => {
               <h3 className="text-sm font-bold text-[#07142f]">Ranked Markets</h3>
               <p className="text-[11px] text-[#8794ab]">({filtered.length} markets found)</p>
             </div>
-            <button className="flex items-center gap-1 text-xs font-medium text-[#174be8] hover:underline">
+            <button
+              onClick={openCompare}
+              disabled={selectedForCompare.length < 2}
+              className="flex items-center gap-1 text-xs font-medium text-[#174be8] hover:underline disabled:text-[#8794ab] disabled:no-underline disabled:cursor-not-allowed"
+            >
               <GitCompare size={12} /> Compare ({selectedForCompare.length})
             </button>
           </div>
+          {compareMode && (
+            <div className="mb-2 rounded-md bg-[#eaf0ff] border border-[#cfdcff] px-2 py-1.5 text-[11px] text-[#174be8]">
+              Compare mode on — select 2 to 4 markets, then click Compare.
+            </div>
+          )}
           <div className="overflow-hidden flex-1">
             <div className="grid grid-cols-[16px_14px_minmax(0,1fr)_46px_72px_18px] items-center gap-x-2 px-1 py-2 text-[9.5px] uppercase tracking-wide text-[#8794ab] border-b border-[#eef2f7]">
               <span></span>
@@ -427,7 +500,9 @@ const CityScoring = () => {
                   onClick={() => setSelectedId(c.id)}
                   className={`grid grid-cols-[16px_14px_minmax(0,1fr)_46px_72px_18px] items-center gap-x-2 px-1 py-3 text-[11px] cursor-pointer border-b border-[#f3f5f9] last:border-0 ${isSel ? "bg-[#eaf0ff]" : "hover:bg-[#f7faff]"}`}
                 >
-                  <Checkbox checked={isCmp} onCheckedChange={() => toggleCompare(c.id)} onClick={(e) => e.stopPropagation()} />
+                  <span className={compareMode ? "rounded ring-2 ring-[#174be8] ring-offset-1 ring-offset-white" : ""}>
+                    <Checkbox checked={isCmp} onCheckedChange={() => toggleCompare(c.id)} onClick={(e) => e.stopPropagation()} />
+                  </span>
                   <span className="text-[#526078]">{i + 1}</span>
                   <div className="min-w-0">
                     <div className="truncate font-semibold text-[#07142f]">{c.city}, {c.state === "Texas" ? "TX" : c.state === "Florida" ? "FL" : c.state}</div>
@@ -560,10 +635,10 @@ const CityScoring = () => {
             <Button onClick={handleFindTeachers} className="h-9 flex-1 min-w-0 bg-[#174be8] hover:bg-[#1240c9] text-white gap-1.5 px-3 font-medium text-[11px]">
               <span className="truncate">Find Teachers in This Market</span> <ArrowRight size={12} className="flex-shrink-0" />
             </Button>
-            <Button variant="outline" className="h-9 min-w-0 border-[#dbe4f2] text-[#2250eb] gap-1 px-2.5 font-medium text-[11px]">
+            <Button variant="outline" onClick={openCompare} className="h-9 min-w-0 border-[#dbe4f2] text-[#2250eb] gap-1 px-2.5 font-medium text-[11px]">
               <GitCompare size={12} /> Compare
             </Button>
-            <Button variant="outline" className="h-9 min-w-0 border-[#dbe4f2] text-[#2250eb] gap-1 px-2.5 font-medium text-[11px]">
+            <Button variant="outline" onClick={() => setReportOpen(true)} className="h-9 min-w-0 border-[#dbe4f2] text-[#2250eb] gap-1 px-2.5 font-medium text-[11px]">
               <FileText size={12} /> Report
             </Button>
             <Button variant="outline" className="h-9 min-w-0 border-[#dbe4f2] text-[#2250eb] gap-1 px-2.5 font-medium text-[11px]" onClick={() => setDetailDrawerOpen(true)}>
@@ -612,7 +687,7 @@ const CityScoring = () => {
           <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
             <h4 className="text-xs font-bold text-[#07142f] mb-1">Market Research Report</h4>
             <p className="text-[10px] text-[#8794ab] mb-2">Comprehensive PDF report with data, insights, recommendations, and competitor analysis.</p>
-            <Button variant="outline" className="w-full h-8 border-[#dbe4f2] text-[#2250eb] text-[11px] font-medium" onClick={() => toast.success("Generating PDF report…")}>
+            <Button variant="outline" className="w-full h-8 border-[#dbe4f2] text-[#2250eb] text-[11px] font-medium" onClick={() => setReportOpen(true)}>
               Generate PDF Report
             </Button>
           </div>
@@ -650,7 +725,29 @@ const CityScoring = () => {
         onSave={(c) => setCustomCriteria((prev) => [...prev, c])}
       />
 
-      <CityDetailDrawer city={selected} open={detailDrawerOpen} onClose={() => setDetailDrawerOpen(false)} />
+      <MarketDetailDrawer
+        market={selected}
+        open={detailDrawerOpen}
+        onClose={() => setDetailDrawerOpen(false)}
+        categoryScores={detailCategoryScores}
+        customCriteria={customCriteria}
+        onFindTeachers={() => { setDetailDrawerOpen(false); handleFindTeachers(); }}
+        onGenerateReport={() => { setDetailDrawerOpen(false); setReportOpen(true); }}
+        onExport={buildCsvDownload}
+      />
+
+      <MarketCompareModal
+        open={compareOpen}
+        onClose={() => setCompareOpen(false)}
+        markets={sampleCities.filter((c) => selectedForCompare.includes(c.id)).slice(0, 4)}
+      />
+
+      <MarketReportModal
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        market={selected}
+        categoryScores={detailCategoryScores}
+      />
     </div>
   );
 };

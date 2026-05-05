@@ -235,11 +235,11 @@ export default function Auth() {
               </CardHeader>
               <CardContent className="px-6 pb-5 pt-3 sm:px-7">
                 {isLogin ? (
-                  <form onSubmit={handleLogin} className="space-y-4">
-                    <div className="space-y-1.5">
+                  <form onSubmit={handleLogin} className="space-y-3">
+                    <div className="space-y-1">
                       <Label htmlFor="login-email" className="font-semibold text-[#07142f]">Email Address</Label>
                       <div className="relative">
-                        <Mail className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#7d8aa0]" />
+                        <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7d8aa0]" />
                         <Input
                           id="login-email"
                           type="email"
@@ -248,14 +248,14 @@ export default function Auth() {
                           onChange={(e) => setEmail(e.target.value.trim())}
                           required
                           placeholder="Enter your email"
-                          className="h-12 rounded-xl border-[#cfd9e8] pl-12 text-base focus-visible:ring-[#174be8]"
+                          className="h-10 rounded-xl border-[#cfd9e8] pl-10 text-sm focus-visible:ring-[#174be8]"
                         />
                       </div>
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="space-y-1">
                       <Label htmlFor="login-password" className="font-semibold text-[#07142f]">Password</Label>
                       <div className="relative">
-                        <Lock className="pointer-events-none absolute left-4 top-1/2 z-10 h-5 w-5 -translate-y-1/2 text-[#7d8aa0]" />
+                        <Lock className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-[#7d8aa0]" />
                         <PasswordInput
                           id="login-password"
                           autoComplete="current-password"
@@ -263,7 +263,7 @@ export default function Auth() {
                           onChange={(e) => setPassword(e.target.value)}
                           required
                           placeholder="Enter your password"
-                          className="h-12 rounded-xl border-[#cfd9e8] pl-12 text-base focus-visible:ring-[#174be8]"
+                          className="h-10 rounded-xl border-[#cfd9e8] pl-10 text-sm focus-visible:ring-[#174be8]"
                         />
                       </div>
                     </div>
@@ -282,16 +282,16 @@ export default function Auth() {
                     </div>
                     <Button
                       type="submit"
-                      className="h-12 w-full rounded-xl bg-[#174be8] text-base font-bold text-white shadow-lg shadow-blue-700/20 hover:bg-[#0f3fd0]"
+                      className="h-10 w-full rounded-xl bg-[#174be8] text-sm font-bold text-white shadow-lg shadow-blue-700/20 hover:bg-[#0f3fd0]"
                       disabled={submitting}
                     >
-                      <LogIn className="mr-2 h-5 w-5" />
+                      <LogIn className="mr-2 h-4 w-4" />
                       {submitting ? "Signing in…" : "Sign In"}
                     </Button>
                   </form>
                 ) : (
-                  <form onSubmit={handleSignup} className="space-y-4">
-                    <div className="space-y-1.5">
+                  <form onSubmit={handleSignup} className="space-y-3">
+                    <div className="space-y-1">
                       <Label htmlFor="signup-name" className="font-semibold text-[#07142f]">Full name (optional)</Label>
                       <Input
                         id="signup-name"
@@ -301,13 +301,13 @@ export default function Auth() {
                         onChange={(e) => setFullName(e.target.value)}
                         maxLength={100}
                         placeholder="Enter your full name"
-                        className="h-12 rounded-xl border-[#cfd9e8] text-base focus-visible:ring-[#174be8]"
+                        className="h-10 rounded-xl border-[#cfd9e8] text-sm focus-visible:ring-[#174be8]"
                       />
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="space-y-1">
                       <Label htmlFor="signup-email" className="font-semibold text-[#07142f]">Email Address</Label>
                       <div className="relative">
-                        <Mail className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#7d8aa0]" />
+                        <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7d8aa0]" />
                         <Input
                           id="signup-email"
                           type="email"
@@ -316,14 +316,14 @@ export default function Auth() {
                           onChange={(e) => setEmail(e.target.value.trim())}
                           required
                           placeholder="Enter your email"
-                          className="h-12 rounded-xl border-[#cfd9e8] pl-12 text-base focus-visible:ring-[#174be8]"
+                          className="h-10 rounded-xl border-[#cfd9e8] pl-10 text-sm focus-visible:ring-[#174be8]"
                         />
                       </div>
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="space-y-1">
                       <Label htmlFor="signup-password" className="font-semibold text-[#07142f]">Password</Label>
                       <div className="relative">
-                        <Lock className="pointer-events-none absolute left-4 top-1/2 z-10 h-5 w-5 -translate-y-1/2 text-[#7d8aa0]" />
+                        <Lock className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-[#7d8aa0]" />
                         <PasswordInput
                           id="signup-password"
                           autoComplete="new-password"
@@ -332,13 +332,13 @@ export default function Auth() {
                           required
                           minLength={6}
                           placeholder="Create a password"
-                          className="h-12 rounded-xl border-[#cfd9e8] pl-12 text-base focus-visible:ring-[#174be8]"
+                          className="h-10 rounded-xl border-[#cfd9e8] pl-10 text-sm focus-visible:ring-[#174be8]"
                         />
                       </div>
                     </div>
                     <Button
                       type="submit"
-                      className="h-12 w-full rounded-xl bg-[#174be8] text-base font-bold text-white shadow-lg shadow-blue-700/20 hover:bg-[#0f3fd0]"
+                      className="h-10 w-full rounded-xl bg-[#174be8] text-sm font-bold text-white shadow-lg shadow-blue-700/20 hover:bg-[#0f3fd0]"
                       disabled={submitting}
                     >
                       {submitting ? "Creating account…" : "Create Account"}
@@ -348,7 +348,7 @@ export default function Auth() {
 
                 {isLogin && (
                   <>
-                    <div className="my-5 flex items-center gap-4 text-sm text-[#7d8aa0]">
+                    <div className="my-4 flex items-center gap-4 text-sm text-[#7d8aa0]">
                       <div className="h-px flex-1 bg-[#dbe3ee]" />
                       <span>or continue with</span>
                       <div className="h-px flex-1 bg-[#dbe3ee]" />
@@ -425,7 +425,7 @@ export default function Auth() {
               Enter your email and we'll send you a link to set a new password.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleForgotPassword} className="space-y-4">
+          <form onSubmit={handleForgotPassword} className="space-y-3">
             <div className="space-y-2">
               <Label htmlFor="forgot-email">Email</Label>
               <Input

@@ -397,9 +397,9 @@ const CityScoring = () => {
       </div>
 
       {/* Three-column layout */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[0.92fr_1.5fr_0.92fr] items-start">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.5fr_0.85fr] items-stretch">
         {/* Left: Ranked Markets */}
-        <div className="min-w-0 rounded-lg bg-white border border-[#eef2f7] p-3 self-start">
+        <div className="min-w-0 rounded-lg bg-white border border-[#eef2f7] p-3 flex flex-col">
           <div className="mb-3 flex items-center justify-between">
             <div>
               <h3 className="text-sm font-bold text-[#07142f]">Ranked Markets</h3>
@@ -410,7 +410,7 @@ const CityScoring = () => {
             </button>
           </div>
           <div className="overflow-hidden">
-            <div className="grid grid-cols-[20px_24px_1fr_60px_50px_30px] items-center gap-2 px-2 py-1.5 text-[10px] uppercase tracking-wide text-[#8794ab] border-b border-[#eef2f7]">
+            <div className="grid grid-cols-[18px_22px_minmax(0,1fr)_56px_78px_24px] items-center gap-2 px-2 py-1.5 text-[10px] uppercase tracking-wide text-[#8794ab] border-b border-[#eef2f7]">
               <span></span>
               <span>Rank</span>
               <span>Market</span>
@@ -425,7 +425,7 @@ const CityScoring = () => {
                 <div
                   key={c.id}
                   onClick={() => setSelectedId(c.id)}
-                  className={`grid grid-cols-[20px_24px_1fr_60px_50px_30px] items-center gap-2 px-2 py-1.5 text-xs cursor-pointer border-b border-[#f3f5f9] last:border-0 ${isSel ? "bg-[#eaf0ff]" : "hover:bg-[#f7faff]"}`}
+                  className={`grid grid-cols-[18px_22px_minmax(0,1fr)_56px_78px_24px] items-center gap-2 px-2 py-2 text-xs cursor-pointer border-b border-[#f3f5f9] last:border-0 ${isSel ? "bg-[#eaf0ff]" : "hover:bg-[#f7faff]"}`}
                 >
                   <Checkbox checked={isCmp} onCheckedChange={() => toggleCompare(c.id)} onClick={(e) => e.stopPropagation()} />
                   <span className="text-[#526078]">{i + 1}</span>
@@ -433,12 +433,12 @@ const CityScoring = () => {
                     <div className="truncate font-semibold text-[#07142f]">{c.city}, {c.state === "Texas" ? "TX" : c.state === "Florida" ? "FL" : c.state}</div>
                     <div className="truncate text-[10px] text-[#8794ab]">{c.population > 200000 ? "Travis County" : "Collin County"}</div>
                   </div>
-                  <span className="rounded-full bg-[#eaf0ff] text-[#174be8] text-[10px] font-medium px-1.5 py-0.5 text-center">
+                  <span className="inline-block self-center w-fit rounded-full bg-[#eaf0ff] text-[#174be8] text-[10px] font-medium px-1.5 py-0.5">
                     {c.population > 200000 ? "Metro" : "Suburb"}
                   </span>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
                     <span className="text-[#07142f] font-semibold">{c.compositeScore}</span>
-                    <div className="h-1 w-7 rounded-full bg-[#eef2f7]">
+                    <div className="h-1.5 w-12 rounded-full bg-[#eef2f7]">
                       <div className="h-full rounded-full bg-[#0ea66e]" style={{ width: `${c.compositeScore}%` }} />
                     </div>
                   </div>
@@ -448,11 +448,15 @@ const CityScoring = () => {
             })}
           </div>
           <div className="mt-3 flex items-center justify-between text-[11px] text-[#8794ab]">
-            <span>Showing 1 to {Math.min(filtered.length, 25)} of {filtered.length} results</span>
+            <span>Showing 1 to {Math.min(filtered.length, 25)} of 238 results</span>
             <div className="flex items-center gap-1">
-              <button className="px-1.5 py-0.5 rounded border border-[#eef2f7]">‹</button>
-              <button className="px-1.5 py-0.5 rounded bg-[#174be8] text-white">1</button>
-              <button className="px-1.5 py-0.5 rounded border border-[#eef2f7]">›</button>
+              <button className="px-1.5 h-6 rounded border border-[#eef2f7] text-[#526078]">‹</button>
+              <button className="px-2 h-6 rounded bg-[#174be8] text-white font-medium">1</button>
+              <button className="px-2 h-6 rounded border border-[#eef2f7] text-[#14233b]">2</button>
+              <button className="px-2 h-6 rounded border border-[#eef2f7] text-[#14233b]">3</button>
+              <span className="px-1 text-[#8794ab]">…</span>
+              <button className="px-2 h-6 rounded border border-[#eef2f7] text-[#14233b]">10</button>
+              <button className="px-1.5 h-6 rounded border border-[#eef2f7] text-[#526078]">›</button>
             </div>
           </div>
         </div>
@@ -536,15 +540,15 @@ const CityScoring = () => {
 
             <div className="border-l border-[#eef2f7] pl-5">
               <p className="mb-2.5 text-[13px] font-semibold text-[#07142f]">Key Market Signals</p>
-              <div className="space-y-2.5">
+              <div className="grid grid-cols-1 gap-y-2">
                 {sigRows.map((r) => {
                   const Icon = r.icon;
                   return (
-                    <div key={r.label} className="grid grid-cols-[14px_minmax(0,1fr)_auto_auto] items-center gap-x-2 text-[10.5px]">
+                    <div key={r.label} className="grid grid-cols-[16px_minmax(0,1.3fr)_auto_minmax(0,1.1fr)] items-center gap-x-2.5 text-[11px]">
                       <Icon size={13} className="text-[#3160ff] flex-shrink-0" />
-                      <span className="text-[#526078] leading-tight">{r.label}</span>
-                      <span className="font-semibold text-[#07142f] whitespace-nowrap">{r.value}</span>
-                      <span className={`whitespace-nowrap text-right font-medium ${r.deltaClass}`}>{r.delta}</span>
+                      <span className="text-[#526078] leading-tight truncate">{r.label}</span>
+                      <span className="font-semibold text-[#07142f] tabular-nums whitespace-nowrap text-right">{r.value}</span>
+                      <span className={`whitespace-nowrap text-right text-[10.5px] font-medium ${r.deltaClass}`}>{r.delta}</span>
                     </div>
                   );
                 })}
@@ -552,26 +556,26 @@ const CityScoring = () => {
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-[1.45fr_0.82fr_1fr_1fr] gap-2">
-            <Button onClick={handleFindTeachers} className="h-10 bg-[#174be8] hover:bg-[#1240c9] text-white gap-2 px-3 font-medium text-[10.5px] whitespace-nowrap">
-              Find Teachers in This Market <ArrowRight size={14} />
+          <div className="mt-4 grid grid-cols-[1.5fr_0.78fr_1.05fr_1.1fr] gap-2">
+            <Button onClick={handleFindTeachers} className="h-9 min-w-0 bg-[#174be8] hover:bg-[#1240c9] text-white gap-1.5 px-2 font-medium text-[10.5px] whitespace-nowrap">
+              Find Teachers in This Market <ArrowRight size={12} />
             </Button>
-            <Button variant="outline" className="h-10 border-[#dbe4f2] text-[#2250eb] gap-1.5 px-3 font-medium text-[10.5px] whitespace-nowrap">
-              <GitCompare size={14} /> Compare
+            <Button variant="outline" className="h-9 min-w-0 border-[#dbe4f2] text-[#2250eb] gap-1 px-2 font-medium text-[10.5px] whitespace-nowrap">
+              <GitCompare size={12} /> Compare
             </Button>
-            <Button variant="outline" className="h-10 border-[#dbe4f2] text-[#2250eb] gap-1.5 px-3 font-medium text-[10.5px] whitespace-nowrap">
-              <FileText size={14} /> Generate Report
+            <Button variant="outline" className="h-9 min-w-0 border-[#dbe4f2] text-[#2250eb] gap-1 px-2 font-medium text-[10.5px] whitespace-nowrap">
+              <FileText size={12} /> Generate Report
             </Button>
-            <Button variant="outline" className="h-10 border-[#dbe4f2] text-[#2250eb] gap-1.5 px-3 font-medium text-[10.5px] whitespace-nowrap" onClick={() => setDetailDrawerOpen(true)}>
-              <Eye size={14} /> View Full Details
+            <Button variant="outline" className="h-9 min-w-0 border-[#dbe4f2] text-[#2250eb] gap-1 px-2 font-medium text-[10.5px] whitespace-nowrap" onClick={() => setDetailDrawerOpen(true)}>
+              <Eye size={12} /> View Full Details
             </Button>
           </div>
         </div>
 
         {/* Right column */}
-        <div className="min-w-0 space-y-3 self-start">
+        <div className="min-w-0 space-y-3 flex flex-col">
           {showNearby && (
-            <div className="rounded-lg bg-white border border-[#eef2f7] p-3 self-start">
+            <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
               <div className="mb-2 flex items-center justify-between">
                 <h4 className="text-[13px] font-semibold text-[#07142f]">Nearby Markets</h4>
                 <button className="text-[10px] font-medium text-[#174be8] hover:underline">View All</button>
@@ -580,7 +584,7 @@ const CityScoring = () => {
                 {NEARBY_MARKETS.map((m) => (
                   <div key={m.name} className="flex items-center justify-between gap-2 text-[11px]">
                     <span className="flex min-w-0 items-center gap-1.5 text-[#14233b]"><MapPin size={11} className="flex-shrink-0 text-[#8794ab]" /> <span className="truncate">{m.name}</span></span>
-                    <span className="font-semibold text-[#07142f]">{m.score}</span>
+                    <span className="inline-flex items-center justify-center min-w-[28px] h-5 rounded-md bg-[#e6f7ef] text-[#0ea66e] text-[10.5px] font-bold px-1.5">{m.score}</span>
                   </div>
                 ))}
               </div>
@@ -613,26 +617,28 @@ const CityScoring = () => {
             </Button>
           </div>
 
-          <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
+          <div className="rounded-lg bg-white border border-[#eef2f7] p-3 flex-1">
             <h4 className="text-xs font-bold text-[#07142f] mb-2">Market Snapshot</h4>
-            <div
-              className="relative h-28 rounded border border-[#eef2f7] mb-2 overflow-hidden"
-              style={{
-                backgroundColor: "#f1f6fc",
-                backgroundImage:
-                  "linear-gradient(to right, #e3ecf7 1px, transparent 1px), linear-gradient(to bottom, #e3ecf7 1px, transparent 1px)",
-                backgroundSize: "16px 16px",
-              }}
-            >
-              <MapPin size={16} className="absolute text-[#174be8]" style={{ top: "30%", left: "40%" }} fill="#174be8" />
-              <MapPin size={12} className="absolute text-[#0ea66e]" style={{ top: "55%", left: "22%" }} fill="#0ea66e" />
-              <MapPin size={12} className="absolute text-[#0ea66e]" style={{ top: "20%", left: "65%" }} fill="#0ea66e" />
-              <MapPin size={12} className="absolute text-[#e11d48]" style={{ top: "65%", left: "70%" }} fill="#e11d48" />
-            </div>
-            <div className="space-y-1 text-[10px] text-[#14233b]">
-              <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#174be8]" /> Selected Market</div>
-              <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#0ea66e]" /> Nearby Markets</div>
-              <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#e11d48]" /> Higher Competition</div>
+            <div className="grid grid-cols-[1fr_auto] gap-3 items-center">
+              <div
+                className="relative h-24 rounded border border-[#eef2f7] overflow-hidden"
+                style={{
+                  backgroundColor: "#f1f6fc",
+                  backgroundImage:
+                    "linear-gradient(to right, #e3ecf7 1px, transparent 1px), linear-gradient(to bottom, #e3ecf7 1px, transparent 1px)",
+                  backgroundSize: "16px 16px",
+                }}
+              >
+                <MapPin size={16} className="absolute text-[#174be8]" style={{ top: "30%", left: "40%" }} fill="#174be8" />
+                <MapPin size={12} className="absolute text-[#0ea66e]" style={{ top: "55%", left: "22%" }} fill="#0ea66e" />
+                <MapPin size={12} className="absolute text-[#0ea66e]" style={{ top: "20%", left: "65%" }} fill="#0ea66e" />
+                <MapPin size={12} className="absolute text-[#e11d48]" style={{ top: "65%", left: "70%" }} fill="#e11d48" />
+              </div>
+              <div className="space-y-1.5 text-[10px] text-[#14233b] whitespace-nowrap">
+                <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#174be8]" /> Selected Market</div>
+                <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#0ea66e]" /> Nearby Markets</div>
+                <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#e11d48]" /> Higher Competition</div>
+              </div>
             </div>
           </div>
         </div>

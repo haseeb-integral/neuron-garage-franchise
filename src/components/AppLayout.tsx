@@ -12,7 +12,6 @@ export function AppLayout() {
   const location = useLocation();
   const [collapsed] = useSidebarCollapsed();
 
-  // Default-collapsed when first visiting Candidate Pipeline (so all 7 columns fit).
   useDefaultCollapsedForRoute(["/candidate-pipeline"]);
 
   const closeDrawer = () => setOpen(false);
@@ -34,10 +33,8 @@ export function AppLayout() {
         </SheetContent>
       </Sheet>
 
-      <main
-        className={`flex-1 min-h-screen bg-white ${collapsed ? "md:ml-16" : "md:ml-[248px]"} transition-[margin] duration-200`}
-      >
-        <div className="md:hidden flex items-center justify-between px-4 py-3 border-b bg-white border-[#d8e2ef]">
+      <main className={`flex-1 min-h-screen bg-white ${collapsed ? "md:ml-16" : "md:ml-[248px]"} transition-[margin] duration-200`}>
+        <div className="md:hidden flex items-center justify-between px-4 py-3 border-b bg-white border-[#eef2f7]">
           <button
             onClick={() => setOpen(true)}
             aria-label="Open navigation menu"
@@ -60,7 +57,7 @@ export function AppLayout() {
           </button>
         </div>
 
-        <div className="p-3 md:px-7 md:py-4 lg:px-8 lg:py-5">
+        <div className="p-3 md:px-7 md:py-3 lg:px-8 lg:py-3">
           <Outlet key={location.pathname} />
         </div>
       </main>

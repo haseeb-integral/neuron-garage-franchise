@@ -635,10 +635,10 @@ const CityScoring = () => {
             <Button onClick={handleFindTeachers} className="h-9 flex-1 min-w-0 bg-[#174be8] hover:bg-[#1240c9] text-white gap-1.5 px-3 font-medium text-[11px]">
               <span className="truncate">Find Teachers in This Market</span> <ArrowRight size={12} className="flex-shrink-0" />
             </Button>
-            <Button variant="outline" className="h-9 min-w-0 border-[#dbe4f2] text-[#2250eb] gap-1 px-2.5 font-medium text-[11px]">
+            <Button variant="outline" onClick={openCompare} className="h-9 min-w-0 border-[#dbe4f2] text-[#2250eb] gap-1 px-2.5 font-medium text-[11px]">
               <GitCompare size={12} /> Compare
             </Button>
-            <Button variant="outline" className="h-9 min-w-0 border-[#dbe4f2] text-[#2250eb] gap-1 px-2.5 font-medium text-[11px]">
+            <Button variant="outline" onClick={() => setReportOpen(true)} className="h-9 min-w-0 border-[#dbe4f2] text-[#2250eb] gap-1 px-2.5 font-medium text-[11px]">
               <FileText size={12} /> Report
             </Button>
             <Button variant="outline" className="h-9 min-w-0 border-[#dbe4f2] text-[#2250eb] gap-1 px-2.5 font-medium text-[11px]" onClick={() => setDetailDrawerOpen(true)}>

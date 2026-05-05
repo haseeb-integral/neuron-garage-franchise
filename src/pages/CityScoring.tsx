@@ -397,7 +397,7 @@ const CityScoring = () => {
       </div>
 
       {/* Three-column layout */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.02fr_1.42fr_0.82fr]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[0.94fr_1.6fr_0.72fr]">
         {/* Left: Ranked Markets */}
         <div className="min-w-0 rounded-lg bg-white border border-[#eef2f7] p-3">
           <div className="mb-3 flex items-center justify-between">
@@ -486,15 +486,27 @@ const CityScoring = () => {
             </div>
 
             <div className="space-y-4 pt-1">
-              <div className="grid grid-cols-[70px_auto_84px_auto] items-start gap-x-3 gap-y-4 text-[11px]">
-                <span className="pt-1 text-[#6b7a96]">Tier</span>
-                <span className="w-fit rounded-full bg-[#e6f7ef] px-2.5 py-1 text-[11px] font-semibold leading-none text-[#0ea66e]">{selected.tier} (Tier 1)</span>
-                <span className="pt-1 text-[#6b7a96]">Market Type</span>
-                <span className="w-fit rounded-full bg-[#eef3ff] px-2.5 py-1 text-[11px] font-medium leading-none text-[#174be8]">Suburb</span>
-                <span className="pt-0.5 text-[#6b7a96]">Metro Area</span>
-                <span className="col-span-1 font-semibold leading-5 text-[#07142f]">Dallas-Fort Worth, TX</span>
-                <span className="pt-0.5 text-[#6b7a96]">County</span>
-                <span className="font-semibold leading-5 text-[#07142f]">Collin County</span>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-[11px]">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-[70px_1fr] items-center gap-3">
+                    <span className="text-[#6b7a96]">Tier</span>
+                    <span className="w-fit rounded-full bg-[#e6f7ef] px-2.5 py-1 text-[11px] font-semibold leading-none text-[#0ea66e]">{selected.tier} (Tier 1)</span>
+                  </div>
+                  <div className="grid grid-cols-[70px_1fr] items-start gap-3">
+                    <span className="pt-0.5 text-[#6b7a96]">Metro Area</span>
+                    <span className="font-semibold leading-5 text-[#07142f]">Dallas-Fort Worth, TX</span>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-[84px_1fr] items-center gap-3">
+                    <span className="text-[#6b7a96]">Market Type</span>
+                    <span className="w-fit rounded-full bg-[#eef3ff] px-2.5 py-1 text-[11px] font-medium leading-none text-[#174be8]">Suburb</span>
+                  </div>
+                  <div className="grid grid-cols-[52px_1fr] items-start gap-3">
+                    <span className="pt-0.5 text-[#6b7a96]">County</span>
+                    <span className="font-semibold leading-5 text-[#07142f]">Collin County</span>
+                  </div>
+                </div>
               </div>
 
               <div>

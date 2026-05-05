@@ -240,10 +240,10 @@ const CityScoring = () => {
       </div>
 
       {/* Title row + model controls */}
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+      <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-[#07142f]">City Search</h1>
-          <p className="text-sm text-[#526078] mt-0.5">
+          <h1 className="text-xl font-black tracking-tight text-[#07142f]">City Search</h1>
+          <p className="text-xs text-[#526078] mt-0.5">
             Discover and score the best cities, suburbs, and metros for Neuron Garage franchises.
           </p>
         </div>
@@ -301,6 +301,7 @@ const CityScoring = () => {
                   onValueChange={([v]) => setWeights((w) => ({ ...w, [cat.key]: v }))}
                   max={50}
                   step={1}
+                  className="[&>span:first-child]:bg-[#eaf0ff] [&>span:first-child]:h-1.5 [&_[role=slider]]:h-3.5 [&_[role=slider]]:w-3.5 [&_[role=slider]]:border-[#174be8] [&_[role=slider]]:bg-white [&>span:first-child_span]:bg-[#174be8]"
                 />
                 <p className="text-[11px] text-[#8794ab] leading-snug">{cat.description}</p>
                 {customCount > 0 && (
@@ -339,8 +340,14 @@ const CityScoring = () => {
         </div>
         <div className="flex flex-col gap-1 min-w-[180px] flex-1 max-w-[260px]">
           <label className="text-[11px] text-[#526078]">Min Score</label>
-          <div className="flex items-center gap-2">
-            <Slider value={[minScore]} onValueChange={([v]) => setMinScore(v)} max={100} step={1} className="flex-1" />
+          <div className="flex items-center gap-2 h-9">
+            <Slider
+              value={[minScore]}
+              onValueChange={([v]) => setMinScore(v)}
+              max={100}
+              step={1}
+              className="flex-1 [&>span:first-child]:bg-[#eaf0ff] [&>span:first-child]:h-1.5 [&_[role=slider]]:h-3.5 [&_[role=slider]]:w-3.5 [&_[role=slider]]:border-[#174be8] [&_[role=slider]]:bg-white [&>span:first-child_span]:bg-[#174be8]"
+            />
             <span className="text-xs font-medium text-[#07142f] w-7 text-right">{minScore}</span>
           </div>
         </div>
@@ -357,11 +364,11 @@ const CityScoring = () => {
             </SelectContent>
           </Select>
         </div>
-        <label className="flex items-center gap-2 mb-1.5">
+        <label className="flex items-center gap-2 h-9">
           <Checkbox checked={nonRegOnly} onCheckedChange={(v) => setNonRegOnly(!!v)} />
-          <span className="text-xs text-[#14233b]">Non-Registration States Only</span>
+          <span className="text-xs text-[#14233b] whitespace-nowrap">Non-Registration States Only</span>
         </label>
-        <div className="ml-auto">
+        <div className="ml-auto h-9 flex items-end">
           <Button variant="outline" className="h-9 border-[#e5eaf2] text-[#14233b] gap-1.5 font-normal" onClick={() => toast.success("Data refreshed")}>
             <RefreshCw size={14} /> Refresh Data
           </Button>
@@ -547,9 +554,6 @@ const CityScoring = () => {
           <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
             <h4 className="text-xs font-bold text-[#07142f] mb-1">Market Research Report</h4>
             <p className="text-[10px] text-[#8794ab] mb-2">Comprehensive PDF report with data, insights, recommendations, and competitor analysis.</p>
-            <div className="h-16 rounded bg-gradient-to-br from-[#f7faff] to-[#eaf0ff] border border-[#eef2f7] mb-2 flex items-center justify-center">
-              <FileText size={24} className="text-[#174be8]/40" />
-            </div>
             <Button className="w-full h-8 bg-[#174be8] hover:bg-[#1240c9] text-white text-[11px] font-medium" onClick={() => toast.success("Generating PDF report…")}>
               Generate PDF Report
             </Button>
@@ -557,8 +561,19 @@ const CityScoring = () => {
 
           <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
             <h4 className="text-xs font-bold text-[#07142f] mb-2">Market Snapshot</h4>
-            <div className="h-24 rounded bg-[#eef4fb] border border-[#eef2f7] flex items-center justify-center mb-2">
-              <MapPin size={20} className="text-[#174be8]/40" />
+            <div
+              className="relative h-28 rounded border border-[#eef2f7] mb-2 overflow-hidden"
+              style={{
+                backgroundColor: "#f1f6fc",
+                backgroundImage:
+                  "linear-gradient(to right, #e3ecf7 1px, transparent 1px), linear-gradient(to bottom, #e3ecf7 1px, transparent 1px)",
+                backgroundSize: "16px 16px",
+              }}
+            >
+              <MapPin size={16} className="absolute text-[#174be8]" style={{ top: "30%", left: "40%" }} fill="#174be8" />
+              <MapPin size={12} className="absolute text-[#0ea66e]" style={{ top: "55%", left: "22%" }} fill="#0ea66e" />
+              <MapPin size={12} className="absolute text-[#0ea66e]" style={{ top: "20%", left: "65%" }} fill="#0ea66e" />
+              <MapPin size={12} className="absolute text-[#e11d48]" style={{ top: "65%", left: "70%" }} fill="#e11d48" />
             </div>
             <div className="space-y-1 text-[10px] text-[#14233b]">
               <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#174be8]" /> Selected Market</div>

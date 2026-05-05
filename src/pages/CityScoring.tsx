@@ -397,9 +397,9 @@ const CityScoring = () => {
       </div>
 
       {/* Three-column layout */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[0.94fr_1.6fr_0.72fr]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[0.92fr_1.5fr_0.92fr] items-start">
         {/* Left: Ranked Markets */}
-        <div className="min-w-0 rounded-lg bg-white border border-[#eef2f7] p-3">
+        <div className="min-w-0 rounded-lg bg-white border border-[#eef2f7] p-3 self-start">
           <div className="mb-3 flex items-center justify-between">
             <div>
               <h3 className="text-sm font-bold text-[#07142f]">Ranked Markets</h3>

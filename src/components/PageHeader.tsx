@@ -106,7 +106,7 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
 
       <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
-          <h1 className="text-2xl md:text-[28px] font-black leading-tight tracking-tight" style={{ color: "#07142f" }}>
+          <h1 className="text-xl md:text-2xl font-black leading-tight tracking-tight" style={{ color: "#07142f" }}>
             {title}
           </h1>
           <p className="text-sm mt-0.5" style={{ color: "#526078" }}>

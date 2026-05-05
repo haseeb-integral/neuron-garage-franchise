@@ -116,6 +116,8 @@ const CityScoring = () => {
   const [selectedId, setSelectedId] = useState<number>(sampleCities[0]?.id ?? 1);
   const [selectedForCompare, setSelectedForCompare] = useState<number[]>([]);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
+  const [compareOpen, setCompareOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
 
   // Open city via global search ?city=ID
   useEffect(() => {

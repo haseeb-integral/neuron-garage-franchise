@@ -59,7 +59,7 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
           backgroundColor: active ? "#174be8" : "transparent",
           color: active ? "#ffffff" : "#14233b",
           fontSize: 13.5,
-          fontWeight: active ? 600 : 500,
+          fontWeight: active ? 500 : 500,
           boxShadow: "none",
         }}
         onMouseEnter={(e) => {
@@ -75,7 +75,7 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
           }
         }}
       >
-        <item.icon size={isCollapsed ? 17 : 17} strokeWidth={active ? 2.1 : 1.75} />
+        <item.icon size={isCollapsed ? 17 : 17} strokeWidth={1.75} />
         {!isCollapsed && <span className="whitespace-nowrap">{item.title}</span>}
       </NavLink>
     );

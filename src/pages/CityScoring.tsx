@@ -397,7 +397,7 @@ const CityScoring = () => {
       </div>
 
       {/* Three-column layout */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.5fr_0.85fr] items-stretch">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.1fr_1.35fr_0.78fr] items-stretch">
         {/* Left: Ranked Markets */}
         <div className="min-w-0 rounded-lg bg-white border border-[#eef2f7] p-3 flex flex-col">
           <div className="mb-3 flex items-center justify-between">
@@ -410,7 +410,7 @@ const CityScoring = () => {
             </button>
           </div>
           <div className="overflow-hidden flex-1">
-            <div className="grid grid-cols-[18px_18px_minmax(0,1fr)_58px_84px_22px] items-center gap-x-3 px-1 py-2 text-[10px] uppercase tracking-wide text-[#8794ab] border-b border-[#eef2f7]">
+            <div className="grid grid-cols-[16px_14px_minmax(0,1fr)_46px_72px_18px] items-center gap-x-2 px-1 py-2 text-[9.5px] uppercase tracking-wide text-[#8794ab] border-b border-[#eef2f7]">
               <span></span>
               <span>Rank</span>
               <span>Market</span>
@@ -425,7 +425,7 @@ const CityScoring = () => {
                 <div
                   key={c.id}
                   onClick={() => setSelectedId(c.id)}
-                  className={`grid grid-cols-[18px_18px_minmax(0,1fr)_58px_84px_22px] items-center gap-x-3 px-1 py-3 text-xs cursor-pointer border-b border-[#f3f5f9] last:border-0 ${isSel ? "bg-[#eaf0ff]" : "hover:bg-[#f7faff]"}`}
+                  className={`grid grid-cols-[16px_14px_minmax(0,1fr)_46px_72px_18px] items-center gap-x-2 px-1 py-3 text-[11px] cursor-pointer border-b border-[#f3f5f9] last:border-0 ${isSel ? "bg-[#eaf0ff]" : "hover:bg-[#f7faff]"}`}
                 >
                   <Checkbox checked={isCmp} onCheckedChange={() => toggleCompare(c.id)} onClick={(e) => e.stopPropagation()} />
                   <span className="text-[#526078]">{i + 1}</span>
@@ -433,7 +433,7 @@ const CityScoring = () => {
                     <div className="truncate font-semibold text-[#07142f]">{c.city}, {c.state === "Texas" ? "TX" : c.state === "Florida" ? "FL" : c.state}</div>
                     <div className="truncate text-[10px] text-[#8794ab]">{c.population > 200000 ? "Travis County" : "Collin County"}</div>
                   </div>
-                  <span className="inline-block self-center w-fit rounded-full bg-[#eaf0ff] text-[#174be8] text-[10px] font-medium px-2 py-0.5">
+                  <span className="inline-block self-center w-fit rounded-full bg-[#eaf0ff] text-[#174be8] text-[9.5px] font-medium px-1.5 py-0.5">
                     {c.population > 200000 ? "Metro" : "Suburb"}
                   </span>
                   <div className="flex items-center gap-1.5">

@@ -410,7 +410,7 @@ const CityScoring = () => {
             </button>
           </div>
           <div className="overflow-hidden">
-            <div className="grid grid-cols-[20px_24px_1fr_60px_50px_30px] items-center gap-2 px-2 py-1.5 text-[10px] uppercase tracking-wide text-[#8794ab] border-b border-[#eef2f7]">
+            <div className="grid grid-cols-[18px_22px_minmax(0,1fr)_56px_78px_24px] items-center gap-2 px-2 py-1.5 text-[10px] uppercase tracking-wide text-[#8794ab] border-b border-[#eef2f7]">
               <span></span>
               <span>Rank</span>
               <span>Market</span>
@@ -425,7 +425,7 @@ const CityScoring = () => {
                 <div
                   key={c.id}
                   onClick={() => setSelectedId(c.id)}
-                  className={`grid grid-cols-[20px_24px_1fr_60px_50px_30px] items-center gap-2 px-2 py-1.5 text-xs cursor-pointer border-b border-[#f3f5f9] last:border-0 ${isSel ? "bg-[#eaf0ff]" : "hover:bg-[#f7faff]"}`}
+                  className={`grid grid-cols-[18px_22px_minmax(0,1fr)_56px_78px_24px] items-center gap-2 px-2 py-2 text-xs cursor-pointer border-b border-[#f3f5f9] last:border-0 ${isSel ? "bg-[#eaf0ff]" : "hover:bg-[#f7faff]"}`}
                 >
                   <Checkbox checked={isCmp} onCheckedChange={() => toggleCompare(c.id)} onClick={(e) => e.stopPropagation()} />
                   <span className="text-[#526078]">{i + 1}</span>
@@ -433,12 +433,12 @@ const CityScoring = () => {
                     <div className="truncate font-semibold text-[#07142f]">{c.city}, {c.state === "Texas" ? "TX" : c.state === "Florida" ? "FL" : c.state}</div>
                     <div className="truncate text-[10px] text-[#8794ab]">{c.population > 200000 ? "Travis County" : "Collin County"}</div>
                   </div>
-                  <span className="rounded-full bg-[#eaf0ff] text-[#174be8] text-[10px] font-medium px-1.5 py-0.5 text-center">
+                  <span className="inline-block self-center w-fit rounded-full bg-[#eaf0ff] text-[#174be8] text-[10px] font-medium px-1.5 py-0.5">
                     {c.population > 200000 ? "Metro" : "Suburb"}
                   </span>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
                     <span className="text-[#07142f] font-semibold">{c.compositeScore}</span>
-                    <div className="h-1 w-7 rounded-full bg-[#eef2f7]">
+                    <div className="h-1.5 w-12 rounded-full bg-[#eef2f7]">
                       <div className="h-full rounded-full bg-[#0ea66e]" style={{ width: `${c.compositeScore}%` }} />
                     </div>
                   </div>
@@ -448,11 +448,15 @@ const CityScoring = () => {
             })}
           </div>
           <div className="mt-3 flex items-center justify-between text-[11px] text-[#8794ab]">
-            <span>Showing 1 to {Math.min(filtered.length, 25)} of {filtered.length} results</span>
+            <span>Showing 1 to {Math.min(filtered.length, 25)} of 238 results</span>
             <div className="flex items-center gap-1">
-              <button className="px-1.5 py-0.5 rounded border border-[#eef2f7]">‹</button>
-              <button className="px-1.5 py-0.5 rounded bg-[#174be8] text-white">1</button>
-              <button className="px-1.5 py-0.5 rounded border border-[#eef2f7]">›</button>
+              <button className="px-1.5 h-6 rounded border border-[#eef2f7] text-[#526078]">‹</button>
+              <button className="px-2 h-6 rounded bg-[#174be8] text-white font-medium">1</button>
+              <button className="px-2 h-6 rounded border border-[#eef2f7] text-[#14233b]">2</button>
+              <button className="px-2 h-6 rounded border border-[#eef2f7] text-[#14233b]">3</button>
+              <span className="px-1 text-[#8794ab]">…</span>
+              <button className="px-2 h-6 rounded border border-[#eef2f7] text-[#14233b]">10</button>
+              <button className="px-1.5 h-6 rounded border border-[#eef2f7] text-[#526078]">›</button>
             </div>
           </div>
         </div>

@@ -340,8 +340,14 @@ const CityScoring = () => {
         </div>
         <div className="flex flex-col gap-1 min-w-[180px] flex-1 max-w-[260px]">
           <label className="text-[11px] text-[#526078]">Min Score</label>
-          <div className="flex items-center gap-2">
-            <Slider value={[minScore]} onValueChange={([v]) => setMinScore(v)} max={100} step={1} className="flex-1" />
+          <div className="flex items-center gap-2 h-9">
+            <Slider
+              value={[minScore]}
+              onValueChange={([v]) => setMinScore(v)}
+              max={100}
+              step={1}
+              className="flex-1 [&>span:first-child]:bg-[#eaf0ff] [&>span:first-child]:h-1.5 [&_[role=slider]]:h-3.5 [&_[role=slider]]:w-3.5 [&_[role=slider]]:border-[#174be8] [&_[role=slider]]:bg-white [&>span:first-child_span]:bg-[#174be8]"
+            />
             <span className="text-xs font-medium text-[#07142f] w-7 text-right">{minScore}</span>
           </div>
         </div>
@@ -358,11 +364,11 @@ const CityScoring = () => {
             </SelectContent>
           </Select>
         </div>
-        <label className="flex items-center gap-2 mb-1.5">
+        <label className="flex items-center gap-2 h-9">
           <Checkbox checked={nonRegOnly} onCheckedChange={(v) => setNonRegOnly(!!v)} />
-          <span className="text-xs text-[#14233b]">Non-Registration States Only</span>
+          <span className="text-xs text-[#14233b] whitespace-nowrap">Non-Registration States Only</span>
         </label>
-        <div className="ml-auto">
+        <div className="ml-auto h-9 flex items-end">
           <Button variant="outline" className="h-9 border-[#e5eaf2] text-[#14233b] gap-1.5 font-normal" onClick={() => toast.success("Data refreshed")}>
             <RefreshCw size={14} /> Refresh Data
           </Button>

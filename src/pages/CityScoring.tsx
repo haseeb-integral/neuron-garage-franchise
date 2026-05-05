@@ -468,10 +468,10 @@ const CityScoring = () => {
             </button>
           </div>
 
-          <div className="grid grid-cols-[176px_1fr] gap-4 items-start">
+          <div className="grid grid-cols-[150px_1fr] gap-3 items-start">
             <div className="flex flex-col items-center text-center pt-1">
               <p className="mb-1.5 text-[12px] font-semibold text-[#3a4c72]">Overall Score</p>
-              <svg viewBox="0 0 200 120" className="h-[116px] w-[176px] max-w-full">
+              <svg viewBox="0 0 200 120" className="h-[100px] w-[150px] max-w-full">
                 <path d="M25 92 A75 75 0 0 1 175 92" fill="none" stroke="#e7ebf3" strokeWidth="14" strokeLinecap="round" />
                 <path
                   d="M25 92 A75 75 0 0 1 175 92"
@@ -484,36 +484,32 @@ const CityScoring = () => {
                 <text x="100" y="76" textAnchor="middle" className="fill-[#07142f]" style={{ fontSize: 32, fontWeight: 800 }}>{detailScore}</text>
                 <text x="100" y="102" textAnchor="middle" className="fill-[#7e8aa3]" style={{ fontSize: 12, fontWeight: 600 }}>/100</text>
               </svg>
-              <p className="-mt-2 text-[14px] font-semibold text-[#0ea66e]">Excellent Opportunity</p>
+              <p className="-mt-1 text-[12px] font-semibold text-[#0ea66e]">Excellent Opportunity</p>
             </div>
 
-            <div className="space-y-3 pt-1">
-              <div className="grid grid-cols-2 gap-x-5 gap-y-3 text-[11px]">
-                <div className="space-y-3">
-                  <div className="grid grid-cols-[70px_1fr] items-center gap-3">
-                    <span className="text-[#6b7a96]">Tier</span>
-                    <span className="w-fit rounded-full bg-[#e6f7ef] px-2.5 py-1 text-[11px] font-semibold leading-none text-[#0ea66e]">{selected.tier} (Tier 1)</span>
-                  </div>
-                  <div className="grid grid-cols-[70px_1fr] items-start gap-3">
-                    <span className="pt-0.5 text-[#6b7a96]">Metro Area</span>
-                    <span className="font-semibold leading-5 text-[#07142f]">Dallas-Fort Worth, TX</span>
-                  </div>
+            <div className="space-y-2.5 pt-1 min-w-0">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-[11px] min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-[#6b7a96] flex-shrink-0">Tier</span>
+                  <span className="w-fit rounded-full bg-[#e6f7ef] px-2 py-0.5 text-[10.5px] font-semibold leading-tight text-[#0ea66e]">{selected.tier} (Tier 1)</span>
                 </div>
-                <div className="space-y-3">
-                  <div className="grid grid-cols-[84px_1fr] items-center gap-3">
-                    <span className="text-[#6b7a96]">Market Type</span>
-                    <span className="w-fit rounded-full bg-[#eef3ff] px-2.5 py-1 text-[11px] font-medium leading-none text-[#174be8]">Suburb</span>
-                  </div>
-                  <div className="grid grid-cols-[52px_1fr] items-start gap-3">
-                    <span className="pt-0.5 text-[#6b7a96]">County</span>
-                    <span className="font-semibold leading-5 text-[#07142f]">Collin County</span>
-                  </div>
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-[#6b7a96] flex-shrink-0">Market Type</span>
+                  <span className="w-fit rounded-full bg-[#eef3ff] px-2 py-0.5 text-[10.5px] font-medium leading-tight text-[#174be8]">Suburb</span>
+                </div>
+                <div className="flex items-baseline gap-2 min-w-0">
+                  <span className="text-[#6b7a96] flex-shrink-0">Metro Area</span>
+                  <span className="font-semibold text-[#07142f] truncate">Dallas-Fort Worth, TX</span>
+                </div>
+                <div className="flex items-baseline gap-2 min-w-0">
+                  <span className="text-[#6b7a96] flex-shrink-0">County</span>
+                  <span className="font-semibold text-[#07142f] truncate">Collin County</span>
                 </div>
               </div>
 
               <div>
-                <p className="mb-1 text-[12px] font-semibold text-[#3a4c72]">Market Summary</p>
-                <p className="max-w-[420px] text-[12px] leading-5 text-[#14233b]">Affluent, rapidly growing suburb with strong demand for premium youth education and enrichment programs.</p>
+                <p className="mb-0.5 text-[12px] font-semibold text-[#3a4c72]">Market Summary</p>
+                <p className="text-[11.5px] leading-snug text-[#14233b]">Affluent, rapidly growing suburb with strong demand for premium youth education and enrichment programs.</p>
               </div>
             </div>
           </div>

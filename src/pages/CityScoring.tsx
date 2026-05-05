@@ -1,116 +1,581 @@
-import { useEffect, useState, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
-import { sampleCities, CityData } from "@/data/cityData";
-import { StatCards } from "@/components/city-scoring/StatCards";
-import { FilterBar } from "@/components/city-scoring/FilterBar";
-import { CityTable } from "@/components/city-scoring/CityTable";
-import { CityDetailDrawer } from "@/components/city-scoring/CityDetailDrawer";
-import { ScoringWeights } from "@/components/city-scoring/ScoringWeights";
-import { CompareModal } from "@/components/city-scoring/CompareModal";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import {
+  Bell, HelpCircle, ChevronDown, LogOut, Settings, Search, Download, FileText,
+  Plus, RefreshCw, ArrowRight, GitCompare, Eye, Star, Users, DollarSign,
+  Trophy, UserCheck, Cog, Heart, MapPin, Building2, GraduationCap, Home as HomeIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { GitCompare } from "lucide-react";
-import { PageHeader } from "@/components/PageHeader";
+import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/contexts/AuthContext";
+import { sampleCities, CityData } from "@/data/cityData";
+import { AddCriteriaDrawer } from "@/components/city-scoring/AddCriteriaDrawer";
+import { CityDetailDrawer } from "@/components/city-scoring/CityDetailDrawer";
+import { toast } from "sonner";
+
+type CategoryKey =
+  | "demand"
+  | "pricingPower"
+  | "competitiveLandscape"
+  | "franchiseeSupply"
+  | "easeOfOperations"
+  | "parentMindset";
+
+interface Category {
+  key: CategoryKey;
+  label: string;
+  icon: typeof Users;
+  color: string;
+  bg: string;
+  description: string;
+  defaultWeight: number;
+}
+
+const CATEGORIES: Category[] = [
+  { key: "demand", label: "Demand", icon: Users, color: "#174be8", bg: "#eaf0ff",
+    description: "Measures size of target families and program demand.", defaultWeight: 25 },
+  { key: "pricingPower", label: "Pricing Power", icon: DollarSign, color: "#0ea66e", bg: "#e6f7ef",
+    description: "Measures ability to sustain premium pricing.", defaultWeight: 20 },
+  { key: "competitiveLandscape", label: "Competitive Landscape", icon: Trophy, color: "#b8860b", bg: "#fff6dc",
+    description: "Measures level of competition and market saturation.", defaultWeight: 20 },
+  { key: "franchiseeSupply", label: "Franchisee Supply", icon: UserCheck, color: "#7c3aed", bg: "#f1ebff",
+    description: "Measures availability and quality of teacher-operators.", defaultWeight: 15 },
+  { key: "easeOfOperations", label: "Ease of Operations", icon: Cog, color: "#ea580c", bg: "#ffeede",
+    description: "Measures operational complexity and real estate access.", defaultWeight: 10 },
+  { key: "parentMindset", label: "Parent Mindset Indicators", icon: Heart, color: "#e11d48", bg: "#ffe4ea",
+    description: "Measures education priorities and willingness to invest.", defaultWeight: 10 },
+];
+
+// Map mock data scoreBreakdown into our 6 category scores deterministically
+function categoryScores(c: CityData): Record<CategoryKey, number> {
+  const b = c.scoreBreakdown;
+  return {
+    demand: b.summerCampDemand,
+    pricingPower: Math.round((b.dualIncomeFamilies + (c.medianIncome > 90000 ? 10 : 0)) * 0.95),
+    competitiveLandscape: b.competitionScore,
+    franchiseeSupply: Math.round((b.stemJobs + b.schoolDensity) / 2),
+    easeOfOperations: Math.round((b.schoolDensity + b.dualIncomeFamilies) / 2),
+    parentMindset: Math.round((b.childPopulation + b.dualIncomeFamilies) / 2),
+  };
+}
+
+const NEARBY_MARKETS = [
+  { name: "Prosper, TX (USD)", score: 87 },
+  { name: "McKinney, TX (ISD)", score: 86 },
+  { name: "Allen, TX (ISD)", score: 85 },
+  { name: "Little Elm, TX", score: 82 },
+  { name: "The Colony, TX", score: 80 },
+];
+
+const SOURCES = [
+  { name: "U.S. Census Bureau", icon: Building2 },
+  { name: "BLS (Occupational Data)", icon: Building2 },
+  { name: "Google Trends", icon: Search },
+  { name: "Yelp / Google Maps", icon: MapPin },
+  { name: "GreatSchools.org", icon: GraduationCap },
+  { name: "State Education Databases", icon: GraduationCap },
+  { name: "ACA Camp Regulations", icon: FileText },
+  { name: "Internal Franchise Data", icon: HomeIcon },
+];
 
 const CityScoring = () => {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [nonRegOnly, setNonRegOnly] = useState(true);
-  const [stateFilter, setStateFilter] = useState("All");
-  const [tierFilter, setTierFilter] = useState("All");
-  const [minScore, setMinScore] = useState(0);
-  const [selectedCity, setSelectedCity] = useState<CityData | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [compareMode, setCompareMode] = useState(false);
-  const [selectedForCompare, setSelectedForCompare] = useState<number[]>([]);
-  const [compareOpen, setCompareOpen] = useState(false);
-  const [weights, setWeights] = useState<Record<string, number>>({
-    summerCampDemand: 20, schoolDensity: 15, childPopulation: 20,
-    dualIncomeFamilies: 15, stemJobs: 15, competitionScore: 15,
-  });
+  const { profile, user, role, signOut } = useAuth();
 
-  // Open city drawer when arriving via global search (?city=ID)
+  const displayName = profile?.full_name || profile?.email || user?.email || "Account";
+  const initials = (displayName.match(/\b\w/g) || []).slice(0, 1).join("").toUpperCase() || "U";
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [scoringModel, setScoringModel] = useState("Affluent Suburbs Model");
+  const [compareMode, setCompareMode] = useState(false);
+  const [showNearby, setShowNearby] = useState(true);
+
+  const [stateFilter, setStateFilter] = useState("All");
+  const [minPop, setMinPop] = useState("25000");
+  const [minScore, setMinScore] = useState(35);
+  const [tierFilter, setTierFilter] = useState("All");
+  const [nonRegOnly, setNonRegOnly] = useState(false);
+
+  const [weights, setWeights] = useState<Record<CategoryKey, number>>(
+    CATEGORIES.reduce((acc, c) => ({ ...acc, [c.key]: c.defaultWeight }), {} as Record<CategoryKey, number>)
+  );
+  const [customCriteria, setCustomCriteria] = useState<Array<{ name: string; category: string; weight: number; source: string; notes: string }>>([]);
+  const [addCritOpen, setAddCritOpen] = useState(false);
+
+  const [selectedId, setSelectedId] = useState<number>(sampleCities[0]?.id ?? 1);
+  const [selectedForCompare, setSelectedForCompare] = useState<number[]>([]);
+  const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
+
+  // Open city via global search ?city=ID
   useEffect(() => {
     const id = searchParams.get("city");
-    if (!id) return;
-    const found = sampleCities.find((c) => c.id === Number(id));
-    if (found) {
-      setSelectedCity(found);
-      setDrawerOpen(true);
-      setNonRegOnly(false); // ensure city is visible if filter would hide it
+    if (id) {
+      const found = sampleCities.find((c) => c.id === Number(id));
+      if (found) setSelectedId(found.id);
+      searchParams.delete("city");
+      setSearchParams(searchParams, { replace: true });
     }
-    searchParams.delete("city");
-    setSearchParams(searchParams, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, []);
 
   const filtered = useMemo(() => {
-    return sampleCities.filter(c => {
-      if (nonRegOnly && !c.isNonRegistration) return false;
+    return sampleCities.filter((c) => {
+      if (searchTerm && !`${c.city} ${c.state}`.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       if (stateFilter !== "All" && c.state !== stateFilter) return false;
       if (tierFilter !== "All" && c.tier !== tierFilter) return false;
+      if (nonRegOnly && !c.isNonRegistration) return false;
       if (c.compositeScore < minScore) return false;
+      if (Number(minPop) && c.population < Number(minPop)) return false;
       return true;
-    });
-  }, [nonRegOnly, stateFilter, tierFilter, minScore]);
+    }).sort((a, b) => b.compositeScore - a.compositeScore);
+  }, [searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop]);
 
-  const handleSelectCity = (city: CityData) => {
-    setSelectedCity(city);
-    setDrawerOpen(true);
+  const selected = sampleCities.find((c) => c.id === selectedId) ?? sampleCities[0];
+
+  const totalWeight = Object.values(weights).reduce((s, v) => s + v, 0);
+
+  const resetWeights = () => {
+    setWeights(CATEGORIES.reduce((acc, c) => ({ ...acc, [c.key]: c.defaultWeight }), {} as Record<CategoryKey, number>));
+    toast.success("Weights reset to defaults");
   };
 
-  const handleToggleCompare = (id: number) => {
-    setSelectedForCompare(prev =>
-      prev.includes(id) ? prev.filter(i => i !== id) : prev.length < 2 ? [...prev, id] : prev
-    );
+  const toggleCompare = (id: number) => {
+    setSelectedForCompare((p) => p.includes(id) ? p.filter((i) => i !== id) : [...p, id]);
   };
 
-  const compareCities = sampleCities.filter(c => selectedForCompare.includes(c.id));
+  const handleFindTeachers = () => {
+    navigate(`/teacher-prospects?city=${encodeURIComponent(selected.city)}&state=${encodeURIComponent(selected.state)}`);
+  };
+
+  const handleLogout = async () => { await signOut(); navigate("/auth", { replace: true }); };
+
+  const sigRows = [
+    { icon: Users, label: "Children Ages 5–12", value: "19,842", delta: "+12% vs. nat. avg" },
+    { icon: HomeIcon, label: "Households $150k+", value: "46%", delta: "+15% vs. nat. avg" },
+    { icon: DollarSign, label: "Premium Camp Pricing", value: "$245 / week", delta: "+8%" },
+    { icon: GraduationCap, label: "Teacher Density", value: "1:475", delta: "20% below nat-avg kts" },
+    { icon: Building2, label: "School District Access", value: "High", delta: "Strong availability" },
+    { icon: Star, label: "Montessori Density", value: "42%", delta: "+16% vs. avg." },
+  ];
+
+  const cs = categoryScores(selected);
 
   return (
-    <div className="-mx-3 md:-mx-5 lg:-mx-6 -my-3 px-3 md:px-5 lg:px-6 py-3 min-h-screen" style={{ backgroundColor: '#f2f4f6' }}>
-      <div className="max-w-[1280px] mx-auto w-full">
-      <PageHeader
-        title="City Scoring"
-        subtitle="Analyze and rank U.S. cities to find the best markets for new Neuron Garage franchises."
-      />
+    <div className="-mx-3 md:-mx-5 lg:-mx-6 -my-3 px-3 md:px-5 lg:px-6 py-3 min-h-screen bg-white">
+      {/* Top header: search + actions + notification/help/avatar */}
+      <div className="mb-4 flex items-center gap-3">
+        <div className="relative flex-1 max-w-[680px]">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8794ab]" />
+          <Input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search city, suburb, metro, or school district…"
+            className="pl-9 h-10 bg-white border-[#e5eaf2] text-sm"
+          />
+        </div>
+        <Button variant="outline" className="h-10 border-[#e5eaf2] text-[#14233b] gap-2 font-normal">
+          <Download size={15} /> Export Source Data
+        </Button>
+        <Button className="h-10 bg-[#174be8] hover:bg-[#1240c9] text-white gap-2 font-medium">
+          <FileText size={15} /> Generate Market Report
+        </Button>
+        <button
+          type="button"
+          className="relative flex items-center justify-center rounded-full bg-white text-[#526078] hover:bg-[#f3f6fb]"
+          aria-label="Notifications"
+          style={{ width: 36, height: 36, border: "1px solid #eef2f7" }}
+        >
+          <Bell size={16} strokeWidth={1.75} />
+          <span className="absolute -right-0.5 -top-0.5 flex items-center justify-center rounded-full bg-[#e11d48] text-[9px] font-bold text-white" style={{ width: 14, height: 14 }}>3</span>
+        </button>
+        <button
+          className="flex items-center justify-center rounded-full bg-white text-[#526078] hover:bg-[#f3f6fb]"
+          style={{ width: 36, height: 36, border: "1px solid #eef2f7" }}
+        >
+          <HelpCircle size={16} strokeWidth={1.75} />
+        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex items-center gap-2 rounded-full px-1 py-0.5 hover:bg-[#f7faff]">
+              <span className="flex items-center justify-center rounded-full bg-[#174be8] text-sm font-bold text-white" style={{ width: 34, height: 34 }}>{initials}</span>
+              <span className="hidden text-left md:block">
+                <span className="block text-[13px] font-bold leading-4 text-[#07142f]">{displayName.split("@")[0]}</span>
+                {role && <span className="block text-[10px] uppercase leading-3 tracking-wide text-[#526078]">{role}</span>}
+              </span>
+              <ChevronDown className="hidden h-4 w-4 text-[#526078] md:block" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium truncate">{displayName}</span>
+                {(profile?.email || user?.email) && (
+                  <span className="text-xs text-muted-foreground truncate">{profile?.email || user?.email}</span>
+                )}
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {role === "admin" && (
+              <>
+                <DropdownMenuItem onClick={() => navigate("/settings/team")}>
+                  <Settings className="mr-2 h-4 w-4" /> Team members
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            <DropdownMenuItem onClick={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4" /> Log out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
-      <StatCards cities={filtered} nonRegOnly={nonRegOnly} onToggleNonReg={setNonRegOnly} />
-      <FilterBar
-        stateFilter={stateFilter} tierFilter={tierFilter} minScore={minScore}
-        onStateChange={setStateFilter} onTierChange={setTierFilter} onMinScoreChange={setMinScore}
-      />
-
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
-        <p className="text-sm" style={{ color: '#6c757d' }}>{filtered.length} cities found</p>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant={compareMode ? "default" : "outline"}
-            size="sm"
-            onClick={() => { setCompareMode(!compareMode); setSelectedForCompare([]); }}
-            style={{ minHeight: 44 }}
-          >
-            <GitCompare size={14} className="mr-1" /> {compareMode ? "Cancel Compare" : "Compare"}
+      {/* Title row + model controls */}
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-black tracking-tight text-[#07142f]">City Search</h1>
+          <p className="text-sm text-[#526078] mt-0.5">
+            Discover and score the best cities, suburbs, and metros for Neuron Garage franchises.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Select value={scoringModel} onValueChange={setScoringModel}>
+            <SelectTrigger className="h-9 w-[210px] bg-white border-[#e5eaf2] text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Affluent Suburbs Model">Affluent Suburbs Model</SelectItem>
+              <SelectItem value="Urban Core Model">Urban Core Model</SelectItem>
+              <SelectItem value="Emerging Markets Model">Emerging Markets Model</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button variant="outline" className="h-9 border-[#e5eaf2] text-[#14233b] gap-1.5 font-normal" onClick={() => setAddCritOpen(true)}>
+            <Plus size={14} /> Add Criteria
           </Button>
-          {compareMode && selectedForCompare.length === 2 && (
-            <Button size="sm" className="text-white" style={{ backgroundColor: '#fd7e14', minHeight: 44 }} onClick={() => setCompareOpen(true)}>
-              Compare Selected
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-[#14233b]">Compare Mode</span>
+            <Switch checked={compareMode} onCheckedChange={setCompareMode} />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-[#14233b]">Show nearby markets</span>
+            <Switch checked={showNearby} onCheckedChange={setShowNearby} />
+          </div>
         </div>
       </div>
 
-      <CityTable
-        cities={filtered}
-        onSelectCity={handleSelectCity}
-        compareMode={compareMode}
-        selectedForCompare={selectedForCompare}
-        onToggleCompare={handleToggleCompare}
+      {/* Scoring Weights */}
+      <div className="mb-4 rounded-lg bg-white border border-[#eef2f7] p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h3 className="text-sm font-bold text-[#07142f]">Scoring Weights</h3>
+            <span className="text-xs text-[#526078]">Total Weight: <span className={totalWeight === 100 ? "text-[#0ea66e] font-medium" : "text-[#ea580c] font-medium"}>{totalWeight}%</span></span>
+          </div>
+          <button onClick={resetWeights} className="text-xs font-medium text-[#174be8] hover:underline">Reset to Default</button>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {CATEGORIES.map((cat) => {
+            const Icon = cat.icon;
+            const customCount = customCriteria.filter((c) => c.category === cat.label).length;
+            return (
+              <div key={cat.key} className="rounded-lg border border-[#eef2f7] bg-white p-3 flex flex-col gap-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 28, height: 28, backgroundColor: cat.bg }}>
+                      <Icon size={15} style={{ color: cat.color }} />
+                    </span>
+                    <span className="text-[12.5px] font-semibold text-[#07142f] leading-tight">{cat.label}</span>
+                  </div>
+                </div>
+                <div className="text-right text-base font-bold text-[#07142f]">{weights[cat.key]}%</div>
+                <Slider
+                  value={[weights[cat.key]]}
+                  onValueChange={([v]) => setWeights((w) => ({ ...w, [cat.key]: v }))}
+                  max={50}
+                  step={1}
+                />
+                <p className="text-[11px] text-[#8794ab] leading-snug">{cat.description}</p>
+                {customCount > 0 && (
+                  <p className="text-[10px] text-[#174be8] font-medium">+{customCount} custom metric{customCount > 1 ? "s" : ""}</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Filters row */}
+      <div className="mb-4 rounded-lg bg-white border border-[#eef2f7] p-3 flex flex-wrap items-end gap-3">
+        <div className="flex flex-col gap-1 min-w-[140px]">
+          <label className="text-[11px] text-[#526078]">State</label>
+          <Select value={stateFilter} onValueChange={setStateFilter}>
+            <SelectTrigger className="h-9 bg-white border-[#e5eaf2] text-sm"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All States</SelectItem>
+              <SelectItem value="Texas">Texas</SelectItem>
+              <SelectItem value="Florida">Florida</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex flex-col gap-1 min-w-[140px]">
+          <label className="text-[11px] text-[#526078]">Min Population</label>
+          <Select value={minPop} onValueChange={setMinPop}>
+            <SelectTrigger className="h-9 bg-white border-[#e5eaf2] text-sm"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="0">Any</SelectItem>
+              <SelectItem value="25000">25,000+</SelectItem>
+              <SelectItem value="50000">50,000+</SelectItem>
+              <SelectItem value="100000">100,000+</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex flex-col gap-1 min-w-[180px] flex-1 max-w-[260px]">
+          <label className="text-[11px] text-[#526078]">Min Score</label>
+          <div className="flex items-center gap-2">
+            <Slider value={[minScore]} onValueChange={([v]) => setMinScore(v)} max={100} step={1} className="flex-1" />
+            <span className="text-xs font-medium text-[#07142f] w-7 text-right">{minScore}</span>
+          </div>
+        </div>
+        <div className="flex flex-col gap-1 min-w-[120px]">
+          <label className="text-[11px] text-[#526078]">Tier</label>
+          <Select value={tierFilter} onValueChange={setTierFilter}>
+            <SelectTrigger className="h-9 bg-white border-[#e5eaf2] text-sm"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All</SelectItem>
+              <SelectItem value="A">A</SelectItem>
+              <SelectItem value="B">B</SelectItem>
+              <SelectItem value="C">C</SelectItem>
+              <SelectItem value="D">D</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <label className="flex items-center gap-2 mb-1.5">
+          <Checkbox checked={nonRegOnly} onCheckedChange={(v) => setNonRegOnly(!!v)} />
+          <span className="text-xs text-[#14233b]">Non-Registration States Only</span>
+        </label>
+        <div className="ml-auto">
+          <Button variant="outline" className="h-9 border-[#e5eaf2] text-[#14233b] gap-1.5 font-normal" onClick={() => toast.success("Data refreshed")}>
+            <RefreshCw size={14} /> Refresh Data
+          </Button>
+        </div>
+      </div>
+
+      {/* Three-column layout */}
+      <div className="grid grid-cols-12 gap-4">
+        {/* Left: Ranked Markets */}
+        <div className="col-span-12 lg:col-span-4 rounded-lg bg-white border border-[#eef2f7] p-3">
+          <div className="mb-3 flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-[#07142f]">Ranked Markets</h3>
+              <p className="text-[11px] text-[#8794ab]">({filtered.length} markets found)</p>
+            </div>
+            <button className="flex items-center gap-1 text-xs font-medium text-[#174be8] hover:underline">
+              <GitCompare size={12} /> Compare ({selectedForCompare.length})
+            </button>
+          </div>
+          <div className="overflow-hidden">
+            <div className="grid grid-cols-[20px_24px_1fr_60px_50px_30px] items-center gap-2 px-2 py-1.5 text-[10px] uppercase tracking-wide text-[#8794ab] border-b border-[#eef2f7]">
+              <span></span>
+              <span>Rank</span>
+              <span>Market</span>
+              <span>Type</span>
+              <span>Score</span>
+              <span>Tier</span>
+            </div>
+            {filtered.map((c, i) => {
+              const isSel = c.id === selectedId;
+              const isCmp = selectedForCompare.includes(c.id);
+              return (
+                <div
+                  key={c.id}
+                  onClick={() => setSelectedId(c.id)}
+                  className={`grid grid-cols-[20px_24px_1fr_60px_50px_30px] items-center gap-2 px-2 py-2 text-xs cursor-pointer border-b border-[#f3f5f9] last:border-0 ${isSel ? "bg-[#eaf0ff]" : "hover:bg-[#f7faff]"}`}
+                >
+                  <Checkbox checked={isCmp} onCheckedChange={() => toggleCompare(c.id)} onClick={(e) => e.stopPropagation()} />
+                  <span className="text-[#526078]">{i + 1}</span>
+                  <div className="min-w-0">
+                    <div className="truncate font-semibold text-[#07142f]">{c.city}, {c.state === "Texas" ? "TX" : c.state === "Florida" ? "FL" : c.state}</div>
+                    <div className="truncate text-[10px] text-[#8794ab]">{c.population > 200000 ? "Travis County" : "Collin County"}</div>
+                  </div>
+                  <span className="rounded-full bg-[#eaf0ff] text-[#174be8] text-[10px] font-medium px-1.5 py-0.5 text-center">
+                    {c.population > 200000 ? "Metro" : "Suburb"}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[#07142f] font-semibold">{c.compositeScore}</span>
+                    <div className="h-1 w-7 rounded-full bg-[#eef2f7]">
+                      <div className="h-full rounded-full bg-[#0ea66e]" style={{ width: `${c.compositeScore}%` }} />
+                    </div>
+                  </div>
+                  <span className={`flex items-center justify-center rounded-full text-[10px] font-bold text-white`} style={{ width: 18, height: 18, backgroundColor: c.tier === "A" ? "#0ea66e" : c.tier === "B" ? "#174be8" : c.tier === "C" ? "#b8860b" : "#ea580c" }}>{c.tier}</span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-3 flex items-center justify-between text-[11px] text-[#8794ab]">
+            <span>Showing 1 to {Math.min(filtered.length, 25)} of {filtered.length} results</span>
+            <div className="flex items-center gap-1">
+              <button className="px-1.5 py-0.5 rounded border border-[#eef2f7]">‹</button>
+              <button className="px-1.5 py-0.5 rounded bg-[#174be8] text-white">1</button>
+              <button className="px-1.5 py-0.5 rounded border border-[#eef2f7]">›</button>
+            </div>
+          </div>
+        </div>
+
+        {/* Center: Selected Market Detail */}
+        <div className="col-span-12 lg:col-span-5 rounded-lg bg-white border border-[#eef2f7] p-4">
+          <div className="flex items-start justify-between mb-3">
+            <h2 className="text-lg font-bold text-[#07142f]">{selected.city}, {selected.state === "Texas" ? "TX" : selected.state === "Florida" ? "FL" : selected.state}</h2>
+            <button className="flex items-center gap-1 text-[11px] font-medium text-[#174be8] hover:underline">
+              <Star size={12} /> Add to Watchlist
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="flex flex-col items-center justify-center rounded-lg border border-[#eef2f7] p-3">
+              <p className="text-[10px] text-[#8794ab] uppercase tracking-wide">Overall Score</p>
+              <div className="relative mt-1 flex items-end">
+                <span className="text-3xl font-black text-[#07142f]">{selected.compositeScore}</span>
+                <span className="text-xs text-[#8794ab] mb-1">/100</span>
+              </div>
+              <div className="mt-2 h-1.5 w-full rounded-full bg-[#eef2f7]">
+                <div className="h-full rounded-full bg-[#0ea66e]" style={{ width: `${selected.compositeScore}%` }} />
+              </div>
+              <p className="mt-1.5 text-[11px] font-medium text-[#0ea66e]">Excellent Opportunity</p>
+            </div>
+            <div className="text-xs space-y-1.5">
+              <div className="flex items-center justify-between"><span className="text-[#8794ab]">Tier</span><span className="rounded-full bg-[#e6f7ef] text-[#0ea66e] px-2 py-0.5 text-[10px] font-bold">{selected.tier} (Tier 1)</span></div>
+              <div className="flex items-center justify-between"><span className="text-[#8794ab]">Market Type</span><span className="rounded-full bg-[#eaf0ff] text-[#174be8] px-2 py-0.5 text-[10px] font-medium">Suburb</span></div>
+              <div className="flex items-center justify-between"><span className="text-[#8794ab]">Metro Area</span><span className="text-[#07142f] font-medium">Dallas-Fort Worth, TX</span></div>
+              <div className="flex items-center justify-between"><span className="text-[#8794ab]">County</span><span className="text-[#07142f] font-medium">Collin County</span></div>
+              <div className="pt-2">
+                <p className="text-[10px] uppercase tracking-wide text-[#8794ab]">Market Summary</p>
+                <p className="text-[11px] text-[#14233b] leading-snug mt-0.5">Affluent, rapidly growing suburb with strong demand for premium youth education and enrichment programs.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-[11px] font-bold text-[#07142f] mb-2">Category Scores</p>
+              <div className="space-y-1.5">
+                {CATEGORIES.map((cat) => (
+                  <div key={cat.key}>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-[#526078]">{cat.label}</span>
+                      <span className="font-semibold text-[#07142f]">{cs[cat.key]}</span>
+                    </div>
+                    <div className="h-1 w-full rounded-full bg-[#eef2f7] mt-0.5">
+                      <div className="h-full rounded-full bg-[#0ea66e]" style={{ width: `${cs[cat.key]}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-[11px] font-bold text-[#07142f] mb-2">Key Market Signals</p>
+              <div className="space-y-1.5">
+                {sigRows.map((r) => {
+                  const Icon = r.icon;
+                  return (
+                    <div key={r.label} className="flex items-center gap-2 text-[11px]">
+                      <Icon size={12} className="text-[#8794ab] flex-shrink-0" />
+                      <span className="text-[#526078] flex-1 truncate">{r.label}</span>
+                      <span className="font-semibold text-[#07142f]">{r.value}</span>
+                      <span className="text-[10px] text-[#0ea66e] whitespace-nowrap">{r.delta}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button onClick={handleFindTeachers} className="h-9 bg-[#174be8] hover:bg-[#1240c9] text-white gap-1.5 font-medium text-xs">
+              Find Teachers in This Market <ArrowRight size={13} />
+            </Button>
+            <Button variant="outline" className="h-9 border-[#e5eaf2] text-[#14233b] gap-1.5 font-normal text-xs"><GitCompare size={13} /> Compare</Button>
+            <Button variant="outline" className="h-9 border-[#e5eaf2] text-[#14233b] gap-1.5 font-normal text-xs"><FileText size={13} /> Generate Report</Button>
+            <Button variant="outline" className="h-9 border-[#e5eaf2] text-[#14233b] gap-1.5 font-normal text-xs" onClick={() => setDetailDrawerOpen(true)}><Eye size={13} /> View Full Details</Button>
+          </div>
+        </div>
+
+        {/* Right column */}
+        <div className="col-span-12 lg:col-span-3 space-y-3">
+          {showNearby && (
+            <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-xs font-bold text-[#07142f]">Nearby Markets</h4>
+                <button className="text-[10px] font-medium text-[#174be8] hover:underline">View All</button>
+              </div>
+              <div className="space-y-1.5">
+                {NEARBY_MARKETS.map((m) => (
+                  <div key={m.name} className="flex items-center justify-between text-[11px]">
+                    <span className="flex items-center gap-1 text-[#14233b] truncate"><MapPin size={11} className="text-[#8794ab]" /> {m.name}</span>
+                    <span className="font-semibold text-[#07142f]">{m.score}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-xs font-bold text-[#07142f]">Source Data</h4>
+              <button className="text-[10px] font-medium text-[#174be8] hover:underline">View All</button>
+            </div>
+            <div className="grid grid-cols-1 gap-1">
+              {SOURCES.map((s) => {
+                const Icon = s.icon;
+                return (
+                  <div key={s.name} className="flex items-center gap-1.5 text-[11px] text-[#14233b]">
+                    <Icon size={11} className="text-[#8794ab] flex-shrink-0" />
+                    <span className="truncate">{s.name}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
+            <h4 className="text-xs font-bold text-[#07142f] mb-1">Market Research Report</h4>
+            <p className="text-[10px] text-[#8794ab] mb-2">Comprehensive PDF report with data, insights, recommendations, and competitor analysis.</p>
+            <div className="h-16 rounded bg-gradient-to-br from-[#f7faff] to-[#eaf0ff] border border-[#eef2f7] mb-2 flex items-center justify-center">
+              <FileText size={24} className="text-[#174be8]/40" />
+            </div>
+            <Button className="w-full h-8 bg-[#174be8] hover:bg-[#1240c9] text-white text-[11px] font-medium" onClick={() => toast.success("Generating PDF report…")}>
+              Generate PDF Report
+            </Button>
+          </div>
+
+          <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
+            <h4 className="text-xs font-bold text-[#07142f] mb-2">Market Snapshot</h4>
+            <div className="h-24 rounded bg-[#eef4fb] border border-[#eef2f7] flex items-center justify-center mb-2">
+              <MapPin size={20} className="text-[#174be8]/40" />
+            </div>
+            <div className="space-y-1 text-[10px] text-[#14233b]">
+              <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#174be8]" /> Selected Market</div>
+              <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#0ea66e]" /> Nearby Markets</div>
+              <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#e11d48]" /> Higher Competition</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <AddCriteriaDrawer
+        open={addCritOpen}
+        onClose={() => setAddCritOpen(false)}
+        onSave={(c) => setCustomCriteria((prev) => [...prev, c])}
       />
 
-      <ScoringWeights weights={weights} onChangeWeight={(k, v) => setWeights(prev => ({ ...prev, [k]: v }))} />
-
-      <CityDetailDrawer city={selectedCity} open={drawerOpen} onClose={() => setDrawerOpen(false)} />
-      <CompareModal open={compareOpen} onClose={() => setCompareOpen(false)} cities={compareCities} />
-      </div>
+      <CityDetailDrawer city={selected} open={detailDrawerOpen} onClose={() => setDetailDrawerOpen(false)} />
     </div>
   );
 };

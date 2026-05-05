@@ -1,72 +1,68 @@
-## Root cause
-
-In `src/pages/CityScoring.tsx` line 572, the right insights wrapper uses:
-
-```tsx
-<div className="col-span-12 lg:col-span-3 space-y-3">
-```
-
-But the parent grid (line 400) is a custom 3-track template: `lg:grid-cols-[0.94fr_1.6fr_0.72fr]`. The leftover Tailwind `col-span-12` / `lg:col-span-3` classes force the wrapper to span more columns than exist, so CSS Grid creates implicit extra columns and pushes the right column onto a new row — making Nearby Markets / Source Data / Report / Map stack full-width below.
-
-Fix is small: drop those col-span classes so the wrapper occupies the natural 3rd track. No other layout rewrite needed.
+## Scope
+UI-only refinement of `src/pages/CityScoring.tsx`. No backend, route, auth, or data changes. Match the attached mockup at ~1100px preview width.
 
 ## Changes (single file: `src/pages/CityScoring.tsx`)
 
-### 1. Right column wrapper — line 572
-Replace:
-```tsx
-<div className="col-span-12 lg:col-span-3 space-y-3">
-```
-with:
-```tsx
-<div className="min-w-0 space-y-3 self-start">
-```
+### 1. Ranked Markets card (lines 402–458)
+- Widen left column proportions: change main grid from `lg:grid-cols-[0.92fr_1.5fr_0.92fr]` to `lg:grid-cols-[1fr_1.5fr_0.85fr]` so the left card has more breathing room and the right column stays compact.
+- Update row template to `grid-cols-[18px_22px_minmax(0,1fr)_56px_72px_24px]` for both header and rows so Score column has room for a wider mini-bar.
+- Bump row vertical padding from `py-1.5` to `py-2` for cleaner spacing.
+- Change Type pill to use `inline-block self-center` to avoid stretching.
+- Increase mini score bar from `w-7 h-1` to `w-12 h-1.5` so it doesn't look squeezed.
+- Rebuild pagination to mockup style (1, 2, 3, …, 10 with chevrons):
+  ```tsx
+  <div className="flex items-center gap-1">
+    <button className="px-1.5 h-6 rounded border border-[#eef2f7] text-[#526078]">‹</button>
+    <button className="px-2 h-6 rounded bg-[#174be8] text-white">1</button>
+    <button className="px-2 h-6 rounded border border-[#eef2f7]">2</button>
+    <button className="px-2 h-6 rounded border border-[#eef2f7]">3</button>
+    <span className="px-1 text-[#8794ab]">…</span>
+    <button className="px-2 h-6 rounded border border-[#eef2f7]">10</button>
+    <button className="px-1.5 h-6 rounded border border-[#eef2f7] text-[#526078]">›</button>
+  </div>
+  ```
+- Update result count to mockup-style copy:
+  `Showing 1 to {Math.min(filtered.length, 25)} of 238 results` (kept dynamic page-size, total uses 238 to mirror mockup behavior).
 
-This puts Nearby Markets, Source Data, Market Research Report, and Market Snapshot in the 3rd grid track beside the Frisco detail panel, exactly like the mockup. Frisco panel content is untouched.
+### 2. Frisco detail card — action buttons (lines 555–568)
+- Buttons row currently overflows because `View Full Details` is too wide for its track. Rebalance to `grid-cols-[1.55fr_0.78fr_1.05fr_1.1fr]`, add `min-w-0` to each button, drop icon size to 12, and reduce horizontal padding to `px-2`. This keeps all 4 buttons inside the card border at 1100px.
 
-### 2. Slightly rebalance the 3 tracks for ~1100px width — line 400
-Change `lg:grid-cols-[0.94fr_1.6fr_0.72fr]` to `lg:grid-cols-[0.92fr_1.5fr_0.92fr]` so the right column has enough room for readable Source Data / Nearby Markets text and isn't squeezed.
+### 3. Key Market Signals — proper aligned mini-table (lines 538–552)
+- Lift the row template to a fixed 4-col grid so every row aligns identically:
+  ```tsx
+  <div className="grid grid-cols-[16px_minmax(0,1.4fr)_auto_auto] items-center gap-x-2.5 text-[11px] py-0.5">
+    <Icon size={13} className="text-[#3160ff]" />
+    <span className="text-[#526078] truncate">{r.label}</span>
+    <span className="font-semibold text-[#07142f] tabular-nums whitespace-nowrap text-right pr-1">{r.value}</span>
+    <span className={`whitespace-nowrap text-right text-[10.5px] font-medium ${r.deltaClass}`}>{r.delta}</span>
+  </div>
+  ```
+- Wrap rows in a parent `grid grid-cols-1 gap-y-2` for consistent vertical rhythm.
 
-### 3. Key Market Signals — stop truncation (line 543)
-Current grid `[16px_minmax(0,1fr)_80px_126px]` with `truncate` cuts labels to "C…", "H…" once the panel narrows. Replace with a tighter, no-truncate row:
+### 4. Nearby Markets — boxed score badges (lines 580–585)
+- Replace the plain `<span>{m.score}</span>` with a small badge:
+  ```tsx
+  <span className="inline-flex items-center justify-center min-w-[28px] h-5 rounded-md bg-[#e6f7ef] text-[#0ea66e] text-[10.5px] font-bold px-1.5">
+    {m.score}
+  </span>
+  ```
 
-```tsx
-<div ... className="grid grid-cols-[14px_minmax(0,1fr)_auto_auto] items-center gap-x-2 text-[10.5px]">
-  <Icon size={13} className="text-[#3160ff] flex-shrink-0" />
-  <span className="text-[#526078] leading-tight">{r.label}</span>
-  <span className="font-semibold text-[#07142f] whitespace-nowrap">{r.value}</span>
-  <span className={`whitespace-nowrap text-right font-medium ${r.deltaClass}`}>{r.delta}</span>
-</div>
-```
+### 5. Market Snapshot — legend on right of map (lines 616–637)
+- Restructure inside of card: wrap map + legend in `grid grid-cols-[1fr_auto] gap-3 items-center`. Map keeps its current styling (slightly narrower); legend becomes a vertical stack on the right with the 3 colored dots and labels (`text-[10.5px]`, `space-y-1.5`).
 
-Removes `truncate`, lets label wrap if needed, sizes value/delta to content. Slightly smaller font (10.5px) to keep one line on most rows.
+### 6. Bottom alignment of three columns
+- Remove `self-start` from the right column wrapper (line 572) so the right stack stretches to align with the tallest sibling.
+- Add a small bottom spacer/padding on the Ranked Markets card to bring its bottom edge close to the Frisco card.
+- Net: at 1100px the three columns end on visually similar lines, matching mockup.
 
-### 4. Source Data — 2 columns (line 595)
-Change `grid-cols-1` to `grid-cols-2 gap-x-3 gap-y-1` so the 8 sources display in two clean columns like the mockup.
-
-### 5. Ranked Markets — Compare button placement & tighter rows
-- The Compare button is already top-right (line 408) — keep.
-- Reduce row vertical padding from `py-2` to `py-1.5` (line 428) so the list is more compact and the card aligns to top of the row.
-- Add `self-start` to the Ranked Markets card wrapper (line 402) so it doesn't stretch to the tallest sibling.
-
-### 6. Market Research Report — compact preview (lines 608–614)
-Keep the current compact form. Change the full-width solid blue button to an outlined button to match mockup ("Generate PDF Report" outlined, not a heavy CTA):
-```tsx
-<Button variant="outline" className="w-full h-8 border-[#dbe4f2] text-[#2250eb] text-[11px] font-medium" ...>
-  Generate PDF Report
-</Button>
-```
-
-### 7. Market Snapshot — keep current compact map placeholder
-Already small and matches mockup. No change beyond it now sitting in the right column naturally.
-
-## Out of scope (do not touch)
-- Top header, scoring weights, filter row, Add Criteria, Find Teachers behavior
-- Backend, auth, Supabase, routes, env, RLS, edge functions
+### 7. Preserved as-is
+Top header, scoring weights, filter bar, three-column structure, Find Teachers behavior, Source Data card, Market Research Report card content, drawers, all data wiring, pagination logic (no state added — visual buttons are presentational, matching current behavior).
 
 ## Acceptance
-- At ~1100px preview width, Ranked Markets / Frisco detail / right insight column appear on a single row.
-- Right column shows Nearby Markets, Source Data (2 cols), Market Research Report (outlined button), Market Snapshot — stacked.
-- Key Market Signals labels are fully readable (no "C…" truncation).
-- Frisco panel internals unchanged.
-- Page is noticeably shorter / less scrolling.
+- Ranked Markets rows breathe; score bars are wider; pagination shows `‹ 1 2 3 … 10 ›`; result text reads "Showing 1 to N of 238 results".
+- All 4 Frisco buttons fit inside the card border at 1100px.
+- Key Market Signals rows align cleanly across icon / label / value / delta.
+- Nearby Markets scores appear as green boxed badges.
+- Market Snapshot legend sits to the right of the map.
+- Bottoms of the three main columns end on visually aligned lines.
+- App compiles cleanly; no functional/backend changes.

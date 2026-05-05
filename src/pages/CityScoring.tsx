@@ -18,7 +18,9 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { sampleCities, CityData } from "@/data/cityData";
 import { AddCriteriaDrawer } from "@/components/city-scoring/AddCriteriaDrawer";
-import { CityDetailDrawer } from "@/components/city-scoring/CityDetailDrawer";
+import { MarketDetailDrawer } from "@/components/city-scoring/MarketDetailDrawer";
+import { MarketCompareModal } from "@/components/city-scoring/MarketCompareModal";
+import { MarketReportModal } from "@/components/city-scoring/MarketReportModal";
 import { toast } from "sonner";
 
 type CategoryKey =

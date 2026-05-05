@@ -401,17 +401,15 @@ export default function Auth() {
             </Card>
           </div>
 
-          <footer className="flex flex-col items-center justify-between gap-3 border-t border-[#dbe3ee] pt-3 text-xs text-[#65748c] sm:flex-row">
+          <footer className="flex flex-col items-center justify-between gap-2 border-t border-[#eef2f7] pt-4 text-[12px] text-[#65748c] sm:flex-row">
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-[#174be8]" />
-              Your data is protected with enterprise-grade security.
+              <span>Your data is protected with enterprise-grade security.</span>
             </div>
-            <div className="flex flex-wrap items-center justify-center gap-3">
+            <div className="flex items-center gap-5">
               <span>© 2026 Neuron Garage Franchise. All rights reserved.</span>
-              <span className="hidden sm:inline">•</span>
-              <span>Privacy Policy</span>
-              <span>•</span>
-              <span>Terms of Service</span>
+              <a href="#" className="hover:text-[#174be8]">Privacy Policy</a>
+              <a href="#" className="hover:text-[#174be8]">Terms of Service</a>
             </div>
           </footer>
         </main>

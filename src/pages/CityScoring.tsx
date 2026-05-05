@@ -158,16 +158,37 @@ const CityScoring = () => {
 
   const handleLogout = async () => { await signOut(); navigate("/auth", { replace: true }); };
 
-  const sigRows = [
-    { icon: Users, label: "Children Ages 5–12", value: "19,842", delta: "+12% vs. nat. avg" },
-    { icon: HomeIcon, label: "Households $150k+", value: "46%", delta: "+15% vs. nat. avg" },
-    { icon: DollarSign, label: "Premium Camp Pricing", value: "$245 / week", delta: "+8%" },
-    { icon: GraduationCap, label: "Teacher Density", value: "1:475", delta: "20% below nat-avg kts" },
-    { icon: Building2, label: "School District Access", value: "High", delta: "Strong availability" },
-    { icon: Star, label: "Montessori Density", value: "42%", delta: "+16% vs. avg." },
-  ];
-
   const cs = categoryScores(selected);
+  const isFriscoMock = selected.city === "Frisco" && selected.state === "Texas";
+  const detailScore = isFriscoMock ? 91 : selected.compositeScore;
+  const detailCategoryScores = isFriscoMock
+    ? {
+        demand: 92,
+        pricingPower: 90,
+        competitiveLandscape: 76,
+        franchiseeSupply: 83,
+        easeOfOperations: 85,
+        parentMindset: 84,
+      }
+    : cs;
+
+  const sigRows = isFriscoMock
+    ? [
+        { icon: Users, label: "Children Ages 5-12", value: "19,842", delta: "+12% vs. nat. avg.", deltaClass: "text-[#8ad1a8]" },
+        { icon: HomeIcon, label: "Households ($100k+)", value: "46%", delta: "+15% vs. nat. avg.", deltaClass: "text-[#8ad1a8]" },
+        { icon: DollarSign, label: "Premium Camp Pricing", value: "$245 / week", delta: "+8%", deltaClass: "text-[#8ad1a8]" },
+        { icon: GraduationCap, label: "Teacher Density", value: "1:475", delta: "20% below nat-avg kts", deltaClass: "text-[#8794ab]" },
+        { icon: Building2, label: "School District Access", value: "High", delta: "Strong availability", deltaClass: "text-[#8794ab]" },
+        { icon: Star, label: "Millennial Density", value: "42%", delta: "+16% vs. avg.", deltaClass: "text-[#8ad1a8]" },
+      ]
+    : [
+        { icon: Users, label: "Children Ages 5-12", value: "19,842", delta: "+12% vs. nat. avg.", deltaClass: "text-[#8ad1a8]" },
+        { icon: HomeIcon, label: "Households ($100k+)", value: "46%", delta: "+15% vs. nat. avg.", deltaClass: "text-[#8ad1a8]" },
+        { icon: DollarSign, label: "Premium Camp Pricing", value: "$245 / week", delta: "+8%", deltaClass: "text-[#8ad1a8]" },
+        { icon: GraduationCap, label: "Teacher Density", value: "1:475", delta: "20% below nat-avg kts", deltaClass: "text-[#8794ab]" },
+        { icon: Building2, label: "School District Access", value: "High", delta: "Strong availability", deltaClass: "text-[#8794ab]" },
+        { icon: Star, label: "Millennial Density", value: "42%", delta: "+16% vs. avg.", deltaClass: "text-[#8ad1a8]" },
+      ];
 
   return (
     <div className="-mx-3 md:-mx-5 lg:-mx-6 -my-3 px-3 md:px-5 lg:px-6 py-3 min-h-screen bg-white">
@@ -438,75 +459,88 @@ const CityScoring = () => {
 
         {/* Center: Selected Market Detail */}
         <div className="col-span-12 lg:col-span-5 rounded-lg bg-white border border-[#eef2f7] p-4">
-          <div className="flex items-start justify-between mb-3">
-            <h2 className="text-lg font-bold text-[#07142f]">{selected.city}, {selected.state === "Texas" ? "TX" : selected.state === "Florida" ? "FL" : selected.state}</h2>
-            <button className="flex items-center gap-1 text-[11px] font-medium text-[#174be8] hover:underline">
+          <div className="flex items-start justify-between gap-3 mb-4">
+            <h2 className="text-[18px] leading-none font-bold text-[#07142f]">{selected.city}, {selected.state === "Texas" ? "TX" : selected.state === "Florida" ? "FL" : selected.state}</h2>
+            <button className="flex items-center gap-1 text-[11px] font-medium text-[#174be8] hover:underline whitespace-nowrap">
               <Star size={12} /> Add to Watchlist
             </button>
           </div>
 
-          {/* Gauge + meta */}
-          <div className="grid grid-cols-[170px_1fr] gap-4 mb-3 items-start">
-            {/* Semicircle gauge */}
-            <div className="flex flex-col items-center">
-              <svg viewBox="0 0 120 70" className="w-[160px] h-[92px]">
-                <path d="M10,65 A50,50 0 0,1 110,65" fill="none" stroke="#eef2f7" strokeWidth="10" strokeLinecap="round" />
+          <div className="grid grid-cols-[210px_1fr] gap-6 items-start">
+            <div className="flex flex-col items-center text-center pt-1">
+              <p className="mb-2 text-[12px] font-semibold text-[#3a4c72]">Overall Score</p>
+              <svg viewBox="0 0 200 120" className="h-[138px] w-[220px] max-w-full">
+                <path d="M25 92 A75 75 0 0 1 175 92" fill="none" stroke="#e7ebf3" strokeWidth="14" strokeLinecap="round" />
                 <path
-                  d="M10,65 A50,50 0 0,1 110,65"
+                  d="M25 92 A75 75 0 0 1 175 92"
                   fill="none"
                   stroke="#0ea66e"
-                  strokeWidth="10"
+                  strokeWidth="14"
                   strokeLinecap="round"
-                  strokeDasharray={`${(selected.compositeScore / 100) * 157} 157`}
+                  strokeDasharray={`${(detailScore / 100) * 236} 236`}
                 />
-                <text x="60" y="55" textAnchor="middle" className="fill-[#07142f]" style={{ fontSize: 22, fontWeight: 800 }}>{selected.compositeScore}</text>
-                <text x="60" y="66" textAnchor="middle" className="fill-[#8794ab]" style={{ fontSize: 7 }}>/100</text>
+                <text x="100" y="76" textAnchor="middle" className="fill-[#07142f]" style={{ fontSize: 36, fontWeight: 800 }}>{detailScore}</text>
+                <text x="100" y="102" textAnchor="middle" className="fill-[#7e8aa3]" style={{ fontSize: 12, fontWeight: 600 }}>/100</text>
               </svg>
-              <p className="-mt-2 text-[11px] font-semibold text-[#0ea66e]">Excellent Opportunity</p>
+              <p className="-mt-3 text-[15px] font-semibold text-[#0ea66e]">Excellent Opportunity</p>
             </div>
-            {/* Meta grid */}
-            <div className="text-xs space-y-1.5">
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                <div className="flex items-center justify-between"><span className="text-[#8794ab]">Tier</span><span className="rounded-full bg-[#e6f7ef] text-[#0ea66e] px-2 py-0.5 text-[10px] font-bold">{selected.tier} (Tier 1)</span></div>
-                <div className="flex items-center justify-between"><span className="text-[#8794ab]">Market Type</span><span className="rounded-full bg-[#eaf0ff] text-[#174be8] px-2 py-0.5 text-[10px] font-medium">Suburb</span></div>
-                <div className="flex items-center justify-between"><span className="text-[#8794ab]">Metro Area</span><span className="text-[#07142f] font-medium text-right">Dallas-Fort Worth, TX</span></div>
-                <div className="flex items-center justify-between"><span className="text-[#8794ab]">County</span><span className="text-[#07142f] font-medium">Collin County</span></div>
+
+            <div className="space-y-4 pt-1">
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-[11px]">
+                <div className="grid grid-cols-[74px_1fr] items-center gap-2">
+                  <span className="text-[#6b7a96]">Tier</span>
+                  <span className="w-fit rounded-full bg-[#e6f7ef] px-2.5 py-1 text-[11px] font-semibold leading-none text-[#0ea66e]">{selected.tier} (Tier 1)</span>
+                </div>
+                <div className="grid grid-cols-[84px_1fr] items-center gap-2">
+                  <span className="text-[#6b7a96]">Market Type</span>
+                  <span className="w-fit rounded-full bg-[#eef3ff] px-2.5 py-1 text-[11px] font-medium leading-none text-[#174be8]">Suburb</span>
+                </div>
+                <div className="grid grid-cols-[74px_1fr] items-start gap-2">
+                  <span className="text-[#6b7a96]">Metro Area</span>
+                  <span className="font-semibold leading-5 text-[#07142f]">Dallas-Fort Worth, TX</span>
+                </div>
+                <div className="grid grid-cols-[52px_1fr] items-start gap-2">
+                  <span className="text-[#6b7a96]">County</span>
+                  <span className="font-semibold leading-5 text-[#07142f]">Collin County</span>
+                </div>
               </div>
-              <div className="pt-1.5">
-                <p className="text-[10px] uppercase tracking-wide text-[#8794ab]">Market Summary</p>
-                <p className="text-[11px] text-[#14233b] leading-snug mt-0.5">Affluent, rapidly growing suburb with strong demand for premium youth education and enrichment programs.</p>
+
+              <div>
+                <p className="mb-1.5 text-[12px] font-semibold text-[#3a4c72]">Market Summary</p>
+                <p className="max-w-[420px] text-[13px] leading-6 text-[#14233b]">Affluent, rapidly growing suburb with strong demand for premium youth education and enrichment programs.</p>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="mt-4 grid grid-cols-[1fr_1.12fr] gap-6 border-t border-[#eef2f7] pt-4">
             <div>
-              <p className="text-[11px] font-bold text-[#07142f] mb-2">Category Scores</p>
-              <div className="space-y-1.5">
+              <p className="mb-3 text-[13px] font-semibold text-[#07142f]">Category Scores</p>
+              <div className="space-y-2.5">
                 {CATEGORIES.map((cat) => (
                   <div key={cat.key}>
-                    <div className="flex items-center justify-between text-[11px]">
+                    <div className="mb-1 flex items-center justify-between gap-3 text-[12px]">
                       <span className="text-[#526078]">{cat.label}</span>
-                      <span className="font-semibold text-[#07142f]">{cs[cat.key]}</span>
+                      <span className="font-semibold text-[#07142f]">{detailCategoryScores[cat.key]}</span>
                     </div>
-                    <div className="h-1 w-full rounded-full bg-[#eef2f7] mt-0.5">
-                      <div className="h-full rounded-full bg-[#0ea66e]" style={{ width: `${cs[cat.key]}%` }} />
+                    <div className="h-1.5 w-full rounded-full bg-[#e8edf6]">
+                      <div className="h-full rounded-full bg-[#1d4fff]" style={{ width: `${detailCategoryScores[cat.key]}%` }} />
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-            <div>
-              <p className="text-[11px] font-bold text-[#07142f] mb-2">Key Market Signals</p>
-              <div className="space-y-1.5">
+
+            <div className="border-l border-[#eef2f7] pl-6">
+              <p className="mb-3 text-[13px] font-semibold text-[#07142f]">Key Market Signals</p>
+              <div className="space-y-3">
                 {sigRows.map((r) => {
                   const Icon = r.icon;
                   return (
-                    <div key={r.label} className="flex items-center gap-2 text-[11px]">
-                      <Icon size={12} className="text-[#8794ab] flex-shrink-0" />
-                      <span className="text-[#526078] flex-1 truncate">{r.label}</span>
+                    <div key={r.label} className="grid grid-cols-[18px_minmax(0,1fr)_84px_140px] items-center gap-2 text-[12px]">
+                      <Icon size={15} className="text-[#3160ff] flex-shrink-0" />
+                      <span className="truncate text-[#526078]">{r.label}</span>
                       <span className="font-semibold text-[#07142f]">{r.value}</span>
-                      <span className="text-[10px] text-[#0ea66e] whitespace-nowrap">{r.delta}</span>
+                      <span className={`truncate text-right text-[11px] font-medium ${r.deltaClass}`}>{r.delta}</span>
                     </div>
                   );
                 })}
@@ -514,28 +548,34 @@ const CityScoring = () => {
             </div>
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Button onClick={handleFindTeachers} className="h-9 bg-[#174be8] hover:bg-[#1240c9] text-white gap-1.5 font-medium text-xs">
-              Find Teachers in This Market <ArrowRight size={13} />
+          <div className="mt-5 grid grid-cols-[1.55fr_0.9fr_1.08fr_1.08fr] gap-2.5">
+            <Button onClick={handleFindTeachers} className="h-11 bg-[#174be8] hover:bg-[#1240c9] text-white gap-2 px-3 font-medium text-[11px] whitespace-nowrap">
+              Find Teachers in This Market <ArrowRight size={14} />
             </Button>
-            <Button variant="outline" className="h-9 border-[#e5eaf2] text-[#14233b] gap-1.5 font-normal text-xs"><GitCompare size={13} /> Compare</Button>
-            <Button variant="outline" className="h-9 border-[#e5eaf2] text-[#14233b] gap-1.5 font-normal text-xs"><FileText size={13} /> Generate Report</Button>
-            <Button variant="outline" className="h-9 border-[#e5eaf2] text-[#14233b] gap-1.5 font-normal text-xs" onClick={() => setDetailDrawerOpen(true)}><Eye size={13} /> View Full Details</Button>
+            <Button variant="outline" className="h-11 border-[#dbe4f2] text-[#2250eb] gap-1.5 px-3 font-medium text-[11px] whitespace-nowrap">
+              <GitCompare size={14} /> Compare
+            </Button>
+            <Button variant="outline" className="h-11 border-[#dbe4f2] text-[#2250eb] gap-1.5 px-3 font-medium text-[11px] whitespace-nowrap">
+              <FileText size={14} /> Generate Report
+            </Button>
+            <Button variant="outline" className="h-11 border-[#dbe4f2] text-[#2250eb] gap-1.5 px-3 font-medium text-[11px] whitespace-nowrap" onClick={() => setDetailDrawerOpen(true)}>
+              <Eye size={14} /> View Full Details
+            </Button>
           </div>
         </div>
 
         {/* Right column */}
         <div className="col-span-12 lg:col-span-3 space-y-3">
           {showNearby && (
-            <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-xs font-bold text-[#07142f]">Nearby Markets</h4>
+            <div className="rounded-lg bg-white border border-[#eef2f7] p-3 self-start">
+              <div className="mb-2 flex items-center justify-between">
+                <h4 className="text-[13px] font-semibold text-[#07142f]">Nearby Markets</h4>
                 <button className="text-[10px] font-medium text-[#174be8] hover:underline">View All</button>
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 {NEARBY_MARKETS.map((m) => (
-                  <div key={m.name} className="flex items-center justify-between text-[11px]">
-                    <span className="flex items-center gap-1 text-[#14233b] truncate"><MapPin size={11} className="text-[#8794ab]" /> {m.name}</span>
+                  <div key={m.name} className="flex items-center justify-between gap-2 text-[11px]">
+                    <span className="flex min-w-0 items-center gap-1.5 text-[#14233b]"><MapPin size={11} className="flex-shrink-0 text-[#8794ab]" /> <span className="truncate">{m.name}</span></span>
                     <span className="font-semibold text-[#07142f]">{m.score}</span>
                   </div>
                 ))}

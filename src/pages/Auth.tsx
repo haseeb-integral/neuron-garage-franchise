@@ -117,7 +117,7 @@ export default function Auth() {
   return (
     <div className="min-h-screen bg-[#f5f8fc] text-[#081633]">
       <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[1.02fr_1fr]">
-        <section className="relative hidden overflow-hidden bg-gradient-to-br from-white via-[#f7fbff] to-[#eef5ff] px-8 py-6 lg:flex lg:flex-col lg:justify-between xl:px-12">
+        <section className="relative hidden overflow-hidden bg-gradient-to-br from-white via-[#f7fbff] to-[#eef5ff] px-8 py-5 lg:flex lg:flex-col lg:justify-between xl:px-12">
           <div className="pointer-events-none absolute inset-0 opacity-80">
             <div className="absolute left-12 top-60 h-[360px] w-[620px] rounded-[50%] border border-dashed border-[#8bb8ff]/40" />
             <div className="absolute left-28 top-[330px] h-[310px] w-[520px] rounded-[50%] border border-dashed border-[#8bb8ff]/30" />
@@ -125,28 +125,28 @@ export default function Auth() {
           </div>
 
           <div className="relative z-10">
-            <div className="mb-9 flex items-center gap-3">
-              <img src={logo} alt="Neuron Garage Franchise" className="h-12 w-12 object-contain" />
+            <div className="mb-6 flex items-center gap-3">
+              <img src={logo} alt="Neuron Garage Franchise" className="h-10 w-10 object-contain" />
               <div>
-                <div className="text-2xl font-black uppercase leading-5 tracking-[0.08em] text-[#081633]">Neuron</div>
-                <div className="text-2xl font-black uppercase leading-6 tracking-[0.08em] text-[#081633]">Garage</div>
-                <div className="mt-1 text-xs font-bold uppercase tracking-[0.35em] text-[#2458ff]">Franchise</div>
+                <div className="text-xl font-black uppercase leading-5 tracking-[0.08em] text-[#081633]">Neuron</div>
+                <div className="text-xl font-black uppercase leading-5 tracking-[0.08em] text-[#081633]">Garage</div>
+                <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.35em] text-[#2458ff]">Franchise</div>
               </div>
             </div>
 
             <div className="max-w-xl">
-              <h1 className="text-4xl font-black leading-tight tracking-tight text-[#07142f] xl:text-5xl">
+              <h1 className="text-3xl font-black leading-tight tracking-tight text-[#07142f] xl:text-[34px]">
                 Grow Together.
                 <br />
                 Drive Success.
               </h1>
-              <p className="mt-4 max-w-lg text-lg leading-7 text-[#4d5d76]">
+              <p className="mt-3 max-w-lg text-sm leading-6 text-[#4d5d76]">
                 Manage franchise acquisition and onboarding with insights, automation, and scale.
               </p>
             </div>
           </div>
 
-          <div className="relative z-10 mt-5 min-h-[330px]">
+          <div className="relative z-10 mt-4 min-h-[260px]">
             <div className="absolute left-8 top-0 w-[280px] rounded-2xl border border-[#d9e2ef] bg-white/90 p-4 shadow-xl shadow-blue-950/5 backdrop-blur">
               <div className="mb-3 text-sm font-semibold text-[#081633]">Pipeline Snapshot</div>
               <div className="flex h-10 overflow-hidden rounded-lg">
@@ -215,31 +215,31 @@ export default function Auth() {
           </div>
         </section>
 
-        <main className="flex min-h-screen flex-col justify-between px-5 py-4 sm:px-8 lg:px-10 xl:px-14">
-          <div className="mx-auto flex w-full max-w-xl flex-1 flex-col justify-center py-3">
-            <div className="mb-5 flex items-center justify-center gap-3 lg:hidden">
-              <img src={logo} alt="Neuron Garage" className="h-10 w-10 object-contain" />
-              <div className="text-2xl font-black tracking-tight text-[#003c7e]">Neuron Garage</div>
+        <main className="flex min-h-screen flex-col justify-between px-5 py-3 sm:px-8 lg:px-10 xl:px-14">
+          <div className="mx-auto flex w-full max-w-xl flex-1 flex-col justify-center py-2">
+            <div className="mb-4 flex items-center justify-center gap-3 lg:hidden">
+              <img src={logo} alt="Neuron Garage" className="h-9 w-9 object-contain" />
+              <div className="text-xl font-black tracking-tight text-[#003c7e]">Neuron Garage</div>
             </div>
 
             <Card className="rounded-3xl border-[#d8e2ef] bg-white/95 shadow-2xl shadow-blue-950/5">
-              <CardHeader className="px-7 pb-1 pt-6 sm:px-9">
-                <CardTitle className="text-3xl font-black tracking-tight text-[#07142f]">
+              <CardHeader className="px-6 pb-1 pt-5 sm:px-7">
+                <CardTitle className="text-2xl font-black tracking-tight text-[#07142f]">
                   {isLogin ? "Welcome Back" : "Create Account"}
                 </CardTitle>
-                <CardDescription className="pt-1 text-base text-[#4d5d76]">
+                <CardDescription className="pt-1 text-sm text-[#4d5d76]">
                   {isLogin
                     ? "Sign in to your Neuron Garage Franchise account"
                     : "Create your Neuron Garage Franchise account to get started."}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="px-7 pb-6 pt-3 sm:px-9">
+              <CardContent className="px-6 pb-5 pt-3 sm:px-7">
                 {isLogin ? (
-                  <form onSubmit={handleLogin} className="space-y-4">
-                    <div className="space-y-1.5">
+                  <form onSubmit={handleLogin} className="space-y-3">
+                    <div className="space-y-1">
                       <Label htmlFor="login-email" className="font-semibold text-[#07142f]">Email Address</Label>
                       <div className="relative">
-                        <Mail className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#7d8aa0]" />
+                        <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7d8aa0]" />
                         <Input
                           id="login-email"
                           type="email"
@@ -248,14 +248,14 @@ export default function Auth() {
                           onChange={(e) => setEmail(e.target.value.trim())}
                           required
                           placeholder="Enter your email"
-                          className="h-12 rounded-xl border-[#cfd9e8] pl-12 text-base focus-visible:ring-[#174be8]"
+                          className="h-10 rounded-xl border-[#cfd9e8] pl-10 text-sm focus-visible:ring-[#174be8]"
                         />
                       </div>
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="space-y-1">
                       <Label htmlFor="login-password" className="font-semibold text-[#07142f]">Password</Label>
                       <div className="relative">
-                        <Lock className="pointer-events-none absolute left-4 top-1/2 z-10 h-5 w-5 -translate-y-1/2 text-[#7d8aa0]" />
+                        <Lock className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-[#7d8aa0]" />
                         <PasswordInput
                           id="login-password"
                           autoComplete="current-password"
@@ -263,7 +263,7 @@ export default function Auth() {
                           onChange={(e) => setPassword(e.target.value)}
                           required
                           placeholder="Enter your password"
-                          className="h-12 rounded-xl border-[#cfd9e8] pl-12 text-base focus-visible:ring-[#174be8]"
+                          className="h-10 rounded-xl border-[#cfd9e8] pl-10 text-sm focus-visible:ring-[#174be8]"
                         />
                       </div>
                     </div>
@@ -282,16 +282,16 @@ export default function Auth() {
                     </div>
                     <Button
                       type="submit"
-                      className="h-12 w-full rounded-xl bg-[#174be8] text-base font-bold text-white shadow-lg shadow-blue-700/20 hover:bg-[#0f3fd0]"
+                      className="h-10 w-full rounded-xl bg-[#174be8] text-sm font-bold text-white shadow-lg shadow-blue-700/20 hover:bg-[#0f3fd0]"
                       disabled={submitting}
                     >
-                      <LogIn className="mr-2 h-5 w-5" />
+                      <LogIn className="mr-2 h-4 w-4" />
                       {submitting ? "Signing in…" : "Sign In"}
                     </Button>
                   </form>
                 ) : (
-                  <form onSubmit={handleSignup} className="space-y-4">
-                    <div className="space-y-1.5">
+                  <form onSubmit={handleSignup} className="space-y-3">
+                    <div className="space-y-1">
                       <Label htmlFor="signup-name" className="font-semibold text-[#07142f]">Full name (optional)</Label>
                       <Input
                         id="signup-name"
@@ -301,13 +301,13 @@ export default function Auth() {
                         onChange={(e) => setFullName(e.target.value)}
                         maxLength={100}
                         placeholder="Enter your full name"
-                        className="h-12 rounded-xl border-[#cfd9e8] text-base focus-visible:ring-[#174be8]"
+                        className="h-10 rounded-xl border-[#cfd9e8] text-sm focus-visible:ring-[#174be8]"
                       />
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="space-y-1">
                       <Label htmlFor="signup-email" className="font-semibold text-[#07142f]">Email Address</Label>
                       <div className="relative">
-                        <Mail className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#7d8aa0]" />
+                        <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7d8aa0]" />
                         <Input
                           id="signup-email"
                           type="email"
@@ -316,14 +316,14 @@ export default function Auth() {
                           onChange={(e) => setEmail(e.target.value.trim())}
                           required
                           placeholder="Enter your email"
-                          className="h-12 rounded-xl border-[#cfd9e8] pl-12 text-base focus-visible:ring-[#174be8]"
+                          className="h-10 rounded-xl border-[#cfd9e8] pl-10 text-sm focus-visible:ring-[#174be8]"
                         />
                       </div>
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="space-y-1">
                       <Label htmlFor="signup-password" className="font-semibold text-[#07142f]">Password</Label>
                       <div className="relative">
-                        <Lock className="pointer-events-none absolute left-4 top-1/2 z-10 h-5 w-5 -translate-y-1/2 text-[#7d8aa0]" />
+                        <Lock className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-[#7d8aa0]" />
                         <PasswordInput
                           id="signup-password"
                           autoComplete="new-password"
@@ -332,13 +332,13 @@ export default function Auth() {
                           required
                           minLength={6}
                           placeholder="Create a password"
-                          className="h-12 rounded-xl border-[#cfd9e8] pl-12 text-base focus-visible:ring-[#174be8]"
+                          className="h-10 rounded-xl border-[#cfd9e8] pl-10 text-sm focus-visible:ring-[#174be8]"
                         />
                       </div>
                     </div>
                     <Button
                       type="submit"
-                      className="h-12 w-full rounded-xl bg-[#174be8] text-base font-bold text-white shadow-lg shadow-blue-700/20 hover:bg-[#0f3fd0]"
+                      className="h-10 w-full rounded-xl bg-[#174be8] text-sm font-bold text-white shadow-lg shadow-blue-700/20 hover:bg-[#0f3fd0]"
                       disabled={submitting}
                     >
                       {submitting ? "Creating account…" : "Create Account"}
@@ -348,7 +348,7 @@ export default function Auth() {
 
                 {isLogin && (
                   <>
-                    <div className="my-5 flex items-center gap-4 text-sm text-[#7d8aa0]">
+                    <div className="my-4 flex items-center gap-4 text-sm text-[#7d8aa0]">
                       <div className="h-px flex-1 bg-[#dbe3ee]" />
                       <span>or continue with</span>
                       <div className="h-px flex-1 bg-[#dbe3ee]" />
@@ -425,7 +425,7 @@ export default function Auth() {
               Enter your email and we'll send you a link to set a new password.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleForgotPassword} className="space-y-4">
+          <form onSubmit={handleForgotPassword} className="space-y-3">
             <div className="space-y-2">
               <Label htmlFor="forgot-email">Email</Label>
               <Input

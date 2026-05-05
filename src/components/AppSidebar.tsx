@@ -56,11 +56,11 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
         }`}
         style={{
           minHeight: isCollapsed ? 40 : 44,
-          backgroundColor: active ? "#0757ff" : "transparent",
+          backgroundColor: active ? "#174be8" : "transparent",
           color: active ? "#ffffff" : "#14233b",
-          fontSize: isCollapsed ? 13 : 13,
-          fontWeight: active ? 700 : 500,
-          boxShadow: active ? "0 8px 18px rgba(7, 87, 255, 0.14)" : "none",
+          fontSize: 13,
+          fontWeight: active ? 600 : 500,
+          boxShadow: "none",
         }}
         onMouseEnter={(e) => {
           if (!active) {

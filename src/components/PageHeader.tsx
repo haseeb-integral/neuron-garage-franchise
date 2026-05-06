@@ -18,9 +18,10 @@ interface PageHeaderProps {
   title: string;
   subtitle: string;
   action?: ReactNode;
+  hideJourneyBar?: boolean;
 }
 
-export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, action, hideJourneyBar = false }: PageHeaderProps) {
   const navigate = useNavigate();
   const { profile, user, role, signOut } = useAuth();
   const displayName = profile?.full_name || profile?.email || user?.email || "Account";
@@ -121,7 +122,7 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
         )}
       </div>
 
-      <JourneyBar />
+      {!hideJourneyBar && <JourneyBar />}
     </>
   );
 }

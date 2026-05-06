@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { TeacherProspect } from "@/data/teacherData";
 import { FitScoreBadge } from "./FitScoreBadge";
-import { Linkedin, Mail, Phone, GraduationCap, Calendar, X, Plus } from "lucide-react";
+import { Linkedin, Mail, Phone, GraduationCap, Calendar, X, Plus, Sparkles, MapPin, UserCheck, UserX } from "lucide-react";
 
 interface Props {
   prospect: TeacherProspect | null;
@@ -32,137 +32,85 @@ export function TeacherDetailPanel({ prospect, onClose, onUpdate, onPromote, onM
 
   if (!prospect) return null;
 
-  const save = (nextTags: string[], nextNotes: string) => {
-    onUpdate({ ...prospect, tags: nextTags, notes: nextNotes });
-  };
-
+  const save = (nextTags: string[], nextNotes: string) => onUpdate({ ...prospect, tags: nextTags, notes: nextNotes });
   const addTag = () => {
     if (!newTag.trim()) return;
     const next = [...tags, newTag.trim()];
-    setTags(next); setNewTag(""); save(next, notes);
+    setTags(next);
+    setNewTag("");
+    save(next, notes);
   };
-
   const removeTag = (t: string) => {
     const next = tags.filter(x => x !== t);
-    setTags(next); save(next, notes);
+    setTags(next);
+    save(next, notes);
   };
 
   return (
     <Sheet open={!!prospect} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="bg-white p-0 w-full sm:max-w-[450px] overflow-y-auto">
-        <SheetHeader className="p-6 pb-4 border-b" style={{ borderColor: "#dee2e6" }}>
-          <SheetTitle className="text-2xl" style={{ color: "#003c7e" }}>{prospect.name}</SheetTitle>
-          <p className="text-sm" style={{ color: "#6c757d" }}>{prospect.school}</p>
-          <p className="text-sm" style={{ color: "#6c757d" }}>{prospect.city}, {prospect.state}</p>
+      <SheetContent side="right" className="w-full overflow-y-auto bg-white p-0 sm:max-w-[470px]">
+        <SheetHeader className="border-b border-[#e7edf5] bg-white p-6 pb-5 text-left">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <SheetTitle className="text-2xl font-black text-[#07142f]">{prospect.name}</SheetTitle>
+              <p className="mt-1 text-sm font-medium text-[#526078]">{prospect.school}</p>
+              <p className="mt-1 flex items-center gap-1.5 text-sm text-[#66728a]"><MapPin size={14} /> {prospect.city}, {prospect.state}</p>
+            </div>
+            <FitScoreBadge score={prospect.fitScore} />
+          </div>
         </SheetHeader>
 
-        <div className="p-6 space-y-5">
-          {/* Contact */}
-          <div className="space-y-2">
-            <h4 className="text-xs uppercase font-semibold tracking-wide" style={{ color: "#868e96" }}>Contact</h4>
-            <div className="flex items-center gap-2 text-sm" style={{ color: "#343a40" }}>
-              <Mail size={14} style={{ color: "#adb5bd" }} /> {prospect.email}
+        <div className="space-y-5 p-6">
+          <section className="rounded-xl border border-[#e7edf5] bg-white p-4">
+            <h4 className="mb-3 text-xs font-black uppercase tracking-wide text-[#8794ab]">Contact</h4>
+            <div className="space-y-2 text-sm text-[#34445f]">
+              <div className="flex items-center gap-2"><Mail size={14} className="text-[#8794ab]" /> {prospect.email}</div>
+              <div className="flex items-center gap-2"><Phone size={14} className="text-[#8794ab]" /> {prospect.phone}</div>
+              <a href={`https://${prospect.linkedin}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 font-medium text-[#0a66c2] hover:underline"><Linkedin size={14} /> {prospect.linkedin}</a>
             </div>
-            <div className="flex items-center gap-2 text-sm" style={{ color: "#343a40" }}>
-              <Phone size={14} style={{ color: "#adb5bd" }} /> {prospect.phone}
-            </div>
-            <a
-              href={`https://${prospect.linkedin}`}
-              target="_blank" rel="noreferrer"
-              className="flex items-center gap-2 text-sm hover:underline"
-              style={{ color: "#0a66c2" }}
-            >
-              <Linkedin size={14} /> {prospect.linkedin}
-            </a>
-          </div>
+          </section>
 
-          {/* Background */}
-          <div className="space-y-2">
-            <h4 className="text-xs uppercase font-semibold tracking-wide" style={{ color: "#868e96" }}>Background</h4>
-            <div className="flex items-center gap-2 text-sm" style={{ color: "#343a40" }}>
-              <GraduationCap size={14} style={{ color: "#adb5bd" }} /> Grade Level: <strong>{prospect.gradeLevel}</strong>
+          <section className="rounded-xl border border-[#e7edf5] bg-white p-4">
+            <h4 className="mb-3 text-xs font-black uppercase tracking-wide text-[#8794ab]">Background</h4>
+            <div className="grid gap-3 text-sm text-[#34445f]">
+              <div className="flex items-center gap-2"><GraduationCap size={14} className="text-[#8794ab]" /> Grade Level: <strong className="text-[#07142f]">{prospect.gradeLevel}</strong></div>
+              <div className="flex items-center gap-2"><Calendar size={14} className="text-[#8794ab]" /> {prospect.yearsExperience} years experience</div>
+              <div className="flex items-center gap-2"><span>Summer Camp Experience:</span><Badge className="border-0 bg-[#e6f7ef] text-[#0a8f5a]">{prospect.hasSummerCampExp ? "Yes" : "No"}</Badge></div>
             </div>
-            <div className="flex items-center gap-2 text-sm" style={{ color: "#343a40" }}>
-              <Calendar size={14} style={{ color: "#adb5bd" }} /> {prospect.yearsExperience} years experience
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <span style={{ color: "#343a40" }}>Summer Camp Experience:</span>
-              <Badge
-                style={{
-                  backgroundColor: prospect.hasSummerCampExp ? "#d8f5ea" : "#e9ecef",
-                  color: prospect.hasSummerCampExp ? "#0d7a4e" : "#6c757d",
-                }}
-                className="border-0"
-              >
-                {prospect.hasSummerCampExp ? "Yes" : "No"}
-              </Badge>
-            </div>
-          </div>
+          </section>
 
-          {/* AI Fit Score */}
-          <div className="rounded-lg p-4" style={{ backgroundColor: "#fff4ec", border: "1px solid #ffe4cc" }}>
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="text-xs uppercase font-semibold tracking-wide" style={{ color: "#fd7e14" }}>AI Fit Score</h4>
+          <section className="rounded-xl border border-[#e7edf5] bg-white p-4">
+            <div className="mb-2 flex items-center justify-between">
+              <h4 className="flex items-center gap-2 text-xs font-black uppercase tracking-wide text-[#174be8]"><Sparkles size={14} /> AI Fit Score</h4>
               <FitScoreBadge score={prospect.fitScore} />
             </div>
-            <p className="text-sm leading-relaxed" style={{ color: "#343a40" }}>{prospect.aiReasoning}</p>
-          </div>
+            <p className="text-sm leading-6 text-[#34445f]">{prospect.aiReasoning}</p>
+          </section>
 
-          {/* Tags */}
-          <div className="space-y-2">
-            <h4 className="text-xs uppercase font-semibold tracking-wide" style={{ color: "#868e96" }}>Tags</h4>
+          <section className="space-y-2">
+            <h4 className="text-xs font-black uppercase tracking-wide text-[#8794ab]">Tags</h4>
             <div className="flex flex-wrap gap-2">
               {tags.map(t => (
-                <span key={t} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs"
-                  style={{ backgroundColor: "#e7f1ff", color: "#003c7e" }}>
-                  {t}
-                  <button onClick={() => removeTag(t)} className="hover:text-red-600"><X size={12} /></button>
+                <span key={t} className="inline-flex items-center gap-1 rounded-full bg-[#eef4ff] px-2.5 py-1 text-xs font-bold text-[#174be8]">
+                  {t}<button onClick={() => removeTag(t)} className="hover:text-red-600"><X size={12} /></button>
                 </span>
               ))}
-              {tags.length === 0 && <span className="text-xs" style={{ color: "#adb5bd" }}>No tags yet</span>}
+              {tags.length === 0 && <span className="text-xs text-[#8794ab]">No tags yet</span>}
             </div>
             <div className="flex gap-2">
-              <Input
-                value={newTag}
-                onChange={e => setNewTag(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && addTag()}
-                placeholder="Add tag..."
-                className="h-8 text-sm bg-white"
-              />
-              <Button size="sm" variant="outline" onClick={addTag} className="h-8"><Plus size={14} /></Button>
+              <Input value={newTag} onChange={e => setNewTag(e.target.value)} onKeyDown={e => e.key === "Enter" && addTag()} placeholder="Add tag..." className="h-9 rounded-lg border-[#dbe4f2] bg-white text-sm focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0" />
+              <Button size="sm" variant="outline" onClick={addTag} className="h-9 border-[#dbe4f2] text-[#174be8]"><Plus size={14} /></Button>
             </div>
-          </div>
+          </section>
 
-          {/* Notes */}
-          <div className="space-y-2">
-            <h4 className="text-xs uppercase font-semibold tracking-wide" style={{ color: "#868e96" }}>Notes</h4>
-            <Textarea
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              onBlur={() => save(tags, notes)}
-              placeholder="Add internal notes..."
-              className="bg-white min-h-[80px]"
-            />
-          </div>
+          <section className="space-y-2">
+            <h4 className="text-xs font-black uppercase tracking-wide text-[#8794ab]">Notes</h4>
+            <Textarea value={notes} onChange={e => setNotes(e.target.value)} onBlur={() => save(tags, notes)} placeholder="Add internal notes..." className="min-h-[86px] rounded-lg border-[#dbe4f2] bg-white focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0" />
+          </section>
 
-          {/* Actions */}
-          <div className="flex gap-2 pt-2">
-            <Button
-              className="flex-1 text-white"
-              style={{ backgroundColor: isPromoted ? "#adb5bd" : "#fd7e14" }}
-              disabled={isPromoted || isPromoting}
-              onClick={() => onPromote(prospect)}
-            >
-              {isPromoted ? "Promoted ✓" : isPromoting ? "Promoting…" : "Promote to Pipeline"}
-            </Button>
-            <Button
-              variant="outline"
-              className="flex-1"
-              style={{ borderColor: "#ff4438", color: "#ff4438" }}
-              onClick={() => onMarkNotFit(prospect)}
-            >
-              Mark Not a Fit
-            </Button>
+          <div className="grid grid-cols-2 gap-2 pt-2">
+            <Button className="bg-[#174be8] text-white hover:bg-[#123fc5]" disabled={isPromoted || isPromoting} onClick={() => onPromote(prospect)}><UserCheck size={16} /> {isPromoted ? "Promoted ✓" : isPromoting ? "Promoting…" : "Promote"}</Button>
+            <Button variant="outline" className="border-[#ef4444] text-[#ef4444] hover:bg-[#fff5f5]" onClick={() => onMarkNotFit(prospect)}><UserX size={16} /> Not a Fit</Button>
           </div>
         </div>
       </SheetContent>

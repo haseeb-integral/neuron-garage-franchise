@@ -31,6 +31,13 @@ function fitTagClass(tag: TeacherProspect["tag"]) {
   return "bg-[#eef4ff] text-[#174be8]";
 }
 
+function fitTagLabel(tag: TeacherProspect["tag"]) {
+  if (tag === "High Potential") return "High";
+  if (tag === "Follow-Up") return "Follow";
+  if (tag === "Not a Fit") return "Not Fit";
+  return "Untagged";
+}
+
 export function TeacherTable({ prospects, selected, onToggleSelect, onToggleAll, onRowClick, onPromote, promotedIds, promotingId }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("fitScore");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -89,7 +96,7 @@ export function TeacherTable({ prospects, selected, onToggleSelect, onToggleAll,
                   <TableCell className="whitespace-nowrap py-2 text-sm text-[#526078]">{p.yearsExperience} yrs</TableCell>
                   <TableCell className="py-2"><div className="flex items-center gap-2 text-[#174be8]"><Linkedin size={13} />{p.enrichmentStatus === "Enriched" && <Mail size={13} />}{p.hasSummerCampExp ? <Users size={13} /> : <Globe size={13} className="text-[#8794ab]" />}</div></TableCell>
                   <TableCell className="py-2"><FitScoreBadge score={p.fitScore} /></TableCell>
-                  <TableCell className="py-2"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${fitTagClass(p.tag)}`}>{p.tag}</span></TableCell>
+                  <TableCell className="py-2"><span title={p.tag} className={`inline-flex min-w-[54px] justify-center rounded-full px-2 py-0.5 text-[10.5px] font-bold leading-4 ${fitTagClass(p.tag)}`}>{fitTagLabel(p.tag)}</span></TableCell>
                   <TableCell className="py-2">
                     <div className="flex flex-wrap items-center gap-1.5">
                       {isPromoted && <span className="inline-flex items-center gap-1 rounded-full bg-[#eef2f7] px-2.5 py-1 text-xs font-bold text-[#526078]"><UserCheck size={12} /> Promoted</span>}

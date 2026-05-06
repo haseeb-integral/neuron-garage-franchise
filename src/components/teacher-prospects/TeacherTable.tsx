@@ -45,59 +45,63 @@ export function TeacherTable({ prospects, selected, onToggleSelect, onToggleAll,
   const allSelected = prospects.length > 0 && prospects.every(p => selected.includes(p.id));
 
   const SortHeader = ({ label, k }: { label: string; k: SortKey }) => (
-    <TableHead className="cursor-pointer select-none whitespace-nowrap text-xs" onClick={() => toggleSort(k)} style={{ color: "#6c757d" }}>
+    <TableHead className="cursor-pointer select-none whitespace-nowrap text-[11px] font-bold uppercase tracking-wide text-[#8794ab]" onClick={() => toggleSort(k)}>
       <span className="flex items-center gap-1">{label} <ArrowUpDown size={12} /></span>
     </TableHead>
   );
 
   return (
-    <div className="bg-white rounded-lg" style={{ border: "1px solid #dee2e6" }}>
-      <div className="overflow-x-auto rounded-lg">
+    <div className="overflow-hidden rounded-xl border border-[#dbe4f2] bg-white shadow-sm">
+      <div className="border-b border-[#edf2f8] px-4 py-3">
+        <h2 className="text-base font-black text-[#07142f]">Teacher Prospect List</h2>
+        <p className="text-xs text-[#66728a]">Review enriched teacher-operator prospects for this market.</p>
+      </div>
+      <div className="overflow-x-auto">
         <Table>
-        <TableHeader>
-          <TableRow>
+        <TableHeader className="bg-[#fbfcfe]">
+          <TableRow className="border-[#edf2f8] hover:bg-[#fbfcfe]">
             <TableHead className="w-10">
-              <Checkbox checked={allSelected} onCheckedChange={onToggleAll} />
+              <Checkbox className="border-[#dbe4f2] data-[state=checked]:border-[#174be8] data-[state=checked]:bg-[#174be8]" checked={allSelected} onCheckedChange={onToggleAll} />
             </TableHead>
             <SortHeader label="Name" k="name" />
             <SortHeader label="School" k="school" />
             <SortHeader label="City/State" k="city" />
-            <TableHead className="text-xs" style={{ color: "#6c757d" }}>Email</TableHead>
-            <TableHead className="text-xs" style={{ color: "#6c757d" }}>LinkedIn</TableHead>
+            <TableHead className="text-[11px] font-bold uppercase tracking-wide text-[#8794ab]">Email</TableHead>
+            <TableHead className="text-[11px] font-bold uppercase tracking-wide text-[#8794ab]">LinkedIn</TableHead>
             <SortHeader label="Fit Score" k="fitScore" />
-            <TableHead className="text-xs" style={{ color: "#6c757d" }}>Tag</TableHead>
-            <TableHead className="text-xs" style={{ color: "#6c757d" }}>Enrichment</TableHead>
-            <TableHead className="text-xs hidden md:table-cell" style={{ color: "#6c757d" }}>Action</TableHead>
+            <TableHead className="text-[11px] font-bold uppercase tracking-wide text-[#8794ab]">Tag</TableHead>
+            <TableHead className="text-[11px] font-bold uppercase tracking-wide text-[#8794ab]">Enrichment</TableHead>
+            <TableHead className="text-[11px] font-bold uppercase tracking-wide text-[#8794ab] hidden md:table-cell">Action</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {sorted.map(p => (
             <TableRow
               key={p.id}
-              className="cursor-pointer hover:bg-gray-50 transition-colors"
+              className="cursor-pointer border-[#edf2f8] transition-colors hover:bg-[#f4f7ff]"
               onClick={() => onRowClick(p)}
             >
               <TableCell onClick={e => e.stopPropagation()}>
-                <Checkbox checked={selected.includes(p.id)} onCheckedChange={() => onToggleSelect(p.id)} />
+                <Checkbox className="border-[#dbe4f2] data-[state=checked]:border-[#174be8] data-[state=checked]:bg-[#174be8]" checked={selected.includes(p.id)} onCheckedChange={() => onToggleSelect(p.id)} />
               </TableCell>
-              <TableCell className="font-medium" style={{ color: "#343a40" }}>{p.name}</TableCell>
-              <TableCell style={{ color: "#6c757d" }}>{p.school}</TableCell>
-              <TableCell style={{ color: "#6c757d" }}>{p.city}, {p.state}</TableCell>
-              <TableCell style={{ color: "#6c757d" }} className="text-xs font-mono">{maskEmail(p.email)}</TableCell>
+              <TableCell className="font-semibold text-[#07142f]">{p.name}</TableCell>
+              <TableCell className="text-[#526078]">{p.school}</TableCell>
+              <TableCell className="text-[#526078]">{p.city}, {p.state}</TableCell>
+              <TableCell className="text-xs font-mono text-[#526078]">{maskEmail(p.email)}</TableCell>
               <TableCell onClick={e => e.stopPropagation()}>
                 <a href={`https://${p.linkedin}`} target="_blank" rel="noreferrer" className="inline-flex">
-                  <Linkedin size={16} style={{ color: "#0a66c2" }} />
+                  <Linkedin size={16} className="text-[#0a66c2]" />
                 </a>
               </TableCell>
               <TableCell><FitScoreBadge score={p.fitScore} /></TableCell>
               <TableCell><TagBadge tag={p.tag} /></TableCell>
               <TableCell>
                 {p.enrichmentStatus === "Enriched" ? (
-                  <span className="inline-flex items-center gap-1 text-xs" style={{ color: "#20c997" }}>
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-[#0ea66e]">
                     <CheckCircle2 size={14} /> Enriched
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 text-xs" style={{ color: "#adb5bd" }}>
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-[#8794ab]">
                     <Clock size={14} /> Pending
                   </span>
                 )}
@@ -107,16 +111,14 @@ export function TeacherTable({ prospects, selected, onToggleSelect, onToggleAll,
                   <Button
                     size="sm"
                     disabled
-                    className="h-7 text-xs"
-                    style={{ backgroundColor: "#e9ecef", color: "#6c757d" }}
+                    className="h-8 rounded-lg bg-[#eef2f7] text-xs font-bold text-[#66728a]"
                   >
                     Promoted ✓
                   </Button>
                 ) : (
                   <Button
                     size="sm"
-                    className="text-white h-7 text-xs"
-                    style={{ backgroundColor: "#fd7e14" }}
+                    className="h-8 rounded-lg bg-[#174be8] text-xs font-bold text-white hover:bg-[#123fc5]"
                     disabled={promotingId === p.id}
                     onClick={() => onPromote(p)}
                   >
@@ -128,7 +130,7 @@ export function TeacherTable({ prospects, selected, onToggleSelect, onToggleAll,
           ))}
           {prospects.length === 0 && (
             <TableRow>
-              <TableCell colSpan={10} className="text-center py-8" style={{ color: "#adb5bd" }}>
+              <TableCell colSpan={10} className="py-8 text-center text-[#8794ab]">
                 No prospects match your filters.
               </TableCell>
             </TableRow>

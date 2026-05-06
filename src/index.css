@@ -170,3 +170,16 @@
 .ng-driver-popover .driver-popover-close-btn > * {
   display: none !important;
 }
+
+/* City Search compare-mode checkbox polish: remove the heavy blue wrapper ring without changing selection behavior. */
+.ring-\[\#174be8\].ring-offset-1 {
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+}
+
+button[role="checkbox"]:focus-visible {
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+  outline: 2px solid #fd7e14;
+  outline-offset: 2px;
+}

@@ -77,7 +77,7 @@ export function MarketCompareModal({ open, onClose, markets }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="w-[calc(100vw-2rem)] max-w-[760px] overflow-hidden rounded-2xl border border-[#dbe4f0] bg-white p-0 shadow-2xl [&>button]:right-4 [&>button]:top-4 [&>button]:h-7 [&>button]:w-7 [&>button]:rounded-full [&>button]:border [&>button]:border-[#dbe4f0] [&>button]:bg-white [&>button]:opacity-100 [&>button]:shadow-none [&>button]:ring-0 [&>button]:ring-offset-0 [&>button]:focus:ring-0 [&>button]:focus:ring-offset-0">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-[760px] overflow-hidden rounded-2xl border border-[#dbe4f0] bg-white p-0 shadow-2xl [&>button]:hidden">
         <DialogHeader className="px-5 pb-3 pt-4 text-left">
           <DialogTitle className="text-lg font-black text-[#07142f]">Compare Markets</DialogTitle>
           <p className="mt-0.5 text-sm text-[#66728a]">{markets.length} markets selected</p>

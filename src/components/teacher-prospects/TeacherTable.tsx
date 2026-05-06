@@ -24,6 +24,13 @@ function initials(name: string) {
   return name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase();
 }
 
+function fitTagClass(tag: TeacherProspect["tag"]) {
+  if (tag === "High Potential") return "bg-[#e6f7ef] text-[#0a8f5a]";
+  if (tag === "Follow-Up") return "bg-[#fff4df] text-[#b7791f]";
+  if (tag === "Not a Fit") return "bg-[#eef2f7] text-[#526078]";
+  return "bg-[#eef4ff] text-[#174be8]";
+}
+
 export function TeacherTable({ prospects, selected, onToggleSelect, onToggleAll, onRowClick, onPromote, promotedIds, promotingId }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("fitScore");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -60,6 +67,7 @@ export function TeacherTable({ prospects, selected, onToggleSelect, onToggleAll,
               <TableHead className="h-9 py-2 text-[10.5px] font-bold text-[#8794ab]">Experience</TableHead>
               <TableHead className="h-9 py-2 text-[10.5px] font-bold text-[#8794ab]">Signals</TableHead>
               <SortHeader label="Fit Score" k="fitScore" />
+              <TableHead className="h-9 py-2 text-[10.5px] font-bold text-[#8794ab]">Fit Tag</TableHead>
               <TableHead className="h-9 py-2 text-[10.5px] font-bold text-[#8794ab]">Status</TableHead>
               <TableHead className="h-9 py-2 text-right text-[10.5px] font-bold text-[#8794ab]">Action</TableHead>
             </TableRow>
@@ -81,6 +89,7 @@ export function TeacherTable({ prospects, selected, onToggleSelect, onToggleAll,
                   <TableCell className="whitespace-nowrap py-2 text-sm text-[#526078]">{p.yearsExperience} yrs</TableCell>
                   <TableCell className="py-2"><div className="flex items-center gap-2 text-[#174be8]"><Linkedin size={13} />{p.enrichmentStatus === "Enriched" && <Mail size={13} />}{p.hasSummerCampExp ? <Users size={13} /> : <Globe size={13} className="text-[#8794ab]" />}</div></TableCell>
                   <TableCell className="py-2"><FitScoreBadge score={p.fitScore} /></TableCell>
+                  <TableCell className="py-2"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${fitTagClass(p.tag)}`}>{p.tag}</span></TableCell>
                   <TableCell className="py-2">
                     <div className="flex flex-wrap items-center gap-1.5">
                       {isPromoted && <span className="inline-flex items-center gap-1 rounded-full bg-[#eef2f7] px-2.5 py-1 text-xs font-bold text-[#526078]"><UserCheck size={12} /> Promoted</span>}
@@ -103,7 +112,7 @@ export function TeacherTable({ prospects, selected, onToggleSelect, onToggleAll,
                 </TableRow>
               );
             })}
-            {prospects.length === 0 && <TableRow><TableCell colSpan={8} className="py-8 text-center text-[#8794ab]">No prospects match your filters.</TableCell></TableRow>}
+            {prospects.length === 0 && <TableRow><TableCell colSpan={9} className="py-8 text-center text-[#8794ab]">No prospects match your filters.</TableCell></TableRow>}
           </TableBody>
         </Table>
       </div>

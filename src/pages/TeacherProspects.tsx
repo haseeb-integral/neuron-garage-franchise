@@ -274,6 +274,7 @@ const TeacherProspects = () => {
       <PageHeader
         title={selectedMarket ? `${selectedMarket.city}, ${stateAbbr(selectedMarket.state)} Teacher Prospects` : "Teacher Prospects"}
         subtitle={selectedMarket ? "Build and enrich teacher-operator prospect lists for this selected market." : "Discover and evaluate potential franchisee candidates from the teaching community."}
+        hideJourneyBar
         action={
           <div className="flex flex-wrap items-center gap-2">
             <Button

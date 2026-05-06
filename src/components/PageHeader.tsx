@@ -19,9 +19,10 @@ interface PageHeaderProps {
   subtitle: string;
   action?: ReactNode;
   hideJourneyBar?: boolean;
+  searchPlaceholder?: string;
 }
 
-export function PageHeader({ title, subtitle, action, hideJourneyBar = false }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, action, hideJourneyBar = false, searchPlaceholder }: PageHeaderProps) {
   const navigate = useNavigate();
   const { profile, user, role, signOut } = useAuth();
   const displayName = profile?.full_name || profile?.email || user?.email || "Account";
@@ -36,7 +37,7 @@ export function PageHeader({ title, subtitle, action, hideJourneyBar = false }: 
     <>
       <div className="mb-4 flex items-center justify-between gap-4">
         <div className="hidden md:block w-full max-w-[760px]">
-          <GlobalSearch />
+          <GlobalSearch placeholder={searchPlaceholder} />
         </div>
 
         <div className="ml-auto flex items-center gap-3">

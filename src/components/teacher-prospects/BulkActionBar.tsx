@@ -12,24 +12,21 @@ interface Props {
 export function BulkActionBar({ count, onExport, onAddTag, onPromote, onClear }: Props) {
   if (count === 0) return null;
   return (
-    <div className="bg-white rounded-lg p-3 mb-4 flex flex-wrap items-center gap-2 sm:gap-3" style={{ border: "1px solid #fd7e14", boxShadow: "0 2px 8px rgba(253,126,20,0.15)" }}>
-      <span className="text-sm font-medium" style={{ color: "#003c7e" }}>
+    <div className="rounded-xl border border-[#dbe4f2] bg-[#f8fbff] p-2.5 flex flex-wrap items-center gap-2 shadow-[0_1px_2px_rgba(15,23,42,0.02)]">
+      <span className="px-2 text-sm font-bold text-[#174be8]">
         {count} selected
       </span>
-      <div className="h-5 w-px hidden sm:block" style={{ backgroundColor: "#dee2e6" }} />
-      <button onClick={onClear} className="ml-auto sm:hidden p-1 rounded hover:bg-gray-100" style={{ color: "#6c757d" }} aria-label="Clear selection">
-        <X size={16} />
-      </button>
-      <Button variant="outline" size="sm" onClick={onExport} className="h-8">
+      <div className="h-5 w-px hidden sm:block bg-[#dbe4f2]" />
+      <Button variant="outline" size="sm" onClick={onExport} className="h-8 rounded-lg border-[#dbe4f2] bg-white text-[#174be8] shadow-none hover:bg-[#eef4ff]">
         <Download size={14} /> Export CSV
       </Button>
-      <Button variant="outline" size="sm" onClick={onAddTag} className="h-8">
+      <Button variant="outline" size="sm" onClick={onAddTag} className="h-8 rounded-lg border-[#dbe4f2] bg-white text-[#174be8] shadow-none hover:bg-[#eef4ff]">
         <Tag size={14} /> Add Tag
       </Button>
-      <Button size="sm" onClick={onPromote} className="h-8 text-white" style={{ backgroundColor: "#fd7e14" }}>
+      <Button size="sm" onClick={onPromote} className="h-8 rounded-lg bg-[#174be8] text-white shadow-none hover:bg-[#123fc5]">
         <ArrowRight size={14} /> Promote Selected
       </Button>
-      <button onClick={onClear} className="ml-auto p-1 rounded hover:bg-gray-100 hidden sm:block" style={{ color: "#6c757d" }} aria-label="Clear selection">
+      <button onClick={onClear} className="ml-auto p-1 rounded hover:bg-white text-[#66728a]" aria-label="Clear selection">
         <X size={16} />
       </button>
     </div>

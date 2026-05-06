@@ -39,7 +39,7 @@ export function TeacherTable({ prospects, selected, onToggleSelect, onToggleAll,
     return sortDir === "asc" ? (av as number) - (bv as number) : (bv as number) - (av as number);
   });
 
-  const visibleRows = sorted.slice(0, 4);
+  const visibleRows = sorted.slice(0, 6);
   const allSelected = prospects.length > 0 && prospects.every(p => selected.includes(p.id));
 
   const SortHeader = ({ label, k }: { label: string; k: SortKey }) => (
@@ -65,11 +65,11 @@ export function TeacherTable({ prospects, selected, onToggleSelect, onToggleAll,
             </TableRow>
           </TableHeader>
           <TableBody>
-            {visibleRows.map((p, index) => {
+            {visibleRows.map((p) => {
               const isSelected = selected.includes(p.id);
               const isPromoted = promotedIds?.has(p.id);
               return (
-                <TableRow key={p.id} className={`h-[54px] cursor-pointer border-[#edf2f8] transition-colors hover:bg-[#f7faff] ${index === 0 ? "bg-[#f4f7ff]" : ""}`} onClick={() => onRowClick(p)}>
+                <TableRow key={p.id} className="h-[54px] cursor-pointer border-[#edf2f8] transition-colors hover:bg-[#f7faff]" onClick={() => onRowClick(p)}>
                   <TableCell className="py-2" onClick={e => e.stopPropagation()}><Checkbox className="border-[#dbe4f2] data-[state=checked]:border-[#174be8] data-[state=checked]:bg-[#174be8]" checked={isSelected} onCheckedChange={() => onToggleSelect(p.id)} /></TableCell>
                   <TableCell className="min-w-[205px] py-2">
                     <div className="flex items-center gap-3">
@@ -81,7 +81,12 @@ export function TeacherTable({ prospects, selected, onToggleSelect, onToggleAll,
                   <TableCell className="whitespace-nowrap py-2 text-sm text-[#526078]">{p.yearsExperience} yrs</TableCell>
                   <TableCell className="py-2"><div className="flex items-center gap-2 text-[#174be8]"><Linkedin size={13} />{p.enrichmentStatus === "Enriched" && <Mail size={13} />}{p.hasSummerCampExp ? <Users size={13} /> : <Globe size={13} className="text-[#8794ab]" />}</div></TableCell>
                   <TableCell className="py-2"><FitScoreBadge score={p.fitScore} /></TableCell>
-                  <TableCell className="py-2">{p.enrichmentStatus === "Enriched" ? <span className="inline-flex items-center gap-1 rounded-full bg-[#e6f7ef] px-2.5 py-1 text-xs font-bold text-[#0ea66e]"><CheckCircle2 size={12} /> Enriched</span> : <span className="inline-flex items-center gap-1 rounded-full bg-[#fff4df] px-2.5 py-1 text-xs font-bold text-[#b7791f]"><Clock size={12} /> Pending</span>}</TableCell>
+                  <TableCell className="py-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {isPromoted && <span className="inline-flex items-center gap-1 rounded-full bg-[#eef2f7] px-2.5 py-1 text-xs font-bold text-[#526078]"><UserCheck size={12} /> Promoted</span>}
+                      {p.enrichmentStatus === "Enriched" ? <span className="inline-flex items-center gap-1 rounded-full bg-[#e6f7ef] px-2.5 py-1 text-xs font-bold text-[#0ea66e]"><CheckCircle2 size={12} /> Enriched</span> : <span className="inline-flex items-center gap-1 rounded-full bg-[#fff4df] px-2.5 py-1 text-xs font-bold text-[#b7791f]"><Clock size={12} /> Pending</span>}
+                    </div>
+                  </TableCell>
                   <TableCell onClick={e => e.stopPropagation()} className="py-2 text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild><button className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#dbe4f2] bg-white text-[#526078] hover:bg-[#f4f7ff] hover:text-[#174be8]"><MoreVertical size={14} /></button></DropdownMenuTrigger>
@@ -103,7 +108,7 @@ export function TeacherTable({ prospects, selected, onToggleSelect, onToggleAll,
         </Table>
       </div>
       <div className="flex items-center justify-between border-t border-[#edf2f8] px-4 py-2 text-xs text-[#66728a]">
-        <span>Showing 1 to {Math.min(sorted.length, 4)} of 354 results</span>
+        <span>Showing 1 to {Math.min(sorted.length, 6)} of 354 results</span>
         <div className="flex items-center gap-1.5">{["‹", "1", "2", "3", "…", "45", "›"].map((p) => <button key={p} className={`h-7 min-w-7 rounded-md border px-2 font-bold ${p === "1" ? "border-[#174be8] bg-[#174be8] text-white" : "border-[#dbe4f2] bg-white text-[#526078]"}`}>{p}</button>)}</div>
       </div>
     </div>

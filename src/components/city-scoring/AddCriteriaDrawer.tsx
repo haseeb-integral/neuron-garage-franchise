@@ -41,47 +41,101 @@ export function AddCriteriaDrawer({ open, onClose, onSave }: Props) {
     }
     onSave({ name: name.trim(), category, weight, source: source.trim(), notes: notes.trim() });
     toast.success(`Added "${name}" under ${category}`);
-    setName(""); setSource(""); setNotes(""); setWeight(5);
+    setName("");
+    setSource("");
+    setNotes("");
+    setWeight(5);
     onClose();
   };
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="w-full sm:max-w-[440px] overflow-y-auto bg-white">
-        <SheetHeader>
-          <SheetTitle className="text-[#07142f]">Add Custom Scoring Metric</SheetTitle>
+      <SheetContent className="w-full overflow-y-auto bg-white px-6 py-6 sm:max-w-[520px]">
+        <SheetHeader className="space-y-1 text-left">
+          <SheetTitle className="text-[22px] font-black leading-tight text-[#07142f]">
+            Add Custom Scoring Metric
+          </SheetTitle>
+          <p className="text-sm leading-snug text-[#66728a]">
+            Add one metric inside an existing scoring category. This does not create a new top-level card.
+          </p>
         </SheetHeader>
-        <div className="mt-5 space-y-4">
-          <div>
-            <Label className="text-xs text-[#526078]">Metric Name</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Walkability Index" />
+
+        <div className="mt-6 space-y-4">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold text-[#526078]">Metric Name</Label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Walkability Index"
+              className="h-10 rounded-lg border-[#dbe4f0] text-sm"
+            />
           </div>
-          <div>
-            <Label className="text-xs text-[#526078]">Category</Label>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold text-[#526078]">Category</Label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="mt-1 w-full rounded-md border border-[#e5eaf2] bg-white px-3 py-2 text-sm"
+              className="h-10 w-full rounded-lg border border-[#dbe4f0] bg-white px-3 text-sm text-[#273142] outline-none focus:border-[#174be8] focus:ring-2 focus:ring-[#174be8]/10"
             >
-              {SCORING_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              {SCORING_CATEGORIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
             </select>
-            <p className="mt-1 text-[11px] text-[#8794ab]">Custom metrics are nested inside one of the six fixed categories.</p>
+            <p className="text-[11px] leading-snug text-[#8794ab]">
+              Custom metrics are nested inside one of the six fixed categories.
+            </p>
           </div>
-          <div>
-            <Label className="text-xs text-[#526078]">Weight %</Label>
-            <Input type="number" min={0} max={100} value={weight} onChange={(e) => setWeight(Number(e.target.value))} />
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[120px_1fr]">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-[#526078]">Weight %</Label>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                value={weight}
+                onChange={(e) => setWeight(Number(e.target.value))}
+                className="h-10 rounded-lg border-[#dbe4f0] text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-[#526078]">Data Source</Label>
+              <Input
+                value={source}
+                onChange={(e) => setSource(e.target.value)}
+                placeholder="e.g. Walk Score API"
+                className="h-10 rounded-lg border-[#dbe4f0] text-sm"
+              />
+            </div>
           </div>
-          <div>
-            <Label className="text-xs text-[#526078]">Data Source</Label>
-            <Input value={source} onChange={(e) => setSource(e.target.value)} placeholder="e.g. Walk Score API" />
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold text-[#526078]">Notes / Formula</Label>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+              placeholder="Describe how this metric is computed…"
+              className="min-h-[92px] rounded-lg border-[#dbe4f0] text-sm"
+            />
           </div>
-          <div>
-            <Label className="text-xs text-[#526078]">Notes / Formula</Label>
-            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Describe how this metric is computed…" />
+
+          <div className="rounded-xl border border-[#dbe6ff] bg-[#f5f8ff] px-4 py-3">
+            <p className="text-xs font-medium text-[#66728a]">This will appear under:</p>
+            <p className="mt-0.5 text-sm font-bold text-[#174be8]">{category}</p>
+            <p className="mt-1 text-[11px] leading-snug text-[#66728a]">
+              After saving, that scoring card will show a small “+1 custom metric” note.
+            </p>
           </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={onClose}>Cancel</Button>
-            <Button onClick={handleSave} className="bg-[#174be8] hover:bg-[#1240c9] text-white">Save</Button>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="outline" onClick={onClose} className="h-10 rounded-lg border-[#dbe4f0] px-5">
+              Cancel
+            </Button>
+            <Button onClick={handleSave} className="h-10 rounded-lg bg-[#174be8] px-6 text-white hover:bg-[#1240c9]">
+              Save
+            </Button>
           </div>
         </div>
       </SheetContent>

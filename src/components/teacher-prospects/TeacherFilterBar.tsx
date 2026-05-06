@@ -44,9 +44,9 @@ export function TeacherFilterBar(p: Props) {
         </Select>
 
         <Select value={p.tagFilter} onValueChange={p.setTagFilter}>
-          <SelectTrigger className={selectClass}><SelectValue placeholder="Tag" /></SelectTrigger>
+          <SelectTrigger className={selectClass}><SelectValue placeholder="Fit Tag" /></SelectTrigger>
           <SelectContent className="bg-white">
-            <SelectItem value="All">All Tags</SelectItem>
+            <SelectItem value="All">All Fit Tags</SelectItem>
             <SelectItem value="High Potential">High Potential</SelectItem>
             <SelectItem value="Follow-Up">Follow-Up</SelectItem>
             <SelectItem value="Not a Fit">Not a Fit</SelectItem>

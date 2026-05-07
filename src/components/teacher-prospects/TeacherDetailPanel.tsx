@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { TeacherProspect } from "@/data/teacherData";
 import { FitScoreBadge } from "./FitScoreBadge";
-import { Linkedin, Mail, Phone, GraduationCap, Calendar, X, Plus, Sparkles, MapPin, UserCheck, UserX } from "lucide-react";
+import { Linkedin, Mail, Phone, GraduationCap, Calendar, X, Plus, Sparkles, MapPin, MailPlus, UserX } from "lucide-react";
 
 interface Props {
   prospect: TeacherProspect | null;
@@ -109,7 +109,7 @@ export function TeacherDetailPanel({ prospect, onClose, onUpdate, onPromote, onM
           </section>
 
           <div className="grid grid-cols-2 gap-2 pt-2">
-            <Button className="bg-[#174be8] text-white hover:bg-[#123fc5]" disabled={isPromoted || isPromoting} onClick={() => onPromote(prospect)}><UserCheck size={16} /> {isPromoted ? "Promoted ✓" : isPromoting ? "Promoting…" : "Promote"}</Button>
+            <Button className="bg-[#174be8] text-white hover:bg-[#123fc5]" disabled={isPromoted || isPromoting} onClick={() => onPromote(prospect)}><MailPlus size={16} /> {isPromoted ? "In Outreach ✓" : isPromoting ? "Adding…" : "Add to Outreach"}</Button>
             <Button variant="outline" className="border-[#ef4444] text-[#ef4444] hover:bg-[#fff5f5]" onClick={() => onMarkNotFit(prospect)}><UserX size={16} /> Not a Fit</Button>
           </div>
         </div>

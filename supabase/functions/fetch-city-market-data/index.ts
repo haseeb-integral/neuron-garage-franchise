@@ -308,33 +308,97 @@ async function fetchCensus(city: string, state: string): Promise<{ data: CensusD
   }
 }
 
+// ---- BLS OEWS state-level (lightweight) ----
+type BlsData = {
+  state_fips: string
+  area_code: string
+  teacher_mean_wage: number | null      // SOC 25-2021 elementary teachers
+  childcare_mean_wage: number | null    // SOC 39-9011 childcare workers
+  recreation_mean_wage: number | null   // SOC 39-9032 recreation workers (camp guide proxy)
+  series_used: string[]
+  source_url: string
+}
+
+async function fetchBls(stateFips: string | null): Promise<{ data: BlsData | null; error: string | null }> {
+  const key = Deno.env.get('BLS_API_KEY')
+  if (!key) return { data: null, error: 'BLS_API_KEY missing' }
+  if (!stateFips) return { data: null, error: 'state_fips unavailable' }
+  const areaCode = stateFips.padEnd(7, '0') // e.g. TX "48" -> "4800000"
+  // OEUS + area(7) + industry(6 zeros) + soc(6) + datatype "04" (annual mean wage) = 25 chars
+  const mk = (soc: string) => `OEUS${areaCode}000000${soc}04`
+  const teacherSeries = mk('252021')
+  const childcareSeries = mk('399011')
+  const recreationSeries = mk('399032')
+  const seriesIds = [teacherSeries, childcareSeries, recreationSeries]
+  try {
+    const res = await fetch('https://api.bls.gov/publicAPI/v2/timeseries/data/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ seriesid: seriesIds, registrationkey: key }),
+    })
+    if (!res.ok) return { data: null, error: `BLS HTTP ${res.status}` }
+    const json = await res.json().catch(() => ({}))
+    if (json?.status !== 'REQUEST_SUCCEEDED') return { data: null, error: `BLS ${json?.status ?? 'unknown'}: ${(json?.message ?? []).join(' | ')}` }
+    const series = Array.isArray(json?.Results?.series) ? json.Results.series : []
+    const pickLatest = (sid: string): number | null => {
+      const s = series.find((x: any) => x?.seriesID === sid)
+      const d = s?.data?.[0]?.value
+      const n = Number(d)
+      return Number.isFinite(n) && n > 0 ? n : null
+    }
+    return {
+      data: {
+        state_fips: stateFips,
+        area_code: areaCode,
+        teacher_mean_wage: pickLatest(teacherSeries),
+        childcare_mean_wage: pickLatest(childcareSeries),
+        recreation_mean_wage: pickLatest(recreationSeries),
+        series_used: seriesIds,
+        source_url: `https://beta.bls.gov/dataViewer/view/timeseries/${teacherSeries}`,
+      },
+      error: null,
+    }
+  } catch (e) {
+    return { data: null, error: (e as Error).message }
+  }
+}
+
 function computeCategoryScores(b: {
   elementary: number; private_: number; preschool: number;
   competitors: number; stem: number; rentals: number; parent: number; firecrawl: number;
   census: CensusData | null;
+  bls: BlsData | null;
 }) {
   const c = b.census
   // Census-driven boosts (bounded contributions)
-  // Demand: population scale + children share
   let demandBoost = 0
   if (c?.total_population) demandBoost += Math.min(15, Math.log10(Math.max(1, c.total_population)) * 2.5)
-  if (c?.children_pct) demandBoost += Math.min(10, (c.children_pct - 18) * 0.8) // 18% baseline
-  // Pricing power: median income + premium income share
+  if (c?.children_pct) demandBoost += Math.min(10, (c.children_pct - 18) * 0.8)
   let priceBoost = 0
   if (c?.median_household_income) priceBoost += Math.min(20, (c.median_household_income - 60000) / 4000)
   if (c?.income_100k_plus_pct) priceBoost += Math.min(10, (c.income_100k_plus_pct - 25) * 0.4)
   if (c?.income_150k_plus_pct) priceBoost += Math.min(8, (c.income_150k_plus_pct - 10) * 0.5)
-  // Parent mindset: education + children
   let mindsetBoost = 0
   if (c?.bachelors_plus_pct) mindsetBoost += Math.min(20, (c.bachelors_plus_pct - 30) * 0.6)
   if (c?.children_pct) mindsetBoost += Math.min(6, (c.children_pct - 18) * 0.4)
+
+  // BLS modest adjustments (small, bounded; never dominate)
+  // Franchisee Supply: lower teacher wage = teachers more available/affordable as operators
+  // baseline ~$65k national mean; ±6 pts within ±$25k band
+  let supplyAdj = 0
+  if (b.bls?.teacher_mean_wage) supplyAdj += Math.max(-6, Math.min(6, (65000 - b.bls.teacher_mean_wage) / 4000))
+  // Ease of Operations: higher recreation/childcare wage = cost pressure
+  // baseline ~$32k; ±5 pts within ±$15k band
+  let easeAdj = 0
+  const wageProxy = b.bls?.recreation_mean_wage ?? b.bls?.childcare_mean_wage ?? null
+  if (wageProxy) easeAdj += Math.max(-5, Math.min(5, (32000 - wageProxy) / 3000))
 
   return {
     demand: clamp(50 + b.elementary * 3 + b.preschool * 1.5 + b.firecrawl * 1 + demandBoost),
     pricing_power: clamp(45 + b.private_ * 4 + b.parent * 1 + priceBoost),
     competitive_landscape: clamp(95 - b.competitors * 3 - b.stem * 1.5),
-    franchisee_supply: clamp(55 + b.elementary * 3 + b.private_ * 2),
-    ease_of_operations: clamp(55 + b.rentals * 4),
+    franchisee_supply: clamp(55 + b.elementary * 3 + b.private_ * 2 + supplyAdj),
+    ease_of_operations: clamp(55 + b.rentals * 4 + easeAdj),
     parent_mindset: clamp(50 + b.parent * 3 + b.private_ * 1.5 + b.firecrawl * 0.5 + mindsetBoost),
   }
 }

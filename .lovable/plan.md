@@ -1,59 +1,47 @@
 ## Goal
-Make the Scoring Weights sliders visibly drive the selected market's composite score in the center detail panel. Default weights match the official model. Frontend-only.
+Clean up the City Search Overall Score panel and let any single category drive 100% of the weighted composite. Frontend-only.
 
 ## Scope confirmation
-- No DB write
+- No DB change
 - No Edge Function change
-- No Census/BLS work
+- No Census/BLS change
+- No API logic change
 
 ## Changes (all in `src/pages/CityScoring.tsx`)
 
-### 1. Default weights → official model
-`CATEGORIES.defaultWeight`: demand 25, pricingPower 20, competitiveLandscape 20, franchiseeSupply 15, easeOfOperations 10, parentMindset 10. UI keys already map 1:1 to DB keys via `DB_CAT_TO_UI`.
+### 1. Slider max 50 → 100
+Line 519: change `max={50}` to `max={100}` on the per-category Scoring Weights `Slider`. This permits Demand=100, others=0 (or any single category at 100). Total-must-equal-100 rule is unchanged: Apply button stays disabled when `totalWeight !== 100` (line 493) and the orange "Weights must total 100% to apply scoring." warning stays (lines 485–487).
 
-### 2. Add applied-weights state
-`appliedWeights` initialized to defaults. Drives the displayed composite — sliders alone don't change the gauge until Apply is clicked. `resetWeights()` resets both `weights` and `appliedWeights`.
-
-### 3. Compute weighted composite from visible category scores
-Use `detailCategoryScores` (live DB scores w/ sample fallback) and `appliedWeights`:
-
-```ts
-const weightedComposite = appliedTotal > 0
-  ? Math.round(
-      CATEGORIES.reduce((s, c) => s + detailCategoryScores[c.key] * appliedWeights[c.key], 0)
-      / appliedTotal
-    )
-  : detailScore;
+### 2. Add short explainer near Scoring Weights title
+Insert one line of muted helper text inside the title row (around lines 482–483), right after the `<h3>Scoring Weights</h3>`:
+```tsx
+<span className="text-[11px] text-[#8794ab] whitespace-nowrap">
+  Set what matters most. 100% means score this market only by that category.
+</span>
 ```
+Placed as a sibling of the `<h3>` inside the existing `flex items-center gap-3 flex-wrap` wrapper so it sits beside the title on wide screens and wraps gracefully on narrow ones. Total Weight indicator and warning continue to follow.
 
-Replace `detailScore` in gauge `strokeDasharray` and center text (~lines 690–693) with `weightedComposite`.
-
-### 4. Recompute tier from weighted score (official thresholds)
-- A = 85+
-- B = 75–84
-- C = 65–74
-- D = below 65
-
-Use `tierFromScore(weightedComposite)` for the tier badge near line 703 and its color.
-
-### 5. Apply Weights behavior
-- `applyWeights()`: if `totalWeight === 100`, copy `weights` → `appliedWeights` and toast "Composite score recalculated from current weights."
-- Button disabled when `totalWeight !== 100` (already wired).
-- Existing "Weights must total 100%" warning remains.
-
-### 6. Helper text near the score
-Under "Excellent Opportunity" (~line 695):
-```
+### 3. Clean up the gauge area
+Remove line 719 entirely:
+```tsx
 <p className="text-[10px] text-[#8794ab]">Score recalculated from current category weights.</p>
 ```
+Do not replace it with anything. The gauge column then contains only:
+- "Overall Score" label
+- gauge with number and `/100`
+- opportunity label (e.g. "Excellent Opportunity")
+
+Skip the optional "Weighted view" sub-label — the panel reads cleaner without it.
 
 ## Out of scope
-- Census / BLS integration
-- Persisting recalculated score to DB
-- Ranked Markets list scores (still uses stored `compositeScore`)
+- Reset-to-default behavior (unchanged; defaults still 25/20/20/15/10/10)
+- `appliedWeights` / `weightedComposite` math (unchanged — already supports 100/0 splits)
+- Tier thresholds (unchanged: A 85+, B 75–84, C 65–74, D <65)
+- Ranked Markets list scores
 
 ## Test
-1. Frisco, TX with default weights → gauge shows weighted composite of live category scores.
-2. Move Demand=50, others=10 each → Apply → gauge + tier update; helper text visible.
-3. Total ≠ 100 → Apply disabled, warning shown, gauge unchanged.
-4. Reset to Default → returns to official-model composite.
+1. Demand=100, all others=0 → Apply enabled (total=100) → gauge equals Demand category score.
+2. Competitive Landscape=100, all others=0 → Apply → gauge equals Competitive Landscape score.
+3. Any combination where total ≠ 100 → Apply disabled, orange warning shown, gauge unchanged.
+4. Reset to Default → returns to 25/20/20/15/10/10 composite.
+5. Visual: gauge column shows only Overall Score / number / /100 / opportunity label — no extra helper line.

@@ -368,7 +368,10 @@ Deno.serve(async (req) => {
 
     const apify = await fetchAllApify(city, state)
     const firecrawl = await fetchFirecrawlSignals(city, state)
-    const hasAnyLiveSecret = Boolean(Deno.env.get('APIFY_API_TOKEN') || Deno.env.get('FIRECRAWL_API_KEY'))
+    const census = await fetchCensus(city, state)
+    const censusData = census.data
+    const censusError = census.error
+    const hasAnyLiveSecret = Boolean(Deno.env.get('APIFY_API_TOKEN') || Deno.env.get('FIRECRAWL_API_KEY') || Deno.env.get('CENSUS_API_KEY'))
     const mode = hasAnyLiveSecret ? 'live_api' : 'poc'
 
     const allItems = apify?.deduped ?? []

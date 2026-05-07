@@ -154,6 +154,49 @@ const CityScoring = () => {
 
   const selected = sampleCities.find((c) => c.id === selectedId) ?? sampleCities[0];
 
+  // Load live DB-backed data for the currently selected market.
+  const loadLiveData = async (city: string, state: string) => {
+    try {
+      const { data: cityRow } = await supabase
+        .from("cities")
+        .select("*")
+        .eq("city", city)
+        .eq("state", state)
+        .maybeSingle();
+
+      if (!cityRow) {
+        setLiveCity(null);
+        setLiveSignals([]);
+        setLiveCategoryScores({});
+        setLiveCompetitors([]);
+        setLiveJob(null);
+        return;
+      }
+
+      const [{ data: signals }, { data: scores }, { data: comps }, { data: jobs }] = await Promise.all([
+        supabase.from("city_market_signals").select("*").eq("city_id", cityRow.id),
+        supabase.from("city_category_scores").select("*").eq("city_id", cityRow.id),
+        supabase.from("city_competitors").select("*").eq("city_id", cityRow.id).order("created_at", { ascending: false }),
+        supabase.from("city_fetch_jobs").select("*").eq("city_id", cityRow.id).order("created_at", { ascending: false }).limit(1),
+      ]);
+
+      setLiveCity(cityRow);
+      setLiveSignals(signals ?? []);
+      setLiveCategoryScores(
+        (scores ?? []).reduce((acc: Record<string, number>, s: any) => ({ ...acc, [s.category]: s.score }), {})
+      );
+      setLiveCompetitors(comps ?? []);
+      setLiveJob(jobs?.[0] ?? null);
+    } catch (err) {
+      console.error("loadLiveData error", err);
+    }
+  };
+
+  useEffect(() => {
+    if (selected) loadLiveData(selected.city, selected.state);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
+
   const totalWeight = Object.values(weights).reduce((s, v) => s + v, 0);
 
   const resetWeights = () => {

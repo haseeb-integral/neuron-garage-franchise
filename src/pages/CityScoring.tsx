@@ -116,6 +116,7 @@ const CityScoring = () => {
 
   const [selectedId, setSelectedId] = useState<number>(sampleCities[0]?.id ?? 1);
   const [selectedForCompare, setSelectedForCompare] = useState<number[]>([]);
+  const [refreshingMarket, setRefreshingMarket] = useState(false);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);

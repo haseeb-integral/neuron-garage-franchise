@@ -177,7 +177,7 @@ async function fetchApifyCompetitors(city: string, state: string, now: string) {
       body: JSON.stringify(payload),
     })
     const data = await res.json().catch(() => [])
-    if (!res.ok) return { rows: [] as CompetitorRow[], error: `Apify ${res.status}: ${JSON.stringify(data).slice(0, 400)}`, rawCount: 0 }
+    if (!res.ok) return { rows: [] as CompetitorRow[], error: `Apify ${res.status}: ${JSON.stringify(data).slice(0, 400)}`, rawCount: 0, afterFilter: 0, excludedCount: 0 }
     const items = Array.isArray(data) ? data : []
     const relevant = items.filter((it) => isRelevantCompetitor(it as Record<string, unknown>))
     const excludedCount = items.length - relevant.length

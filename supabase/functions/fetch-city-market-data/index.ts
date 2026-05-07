@@ -407,6 +407,7 @@ Deno.serve(async (req) => {
       rentals: rentalItems.length,
       parent: parentItems.length,
       firecrawl: firecrawl.count,
+      census: censusData,
     }
     const cat = computeCategoryScores(scoreInputs)
     const categoryWeights = { demand: 0.25, pricing_power: 0.20, competitive_landscape: 0.20, franchisee_supply: 0.15, ease_of_operations: 0.10, parent_mindset: 0.10 }
@@ -417,11 +418,17 @@ Deno.serve(async (req) => {
     )
     const tier = compositeScore >= 85 ? 'A' : compositeScore >= 75 ? 'B' : compositeScore >= 65 ? 'C' : 'D'
 
+    const cityNotes = censusData
+      ? `Live API + Census ACS 2022 (place ${censusData.place_fips})`
+      : (mode === 'live_api' ? 'Live API multi-category POC' : 'POC sample data')
     const { data: cityRow, error: cityErr } = await admin.from('cities').upsert({
       city, state, market_type: 'Suburb', tier, composite_score: compositeScore,
-      population: 100000, competitor_count: finalCompetitors.length,
+      population: censusData?.total_population ?? 100000,
+      median_income: censusData?.median_household_income ?? null,
+      children_pct: censusData?.children_pct ?? null,
+      competitor_count: finalCompetitors.length,
       last_scraped_at: startedAt,
-      notes: mode === 'live_api' ? 'Live API multi-category POC' : 'POC sample data',
+      notes: cityNotes,
     }, { onConflict: 'city,state' }).select('id').single()
     if (cityErr || !cityRow) return json({ error: 'Failed to upsert city', detail: cityErr?.message }, 500)
     const cityId = cityRow.id as string

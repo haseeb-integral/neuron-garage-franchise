@@ -318,7 +318,7 @@ Deno.serve(async (req) => {
         request_payload: { city, state, mode },
         response_summary: {
           mode,
-          counts: { signals: signals.length, scores: scores.length, competitors: competitors.length, apify_raw: apify.rawCount, firecrawl_results: firecrawl.count },
+          counts: { signals: signals.length, scores: scores.length, competitors: competitors.length, apify_raw: apify.rawCount, apify_after_filter: apify.afterFilter, excluded_count: apify.excludedCount, firecrawl_results: firecrawl.count },
           warnings: { apify: apify.error, firecrawl: firecrawl.error },
         },
         error_message: [apify.error, firecrawl.error].filter(Boolean).join(' | ') || null,

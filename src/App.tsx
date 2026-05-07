@@ -11,20 +11,14 @@ import ResetPassword from "./pages/ResetPassword";
 import Index from "./pages/Index";
 import CityScoring from "./pages/CityScoring";
 import TeacherProspects from "./pages/TeacherProspects";
+import EmailOutreach from "./pages/EmailOutreach";
 import CandidatePipeline from "./pages/CandidatePipeline";
 import Onboarding from "./pages/Onboarding";
 import Spec from "./pages/Spec";
 import TeamMembers from "./pages/TeamMembers";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 30_000,
-      refetchOnWindowFocus: true,
-    },
-  },
-});
+const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 30000, refetchOnWindowFocus: true } } });
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -36,16 +30,11 @@ const App = () => (
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
-            <Route
-              element={
-                <ProtectedRoute>
-                  <AppLayout />
-                </ProtectedRoute>
-              }
-            >
+            <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="/" element={<Index />} />
               <Route path="/city-scoring" element={<CityScoring />} />
               <Route path="/teacher-prospects" element={<TeacherProspects />} />
+              <Route path="/email-outreach" element={<EmailOutreach />} />
               <Route path="/candidate-pipeline" element={<CandidatePipeline />} />
               <Route path="/onboarding" element={<Onboarding />} />
               <Route path="/settings/team" element={<TeamMembers />} />

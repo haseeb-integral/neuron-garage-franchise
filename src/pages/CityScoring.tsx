@@ -710,12 +710,13 @@ const CityScoring = () => {
                   stroke="#0ea66e"
                   strokeWidth="14"
                   strokeLinecap="round"
-                  strokeDasharray={`${(detailScore / 100) * 236} 236`}
+                  strokeDasharray={`${(weightedComposite / 100) * 236} 236`}
                 />
-                <text x="100" y="76" textAnchor="middle" className="fill-[#07142f]" style={{ fontSize: 32, fontWeight: 800 }}>{detailScore}</text>
+                <text x="100" y="76" textAnchor="middle" className="fill-[#07142f]" style={{ fontSize: 32, fontWeight: 800 }}>{weightedComposite}</text>
                 <text x="100" y="102" textAnchor="middle" className="fill-[#7e8aa3]" style={{ fontSize: 12, fontWeight: 600 }}>/100</text>
               </svg>
-              <p className="-mt-1 text-[12px] font-semibold text-[#0ea66e]">Excellent Opportunity</p>
+              <p className="-mt-1 text-[12px] font-semibold" style={{ color: tierBadge.fg }}>{opportunityLabel}</p>
+              <p className="text-[10px] text-[#8794ab]">Score recalculated from current category weights.</p>
             </div>
 
             <div className="space-y-2.5 pt-1 min-w-0">

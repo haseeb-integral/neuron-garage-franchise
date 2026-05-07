@@ -308,33 +308,97 @@ async function fetchCensus(city: string, state: string): Promise<{ data: CensusD
   }
 }
 
+// ---- BLS OEWS state-level (lightweight) ----
+type BlsData = {
+  state_fips: string
+  area_code: string
+  teacher_mean_wage: number | null      // SOC 25-2021 elementary teachers
+  childcare_mean_wage: number | null    // SOC 39-9011 childcare workers
+  recreation_mean_wage: number | null   // SOC 39-9032 recreation workers (camp guide proxy)
+  series_used: string[]
+  source_url: string
+}
+
+async function fetchBls(stateFips: string | null): Promise<{ data: BlsData | null; error: string | null }> {
+  const key = Deno.env.get('BLS_API_KEY')
+  if (!key) return { data: null, error: 'BLS_API_KEY missing' }
+  if (!stateFips) return { data: null, error: 'state_fips unavailable' }
+  const areaCode = stateFips.padEnd(7, '0') // e.g. TX "48" -> "4800000"
+  // OEUS + area(7) + industry(6 zeros) + soc(6) + datatype "04" (annual mean wage) = 25 chars
+  const mk = (soc: string) => `OEUS${areaCode}000000${soc}04`
+  const teacherSeries = mk('252021')
+  const childcareSeries = mk('399011')
+  const recreationSeries = mk('399032')
+  const seriesIds = [teacherSeries, childcareSeries, recreationSeries]
+  try {
+    const res = await fetch('https://api.bls.gov/publicAPI/v2/timeseries/data/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ seriesid: seriesIds, registrationkey: key }),
+    })
+    if (!res.ok) return { data: null, error: `BLS HTTP ${res.status}` }
+    const json = await res.json().catch(() => ({}))
+    if (json?.status !== 'REQUEST_SUCCEEDED') return { data: null, error: `BLS ${json?.status ?? 'unknown'}: ${(json?.message ?? []).join(' | ')}` }
+    const series = Array.isArray(json?.Results?.series) ? json.Results.series : []
+    const pickLatest = (sid: string): number | null => {
+      const s = series.find((x: any) => x?.seriesID === sid)
+      const d = s?.data?.[0]?.value
+      const n = Number(d)
+      return Number.isFinite(n) && n > 0 ? n : null
+    }
+    return {
+      data: {
+        state_fips: stateFips,
+        area_code: areaCode,
+        teacher_mean_wage: pickLatest(teacherSeries),
+        childcare_mean_wage: pickLatest(childcareSeries),
+        recreation_mean_wage: pickLatest(recreationSeries),
+        series_used: seriesIds,
+        source_url: `https://beta.bls.gov/dataViewer/view/timeseries/${teacherSeries}`,
+      },
+      error: null,
+    }
+  } catch (e) {
+    return { data: null, error: (e as Error).message }
+  }
+}
+
 function computeCategoryScores(b: {
   elementary: number; private_: number; preschool: number;
   competitors: number; stem: number; rentals: number; parent: number; firecrawl: number;
   census: CensusData | null;
+  bls: BlsData | null;
 }) {
   const c = b.census
   // Census-driven boosts (bounded contributions)
-  // Demand: population scale + children share
   let demandBoost = 0
   if (c?.total_population) demandBoost += Math.min(15, Math.log10(Math.max(1, c.total_population)) * 2.5)
-  if (c?.children_pct) demandBoost += Math.min(10, (c.children_pct - 18) * 0.8) // 18% baseline
-  // Pricing power: median income + premium income share
+  if (c?.children_pct) demandBoost += Math.min(10, (c.children_pct - 18) * 0.8)
   let priceBoost = 0
   if (c?.median_household_income) priceBoost += Math.min(20, (c.median_household_income - 60000) / 4000)
   if (c?.income_100k_plus_pct) priceBoost += Math.min(10, (c.income_100k_plus_pct - 25) * 0.4)
   if (c?.income_150k_plus_pct) priceBoost += Math.min(8, (c.income_150k_plus_pct - 10) * 0.5)
-  // Parent mindset: education + children
   let mindsetBoost = 0
   if (c?.bachelors_plus_pct) mindsetBoost += Math.min(20, (c.bachelors_plus_pct - 30) * 0.6)
   if (c?.children_pct) mindsetBoost += Math.min(6, (c.children_pct - 18) * 0.4)
+
+  // BLS modest adjustments (small, bounded; never dominate)
+  // Franchisee Supply: lower teacher wage = teachers more available/affordable as operators
+  // baseline ~$65k national mean; ±6 pts within ±$25k band
+  let supplyAdj = 0
+  if (b.bls?.teacher_mean_wage) supplyAdj += Math.max(-6, Math.min(6, (65000 - b.bls.teacher_mean_wage) / 4000))
+  // Ease of Operations: higher recreation/childcare wage = cost pressure
+  // baseline ~$32k; ±5 pts within ±$15k band
+  let easeAdj = 0
+  const wageProxy = b.bls?.recreation_mean_wage ?? b.bls?.childcare_mean_wage ?? null
+  if (wageProxy) easeAdj += Math.max(-5, Math.min(5, (32000 - wageProxy) / 3000))
 
   return {
     demand: clamp(50 + b.elementary * 3 + b.preschool * 1.5 + b.firecrawl * 1 + demandBoost),
     pricing_power: clamp(45 + b.private_ * 4 + b.parent * 1 + priceBoost),
     competitive_landscape: clamp(95 - b.competitors * 3 - b.stem * 1.5),
-    franchisee_supply: clamp(55 + b.elementary * 3 + b.private_ * 2),
-    ease_of_operations: clamp(55 + b.rentals * 4),
+    franchisee_supply: clamp(55 + b.elementary * 3 + b.private_ * 2 + supplyAdj),
+    ease_of_operations: clamp(55 + b.rentals * 4 + easeAdj),
     parent_mindset: clamp(50 + b.parent * 3 + b.private_ * 1.5 + b.firecrawl * 0.5 + mindsetBoost),
   }
 }
@@ -371,7 +435,10 @@ Deno.serve(async (req) => {
     const census = await fetchCensus(city, state)
     const censusData = census.data
     const censusError = census.error
-    const hasAnyLiveSecret = Boolean(Deno.env.get('APIFY_API_TOKEN') || Deno.env.get('FIRECRAWL_API_KEY') || Deno.env.get('CENSUS_API_KEY'))
+    const bls = await fetchBls(censusData?.state_fips ?? (resolveStateAbbr(state) ? STATE_FIPS[resolveStateAbbr(state) as string] : null))
+    const blsData = bls.data
+    const blsError = bls.error
+    const hasAnyLiveSecret = Boolean(Deno.env.get('APIFY_API_TOKEN') || Deno.env.get('FIRECRAWL_API_KEY') || Deno.env.get('CENSUS_API_KEY') || Deno.env.get('BLS_API_KEY'))
     const mode = hasAnyLiveSecret ? 'live_api' : 'poc'
 
     const allItems = apify?.deduped ?? []
@@ -408,6 +475,7 @@ Deno.serve(async (req) => {
       parent: parentItems.length,
       firecrawl: firecrawl.count,
       census: censusData,
+      bls: blsData,
     }
     const cat = computeCategoryScores(scoreInputs)
     const categoryWeights = { demand: 0.25, pricing_power: 0.20, competitive_landscape: 0.20, franchisee_supply: 0.15, ease_of_operations: 0.10, parent_mindset: 0.10 }
@@ -445,7 +513,16 @@ Deno.serve(async (req) => {
       { signal_key: 'education_bachelors_plus_proxy', label: "Bachelor's Degree or Higher (25+)", value: censusData.bachelors_plus_pct != null ? `${censusData.bachelors_plus_pct}%` : 'N/A', delta: null, delta_type: 'neutral', source: 'census', source_url: censusData.source_url, confidence: 0.9, raw_data: { mode, pct: censusData.bachelors_plus_pct } },
       { signal_key: 'census_data_readiness', label: 'Census Data', value: 'Connected (ACS 2022 5-yr)', delta: null, delta_type: 'up', source: 'census', source_url: censusData.source_url, confidence: 0.95, raw_data: { mode, place_fips: censusData.place_fips, state_fips: censusData.state_fips } },
     ] : [
-      { signal_key: 'census_data_readiness', label: 'Census Data', value: censusError ? `Unavailable (${censusError})` : 'Unavailable', delta: null, delta_type: 'down', source: 'census', source_url: null, confidence: 0.3, raw_data: { mode, error: censusError } },
+    ]
+
+    const fmtUSD = (n: number | null) => n != null ? `$${n.toLocaleString()}` : 'N/A'
+    const blsSignals = blsData ? [
+      { signal_key: 'teacher_salary_proxy', label: 'Elementary Teacher Mean Wage (BLS state)', value: fmtUSD(blsData.teacher_mean_wage), delta: null, delta_type: 'neutral', source: 'bls', source_url: blsData.source_url, confidence: 0.8, raw_data: { soc: '25-2021', area: blsData.area_code, value: blsData.teacher_mean_wage, series: blsData.series_used[0] } },
+      { signal_key: 'education_labor_market_proxy', label: 'Childcare Worker Mean Wage (BLS state)', value: fmtUSD(blsData.childcare_mean_wage), delta: null, delta_type: 'neutral', source: 'bls', source_url: blsData.source_url, confidence: 0.75, raw_data: { soc: '39-9011', area: blsData.area_code, value: blsData.childcare_mean_wage, series: blsData.series_used[1] } },
+      { signal_key: 'guide_wage_proxy', label: 'Recreation Worker Mean Wage (camp guide proxy)', value: fmtUSD(blsData.recreation_mean_wage), delta: null, delta_type: 'neutral', source: 'bls', source_url: blsData.source_url, confidence: 0.7, raw_data: { soc: '39-9032', area: blsData.area_code, value: blsData.recreation_mean_wage, series: blsData.series_used[2] } },
+      { signal_key: 'bls_data_readiness', label: 'BLS OEWS Data', value: 'Connected (state OEWS)', delta: null, delta_type: 'up', source: 'bls', source_url: blsData.source_url, confidence: 0.9, raw_data: { area_code: blsData.area_code, state_fips: blsData.state_fips, series: blsData.series_used } },
+    ] : [
+      { signal_key: 'bls_data_readiness', label: 'BLS OEWS Data', value: blsError ? `Unavailable (${blsError})` : 'Unavailable', delta: null, delta_type: 'down', source: 'bls', source_url: null, confidence: 0.3, raw_data: { error: blsError } },
     ]
 
     const baseSignals = [
@@ -459,7 +536,7 @@ Deno.serve(async (req) => {
       { signal_key: 'firecrawl_source_pages', label: 'Source Pages Found', value: String(firecrawl.count), delta: null, delta_type: firecrawl.count > 0 ? 'up' : 'neutral', source: mode, source_url: null, confidence: 0.5, raw_data: { mode } },
       { signal_key: 'data_readiness', label: 'Data Readiness', value: mode === 'live_api' ? 'Live API Connected' : 'POC Sample', delta: null, delta_type: mode === 'live_api' ? 'up' : 'neutral', source: mode, source_url: null, confidence: 0.7, raw_data: { mode } },
     ]
-    const signals = [...baseSignals, ...censusSignals]
+    const signals = [...baseSignals, ...censusSignals, ...blsSignals]
     const { error: sErr } = await admin.from('city_market_signals').insert(signals.map((r) => ({ ...r, city_id: cityId })))
     if (sErr) return json({ error: 'Failed to insert signals', detail: sErr.message }, 500)
 
@@ -496,17 +573,18 @@ Deno.serve(async (req) => {
       category_scores: cat,
       composite_score: compositeScore,
       census: censusData,
-      warnings: { apify: apifyError, firecrawl: firecrawl.error, census: censusError },
+      bls: blsData,
+      warnings: { apify: apifyError, firecrawl: firecrawl.error, census: censusError, bls: blsError },
     }
 
-    const anyWarn = apifyError || firecrawl.error || censusError
+    const anyWarn = apifyError || firecrawl.error || censusError || blsError
     const { data: jobRow, error: jobErr } = await admin.from('city_fetch_jobs').insert({
       city_id: cityId, city, state, source: mode,
       status: anyWarn ? 'completed_with_warnings' : 'completed',
       started_at: startedAt, completed_at: completedAt,
       request_payload: { city, state, mode },
       response_summary: responseSummary,
-      error_message: [apifyError, firecrawl.error, censusError].filter(Boolean).join(' | ') || null,
+      error_message: [apifyError, firecrawl.error, censusError, blsError].filter(Boolean).join(' | ') || null,
     }).select('id').single()
     if (jobErr) return json({ error: 'Failed to insert job', detail: jobErr.message }, 500)
 
@@ -515,9 +593,10 @@ Deno.serve(async (req) => {
       composite_score: compositeScore, tier,
       category_scores: cat,
       census: censusData,
+      bls: blsData,
       inserted: { signals: signals.length, scores: scores.length, competitors: finalCompetitors.length, job_id: jobRow?.id },
       counts: responseSummary.counts,
-      warnings: { apify: apifyError, firecrawl: firecrawl.error, census: censusError },
+      warnings: { apify: apifyError, firecrawl: firecrawl.error, census: censusError, bls: blsError },
     })
   } catch (e) {
     return json({ error: (e as Error).message }, 500)

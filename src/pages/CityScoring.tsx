@@ -481,6 +481,7 @@ const CityScoring = () => {
         <div className="mb-3 flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3 flex-wrap">
             <h3 className="text-sm font-bold text-[#07142f]">Scoring Weights</h3>
+            <span className="text-[11px] text-[#8794ab] whitespace-nowrap">Set what matters most. 100% means score this market only by that category.</span>
             <span className="text-xs text-[#526078]">Total Weight: <span className={totalWeight === 100 ? "text-[#0ea66e] font-medium" : "text-[#ea580c] font-medium"}>{totalWeight}%</span></span>
             {totalWeight !== 100 && (
               <span className="text-[11px] text-[#ea580c]">Weights must total 100% to apply scoring.</span>
@@ -516,7 +517,7 @@ const CityScoring = () => {
                 <Slider
                   value={[weights[cat.key]]}
                   onValueChange={([v]) => setWeights((w) => ({ ...w, [cat.key]: v }))}
-                  max={50}
+                  max={100}
                   step={1}
                   className="[&>span:first-child]:bg-[#eaf0ff] [&>span:first-child]:h-1.5 [&_[role=slider]]:h-3.5 [&_[role=slider]]:w-3.5 [&_[role=slider]]:border-[#174be8] [&_[role=slider]]:bg-white [&>span:first-child_span]:bg-[#174be8]"
                 />
@@ -716,7 +717,6 @@ const CityScoring = () => {
                 <text x="100" y="102" textAnchor="middle" className="fill-[#7e8aa3]" style={{ fontSize: 12, fontWeight: 600 }}>/100</text>
               </svg>
               <p className="-mt-1 text-[12px] font-semibold" style={{ color: tierBadge.fg }}>{opportunityLabel}</p>
-              <p className="text-[10px] text-[#8794ab]">Score recalculated from current category weights.</p>
             </div>
 
             <div className="space-y-2.5 pt-1 min-w-0">

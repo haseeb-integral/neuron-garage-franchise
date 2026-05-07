@@ -280,6 +280,13 @@ const CityScoring = () => {
 
   // DB → UI category-key mapping
   const DB_CAT_TO_UI: Record<string, CategoryKey> = {
+    demand: "demand",
+    pricing_power: "pricingPower",
+    competitive_landscape: "competitiveLandscape",
+    franchisee_supply: "franchiseeSupply",
+    ease_of_operations: "easeOfOperations",
+    parent_mindset: "parentMindset",
+    // Legacy keys (back-compat)
     summer_camp_demand: "demand",
     dual_income_families: "pricingPower",
     competition_score: "competitiveLandscape",
@@ -304,6 +311,13 @@ const CityScoring = () => {
 
   const SIGNAL_ICONS: Record<string, typeof Users> = {
     competitor_count: Trophy,
+    elementary_school_count: GraduationCap,
+    private_school_count: Building2,
+    stem_enrichment_count: Cog,
+    montessori_count: Star,
+    rental_venue_count: HomeIcon,
+    parent_mindset_places: Heart,
+    firecrawl_source_pages: FileText,
     source_pages_found: FileText,
     data_readiness: Star,
     children_5_12: Users,

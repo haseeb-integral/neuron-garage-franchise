@@ -495,16 +495,18 @@ Deno.serve(async (req) => {
       },
       category_scores: cat,
       composite_score: compositeScore,
-      warnings: { apify: apifyError, firecrawl: firecrawl.error },
+      census: censusData,
+      warnings: { apify: apifyError, firecrawl: firecrawl.error, census: censusError },
     }
 
+    const anyWarn = apifyError || firecrawl.error || censusError
     const { data: jobRow, error: jobErr } = await admin.from('city_fetch_jobs').insert({
       city_id: cityId, city, state, source: mode,
-      status: apifyError || firecrawl.error ? 'completed_with_warnings' : 'completed',
+      status: anyWarn ? 'completed_with_warnings' : 'completed',
       started_at: startedAt, completed_at: completedAt,
       request_payload: { city, state, mode },
       response_summary: responseSummary,
-      error_message: [apifyError, firecrawl.error].filter(Boolean).join(' | ') || null,
+      error_message: [apifyError, firecrawl.error, censusError].filter(Boolean).join(' | ') || null,
     }).select('id').single()
     if (jobErr) return json({ error: 'Failed to insert job', detail: jobErr.message }, 500)
 
@@ -512,9 +514,10 @@ Deno.serve(async (req) => {
       ok: true, mode, city_id: cityId,
       composite_score: compositeScore, tier,
       category_scores: cat,
+      census: censusData,
       inserted: { signals: signals.length, scores: scores.length, competitors: finalCompetitors.length, job_id: jobRow?.id },
       counts: responseSummary.counts,
-      warnings: { apify: apifyError, firecrawl: firecrawl.error },
+      warnings: { apify: apifyError, firecrawl: firecrawl.error, census: censusError },
     })
   } catch (e) {
     return json({ error: (e as Error).message }, 500)

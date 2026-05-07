@@ -1,5 +1,29 @@
 import { useMemo, useState } from "react";
-import { AlertCircle, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock, Download, ExternalLink, Info, Link as LinkIcon, Mail, MapPin, Plus, RefreshCw, Reply, Search, Send, Target, Trophy, Upload, Users, XCircle } from "lucide-react";
+import {
+  AlertCircle,
+  CalendarDays,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Download,
+  ExternalLink,
+  Info,
+  Link as LinkIcon,
+  Mail,
+  MapPin,
+  Plus,
+  RefreshCw,
+  Reply,
+  Search,
+  Send,
+  Target,
+  Trophy,
+  Upload,
+  Users,
+  X,
+  XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 
 type CampaignStatus = "Active" | "Draft" | "Paused" | "Complete";
@@ -7,8 +31,33 @@ type EmailStatus = "Opened" | "Replied" | "Bounced" | "Queued" | "Sent";
 type ReplyStatus = "Interested" | "Meeting Booked" | "Follow-Up Needed" | "No Reply" | "Not Interested";
 type Fit = "High" | "Medium" | "Low";
 
-type Campaign = { id: number; name: string; market: string; smartLeadId: string; status: CampaignStatus; prospects: number; sent: number; openRate: string; replyRate: string; replies: number; interested: number; promoted: number; };
-type Prospect = { id: number; campaignId: number; initials: string; name: string; school: string; emailStatus: EmailStatus; engagement: string; replyStatus: ReplyStatus; fit: Fit; preview: string; };
+type Campaign = {
+  id: number;
+  name: string;
+  market: string;
+  smartLeadId: string;
+  status: CampaignStatus;
+  prospects: number;
+  sent: number;
+  openRate: string;
+  replyRate: string;
+  replies: number;
+  interested: number;
+  promoted: number;
+};
+
+type Prospect = {
+  id: number;
+  campaignId: number;
+  initials: string;
+  name: string;
+  school: string;
+  emailStatus: EmailStatus;
+  engagement: string;
+  replyStatus: ReplyStatus;
+  fit: Fit;
+  preview: string;
+};
 
 const campaigns: Campaign[] = [
   { id: 1, name: "Austin TX — Spring 2026", market: "Austin, TX", smartLeadId: "#4812", status: "Active", prospects: 312, sent: 38, openRate: "52%", replyRate: "10.5%", replies: 4, interested: 2, promoted: 1 },
@@ -37,11 +86,25 @@ const prospects: Prospect[] = [
 ];
 
 function Chip({ children, tone = "blue" }: { children: React.ReactNode; tone?: "blue" | "green" | "gold" | "red" | "gray" | "purple" }) {
-  const styles = { blue: "bg-[#eef4ff] text-[#174be8]", green: "bg-[#e6f7ef] text-[#0a8f5a]", gold: "bg-[#fff4df] text-[#b7791f]", red: "bg-[#fff1f1] text-[#ef4444]", gray: "bg-[#eef2f7] text-[#526078]", purple: "bg-[#f2ebff] text-[#7c3aed]" };
+  const styles = {
+    blue: "bg-[#eef4ff] text-[#174be8]",
+    green: "bg-[#e6f7ef] text-[#0a8f5a]",
+    gold: "bg-[#fff4df] text-[#b7791f]",
+    red: "bg-[#fff1f1] text-[#ef4444]",
+    gray: "bg-[#eef2f7] text-[#526078]",
+    purple: "bg-[#f2ebff] text-[#7c3aed]",
+  };
   return <span className={`inline-flex h-6 max-w-full items-center rounded-md px-2 text-[11px] font-bold ${styles[tone]}`}>{children}</span>;
 }
-function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) { return <div className={`rounded-xl border border-[#e7edf5] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.02)] ${className}`}>{children}</div>; }
-function IconBox({ children, tone = "blue" }: { children: React.ReactNode; tone?: "blue" | "green" | "gold" | "purple" }) { const styles = { blue: "bg-[#eef4ff] text-[#174be8]", green: "bg-[#e6f7ef] text-[#0a8f5a]", gold: "bg-[#fff4df] text-[#b7791f]", purple: "bg-[#f2ebff] text-[#7c3aed]" }; return <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${styles[tone]}`}>{children}</div>; }
+
+function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <div className={`rounded-xl border border-[#e7edf5] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.02)] ${className}`}>{children}</div>;
+}
+
+function IconBox({ children, tone = "blue" }: { children: React.ReactNode; tone?: "blue" | "green" | "gold" | "purple" }) {
+  const styles = { blue: "bg-[#eef4ff] text-[#174be8]", green: "bg-[#e6f7ef] text-[#0a8f5a]", gold: "bg-[#fff4df] text-[#b7791f]", purple: "bg-[#f2ebff] text-[#7c3aed]" };
+  return <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${styles[tone]}`}>{children}</div>;
+}
 
 const statusTone = (status: CampaignStatus) => status === "Active" ? "green" : status === "Draft" ? "blue" : status === "Paused" ? "gold" : "gray";
 const emailTone = (status: EmailStatus) => status === "Opened" || status === "Sent" ? "blue" : status === "Replied" ? "green" : status === "Bounced" ? "red" : "gold";
@@ -52,12 +115,25 @@ const fitTone = (fit: Fit) => fit === "High" ? "green" : fit === "Medium" ? "gol
 
 export default function EmailOutreach() {
   const [selectedCampaign, setSelectedCampaign] = useState(campaigns[0]);
+  const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null);
   const [tab, setTab] = useState("All Prospects");
   const safeToast = (message: string) => toast.info(message);
 
   const campaignProspects = prospects.filter((p) => p.campaignId === selectedCampaign.id);
-  const statusCounts = { Sent: campaignProspects.filter((p) => p.emailStatus === "Sent").length, Opened: campaignProspects.filter((p) => p.emailStatus === "Opened").length, Replied: campaignProspects.filter((p) => p.emailStatus === "Replied").length, Bounced: campaignProspects.filter((p) => p.emailStatus === "Bounced").length, Queued: campaignProspects.filter((p) => p.emailStatus === "Queued").length };
-  const replyCounts = { Interested: campaignProspects.filter((p) => p.replyStatus === "Interested").length, "Meeting Booked": campaignProspects.filter((p) => p.replyStatus === "Meeting Booked").length, "Follow-Up Needed": campaignProspects.filter((p) => p.replyStatus === "Follow-Up Needed").length, "No Reply": campaignProspects.filter((p) => p.replyStatus === "No Reply").length, "Not Interested": campaignProspects.filter((p) => p.replyStatus === "Not Interested").length };
+  const statusCounts = {
+    Sent: campaignProspects.filter((p) => p.emailStatus === "Sent").length,
+    Opened: campaignProspects.filter((p) => p.emailStatus === "Opened").length,
+    Replied: campaignProspects.filter((p) => p.emailStatus === "Replied").length,
+    Bounced: campaignProspects.filter((p) => p.emailStatus === "Bounced").length,
+    Queued: campaignProspects.filter((p) => p.emailStatus === "Queued").length,
+  };
+  const replyCounts = {
+    Interested: campaignProspects.filter((p) => p.replyStatus === "Interested").length,
+    "Meeting Booked": campaignProspects.filter((p) => p.replyStatus === "Meeting Booked").length,
+    "Follow-Up Needed": campaignProspects.filter((p) => p.replyStatus === "Follow-Up Needed").length,
+    "No Reply": campaignProspects.filter((p) => p.replyStatus === "No Reply").length,
+    "Not Interested": campaignProspects.filter((p) => p.replyStatus === "Not Interested").length,
+  };
   const readyToPromote = replyCounts.Interested + replyCounts["Meeting Booked"];
   const maxCount = Math.max(1, campaignProspects.length);
 
@@ -89,7 +165,7 @@ export default function EmailOutreach() {
       <div className="grid gap-3 xl:grid-cols-[275px_minmax(0,1fr)_280px]">
         <Card className="overflow-hidden">
           <div className="flex items-center justify-between border-b border-[#edf2f8] p-3"><h2 className="text-base font-black">Campaigns</h2><button onClick={() => safeToast("New campaign setup is sample-only in this preview.")} className="text-xs font-bold text-[#174be8]">+ New</button></div>
-          <div className="divide-y divide-[#edf2f8]">{campaigns.map((campaign) => { const active = selectedCampaign.id === campaign.id; return <button key={campaign.id} onClick={() => { setSelectedCampaign(campaign); setTab("All Prospects"); }} className={`block w-full px-3 py-3 text-left transition hover:bg-[#f8fbff] ${active ? "bg-[#f8fbff]" : "bg-white"}`}><div className="mb-1 flex items-start justify-between gap-2"><div className="text-[13px] font-black">{campaign.name}</div><Chip tone={statusTone(campaign.status) as "blue" | "green" | "gold" | "gray"}>{campaign.status}</Chip></div><div className="mb-2 flex items-center gap-1 text-[11px] text-[#526078]"><MapPin size={11} className="text-[#ef4444]" /> {campaign.market}</div><div className="grid grid-cols-4 gap-1 text-center"><div><div className="text-xs font-black">{campaign.prospects}</div><div className="text-[9px] text-[#526078]">Prospects</div></div><div><div className="text-xs font-black">{campaign.openRate}</div><div className="text-[9px] text-[#526078]">Open</div></div><div><div className="text-xs font-black">{campaign.replies}</div><div className="text-[9px] text-[#526078]">Replies</div></div><div><div className="text-xs font-black">{campaign.interested}</div><div className="text-[9px] text-[#526078]">Interest</div></div></div></button>; })}</div>
+          <div className="divide-y divide-[#edf2f8]">{campaigns.map((campaign) => { const active = selectedCampaign.id === campaign.id; return <button key={campaign.id} onClick={() => { setSelectedCampaign(campaign); setTab("All Prospects"); setSelectedProspect(null); }} className={`block w-full px-3 py-3 text-left transition hover:bg-[#f8fbff] ${active ? "bg-[#f8fbff]" : "bg-white"}`}><div className="mb-1 flex items-start justify-between gap-2"><div className="text-[13px] font-black">{campaign.name}</div><Chip tone={statusTone(campaign.status) as "blue" | "green" | "gold" | "gray"}>{campaign.status}</Chip></div><div className="mb-2 flex items-center gap-1 text-[11px] text-[#526078]"><MapPin size={11} className="text-[#ef4444]" /> {campaign.market}</div><div className="grid grid-cols-4 gap-1 text-center"><div><div className="text-xs font-black">{campaign.prospects}</div><div className="text-[9px] text-[#526078]">Prospects</div></div><div><div className="text-xs font-black">{campaign.openRate}</div><div className="text-[9px] text-[#526078]">Open</div></div><div><div className="text-xs font-black">{campaign.replies}</div><div className="text-[9px] text-[#526078]">Replies</div></div><div><div className="text-xs font-black">{campaign.interested}</div><div className="text-[9px] text-[#526078]">Interest</div></div></div></button>; })}</div>
           <div className="p-3 text-center"><button className="text-xs font-bold text-[#174be8]">View all campaigns →</button></div>
         </Card>
 
@@ -106,7 +182,7 @@ export default function EmailOutreach() {
           <div className="px-3 pb-3">
             <table className="w-full table-fixed text-left text-[11.5px]">
               <thead><tr className="border-y border-[#edf2f8] text-[9.5px] uppercase text-[#8794ab]"><th className="w-[18%] py-2">Teacher</th><th className="w-[12%]">School</th><th className="w-[12%]">Email Status</th><th className="w-[12%]">Engagement</th><th className="w-[14%]">Reply Status</th><th className="w-[8%]">Fit</th><th className="w-[14%]">Reply Preview</th><th className="w-[10%] text-right">Action</th></tr></thead>
-              <tbody>{visibleProspects.map((p) => <tr key={p.id} className="border-b border-[#edf2f8] hover:bg-[#f8fbff]"><td className="py-2"><div className="flex items-center gap-2"><div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-[#dbe7ff] text-[10px] font-black text-[#174be8]">{p.initials}</div><div className="min-w-0"><div className="truncate font-bold">{p.name}</div><div className="truncate text-[10px] text-[#8794ab]">{p.name.toLowerCase().replace(" ", ".")}@school.edu</div></div></div></td><td className="truncate text-[#34445f]">{p.school}</td><td><span className={`inline-flex items-center gap-1 truncate font-semibold ${emailTone(p.emailStatus) === "green" ? "text-[#0a8f5a]" : emailTone(p.emailStatus) === "red" ? "text-[#ef4444]" : emailTone(p.emailStatus) === "gold" ? "text-[#b7791f]" : "text-[#174be8]"}`}>{emailIcon(p.emailStatus)} {p.emailStatus}</span></td><td className="truncate text-[#34445f]">{p.engagement}</td><td><span className="flex items-center gap-1.5 truncate text-[#34445f]"><span className={`h-2 w-2 flex-shrink-0 rounded-full ${replyDot(p.replyStatus)}`} />{replyText(p.replyStatus)}</span></td><td><Chip tone={fitTone(p.fit) as "green" | "gold" | "red"}>{p.fit}</Chip></td><td className="truncate text-[#526078]">{p.preview}</td><td className="text-right">{p.replyStatus === "Interested" || p.replyStatus === "Meeting Booked" ? <button onClick={() => safeToast(`${p.name} would be promoted to Candidate Pipeline.`)} className="rounded-md bg-[#174be8] px-2.5 py-1.5 text-[10.5px] font-bold text-white">Promote</button> : p.replyStatus === "Follow-Up Needed" || p.emailStatus === "Replied" ? <button className="rounded-md border border-[#dbe4f2] px-2.5 py-1.5 text-[10.5px] font-bold text-[#174be8]">Follow Up</button> : <button onClick={() => safeToast(`${p.name} details would open in the outreach profile drawer.`)} className="rounded-md border border-[#dbe4f2] px-2.5 py-1.5 text-[10.5px] font-bold text-[#174be8]">Details</button>}</td></tr>)}</tbody>
+              <tbody>{visibleProspects.map((p) => <tr key={p.id} onClick={() => setSelectedProspect(p)} className="cursor-pointer border-b border-[#edf2f8] hover:bg-[#f8fbff]"><td className="py-2"><div className="flex items-center gap-2"><div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-[#dbe7ff] text-[10px] font-black text-[#174be8]">{p.initials}</div><div className="min-w-0"><div className="truncate font-bold">{p.name}</div><div className="truncate text-[10px] text-[#8794ab]">{p.name.toLowerCase().replace(" ", ".")}@school.edu</div></div></div></td><td className="truncate text-[#34445f]">{p.school}</td><td><span className={`inline-flex items-center gap-1 truncate font-semibold ${emailTone(p.emailStatus) === "green" ? "text-[#0a8f5a]" : emailTone(p.emailStatus) === "red" ? "text-[#ef4444]" : emailTone(p.emailStatus) === "gold" ? "text-[#b7791f]" : "text-[#174be8]"}`}>{emailIcon(p.emailStatus)} {p.emailStatus}</span></td><td className="truncate text-[#34445f]">{p.engagement}</td><td><span className="flex items-center gap-1.5 truncate text-[#34445f]"><span className={`h-2 w-2 flex-shrink-0 rounded-full ${replyDot(p.replyStatus)}`} />{replyText(p.replyStatus)}</span></td><td><Chip tone={fitTone(p.fit) as "green" | "gold" | "red"}>{p.fit}</Chip></td><td className="truncate text-[#526078]">{p.preview}</td><td className="text-right">{p.replyStatus === "Interested" || p.replyStatus === "Meeting Booked" ? <button onClick={(e) => { e.stopPropagation(); safeToast(`${p.name} would be promoted to Candidate Pipeline.`); }} className="rounded-md bg-[#174be8] px-2.5 py-1.5 text-[10.5px] font-bold text-white">Promote</button> : p.replyStatus === "Follow-Up Needed" || p.emailStatus === "Replied" ? <button onClick={(e) => { e.stopPropagation(); safeToast(`Sample follow-up would be queued for ${p.name}.`); }} className="rounded-md border border-[#dbe4f2] px-2.5 py-1.5 text-[10.5px] font-bold text-[#174be8]">Follow Up</button> : <button onClick={(e) => { e.stopPropagation(); setSelectedProspect(p); }} className="rounded-md border border-[#dbe4f2] px-2.5 py-1.5 text-[10.5px] font-bold text-[#174be8]">Details</button>}</td></tr>)}</tbody>
             </table>
             <div className="flex items-center justify-between pt-2 text-[11px] text-[#526078]"><span>Showing {visibleProspects.length} of {campaignProspects.length} prospects</span><div className="flex items-center gap-1"><button className="rounded-md border border-[#dbe4f2] p-1.5"><ChevronLeft size={13} /></button><button className="rounded-md bg-[#174be8] px-2.5 py-1.5 font-bold text-white">1</button><button className="rounded-md border border-[#dbe4f2] px-2.5 py-1.5 font-bold">2</button><button className="rounded-md border border-[#dbe4f2] p-1.5"><ChevronRight size={13} /></button></div></div>
           </div>
@@ -117,6 +193,54 @@ export default function EmailOutreach() {
           <div className="space-y-3 p-3"><Card className="p-3"><div className="flex items-start justify-between"><div><div className="text-[10px] font-bold uppercase text-[#174be8]">Selected Campaign</div><div className="mt-1 text-sm font-black">{selectedCampaign.name}</div><div className="mt-1 text-[11px] text-[#0a8f5a]">{selectedCampaign.openRate} open • {selectedCampaign.replyRate} reply</div></div><IconBox tone="gold"><Trophy size={16} /></IconBox></div></Card><Card className="p-3"><div className="mb-2 text-sm font-black">Email Status Breakdown</div>{Object.entries(statusCounts).map(([label, num]) => <div key={label} className="mb-2 grid grid-cols-[58px_1fr_24px] items-center gap-2 text-[11px]"><span>{label}</span><div className="h-1.5 rounded-full bg-[#edf2f8]"><div className="h-1.5 rounded-full bg-[#174be8]" style={{ width: `${Math.max(8, (num / maxCount) * 100)}%` }} /></div><span className="text-right font-bold">{num}</span></div>)}</Card><Card className="p-3"><div className="mb-2 text-sm font-black">Reply Status Breakdown</div>{Object.entries(replyCounts).map(([label, num]) => <div key={label} className="mb-1.5 flex items-center justify-between text-[11px]"><span className="flex items-center gap-1.5">{label === "Interested" ? <CheckCircle2 size={12} className="text-[#0a8f5a]" /> : label === "Meeting Booked" ? <CalendarDays size={12} className="text-[#0a8f5a]" /> : label === "Follow-Up Needed" ? <Clock size={12} className="text-[#b7791f]" /> : label === "Not Interested" ? <XCircle size={12} className="text-[#ef4444]" /> : <span className="h-3 w-3 rounded-full bg-[#8794ab]" />} {label}</span><span className="font-bold">{num}</span></div>)}</Card><Card className="border-[#d5f2df] bg-[#f4fff8] p-3"><div className="flex gap-2"><IconBox tone="green"><Target size={16} /></IconBox><div><div className="text-sm font-black">Recommended Next Step</div><p className="mt-1 text-xs text-[#34445f]">{readyToPromote} interested leads are ready to move to the pipeline.</p><button onClick={() => safeToast(`${readyToPromote} interested leads would be promoted to Candidate Pipeline.`)} className="mt-2 w-full rounded-lg bg-[#0ea66e] px-3 py-2 text-xs font-bold text-white">Promote {readyToPromote} to Pipeline</button></div></div></Card></div>
         </Card>
       </div>
+
+      {selectedProspect && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/35" onClick={() => setSelectedProspect(null)}>
+          <aside className="h-full w-full max-w-[430px] overflow-y-auto border-l border-[#e7edf5] bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 z-10 flex items-start justify-between border-b border-[#edf2f8] bg-white px-5 py-5">
+              <div className="flex items-start gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#dbe7ff] text-sm font-black text-[#174be8]">{selectedProspect.initials}</div>
+                <div><h2 className="text-xl font-black">{selectedProspect.name}</h2><p className="text-sm text-[#526078]">{selectedProspect.school}</p><p className="text-xs text-[#8794ab]">{selectedCampaign.market} • {selectedCampaign.name}</p></div>
+              </div>
+              <button onClick={() => setSelectedProspect(null)} className="rounded-full p-1 text-[#526078] hover:bg-[#f7faff]"><X size={20} /></button>
+            </div>
+
+            <div className="space-y-4 p-5">
+              <Card className="p-4">
+                <div className="mb-3 text-xs font-black uppercase text-[#8794ab]">Outreach Status</div>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div><div className="text-xs font-bold text-[#8794ab]">Email Status</div><div className="mt-1 font-bold">{selectedProspect.emailStatus}</div></div>
+                  <div><div className="text-xs font-bold text-[#8794ab]">Engagement</div><div className="mt-1 font-bold">{selectedProspect.engagement}</div></div>
+                  <div><div className="text-xs font-bold text-[#8794ab]">Reply Status</div><div className="mt-1 font-bold">{selectedProspect.replyStatus}</div></div>
+                  <div><div className="text-xs font-bold text-[#8794ab]">Fit</div><div className="mt-1"><Chip tone={fitTone(selectedProspect.fit) as "green" | "gold" | "red"}>{selectedProspect.fit}</Chip></div></div>
+                </div>
+              </Card>
+
+              <Card className="p-4">
+                <div className="mb-3 text-xs font-black uppercase text-[#8794ab]">Campaign Record</div>
+                <div className="space-y-2 text-sm text-[#34445f]"><p><b>Campaign:</b> {selectedCampaign.name}</p><p><b>Engine:</b> SmartLead {selectedCampaign.smartLeadId}</p><p><b>Market:</b> {selectedCampaign.market}</p><p><b>Email:</b> {selectedProspect.name.toLowerCase().replace(" ", ".")}@school.edu</p></div>
+              </Card>
+
+              <Card className="p-4">
+                <div className="mb-2 text-xs font-black uppercase text-[#8794ab]">Reply Preview</div>
+                <p className="rounded-lg border border-[#edf2f8] bg-[#fbfdff] p-3 text-sm text-[#34445f]">{selectedProspect.preview}</p>
+              </Card>
+
+              <Card className="p-4">
+                <div className="mb-2 text-xs font-black uppercase text-[#8794ab]">Internal Notes</div>
+                <textarea className="min-h-[90px] w-full rounded-lg border border-[#dbe4f2] p-3 text-sm outline-none placeholder:text-[#8794ab]" placeholder="Add outreach notes..." />
+              </Card>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button onClick={() => safeToast("This would open the matching SmartLead contact/campaign record.")} className="rounded-lg border border-[#dbe4f2] px-3 py-2 text-sm font-bold text-[#174be8]">Open SmartLead</button>
+                <button onClick={() => safeToast(`Sample follow-up would be queued for ${selectedProspect.name}.`)} className="rounded-lg border border-[#dbe4f2] px-3 py-2 text-sm font-bold text-[#174be8]">Follow Up</button>
+                <button onClick={() => safeToast(`${selectedProspect.name} would be promoted to Candidate Pipeline.`)} className="rounded-lg bg-[#174be8] px-3 py-2 text-sm font-bold text-white">Promote to Pipeline</button>
+                <button onClick={() => safeToast(`${selectedProspect.name} would be marked as not interested.`)} className="rounded-lg border border-[#f5c2c2] px-3 py-2 text-sm font-bold text-[#ef4444]">Not Interested</button>
+              </div>
+            </div>
+          </aside>
+        </div>
+      )}
     </div>
   );
 }

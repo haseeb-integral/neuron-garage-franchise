@@ -435,7 +435,10 @@ Deno.serve(async (req) => {
     const census = await fetchCensus(city, state)
     const censusData = census.data
     const censusError = census.error
-    const hasAnyLiveSecret = Boolean(Deno.env.get('APIFY_API_TOKEN') || Deno.env.get('FIRECRAWL_API_KEY') || Deno.env.get('CENSUS_API_KEY'))
+    const bls = await fetchBls(censusData?.state_fips ?? (resolveStateAbbr(state) ? STATE_FIPS[resolveStateAbbr(state) as string] : null))
+    const blsData = bls.data
+    const blsError = bls.error
+    const hasAnyLiveSecret = Boolean(Deno.env.get('APIFY_API_TOKEN') || Deno.env.get('FIRECRAWL_API_KEY') || Deno.env.get('CENSUS_API_KEY') || Deno.env.get('BLS_API_KEY'))
     const mode = hasAnyLiveSecret ? 'live_api' : 'poc'
 
     const allItems = apify?.deduped ?? []

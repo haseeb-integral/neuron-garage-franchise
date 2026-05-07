@@ -311,6 +311,13 @@ const CityScoring = () => {
 
   const SIGNAL_ICONS: Record<string, typeof Users> = {
     competitor_count: Trophy,
+    elementary_school_count: GraduationCap,
+    private_school_count: Building2,
+    stem_enrichment_count: Cog,
+    montessori_count: Star,
+    rental_venue_count: HomeIcon,
+    parent_mindset_places: Heart,
+    firecrawl_source_pages: FileText,
     source_pages_found: FileText,
     data_readiness: Star,
     children_5_12: Users,

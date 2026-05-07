@@ -32,8 +32,8 @@ Deno.serve(async (req) => {
     const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
     })
-    const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(token)
-    if (claimsErr || !claimsData?.claims) {
+    const { data: userData, error: userErr } = await userClient.auth.getUser(token)
+    if (userErr || !userData?.user) {
       return json({ error: 'Invalid session' }, 401)
     }
 

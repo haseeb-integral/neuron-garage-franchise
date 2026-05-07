@@ -311,6 +311,27 @@ const CityScoring = () => {
     : cs;
   const detailCategoryScores = { ...fallbackCats, ...liveUiCategoryScores } as Record<CategoryKey, number>;
 
+  // Frontend-only weighted composite using applied weights and visible category scores.
+  const appliedTotal = Object.values(appliedWeights).reduce((s, v) => s + v, 0);
+  const weightedComposite = appliedTotal > 0
+    ? Math.round(
+        CATEGORIES.reduce((s, c) => s + (detailCategoryScores[c.key] ?? 0) * appliedWeights[c.key], 0) / appliedTotal
+      )
+    : detailScore;
+  const displayTier: "A" | "B" | "C" | "D" =
+    weightedComposite >= 85 ? "A" : weightedComposite >= 75 ? "B" : weightedComposite >= 65 ? "C" : "D";
+  const TIER_BADGE: Record<string, { bg: string; fg: string; label: string }> = {
+    A: { bg: "#e6f7ef", fg: "#0ea66e", label: "A (Tier 1)" },
+    B: { bg: "#eaf0ff", fg: "#174be8", label: "B (Tier 2)" },
+    C: { bg: "#fff6dc", fg: "#b8860b", label: "C (Tier 3)" },
+    D: { bg: "#ffeede", fg: "#ea580c", label: "D (Tier 4)" },
+  };
+  const tierBadge = TIER_BADGE[displayTier];
+  const opportunityLabel =
+    displayTier === "A" ? "Excellent Opportunity" :
+    displayTier === "B" ? "Strong Opportunity" :
+    displayTier === "C" ? "Moderate Opportunity" : "Limited Opportunity";
+
   const SIGNAL_ICONS: Record<string, typeof Users> = {
     competitor_count: Trophy,
     elementary_school_count: GraduationCap,

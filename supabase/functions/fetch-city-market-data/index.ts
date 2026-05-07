@@ -138,13 +138,11 @@ async function fetchAllApify(city: string, state: string) {
   if (!token) return null
   const actorId = normalizeActorId(Deno.env.get('APIFY_GOOGLE_MAPS_ACTOR_ID') ?? 'compass/crawler-google-places')
 
-  const groups = await Promise.all([
-    runApifySearch(actorId, token, city, state, QUERY_GROUPS.schools(city, state)),
-    runApifySearch(actorId, token, city, state, QUERY_GROUPS.pricing(city, state)),
-    runApifySearch(actorId, token, city, state, QUERY_GROUPS.competitors(city, state)),
-    runApifySearch(actorId, token, city, state, QUERY_GROUPS.rentals(city, state)),
-    runApifySearch(actorId, token, city, state, QUERY_GROUPS.parent(city, state)),
-  ])
+  // Sequential to avoid Apify concurrent memory limits
+  const groups: ApifyResult[] = []
+  for (const fn of [QUERY_GROUPS.schools, QUERY_GROUPS.pricing, QUERY_GROUPS.competitors, QUERY_GROUPS.rentals, QUERY_GROUPS.parent]) {
+    groups.push(await runApifySearch(actorId, token, city, state, fn(city, state)))
+  }
   const errors = groups.map((g) => g.error).filter(Boolean) as string[]
   const all: Item[] = []
   const seen = new Set<string>()

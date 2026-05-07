@@ -108,9 +108,9 @@ const CityScoring = () => {
   const [tierFilter, setTierFilter] = useState("All");
   const [nonRegOnly, setNonRegOnly] = useState(false);
 
-  const [weights, setWeights] = useState<Record<CategoryKey, number>>(
-    CATEGORIES.reduce((acc, c) => ({ ...acc, [c.key]: c.defaultWeight }), {} as Record<CategoryKey, number>)
-  );
+  const defaultWeights = CATEGORIES.reduce((acc, c) => ({ ...acc, [c.key]: c.defaultWeight }), {} as Record<CategoryKey, number>);
+  const [weights, setWeights] = useState<Record<CategoryKey, number>>(defaultWeights);
+  const [appliedWeights, setAppliedWeights] = useState<Record<CategoryKey, number>>(defaultWeights);
   const [customCriteria, setCustomCriteria] = useState<Array<{ name: string; category: string; weight: number; source: string; notes: string }>>([]);
   const [addCritOpen, setAddCritOpen] = useState(false);
 

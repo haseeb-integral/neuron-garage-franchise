@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Download, Tag, ArrowRight, X } from "lucide-react";
+import { Download, Tag, MailPlus, X } from "lucide-react";
 
 interface Props {
   count: number;
@@ -24,7 +24,7 @@ export function BulkActionBar({ count, onExport, onAddTag, onPromote, onClear }:
         <Tag size={14} /> Add Tag
       </Button>
       <Button size="sm" onClick={onPromote} className="h-8 rounded-lg bg-[#174be8] text-white shadow-none hover:bg-[#123fc5]">
-        <ArrowRight size={14} /> Promote Selected
+        <MailPlus size={14} /> Add to Outreach
       </Button>
       <button onClick={onClear} className="ml-auto p-1 rounded hover:bg-white text-[#66728a]" aria-label="Clear selection">
         <X size={16} />

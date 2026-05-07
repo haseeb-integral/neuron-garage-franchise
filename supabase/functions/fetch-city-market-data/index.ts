@@ -151,7 +151,7 @@ function buildScores(competitorCount: number, firecrawlCount: number) {
 
 async function fetchApifyCompetitors(city: string, state: string, now: string) {
   const token = Deno.env.get('APIFY_API_TOKEN')
-  if (!token) return { rows: [] as CompetitorRow[], error: null as string | null, rawCount: 0 }
+  if (!token) return { rows: [] as CompetitorRow[], error: null as string | null, rawCount: 0, afterFilter: 0, excludedCount: 0 }
 
   const actorId = normalizeActorId(Deno.env.get('APIFY_GOOGLE_MAPS_ACTOR_ID') ?? 'compass/google-maps-scraper')
   const queries = [

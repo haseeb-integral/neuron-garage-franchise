@@ -647,11 +647,20 @@ const CityScoring = () => {
         {/* Center: Selected Market Detail */}
         <div className="min-w-0 rounded-lg bg-white border border-[#eef2f7] p-4">
           <div className="mb-3 flex items-start justify-between gap-3">
-            <h2 className="text-[18px] leading-none font-bold text-[#07142f]">{selected.city}, {selected.state === "Texas" ? "TX" : selected.state === "Florida" ? "FL" : selected.state}</h2>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-[18px] leading-none font-bold text-[#07142f]">{selected.city}, {selected.state === "Texas" ? "TX" : selected.state === "Florida" ? "FL" : selected.state}</h2>
+              {lastScrapedLabel && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#e6f7ef] px-2 py-0.5 text-[10px] font-semibold text-[#0ea66e]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#0ea66e]" />
+                  Live data refreshed {lastScrapedLabel}
+                </span>
+              )}
+            </div>
             <button className="flex items-center gap-1 text-[11px] font-medium text-[#174be8] hover:underline whitespace-nowrap">
               <Star size={12} /> Add to Watchlist
             </button>
           </div>
+
 
           <div className="grid grid-cols-[150px_1fr] gap-3 items-start">
             <div className="flex flex-col items-center text-center pt-1">

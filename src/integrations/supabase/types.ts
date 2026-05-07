@@ -276,6 +276,257 @@ export type Database = {
         }
         Relationships: []
       }
+      cities: {
+        Row: {
+          children_pct: number | null
+          city: string
+          competitor_count: number
+          composite_score: number
+          county: string | null
+          created_at: string
+          elementary_schools: number | null
+          id: string
+          is_non_registration: boolean
+          last_scraped_at: string | null
+          market_type: string
+          median_income: number | null
+          metro_area: string | null
+          notes: string | null
+          population: number | null
+          state: string
+          tier: string
+          updated_at: string
+        }
+        Insert: {
+          children_pct?: number | null
+          city: string
+          competitor_count?: number
+          composite_score?: number
+          county?: string | null
+          created_at?: string
+          elementary_schools?: number | null
+          id?: string
+          is_non_registration?: boolean
+          last_scraped_at?: string | null
+          market_type?: string
+          median_income?: number | null
+          metro_area?: string | null
+          notes?: string | null
+          population?: number | null
+          state: string
+          tier?: string
+          updated_at?: string
+        }
+        Update: {
+          children_pct?: number | null
+          city?: string
+          competitor_count?: number
+          composite_score?: number
+          county?: string | null
+          created_at?: string
+          elementary_schools?: number | null
+          id?: string
+          is_non_registration?: boolean
+          last_scraped_at?: string | null
+          market_type?: string
+          median_income?: number | null
+          metro_area?: string | null
+          notes?: string | null
+          population?: number | null
+          state?: string
+          tier?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      city_category_scores: {
+        Row: {
+          category: string
+          city_id: string
+          id: string
+          score: number
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          city_id: string
+          id?: string
+          score: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          city_id?: string
+          id?: string
+          score?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_category_scores_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      city_competitors: {
+        Row: {
+          capacity: number | null
+          city_id: string
+          created_at: string
+          id: string
+          name: string
+          pricing: string | null
+          raw_data: Json | null
+          scraped_at: string | null
+          source: string | null
+          source_url: string | null
+          type: string | null
+        }
+        Insert: {
+          capacity?: number | null
+          city_id: string
+          created_at?: string
+          id?: string
+          name: string
+          pricing?: string | null
+          raw_data?: Json | null
+          scraped_at?: string | null
+          source?: string | null
+          source_url?: string | null
+          type?: string | null
+        }
+        Update: {
+          capacity?: number | null
+          city_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          pricing?: string | null
+          raw_data?: Json | null
+          scraped_at?: string | null
+          source?: string | null
+          source_url?: string | null
+          type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_competitors_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      city_fetch_jobs: {
+        Row: {
+          city: string
+          city_id: string | null
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          request_payload: Json | null
+          response_summary: Json | null
+          source: string
+          started_at: string | null
+          state: string
+          status: string
+        }
+        Insert: {
+          city: string
+          city_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          request_payload?: Json | null
+          response_summary?: Json | null
+          source: string
+          started_at?: string | null
+          state: string
+          status?: string
+        }
+        Update: {
+          city?: string
+          city_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          request_payload?: Json | null
+          response_summary?: Json | null
+          source?: string
+          started_at?: string | null
+          state?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_fetch_jobs_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      city_market_signals: {
+        Row: {
+          city_id: string
+          confidence: number | null
+          delta: string | null
+          delta_type: string | null
+          id: string
+          label: string
+          raw_data: Json | null
+          signal_key: string
+          source: string | null
+          source_url: string | null
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          city_id: string
+          confidence?: number | null
+          delta?: string | null
+          delta_type?: string | null
+          id?: string
+          label: string
+          raw_data?: Json | null
+          signal_key: string
+          source?: string | null
+          source_url?: string | null
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          city_id?: string
+          confidence?: number | null
+          delta?: string | null
+          delta_type?: string | null
+          id?: string
+          label?: string
+          raw_data?: Json | null
+          signal_key?: string
+          source?: string | null
+          source_url?: string | null
+          updated_at?: string
+          value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_market_signals_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onboarding_records: {
         Row: {
           candidate_id: string | null

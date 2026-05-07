@@ -1,14 +1,4 @@
-# City Search — Database Migration (Approved, Re-runnable)
-
-Schema-only migration with idempotent triggers and policies. Safe to re-run.
-
-## SQL to run
-
-```sql
--- =========================
 -- TABLES
--- =========================
-
 CREATE TABLE IF NOT EXISTS public.cities (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   city TEXT NOT NULL,
@@ -85,10 +75,7 @@ CREATE TABLE IF NOT EXISTS public.city_fetch_jobs (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- =========================
 -- INDEXES
--- =========================
-
 CREATE INDEX IF NOT EXISTS idx_cities_state ON public.cities(state);
 CREATE INDEX IF NOT EXISTS idx_cities_tier ON public.cities(tier);
 CREATE INDEX IF NOT EXISTS idx_cities_composite_score ON public.cities(composite_score DESC);
@@ -98,10 +85,7 @@ CREATE INDEX IF NOT EXISTS idx_city_market_signals_city_id ON public.city_market
 CREATE INDEX IF NOT EXISTS idx_city_fetch_jobs_city_id ON public.city_fetch_jobs(city_id);
 CREATE INDEX IF NOT EXISTS idx_city_fetch_jobs_status ON public.city_fetch_jobs(status);
 
--- =========================
--- updated_at TRIGGERS (idempotent)
--- =========================
-
+-- TRIGGERS
 DROP TRIGGER IF EXISTS trg_cities_updated_at ON public.cities;
 CREATE TRIGGER trg_cities_updated_at
   BEFORE UPDATE ON public.cities
@@ -117,17 +101,13 @@ CREATE TRIGGER trg_city_market_signals_updated_at
   BEFORE UPDATE ON public.city_market_signals
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
--- =========================
--- ROW LEVEL SECURITY
--- =========================
-
+-- RLS
 ALTER TABLE public.cities                ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.city_category_scores  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.city_competitors      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.city_market_signals   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.city_fetch_jobs       ENABLE ROW LEVEL SECURITY;
 
--- cities
 DROP POLICY IF EXISTS "Authenticated can view cities"   ON public.cities;
 DROP POLICY IF EXISTS "Authenticated can insert cities" ON public.cities;
 DROP POLICY IF EXISTS "Authenticated can update cities" ON public.cities;
@@ -137,7 +117,6 @@ CREATE POLICY "Authenticated can insert cities" ON public.cities FOR INSERT TO a
 CREATE POLICY "Authenticated can update cities" ON public.cities FOR UPDATE TO authenticated USING (true);
 CREATE POLICY "Authenticated can delete cities" ON public.cities FOR DELETE TO authenticated USING (true);
 
--- city_category_scores
 DROP POLICY IF EXISTS "Authenticated can view category scores"   ON public.city_category_scores;
 DROP POLICY IF EXISTS "Authenticated can insert category scores" ON public.city_category_scores;
 DROP POLICY IF EXISTS "Authenticated can update category scores" ON public.city_category_scores;
@@ -147,7 +126,6 @@ CREATE POLICY "Authenticated can insert category scores" ON public.city_category
 CREATE POLICY "Authenticated can update category scores" ON public.city_category_scores FOR UPDATE TO authenticated USING (true);
 CREATE POLICY "Authenticated can delete category scores" ON public.city_category_scores FOR DELETE TO authenticated USING (true);
 
--- city_competitors
 DROP POLICY IF EXISTS "Authenticated can view competitors"   ON public.city_competitors;
 DROP POLICY IF EXISTS "Authenticated can insert competitors" ON public.city_competitors;
 DROP POLICY IF EXISTS "Authenticated can update competitors" ON public.city_competitors;
@@ -157,7 +135,6 @@ CREATE POLICY "Authenticated can insert competitors" ON public.city_competitors 
 CREATE POLICY "Authenticated can update competitors" ON public.city_competitors FOR UPDATE TO authenticated USING (true);
 CREATE POLICY "Authenticated can delete competitors" ON public.city_competitors FOR DELETE TO authenticated USING (true);
 
--- city_market_signals
 DROP POLICY IF EXISTS "Authenticated can view market signals"   ON public.city_market_signals;
 DROP POLICY IF EXISTS "Authenticated can insert market signals" ON public.city_market_signals;
 DROP POLICY IF EXISTS "Authenticated can update market signals" ON public.city_market_signals;
@@ -167,7 +144,6 @@ CREATE POLICY "Authenticated can insert market signals" ON public.city_market_si
 CREATE POLICY "Authenticated can update market signals" ON public.city_market_signals FOR UPDATE TO authenticated USING (true);
 CREATE POLICY "Authenticated can delete market signals" ON public.city_market_signals FOR DELETE TO authenticated USING (true);
 
--- city_fetch_jobs
 DROP POLICY IF EXISTS "Authenticated can view fetch jobs"   ON public.city_fetch_jobs;
 DROP POLICY IF EXISTS "Authenticated can insert fetch jobs" ON public.city_fetch_jobs;
 DROP POLICY IF EXISTS "Authenticated can update fetch jobs" ON public.city_fetch_jobs;
@@ -176,8 +152,3 @@ CREATE POLICY "Authenticated can view fetch jobs"   ON public.city_fetch_jobs FO
 CREATE POLICY "Authenticated can insert fetch jobs" ON public.city_fetch_jobs FOR INSERT TO authenticated WITH CHECK (true);
 CREATE POLICY "Authenticated can update fetch jobs" ON public.city_fetch_jobs FOR UPDATE TO authenticated USING (true);
 CREATE POLICY "Authenticated can delete fetch jobs" ON public.city_fetch_jobs FOR DELETE TO authenticated USING (true);
-```
-
-## Approval
-
-You've approved running this migration. Switch me to default mode and I'll run it through Lovable's migration tool (you'll get one more in-chat approval prompt for the SQL itself, which is the standard safety gate).

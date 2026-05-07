@@ -277,35 +277,64 @@ const CityScoring = () => {
 
   const cs = categoryScores(selected);
   const isFriscoMock = selected.city === "Frisco" && selected.state === "Texas";
-  const detailScore = isFriscoMock ? 91 : selected.compositeScore;
-  const detailCategoryScores = isFriscoMock
-    ? {
-        demand: 92,
-        pricingPower: 90,
-        competitiveLandscape: 76,
-        franchiseeSupply: 83,
-        easeOfOperations: 85,
-        parentMindset: 84,
-      }
-    : cs;
 
-  const sigRows = isFriscoMock
-    ? [
-        { icon: Users, label: "Children Ages 5-12", value: "19,842", delta: "+12% vs. nat. avg.", deltaClass: "text-[#8ad1a8]" },
-        { icon: HomeIcon, label: "Households ($100k+)", value: "46%", delta: "+15% vs. nat. avg.", deltaClass: "text-[#8ad1a8]" },
-        { icon: DollarSign, label: "Premium Camp Pricing", value: "$245 / week", delta: "+8%", deltaClass: "text-[#8ad1a8]" },
-        { icon: GraduationCap, label: "Teacher Density", value: "1:475", delta: "20% below nat-avg kts", deltaClass: "text-[#8794ab]" },
-        { icon: Building2, label: "School District Access", value: "High", delta: "Strong availability", deltaClass: "text-[#8794ab]" },
-        { icon: Star, label: "Millennial Density", value: "42%", delta: "+16% vs. avg.", deltaClass: "text-[#8ad1a8]" },
-      ]
-    : [
-        { icon: Users, label: "Children Ages 5-12", value: "19,842", delta: "+12% vs. nat. avg.", deltaClass: "text-[#8ad1a8]" },
-        { icon: HomeIcon, label: "Households ($100k+)", value: "46%", delta: "+15% vs. nat. avg.", deltaClass: "text-[#8ad1a8]" },
-        { icon: DollarSign, label: "Premium Camp Pricing", value: "$245 / week", delta: "+8%", deltaClass: "text-[#8ad1a8]" },
-        { icon: GraduationCap, label: "Teacher Density", value: "1:475", delta: "20% below nat-avg kts", deltaClass: "text-[#8794ab]" },
-        { icon: Building2, label: "School District Access", value: "High", delta: "Strong availability", deltaClass: "text-[#8794ab]" },
-        { icon: Star, label: "Millennial Density", value: "42%", delta: "+16% vs. avg.", deltaClass: "text-[#8ad1a8]" },
-      ];
+  // DB → UI category-key mapping
+  const DB_CAT_TO_UI: Record<string, CategoryKey> = {
+    summer_camp_demand: "demand",
+    dual_income_families: "pricingPower",
+    competition_score: "competitiveLandscape",
+    stem_jobs: "franchiseeSupply",
+    school_density: "easeOfOperations",
+    child_population: "parentMindset",
+  };
+  const liveUiCategoryScores: Partial<Record<CategoryKey, number>> = {};
+  Object.entries(liveCategoryScores).forEach(([k, v]) => {
+    const uiKey = DB_CAT_TO_UI[k];
+    if (uiKey) liveUiCategoryScores[uiKey] = v as number;
+  });
+
+  const detailScore = liveCity?.composite_score
+    ? liveCity.composite_score
+    : isFriscoMock ? 91 : selected.compositeScore;
+
+  const fallbackCats = isFriscoMock
+    ? { demand: 92, pricingPower: 90, competitiveLandscape: 76, franchiseeSupply: 83, easeOfOperations: 85, parentMindset: 84 }
+    : cs;
+  const detailCategoryScores = { ...fallbackCats, ...liveUiCategoryScores } as Record<CategoryKey, number>;
+
+  const SIGNAL_ICONS: Record<string, typeof Users> = {
+    competitor_count: Trophy,
+    source_pages_found: FileText,
+    data_readiness: Star,
+    children_5_12: Users,
+    households_100k: HomeIcon,
+    premium_pricing: DollarSign,
+    teacher_density: GraduationCap,
+    school_access: Building2,
+  };
+
+  const liveSigRows = liveSignals.map((s) => ({
+    icon: SIGNAL_ICONS[s.signal_key] ?? Star,
+    label: s.label,
+    value: s.value,
+    delta: s.delta ?? "",
+    deltaClass: s.delta_type === "positive" ? "text-[#8ad1a8]" : "text-[#8794ab]",
+  }));
+
+  const fallbackSigRows = [
+    { icon: Users, label: "Children Ages 5-12", value: "19,842", delta: "+12% vs. nat. avg.", deltaClass: "text-[#8ad1a8]" },
+    { icon: HomeIcon, label: "Households ($100k+)", value: "46%", delta: "+15% vs. nat. avg.", deltaClass: "text-[#8ad1a8]" },
+    { icon: DollarSign, label: "Premium Camp Pricing", value: "$245 / week", delta: "+8%", deltaClass: "text-[#8ad1a8]" },
+    { icon: GraduationCap, label: "Teacher Density", value: "1:475", delta: "20% below nat-avg kts", deltaClass: "text-[#8794ab]" },
+    { icon: Building2, label: "School District Access", value: "High", delta: "Strong availability", deltaClass: "text-[#8794ab]" },
+    { icon: Star, label: "Millennial Density", value: "42%", delta: "+16% vs. avg.", deltaClass: "text-[#8ad1a8]" },
+  ];
+  const sigRows = liveSigRows.length > 0 ? liveSigRows : fallbackSigRows;
+
+  const lastScrapedAt = liveCity?.last_scraped_at ?? liveJob?.completed_at ?? null;
+  const lastScrapedLabel = lastScrapedAt
+    ? new Date(lastScrapedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+    : null;
 
   return (
     <div className="-mx-3 md:-mx-5 lg:-mx-6 -my-3 px-3 md:px-5 lg:px-6 py-3 min-h-screen bg-white">

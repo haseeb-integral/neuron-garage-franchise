@@ -479,9 +479,11 @@ const CityScoring = () => {
           <Button
             variant="outline"
             className="h-9 border-[#e5eaf2] text-[#14233b] gap-1.5 font-normal"
-            onClick={() => toast.success("Sample data refreshed. Live source refresh will be connected later.")}
+            disabled={refreshingMarket}
+            onClick={handleRefreshData}
           >
-            <RefreshCw size={14} /> Refresh Data
+            <RefreshCw size={14} className={refreshingMarket ? "animate-spin" : ""} />
+            {refreshingMarket ? "Refreshing..." : "Refresh Data"}
           </Button>
         </div>
       </div>

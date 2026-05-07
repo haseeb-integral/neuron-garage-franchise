@@ -242,7 +242,8 @@ const CityScoring = () => {
 
   const applyWeights = () => {
     if (totalWeight !== 100) return;
-    toast.success("Sample scores recalculated.");
+    setAppliedWeights({ ...weights });
+    toast.success("Composite score recalculated from current weights.");
   };
 
   const handleFindTeachers = () => {

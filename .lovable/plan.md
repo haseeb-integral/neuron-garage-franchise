@@ -1,35 +1,59 @@
-## Edge Function: `fetch-city-market-data` (POC skeleton)
+## Goal
+Make the Scoring Weights sliders visibly drive the selected market's composite score in the center detail panel. Default weights match the official model. Frontend-only.
 
-Create a single new file at `supabase/functions/fetch-city-market-data/index.ts`. No frontend changes, no secrets, no external API calls. Lovable auto-deploys on save.
+## Scope confirmation
+- No DB write
+- No Edge Function change
+- No Census/BLS work
 
-### Behavior
+## Changes (all in `src/pages/CityScoring.tsx`)
 
-- **Method:** `POST` (plus `OPTIONS` for CORS preflight)
-- **Auth:** Validate caller JWT via `supabase.auth.getClaims(token)` — same pattern as `admin-create-user` (which uses `getUser`). Return 401 if missing/invalid.
-- **Body validation:** `{ city: string (1–100), state: string (2–50) }`. Return 400 with field errors on bad input.
-- **DB writes** (using `SUPABASE_SERVICE_ROLE_KEY`, matching the existing `admin-create-user` pattern):
-  1. **Upsert `cities`** on `(city, state)` with defaults: `market_type='Suburb'`, `tier='C'`, `composite_score=72`, `population=100000`, `last_scraped_at=now()`, `notes='POC sample data'`. Return the row's `id`.
-  2. **Insert `city_fetch_jobs`**: `{ city_id, city, state, source: 'poc', status: 'completed', started_at, completed_at, response_summary: { mode: 'poc', counts: {...} } }`.
-  3. **Insert 3 sample `city_market_signals`** (delete existing for that `city_id` first to avoid `UNIQUE(city_id, signal_key)` conflicts on re-run): `population_growth`, `median_income_trend`, `school_enrollment` — each with `label`, `value`, `delta`, `delta_type`, `source='poc'`, `confidence=0.5`.
-  4. **Insert 6 sample `city_category_scores`** (delete existing for that `city_id` first): `summer_camp_demand`, `school_density`, `child_population`, `dual_income_families`, `stem_jobs`, `competition_score` — each `score` 60–90.
-  5. **Insert 2 sample `city_competitors`** (delete existing for that `city_id` first to keep re-runs clean): e.g. "Code Ninjas (sample)", "Mathnasium (sample)" with `source='poc'`.
-- **Response (200):** `{ ok: true, city_id, inserted: { signals: 3, scores: 6, competitors: 2, job_id } }`. All errors return JSON with CORS headers.
+### 1. Default weights → official model
+`CATEGORIES.defaultWeight`: demand 25, pricingPower 20, competitiveLandscape 20, franchiseeSupply 15, easeOfOperations 10, parentMindset 10. UI keys already map 1:1 to DB keys via `DB_CAT_TO_UI`.
 
-### Technical notes
+### 2. Add applied-weights state
+`appliedWeights` initialized to defaults. Drives the displayed composite — sliders alone don't change the gauge until Apply is clicked. `resetWeights()` resets both `weights` and `appliedWeights`.
 
-- Imports: `createClient` from `https://esm.sh/@supabase/supabase-js@2.45.0` (matches `admin-create-user`).
-- Inline `corsHeaders` (same shape as existing functions): `Access-Control-Allow-Origin: *`, headers list includes `authorization, x-client-info, apikey, content-type`.
-- Two clients: a user-scoped client (anon key + caller's `Authorization`) for `getClaims`, and a service-role client for writes (bypasses RLS cleanly since the function deploys with `verify_jwt = false`).
-- No `supabase/config.toml` change needed — default `verify_jwt = false` is fine; we validate JWT in code.
-- No new secrets. Uses pre-existing: `SUPABASE_URL`, `SUPABASE_ANON_KEY` (or `SUPABASE_PUBLISHABLE_KEY`), `SUPABASE_SERVICE_ROLE_KEY`.
-- Re-runnable: upsert on cities; delete-then-insert for signals/scores/competitors keyed by `city_id`.
+### 3. Compute weighted composite from visible category scores
+Use `detailCategoryScores` (live DB scores w/ sample fallback) and `appliedWeights`:
 
-### Out of scope (later steps)
-- Apify / Firecrawl / Census calls
-- Adding `APIFY_API_TOKEN`, `FIRECRAWL_API_KEY`, `CENSUS_API_KEY` secrets
-- Frontend wiring on `/city-scoring`
+```ts
+const weightedComposite = appliedTotal > 0
+  ? Math.round(
+      CATEGORIES.reduce((s, c) => s + detailCategoryScores[c.key] * appliedWeights[c.key], 0)
+      / appliedTotal
+    )
+  : detailScore;
+```
 
-### Verification after deploy
-- Confirm file path: `supabase/functions/fetch-city-market-data/index.ts`
-- Check deploy via edge function logs
-- Optional smoke test: invoke with `{ "city": "Frisco", "state": "Texas" }` and report the JSON response + row counts
+Replace `detailScore` in gauge `strokeDasharray` and center text (~lines 690–693) with `weightedComposite`.
+
+### 4. Recompute tier from weighted score (official thresholds)
+- A = 85+
+- B = 75–84
+- C = 65–74
+- D = below 65
+
+Use `tierFromScore(weightedComposite)` for the tier badge near line 703 and its color.
+
+### 5. Apply Weights behavior
+- `applyWeights()`: if `totalWeight === 100`, copy `weights` → `appliedWeights` and toast "Composite score recalculated from current weights."
+- Button disabled when `totalWeight !== 100` (already wired).
+- Existing "Weights must total 100%" warning remains.
+
+### 6. Helper text near the score
+Under "Excellent Opportunity" (~line 695):
+```
+<p className="text-[10px] text-[#8794ab]">Score recalculated from current category weights.</p>
+```
+
+## Out of scope
+- Census / BLS integration
+- Persisting recalculated score to DB
+- Ranked Markets list scores (still uses stored `compositeScore`)
+
+## Test
+1. Frisco, TX with default weights → gauge shows weighted composite of live category scores.
+2. Move Demand=50, others=10 each → Apply → gauge + tier update; helper text visible.
+3. Total ≠ 100 → Apply disabled, warning shown, gauge unchanged.
+4. Reset to Default → returns to official-model composite.

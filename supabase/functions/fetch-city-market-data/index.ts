@@ -192,18 +192,150 @@ async function fetchFirecrawlSignals(city: string, state: string) {
 
 function clamp(n: number, lo = 40, hi = 98) { return Math.max(lo, Math.min(hi, Math.round(n))) }
 
+// ---- Census ACS 5-year ----
+type CensusData = {
+  total_population: number | null
+  median_household_income: number | null
+  children_under_18: number | null
+  children_pct: number | null
+  bachelors_plus_pct: number | null
+  income_100k_plus_pct: number | null
+  income_150k_plus_pct: number | null
+  state_fips: string | null
+  place_fips: string | null
+  source_url: string | null
+}
+
+const STATE_FIPS: Record<string, string> = {
+  AL:'01',AK:'02',AZ:'04',AR:'05',CA:'06',CO:'08',CT:'09',DE:'10',DC:'11',FL:'12',GA:'13',HI:'15',ID:'16',IL:'17',IN:'18',IA:'19',KS:'20',KY:'21',LA:'22',ME:'23',MD:'24',MA:'25',MI:'26',MN:'27',MS:'28',MO:'29',MT:'30',NE:'31',NV:'32',NH:'33',NJ:'34',NM:'35',NY:'36',NC:'37',ND:'38',OH:'39',OK:'40',OR:'41',PA:'42',RI:'44',SC:'45',SD:'46',TN:'47',TX:'48',UT:'49',VT:'50',VA:'51',WA:'53',WV:'54',WI:'55',WY:'56',PR:'72'
+}
+const STATE_NAME_TO_ABBR: Record<string, string> = {
+  alabama:'AL',alaska:'AK',arizona:'AZ',arkansas:'AR',california:'CA',colorado:'CO',connecticut:'CT',delaware:'DE','district of columbia':'DC',florida:'FL',georgia:'GA',hawaii:'HI',idaho:'ID',illinois:'IL',indiana:'IN',iowa:'IA',kansas:'KS',kentucky:'KY',louisiana:'LA',maine:'ME',maryland:'MD',massachusetts:'MA',michigan:'MI',minnesota:'MN',mississippi:'MS',missouri:'MO',montana:'MT',nebraska:'NE',nevada:'NV','new hampshire':'NH','new jersey':'NJ','new mexico':'NM','new york':'NY','north carolina':'NC','north dakota':'ND',ohio:'OH',oklahoma:'OK',oregon:'OR',pennsylvania:'PA','rhode island':'RI','south carolina':'SC','south dakota':'SD',tennessee:'TN',texas:'TX',utah:'UT',vermont:'VT',virginia:'VA',washington:'WA','west virginia':'WV',wisconsin:'WI',wyoming:'WY'
+}
+
+function resolveStateAbbr(state: string): string | null {
+  const s = state.trim()
+  if (s.length === 2) return s.toUpperCase() in STATE_FIPS ? s.toUpperCase() : null
+  return STATE_NAME_TO_ABBR[s.toLowerCase()] ?? null
+}
+
+async function fetchCensus(city: string, state: string): Promise<{ data: CensusData | null; error: string | null }> {
+  const key = Deno.env.get('CENSUS_API_KEY')
+  if (!key) return { data: null, error: 'CENSUS_API_KEY missing' }
+  const abbr = resolveStateAbbr(state)
+  if (!abbr) return { data: null, error: `Unknown state: ${state}` }
+  const stateFips = STATE_FIPS[abbr]
+
+  try {
+    // 1. Find place FIPS by name match within state
+    const placeListUrl = `https://api.census.gov/data/2022/acs/acs5?get=NAME&for=place:*&in=state:${stateFips}&key=${key}`
+    const listRes = await fetch(placeListUrl)
+    if (!listRes.ok) return { data: null, error: `Census place list ${listRes.status}` }
+    const listData = await listRes.json() as string[][]
+    const target = city.toLowerCase().trim()
+    let placeFips: string | null = null
+    let matchedName: string | null = null
+    // header is row 0
+    for (let i = 1; i < listData.length; i++) {
+      const [name, , place] = listData[i]
+      const nm = name.toLowerCase()
+      // matches "Frisco city, Texas" or "Frisco town, Texas"
+      if (nm.startsWith(target + ' city,') || nm.startsWith(target + ' town,') || nm.startsWith(target + ' cdp,') || nm.startsWith(target + ' village,')) {
+        placeFips = place; matchedName = name; break
+      }
+    }
+    if (!placeFips) {
+      // looser match
+      for (let i = 1; i < listData.length; i++) {
+        const [name, , place] = listData[i]
+        if (name.toLowerCase().startsWith(target + ' ')) { placeFips = place; matchedName = name; break }
+      }
+    }
+    if (!placeFips) return { data: null, error: `Place not found: ${city}, ${abbr}` }
+
+    // 2. Fetch ACS variables
+    const vars = [
+      'B01003_001E', // total pop
+      'B19013_001E', // median household income
+      'B09001_001E', // population under 18
+      'B15003_001E', // total 25+
+      'B15003_022E', // bachelor's
+      'B15003_023E', // master's
+      'B15003_024E', // professional
+      'B15003_025E', // doctorate
+      'B19001_001E', // total households
+      'B19001_014E', // 100-125k
+      'B19001_015E', // 125-150k
+      'B19001_016E', // 150-200k
+      'B19001_017E', // 200k+
+    ]
+    const dataUrl = `https://api.census.gov/data/2022/acs/acs5?get=${vars.join(',')}&for=place:${placeFips}&in=state:${stateFips}&key=${key}`
+    const dataRes = await fetch(dataUrl)
+    if (!dataRes.ok) return { data: null, error: `Census ACS ${dataRes.status}` }
+    const arr = await dataRes.json() as string[][]
+    const row = arr[1]
+    const num = (v: string) => { const n = Number(v); return Number.isFinite(n) && n >= 0 ? n : null }
+    const totalPop = num(row[0])
+    const medianIncome = num(row[1])
+    const under18 = num(row[2])
+    const total25 = num(row[3])
+    const bachPlus = (num(row[4]) ?? 0) + (num(row[5]) ?? 0) + (num(row[6]) ?? 0) + (num(row[7]) ?? 0)
+    const totalHH = num(row[8])
+    const hh100_125 = num(row[9]) ?? 0
+    const hh125_150 = num(row[10]) ?? 0
+    const hh150_200 = num(row[11]) ?? 0
+    const hh200p = num(row[12]) ?? 0
+    const income100plus = hh100_125 + hh125_150 + hh150_200 + hh200p
+    const income150plus = hh150_200 + hh200p
+
+    return {
+      data: {
+        total_population: totalPop,
+        median_household_income: medianIncome,
+        children_under_18: under18,
+        children_pct: totalPop && under18 ? Math.round((under18 / totalPop) * 1000) / 10 : null,
+        bachelors_plus_pct: total25 && total25 > 0 ? Math.round((bachPlus / total25) * 1000) / 10 : null,
+        income_100k_plus_pct: totalHH && totalHH > 0 ? Math.round((income100plus / totalHH) * 1000) / 10 : null,
+        income_150k_plus_pct: totalHH && totalHH > 0 ? Math.round((income150plus / totalHH) * 1000) / 10 : null,
+        state_fips: stateFips,
+        place_fips: placeFips,
+        source_url: `https://api.census.gov/data/2022/acs/acs5?get=NAME&for=place:${placeFips}&in=state:${stateFips}`,
+      },
+      error: null,
+    }
+  } catch (e) {
+    return { data: null, error: (e as Error).message }
+  }
+}
+
 function computeCategoryScores(b: {
   elementary: number; private_: number; preschool: number;
   competitors: number; stem: number; rentals: number; parent: number; firecrawl: number;
+  census: CensusData | null;
 }) {
-  // Heuristic, bounded scoring
+  const c = b.census
+  // Census-driven boosts (bounded contributions)
+  // Demand: population scale + children share
+  let demandBoost = 0
+  if (c?.total_population) demandBoost += Math.min(15, Math.log10(Math.max(1, c.total_population)) * 2.5)
+  if (c?.children_pct) demandBoost += Math.min(10, (c.children_pct - 18) * 0.8) // 18% baseline
+  // Pricing power: median income + premium income share
+  let priceBoost = 0
+  if (c?.median_household_income) priceBoost += Math.min(20, (c.median_household_income - 60000) / 4000)
+  if (c?.income_100k_plus_pct) priceBoost += Math.min(10, (c.income_100k_plus_pct - 25) * 0.4)
+  if (c?.income_150k_plus_pct) priceBoost += Math.min(8, (c.income_150k_plus_pct - 10) * 0.5)
+  // Parent mindset: education + children
+  let mindsetBoost = 0
+  if (c?.bachelors_plus_pct) mindsetBoost += Math.min(20, (c.bachelors_plus_pct - 30) * 0.6)
+  if (c?.children_pct) mindsetBoost += Math.min(6, (c.children_pct - 18) * 0.4)
+
   return {
-    demand: clamp(55 + b.elementary * 4 + b.preschool * 2 + b.firecrawl * 1.5),
-    pricing_power: clamp(55 + b.private_ * 6 + b.parent * 1.5),
-    competitive_landscape: clamp(95 - b.competitors * 3 - b.stem * 1.5), // higher = less saturated
+    demand: clamp(50 + b.elementary * 3 + b.preschool * 1.5 + b.firecrawl * 1 + demandBoost),
+    pricing_power: clamp(45 + b.private_ * 4 + b.parent * 1 + priceBoost),
+    competitive_landscape: clamp(95 - b.competitors * 3 - b.stem * 1.5),
     franchisee_supply: clamp(55 + b.elementary * 3 + b.private_ * 2),
     ease_of_operations: clamp(55 + b.rentals * 4),
-    parent_mindset: clamp(55 + b.parent * 4 + b.private_ * 2 + b.firecrawl * 1),
+    parent_mindset: clamp(50 + b.parent * 3 + b.private_ * 1.5 + b.firecrawl * 0.5 + mindsetBoost),
   }
 }
 

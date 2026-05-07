@@ -40,12 +40,25 @@ function normalizeActorId(actorId: string) {
   return actorId.includes('/') ? actorId.replace('/', '~') : actorId
 }
 
+function competitorText(item: Record<string, unknown>) {
+  return `${item.title ?? ''} ${item.name ?? ''} ${item.categoryName ?? ''} ${Array.isArray(item.categories) ? (item.categories as unknown[]).join(' ') : item.categories ?? ''} ${item.description ?? ''}`.toLowerCase()
+}
+
+const INCLUDE_KEYWORDS = ['coding','code','robotics','robot','stem','maker','technology','computer','tutoring','math','camp','enrichment','science','kids','children','after school','after-school','learning center']
+const EXCLUDE_KEYWORDS = ['sports store','sporting goods','golf','pga','soccer','baseball','basketball','fitness','gym','retail','academy sports','coaching center','apparel']
+
+function isRelevantCompetitor(item: Record<string, unknown>) {
+  const text = competitorText(item)
+  if (EXCLUDE_KEYWORDS.some((k) => text.includes(k))) return false
+  return INCLUDE_KEYWORDS.some((k) => text.includes(k))
+}
+
 function inferCompetitorType(item: Record<string, unknown>) {
-  const text = `${item.title ?? ''} ${item.name ?? ''} ${item.categoryName ?? ''} ${item.categories ?? ''}`.toLowerCase()
+  const text = competitorText(item)
   if (text.includes('coding') || text.includes('robot') || text.includes('stem')) return 'STEM / Coding Program'
   if (text.includes('math')) return 'Math / STEM Tutoring'
   if (text.includes('camp')) return 'Summer Camp'
-  if (text.includes('school')) return 'School / Enrichment'
+  if (text.includes('school') || text.includes('learning center')) return 'School / Enrichment'
   return 'Youth Enrichment'
 }
 

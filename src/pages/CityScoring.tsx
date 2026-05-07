@@ -108,9 +108,9 @@ const CityScoring = () => {
   const [tierFilter, setTierFilter] = useState("All");
   const [nonRegOnly, setNonRegOnly] = useState(false);
 
-  const [weights, setWeights] = useState<Record<CategoryKey, number>>(
-    CATEGORIES.reduce((acc, c) => ({ ...acc, [c.key]: c.defaultWeight }), {} as Record<CategoryKey, number>)
-  );
+  const defaultWeights = CATEGORIES.reduce((acc, c) => ({ ...acc, [c.key]: c.defaultWeight }), {} as Record<CategoryKey, number>);
+  const [weights, setWeights] = useState<Record<CategoryKey, number>>(defaultWeights);
+  const [appliedWeights, setAppliedWeights] = useState<Record<CategoryKey, number>>(defaultWeights);
   const [customCriteria, setCustomCriteria] = useState<Array<{ name: string; category: string; weight: number; source: string; notes: string }>>([]);
   const [addCritOpen, setAddCritOpen] = useState(false);
 
@@ -200,7 +200,8 @@ const CityScoring = () => {
   const totalWeight = Object.values(weights).reduce((s, v) => s + v, 0);
 
   const resetWeights = () => {
-    setWeights(CATEGORIES.reduce((acc, c) => ({ ...acc, [c.key]: c.defaultWeight }), {} as Record<CategoryKey, number>));
+    setWeights(defaultWeights);
+    setAppliedWeights(defaultWeights);
     toast.success("Weights reset to defaults");
   };
 
@@ -241,7 +242,8 @@ const CityScoring = () => {
 
   const applyWeights = () => {
     if (totalWeight !== 100) return;
-    toast.success("Sample scores recalculated.");
+    setAppliedWeights({ ...weights });
+    toast.success("Composite score recalculated from current weights.");
   };
 
   const handleFindTeachers = () => {
@@ -308,6 +310,27 @@ const CityScoring = () => {
     ? { demand: 92, pricingPower: 90, competitiveLandscape: 76, franchiseeSupply: 83, easeOfOperations: 85, parentMindset: 84 }
     : cs;
   const detailCategoryScores = { ...fallbackCats, ...liveUiCategoryScores } as Record<CategoryKey, number>;
+
+  // Frontend-only weighted composite using applied weights and visible category scores.
+  const appliedTotal = Object.values(appliedWeights).reduce((s, v) => s + v, 0);
+  const weightedComposite = appliedTotal > 0
+    ? Math.round(
+        CATEGORIES.reduce((s, c) => s + (detailCategoryScores[c.key] ?? 0) * appliedWeights[c.key], 0) / appliedTotal
+      )
+    : detailScore;
+  const displayTier: "A" | "B" | "C" | "D" =
+    weightedComposite >= 85 ? "A" : weightedComposite >= 75 ? "B" : weightedComposite >= 65 ? "C" : "D";
+  const TIER_BADGE: Record<string, { bg: string; fg: string; label: string }> = {
+    A: { bg: "#e6f7ef", fg: "#0ea66e", label: "A (Tier 1)" },
+    B: { bg: "#eaf0ff", fg: "#174be8", label: "B (Tier 2)" },
+    C: { bg: "#fff6dc", fg: "#b8860b", label: "C (Tier 3)" },
+    D: { bg: "#ffeede", fg: "#ea580c", label: "D (Tier 4)" },
+  };
+  const tierBadge = TIER_BADGE[displayTier];
+  const opportunityLabel =
+    displayTier === "A" ? "Excellent Opportunity" :
+    displayTier === "B" ? "Strong Opportunity" :
+    displayTier === "C" ? "Moderate Opportunity" : "Limited Opportunity";
 
   const SIGNAL_ICONS: Record<string, typeof Users> = {
     competitor_count: Trophy,
@@ -687,12 +710,13 @@ const CityScoring = () => {
                   stroke="#0ea66e"
                   strokeWidth="14"
                   strokeLinecap="round"
-                  strokeDasharray={`${(detailScore / 100) * 236} 236`}
+                  strokeDasharray={`${(weightedComposite / 100) * 236} 236`}
                 />
-                <text x="100" y="76" textAnchor="middle" className="fill-[#07142f]" style={{ fontSize: 32, fontWeight: 800 }}>{detailScore}</text>
+                <text x="100" y="76" textAnchor="middle" className="fill-[#07142f]" style={{ fontSize: 32, fontWeight: 800 }}>{weightedComposite}</text>
                 <text x="100" y="102" textAnchor="middle" className="fill-[#7e8aa3]" style={{ fontSize: 12, fontWeight: 600 }}>/100</text>
               </svg>
-              <p className="-mt-1 text-[12px] font-semibold text-[#0ea66e]">Excellent Opportunity</p>
+              <p className="-mt-1 text-[12px] font-semibold" style={{ color: tierBadge.fg }}>{opportunityLabel}</p>
+              <p className="text-[10px] text-[#8794ab]">Score recalculated from current category weights.</p>
             </div>
 
             <div className="space-y-2.5 pt-1 min-w-0">
@@ -700,7 +724,7 @@ const CityScoring = () => {
                 <div className="flex items-center gap-x-4 gap-y-1.5 flex-wrap">
                   <div className="flex items-center gap-2">
                     <span className="text-[#6b7a96]">Tier</span>
-                    <span className="rounded-full bg-[#e6f7ef] px-2 py-0.5 text-[10.5px] font-semibold leading-tight text-[#0ea66e]">{selected.tier} (Tier 1)</span>
+                    <span className="rounded-full px-2 py-0.5 text-[10.5px] font-semibold leading-tight" style={{ backgroundColor: tierBadge.bg, color: tierBadge.fg }}>{tierBadge.label}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[#6b7a96]">Market Type</span>

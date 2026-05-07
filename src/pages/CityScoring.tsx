@@ -117,6 +117,13 @@ const CityScoring = () => {
   const [selectedId, setSelectedId] = useState<number>(sampleCities[0]?.id ?? 1);
   const [selectedForCompare, setSelectedForCompare] = useState<number[]>([]);
   const [refreshingMarket, setRefreshingMarket] = useState(false);
+
+  // Live DB-backed data for the selected market (falls back to sample data when missing)
+  const [liveCity, setLiveCity] = useState<any | null>(null);
+  const [liveSignals, setLiveSignals] = useState<any[]>([]);
+  const [liveCategoryScores, setLiveCategoryScores] = useState<Record<string, number>>({});
+  const [liveCompetitors, setLiveCompetitors] = useState<any[]>([]);
+  const [liveJob, setLiveJob] = useState<any | null>(null);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);

@@ -475,6 +475,7 @@ Deno.serve(async (req) => {
       parent: parentItems.length,
       firecrawl: firecrawl.count,
       census: censusData,
+      bls: blsData,
     }
     const cat = computeCategoryScores(scoreInputs)
     const categoryWeights = { demand: 0.25, pricing_power: 0.20, competitive_landscape: 0.20, franchisee_supply: 0.15, ease_of_operations: 0.10, parent_mindset: 0.10 }
@@ -512,7 +513,16 @@ Deno.serve(async (req) => {
       { signal_key: 'education_bachelors_plus_proxy', label: "Bachelor's Degree or Higher (25+)", value: censusData.bachelors_plus_pct != null ? `${censusData.bachelors_plus_pct}%` : 'N/A', delta: null, delta_type: 'neutral', source: 'census', source_url: censusData.source_url, confidence: 0.9, raw_data: { mode, pct: censusData.bachelors_plus_pct } },
       { signal_key: 'census_data_readiness', label: 'Census Data', value: 'Connected (ACS 2022 5-yr)', delta: null, delta_type: 'up', source: 'census', source_url: censusData.source_url, confidence: 0.95, raw_data: { mode, place_fips: censusData.place_fips, state_fips: censusData.state_fips } },
     ] : [
-      { signal_key: 'census_data_readiness', label: 'Census Data', value: censusError ? `Unavailable (${censusError})` : 'Unavailable', delta: null, delta_type: 'down', source: 'census', source_url: null, confidence: 0.3, raw_data: { mode, error: censusError } },
+    ]
+
+    const fmtUSD = (n: number | null) => n != null ? `$${n.toLocaleString()}` : 'N/A'
+    const blsSignals = blsData ? [
+      { signal_key: 'teacher_salary_proxy', label: 'Elementary Teacher Mean Wage (BLS state)', value: fmtUSD(blsData.teacher_mean_wage), delta: null, delta_type: 'neutral', source: 'bls', source_url: blsData.source_url, confidence: 0.8, raw_data: { soc: '25-2021', area: blsData.area_code, value: blsData.teacher_mean_wage, series: blsData.series_used[0] } },
+      { signal_key: 'education_labor_market_proxy', label: 'Childcare Worker Mean Wage (BLS state)', value: fmtUSD(blsData.childcare_mean_wage), delta: null, delta_type: 'neutral', source: 'bls', source_url: blsData.source_url, confidence: 0.75, raw_data: { soc: '39-9011', area: blsData.area_code, value: blsData.childcare_mean_wage, series: blsData.series_used[1] } },
+      { signal_key: 'guide_wage_proxy', label: 'Recreation Worker Mean Wage (camp guide proxy)', value: fmtUSD(blsData.recreation_mean_wage), delta: null, delta_type: 'neutral', source: 'bls', source_url: blsData.source_url, confidence: 0.7, raw_data: { soc: '39-9032', area: blsData.area_code, value: blsData.recreation_mean_wage, series: blsData.series_used[2] } },
+      { signal_key: 'bls_data_readiness', label: 'BLS OEWS Data', value: 'Connected (state OEWS)', delta: null, delta_type: 'up', source: 'bls', source_url: blsData.source_url, confidence: 0.9, raw_data: { area_code: blsData.area_code, state_fips: blsData.state_fips, series: blsData.series_used } },
+    ] : [
+      { signal_key: 'bls_data_readiness', label: 'BLS OEWS Data', value: blsError ? `Unavailable (${blsError})` : 'Unavailable', delta: null, delta_type: 'down', source: 'bls', source_url: null, confidence: 0.3, raw_data: { error: blsError } },
     ]
 
     const baseSignals = [
@@ -526,7 +536,7 @@ Deno.serve(async (req) => {
       { signal_key: 'firecrawl_source_pages', label: 'Source Pages Found', value: String(firecrawl.count), delta: null, delta_type: firecrawl.count > 0 ? 'up' : 'neutral', source: mode, source_url: null, confidence: 0.5, raw_data: { mode } },
       { signal_key: 'data_readiness', label: 'Data Readiness', value: mode === 'live_api' ? 'Live API Connected' : 'POC Sample', delta: null, delta_type: mode === 'live_api' ? 'up' : 'neutral', source: mode, source_url: null, confidence: 0.7, raw_data: { mode } },
     ]
-    const signals = [...baseSignals, ...censusSignals]
+    const signals = [...baseSignals, ...censusSignals, ...blsSignals]
     const { error: sErr } = await admin.from('city_market_signals').insert(signals.map((r) => ({ ...r, city_id: cityId })))
     if (sErr) return json({ error: 'Failed to insert signals', detail: sErr.message }, 500)
 

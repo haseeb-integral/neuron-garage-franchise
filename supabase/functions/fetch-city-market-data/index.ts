@@ -194,7 +194,7 @@ async function fetchApifyCompetitors(city: string, state: string, now: string) {
       .slice(0, 20)
     return { rows, error: null as string | null, rawCount: items.length, afterFilter: relevant.length, excludedCount }
   } catch (e) {
-    return { rows: [] as CompetitorRow[], error: (e as Error).message, rawCount: 0 }
+    return { rows: [] as CompetitorRow[], error: (e as Error).message, rawCount: 0, afterFilter: 0, excludedCount: 0 }
   }
 }
 

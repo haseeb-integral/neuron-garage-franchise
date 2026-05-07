@@ -280,6 +280,13 @@ const CityScoring = () => {
 
   // DB → UI category-key mapping
   const DB_CAT_TO_UI: Record<string, CategoryKey> = {
+    demand: "demand",
+    pricing_power: "pricingPower",
+    competitive_landscape: "competitiveLandscape",
+    franchisee_supply: "franchiseeSupply",
+    ease_of_operations: "easeOfOperations",
+    parent_mindset: "parentMindset",
+    // Legacy keys (back-compat)
     summer_camp_demand: "demand",
     dual_income_families: "pricingPower",
     competition_score: "competitiveLandscape",

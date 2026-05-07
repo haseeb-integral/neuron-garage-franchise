@@ -1,183 +1,35 @@
-# City Search — Database Migration (Approved, Re-runnable)
+## Edge Function: `fetch-city-market-data` (POC skeleton)
 
-Schema-only migration with idempotent triggers and policies. Safe to re-run.
+Create a single new file at `supabase/functions/fetch-city-market-data/index.ts`. No frontend changes, no secrets, no external API calls. Lovable auto-deploys on save.
 
-## SQL to run
+### Behavior
 
-```sql
--- =========================
--- TABLES
--- =========================
+- **Method:** `POST` (plus `OPTIONS` for CORS preflight)
+- **Auth:** Validate caller JWT via `supabase.auth.getClaims(token)` — same pattern as `admin-create-user` (which uses `getUser`). Return 401 if missing/invalid.
+- **Body validation:** `{ city: string (1–100), state: string (2–50) }`. Return 400 with field errors on bad input.
+- **DB writes** (using `SUPABASE_SERVICE_ROLE_KEY`, matching the existing `admin-create-user` pattern):
+  1. **Upsert `cities`** on `(city, state)` with defaults: `market_type='Suburb'`, `tier='C'`, `composite_score=72`, `population=100000`, `last_scraped_at=now()`, `notes='POC sample data'`. Return the row's `id`.
+  2. **Insert `city_fetch_jobs`**: `{ city_id, city, state, source: 'poc', status: 'completed', started_at, completed_at, response_summary: { mode: 'poc', counts: {...} } }`.
+  3. **Insert 3 sample `city_market_signals`** (delete existing for that `city_id` first to avoid `UNIQUE(city_id, signal_key)` conflicts on re-run): `population_growth`, `median_income_trend`, `school_enrollment` — each with `label`, `value`, `delta`, `delta_type`, `source='poc'`, `confidence=0.5`.
+  4. **Insert 6 sample `city_category_scores`** (delete existing for that `city_id` first): `summer_camp_demand`, `school_density`, `child_population`, `dual_income_families`, `stem_jobs`, `competition_score` — each `score` 60–90.
+  5. **Insert 2 sample `city_competitors`** (delete existing for that `city_id` first to keep re-runs clean): e.g. "Code Ninjas (sample)", "Mathnasium (sample)" with `source='poc'`.
+- **Response (200):** `{ ok: true, city_id, inserted: { signals: 3, scores: 6, competitors: 2, job_id } }`. All errors return JSON with CORS headers.
 
-CREATE TABLE IF NOT EXISTS public.cities (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  city TEXT NOT NULL,
-  state TEXT NOT NULL,
-  metro_area TEXT,
-  county TEXT,
-  market_type TEXT NOT NULL DEFAULT 'Suburb',
-  tier TEXT NOT NULL DEFAULT 'C',
-  composite_score INTEGER NOT NULL DEFAULT 0 CHECK (composite_score BETWEEN 0 AND 100),
-  population INTEGER,
-  elementary_schools INTEGER,
-  children_pct NUMERIC(5,2),
-  median_income INTEGER,
-  competitor_count INTEGER NOT NULL DEFAULT 0,
-  is_non_registration BOOLEAN NOT NULL DEFAULT false,
-  notes TEXT,
-  last_scraped_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (city, state)
-);
+### Technical notes
 
-CREATE TABLE IF NOT EXISTS public.city_category_scores (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  city_id UUID NOT NULL REFERENCES public.cities(id) ON DELETE CASCADE,
-  category TEXT NOT NULL,
-  score INTEGER NOT NULL CHECK (score BETWEEN 0 AND 100),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (city_id, category)
-);
+- Imports: `createClient` from `https://esm.sh/@supabase/supabase-js@2.45.0` (matches `admin-create-user`).
+- Inline `corsHeaders` (same shape as existing functions): `Access-Control-Allow-Origin: *`, headers list includes `authorization, x-client-info, apikey, content-type`.
+- Two clients: a user-scoped client (anon key + caller's `Authorization`) for `getClaims`, and a service-role client for writes (bypasses RLS cleanly since the function deploys with `verify_jwt = false`).
+- No `supabase/config.toml` change needed — default `verify_jwt = false` is fine; we validate JWT in code.
+- No new secrets. Uses pre-existing: `SUPABASE_URL`, `SUPABASE_ANON_KEY` (or `SUPABASE_PUBLISHABLE_KEY`), `SUPABASE_SERVICE_ROLE_KEY`.
+- Re-runnable: upsert on cities; delete-then-insert for signals/scores/competitors keyed by `city_id`.
 
-CREATE TABLE IF NOT EXISTS public.city_competitors (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  city_id UUID NOT NULL REFERENCES public.cities(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  type TEXT,
-  pricing TEXT,
-  capacity INTEGER,
-  source TEXT,
-  source_url TEXT,
-  raw_data JSONB,
-  scraped_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+### Out of scope (later steps)
+- Apify / Firecrawl / Census calls
+- Adding `APIFY_API_TOKEN`, `FIRECRAWL_API_KEY`, `CENSUS_API_KEY` secrets
+- Frontend wiring on `/city-scoring`
 
-CREATE TABLE IF NOT EXISTS public.city_market_signals (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  city_id UUID NOT NULL REFERENCES public.cities(id) ON DELETE CASCADE,
-  signal_key TEXT NOT NULL,
-  label TEXT NOT NULL,
-  value TEXT NOT NULL,
-  delta TEXT,
-  delta_type TEXT,
-  source TEXT,
-  source_url TEXT,
-  raw_data JSONB,
-  confidence NUMERIC(3,2),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (city_id, signal_key)
-);
-
-CREATE TABLE IF NOT EXISTS public.city_fetch_jobs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  city_id UUID REFERENCES public.cities(id) ON DELETE SET NULL,
-  city TEXT NOT NULL,
-  state TEXT NOT NULL,
-  source TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'queued',
-  request_payload JSONB,
-  response_summary JSONB,
-  error_message TEXT,
-  started_at TIMESTAMPTZ,
-  completed_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- =========================
--- INDEXES
--- =========================
-
-CREATE INDEX IF NOT EXISTS idx_cities_state ON public.cities(state);
-CREATE INDEX IF NOT EXISTS idx_cities_tier ON public.cities(tier);
-CREATE INDEX IF NOT EXISTS idx_cities_composite_score ON public.cities(composite_score DESC);
-CREATE INDEX IF NOT EXISTS idx_city_category_scores_city_id ON public.city_category_scores(city_id);
-CREATE INDEX IF NOT EXISTS idx_city_competitors_city_id ON public.city_competitors(city_id);
-CREATE INDEX IF NOT EXISTS idx_city_market_signals_city_id ON public.city_market_signals(city_id);
-CREATE INDEX IF NOT EXISTS idx_city_fetch_jobs_city_id ON public.city_fetch_jobs(city_id);
-CREATE INDEX IF NOT EXISTS idx_city_fetch_jobs_status ON public.city_fetch_jobs(status);
-
--- =========================
--- updated_at TRIGGERS (idempotent)
--- =========================
-
-DROP TRIGGER IF EXISTS trg_cities_updated_at ON public.cities;
-CREATE TRIGGER trg_cities_updated_at
-  BEFORE UPDATE ON public.cities
-  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-DROP TRIGGER IF EXISTS trg_city_category_scores_updated_at ON public.city_category_scores;
-CREATE TRIGGER trg_city_category_scores_updated_at
-  BEFORE UPDATE ON public.city_category_scores
-  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-DROP TRIGGER IF EXISTS trg_city_market_signals_updated_at ON public.city_market_signals;
-CREATE TRIGGER trg_city_market_signals_updated_at
-  BEFORE UPDATE ON public.city_market_signals
-  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
--- =========================
--- ROW LEVEL SECURITY
--- =========================
-
-ALTER TABLE public.cities                ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.city_category_scores  ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.city_competitors      ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.city_market_signals   ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.city_fetch_jobs       ENABLE ROW LEVEL SECURITY;
-
--- cities
-DROP POLICY IF EXISTS "Authenticated can view cities"   ON public.cities;
-DROP POLICY IF EXISTS "Authenticated can insert cities" ON public.cities;
-DROP POLICY IF EXISTS "Authenticated can update cities" ON public.cities;
-DROP POLICY IF EXISTS "Authenticated can delete cities" ON public.cities;
-CREATE POLICY "Authenticated can view cities"   ON public.cities FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Authenticated can insert cities" ON public.cities FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Authenticated can update cities" ON public.cities FOR UPDATE TO authenticated USING (true);
-CREATE POLICY "Authenticated can delete cities" ON public.cities FOR DELETE TO authenticated USING (true);
-
--- city_category_scores
-DROP POLICY IF EXISTS "Authenticated can view category scores"   ON public.city_category_scores;
-DROP POLICY IF EXISTS "Authenticated can insert category scores" ON public.city_category_scores;
-DROP POLICY IF EXISTS "Authenticated can update category scores" ON public.city_category_scores;
-DROP POLICY IF EXISTS "Authenticated can delete category scores" ON public.city_category_scores;
-CREATE POLICY "Authenticated can view category scores"   ON public.city_category_scores FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Authenticated can insert category scores" ON public.city_category_scores FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Authenticated can update category scores" ON public.city_category_scores FOR UPDATE TO authenticated USING (true);
-CREATE POLICY "Authenticated can delete category scores" ON public.city_category_scores FOR DELETE TO authenticated USING (true);
-
--- city_competitors
-DROP POLICY IF EXISTS "Authenticated can view competitors"   ON public.city_competitors;
-DROP POLICY IF EXISTS "Authenticated can insert competitors" ON public.city_competitors;
-DROP POLICY IF EXISTS "Authenticated can update competitors" ON public.city_competitors;
-DROP POLICY IF EXISTS "Authenticated can delete competitors" ON public.city_competitors;
-CREATE POLICY "Authenticated can view competitors"   ON public.city_competitors FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Authenticated can insert competitors" ON public.city_competitors FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Authenticated can update competitors" ON public.city_competitors FOR UPDATE TO authenticated USING (true);
-CREATE POLICY "Authenticated can delete competitors" ON public.city_competitors FOR DELETE TO authenticated USING (true);
-
--- city_market_signals
-DROP POLICY IF EXISTS "Authenticated can view market signals"   ON public.city_market_signals;
-DROP POLICY IF EXISTS "Authenticated can insert market signals" ON public.city_market_signals;
-DROP POLICY IF EXISTS "Authenticated can update market signals" ON public.city_market_signals;
-DROP POLICY IF EXISTS "Authenticated can delete market signals" ON public.city_market_signals;
-CREATE POLICY "Authenticated can view market signals"   ON public.city_market_signals FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Authenticated can insert market signals" ON public.city_market_signals FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Authenticated can update market signals" ON public.city_market_signals FOR UPDATE TO authenticated USING (true);
-CREATE POLICY "Authenticated can delete market signals" ON public.city_market_signals FOR DELETE TO authenticated USING (true);
-
--- city_fetch_jobs
-DROP POLICY IF EXISTS "Authenticated can view fetch jobs"   ON public.city_fetch_jobs;
-DROP POLICY IF EXISTS "Authenticated can insert fetch jobs" ON public.city_fetch_jobs;
-DROP POLICY IF EXISTS "Authenticated can update fetch jobs" ON public.city_fetch_jobs;
-DROP POLICY IF EXISTS "Authenticated can delete fetch jobs" ON public.city_fetch_jobs;
-CREATE POLICY "Authenticated can view fetch jobs"   ON public.city_fetch_jobs FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Authenticated can insert fetch jobs" ON public.city_fetch_jobs FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Authenticated can update fetch jobs" ON public.city_fetch_jobs FOR UPDATE TO authenticated USING (true);
-CREATE POLICY "Authenticated can delete fetch jobs" ON public.city_fetch_jobs FOR DELETE TO authenticated USING (true);
-```
-
-## Approval
-
-You've approved running this migration. Switch me to default mode and I'll run it through Lovable's migration tool (you'll get one more in-chat approval prompt for the SQL itself, which is the standard safety gate).
+### Verification after deploy
+- Confirm file path: `supabase/functions/fetch-city-market-data/index.ts`
+- Check deploy via edge function logs
+- Optional smoke test: invoke with `{ "city": "Frisco", "state": "Texas" }` and report the JSON response + row counts

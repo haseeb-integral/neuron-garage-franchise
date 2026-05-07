@@ -22,6 +22,7 @@ import { MarketDetailDrawer } from "@/components/city-scoring/MarketDetailDrawer
 import { MarketCompareModal } from "@/components/city-scoring/MarketCompareModal";
 import { MarketReportModal } from "@/components/city-scoring/MarketReportModal";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 type CategoryKey =
   | "demand"

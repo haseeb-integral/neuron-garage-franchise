@@ -22,6 +22,7 @@ import { MarketDetailDrawer } from "@/components/city-scoring/MarketDetailDrawer
 import { MarketCompareModal } from "@/components/city-scoring/MarketCompareModal";
 import { MarketReportModal } from "@/components/city-scoring/MarketReportModal";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 type CategoryKey =
   | "demand"
@@ -115,6 +116,7 @@ const CityScoring = () => {
 
   const [selectedId, setSelectedId] = useState<number>(sampleCities[0]?.id ?? 1);
   const [selectedForCompare, setSelectedForCompare] = useState<number[]>([]);
+  const [refreshingMarket, setRefreshingMarket] = useState(false);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
@@ -194,6 +196,30 @@ const CityScoring = () => {
 
   const handleFindTeachers = () => {
     navigate(`/teacher-prospects?city=${encodeURIComponent(selected.city)}&state=${encodeURIComponent(selected.state)}`);
+  };
+
+  const handleRefreshData = async () => {
+    if (!selected) return;
+    setRefreshingMarket(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-city-market-data", {
+        body: { city: selected.city, state: selected.state },
+      });
+      if (error) {
+        toast.error("Refresh failed", { description: error.message });
+        return;
+      }
+      toast.success("Market data refreshed", {
+        description: `${selected.city}, ${selected.state} updated with POC database rows.`,
+      });
+      console.log("fetch-city-market-data response", data);
+    } catch (err) {
+      toast.error("Refresh failed", {
+        description: err instanceof Error ? err.message : "Unknown error",
+      });
+    } finally {
+      setRefreshingMarket(false);
+    }
   };
 
   const handleLogout = async () => { await signOut(); navigate("/auth", { replace: true }); };
@@ -453,9 +479,11 @@ const CityScoring = () => {
           <Button
             variant="outline"
             className="h-9 border-[#e5eaf2] text-[#14233b] gap-1.5 font-normal"
-            onClick={() => toast.success("Sample data refreshed. Live source refresh will be connected later.")}
+            disabled={refreshingMarket}
+            onClick={handleRefreshData}
           >
-            <RefreshCw size={14} /> Refresh Data
+            <RefreshCw size={14} className={refreshingMarket ? "animate-spin" : ""} />
+            {refreshingMarket ? "Refreshing..." : "Refresh Data"}
           </Button>
         </div>
       </div>

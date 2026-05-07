@@ -263,6 +263,7 @@ const CityScoring = () => {
         description: `${selected.city}, ${selected.state} updated with POC database rows.`,
       });
       console.log("fetch-city-market-data response", data);
+      await loadLiveData(selected.city, selected.state);
     } catch (err) {
       toast.error("Refresh failed", {
         description: err instanceof Error ? err.message : "Unknown error",

@@ -724,7 +724,7 @@ const CityScoring = () => {
                 <div className="flex items-center gap-x-4 gap-y-1.5 flex-wrap">
                   <div className="flex items-center gap-2">
                     <span className="text-[#6b7a96]">Tier</span>
-                    <span className="rounded-full bg-[#e6f7ef] px-2 py-0.5 text-[10.5px] font-semibold leading-tight text-[#0ea66e]">{selected.tier} (Tier 1)</span>
+                    <span className="rounded-full px-2 py-0.5 text-[10.5px] font-semibold leading-tight" style={{ backgroundColor: tierBadge.bg, color: tierBadge.fg }}>{tierBadge.label}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[#6b7a96]">Market Type</span>

@@ -1,15 +1,16 @@
-import { Home, Map, Users, Kanban, ClipboardCheck, ChevronLeft, ChevronRight, Settings } from "lucide-react";
+import { Home, Map, Users, Kanban, ClipboardCheck, ChevronLeft, ChevronRight, Settings, Mail } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import logo from "@/assets/neuron-garage-logo.png";
 import { useSidebarCollapsed } from "@/lib/sidebarState";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const primaryNavItems = [
-  { title: "Dashboard", url: "/", icon: Home, tourId: "nav-dashboard" },
-  { title: "City Search", url: "/city-scoring", icon: Map, tourId: "nav-city-scoring" },
-  { title: "Teacher Prospects", url: "/teacher-prospects", icon: Users, tourId: "nav-teacher-prospects" },
-  { title: "Candidate Pipeline", url: "/candidate-pipeline", icon: Kanban, tourId: "nav-candidate-pipeline" },
-  { title: "Onboarding", url: "/onboarding", icon: ClipboardCheck, tourId: "nav-onboarding" },
+  { title: "Dashboard", url: "/", icon: Home },
+  { title: "City Search", url: "/city-scoring", icon: Map },
+  { title: "Teacher Prospects", url: "/teacher-prospects", icon: Users },
+  { title: "Email Outreach", url: "/email-outreach", icon: Mail },
+  { title: "Candidate Pipeline", url: "/candidate-pipeline", icon: Kanban },
+  { title: "Onboarding", url: "/onboarding", icon: ClipboardCheck },
 ];
 
 const utilityNavItems = [
@@ -27,21 +28,12 @@ type NavItem = (typeof primaryNavItems)[number] | (typeof utilityNavItems)[numbe
 export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
   const location = useLocation();
   const [collapsed, setCollapsed] = useSidebarCollapsed();
-
   const isCollapsed = variant === "fixed" && collapsed;
   const widthClass = isCollapsed ? "w-16" : "w-[220px]";
 
-  const isActive = (url: string) => {
-    if (url === "/") return location.pathname === "/";
-    return location.pathname.startsWith(url);
-  };
+  const isActive = (url: string) => (url === "/" ? location.pathname === "/" : location.pathname.startsWith(url));
 
-  const containerClass =
-    variant === "fixed"
-      ? `fixed left-0 top-0 h-screen ${widthClass} flex flex-col z-40 transition-[width] duration-200`
-      : "h-full w-full flex flex-col";
-
-  const renderLink = (item: NavItem, withTour = false) => {
+  const renderLink = (item: NavItem) => {
     const active = isActive(item.url);
     const link = (
       <NavLink
@@ -49,38 +41,14 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
         to={item.url}
         end={item.url === "/"}
         onClick={onNavigate}
-        data-tour={withTour && "tourId" in item ? item.tourId : undefined}
-        className={`group flex items-center rounded-lg transition-all ${
-          isCollapsed ? "justify-center px-0" : "gap-3 px-3"
-        }`}
-        style={{
-          minHeight: isCollapsed ? 32 : 34,
-          backgroundColor: active ? "#1f5bff" : "transparent",
-          color: active ? "#ffffff" : "#14233b",
-          fontSize: 13,
-          fontWeight: active ? 500 : 450,
-          boxShadow: "none",
-        }}
-        onMouseEnter={(e) => {
-          if (!active) {
-            e.currentTarget.style.backgroundColor = "#f7faff";
-            e.currentTarget.style.color = "#0757ff";
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (!active) {
-            e.currentTarget.style.backgroundColor = "transparent";
-            e.currentTarget.style.color = "#14233b";
-          }
-        }}
+        className={`group flex min-h-[34px] items-center rounded-lg text-[13px] transition-all ${isCollapsed ? "justify-center px-0" : "gap-3 px-3"} ${active ? "bg-[#1f5bff] font-medium text-white" : "bg-transparent font-medium text-[#14233b] hover:bg-[#f7faff] hover:text-[#0757ff]"}`}
       >
-        <item.icon size={isCollapsed ? 17 : 17} strokeWidth={1.75} />
+        <item.icon size={17} strokeWidth={1.75} />
         {!isCollapsed && <span className="whitespace-nowrap">{item.title}</span>}
       </NavLink>
     );
 
     if (!isCollapsed) return link;
-
     return (
       <Tooltip key={item.title} delayDuration={150}>
         <TooltipTrigger asChild>{link}</TooltipTrigger>
@@ -91,16 +59,9 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
 
   return (
     <TooltipProvider>
-      <aside
-        className={containerClass}
-        style={{
-          backgroundColor: "#ffffff",
-          borderRight: "1px solid #eef2f7",
-          boxShadow: "none",
-        }}
-      >
+      <aside className={`${variant === "fixed" ? `fixed left-0 top-0 h-screen ${widthClass}` : "h-full w-full"} z-40 flex flex-col border-r border-[#eef2f7] bg-white transition-[width] duration-200`}>
         <div className={`flex items-start ${isCollapsed ? "flex-col gap-3 px-2 py-4" : "gap-2 px-3.5 pb-5 pt-4"}`}>
-          <div className={`flex items-center gap-2 ${isCollapsed ? "justify-center w-full" : "flex-1 min-w-0"}`}>
+          <div className={`flex items-center gap-2 ${isCollapsed ? "w-full justify-center" : "min-w-0 flex-1"}`}>
             <img src={logo} alt="Neuron Garage" className={`${isCollapsed ? "h-9 w-9" : "h-10 w-10"} flex-shrink-0 object-contain`} />
             {!isCollapsed && (
               <div className="min-w-0 leading-none">
@@ -111,35 +72,14 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
             )}
           </div>
           {variant === "fixed" && (
-            <button
-              onClick={() => setCollapsed(!collapsed)}
-              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              className="flex items-center justify-center rounded-xl transition-colors flex-shrink-0"
-              style={{
-                width: isCollapsed ? 32 : 34,
-                height: isCollapsed ? 32 : 34,
-                backgroundColor: "#ffffff",
-                border: "1px solid #eef2f7",
-                color: "#14233b",
-                boxShadow: "0 4px 10px rgba(15, 23, 42, 0.03)",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "#f7faff";
-                e.currentTarget.style.color = "#0757ff";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "#ffffff";
-                e.currentTarget.style.color = "#14233b";
-              }}
-            >
+            <button onClick={() => setCollapsed(!collapsed)} className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl border border-[#eef2f7] bg-white text-[#14233b] shadow-[0_4px_10px_rgba(15,23,42,0.03)] hover:bg-[#f7faff] hover:text-[#0757ff]" aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
               {collapsed ? <ChevronRight size={17} /> : <ChevronLeft size={17} />}
             </button>
           )}
         </div>
 
         <nav className={`flex flex-col ${isCollapsed ? "gap-2 px-2" : "gap-2.5 px-3.5"}`}>
-          {primaryNavItems.map((item) => renderLink(item, true))}
+          {primaryNavItems.map((item) => renderLink(item))}
         </nav>
 
         <div className={`${isCollapsed ? "mx-3 my-5" : "mx-3.5 my-5"} h-px bg-[#eef2f7]`} />

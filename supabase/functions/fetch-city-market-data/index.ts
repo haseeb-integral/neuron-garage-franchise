@@ -13,6 +13,199 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
 
+type CompetitorRow = {
+  name: string
+  type: string | null
+  pricing: string | null
+  capacity: number | null
+  source: string
+  source_url: string | null
+  raw_data: Record<string, unknown>
+  scraped_at: string
+}
+
+type SignalRow = {
+  signal_key: string
+  label: string
+  value: string
+  delta: string | null
+  delta_type: string | null
+  source: string
+  source_url?: string | null
+  raw_data?: Record<string, unknown>
+  confidence: number
+}
+
+function normalizeActorId(actorId: string) {
+  return actorId.includes('/') ? actorId.replace('/', '~') : actorId
+}
+
+function inferCompetitorType(item: Record<string, unknown>) {
+  const text = `${item.title ?? ''} ${item.name ?? ''} ${item.categoryName ?? ''} ${item.categories ?? ''}`.toLowerCase()
+  if (text.includes('coding') || text.includes('robot') || text.includes('stem')) return 'STEM / Coding Program'
+  if (text.includes('math')) return 'Math / STEM Tutoring'
+  if (text.includes('camp')) return 'Summer Camp'
+  if (text.includes('school')) return 'School / Enrichment'
+  return 'Youth Enrichment'
+}
+
+function mapApifyItem(item: Record<string, unknown>, now: string): CompetitorRow | null {
+  const name = String(item.title ?? item.name ?? item.placeName ?? '').trim()
+  if (!name) return null
+  return {
+    name,
+    type: inferCompetitorType(item),
+    pricing: null,
+    capacity: null,
+    source: 'apify',
+    source_url: String(item.url ?? item.placeUrl ?? item.website ?? item.websiteUrl ?? '') || null,
+    raw_data: item,
+    scraped_at: now,
+  }
+}
+
+function sampleCompetitors(city: string, now: string): CompetitorRow[] {
+  return [
+    {
+      name: `Code Ninjas ${city} (sample)`,
+      type: 'Coding Camp',
+      pricing: '$299/week',
+      capacity: 40,
+      source: 'poc',
+      source_url: null,
+      raw_data: { mode: 'poc', query: `coding camp ${city}` },
+      scraped_at: now,
+    },
+    {
+      name: `Mathnasium ${city} (sample)`,
+      type: 'STEM Tutoring',
+      pricing: '$250/month',
+      capacity: 30,
+      source: 'poc',
+      source_url: null,
+      raw_data: { mode: 'poc', query: `math tutoring ${city}` },
+      scraped_at: now,
+    },
+  ]
+}
+
+function buildSignals(city: string, mode: string, competitorCount: number, firecrawlCount: number): SignalRow[] {
+  return [
+    {
+      signal_key: 'competitor_count',
+      label: 'Competitor Count',
+      value: String(competitorCount),
+      delta: competitorCount > 0 ? 'Fetched from live/source-backed search' : 'No live competitors found',
+      delta_type: competitorCount > 0 ? 'up' : 'neutral',
+      source: mode,
+      raw_data: { mode, city, competitorCount },
+      confidence: competitorCount > 0 ? 0.75 : 0.35,
+    },
+    {
+      signal_key: 'source_pages_found',
+      label: 'Source Pages Found',
+      value: String(firecrawlCount),
+      delta: firecrawlCount > 0 ? 'Firecrawl search returned source pages' : 'No Firecrawl pages yet',
+      delta_type: firecrawlCount > 0 ? 'up' : 'neutral',
+      source: mode,
+      raw_data: { mode, city, firecrawlCount },
+      confidence: firecrawlCount > 0 ? 0.65 : 0.35,
+    },
+    {
+      signal_key: 'data_readiness',
+      label: 'Data Readiness',
+      value: mode === 'live_api' ? 'Live API Connected' : 'POC Sample',
+      delta: mode === 'live_api' ? 'Apify/Firecrawl path is active' : 'Waiting for API secrets',
+      delta_type: mode === 'live_api' ? 'up' : 'neutral',
+      source: mode,
+      raw_data: { mode, city },
+      confidence: mode === 'live_api' ? 0.7 : 0.5,
+    },
+  ]
+}
+
+function buildScores(competitorCount: number, firecrawlCount: number) {
+  const hasLiveData = competitorCount > 0 || firecrawlCount > 0
+  return [
+    { category: 'summer_camp_demand', score: hasLiveData ? 78 : 82 },
+    { category: 'school_density', score: hasLiveData ? 74 : 75 },
+    { category: 'child_population', score: 78 },
+    { category: 'dual_income_families', score: 82 },
+    { category: 'stem_jobs', score: hasLiveData ? 76 : 70 },
+    { category: 'competition_score', score: Math.max(55, Math.min(90, 78 - competitorCount * 2)) },
+  ]
+}
+
+async function fetchApifyCompetitors(city: string, state: string, now: string) {
+  const token = Deno.env.get('APIFY_API_TOKEN')
+  if (!token) return { rows: [] as CompetitorRow[], error: null as string | null, rawCount: 0 }
+
+  const actorId = normalizeActorId(Deno.env.get('APIFY_GOOGLE_MAPS_ACTOR_ID') ?? 'compass/google-maps-scraper')
+  const queries = [
+    `coding camp ${city} ${state}`,
+    `STEM camp ${city} ${state}`,
+    `robotics camp ${city} ${state}`,
+    `math tutoring ${city} ${state}`,
+  ]
+
+  const payload = {
+    searchStringsArray: queries,
+    maxCrawledPlacesPerSearch: 5,
+    language: 'en',
+    locationQuery: `${city}, ${state}`,
+    includeReviews: false,
+    includeImages: false,
+  }
+
+  try {
+    const res = await fetch(`https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${token}&timeout=90`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    const data = await res.json().catch(() => [])
+    if (!res.ok) return { rows: [] as CompetitorRow[], error: `Apify ${res.status}: ${JSON.stringify(data).slice(0, 400)}`, rawCount: 0 }
+    const items = Array.isArray(data) ? data : []
+    const seen = new Set<string>()
+    const rows = items
+      .map((item) => mapApifyItem(item as Record<string, unknown>, now))
+      .filter((row): row is CompetitorRow => Boolean(row))
+      .filter((row) => {
+        const key = row.name.toLowerCase()
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+      .slice(0, 20)
+    return { rows, error: null as string | null, rawCount: items.length }
+  } catch (e) {
+    return { rows: [] as CompetitorRow[], error: (e as Error).message, rawCount: 0 }
+  }
+}
+
+async function fetchFirecrawlSignals(city: string, state: string) {
+  const key = Deno.env.get('FIRECRAWL_API_KEY')
+  if (!key) return { count: 0, error: null as string | null, raw: null as unknown }
+
+  try {
+    const res = await fetch('https://api.firecrawl.dev/v1/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+      body: JSON.stringify({
+        query: `summer camps STEM robotics enrichment elementary school ${city} ${state}`,
+        limit: 5,
+        scrapeOptions: { formats: ['markdown'] },
+      }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) return { count: 0, error: `Firecrawl ${res.status}: ${JSON.stringify(data).slice(0, 400)}`, raw: data }
+    const results = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []
+    return { count: results.length, error: null as string | null, raw: data }
+  } catch (e) {
+    return { count: 0, error: (e as Error).message, raw: null as unknown }
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
@@ -23,21 +216,16 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? Deno.env.get('SUPABASE_PUBLISHABLE_KEY')!
     const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
-    // --- Auth: validate caller JWT ---
     const authHeader = req.headers.get('Authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
-      return json({ error: 'Unauthorized' }, 401)
-    }
+    if (!authHeader?.startsWith('Bearer ')) return json({ error: 'Unauthorized' }, 401)
+
     const token = authHeader.replace('Bearer ', '')
     const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
     })
     const { data: userData, error: userErr } = await userClient.auth.getUser(token)
-    if (userErr || !userData?.user) {
-      return json({ error: 'Invalid session' }, 401)
-    }
+    if (userErr || !userData?.user) return json({ error: 'Invalid session' }, 401)
 
-    // --- Validate body ---
     const body = await req.json().catch(() => ({}))
     const city = String(body?.city ?? '').trim()
     const state = String(body?.state ?? '').trim()
@@ -46,13 +234,17 @@ Deno.serve(async (req) => {
     if (state.length < 2 || state.length > 50) errors.state = 'state must be 2–50 chars'
     if (Object.keys(errors).length) return json({ error: errors }, 400)
 
-    const admin = createClient(SUPABASE_URL, SERVICE_KEY, {
-      auth: { persistSession: false },
-    })
-
+    const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } })
     const startedAt = new Date().toISOString()
 
-    // 1) Upsert cities (UNIQUE on city, state)
+    const apify = await fetchApifyCompetitors(city, state, startedAt)
+    const firecrawl = await fetchFirecrawlSignals(city, state)
+    const hasAnyLiveSecret = Boolean(Deno.env.get('APIFY_API_TOKEN') || Deno.env.get('FIRECRAWL_API_KEY'))
+    const mode = hasAnyLiveSecret ? 'live_api' : 'poc'
+    const competitors = apify.rows.length > 0 ? apify.rows : sampleCompetitors(city, startedAt)
+    const competitorCount = competitors.length
+    const compositeScore = Math.max(45, Math.min(95, 72 + Math.min(12, firecrawl.count * 2) - Math.min(10, Math.max(0, competitorCount - 4))))
+
     const { data: cityRow, error: cityErr } = await admin
       .from('cities')
       .upsert(
@@ -60,100 +252,43 @@ Deno.serve(async (req) => {
           city,
           state,
           market_type: 'Suburb',
-          tier: 'C',
-          composite_score: 72,
+          tier: compositeScore >= 85 ? 'A' : compositeScore >= 75 ? 'B' : compositeScore >= 65 ? 'C' : 'D',
+          composite_score: compositeScore,
           population: 100000,
+          competitor_count: competitorCount,
           last_scraped_at: startedAt,
-          notes: 'POC sample data',
+          notes: mode === 'live_api' ? 'Live API POC data' : 'POC sample data',
         },
         { onConflict: 'city,state' },
       )
       .select('id')
       .single()
 
-    if (cityErr || !cityRow) {
-      return json({ error: 'Failed to upsert city', detail: cityErr?.message }, 500)
-    }
+    if (cityErr || !cityRow) return json({ error: 'Failed to upsert city', detail: cityErr?.message }, 500)
     const cityId = cityRow.id as string
 
-    // 2) Clear prior POC sample rows for this city (keeps re-runs idempotent)
     await admin.from('city_market_signals').delete().eq('city_id', cityId)
     await admin.from('city_category_scores').delete().eq('city_id', cityId)
-    await admin.from('city_competitors').delete().eq('city_id', cityId).eq('source', 'poc')
+    await admin.from('city_competitors').delete().eq('city_id', cityId).in('source', ['poc', 'apify', 'firecrawl'])
 
-    // 3) Sample market signals
-    const signals = [
-      {
-        city_id: cityId,
-        signal_key: 'population_growth',
-        label: 'Population Growth (5y)',
-        value: '+12.4%',
-        delta: '+2.1%',
-        delta_type: 'up',
-        source: 'poc',
-        confidence: 0.5,
-      },
-      {
-        city_id: cityId,
-        signal_key: 'median_income_trend',
-        label: 'Median Income Trend',
-        value: '$95,200',
-        delta: '+3.8%',
-        delta_type: 'up',
-        source: 'poc',
-        confidence: 0.5,
-      },
-      {
-        city_id: cityId,
-        signal_key: 'school_enrollment',
-        label: 'Elementary Enrollment',
-        value: '18,400',
-        delta: '+1.2%',
-        delta_type: 'up',
-        source: 'poc',
-        confidence: 0.5,
-      },
-    ]
-    const { error: signalsErr } = await admin.from('city_market_signals').insert(signals)
+    const signals = buildSignals(city, mode, competitorCount, firecrawl.count)
+    const scores = buildScores(competitorCount, firecrawl.count)
+
+    const { error: signalsErr } = await admin
+      .from('city_market_signals')
+      .insert(signals.map((row) => ({ ...row, city_id: cityId })))
     if (signalsErr) return json({ error: 'Failed to insert signals', detail: signalsErr.message }, 500)
 
-    // 4) Sample category scores
-    const scores = [
-      { city_id: cityId, category: 'summer_camp_demand', score: 82 },
-      { city_id: cityId, category: 'school_density', score: 75 },
-      { city_id: cityId, category: 'child_population', score: 78 },
-      { city_id: cityId, category: 'dual_income_families', score: 85 },
-      { city_id: cityId, category: 'stem_jobs', score: 70 },
-      { city_id: cityId, category: 'competition_score', score: 68 },
-    ]
-    const { error: scoresErr } = await admin.from('city_category_scores').insert(scores)
+    const { error: scoresErr } = await admin
+      .from('city_category_scores')
+      .insert(scores.map((row) => ({ ...row, city_id: cityId })))
     if (scoresErr) return json({ error: 'Failed to insert scores', detail: scoresErr.message }, 500)
 
-    // 5) Sample competitors
-    const competitors = [
-      {
-        city_id: cityId,
-        name: 'Code Ninjas (sample)',
-        type: 'Coding Camp',
-        pricing: '$299/week',
-        capacity: 40,
-        source: 'poc',
-        scraped_at: startedAt,
-      },
-      {
-        city_id: cityId,
-        name: 'Mathnasium (sample)',
-        type: 'STEM Tutoring',
-        pricing: '$250/month',
-        capacity: 30,
-        source: 'poc',
-        scraped_at: startedAt,
-      },
-    ]
-    const { error: compErr } = await admin.from('city_competitors').insert(competitors)
+    const { error: compErr } = await admin
+      .from('city_competitors')
+      .insert(competitors.map((row) => ({ ...row, city_id: cityId })))
     if (compErr) return json({ error: 'Failed to insert competitors', detail: compErr.message }, 500)
 
-    // 6) Insert fetch job
     const completedAt = new Date().toISOString()
     const { data: jobRow, error: jobErr } = await admin
       .from('city_fetch_jobs')
@@ -161,15 +296,17 @@ Deno.serve(async (req) => {
         city_id: cityId,
         city,
         state,
-        source: 'poc',
-        status: 'completed',
+        source: mode,
+        status: apify.error || firecrawl.error ? 'completed_with_warnings' : 'completed',
         started_at: startedAt,
         completed_at: completedAt,
-        request_payload: { city, state },
+        request_payload: { city, state, mode },
         response_summary: {
-          mode: 'poc',
-          counts: { signals: signals.length, scores: scores.length, competitors: competitors.length },
+          mode,
+          counts: { signals: signals.length, scores: scores.length, competitors: competitors.length, apify_raw: apify.rawCount, firecrawl_results: firecrawl.count },
+          warnings: { apify: apify.error, firecrawl: firecrawl.error },
         },
+        error_message: [apify.error, firecrawl.error].filter(Boolean).join(' | ') || null,
       })
       .select('id')
       .single()
@@ -178,14 +315,10 @@ Deno.serve(async (req) => {
 
     return json({
       ok: true,
-      mode: 'poc',
+      mode,
       city_id: cityId,
-      inserted: {
-        signals: signals.length,
-        scores: scores.length,
-        competitors: competitors.length,
-        job_id: jobRow?.id,
-      },
+      inserted: { signals: signals.length, scores: scores.length, competitors: competitors.length, job_id: jobRow?.id },
+      warnings: { apify: apify.error, firecrawl: firecrawl.error },
     })
   } catch (e) {
     return json({ error: (e as Error).message }, 500)

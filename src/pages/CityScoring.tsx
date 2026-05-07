@@ -198,6 +198,30 @@ const CityScoring = () => {
     navigate(`/teacher-prospects?city=${encodeURIComponent(selected.city)}&state=${encodeURIComponent(selected.state)}`);
   };
 
+  const handleRefreshData = async () => {
+    if (!selected) return;
+    setRefreshingMarket(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-city-market-data", {
+        body: { city: selected.city, state: selected.state },
+      });
+      if (error) {
+        toast.error("Refresh failed", { description: error.message });
+        return;
+      }
+      toast.success("Market data refreshed", {
+        description: `${selected.city}, ${selected.state} updated with POC database rows.`,
+      });
+      console.log("fetch-city-market-data response", data);
+    } catch (err) {
+      toast.error("Refresh failed", {
+        description: err instanceof Error ? err.message : "Unknown error",
+      });
+    } finally {
+      setRefreshingMarket(false);
+    }
+  };
+
   const handleLogout = async () => { await signOut(); navigate("/auth", { replace: true }); };
 
   const cs = categoryScores(selected);

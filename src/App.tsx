@@ -11,7 +11,7 @@ import ResetPassword from "./pages/ResetPassword";
 import Index from "./pages/Index";
 import CityScoring from "./pages/CityScoring";
 import TeacherProspects from "./pages/TeacherProspects";
-import EmailOutreach from "./pages/EmailOutreach";
+import EmailOutreach from "./pages/EmailOutreachV2";
 import CandidatePipeline from "./pages/CandidatePipeline";
 import Onboarding from "./pages/Onboarding";
 import Spec from "./pages/Spec";

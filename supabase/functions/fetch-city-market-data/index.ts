@@ -192,18 +192,150 @@ async function fetchFirecrawlSignals(city: string, state: string) {
 
 function clamp(n: number, lo = 40, hi = 98) { return Math.max(lo, Math.min(hi, Math.round(n))) }
 
+// ---- Census ACS 5-year ----
+type CensusData = {
+  total_population: number | null
+  median_household_income: number | null
+  children_under_18: number | null
+  children_pct: number | null
+  bachelors_plus_pct: number | null
+  income_100k_plus_pct: number | null
+  income_150k_plus_pct: number | null
+  state_fips: string | null
+  place_fips: string | null
+  source_url: string | null
+}
+
+const STATE_FIPS: Record<string, string> = {
+  AL:'01',AK:'02',AZ:'04',AR:'05',CA:'06',CO:'08',CT:'09',DE:'10',DC:'11',FL:'12',GA:'13',HI:'15',ID:'16',IL:'17',IN:'18',IA:'19',KS:'20',KY:'21',LA:'22',ME:'23',MD:'24',MA:'25',MI:'26',MN:'27',MS:'28',MO:'29',MT:'30',NE:'31',NV:'32',NH:'33',NJ:'34',NM:'35',NY:'36',NC:'37',ND:'38',OH:'39',OK:'40',OR:'41',PA:'42',RI:'44',SC:'45',SD:'46',TN:'47',TX:'48',UT:'49',VT:'50',VA:'51',WA:'53',WV:'54',WI:'55',WY:'56',PR:'72'
+}
+const STATE_NAME_TO_ABBR: Record<string, string> = {
+  alabama:'AL',alaska:'AK',arizona:'AZ',arkansas:'AR',california:'CA',colorado:'CO',connecticut:'CT',delaware:'DE','district of columbia':'DC',florida:'FL',georgia:'GA',hawaii:'HI',idaho:'ID',illinois:'IL',indiana:'IN',iowa:'IA',kansas:'KS',kentucky:'KY',louisiana:'LA',maine:'ME',maryland:'MD',massachusetts:'MA',michigan:'MI',minnesota:'MN',mississippi:'MS',missouri:'MO',montana:'MT',nebraska:'NE',nevada:'NV','new hampshire':'NH','new jersey':'NJ','new mexico':'NM','new york':'NY','north carolina':'NC','north dakota':'ND',ohio:'OH',oklahoma:'OK',oregon:'OR',pennsylvania:'PA','rhode island':'RI','south carolina':'SC','south dakota':'SD',tennessee:'TN',texas:'TX',utah:'UT',vermont:'VT',virginia:'VA',washington:'WA','west virginia':'WV',wisconsin:'WI',wyoming:'WY'
+}
+
+function resolveStateAbbr(state: string): string | null {
+  const s = state.trim()
+  if (s.length === 2) return s.toUpperCase() in STATE_FIPS ? s.toUpperCase() : null
+  return STATE_NAME_TO_ABBR[s.toLowerCase()] ?? null
+}
+
+async function fetchCensus(city: string, state: string): Promise<{ data: CensusData | null; error: string | null }> {
+  const key = Deno.env.get('CENSUS_API_KEY')
+  if (!key) return { data: null, error: 'CENSUS_API_KEY missing' }
+  const abbr = resolveStateAbbr(state)
+  if (!abbr) return { data: null, error: `Unknown state: ${state}` }
+  const stateFips = STATE_FIPS[abbr]
+
+  try {
+    // 1. Find place FIPS by name match within state
+    const placeListUrl = `https://api.census.gov/data/2022/acs/acs5?get=NAME&for=place:*&in=state:${stateFips}&key=${key}`
+    const listRes = await fetch(placeListUrl)
+    if (!listRes.ok) return { data: null, error: `Census place list ${listRes.status}` }
+    const listData = await listRes.json() as string[][]
+    const target = city.toLowerCase().trim()
+    let placeFips: string | null = null
+    let matchedName: string | null = null
+    // header is row 0
+    for (let i = 1; i < listData.length; i++) {
+      const [name, , place] = listData[i]
+      const nm = name.toLowerCase()
+      // matches "Frisco city, Texas" or "Frisco town, Texas"
+      if (nm.startsWith(target + ' city,') || nm.startsWith(target + ' town,') || nm.startsWith(target + ' cdp,') || nm.startsWith(target + ' village,')) {
+        placeFips = place; matchedName = name; break
+      }
+    }
+    if (!placeFips) {
+      // looser match
+      for (let i = 1; i < listData.length; i++) {
+        const [name, , place] = listData[i]
+        if (name.toLowerCase().startsWith(target + ' ')) { placeFips = place; matchedName = name; break }
+      }
+    }
+    if (!placeFips) return { data: null, error: `Place not found: ${city}, ${abbr}` }
+
+    // 2. Fetch ACS variables
+    const vars = [
+      'B01003_001E', // total pop
+      'B19013_001E', // median household income
+      'B09001_001E', // population under 18
+      'B15003_001E', // total 25+
+      'B15003_022E', // bachelor's
+      'B15003_023E', // master's
+      'B15003_024E', // professional
+      'B15003_025E', // doctorate
+      'B19001_001E', // total households
+      'B19001_014E', // 100-125k
+      'B19001_015E', // 125-150k
+      'B19001_016E', // 150-200k
+      'B19001_017E', // 200k+
+    ]
+    const dataUrl = `https://api.census.gov/data/2022/acs/acs5?get=${vars.join(',')}&for=place:${placeFips}&in=state:${stateFips}&key=${key}`
+    const dataRes = await fetch(dataUrl)
+    if (!dataRes.ok) return { data: null, error: `Census ACS ${dataRes.status}` }
+    const arr = await dataRes.json() as string[][]
+    const row = arr[1]
+    const num = (v: string) => { const n = Number(v); return Number.isFinite(n) && n >= 0 ? n : null }
+    const totalPop = num(row[0])
+    const medianIncome = num(row[1])
+    const under18 = num(row[2])
+    const total25 = num(row[3])
+    const bachPlus = (num(row[4]) ?? 0) + (num(row[5]) ?? 0) + (num(row[6]) ?? 0) + (num(row[7]) ?? 0)
+    const totalHH = num(row[8])
+    const hh100_125 = num(row[9]) ?? 0
+    const hh125_150 = num(row[10]) ?? 0
+    const hh150_200 = num(row[11]) ?? 0
+    const hh200p = num(row[12]) ?? 0
+    const income100plus = hh100_125 + hh125_150 + hh150_200 + hh200p
+    const income150plus = hh150_200 + hh200p
+
+    return {
+      data: {
+        total_population: totalPop,
+        median_household_income: medianIncome,
+        children_under_18: under18,
+        children_pct: totalPop && under18 ? Math.round((under18 / totalPop) * 1000) / 10 : null,
+        bachelors_plus_pct: total25 && total25 > 0 ? Math.round((bachPlus / total25) * 1000) / 10 : null,
+        income_100k_plus_pct: totalHH && totalHH > 0 ? Math.round((income100plus / totalHH) * 1000) / 10 : null,
+        income_150k_plus_pct: totalHH && totalHH > 0 ? Math.round((income150plus / totalHH) * 1000) / 10 : null,
+        state_fips: stateFips,
+        place_fips: placeFips,
+        source_url: `https://api.census.gov/data/2022/acs/acs5?get=NAME&for=place:${placeFips}&in=state:${stateFips}`,
+      },
+      error: null,
+    }
+  } catch (e) {
+    return { data: null, error: (e as Error).message }
+  }
+}
+
 function computeCategoryScores(b: {
   elementary: number; private_: number; preschool: number;
   competitors: number; stem: number; rentals: number; parent: number; firecrawl: number;
+  census: CensusData | null;
 }) {
-  // Heuristic, bounded scoring
+  const c = b.census
+  // Census-driven boosts (bounded contributions)
+  // Demand: population scale + children share
+  let demandBoost = 0
+  if (c?.total_population) demandBoost += Math.min(15, Math.log10(Math.max(1, c.total_population)) * 2.5)
+  if (c?.children_pct) demandBoost += Math.min(10, (c.children_pct - 18) * 0.8) // 18% baseline
+  // Pricing power: median income + premium income share
+  let priceBoost = 0
+  if (c?.median_household_income) priceBoost += Math.min(20, (c.median_household_income - 60000) / 4000)
+  if (c?.income_100k_plus_pct) priceBoost += Math.min(10, (c.income_100k_plus_pct - 25) * 0.4)
+  if (c?.income_150k_plus_pct) priceBoost += Math.min(8, (c.income_150k_plus_pct - 10) * 0.5)
+  // Parent mindset: education + children
+  let mindsetBoost = 0
+  if (c?.bachelors_plus_pct) mindsetBoost += Math.min(20, (c.bachelors_plus_pct - 30) * 0.6)
+  if (c?.children_pct) mindsetBoost += Math.min(6, (c.children_pct - 18) * 0.4)
+
   return {
-    demand: clamp(55 + b.elementary * 4 + b.preschool * 2 + b.firecrawl * 1.5),
-    pricing_power: clamp(55 + b.private_ * 6 + b.parent * 1.5),
-    competitive_landscape: clamp(95 - b.competitors * 3 - b.stem * 1.5), // higher = less saturated
+    demand: clamp(50 + b.elementary * 3 + b.preschool * 1.5 + b.firecrawl * 1 + demandBoost),
+    pricing_power: clamp(45 + b.private_ * 4 + b.parent * 1 + priceBoost),
+    competitive_landscape: clamp(95 - b.competitors * 3 - b.stem * 1.5),
     franchisee_supply: clamp(55 + b.elementary * 3 + b.private_ * 2),
     ease_of_operations: clamp(55 + b.rentals * 4),
-    parent_mindset: clamp(55 + b.parent * 4 + b.private_ * 2 + b.firecrawl * 1),
+    parent_mindset: clamp(50 + b.parent * 3 + b.private_ * 1.5 + b.firecrawl * 0.5 + mindsetBoost),
   }
 }
 
@@ -236,7 +368,10 @@ Deno.serve(async (req) => {
 
     const apify = await fetchAllApify(city, state)
     const firecrawl = await fetchFirecrawlSignals(city, state)
-    const hasAnyLiveSecret = Boolean(Deno.env.get('APIFY_API_TOKEN') || Deno.env.get('FIRECRAWL_API_KEY'))
+    const census = await fetchCensus(city, state)
+    const censusData = census.data
+    const censusError = census.error
+    const hasAnyLiveSecret = Boolean(Deno.env.get('APIFY_API_TOKEN') || Deno.env.get('FIRECRAWL_API_KEY') || Deno.env.get('CENSUS_API_KEY'))
     const mode = hasAnyLiveSecret ? 'live_api' : 'poc'
 
     const allItems = apify?.deduped ?? []
@@ -272,6 +407,7 @@ Deno.serve(async (req) => {
       rentals: rentalItems.length,
       parent: parentItems.length,
       firecrawl: firecrawl.count,
+      census: censusData,
     }
     const cat = computeCategoryScores(scoreInputs)
     const categoryWeights = { demand: 0.25, pricing_power: 0.20, competitive_landscape: 0.20, franchisee_supply: 0.15, ease_of_operations: 0.10, parent_mindset: 0.10 }
@@ -282,11 +418,17 @@ Deno.serve(async (req) => {
     )
     const tier = compositeScore >= 85 ? 'A' : compositeScore >= 75 ? 'B' : compositeScore >= 65 ? 'C' : 'D'
 
+    const cityNotes = censusData
+      ? `Live API + Census ACS 2022 (place ${censusData.place_fips})`
+      : (mode === 'live_api' ? 'Live API multi-category POC' : 'POC sample data')
     const { data: cityRow, error: cityErr } = await admin.from('cities').upsert({
       city, state, market_type: 'Suburb', tier, composite_score: compositeScore,
-      population: 100000, competitor_count: finalCompetitors.length,
+      population: censusData?.total_population ?? 100000,
+      median_income: censusData?.median_household_income ?? null,
+      children_pct: censusData?.children_pct ?? null,
+      competitor_count: finalCompetitors.length,
       last_scraped_at: startedAt,
-      notes: mode === 'live_api' ? 'Live API multi-category POC' : 'POC sample data',
+      notes: cityNotes,
     }, { onConflict: 'city,state' }).select('id').single()
     if (cityErr || !cityRow) return json({ error: 'Failed to upsert city', detail: cityErr?.message }, 500)
     const cityId = cityRow.id as string
@@ -295,18 +437,30 @@ Deno.serve(async (req) => {
     await admin.from('city_category_scores').delete().eq('city_id', cityId)
     await admin.from('city_competitors').delete().eq('city_id', cityId).in('source', ['poc', 'apify', 'firecrawl'])
 
-    const signals = [
-      { signal_key: 'elementary_school_count', label: 'Elementary Schools', value: String(elementaryItems.length), delta: null, delta_type: 'neutral', source: mode, confidence: 0.6 },
-      { signal_key: 'private_school_count', label: 'Private Schools', value: String(privateItems.length), delta: null, delta_type: 'neutral', source: mode, confidence: 0.6 },
-      { signal_key: 'competitor_count', label: 'Direct Competitors', value: String(finalCompetitors.length), delta: null, delta_type: finalCompetitors.length > 0 ? 'up' : 'neutral', source: mode, confidence: 0.7 },
-      { signal_key: 'stem_enrichment_count', label: 'STEM Enrichment Programs', value: String(stemItems.length), delta: null, delta_type: 'neutral', source: mode, confidence: 0.6 },
-      { signal_key: 'montessori_count', label: 'Montessori / Premium Schools', value: String(privateItems.filter((p) => itemText(p).includes('montessori')).length), delta: null, delta_type: 'neutral', source: mode, confidence: 0.5 },
-      { signal_key: 'rental_venue_count', label: 'Rental Venues (church/community/rec)', value: String(rentalItems.length), delta: null, delta_type: 'neutral', source: mode, confidence: 0.5 },
-      { signal_key: 'parent_mindset_places', label: 'Parent-Mindset Places', value: String(parentItems.length), delta: null, delta_type: 'neutral', source: mode, confidence: 0.5 },
-      { signal_key: 'firecrawl_source_pages', label: 'Source Pages Found', value: String(firecrawl.count), delta: null, delta_type: firecrawl.count > 0 ? 'up' : 'neutral', source: mode, confidence: 0.5 },
-      { signal_key: 'data_readiness', label: 'Data Readiness', value: mode === 'live_api' ? 'Live API Connected' : 'POC Sample', delta: null, delta_type: mode === 'live_api' ? 'up' : 'neutral', source: mode, confidence: 0.7 },
+    const censusSignals = censusData ? [
+      { signal_key: 'total_population', label: 'Total Population (ACS)', value: censusData.total_population != null ? censusData.total_population.toLocaleString() : 'N/A', delta: null, delta_type: 'neutral', source: 'census', source_url: censusData.source_url, confidence: 0.95, raw_data: { mode, value: censusData.total_population } },
+      { signal_key: 'median_household_income', label: 'Median Household Income (ACS)', value: censusData.median_household_income != null ? `$${censusData.median_household_income.toLocaleString()}` : 'N/A', delta: null, delta_type: 'neutral', source: 'census', source_url: censusData.source_url, confidence: 0.95, raw_data: { mode, value: censusData.median_household_income } },
+      { signal_key: 'children_population_proxy', label: 'Population Under 18', value: censusData.children_under_18 != null ? `${censusData.children_under_18.toLocaleString()} (${censusData.children_pct ?? '–'}%)` : 'N/A', delta: null, delta_type: 'neutral', source: 'census', source_url: censusData.source_url, confidence: 0.9, raw_data: { mode, count: censusData.children_under_18, pct: censusData.children_pct } },
+      { signal_key: 'income_100k_plus_proxy', label: 'Households $100k+', value: censusData.income_100k_plus_pct != null ? `${censusData.income_100k_plus_pct}%` : 'N/A', delta: null, delta_type: 'neutral', source: 'census', source_url: censusData.source_url, confidence: 0.9, raw_data: { mode, pct_100k: censusData.income_100k_plus_pct, pct_150k: censusData.income_150k_plus_pct } },
+      { signal_key: 'education_bachelors_plus_proxy', label: "Bachelor's Degree or Higher (25+)", value: censusData.bachelors_plus_pct != null ? `${censusData.bachelors_plus_pct}%` : 'N/A', delta: null, delta_type: 'neutral', source: 'census', source_url: censusData.source_url, confidence: 0.9, raw_data: { mode, pct: censusData.bachelors_plus_pct } },
+      { signal_key: 'census_data_readiness', label: 'Census Data', value: 'Connected (ACS 2022 5-yr)', delta: null, delta_type: 'up', source: 'census', source_url: censusData.source_url, confidence: 0.95, raw_data: { mode, place_fips: censusData.place_fips, state_fips: censusData.state_fips } },
+    ] : [
+      { signal_key: 'census_data_readiness', label: 'Census Data', value: censusError ? `Unavailable (${censusError})` : 'Unavailable', delta: null, delta_type: 'down', source: 'census', source_url: null, confidence: 0.3, raw_data: { mode, error: censusError } },
     ]
-    const { error: sErr } = await admin.from('city_market_signals').insert(signals.map((r) => ({ ...r, city_id: cityId, raw_data: { mode } })))
+
+    const baseSignals = [
+      { signal_key: 'elementary_school_count', label: 'Elementary Schools', value: String(elementaryItems.length), delta: null, delta_type: 'neutral', source: mode, source_url: null, confidence: 0.6, raw_data: { mode } },
+      { signal_key: 'private_school_count', label: 'Private Schools', value: String(privateItems.length), delta: null, delta_type: 'neutral', source: mode, source_url: null, confidence: 0.6, raw_data: { mode } },
+      { signal_key: 'competitor_count', label: 'Direct Competitors', value: String(finalCompetitors.length), delta: null, delta_type: finalCompetitors.length > 0 ? 'up' : 'neutral', source: mode, source_url: null, confidence: 0.7, raw_data: { mode } },
+      { signal_key: 'stem_enrichment_count', label: 'STEM Enrichment Programs', value: String(stemItems.length), delta: null, delta_type: 'neutral', source: mode, source_url: null, confidence: 0.6, raw_data: { mode } },
+      { signal_key: 'montessori_count', label: 'Montessori / Premium Schools', value: String(privateItems.filter((p) => itemText(p).includes('montessori')).length), delta: null, delta_type: 'neutral', source: mode, source_url: null, confidence: 0.5, raw_data: { mode } },
+      { signal_key: 'rental_venue_count', label: 'Rental Venues (church/community/rec)', value: String(rentalItems.length), delta: null, delta_type: 'neutral', source: mode, source_url: null, confidence: 0.5, raw_data: { mode } },
+      { signal_key: 'parent_mindset_places', label: 'Parent-Mindset Places', value: String(parentItems.length), delta: null, delta_type: 'neutral', source: mode, source_url: null, confidence: 0.5, raw_data: { mode } },
+      { signal_key: 'firecrawl_source_pages', label: 'Source Pages Found', value: String(firecrawl.count), delta: null, delta_type: firecrawl.count > 0 ? 'up' : 'neutral', source: mode, source_url: null, confidence: 0.5, raw_data: { mode } },
+      { signal_key: 'data_readiness', label: 'Data Readiness', value: mode === 'live_api' ? 'Live API Connected' : 'POC Sample', delta: null, delta_type: mode === 'live_api' ? 'up' : 'neutral', source: mode, source_url: null, confidence: 0.7, raw_data: { mode } },
+    ]
+    const signals = [...baseSignals, ...censusSignals]
+    const { error: sErr } = await admin.from('city_market_signals').insert(signals.map((r) => ({ ...r, city_id: cityId })))
     if (sErr) return json({ error: 'Failed to insert signals', detail: sErr.message }, 500)
 
     const scores = [
@@ -341,16 +495,18 @@ Deno.serve(async (req) => {
       },
       category_scores: cat,
       composite_score: compositeScore,
-      warnings: { apify: apifyError, firecrawl: firecrawl.error },
+      census: censusData,
+      warnings: { apify: apifyError, firecrawl: firecrawl.error, census: censusError },
     }
 
+    const anyWarn = apifyError || firecrawl.error || censusError
     const { data: jobRow, error: jobErr } = await admin.from('city_fetch_jobs').insert({
       city_id: cityId, city, state, source: mode,
-      status: apifyError || firecrawl.error ? 'completed_with_warnings' : 'completed',
+      status: anyWarn ? 'completed_with_warnings' : 'completed',
       started_at: startedAt, completed_at: completedAt,
       request_payload: { city, state, mode },
       response_summary: responseSummary,
-      error_message: [apifyError, firecrawl.error].filter(Boolean).join(' | ') || null,
+      error_message: [apifyError, firecrawl.error, censusError].filter(Boolean).join(' | ') || null,
     }).select('id').single()
     if (jobErr) return json({ error: 'Failed to insert job', detail: jobErr.message }, 500)
 
@@ -358,9 +514,10 @@ Deno.serve(async (req) => {
       ok: true, mode, city_id: cityId,
       composite_score: compositeScore, tier,
       category_scores: cat,
+      census: censusData,
       inserted: { signals: signals.length, scores: scores.length, competitors: finalCompetitors.length, job_id: jobRow?.id },
       counts: responseSummary.counts,
-      warnings: { apify: apifyError, firecrawl: firecrawl.error },
+      warnings: { apify: apifyError, firecrawl: firecrawl.error, census: censusError },
     })
   } catch (e) {
     return json({ error: (e as Error).message }, 500)

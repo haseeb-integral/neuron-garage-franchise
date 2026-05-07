@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { AlertCircle, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock, Download, ExternalLink, FolderCheck, Link as LinkIcon, Mail, MapPin, MoreVertical, Plus, RefreshCw, Reply, Search, Send, Target, Trophy, Upload, Users, XCircle } from "lucide-react";
+import { AlertCircle, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock, Download, ExternalLink, Info, Link as LinkIcon, Mail, MapPin, MoreVertical, Plus, RefreshCw, Reply, Search, Send, Target, Trophy, Upload, Users, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 type CampaignStatus = "Active" | "Draft" | "Paused" | "Complete";
@@ -61,7 +61,7 @@ const prospects: Prospect[] = [
   { id: 16, campaignId: 4, initials: "JP", name: "Jennifer Park", school: "Spears Elementary", emailStatus: "Queued", engagement: "—", replyStatus: "No Reply", fit: "Medium", preview: "Draft prospect, not sent yet." },
 ];
 
-function Pill({ children, tone = "blue" }: { children: React.ReactNode; tone?: "blue" | "green" | "gold" | "red" | "gray" | "purple" }) {
+function Chip({ children, tone = "blue" }: { children: React.ReactNode; tone?: "blue" | "green" | "gold" | "red" | "gray" | "purple" }) {
   const styles = {
     blue: "bg-[#eef4ff] text-[#174be8]",
     green: "bg-[#e6f7ef] text-[#0a8f5a]",
@@ -70,41 +70,33 @@ function Pill({ children, tone = "blue" }: { children: React.ReactNode; tone?: "
     gray: "bg-[#eef2f7] text-[#526078]",
     purple: "bg-[#f2ebff] text-[#7c3aed]",
   };
-  return <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-bold leading-5 ${styles[tone]}`}>{children}</span>;
+  return <span className={`inline-flex h-6 max-w-full items-center rounded-md px-2 text-[11px] font-bold ${styles[tone]}`}>{children}</span>;
 }
 
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return <div className={`rounded-xl border border-[#e7edf5] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.02)] ${className}`}>{children}</div>;
 }
 
-function IconBox({ children, tone = "blue", size = "sm" }: { children: React.ReactNode; tone?: "blue" | "green" | "gold" | "purple"; size?: "sm" | "md" }) {
+function IconBox({ children, tone = "blue" }: { children: React.ReactNode; tone?: "blue" | "green" | "gold" | "purple" }) {
   const styles = {
     blue: "bg-[#eef4ff] text-[#174be8]",
     green: "bg-[#e6f7ef] text-[#0a8f5a]",
     gold: "bg-[#fff4df] text-[#b7791f]",
     purple: "bg-[#f2ebff] text-[#7c3aed]",
   };
-  return <div className={`flex ${size === "md" ? "h-9 w-9" : "h-8 w-8"} items-center justify-center rounded-lg ${styles[tone]}`}>{children}</div>;
+  return <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${styles[tone]}`}>{children}</div>;
 }
 
 const statusTone = (status: CampaignStatus) => status === "Active" ? "green" : status === "Draft" ? "blue" : status === "Paused" ? "gold" : "gray";
 const emailTone = (status: EmailStatus) => status === "Opened" || status === "Sent" ? "blue" : status === "Replied" ? "green" : status === "Bounced" ? "red" : "gold";
-const replyTone = (status: ReplyStatus) => status === "Interested" ? "green" : status === "Meeting Booked" ? "purple" : status === "Follow-Up Needed" ? "gold" : status === "Not Interested" ? "red" : "gray";
+const replyDot = (status: ReplyStatus) => status === "Interested" || status === "Meeting Booked" ? "bg-[#0ea66e]" : status === "Follow-Up Needed" ? "bg-[#f59e0b]" : status === "Not Interested" ? "bg-[#ef4444]" : "bg-[#8794ab]";
+const replyText = (status: ReplyStatus) => status === "Meeting Booked" ? "Booked" : status === "Follow-Up Needed" ? "Follow-Up" : status;
 const fitTone = (fit: Fit) => fit === "High" ? "green" : fit === "Medium" ? "gold" : "red";
 
 export default function EmailOutreach() {
   const [selectedCampaign, setSelectedCampaign] = useState(campaigns[0]);
   const [tab, setTab] = useState("All Prospects");
   const safeToast = (message: string) => toast.info(message);
-
-  const visibleProspects = useMemo(() => {
-    const rows = prospects.filter((p) => p.campaignId === selectedCampaign.id);
-    if (tab === "Replied") return rows.filter((p) => p.emailStatus === "Replied");
-    if (tab === "Interested") return rows.filter((p) => p.replyStatus === "Interested" || p.replyStatus === "Meeting Booked");
-    if (tab === "Opened") return rows.filter((p) => p.emailStatus === "Opened" || p.engagement.includes("open"));
-    if (tab === "Bounced") return rows.filter((p) => p.emailStatus === "Bounced");
-    return rows;
-  }, [selectedCampaign.id, tab]);
 
   const campaignProspects = prospects.filter((p) => p.campaignId === selectedCampaign.id);
   const statusCounts = {
@@ -124,32 +116,38 @@ export default function EmailOutreach() {
   const readyToPromote = replyCounts.Interested + replyCounts["Meeting Booked"];
   const maxCount = Math.max(1, campaignProspects.length);
 
+  const visibleProspects = useMemo(() => {
+    const rows = prospects.filter((p) => p.campaignId === selectedCampaign.id);
+    if (tab === "Replied") return rows.filter((p) => p.emailStatus === "Replied");
+    if (tab === "Interested") return rows.filter((p) => p.replyStatus === "Interested" || p.replyStatus === "Meeting Booked");
+    if (tab === "Opened") return rows.filter((p) => p.emailStatus === "Opened" || p.engagement.includes("open"));
+    if (tab === "Bounced") return rows.filter((p) => p.emailStatus === "Bounced");
+    return rows;
+  }, [selectedCampaign.id, tab]);
+
   return (
     <div className="min-h-screen bg-white text-[#07142f]">
       <div className="mb-3 flex items-center justify-between gap-4">
         <div className="relative w-full max-w-[520px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8794ab]" />
-          <input className="h-10 w-full rounded-xl border border-[#dbe4f2] bg-white pl-10 pr-4 text-sm text-[#07142f] outline-none placeholder:text-[#8794ab]" placeholder="Search campaigns, prospects, schools, cities..." />
+          <input className="h-10 w-full rounded-xl border border-[#dbe4f2] bg-white pl-10 pr-4 text-sm outline-none placeholder:text-[#8794ab]" placeholder="Search campaigns, prospects, schools, cities..." />
         </div>
         <div className="hidden items-center gap-3 lg:flex">
           <button className="rounded-full border border-[#e7edf5] p-2 text-[#526078]"><AlertCircle size={18} /></button>
-          <div className="flex items-center gap-3 rounded-xl border border-[#e7edf5] px-3 py-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#174be8] text-sm font-bold text-white">H</div>
-            <div className="leading-tight"><div className="text-sm font-bold">Haseeb</div><div className="text-[11px] text-[#66728a]">ADMIN</div></div>
-          </div>
+          <div className="flex items-center gap-3 rounded-xl border border-[#e7edf5] px-3 py-2"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#174be8] text-sm font-bold text-white">H</div><div className="leading-tight"><div className="text-sm font-bold">Haseeb</div><div className="text-[11px] text-[#66728a]">ADMIN</div></div></div>
         </div>
       </div>
 
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-[26px] font-black tracking-tight text-[#07142f]">Email Outreach</h1>
+      <div className="mb-3 flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-[26px] font-black tracking-tight">Email Outreach</h1>
           <p className="mt-1 text-sm text-[#526078]">Manage teacher prospect outreach campaigns and move interested replies into the candidate pipeline.</p>
         </div>
-        <div className="ml-auto flex flex-wrap justify-end gap-2">
-          <button onClick={() => safeToast("Sample CSV export prepared. Live exports will use synced campaign data.")} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[#dbe4f2] bg-white px-4 text-sm font-bold text-[#07142f]"><Download size={15} /> Export CSV</button>
-          <button onClick={() => safeToast("Sample replies synced. SmartLead or GHL sync will connect later.")} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[#dbe4f2] bg-white px-4 text-sm font-bold text-[#07142f]"><RefreshCw size={15} /> Sync Replies</button>
-          <button onClick={() => safeToast("Selected teacher prospects would be imported into the selected campaign.")} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[#dbe4f2] bg-white px-4 text-sm font-bold text-[#174be8]"><Upload size={15} /> Import Prospects</button>
-          <button onClick={() => safeToast("Campaign creation is sample-only until SmartLead/GHL is connected.")} className="inline-flex h-9 items-center gap-2 rounded-lg bg-[#174be8] px-4 text-sm font-bold text-white"><Plus size={15} /> Create Campaign</button>
+        <div className="ml-auto flex shrink-0 flex-wrap justify-end gap-2 pt-1">
+          <button onClick={() => safeToast("Sample CSV export prepared. Live exports will use synced campaign data.")} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#dbe4f2] bg-white px-3 text-xs font-bold text-[#07142f]"><Download size={14} /> CSV</button>
+          <button onClick={() => safeToast("Sample replies synced. SmartLead or GHL sync will connect later.")} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#dbe4f2] bg-white px-3 text-xs font-bold text-[#07142f]"><RefreshCw size={14} /> Sync</button>
+          <button onClick={() => safeToast("Selected teacher prospects would be imported into the selected campaign.")} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#dbe4f2] bg-white px-3 text-xs font-bold text-[#174be8]"><Upload size={14} /> Import</button>
+          <button onClick={() => safeToast("Campaign creation is sample-only until SmartLead/GHL is connected.")} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#174be8] px-3 text-xs font-bold text-white"><Plus size={14} /> Campaign</button>
         </div>
       </div>
 
@@ -160,39 +158,25 @@ export default function EmailOutreach() {
           [Send, "Open Rate", "42.6%", "+6.3 pp", "green"],
           [Reply, "Replies", "186", "14.9% reply rate", "green"],
           [Target, "Interested Leads", "58", "31.2% of replies", "gold"],
-          [FolderCheck, "Promoted to Pipeline", "23", "+8 this week", "blue"],
+          [Mail, "Promoted to Pipeline", "23", "+8 this week", "blue"],
         ].map(([Icon, label, value, sub, tone]) => (
-          <Card key={label as string} className="px-3 py-3">
-            <div className="flex items-center gap-2">
-              <IconBox tone={tone as "blue" | "green" | "gold" | "purple"}><Icon size={17} /></IconBox>
-              <div className="min-w-0"><div className="truncate text-[11px] font-bold text-[#34445f]">{label as string}</div><div className="text-[21px] font-black leading-6 text-[#07142f]">{value as string}</div><div className="truncate text-[11px] font-bold text-[#0a8f5a]">{sub as string}</div></div>
-            </div>
+          <Card key={label as string} className="px-3 py-2.5">
+            <div className="flex items-center gap-2"><IconBox tone={tone as "blue" | "green" | "gold" | "purple"}><Icon size={17} /></IconBox><div className="min-w-0"><div className="truncate text-[11px] font-bold text-[#34445f]">{label as string}</div><div className="text-[21px] font-black leading-6">{value as string}</div><div className="truncate text-[11px] font-bold text-[#0a8f5a]">{sub as string}</div></div></div>
           </Card>
         ))}
       </div>
 
-      <div className="grid gap-3 xl:grid-cols-[290px_minmax(0,1fr)_300px]">
+      <div className="grid gap-3 xl:grid-cols-[275px_minmax(0,1fr)_280px]">
         <Card className="overflow-hidden">
-          <div className="flex items-center justify-between border-b border-[#edf2f8] p-3">
-            <h2 className="text-base font-black">Campaigns</h2>
-            <button onClick={() => safeToast("New campaign setup is sample-only in this preview.")} className="text-xs font-bold text-[#174be8]">+ New</button>
-          </div>
+          <div className="flex items-center justify-between border-b border-[#edf2f8] p-3"><h2 className="text-base font-black">Campaigns</h2><button onClick={() => safeToast("New campaign setup is sample-only in this preview.")} className="text-xs font-bold text-[#174be8]">+ New</button></div>
           <div className="divide-y divide-[#edf2f8]">
             {campaigns.map((campaign) => {
               const active = selectedCampaign.id === campaign.id;
               return (
                 <button key={campaign.id} onClick={() => { setSelectedCampaign(campaign); setTab("All Prospects"); }} className={`block w-full px-3 py-3 text-left transition hover:bg-[#f8fbff] ${active ? "bg-[#f8fbff]" : "bg-white"}`}>
-                  <div className="mb-1 flex items-start justify-between gap-2">
-                    <div className="text-[13px] font-black text-[#07142f]">{campaign.name}</div>
-                    <Pill tone={statusTone(campaign.status) as "blue" | "green" | "gold" | "gray"}>{campaign.status}</Pill>
-                  </div>
+                  <div className="mb-1 flex items-start justify-between gap-2"><div className="text-[13px] font-black">{campaign.name}</div><Chip tone={statusTone(campaign.status) as "blue" | "green" | "gold" | "gray"}>{campaign.status}</Chip></div>
                   <div className="mb-2 flex items-center gap-1 text-[11px] text-[#526078]"><MapPin size={11} className="text-[#ef4444]" /> {campaign.market}</div>
-                  <div className="grid grid-cols-4 gap-1 text-center">
-                    <div><div className="text-xs font-black">{campaign.prospects}</div><div className="text-[9px] text-[#526078]">Prospects</div></div>
-                    <div><div className="text-xs font-black">{campaign.openRate}</div><div className="text-[9px] text-[#526078]">Open</div></div>
-                    <div><div className="text-xs font-black">{campaign.replies}</div><div className="text-[9px] text-[#526078]">Replies</div></div>
-                    <div><div className="text-xs font-black">{campaign.interested}</div><div className="text-[9px] text-[#526078]">Interest</div></div>
-                  </div>
+                  <div className="grid grid-cols-4 gap-1 text-center"><div><div className="text-xs font-black">{campaign.prospects}</div><div className="text-[9px] text-[#526078]">Prospects</div></div><div><div className="text-xs font-black">{campaign.openRate}</div><div className="text-[9px] text-[#526078]">Open</div></div><div><div className="text-xs font-black">{campaign.replies}</div><div className="text-[9px] text-[#526078]">Replies</div></div><div><div className="text-xs font-black">{campaign.interested}</div><div className="text-[9px] text-[#526078]">Interest</div></div></div>
                 </button>
               );
             })}
@@ -203,46 +187,36 @@ export default function EmailOutreach() {
         <Card className="overflow-hidden">
           <div className="border-b border-[#edf2f8] p-3">
             <div className="flex flex-wrap items-start justify-between gap-2">
-              <div>
-                <div className="flex items-center gap-2"><h2 className="text-lg font-black">{selectedCampaign.name}</h2><Pill tone={statusTone(selectedCampaign.status) as "blue" | "green" | "gold" | "gray"}>{selectedCampaign.status}</Pill></div>
-                <div className="mt-1 flex flex-wrap gap-3 text-[11px] text-[#526078]"><span className="flex items-center gap-1"><MapPin size={12} /> {selectedCampaign.market}</span><span className="flex items-center gap-1"><CalendarDays size={12} /> Apr 28, 2025</span><span className="flex items-center gap-1"><LinkIcon size={12} /> SmartLead {selectedCampaign.smartLeadId}</span></div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button onClick={() => safeToast("This would open the connected campaign in SmartLead.")} className="inline-flex h-8 items-center gap-1 rounded-lg border border-[#dbe4f2] bg-white px-3 text-[11px] font-bold text-[#174be8]">Open SmartLead <ExternalLink size={12} /></button>
-                <button onClick={() => safeToast("Sample replies synced. Live SmartLead/GHL sync will connect later.")} className="inline-flex h-8 items-center gap-1 rounded-lg border border-[#dbe4f2] bg-white px-3 text-[11px] font-bold text-[#174be8]"><RefreshCw size={12} /> Sync</button>
-                <button onClick={() => safeToast("Selected prospects would be pushed to the selected outreach campaign.")} className="inline-flex h-8 items-center gap-1 rounded-lg bg-[#174be8] px-3 text-[11px] font-bold text-white"><Upload size={12} /> Import</button>
-              </div>
+              <div><div className="flex items-center gap-2"><h2 className="text-lg font-black">{selectedCampaign.name}</h2><Chip tone={statusTone(selectedCampaign.status) as "blue" | "green" | "gold" | "gray"}>{selectedCampaign.status}</Chip></div><div className="mt-1 flex flex-wrap gap-3 text-[11px] text-[#526078]"><span className="flex items-center gap-1"><MapPin size={12} /> {selectedCampaign.market}</span><span className="flex items-center gap-1"><CalendarDays size={12} /> Apr 28, 2025</span><span className="flex items-center gap-1"><LinkIcon size={12} /> SmartLead {selectedCampaign.smartLeadId}</span></div></div>
+              <div className="flex flex-wrap gap-2"><button onClick={() => safeToast("This would open the connected campaign in SmartLead.")} className="inline-flex h-8 items-center gap-1 rounded-lg border border-[#dbe4f2] bg-white px-3 text-[11px] font-bold text-[#174be8]">Open SmartLead <ExternalLink size={12} /></button><button onClick={() => safeToast("Sample replies synced. Live SmartLead/GHL sync will connect later.")} className="inline-flex h-8 items-center gap-1 rounded-lg border border-[#dbe4f2] bg-white px-3 text-[11px] font-bold text-[#174be8]"><RefreshCw size={12} /> Sync Replies</button><button onClick={() => safeToast("Selected prospects would be pushed to the selected outreach campaign.")} className="inline-flex h-8 items-center gap-1 rounded-lg border border-[#dbe4f2] bg-white px-3 text-[11px] font-bold text-[#174be8]"><Upload size={12} /> Import Prospects</button></div>
             </div>
-            <div className="mt-3 grid grid-cols-6 divide-x divide-[#edf2f8] rounded-lg border border-[#edf2f8]">
-              {[["SENT", selectedCampaign.sent],["OPEN RATE", selectedCampaign.openRate],["REPLY RATE", selectedCampaign.replyRate],["REPLIES", selectedCampaign.replies],["INTERESTED", selectedCampaign.interested],["PROMOTED", selectedCampaign.promoted]].map(([label,value]) => <div key={label} className="px-3 py-2"><div className="text-[9px] font-bold text-[#8794ab]">{label}</div><div className={`mt-0.5 text-base font-black ${String(label).includes("RATE") || label === "INTERESTED" ? "text-[#0a8f5a]" : "text-[#07142f]"}`}>{value}</div></div>)}
+            <div className="mt-3 flex items-center gap-2 rounded-lg border border-[#dbe4f2] bg-[#fbfdff] px-3 py-2 text-xs text-[#526078]"><Info size={14} className="text-[#174be8]" /><span><b>Outreach is managed in SmartLead.</b> Use this dashboard to open the platform, sync replies, import prospects, and promote interested leads.</span></div>
+            <div className="mt-3 grid grid-cols-3 gap-0 rounded-xl border border-[#edf2f8] bg-white md:grid-cols-6">
+              {[["SENT", selectedCampaign.sent],["OPEN RATE", selectedCampaign.openRate],["REPLY RATE", selectedCampaign.replyRate],["REPLIES", selectedCampaign.replies],["INTERESTED", selectedCampaign.interested],["PROMOTED", selectedCampaign.promoted]].map(([label,value]) => <div key={label} className="border-r border-[#edf2f8] px-3 py-2 last:border-r-0"><div className="text-[9px] font-bold text-[#8794ab]">{label}</div><div className={`mt-0.5 text-base font-black ${String(label).includes("RATE") || label === "INTERESTED" ? "text-[#0a8f5a]" : "text-[#07142f]"}`}>{value}</div></div>)}
             </div>
-            <div className="mt-3 flex items-center gap-2 rounded-lg border border-[#edf2f8] px-3 py-2">
-              {[["Day 1","Cold"],["Day 3","Follow-Up"],["Day 7","Final"]].map((s, idx) => <div key={s[0]} className="flex min-w-0 flex-1 items-center gap-2"><Pill tone="blue">{s[0]}</Pill><span className="truncate text-[11px] font-bold text-[#07142f]">{s[1]}</span>{idx < 2 && <div className="ml-auto h-px flex-1 border-t border-dashed border-[#cbd5e1]" />}</div>)}
+            <div className="mt-3 grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center rounded-xl border border-[#edf2f8] px-3 py-3">
+              {[ ["Day 1", "Cold Outreach"], ["Day 3", "Follow-Up 1"], ["Day 7", "Final Follow-Up"] ].map((item, idx) => (
+                <div key={item[0]} className={`flex items-center gap-2 ${idx === 0 ? "justify-start" : idx === 1 ? "justify-center" : "justify-end"}`}><div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#dbe4f2] bg-[#eef4ff] text-[#174be8]"><Mail size={15} /></div><div><div className="text-xs font-black">{item[0]}</div><div className="text-xs text-[#526078]">{item[1]}</div></div></div>
+              )).flatMap((node, idx) => idx < 2 ? [node, <div key={`line-${idx}`} className="h-px border-t border-dashed border-[#cbd5e1]" />] : [node])}
             </div>
           </div>
 
-          <div className="px-3 pt-2">
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex flex-wrap gap-4 text-xs font-bold">
-                {[["All Prospects", campaignProspects.length],["Replied", statusCounts.Replied],["Interested", readyToPromote],["Opened", statusCounts.Opened],["Bounced", statusCounts.Bounced]].map(([name,count]) => <button key={name} onClick={() => setTab(String(name))} className={`pb-1.5 ${tab === name ? "border-b-2 border-[#174be8] text-[#174be8]" : "text-[#526078]"}`}>{name} <span className="ml-1 rounded-full bg-[#eef4ff] px-1.5 text-[10px] text-[#174be8]">{count}</span></button>)}
-              </div>
-              <button className="rounded-lg border border-[#dbe4f2] px-3 py-1.5 text-xs font-bold text-[#07142f]">Filter</button>
-            </div>
-          </div>
+          <div className="px-3 pt-2"><div className="mb-2 flex flex-wrap items-center justify-between gap-2"><div className="flex flex-wrap gap-4 text-xs font-bold">{[["All Prospects", campaignProspects.length],["Replied", statusCounts.Replied],["Interested", readyToPromote],["Opened", statusCounts.Opened],["Bounced", statusCounts.Bounced]].map(([name,count]) => <button key={name} onClick={() => setTab(String(name))} className={`pb-1.5 ${tab === name ? "border-b-2 border-[#174be8] text-[#174be8]" : "text-[#526078]"}`}>{name} <span className="ml-1 rounded-full bg-[#eef4ff] px-1.5 text-[10px] text-[#174be8]">{count}</span></button>)}</div><button className="rounded-lg border border-[#dbe4f2] px-3 py-1.5 text-xs font-bold">Filter</button></div></div>
 
           <div className="px-3 pb-3">
             <table className="w-full table-fixed text-left text-[12px]">
-              <thead><tr className="border-y border-[#edf2f8] text-[10px] uppercase text-[#8794ab]"><th className="w-[22%] py-2">Teacher</th><th className="w-[15%]">School</th><th className="w-[12%]">Email</th><th className="w-[13%]">Engage</th><th className="w-[15%]">Reply</th><th className="w-[8%]">Fit</th><th className="w-[15%] text-right">Action</th></tr></thead>
+              <thead><tr className="border-y border-[#edf2f8] text-[10px] uppercase text-[#8794ab]"><th className="w-[20%] py-2">Teacher</th><th className="w-[13%]">School</th><th className="w-[11%]">Email</th><th className="w-[11%]">Engage</th><th className="w-[14%]">Reply</th><th className="w-[9%]">Fit</th><th className="w-[14%]">Preview</th><th className="w-[8%] text-right">Action</th></tr></thead>
               <tbody>
                 {visibleProspects.map((p) => (
                   <tr key={p.id} className="border-b border-[#edf2f8] hover:bg-[#f8fbff]">
-                    <td className="py-2"><div className="flex items-center gap-2"><div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-[#dbe7ff] text-[10px] font-black text-[#174be8]">{p.initials}</div><div className="min-w-0"><div className="truncate font-bold text-[#07142f]">{p.name}</div><div className="truncate text-[10px] text-[#8794ab]">{p.name.toLowerCase().replace(" ", ".")}@school.edu</div></div></div></td>
+                    <td className="py-2"><div className="flex items-center gap-2"><div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-[#dbe7ff] text-[10px] font-black text-[#174be8]">{p.initials}</div><div className="min-w-0"><div className="truncate font-bold">{p.name}</div><div className="truncate text-[10px] text-[#8794ab]">{p.name.toLowerCase().replace(" ", ".")}@school.edu</div></div></div></td>
                     <td className="truncate text-[#34445f]">{p.school}</td>
-                    <td><Pill tone={emailTone(p.emailStatus) as "blue" | "green" | "gold" | "red"}>{p.emailStatus}</Pill></td>
+                    <td><Chip tone={emailTone(p.emailStatus) as "blue" | "green" | "gold" | "red"}>{p.emailStatus}</Chip></td>
                     <td className="truncate text-[#526078]">{p.engagement}</td>
-                    <td><Pill tone={replyTone(p.replyStatus) as "green" | "gold" | "red" | "gray" | "purple"}>{p.replyStatus}</Pill></td>
-                    <td><Pill tone={fitTone(p.fit) as "green" | "gold" | "red"}>{p.fit}</Pill></td>
-                    <td className="text-right">{p.replyStatus === "Interested" || p.replyStatus === "Meeting Booked" ? <button onClick={() => safeToast(`${p.name} would be promoted to Candidate Pipeline.`)} className="rounded-md bg-[#174be8] px-2.5 py-1.5 text-[11px] font-bold text-white">Pipeline</button> : p.replyStatus === "Follow-Up Needed" ? <button className="rounded-md border border-[#dbe4f2] px-2.5 py-1.5 text-[11px] font-bold text-[#174be8]">Follow Up</button> : <button className="rounded-md border border-[#dbe4f2] px-2 py-1.5 text-[#526078]"><MoreVertical size={13} /></button>}</td>
+                    <td><span className="flex items-center gap-1.5 truncate font-bold text-[#34445f]"><span className={`h-2 w-2 flex-shrink-0 rounded-full ${replyDot(p.replyStatus)}`} />{replyText(p.replyStatus)}</span></td>
+                    <td><Chip tone={fitTone(p.fit) as "green" | "gold" | "red"}>{p.fit}</Chip></td>
+                    <td className="truncate text-[#526078]">{p.preview}</td>
+                    <td className="text-right">{p.replyStatus === "Interested" || p.replyStatus === "Meeting Booked" ? <button onClick={() => safeToast(`${p.name} would be promoted to Candidate Pipeline.`)} className="rounded-md bg-[#174be8] px-2 py-1.5 text-[11px] font-bold text-white">Pipeline</button> : p.replyStatus === "Follow-Up Needed" || p.emailStatus === "Replied" ? <button className="rounded-md border border-[#dbe4f2] px-2 py-1.5 text-[11px] font-bold text-[#174be8]">Follow</button> : <button className="rounded-md border border-[#dbe4f2] px-1.5 py-1.5 text-[#526078]"><MoreVertical size={13} /></button>}</td>
                   </tr>
                 ))}
               </tbody>

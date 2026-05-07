@@ -200,7 +200,8 @@ const CityScoring = () => {
   const totalWeight = Object.values(weights).reduce((s, v) => s + v, 0);
 
   const resetWeights = () => {
-    setWeights(CATEGORIES.reduce((acc, c) => ({ ...acc, [c.key]: c.defaultWeight }), {} as Record<CategoryKey, number>));
+    setWeights(defaultWeights);
+    setAppliedWeights(defaultWeights);
     toast.success("Weights reset to defaults");
   };
 

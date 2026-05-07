@@ -3,7 +3,7 @@ import { TeacherProspect } from "@/data/teacherData";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FitScoreBadge } from "./FitScoreBadge";
-import { ArrowUpDown, CheckCircle2, Clock, Eye, Globe, Linkedin, Mail, MoreVertical, Send, Star, UserCheck, UserX, Users } from "lucide-react";
+import { ArrowUpDown, CheckCircle2, Clock, Eye, Globe, Linkedin, Mail, MoreVertical, Send, Star, UserCheck, UserX, Users, MailPlus } from "lucide-react";
 import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
@@ -99,19 +99,19 @@ export function TeacherTable({ prospects, selected, onToggleSelect, onToggleAll,
                   <TableCell className="py-2"><span title={p.tag} className={`inline-flex min-w-[54px] justify-center rounded-full px-2 py-0.5 text-[10.5px] font-bold leading-4 ${fitTagClass(p.tag)}`}>{fitTagLabel(p.tag)}</span></TableCell>
                   <TableCell className="py-2">
                     <div className="flex flex-wrap items-center gap-1.5">
-                      {isPromoted && <span className="inline-flex items-center gap-1 rounded-full bg-[#eef2f7] px-2.5 py-1 text-xs font-bold text-[#526078]"><UserCheck size={12} /> Promoted</span>}
+                      {isPromoted && <span className="inline-flex items-center gap-1 rounded-full bg-[#eef2f7] px-2.5 py-1 text-xs font-bold text-[#526078]"><UserCheck size={12} /> In Outreach</span>}
                       {p.enrichmentStatus === "Enriched" ? <span className="inline-flex items-center gap-1 rounded-full bg-[#e6f7ef] px-2.5 py-1 text-xs font-bold text-[#0ea66e]"><CheckCircle2 size={12} /> Enriched</span> : <span className="inline-flex items-center gap-1 rounded-full bg-[#fff4df] px-2.5 py-1 text-xs font-bold text-[#b7791f]"><Clock size={12} /> Pending</span>}
                     </div>
                   </TableCell>
                   <TableCell onClick={e => e.stopPropagation()} className="py-2 text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild><button className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#dbe4f2] bg-white text-[#526078] hover:bg-[#f4f7ff] hover:text-[#174be8]"><MoreVertical size={14} /></button></DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48 bg-white">
+                      <DropdownMenuContent align="end" className="w-52 bg-white">
                         <DropdownMenuItem onClick={() => onRowClick(p)}><Eye className="mr-2 h-4 w-4" /> View profile</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => toast.info(`Sample enrichment queued for ${p.name}.`)}><Send className="mr-2 h-4 w-4" /> Enrich contact</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => toast.success(`${p.name} added to shortlist.`)}><Star className="mr-2 h-4 w-4" /> Add to shortlist</DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem disabled={isPromoted || promotingId === p.id} onClick={() => onPromote(p)}><UserCheck className="mr-2 h-4 w-4" /> {isPromoted ? "Already promoted" : "Promote to pipeline"}</DropdownMenuItem>
+                        <DropdownMenuItem disabled={isPromoted || promotingId === p.id} onClick={() => onPromote(p)}><MailPlus className="mr-2 h-4 w-4" /> {isPromoted ? "Already in outreach" : "Add to outreach"}</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => toast.info(`${p.name} marked as not a fit.`)}><UserX className="mr-2 h-4 w-4" /> Mark not fit</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

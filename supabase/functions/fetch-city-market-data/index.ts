@@ -179,8 +179,10 @@ async function fetchApifyCompetitors(city: string, state: string, now: string) {
     const data = await res.json().catch(() => [])
     if (!res.ok) return { rows: [] as CompetitorRow[], error: `Apify ${res.status}: ${JSON.stringify(data).slice(0, 400)}`, rawCount: 0 }
     const items = Array.isArray(data) ? data : []
+    const relevant = items.filter((it) => isRelevantCompetitor(it as Record<string, unknown>))
+    const excludedCount = items.length - relevant.length
     const seen = new Set<string>()
-    const rows = items
+    const rows = relevant
       .map((item) => mapApifyItem(item as Record<string, unknown>, now))
       .filter((row): row is CompetitorRow => Boolean(row))
       .filter((row) => {
@@ -190,7 +192,7 @@ async function fetchApifyCompetitors(city: string, state: string, now: string) {
         return true
       })
       .slice(0, 20)
-    return { rows, error: null as string | null, rawCount: items.length }
+    return { rows, error: null as string | null, rawCount: items.length, afterFilter: relevant.length, excludedCount }
   } catch (e) {
     return { rows: [] as CompetitorRow[], error: (e as Error).message, rawCount: 0 }
   }

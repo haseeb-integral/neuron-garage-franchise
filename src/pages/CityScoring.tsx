@@ -540,7 +540,7 @@ const CityScoring = () => {
               Set what matters most. 100% means scoring the market only by that category.
             </p>
             <p className="text-[10px] text-[#8794ab] leading-snug mt-0.5">
-              Composite score uses six category scores. The 46 SOW metrics are evidence and are not fully rolled into the backend formula yet.
+              Score uses available enabled metrics from the 46-metric SOW framework. Missing metrics are tracked as evidence gaps, not counted as zero.
             </p>
             {totalWeight !== 100 && (
               <p className="text-[11px] text-[#ea580c] mt-1">Weights must total 100% to apply scoring.</p>

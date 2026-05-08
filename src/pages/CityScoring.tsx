@@ -130,6 +130,7 @@ const CityScoring = () => {
   const [liveSignals, setLiveSignals] = useState<any[]>([]);
   const [liveCategoryScores, setLiveCategoryScores] = useState<Record<string, number>>({});
   const [liveCompetitors, setLiveCompetitors] = useState<any[]>([]);
+  const [liveRankedMarkets, setLiveRankedMarkets] = useState<RankedMarket[]>([]);
   const [liveJob, setLiveJob] = useState<any | null>(null);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);

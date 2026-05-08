@@ -411,10 +411,10 @@ export function calculateSowCategoryScores(
     const fb = fallback?.[cat];
     if (b.weight > 0 && b.count > 0) {
       let raw = b.sum / b.weight;
-      // Conservative: with only 1 metric, blend 50/50 with fallback if available
-      // to avoid wild single-proxy swings.
-      if (b.count === 1 && typeof fb === "number") {
-        raw = (raw + fb) / 2;
+      // Conservative: with fewer than 3 usable metrics, blend 50/50 with
+      // fallback if available to avoid sparse-proxy swings.
+      if (b.count < 3 && typeof fb === "number") {
+        raw = (raw * 0.5) + (fb * 0.5);
       }
       out[cat] = clampScore(raw);
     } else if (typeof fb === "number") {

@@ -145,6 +145,10 @@ async function fetchCensusExpanded(city: string, state: string) {
     const householdsWithChildrenProxy = num(row[17])
     const unemployed = num(row[18])
     const laborForce = num(row[19])
+    const medianGrossRent = num(row[20])
+    const discretionaryIncomeProxy = (medianIncome != null && medianGrossRent != null)
+      ? Math.max(0, Math.round(medianIncome - (medianGrossRent * 12)))
+      : null
 
     return {
       data: {
@@ -154,6 +158,8 @@ async function fetchCensusExpanded(city: string, state: string) {
         source_url: `https://api.census.gov/data/2022/acs/acs5?get=NAME&for=place:${placeFips}&in=state:${stateFips}`,
         total_population: totalPopulation,
         median_household_income: medianIncome,
+        median_gross_rent: medianGrossRent,
+        household_discretionary_income_proxy: discretionaryIncomeProxy,
         children_5_12_count: children5_12,
         children_5_12_pct: pct(children5_12, totalPopulation),
         children_under_18: under18,

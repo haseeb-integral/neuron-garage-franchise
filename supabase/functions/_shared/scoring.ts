@@ -119,6 +119,92 @@ export function tierFromComposite(score: number): "A" | "B" | "C" | "D" {
   return "D";
 }
 
+// ---------- State normalization (canonical full names) ----------
+
+const STATE_ABBR_TO_NAME: Record<string, string> = {
+  AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas", CA: "California",
+  CO: "Colorado", CT: "Connecticut", DE: "Delaware", DC: "District of Columbia",
+  FL: "Florida", GA: "Georgia", HI: "Hawaii", ID: "Idaho", IL: "Illinois",
+  IN: "Indiana", IA: "Iowa", KS: "Kansas", KY: "Kentucky", LA: "Louisiana",
+  ME: "Maine", MD: "Maryland", MA: "Massachusetts", MI: "Michigan", MN: "Minnesota",
+  MS: "Mississippi", MO: "Missouri", MT: "Montana", NE: "Nebraska", NV: "Nevada",
+  NH: "New Hampshire", NJ: "New Jersey", NM: "New Mexico", NY: "New York",
+  NC: "North Carolina", ND: "North Dakota", OH: "Ohio", OK: "Oklahoma", OR: "Oregon",
+  PA: "Pennsylvania", RI: "Rhode Island", SC: "South Carolina", SD: "South Dakota",
+  TN: "Tennessee", TX: "Texas", UT: "Utah", VT: "Vermont", VA: "Virginia",
+  WA: "Washington", WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming",
+};
+
+const STATE_NAMES_LOWER: Set<string> = new Set(
+  Object.values(STATE_ABBR_TO_NAME).map((n) => n.toLowerCase()),
+);
+
+// Normalize "tx" / "TX" / "texas" / "Texas" → "Texas". Unknown values returned trimmed as-is.
+export function normalizeStateName(input: string | null | undefined): string {
+  const raw = (input ?? "").trim();
+  if (!raw) return raw;
+  if (raw.length === 2) {
+    const up = raw.toUpperCase();
+    if (STATE_ABBR_TO_NAME[up]) return STATE_ABBR_TO_NAME[up];
+  }
+  const lower = raw.toLowerCase();
+  if (STATE_NAMES_LOWER.has(lower)) {
+    // Title-case the canonical form by looking it up.
+    for (const name of Object.values(STATE_ABBR_TO_NAME)) {
+      if (name.toLowerCase() === lower) return name;
+    }
+  }
+  return raw;
+}
+
+// ---------- Tier hysteresis (stability guard) ----------
+
+export type TierStability = {
+  previous_score: number | null;
+  previous_tier: string | null;
+  new_score: number;
+  raw_new_tier: "A" | "B" | "C" | "D";
+  final_tier: "A" | "B" | "C" | "D";
+  applied: boolean;
+  reason: string;
+};
+
+// If previous tier exists and the new composite is within 1 point of the prior
+// composite, keep the previous tier to avoid API-count noise flipping tiers
+// near a boundary. Otherwise, use the freshly computed tier.
+export function applyTierHysteresis(
+  newScore: number,
+  prevScore: number | null | undefined,
+  prevTier: string | null | undefined,
+): TierStability {
+  const rawNewTier = tierFromComposite(newScore);
+  const validPrevTier = prevTier && /^[ABCD]$/.test(prevTier) ? (prevTier as "A"|"B"|"C"|"D") : null;
+  if (validPrevTier && typeof prevScore === "number" && Math.abs(newScore - prevScore) <= 1 && rawNewTier !== validPrevTier) {
+    return {
+      previous_score: prevScore,
+      previous_tier: validPrevTier,
+      new_score: newScore,
+      raw_new_tier: rawNewTier,
+      final_tier: validPrevTier,
+      applied: true,
+      reason: "New score within 1 point of prior score; retained prior tier to reduce API-count noise.",
+    };
+  }
+  return {
+    previous_score: typeof prevScore === "number" ? prevScore : null,
+    previous_tier: validPrevTier,
+    new_score: newScore,
+    raw_new_tier: rawNewTier,
+    final_tier: rawNewTier,
+    applied: false,
+    reason: validPrevTier
+      ? (rawNewTier === validPrevTier
+          ? "Tier unchanged from prior; no hysteresis needed."
+          : "Score moved 2+ points from prior; tier change allowed.")
+      : "No prior tier to compare; using fresh tier.",
+  };
+}
+
 // ---------- Phase B: SOW metric registry ----------
 
 export type SowMetricEntry = {

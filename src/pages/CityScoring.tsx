@@ -834,13 +834,14 @@ const CityScoring = () => {
               <span className="text-right">Tier</span>
             </div>
             {filtered.slice(0, 8).map((c, i) => {
-              const isSel = c.id === selectedId;
+              const isSel = c.city === selectedCity && c.state === selectedState;
               const isCmp = selectedForCompare.includes(c.id);
               return (
                 <div
                   key={c.id}
                   onClick={() => {
                     const sample = sampleCities.find((s) => s.city === c.city && s.state === c.state);
+                    setSelectedMarketKey({ city: c.city, state: c.state });
                     if (sample) setSelectedId(sample.id);
                     else setSelectedId(c.id);
                     loadLiveData(c.city, c.state);

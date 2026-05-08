@@ -397,7 +397,7 @@ export function MarketDetailDrawer({
               ) : (
                 Object.entries(counts).map(([key, value]) => (
                   <div key={key} className="flex justify-between gap-2 rounded bg-[#f8fafe] px-2 py-1">
-                    <span className="truncate text-[#526078]">{key.replaceAll("_", " ")}</span>
+                    <span className="truncate text-[#526078]">{key.split("_").join(" ")}</span>
                     <span className="font-semibold text-[#07142f]">{String(value)}</span>
                   </div>
                 ))

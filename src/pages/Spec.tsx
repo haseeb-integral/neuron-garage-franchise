@@ -60,7 +60,7 @@ const Spec = () => {
       <PageHeader
         title="Product Specification"
         subtitle="Detailed specification of the Neuron Garage Franchise Acquisition System."
-        actions={
+        action={
           <Button
             onClick={handleDownloadSpec}
             className="gap-2 bg-[#0757ff] text-white hover:bg-[#0644cc]"

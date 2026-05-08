@@ -676,7 +676,12 @@ const CityScoring = () => {
               return (
                 <div
                   key={c.id}
-                  onClick={() => setSelectedId(c.id)}
+                  onClick={() => {
+                    const sample = sampleCities.find((s) => s.city === c.city && s.state === c.state);
+                    if (sample) setSelectedId(sample.id);
+                    else setSelectedId(c.id);
+                    loadLiveData(c.city, c.state);
+                  }}
                   className={`grid grid-cols-[16px_14px_minmax(0,1fr)_46px_72px_18px] items-center gap-x-2 px-1 py-3 text-[11px] cursor-pointer border-b border-[#f3f5f9] last:border-0 ${isSel ? "bg-[#eaf0ff]" : "hover:bg-[#f7faff]"}`}
                 >
                   <span className={compareMode ? "rounded ring-2 ring-[#174be8] ring-offset-1 ring-offset-white" : ""}>

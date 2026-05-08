@@ -95,8 +95,70 @@ function getStatus(signal: LiveSignal): MetricStatus {
   return signal.raw_data?.status ?? "proxy";
 }
 
+// Fallback signal_key → category map. Mirrors the SOW registry in
+// supabase/functions/_shared/scoring.ts so the drawer still groups rows
+// correctly if raw_data.metric_category is missing (e.g. rows inserted
+// by the live formula before the SOW coverage refresh runs).
+const SIGNAL_KEY_TO_CATEGORY: Record<string, MetricCategory> = {
+  children_5_12_count: "demand",
+  children_5_12_pct: "demand",
+  households_with_children_under_13: "demand",
+  median_household_income: "demand",
+  income_100k_plus_pct: "demand",
+  income_150k_plus_pct: "demand",
+  young_family_growth_rate: "demand",
+  dual_income_household_pct: "demand",
+  education_bachelors_plus_pct: "demand",
+  summer_weather_index: "demand",
+  avg_peak_summer_temperature: "demand",
+  days_above_100f: "demand",
+  total_population: "demand",
+  children_population_proxy: "demand",
+  income_100k_plus_proxy: "demand",
+  education_bachelors_plus_proxy: "demand",
+  avg_weekly_camp_tuition: "pricing_power",
+  avg_hourly_camp_pricing: "pricing_power",
+  premium_stem_camp_pricing: "pricing_power",
+  private_school_tuition_proxy: "pricing_power",
+  private_school_student_count: "pricing_power",
+  childcare_nanny_hourly_rate_proxy: "pricing_power",
+  household_discretionary_income_proxy: "pricing_power",
+  private_school_count: "pricing_power",
+  summer_camps_per_10k_children: "competitive_landscape",
+  stem_robotics_maker_camp_count: "competitive_landscape",
+  school_based_summer_camp_count: "competitive_landscape",
+  national_brand_presence: "competitive_landscape",
+  google_search_demand_summer_camp: "competitive_landscape",
+  google_search_demand_summer_day_camp: "competitive_landscape",
+  google_search_demand_summer_day_camps_year: "competitive_landscape",
+  waitlist_sold_out_signal_count: "competitive_landscape",
+  competitor_count: "competitive_landscape",
+  stem_enrichment_count: "competitive_landscape",
+  public_elementary_teacher_count: "franchisee_supply",
+  private_charter_montessori_teacher_count: "franchisee_supply",
+  elementary_school_count: "franchisee_supply",
+  teacher_salary_proxy: "franchisee_supply",
+  cost_of_living_index: "franchisee_supply",
+  summer_income_need_ratio: "franchisee_supply",
+  rental_venue_count: "ease_of_operations",
+  classroom_rental_cost_weekly: "ease_of_operations",
+  commute_sprawl_index: "ease_of_operations",
+  state_camp_regulation_complexity: "ease_of_operations",
+  guide_wage_proxy: "ease_of_operations",
+  homeschool_population_proxy: "parent_mindset",
+  montessori_school_density: "parent_mindset",
+  childrens_museum_signal: "parent_mindset",
+  robotics_maker_space_count: "parent_mindset",
+  library_children_program_signal: "parent_mindset",
+  parenting_facebook_group_activity: "parent_mindset",
+  parent_community_activity_proxy: "parent_mindset",
+  montessori_count: "parent_mindset",
+  parent_mindset_places: "parent_mindset",
+};
+
 function getCategory(signal: LiveSignal): MetricCategory | null {
-  return signal.raw_data?.metric_category ?? null;
+  return signal.raw_data?.metric_category
+    ?? (signal.signal_key ? SIGNAL_KEY_TO_CATEGORY[signal.signal_key] ?? null : null);
 }
 
 function SourcePill({ source }: { source?: string | null }) {

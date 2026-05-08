@@ -448,7 +448,7 @@ Deno.serve(async (req) => {
       bls: blsData,
     }
     const cat = calculateCurrentCategoryScores(scoreInputs)
-    const categoryWeights = CATEGORY_WEIGHTS
+    void CATEGORY_WEIGHTS // weights live in shared scoring module
     const compositeScore = calculateCompositeScore(cat)
     const tier = tierFromComposite(compositeScore)
 

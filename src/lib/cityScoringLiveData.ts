@@ -150,7 +150,7 @@ export function dedupeRankedMarkets(markets: RankedMarket[]): RankedMarket[] {
 
 export function filterRankedMarkets(markets: RankedMarket[], filters: RankedMarketFilters) {
   const minPopulation = Number(filters.minPop || 0);
-  return markets
+  return dedupeRankedMarkets(markets)
     .filter((market) => {
       const haystack = `${market.city} ${market.state} ${market.county ?? ""} ${market.metroArea ?? ""}`.toLowerCase();
       if (filters.searchTerm && !haystack.includes(filters.searchTerm.toLowerCase())) return false;

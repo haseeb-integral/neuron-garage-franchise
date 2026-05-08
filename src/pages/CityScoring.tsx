@@ -85,15 +85,16 @@ const NEARBY_MARKETS = [
   { name: "The Colony, TX", score: 80 },
 ];
 
-const SOURCES = [
-  { name: "U.S. Census Bureau", icon: Building2 },
-  { name: "BLS (Occupational Data)", icon: Building2 },
-  { name: "Google Trends", icon: Search },
-  { name: "Yelp / Google Maps", icon: MapPin },
-  { name: "GreatSchools.org", icon: GraduationCap },
-  { name: "State Education Databases", icon: GraduationCap },
-  { name: "ACA Camp Regulations", icon: FileText },
-  { name: "Internal Franchise Data", icon: HomeIcon },
+const SOURCES: { name: string; icon: typeof Building2; status: "connected" | "planned" }[] = [
+  { name: "U.S. Census Bureau", icon: Building2, status: "connected" },
+  { name: "BLS (Occupational Data)", icon: Building2, status: "connected" },
+  { name: "Yelp / Google Maps / Apify", icon: MapPin, status: "connected" },
+  { name: "Firecrawl", icon: FileText, status: "connected" },
+  { name: "Google Trends", icon: Search, status: "planned" },
+  { name: "GreatSchools.org", icon: GraduationCap, status: "planned" },
+  { name: "State Education Databases", icon: GraduationCap, status: "planned" },
+  { name: "ACA Camp Regulations", icon: FileText, status: "planned" },
+  { name: "Internal Franchise Data", icon: HomeIcon, status: "planned" },
 ];
 
 const CityScoring = () => {
@@ -533,6 +534,7 @@ const CityScoring = () => {
           <div className="flex items-center gap-3 flex-wrap">
             <h3 className="text-sm font-bold text-[#07142f]">Scoring Weights</h3>
             <span className="text-[11px] text-[#8794ab] whitespace-nowrap">Set what matters most. 100% means score this market only by that category.</span>
+            <span className="text-[10px] text-[#8794ab] basis-full">Composite score uses six category scores. The 46 SOW metrics are currently stored as evidence, not fully rolled into the backend formula yet.</span>
             <span className="text-xs text-[#526078]">Total Weight: <span className={totalWeight === 100 ? "text-[#0ea66e] font-medium" : "text-[#ea580c] font-medium"}>{totalWeight}%</span></span>
             {totalWeight !== 100 && (
               <span className="text-[11px] text-[#ea580c]">Weights must total 100% to apply scoring.</span>
@@ -868,10 +870,16 @@ const CityScoring = () => {
         <div className="min-w-0 space-y-3 flex flex-col">
           {showNearby && (
             <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
-              <div className="mb-2 flex items-center justify-between">
+              <div className="mb-1 flex items-center justify-between">
                 <h4 className="text-[13px] font-semibold text-[#07142f]">Nearby Markets</h4>
-                <button className="text-[10px] font-medium text-[#174be8] hover:underline">View All</button>
+                <button
+                  className="text-[10px] font-medium text-[#174be8] hover:underline"
+                  onClick={() => setDetailDrawerOpen(true)}
+                >
+                  View All
+                </button>
               </div>
+              <p className="text-[10px] text-[#8794ab] mb-2">Sample nearby markets</p>
               <div className="space-y-2">
                 {NEARBY_MARKETS.map((m) => (
                   <div key={m.name} className="flex items-center justify-between gap-2 text-[11px]">
@@ -886,15 +894,29 @@ const CityScoring = () => {
           <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-xs font-bold text-[#07142f]">Source Data</h4>
-              <button className="text-[10px] font-medium text-[#174be8] hover:underline">View All</button>
+              <button
+                className="text-[10px] font-medium text-[#174be8] hover:underline"
+                onClick={() => setDetailDrawerOpen(true)}
+              >
+                View All
+              </button>
             </div>
-            <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
               {SOURCES.map((s) => {
                 const Icon = s.icon;
+                const isConnected = s.status === "connected";
                 return (
-                  <div key={s.name} className="flex items-center gap-1.5 text-[11px] text-[#14233b]">
+                  <div key={s.name} className="flex items-center gap-1.5 text-[11px] text-[#14233b] min-w-0">
                     <Icon size={11} className="text-[#8794ab] flex-shrink-0" />
-                    <span className="truncate">{s.name}</span>
+                    <span className="truncate flex-1">{s.name}</span>
+                    <span
+                      className={
+                        "ml-auto inline-flex items-center px-1.5 h-4 rounded-full text-[9px] font-semibold flex-shrink-0 " +
+                        (isConnected ? "bg-[#e6f7ef] text-[#0ea66e]" : "bg-[#eef2f7] text-[#8794ab]")
+                      }
+                    >
+                      {isConnected ? "Connected" : "Planned"}
+                    </span>
                   </div>
                 );
               })}

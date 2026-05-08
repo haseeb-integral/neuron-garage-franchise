@@ -123,6 +123,10 @@ const CityScoring = () => {
   const [addCritOpen, setAddCritOpen] = useState(false);
 
   const [selectedId, setSelectedId] = useState<number>(sampleCities[0]?.id ?? 1);
+  const [selectedMarketKey, setSelectedMarketKey] = useState<{ city: string; state: string }>({
+    city: sampleCities[0]?.city ?? "",
+    state: sampleCities[0]?.state ?? "",
+  });
   const [selectedForCompare, setSelectedForCompare] = useState<number[]>([]);
   const [refreshingMarket, setRefreshingMarket] = useState(false);
 
@@ -142,7 +146,10 @@ const CityScoring = () => {
     const id = searchParams.get("city");
     if (id) {
       const found = sampleCities.find((c) => c.id === Number(id));
-      if (found) setSelectedId(found.id);
+      if (found) {
+        setSelectedId(found.id);
+        setSelectedMarketKey({ city: found.city, state: found.state });
+      }
       searchParams.delete("city");
       setSearchParams(searchParams, { replace: true });
     }
@@ -172,7 +179,17 @@ const CityScoring = () => {
     });
   }, [baseRankedMarkets, searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop]);
 
-  const selected = sampleCities.find((c) => c.id === selectedId) ?? sampleCities[0];
+  const selectedFallback = sampleCities.find((c) => c.id === selectedId) ?? sampleCities[0];
+  const selectedSample = sampleCities.find(
+    (c) => c.city === selectedMarketKey.city && c.state === selectedMarketKey.state,
+  ) ?? selectedFallback;
+  const selectedCity = selectedMarketKey.city || selectedSample.city;
+  const selectedState = selectedMarketKey.state || selectedSample.state;
+  const selected = {
+    ...selectedSample,
+    city: selectedCity,
+    state: selectedState,
+  };
 
   // Load live DB-backed data for the currently selected market.
   const loadLiveData = async (city: string, state: string) => {
@@ -197,7 +214,13 @@ const CityScoring = () => {
         supabase.from("city_market_signals").select("*").eq("city_id", cityRow.id),
         supabase.from("city_category_scores").select("*").eq("city_id", cityRow.id),
         supabase.from("city_competitors").select("*").eq("city_id", cityRow.id).order("created_at", { ascending: false }),
-        supabase.from("city_fetch_jobs").select("*").eq("city_id", cityRow.id).order("created_at", { ascending: false }).limit(1),
+        supabase
+          .from("city_fetch_jobs")
+          .select("*")
+          .eq("city_id", cityRow.id)
+          .eq("source", "sow_metric_coverage")
+          .order("created_at", { ascending: false })
+          .limit(1),
       ]);
 
       setLiveCity(cityRow);
@@ -213,9 +236,83 @@ const CityScoring = () => {
   };
 
   useEffect(() => {
-    if (selected) loadLiveData(selected.city, selected.state);
+    if (selectedCity && selectedState) loadLiveData(selectedCity, selectedState);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId]);
+  }, [selectedCity, selectedState]);
+
+  const getInvokeErrorMessage = async (error: any) => {
+    if (!error) return "Unknown error";
+    const response = error?.context;
+    if (response && typeof response.clone === "function") {
+      try {
+        const bodyText = await response.clone().text();
+        if (bodyText) {
+          try {
+            const body = JSON.parse(bodyText);
+            const detail = body?.error?.detail ?? body?.detail ?? body?.error?.message ?? body?.error;
+            if (detail) return typeof detail === "string" ? detail : JSON.stringify(detail);
+          } catch {
+            return bodyText;
+          }
+          return bodyText;
+        }
+      } catch {
+        // Ignore response parsing failures and fall back to the standard error message.
+      }
+    }
+    return error instanceof Error ? error.message : error?.message || String(error);
+  };
+
+  const waitForCompleteSowEvidence = async (city: string, state: string) => {
+    let lastDetail = "SOW evidence rows are not ready yet";
+
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const { data: cityRow, error: cityError } = await supabase
+        .from("cities")
+        .select("id")
+        .eq("city", city)
+        .eq("state", state)
+        .maybeSingle();
+
+      if (cityError) {
+        lastDetail = cityError.message;
+      } else if (cityRow?.id) {
+        const [{ data: sowJob, error: jobError }, { count: signalCount, error: signalError }] = await Promise.all([
+          supabase
+            .from("city_fetch_jobs")
+            .select("status,response_summary,created_at")
+            .eq("city_id", cityRow.id)
+            .eq("source", "sow_metric_coverage")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          supabase
+            .from("city_market_signals")
+            .select("id", { count: "exact", head: true })
+            .eq("city_id", cityRow.id),
+        ]);
+
+        const totalSowMetrics = Number(sowJob?.response_summary?.counts?.total_sow_metrics ?? 0);
+        if (!jobError && !signalError && totalSowMetrics === 46 && signalCount === 46) {
+          return { ready: true };
+        }
+
+        lastDetail = [
+          jobError?.message,
+          signalError?.message,
+          `signals=${signalCount ?? 0}`,
+          `expected=${totalSowMetrics || 0}`,
+          sowJob?.status ? `status=${sowJob.status}` : null,
+        ].filter(Boolean).join(", ");
+      } else {
+        lastDetail = "City row not found after refresh";
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, attempt === 0 ? 350 : 800));
+    }
+
+    return { ready: false, detail: lastDetail };
+  };
 
   const totalWeight = Object.values(weights).reduce((s, v) => s + v, 0);
 

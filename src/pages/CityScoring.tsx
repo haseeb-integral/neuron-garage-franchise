@@ -358,16 +358,19 @@ const CityScoring = () => {
   };
 
   const handleRefreshData = async () => {
-    if (!selected) return;
+    if (!selectedCity || !selectedState) return;
     setRefreshingMarket(true);
     let liveData: any = null;
     let liveError: any = null;
     let sowData: any = null;
     let sowError: any = null;
     try {
+      const city = selectedCity;
+      const state = selectedState;
+
       try {
         const res = await supabase.functions.invoke("fetch-city-market-data", {
-          body: { city: selected.city, state: selected.state },
+          body: { city, state },
         });
         if (res.error) liveError = res.error;
         else liveData = res.data;
@@ -377,7 +380,7 @@ const CityScoring = () => {
 
       try {
         const res = await supabase.functions.invoke("fetch-city-market-data-sow", {
-          body: { city: selected.city, state: selected.state },
+          body: { city, state },
         });
         if (res.error) sowError = res.error;
         else sowData = res.data;
@@ -385,33 +388,50 @@ const CityScoring = () => {
         sowError = e;
       }
 
-      console.log("refresh result", { liveData, liveError, sowData, sowError });
+      const liveErrorMessage = await getInvokeErrorMessage(liveError);
+      const sowErrorMessage = await getInvokeErrorMessage(sowError);
+      const sowEvidence = !sowError ? await waitForCompleteSowEvidence(city, state) : { ready: false, detail: sowErrorMessage };
 
-      await loadLiveData(selected.city, selected.state);
+      if (!sowError && !sowEvidence.ready) {
+        sowError = new Error(sowEvidence.detail || "SOW refresh completed without a full 46-row evidence set");
+      }
+
+      console.log("refresh result", {
+        city,
+        state,
+        liveData,
+        liveError,
+        liveErrorMessage,
+        sowData,
+        sowError,
+        sowErrorMessage,
+        sowEvidence,
+      });
+
+      await loadLiveData(city, state);
       try {
         setLiveRankedMarkets(await loadLiveRankedMarkets());
       } catch (e) {
         console.error("loadLiveRankedMarkets after refresh failed", e);
       }
 
-      const where = `${selected.city}, ${selected.state}`;
+      const where = `${city}, ${state}`;
       const liveOk = !liveError;
       const sowOk = !sowError;
-      const errMsg = (e: any) => (e instanceof Error ? e.message : e?.message || String(e ?? ""));
 
       if (liveOk && sowOk) {
         toast.success("Market data and SOW score refreshed", { description: `${where} updated.` });
       } else if (!liveOk && sowOk) {
         toast.warning("SOW score refreshed. Live market refresh had warnings", {
-          description: `${where} — live: ${errMsg(liveError)}`,
+          description: `${where} — live: ${liveErrorMessage}`,
         });
       } else if (liveOk && !sowOk) {
         toast.warning("Market data refreshed, but SOW scoring failed", {
-          description: `${where} — sow: ${errMsg(sowError)}`,
+          description: `${where} — sow: ${await getInvokeErrorMessage(sowError)}`,
         });
       } else {
         toast.error("Refresh failed. Live market and SOW scoring both failed", {
-          description: `${where} — live: ${errMsg(liveError)} | sow: ${errMsg(sowError)}`,
+          description: `${where} — live: ${liveErrorMessage} | sow: ${await getInvokeErrorMessage(sowError)}`,
         });
       }
     } finally {

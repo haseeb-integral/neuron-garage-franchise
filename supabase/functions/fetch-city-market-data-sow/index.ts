@@ -246,7 +246,22 @@ function buildSowSignals(args: {
   add(missingSignal('pricing_power', 'private_school_tuition_proxy', 'Private Elementary School Tuition Levels', 'firecrawl', 'Requires private school tuition page extraction or state data.'))
   add(missingSignal('pricing_power', 'private_school_student_count', 'Number of Private School Students', 'state_edu', 'Needs state/private school enrollment data.'))
   add({ signal_key: 'childcare_nanny_hourly_rate_proxy', label: 'Childcare / Nanny Hourly Rate Proxy', value: fmtMoney(bls?.childcare_worker_wage_proxy ?? null), source: bls ? 'bls' : 'not_connected', source_url: bls?.source_url ?? null, confidence: bls ? 0.55 : 0, status: bls ? 'proxy' : 'missing', metric_category: 'pricing_power', used_in_score: Boolean(bls), notes: 'Annual childcare worker wage from BLS used as a local wage/cost proxy, not consumer nanny rate.' })
-  add(missingSignal('pricing_power', 'household_discretionary_income_proxy', 'Household Discretionary Income Estimate', 'computed', 'Requires income plus cost-of-living/rent proxy.'))
+  add({
+    signal_key: 'household_discretionary_income_proxy',
+    label: 'Household Discretionary Income Estimate',
+    value: fmtMoney(census?.household_discretionary_income_proxy ?? null),
+    source: census?.household_discretionary_income_proxy != null ? 'computed' : 'not_connected',
+    source_url: census?.source_url ?? null,
+    confidence: census?.household_discretionary_income_proxy != null ? 0.55 : 0,
+    status: census?.household_discretionary_income_proxy != null ? 'proxy' : 'missing',
+    metric_category: 'pricing_power',
+    used_in_score: census?.household_discretionary_income_proxy != null,
+    notes: 'Housing-cost-adjusted income proxy: median household income minus (median gross rent × 12), from Census ACS B19013 and B25064.',
+    raw_data: {
+      median_household_income: census?.median_household_income ?? null,
+      median_gross_rent: census?.median_gross_rent ?? null,
+    },
+  })
 
   add({ signal_key: 'summer_camps_per_10k_children', label: 'Summer Camps per 10,000 Children', value: census?.children_5_12_count ? Math.round(((existingCounts.competitors ?? 0) / census.children_5_12_count) * 10000 * 10) / 10 : 'Not available yet', source: census ? 'computed' : 'not_connected', confidence: census ? 0.55 : 0, status: census ? 'proxy' : 'missing', metric_category: 'competitive_landscape', used_in_score: Boolean(census), notes: 'Uses current competitor count divided by estimated children ages 5–12.' })
   add({ signal_key: 'stem_robotics_maker_camp_count', label: 'STEM / Robotics / Maker Camps', value: existingCounts.stem_enrichment ?? 'Not available yet', source: 'apify', confidence: 0.65, status: 'proxy', metric_category: 'competitive_landscape', used_in_score: true })

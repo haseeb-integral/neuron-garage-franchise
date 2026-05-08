@@ -310,6 +310,7 @@ function lin(v: number, lo: number, hi: number, invert = false): number {
 }
 
 // Conservative per-metric normalization. Returns 0..100 or null if not scorable.
+// Ranges updated for sow_official_v1 (absolute normalized scoring).
 export function normalizeSowMetric(
   signalKey: string,
   value: number | null | undefined,
@@ -318,28 +319,47 @@ export function normalizeSowMetric(
   const v = Number(value);
   switch (signalKey) {
     // Demand
-    case "children_5_12_count":               return lin(v, 0, 8000);
-    case "children_5_12_pct":                 return lin(v, 5, 15);
-    case "households_with_children_under_13": return lin(v, 0, 8000);
-    case "median_household_income":           return lin(v, 50000, 150000);
+    case "children_5_12_count":               return lin(v, 0, 50000);
+    case "children_5_12_pct":                 return lin(v, 5, 18);
+    case "households_with_children_under_13": return lin(v, 0, 40000);
+    case "median_household_income":           return lin(v, 60000, 180000);
     case "income_100k_plus_pct":              return lin(v, 20, 70);
-    case "income_150k_plus_pct":              return lin(v, 5, 50);
-    case "education_bachelors_plus_pct":      return lin(v, 20, 70);
+    case "income_150k_plus_pct":              return lin(v, 10, 50);
+    case "education_bachelors_plus_pct":      return lin(v, 25, 70);
     // Pricing power
-    case "childcare_nanny_hourly_rate_proxy": return lin(v, 20000, 45000);
-    case "household_discretionary_income_proxy": return lin(v, 20000, 120000);
-    // Competitive landscape (lower competitor density = better)
-    case "summer_camps_per_10k_children":     return lin(v, 0, 30, true);
-    case "stem_robotics_maker_camp_count":    return lin(v, 0, 20, true);
+    case "childcare_nanny_hourly_rate_proxy": return lin(v, 25000, 60000);
+    case "household_discretionary_income_proxy": return lin(v, 20000, 150000);
+    case "avg_weekly_camp_tuition":           return lin(v, 200, 600);
+    case "avg_hourly_camp_pricing":           return lin(v, 8, 20);
+    case "premium_stem_camp_pricing":         return lin(v, 300, 800);
+    case "private_school_tuition_proxy":      return lin(v, 8000, 35000);
+    // Competitive landscape
+    case "summer_camps_per_10k_children":     return lin(v, 0, 15, true);
+    case "stem_robotics_maker_camp_count":    return lin(v, 0, 20);
+    case "national_brand_presence":           return lin(v, 0, 5);
+    case "waitlist_sold_out_signal_count":    return lin(v, 0, 10);
+    case "competitor_count":                  return lin(v, 0, 35, true);
     // Franchisee supply
-    case "elementary_school_count":           return lin(v, 0, 30);
-    case "teacher_salary_proxy":              return lin(v, 45000, 80000, true);
+    case "elementary_school_count":           return lin(v, 0, 40);
+    case "teacher_salary_proxy":              return lin(v, 45000, 90000, true);
+    case "public_elementary_teacher_count":   return lin(v, 0, 2000);
+    case "private_charter_montessori_teacher_count": return lin(v, 0, 800);
+    case "cost_of_living_index":              return lin(v, 80, 180, true);
+    case "summer_income_need_ratio":          return lin(v, 0, 1);
     // Ease of operations
-    case "rental_venue_count":                return lin(v, 0, 50);
-    case "guide_wage_proxy":                  return lin(v, 25000, 50000, true);
+    case "rental_venue_count":                return lin(v, 0, 25);
+    case "guide_wage_proxy":                  return lin(v, 25000, 60000, true);
+    case "classroom_rental_cost_weekly":      return lin(v, 250, 2000, true);
+    case "commute_sprawl_index":              return lin(v, 10, 60, true);
+    case "state_camp_regulation_complexity":  return lin(v, 1, 5, true);
     // Parent mindset
-    case "montessori_school_density":         return lin(v, 0, 5);
+    case "montessori_school_density":         return lin(v, 0, 10);
     case "robotics_maker_space_count":        return lin(v, 0, 20);
+    case "childrens_museum_signal":           return lin(v, 0, 10);
+    case "library_children_program_signal":   return lin(v, 0, 20);
+    case "homeschool_population_proxy":       return lin(v, 0, 10000);
+    case "parenting_facebook_group_activity": return lin(v, 0, 100);
+    case "parent_community_activity_proxy":   return lin(v, 0, 100);
     default:                                  return null;
   }
 }
@@ -536,6 +556,67 @@ export function buildShadowDiagnostics(
         : `Only ${categoriesReady}/${totalCats} categories have at least ${minRequired} contributing metrics. Shadow score is useful for testing but not ready to replace current score.`,
       categories_with_sufficient_metrics: categoriesReady,
       min_metrics_per_category_required: minRequired,
+    },
+  };
+}
+
+// ---------- Phase D: Official SOW scoring (sow_official_v1) ----------
+//
+// Absolute normalized scoring derived from the 46-metric SOW registry.
+// Reuses calculateSowCategoryScores (which already implements the spec:
+// weighted average of usable normalized metrics, 1-metric blend with
+// fallback, clamp 40..98). Composite is weighted by CATEGORY_WEIGHTS,
+// renormalized over categories that produced a score.
+
+export const SOW_OFFICIAL_SCORING_VERSION = "sow_official_v1";
+
+export type OfficialSowScoringResult = {
+  scoring_version: string;
+  category_scores: Partial<CategoryScores>;
+  composite_score: number | null;
+  tier: "A" | "B" | "C" | "D" | null;
+  enabled_metric_count: number;
+  ignored_metric_count: number;
+  per_category_metric_counts: Record<keyof CategoryScores, number>;
+  category_diagnostics: Record<keyof CategoryScores, CategoryDiagnostic>;
+  readiness: {
+    missing_metrics_tracked: true;
+    missing_metrics_count: number;
+    note: string;
+  };
+};
+
+export function calculateOfficialSowScoring(
+  values: SowMetricValues,
+  fallback?: Partial<CategoryScores> | null,
+): OfficialSowScoringResult {
+  const cat = calculateSowCategoryScores(values, fallback);
+  const composite = calculateSowShadowComposite(cat.category_scores);
+  const tier = composite != null ? tierFromComposite(composite) : null;
+  const diag = buildShadowDiagnostics(values, cat.per_category_metric_counts);
+
+  // Count missing metrics across registry (enabled metrics with no usable value
+  // + disabled/missing entries). These are tracked but NOT counted as zero.
+  let missingCount = 0;
+  for (const m of SOW_METRIC_REGISTRY) {
+    if (!m.enabled) { missingCount++; continue; }
+    const norm = normalizeSowMetric(m.key, values[m.key] ?? null);
+    if (norm == null) missingCount++;
+  }
+
+  return {
+    scoring_version: SOW_OFFICIAL_SCORING_VERSION,
+    category_scores: cat.category_scores,
+    composite_score: composite,
+    tier,
+    enabled_metric_count: cat.enabled_metric_count,
+    ignored_metric_count: cat.ignored_metric_count,
+    per_category_metric_counts: cat.per_category_metric_counts,
+    category_diagnostics: diag.category_diagnostics,
+    readiness: {
+      missing_metrics_tracked: true,
+      missing_metrics_count: missingCount,
+      note: "Missing metrics are tracked but not counted as zero.",
     },
   };
 }

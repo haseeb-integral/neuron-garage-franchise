@@ -3,6 +3,8 @@ import {
   isMetricEnabled,
   calculateSowCategoryScores,
   calculateSowShadowComposite,
+  calculateOfficialSowScoring,
+  applyTierHysteresis,
   tierFromComposite,
   buildShadowDiagnostics,
   normalizeStateName,
@@ -446,6 +448,61 @@ Deno.serve(async (req) => {
       score_readiness: diag.score_readiness,
     }
 
+    // ---- Phase D: Official SOW scoring (sow_official_v1) — writes to cities + city_category_scores ----
+    const official = calculateOfficialSowScoring(sowMetricValues, fallbackCategories)
+
+    // For tier hysteresis, compare against the prior official SOW run (not the
+    // live formula that just wrote moments ago in the same refresh).
+    const { data: priorOfficialJob } = await admin
+      .from('city_fetch_jobs')
+      .select('response_summary, created_at')
+      .eq('city_id', cityId)
+      .eq('source', 'sow_metric_coverage')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    const priorOfficial = (priorOfficialJob?.response_summary as any)?.official_sow_scoring ?? null
+    const priorOfficialScore: number | null = typeof priorOfficial?.composite_score === 'number'
+      ? priorOfficial.composite_score : null
+    const priorOfficialTier: string | null = typeof priorOfficial?.tier === 'string'
+      ? priorOfficial.tier : null
+
+    let officialTierStability: any = null
+    if (official.composite_score != null) {
+      officialTierStability = applyTierHysteresis(
+        official.composite_score,
+        priorOfficialScore,
+        priorOfficialTier,
+      )
+      // Write composite + tier to cities (overrides whatever the live formula wrote in this refresh)
+      await admin.from('cities').update({
+        composite_score: official.composite_score,
+        tier: officialTierStability.final_tier,
+      }).eq('id', cityId)
+
+      // Replace city_category_scores with official SOW per-category scores
+      const catKeys = Object.keys(official.category_scores) as (keyof CategoryScores)[]
+      if (catKeys.length > 0) {
+        await admin.from('city_category_scores').delete().eq('city_id', cityId)
+        const catRowsToInsert = catKeys
+          .filter((k) => typeof official.category_scores[k] === 'number')
+          .map((k) => ({
+            city_id: cityId,
+            category: k as string,
+            score: official.category_scores[k] as number,
+          }))
+        if (catRowsToInsert.length > 0) {
+          await admin.from('city_category_scores').insert(catRowsToInsert)
+        }
+      }
+    }
+
+    const officialScoring = {
+      ...official,
+      tier: officialTierStability ? officialTierStability.final_tier : official.tier,
+      tier_stability: officialTierStability,
+    }
+
     const { data: jobRow } = await admin.from('city_fetch_jobs').insert({
       city_id: cityId,
       city,
@@ -466,6 +523,7 @@ Deno.serve(async (req) => {
         },
         warnings,
         shadow_scoring: shadowScoring,
+        official_sow_scoring: officialScoring,
       },
     }).select('id').single()
 
@@ -481,6 +539,7 @@ Deno.serve(async (req) => {
         missing: signals.filter((s) => s.status === 'missing').length,
       },
       shadow_scoring: shadowScoring,
+      official_sow_scoring: officialScoring,
     })
   } catch (e) {
     return json({ error: 'Unexpected error', detail: (e as Error).message }, 500)

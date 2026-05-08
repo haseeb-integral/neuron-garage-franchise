@@ -269,11 +269,29 @@ const CityScoring = () => {
         toast.error("Refresh failed", { description: error.message });
         return;
       }
-      toast.success("Market data refreshed", {
-        description: `${selected.city}, ${selected.state} updated with POC database rows.`,
-      });
       console.log("fetch-city-market-data response", data);
+
+      const { data: sowData, error: sowError } = await supabase.functions.invoke("fetch-city-market-data-sow", {
+        body: { city: selected.city, state: selected.state },
+      });
+      console.log("fetch-city-market-data-sow response", sowData, sowError);
+
+      if (sowError) {
+        toast.warning("Market data refreshed, but SOW coverage refresh failed", {
+          description: sowError.message,
+        });
+      } else {
+        toast.success("Market data and SOW coverage refreshed", {
+          description: `${selected.city}, ${selected.state} updated.`,
+        });
+      }
+
       await loadLiveData(selected.city, selected.state);
+      try {
+        setLiveRankedMarkets(await loadLiveRankedMarkets());
+      } catch (e) {
+        console.error("loadLiveRankedMarkets after refresh failed", e);
+      }
     } catch (err) {
       toast.error("Refresh failed", {
         description: err instanceof Error ? err.message : "Unknown error",

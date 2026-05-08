@@ -420,6 +420,9 @@ const CityScoring = () => {
   ];
   const sigRows = liveSigRows.length > 0 ? liveSigRows : fallbackSigRows;
 
+  const shadowScoring: any = liveJob?.response_summary?.shadow_scoring ?? null;
+  const shadowReady: boolean = shadowScoring?.score_readiness?.ready_for_cutover === true;
+
   const lastScrapedAt = liveCity?.last_scraped_at ?? liveJob?.completed_at ?? null;
   const lastScrapedLabel = lastScrapedAt
     ? new Date(lastScrapedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
@@ -781,6 +784,25 @@ const CityScoring = () => {
                 <text x="100" y="102" textAnchor="middle" className="fill-[#7e8aa3]" style={{ fontSize: 12, fontWeight: 600 }}>/100</text>
               </svg>
               <p className="-mt-1 text-[12px] font-semibold" style={{ color: tierBadge.fg }}>{opportunityLabel}</p>
+              {shadowScoring && typeof shadowScoring.composite_score === "number" && (
+                <div className="mt-2 w-full rounded-md border border-[#e5eaf2] bg-[#f7faff] px-2 py-1.5 text-left">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-[#526078]">SOW Shadow Score</p>
+                  <p className="mt-0.5 text-[13px] font-bold text-[#07142f]">
+                    {shadowScoring.composite_score}/100
+                    {shadowScoring.tier && (
+                      <span className="ml-1 text-[11px] font-semibold text-[#174be8]">Tier {shadowScoring.tier}</span>
+                    )}
+                  </p>
+                  <p className="text-[10px] leading-tight text-[#6b7a96]">
+                    From {shadowScoring.enabled_metric_count ?? 0} available SOW metrics
+                  </p>
+                  {!shadowReady && (
+                    <p className="mt-1 text-[10px] leading-tight text-[#b8860b]">
+                      Not official yet. More source coverage needed before cutover.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="space-y-2.5 pt-1 min-w-0">

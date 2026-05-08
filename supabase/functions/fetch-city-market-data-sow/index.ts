@@ -387,6 +387,7 @@ Deno.serve(async (req) => {
       income_150k_plus_pct:              censusData?.income_150k_plus_pct ?? null,
       education_bachelors_plus_pct:      censusData?.bachelors_plus_pct ?? null,
       childcare_nanny_hourly_rate_proxy: blsData?.childcare_worker_wage_proxy ?? null,
+      household_discretionary_income_proxy: censusData?.household_discretionary_income_proxy ?? null,
       summer_camps_per_10k_children:     censusData?.children_5_12_count
         ? Math.round(((existingCounts.competitors ?? 0) / censusData.children_5_12_count) * 10000 * 10) / 10
         : null,

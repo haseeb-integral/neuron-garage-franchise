@@ -1,5 +1,13 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
-import { isMetricEnabled } from '../_shared/scoring.ts'
+import {
+  isMetricEnabled,
+  calculateSowCategoryScores,
+  calculateSowShadowComposite,
+  tierFromComposite,
+  SOW_SHADOW_SCORING_VERSION,
+  type SowMetricValues,
+  type CategoryScores,
+} from '../_shared/scoring.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -345,6 +353,69 @@ Deno.serve(async (req) => {
 
     const completedAt = new Date().toISOString()
     const warnings = { census: censusError, bls: blsError }
+
+    // ---- Phase C: SOW shadow scoring (observation only) ----
+    const sowMetricValues: SowMetricValues = {
+      children_5_12_count:               censusData?.children_5_12_count ?? null,
+      children_5_12_pct:                 censusData?.children_5_12_pct ?? null,
+      households_with_children_under_13: censusData?.households_with_children_under_13_proxy ?? null,
+      median_household_income:           censusData?.median_household_income ?? null,
+      income_100k_plus_pct:              censusData?.income_100k_plus_pct ?? null,
+      income_150k_plus_pct:              censusData?.income_150k_plus_pct ?? null,
+      education_bachelors_plus_pct:      censusData?.bachelors_plus_pct ?? null,
+      childcare_nanny_hourly_rate_proxy: blsData?.childcare_worker_wage_proxy ?? null,
+      summer_camps_per_10k_children:     censusData?.children_5_12_count
+        ? Math.round(((existingCounts.competitors ?? 0) / censusData.children_5_12_count) * 10000 * 10) / 10
+        : null,
+      stem_robotics_maker_camp_count:    existingCounts.stem_enrichment ?? null,
+      elementary_school_count:           existingCounts.elementary_schools ?? null,
+      teacher_salary_proxy:              blsData?.teacher_salary_proxy ?? null,
+      rental_venue_count:                existingCounts.rental_venues ?? null,
+      guide_wage_proxy:                  blsData?.guide_wage_proxy ?? null,
+      montessori_school_density:         censusData?.children_5_12_count
+        ? Math.round(((existingCounts.montessori ?? 0) / censusData.children_5_12_count) * 10000 * 10) / 10
+        : null,
+      robotics_maker_space_count:        existingCounts.stem_enrichment ?? null,
+    }
+
+    const { data: currentCatRows } = await admin
+      .from('city_category_scores')
+      .select('category, score')
+      .eq('city_id', cityId)
+    const fallbackCategories: Partial<CategoryScores> = {}
+    for (const r of currentCatRows ?? []) {
+      const k = r.category as keyof CategoryScores
+      if (typeof r.score === 'number') fallbackCategories[k] = r.score
+    }
+    const { data: cityScoreRow } = await admin
+      .from('cities')
+      .select('composite_score, tier')
+      .eq('id', cityId)
+      .maybeSingle()
+    const currentCompositeScore = cityScoreRow?.composite_score ?? null
+    const currentTier = cityScoreRow?.tier ?? null
+
+    const shadowCat = calculateSowCategoryScores(sowMetricValues, fallbackCategories)
+    const shadowComposite = calculateSowShadowComposite(shadowCat.category_scores)
+    const shadowTier = shadowComposite != null ? tierFromComposite(shadowComposite) : null
+    const shadowDelta = shadowComposite != null && currentCompositeScore != null
+      ? shadowComposite - currentCompositeScore
+      : null
+
+    const shadowScoring = {
+      scoring_version: SOW_SHADOW_SCORING_VERSION,
+      category_scores: shadowCat.category_scores,
+      composite_score: shadowComposite,
+      tier: shadowTier,
+      current_composite_score: currentCompositeScore,
+      current_tier: currentTier,
+      delta_vs_current: shadowDelta,
+      enabled_metric_count: shadowCat.enabled_metric_count,
+      ignored_metric_count: shadowCat.ignored_metric_count,
+      per_category_metric_counts: shadowCat.per_category_metric_counts,
+      fallback_categories_used: Object.keys(fallbackCategories),
+    }
+
     const { data: jobRow } = await admin.from('city_fetch_jobs').insert({
       city_id: cityId,
       city,
@@ -364,6 +435,7 @@ Deno.serve(async (req) => {
           manual: signals.filter((s) => s.status === 'manual').length,
         },
         warnings,
+        shadow_scoring: shadowScoring,
       },
     }).select('id').single()
 
@@ -378,6 +450,7 @@ Deno.serve(async (req) => {
         proxy: signals.filter((s) => s.status === 'proxy').length,
         missing: signals.filter((s) => s.status === 'missing').length,
       },
+      shadow_scoring: shadowScoring,
     })
   } catch (e) {
     return json({ error: 'Unexpected error', detail: (e as Error).message }, 500)

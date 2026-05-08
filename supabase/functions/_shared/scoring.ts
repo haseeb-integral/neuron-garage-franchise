@@ -204,3 +204,138 @@ export function getRegistryEntry(key: string): SowMetricEntry | undefined {
 export function isMetricEnabled(key: string): boolean {
   return REGISTRY_BY_KEY[key]?.enabled ?? false;
 }
+
+// ---------- Phase C: SOW shadow scoring ----------
+//
+// Computes a parallel category + composite score from the SOW registry's
+// `enabled` metrics. Output is for observation only; it is NOT yet written
+// to cities.composite_score / cities.tier / city_category_scores.
+
+export const SOW_SHADOW_SCORING_VERSION = "sow_shadow_v1";
+
+export type SowMetricValues = Record<string, number | null | undefined>;
+
+// Linear normalizer with clamp to 0..100. If invert=true, lower input → higher score.
+function lin(v: number, lo: number, hi: number, invert = false): number {
+  if (hi === lo) return 50;
+  let t = (v - lo) / (hi - lo);
+  if (invert) t = 1 - t;
+  return Math.max(0, Math.min(100, t * 100));
+}
+
+// Conservative per-metric normalization. Returns 0..100 or null if not scorable.
+export function normalizeSowMetric(
+  signalKey: string,
+  value: number | null | undefined,
+): number | null {
+  if (value == null || !Number.isFinite(value)) return null;
+  const v = Number(value);
+  switch (signalKey) {
+    // Demand
+    case "children_5_12_count":               return lin(v, 0, 8000);
+    case "children_5_12_pct":                 return lin(v, 5, 15);
+    case "households_with_children_under_13": return lin(v, 0, 8000);
+    case "median_household_income":           return lin(v, 50000, 150000);
+    case "income_100k_plus_pct":              return lin(v, 20, 70);
+    case "income_150k_plus_pct":              return lin(v, 5, 50);
+    case "education_bachelors_plus_pct":      return lin(v, 20, 70);
+    // Pricing power
+    case "childcare_nanny_hourly_rate_proxy": return lin(v, 20000, 45000);
+    // Competitive landscape (lower competitor density = better)
+    case "summer_camps_per_10k_children":     return lin(v, 0, 30, true);
+    case "stem_robotics_maker_camp_count":    return lin(v, 0, 20, true);
+    // Franchisee supply
+    case "elementary_school_count":           return lin(v, 0, 30);
+    case "teacher_salary_proxy":              return lin(v, 45000, 80000, true);
+    // Ease of operations
+    case "rental_venue_count":                return lin(v, 0, 50);
+    case "guide_wage_proxy":                  return lin(v, 25000, 50000, true);
+    // Parent mindset
+    case "montessori_school_density":         return lin(v, 0, 5);
+    case "robotics_maker_space_count":        return lin(v, 0, 20);
+    default:                                  return null;
+  }
+}
+
+export type SowShadowCategoryResult = {
+  category_scores: Partial<CategoryScores>;
+  enabled_metric_count: number;
+  ignored_metric_count: number;
+  per_category_metric_counts: Record<keyof CategoryScores, number>;
+};
+
+export function calculateSowCategoryScores(
+  values: SowMetricValues,
+  fallback?: Partial<CategoryScores> | null,
+): SowShadowCategoryResult {
+  const buckets: Record<keyof CategoryScores, { sum: number; weight: number; count: number }> = {
+    demand:                { sum: 0, weight: 0, count: 0 },
+    pricing_power:         { sum: 0, weight: 0, count: 0 },
+    competitive_landscape: { sum: 0, weight: 0, count: 0 },
+    franchisee_supply:     { sum: 0, weight: 0, count: 0 },
+    ease_of_operations:    { sum: 0, weight: 0, count: 0 },
+    parent_mindset:        { sum: 0, weight: 0, count: 0 },
+  };
+
+  let enabled = 0;
+  let ignored = 0;
+
+  for (const m of SOW_METRIC_REGISTRY) {
+    if (!m.enabled) { ignored++; continue; }
+    const norm = normalizeSowMetric(m.key, values[m.key] ?? null);
+    if (norm == null) { ignored++; continue; }
+    const w = m.weight_within_category > 0 ? m.weight_within_category : 1;
+    const b = buckets[m.category];
+    b.sum += norm * w;
+    b.weight += w;
+    b.count += 1;
+    enabled++;
+  }
+
+  const out: Partial<CategoryScores> = {};
+  const perCount: Record<keyof CategoryScores, number> = {
+    demand: 0, pricing_power: 0, competitive_landscape: 0,
+    franchisee_supply: 0, ease_of_operations: 0, parent_mindset: 0,
+  };
+
+  (Object.keys(buckets) as (keyof CategoryScores)[]).forEach((cat) => {
+    const b = buckets[cat];
+    perCount[cat] = b.count;
+    const fb = fallback?.[cat];
+    if (b.weight > 0 && b.count > 0) {
+      let raw = b.sum / b.weight;
+      // Conservative: with only 1 metric, blend 50/50 with fallback if available
+      // to avoid wild single-proxy swings.
+      if (b.count === 1 && typeof fb === "number") {
+        raw = (raw + fb) / 2;
+      }
+      out[cat] = clampScore(raw);
+    } else if (typeof fb === "number") {
+      out[cat] = clampScore(fb);
+    }
+    // else: leave undefined (no usable signal, no fallback)
+  });
+
+  return {
+    category_scores: out,
+    enabled_metric_count: enabled,
+    ignored_metric_count: ignored,
+    per_category_metric_counts: perCount,
+  };
+}
+
+export function calculateSowShadowComposite(
+  cat: Partial<CategoryScores>,
+): number | null {
+  let sum = 0;
+  let wsum = 0;
+  (Object.keys(CATEGORY_WEIGHTS) as (keyof CategoryScores)[]).forEach((k) => {
+    const v = cat[k];
+    if (typeof v === "number") {
+      sum += v * CATEGORY_WEIGHTS[k];
+      wsum += CATEGORY_WEIGHTS[k];
+    }
+  });
+  if (wsum <= 0) return null;
+  return Math.round(sum / wsum);
+}

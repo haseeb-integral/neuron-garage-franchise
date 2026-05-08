@@ -262,30 +262,32 @@ const CityScoring = () => {
   const handleRefreshData = async () => {
     if (!selected) return;
     setRefreshingMarket(true);
+    let liveData: any = null;
+    let liveError: any = null;
+    let sowData: any = null;
+    let sowError: any = null;
     try {
-      const { data, error } = await supabase.functions.invoke("fetch-city-market-data", {
-        body: { city: selected.city, state: selected.state },
-      });
-      if (error) {
-        toast.error("Refresh failed", { description: error.message });
-        return;
-      }
-      console.log("fetch-city-market-data response", data);
-
-      const { data: sowData, error: sowError } = await supabase.functions.invoke("fetch-city-market-data-sow", {
-        body: { city: selected.city, state: selected.state },
-      });
-      console.log("fetch-city-market-data-sow response", sowData, sowError);
-
-      if (sowError) {
-        toast.warning("Market data refreshed, but SOW scoring failed", {
-          description: sowError.message,
+      try {
+        const res = await supabase.functions.invoke("fetch-city-market-data", {
+          body: { city: selected.city, state: selected.state },
         });
-      } else {
-        toast.success("Market data and SOW score refreshed", {
-          description: `${selected.city}, ${selected.state} updated.`,
-        });
+        if (res.error) liveError = res.error;
+        else liveData = res.data;
+      } catch (e) {
+        liveError = e;
       }
+
+      try {
+        const res = await supabase.functions.invoke("fetch-city-market-data-sow", {
+          body: { city: selected.city, state: selected.state },
+        });
+        if (res.error) sowError = res.error;
+        else sowData = res.data;
+      } catch (e) {
+        sowError = e;
+      }
+
+      console.log("refresh result", { liveData, liveError, sowData, sowError });
 
       await loadLiveData(selected.city, selected.state);
       try {
@@ -293,10 +295,27 @@ const CityScoring = () => {
       } catch (e) {
         console.error("loadLiveRankedMarkets after refresh failed", e);
       }
-    } catch (err) {
-      toast.error("Refresh failed", {
-        description: err instanceof Error ? err.message : "Unknown error",
-      });
+
+      const where = `${selected.city}, ${selected.state}`;
+      const liveOk = !liveError;
+      const sowOk = !sowError;
+      const errMsg = (e: any) => (e instanceof Error ? e.message : e?.message || String(e ?? ""));
+
+      if (liveOk && sowOk) {
+        toast.success("Market data and SOW score refreshed", { description: `${where} updated.` });
+      } else if (!liveOk && sowOk) {
+        toast.warning("SOW score refreshed. Live market refresh had warnings", {
+          description: `${where} — live: ${errMsg(liveError)}`,
+        });
+      } else if (liveOk && !sowOk) {
+        toast.warning("Market data refreshed, but SOW scoring failed", {
+          description: `${where} — sow: ${errMsg(sowError)}`,
+        });
+      } else {
+        toast.error("Refresh failed. Live market and SOW scoring both failed", {
+          description: `${where} — live: ${errMsg(liveError)} | sow: ${errMsg(sowError)}`,
+        });
+      }
     } finally {
       setRefreshingMarket(false);
     }

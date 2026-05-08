@@ -85,15 +85,16 @@ const NEARBY_MARKETS = [
   { name: "The Colony, TX", score: 80 },
 ];
 
-const SOURCES = [
-  { name: "U.S. Census Bureau", icon: Building2 },
-  { name: "BLS (Occupational Data)", icon: Building2 },
-  { name: "Google Trends", icon: Search },
-  { name: "Yelp / Google Maps", icon: MapPin },
-  { name: "GreatSchools.org", icon: GraduationCap },
-  { name: "State Education Databases", icon: GraduationCap },
-  { name: "ACA Camp Regulations", icon: FileText },
-  { name: "Internal Franchise Data", icon: HomeIcon },
+const SOURCES: { name: string; icon: typeof Building2; status: "connected" | "planned" }[] = [
+  { name: "U.S. Census Bureau", icon: Building2, status: "connected" },
+  { name: "BLS (Occupational Data)", icon: Building2, status: "connected" },
+  { name: "Yelp / Google Maps / Apify", icon: MapPin, status: "connected" },
+  { name: "Firecrawl", icon: FileText, status: "connected" },
+  { name: "Google Trends", icon: Search, status: "planned" },
+  { name: "GreatSchools.org", icon: GraduationCap, status: "planned" },
+  { name: "State Education Databases", icon: GraduationCap, status: "planned" },
+  { name: "ACA Camp Regulations", icon: FileText, status: "planned" },
+  { name: "Internal Franchise Data", icon: HomeIcon, status: "planned" },
 ];
 
 const CityScoring = () => {

@@ -1,47 +1,47 @@
-## Goal
-Clean up the City Search Overall Score panel and let any single category drive 100% of the weighted composite. Frontend-only.
+## Scope
+UI-only cleanup in `src/pages/CityScoring.tsx`. No changes to drawer, report modal, helper, edge functions, DB, or scoring logic.
 
-## Scope confirmation
-- No DB change
-- No Edge Function change
-- No Census/BLS change
-- No API logic change
+## 1. Restructure Scoring Weights header (lines 531–554)
 
-## Changes (all in `src/pages/CityScoring.tsx`)
+Replace the current header row with a two-column flex layout:
 
-### 1. Slider max 50 → 100
-Line 519: change `max={50}` to `max={100}` on the per-category Scoring Weights `Slider`. This permits Demand=100, others=0 (or any single category at 100). Total-must-equal-100 rule is unchanged: Apply button stays disabled when `totalWeight !== 100` (line 493) and the orange "Weights must total 100% to apply scoring." warning stays (lines 485–487).
-
-### 2. Add short explainer near Scoring Weights title
-Insert one line of muted helper text inside the title row (around lines 482–483), right after the `<h3>Scoring Weights</h3>`:
 ```tsx
-<span className="text-[11px] text-[#8794ab] whitespace-nowrap">
-  Set what matters most. 100% means score this market only by that category.
-</span>
+<div className="mb-3 flex items-start justify-between gap-4">
+  <div className="min-w-0">
+    <h3 className="text-sm font-bold text-[#07142f]">Scoring Weights</h3>
+    <p className="text-[10px] text-[#8794ab] leading-snug mt-1">
+      Set what matters most. 100% means scoring the market only by that category.
+    </p>
+    <p className="text-[10px] text-[#8794ab] leading-snug mt-0.5">
+      Composite score uses six category scores. The 46 SOW metrics are evidence and are not fully rolled into the backend formula yet.
+    </p>
+    {totalWeight !== 100 && (
+      <p className="text-[11px] text-[#ea580c] mt-1">Weights must total 100% to apply scoring.</p>
+    )}
+  </div>
+  <div className="flex shrink-0 items-center gap-3">
+    <span className="text-xs text-[#526078]">
+      Total Weight: <span className={totalWeight === 100 ? "text-[#0ea66e] font-medium" : "text-[#ea580c] font-medium"}>{totalWeight}%</span>
+    </span>
+    <button onClick={resetWeights} className="text-xs font-medium text-[#174be8] hover:underline">Reset to Default</button>
+    <Button
+      size="sm"
+      disabled={totalWeight !== 100}
+      onClick={applyWeights}
+      className="h-7 bg-[#174be8] hover:bg-[#1240c9] text-white text-[11px] px-3 disabled:opacity-50"
+    >
+      Apply Weights
+    </Button>
+  </div>
+</div>
 ```
-Placed as a sibling of the `<h3>` inside the existing `flex items-center gap-3 flex-wrap` wrapper so it sits beside the title on wide screens and wraps gracefully on narrow ones. Total Weight indicator and warning continue to follow.
 
-### 3. Clean up the gauge area
-Remove line 719 entirely:
-```tsx
-<p className="text-[10px] text-[#8794ab]">Score recalculated from current category weights.</p>
-```
-Do not replace it with anything. The gauge column then contains only:
-- "Overall Score" label
-- gauge with number and `/100`
-- opportunity label (e.g. "Excellent Opportunity")
+Helper lines stack under the title; controls stay right-aligned and don't shrink.
 
-Skip the optional "Weighted view" sub-label — the panel reads cleaner without it.
+## 2. Rename "View All" → "View Evidence"
+
+- Line 879 (Nearby Markets card): change button label `View All` → `View Evidence`. Click handler unchanged (still opens Source Evidence drawer).
+- Line 901 (Source Data card): same change. Click handler unchanged.
 
 ## Out of scope
-- Reset-to-default behavior (unchanged; defaults still 25/20/20/15/10/10)
-- `appliedWeights` / `weightedComposite` math (unchanged — already supports 100/0 splits)
-- Tier thresholds (unchanged: A 85+, B 75–84, C 65–74, D <65)
-- Ranked Markets list scores
-
-## Test
-1. Demand=100, all others=0 → Apply enabled (total=100) → gauge equals Demand category score.
-2. Competitive Landscape=100, all others=0 → Apply → gauge equals Competitive Landscape score.
-3. Any combination where total ≠ 100 → Apply disabled, orange warning shown, gauge unchanged.
-4. Reset to Default → returns to 25/20/20/15/10/10 composite.
-5. Visual: gauge column shows only Overall Score / number / /100 / opportunity label — no extra helper line.
+MarketDetailDrawer, MarketReportModal, cityScoringLiveData, edge functions, DB, scoring logic, slider behavior, legend text on line 953.

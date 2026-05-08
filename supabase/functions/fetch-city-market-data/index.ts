@@ -370,45 +370,8 @@ async function fetchBls(stateFips: string | null): Promise<{ data: BlsData | nul
   }
 }
 
-function computeCategoryScores(b: {
-  elementary: number; private_: number; preschool: number;
-  competitors: number; stem: number; rentals: number; parent: number; firecrawl: number;
-  census: CensusData | null;
-  bls: BlsData | null;
-}) {
-  const c = b.census
-  // Census-driven boosts (bounded contributions)
-  let demandBoost = 0
-  if (c?.total_population) demandBoost += Math.min(15, Math.log10(Math.max(1, c.total_population)) * 2.5)
-  if (c?.children_pct) demandBoost += Math.min(10, (c.children_pct - 18) * 0.8)
-  let priceBoost = 0
-  if (c?.median_household_income) priceBoost += Math.min(20, (c.median_household_income - 60000) / 4000)
-  if (c?.income_100k_plus_pct) priceBoost += Math.min(10, (c.income_100k_plus_pct - 25) * 0.4)
-  if (c?.income_150k_plus_pct) priceBoost += Math.min(8, (c.income_150k_plus_pct - 10) * 0.5)
-  let mindsetBoost = 0
-  if (c?.bachelors_plus_pct) mindsetBoost += Math.min(20, (c.bachelors_plus_pct - 30) * 0.6)
-  if (c?.children_pct) mindsetBoost += Math.min(6, (c.children_pct - 18) * 0.4)
-
-  // BLS modest adjustments (small, bounded; never dominate)
-  // Franchisee Supply: lower teacher wage = teachers more available/affordable as operators
-  // baseline ~$65k national mean; ±6 pts within ±$25k band
-  let supplyAdj = 0
-  if (b.bls?.teacher_mean_wage) supplyAdj += Math.max(-6, Math.min(6, (65000 - b.bls.teacher_mean_wage) / 4000))
-  // Ease of Operations: higher recreation/childcare wage = cost pressure
-  // baseline ~$32k; ±5 pts within ±$15k band
-  let easeAdj = 0
-  const wageProxy = b.bls?.recreation_mean_wage ?? b.bls?.childcare_mean_wage ?? null
-  if (wageProxy) easeAdj += Math.max(-5, Math.min(5, (32000 - wageProxy) / 3000))
-
-  return {
-    demand: clamp(50 + b.elementary * 3 + b.preschool * 1.5 + b.firecrawl * 1 + demandBoost),
-    pricing_power: clamp(45 + b.private_ * 4 + b.parent * 1 + priceBoost),
-    competitive_landscape: clamp(95 - b.competitors * 3 - b.stem * 1.5),
-    franchisee_supply: clamp(55 + b.elementary * 3 + b.private_ * 2 + supplyAdj),
-    ease_of_operations: clamp(55 + b.rentals * 4 + easeAdj),
-    parent_mindset: clamp(50 + b.parent * 3 + b.private_ * 1.5 + b.firecrawl * 0.5 + mindsetBoost),
-  }
-}
+// computeCategoryScores moved to ../_shared/scoring.ts as calculateCurrentCategoryScores.
+// Kept here as a thin alias so existing call sites continue to work unchanged.
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })

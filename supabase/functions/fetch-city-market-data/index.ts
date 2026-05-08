@@ -447,14 +447,10 @@ Deno.serve(async (req) => {
       census: censusData,
       bls: blsData,
     }
-    const cat = computeCategoryScores(scoreInputs)
-    const categoryWeights = { demand: 0.25, pricing_power: 0.20, competitive_landscape: 0.20, franchisee_supply: 0.15, ease_of_operations: 0.10, parent_mindset: 0.10 }
-    const compositeScore = Math.round(
-      cat.demand * categoryWeights.demand + cat.pricing_power * categoryWeights.pricing_power +
-      cat.competitive_landscape * categoryWeights.competitive_landscape + cat.franchisee_supply * categoryWeights.franchisee_supply +
-      cat.ease_of_operations * categoryWeights.ease_of_operations + cat.parent_mindset * categoryWeights.parent_mindset
-    )
-    const tier = compositeScore >= 85 ? 'A' : compositeScore >= 75 ? 'B' : compositeScore >= 65 ? 'C' : 'D'
+    const cat = calculateCurrentCategoryScores(scoreInputs)
+    const categoryWeights = CATEGORY_WEIGHTS
+    const compositeScore = calculateCompositeScore(cat)
+    const tier = tierFromComposite(compositeScore)
 
     const cityNotes = censusData
       ? `Live API + Census ACS 2022 (place ${censusData.place_fips})`

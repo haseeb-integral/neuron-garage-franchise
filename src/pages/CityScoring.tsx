@@ -191,6 +191,12 @@ const CityScoring = () => {
     state: selectedState,
   };
 
+  useEffect(() => {
+    if (selectedFallback && (selectedFallback.city !== selectedMarketKey.city || selectedFallback.state !== selectedMarketKey.state)) {
+      setSelectedMarketKey({ city: selectedFallback.city, state: selectedFallback.state });
+    }
+  }, [selectedFallback, selectedMarketKey.city, selectedMarketKey.state]);
+
   // Load live DB-backed data for the currently selected market.
   const loadLiveData = async (city: string, state: string) => {
     try {

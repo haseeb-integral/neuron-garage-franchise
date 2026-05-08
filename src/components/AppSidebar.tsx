@@ -8,8 +8,8 @@ const primaryNavItems = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "City Search", url: "/city-scoring", icon: Map },
   { title: "Teacher Prospects", url: "/teacher-prospects", icon: Users },
-  { title: "Candidate Pipeline", url: "/candidate-pipeline", icon: Kanban },
   { title: "Email Outreach", url: "/email-outreach", icon: Mail },
+  { title: "Candidate Pipeline", url: "/candidate-pipeline", icon: Kanban },
 ];
 
 const utilityNavItems = [

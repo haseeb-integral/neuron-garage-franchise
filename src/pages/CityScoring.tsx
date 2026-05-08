@@ -805,6 +805,15 @@ const CityScoring = () => {
                   );
                 })}
               </div>
+              {hasMoreSignals && (
+                <button
+                  type="button"
+                  onClick={() => setDetailDrawerOpen(true)}
+                  className="mt-2 text-[10.5px] font-medium text-[#2250eb] hover:underline"
+                >
+                  View all signals
+                </button>
+              )}
             </div>
           </div>
 

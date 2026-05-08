@@ -121,6 +121,7 @@ async function fetchCensusExpanded(city: string, state: string) {
       'B11005_002E',
       'B23025_005E',
       'B23025_003E',
+      'B25064_001E',
     ]
     const url = `https://api.census.gov/data/2022/acs/acs5?get=${vars.join(',')}&for=place:${placeFips}&in=state:${stateFips}&key=${key}`
     const res = await fetch(url)

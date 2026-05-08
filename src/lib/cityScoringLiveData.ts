@@ -119,9 +119,33 @@ export async function loadLiveRankedMarkets(): Promise<RankedMarket[]> {
     }
   }
 
-  return cityRows.map((row: any, index: number) =>
+  const mapped = cityRows.map((row: any, index: number) =>
     mapLiveCityToRankedMarket(row, index, competitorCounts.get(row.id) ?? 0),
   );
+  return dedupeRankedMarkets(mapped);
+}
+
+export function dedupeRankedMarkets(markets: RankedMarket[]): RankedMarket[] {
+  const byKey = new Map<string, RankedMarket>();
+  const score = (m: RankedMarket) => (m.lastScrapedAt ? new Date(m.lastScrapedAt).getTime() : 0);
+  for (const m of markets) {
+    const key = `${(m.city ?? "").trim().toLowerCase()}|${normalizeState(m.state).toLowerCase()}`;
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, m);
+      continue;
+    }
+    const a = score(m);
+    const b = score(existing);
+    let winner = existing;
+    if (a > b) winner = m;
+    else if (a === b) {
+      if (m.compositeScore > existing.compositeScore) winner = m;
+      else if (m.compositeScore === existing.compositeScore && m.source === "live" && existing.source !== "live") winner = m;
+    }
+    byKey.set(key, winner);
+  }
+  return Array.from(byKey.values());
 }
 
 export function filterRankedMarkets(markets: RankedMarket[], filters: RankedMarketFilters) {

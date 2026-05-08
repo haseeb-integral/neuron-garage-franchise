@@ -292,7 +292,8 @@ const CityScoring = () => {
             .eq("city_id", cityRow.id),
         ]);
 
-        const totalSowMetrics = Number(sowJob?.response_summary?.counts?.total_sow_metrics ?? 0);
+        const jobSummary = sowJob?.response_summary as any;
+        const totalSowMetrics = Number(jobSummary?.counts?.total_sow_metrics ?? 0);
         if (!jobError && !signalError && totalSowMetrics === 46 && signalCount === 46) {
           return { ready: true };
         }

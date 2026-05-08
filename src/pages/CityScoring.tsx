@@ -797,13 +797,10 @@ const CityScoring = () => {
                 {sigRows.map((r) => {
                   const Icon = r.icon;
                   return (
-                    <div key={r.label} className="flex items-start gap-2 text-[10.5px] min-w-0">
-                      <Icon size={12} className="text-[#3160ff] flex-shrink-0 mt-0.5" />
-                      <span className="text-[#526078] leading-tight flex-1 min-w-0 truncate">{r.label}</span>
-                      <div className="flex flex-col items-end flex-shrink-0 leading-tight">
-                        <span className="font-semibold text-[#07142f] tabular-nums">{r.value}</span>
-                        <span className={`text-[9.5px] font-medium ${r.deltaClass}`}>{r.delta}</span>
-                      </div>
+                    <div key={r.label} className="grid grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-2 text-[10.5px]">
+                      <Icon size={15} className="text-[#174be8]" />
+                      <span className="min-w-0 truncate text-[#526078]">{r.label}</span>
+                      <span className="max-w-[120px] truncate text-right font-bold text-[#07142f]">{r.value}</span>
                     </div>
                   );
                 })}
@@ -812,7 +809,7 @@ const CityScoring = () => {
                 <button
                   type="button"
                   onClick={() => setDetailDrawerOpen(true)}
-                  className="mt-2 text-[10.5px] font-medium text-[#2250eb] hover:underline"
+                  className="mt-2 text-[11px] font-semibold text-[#174be8] hover:underline"
                 >
                   View all signals
                 </button>

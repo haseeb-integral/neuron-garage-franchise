@@ -559,3 +559,64 @@ export function buildShadowDiagnostics(
     },
   };
 }
+
+// ---------- Phase D: Official SOW scoring (sow_official_v1) ----------
+//
+// Absolute normalized scoring derived from the 46-metric SOW registry.
+// Reuses calculateSowCategoryScores (which already implements the spec:
+// weighted average of usable normalized metrics, 1-metric blend with
+// fallback, clamp 40..98). Composite is weighted by CATEGORY_WEIGHTS,
+// renormalized over categories that produced a score.
+
+export const SOW_OFFICIAL_SCORING_VERSION = "sow_official_v1";
+
+export type OfficialSowScoringResult = {
+  scoring_version: string;
+  category_scores: Partial<CategoryScores>;
+  composite_score: number | null;
+  tier: "A" | "B" | "C" | "D" | null;
+  enabled_metric_count: number;
+  ignored_metric_count: number;
+  per_category_metric_counts: Record<keyof CategoryScores, number>;
+  category_diagnostics: Record<keyof CategoryScores, CategoryDiagnostic>;
+  readiness: {
+    missing_metrics_tracked: true;
+    missing_metrics_count: number;
+    note: string;
+  };
+};
+
+export function calculateOfficialSowScoring(
+  values: SowMetricValues,
+  fallback?: Partial<CategoryScores> | null,
+): OfficialSowScoringResult {
+  const cat = calculateSowCategoryScores(values, fallback);
+  const composite = calculateSowShadowComposite(cat.category_scores);
+  const tier = composite != null ? tierFromComposite(composite) : null;
+  const diag = buildShadowDiagnostics(values, cat.per_category_metric_counts);
+
+  // Count missing metrics across registry (enabled metrics with no usable value
+  // + disabled/missing entries). These are tracked but NOT counted as zero.
+  let missingCount = 0;
+  for (const m of SOW_METRIC_REGISTRY) {
+    if (!m.enabled) { missingCount++; continue; }
+    const norm = normalizeSowMetric(m.key, values[m.key] ?? null);
+    if (norm == null) missingCount++;
+  }
+
+  return {
+    scoring_version: SOW_OFFICIAL_SCORING_VERSION,
+    category_scores: cat.category_scores,
+    composite_score: composite,
+    tier,
+    enabled_metric_count: cat.enabled_metric_count,
+    ignored_metric_count: cat.ignored_metric_count,
+    per_category_metric_counts: cat.per_category_metric_counts,
+    category_diagnostics: diag.category_diagnostics,
+    readiness: {
+      missing_metrics_tracked: true,
+      missing_metrics_count: missingCount,
+      note: "Missing metrics are tracked but not counted as zero.",
+    },
+  };
+}

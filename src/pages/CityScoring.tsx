@@ -23,6 +23,13 @@ import { MarketCompareModal } from "@/components/city-scoring/MarketCompareModal
 import { MarketReportModal } from "@/components/city-scoring/MarketReportModal";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  loadLiveRankedMarkets,
+  filterRankedMarkets,
+  sampleRankedMarkets,
+  downloadRankedMarketsCsv,
+  type RankedMarket,
+} from "@/lib/cityScoringLiveData";
 
 type CategoryKey =
   | "demand"

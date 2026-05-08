@@ -148,17 +148,28 @@ const CityScoring = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Load live ranked markets from Supabase once on mount
+  useEffect(() => {
+    loadLiveRankedMarkets()
+      .then(setLiveRankedMarkets)
+      .catch((err) => console.error("loadLiveRankedMarkets error", err));
+  }, []);
+
+  const baseRankedMarkets = useMemo<RankedMarket[]>(
+    () => (liveRankedMarkets.length > 0 ? liveRankedMarkets : sampleRankedMarkets()),
+    [liveRankedMarkets],
+  );
+
   const filtered = useMemo(() => {
-    return sampleCities.filter((c) => {
-      if (searchTerm && !`${c.city} ${c.state}`.toLowerCase().includes(searchTerm.toLowerCase())) return false;
-      if (stateFilter !== "All" && c.state !== stateFilter) return false;
-      if (tierFilter !== "All" && c.tier !== tierFilter) return false;
-      if (nonRegOnly && !c.isNonRegistration) return false;
-      if (c.compositeScore < minScore) return false;
-      if (Number(minPop) && c.population < Number(minPop)) return false;
-      return true;
-    }).sort((a, b) => b.compositeScore - a.compositeScore);
-  }, [searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop]);
+    return filterRankedMarkets(baseRankedMarkets, {
+      searchTerm,
+      stateFilter,
+      tierFilter,
+      nonRegOnly,
+      minScore,
+      minPop,
+    });
+  }, [baseRankedMarkets, searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop]);
 
   const selected = sampleCities.find((c) => c.id === selectedId) ?? sampleCities[0];
 

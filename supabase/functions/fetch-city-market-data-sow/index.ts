@@ -4,6 +4,7 @@ import {
   calculateSowCategoryScores,
   calculateSowShadowComposite,
   tierFromComposite,
+  buildShadowDiagnostics,
   SOW_SHADOW_SCORING_VERSION,
   type SowMetricValues,
   type CategoryScores,

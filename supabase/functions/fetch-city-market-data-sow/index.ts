@@ -5,6 +5,7 @@ import {
   calculateSowShadowComposite,
   tierFromComposite,
   buildShadowDiagnostics,
+  normalizeStateName,
   SOW_SHADOW_SCORING_VERSION,
   type SowMetricValues,
   type CategoryScores,
@@ -316,7 +317,8 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}))
     const city = String(body?.city ?? '').trim()
-    const state = String(body?.state ?? '').trim()
+    const stateRaw = String(body?.state ?? '').trim()
+    const state = normalizeStateName(stateRaw)
     if (!city || !state) return json({ error: { city: 'required', state: 'required' } }, 400)
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } })

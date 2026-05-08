@@ -23,6 +23,13 @@ import { MarketCompareModal } from "@/components/city-scoring/MarketCompareModal
 import { MarketReportModal } from "@/components/city-scoring/MarketReportModal";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  loadLiveRankedMarkets,
+  filterRankedMarkets,
+  sampleRankedMarkets,
+  downloadRankedMarketsCsv,
+  type RankedMarket,
+} from "@/lib/cityScoringLiveData";
 
 type CategoryKey =
   | "demand"
@@ -123,6 +130,7 @@ const CityScoring = () => {
   const [liveSignals, setLiveSignals] = useState<any[]>([]);
   const [liveCategoryScores, setLiveCategoryScores] = useState<Record<string, number>>({});
   const [liveCompetitors, setLiveCompetitors] = useState<any[]>([]);
+  const [liveRankedMarkets, setLiveRankedMarkets] = useState<RankedMarket[]>([]);
   const [liveJob, setLiveJob] = useState<any | null>(null);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
@@ -140,17 +148,28 @@ const CityScoring = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Load live ranked markets from Supabase once on mount
+  useEffect(() => {
+    loadLiveRankedMarkets()
+      .then(setLiveRankedMarkets)
+      .catch((err) => console.error("loadLiveRankedMarkets error", err));
+  }, []);
+
+  const baseRankedMarkets = useMemo<RankedMarket[]>(
+    () => (liveRankedMarkets.length > 0 ? liveRankedMarkets : sampleRankedMarkets()),
+    [liveRankedMarkets],
+  );
+
   const filtered = useMemo(() => {
-    return sampleCities.filter((c) => {
-      if (searchTerm && !`${c.city} ${c.state}`.toLowerCase().includes(searchTerm.toLowerCase())) return false;
-      if (stateFilter !== "All" && c.state !== stateFilter) return false;
-      if (tierFilter !== "All" && c.tier !== tierFilter) return false;
-      if (nonRegOnly && !c.isNonRegistration) return false;
-      if (c.compositeScore < minScore) return false;
-      if (Number(minPop) && c.population < Number(minPop)) return false;
-      return true;
-    }).sort((a, b) => b.compositeScore - a.compositeScore);
-  }, [searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop]);
+    return filterRankedMarkets(baseRankedMarkets, {
+      searchTerm,
+      stateFilter,
+      tierFilter,
+      nonRegOnly,
+      minScore,
+      minPop,
+    });
+  }, [baseRankedMarkets, searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop]);
 
   const selected = sampleCities.find((c) => c.id === selectedId) ?? sampleCities[0];
 
@@ -217,18 +236,7 @@ const CityScoring = () => {
   };
 
   const buildCsvDownload = () => {
-    const rows = [
-      ["Rank", "Market", "State", "Tier", "Composite Score", "Population", "Competitors"],
-      ...filtered.map((c, i) => [String(i + 1), c.city, c.state, c.tier, String(c.compositeScore), String(c.population), String(c.competitorCount)]),
-    ];
-    const csv = rows.map((r) => r.map((v) => `"${v.replace(/"/g, '""')}"`).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `ranked-markets-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadRankedMarketsCsv(filtered);
     toast.success("Ranked markets exported as CSV");
   };
 
@@ -668,7 +676,12 @@ const CityScoring = () => {
               return (
                 <div
                   key={c.id}
-                  onClick={() => setSelectedId(c.id)}
+                  onClick={() => {
+                    const sample = sampleCities.find((s) => s.city === c.city && s.state === c.state);
+                    if (sample) setSelectedId(sample.id);
+                    else setSelectedId(c.id);
+                    loadLiveData(c.city, c.state);
+                  }}
                   className={`grid grid-cols-[16px_14px_minmax(0,1fr)_46px_72px_18px] items-center gap-x-2 px-1 py-3 text-[11px] cursor-pointer border-b border-[#f3f5f9] last:border-0 ${isSel ? "bg-[#eaf0ff]" : "hover:bg-[#f7faff]"}`}
                 >
                   <span className={compareMode ? "rounded ring-2 ring-[#174be8] ring-offset-1 ring-offset-white" : ""}>

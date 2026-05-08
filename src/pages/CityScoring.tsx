@@ -359,25 +359,28 @@ const CityScoring = () => {
     "competitor_count",
     "elementary_school_count",
     "private_school_count",
-    "data_readiness",
   ];
 
-  const prioritizedLiveSignals = [...liveSignals].sort((a, b) => {
-    const ai = SIGNAL_DISPLAY_PRIORITY.indexOf(a.signal_key);
-    const bi = SIGNAL_DISPLAY_PRIORITY.indexOf(b.signal_key);
-    const ar = ai === -1 ? 999 : ai;
-    const br = bi === -1 ? 999 : bi;
-    return ar - br;
-  });
-  const visibleLiveSignals = prioritizedLiveSignals.slice(0, 9);
-  const hasMoreSignals = liveSignals.length > visibleLiveSignals.length;
+  const CENTER_SIGNAL_EXCLUDE = [
+    "data_readiness",
+    "census_data_readiness",
+    "bls_data_readiness",
+  ];
 
-  const liveSigRows = visibleLiveSignals.map((s) => ({
+  const centerLiveSignals = [...liveSignals]
+    .filter((s) => !CENTER_SIGNAL_EXCLUDE.includes(s.signal_key))
+    .sort((a, b) => {
+      const ai = SIGNAL_DISPLAY_PRIORITY.indexOf(a.signal_key);
+      const bi = SIGNAL_DISPLAY_PRIORITY.indexOf(b.signal_key);
+      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+    });
+  const visibleCenterSignals = centerLiveSignals.slice(0, 8);
+  const hasMoreSignals = centerLiveSignals.length > visibleCenterSignals.length;
+
+  const liveSigRows = visibleCenterSignals.map((s) => ({
     icon: SIGNAL_ICONS[s.signal_key] ?? Star,
     label: s.label,
     value: s.value,
-    delta: s.delta ?? "",
-    deltaClass: s.delta_type === "positive" ? "text-[#8ad1a8]" : "text-[#8794ab]",
   }));
 
   const fallbackSigRows = [

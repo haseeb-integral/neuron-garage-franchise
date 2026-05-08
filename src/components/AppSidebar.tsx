@@ -10,7 +10,6 @@ const primaryNavItems = [
   { title: "Teacher Prospects", url: "/teacher-prospects", icon: Users },
   { title: "Email Outreach", url: "/email-outreach", icon: Mail },
   { title: "Candidate Pipeline", url: "/candidate-pipeline", icon: Kanban },
-  { title: "Onboarding", url: "/onboarding", icon: ClipboardCheck },
 ];
 
 const utilityNavItems = [

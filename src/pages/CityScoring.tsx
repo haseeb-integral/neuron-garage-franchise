@@ -262,30 +262,32 @@ const CityScoring = () => {
   const handleRefreshData = async () => {
     if (!selected) return;
     setRefreshingMarket(true);
+    let liveData: any = null;
+    let liveError: any = null;
+    let sowData: any = null;
+    let sowError: any = null;
     try {
-      const { data, error } = await supabase.functions.invoke("fetch-city-market-data", {
-        body: { city: selected.city, state: selected.state },
-      });
-      if (error) {
-        toast.error("Refresh failed", { description: error.message });
-        return;
-      }
-      console.log("fetch-city-market-data response", data);
-
-      const { data: sowData, error: sowError } = await supabase.functions.invoke("fetch-city-market-data-sow", {
-        body: { city: selected.city, state: selected.state },
-      });
-      console.log("fetch-city-market-data-sow response", sowData, sowError);
-
-      if (sowError) {
-        toast.warning("Market data refreshed, but SOW scoring failed", {
-          description: sowError.message,
+      try {
+        const res = await supabase.functions.invoke("fetch-city-market-data", {
+          body: { city: selected.city, state: selected.state },
         });
-      } else {
-        toast.success("Market data and SOW score refreshed", {
-          description: `${selected.city}, ${selected.state} updated.`,
-        });
+        if (res.error) liveError = res.error;
+        else liveData = res.data;
+      } catch (e) {
+        liveError = e;
       }
+
+      try {
+        const res = await supabase.functions.invoke("fetch-city-market-data-sow", {
+          body: { city: selected.city, state: selected.state },
+        });
+        if (res.error) sowError = res.error;
+        else sowData = res.data;
+      } catch (e) {
+        sowError = e;
+      }
+
+      console.log("refresh result", { liveData, liveError, sowData, sowError });
 
       await loadLiveData(selected.city, selected.state);
       try {
@@ -293,10 +295,27 @@ const CityScoring = () => {
       } catch (e) {
         console.error("loadLiveRankedMarkets after refresh failed", e);
       }
-    } catch (err) {
-      toast.error("Refresh failed", {
-        description: err instanceof Error ? err.message : "Unknown error",
-      });
+
+      const where = `${selected.city}, ${selected.state}`;
+      const liveOk = !liveError;
+      const sowOk = !sowError;
+      const errMsg = (e: any) => (e instanceof Error ? e.message : e?.message || String(e ?? ""));
+
+      if (liveOk && sowOk) {
+        toast.success("Market data and SOW score refreshed", { description: `${where} updated.` });
+      } else if (!liveOk && sowOk) {
+        toast.warning("SOW score refreshed. Live market refresh had warnings", {
+          description: `${where} — live: ${errMsg(liveError)}`,
+        });
+      } else if (liveOk && !sowOk) {
+        toast.warning("Market data refreshed, but SOW scoring failed", {
+          description: `${where} — sow: ${errMsg(sowError)}`,
+        });
+      } else {
+        toast.error("Refresh failed. Live market and SOW scoring both failed", {
+          description: `${where} — live: ${errMsg(liveError)} | sow: ${errMsg(sowError)}`,
+        });
+      }
     } finally {
       setRefreshingMarket(false);
     }
@@ -419,9 +438,6 @@ const CityScoring = () => {
     { icon: Star, label: "Millennial Density", value: "42%", delta: "+16% vs. avg.", deltaClass: "text-[#8ad1a8]" },
   ];
   const sigRows = liveSigRows.length > 0 ? liveSigRows : fallbackSigRows;
-
-  const shadowScoring: any = liveJob?.response_summary?.shadow_scoring ?? null;
-  const shadowReady: boolean = shadowScoring?.score_readiness?.ready_for_cutover === true;
 
   const lastScrapedAt = liveCity?.last_scraped_at ?? liveJob?.completed_at ?? null;
   const lastScrapedLabel = lastScrapedAt
@@ -784,25 +800,6 @@ const CityScoring = () => {
                 <text x="100" y="102" textAnchor="middle" className="fill-[#7e8aa3]" style={{ fontSize: 12, fontWeight: 600 }}>/100</text>
               </svg>
               <p className="-mt-1 text-[12px] font-semibold" style={{ color: tierBadge.fg }}>{opportunityLabel}</p>
-              {shadowScoring && typeof shadowScoring.composite_score === "number" && (
-                <div className="mt-2 w-full rounded-md border border-[#e5eaf2] bg-[#f7faff] px-2 py-1.5 text-left">
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-[#526078]">SOW Shadow Score</p>
-                  <p className="mt-0.5 text-[13px] font-bold text-[#07142f]">
-                    {shadowScoring.composite_score}/100
-                    {shadowScoring.tier && (
-                      <span className="ml-1 text-[11px] font-semibold text-[#174be8]">Tier {shadowScoring.tier}</span>
-                    )}
-                  </p>
-                  <p className="text-[10px] leading-tight text-[#6b7a96]">
-                    From {shadowScoring.enabled_metric_count ?? 0} available SOW metrics
-                  </p>
-                  {!shadowReady && (
-                    <p className="mt-1 text-[10px] leading-tight text-[#b8860b]">
-                      Not official yet. More source coverage needed before cutover.
-                    </p>
-                  )}
-                </div>
-              )}
             </div>
 
             <div className="space-y-2.5 pt-1 min-w-0">

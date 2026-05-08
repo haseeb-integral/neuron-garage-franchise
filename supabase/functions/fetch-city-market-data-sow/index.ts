@@ -539,6 +539,7 @@ Deno.serve(async (req) => {
         missing: signals.filter((s) => s.status === 'missing').length,
       },
       shadow_scoring: shadowScoring,
+      official_sow_scoring: officialScoring,
     })
   } catch (e) {
     return json({ error: 'Unexpected error', detail: (e as Error).message }, 500)

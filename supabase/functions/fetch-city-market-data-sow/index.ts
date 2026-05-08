@@ -403,6 +403,8 @@ Deno.serve(async (req) => {
       ? shadowComposite - currentCompositeScore
       : null
 
+    const diag = buildShadowDiagnostics(sowMetricValues, shadowCat.per_category_metric_counts)
+
     const shadowScoring = {
       scoring_version: SOW_SHADOW_SCORING_VERSION,
       category_scores: shadowCat.category_scores,
@@ -415,6 +417,8 @@ Deno.serve(async (req) => {
       ignored_metric_count: shadowCat.ignored_metric_count,
       per_category_metric_counts: shadowCat.per_category_metric_counts,
       fallback_categories_used: Object.keys(fallbackCategories),
+      category_diagnostics: diag.category_diagnostics,
+      score_readiness: diag.score_readiness,
     }
 
     const { data: jobRow } = await admin.from('city_fetch_jobs').insert({

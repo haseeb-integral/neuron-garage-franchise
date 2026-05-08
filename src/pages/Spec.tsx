@@ -59,7 +59,16 @@ const Spec = () => {
     <div>
       <PageHeader
         title="Product Specification"
-        subtitle="Detailed specification of the Neuron Garage Franchise Acquisition System prototype."
+        subtitle="Detailed specification of the Neuron Garage Franchise Acquisition System."
+        actions={
+          <Button
+            onClick={handleDownloadSpec}
+            className="gap-2 bg-[#0757ff] text-white hover:bg-[#0644cc]"
+          >
+            <Download size={16} />
+            Download .md
+          </Button>
+        }
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-8">

@@ -439,9 +439,6 @@ const CityScoring = () => {
   ];
   const sigRows = liveSigRows.length > 0 ? liveSigRows : fallbackSigRows;
 
-  const shadowScoring: any = liveJob?.response_summary?.shadow_scoring ?? null;
-  const shadowReady: boolean = shadowScoring?.score_readiness?.ready_for_cutover === true;
-
   const lastScrapedAt = liveCity?.last_scraped_at ?? liveJob?.completed_at ?? null;
   const lastScrapedLabel = lastScrapedAt
     ? new Date(lastScrapedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })

@@ -450,6 +450,7 @@ Deno.serve(async (req) => {
         proxy: signals.filter((s) => s.status === 'proxy').length,
         missing: signals.filter((s) => s.status === 'missing').length,
       },
+      shadow_scoring: shadowScoring,
     })
   } catch (e) {
     return json({ error: 'Unexpected error', detail: (e as Error).message }, 500)

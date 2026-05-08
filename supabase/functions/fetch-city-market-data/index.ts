@@ -5,6 +5,8 @@ import {
   calculateCompositeScore,
   tierFromComposite,
   CATEGORY_WEIGHTS,
+  normalizeStateName,
+  applyTierHysteresis,
 } from '../_shared/scoring.ts'
 
 const corsHeaders = {
@@ -391,7 +393,8 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}))
     const city = String(body?.city ?? '').trim()
-    const state = String(body?.state ?? '').trim()
+    const stateRaw = String(body?.state ?? '').trim()
+    const state = normalizeStateName(stateRaw)
     const errors: Record<string, string> = {}
     if (city.length < 1 || city.length > 100) errors.city = 'city must be 1–100 chars'
     if (state.length < 2 || state.length > 50) errors.state = 'state must be 2–50 chars'
@@ -450,7 +453,20 @@ Deno.serve(async (req) => {
     const cat = calculateCurrentCategoryScores(scoreInputs)
     void CATEGORY_WEIGHTS // weights live in shared scoring module
     const compositeScore = calculateCompositeScore(cat)
-    const tier = tierFromComposite(compositeScore)
+    const rawTier = tierFromComposite(compositeScore)
+
+    // Tier hysteresis: read prior score/tier for the same canonical city/state.
+    const { data: priorRow } = await admin
+      .from('cities')
+      .select('composite_score, tier')
+      .eq('city', city).eq('state', state).maybeSingle()
+    const tierStability = applyTierHysteresis(
+      compositeScore,
+      (priorRow?.composite_score as number | null | undefined) ?? null,
+      (priorRow?.tier as string | null | undefined) ?? null,
+    )
+    const tier = tierStability.final_tier
+    void rawTier
 
     const cityNotes = censusData
       ? `Live API + Census ACS 2022 (place ${censusData.place_fips})`
@@ -538,6 +554,8 @@ Deno.serve(async (req) => {
       },
       category_scores: cat,
       composite_score: compositeScore,
+      tier,
+      tier_stability: tierStability,
       census: censusData,
       bls: blsData,
       warnings: { apify: apifyError, firecrawl: firecrawl.error, census: censusError, bls: blsError },

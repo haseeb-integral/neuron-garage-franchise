@@ -1,5 +1,13 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
-import { isMetricEnabled } from '../_shared/scoring.ts'
+import {
+  isMetricEnabled,
+  calculateSowCategoryScores,
+  calculateSowShadowComposite,
+  tierFromComposite,
+  SOW_SHADOW_SCORING_VERSION,
+  type SowMetricValues,
+  type CategoryScores,
+} from '../_shared/scoring.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

@@ -904,7 +904,7 @@ const CityScoring = () => {
                 className="text-[10px] font-medium text-[#174be8] hover:underline"
                 onClick={() => setDetailDrawerOpen(true)}
               >
-                View All
+                View Evidence
               </button>
             </div>
             <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">

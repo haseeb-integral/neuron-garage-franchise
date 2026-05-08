@@ -334,7 +334,9 @@ Deno.serve(async (req) => {
         ...(s.raw_data ?? {}),
         status: s.status,
         metric_category: s.metric_category,
-        used_in_score: s.used_in_score,
+        // Phase B: derive used_in_score from the shared SOW registry rather than
+        // each signal's hardcoded value. Unknown keys default to false.
+        used_in_score: isMetricEnabled(s.signal_key),
         notes: s.notes ?? null,
       },
     }))

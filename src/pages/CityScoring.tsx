@@ -269,9 +269,6 @@ const CityScoring = () => {
         toast.error("Refresh failed", { description: error.message });
         return;
       }
-      toast.success("Market data refreshed", {
-        description: `${selected.city}, ${selected.state} updated with POC database rows.`,
-      });
       console.log("fetch-city-market-data response", data);
 
       const { data: sowData, error: sowError } = await supabase.functions.invoke("fetch-city-market-data-sow", {

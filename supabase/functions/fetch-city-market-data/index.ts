@@ -197,7 +197,7 @@ async function fetchFirecrawlSignals(city: string, state: string) {
   }
 }
 
-function clamp(n: number, lo = 40, hi = 98) { return Math.max(lo, Math.min(hi, Math.round(n))) }
+// clamp moved to ../_shared/scoring.ts as clampScore
 
 // ---- Census ACS 5-year ----
 type CensusData = {

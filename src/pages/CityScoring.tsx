@@ -882,7 +882,7 @@ const CityScoring = () => {
                   className="text-[10px] font-medium text-[#174be8] hover:underline"
                   onClick={() => setDetailDrawerOpen(true)}
                 >
-                  View All
+                  View Evidence
                 </button>
               </div>
               <p className="text-[10px] text-[#8794ab] mb-2">Sample nearby markets</p>

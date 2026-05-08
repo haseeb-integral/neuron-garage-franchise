@@ -375,7 +375,7 @@ const CityScoring = () => {
       return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
     });
   const visibleCenterSignals = centerLiveSignals.slice(0, 8);
-  const hasMoreSignals = centerLiveSignals.length > visibleCenterSignals.length;
+  const hasMoreSignals = liveSignals.length > visibleCenterSignals.length;
 
   const liveSigRows = visibleCenterSignals.map((s) => ({
     icon: SIGNAL_ICONS[s.signal_key] ?? Star,

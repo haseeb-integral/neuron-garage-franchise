@@ -339,3 +339,116 @@ export function calculateSowShadowComposite(
   if (wsum <= 0) return null;
   return Math.round(sum / wsum);
 }
+
+// ---------- Phase C.1: shadow scoring diagnostics ----------
+
+export type CategoryConfidence = "high" | "medium" | "low";
+
+export type CategoryDiagnostic = {
+  enabled_metrics_used: number;
+  enabled_metrics_available: number;
+  missing_or_disabled_metrics: number;
+  total_registry_metrics: number;
+  confidence: CategoryConfidence;
+  notes: string;
+};
+
+export type ScoreReadiness = {
+  ready_for_cutover: boolean;
+  reason: string;
+  categories_with_sufficient_metrics: number;
+  min_metrics_per_category_required: number;
+};
+
+const CATEGORY_LABELS: Record<keyof CategoryScores, string> = {
+  demand: "Demand",
+  pricing_power: "Pricing Power",
+  competitive_landscape: "Competitive Landscape",
+  franchisee_supply: "Franchisee Supply",
+  ease_of_operations: "Ease of Operations",
+  parent_mindset: "Parent Mindset",
+};
+
+function confidenceFor(used: number): CategoryConfidence {
+  if (used >= 3) return "high";
+  if (used === 2) return "medium";
+  return "low";
+}
+
+function notesFor(
+  cat: keyof CategoryScores,
+  used: number,
+  available: number,
+  missingDisabledLabels: string[],
+): string {
+  if (available === 0) {
+    return `No metrics enabled in registry yet for ${CATEGORY_LABELS[cat]}.`;
+  }
+  if (used === 0) {
+    return `No usable values for enabled ${CATEGORY_LABELS[cat]} metrics; falling back to current category score if available.`;
+  }
+  if (used >= 3) {
+    return `${used} enabled metrics contributing; ${CATEGORY_LABELS[cat]} score has solid coverage.`;
+  }
+  const missingPreview = missingDisabledLabels.slice(0, 3).join(", ");
+  if (used === 1) {
+    return `${CATEGORY_LABELS[cat]} score is not final because only 1 metric is contributing. Missing: ${missingPreview || "additional registry metrics"}.`;
+  }
+  return `${CATEGORY_LABELS[cat]} has ${used} contributing metrics; needs more for high confidence. Missing: ${missingPreview || "additional registry metrics"}.`;
+}
+
+export function buildShadowDiagnostics(
+  values: SowMetricValues,
+  perCategoryUsed: Record<keyof CategoryScores, number>,
+): {
+  category_diagnostics: Record<keyof CategoryScores, CategoryDiagnostic>;
+  score_readiness: ScoreReadiness;
+} {
+  const minRequired = 3;
+  const diagnostics = {} as Record<keyof CategoryScores, CategoryDiagnostic>;
+  let categoriesReady = 0;
+
+  (Object.keys(CATEGORY_LABELS) as (keyof CategoryScores)[]).forEach((cat) => {
+    const inCat = SOW_METRIC_REGISTRY.filter((m) => m.category === cat);
+    const enabledInCat = inCat.filter((m) => m.enabled);
+    const used = perCategoryUsed[cat] ?? 0;
+    const available = enabledInCat.length;
+    // Missing or disabled = total registry metrics in this category that did NOT contribute.
+    const missingOrDisabled = inCat.length - used;
+    const missingDisabledLabels = inCat
+      .filter((m) => {
+        if (!m.enabled) return true;
+        const v = values[m.key];
+        return v == null || !Number.isFinite(Number(v));
+      })
+      .map((m) => m.label);
+
+    const confidence = confidenceFor(used);
+    if (used >= minRequired) categoriesReady++;
+
+    diagnostics[cat] = {
+      enabled_metrics_used: used,
+      enabled_metrics_available: available,
+      missing_or_disabled_metrics: missingOrDisabled,
+      total_registry_metrics: inCat.length,
+      confidence,
+      notes: notesFor(cat, used, available, missingDisabledLabels),
+    };
+  });
+
+  const totalCats = Object.keys(CATEGORY_LABELS).length;
+  // "Most" = at least 4 of 6 categories have >= 3 contributing metrics.
+  const ready = categoriesReady >= Math.ceil(totalCats * 2 / 3);
+
+  return {
+    category_diagnostics: diagnostics,
+    score_readiness: {
+      ready_for_cutover: ready,
+      reason: ready
+        ? `${categoriesReady}/${totalCats} categories have at least ${minRequired} contributing metrics.`
+        : `Only ${categoriesReady}/${totalCats} categories have at least ${minRequired} contributing metrics. Shadow score is useful for testing but not ready to replace current score.`,
+      categories_with_sufficient_metrics: categoriesReady,
+      min_metrics_per_category_required: minRequired,
+    },
+  };
+}

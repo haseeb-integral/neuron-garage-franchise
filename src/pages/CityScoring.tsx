@@ -534,6 +534,7 @@ const CityScoring = () => {
           <div className="flex items-center gap-3 flex-wrap">
             <h3 className="text-sm font-bold text-[#07142f]">Scoring Weights</h3>
             <span className="text-[11px] text-[#8794ab] whitespace-nowrap">Set what matters most. 100% means score this market only by that category.</span>
+            <span className="text-[10px] text-[#8794ab] basis-full">Composite score uses six category scores. The 46 SOW metrics are currently stored as evidence, not fully rolled into the backend formula yet.</span>
             <span className="text-xs text-[#526078]">Total Weight: <span className={totalWeight === 100 ? "text-[#0ea66e] font-medium" : "text-[#ea580c] font-medium"}>{totalWeight}%</span></span>
             {totalWeight !== 100 && (
               <span className="text-[11px] text-[#ea580c]">Weights must total 100% to apply scoring.</span>

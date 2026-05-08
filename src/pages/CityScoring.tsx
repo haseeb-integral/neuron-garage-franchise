@@ -359,25 +359,28 @@ const CityScoring = () => {
     "competitor_count",
     "elementary_school_count",
     "private_school_count",
-    "data_readiness",
   ];
 
-  const prioritizedLiveSignals = [...liveSignals].sort((a, b) => {
-    const ai = SIGNAL_DISPLAY_PRIORITY.indexOf(a.signal_key);
-    const bi = SIGNAL_DISPLAY_PRIORITY.indexOf(b.signal_key);
-    const ar = ai === -1 ? 999 : ai;
-    const br = bi === -1 ? 999 : bi;
-    return ar - br;
-  });
-  const visibleLiveSignals = prioritizedLiveSignals.slice(0, 9);
-  const hasMoreSignals = liveSignals.length > visibleLiveSignals.length;
+  const CENTER_SIGNAL_EXCLUDE = [
+    "data_readiness",
+    "census_data_readiness",
+    "bls_data_readiness",
+  ];
 
-  const liveSigRows = visibleLiveSignals.map((s) => ({
+  const centerLiveSignals = [...liveSignals]
+    .filter((s) => !CENTER_SIGNAL_EXCLUDE.includes(s.signal_key))
+    .sort((a, b) => {
+      const ai = SIGNAL_DISPLAY_PRIORITY.indexOf(a.signal_key);
+      const bi = SIGNAL_DISPLAY_PRIORITY.indexOf(b.signal_key);
+      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+    });
+  const visibleCenterSignals = centerLiveSignals.slice(0, 8);
+  const hasMoreSignals = centerLiveSignals.length > visibleCenterSignals.length;
+
+  const liveSigRows = visibleCenterSignals.map((s) => ({
     icon: SIGNAL_ICONS[s.signal_key] ?? Star,
     label: s.label,
     value: s.value,
-    delta: s.delta ?? "",
-    deltaClass: s.delta_type === "positive" ? "text-[#8ad1a8]" : "text-[#8794ab]",
   }));
 
   const fallbackSigRows = [
@@ -794,13 +797,10 @@ const CityScoring = () => {
                 {sigRows.map((r) => {
                   const Icon = r.icon;
                   return (
-                    <div key={r.label} className="flex items-start gap-2 text-[10.5px] min-w-0">
-                      <Icon size={12} className="text-[#3160ff] flex-shrink-0 mt-0.5" />
-                      <span className="text-[#526078] leading-tight flex-1 min-w-0 truncate">{r.label}</span>
-                      <div className="flex flex-col items-end flex-shrink-0 leading-tight">
-                        <span className="font-semibold text-[#07142f] tabular-nums">{r.value}</span>
-                        <span className={`text-[9.5px] font-medium ${r.deltaClass}`}>{r.delta}</span>
-                      </div>
+                    <div key={r.label} className="grid grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-2 text-[10.5px]">
+                      <Icon size={15} className="text-[#174be8]" />
+                      <span className="min-w-0 truncate text-[#526078]">{r.label}</span>
+                      <span className="max-w-[120px] truncate text-right font-bold text-[#07142f]">{r.value}</span>
                     </div>
                   );
                 })}
@@ -809,7 +809,7 @@ const CityScoring = () => {
                 <button
                   type="button"
                   onClick={() => setDetailDrawerOpen(true)}
-                  className="mt-2 text-[10.5px] font-medium text-[#2250eb] hover:underline"
+                  className="mt-2 text-[11px] font-semibold text-[#174be8] hover:underline"
                 >
                   View all signals
                 </button>

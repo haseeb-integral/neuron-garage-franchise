@@ -278,11 +278,11 @@ const CityScoring = () => {
       console.log("fetch-city-market-data-sow response", sowData, sowError);
 
       if (sowError) {
-        toast.warning("Market data refreshed, but SOW coverage refresh failed", {
+        toast.warning("Market data refreshed, but SOW scoring failed", {
           description: sowError.message,
         });
       } else {
-        toast.success("Market data and SOW coverage refreshed", {
+        toast.success("Market data and SOW score refreshed", {
           description: `${selected.city}, ${selected.state} updated.`,
         });
       }

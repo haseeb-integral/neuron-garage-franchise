@@ -1,4 +1,19 @@
 import { PageHeader } from "@/components/PageHeader";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
+import { SPEC_MARKDOWN } from "@/data/specMarkdown";
+
+const handleDownloadSpec = () => {
+  const blob = new Blob([SPEC_MARKDOWN], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "neuron-garage-franchise-spec.md";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
 
 const Section = ({ id, title, children }: { id: string; title: string; children: React.ReactNode }) => (
   <section id={id} className="scroll-mt-8 mb-10">
@@ -44,7 +59,16 @@ const Spec = () => {
     <div>
       <PageHeader
         title="Product Specification"
-        subtitle="Detailed specification of the Neuron Garage Franchise Acquisition System prototype."
+        subtitle="Detailed specification of the Neuron Garage Franchise Acquisition System."
+        action={
+          <Button
+            onClick={handleDownloadSpec}
+            className="gap-2 bg-[#0757ff] text-white hover:bg-[#0644cc]"
+          >
+            <Download size={16} />
+            Download .md
+          </Button>
+        }
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-8">

@@ -164,9 +164,17 @@ const CityScoring = () => {
   }, []);
 
   const baseRankedMarkets = useMemo<RankedMarket[]>(
-    () => (liveRankedMarkets.length > 0 ? liveRankedMarkets : sampleRankedMarkets()),
+    // Always include starter sample markets so users can discover/refresh any city.
+    // Live DB rows override sample rows via dedupeRankedMarkets (live wins).
+    () => [...liveRankedMarkets, ...sampleRankedMarkets()],
     [liveRankedMarkets],
   );
+
+  const availableStates = useMemo(() => {
+    const set = new Set<string>();
+    baseRankedMarkets.forEach((m) => { if (m.state) set.add(m.state); });
+    return Array.from(set).sort();
+  }, [baseRankedMarkets]);
 
   const filtered = useMemo(() => {
     return filterRankedMarkets(baseRankedMarkets, {

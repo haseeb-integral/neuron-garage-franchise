@@ -530,17 +530,23 @@ const CityScoring = () => {
 
       {/* Scoring Weights */}
       <div className="mb-4 rounded-lg bg-white border border-[#eef2f7] p-4">
-        <div className="mb-3 flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-3 flex-wrap">
+        <div className="mb-3 flex items-start justify-between gap-4">
+          <div className="min-w-0">
             <h3 className="text-sm font-bold text-[#07142f]">Scoring Weights</h3>
-            <span className="text-[11px] text-[#8794ab] whitespace-nowrap">Set what matters most. 100% means score this market only by that category.</span>
-            <span className="text-[10px] text-[#8794ab] basis-full">Composite score uses six category scores. The 46 SOW metrics are currently stored as evidence, not fully rolled into the backend formula yet.</span>
-            <span className="text-xs text-[#526078]">Total Weight: <span className={totalWeight === 100 ? "text-[#0ea66e] font-medium" : "text-[#ea580c] font-medium"}>{totalWeight}%</span></span>
+            <p className="text-[10px] text-[#8794ab] leading-snug mt-1">
+              Set what matters most. 100% means scoring the market only by that category.
+            </p>
+            <p className="text-[10px] text-[#8794ab] leading-snug mt-0.5">
+              Composite score uses six category scores. The 46 SOW metrics are evidence and are not fully rolled into the backend formula yet.
+            </p>
             {totalWeight !== 100 && (
-              <span className="text-[11px] text-[#ea580c]">Weights must total 100% to apply scoring.</span>
+              <p className="text-[11px] text-[#ea580c] mt-1">Weights must total 100% to apply scoring.</p>
             )}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-3">
+            <span className="text-xs text-[#526078]">
+              Total Weight: <span className={totalWeight === 100 ? "text-[#0ea66e] font-medium" : "text-[#ea580c] font-medium"}>{totalWeight}%</span>
+            </span>
             <button onClick={resetWeights} className="text-xs font-medium text-[#174be8] hover:underline">Reset to Default</button>
             <Button
               size="sm"

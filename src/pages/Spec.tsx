@@ -1,4 +1,19 @@
 import { PageHeader } from "@/components/PageHeader";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
+import { SPEC_MARKDOWN } from "@/data/specMarkdown";
+
+const handleDownloadSpec = () => {
+  const blob = new Blob([SPEC_MARKDOWN], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "neuron-garage-franchise-spec.md";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
 
 const Section = ({ id, title, children }: { id: string; title: string; children: React.ReactNode }) => (
   <section id={id} className="scroll-mt-8 mb-10">

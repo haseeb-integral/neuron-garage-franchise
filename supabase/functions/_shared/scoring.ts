@@ -156,7 +156,7 @@ export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
   { key: "private_school_tuition_proxy",        category: "pricing_power", label: "Private Elementary School Tuition Levels",          enabled: false, weight_within_category: 0,    status: "missing" },
   { key: "private_school_student_count",        category: "pricing_power", label: "Number of Private School Students",                 enabled: false, weight_within_category: 0,    status: "missing" },
   { key: "childcare_nanny_hourly_rate_proxy",   category: "pricing_power", label: "Childcare / Nanny Hourly Rate Proxy",               enabled: true,  weight_within_category: 0.40, status: "proxy" },
-  { key: "household_discretionary_income_proxy",category: "pricing_power", label: "Household Discretionary Income Estimate",           enabled: false, weight_within_category: 0,    status: "missing" },
+  { key: "household_discretionary_income_proxy",category: "pricing_power", label: "Household Discretionary Income Estimate",           enabled: true,  weight_within_category: 0.20, status: "proxy" },
 
   // Competitive Landscape
   { key: "summer_camps_per_10k_children",       category: "competitive_landscape", label: "Summer Camps per 10,000 Children",          enabled: true,  weight_within_category: 0.30, status: "proxy" },
@@ -241,6 +241,7 @@ export function normalizeSowMetric(
     case "education_bachelors_plus_pct":      return lin(v, 20, 70);
     // Pricing power
     case "childcare_nanny_hourly_rate_proxy": return lin(v, 20000, 45000);
+    case "household_discretionary_income_proxy": return lin(v, 20000, 120000);
     // Competitive landscape (lower competitor density = better)
     case "summer_camps_per_10k_children":     return lin(v, 0, 30, true);
     case "stem_robotics_maker_camp_count":    return lin(v, 0, 20, true);

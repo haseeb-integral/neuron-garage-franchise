@@ -743,8 +743,9 @@ const CityScoring = () => {
             <SelectTrigger className="h-9 bg-white border-[#e5eaf2] text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="All">All States</SelectItem>
-              <SelectItem value="Texas">Texas</SelectItem>
-              <SelectItem value="Florida">Florida</SelectItem>
+              {availableStates.map((s) => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

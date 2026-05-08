@@ -1,7 +1,9 @@
+import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { CityData } from "@/data/cityData";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   open: boolean;
@@ -10,47 +12,230 @@ interface Props {
   categoryScores: Record<string, number>;
 }
 
-const CAT_LABELS: { key: string; label: string }[] = [
-  { key: "demand", label: "Demand" },
-  { key: "pricingPower", label: "Pricing Power" },
-  { key: "competitiveLandscape", label: "Competitive Landscape" },
-  { key: "franchiseeSupply", label: "Franchisee Supply" },
-  { key: "easeOfOperations", label: "Ease of Operations" },
-  { key: "parentMindset", label: "Parent Mindset" },
+type MetricStatus = "live" | "proxy" | "missing" | "blocked" | "manual";
+type MetricCategory =
+  | "demand"
+  | "pricing_power"
+  | "competitive_landscape"
+  | "franchisee_supply"
+  | "ease_of_operations"
+  | "parent_mindset";
+
+type LiveSignal = {
+  id?: string;
+  signal_key?: string;
+  label?: string;
+  value?: string | number | null;
+  source?: string | null;
+  source_url?: string | null;
+  confidence?: number | null;
+  raw_data?: {
+    status?: MetricStatus;
+    metric_category?: MetricCategory;
+    used_in_score?: boolean;
+    notes?: string | null;
+    [key: string]: unknown;
+  } | null;
+};
+
+type LiveCompetitor = {
+  id?: string;
+  name?: string;
+  type?: string | null;
+  category?: string | null;
+  source?: string | null;
+  source_url?: string | null;
+};
+
+const CAT_LABELS: { key: string; dbKey: MetricCategory; label: string }[] = [
+  { key: "demand", dbKey: "demand", label: "Demand" },
+  { key: "pricingPower", dbKey: "pricing_power", label: "Pricing Power" },
+  { key: "competitiveLandscape", dbKey: "competitive_landscape", label: "Competitive Landscape" },
+  { key: "franchiseeSupply", dbKey: "franchisee_supply", label: "Franchisee Supply" },
+  { key: "easeOfOperations", dbKey: "ease_of_operations", label: "Ease of Operations" },
+  { key: "parentMindset", dbKey: "parent_mindset", label: "Parent Mindset" },
 ];
 
-const SIGNALS = [
-  { label: "Children Ages 5-12", value: "19,842 (+12% vs nat. avg)" },
-  { label: "Households $100k+", value: "46% (+15% vs nat. avg)" },
-  { label: "Premium Camp Pricing", value: "$245/week (+8%)" },
-  { label: "Teacher Density", value: "1:475" },
-  { label: "School District Access", value: "High" },
+const PRIORITY_SIGNAL_KEYS = [
+  "median_household_income",
+  "income_100k_plus_pct",
+  "income_150k_plus_pct",
+  "children_5_12_count",
+  "children_5_12_pct",
+  "education_bachelors_plus_pct",
+  "summer_camps_per_10k_children",
+  "teacher_salary_proxy",
+  "rental_venue_count",
+  "guide_wage_proxy",
+  "robotics_maker_space_count",
+  "sow_metric_coverage_readiness",
 ];
 
-const NEARBY = ["Prosper, TX (87)", "McKinney, TX (86)", "Allen, TX (85)", "Little Elm, TX (82)"];
-const SOURCES = ["U.S. Census Bureau", "BLS Occupational Data", "Google Trends", "Yelp / Google Maps", "GreatSchools.org", "ACA Camp Regulations"];
+function getStatus(signal: LiveSignal): MetricStatus {
+  return signal.raw_data?.status ?? "proxy";
+}
+
+function getCategory(signal: LiveSignal): MetricCategory | null {
+  return signal.raw_data?.metric_category ?? null;
+}
+
+function statusClass(status: MetricStatus) {
+  if (status === "live") return "bg-[#e6f7ef] text-[#0ea66e]";
+  if (status === "proxy") return "bg-[#eaf0ff] text-[#174be8]";
+  if (status === "missing") return "bg-[#f3f6fb] text-[#526078]";
+  return "bg-[#fff6dc] text-[#b8860b]";
+}
+
+function csvEscape(value: unknown) {
+  return `"${String(value ?? "").replace(/"/g, '""')}"`;
+}
+
+function downloadCsv(filename: string, rows: unknown[][]) {
+  const csv = rows.map((row) => row.map(csvEscape).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export function MarketReportModal({ open, onClose, market, categoryScores }: Props) {
   const stateAbbr = market.state === "Texas" ? "TX" : market.state === "Florida" ? "FL" : market.state;
+  const [loading, setLoading] = useState(false);
+  const [liveSignals, setLiveSignals] = useState<LiveSignal[]>([]);
+  const [liveCompetitors, setLiveCompetitors] = useState<LiveCompetitor[]>([]);
+  const [latestJob, setLatestJob] = useState<any | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const loadReportData = async () => {
+      setLoading(true);
+      try {
+        const { data: cityRow } = await supabase
+          .from("cities")
+          .select("*")
+          .eq("city", market.city)
+          .eq("state", market.state)
+          .maybeSingle();
+
+        if (!cityRow) {
+          setLiveSignals([]);
+          setLiveCompetitors([]);
+          setLatestJob(null);
+          return;
+        }
+
+        const [{ data: signals }, { data: competitors }, { data: jobs }] = await Promise.all([
+          supabase.from("city_market_signals").select("*").eq("city_id", cityRow.id),
+          supabase.from("city_competitors").select("*").eq("city_id", cityRow.id).order("created_at", { ascending: false }),
+          supabase.from("city_fetch_jobs").select("*").eq("city_id", cityRow.id).order("created_at", { ascending: false }).limit(1),
+        ]);
+
+        setLiveSignals((signals ?? []) as LiveSignal[]);
+        setLiveCompetitors((competitors ?? []) as LiveCompetitor[]);
+        setLatestJob(jobs?.[0] ?? null);
+      } catch (err) {
+        console.error("MarketReportModal load error", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadReportData();
+  }, [open, market.city, market.state]);
+
+  const liveCount = liveSignals.filter((s) => getStatus(s) === "live").length;
+  const proxyCount = liveSignals.filter((s) => getStatus(s) === "proxy").length;
+  const missingCount = liveSignals.filter((s) => getStatus(s) === "missing").length;
+
+  const prioritySignals = useMemo(() => {
+    return [...liveSignals]
+      .filter((s) => getStatus(s) !== "missing")
+      .sort((a, b) => {
+        const ai = PRIORITY_SIGNAL_KEYS.indexOf(a.signal_key ?? "");
+        const bi = PRIORITY_SIGNAL_KEYS.indexOf(b.signal_key ?? "");
+        return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+      })
+      .slice(0, 10);
+  }, [liveSignals]);
+
+  const coverageByCategory = CAT_LABELS.map((cat) => {
+    const rows = liveSignals.filter((s) => getCategory(s) === cat.dbKey);
+    return {
+      ...cat,
+      total: rows.length,
+      live: rows.filter((s) => getStatus(s) === "live").length,
+      proxy: rows.filter((s) => getStatus(s) === "proxy").length,
+      missing: rows.filter((s) => getStatus(s) === "missing").length,
+    };
+  });
+
+  const handleDownloadCsv = () => {
+    if (!liveSignals.length) {
+      toast.error("No live SOW signals found to export");
+      return;
+    }
+
+    const rows = [
+      ["Category", "Metric", "Value", "Status", "Source", "Confidence", "Used In Score", "Notes", "Source URL"],
+      ...liveSignals.map((s) => [
+        CAT_LABELS.find((c) => c.dbKey === getCategory(s))?.label ?? "Other",
+        s.label ?? s.signal_key ?? "",
+        s.value ?? "",
+        getStatus(s),
+        s.source ?? "",
+        s.confidence == null ? "" : `${Math.round(s.confidence * 100)}%`,
+        s.raw_data?.used_in_score ? "Yes" : "No",
+        s.raw_data?.notes ?? "",
+        s.source_url ?? "",
+      ]),
+      [],
+      ["Competitors & Enrichment Programs"],
+      ["Name", "Type", "Source", "Source URL"],
+      ...liveCompetitors.map((c) => [c.name ?? "", c.type ?? c.category ?? "", c.source ?? "", c.source_url ?? ""]),
+    ];
+
+    downloadCsv(`${market.city.toLowerCase().replace(/\s+/g, "-")}-sow-source-evidence.csv`, rows);
+    toast.success("SOW source evidence exported");
+  };
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-2xl w-[calc(100vw-2rem)] max-h-[90vh] overflow-y-auto bg-white">
         <DialogHeader>
-          <DialogTitle className="text-[#07142f]">{market.city}, {stateAbbr} Market Research Report Preview</DialogTitle>
+          <DialogTitle className="text-[#07142f]">{market.city}, {stateAbbr} SOW Market Report Preview</DialogTitle>
         </DialogHeader>
         <div className="space-y-5 text-[12.5px] text-[#14233b]">
-          <section>
+          <section className="rounded-lg border border-[#eef2f7] bg-[#f8fafe] p-3">
             <h4 className="text-[13px] font-bold text-[#07142f] mb-1">Market Summary</h4>
-            <p className="leading-snug text-[#3a4c72]">Affluent, rapidly growing market with strong demand for premium youth education and enrichment programs. Composite metrics indicate high suitability for a Neuron Garage franchise.</p>
+            <p className="leading-snug text-[#3a4c72]">
+              This report preview uses the live SOW metric registry for {market.city}. It separates confirmed live metrics, proxy-backed metrics, and missing source integrations so the score is auditable instead of relying on hardcoded sample signals.
+            </p>
+            {loading && <p className="mt-2 text-[11px] text-[#526078]">Loading live report evidence…</p>}
           </section>
 
           <section>
-            <h4 className="text-[13px] font-bold text-[#07142f] mb-1">Overall Score</h4>
-            <div className="flex items-center gap-3">
-              <span className="text-3xl font-black text-[#174be8]">{market.compositeScore}</span>
-              <span className="text-[#526078]">/ 100 — Tier {market.tier}</span>
+            <h4 className="text-[13px] font-bold text-[#07142f] mb-2">SOW Coverage Status</h4>
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="rounded-md border border-[#eef2f7] p-3">
+                <p className="text-2xl font-black text-[#0ea66e]">{liveCount}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-[#8794ab]">Live</p>
+              </div>
+              <div className="rounded-md border border-[#eef2f7] p-3">
+                <p className="text-2xl font-black text-[#174be8]">{proxyCount}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-[#8794ab]">Proxy</p>
+              </div>
+              <div className="rounded-md border border-[#eef2f7] p-3">
+                <p className="text-2xl font-black text-[#526078]">{missingCount}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-[#8794ab]">Missing</p>
+              </div>
             </div>
+            {latestJob?.response_summary?.mode && (
+              <p className="mt-2 text-[11px] text-[#526078]">Latest backend mode: {latestJob.response_summary.mode}</p>
+            )}
           </section>
 
           <section>
@@ -71,40 +256,61 @@ export function MarketReportModal({ open, onClose, market, categoryScores }: Pro
           </section>
 
           <section>
-            <h4 className="text-[13px] font-bold text-[#07142f] mb-1">Key Market Signals</h4>
-            <ul className="space-y-1">
-              {SIGNALS.map((s) => (
-                <li key={s.label} className="flex justify-between border-b border-[#f3f5f9] py-1">
-                  <span className="text-[#526078]">{s.label}</span>
-                  <span className="font-medium text-[#07142f]">{s.value}</span>
-                </li>
+            <h4 className="text-[13px] font-bold text-[#07142f] mb-1">SOW Category Coverage</h4>
+            <div className="space-y-1">
+              {coverageByCategory.map((c) => (
+                <div key={c.dbKey} className="flex items-center justify-between border-b border-[#f3f5f9] py-1">
+                  <span className="text-[#526078]">{c.label}</span>
+                  <span className="font-medium text-[#07142f]">{c.live} live · {c.proxy} proxy · {c.missing} missing</span>
+                </div>
               ))}
-            </ul>
-          </section>
-
-          <section>
-            <h4 className="text-[13px] font-bold text-[#07142f] mb-1">Nearby Markets</h4>
-            <div className="flex flex-wrap gap-2">
-              {NEARBY.map((n) => <span key={n} className="rounded-full bg-[#eaf0ff] text-[#174be8] px-2 py-0.5 text-[11px]">{n}</span>)}
             </div>
           </section>
 
           <section>
-            <h4 className="text-[13px] font-bold text-[#07142f] mb-1">Source Data</h4>
-            <ul className="grid grid-cols-2 gap-x-6 list-disc list-inside text-[12px] text-[#3a4c72]">
-              {SOURCES.map((s) => <li key={s}>{s}</li>)}
-            </ul>
+            <h4 className="text-[13px] font-bold text-[#07142f] mb-1">Key Live / Proxy Market Signals</h4>
+            {prioritySignals.length === 0 ? (
+              <p className="text-[#526078]">No live/proxy SOW signals found yet. Run the SOW coverage refresh first.</p>
+            ) : (
+              <ul className="space-y-1">
+                {prioritySignals.map((s) => {
+                  const status = getStatus(s);
+                  return (
+                    <li key={s.id ?? s.signal_key} className="flex justify-between gap-3 border-b border-[#f3f5f9] py-1">
+                      <span className="min-w-0 truncate text-[#526078]">
+                        <span className={`mr-2 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase ${statusClass(status)}`}>{status}</span>
+                        {s.label ?? s.signal_key}
+                      </span>
+                      <span className="shrink-0 font-medium text-[#07142f]">{s.value ?? "—"}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+
+          <section>
+            <h4 className="text-[13px] font-bold text-[#07142f] mb-1">Competitors & Enrichment Programs</h4>
+            <p className="mb-2 text-[#526078]">{liveCompetitors.length} live competitor rows are attached to this market.</p>
+            <div className="flex flex-wrap gap-2">
+              {liveCompetitors.slice(0, 12).map((c, idx) => (
+                <span key={c.id ?? `${c.name}-${idx}`} className="rounded-full bg-[#eaf0ff] text-[#174be8] px-2 py-0.5 text-[11px]">
+                  {c.name}
+                </span>
+              ))}
+              {liveCompetitors.length > 12 && <span className="text-[11px] text-[#526078]">+{liveCompetitors.length - 12} more</span>}
+            </div>
           </section>
 
           <section>
             <h4 className="text-[13px] font-bold text-[#07142f] mb-1">Recommendation</h4>
             <p className="leading-snug text-[#3a4c72]">
-              Proceed with franchise development planning. {market.city} ranks in the top tier across demand, pricing power, and operational ease. Prioritize teacher recruitment and secure premium real-estate near top elementary school clusters.
+              Treat {market.city} as a high-priority market only after reviewing the proxy and missing metrics. The current live/proxy coverage is useful for screening, while pricing, weather, Google Trends, state education, and rental-cost integrations should be completed for a final investment-grade score.
             </p>
           </section>
         </div>
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => toast.success("PDF download will be connected with live source data.")}>Download PDF (coming soon)</Button>
+          <Button variant="outline" onClick={handleDownloadCsv}>Download Source CSV</Button>
           <Button className="bg-[#174be8] hover:bg-[#1240c9] text-white" onClick={onClose}>Close</Button>
         </DialogFooter>
       </DialogContent>

@@ -241,6 +241,7 @@ export function normalizeSowMetric(
     case "education_bachelors_plus_pct":      return lin(v, 20, 70);
     // Pricing power
     case "childcare_nanny_hourly_rate_proxy": return lin(v, 20000, 45000);
+    case "household_discretionary_income_proxy": return lin(v, 20000, 120000);
     // Competitive landscape (lower competitor density = better)
     case "summer_camps_per_10k_children":     return lin(v, 0, 30, true);
     case "stem_robotics_maker_camp_count":    return lin(v, 0, 20, true);

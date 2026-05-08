@@ -226,13 +226,18 @@ export function MarketDetailDrawer({
             .from("city_fetch_jobs")
             .select("*")
             .eq("city_id", cityRow.id)
+            .eq("source", "sow_metric_coverage")
             .order("created_at", { ascending: false })
             .limit(1),
         ]);
 
-        setSignals((signalRows ?? []) as LiveSignal[]);
+        const latestSowJob = jobRows?.[0] ?? null;
+        const totalSowMetrics = Number((latestSowJob?.response_summary as any)?.counts?.total_sow_metrics ?? 0);
+        const safeSignals = totalSowMetrics === 46 && (signalRows?.length ?? 0) === 46 ? signalRows : [];
+
+        setSignals((safeSignals ?? []) as LiveSignal[]);
         setCompetitors((competitorRows ?? []) as LiveCompetitor[]);
-        setLatestJob(jobRows?.[0] ?? null);
+        setLatestJob(latestSowJob);
       } catch (error) {
         console.error("MarketDetailDrawer live evidence error", error);
       } finally {

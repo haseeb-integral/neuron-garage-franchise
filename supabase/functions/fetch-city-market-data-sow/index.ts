@@ -3,6 +3,8 @@ import {
   isMetricEnabled,
   calculateSowCategoryScores,
   calculateSowShadowComposite,
+  calculateOfficialSowScoring,
+  applyTierHysteresis,
   tierFromComposite,
   buildShadowDiagnostics,
   normalizeStateName,

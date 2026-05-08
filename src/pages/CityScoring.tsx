@@ -350,7 +350,29 @@ const CityScoring = () => {
     school_access: Building2,
   };
 
-  const liveSigRows = liveSignals.map((s) => ({
+  const SIGNAL_DISPLAY_PRIORITY = [
+    "total_population",
+    "median_household_income",
+    "children_population_proxy",
+    "income_100k_plus_proxy",
+    "education_bachelors_plus_proxy",
+    "competitor_count",
+    "elementary_school_count",
+    "private_school_count",
+    "data_readiness",
+  ];
+
+  const prioritizedLiveSignals = [...liveSignals].sort((a, b) => {
+    const ai = SIGNAL_DISPLAY_PRIORITY.indexOf(a.signal_key);
+    const bi = SIGNAL_DISPLAY_PRIORITY.indexOf(b.signal_key);
+    const ar = ai === -1 ? 999 : ai;
+    const br = bi === -1 ? 999 : bi;
+    return ar - br;
+  });
+  const visibleLiveSignals = prioritizedLiveSignals.slice(0, 9);
+  const hasMoreSignals = liveSignals.length > visibleLiveSignals.length;
+
+  const liveSigRows = visibleLiveSignals.map((s) => ({
     icon: SIGNAL_ICONS[s.signal_key] ?? Star,
     label: s.label,
     value: s.value,
@@ -783,6 +805,15 @@ const CityScoring = () => {
                   );
                 })}
               </div>
+              {hasMoreSignals && (
+                <button
+                  type="button"
+                  onClick={() => setDetailDrawerOpen(true)}
+                  className="mt-2 text-[10.5px] font-medium text-[#2250eb] hover:underline"
+                >
+                  View all signals
+                </button>
+              )}
             </div>
           </div>
 

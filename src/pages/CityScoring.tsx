@@ -869,10 +869,16 @@ const CityScoring = () => {
         <div className="min-w-0 space-y-3 flex flex-col">
           {showNearby && (
             <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
-              <div className="mb-2 flex items-center justify-between">
+              <div className="mb-1 flex items-center justify-between">
                 <h4 className="text-[13px] font-semibold text-[#07142f]">Nearby Markets</h4>
-                <button className="text-[10px] font-medium text-[#174be8] hover:underline">View All</button>
+                <button
+                  className="text-[10px] font-medium text-[#174be8] hover:underline"
+                  onClick={() => setDetailDrawerOpen(true)}
+                >
+                  View All
+                </button>
               </div>
+              <p className="text-[10px] text-[#8794ab] mb-2">Sample nearby markets</p>
               <div className="space-y-2">
                 {NEARBY_MARKETS.map((m) => (
                   <div key={m.name} className="flex items-center justify-between gap-2 text-[11px]">
@@ -887,15 +893,29 @@ const CityScoring = () => {
           <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-xs font-bold text-[#07142f]">Source Data</h4>
-              <button className="text-[10px] font-medium text-[#174be8] hover:underline">View All</button>
+              <button
+                className="text-[10px] font-medium text-[#174be8] hover:underline"
+                onClick={() => setDetailDrawerOpen(true)}
+              >
+                View All
+              </button>
             </div>
-            <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
               {SOURCES.map((s) => {
                 const Icon = s.icon;
+                const isConnected = s.status === "connected";
                 return (
-                  <div key={s.name} className="flex items-center gap-1.5 text-[11px] text-[#14233b]">
+                  <div key={s.name} className="flex items-center gap-1.5 text-[11px] text-[#14233b] min-w-0">
                     <Icon size={11} className="text-[#8794ab] flex-shrink-0" />
-                    <span className="truncate">{s.name}</span>
+                    <span className="truncate flex-1">{s.name}</span>
+                    <span
+                      className={
+                        "ml-auto inline-flex items-center px-1.5 h-4 rounded-full text-[9px] font-semibold flex-shrink-0 " +
+                        (isConnected ? "bg-[#e6f7ef] text-[#0ea66e]" : "bg-[#eef2f7] text-[#8794ab]")
+                      }
+                    >
+                      {isConnected ? "Connected" : "Planned"}
+                    </span>
                   </div>
                 );
               })}

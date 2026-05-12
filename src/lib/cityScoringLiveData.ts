@@ -135,13 +135,14 @@ export function dedupeRankedMarkets(markets: RankedMarket[]): RankedMarket[] {
       byKey.set(key, m);
       continue;
     }
-    const a = score(m);
-    const b = score(existing);
     let winner = existing;
-    if (a > b) winner = m;
-    else if (a === b) {
-      if (m.compositeScore > existing.compositeScore) winner = m;
-      else if (m.compositeScore === existing.compositeScore && m.source === "live" && existing.source !== "live") winner = m;
+    // Live data is authoritative — always prefer live over sample, regardless of score.
+    if (m.source === "live" && existing.source !== "live") winner = m;
+    else if (m.source === existing.source) {
+      const a = score(m);
+      const b = score(existing);
+      if (a > b) winner = m;
+      else if (a === b && m.compositeScore > existing.compositeScore) winner = m;
     }
     byKey.set(key, winner);
   }

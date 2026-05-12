@@ -871,7 +871,7 @@ const CityScoring = () => {
                     <div className="truncate text-[10px] text-[#8794ab]">{(c as any).county ?? ""}</div>
                   </div>
                   <span className="inline-block self-center w-fit rounded-full bg-[#eaf0ff] text-[#174be8] text-[9.5px] font-medium px-1.5 py-0.5">
-                    {c.population > 200000 ? "Metro" : "Suburb"}
+                    {(c as any).marketType ?? (c.population > 200000 ? "Urban" : "Suburb")}
                   </span>
                   <div className="flex items-center gap-1.5">
                     <span className="text-[#07142f] font-semibold tabular-nums">{c.compositeScore}</span>

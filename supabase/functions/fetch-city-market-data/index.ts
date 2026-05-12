@@ -8,6 +8,7 @@ import {
   normalizeStateName,
   applyTierHysteresis,
 } from '../_shared/scoring.ts'
+import { lookupCityGeo } from '../_shared/cityGeo.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -372,9 +373,6 @@ async function fetchBls(stateFips: string | null): Promise<{ data: BlsData | nul
   }
 }
 
-// computeCategoryScores moved to ../_shared/scoring.ts as calculateCurrentCategoryScores.
-// Kept here as a thin alias so existing call sites continue to work unchanged.
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
@@ -451,7 +449,7 @@ Deno.serve(async (req) => {
       bls: blsData,
     }
     const cat = calculateCurrentCategoryScores(scoreInputs)
-    void CATEGORY_WEIGHTS // weights live in shared scoring module
+    void CATEGORY_WEIGHTS
     const compositeScore = calculateCompositeScore(cat)
     const rawTier = tierFromComposite(compositeScore)
 
@@ -468,11 +466,18 @@ Deno.serve(async (req) => {
     const tier = tierStability.final_tier
     void rawTier
 
+    // Geo lookup — populates metro_area, county, market_type from shared map
+    const geo = lookupCityGeo(city, state)
+
     const cityNotes = censusData
       ? `Live API + Census ACS 2022 (place ${censusData.place_fips})`
       : (mode === 'live_api' ? 'Live API multi-category POC' : 'POC sample data')
     const { data: cityRow, error: cityErr } = await admin.from('cities').upsert({
-      city, state, market_type: 'Suburb', tier, composite_score: compositeScore,
+      city, state,
+      market_type: geo?.marketType ?? 'Suburb',
+      metro_area:  geo?.metroArea  ?? null,
+      county:      geo?.county     ?? null,
+      tier, composite_score: compositeScore,
       population: censusData?.total_population ?? 100000,
       median_income: censusData?.median_household_income ?? null,
       children_pct: censusData?.children_pct ?? null,
@@ -494,8 +499,7 @@ Deno.serve(async (req) => {
       { signal_key: 'income_100k_plus_proxy', label: 'Households $100k+', value: censusData.income_100k_plus_pct != null ? `${censusData.income_100k_plus_pct}%` : 'N/A', delta: null, delta_type: 'neutral', source: 'census', source_url: censusData.source_url, confidence: 0.9, raw_data: { mode, pct_100k: censusData.income_100k_plus_pct, pct_150k: censusData.income_150k_plus_pct } },
       { signal_key: 'education_bachelors_plus_proxy', label: "Bachelor's Degree or Higher (25+)", value: censusData.bachelors_plus_pct != null ? `${censusData.bachelors_plus_pct}%` : 'N/A', delta: null, delta_type: 'neutral', source: 'census', source_url: censusData.source_url, confidence: 0.9, raw_data: { mode, pct: censusData.bachelors_plus_pct } },
       { signal_key: 'census_data_readiness', label: 'Census Data', value: 'Connected (ACS 2022 5-yr)', delta: null, delta_type: 'up', source: 'census', source_url: censusData.source_url, confidence: 0.95, raw_data: { mode, place_fips: censusData.place_fips, state_fips: censusData.state_fips } },
-    ] : [
-    ]
+    ] : []
 
     const fmtUSD = (n: number | null) => n != null ? `$${n.toLocaleString()}` : 'N/A'
     const blsSignals = blsData ? [
@@ -558,6 +562,7 @@ Deno.serve(async (req) => {
       tier_stability: tierStability,
       census: censusData,
       bls: blsData,
+      geo: geo ? { metroArea: geo.metroArea, county: geo.county, marketType: geo.marketType } : null,
       warnings: { apify: apifyError, firecrawl: firecrawl.error, census: censusError, bls: blsError },
     }
 
@@ -578,6 +583,7 @@ Deno.serve(async (req) => {
       category_scores: cat,
       census: censusData,
       bls: blsData,
+      geo: geo ?? null,
       inserted: { signals: signals.length, scores: scores.length, competitors: finalCompetitors.length, job_id: jobRow?.id },
       counts: responseSummary.counts,
       warnings: { apify: apifyError, firecrawl: firecrawl.error, census: censusError, bls: blsError },

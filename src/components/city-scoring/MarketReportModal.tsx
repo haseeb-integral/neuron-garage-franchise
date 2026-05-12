@@ -181,18 +181,22 @@ export function MarketReportModal({ open, onClose, market, categoryScores }: Pro
     }
 
     const rows = [
-      ["Category", "Metric", "Value", "Status", "Source", "Confidence", "Used In Score", "Notes", "Source URL"],
-      ...liveSignals.map((s) => [
-        CAT_LABELS.find((c) => c.dbKey === getCategory(s))?.label ?? "Other",
-        s.label ?? s.signal_key ?? "",
-        s.value ?? "",
-        getStatus(s),
-        s.source ?? "",
-        s.confidence == null ? "" : `${Math.round(s.confidence * 100)}%`,
-        s.raw_data?.used_in_score ? "Yes" : "No",
-        s.raw_data?.notes ?? "",
-        s.source_url ?? "",
-      ]),
+      ["Category", "Metric", "Value", "Geography", "Counts Toward Score", "Status", "Source", "Confidence", "Notes", "Source URL"],
+      ...liveSignals.map((s) => {
+        const geo = getSignalGeography(s.source, s.signal_key);
+        return [
+          CAT_LABELS.find((c) => c.dbKey === getCategory(s))?.label ?? "Other",
+          s.label ?? s.signal_key ?? "",
+          s.value ?? "",
+          geo.full,
+          s.raw_data?.used_in_score ? "Yes" : "No",
+          getStatus(s),
+          s.source ?? "",
+          s.confidence == null ? "" : `${Math.round(s.confidence * 100)}%`,
+          s.raw_data?.notes ?? "",
+          s.source_url ?? "",
+        ];
+      }),
       [],
       ["Competitors & Enrichment Programs"],
       ["Name", "Type", "Source", "Source URL"],

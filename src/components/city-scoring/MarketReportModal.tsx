@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { CityData } from "@/data/cityData";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { getSignalGeography, GEO_BADGE_CLASS } from "@/lib/signalGeography";
 
 interface Props {
   open: boolean;

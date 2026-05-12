@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { CityData } from "@/data/cityData";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { getSignalGeography, GEO_BADGE_CLASS } from "@/lib/signalGeography";
 
 interface Props {
   open: boolean;
@@ -180,18 +181,22 @@ export function MarketReportModal({ open, onClose, market, categoryScores }: Pro
     }
 
     const rows = [
-      ["Category", "Metric", "Value", "Status", "Source", "Confidence", "Used In Score", "Notes", "Source URL"],
-      ...liveSignals.map((s) => [
-        CAT_LABELS.find((c) => c.dbKey === getCategory(s))?.label ?? "Other",
-        s.label ?? s.signal_key ?? "",
-        s.value ?? "",
-        getStatus(s),
-        s.source ?? "",
-        s.confidence == null ? "" : `${Math.round(s.confidence * 100)}%`,
-        s.raw_data?.used_in_score ? "Yes" : "No",
-        s.raw_data?.notes ?? "",
-        s.source_url ?? "",
-      ]),
+      ["Category", "Metric", "Value", "Geography", "Counts Toward Score", "Status", "Source", "Confidence", "Notes", "Source URL"],
+      ...liveSignals.map((s) => {
+        const geo = getSignalGeography(s.source, s.signal_key);
+        return [
+          CAT_LABELS.find((c) => c.dbKey === getCategory(s))?.label ?? "Other",
+          s.label ?? s.signal_key ?? "",
+          s.value ?? "",
+          geo.full,
+          s.raw_data?.used_in_score ? "Yes" : "No",
+          getStatus(s),
+          s.source ?? "",
+          s.confidence == null ? "" : `${Math.round(s.confidence * 100)}%`,
+          s.raw_data?.notes ?? "",
+          s.source_url ?? "",
+        ];
+      }),
       [],
       ["Competitors & Enrichment Programs"],
       ["Name", "Type", "Source", "Source URL"],
@@ -275,11 +280,20 @@ export function MarketReportModal({ open, onClose, market, categoryScores }: Pro
               <ul className="space-y-1">
                 {prioritySignals.map((s) => {
                   const status = getStatus(s);
+                  const geo = getSignalGeography(s.source, s.signal_key);
+                  const used = Boolean(s.raw_data?.used_in_score);
                   return (
-                    <li key={s.id ?? s.signal_key} className="flex justify-between gap-3 border-b border-[#f3f5f9] py-1">
-                      <span className="min-w-0 truncate text-[#526078]">
-                        <span className={`mr-2 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase ${statusClass(status)}`}>{status}</span>
-                        {s.label ?? s.signal_key}
+                    <li key={s.id ?? s.signal_key} className="flex items-center justify-between gap-3 border-b border-[#f3f5f9] py-1">
+                      <span className="flex min-w-0 items-center gap-1.5 text-[#526078]">
+                        <span className={`rounded-full px-1.5 py-px text-[9px] font-bold uppercase ${statusClass(status)}`}>{status}</span>
+                        <span className={`rounded-full border px-1.5 py-px text-[9px] font-bold uppercase ${GEO_BADGE_CLASS[geo.level]}`} title={geo.full}>{geo.short}</span>
+                        <span
+                          className={`rounded-full border px-1.5 py-px text-[9px] font-bold uppercase ${used ? "border-[#bfead6] bg-[#e6f7ef] text-[#0ea66e]" : "border-[#e5eaf2] bg-[#f3f6fb] text-[#8794ab]"}`}
+                          title={used ? "Counts toward the composite score" : "Informational only"}
+                        >
+                          {used ? "✓ Counts" : "Info"}
+                        </span>
+                        <span className="truncate">{s.label ?? s.signal_key}</span>
                       </span>
                       <span className="shrink-0 font-medium text-[#07142f]">{s.value ?? "—"}</span>
                     </li>

@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { CityData } from "@/data/cityData";
 import { ArrowRight, Download, ExternalLink, FileText, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getSignalGeography, GEO_BADGE_CLASS } from "@/lib/signalGeography";
 
 export interface CustomCriterion {
   name: string;
@@ -41,6 +43,7 @@ type LiveSignal = {
   source?: string | null;
   source_url?: string | null;
   confidence?: number | null;
+  updated_at?: string | null;
   raw_data?: {
     status?: MetricStatus;
     metric_category?: MetricCategory;
@@ -59,13 +62,13 @@ type LiveCompetitor = {
   source_url?: string | null;
 };
 
-const SOW_CATEGORIES: { key: MetricCategory; label: string; description: string }[] = [
-  { key: "demand", label: "Demand", description: "Family demand, child population, income, education, and weather signals." },
-  { key: "pricing_power", label: "Pricing Power", description: "Ability to support profitable tuition and premium enrichment pricing." },
-  { key: "competitive_landscape", label: "Competitive Landscape", description: "Whitespace, competitor density, national brands, search demand, and waitlist signals." },
-  { key: "franchisee_supply", label: "Franchisee Supply", description: "Teacher-operator availability, teacher compensation, and local cost pressure." },
-  { key: "ease_of_operations", label: "Ease of Operations", description: "Rental venues, regulations, commute/sprawl, and guide wage pressure." },
-  { key: "parent_mindset", label: "Parent Mindset Indicators", description: "Enrichment-oriented parent culture and education community signals." },
+const SOW_CATEGORIES: { key: MetricCategory; label: string }[] = [
+  { key: "demand", label: "Demand" },
+  { key: "pricing_power", label: "Pricing Power" },
+  { key: "competitive_landscape", label: "Competitive Landscape" },
+  { key: "franchisee_supply", label: "Franchisee Supply" },
+  { key: "ease_of_operations", label: "Ease of Operations" },
+  { key: "parent_mindset", label: "Parent Mindset" },
 ];
 
 const STATUS_STYLES: Record<MetricStatus, string> = {
@@ -86,19 +89,28 @@ function formatDate(value?: string | null) {
   });
 }
 
-function formatConfidence(value?: number | null) {
-  if (value == null) return "—";
-  return `${Math.round(value * 100)}%`;
+function relativeTime(value?: string | null) {
+  if (!value) return "—";
+  const then = new Date(value).getTime();
+  if (Number.isNaN(then)) return "—";
+  const diffSec = Math.max(0, (Date.now() - then) / 1000);
+  if (diffSec < 60) return "just now";
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+  if (diffSec < 86400 * 30) return `${Math.floor(diffSec / 86400)}d ago`;
+  if (diffSec < 86400 * 365) return `${Math.floor(diffSec / (86400 * 30))}mo ago`;
+  return `${Math.floor(diffSec / (86400 * 365))}y ago`;
 }
 
 function getStatus(signal: LiveSignal): MetricStatus {
   return signal.raw_data?.status ?? "proxy";
 }
 
-// Fallback signal_key → category map. Mirrors the SOW registry in
-// supabase/functions/_shared/scoring.ts so the drawer still groups rows
-// correctly if raw_data.metric_category is missing (e.g. rows inserted
-// by the live formula before the SOW coverage refresh runs).
+function displayValue(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "—";
+  return String(value);
+}
+
 const SIGNAL_KEY_TO_CATEGORY: Record<string, MetricCategory> = {
   children_5_12_count: "demand",
   children_5_12_pct: "demand",
@@ -161,19 +173,40 @@ function getCategory(signal: LiveSignal): MetricCategory | null {
     ?? (signal.signal_key ? SIGNAL_KEY_TO_CATEGORY[signal.signal_key] ?? null : null);
 }
 
-function SourcePill({ source }: { source?: string | null }) {
-  if (!source) return null;
+function StatusBadge({ status }: { status: MetricStatus }) {
   return (
-    <span className="rounded-full bg-[#eef4ff] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#174be8]">
-      {source}
+    <span className={`rounded-full border px-1.5 py-px text-[9px] font-bold uppercase tracking-wide ${STATUS_STYLES[status]}`}>
+      {status}
     </span>
   );
 }
 
-function StatusBadge({ status }: { status: MetricStatus }) {
+function ScoreImpactBadge({ used }: { used: boolean }) {
+  return used ? (
+    <span
+      className="rounded-full border border-[#bfead6] bg-[#e6f7ef] px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#0ea66e]"
+      title="This metric counts toward the composite score"
+    >
+      ✓ Counts
+    </span>
+  ) : (
+    <span
+      className="rounded-full border border-[#e5eaf2] bg-[#f3f6fb] px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#8794ab]"
+      title="Informational only — not used in score"
+    >
+      Info only
+    </span>
+  );
+}
+
+function GeoBadge({ source, signalKey }: { source?: string | null; signalKey?: string | null }) {
+  const geo = getSignalGeography(source, signalKey);
   return (
-    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${STATUS_STYLES[status]}`}>
-      {status}
+    <span
+      className={`rounded-full border px-1.5 py-px text-[9px] font-bold uppercase tracking-wide ${GEO_BADGE_CLASS[geo.level]}`}
+      title={geo.full}
+    >
+      {geo.short}
     </span>
   );
 }
@@ -267,225 +300,217 @@ export function MarketDetailDrawer({
   const proxyCount = signals.filter((signal) => getStatus(signal) === "proxy").length;
   const missingCount = signals.filter((signal) => getStatus(signal) === "missing").length;
 
+  const metroArea = (market as any).metroArea ?? null;
+  const county = (market as any).county ?? null;
+  const marketType = (market as any).marketType ?? null;
+
+  const renderSignalRow = (signal: LiveSignal, key: string) => {
+    const status = getStatus(signal);
+    const used = Boolean(signal.raw_data?.used_in_score);
+    return (
+      <div
+        key={key}
+        className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-[#f1f4f9] px-2 py-1.5 last:border-0 hover:bg-[#fbfcff]"
+      >
+        <div className="min-w-0">
+          <p className="truncate text-[12px] font-medium text-[#07142f]" title={signal.label ?? signal.signal_key ?? ""}>
+            {signal.label ?? signal.signal_key}
+          </p>
+          <div className="mt-0.5 flex flex-nowrap items-center gap-1 overflow-hidden">
+            <ScoreImpactBadge used={used} />
+            <GeoBadge source={signal.source} signalKey={signal.signal_key} />
+            <StatusBadge status={status} />
+            {signal.source && (
+              <span className="truncate text-[10px] font-semibold uppercase tracking-wide text-[#8794ab]">
+                {signal.source}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-2 text-right">
+          <div>
+            <p className="text-[12px] font-bold text-[#07142f]">{displayValue(signal.value)}</p>
+            <p className="text-[10px] text-[#8794ab]">{relativeTime(signal.updated_at)}</p>
+          </div>
+          {signal.source_url ? (
+            <a
+              href={signal.source_url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-[#174be8] hover:text-[#1240c9]"
+              title="Open source"
+            >
+              <ExternalLink size={12} />
+            </a>
+          ) : null}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="w-full sm:max-w-[620px] overflow-y-auto bg-white">
-        <SheetHeader className="mb-4">
-          <SheetTitle className="text-[#07142f]">{market.city}, {stateAbbr} Source Evidence</SheetTitle>
-          <p className="text-xs text-[#526078]">
-            Sam SOW metric coverage from Apify, Firecrawl, Census, BLS, and future source integrations.
+      <SheetContent className="w-full sm:max-w-[640px] overflow-y-auto bg-white">
+        <SheetHeader className="mb-3">
+          <SheetTitle className="text-[#07142f]">{market.city}, {stateAbbr}</SheetTitle>
+          <p className="text-[11px] text-[#526078]">
+            Source-of-truth audit for the SOW metric coverage powering this market's score.
           </p>
         </SheetHeader>
 
-        <div className="mb-4 rounded-lg border border-[#eef2f7] bg-[#f8fafe] p-3">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-[#8794ab]">Latest refresh</p>
-              <p className="text-[13px] font-bold text-[#07142f]">{formatDate(latestJob?.completed_at)}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-[#8794ab]">Status</p>
-              <p className={hasWarnings ? "text-[13px] font-bold text-[#b8860b]" : "text-[13px] font-bold text-[#0ea66e]"}>
-                {latestJob?.status ?? (loading ? "Loading" : "Ready")}
-              </p>
-            </div>
+        <div className="mb-3 rounded-lg border border-[#eef2f7] bg-[#f8fafe] p-3">
+          <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-[#3a4c72]">
+            <span className="rounded-full bg-white px-2 py-0.5 font-semibold text-[#07142f]">City: {market.city}</span>
+            {metroArea && <span className="rounded-full bg-white px-2 py-0.5">Metro: {metroArea}</span>}
+            {county && <span className="rounded-full bg-white px-2 py-0.5">County: {county}</span>}
+            {marketType && <span className="rounded-full bg-white px-2 py-0.5">Type: {marketType}</span>}
           </div>
-          <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-            <div className="rounded-md bg-white px-2 py-1.5">
-              <p className="text-[15px] font-black text-[#0ea66e]">{liveCount}</p>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-[#8794ab]">Live</p>
-            </div>
-            <div className="rounded-md bg-white px-2 py-1.5">
-              <p className="text-[15px] font-black text-[#174be8]">{proxyCount}</p>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-[#8794ab]">Proxy</p>
-            </div>
-            <div className="rounded-md bg-white px-2 py-1.5">
-              <p className="text-[15px] font-black text-[#526078]">{missingCount}</p>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-[#8794ab]">Missing</p>
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <p className="text-[11px] text-[#526078]">
+              Latest refresh: <span className="font-semibold text-[#07142f]">{formatDate(latestJob?.completed_at)}</span>
+            </p>
+            <div className="flex gap-1.5 text-[11px]">
+              <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#0ea66e]">{liveCount} live</span>
+              <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#174be8]">{proxyCount} proxy</span>
+              <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#526078]">{missingCount} missing</span>
             </div>
           </div>
           {loading && (
-            <div className="mt-3 flex items-center gap-2 text-[12px] text-[#526078]">
-              <RefreshCw size={13} className="animate-spin" /> Loading live evidence…
+            <div className="mt-2 flex items-center gap-2 text-[11px] text-[#526078]">
+              <RefreshCw size={12} className="animate-spin" /> Loading live evidence…
             </div>
           )}
         </div>
 
-        <section className="mb-5">
-          <div className="mb-2 flex items-center justify-between">
-            <h4 className="text-[13px] font-bold text-[#07142f]">SOW Metric Coverage</h4>
-            <span className="text-[11px] text-[#8794ab]">{signals.length} signals</span>
-          </div>
+        <Tabs defaultValue="data-sources" className="mb-4">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="data-sources">Data Sources</TabsTrigger>
+          </TabsList>
 
-          {signals.length === 0 && !loading ? (
-            <div className="rounded-md border border-[#eef2f7] p-3 text-[12px] text-[#526078]">
-              No live SOW metric rows found for this city yet. Run the SOW coverage refresh first.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {groupedSignals.map((category) => (
-                <div key={category.key} className="rounded-lg border border-[#eef2f7] bg-white p-3">
-                  <div className="mb-2 flex items-start justify-between gap-3">
-                    <div>
-                      <h5 className="text-[12.5px] font-bold text-[#07142f]">{category.label}</h5>
-                      <p className="mt-0.5 text-[10.5px] leading-snug text-[#8794ab]">{category.description}</p>
-                    </div>
-                    <span className="shrink-0 rounded-full bg-[#f3f6fb] px-2 py-0.5 text-[10px] font-bold text-[#526078]">
-                      {category.rows.length}
-                    </span>
-                  </div>
-
-                  {category.rows.length === 0 ? (
-                    <div className="rounded-md bg-[#f8fafe] px-3 py-2 text-[11.5px] text-[#526078]">
-                      No rows stored for this category yet.
-                    </div>
+          <TabsContent value="overview" className="mt-3 space-y-4">
+            <section>
+              <h4 className="mb-2 text-[12.5px] font-bold text-[#07142f]">Refresh Summary</h4>
+              <div className="rounded-md border border-[#eef2f7] p-3">
+                <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                  {Object.entries(counts).length === 0 ? (
+                    <p className="col-span-2 text-[#526078]">No refresh counts stored yet.</p>
                   ) : (
-                    <div className="space-y-2">
-                      {category.rows.map((signal, index) => {
-                        const status = getStatus(signal);
-                        const notes = signal.raw_data?.notes;
-                        return (
-                          <div key={signal.id ?? signal.signal_key ?? `${category.key}-${index}`} className="rounded-md border border-[#eef2f7] bg-[#fbfcff] p-2.5">
-                            <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
-                              <div className="min-w-0">
-                                <p className="truncate text-[12px] font-semibold text-[#07142f]">{signal.label ?? signal.signal_key}</p>
-                                <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                                  <StatusBadge status={status} />
-                                  <SourcePill source={signal.source} />
-                                  <span className="text-[10.5px] text-[#8794ab]">{formatConfidence(signal.confidence)} confidence</span>
-                                  {signal.raw_data?.used_in_score && (
-                                    <span className="rounded-full bg-[#fff6dc] px-2 py-0.5 text-[10px] font-semibold text-[#b8860b]">Used in score</span>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="max-w-[170px] text-right">
-                                <p className="truncate text-[12px] font-bold text-[#07142f]">{signal.value ?? "—"}</p>
-                                {signal.source_url && (
-                                  <a
-                                    href={signal.source_url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="mt-1 inline-flex items-center gap-1 text-[10.5px] font-semibold text-[#174be8] hover:underline"
-                                  >
-                                    Source <ExternalLink size={10} />
-                                  </a>
-                                )}
-                              </div>
-                            </div>
-                            {notes && (
-                              <p className="mt-2 rounded bg-white px-2 py-1 text-[10.5px] leading-snug text-[#526078]">
-                                {notes}
-                              </p>
-                            )}
-                          </div>
-                        );
-                      })}
+                    Object.entries(counts).map(([key, value]) => (
+                      <div key={key} className="flex justify-between gap-2 rounded bg-[#f8fafe] px-2 py-1">
+                        <span className="truncate text-[#526078]">{key.split("_").join(" ")}</span>
+                        <span className="font-semibold text-[#07142f]">{String(value)}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div className="mt-3 border-t border-[#eef2f7] pt-2 text-[11px]">
+                  <p className="mb-1 font-semibold text-[#07142f]">Warnings</p>
+                  {Object.entries(warnings).length === 0 ? (
+                    <p className="text-[#0ea66e]">No warnings recorded.</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {Object.entries(warnings).map(([key, value]) => (
+                        <p key={key} className={value ? "text-[#b8860b]" : "text-[#0ea66e]"}>
+                          {key}: {value ? String(value) : "clean"}
+                        </p>
+                      ))}
                     </div>
                   )}
                 </div>
-              ))}
-
-              {uncategorizedSignals.length > 0 && (
-                <div className="rounded-lg border border-[#eef2f7] bg-white p-3">
-                  <div className="mb-2 flex items-center justify-between">
-                    <h5 className="text-[12.5px] font-bold text-[#07142f]">Other Signals</h5>
-                    <span className="rounded-full bg-[#f3f6fb] px-2 py-0.5 text-[10px] font-bold text-[#526078]">{uncategorizedSignals.length}</span>
-                  </div>
-                  <div className="space-y-2">
-                    {uncategorizedSignals.map((signal, index) => {
-                      const status = getStatus(signal);
-                      return (
-                        <div key={signal.id ?? signal.signal_key ?? `other-${index}`} className="rounded-md border border-[#eef2f7] bg-[#fbfcff] p-2.5">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="truncate text-[12px] font-semibold text-[#07142f]">{signal.label ?? signal.signal_key}</p>
-                              <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                                <StatusBadge status={status} />
-                                <SourcePill source={signal.source} />
-                                <span className="text-[10.5px] text-[#8794ab]">{formatConfidence(signal.confidence)} confidence</span>
-                              </div>
-                            </div>
-                            <p className="max-w-[170px] truncate text-right text-[12px] font-bold text-[#07142f]">{signal.value ?? "—"}</p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+              </div>
+              {hasWarnings && (
+                <p className="mt-1 text-[10.5px] text-[#b8860b]">Some sources returned warnings — see Data Sources tab to inspect.</p>
               )}
-            </div>
-          )}
-        </section>
+            </section>
 
-        <section className="mb-5">
-          <div className="mb-2 flex items-center justify-between">
-            <h4 className="text-[13px] font-bold text-[#07142f]">Competitors & Enrichment Programs</h4>
-            <span className="text-[11px] text-[#8794ab]">{competitors.length} rows</span>
-          </div>
-          <div className="space-y-2">
-            {competitors.length === 0 && !loading ? (
+            <section>
+              <div className="mb-2 flex items-center justify-between">
+                <h4 className="text-[12.5px] font-bold text-[#07142f]">Competitors & Enrichment Programs</h4>
+                <span className="text-[11px] text-[#8794ab]">{competitors.length} rows</span>
+              </div>
+              <div className="space-y-1.5">
+                {competitors.length === 0 && !loading ? (
+                  <div className="rounded-md border border-[#eef2f7] p-3 text-[11.5px] text-[#526078]">
+                    No live competitor rows found yet.
+                  </div>
+                ) : (
+                  competitors.slice(0, 25).map((comp, index) => (
+                    <div key={comp.id ?? `${comp.name}-${index}`} className="flex items-center justify-between gap-3 rounded-md border border-[#eef2f7] bg-[#f8fafe] px-2.5 py-1.5">
+                      <div className="min-w-0">
+                        <p className="truncate text-[12px] font-semibold text-[#07142f]">{comp.name ?? "Unnamed competitor"}</p>
+                        <p className="mt-0.5 truncate text-[10.5px] text-[#526078]">{comp.type ?? comp.category ?? "Education / enrichment"}</p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        {comp.source && (
+                          <span className="rounded-full bg-[#eef4ff] px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#174be8]">
+                            {comp.source}
+                          </span>
+                        )}
+                        {comp.source_url ? (
+                          <a
+                            href={comp.source_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[#174be8] hover:text-[#1240c9]"
+                            title="Open source"
+                          >
+                            <ExternalLink size={11} />
+                          </a>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))
+                )}
+                {competitors.length > 25 && (
+                  <p className="text-[10.5px] text-[#8794ab]">+{competitors.length - 25} more not shown</p>
+                )}
+              </div>
+            </section>
+          </TabsContent>
+
+          <TabsContent value="data-sources" className="mt-3">
+            {signals.length === 0 && !loading ? (
               <div className="rounded-md border border-[#eef2f7] p-3 text-[12px] text-[#526078]">
-                No live competitor rows found yet.
+                No live SOW metric rows found for this city yet. Run the SOW coverage refresh first.
               </div>
             ) : (
-              competitors.map((comp, index) => (
-                <div key={comp.id ?? `${comp.name}-${index}`} className="rounded-md border border-[#eef2f7] bg-[#f8fafe] p-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-[12.5px] font-semibold text-[#07142f]">{comp.name ?? "Unnamed competitor"}</p>
-                      <p className="mt-0.5 text-[11.5px] text-[#526078]">{comp.type ?? comp.category ?? "Education / enrichment"}</p>
+              <div className="space-y-3">
+                {groupedSignals.map((category) => (
+                  <div key={category.key} className="rounded-lg border border-[#eef2f7] bg-white">
+                    <div className="flex items-center justify-between border-b border-[#eef2f7] bg-[#f8fafe] px-3 py-1.5">
+                      <h5 className="text-[12px] font-bold text-[#07142f]">{category.label}</h5>
+                      <span className="text-[10px] font-semibold text-[#8794ab]">{category.rows.length} signals</span>
                     </div>
-                    <div className="shrink-0 text-right">
-                      <SourcePill source={comp.source} />
-                      {comp.source_url && (
-                        <a
-                          href={comp.source_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="mt-1 inline-flex items-center gap-1 text-[10.5px] font-semibold text-[#174be8] hover:underline"
-                        >
-                          Source <ExternalLink size={10} />
-                        </a>
+                    {category.rows.length === 0 ? (
+                      <div className="px-3 py-2 text-[11px] text-[#526078]">No rows stored for this category yet.</div>
+                    ) : (
+                      <div>
+                        {category.rows.map((signal, index) =>
+                          renderSignalRow(signal, signal.id ?? signal.signal_key ?? `${category.key}-${index}`),
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {uncategorizedSignals.length > 0 && (
+                  <div className="rounded-lg border border-[#eef2f7] bg-white">
+                    <div className="flex items-center justify-between border-b border-[#eef2f7] bg-[#f8fafe] px-3 py-1.5">
+                      <h5 className="text-[12px] font-bold text-[#07142f]">Other Signals</h5>
+                      <span className="text-[10px] font-semibold text-[#8794ab]">{uncategorizedSignals.length}</span>
+                    </div>
+                    <div>
+                      {uncategorizedSignals.map((signal, index) =>
+                        renderSignalRow(signal, signal.id ?? signal.signal_key ?? `other-${index}`),
                       )}
                     </div>
                   </div>
-                </div>
-              ))
+                )}
+              </div>
             )}
-          </div>
-        </section>
-
-        <section className="mb-5">
-          <h4 className="mb-2 text-[13px] font-bold text-[#07142f]">Refresh Summary</h4>
-          <div className="rounded-md border border-[#eef2f7] p-3">
-            <div className="grid grid-cols-2 gap-2 text-[11.5px]">
-              {Object.entries(counts).length === 0 ? (
-                <p className="col-span-2 text-[#526078]">No refresh counts stored yet.</p>
-              ) : (
-                Object.entries(counts).map(([key, value]) => (
-                  <div key={key} className="flex justify-between gap-2 rounded bg-[#f8fafe] px-2 py-1">
-                    <span className="truncate text-[#526078]">{key.split("_").join(" ")}</span>
-                    <span className="font-semibold text-[#07142f]">{String(value)}</span>
-                  </div>
-                ))
-              )}
-            </div>
-            <div className="mt-3 border-t border-[#eef2f7] pt-2 text-[11.5px]">
-              <p className="mb-1 font-semibold text-[#07142f]">Warnings</p>
-              {Object.entries(warnings).length === 0 ? (
-                <p className="text-[#0ea66e]">No warnings recorded.</p>
-              ) : (
-                <div className="space-y-1">
-                  {Object.entries(warnings).map(([key, value]) => (
-                    <p key={key} className={value ? "text-[#b8860b]" : "text-[#0ea66e]"}>
-                      {key}: {value ? String(value) : "clean"}
-                    </p>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
+          </TabsContent>
+        </Tabs>
 
         <div className="sticky bottom-0 flex flex-col gap-2 bg-white pt-2">
           <Button onClick={onFindTeachers} className="w-full bg-[#174be8] hover:bg-[#1240c9] text-white font-semibold">

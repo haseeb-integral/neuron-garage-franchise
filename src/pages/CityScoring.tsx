@@ -571,9 +571,9 @@ const CityScoring = () => {
     : null;
 
   // Derived display values for metro, county, market type — wired to live DB, with honest fallbacks
-  const displayMetroArea = liveCity?.metro_area ?? selected.metroArea ?? "\u2014";
+  const displayMetroArea = liveCity?.metro_area ?? (selected as any).metroArea ?? "\u2014";
   const displayCounty = liveCity?.county ?? (selected as any).county ?? "\u2014";
-  const displayMarketType = liveCity?.market_type ?? selected.marketType ?? "Suburb";
+  const displayMarketType = liveCity?.market_type ?? (selected as any).marketType ?? "Suburb";
 
   return (
     <div className="-mx-3 md:-mx-5 lg:-mx-6 -my-3 px-3 md:px-5 lg:px-6 py-3 min-h-screen bg-white">

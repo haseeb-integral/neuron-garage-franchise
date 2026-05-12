@@ -570,6 +570,11 @@ const CityScoring = () => {
     ? new Date(lastScrapedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
     : null;
 
+  // Derived display values for metro, county, market type — wired to live DB, with honest fallbacks
+  const displayMetroArea = liveCity?.metro_area ?? (selected as any).metroArea ?? "\u2014";
+  const displayCounty = liveCity?.county ?? "\u2014";
+  const displayMarketType = liveCity?.market_type ?? (selected.population > 200000 ? "Metro" : "Suburb");
+
   return (
     <div className="-mx-3 md:-mx-5 lg:-mx-6 -my-3 px-3 md:px-5 lg:px-6 py-3 min-h-screen bg-white">
       {/* Top header: search + actions + notification/help/avatar */}
@@ -863,7 +868,7 @@ const CityScoring = () => {
                   <span className="text-[#526078]">{i + 1}</span>
                   <div className="min-w-0">
                     <div className="truncate font-semibold text-[#07142f]">{c.city}, {c.state === "Texas" ? "TX" : c.state === "Florida" ? "FL" : c.state}</div>
-                    <div className="truncate text-[10px] text-[#8794ab]">{c.population > 200000 ? "Travis County" : "Collin County"}</div>
+                    <div className="truncate text-[10px] text-[#8794ab]">{(c as any).county ?? ""}</div>
                   </div>
                   <span className="inline-block self-center w-fit rounded-full bg-[#eaf0ff] text-[#174be8] text-[9.5px] font-medium px-1.5 py-0.5">
                     {c.population > 200000 ? "Metro" : "Suburb"}
@@ -939,16 +944,16 @@ const CityScoring = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[#6b7a96]">Market Type</span>
-                    <span className="rounded-full bg-[#eef3ff] px-2 py-0.5 text-[10.5px] font-medium leading-tight text-[#174be8]">Suburb</span>
+                    <span className="rounded-full bg-[#eef3ff] px-2 py-0.5 text-[10.5px] font-medium leading-tight text-[#174be8]">{displayMarketType}</span>
                   </div>
                 </div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-[#6b7a96] w-[78px] flex-shrink-0">Metro Area</span>
-                  <span className="font-semibold text-[#07142f]">Dallas-Fort Worth, TX</span>
+                  <span className="font-semibold text-[#07142f]">{displayMetroArea}</span>
                 </div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-[#6b7a96] w-[78px] flex-shrink-0">County</span>
-                  <span className="font-semibold text-[#07142f]">Collin County</span>
+                  <span className="font-semibold text-[#07142f]">{displayCounty}</span>
                 </div>
               </div>
 

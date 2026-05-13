@@ -34,7 +34,7 @@ import {
   downloadRankedMarketsCsv,
   type RankedMarket,
 } from "@/lib/cityScoringLiveData";
-import { useCityScoringStore, DEFAULT_WEIGHTS, type CategoryKey as StoreCategoryKey } from "@/stores/cityScoringStore";
+import { useCityScoringStore, DEFAULT_WEIGHTS } from "@/stores/cityScoringStore";
 import { METRICS_BY_CATEGORY } from "@/lib/sowMetricRegistry";
 import { getCached, setCached } from "@/lib/pageCache";
 import { ArrowLeft } from "lucide-react";

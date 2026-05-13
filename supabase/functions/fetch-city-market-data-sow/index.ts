@@ -12,6 +12,12 @@ import {
   type SowMetricValues,
   type CategoryScores,
 } from '../_shared/scoring.ts'
+import {
+  fetchCensusSprintMetrics,
+  fetchGoogleTrends,
+  fetchCompetitorWaitlistSignals,
+  type CensusSprintMetrics,
+} from '../_shared/metricFetchers.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

@@ -52,10 +52,11 @@ function Gauge({ value }: { value: number | null }) {
   );
 }
 
-type SignalRow = { value: string; delta: string | null };
+type SignalRow = { value: string; delta: string | null; label: string };
 
 export function MarketCompareModal({ open, onClose, markets }: Props) {
   const [signalsByCity, setSignalsByCity] = useState<Record<string, Record<string, SignalRow>>>({});
+  const [signalRows, setSignalRows] = useState<{ key: string; label: string }[]>([]);
   const [scoresByCity, setScoresByCity] = useState<Record<string, Record<string, number>>>({});
   const [loading, setLoading] = useState(false);
 
@@ -65,18 +66,21 @@ export function MarketCompareModal({ open, onClose, markets }: Props) {
     if (cityIds.length === 0) {
       setSignalsByCity({});
       setScoresByCity({});
+      setSignalRows([]);
       return;
     }
     setLoading(true);
     Promise.all([
-      supabase.from("city_market_signals").select("city_id, signal_key, value, delta").in("city_id", cityIds),
+      supabase.from("city_market_signals").select("city_id, signal_key, label, value, delta").in("city_id", cityIds),
       supabase.from("city_category_scores").select("city_id, category, score").in("city_id", cityIds),
     ])
       .then(([sigRes, catRes]) => {
         const sigMap: Record<string, Record<string, SignalRow>> = {};
+        const seen = new Map<string, string>(); // key -> label, preserves insertion order
         (sigRes.data ?? []).forEach((r: any) => {
           if (!sigMap[r.city_id]) sigMap[r.city_id] = {};
-          sigMap[r.city_id][r.signal_key] = { value: r.value, delta: r.delta ?? null };
+          sigMap[r.city_id][r.signal_key] = { value: r.value, delta: r.delta ?? null, label: r.label };
+          if (!seen.has(r.signal_key)) seen.set(r.signal_key, r.label || r.signal_key);
         });
         const catMap: Record<string, Record<string, number>> = {};
         (catRes.data ?? []).forEach((r: any) => {
@@ -85,6 +89,7 @@ export function MarketCompareModal({ open, onClose, markets }: Props) {
         });
         setSignalsByCity(sigMap);
         setScoresByCity(catMap);
+        setSignalRows(Array.from(seen.entries()).map(([key, label]) => ({ key, label })));
       })
       .catch((e) => console.error("compare modal load error", e))
       .finally(() => setLoading(false));

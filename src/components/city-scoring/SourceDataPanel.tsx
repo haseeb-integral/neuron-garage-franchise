@@ -73,8 +73,7 @@ export function SourceDataPanel({ cityId, refreshKey = 0, onViewEvidence }: Prop
         <div className="py-6 text-center text-[11px] text-[#8794ab]">Loading…</div>
       ) : rows.length === 0 ? (
         <div className="rounded-md border border-dashed border-[#dbe4f2] bg-[#f7faff] px-3 py-4 text-center">
-          <p className="text-[11px] text-[#526078]">No data fetched yet for this city.</p>
-          <p className="mt-1 text-[10px] text-[#8794ab]">Click “Refresh This Market” to pull live sources.</p>
+          <p className="text-[11px] text-[#526078]">No live data sources yet — click Refresh to fetch.</p>
         </div>
       ) : (
         <div className="space-y-1.5">

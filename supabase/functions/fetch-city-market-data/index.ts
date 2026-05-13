@@ -97,12 +97,9 @@ function mapCompetitor(item: Item, now: string): CompetitorRow | null {
   }
 }
 
-function sampleCompetitors(city: string, now: string): CompetitorRow[] {
-  return [
-    { name: `Code Ninjas ${city} (sample)`, type: 'Coding Camp', pricing: '$299/week', capacity: 40, source: 'poc', source_url: null, raw_data: { mode: 'poc' }, scraped_at: now },
-    { name: `Mathnasium ${city} (sample)`, type: 'STEM Tutoring', pricing: '$250/month', capacity: 30, source: 'poc', source_url: null, raw_data: { mode: 'poc' }, scraped_at: now },
-  ]
-}
+// Sample competitors removed — never insert placeholder/POC competitor rows.
+// If Apify returns no results, the competitors section stays empty.
+
 
 // ---- Apify multi-search ----
 type ApifyResult = {
@@ -433,7 +430,7 @@ Deno.serve(async (req) => {
       .filter((r) => { const k = r.name.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true })
       .slice(0, 30)
 
-    const finalCompetitors = competitors.length > 0 ? competitors : sampleCompetitors(city, startedAt)
+    const finalCompetitors = competitors
     const excludedCount = Math.max(0, allItems.length - (competitorItems.length + elementaryItems.length + privateItems.length + preschoolItems.length + stemItems.length + rentalItems.length + parentItems.length))
 
     const scoreInputs = {

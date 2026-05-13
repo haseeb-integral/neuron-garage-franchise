@@ -274,7 +274,11 @@ export async function getCitySourceData(cityId: string): Promise<CitySourceRow[]
     signalAgg.set(src, cur);
   });
 
-  const allSources = new Set<string>([...latestJobBySource.keys(), ...signalAgg.keys()]);
+  // Only show sources that are real connected APIs. Hide proxy/seed/computed sources entirely.
+  const REAL_API_SOURCES = new Set(["census", "bls", "apify", "firecrawl"]);
+  const allSources = new Set<string>(
+    [...latestJobBySource.keys(), ...signalAgg.keys()].filter((s) => REAL_API_SOURCES.has(s)),
+  );
   if (allSources.size === 0) return [];
 
   return Array.from(allSources).map((source) => {

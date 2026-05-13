@@ -92,25 +92,34 @@ export function MarketsMap({ markets, onSelect }: Props) {
   const handleBackfill = async () => {
     setBackfilling(true);
     try {
+      // Edge function rate-limits to ~1.1s per city; keep batch small to avoid timeout.
       const { data, error } = await supabase.functions.invoke("backfill-city-coordinates", {
-        body: { limit: 100 },
+        body: { limit: 25 },
       });
       if (error) throw error;
       const updated = (data as any)?.updated ?? 0;
       const processed = (data as any)?.processed ?? 0;
-      toast.success(`Backfill: ${updated}/${processed} cities geocoded`);
-      // Refetch coords
-      const { data: refresh } = await supabase
-        .from("cities")
-        .select("id, latitude, longitude")
-        .in("id", cityIds);
-      const map: Record<string, Coords> = {};
-      (refresh ?? []).forEach((row: any) => {
-        if (row.latitude != null && row.longitude != null) {
-          map[row.id] = { lat: Number(row.latitude), lng: Number(row.longitude) };
-        }
-      });
-      setCoordsByCityId(map);
+      const failures = (data as any)?.failures ?? [];
+      if (processed === 0) {
+        toast.success("All cities already have coordinates.");
+      } else {
+        toast.success(`Geocoded ${updated}/${processed} cities${failures.length ? ` • ${failures.length} failed` : ""}. Run again for more.`);
+        if (failures.length) console.warn("Backfill failures:", failures);
+      }
+      // Refetch coords for the cities currently in view.
+      if (cityIds.length > 0) {
+        const { data: refresh } = await supabase
+          .from("cities")
+          .select("id, latitude, longitude")
+          .in("id", cityIds);
+        const map: Record<string, Coords> = {};
+        (refresh ?? []).forEach((row: any) => {
+          if (row.latitude != null && row.longitude != null) {
+            map[row.id] = { lat: Number(row.latitude), lng: Number(row.longitude) };
+          }
+        });
+        setCoordsByCityId(map);
+      }
     } catch (e) {
       console.error(e);
       toast.error("Backfill failed: " + (e as Error).message);

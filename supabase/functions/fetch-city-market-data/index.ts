@@ -558,10 +558,10 @@ Deno.serve(async (req) => {
 
     const finalCompetitors = competitors
 
-    // Sprint additions: Google Trends (on-demand) + Firecrawl waitlist scrape over competitor URLs.
-    const trends = await fetchGoogleTrends(city, state)
-    const waitlistUrls = finalCompetitors.map((c) => c.source_url ?? '').filter(Boolean) as string[]
-    const waitlist = await fetchCompetitorWaitlistSignals(waitlistUrls)
+    // Sprint signals (Google Trends + Firecrawl waitlist) moved to the SOW function
+    // to keep this function under the 150s idle timeout. Avoid duplicating the slow calls here.
+    const trends = { city_camp: null as number | null, generic_camp: null as number | null, error: null as string | null }
+    const waitlist = { scanned: 0, waitlist: 0, soldout: 0, error: null as string | null }
     const excludedCount = Math.max(0, allItems.length - (competitorItems.length + elementaryItems.length + privateItems.length + preschoolItems.length + stemItems.length + rentalItems.length + parentItems.length))
 
     const scoreInputs = {

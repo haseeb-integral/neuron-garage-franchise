@@ -237,6 +237,8 @@ const CityScoring = () => {
     marketType: liveCity?.market_type ?? selectedRankedMarket?.marketType ?? (selectedSample as any).marketType,
     lastScrapedAt: liveCity?.last_scraped_at ?? selectedRankedMarket?.lastScrapedAt ?? null,
   };
+  const selectedHasLiveData =
+    !!liveCity && (Number(liveCity?.composite_score ?? 0) > 0 || !!liveCity?.last_scraped_at);
 
   // Load live DB-backed data for the currently selected market.
   const loadLiveData = async (city: string, state: string) => {

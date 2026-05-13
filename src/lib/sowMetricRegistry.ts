@@ -9,20 +9,22 @@ export type RegistryCategory =
   | "demand"
   | "pricing_power"
   | "competitive_landscape"
+  | "franchiseeSupply_legacy" // not used; placeholder to keep type unions tidy
   | "franchisee_supply"
   | "ease_of_operations"
   | "parent_mindset";
 
 export type SowMetricEntry = {
   key: string;
-  category: RegistryCategory;
+  category: Exclude<RegistryCategory, "franchiseeSupply_legacy">;
   label: string;
+  description: string;
   enabled: boolean;
   weight_within_category: number;
   status: MetricStatus;
 };
 
-export const CATEGORY_KEY_MAP: Record<RegistryCategory, CategoryKey> = {
+export const CATEGORY_KEY_MAP: Record<Exclude<RegistryCategory, "franchiseeSupply_legacy">, CategoryKey> = {
   demand: "demand",
   pricing_power: "pricingPower",
   competitive_landscape: "competitiveLandscape",
@@ -31,63 +33,162 @@ export const CATEGORY_KEY_MAP: Record<RegistryCategory, CategoryKey> = {
   parent_mindset: "parentMindset",
 };
 
+export const CATEGORY_PURPOSE: Record<CategoryKey, string> = {
+  demand: "Are there enough affluent families with the right-aged kids in this city?",
+  pricingPower: "Will families pay premium prices for camp, and how much?",
+  competitiveLandscape: "How crowded is the camp market — and how much room is there to win?",
+  franchiseeSupply: "Are there enough teachers here to recruit as franchise operators?",
+  easeOfOperations: "How hard will it be to run camps here — venues, regulations, sprawl, wages?",
+  parentMindset: "Do parents in this city actively invest in enrichment, STEM, and learning?",
+};
+
 export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
-  // Demand
-  { key: "children_5_12_count",                 category: "demand", label: "Children Ages 5–12",                     enabled: true,  weight_within_category: 0.20, status: "proxy" },
-  { key: "children_5_12_pct",                   category: "demand", label: "% Population Ages 5–12",                  enabled: true,  weight_within_category: 0.10, status: "proxy" },
-  { key: "households_with_children_under_13",   category: "demand", label: "Households With Children Under 13",       enabled: true,  weight_within_category: 0.10, status: "proxy" },
-  { key: "median_household_income",             category: "demand", label: "Median Household Income",                 enabled: true,  weight_within_category: 0.15, status: "live"  },
-  { key: "income_100k_plus_pct",                category: "demand", label: "Households Earning $100k+",               enabled: true,  weight_within_category: 0.10, status: "live"  },
-  { key: "income_150k_plus_pct",                category: "demand", label: "Households Earning $150k+",               enabled: true,  weight_within_category: 0.10, status: "live"  },
-  { key: "young_family_growth_rate",            category: "demand", label: "Growth Rate of Young Families",           enabled: false, weight_within_category: 0,    status: "missing" },
-  { key: "dual_income_household_pct",           category: "demand", label: "% Dual-Income Households",                enabled: false, weight_within_category: 0,    status: "missing" },
-  { key: "education_bachelors_plus_pct",        category: "demand", label: "Parent Education / Bachelor's+",          enabled: true,  weight_within_category: 0.10, status: "live"  },
-  { key: "summer_weather_index",                category: "demand", label: "Summer Weather Index",                    enabled: false, weight_within_category: 0,    status: "missing" },
-  { key: "avg_peak_summer_temperature",         category: "demand", label: "Avg Peak Summer Temperature",             enabled: false, weight_within_category: 0,    status: "missing" },
-  { key: "days_above_100f",                     category: "demand", label: "Number of 100°+ Days",                    enabled: false, weight_within_category: 0,    status: "missing" },
+  // ─────────── DEMAND ───────────
+  { key: "children_5_12_count", category: "demand", label: "Children Ages 5–12",
+    description: "Raw count of kids in the camp's target age range. Bigger pool = more potential customers.",
+    enabled: true,  weight_within_category: 0.20, status: "proxy" },
+  { key: "children_5_12_pct", category: "demand", label: "% Population Ages 5–12",
+    description: "Share of the population that's school-aged. High % means a family-oriented town vs. retirees or singles.",
+    enabled: true,  weight_within_category: 0.10, status: "proxy" },
+  { key: "households_with_children_under_13", category: "demand", label: "Households With Children Under 13",
+    description: "Number of households actively raising young kids — your direct buyer pool.",
+    enabled: true,  weight_within_category: 0.10, status: "proxy" },
+  { key: "median_household_income", category: "demand", label: "Median Household Income",
+    description: "Typical family earnings. Above ~$90k starts to support discretionary camp spend.",
+    enabled: true,  weight_within_category: 0.15, status: "live"  },
+  { key: "income_100k_plus_pct", category: "demand", label: "Households Earning $100k+",
+    description: "Share of households comfortably able to afford weekly camp tuition.",
+    enabled: true,  weight_within_category: 0.10, status: "live"  },
+  { key: "income_150k_plus_pct", category: "demand", label: "Households Earning $150k+",
+    description: "Share of high-income households — the premium segment for multi-week enrollments.",
+    enabled: true,  weight_within_category: 0.10, status: "live"  },
+  { key: "young_family_growth_rate", category: "demand", label: "Growth Rate of Young Families",
+    description: "Is the family population growing or shrinking year-over-year? Growth = expanding demand.",
+    enabled: false, weight_within_category: 0,    status: "missing" },
+  { key: "dual_income_household_pct", category: "demand", label: "% Dual-Income Households",
+    description: "Two working parents need summer childcare more urgently than single-earner households.",
+    enabled: false, weight_within_category: 0,    status: "missing" },
+  { key: "education_bachelors_plus_pct", category: "demand", label: "Parent Education / Bachelor's+",
+    description: "Share of adults with a college degree. Educated parents over-index on enrichment spending.",
+    enabled: true,  weight_within_category: 0.10, status: "live"  },
+  { key: "summer_weather_index", category: "demand", label: "Summer Weather Index",
+    description: "How camp-friendly is the local summer? Mild weather supports outdoor programming.",
+    enabled: false, weight_within_category: 0,    status: "missing" },
+  { key: "avg_peak_summer_temperature", category: "demand", label: "Avg Peak Summer Temperature",
+    description: "Average July/August high. Extreme heat pushes parents toward indoor or AC-required camps.",
+    enabled: false, weight_within_category: 0,    status: "missing" },
+  { key: "days_above_100f", category: "demand", label: "Number of 100°+ Days",
+    description: "Count of dangerously hot days. High counts limit operating days for outdoor camps.",
+    enabled: false, weight_within_category: 0,    status: "missing" },
 
-  // Pricing Power
-  { key: "avg_weekly_camp_tuition",             category: "pricing_power", label: "Average Weekly Camp Tuition",                       enabled: false, weight_within_category: 0,    status: "missing" },
-  { key: "avg_hourly_camp_pricing",             category: "pricing_power", label: "Average Hourly Camp Pricing",                       enabled: false, weight_within_category: 0,    status: "missing" },
-  { key: "premium_stem_camp_pricing",           category: "pricing_power", label: "Premium STEM / Maker / Enrichment Camp Pricing",    enabled: false, weight_within_category: 0,    status: "missing" },
-  { key: "private_school_tuition_proxy",        category: "pricing_power", label: "Private Elementary School Tuition Levels",          enabled: false, weight_within_category: 0,    status: "missing" },
-  { key: "private_school_student_count",        category: "pricing_power", label: "Number of Private School Students",                 enabled: false, weight_within_category: 0,    status: "missing" },
-  { key: "childcare_nanny_hourly_rate_proxy",   category: "pricing_power", label: "Childcare / Nanny Hourly Rate Proxy",               enabled: true,  weight_within_category: 0.40, status: "proxy" },
-  { key: "household_discretionary_income_proxy",category: "pricing_power", label: "Household Discretionary Income Estimate",           enabled: true,  weight_within_category: 0.20, status: "proxy" },
+  // ─────────── PRICING POWER ───────────
+  { key: "avg_weekly_camp_tuition", category: "pricing_power", label: "Average Weekly Camp Tuition",
+    description: "Going rate competitors charge per week. Sets the ceiling and floor for your pricing.",
+    enabled: false, weight_within_category: 0,    status: "missing" },
+  { key: "avg_hourly_camp_pricing", category: "pricing_power", label: "Average Hourly Camp Pricing",
+    description: "Hourly equivalent of local camp rates. Useful for comparing partial-day or after-school programs.",
+    enabled: false, weight_within_category: 0,    status: "missing" },
+  { key: "premium_stem_camp_pricing", category: "pricing_power", label: "Premium STEM / Maker / Enrichment Pricing",
+    description: "What the top STEM/maker camps charge. Indicates if the market accepts premium positioning.",
+    enabled: false, weight_within_category: 0,    status: "missing" },
+  { key: "private_school_tuition_proxy", category: "pricing_power", label: "Private Elementary School Tuition",
+    description: "Local private K-5 tuition. Proxy for what families already pay for premium kids' programs.",
+    enabled: false, weight_within_category: 0,    status: "missing" },
+  { key: "private_school_student_count", category: "pricing_power", label: "Private School Students",
+    description: "How many kids attend private school — a built-in segment willing to pay for enrichment.",
+    enabled: false, weight_within_category: 0,    status: "missing" },
+  { key: "childcare_nanny_hourly_rate_proxy", category: "pricing_power", label: "Childcare / Nanny Hourly Rate",
+    description: "What local families already pay for childcare. Anchors what they'll comfortably pay for camp.",
+    enabled: true,  weight_within_category: 0.40, status: "proxy" },
+  { key: "household_discretionary_income_proxy", category: "pricing_power", label: "Household Discretionary Income",
+    description: "Income left after essentials. Larger discretionary pool = more room for premium camp spend.",
+    enabled: true,  weight_within_category: 0.20, status: "proxy" },
 
-  // Competitive Landscape
-  { key: "summer_camps_per_10k_children",       category: "competitive_landscape", label: "Summer Camps per 10,000 Children",          enabled: true,  weight_within_category: 0.30, status: "proxy" },
-  { key: "stem_robotics_maker_camp_count",      category: "competitive_landscape", label: "STEM / Robotics / Maker Camps",             enabled: true,  weight_within_category: 0.20, status: "proxy" },
-  { key: "school_based_summer_camp_count",      category: "competitive_landscape", label: "School-Based Summer Camps",                 enabled: false, weight_within_category: 0,    status: "missing" },
-  { key: "national_brand_presence",             category: "competitive_landscape", label: "National Brand Presence",                   enabled: false, weight_within_category: 0,    status: "proxy" },
-  { key: "google_search_demand_summer_camp",    category: "competitive_landscape", label: "Google Search Demand: summer camp [city]",  enabled: false, weight_within_category: 0,    status: "missing" },
-  { key: "google_search_demand_summer_day_camp",category: "competitive_landscape", label: "Google Search Demand: summer day camp",     enabled: false, weight_within_category: 0,    status: "missing" },
-  { key: "google_search_demand_summer_day_camps_year", category: "competitive_landscape", label: "Google Search Demand: Day Camps [Year]", enabled: false, weight_within_category: 0, status: "missing" },
-  { key: "waitlist_sold_out_signal_count",      category: "competitive_landscape", label: "Waitlist / Sold-Out Signals",               enabled: false, weight_within_category: 0,    status: "missing" },
+  // ─────────── COMPETITIVE LANDSCAPE ───────────
+  { key: "summer_camps_per_10k_children", category: "competitive_landscape", label: "Summer Camps per 10k Children",
+    description: "Camp density relative to kid population. Lower = under-served market with white space.",
+    enabled: true,  weight_within_category: 0.30, status: "proxy" },
+  { key: "stem_robotics_maker_camp_count", category: "competitive_landscape", label: "STEM / Robotics / Maker Camps",
+    description: "Count of direct competitors in the STEM camp niche. High count = saturated; low = open lane.",
+    enabled: true,  weight_within_category: 0.20, status: "proxy" },
+  { key: "school_based_summer_camp_count", category: "competitive_landscape", label: "School-Based Summer Camps",
+    description: "Camps run by local school districts. They're cheap competition — a high count squeezes pricing.",
+    enabled: false, weight_within_category: 0,    status: "missing" },
+  { key: "national_brand_presence", category: "competitive_landscape", label: "National Brand Presence",
+    description: "Are big brands (Galileo, Steve & Kate's, etc.) already here? Validates demand but raises competition.",
+    enabled: false, weight_within_category: 0,    status: "proxy" },
+  { key: "google_search_demand_summer_camp", category: "competitive_landscape", label: "Search Demand: 'summer camp [city]'",
+    description: "How often parents google for camps in this city. Higher = more in-market intent to capture.",
+    enabled: false, weight_within_category: 0,    status: "missing" },
+  { key: "google_search_demand_summer_day_camp", category: "competitive_landscape", label: "Search Demand: 'summer day camp'",
+    description: "Search volume specifically for day camps (your core product). Direct buyer-intent signal.",
+    enabled: false, weight_within_category: 0,    status: "missing" },
+  { key: "google_search_demand_summer_day_camps_year", category: "competitive_landscape", label: "Search Demand: 'Day Camps [Year]'",
+    description: "Dated camp searches show parents in active planning mode for the upcoming summer.",
+    enabled: false, weight_within_category: 0,    status: "missing" },
+  { key: "waitlist_sold_out_signal_count", category: "competitive_landscape", label: "Waitlist / Sold-Out Signals",
+    description: "Competitor camps that sell out or run waitlists. Strong evidence of unmet demand.",
+    enabled: false, weight_within_category: 0,    status: "missing" },
 
-  // Franchisee Supply
-  { key: "public_elementary_teacher_count",     category: "franchisee_supply", label: "Public Elementary Teachers",                    enabled: false, weight_within_category: 0,    status: "missing" },
-  { key: "private_charter_montessori_teacher_count", category: "franchisee_supply", label: "Private / Charter / Montessori Teachers", enabled: false, weight_within_category: 0,    status: "missing" },
-  { key: "elementary_school_count",             category: "franchisee_supply", label: "Elementary Schools",                            enabled: true,  weight_within_category: 0.40, status: "proxy" },
-  { key: "teacher_salary_proxy",                category: "franchisee_supply", label: "Average Teacher Salary Proxy",                  enabled: true,  weight_within_category: 0.30, status: "proxy" },
-  { key: "cost_of_living_index",                category: "franchisee_supply", label: "Cost of Living Index",                          enabled: false, weight_within_category: 0,    status: "missing" },
-  { key: "summer_income_need_ratio",            category: "franchisee_supply", label: "Summer Income Need Ratio",                      enabled: false, weight_within_category: 0,    status: "missing" },
+  // ─────────── FRANCHISEE SUPPLY ───────────
+  { key: "public_elementary_teacher_count", category: "franchisee_supply", label: "Public Elementary Teachers",
+    description: "Count of public K-5 teachers in the metro — your largest franchisee recruiting pool.",
+    enabled: false, weight_within_category: 0,    status: "missing" },
+  { key: "private_charter_montessori_teacher_count", category: "franchisee_supply", label: "Private / Charter / Montessori Teachers",
+    description: "Teachers at non-public schools. Often more entrepreneurial and open to franchise ownership.",
+    enabled: false, weight_within_category: 0,    status: "missing" },
+  { key: "elementary_school_count", category: "franchisee_supply", label: "Elementary Schools",
+    description: "Number of K-5 schools in the area. Proxy for total teacher supply when teacher counts are missing.",
+    enabled: true,  weight_within_category: 0.40, status: "proxy" },
+  { key: "teacher_salary_proxy", category: "franchisee_supply", label: "Average Teacher Salary",
+    description: "Lower teacher pay = stronger pull toward summer income and franchise ownership upside.",
+    enabled: true,  weight_within_category: 0.30, status: "proxy" },
+  { key: "cost_of_living_index", category: "franchisee_supply", label: "Cost of Living Index",
+    description: "Local cost of living vs. national. High COL + low teacher pay = the strongest recruiting market.",
+    enabled: false, weight_within_category: 0,    status: "missing" },
+  { key: "summer_income_need_ratio", category: "franchisee_supply", label: "Summer Income Need Ratio",
+    description: "How dependent local teachers are on summer income vs. their school-year salary. Higher = stronger pull.",
+    enabled: false, weight_within_category: 0,    status: "missing" },
 
-  // Ease of Operations
-  { key: "rental_venue_count",                  category: "ease_of_operations", label: "Rental Venues (Schools / Churches / Rec)",     enabled: true,  weight_within_category: 0.50, status: "proxy" },
-  { key: "classroom_rental_cost_weekly",        category: "ease_of_operations", label: "Typical Classroom Rental Cost per Week",       enabled: false, weight_within_category: 0,    status: "missing" },
-  { key: "commute_sprawl_index",                category: "ease_of_operations", label: "Commute Times / Geographic Sprawl",            enabled: false, weight_within_category: 0,    status: "missing" },
-  { key: "state_camp_regulation_complexity",    category: "ease_of_operations", label: "State Camp Regulation Complexity",             enabled: false, weight_within_category: 0,    status: "missing" },
-  { key: "guide_wage_proxy",                    category: "ease_of_operations", label: "Estimated Guide Wage Proxy",                   enabled: true,  weight_within_category: 0.30, status: "proxy" },
+  // ─────────── EASE OF OPERATIONS ───────────
+  { key: "rental_venue_count", category: "ease_of_operations", label: "Rental Venues (Schools / Churches / Rec)",
+    description: "Available spaces to rent for camp sessions. More venues = easier expansion and lower real-estate risk.",
+    enabled: true,  weight_within_category: 0.50, status: "proxy" },
+  { key: "classroom_rental_cost_weekly", category: "ease_of_operations", label: "Classroom Rental Cost / Week",
+    description: "Typical weekly rental rate for a classroom. Directly hits franchisee margin.",
+    enabled: false, weight_within_category: 0,    status: "missing" },
+  { key: "commute_sprawl_index", category: "ease_of_operations", label: "Commute Times / Geographic Sprawl",
+    description: "How spread out the metro is. Sprawl forces multi-location operations and complicates logistics.",
+    enabled: false, weight_within_category: 0,    status: "missing" },
+  { key: "state_camp_regulation_complexity", category: "ease_of_operations", label: "State Camp Regulation Complexity",
+    description: "How heavy state licensing/inspections are. Heavy regulation = slower launches and higher overhead.",
+    enabled: false, weight_within_category: 0,    status: "missing" },
+  { key: "guide_wage_proxy", category: "ease_of_operations", label: "Estimated Guide Wage",
+    description: "Local hourly wage for camp counselors / 'Guides'. Major recurring labor cost for the franchisee.",
+    enabled: true,  weight_within_category: 0.30, status: "proxy" },
 
-  // Parent Mindset
-  { key: "homeschool_population_proxy",         category: "parent_mindset", label: "Homeschool Population Proxy",                      enabled: false, weight_within_category: 0,    status: "missing" },
-  { key: "montessori_school_density",           category: "parent_mindset", label: "Elementary Montessori School Density",             enabled: true,  weight_within_category: 0.30, status: "proxy" },
-  { key: "childrens_museum_signal",             category: "parent_mindset", label: "Children's Museum Signal",                         enabled: false, weight_within_category: 0,    status: "proxy" },
-  { key: "robotics_maker_space_count",          category: "parent_mindset", label: "Robotics Clubs / Maker Spaces",                    enabled: true,  weight_within_category: 0.30, status: "proxy" },
-  { key: "library_children_program_signal",     category: "parent_mindset", label: "Library Program Engagement",                       enabled: false, weight_within_category: 0,    status: "missing" },
-  { key: "parenting_facebook_group_activity",   category: "parent_mindset", label: "Parenting Facebook Group Activity",                enabled: false, weight_within_category: 0,    status: "blocked" },
-  { key: "parent_community_activity_proxy",     category: "parent_mindset", label: "Other Parent Communities Activity",                enabled: false, weight_within_category: 0,    status: "blocked" },
+  // ─────────── PARENT MINDSET ───────────
+  { key: "homeschool_population_proxy", category: "parent_mindset", label: "Homeschool Population Proxy",
+    description: "Size of the local homeschool community. They're heavy users of enrichment programs year-round.",
+    enabled: false, weight_within_category: 0,    status: "missing" },
+  { key: "montessori_school_density", category: "parent_mindset", label: "Elementary Montessori School Density",
+    description: "Number of Montessori schools nearby. Strong indicator of parents who value experiential learning.",
+    enabled: true,  weight_within_category: 0.30, status: "proxy" },
+  { key: "childrens_museum_signal", category: "parent_mindset", label: "Children's Museum Signal",
+    description: "Presence of a children's museum signals a community that invests in kid-centered learning experiences.",
+    enabled: false, weight_within_category: 0,    status: "proxy" },
+  { key: "robotics_maker_space_count", category: "parent_mindset", label: "Robotics Clubs / Maker Spaces",
+    description: "Local robotics clubs and maker spaces — direct evidence of demand for STEM enrichment.",
+    enabled: true,  weight_within_category: 0.30, status: "proxy" },
+  { key: "library_children_program_signal", category: "parent_mindset", label: "Library Program Engagement",
+    description: "Attendance at library kids' programs. High engagement = parents who actively seek learning activities.",
+    enabled: false, weight_within_category: 0,    status: "missing" },
+  { key: "parenting_facebook_group_activity", category: "parent_mindset", label: "Parenting Facebook Group Activity",
+    description: "Activity in local parenting groups. Strong signal of an engaged parent community for word-of-mouth.",
+    enabled: false, weight_within_category: 0,    status: "blocked" },
+  { key: "parent_community_activity_proxy", category: "parent_mindset", label: "Other Parent Communities Activity",
+    description: "Activity in PTAs, NextDoor, neighborhood groups — broader community engagement signal.",
+    enabled: false, weight_within_category: 0,    status: "blocked" },
 ];
 
 export const METRICS_BY_CATEGORY: Record<CategoryKey, SowMetricEntry[]> = (() => {

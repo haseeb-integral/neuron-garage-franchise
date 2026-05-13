@@ -1241,7 +1241,6 @@ const CityScoring = () => {
           />
         </div>
       </div>
-      </div>
 
       <AddCriteriaDrawer
         open={addCritOpen}

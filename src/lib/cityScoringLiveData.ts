@@ -139,10 +139,10 @@ export function dedupeRankedMarkets(markets: RankedMarket[]): RankedMarket[] {
       byKey.set(key, m);
       continue;
     }
-    // A live row counts as "real" only if it has actual scoring data.
-    const isReal = (x: RankedMarket) =>
-      x.source === "live" && (x.compositeScore > 0 || !!x.lastScrapedAt || (x.population ?? 0) > 0);
-    const enrich = (base: RankedMarket, geo: RankedMarket): RankedMarket => ({
+    // A live row always wins over a sample row for the same key — even if the
+    // live row has no scoring yet. We never substitute hardcoded sample numbers
+    // for a city that exists in the DB. Optionally copy missing geo fields.
+    const enrichGeo = (base: RankedMarket, geo: RankedMarket): RankedMarket => ({
       ...base,
       metroArea: base.metroArea ?? geo.metroArea,
       county: base.county ?? geo.county,
@@ -150,14 +150,10 @@ export function dedupeRankedMarkets(markets: RankedMarket[]): RankedMarket[] {
     });
 
     let winner = existing;
-    const mReal = isReal(m);
-    const eReal = isReal(existing);
-
     if (m.source === "live" && existing.source === "sample") {
-      // Live is real → take live. Live is geo-only stub → keep sample but copy geo fields.
-      winner = mReal ? m : enrich(existing, m);
+      winner = enrichGeo(m, existing);
     } else if (existing.source === "live" && m.source === "sample") {
-      winner = eReal ? existing : enrich(m, existing);
+      winner = enrichGeo(existing, m);
     } else if (m.source === existing.source) {
       const a = score(m);
       const b = score(existing);

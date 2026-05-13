@@ -53,6 +53,7 @@ function toNumber(value: unknown, fallback = 0) {
 export function mapLiveCityToRankedMarket(row: any, index: number, competitorCount = 0): RankedMarket {
   const state = normalizeState(row.state);
   const compositeScore = toNumber(row.composite_score, 0);
+  const hasLiveData = compositeScore > 0 || !!row.last_scraped_at;
   return {
     id: 100000 + index,
     cityId: row.id,
@@ -68,6 +69,7 @@ export function mapLiveCityToRankedMarket(row: any, index: number, competitorCou
     isNonRegistration: NON_REGISTRATION_STATES.has(state),
     lastScrapedAt: row.last_scraped_at ?? null,
     source: "live",
+    hasLiveData,
   };
 }
 
@@ -85,6 +87,7 @@ export function mapSampleCityToRankedMarket(city: CityData): RankedMarket {
     marketType: (city as any).marketType,
     isNonRegistration: city.isNonRegistration,
     source: "sample",
+    hasLiveData: false,
     sample: city,
   };
 }

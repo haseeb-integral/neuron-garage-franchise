@@ -938,13 +938,21 @@ const CityScoring = () => {
               <h3 className="text-sm font-bold text-[#07142f]">Ranked Markets</h3>
               <p className="text-[11px] text-[#8794ab]">({filtered.length} markets found)</p>
             </div>
-            <button
-              onClick={openCompare}
-              disabled={selectedForCompare.length < 2}
-              className="flex items-center gap-1 text-xs font-medium text-[#174be8] hover:underline disabled:text-[#8794ab] disabled:no-underline disabled:cursor-not-allowed"
-            >
-              <GitCompare size={12} /> Compare ({selectedForCompare.length})
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setAddCityOpen(true)}
+                className="flex items-center gap-1 text-xs font-medium text-[#174be8] hover:underline"
+              >
+                <Plus size={12} /> Add City
+              </button>
+              <button
+                onClick={openCompare}
+                disabled={selectedForCompare.length < 2}
+                className="flex items-center gap-1 text-xs font-medium text-[#174be8] hover:underline disabled:text-[#8794ab] disabled:no-underline disabled:cursor-not-allowed"
+              >
+                <GitCompare size={12} /> Compare ({selectedForCompare.length})
+              </button>
+            </div>
           </div>
           {compareMode && (
             <div className="mb-2 rounded-md bg-[#eaf0ff] border border-[#cfdcff] px-2 py-1.5 text-[11px] text-[#174be8]">

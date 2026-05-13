@@ -288,6 +288,8 @@ export type Database = {
           id: string
           is_non_registration: boolean
           last_scraped_at: string | null
+          latitude: number | null
+          longitude: number | null
           market_type: string
           median_income: number | null
           metro_area: string | null
@@ -308,6 +310,8 @@ export type Database = {
           id?: string
           is_non_registration?: boolean
           last_scraped_at?: string | null
+          latitude?: number | null
+          longitude?: number | null
           market_type?: string
           median_income?: number | null
           metro_area?: string | null
@@ -328,6 +332,8 @@ export type Database = {
           id?: string
           is_non_registration?: boolean
           last_scraped_at?: string | null
+          latitude?: number | null
+          longitude?: number | null
           market_type?: string
           median_income?: number | null
           metro_area?: string | null

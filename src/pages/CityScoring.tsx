@@ -1115,17 +1115,20 @@ const CityScoring = () => {
             <div>
               <p className="mb-2.5 text-[13px] font-semibold text-[#07142f]">Category Scores</p>
               <div className="space-y-2">
-                {CATEGORIES.map((cat) => (
-                  <div key={cat.key}>
-                    <div className="mb-1 flex items-center justify-between gap-3 text-[12px]">
-                      <span className="text-[#526078]">{cat.label}</span>
-                      <span className="font-semibold text-[#07142f]">{detailCategoryScores[cat.key]}</span>
+                {CATEGORIES.map((cat) => {
+                  const v = selectedHasLiveData ? (detailCategoryScores[cat.key] ?? 0) : null;
+                  return (
+                    <div key={cat.key}>
+                      <div className="mb-1 flex items-center justify-between gap-3 text-[12px]">
+                        <span className="text-[#526078]">{cat.label}</span>
+                        <span className="font-semibold text-[#07142f]">{v ?? "—"}</span>
+                      </div>
+                      <div className="h-1.5 w-full rounded-full bg-[#e8edf6]">
+                        <div className="h-full rounded-full bg-[#1d4fff]" style={{ width: `${v ?? 0}%` }} />
+                      </div>
                     </div>
-                    <div className="h-1.5 w-full rounded-full bg-[#e8edf6]">
-                      <div className="h-full rounded-full bg-[#1d4fff]" style={{ width: `${detailCategoryScores[cat.key]}%` }} />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

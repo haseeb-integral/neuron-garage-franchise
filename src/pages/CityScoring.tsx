@@ -891,7 +891,7 @@ const CityScoring = () => {
                 <div className="text-right text-base font-bold text-[#07142f]">{weights[cat.key]}%</div>
                 <Slider
                   value={[weights[cat.key]]}
-                  onValueChange={([v]) => setWeights((w) => ({ ...w, [cat.key]: v }))}
+                  onValueChange={([v]) => setWeights((w) => rebalanceWeights(w, cat.key, v))}
                   max={100}
                   step={1}
                   className="[&>span:first-child]:bg-[#eaf0ff] [&>span:first-child]:h-1.5 [&_[role=slider]]:h-3.5 [&_[role=slider]]:w-3.5 [&_[role=slider]]:border-[#174be8] [&_[role=slider]]:bg-white [&>span:first-child_span]:bg-[#174be8]"

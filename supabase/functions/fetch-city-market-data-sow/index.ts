@@ -439,7 +439,7 @@ Deno.serve(async (req) => {
     if (insertErr) return json({ error: 'Failed to insert SOW metric signals', detail: insertErr.message }, 500)
 
     const completedAt = new Date().toISOString()
-    const warnings = { census: censusError, bls: blsError }
+    const warnings = { census: censusError, bls: blsError, census_sprint: sprintError, trends: trendsResult.error, waitlist: waitlistResult.error }
 
     // ---- Phase C: SOW shadow scoring (observation only) ----
     const sowMetricValues: SowMetricValues = {

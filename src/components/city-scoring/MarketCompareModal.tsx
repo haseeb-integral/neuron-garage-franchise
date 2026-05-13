@@ -15,15 +15,9 @@ const CATEGORY_ROWS: { key: string; label: string; dbKey: string }[] = [
   { key: "parentMindset", label: "Parent Mindset Indicators", dbKey: "parent_mindset" },
 ];
 
-// Headline signals shown in compare; missing → "—"
-const SIGNAL_ROWS: { key: string; label: string }[] = [
-  { key: "children_5_12_count", label: "Children Ages 5–12" },
-  { key: "income_100k_plus_pct", label: "Households $100k+" },
-  { key: "avg_weekly_camp_tuition", label: "Avg Weekly Camp Tuition" },
-  { key: "public_elementary_teacher_count", label: "Elementary Teachers" },
-  { key: "teacher_salary_proxy", label: "Teacher Salary Proxy" },
-  { key: "young_family_growth_rate", label: "Young Family Growth" },
-];
+// Signal rows are built dynamically from whatever signals exist for the
+// selected cities, so the modal always shows ALL available data — not a
+// hand-picked subset. Order is determined by first-seen.
 
 interface Props {
   open: boolean;
@@ -58,10 +52,11 @@ function Gauge({ value }: { value: number | null }) {
   );
 }
 
-type SignalRow = { value: string; delta: string | null };
+type SignalRow = { value: string; delta: string | null; label: string };
 
 export function MarketCompareModal({ open, onClose, markets }: Props) {
   const [signalsByCity, setSignalsByCity] = useState<Record<string, Record<string, SignalRow>>>({});
+  const [signalRows, setSignalRows] = useState<{ key: string; label: string }[]>([]);
   const [scoresByCity, setScoresByCity] = useState<Record<string, Record<string, number>>>({});
   const [loading, setLoading] = useState(false);
 
@@ -71,18 +66,21 @@ export function MarketCompareModal({ open, onClose, markets }: Props) {
     if (cityIds.length === 0) {
       setSignalsByCity({});
       setScoresByCity({});
+      setSignalRows([]);
       return;
     }
     setLoading(true);
     Promise.all([
-      supabase.from("city_market_signals").select("city_id, signal_key, value, delta").in("city_id", cityIds),
+      supabase.from("city_market_signals").select("city_id, signal_key, label, value, delta").in("city_id", cityIds),
       supabase.from("city_category_scores").select("city_id, category, score").in("city_id", cityIds),
     ])
       .then(([sigRes, catRes]) => {
         const sigMap: Record<string, Record<string, SignalRow>> = {};
+        const seen = new Map<string, string>(); // key -> label, preserves insertion order
         (sigRes.data ?? []).forEach((r: any) => {
           if (!sigMap[r.city_id]) sigMap[r.city_id] = {};
-          sigMap[r.city_id][r.signal_key] = { value: r.value, delta: r.delta ?? null };
+          sigMap[r.city_id][r.signal_key] = { value: r.value, delta: r.delta ?? null, label: r.label };
+          if (!seen.has(r.signal_key)) seen.set(r.signal_key, r.label || r.signal_key);
         });
         const catMap: Record<string, Record<string, number>> = {};
         (catRes.data ?? []).forEach((r: any) => {
@@ -91,6 +89,7 @@ export function MarketCompareModal({ open, onClose, markets }: Props) {
         });
         setSignalsByCity(sigMap);
         setScoresByCity(catMap);
+        setSignalRows(Array.from(seen.entries()).map(([key, label]) => ({ key, label })));
       })
       .catch((e) => console.error("compare modal load error", e))
       .finally(() => setLoading(false));
@@ -177,9 +176,18 @@ export function MarketCompareModal({ open, onClose, markets }: Props) {
                   </tr>
                 ))}
                 <tr>
-                  <td colSpan={markets.length + 1} className="px-3 pb-1 pt-2.5 text-sm font-black text-[#07142f]">Key Market Signals</td>
+                  <td colSpan={markets.length + 1} className="px-3 pb-1 pt-2.5 text-sm font-black text-[#07142f]">
+                    Key Market Signals {signalRows.length > 0 && <span className="font-medium text-[#8794ab]">({signalRows.length})</span>}
+                  </td>
                 </tr>
-                {SIGNAL_ROWS.map((row) => (
+                {signalRows.length === 0 && !loading && (
+                  <tr>
+                    <td colSpan={markets.length + 1} className="px-3 py-3 text-center text-[11px] text-[#8794ab]">
+                      No live signals yet — refresh these cities to populate data.
+                    </td>
+                  </tr>
+                )}
+                {signalRows.map((row) => (
                   <tr key={row.key} className="border-b border-[#eef2f7] last:border-b-0">
                     <td className="border-r border-[#e6edf7] px-3 py-2 text-[10.5px] font-semibold leading-tight text-[#34445f]">{row.label}</td>
                     {markets.map((m) => {

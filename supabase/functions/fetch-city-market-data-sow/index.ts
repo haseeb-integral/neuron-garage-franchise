@@ -231,8 +231,11 @@ function buildSowSignals(args: {
   bls: any | null
   existingCounts: Record<string, number>
   existingWarnings: Record<string, unknown>
+  sprint: CensusSprintMetrics | null
+  trends: { city_camp: number | null; generic_camp: number | null } | null
+  waitlist: { scanned: number; waitlist: number; soldout: number } | null
 }) {
-  const { census, bls, existingCounts } = args
+  const { census, bls, existingCounts, sprint, trends, waitlist } = args
   const signals: SignalInput[] = []
   const add = (s: SignalInput) => signals.push(s)
 

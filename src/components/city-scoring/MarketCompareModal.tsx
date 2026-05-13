@@ -139,7 +139,7 @@ export function MarketCompareModal({ open, onClose, markets }: Props) {
                   <td className="border-r border-[#e6edf7] px-3 py-2.5 font-semibold text-[#07142f]">Overall Score</td>
                   {markets.map((m) => (
                     <td key={m.id} className="border-r border-[#e6edf7] px-2 py-2.5 text-center last:border-r-0">
-                      <Gauge value={m.compositeScore || null} />
+                      <Gauge value={m.hasLiveData ? (m.compositeScore || null) : null} />
                     </td>
                   ))}
                 </tr>
@@ -147,7 +147,11 @@ export function MarketCompareModal({ open, onClose, markets }: Props) {
                   <td className="border-r border-[#e6edf7] px-3 py-2.5 font-semibold text-[#07142f]">Tier</td>
                   {markets.map((m) => (
                     <td key={m.id} className="border-r border-[#e6edf7] px-2 py-2.5 text-center last:border-r-0">
-                      <span className="rounded-full bg-[#e6f7ef] px-2 py-1 text-[11px] font-bold text-[#0a8f5a]">{m.tier}</span>
+                      {m.hasLiveData ? (
+                        <span className="rounded-full bg-[#e6f7ef] px-2 py-1 text-[11px] font-bold text-[#0a8f5a]">{m.tier}</span>
+                      ) : (
+                        <span className="rounded-full bg-[#eef2f7] px-2 py-1 text-[11px] font-bold text-[#8794ab]">No data</span>
+                      )}
                     </td>
                   ))}
                 </tr>

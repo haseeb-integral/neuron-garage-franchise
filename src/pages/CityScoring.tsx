@@ -237,6 +237,8 @@ const CityScoring = () => {
     marketType: liveCity?.market_type ?? selectedRankedMarket?.marketType ?? (selectedSample as any).marketType,
     lastScrapedAt: liveCity?.last_scraped_at ?? selectedRankedMarket?.lastScrapedAt ?? null,
   };
+  const selectedHasLiveData =
+    !!liveCity && (Number(liveCity?.composite_score ?? 0) > 0 || !!liveCity?.last_scraped_at);
 
   // Load live DB-backed data for the currently selected market.
   const loadLiveData = async (city: string, state: string) => {
@@ -976,12 +978,22 @@ const CityScoring = () => {
                     {(c as any).marketType ?? (c.population > 200000 ? "Urban" : "Suburb")}
                   </span>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[#07142f] font-semibold tabular-nums">{c.compositeScore}</span>
-                    <div className="h-1.5 flex-1 rounded-full bg-[#eef2f7]">
-                      <div className="h-full rounded-full bg-[#0ea66e]" style={{ width: `${c.compositeScore}%` }} />
-                    </div>
+                    {c.hasLiveData ? (
+                      <>
+                        <span className="text-[#07142f] font-semibold tabular-nums">{c.compositeScore}</span>
+                        <div className="h-1.5 flex-1 rounded-full bg-[#eef2f7]">
+                          <div className="h-full rounded-full bg-[#0ea66e]" style={{ width: `${c.compositeScore}%` }} />
+                        </div>
+                      </>
+                    ) : (
+                      <span className="text-[#8794ab] font-medium">—</span>
+                    )}
                   </div>
-                  <span className={`justify-self-end flex items-center justify-center rounded-full text-[10px] font-bold text-white`} style={{ width: 20, height: 20, backgroundColor: c.tier === "A" ? "#0ea66e" : c.tier === "B" ? "#174be8" : c.tier === "C" ? "#b8860b" : "#ea580c" }}>{c.tier}</span>
+                  {c.hasLiveData ? (
+                    <span className={`justify-self-end flex items-center justify-center rounded-full text-[10px] font-bold text-white`} style={{ width: 20, height: 20, backgroundColor: c.tier === "A" ? "#0ea66e" : c.tier === "B" ? "#174be8" : c.tier === "C" ? "#b8860b" : "#ea580c" }}>{c.tier}</span>
+                  ) : (
+                    <span className="justify-self-end rounded-full bg-[#eef2f7] px-1.5 py-0.5 text-[8.5px] font-semibold text-[#8794ab] whitespace-nowrap">No data</span>
+                  )}
                 </div>
               );
             })}
@@ -1048,18 +1060,20 @@ const CityScoring = () => {
               <p className="mb-1.5 text-[12px] font-semibold text-[#3a4c72]">Overall Score</p>
               <svg viewBox="0 0 200 120" className="h-[100px] w-[150px] max-w-full">
                 <path d="M25 92 A75 75 0 0 1 175 92" fill="none" stroke="#e7ebf3" strokeWidth="14" strokeLinecap="round" />
-                <path
-                  d="M25 92 A75 75 0 0 1 175 92"
-                  fill="none"
-                  stroke="#0ea66e"
-                  strokeWidth="14"
-                  strokeLinecap="round"
-                  strokeDasharray={`${(weightedComposite / 100) * 236} 236`}
-                />
-                <text x="100" y="76" textAnchor="middle" className="fill-[#07142f]" style={{ fontSize: 32, fontWeight: 800 }}>{weightedComposite}</text>
+                {selectedHasLiveData && (
+                  <path
+                    d="M25 92 A75 75 0 0 1 175 92"
+                    fill="none"
+                    stroke="#0ea66e"
+                    strokeWidth="14"
+                    strokeLinecap="round"
+                    strokeDasharray={`${(weightedComposite / 100) * 236} 236`}
+                  />
+                )}
+                <text x="100" y="76" textAnchor="middle" className="fill-[#07142f]" style={{ fontSize: 32, fontWeight: 800 }}>{selectedHasLiveData ? weightedComposite : "—"}</text>
                 <text x="100" y="102" textAnchor="middle" className="fill-[#7e8aa3]" style={{ fontSize: 12, fontWeight: 600 }}>/100</text>
               </svg>
-              <p className="-mt-1 text-[12px] font-semibold" style={{ color: tierBadge.fg }}>{opportunityLabel}</p>
+              <p className="-mt-1 text-[12px] font-semibold" style={{ color: selectedHasLiveData ? tierBadge.fg : "#8794ab" }}>{selectedHasLiveData ? opportunityLabel : "No live data"}</p>
             </div>
 
             <div className="space-y-2.5 pt-1 min-w-0">
@@ -1067,7 +1081,11 @@ const CityScoring = () => {
                 <div className="flex items-center gap-x-4 gap-y-1.5 flex-wrap">
                   <div className="flex items-center gap-2">
                     <span className="text-[#6b7a96]">Tier</span>
-                    <span className="rounded-full px-2 py-0.5 text-[10.5px] font-semibold leading-tight" style={{ backgroundColor: tierBadge.bg, color: tierBadge.fg }}>{tierBadge.label}</span>
+                    {selectedHasLiveData ? (
+                      <span className="rounded-full px-2 py-0.5 text-[10.5px] font-semibold leading-tight" style={{ backgroundColor: tierBadge.bg, color: tierBadge.fg }}>{tierBadge.label}</span>
+                    ) : (
+                      <span className="rounded-full bg-[#eef2f7] px-2 py-0.5 text-[10.5px] font-semibold leading-tight text-[#8794ab]">No data</span>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[#6b7a96]">Market Type</span>
@@ -1097,17 +1115,20 @@ const CityScoring = () => {
             <div>
               <p className="mb-2.5 text-[13px] font-semibold text-[#07142f]">Category Scores</p>
               <div className="space-y-2">
-                {CATEGORIES.map((cat) => (
-                  <div key={cat.key}>
-                    <div className="mb-1 flex items-center justify-between gap-3 text-[12px]">
-                      <span className="text-[#526078]">{cat.label}</span>
-                      <span className="font-semibold text-[#07142f]">{detailCategoryScores[cat.key]}</span>
+                {CATEGORIES.map((cat) => {
+                  const v = selectedHasLiveData ? (detailCategoryScores[cat.key] ?? 0) : null;
+                  return (
+                    <div key={cat.key}>
+                      <div className="mb-1 flex items-center justify-between gap-3 text-[12px]">
+                        <span className="text-[#526078]">{cat.label}</span>
+                        <span className="font-semibold text-[#07142f]">{v ?? "—"}</span>
+                      </div>
+                      <div className="h-1.5 w-full rounded-full bg-[#e8edf6]">
+                        <div className="h-full rounded-full bg-[#1d4fff]" style={{ width: `${v ?? 0}%` }} />
+                      </div>
                     </div>
-                    <div className="h-1.5 w-full rounded-full bg-[#e8edf6]">
-                      <div className="h-full rounded-full bg-[#1d4fff]" style={{ width: `${detailCategoryScores[cat.key]}%` }} />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

@@ -1,82 +1,38 @@
-# Execute approved fixes 1, 2, 3 — remove Frisco-only mock, Nearby Markets, and Compare modal hardcoding
+## Goal
 
-Implementing in order, smallest blast radius first.
+Eliminate the silent sample-data fallback that makes empty cities look scored (e.g. Pflugerville=41, Cedar Park=58 came from `src/data/cityData.ts`, not the DB). Cities without live scoring data should clearly read "—" and "No data". Nearby Markets stays removed for now.
 
----
+## Root cause
 
-## Step 1 — Kill `isFriscoMock` branch
+`src/lib/cityScoringLiveData.ts` → `dedupeRankedMarkets`:
+- When a `cities` row has `composite_score=0` and no `last_scraped_at`, it's treated as a "geo-only stub" and the **sample** city (with hardcoded score/tier/competitors) is used as the row, only copying metro/county fields from the live row.
+- Result: hardcoded scores leak into the live table.
 
-File: `src/pages/CityScoring.tsx`
+## Changes
 
-- Delete line 565 `const isFriscoMock = selected.city === "Frisco" && selected.state === "Texas";`
-- Line 591: change `: isFriscoMock ? 91 : selected.compositeScore;` → `: selected.compositeScore;`
-- Lines 593–595: replace `const fallbackCats = isFriscoMock ? {…Frisco-specific…} : categoryScores(selected);` with `const fallbackCats = categoryScores(selected);`
+### 1. `src/lib/cityScoringLiveData.ts`
+- Remove the sample-fallback branch in `dedupeRankedMarkets`. When live exists for a city+state key, **always** keep the live row (even if score=0); never fall back to the sample row's numbers.
+- Keep dedupe between two live rows (newest `last_scraped_at` wins) and between two sample rows (current behavior).
+- In `mapLiveCityToRankedMarket`, when `composite_score` is 0 AND `last_scraped_at` is null, set `tier = "—"` (or a sentinel like `"none"`) so downstream UI can detect "no data" without guessing.
+- Add a derived flag `hasLiveData: boolean` on `RankedMarket` (`compositeScore > 0 || !!lastScrapedAt`) to make UI checks trivial.
 
-Result: Frisco no longer gets a hardcoded 91/special category object. It uses the same path as every other city — live `liveUiCategoryScores` if present, otherwise the deterministic `categoryScores(c)` formula on whatever `selected` data is available.
+### 2. `src/components/city-scoring/CityTable.tsx`
+- For rows where `hasLiveData === false`:
+  - Score cell renders `—` (muted) instead of the score bar.
+  - Tier cell renders a grey "No data" pill instead of the colored A/B/C/D badge.
+  - Row remains clickable (opens drawer, which already says "No live data yet" and offers Refresh).
+- Sorting: push no-data rows to the bottom regardless of sort direction on score.
 
----
+### 3. `src/pages/CityScoring.tsx`
+- Right-column selected-market panel: if `selected.hasLiveData === false`, show "—" in the gauge, "No data" tier chip, and hide category-score bars (the "Refresh This Market" CTA already exists).
+- No Nearby Markets work this round (deferred per your decision).
 
-## Step 2 — Remove "Nearby Markets" hardcoded panel
+### 4. `src/components/city-scoring/MarketCompareModal.tsx`
+- Already handles missing `cityId`. Add the same treatment when `hasLiveData === false`: render "—" for Overall Score gauge and "No data" for tier, instead of showing a 0 gauge.
 
-File: `src/pages/CityScoring.tsx`
+## Out of scope
+- Nearby Markets card re-add (later, post-Module-1, sourced from DB by metro_area/county).
+- Removing `sampleCities` entirely. It's still referenced elsewhere; we just stop using it as a fallback for live rows. A separate cleanup pass can purge it once all consumers are live.
 
-- Delete lines 80–86 (`NEARBY_MARKETS` constant).
-- Delete the `showNearby` state at line 123 and the toggle at line 796.
-- Delete the entire `{showNearby && (…)}` block at lines 1193–1214 in the right column.
-
-Result: the right-column "Nearby Markets" card is gone. We can rebuild it later sourced from `cities` table filtered by same `metro_area`. Out of scope here.
-
-(I am NOT removing the decorative Market Snapshot map and Source Data panel — those were items 6 in the audit, not approved here.)
-
----
-
-## Step 3 — Make Compare modal use live data, no per-city ternaries
-
-Files:
-- `src/components/city-scoring/MarketCompareModal.tsx` (rewrite)
-- `src/pages/CityScoring.tsx` (change what we pass into it)
-
-### 3a. Change the modal's input contract
-
-Replace `markets: CityData[]` with `markets: RankedMarket[]` (the same live-aware object the Ranked Markets table already uses). `RankedMarket` already has city, state, county, metroArea, tier, compositeScore, population, cityId.
-
-### 3b. Fetch live signals + category scores when the modal opens
-
-When `open && markets.length >= 2`:
-- Collect `cityId`s from markets that have one (live cities).
-- Query in parallel:
-  - `city_market_signals` where `city_id in (...)` → group by `city_id`, pick the 6 signals matching `signal_key` of: `children_5_12`, `households_100k_plus`, `premium_pricing`, `teacher_density`, `school_district_access`, `millennial_density` (these are the SOW signal keys; if a key isn't present, render `—`).
-  - `city_category_scores` where `city_id in (...)` → group by `city_id`, map to the 6 categories used in the table.
-- Hold results in local state keyed by `cityId`.
-
-### 3c. Render rules
-
-- **Header per column**: `{city}, {state-abbrev}` and `{county ?? metroArea ?? "—"}` — no more `population > 200000 ? "Travis County" : "Collin County"`.
-- **Overall Score**: `market.compositeScore` (delete `scoreForMarket` Frisco/Plano/Austin overrides).
-- **Tier**: `market.tier` (drop the literal `(Tier 1)` label suffix; just show the letter pill).
-- **Category Scores**: from fetched `city_category_scores`; fall back to `—` and a flat grey bar when missing. Delete `categoryScore()` Frisco override and `CATEGORY_ROWS` `.get()` synthesizers — the row defs become `{ key, label, categoryKey }`.
-- **Key Market Signals**: from fetched `city_market_signals`; render `value` and `delta` straight from the row. Missing → `—` / hide delta. Delete the per-city ternaries entirely.
-- Sample-only cities (no `cityId`) render `—` for every signal/category and a small "No live data — refresh this market first" hint under the header.
-
-### 3d. Wire live markets into the modal
-
-`src/pages/CityScoring.tsx` line 1304 currently:
-```tsx
-markets={sampleCities.filter((c) => selectedForCompare.includes(c.id)).slice(0, 4)}
-```
-Change to use the live ranked list:
-```tsx
-markets={filtered.filter((m) => selectedForCompare.includes(m.id)).slice(0, 4)}
-```
-(`filtered` is already the live-aware `RankedMarket[]` used by the table; `selectedForCompare` already stores those ids.)
-
----
-
-## Files touched
-- `src/pages/CityScoring.tsx` — Steps 1, 2, and 3d
-- `src/components/city-scoring/MarketCompareModal.tsx` — Step 3 rewrite
-
-## Out of scope (deferred per your approval scope)
-- Items 4–7 from the audit (mock category formula, sample injection into ranked list, decorative map, hardcoded SOURCES, scoring-model preset, state shortener).
-
-After approval I'll run them sequentially in one implementation pass and verify the build.
+## Risk
+Low. Pure presentation + dedupe-rule change. No DB writes, no schema changes, no edge-function changes.

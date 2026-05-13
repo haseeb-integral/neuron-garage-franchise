@@ -197,6 +197,90 @@ async function fetchFirecrawlSignals(city: string, state: string) {
   }
 }
 
+// ---- Firecrawl waitlist / sold-out signal scraper ----
+// Scrapes up to 5 competitor URLs and counts pages mentioning waitlist/sold-out language.
+async function fetchCompetitorWaitlistSignals(urls: string[]) {
+  const key = Deno.env.get('FIRECRAWL_API_KEY')
+  if (!key) return { waitlist: 0, soldout: 0, scanned: 0, error: null as string | null }
+  const targets = urls.filter((u) => /^https?:\/\//.test(u)).slice(0, 5)
+  if (targets.length === 0) return { waitlist: 0, soldout: 0, scanned: 0, error: null }
+  const WAITLIST_RE = /waitlist|wait list|join the wait|notify me when/i
+  const SOLDOUT_RE = /sold out|fully booked|registration closed|session full|class full|enrollment closed/i
+  let waitlist = 0, soldout = 0
+  const errs: string[] = []
+  await Promise.all(targets.map(async (url) => {
+    try {
+      const res = await fetch('https://api.firecrawl.dev/v2/scrape', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+        body: JSON.stringify({ url, formats: ['markdown'], onlyMainContent: true }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { errs.push(`Firecrawl ${res.status} ${url}`); return }
+      const md: string = (data?.data?.markdown ?? data?.markdown ?? '') as string
+      if (WAITLIST_RE.test(md)) waitlist++
+      if (SOLDOUT_RE.test(md)) soldout++
+    } catch (e) { errs.push((e as Error).message) }
+  }))
+  return { waitlist, soldout, scanned: targets.length, error: errs.length ? errs.join(' | ') : null }
+}
+
+// ---- Google Trends via Apify (emastra/google-trends-scraper) ----
+// On-demand only — fired by user-clicked refresh, not bulk backfill.
+async function fetchGoogleTrends(city: string, state: string) {
+  const token = Deno.env.get('APIFY_API_TOKEN')
+  if (!token) return { city_camp: null as number | null, generic_camp: null as number | null, error: null as string | null }
+  const actorId = normalizeActorId('emastra/google-trends-scraper')
+  const cityKw = `summer camp ${city}`
+  const genericKw = 'summer day camp'
+  const payload = {
+    searchTerms: [cityKw, genericKw],
+    geo: 'US',
+    timeRange: 'today 12-m',
+    category: 0,
+  }
+  try {
+    const res = await fetch(`https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${token}&timeout=120`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    const data = await res.json().catch(() => [])
+    if (!res.ok) return { city_camp: null, generic_camp: null, error: `Apify Trends ${res.status}: ${JSON.stringify(data).slice(0, 200)}` }
+    const items: any[] = Array.isArray(data) ? data : []
+    // Compute average interest per term across the returned series.
+    const avgFor = (term: string): number | null => {
+      const matches = items.filter((it) => {
+        const t = (it?.searchTerm ?? it?.keyword ?? it?.term ?? '').toString().toLowerCase()
+        return t === term.toLowerCase()
+      })
+      if (matches.length === 0) return null
+      // series can be `interestOverTime`, `data`, or flat `value`
+      const values: number[] = []
+      for (const m of matches) {
+        const series = m?.interestOverTime ?? m?.data ?? m?.timelineData ?? []
+        if (Array.isArray(series)) {
+          for (const pt of series) {
+            const v = Number(pt?.value ?? pt?.interest ?? pt?.score)
+            if (Number.isFinite(v)) values.push(v)
+          }
+        } else if (typeof m?.value === 'number') {
+          values.push(m.value)
+        }
+      }
+      if (values.length === 0) return null
+      return Math.round((values.reduce((s, v) => s + v, 0) / values.length) * 10) / 10
+    }
+    return {
+      city_camp: avgFor(cityKw),
+      generic_camp: avgFor(genericKw),
+      error: null,
+    }
+  } catch (e) {
+    return { city_camp: null, generic_camp: null, error: (e as Error).message }
+  }
+}
+
 // clamp moved to ../_shared/scoring.ts as clampScore
 
 // ---- Census ACS 5-year ----
@@ -208,6 +292,12 @@ type CensusData = {
   bachelors_plus_pct: number | null
   income_100k_plus_pct: number | null
   income_150k_plus_pct: number | null
+  // New (sprint additions)
+  households_with_kids: number | null               // B11005_002E (2022)
+  households_with_kids_2017: number | null          // B11005_002E (2017)
+  young_families_growth_pct: number | null          // 5-yr growth
+  dual_income_pct: number | null                    // B23007 _004 / _003
+  long_commute_pct: number | null                   // B08303 (45+ min) / total
   state_fips: string | null
   place_fips: string | null
   source_url: string | null
@@ -262,19 +352,26 @@ async function fetchCensus(city: string, state: string): Promise<{ data: CensusD
 
     // 2. Fetch ACS variables
     const vars = [
-      'B01003_001E', // total pop
-      'B19013_001E', // median household income
-      'B09001_001E', // population under 18
-      'B15003_001E', // total 25+
-      'B15003_022E', // bachelor's
-      'B15003_023E', // master's
-      'B15003_024E', // professional
-      'B15003_025E', // doctorate
-      'B19001_001E', // total households
-      'B19001_014E', // 100-125k
-      'B19001_015E', // 125-150k
-      'B19001_016E', // 150-200k
-      'B19001_017E', // 200k+
+      'B01003_001E', // 0  total pop
+      'B19013_001E', // 1  median household income
+      'B09001_001E', // 2  population under 18
+      'B15003_001E', // 3  total 25+
+      'B15003_022E', // 4  bachelor's
+      'B15003_023E', // 5  master's
+      'B15003_024E', // 6  professional
+      'B15003_025E', // 7  doctorate
+      'B19001_001E', // 8  total households
+      'B19001_014E', // 9  100-125k
+      'B19001_015E', // 10 125-150k
+      'B19001_016E', // 11 150-200k
+      'B19001_017E', // 12 200k+
+      'B11005_002E', // 13 households with people under 18 (young families current)
+      'B23007_003E', // 14 married-couple families with own children under 18
+      'B23007_004E', // 15 ...both husband and wife in labor force
+      'B08303_001E', // 16 commute total workers
+      'B08303_011E', // 17 commute 45-59 min
+      'B08303_012E', // 18 commute 60-89 min
+      'B08303_013E', // 19 commute 90+ min
     ]
     const dataUrl = `https://api.census.gov/data/2022/acs/acs5?get=${vars.join(',')}&for=place:${placeFips}&in=state:${stateFips}&key=${key}`
     const dataRes = await fetch(dataUrl)
@@ -294,6 +391,26 @@ async function fetchCensus(city: string, state: string): Promise<{ data: CensusD
     const hh200p = num(row[12]) ?? 0
     const income100plus = hh100_125 + hh125_150 + hh150_200 + hh200p
     const income150plus = hh150_200 + hh200p
+    const hhKids2022 = num(row[13])
+    const marriedKids = num(row[14])
+    const dualIncome = num(row[15])
+    const commuteTotal = num(row[16])
+    const longCommute = (num(row[17]) ?? 0) + (num(row[18]) ?? 0) + (num(row[19]) ?? 0)
+
+    // 3. Second-vintage call (2017 ACS5) for young-families growth — single var
+    let hhKids2017: number | null = null
+    try {
+      const url2017 = `https://api.census.gov/data/2017/acs/acs5?get=B11005_002E&for=place:${placeFips}&in=state:${stateFips}&key=${key}`
+      const r2017 = await fetch(url2017)
+      if (r2017.ok) {
+        const a2017 = await r2017.json() as string[][]
+        hhKids2017 = num(a2017?.[1]?.[0] ?? '')
+      }
+    } catch (_) { /* non-fatal */ }
+
+    const youngFamiliesGrowth = (hhKids2022 != null && hhKids2017 != null && hhKids2017 > 0)
+      ? Math.round(((hhKids2022 - hhKids2017) / hhKids2017) * 1000) / 10
+      : null
 
     return {
       data: {
@@ -304,6 +421,15 @@ async function fetchCensus(city: string, state: string): Promise<{ data: CensusD
         bachelors_plus_pct: total25 && total25 > 0 ? Math.round((bachPlus / total25) * 1000) / 10 : null,
         income_100k_plus_pct: totalHH && totalHH > 0 ? Math.round((income100plus / totalHH) * 1000) / 10 : null,
         income_150k_plus_pct: totalHH && totalHH > 0 ? Math.round((income150plus / totalHH) * 1000) / 10 : null,
+        households_with_kids: hhKids2022,
+        households_with_kids_2017: hhKids2017,
+        young_families_growth_pct: youngFamiliesGrowth,
+        dual_income_pct: marriedKids && marriedKids > 0 && dualIncome != null
+          ? Math.round((dualIncome / marriedKids) * 1000) / 10
+          : null,
+        long_commute_pct: commuteTotal && commuteTotal > 0
+          ? Math.round((longCommute / commuteTotal) * 1000) / 10
+          : null,
         state_fips: stateFips,
         place_fips: placeFips,
         source_url: `https://api.census.gov/data/2022/acs/acs5?get=NAME&for=place:${placeFips}&in=state:${stateFips}`,
@@ -431,6 +557,11 @@ Deno.serve(async (req) => {
       .slice(0, 30)
 
     const finalCompetitors = competitors
+
+    // Sprint additions: Google Trends (on-demand) + Firecrawl waitlist scrape over competitor URLs.
+    const trends = await fetchGoogleTrends(city, state)
+    const waitlistUrls = finalCompetitors.map((c) => c.source_url ?? '').filter(Boolean) as string[]
+    const waitlist = await fetchCompetitorWaitlistSignals(waitlistUrls)
     const excludedCount = Math.max(0, allItems.length - (competitorItems.length + elementaryItems.length + privateItems.length + preschoolItems.length + stemItems.length + rentalItems.length + parentItems.length))
 
     const scoreInputs = {
@@ -496,6 +627,20 @@ Deno.serve(async (req) => {
       { signal_key: 'income_100k_plus_proxy', label: 'Households $100k+', value: censusData.income_100k_plus_pct != null ? `${censusData.income_100k_plus_pct}%` : 'N/A', delta: null, delta_type: 'neutral', source: 'census', source_url: censusData.source_url, confidence: 0.9, raw_data: { mode, pct_100k: censusData.income_100k_plus_pct, pct_150k: censusData.income_150k_plus_pct } },
       { signal_key: 'education_bachelors_plus_proxy', label: "Bachelor's Degree or Higher (25+)", value: censusData.bachelors_plus_pct != null ? `${censusData.bachelors_plus_pct}%` : 'N/A', delta: null, delta_type: 'neutral', source: 'census', source_url: censusData.source_url, confidence: 0.9, raw_data: { mode, pct: censusData.bachelors_plus_pct } },
       { signal_key: 'census_data_readiness', label: 'Census Data', value: 'Connected (ACS 2022 5-yr)', delta: null, delta_type: 'up', source: 'census', source_url: censusData.source_url, confidence: 0.95, raw_data: { mode, place_fips: censusData.place_fips, state_fips: censusData.state_fips } },
+      // Sprint additions — Census ACS B11005 / B23007 / B08303
+      { signal_key: 'young_families_growth_5yr', label: 'Growth Rate of Young Families (5-yr)', value: censusData.young_families_growth_pct != null ? `${censusData.young_families_growth_pct > 0 ? '+' : ''}${censusData.young_families_growth_pct}%` : 'N/A', delta: null, delta_type: censusData.young_families_growth_pct != null && censusData.young_families_growth_pct > 0 ? 'up' : censusData.young_families_growth_pct != null && censusData.young_families_growth_pct < 0 ? 'down' : 'neutral', source: 'census', source_url: censusData.source_url, confidence: 0.85, raw_data: { mode, hh_2022: censusData.households_with_kids, hh_2017: censusData.households_with_kids_2017, table: 'B11005' } },
+      { signal_key: 'dual_income_pct', label: '% Dual-Income Households (married w/ kids)', value: censusData.dual_income_pct != null ? `${censusData.dual_income_pct}%` : 'N/A', delta: null, delta_type: 'neutral', source: 'census', source_url: censusData.source_url, confidence: 0.85, raw_data: { mode, table: 'B23007' } },
+      { signal_key: 'long_commute_pct', label: 'Long Commute % (45+ min, sprawl proxy)', value: censusData.long_commute_pct != null ? `${censusData.long_commute_pct}%` : 'N/A', delta: null, delta_type: 'neutral', source: 'census', source_url: censusData.source_url, confidence: 0.85, raw_data: { mode, table: 'B08303' } },
+    ] : []
+
+    const trendsSignals = (trends.city_camp != null || trends.generic_camp != null) ? [
+      { signal_key: 'gtrends_summer_camp_city', label: `Google Trends: "summer camp ${city}" (12-mo avg)`, value: trends.city_camp != null ? String(trends.city_camp) : 'N/A', delta: null, delta_type: 'neutral', source: 'apify', source_url: 'https://trends.google.com', confidence: 0.6, raw_data: { actor: 'emastra/google-trends-scraper', term: `summer camp ${city}` } },
+      { signal_key: 'gtrends_summer_day_camp', label: 'Google Trends: "summer day camp" (12-mo avg)', value: trends.generic_camp != null ? String(trends.generic_camp) : 'N/A', delta: null, delta_type: 'neutral', source: 'apify', source_url: 'https://trends.google.com', confidence: 0.6, raw_data: { actor: 'emastra/google-trends-scraper', term: 'summer day camp' } },
+    ] : []
+
+    const waitlistSignals = waitlist.scanned > 0 ? [
+      { signal_key: 'competitor_waitlist_count', label: `Competitors with Waitlist (${waitlist.scanned} scanned)`, value: String(waitlist.waitlist), delta: null, delta_type: waitlist.waitlist > 0 ? 'up' : 'neutral', source: 'firecrawl', source_url: null, confidence: 0.7, raw_data: { scanned: waitlist.scanned } },
+      { signal_key: 'competitor_soldout_count', label: `Competitors Sold Out / Full (${waitlist.scanned} scanned)`, value: String(waitlist.soldout), delta: null, delta_type: waitlist.soldout > 0 ? 'up' : 'neutral', source: 'firecrawl', source_url: null, confidence: 0.7, raw_data: { scanned: waitlist.scanned } },
     ] : []
 
     const fmtUSD = (n: number | null) => n != null ? `$${n.toLocaleString()}` : 'N/A'
@@ -519,7 +664,7 @@ Deno.serve(async (req) => {
       { signal_key: 'firecrawl_source_pages', label: 'Source Pages Found', value: String(firecrawl.count), delta: null, delta_type: firecrawl.count > 0 ? 'up' : 'neutral', source: mode, source_url: null, confidence: 0.5, raw_data: { mode } },
       { signal_key: 'data_readiness', label: 'Data Readiness', value: mode === 'live_api' ? 'Live API Connected' : 'POC Sample', delta: null, delta_type: mode === 'live_api' ? 'up' : 'neutral', source: mode, source_url: null, confidence: 0.7, raw_data: { mode } },
     ]
-    const signals = [...baseSignals, ...censusSignals, ...blsSignals]
+    const signals = [...baseSignals, ...censusSignals, ...blsSignals, ...trendsSignals, ...waitlistSignals]
     const { error: sErr } = await admin.from('city_market_signals').insert(signals.map((r) => ({ ...r, city_id: cityId })))
     if (sErr) return json({ error: 'Failed to insert signals', detail: sErr.message }, 500)
 
@@ -560,17 +705,19 @@ Deno.serve(async (req) => {
       census: censusData,
       bls: blsData,
       geo: geo ? { metroArea: geo.metroArea, county: geo.county, marketType: geo.marketType } : null,
-      warnings: { apify: apifyError, firecrawl: firecrawl.error, census: censusError, bls: blsError },
+      warnings: { apify: apifyError, firecrawl: firecrawl.error, census: censusError, bls: blsError, trends: trends.error, waitlist: waitlist.error },
+      trends: { city_camp: trends.city_camp, generic_camp: trends.generic_camp },
+      waitlist: { scanned: waitlist.scanned, waitlist: waitlist.waitlist, soldout: waitlist.soldout },
     }
 
-    const anyWarn = apifyError || firecrawl.error || censusError || blsError
+    const anyWarn = apifyError || firecrawl.error || censusError || blsError || trends.error || waitlist.error
     const { data: jobRow, error: jobErr } = await admin.from('city_fetch_jobs').insert({
       city_id: cityId, city, state, source: mode,
       status: anyWarn ? 'completed_with_warnings' : 'completed',
       started_at: startedAt, completed_at: completedAt,
       request_payload: { city, state, mode },
       response_summary: responseSummary,
-      error_message: [apifyError, firecrawl.error, censusError, blsError].filter(Boolean).join(' | ') || null,
+      error_message: [apifyError, firecrawl.error, censusError, blsError, trends.error, waitlist.error].filter(Boolean).join(' | ') || null,
     }).select('id').single()
     if (jobErr) return json({ error: 'Failed to insert job', detail: jobErr.message }, 500)
 
@@ -583,7 +730,7 @@ Deno.serve(async (req) => {
       geo: geo ?? null,
       inserted: { signals: signals.length, scores: scores.length, competitors: finalCompetitors.length, job_id: jobRow?.id },
       counts: responseSummary.counts,
-      warnings: { apify: apifyError, firecrawl: firecrawl.error, census: censusError, bls: blsError },
+      warnings: { apify: apifyError, firecrawl: firecrawl.error, census: censusError, bls: blsError, trends: trends.error, waitlist: waitlist.error },
     })
   } catch (e) {
     return json({ error: (e as Error).message }, 500)

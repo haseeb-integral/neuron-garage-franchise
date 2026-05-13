@@ -557,6 +557,11 @@ Deno.serve(async (req) => {
       .slice(0, 30)
 
     const finalCompetitors = competitors
+
+    // Sprint additions: Google Trends (on-demand) + Firecrawl waitlist scrape over competitor URLs.
+    const trends = await fetchGoogleTrends(city, state)
+    const waitlistUrls = finalCompetitors.map((c) => c.source_url ?? '').filter(Boolean) as string[]
+    const waitlist = await fetchCompetitorWaitlistSignals(waitlistUrls)
     const excludedCount = Math.max(0, allItems.length - (competitorItems.length + elementaryItems.length + privateItems.length + preschoolItems.length + stemItems.length + rentalItems.length + parentItems.length))
 
     const scoreInputs = {

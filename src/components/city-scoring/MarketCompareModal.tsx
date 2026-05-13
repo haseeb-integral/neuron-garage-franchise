@@ -15,15 +15,9 @@ const CATEGORY_ROWS: { key: string; label: string; dbKey: string }[] = [
   { key: "parentMindset", label: "Parent Mindset Indicators", dbKey: "parent_mindset" },
 ];
 
-// Headline signals shown in compare; missing → "—"
-const SIGNAL_ROWS: { key: string; label: string }[] = [
-  { key: "children_5_12_count", label: "Children Ages 5–12" },
-  { key: "income_100k_plus_pct", label: "Households $100k+" },
-  { key: "avg_weekly_camp_tuition", label: "Avg Weekly Camp Tuition" },
-  { key: "public_elementary_teacher_count", label: "Elementary Teachers" },
-  { key: "teacher_salary_proxy", label: "Teacher Salary Proxy" },
-  { key: "young_family_growth_rate", label: "Young Family Growth" },
-];
+// Signal rows are built dynamically from whatever signals exist for the
+// selected cities, so the modal always shows ALL available data — not a
+// hand-picked subset. Order is determined by first-seen.
 
 interface Props {
   open: boolean;

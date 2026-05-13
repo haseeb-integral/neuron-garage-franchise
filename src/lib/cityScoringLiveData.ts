@@ -16,6 +16,7 @@ export type RankedMarket = {
   isNonRegistration: boolean;
   lastScrapedAt?: string | null;
   source: "live" | "sample";
+  hasLiveData: boolean;
   sample?: CityData;
 };
 

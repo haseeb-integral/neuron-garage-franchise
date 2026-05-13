@@ -84,12 +84,21 @@ const TeacherProspects = () => {
   const [promotingId, setPromotingId] = useState<number | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const initialCity = searchParams.get("city") ?? "Frisco";
-  const [search, setSearch] = useState("");
-  const [cityFilter, setCityFilter] = useState(initialCity);
-  const [tagFilter, setTagFilter] = useState("All");
-  const [gradeFilter, setGradeFilter] = useState("All");
-  const [enrichmentFilter, setEnrichmentFilter] = useState("All");
-  const [campOnly, setCampOnly] = useState(false);
+  const search = useTeacherProspectsStore((s) => s.search);
+  const setSearch = useTeacherProspectsStore((s) => s.setSearch);
+  const cityFilter = useTeacherProspectsStore((s) => s.cityFilter);
+  const setCityFilterRaw = useTeacherProspectsStore((s) => s.setCityFilter);
+  const tagFilter = useTeacherProspectsStore((s) => s.tagFilter);
+  const setTagFilter = useTeacherProspectsStore((s) => s.setTagFilter);
+  const gradeFilter = useTeacherProspectsStore((s) => s.gradeFilter);
+  const setGradeFilter = useTeacherProspectsStore((s) => s.setGradeFilter);
+  const enrichmentFilter = useTeacherProspectsStore((s) => s.enrichmentFilter);
+  const setEnrichmentFilter = useTeacherProspectsStore((s) => s.setEnrichmentFilter);
+  const campOnly = useTeacherProspectsStore((s) => s.campOnly);
+  const setCampOnly = useTeacherProspectsStore((s) => s.setCampOnly);
+  const setCityFilter = setCityFilterRaw;
+  // Apply URL ?city= override on first mount only
+  useEffect(() => { if (searchParams.get("city")) setCityFilterRaw(initialCity); /* eslint-disable-next-line */ }, []);
 
   useEffect(() => { const city = searchParams.get("city"); if (city) setCityFilter(city); const prospectId = searchParams.get("prospect"); if (prospectId) { const found = prospects.find((p) => p.id === Number(prospectId)); if (found) setActive(found); searchParams.delete("prospect"); setSearchParams(searchParams, { replace: true }); } }, [searchParams, prospects, setSearchParams]);
   const cities = useMemo(() => Array.from(new Set([...prospects.map((p) => p.city), ...sampleCities.map((c) => c.city)])).sort(), [prospects]);

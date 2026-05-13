@@ -151,6 +151,7 @@ const CityScoring = () => {
   const [compareOpen, setCompareOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [addCityOpen, setAddCityOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"table" | "map">("table");
 
   // Open city via global search ?city=ID
   useEffect(() => {

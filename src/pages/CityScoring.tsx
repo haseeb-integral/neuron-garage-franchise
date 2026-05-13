@@ -97,6 +97,18 @@ const SOURCES: { name: string; icon: typeof Building2; status: "connected" | "pl
   { name: "Internal Franchise Data", icon: HomeIcon, status: "planned" },
 ];
 
+const normalizeMarketState = (state?: string | null) => {
+  if (!state) return "";
+  if (state === "TX") return "Texas";
+  if (state === "FL") return "Florida";
+  return state;
+};
+
+const sameMarket = (cityA?: string | null, stateA?: string | null, cityB?: string | null, stateB?: string | null) => {
+  return (cityA ?? "").trim().toLowerCase() === (cityB ?? "").trim().toLowerCase()
+    && normalizeMarketState(stateA).toLowerCase() === normalizeMarketState(stateB).toLowerCase();
+};
+
 const CityScoring = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -137,6 +149,7 @@ const CityScoring = () => {
   const [liveCompetitors, setLiveCompetitors] = useState<any[]>([]);
   const [liveRankedMarkets, setLiveRankedMarkets] = useState<RankedMarket[]>([]);
   const [liveJob, setLiveJob] = useState<any | null>(null);
+  const [marketRefreshVersion, setMarketRefreshVersion] = useState(0);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
@@ -193,10 +206,19 @@ const CityScoring = () => {
   ) ?? selectedFallback;
   const selectedCity = selectedMarketKey.city || selectedSample.city;
   const selectedState = selectedMarketKey.state || selectedSample.state;
+  const selectedRankedMarket = baseRankedMarkets.find((market) => sameMarket(market.city, market.state, selectedCity, selectedState));
   const selected = {
     ...selectedSample,
     city: selectedCity,
     state: selectedState,
+    compositeScore: liveCity?.composite_score ?? selectedRankedMarket?.compositeScore ?? selectedSample.compositeScore,
+    tier: liveCity?.tier ?? selectedRankedMarket?.tier ?? selectedSample.tier,
+    population: liveCity?.population ?? selectedRankedMarket?.population ?? selectedSample.population,
+    competitorCount: liveCity?.competitor_count ?? selectedRankedMarket?.competitorCount ?? selectedSample.competitorCount,
+    county: liveCity?.county ?? selectedRankedMarket?.county ?? (selectedSample as any).county,
+    metroArea: liveCity?.metro_area ?? selectedRankedMarket?.metroArea ?? (selectedSample as any).metroArea,
+    marketType: liveCity?.market_type ?? selectedRankedMarket?.marketType ?? (selectedSample as any).marketType,
+    lastScrapedAt: liveCity?.last_scraped_at ?? selectedRankedMarket?.lastScrapedAt ?? null,
   };
 
   // Load live DB-backed data for the currently selected market.
@@ -271,13 +293,36 @@ const CityScoring = () => {
     return error instanceof Error ? error.message : error?.message || String(error);
   };
 
-  const waitForCompleteSowEvidence = async (city: string, state: string) => {
+  const reloadSelectedMarketView = async (city: string, state: string) => {
+    await Promise.all([
+      loadLiveData(city, state),
+      loadLiveRankedMarkets()
+        .then(setLiveRankedMarkets)
+        .catch((err) => console.error("loadLiveRankedMarkets after refresh failed", err)),
+    ]);
+  };
+
+  const waitForCompleteSowEvidence = async ({
+    city,
+    state,
+    startedAfter,
+    expectedJobId,
+    expectedCompositeScore,
+    expectedTier,
+  }: {
+    city: string;
+    state: string;
+    startedAfter: string;
+    expectedJobId?: string | null;
+    expectedCompositeScore?: number | null;
+    expectedTier?: string | null;
+  }) => {
     let lastDetail = "SOW evidence rows are not ready yet";
 
-    for (let attempt = 0; attempt < 8; attempt += 1) {
+    for (let attempt = 0; attempt < 10; attempt += 1) {
       const { data: cityRow, error: cityError } = await supabase
         .from("cities")
-        .select("id")
+        .select("id, composite_score, tier, last_scraped_at")
         .eq("city", city)
         .eq("state", state)
         .maybeSingle();
@@ -285,32 +330,67 @@ const CityScoring = () => {
       if (cityError) {
         lastDetail = cityError.message;
       } else if (cityRow?.id) {
-        const [{ data: sowJob, error: jobError }, { count: signalCount, error: signalError }] = await Promise.all([
-          supabase
-            .from("city_fetch_jobs")
-            .select("status,response_summary,created_at")
-            .eq("city_id", cityRow.id)
-            .eq("source", "sow_metric_coverage")
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle(),
+        const latestSowJobQuery = expectedJobId
+          ? supabase
+              .from("city_fetch_jobs")
+              .select("id,status,response_summary,created_at,completed_at")
+              .eq("id", expectedJobId)
+              .maybeSingle()
+          : supabase
+              .from("city_fetch_jobs")
+              .select("id,status,response_summary,created_at,completed_at")
+              .eq("city_id", cityRow.id)
+              .eq("source", "sow_metric_coverage")
+              .gte("created_at", startedAfter)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+        const [{ data: sowJob, error: jobError }, { count: signalCount, error: signalError }, { count: categoryCount, error: categoryError }] = await Promise.all([
+          latestSowJobQuery,
           supabase
             .from("city_market_signals")
+            .select("id", { count: "exact", head: true })
+            .eq("city_id", cityRow.id),
+          supabase
+            .from("city_category_scores")
             .select("id", { count: "exact", head: true })
             .eq("city_id", cityRow.id),
         ]);
 
         const jobSummary = sowJob?.response_summary as any;
         const totalSowMetrics = Number(jobSummary?.counts?.total_sow_metrics ?? 0);
-        if (!jobError && !signalError && totalSowMetrics === 46 && signalCount === 46) {
+        const scoreMatches = expectedCompositeScore == null || cityRow.composite_score === expectedCompositeScore;
+        const tierMatches = expectedTier == null || cityRow.tier === expectedTier;
+        const jobMatchesRequest = expectedJobId
+          ? sowJob?.id === expectedJobId
+          : !!sowJob?.created_at && new Date(sowJob.created_at).getTime() >= new Date(startedAfter).getTime();
+        const jobCompleted = sowJob?.status === "completed" || sowJob?.status === "completed_with_warnings";
+
+        if (
+          !jobError
+          && !signalError
+          && !categoryError
+          && jobMatchesRequest
+          && jobCompleted
+          && totalSowMetrics === 46
+          && signalCount === 46
+          && (categoryCount ?? 0) >= CATEGORIES.length
+          && scoreMatches
+          && tierMatches
+        ) {
           return { ready: true };
         }
 
         lastDetail = [
           jobError?.message,
           signalError?.message,
+          categoryError?.message,
           `signals=${signalCount ?? 0}`,
+          `categories=${categoryCount ?? 0}`,
           `expected=${totalSowMetrics || 0}`,
+          scoreMatches ? null : `score=${cityRow.composite_score ?? "?"}`,
+          tierMatches ? null : `tier=${cityRow.tier ?? "?"}`,
           sowJob?.status ? `status=${sowJob.status}` : null,
         ].filter(Boolean).join(", ");
       } else {
@@ -398,7 +478,17 @@ const CityScoring = () => {
 
       const liveErrorMessage = await getInvokeErrorMessage(liveError);
       const sowErrorMessage = await getInvokeErrorMessage(sowError);
-      const sowEvidence = !sowError ? await waitForCompleteSowEvidence(city, state) : { ready: false, detail: sowErrorMessage };
+      const refreshStartedAt = new Date().toISOString();
+      const sowEvidence = !sowError
+        ? await waitForCompleteSowEvidence({
+            city,
+            state,
+            startedAfter: refreshStartedAt,
+            expectedJobId: sowData?.inserted?.job_id ?? null,
+            expectedCompositeScore: sowData?.official_sow_scoring?.composite_score ?? null,
+            expectedTier: sowData?.official_sow_scoring?.tier ?? null,
+          })
+        : { ready: false, detail: sowErrorMessage };
 
       if (!sowError && !sowEvidence.ready) {
         sowError = new Error(sowEvidence.detail || "SOW refresh completed without a full 46-row evidence set");
@@ -416,12 +506,8 @@ const CityScoring = () => {
         sowEvidence,
       });
 
-      await loadLiveData(city, state);
-      try {
-        setLiveRankedMarkets(await loadLiveRankedMarkets());
-      } catch (e) {
-        console.error("loadLiveRankedMarkets after refresh failed", e);
-      }
+      await reloadSelectedMarketView(city, state);
+      setMarketRefreshVersion((version) => version + 1);
 
       const where = `${city}, ${state}`;
       const liveOk = !liveError;
@@ -854,11 +940,10 @@ const CityScoring = () => {
                 <div
                   key={c.id}
                   onClick={() => {
-                    const sample = sampleCities.find((s) => s.city === c.city && s.state === c.state);
+                    const sample = sampleCities.find((s) => sameMarket(s.city, s.state, c.city, c.state));
                     setSelectedMarketKey({ city: c.city, state: c.state });
                     if (sample) setSelectedId(sample.id);
                     else setSelectedId(c.id);
-                    loadLiveData(c.city, c.state);
                   }}
                   className={`grid grid-cols-[16px_14px_minmax(0,1fr)_46px_72px_18px] items-center gap-x-2 px-1 py-3 text-[11px] cursor-pointer border-b border-[#f3f5f9] last:border-0 ${isSel ? "bg-[#eaf0ff]" : "hover:bg-[#f7faff]"}`}
                 >
@@ -1124,6 +1209,7 @@ const CityScoring = () => {
 
       <MarketDetailDrawer
         market={selected}
+        refreshVersion={marketRefreshVersion}
         open={detailDrawerOpen}
         onClose={() => setDetailDrawerOpen(false)}
         categoryScores={detailCategoryScores}
@@ -1144,6 +1230,7 @@ const CityScoring = () => {
         onClose={() => setReportOpen(false)}
         market={selected}
         categoryScores={detailCategoryScores}
+        refreshVersion={marketRefreshVersion}
       />
     </div>
   );

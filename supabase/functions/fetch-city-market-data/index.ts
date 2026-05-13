@@ -208,6 +208,12 @@ type CensusData = {
   bachelors_plus_pct: number | null
   income_100k_plus_pct: number | null
   income_150k_plus_pct: number | null
+  // New (sprint additions)
+  households_with_kids: number | null               // B11005_002E (2022)
+  households_with_kids_2017: number | null          // B11005_002E (2017)
+  young_families_growth_pct: number | null          // 5-yr growth
+  dual_income_pct: number | null                    // B23007 _004 / _003
+  long_commute_pct: number | null                   // B08303 (45+ min) / total
   state_fips: string | null
   place_fips: string | null
   source_url: string | null

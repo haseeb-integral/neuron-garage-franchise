@@ -1214,37 +1214,11 @@ const CityScoring = () => {
 
         {/* Right column */}
         <div className="min-w-0 space-y-3 flex flex-col">
-          <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="text-xs font-bold text-[#07142f]">Source Data</h4>
-              <button
-                className="text-[10px] font-medium text-[#174be8] hover:underline"
-                onClick={() => setDetailDrawerOpen(true)}
-              >
-                View Evidence
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
-              {SOURCES.map((s) => {
-                const Icon = s.icon;
-                const isConnected = s.status === "connected";
-                return (
-                  <div key={s.name} className="flex items-center gap-1.5 text-[11px] text-[#14233b] min-w-0">
-                    <Icon size={11} className="text-[#8794ab] flex-shrink-0" />
-                    <span className="truncate flex-1">{s.name}</span>
-                    <span
-                      className={
-                        "ml-auto inline-flex items-center px-1.5 h-4 rounded-full text-[9px] font-semibold flex-shrink-0 " +
-                        (isConnected ? "bg-[#e6f7ef] text-[#0ea66e]" : "bg-[#eef2f7] text-[#8794ab]")
-                      }
-                    >
-                      {isConnected ? "Connected" : "Planned"}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <SourceDataPanel
+            cityId={liveCity?.id ?? null}
+            refreshKey={marketRefreshVersion}
+            onViewEvidence={() => setDetailDrawerOpen(true)}
+          />
 
           <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
             <h4 className="text-xs font-bold text-[#07142f] mb-1">Market Research Report</h4>
@@ -1254,31 +1228,19 @@ const CityScoring = () => {
             </Button>
           </div>
 
-          <div className="rounded-lg bg-white border border-[#eef2f7] p-3 flex-1">
-            <h4 className="text-xs font-bold text-[#07142f] mb-2">Market Snapshot</h4>
-            <div className="grid grid-cols-[1fr_auto] gap-3 items-center">
-              <div
-                className="relative h-24 rounded border border-[#eef2f7] overflow-hidden"
-                style={{
-                  backgroundColor: "#f1f6fc",
-                  backgroundImage:
-                    "linear-gradient(to right, #e3ecf7 1px, transparent 1px), linear-gradient(to bottom, #e3ecf7 1px, transparent 1px)",
-                  backgroundSize: "16px 16px",
-                }}
-              >
-                <MapPin size={16} className="absolute text-[#174be8]" style={{ top: "30%", left: "40%" }} fill="#174be8" />
-                <MapPin size={12} className="absolute text-[#0ea66e]" style={{ top: "55%", left: "22%" }} fill="#0ea66e" />
-                <MapPin size={12} className="absolute text-[#0ea66e]" style={{ top: "20%", left: "65%" }} fill="#0ea66e" />
-                <MapPin size={12} className="absolute text-[#e11d48]" style={{ top: "65%", left: "70%" }} fill="#e11d48" />
-              </div>
-              <div className="space-y-1.5 text-[10px] text-[#14233b] whitespace-nowrap">
-                <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#174be8]" /> Selected Market</div>
-                <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#0ea66e]" /> Nearby Markets</div>
-                <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#e11d48]" /> Higher Competition</div>
-              </div>
-            </div>
-          </div>
+          <NearbyMarketsPanel
+            cityId={liveCity?.id ?? null}
+            state={selectedState}
+            metroArea={liveCity?.metro_area ?? (selected as any).metroArea ?? null}
+            refreshKey={marketRefreshVersion}
+            onSelect={(m) => {
+              setSelectedMarketKey({ city: m.city, state: m.state });
+              const sample = sampleCities.find((s) => sameMarket(s.city, s.state, m.city, m.state));
+              if (sample) setSelectedId(sample.id);
+            }}
+          />
         </div>
+      </div>
       </div>
 
       <AddCriteriaDrawer

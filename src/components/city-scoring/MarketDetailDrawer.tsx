@@ -17,6 +17,7 @@ export interface CustomCriterion {
 
 interface Props {
   market: CityData;
+  refreshVersion?: number;
   open: boolean;
   onClose: () => void;
   categoryScores: Record<string, number>;
@@ -213,6 +214,7 @@ function GeoBadge({ source, signalKey }: { source?: string | null; signalKey?: s
 
 export function MarketDetailDrawer({
   market,
+  refreshVersion = 0,
   open,
   onClose,
   onFindTeachers,
@@ -279,7 +281,7 @@ export function MarketDetailDrawer({
     };
 
     loadLiveEvidence();
-  }, [open, market.city, market.state]);
+  }, [open, market.city, market.state, refreshVersion]);
 
   const groupedSignals = useMemo(() => {
     return SOW_CATEGORIES.map((category) => ({

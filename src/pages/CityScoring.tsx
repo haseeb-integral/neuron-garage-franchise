@@ -933,113 +933,57 @@ const CityScoring = () => {
             </Button>
           </div>
         </div>
-        <style>{`
-          .ng-flip-card { perspective: 1200px; }
-          .ng-flip-inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform 0.55s cubic-bezier(0.4,0,0.2,1); }
-          .ng-flip-inner.is-flipped { transform: rotateY(180deg); }
-          .ng-flip-face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
-          .ng-flip-face-back { transform: rotateY(180deg); }
-        `}</style>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {CATEGORIES.map((cat) => {
             const Icon = cat.icon;
             const customCount = customCriteria.filter((c) => c.category === cat.label).length;
-            const isFlipped = flippedCard === cat.key;
-            const metrics = METRICS_BY_CATEGORY[cat.key] ?? [];
-            const subTotal = metrics.reduce((s, m) => s + (subWeights[cat.key]?.[m.key] ?? 0), 0);
-            const totalOk = subTotal === 100;
             return (
-              <div key={cat.key} className="ng-flip-card relative" style={{ minHeight: 230 }}>
-                <div className={`ng-flip-inner ${isFlipped ? "is-flipped" : ""}`}>
-                  {/* FRONT */}
-                  <div
-                    className="ng-flip-face rounded-lg border border-[#eef2f7] bg-white p-3 flex flex-col gap-2 cursor-pointer hover:border-[#174be8]/40 transition-colors"
-                    onClick={(e) => {
-                      // Don't flip when interacting with the slider
-                      const target = e.target as HTMLElement;
-                      if (target.closest("[data-no-flip]")) return;
-                      setFlippedCard(cat.key);
-                    }}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 28, height: 28, backgroundColor: cat.bg }}>
-                          <Icon size={15} style={{ color: cat.color }} />
-                        </span>
-                        <span className="text-[12.5px] font-semibold text-[#07142f] leading-tight">{cat.label}</span>
-                      </div>
-                    </div>
-                    <div className="text-right text-base font-bold text-[#07142f]">{weights[cat.key]}%</div>
-                    <div data-no-flip onClick={(e) => e.stopPropagation()}>
-                      <Slider
-                        value={[weights[cat.key]]}
-                        onValueChange={([v]) => setWeights((w) => rebalanceWeights(w, cat.key, v))}
-                        max={100}
-                        step={1}
-                        className="[&>span:first-child]:bg-[#eaf0ff] [&>span:first-child]:h-1.5 [&_[role=slider]]:h-3.5 [&_[role=slider]]:w-3.5 [&_[role=slider]]:border-[#174be8] [&_[role=slider]]:bg-white [&>span:first-child_span]:bg-[#174be8]"
-                      />
-                    </div>
-                    <p className="text-[11px] text-[#8794ab] leading-snug">{cat.description}</p>
-                    {customCount > 0 && (
-                      <p className="text-[10px] text-[#174be8] font-medium">+{customCount} custom metric{customCount > 1 ? "s" : ""}</p>
-                    )}
-                    <p className="text-[10px] text-[#8794ab] mt-auto pt-1 italic">Click to configure metrics</p>
-                  </div>
-
-                  {/* BACK */}
-                  <div className="ng-flip-face ng-flip-face-back rounded-lg border border-[#174be8]/30 bg-white p-2 flex flex-col">
-                    <div className="flex items-center gap-1.5 pb-1.5 border-b border-[#eef2f7]">
-                      <button
-                        onClick={() => setFlippedCard(null)}
-                        className="flex items-center justify-center h-6 w-6 rounded hover:bg-[#eaf0ff] text-[#174be8]"
-                        aria-label="Back to category"
-                      >
-                        <ArrowLeft size={14} />
-                      </button>
-                      <span className="text-[11px] font-semibold text-[#07142f] leading-tight truncate">{cat.label}</span>
-                    </div>
-                    <div className="flex-1 overflow-y-auto py-1.5 space-y-1">
-                      {metrics.map((m) => {
-                        const value = subWeights[cat.key]?.[m.key] ?? 0;
-                        const isMissing = m.status === "missing" || m.status === "blocked";
-                        const pillClass =
-                          m.status === "live"
-                            ? "bg-green-500/15 text-green-700"
-                            : m.status === "proxy"
-                            ? "bg-blue-500/15 text-blue-700"
-                            : "bg-gray-200 text-gray-600";
-                        const pillLabel = isMissing ? "No data yet" : m.status === "live" ? "Live" : "Proxy";
-                        return (
-                          <div key={m.key} className="flex items-center gap-1.5">
-                            <span className={`flex-1 text-[10px] leading-tight truncate ${isMissing ? "text-[#8794ab]" : "text-[#07142f]"}`} title={m.label}>
-                              {m.label}
-                            </span>
-                            <input
-                              type="number"
-                              min={0}
-                              max={100}
-                              value={value}
-                              onChange={(e) => setSubWeight(cat.key, m.key, Number(e.target.value))}
-                              className="w-10 h-5 text-[10px] text-right rounded border border-[#e5eaf2] px-1 focus:outline-none focus:border-[#174be8]"
-                            />
-                            <span className={`text-[8px] px-1 py-0.5 rounded font-medium whitespace-nowrap ${pillClass}`}>{pillLabel}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div className="pt-1.5 border-t border-[#eef2f7] flex items-center justify-between">
-                      <span className="text-[10px] text-[#8794ab]">Total:</span>
-                      <span className={`text-[11px] font-bold ${totalOk ? "text-green-600" : "text-orange-600"}`}>
-                        {subTotal} / 100
-                      </span>
-                    </div>
+              <div
+                key={cat.key}
+                className="rounded-lg border border-[#eef2f7] bg-white p-3 flex flex-col gap-2 hover:border-[#174be8]/40 transition-colors"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 28, height: 28, backgroundColor: cat.bg }}>
+                      <Icon size={15} style={{ color: cat.color }} />
+                    </span>
+                    <span className="text-[12.5px] font-semibold text-[#07142f] leading-tight">{cat.label}</span>
                   </div>
                 </div>
+                <div className="text-right text-base font-bold text-[#07142f]">{weights[cat.key]}%</div>
+                <Slider
+                  value={[weights[cat.key]]}
+                  onValueChange={([v]) => setWeights((w) => rebalanceWeights(w, cat.key, v))}
+                  max={100}
+                  step={1}
+                  className="[&>span:first-child]:bg-[#eaf0ff] [&>span:first-child]:h-1.5 [&_[role=slider]]:h-3.5 [&_[role=slider]]:w-3.5 [&_[role=slider]]:border-[#174be8] [&_[role=slider]]:bg-white [&>span:first-child_span]:bg-[#174be8]"
+                />
+                <p className="text-[11px] text-[#8794ab] leading-snug">{cat.description}</p>
+                {customCount > 0 && (
+                  <p className="text-[10px] text-[#174be8] font-medium">+{customCount} custom metric{customCount > 1 ? "s" : ""}</p>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setOpenSubMetricsFor(cat.key)}
+                  className="mt-auto pt-1 inline-flex items-center gap-1 text-[10.5px] font-medium text-[#174be8] hover:underline self-start"
+                >
+                  <Settings2 size={11} />
+                  Configure metrics
+                </button>
               </div>
             );
           })}
         </div>
       </div>
+
+      <SubMetricWeightsDrawer
+        open={openSubMetricsFor !== null}
+        onOpenChange={(o) => { if (!o) setOpenSubMetricsFor(null); }}
+        categoryKey={openSubMetricsFor}
+        categoryLabel={CATEGORIES.find((c) => c.key === openSubMetricsFor)?.label ?? ""}
+        categoryColor={CATEGORIES.find((c) => c.key === openSubMetricsFor)?.color ?? "#174be8"}
+        categoryBg={CATEGORIES.find((c) => c.key === openSubMetricsFor)?.bg ?? "#eaf0ff"}
+      />
 
       {/* Filters row */}
       <div className="mb-4 rounded-lg bg-white border border-[#eef2f7] p-3 flex flex-wrap items-end gap-3">

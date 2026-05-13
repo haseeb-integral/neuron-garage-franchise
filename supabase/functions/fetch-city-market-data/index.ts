@@ -197,6 +197,90 @@ async function fetchFirecrawlSignals(city: string, state: string) {
   }
 }
 
+// ---- Firecrawl waitlist / sold-out signal scraper ----
+// Scrapes up to 5 competitor URLs and counts pages mentioning waitlist/sold-out language.
+async function fetchCompetitorWaitlistSignals(urls: string[]) {
+  const key = Deno.env.get('FIRECRAWL_API_KEY')
+  if (!key) return { waitlist: 0, soldout: 0, scanned: 0, error: null as string | null }
+  const targets = urls.filter((u) => /^https?:\/\//.test(u)).slice(0, 5)
+  if (targets.length === 0) return { waitlist: 0, soldout: 0, scanned: 0, error: null }
+  const WAITLIST_RE = /waitlist|wait list|join the wait|notify me when/i
+  const SOLDOUT_RE = /sold out|fully booked|registration closed|session full|class full|enrollment closed/i
+  let waitlist = 0, soldout = 0
+  const errs: string[] = []
+  await Promise.all(targets.map(async (url) => {
+    try {
+      const res = await fetch('https://api.firecrawl.dev/v2/scrape', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+        body: JSON.stringify({ url, formats: ['markdown'], onlyMainContent: true }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { errs.push(`Firecrawl ${res.status} ${url}`); return }
+      const md: string = (data?.data?.markdown ?? data?.markdown ?? '') as string
+      if (WAITLIST_RE.test(md)) waitlist++
+      if (SOLDOUT_RE.test(md)) soldout++
+    } catch (e) { errs.push((e as Error).message) }
+  }))
+  return { waitlist, soldout, scanned: targets.length, error: errs.length ? errs.join(' | ') : null }
+}
+
+// ---- Google Trends via Apify (emastra/google-trends-scraper) ----
+// On-demand only — fired by user-clicked refresh, not bulk backfill.
+async function fetchGoogleTrends(city: string, state: string) {
+  const token = Deno.env.get('APIFY_API_TOKEN')
+  if (!token) return { city_camp: null as number | null, generic_camp: null as number | null, error: null as string | null }
+  const actorId = normalizeActorId('emastra/google-trends-scraper')
+  const cityKw = `summer camp ${city}`
+  const genericKw = 'summer day camp'
+  const payload = {
+    searchTerms: [cityKw, genericKw],
+    geo: 'US',
+    timeRange: 'today 12-m',
+    category: 0,
+  }
+  try {
+    const res = await fetch(`https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${token}&timeout=120`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    const data = await res.json().catch(() => [])
+    if (!res.ok) return { city_camp: null, generic_camp: null, error: `Apify Trends ${res.status}: ${JSON.stringify(data).slice(0, 200)}` }
+    const items: any[] = Array.isArray(data) ? data : []
+    // Compute average interest per term across the returned series.
+    const avgFor = (term: string): number | null => {
+      const matches = items.filter((it) => {
+        const t = (it?.searchTerm ?? it?.keyword ?? it?.term ?? '').toString().toLowerCase()
+        return t === term.toLowerCase()
+      })
+      if (matches.length === 0) return null
+      // series can be `interestOverTime`, `data`, or flat `value`
+      const values: number[] = []
+      for (const m of matches) {
+        const series = m?.interestOverTime ?? m?.data ?? m?.timelineData ?? []
+        if (Array.isArray(series)) {
+          for (const pt of series) {
+            const v = Number(pt?.value ?? pt?.interest ?? pt?.score)
+            if (Number.isFinite(v)) values.push(v)
+          }
+        } else if (typeof m?.value === 'number') {
+          values.push(m.value)
+        }
+      }
+      if (values.length === 0) return null
+      return Math.round((values.reduce((s, v) => s + v, 0) / values.length) * 10) / 10
+    }
+    return {
+      city_camp: avgFor(cityKw),
+      generic_camp: avgFor(genericKw),
+      error: null,
+    }
+  } catch (e) {
+    return { city_camp: null, generic_camp: null, error: (e as Error).message }
+  }
+}
+
 // clamp moved to ../_shared/scoring.ts as clampScore
 
 // ---- Census ACS 5-year ----

@@ -546,6 +546,7 @@ const CityScoring = () => {
   const resetWeights = () => {
     setWeights(defaultWeights);
     setAppliedWeights(defaultWeights);
+    resetSubWeights();
     toast.success("Weights reset to defaults");
   };
 

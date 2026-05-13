@@ -386,7 +386,33 @@ Deno.serve(async (req) => {
     const existingCounts = (latestJobRows?.[0]?.response_summary?.counts ?? {}) as Record<string, number>
     const existingWarnings = (latestJobRows?.[0]?.response_summary?.warnings ?? {}) as Record<string, unknown>
 
-    const signals = buildSowSignals({ census: censusData, bls: blsData, existingCounts, existingWarnings })
+    // ---- Sprint additions: Census B11005/B23007/B08303, Apify Trends, Firecrawl waitlist ----
+    const { data: sprintData, error: sprintError } = await fetchCensusSprintMetrics(
+      city,
+      state,
+      censusData?.place_fips ?? null,
+      censusData?.state_fips ?? null,
+    )
+    const trendsResult = await fetchGoogleTrends(city, state)
+    // Pull existing competitor URLs (populated by fetch-city-market-data, which runs first).
+    const { data: competitorRows } = await admin
+      .from('city_competitors')
+      .select('source_url')
+      .eq('city_id', cityId)
+      .not('source_url', 'is', null)
+      .limit(20)
+    const competitorUrls = (competitorRows ?? []).map((r) => r.source_url as string).filter(Boolean)
+    const waitlistResult = await fetchCompetitorWaitlistSignals(competitorUrls)
+
+    const signals = buildSowSignals({
+      census: censusData,
+      bls: blsData,
+      existingCounts,
+      existingWarnings,
+      sprint: sprintData,
+      trends: trendsResult,
+      waitlist: waitlistResult,
+    })
 
     await admin.from('city_market_signals').delete().eq('city_id', cityId)
     const rows = signals.map((s) => ({

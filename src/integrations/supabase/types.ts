@@ -645,6 +645,45 @@ export type Database = {
         }
         Relationships: []
       }
+      us_cities_geo: {
+        Row: {
+          city: string
+          city_ascii: string
+          county_name: string | null
+          density: number | null
+          id: number
+          lat: number
+          lng: number
+          population: number | null
+          state_id: string
+          state_name: string
+        }
+        Insert: {
+          city: string
+          city_ascii: string
+          county_name?: string | null
+          density?: number | null
+          id?: number
+          lat: number
+          lng: number
+          population?: number | null
+          state_id: string
+          state_name: string
+        }
+        Update: {
+          city?: string
+          city_ascii?: string
+          county_name?: string | null
+          density?: number | null
+          id?: number
+          lat?: number
+          lng?: number
+          population?: number | null
+          state_id?: string
+          state_name?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string

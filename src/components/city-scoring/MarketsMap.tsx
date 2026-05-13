@@ -2,9 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
-import { RefreshCw } from "lucide-react";
 import type { RankedMarket } from "@/lib/cityScoringLiveData";
 
 const TIER_COLOR: Record<string, string> = {
@@ -45,7 +42,6 @@ function FitBounds({ points }: { points: Coords[] }) {
 export function MarketsMap({ markets, onSelect }: Props) {
   const [coordsByCityId, setCoordsByCityId] = useState<Record<string, Coords>>({});
   const [loading, setLoading] = useState(false);
-  const [backfilling, setBackfilling] = useState(false);
 
   const cityIds = useMemo(
     () => markets.map((m) => m.cityId).filter((x): x is string => !!x),
@@ -89,79 +85,22 @@ export function MarketsMap({ markets, onSelect }: Props) {
   const unmappedCount = markets.length - mapped.length;
   const points = mapped.map((x) => x.c);
 
-  const handleBackfill = async () => {
-    setBackfilling(true);
-    try {
-      // Edge function rate-limits to ~1.1s per city; keep batch small to avoid timeout.
-      const { data, error } = await supabase.functions.invoke("backfill-city-coordinates", {
-        body: { limit: 25 },
-      });
-      if (error) throw error;
-      const updated = (data as any)?.updated ?? 0;
-      const processed = (data as any)?.processed ?? 0;
-      const failures = (data as any)?.failures ?? [];
-      if (processed === 0) {
-        toast.success("All cities already have coordinates.");
-      } else {
-        toast.success(`Geocoded ${updated}/${processed} cities${failures.length ? ` • ${failures.length} failed` : ""}. Run again for more.`);
-        if (failures.length) console.warn("Backfill failures:", failures);
-      }
-      // Refetch coords for the cities currently in view.
-      if (cityIds.length > 0) {
-        const { data: refresh } = await supabase
-          .from("cities")
-          .select("id, latitude, longitude")
-          .in("id", cityIds);
-        const map: Record<string, Coords> = {};
-        (refresh ?? []).forEach((row: any) => {
-          if (row.latitude != null && row.longitude != null) {
-            map[row.id] = { lat: Number(row.latitude), lng: Number(row.longitude) };
-          }
-        });
-        setCoordsByCityId(map);
-      }
-    } catch (e) {
-      console.error(e);
-      toast.error("Backfill failed: " + (e as Error).message);
-    } finally {
-      setBackfilling(false);
-    }
-  };
-
   return (
     <div className="rounded-lg border border-[#eef2f7] bg-white p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-bold text-[#07142f]">Markets Map</h3>
-          <p className="text-[11px] text-[#8794ab]">
-            {mapped.length} of {markets.length} markets mapped
-            {unmappedCount > 0 && ` • ${unmappedCount} missing coordinates`}
-          </p>
-        </div>
-        {unmappedCount > 0 && (
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={backfilling}
-            onClick={handleBackfill}
-            className="h-8 border-[#dbe4f2] text-[#174be8] gap-1.5 text-[11px]"
-          >
-            <RefreshCw size={12} className={backfilling ? "animate-spin" : ""} />
-            {backfilling ? "Geocoding…" : "Backfill Coordinates"}
-          </Button>
-        )}
+      <div className="mb-2">
+        <h3 className="text-sm font-bold text-[#07142f]">Markets Map</h3>
+        <p className="text-[11px] text-[#8794ab]">
+          {mapped.length} of {markets.length} markets mapped
+          {unmappedCount > 0 && ` • ${unmappedCount} missing coordinates`}
+        </p>
       </div>
 
       <div className="h-[520px] w-full overflow-hidden rounded-md border border-[#eef2f7]">
         {loading && Object.keys(coordsByCityId).length === 0 ? (
           <div className="flex h-full items-center justify-center text-[12px] text-[#8794ab]">Loading map…</div>
         ) : mapped.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center text-center px-6">
-            <p className="text-[13px] font-semibold text-[#07142f] mb-1">No mapped cities yet</p>
-            <p className="text-[11px] text-[#526078] mb-3">Click “Backfill Coordinates” to geocode this batch (~1s per city).</p>
-            <Button onClick={handleBackfill} disabled={backfilling} className="bg-[#174be8] hover:bg-[#1240c9] text-white">
-              {backfilling ? "Geocoding…" : "Backfill Coordinates"}
-            </Button>
+          <div className="flex h-full items-center justify-center px-6 text-center text-[12px] text-[#8794ab]">
+            No mapped cities for the current filters.
           </div>
         ) : (
           <MapContainer center={[39.5, -98.35]} zoom={4} style={{ height: "100%", width: "100%" }} scrollWheelZoom>

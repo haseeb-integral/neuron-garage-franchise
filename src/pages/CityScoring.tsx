@@ -667,20 +667,28 @@ const CityScoring = () => {
     value: s.value,
   }));
 
-  const fallbackSigRows = [
-    { icon: Users, label: "Children Ages 5-12", value: "19,842", delta: "+12% vs. nat. avg.", deltaClass: "text-[#8ad1a8]" },
-    { icon: HomeIcon, label: "Households ($100k+)", value: "46%", delta: "+15% vs. nat. avg.", deltaClass: "text-[#8ad1a8]" },
-    { icon: DollarSign, label: "Premium Camp Pricing", value: "$245 / week", delta: "+8%", deltaClass: "text-[#8ad1a8]" },
-    { icon: GraduationCap, label: "Teacher Density", value: "1:475", delta: "20% below nat-avg kts", deltaClass: "text-[#8794ab]" },
-    { icon: Building2, label: "School District Access", value: "High", delta: "Strong availability", deltaClass: "text-[#8794ab]" },
-    { icon: Star, label: "Millennial Density", value: "42%", delta: "+16% vs. avg.", deltaClass: "text-[#8ad1a8]" },
-  ];
-  const sigRows = liveSigRows.length > 0 ? liveSigRows : fallbackSigRows;
+  const sigRows = liveSigRows;
+  const hasLiveSignals = sigRows.length > 0;
 
   const lastScrapedAt = liveCity?.last_scraped_at ?? liveJob?.completed_at ?? null;
-  const lastScrapedLabel = lastScrapedAt
+  const lastScrapedAtMs = lastScrapedAt ? new Date(lastScrapedAt).getTime() : null;
+  const lastScrapedAbsolute = lastScrapedAt
     ? new Date(lastScrapedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
     : null;
+  const formatRelative = (ms: number) => {
+    const diff = Math.max(0, Date.now() - ms);
+    const m = Math.round(diff / 60000);
+    if (m < 1) return "just now";
+    if (m < 60) return `${m} min ago`;
+    const h = Math.round(m / 60);
+    if (h < 24) return `${h} hr ago`;
+    const d = Math.round(h / 24);
+    if (d < 30) return `${d} day${d === 1 ? "" : "s"} ago`;
+    const mo = Math.round(d / 30);
+    return `${mo} mo ago`;
+  };
+  const lastScrapedRelative = lastScrapedAtMs ? formatRelative(lastScrapedAtMs) : null;
+  const isStale = lastScrapedAtMs ? Date.now() - lastScrapedAtMs > 24 * 60 * 60 * 1000 : false;
 
   // Derived display values for metro, county, market type — wired to live DB, with honest fallbacks
   const displayMetroArea = liveCity?.metro_area ?? (selected as any).metroArea ?? "\u2014";

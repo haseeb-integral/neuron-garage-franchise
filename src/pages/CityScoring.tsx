@@ -24,6 +24,7 @@ import { AddCityModal } from "@/components/city-scoring/AddCityModal";
 import { MarketReportModal } from "@/components/city-scoring/MarketReportModal";
 import { SourceDataPanel } from "@/components/city-scoring/SourceDataPanel";
 import { NearbyMarketsPanel } from "@/components/city-scoring/NearbyMarketsPanel";
+import { MarketsMap } from "@/components/city-scoring/MarketsMap";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {

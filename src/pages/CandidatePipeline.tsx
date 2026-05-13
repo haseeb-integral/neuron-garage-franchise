@@ -43,7 +43,8 @@ const CandidatePipeline = () => {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [active, setActive] = useState<Candidate | null>(null);
-  const [compact, setCompact] = useState(false);
+  const compact = useCandidatePipelineStore((s) => s.compact);
+  const setCompact = useCandidatePipelineStore((s) => s.setCompact);
   const [collapsed, setCollapsed] = useState<Set<StageId>>(new Set());
   const [confirmCandidate, setConfirmCandidate] = useState<Candidate | null>(null);
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);

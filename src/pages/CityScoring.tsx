@@ -35,6 +35,53 @@ import {
   type RankedMarket,
 } from "@/lib/cityScoringLiveData";
 
+function rebalanceWeights<K extends string>(
+  prev: Record<K, number>,
+  changedKey: K,
+  rawValue: number,
+): Record<K, number> {
+  const newValue = Math.max(0, Math.min(100, Math.round(rawValue)));
+  const keys = Object.keys(prev) as K[];
+  const others = keys.filter((k) => k !== changedKey);
+  const pool = others.reduce((s, k) => s + prev[k], 0);
+  const remainder = 100 - newValue;
+
+  const next = { ...prev };
+  next[changedKey] = newValue;
+
+  if (others.length === 0) return next;
+
+  if (pool > 0) {
+    others.forEach((k) => {
+      next[k] = Math.max(0, (prev[k] / pool) * remainder);
+    });
+  } else {
+    const equal = remainder / others.length;
+    others.forEach((k) => {
+      next[k] = Math.max(0, equal);
+    });
+  }
+
+  // Round to integers
+  keys.forEach((k) => {
+    next[k] = Math.round(next[k]);
+  });
+
+  // Reconcile rounding drift so total === 100, adjusting only "others"
+  let diff = 100 - keys.reduce((s, k) => s + next[k], 0);
+  while (diff !== 0 && others.length > 0) {
+    // Pick the "other" with largest value (when subtracting) or smallest (when adding) to minimize visual jump
+    const sorted = [...others].sort((a, b) => next[b] - next[a]);
+    const target = diff > 0 ? sorted[sorted.length - 1] : sorted[0];
+    const step = diff > 0 ? 1 : -1;
+    if (next[target] + step < 0) break;
+    next[target] = next[target] + step;
+    diff -= step;
+  }
+
+  return next;
+}
+
 type CategoryKey =
   | "demand"
   | "pricingPower"
@@ -844,7 +891,7 @@ const CityScoring = () => {
                 <div className="text-right text-base font-bold text-[#07142f]">{weights[cat.key]}%</div>
                 <Slider
                   value={[weights[cat.key]]}
-                  onValueChange={([v]) => setWeights((w) => ({ ...w, [cat.key]: v }))}
+                  onValueChange={([v]) => setWeights((w) => rebalanceWeights(w, cat.key, v))}
                   max={100}
                   step={1}
                   className="[&>span:first-child]:bg-[#eaf0ff] [&>span:first-child]:h-1.5 [&_[role=slider]]:h-3.5 [&_[role=slider]]:w-3.5 [&_[role=slider]]:border-[#174be8] [&_[role=slider]]:bg-white [&>span:first-child_span]:bg-[#174be8]"

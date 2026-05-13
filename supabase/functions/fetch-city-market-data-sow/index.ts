@@ -12,6 +12,12 @@ import {
   type SowMetricValues,
   type CategoryScores,
 } from '../_shared/scoring.ts'
+import {
+  fetchCensusSprintMetrics,
+  fetchGoogleTrends,
+  fetchCompetitorWaitlistSignals,
+  type CensusSprintMetrics,
+} from '../_shared/metricFetchers.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -225,8 +231,11 @@ function buildSowSignals(args: {
   bls: any | null
   existingCounts: Record<string, number>
   existingWarnings: Record<string, unknown>
+  sprint: CensusSprintMetrics | null
+  trends: { city_camp: number | null; generic_camp: number | null } | null
+  waitlist: { scanned: number; waitlist: number; soldout: number } | null
 }) {
-  const { census, bls, existingCounts } = args
+  const { census, bls, existingCounts, sprint, trends, waitlist } = args
   const signals: SignalInput[] = []
   const add = (s: SignalInput) => signals.push(s)
 
@@ -236,8 +245,17 @@ function buildSowSignals(args: {
   add({ signal_key: 'median_household_income', label: 'Median Household Income', value: fmtMoney(census?.median_household_income ?? null), source: census ? 'census' : 'not_connected', source_url: census?.source_url ?? null, confidence: census ? 0.95 : 0, status: census ? 'live' : 'missing', metric_category: 'demand', used_in_score: Boolean(census) })
   add({ signal_key: 'income_100k_plus_pct', label: 'Households Earning $100k+', value: fmtPct(census?.income_100k_plus_pct ?? null), source: census ? 'census' : 'not_connected', source_url: census?.source_url ?? null, confidence: census ? 0.95 : 0, status: census ? 'live' : 'missing', metric_category: 'demand', used_in_score: Boolean(census) })
   add({ signal_key: 'income_150k_plus_pct', label: 'Households Earning $150k+', value: fmtPct(census?.income_150k_plus_pct ?? null), source: census ? 'census' : 'not_connected', source_url: census?.source_url ?? null, confidence: census ? 0.95 : 0, status: census ? 'live' : 'missing', metric_category: 'demand', used_in_score: Boolean(census) })
-  add(missingSignal('demand', 'young_family_growth_rate', 'Growth Rate of Young Families', 'census', 'Requires multi-year ACS comparison.'))
-  add(missingSignal('demand', 'dual_income_household_pct', '% Dual-Income Households', 'census', 'Requires ACS family employment variable mapping.'))
+  if (sprint?.young_family_growth_rate_pct != null) {
+    const v = sprint.young_family_growth_rate_pct
+    add({ signal_key: 'young_family_growth_rate', label: 'Growth Rate of Young Families (5-yr)', value: `${v > 0 ? '+' : ''}${v}%`, source: 'census', source_url: sprint.source_url, confidence: 0.85, status: 'live', metric_category: 'demand', used_in_score: true, notes: 'ACS B11005_002 households w/ people <18, 2022 vs 2017.', raw_data: { table: 'B11005', hh_2022: sprint.hh_kids_2022, hh_2017: sprint.hh_kids_2017 } })
+  } else {
+    add(missingSignal('demand', 'young_family_growth_rate', 'Growth Rate of Young Families', 'census', 'ACS 2017 vintage missing for this place.'))
+  }
+  if (sprint?.dual_income_household_pct != null) {
+    add({ signal_key: 'dual_income_household_pct', label: '% Dual-Income Households (married w/ kids)', value: `${sprint.dual_income_household_pct}%`, source: 'census', source_url: sprint.source_url, confidence: 0.85, status: 'live', metric_category: 'demand', used_in_score: true, notes: 'ACS B23007: husband-in-labor-force / married-couple families w/ own children.', raw_data: { table: 'B23007', married_kids: sprint.married_kids, dual_income: sprint.dual_income } })
+  } else {
+    add(missingSignal('demand', 'dual_income_household_pct', '% Dual-Income Households', 'census', 'B23007 returned null for this place.'))
+  }
   add({ signal_key: 'education_bachelors_plus_pct', label: 'Parent Education / Bachelor’s+', value: fmtPct(census?.bachelors_plus_pct ?? null), source: census ? 'census' : 'not_connected', source_url: census?.source_url ?? null, confidence: census ? 0.9 : 0, status: census ? 'live' : 'missing', metric_category: 'demand', used_in_score: Boolean(census) })
   add(missingSignal('demand', 'summer_weather_index', 'Summer Weather Index', 'weather', 'Needs NOAA/Open-Meteo integration.'))
   add(missingSignal('demand', 'avg_peak_summer_temperature', 'Avg Peak Summer Temperature', 'weather', 'Needs NOAA/Open-Meteo integration.'))
@@ -270,10 +288,22 @@ function buildSowSignals(args: {
   add({ signal_key: 'stem_robotics_maker_camp_count', label: 'STEM / Robotics / Maker Camps', value: existingCounts.stem_enrichment ?? 'Not available yet', source: 'apify', confidence: 0.65, status: 'proxy', metric_category: 'competitive_landscape', used_in_score: true })
   add(missingSignal('competitive_landscape', 'school_based_summer_camp_count', 'School-Based Summer Camps', 'firecrawl', 'Needs classifier for camp programs hosted at schools.'))
   add({ signal_key: 'national_brand_presence', label: 'National Brand Presence', value: 'Proxy from competitor names', source: 'apify', confidence: 0.35, status: 'proxy', metric_category: 'competitive_landscape', used_in_score: false, notes: 'Needs explicit national-brand detector list.' })
-  add(missingSignal('competitive_landscape', 'google_search_demand_summer_camp', 'Google Search Demand: summer camp [city]', 'google_trends', 'Needs Google Trends actor/source.'))
-  add(missingSignal('competitive_landscape', 'google_search_demand_summer_day_camp', 'Google Search Demand: summer day camp in [city]', 'google_trends', 'Needs Google Trends actor/source.'))
-  add(missingSignal('competitive_landscape', 'google_search_demand_summer_day_camps_year', 'Google Search Demand: Summer Day Camps [Current Year]', 'google_trends', 'Needs Google Trends actor/source.'))
-  add(missingSignal('competitive_landscape', 'waitlist_sold_out_signal_count', 'Waitlist / Sold-Out Signals', 'firecrawl', 'Needs page extraction for waitlist/sold-out language.'))
+  if (trends?.city_camp != null) {
+    add({ signal_key: 'google_search_demand_summer_camp', label: 'Google Search Demand: summer camp [city] (12-mo avg)', value: String(trends.city_camp), source: 'apify', source_url: 'https://trends.google.com', confidence: 0.6, status: 'live', metric_category: 'competitive_landscape', used_in_score: true, raw_data: { actor: 'emastra/google-trends-scraper', term: 'summer camp [city]' } })
+  } else {
+    add(missingSignal('competitive_landscape', 'google_search_demand_summer_camp', 'Google Search Demand: summer camp [city]', 'google_trends', 'Apify returned no series for this term.'))
+  }
+  if (trends?.generic_camp != null) {
+    add({ signal_key: 'google_search_demand_summer_day_camp', label: 'Google Search Demand: summer day camp (12-mo avg)', value: String(trends.generic_camp), source: 'apify', source_url: 'https://trends.google.com', confidence: 0.6, status: 'live', metric_category: 'competitive_landscape', used_in_score: true, raw_data: { actor: 'emastra/google-trends-scraper', term: 'summer day camp' } })
+  } else {
+    add(missingSignal('competitive_landscape', 'google_search_demand_summer_day_camp', 'Google Search Demand: summer day camp in [city]', 'google_trends', 'Apify returned no series for this term.'))
+  }
+  add(missingSignal('competitive_landscape', 'google_search_demand_summer_day_camps_year', 'Google Search Demand: Summer Day Camps [Current Year]', 'google_trends', 'Year-tagged variant deferred — needs dated keyword.'))
+  if (waitlist && waitlist.scanned > 0) {
+    add({ signal_key: 'waitlist_sold_out_signal_count', label: `Waitlist / Sold-Out Signals (${waitlist.scanned} competitor pages scanned)`, value: String(waitlist.waitlist + waitlist.soldout), source: 'firecrawl', confidence: 0.7, status: 'live', metric_category: 'competitive_landscape', used_in_score: true, notes: 'Firecrawl markdown scrape of top 5 competitor URLs; combined waitlist + sold-out hit count.', raw_data: { scanned: waitlist.scanned, waitlist: waitlist.waitlist, soldout: waitlist.soldout } })
+  } else {
+    add(missingSignal('competitive_landscape', 'waitlist_sold_out_signal_count', 'Waitlist / Sold-Out Signals', 'firecrawl', 'No competitor URLs available to scan.'))
+  }
 
   add(missingSignal('franchisee_supply', 'public_elementary_teacher_count', 'Public Elementary Teachers', 'state_edu', 'Needs state/NCES district data.'))
   add(missingSignal('franchisee_supply', 'private_charter_montessori_teacher_count', 'Private / Charter / Montessori Teachers', 'state_edu', 'Needs private/charter/Montessori teacher source or estimate.'))
@@ -284,7 +314,11 @@ function buildSowSignals(args: {
 
   add({ signal_key: 'rental_venue_count', label: 'Rental Venues (Schools / Churches / Rec Centers)', value: existingCounts.rental_venues ?? 'Not available yet', source: 'apify', confidence: 0.55, status: 'proxy', metric_category: 'ease_of_operations', used_in_score: true })
   add(missingSignal('ease_of_operations', 'classroom_rental_cost_weekly', 'Typical Classroom Rental Cost per Week', 'firecrawl', 'Needs venue/classroom rental price extraction.'))
-  add(missingSignal('ease_of_operations', 'commute_sprawl_index', 'Commute Times / Geographic Sprawl', 'census_maps', 'Needs Census commute and/or maps/geography source.'))
+  if (sprint?.commute_sprawl_index_pct != null) {
+    add({ signal_key: 'commute_sprawl_index', label: 'Commute Times / Sprawl (% workers w/ 45+ min commute)', value: `${sprint.commute_sprawl_index_pct}%`, source: 'census', source_url: sprint.source_url, confidence: 0.85, status: 'live', metric_category: 'ease_of_operations', used_in_score: true, notes: 'ACS B08303: workers with 45+ minute commute / total workers.', raw_data: { table: 'B08303', long_commute: sprint.long_commute, total: sprint.commute_total } })
+  } else {
+    add(missingSignal('ease_of_operations', 'commute_sprawl_index', 'Commute Times / Geographic Sprawl', 'census', 'B08303 returned null for this place.'))
+  }
   add(missingSignal('ease_of_operations', 'state_camp_regulation_complexity', 'State Camp Regulation Complexity', 'aca', 'Needs ACA state law/regulation mapping.'))
   add({ signal_key: 'guide_wage_proxy', label: 'Estimated Guide Wage Proxy', value: fmtMoney(bls?.guide_wage_proxy ?? null), source: bls ? 'bls' : 'not_connected', source_url: bls?.source_url ?? null, confidence: bls ? 0.6 : 0, status: bls ? 'proxy' : 'missing', metric_category: 'ease_of_operations', used_in_score: Boolean(bls) })
 
@@ -352,7 +386,33 @@ Deno.serve(async (req) => {
     const existingCounts = (latestJobRows?.[0]?.response_summary?.counts ?? {}) as Record<string, number>
     const existingWarnings = (latestJobRows?.[0]?.response_summary?.warnings ?? {}) as Record<string, unknown>
 
-    const signals = buildSowSignals({ census: censusData, bls: blsData, existingCounts, existingWarnings })
+    // ---- Sprint additions: Census B11005/B23007/B08303, Apify Trends, Firecrawl waitlist ----
+    const { data: sprintData, error: sprintError } = await fetchCensusSprintMetrics(
+      city,
+      state,
+      censusData?.place_fips ?? null,
+      censusData?.state_fips ?? null,
+    )
+    const trendsResult = await fetchGoogleTrends(city, state)
+    // Pull existing competitor URLs (populated by fetch-city-market-data, which runs first).
+    const { data: competitorRows } = await admin
+      .from('city_competitors')
+      .select('source_url')
+      .eq('city_id', cityId)
+      .not('source_url', 'is', null)
+      .limit(20)
+    const competitorUrls = (competitorRows ?? []).map((r) => r.source_url as string).filter(Boolean)
+    const waitlistResult = await fetchCompetitorWaitlistSignals(competitorUrls)
+
+    const signals = buildSowSignals({
+      census: censusData,
+      bls: blsData,
+      existingCounts,
+      existingWarnings,
+      sprint: sprintData,
+      trends: trendsResult,
+      waitlist: waitlistResult,
+    })
 
     await admin.from('city_market_signals').delete().eq('city_id', cityId)
     const rows = signals.map((s) => ({
@@ -379,7 +439,7 @@ Deno.serve(async (req) => {
     if (insertErr) return json({ error: 'Failed to insert SOW metric signals', detail: insertErr.message }, 500)
 
     const completedAt = new Date().toISOString()
-    const warnings = { census: censusError, bls: blsError }
+    const warnings = { census: censusError, bls: blsError, census_sprint: sprintError, trends: trendsResult.error, waitlist: waitlistResult.error }
 
     // ---- Phase C: SOW shadow scoring (observation only) ----
     const sowMetricValues: SowMetricValues = {

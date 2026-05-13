@@ -205,7 +205,13 @@ const CityScoring = () => {
   const [liveSignals, setLiveSignals] = useState<any[]>([]);
   const [liveCategoryScores, setLiveCategoryScores] = useState<Record<string, number>>({});
   const [liveCompetitors, setLiveCompetitors] = useState<any[]>([]);
-  const [liveRankedMarkets, setLiveRankedMarkets] = useState<RankedMarket[]>([]);
+  const [liveRankedMarkets, setLiveRankedMarketsState] = useState<RankedMarket[]>(
+    () => getCached<RankedMarket[]>("city:rankedMarkets") ?? [],
+  );
+  const setLiveRankedMarkets = (v: RankedMarket[]) => {
+    setCached("city:rankedMarkets", v);
+    setLiveRankedMarketsState(v);
+  };
   const [liveJob, setLiveJob] = useState<any | null>(null);
   const [marketRefreshVersion, setMarketRefreshVersion] = useState(0);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);

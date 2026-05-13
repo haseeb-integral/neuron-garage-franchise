@@ -1,46 +1,63 @@
-# Plan: Persistent UI State (Option B — Zustand + localStorage)
+# Plan — Sub-Metric Weights UX Rework
 
-Per CLAUDE.md sprint mode ("one thing at a time"), I'll **build the pattern on City Search first**, validate it, then roll the same pattern to the other 3 pages in follow-up tasks.
+## Goal
+Fix the broken back-panel UX. Sam needs to (a) understand what each metric means before weighting it, (b) see the full SOW vision including not-yet-live metrics, (c) edit weights with enough room to breathe.
 
-## Step 1 — Add dependency
-- `bun add zustand` (~1 KB, brings `persist` middleware).
+## What changes
 
-## Step 2 — Create the store
-New file: `src/stores/cityScoringStore.ts`
-- One zustand store wrapped in `persist` middleware, key: `ng:city-scoring-v1`.
-- Persists ONLY UI state (not server data, not transient flags):
-  - `searchTerm`, `scoringModel`
-  - `stateFilter`, `minPop`, `minScore`, `tierFilter`, `nonRegOnly`
-  - `weights`, `appliedWeights`, `customCriteria`
-  - `selectedId`, `selectedMarketKey`
-  - `viewMode` (table/map), `page`
-  - `compareMode`, `selectedForCompare`
-- Does NOT persist: `liveCity`, `liveSignals`, `liveRankedMarkets`, `liveJob`, drawer/modal open flags, `refreshingMarket` (always start closed/idle on return).
-- `version: 1` + `migrate` stub so we can evolve the schema safely.
+### 1. Drop the flip animation, use a side drawer
+- Click a category card → opens a right-side `Sheet` (shadcn) titled e.g. "Demand — Sub-Metric Weights".
+- Card front stays exactly as-is today (icon, label, master weight slider, score). Click anywhere on card → opens drawer.
+- Remove all `.flip-card` / `.flip-inner` / `.flip-face` CSS and the `flippedCard` state from `CityScoring.tsx`.
 
-## Step 3 — Wire into `CityScoring.tsx`
-- Replace the relevant `useState` calls with `useCityScoringStore(s => s.x)` selectors and store setters.
-- Initial values come from the store (already defaulted), so no behavior changes on first load.
-- Drawer/modal `open` state stays as local `useState` (intentional — these always reopen closed).
+### 2. Drawer content
+Header:
+- Category name + short purpose line (e.g. "Demand — Are there enough affluent families with the right-aged kids?").
+- Helper text: "Set the importance weight (0–100) for each signal. Total should equal 100 when you Apply."
 
-## Step 4 — Verify
-- Set filters + move sliders + open drawer + select a city → navigate away → return → all UI state preserved (drawer closes; that's intended).
-- Hard refresh → still preserved (localStorage).
-- Logout/login same browser → still preserved (per-browser, not per-user; acceptable for 3-user internal tool).
+Metric rows (one per metric in `METRICS_BY_CATEGORY[catKey]`, ALL metrics, no filtering):
+```
+[ Metric label                    (i) ]   [  0–100 input  ]   [ status pill ]
+```
+- **Label**: full text, no truncation (drawer width ~480px gives room).
+- **(i) tooltip**: hover/focus → 1-line plain-English description of what the metric measures and why it matters for Sam's franchise model.
+- **Weight input**: number 0–100. Disabled (greyed) when `enabled === false`.
+- **Status pill**: "Live" (green), "Proxy" (blue), "No data yet" (grey) for `missing`/`blocked`.
+- Disabled rows: muted text color, weight input disabled at 0.
 
-## Step 5 — Confirm before rollout
-After City Search is verified in preview, I'll ask before applying the same pattern to:
-- Teacher Prospects (filters, search, selected teacher)
-- Candidate Pipeline (filters, selected candidate, active tab)
-- Onboarding (selected franchisee, active step)
+Footer (sticky):
+- Running total: `Total: 85 / 100` — orange when ≠ 100, green when = 100. Informational only, does not block Apply.
+- Two buttons: **Apply Weights** (commits this category's sub-weights to `appliedSubWeights[catKey]` + closes drawer) and **Reset Category** (restores defaults for this category only).
+
+No column headers row — labels in the rows are self-explanatory once descriptions exist via tooltip.
+
+### 3. Add metric descriptions
+New field on registry entries: `description: string`. Add to every entry in `src/lib/sowMetricRegistry.ts`. Examples:
+- `children_5_12_count` → "Raw count of kids in the camp's target age range. Bigger pool = more potential customers."
+- `public_elementary_teacher_count` → "Pool of K-5 teachers — your primary franchisee recruiting source."
+- `summer_income_need_ratio` → "How much teachers need summer income vs. their school-year salary. Higher = stronger pull toward franchising."
+- `childcare_nanny_hourly_rate_proxy` → "What local families already pay for childcare. Anchors what they'll pay for camp."
+
+(I'll write all 45 descriptions in plain language Sam can act on.)
+
+### 4. State / store
+No store schema change. `subWeights` and `appliedSubWeights` already exist. Apply button writes only the open category's slice; other categories untouched.
+
+### 5. Master weight controls integration
+Apply Weights and Reset to Default buttons on the main page already commit/reset `appliedWeights`. The drawer's per-category Apply does the same for that category's sub-weights. The page-level Reset to Default also resets all sub-weights (already implemented).
+
+## Files touched
+- `src/lib/sowMetricRegistry.ts` — add `description` field to all 45 entries.
+- `src/pages/CityScoring.tsx` — remove flip CSS + `flippedCard` state; add `Sheet`-based drawer; wire click-to-open.
+- (New small component) `src/components/city-scoring/SubMetricWeightsDrawer.tsx` — the drawer body (keeps `CityScoring.tsx` from ballooning).
 
 ## Out of scope
-- Cross-device sync (would need Supabase `user_preferences` table — overkill for 3 users).
-- URL-based deep links.
+- Sub-weights affecting composite score / sort.
+- Live signal values shown next to each metric.
+- Drag-to-reorder.
+- Per-metric Apply across all categories at once (each drawer commits its own).
 
 ## Risk: Low
-- Store is additive; behavior is identical on first visit.
-- If localStorage is corrupted, `persist` falls back to defaults.
-- Easy undo: revert the file + delete the store.
+Pure UI refactor of an additive feature shipped in the prior turn. Store unchanged. Easy revert: restore the 3 files.
 
-## Effort: ~25 min for City Search.
+## Effort: ~90 min.

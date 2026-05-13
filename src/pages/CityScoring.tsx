@@ -77,14 +77,6 @@ function categoryScores(c: CityData): Record<CategoryKey, number> {
   };
 }
 
-const NEARBY_MARKETS = [
-  { name: "Prosper, TX (USD)", score: 87 },
-  { name: "McKinney, TX (ISD)", score: 86 },
-  { name: "Allen, TX (ISD)", score: 85 },
-  { name: "Little Elm, TX", score: 82 },
-  { name: "The Colony, TX", score: 80 },
-];
-
 const SOURCES: { name: string; icon: typeof Building2; status: "connected" | "planned" }[] = [
   { name: "U.S. Census Bureau", icon: Building2, status: "connected" },
   { name: "BLS (Occupational Data)", icon: Building2, status: "connected" },

@@ -11,6 +11,7 @@ interface Props {
   onClose: () => void;
   market: CityData;
   categoryScores: Record<string, number>;
+  refreshVersion?: number;
 }
 
 type MetricStatus = "live" | "proxy" | "missing" | "blocked" | "manual";
@@ -102,7 +103,7 @@ function downloadCsv(filename: string, rows: unknown[][]) {
   URL.revokeObjectURL(url);
 }
 
-export function MarketReportModal({ open, onClose, market, categoryScores }: Props) {
+export function MarketReportModal({ open, onClose, market, categoryScores, refreshVersion = 0 }: Props) {
   const stateAbbr = market.state === "Texas" ? "TX" : market.state === "Florida" ? "FL" : market.state;
   const [loading, setLoading] = useState(false);
   const [liveSignals, setLiveSignals] = useState<LiveSignal[]>([]);
@@ -146,7 +147,7 @@ export function MarketReportModal({ open, onClose, market, categoryScores }: Pro
     };
 
     loadReportData();
-  }, [open, market.city, market.state]);
+  }, [open, market.city, market.state, refreshVersion]);
 
   const liveCount = liveSignals.filter((s) => getStatus(s) === "live").length;
   const proxyCount = liveSignals.filter((s) => getStatus(s) === "proxy").length;

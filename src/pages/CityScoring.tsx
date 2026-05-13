@@ -452,6 +452,7 @@ const CityScoring = () => {
     let liveError: any = null;
     let sowData: any = null;
     let sowError: any = null;
+    const refreshStartedAt = new Date().toISOString();
     try {
       const city = selectedCity;
       const state = selectedState;
@@ -478,7 +479,6 @@ const CityScoring = () => {
 
       const liveErrorMessage = await getInvokeErrorMessage(liveError);
       const sowErrorMessage = await getInvokeErrorMessage(sowError);
-      const refreshStartedAt = new Date().toISOString();
       const sowEvidence = !sowError
         ? await waitForCompleteSowEvidence({
             city,

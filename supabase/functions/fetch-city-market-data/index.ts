@@ -730,7 +730,7 @@ Deno.serve(async (req) => {
       geo: geo ?? null,
       inserted: { signals: signals.length, scores: scores.length, competitors: finalCompetitors.length, job_id: jobRow?.id },
       counts: responseSummary.counts,
-      warnings: { apify: apifyError, firecrawl: firecrawl.error, census: censusError, bls: blsError },
+      warnings: { apify: apifyError, firecrawl: firecrawl.error, census: censusError, bls: blsError, trends: trends.error, waitlist: waitlist.error },
     })
   } catch (e) {
     return json({ error: (e as Error).message }, 500)

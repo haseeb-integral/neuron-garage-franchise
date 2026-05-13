@@ -141,6 +141,8 @@ const CityScoring = () => {
   });
   const [selectedForCompare, setSelectedForCompare] = useState<number[]>([]);
   const [refreshingMarket, setRefreshingMarket] = useState(false);
+  const PAGE_SIZE = 8;
+  const [page, setPage] = useState(1);
 
   // Live DB-backed data for the selected market (falls back to sample data when missing)
   const [liveCity, setLiveCity] = useState<any | null>(null);
@@ -199,6 +201,30 @@ const CityScoring = () => {
       minPop,
     });
   }, [baseRankedMarkets, searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop]);
+
+  // Reset pagination whenever filter inputs change
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageStart = (safePage - 1) * PAGE_SIZE;
+  const pageItems = filtered.slice(pageStart, pageStart + PAGE_SIZE);
+  const showingFrom = filtered.length === 0 ? 0 : pageStart + 1;
+  const showingTo = Math.min(filtered.length, pageStart + PAGE_SIZE);
+
+  const pageNumbers = useMemo<(number | "...")[]>(() => {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const set = new Set<number>([1, 2, totalPages - 1, totalPages, safePage - 1, safePage, safePage + 1]);
+    const sorted = Array.from(set).filter((n) => n >= 1 && n <= totalPages).sort((a, b) => a - b);
+    const out: (number | "...")[] = [];
+    sorted.forEach((n, i) => {
+      if (i > 0 && n - (sorted[i - 1] as number) > 1) out.push("...");
+      out.push(n);
+    });
+    return out;
+  }, [totalPages, safePage]);
 
   const selectedFallback = sampleCities.find((c) => c.id === selectedId) ?? sampleCities[0];
   const selectedSample = sampleCities.find(
@@ -641,20 +667,28 @@ const CityScoring = () => {
     value: s.value,
   }));
 
-  const fallbackSigRows = [
-    { icon: Users, label: "Children Ages 5-12", value: "19,842", delta: "+12% vs. nat. avg.", deltaClass: "text-[#8ad1a8]" },
-    { icon: HomeIcon, label: "Households ($100k+)", value: "46%", delta: "+15% vs. nat. avg.", deltaClass: "text-[#8ad1a8]" },
-    { icon: DollarSign, label: "Premium Camp Pricing", value: "$245 / week", delta: "+8%", deltaClass: "text-[#8ad1a8]" },
-    { icon: GraduationCap, label: "Teacher Density", value: "1:475", delta: "20% below nat-avg kts", deltaClass: "text-[#8794ab]" },
-    { icon: Building2, label: "School District Access", value: "High", delta: "Strong availability", deltaClass: "text-[#8794ab]" },
-    { icon: Star, label: "Millennial Density", value: "42%", delta: "+16% vs. avg.", deltaClass: "text-[#8ad1a8]" },
-  ];
-  const sigRows = liveSigRows.length > 0 ? liveSigRows : fallbackSigRows;
+  const sigRows = liveSigRows;
+  const hasLiveSignals = sigRows.length > 0;
 
   const lastScrapedAt = liveCity?.last_scraped_at ?? liveJob?.completed_at ?? null;
-  const lastScrapedLabel = lastScrapedAt
+  const lastScrapedAtMs = lastScrapedAt ? new Date(lastScrapedAt).getTime() : null;
+  const lastScrapedAbsolute = lastScrapedAt
     ? new Date(lastScrapedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
     : null;
+  const formatRelative = (ms: number) => {
+    const diff = Math.max(0, Date.now() - ms);
+    const m = Math.round(diff / 60000);
+    if (m < 1) return "just now";
+    if (m < 60) return `${m} min ago`;
+    const h = Math.round(m / 60);
+    if (h < 24) return `${h} hr ago`;
+    const d = Math.round(h / 24);
+    if (d < 30) return `${d} day${d === 1 ? "" : "s"} ago`;
+    const mo = Math.round(d / 30);
+    return `${mo} mo ago`;
+  };
+  const lastScrapedRelative = lastScrapedAtMs ? formatRelative(lastScrapedAtMs) : null;
+  const isStale = lastScrapedAtMs ? Date.now() - lastScrapedAtMs > 24 * 60 * 60 * 1000 : false;
 
   // Derived display values for metro, county, market type — wired to live DB, with honest fallbacks
   const displayMetroArea = liveCity?.metro_area ?? (selected as any).metroArea ?? "\u2014";
@@ -933,7 +967,7 @@ const CityScoring = () => {
               <span>Score</span>
               <span className="text-right">Tier</span>
             </div>
-            {filtered.slice(0, 8).map((c, i) => {
+            {pageItems.map((c, i) => {
               const isSel = c.city === selectedCity && c.state === selectedState;
               const isCmp = selectedForCompare.includes(c.id);
               return (
@@ -950,7 +984,7 @@ const CityScoring = () => {
                   <span className={compareMode ? "rounded ring-2 ring-[#174be8] ring-offset-1 ring-offset-white" : ""}>
                     <Checkbox checked={isCmp} onCheckedChange={() => toggleCompare(c.id)} onClick={(e) => e.stopPropagation()} />
                   </span>
-                  <span className="text-[#526078]">{i + 1}</span>
+                  <span className="text-[#526078]">{pageStart + i + 1}</span>
                   <div className="min-w-0">
                     <div className="truncate font-semibold text-[#07142f]">{c.city}, {c.state === "Texas" ? "TX" : c.state === "Florida" ? "FL" : c.state}</div>
                     <div className="truncate text-[10px] text-[#8794ab]">{(c as any).county ?? ""}</div>
@@ -970,15 +1004,32 @@ const CityScoring = () => {
             })}
           </div>
           <div className="mt-3 flex items-center justify-between text-[11px] text-[#8794ab]">
-            <span>Showing 1 to {Math.min(filtered.length, 8)} of 238 results</span>
+            <span>Showing {showingFrom} to {showingTo} of {filtered.length} results</span>
             <div className="flex items-center gap-1">
-              <button className="px-1.5 h-6 rounded border border-[#eef2f7] text-[#526078]">‹</button>
-              <button className="px-2 h-6 rounded bg-[#174be8] text-white font-medium">1</button>
-              <button className="px-2 h-6 rounded border border-[#eef2f7] text-[#14233b]">2</button>
-              <button className="px-2 h-6 rounded border border-[#eef2f7] text-[#14233b]">3</button>
-              <span className="px-1 text-[#8794ab]">…</span>
-              <button className="px-2 h-6 rounded border border-[#eef2f7] text-[#14233b]">30</button>
-              <button className="px-1.5 h-6 rounded border border-[#eef2f7] text-[#526078]">›</button>
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={safePage <= 1}
+                className="px-1.5 h-6 rounded border border-[#eef2f7] text-[#526078] disabled:opacity-40 disabled:cursor-not-allowed"
+              >‹</button>
+              {pageNumbers.map((p, idx) =>
+                p === "..." ? (
+                  <span key={`ellipsis-${idx}`} className="px-1 text-[#8794ab]">…</span>
+                ) : (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setPage(p)}
+                    className={`px-2 h-6 rounded font-medium ${p === safePage ? "bg-[#174be8] text-white" : "border border-[#eef2f7] text-[#14233b] hover:bg-[#f3f6fc]"}`}
+                  >{p}</button>
+                )
+              )}
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={safePage >= totalPages}
+                className="px-1.5 h-6 rounded border border-[#eef2f7] text-[#526078] disabled:opacity-40 disabled:cursor-not-allowed"
+              >›</button>
             </div>
           </div>
         </div>
@@ -988,10 +1039,18 @@ const CityScoring = () => {
           <div className="mb-3 flex items-start justify-between gap-3">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-[18px] leading-none font-bold text-[#07142f]">{selected.city}, {selected.state === "Texas" ? "TX" : selected.state === "Florida" ? "FL" : selected.state}</h2>
-              {lastScrapedLabel && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#e6f7ef] px-2 py-0.5 text-[10px] font-semibold text-[#0ea66e]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#0ea66e]" />
-                  Live data refreshed {lastScrapedLabel}
+              {lastScrapedRelative ? (
+                <span
+                  title={lastScrapedAbsolute ?? ""}
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${isStale ? "bg-[#fff1e6] text-[#c2410c]" : "bg-[#e6f7ef] text-[#0ea66e]"}`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${isStale ? "bg-[#ea580c]" : "bg-[#0ea66e]"}`} />
+                  Live data refreshed {lastScrapedRelative}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#eef2f7] px-2 py-0.5 text-[10px] font-semibold text-[#526078]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#8794ab]" />
+                  No live data yet
                 </span>
               )}
             </div>
@@ -1042,10 +1101,12 @@ const CityScoring = () => {
                 </div>
               </div>
 
-              <div>
-                <p className="mb-0.5 text-[12px] font-semibold text-[#3a4c72]">Market Summary</p>
-                <p className="text-[11.5px] leading-snug text-[#14233b]">Affluent, rapidly growing suburb with strong demand for premium youth education and enrichment programs.</p>
-              </div>
+              {liveCity?.notes && (
+                <div>
+                  <p className="mb-0.5 text-[12px] font-semibold text-[#3a4c72]">Market Summary</p>
+                  <p className="text-[11.5px] leading-snug text-[#14233b]">{liveCity.notes}</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1069,26 +1130,44 @@ const CityScoring = () => {
 
             <div className="min-w-0 border-l border-[#eef2f7] pl-4">
               <p className="mb-2.5 text-[13px] font-semibold text-[#07142f]">Key Market Signals</p>
-              <div className="flex flex-col gap-y-2.5 min-w-0">
-                {sigRows.map((r) => {
-                  const Icon = r.icon;
-                  return (
-                    <div key={r.label} className="grid grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-2 text-[10.5px]">
-                      <Icon size={15} className="text-[#174be8]" />
-                      <span className="min-w-0 truncate text-[#526078]">{r.label}</span>
-                      <span className="max-w-[120px] truncate text-right font-bold text-[#07142f]">{r.value}</span>
-                    </div>
-                  );
-                })}
-              </div>
-              {hasMoreSignals && (
-                <button
-                  type="button"
-                  onClick={() => setDetailDrawerOpen(true)}
-                  className="mt-2 text-[11px] font-semibold text-[#174be8] hover:underline"
-                >
-                  View all signals
-                </button>
+              {hasLiveSignals ? (
+                <>
+                  <div className="flex flex-col gap-y-2.5 min-w-0">
+                    {sigRows.map((r) => {
+                      const Icon = r.icon;
+                      return (
+                        <div key={r.label} className="grid grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-2 text-[10.5px]">
+                          <Icon size={15} className="text-[#174be8]" />
+                          <span className="min-w-0 truncate text-[#526078]">{r.label}</span>
+                          <span className="max-w-[120px] truncate text-right font-bold text-[#07142f]">{r.value}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {hasMoreSignals && (
+                    <button
+                      type="button"
+                      onClick={() => setDetailDrawerOpen(true)}
+                      className="mt-2 text-[11px] font-semibold text-[#174be8] hover:underline"
+                    >
+                      View all signals
+                    </button>
+                  )}
+                </>
+              ) : (
+                <div className="rounded-md border border-dashed border-[#dbe4f2] bg-[#f7faff] px-3 py-4 text-center">
+                  <p className="text-[11.5px] text-[#526078] leading-snug">
+                    No live signals yet for this market.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleRefreshData}
+                    disabled={refreshingMarket}
+                    className="mt-2 inline-flex items-center gap-1 rounded-md bg-[#174be8] px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-[#1240c9] disabled:opacity-60"
+                  >
+                    {refreshingMarket ? "Refreshing…" : "Refresh This Market"}
+                  </button>
+                </div>
               )}
             </div>
           </div>

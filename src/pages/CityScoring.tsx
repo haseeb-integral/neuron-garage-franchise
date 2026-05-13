@@ -385,7 +385,19 @@ const CityScoring = () => {
   };
 
   useEffect(() => {
-    if (selectedCity && selectedState) loadLiveData(selectedCity, selectedState);
+    if (!selectedCity || !selectedState) return;
+    // Hydrate immediately from cache so re-mounts/market-switches feel instant
+    const cached = getCached<{
+      city: any | null; signals: any[]; scores: Record<string, number>; comps: any[]; job: any | null;
+    }>(`city:detail:${selectedCity}|${selectedState}`);
+    if (cached) {
+      setLiveCity(cached.city);
+      setLiveSignals(cached.signals);
+      setLiveCategoryScores(cached.scores);
+      setLiveCompetitors(cached.comps);
+      setLiveJob(cached.job);
+    }
+    loadLiveData(selectedCity, selectedState);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCity, selectedState]);
 

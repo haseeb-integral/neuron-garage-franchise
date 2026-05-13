@@ -1060,18 +1060,20 @@ const CityScoring = () => {
               <p className="mb-1.5 text-[12px] font-semibold text-[#3a4c72]">Overall Score</p>
               <svg viewBox="0 0 200 120" className="h-[100px] w-[150px] max-w-full">
                 <path d="M25 92 A75 75 0 0 1 175 92" fill="none" stroke="#e7ebf3" strokeWidth="14" strokeLinecap="round" />
-                <path
-                  d="M25 92 A75 75 0 0 1 175 92"
-                  fill="none"
-                  stroke="#0ea66e"
-                  strokeWidth="14"
-                  strokeLinecap="round"
-                  strokeDasharray={`${(weightedComposite / 100) * 236} 236`}
-                />
-                <text x="100" y="76" textAnchor="middle" className="fill-[#07142f]" style={{ fontSize: 32, fontWeight: 800 }}>{weightedComposite}</text>
+                {selectedHasLiveData && (
+                  <path
+                    d="M25 92 A75 75 0 0 1 175 92"
+                    fill="none"
+                    stroke="#0ea66e"
+                    strokeWidth="14"
+                    strokeLinecap="round"
+                    strokeDasharray={`${(weightedComposite / 100) * 236} 236`}
+                  />
+                )}
+                <text x="100" y="76" textAnchor="middle" className="fill-[#07142f]" style={{ fontSize: 32, fontWeight: 800 }}>{selectedHasLiveData ? weightedComposite : "—"}</text>
                 <text x="100" y="102" textAnchor="middle" className="fill-[#7e8aa3]" style={{ fontSize: 12, fontWeight: 600 }}>/100</text>
               </svg>
-              <p className="-mt-1 text-[12px] font-semibold" style={{ color: tierBadge.fg }}>{opportunityLabel}</p>
+              <p className="-mt-1 text-[12px] font-semibold" style={{ color: selectedHasLiveData ? tierBadge.fg : "#8794ab" }}>{selectedHasLiveData ? opportunityLabel : "No live data"}</p>
             </div>
 
             <div className="space-y-2.5 pt-1 min-w-0">

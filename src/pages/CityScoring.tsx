@@ -20,6 +20,7 @@ import { sampleCities, CityData } from "@/data/cityData";
 import { AddCriteriaDrawer } from "@/components/city-scoring/AddCriteriaDrawer";
 import { MarketDetailDrawer } from "@/components/city-scoring/MarketDetailDrawer";
 import { MarketCompareModal } from "@/components/city-scoring/MarketCompareModal";
+import { AddCityModal } from "@/components/city-scoring/AddCityModal";
 import { MarketReportModal } from "@/components/city-scoring/MarketReportModal";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -146,6 +147,7 @@ const CityScoring = () => {
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [addCityOpen, setAddCityOpen] = useState(false);
 
   // Open city via global search ?city=ID
   useEffect(() => {
@@ -176,11 +178,19 @@ const CityScoring = () => {
     [liveRankedMarkets],
   );
 
-  const availableStates = useMemo(() => {
-    const set = new Set<string>();
-    baseRankedMarkets.forEach((m) => { if (m.state) set.add(m.state); });
-    return Array.from(set).sort();
-  }, [baseRankedMarkets]);
+  const availableStates = useMemo(
+    () => [
+      "Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut",
+      "Delaware","District of Columbia","Florida","Georgia","Hawaii","Idaho","Illinois",
+      "Indiana","Iowa","Kansas","Kentucky","Louisiana","Maine","Maryland","Massachusetts",
+      "Michigan","Minnesota","Mississippi","Missouri","Montana","Nebraska","Nevada",
+      "New Hampshire","New Jersey","New Mexico","New York","North Carolina","North Dakota",
+      "Ohio","Oklahoma","Oregon","Pennsylvania","Rhode Island","South Carolina","South Dakota",
+      "Tennessee","Texas","Utah","Vermont","Virginia","Washington","West Virginia",
+      "Wisconsin","Wyoming",
+    ],
+    [],
+  );
 
   const filtered = useMemo(() => {
     return filterRankedMarkets(baseRankedMarkets, {
@@ -930,13 +940,21 @@ const CityScoring = () => {
               <h3 className="text-sm font-bold text-[#07142f]">Ranked Markets</h3>
               <p className="text-[11px] text-[#8794ab]">({filtered.length} markets found)</p>
             </div>
-            <button
-              onClick={openCompare}
-              disabled={selectedForCompare.length < 2}
-              className="flex items-center gap-1 text-xs font-medium text-[#174be8] hover:underline disabled:text-[#8794ab] disabled:no-underline disabled:cursor-not-allowed"
-            >
-              <GitCompare size={12} /> Compare ({selectedForCompare.length})
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setAddCityOpen(true)}
+                className="flex items-center gap-1 text-xs font-medium text-[#174be8] hover:underline"
+              >
+                <Plus size={12} /> Add City
+              </button>
+              <button
+                onClick={openCompare}
+                disabled={selectedForCompare.length < 2}
+                className="flex items-center gap-1 text-xs font-medium text-[#174be8] hover:underline disabled:text-[#8794ab] disabled:no-underline disabled:cursor-not-allowed"
+              >
+                <GitCompare size={12} /> Compare ({selectedForCompare.length})
+              </button>
+            </div>
           </div>
           {compareMode && (
             <div className="mb-2 rounded-md bg-[#eaf0ff] border border-[#cfdcff] px-2 py-1.5 text-[11px] text-[#174be8]">
@@ -1291,6 +1309,15 @@ const CityScoring = () => {
         market={selected}
         categoryScores={detailCategoryScores}
         refreshVersion={marketRefreshVersion}
+      />
+
+      <AddCityModal
+        open={addCityOpen}
+        onClose={() => setAddCityOpen(false)}
+        onAdded={async (city, state) => {
+          await reloadSelectedMarketView(city, state);
+          setSelectedMarketKey({ city, state });
+        }}
       />
     </div>
   );

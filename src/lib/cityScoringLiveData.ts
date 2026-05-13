@@ -172,13 +172,25 @@ export function filterRankedMarkets(markets: RankedMarket[], filters: RankedMark
       const haystack = `${market.city} ${market.state} ${market.county ?? ""} ${market.metroArea ?? ""}`.toLowerCase();
       if (filters.searchTerm && !haystack.includes(filters.searchTerm.toLowerCase())) return false;
       if (filters.stateFilter !== "All" && market.state !== filters.stateFilter) return false;
-      if (filters.tierFilter !== "All" && market.tier !== filters.tierFilter) return false;
-      if (filters.nonRegOnly && !market.isNonRegistration) return false;
-      if (market.compositeScore < filters.minScore) return false;
-      if (minPopulation && market.population < minPopulation) return false;
+      // No-data cities always pass the score / tier / population filters so the
+      // user can still see them and trigger a Refresh to fetch real data.
+      if (market.hasLiveData) {
+        if (filters.tierFilter !== "All" && market.tier !== filters.tierFilter) return false;
+        if (filters.nonRegOnly && !market.isNonRegistration) return false;
+        if (market.compositeScore < filters.minScore) return false;
+        if (minPopulation && market.population < minPopulation) return false;
+      } else {
+        // Still respect the explicit non-registration toggle for no-data rows.
+        if (filters.nonRegOnly && !market.isNonRegistration) return false;
+      }
       return true;
     })
-    .sort((a, b) => b.compositeScore - a.compositeScore);
+    .sort((a, b) => {
+      // Data-bearing markets first (by score desc), no-data markets at the bottom (alpha).
+      if (a.hasLiveData !== b.hasLiveData) return a.hasLiveData ? -1 : 1;
+      if (a.hasLiveData) return b.compositeScore - a.compositeScore;
+      return a.city.localeCompare(b.city);
+    });
 }
 
 export function sampleRankedMarkets() {

@@ -202,6 +202,30 @@ const CityScoring = () => {
     });
   }, [baseRankedMarkets, searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop]);
 
+  // Reset pagination whenever filter inputs change
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageStart = (safePage - 1) * PAGE_SIZE;
+  const pageItems = filtered.slice(pageStart, pageStart + PAGE_SIZE);
+  const showingFrom = filtered.length === 0 ? 0 : pageStart + 1;
+  const showingTo = Math.min(filtered.length, pageStart + PAGE_SIZE);
+
+  const pageNumbers = useMemo<(number | "...")[]>(() => {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const set = new Set<number>([1, 2, totalPages - 1, totalPages, safePage - 1, safePage, safePage + 1]);
+    const sorted = Array.from(set).filter((n) => n >= 1 && n <= totalPages).sort((a, b) => a - b);
+    const out: (number | "...")[] = [];
+    sorted.forEach((n, i) => {
+      if (i > 0 && n - (sorted[i - 1] as number) > 1) out.push("...");
+      out.push(n);
+    });
+    return out;
+  }, [totalPages, safePage]);
+
   const selectedFallback = sampleCities.find((c) => c.id === selectedId) ?? sampleCities[0];
   const selectedSample = sampleCities.find(
     (c) => c.city === selectedMarketKey.city && c.state === selectedMarketKey.state,

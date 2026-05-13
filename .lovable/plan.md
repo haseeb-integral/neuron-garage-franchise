@@ -1,38 +1,43 @@
 ## Goal
 
-Eliminate the silent sample-data fallback that makes empty cities look scored (e.g. Pflugerville=41, Cedar Park=58 came from `src/data/cityData.ts`, not the DB). Cities without live scoring data should clearly read "—" and "No data". Nearby Markets stays removed for now.
-
-## Root cause
-
-`src/lib/cityScoringLiveData.ts` → `dedupeRankedMarkets`:
-- When a `cities` row has `composite_score=0` and no `last_scraped_at`, it's treated as a "geo-only stub" and the **sample** city (with hardcoded score/tier/competitors) is used as the row, only copying metro/county fields from the live row.
-- Result: hardcoded scores leak into the live table.
+Make every US state selectable and every state populated with seed candidate cities so the user can click any market and trigger a real API refresh. Plus give them an "+ Add City" escape hatch for ad-hoc additions. Also fix the related bug where no-data cities are filtered out by Min Score.
 
 ## Changes
 
-### 1. `src/lib/cityScoringLiveData.ts`
-- Remove the sample-fallback branch in `dedupeRankedMarkets`. When live exists for a city+state key, **always** keep the live row (even if score=0); never fall back to the sample row's numbers.
-- Keep dedupe between two live rows (newest `last_scraped_at` wins) and between two sample rows (current behavior).
-- In `mapLiveCityToRankedMarket`, when `composite_score` is 0 AND `last_scraped_at` is null, set `tier = "—"` (or a sentinel like `"none"`) so downstream UI can detect "no data" without guessing.
-- Add a derived flag `hasLiveData: boolean` on `RankedMarket` (`compositeScore > 0 || !!lastScrapedAt`) to make UI checks trivial.
+### 1. Hardcode all 50 states in the dropdown
+`src/pages/CityScoring.tsx`
+- Replace `availableStates` (derived from DB) with a hardcoded constant `US_STATES` listing all 50 + DC.
+- Dropdown order: alphabetical, with "All States" first.
 
-### 2. `src/components/city-scoring/CityTable.tsx`
-- For rows where `hasLiveData === false`:
-  - Score cell renders `—` (muted) instead of the score bar.
-  - Tier cell renders a grey "No data" pill instead of the colored A/B/C/D badge.
-  - Row remains clickable (opens drawer, which already says "No live data yet" and offers Refresh).
-- Sorting: push no-data rows to the bottom regardless of sort direction on score.
+### 2. Seed candidate cities for every state with <5 rows
+New SQL seed (run via the insert tool, idempotent via `ON CONFLICT (city, state) DO NOTHING`).
+- For each state currently underrepresented in `cities`, insert ~5 well-known affluent suburb / strong-franchise candidate cities.
+- Defaults: `composite_score=0`, `tier='C'`, `market_type='Suburb'`, `is_non_registration=false` (TX/FL stays true via existing flag logic on read), no `last_scraped_at`.
+- Result: every state has at least 5 cities to choose from. Total adds roughly 100–150 rows. None show fake numbers — they all render as "—" / "No data" with our prior fix and a Refresh button.
+- Source list will be a curated set in the migration body (no scraping needed).
 
-### 3. `src/pages/CityScoring.tsx`
-- Right-column selected-market panel: if `selected.hasLiveData === false`, show "—" in the gauge, "No data" tier chip, and hide category-score bars (the "Refresh This Market" CTA already exists).
-- No Nearby Markets work this round (deferred per your decision).
+### 3. Min-Score filter fix (carryover from earlier message)
+`src/lib/cityScoringLiveData.ts` → `filterRankedMarkets`:
+- Bypass `minScore` and `tierFilter` for cities where `hasLiveData === false`. They always pass through so the user can see them and refresh.
+- Sort: data-bearing markets first by `compositeScore DESC`, then no-data markets alphabetically at the bottom.
 
-### 4. `src/components/city-scoring/MarketCompareModal.tsx`
-- Already handles missing `cityId`. Add the same treatment when `hasLiveData === false`: render "—" for Overall Score gauge and "No data" for tier, instead of showing a 0 gauge.
+### 4. "+ Add City" button
+`src/pages/CityScoring.tsx` + new `src/components/city-scoring/AddCityModal.tsx`
+- Small "+ Add City" button in the Ranked Markets header (next to "Compare").
+- Modal: City (text), State (the same 50-state Select), optional County, optional Metro Area.
+- On submit: `INSERT INTO cities (city, state, county, metro_area)` with defaults; `ON CONFLICT (city, state) DO NOTHING`. Then refresh `liveRankedMarkets`, select the newly added city, and prompt them to hit "Refresh This Market".
+- Validation: city + state required; trim; reject empty; show toast on conflict ("Already in your list").
 
 ## Out of scope
-- Nearby Markets card re-add (later, post-Module-1, sourced from DB by metro_area/county).
-- Removing `sampleCities` entirely. It's still referenced elsewhere; we just stop using it as a fallback for live rows. A separate cleanup pass can purge it once all consumers are live.
+- Geocoding / lat-lng columns (separate plan, later).
+- Auto-classifying non-registration states beyond TX/FL (CLAUDE.md says 38-state list is locked SOW business logic; will revisit with Sam).
+- Pre-fetching API data for newly seeded cities — user pulls them on demand via Refresh.
 
 ## Risk
-Low. Pure presentation + dedupe-rule change. No DB writes, no schema changes, no edge-function changes.
+Low. Pure additive: dropdown expands, table grows, one new modal, one filter rule loosened. No edge function or scoring engine changes.
+
+## Order of execution
+1. Filter fix (immediate, code only).
+2. State dropdown hardcode (code only).
+3. Seed migration (data insert via insert tool).
+4. Add City modal (code only).

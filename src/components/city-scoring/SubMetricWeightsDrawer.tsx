@@ -1,4 +1,4 @@
-import { Info, RotateCcw } from "lucide-react";
+import { Info, RotateCcw, Minus, Plus } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";

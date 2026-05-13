@@ -3,6 +3,8 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { sampleCities } from "@/data/cityData";
 
 export type CategoryKey =
+  | "_placeholder_remove_below_";
+// re-declared below — placeholder to keep TS happy during edit; replaced
   | "demand"
   | "pricingPower"
   | "competitiveLandscape"

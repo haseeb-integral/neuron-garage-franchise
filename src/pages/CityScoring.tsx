@@ -20,6 +20,7 @@ import { sampleCities, CityData } from "@/data/cityData";
 import { AddCriteriaDrawer } from "@/components/city-scoring/AddCriteriaDrawer";
 import { MarketDetailDrawer } from "@/components/city-scoring/MarketDetailDrawer";
 import { MarketCompareModal } from "@/components/city-scoring/MarketCompareModal";
+import { AddCityModal } from "@/components/city-scoring/AddCityModal";
 import { MarketReportModal } from "@/components/city-scoring/MarketReportModal";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -146,6 +147,7 @@ const CityScoring = () => {
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [addCityOpen, setAddCityOpen] = useState(false);
 
   // Open city via global search ?city=ID
   useEffect(() => {

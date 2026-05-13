@@ -268,19 +268,26 @@ async function fetchCensus(city: string, state: string): Promise<{ data: CensusD
 
     // 2. Fetch ACS variables
     const vars = [
-      'B01003_001E', // total pop
-      'B19013_001E', // median household income
-      'B09001_001E', // population under 18
-      'B15003_001E', // total 25+
-      'B15003_022E', // bachelor's
-      'B15003_023E', // master's
-      'B15003_024E', // professional
-      'B15003_025E', // doctorate
-      'B19001_001E', // total households
-      'B19001_014E', // 100-125k
-      'B19001_015E', // 125-150k
-      'B19001_016E', // 150-200k
-      'B19001_017E', // 200k+
+      'B01003_001E', // 0  total pop
+      'B19013_001E', // 1  median household income
+      'B09001_001E', // 2  population under 18
+      'B15003_001E', // 3  total 25+
+      'B15003_022E', // 4  bachelor's
+      'B15003_023E', // 5  master's
+      'B15003_024E', // 6  professional
+      'B15003_025E', // 7  doctorate
+      'B19001_001E', // 8  total households
+      'B19001_014E', // 9  100-125k
+      'B19001_015E', // 10 125-150k
+      'B19001_016E', // 11 150-200k
+      'B19001_017E', // 12 200k+
+      'B11005_002E', // 13 households with people under 18 (young families current)
+      'B23007_003E', // 14 married-couple families with own children under 18
+      'B23007_004E', // 15 ...both husband and wife in labor force
+      'B08303_001E', // 16 commute total workers
+      'B08303_011E', // 17 commute 45-59 min
+      'B08303_012E', // 18 commute 60-89 min
+      'B08303_013E', // 19 commute 90+ min
     ]
     const dataUrl = `https://api.census.gov/data/2022/acs/acs5?get=${vars.join(',')}&for=place:${placeFips}&in=state:${stateFips}&key=${key}`
     const dataRes = await fetch(dataUrl)
@@ -300,6 +307,26 @@ async function fetchCensus(city: string, state: string): Promise<{ data: CensusD
     const hh200p = num(row[12]) ?? 0
     const income100plus = hh100_125 + hh125_150 + hh150_200 + hh200p
     const income150plus = hh150_200 + hh200p
+    const hhKids2022 = num(row[13])
+    const marriedKids = num(row[14])
+    const dualIncome = num(row[15])
+    const commuteTotal = num(row[16])
+    const longCommute = (num(row[17]) ?? 0) + (num(row[18]) ?? 0) + (num(row[19]) ?? 0)
+
+    // 3. Second-vintage call (2017 ACS5) for young-families growth — single var
+    let hhKids2017: number | null = null
+    try {
+      const url2017 = `https://api.census.gov/data/2017/acs/acs5?get=B11005_002E&for=place:${placeFips}&in=state:${stateFips}&key=${key}`
+      const r2017 = await fetch(url2017)
+      if (r2017.ok) {
+        const a2017 = await r2017.json() as string[][]
+        hhKids2017 = num(a2017?.[1]?.[0] ?? '')
+      }
+    } catch (_) { /* non-fatal */ }
+
+    const youngFamiliesGrowth = (hhKids2022 != null && hhKids2017 != null && hhKids2017 > 0)
+      ? Math.round(((hhKids2022 - hhKids2017) / hhKids2017) * 1000) / 10
+      : null
 
     return {
       data: {
@@ -310,6 +337,15 @@ async function fetchCensus(city: string, state: string): Promise<{ data: CensusD
         bachelors_plus_pct: total25 && total25 > 0 ? Math.round((bachPlus / total25) * 1000) / 10 : null,
         income_100k_plus_pct: totalHH && totalHH > 0 ? Math.round((income100plus / totalHH) * 1000) / 10 : null,
         income_150k_plus_pct: totalHH && totalHH > 0 ? Math.round((income150plus / totalHH) * 1000) / 10 : null,
+        households_with_kids: hhKids2022,
+        households_with_kids_2017: hhKids2017,
+        young_families_growth_pct: youngFamiliesGrowth,
+        dual_income_pct: marriedKids && marriedKids > 0 && dualIncome != null
+          ? Math.round((dualIncome / marriedKids) * 1000) / 10
+          : null,
+        long_commute_pct: commuteTotal && commuteTotal > 0
+          ? Math.round((longCommute / commuteTotal) * 1000) / 10
+          : null,
         state_fips: stateFips,
         place_fips: placeFips,
         source_url: `https://api.census.gov/data/2022/acs/acs5?get=NAME&for=place:${placeFips}&in=state:${stateFips}`,

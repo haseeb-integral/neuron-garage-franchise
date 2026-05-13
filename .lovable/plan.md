@@ -1,121 +1,58 @@
-# Permanent Geocoding via SimpleMaps US Cities CSV
+## Diagnosis
 
-You uploaded `uscities.csv` (31,257 rows, SimpleMaps US Cities Basic). I'll use that file directly — no need to re-download. Doing all 6 steps in one go.
+The "Refresh This Market" button calls **two** edge functions back-to-back:
+1. `fetch-city-market-data` — runs first, correctly fetches Census + writes the 6 new sprint signals (`young_families_growth_5yr`, `dual_income_pct`, `long_commute_pct`, `gtrends_*`, `competitor_waitlist_count`, `competitor_soldout_count`).
+2. `fetch-city-market-data-sow` — runs **second** and at line 357 does `delete().eq('city_id', cityId)` against `city_market_signals` for the **entire city**, then inserts its own 46-row SOW coverage set, which contains hard-coded `missingSignal(...)` placeholders for these same metrics under the SOW canonical keys (`dual_income_household_pct`, `young_family_growth_rate`, `commute_sprawl_index`, `waitlist_sold_out_signal_count`, `google_search_demand_summer_camp`, `google_search_demand_summer_day_camp`).
 
----
+So the live values are written, then **wiped a few seconds later** and replaced with `status: "missing"` rows. The MarketDetailDrawer reads `city_market_signals` and faithfully shows what's there — which is the SOW's MISSING placeholders.
 
-## Step 1 — Stage the CSV (you already uploaded it)
+Secondary issue: the live function and the SOW function use **different signal_key naming**, so even if both rows survived, the drawer wouldn't merge them. The SOW keys are the canonical ones the UI expects.
 
-`user-uploads://uscities.csv` — relevant columns: `city`, `city_ascii`, `state_id` (2-letter), `state_name` (full), `lat`, `lng`, `population`, `density`. ~31k rows covers every US incorporated place; our 320 cities are a strict subset.
+### What Census actually returned for Austin (verified live just now)
 
-I'll copy it to `/tmp/uscities.csv` so it can be loaded via `psql \copy` / `COPY FROM STDIN`.
-
-## Step 2 — Migration: create `us_cities_geo`
-
-```sql
-CREATE TABLE public.us_cities_geo (
-  id           bigserial PRIMARY KEY,
-  city         text         NOT NULL,
-  city_ascii   text         NOT NULL,
-  state_id     text         NOT NULL,   -- 'WY'
-  state_name   text         NOT NULL,   -- 'Wyoming'
-  county_name  text,
-  lat          numeric(9,6) NOT NULL,
-  lng          numeric(9,6) NOT NULL,
-  population   integer,
-  density      numeric
-);
-
-CREATE INDEX idx_us_cities_geo_lookup
-  ON public.us_cities_geo (LOWER(city_ascii), LOWER(state_name));
-CREATE INDEX idx_us_cities_geo_alt
-  ON public.us_cities_geo (LOWER(city), LOWER(state_name));
-
-ALTER TABLE public.us_cities_geo ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated can read us_cities_geo"
-  ON public.us_cities_geo FOR SELECT TO authenticated USING (true);
+```
+B23007_001E = 207,727   B23007_003E = 69,919   B23007_004E = 67,058
+B08303_001E = 433,417   B08303_011E = 28,907   _012E = 14,678   _013E = 5,947
+B11005_002E (2022) = 105,582     B11005_002E (2017) = 99,014
 ```
 
-Read-only reference data — no insert/update/delete policies (seeded server-side).
+All 8 variables resolved cleanly. **No FIPS or variable-name issue.** The code in `fetch-city-market-data` is correct.
 
-## Step 3 — Seed `us_cities_geo` from the CSV
+## Fix
 
-I'll load the file via `psql \copy` into a temp staging table, then `INSERT … SELECT` into `us_cities_geo` keeping only the columns we need. Done in one shot (~31k rows, <2s). No edge function needed for seeding — it's a one-time admin task best done via direct SQL.
+Move the 6 sprint metric computations into **`fetch-city-market-data-sow`** so they are written under the SOW's canonical signal_keys instead of being placeholder `missingSignal(...)` rows. Stop computing them in the live function (or keep them but they'll be overwritten — cleaner to remove the duplicate).
 
-Verify count after load: `SELECT count(*) FROM us_cities_geo;` should be ~31,257.
+### Implementation steps
 
-## Step 4 — One-shot backfill of `cities.latitude/longitude`
+1. **Extract shared helpers into `supabase/functions/_shared/`** (new file `metricFetchers.ts`):
+   - `fetchCensusSprintMetrics(city, state)` → returns `{ young_family_growth_rate, dual_income_household_pct, commute_sprawl_index }` using B23007, B08303, and the 2-vintage B11005 call. Lifted verbatim from `fetch-city-market-data/index.ts` lines 354–438.
+   - `fetchGoogleTrends(city, state)` → returns `{ city_camp, generic_camp }` (Apify `emastra/google-trends-scraper`). Lifted from the live function.
+   - `fetchCompetitorWaitlistSignals(urls)` → returns `{ scanned, waitlist, soldout }` (Firecrawl scrape). Lifted from the live function.
 
-```sql
-UPDATE public.cities c
-SET    latitude  = g.lat,
-       longitude = g.lng
-FROM   public.us_cities_geo g
-WHERE  c.latitude IS NULL
-  AND  LOWER(c.state) = LOWER(g.state_name)
-  AND  (LOWER(c.city) = LOWER(g.city_ascii)
-        OR LOWER(c.city) = LOWER(g.city));
-```
+2. **In `fetch-city-market-data-sow/index.ts`:**
+   - Call `fetchCensusSprintMetrics` once (it shares the Census key already in use elsewhere in that function for the demand metrics).
+   - Call `fetchGoogleTrends` once.
+   - After SOW competitor rows are written, call `fetchCompetitorWaitlistSignals` over those URLs (cap 5 per city as previously approved).
+   - **Replace** the 6 `missingSignal(...)` calls (line 240 plus 5 others — locate via grep on `dual_income_household_pct`, `young_family_growth_rate`, `commute_sprawl_index`, `waitlist_sold_out_signal_count`, `google_search_demand_summer_camp`, `google_search_demand_summer_day_camp`) with real-value rows: `status: "live"`, `used_in_score: true` where appropriate, plus `raw_data` with provenance (FIPS / table / actor / scanned count).
+   - Keep the count of inserted rows at exactly 46 — these aren't new rows, they're upgrading existing placeholders to live values.
 
-Then report match count:
-```sql
-SELECT
-  count(*) FILTER (WHERE latitude IS NOT NULL) AS matched,
-  count(*) FILTER (WHERE latitude IS NULL)     AS unmatched,
-  count(*) AS total
-FROM public.cities;
-```
+3. **In `fetch-city-market-data/index.ts`:** Remove the 6 sprint signal rows from `censusSignals`, `trendsSignals`, and `waitlistSignals` blocks (lines 631–633, 636–639, 641–644). They were getting deleted by SOW anyway. Keep the helper functions only if they're still imported elsewhere — otherwise inline-delete to keep the file lean. The original (non-sprint) Census/BLS/Firecrawl signals stay as-is.
 
-If any unmatched, list them so you can decide whether to add aliases (e.g. "St." vs "Saint", "Mt." vs "Mount"). I'll attempt a second pass with simple normalization (strip `.`, expand `St`/`Mt`) before reporting final numbers.
+4. **Deploy both functions** and re-test on Austin TX. Expected outcome:
+   - `young_family_growth_rate` shows ≈ **+6.6%** with `live` badge
+   - `dual_income_household_pct` shows ≈ **95.9%** with `live` badge
+   - `commute_sprawl_index` shows ≈ **11.4%** with `live` badge
+   - `google_search_demand_summer_camp`, `..._day_camp`: live values from Apify (or `proxy` if Trends returns sparse data for Austin's keyword)
+   - `waitlist_sold_out_signal_count`: live integer from Firecrawl scrape over Austin competitor URLs
 
-## Step 5 — Auto-geocode new cities (bonus, keeps it permanent)
+5. **Report back** with the actual Austin values from the DB and confirm `dual_income_household_pct` and `commute_sprawl_index` (the two zero-additional-API-call metrics) render real numbers in the drawer.
 
-Add an `AFTER INSERT` trigger on `cities` that fills lat/lng from `us_cities_geo` automatically, so any city added via AddCityModal is mapped instantly with zero UI work.
+### Risk
 
-```sql
-CREATE OR REPLACE FUNCTION public.fill_city_coords()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-BEGIN
-  IF NEW.latitude IS NULL OR NEW.longitude IS NULL THEN
-    SELECT g.lat, g.lng INTO NEW.latitude, NEW.longitude
-    FROM public.us_cities_geo g
-    WHERE LOWER(g.state_name) = LOWER(NEW.state)
-      AND (LOWER(g.city_ascii) = LOWER(NEW.city) OR LOWER(g.city) = LOWER(NEW.city))
-    LIMIT 1;
-  END IF;
-  RETURN NEW;
-END $$;
+Low. The Census variables are confirmed valid. The SOW function already runs the Apify and Firecrawl pipelines for other metrics, so adding 3 more API calls into that path mirrors existing patterns. The only structural change is moving the sprint computations into the function whose output the UI actually reads.
 
-CREATE TRIGGER trg_fill_city_coords
-BEFORE INSERT ON public.cities
-FOR EACH ROW EXECUTE FUNCTION public.fill_city_coords();
-```
+### Out of scope
 
-## Step 6 — Remove Nominatim plumbing
-
-- Delete `supabase/functions/backfill-city-coordinates/` and call `supabase--delete_edge_functions(["backfill-city-coordinates"])`.
-- In `src/components/city-scoring/MarketsMap.tsx`:
-  - Remove `handleBackfill`, `backfilling` state, the "Backfill Coordinates" button, the empty-state CTA, and the `RefreshCw` import.
-  - Simplify the empty state to a static message (shouldn't appear in practice now).
-  - Keep the coords-loading `useEffect` exactly as is.
-
-## Acceptance
-
-- `us_cities_geo` populated (~31k rows).
-- Reported match count for our 320 cities (target: ≥315; the rest are likely typos / non-incorporated places that we'll fix manually).
-- Map tab loads with markers visible on first paint, no button click required.
-- Adding a new city via AddCityModal auto-fills lat/lng (verified by inserting one test row in psql).
-- `backfill-city-coordinates` function gone from the deployed list.
-
-## Risks
-
-| Risk | Mitigation |
-|------|------------|
-| CSV rows with apostrophes / commas in city names | Use `\copy` with proper quoting (CSV mode) — already handled by SimpleMaps' quoting. |
-| Duplicate city/state pairs (e.g. two "Springfield, Ohio" — there aren't, but defensively) | `LIMIT 1` in the trigger; `UPDATE` is idempotent. |
-| Unmatched cities | Reported back to you; quick manual fix or a second normalization pass. |
-| Bloating the DB with 31k rows | Negligible (~3 MB), one indexed reference table. |
-
-## Order
-
-1. Migration (table + indexes + RLS + trigger function & trigger). 2. Stage CSV → load into `us_cities_geo` via `psql \copy`. 3. Run UPDATE + report match count. 4. Delete edge function + remove button from MarketsMap. 5. Manual smoke test of Map tab.
+- No DB schema changes.
+- No frontend changes (drawer already renders whatever signals are in the table).
+- Tier hysteresis and composite scoring untouched.

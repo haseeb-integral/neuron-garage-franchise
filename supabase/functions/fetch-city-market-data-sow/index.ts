@@ -245,8 +245,17 @@ function buildSowSignals(args: {
   add({ signal_key: 'median_household_income', label: 'Median Household Income', value: fmtMoney(census?.median_household_income ?? null), source: census ? 'census' : 'not_connected', source_url: census?.source_url ?? null, confidence: census ? 0.95 : 0, status: census ? 'live' : 'missing', metric_category: 'demand', used_in_score: Boolean(census) })
   add({ signal_key: 'income_100k_plus_pct', label: 'Households Earning $100k+', value: fmtPct(census?.income_100k_plus_pct ?? null), source: census ? 'census' : 'not_connected', source_url: census?.source_url ?? null, confidence: census ? 0.95 : 0, status: census ? 'live' : 'missing', metric_category: 'demand', used_in_score: Boolean(census) })
   add({ signal_key: 'income_150k_plus_pct', label: 'Households Earning $150k+', value: fmtPct(census?.income_150k_plus_pct ?? null), source: census ? 'census' : 'not_connected', source_url: census?.source_url ?? null, confidence: census ? 0.95 : 0, status: census ? 'live' : 'missing', metric_category: 'demand', used_in_score: Boolean(census) })
-  add(missingSignal('demand', 'young_family_growth_rate', 'Growth Rate of Young Families', 'census', 'Requires multi-year ACS comparison.'))
-  add(missingSignal('demand', 'dual_income_household_pct', '% Dual-Income Households', 'census', 'Requires ACS family employment variable mapping.'))
+  if (sprint?.young_family_growth_rate_pct != null) {
+    const v = sprint.young_family_growth_rate_pct
+    add({ signal_key: 'young_family_growth_rate', label: 'Growth Rate of Young Families (5-yr)', value: `${v > 0 ? '+' : ''}${v}%`, source: 'census', source_url: sprint.source_url, confidence: 0.85, status: 'live', metric_category: 'demand', used_in_score: true, notes: 'ACS B11005_002 households w/ people <18, 2022 vs 2017.', raw_data: { table: 'B11005', hh_2022: sprint.hh_kids_2022, hh_2017: sprint.hh_kids_2017 } })
+  } else {
+    add(missingSignal('demand', 'young_family_growth_rate', 'Growth Rate of Young Families', 'census', 'ACS 2017 vintage missing for this place.'))
+  }
+  if (sprint?.dual_income_household_pct != null) {
+    add({ signal_key: 'dual_income_household_pct', label: '% Dual-Income Households (married w/ kids)', value: `${sprint.dual_income_household_pct}%`, source: 'census', source_url: sprint.source_url, confidence: 0.85, status: 'live', metric_category: 'demand', used_in_score: true, notes: 'ACS B23007: husband-in-labor-force / married-couple families w/ own children.', raw_data: { table: 'B23007', married_kids: sprint.married_kids, dual_income: sprint.dual_income } })
+  } else {
+    add(missingSignal('demand', 'dual_income_household_pct', '% Dual-Income Households', 'census', 'B23007 returned null for this place.'))
+  }
   add({ signal_key: 'education_bachelors_plus_pct', label: 'Parent Education / Bachelor’s+', value: fmtPct(census?.bachelors_plus_pct ?? null), source: census ? 'census' : 'not_connected', source_url: census?.source_url ?? null, confidence: census ? 0.9 : 0, status: census ? 'live' : 'missing', metric_category: 'demand', used_in_score: Boolean(census) })
   add(missingSignal('demand', 'summer_weather_index', 'Summer Weather Index', 'weather', 'Needs NOAA/Open-Meteo integration.'))
   add(missingSignal('demand', 'avg_peak_summer_temperature', 'Avg Peak Summer Temperature', 'weather', 'Needs NOAA/Open-Meteo integration.'))

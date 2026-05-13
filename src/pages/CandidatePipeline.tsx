@@ -41,8 +41,18 @@ const CandidatePipeline = () => {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedCandidates = getCached<Candidate[]>("pipeline:candidates");
+  const cachedTeam = getCached<TeamMember[]>("pipeline:team");
+  const cachedMetrics = getCached<{ totalInPipeline: number; hotLeads: number; conversionRate: number; newThisWeek: number }>("pipeline:metrics");
+  const [candidates, setCandidatesState] = useState<Candidate[]>(cachedCandidates ?? []);
+  const setCandidates: typeof setCandidatesState = (v) => {
+    setCandidatesState((prev) => {
+      const next = typeof v === "function" ? (v as (p: Candidate[]) => Candidate[])(prev) : v;
+      setCached("pipeline:candidates", next);
+      return next;
+    });
+  };
+  const [loading, setLoading] = useState(!cachedCandidates);
   const [active, setActive] = useState<Candidate | null>(null);
   const compact = useCandidatePipelineStore((s) => s.compact);
   const setCompact = useCandidatePipelineStore((s) => s.setCompact);
@@ -52,14 +62,22 @@ const CandidatePipeline = () => {
   const [pendingIncompleteCount, setPendingIncompleteCount] = useState<number>(0);
   const [disqualifyTarget, setDisqualifyTarget] = useState<{ candidate: Candidate; fromStage: StageId } | null>(null);
   const [disqualifyReason, setDisqualifyReason] = useState<string>("");
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [teamMembers, setTeamMembersState] = useState<TeamMember[]>(cachedTeam ?? []);
+  const setTeamMembers = (v: TeamMember[]) => { setCached("pipeline:team", v); setTeamMembersState(v); };
   const [newOpen, setNewOpen] = useState(false);
-  const [metrics, setMetrics] = useState({
+  const [metrics, setMetricsState] = useState(cachedMetrics ?? {
     totalInPipeline: 0,
     hotLeads: 0,
     conversionRate: 0,
     newThisWeek: 0,
   });
+  const setMetrics: typeof setMetricsState = (v) => {
+    setMetricsState((prev) => {
+      const next = typeof v === "function" ? (v as (p: typeof prev) => typeof prev)(prev) : v;
+      setCached("pipeline:metrics", next);
+      return next;
+    });
+  };
 
   // DB enum stage -> local UI StageId
   const dbStageToUi: Record<string, StageId> = {

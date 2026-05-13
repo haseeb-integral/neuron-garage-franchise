@@ -187,6 +187,11 @@ const CityScoring = () => {
   const setAppliedWeights = useCityScoringStore((s) => s.setAppliedWeights);
   const customCriteria = useCityScoringStore((s) => s.customCriteria);
   const setCustomCriteria = useCityScoringStore((s) => s.setCustomCriteria);
+  const subWeights = useCityScoringStore((s) => s.subWeights);
+  const setSubWeight = useCityScoringStore((s) => s.setSubWeight);
+  const setAppliedSubWeights = useCityScoringStore((s) => s.setAppliedSubWeights);
+  const resetSubWeights = useCityScoringStore((s) => s.resetSubWeights);
+  const [flippedCard, setFlippedCard] = useState<CategoryKey | null>(null);
   const [addCritOpen, setAddCritOpen] = useState(false);
 
   const selectedId = useCityScoringStore((s) => s.selectedId);

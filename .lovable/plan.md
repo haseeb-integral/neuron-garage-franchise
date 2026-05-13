@@ -1,68 +1,82 @@
-# Fix City Search: real signals, real refresh time, real pagination
+# Execute approved fixes 1, 2, 3 — remove Frisco-only mock, Nearby Markets, and Compare modal hardcoding
 
-## Your 4 issues — root cause for each
-
-**1. "Some cities show only 6 key signals, Frisco shows 8+"**
-Not a UI bug, not a fetch bug. It's the actual database state.
-
-- `src/pages/CityScoring.tsx` line 635 caps the center panel at `slice(0, 8)` signals — that's the max.
-- The reason most cities show fewer (or 6 hardcoded ones) is they have **0 signals in the DB**. Verified:
-  - Frisco / Plano / Austin / Prosper / The Woodlands → 46 signals each
-  - Ashburn → 19 signals (partial old fetch)
-  - Every other city in the table → **0 signals** (never refreshed)
-- When `liveSignals.length === 0`, line 652 falls back to `fallbackSigRows` — a **hardcoded list of 6 fake values** ("19,842 children", "$245/week", "1:475 teacher density", etc.). That's why every un-refreshed city shows the exact same 6 numbers.
-
-**2. "Frisco shows 'May 8 refresh' badge — I refreshed many times today"**
-The badge reads `liveCity.last_scraped_at`. DB confirms Frisco's `last_scraped_at = 2026-05-08 14:10:54`. Recent refreshes today (May 12/13) wrote to **Austin / Prosper / The Woodlands**, not Frisco. So the badge is technically correct — but it's misleading because:
-- The "Refresh This Market" button in the drawer may not be writing `last_scraped_at` back to the `cities` row for the city you actually clicked refresh on, OR
-- The refresh you triggered ran against a different city than Frisco.
-
-We need to verify the SOW edge function updates `cities.last_scraped_at` for the target city on every successful run, and that the page-level `liveCity` object re-reads it after refresh (the `marketRefreshVersion` already exists but `liveCity` may not be re-fetched).
-
-**3. "Pagination shows 238 results, page 2/3 do nothing"**
-Confirmed mock. `src/pages/CityScoring.tsx` lines 972–983 are **hardcoded JSX buttons** with no `onClick`, no state, no slicing. The `Showing 1 to {Math.min(filtered.length, 8)} of 238` is literally the string `238` typed in. The list above it already renders all `filtered` markets via `.slice(0, 8)` only.
-
-**4. "Refresh dates wrong / what shows after logout"**
-Refresh state is **not** stored in localStorage — it comes from `cities.last_scraped_at` and `city_fetch_jobs` in the DB. So after logout/login the badge will correctly show whatever the DB has. The "wrong" feeling is from issue #2 (Frisco was never refreshed today) plus the fallback fakery in #1.
+Implementing in order, smallest blast radius first.
 
 ---
 
-## Plan
+## Step 1 — Kill `isFriscoMock` branch
 
-### Fix A — Kill the fake 6-signal fallback (issue #1)
-- Delete `fallbackSigRows` (lines 644–651) and the `sigRows = liveSigRows.length > 0 ? … : fallbackSigRows` branch.
-- When `liveSignals.length === 0`, render an empty state in the Key Market Signals box:
-  > "No live signals yet for this market. Click **Refresh This Market** to fetch."
-  with a small Refresh button that triggers the same flow as the drawer button.
-- Keep the 8-row cap + "View all signals" link for cities that DO have data.
+File: `src/pages/CityScoring.tsx`
 
-### Fix B — Real pagination on Ranked Markets (issue #3)
-- Replace lines 972–983 with state-driven pagination:
-  - `const [page, setPage] = useState(1); const PAGE_SIZE = 8;`
-  - Slice `filtered.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE)` for rendering.
-  - `total = filtered.length`, `totalPages = Math.ceil(total / PAGE_SIZE)`.
-  - Render real prev/next + numeric buttons (with ellipsis when `totalPages > 5`).
-  - Reset `page` to 1 whenever filters change.
-- Caption becomes `Showing {start} to {end} of {total} results` — no more `238`.
+- Delete line 565 `const isFriscoMock = selected.city === "Frisco" && selected.state === "Texas";`
+- Line 591: change `: isFriscoMock ? 91 : selected.compositeScore;` → `: selected.compositeScore;`
+- Lines 593–595: replace `const fallbackCats = isFriscoMock ? {…Frisco-specific…} : categoryScores(selected);` with `const fallbackCats = categoryScores(selected);`
 
-### Fix C — Honest refresh badge + post-refresh re-read (issue #2 + #4)
-- After a successful refresh of city X, force a fresh `cities` row read for city X (not just signals/scores) so `liveCity.last_scraped_at` updates immediately. Add this to `reloadSelectedMarketView`.
-- Verify `fetch-city-market-data-sow` edge function does `update cities set last_scraped_at = now() where id = :cityId` at the end of a successful run — if not, add it (this is the only backend touch, and it's a single line).
-- Badge label: change to `Live data: {relative time}` (e.g. "Live data refreshed 2 min ago") with the absolute timestamp on hover, so stale data (May 8) reads as "5 days ago" — visually obvious instead of a friendly green pill.
-- If `last_scraped_at` is null → show neutral grey badge "No live data yet" instead of hiding.
+Result: Frisco no longer gets a hardcoded 91/special category object. It uses the same path as every other city — live `liveUiCategoryScores` if present, otherwise the deterministic `categoryScores(c)` formula on whatever `selected` data is available.
 
-### Fix D — Drop the hardcoded "Market Summary" sentence
-Line 1047 is one hardcoded sentence shown for every city ("Affluent, rapidly growing suburb…"). Either hide it when there's no per-city summary in the DB, or render `selected.summary ?? "—"`. Recommend: hide entirely until we have a real field. (Tiny but it's part of "get rid of mock".)
+---
+
+## Step 2 — Remove "Nearby Markets" hardcoded panel
+
+File: `src/pages/CityScoring.tsx`
+
+- Delete lines 80–86 (`NEARBY_MARKETS` constant).
+- Delete the `showNearby` state at line 123 and the toggle at line 796.
+- Delete the entire `{showNearby && (…)}` block at lines 1193–1214 in the right column.
+
+Result: the right-column "Nearby Markets" card is gone. We can rebuild it later sourced from `cities` table filtered by same `metro_area`. Out of scope here.
+
+(I am NOT removing the decorative Market Snapshot map and Source Data panel — those were items 6 in the audit, not approved here.)
+
+---
+
+## Step 3 — Make Compare modal use live data, no per-city ternaries
+
+Files:
+- `src/components/city-scoring/MarketCompareModal.tsx` (rewrite)
+- `src/pages/CityScoring.tsx` (change what we pass into it)
+
+### 3a. Change the modal's input contract
+
+Replace `markets: CityData[]` with `markets: RankedMarket[]` (the same live-aware object the Ranked Markets table already uses). `RankedMarket` already has city, state, county, metroArea, tier, compositeScore, population, cityId.
+
+### 3b. Fetch live signals + category scores when the modal opens
+
+When `open && markets.length >= 2`:
+- Collect `cityId`s from markets that have one (live cities).
+- Query in parallel:
+  - `city_market_signals` where `city_id in (...)` → group by `city_id`, pick the 6 signals matching `signal_key` of: `children_5_12`, `households_100k_plus`, `premium_pricing`, `teacher_density`, `school_district_access`, `millennial_density` (these are the SOW signal keys; if a key isn't present, render `—`).
+  - `city_category_scores` where `city_id in (...)` → group by `city_id`, map to the 6 categories used in the table.
+- Hold results in local state keyed by `cityId`.
+
+### 3c. Render rules
+
+- **Header per column**: `{city}, {state-abbrev}` and `{county ?? metroArea ?? "—"}` — no more `population > 200000 ? "Travis County" : "Collin County"`.
+- **Overall Score**: `market.compositeScore` (delete `scoreForMarket` Frisco/Plano/Austin overrides).
+- **Tier**: `market.tier` (drop the literal `(Tier 1)` label suffix; just show the letter pill).
+- **Category Scores**: from fetched `city_category_scores`; fall back to `—` and a flat grey bar when missing. Delete `categoryScore()` Frisco override and `CATEGORY_ROWS` `.get()` synthesizers — the row defs become `{ key, label, categoryKey }`.
+- **Key Market Signals**: from fetched `city_market_signals`; render `value` and `delta` straight from the row. Missing → `—` / hide delta. Delete the per-city ternaries entirely.
+- Sample-only cities (no `cityId`) render `—` for every signal/category and a small "No live data — refresh this market first" hint under the header.
+
+### 3d. Wire live markets into the modal
+
+`src/pages/CityScoring.tsx` line 1304 currently:
+```tsx
+markets={sampleCities.filter((c) => selectedForCompare.includes(c.id)).slice(0, 4)}
+```
+Change to use the live ranked list:
+```tsx
+markets={filtered.filter((m) => selectedForCompare.includes(m.id)).slice(0, 4)}
+```
+(`filtered` is already the live-aware `RankedMarket[]` used by the table; `selectedForCompare` already stores those ids.)
 
 ---
 
 ## Files touched
-- `src/pages/CityScoring.tsx` — remove `fallbackSigRows`, real pagination, empty-state for signals, drop hardcoded summary, refresh-badge wording, re-read `cities` row after refresh.
-- `supabase/functions/fetch-city-market-data-sow/index.ts` — confirm/add `last_scraped_at = now()` write on success (only if missing).
+- `src/pages/CityScoring.tsx` — Steps 1, 2, and 3d
+- `src/components/city-scoring/MarketCompareModal.tsx` — Step 3 rewrite
 
-## Out of scope (defer)
-- Backfilling signals for the ~30 un-refreshed cities (that's a data job — user must click Refresh per city, or we add a "Refresh all visible" later).
-- Discoverability / new-city search combobox (separate PR).
-- Removing remaining `sampleCities` imports — only the user-visible mock symptoms in this PR.
+## Out of scope (deferred per your approval scope)
+- Items 4–7 from the audit (mock category formula, sample injection into ranked list, decorative map, hardcoded SOURCES, scoring-model preset, state shortener).
 
-Approve and I'll implement A → B → D → C in that order (smallest blast radius first).
+After approval I'll run them sequentially in one implementation pass and verify the build.

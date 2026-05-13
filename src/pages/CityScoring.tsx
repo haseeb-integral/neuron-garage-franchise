@@ -77,14 +77,6 @@ function categoryScores(c: CityData): Record<CategoryKey, number> {
   };
 }
 
-const NEARBY_MARKETS = [
-  { name: "Prosper, TX (USD)", score: 87 },
-  { name: "McKinney, TX (ISD)", score: 86 },
-  { name: "Allen, TX (ISD)", score: 85 },
-  { name: "Little Elm, TX", score: 82 },
-  { name: "The Colony, TX", score: 80 },
-];
-
 const SOURCES: { name: string; icon: typeof Building2; status: "connected" | "planned" }[] = [
   { name: "U.S. Census Bureau", icon: Building2, status: "connected" },
   { name: "BLS (Occupational Data)", icon: Building2, status: "connected" },
@@ -120,7 +112,6 @@ const CityScoring = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [scoringModel, setScoringModel] = useState("Affluent Suburbs Model");
   const [compareMode, setCompareMode] = useState(false);
-  const [showNearby, setShowNearby] = useState(true);
 
   const [stateFilter, setStateFilter] = useState("All");
   const [minPop, setMinPop] = useState("25000");
@@ -562,7 +553,6 @@ const CityScoring = () => {
   const handleLogout = async () => { await signOut(); navigate("/auth", { replace: true }); };
 
   const cs = categoryScores(selected);
-  const isFriscoMock = selected.city === "Frisco" && selected.state === "Texas";
 
   // DB → UI category-key mapping
   const DB_CAT_TO_UI: Record<string, CategoryKey> = {
@@ -588,12 +578,9 @@ const CityScoring = () => {
 
   const detailScore = liveCity?.composite_score
     ? liveCity.composite_score
-    : isFriscoMock ? 91 : selected.compositeScore;
+    : selected.compositeScore;
 
-  const fallbackCats = isFriscoMock
-    ? { demand: 92, pricingPower: 90, competitiveLandscape: 76, franchiseeSupply: 83, easeOfOperations: 85, parentMindset: 84 }
-    : cs;
-  const detailCategoryScores = { ...fallbackCats, ...liveUiCategoryScores } as Record<CategoryKey, number>;
+  const detailCategoryScores = { ...cs, ...liveUiCategoryScores } as Record<CategoryKey, number>;
 
   // Frontend-only weighted composite using applied weights and visible category scores.
   const appliedTotal = Object.values(appliedWeights).reduce((s, v) => s + v, 0);
@@ -790,10 +777,6 @@ const CityScoring = () => {
           <div className="flex items-center gap-2">
             <span className="text-sm text-[#14233b]">Compare Mode</span>
             <Switch checked={compareMode} onCheckedChange={setCompareMode} />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-[#14233b]">Show nearby markets</span>
-            <Switch checked={showNearby} onCheckedChange={setShowNearby} />
           </div>
         </div>
       </div>
@@ -1190,29 +1173,6 @@ const CityScoring = () => {
 
         {/* Right column */}
         <div className="min-w-0 space-y-3 flex flex-col">
-          {showNearby && (
-            <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
-              <div className="mb-1 flex items-center justify-between">
-                <h4 className="text-[13px] font-semibold text-[#07142f]">Nearby Markets</h4>
-                <button
-                  className="text-[10px] font-medium text-[#174be8] hover:underline"
-                  onClick={() => setDetailDrawerOpen(true)}
-                >
-                  View Evidence
-                </button>
-              </div>
-              <p className="text-[10px] text-[#8794ab] mb-2">Sample nearby markets</p>
-              <div className="space-y-2">
-                {NEARBY_MARKETS.map((m) => (
-                  <div key={m.name} className="flex items-center justify-between gap-2 text-[11px]">
-                    <span className="flex min-w-0 items-center gap-1.5 text-[#14233b]"><MapPin size={11} className="flex-shrink-0 text-[#8794ab]" /> <span className="truncate">{m.name}</span></span>
-                    <span className="inline-flex items-center justify-center min-w-[28px] h-5 rounded-md bg-[#e6f7ef] text-[#0ea66e] text-[10.5px] font-bold px-1.5">{m.score}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-xs font-bold text-[#07142f]">Source Data</h4>
@@ -1301,7 +1261,7 @@ const CityScoring = () => {
       <MarketCompareModal
         open={compareOpen}
         onClose={() => setCompareOpen(false)}
-        markets={sampleCities.filter((c) => selectedForCompare.includes(c.id)).slice(0, 4)}
+        markets={baseRankedMarkets.filter((m) => selectedForCompare.includes(m.id)).slice(0, 4)}
       />
 
       <MarketReportModal

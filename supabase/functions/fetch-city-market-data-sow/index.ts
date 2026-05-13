@@ -314,7 +314,11 @@ function buildSowSignals(args: {
 
   add({ signal_key: 'rental_venue_count', label: 'Rental Venues (Schools / Churches / Rec Centers)', value: existingCounts.rental_venues ?? 'Not available yet', source: 'apify', confidence: 0.55, status: 'proxy', metric_category: 'ease_of_operations', used_in_score: true })
   add(missingSignal('ease_of_operations', 'classroom_rental_cost_weekly', 'Typical Classroom Rental Cost per Week', 'firecrawl', 'Needs venue/classroom rental price extraction.'))
-  add(missingSignal('ease_of_operations', 'commute_sprawl_index', 'Commute Times / Geographic Sprawl', 'census_maps', 'Needs Census commute and/or maps/geography source.'))
+  if (sprint?.commute_sprawl_index_pct != null) {
+    add({ signal_key: 'commute_sprawl_index', label: 'Commute Times / Sprawl (% workers w/ 45+ min commute)', value: `${sprint.commute_sprawl_index_pct}%`, source: 'census', source_url: sprint.source_url, confidence: 0.85, status: 'live', metric_category: 'ease_of_operations', used_in_score: true, notes: 'ACS B08303: workers with 45+ minute commute / total workers.', raw_data: { table: 'B08303', long_commute: sprint.long_commute, total: sprint.commute_total } })
+  } else {
+    add(missingSignal('ease_of_operations', 'commute_sprawl_index', 'Commute Times / Geographic Sprawl', 'census', 'B08303 returned null for this place.'))
+  }
   add(missingSignal('ease_of_operations', 'state_camp_regulation_complexity', 'State Camp Regulation Complexity', 'aca', 'Needs ACA state law/regulation mapping.'))
   add({ signal_key: 'guide_wage_proxy', label: 'Estimated Guide Wage Proxy', value: fmtMoney(bls?.guide_wage_proxy ?? null), source: bls ? 'bls' : 'not_connected', source_url: bls?.source_url ?? null, confidence: bls ? 0.6 : 0, status: bls ? 'proxy' : 'missing', metric_category: 'ease_of_operations', used_in_score: Boolean(bls) })
 

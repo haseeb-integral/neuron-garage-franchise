@@ -267,10 +267,8 @@ export function MarketDetailDrawer({
         ]);
 
         const latestSowJob = jobRows?.[0] ?? null;
-        const totalSowMetrics = Number((latestSowJob?.response_summary as any)?.counts?.total_sow_metrics ?? 0);
-        const safeSignals = totalSowMetrics === 46 && (signalRows?.length ?? 0) === 46 ? signalRows : [];
 
-        setSignals((safeSignals ?? []) as LiveSignal[]);
+        setSignals((signalRows ?? []) as LiveSignal[]);
         setCompetitors((competitorRows ?? []) as LiveCompetitor[]);
         setLatestJob(latestSowJob);
       } catch (error) {

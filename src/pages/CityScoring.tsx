@@ -933,7 +933,34 @@ const CityScoring = () => {
         </div>
       </div>
 
-      {/* Three-column layout */}
+      {/* View toggle: Table | Map */}
+      <div className="mb-3 flex items-center gap-1 rounded-lg border border-[#eef2f7] bg-white p-1 w-fit">
+        {(["table", "map"] as const).map((v) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => setViewMode(v)}
+            className={`px-3 h-7 rounded-md text-[11.5px] font-semibold transition-colors ${
+              viewMode === v ? "bg-[#174be8] text-white" : "text-[#526078] hover:bg-[#f3f6fc]"
+            }`}
+          >
+            {v === "table" ? "Table" : "Map"}
+          </button>
+        ))}
+      </div>
+
+      {viewMode === "map" ? (
+        <MarketsMap
+          markets={filtered}
+          onSelect={(m) => {
+            setSelectedMarketKey({ city: m.city, state: m.state });
+            const sample = sampleCities.find((s) => sameMarket(s.city, s.state, m.city, m.state));
+            if (sample) setSelectedId(sample.id);
+            setViewMode("table");
+          }}
+        />
+      ) : (
+      /* Three-column layout */
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.1fr_1.35fr_0.78fr] items-stretch">
         {/* Left: Ranked Markets */}
         <div className="min-w-0 rounded-lg bg-white border border-[#eef2f7] p-3 flex flex-col">

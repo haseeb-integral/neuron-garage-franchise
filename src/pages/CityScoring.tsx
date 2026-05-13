@@ -141,6 +141,8 @@ const CityScoring = () => {
   });
   const [selectedForCompare, setSelectedForCompare] = useState<number[]>([]);
   const [refreshingMarket, setRefreshingMarket] = useState(false);
+  const PAGE_SIZE = 8;
+  const [page, setPage] = useState(1);
 
   // Live DB-backed data for the selected market (falls back to sample data when missing)
   const [liveCity, setLiveCity] = useState<any | null>(null);

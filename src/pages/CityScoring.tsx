@@ -160,31 +160,43 @@ const CityScoring = () => {
   const displayName = profile?.full_name || profile?.email || user?.email || "Account";
   const initials = (displayName.match(/\b\w/g) || []).slice(0, 1).join("").toUpperCase() || "U";
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [scoringModel, setScoringModel] = useState("Affluent Suburbs Model");
-  const [compareMode, setCompareMode] = useState(false);
+  const searchTerm = useCityScoringStore((s) => s.searchTerm);
+  const setSearchTerm = useCityScoringStore((s) => s.setSearchTerm);
+  const scoringModel = useCityScoringStore((s) => s.scoringModel);
+  const setScoringModel = useCityScoringStore((s) => s.setScoringModel);
+  const compareMode = useCityScoringStore((s) => s.compareMode);
+  const setCompareMode = useCityScoringStore((s) => s.setCompareMode);
 
-  const [stateFilter, setStateFilter] = useState("All");
-  const [minPop, setMinPop] = useState("25000");
-  const [minScore, setMinScore] = useState(35);
-  const [tierFilter, setTierFilter] = useState("All");
-  const [nonRegOnly, setNonRegOnly] = useState(false);
+  const stateFilter = useCityScoringStore((s) => s.stateFilter);
+  const setStateFilter = useCityScoringStore((s) => s.setStateFilter);
+  const minPop = useCityScoringStore((s) => s.minPop);
+  const setMinPop = useCityScoringStore((s) => s.setMinPop);
+  const minScore = useCityScoringStore((s) => s.minScore);
+  const setMinScore = useCityScoringStore((s) => s.setMinScore);
+  const tierFilter = useCityScoringStore((s) => s.tierFilter);
+  const setTierFilter = useCityScoringStore((s) => s.setTierFilter);
+  const nonRegOnly = useCityScoringStore((s) => s.nonRegOnly);
+  const setNonRegOnly = useCityScoringStore((s) => s.setNonRegOnly);
 
-  const defaultWeights = CATEGORIES.reduce((acc, c) => ({ ...acc, [c.key]: c.defaultWeight }), {} as Record<CategoryKey, number>);
-  const [weights, setWeights] = useState<Record<CategoryKey, number>>(defaultWeights);
-  const [appliedWeights, setAppliedWeights] = useState<Record<CategoryKey, number>>(defaultWeights);
-  const [customCriteria, setCustomCriteria] = useState<Array<{ name: string; category: string; weight: number; source: string; notes: string }>>([]);
+  const defaultWeights = DEFAULT_WEIGHTS;
+  const weights = useCityScoringStore((s) => s.weights);
+  const setWeights = useCityScoringStore((s) => s.setWeights);
+  const appliedWeights = useCityScoringStore((s) => s.appliedWeights);
+  const setAppliedWeights = useCityScoringStore((s) => s.setAppliedWeights);
+  const customCriteria = useCityScoringStore((s) => s.customCriteria);
+  const setCustomCriteria = useCityScoringStore((s) => s.setCustomCriteria);
   const [addCritOpen, setAddCritOpen] = useState(false);
 
-  const [selectedId, setSelectedId] = useState<number>(sampleCities[0]?.id ?? 1);
-  const [selectedMarketKey, setSelectedMarketKey] = useState<{ city: string; state: string }>({
-    city: sampleCities[0]?.city ?? "",
-    state: sampleCities[0]?.state ?? "",
-  });
-  const [selectedForCompare, setSelectedForCompare] = useState<number[]>([]);
+  const selectedId = useCityScoringStore((s) => s.selectedId);
+  const setSelectedId = useCityScoringStore((s) => s.setSelectedId);
+  const selectedMarketKey = useCityScoringStore((s) => s.selectedMarketKey);
+  const setSelectedMarketKey = useCityScoringStore((s) => s.setSelectedMarketKey);
+  const selectedForCompare = useCityScoringStore((s) => s.selectedForCompare);
+  const setSelectedForCompare = useCityScoringStore((s) => s.setSelectedForCompare);
   const [refreshingMarket, setRefreshingMarket] = useState(false);
   const PAGE_SIZE = 8;
-  const [page, setPage] = useState(1);
+  const page = useCityScoringStore((s) => s.page);
+  const setPage = useCityScoringStore((s) => s.setPage);
 
   // Live DB-backed data for the selected market (falls back to sample data when missing)
   const [liveCity, setLiveCity] = useState<any | null>(null);
@@ -198,7 +210,8 @@ const CityScoring = () => {
   const [compareOpen, setCompareOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [addCityOpen, setAddCityOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<"table" | "map">("table");
+  const viewMode = useCityScoringStore((s) => s.viewMode);
+  const setViewMode = useCityScoringStore((s) => s.setViewMode);
 
   // Open city via global search ?city=ID
   useEffect(() => {

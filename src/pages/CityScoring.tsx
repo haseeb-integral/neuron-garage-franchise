@@ -34,6 +34,7 @@ import {
   downloadRankedMarketsCsv,
   type RankedMarket,
 } from "@/lib/cityScoringLiveData";
+import { useCityScoringStore, DEFAULT_WEIGHTS } from "@/stores/cityScoringStore";
 
 function rebalanceWeights<K extends string>(
   prev: Record<K, number>,

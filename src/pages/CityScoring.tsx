@@ -577,6 +577,7 @@ const CityScoring = () => {
   const applyWeights = () => {
     if (totalWeight !== 100) return;
     setAppliedWeights({ ...weights });
+    setAppliedSubWeights(subWeights);
     toast.success("Composite score recalculated from current weights.");
   };
 

@@ -22,9 +22,9 @@ interface Props {
 
 const STATUS_PILL: Record<SowMetricEntry["status"], { label: string; cls: string }> = {
   live:    { label: "Live",        cls: "bg-green-500/15 text-green-700" },
-  proxy:   { label: "Proxy",       cls: "bg-blue-500/15 text-blue-700" },
-  missing: { label: "No data yet", cls: "bg-gray-200 text-gray-600" },
-  blocked: { label: "No data yet", cls: "bg-gray-200 text-gray-600" },
+  proxy:   { label: "Estimated",   cls: "bg-blue-500/15 text-blue-700" },
+  missing: { label: "Unavailable", cls: "bg-gray-200 text-gray-600" },
+  blocked: { label: "Unavailable", cls: "bg-gray-200 text-gray-600" },
 };
 
 export function SubMetricWeightsDrawer({

@@ -115,19 +115,46 @@ export function SubMetricWeightsDrawer({
                     </Tooltip>
                   </div>
 
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    disabled={isDisabled}
-                    value={value}
-                    onChange={(e) => setSubWeight(categoryKey, m.key, Number(e.target.value))}
-                    className={`w-14 h-7 text-[12px] text-right rounded border px-1.5 focus:outline-none focus:ring-1 focus:ring-[#174be8]/30 ${
+                  <div
+                    className={`flex items-center h-7 rounded border overflow-hidden ${
                       isDisabled
-                        ? "border-[#eef2f7] bg-gray-50 text-[#9aa3b5] cursor-not-allowed"
-                        : "border-[#e5eaf2] bg-white text-[#07142f]"
+                        ? "border-[#eef2f7] bg-gray-50 opacity-60"
+                        : "border-[#e5eaf2] bg-white"
                     }`}
-                  />
+                  >
+                    <button
+                      type="button"
+                      aria-label="Decrease weight"
+                      disabled={isDisabled || value <= 0}
+                      onClick={() => setSubWeight(categoryKey, m.key, value - 1)}
+                      className="h-full w-7 flex items-center justify-center text-[#526078] hover:bg-[#f3f6fb] disabled:text-[#c5cdda] disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors"
+                    >
+                      <Minus size={12} />
+                    </button>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      disabled={isDisabled}
+                      value={value}
+                      onChange={(e) => {
+                        const n = parseInt(e.target.value.replace(/\D/g, ""), 10);
+                        setSubWeight(categoryKey, m.key, isNaN(n) ? 0 : n);
+                      }}
+                      className={`w-9 h-full text-[12px] text-center bg-transparent border-x border-[#eef2f7] focus:outline-none ${
+                        isDisabled ? "text-[#9aa3b5] cursor-not-allowed" : "text-[#07142f]"
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      aria-label="Increase weight"
+                      disabled={isDisabled || value >= 100}
+                      onClick={() => setSubWeight(categoryKey, m.key, value + 1)}
+                      className="h-full w-7 flex items-center justify-center text-[#526078] hover:bg-[#f3f6fb] disabled:text-[#c5cdda] disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors"
+                    >
+                      <Plus size={12} />
+                    </button>
+                  </div>
 
                   <span
                     className={`text-[10px] px-1.5 py-0.5 rounded font-medium whitespace-nowrap w-[68px] text-center ${pill.cls}`}

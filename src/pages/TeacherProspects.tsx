@@ -11,6 +11,7 @@ import { TeacherTable } from "@/components/teacher-prospects/TeacherTable";
 import { TeacherDetailPanel } from "@/components/teacher-prospects/TeacherDetailPanel";
 import { BulkActionBar } from "@/components/teacher-prospects/BulkActionBar";
 import { PageHeader } from "@/components/PageHeader";
+import { useTeacherProspectsStore } from "@/stores/teacherProspectsStore";
 
 const stateAbbr = (state?: string | null) => {
   if (!state) return "";

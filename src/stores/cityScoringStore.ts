@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { sampleCities } from "@/data/cityData";
+import { DEFAULT_SUB_WEIGHTS } from "@/lib/sowMetricRegistry";
 
 export type CategoryKey =
   | "demand"
@@ -17,6 +18,16 @@ export const DEFAULT_WEIGHTS: Record<CategoryKey, number> = {
   franchiseeSupply: 15,
   easeOfOperations: 10,
   parentMindset: 10,
+};
+
+export type SubWeights = Record<CategoryKey, Record<string, number>>;
+
+const cloneSubWeights = (src: SubWeights): SubWeights => {
+  const out = {} as SubWeights;
+  (Object.keys(src) as CategoryKey[]).forEach((k) => {
+    out[k] = { ...src[k] };
+  });
+  return out;
 };
 
 export interface CustomCriterion {
@@ -49,6 +60,10 @@ interface CityScoringState {
   appliedWeights: Record<CategoryKey, number>;
   customCriteria: CustomCriterion[];
 
+  // Sub-metric weights (display + persist only; do NOT affect composite yet)
+  subWeights: SubWeights;
+  appliedSubWeights: SubWeights;
+
   // Selection
   selectedId: number;
   selectedMarketKey: MarketKey;
@@ -70,6 +85,9 @@ interface CityScoringState {
   setWeights: (v: Record<CategoryKey, number> | ((prev: Record<CategoryKey, number>) => Record<CategoryKey, number>)) => void;
   setAppliedWeights: (v: Record<CategoryKey, number>) => void;
   setCustomCriteria: (v: CustomCriterion[] | ((prev: CustomCriterion[]) => CustomCriterion[])) => void;
+  setSubWeight: (category: CategoryKey, metricKey: string, value: number) => void;
+  setAppliedSubWeights: (v: SubWeights) => void;
+  resetSubWeights: () => void;
   setSelectedId: (id: number) => void;
   setSelectedMarketKey: (k: MarketKey) => void;
   setSelectedForCompare: (v: number[] | ((prev: number[]) => number[])) => void;
@@ -93,6 +111,8 @@ export const useCityScoringStore = create<CityScoringState>()(
       weights: { ...DEFAULT_WEIGHTS },
       appliedWeights: { ...DEFAULT_WEIGHTS },
       customCriteria: [],
+      subWeights: cloneSubWeights(DEFAULT_SUB_WEIGHTS),
+      appliedSubWeights: cloneSubWeights(DEFAULT_SUB_WEIGHTS),
       selectedId: firstCity?.id ?? 1,
       selectedMarketKey: { city: firstCity?.city ?? "", state: firstCity?.state ?? "" },
       selectedForCompare: [],
@@ -110,6 +130,22 @@ export const useCityScoringStore = create<CityScoringState>()(
       setWeights: (v) => set((s) => ({ weights: typeof v === "function" ? v(s.weights) : v })),
       setAppliedWeights: (v) => set({ appliedWeights: v }),
       setCustomCriteria: (v) => set((s) => ({ customCriteria: typeof v === "function" ? v(s.customCriteria) : v })),
+      setSubWeight: (category, metricKey, value) =>
+        set((s) => {
+          const clamped = Math.max(0, Math.min(100, Math.round(value || 0)));
+          return {
+            subWeights: {
+              ...s.subWeights,
+              [category]: { ...s.subWeights[category], [metricKey]: clamped },
+            },
+          };
+        }),
+      setAppliedSubWeights: (v) => set({ appliedSubWeights: cloneSubWeights(v) }),
+      resetSubWeights: () =>
+        set({
+          subWeights: cloneSubWeights(DEFAULT_SUB_WEIGHTS),
+          appliedSubWeights: cloneSubWeights(DEFAULT_SUB_WEIGHTS),
+        }),
       setSelectedId: (id) => set({ selectedId: id }),
       setSelectedMarketKey: (k) => set({ selectedMarketKey: k }),
       setSelectedForCompare: (v) => set((s) => ({ selectedForCompare: typeof v === "function" ? v(s.selectedForCompare) : v })),
@@ -120,8 +156,15 @@ export const useCityScoringStore = create<CityScoringState>()(
     {
       name: "ng:city-scoring-v1",
       storage: createJSONStorage(() => localStorage),
-      version: 1,
-      // Persist only UI state — exclude the setters
+      version: 2,
+      migrate: (persisted: any, version) => {
+        if (!persisted) return persisted;
+        if (version < 2) {
+          persisted.subWeights = cloneSubWeights(DEFAULT_SUB_WEIGHTS);
+          persisted.appliedSubWeights = cloneSubWeights(DEFAULT_SUB_WEIGHTS);
+        }
+        return persisted;
+      },
       partialize: (s) => ({
         searchTerm: s.searchTerm,
         scoringModel: s.scoringModel,
@@ -133,6 +176,8 @@ export const useCityScoringStore = create<CityScoringState>()(
         weights: s.weights,
         appliedWeights: s.appliedWeights,
         customCriteria: s.customCriteria,
+        subWeights: s.subWeights,
+        appliedSubWeights: s.appliedSubWeights,
         selectedId: s.selectedId,
         selectedMarketKey: s.selectedMarketKey,
         selectedForCompare: s.selectedForCompare,

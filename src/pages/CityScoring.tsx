@@ -35,9 +35,9 @@ import {
   type RankedMarket,
 } from "@/lib/cityScoringLiveData";
 import { useCityScoringStore, DEFAULT_WEIGHTS } from "@/stores/cityScoringStore";
-import { METRICS_BY_CATEGORY } from "@/lib/sowMetricRegistry";
+import { SubMetricWeightsDrawer } from "@/components/city-scoring/SubMetricWeightsDrawer";
 import { getCached, setCached } from "@/lib/pageCache";
-import { ArrowLeft } from "lucide-react";
+import { Settings2 } from "lucide-react";
 
 function rebalanceWeights<K extends string>(
   prev: Record<K, number>,

@@ -201,10 +201,14 @@ const CityScoring = () => {
   const setPage = useCityScoringStore((s) => s.setPage);
 
   // Live DB-backed data for the selected market (falls back to sample data when missing)
-  const [liveCity, setLiveCity] = useState<any | null>(null);
-  const [liveSignals, setLiveSignals] = useState<any[]>([]);
-  const [liveCategoryScores, setLiveCategoryScores] = useState<Record<string, number>>({});
-  const [liveCompetitors, setLiveCompetitors] = useState<any[]>([]);
+  const initialMarketKey = `${selectedMarketKey.city}|${selectedMarketKey.state}`;
+  const initialDetail = getCached<{
+    city: any | null; signals: any[]; scores: Record<string, number>; comps: any[]; job: any | null;
+  }>(`city:detail:${initialMarketKey}`);
+  const [liveCity, setLiveCityState] = useState<any | null>(initialDetail?.city ?? null);
+  const [liveSignals, setLiveSignalsState] = useState<any[]>(initialDetail?.signals ?? []);
+  const [liveCategoryScores, setLiveCategoryScoresState] = useState<Record<string, number>>(initialDetail?.scores ?? {});
+  const [liveCompetitors, setLiveCompetitorsState] = useState<any[]>(initialDetail?.comps ?? []);
   const [liveRankedMarkets, setLiveRankedMarketsState] = useState<RankedMarket[]>(
     () => getCached<RankedMarket[]>("city:rankedMarkets") ?? [],
   );
@@ -212,7 +216,12 @@ const CityScoring = () => {
     setCached("city:rankedMarkets", v);
     setLiveRankedMarketsState(v);
   };
-  const [liveJob, setLiveJob] = useState<any | null>(null);
+  const [liveJob, setLiveJobState] = useState<any | null>(initialDetail?.job ?? null);
+  const setLiveCity = setLiveCityState;
+  const setLiveSignals = setLiveSignalsState;
+  const setLiveCategoryScores = setLiveCategoryScoresState;
+  const setLiveCompetitors = setLiveCompetitorsState;
+  const setLiveJob = setLiveJobState;
   const [marketRefreshVersion, setMarketRefreshVersion] = useState(0);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);

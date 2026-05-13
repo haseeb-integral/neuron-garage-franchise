@@ -231,9 +231,12 @@ const CandidatePipeline = () => {
   }, [searchParams, candidates]);
 
   // Filters
-  const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>("all");
-  const [tagFilter, setTagFilter] = useState<TagFilter>("all");
-  const [fitFilter, setFitFilter] = useState<FitFilter>("all");
+  const ownerFilter = useCandidatePipelineStore((s) => s.ownerFilter);
+  const setOwnerFilter = useCandidatePipelineStore((s) => s.setOwnerFilter);
+  const tagFilter = useCandidatePipelineStore((s) => s.tagFilter);
+  const setTagFilter = useCandidatePipelineStore((s) => s.setTagFilter);
+  const fitFilter = useCandidatePipelineStore((s) => s.fitFilter);
+  const setFitFilter = useCandidatePipelineStore((s) => s.setFitFilter);
 
   const filteredCandidates = useMemo(() => {
     return candidates.filter((c) => {

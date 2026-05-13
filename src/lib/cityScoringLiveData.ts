@@ -197,6 +197,177 @@ export function sampleRankedMarkets() {
   return sampleCities.map(mapSampleCityToRankedMarket);
 }
 
+// ============================================================================
+// Source Data (provenance) for the selected city
+// ============================================================================
+export type CitySourceRow = {
+  source: string;
+  label: string;
+  status: "success" | "error" | "running" | "queued" | "never";
+  lastFetchedAt: string | null;
+  recordCount: number;
+  sourceUrl: string | null;
+  errorMessage: string | null;
+};
+
+const SOURCE_LABELS: Record<string, string> = {
+  census: "U.S. Census Bureau",
+  bls: "BLS (Occupational Data)",
+  apify: "Yelp / Google Maps / Apify",
+  firecrawl: "Firecrawl",
+  google_trends: "Google Trends",
+  state_edu: "State Education Databases",
+  aca: "ACA Camp Regulations",
+  zillow_col: "Zillow / Cost of Living",
+  weather: "Weather Data",
+  census_maps: "Census Maps",
+  computed: "Computed Metrics",
+  manual_or_phase2: "Manual / Phase 2",
+  live_api: "Live API Aggregator",
+  sow_metric_coverage: "SOW Metric Engine",
+  poc: "Proof of Concept",
+};
+
+function labelFor(source: string) {
+  return SOURCE_LABELS[source] ?? source.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function jobStatusToRowStatus(status: string | null | undefined): CitySourceRow["status"] {
+  if (!status) return "never";
+  if (status === "completed" || status === "completed_with_warnings") return "success";
+  if (status === "running" || status === "in_progress") return "running";
+  if (status === "queued" || status === "pending") return "queued";
+  return "error";
+}
+
+export async function getCitySourceData(cityId: string): Promise<CitySourceRow[]> {
+  if (!cityId) return [];
+
+  const [{ data: jobs }, { data: signals }] = await Promise.all([
+    supabase
+      .from("city_fetch_jobs")
+      .select("source, status, started_at, completed_at, created_at, error_message, response_summary")
+      .eq("city_id", cityId)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("city_market_signals")
+      .select("source, source_url, updated_at")
+      .eq("city_id", cityId),
+  ]);
+
+  // Latest job per source.
+  const latestJobBySource = new Map<string, any>();
+  (jobs ?? []).forEach((j: any) => {
+    if (!j.source) return;
+    if (!latestJobBySource.has(j.source)) latestJobBySource.set(j.source, j);
+  });
+
+  // Signals grouped by source: count + latest URL + latest update.
+  const signalAgg = new Map<string, { count: number; url: string | null; latest: string | null }>();
+  (signals ?? []).forEach((s: any) => {
+    const src = s.source;
+    if (!src) return;
+    const cur = signalAgg.get(src) ?? { count: 0, url: null, latest: null };
+    cur.count += 1;
+    if (s.source_url && !cur.url) cur.url = s.source_url;
+    if (s.updated_at && (!cur.latest || s.updated_at > cur.latest)) cur.latest = s.updated_at;
+    signalAgg.set(src, cur);
+  });
+
+  const allSources = new Set<string>([...latestJobBySource.keys(), ...signalAgg.keys()]);
+  if (allSources.size === 0) return [];
+
+  return Array.from(allSources).map((source) => {
+    const job = latestJobBySource.get(source);
+    const sig = signalAgg.get(source);
+    const status: CitySourceRow["status"] = job ? jobStatusToRowStatus(job.status) : sig ? "success" : "never";
+    const lastFetchedAt = job?.completed_at ?? job?.started_at ?? job?.created_at ?? sig?.latest ?? null;
+    return {
+      source,
+      label: labelFor(source),
+      status,
+      lastFetchedAt,
+      recordCount: sig?.count ?? 0,
+      sourceUrl: sig?.url ?? null,
+      errorMessage: job?.error_message ?? null,
+    };
+  }).sort((a, b) => a.label.localeCompare(b.label));
+}
+
+// ============================================================================
+// Nearby Markets — same metro_area first, then same state fallback
+// ============================================================================
+export type NearbyMarket = {
+  cityId: string;
+  city: string;
+  state: string;
+  metroArea: string | null;
+  county: string | null;
+  compositeScore: number;
+  tier: string;
+  population: number;
+};
+
+export async function getNearbyMarkets(opts: {
+  cityId: string;
+  state: string;
+  metroArea: string | null;
+  limit?: number;
+}): Promise<NearbyMarket[]> {
+  const limit = opts.limit ?? 5;
+  if (!opts.cityId) return [];
+
+  const collected: any[] = [];
+  const seen = new Set<string>([opts.cityId]);
+
+  if (opts.metroArea) {
+    const { data } = await supabase
+      .from("cities")
+      .select("id, city, state, metro_area, county, composite_score, tier, population")
+      .eq("metro_area", opts.metroArea)
+      .gt("composite_score", 0)
+      .neq("id", opts.cityId)
+      .order("composite_score", { ascending: false })
+      .limit(limit);
+    (data ?? []).forEach((row: any) => {
+      if (!seen.has(row.id)) {
+        seen.add(row.id);
+        collected.push(row);
+      }
+    });
+  }
+
+  if (collected.length < limit && opts.state) {
+    const remaining = limit - collected.length;
+    const { data } = await supabase
+      .from("cities")
+      .select("id, city, state, metro_area, county, composite_score, tier, population")
+      .eq("state", opts.state)
+      .gt("composite_score", 0)
+      .neq("id", opts.cityId)
+      .order("composite_score", { ascending: false })
+      .limit(remaining + seen.size);
+    (data ?? []).forEach((row: any) => {
+      if (collected.length >= limit) return;
+      if (!seen.has(row.id)) {
+        seen.add(row.id);
+        collected.push(row);
+      }
+    });
+  }
+
+  return collected.slice(0, limit).map((row: any) => ({
+    cityId: row.id,
+    city: row.city,
+    state: normalizeState(row.state),
+    metroArea: row.metro_area ?? null,
+    county: row.county ?? null,
+    compositeScore: toNumber(row.composite_score, 0),
+    tier: row.tier ?? tierFromScore(toNumber(row.composite_score, 0)),
+    population: toNumber(row.population, 0),
+  }));
+}
+
 export function buildRankedMarketsCsv(markets: RankedMarket[]) {
   const rows = [
     ["Rank", "Market", "State", "Tier", "Composite Score", "Population", "Competitors", "Source", "Last Refreshed"],

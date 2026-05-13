@@ -11,6 +11,7 @@ import { KanbanBoard } from "@/components/candidate-pipeline/KanbanBoard";
 import { PipelineAnalyticsBar } from "@/components/candidate-pipeline/PipelineAnalyticsBar";
 import { CandidateDetailPanel } from "@/components/candidate-pipeline/CandidateDetailPanel";
 import { PageHeader } from "@/components/PageHeader";
+import { useCandidatePipelineStore } from "@/stores/candidatePipelineStore";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,7 +43,8 @@ const CandidatePipeline = () => {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [active, setActive] = useState<Candidate | null>(null);
-  const [compact, setCompact] = useState(false);
+  const compact = useCandidatePipelineStore((s) => s.compact);
+  const setCompact = useCandidatePipelineStore((s) => s.setCompact);
   const [collapsed, setCollapsed] = useState<Set<StageId>>(new Set());
   const [confirmCandidate, setConfirmCandidate] = useState<Candidate | null>(null);
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
@@ -229,9 +231,12 @@ const CandidatePipeline = () => {
   }, [searchParams, candidates]);
 
   // Filters
-  const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>("all");
-  const [tagFilter, setTagFilter] = useState<TagFilter>("all");
-  const [fitFilter, setFitFilter] = useState<FitFilter>("all");
+  const ownerFilter = useCandidatePipelineStore((s) => s.ownerFilter);
+  const setOwnerFilter = useCandidatePipelineStore((s) => s.setOwnerFilter);
+  const tagFilter = useCandidatePipelineStore((s) => s.tagFilter);
+  const setTagFilter = useCandidatePipelineStore((s) => s.setTagFilter);
+  const fitFilter = useCandidatePipelineStore((s) => s.fitFilter);
+  const setFitFilter = useCandidatePipelineStore((s) => s.setFitFilter);
 
   const filteredCandidates = useMemo(() => {
     return candidates.filter((c) => {

@@ -363,13 +363,22 @@ const CityScoring = () => {
           .limit(1),
       ]);
 
+      const scoresMap = (scores ?? []).reduce(
+        (acc: Record<string, number>, s: any) => ({ ...acc, [s.category]: s.score }),
+        {},
+      );
       setLiveCity(cityRow);
       setLiveSignals(signals ?? []);
-      setLiveCategoryScores(
-        (scores ?? []).reduce((acc: Record<string, number>, s: any) => ({ ...acc, [s.category]: s.score }), {})
-      );
+      setLiveCategoryScores(scoresMap);
       setLiveCompetitors(comps ?? []);
       setLiveJob(jobs?.[0] ?? null);
+      setCached(`city:detail:${city}|${state}`, {
+        city: cityRow,
+        signals: signals ?? [],
+        scores: scoresMap,
+        comps: comps ?? [],
+        job: jobs?.[0] ?? null,
+      });
     } catch (err) {
       console.error("loadLiveData error", err);
     }

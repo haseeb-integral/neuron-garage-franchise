@@ -67,15 +67,15 @@ interface CityScoringState {
   setMinScore: (v: number) => void;
   setTierFilter: (v: string) => void;
   setNonRegOnly: (v: boolean) => void;
-  setWeights: (updater: (prev: Record<CategoryKey, number>) => Record<CategoryKey, number>) => void;
+  setWeights: (v: Record<CategoryKey, number> | ((prev: Record<CategoryKey, number>) => Record<CategoryKey, number>)) => void;
   setAppliedWeights: (v: Record<CategoryKey, number>) => void;
-  setCustomCriteria: (updater: (prev: CustomCriterion[]) => CustomCriterion[]) => void;
+  setCustomCriteria: (v: CustomCriterion[] | ((prev: CustomCriterion[]) => CustomCriterion[])) => void;
   setSelectedId: (id: number) => void;
   setSelectedMarketKey: (k: MarketKey) => void;
-  setSelectedForCompare: (updater: (prev: number[]) => number[]) => void;
+  setSelectedForCompare: (v: number[] | ((prev: number[]) => number[])) => void;
   setCompareMode: (v: boolean) => void;
   setViewMode: (v: "table" | "map") => void;
-  setPage: (v: number) => void;
+  setPage: (v: number | ((prev: number) => number)) => void;
 }
 
 const firstCity = sampleCities[0];

@@ -430,7 +430,7 @@ Deno.serve(async (req) => {
       .filter((r) => { const k = r.name.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true })
       .slice(0, 30)
 
-    const finalCompetitors = competitors.length > 0 ? competitors : sampleCompetitors(city, startedAt)
+    const finalCompetitors = competitors
     const excludedCount = Math.max(0, allItems.length - (competitorItems.length + elementaryItems.length + privateItems.length + preschoolItems.length + stemItems.length + rentalItems.length + parentItems.length))
 
     const scoreInputs = {

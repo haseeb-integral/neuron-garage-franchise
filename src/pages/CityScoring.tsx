@@ -976,12 +976,22 @@ const CityScoring = () => {
                     {(c as any).marketType ?? (c.population > 200000 ? "Urban" : "Suburb")}
                   </span>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[#07142f] font-semibold tabular-nums">{c.compositeScore}</span>
-                    <div className="h-1.5 flex-1 rounded-full bg-[#eef2f7]">
-                      <div className="h-full rounded-full bg-[#0ea66e]" style={{ width: `${c.compositeScore}%` }} />
-                    </div>
+                    {c.hasLiveData ? (
+                      <>
+                        <span className="text-[#07142f] font-semibold tabular-nums">{c.compositeScore}</span>
+                        <div className="h-1.5 flex-1 rounded-full bg-[#eef2f7]">
+                          <div className="h-full rounded-full bg-[#0ea66e]" style={{ width: `${c.compositeScore}%` }} />
+                        </div>
+                      </>
+                    ) : (
+                      <span className="text-[#8794ab] font-medium">—</span>
+                    )}
                   </div>
-                  <span className={`justify-self-end flex items-center justify-center rounded-full text-[10px] font-bold text-white`} style={{ width: 20, height: 20, backgroundColor: c.tier === "A" ? "#0ea66e" : c.tier === "B" ? "#174be8" : c.tier === "C" ? "#b8860b" : "#ea580c" }}>{c.tier}</span>
+                  {c.hasLiveData ? (
+                    <span className={`justify-self-end flex items-center justify-center rounded-full text-[10px] font-bold text-white`} style={{ width: 20, height: 20, backgroundColor: c.tier === "A" ? "#0ea66e" : c.tier === "B" ? "#174be8" : c.tier === "C" ? "#b8860b" : "#ea580c" }}>{c.tier}</span>
+                  ) : (
+                    <span className="justify-self-end rounded-full bg-[#eef2f7] px-1.5 py-0.5 text-[8.5px] font-semibold text-[#8794ab] whitespace-nowrap">No data</span>
+                  )}
                 </div>
               );
             })}

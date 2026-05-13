@@ -664,7 +664,7 @@ Deno.serve(async (req) => {
       { signal_key: 'firecrawl_source_pages', label: 'Source Pages Found', value: String(firecrawl.count), delta: null, delta_type: firecrawl.count > 0 ? 'up' : 'neutral', source: mode, source_url: null, confidence: 0.5, raw_data: { mode } },
       { signal_key: 'data_readiness', label: 'Data Readiness', value: mode === 'live_api' ? 'Live API Connected' : 'POC Sample', delta: null, delta_type: mode === 'live_api' ? 'up' : 'neutral', source: mode, source_url: null, confidence: 0.7, raw_data: { mode } },
     ]
-    const signals = [...baseSignals, ...censusSignals, ...blsSignals]
+    const signals = [...baseSignals, ...censusSignals, ...blsSignals, ...trendsSignals, ...waitlistSignals]
     const { error: sErr } = await admin.from('city_market_signals').insert(signals.map((r) => ({ ...r, city_id: cityId })))
     if (sErr) return json({ error: 'Failed to insert signals', detail: sErr.message }, 500)
 

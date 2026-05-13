@@ -189,6 +189,7 @@ const CityScoring = () => {
   const setAppliedWeights = useCityScoringStore((s) => s.setAppliedWeights);
   const customCriteria = useCityScoringStore((s) => s.customCriteria);
   const setCustomCriteria = useCityScoringStore((s) => s.setCustomCriteria);
+  const subWeights = useCityScoringStore((s) => s.subWeights);
   const setAppliedSubWeights = useCityScoringStore((s) => s.setAppliedSubWeights);
   const resetSubWeights = useCityScoringStore((s) => s.resetSubWeights);
   const [openSubMetricsFor, setOpenSubMetricsFor] = useState<CategoryKey | null>(null);

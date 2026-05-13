@@ -35,6 +35,7 @@ import {
   type RankedMarket,
 } from "@/lib/cityScoringLiveData";
 import { useCityScoringStore, DEFAULT_WEIGHTS } from "@/stores/cityScoringStore";
+import { getCached, setCached } from "@/lib/pageCache";
 
 function rebalanceWeights<K extends string>(
   prev: Record<K, number>,
@@ -200,12 +201,27 @@ const CityScoring = () => {
   const setPage = useCityScoringStore((s) => s.setPage);
 
   // Live DB-backed data for the selected market (falls back to sample data when missing)
-  const [liveCity, setLiveCity] = useState<any | null>(null);
-  const [liveSignals, setLiveSignals] = useState<any[]>([]);
-  const [liveCategoryScores, setLiveCategoryScores] = useState<Record<string, number>>({});
-  const [liveCompetitors, setLiveCompetitors] = useState<any[]>([]);
-  const [liveRankedMarkets, setLiveRankedMarkets] = useState<RankedMarket[]>([]);
-  const [liveJob, setLiveJob] = useState<any | null>(null);
+  const initialMarketKey = `${selectedMarketKey.city}|${selectedMarketKey.state}`;
+  const initialDetail = getCached<{
+    city: any | null; signals: any[]; scores: Record<string, number>; comps: any[]; job: any | null;
+  }>(`city:detail:${initialMarketKey}`);
+  const [liveCity, setLiveCityState] = useState<any | null>(initialDetail?.city ?? null);
+  const [liveSignals, setLiveSignalsState] = useState<any[]>(initialDetail?.signals ?? []);
+  const [liveCategoryScores, setLiveCategoryScoresState] = useState<Record<string, number>>(initialDetail?.scores ?? {});
+  const [liveCompetitors, setLiveCompetitorsState] = useState<any[]>(initialDetail?.comps ?? []);
+  const [liveRankedMarkets, setLiveRankedMarketsState] = useState<RankedMarket[]>(
+    () => getCached<RankedMarket[]>("city:rankedMarkets") ?? [],
+  );
+  const setLiveRankedMarkets = (v: RankedMarket[]) => {
+    setCached("city:rankedMarkets", v);
+    setLiveRankedMarketsState(v);
+  };
+  const [liveJob, setLiveJobState] = useState<any | null>(initialDetail?.job ?? null);
+  const setLiveCity = setLiveCityState;
+  const setLiveSignals = setLiveSignalsState;
+  const setLiveCategoryScores = setLiveCategoryScoresState;
+  const setLiveCompetitors = setLiveCompetitorsState;
+  const setLiveJob = setLiveJobState;
   const [marketRefreshVersion, setMarketRefreshVersion] = useState(0);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
@@ -347,20 +363,41 @@ const CityScoring = () => {
           .limit(1),
       ]);
 
+      const scoresMap = (scores ?? []).reduce(
+        (acc: Record<string, number>, s: any) => ({ ...acc, [s.category]: s.score }),
+        {},
+      );
       setLiveCity(cityRow);
       setLiveSignals(signals ?? []);
-      setLiveCategoryScores(
-        (scores ?? []).reduce((acc: Record<string, number>, s: any) => ({ ...acc, [s.category]: s.score }), {})
-      );
+      setLiveCategoryScores(scoresMap);
       setLiveCompetitors(comps ?? []);
       setLiveJob(jobs?.[0] ?? null);
+      setCached(`city:detail:${city}|${state}`, {
+        city: cityRow,
+        signals: signals ?? [],
+        scores: scoresMap,
+        comps: comps ?? [],
+        job: jobs?.[0] ?? null,
+      });
     } catch (err) {
       console.error("loadLiveData error", err);
     }
   };
 
   useEffect(() => {
-    if (selectedCity && selectedState) loadLiveData(selectedCity, selectedState);
+    if (!selectedCity || !selectedState) return;
+    // Hydrate immediately from cache so re-mounts/market-switches feel instant
+    const cached = getCached<{
+      city: any | null; signals: any[]; scores: Record<string, number>; comps: any[]; job: any | null;
+    }>(`city:detail:${selectedCity}|${selectedState}`);
+    if (cached) {
+      setLiveCity(cached.city);
+      setLiveSignals(cached.signals);
+      setLiveCategoryScores(cached.scores);
+      setLiveCompetitors(cached.comps);
+      setLiveJob(cached.job);
+    }
+    loadLiveData(selectedCity, selectedState);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCity, selectedState]);
 

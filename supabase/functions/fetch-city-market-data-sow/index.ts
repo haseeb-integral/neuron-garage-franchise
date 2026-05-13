@@ -288,10 +288,22 @@ function buildSowSignals(args: {
   add({ signal_key: 'stem_robotics_maker_camp_count', label: 'STEM / Robotics / Maker Camps', value: existingCounts.stem_enrichment ?? 'Not available yet', source: 'apify', confidence: 0.65, status: 'proxy', metric_category: 'competitive_landscape', used_in_score: true })
   add(missingSignal('competitive_landscape', 'school_based_summer_camp_count', 'School-Based Summer Camps', 'firecrawl', 'Needs classifier for camp programs hosted at schools.'))
   add({ signal_key: 'national_brand_presence', label: 'National Brand Presence', value: 'Proxy from competitor names', source: 'apify', confidence: 0.35, status: 'proxy', metric_category: 'competitive_landscape', used_in_score: false, notes: 'Needs explicit national-brand detector list.' })
-  add(missingSignal('competitive_landscape', 'google_search_demand_summer_camp', 'Google Search Demand: summer camp [city]', 'google_trends', 'Needs Google Trends actor/source.'))
-  add(missingSignal('competitive_landscape', 'google_search_demand_summer_day_camp', 'Google Search Demand: summer day camp in [city]', 'google_trends', 'Needs Google Trends actor/source.'))
-  add(missingSignal('competitive_landscape', 'google_search_demand_summer_day_camps_year', 'Google Search Demand: Summer Day Camps [Current Year]', 'google_trends', 'Needs Google Trends actor/source.'))
-  add(missingSignal('competitive_landscape', 'waitlist_sold_out_signal_count', 'Waitlist / Sold-Out Signals', 'firecrawl', 'Needs page extraction for waitlist/sold-out language.'))
+  if (trends?.city_camp != null) {
+    add({ signal_key: 'google_search_demand_summer_camp', label: 'Google Search Demand: summer camp [city] (12-mo avg)', value: String(trends.city_camp), source: 'apify', source_url: 'https://trends.google.com', confidence: 0.6, status: 'live', metric_category: 'competitive_landscape', used_in_score: true, raw_data: { actor: 'emastra/google-trends-scraper', term: 'summer camp [city]' } })
+  } else {
+    add(missingSignal('competitive_landscape', 'google_search_demand_summer_camp', 'Google Search Demand: summer camp [city]', 'google_trends', 'Apify returned no series for this term.'))
+  }
+  if (trends?.generic_camp != null) {
+    add({ signal_key: 'google_search_demand_summer_day_camp', label: 'Google Search Demand: summer day camp (12-mo avg)', value: String(trends.generic_camp), source: 'apify', source_url: 'https://trends.google.com', confidence: 0.6, status: 'live', metric_category: 'competitive_landscape', used_in_score: true, raw_data: { actor: 'emastra/google-trends-scraper', term: 'summer day camp' } })
+  } else {
+    add(missingSignal('competitive_landscape', 'google_search_demand_summer_day_camp', 'Google Search Demand: summer day camp in [city]', 'google_trends', 'Apify returned no series for this term.'))
+  }
+  add(missingSignal('competitive_landscape', 'google_search_demand_summer_day_camps_year', 'Google Search Demand: Summer Day Camps [Current Year]', 'google_trends', 'Year-tagged variant deferred — needs dated keyword.'))
+  if (waitlist && waitlist.scanned > 0) {
+    add({ signal_key: 'waitlist_sold_out_signal_count', label: `Waitlist / Sold-Out Signals (${waitlist.scanned} competitor pages scanned)`, value: String(waitlist.waitlist + waitlist.soldout), source: 'firecrawl', confidence: 0.7, status: 'live', metric_category: 'competitive_landscape', used_in_score: true, notes: 'Firecrawl markdown scrape of top 5 competitor URLs; combined waitlist + sold-out hit count.', raw_data: { scanned: waitlist.scanned, waitlist: waitlist.waitlist, soldout: waitlist.soldout } })
+  } else {
+    add(missingSignal('competitive_landscape', 'waitlist_sold_out_signal_count', 'Waitlist / Sold-Out Signals', 'firecrawl', 'No competitor URLs available to scan.'))
+  }
 
   add(missingSignal('franchisee_supply', 'public_elementary_teacher_count', 'Public Elementary Teachers', 'state_edu', 'Needs state/NCES district data.'))
   add(missingSignal('franchisee_supply', 'private_charter_montessori_teacher_count', 'Private / Charter / Montessori Teachers', 'state_edu', 'Needs private/charter/Montessori teacher source or estimate.'))

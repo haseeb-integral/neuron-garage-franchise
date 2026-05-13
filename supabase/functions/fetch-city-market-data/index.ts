@@ -627,6 +627,20 @@ Deno.serve(async (req) => {
       { signal_key: 'income_100k_plus_proxy', label: 'Households $100k+', value: censusData.income_100k_plus_pct != null ? `${censusData.income_100k_plus_pct}%` : 'N/A', delta: null, delta_type: 'neutral', source: 'census', source_url: censusData.source_url, confidence: 0.9, raw_data: { mode, pct_100k: censusData.income_100k_plus_pct, pct_150k: censusData.income_150k_plus_pct } },
       { signal_key: 'education_bachelors_plus_proxy', label: "Bachelor's Degree or Higher (25+)", value: censusData.bachelors_plus_pct != null ? `${censusData.bachelors_plus_pct}%` : 'N/A', delta: null, delta_type: 'neutral', source: 'census', source_url: censusData.source_url, confidence: 0.9, raw_data: { mode, pct: censusData.bachelors_plus_pct } },
       { signal_key: 'census_data_readiness', label: 'Census Data', value: 'Connected (ACS 2022 5-yr)', delta: null, delta_type: 'up', source: 'census', source_url: censusData.source_url, confidence: 0.95, raw_data: { mode, place_fips: censusData.place_fips, state_fips: censusData.state_fips } },
+      // Sprint additions — Census ACS B11005 / B23007 / B08303
+      { signal_key: 'young_families_growth_5yr', label: 'Growth Rate of Young Families (5-yr)', value: censusData.young_families_growth_pct != null ? `${censusData.young_families_growth_pct > 0 ? '+' : ''}${censusData.young_families_growth_pct}%` : 'N/A', delta: null, delta_type: censusData.young_families_growth_pct != null && censusData.young_families_growth_pct > 0 ? 'up' : censusData.young_families_growth_pct != null && censusData.young_families_growth_pct < 0 ? 'down' : 'neutral', source: 'census', source_url: censusData.source_url, confidence: 0.85, raw_data: { mode, hh_2022: censusData.households_with_kids, hh_2017: censusData.households_with_kids_2017, table: 'B11005' } },
+      { signal_key: 'dual_income_pct', label: '% Dual-Income Households (married w/ kids)', value: censusData.dual_income_pct != null ? `${censusData.dual_income_pct}%` : 'N/A', delta: null, delta_type: 'neutral', source: 'census', source_url: censusData.source_url, confidence: 0.85, raw_data: { mode, table: 'B23007' } },
+      { signal_key: 'long_commute_pct', label: 'Long Commute % (45+ min, sprawl proxy)', value: censusData.long_commute_pct != null ? `${censusData.long_commute_pct}%` : 'N/A', delta: null, delta_type: 'neutral', source: 'census', source_url: censusData.source_url, confidence: 0.85, raw_data: { mode, table: 'B08303' } },
+    ] : []
+
+    const trendsSignals = (trends.city_camp != null || trends.generic_camp != null) ? [
+      { signal_key: 'gtrends_summer_camp_city', label: `Google Trends: "summer camp ${city}" (12-mo avg)`, value: trends.city_camp != null ? String(trends.city_camp) : 'N/A', delta: null, delta_type: 'neutral', source: 'apify', source_url: 'https://trends.google.com', confidence: 0.6, raw_data: { actor: 'emastra/google-trends-scraper', term: `summer camp ${city}` } },
+      { signal_key: 'gtrends_summer_day_camp', label: 'Google Trends: "summer day camp" (12-mo avg)', value: trends.generic_camp != null ? String(trends.generic_camp) : 'N/A', delta: null, delta_type: 'neutral', source: 'apify', source_url: 'https://trends.google.com', confidence: 0.6, raw_data: { actor: 'emastra/google-trends-scraper', term: 'summer day camp' } },
+    ] : []
+
+    const waitlistSignals = waitlist.scanned > 0 ? [
+      { signal_key: 'competitor_waitlist_count', label: `Competitors with Waitlist (${waitlist.scanned} scanned)`, value: String(waitlist.waitlist), delta: null, delta_type: waitlist.waitlist > 0 ? 'up' : 'neutral', source: 'firecrawl', source_url: null, confidence: 0.7, raw_data: { scanned: waitlist.scanned } },
+      { signal_key: 'competitor_soldout_count', label: `Competitors Sold Out / Full (${waitlist.scanned} scanned)`, value: String(waitlist.soldout), delta: null, delta_type: waitlist.soldout > 0 ? 'up' : 'neutral', source: 'firecrawl', source_url: null, confidence: 0.7, raw_data: { scanned: waitlist.scanned } },
     ] : []
 
     const fmtUSD = (n: number | null) => n != null ? `$${n.toLocaleString()}` : 'N/A'

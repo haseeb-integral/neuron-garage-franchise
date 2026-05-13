@@ -1310,6 +1310,15 @@ const CityScoring = () => {
         categoryScores={detailCategoryScores}
         refreshVersion={marketRefreshVersion}
       />
+
+      <AddCityModal
+        open={addCityOpen}
+        onClose={() => setAddCityOpen(false)}
+        onAdded={async (city, state) => {
+          await reloadSelectedMarketView(city, state);
+          setSelectedMarketKey({ city, state });
+        }}
+      />
     </div>
   );
 };

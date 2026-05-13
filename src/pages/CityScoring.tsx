@@ -35,6 +35,7 @@ import {
   type RankedMarket,
 } from "@/lib/cityScoringLiveData";
 import { useCityScoringStore, DEFAULT_WEIGHTS } from "@/stores/cityScoringStore";
+import { getCached, setCached } from "@/lib/pageCache";
 
 function rebalanceWeights<K extends string>(
   prev: Record<K, number>,

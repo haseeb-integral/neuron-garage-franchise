@@ -1,43 +1,82 @@
-## Goal
+# Module 1 Polish — Steps 2, 3, 4
 
-Make every US state selectable and every state populated with seed candidate cities so the user can click any market and trigger a real API refresh. Plus give them an "+ Add City" escape hatch for ad-hoc additions. Also fix the related bug where no-data cities are filtered out by Min Score.
+Step 1 (un-hide no-data cities) is verified done. Building the remaining three.
 
-## Changes
+---
 
-### 1. Hardcode all 50 states in the dropdown
-`src/pages/CityScoring.tsx`
-- Replace `availableStates` (derived from DB) with a hardcoded constant `US_STATES` listing all 50 + DC.
-- Dropdown order: alphabetical, with "All States" first.
+## Step 2 — Source Data panel goes live (~1–2 hr, low-medium risk)
 
-### 2. Seed candidate cities for every state with <5 rows
-New SQL seed (run via the insert tool, idempotent via `ON CONFLICT (city, state) DO NOTHING`).
-- For each state currently underrepresented in `cities`, insert ~5 well-known affluent suburb / strong-franchise candidate cities.
-- Defaults: `composite_score=0`, `tier='C'`, `market_type='Suburb'`, `is_non_registration=false` (TX/FL stays true via existing flag logic on read), no `last_scraped_at`.
-- Result: every state has at least 5 cities to choose from. Total adds roughly 100–150 rows. None show fake numbers — they all render as "—" / "No data" with our prior fix and a Refresh button.
-- Source list will be a curated set in the migration body (no scraping needed).
+**Problem:** Source Data panel currently shows hardcoded/sample provenance. Should reflect actual `city_fetch_jobs` and `city_market_signals` for the selected city.
 
-### 3. Min-Score filter fix (carryover from earlier message)
-`src/lib/cityScoringLiveData.ts` → `filterRankedMarkets`:
-- Bypass `minScore` and `tierFilter` for cities where `hasLiveData === false`. They always pass through so the user can see them and refresh.
-- Sort: data-bearing markets first by `compositeScore DESC`, then no-data markets alphabetically at the bottom.
+**Changes:**
+- `src/lib/cityScoringLiveData.ts` — add `getCitySourceData(cityId)`:
+  - Query latest row per `source` from `city_fetch_jobs` (apify, census, bls, fred): status, started_at, completed_at, error_message, response_summary.
+  - Join distinct `source` + `source_url` from `city_market_signals` for that city.
+  - Return `{ source, label, status, lastFetchedAt, recordCount, sourceUrl, errorMessage }[]`.
+- Locate the existing source/provenance UI in `src/pages/CityScoring.tsx` (city detail drawer/modal) and replace static array with the live query (use `useEffect` keyed on selected city id).
+- Render: source name, status badge (success/error/queued/never), relative timestamp ("3 min ago" / "Never"), record count, link to source URL.
+- Empty state for no-data city: "No data fetched yet — click Refresh This Market."
 
-### 4. "+ Add City" button
-`src/pages/CityScoring.tsx` + new `src/components/city-scoring/AddCityModal.tsx`
-- Small "+ Add City" button in the Ranked Markets header (next to "Compare").
-- Modal: City (text), State (the same 50-state Select), optional County, optional Metro Area.
-- On submit: `INSERT INTO cities (city, state, county, metro_area)` with defaults; `ON CONFLICT (city, state) DO NOTHING`. Then refresh `liveRankedMarkets`, select the newly added city, and prompt them to hit "Refresh This Market".
-- Validation: city + state required; trim; reject empty; show toast on conflict ("Already in your list").
+**Acceptance:** Open a city with data → real fetch timestamps + statuses. Open a no-data city → "Never" / empty state. Refresh updates timestamps after job completes.
+
+---
+
+## Step 3 — Nearby Markets goes live (~1 hr, low risk)
+
+**Problem:** Hardcoded `NEARBY_MARKETS` constant in `MarketCompareModal.tsx`.
+
+**Changes:**
+- `src/lib/cityScoringLiveData.ts` — add `getNearbyMarkets(city)`:
+  1. Top 5 cities WHERE `metro_area = selected.metro_area` AND `id <> selected.id` AND `composite_score > 0` ORDER BY `composite_score DESC`.
+  2. If <5 results, fill remainder from same `state` (excluding already-included), still data-bearing only.
+- `src/components/city-scoring/MarketCompareModal.tsx` — remove `NEARBY_MARKETS` constant + "Sample nearby markets" label, fetch via the new function on open, show loading skeleton + empty state ("No nearby markets with data yet").
+
+**Acceptance:** Open a city in a metro with siblings → real ranked neighbors. Open isolated city → graceful empty state. No more "Sample" label.
+
+---
+
+## Step 4 — Leaflet map + lat/lng backfill (~2–3 hr, medium risk)
+
+Last because it requires schema change + one-shot backfill.
+
+**Schema migration:**
+```sql
+ALTER TABLE public.cities
+  ADD COLUMN latitude  numeric(9,6),
+  ADD COLUMN longitude numeric(9,6);
+CREATE INDEX idx_cities_lat_lng ON public.cities(latitude, longitude);
+```
+
+**Backfill edge function** `backfill-city-coordinates`:
+- Iterates cities WHERE `latitude IS NULL`.
+- Geocodes via **Nominatim** (OpenStreetMap, free, no key, 1 req/sec) using `?city={city}&state={state}&country=USA&format=json&limit=1`.
+- Sends required `User-Agent: NeuronGarage/1.0`.
+- Writes lat/lng. Idempotent — safe to re-run.
+- Triggered by a small "Backfill Coordinates" button in CityScoring header (internal, all 3 users).
+
+**Map UI:**
+- Add deps: `leaflet`, `react-leaflet`, `@types/leaflet`.
+- New `src/components/city-scoring/MarketsMap.tsx` — Leaflet + OSM tiles, marker per filtered city with lat/lng. Marker color by tier (A=green, B=amber, C=gray, no-data=muted). Popup: city, state, score, tier, "View details" button wired to existing detail flow.
+- Add `[Table | Map]` tab toggle above Ranked Markets in `CityScoring.tsx`. Map respects all current filters (state, search, tier, min-score).
+- Cities missing lat/lng: omitted from map; footer shows "X cities not mapped — run backfill".
+
+**Acceptance:** Run backfill once → map shows pins → filters update pins → click pin → popup → "View details" opens existing modal.
+
+---
+
+## Risks & rollback
+
+| Step | Risk | Rollback |
+|------|------|----------|
+| 2 | Slow query on detail open | Add LIMIT, memoize per cityId |
+| 3 | Empty for isolated cities | Empty state copy planned |
+| 4 | Geocoding rate limit / wrong coords | Backfill idempotent; map hides null lat/lng |
 
 ## Out of scope
-- Geocoding / lat-lng columns (separate plan, later).
-- Auto-classifying non-registration states beyond TX/FL (CLAUDE.md says 38-state list is locked SOW business logic; will revisit with Sam).
-- Pre-fetching API data for newly seeded cities — user pulls them on demand via Refresh.
+- Driving distance / radius search
+- Marker clustering (defer until >500 cities)
+- Manual lat/lng entry in Add City modal — next backfill picks up new rows
+- Real-time map updates
 
-## Risk
-Low. Pure additive: dropdown expands, table grows, one new modal, one filter rule loosened. No edge function or scoring engine changes.
-
-## Order of execution
-1. Filter fix (immediate, code only).
-2. State dropdown hardcode (code only).
-3. Seed migration (data insert via insert tool).
-4. Add City modal (code only).
+## Order
+Step 2 → Step 3 → Step 4 (schema + backfill + map last).

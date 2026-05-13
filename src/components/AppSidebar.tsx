@@ -14,7 +14,6 @@ const primaryNavItems = [
 
 const utilityNavItems = [
   { title: "Team Members", url: "/settings/team", icon: Users },
-  { title: "Settings", url: "/settings/team", icon: Settings },
   { title: "Specification", url: "/spec", icon: FileText },
 ];
 

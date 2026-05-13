@@ -1101,10 +1101,12 @@ const CityScoring = () => {
                 </div>
               </div>
 
-              <div>
-                <p className="mb-0.5 text-[12px] font-semibold text-[#3a4c72]">Market Summary</p>
-                <p className="text-[11.5px] leading-snug text-[#14233b]">Affluent, rapidly growing suburb with strong demand for premium youth education and enrichment programs.</p>
-              </div>
+              {liveCity?.notes && (
+                <div>
+                  <p className="mb-0.5 text-[12px] font-semibold text-[#3a4c72]">Market Summary</p>
+                  <p className="text-[11.5px] leading-snug text-[#14233b]">{liveCity.notes}</p>
+                </div>
+              )}
             </div>
           </div>
 

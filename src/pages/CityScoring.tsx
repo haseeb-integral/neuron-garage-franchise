@@ -967,7 +967,7 @@ const CityScoring = () => {
               <span>Score</span>
               <span className="text-right">Tier</span>
             </div>
-            {filtered.slice(0, 8).map((c, i) => {
+            {pageItems.map((c, i) => {
               const isSel = c.city === selectedCity && c.state === selectedState;
               const isCmp = selectedForCompare.includes(c.id);
               return (
@@ -984,7 +984,7 @@ const CityScoring = () => {
                   <span className={compareMode ? "rounded ring-2 ring-[#174be8] ring-offset-1 ring-offset-white" : ""}>
                     <Checkbox checked={isCmp} onCheckedChange={() => toggleCompare(c.id)} onClick={(e) => e.stopPropagation()} />
                   </span>
-                  <span className="text-[#526078]">{i + 1}</span>
+                  <span className="text-[#526078]">{pageStart + i + 1}</span>
                   <div className="min-w-0">
                     <div className="truncate font-semibold text-[#07142f]">{c.city}, {c.state === "Texas" ? "TX" : c.state === "Florida" ? "FL" : c.state}</div>
                     <div className="truncate text-[10px] text-[#8794ab]">{(c as any).county ?? ""}</div>
@@ -1004,15 +1004,32 @@ const CityScoring = () => {
             })}
           </div>
           <div className="mt-3 flex items-center justify-between text-[11px] text-[#8794ab]">
-            <span>Showing 1 to {Math.min(filtered.length, 8)} of 238 results</span>
+            <span>Showing {showingFrom} to {showingTo} of {filtered.length} results</span>
             <div className="flex items-center gap-1">
-              <button className="px-1.5 h-6 rounded border border-[#eef2f7] text-[#526078]">‹</button>
-              <button className="px-2 h-6 rounded bg-[#174be8] text-white font-medium">1</button>
-              <button className="px-2 h-6 rounded border border-[#eef2f7] text-[#14233b]">2</button>
-              <button className="px-2 h-6 rounded border border-[#eef2f7] text-[#14233b]">3</button>
-              <span className="px-1 text-[#8794ab]">…</span>
-              <button className="px-2 h-6 rounded border border-[#eef2f7] text-[#14233b]">30</button>
-              <button className="px-1.5 h-6 rounded border border-[#eef2f7] text-[#526078]">›</button>
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={safePage <= 1}
+                className="px-1.5 h-6 rounded border border-[#eef2f7] text-[#526078] disabled:opacity-40 disabled:cursor-not-allowed"
+              >‹</button>
+              {pageNumbers.map((p, idx) =>
+                p === "..." ? (
+                  <span key={`ellipsis-${idx}`} className="px-1 text-[#8794ab]">…</span>
+                ) : (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setPage(p)}
+                    className={`px-2 h-6 rounded font-medium ${p === safePage ? "bg-[#174be8] text-white" : "border border-[#eef2f7] text-[#14233b] hover:bg-[#f3f6fc]"}`}
+                  >{p}</button>
+                )
+              )}
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={safePage >= totalPages}
+                className="px-1.5 h-6 rounded border border-[#eef2f7] text-[#526078] disabled:opacity-40 disabled:cursor-not-allowed"
+              >›</button>
             </div>
           </div>
         </div>
@@ -1022,10 +1039,18 @@ const CityScoring = () => {
           <div className="mb-3 flex items-start justify-between gap-3">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-[18px] leading-none font-bold text-[#07142f]">{selected.city}, {selected.state === "Texas" ? "TX" : selected.state === "Florida" ? "FL" : selected.state}</h2>
-              {lastScrapedLabel && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#e6f7ef] px-2 py-0.5 text-[10px] font-semibold text-[#0ea66e]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#0ea66e]" />
-                  Live data refreshed {lastScrapedLabel}
+              {lastScrapedRelative ? (
+                <span
+                  title={lastScrapedAbsolute ?? ""}
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${isStale ? "bg-[#fff1e6] text-[#c2410c]" : "bg-[#e6f7ef] text-[#0ea66e]"}`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${isStale ? "bg-[#ea580c]" : "bg-[#0ea66e]"}`} />
+                  Live data refreshed {lastScrapedRelative}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#eef2f7] px-2 py-0.5 text-[10px] font-semibold text-[#526078]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#8794ab]" />
+                  No live data yet
                 </span>
               )}
             </div>

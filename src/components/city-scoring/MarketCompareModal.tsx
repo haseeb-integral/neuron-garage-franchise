@@ -176,9 +176,18 @@ export function MarketCompareModal({ open, onClose, markets }: Props) {
                   </tr>
                 ))}
                 <tr>
-                  <td colSpan={markets.length + 1} className="px-3 pb-1 pt-2.5 text-sm font-black text-[#07142f]">Key Market Signals</td>
+                  <td colSpan={markets.length + 1} className="px-3 pb-1 pt-2.5 text-sm font-black text-[#07142f]">
+                    Key Market Signals {signalRows.length > 0 && <span className="font-medium text-[#8794ab]">({signalRows.length})</span>}
+                  </td>
                 </tr>
-                {SIGNAL_ROWS.map((row) => (
+                {signalRows.length === 0 && !loading && (
+                  <tr>
+                    <td colSpan={markets.length + 1} className="px-3 py-3 text-center text-[11px] text-[#8794ab]">
+                      No live signals yet — refresh these cities to populate data.
+                    </td>
+                  </tr>
+                )}
+                {signalRows.map((row) => (
                   <tr key={row.key} className="border-b border-[#eef2f7] last:border-b-0">
                     <td className="border-r border-[#e6edf7] px-3 py-2 text-[10.5px] font-semibold leading-tight text-[#34445f]">{row.label}</td>
                     {markets.map((m) => {

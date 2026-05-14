@@ -1,67 +1,106 @@
-# Build A–D + answer the 25% vs 8% question
+# City Screen Fix Pass
 
-## Why the drawer says 25% but the card slider shows 8%
-
-I traced the code. The drawer reads from `appliedWeights` (the master weights you've **clicked Apply on**). The card slider shows `weights` (what you're **currently dragging**). They're two different states.
-
-So right now: you dragged Demand's master slider down to 8% on the card, but you didn't click the **"Apply Weights"** button at the top-right of the Scoring Weights section. Until you click it, the drawer keeps using the previously-applied 25%, and the composite score is also still computed with 25%.
-
-This is by design (typing/dragging shouldn't immediately re-rank everything), but it's invisible to you — there's no signal that pending master edits exist.
-
-**Fix added to plan (item F):** when `weights ≠ appliedWeights`, show an inline "Pending master edits — click Apply Weights to use 8%" hint inside the drawer's master-weight line, in amber, so you know exactly which number is being used and why.
+Five related issues, all in `MarketDetailDrawer.tsx`, `SourceDataPanel.tsx`, `CityScoring.tsx`, and `scoringPresets.ts`. No DB changes.
 
 ---
 
-## Build items
+## FIX A — "PROXY" → "Estimated" everywhere user-facing
 
-### A. Fix the close (X) overlapping the action button
-`src/components/ui/sheet.tsx` renders a built-in `<SheetPrimitive.Close>` X at `top-4 right-4`. Our drawer header puts "Show Formula" / "Edit Weights" in the same corner, so they collide. Add `pr-10` to the drawer's header action container in `SubMetricWeightsDrawer.tsx` so the action button sits left of the X with breathing room. No change to the shared `sheet.tsx`.
+**Files:** `src/components/city-scoring/MarketDetailDrawer.tsx`
 
-### B. Tooltips + legend on Raw / Norm / Share / Contrib
-Wrap each `<th>` in `Tooltip` from `@/components/ui/tooltip`:
-- **Raw** — Actual measured value for this city (e.g. 26,960 children).
-- **Norm** — Raw value scaled to 0–100 using this metric's range.
-- **Share** — This metric's slice of the category, after auto-normalizing your typed weights to 100%.
-- **Contrib** — Norm × Share. Sum of Contrib = category score.
+- `STATUS_STYLES` keys stay (`proxy`, `live`, `missing`...) — they're internal types.
+- `StatusBadge` component renders the raw status string. Replace with a label map: `live`→"Live", `proxy`→"Estimated", `missing`→"Missing", `blocked`→"Unavailable", `manual`→"Manual".
+- Header summary (line 374): change `{proxyCount} proxy` → `{proxyCount} estimated`.
+- Result: image-87 will show "ESTIMATED" pill instead of "PROXY"; image-88 will show "15 estimated" instead of "15 proxy".
 
-Add a one-line legend above the table: *"Raw → scaled to Norm (0–100) → weighted by your Share → contributes to category score."*
-
-### C. Plain-English summary: explain the 25% line
-Append to `summarizeCategory` in `clientSubWeightScoring.ts`. New optional args: `masterWeightPct`, `compositeContribution`. Adds one sentence:
-
-> Demand counts for 25.0% of the overall composite, contributing 17.0 points to Frisco's composite score today.
-
-If pending master edits exist (item F surfaces this), the sentence appends: *"(Master sliders have unsaved edits — click Apply Weights on the main screen to use the new value.)"*
-
-### D. Score-delta toast after Save & Recalculate
-In `handleApply`:
-1. Capture `oldDemand` = current preview score (before normalize), `oldComposite` = current composite for selected city (from `compositeOverrides[selectedId]?.composite ?? serverComposite`).
-2. After `setAppliedSubWeights`, compute `newDemand` from the just-normalized weights and `newComposite` via `recomputeComposite` using fresh per-category scores.
-3. Replace existing `toast.success(...)` with:
-   ```
-   Demand updated: 71.4 → 68.1 · Composite updated: 78 → 77
-   ```
-   If composite unchanged (only this category drawer was edited but recompute rounds same): show only the category line. `duration: 4000`.
-
-Note: `compositeOverrides` lives in `CityScoring.tsx`. Easiest path: pass `currentComposite` and an `onApplied(newComposite)` callback into the drawer, OR compute new composite inside the drawer using a new prop `allCategoryScoresExceptThis: Record<CategoryKey, number|null>`. I'll go with passing in the current composite plus a closure that returns recomputed composite given the new applied sub-weights — keeps the drawer self-contained.
-
-### F. (NEW — closes the 25% vs 8% confusion) Show pending master-edits hint
-In `SubMetricWeightsDrawer.tsx`, accept new prop `masterWeightPending?: { applied: number; pending: number }`. When present and `applied !== pending`, render a small amber line under the "× master weight 25.0% → composite contribution" row:
-
-> ⚠ You've dragged this slider to 8.0% but haven't clicked **Apply Weights** yet. Composite still uses 25.0%.
-
-Wire from `CityScoring.tsx` by computing both pending and applied master shares and passing both.
+`SubMetricWeightsDrawer.tsx` already says "Estimated" — no change needed there.
 
 ---
+
+## FIX B — Live / Estimated / Missing counts are wrong
+
+**Root cause:** in `getStatus()` (line 106), if `raw_data.status` is missing, the signal silently defaults to `"proxy"`. Many "Not available yet" rows have no `raw_data.status` AND no `value` → they're being counted as Estimated when they should be Missing. That's why your screenshot shows 15 estimated and only 26 missing — inflated proxy count.
+
+**Fix in `getStatus()`:**
+- If `signal.value` is null / undefined / empty string / `"—"` / `"Not available yet"` → return `"missing"`.
+- Else if `raw_data.status` is set → use it.
+- Else default to `"live"` (a row WITH a value but no status flag is genuinely live data).
+
+This will rebalance the header pills to honest numbers per city.
+
+---
+
+## FIX C — Row-level badge formatting (image-87)
+
+**File:** `src/components/city-scoring/MarketDetailDrawer.tsx`, `renderSignalRow` (lines 307–349).
+
+Issues visible in the screenshot:
+1. The trailing source name (`COMPUTED`, `APIFY`, `FIRECRAWL`, `ACA`) is plain uppercase text wedged between rounded pills — visually inconsistent.
+2. Long labels + 3 badges + source text wrap awkwardly at this drawer width.
+3. "INFO ONLY" pill style is too pale vs the colored ones.
+
+**Changes:**
+- Wrap source-name in the same rounded-pill style used for other badges (small grey outline pill) so the row reads as a uniform badge strip.
+- Add `flex-wrap` to the badge row (currently `flex-nowrap overflow-hidden` truncates badges).
+- Bump "INFO ONLY" foreground contrast slightly (#526078 instead of #8794ab).
+- Make the metric label clamp to 2 lines max (`line-clamp-2`) so layout stays predictable.
+
+---
+
+## FIX D — Source Data card formatting (image-86)
+
+**File:** `src/components/city-scoring/SourceDataPanel.tsx`, lines 79–104.
+
+Issue: source name truncates aggressively to "BLS (Occupati..." and "U.S. Census Bu..." because every column is in the same flex row. At 1083px viewport the right side has just ~280px width.
+
+**Changes:**
+- Restructure each row into two lines: line 1 = source label (full, no truncation) + status pill on the right; line 2 = small muted text "3 rows · 2 days ago" + external link icon.
+- This removes the awkward middle truncation and matches the visual density of the rest of the right panel.
+
+---
+
+## FIX E — Sticky bottom buttons overlap content (image-87)
+
+**File:** `src/components/city-scoring/MarketDetailDrawer.tsx`, lines 515–527.
+
+The sticky footer has only `bg-white pt-2` so previous rows show through above the buttons (you can see "INFO ONLY  STATE  MISSING  ACA" bleeding behind the buttons in the screenshot).
+
+**Changes:**
+- Add a top border + soft shadow + bottom padding: `border-t border-[#eef2f7] pt-3 pb-3 -mx-6 px-6 shadow-[0_-4px_12px_-6px_rgba(7,20,47,0.08)]`.
+- Add `mt-4` so it doesn't flush against the last data card.
+- Result: clean visual separator, no bleed-through.
+
+---
+
+## FIX F — Scoring Model dropdown is dummy (image-89)
+
+**File:** `src/pages/CityScoring.tsx`, lines 1032–1041 + `useCityScoringStore` defaults.
+
+Today the dropdown has 3 hardcoded labels (`Affluent Suburbs Model`, `Urban Core Model`, `Emerging Markets Model`) and `setScoringModel` only updates state — nothing applies weights. Earlier work (`scoringPresets.ts`) already defined real presets (`Balanced` / `Demand-Heavy` / `Pricing-Heavy` / `Custom`) but the dropdown was never rewired.
+
+**Changes:**
+1. Replace the 3 SelectItem entries with `PRESET_NAMES` from `scoringPresets.ts` (Balanced, Demand-Heavy, Pricing-Heavy, Custom).
+2. Default value migrated: if persisted `scoringModel` is one of the old names, fall back to "Balanced" on load (one-line guard in CityScoring before render).
+3. `onValueChange` becomes:
+   - If preset === "Custom": just set `scoringModel` (don't touch weights).
+   - Else: `setScoringModel(name)` + `setWeights(SCORING_PRESETS[name])` + `setAppliedWeights(SCORING_PRESETS[name])`. This immediately re-scores all cities.
+4. When the user moves a master slider manually, auto-flip `scoringModel` to "Custom" (one-liner inside the slider's onValueChange).
+5. Show a small caption under the dropdown: `PRESET_DESCRIPTIONS[scoringModel]` so users see what the preset actually does.
+
+Persistence to Supabase `scoring_config` already exists via `useScoringConfig` hook — this PR does NOT touch the hook; we only wire the UI to call existing setters. (If you want cross-device persistence wired in this same PR, say so and I'll add the `useDebouncedSaveScoringConfig` call too.)
+
+---
+
+## Risk & undo
+
+- Risk: **Low**. All visual changes + 1 data-mapping fix (status default) + 1 dropdown rewire. No DB migration, no schema change.
+- Undo: revert the 4 files. Persisted `scoringModel` string in localStorage stays harmless (guarded by the migration shim).
 
 ## Files touched
-- `src/components/city-scoring/SubMetricWeightsDrawer.tsx` — A, B, C wiring, D, F
-- `src/lib/clientSubWeightScoring.ts` — C (extend `summarizeCategory`)
-- `src/pages/CityScoring.tsx` — D (pass `currentComposite` + recompute helper), F (pass pending vs applied master)
 
-## Out of scope
-- Auto-applying master sliders on drag (deliberate two-step UX).
-- Changing how server composite is fetched.
-- Master sliders themselves.
+1. `src/components/city-scoring/MarketDetailDrawer.tsx` — FIX A, B, C, E
+2. `src/components/city-scoring/SourceDataPanel.tsx` — FIX D
+3. `src/pages/CityScoring.tsx` — FIX F
+4. `src/lib/scoringPresets.ts` — no edits needed (already has presets); only consumed.
 
-## Risk: Low. Undo: revert 3 files.
+Approve to build all six fixes in one pass.

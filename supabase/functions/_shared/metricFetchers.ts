@@ -214,6 +214,70 @@ const NATIONAL_BRANDS = [
   'Code Ninjas', 'iD Tech', 'Galileo', 'Camp Invention', 'Snapology',
 ]
 
+// ---- Firecrawl URL discovery: find actual camp pricing pages for a city ----
+// Uses Firecrawl /v2/search (web search) with pricing-intent queries, then
+// filters out junk hosts (google maps, social, directories) so we only feed
+// real camp/program pages into the scraper. Returns up to `limit` URLs.
+const URL_HOST_BLOCKLIST = [
+  'google.com', 'maps.google.', 'goo.gl', 'g.page',
+  'facebook.com', 'instagram.com', 'twitter.com', 'x.com', 'tiktok.com',
+  'yelp.com', 'tripadvisor.', 'reddit.com', 'youtube.com',
+  'eventbrite.com', 'meetup.com', 'pinterest.',
+  'wikipedia.org', 'linkedin.com',
+]
+function isUsefulCampUrl(u: string): boolean {
+  try {
+    const url = new URL(u)
+    const host = url.hostname.toLowerCase()
+    if (URL_HOST_BLOCKLIST.some((b) => host.includes(b))) return false
+    return /^https?:$/.test(url.protocol)
+  } catch { return false }
+}
+
+export async function findCampPricingUrls(
+  city: string,
+  state: string,
+  limit = 8,
+): Promise<{ urls: string[]; source: 'firecrawl_search' | 'none'; error: string | null }> {
+  const key = Deno.env.get('FIRECRAWL_API_KEY')
+  if (!key) return { urls: [], source: 'none', error: 'FIRECRAWL_API_KEY not set' }
+  const queries = [
+    `summer camp tuition price ${city} ${state}`,
+    `kids STEM camp registration cost ${city} ${state}`,
+    `summer day camp weekly rate ${city} ${state}`,
+  ]
+  const found = new Set<string>()
+  const errs: string[] = []
+  for (const q of queries) {
+    try {
+      const res = await fetch('https://api.firecrawl.dev/v2/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+        body: JSON.stringify({ query: q, limit: 10 }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { errs.push(`Firecrawl search ${res.status}: ${q}`); continue }
+      // v2 search response: { success, data: { web: [{ url, title, description }] } } or { data: [...] }
+      const results: any[] =
+        (Array.isArray(data?.data?.web) && data.data.web) ||
+        (Array.isArray(data?.data) && data.data) ||
+        (Array.isArray(data?.web) && data.web) ||
+        []
+      for (const r of results) {
+        const u = (r?.url ?? r?.link ?? '') as string
+        if (u && isUsefulCampUrl(u)) found.add(u)
+        if (found.size >= limit) break
+      }
+      if (found.size >= limit) break
+    } catch (e) { errs.push((e as Error).message) }
+  }
+  return {
+    urls: Array.from(found).slice(0, limit),
+    source: found.size > 0 ? 'firecrawl_search' : 'none',
+    error: errs.length ? errs.join(' | ') : null,
+  }
+}
+
 export async function fetchCompetitorWaitlistSignals(urls: string[]): Promise<CompetitorSignals> {
   const empty: CompetitorSignals = {
     scanned: 0, waitlist: 0, soldout: 0,
@@ -254,13 +318,35 @@ export async function fetchCompetitorWaitlistSignals(urls: string[]): Promise<Co
       if (WAITLIST_RE.test(md)) out.waitlist++
       if (SOLDOUT_RE.test(md)) out.soldout++
 
-      // Pricing extraction
+      // Pricing extraction — two passes:
+      //  1. strict $X/week, $X per week, $X weekly, $X/wk
+      //  2. proximity: any "$NNN" within 40 chars of week|wk|weekly|tuition|per session
       const pagePrices: number[] = []
+      const seenPositions = new Set<number>()
+      const STRICT_RE = /\$\s?(\d{2,4}(?:,\d{3})?)\s*(?:\/|per|-)?\s*(?:week|wk|weekly)\b/gi
       let m: RegExpExecArray | null
-      WEEKLY_PRICE_RE.lastIndex = 0
-      while ((m = WEEKLY_PRICE_RE.exec(md)) !== null) {
+      STRICT_RE.lastIndex = 0
+      while ((m = STRICT_RE.exec(md)) !== null) {
         const n = Number(m[1].replace(/,/g, ''))
-        if (Number.isFinite(n) && n >= 50 && n <= 5000) pagePrices.push(n)
+        if (Number.isFinite(n) && n >= 50 && n <= 5000) {
+          pagePrices.push(n)
+          seenPositions.add(m.index)
+        }
+      }
+      // Proximity pass: find any "$NNN[NN]" then check ±40 chars for week/tuition/session
+      const PRICE_RE = /\$\s?(\d{2,4}(?:,\d{3})?)/g
+      const CONTEXT_RE = /(week|wk|weekly|tuition|per session|per camper|registration)/i
+      let pm: RegExpExecArray | null
+      PRICE_RE.lastIndex = 0
+      while ((pm = PRICE_RE.exec(md)) !== null) {
+        if (seenPositions.has(pm.index)) continue
+        const n = Number(pm[1].replace(/,/g, ''))
+        if (!Number.isFinite(n) || n < 100 || n > 5000) continue
+        const start = Math.max(0, pm.index - 40)
+        const end = Math.min(md.length, pm.index + pm[0].length + 40)
+        if (CONTEXT_RE.test(md.slice(start, end))) {
+          pagePrices.push(n)
+        }
       }
       for (const p of pagePrices) {
         out.weekly_prices.push(p)

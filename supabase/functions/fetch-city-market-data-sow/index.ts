@@ -237,6 +237,7 @@ async function fetchBlsSignals(stateFips: string | null) {
 function buildSowSignals(args: {
   census: any | null
   bls: any | null
+  blsOews: BlsOewsResult | null
   existingCounts: Record<string, number>
   existingWarnings: Record<string, unknown>
   sprint: CensusSprintMetrics | null
@@ -246,9 +247,18 @@ function buildSowSignals(args: {
   bea: { rpp_all_items: number | null; year: number | null; source_url: string | null } | null
   nces: NcesElementaryStaffing | null
 }) {
-  const { census, bls, existingCounts, sprint, trends, waitlist, noaa, bea, nces } = args
+  const { census, bls, blsOews, existingCounts, sprint, trends, waitlist, noaa, bea, nces } = args
   const signals: SignalInput[] = []
   const add = (s: SignalInput) => signals.push(s)
+
+  // Day 4: BLS OEWS tier→signal-status helpers (metro=live, state/national=proxy).
+  const tierStatus = (tier: 'metro' | 'state' | 'national' | null): 'live' | 'proxy' | 'missing' =>
+    tier === 'metro' ? 'live' : (tier === 'state' || tier === 'national') ? 'proxy' : 'missing'
+  const tierNote = (tier: 'metro' | 'state' | 'national' | null, areaLabel: string | null, city: string) =>
+    tier === 'metro' ? `BLS OEWS metro-level wage for ${areaLabel ?? 'metro'}.`
+    : tier === 'state' ? `BLS OEWS state-level wage (${areaLabel ?? 'state'}); used as proxy — no metro data available for ${city}.`
+    : tier === 'national' ? 'BLS OEWS national wage; used as proxy — no metro or state data available.'
+    : 'BLS OEWS lookup failed.'
 
   add({ signal_key: 'children_5_12_count', label: 'Children Ages 5–12', value: fmtNum(census?.children_5_12_count ?? null), source: census ? 'census' : 'not_connected', source_url: census?.source_url ?? null, confidence: census ? 0.75 : 0, status: census ? 'proxy' : 'missing', metric_category: 'demand', used_in_score: Boolean(census), notes: 'Estimated from ACS 5-year age bands: 5–9 plus 60% of 10–14.' })
   add({ signal_key: 'children_5_12_pct', label: '% Population Ages 5–12', value: fmtPct(census?.children_5_12_pct ?? null), source: census ? 'census' : 'not_connected', source_url: census?.source_url ?? null, confidence: census ? 0.75 : 0, status: census ? 'proxy' : 'missing', metric_category: 'demand', used_in_score: Boolean(census) })

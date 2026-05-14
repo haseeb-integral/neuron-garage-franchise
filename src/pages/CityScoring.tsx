@@ -473,9 +473,15 @@ const CityScoring = () => {
       minPop,
     });
     const q = cityFilter.trim().toLowerCase();
-    if (!q) return base;
-    return base.filter((m: any) => String(m.city ?? "").toLowerCase().includes(q));
-  }, [baseRankedMarkets, searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop, cityFilter]);
+    let out = q ? base.filter((m: any) => String(m.city ?? "").toLowerCase().includes(q)) : base;
+    if (watchlistOnly) {
+      out = out.filter((m: any) => m.cityId && watchlistCityIds.has(m.cityId));
+    }
+    return out;
+  }, [baseRankedMarkets, searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop, cityFilter, watchlistOnly, watchlistCityIds]);
+
+  // Reset to page 1 when watchlist filter toggles
+  useEffect(() => { setPage(1); }, [watchlistOnly]);
 
   // Percentile rank within currently filtered list (only live-data rows are ranked).
   // 100 = top scorer, 0 = bottom. Used in the Tier badge tooltip.

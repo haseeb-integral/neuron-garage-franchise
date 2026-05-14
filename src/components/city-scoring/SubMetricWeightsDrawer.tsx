@@ -137,7 +137,7 @@ export function SubMetricWeightsDrawer({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-[560px] p-0 flex flex-col bg-white">
         <SheetHeader className="px-5 pt-5 pb-3 border-b border-[#eef2f7] space-y-2">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-2 pr-8">
             <div className="flex items-center gap-2 min-w-0">
               <span
                 className="inline-block h-2.5 w-2.5 rounded-full flex-shrink-0"
@@ -150,7 +150,7 @@ export function SubMetricWeightsDrawer({
             <button
               type="button"
               onClick={() => setView(view === "weights" ? "formula" : "weights")}
-              className="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-medium text-[#174be8] hover:underline"
+              className="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-medium text-[#174be8] hover:underline mr-2"
             >
               {view === "weights" ? <Calculator size={12} /> : <Sliders size={12} />}
               {view === "weights" ? "Show Formula" : "Edit Weights"}

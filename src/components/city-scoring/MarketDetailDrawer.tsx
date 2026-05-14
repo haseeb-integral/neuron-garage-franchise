@@ -3,11 +3,13 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { CityData } from "@/data/cityData";
-import { ArrowRight, Download, ExternalLink, FileText, RefreshCw } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronRight, Download, ExternalLink, FileText, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getSignalGeography, GEO_BADGE_CLASS } from "@/lib/signalGeography";
 import { useCustomCriteria, CATEGORY_LABEL_TO_KEY } from "@/hooks/useCustomCriteria";
 import type { CategoryKey } from "@/stores/cityScoringStore";
+import { METRICS_BY_CATEGORY, CATEGORY_KEY_MAP, type SowMetricEntry } from "@/lib/sowMetricRegistry";
+import { LEGACY_TO_CANONICAL, FETCHER_DIAGNOSTIC_KEYS, canonicalKey } from "@/lib/signalAliases";
 
 export interface CustomCriterion {
   name: string;

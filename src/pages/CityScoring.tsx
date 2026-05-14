@@ -279,11 +279,15 @@ const CityScoring = () => {
     if (!name) { toast.error("Name required"); return; }
     if (!user) { toast.error("Sign in required"); return; }
     setSavingSearch(true);
+    // Save the live draft (what the sliders show) and also apply it so saving
+    // doubles as Apply Weights — avoids saving stale appliedWeights.
+    setAppliedWeights(weights);
+    setAppliedSubWeights(subWeights);
     const { error } = await supabase.from("saved_searches").insert({
       user_id: user.id,
       name,
-      master_weights: appliedWeights as any,
-      sub_weights: appliedSubWeights as any,
+      master_weights: weights as any,
+      sub_weights: subWeights as any,
     });
     setSavingSearch(false);
     if (error) {

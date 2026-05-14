@@ -1282,9 +1282,15 @@ const CityScoring = () => {
           <p className="text-xs text-[#526078] mt-0.5">
             Discover and score the best cities, suburbs, and metros for Neuron Garage franchises.
           </p>
-          <p className="text-[10px] text-[#8794ab] leading-tight mt-1 max-w-[520px]">
-            {PRESET_DESCRIPTIONS[((PRESET_NAMES as string[]).includes(scoringModel) ? scoringModel : "Balanced") as PresetName]}
-          </p>
+          {activeSavedSearchId ? (
+            <p className="text-[11px] text-[#174be8] font-medium leading-tight mt-1">
+              Loaded saved search: "{savedSearches.find((s) => s.id === activeSavedSearchId)?.name}"
+            </p>
+          ) : (
+            <p className="text-[10px] text-[#8794ab] leading-tight mt-1 max-w-[520px]">
+              {PRESET_DESCRIPTIONS[((PRESET_NAMES as string[]).includes(scoringModel) ? scoringModel : "Balanced") as PresetName]}
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center">

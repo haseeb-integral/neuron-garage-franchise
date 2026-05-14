@@ -415,6 +415,9 @@ export function MarketReportModal({ open, onClose, market, categoryScores, refre
         </div>
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={handleDownloadCsv}>Download Source CSV</Button>
+          <Button variant="outline" onClick={handleDownloadPdf} disabled={loading || generatingPdf}>
+            {generatingPdf ? "Generating PDF…" : "Download PDF Report"}
+          </Button>
           <Button className="bg-[#174be8] hover:bg-[#1240c9] text-white" onClick={onClose}>Close</Button>
         </DialogFooter>
       </DialogContent>

@@ -276,6 +276,7 @@ export function SubMetricWeightsDrawer({
             previewRecompute={previewRecompute}
             serverCategoryScore={serverCategoryScore ?? null}
             masterWeightPct={masterWeightPct ?? null}
+            masterWeightPendingPct={masterWeightPendingPct ?? null}
             enabledSum={enabledSum}
             pendingEdits={pendingEdits}
           />

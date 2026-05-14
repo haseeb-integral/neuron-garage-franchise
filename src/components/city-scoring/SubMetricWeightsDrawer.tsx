@@ -67,6 +67,20 @@ export function SubMetricWeightsDrawer({
     return recomputeCategoryScore(metrics, rawValuesByKey, cur, serverCategoryScore ?? null);
   }, [metrics, rawValuesByKey, cur, serverCategoryScore]);
 
+  // True iff the user's typed (live) sub-weights, once normalized to 100%,
+  // differ from what was last applied. Used to surface a "Pending edits" pill
+  // and to remind the user that the city's score won't update until Apply.
+  const pendingEdits = useMemo(() => {
+    if (!categoryKey) return false;
+    const applied = appliedSubWeights[categoryKey] ?? {};
+    const norm: Record<string, number> = {};
+    metrics.forEach((m) => {
+      const v = m.enabled ? (cur[m.key] ?? 0) : 0;
+      norm[m.key] = enabledSum > 0 ? (v / enabledSum) * 100 : 0;
+    });
+    return metrics.some((m) => Math.abs((norm[m.key] ?? 0) - (applied[m.key] ?? 0)) > 0.05);
+  }, [categoryKey, cur, metrics, enabledSum, appliedSubWeights]);
+
   if (!categoryKey) return null;
 
   const handleApply = () => {

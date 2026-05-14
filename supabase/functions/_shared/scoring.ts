@@ -349,7 +349,7 @@ export function normalizeSowMetric(
     case "summer_income_need_ratio":          return lin(v, 0, 1);
     // Ease of operations
     case "rental_venue_count":                return lin(v, 0, 25);
-    case "guide_wage_proxy":                  return lin(v, 25000, 60000, true);
+    case "guide_wage_proxy":                  return lin(v, 11, 25, true); // BLS SOC 39-9011 hourly mean wage; lower wage = better unit economics
     case "classroom_rental_cost_weekly":      return lin(v, 250, 2000, true);
     case "commute_sprawl_index":              return lin(v, 10, 60, true);
     case "state_camp_regulation_complexity":  return lin(v, 1, 5, true);

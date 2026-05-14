@@ -1962,9 +1962,22 @@ const CityScoring = () => {
                 </span>
               )}
             </div>
-            <button className="flex items-center gap-1 text-[11px] font-medium text-[#174be8] hover:underline whitespace-nowrap">
-              <Star size={12} /> Add to Watchlist
-            </button>
+            {(() => {
+              const detailCityId = liveCity?.id as string | undefined;
+              const isSaved = !!detailCityId && watchlistCityIds.has(detailCityId);
+              return (
+                <button
+                  type="button"
+                  onClick={() => toggleWatchlist(detailCityId)}
+                  disabled={!detailCityId}
+                  title={!detailCityId ? "Refresh this city's data first" : isSaved ? "Remove from watchlist" : "Add to watchlist"}
+                  className={`flex items-center gap-1 text-[11px] font-medium hover:underline whitespace-nowrap disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed ${isSaved ? "text-[#0ea66e]" : "text-[#174be8]"}`}
+                >
+                  {isSaved ? <BookmarkCheck size={12} fill="currentColor" /> : <Bookmark size={12} />}
+                  {isSaved ? "Saved to Watchlist" : "Add to Watchlist"}
+                </button>
+              );
+            })()}
           </div>
 
 

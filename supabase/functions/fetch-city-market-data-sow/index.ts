@@ -275,9 +275,25 @@ function buildSowSignals(args: {
     add(missingSignal('demand', 'days_above_100f', 'Number of 100°+ Days', 'open_meteo', 'No station within 50 miles of city centroid.'))
   }
 
-  add(missingSignal('pricing_power', 'avg_weekly_camp_tuition', 'Average Weekly Camp Tuition', 'firecrawl', 'Requires pricing extraction from competitor websites.'))
-  add(missingSignal('pricing_power', 'avg_hourly_camp_pricing', 'Average Hourly Camp Pricing', 'computed', 'Requires weekly tuition and hours of care.'))
-  add(missingSignal('pricing_power', 'premium_stem_camp_pricing', 'Premium STEM / Maker / Enrichment Camp Pricing', 'firecrawl', 'Requires STEM/coding camp pricing extraction.'))
+  // Pricing Power: avg_weekly_camp_tuition / avg_hourly / premium — from Firecrawl competitor pages
+  if (waitlist && waitlist.weekly_prices.length > 0) {
+    const avgWeekly = Math.round(waitlist.weekly_prices.reduce((s, n) => s + n, 0) / waitlist.weekly_prices.length)
+    add({ signal_key: 'avg_weekly_camp_tuition', label: `Average Weekly Camp Tuition (${waitlist.weekly_prices.length} prices, ${waitlist.scanned} pages)`, value: `$${avgWeekly}`, source: 'firecrawl', confidence: 0.7, status: 'live', metric_category: 'pricing_power', used_in_score: true, notes: 'Mean of $x/week patterns extracted from competitor pages.', raw_data: { samples: waitlist.weekly_prices.length, min: Math.min(...waitlist.weekly_prices), max: Math.max(...waitlist.weekly_prices) } })
+  } else {
+    add(missingSignal('pricing_power', 'avg_weekly_camp_tuition', 'Average Weekly Camp Tuition', 'firecrawl', waitlist?.scanned ? 'No weekly tuition patterns matched on scanned pages.' : 'No competitor URLs available to scan.'))
+  }
+  if (waitlist && waitlist.hourly_rates.length > 0) {
+    const avgHourly = Math.round((waitlist.hourly_rates.reduce((s, n) => s + n, 0) / waitlist.hourly_rates.length) * 100) / 100
+    add({ signal_key: 'avg_hourly_camp_pricing', label: `Average Hourly Camp Pricing (${waitlist.hourly_rates.length} pages with price+hours)`, value: `$${avgHourly}`, source: 'firecrawl', confidence: 0.65, status: 'live', metric_category: 'pricing_power', used_in_score: true, notes: 'Weekly price ÷ hours-per-week, computed only from pages where BOTH were extracted (no assumed hour constants).', raw_data: { samples: waitlist.hourly_rates.length } })
+  } else {
+    add(missingSignal('pricing_power', 'avg_hourly_camp_pricing', 'Average Hourly Camp Pricing', 'firecrawl', 'No page had both a weekly price AND hours-per-week — no assumed-hours fallback per spec.'))
+  }
+  if (waitlist && waitlist.premium_prices.length > 0) {
+    const avgPremium = Math.round(waitlist.premium_prices.reduce((s, n) => s + n, 0) / waitlist.premium_prices.length)
+    add({ signal_key: 'premium_stem_camp_pricing', label: `Premium STEM / Maker / Enrichment Pricing (>$400/wk, ${waitlist.premium_prices.length} samples)`, value: `$${avgPremium}`, source: 'firecrawl', confidence: 0.6, status: 'live', metric_category: 'pricing_power', used_in_score: true, notes: 'Mean of weekly tuition prices > $400 from competitor pages.', raw_data: { samples: waitlist.premium_prices.length } })
+  } else {
+    add(missingSignal('pricing_power', 'premium_stem_camp_pricing', 'Premium STEM / Maker / Enrichment Pricing', 'firecrawl', waitlist?.weekly_prices?.length ? 'No premium-tier (>$400/wk) prices found on scanned pages.' : 'No pricing data extracted from competitor pages.'))
+  }
   add(missingSignal('pricing_power', 'private_school_tuition_proxy', 'Private Elementary School Tuition Levels', 'firecrawl', 'Requires private school tuition page extraction or state data.'))
   add(missingSignal('pricing_power', 'private_school_student_count', 'Number of Private School Students', 'state_edu', 'Needs state/private school enrollment data.'))
   add({ signal_key: 'childcare_nanny_hourly_rate_proxy', label: 'Childcare / Nanny Hourly Rate Proxy', value: fmtMoney(bls?.childcare_worker_wage_proxy ?? null), source: bls ? 'bls' : 'not_connected', source_url: bls?.source_url ?? null, confidence: bls ? 0.55 : 0, status: bls ? 'proxy' : 'missing', metric_category: 'pricing_power', used_in_score: Boolean(bls), notes: 'Annual childcare worker wage from BLS used as a local wage/cost proxy, not consumer nanny rate.' })

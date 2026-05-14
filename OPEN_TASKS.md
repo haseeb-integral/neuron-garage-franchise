@@ -55,6 +55,15 @@
 ~~**Score-delta toast after Save & Recalculate**~~ ✅ May 14
 - Toast shows `old → new` for category score AND composite score
 
+~~**Task 10: Wire NCES CCD API — public elementary school count per city**~~ ✅ May 14
+- Edge function `fetch-school-counts` live — no API key, fetches by full state + groups by city locally
+- Unique constraint added to `city_market_signals(city_id, signal_key)` for clean upserts
+- Signals stored: `public_elementary_count`, `public_elementary_enrollment` with `source='nces_ccd'`
+- 48 of 50 cities matched. 2 expected misses: Summerlin NV + Town and Country MO (CCD lists under parent city names — not a bug, can manually map if Sam asks)
+- Verified: Frisco TX=35 schools/22,950 enrollment, Austin TX=156 schools/77,563 enrollment
+- **Known gap — Task 10a:** Wire "Refresh school data" into per-city Refresh button (currently requires full backfill POST)
+- **Known gap — Task 10b:** Surface `public_elementary_count` + `public_elementary_enrollment` in city drawer UI (DB has data but "Elementary schools — Not available yet" placeholder still shows)
+
 ---
 
 ## ⚡ Day 1 — City Search (remaining)
@@ -78,14 +87,15 @@
 - **Risk:** low-medium
 - **If Day 1 is full → push to Day 2 morning**
 
-### 10. Wire NCES CCD API — public elementary school count per city
-- **What:** Connect the NCES Common Core of Data API to pull public elementary school count, enrollment, and location for each scored city
-- **Why:** School count is a scored sub-metric under Demand and Franchisee Supply. Currently showing "Not available yet."
-- **API:** `https://educationdata.urban.org/api/v1/schools/ccd/` (Urban Institute wrapper — free, no key needed)
-- Pull per city: school count, total enrollment
-- Store in `city_market_signals` table: add columns `public_elementary_count`, `public_elementary_enrollment`
-- **Risk:** low — free, well-documented API
-- **Verify by:** check Austin TX → should return ~130 AISD elementary schools
+### 10a. Wire school data refresh into per-city Refresh button
+- Currently `fetch-school-counts` only runs on full backfill POST `{}`
+- When user hits Refresh Data on a specific city, also call `fetch-school-counts` with `{ "cityIds": ["<id>"] }`
+- **Risk:** low — endpoint already supports single-city mode
+
+### 10b. Surface school counts in city drawer UI
+- `public_elementary_count` and `public_elementary_enrollment` are in DB but UI still shows "Not available yet"
+- Read from `city_market_signals` where `signal_key = 'public_elementary_count'` and display in the city detail panel
+- **Risk:** low — data is there, just needs a UI read
 
 ### 11. Wire GreatSchools API — private + charter elementary school count per city
 - **What:** Connect GreatSchools NearbySchools API to pull private and charter elementary school counts alongside NCES public data

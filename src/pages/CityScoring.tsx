@@ -334,6 +334,22 @@ const CityScoring = () => {
     return base.filter((m: any) => String(m.city ?? "").toLowerCase().includes(q));
   }, [baseRankedMarkets, searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop, cityFilter]);
 
+  // Percentile rank within currently filtered list (only live-data rows are ranked).
+  // 100 = top scorer, 0 = bottom. Used in the Tier badge tooltip.
+  const percentileById = useMemo(() => {
+    const live = filtered.filter((m: any) => m.hasLiveData);
+    const sorted = [...live].sort(
+      (a: any, b: any) => Number(b.compositeScore ?? 0) - Number(a.compositeScore ?? 0),
+    );
+    const total = sorted.length;
+    const map = new Map<string | number, number>();
+    sorted.forEach((m: any, idx) => {
+      const pct = total <= 1 ? 100 : Math.round((1 - idx / (total - 1)) * 100);
+      map.set(m.id, pct);
+    });
+    return map;
+  }, [filtered]);
+
   // Reset pagination whenever filter inputs change
   useEffect(() => {
     setPage(1);

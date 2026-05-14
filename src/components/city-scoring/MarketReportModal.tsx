@@ -229,45 +229,98 @@ export function MarketReportModal({ open, onClose, market, categoryScores, refre
       node.style.maxHeight = "none";
       node.style.height = "auto";
       node.style.backgroundColor = "#ffffff";
-      const canvas = await html2canvas(node, {
-        scale: 2,
-        backgroundColor: "#ffffff",
-        useCORS: true,
-        windowWidth: node.scrollWidth,
-      });
-      const imgData = canvas.toDataURL("image/jpeg", 0.92);
+
       const pdf = new jsPDF({ unit: "pt", format: "a4" });
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
-      const margin = 24;
-      const headerH = 28;
-      const usableW = pageW - margin * 2;
-      const usableH = pageH - margin * 2 - headerH;
-      const imgW = usableW;
-      const imgH = (canvas.height * imgW) / canvas.width;
+      const margin = 32;
+      const headerH = 24;
+      const contentW = pageW - margin * 2;
+      const contentTop = margin + headerH;
+      const contentBottom = pageH - margin;
       const today = new Date().toISOString().slice(0, 10);
       const headerText = `${market.city}, ${stateAbbr} — SOW Market Report  ·  Generated ${today}`;
 
-      let remainingH = imgH;
-      let yOffset = 0;
-      while (remainingH > 0) {
+      const drawHeader = () => {
         pdf.setFontSize(9);
         pdf.setTextColor(120);
         pdf.text(headerText, margin, margin + 12);
-        pdf.addImage(imgData, "JPEG", margin, margin + headerH - yOffset, imgW, imgH);
-        // Mask outside usable region by drawing white rectangles is unnecessary because addImage clipping handled by next page;
-        // jsPDF doesn't auto-clip, so use a workaround: cover overflow with white.
-        // Top mask
-        pdf.setFillColor(255, 255, 255);
-        pdf.rect(0, 0, pageW, margin + headerH - 2, "F");
-        pdf.setFontSize(9);
-        pdf.setTextColor(120);
-        pdf.text(headerText, margin, margin + 12);
-        // Bottom mask
-        pdf.rect(0, pageH - margin + 2, pageW, margin, "F");
-        remainingH -= usableH;
-        yOffset += usableH;
-        if (remainingH > 0) pdf.addPage();
+        pdf.setDrawColor(220);
+        pdf.line(margin, margin + 18, pageW - margin, margin + 18);
+      };
+
+      // Title block
+      drawHeader();
+      pdf.setFontSize(16);
+      pdf.setTextColor(7, 20, 47);
+      pdf.text(`${market.city}, ${stateAbbr}`, margin, contentTop + 12);
+      pdf.setFontSize(11);
+      pdf.setTextColor(82, 96, 120);
+      pdf.text("SOW Market Report", margin, contentTop + 28);
+      let cursorY = contentTop + 44;
+
+      const sections = Array.from(node.querySelectorAll("section")) as HTMLElement[];
+
+      for (const section of sections) {
+        const canvas = await html2canvas(section, {
+          scale: 2,
+          backgroundColor: "#ffffff",
+          useCORS: true,
+          windowWidth: section.scrollWidth,
+        });
+        const imgW = contentW;
+        const imgH = (canvas.height * imgW) / canvas.width;
+        const imgData = canvas.toDataURL("image/jpeg", 0.92);
+
+        const available = contentBottom - cursorY;
+
+        // If section fits entirely → place it
+        if (imgH <= available) {
+          pdf.addImage(imgData, "JPEG", margin, cursorY, imgW, imgH);
+          cursorY += imgH + 12;
+          continue;
+        }
+
+        // If section is taller than a full page → slice it across pages
+        const pageContentH = contentBottom - contentTop;
+        if (imgH > pageContentH) {
+          // Need to slice the source canvas vertically
+          const sliceHeightPx = (pageContentH * canvas.width) / imgW;
+          let srcY = 0;
+          // Start on a fresh page if there's not much room
+          if (cursorY > contentTop + 4) {
+            pdf.addPage();
+            drawHeader();
+            cursorY = contentTop;
+          }
+          while (srcY < canvas.height) {
+            const sliceH = Math.min(sliceHeightPx, canvas.height - srcY);
+            const sliceCanvas = document.createElement("canvas");
+            sliceCanvas.width = canvas.width;
+            sliceCanvas.height = sliceH;
+            const ctx = sliceCanvas.getContext("2d")!;
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+            ctx.drawImage(canvas, 0, -srcY);
+            const sliceData = sliceCanvas.toDataURL("image/jpeg", 0.92);
+            const sliceMmH = (sliceH * imgW) / canvas.width;
+            pdf.addImage(sliceData, "JPEG", margin, contentTop, imgW, sliceMmH);
+            srcY += sliceH;
+            if (srcY < canvas.height) {
+              pdf.addPage();
+              drawHeader();
+            }
+          }
+          cursorY = contentTop + (((canvas.height - (Math.floor(canvas.height / sliceHeightPx) * sliceHeightPx)) || sliceHeightPx) * imgW) / canvas.width + 12;
+          continue;
+        }
+
+        // Otherwise add a new page and place section at top
+        pdf.addPage();
+        drawHeader();
+        cursorY = contentTop;
+        pdf.addImage(imgData, "JPEG", margin, cursorY, imgW, imgH);
+        cursorY += imgH + 12;
       }
 
       const slug = market.city.toLowerCase().replace(/\s+/g, "-");

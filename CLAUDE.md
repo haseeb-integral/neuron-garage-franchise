@@ -70,8 +70,12 @@ Implications:
 4. **Source of truth = May 8 meeting transcript + notes.** When older docs
    disagree, May 8 wins.
 
-5. **Master sliders auto-rebalance to 100. Sub-metric weights do NOT.**
-   Sub-weights are editable numbers with a visible running total. Intentional.
+5. **Master sliders auto-rebalance to 100. Sub-metric weights auto-normalize on Apply.**
+   Sub-weights are typed as relative-importance numbers (no upper bound). On Apply,
+   each enabled metric's share = `sub_i / Σ(enabled sub-weights) × 100`, then feeds
+   the composite client-side: `categoryScore = Σ(sub_share × normalized_metric)` and
+   `composite = Σ(master_share × categoryScore)`. Empty category falls back to the
+   server-stored category score. Every drawer surfaces "Show Formula" per Rule 1.
 
 6. **One change at a time.** Small reversible steps. Lovable's undo is bad —
    if you break something, fix it forward.

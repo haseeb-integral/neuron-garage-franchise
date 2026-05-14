@@ -318,13 +318,35 @@ export async function fetchCompetitorWaitlistSignals(urls: string[]): Promise<Co
       if (WAITLIST_RE.test(md)) out.waitlist++
       if (SOLDOUT_RE.test(md)) out.soldout++
 
-      // Pricing extraction
+      // Pricing extraction — two passes:
+      //  1. strict $X/week, $X per week, $X weekly, $X/wk
+      //  2. proximity: any "$NNN" within 40 chars of week|wk|weekly|tuition|per session
       const pagePrices: number[] = []
+      const seenPositions = new Set<number>()
+      const STRICT_RE = /\$\s?(\d{2,4}(?:,\d{3})?)\s*(?:\/|per|-)?\s*(?:week|wk|weekly)\b/gi
       let m: RegExpExecArray | null
-      WEEKLY_PRICE_RE.lastIndex = 0
-      while ((m = WEEKLY_PRICE_RE.exec(md)) !== null) {
+      STRICT_RE.lastIndex = 0
+      while ((m = STRICT_RE.exec(md)) !== null) {
         const n = Number(m[1].replace(/,/g, ''))
-        if (Number.isFinite(n) && n >= 50 && n <= 5000) pagePrices.push(n)
+        if (Number.isFinite(n) && n >= 50 && n <= 5000) {
+          pagePrices.push(n)
+          seenPositions.add(m.index)
+        }
+      }
+      // Proximity pass: find any "$NNN[NN]" then check ±40 chars for week/tuition/session
+      const PRICE_RE = /\$\s?(\d{2,4}(?:,\d{3})?)/g
+      const CONTEXT_RE = /(week|wk|weekly|tuition|per session|per camper|registration)/i
+      let pm: RegExpExecArray | null
+      PRICE_RE.lastIndex = 0
+      while ((pm = PRICE_RE.exec(md)) !== null) {
+        if (seenPositions.has(pm.index)) continue
+        const n = Number(pm[1].replace(/,/g, ''))
+        if (!Number.isFinite(n) || n < 100 || n > 5000) continue
+        const start = Math.max(0, pm.index - 40)
+        const end = Math.min(md.length, pm.index + pm[0].length + 40)
+        if (CONTEXT_RE.test(md.slice(start, end))) {
+          pagePrices.push(n)
+        }
       }
       for (const p of pagePrices) {
         out.weekly_prices.push(p)

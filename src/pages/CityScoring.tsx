@@ -1068,8 +1068,19 @@ const CityScoring = () => {
             <Select
               value={(PRESET_NAMES as string[]).includes(scoringModel) ? scoringModel : "Balanced"}
               onValueChange={(name) => {
+                // Leaving "Custom" → snapshot current weights so we can restore them later.
+                if (scoringModel === "Custom" && name !== "Custom") {
+                  setCustomWeightsSnapshot({ ...appliedWeights });
+                }
                 setScoringModel(name);
-                if (name !== "Custom" && SCORING_PRESETS[name as Exclude<PresetName, "Custom">]) {
+                if (name === "Custom") {
+                  // Restore the last custom snapshot if we have one.
+                  if (customWeightsSnapshot) {
+                    setWeights(customWeightsSnapshot);
+                    setAppliedWeights(customWeightsSnapshot);
+                    toast.success("Restored your custom weights");
+                  }
+                } else if (SCORING_PRESETS[name as Exclude<PresetName, "Custom">]) {
                   const preset = SCORING_PRESETS[name as Exclude<PresetName, "Custom">];
                   setWeights(preset);
                   setAppliedWeights(preset);

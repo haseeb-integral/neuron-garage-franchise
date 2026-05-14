@@ -24,7 +24,11 @@ interface Props {
   selectedCityLabel?: string;
   rawValuesByKey?: Record<string, number | null | undefined>;
   serverCategoryScore?: number | null;
-  masterWeightPct?: number; // 0..100
+  masterWeightPct?: number; // 0..100, applied master share
+  masterWeightPendingPct?: number; // 0..100, share if pending master sliders were applied
+  currentCategoryScore?: number | null; // displayed category score before Apply (for delta toast)
+  currentComposite?: number; // composite before Apply (for delta toast)
+  computeNewComposite?: (newCategoryScore: number) => number; // recompute composite swapping in new category score
 }
 
 const STATUS_PILL: Record<SowMetricEntry["status"], { label: string; cls: string }> = {
@@ -40,6 +44,7 @@ const fmt = (n: number | null | undefined, decimals = 1) =>
 export function SubMetricWeightsDrawer({
   open, onOpenChange, categoryKey, categoryLabel, categoryColor, categoryBg,
   selectedCityLabel, rawValuesByKey, serverCategoryScore, masterWeightPct,
+  masterWeightPendingPct, currentCategoryScore, currentComposite, computeNewComposite,
 }: Props) {
   const subWeights = useCityScoringStore((s) => s.subWeights);
   const setSubWeight = useCityScoringStore((s) => s.setSubWeight);
@@ -96,11 +101,27 @@ export function SubMetricWeightsDrawer({
       ...appliedSubWeights,
       [categoryKey]: normalized,
     });
-    toast.success(
-      enabledSum > 0
-        ? `${categoryLabel} weights applied (auto-normalized to 100%)`
-        : `${categoryLabel} reset — using server score as fallback`,
-    );
+
+    // Compute old vs new for the delta toast.
+    const newCatScoreRaw = previewRecompute?.score ?? null;
+    const oldCat = currentCategoryScore;
+    const newCatRounded = newCatScoreRaw != null ? Math.round(newCatScoreRaw) : null;
+    const oldComp = currentComposite;
+    const newComp = newCatScoreRaw != null && computeNewComposite
+      ? computeNewComposite(newCatScoreRaw)
+      : oldComp;
+
+    if (enabledSum <= 0) {
+      toast.success(`${categoryLabel} reset — using server score as fallback`, { duration: 4000 });
+    } else if (oldCat != null && newCatRounded != null) {
+      const catLine = `${categoryLabel} updated: ${oldCat.toFixed(0)} → ${newCatRounded}`;
+      const compLine = oldComp != null && newComp != null && oldComp !== newComp
+        ? ` · Composite updated: ${oldComp} → ${newComp}`
+        : "";
+      toast.success(catLine + compLine, { duration: 4000 });
+    } else {
+      toast.success(`${categoryLabel} weights applied (auto-normalized to 100%)`, { duration: 4000 });
+    }
     onOpenChange(false);
   };
 
@@ -116,7 +137,7 @@ export function SubMetricWeightsDrawer({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-[560px] p-0 flex flex-col bg-white">
         <SheetHeader className="px-5 pt-5 pb-3 border-b border-[#eef2f7] space-y-2">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-2 pr-8">
             <div className="flex items-center gap-2 min-w-0">
               <span
                 className="inline-block h-2.5 w-2.5 rounded-full flex-shrink-0"
@@ -129,7 +150,7 @@ export function SubMetricWeightsDrawer({
             <button
               type="button"
               onClick={() => setView(view === "weights" ? "formula" : "weights")}
-              className="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-medium text-[#174be8] hover:underline"
+              className="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-medium text-[#174be8] hover:underline mr-2"
             >
               {view === "weights" ? <Calculator size={12} /> : <Sliders size={12} />}
               {view === "weights" ? "Show Formula" : "Edit Weights"}
@@ -255,6 +276,7 @@ export function SubMetricWeightsDrawer({
             previewRecompute={previewRecompute}
             serverCategoryScore={serverCategoryScore ?? null}
             masterWeightPct={masterWeightPct ?? null}
+            masterWeightPendingPct={masterWeightPendingPct ?? null}
             enabledSum={enabledSum}
             pendingEdits={pendingEdits}
           />
@@ -296,6 +318,7 @@ function FormulaPanel({
   previewRecompute,
   serverCategoryScore,
   masterWeightPct,
+  masterWeightPendingPct,
   enabledSum,
   pendingEdits,
 }: {
@@ -304,13 +327,43 @@ function FormulaPanel({
   previewRecompute: ReturnType<typeof recomputeCategoryScore> | null;
   serverCategoryScore: number | null;
   masterWeightPct: number | null;
+  masterWeightPendingPct: number | null;
   enabledSum: number;
   pendingEdits: boolean;
 }) {
+  const compositeContribution =
+    previewRecompute?.score != null && masterWeightPct != null
+      ? (previewRecompute.score * masterWeightPct) / 100
+      : null;
   const summary = previewRecompute
-    ? summarizeCategory(previewRecompute, selectedCityLabel, categoryLabel)
+    ? summarizeCategory(
+        previewRecompute,
+        selectedCityLabel,
+        categoryLabel,
+        masterWeightPct ?? undefined,
+        compositeContribution ?? undefined,
+      )
     : null;
+  const masterPending =
+    masterWeightPendingPct != null &&
+    masterWeightPct != null &&
+    Math.abs(masterWeightPendingPct - masterWeightPct) > 0.05;
+
+  const Th = ({ label, tip }: { label: string; tip: string }) => (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <th className="text-right px-2 py-1.5 font-medium cursor-help underline decoration-dotted decoration-[#c5cdda] underline-offset-2">
+          {label}
+        </th>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-[260px] text-[12px] leading-snug">
+        {tip}
+      </TooltipContent>
+    </Tooltip>
+  );
+
   return (
+    <TooltipProvider delayDuration={150}>
     <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 text-[12px] text-[#07142f] leading-relaxed">
       {pendingEdits && (
         <div className="rounded border border-[#fde68a] bg-[#fffbe6] px-3 py-2 text-[11.5px] text-[#854d0e] leading-snug">
@@ -375,63 +428,76 @@ normalized_i  = raw_i scaled to 0..100 (per-metric range)`}
             with live raw → normalized → contribution math.
           </p>
         ) : (
-          <div className="rounded border border-[#eef2f7] overflow-hidden">
-            <table className="w-full text-[11px] font-mono">
-              <thead className="bg-[#fafbfd] text-[#526078]">
-                <tr>
-                  <th className="text-left px-2 py-1.5 font-medium">Metric</th>
-                  <th className="text-right px-2 py-1.5 font-medium">Raw</th>
-                  <th className="text-right px-2 py-1.5 font-medium">Norm</th>
-                  <th className="text-right px-2 py-1.5 font-medium">Share</th>
-                  <th className="text-right px-2 py-1.5 font-medium">Contrib</th>
-                </tr>
-              </thead>
-              <tbody>
-                {previewRecompute.contributions.map((c) => (
-                  <tr key={c.key} className={`border-t border-[#eef2f7] ${c.used ? "" : "text-[#9aa3b5]"}`}>
-                    <td className="px-2 py-1 truncate max-w-[160px]" title={c.label}>{c.label}</td>
-                    <td className="px-2 py-1 text-right tabular-nums">{c.rawValue == null ? "—" : c.rawValue.toLocaleString()}</td>
-                    <td className="px-2 py-1 text-right tabular-nums">{c.normalized == null ? "—" : c.normalized.toFixed(1)}</td>
-                    <td className="px-2 py-1 text-right tabular-nums">{c.used ? `${(c.subShare * 100).toFixed(1)}%` : "—"}</td>
-                    <td className="px-2 py-1 text-right tabular-nums">{c.used ? c.contribution.toFixed(2) : "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot className="bg-[#f7faff] border-t-2 border-[#eef2f7]">
-                <tr>
-                  <td colSpan={4} className="px-2 py-1.5 text-right font-semibold text-[#1a2540]">
-                    {categoryLabel} score
-                    {previewRecompute.usedServerFallback && " (server fallback)"}
-                  </td>
-                  <td className="px-2 py-1.5 text-right font-bold tabular-nums text-[#1a2540]">
-                    {previewRecompute.score == null ? "—" : previewRecompute.score.toFixed(1)}
-                  </td>
-                </tr>
-                {masterWeightPct != null && previewRecompute.score != null && (
+          <>
+            <p className="text-[11px] text-[#526078] mb-1.5 italic">
+              Raw → scaled to Norm (0–100) → weighted by your Share → contributes to category score. Hover any column header for details.
+            </p>
+            <div className="rounded border border-[#eef2f7] overflow-hidden">
+              <table className="w-full text-[11px] font-mono">
+                <thead className="bg-[#fafbfd] text-[#526078]">
                   <tr>
-                    <td colSpan={4} className="px-2 py-1.5 text-right text-[#526078]">
-                      × master weight {masterWeightPct.toFixed(1)}% → composite contribution
-                    </td>
-                    <td className="px-2 py-1.5 text-right font-semibold tabular-nums text-[#174be8]">
-                      {((previewRecompute.score * masterWeightPct) / 100).toFixed(2)}
-                    </td>
+                    <th className="text-left px-2 py-1.5 font-medium">Metric</th>
+                    <Th label="Raw" tip="Raw — the actual measured value for this city (e.g. number of children, median income)." />
+                    <Th label="Norm" tip="Norm — the raw value rescaled to a 0–100 score using this metric's expected range, so different metrics can be compared." />
+                    <Th label="Share" tip="Share — this metric's slice of the category, after auto-normalizing your typed weights so they sum to 100%." />
+                    <Th label="Contrib" tip="Contrib — Norm × Share. Adding all Contrib values together gives this category's score." />
                   </tr>
-                )}
-                {serverCategoryScore != null && (
+                </thead>
+                <tbody>
+                  {previewRecompute.contributions.map((c) => (
+                    <tr key={c.key} className={`border-t border-[#eef2f7] ${c.used ? "" : "text-[#9aa3b5]"}`}>
+                      <td className="px-2 py-1 truncate max-w-[160px]" title={c.label}>{c.label}</td>
+                      <td className="px-2 py-1 text-right tabular-nums">{c.rawValue == null ? "—" : c.rawValue.toLocaleString()}</td>
+                      <td className="px-2 py-1 text-right tabular-nums">{c.normalized == null ? "—" : c.normalized.toFixed(1)}</td>
+                      <td className="px-2 py-1 text-right tabular-nums">{c.used ? `${(c.subShare * 100).toFixed(1)}%` : "—"}</td>
+                      <td className="px-2 py-1 text-right tabular-nums">{c.used ? c.contribution.toFixed(2) : "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="bg-[#f7faff] border-t-2 border-[#eef2f7]">
                   <tr>
-                    <td colSpan={4} className="px-2 py-1.5 text-right text-[#8794ab]">
-                      Server-stored {categoryLabel} score (fallback)
+                    <td colSpan={4} className="px-2 py-1.5 text-right font-semibold text-[#1a2540]">
+                      {categoryLabel} score
+                      {previewRecompute.usedServerFallback && " (server fallback)"}
                     </td>
-                    <td className="px-2 py-1.5 text-right tabular-nums text-[#8794ab]">
-                      {fmt(serverCategoryScore, 0)}
+                    <td className="px-2 py-1.5 text-right font-bold tabular-nums text-[#1a2540]">
+                      {previewRecompute.score == null ? "—" : previewRecompute.score.toFixed(1)}
                     </td>
                   </tr>
-                )}
-              </tfoot>
-            </table>
-          </div>
+                  {masterWeightPct != null && previewRecompute.score != null && (
+                    <tr>
+                      <td colSpan={4} className="px-2 py-1.5 text-right text-[#526078]">
+                        × master weight {masterWeightPct.toFixed(1)}% → composite contribution
+                      </td>
+                      <td className="px-2 py-1.5 text-right font-semibold tabular-nums text-[#174be8]">
+                        {((previewRecompute.score * masterWeightPct) / 100).toFixed(2)}
+                      </td>
+                    </tr>
+                  )}
+                  {masterPending && (
+                    <tr>
+                      <td colSpan={5} className="px-2 py-1.5 text-[11px] text-[#854d0e] bg-[#fffbe6] border-t border-[#fde68a] leading-snug">
+                        ⚠ You've dragged this category's master slider to <strong>{masterWeightPendingPct!.toFixed(1)}%</strong> on the city screen but haven't clicked <strong>Apply Weights</strong> yet. The composite still uses {masterWeightPct!.toFixed(1)}%.
+                      </td>
+                    </tr>
+                  )}
+                  {serverCategoryScore != null && (
+                    <tr>
+                      <td colSpan={4} className="px-2 py-1.5 text-right text-[#8794ab]">
+                        Server-stored {categoryLabel} score (fallback)
+                      </td>
+                      <td className="px-2 py-1.5 text-right tabular-nums text-[#8794ab]">
+                        {fmt(serverCategoryScore, 0)}
+                      </td>
+                    </tr>
+                  )}
+                </tfoot>
+              </table>
+            </div>
+          </>
         )}
       </section>
     </div>
+    </TooltipProvider>
   );
 }

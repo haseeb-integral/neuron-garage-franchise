@@ -792,6 +792,27 @@ export type Database = {
         }
         Relationships: []
       }
+      watchlist_items: {
+        Row: {
+          city_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          city_id: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Update: {
+          city_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -4,7 +4,7 @@ import {
   Bell, HelpCircle, ChevronDown, LogOut, Settings, Search, Download, FileText,
   Plus, RefreshCw, ArrowRight, GitCompare, Eye, Star, Users, DollarSign,
   Trophy, UserCheck, Cog, Heart, MapPin, Building2, GraduationCap, Home as HomeIcon,
-  Check, ChevronsUpDown, Info, X, Bookmark, Trash2,
+  Check, ChevronsUpDown, Info, X, Bookmark, BookmarkCheck, Trash2,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -274,6 +274,47 @@ const CityScoring = () => {
   };
   useEffect(() => { refreshSavedSearches(); }, [user?.id]);
 
+  // ─── Watchlist (per-user, persisted to Supabase) ───────────────────────
+  const [watchlistCityIds, setWatchlistCityIds] = useState<Set<string>>(new Set());
+  const [watchlistOnly, setWatchlistOnly] = useState(false);
+
+  const refreshWatchlist = async () => {
+    if (!user) { setWatchlistCityIds(new Set()); return; }
+    const { data, error } = await supabase
+      .from("watchlist_items")
+      .select("city_id");
+    if (error) { console.error("refreshWatchlist", error); return; }
+    setWatchlistCityIds(new Set((data ?? []).map((r: any) => r.city_id)));
+  };
+  useEffect(() => { refreshWatchlist(); }, [user?.id]);
+
+  const toggleWatchlist = async (cityId: string | null | undefined) => {
+    if (!cityId) { toast.error("Refresh this city's data before saving it"); return; }
+    if (!user) { toast.error("Sign in required"); return; }
+    const isSaved = watchlistCityIds.has(cityId);
+    // optimistic
+    setWatchlistCityIds((prev) => {
+      const next = new Set(prev);
+      if (isSaved) next.delete(cityId); else next.add(cityId);
+      return next;
+    });
+    if (isSaved) {
+      const { error } = await supabase
+        .from("watchlist_items")
+        .delete()
+        .eq("city_id", cityId)
+        .eq("user_id", user.id);
+      if (error) { console.error(error); toast.error("Remove failed"); refreshWatchlist(); return; }
+      toast.success("Removed from watchlist");
+    } else {
+      const { error } = await supabase
+        .from("watchlist_items")
+        .insert({ user_id: user.id, city_id: cityId });
+      if (error) { console.error(error); toast.error("Save failed"); refreshWatchlist(); return; }
+      toast.success("Added to watchlist");
+    }
+  };
+
   const handleSaveSearch = async () => {
     const name = saveSearchName.trim();
     if (!name) { toast.error("Name required"); return; }
@@ -432,9 +473,15 @@ const CityScoring = () => {
       minPop,
     });
     const q = cityFilter.trim().toLowerCase();
-    if (!q) return base;
-    return base.filter((m: any) => String(m.city ?? "").toLowerCase().includes(q));
-  }, [baseRankedMarkets, searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop, cityFilter]);
+    let out = q ? base.filter((m: any) => String(m.city ?? "").toLowerCase().includes(q)) : base;
+    if (watchlistOnly) {
+      out = out.filter((m: any) => m.cityId && watchlistCityIds.has(m.cityId));
+    }
+    return out;
+  }, [baseRankedMarkets, searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop, cityFilter, watchlistOnly, watchlistCityIds]);
+
+  // Reset to page 1 when watchlist filter toggles
+  useEffect(() => { setPage(1); }, [watchlistOnly]);
 
   // Percentile rank within currently filtered list (only live-data rows are ranked).
   // 100 = top scorer, 0 = bottom. Used in the Tier badge tooltip.
@@ -1736,6 +1783,14 @@ const CityScoring = () => {
             </div>
             <div className="flex items-center gap-3">
               <button
+                onClick={() => setWatchlistOnly((v) => !v)}
+                className={`flex items-center gap-1 text-xs font-medium hover:underline ${watchlistOnly ? "text-[#0ea66e]" : "text-[#526078]"}`}
+                title="Show only saved cities"
+              >
+                {watchlistOnly ? <BookmarkCheck size={12} /> : <Bookmark size={12} />}
+                Watchlist {watchlistOnly ? "On" : `(${watchlistCityIds.size})`}
+              </button>
+              <button
                 onClick={() => setAddCityOpen(true)}
                 className="flex items-center gap-1 text-xs font-medium text-[#174be8] hover:underline"
               >
@@ -1774,17 +1829,25 @@ const CityScoring = () => {
             </div>
           )}
           <div className="overflow-hidden flex-1">
-            <div className="grid grid-cols-[16px_14px_minmax(0,1fr)_46px_72px_18px] items-center gap-x-2 px-1 py-2 text-[9.5px] uppercase tracking-wide text-[#8794ab] border-b border-[#eef2f7]">
+            <div className="grid grid-cols-[16px_14px_minmax(0,1fr)_46px_72px_18px_16px] items-center gap-x-2 px-1 py-2 text-[9.5px] uppercase tracking-wide text-[#8794ab] border-b border-[#eef2f7]">
               <span></span>
               <span>Rank</span>
               <span>Market</span>
               <span>Type</span>
               <span>Score</span>
               <span className="text-right">Tier</span>
+              <span></span>
             </div>
+            {pageItems.length === 0 && watchlistOnly && (
+              <div className="px-2 py-8 text-center text-[11px] text-[#8794ab]">
+                No saved markets yet — click the bookmark on any city to save it.
+              </div>
+            )}
             {pageItems.map((c, i) => {
               const isSel = c.city === selectedCity && c.state === selectedState;
               const isCmp = selectedForCompare.includes(c.id);
+              const rowCityId = (c as any).cityId as string | undefined;
+              const isSaved = !!rowCityId && watchlistCityIds.has(rowCityId);
               return (
                 <div
                   key={c.id}
@@ -1794,7 +1857,7 @@ const CityScoring = () => {
                     if (sample) setSelectedId(sample.id);
                     else setSelectedId(c.id);
                   }}
-                  className={`grid grid-cols-[16px_14px_minmax(0,1fr)_46px_72px_18px] items-center gap-x-2 px-1 py-3 text-[11px] cursor-pointer border-b border-[#f3f5f9] last:border-0 ${isSel ? "bg-[#eaf0ff]" : "hover:bg-[#f7faff]"}`}
+                  className={`grid grid-cols-[16px_14px_minmax(0,1fr)_46px_72px_18px_16px] items-center gap-x-2 px-1 py-3 text-[11px] cursor-pointer border-b border-[#f3f5f9] last:border-0 ${isSel ? "bg-[#eaf0ff]" : "hover:bg-[#f7faff]"}`}
                 >
                   <span className={compareMode ? "rounded ring-2 ring-[#174be8] ring-offset-1 ring-offset-white" : ""}>
                     <Checkbox checked={isCmp} onCheckedChange={() => toggleCompare(c.id)} onClick={(e) => e.stopPropagation()} />
@@ -1830,6 +1893,19 @@ const CityScoring = () => {
                     </span>
                   ) : (
                     <span className="justify-self-end rounded-full bg-[#eef2f7] px-1.5 py-0.5 text-[8.5px] font-semibold text-[#8794ab] whitespace-nowrap">No data</span>
+                  )}
+                  {rowCityId ? (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); toggleWatchlist(rowCityId); }}
+                      className={`justify-self-end p-0.5 rounded hover:bg-white ${isSaved ? "text-[#0ea66e]" : "text-[#cbd5e1] hover:text-[#526078]"}`}
+                      title={isSaved ? "Remove from watchlist" : "Add to watchlist"}
+                      aria-label={isSaved ? "Remove from watchlist" : "Add to watchlist"}
+                    >
+                      {isSaved ? <BookmarkCheck size={12} fill="currentColor" /> : <Bookmark size={12} />}
+                    </button>
+                  ) : (
+                    <span />
                   )}
                 </div>
               );
@@ -1886,9 +1962,22 @@ const CityScoring = () => {
                 </span>
               )}
             </div>
-            <button className="flex items-center gap-1 text-[11px] font-medium text-[#174be8] hover:underline whitespace-nowrap">
-              <Star size={12} /> Add to Watchlist
-            </button>
+            {(() => {
+              const detailCityId = liveCity?.id as string | undefined;
+              const isSaved = !!detailCityId && watchlistCityIds.has(detailCityId);
+              return (
+                <button
+                  type="button"
+                  onClick={() => toggleWatchlist(detailCityId)}
+                  disabled={!detailCityId}
+                  title={!detailCityId ? "Refresh this city's data first" : isSaved ? "Remove from watchlist" : "Add to watchlist"}
+                  className={`flex items-center gap-1 text-[11px] font-medium hover:underline whitespace-nowrap disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed ${isSaved ? "text-[#0ea66e]" : "text-[#174be8]"}`}
+                >
+                  {isSaved ? <BookmarkCheck size={12} fill="currentColor" /> : <Bookmark size={12} />}
+                  {isSaved ? "Saved to Watchlist" : "Add to Watchlist"}
+                </button>
+              );
+            })()}
           </div>
 
 

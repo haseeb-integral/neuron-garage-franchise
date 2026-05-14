@@ -274,6 +274,47 @@ const CityScoring = () => {
   };
   useEffect(() => { refreshSavedSearches(); }, [user?.id]);
 
+  // ─── Watchlist (per-user, persisted to Supabase) ───────────────────────
+  const [watchlistCityIds, setWatchlistCityIds] = useState<Set<string>>(new Set());
+  const [watchlistOnly, setWatchlistOnly] = useState(false);
+
+  const refreshWatchlist = async () => {
+    if (!user) { setWatchlistCityIds(new Set()); return; }
+    const { data, error } = await supabase
+      .from("watchlist_items")
+      .select("city_id");
+    if (error) { console.error("refreshWatchlist", error); return; }
+    setWatchlistCityIds(new Set((data ?? []).map((r: any) => r.city_id)));
+  };
+  useEffect(() => { refreshWatchlist(); }, [user?.id]);
+
+  const toggleWatchlist = async (cityId: string | null | undefined) => {
+    if (!cityId) { toast.error("Refresh this city's data before saving it"); return; }
+    if (!user) { toast.error("Sign in required"); return; }
+    const isSaved = watchlistCityIds.has(cityId);
+    // optimistic
+    setWatchlistCityIds((prev) => {
+      const next = new Set(prev);
+      if (isSaved) next.delete(cityId); else next.add(cityId);
+      return next;
+    });
+    if (isSaved) {
+      const { error } = await supabase
+        .from("watchlist_items")
+        .delete()
+        .eq("city_id", cityId)
+        .eq("user_id", user.id);
+      if (error) { console.error(error); toast.error("Remove failed"); refreshWatchlist(); return; }
+      toast.success("Removed from watchlist");
+    } else {
+      const { error } = await supabase
+        .from("watchlist_items")
+        .insert({ user_id: user.id, city_id: cityId });
+      if (error) { console.error(error); toast.error("Save failed"); refreshWatchlist(); return; }
+      toast.success("Added to watchlist");
+    }
+  };
+
   const handleSaveSearch = async () => {
     const name = saveSearchName.trim();
     if (!name) { toast.error("Name required"); return; }

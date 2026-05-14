@@ -1108,7 +1108,13 @@ const CityScoring = () => {
                 />
                 <p className="text-[11px] text-[#8794ab] leading-snug">{cat.description}</p>
                 {customCount > 0 && (
-                  <p className="text-[10px] text-[#174be8] font-medium">+{customCount} custom metric{customCount > 1 ? "s" : ""}</p>
+                  <button
+                    type="button"
+                    onClick={() => setOpenSubMetricsFor(cat.key)}
+                    className="text-[10px] text-[#174be8] font-medium hover:underline self-start"
+                  >
+                    +{customCount} custom metric{customCount > 1 ? "s" : ""}
+                  </button>
                 )}
                 <button
                   type="button"
@@ -1149,6 +1155,13 @@ const CityScoring = () => {
           }, 0);
           return Math.round(sum / appliedTotal);
         }}
+        customMetricsForCategory={
+          openSubMetricsFor
+            ? supabaseCustomCriteria.filter(
+                (c) => c.category === (CATEGORIES.find((cc) => cc.key === openSubMetricsFor)?.label ?? ""),
+              )
+            : []
+        }
       />
 
       {/* Filters row */}

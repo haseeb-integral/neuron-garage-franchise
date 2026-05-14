@@ -1581,7 +1581,6 @@ const CityScoring = () => {
       <AddCriteriaDrawer
         open={addCritOpen}
         onClose={() => setAddCritOpen(false)}
-        onSave={(c) => setCustomCriteria((prev) => [...prev, c])}
       />
 
       <MarketDetailDrawer

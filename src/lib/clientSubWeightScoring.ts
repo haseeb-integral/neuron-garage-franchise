@@ -8,10 +8,23 @@
 //   sub_share_i   = sub_i / Σ(sub enabled with usable values)
 //   categoryScore = Σ_i (sub_share_i × normalized_i)
 //   composite     = Σ_c (master_c / Σmaster) × categoryScore_c
+//
+// Custom metrics (added via the "+ Add Criteria" drawer and stored in Supabase)
+// participate alongside built-in metrics. They use a NEUTRAL normalized value
+// of 50 until a real data source is wired — surfaced in the UI with a "No live
+// data — using neutral score (50)" tag so users know which numbers are real.
 
 import type { CategoryKey } from "@/stores/cityScoringStore";
 import type { SowMetricEntry } from "@/lib/sowMetricRegistry";
 import { normalizeSowMetric } from "@/lib/sowNormalize";
+
+export const CUSTOM_METRIC_NEUTRAL_NORM = 50;
+
+export type CustomMetricInput = {
+  id: string;       // Supabase row id, used as scoring key
+  label: string;    // metric name
+  weight: number;   // user-typed relative-importance number
+};
 
 export type MetricContribution = {
   key: string;
@@ -22,6 +35,7 @@ export type MetricContribution = {
   subShare: number;           // 0..1, share within category
   contribution: number;       // normalized × subShare
   used: boolean;              // true iff included in the category sum
+  isCustom: boolean;          // true for user-added custom criteria
 };
 
 export type CategoryRecomputeResult = {
@@ -37,11 +51,13 @@ export function recomputeCategoryScore(
   rawValuesByKey: Record<string, number | null | undefined>,
   appliedSubByKey: Record<string, number>,
   serverFallback: number | null | undefined,
+  customMetrics: readonly CustomMetricInput[] = [],
 ): CategoryRecomputeResult {
   const contributions: MetricContribution[] = [];
   let enabledSum = 0;
   let usableSum = 0;
 
+  // Built-in metrics
   for (const m of metricsInCategory) {
     const sub = Math.max(0, Number(appliedSubByKey[m.key] ?? 0));
     const raw = m.enabled ? (rawValuesByKey[m.key] ?? null) : null;
@@ -58,6 +74,26 @@ export function recomputeCategoryScore(
       subShare: 0, // filled below once usableSum is known
       contribution: 0,
       used,
+      isCustom: false,
+    });
+  }
+
+  // Custom metrics — always treated as "enabled", normalized = neutral 50.
+  for (const cm of customMetrics) {
+    const sub = Math.max(0, Number(cm.weight ?? 0));
+    enabledSum += sub;
+    const used = sub > 0;
+    if (used) usableSum += sub;
+    contributions.push({
+      key: `custom:${cm.id}`,
+      label: cm.label,
+      rawValue: null,
+      normalized: CUSTOM_METRIC_NEUTRAL_NORM,
+      subWeight: sub,
+      subShare: 0,
+      contribution: 0,
+      used,
+      isCustom: true,
     });
   }
 
@@ -128,19 +164,25 @@ export function summarizeCategory(
     return `No usable data for ${categoryLabel} — falling back to the server-stored score.`;
   }
   const used = result.contributions.filter((c) => c.used);
-  const unavailable = result.contributions.filter((c) => !c.used).length;
+  const unavailable = result.contributions.filter((c) => !c.used && !c.isCustom).length;
+  const customUsed = used.filter((c) => c.isCustom).length;
   const heaviest = [...used].sort((a, b) => b.contribution - a.contribution)[0];
 
   const sentences: string[] = [];
   sentences.push(`${cityPart} ${result.score.toFixed(1)} on ${categoryLabel}.`);
   if (heaviest) {
     sentences.push(
-      `${heaviest.label} is your heaviest metric at ${(heaviest.subShare * 100).toFixed(1)}% weight, contributing ${heaviest.contribution.toFixed(1)} points.`,
+      `${heaviest.label}${heaviest.isCustom ? " (custom)" : ""} is your heaviest metric at ${(heaviest.subShare * 100).toFixed(1)}% weight, contributing ${heaviest.contribution.toFixed(1)} points.`,
     );
   }
   if (unavailable > 0) {
     sentences.push(
       `${unavailable} metric${unavailable === 1 ? " is" : "s are"} unavailable and excluded from scoring.`,
+    );
+  }
+  if (customUsed > 0) {
+    sentences.push(
+      `${customUsed} custom metric${customUsed === 1 ? "" : "s"} also contribute${customUsed === 1 ? "s" : ""} using a neutral score of ${CUSTOM_METRIC_NEUTRAL_NORM} until a live data source is connected.`,
     );
   }
   if (result.usedServerFallback) {

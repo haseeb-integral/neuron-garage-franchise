@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getSignalGeography, GEO_BADGE_CLASS } from "@/lib/signalGeography";
 import { useCustomCriteria, CATEGORY_LABEL_TO_KEY } from "@/hooks/useCustomCriteria";
 import type { CategoryKey } from "@/stores/cityScoringStore";
-import { METRICS_BY_CATEGORY, CATEGORY_KEY_MAP, type SowMetricEntry } from "@/lib/sowMetricRegistry";
+import { METRICS_BY_CATEGORY, type SowMetricEntry } from "@/lib/sowMetricRegistry";
 import { FETCHER_DIAGNOSTIC_KEYS, canonicalKey } from "@/lib/signalAliases";
 
 export interface CustomCriterion {

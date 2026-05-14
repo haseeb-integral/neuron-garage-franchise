@@ -477,11 +477,12 @@ Deno.serve(async (req) => {
       children_pct: censusData?.children_5_12_pct ?? null,
       last_scraped_at: startedAt,
       notes: 'SOW metric coverage refresh',
-    }, { onConflict: 'city,state' }).select('id, latitude, longitude').single()
+    }, { onConflict: 'city,state' }).select('id, latitude, longitude, metro_area').single()
     if (cityErr || !cityRow) return json({ error: 'Failed to upsert city', detail: cityErr?.message }, 500)
     const cityId = cityRow.id as string
     const cityLat = cityRow.latitude != null ? Number(cityRow.latitude) : null
     const cityLng = cityRow.longitude != null ? Number(cityRow.longitude) : null
+    const cityMetro = (cityRow as any).metro_area as string | null
 
     const { data: latestJobRows } = await admin
       .from('city_fetch_jobs')

@@ -247,8 +247,8 @@ export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
   // Competitive Landscape
   { key: "summer_camps_per_10k_children",       category: "competitive_landscape", label: "Summer Camps per 10,000 Children",          enabled: true,  weight_within_category: 0.30, status: "proxy" },
   { key: "stem_robotics_maker_camp_count",      category: "competitive_landscape", label: "STEM / Robotics / Maker Camps",             enabled: true,  weight_within_category: 0.20, status: "proxy" },
-  { key: "school_based_summer_camp_count",      category: "competitive_landscape", label: "School-Based Summer Camps",                 enabled: false, weight_within_category: 0,    status: "missing" },
-  { key: "national_brand_presence",             category: "competitive_landscape", label: "National Brand Presence",                   enabled: false, weight_within_category: 0,    status: "proxy" },
+  { key: "school_based_summer_camp_count",      category: "competitive_landscape", label: "School-Based Summer Camps",                 enabled: false, weight_within_category: 0,    status: "live" },
+  { key: "national_brand_presence",             category: "competitive_landscape", label: "National Brand Presence",                   enabled: false, weight_within_category: 0,    status: "live" },
   { key: "google_search_demand_summer_camp",    category: "competitive_landscape", label: "Google Search Demand: summer camp [city]",  enabled: false, weight_within_category: 0,    status: "live"    },
   { key: "google_search_demand_summer_day_camp",category: "competitive_landscape", label: "Google Search Demand: summer day camp",     enabled: false, weight_within_category: 0,    status: "live"    },
   { key: "google_search_demand_summer_day_camps_year", category: "competitive_landscape", label: "Google Search Demand: Day Camps [Year]", enabled: false, weight_within_category: 0, status: "missing" },

@@ -660,13 +660,14 @@ export function MarketDetailDrawer({
                 const enabledRows = bucket.enabled;
                 const disabledRows = bucket.disabled;
                 const enabledTotal = enabledRows.length;
+                const totalInCategory = enabledRows.length + disabledRows.length;
                 const liveProxy = enabledRows.filter((r) => r.status === "live" || r.status === "proxy").length;
                 return (
                   <div key={category.key} className="rounded-lg border border-[#eef2f7] bg-white">
                     <div className="flex items-center justify-between border-b border-[#eef2f7] bg-[#f8fafe] px-3 py-1.5">
                       <h5 className="text-[12px] font-bold text-[#07142f]">{category.label}</h5>
                       <span className="text-[10px] font-semibold text-[#8794ab]">
-                        {liveProxy}/{enabledTotal} covered
+                        {liveProxy}/{enabledTotal} wired · {totalInCategory} total
                         {customs.length > 0 ? ` · ${customs.length} custom` : ""}
                       </span>
                     </div>
@@ -684,10 +685,9 @@ export function MarketDetailDrawer({
                               {c.name}
                             </p>
                             <div className="mt-1 flex flex-wrap items-center gap-1">
-                              <span className="rounded-full border border-[#cbd8ff] bg-[#eaf0ff] px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#174be8]">
+                              <span className="rounded-full border border-[#f4df9a] bg-[#fff6dc] px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#b8860b]">
                                 Custom
                               </span>
-                              <StatusBadge status="proxy" />
                               {c.data_source && (
                                 <span className="rounded-full border border-[#e5eaf2] bg-white px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#526078]">
                                   {c.data_source}
@@ -707,28 +707,15 @@ export function MarketDetailDrawer({
                         </div>
                       ))}
                       {disabledRows.length > 0 && (
-                        <div className="border-t border-[#eef2f7] bg-[#fbfcff]">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setShowDisabled((s) => ({ ...s, [category.key]: !s[category.key] }))
-                            }
-                            className="flex w-full items-center justify-between px-3 py-1.5 text-[10.5px] font-semibold text-[#526078] hover:text-[#07142f]"
-                          >
-                            <span className="flex items-center gap-1">
-                              {showDisabled[category.key] ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-                              Not in current scoring model
-                            </span>
+                        <>
+                          <div className="flex items-center justify-between border-t border-[#eef2f7] bg-[#fbfcff] px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#8794ab]">
+                            <span>Not in current scoring model</span>
                             <span>{disabledRows.length}</span>
-                          </button>
-                          {showDisabled[category.key] && (
-                            <div>
-                              {disabledRows.map(({ metric, signal, status }) =>
-                                renderRegistryRow(metric, signal, status, true),
-                              )}
-                            </div>
+                          </div>
+                          {disabledRows.map(({ metric, signal, status }) =>
+                            renderRegistryRow(metric, signal, status, true),
                           )}
-                        </div>
+                        </>
                       )}
                     </div>
                   </div>

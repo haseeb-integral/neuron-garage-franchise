@@ -675,6 +675,33 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_searches: {
+        Row: {
+          created_at: string
+          id: string
+          master_weights: Json
+          name: string
+          sub_weights: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          master_weights: Json
+          name: string
+          sub_weights?: Json
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          master_weights?: Json
+          name?: string
+          sub_weights?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
       scoring_config: {
         Row: {
           created_at: string

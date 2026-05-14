@@ -214,13 +214,96 @@ export function MarketReportModal({ open, onClose, market, categoryScores, refre
     toast.success("SOW source evidence exported");
   };
 
+  const handleDownloadPdf = async () => {
+    const node = reportRef.current;
+    if (!node) return;
+    if (loading) {
+      toast.error("Report data still loading");
+      return;
+    }
+    setGeneratingPdf(true);
+    const prevMaxHeight = node.style.maxHeight;
+    const prevHeight = node.style.height;
+    const prevBg = node.style.backgroundColor;
+    try {
+      node.style.maxHeight = "none";
+      node.style.height = "auto";
+      node.style.backgroundColor = "#ffffff";
+      const canvas = await html2canvas(node, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+        useCORS: true,
+        windowWidth: node.scrollWidth,
+      });
+      const imgData = canvas.toDataURL("image/jpeg", 0.92);
+      const pdf = new jsPDF({ unit: "pt", format: "a4" });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const margin = 24;
+      const headerH = 28;
+      const usableW = pageW - margin * 2;
+      const usableH = pageH - margin * 2 - headerH;
+      const imgW = usableW;
+      const imgH = (canvas.height * imgW) / canvas.width;
+      const today = new Date().toISOString().slice(0, 10);
+      const headerText = `${market.city}, ${stateAbbr} — SOW Market Report  ·  Generated ${today}`;
+
+      let remainingH = imgH;
+      let yOffset = 0;
+      while (remainingH > 0) {
+        pdf.setFontSize(9);
+        pdf.setTextColor(120);
+        pdf.text(headerText, margin, margin + 12);
+        pdf.addImage(imgData, "JPEG", margin, margin + headerH - yOffset, imgW, imgH);
+        // Mask outside usable region by drawing white rectangles is unnecessary because addImage clipping handled by next page;
+        // jsPDF doesn't auto-clip, so use a workaround: cover overflow with white.
+        // Top mask
+        pdf.setFillColor(255, 255, 255);
+        pdf.rect(0, 0, pageW, margin + headerH - 2, "F");
+        pdf.setFontSize(9);
+        pdf.setTextColor(120);
+        pdf.text(headerText, margin, margin + 12);
+        // Bottom mask
+        pdf.rect(0, pageH - margin + 2, pageW, margin, "F");
+        remainingH -= usableH;
+        yOffset += usableH;
+        if (remainingH > 0) pdf.addPage();
+      }
+
+      const slug = market.city.toLowerCase().replace(/\s+/g, "-");
+      pdf.save(`${slug}-${stateAbbr.toLowerCase()}-market-report-${today}.pdf`);
+      toast.success("PDF report downloaded");
+    } catch (err) {
+      console.error("PDF generation failed", err);
+      toast.error("PDF generation failed");
+    } finally {
+      node.style.maxHeight = prevMaxHeight;
+      node.style.height = prevHeight;
+      node.style.backgroundColor = prevBg;
+      setGeneratingPdf(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!open) {
+      autoFiredRef.current = false;
+      return;
+    }
+    if (autoDownload && !loading && !autoFiredRef.current && liveSignals.length >= 0) {
+      autoFiredRef.current = true;
+      // Wait one tick for DOM paint
+      const t = setTimeout(() => { handleDownloadPdf(); }, 250);
+      return () => clearTimeout(t);
+    }
+  }, [open, autoDownload, loading]);
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-2xl w-[calc(100vw-2rem)] max-h-[90vh] overflow-y-auto bg-white">
         <DialogHeader>
           <DialogTitle className="text-[#07142f]">{market.city}, {stateAbbr} SOW Market Report Preview</DialogTitle>
         </DialogHeader>
-        <div className="space-y-5 text-[12.5px] text-[#14233b]">
+        <div ref={reportRef} className="space-y-5 text-[12.5px] text-[#14233b] bg-white">
           <section className="rounded-lg border border-[#eef2f7] bg-[#f8fafe] p-3">
             <h4 className="text-[13px] font-bold text-[#07142f] mb-1">Market Summary</h4>
             <p className="leading-snug text-[#3a4c72]">

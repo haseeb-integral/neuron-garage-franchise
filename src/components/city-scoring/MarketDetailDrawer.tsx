@@ -388,7 +388,7 @@ export function MarketDetailDrawer({
             </p>
             <div className="flex gap-1.5 text-[11px]">
               <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#0ea66e]">{liveCount} live</span>
-              <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#174be8]">{proxyCount} proxy</span>
+              <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#174be8]">{proxyCount} estimated</span>
               <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#526078]">{missingCount} missing</span>
             </div>
           </div>

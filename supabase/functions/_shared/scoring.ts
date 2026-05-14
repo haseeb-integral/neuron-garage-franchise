@@ -222,8 +222,8 @@ export type SowMetricEntry = {
 // NOT applied today. Total per category is informational only.
 export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
   // Demand
-  { key: "children_5_12_count",                 category: "demand", label: "Children Ages 5–12",                     enabled: true,  weight_within_category: 0.20, status: "proxy" },
-  { key: "children_5_12_pct",                   category: "demand", label: "% Population Ages 5–12",                  enabled: true,  weight_within_category: 0.10, status: "proxy" },
+  { key: "children_5_12_count",                 category: "demand", label: "Children Ages 5–12",                     enabled: true,  weight_within_category: 0.20, status: "live"  },
+  { key: "children_5_12_pct",                   category: "demand", label: "% Population Ages 5–12",                  enabled: true,  weight_within_category: 0.10, status: "live"  },
   { key: "households_with_children_under_13",   category: "demand", label: "Households With Children Under 13",       enabled: true,  weight_within_category: 0.10, status: "proxy" },
   { key: "median_household_income",             category: "demand", label: "Median Household Income",                 enabled: true,  weight_within_category: 0.15, status: "live"  },
   { key: "income_100k_plus_pct",                category: "demand", label: "Households Earning $100k+",               enabled: true,  weight_within_category: 0.10, status: "live"  },
@@ -257,7 +257,7 @@ export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
   // Franchisee Supply
   { key: "public_elementary_teacher_count",     category: "franchisee_supply", label: "Public Elementary Teachers",                    enabled: false, weight_within_category: 0,    status: "live"    },
   { key: "private_charter_montessori_teacher_count", category: "franchisee_supply", label: "Private / Charter / Montessori Teachers", enabled: false, weight_within_category: 0,    status: "live"    },
-  { key: "elementary_school_count",             category: "franchisee_supply", label: "Elementary Schools",                            enabled: true,  weight_within_category: 0.40, status: "proxy"   },
+  { key: "elementary_school_count",             category: "franchisee_supply", label: "Elementary Schools",                            enabled: true,  weight_within_category: 0.40, status: "live"    },
   { key: "teacher_salary_proxy",                category: "franchisee_supply", label: "Average Teacher Salary Proxy",                  enabled: true,  weight_within_category: 0.30, status: "live"    },
   { key: "cost_of_living_index",                category: "franchisee_supply", label: "Cost of Living Index",                          enabled: false, weight_within_category: 0,    status: "live"    },
   { key: "student_teacher_ratio_elementary",    category: "franchisee_supply", label: "Elementary Student-Teacher Ratio",              enabled: false, weight_within_category: 0,    status: "live"    },

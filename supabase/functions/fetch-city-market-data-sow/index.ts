@@ -139,6 +139,11 @@ async function fetchCensusExpanded(city: string, state: string) {
       'B23025_005E',
       'B23025_003E',
       'B25064_001E',
+      // Day 5: B09001 own-children-under-18 by single age — used for precise 5–12 count.
+      'B09001_006E', // age 5
+      'B09001_007E', // ages 6–8
+      'B09001_008E', // ages 9–11
+      'B09001_009E', // ages 12–14 (take 1/3 for age 12 only)
     ]
     const url = `https://api.census.gov/data/2022/acs/acs5?get=${vars.join(',')}&for=place:${placeFips}&in=state:${stateFips}&key=${key}`
     const res = await fetch(url)
@@ -152,7 +157,6 @@ async function fetchCensusExpanded(city: string, state: string) {
     const male10_14 = num(row[3]) ?? 0
     const female5_9 = num(row[4]) ?? 0
     const female10_14 = num(row[5]) ?? 0
-    const children5_12 = Math.round(male5_9 + female5_9 + ((male10_14 + female10_14) * 0.6))
     const under18 = num(row[6])
     const total25 = num(row[7])
     const bachelorsPlus = (num(row[8]) ?? 0) + (num(row[9]) ?? 0) + (num(row[10]) ?? 0) + (num(row[11]) ?? 0)
@@ -163,6 +167,21 @@ async function fetchCensusExpanded(city: string, state: string) {
     const unemployed = num(row[18])
     const laborForce = num(row[19])
     const medianGrossRent = num(row[20])
+
+    // Day 5: precise children 5–12 from B09001 single-age bands.
+    const age_5      = num(row[21])
+    const ages_6_8   = num(row[22])
+    const ages_9_11  = num(row[23])
+    const ages_12_14 = num(row[24])
+    const childrenB09001 =
+      (age_5 != null && ages_6_8 != null && ages_9_11 != null && ages_12_14 != null)
+        ? Math.round(age_5 + ages_6_8 + ages_9_11 + (ages_12_14 / 3))
+        : null
+    // Fallback: legacy B01001 5-year-band proxy.
+    const childrenB01001 = Math.round(male5_9 + female5_9 + ((male10_14 + female10_14) * 0.6))
+    const children5_12 = childrenB09001 ?? childrenB01001
+    const children5_12_source: 'b09001' | 'b01001' = childrenB09001 != null ? 'b09001' : 'b01001'
+
     const discretionaryIncomeProxy = (medianIncome != null && medianGrossRent != null)
       ? Math.max(0, Math.round(medianIncome - (medianGrossRent * 12)))
       : null
@@ -179,6 +198,11 @@ async function fetchCensusExpanded(city: string, state: string) {
         household_discretionary_income_proxy: discretionaryIncomeProxy,
         children_5_12_count: children5_12,
         children_5_12_pct: pct(children5_12, totalPopulation),
+        children_5_12_source: children5_12_source,
+        children_5_12_breakdown: {
+          age_5, ages_6_8, ages_9_11, ages_12_14,
+          formula: 'age_5 + ages_6_8 + ages_9_11 + (ages_12_14 / 3)',
+        },
         children_under_18: under18,
         households_with_children_under_13_proxy: householdsWithChildrenProxy,
         bachelors_plus_pct: pct(bachelorsPlus, total25),
@@ -260,8 +284,14 @@ function buildSowSignals(args: {
     : tier === 'national' ? 'BLS OEWS national wage; used as proxy — no metro or state data available.'
     : 'BLS OEWS lookup failed.'
 
-  add({ signal_key: 'children_5_12_count', label: 'Children Ages 5–12', value: fmtNum(census?.children_5_12_count ?? null), source: census ? 'census' : 'not_connected', source_url: census?.source_url ?? null, confidence: census ? 0.75 : 0, status: census ? 'proxy' : 'missing', metric_category: 'demand', used_in_score: Boolean(census), notes: 'Estimated from ACS 5-year age bands: 5–9 plus 60% of 10–14.' })
-  add({ signal_key: 'children_5_12_pct', label: '% Population Ages 5–12', value: fmtPct(census?.children_5_12_pct ?? null), source: census ? 'census' : 'not_connected', source_url: census?.source_url ?? null, confidence: census ? 0.75 : 0, status: census ? 'proxy' : 'missing', metric_category: 'demand', used_in_score: Boolean(census) })
+  {
+    const isLive = census?.children_5_12_source === 'b09001'
+    const breakdown = census?.children_5_12_breakdown ?? null
+    const noteLive = 'ACS B09001 own-children-under-18 by single-age band: age 5 + ages 6–8 + ages 9–11 + (ages 12–14 ÷ 3 for age 12 only).'
+    const noteFallback = 'B09001 unavailable — fell back to B01001 5-year-band proxy (5–9 plus 60% of 10–14).'
+    add({ signal_key: 'children_5_12_count', label: 'Children Ages 5–12', value: fmtNum(census?.children_5_12_count ?? null), source: census ? 'census' : 'not_connected', source_url: census?.source_url ?? null, confidence: census ? (isLive ? 0.9 : 0.75) : 0, status: census ? (isLive ? 'live' : 'proxy') : 'missing', metric_category: 'demand', used_in_score: Boolean(census), notes: census ? (isLive ? noteLive : noteFallback) : undefined, raw_data: { source: census?.children_5_12_source ?? null, table: isLive ? 'B09001' : 'B01001', ...breakdown } })
+    add({ signal_key: 'children_5_12_pct', label: '% Population Ages 5–12', value: fmtPct(census?.children_5_12_pct ?? null), source: census ? 'census' : 'not_connected', source_url: census?.source_url ?? null, confidence: census ? (isLive ? 0.9 : 0.75) : 0, status: census ? (isLive ? 'live' : 'proxy') : 'missing', metric_category: 'demand', used_in_score: Boolean(census), notes: census ? (isLive ? noteLive : noteFallback) : undefined, raw_data: { source: census?.children_5_12_source ?? null, table: isLive ? 'B09001' : 'B01001', total_population: census?.total_population ?? null } })
+  }
   add({ signal_key: 'households_with_children_under_13', label: 'Households With Children Under 13', value: census?.households_with_children_under_13_proxy ? `${fmtNum(census.households_with_children_under_13_proxy)} proxy` : 'Not available yet', source: census ? 'census' : 'not_connected', source_url: census?.source_url ?? null, confidence: census ? 0.55 : 0, status: census ? 'proxy' : 'missing', metric_category: 'demand', used_in_score: Boolean(census), notes: 'ACS readily provides own children under 18 proxy. Under-13 exact metric requires deeper variable mapping.' })
   add({ signal_key: 'median_household_income', label: 'Median Household Income', value: fmtMoney(census?.median_household_income ?? null), source: census ? 'census' : 'not_connected', source_url: census?.source_url ?? null, confidence: census ? 0.95 : 0, status: census ? 'live' : 'missing', metric_category: 'demand', used_in_score: Boolean(census) })
   add({ signal_key: 'income_100k_plus_pct', label: 'Households Earning $100k+', value: fmtPct(census?.income_100k_plus_pct ?? null), source: census ? 'census' : 'not_connected', source_url: census?.source_url ?? null, confidence: census ? 0.95 : 0, status: census ? 'live' : 'missing', metric_category: 'demand', used_in_score: Boolean(census) })
@@ -377,7 +407,17 @@ function buildSowSignals(args: {
     add(missingSignal('franchisee_supply', 'student_teacher_ratio_elementary', 'Elementary Student-Teacher Ratio', 'nces_ccd', nces?.error ?? 'NCES CCD lookup unavailable.'))
     add(missingSignal('franchisee_supply', 'private_charter_montessori_teacher_count', 'Private / Charter / Montessori Teachers', 'nces_ccd', nces?.error ?? 'NCES CCD lookup unavailable.'))
   }
-  add({ signal_key: 'elementary_school_count', label: 'Elementary Schools', value: existingCounts.elementary_schools ?? 'Not available yet', source: 'apify', confidence: 0.6, status: 'proxy', metric_category: 'franchisee_supply', used_in_score: true })
+  {
+    const ncesCount = (nces && nces.status === 'live' && nces.schools_matched > 0) ? nces.schools_matched : null
+    const apifyCount = existingCounts.elementary_schools ?? null
+    if (ncesCount != null) {
+      add({ signal_key: 'elementary_school_count', label: `Elementary Schools (NCES CCD ${nces!.year})`, value: String(ncesCount), source: 'nces_ccd', source_url: nces!.source_url, confidence: 0.9, status: 'live', metric_category: 'franchisee_supply', used_in_score: true, notes: 'NCES CCD public elementary school count. Add private/charter when GreatSchools key is available.', raw_data: { source: 'nces_ccd', year: nces!.year, public_elementary_schools: ncesCount, apify_fallback: apifyCount } })
+    } else if (apifyCount != null) {
+      add({ signal_key: 'elementary_school_count', label: 'Elementary Schools (Apify Google Maps fallback)', value: String(apifyCount), source: 'apify', confidence: 0.6, status: 'proxy', metric_category: 'franchisee_supply', used_in_score: true, notes: 'NCES CCD lookup unavailable — using Apify Google Maps count as fallback.', raw_data: { source: 'apify_google_maps', count: apifyCount } })
+    } else {
+      add(missingSignal('franchisee_supply', 'elementary_school_count', 'Elementary Schools', 'nces_ccd', nces?.error ?? 'No NCES match and no Apify fallback.'))
+    }
+  }
   {
     const m = blsOews?.teacher_annual ?? null
     add({

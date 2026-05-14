@@ -1062,6 +1062,24 @@ const CityScoring = () => {
         sowEvidence,
       });
 
+      // Fire-and-await the school-counts refresh for just this city.
+      // Non-blocking on failure: other data should still surface.
+      const targetCityId = liveCity?.id as string | undefined;
+      if (targetCityId) {
+        try {
+          const schoolRes = await supabase.functions.invoke("fetch-school-counts", {
+            body: { cityIds: [targetCityId] },
+          });
+          if (schoolRes.error) {
+            console.warn("fetch-school-counts failed", schoolRes.error);
+            toast.warning("School data refresh failed; other data updated.");
+          }
+        } catch (e) {
+          console.warn("fetch-school-counts threw", e);
+          toast.warning("School data refresh failed; other data updated.");
+        }
+      }
+
       await reloadSelectedMarketView(city, state);
       setMarketRefreshVersion((version) => version + 1);
 

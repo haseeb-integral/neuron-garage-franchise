@@ -312,6 +312,22 @@ function FormulaPanel({
     : null;
   return (
     <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 text-[12px] text-[#07142f] leading-relaxed">
+      {pendingEdits && (
+        <div className="rounded border border-[#fde68a] bg-[#fffbe6] px-3 py-2 text-[11.5px] text-[#854d0e] leading-snug">
+          <span className="font-semibold">Pending edits — not yet applied.</span>{" "}
+          The numbers below preview what scores would become if you click <em>Save &amp; Recalculate</em>.
+        </div>
+      )}
+      {summary && (
+        <section>
+          <h4 className="text-[11px] font-bold uppercase tracking-wide text-[#526078] mb-1.5">
+            In plain English
+          </h4>
+          <p className="rounded bg-[#eef4ff] border border-[#cfdcff] px-3 py-2 text-[12.5px] text-[#1a2540] leading-snug">
+            {summary}
+          </p>
+        </section>
+      )}
       <section>
         <h4 className="text-[11px] font-bold uppercase tracking-wide text-[#526078] mb-1.5">
           1. Within-category normalization

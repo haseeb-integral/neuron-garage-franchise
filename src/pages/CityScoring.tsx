@@ -230,6 +230,9 @@ const CityScoring = () => {
   const [openSubMetricsFor, setOpenSubMetricsFor] = useState<CategoryKey | null>(null);
   const [cityFilter, setCityFilter] = useState("");
   const [stateOpen, setStateOpen] = useState(false);
+  // Snapshot of the user's manually-tuned ("Custom") weights so switching to a
+  // preset and back doesn't lose them.
+  const [customWeightsSnapshot, setCustomWeightsSnapshot] = useState<Record<CategoryKey, number> | null>(null);
   const [addCritOpen, setAddCritOpen] = useState(false);
 
   const selectedId = useCityScoringStore((s) => s.selectedId);
@@ -720,6 +723,9 @@ const CityScoring = () => {
     if (totalWeight !== 100) return;
     setAppliedWeights({ ...weights });
     setAppliedSubWeights(subWeights);
+    // While the user is in Custom mode, keep the snapshot in sync with the
+    // most recently applied weights so a round-trip through a preset restores them.
+    if (scoringModel === "Custom") setCustomWeightsSnapshot({ ...weights });
     toast.success("Composite score recalculated from current weights.");
   };
 
@@ -1065,8 +1071,19 @@ const CityScoring = () => {
             <Select
               value={(PRESET_NAMES as string[]).includes(scoringModel) ? scoringModel : "Balanced"}
               onValueChange={(name) => {
+                // Leaving "Custom" → snapshot current weights so we can restore them later.
+                if (scoringModel === "Custom" && name !== "Custom") {
+                  setCustomWeightsSnapshot({ ...appliedWeights });
+                }
                 setScoringModel(name);
-                if (name !== "Custom" && SCORING_PRESETS[name as Exclude<PresetName, "Custom">]) {
+                if (name === "Custom") {
+                  // Restore the last custom snapshot if we have one.
+                  if (customWeightsSnapshot) {
+                    setWeights(customWeightsSnapshot);
+                    setAppliedWeights(customWeightsSnapshot);
+                    toast.success("Restored your custom weights");
+                  }
+                } else if (SCORING_PRESETS[name as Exclude<PresetName, "Custom">]) {
                   const preset = SCORING_PRESETS[name as Exclude<PresetName, "Custom">];
                   setWeights(preset);
                   setAppliedWeights(preset);

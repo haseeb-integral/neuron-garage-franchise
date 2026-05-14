@@ -570,11 +570,11 @@ export function MarketDetailDrawer({
                 <div className="grid grid-cols-2 gap-1.5 text-[11px]">
                   {[
                     ["Live", liveCount],
-                    ["Estimated", proxyCount],
+                    ["Estimated", estimatedCount],
                     ["Manual", manualCount],
                     ["Blocked", blockedCount],
                     ["Missing", missingCount],
-                    ["Total SOW metrics", totalCount],
+                    ["Total metrics", totalRegistry + customCount],
                   ].map(([label, value]) => (
                     <div key={String(label)} className="flex justify-between gap-2 rounded bg-[#f8fafe] px-2 py-1">
                       <span className="truncate text-[#526078]">{label}</span>

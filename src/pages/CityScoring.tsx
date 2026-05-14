@@ -1022,6 +1022,10 @@ const CityScoring = () => {
         categoryLabel={CATEGORIES.find((c) => c.key === openSubMetricsFor)?.label ?? ""}
         categoryColor={CATEGORIES.find((c) => c.key === openSubMetricsFor)?.color ?? "#174be8"}
         categoryBg={CATEGORIES.find((c) => c.key === openSubMetricsFor)?.bg ?? "#eaf0ff"}
+        selectedCityLabel={`${selected.city}, ${selected.state}`}
+        rawValuesByKey={rawValuesByKey}
+        serverCategoryScore={openSubMetricsFor ? (baseDetailCategoryScores[openSubMetricsFor] ?? null) : null}
+        masterWeightPct={openSubMetricsFor ? (appliedTotal > 0 ? (appliedWeights[openSubMetricsFor] / appliedTotal) * 100 : null) : null}
       />
 
       {/* Filters row */}

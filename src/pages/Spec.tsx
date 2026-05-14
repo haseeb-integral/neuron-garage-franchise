@@ -45,7 +45,7 @@ const Spec = () => {
     { id: "navigation", label: "4. Navigation & Layout" },
     { id: "dashboard", label: "5. Dashboard" },
     { id: "city-scoring", label: "6. City Scoring" },
-    { id: "teacher-prospects", label: "7. Teacher Prospects" },
+    { id: "teacher-prospects", label: "7. Teacher Search" },
     { id: "candidate-pipeline", label: "8. Candidate Pipeline" },
     { id: "onboarding", label: "9. Onboarding" },
     { id: "tour", label: "10. Guided Tour" },
@@ -170,7 +170,7 @@ const Spec = () => {
             <ul className="list-disc pl-5 space-y-1">
               <li><code>/</code> — Dashboard</li>
               <li><code>/city-scoring</code> — City Scoring</li>
-              <li><code>/teacher-prospects</code> — Teacher Prospects</li>
+              <li><code>/teacher-prospects</code> — Teacher Search</li>
               <li><code>/candidate-pipeline</code> — Candidate Pipeline</li>
               <li><code>/onboarding</code> — Onboarding</li>
               <li><code>/spec</code> — This document</li>
@@ -220,11 +220,11 @@ const Spec = () => {
             <SubHeading>Key actions</SubHeading>
             <ul className="list-disc pl-5 space-y-1">
               <li>From the detail drawer: <em>"Find Teachers in this City"</em> button → navigates to
-                Teacher Prospects pre-filtered to that city.</li>
+                Teacher Search pre-filtered to that city.</li>
             </ul>
           </Section>
 
-          <Section id="teacher-prospects" title="7. Teacher Prospects">
+          <Section id="teacher-prospects" title="7. Teacher Search">
             <SubHeading>Purpose</SubHeading>
             <p>Discover and shortlist elementary-school teachers who could become franchisees.</p>
             <SubHeading>Components</SubHeading>
@@ -325,7 +325,7 @@ const Spec = () => {
           <Section id="tour" title="10. Guided Tour">
             <p>
               First-time visitors see a 4-step Driver.js tour that highlights each main sidebar item:
-              City Scoring → Teacher Prospects → Candidate Pipeline → Onboarding. The tour ends with a
+              City Scoring → Teacher Search → Candidate Pipeline → Onboarding. The tour ends with a
               "You're all set" panel that deep-links to City Scoring.
             </p>
             <ul className="list-disc pl-5 space-y-1">

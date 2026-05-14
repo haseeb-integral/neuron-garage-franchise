@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 const primaryNavItems = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "City Search", url: "/city-scoring", icon: Map },
-  { title: "Teacher Prospects", url: "/teacher-prospects", icon: Users },
+  { title: "Teacher Search", url: "/teacher-prospects", icon: Users },
   { title: "Email Outreach", url: "/email-outreach", icon: Mail },
   { title: "Candidate Pipeline", url: "/candidate-pipeline", icon: Kanban },
 ];

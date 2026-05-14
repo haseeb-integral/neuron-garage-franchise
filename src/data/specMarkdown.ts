@@ -15,7 +15,7 @@ export const SPEC_MARKDOWN = `# Neuron Garage Franchise Acquisition System — P
 4. [Navigation & Layout](#4-navigation--layout)
 5. [Dashboard](#5-dashboard)
 6. [City Scoring](#6-city-scoring)
-7. [Teacher Prospects](#7-teacher-prospects)
+7. [Teacher Search](#7-teacher-prospects)
 8. [Email Outreach](#8-email-outreach)
 9. [Candidate Pipeline](#9-candidate-pipeline)
 10. [Onboarding](#10-onboarding)
@@ -90,7 +90,7 @@ The product follows a left-to-right funnel reflected in the sidebar order:
 
 - \`/\` — Dashboard
 - \`/city-scoring\` — City Search
-- \`/teacher-prospects\` — Teacher Prospects
+- \`/teacher-prospects\` — Teacher Search
 - \`/email-outreach\` — Email Outreach
 - \`/candidate-pipeline\` — Candidate Pipeline
 - \`/onboarding\` — Onboarding
@@ -142,11 +142,11 @@ The official **SOW composite score and category scores** become the displayed sc
 
 ### Key actions
 
-- From the detail drawer: *"Find Teachers in this City"* button → navigates to Teacher Prospects pre-filtered to that city.
+- From the detail drawer: *"Find Teachers in this City"* button → navigates to Teacher Search pre-filtered to that city.
 
 ---
 
-## 7. Teacher Prospects
+## 7. Teacher Search
 
 **Purpose:** discover and shortlist elementary-school teachers who could become franchisees.
 

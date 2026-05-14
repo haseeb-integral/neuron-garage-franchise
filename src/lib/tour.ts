@@ -33,7 +33,7 @@ export function startTour(opts: StartTourOptions = {}) {
       {
         element: '[data-tour="nav-teacher-prospects"]',
         popover: {
-          title: "Step 2 · Teacher Prospects",
+          title: "Step 2 · Teacher Search",
           description:
             "Discover elementary school teacher prospects in your top cities.",
           side: "right",

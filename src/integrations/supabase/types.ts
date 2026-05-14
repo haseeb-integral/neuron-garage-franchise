@@ -533,6 +533,36 @@ export type Database = {
           },
         ]
       }
+      custom_criteria: {
+        Row: {
+          category: string
+          created_at: string
+          data_source: string | null
+          id: string
+          name: string
+          notes: string | null
+          weight: number
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          data_source?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          weight?: number
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          data_source?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          weight?: number
+        }
+        Relationships: []
+      }
       onboarding_records: {
         Row: {
           candidate_id: string | null
@@ -641,6 +671,33 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      scoring_config: {
+        Row: {
+          created_at: string
+          id: string
+          master_weights: Json
+          preset_name: string
+          singleton: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          master_weights: Json
+          preset_name?: string
+          singleton?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          master_weights?: Json
+          preset_name?: string
+          singleton?: boolean
           updated_at?: string
         }
         Relationships: []

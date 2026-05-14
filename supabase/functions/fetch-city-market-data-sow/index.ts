@@ -388,9 +388,11 @@ Deno.serve(async (req) => {
       children_pct: censusData?.children_5_12_pct ?? null,
       last_scraped_at: startedAt,
       notes: 'SOW metric coverage refresh',
-    }, { onConflict: 'city,state' }).select('id').single()
+    }, { onConflict: 'city,state' }).select('id, latitude, longitude').single()
     if (cityErr || !cityRow) return json({ error: 'Failed to upsert city', detail: cityErr?.message }, 500)
     const cityId = cityRow.id as string
+    const cityLat = cityRow.latitude != null ? Number(cityRow.latitude) : null
+    const cityLng = cityRow.longitude != null ? Number(cityRow.longitude) : null
 
     const { data: latestJobRows } = await admin
       .from('city_fetch_jobs')
@@ -419,6 +421,12 @@ Deno.serve(async (req) => {
     const competitorUrls = (competitorRows ?? []).map((r) => r.source_url as string).filter(Boolean)
     const waitlistResult = await fetchCompetitorWaitlistSignals(competitorUrls)
 
+    // Day 2: NOAA Open-Meteo + BEA RPP, run in parallel.
+    const [noaaResult, beaResult] = await Promise.all([
+      fetchNoaaClimateMetrics(cityLat, cityLng),
+      fetchBeaRpp(state),
+    ])
+
     const signals = buildSowSignals({
       census: censusData,
       bls: blsData,
@@ -427,6 +435,8 @@ Deno.serve(async (req) => {
       sprint: sprintData,
       trends: trendsResult,
       waitlist: waitlistResult,
+      noaa: noaaResult.data,
+      bea: beaResult.data,
     })
 
     await admin.from('city_market_signals').delete().eq('city_id', cityId)
@@ -454,7 +464,7 @@ Deno.serve(async (req) => {
     if (insertErr) return json({ error: 'Failed to insert SOW metric signals', detail: insertErr.message }, 500)
 
     const completedAt = new Date().toISOString()
-    const warnings = { census: censusError, bls: blsError, census_sprint: sprintError, trends: trendsResult.error, waitlist: waitlistResult.error }
+    const warnings = { census: censusError, bls: blsError, census_sprint: sprintError, trends: trendsResult.error, waitlist: waitlistResult.error, noaa: noaaResult.error, bea: beaResult.error }
 
     // ---- Phase C: SOW shadow scoring (observation only) ----
     const sowMetricValues: SowMetricValues = {

@@ -236,9 +236,9 @@ export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
   { key: "days_above_100f",                     category: "demand", label: "Number of 100°+ Days",                    enabled: false, weight_within_category: 0,    status: "live"    },
 
   // Pricing Power
-  { key: "avg_weekly_camp_tuition",             category: "pricing_power", label: "Average Weekly Camp Tuition",                       enabled: false, weight_within_category: 0,    status: "missing" },
-  { key: "avg_hourly_camp_pricing",             category: "pricing_power", label: "Average Hourly Camp Pricing",                       enabled: false, weight_within_category: 0,    status: "missing" },
-  { key: "premium_stem_camp_pricing",           category: "pricing_power", label: "Premium STEM / Maker / Enrichment Camp Pricing",    enabled: false, weight_within_category: 0,    status: "missing" },
+  { key: "avg_weekly_camp_tuition",             category: "pricing_power", label: "Average Weekly Camp Tuition",                       enabled: false, weight_within_category: 0,    status: "live" },
+  { key: "avg_hourly_camp_pricing",             category: "pricing_power", label: "Average Hourly Camp Pricing",                       enabled: false, weight_within_category: 0,    status: "live" },
+  { key: "premium_stem_camp_pricing",           category: "pricing_power", label: "Premium STEM / Maker / Enrichment Camp Pricing",    enabled: false, weight_within_category: 0,    status: "live" },
   { key: "private_school_tuition_proxy",        category: "pricing_power", label: "Private Elementary School Tuition Levels",          enabled: false, weight_within_category: 0,    status: "missing" },
   { key: "private_school_student_count",        category: "pricing_power", label: "Number of Private School Students",                 enabled: false, weight_within_category: 0,    status: "missing" },
   { key: "childcare_nanny_hourly_rate_proxy",   category: "pricing_power", label: "Childcare / Nanny Hourly Rate Proxy",               enabled: true,  weight_within_category: 0.40, status: "proxy" },

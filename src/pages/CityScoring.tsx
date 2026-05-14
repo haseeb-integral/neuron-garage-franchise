@@ -2000,6 +2000,24 @@ const CityScoring = () => {
                 <text x="100" y="102" textAnchor="middle" className="fill-[#7e8aa3]" style={{ fontSize: 12, fontWeight: 600 }}>/100</text>
               </svg>
               <p className="-mt-1 text-[12px] font-semibold" style={{ color: selectedHasLiveData ? tierBadge.fg : "#8794ab" }}>{selectedHasLiveData ? opportunityLabel : "No live data"}</p>
+              {selectedHasLiveData && (() => {
+                const ranked = CATEGORIES
+                  .map((c) => ({ label: c.label, score: Math.round(detailCategoryScores[c.key] ?? 0) }))
+                  .filter((x) => x.score > 0)
+                  .sort((a, b) => b.score - a.score);
+                if (ranked.length < 2) return null;
+                const top2 = ranked.slice(0, 2);
+                const lowest = ranked[ranked.length - 1];
+                const showDrag = lowest.score < 50 && !top2.some((t) => t.label === lowest.label);
+                return (
+                  <div className="mt-1.5 px-1 text-center text-[10.5px] italic leading-snug text-[#6b7a99] max-w-[180px]">
+                    <p>{top2[0].label} ({top2[0].score}) and {top2[1].label} ({top2[1].score}) are driving this score.</p>
+                    {showDrag && (
+                      <p className="mt-0.5">{lowest.label} ({lowest.score}) is pulling the score down.</p>
+                    )}
+                  </div>
+                );
+              })()}
               {selectedHasLiveData ? (
                 <Popover>
                   <PopoverTrigger asChild>

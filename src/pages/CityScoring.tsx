@@ -2182,6 +2182,7 @@ const CityScoring = () => {
               maxLength={60}
               placeholder="e.g. High-income TX suburbs"
               onChange={(e) => setSaveSearchName(e.target.value)}
+              onFocus={(e) => e.currentTarget.select()}
               onKeyDown={(e) => { if (e.key === "Enter" && !savingSearch) handleSaveSearch(); }}
             />
             <p className="text-[10px] text-[#8794ab]">Saves your current master + sub-metric weights.</p>

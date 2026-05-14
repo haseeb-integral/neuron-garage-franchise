@@ -397,7 +397,8 @@ export function MarketDetailDrawer({
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="w-full sm:max-w-[640px] overflow-y-auto bg-white">
+      <SheetContent className="w-full sm:max-w-[640px] bg-white p-0 flex flex-col">
+        <div className="flex-1 overflow-y-auto px-6 pt-6 pb-4">
         <SheetHeader className="mb-3">
           <SheetTitle className="text-[#07142f]">{market.city}, {stateAbbr}</SheetTitle>
           <p className="text-[11px] text-[#526078]">

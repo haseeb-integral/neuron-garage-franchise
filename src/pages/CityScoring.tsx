@@ -1082,7 +1082,9 @@ const CityScoring = () => {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {CATEGORIES.map((cat) => {
             const Icon = cat.icon;
-            const customCount = customCriteria.filter((c) => c.category === cat.label).length;
+            const customCount =
+              customCriteria.filter((c) => c.category === cat.label).length +
+              supabaseCustomCriteria.filter((c) => c.category === cat.label).length;
             return (
               <div
                 key={cat.key}

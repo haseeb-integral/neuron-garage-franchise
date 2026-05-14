@@ -1062,6 +1062,24 @@ const CityScoring = () => {
         sowEvidence,
       });
 
+      // Fire-and-await the school-counts refresh for just this city.
+      // Non-blocking on failure: other data should still surface.
+      const targetCityId = liveCity?.id as string | undefined;
+      if (targetCityId) {
+        try {
+          const schoolRes = await supabase.functions.invoke("fetch-school-counts", {
+            body: { cityIds: [targetCityId] },
+          });
+          if (schoolRes.error) {
+            console.warn("fetch-school-counts failed", schoolRes.error);
+            toast.warning("School data refresh failed; other data updated.");
+          }
+        } catch (e) {
+          console.warn("fetch-school-counts threw", e);
+          toast.warning("School data refresh failed; other data updated.");
+        }
+      }
+
       await reloadSelectedMarketView(city, state);
       setMarketRefreshVersion((version) => version + 1);
 
@@ -1180,6 +1198,7 @@ const CityScoring = () => {
   const SIGNAL_ICONS: Record<string, typeof Users> = {
     competitor_count: Trophy,
     elementary_school_count: GraduationCap,
+    public_elementary_count: GraduationCap,
     private_school_count: Building2,
     stem_enrichment_count: Cog,
     montessori_count: Star,
@@ -1202,6 +1221,7 @@ const CityScoring = () => {
     "income_100k_plus_proxy",
     "education_bachelors_plus_proxy",
     "competitor_count",
+    "public_elementary_count",
     "elementary_school_count",
     "private_school_count",
   ];
@@ -1210,6 +1230,8 @@ const CityScoring = () => {
     "data_readiness",
     "census_data_readiness",
     "bls_data_readiness",
+    // Folded into the public_elementary_count row below
+    "public_elementary_enrollment",
   ];
 
   const centerLiveSignals = [...liveSignals]
@@ -1222,11 +1244,31 @@ const CityScoring = () => {
   const visibleCenterSignals = centerLiveSignals.slice(0, 8);
   const hasMoreSignals = liveSignals.length > visibleCenterSignals.length;
 
-  const liveSigRows = visibleCenterSignals.map((s) => ({
-    icon: SIGNAL_ICONS[s.signal_key] ?? Star,
-    label: s.label,
-    value: s.value,
-  }));
+  // Find enrollment to fold into the public_elementary_count row
+  const elementaryEnrollmentSignal = liveSignals.find(
+    (s) => s.signal_key === "public_elementary_enrollment",
+  );
+
+  const liveSigRows = visibleCenterSignals.map((s) => {
+    if (s.signal_key === "public_elementary_count") {
+      const countNum = Number(s.value);
+      const enrollNum = Number(elementaryEnrollmentSignal?.value ?? 0);
+      const countLabel = Number.isFinite(countNum) ? countNum.toLocaleString() : s.value;
+      const value = enrollNum > 0
+        ? `${countLabel} schools · ${enrollNum.toLocaleString()} enrolled`
+        : `${countLabel} schools`;
+      return {
+        icon: SIGNAL_ICONS[s.signal_key] ?? Star,
+        label: "Public elementary (NCES CCD 2022)",
+        value,
+      };
+    }
+    return {
+      icon: SIGNAL_ICONS[s.signal_key] ?? Star,
+      label: s.label,
+      value: s.value,
+    };
+  });
 
   const sigRows = liveSigRows;
   const hasLiveSignals = sigRows.length > 0;

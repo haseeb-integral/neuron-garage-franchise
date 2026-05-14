@@ -6,6 +6,8 @@ import { CityData } from "@/data/cityData";
 import { ArrowRight, Download, ExternalLink, FileText, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getSignalGeography, GEO_BADGE_CLASS } from "@/lib/signalGeography";
+import { useCustomCriteria, CATEGORY_LABEL_TO_KEY } from "@/hooks/useCustomCriteria";
+import type { CategoryKey } from "@/stores/cityScoringStore";
 
 export interface CustomCriterion {
   name: string;

@@ -525,29 +525,67 @@ export function MarketDetailDrawer({
           </TabsContent>
 
           <TabsContent value="data-sources" className="mt-3">
-            {signals.length === 0 && !loading ? (
+            {signals.length === 0 && customCount === 0 && !loading ? (
               <div className="rounded-md border border-[#eef2f7] p-3 text-[12px] text-[#526078]">
                 No live SOW metric rows found for this city yet. Run the SOW coverage refresh first.
               </div>
             ) : (
               <div className="space-y-3">
-                {groupedSignals.map((category) => (
-                  <div key={category.key} className="rounded-lg border border-[#eef2f7] bg-white">
-                    <div className="flex items-center justify-between border-b border-[#eef2f7] bg-[#f8fafe] px-3 py-1.5">
-                      <h5 className="text-[12px] font-bold text-[#07142f]">{category.label}</h5>
-                      <span className="text-[10px] font-semibold text-[#8794ab]">{category.rows.length} signals</span>
-                    </div>
-                    {category.rows.length === 0 ? (
-                      <div className="px-3 py-2 text-[11px] text-[#526078]">No rows stored for this category yet.</div>
-                    ) : (
-                      <div>
-                        {category.rows.map((signal, index) =>
-                          renderSignalRow(signal, signal.id ?? signal.signal_key ?? `${category.key}-${index}`),
-                        )}
+                {groupedSignals.map((category) => {
+                  const customs = customByMetricCategory[category.key] ?? [];
+                  const total = category.rows.length + customs.length;
+                  return (
+                    <div key={category.key} className="rounded-lg border border-[#eef2f7] bg-white">
+                      <div className="flex items-center justify-between border-b border-[#eef2f7] bg-[#f8fafe] px-3 py-1.5">
+                        <h5 className="text-[12px] font-bold text-[#07142f]">{category.label}</h5>
+                        <span className="text-[10px] font-semibold text-[#8794ab]">
+                          {total} signal{total === 1 ? "" : "s"}{customs.length > 0 ? ` · ${customs.length} custom` : ""}
+                        </span>
                       </div>
-                    )}
-                  </div>
-                ))}
+                      {total === 0 ? (
+                        <div className="px-3 py-2 text-[11px] text-[#526078]">No rows stored for this category yet.</div>
+                      ) : (
+                        <div>
+                          {category.rows.map((signal, index) =>
+                            renderSignalRow(signal, signal.id ?? signal.signal_key ?? `${category.key}-${index}`),
+                          )}
+                          {customs.map((c) => (
+                            <div
+                              key={`custom-${c.id}`}
+                              className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-[#f1f4f9] px-2 py-1.5 last:border-0 hover:bg-[#fbfcff]"
+                            >
+                              <div className="min-w-0">
+                                <p className="text-[12px] font-medium text-[#07142f] line-clamp-2" title={c.name}>
+                                  {c.name}
+                                </p>
+                                <div className="mt-1 flex flex-wrap items-center gap-1">
+                                  <span className="rounded-full border border-[#cbd8ff] bg-[#eaf0ff] px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#174be8]">
+                                    Custom
+                                  </span>
+                                  <StatusBadge status="proxy" />
+                                  {c.data_source && (
+                                    <span className="rounded-full border border-[#e5eaf2] bg-white px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#526078]">
+                                      {c.data_source}
+                                    </span>
+                                  )}
+                                </div>
+                                {c.notes && (
+                                  <p className="mt-0.5 text-[10.5px] text-[#8794ab] line-clamp-2">{c.notes}</p>
+                                )}
+                              </div>
+                              <div className="flex shrink-0 items-center gap-2 text-right">
+                                <div>
+                                  <p className="text-[12px] font-bold text-[#07142f]">Neutral 50</p>
+                                  <p className="text-[10px] text-[#8794ab]">no live data</p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
 
                 {uncategorizedSignals.length > 0 && (
                   <div className="rounded-lg border border-[#eef2f7] bg-white">

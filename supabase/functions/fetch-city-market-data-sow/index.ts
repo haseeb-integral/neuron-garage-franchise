@@ -18,8 +18,10 @@ import {
   fetchCompetitorWaitlistSignals,
   fetchNoaaClimateMetrics,
   fetchBeaRpp,
+  fetchNcesElementaryStaffing,
   type CensusSprintMetrics,
   type NoaaClimateMetrics,
+  type NcesElementaryStaffing,
 } from '../_shared/metricFetchers.ts'
 
 const corsHeaders = {

@@ -101,11 +101,27 @@ export function SubMetricWeightsDrawer({
       ...appliedSubWeights,
       [categoryKey]: normalized,
     });
-    toast.success(
-      enabledSum > 0
-        ? `${categoryLabel} weights applied (auto-normalized to 100%)`
-        : `${categoryLabel} reset — using server score as fallback`,
-    );
+
+    // Compute old vs new for the delta toast.
+    const newCatScoreRaw = previewRecompute?.score ?? null;
+    const oldCat = currentCategoryScore;
+    const newCatRounded = newCatScoreRaw != null ? Math.round(newCatScoreRaw) : null;
+    const oldComp = currentComposite;
+    const newComp = newCatScoreRaw != null && computeNewComposite
+      ? computeNewComposite(newCatScoreRaw)
+      : oldComp;
+
+    if (enabledSum <= 0) {
+      toast.success(`${categoryLabel} reset — using server score as fallback`, { duration: 4000 });
+    } else if (oldCat != null && newCatRounded != null) {
+      const catLine = `${categoryLabel} updated: ${oldCat.toFixed(0)} → ${newCatRounded}`;
+      const compLine = oldComp != null && newComp != null && oldComp !== newComp
+        ? ` · Composite updated: ${oldComp} → ${newComp}`
+        : "";
+      toast.success(catLine + compLine, { duration: 4000 });
+    } else {
+      toast.success(`${categoryLabel} weights applied (auto-normalized to 100%)`, { duration: 4000 });
+    }
     onOpenChange(false);
   };
 

@@ -431,10 +431,11 @@ Deno.serve(async (req) => {
     const competitorUrls = (competitorRows ?? []).map((r) => r.source_url as string).filter(Boolean)
     const waitlistResult = await fetchCompetitorWaitlistSignals(competitorUrls)
 
-    // Day 2: NOAA Open-Meteo + BEA RPP, run in parallel.
-    const [noaaResult, beaResult] = await Promise.all([
+    // Day 2: NOAA Open-Meteo + BEA RPP + NCES CCD, run in parallel.
+    const [noaaResult, beaResult, ncesResult] = await Promise.all([
       fetchNoaaClimateMetrics(cityLat, cityLng),
       fetchBeaRpp(state),
+      fetchNcesElementaryStaffing(city, state),
     ])
 
     const signals = buildSowSignals({
@@ -447,6 +448,7 @@ Deno.serve(async (req) => {
       waitlist: waitlistResult,
       noaa: noaaResult.data,
       bea: beaResult.data,
+      nces: ncesResult,
     })
 
     await admin.from('city_market_signals').delete().eq('city_id', cityId)

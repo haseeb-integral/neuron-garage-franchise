@@ -309,7 +309,22 @@ function buildSowSignals(args: {
   }
   add(missingSignal('pricing_power', 'private_school_tuition_proxy', 'Private Elementary School Tuition Levels', 'firecrawl', 'Requires private school tuition page extraction or state data.'))
   add(missingSignal('pricing_power', 'private_school_student_count', 'Number of Private School Students', 'state_edu', 'Needs state/private school enrollment data.'))
-  add({ signal_key: 'childcare_nanny_hourly_rate_proxy', label: 'Childcare / Nanny Hourly Rate Proxy', value: fmtMoney(bls?.childcare_worker_wage_proxy ?? null), source: bls ? 'bls' : 'not_connected', source_url: bls?.source_url ?? null, confidence: bls ? 0.55 : 0, status: bls ? 'proxy' : 'missing', metric_category: 'pricing_power', used_in_score: Boolean(bls), notes: 'Annual childcare worker wage from BLS used as a local wage/cost proxy, not consumer nanny rate.' })
+  {
+    const m = blsOews?.childcare_hourly ?? null
+    add({
+      signal_key: 'childcare_nanny_hourly_rate_proxy',
+      label: 'Childcare / Nanny Hourly Rate Proxy',
+      value: m?.value != null ? `$${m.value.toFixed(2)}/hr` : 'Not available yet',
+      source: m?.value != null ? 'bls_oews' : 'not_connected',
+      source_url: blsOews?.source_url ?? null,
+      confidence: m?.tier === 'metro' ? 0.7 : (m?.tier ? 0.5 : 0),
+      status: tierStatus(m?.tier ?? null),
+      metric_category: 'pricing_power',
+      used_in_score: m?.value != null,
+      notes: `${tierNote(m?.tier ?? null, m?.area_label ?? null)} BLS SOC 39-9011 (Childcare Workers) hourly mean — defensible proxy; real in-home nanny rates typically run 30–60% higher.`,
+      raw_data: { soc: '39-9011', datatype: '03_hourly_mean', tier: m?.tier ?? null, area_code: m?.area_code ?? null, area_label: m?.area_label ?? null, series_id: m?.series_id ?? null },
+    })
+  }
   add({
     signal_key: 'household_discretionary_income_proxy',
     label: 'Household Discretionary Income Estimate',

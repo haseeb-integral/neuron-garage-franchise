@@ -378,7 +378,22 @@ function buildSowSignals(args: {
     add(missingSignal('franchisee_supply', 'private_charter_montessori_teacher_count', 'Private / Charter / Montessori Teachers', 'nces_ccd', nces?.error ?? 'NCES CCD lookup unavailable.'))
   }
   add({ signal_key: 'elementary_school_count', label: 'Elementary Schools', value: existingCounts.elementary_schools ?? 'Not available yet', source: 'apify', confidence: 0.6, status: 'proxy', metric_category: 'franchisee_supply', used_in_score: true })
-  add({ signal_key: 'teacher_salary_proxy', label: 'Average Teacher Salary Proxy', value: fmtMoney(bls?.teacher_salary_proxy ?? null), source: bls ? 'bls' : 'not_connected', source_url: bls?.source_url ?? null, confidence: bls ? 0.7 : 0, status: bls ? 'proxy' : 'missing', metric_category: 'franchisee_supply', used_in_score: Boolean(bls) })
+  {
+    const m = blsOews?.teacher_annual ?? null
+    add({
+      signal_key: 'teacher_salary_proxy',
+      label: 'Average Teacher Salary Proxy',
+      value: m?.value != null ? `$${Math.round(m.value).toLocaleString()}` : 'Not available yet',
+      source: m?.value != null ? 'bls_oews' : 'not_connected',
+      source_url: blsOews?.source_url ?? null,
+      confidence: m?.tier === 'metro' ? 0.85 : (m?.tier ? 0.65 : 0),
+      status: tierStatus(m?.tier ?? null),
+      metric_category: 'franchisee_supply',
+      used_in_score: m?.value != null,
+      notes: `${tierNote(m?.tier ?? null, m?.area_label ?? null)} BLS SOC 25-2021 (Elementary School Teachers) annual mean wage.`,
+      raw_data: { soc: '25-2021', datatype: '04_annual_mean', tier: m?.tier ?? null, area_code: m?.area_code ?? null, area_label: m?.area_label ?? null, series_id: m?.series_id ?? null },
+    })
+  }
   if (bea?.rpp_all_items != null) {
     add({ signal_key: 'cost_of_living_index', label: `Cost of Living Index (BEA RPP, ${bea.year ?? 'latest'})`, value: String(bea.rpp_all_items), source: 'bea_rpp', source_url: bea.source_url, confidence: 0.9, status: 'live', metric_category: 'franchisee_supply', used_in_score: true, notes: 'BEA Regional Price Parity, all items, state-level. National = 100.', raw_data: { year: bea.year } })
   } else {

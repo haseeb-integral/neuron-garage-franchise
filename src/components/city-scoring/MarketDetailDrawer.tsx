@@ -534,10 +534,14 @@ export function MarketDetailDrawer({
             <p className="text-[11px] text-[#526078]">
               Latest refresh: <span className="font-semibold text-[#07142f]">{formatDate(latestJob?.completed_at)}</span>
             </p>
-            <div className="flex gap-1.5 text-[11px]">
+            <div className="flex flex-wrap gap-1.5 text-[11px]">
               <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#0ea66e]">{liveCount} live</span>
-              <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#174be8]">{proxyCount} estimated</span>
+              <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#174be8]">{proxyCount} proxy</span>
               <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#526078]">{missingCount} missing</span>
+              {blockedCount > 0 && (
+                <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#ea580c]">{blockedCount} blocked</span>
+              )}
+              <span className="rounded-md bg-[#f3f6fb] px-1.5 py-0.5 font-semibold text-[#526078]">of {enabledRegistryTotal} SOW metrics</span>
             </div>
           </div>
           {loading && (

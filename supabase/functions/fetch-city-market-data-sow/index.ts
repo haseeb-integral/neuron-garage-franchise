@@ -241,8 +241,9 @@ function buildSowSignals(args: {
   waitlist: { scanned: number; waitlist: number; soldout: number } | null
   noaa: NoaaClimateMetrics | null
   bea: { rpp_all_items: number | null; year: number | null; source_url: string | null } | null
+  nces: NcesElementaryStaffing | null
 }) {
-  const { census, bls, existingCounts, sprint, trends, waitlist, noaa, bea } = args
+  const { census, bls, existingCounts, sprint, trends, waitlist, noaa, bea, nces } = args
   const signals: SignalInput[] = []
   const add = (s: SignalInput) => signals.push(s)
 

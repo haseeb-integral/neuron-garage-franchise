@@ -243,6 +243,22 @@ const CityScoring = () => {
   const [saveSearchOpen, setSaveSearchOpen] = useState(false);
   const [saveSearchName, setSaveSearchName] = useState("");
   const [savingSearch, setSavingSearch] = useState(false);
+  const [activeSavedSearchId, setActiveSavedSearchId] = useState<string | null>(null);
+
+  const buildDefaultSearchName = (): string => {
+    const dateStr = new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    if ((PRESET_NAMES as string[]).includes(scoringModel) && scoringModel !== "Custom") {
+      return `${scoringModel} – ${dateStr}`;
+    }
+    const top = (Object.entries(appliedWeights) as [CategoryKey, number][])
+      .sort((a, b) => b[1] - a[1])[0];
+    const label = CATEGORIES.find((c) => c.key === top?.[0])?.label ?? "Custom";
+    return `${label}-heavy – ${dateStr}`;
+  };
+  const openSaveDialog = () => {
+    setSaveSearchName(buildDefaultSearchName());
+    setSaveSearchOpen(true);
+  };
 
   const refreshSavedSearches = async () => {
     if (!user) return;

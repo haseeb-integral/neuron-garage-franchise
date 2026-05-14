@@ -1,5 +1,5 @@
-// Hook to hydrate / persist the team-shared scoring_config row
-// (selected preset name + master weights). Single-row table (singleton=true).
+// Hook to hydrate / persist the per-user scoring_config row
+// (selected preset name + master weights). One row per authenticated user.
 
 import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -15,14 +15,21 @@ export interface ScoringConfigRow {
   master_weights: Record<CategoryKey, number>;
 }
 
+async function getCurrentUserId(): Promise<string | null> {
+  const { data } = await supabase.auth.getUser();
+  return data.user?.id ?? null;
+}
+
 export function useScoringConfig() {
   return useQuery({
     queryKey: QUERY_KEY,
     queryFn: async (): Promise<ScoringConfigRow | null> => {
+      const userId = await getCurrentUserId();
+      if (!userId) return null;
       const { data, error } = await supabase
         .from("scoring_config")
         .select("id, preset_name, master_weights")
-        .limit(1)
+        .eq("user_id", userId)
         .maybeSingle();
       if (error) throw error;
       return (data as ScoringConfigRow | null) ?? null;
@@ -34,11 +41,12 @@ export function useSaveScoringConfig() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: { preset_name: PresetName; master_weights: Record<CategoryKey, number> }) => {
-      // Try to update the singleton row; if it doesn't exist yet, insert it.
+      const userId = await getCurrentUserId();
+      if (!userId) return; // not signed in — skip
       const existing = await supabase
         .from("scoring_config")
         .select("id")
-        .limit(1)
+        .eq("user_id", userId)
         .maybeSingle();
       if (existing.data?.id) {
         const { error } = await supabase
@@ -49,7 +57,12 @@ export function useSaveScoringConfig() {
       } else {
         const { error } = await supabase
           .from("scoring_config")
-          .insert({ preset_name: input.preset_name, master_weights: input.master_weights as any, singleton: true });
+          .insert({
+            user_id: userId,
+            preset_name: input.preset_name,
+            master_weights: input.master_weights as any,
+            singleton: false,
+          });
         if (error) throw error;
       }
     },

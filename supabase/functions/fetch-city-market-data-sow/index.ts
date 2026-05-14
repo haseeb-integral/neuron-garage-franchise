@@ -593,7 +593,7 @@ Deno.serve(async (req) => {
         : null,
       stem_robotics_maker_camp_count:    existingCounts.stem_enrichment ?? null,
       elementary_school_count:           existingCounts.elementary_schools ?? null,
-      teacher_salary_proxy:              blsData?.teacher_salary_proxy ?? null,
+      teacher_salary_proxy:              blsOewsData.teacher_annual.value ?? blsData?.teacher_salary_proxy ?? null,
       rental_venue_count:                existingCounts.rental_venues ?? null,
       guide_wage_proxy:                  blsData?.guide_wage_proxy ?? null,
       montessori_school_density:         censusData?.children_5_12_count

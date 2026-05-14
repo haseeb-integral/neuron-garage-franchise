@@ -273,6 +273,7 @@ const CityScoring = () => {
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [reportAutoPdf, setReportAutoPdf] = useState(false);
   const [addCityOpen, setAddCityOpen] = useState(false);
   const viewMode = useCityScoringStore((s) => s.viewMode);
   const setViewMode = useCityScoringStore((s) => s.setViewMode);
@@ -1944,7 +1945,7 @@ const CityScoring = () => {
           <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
             <h4 className="text-xs font-bold text-[#07142f] mb-1">Market Research Report</h4>
             <p className="text-[10px] text-[#8794ab] mb-2">Comprehensive PDF report with data, insights, recommendations, and competitor analysis.</p>
-            <Button variant="outline" className="w-full h-8 border-[#dbe4f2] text-[#2250eb] text-[11px] font-medium" onClick={() => setReportOpen(true)}>
+            <Button variant="outline" className="w-full h-8 border-[#dbe4f2] text-[#2250eb] text-[11px] font-medium" onClick={() => { setReportAutoPdf(true); setReportOpen(true); }}>
               Generate PDF Report
             </Button>
           </div>
@@ -1989,10 +1990,11 @@ const CityScoring = () => {
 
       <MarketReportModal
         open={reportOpen}
-        onClose={() => setReportOpen(false)}
+        onClose={() => { setReportOpen(false); setReportAutoPdf(false); }}
         market={selected}
         categoryScores={detailCategoryScores}
         refreshVersion={marketRefreshVersion}
+        autoDownload={reportAutoPdf}
       />
 
       <AddCityModal

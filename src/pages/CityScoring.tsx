@@ -243,6 +243,22 @@ const CityScoring = () => {
   const [saveSearchOpen, setSaveSearchOpen] = useState(false);
   const [saveSearchName, setSaveSearchName] = useState("");
   const [savingSearch, setSavingSearch] = useState(false);
+  const [activeSavedSearchId, setActiveSavedSearchId] = useState<string | null>(null);
+
+  const buildDefaultSearchName = (): string => {
+    const dateStr = new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    if ((PRESET_NAMES as string[]).includes(scoringModel) && scoringModel !== "Custom") {
+      return `${scoringModel} – ${dateStr}`;
+    }
+    const top = (Object.entries(appliedWeights) as [CategoryKey, number][])
+      .sort((a, b) => b[1] - a[1])[0];
+    const label = CATEGORIES.find((c) => c.key === top?.[0])?.label ?? "Custom";
+    return `${label}-heavy – ${dateStr}`;
+  };
+  const openSaveDialog = () => {
+    setSaveSearchName(buildDefaultSearchName());
+    setSaveSearchOpen(true);
+  };
 
   const refreshSavedSearches = async () => {
     if (!user) return;
@@ -275,9 +291,10 @@ const CityScoring = () => {
       toast.error("Save failed");
       return;
     }
-    toast.success(`Saved "${name}"`);
+    toast.success(`Saved "${name}" — find it under the Saved dropdown`);
     setSaveSearchOpen(false);
     setSaveSearchName("");
+    setActiveSavedSearchId(null);
     refreshSavedSearches();
   };
 
@@ -292,6 +309,7 @@ const CityScoring = () => {
     // Update both draft and applied sub-weights so any open drawer reflects the change
     useCityScoringStore.setState({ subWeights: sw, appliedSubWeights: sw });
     setScoringModel("Custom");
+    setActiveSavedSearchId(s.id);
     toast.success(`Loaded "${s.name}"`);
   };
 
@@ -307,6 +325,7 @@ const CityScoring = () => {
             return;
           }
           toast.success(`Deleted "${s.name}"`);
+          if (activeSavedSearchId === s.id) setActiveSavedSearchId(null);
           refreshSavedSearches();
         },
       },
@@ -1263,9 +1282,15 @@ const CityScoring = () => {
           <p className="text-xs text-[#526078] mt-0.5">
             Discover and score the best cities, suburbs, and metros for Neuron Garage franchises.
           </p>
-          <p className="text-[10px] text-[#8794ab] leading-tight mt-1 max-w-[520px]">
-            {PRESET_DESCRIPTIONS[((PRESET_NAMES as string[]).includes(scoringModel) ? scoringModel : "Balanced") as PresetName]}
-          </p>
+          {activeSavedSearchId ? (
+            <p className="text-[11px] text-[#174be8] font-medium leading-tight mt-1">
+              Loaded saved search: "{savedSearches.find((s) => s.id === activeSavedSearchId)?.name}"
+            </p>
+          ) : (
+            <p className="text-[10px] text-[#8794ab] leading-tight mt-1 max-w-[520px]">
+              {PRESET_DESCRIPTIONS[((PRESET_NAMES as string[]).includes(scoringModel) ? scoringModel : "Balanced") as PresetName]}
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center">
@@ -1283,6 +1308,7 @@ const CityScoring = () => {
                 if (scoringModel === "Custom" && name !== "Custom") {
                   setCustomWeightsSnapshot({ ...appliedWeights });
                 }
+                setActiveSavedSearchId(null);
                 setScoringModel(name);
                 if (name === "Custom") {
                   // Restore the last custom snapshot if we have one.
@@ -1330,6 +1356,37 @@ const CityScoring = () => {
               </SelectContent>
             </Select>
           </div>
+          {savedSearches.length > 0 && (
+            <Select
+              value={activeSavedSearchId ?? ""}
+              onValueChange={(id) => {
+                const found = savedSearches.find((s) => s.id === id);
+                if (found) handleLoadSavedSearch(found);
+              }}
+            >
+              <SelectTrigger className="h-9 w-[180px] bg-white border-[#e5eaf2] text-sm">
+                <SelectValue placeholder={`Saved (${savedSearches.length})`} />
+              </SelectTrigger>
+              <SelectContent>
+                {savedSearches.map((s) => (
+                  <div key={s.id} className="relative">
+                    <SelectItem value={s.id} className="pr-8">
+                      <span className="truncate">{s.name}</span>
+                    </SelectItem>
+                    <button
+                      type="button"
+                      onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteSavedSearch(s); }}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-[#fde8e8] text-[#9aa6bd] hover:text-[#dc2626]"
+                      aria-label={`Delete ${s.name}`}
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <Button variant="outline" className="h-9 border-[#e5eaf2] text-[#14233b] gap-1.5 font-normal" onClick={() => setAddCritOpen(true)}>
             <Plus size={14} /> Add Criteria
           </Button>
@@ -1364,7 +1421,7 @@ const CityScoring = () => {
               size="sm"
               variant="outline"
               disabled={totalWeight !== 100}
-              onClick={() => setSaveSearchOpen(true)}
+              onClick={openSaveDialog}
               className="h-7 border-[#dbe4f2] text-[#174be8] text-[11px] px-3 gap-1 disabled:opacity-50"
             >
               <Bookmark size={12} /> Save Search
@@ -2125,6 +2182,7 @@ const CityScoring = () => {
               maxLength={60}
               placeholder="e.g. High-income TX suburbs"
               onChange={(e) => setSaveSearchName(e.target.value)}
+              onFocus={(e) => e.currentTarget.select()}
               onKeyDown={(e) => { if (e.key === "Enter" && !savingSearch) handleSaveSearch(); }}
             />
             <p className="text-[10px] text-[#8794ab]">Saves your current master + sub-metric weights.</p>

@@ -230,6 +230,9 @@ const CityScoring = () => {
   const [openSubMetricsFor, setOpenSubMetricsFor] = useState<CategoryKey | null>(null);
   const [cityFilter, setCityFilter] = useState("");
   const [stateOpen, setStateOpen] = useState(false);
+  // Snapshot of the user's manually-tuned ("Custom") weights so switching to a
+  // preset and back doesn't lose them.
+  const [customWeightsSnapshot, setCustomWeightsSnapshot] = useState<Record<CategoryKey, number> | null>(null);
   const [addCritOpen, setAddCritOpen] = useState(false);
 
   const selectedId = useCityScoringStore((s) => s.selectedId);

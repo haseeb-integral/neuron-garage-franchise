@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getSignalGeography, GEO_BADGE_CLASS } from "@/lib/signalGeography";
 import { useCustomCriteria, CATEGORY_LABEL_TO_KEY } from "@/hooks/useCustomCriteria";
 import type { CategoryKey } from "@/stores/cityScoringStore";
-import { METRICS_BY_CATEGORY, type SowMetricEntry } from "@/lib/sowMetricRegistry";
+import { METRICS_BY_CATEGORY, SOW_METRIC_REGISTRY, type SowMetricEntry } from "@/lib/sowMetricRegistry";
 import { FETCHER_DIAGNOSTIC_KEYS, canonicalKey } from "@/lib/signalAliases";
 
 export interface CustomCriterion {
@@ -336,25 +336,6 @@ export function MarketDetailDrawer({
     return out;
   }, [signalsByCanonical]);
 
-  // Truthful counter: count enabled SOW metrics by status.
-  const coverageCounts = useMemo(() => {
-    let live = 0, proxy = 0, missing = 0, blocked = 0;
-    Object.values(coverageByCategory).forEach(({ enabled }) => {
-      enabled.forEach(({ status }) => {
-        if (status === "live") live++;
-        else if (status === "proxy") proxy++;
-        else if (status === "blocked") blocked++;
-        else missing++;
-      });
-    });
-    return { live, proxy, missing, blocked };
-  }, [coverageByCategory]);
-
-  const enabledRegistryTotal = useMemo(() => {
-    let n = 0;
-    Object.values(coverageByCategory).forEach(({ enabled }) => { n += enabled.length; });
-    return n;
-  }, [coverageByCategory]);
 
   const warnings = latestJob?.response_summary?.warnings ?? {};
   const hasWarnings = Object.values(warnings).some(Boolean);
@@ -383,17 +364,28 @@ export function MarketDetailDrawer({
   }, [customCriteriaRows]);
   const customCount = customCriteriaRows.length;
 
-  const liveCount = coverageCounts.live;
-  const proxyCount = coverageCounts.proxy + customCount;
-  const missingCount = coverageCounts.missing;
-  const blockedCount = coverageCounts.blocked;
-  const manualCount = 0;
-  const totalCount = enabledRegistryTotal + customCount;
+  // Count ALL registry rows (enabled + disabled), not just enabled — the
+  // header chip is supposed to reflect total spec coverage.
+  const allCoverageCounts = useMemo(() => {
+    let live = 0, proxy = 0, missing = 0, blocked = 0;
+    Object.values(coverageByCategory).forEach(({ enabled, disabled }) => {
+      [...enabled, ...disabled].forEach(({ status }) => {
+        if (status === "live") live++;
+        else if (status === "proxy") proxy++;
+        else if (status === "blocked") blocked++;
+        else missing++;
+      });
+    });
+    return { live, proxy, missing, blocked };
+  }, [coverageByCategory]);
 
-  const [showDisabled, setShowDisabled] = useState<Record<MetricCategory, boolean>>({
-    demand: false, pricing_power: false, competitive_landscape: false,
-    franchisee_supply: false, ease_of_operations: false, parent_mindset: false,
-  });
+  const liveCount = allCoverageCounts.live;
+  const estimatedCount = allCoverageCounts.proxy;
+  const missingCount = allCoverageCounts.missing;
+  const blockedCount = allCoverageCounts.blocked;
+  const manualCount = 0;
+  const totalRegistry = SOW_METRIC_REGISTRY.length;
+
   const [showDiagnostics, setShowDiagnostics] = useState(false);
 
   const metroArea = (market as any).metroArea ?? null;
@@ -511,7 +503,7 @@ export function MarketDetailDrawer({
         <SheetHeader className="mb-3">
           <SheetTitle className="text-[#07142f]">{market.city}, {stateAbbr}</SheetTitle>
           <p className="text-[11px] text-[#526078]">
-            Source-of-truth audit for the SOW metric coverage powering this market's score.
+            Source-of-truth audit for every metric powering this market's score.
           </p>
         </SheetHeader>
 
@@ -527,13 +519,16 @@ export function MarketDetailDrawer({
               Latest refresh: <span className="font-semibold text-[#07142f]">{formatDate(latestJob?.completed_at)}</span>
             </p>
             <div className="flex flex-wrap gap-1.5 text-[11px]">
-              <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#0ea66e]">{liveCount} live</span>
-              <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#174be8]">{proxyCount} proxy</span>
-              <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#526078]">{missingCount} missing</span>
+              <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#0ea66e]">{liveCount} Live</span>
+              <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#174be8]">{estimatedCount} Estimated</span>
+              <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#526078]">{missingCount} Missing</span>
               {blockedCount > 0 && (
-                <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#ea580c]">{blockedCount} blocked</span>
+                <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#ea580c]">{blockedCount} Blocked</span>
               )}
-              <span className="rounded-md bg-[#f3f6fb] px-1.5 py-0.5 font-semibold text-[#526078]">of {enabledRegistryTotal} SOW metrics</span>
+              {customCount > 0 && (
+                <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#b8860b]">{customCount} Custom</span>
+              )}
+              <span className="rounded-md bg-[#f3f6fb] px-1.5 py-0.5 font-semibold text-[#526078]">of {totalRegistry} metrics</span>
             </div>
           </div>
           {loading && (
@@ -556,11 +551,11 @@ export function MarketDetailDrawer({
                 <div className="grid grid-cols-2 gap-1.5 text-[11px]">
                   {[
                     ["Live", liveCount],
-                    ["Estimated", proxyCount],
+                    ["Estimated", estimatedCount],
                     ["Manual", manualCount],
                     ["Blocked", blockedCount],
                     ["Missing", missingCount],
-                    ["Total SOW metrics", totalCount],
+                    ["Total metrics", totalRegistry + customCount],
                   ].map(([label, value]) => (
                     <div key={String(label)} className="flex justify-between gap-2 rounded bg-[#f8fafe] px-2 py-1">
                       <span className="truncate text-[#526078]">{label}</span>
@@ -646,13 +641,14 @@ export function MarketDetailDrawer({
                 const enabledRows = bucket.enabled;
                 const disabledRows = bucket.disabled;
                 const enabledTotal = enabledRows.length;
+                const totalInCategory = enabledRows.length + disabledRows.length;
                 const liveProxy = enabledRows.filter((r) => r.status === "live" || r.status === "proxy").length;
                 return (
                   <div key={category.key} className="rounded-lg border border-[#eef2f7] bg-white">
                     <div className="flex items-center justify-between border-b border-[#eef2f7] bg-[#f8fafe] px-3 py-1.5">
                       <h5 className="text-[12px] font-bold text-[#07142f]">{category.label}</h5>
                       <span className="text-[10px] font-semibold text-[#8794ab]">
-                        {liveProxy}/{enabledTotal} covered
+                        {liveProxy}/{enabledTotal} wired · {totalInCategory} total
                         {customs.length > 0 ? ` · ${customs.length} custom` : ""}
                       </span>
                     </div>
@@ -670,10 +666,9 @@ export function MarketDetailDrawer({
                               {c.name}
                             </p>
                             <div className="mt-1 flex flex-wrap items-center gap-1">
-                              <span className="rounded-full border border-[#cbd8ff] bg-[#eaf0ff] px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#174be8]">
+                              <span className="rounded-full border border-[#f4df9a] bg-[#fff6dc] px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#b8860b]">
                                 Custom
                               </span>
-                              <StatusBadge status="proxy" />
                               {c.data_source && (
                                 <span className="rounded-full border border-[#e5eaf2] bg-white px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#526078]">
                                   {c.data_source}
@@ -693,28 +688,15 @@ export function MarketDetailDrawer({
                         </div>
                       ))}
                       {disabledRows.length > 0 && (
-                        <div className="border-t border-[#eef2f7] bg-[#fbfcff]">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setShowDisabled((s) => ({ ...s, [category.key]: !s[category.key] }))
-                            }
-                            className="flex w-full items-center justify-between px-3 py-1.5 text-[10.5px] font-semibold text-[#526078] hover:text-[#07142f]"
-                          >
-                            <span className="flex items-center gap-1">
-                              {showDisabled[category.key] ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-                              Not in current scoring model
-                            </span>
+                        <>
+                          <div className="flex items-center justify-between border-t border-[#eef2f7] bg-[#fbfcff] px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#8794ab]">
+                            <span>Not in current scoring model</span>
                             <span>{disabledRows.length}</span>
-                          </button>
-                          {showDisabled[category.key] && (
-                            <div>
-                              {disabledRows.map(({ metric, signal, status }) =>
-                                renderRegistryRow(metric, signal, status, true),
-                              )}
-                            </div>
+                          </div>
+                          {disabledRows.map(({ metric, signal, status }) =>
+                            renderRegistryRow(metric, signal, status, true),
                           )}
-                        </div>
+                        </>
                       )}
                     </div>
                   </div>

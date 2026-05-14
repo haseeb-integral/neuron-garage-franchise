@@ -336,25 +336,6 @@ export function MarketDetailDrawer({
     return out;
   }, [signalsByCanonical]);
 
-  // Truthful counter: count enabled SOW metrics by status.
-  const coverageCounts = useMemo(() => {
-    let live = 0, proxy = 0, missing = 0, blocked = 0;
-    Object.values(coverageByCategory).forEach(({ enabled }) => {
-      enabled.forEach(({ status }) => {
-        if (status === "live") live++;
-        else if (status === "proxy") proxy++;
-        else if (status === "blocked") blocked++;
-        else missing++;
-      });
-    });
-    return { live, proxy, missing, blocked };
-  }, [coverageByCategory]);
-
-  const enabledRegistryTotal = useMemo(() => {
-    let n = 0;
-    Object.values(coverageByCategory).forEach(({ enabled }) => { n += enabled.length; });
-    return n;
-  }, [coverageByCategory]);
 
   const warnings = latestJob?.response_summary?.warnings ?? {};
   const hasWarnings = Object.values(warnings).some(Boolean);

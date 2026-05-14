@@ -291,9 +291,10 @@ const CityScoring = () => {
       toast.error("Save failed");
       return;
     }
-    toast.success(`Saved "${name}"`);
+    toast.success(`Saved "${name}" — find it under the Saved dropdown`);
     setSaveSearchOpen(false);
     setSaveSearchName("");
+    setActiveSavedSearchId(null);
     refreshSavedSearches();
   };
 

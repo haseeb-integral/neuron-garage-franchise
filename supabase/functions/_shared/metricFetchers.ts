@@ -184,16 +184,62 @@ export async function fetchGoogleTrends(city: string, state: string) {
   }
 }
 
-// ---- Firecrawl waitlist / sold-out signal scraper (cap 5 URLs) ----
-export async function fetchCompetitorWaitlistSignals(urls: string[]) {
+// ---- Firecrawl competitor signals scraper (cap 5 URLs) ----
+// Single Firecrawl pass per URL extracts:
+//   - waitlist / sold-out flags
+//   - weekly tuition prices ($x/week, $x per week)
+//   - hours-per-week (only used if a weekly price exists on same page → hourly)
+//   - national brand mentions (KidStrong, Bricks4Kidz, etc.)
+//   - school-hosted flags ("school hosts", "hosted at ... school", "elementary school camp")
+// Per spec: hourly is only emitted as live when BOTH price AND hours found.
+
+export type CompetitorSignals = {
+  scanned: number
+  // waitlist / sold-out
+  waitlist: number
+  soldout: number
+  // pricing
+  weekly_prices: number[]      // every $x/week match across pages
+  premium_prices: number[]     // weekly prices > $400
+  hourly_rates: number[]       // only when same page had price + hours
+  // landscape
+  brand_count: number          // distinct national brands found across pages
+  brands_found: string[]
+  school_hosted_pages: number  // pages that triggered school-hosted flag
+  error: string | null
+}
+
+const NATIONAL_BRANDS = [
+  'KidStrong', 'Bricks 4 Kidz', 'Bricks4Kidz', 'Mad Science',
+  'Code Ninjas', 'iD Tech', 'Galileo', 'Camp Invention', 'Snapology',
+]
+
+export async function fetchCompetitorWaitlistSignals(urls: string[]): Promise<CompetitorSignals> {
+  const empty: CompetitorSignals = {
+    scanned: 0, waitlist: 0, soldout: 0,
+    weekly_prices: [], premium_prices: [], hourly_rates: [],
+    brand_count: 0, brands_found: [], school_hosted_pages: 0, error: null,
+  }
   const key = Deno.env.get('FIRECRAWL_API_KEY')
-  if (!key) return { waitlist: 0, soldout: 0, scanned: 0, error: null as string | null }
+  if (!key) return empty
   const targets = urls.filter((u) => /^https?:\/\//.test(u)).slice(0, 5)
-  if (targets.length === 0) return { waitlist: 0, soldout: 0, scanned: 0, error: null }
+  if (targets.length === 0) return empty
+
   const WAITLIST_RE = /waitlist|wait list|join the wait|notify me when/i
   const SOLDOUT_RE = /sold out|fully booked|registration closed|session full|class full|enrollment closed/i
-  let waitlist = 0, soldout = 0
+  // Weekly price patterns: $250/week, $250 / week, $250 per week, $1,200/wk
+  const WEEKLY_PRICE_RE = /\$\s?(\d{2,4}(?:,\d{3})?)\s*(?:\/|per)\s*(?:week|wk)\b/gi
+  // Hours patterns: "30 hours/week", "30 hours per week", "full day" (=8h), "half day" (=4h)
+  const HOURS_RE = /(\d{1,2})\s*hours?\s*(?:\/|per)\s*week\b/i
+  const FULL_DAY_RE = /full[- ]day\b/i
+  const HALF_DAY_RE = /half[- ]day\b/i
+  // School-hosted flags
+  const SCHOOL_RE = /school hosts|hosted at [a-z][\w .'-]*?\b(?:elementary|school)\b|elementary school camp|hosted by [a-z][\w .'-]*?\b(?:isd|school district|elementary)\b/i
+
+  const brandsSet = new Set<string>()
+  const out: CompetitorSignals = { ...empty, scanned: targets.length, weekly_prices: [], premium_prices: [], hourly_rates: [], brands_found: [] }
   const errs: string[] = []
+
   await Promise.all(targets.map(async (url) => {
     try {
       const res = await fetch('https://api.firecrawl.dev/v2/scrape', {
@@ -204,11 +250,58 @@ export async function fetchCompetitorWaitlistSignals(urls: string[]) {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) { errs.push(`Firecrawl ${res.status} ${url}`); return }
       const md: string = (data?.data?.markdown ?? data?.markdown ?? '') as string
-      if (WAITLIST_RE.test(md)) waitlist++
-      if (SOLDOUT_RE.test(md)) soldout++
+      if (!md) return
+      if (WAITLIST_RE.test(md)) out.waitlist++
+      if (SOLDOUT_RE.test(md)) out.soldout++
+
+      // Pricing extraction
+      const pagePrices: number[] = []
+      let m: RegExpExecArray | null
+      WEEKLY_PRICE_RE.lastIndex = 0
+      while ((m = WEEKLY_PRICE_RE.exec(md)) !== null) {
+        const n = Number(m[1].replace(/,/g, ''))
+        if (Number.isFinite(n) && n >= 50 && n <= 5000) pagePrices.push(n)
+      }
+      for (const p of pagePrices) {
+        out.weekly_prices.push(p)
+        if (p > 400) out.premium_prices.push(p)
+      }
+
+      // Hours — only used if same page had at least one price
+      if (pagePrices.length > 0) {
+        let hours: number | null = null
+        const hm = HOURS_RE.exec(md)
+        if (hm) {
+          const h = Number(hm[1])
+          if (Number.isFinite(h) && h >= 1 && h <= 80) hours = h
+        } else if (FULL_DAY_RE.test(md)) {
+          hours = 40 // 5 × 8h
+        } else if (HALF_DAY_RE.test(md)) {
+          hours = 20 // 5 × 4h
+        }
+        if (hours != null && hours > 0) {
+          for (const p of pagePrices) {
+            const rate = p / hours
+            if (Number.isFinite(rate) && rate >= 1 && rate <= 200) out.hourly_rates.push(rate)
+          }
+        }
+      }
+
+      // Brand detection
+      for (const brand of NATIONAL_BRANDS) {
+        const re = new RegExp(`\\b${brand.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}\\b`, 'i')
+        if (re.test(md)) brandsSet.add(brand.replace(/\s+/g, ''))
+      }
+
+      // School-hosted
+      if (SCHOOL_RE.test(md)) out.school_hosted_pages++
     } catch (e) { errs.push((e as Error).message) }
   }))
-  return { waitlist, soldout, scanned: targets.length, error: errs.length ? errs.join(' | ') : null }
+
+  out.brands_found = Array.from(brandsSet).sort()
+  out.brand_count = out.brands_found.length
+  out.error = errs.length ? errs.join(' | ') : null
+  return out
 }
 
 // ---- NOAA / Open-Meteo climate fetcher (Archive API) ----

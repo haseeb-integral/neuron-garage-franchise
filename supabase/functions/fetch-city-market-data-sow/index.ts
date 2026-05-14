@@ -595,7 +595,7 @@ Deno.serve(async (req) => {
       elementary_school_count:           existingCounts.elementary_schools ?? null,
       teacher_salary_proxy:              blsOewsData.teacher_annual.value ?? blsData?.teacher_salary_proxy ?? null,
       rental_venue_count:                existingCounts.rental_venues ?? null,
-      guide_wage_proxy:                  blsData?.guide_wage_proxy ?? null,
+      guide_wage_proxy:                  blsOewsData.childcare_hourly.value ?? blsData?.guide_wage_proxy ?? null,
       montessori_school_density:         censusData?.children_5_12_count
         ? Math.round(((existingCounts.montessori ?? 0) / censusData.children_5_12_count) * 10000 * 10) / 10
         : null,

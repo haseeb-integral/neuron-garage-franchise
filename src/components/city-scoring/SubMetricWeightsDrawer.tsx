@@ -256,12 +256,13 @@ export function SubMetricWeightsDrawer({
             serverCategoryScore={serverCategoryScore ?? null}
             masterWeightPct={masterWeightPct ?? null}
             enabledSum={enabledSum}
+            pendingEdits={pendingEdits}
           />
         )}
 
         <div className="border-t border-[#eef2f7] px-5 py-3 flex items-center justify-between gap-3 bg-[#fafbfd]">
           <p className="text-[10.5px] text-[#8794ab] leading-snug max-w-[260px]">
-            Auto-normalized to 100% on Apply. Empty category falls back to server score.
+            Auto-normalized to 100% on save. Empty category falls back to server score.
           </p>
           <div className="flex items-center gap-2">
             <Button
@@ -278,7 +279,7 @@ export function SubMetricWeightsDrawer({
               onClick={handleApply}
               className="h-8 bg-[#174be8] hover:bg-[#1240c9] text-white text-[11px] px-3"
             >
-              Apply Weights
+              Save &amp; Recalculate
             </Button>
           </div>
         </div>
@@ -296,6 +297,7 @@ function FormulaPanel({
   serverCategoryScore,
   masterWeightPct,
   enabledSum,
+  pendingEdits,
 }: {
   categoryLabel: string;
   selectedCityLabel?: string;
@@ -303,7 +305,11 @@ function FormulaPanel({
   serverCategoryScore: number | null;
   masterWeightPct: number | null;
   enabledSum: number;
+  pendingEdits: boolean;
 }) {
+  const summary = previewRecompute
+    ? summarizeCategory(previewRecompute, selectedCityLabel, categoryLabel)
+    : null;
   return (
     <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 text-[12px] text-[#07142f] leading-relaxed">
       <section>

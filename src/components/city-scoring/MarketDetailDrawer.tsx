@@ -616,8 +616,8 @@ export function MarketDetailDrawer({
             <Button variant="outline" className="border-[#dbe4f2] text-[#2250eb]" onClick={onGenerateReport}>
               <FileText size={14} className="mr-1" /> Generate Report
             </Button>
-            <Button variant="outline" className="border-[#dbe4f2] text-[#2250eb]" onClick={onExport}>
-              <Download size={14} className="mr-1" /> Export Source Data
+            <Button variant="outline" className="border-[#dbe4f2] text-[#2250eb]" onClick={handleExportRawSignals}>
+              <Download size={14} className="mr-1" /> Export Raw Signals
             </Button>
           </div>
         </div>

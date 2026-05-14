@@ -1362,6 +1362,15 @@ const CityScoring = () => {
             <button onClick={resetWeights} className="text-xs font-medium text-[#174be8] hover:underline">Reset to Default</button>
             <Button
               size="sm"
+              variant="outline"
+              disabled={totalWeight !== 100}
+              onClick={() => setSaveSearchOpen(true)}
+              className="h-7 border-[#dbe4f2] text-[#174be8] text-[11px] px-3 gap-1 disabled:opacity-50"
+            >
+              <Bookmark size={12} /> Save Search
+            </Button>
+            <Button
+              size="sm"
               disabled={totalWeight !== 100}
               onClick={applyWeights}
               className="h-7 bg-[#174be8] hover:bg-[#1240c9] text-white text-[11px] px-3 disabled:opacity-50"

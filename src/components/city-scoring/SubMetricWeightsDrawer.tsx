@@ -47,9 +47,8 @@ export function SubMetricWeightsDrawer({
   const setAppliedSubWeights = useCityScoringStore((s) => s.setAppliedSubWeights);
   const [view, setView] = useState<"weights" | "formula">("weights");
 
-  if (!categoryKey) return null;
-  const metrics = METRICS_BY_CATEGORY[categoryKey] ?? [];
-  const cur = subWeights[categoryKey] ?? {};
+  const metrics = categoryKey ? (METRICS_BY_CATEGORY[categoryKey] ?? []) : [];
+  const cur = categoryKey ? (subWeights[categoryKey] ?? {}) : {};
 
   // Live "effective %" preview — pure local arithmetic, no store writes.
   const enabledSum = useMemo(
@@ -67,6 +66,8 @@ export function SubMetricWeightsDrawer({
     if (!rawValuesByKey) return null;
     return recomputeCategoryScore(metrics, rawValuesByKey, cur, serverCategoryScore ?? null);
   }, [metrics, rawValuesByKey, cur, serverCategoryScore]);
+
+  if (!categoryKey) return null;
 
   const handleApply = () => {
     // Auto-normalize: persist normalized (sum=100) sub-weights for enabled

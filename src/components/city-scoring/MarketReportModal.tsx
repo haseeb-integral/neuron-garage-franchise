@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { CityData } from "@/data/cityData";

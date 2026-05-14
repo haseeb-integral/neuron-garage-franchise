@@ -658,3 +658,154 @@ export async function fetchNcesElementaryStaffing(
     error: null,
   }
 }
+
+// =============================================================================
+// Day 4: BLS OEWS wages — metro→state→national fallback per SOC.
+// Single batched HTTP request (≤1 BLS call per city refresh).
+// =============================================================================
+
+// OEWS metro area codes are the 5-digit CBSA, zero-padded to 7.
+// Keyed by lowercased substring match against city's metro_area string.
+const OEWS_MSA_CODES: Record<string, { code: string; label: string }> = {
+  'dallas-fort worth':       { code: '0019100', label: 'Dallas-Fort Worth-Arlington, TX' },
+  'dallas':                  { code: '0019100', label: 'Dallas-Fort Worth-Arlington, TX' },
+  'houston':                 { code: '0026420', label: 'Houston-The Woodlands-Sugar Land, TX' },
+  'austin':                  { code: '0012420', label: 'Austin-Round Rock-Georgetown, TX' },
+  'san antonio':             { code: '0041700', label: 'San Antonio-New Braunfels, TX' },
+  'new york':                { code: '0035620', label: 'New York-Newark-Jersey City, NY-NJ-PA' },
+  'los angeles':             { code: '0031080', label: 'Los Angeles-Long Beach-Anaheim, CA' },
+  'chicago':                 { code: '0016980', label: 'Chicago-Naperville-Elgin, IL-IN-WI' },
+  'phoenix':                 { code: '0038060', label: 'Phoenix-Mesa-Chandler, AZ' },
+  'philadelphia':            { code: '0037980', label: 'Philadelphia-Camden-Wilmington, PA-NJ-DE-MD' },
+  'atlanta':                 { code: '0012060', label: 'Atlanta-Sandy Springs-Alpharetta, GA' },
+  'boston':                  { code: '0014460', label: 'Boston-Cambridge-Newton, MA-NH' },
+  'miami':                   { code: '0033100', label: 'Miami-Fort Lauderdale-Pompano Beach, FL' },
+  'washington':              { code: '0047900', label: 'Washington-Arlington-Alexandria, DC-VA-MD-WV' },
+  'seattle':                 { code: '0042660', label: 'Seattle-Tacoma-Bellevue, WA' },
+  'denver':                  { code: '0019740', label: 'Denver-Aurora-Lakewood, CO' },
+  'minneapolis':             { code: '0033460', label: 'Minneapolis-St. Paul-Bloomington, MN-WI' },
+  'tampa':                   { code: '0045300', label: 'Tampa-St. Petersburg-Clearwater, FL' },
+  'orlando':                 { code: '0036740', label: 'Orlando-Kissimmee-Sanford, FL' },
+  'detroit':                 { code: '0019820', label: 'Detroit-Warren-Dearborn, MI' },
+  'st. louis':               { code: '0041180', label: 'St. Louis, MO-IL' },
+  'st louis':                { code: '0041180', label: 'St. Louis, MO-IL' },
+  'charlotte':               { code: '0016740', label: 'Charlotte-Concord-Gastonia, NC-SC' },
+  'raleigh':                 { code: '0039580', label: 'Raleigh-Cary, NC' },
+  'portland':                { code: '0038900', label: 'Portland-Vancouver-Hillsboro, OR-WA' },
+  'san diego':               { code: '0041740', label: 'San Diego-Chula Vista-Carlsbad, CA' },
+  'san francisco':           { code: '0041860', label: 'San Francisco-Oakland-Berkeley, CA' },
+  'san jose':                { code: '0041940', label: 'San Jose-Sunnyvale-Santa Clara, CA' },
+  'sacramento':              { code: '0040900', label: 'Sacramento-Roseville-Folsom, CA' },
+  'nashville':               { code: '0034980', label: 'Nashville-Davidson--Murfreesboro--Franklin, TN' },
+  'columbus':                { code: '0018140', label: 'Columbus, OH' },
+  'indianapolis':            { code: '0026900', label: 'Indianapolis-Carmel-Anderson, IN' },
+  'pittsburgh':              { code: '0038300', label: 'Pittsburgh, PA' },
+  'kansas city':             { code: '0028140', label: 'Kansas City, MO-KS' },
+  'las vegas':               { code: '0029820', label: 'Las Vegas-Henderson-Paradise, NV' },
+  'salt lake city':          { code: '0041620', label: 'Salt Lake City, UT' },
+  'cincinnati':              { code: '0017140', label: 'Cincinnati, OH-KY-IN' },
+  'cleveland':               { code: '0017460', label: 'Cleveland-Elyria, OH' },
+  'baltimore':               { code: '0012580', label: 'Baltimore-Columbia-Towson, MD' },
+}
+
+function resolveMsa(metroArea: string | null | undefined, city: string, state: string): { code: string; label: string } | null {
+  const candidates = [metroArea, `${city}, ${state}`, city].filter(Boolean) as string[]
+  for (const c of candidates) {
+    const lc = c.toLowerCase()
+    for (const key of Object.keys(OEWS_MSA_CODES)) {
+      if (lc.includes(key)) return OEWS_MSA_CODES[key]
+    }
+  }
+  return null
+}
+
+export type BlsOewsTier = 'metro' | 'state' | 'national'
+export type BlsOewsMetric = {
+  value: number | null
+  tier: BlsOewsTier | null
+  area_code: string | null
+  area_label: string | null
+  series_id: string | null
+}
+export type BlsOewsResult = {
+  teacher_annual: BlsOewsMetric           // SOC 25-2021, datatype 04 (annual mean)
+  childcare_hourly: BlsOewsMetric         // SOC 39-9011, datatype 03 (hourly mean)
+  source_url: string | null
+  error: string | null
+}
+
+const EMPTY_METRIC: BlsOewsMetric = { value: null, tier: null, area_code: null, area_label: null, series_id: null }
+
+export async function fetchBlsOewsWages(
+  stateAbbr: string | null,
+  metroArea: string | null,
+  city: string,
+  state: string,
+): Promise<BlsOewsResult> {
+  const key = Deno.env.get('BLS_API_KEY')
+  if (!key) return { teacher_annual: EMPTY_METRIC, childcare_hourly: EMPTY_METRIC, source_url: null, error: 'BLS_API_KEY missing' }
+
+  const abbr = stateAbbr ?? resolveStateAbbr(state)
+  const stateFips = abbr ? STATE_FIPS[abbr] ?? null : null
+  const msa = resolveMsa(metroArea, city, state)
+
+  const SOC = { teacher: '252021', childcare: '399011' } as const
+  const DT  = { teacher: '04',     childcare: '03'     } as const  // annual / hourly mean
+
+  type SeriesPlan = { id: string; tier: BlsOewsTier; area_code: string; area_label: string; soc: 'teacher' | 'childcare' }
+  const plans: SeriesPlan[] = []
+  const push = (soc: 'teacher' | 'childcare', tier: BlsOewsTier, area_code: string, area_label: string) => {
+    const id = `OEU${tier === 'metro' ? 'M' : tier === 'state' ? 'S' : 'N'}${area_code}000000${SOC[soc]}${DT[soc]}`
+    plans.push({ id, tier, area_code, area_label, soc })
+  }
+  for (const soc of ['teacher', 'childcare'] as const) {
+    if (msa) push(soc, 'metro', msa.code, msa.label)
+    if (stateFips) push(soc, 'state', stateFips.padEnd(7, '0'), `${abbr} statewide`)
+    push(soc, 'national', '0000000', 'United States')
+  }
+
+  if (plans.length === 0) {
+    return { teacher_annual: EMPTY_METRIC, childcare_hourly: EMPTY_METRIC, source_url: null, error: 'No series IDs constructible (missing state + metro)' }
+  }
+
+  try {
+    const res = await fetch('https://api.bls.gov/publicAPI/v2/timeseries/data/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ seriesid: plans.map(p => p.id), registrationkey: key }),
+    })
+    if (!res.ok) return { teacher_annual: EMPTY_METRIC, childcare_hourly: EMPTY_METRIC, source_url: null, error: `BLS HTTP ${res.status}` }
+    const body = await res.json().catch(() => ({}))
+    if (body?.status !== 'REQUEST_SUCCEEDED') {
+      return { teacher_annual: EMPTY_METRIC, childcare_hourly: EMPTY_METRIC, source_url: null, error: `BLS ${body?.status ?? 'unknown'}: ${(body?.message ?? []).join(' | ')}` }
+    }
+    const series: any[] = Array.isArray(body?.Results?.series) ? body.Results.series : []
+    const valueOf = (sid: string): number | null => {
+      const s = series.find((x: any) => x?.seriesID === sid)
+      const n = Number(s?.data?.[0]?.value)
+      return Number.isFinite(n) && n > 0 ? n : null
+    }
+
+    // Pick best tier per SOC: metro > state > national.
+    const pick = (soc: 'teacher' | 'childcare'): BlsOewsMetric => {
+      const ranked = plans.filter(p => p.soc === soc)  // already in metro→state→national order
+      for (const p of ranked) {
+        const v = valueOf(p.id)
+        if (v != null) return { value: v, tier: p.tier, area_code: p.area_code, area_label: p.area_label, series_id: p.id }
+      }
+      return EMPTY_METRIC
+    }
+
+    const teacher_annual = pick('teacher')
+    const childcare_hourly = pick('childcare')
+    const ref = teacher_annual.series_id ?? childcare_hourly.series_id
+    return {
+      teacher_annual,
+      childcare_hourly,
+      source_url: ref ? `https://beta.bls.gov/dataViewer/view/timeseries/${ref}` : null,
+      error: null,
+    }
+  } catch (e) {
+    return { teacher_annual: EMPTY_METRIC, childcare_hourly: EMPTY_METRIC, source_url: null, error: (e as Error).message }
+  }
+}

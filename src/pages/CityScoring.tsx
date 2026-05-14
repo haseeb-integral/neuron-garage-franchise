@@ -1632,6 +1632,87 @@ const CityScoring = () => {
                 <text x="100" y="102" textAnchor="middle" className="fill-[#7e8aa3]" style={{ fontSize: 12, fontWeight: 600 }}>/100</text>
               </svg>
               <p className="-mt-1 text-[12px] font-semibold" style={{ color: selectedHasLiveData ? tierBadge.fg : "#8794ab" }}>{selectedHasLiveData ? opportunityLabel : "No live data"}</p>
+              {selectedHasLiveData ? (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="mt-1 text-[11px] font-medium text-[#174be8] hover:underline"
+                      aria-label="Show overall score formula"
+                    >
+                      <span className="font-mono italic mr-0.5">ƒx</span> Show formula
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    align="start"
+                    side="bottom"
+                    className="w-[360px] p-3"
+                  >
+                    <div className="mb-2">
+                      <p className="text-[12px] font-semibold text-[#07142f]">{selected.city}, {selected.state}</p>
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-[#526078]">Overall Score breakdown</p>
+                    </div>
+                    {(() => {
+                      const total = appliedTotal > 0 ? appliedTotal : 1;
+                      const rows = CATEGORIES.map((c) => {
+                        const weightPct = (appliedWeights[c.key] / total) * 100;
+                        const score = detailCategoryScores[c.key] ?? 0;
+                        const contribution = (weightPct * score) / 100;
+                        return { key: c.key, label: c.label, weightPct, score, contribution };
+                      });
+                      const sumContribution = rows.reduce((s, r) => s + r.contribution, 0);
+                      return (
+                        <>
+                          <div className="rounded border border-[#eef2f7] overflow-hidden">
+                            <table className="w-full text-[11px] font-mono">
+                              <thead className="bg-[#fafbfd] text-[#526078]">
+                                <tr>
+                                  <th className="text-left px-2 py-1.5 font-medium">Category</th>
+                                  <th className="text-right px-2 py-1.5 font-medium">Weight</th>
+                                  <th className="text-right px-2 py-1.5 font-medium">Score</th>
+                                  <th className="text-right px-2 py-1.5 font-medium">Contribution</th>
+                                </tr>
+                              </thead>
+                              <tbody className="text-[#1a2540]">
+                                {rows.map((r) => (
+                                  <tr key={r.key} className="border-t border-[#eef2f7]">
+                                    <td className="text-left px-2 py-1.5">{r.label}</td>
+                                    <td className="text-right px-2 py-1.5 tabular-nums">{r.weightPct.toFixed(1)}%</td>
+                                    <td className="text-right px-2 py-1.5 tabular-nums">{Math.round(r.score)}</td>
+                                    <td className="text-right px-2 py-1.5 tabular-nums">{r.contribution.toFixed(1)}</td>
+                                  </tr>
+                                ))}
+                                <tr className="border-t-2 border-[#c5cdda] bg-[#fafbfd] font-bold">
+                                  <td className="text-left px-2 py-1.5" colSpan={2}>Overall Score</td>
+                                  <td className="text-right px-2 py-1.5 tabular-nums text-[#526078]" title={`Σ contributions = ${sumContribution.toFixed(1)}`}>=</td>
+                                  <td className="text-right px-2 py-1.5 tabular-nums text-[#07142f]">{weightedComposite}</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                          <p className="text-[11px] text-[#526078] mt-2 leading-snug">
+                            Formula: Overall Score = Σ (master weight % × category score)
+                          </p>
+                          {Math.abs(appliedTotal - 100) > 0.5 && (
+                            <p className="text-[10.5px] text-[#8794ab] mt-1 leading-snug italic">
+                              Master weights are normalized to sum to 100% before scoring.
+                            </p>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </PopoverContent>
+                </Popover>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="mt-1 text-[11px] font-medium text-[#8794ab] opacity-60 cursor-not-allowed"
+                  aria-label="Show overall score formula (no live data)"
+                >
+                  <span className="font-mono italic mr-0.5">ƒx</span> Show formula
+                </button>
+              )}
             </div>
 
             <div className="space-y-2.5 pt-1 min-w-0">

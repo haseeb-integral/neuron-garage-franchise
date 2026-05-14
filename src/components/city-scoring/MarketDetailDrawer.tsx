@@ -330,15 +330,15 @@ export function MarketDetailDrawer({
         className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-[#f1f4f9] px-2 py-1.5 last:border-0 hover:bg-[#fbfcff]"
       >
         <div className="min-w-0">
-          <p className="truncate text-[12px] font-medium text-[#07142f]" title={signal.label ?? signal.signal_key ?? ""}>
+          <p className="text-[12px] font-medium text-[#07142f] line-clamp-2" title={signal.label ?? signal.signal_key ?? ""}>
             {signal.label ?? signal.signal_key}
           </p>
-          <div className="mt-0.5 flex flex-nowrap items-center gap-1 overflow-hidden">
+          <div className="mt-1 flex flex-wrap items-center gap-1">
             <ScoreImpactBadge used={used} />
             <GeoBadge source={signal.source} signalKey={signal.signal_key} />
             <StatusBadge status={status} />
             {signal.source && (
-              <span className="truncate text-[10px] font-semibold uppercase tracking-wide text-[#8794ab]">
+              <span className="rounded-full border border-[#e5eaf2] bg-white px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#526078]">
                 {signal.source}
               </span>
             )}

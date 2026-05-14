@@ -4,8 +4,9 @@ import {
   Bell, HelpCircle, ChevronDown, LogOut, Settings, Search, Download, FileText,
   Plus, RefreshCw, ArrowRight, GitCompare, Eye, Star, Users, DollarSign,
   Trophy, UserCheck, Cog, Heart, MapPin, Building2, GraduationCap, Home as HomeIcon,
-  Check, ChevronsUpDown, Info, X,
+  Check, ChevronsUpDown, Info, X, Bookmark, Trash2,
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
@@ -235,6 +236,83 @@ const CityScoring = () => {
   // preset and back doesn't lose them.
   const [customWeightsSnapshot, setCustomWeightsSnapshot] = useState<Record<CategoryKey, number> | null>(null);
   const [addCritOpen, setAddCritOpen] = useState(false);
+
+  // Saved searches (per-user)
+  type SavedSearch = { id: string; name: string; master_weights: any; sub_weights: any; created_at: string };
+  const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
+  const [saveSearchOpen, setSaveSearchOpen] = useState(false);
+  const [saveSearchName, setSaveSearchName] = useState("");
+  const [savingSearch, setSavingSearch] = useState(false);
+
+  const refreshSavedSearches = async () => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from("saved_searches")
+      .select("id, name, master_weights, sub_weights, created_at")
+      .order("created_at", { ascending: false });
+    if (error) {
+      console.error("loadSavedSearches", error);
+      return;
+    }
+    setSavedSearches((data ?? []) as SavedSearch[]);
+  };
+  useEffect(() => { refreshSavedSearches(); }, [user?.id]);
+
+  const handleSaveSearch = async () => {
+    const name = saveSearchName.trim();
+    if (!name) { toast.error("Name required"); return; }
+    if (!user) { toast.error("Sign in required"); return; }
+    setSavingSearch(true);
+    const { error } = await supabase.from("saved_searches").insert({
+      user_id: user.id,
+      name,
+      master_weights: appliedWeights as any,
+      sub_weights: appliedSubWeights as any,
+    });
+    setSavingSearch(false);
+    if (error) {
+      console.error("saveSearch", error);
+      toast.error("Save failed");
+      return;
+    }
+    toast.success(`Saved "${name}"`);
+    setSaveSearchOpen(false);
+    setSaveSearchName("");
+    refreshSavedSearches();
+  };
+
+  const handleLoadSavedSearch = (s: SavedSearch) => {
+    const mw = s.master_weights as Record<CategoryKey, number>;
+    const sw = s.sub_weights ?? {};
+    if (mw) {
+      setWeights(mw);
+      setAppliedWeights(mw);
+      setCustomWeightsSnapshot({ ...mw });
+    }
+    // Update both draft and applied sub-weights so any open drawer reflects the change
+    useCityScoringStore.setState({ subWeights: sw, appliedSubWeights: sw });
+    setScoringModel("Custom");
+    toast.success(`Loaded "${s.name}"`);
+  };
+
+  const handleDeleteSavedSearch = (s: SavedSearch) => {
+    toast(`Delete "${s.name}"?`, {
+      action: {
+        label: "Delete",
+        onClick: async () => {
+          const { error } = await supabase.from("saved_searches").delete().eq("id", s.id);
+          if (error) {
+            console.error("deleteSavedSearch", error);
+            toast.error("Delete failed");
+            return;
+          }
+          toast.success(`Deleted "${s.name}"`);
+          refreshSavedSearches();
+        },
+      },
+      cancel: { label: "Cancel", onClick: () => {} },
+    });
+  };
 
   const selectedId = useCityScoringStore((s) => s.selectedId);
   const setSelectedId = useCityScoringStore((s) => s.setSelectedId);
@@ -1194,6 +1272,13 @@ const CityScoring = () => {
             <Select
               value={(PRESET_NAMES as string[]).includes(scoringModel) ? scoringModel : "Balanced"}
               onValueChange={(name) => {
+                // Saved-search selection
+                if (name.startsWith("saved:")) {
+                  const id = name.slice("saved:".length);
+                  const found = savedSearches.find((s) => s.id === id);
+                  if (found) handleLoadSavedSearch(found);
+                  return;
+                }
                 // Leaving "Custom" → snapshot current weights so we can restore them later.
                 if (scoringModel === "Custom" && name !== "Custom") {
                   setCustomWeightsSnapshot({ ...appliedWeights });
@@ -1221,6 +1306,27 @@ const CityScoring = () => {
                 {PRESET_NAMES.map((p) => (
                   <SelectItem key={p} value={p}>{p}</SelectItem>
                 ))}
+                {savedSearches.length > 0 && (
+                  <>
+                    <div className="px-2 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-[#8794ab]">Saved Searches</div>
+                    {savedSearches.map((s) => (
+                      <div key={s.id} className="relative">
+                        <SelectItem value={`saved:${s.id}`} className="pr-8">
+                          <span className="truncate">{s.name}</span>
+                        </SelectItem>
+                        <button
+                          type="button"
+                          onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteSavedSearch(s); }}
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                          className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-[#fde8e8] text-[#9aa6bd] hover:text-[#dc2626]"
+                          aria-label={`Delete ${s.name}`}
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </>
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -1254,6 +1360,15 @@ const CityScoring = () => {
               Total Weight: <span className={totalWeight === 100 ? "text-[#0ea66e] font-medium" : "text-[#ea580c] font-medium"}>{totalWeight}%</span>
             </span>
             <button onClick={resetWeights} className="text-xs font-medium text-[#174be8] hover:underline">Reset to Default</button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={totalWeight !== 100}
+              onClick={() => setSaveSearchOpen(true)}
+              className="h-7 border-[#dbe4f2] text-[#174be8] text-[11px] px-3 gap-1 disabled:opacity-50"
+            >
+              <Bookmark size={12} /> Save Search
+            </Button>
             <Button
               size="sm"
               disabled={totalWeight !== 100}
@@ -1996,6 +2111,32 @@ const CityScoring = () => {
         refreshVersion={marketRefreshVersion}
         autoDownload={reportAutoPdf}
       />
+
+      <Dialog open={saveSearchOpen} onOpenChange={setSaveSearchOpen}>
+        <DialogContent className="max-w-sm bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-[#07142f]">Save Search</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-[#526078]">Name</label>
+            <Input
+              autoFocus
+              value={saveSearchName}
+              maxLength={60}
+              placeholder="e.g. High-income TX suburbs"
+              onChange={(e) => setSaveSearchName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !savingSearch) handleSaveSearch(); }}
+            />
+            <p className="text-[10px] text-[#8794ab]">Saves your current master + sub-metric weights.</p>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setSaveSearchOpen(false)} disabled={savingSearch}>Cancel</Button>
+            <Button className="bg-[#174be8] hover:bg-[#1240c9] text-white" onClick={handleSaveSearch} disabled={savingSearch || !saveSearchName.trim()}>
+              {savingSearch ? "Saving…" : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AddCityModal
         open={addCityOpen}

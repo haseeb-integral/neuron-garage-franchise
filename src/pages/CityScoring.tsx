@@ -195,6 +195,7 @@ const CityScoring = () => {
   const setAppliedWeights = useCityScoringStore((s) => s.setAppliedWeights);
   const customCriteria = useCityScoringStore((s) => s.customCriteria);
   const setCustomCriteria = useCityScoringStore((s) => s.setCustomCriteria);
+  const { data: supabaseCustomCriteria = [] } = useCustomCriteria();
   const subWeights = useCityScoringStore((s) => s.subWeights);
   const appliedSubWeights = useCityScoringStore((s) => s.appliedSubWeights);
   const setAppliedSubWeights = useCityScoringStore((s) => s.setAppliedSubWeights);

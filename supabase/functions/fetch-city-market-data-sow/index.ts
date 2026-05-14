@@ -20,9 +20,11 @@ import {
   fetchNoaaClimateMetrics,
   fetchBeaRpp,
   fetchNcesElementaryStaffing,
+  fetchBlsOewsWages,
   type CensusSprintMetrics,
   type NoaaClimateMetrics,
   type NcesElementaryStaffing,
+  type BlsOewsResult,
 } from '../_shared/metricFetchers.ts'
 
 const corsHeaders = {
@@ -235,6 +237,7 @@ async function fetchBlsSignals(stateFips: string | null) {
 function buildSowSignals(args: {
   census: any | null
   bls: any | null
+  blsOews: BlsOewsResult | null
   existingCounts: Record<string, number>
   existingWarnings: Record<string, unknown>
   sprint: CensusSprintMetrics | null
@@ -244,9 +247,18 @@ function buildSowSignals(args: {
   bea: { rpp_all_items: number | null; year: number | null; source_url: string | null } | null
   nces: NcesElementaryStaffing | null
 }) {
-  const { census, bls, existingCounts, sprint, trends, waitlist, noaa, bea, nces } = args
+  const { census, bls, blsOews, existingCounts, sprint, trends, waitlist, noaa, bea, nces } = args
   const signals: SignalInput[] = []
   const add = (s: SignalInput) => signals.push(s)
+
+  // Day 4: BLS OEWS tier→signal-status helpers (metro=live, state/national=proxy).
+  const tierStatus = (tier: 'metro' | 'state' | 'national' | null): 'live' | 'proxy' | 'missing' =>
+    tier === 'metro' ? 'live' : (tier === 'state' || tier === 'national') ? 'proxy' : 'missing'
+  const tierNote = (tier: 'metro' | 'state' | 'national' | null, areaLabel: string | null) =>
+    tier === 'metro' ? `BLS OEWS metro-level wage for ${areaLabel ?? 'metro'}.`
+    : tier === 'state' ? `BLS OEWS state-level wage (${areaLabel ?? 'state'}); used as proxy — no metro data available.`
+    : tier === 'national' ? 'BLS OEWS national wage; used as proxy — no metro or state data available.'
+    : 'BLS OEWS lookup failed.'
 
   add({ signal_key: 'children_5_12_count', label: 'Children Ages 5–12', value: fmtNum(census?.children_5_12_count ?? null), source: census ? 'census' : 'not_connected', source_url: census?.source_url ?? null, confidence: census ? 0.75 : 0, status: census ? 'proxy' : 'missing', metric_category: 'demand', used_in_score: Boolean(census), notes: 'Estimated from ACS 5-year age bands: 5–9 plus 60% of 10–14.' })
   add({ signal_key: 'children_5_12_pct', label: '% Population Ages 5–12', value: fmtPct(census?.children_5_12_pct ?? null), source: census ? 'census' : 'not_connected', source_url: census?.source_url ?? null, confidence: census ? 0.75 : 0, status: census ? 'proxy' : 'missing', metric_category: 'demand', used_in_score: Boolean(census) })
@@ -297,7 +309,22 @@ function buildSowSignals(args: {
   }
   add(missingSignal('pricing_power', 'private_school_tuition_proxy', 'Private Elementary School Tuition Levels', 'firecrawl', 'Requires private school tuition page extraction or state data.'))
   add(missingSignal('pricing_power', 'private_school_student_count', 'Number of Private School Students', 'state_edu', 'Needs state/private school enrollment data.'))
-  add({ signal_key: 'childcare_nanny_hourly_rate_proxy', label: 'Childcare / Nanny Hourly Rate Proxy', value: fmtMoney(bls?.childcare_worker_wage_proxy ?? null), source: bls ? 'bls' : 'not_connected', source_url: bls?.source_url ?? null, confidence: bls ? 0.55 : 0, status: bls ? 'proxy' : 'missing', metric_category: 'pricing_power', used_in_score: Boolean(bls), notes: 'Annual childcare worker wage from BLS used as a local wage/cost proxy, not consumer nanny rate.' })
+  {
+    const m = blsOews?.childcare_hourly ?? null
+    add({
+      signal_key: 'childcare_nanny_hourly_rate_proxy',
+      label: 'Childcare / Nanny Hourly Rate Proxy',
+      value: m?.value != null ? `$${m.value.toFixed(2)}/hr` : 'Not available yet',
+      source: m?.value != null ? 'bls_oews' : 'not_connected',
+      source_url: blsOews?.source_url ?? null,
+      confidence: m?.tier === 'metro' ? 0.7 : (m?.tier ? 0.5 : 0),
+      status: tierStatus(m?.tier ?? null),
+      metric_category: 'pricing_power',
+      used_in_score: m?.value != null,
+      notes: `${tierNote(m?.tier ?? null, m?.area_label ?? null)} BLS SOC 39-9011 (Childcare Workers) hourly mean — defensible proxy; real in-home nanny rates typically run 30–60% higher.`,
+      raw_data: { soc: '39-9011', datatype: '03_hourly_mean', tier: m?.tier ?? null, area_code: m?.area_code ?? null, area_label: m?.area_label ?? null, series_id: m?.series_id ?? null },
+    })
+  }
   add({
     signal_key: 'household_discretionary_income_proxy',
     label: 'Household Discretionary Income Estimate',
@@ -351,7 +378,22 @@ function buildSowSignals(args: {
     add(missingSignal('franchisee_supply', 'private_charter_montessori_teacher_count', 'Private / Charter / Montessori Teachers', 'nces_ccd', nces?.error ?? 'NCES CCD lookup unavailable.'))
   }
   add({ signal_key: 'elementary_school_count', label: 'Elementary Schools', value: existingCounts.elementary_schools ?? 'Not available yet', source: 'apify', confidence: 0.6, status: 'proxy', metric_category: 'franchisee_supply', used_in_score: true })
-  add({ signal_key: 'teacher_salary_proxy', label: 'Average Teacher Salary Proxy', value: fmtMoney(bls?.teacher_salary_proxy ?? null), source: bls ? 'bls' : 'not_connected', source_url: bls?.source_url ?? null, confidence: bls ? 0.7 : 0, status: bls ? 'proxy' : 'missing', metric_category: 'franchisee_supply', used_in_score: Boolean(bls) })
+  {
+    const m = blsOews?.teacher_annual ?? null
+    add({
+      signal_key: 'teacher_salary_proxy',
+      label: 'Average Teacher Salary Proxy',
+      value: m?.value != null ? `$${Math.round(m.value).toLocaleString()}` : 'Not available yet',
+      source: m?.value != null ? 'bls_oews' : 'not_connected',
+      source_url: blsOews?.source_url ?? null,
+      confidence: m?.tier === 'metro' ? 0.85 : (m?.tier ? 0.65 : 0),
+      status: tierStatus(m?.tier ?? null),
+      metric_category: 'franchisee_supply',
+      used_in_score: m?.value != null,
+      notes: `${tierNote(m?.tier ?? null, m?.area_label ?? null)} BLS SOC 25-2021 (Elementary School Teachers) annual mean wage.`,
+      raw_data: { soc: '25-2021', datatype: '04_annual_mean', tier: m?.tier ?? null, area_code: m?.area_code ?? null, area_label: m?.area_label ?? null, series_id: m?.series_id ?? null },
+    })
+  }
   if (bea?.rpp_all_items != null) {
     add({ signal_key: 'cost_of_living_index', label: `Cost of Living Index (BEA RPP, ${bea.year ?? 'latest'})`, value: String(bea.rpp_all_items), source: 'bea_rpp', source_url: bea.source_url, confidence: 0.9, status: 'live', metric_category: 'franchisee_supply', used_in_score: true, notes: 'BEA Regional Price Parity, all items, state-level. National = 100.', raw_data: { year: bea.year } })
   } else {
@@ -367,7 +409,22 @@ function buildSowSignals(args: {
     add(missingSignal('ease_of_operations', 'commute_sprawl_index', 'Commute Times / Geographic Sprawl', 'census', 'B08303 returned null for this place.'))
   }
   add(missingSignal('ease_of_operations', 'state_camp_regulation_complexity', 'State Camp Regulation Complexity', 'aca', 'Needs ACA state law/regulation mapping.'))
-  add({ signal_key: 'guide_wage_proxy', label: 'Estimated Guide Wage Proxy', value: fmtMoney(bls?.guide_wage_proxy ?? null), source: bls ? 'bls' : 'not_connected', source_url: bls?.source_url ?? null, confidence: bls ? 0.6 : 0, status: bls ? 'proxy' : 'missing', metric_category: 'ease_of_operations', used_in_score: Boolean(bls) })
+  {
+    const m = blsOews?.childcare_hourly ?? null
+    add({
+      signal_key: 'guide_wage_proxy',
+      label: 'Estimated Guide Wage Proxy',
+      value: m?.value != null ? `$${m.value.toFixed(2)}/hr` : 'Not available yet',
+      source: m?.value != null ? 'bls_oews' : 'not_connected',
+      source_url: blsOews?.source_url ?? null,
+      confidence: m?.tier === 'metro' ? 0.75 : (m?.tier ? 0.55 : 0),
+      status: tierStatus(m?.tier ?? null),
+      metric_category: 'ease_of_operations',
+      used_in_score: m?.value != null,
+      notes: `${tierNote(m?.tier ?? null, m?.area_label ?? null)} BLS SOC 39-9011 (Childcare Workers) hourly mean — best public proxy for camp counselor wage.`,
+      raw_data: { soc: '39-9011', datatype: '03_hourly_mean', tier: m?.tier ?? null, area_code: m?.area_code ?? null, area_label: m?.area_label ?? null, series_id: m?.series_id ?? null },
+    })
+  }
 
   add(missingSignal('parent_mindset', 'homeschool_population_proxy', 'Homeschool Population Proxy', 'state_edu', 'Needs state education/homeschool source.'))
   add({ signal_key: 'montessori_school_density', label: 'Elementary Montessori School Density', value: census?.children_5_12_count ? Math.round(((existingCounts.montessori ?? 0) / census.children_5_12_count) * 10000 * 10) / 10 : 'Not available yet', source: census ? 'computed' : 'not_connected', confidence: census ? 0.55 : 0, status: census ? 'proxy' : 'missing', metric_category: 'parent_mindset', used_in_score: Boolean(census) })
@@ -420,11 +477,12 @@ Deno.serve(async (req) => {
       children_pct: censusData?.children_5_12_pct ?? null,
       last_scraped_at: startedAt,
       notes: 'SOW metric coverage refresh',
-    }, { onConflict: 'city,state' }).select('id, latitude, longitude').single()
+    }, { onConflict: 'city,state' }).select('id, latitude, longitude, metro_area').single()
     if (cityErr || !cityRow) return json({ error: 'Failed to upsert city', detail: cityErr?.message }, 500)
     const cityId = cityRow.id as string
     const cityLat = cityRow.latitude != null ? Number(cityRow.latitude) : null
     const cityLng = cityRow.longitude != null ? Number(cityRow.longitude) : null
+    const cityMetro = (cityRow as any).metro_area as string | null
 
     const { data: latestJobRows } = await admin
       .from('city_fetch_jobs')
@@ -459,16 +517,29 @@ Deno.serve(async (req) => {
     const mergedUrls = Array.from(new Set([...pricingDiscovery.urls, ...competitorUrls]))
     const waitlistResult = await fetchCompetitorWaitlistSignals(mergedUrls)
 
-    // Day 2: NOAA Open-Meteo + BEA RPP + NCES CCD, run in parallel.
-    const [noaaResult, beaResult, ncesResult] = await Promise.all([
+    // Day 2: NOAA Open-Meteo + BEA RPP + NCES CCD; Day 4 adds BLS OEWS — all in parallel.
+    const stateAbbr = resolveStateAbbr(state)
+    const [noaaResult, beaResult, ncesResult, blsOewsData] = await Promise.all([
       fetchNoaaClimateMetrics(cityLat, cityLng),
       fetchBeaRpp(state),
       fetchNcesElementaryStaffing(city, state),
+      fetchBlsOewsWages(stateAbbr, cityMetro, city, state),
     ])
+    console.log('[fetchBlsOewsWages]', {
+      city,
+      state,
+      teacher_tier: blsOewsData.teacher_annual.tier,
+      teacher_value: blsOewsData.teacher_annual.value,
+      childcare_tier: blsOewsData.childcare_hourly.tier,
+      childcare_value: blsOewsData.childcare_hourly.value,
+      area: blsOewsData.teacher_annual.area_label ?? blsOewsData.childcare_hourly.area_label,
+      error: blsOewsData.error,
+    })
 
     const signals = buildSowSignals({
       census: censusData,
       bls: blsData,
+      blsOews: blsOewsData,
       existingCounts,
       existingWarnings,
       sprint: sprintData,
@@ -504,7 +575,7 @@ Deno.serve(async (req) => {
     if (insertErr) return json({ error: 'Failed to insert SOW metric signals', detail: insertErr.message }, 500)
 
     const completedAt = new Date().toISOString()
-    const warnings = { census: censusError, bls: blsError, census_sprint: sprintError, trends: trendsResult.error, waitlist: waitlistResult.error, noaa: noaaResult.error, bea: beaResult.error, nces: ncesResult.error }
+    const warnings = { census: censusError, bls: blsError, bls_oews: blsOewsData.error, census_sprint: sprintError, trends: trendsResult.error, waitlist: waitlistResult.error, noaa: noaaResult.error, bea: beaResult.error, nces: ncesResult.error }
 
     // ---- Phase C: SOW shadow scoring (observation only) ----
     const sowMetricValues: SowMetricValues = {
@@ -515,16 +586,16 @@ Deno.serve(async (req) => {
       income_100k_plus_pct:              censusData?.income_100k_plus_pct ?? null,
       income_150k_plus_pct:              censusData?.income_150k_plus_pct ?? null,
       education_bachelors_plus_pct:      censusData?.bachelors_plus_pct ?? null,
-      childcare_nanny_hourly_rate_proxy: blsData?.childcare_worker_wage_proxy ?? null,
+      childcare_nanny_hourly_rate_proxy: blsOewsData.childcare_hourly.value ?? blsData?.childcare_worker_wage_proxy ?? null,
       household_discretionary_income_proxy: censusData?.household_discretionary_income_proxy ?? null,
       summer_camps_per_10k_children:     censusData?.children_5_12_count
         ? Math.round(((existingCounts.competitors ?? 0) / censusData.children_5_12_count) * 10000 * 10) / 10
         : null,
       stem_robotics_maker_camp_count:    existingCounts.stem_enrichment ?? null,
       elementary_school_count:           existingCounts.elementary_schools ?? null,
-      teacher_salary_proxy:              blsData?.teacher_salary_proxy ?? null,
+      teacher_salary_proxy:              blsOewsData.teacher_annual.value ?? blsData?.teacher_salary_proxy ?? null,
       rental_venue_count:                existingCounts.rental_venues ?? null,
-      guide_wage_proxy:                  blsData?.guide_wage_proxy ?? null,
+      guide_wage_proxy:                  blsOewsData.childcare_hourly.value ?? blsData?.guide_wage_proxy ?? null,
       montessori_school_density:         censusData?.children_5_12_count
         ? Math.round(((existingCounts.montessori ?? 0) / censusData.children_5_12_count) * 10000 * 10) / 10
         : null,

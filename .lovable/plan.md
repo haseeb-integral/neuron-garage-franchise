@@ -1,58 +1,73 @@
-## Problem
+# Day 4 — BLS OEWS Wage Fetcher
 
-Last turn I made the Data Sources drawer worse:
+Promote 3 wage proxies to real BLS data with honest tier tracking.
 
-1. **Jargon**: header says "of 17 SOW metrics" — "SOW" is internal shorthand the user shouldn't have to decode.
-2. **Wrong denominator**: counter shows 17 (only the metrics enabled in scoring). The other ~28 metrics from the spec are hidden inside per-category collapsibles, so the user can't see all 46.
-3. **Wrong word**: header chip says "proxy" — the agreed user-facing label is **Estimated** (already used in row badges via `STATUS_LABEL`).
-4. **Hidden per-category rows**: every metric with `enabled: false` was tucked under a "Not in current scoring model" toggle. Demand visibly shows 7 of 12, Pricing Power 2 of 7, etc.
-5. **Custom rows silently lumped into "proxy"** — that's why 4 + 10 + 4 ≠ 17.
+## 1. New fetcher: `fetchBlsOewsWages(stateAbbr, metroArea)`
 
-## Registry count discrepancy — needs your call
+Location: `supabase/functions/_shared/metricFetchers.ts`
 
-`SOW_METRIC_REGISTRY` in `src/lib/sowMetricRegistry.ts` currently has **45 entries**, not 46:
-- Demand: 12 · Pricing Power: 7 · Competitive Landscape: 8 · Franchisee Supply: 6 · Ease of Operations: 5 · Parent Mindset: 7 = **45**
+- Single BLS Public Data API v2 request (uses existing `BLS_API_KEY`).
+- Series IDs follow OEWS format: `OEUM<area_code><industry><soc_code><datatype>`.
+  - SOC `25-2021` Elementary Teachers — annual mean wage (datatype `04`)
+  - SOC `39-9011` Childcare Workers — hourly mean wage (datatype `03`)
+- 3-tier fallback **per SOC** (independent — teacher may be metro while childcare is state):
+  1. **Metro** — resolve `metroArea` → MSA area code via small built-in map (Dallas-Fort Worth, Houston, NYC, LA, Chicago, Phoenix, Atlanta, Boston, Miami, Seattle, DC, etc.; expand as needed). Series prefix `OEUM`.
+  2. **State** — resolve `stateAbbr` → state area code. Series prefix `OEUS`.
+  3. **National** — area code `0000000`. Series prefix `OEUN`.
+- Returns:
+  ```ts
+  { teacher: { value, tier, area }, childcare: { value, tier, area }, error }
+  ```
+  where `tier ∈ 'metro' | 'state' | 'national' | null` and value is `null` on full failure.
+- Catches all network/parse errors — never throws. Single HTTP request batches all needed series IDs (BLS allows up to 50 per request).
 
-I'll wire the header to read from `SOW_METRIC_REGISTRY.length` so the number stays truthful no matter what. **Tell me which metric is missing from the registry vs. the spec and I'll add the 46th entry in the same edit** — I won't make one up.
+## 2. Wire into SOW function
 
-## Fix (UI-only, one file)
+Location: `supabase/functions/fetch-city-market-data-sow/index.ts`
 
-### A. Header strings — drop "SOW", use "Estimated"
-- Subtitle: `Source-of-truth audit for the SOW metric coverage powering this market's score.`
-  → `Source-of-truth audit for every metric powering this market's score.`
-- Coverage chip: `4 live · 10 proxy · 4 missing · of 17 SOW metrics`
-  → `{live} Live · {estimated} Estimated · {missing} Missing · {blocked} Blocked · of {SOW_METRIC_REGISTRY.length} metrics` (and a separate `· {n} Custom` chip when n > 0).
+- Call `fetchBlsOewsWages(stateAbbr, metroArea)` inside the existing `Promise.all([...])` block alongside NOAA / BEA / NCES.
+- Cap respected: 1 BLS request per refresh.
+- Pass result into `buildSowSignals(...)` via a new `blsOews` field.
 
-### B. Count all metrics in the header chip
-In `MarketDetailDrawer.tsx`, change `coverageCounts` to walk **both** `enabled` and `disabled` buckets in `coverageByCategory`. Denominator becomes `SOW_METRIC_REGISTRY.length` (45 today, 46 once you tell me what's missing), not `enabledRegistryTotal`.
+## 3. Signal writes (in `buildSowSignals`)
 
-### C. Show every metric inline per category (no toggle)
-Remove the `showDisabled` collapsible. Render `enabled` rows first, then `disabled` rows directly below them, separated only by a thin label row `Not in current scoring model · {n}` (visual divider, no click). Disabled rows keep `opacity-70` and the "Info only" badge so it's clear they don't affect the score.
+Three signals to `city_market_signals`:
 
-Per-category coverage chip becomes `{wired}/{totalIncludingDisabled} wired · {custom} custom`.
+| signal_key | source | value | status rule |
+|---|---|---|---|
+| `teacher_salary_proxy` | bls_oews | `$NN,NNN` | `live` if tier=metro, else `proxy` if state/national, else `missing` |
+| `guide_wage_proxy` | bls_oews | `$NN.NN/hr` | same |
+| `childcare_nanny_hourly_rate_proxy` | bls_oews | `$NN.NN/hr` | same (reuses SOC 39-9011 — different registry meaning) |
 
-### D. Custom metrics out of "proxy"
-Custom rows still render in their category, and get their own `· {n} Custom` chip in the header. They stop being silently merged into the Estimated count.
+Each row's `raw_data` includes:
+```json
+{ "soc": "25-2021", "tier": "metro", "area_code": "19100", "area_label": "Dallas-Fort Worth-Arlington, TX" }
+```
 
-## Files touched
+Notes field surfaces tier in plain English:
+- metro → "BLS OEWS metro-level wage for [MSA]"
+- state → "BLS OEWS state-level wage (no metro data); used as proxy for [city]"
+- national → "BLS OEWS national wage (no state data); used as proxy"
 
-- `src/components/city-scoring/MarketDetailDrawer.tsx` only — header strings, counter math (lines ~340-391), remove `showDisabled` toggle, render disabled rows inline.
-- `src/lib/sowMetricRegistry.ts` — add the 46th metric **only after you tell me which one**.
+## 4. Registry promotion
 
-## Out of scope
+Flip `status: 'proxy'` → `status: 'live'` for these 3 keys in **both** files:
+- `supabase/functions/_shared/scoring.ts`
+- `src/lib/sowMetricRegistry.ts`
 
-- Renaming fetcher signal keys (Phase 2 from earlier plan).
-- Scoring math changes.
-- Adding new fetchers for missing data.
-- Overview tab, Compare modal, CSV export, "Refresh school data" button.
+`enabled` flags and weights unchanged. (Per-row runtime status from raw_data still drives the Live/Estimated/Missing UI badges, so a state-fallback row will still display as "Estimated" even though the registry says live — this matches Day 2/3 behavior.)
 
-## Risk
+## 5. Verify
 
-Low. Frontend-only. No DB, no scoring, no fetcher edits. Composite scores unchanged.
+- Deploy `fetch-city-market-data-sow`.
+- Direct curl with `{ city: "Frisco", state: "Texas" }`.
+- Report:
+  - New Live / Estimated / Missing counts
+  - Which BLS tier was used for Frisco's teacher and childcare SOC (expected: metro = Dallas-Fort Worth-Arlington MSA, area code `19100`)
+- Stop. Wait for confirm before Day 5.
 
-## Verification
+## Risks / honest caveats
 
-Open Data Sources for Frisco, TX after the fix:
-- Header reads e.g. `13 Live · 5 Estimated · 26 Missing · 1 Blocked · 1 Custom · of 46 metrics`. No "SOW" anywhere. No "proxy" anywhere.
-- Demand category shows all 12 rows inline (7 enabled bright + 5 disabled dimmed) with no clicks.
-- Custom row appears in its category and in its own chip — not folded into Estimated.
+- **MSA code map is hand-rolled.** Cities outside the ~30 MSAs we encode will fall back to state-tier (still proxy, still useful — just not "live"). Easy to extend later.
+- **OEWS data is annual** (one release per year, ~May). No freshness concern within a sprint.
+- **`childcare_nanny_hourly_rate_proxy` reuses SOC 39-9011.** It's the closest defensible BLS code for in-home childcare. Real Care.com nanny rates run 30-60% higher; flagged in the notes field so Sam isn't misled.

@@ -99,7 +99,7 @@ export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
     enabled: false, weight_within_category: 0,    status: "missing" },
   { key: "childcare_nanny_hourly_rate_proxy", category: "pricing_power", label: "Childcare / Nanny Hourly Rate",
     description: "What local families already pay for childcare. Anchors what they'll comfortably pay for camp.",
-    enabled: true,  weight_within_category: 0.40, status: "proxy" },
+    enabled: true,  weight_within_category: 0.40, status: "live" },
   { key: "household_discretionary_income_proxy", category: "pricing_power", label: "Household Discretionary Income",
     description: "Income left after essentials. Larger discretionary pool = more room for premium camp spend.",
     enabled: true,  weight_within_category: 0.20, status: "proxy" },
@@ -142,7 +142,7 @@ export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
     enabled: true,  weight_within_category: 0.40, status: "proxy" },
   { key: "teacher_salary_proxy", category: "franchisee_supply", label: "Average Teacher Salary",
     description: "Lower teacher pay = stronger pull toward summer income and franchise ownership upside.",
-    enabled: true,  weight_within_category: 0.30, status: "proxy" },
+    enabled: true,  weight_within_category: 0.30, status: "live" },
   { key: "cost_of_living_index", category: "franchisee_supply", label: "Cost of Living Index",
     description: "Local cost of living vs. national. High COL + low teacher pay = the strongest recruiting market.",
     enabled: false, weight_within_category: 0,    status: "live" },
@@ -168,7 +168,7 @@ export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
     enabled: false, weight_within_category: 0,    status: "missing" },
   { key: "guide_wage_proxy", category: "ease_of_operations", label: "Estimated Guide Wage",
     description: "Local hourly wage for camp counselors / 'Guides'. Major recurring labor cost for the franchisee.",
-    enabled: true,  weight_within_category: 0.30, status: "proxy" },
+    enabled: true,  weight_within_category: 0.30, status: "live" },
 
   // ─────────── PARENT MINDSET ───────────
   { key: "homeschool_population_proxy", category: "parent_mindset", label: "Homeschool Population Proxy",

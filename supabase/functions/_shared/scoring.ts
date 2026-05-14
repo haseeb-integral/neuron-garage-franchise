@@ -241,7 +241,7 @@ export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
   { key: "premium_stem_camp_pricing",           category: "pricing_power", label: "Premium STEM / Maker / Enrichment Camp Pricing",    enabled: false, weight_within_category: 0,    status: "live" },
   { key: "private_school_tuition_proxy",        category: "pricing_power", label: "Private Elementary School Tuition Levels",          enabled: false, weight_within_category: 0,    status: "missing" },
   { key: "private_school_student_count",        category: "pricing_power", label: "Number of Private School Students",                 enabled: false, weight_within_category: 0,    status: "missing" },
-  { key: "childcare_nanny_hourly_rate_proxy",   category: "pricing_power", label: "Childcare / Nanny Hourly Rate Proxy",               enabled: true,  weight_within_category: 0.40, status: "proxy" },
+  { key: "childcare_nanny_hourly_rate_proxy",   category: "pricing_power", label: "Childcare / Nanny Hourly Rate Proxy",               enabled: true,  weight_within_category: 0.40, status: "live"  },
   { key: "household_discretionary_income_proxy",category: "pricing_power", label: "Household Discretionary Income Estimate",           enabled: true,  weight_within_category: 0.20, status: "proxy" },
 
   // Competitive Landscape
@@ -258,7 +258,7 @@ export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
   { key: "public_elementary_teacher_count",     category: "franchisee_supply", label: "Public Elementary Teachers",                    enabled: false, weight_within_category: 0,    status: "live"    },
   { key: "private_charter_montessori_teacher_count", category: "franchisee_supply", label: "Private / Charter / Montessori Teachers", enabled: false, weight_within_category: 0,    status: "live"    },
   { key: "elementary_school_count",             category: "franchisee_supply", label: "Elementary Schools",                            enabled: true,  weight_within_category: 0.40, status: "proxy"   },
-  { key: "teacher_salary_proxy",                category: "franchisee_supply", label: "Average Teacher Salary Proxy",                  enabled: true,  weight_within_category: 0.30, status: "proxy"   },
+  { key: "teacher_salary_proxy",                category: "franchisee_supply", label: "Average Teacher Salary Proxy",                  enabled: true,  weight_within_category: 0.30, status: "live"    },
   { key: "cost_of_living_index",                category: "franchisee_supply", label: "Cost of Living Index",                          enabled: false, weight_within_category: 0,    status: "live"    },
   { key: "student_teacher_ratio_elementary",    category: "franchisee_supply", label: "Elementary Student-Teacher Ratio",              enabled: false, weight_within_category: 0,    status: "live"    },
   { key: "summer_income_need_ratio",            category: "franchisee_supply", label: "Summer Income Need Ratio",                      enabled: false, weight_within_category: 0,    status: "missing" },
@@ -268,7 +268,7 @@ export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
   { key: "classroom_rental_cost_weekly",        category: "ease_of_operations", label: "Typical Classroom Rental Cost per Week",       enabled: false, weight_within_category: 0,    status: "missing" },
   { key: "commute_sprawl_index",                category: "ease_of_operations", label: "Commute Times / Geographic Sprawl",            enabled: false, weight_within_category: 0,    status: "live"    },
   { key: "state_camp_regulation_complexity",    category: "ease_of_operations", label: "State Camp Regulation Complexity",             enabled: false, weight_within_category: 0,    status: "missing" },
-  { key: "guide_wage_proxy",                    category: "ease_of_operations", label: "Estimated Guide Wage Proxy",                   enabled: true,  weight_within_category: 0.30, status: "proxy" },
+  { key: "guide_wage_proxy",                    category: "ease_of_operations", label: "Estimated Guide Wage Proxy",                   enabled: true,  weight_within_category: 0.30, status: "live"  },
 
   // Parent Mindset
   { key: "homeschool_population_proxy",         category: "parent_mindset", label: "Homeschool Population Proxy",                      enabled: false, weight_within_category: 0,    status: "missing" },
@@ -328,7 +328,7 @@ export function normalizeSowMetric(
     case "income_150k_plus_pct":              return lin(v, 10, 50);
     case "education_bachelors_plus_pct":      return lin(v, 25, 70);
     // Pricing power
-    case "childcare_nanny_hourly_rate_proxy": return lin(v, 25000, 60000);
+    case "childcare_nanny_hourly_rate_proxy": return lin(v, 11, 25); // BLS SOC 39-9011 hourly mean wage ($/hr)
     case "household_discretionary_income_proxy": return lin(v, 20000, 150000);
     case "avg_weekly_camp_tuition":           return lin(v, 200, 600);
     case "avg_hourly_camp_pricing":           return lin(v, 8, 20);
@@ -349,7 +349,7 @@ export function normalizeSowMetric(
     case "summer_income_need_ratio":          return lin(v, 0, 1);
     // Ease of operations
     case "rental_venue_count":                return lin(v, 0, 25);
-    case "guide_wage_proxy":                  return lin(v, 25000, 60000, true);
+    case "guide_wage_proxy":                  return lin(v, 11, 25, true); // BLS SOC 39-9011 hourly mean wage; lower wage = better unit economics
     case "classroom_rental_cost_weekly":      return lin(v, 250, 2000, true);
     case "commute_sprawl_index":              return lin(v, 10, 60, true);
     case "state_camp_regulation_complexity":  return lin(v, 1, 5, true);

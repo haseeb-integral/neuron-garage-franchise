@@ -44,6 +44,7 @@ const fmt = (n: number | null | undefined, decimals = 1) =>
 export function SubMetricWeightsDrawer({
   open, onOpenChange, categoryKey, categoryLabel, categoryColor, categoryBg,
   selectedCityLabel, rawValuesByKey, serverCategoryScore, masterWeightPct,
+  masterWeightPendingPct, currentCategoryScore, currentComposite, computeNewComposite,
 }: Props) {
   const subWeights = useCityScoringStore((s) => s.subWeights);
   const setSubWeight = useCityScoringStore((s) => s.setSubWeight);

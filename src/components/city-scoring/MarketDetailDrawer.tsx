@@ -458,6 +458,66 @@ export function MarketDetailDrawer({
     );
   };
 
+  const renderRegistryRow = (
+    metric: SowMetricEntry,
+    signal: LiveSignal | null,
+    status: MetricStatus,
+    dimmed = false,
+  ) => {
+    const used = metric.enabled && (status === "live" || status === "proxy");
+    const value = signal && status !== "missing" ? displayValue(signal.value) : "Not collected yet";
+    const sub =
+      status === "missing" && metric.status !== "blocked"
+        ? "No fetcher wired yet"
+        : status === "blocked"
+        ? "Source unavailable"
+        : relativeTime(signal?.updated_at);
+    return (
+      <div
+        key={`reg-${metric.key}`}
+        className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-[#f1f4f9] px-2 py-1.5 last:border-0 hover:bg-[#fbfcff] ${
+          dimmed || status === "missing" ? "opacity-70" : ""
+        }`}
+      >
+        <div className="min-w-0">
+          <p className="text-[12px] font-medium text-[#07142f] line-clamp-2" title={metric.label}>
+            {metric.label}
+          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-1">
+            <ScoreImpactBadge used={used} />
+            <GeoBadge source={signal?.source} signalKey={signal?.signal_key ?? metric.key} />
+            <StatusBadge status={status} />
+            {signal?.source && status !== "missing" && (
+              <span className="rounded-full border border-[#e5eaf2] bg-white px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#526078]">
+                {signal.source}
+              </span>
+            )}
+          </div>
+          {(status === "missing" || dimmed) && (
+            <p className="mt-0.5 text-[10.5px] text-[#8794ab] line-clamp-2">{metric.description}</p>
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-2 text-right">
+          <div>
+            <p className="text-[12px] font-bold text-[#07142f]">{value}</p>
+            <p className="text-[10px] text-[#8794ab]">{sub}</p>
+          </div>
+          {signal?.source_url ? (
+            <a
+              href={signal.source_url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-[#174be8] hover:text-[#1240c9]"
+              title="Open source"
+            >
+              <ExternalLink size={12} />
+            </a>
+          ) : null}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
       <SheetContent className="w-full sm:max-w-[640px] bg-white p-0 flex flex-col">

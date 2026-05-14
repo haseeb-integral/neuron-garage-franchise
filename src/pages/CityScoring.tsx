@@ -706,9 +706,44 @@ const CityScoring = () => {
     ? liveCity.composite_score
     : selected.compositeScore;
 
-  const detailCategoryScores = { ...cs, ...liveUiCategoryScores } as Record<CategoryKey, number>;
+  const baseDetailCategoryScores = { ...cs, ...liveUiCategoryScores } as Record<CategoryKey, number>;
 
-  // Frontend-only weighted composite using applied weights and visible category scores.
+  // Build raw signal values keyed by SOW signal_key for the selected city.
+  const rawValuesByKey = useMemo(() => {
+    const out: Record<string, number | null> = {};
+    for (const s of liveSignals) {
+      if (!s?.signal_key) continue;
+      out[s.signal_key] = parseSignalValue(s.value);
+    }
+    return out;
+  }, [liveSignals]);
+
+  // Recompute each category score using the user's applied sub-weights when
+  // available; otherwise fall back to the server-stored category score.
+  const recomputedByCategory = useMemo(() => {
+    const out = {} as Record<CategoryKey, ReturnType<typeof recomputeCategoryScore>>;
+    (Object.keys(baseDetailCategoryScores) as CategoryKey[]).forEach((k) => {
+      out[k] = recomputeCategoryScore(
+        METRICS_BY_CATEGORY[k] ?? [],
+        rawValuesByKey,
+        appliedSubWeights[k] ?? {},
+        baseDetailCategoryScores[k] ?? null,
+      );
+    });
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseDetailCategoryScores, rawValuesByKey, appliedSubWeights]);
+
+  const detailCategoryScores = (() => {
+    const out = { ...baseDetailCategoryScores } as Record<CategoryKey, number>;
+    (Object.keys(out) as CategoryKey[]).forEach((k) => {
+      const r = recomputedByCategory[k];
+      if (r?.score != null) out[k] = Math.round(r.score);
+    });
+    return out;
+  })();
+
+  // Frontend-only weighted composite using applied weights and recomputed scores.
   const appliedTotal = Object.values(appliedWeights).reduce((s, v) => s + v, 0);
   const weightedComposite = appliedTotal > 0
     ? Math.round(

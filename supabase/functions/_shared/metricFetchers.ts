@@ -76,15 +76,20 @@ export async function fetchCensusSprintMetrics(
     ]
     const dataUrl = `https://api.census.gov/data/2022/acs/acs5?get=${vars.join(',')}&for=place:${placeFips}&in=state:${stateFips}&key=${key}`
     const dataRes = await fetch(dataUrl)
-    if (!dataRes.ok) return { data: null, error: `Census ACS sprint ${dataRes.status}` }
+    if (!dataRes.ok) {
+      const body = await dataRes.text().catch(() => '')
+      return { data: null, error: `Census ACS sprint ${dataRes.status}: ${body.slice(0, 200)}` }
+    }
     const arr = await dataRes.json() as string[][]
-    const row = arr[1]
+    const row = arr?.[1]
+    if (!row) return { data: null, error: `Census ACS sprint: empty row for place ${placeFips} state ${stateFips}` }
     const num = (v: string) => { const n = Number(v); return Number.isFinite(n) && n >= 0 ? n : null }
     const hhKids2022 = num(row[0])
     const marriedKids = num(row[1])
     const dualIncome = num(row[2])
     const commuteTotal = num(row[3])
     const longCommute = (num(row[4]) ?? 0) + (num(row[5]) ?? 0) + (num(row[6]) ?? 0)
+    console.log('[fetchCensusSprintMetrics]', { city, state, placeFips, stateFips, hhKids2022, marriedKids, dualIncome, commuteTotal, longCommute })
 
     let hhKids2017: number | null = null
     try {

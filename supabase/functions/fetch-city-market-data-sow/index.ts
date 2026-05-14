@@ -517,12 +517,24 @@ Deno.serve(async (req) => {
     const mergedUrls = Array.from(new Set([...pricingDiscovery.urls, ...competitorUrls]))
     const waitlistResult = await fetchCompetitorWaitlistSignals(mergedUrls)
 
-    // Day 2: NOAA Open-Meteo + BEA RPP + NCES CCD, run in parallel.
-    const [noaaResult, beaResult, ncesResult] = await Promise.all([
+    // Day 2: NOAA Open-Meteo + BEA RPP + NCES CCD; Day 4 adds BLS OEWS — all in parallel.
+    const stateAbbr = resolveStateAbbr(state)
+    const [noaaResult, beaResult, ncesResult, blsOewsData] = await Promise.all([
       fetchNoaaClimateMetrics(cityLat, cityLng),
       fetchBeaRpp(state),
       fetchNcesElementaryStaffing(city, state),
+      fetchBlsOewsWages(stateAbbr, cityMetro, city, state),
     ])
+    console.log('[fetchBlsOewsWages]', {
+      city,
+      state,
+      teacher_tier: blsOewsData.teacher_annual.tier,
+      teacher_value: blsOewsData.teacher_annual.value,
+      childcare_tier: blsOewsData.childcare_hourly.tier,
+      childcare_value: blsOewsData.childcare_hourly.value,
+      area: blsOewsData.teacher_annual.area_label ?? blsOewsData.childcare_hourly.area_label,
+      error: blsOewsData.error,
+    })
 
     const signals = buildSowSignals({
       census: censusData,

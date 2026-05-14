@@ -363,3 +363,119 @@ export async function fetchBeaRpp(state: string): Promise<{
     return { data: null, error: (e as Error).message }
   }
 }
+
+// ─────────── NCES CCD: elementary teacher staffing ───────────
+// Pulls a single state-wide CCD elementary directory page (Urban Institute
+// returns the full state in one response — query-param filters like
+// city_location/lea_name are silently ignored upstream, so we filter locally).
+//
+// Outputs three metrics for the city:
+//   - public_elementary_teacher_count        (sum teachers_fte across public, non-charter elementary)
+//   - student_teacher_ratio_elementary       (enrollment / FTE, 1 decimal)
+//   - private_charter_montessori_teacher_count
+//       Currently only includes CHARTER FTE from CCD.
+//       (Urban Institute does not expose a PSS endpoint; private + Montessori
+//       breakdown is deferred. We still mark this 'live' when any CCD data is
+//       returned for the city — value may be 0 if no charter elementaries.)
+//
+// Returns status 'missing' when:
+//   - state is unknown / not in 50-state map
+//   - upstream API errors / timeout
+//   - no rows matched the city locally
+
+export type NcesElementaryStaffing = {
+  status: 'live' | 'missing'
+  public_elementary_teacher_count: number | null
+  public_elementary_enrollment: number | null
+  student_teacher_ratio_elementary: number | null
+  private_charter_montessori_teacher_count: number | null
+  charter_school_count: number | null
+  schools_matched: number
+  year: number
+  source_url: string | null
+  error: string | null
+}
+
+const CCD_YEAR = 2022
+const CCD_BASE = `https://educationdata.urban.org/api/v1/schools/ccd/directory/${CCD_YEAR}/`
+
+const normalizeCcdCity = (s: string) =>
+  s.toUpperCase().replace(/\./g, '').replace(/\s+/g, ' ').trim()
+
+export async function fetchNcesElementaryStaffing(
+  city: string,
+  state: string,
+): Promise<NcesElementaryStaffing> {
+  const missing = (error: string | null): NcesElementaryStaffing => ({
+    status: 'missing',
+    public_elementary_teacher_count: null,
+    public_elementary_enrollment: null,
+    student_teacher_ratio_elementary: null,
+    private_charter_montessori_teacher_count: null,
+    charter_school_count: null,
+    schools_matched: 0,
+    year: CCD_YEAR,
+    source_url: null,
+    error,
+  })
+
+  const abbr = resolveStateAbbr(state)
+  if (!abbr) return missing(`Unknown state: ${state}`)
+  const fips = STATE_FIPS[abbr]
+  if (!fips) return missing(`No FIPS for ${abbr}`)
+
+  const url = `${CCD_BASE}?fips=${fips}&school_level=1`
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 25000)
+  let body: any
+  try {
+    const res = await fetch(url, { signal: controller.signal })
+    if (!res.ok) return missing(`CCD HTTP ${res.status}`)
+    body = await res.json()
+  } catch (e) {
+    return missing(`CCD fetch failed: ${(e as Error).message}`)
+  } finally {
+    clearTimeout(timeout)
+  }
+
+  const rows: any[] = Array.isArray(body?.results) ? body.results : []
+  if (!rows.length) return missing('CCD returned no rows')
+
+  const target = normalizeCcdCity(city)
+  let publicFte = 0
+  let publicEnroll = 0
+  let charterFte = 0
+  let charterCount = 0
+  let matched = 0
+  for (const r of rows) {
+    const c = r?.city_location ? normalizeCcdCity(String(r.city_location)) : ''
+    if (c !== target) continue
+    matched += 1
+    const fte = typeof r.teachers_fte === 'number' && r.teachers_fte > 0 ? r.teachers_fte : 0
+    const enr = typeof r.enrollment === 'number' && r.enrollment > 0 ? r.enrollment : 0
+    if (r.charter === 1) {
+      charterFte += fte
+      charterCount += 1
+    } else {
+      publicFte += fte
+    }
+    publicEnroll += enr
+  }
+
+  if (matched === 0) return missing(`No CCD elementary schools matched city "${city}"`)
+
+  const ratio = publicFte > 0 ? Math.round((publicEnroll / publicFte) * 10) / 10 : null
+
+  return {
+    status: 'live',
+    public_elementary_teacher_count: publicFte > 0 ? Math.round(publicFte) : 0,
+    public_elementary_enrollment: publicEnroll,
+    student_teacher_ratio_elementary: ratio,
+    private_charter_montessori_teacher_count: Math.round(charterFte),
+    charter_school_count: charterCount,
+    schools_matched: matched,
+    year: CCD_YEAR,
+    source_url: url,
+    error: null,
+  }
+}

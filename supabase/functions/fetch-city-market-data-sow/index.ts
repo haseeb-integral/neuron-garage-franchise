@@ -18,8 +18,10 @@ import {
   fetchCompetitorWaitlistSignals,
   fetchNoaaClimateMetrics,
   fetchBeaRpp,
+  fetchNcesElementaryStaffing,
   type CensusSprintMetrics,
   type NoaaClimateMetrics,
+  type NcesElementaryStaffing,
 } from '../_shared/metricFetchers.ts'
 
 const corsHeaders = {
@@ -239,8 +241,9 @@ function buildSowSignals(args: {
   waitlist: { scanned: number; waitlist: number; soldout: number } | null
   noaa: NoaaClimateMetrics | null
   bea: { rpp_all_items: number | null; year: number | null; source_url: string | null } | null
+  nces: NcesElementaryStaffing | null
 }) {
-  const { census, bls, existingCounts, sprint, trends, waitlist, noaa, bea } = args
+  const { census, bls, existingCounts, sprint, trends, waitlist, noaa, bea, nces } = args
   const signals: SignalInput[] = []
   const add = (s: SignalInput) => signals.push(s)
 
@@ -316,8 +319,15 @@ function buildSowSignals(args: {
     add(missingSignal('competitive_landscape', 'waitlist_sold_out_signal_count', 'Waitlist / Sold-Out Signals', 'firecrawl', 'No competitor URLs available to scan.'))
   }
 
-  add(missingSignal('franchisee_supply', 'public_elementary_teacher_count', 'Public Elementary Teachers', 'state_edu', 'Needs state/NCES district data.'))
-  add(missingSignal('franchisee_supply', 'private_charter_montessori_teacher_count', 'Private / Charter / Montessori Teachers', 'state_edu', 'Needs private/charter/Montessori teacher source or estimate.'))
+  if (nces && nces.status === 'live') {
+    add({ signal_key: 'public_elementary_teacher_count', label: `Public Elementary Teachers (FTE, ${nces.year})`, value: fmtNum(nces.public_elementary_teacher_count), source: 'nces_ccd', source_url: nces.source_url, confidence: 0.9, status: 'live', metric_category: 'franchisee_supply', used_in_score: true, notes: `Sum of teachers_fte across ${nces.schools_matched} CCD elementary schools matched on city_location.`, raw_data: { schools_matched: nces.schools_matched, enrollment: nces.public_elementary_enrollment, year: nces.year } })
+    add({ signal_key: 'student_teacher_ratio_elementary', label: 'Elementary Student-Teacher Ratio', value: nces.student_teacher_ratio_elementary != null ? `${nces.student_teacher_ratio_elementary}:1` : 'Not available yet', source: 'nces_ccd', source_url: nces.source_url, confidence: 0.9, status: nces.student_teacher_ratio_elementary != null ? 'live' : 'missing', metric_category: 'franchisee_supply', used_in_score: nces.student_teacher_ratio_elementary != null, notes: 'CCD enrollment ÷ teachers_fte across matched public elementary schools.', raw_data: { enrollment: nces.public_elementary_enrollment, fte: nces.public_elementary_teacher_count } })
+    add({ signal_key: 'private_charter_montessori_teacher_count', label: `Charter Elementary Teachers (FTE) — private/Montessori not yet wired`, value: fmtNum(nces.private_charter_montessori_teacher_count), source: 'nces_ccd', source_url: nces.source_url, confidence: 0.6, status: 'live', metric_category: 'franchisee_supply', used_in_score: true, notes: `CCD charter elementary FTE only (${nces.charter_school_count} schools). PSS private/Montessori source not available from Urban Institute.`, raw_data: { charter_school_count: nces.charter_school_count, year: nces.year } })
+  } else {
+    add(missingSignal('franchisee_supply', 'public_elementary_teacher_count', 'Public Elementary Teachers', 'nces_ccd', nces?.error ?? 'NCES CCD lookup unavailable.'))
+    add(missingSignal('franchisee_supply', 'student_teacher_ratio_elementary', 'Elementary Student-Teacher Ratio', 'nces_ccd', nces?.error ?? 'NCES CCD lookup unavailable.'))
+    add(missingSignal('franchisee_supply', 'private_charter_montessori_teacher_count', 'Private / Charter / Montessori Teachers', 'nces_ccd', nces?.error ?? 'NCES CCD lookup unavailable.'))
+  }
   add({ signal_key: 'elementary_school_count', label: 'Elementary Schools', value: existingCounts.elementary_schools ?? 'Not available yet', source: 'apify', confidence: 0.6, status: 'proxy', metric_category: 'franchisee_supply', used_in_score: true })
   add({ signal_key: 'teacher_salary_proxy', label: 'Average Teacher Salary Proxy', value: fmtMoney(bls?.teacher_salary_proxy ?? null), source: bls ? 'bls' : 'not_connected', source_url: bls?.source_url ?? null, confidence: bls ? 0.7 : 0, status: bls ? 'proxy' : 'missing', metric_category: 'franchisee_supply', used_in_score: Boolean(bls) })
   if (bea?.rpp_all_items != null) {
@@ -421,10 +431,11 @@ Deno.serve(async (req) => {
     const competitorUrls = (competitorRows ?? []).map((r) => r.source_url as string).filter(Boolean)
     const waitlistResult = await fetchCompetitorWaitlistSignals(competitorUrls)
 
-    // Day 2: NOAA Open-Meteo + BEA RPP, run in parallel.
-    const [noaaResult, beaResult] = await Promise.all([
+    // Day 2: NOAA Open-Meteo + BEA RPP + NCES CCD, run in parallel.
+    const [noaaResult, beaResult, ncesResult] = await Promise.all([
       fetchNoaaClimateMetrics(cityLat, cityLng),
       fetchBeaRpp(state),
+      fetchNcesElementaryStaffing(city, state),
     ])
 
     const signals = buildSowSignals({
@@ -437,6 +448,7 @@ Deno.serve(async (req) => {
       waitlist: waitlistResult,
       noaa: noaaResult.data,
       bea: beaResult.data,
+      nces: ncesResult,
     })
 
     await admin.from('city_market_signals').delete().eq('city_id', cityId)
@@ -464,7 +476,7 @@ Deno.serve(async (req) => {
     if (insertErr) return json({ error: 'Failed to insert SOW metric signals', detail: insertErr.message }, 500)
 
     const completedAt = new Date().toISOString()
-    const warnings = { census: censusError, bls: blsError, census_sprint: sprintError, trends: trendsResult.error, waitlist: waitlistResult.error, noaa: noaaResult.error, bea: beaResult.error }
+    const warnings = { census: censusError, bls: blsError, census_sprint: sprintError, trends: trendsResult.error, waitlist: waitlistResult.error, noaa: noaaResult.error, bea: beaResult.error, nces: ncesResult.error }
 
     // ---- Phase C: SOW shadow scoring (observation only) ----
     const sowMetricValues: SowMetricValues = {

@@ -1272,6 +1272,13 @@ const CityScoring = () => {
             <Select
               value={(PRESET_NAMES as string[]).includes(scoringModel) ? scoringModel : "Balanced"}
               onValueChange={(name) => {
+                // Saved-search selection
+                if (name.startsWith("saved:")) {
+                  const id = name.slice("saved:".length);
+                  const found = savedSearches.find((s) => s.id === id);
+                  if (found) handleLoadSavedSearch(found);
+                  return;
+                }
                 // Leaving "Custom" → snapshot current weights so we can restore them later.
                 if (scoringModel === "Custom" && name !== "Custom") {
                   setCustomWeightsSnapshot({ ...appliedWeights });
@@ -1299,6 +1306,26 @@ const CityScoring = () => {
                 {PRESET_NAMES.map((p) => (
                   <SelectItem key={p} value={p}>{p}</SelectItem>
                 ))}
+                {savedSearches.length > 0 && (
+                  <>
+                    <div className="px-2 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-[#8794ab]">Saved Searches</div>
+                    {savedSearches.map((s) => (
+                      <SelectItem key={s.id} value={`saved:${s.id}`} className="pr-8">
+                        <span className="flex items-center justify-between gap-2 w-full">
+                          <span className="truncate">{s.name}</span>
+                        </span>
+                        <button
+                          type="button"
+                          onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteSavedSearch(s); }}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-[#fde8e8] text-[#9aa6bd] hover:text-[#dc2626]"
+                          aria-label={`Delete ${s.name}`}
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </SelectItem>
+                    ))}
+                  </>
+                )}
               </SelectContent>
             </Select>
           </div>

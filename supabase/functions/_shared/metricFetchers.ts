@@ -139,7 +139,10 @@ export async function fetchGoogleTrends(city: string, state: string) {
   const actorId = normalizeActorId('emastra/google-trends-scraper')
   const cityKw = `summer camp ${city}`
   const genericKw = 'summer day camp'
-  const payload = { searchTerms: [cityKw, genericKw], geo: 'US', timeRange: 'today 12-m', category: 0 }
+  // emastra/google-trends-scraper rejects 'today 12-m'; the actor's schema
+  // requires one of the short codes (e.g. 'today 1-m', 'today 3-m').
+  // Use 'today 3-m' for stable seasonal signal without the 400.
+  const payload = { searchTerms: [cityKw, genericKw], geo: 'US', timeRange: 'today 3-m', category: 0 }
   try {
     const res = await fetch(`https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${token}&timeout=120`, {
       method: 'POST',

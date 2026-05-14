@@ -362,7 +362,17 @@ export function SubMetricWeightsDrawer({
               )}
             </div>
           </TooltipProvider>
-
+        ) : (
+          <FormulaPanel
+            categoryLabel={categoryLabel}
+            selectedCityLabel={selectedCityLabel}
+            previewRecompute={previewRecompute}
+            serverCategoryScore={serverCategoryScore ?? null}
+            masterWeightPct={masterWeightPct ?? null}
+            masterWeightPendingPct={masterWeightPendingPct ?? null}
+            enabledSum={enabledSum}
+            pendingEdits={pendingEdits}
+          />
         )}
 
         <AlertDialog open={confirmDeleteId !== null} onOpenChange={(o) => !o && setConfirmDeleteId(null)}>
@@ -391,20 +401,6 @@ export function SubMetricWeightsDrawer({
           </AlertDialogContent>
         </AlertDialog>
 
-        {false && (
-          <div>
-        ) : (
-          <FormulaPanel
-            categoryLabel={categoryLabel}
-            selectedCityLabel={selectedCityLabel}
-            previewRecompute={previewRecompute}
-            serverCategoryScore={serverCategoryScore ?? null}
-            masterWeightPct={masterWeightPct ?? null}
-            masterWeightPendingPct={masterWeightPendingPct ?? null}
-            enabledSum={enabledSum}
-            pendingEdits={pendingEdits}
-          />
-        )}
 
         <div className="border-t border-[#eef2f7] px-5 py-3 flex items-center justify-between gap-3 bg-[#fafbfd]">
           <p className="text-[10.5px] text-[#8794ab] leading-snug max-w-[260px]">

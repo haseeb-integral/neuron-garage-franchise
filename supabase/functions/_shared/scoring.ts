@@ -328,7 +328,7 @@ export function normalizeSowMetric(
     case "income_150k_plus_pct":              return lin(v, 10, 50);
     case "education_bachelors_plus_pct":      return lin(v, 25, 70);
     // Pricing power
-    case "childcare_nanny_hourly_rate_proxy": return lin(v, 25000, 60000);
+    case "childcare_nanny_hourly_rate_proxy": return lin(v, 11, 25); // BLS SOC 39-9011 hourly mean wage ($/hr)
     case "household_discretionary_income_proxy": return lin(v, 20000, 150000);
     case "avg_weekly_camp_tuition":           return lin(v, 200, 600);
     case "avg_hourly_camp_pricing":           return lin(v, 8, 20);

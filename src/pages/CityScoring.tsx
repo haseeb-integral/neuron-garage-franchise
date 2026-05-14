@@ -250,7 +250,7 @@ const CityScoring = () => {
     if ((PRESET_NAMES as string[]).includes(scoringModel) && scoringModel !== "Custom") {
       return `${scoringModel} – ${dateStr}`;
     }
-    const top = (Object.entries(appliedWeights) as [CategoryKey, number][])
+    const top = (Object.entries(weights) as [CategoryKey, number][])
       .sort((a, b) => b[1] - a[1])[0];
     const label = CATEGORIES.find((c) => c.key === top?.[0])?.label ?? "Custom";
     return `${label}-heavy – ${dateStr}`;

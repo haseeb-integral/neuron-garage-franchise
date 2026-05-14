@@ -104,8 +104,25 @@ function relativeTime(value?: string | null) {
 }
 
 function getStatus(signal: LiveSignal): MetricStatus {
-  return signal.raw_data?.status ?? "proxy";
+  const v = signal.value;
+  const isEmpty =
+    v == null ||
+    v === "" ||
+    v === "—" ||
+    (typeof v === "string" && /not available/i.test(v));
+  if (isEmpty) return "missing";
+  const explicit = signal.raw_data?.status as MetricStatus | undefined;
+  if (explicit) return explicit;
+  return "live";
 }
+
+const STATUS_LABEL: Record<MetricStatus, string> = {
+  live: "Live",
+  proxy: "Estimated",
+  missing: "Missing",
+  blocked: "Unavailable",
+  manual: "Manual",
+};
 
 function displayValue(value: unknown): string {
   if (value === null || value === undefined || value === "") return "—";

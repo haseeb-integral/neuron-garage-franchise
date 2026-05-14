@@ -113,3 +113,36 @@ export function recomputeComposite(
 
   return { composite: Math.round(sum), perCategoryShares };
 }
+
+// Plain-English summary of a category recompute. Drives the "human-readable"
+// block above the math table in the Show Formula panel.
+export function summarizeCategory(
+  result: CategoryRecomputeResult,
+  cityLabel: string | undefined,
+  categoryLabel: string,
+): string {
+  const cityPart = cityLabel ? `${cityLabel} scores` : "This city scores";
+  if (result.score == null) {
+    return `No usable data for ${categoryLabel} — falling back to the server-stored score.`;
+  }
+  const used = result.contributions.filter((c) => c.used);
+  const unavailable = result.contributions.filter((c) => !c.used).length;
+  const heaviest = [...used].sort((a, b) => b.contribution - a.contribution)[0];
+
+  const sentences: string[] = [];
+  sentences.push(`${cityPart} ${result.score.toFixed(1)} on ${categoryLabel}.`);
+  if (heaviest) {
+    sentences.push(
+      `${heaviest.label} is your heaviest metric at ${(heaviest.subShare * 100).toFixed(1)}% weight, contributing ${heaviest.contribution.toFixed(1)} points.`,
+    );
+  }
+  if (unavailable > 0) {
+    sentences.push(
+      `${unavailable} metric${unavailable === 1 ? " is" : "s are"} unavailable and excluded from scoring.`,
+    );
+  }
+  if (result.usedServerFallback) {
+    sentences.push(`Sub-weights collapsed to zero — using the server-stored category score as fallback.`);
+  }
+  return sentences.join(" ");
+}

@@ -35,12 +35,14 @@ import {
   type RankedMarket,
 } from "@/lib/cityScoringLiveData";
 import { useCityScoringStore, DEFAULT_WEIGHTS } from "@/stores/cityScoringStore";
+import { DEFAULT_SUB_WEIGHTS } from "@/lib/sowMetricRegistry";
 import { SubMetricWeightsDrawer } from "@/components/city-scoring/SubMetricWeightsDrawer";
 import { getCached, setCached } from "@/lib/pageCache";
 import { Settings2 } from "lucide-react";
 import { METRICS_BY_CATEGORY } from "@/lib/sowMetricRegistry";
 import { parseSignalValue } from "@/lib/sowNormalize";
-import { recomputeCategoryScore } from "@/lib/clientSubWeightScoring";
+import { recomputeCategoryScore, recomputeComposite } from "@/lib/clientSubWeightScoring";
+import { tierFromScore } from "@/lib/cityScoringLiveData";
 
 function rebalanceWeights<K extends string>(
   prev: Record<K, number>,
@@ -302,9 +304,112 @@ const CityScoring = () => {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const pageStart = (safePage - 1) * PAGE_SIZE;
-  const pageItems = filtered.slice(pageStart, pageStart + PAGE_SIZE);
+  const rawPageItems = filtered.slice(pageStart, pageStart + PAGE_SIZE);
   const showingFrom = filtered.length === 0 ? 0 : pageStart + 1;
   const showingTo = Math.min(filtered.length, pageStart + PAGE_SIZE);
+
+  // ─── Visible-page rescoring ─────────────────────────────────────────────
+  // When the user changes sub-weights, the selected-city composite already
+  // reflects them. For the visible page of the Ranked Markets list, we batch-
+  // fetch each row's signals + server category scores and recompute composites
+  // client-side using the user's appliedSubWeights + appliedWeights. Cities
+  // off-page keep their server composite. Cleared when sub-weights are at
+  // their defaults (no override needed).
+  const visibleCityIds = useMemo(
+    () => Array.from(new Set(rawPageItems.map((m) => m.cityId).filter((x): x is string => !!x))),
+    [rawPageItems],
+  );
+  const subWeightsKey = useMemo(() => JSON.stringify(appliedSubWeights), [appliedSubWeights]);
+  const appliedWeightsKey = useMemo(() => JSON.stringify(appliedWeights), [appliedWeights]);
+  const defaultSubWeightsKey = useMemo(() => JSON.stringify(DEFAULT_SUB_WEIGHTS), []);
+  const defaultMasterWeightsKey = useMemo(() => JSON.stringify(DEFAULT_WEIGHTS), []);
+  const subWeightsAreDefault =
+    subWeightsKey === defaultSubWeightsKey && appliedWeightsKey === defaultMasterWeightsKey;
+  type CompositeOverride = { composite: number; tier: "A" | "B" | "C" | "D" };
+  const [compositeOverrides, setCompositeOverrides] = useState<Record<string, CompositeOverride>>({});
+
+  useEffect(() => {
+    if (visibleCityIds.length === 0) {
+      setCompositeOverrides({});
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const [{ data: signals }, { data: scores }] = await Promise.all([
+        supabase
+          .from("city_market_signals")
+          .select("city_id,signal_key,value")
+          .in("city_id", visibleCityIds),
+        supabase
+          .from("city_category_scores")
+          .select("city_id,category,score")
+          .in("city_id", visibleCityIds),
+      ]);
+      if (cancelled) return;
+
+      const DB_TO_UI: Record<string, CategoryKey> = {
+        demand: "demand",
+        pricing_power: "pricingPower",
+        competitive_landscape: "competitiveLandscape",
+        franchisee_supply: "franchiseeSupply",
+        ease_of_operations: "easeOfOperations",
+        parent_mindset: "parentMindset",
+      };
+
+      const sigByCity: Record<string, Record<string, number | null>> = {};
+      (signals ?? []).forEach((s: any) => {
+        if (!sigByCity[s.city_id]) sigByCity[s.city_id] = {};
+        sigByCity[s.city_id][s.signal_key] = parseSignalValue(s.value);
+      });
+      const scoresByCity: Record<string, Partial<Record<CategoryKey, number>>> = {};
+      (scores ?? []).forEach((s: any) => {
+        const ui = DB_TO_UI[s.category];
+        if (!ui) return;
+        if (!scoresByCity[s.city_id]) scoresByCity[s.city_id] = {};
+        (scoresByCity[s.city_id] as any)[ui] = s.score;
+      });
+
+      const next: Record<string, CompositeOverride> = {};
+      visibleCityIds.forEach((id) => {
+        const raw = sigByCity[id] ?? {};
+        const srv = scoresByCity[id] ?? {};
+        if (Object.keys(raw).length === 0 && Object.keys(srv).length === 0) return;
+        const cats = {} as Record<CategoryKey, number | null>;
+        (Object.keys(METRICS_BY_CATEGORY) as CategoryKey[]).forEach((k) => {
+          const r = recomputeCategoryScore(
+            METRICS_BY_CATEGORY[k] ?? [],
+            raw,
+            (appliedSubWeights as any)[k] ?? {},
+            (srv as any)[k] ?? null,
+          );
+          cats[k] = r.score;
+        });
+        const { composite } = recomputeComposite(cats, appliedWeights);
+        if (composite > 0) {
+          next[id] = { composite, tier: tierFromScore(composite) };
+        }
+      });
+      setCompositeOverrides(next);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleCityIds.join(","), subWeightsKey, appliedWeightsKey]);
+
+  // Apply overrides to the visible page and re-sort by the override-aware score.
+  const pageItems = useMemo(() => {
+    const merged = rawPageItems.map((m) => {
+      const o = m.cityId ? compositeOverrides[m.cityId] : undefined;
+      if (!o) return m;
+      return { ...m, compositeScore: o.composite, tier: o.tier };
+    });
+    return [...merged].sort((a, b) => {
+      if (a.hasLiveData !== b.hasLiveData) return a.hasLiveData ? -1 : 1;
+      if (a.hasLiveData) return b.compositeScore - a.compositeScore;
+      return a.city.localeCompare(b.city);
+    });
+  }, [rawPageItems, compositeOverrides]);
+
+  const hasOverrides = Object.keys(compositeOverrides).length > 0 && !subWeightsAreDefault;
 
   const pageNumbers = useMemo<(number | "...")[]>(() => {
     if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -1159,6 +1264,24 @@ const CityScoring = () => {
           {compareMode && (
             <div className="mb-2 rounded-md bg-[#eaf0ff] border border-[#cfdcff] px-2 py-1.5 text-[11px] text-[#174be8]">
               Compare mode on — select 2 to 4 markets, then click Compare.
+            </div>
+          )}
+          {hasOverrides && (
+            <div className="mb-2 rounded-md bg-[#fffbe6] border border-[#fde68a] px-2 py-1.5 text-[11px] text-[#854d0e] flex items-center justify-between gap-2">
+              <span>
+                <span className="font-semibold">Re-ranked with your weights</span> — this page recomputed
+                from your sub-metric edits.
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  resetSubWeights();
+                  toast.success("Sub-metric weights reset to defaults");
+                }}
+                className="font-semibold text-[#174be8] hover:underline whitespace-nowrap"
+              >
+                Reset to default
+              </button>
             </div>
           )}
           <div className="overflow-hidden flex-1">

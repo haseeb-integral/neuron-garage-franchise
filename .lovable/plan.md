@@ -1,60 +1,67 @@
-# Close the gap between sub-weight edits and what the user sees
+# Build A–D + answer the 25% vs 8% question
 
-Sam types `55` for Children, hits Apply, and the drawer + main screen don't visibly tell her what changed. This plan fixes the four gaps you found.
+## Why the drawer says 25% but the card slider shows 8%
 
-## What changes (user-facing)
+I traced the code. The drawer reads from `appliedWeights` (the master weights you've **clicked Apply on**). The card slider shows `weights` (what you're **currently dragging**). They're two different states.
 
-### 1. Show Formula previews pending edits, not just applied
-Today the formula panel reads from `appliedSubWeights` (last Apply). It will read from the live `subWeights` (what's typed right now), so the Raw/Norm/Share/Contrib table updates as Sam types. The category score in the footer updates live too. Apply still controls what actually scores the city — preview is just visual.
+So right now: you dragged Demand's master slider down to 8% on the card, but you didn't click the **"Apply Weights"** button at the top-right of the Scoring Weights section. Until you click it, the drawer keeps using the previously-applied 25%, and the composite score is also still computed with 25%.
 
-A small "Pending edits — not yet applied" pill appears at the top of the table whenever live values differ from applied. After Apply, the pill disappears.
+This is by design (typing/dragging shouldn't immediately re-rank everything), but it's invisible to you — there's no signal that pending master edits exist.
 
-### 2. Plain-English summary above the math
-Above the Raw/Norm/Share/Contrib table, 2–3 dynamically generated sentences:
+**Fix added to plan (item F):** when `weights ≠ appliedWeights`, show an inline "Pending master edits — click Apply Weights to use 8%" hint inside the drawer's master-weight line, in amber, so you know exactly which number is being used and why.
 
-> **Frisco scores 71.9 on Demand.** Median Household Income is your heaviest metric at 28.4% weight, contributing 20.0 points. 4 metrics are unavailable and excluded from scoring.
+---
 
-Generated from the same live values that drive the table. The math table stays exactly as-is below it.
+## Build items
 
-### 3. Sub-weight changes re-rank the visible city table page
-On Apply, we recompute composite for the ~25 cities currently visible (current page only, not all 500+). Re-ranking happens on that slice. Cities off-page keep their server composite until they scroll into view.
+### A. Fix the close (X) overlapping the action button
+`src/components/ui/sheet.tsx` renders a built-in `<SheetPrimitive.Close>` X at `top-4 right-4`. Our drawer header puts "Show Formula" / "Edit Weights" in the same corner, so they collide. Add `pr-10` to the drawer's header action container in `SubMetricWeightsDrawer.tsx` so the action button sits left of the X with breathing room. No change to the shared `sheet.tsx`.
 
-Implementation: batch-fetch `city_market_signals` for the visible city IDs, run each through `recomputeCategoryScore` + `recomputeComposite` using `appliedSubWeights` and `appliedWeights`, and override the displayed `composite_score` for those rows. Cached per-page so re-renders are cheap.
+### B. Tooltips + legend on Raw / Norm / Share / Contrib
+Wrap each `<th>` in `Tooltip` from `@/components/ui/tooltip`:
+- **Raw** — Actual measured value for this city (e.g. 26,960 children).
+- **Norm** — Raw value scaled to 0–100 using this metric's range.
+- **Share** — This metric's slice of the category, after auto-normalizing your typed weights to 100%.
+- **Contrib** — Norm × Share. Sum of Contrib = category score.
 
-A subtle "Re-ranked with your weights" indicator appears in the table header once an override is active, with a "Reset to default scoring" link.
+Add a one-line legend above the table: *"Raw → scaled to Norm (0–100) → weighted by your Share → contributes to category score."*
 
-### 4. Button rename: "Apply Weights" → "Save & Recalculate"
-Inside the sub-metric drawer only. The main city screen's "Apply Weights" (master sliders) keeps its name. The two buttons no longer collide visually or in meaning.
+### C. Plain-English summary: explain the 25% line
+Append to `summarizeCategory` in `clientSubWeightScoring.ts`. New optional args: `masterWeightPct`, `compositeContribution`. Adds one sentence:
 
-## Technical detail
+> Demand counts for 25.0% of the overall composite, contributing 17.0 points to Frisco's composite score today.
 
-**Files to edit**
-- `SubMetricWeightsDrawer.tsx` — switch `previewRecompute` source from `appliedSubByKey` to live `subByKey`; add `<PendingPill>` when they differ; add summary block above the table; rename button.
-- `CityScoring.tsx` — add `useVisiblePageRescoring(visibleCityIds, appliedSubWeights, appliedWeights)` hook that:
-  1. Reads `city_market_signals` for those city IDs (single Supabase query, `.in('city_id', ids)`).
-  2. Pivots rows to `Record<cityId, Record<signalKey, number>>` via `parseSignalValue`.
-  3. Runs each city through all 6 categories' `recomputeCategoryScore`, then `recomputeComposite`.
-  4. Returns `Record<cityId, { composite, perCategoryScores }>` overrides.
-- `CityTable.tsx` — accept `compositeOverrides` prop; merge over server `composite_score`; sort using overrides when present; render the "Re-ranked" indicator.
-- `clientSubWeightScoring.ts` — already exports the math; small helper `summarizeCategory(contributions, score)` returns the plain-English string for the summary block.
-- `cityScoringStore.ts` — no schema change. (Pending vs applied already exists as `subWeights` vs `appliedSubWeights`.)
+If pending master edits exist (item F surfaces this), the sentence appends: *"(Master sliders have unsaved edits — click Apply Weights on the main screen to use the new value.)"*
 
-**Performance notes**
-- Visible-page rescoring is at most 25 cities × 6 categories × ~8 metrics = ~1.2k pure-function ops per Apply. Negligible.
-- Single signals query keyed on visible IDs. Result cached in a `useMemo` keyed on `[visibleIds.join, appliedSubWeights, appliedWeights]`.
-- No edge-function changes, no DB migration.
+### D. Score-delta toast after Save & Recalculate
+In `handleApply`:
+1. Capture `oldDemand` = current preview score (before normalize), `oldComposite` = current composite for selected city (from `compositeOverrides[selectedId]?.composite ?? serverComposite`).
+2. After `setAppliedSubWeights`, compute `newDemand` from the just-normalized weights and `newComposite` via `recomputeComposite` using fresh per-category scores.
+3. Replace existing `toast.success(...)` with:
+   ```
+   Demand updated: 71.4 → 68.1 · Composite updated: 78 → 77
+   ```
+   If composite unchanged (only this category drawer was edited but recompute rounds same): show only the category line. `duration: 4000`.
 
-**Edge cases**
-- Visible city has no signals row → falls back to server `composite_score` (no override).
-- All sub-weights zero in a category → that category falls back to server score, exactly like the selected-city math today.
-- Pending = applied → no pill, no override indicator.
+Note: `compositeOverrides` lives in `CityScoring.tsx`. Easiest path: pass `currentComposite` and an `onApplied(newComposite)` callback into the drawer, OR compute new composite inside the drawer using a new prop `allCategoryScoresExceptThis: Record<CategoryKey, number|null>`. I'll go with passing in the current composite plus a closure that returns recomputed composite given the new applied sub-weights — keeps the drawer self-contained.
+
+### F. (NEW — closes the 25% vs 8% confusion) Show pending master-edits hint
+In `SubMetricWeightsDrawer.tsx`, accept new prop `masterWeightPending?: { applied: number; pending: number }`. When present and `applied !== pending`, render a small amber line under the "× master weight 25.0% → composite contribution" row:
+
+> ⚠ You've dragged this slider to 8.0% but haven't clicked **Apply Weights** yet. Composite still uses 25.0%.
+
+Wire from `CityScoring.tsx` by computing both pending and applied master shares and passing both.
+
+---
+
+## Files touched
+- `src/components/city-scoring/SubMetricWeightsDrawer.tsx` — A, B, C wiring, D, F
+- `src/lib/clientSubWeightScoring.ts` — C (extend `summarizeCategory`)
+- `src/pages/CityScoring.tsx` — D (pass `currentComposite` + recompute helper), F (pass pending vs applied master)
 
 ## Out of scope
+- Auto-applying master sliders on drag (deliberate two-step UX).
+- Changing how server composite is fetched.
+- Master sliders themselves.
 
-- Re-ranking the **entire** dataset (500+ cities). You picked visible-page only; full re-rank would need a server job and is deferred.
-- Changing the math itself (formulas, normalization ranges, master weight behavior).
-- The main city screen's "Apply Weights" button — kept as-is.
-
-## Risk / undo
-
-Risk: **medium**. Touches the table that users sort and click on. Server composite stays untouched as fallback, so disabling the override hook reverts behavior instantly. Undo: revert the 4 files; no DB or edge changes.
+## Risk: Low. Undo: revert 3 files.

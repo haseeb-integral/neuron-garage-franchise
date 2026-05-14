@@ -1,17 +1,21 @@
 import { useState, useMemo } from "react";
-import { Info, RotateCcw, Minus, Plus, Calculator, Sliders } from "lucide-react";
+import { Info, RotateCcw, Minus, Plus, Calculator, Sliders, Trash2, AlertTriangle } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
   METRICS_BY_CATEGORY,
-  DEFAULT_SUB_WEIGHTS,
   CATEGORY_PURPOSE,
   type SowMetricEntry,
 } from "@/lib/sowMetricRegistry";
 import { useCityScoringStore, type CategoryKey } from "@/stores/cityScoringStore";
-import { recomputeCategoryScore, summarizeCategory } from "@/lib/clientSubWeightScoring";
+import { recomputeCategoryScore, summarizeCategory, CUSTOM_METRIC_NEUTRAL_NORM } from "@/lib/clientSubWeightScoring";
+import { useDeleteCustomCriterion, useUpdateCustomCriterionWeight, type CustomCriterionRow } from "@/hooks/useCustomCriteria";
 
 interface Props {
   open: boolean;

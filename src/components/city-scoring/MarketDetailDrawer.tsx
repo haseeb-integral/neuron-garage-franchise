@@ -606,7 +606,9 @@ export function MarketDetailDrawer({
           </TabsContent>
         </Tabs>
 
-        <div className="sticky bottom-0 mt-4 flex flex-col gap-2 border-t border-[#eef2f7] bg-white pt-3 pb-3 -mx-6 px-6 shadow-[0_-4px_12px_-6px_rgba(7,20,47,0.12)]">
+        </div>
+
+        <div className="flex-shrink-0 flex flex-col gap-2 border-t border-[#eef2f7] bg-white px-6 py-3 shadow-[0_-4px_12px_-6px_rgba(7,20,47,0.12)]">
           <Button onClick={onFindTeachers} className="w-full bg-[#174be8] hover:bg-[#1240c9] text-white font-semibold">
             Find Teachers in This Market <ArrowRight size={14} className="ml-2" />
           </Button>

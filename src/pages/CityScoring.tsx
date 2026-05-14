@@ -1059,15 +1059,18 @@ const CityScoring = () => {
       </div>
 
       {/* Title row + model controls */}
-      <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-black tracking-tight text-[#07142f]">City Search</h1>
           <p className="text-xs text-[#526078] mt-0.5">
             Discover and score the best cities, suburbs, and metros for Neuron Garage franchises.
           </p>
+          <p className="text-[10px] text-[#8794ab] leading-tight mt-1 max-w-[520px]">
+            {PRESET_DESCRIPTIONS[((PRESET_NAMES as string[]).includes(scoringModel) ? scoringModel : "Balanced") as PresetName]}
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex flex-col gap-1">
+          <div className="flex items-center">
             <Select
               value={(PRESET_NAMES as string[]).includes(scoringModel) ? scoringModel : "Balanced"}
               onValueChange={(name) => {
@@ -1100,9 +1103,6 @@ const CityScoring = () => {
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-[10px] text-[#8794ab] leading-tight max-w-[210px]">
-              {PRESET_DESCRIPTIONS[((PRESET_NAMES as string[]).includes(scoringModel) ? scoringModel : "Balanced") as PresetName]}
-            </p>
           </div>
           <Button variant="outline" className="h-9 border-[#e5eaf2] text-[#14233b] gap-1.5 font-normal" onClick={() => setAddCritOpen(true)}>
             <Plus size={14} /> Add Criteria

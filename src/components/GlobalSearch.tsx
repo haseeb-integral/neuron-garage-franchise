@@ -97,7 +97,7 @@ export function GlobalSearch({ placeholder = "Search candidates, prospects, citi
           ) : (
             <div className="overflow-y-auto py-1" style={{ flex: 1 }}>
               <ResultGroup title="Candidates" items={groups.candidateMatches} onSelect={handleSelect} />
-              <ResultGroup title="Teacher Prospects" items={groups.prospectMatches} onSelect={handleSelect} />
+              <ResultGroup title="Teacher Search" items={groups.prospectMatches} onSelect={handleSelect} />
               <ResultGroup title="Cities" items={groups.cityMatches} onSelect={handleSelect} />
             </div>
           )}

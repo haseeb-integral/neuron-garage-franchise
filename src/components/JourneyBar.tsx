@@ -22,7 +22,7 @@ export function JourneyBar() {
 
   const steps: Step[] = [
     { num: 1, label: "City Scoring", path: "/city-scoring", count: `${cityCount} cities` },
-    { num: 2, label: "Teacher Prospects", path: "/teacher-prospects", count: `${prospectCount} prospects` },
+    { num: 2, label: "Teacher Search", path: "/teacher-prospects", count: `${prospectCount} prospects` },
     {
       num: 3,
       label: "Candidate Pipeline",

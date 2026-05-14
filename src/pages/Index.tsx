@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 
 const kpis = [
   { title: "Target Cities", value: "42", delta: "12%", compare: "vs Apr 12 – May 11", icon: MapPin, bg: "#e4f7f4", color: "#05939a" },
-  { title: "Teacher Prospects", value: "354", delta: "25%", compare: "vs Apr 12 – May 11", icon: UserRound, bg: "#f0efff", color: "#174be8" },
+  { title: "Teacher Search", value: "354", delta: "25%", compare: "vs Apr 12 – May 11", icon: UserRound, bg: "#f0efff", color: "#174be8" },
   { title: "Active Candidates", value: "128", delta: "18%", compare: "vs Apr 12 – May 11", icon: Users, bg: "#eef4ff", color: "#174be8" },
   { title: "Onboarding in Progress", value: "23", delta: "21%", compare: "vs Apr 12 – May 11", icon: ClipboardCheck, bg: "#fff1e5", color: "#fd7e14" },
 ];

@@ -30,7 +30,7 @@ export function FindProspectsModal({ open, onOpenChange, onResults }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-white">
         <DialogHeader>
-          <DialogTitle style={{ color: "#003c7e" }}>Find Teacher Prospects</DialogTitle>
+          <DialogTitle style={{ color: "#003c7e" }}>Find Teachers</DialogTitle>
           <DialogDescription>
             Select a scored city to discover potential teacher franchisees in that area.
           </DialogDescription>

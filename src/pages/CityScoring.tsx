@@ -1829,17 +1829,25 @@ const CityScoring = () => {
             </div>
           )}
           <div className="overflow-hidden flex-1">
-            <div className="grid grid-cols-[16px_14px_minmax(0,1fr)_46px_72px_18px] items-center gap-x-2 px-1 py-2 text-[9.5px] uppercase tracking-wide text-[#8794ab] border-b border-[#eef2f7]">
+            <div className="grid grid-cols-[16px_14px_minmax(0,1fr)_46px_72px_18px_16px] items-center gap-x-2 px-1 py-2 text-[9.5px] uppercase tracking-wide text-[#8794ab] border-b border-[#eef2f7]">
               <span></span>
               <span>Rank</span>
               <span>Market</span>
               <span>Type</span>
               <span>Score</span>
               <span className="text-right">Tier</span>
+              <span></span>
             </div>
+            {pageItems.length === 0 && watchlistOnly && (
+              <div className="px-2 py-8 text-center text-[11px] text-[#8794ab]">
+                No saved markets yet — click the bookmark on any city to save it.
+              </div>
+            )}
             {pageItems.map((c, i) => {
               const isSel = c.city === selectedCity && c.state === selectedState;
               const isCmp = selectedForCompare.includes(c.id);
+              const rowCityId = (c as any).cityId as string | undefined;
+              const isSaved = !!rowCityId && watchlistCityIds.has(rowCityId);
               return (
                 <div
                   key={c.id}
@@ -1849,7 +1857,7 @@ const CityScoring = () => {
                     if (sample) setSelectedId(sample.id);
                     else setSelectedId(c.id);
                   }}
-                  className={`grid grid-cols-[16px_14px_minmax(0,1fr)_46px_72px_18px] items-center gap-x-2 px-1 py-3 text-[11px] cursor-pointer border-b border-[#f3f5f9] last:border-0 ${isSel ? "bg-[#eaf0ff]" : "hover:bg-[#f7faff]"}`}
+                  className={`grid grid-cols-[16px_14px_minmax(0,1fr)_46px_72px_18px_16px] items-center gap-x-2 px-1 py-3 text-[11px] cursor-pointer border-b border-[#f3f5f9] last:border-0 ${isSel ? "bg-[#eaf0ff]" : "hover:bg-[#f7faff]"}`}
                 >
                   <span className={compareMode ? "rounded ring-2 ring-[#174be8] ring-offset-1 ring-offset-white" : ""}>
                     <Checkbox checked={isCmp} onCheckedChange={() => toggleCompare(c.id)} onClick={(e) => e.stopPropagation()} />
@@ -1885,6 +1893,19 @@ const CityScoring = () => {
                     </span>
                   ) : (
                     <span className="justify-self-end rounded-full bg-[#eef2f7] px-1.5 py-0.5 text-[8.5px] font-semibold text-[#8794ab] whitespace-nowrap">No data</span>
+                  )}
+                  {rowCityId ? (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); toggleWatchlist(rowCityId); }}
+                      className={`justify-self-end p-0.5 rounded hover:bg-white ${isSaved ? "text-[#0ea66e]" : "text-[#cbd5e1] hover:text-[#526078]"}`}
+                      title={isSaved ? "Remove from watchlist" : "Add to watchlist"}
+                      aria-label={isSaved ? "Remove from watchlist" : "Add to watchlist"}
+                    >
+                      {isSaved ? <BookmarkCheck size={12} fill="currentColor" /> : <Bookmark size={12} />}
+                    </button>
+                  ) : (
+                    <span />
                   )}
                 </div>
               );

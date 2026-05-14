@@ -2001,17 +2001,20 @@ const CityScoring = () => {
               </svg>
               <p className="-mt-1 text-[12px] font-semibold" style={{ color: selectedHasLiveData ? tierBadge.fg : "#8794ab" }}>{selectedHasLiveData ? opportunityLabel : "No live data"}</p>
               {selectedHasLiveData && (() => {
-                const ranked = CATEGORIES
-                  .map((c) => ({ label: c.label, score: Math.round(detailCategoryScores[c.key] ?? 0) }))
-                  .filter((x) => x.score > 0)
-                  .sort((a, b) => b.score - a.score);
-                if (ranked.length < 2) return null;
-                const top2 = ranked.slice(0, 2);
-                const lowest = ranked[ranked.length - 1];
-                const showDrag = lowest.score < 50 && !top2.some((t) => t.label === lowest.label);
+                // Rank by CONTRIBUTION = score × applied master weight, so
+                // categories the user weighted to 0% never count as drivers.
+                const enriched = CATEGORIES.map((c) => {
+                  const score = Math.round(detailCategoryScores[c.key] ?? 0);
+                  const weight = appliedWeights[c.key] ?? 0;
+                  return { label: c.label, score, weight, contribution: score * weight };
+                }).filter((x) => x.weight > 0);
+                if (enriched.length < 2) return null;
+                const drivers = [...enriched].sort((a, b) => b.contribution - a.contribution).slice(0, 2);
+                const lowest = [...enriched].sort((a, b) => a.score - b.score)[0];
+                const showDrag = lowest.score < 50 && !drivers.some((d) => d.label === lowest.label);
                 return (
                   <div className="mt-1.5 px-1 text-center text-[10.5px] italic leading-snug text-[#6b7a99] max-w-[180px]">
-                    <p>{top2[0].label} ({top2[0].score}) and {top2[1].label} ({top2[1].score}) are driving this score.</p>
+                    <p>{drivers[0].label} ({drivers[0].score}) and {drivers[1].label} ({drivers[1].score}) are driving this score.</p>
                     {showDrag && (
                       <p className="mt-0.5">{lowest.label} ({lowest.score}) is pulling the score down.</p>
                     )}

@@ -254,9 +254,9 @@ function buildSowSignals(args: {
   // Day 4: BLS OEWS tier→signal-status helpers (metro=live, state/national=proxy).
   const tierStatus = (tier: 'metro' | 'state' | 'national' | null): 'live' | 'proxy' | 'missing' =>
     tier === 'metro' ? 'live' : (tier === 'state' || tier === 'national') ? 'proxy' : 'missing'
-  const tierNote = (tier: 'metro' | 'state' | 'national' | null, areaLabel: string | null, city: string) =>
+  const tierNote = (tier: 'metro' | 'state' | 'national' | null, areaLabel: string | null) =>
     tier === 'metro' ? `BLS OEWS metro-level wage for ${areaLabel ?? 'metro'}.`
-    : tier === 'state' ? `BLS OEWS state-level wage (${areaLabel ?? 'state'}); used as proxy — no metro data available for ${city}.`
+    : tier === 'state' ? `BLS OEWS state-level wage (${areaLabel ?? 'state'}); used as proxy — no metro data available.`
     : tier === 'national' ? 'BLS OEWS national wage; used as proxy — no metro or state data available.'
     : 'BLS OEWS lookup failed.'
 

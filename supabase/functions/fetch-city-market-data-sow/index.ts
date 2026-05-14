@@ -757,6 +757,25 @@ Deno.serve(async (req) => {
           blocked: signals.filter((s) => s.status === 'blocked').length,
           manual: signals.filter((s) => s.status === 'manual').length,
         },
+        // Per-metric snapshot keyed by canonical signal_key. Drawer reads this
+        // directly so its coverage badges always equal backend reality.
+        metric_status_map: Object.fromEntries(
+          signals.map((s: any) => [
+            s.signal_key,
+            {
+              status: s.status,
+              used_in_score: s.used_in_score ?? false,
+              value: s.value ?? null,
+              source: s.source ?? null,
+              source_url: s.source_url ?? null,
+              confidence: s.confidence ?? null,
+              updated_at: completedAt,
+              label: s.label ?? null,
+              metric_category: s.metric_category ?? null,
+              notes: s.notes ?? null,
+            },
+          ]),
+        ),
         warnings,
         shadow_scoring: shadowScoring,
         official_sow_scoring: officialScoring,

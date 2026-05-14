@@ -33,6 +33,7 @@ interface Props {
   currentCategoryScore?: number | null; // displayed category score before Apply (for delta toast)
   currentComposite?: number; // composite before Apply (for delta toast)
   computeNewComposite?: (newCategoryScore: number) => number; // recompute composite swapping in new category score
+  customMetricsForCategory?: CustomCriterionRow[]; // user-added metrics in this category
 }
 
 const STATUS_PILL: Record<SowMetricEntry["status"], { label: string; cls: string }> = {

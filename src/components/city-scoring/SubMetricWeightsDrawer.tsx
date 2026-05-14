@@ -11,7 +11,7 @@ import {
   type SowMetricEntry,
 } from "@/lib/sowMetricRegistry";
 import { useCityScoringStore, type CategoryKey } from "@/stores/cityScoringStore";
-import { recomputeCategoryScore } from "@/lib/clientSubWeightScoring";
+import { recomputeCategoryScore, summarizeCategory } from "@/lib/clientSubWeightScoring";
 
 interface Props {
   open: boolean;

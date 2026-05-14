@@ -31,10 +31,10 @@ export function CompareModal({ open, onClose, cities }: Props) {
         <div className="grid grid-cols-3 gap-2 sm:gap-4 text-sm min-w-[480px]">
           <div />
           <div className="text-center font-semibold" style={{ color: '#343a40' }}>
-            {a.city}, {a.state} <div className="mt-1 flex justify-center"><TierBadge tier={a.tier} /></div>
+            {a.city}, {a.state} <div className="mt-1 flex justify-center"><TierBadge tier={a.tier} compact /></div>
           </div>
           <div className="text-center font-semibold" style={{ color: '#343a40' }}>
-            {b.city}, {b.state} <div className="mt-1 flex justify-center"><TierBadge tier={b.tier} /></div>
+            {b.city}, {b.state} <div className="mt-1 flex justify-center"><TierBadge tier={b.tier} compact /></div>
           </div>
 
           {[

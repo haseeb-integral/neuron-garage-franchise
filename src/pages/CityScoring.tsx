@@ -317,7 +317,7 @@ const CityScoring = () => {
   );
 
   const filtered = useMemo(() => {
-    return filterRankedMarkets(baseRankedMarkets, {
+    const base = filterRankedMarkets(baseRankedMarkets, {
       searchTerm,
       stateFilter,
       tierFilter,
@@ -325,12 +325,15 @@ const CityScoring = () => {
       minScore,
       minPop,
     });
-  }, [baseRankedMarkets, searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop]);
+    const q = cityFilter.trim().toLowerCase();
+    if (!q) return base;
+    return base.filter((m: any) => String(m.city ?? "").toLowerCase().includes(q));
+  }, [baseRankedMarkets, searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop, cityFilter]);
 
   // Reset pagination whenever filter inputs change
   useEffect(() => {
     setPage(1);
-  }, [searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop]);
+  }, [searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop, cityFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);

@@ -43,6 +43,7 @@ import { METRICS_BY_CATEGORY } from "@/lib/sowMetricRegistry";
 import { parseSignalValue } from "@/lib/sowNormalize";
 import { recomputeCategoryScore, recomputeComposite } from "@/lib/clientSubWeightScoring";
 import { tierFromScore } from "@/lib/cityScoringLiveData";
+import { useCustomCriteria } from "@/hooks/useCustomCriteria";
 
 function rebalanceWeights<K extends string>(
   prev: Record<K, number>,

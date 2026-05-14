@@ -238,7 +238,6 @@ const CityScoring = () => {
   const [addCritOpen, setAddCritOpen] = useState(false);
 
   // Saved searches (per-user)
-  const { user } = useAuth();
   type SavedSearch = { id: string; name: string; master_weights: any; sub_weights: any; created_at: string };
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
   const [saveSearchOpen, setSaveSearchOpen] = useState(false);

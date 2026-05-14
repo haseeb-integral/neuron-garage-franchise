@@ -194,7 +194,7 @@ function getCategory(signal: LiveSignal): MetricCategory | null {
 function StatusBadge({ status }: { status: MetricStatus }) {
   return (
     <span className={`rounded-full border px-1.5 py-px text-[9px] font-bold uppercase tracking-wide ${STATUS_STYLES[status]}`}>
-      {status}
+      {STATUS_LABEL[status]}
     </span>
   );
 }

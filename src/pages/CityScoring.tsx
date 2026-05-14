@@ -1103,9 +1103,6 @@ const CityScoring = () => {
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-[10px] text-[#8794ab] leading-tight max-w-[210px]">
-              {PRESET_DESCRIPTIONS[((PRESET_NAMES as string[]).includes(scoringModel) ? scoringModel : "Balanced") as PresetName]}
-            </p>
           </div>
           <Button variant="outline" className="h-9 border-[#e5eaf2] text-[#14233b] gap-1.5 font-normal" onClick={() => setAddCritOpen(true)}>
             <Plus size={14} /> Add Criteria

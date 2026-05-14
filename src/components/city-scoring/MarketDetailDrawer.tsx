@@ -304,7 +304,26 @@ export function MarketDetailDrawer({
     [signals],
   );
 
-  // Per-row coverage status derived from the registry + DB row.
+  // Backend-authored per-metric status map. When present (current edge fn
+  // writes this on every refresh), it is the single source of truth for
+  // coverage badges and per-row status. Falls back to client-side derivation
+  // for legacy job rows written before this field existed.
+  const statusMap = (latestJob?.response_summary?.metric_status_map ?? null) as
+    | Record<string, {
+        status?: MetricStatus;
+        used_in_score?: boolean;
+        value?: unknown;
+        source?: string | null;
+        source_url?: string | null;
+        confidence?: number | null;
+        updated_at?: string | null;
+        label?: string | null;
+        notes?: string | null;
+      }>
+    | null;
+
+  // Per-row coverage status derived from the registry + (preferred) status map
+  // or (fallback) DB row.
   type Coverage = { metric: SowMetricEntry; signal: LiveSignal | null; status: MetricStatus };
   const coverageByCategory = useMemo(() => {
     const out: Record<MetricCategory, { enabled: Coverage[]; disabled: Coverage[] }> = {
@@ -318,23 +337,56 @@ export function MarketDetailDrawer({
     (Object.keys(METRICS_BY_CATEGORY) as CategoryKey[]).forEach((catKey) => {
       METRICS_BY_CATEGORY[catKey].forEach((metric) => {
         const cat = metric.category as MetricCategory;
-        const signal = signalsByCanonical[metric.key] ?? null;
+        const dbSignal = signalsByCanonical[metric.key] ?? null;
         let status: MetricStatus;
-        if (metric.status === "blocked") {
-          status = "blocked";
-        } else if (signal && getStatus(signal) !== "missing") {
-          // Honor the row's own status when present; otherwise inherit registry status.
-          status = (signal.raw_data?.status as MetricStatus | undefined)
-            ?? (metric.status === "live" ? "live" : "proxy");
+        let signal: LiveSignal | null;
+
+        if (statusMap) {
+          // BACKEND IS SOURCE OF TRUTH.
+          const snap = statusMap[metric.key];
+          if (snap?.status) {
+            status = snap.status;
+          } else if (metric.status === "blocked") {
+            status = "blocked";
+          } else {
+            status = "missing";
+          }
+          // Synthesize a signal-like object so renderRegistryRow can show
+          // value/source/updated_at without a second lookup. Prefer the DB
+          // row when it exists (so source_url etc. are available), else
+          // fall back to the snapshot.
+          signal = dbSignal ?? (snap
+            ? {
+                signal_key: metric.key,
+                label: snap.label ?? metric.label,
+                value: (snap.value as any) ?? null,
+                source: snap.source ?? null,
+                source_url: snap.source_url ?? null,
+                confidence: snap.confidence ?? null,
+                updated_at: snap.updated_at ?? null,
+                raw_data: { status: snap.status, used_in_score: snap.used_in_score, notes: snap.notes ?? null },
+              }
+            : null);
         } else {
-          status = "missing";
+          // LEGACY FALLBACK — old job row without metric_status_map.
+          signal = dbSignal;
+          if (metric.status === "blocked") {
+            status = "blocked";
+          } else if (signal && getStatus(signal) !== "missing") {
+            status = (signal.raw_data?.status as MetricStatus | undefined)
+              ?? (metric.status === "live" ? "live" : "proxy");
+          } else {
+            status = "missing";
+          }
         }
+
         const bucket = metric.enabled ? out[cat].enabled : out[cat].disabled;
         bucket.push({ metric, signal, status });
       });
     });
     return out;
-  }, [signalsByCanonical]);
+  }, [signalsByCanonical, statusMap]);
+
 
 
   const warnings = latestJob?.response_summary?.warnings ?? {};

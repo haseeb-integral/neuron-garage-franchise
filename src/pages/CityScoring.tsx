@@ -43,6 +43,7 @@ import { METRICS_BY_CATEGORY } from "@/lib/sowMetricRegistry";
 import { parseSignalValue } from "@/lib/sowNormalize";
 import { recomputeCategoryScore, recomputeComposite } from "@/lib/clientSubWeightScoring";
 import { tierFromScore } from "@/lib/cityScoringLiveData";
+import { useCustomCriteria } from "@/hooks/useCustomCriteria";
 
 function rebalanceWeights<K extends string>(
   prev: Record<K, number>,
@@ -194,6 +195,7 @@ const CityScoring = () => {
   const setAppliedWeights = useCityScoringStore((s) => s.setAppliedWeights);
   const customCriteria = useCityScoringStore((s) => s.customCriteria);
   const setCustomCriteria = useCityScoringStore((s) => s.setCustomCriteria);
+  const { data: supabaseCustomCriteria = [] } = useCustomCriteria();
   const subWeights = useCityScoringStore((s) => s.subWeights);
   const appliedSubWeights = useCityScoringStore((s) => s.appliedSubWeights);
   const setAppliedSubWeights = useCityScoringStore((s) => s.setAppliedSubWeights);
@@ -1080,7 +1082,9 @@ const CityScoring = () => {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {CATEGORIES.map((cat) => {
             const Icon = cat.icon;
-            const customCount = customCriteria.filter((c) => c.category === cat.label).length;
+            const customCount =
+              customCriteria.filter((c) => c.category === cat.label).length +
+              supabaseCustomCriteria.filter((c) => c.category === cat.label).length;
             return (
               <div
                 key={cat.key}

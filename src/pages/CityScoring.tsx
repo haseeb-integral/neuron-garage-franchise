@@ -1783,6 +1783,14 @@ const CityScoring = () => {
             </div>
             <div className="flex items-center gap-3">
               <button
+                onClick={() => setWatchlistOnly((v) => !v)}
+                className={`flex items-center gap-1 text-xs font-medium hover:underline ${watchlistOnly ? "text-[#0ea66e]" : "text-[#526078]"}`}
+                title="Show only saved cities"
+              >
+                {watchlistOnly ? <BookmarkCheck size={12} /> : <Bookmark size={12} />}
+                Watchlist {watchlistOnly ? "On" : `(${watchlistCityIds.size})`}
+              </button>
+              <button
                 onClick={() => setAddCityOpen(true)}
                 className="flex items-center gap-1 text-xs font-medium text-[#174be8] hover:underline"
               >

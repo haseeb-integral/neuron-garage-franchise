@@ -309,6 +309,7 @@ const CityScoring = () => {
     // Update both draft and applied sub-weights so any open drawer reflects the change
     useCityScoringStore.setState({ subWeights: sw, appliedSubWeights: sw });
     setScoringModel("Custom");
+    setActiveSavedSearchId(s.id);
     toast.success(`Loaded "${s.name}"`);
   };
 

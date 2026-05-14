@@ -50,32 +50,43 @@ export function SubMetricWeightsDrawer({
   open, onOpenChange, categoryKey, categoryLabel, categoryColor, categoryBg,
   selectedCityLabel, rawValuesByKey, serverCategoryScore, masterWeightPct,
   masterWeightPendingPct, currentCategoryScore, currentComposite, computeNewComposite,
+  customMetricsForCategory,
 }: Props) {
   const subWeights = useCityScoringStore((s) => s.subWeights);
   const setSubWeight = useCityScoringStore((s) => s.setSubWeight);
   const appliedSubWeights = useCityScoringStore((s) => s.appliedSubWeights);
   const setAppliedSubWeights = useCityScoringStore((s) => s.setAppliedSubWeights);
   const [view, setView] = useState<"weights" | "formula">("weights");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const deleteCustom = useDeleteCustomCriterion();
+  const updateCustomWeight = useUpdateCustomCriterionWeight();
 
   const metrics = categoryKey ? (METRICS_BY_CATEGORY[categoryKey] ?? []) : [];
   const cur = categoryKey ? (subWeights[categoryKey] ?? {}) : {};
+  const customs = customMetricsForCategory ?? [];
+  const customMetricsForRecompute = useMemo(
+    () => customs.map((c) => ({ id: c.id, label: c.name, weight: Number(c.weight) || 0 })),
+    [customs],
+  );
 
   // Live "effective %" preview — pure local arithmetic, no store writes.
-  const enabledSum = useMemo(
+  const builtInSum = useMemo(
     () => metrics.reduce((s, m) => s + (m.enabled ? (cur[m.key] ?? 0) : 0), 0),
     [metrics, cur],
   );
-  const effectivePct = (key: string, isEnabled: boolean) => {
+  const customSum = customMetricsForRecompute.reduce((s, c) => s + (c.weight || 0), 0);
+  const enabledSum = builtInSum + customSum;
+  const effectivePct = (weight: number, isEnabled: boolean) => {
     if (!isEnabled || enabledSum <= 0) return null;
-    return ((cur[key] ?? 0) / enabledSum) * 100;
+    return (weight / enabledSum) * 100;
   };
 
   // Live preview of what this category's score WOULD be if Apply were clicked.
   // Uses the user's typed sub-weights (auto-normalized inside recompute via subShare).
   const previewRecompute = useMemo(() => {
     if (!rawValuesByKey) return null;
-    return recomputeCategoryScore(metrics, rawValuesByKey, cur, serverCategoryScore ?? null);
-  }, [metrics, rawValuesByKey, cur, serverCategoryScore]);
+    return recomputeCategoryScore(metrics, rawValuesByKey, cur, serverCategoryScore ?? null, customMetricsForRecompute);
+  }, [metrics, rawValuesByKey, cur, serverCategoryScore, customMetricsForRecompute]);
 
   // True iff the user's typed (live) sub-weights, once normalized to 100%,
   // differ from what was last applied. Used to surface a "Pending edits" pill

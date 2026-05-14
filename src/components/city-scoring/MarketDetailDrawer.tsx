@@ -104,8 +104,25 @@ function relativeTime(value?: string | null) {
 }
 
 function getStatus(signal: LiveSignal): MetricStatus {
-  return signal.raw_data?.status ?? "proxy";
+  const v = signal.value;
+  const isEmpty =
+    v == null ||
+    v === "" ||
+    v === "—" ||
+    (typeof v === "string" && /not available/i.test(v));
+  if (isEmpty) return "missing";
+  const explicit = signal.raw_data?.status as MetricStatus | undefined;
+  if (explicit) return explicit;
+  return "live";
 }
+
+const STATUS_LABEL: Record<MetricStatus, string> = {
+  live: "Live",
+  proxy: "Estimated",
+  missing: "Missing",
+  blocked: "Unavailable",
+  manual: "Manual",
+};
 
 function displayValue(value: unknown): string {
   if (value === null || value === undefined || value === "") return "—";
@@ -177,7 +194,7 @@ function getCategory(signal: LiveSignal): MetricCategory | null {
 function StatusBadge({ status }: { status: MetricStatus }) {
   return (
     <span className={`rounded-full border px-1.5 py-px text-[9px] font-bold uppercase tracking-wide ${STATUS_STYLES[status]}`}>
-      {status}
+      {STATUS_LABEL[status]}
     </span>
   );
 }
@@ -192,7 +209,7 @@ function ScoreImpactBadge({ used }: { used: boolean }) {
     </span>
   ) : (
     <span
-      className="rounded-full border border-[#e5eaf2] bg-[#f3f6fb] px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#8794ab]"
+      className="rounded-full border border-[#e5eaf2] bg-[#f3f6fb] px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#526078]"
       title="Informational only — not used in score"
     >
       Info only
@@ -313,15 +330,15 @@ export function MarketDetailDrawer({
         className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-[#f1f4f9] px-2 py-1.5 last:border-0 hover:bg-[#fbfcff]"
       >
         <div className="min-w-0">
-          <p className="truncate text-[12px] font-medium text-[#07142f]" title={signal.label ?? signal.signal_key ?? ""}>
+          <p className="text-[12px] font-medium text-[#07142f] line-clamp-2" title={signal.label ?? signal.signal_key ?? ""}>
             {signal.label ?? signal.signal_key}
           </p>
-          <div className="mt-0.5 flex flex-nowrap items-center gap-1 overflow-hidden">
+          <div className="mt-1 flex flex-wrap items-center gap-1">
             <ScoreImpactBadge used={used} />
             <GeoBadge source={signal.source} signalKey={signal.signal_key} />
             <StatusBadge status={status} />
             {signal.source && (
-              <span className="truncate text-[10px] font-semibold uppercase tracking-wide text-[#8794ab]">
+              <span className="rounded-full border border-[#e5eaf2] bg-white px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#526078]">
                 {signal.source}
               </span>
             )}
@@ -371,7 +388,7 @@ export function MarketDetailDrawer({
             </p>
             <div className="flex gap-1.5 text-[11px]">
               <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#0ea66e]">{liveCount} live</span>
-              <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#174be8]">{proxyCount} proxy</span>
+              <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#174be8]">{proxyCount} estimated</span>
               <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#526078]">{missingCount} missing</span>
             </div>
           </div>
@@ -512,7 +529,7 @@ export function MarketDetailDrawer({
           </TabsContent>
         </Tabs>
 
-        <div className="sticky bottom-0 flex flex-col gap-2 bg-white pt-2">
+        <div className="sticky bottom-0 mt-4 flex flex-col gap-2 border-t border-[#eef2f7] bg-white pt-3 pb-3 -mx-6 px-6 shadow-[0_-4px_12px_-6px_rgba(7,20,47,0.12)]">
           <Button onClick={onFindTeachers} className="w-full bg-[#174be8] hover:bg-[#1240c9] text-white font-semibold">
             Find Teachers in This Market <ArrowRight size={14} className="ml-2" />
           </Button>

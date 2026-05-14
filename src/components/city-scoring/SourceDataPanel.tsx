@@ -76,29 +76,30 @@ export function SourceDataPanel({ cityId, refreshKey = 0, onViewEvidence }: Prop
           <p className="text-[11px] text-[#526078]">No live data sources yet — click Refresh to fetch.</p>
         </div>
       ) : (
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           {rows.map((r) => (
-            <div key={r.source} className="flex items-center gap-2 text-[11px] text-[#14233b] min-w-0">
-              <span className="truncate font-medium flex-1">{r.label}</span>
-              {r.recordCount > 0 && (
-                <span className="text-[9.5px] text-[#8794ab] tabular-nums">{r.recordCount} rows</span>
-              )}
-              <span className="text-[9.5px] text-[#8794ab] whitespace-nowrap" title={r.lastFetchedAt ?? "Never"}>
-                {relativeTime(r.lastFetchedAt)}
-              </span>
-              <span className={`inline-flex items-center px-1.5 h-4 rounded-full text-[9px] font-semibold flex-shrink-0 ${STATUS_STYLES[r.status]}`}>
-                {STATUS_LABEL[r.status]}
-              </span>
-              {r.sourceUrl && (
-                <a href={r.sourceUrl} target="_blank" rel="noreferrer" className="text-[#174be8] hover:text-[#1240c9] flex-shrink-0" title="Open source">
-                  <ExternalLink size={11} />
-                </a>
-              )}
-              {r.status === "error" && r.errorMessage && (
-                <span title={r.errorMessage} className="text-[#b91c1c] flex-shrink-0">
-                  <AlertCircle size={11} />
+            <div key={r.source} className="text-[11px] text-[#14233b]">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium text-[#07142f] flex-1 min-w-0 break-words leading-snug">{r.label}</span>
+                <span className={`inline-flex items-center px-1.5 h-4 rounded-full text-[9px] font-semibold flex-shrink-0 ${STATUS_STYLES[r.status]}`}>
+                  {STATUS_LABEL[r.status]}
                 </span>
-              )}
+              </div>
+              <div className="mt-0.5 flex items-center gap-2 text-[10px] text-[#8794ab]">
+                {r.recordCount > 0 && <span className="tabular-nums">{r.recordCount} rows</span>}
+                {r.recordCount > 0 && <span aria-hidden>·</span>}
+                <span title={r.lastFetchedAt ?? "Never"}>{relativeTime(r.lastFetchedAt)}</span>
+                {r.sourceUrl && (
+                  <a href={r.sourceUrl} target="_blank" rel="noreferrer" className="ml-auto text-[#174be8] hover:text-[#1240c9]" title="Open source">
+                    <ExternalLink size={11} />
+                  </a>
+                )}
+                {r.status === "error" && r.errorMessage && (
+                  <span title={r.errorMessage} className="text-[#b91c1c]">
+                    <AlertCircle size={11} />
+                  </span>
+                )}
+              </div>
             </div>
           ))}
         </div>

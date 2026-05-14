@@ -44,6 +44,7 @@ import { parseSignalValue } from "@/lib/sowNormalize";
 import { recomputeCategoryScore, recomputeComposite } from "@/lib/clientSubWeightScoring";
 import { tierFromScore } from "@/lib/cityScoringLiveData";
 import { useCustomCriteria } from "@/hooks/useCustomCriteria";
+import { SCORING_PRESETS, PRESET_NAMES, PRESET_DESCRIPTIONS, detectPreset, type PresetName } from "@/lib/scoringPresets";
 
 function rebalanceWeights<K extends string>(
   prev: Record<K, number>,
@@ -1029,16 +1030,32 @@ const CityScoring = () => {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Select value={scoringModel} onValueChange={setScoringModel}>
-            <SelectTrigger className="h-9 w-[210px] bg-white border-[#e5eaf2] text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Affluent Suburbs Model">Affluent Suburbs Model</SelectItem>
-              <SelectItem value="Urban Core Model">Urban Core Model</SelectItem>
-              <SelectItem value="Emerging Markets Model">Emerging Markets Model</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex flex-col gap-1">
+            <Select
+              value={(PRESET_NAMES as string[]).includes(scoringModel) ? scoringModel : "Balanced"}
+              onValueChange={(name) => {
+                setScoringModel(name);
+                if (name !== "Custom" && SCORING_PRESETS[name as Exclude<PresetName, "Custom">]) {
+                  const preset = SCORING_PRESETS[name as Exclude<PresetName, "Custom">];
+                  setWeights(preset);
+                  setAppliedWeights(preset);
+                  toast.success(`Applied ${name} preset`);
+                }
+              }}
+            >
+              <SelectTrigger className="h-9 w-[210px] bg-white border-[#e5eaf2] text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PRESET_NAMES.map((p) => (
+                  <SelectItem key={p} value={p}>{p}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-[#8794ab] leading-tight max-w-[210px]">
+              {PRESET_DESCRIPTIONS[((PRESET_NAMES as string[]).includes(scoringModel) ? scoringModel : "Balanced") as PresetName]}
+            </p>
+          </div>
           <Button variant="outline" className="h-9 border-[#e5eaf2] text-[#14233b] gap-1.5 font-normal" onClick={() => setAddCritOpen(true)}>
             <Plus size={14} /> Add Criteria
           </Button>
@@ -1101,7 +1118,14 @@ const CityScoring = () => {
                 <div className="text-right text-base font-bold text-[#07142f]">{weights[cat.key]}%</div>
                 <Slider
                   value={[weights[cat.key]]}
-                  onValueChange={([v]) => setWeights((w) => rebalanceWeights(w, cat.key, v))}
+                  onValueChange={([v]) => {
+                    setWeights((w) => {
+                      const next = rebalanceWeights(w, cat.key, v);
+                      const detected = detectPreset(next);
+                      if (detected !== scoringModel) setScoringModel(detected);
+                      return next;
+                    });
+                  }}
                   max={100}
                   step={1}
                   className="[&>span:first-child]:bg-[#eaf0ff] [&>span:first-child]:h-1.5 [&_[role=slider]]:h-3.5 [&_[role=slider]]:w-3.5 [&_[role=slider]]:border-[#174be8] [&_[role=slider]]:bg-white [&>span:first-child_span]:bg-[#174be8]"

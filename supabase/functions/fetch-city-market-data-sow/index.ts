@@ -139,6 +139,11 @@ async function fetchCensusExpanded(city: string, state: string) {
       'B23025_005E',
       'B23025_003E',
       'B25064_001E',
+      // Day 5: B09001 own-children-under-18 by single age — used for precise 5–12 count.
+      'B09001_006E', // age 5
+      'B09001_007E', // ages 6–8
+      'B09001_008E', // ages 9–11
+      'B09001_009E', // ages 12–14 (take 1/3 for age 12 only)
     ]
     const url = `https://api.census.gov/data/2022/acs/acs5?get=${vars.join(',')}&for=place:${placeFips}&in=state:${stateFips}&key=${key}`
     const res = await fetch(url)
@@ -152,7 +157,6 @@ async function fetchCensusExpanded(city: string, state: string) {
     const male10_14 = num(row[3]) ?? 0
     const female5_9 = num(row[4]) ?? 0
     const female10_14 = num(row[5]) ?? 0
-    const children5_12 = Math.round(male5_9 + female5_9 + ((male10_14 + female10_14) * 0.6))
     const under18 = num(row[6])
     const total25 = num(row[7])
     const bachelorsPlus = (num(row[8]) ?? 0) + (num(row[9]) ?? 0) + (num(row[10]) ?? 0) + (num(row[11]) ?? 0)
@@ -163,6 +167,21 @@ async function fetchCensusExpanded(city: string, state: string) {
     const unemployed = num(row[18])
     const laborForce = num(row[19])
     const medianGrossRent = num(row[20])
+
+    // Day 5: precise children 5–12 from B09001 single-age bands.
+    const age_5      = num(row[21])
+    const ages_6_8   = num(row[22])
+    const ages_9_11  = num(row[23])
+    const ages_12_14 = num(row[24])
+    const childrenB09001 =
+      (age_5 != null && ages_6_8 != null && ages_9_11 != null && ages_12_14 != null)
+        ? Math.round(age_5 + ages_6_8 + ages_9_11 + (ages_12_14 / 3))
+        : null
+    // Fallback: legacy B01001 5-year-band proxy.
+    const childrenB01001 = Math.round(male5_9 + female5_9 + ((male10_14 + female10_14) * 0.6))
+    const children5_12 = childrenB09001 ?? childrenB01001
+    const children5_12_source: 'b09001' | 'b01001' = childrenB09001 != null ? 'b09001' : 'b01001'
+
     const discretionaryIncomeProxy = (medianIncome != null && medianGrossRent != null)
       ? Math.max(0, Math.round(medianIncome - (medianGrossRent * 12)))
       : null
@@ -179,6 +198,11 @@ async function fetchCensusExpanded(city: string, state: string) {
         household_discretionary_income_proxy: discretionaryIncomeProxy,
         children_5_12_count: children5_12,
         children_5_12_pct: pct(children5_12, totalPopulation),
+        children_5_12_source: children5_12_source,
+        children_5_12_breakdown: {
+          age_5, ages_6_8, ages_9_11, ages_12_14,
+          formula: 'age_5 + ages_6_8 + ages_9_11 + (ages_12_14 / 3)',
+        },
         children_under_18: under18,
         households_with_children_under_13_proxy: householdsWithChildrenProxy,
         bachelors_plus_pct: pct(bachelorsPlus, total25),

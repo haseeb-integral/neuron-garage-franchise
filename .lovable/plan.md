@@ -1,70 +1,49 @@
+
 ## Goal
 
-Wire NCES public elementary school data (Task 10) via Urban Institute's free CCD API. No API key.
+In the city detail drawer, show a live "Public elementary schools" row sourced from `city_market_signals` (`signal_key = 'public_elementary_count'`) for the selected city, with enrollment in parens and an "NCES CCD 2022" source label. Wire the existing per-city Refresh button to also call `fetch-school-counts` with `{ cityIds: [<id>] }` so the user doesn't have to wait on the full backfill.
 
-## Important finding from API testing
+## Changes
 
-The Urban Institute CCD endpoint **ignores the `city_location` query param** (verified — passing `city_location=AUSTIN` still returns all 4,765 Texas elementary schools, with 884 unique cities). The valid path-style filters are `fips` (state) and `school_level`. City filtering must be done **client-side after fetch**.
+### 1. `src/pages/CityScoring.tsx` — drawer signal rendering
 
-The correct param is also `school_level=1` (not `level_of_institution=1`), and the latest year currently published is **2022**.
+- Add `public_elementary_count` to `SIGNAL_ICONS` (use `GraduationCap`) and to the front of `SIGNAL_DISPLAY_PRIORITY` (just after the demographic block, before competitor count).
+- Build a derived row from `liveSignals` for the elementary card:
+  - Find `count = signals.find(s => s.signal_key === 'public_elementary_count')`
+  - Find `enrollment = signals.find(s => s.signal_key === 'public_elementary_enrollment')`
+  - If `count` exists → render value as `"{count} schools · {enrollment.toLocaleString()} enrolled"` and a small "NCES CCD 2022" footnote/tooltip.
+  - If `count` missing → fall back to existing "Not available yet" empty state (currently this just means the row doesn't render; we'll keep that behavior).
+- Drop `public_elementary_enrollment` from the standalone signal grid so it doesn't appear twice (it's folded into the count row).
 
-So instead of calling the API once per city (which would be ~50× redundant fetches of the same state-level dataset), we fetch **once per state** and group by `city_location` locally. Same outcome, ~10× fewer requests.
+### 2. `src/pages/CityScoring.tsx` — `handleRefreshData`
 
-Table is `cities` (not `city_markets`) — using the actual schema name.
+After the existing live-market + SOW refresh resolves successfully (around line 1066, where `setMarketRefreshVersion` is bumped), fire-and-await:
 
-## What we'll build
-
-### 1. Edge function `supabase/functions/fetch-school-counts/index.ts`
-
-- POST endpoint, JWT-validated (matches other Lovable Cloud functions)
-- Optional body: `{ cityIds?: string[] }` — when omitted, processes all rows in `cities`; when provided, only those cities (used by the per-city Refresh button later)
-- Logic:
-  1. Load target cities from `cities` (id, city, state)
-  2. Map each state name → 2-digit FIPS code (50-state lookup, hardcoded constant in the function)
-  3. Group cities by FIPS, then **for each unique state**:
-     - Paginate `https://educationdata.urban.org/api/v1/schools/ccd/directory/2022/?fips={FIPS}&school_level=1` (follow `next` URL until null)
-     - Build a `Map<UPPER(city_location), { count, enrollment }>` — sum `enrollment` only when not null/-1
-  4. For each target city, look up its uppercase name in the state map
-  5. Upsert two rows into `city_market_signals` per city:
-     - `signal_key='public_elementary_count'`, `value=<count>`, `label='Public elementary schools'`, `source='nces_ccd'`, `source_url=<the API URL>`
-     - `signal_key='public_elementary_enrollment'`, `value=<enrollment>`, `label='Public elementary enrollment'`, `source='nces_ccd'`
-  6. `console.warn` for any city that returns 0 results (so we can spot bad city-name matches like "St. Louis" vs "SAINT LOUIS")
-- Returns JSON summary: `{ processed, withData, zeroResults: [{city, state}], errors: [...] }`
-- CORS headers on every response
-
-### 2. Migration — unique constraint for clean upserts
-
-`city_market_signals` currently has no unique constraint, so true upserts aren't possible. Add:
-
-```sql
-ALTER TABLE public.city_market_signals
-  ADD CONSTRAINT city_market_signals_city_signal_unique
-  UNIQUE (city_id, signal_key);
+```ts
+await supabase.functions.invoke("fetch-school-counts", {
+  body: { cityIds: [cityId] },
+});
 ```
 
-This lets the edge function call `.upsert(..., { onConflict: 'city_id,signal_key' })` cleanly without delete-then-insert.
+- Wrap in try/catch — a school-fetch failure must NOT fail the whole refresh; just `console.warn` and `toast.warning("School data refresh failed; other data updated.")`.
+- Bump `marketRefreshVersion` again after success so `SourceDataPanel` and the signal rows re-read.
 
-### 3. Frontend wiring (this turn)
+### 3. No schema changes
 
-- Nothing in the UI yet — we just want the data flowing. Once verified, we'll either:
-  - (a) add a small "Refresh school data" button on the city detail drawer, or
-  - (b) auto-call it from the existing per-city Refresh flow.
-- The "Elementary schools — Not available yet" placeholder on the city card will start showing real numbers once `city_market_signals` has the rows (the `MarketDetailDrawer` already reads from that table).
+`city_market_signals` already has the unique constraint and the rows are written by the deployed edge function. No migration needed.
 
-## Out of scope (deferred)
+### 4. Verification
 
-- GreatSchools (Task 11) — blocked on Brett's API key
-- Backfilling all 50 cities — we'll trigger once after deploy via curl, then verify Frisco/Plano/Ashburn/Austin
-- UI badge to show data freshness — Phase 2
+- Open a city we know has data (Frisco, Plano, Austin, Ashburn) → drawer should show e.g. "35 schools · 22,950 enrolled" with "NCES CCD 2022" label.
+- Open Summerlin NV / Town and Country MO → row stays hidden (matches existing "missing" behavior).
+- Click Refresh on a city → network tab shows `fetch-school-counts` POST with `cityIds: [...]`; row updates after toast.
 
 ## Risks
 
-- **City-name mismatches** are the main risk (e.g., "St. Petersburg" in DB vs "ST PETERSBURG" in CCD). The function normalizes both sides to uppercase + strips periods, but unusual names will land in `zeroResults` for manual review. Low risk — easy to fix per-city if it happens.
-- 2022 is the latest year — fine for the demo. Urban Institute publishes new years annually.
+- **Low.** All wiring is read-side + one extra non-blocking edge call. Worst case the school call fails and the rest of the refresh still works.
 
-## Verify
+## Out of scope (confirm if you want it)
 
-- After deploy, curl the function with `{}` body, watch logs for warnings
-- Open Austin TX → drawer should show ~150+ public elementary schools
-- Open Frisco TX → should show ~40+ schools
-- `zeroResults` array in response shows any cities that need name normalization
+- A separate "Refresh school data" standalone button.
+- Showing private/charter counts (that's the GreatSchools task, blocked on Brett's API key).
+- Renaming the source label to "2024" — the upstream data is genuinely the 2022–23 school year; I'll use "NCES CCD 2022".

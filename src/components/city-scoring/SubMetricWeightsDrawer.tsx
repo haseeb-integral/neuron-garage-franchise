@@ -283,8 +283,116 @@ export function SubMetricWeightsDrawer({
                   </div>
                 );
               })}
+
+              {customs.length > 0 && (
+                <div className="pt-2 mt-2 border-t border-dashed border-[#e5eaf2]">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-[#526078] mb-1.5 px-1">
+                    Custom metrics
+                  </p>
+                  {customs.map((cm) => {
+                    const w = Number(cm.weight) || 0;
+                    const eff = effectivePct(w, true);
+                    return (
+                      <div
+                        key={cm.id}
+                        className="flex items-center gap-2 py-1.5 px-2 rounded border border-transparent hover:bg-[#fafbfd]"
+                      >
+                        <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                          <span className="text-[12.5px] leading-tight text-[#07142f] font-medium truncate">
+                            {cm.name}
+                          </span>
+                          <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-[#eef4ff] text-[#174be8] font-semibold">
+                            CUSTOM
+                          </span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center text-[#b45309]">
+                                <AlertTriangle size={11} />
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-[260px] text-[12px] leading-snug">
+                              No live data — using neutral score ({CUSTOM_METRIC_NEUTRAL_NORM}) until a data source is connected.
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                        <div className="flex items-center h-7 rounded border overflow-hidden border-[#e5eaf2] bg-white">
+                          <button
+                            type="button"
+                            aria-label="Decrease weight"
+                            disabled={w <= 0}
+                            onClick={() => updateCustomWeight.mutate({ id: cm.id, weight: Math.max(0, w - 1) })}
+                            className="h-full w-7 flex items-center justify-center text-[#526078] hover:bg-[#f3f6fb] disabled:text-[#c5cdda] disabled:cursor-not-allowed"
+                          >
+                            <Minus size={12} />
+                          </button>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={w}
+                            onChange={(e) => {
+                              const n = parseInt(e.target.value.replace(/\D/g, ""), 10);
+                              updateCustomWeight.mutate({ id: cm.id, weight: isNaN(n) ? 0 : n });
+                            }}
+                            className="w-9 h-full text-[12px] text-center bg-transparent border-x border-[#eef2f7] focus:outline-none text-[#07142f]"
+                          />
+                          <button
+                            type="button"
+                            aria-label="Increase weight"
+                            onClick={() => updateCustomWeight.mutate({ id: cm.id, weight: w + 1 })}
+                            className="h-full w-7 flex items-center justify-center text-[#526078] hover:bg-[#f3f6fb]"
+                          >
+                            <Plus size={12} />
+                          </button>
+                        </div>
+                        <span className="text-[10.5px] tabular-nums whitespace-nowrap w-[54px] text-right text-[#8794ab]">
+                          {eff == null ? "→ —" : `→ ${eff.toFixed(1)}%`}
+                        </span>
+                        <button
+                          type="button"
+                          aria-label="Delete custom metric"
+                          onClick={() => setConfirmDeleteId(cm.id)}
+                          className="w-[68px] inline-flex items-center justify-center h-7 rounded text-[#b91c1c] hover:bg-[#fef2f2]"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </TooltipProvider>
+
+        )}
+
+        <AlertDialog open={confirmDeleteId !== null} onOpenChange={(o) => !o && setConfirmDeleteId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete custom metric?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will remove the metric and recompute scores for all cities.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (confirmDeleteId) {
+                    deleteCustom.mutate(confirmDeleteId, {
+                      onSuccess: () => toast.success("Custom metric deleted"),
+                    });
+                  }
+                  setConfirmDeleteId(null);
+                }}
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {false && (
+          <div>
         ) : (
           <FormulaPanel
             categoryLabel={categoryLabel}

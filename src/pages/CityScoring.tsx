@@ -1131,6 +1131,20 @@ const CityScoring = () => {
         rawValuesByKey={rawValuesByKey}
         serverCategoryScore={openSubMetricsFor ? (baseDetailCategoryScores[openSubMetricsFor] ?? null) : null}
         masterWeightPct={openSubMetricsFor ? (appliedTotal > 0 ? (appliedWeights[openSubMetricsFor] / appliedTotal) * 100 : null) : null}
+        masterWeightPendingPct={openSubMetricsFor ? ((() => {
+          const t = Object.values(weights).reduce((s, v) => s + v, 0);
+          return t > 0 ? (weights[openSubMetricsFor] / t) * 100 : null;
+        })()) : null}
+        currentCategoryScore={openSubMetricsFor ? (detailCategoryScores[openSubMetricsFor] ?? null) : null}
+        currentComposite={weightedComposite}
+        computeNewComposite={(newCatScore) => {
+          if (!openSubMetricsFor || appliedTotal <= 0) return weightedComposite;
+          const sum = CATEGORIES.reduce((s, c) => {
+            const v = c.key === openSubMetricsFor ? newCatScore : (detailCategoryScores[c.key] ?? 0);
+            return s + v * appliedWeights[c.key];
+          }, 0);
+          return Math.round(sum / appliedTotal);
+        }}
       />
 
       {/* Filters row */}

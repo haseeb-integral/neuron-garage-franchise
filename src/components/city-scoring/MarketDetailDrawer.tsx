@@ -383,17 +383,28 @@ export function MarketDetailDrawer({
   }, [customCriteriaRows]);
   const customCount = customCriteriaRows.length;
 
-  const liveCount = coverageCounts.live;
-  const proxyCount = coverageCounts.proxy + customCount;
-  const missingCount = coverageCounts.missing;
-  const blockedCount = coverageCounts.blocked;
-  const manualCount = 0;
-  const totalCount = enabledRegistryTotal + customCount;
+  // Count ALL registry rows (enabled + disabled), not just enabled — the
+  // header chip is supposed to reflect total spec coverage.
+  const allCoverageCounts = useMemo(() => {
+    let live = 0, proxy = 0, missing = 0, blocked = 0;
+    Object.values(coverageByCategory).forEach(({ enabled, disabled }) => {
+      [...enabled, ...disabled].forEach(({ status }) => {
+        if (status === "live") live++;
+        else if (status === "proxy") proxy++;
+        else if (status === "blocked") blocked++;
+        else missing++;
+      });
+    });
+    return { live, proxy, missing, blocked };
+  }, [coverageByCategory]);
 
-  const [showDisabled, setShowDisabled] = useState<Record<MetricCategory, boolean>>({
-    demand: false, pricing_power: false, competitive_landscape: false,
-    franchisee_supply: false, ease_of_operations: false, parent_mindset: false,
-  });
+  const liveCount = allCoverageCounts.live;
+  const estimatedCount = allCoverageCounts.proxy;
+  const missingCount = allCoverageCounts.missing;
+  const blockedCount = allCoverageCounts.blocked;
+  const manualCount = 0;
+  const totalRegistry = SOW_METRIC_REGISTRY.length;
+
   const [showDiagnostics, setShowDiagnostics] = useState(false);
 
   const metroArea = (market as any).metroArea ?? null;

@@ -168,7 +168,7 @@ export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
     enabled: false, weight_within_category: 0,    status: "missing" },
   { key: "guide_wage_proxy", category: "ease_of_operations", label: "Estimated Guide Wage",
     description: "Local hourly wage for camp counselors / 'Guides'. Major recurring labor cost for the franchisee.",
-    enabled: true,  weight_within_category: 0.30, status: "proxy" },
+    enabled: true,  weight_within_category: 0.30, status: "live" },
 
   // ─────────── PARENT MINDSET ───────────
   { key: "homeschool_population_proxy", category: "parent_mindset", label: "Homeschool Population Proxy",

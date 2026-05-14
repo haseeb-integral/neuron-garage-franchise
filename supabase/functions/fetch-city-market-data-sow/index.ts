@@ -16,6 +16,7 @@ import {
   fetchCensusSprintMetrics,
   fetchGoogleTrends,
   fetchCompetitorWaitlistSignals,
+  findCampPricingUrls,
   fetchNoaaClimateMetrics,
   fetchBeaRpp,
   fetchNcesElementaryStaffing,

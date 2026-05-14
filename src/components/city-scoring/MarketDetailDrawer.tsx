@@ -522,7 +522,7 @@ export function MarketDetailDrawer({
         <SheetHeader className="mb-3">
           <SheetTitle className="text-[#07142f]">{market.city}, {stateAbbr}</SheetTitle>
           <p className="text-[11px] text-[#526078]">
-            Source-of-truth audit for the SOW metric coverage powering this market's score.
+            Source-of-truth audit for every metric powering this market's score.
           </p>
         </SheetHeader>
 

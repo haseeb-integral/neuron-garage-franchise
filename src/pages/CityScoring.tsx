@@ -321,11 +321,10 @@ const CityScoring = () => {
   );
   const subWeightsKey = useMemo(() => JSON.stringify(appliedSubWeights), [appliedSubWeights]);
   const appliedWeightsKey = useMemo(() => JSON.stringify(appliedWeights), [appliedWeights]);
-  const defaultSubKey = useMemo(() => JSON.stringify(DEFAULT_WEIGHTS), []);
-  const subWeightsAreDefault = subWeightsKey === JSON.stringify({
-    demand: {}, pricingPower: {}, competitiveLandscape: {},
-    franchiseeSupply: {}, easeOfOperations: {}, parentMindset: {},
-  }) || subWeightsKey === defaultSubKey;
+  const defaultSubWeightsKey = useMemo(() => JSON.stringify(DEFAULT_SUB_WEIGHTS), []);
+  const defaultMasterWeightsKey = useMemo(() => JSON.stringify(DEFAULT_WEIGHTS), []);
+  const subWeightsAreDefault =
+    subWeightsKey === defaultSubWeightsKey && appliedWeightsKey === defaultMasterWeightsKey;
   type CompositeOverride = { composite: number; tier: "A" | "B" | "C" | "D" };
   const [compositeOverrides, setCompositeOverrides] = useState<Record<string, CompositeOverride>>({});
 

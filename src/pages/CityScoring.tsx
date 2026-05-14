@@ -38,6 +38,9 @@ import { useCityScoringStore, DEFAULT_WEIGHTS } from "@/stores/cityScoringStore"
 import { SubMetricWeightsDrawer } from "@/components/city-scoring/SubMetricWeightsDrawer";
 import { getCached, setCached } from "@/lib/pageCache";
 import { Settings2 } from "lucide-react";
+import { METRICS_BY_CATEGORY } from "@/lib/sowMetricRegistry";
+import { parseSignalValue } from "@/lib/sowNormalize";
+import { recomputeCategoryScore } from "@/lib/clientSubWeightScoring";
 
 function rebalanceWeights<K extends string>(
   prev: Record<K, number>,
@@ -190,6 +193,7 @@ const CityScoring = () => {
   const customCriteria = useCityScoringStore((s) => s.customCriteria);
   const setCustomCriteria = useCityScoringStore((s) => s.setCustomCriteria);
   const subWeights = useCityScoringStore((s) => s.subWeights);
+  const appliedSubWeights = useCityScoringStore((s) => s.appliedSubWeights);
   const setAppliedSubWeights = useCityScoringStore((s) => s.setAppliedSubWeights);
   const resetSubWeights = useCityScoringStore((s) => s.resetSubWeights);
   const [openSubMetricsFor, setOpenSubMetricsFor] = useState<CategoryKey | null>(null);

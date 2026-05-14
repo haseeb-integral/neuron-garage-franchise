@@ -209,7 +209,7 @@ function ScoreImpactBadge({ used }: { used: boolean }) {
     </span>
   ) : (
     <span
-      className="rounded-full border border-[#e5eaf2] bg-[#f3f6fb] px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#8794ab]"
+      className="rounded-full border border-[#e5eaf2] bg-[#f3f6fb] px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#526078]"
       title="Informational only — not used in score"
     >
       Info only

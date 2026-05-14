@@ -409,7 +409,22 @@ function buildSowSignals(args: {
     add(missingSignal('ease_of_operations', 'commute_sprawl_index', 'Commute Times / Geographic Sprawl', 'census', 'B08303 returned null for this place.'))
   }
   add(missingSignal('ease_of_operations', 'state_camp_regulation_complexity', 'State Camp Regulation Complexity', 'aca', 'Needs ACA state law/regulation mapping.'))
-  add({ signal_key: 'guide_wage_proxy', label: 'Estimated Guide Wage Proxy', value: fmtMoney(bls?.guide_wage_proxy ?? null), source: bls ? 'bls' : 'not_connected', source_url: bls?.source_url ?? null, confidence: bls ? 0.6 : 0, status: bls ? 'proxy' : 'missing', metric_category: 'ease_of_operations', used_in_score: Boolean(bls) })
+  {
+    const m = blsOews?.childcare_hourly ?? null
+    add({
+      signal_key: 'guide_wage_proxy',
+      label: 'Estimated Guide Wage Proxy',
+      value: m?.value != null ? `$${m.value.toFixed(2)}/hr` : 'Not available yet',
+      source: m?.value != null ? 'bls_oews' : 'not_connected',
+      source_url: blsOews?.source_url ?? null,
+      confidence: m?.tier === 'metro' ? 0.75 : (m?.tier ? 0.55 : 0),
+      status: tierStatus(m?.tier ?? null),
+      metric_category: 'ease_of_operations',
+      used_in_score: m?.value != null,
+      notes: `${tierNote(m?.tier ?? null, m?.area_label ?? null)} BLS SOC 39-9011 (Childcare Workers) hourly mean — best public proxy for camp counselor wage.`,
+      raw_data: { soc: '39-9011', datatype: '03_hourly_mean', tier: m?.tier ?? null, area_code: m?.area_code ?? null, area_label: m?.area_label ?? null, series_id: m?.series_id ?? null },
+    })
+  }
 
   add(missingSignal('parent_mindset', 'homeschool_population_proxy', 'Homeschool Population Proxy', 'state_edu', 'Needs state education/homeschool source.'))
   add({ signal_key: 'montessori_school_density', label: 'Elementary Montessori School Density', value: census?.children_5_12_count ? Math.round(((existingCounts.montessori ?? 0) / census.children_5_12_count) * 10000 * 10) / 10 : 'Not available yet', source: census ? 'computed' : 'not_connected', confidence: census ? 0.55 : 0, status: census ? 'proxy' : 'missing', metric_category: 'parent_mindset', used_in_score: Boolean(census) })

@@ -40,7 +40,8 @@ import { getCached, setCached } from "@/lib/pageCache";
 import { Settings2 } from "lucide-react";
 import { METRICS_BY_CATEGORY } from "@/lib/sowMetricRegistry";
 import { parseSignalValue } from "@/lib/sowNormalize";
-import { recomputeCategoryScore } from "@/lib/clientSubWeightScoring";
+import { recomputeCategoryScore, recomputeComposite } from "@/lib/clientSubWeightScoring";
+import { tierFromScore } from "@/lib/cityScoringLiveData";
 
 function rebalanceWeights<K extends string>(
   prev: Record<K, number>,

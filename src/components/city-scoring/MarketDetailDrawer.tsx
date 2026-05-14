@@ -3,11 +3,13 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { CityData } from "@/data/cityData";
-import { ArrowRight, Download, ExternalLink, FileText, RefreshCw } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronRight, Download, ExternalLink, FileText, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getSignalGeography, GEO_BADGE_CLASS } from "@/lib/signalGeography";
 import { useCustomCriteria, CATEGORY_LABEL_TO_KEY } from "@/hooks/useCustomCriteria";
 import type { CategoryKey } from "@/stores/cityScoringStore";
+import { METRICS_BY_CATEGORY, type SowMetricEntry } from "@/lib/sowMetricRegistry";
+import { FETCHER_DIAGNOSTIC_KEYS, canonicalKey } from "@/lib/signalAliases";
 
 export interface CustomCriterion {
   name: string;
@@ -131,67 +133,11 @@ function displayValue(value: unknown): string {
   return String(value);
 }
 
-const SIGNAL_KEY_TO_CATEGORY: Record<string, MetricCategory> = {
-  children_5_12_count: "demand",
-  children_5_12_pct: "demand",
-  households_with_children_under_13: "demand",
-  median_household_income: "demand",
-  income_100k_plus_pct: "demand",
-  income_150k_plus_pct: "demand",
-  young_family_growth_rate: "demand",
-  dual_income_household_pct: "demand",
-  education_bachelors_plus_pct: "demand",
-  summer_weather_index: "demand",
-  avg_peak_summer_temperature: "demand",
-  days_above_100f: "demand",
-  total_population: "demand",
-  children_population_proxy: "demand",
-  income_100k_plus_proxy: "demand",
-  education_bachelors_plus_proxy: "demand",
-  avg_weekly_camp_tuition: "pricing_power",
-  avg_hourly_camp_pricing: "pricing_power",
-  premium_stem_camp_pricing: "pricing_power",
-  private_school_tuition_proxy: "pricing_power",
-  private_school_student_count: "pricing_power",
-  childcare_nanny_hourly_rate_proxy: "pricing_power",
-  household_discretionary_income_proxy: "pricing_power",
-  private_school_count: "pricing_power",
-  summer_camps_per_10k_children: "competitive_landscape",
-  stem_robotics_maker_camp_count: "competitive_landscape",
-  school_based_summer_camp_count: "competitive_landscape",
-  national_brand_presence: "competitive_landscape",
-  google_search_demand_summer_camp: "competitive_landscape",
-  google_search_demand_summer_day_camp: "competitive_landscape",
-  google_search_demand_summer_day_camps_year: "competitive_landscape",
-  waitlist_sold_out_signal_count: "competitive_landscape",
-  competitor_count: "competitive_landscape",
-  stem_enrichment_count: "competitive_landscape",
-  public_elementary_teacher_count: "franchisee_supply",
-  private_charter_montessori_teacher_count: "franchisee_supply",
-  elementary_school_count: "franchisee_supply",
-  teacher_salary_proxy: "franchisee_supply",
-  cost_of_living_index: "franchisee_supply",
-  summer_income_need_ratio: "franchisee_supply",
-  rental_venue_count: "ease_of_operations",
-  classroom_rental_cost_weekly: "ease_of_operations",
-  commute_sprawl_index: "ease_of_operations",
-  state_camp_regulation_complexity: "ease_of_operations",
-  guide_wage_proxy: "ease_of_operations",
-  homeschool_population_proxy: "parent_mindset",
-  montessori_school_density: "parent_mindset",
-  childrens_museum_signal: "parent_mindset",
-  robotics_maker_space_count: "parent_mindset",
-  library_children_program_signal: "parent_mindset",
-  parenting_facebook_group_activity: "parent_mindset",
-  parent_community_activity_proxy: "parent_mindset",
-  montessori_count: "parent_mindset",
-  parent_mindset_places: "parent_mindset",
-};
+// Build a lookup from canonical signal_key → registry category, derived from
+// the SOW registry itself so the drawer cannot drift from the spec.
+// (registry-by-category lookup not needed — drawer iterates METRICS_BY_CATEGORY directly)
 
-function getCategory(signal: LiveSignal): MetricCategory | null {
-  return signal.raw_data?.metric_category
-    ?? (signal.signal_key ? SIGNAL_KEY_TO_CATEGORY[signal.signal_key] ?? null : null);
-}
+// (legacy getCategory removed — drawer is now driven by the SOW registry directly)
 
 function StatusBadge({ status }: { status: MetricStatus }) {
   return (
@@ -335,17 +281,80 @@ export function MarketDetailDrawer({
     URL.revokeObjectURL(url);
   };
 
-  const groupedSignals = useMemo(() => {
-    return SOW_CATEGORIES.map((category) => ({
-      ...category,
-      rows: signals.filter((signal) => getCategory(signal) === category.key),
-    }));
+  // Build a lookup of stored signals keyed by canonical signal_key. We keep
+  // the most-recently-updated row when duplicates exist (legacy + canonical).
+  const signalsByCanonical = useMemo(() => {
+    const out: Record<string, LiveSignal> = {};
+    for (const s of signals) {
+      const k = canonicalKey(s.signal_key);
+      if (!k) continue;
+      if (FETCHER_DIAGNOSTIC_KEYS.has(s.signal_key ?? "")) continue;
+      const prev = out[k];
+      if (!prev) { out[k] = s; continue; }
+      const a = new Date(prev.updated_at ?? 0).getTime();
+      const b = new Date(s.updated_at ?? 0).getTime();
+      if (b >= a) out[k] = s;
+    }
+    return out;
   }, [signals]);
 
-  const uncategorizedSignals = useMemo(
-    () => signals.filter((signal) => !getCategory(signal)),
+  // Diagnostic rows surface in their own collapsible at the bottom.
+  const diagnosticRows = useMemo(
+    () => signals.filter((s) => s.signal_key && FETCHER_DIAGNOSTIC_KEYS.has(s.signal_key)),
     [signals],
   );
+
+  // Per-row coverage status derived from the registry + DB row.
+  type Coverage = { metric: SowMetricEntry; signal: LiveSignal | null; status: MetricStatus };
+  const coverageByCategory = useMemo(() => {
+    const out: Record<MetricCategory, { enabled: Coverage[]; disabled: Coverage[] }> = {
+      demand: { enabled: [], disabled: [] },
+      pricing_power: { enabled: [], disabled: [] },
+      competitive_landscape: { enabled: [], disabled: [] },
+      franchisee_supply: { enabled: [], disabled: [] },
+      ease_of_operations: { enabled: [], disabled: [] },
+      parent_mindset: { enabled: [], disabled: [] },
+    };
+    (Object.keys(METRICS_BY_CATEGORY) as CategoryKey[]).forEach((catKey) => {
+      METRICS_BY_CATEGORY[catKey].forEach((metric) => {
+        const cat = metric.category as MetricCategory;
+        const signal = signalsByCanonical[metric.key] ?? null;
+        let status: MetricStatus;
+        if (metric.status === "blocked") {
+          status = "blocked";
+        } else if (signal && getStatus(signal) !== "missing") {
+          // Honor the row's own status when present; otherwise inherit registry status.
+          status = (signal.raw_data?.status as MetricStatus | undefined)
+            ?? (metric.status === "live" ? "live" : "proxy");
+        } else {
+          status = "missing";
+        }
+        const bucket = metric.enabled ? out[cat].enabled : out[cat].disabled;
+        bucket.push({ metric, signal, status });
+      });
+    });
+    return out;
+  }, [signalsByCanonical]);
+
+  // Truthful counter: count enabled SOW metrics by status.
+  const coverageCounts = useMemo(() => {
+    let live = 0, proxy = 0, missing = 0, blocked = 0;
+    Object.values(coverageByCategory).forEach(({ enabled }) => {
+      enabled.forEach(({ status }) => {
+        if (status === "live") live++;
+        else if (status === "proxy") proxy++;
+        else if (status === "blocked") blocked++;
+        else missing++;
+      });
+    });
+    return { live, proxy, missing, blocked };
+  }, [coverageByCategory]);
+
+  const enabledRegistryTotal = useMemo(() => {
+    let n = 0;
+    Object.values(coverageByCategory).forEach(({ enabled }) => { n += enabled.length; });
+    return n;
+  }, [coverageByCategory]);
 
   const warnings = latestJob?.response_summary?.warnings ?? {};
   const hasWarnings = Object.values(warnings).some(Boolean);
@@ -374,13 +383,18 @@ export function MarketDetailDrawer({
   }, [customCriteriaRows]);
   const customCount = customCriteriaRows.length;
 
-  const liveCount = signals.filter((signal) => getStatus(signal) === "live").length;
-  const proxyCount =
-    signals.filter((signal) => getStatus(signal) === "proxy").length + customCount;
-  const missingCount = signals.filter((signal) => getStatus(signal) === "missing").length;
-  const blockedCount = signals.filter((signal) => getStatus(signal) === "blocked").length;
-  const manualCount = signals.filter((signal) => getStatus(signal) === "manual").length;
-  const totalCount = signals.length + customCount;
+  const liveCount = coverageCounts.live;
+  const proxyCount = coverageCounts.proxy + customCount;
+  const missingCount = coverageCounts.missing;
+  const blockedCount = coverageCounts.blocked;
+  const manualCount = 0;
+  const totalCount = enabledRegistryTotal + customCount;
+
+  const [showDisabled, setShowDisabled] = useState<Record<MetricCategory, boolean>>({
+    demand: false, pricing_power: false, competitive_landscape: false,
+    franchisee_supply: false, ease_of_operations: false, parent_mindset: false,
+  });
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
 
   const metroArea = (market as any).metroArea ?? null;
   const county = (market as any).county ?? null;
@@ -430,6 +444,66 @@ export function MarketDetailDrawer({
     );
   };
 
+  const renderRegistryRow = (
+    metric: SowMetricEntry,
+    signal: LiveSignal | null,
+    status: MetricStatus,
+    dimmed = false,
+  ) => {
+    const used = metric.enabled && (status === "live" || status === "proxy");
+    const value = signal && status !== "missing" ? displayValue(signal.value) : "Not collected yet";
+    const sub =
+      status === "missing" && metric.status !== "blocked"
+        ? "No fetcher wired yet"
+        : status === "blocked"
+        ? "Source unavailable"
+        : relativeTime(signal?.updated_at);
+    return (
+      <div
+        key={`reg-${metric.key}`}
+        className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-[#f1f4f9] px-2 py-1.5 last:border-0 hover:bg-[#fbfcff] ${
+          dimmed || status === "missing" ? "opacity-70" : ""
+        }`}
+      >
+        <div className="min-w-0">
+          <p className="text-[12px] font-medium text-[#07142f] line-clamp-2" title={metric.label}>
+            {metric.label}
+          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-1">
+            <ScoreImpactBadge used={used} />
+            <GeoBadge source={signal?.source} signalKey={signal?.signal_key ?? metric.key} />
+            <StatusBadge status={status} />
+            {signal?.source && status !== "missing" && (
+              <span className="rounded-full border border-[#e5eaf2] bg-white px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#526078]">
+                {signal.source}
+              </span>
+            )}
+          </div>
+          {(status === "missing" || dimmed) && (
+            <p className="mt-0.5 text-[10.5px] text-[#8794ab] line-clamp-2">{metric.description}</p>
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-2 text-right">
+          <div>
+            <p className="text-[12px] font-bold text-[#07142f]">{value}</p>
+            <p className="text-[10px] text-[#8794ab]">{sub}</p>
+          </div>
+          {signal?.source_url ? (
+            <a
+              href={signal.source_url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-[#174be8] hover:text-[#1240c9]"
+              title="Open source"
+            >
+              <ExternalLink size={12} />
+            </a>
+          ) : null}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
       <SheetContent className="w-full sm:max-w-[640px] bg-white p-0 flex flex-col">
@@ -452,10 +526,14 @@ export function MarketDetailDrawer({
             <p className="text-[11px] text-[#526078]">
               Latest refresh: <span className="font-semibold text-[#07142f]">{formatDate(latestJob?.completed_at)}</span>
             </p>
-            <div className="flex gap-1.5 text-[11px]">
+            <div className="flex flex-wrap gap-1.5 text-[11px]">
               <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#0ea66e]">{liveCount} live</span>
-              <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#174be8]">{proxyCount} estimated</span>
+              <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#174be8]">{proxyCount} proxy</span>
               <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#526078]">{missingCount} missing</span>
+              {blockedCount > 0 && (
+                <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#ea580c]">{blockedCount} blocked</span>
+              )}
+              <span className="rounded-md bg-[#f3f6fb] px-1.5 py-0.5 font-semibold text-[#526078]">of {enabledRegistryTotal} SOW metrics</span>
             </div>
           </div>
           {loading && (
@@ -561,83 +639,111 @@ export function MarketDetailDrawer({
           </TabsContent>
 
           <TabsContent value="data-sources" className="mt-3">
-            {signals.length === 0 && customCount === 0 && !loading ? (
-              <div className="rounded-md border border-[#eef2f7] p-3 text-[12px] text-[#526078]">
-                No live SOW metric rows found for this city yet. Run the SOW coverage refresh first.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {groupedSignals.map((category) => {
-                  const customs = customByMetricCategory[category.key] ?? [];
-                  const total = category.rows.length + customs.length;
-                  return (
-                    <div key={category.key} className="rounded-lg border border-[#eef2f7] bg-white">
-                      <div className="flex items-center justify-between border-b border-[#eef2f7] bg-[#f8fafe] px-3 py-1.5">
-                        <h5 className="text-[12px] font-bold text-[#07142f]">{category.label}</h5>
-                        <span className="text-[10px] font-semibold text-[#8794ab]">
-                          {total} signal{total === 1 ? "" : "s"}{customs.length > 0 ? ` · ${customs.length} custom` : ""}
-                        </span>
-                      </div>
-                      {total === 0 ? (
-                        <div className="px-3 py-2 text-[11px] text-[#526078]">No rows stored for this category yet.</div>
-                      ) : (
-                        <div>
-                          {category.rows.map((signal, index) =>
-                            renderSignalRow(signal, signal.id ?? signal.signal_key ?? `${category.key}-${index}`),
-                          )}
-                          {customs.map((c) => (
-                            <div
-                              key={`custom-${c.id}`}
-                              className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-[#f1f4f9] px-2 py-1.5 last:border-0 hover:bg-[#fbfcff]"
-                            >
-                              <div className="min-w-0">
-                                <p className="text-[12px] font-medium text-[#07142f] line-clamp-2" title={c.name}>
-                                  {c.name}
-                                </p>
-                                <div className="mt-1 flex flex-wrap items-center gap-1">
-                                  <span className="rounded-full border border-[#cbd8ff] bg-[#eaf0ff] px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#174be8]">
-                                    Custom
-                                  </span>
-                                  <StatusBadge status="proxy" />
-                                  {c.data_source && (
-                                    <span className="rounded-full border border-[#e5eaf2] bg-white px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#526078]">
-                                      {c.data_source}
-                                    </span>
-                                  )}
-                                </div>
-                                {c.notes && (
-                                  <p className="mt-0.5 text-[10.5px] text-[#8794ab] line-clamp-2">{c.notes}</p>
-                                )}
-                              </div>
-                              <div className="flex shrink-0 items-center gap-2 text-right">
-                                <div>
-                                  <p className="text-[12px] font-bold text-[#07142f]">Neutral 50</p>
-                                  <p className="text-[10px] text-[#8794ab]">no live data</p>
-                                </div>
-                              </div>
+            <div className="space-y-3">
+              {SOW_CATEGORIES.map((category) => {
+                const bucket = coverageByCategory[category.key];
+                const customs = customByMetricCategory[category.key] ?? [];
+                const enabledRows = bucket.enabled;
+                const disabledRows = bucket.disabled;
+                const enabledTotal = enabledRows.length;
+                const liveProxy = enabledRows.filter((r) => r.status === "live" || r.status === "proxy").length;
+                return (
+                  <div key={category.key} className="rounded-lg border border-[#eef2f7] bg-white">
+                    <div className="flex items-center justify-between border-b border-[#eef2f7] bg-[#f8fafe] px-3 py-1.5">
+                      <h5 className="text-[12px] font-bold text-[#07142f]">{category.label}</h5>
+                      <span className="text-[10px] font-semibold text-[#8794ab]">
+                        {liveProxy}/{enabledTotal} covered
+                        {customs.length > 0 ? ` · ${customs.length} custom` : ""}
+                      </span>
+                    </div>
+                    <div>
+                      {enabledRows.map(({ metric, signal, status }) =>
+                        renderRegistryRow(metric, signal, status),
+                      )}
+                      {customs.map((c) => (
+                        <div
+                          key={`custom-${c.id}`}
+                          className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-[#f1f4f9] px-2 py-1.5 last:border-0 hover:bg-[#fbfcff]"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-[12px] font-medium text-[#07142f] line-clamp-2" title={c.name}>
+                              {c.name}
+                            </p>
+                            <div className="mt-1 flex flex-wrap items-center gap-1">
+                              <span className="rounded-full border border-[#cbd8ff] bg-[#eaf0ff] px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#174be8]">
+                                Custom
+                              </span>
+                              <StatusBadge status="proxy" />
+                              {c.data_source && (
+                                <span className="rounded-full border border-[#e5eaf2] bg-white px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#526078]">
+                                  {c.data_source}
+                                </span>
+                              )}
                             </div>
-                          ))}
+                            {c.notes && (
+                              <p className="mt-0.5 text-[10.5px] text-[#8794ab] line-clamp-2">{c.notes}</p>
+                            )}
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2 text-right">
+                            <div>
+                              <p className="text-[12px] font-bold text-[#07142f]">Neutral 50</p>
+                              <p className="text-[10px] text-[#8794ab]">no live data</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {disabledRows.length > 0 && (
+                        <div className="border-t border-[#eef2f7] bg-[#fbfcff]">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setShowDisabled((s) => ({ ...s, [category.key]: !s[category.key] }))
+                            }
+                            className="flex w-full items-center justify-between px-3 py-1.5 text-[10.5px] font-semibold text-[#526078] hover:text-[#07142f]"
+                          >
+                            <span className="flex items-center gap-1">
+                              {showDisabled[category.key] ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+                              Not in current scoring model
+                            </span>
+                            <span>{disabledRows.length}</span>
+                          </button>
+                          {showDisabled[category.key] && (
+                            <div>
+                              {disabledRows.map(({ metric, signal, status }) =>
+                                renderRegistryRow(metric, signal, status, true),
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
-                  );
-                })}
+                  </div>
+                );
+              })}
 
-                {uncategorizedSignals.length > 0 && (
-                  <div className="rounded-lg border border-[#eef2f7] bg-white">
-                    <div className="flex items-center justify-between border-b border-[#eef2f7] bg-[#f8fafe] px-3 py-1.5">
-                      <h5 className="text-[12px] font-bold text-[#07142f]">Other Signals</h5>
-                      <span className="text-[10px] font-semibold text-[#8794ab]">{uncategorizedSignals.length}</span>
-                    </div>
-                    <div>
-                      {uncategorizedSignals.map((signal, index) =>
-                        renderSignalRow(signal, signal.id ?? signal.signal_key ?? `other-${index}`),
+              {diagnosticRows.length > 0 && (
+                <div className="rounded-lg border border-dashed border-[#eef2f7] bg-[#fbfcff]">
+                  <button
+                    type="button"
+                    onClick={() => setShowDiagnostics((v) => !v)}
+                    className="flex w-full items-center justify-between px-3 py-2 text-[11px] font-semibold text-[#526078] hover:text-[#07142f]"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      {showDiagnostics ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                      Fetcher diagnostics
+                    </span>
+                    <span className="text-[10px] text-[#8794ab]">{diagnosticRows.length} rows · not metrics</span>
+                  </button>
+                  {showDiagnostics && (
+                    <div className="border-t border-[#eef2f7] bg-white">
+                      {diagnosticRows.map((signal, index) =>
+                        renderSignalRow(signal, signal.id ?? signal.signal_key ?? `diag-${index}`),
                       )}
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
+                  )}
+                </div>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
 

@@ -35,6 +35,7 @@ import {
   type RankedMarket,
 } from "@/lib/cityScoringLiveData";
 import { useCityScoringStore, DEFAULT_WEIGHTS } from "@/stores/cityScoringStore";
+import { DEFAULT_SUB_WEIGHTS } from "@/lib/sowMetricRegistry";
 import { SubMetricWeightsDrawer } from "@/components/city-scoring/SubMetricWeightsDrawer";
 import { getCached, setCached } from "@/lib/pageCache";
 import { Settings2 } from "lucide-react";

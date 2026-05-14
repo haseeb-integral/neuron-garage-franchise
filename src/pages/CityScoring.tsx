@@ -4,6 +4,7 @@ import {
   Bell, HelpCircle, ChevronDown, LogOut, Settings, Search, Download, FileText,
   Plus, RefreshCw, ArrowRight, GitCompare, Eye, Star, Users, DollarSign,
   Trophy, UserCheck, Cog, Heart, MapPin, Building2, GraduationCap, Home as HomeIcon,
+  Check, ChevronsUpDown, Info, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +12,10 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -223,6 +228,8 @@ const CityScoring = () => {
   const setAppliedSubWeights = useCityScoringStore((s) => s.setAppliedSubWeights);
   const resetSubWeights = useCityScoringStore((s) => s.resetSubWeights);
   const [openSubMetricsFor, setOpenSubMetricsFor] = useState<CategoryKey | null>(null);
+  const [cityFilter, setCityFilter] = useState("");
+  const [stateOpen, setStateOpen] = useState(false);
   const [addCritOpen, setAddCritOpen] = useState(false);
 
   const selectedId = useCityScoringStore((s) => s.selectedId);
@@ -310,7 +317,7 @@ const CityScoring = () => {
   );
 
   const filtered = useMemo(() => {
-    return filterRankedMarkets(baseRankedMarkets, {
+    const base = filterRankedMarkets(baseRankedMarkets, {
       searchTerm,
       stateFilter,
       tierFilter,
@@ -318,12 +325,15 @@ const CityScoring = () => {
       minScore,
       minPop,
     });
-  }, [baseRankedMarkets, searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop]);
+    const q = cityFilter.trim().toLowerCase();
+    if (!q) return base;
+    return base.filter((m: any) => String(m.city ?? "").toLowerCase().includes(q));
+  }, [baseRankedMarkets, searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop, cityFilter]);
 
   // Reset pagination whenever filter inputs change
   useEffect(() => {
     setPage(1);
-  }, [searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop]);
+  }, [searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop, cityFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -1210,21 +1220,79 @@ const CityScoring = () => {
       />
 
       {/* Filters row */}
+      <TooltipProvider delayDuration={150}>
       <div className="mb-4 rounded-lg bg-white border border-[#eef2f7] p-3 flex flex-wrap items-end gap-3">
-        <div className="flex flex-col gap-1 min-w-[140px]">
+        {/* Searchable State combobox */}
+        <div className="flex flex-col gap-1 min-w-[180px]">
           <label className="text-[11px] text-[#526078]">State</label>
-          <Select value={stateFilter} onValueChange={setStateFilter}>
-            <SelectTrigger className="h-9 bg-white border-[#e5eaf2] text-sm"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="All">All States</SelectItem>
-              {availableStates.map((s) => (
-                <SelectItem key={s} value={s}>{s}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Popover open={stateOpen} onOpenChange={setStateOpen}>
+            <PopoverTrigger asChild>
+              <button
+                role="combobox"
+                aria-expanded={stateOpen}
+                className="h-9 w-full flex items-center justify-between rounded-md border border-[#e5eaf2] bg-white px-3 text-sm text-[#07142f] hover:bg-[#fbfcff]"
+              >
+                <span className="truncate">{stateFilter === "All" ? "All States" : stateFilter}</span>
+                <ChevronsUpDown size={14} className="ml-2 shrink-0 text-[#8794ab]" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="p-0 w-[240px]" align="start">
+              <Command>
+                <CommandInput placeholder="Search state…" className="h-9" />
+                <CommandList>
+                  <CommandEmpty>No state found.</CommandEmpty>
+                  <CommandGroup>
+                    {(["All", ...availableStates] as string[]).map((s) => (
+                      <CommandItem
+                        key={s}
+                        value={s}
+                        onSelect={() => { setStateFilter(s); setStateOpen(false); }}
+                      >
+                        <Check className={cn("mr-2 h-4 w-4", stateFilter === s ? "opacity-100" : "opacity-0")} />
+                        {s === "All" ? "All States" : s}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </div>
+
+        {/* City quick-search */}
+        <div className="flex flex-col gap-1 min-w-[180px]">
+          <label className="text-[11px] text-[#526078]">City</label>
+          <div className="relative h-9">
+            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#8794ab]" />
+            <Input
+              value={cityFilter}
+              onChange={(e) => setCityFilter(e.target.value)}
+              placeholder="Search city…"
+              className="h-9 pl-8 pr-7 bg-white border-[#e5eaf2] text-sm"
+            />
+            {cityFilter && (
+              <button
+                type="button"
+                onClick={() => setCityFilter("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-[#8794ab] hover:text-[#07142f]"
+                aria-label="Clear city filter"
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
+        </div>
+
         <div className="flex flex-col gap-1 min-w-[140px]">
-          <label className="text-[11px] text-[#526078]">Min Population</label>
+          <label className="text-[11px] text-[#526078] flex items-center gap-1">
+            Min Population
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="cursor-help text-[#8794ab]"><Info size={11} /></span>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-[220px] text-xs">Only show cities with population above this threshold.</TooltipContent>
+            </Tooltip>
+          </label>
           <Select value={minPop} onValueChange={setMinPop}>
             <SelectTrigger className="h-9 bg-white border-[#e5eaf2] text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -1236,7 +1304,15 @@ const CityScoring = () => {
           </Select>
         </div>
         <div className="flex flex-col gap-1 min-w-[180px] flex-1 max-w-[260px]">
-          <label className="text-[11px] text-[#526078]">Min Score</label>
+          <label className="text-[11px] text-[#526078] flex items-center gap-1">
+            Min Score
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="cursor-help text-[#8794ab]"><Info size={11} /></span>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-[220px] text-xs">Only show cities scoring at or above this number (0–100).</TooltipContent>
+            </Tooltip>
+          </label>
           <div className="flex items-center gap-2 h-9">
             <Slider
               value={[minScore]}
@@ -1249,7 +1325,15 @@ const CityScoring = () => {
           </div>
         </div>
         <div className="flex flex-col gap-1 min-w-[120px]">
-          <label className="text-[11px] text-[#526078]">Tier</label>
+          <label className="text-[11px] text-[#526078] flex items-center gap-1">
+            Tier
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="cursor-help text-[#8794ab]"><Info size={11} /></span>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-[220px] text-xs">Filter by city tier assigned during scoring.</TooltipContent>
+            </Tooltip>
+          </label>
           <Select value={tierFilter} onValueChange={setTierFilter}>
             <SelectTrigger className="h-9 bg-white border-[#e5eaf2] text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -1261,17 +1345,27 @@ const CityScoring = () => {
             </SelectContent>
           </Select>
         </div>
-        <label className="flex items-center gap-2 h-9">
-          <Checkbox
-            checked={nonRegOnly}
-            onCheckedChange={(v) => {
-              const on = !!v;
-              setNonRegOnly(on);
-              if (on) toast.success("Non-registration state filter applied to available sample data.");
-            }}
-          />
-          <span className="text-xs text-[#14233b] whitespace-nowrap">Non-Registration States Only</span>
-        </label>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <label className="flex items-center gap-2 h-9 cursor-pointer">
+              <Checkbox
+                checked={nonRegOnly}
+                onCheckedChange={(v) => {
+                  const on = !!v;
+                  setNonRegOnly(on);
+                  if (on) toast.success("Non-registration state filter applied to available sample data.");
+                }}
+              />
+              <span className="text-xs text-[#14233b] whitespace-nowrap inline-flex items-center gap-1">
+                Non-Registration States Only
+                <Info size={11} className="text-[#8794ab]" />
+              </span>
+            </label>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-[280px] text-xs">
+            Franchise registration states require extra legal filings. Check this to only see states where you can sell franchises without state registration.
+          </TooltipContent>
+        </Tooltip>
         <div className="ml-auto h-9 flex items-end">
           <Button
             variant="outline"
@@ -1284,8 +1378,7 @@ const CityScoring = () => {
           </Button>
         </div>
       </div>
-
-      {/* View toggle: Table | Map */}
+      </TooltipProvider>
       <div className="mb-3 flex items-center gap-1 rounded-lg border border-[#eef2f7] bg-white p-1 w-fit">
         {(["table", "map"] as const).map((v) => (
           <button

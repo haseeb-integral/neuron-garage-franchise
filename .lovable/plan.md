@@ -1,48 +1,37 @@
-## Goal
-Replace the CSV-only download in the Market Report modal with a real PDF that mirrors the on-screen content, and make the right-panel "Generate PDF Report" button a one-click flow.
+## Issues
 
-## Approach
-Use **html2canvas + jsPDF** to snapshot the modal content div and emit a clean, multi-page A4 PDF. Both libs are small, work fully client-side, and require zero backend changes. (Preferred over `window.print()` because it avoids printing app chrome and works without user print-dialog steps.)
+1. **No default name** in the Save Search dialog — user has to type one from scratch.
+2. **Saved searches "disappear"** after saving. They actually exist (stored in `saved_searches` table) and are loaded into `savedSearches` state, but they're hidden inside the **preset dropdown at the top right** (the one currently labeled "Custom"). Most users won't think to look there. After loading one, the dropdown shows "Custom" — the saved name is never displayed.
 
-## Scope
-**Files:**
-- `src/components/city-scoring/MarketReportModal.tsx` — PDF capture + new button + auto-download support
-- `src/pages/CityScoring.tsx` — pass an `autoDownload` flag when the right-panel button is clicked
+This is a UI discoverability problem, not a data problem. (Also — yes, this acts like an internal CRM: the rows are per-user via RLS, you stay signed in, and they persist across sessions.)
 
-**Dep add:** `jspdf`, `html2canvas`
+## Fix (frontend only, `src/pages/CityScoring.tsx`)
 
-## Changes
+### 1. Auto-default name in the Save dialog
+When the dialog opens, prefill `saveSearchName` with a smart default that the user can edit:
+- If a built-in preset is currently active → `"<PresetName> – <MMM D>"` (e.g. `"Affluent Suburbs Model – Nov 14"`).
+- Otherwise (Custom) → use the highest-weighted category as the hint: `"<CategoryLabel>-heavy – <MMM D>"` (e.g. `"Demand-heavy – Nov 14"`).
+- Field is fully editable, autofocus + select-all so a quick keystroke replaces it.
 
-### 1. Install deps
-- `bun add jspdf html2canvas`
+### 2. Make saved searches visible (two changes)
 
-### 2. MarketReportModal.tsx
-- Attach `ref={reportRef}` to the existing scrollable content `<div className="space-y-5 ...">` (lines ~217–311). No layout changes.
-- New `handleDownloadPdf`:
-  - Guard on `loading` / missing ref.
-  - Temporarily expand node height to `scrollHeight` and force white bg so html2canvas captures the full modal (currently clipped by `max-h-[90vh]`).
-  - `html2canvas(node, { scale: 2, backgroundColor: "#ffffff", useCORS: true, windowWidth: node.scrollWidth })`.
-  - Build A4 portrait with `jsPDF({ unit: "pt", format: "a4" })`.
-  - Multi-page slice: render the same image at negative `y` offsets per page (standard pattern) so long content paginates cleanly.
-  - Add a small header line (`pdf.text(...)`) on page 1 with `Generated: YYYY-MM-DD` — no DOM mutation needed.
-  - Filename: `${city-slug}-${stateAbbr}-market-report-${YYYY-MM-DD}.pdf`.
-  - Toast success/error.
-- Footer: keep `Download Source CSV` (outline); add primary `Download PDF Report` button next to it, disabled while `loading`.
-- **Auto-download wiring:** add new optional prop `autoDownload?: boolean`. When `open` becomes true with `autoDownload`, after the existing data-load effect resolves and `loading` flips false, run `handleDownloadPdf` once (guarded by a ref so it fires only once per open). The modal still appears (so the user sees what's being captured and the export progress) — they can close it after.
+**a. Dedicated "Saved Searches" dropdown next to the preset dropdown.**
+A second `<Select>` shows up only when the user has ≥1 saved search. Trigger label = `"Saved (3)"` collapsed, opens to show each name + trash icon. Selecting one loads it (same `handleLoadSavedSearch` path). This is the obvious place users will look — separate from the built-in presets.
 
-### 3. CityScoring.tsx (line ~1947)
-- Add local state `reportAutoPdf: boolean`.
-- "Generate PDF Report" button → `setReportAutoPdf(true); setReportOpen(true);`.
-- Pass `autoDownload={reportAutoPdf}` to `<MarketReportModal>`.
-- Reset `reportAutoPdf` to false when the modal closes.
-- The "Report" button at line 1928 stays as plain open (no auto-download).
+**b. After loading, show the saved name in the page subtitle.**
+Replace the "Manually adjusted master weights — no preset matches" line with `Loaded saved search: "<name>"` while a saved search is active. Track `activeSavedSearchId` in state; cleared as soon as the user moves a slider or picks a preset.
 
-**Decision: I'll do the auto-download.** It's straightforward — one prop, one effect, one ref guard. No data race because we wait for the existing `loading` effect to finish before triggering.
+Keep the existing entries inside the preset dropdown too (under the "Saved Searches" section header) — harmless, and helps users who already learned that path.
+
+### 3. Tiny polish
+- Toast on save now says `Saved "<name>" — find it under the Saved dropdown` so the location is obvious the first time.
 
 ## Risk
-Low. Read-only capture of existing DOM. No scoring, data, or layout logic changes. Two new npm deps (~250KB gzipped) loaded only where used.
+Low. ~40 LOC in one file. No DB changes, no scoring/filter logic touched.
 
-## Out of scope
-- Restyling the modal for print
-- Server-side PDF generation
-- Hiding the modal during auto-download (kept visible so user sees source + can re-export/close)
+## Verification
+1. Click Save Search → name field is prefilled, editable, Enter saves.
+2. After save, toast points to the new "Saved" dropdown; the name appears there.
+3. Selecting it loads weights AND the subtitle shows `Loaded saved search: "<name>"`.
+4. Moving any slider clears the subtitle indicator.
+5. Trash icon in the new dropdown deletes without loading the search.

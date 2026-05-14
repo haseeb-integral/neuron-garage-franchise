@@ -440,17 +440,25 @@ export function MarketDetailDrawer({
               <h4 className="mb-2 text-[12.5px] font-bold text-[#07142f]">Refresh Summary</h4>
               <div className="rounded-md border border-[#eef2f7] p-3">
                 <div className="grid grid-cols-2 gap-1.5 text-[11px]">
-                  {Object.entries(counts).length === 0 ? (
-                    <p className="col-span-2 text-[#526078]">No refresh counts stored yet.</p>
-                  ) : (
-                    Object.entries(counts).map(([key, value]) => (
-                      <div key={key} className="flex justify-between gap-2 rounded bg-[#f8fafe] px-2 py-1">
-                        <span className="truncate text-[#526078]">{key.split("_").join(" ")}</span>
-                        <span className="font-semibold text-[#07142f]">{String(value)}</span>
-                      </div>
-                    ))
-                  )}
+                  {[
+                    ["Live", liveCount],
+                    ["Estimated", proxyCount],
+                    ["Manual", manualCount],
+                    ["Blocked", blockedCount],
+                    ["Missing", missingCount],
+                    ["Total SOW metrics", totalCount],
+                  ].map(([label, value]) => (
+                    <div key={String(label)} className="flex justify-between gap-2 rounded bg-[#f8fafe] px-2 py-1">
+                      <span className="truncate text-[#526078]">{label}</span>
+                      <span className="font-semibold text-[#07142f]">{String(value)}</span>
+                    </div>
+                  ))}
                 </div>
+                {customCount > 0 && (
+                  <p className="mt-2 text-[10.5px] text-[#526078]">
+                    Includes {customCount} custom metric{customCount === 1 ? "" : "s"} (counted as Estimated — uses neutral 50 until live data is wired).
+                  </p>
+                )}
                 <div className="mt-3 border-t border-[#eef2f7] pt-2 text-[11px]">
                   <p className="mb-1 font-semibold text-[#07142f]">Warnings</p>
                   {Object.entries(warnings).length === 0 ? (

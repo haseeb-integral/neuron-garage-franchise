@@ -1365,17 +1365,24 @@ const CityScoring = () => {
               <TooltipTrigger asChild>
                 <span className="cursor-help text-[#8794ab]"><Info size={11} /></span>
               </TooltipTrigger>
-              <TooltipContent className="max-w-[220px] text-xs">Filter by city tier assigned during scoring.</TooltipContent>
+              <TooltipContent className="max-w-[280px] text-xs leading-relaxed">
+                Cities are auto-ranked into tiers by composite score.
+                <br />
+                <b>A = Top (85+)</b>, <b>B = Strong (75–84)</b>,{" "}
+                <b>C = Moderate (65–74)</b>, <b>D = Weak (below 65)</b>.
+                <br />
+                Use this to jump straight to your best markets.
+              </TooltipContent>
             </Tooltip>
           </label>
           <Select value={tierFilter} onValueChange={setTierFilter}>
             <SelectTrigger className="h-9 bg-white border-[#e5eaf2] text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="All">All</SelectItem>
-              <SelectItem value="A">A</SelectItem>
-              <SelectItem value="B">B</SelectItem>
-              <SelectItem value="C">C</SelectItem>
-              <SelectItem value="D">D</SelectItem>
+              <SelectItem value="A">A — Top</SelectItem>
+              <SelectItem value="B">B — Strong</SelectItem>
+              <SelectItem value="C">C — Moderate</SelectItem>
+              <SelectItem value="D">D — Weak</SelectItem>
             </SelectContent>
           </Select>
         </div>

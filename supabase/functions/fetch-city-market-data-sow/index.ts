@@ -539,6 +539,7 @@ Deno.serve(async (req) => {
     const signals = buildSowSignals({
       census: censusData,
       bls: blsData,
+      blsOews: blsOewsData,
       existingCounts,
       existingWarnings,
       sprint: sprintData,

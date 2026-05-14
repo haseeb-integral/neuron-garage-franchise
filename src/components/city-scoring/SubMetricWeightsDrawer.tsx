@@ -193,7 +193,7 @@ export function SubMetricWeightsDrawer({
                 const value = cur[m.key] ?? 0;
                 const isDisabled = !m.enabled;
                 const pill = STATUS_PILL[m.status];
-                const eff = effectivePct(m.key, m.enabled);
+                const eff = effectivePct(value, m.enabled);
 
                 return (
                   <div

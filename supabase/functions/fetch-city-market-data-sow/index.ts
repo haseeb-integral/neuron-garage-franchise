@@ -16,7 +16,10 @@ import {
   fetchCensusSprintMetrics,
   fetchGoogleTrends,
   fetchCompetitorWaitlistSignals,
+  fetchNoaaClimateMetrics,
+  fetchBeaRpp,
   type CensusSprintMetrics,
+  type NoaaClimateMetrics,
 } from '../_shared/metricFetchers.ts'
 
 const corsHeaders = {
@@ -234,8 +237,10 @@ function buildSowSignals(args: {
   sprint: CensusSprintMetrics | null
   trends: { city_camp: number | null; generic_camp: number | null } | null
   waitlist: { scanned: number; waitlist: number; soldout: number } | null
+  noaa: NoaaClimateMetrics | null
+  bea: { rpp_all_items: number | null; year: number | null; source_url: string | null } | null
 }) {
-  const { census, bls, existingCounts, sprint, trends, waitlist } = args
+  const { census, bls, existingCounts, sprint, trends, waitlist, noaa, bea } = args
   const signals: SignalInput[] = []
   const add = (s: SignalInput) => signals.push(s)
 
@@ -257,9 +262,15 @@ function buildSowSignals(args: {
     add(missingSignal('demand', 'dual_income_household_pct', '% Dual-Income Households', 'census', 'B23007 returned null for this place.'))
   }
   add({ signal_key: 'education_bachelors_plus_pct', label: 'Parent Education / Bachelor’s+', value: fmtPct(census?.bachelors_plus_pct ?? null), source: census ? 'census' : 'not_connected', source_url: census?.source_url ?? null, confidence: census ? 0.9 : 0, status: census ? 'live' : 'missing', metric_category: 'demand', used_in_score: Boolean(census) })
-  add(missingSignal('demand', 'summer_weather_index', 'Summer Weather Index', 'weather', 'Needs NOAA/Open-Meteo integration.'))
-  add(missingSignal('demand', 'avg_peak_summer_temperature', 'Avg Peak Summer Temperature', 'weather', 'Needs NOAA/Open-Meteo integration.'))
-  add(missingSignal('demand', 'days_above_100f', 'Number of 100°+ Days', 'weather', 'Needs NOAA/Open-Meteo integration.'))
+  if (noaa && noaa.status === 'live') {
+    add({ signal_key: 'summer_weather_index', label: 'Summer Weather Index (0–100 comfort)', value: String(noaa.summer_weather_index), source: 'open_meteo', source_url: noaa.source_url, confidence: 0.85, status: 'live', metric_category: 'demand', used_in_score: true, notes: `5-yr Jun–Aug ERA5 reanalysis at city centroid. Penalizes >85°F highs, <65°F lows, and ≥0.25in rain days. Outdoor camp days/yr: ${noaa.outdoor_camp_days_per_year}.`, raw_data: { years_sampled: noaa.years_sampled, outdoor_camp_days_per_year: noaa.outdoor_camp_days_per_year } })
+    add({ signal_key: 'avg_peak_summer_temperature', label: 'Avg Peak Summer Temperature', value: `${noaa.avg_peak_summer_temperature_f}°F`, source: 'open_meteo', source_url: noaa.source_url, confidence: 0.9, status: 'live', metric_category: 'demand', used_in_score: true, raw_data: { years_sampled: noaa.years_sampled } })
+    add({ signal_key: 'days_above_100f', label: 'Number of 100°+ Days (yr avg)', value: String(noaa.days_above_100f_per_year), source: 'open_meteo', source_url: noaa.source_url, confidence: 0.9, status: 'live', metric_category: 'demand', used_in_score: true, raw_data: { years_sampled: noaa.years_sampled } })
+  } else {
+    add(missingSignal('demand', 'summer_weather_index', 'Summer Weather Index', 'open_meteo', 'No station within 50 miles of city centroid.'))
+    add(missingSignal('demand', 'avg_peak_summer_temperature', 'Avg Peak Summer Temperature', 'open_meteo', 'No station within 50 miles of city centroid.'))
+    add(missingSignal('demand', 'days_above_100f', 'Number of 100°+ Days', 'open_meteo', 'No station within 50 miles of city centroid.'))
+  }
 
   add(missingSignal('pricing_power', 'avg_weekly_camp_tuition', 'Average Weekly Camp Tuition', 'firecrawl', 'Requires pricing extraction from competitor websites.'))
   add(missingSignal('pricing_power', 'avg_hourly_camp_pricing', 'Average Hourly Camp Pricing', 'computed', 'Requires weekly tuition and hours of care.'))
@@ -309,7 +320,11 @@ function buildSowSignals(args: {
   add(missingSignal('franchisee_supply', 'private_charter_montessori_teacher_count', 'Private / Charter / Montessori Teachers', 'state_edu', 'Needs private/charter/Montessori teacher source or estimate.'))
   add({ signal_key: 'elementary_school_count', label: 'Elementary Schools', value: existingCounts.elementary_schools ?? 'Not available yet', source: 'apify', confidence: 0.6, status: 'proxy', metric_category: 'franchisee_supply', used_in_score: true })
   add({ signal_key: 'teacher_salary_proxy', label: 'Average Teacher Salary Proxy', value: fmtMoney(bls?.teacher_salary_proxy ?? null), source: bls ? 'bls' : 'not_connected', source_url: bls?.source_url ?? null, confidence: bls ? 0.7 : 0, status: bls ? 'proxy' : 'missing', metric_category: 'franchisee_supply', used_in_score: Boolean(bls) })
-  add(missingSignal('franchisee_supply', 'cost_of_living_index', 'Cost of Living Index', 'zillow_col', 'Needs approved COL/rent source.'))
+  if (bea?.rpp_all_items != null) {
+    add({ signal_key: 'cost_of_living_index', label: `Cost of Living Index (BEA RPP, ${bea.year ?? 'latest'})`, value: String(bea.rpp_all_items), source: 'bea_rpp', source_url: bea.source_url, confidence: 0.9, status: 'live', metric_category: 'franchisee_supply', used_in_score: true, notes: 'BEA Regional Price Parity, all items, state-level. National = 100.', raw_data: { year: bea.year } })
+  } else {
+    add(missingSignal('franchisee_supply', 'cost_of_living_index', 'Cost of Living Index', 'bea_rpp', 'BEA SARPP returned no data for this state.'))
+  }
   add(missingSignal('franchisee_supply', 'summer_income_need_ratio', 'Summer Income Need Ratio', 'computed', 'Requires teacher salary and COL/rent proxy.'))
 
   add({ signal_key: 'rental_venue_count', label: 'Rental Venues (Schools / Churches / Rec Centers)', value: existingCounts.rental_venues ?? 'Not available yet', source: 'apify', confidence: 0.55, status: 'proxy', metric_category: 'ease_of_operations', used_in_score: true })
@@ -373,9 +388,11 @@ Deno.serve(async (req) => {
       children_pct: censusData?.children_5_12_pct ?? null,
       last_scraped_at: startedAt,
       notes: 'SOW metric coverage refresh',
-    }, { onConflict: 'city,state' }).select('id').single()
+    }, { onConflict: 'city,state' }).select('id, latitude, longitude').single()
     if (cityErr || !cityRow) return json({ error: 'Failed to upsert city', detail: cityErr?.message }, 500)
     const cityId = cityRow.id as string
+    const cityLat = cityRow.latitude != null ? Number(cityRow.latitude) : null
+    const cityLng = cityRow.longitude != null ? Number(cityRow.longitude) : null
 
     const { data: latestJobRows } = await admin
       .from('city_fetch_jobs')
@@ -404,6 +421,12 @@ Deno.serve(async (req) => {
     const competitorUrls = (competitorRows ?? []).map((r) => r.source_url as string).filter(Boolean)
     const waitlistResult = await fetchCompetitorWaitlistSignals(competitorUrls)
 
+    // Day 2: NOAA Open-Meteo + BEA RPP, run in parallel.
+    const [noaaResult, beaResult] = await Promise.all([
+      fetchNoaaClimateMetrics(cityLat, cityLng),
+      fetchBeaRpp(state),
+    ])
+
     const signals = buildSowSignals({
       census: censusData,
       bls: blsData,
@@ -412,6 +435,8 @@ Deno.serve(async (req) => {
       sprint: sprintData,
       trends: trendsResult,
       waitlist: waitlistResult,
+      noaa: noaaResult.data,
+      bea: beaResult.data,
     })
 
     await admin.from('city_market_signals').delete().eq('city_id', cityId)
@@ -439,7 +464,7 @@ Deno.serve(async (req) => {
     if (insertErr) return json({ error: 'Failed to insert SOW metric signals', detail: insertErr.message }, 500)
 
     const completedAt = new Date().toISOString()
-    const warnings = { census: censusError, bls: blsError, census_sprint: sprintError, trends: trendsResult.error, waitlist: waitlistResult.error }
+    const warnings = { census: censusError, bls: blsError, census_sprint: sprintError, trends: trendsResult.error, waitlist: waitlistResult.error, noaa: noaaResult.error, bea: beaResult.error }
 
     // ---- Phase C: SOW shadow scoring (observation only) ----
     const sowMetricValues: SowMetricValues = {

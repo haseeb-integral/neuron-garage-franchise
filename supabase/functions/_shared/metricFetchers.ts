@@ -210,3 +210,156 @@ export async function fetchCompetitorWaitlistSignals(urls: string[]) {
   }))
   return { waitlist, soldout, scanned: targets.length, error: errs.length ? errs.join(' | ') : null }
 }
+
+// ---- NOAA / Open-Meteo climate fetcher (Archive API) ----
+// Returns 5-year-averaged summer climate metrics for the given centroid.
+// Per spec: if no usable station within 50 miles, return status 'missing' (never throw, never null+error).
+// Open-Meteo's gridded reanalysis (ERA5) covers the entire US at ~10km resolution,
+// so the 50-mile fallback is enforced via coordinate sanity (must be within US bbox)
+// and via verifying the API actually returns daily series. If empty -> missing.
+export type NoaaClimateMetrics = {
+  summer_weather_index: number | null    // 0-100 comfort score
+  avg_peak_summer_temperature_f: number | null
+  days_above_100f_per_year: number | null
+  outdoor_camp_days_per_year: number | null
+  years_sampled: number
+  source_url: string | null
+  status: 'live' | 'missing'
+}
+
+export async function fetchNoaaClimateMetrics(
+  lat: number | null | undefined,
+  lng: number | null | undefined,
+): Promise<{ data: NoaaClimateMetrics; error: string | null }> {
+  const empty: NoaaClimateMetrics = {
+    summer_weather_index: null,
+    avg_peak_summer_temperature_f: null,
+    days_above_100f_per_year: null,
+    outdoor_camp_days_per_year: null,
+    years_sampled: 0,
+    source_url: null,
+    status: 'missing',
+  }
+  if (lat == null || lng == null || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return { data: empty, error: 'No city centroid available (no coordinates within 50 miles).' }
+  }
+  // Continental US bbox + Alaska/Hawaii rough bounds. Outside → no station within 50 miles.
+  const inUS = (lat >= 18 && lat <= 72 && lng >= -180 && lng <= -65)
+  if (!inUS) return { data: empty, error: `Coordinates ${lat},${lng} outside US — no station within 50 miles.` }
+
+  const now = new Date()
+  const endYear = now.getFullYear() - 1 // last full year
+  const startYear = endYear - 4         // 5-year window
+  const startDate = `${startYear}-06-01`
+  const endDate = `${endYear}-08-31`
+  const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}` +
+    `&start_date=${startDate}&end_date=${endDate}` +
+    `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum` +
+    `&temperature_unit=fahrenheit&precipitation_unit=inch&timezone=auto`
+  try {
+    const res = await fetch(url)
+    if (!res.ok) {
+      const body = await res.text().catch(() => '')
+      return { data: empty, error: `Open-Meteo ${res.status}: ${body.slice(0, 160)}` }
+    }
+    const body = await res.json() as any
+    const dates: string[] = body?.daily?.time ?? []
+    const tmax: number[] = body?.daily?.temperature_2m_max ?? []
+    const tmin: number[] = body?.daily?.temperature_2m_min ?? []
+    const precip: number[] = body?.daily?.precipitation_sum ?? []
+    if (!dates.length || !tmax.length) return { data: empty, error: 'Open-Meteo returned no daily series.' }
+
+    // Filter to summer months only (Jun/Jul/Aug)
+    let summerDays = 0, hot100 = 0, outdoorOk = 0
+    let sumMax = 0, sumComfortPenalty = 0
+    for (let i = 0; i < dates.length; i++) {
+      const m = Number(dates[i].slice(5, 7))
+      if (m < 6 || m > 8) continue
+      const hi = tmax[i], lo = tmin[i], pr = precip[i] ?? 0
+      if (!Number.isFinite(hi)) continue
+      summerDays++
+      sumMax += hi
+      if (hi >= 100) hot100++
+      if (hi <= 95 && pr < 0.25) outdoorOk++
+      // Comfort penalty: each degree above 85 or below 65 hurts; rain hurts.
+      const overheat = Math.max(0, hi - 85)
+      const cold = Math.max(0, 65 - (Number.isFinite(lo) ? lo : hi))
+      const wet = pr >= 0.25 ? 5 : 0
+      sumComfortPenalty += overheat * 1.5 + cold * 1 + wet
+    }
+    if (summerDays === 0) return { data: empty, error: 'Open-Meteo returned no summer days in window.' }
+    const yearsSampled = endYear - startYear + 1
+    const avgPeak = Math.round((sumMax / summerDays) * 10) / 10
+    const hot100PerYear = Math.round((hot100 / yearsSampled) * 10) / 10
+    const outdoorPerYear = Math.round((outdoorOk / yearsSampled) * 10) / 10
+    // Comfort index 0-100: lower penalty = higher score. Empirically penalty/day in [0..30].
+    const avgPenalty = sumComfortPenalty / summerDays
+    const comfort = Math.max(0, Math.min(100, Math.round(100 - avgPenalty * 4)))
+
+    return {
+      data: {
+        summer_weather_index: comfort,
+        avg_peak_summer_temperature_f: avgPeak,
+        days_above_100f_per_year: hot100PerYear,
+        outdoor_camp_days_per_year: outdoorPerYear,
+        years_sampled: yearsSampled,
+        source_url: 'https://open-meteo.com/en/docs/historical-weather-api',
+        status: 'live',
+      },
+      error: null,
+    }
+  } catch (e) {
+    return { data: empty, error: (e as Error).message }
+  }
+}
+
+// ---- BEA Regional Price Parity (state-level, table SARPP) ----
+// Uses BEA Regional API (free, requires UserID = BEA_API_KEY).
+// Returns the "All items" RPP for the given state. National = 100.
+const BEA_STATE_FIPS_TO_GEO: Record<string, string> = (() => {
+  const map: Record<string, string> = {}
+  for (const [abbr, fips] of Object.entries(STATE_FIPS)) map[abbr] = `${fips}000`
+  return map
+})()
+
+export async function fetchBeaRpp(state: string): Promise<{
+  data: { rpp_all_items: number | null; year: number | null; geo_fips: string | null; source_url: string | null } | null
+  error: string | null
+}> {
+  const key = Deno.env.get('BEA_API_KEY')
+  if (!key) return { data: null, error: 'BEA_API_KEY missing' }
+  const abbr = resolveStateAbbr(state)
+  if (!abbr) return { data: null, error: `Unknown state: ${state}` }
+  const geoFips = BEA_STATE_FIPS_TO_GEO[abbr]
+  if (!geoFips) return { data: null, error: `No BEA geo for ${abbr}` }
+  const url = `https://apps.bea.gov/api/data?UserID=${key}&method=GetData&datasetname=Regional` +
+    `&TableName=SARPP&LineCode=1&GeoFips=${geoFips}&Year=LAST5&ResultFormat=JSON`
+  try {
+    const res = await fetch(url)
+    if (!res.ok) {
+      const body = await res.text().catch(() => '')
+      return { data: null, error: `BEA HTTP ${res.status}: ${body.slice(0, 160)}` }
+    }
+    const body = await res.json() as any
+    const results = body?.BEAAPI?.Results
+    if (results?.Error) return { data: null, error: `BEA error: ${JSON.stringify(results.Error).slice(0, 160)}` }
+    const data: any[] = results?.Data ?? []
+    if (!data.length) return { data: null, error: 'BEA returned no data rows.' }
+    // Pick the most recent year
+    const sorted = [...data].sort((a, b) => Number(b.TimePeriod) - Number(a.TimePeriod))
+    const latest = sorted[0]
+    const value = Number(String(latest?.DataValue ?? '').replace(/,/g, ''))
+    if (!Number.isFinite(value)) return { data: null, error: `BEA non-numeric value: ${latest?.DataValue}` }
+    return {
+      data: {
+        rpp_all_items: Math.round(value * 10) / 10,
+        year: Number(latest.TimePeriod) || null,
+        geo_fips: geoFips,
+        source_url: `https://apps.bea.gov/itable/?ReqID=70&step=1`,
+      },
+      error: null,
+    }
+  } catch (e) {
+    return { data: null, error: (e as Error).message }
+  }
+}

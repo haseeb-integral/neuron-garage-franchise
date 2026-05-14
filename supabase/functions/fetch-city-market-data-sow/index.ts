@@ -407,7 +407,17 @@ function buildSowSignals(args: {
     add(missingSignal('franchisee_supply', 'student_teacher_ratio_elementary', 'Elementary Student-Teacher Ratio', 'nces_ccd', nces?.error ?? 'NCES CCD lookup unavailable.'))
     add(missingSignal('franchisee_supply', 'private_charter_montessori_teacher_count', 'Private / Charter / Montessori Teachers', 'nces_ccd', nces?.error ?? 'NCES CCD lookup unavailable.'))
   }
-  add({ signal_key: 'elementary_school_count', label: 'Elementary Schools', value: existingCounts.elementary_schools ?? 'Not available yet', source: 'apify', confidence: 0.6, status: 'proxy', metric_category: 'franchisee_supply', used_in_score: true })
+  {
+    const ncesCount = (nces && nces.status === 'live' && nces.schools_matched > 0) ? nces.schools_matched : null
+    const apifyCount = existingCounts.elementary_schools ?? null
+    if (ncesCount != null) {
+      add({ signal_key: 'elementary_school_count', label: `Elementary Schools (NCES CCD ${nces!.year})`, value: String(ncesCount), source: 'nces_ccd', source_url: nces!.source_url, confidence: 0.9, status: 'live', metric_category: 'franchisee_supply', used_in_score: true, notes: 'NCES CCD public elementary school count. Add private/charter when GreatSchools key is available.', raw_data: { source: 'nces_ccd', year: nces!.year, public_elementary_schools: ncesCount, apify_fallback: apifyCount } })
+    } else if (apifyCount != null) {
+      add({ signal_key: 'elementary_school_count', label: 'Elementary Schools (Apify Google Maps fallback)', value: String(apifyCount), source: 'apify', confidence: 0.6, status: 'proxy', metric_category: 'franchisee_supply', used_in_score: true, notes: 'NCES CCD lookup unavailable — using Apify Google Maps count as fallback.', raw_data: { source: 'apify_google_maps', count: apifyCount } })
+    } else {
+      add(missingSignal('franchisee_supply', 'elementary_school_count', 'Elementary Schools', 'nces_ccd', nces?.error ?? 'No NCES match and no Apify fallback.'))
+    }
+  }
   {
     const m = blsOews?.teacher_annual ?? null
     add({

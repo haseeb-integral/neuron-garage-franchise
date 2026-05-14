@@ -312,12 +312,40 @@ export function MarketDetailDrawer({
     [signals],
   );
 
-  const counts = latestJob?.response_summary?.counts ?? {};
   const warnings = latestJob?.response_summary?.warnings ?? {};
   const hasWarnings = Object.values(warnings).some(Boolean);
+
+  // Custom metrics (per-category) appear alongside live signals and count as Estimated.
+  const { data: customCriteriaRows = [] } = useCustomCriteria();
+  const customByMetricCategory = useMemo(() => {
+    const out: Record<MetricCategory, typeof customCriteriaRows> = {
+      demand: [], pricing_power: [], competitive_landscape: [],
+      franchisee_supply: [], ease_of_operations: [], parent_mindset: [],
+    };
+    const KEY_TO_METRIC: Record<CategoryKey, MetricCategory> = {
+      demand: "demand",
+      pricingPower: "pricing_power",
+      competitiveLandscape: "competitive_landscape",
+      franchiseeSupply: "franchisee_supply",
+      easeOfOperations: "ease_of_operations",
+      parentMindset: "parent_mindset",
+    };
+    customCriteriaRows.forEach((r) => {
+      const ck = CATEGORY_LABEL_TO_KEY[r.category];
+      const mk = ck ? KEY_TO_METRIC[ck] : null;
+      if (mk) out[mk].push(r);
+    });
+    return out;
+  }, [customCriteriaRows]);
+  const customCount = customCriteriaRows.length;
+
   const liveCount = signals.filter((signal) => getStatus(signal) === "live").length;
-  const proxyCount = signals.filter((signal) => getStatus(signal) === "proxy").length;
+  const proxyCount =
+    signals.filter((signal) => getStatus(signal) === "proxy").length + customCount;
   const missingCount = signals.filter((signal) => getStatus(signal) === "missing").length;
+  const blockedCount = signals.filter((signal) => getStatus(signal) === "blocked").length;
+  const manualCount = signals.filter((signal) => getStatus(signal) === "manual").length;
+  const totalCount = signals.length + customCount;
 
   const metroArea = (market as any).metroArea ?? null;
   const county = (market as any).county ?? null;

@@ -24,7 +24,11 @@ interface Props {
   selectedCityLabel?: string;
   rawValuesByKey?: Record<string, number | null | undefined>;
   serverCategoryScore?: number | null;
-  masterWeightPct?: number; // 0..100
+  masterWeightPct?: number; // 0..100, applied master share
+  masterWeightPendingPct?: number; // 0..100, share if pending master sliders were applied
+  currentCategoryScore?: number | null; // displayed category score before Apply (for delta toast)
+  currentComposite?: number; // composite before Apply (for delta toast)
+  computeNewComposite?: (newCategoryScore: number) => number; // recompute composite swapping in new category score
 }
 
 const STATUS_PILL: Record<SowMetricEntry["status"], { label: string; cls: string }> = {

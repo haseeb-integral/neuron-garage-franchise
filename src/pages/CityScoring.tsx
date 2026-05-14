@@ -237,6 +237,84 @@ const CityScoring = () => {
   const [customWeightsSnapshot, setCustomWeightsSnapshot] = useState<Record<CategoryKey, number> | null>(null);
   const [addCritOpen, setAddCritOpen] = useState(false);
 
+  // Saved searches (per-user)
+  const { user } = useAuth();
+  type SavedSearch = { id: string; name: string; master_weights: any; sub_weights: any; created_at: string };
+  const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
+  const [saveSearchOpen, setSaveSearchOpen] = useState(false);
+  const [saveSearchName, setSaveSearchName] = useState("");
+  const [savingSearch, setSavingSearch] = useState(false);
+
+  const refreshSavedSearches = async () => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from("saved_searches")
+      .select("id, name, master_weights, sub_weights, created_at")
+      .order("created_at", { ascending: false });
+    if (error) {
+      console.error("loadSavedSearches", error);
+      return;
+    }
+    setSavedSearches((data ?? []) as SavedSearch[]);
+  };
+  useEffect(() => { refreshSavedSearches(); }, [user?.id]);
+
+  const handleSaveSearch = async () => {
+    const name = saveSearchName.trim();
+    if (!name) { toast.error("Name required"); return; }
+    if (!user) { toast.error("Sign in required"); return; }
+    setSavingSearch(true);
+    const { error } = await supabase.from("saved_searches").insert({
+      user_id: user.id,
+      name,
+      master_weights: appliedWeights as any,
+      sub_weights: appliedSubWeights as any,
+    });
+    setSavingSearch(false);
+    if (error) {
+      console.error("saveSearch", error);
+      toast.error("Save failed");
+      return;
+    }
+    toast.success(`Saved "${name}"`);
+    setSaveSearchOpen(false);
+    setSaveSearchName("");
+    refreshSavedSearches();
+  };
+
+  const handleLoadSavedSearch = (s: SavedSearch) => {
+    const mw = s.master_weights as Record<CategoryKey, number>;
+    const sw = s.sub_weights ?? {};
+    if (mw) {
+      setWeights(mw);
+      setAppliedWeights(mw);
+      setCustomWeightsSnapshot({ ...mw });
+    }
+    // Update both draft and applied sub-weights so any open drawer reflects the change
+    useCityScoringStore.setState({ subWeights: sw, appliedSubWeights: sw });
+    setScoringModel("Custom");
+    toast.success(`Loaded "${s.name}"`);
+  };
+
+  const handleDeleteSavedSearch = (s: SavedSearch) => {
+    toast(`Delete "${s.name}"?`, {
+      action: {
+        label: "Delete",
+        onClick: async () => {
+          const { error } = await supabase.from("saved_searches").delete().eq("id", s.id);
+          if (error) {
+            console.error("deleteSavedSearch", error);
+            toast.error("Delete failed");
+            return;
+          }
+          toast.success(`Deleted "${s.name}"`);
+          refreshSavedSearches();
+        },
+      },
+      cancel: { label: "Cancel", onClick: () => {} },
+    });
+  };
+
   const selectedId = useCityScoringStore((s) => s.selectedId);
   const setSelectedId = useCityScoringStore((s) => s.setSelectedId);
   const selectedMarketKey = useCityScoringStore((s) => s.selectedMarketKey);

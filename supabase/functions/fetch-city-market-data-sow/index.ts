@@ -20,9 +20,11 @@ import {
   fetchNoaaClimateMetrics,
   fetchBeaRpp,
   fetchNcesElementaryStaffing,
+  fetchBlsOewsWages,
   type CensusSprintMetrics,
   type NoaaClimateMetrics,
   type NcesElementaryStaffing,
+  type BlsOewsResult,
 } from '../_shared/metricFetchers.ts'
 
 const corsHeaders = {

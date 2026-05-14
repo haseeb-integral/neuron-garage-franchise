@@ -1356,6 +1356,37 @@ const CityScoring = () => {
               </SelectContent>
             </Select>
           </div>
+          {savedSearches.length > 0 && (
+            <Select
+              value={activeSavedSearchId ?? ""}
+              onValueChange={(id) => {
+                const found = savedSearches.find((s) => s.id === id);
+                if (found) handleLoadSavedSearch(found);
+              }}
+            >
+              <SelectTrigger className="h-9 w-[180px] bg-white border-[#e5eaf2] text-sm">
+                <SelectValue placeholder={`Saved (${savedSearches.length})`} />
+              </SelectTrigger>
+              <SelectContent>
+                {savedSearches.map((s) => (
+                  <div key={s.id} className="relative">
+                    <SelectItem value={s.id} className="pr-8">
+                      <span className="truncate">{s.name}</span>
+                    </SelectItem>
+                    <button
+                      type="button"
+                      onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteSavedSearch(s); }}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-[#fde8e8] text-[#9aa6bd] hover:text-[#dc2626]"
+                      aria-label={`Delete ${s.name}`}
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <Button variant="outline" className="h-9 border-[#e5eaf2] text-[#14233b] gap-1.5 font-normal" onClick={() => setAddCritOpen(true)}>
             <Plus size={14} /> Add Criteria
           </Button>

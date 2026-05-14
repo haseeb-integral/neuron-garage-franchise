@@ -723,6 +723,9 @@ const CityScoring = () => {
     if (totalWeight !== 100) return;
     setAppliedWeights({ ...weights });
     setAppliedSubWeights(subWeights);
+    // While the user is in Custom mode, keep the snapshot in sync with the
+    // most recently applied weights so a round-trip through a preset restores them.
+    if (scoringModel === "Custom") setCustomWeightsSnapshot({ ...weights });
     toast.success("Composite score recalculated from current weights.");
   };
 

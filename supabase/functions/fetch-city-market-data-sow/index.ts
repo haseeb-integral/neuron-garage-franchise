@@ -316,8 +316,13 @@ function buildSowSignals(args: {
 
   add({ signal_key: 'summer_camps_per_10k_children', label: 'Summer Camps per 10,000 Children', value: census?.children_5_12_count ? Math.round(((existingCounts.competitors ?? 0) / census.children_5_12_count) * 10000 * 10) / 10 : 'Not available yet', source: census ? 'computed' : 'not_connected', confidence: census ? 0.55 : 0, status: census ? 'proxy' : 'missing', metric_category: 'competitive_landscape', used_in_score: Boolean(census), notes: 'Uses current competitor count divided by estimated children ages 5–12.' })
   add({ signal_key: 'stem_robotics_maker_camp_count', label: 'STEM / Robotics / Maker Camps', value: existingCounts.stem_enrichment ?? 'Not available yet', source: 'apify', confidence: 0.65, status: 'proxy', metric_category: 'competitive_landscape', used_in_score: true })
-  add(missingSignal('competitive_landscape', 'school_based_summer_camp_count', 'School-Based Summer Camps', 'firecrawl', 'Needs classifier for camp programs hosted at schools.'))
-  add({ signal_key: 'national_brand_presence', label: 'National Brand Presence', value: 'Proxy from competitor names', source: 'apify', confidence: 0.35, status: 'proxy', metric_category: 'competitive_landscape', used_in_score: false, notes: 'Needs explicit national-brand detector list.' })
+  if (waitlist && waitlist.scanned > 0) {
+    add({ signal_key: 'school_based_summer_camp_count', label: `School-Based Summer Camps (${waitlist.school_hosted_pages} of ${waitlist.scanned} pages flagged)`, value: String(waitlist.school_hosted_pages), source: 'firecrawl', confidence: 0.6, status: 'live', metric_category: 'competitive_landscape', used_in_score: true, notes: 'Pages mentioning school-hosted / school-district camp patterns. Zero is a valid live value.', raw_data: { scanned: waitlist.scanned } })
+    add({ signal_key: 'national_brand_presence', label: `National Brand Presence (${waitlist.brand_count} brands)`, value: String(waitlist.brand_count), source: 'firecrawl', confidence: 0.75, status: 'live', metric_category: 'competitive_landscape', used_in_score: true, notes: `Distinct national brands detected across ${waitlist.scanned} competitor pages: ${waitlist.brands_found.join(', ') || 'none'}.`, raw_data: { brands: waitlist.brands_found, scanned: waitlist.scanned } })
+  } else {
+    add(missingSignal('competitive_landscape', 'school_based_summer_camp_count', 'School-Based Summer Camps', 'firecrawl', 'No competitor URLs available to scan.'))
+    add(missingSignal('competitive_landscape', 'national_brand_presence', 'National Brand Presence', 'firecrawl', 'No competitor URLs available to scan.'))
+  }
   if (trends?.city_camp != null) {
     add({ signal_key: 'google_search_demand_summer_camp', label: 'Google Search Demand: summer camp [city] (12-mo avg)', value: String(trends.city_camp), source: 'apify', source_url: 'https://trends.google.com', confidence: 0.6, status: 'live', metric_category: 'competitive_landscape', used_in_score: true, raw_data: { actor: 'emastra/google-trends-scraper', term: 'summer camp [city]' } })
   } else {

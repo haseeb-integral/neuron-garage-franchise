@@ -1030,16 +1030,32 @@ const CityScoring = () => {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Select value={scoringModel} onValueChange={setScoringModel}>
-            <SelectTrigger className="h-9 w-[210px] bg-white border-[#e5eaf2] text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Affluent Suburbs Model">Affluent Suburbs Model</SelectItem>
-              <SelectItem value="Urban Core Model">Urban Core Model</SelectItem>
-              <SelectItem value="Emerging Markets Model">Emerging Markets Model</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex flex-col gap-1">
+            <Select
+              value={(PRESET_NAMES as string[]).includes(scoringModel) ? scoringModel : "Balanced"}
+              onValueChange={(name) => {
+                setScoringModel(name);
+                if (name !== "Custom" && SCORING_PRESETS[name as Exclude<PresetName, "Custom">]) {
+                  const preset = SCORING_PRESETS[name as Exclude<PresetName, "Custom">];
+                  setWeights(preset);
+                  setAppliedWeights(preset);
+                  toast.success(`Applied ${name} preset`);
+                }
+              }}
+            >
+              <SelectTrigger className="h-9 w-[210px] bg-white border-[#e5eaf2] text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PRESET_NAMES.map((p) => (
+                  <SelectItem key={p} value={p}>{p}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-[#8794ab] leading-tight max-w-[210px]">
+              {PRESET_DESCRIPTIONS[((PRESET_NAMES as string[]).includes(scoringModel) ? scoringModel : "Balanced") as PresetName]}
+            </p>
+          </div>
           <Button variant="outline" className="h-9 border-[#e5eaf2] text-[#14233b] gap-1.5 font-normal" onClick={() => setAddCritOpen(true)}>
             <Plus size={14} /> Add Criteria
           </Button>

@@ -723,9 +723,111 @@ const CityScoring = () => {
     });
   };
 
-  const buildCsvDownload = () => {
-    downloadRankedMarketsCsv(filtered);
-    toast.success("Ranked markets exported as CSV");
+  const buildCsvDownload = async () => {
+    try {
+      const cityIds = Array.from(
+        new Set(filtered.map((m: any) => m.cityId).filter((x: any): x is string => !!x)),
+      );
+
+      const DB_TO_UI: Record<string, CategoryKey> = {
+        demand: "demand",
+        pricing_power: "pricingPower",
+        competitive_landscape: "competitiveLandscape",
+        franchisee_supply: "franchiseeSupply",
+        ease_of_operations: "easeOfOperations",
+        parent_mindset: "parentMindset",
+      };
+
+      const sigByCity: Record<string, Record<string, number | null>> = {};
+      const scoresByCity: Record<string, Partial<Record<CategoryKey, number>>> = {};
+
+      if (cityIds.length > 0) {
+        const [{ data: signals }, { data: scores }] = await Promise.all([
+          supabase.from("city_market_signals").select("city_id,signal_key,value").in("city_id", cityIds),
+          supabase.from("city_category_scores").select("city_id,category,score").in("city_id", cityIds),
+        ]);
+        (signals ?? []).forEach((s: any) => {
+          if (!sigByCity[s.city_id]) sigByCity[s.city_id] = {};
+          sigByCity[s.city_id][s.signal_key] = parseSignalValue(s.value);
+        });
+        (scores ?? []).forEach((s: any) => {
+          const ui = DB_TO_UI[s.category];
+          if (!ui) return;
+          if (!scoresByCity[s.city_id]) scoresByCity[s.city_id] = {};
+          (scoresByCity[s.city_id] as any)[ui] = s.score;
+        });
+      }
+
+      const masterTotal = Object.values(appliedWeights).reduce((s, v) => s + v, 0) || 1;
+
+      const header = ["Rank", "City", "State", "County", "Metro Area", "Tier", "Composite Score"];
+      CATEGORIES.forEach((c) => {
+        header.push(`${c.label} Score`, `${c.label} Weight%`, `${c.label} Contribution`);
+      });
+      header.push("Population", "Competitors", "Market Type", "Source", "Last Refreshed");
+
+      const rows: string[][] = [header];
+
+      filtered.forEach((m: any, index: number) => {
+        const raw = (m.cityId && sigByCity[m.cityId]) || {};
+        const srv = (m.cityId && scoresByCity[m.cityId]) || {};
+
+        const catScores = {} as Record<CategoryKey, number>;
+        CATEGORIES.forEach((c) => {
+          const r = recomputeCategoryScore(
+            METRICS_BY_CATEGORY[c.key] ?? [],
+            raw,
+            (appliedSubWeights as any)[c.key] ?? {},
+            (srv as any)[c.key] ?? null,
+          );
+          catScores[c.key] = r.score != null ? Math.round(r.score) : 0;
+        });
+
+        let composite = 0;
+        const perCatRow: string[] = [];
+        CATEGORIES.forEach((c) => {
+          const weightPct = (appliedWeights[c.key] / masterTotal) * 100;
+          const score = catScores[c.key];
+          const contribution = (weightPct * score) / 100;
+          composite += contribution;
+          perCatRow.push(String(score), weightPct.toFixed(1), contribution.toFixed(2));
+        });
+        const compositeRounded = Math.round(composite);
+        const tier = m.hasLiveData ? tierFromScore(compositeRounded) : (m.tier ?? "");
+
+        rows.push([
+          String(index + 1),
+          m.city ?? "",
+          m.state ?? "",
+          m.county ?? "",
+          m.metroArea ?? "",
+          String(tier),
+          m.hasLiveData ? String(compositeRounded) : "",
+          ...perCatRow,
+          String(m.population ?? ""),
+          String(m.competitorCount ?? ""),
+          m.marketType ?? "",
+          m.source ?? "",
+          m.lastScrapedAt ?? "",
+        ]);
+      });
+
+      const csv = rows
+        .map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(","))
+        .join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ranked-markets-live-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      toast.success("Ranked markets exported as CSV");
+    } catch (err) {
+      console.error("Export CSV failed", err);
+      toast.error("Export failed — see console");
+    }
   };
 
   const openCompare = () => {

@@ -1310,19 +1310,20 @@ const CityScoring = () => {
                   <>
                     <div className="px-2 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-[#8794ab]">Saved Searches</div>
                     {savedSearches.map((s) => (
-                      <SelectItem key={s.id} value={`saved:${s.id}`} className="pr-8">
-                        <span className="flex items-center justify-between gap-2 w-full">
+                      <div key={s.id} className="relative">
+                        <SelectItem value={`saved:${s.id}`} className="pr-8">
                           <span className="truncate">{s.name}</span>
-                        </span>
+                        </SelectItem>
                         <button
                           type="button"
                           onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteSavedSearch(s); }}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-[#fde8e8] text-[#9aa6bd] hover:text-[#dc2626]"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                          className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-[#fde8e8] text-[#9aa6bd] hover:text-[#dc2626]"
                           aria-label={`Delete ${s.name}`}
                         >
                           <Trash2 size={12} />
                         </button>
-                      </SelectItem>
+                      </div>
                     ))}
                   </>
                 )}

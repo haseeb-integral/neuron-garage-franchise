@@ -21,8 +21,89 @@ Things that came up during the sprint but don't block the demo. Review after Day
 
 ---
 
+## Prompt A — "NEW DEMAND METRIC" audit (paste into Lovable after Day 5 confirmed)
+
+Before moving on: what is the "NEW DEMAND METRIC" custom metric showing
+"Neutral 50" in the Frisco drawer? Is the value 50 hardcoded, calculated,
+or a placeholder? Show me the code in sowMetricRegistry.ts and the SOW writer.
+Do not change anything. Just show me the code.
+
+---
+
+## Prompt B — Firecrawl pricing URL fix (paste into Lovable after Prompt A answered)
+
+Fix Firecrawl URL sourcing for pricing metrics — the 5 competitor URLs are
+Google Maps listings with no inline pricing. Use Firecrawl search or map to
+find actual camp website pricing pages before scraping. Target URLs containing:
+/pricing /tuition /rates /register /summer-camp. Cap still 5 URLs. If no pricing
+URLs found, keep status: 'missing'. Do not change regex or missing-not-null logic.
+Deploy → refresh Frisco → report new Live count. Wait for my confirm.
+
+---
+
+## Day 6–8 Remaining Metrics Plan (City Search)
+
+**Status as of Day 5:** 25 Live / 8 Estimated / 11 Missing / 2 Blocked
+
+### Day 6 — Cheap wins, no new keys (target: 11 → ~6 missing)
+
+Sources already wired, just not written as metrics:
+
+- `households_with_children_under_13` — Census B11003/B23008 (already in Census call)
+- `dual_income_household_pct` — Census B23007 (already pulled)
+- `young_family_growth_rate` — ACS 5-yr vs 1-yr delta on under-18 pop (Census, already keyed)
+- `commute_sprawl_index` — Census B08303 long-commute % (already pulled)
+- `national_brand_presence` — derive from existing Apify Google Maps competitor pull (count Goldfish/Primrose/KinderCare hits)
+
+### Day 7 — Requires one new key (target: 6 → ~3 missing)
+
+- `private_school_count`, `montessori_school_density`, `student_teacher_ratio_elementary` — needs GreatSchools API key (Task 11 in OPEN_TASKS)
+- `private_charter_montessori_teacher_count` — same key
+- `waitlist_sold_out_signal_count` — Firecrawl scrape of competitor pages for "waitlist"/"sold out" strings
+
+### Day 8 — Permanently blocked or manual
+
+- 2 Blocked stay blocked (no public source exists — documented as such)
+- Remaining → manual-entry fields with "Source unknown" badge
+
+---
+
+## teacher_prospects Migration (completed Day 5 sprint)
+
+Migration applied. Schema:
+
+```sql
+CREATE TABLE public.teacher_prospects (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  city text NOT NULL,
+  state text NOT NULL,
+  school_name text,
+  district text,
+  teacher_name text,
+  email text,
+  phone text,
+  years_experience integer,
+  grade_level text,
+  subjects text[],
+  fit_score integer,
+  fit_tag text,
+  enrichment_status text DEFAULT 'Pending',
+  source_channel text,
+  has_camp_experience boolean DEFAULT false,
+  apify_run_id text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+```
+
+RLS: authenticated users can SELECT / INSERT / UPDATE. No DELETE policy.
+Reuses existing `update_updated_at_column()` trigger.
+No frontend code touched. Types regenerate automatically post-migration.
+
+---
+
 ## How to use this file
 
 - Add items here instead of building them mid-sprint
 - Review with Brett after the sprint — promote to OPEN_TASKS.md if prioritized
-- Don't delete entries — they’re a decision log
+- Don't delete entries — they're a decision log

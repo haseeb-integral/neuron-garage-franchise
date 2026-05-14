@@ -30,6 +30,7 @@ import { MarketReportModal } from "@/components/city-scoring/MarketReportModal";
 import { SourceDataPanel } from "@/components/city-scoring/SourceDataPanel";
 import { NearbyMarketsPanel } from "@/components/city-scoring/NearbyMarketsPanel";
 import { MarketsMap } from "@/components/city-scoring/MarketsMap";
+import { TierBadge } from "@/components/city-scoring/TierBadge";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -332,6 +333,22 @@ const CityScoring = () => {
     if (!q) return base;
     return base.filter((m: any) => String(m.city ?? "").toLowerCase().includes(q));
   }, [baseRankedMarkets, searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop, cityFilter]);
+
+  // Percentile rank within currently filtered list (only live-data rows are ranked).
+  // 100 = top scorer, 0 = bottom. Used in the Tier badge tooltip.
+  const percentileById = useMemo(() => {
+    const live = filtered.filter((m: any) => m.hasLiveData);
+    const sorted = [...live].sort(
+      (a: any, b: any) => Number(b.compositeScore ?? 0) - Number(a.compositeScore ?? 0),
+    );
+    const total = sorted.length;
+    const map = new Map<string | number, number>();
+    sorted.forEach((m: any, idx) => {
+      const pct = total <= 1 ? 100 : Math.round((1 - idx / (total - 1)) * 100);
+      map.set(m.id, pct);
+    });
+    return map;
+  }, [filtered]);
 
   // Reset pagination whenever filter inputs change
   useEffect(() => {
@@ -1348,17 +1365,24 @@ const CityScoring = () => {
               <TooltipTrigger asChild>
                 <span className="cursor-help text-[#8794ab]"><Info size={11} /></span>
               </TooltipTrigger>
-              <TooltipContent className="max-w-[220px] text-xs">Filter by city tier assigned during scoring.</TooltipContent>
+              <TooltipContent className="max-w-[280px] text-xs leading-relaxed">
+                Cities are auto-ranked into tiers by composite score.
+                <br />
+                <b>A = Top (85+)</b>, <b>B = Strong (75–84)</b>,{" "}
+                <b>C = Moderate (65–74)</b>, <b>D = Weak (below 65)</b>.
+                <br />
+                Use this to jump straight to your best markets.
+              </TooltipContent>
             </Tooltip>
           </label>
           <Select value={tierFilter} onValueChange={setTierFilter}>
             <SelectTrigger className="h-9 bg-white border-[#e5eaf2] text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="All">All</SelectItem>
-              <SelectItem value="A">A</SelectItem>
-              <SelectItem value="B">B</SelectItem>
-              <SelectItem value="C">C</SelectItem>
-              <SelectItem value="D">D</SelectItem>
+              <SelectItem value="A">A — Top</SelectItem>
+              <SelectItem value="B">B — Strong</SelectItem>
+              <SelectItem value="C">C — Moderate</SelectItem>
+              <SelectItem value="D">D — Weak</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -1517,7 +1541,14 @@ const CityScoring = () => {
                     )}
                   </div>
                   {c.hasLiveData ? (
-                    <span className={`justify-self-end flex items-center justify-center rounded-full text-[10px] font-bold text-white`} style={{ width: 20, height: 20, backgroundColor: c.tier === "A" ? "#0ea66e" : c.tier === "B" ? "#174be8" : c.tier === "C" ? "#b8860b" : "#ea580c" }}>{c.tier}</span>
+                    <span className="justify-self-end">
+                      <TierBadge
+                        tier={c.tier}
+                        compact
+                        score={c.compositeScore}
+                        percentile={percentileById.get(c.id)}
+                      />
+                    </span>
                   ) : (
                     <span className="justify-self-end rounded-full bg-[#eef2f7] px-1.5 py-0.5 text-[8.5px] font-semibold text-[#8794ab] whitespace-nowrap">No data</span>
                   )}

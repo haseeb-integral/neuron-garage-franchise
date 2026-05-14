@@ -2112,6 +2112,32 @@ const CityScoring = () => {
         autoDownload={reportAutoPdf}
       />
 
+      <Dialog open={saveSearchOpen} onOpenChange={setSaveSearchOpen}>
+        <DialogContent className="max-w-sm bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-[#07142f]">Save Search</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-[#526078]">Name</label>
+            <Input
+              autoFocus
+              value={saveSearchName}
+              maxLength={60}
+              placeholder="e.g. High-income TX suburbs"
+              onChange={(e) => setSaveSearchName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !savingSearch) handleSaveSearch(); }}
+            />
+            <p className="text-[10px] text-[#8794ab]">Saves your current master + sub-metric weights.</p>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setSaveSearchOpen(false)} disabled={savingSearch}>Cancel</Button>
+            <Button className="bg-[#174be8] hover:bg-[#1240c9] text-white" onClick={handleSaveSearch} disabled={savingSearch || !saveSearchName.trim()}>
+              {savingSearch ? "Saving…" : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <AddCityModal
         open={addCityOpen}
         onClose={() => setAddCityOpen(false)}

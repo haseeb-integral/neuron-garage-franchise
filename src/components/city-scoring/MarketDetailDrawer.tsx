@@ -145,13 +145,7 @@ const REGISTRY_KEY_TO_CATEGORY: Record<string, MetricCategory> = (() => {
   return out;
 })();
 
-// Map a raw DB signal_key (possibly legacy) to its registry category.
-function getCategory(signal: LiveSignal): MetricCategory | null {
-  if (signal.raw_data?.metric_category) return signal.raw_data.metric_category;
-  const canon = canonicalKey(signal.signal_key);
-  if (canon && REGISTRY_KEY_TO_CATEGORY[canon]) return REGISTRY_KEY_TO_CATEGORY[canon];
-  return null;
-}
+// (legacy getCategory removed — drawer is now driven by the SOW registry directly)
 
 function StatusBadge({ status }: { status: MetricStatus }) {
   return (

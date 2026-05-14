@@ -2008,13 +2008,17 @@ const CityScoring = () => {
                   const weight = appliedWeights[c.key] ?? 0;
                   return { label: c.label, score, weight, contribution: score * weight };
                 }).filter((x) => x.weight > 0);
-                if (enriched.length < 2) return null;
-                const drivers = [...enriched].sort((a, b) => b.contribution - a.contribution).slice(0, 2);
+                if (enriched.length === 0) return null;
+                const sorted = [...enriched].sort((a, b) => b.contribution - a.contribution);
+                const drivers = sorted.slice(0, Math.min(2, sorted.length));
                 const lowest = [...enriched].sort((a, b) => a.score - b.score)[0];
-                const showDrag = lowest.score < 50 && !drivers.some((d) => d.label === lowest.label);
+                const showDrag = enriched.length > 1 && lowest.score < 50 && !drivers.some((d) => d.label === lowest.label);
+                const driverText = drivers.length === 1
+                  ? `${drivers[0].label} (${drivers[0].score}) is driving this score.`
+                  : `${drivers[0].label} (${drivers[0].score}) and ${drivers[1].label} (${drivers[1].score}) are driving this score.`;
                 return (
                   <div className="mt-1.5 px-1 text-center text-[10.5px] italic leading-snug text-[#6b7a99] max-w-[180px]">
-                    <p>{drivers[0].label} ({drivers[0].score}) and {drivers[1].label} ({drivers[1].score}) are driving this score.</p>
+                    <p>{driverText}</p>
                     {showDrag && (
                       <p className="mt-0.5">{lowest.label} ({lowest.score}) is pulling the score down.</p>
                     )}

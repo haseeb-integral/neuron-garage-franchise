@@ -1266,6 +1266,24 @@ const CityScoring = () => {
               Compare mode on — select 2 to 4 markets, then click Compare.
             </div>
           )}
+          {hasOverrides && (
+            <div className="mb-2 rounded-md bg-[#fffbe6] border border-[#fde68a] px-2 py-1.5 text-[11px] text-[#854d0e] flex items-center justify-between gap-2">
+              <span>
+                <span className="font-semibold">Re-ranked with your weights</span> — this page recomputed
+                from your sub-metric edits.
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  resetSubWeights();
+                  toast.success("Sub-metric weights reset to defaults");
+                }}
+                className="font-semibold text-[#174be8] hover:underline whitespace-nowrap"
+              >
+                Reset to default
+              </button>
+            </div>
+          )}
           <div className="overflow-hidden flex-1">
             <div className="grid grid-cols-[16px_14px_minmax(0,1fr)_46px_72px_18px] items-center gap-x-2 px-1 py-2 text-[9.5px] uppercase tracking-wide text-[#8794ab] border-b border-[#eef2f7]">
               <span></span>

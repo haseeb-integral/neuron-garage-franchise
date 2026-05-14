@@ -300,6 +300,41 @@ export function MarketDetailDrawer({
     loadLiveEvidence();
   }, [open, market.city, market.state, refreshVersion]);
 
+  const handleExportRawSignals = () => {
+    if (!signals.length) {
+      // Fall back to a header-only file so the user still gets feedback
+      // instead of a silent click.
+    }
+    const header = ["Signal Key", "Label", "Value", "Unit", "Source", "Source URL", "Last Updated"];
+    const rows: string[][] = [header];
+    for (const s of signals) {
+      const unit =
+        (s.raw_data && typeof s.raw_data === "object" && "unit" in s.raw_data
+          ? String((s.raw_data as any).unit ?? "")
+          : "") || "";
+      rows.push([
+        String(s.signal_key ?? ""),
+        String(s.label ?? ""),
+        String(s.value ?? ""),
+        unit,
+        String(s.source ?? ""),
+        String(s.source_url ?? ""),
+        s.updated_at ? new Date(s.updated_at).toISOString() : "",
+      ]);
+    }
+    const csv = rows
+      .map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const slug = market.city.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    a.href = url;
+    a.download = `${slug}-source-data-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const groupedSignals = useMemo(() => {
     return SOW_CATEGORIES.map((category) => ({
       ...category,
@@ -616,8 +651,8 @@ export function MarketDetailDrawer({
             <Button variant="outline" className="border-[#dbe4f2] text-[#2250eb]" onClick={onGenerateReport}>
               <FileText size={14} className="mr-1" /> Generate Report
             </Button>
-            <Button variant="outline" className="border-[#dbe4f2] text-[#2250eb]" onClick={onExport}>
-              <Download size={14} className="mr-1" /> Export Source Data
+            <Button variant="outline" className="border-[#dbe4f2] text-[#2250eb]" onClick={handleExportRawSignals}>
+              <Download size={14} className="mr-1" /> Export Raw Signals
             </Button>
           </div>
         </div>

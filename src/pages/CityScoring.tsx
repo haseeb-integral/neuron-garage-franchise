@@ -44,6 +44,7 @@ import { parseSignalValue } from "@/lib/sowNormalize";
 import { recomputeCategoryScore, recomputeComposite } from "@/lib/clientSubWeightScoring";
 import { tierFromScore } from "@/lib/cityScoringLiveData";
 import { useCustomCriteria } from "@/hooks/useCustomCriteria";
+import { SCORING_PRESETS, PRESET_NAMES, PRESET_DESCRIPTIONS, detectPreset, type PresetName } from "@/lib/scoringPresets";
 
 function rebalanceWeights<K extends string>(
   prev: Record<K, number>,

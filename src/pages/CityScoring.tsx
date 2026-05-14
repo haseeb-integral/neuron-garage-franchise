@@ -198,6 +198,26 @@ const CityScoring = () => {
   const customCriteria = useCityScoringStore((s) => s.customCriteria);
   const setCustomCriteria = useCityScoringStore((s) => s.setCustomCriteria);
   const { data: supabaseCustomCriteria = [] } = useCustomCriteria();
+
+  // Hydrate scoring preset + master weights from per-user Supabase row (one-shot)
+  const { data: scoringConfigRow } = useScoringConfig();
+  const [hydratedConfig, setHydratedConfig] = useState(false);
+  useEffect(() => {
+    if (hydratedConfig || !scoringConfigRow) return;
+    if (scoringConfigRow.master_weights) {
+      setWeights(scoringConfigRow.master_weights);
+      setAppliedWeights(scoringConfigRow.master_weights);
+    }
+    if (scoringConfigRow.preset_name) setScoringModel(scoringConfigRow.preset_name);
+    setHydratedConfig(true);
+  }, [scoringConfigRow, hydratedConfig, setWeights, setAppliedWeights, setScoringModel]);
+
+  // Persist preset + applied master weights to Supabase (debounced) once hydrated
+  useDebouncedSaveScoringConfig(
+    ((PRESET_NAMES as string[]).includes(scoringModel) ? scoringModel : "Balanced") as PresetName,
+    appliedWeights,
+    hydratedConfig,
+  );
   const subWeights = useCityScoringStore((s) => s.subWeights);
   const appliedSubWeights = useCityScoringStore((s) => s.appliedSubWeights);
   const setAppliedSubWeights = useCityScoringStore((s) => s.setAppliedSubWeights);

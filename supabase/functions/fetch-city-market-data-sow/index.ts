@@ -450,7 +450,13 @@ Deno.serve(async (req) => {
       .not('source_url', 'is', null)
       .limit(20)
     const competitorUrls = (competitorRows ?? []).map((r) => r.source_url as string).filter(Boolean)
-    const waitlistResult = await fetchCompetitorWaitlistSignals(competitorUrls)
+    // Day 3 enhancement: discover real camp pricing pages via Firecrawl search,
+    // then prepend so the 5-URL scrape budget hits pricing pages first instead
+    // of Google Maps/social links.
+    const pricingDiscovery = await findCampPricingUrls(city, state, 8)
+    console.log('[findCampPricingUrls]', { city, state, found: pricingDiscovery.urls.length, source: pricingDiscovery.source, error: pricingDiscovery.error })
+    const mergedUrls = Array.from(new Set([...pricingDiscovery.urls, ...competitorUrls]))
+    const waitlistResult = await fetchCompetitorWaitlistSignals(mergedUrls)
 
     // Day 2: NOAA Open-Meteo + BEA RPP + NCES CCD, run in parallel.
     const [noaaResult, beaResult, ncesResult] = await Promise.all([

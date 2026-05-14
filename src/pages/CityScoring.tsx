@@ -1155,6 +1155,13 @@ const CityScoring = () => {
           }, 0);
           return Math.round(sum / appliedTotal);
         }}
+        customMetricsForCategory={
+          openSubMetricsFor
+            ? supabaseCustomCriteria.filter(
+                (c) => c.category === (CATEGORIES.find((cc) => cc.key === openSubMetricsFor)?.label ?? ""),
+              )
+            : []
+        }
       />
 
       {/* Filters row */}

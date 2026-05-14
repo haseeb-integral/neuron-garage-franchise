@@ -120,6 +120,8 @@ export function summarizeCategory(
   result: CategoryRecomputeResult,
   cityLabel: string | undefined,
   categoryLabel: string,
+  masterWeightPct?: number,
+  compositeContribution?: number,
 ): string {
   const cityPart = cityLabel ? `${cityLabel} scores` : "This city scores";
   if (result.score == null) {
@@ -143,6 +145,12 @@ export function summarizeCategory(
   }
   if (result.usedServerFallback) {
     sentences.push(`Sub-weights collapsed to zero — using the server-stored category score as fallback.`);
+  }
+  if (masterWeightPct != null && compositeContribution != null) {
+    const cityName = cityLabel ?? "this city";
+    sentences.push(
+      `${categoryLabel} counts for ${masterWeightPct.toFixed(1)}% of the overall composite, so it contributes ${compositeContribution.toFixed(1)} points to ${cityName}'s composite score today.`,
+    );
   }
   return sentences.join(" ");
 }

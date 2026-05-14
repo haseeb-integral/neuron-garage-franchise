@@ -142,7 +142,7 @@ export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
     enabled: true,  weight_within_category: 0.40, status: "proxy" },
   { key: "teacher_salary_proxy", category: "franchisee_supply", label: "Average Teacher Salary",
     description: "Lower teacher pay = stronger pull toward summer income and franchise ownership upside.",
-    enabled: true,  weight_within_category: 0.30, status: "proxy" },
+    enabled: true,  weight_within_category: 0.30, status: "live" },
   { key: "cost_of_living_index", category: "franchisee_supply", label: "Cost of Living Index",
     description: "Local cost of living vs. national. High COL + low teacher pay = the strongest recruiting market.",
     enabled: false, weight_within_category: 0,    status: "live" },

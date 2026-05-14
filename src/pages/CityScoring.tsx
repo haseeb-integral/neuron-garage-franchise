@@ -38,6 +38,9 @@ import { useCityScoringStore, DEFAULT_WEIGHTS } from "@/stores/cityScoringStore"
 import { SubMetricWeightsDrawer } from "@/components/city-scoring/SubMetricWeightsDrawer";
 import { getCached, setCached } from "@/lib/pageCache";
 import { Settings2 } from "lucide-react";
+import { METRICS_BY_CATEGORY } from "@/lib/sowMetricRegistry";
+import { parseSignalValue } from "@/lib/sowNormalize";
+import { recomputeCategoryScore } from "@/lib/clientSubWeightScoring";
 
 function rebalanceWeights<K extends string>(
   prev: Record<K, number>,
@@ -190,6 +193,7 @@ const CityScoring = () => {
   const customCriteria = useCityScoringStore((s) => s.customCriteria);
   const setCustomCriteria = useCityScoringStore((s) => s.setCustomCriteria);
   const subWeights = useCityScoringStore((s) => s.subWeights);
+  const appliedSubWeights = useCityScoringStore((s) => s.appliedSubWeights);
   const setAppliedSubWeights = useCityScoringStore((s) => s.setAppliedSubWeights);
   const resetSubWeights = useCityScoringStore((s) => s.resetSubWeights);
   const [openSubMetricsFor, setOpenSubMetricsFor] = useState<CategoryKey | null>(null);
@@ -702,9 +706,44 @@ const CityScoring = () => {
     ? liveCity.composite_score
     : selected.compositeScore;
 
-  const detailCategoryScores = { ...cs, ...liveUiCategoryScores } as Record<CategoryKey, number>;
+  const baseDetailCategoryScores = { ...cs, ...liveUiCategoryScores } as Record<CategoryKey, number>;
 
-  // Frontend-only weighted composite using applied weights and visible category scores.
+  // Build raw signal values keyed by SOW signal_key for the selected city.
+  const rawValuesByKey = useMemo(() => {
+    const out: Record<string, number | null> = {};
+    for (const s of liveSignals) {
+      if (!s?.signal_key) continue;
+      out[s.signal_key] = parseSignalValue(s.value);
+    }
+    return out;
+  }, [liveSignals]);
+
+  // Recompute each category score using the user's applied sub-weights when
+  // available; otherwise fall back to the server-stored category score.
+  const recomputedByCategory = useMemo(() => {
+    const out = {} as Record<CategoryKey, ReturnType<typeof recomputeCategoryScore>>;
+    (Object.keys(baseDetailCategoryScores) as CategoryKey[]).forEach((k) => {
+      out[k] = recomputeCategoryScore(
+        METRICS_BY_CATEGORY[k] ?? [],
+        rawValuesByKey,
+        appliedSubWeights[k] ?? {},
+        baseDetailCategoryScores[k] ?? null,
+      );
+    });
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseDetailCategoryScores, rawValuesByKey, appliedSubWeights]);
+
+  const detailCategoryScores = (() => {
+    const out = { ...baseDetailCategoryScores } as Record<CategoryKey, number>;
+    (Object.keys(out) as CategoryKey[]).forEach((k) => {
+      const r = recomputedByCategory[k];
+      if (r?.score != null) out[k] = Math.round(r.score);
+    });
+    return out;
+  })();
+
+  // Frontend-only weighted composite using applied weights and recomputed scores.
   const appliedTotal = Object.values(appliedWeights).reduce((s, v) => s + v, 0);
   const weightedComposite = appliedTotal > 0
     ? Math.round(
@@ -983,6 +1022,10 @@ const CityScoring = () => {
         categoryLabel={CATEGORIES.find((c) => c.key === openSubMetricsFor)?.label ?? ""}
         categoryColor={CATEGORIES.find((c) => c.key === openSubMetricsFor)?.color ?? "#174be8"}
         categoryBg={CATEGORIES.find((c) => c.key === openSubMetricsFor)?.bg ?? "#eaf0ff"}
+        selectedCityLabel={`${selected.city}, ${selected.state}`}
+        rawValuesByKey={rawValuesByKey}
+        serverCategoryScore={openSubMetricsFor ? (baseDetailCategoryScores[openSubMetricsFor] ?? null) : null}
+        masterWeightPct={openSubMetricsFor ? (appliedTotal > 0 ? (appliedWeights[openSubMetricsFor] / appliedTotal) * 100 : null) : null}
       />
 
       {/* Filters row */}

@@ -1,40 +1,38 @@
-# Sub-Metric Drawer — UX Polish
+# Auto-Normalize Sub-Weights + Wire Into Composite + Show Formula — SHIPPED
 
-Two small, isolated changes to `src/components/city-scoring/SubMetricWeightsDrawer.tsx`. No store, no data, no scoring math touched.
+Per May 8 transcript: sub-weights affect the composite. Per CLAUDE.md Rule 1: every calculated number must reveal its math. Both delivered.
 
-## 1. −/+ stepper instead of native number spinner
+## Files changed
 
-Why: the native `<input type="number">` arrows are tiny, browser-dependent, and feel broken when they "stop" at 0. Standard pattern (Amazon quantity, Stripe seat counts) is a visible − button, the value, and a + button.
+- `src/lib/sowNormalize.ts` (new) — pure-function port of `normalizeSowMetric` + `parseSignalValue` text-to-number helper.
+- `src/lib/clientSubWeightScoring.ts` (new) — `recomputeCategoryScore` + `recomputeComposite` with full per-metric contribution breakdown (Raw → Normalized → Share → Contribution).
+- `src/stores/cityScoringStore.ts` — `setSubWeight` upper bound removed (sub-weights are relative importance, not capped percentages).
+- `src/components/city-scoring/SubMetricWeightsDrawer.tsx` — total-badge replaced with per-row `→ effective%`, "Reset Category" now equal-splits across enabled metrics, Apply auto-normalizes to 100% before persisting, and a header `Show Formula ⇄ Edit Weights` toggle swaps the body to a 4-section formula panel.
+- `src/pages/CityScoring.tsx` — `detailCategoryScores` now runs each category through `recomputeCategoryScore` against the user's `appliedSubWeights` and the live signal values; falls back to server-stored category score when sub-weights collapse to zero or no signals are present. Drawer receives `selectedCityLabel`, `rawValuesByKey`, `serverCategoryScore`, and `masterWeightPct` so Show Formula renders live numbers for the selected city.
+- `CLAUDE.md` — Rule 5 rewritten to document the new normalization + scoring formula.
 
-Build:
-- Replace the `<input type="number">` with a small inline group: `[ − ] [ value ] [ + ]`.
-- − decrements by 1, disabled at 0.
-- \+ increments by 1, disabled at 100.
-- Center value stays editable as a plain text input (so power users can still type "25" directly), width ~36px, no spinner (`appearance-none`, `[&::-webkit-inner-spin-button]:appearance-none`).
-- Disabled metrics: whole stepper greyed out, both buttons disabled, value locked at 0.
-- Keep the existing `setSubWeight` store call — it already clamps to 0–100.
+## Show Formula contents
 
-Visual: ~96px total width, h-7, border `#e5eaf2`, buttons hover `#f3f6fb`, text `#07142f`.
+Inside the drawer, "Show Formula" reveals four sections:
 
-## 2. Rename status pills
+1. **Within-category normalization** — `sub_share_i = sub_i / Σ(enabled)` with the live denominator filled in.
+2. **Category score** — `categoryScore = Σ (sub_share × normalized)` plus the server-fallback rule.
+3. **Composite** — `composite = Σ (master_share × categoryScore)`.
+4. **Live values for {City}** — table with one row per metric: Raw, Normalized, Share, Contribution. Footer shows the resulting category score, the master-weight multiplier, the composite contribution, and the server-stored category score for comparison.
 
-In `STATUS_PILL` map at the top of the file:
+## Edge-case handling
 
-```
-live    → "Live"        (green, unchanged)
-proxy   → "Estimated"   (was "Proxy")
-missing → "Unavailable" (was "No data yet")
-blocked → "Unavailable" (was "No data yet")
-```
+- All sub-weights zero in a category → that category falls back to its server-stored score (table footer is annotated "(server fallback)").
+- Disabled / Unavailable metrics → locked at 0, excluded from sum, show "—".
+- Signal value missing → that metric's contribution row shows "—" and is dropped from numerator + denominator.
+- Stepper "+" no longer caps at 100 (relative-importance model).
 
-Also update the helper text in the drawer header:
-- Current: "Hover the (i) icon to learn what each metric means."
-- Keep as-is — no Proxy reference there.
+## Risk / undo
 
-No other file changes. No registry changes (the internal `status: "proxy"` key stays, only the display label changes).
+Risk: medium. Composite math drives the selected-city ranking, but server values stay as fallback so reverts are safe. Undo: revert the 6 files; server data untouched.
 
-## Risk / effort
+## Out of scope (intentional)
 
-- Risk: very low — pure presentation, single file.
-- Effort: ~15 min.
-- Undo: revert the one file.
+- Per-row recompute in the city table — the table runs against mock `scoreBreakdown`, not per-metric signals; would need a per-row signal fetch first. Server `composite_score` continues to drive table ordering.
+- Edge-function changes / DB columns — none.
+- Master category slider behavior — unchanged.

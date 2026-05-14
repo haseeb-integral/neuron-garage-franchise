@@ -132,7 +132,9 @@ export const useCityScoringStore = create<CityScoringState>()(
       setCustomCriteria: (v) => set((s) => ({ customCriteria: typeof v === "function" ? v(s.customCriteria) : v })),
       setSubWeight: (category, metricKey, value) =>
         set((s) => {
-          const clamped = Math.max(0, Math.min(100, Math.round(value || 0)));
+          // No upper bound: sub-weights express relative importance and are
+          // auto-normalized to 100% within each category on Apply.
+          const clamped = Math.max(0, Math.round(value || 0));
           return {
             subWeights: {
               ...s.subWeights,

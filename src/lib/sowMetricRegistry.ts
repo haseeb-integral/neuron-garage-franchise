@@ -99,7 +99,7 @@ export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
     enabled: false, weight_within_category: 0,    status: "missing" },
   { key: "childcare_nanny_hourly_rate_proxy", category: "pricing_power", label: "Childcare / Nanny Hourly Rate",
     description: "What local families already pay for childcare. Anchors what they'll comfortably pay for camp.",
-    enabled: true,  weight_within_category: 0.40, status: "proxy" },
+    enabled: true,  weight_within_category: 0.40, status: "live" },
   { key: "household_discretionary_income_proxy", category: "pricing_power", label: "Household Discretionary Income",
     description: "Income left after essentials. Larger discretionary pool = more room for premium camp spend.",
     enabled: true,  weight_within_category: 0.20, status: "proxy" },

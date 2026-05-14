@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { CityData } from "@/data/cityData";
@@ -12,6 +14,7 @@ interface Props {
   market: CityData;
   categoryScores: Record<string, number>;
   refreshVersion?: number;
+  autoDownload?: boolean;
 }
 
 type MetricStatus = "live" | "proxy" | "missing" | "blocked" | "manual";
@@ -103,12 +106,15 @@ function downloadCsv(filename: string, rows: unknown[][]) {
   URL.revokeObjectURL(url);
 }
 
-export function MarketReportModal({ open, onClose, market, categoryScores, refreshVersion = 0 }: Props) {
+export function MarketReportModal({ open, onClose, market, categoryScores, refreshVersion = 0, autoDownload = false }: Props) {
   const stateAbbr = market.state === "Texas" ? "TX" : market.state === "Florida" ? "FL" : market.state;
   const [loading, setLoading] = useState(false);
   const [liveSignals, setLiveSignals] = useState<LiveSignal[]>([]);
   const [liveCompetitors, setLiveCompetitors] = useState<LiveCompetitor[]>([]);
   const [latestJob, setLatestJob] = useState<any | null>(null);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const reportRef = useRef<HTMLDivElement>(null);
+  const autoFiredRef = useRef(false);
 
   useEffect(() => {
     if (!open) return;

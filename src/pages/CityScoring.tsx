@@ -1308,6 +1308,7 @@ const CityScoring = () => {
                 if (scoringModel === "Custom" && name !== "Custom") {
                   setCustomWeightsSnapshot({ ...appliedWeights });
                 }
+                setActiveSavedSearchId(null);
                 setScoringModel(name);
                 if (name === "Custom") {
                   // Restore the last custom snapshot if we have one.

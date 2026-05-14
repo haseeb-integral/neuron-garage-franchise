@@ -1421,7 +1421,7 @@ const CityScoring = () => {
               size="sm"
               variant="outline"
               disabled={totalWeight !== 100}
-              onClick={() => setSaveSearchOpen(true)}
+              onClick={openSaveDialog}
               className="h-7 border-[#dbe4f2] text-[#174be8] text-[11px] px-3 gap-1 disabled:opacity-50"
             >
               <Bookmark size={12} /> Save Search

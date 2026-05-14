@@ -135,15 +135,7 @@ function displayValue(value: unknown): string {
 
 // Build a lookup from canonical signal_key → registry category, derived from
 // the SOW registry itself so the drawer cannot drift from the spec.
-const REGISTRY_KEY_TO_CATEGORY: Record<string, MetricCategory> = (() => {
-  const out: Record<string, MetricCategory> = {};
-  (Object.keys(METRICS_BY_CATEGORY) as CategoryKey[]).forEach((cat) => {
-    METRICS_BY_CATEGORY[cat].forEach((m) => {
-      out[m.key] = m.category as MetricCategory;
-    });
-  });
-  return out;
-})();
+// (registry-by-category lookup not needed — drawer iterates METRICS_BY_CATEGORY directly)
 
 // (legacy getCategory removed — drawer is now driven by the SOW registry directly)
 

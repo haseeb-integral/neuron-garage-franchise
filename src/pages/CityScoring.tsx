@@ -1378,8 +1378,7 @@ const CityScoring = () => {
           </Button>
         </div>
       </div>
-
-      {/* View toggle: Table | Map */}
+      </TooltipProvider>
       <div className="mb-3 flex items-center gap-1 rounded-lg border border-[#eef2f7] bg-white p-1 w-fit">
         {(["table", "map"] as const).map((v) => (
           <button

@@ -325,6 +325,7 @@ const CityScoring = () => {
             return;
           }
           toast.success(`Deleted "${s.name}"`);
+          if (activeSavedSearchId === s.id) setActiveSavedSearchId(null);
           refreshSavedSearches();
         },
       },

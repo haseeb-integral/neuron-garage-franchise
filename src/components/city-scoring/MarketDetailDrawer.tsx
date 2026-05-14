@@ -295,17 +295,80 @@ export function MarketDetailDrawer({
     URL.revokeObjectURL(url);
   };
 
-  const groupedSignals = useMemo(() => {
-    return SOW_CATEGORIES.map((category) => ({
-      ...category,
-      rows: signals.filter((signal) => getCategory(signal) === category.key),
-    }));
+  // Build a lookup of stored signals keyed by canonical signal_key. We keep
+  // the most-recently-updated row when duplicates exist (legacy + canonical).
+  const signalsByCanonical = useMemo(() => {
+    const out: Record<string, LiveSignal> = {};
+    for (const s of signals) {
+      const k = canonicalKey(s.signal_key);
+      if (!k) continue;
+      if (FETCHER_DIAGNOSTIC_KEYS.has(s.signal_key ?? "")) continue;
+      const prev = out[k];
+      if (!prev) { out[k] = s; continue; }
+      const a = new Date(prev.updated_at ?? 0).getTime();
+      const b = new Date(s.updated_at ?? 0).getTime();
+      if (b >= a) out[k] = s;
+    }
+    return out;
   }, [signals]);
 
-  const uncategorizedSignals = useMemo(
-    () => signals.filter((signal) => !getCategory(signal)),
+  // Diagnostic rows surface in their own collapsible at the bottom.
+  const diagnosticRows = useMemo(
+    () => signals.filter((s) => s.signal_key && FETCHER_DIAGNOSTIC_KEYS.has(s.signal_key)),
     [signals],
   );
+
+  // Per-row coverage status derived from the registry + DB row.
+  type Coverage = { metric: SowMetricEntry; signal: LiveSignal | null; status: MetricStatus };
+  const coverageByCategory = useMemo(() => {
+    const out: Record<MetricCategory, { enabled: Coverage[]; disabled: Coverage[] }> = {
+      demand: { enabled: [], disabled: [] },
+      pricing_power: { enabled: [], disabled: [] },
+      competitive_landscape: { enabled: [], disabled: [] },
+      franchisee_supply: { enabled: [], disabled: [] },
+      ease_of_operations: { enabled: [], disabled: [] },
+      parent_mindset: { enabled: [], disabled: [] },
+    };
+    (Object.keys(METRICS_BY_CATEGORY) as CategoryKey[]).forEach((catKey) => {
+      METRICS_BY_CATEGORY[catKey].forEach((metric) => {
+        const cat = metric.category as MetricCategory;
+        const signal = signalsByCanonical[metric.key] ?? null;
+        let status: MetricStatus;
+        if (metric.status === "blocked") {
+          status = "blocked";
+        } else if (signal && getStatus(signal) !== "missing") {
+          // Honor the row's own status when present; otherwise inherit registry status.
+          status = (signal.raw_data?.status as MetricStatus | undefined)
+            ?? (metric.status === "live" ? "live" : "proxy");
+        } else {
+          status = "missing";
+        }
+        const bucket = metric.enabled ? out[cat].enabled : out[cat].disabled;
+        bucket.push({ metric, signal, status });
+      });
+    });
+    return out;
+  }, [signalsByCanonical]);
+
+  // Truthful counter: count enabled SOW metrics by status.
+  const coverageCounts = useMemo(() => {
+    let live = 0, proxy = 0, missing = 0, blocked = 0;
+    Object.values(coverageByCategory).forEach(({ enabled }) => {
+      enabled.forEach(({ status }) => {
+        if (status === "live") live++;
+        else if (status === "proxy") proxy++;
+        else if (status === "blocked") blocked++;
+        else missing++;
+      });
+    });
+    return { live, proxy, missing, blocked };
+  }, [coverageByCategory]);
+
+  const enabledRegistryTotal = useMemo(() => {
+    let n = 0;
+    Object.values(coverageByCategory).forEach(({ enabled }) => { n += enabled.length; });
+    return n;
+  }, [coverageByCategory]);
 
   const warnings = latestJob?.response_summary?.warnings ?? {};
   const hasWarnings = Object.values(warnings).some(Boolean);
@@ -334,13 +397,18 @@ export function MarketDetailDrawer({
   }, [customCriteriaRows]);
   const customCount = customCriteriaRows.length;
 
-  const liveCount = signals.filter((signal) => getStatus(signal) === "live").length;
-  const proxyCount =
-    signals.filter((signal) => getStatus(signal) === "proxy").length + customCount;
-  const missingCount = signals.filter((signal) => getStatus(signal) === "missing").length;
-  const blockedCount = signals.filter((signal) => getStatus(signal) === "blocked").length;
-  const manualCount = signals.filter((signal) => getStatus(signal) === "manual").length;
-  const totalCount = signals.length + customCount;
+  const liveCount = coverageCounts.live;
+  const proxyCount = coverageCounts.proxy + customCount;
+  const missingCount = coverageCounts.missing;
+  const blockedCount = coverageCounts.blocked;
+  const manualCount = 0;
+  const totalCount = enabledRegistryTotal + customCount;
+
+  const [showDisabled, setShowDisabled] = useState<Record<MetricCategory, boolean>>({
+    demand: false, pricing_power: false, competitive_landscape: false,
+    franchisee_supply: false, ease_of_operations: false, parent_mindset: false,
+  });
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
 
   const metroArea = (market as any).metroArea ?? null;
   const county = (market as any).county ?? null;

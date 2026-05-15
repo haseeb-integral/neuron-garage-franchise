@@ -1,37 +1,66 @@
-## Goal
-Make Teacher Prospects search reliable so running a city search always produces schools first and teacher rows second.
+## Enable all live & proxy metrics in scoring model
 
-## Exact problem
-- The current backend starts a state-wide Apify run, then filters the results down to the city.
-- For big states like Texas, that actor is unstable:
-  - sometimes it is still `RUNNING` when our function times out,
-  - sometimes it gets rate-limited by NCES on page 2,
-  - when that happens it only returns the first 15 schools.
-- Because Frisco never appears in those 15 rows, enrichment never starts and `teacher_prospects` stays empty.
+Update `src/lib/sowMetricRegistry.ts` (and mirror `supabase/functions/_shared/scoring.ts` if it exists) to flip `enabled: true` for every metric whose `status` is `live` or `proxy`. Rebalance `weight_within_category` per category so each sums to 1.00. Leave `missing` and `blocked` metrics as-is (still disabled).
 
-## Permanent fix
-1. Replace the school-discovery step in `fetch-teacher-prospects`.
-   - Stop depending on the state-wide `jungle_synthesizer` run for city searches.
-   - Query NCES directly by `city + state` and parse the city-scoped school results.
-   - Return matched schools plus websites/districts in the same response shape the frontend already expects.
+### New weights per category (sum = 1.00)
 
-2. Keep Firecrawl as the primary staff-enrichment layer.
-   - Preserve `enrich-school-staff` as the step that turns school websites into teacher/email rows.
-   - Ensure the main page still runs fetch → enrich → reload results.
+**Demand** (9 metrics enabled)
+- children_5_12_count: 0.15
+- children_5_12_pct: 0.10
+- households_with_children_under_13: 0.10
+- median_household_income: 0.13
+- income_100k_plus_pct: 0.09
+- income_150k_plus_pct: 0.09
+- young_family_growth_rate: 0.13 (newly enabled)
+- dual_income_household_pct: 0.11 (newly enabled)
+- education_bachelors_plus_pct: 0.10
+- (weather metrics stay disabled — `live` but Sam never asked for them; flagging as a question below)
 
-3. Make failure states explicit and non-confusing.
-   - Remove the misleading “try a smaller state” behavior for city searches.
-   - Return clearer errors when NCES returns no city matches or no usable websites.
-   - Add logs for schools found, schools with websites, enrichment started, and rows inserted.
+**Pricing Power** (5 enabled)
+- avg_weekly_camp_tuition: 0.20 (new)
+- avg_hourly_camp_pricing: 0.10 (new)
+- premium_stem_camp_pricing: 0.15 (new)
+- childcare_nanny_hourly_rate_proxy: 0.35 (was 0.40)
+- household_discretionary_income_proxy: 0.20
 
-4. Validate end-to-end with Frisco, TX.
-   - Run the new school fetch.
-   - Run enrichment on returned Frisco schools.
-   - Confirm `teacher_prospects` contains rows afterward.
+**Competitive Landscape** (6 enabled)
+- summer_camps_per_10k_children: 0.25 (was 0.30)
+- stem_robotics_maker_camp_count: 0.18 (was 0.20)
+- school_based_summer_camp_count: 0.12 (new)
+- national_brand_presence: 0.13 (new)
+- google_search_demand_summer_camp: 0.17 (new)
+- waitlist_sold_out_signal_count: 0.15 (new)
+- (the two other google_search variants: one is `missing`, the day-camp one stays disabled to avoid double-counting search volume — flagged below)
 
-## Files to update
-- `supabase/functions/fetch-teacher-prospects/index.ts`
-- Possibly `src/pages/TeacherProspects.tsx` only if the frontend needs better error messaging
+**Franchisee Supply** (6 enabled)
+- public_elementary_teacher_count: 0.20 (new)
+- private_charter_montessori_teacher_count: 0.10 (new)
+- elementary_school_count: 0.25 (was 0.40, now back-up proxy since real teacher counts are live)
+- teacher_salary_proxy: 0.20 (was 0.30)
+- cost_of_living_index: 0.15 (new)
+- student_teacher_ratio_elementary: 0.10 (new)
 
-## Expected result
-When you click search for Frisco, the backend should fetch Frisco schools directly, start enrichment for the schools with websites, and finally populate `teacher_prospects` instead of leaving it empty.
+**Ease of Operations** (3 enabled)
+- rental_venue_count: 0.45 (was 0.50)
+- commute_sprawl_index: 0.20 (new)
+- guide_wage_proxy: 0.35 (was 0.30)
+
+**Parent Mindset** (4 enabled)
+- montessori_school_density: 0.28 (was 0.30)
+- childrens_museum_signal: 0.15 (new)
+- robotics_maker_space_count: 0.27 (was 0.30)
+- (no other live/proxy candidates)
+
+### Files
+- `src/lib/sowMetricRegistry.ts` — update `enabled` + `weight_within_category` per above
+- `supabase/functions/_shared/scoring.ts` — mirror same changes if file exists (per the in-file comment: "Keep in sync if the backend registry changes")
+- `DEFAULT_SUB_WEIGHTS` regenerates automatically from the registry — no extra edit
+
+### Side effects
+- Composite scores recompute client-side on next render
+- Users with custom weight overrides in the UI must hit **Reset to defaults** to pick up the new metrics
+- Per CLAUDE.md Rule "scoring math goes through Sam" — proceeding under your direct override
+
+### Two judgment calls I'm making — flag if you disagree
+1. **Weather/heat metrics** (`summer_weather_index`, `avg_peak_summer_temperature`, `days_above_100f`) are `live` but I'm leaving them OFF. They overlap heavily and Kaylie hasn't asked for climate scoring. Tell me to enable if you want them in.
+2. **`google_search_demand_summer_day_camp`** is `live` but stays OFF to avoid double-counting search volume alongside the broader `google_search_demand_summer_camp`. Tell me to enable both if you want.

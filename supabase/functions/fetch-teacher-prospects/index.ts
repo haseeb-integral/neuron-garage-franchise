@@ -1,8 +1,12 @@
 // Edge function: fetch-teacher-prospects
-// Calls Apify actor jungle_synthesizer/k12-school-staff-directory-scraper.
-// IMPORTANT: This actor scrapes the NCES public-school directory at the STATE level
-// and returns SCHOOL records (with teacher FTE counts) — not individual teachers.
-// We fetch the state, then filter to the requested city before upserting.
+// Strategy (v2 — reliable city-scoped path, no full-state Apify crawl):
+//   1. Hit NCES public school directory directly with City + State (FIPS) — returns
+//      every school in that city in one HTML page. No rate-limit issue, no 15-row cap.
+//   2. Parse the result rows (school name, address, phone, grades, NCES ID).
+//   3. Use Firecrawl /v2/search to discover each school's official website.
+//   4. Insert lightweight school placeholder rows into teacher_prospects so the UI
+//      shows progress, and return the schools[] payload so the frontend can fan out
+//      into the enrich-school-staff function for real teacher emails.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -11,10 +15,9 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const ACTOR_ID = "jungle_synthesizer~k12-school-staff-directory-scraper";
-const APIFY_BASE = "https://api.apify.com/v2";
+const NCES_BASE = "https://nces.ed.gov/ccd/schoolsearch/school_list.asp";
+const FC_SEARCH = "https://api.firecrawl.dev/v2/search";
 
-// US state postal -> FIPS code (what the actor expects in `states[]`)
 const STATE_FIPS: Record<string, string> = {
   AL:"01",AK:"02",AZ:"04",AR:"05",CA:"06",CO:"08",CT:"09",DE:"10",DC:"11",FL:"12",
   GA:"13",HI:"15",ID:"16",IL:"17",IN:"18",IA:"19",KS:"20",KY:"21",LA:"22",ME:"23",
@@ -30,154 +33,260 @@ function ok(body: unknown, status = 200) {
   });
 }
 
-function pickStr(...vals: unknown[]): string | null {
-  for (const v of vals) if (typeof v === "string" && v.trim()) return v.trim();
-  return null;
+type ParsedSchool = {
+  ncesId: string;
+  name: string;
+  address: string;
+  phone: string;
+  county: string;
+  students: number | null;
+  grades: string;
+};
+
+// Parse the NCES "school_list.asp" HTML. Each school is rendered as a <tr> that
+// contains a school_detail.asp link with the NCES school ID.
+function parseNcesSchools(html: string): ParsedSchool[] {
+  const out: ParsedSchool[] = [];
+  const seen = new Set<string>();
+  const rowRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = rowRe.exec(html)) !== null) {
+    const row = m[1];
+    const idMatch = row.match(/school_detail\.asp\?[^"']*?ID=(\d+)/i);
+    if (!idMatch) continue;
+    const ncesId = idMatch[1];
+    if (seen.has(ncesId)) continue;
+    seen.add(ncesId);
+
+    const cells = [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map((c) =>
+      c[1]
+        .replace(/<[^>]+>/g, " ")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/&amp;/gi, "&")
+        .replace(/\s+/g, " ")
+        .trim()
+    );
+    if (cells.length < 5) continue;
+
+    const nameAndAddress = cells[1] ?? "";
+    const addrMatch = nameAndAddress.match(/(\d+\s+[A-Z0-9 .'\-]+,\s*[A-Z .'\-]+,\s*[A-Z]{2}\s*\d{5}.*)$/);
+    const address = addrMatch ? addrMatch[1].trim() : "";
+    const name = (addrMatch
+      ? nameAndAddress.slice(0, addrMatch.index).trim()
+      : nameAndAddress
+    ).replace(/^\d+\.\s*/, "").trim();
+    if (!name) continue;
+
+    const phone = cells[2] ?? "";
+    const county = cells[3] ?? "";
+    const studentsRaw = (cells[4] ?? "").replace(/[^0-9]/g, "");
+    const students = studentsRaw ? Number(studentsRaw) : null;
+    const grades = cells[5] ?? "";
+
+    out.push({ ncesId, name, address, phone, county, students, grades });
+  }
+  return out;
 }
 
-function normalize(item: Record<string, any>, city: string, state: string, runId: string) {
-  // NCES school records — map school-level fields. Teacher-specific fields will be null.
-  const schoolName = pickStr(item.school_name, item.schoolName, item.name, item.SCH_NAME);
-  const district = pickStr(item.district_name, item.districtName, item.district, item.LEA_NAME);
-  const phone = pickStr(item.phone, item.phone_number, item.PHONE);
-  const website = pickStr(item.website, item.url, item.WEBSITE);
-  const teacherFte = item.teachers_fte ?? item.teacher_fte ?? item.FTE ?? item.fte ?? null;
-  const ratio = item.student_teacher_ratio ?? item.studentTeacherRatio ?? null;
-  return {
-    name: schoolName ?? "(School record)",         // no teacher name available
-    school: schoolName,
-    district,
-    email: null,                                    // actor doesn't return emails
-    grade: pickStr(item.grade_level, item.gradeLevel, item.LEVEL),
-    experience_years: null,
-    city,
-    state,
-    fit_score: null as number | null,
-    status: "new",
-    apify_run_id: runId,
-    raw: { ...item, _phone: phone, _website: website, _teacher_fte: teacherFte, _ratio: ratio },
-  };
+function titleCase(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/\b([a-z])/g, (_, c) => c.toUpperCase())
+    .replace(/\bIsd\b/g, "ISD")
+    .replace(/\bEl\b/g, "Elementary")
+    .replace(/\bMs\b/g, "Middle")
+    .replace(/\bHs\b/g, "High");
+}
+
+async function discoverWebsite(
+  fcKey: string,
+  schoolName: string,
+  city: string,
+  state: string,
+): Promise<string | null> {
+  const query = `"${schoolName}" ${city} ${state} school official site`;
+  try {
+    const res = await fetch(FC_SEARCH, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${fcKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query, limit: 3 }),
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const hits: Array<{ url?: string }> =
+      json?.data?.web ?? json?.web ?? (Array.isArray(json?.data) ? json.data : []);
+    for (const h of hits) {
+      const url = h?.url;
+      if (!url || typeof url !== "string") continue;
+      if (/(facebook|wikipedia|niche|greatschools|publicschoolreview|usnews|zillow|yelp|nces\.ed\.gov|linkedin|instagram|twitter)/i.test(url)) continue;
+      try {
+        const u = new URL(url);
+        return `${u.protocol}//${u.host}`;
+      } catch { return url; }
+    }
+  } catch (_) {
+    return null;
+  }
+  return null;
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const APIFY_TOKEN = Deno.env.get("APIFY_API_TOKEN");
+    const FC_KEY = Deno.env.get("FIRECRAWL_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (!APIFY_TOKEN) return ok({ error: "Missing APIFY_API_TOKEN secret" });
+    if (!FC_KEY) return ok({ error: "Missing FIRECRAWL_API_KEY secret" });
     if (!SUPABASE_URL || !SERVICE_KEY) return ok({ error: "Missing Supabase server env" });
 
     let body: any;
     try { body = await req.json(); } catch { return ok({ error: "Invalid JSON body" }); }
     const city = typeof body?.city === "string" ? body.city.trim() : "";
     const stateInput = typeof body?.state === "string" ? body.state.trim().toUpperCase() : "";
-    const limit = Number.isFinite(Number(body?.limit)) ? Math.min(Math.max(Number(body.limit), 1), 500) : 100;
+    const limit = Number.isFinite(Number(body?.limit))
+      ? Math.min(Math.max(Number(body.limit), 1), 100)
+      : 25;
     if (!city || !stateInput) return ok({ error: "city and state are required" });
-
     const fips = STATE_FIPS[stateInput];
     if (!fips) return ok({ error: `Unknown state code "${stateInput}" — expected 2-letter postal abbreviation` });
 
     console.log(`[fetch-teacher-prospects] city="${city}" state=${stateInput} fips=${fips} limit=${limit}`);
 
-    // Actor input — required sp_* feedback fields + state FIPS filter
-    const actorInput = {
-      sp_intended_usage: "Internal franchise recruiting research — finding schools in target markets.",
-      sp_improvement_suggestions: "n/a",
-      sp_contact: "ops@neuron-garage.com",
-      states: [fips],
-      schoolTypes: [],
-      gradeLevel: "all",
-      maxItems: 10000,
-      maxListingPagesPerState: 500,
+    // 1. Pull the NCES city-scoped school list. NCES paginates 15 schools per page,
+    //    so walk pages until empty or until we've gathered enough.
+    const headers = {
+      "User-Agent": "Mozilla/5.0 (NeuronGarage research)",
+      "Accept": "text/html,application/xhtml+xml",
     };
-
-    // 1. Start run
-    const startRes = await fetch(`${APIFY_BASE}/acts/${ACTOR_ID}/runs?token=${APIFY_TOKEN}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(actorInput),
-    });
-    if (!startRes.ok) {
-      const txt = await startRes.text();
-      return ok({ error: `Apify start failed (${startRes.status}): ${txt.slice(0, 400)}` });
+    const baseQuery = `City=${encodeURIComponent(city)}&Search=1&State=${fips}`;
+    const parsed: ParsedSchool[] = [];
+    const seenIds = new Set<string>();
+    const maxPages = 10; // 10 * 15 = 150 schools — enough for any one city
+    for (let page = 1; page <= maxPages; page++) {
+      const pagedUrl = page === 1
+        ? `${NCES_BASE}?${baseQuery}`
+        : `${NCES_BASE}?${baseQuery}&SchoolPageNum=${page}`;
+      const r = await fetch(pagedUrl, { headers });
+      if (!r.ok) {
+        console.log(`[fetch-teacher-prospects] NCES page ${page} HTTP ${r.status} — stopping`);
+        break;
+      }
+      const html = await r.text();
+      const idHits = html.match(/school_detail\.asp\?[^"']*?ID=\d+/gi);
+      console.log(`[fetch-teacher-prospects] NCES page ${page} html_len=${html.length} id_hits=${idHits?.length ?? 0}`);
+      const pageSchools = parseNcesSchools(html);
+      const before = parsed.length;
+      for (const s of pageSchools) {
+        if (seenIds.has(s.ncesId)) continue;
+        seenIds.add(s.ncesId);
+        parsed.push(s);
+      }
+      const added = parsed.length - before;
+      console.log(`[fetch-teacher-prospects] NCES page ${page} added ${added} (total ${parsed.length})`);
+      if (added === 0) break;
+      if (parsed.length >= limit) break;
+      // Brief polite delay between NCES pages
+      await new Promise((r) => setTimeout(r, 400));
     }
-    const startJson = await startRes.json();
-    const runId: string = startJson?.data?.id;
-    const datasetId: string = startJson?.data?.defaultDatasetId;
-    if (!runId || !datasetId) return ok({ error: "Apify did not return run id" });
-    console.log(`[fetch-teacher-prospects] runId=${runId} datasetId=${datasetId}`);
+    console.log(`[fetch-teacher-prospects] NCES total ${parsed.length} schools for ${city}, ${stateInput}`);
 
-    // 2. Poll (cap ~115s — actor can be slow)
-    const deadline = Date.now() + 115_000;
-    let status = "RUNNING";
-    while (Date.now() < deadline) {
-      await new Promise((r) => setTimeout(r, 5000));
-      const sRes = await fetch(`${APIFY_BASE}/actor-runs/${runId}?token=${APIFY_TOKEN}`);
-      if (!sRes.ok) continue;
-      const sJson = await sRes.json();
-      status = sJson?.data?.status ?? status;
-      console.log(`[fetch-teacher-prospects] status=${status}`);
-      if (["SUCCEEDED","FAILED","ABORTED","TIMED-OUT","TIMED_OUT"].includes(status)) break;
-    }
-    if (status !== "SUCCEEDED") {
+    if (parsed.length === 0) {
       return ok({
-        error: `Apify run ended with status ${status} (the K-12 actor often needs >2 min for a full state). Try a smaller state or re-run.`,
-        run_id: runId,
-        status,
+        inserted: 0,
+        updated: 0,
+        total: 0,
+        schools: [],
+        note: `NCES returned no schools for "${city}, ${stateInput}". Check city spelling.`,
       });
     }
 
-    // 3. Fetch dataset
-    const itemsRes = await fetch(
-      `${APIFY_BASE}/datasets/${datasetId}/items?clean=true&format=json&token=${APIFY_TOKEN}`
-    );
-    if (!itemsRes.ok) {
-      const txt = await itemsRes.text();
-      return ok({ error: `Apify dataset fetch failed: ${txt.slice(0, 300)}`, run_id: runId });
-    }
-    const allItems: any[] = await itemsRes.json();
-    console.log(`[fetch-teacher-prospects] state returned ${allItems.length} schools`);
+    const trimmed = parsed.slice(0, limit);
 
-    // 4. Filter to requested city
-    const cityLc = city.toLowerCase();
-    const inCity = allItems.filter((it) => {
-      const c = (it.city ?? it.CITY ?? it.school_city ?? it.address_city ?? "").toString().toLowerCase();
-      return c === cityLc || c.includes(cityLc);
-    }).slice(0, limit);
-    console.log(`[fetch-teacher-prospects] ${inCity.length} match city="${city}"`);
+    // 2. Discover each school's website via Firecrawl search (concurrency 4).
+    const schools: Array<{
+      school_name: string;
+      website: string | null;
+      district: string | null;
+      apify_run_id: string;
+      nces_id: string;
+      grades: string;
+      address: string;
+      phone: string;
+    }> = [];
 
-    // 5. Insert (no email dedupe — schools have no email)
+    let cursor = 0;
+    const concurrency = 4;
+    const runId = `nces-${Date.now()}`;
+
+    const worker = async () => {
+      while (cursor < trimmed.length) {
+        const i = cursor++;
+        const s = trimmed[i];
+        const niceName = titleCase(s.name);
+        const website = await discoverWebsite(FC_KEY, niceName, city, stateInput);
+        schools.push({
+          school_name: niceName,
+          website,
+          district: null,
+          apify_run_id: runId,
+          nces_id: s.ncesId,
+          grades: s.grades,
+          address: s.address,
+          phone: s.phone,
+        });
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(concurrency, trimmed.length) }, worker));
+
+    const withWebsites = schools.filter((s) => !!s.website);
+    console.log(`[fetch-teacher-prospects] discovered websites for ${withWebsites.length}/${schools.length} schools`);
+
+    // 3. Insert lightweight school placeholder rows so the UI immediately shows
+    //    something — enrich-school-staff will fill in real teacher rows later.
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
     let inserted = 0;
-    for (const raw of inCity) {
-      const row = normalize(raw, city, stateInput, runId);
+    for (const s of schools) {
+      const row = {
+        name: `(${s.school_name})`,
+        school: s.school_name,
+        district: s.district,
+        email: null,
+        grade: s.grades || null,
+        experience_years: null,
+        city,
+        state: stateInput,
+        fit_score: null as number | null,
+        status: "school_placeholder",
+        apify_run_id: runId,
+        raw: {
+          source: "NCES city directory",
+          nces_id: s.nces_id,
+          address: s.address,
+          phone: s.phone,
+          website: s.website,
+        },
+      };
       const { error } = await supabase.from("teacher_prospects").insert(row);
       if (error) console.error("[fetch-teacher-prospects] insert err", error.message);
       else inserted++;
     }
 
-    const schools = inCity
-      .map((s: any) => ({
-        school_name: pickStr(s.school_name, s.schoolName, s.SCH_NAME, s.name),
-        website: pickStr(s.website, s.WEBSITE, s.url, s.school_website),
-        district: pickStr(s.district_name, s.districtName, s.LEA_NAME, s.district),
-        apify_run_id: runId,
-      }))
-      .filter((s) => s.website && s.school_name);
+    console.log(`[fetch-teacher-prospects] done inserted=${inserted} schools_with_websites=${withWebsites.length}`);
 
-    console.log(`[fetch-teacher-prospects] done inserted=${inserted} schools_with_websites=${schools.length}`);
     return ok({
       inserted,
       updated: 0,
-      total: inCity.length,
-      state_total: allItems.length,
+      total: schools.length,
+      state_total: parsed.length,
       run_id: runId,
-      schools,
-      note: inCity.length === 0
-        ? `Actor returned ${allItems.length} schools for ${stateInput} but none matched city "${city}". Check spelling.`
-        : `Found ${inCity.length} schools (${schools.length} with websites). Run staff enrichment next.`,
+      schools: withWebsites,
+      note: withWebsites.length === 0
+        ? `Found ${schools.length} schools in ${city} but couldn't find any websites. Try again or check Firecrawl quota.`
+        : `Found ${schools.length} schools (${withWebsites.length} with websites). Running staff enrichment…`,
     });
   } catch (err) {
     console.error("[fetch-teacher-prospects] fatal", err);

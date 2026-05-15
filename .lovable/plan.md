@@ -1,82 +1,71 @@
-# Day 5.5 — Backend = Drawer (single source of truth for metric coverage)
+# Wire Teacher Search to real Apify data
 
-**Problem:** Drawer currently joins `city_market_signals` to the registry by canonical key and re-derives status client-side. Any time a fetcher writes a non-canonical `signal_key`, or the alias map misses one, the drawer drifts from the backend's coverage numbers.
+## 1. Edge function: `supabase/functions/fetch-teacher-prospects/index.ts`
 
-**Fix:** The edge function already knows every metric's status when it writes the SOW job. Have it persist a per-key map; drawer reads it verbatim.
-
----
-
-## 1. Edge function — write `metric_status_map`
-
-File: `supabase/functions/fetch-city-market-data-sow/index.ts` (~line 750, inside the `city_fetch_jobs` insert).
-
-Add a new field to `response_summary`:
-
-```ts
-metric_status_map: Object.fromEntries(
-  signals.map((s) => [
-    s.signal_key,                 // already canonical for SOW rows
-    {
-      status: s.status,           // 'live' | 'proxy' | 'missing' | 'blocked' | 'manual'
-      used_in_score: s.used_in_score ?? false,
-      value: s.value ?? null,
-      source: s.source ?? null,
-      source_url: s.source_url ?? null,
-      confidence: s.confidence ?? null,
-      updated_at: completedAt,
-      label: s.label ?? null,
-      metric_category: s.metric_category ?? null,
-      notes: s.notes ?? null,
-    },
-  ]),
-),
+Contract:
+```
+POST { city: string, state: string, limit?: number }   // limit default 100
+→ 200 { inserted: number, updated: number, run_id: string, total: number }
+→ 200 { error: string }   // never throws
 ```
 
-Also include it in the JSON response under `coverage.map` so callers can debug without a DB trip.
+Notes on secrets — the existing Lovable Cloud secret is **`APIFY_API_TOKEN`** (not `APIFY_API_KEY`). I'll use that. Actor ID `jungle_synthesizer/k12-school-staff-directory-scrape` is hardcoded per your spec.
 
-No DB migration — `response_summary` is JSONB.
+Logic:
+1. CORS preflight + Zod-validate body `{ city, state, limit? }`.
+2. Start Apify run async + poll (more reliable than `run-sync` for 100-row scrapes that can exceed the sync timeout):
+   - `POST https://api.apify.com/v2/acts/jungle_synthesizer~k12-school-staff-directory-scrape/runs?token=…`
+     body: `{ location: \`${city} ${state}\`, maxResults: limit ?? 100 }`
+   - Capture `runId` + `defaultDatasetId` from response.
+   - Poll `GET /v2/actor-runs/{runId}` every 5s until `status` ∈ {`SUCCEEDED`,`FAILED`,`ABORTED`,`TIMED-OUT`}. Hard cap 110s (Edge Function limit ~150s).
+3. Fetch dataset: `GET /v2/datasets/{datasetId}/items?clean=true&format=json`.
+4. Service-role Supabase client. Normalize each item defensively (Apify schemas vary):
+   ```
+   name             = item.name || `${item.first_name ?? ''} ${item.last_name ?? ''}`.trim()
+   school           = item.school || item.school_name
+   district         = item.district || item.school_district
+   email            = (item.email || '').trim().toLowerCase() || null
+   grade            = item.grade || item.grade_level
+   experience_years = Number(item.years_experience) || null
+   ```
+   Plus literals: `city`, `state`, `fit_score: null`, `status: 'new'`.
+5. Upsert: if `email` present → match on `lower(email)` → update; else insert. Tally `inserted` / `updated`.
+6. Wrap entire handler in try/catch → `{ error }` with status 200 ("never throws" per spec).
 
-## 2. Drawer — consume the map
+## 2. Frontend wiring — `src/components/teacher-prospects/FindProspectsModal.tsx`
 
-File: `src/components/city-scoring/MarketDetailDrawer.tsx`.
-
-a. After `latestJob` is loaded, derive:
-
+Replace the `setTimeout(1500)` mock with:
 ```ts
-const statusMap: Record<string, MetricSnapshot> | null =
-  latestJob?.response_summary?.metric_status_map ?? null;
+const city = sampleCities.find(c => c.id === Number(selectedCityId));
+const { data, error } = await supabase.functions.invoke('fetch-teacher-prospects', {
+  body: { city: city.city, state: city.state, limit: 100 }
+});
+if (error || data?.error) toast.error(...); else { toast.success(`${data.inserted + data.updated} prospects`); onResults(city.id); }
 ```
 
-b. Replace the `coverageByCategory` builder so it iterates `METRICS_BY_CATEGORY` and, for each metric:
+Page (`src/pages/TeacherProspects.tsx`) — add a `useEffect` that fetches from the `teacher_prospects` table filtered by selected city/state, mapping rows to the existing `TeacherProspect` shape so the table component is untouched. Also re-fetch after `onResults` fires.
 
-- If `statusMap` exists: use `statusMap[metric.key]` directly for `status`, `value`, `source`, `source_url`, `updated_at`, `used_in_score`. No alias lookup, no `getStatus()` recompute.
-- If `statusMap` is absent (legacy job rows from before this deploy): fall back to today's `signalsByCanonical` path so old data still renders.
+## 3. Table display — `src/components/teacher-prospects/TeacherTable.tsx`
 
-c. The header chips (`liveCount` / `estimatedCount` / `missingCount` / `blockedCount`) keep the same shape — they just sum the map-derived statuses.
+No structural changes. The mapping layer in step 2 handles missing fields:
+- `fitScore: row.fit_score ?? null` → render as `—` when null (small adjustment to `FitScoreBadge` to handle null).
+- `enrichmentStatus`: derive `'Enriched'` if `email` present else `'Pending'` (so the envelope icon already wired in `TeacherTable` lights up correctly).
+- `tag`: derive from `status` ('new' → 'Untagged').
+- `linkedin`, `phone`, `hasSummerCampExp`, `aiReasoning`: empty strings / false / `''` — these are display-only and degrade gracefully.
 
-d. Keep `signalsByCanonical` for the **Data Sources** tab (raw signal rows still come from `city_market_signals`), but coverage status no longer flows through it.
+Filters, sorting, bulk-actions, detail panel — all untouched.
 
-e. Drop the `signal && getStatus(signal) !== "missing"` re-check in the registry-iteration block — that's the exact line that caused the 16-metric drift.
+## 4. Out of scope (next sprint days)
+- Fit-score AI enrichment (`fit_score` stays null; UI shows `—`).
+- LinkedIn / camp-experience signals (Day 7 enrichment).
+- Pagination of >1000 rows from `teacher_prospects`.
 
-## 3. Verify
+## Files touched
+- **new** `supabase/functions/fetch-teacher-prospects/index.ts`
+- **edit** `src/components/teacher-prospects/FindProspectsModal.tsx` (real invoke)
+- **edit** `src/pages/TeacherProspects.tsx` (load from Supabase)
+- **edit (tiny)** `src/components/teacher-prospects/FitScoreBadge.tsx` (render `—` when null)
 
-1. Refresh **Frisco TX**. Drawer chips and per-row badges must match `response_summary.counts` exactly (current target: 25 / 8 / 11 / 2 with 1 custom).
-2. Click into 3 previously-misaligned metrics (`elementary_school_count`, `children_5_12_count`, `dual_income_household_pct`) and confirm status badge = backend status.
-3. Open an older market (pre-deploy job) — it must still render via the fallback path without throwing.
-4. Refresh **Austin TX** as a second city sanity check.
+## Open question
 
-## 4. Files touched
-
-- `supabase/functions/fetch-city-market-data-sow/index.ts` — add `metric_status_map` to `response_summary` and the JSON return.
-- `src/components/city-scoring/MarketDetailDrawer.tsx` — prefer map-driven coverage; keep current logic as fallback.
-- `.lovable/plan.md` — replace with this Day 5.5 body.
-
-## Risks
-
-- **Legacy jobs lack the map.** Fallback path covers this; once every market is refreshed, fallback becomes dead code (remove in Day 7+).
-- **Key mismatch between fetcher output and registry.** If a fetcher emits a non-registry key, that metric simply won't appear in `metric_status_map[metric.key]` and will render as `missing`. That's correct behavior — and now it's loud instead of silently mis-statused.
-
-## Out of scope
-
-- Day 6 metric promotions.
-- Removing `LEGACY_TO_CANONICAL` aliases (still needed for the Data Sources tab until fetchers fully migrate).
+Your spec calls the secret `APIFY_API_KEY` but the project actually has **`APIFY_API_TOKEN`** (already set, used by `fetch-city-market-data-sow`). I'll use `APIFY_API_TOKEN`. Tell me if you'd rather I add a new `APIFY_API_KEY` secret instead.

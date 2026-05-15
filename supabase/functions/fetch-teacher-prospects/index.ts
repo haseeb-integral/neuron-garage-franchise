@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
       sp_contact: "ops@neuron-garage.com",
       states: [fips],
       schoolTypes: [],
-      gradeLevel: "",
+      gradeLevel: "all",
       maxItems: Math.max(limit * 5, 200),       // overfetch since we filter by city
       maxListingPagesPerState: 50,
     };

@@ -176,6 +176,8 @@ Deno.serve(async (req) => {
         break;
       }
       const html = await r.text();
+      const idHits = html.match(/school_detail\.asp\?[^"']*?ID=\d+/gi);
+      console.log(`[fetch-teacher-prospects] NCES page ${page} html_len=${html.length} id_hits=${idHits?.length ?? 0}`);
       const pageSchools = parseNcesSchools(html);
       const before = parsed.length;
       for (const s of pageSchools) {

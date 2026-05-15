@@ -43,12 +43,11 @@ type ParsedSchool = {
   grades: string;
 };
 
-// Parse the NCES "school_list.asp" HTML. Each school is rendered as a row of
-// <td> cells: [number, link(name) + address, phone, county, students, grades].
-// We pull the school NCES ID from the school_detail.asp?...&ID=<digits> link.
+// Parse the NCES "school_list.asp" HTML. Each school is rendered as a <tr> that
+// contains a school_detail.asp link with the NCES school ID.
 function parseNcesSchools(html: string): ParsedSchool[] {
   const out: ParsedSchool[] = [];
-  // Match each <tr> that contains a school_detail.asp link
+  const seen = new Set<string>();
   const rowRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
   let m: RegExpExecArray | null;
   while ((m = rowRe.exec(html)) !== null) {
@@ -56,8 +55,9 @@ function parseNcesSchools(html: string): ParsedSchool[] {
     const idMatch = row.match(/school_detail\.asp\?[^"']*?ID=(\d+)/i);
     if (!idMatch) continue;
     const ncesId = idMatch[1];
+    if (seen.has(ncesId)) continue;
+    seen.add(ncesId);
 
-    // Pull all cell text
     const cells = [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map((c) =>
       c[1]
         .replace(/<[^>]+>/g, " ")
@@ -68,10 +68,7 @@ function parseNcesSchools(html: string): ParsedSchool[] {
     );
     if (cells.length < 5) continue;
 
-    // cells[1] = "school name <address>", cells[2] = phone, cells[3] = county,
-    // cells[4] = students, cells[5] = grades
     const nameAndAddress = cells[1] ?? "";
-    // Address typically starts with a number + comma-separated street, ends with state+ZIP
     const addrMatch = nameAndAddress.match(/(\d+\s+[A-Z0-9 .'\-]+,\s*[A-Z .'\-]+,\s*[A-Z]{2}\s*\d{5}.*)$/);
     const address = addrMatch ? addrMatch[1].trim() : "";
     const name = (addrMatch
@@ -119,13 +116,16 @@ async function discoverWebsite(
     });
     if (!res.ok) return null;
     const json = await res.json();
-    const hits: Array<{ url?: string }> = json?.data?.web ?? json?.data ?? json?.web ?? [];
+    const hits: Array<{ url?: string }> =
+      json?.data?.web ?? json?.web ?? (Array.isArray(json?.data) ? json.data : []);
     for (const h of hits) {
       const url = h?.url;
       if (!url || typeof url !== "string") continue;
-      // Skip common noise domains that won't have a staff directory
-      if (/(facebook|wikipedia|niche|greatschools|publicschoolreview|usnews|zillow|yelp|nces\.ed\.gov)/i.test(url)) continue;
-      return url;
+      if (/(facebook|wikipedia|niche|greatschools|publicschoolreview|usnews|zillow|yelp|nces\.ed\.gov|linkedin|instagram|twitter)/i.test(url)) continue;
+      try {
+        const u = new URL(url);
+        return `${u.protocol}//${u.host}`;
+      } catch { return url; }
     }
   } catch (_) {
     return null;
@@ -154,4 +154,116 @@ Deno.serve(async (req) => {
     const fips = STATE_FIPS[stateInput];
     if (!fips) return ok({ error: `Unknown state code "${stateInput}" — expected 2-letter postal abbreviation` });
 
-    console.log(`[fetch-teacher-prospects] city="${city}" state=${stateInput} f
+    console.log(`[fetch-teacher-prospects] city="${city}" state=${stateInput} fips=${fips} limit=${limit}`);
+
+    // 1. Pull the NCES city-scoped school list (single HTML request).
+    const ncesUrl = `${NCES_BASE}?City=${encodeURIComponent(city)}&Search=1&State=${fips}`;
+    const ncesRes = await fetch(ncesUrl, {
+      headers: { "User-Agent": "Mozilla/5.0 (NeuronGarage research)" },
+    });
+    if (!ncesRes.ok) {
+      return ok({ error: `NCES request failed: HTTP ${ncesRes.status}` });
+    }
+    const html = await ncesRes.text();
+    const parsed = parseNcesSchools(html);
+    console.log(`[fetch-teacher-prospects] NCES returned ${parsed.length} schools for ${city}, ${stateInput}`);
+
+    if (parsed.length === 0) {
+      return ok({
+        inserted: 0,
+        updated: 0,
+        total: 0,
+        schools: [],
+        note: `NCES returned no schools for "${city}, ${stateInput}". Check city spelling.`,
+      });
+    }
+
+    const trimmed = parsed.slice(0, limit);
+
+    // 2. Discover each school's website via Firecrawl search (concurrency 4).
+    const schools: Array<{
+      school_name: string;
+      website: string | null;
+      district: string | null;
+      apify_run_id: string;
+      nces_id: string;
+      grades: string;
+      address: string;
+      phone: string;
+    }> = [];
+
+    let cursor = 0;
+    const concurrency = 4;
+    const runId = `nces-${Date.now()}`;
+
+    const worker = async () => {
+      while (cursor < trimmed.length) {
+        const i = cursor++;
+        const s = trimmed[i];
+        const niceName = titleCase(s.name);
+        const website = await discoverWebsite(FC_KEY, niceName, city, stateInput);
+        schools.push({
+          school_name: niceName,
+          website,
+          district: null,
+          apify_run_id: runId,
+          nces_id: s.ncesId,
+          grades: s.grades,
+          address: s.address,
+          phone: s.phone,
+        });
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(concurrency, trimmed.length) }, worker));
+
+    const withWebsites = schools.filter((s) => !!s.website);
+    console.log(`[fetch-teacher-prospects] discovered websites for ${withWebsites.length}/${schools.length} schools`);
+
+    // 3. Insert lightweight school placeholder rows so the UI immediately shows
+    //    something — enrich-school-staff will fill in real teacher rows later.
+    const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+    let inserted = 0;
+    for (const s of schools) {
+      const row = {
+        name: `(${s.school_name})`,
+        school: s.school_name,
+        district: s.district,
+        email: null,
+        grade: s.grades || null,
+        experience_years: null,
+        city,
+        state: stateInput,
+        fit_score: null as number | null,
+        status: "school_placeholder",
+        apify_run_id: runId,
+        raw: {
+          source: "NCES city directory",
+          nces_id: s.nces_id,
+          address: s.address,
+          phone: s.phone,
+          website: s.website,
+        },
+      };
+      const { error } = await supabase.from("teacher_prospects").insert(row);
+      if (error) console.error("[fetch-teacher-prospects] insert err", error.message);
+      else inserted++;
+    }
+
+    console.log(`[fetch-teacher-prospects] done inserted=${inserted} schools_with_websites=${withWebsites.length}`);
+
+    return ok({
+      inserted,
+      updated: 0,
+      total: schools.length,
+      state_total: parsed.length,
+      run_id: runId,
+      schools: withWebsites,
+      note: withWebsites.length === 0
+        ? `Found ${schools.length} schools in ${city} but couldn't find any websites. Try again or check Firecrawl quota.`
+        : `Found ${schools.length} schools (${withWebsites.length} with websites). Running staff enrichment…`,
+    });
+  } catch (err) {
+    console.error("[fetch-teacher-prospects] fatal", err);
+    return ok({ error: (err as Error).message ?? "Unknown error" });
+  }
+});

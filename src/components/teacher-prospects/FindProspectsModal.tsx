@@ -140,7 +140,7 @@ export function FindProspectsModal({ open, onOpenChange, onResults }: Props) {
             style={{ backgroundColor: "#fd7e14" }}
           >
             {loading ? (
-              <><Loader2 className="animate-spin" /> Searching Apify (up to ~2 min)...</>
+              <><Loader2 className="animate-spin" /> Searching + enriching (up to ~5 min)...</>
             ) : (
               <><Search size={16} /> Run Search</>
             )}

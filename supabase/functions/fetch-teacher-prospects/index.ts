@@ -158,16 +158,26 @@ Deno.serve(async (req) => {
       else inserted++;
     }
 
-    console.log(`[fetch-teacher-prospects] done inserted=${inserted}`);
+    const schools = inCity
+      .map((s: any) => ({
+        school_name: pickStr(s.school_name, s.schoolName, s.SCH_NAME, s.name),
+        website: pickStr(s.website, s.WEBSITE, s.url, s.school_website),
+        district: pickStr(s.district_name, s.districtName, s.LEA_NAME, s.district),
+        apify_run_id: runId,
+      }))
+      .filter((s) => s.website && s.school_name);
+
+    console.log(`[fetch-teacher-prospects] done inserted=${inserted} schools_with_websites=${schools.length}`);
     return ok({
       inserted,
       updated: 0,
       total: inCity.length,
       state_total: allItems.length,
       run_id: runId,
+      schools,
       note: inCity.length === 0
         ? `Actor returned ${allItems.length} schools for ${stateInput} but none matched city "${city}". Check spelling.`
-        : "NOTE: This Apify actor returns SCHOOLS (not individual teachers). Names/emails of teachers are not available from this source.",
+        : `Found ${inCity.length} schools (${schools.length} with websites). Run staff enrichment next.`,
     });
   } catch (err) {
     console.error("[fetch-teacher-prospects] fatal", err);

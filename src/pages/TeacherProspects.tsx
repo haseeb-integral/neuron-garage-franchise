@@ -195,7 +195,7 @@ const TeacherProspects = () => {
     const concurrency = 5;
     let cursor = 0;
 
-    toast.loading(`Found ${schools.length} schools  enriching staff (0/${schools.length})…`, { id: toastId });
+    toast.loading(`Found ${schools.length} schools → enriching staff (0/${schools.length})…`, { id: toastId });
 
     const runOne = async (school: SchoolSearchResult) => {
       try {

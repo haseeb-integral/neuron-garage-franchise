@@ -89,8 +89,8 @@ Deno.serve(async (req) => {
       states: [fips],
       schoolTypes: [],
       gradeLevel: "all",
-      maxItems: Math.max(limit * 5, 200),       // overfetch since we filter by city
-      maxListingPagesPerState: 50,
+      maxItems: 10000,
+      maxListingPagesPerState: 500,
     };
 
     // 1. Start run

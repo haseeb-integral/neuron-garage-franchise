@@ -346,38 +346,6 @@ export default function Auth() {
                   </form>
                 )}
 
-                {isLogin && (
-                  <>
-                    <div className="my-4 flex items-center gap-4 text-sm text-[#7d8aa0]">
-                      <div className="h-px flex-1 bg-[#dbe3ee]" />
-                      <span>or continue with</span>
-                      <div className="h-px flex-1 bg-[#dbe3ee]" />
-                    </div>
-                    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-                      {[
-                        { label: "Google", icon: "G" },
-                        { label: "Microsoft", icon: "▦" },
-                        { label: "SSO", icon: "⌂" },
-                      ].map((item) => (
-                        <button
-                          key={item.label}
-                          type="button"
-                          disabled
-                          aria-disabled="true"
-                          className="cursor-not-allowed rounded-xl border border-[#d6dfeb] bg-[#f6f8fb] px-3 py-2 text-[#7d8aa0] opacity-80"
-                        >
-                          <div className="flex items-center justify-center gap-2 text-sm font-semibold">
-                            <span className="text-lg">{item.icon}</span>
-                            {item.label}
-                          </div>
-                          <div className="mx-auto mt-1 w-fit rounded-full bg-[#e9eef6] px-2.5 py-0.5 text-[10px] font-medium text-[#7d8aa0]">
-                            Coming soon
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
               </CardContent>
             </Card>
 

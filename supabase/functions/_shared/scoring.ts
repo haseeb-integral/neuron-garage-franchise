@@ -222,18 +222,18 @@ export type SowMetricEntry = {
 // NOT applied today. Total per category is informational only.
 export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
   // Demand
-  { key: "children_5_12_count",                 category: "demand", label: "Children Ages 5–12",                     enabled: true,  weight_within_category: 0.15, status: "live"  },
-  { key: "children_5_12_pct",                   category: "demand", label: "% Population Ages 5–12",                  enabled: true,  weight_within_category: 0.10, status: "live"  },
-  { key: "households_with_children_under_13",   category: "demand", label: "Households With Children Under 13",       enabled: true,  weight_within_category: 0.10, status: "proxy" },
-  { key: "median_household_income",             category: "demand", label: "Median Household Income",                 enabled: true,  weight_within_category: 0.13, status: "live"  },
-  { key: "income_100k_plus_pct",                category: "demand", label: "Households Earning $100k+",               enabled: true,  weight_within_category: 0.09, status: "live"  },
-  { key: "income_150k_plus_pct",                category: "demand", label: "Households Earning $150k+",               enabled: true,  weight_within_category: 0.09, status: "live"  },
-  { key: "young_family_growth_rate",            category: "demand", label: "Growth Rate of Young Families",           enabled: true,  weight_within_category: 0.13, status: "live"    },
-  { key: "dual_income_household_pct",           category: "demand", label: "% Dual-Income Households",                enabled: true,  weight_within_category: 0.11, status: "live"    },
-  { key: "education_bachelors_plus_pct",        category: "demand", label: "Parent Education / Bachelor's+",          enabled: true,  weight_within_category: 0.10, status: "live"    },
-  { key: "summer_weather_index",                category: "demand", label: "Summer Weather Index",                    enabled: false, weight_within_category: 0,    status: "live"    },
-  { key: "avg_peak_summer_temperature",         category: "demand", label: "Avg Peak Summer Temperature",             enabled: false, weight_within_category: 0,    status: "live"    },
-  { key: "days_above_100f",                     category: "demand", label: "Number of 100°+ Days",                    enabled: false, weight_within_category: 0,    status: "live"    },
+  { key: "children_5_12_count",                 category: "demand", label: "Children Ages 5–12",                     enabled: true,  weight_within_category: 0.13, status: "live"  },
+  { key: "children_5_12_pct",                   category: "demand", label: "% Population Ages 5–12",                  enabled: true,  weight_within_category: 0.08, status: "live"  },
+  { key: "households_with_children_under_13",   category: "demand", label: "Households With Children Under 13",       enabled: true,  weight_within_category: 0.08, status: "proxy" },
+  { key: "median_household_income",             category: "demand", label: "Median Household Income",                 enabled: true,  weight_within_category: 0.11, status: "live"  },
+  { key: "income_100k_plus_pct",                category: "demand", label: "Households Earning $100k+",               enabled: true,  weight_within_category: 0.08, status: "live"  },
+  { key: "income_150k_plus_pct",                category: "demand", label: "Households Earning $150k+",               enabled: true,  weight_within_category: 0.07, status: "live"  },
+  { key: "young_family_growth_rate",            category: "demand", label: "Growth Rate of Young Families",           enabled: true,  weight_within_category: 0.11, status: "live"    },
+  { key: "dual_income_household_pct",           category: "demand", label: "% Dual-Income Households",                enabled: true,  weight_within_category: 0.10, status: "live"    },
+  { key: "education_bachelors_plus_pct",        category: "demand", label: "Parent Education / Bachelor's+",          enabled: true,  weight_within_category: 0.09, status: "live"    },
+  { key: "summer_weather_index",                category: "demand", label: "Summer Weather Index",                    enabled: true,  weight_within_category: 0.08, status: "live"    },
+  { key: "avg_peak_summer_temperature",         category: "demand", label: "Avg Peak Summer Temperature",             enabled: true,  weight_within_category: 0.04, status: "live"    },
+  { key: "days_above_100f",                     category: "demand", label: "Number of 100°+ Days",                    enabled: true,  weight_within_category: 0.03, status: "live"    },
 
   // ─────────── PRICING POWER ───────────
   { key: "avg_weekly_camp_tuition",             category: "pricing_power", label: "Average Weekly Camp Tuition",                       enabled: true,  weight_within_category: 0.20, status: "live" },
@@ -245,14 +245,14 @@ export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
   { key: "household_discretionary_income_proxy",category: "pricing_power", label: "Household Discretionary Income Estimate",           enabled: true,  weight_within_category: 0.20, status: "proxy" },
 
   // ─────────── COMPETITIVE LANDSCAPE ───────────
-  { key: "summer_camps_per_10k_children",       category: "competitive_landscape", label: "Summer Camps per 10,000 Children",          enabled: true,  weight_within_category: 0.25, status: "proxy" },
-  { key: "stem_robotics_maker_camp_count",      category: "competitive_landscape", label: "STEM / Robotics / Maker Camps",             enabled: true,  weight_within_category: 0.18, status: "proxy" },
-  { key: "school_based_summer_camp_count",      category: "competitive_landscape", label: "School-Based Summer Camps",                 enabled: true,  weight_within_category: 0.12, status: "live" },
-  { key: "national_brand_presence",             category: "competitive_landscape", label: "National Brand Presence",                   enabled: true,  weight_within_category: 0.13, status: "live" },
-  { key: "google_search_demand_summer_camp",    category: "competitive_landscape", label: "Google Search Demand: summer camp [city]",  enabled: true,  weight_within_category: 0.17, status: "live"    },
-  { key: "google_search_demand_summer_day_camp",category: "competitive_landscape", label: "Google Search Demand: summer day camp",     enabled: false, weight_within_category: 0,    status: "live"    },
+  { key: "summer_camps_per_10k_children",       category: "competitive_landscape", label: "Summer Camps per 10,000 Children",          enabled: true,  weight_within_category: 0.22, status: "proxy" },
+  { key: "stem_robotics_maker_camp_count",      category: "competitive_landscape", label: "STEM / Robotics / Maker Camps",             enabled: true,  weight_within_category: 0.16, status: "proxy" },
+  { key: "school_based_summer_camp_count",      category: "competitive_landscape", label: "School-Based Summer Camps",                 enabled: true,  weight_within_category: 0.10, status: "live" },
+  { key: "national_brand_presence",             category: "competitive_landscape", label: "National Brand Presence",                   enabled: true,  weight_within_category: 0.11, status: "live" },
+  { key: "google_search_demand_summer_camp",    category: "competitive_landscape", label: "Google Search Demand: summer camp [city]",  enabled: true,  weight_within_category: 0.15, status: "live"    },
+  { key: "google_search_demand_summer_day_camp",category: "competitive_landscape", label: "Google Search Demand: summer day camp",     enabled: true,  weight_within_category: 0.12, status: "live"    },
   { key: "google_search_demand_summer_day_camps_year", category: "competitive_landscape", label: "Google Search Demand: Day Camps [Year]", enabled: false, weight_within_category: 0, status: "missing" },
-  { key: "waitlist_sold_out_signal_count",      category: "competitive_landscape", label: "Waitlist / Sold-Out Signals",               enabled: true,  weight_within_category: 0.15, status: "live"    },
+  { key: "waitlist_sold_out_signal_count",      category: "competitive_landscape", label: "Waitlist / Sold-Out Signals",               enabled: true,  weight_within_category: 0.14, status: "live"    },
 
   // ─────────── FRANCHISEE SUPPLY ───────────
   { key: "public_elementary_teacher_count",     category: "franchisee_supply", label: "Public Elementary Teachers",                    enabled: true,  weight_within_category: 0.20, status: "live"    },

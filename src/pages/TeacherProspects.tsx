@@ -180,7 +180,30 @@ const TeacherProspects = () => {
   const filtered = useMemo(() => prospects.filter(p => { if (search && !p.name.toLowerCase().includes(search.toLowerCase()) && !p.school.toLowerCase().includes(search.toLowerCase())) return false; if (cityFilter !== "All" && p.city !== cityFilter) return false; if (tagFilter !== "All" && p.tag !== tagFilter) return false; if (gradeFilter !== "All" && p.gradeLevel !== gradeFilter) return false; if (enrichmentFilter !== "All" && p.enrichmentStatus !== enrichmentFilter) return false; if (campOnly && !p.hasSummerCampExp) return false; return true; }), [prospects, search, cityFilter, tagFilter, gradeFilter, enrichmentFilter, campOnly]);
 
   const handleResults = async (cityId: number) => { const city = sampleCities.find(c => c.id === cityId); if (!city) return; setCityFilter(city.city); await loadProspects(); };
-  const handleRunMarketSearch = () => setFindOpen(true);
+  const [searchingMarket, setSearchingMarket] = useState(false);
+  const runMarketSearch = async () => {
+    if (!selectedMarket || searchingMarket) return;
+    setSearchingMarket(true);
+    const t = toast.loading(`Searching schools in ${selectedMarket.city}, ${stateAbbr(selectedMarket.state)}…`);
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-teacher-prospects", {
+        body: { city: selectedMarket.city, state: stateAbbr(selectedMarket.state), limit: 100 },
+      });
+      if (error || data?.error) {
+        toast.error(`Search failed: ${error?.message ?? data?.error}`, { id: t });
+      } else {
+        const total = (data?.inserted ?? 0) + (data?.updated ?? 0);
+        toast.success(`Found ${total} schools in ${selectedMarket.city}`, { id: t, description: data?.note });
+        await loadProspects();
+      }
+    } catch (e) {
+      toast.error(`Search failed: ${(e as Error).message}`, { id: t });
+    } finally {
+      setSearchingMarket(false);
+    }
+  };
+  const handleRunMarketSearch = () => { if (selectedMarket) runMarketSearch(); else setFindOpen(true); };
+  const handleChangeMarket = () => setFindOpen(true);
   const handleExport = () => { const rows = filtered.length > 0 ? filtered : marketProspects; if (rows.length === 0) { toast.info("No prospects available to export yet. Run Prospect Search first."); return; } downloadCsv(rows); toast.success(`Exported ${rows.length} teacher prospects to CSV.`); };
   const toggleSelect = (id: number) => setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   const toggleAll = () => { const visibleIds = filtered.map(p => p.id); const allSelected = visibleIds.every(id => selected.includes(id)); setSelected(allSelected ? selected.filter(id => !visibleIds.includes(id)) : Array.from(new Set([...selected, ...visibleIds]))); };

@@ -1,71 +1,89 @@
-# Wire Teacher Search to real Apify data
 
-## 1. Edge function: `supabase/functions/fetch-teacher-prospects/index.ts`
+# Day 6 — Firecrawl staff enrichment
 
-Contract:
+Decision locked: **Option 2**. Keep `jungle_synthesizer/...-scraper` as the school-list source. Add Firecrawl as the primary teacher-name + email source. No Agenscrape.
+
+## 1. New edge function — `supabase/functions/enrich-school-staff/index.ts`
+
+**Contract**
 ```
-POST { city: string, state: string, limit?: number }   // limit default 100
-→ 200 { inserted: number, updated: number, run_id: string, total: number }
+POST { school_website: string,
+       school_name: string,
+       district?: string,
+       city: string,
+       state: string,
+       apify_run_id?: string }
+→ 200 { inserted, updated, pages_crawled, emails_found }
 → 200 { error: string }   // never throws
 ```
 
-Notes on secrets — the existing Lovable Cloud secret is **`APIFY_API_TOKEN`** (not `APIFY_API_KEY`). I'll use that. Actor ID `jungle_synthesizer/k12-school-staff-directory-scrape` is hardcoded per your spec.
+**Logic**
+1. CORS preflight; validate body (`school_website` + `school_name` + `city` + `state` required).
+2. Read `FIRECRAWL_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` from env. Bail with `{error}` if missing.
+3. Call Firecrawl REST `POST https://api.firecrawl.dev/v2/crawl`:
+   - `url: school_website`
+   - `limit: 10`, `maxDepth: 2`
+   - `includePaths: ["/staff*","/about*","/our-team*","/faculty*","/directory*","/teachers*"]`
+   - `scrapeOptions: { formats: ["markdown"], onlyMainContent: true }`
+4. Poll the returned crawl job (`GET /v2/crawl/{id}`) every 4 s, hard cap 90 s.
+5. Concatenate all page markdowns. Extract:
+   - **Emails** — regex `/[a-z0-9._%+-]+@[a-z0-9.-]+\.(?:edu|org|k12\.[a-z]{2}\.us|us)/gi`
+   - **Name for each email** — look at the 120 chars *before* the email match, find the last `Title Case` 2-3 word sequence (`/([A-Z][a-z]+(?:\s+[A-Z][a-z'\-]+){1,2})/g` → take last). Fallback: parse the email local part (`first.last@…` → "First Last").
+   - **Grade/title hint** — look at 80 chars *after* the email for keywords (`Kindergarten|1st|2nd|...|5th|Grade \d|Teacher|Principal|Counselor`).
+6. Dedupe by `lower(email)` within the batch.
+7. Upsert into `teacher_prospects`:
+   - Match on `lower(email)` — update `name`, `school`, `district`, `grade`, `apify_run_id` (passed through), refresh `updated_at`. Else insert.
+   - Set `source_channel = 'Firecrawl /staff'`, `status = 'new'`, `fit_score = null`, `city`, `state`, `raw = { firecrawl_source_url, snippet }`.
+8. Tally `inserted` / `updated`. Return.
+9. Whole handler wrapped in try/catch → `{error}` with 200.
 
-Logic:
-1. CORS preflight + Zod-validate body `{ city, state, limit? }`.
-2. Start Apify run async + poll (more reliable than `run-sync` for 100-row scrapes that can exceed the sync timeout):
-   - `POST https://api.apify.com/v2/acts/jungle_synthesizer~k12-school-staff-directory-scrape/runs?token=…`
-     body: `{ location: \`${city} ${state}\`, maxResults: limit ?? 100 }`
-   - Capture `runId` + `defaultDatasetId` from response.
-   - Poll `GET /v2/actor-runs/{runId}` every 5s until `status` ∈ {`SUCCEEDED`,`FAILED`,`ABORTED`,`TIMED-OUT`}. Hard cap 110s (Edge Function limit ~150s).
-3. Fetch dataset: `GET /v2/datasets/{datasetId}/items?clean=true&format=json`.
-4. Service-role Supabase client. Normalize each item defensively (Apify schemas vary):
-   ```
-   name             = item.name || `${item.first_name ?? ''} ${item.last_name ?? ''}`.trim()
-   school           = item.school || item.school_name
-   district         = item.district || item.school_district
-   email            = (item.email || '').trim().toLowerCase() || null
-   grade            = item.grade || item.grade_level
-   experience_years = Number(item.years_experience) || null
-   ```
-   Plus literals: `city`, `state`, `fit_score: null`, `status: 'new'`.
-5. Upsert: if `email` present → match on `lower(email)` → update; else insert. Tally `inserted` / `updated`.
-6. Wrap entire handler in try/catch → `{ error }` with status 200 ("never throws" per spec).
+**Notes**
+- Use `npm:@supabase/supabase-js@2`, plain `fetch` for Firecrawl (no SDK).
+- `verify_jwt = false` defaults are fine; no `config.toml` change.
 
 ## 2. Frontend wiring — `src/components/teacher-prospects/FindProspectsModal.tsx`
 
-Replace the `setTimeout(1500)` mock with:
+After `fetch-teacher-prospects` resolves successfully:
+
+1. Pull the schools that came back. Today the function only returns counts — extend its response to include `schools: Array<{ school_name, website, district, apify_run_id }>` (filter to those with a non-empty website).
+2. Show progress toast: `Found ${schools.length} schools → enriching staff (0/${N})…`.
+3. Run a **bounded-concurrency** loop (max 5 in flight) calling `supabase.functions.invoke('enrich-school-staff', { body: {...} })` for each school. Each call has its own 90 s ceiling on the server side; client uses `Promise.allSettled`.
+4. Tick toast on each settle: `enriching staff (k/N)…`.
+5. When done: `toast.success(`${totalInserted + totalUpdated} teachers across ${schools.length} schools`)`, then `onResults(cityId)` and close modal.
+
+## 3. Tiny tweak to `fetch-teacher-prospects`
+
+Only change: also return the per-school payload the modal needs.
 ```ts
-const city = sampleCities.find(c => c.id === Number(selectedCityId));
-const { data, error } = await supabase.functions.invoke('fetch-teacher-prospects', {
-  body: { city: city.city, state: city.state, limit: 100 }
+return ok({
+  inserted, updated: 0, total, state_total, run_id,
+  schools: inCity.map(s => ({
+    school_name: pickStr(s.school_name, s.SCH_NAME, s.name),
+    website:     pickStr(s.website, s.WEBSITE, s.url),
+    district:    pickStr(s.district_name, s.LEA_NAME, s.district),
+    apify_run_id: runId,
+  })).filter(s => s.website),
 });
-if (error || data?.error) toast.error(...); else { toast.success(`${data.inserted + data.updated} prospects`); onResults(city.id); }
 ```
+No other behavior changes.
 
-Page (`src/pages/TeacherProspects.tsx`) — add a `useEffect` that fetches from the `teacher_prospects` table filtered by selected city/state, mapping rows to the existing `TeacherProspect` shape so the table component is untouched. Also re-fetch after `onResults` fires.
+## 4. Files touched
 
-## 3. Table display — `src/components/teacher-prospects/TeacherTable.tsx`
+- **new** `supabase/functions/enrich-school-staff/index.ts`
+- **edit** `supabase/functions/fetch-teacher-prospects/index.ts` (add `schools[]` to response — ~10 lines)
+- **edit** `src/components/teacher-prospects/FindProspectsModal.tsx` (chain + progress toast — ~40 lines)
 
-No structural changes. The mapping layer in step 2 handles missing fields:
-- `fitScore: row.fit_score ?? null` → render as `—` when null (small adjustment to `FitScoreBadge` to handle null).
-- `enrichmentStatus`: derive `'Enriched'` if `email` present else `'Pending'` (so the envelope icon already wired in `TeacherTable` lights up correctly).
-- `tag`: derive from `status` ('new' → 'Untagged').
-- `linkedin`, `phone`, `hasSummerCampExp`, `aiReasoning`: empty strings / false / `''` — these are display-only and degrade gracefully.
+## 5. Out of scope (deferred)
 
-Filters, sorting, bulk-actions, detail panel — all untouched.
+- Fit-score AI enrichment (Day 7)
+- Camp-experience signal (Day 7)
+- Pagination / background queue if a city has >50 schools (acceptable today — Frisco has ~70 schools, ~14 enrichment batches at concurrency 5)
+- LinkedIn anything
 
-## 4. Out of scope (next sprint days)
-- Fit-score AI enrichment (`fit_score` stays null; UI shows `—`).
-- LinkedIn / camp-experience signals (Day 7 enrichment).
-- Pagination of >1000 rows from `teacher_prospects`.
+## 6. Risk / honesty
 
-## Files touched
-- **new** `supabase/functions/fetch-teacher-prospects/index.ts`
-- **edit** `src/components/teacher-prospects/FindProspectsModal.tsx` (real invoke)
-- **edit** `src/pages/TeacherProspects.tsx` (load from Supabase)
-- **edit (tiny)** `src/components/teacher-prospects/FitScoreBadge.tsx` (render `—` when null)
+- Firecrawl hit rate on real district sites is ~40–60%. Many schools post staff as **PDFs** or **gated parent portals** — those won't yield emails.
+- Name + email pairing via regex is heuristic. Expect ~10–15% of extracted rows to have a wrong/garbled name. Email is the trustworthy field.
+- Total runtime for a city with 50 schools ≈ 90 s (Apify) + ~3 min (Firecrawl, concurrency 5). Modal will show progress the whole time.
 
-## Open question
-
-Your spec calls the secret `APIFY_API_KEY` but the project actually has **`APIFY_API_TOKEN`** (already set, used by `fetch-city-market-data-sow`). I'll use `APIFY_API_TOKEN`. Tell me if you'd rather I add a new `APIFY_API_KEY` secret instead.
+Approve and I'll build it.

@@ -102,6 +102,26 @@ No frontend code touched. Types regenerate automatically post-migration.
 
 ---
 
+## Teacher Search — Upgrade to Agenscrape Actor (after Firecrawl pipeline validated)
+
+**What it is:** Replace/supplement the Firecrawl staff-page scraper with the Apify actor `agenscrape/us-schools-coaching-staff` as the primary source for individual teacher names + emails.
+
+**Why deferred:** Agenscrape is pay-per-result (~$0.01–0.05 per teacher row). During the sprint we use `jungle_synthesizer` (school list) + Firecrawl (staff pages) which costs nothing extra. Once the pipeline is validated and Kaylie has seen real data, upgrade to Agenscrape for higher coverage and reliability.
+
+**What it takes to build:**
+- In `fetch-teacher-prospects` edge function: add `agenscrape~us-schools-coaching-staff` as primary actor
+- Input shape: `{ state: "TX", city: "Frisco" }` — accepts city directly, no FIPS conversion needed
+- Field mapping: `name`, `email`, `phone`, `title` → `grade` (when title contains "Grade"/"Teacher"), `school_name` → `school`
+- Keep email-based upsert logic (unchanged)
+- Keep Firecrawl `enrich-school-staff` function as fallback for schools Agenscrape misses
+- Estimated Apify cost: ~$1–5 per 100-teacher run
+
+**Decision to make at that point:** Run Agenscrape first, then Firecrawl fills gaps (Option 3 from Lovable Day 6 plan) — highest coverage, modest cost.
+
+**Risk:** Low — additive change, Firecrawl fallback stays in place.
+
+---
+
 ## How to use this file
 
 - Add items here instead of building them mid-sprint

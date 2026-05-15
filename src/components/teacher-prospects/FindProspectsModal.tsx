@@ -28,24 +28,79 @@ export function FindProspectsModal({ open, onOpenChange, onResults }: Props) {
     if (!selectedCityId) return;
     const city = sampleCities.find((c) => c.id === Number(selectedCityId));
     if (!city) return;
+    const stateCode = stateAbbr(city.state);
     setLoading(true);
+    const tId = toast.loading(`Searching schools in ${city.city}, ${stateCode}…`);
     try {
       const { data, error } = await supabase.functions.invoke("fetch-teacher-prospects", {
-        body: { city: city.city, state: stateAbbr(city.state), limit: 100 },
+        body: { city: city.city, state: stateCode, limit: 100 },
       });
-      if (error) {
-        toast.error(`Search failed: ${error.message}`);
-      } else if (data?.error) {
-        toast.error(`Search failed: ${data.error}`);
-      } else {
-        const total = (data?.inserted ?? 0) + (data?.updated ?? 0);
-        toast.success(`Found ${total} prospects in ${city.city}, ${stateAbbr(city.state)}`);
+      if (error || data?.error) {
+        toast.error(`Search failed: ${error?.message ?? data?.error}`, { id: tId });
+        return;
+      }
+      const schools: Array<{ school_name: string; website: string; district: string | null; apify_run_id: string }> =
+        data?.schools ?? [];
+      if (schools.length === 0) {
+        toast.success(`Found 0 schools in ${city.city}`, { id: tId });
         onResults(Number(selectedCityId));
         setSelectedCityId("");
         onOpenChange(false);
+        return;
       }
+
+      // Chain: enrich each school via Firecrawl, max 5 in flight
+      toast.loading(`Found ${schools.length} schools → enriching staff (0/${schools.length})…`, { id: tId });
+      let done = 0;
+      let totalInserted = 0;
+      let totalUpdated = 0;
+      const concurrency = 5;
+      let cursor = 0;
+
+      const runOne = async (s: typeof schools[number]) => {
+        try {
+          const { data: r, error: e } = await supabase.functions.invoke("enrich-school-staff", {
+            body: {
+              school_website: s.website,
+              school_name: s.school_name,
+              district: s.district,
+              city: city.city,
+              state: stateCode,
+              apify_run_id: s.apify_run_id,
+            },
+          });
+          if (!e && r && !r.error) {
+            totalInserted += r.inserted ?? 0;
+            totalUpdated += r.updated ?? 0;
+          }
+        } catch {
+          /* swallow per-school */
+        } finally {
+          done++;
+          toast.loading(`Enriching staff (${done}/${schools.length})…`, { id: tId });
+        }
+      };
+
+      const workers: Promise<void>[] = [];
+      for (let w = 0; w < concurrency; w++) {
+        workers.push((async () => {
+          while (cursor < schools.length) {
+            const i = cursor++;
+            await runOne(schools[i]);
+          }
+        })());
+      }
+      await Promise.all(workers);
+
+      toast.success(
+        `${totalInserted + totalUpdated} teachers across ${schools.length} schools in ${city.city}, ${stateCode}`,
+        { id: tId }
+      );
+      onResults(Number(selectedCityId));
+      setSelectedCityId("");
+      onOpenChange(false);
     } catch (e) {
-      toast.error(`Search failed: ${(e as Error).message}`);
+      toast.error(`Search failed: ${(e as Error).message}`, { id: tId });
     } finally {
       setLoading(false);
     }

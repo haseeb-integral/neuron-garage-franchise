@@ -3,8 +3,61 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, BarChart3, Download, Globe2, Linkedin, Mail, RefreshCw, Search, School, Sparkles, Star, TrendingUp, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
-import { sampleTeachers, generateProspectsForCity, TeacherProspect } from "@/data/teacherData";
+import { TeacherProspect, TeacherTag, EnrichmentStatus, GradeLevel } from "@/data/teacherData";
 import { sampleCities } from "@/data/cityData";
+import { supabase } from "@/integrations/supabase/client";
+
+type DbRow = {
+  id: string;
+  name: string | null;
+  school: string | null;
+  district: string | null;
+  email: string | null;
+  grade: string | null;
+  experience_years: number | null;
+  city: string;
+  state: string;
+  fit_score: number | null;
+  status: string;
+  created_at: string;
+};
+
+const normalizeGrade = (g: string | null): GradeLevel => {
+  if (!g) return "3-5";
+  const s = g.toLowerCase();
+  if (s.includes("k") || s.includes("1") || s.includes("2")) return "K-2";
+  if (s.includes("6") || s.includes("7") || s.includes("8") || s.includes("middle")) return "6-8";
+  return "3-5";
+};
+
+let _hashCounter = 0;
+const stableId = (uuid: string) => {
+  // Map UUID -> stable positive int for the existing number-keyed UI
+  let h = 0;
+  for (let i = 0; i < uuid.length; i++) h = (h * 31 + uuid.charCodeAt(i)) | 0;
+  return Math.abs(h) || ++_hashCounter;
+};
+
+const mapRow = (r: DbRow): TeacherProspect => ({
+  id: stableId(r.id),
+  cityId: 0,
+  name: r.name ?? "(Unknown)",
+  school: r.school ?? (r.district ?? "—"),
+  city: r.city,
+  state: r.state,
+  email: r.email ?? "",
+  phone: "",
+  linkedin: "",
+  fitScore: (r.fit_score ?? null) as unknown as number,
+  tag: (r.fit_score == null ? "Untagged" : r.fit_score >= 80 ? "High Potential" : r.fit_score >= 50 ? "Follow-Up" : "Not a Fit") as TeacherTag,
+  enrichmentStatus: (r.email ? "Enriched" : "Pending") as EnrichmentStatus,
+  gradeLevel: normalizeGrade(r.grade),
+  yearsExperience: r.experience_years ?? 0,
+  hasSummerCampExp: false,
+  aiReasoning: "Imported from Apify K-12 staff directory. Awaiting AI fit scoring.",
+  tags: [],
+  notes: "",
+});
 import { FindProspectsModal } from "@/components/teacher-prospects/FindProspectsModal";
 import { TeacherFilterBar } from "@/components/teacher-prospects/TeacherFilterBar";
 import { TeacherTable } from "@/components/teacher-prospects/TeacherTable";
@@ -77,7 +130,26 @@ const SourcingInsights = () => {
 
 const TeacherProspects = () => {
   const navigate = useNavigate();
-  const [prospects, setProspects] = useState<TeacherProspect[]>(sampleTeachers);
+  const [prospects, setProspects] = useState<TeacherProspect[]>([]);
+  const [loadingProspects, setLoadingProspects] = useState(true);
+
+  const loadProspects = async () => {
+    setLoadingProspects(true);
+    const { data, error } = await supabase
+      .from("teacher_prospects")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(1000);
+    if (error) {
+      toast.error(`Failed to load prospects: ${error.message}`);
+      setProspects([]);
+    } else {
+      setProspects((data ?? []).map((r) => mapRow(r as DbRow)));
+    }
+    setLoadingProspects(false);
+  };
+
+  useEffect(() => { loadProspects(); }, []);
   const [findOpen, setFindOpen] = useState(false);
   const [active, setActive] = useState<TeacherProspect | null>(null);
   const [selected, setSelected] = useState<number[]>([]);
@@ -107,7 +179,7 @@ const TeacherProspects = () => {
   const marketProspects = useMemo(() => selectedMarket ? prospects.filter((p) => p.city.toLowerCase() === selectedMarket.city.toLowerCase()) : prospects, [prospects, selectedMarket]);
   const filtered = useMemo(() => prospects.filter(p => { if (search && !p.name.toLowerCase().includes(search.toLowerCase()) && !p.school.toLowerCase().includes(search.toLowerCase())) return false; if (cityFilter !== "All" && p.city !== cityFilter) return false; if (tagFilter !== "All" && p.tag !== tagFilter) return false; if (gradeFilter !== "All" && p.gradeLevel !== gradeFilter) return false; if (enrichmentFilter !== "All" && p.enrichmentStatus !== enrichmentFilter) return false; if (campOnly && !p.hasSummerCampExp) return false; return true; }), [prospects, search, cityFilter, tagFilter, gradeFilter, enrichmentFilter, campOnly]);
 
-  const handleResults = (cityId: number) => { const city = sampleCities.find(c => c.id === cityId); if (!city) return; const startId = Math.max(...prospects.map(p => p.id), 0) + 1; const newOnes = generateProspectsForCity(cityId, city.city, stateAbbr(city.state), startId); setProspects(prev => [...newOnes, ...prev]); setCityFilter(city.city); toast.success(`Added 5 sample prospects from ${city.city}`); };
+  const handleResults = async (cityId: number) => { const city = sampleCities.find(c => c.id === cityId); if (!city) return; setCityFilter(city.city); await loadProspects(); };
   const handleRunMarketSearch = () => setFindOpen(true);
   const handleExport = () => { const rows = filtered.length > 0 ? filtered : marketProspects; if (rows.length === 0) { toast.info("No prospects available to export yet. Run Prospect Search first."); return; } downloadCsv(rows); toast.success(`Exported ${rows.length} teacher prospects to CSV.`); };
   const toggleSelect = (id: number) => setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);

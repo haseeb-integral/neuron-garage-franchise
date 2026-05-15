@@ -156,19 +156,19 @@ export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
   // ─────────── EASE OF OPERATIONS ───────────
   { key: "rental_venue_count", category: "ease_of_operations", label: "Rental Venues (Schools / Churches / Rec)",
     description: "Available spaces to rent for camp sessions. More venues = easier expansion and lower real-estate risk.",
-    enabled: true,  weight_within_category: 0.50, status: "proxy" },
+    enabled: true,  weight_within_category: 0.45, status: "proxy" },
   { key: "classroom_rental_cost_weekly", category: "ease_of_operations", label: "Classroom Rental Cost / Week",
     description: "Typical weekly rental rate for a classroom. Directly hits franchisee margin.",
     enabled: false, weight_within_category: 0,    status: "missing" },
   { key: "commute_sprawl_index", category: "ease_of_operations", label: "Commute Times / Geographic Sprawl",
     description: "How spread out the metro is. Sprawl forces multi-location operations and complicates logistics.",
-    enabled: false, weight_within_category: 0,    status: "live" },
+    enabled: true,  weight_within_category: 0.20, status: "live" },
   { key: "state_camp_regulation_complexity", category: "ease_of_operations", label: "State Camp Regulation Complexity",
     description: "How heavy state licensing/inspections are. Heavy regulation = slower launches and higher overhead.",
     enabled: false, weight_within_category: 0,    status: "missing" },
   { key: "guide_wage_proxy", category: "ease_of_operations", label: "Estimated Guide Wage",
     description: "Local hourly wage for camp counselors / 'Guides'. Major recurring labor cost for the franchisee.",
-    enabled: true,  weight_within_category: 0.30, status: "live" },
+    enabled: true,  weight_within_category: 0.35, status: "live" },
 
   // ─────────── PARENT MINDSET ───────────
   { key: "homeschool_population_proxy", category: "parent_mindset", label: "Homeschool Population Proxy",

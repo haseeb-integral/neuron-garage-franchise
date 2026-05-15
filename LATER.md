@@ -120,10 +120,24 @@ No frontend code touched. Types regenerate automatically post-migration.
 
 **Risk:** Low — additive change, Firecrawl fallback stays in place.
 
+### Known Firecrawl limitations that Agenscrape solves
+
+These are confirmed risks from the Day 6 Firecrawl implementation (Lovable’s own assessment):
+
+| Risk | Impact | Agenscrape fix? |
+|------|--------|-----------------|
+| ~40–60% of school sites have no scrapeable staff page (PDFs, gated portals) | Up to 60% of schools return 0 teachers | ✅ Yes — Agenscrape pulls from a pre-built 800K-staff database, not live sites |
+| Name extraction is heuristic regex — ~10–15% of rows have wrong/garbled names | Dirty data in `teacher_name` field | ✅ Yes — structured database records, not parsed HTML |
+| Email is the only trustworthy field from Firecrawl | Can’t rely on name for outreach personalization | ✅ Yes — name + email both reliable |
+| Total runtime ~3–4 min per city (90s Apify + 3 min Firecrawl at concurrency 5) | Slow UX even with progress toast | ✅ Partial — Agenscrape direct query is faster, no crawl wait |
+| k12.state.us email regex may miss some district email formats (e.g. `@friscoisd.org`) | Some real emails dropped | ✅ Yes — pre-enriched database has verified emails |
+
+**When to pull the trigger:** After first successful Frisco TX run with Firecrawl — check the `teacher_prospects` table. If fewer than 30 teachers inserted for 42 schools, Agenscrape upgrade is justified immediately.
+
 ---
 
 ## How to use this file
 
 - Add items here instead of building them mid-sprint
 - Review with Brett after the sprint — promote to OPEN_TASKS.md if prioritized
-- Don't delete entries — they're a decision log
+- Don’t delete entries — they’re a decision log

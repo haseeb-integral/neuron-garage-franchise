@@ -22,6 +22,13 @@ type DbRow = {
   created_at: string;
 };
 
+type SchoolSearchResult = {
+  school_name: string;
+  website: string;
+  district: string | null;
+  apify_run_id: string;
+};
+
 const normalizeGrade = (g: string | null): GradeLevel => {
   if (!g) return "3-5";
   const s = g.toLowerCase();
@@ -181,6 +188,47 @@ const TeacherProspects = () => {
 
   const handleResults = async (cityId: number) => { const city = sampleCities.find(c => c.id === cityId); if (!city) return; setCityFilter(city.city); await loadProspects(); };
   const [searchingMarket, setSearchingMarket] = useState(false);
+  const enrichSchools = async (schools: SchoolSearchResult[], city: string, stateCode: string, toastId: string | number) => {
+    let done = 0;
+    let totalInserted = 0;
+    let totalUpdated = 0;
+    const concurrency = 5;
+    let cursor = 0;
+
+    toast.loading(`Found ${schools.length} schools → enriching staff (0/${schools.length})…`, { id: toastId });
+
+    const runOne = async (school: SchoolSearchResult) => {
+      try {
+        const { data, error } = await supabase.functions.invoke("enrich-school-staff", {
+          body: {
+            school_website: school.website,
+            school_name: school.school_name,
+            district: school.district,
+            city,
+            state: stateCode,
+            apify_run_id: school.apify_run_id,
+          },
+        });
+        if (!error && data && !data.error) {
+          totalInserted += data.inserted ?? 0;
+          totalUpdated += data.updated ?? 0;
+        }
+      } finally {
+        done++;
+        toast.loading(`Enriching staff (${done}/${schools.length})…`, { id: toastId });
+      }
+    };
+
+    const workers = Array.from({ length: Math.min(concurrency, schools.length) }, async () => {
+      while (cursor < schools.length) {
+        const index = cursor++;
+        await runOne(schools[index]);
+      }
+    });
+
+    await Promise.all(workers);
+    return { totalInserted, totalUpdated };
+  };
   const runMarketSearch = async () => {
     if (!selectedMarket || searchingMarket) return;
     setSearchingMarket(true);
@@ -192,8 +240,25 @@ const TeacherProspects = () => {
       if (error || data?.error) {
         toast.error(`Search failed: ${error?.message ?? data?.error}`, { id: t });
       } else {
-        const total = (data?.inserted ?? 0) + (data?.updated ?? 0);
-        toast.success(`Found ${total} schools in ${selectedMarket.city}`, { id: t, description: data?.note });
+        const schools: SchoolSearchResult[] = data?.schools ?? [];
+        if (schools.length === 0) {
+          const total = (data?.inserted ?? 0) + (data?.updated ?? 0);
+          toast.success(`Found ${total} schools in ${selectedMarket.city}`, { id: t, description: data?.note });
+          await loadProspects();
+          return;
+        }
+
+        const { totalInserted, totalUpdated } = await enrichSchools(
+          schools,
+          selectedMarket.city,
+          stateAbbr(selectedMarket.state),
+          t,
+        );
+
+        toast.success(
+          `${totalInserted + totalUpdated} teachers across ${schools.length} schools in ${selectedMarket.city}, ${stateAbbr(selectedMarket.state)}`,
+          { id: t },
+        );
         await loadProspects();
       }
     } catch (e) {

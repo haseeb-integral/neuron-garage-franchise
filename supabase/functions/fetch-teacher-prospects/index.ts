@@ -156,17 +156,41 @@ Deno.serve(async (req) => {
 
     console.log(`[fetch-teacher-prospects] city="${city}" state=${stateInput} fips=${fips} limit=${limit}`);
 
-    // 1. Pull the NCES city-scoped school list (single HTML request).
-    const ncesUrl = `${NCES_BASE}?City=${encodeURIComponent(city)}&Search=1&State=${fips}`;
-    const ncesRes = await fetch(ncesUrl, {
-      headers: { "User-Agent": "Mozilla/5.0 (NeuronGarage research)" },
-    });
-    if (!ncesRes.ok) {
-      return ok({ error: `NCES request failed: HTTP ${ncesRes.status}` });
+    // 1. Pull the NCES city-scoped school list. NCES paginates 15 schools per page,
+    //    so walk pages until empty or until we've gathered enough.
+    const headers = {
+      "User-Agent": "Mozilla/5.0 (NeuronGarage research)",
+      "Accept": "text/html,application/xhtml+xml",
+    };
+    const baseQuery = `City=${encodeURIComponent(city)}&Search=1&State=${fips}`;
+    const parsed: ParsedSchool[] = [];
+    const seenIds = new Set<string>();
+    const maxPages = 10; // 10 * 15 = 150 schools — enough for any one city
+    for (let page = 1; page <= maxPages; page++) {
+      const pagedUrl = page === 1
+        ? `${NCES_BASE}?${baseQuery}`
+        : `${NCES_BASE}?${baseQuery}&SchoolPageNum=${page}`;
+      const r = await fetch(pagedUrl, { headers });
+      if (!r.ok) {
+        console.log(`[fetch-teacher-prospects] NCES page ${page} HTTP ${r.status} — stopping`);
+        break;
+      }
+      const html = await r.text();
+      const pageSchools = parseNcesSchools(html);
+      const before = parsed.length;
+      for (const s of pageSchools) {
+        if (seenIds.has(s.ncesId)) continue;
+        seenIds.add(s.ncesId);
+        parsed.push(s);
+      }
+      const added = parsed.length - before;
+      console.log(`[fetch-teacher-prospects] NCES page ${page} added ${added} (total ${parsed.length})`);
+      if (added === 0) break;
+      if (parsed.length >= limit) break;
+      // Brief polite delay between NCES pages
+      await new Promise((r) => setTimeout(r, 400));
     }
-    const html = await ncesRes.text();
-    const parsed = parseNcesSchools(html);
-    console.log(`[fetch-teacher-prospects] NCES returned ${parsed.length} schools for ${city}, ${stateInput}`);
+    console.log(`[fetch-teacher-prospects] NCES total ${parsed.length} schools for ${city}, ${stateInput}`);
 
     if (parsed.length === 0) {
       return ok({

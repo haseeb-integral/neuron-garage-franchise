@@ -732,6 +732,60 @@ export type Database = {
         }
         Relationships: []
       }
+      teacher_prospects: {
+        Row: {
+          apify_run_id: string | null
+          city: string
+          created_at: string
+          district: string | null
+          email: string | null
+          experience_years: number | null
+          fit_score: number | null
+          grade: string | null
+          id: string
+          name: string | null
+          raw: Json | null
+          school: string | null
+          state: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          apify_run_id?: string | null
+          city: string
+          created_at?: string
+          district?: string | null
+          email?: string | null
+          experience_years?: number | null
+          fit_score?: number | null
+          grade?: string | null
+          id?: string
+          name?: string | null
+          raw?: Json | null
+          school?: string | null
+          state: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          apify_run_id?: string | null
+          city?: string
+          created_at?: string
+          district?: string | null
+          email?: string | null
+          experience_years?: number | null
+          fit_score?: number | null
+          grade?: string | null
+          id?: string
+          name?: string | null
+          raw?: Json | null
+          school?: string | null
+          state?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       us_cities_geo: {
         Row: {
           city: string

@@ -1,7 +1,34 @@
-# Open Tasks — Neuron Garage (3-day sprint)
+# Open Tasks — Neuron Garage
 
-> Last reviewed: May 14, 2026 — end of Day 1.
+> Last reviewed: May 18, 2026.
 > GitHub is single source of truth. Do not edit Space OPEN_TASKS.md.
+> Source of truth hierarchy: May 15 meeting decisions override May 8 where they conflict.
+
+---
+
+## 🚨 Task #0 — Database Layer (BLOCKER — due Tuesday May 20)
+
+**This task blocks everything else. City Search and Teacher Search cannot move forward until this is live.**
+
+See **`DATABASE_LAYER_SPEC.md`** for full technical plan, schema, options, and build steps.
+
+### Summary of what must be built:
+
+**Table 1: `us_cities_scored`** — all U.S. cities above 50,000 population, pre-scored and pre-ranked
+- Pre-computed scores across all 6 categories + composite score
+- Instant load — no live API calls at query time
+- Sliders re-rank on top of this stored data
+- Refreshed on scheduled background job (not per user click)
+- This is Neuron Garage's owned city intelligence asset
+
+**Table 2: `teacher_prospects_master`** — master teacher database, target 100,000+ records
+- Elementary school teachers and camp/enrichment teachers across all U.S. cities
+- Seeded via Apollo, LinkedIn, and any other available source
+- Retired teachers flagged separately (Kaylie's addition — high value for summer camp recruitment)
+- Enrichment (contact info, fit signals) runs quarterly as background job
+- This is Neuron Garage's owned recruiting asset — it compounds in value over time
+
+**Deadline: Tuesday May 20 — database tables live in Supabase with initial data seeded**
 
 ---
 
@@ -43,7 +70,7 @@
 
 ---
 
-## ⚡ Day 2 — Teacher Search
+## ⚡ City Search — Pending (unblocked after Task #0)
 
 ### 9. Multiple named favorites lists (rolled over from Day 1)
 - Drop-down on "Add to Favorites" → pick list; create / rename / delete; move cities between lists
@@ -54,6 +81,11 @@
 - Brett: sign up at https://www.greatschools.org/api (School Essentials, free 14 days then $52.50/mo)
 - Haseeb: add key to Lovable env as `GREATSCHOOLS_API_KEY` once received
 - Store: `private_elementary_count`, `charter_elementary_count` in `city_market_signals`
+- **Cost decision:** confirm purchase before next client review
+
+---
+
+## ⚡ Teacher Search — Pending (unblocked after Task #0)
 
 ### 12. Wire Teacher Search to real data (Apify + Clay + DonorsChoose + Firecrawl)
 - See `day2feature2taskspec.md`
@@ -77,7 +109,7 @@
 
 ---
 
-## ⚡ Day 3 — Email Outreach + Candidate Pipeline
+## ⚡ Email Outreach + Candidate Pipeline — Pending
 
 ### 17. SmartLead integration (Feature 3)
 - Wire SmartLead ("Integral Leads"); AI-personalized emails from teacher data
@@ -88,7 +120,7 @@
 - **Risk:** medium
 
 ### 19. Candidate Pipeline — real data wiring
-- Replace dummy candidates with real leads from Email Outreach
+- Replace placeholder candidates with real leads from Email Outreach
 - **Risk:** medium
 
 ### 20. PDF export of candidate lead sheet
@@ -97,17 +129,16 @@
 
 ---
 
-## 🚧 Realistic risk
+## 🚧 Current risk
 
-- Day 2 Teacher Search stack (Clay webhook) is the hardest single piece in the sprint
-- SmartLead Day 3 is high-risk: real emails, external API
-- Sam values working math over feature count — don't ship buggy features to hit a number
-
-**Safe fallback:** City Search 100% done + Teacher Search partially wired.
+- **Database layer (Task #0) is the single critical path item.** Everything stacks behind it.
+- Teacher Search stack (Clay webhook) is the hardest single integration piece
+- SmartLead is high-risk: real emails go out to real people — test thoroughly before any real send
+- Sam's QA bar is high — working math over feature count, always
 
 ---
 
-## 🛑 Explicitly out of scope this sprint
+## 🛑 Explicitly out of scope
 
 - Google / Microsoft / SSO login · Multi-tenancy · Onboarding flow · Mobile app
 - "Ask AI" sparkle button · PDF report for City Search · Module 2 migration to Cursor
@@ -118,5 +149,5 @@
 ## How to use this file
 
 - Strike through completed items with `~~text~~ ✅ <date>`
-- New mid-sprint items that don't block the sprint → `LATER.md`
+- New items that don't block current work → `LATER.md`
 - **GitHub is single source of truth. Do not edit the Space OPEN_TASKS.md.**

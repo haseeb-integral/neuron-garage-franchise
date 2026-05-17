@@ -23,7 +23,8 @@ See **`DATABASE_LAYER_SPEC.md`** for full technical plan, schema, options, and b
 
 **Table 2: `teacher_prospects_master`** — master teacher database, target 100,000+ records
 - Elementary school teachers and camp/enrichment teachers across all U.S. cities
-- Seeded via Apollo, LinkedIn, and any other available source
+- Primary source: Apollo and LinkedIn
+- If a teacher record does not have an email in the dataset, enrich via Apollo, LinkedIn, or any other available source to fill it
 - Retired teachers flagged separately (Kaylie's addition — high value for summer camp recruitment)
 - Enrichment (contact info, fit signals) runs quarterly as background job
 - This is Neuron Garage's owned recruiting asset — it compounds in value over time

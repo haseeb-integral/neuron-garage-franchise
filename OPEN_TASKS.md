@@ -10,7 +10,7 @@
 
 **This task blocks everything else. City Search and Teacher Search cannot move forward until this is live.**
 
-See **`DATABASE_LAYER_SPEC.md`** for full technical plan, schema, options, and build steps.
+See **`DATABASE_LAYER_SPEC.md`** for full technical plan, schema, sourcing options, and build steps.
 
 ### Summary of what must be built:
 
@@ -23,7 +23,7 @@ See **`DATABASE_LAYER_SPEC.md`** for full technical plan, schema, options, and b
 
 **Table 2: `teacher_prospects_master`** — master teacher database, target 100,000+ records
 - Elementary school teachers and camp/enrichment teachers across all U.S. cities
-- Primary source: Apollo and LinkedIn
+- **Data sourcing is an open decision — see `DATABASE_LAYER_SPEC.md` → Teacher Sourcing Options for full comparison of Apollo, LinkedIn, Apify, DonorsChoose, and purchased vendor lists**
 - If a teacher record does not have an email in the dataset, enrich via Apollo, LinkedIn, or any other available source to fill it
 - Retired teachers flagged separately (Kaylie's addition — high value for summer camp recruitment)
 - Enrichment (contact info, fit signals) runs quarterly as background job
@@ -88,11 +88,11 @@ See **`DATABASE_LAYER_SPEC.md`** for full technical plan, schema, options, and b
 
 ## ⚡ Teacher Search — Pending (unblocked after Task #0)
 
-### 12. Wire Teacher Search to real data (Apify + Clay + DonorsChoose + Firecrawl)
-- See `day2feature2taskspec.md`
-- Stack: Apify K-12 scraper → DonorsChoose API → Clay enrichment webhook → AI fit scoring → Firecrawl fallback
-- Store in `prospects` table linked to source city
-- **Risk:** medium-high — Clay webhook is the most complex piece
+### 12. Wire Teacher Search to real data
+- See `day2feature2taskspec.md` and `DATABASE_LAYER_SPEC.md` → Teacher Sourcing Options
+- Stack depends on sourcing decision (Apollo / vendor list / Apify + DonorsChoose + Clay)
+- Store in `teacher_prospects_master` table
+- **Risk:** medium-high — Clay webhook is the most complex piece if used
 
 ### 13. Prospect list view + filters
 - Columns: name, school, city/state, email, fit score
@@ -133,6 +133,7 @@ See **`DATABASE_LAYER_SPEC.md`** for full technical plan, schema, options, and b
 ## 🚧 Current risk
 
 - **Database layer (Task #0) is the single critical path item.** Everything stacks behind it.
+- **Teacher sourcing decision is open** — vendor list vs Apollo vs scraping. See `DATABASE_LAYER_SPEC.md`. Brett needs to decide before Teacher Search seeding starts.
 - Teacher Search stack (Clay webhook) is the hardest single integration piece
 - SmartLead is high-risk: real emails go out to real people — test thoroughly before any real send
 - Sam's QA bar is high — working math over feature count, always

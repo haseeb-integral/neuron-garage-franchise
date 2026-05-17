@@ -15,6 +15,8 @@ The solution is a **pre-built database layer** — two Supabase tables that are 
 
 This is also a business asset decision. Both tables — the scored city database and the teacher database — are **owned by Neuron Garage** and grow in value over time.
 
+> For the full definition of who we are recruiting and why, see **`TEACHER_IDEAL_PROFILE.md`** — read that file before building anything related to Teacher Search or fit scoring.
+
 ---
 
 ## Table 1: `us_cities_scored`
@@ -138,8 +140,12 @@ Where `w_*` = current slider values. This runs in the browser on the already-loa
 ### Purpose
 A master database of teachers across all U.S. cities — Neuron Garage's owned recruiting asset. Target 100,000+ records. The Teacher Search screen queries this table by city, school, or criteria. No live scraping at search time.
 
+> **Who we are seeding:** Active elementary school teachers (K–6), retired elementary school teachers, and summer camp / enrichment educators. See **`TEACHER_IDEAL_PROFILE.md`** for the full profile, fit scoring criteria, and reasoning.
+>
+> ⚠️ This scope is a strong starting point confirmed in the May 15 meeting. It can be expanded or reduced by Kaylie/Sam as the recruiting strategy evolves. The fit scoring system is designed to be adjustable without re-seeding.
+
 ### Target row count
-100,000+ teachers. Start with elementary school teachers and camp/enrichment teachers. Grow over time.
+100,000+ teachers. Start with the three target segments above. Grow over time.
 
 ### Schema
 
@@ -161,9 +167,9 @@ create table teacher_prospects_master (
 
   -- Role
   grade_level           text,           -- e.g. "3rd Grade", "K-2", "Elementary"
-  subject               text,           -- e.g. "STEM", "General", "Arts"
+  subject               text,           -- e.g. "STEM", "Maker", "General", "Arts"
   years_experience      integer,
-  teacher_type          text,           -- "active" | "retired"
+  teacher_type          text,           -- "active" | "retired" | "camp_enrichment"
 
   -- Contact (enriched)
   email                 text,
@@ -174,11 +180,11 @@ create table teacher_prospects_master (
   -- Fit signals
   has_camp_experience   boolean default false,
   camp_experience_notes text,
-  fit_score             integer,        -- 1-100, AI-generated
-  fit_reasoning         text,
+  fit_score             integer,        -- 1–100, AI-generated, see TEACHER_IDEAL_PROFILE.md
+  fit_reasoning         text,           -- always stored and visible in UI (Show Formula principle)
 
   -- Segment tags
-  segment_tags          text[],         -- e.g. ["High Potential", "Follow-Up Needed"]
+  segment_tags          text[],         -- e.g. ["High Potential", "STEM Teacher", "Retired", "Camp Educator"]
 
   -- Source tracking
   source                text,           -- "apollo" | "linkedin" | "apify" | "donorschoose" | "vendor_list" | "manual"
@@ -210,7 +216,7 @@ We have four realistic paths to seed `teacher_prospects_master`. They are not mu
 
 ### Option A: Apollo (Recommended starting point)
 
-**What it does:** Search by job title ("elementary school teacher", "K-5 teacher", "enrichment teacher", "camp director") + city/state. Returns name, school, email (where available), LinkedIn URL, phone.
+**What it does:** Search by job title + city/state. Use the query templates in `TEACHER_IDEAL_PROFILE.md`. Returns name, school, email (where available), LinkedIn URL, phone.
 
 | Factor | Detail |
 |---|---|
@@ -218,7 +224,7 @@ We have four realistic paths to seed `teacher_prospects_master`. They are not mu
 | Email coverage | ~40–60% of records have a verified email |
 | Cost | Credits-based. ~$0.01–0.05 per exported record depending on plan |
 | Speed | Fast — export in bulk via Apollo API |
-| Quality | Good for active teachers at named schools. Weaker on retired teachers. |
+| Quality | Good for active teachers and camp educators. Weaker on retired teachers. |
 | Our status | Already have Apollo access |
 
 **Verdict:** Best starting point. Pull as many records as credits allow, then fill gaps with other sources.
@@ -238,7 +244,7 @@ We have four realistic paths to seed `teacher_prospects_master`. They are not mu
 | **InfoUSA / Data.com** | General professional lists incl. teachers | ~$300–1,500 per 50k | Mixed quality. Check freshness. |
 | **Melissa Data** | Education sector lists | ~$400–1,500 | Good deliverability guarantees. |
 | **LeadsPlease** | Teacher + school admin lists by state | ~$200–800 per state | Smaller vendor, can buy by state. |
-| **K12 Prospects (specialty vendor)** | K-12 educators only | ~$1,000–3,000 for national | Purpose-built for this use case. Search "K12 teacher email list" for current vendors. |
+| **K12 Prospects (specialty vendor)** | K-12 educators only | ~$1,000–3,000 for national | Purpose-built for this use case. |
 
 **Pros:**
 - Fastest path to 50,000–200,000 records in a single step
@@ -247,53 +253,53 @@ We have four realistic paths to seed `teacher_prospects_master`. They are not mu
 
 **Cons:**
 - One-time purchase — data goes stale (re-purchase annually)
-- Quality varies significantly between vendors — always request a sample (500 records) before purchasing
-- Must confirm CAN-SPAM compliance before loading into SmartLead for outreach
+- Quality varies — always request a sample (500 records) before purchasing
+- Must confirm CAN-SPAM compliance before loading into SmartLead
 
-**Verdict:** High leverage if we buy from a quality vendor. Request samples from 2–3 vendors before committing. Budget estimate: $500–2,000 for a strong national list.
+**Verdict:** High leverage if we buy from a quality vendor. Request samples from 2–3 vendors before committing. Budget: $500–2,000.
 
 ---
 
 ### Option C: Apify K-12 School Staff Directory Scraper
 
-**What it does:** Scrapes school websites and staff directories school-by-school. Good for filling gaps Apollo and vendor lists miss.
+**What it does:** Scrapes school websites and staff directories school-by-school.
 
 | Factor | Detail |
 |---|---|
 | Volume | Unlimited but slow — one school at a time |
-| Email coverage | Low on its own — most school sites list name + room number only |
+| Email coverage | Low — most school sites list name + room number only |
 | Cost | ~$4 per 1,000 results |
-| Speed | Slow for national scale. Best used targeted (top 50 cities only). |
+| Speed | Too slow for national first pass |
 | Our status | Already connected |
 
-**Verdict:** Use as a gap-filler for specific cities after Apollo + vendor list seeding. Not for national first pass.
+**Verdict:** Gap-filler for top 20–50 priority cities only. Not for national first pass.
 
 ---
 
 ### Option D: DonorsChoose API
 
-**What it does:** Free API returning teachers who have posted classroom project requests. Strong proxy for engaged, mission-driven teachers who care about student experience — high fit for Neuron Garage franchise pitch.
+**What it does:** Free API returning teachers who have posted classroom project requests. Strong mission-driven signal — exactly the profile Neuron Garage wants.
 
 | Factor | Detail |
 |---|---|
 | Volume | ~500,000 teacher records nationally |
-| Email coverage | No direct email — must cross-reference with Apollo or vendor list |
+| Email coverage | No direct email — cross-reference with Apollo or vendor list |
 | Cost | Free |
 | Speed | Fast API |
 | Our status | Not yet connected |
 
-**Verdict:** Excellent signal layer. Pull all records, match against Apollo/vendor list records by name+school to add `has_camp_experience` signal and boost fit scores.
+**Verdict:** Excellent fit-signal layer. Pull all records, match by name+school, boost fit scores for matched records. See `TEACHER_IDEAL_PROFILE.md` for why DonorsChoose is a strong signal.
 
 ---
 
 ### Recommended Combination (pending Brett's call)
 
-1. **Apollo bulk export** — first pass, use all available credits (~50k records)
-2. **One vendor list purchase** — request samples from Exact Data + LeadsPlease this week, buy best one (~$500–1,000 budget)
-3. **DonorsChoose API** — pull all records, use as fit signal layer on top of #1 and #2
+1. **Apollo bulk export** — first pass (~50k records, use all available credits)
+2. **One vendor list purchase** — request samples from Exact Data + LeadsPlease this week (~$500–1,000 budget)
+3. **DonorsChoose API** — pull all records, use as fit signal layer
 4. **Apify** — targeted gap-fill for top 20 priority cities only
 
-Target outcome: **100,000+ seeded records, ~60–70% with verified email**, ready for Teacher Search and SmartLead outreach.
+Target outcome: **100,000+ seeded records, ~60–70% with verified email**.
 
 ---
 
@@ -340,14 +346,14 @@ Target outcome: **100,000+ seeded records, ~60–70% with verified email**, read
 - [ ] Sliders re-rank the list in real time with no loading spinner
 - [ ] `teacher_prospects_master` seeded with 10,000+ records minimum
 - [ ] Teacher Search screen can filter by city and return results from the database
-- [ ] Show Formula still works — raw signal values visible per city
+- [ ] Show Formula still works — raw signal values visible per city (fit_reasoning column)
 - [ ] Export CSV still works — exports from stored data
 
 ---
 
 ## What This Is NOT
 
-- This is not replacing the existing `city_market_signals` table immediately — that table stays for the per-city detail view. The new `us_cities_scored` table powers the ranked national list.
+- This is not replacing the existing `city_market_signals` table immediately — that table stays for the per-city detail view.
 - This is not a one-time scrape — both tables are living assets with scheduled refresh
 - This is not blocking Email Outreach or Candidate Pipeline — those features do not depend on the database layer
 

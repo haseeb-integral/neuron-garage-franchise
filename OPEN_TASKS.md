@@ -11,6 +11,7 @@
 **This task blocks everything else. City Search and Teacher Search cannot move forward until this is live.**
 
 See **`DATABASE_LAYER_SPEC.md`** for full technical plan, schema, sourcing options, and build steps.
+See **`TEACHER_IDEAL_PROFILE.md`** for who we are recruiting and why — read this before building Teacher Search or fit scoring.
 
 ### Summary of what must be built:
 
@@ -22,12 +23,17 @@ See **`DATABASE_LAYER_SPEC.md`** for full technical plan, schema, sourcing optio
 - This is Neuron Garage's owned city intelligence asset
 
 **Table 2: `teacher_prospects_master`** — master teacher database, target 100,000+ records
-- Elementary school teachers and camp/enrichment teachers across all U.S. cities
-- **Data sourcing is an open decision — see `DATABASE_LAYER_SPEC.md` → Teacher Sourcing Options for full comparison of Apollo, LinkedIn, Apify, DonorsChoose, and purchased vendor lists**
+- **Three target segments (confirmed May 15 meeting):**
+  - Active elementary school teachers (K–6)
+  - Retired elementary school teachers
+  - Summer camp / enrichment educators
+- **Data sourcing is an open decision — see `DATABASE_LAYER_SPEC.md` → Teacher Sourcing Options**
+  (Options include Apollo, purchased vendor lists, Apify, DonorsChoose — likely a combination)
 - If a teacher record does not have an email in the dataset, enrich via Apollo, LinkedIn, or any other available source to fill it
-- Retired teachers flagged separately (Kaylie's addition — high value for summer camp recruitment)
-- Enrichment (contact info, fit signals) runs quarterly as background job
+- Fit score (1–100) ranks teachers by match to Neuron Garage franchisee profile — see `TEACHER_IDEAL_PROFILE.md`
 - This is Neuron Garage's owned recruiting asset — it compounds in value over time
+
+> ⚠️ Teacher segment scope is a strong starting point. Can be expanded or reduced by Kaylie/Sam as strategy evolves.
 
 **Deadline: Tuesday May 20 — database tables live in Supabase with initial data seeded**
 
@@ -89,19 +95,19 @@ See **`DATABASE_LAYER_SPEC.md`** for full technical plan, schema, sourcing optio
 ## ⚡ Teacher Search — Pending (unblocked after Task #0)
 
 ### 12. Wire Teacher Search to real data
-- See `day2feature2taskspec.md` and `DATABASE_LAYER_SPEC.md` → Teacher Sourcing Options
+- See `DATABASE_LAYER_SPEC.md` → Teacher Sourcing Options and `TEACHER_IDEAL_PROFILE.md`
 - Stack depends on sourcing decision (Apollo / vendor list / Apify + DonorsChoose + Clay)
 - Store in `teacher_prospects_master` table
 - **Risk:** medium-high — Clay webhook is the most complex piece if used
 
 ### 13. Prospect list view + filters
-- Columns: name, school, city/state, email, fit score
-- Filters: city, school, grade level, experience, enrichment status
+- Columns: name, school, city/state, email, fit score, teacher type
+- Filters: city, school, grade level, teacher type (active / retired / camp), fit score threshold
 - **Risk:** medium
 
 ### 14. AI fit scoring (1–100)
-- Heavily weight summer camp / youth camp experience (per SOW)
-- Full scoring prompt in `day2feature2taskspec.md`
+- Scoring criteria defined in `TEACHER_IDEAL_PROFILE.md` — use that as the AI prompt source
+- Heavily weights: K–6 grade level, STEM/maker subject, summer camp experience, retired status, DonorsChoose presence
 - **Risk:** medium
 
 ### 15. Prospect segmentation / tagged lists + CSV export
@@ -133,7 +139,7 @@ See **`DATABASE_LAYER_SPEC.md`** for full technical plan, schema, sourcing optio
 ## 🚧 Current risk
 
 - **Database layer (Task #0) is the single critical path item.** Everything stacks behind it.
-- **Teacher sourcing decision is open** — vendor list vs Apollo vs scraping. See `DATABASE_LAYER_SPEC.md`. Brett needs to decide before Teacher Search seeding starts.
+- **Teacher sourcing decision is open** — vendor list vs Apollo vs scraping. Brett needs to decide before Teacher Search seeding starts.
 - Teacher Search stack (Clay webhook) is the hardest single integration piece
 - SmartLead is high-risk: real emails go out to real people — test thoroughly before any real send
 - Sam's QA bar is high — working math over feature count, always

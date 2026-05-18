@@ -528,7 +528,7 @@ export type Database = {
             foreignKeyName: "city_market_signals_city_id_fkey"
             columns: ["city_id"]
             isOneToOne: false
-            referencedRelation: "cities"
+            referencedRelation: "us_cities_scored"
             referencedColumns: ["id"]
           },
         ]

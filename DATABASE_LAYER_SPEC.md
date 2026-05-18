@@ -27,6 +27,16 @@ Store all U.S. cities above 50,000 population, pre-scored across all 6 categorie
 ### Target row count
 ~800–1,000 cities (all U.S. cities above 50,000 population per Census data)
 
+### ⚠️ Use existing `us_cities_geo` as seed skeleton
+
+Supabase already has a `us_cities_geo` table (read-only reference: city name, state, lat/lng, population). **Do not re-fetch the city list from Census raw.** The `seed-cities-database` edge function should:
+
+1. Read all rows from `us_cities_geo` where population ≥ 50,000 — this is your ~800-city skeleton
+2. For each city, call the enrichment APIs (Census ACS, BLS, BEA, FRED, NCES) to fill raw signal values
+3. Score, normalize, and write into `us_cities_scored`
+
+This avoids duplicate geo data and saves a Census API call for the city list itself.
+
 ### Schema
 
 ```sql
@@ -49,7 +59,7 @@ create table us_cities_scored (
   population_density        numeric(10,2),
   stem_job_concentration    numeric(8,4),
   labor_force_participation numeric(5,2),
-  regional_median_income    integer,
+  regional_median_income    integer,                 -- sourced from BEA API (already wired)
   cost_of_living_index      numeric(6,2),
   public_elementary_count   integer,
   public_elementary_enrollment integer,
@@ -74,6 +84,7 @@ create table us_cities_scored (
   -- Data freshness
   census_last_updated       date,
   bls_last_updated          date,
+  bea_last_updated          date,
   fred_last_updated         date,
   nces_last_updated         date,
   greatschools_last_updated date,
@@ -107,19 +118,21 @@ Where `w_*` = current slider values. This runs in the browser on the already-loa
 
 | Column group | Source | Cost | Notes |
 |---|---|---|---|
-| Population, children, income, density | US Census ACS API | Free | Already wired |
-| STEM jobs, labor participation | BLS API | Free | Already wired |
-| Regional income, cost of living | FRED API | Free | Already wired |
-| Public school counts | NCES CCD (Urban Institute) | Free | Already wired |
-| Private + charter counts | GreatSchools API | $52.50/mo after trial | Waiting on Brett's key |
-| Summer camp count, ratings | Apify Google Maps Scraper | ~$4/1k results | Already connected |
-| Camp pricing, school-hosted flags | Firecrawl | Per crawl | Already connected |
+| City list skeleton | `us_cities_geo` (existing Supabase table) | Free | Use this — do NOT re-fetch from Census raw |
+| Population, children, income, density | US Census ACS API | Free | Already wired (`CENSUS_API_KEY`) |
+| STEM jobs, labor participation | BLS API | Free | Already wired (`BLS_API_KEY`) |
+| Regional income | BEA API | Free | Already wired (`BEA_API_KEY`) |
+| Cost of living index | FRED API | Free | Already wired (no key needed) |
+| Public school counts | NCES CCD (Urban Institute) | Free | Already wired (no key needed) |
+| Private + charter counts | GreatSchools API | $52.50/mo after trial | Waiting on Brett's key (`GREATSCHOOLS_API_KEY`) |
+| Summer camp count, ratings | Apify Google Maps Scraper | ~$4/1k results | Already connected (`APIFY_API_TOKEN`) |
+| Camp pricing, school-hosted flags | Firecrawl | Per crawl | Already connected (`FIRECRAWL_API_KEY`) |
 
 ### Seeding strategy — Phase 1 (Tuesday deadline)
 
-**Step 1:** Pull the master city list from Census (all places above 50,000 population). Store city_name, state, population, lat/lon. ~800 rows. This is the skeleton.
+**Step 1:** Read city skeleton from existing `us_cities_geo` table (filter: population ≥ 50,000). ~800 rows. No API call needed for this step.
 
-**Step 2:** For each city, call the already-wired APIs (Census ACS, BLS, FRED, NCES) in batches. Store raw signal values. These are free and fast — can batch 50 cities at a time.
+**Step 2:** For each city, call the already-wired APIs (Census ACS, BLS, BEA, FRED, NCES) in batches. Store raw signal values. These are free and fast — can batch 50 cities at a time.
 
 **Step 3:** Score each city. Normalize each raw signal to 0–100 percentile rank vs all cities in dataset. Calculate category scores. Calculate default composite score.
 
@@ -128,7 +141,7 @@ Where `w_*` = current slider values. This runs in the browser on the already-loa
 **Phase 2 (after Tuesday):** Add Apify camp data and Firecrawl camp pricing per city. Add GreatSchools private school counts once Brett provides API key.
 
 ### Refresh schedule
-- Census / BLS / FRED / NCES: quarterly (data doesn't change faster)
+- Census / BLS / BEA / FRED / NCES: quarterly (data doesn't change faster)
 - Apify / Firecrawl: monthly (competitive landscape changes more)
 - Triggered by Supabase Edge Function `refresh-city-scores` on cron schedule
 - Manual trigger available via admin panel (not exposed to Sam/Kaylie)
@@ -139,6 +152,8 @@ Where `w_*` = current slider values. This runs in the browser on the already-loa
 
 ### Purpose
 A master database of teachers across all U.S. cities — Neuron Garage's owned recruiting asset. Target 100,000+ records. The Teacher Search screen queries this table by city, school, or criteria. No live scraping at search time.
+
+> **Note:** The existing `teacher_prospects` table (Apify-only, no Apollo/vendor data) stays in place — it powers the current Teacher Search UI. `teacher_prospects_master` is a new, separate table that will replace it once seeded.
 
 > **Who we are seeding:** Active elementary school teachers (K–6), retired elementary school teachers, and summer camp / enrichment educators. See **`TEACHER_IDEAL_PROFILE.md`** for the full profile, fit scoring criteria, and reasoning.
 >
@@ -315,7 +330,7 @@ Target outcome: **100,000+ seeded records, ~60–70% with verified email**.
 
 | Function name | Trigger | What it does |
 |---|---|---|
-| `seed-cities-database` | Manual (run once to bootstrap) | Pulls all 800+ cities from Census, calls ACS/BLS/FRED/NCES per city, scores and normalizes, populates `us_cities_scored` |
+| `seed-cities-database` | Manual (run once to bootstrap) | Reads `us_cities_geo` (pop ≥ 50k), calls ACS/BLS/BEA/FRED/NCES per city, scores and normalizes, populates `us_cities_scored` |
 | `refresh-city-scores` | Cron (quarterly) + manual | Re-fetches raw signals for all cities, re-scores, updates `scored_at` |
 | `seed-teachers-database` | Manual (run once to bootstrap) | Seeds initial teacher records from chosen sources (Apollo / vendor CSV upload / Apify / DonorsChoose) |
 | `enrich-teacher-prospects` | Cron (quarterly) | Processes all records where `enrichment_due_at < now()`, fills missing emails, updates fit scores |
@@ -353,7 +368,7 @@ Target outcome: **100,000+ seeded records, ~60–70% with verified email**.
 
 ## What This Is NOT
 
-- This is not replacing the existing `city_market_signals` table immediately — that table stays for the per-city detail view.
+- This is not replacing the existing `city_market_signals` table or `teacher_prospects` table immediately — both stay for the current UI. The new tables power the upgraded national-scale features.
 - This is not a one-time scrape — both tables are living assets with scheduled refresh
 - This is not blocking Email Outreach or Candidate Pipeline — those features do not depend on the database layer
 

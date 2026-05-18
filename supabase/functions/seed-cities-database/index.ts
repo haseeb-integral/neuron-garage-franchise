@@ -254,7 +254,9 @@ const NCES_LAST_UPDATED = "2023-06-30";
 
 async function fetchNcesForCity(cityName: string, stateAbbr: string) {
   try {
-    const url = `https://educationdata.urban.org/api/v1/schools/ccd/directory/${NCES_YEAR}/?fips=${stateAbbr}&city_location=${encodeURIComponent(cityName.toUpperCase())}`;
+    const fips = STATE_FIPS[stateAbbr];
+    if (!fips) return { data: null, error: "no state fips" };
+    const url = `https://educationdata.urban.org/api/v1/schools/ccd/directory/${NCES_YEAR}/?fips=${fips}&city_location=${encodeURIComponent(cityName.toUpperCase())}`;
     const r = await fetch(url);
     if (!r.ok) return { data: null, error: `NCES ${r.status}` };
     const j = await r.json();

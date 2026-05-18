@@ -869,53 +869,95 @@ export type Database = {
           city: string
           created_at: string
           district: string | null
+          donorschoose_id: string | null
           email: string | null
+          enrichment_source: string | null
           experience_years: number | null
           fit_score: number | null
           grade: string | null
           id: string
+          last_enriched_at: string | null
+          linkedin_url: string | null
           name: string | null
           raw: Json | null
           school: string | null
+          school_nces_id: string | null
+          segment: string | null
           state: string
           status: string
+          subject: string | null
+          teacher_type: string | null
           updated_at: string
+          us_cities_scored_id: string | null
         }
         Insert: {
           apify_run_id?: string | null
           city: string
           created_at?: string
           district?: string | null
+          donorschoose_id?: string | null
           email?: string | null
+          enrichment_source?: string | null
           experience_years?: number | null
           fit_score?: number | null
           grade?: string | null
           id?: string
+          last_enriched_at?: string | null
+          linkedin_url?: string | null
           name?: string | null
           raw?: Json | null
           school?: string | null
+          school_nces_id?: string | null
+          segment?: string | null
           state: string
           status?: string
+          subject?: string | null
+          teacher_type?: string | null
           updated_at?: string
+          us_cities_scored_id?: string | null
         }
         Update: {
           apify_run_id?: string | null
           city?: string
           created_at?: string
           district?: string | null
+          donorschoose_id?: string | null
           email?: string | null
+          enrichment_source?: string | null
           experience_years?: number | null
           fit_score?: number | null
           grade?: string | null
           id?: string
+          last_enriched_at?: string | null
+          linkedin_url?: string | null
           name?: string | null
           raw?: Json | null
           school?: string | null
+          school_nces_id?: string | null
+          segment?: string | null
           state?: string
           status?: string
+          subject?: string | null
+          teacher_type?: string | null
           updated_at?: string
+          us_cities_scored_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "teacher_prospects_school_nces_id_fkey"
+            columns: ["school_nces_id"]
+            isOneToOne: false
+            referencedRelation: "public_schools"
+            referencedColumns: ["nces_id"]
+          },
+          {
+            foreignKeyName: "teacher_prospects_us_cities_scored_id_fkey"
+            columns: ["us_cities_scored_id"]
+            isOneToOne: false
+            referencedRelation: "us_cities_scored"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       us_cities_geo: {
         Row: {

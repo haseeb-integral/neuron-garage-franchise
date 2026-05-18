@@ -115,20 +115,20 @@ Deno.serve(async (req) => {
 
   let processed = 0, failed = 0;
   const errors: any[] = [];
-  // Open-Meteo allows ~600/min — we batch 10 in parallel with a small pause.
-  const BATCH = 10;
+  // Open-Meteo free tier: ~600/min but in practice 10-parallel triggers 429s. Use 3-parallel.
+  const BATCH = 3;
   for (let i = 0; i < (cities ?? []).length; i += BATCH) {
     const slice = cities!.slice(i, i + BATCH);
     await Promise.all(slice.map(async (c: any) => {
       try {
-        const w = await fetchWeather(Number(c.latitude), Number(c.longitude));
-        if (!w) { failed++; return; }
+        const { metrics: w, err } = await fetchWeather(Number(c.latitude), Number(c.longitude));
+        if (!w) { failed++; errors.push({ city: c.city_name, state: c.state_abbr, error: err ?? "no data" }); return; }
         if (dryRun) { processed++; return; }
         const now = new Date().toISOString();
         const rows = [
-          { city_id: c.id, signal_key: "avg_peak_summer_temperature", label: "Avg peak summer temp (°F)", value: String(w.avg_peak_summer_temperature), source: "Open-Meteo (2020-2024)", confidence: 0.95, updated_at: now },
-          { city_id: c.id, signal_key: "days_above_90f", label: "Days/yr ≥ 90°F", value: String(w.days_above_90f), source: "Open-Meteo (2020-2024)", confidence: 0.95, updated_at: now },
-          { city_id: c.id, signal_key: "summer_precip_days", label: "Summer precip days/yr", value: String(w.summer_precip_days), source: "Open-Meteo (2020-2024)", confidence: 0.95, updated_at: now },
+          { city_id: c.id, signal_key: "avg_peak_summer_temperature", label: "Avg peak summer temp (°F)", value: String(w.avg_peak_summer_temperature), source: "Open-Meteo (2022-2024)", confidence: 0.95, updated_at: now },
+          { city_id: c.id, signal_key: "days_above_90f", label: "Days/yr ≥ 90°F", value: String(w.days_above_90f), source: "Open-Meteo (2022-2024)", confidence: 0.95, updated_at: now },
+          { city_id: c.id, signal_key: "summer_precip_days", label: "Summer precip days/yr", value: String(w.summer_precip_days), source: "Open-Meteo (2022-2024)", confidence: 0.95, updated_at: now },
           { city_id: c.id, signal_key: "summer_weather_index", label: "Summer weather index", value: String(w.summer_weather_index), source: "Open-Meteo composite", confidence: 0.9, updated_at: now },
         ];
         for (const row of rows) {
@@ -143,6 +143,9 @@ Deno.serve(async (req) => {
         errors.push({ city: c.city_name, state: c.state_abbr, error: (e as Error).message });
       }
     }));
+    // Small pause between batches to stay friendly with Open-Meteo
+    await new Promise((res) => setTimeout(res, 250));
+  }
   }
 
   const returned = cities?.length ?? 0;

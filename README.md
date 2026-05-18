@@ -26,6 +26,8 @@ Read files in this order:
 | `CLAUDE.md` | AI constitution — rules, stack, working style |
 | `OPEN_TASKS.md` | Prioritized task list — the single build queue |
 | `PROJECT_CONTEXT.md` | Live snapshot of app state from Lovable — update regularly |
+| `HOW_IT_WORKS.md` | Narrative of how the product works end-to-end (low-churn) |
+| `APIS.md` | Per-API reference: secrets, usage, cost, owner, seed vs live |
 | `DATABASE_LAYER_SPEC.md` | Schema + seeding plan for city and teacher tables |
 | `TEACHER_IDEAL_PROFILE.md` | Franchisee profile, fit scoring criteria, Apollo query templates |
 | `MAY15_MEETING_NOTES.md` | May 15 client review — source of truth for recent decisions |

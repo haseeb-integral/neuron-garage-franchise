@@ -1,0 +1,147 @@
+# HOW_IT_WORKS.md — Neuron Garage
+
+> Snapshot date: May 18, 2026
+> Audience: Anyone (Kaylie, Sam, Haseeb, any AI agent) who needs to understand the app as a working product, not as an inventory.
+> Companion files: `PROJECT_CONTEXT.md` (what exists), `APIS.md` (integrations).
+
+---
+
+## 1. The job the app does
+
+Neuron Garage is an internal SaaS that helps Kaylie's franchise education company **(a) decide which U.S. cities to expand into next**, **(b) find the right teachers in those cities to run a location**, **(c) contact them**, and **(d) move the best candidates through a hiring and onboarding pipeline**. It is used by 3 people. It is not public-facing.
+
+---
+
+## 2. The user journey (end to end)
+
+```
+Dashboard ─▶ City Search ─▶ Teacher Search ─▶ Email Outreach ─▶ Candidate Pipeline ─▶ Onboarding
+   (overview)   (pick a market)  (find people)    (contact them)     (qualify & confirm)   (open the location)
+```
+
+What the user gets out of each step:
+
+| Step | Output |
+|---|---|
+| Dashboard | A single screen showing pipeline counts and what to do next |
+| City Search | A ranked list of U.S. cities by composite fit score, with the math visible |
+| Teacher Search | A list of teacher prospects inside the favorited cities, with a fit score |
+| Email Outreach | AI-personalized outreach sent through SmartLead (not wired yet) |
+| Candidate Pipeline | A Kanban: new lead → qualification → confirmation → signing |
+| Onboarding | A step tracker per new franchisee from signing through grand opening |
+
+---
+
+## 3. How each screen works
+
+### `/` Dashboard — `Index.tsx`
+- **User sees:** Pipeline tiles (candidates by stage), recent activity, shortcut tiles to the 5 main features.
+- **Behind the scenes:** Reads counts from `candidates` and `teacher_prospects` via Supabase client. No edge functions.
+
+### `/city-scoring` City Search — `CityScoring.tsx`
+- **User sees:** A table of cities with a composite score, 6 category scores, sliders for the 6 master weights, a sub-weight drawer per category, "Show Formula", and "Add to Favorites".
+- **User action:** Adjust sliders, save the configuration as a Saved Search, drill into a city to see raw signals, export to CSV, add a city to Favorites.
+- **Behind the scenes:**
+  - Reads from `cities` + `city_category_scores` + `city_market_signals`.
+  - **Composite score is calculated client-side** in `src/lib/clientSubWeightScoring.ts` so slider changes update the table instantly.
+  - When the user adds a brand-new city, `fetch-city-market-data-sow` runs: pulls 46 metrics from Census / BLS / BEA / FRED / NCES / Apify, normalizes them, writes rows to `city_market_signals` and `city_category_scores`, and updates `cities.composite_score`.
+  - Audit row is written to `city_fetch_jobs`.
+- **Today's limitation:** Per-city refresh takes 5+ minutes, so a national ranked list is not possible until Task #0 (`us_cities_scored` seeded table) ships — see `DATABASE_LAYER_SPEC.md`.
+
+### `/teacher-prospects` Teacher Search — `TeacherProspects.tsx`
+- **User sees:** A table of teachers in the cities the user picked, with school, grade, fit score, and status.
+- **User action:** Pick cities (defaults to Favorites), trigger a search, filter, bulk-select, mark hot/warm, promote to candidate.
+- **Behind the scenes:**
+  - "Find prospects" calls `fetch-teacher-prospects`, which runs an Apify Google-Maps actor over schools in the target city.
+  - `enrich-school-staff` fills missing teacher detail per school.
+  - Fit score (0–100) is computed in `src/utils/fitScore.ts` from grade match (K–6), summer availability heuristic, and teacher type (`active` / `retired` / `camp_enrichment`).
+  - Writes to `teacher_prospects`.
+- **Today's limitation:** Placeholder / Apify-only data. Apollo, vendor lists, and DonorsChoose are not wired (blocked on Brett's decision — see `APIS.md`).
+
+### `/email-outreach` Email Outreach — `EmailOutreachV2.tsx`
+- **User sees:** A composer with AI-personalized templates and a recipient picker that pulls from `teacher_prospects` (status = hot/warm).
+- **User action:** Pick a template, generate AI body via Lovable AI Gateway, review, send.
+- **Behind the scenes:** AI personalization runs through `LOVABLE_API_KEY`. **Sending is not wired** — SmartLead ("Integral Leads") integration is sprint task #17.
+
+### `/candidate-pipeline` Candidate Pipeline — `CandidatePipeline.tsx`
+- **User sees:** Kanban board with columns: New Lead → Qualification → Confirmation → Signing. Click a candidate to open the detail panel (Overview / Qualification / Committee Votes / Homework / Lead Sheet / Notes / Stage History).
+- **User action:** Drag cards across columns, score qualification, cast committee votes, complete confirmation checklist.
+- **Behind the scenes:**
+  - Reads/writes `candidates`, `candidate_profiles`, `candidate_qualification`, `candidate_votes`, `candidate_stage_history`, `candidate_checklist_items`.
+  - **Automatic:** when a candidate enters the `confirmation` stage, the DB trigger `trg_seed_confirmation_checklist` calls `seed_confirmation_checklist()` to insert the 5 default checklist items.
+  - **Hardcoded rule:** cannot drop into "Signing" without passing "Confirmation". Do not change.
+- **Today's limitation:** Candidates are placeholder data. Teacher → Candidate promotion path exists in UI but is not wired end-to-end.
+
+### `/onboarding` Onboarding — `Onboarding.tsx`
+- **User sees:** Table of franchisees in onboarding, each with a 7-step progress bar and FDD countdown.
+- **User action:** Open a record, complete steps, upload documents, log activity.
+- **Behind the scenes:** Reads/writes `onboarding_records` and `onboarding_steps`. Template comes from `src/lib/onboardingTemplate.ts`. No edge function — pure DB.
+
+### `/settings/team` & `/users` Team Members — `TeamMembers.tsx`
+- **User sees:** List of users + roles. Admin can invite new users.
+- **User action:** Invite a user (admin only).
+- **Behind the scenes:** `admin-create-user` edge function creates the auth user; trigger `handle_new_user` creates a `profiles` row + a `user_roles` row with `manager` role. RLS on `user_roles` requires `admin` to write.
+
+### `/spec` Spec — `Spec.tsx`
+- Internal markdown viewer of `src/data/specMarkdown.ts`. Not user-facing.
+
+---
+
+## 4. Key calculations (the "show your math" stuff)
+
+### City composite score
+```
+metric_normalized = sowNormalize(raw_value, metric_definition)    // 0–100
+sub_share_i = sub_weight_i / Σ(enabled sub_weights in category)   // sums to 1.0
+category_score = Σ( sub_share_i × metric_normalized_i ) × 100
+master_share_c = master_weight_c / Σ(master_weights)              // sums to 1.0
+composite = Σ( master_share_c × category_score_c )                // 0–100
+```
+- Master sliders auto-rebalance to 100. Sub-weights do **not** — they're relative-importance numbers.
+- An empty category falls back to the server-stored `city_category_scores.score`.
+- Every drawer exposes "Show Formula" with the raw / normalized / share / contribution table.
+
+### Teacher fit score (0–100)
+Computed in `src/utils/fitScore.ts`. Inputs: grade match (K–6), teacher type (active/retired/camp_enrichment), summer availability heuristic. See `TEACHER_IDEAL_PROFILE.md` for full criteria.
+
+### Candidate qualification composite
+Stored in `candidate_qualification` — five sub-scores (financial readiness, leadership, teaching experience, culture fit, market fit) → `composite_score`.
+
+---
+
+## 5. Cross-feature links
+
+| Link | Status |
+|---|---|
+| Favoriting a city in City Search → Teacher Search defaults to that city | **Working** |
+| Promoting a hot teacher → new row in `candidates` with `prospect_id` set | **UI exists, not wired end-to-end** |
+| Candidate reaches `signing` stage → seeds an `onboarding_records` row | **Not built** |
+| Email Outreach → updates `teacher_prospects.status` after send | **Not wired (no SmartLead)** |
+
+---
+
+## 6. Manual vs automatic
+
+| Action | How |
+|---|---|
+| City refresh | **Manual**, per-city (will become scheduled bulk refresh after Task #0) |
+| Teacher search | **Manual**, per-city, triggered by user |
+| Composite score recompute | **Automatic** (client-side, on slider change) |
+| Confirmation checklist seeding | **Automatic** (DB trigger on stage = `confirmation`) |
+| Stage transitions in Kanban | **Manual** (drag and drop) |
+| New user → profile + role row | **Automatic** (`handle_new_user` trigger) |
+| City lat/lng backfill | **Automatic** (`fill_city_coords` trigger from `us_cities_geo`) |
+| Email send | **Not yet** — will be manual via SmartLead UI |
+
+---
+
+## 7. Auth & access
+
+- Email + password only. No Google / Microsoft / SSO (intentionally removed).
+- HIBP leaked-password check is **off** so users can pick any password meeting length rules.
+- Email auto-confirm is **off** — new users must verify their email before sign-in.
+- 3 users total: Kaylie, Sam, Haseeb. New users get `manager` role by default; `admin` role must be granted manually.
+
+---
+
+*Regenerate this file when product behavior changes — not when a table or API changes. For inventory, see `PROJECT_CONTEXT.md`. For integrations, see `APIS.md`.*

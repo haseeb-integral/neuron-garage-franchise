@@ -1,116 +1,86 @@
-# PROJECT_CONTEXT.md — Neuron Garage
+## What to build
 
-> Snapshot date: May 17, 2026
-> Live URL: https://neuron-garage-franchise.lovable.app
-> Preview: https://id-preview--c74b81ad-10d7-4a10-b6c8-de17f48a663e.lovable.app
-> Stack: React + TS + Vite + Tailwind + shadcn, Lovable Cloud (Supabase) backend
+Three documentation files for the GitHub repo, all generated from live Lovable Cloud state (secrets, tables, edge functions, routes) — not from memory.
 
----
+### 1. Create `HOW_IT_WORKS.md`
 
-## 1. Screens / Pages (React Router routes)
+Narrative of how the product actually works, end-to-end. Sections:
 
-Public:
-- `/auth` — Auth.tsx — email/password sign-in & sign-up (Google/Microsoft/SSO buttons removed; HIBP leaked-password check disabled)
-- `/reset-password` — ResetPassword.tsx — password reset flow
+- **The job the app does** — 2–3 sentences
+- **The user journey** — Dashboard → City Search → Teacher Search → Email Outreach → Candidate Pipeline → Onboarding (with what the user gets at each step)
+- **How each screen works** — for each of the 7 protected pages: what the user sees, what action they take, what fires behind the scenes (edge function / table / API), what comes out
+- **Key data flows** — city scoring math (46 metrics → normalized → weighted → composite), teacher fit score, candidate stage transitions, checklist auto-seeding on `confirmation`
+- **Cross-feature links** — favorites filter Teacher Search, promoting a teacher creates a candidate, candidate → onboarding handoff (flagged as built vs not-yet-built)
+- **What's manual vs automatic** — kanban moves manual, checklist seeding automatic, city refresh manual per-city (today)
 
-Protected (wrapped in `AppLayout` + `ProtectedRoute`):
-- `/` — Index.tsx — Dashboard / home
-- `/city-scoring` — CityScoring.tsx — **City Search** (46-metric, 6-category scoring engine)
-- `/teacher-prospects` — TeacherProspects.tsx — **Teacher Search** (label renamed in UI; route still `/teacher-prospects`)
-- `/email-outreach` — EmailOutreachV2.tsx — Email outreach (V2 is the active page; legacy `EmailOutreach.tsx` exists but is not routed)
-- `/candidate-pipeline` — CandidatePipeline.tsx — Kanban candidate pipeline
-- `/onboarding` — Onboarding.tsx — Franchisee onboarding tracker
-- `/settings/team` & `/users` — TeamMembers.tsx — Team/user management
-- `/spec` — Spec.tsx — Internal spec viewer
-- `*` — NotFound.tsx — 404
+### 2. Create `APIS.md`
 
----
+Per-API reference page. Three sections:
 
-## 2. Supabase tables (public schema)
+**Section A — Live & wired** (one block per API using this template):
+```
+## Census ACS
+- Purpose: ...
+- Secret: CENSUS_API_KEY
+- Used in: supabase/functions/_shared/metricFetchers.ts
+- Called from: fetch-city-market-data-sow
+- Cost / rate limit: Free / 500 per day per key
+- Owner of key: Haseeb
+- Fallback if down: Cached last value in city_market_signals
+- Docs: <url>
+- Status: Live
+```
+Covers: Census ACS, BLS, BEA, FRED, NCES CCD, Apify (Google Maps actor), Firecrawl, Lovable AI Gateway, Supabase.
 
-All tables have RLS enabled. `authenticated` role can read/write unless noted.
+**Section B — Approved but not wired**: GreatSchools, SmartLead ("Integral Leads"), Apollo, DonorsChoose, Clay — each with what it's for and what's blocking.
 
-| Table | Purpose |
+**Section C — Database-seeding APIs (new sub-section per your question)**:
+Explicit table of which APIs feed which database table, separating the two patterns:
+- **Per-row live fetch** (today): Census/BLS/FRED/NCES/Apify called per city, writes to `city_market_signals` / `city_competitors`
+- **Bulk seed for `us_cities_scored`** (Task #0): which APIs are batch-pulled once and refreshed on a schedule
+- **Bulk seed for `teacher_prospects_master`** (Task #0): Apollo bulk export / vendor list / Apify school directory / DonorsChoose — including the open decision from May 15 (Brett picks A+B+D combo)
+- **Purchased data lists**: vendor lists (Exact Data, LeadsPlease, K12 Prospects) noted as one-time CSV ingest, not an API
+
+This directly answers your question: yes, `APIS.md` should call out which APIs are for live calls vs which feed the seeded database, and which data sources are purchased CSVs (no API at all).
+
+### 3. Answer: which files need updating after app changes?
+
+I'll add a short "Maintenance" section at the top of `PROJECT_CONTEXT.md` with this table:
+
+| Change | Update file(s) |
 |---|---|
-| `profiles` | User profile (auto-created on signup via `handle_new_user` trigger). Self-update only. |
-| `user_roles` | Role assignments (`app_role` enum: admin / manager / etc.). Admin-only writes. |
-| `cities` | Core city records (name, state, lat/lng, tier, composite score, population, etc.) |
-| `city_category_scores` | Per-city, per-category (6 categories) scores |
-| `city_market_signals` | Raw signal rows per city (label/value/source/delta) — drives "Show Formula" |
-| `city_competitors` | Apify-scraped competitor records per city |
-| `city_fetch_jobs` | Audit log for per-city data refresh jobs |
-| `us_cities_geo` | Reference table of US cities (lat/lng/pop) — read-only |
-| `custom_criteria` | User-defined extra scoring criteria |
-| `scoring_config` | Per-user master-weight preset |
-| `saved_searches` | Per-user saved slider configs (master + sub weights) |
-| `watchlist_items` | Per-user favorites (cities) |
-| `teacher_prospects` | Teacher records (city/state, school, fit_score, status, apify_run_id) |
-| `candidates` | Pipeline candidates (stage, fit_score, fit_tag, assignment) |
-| `candidate_profiles` | Long-form candidate profile (background, capital, motivation) |
-| `candidate_qualification` | Scored qualification rubric (financial / leadership / teaching / culture / market) |
-| `candidate_votes` | Selection committee votes per candidate |
-| `candidate_stage_history` | Stage transition log |
-| `candidate_checklist_items` | Stage-specific checklists (auto-seeded on entering `confirmation`) |
-| `onboarding_records` | Franchisee onboarding header rows |
-| `onboarding_steps` | Per-record step list |
+| Added/removed a page or route | `PROJECT_CONTEXT.md` § 1 + `HOW_IT_WORKS.md` |
+| Added/removed/renamed a Supabase table or column | `PROJECT_CONTEXT.md` § 2 |
+| Added/removed an edge function | `PROJECT_CONTEXT.md` § 3 + `APIS.md` (if it calls a new API) |
+| Wired a new third-party API | `APIS.md` (new block) + `PROJECT_CONTEXT.md` § 4 |
+| Removed an API or rotated key owner | `APIS.md` only |
+| Product behavior changed (flow, math, rules) | `HOW_IT_WORKS.md` + `MAY15_MEETING_NOTES.md` successor if it was a client decision |
+| Known bug fixed or new bug found | `PROJECT_CONTEXT.md` § 5 |
+| Sprint task done | `OPEN_TASKS.md` |
+| Anything visual | `DESIGN.md` (only if rule changes; not for one-off tweaks) |
 
-DB functions: `handle_new_user`, `has_role`, `update_updated_at_column`, `fill_city_coords`, `seed_confirmation_checklist`, `trg_seed_confirmation_checklist`.
+Rule of thumb: `PROJECT_CONTEXT.md` is high-churn inventory, `HOW_IT_WORKS.md` is low-churn behavior, `APIS.md` is medium-churn reference.
 
-No storage buckets configured.
+### Data sources I'll use to generate
 
----
+- Live secrets list (already have it: 8 third-party keys configured)
+- Live tables list (already have it: 21 tables)
+- `supabase/functions/` directory (6 functions + shared modules)
+- `src/App.tsx` routes
+- `MAY15_MEETING_NOTES.md` for the database-seeding decisions
+- `DATABASE_LAYER_SPEC.md` for the seed table plan
+- `OPEN_TASKS.md` for blocked/pending API status
 
-## 3. Edge Functions (deployed)
+### Files created / edited
 
-- `admin-create-user` — admin-only user provisioning
-- `fetch-city-market-data` — legacy city data refresh
-- `fetch-city-market-data-sow` — SOW-aligned city refresh (46-metric pull → scoring)
-- `fetch-school-counts` — NCES CCD public-elementary counts per city
-- `enrich-school-staff` — staff/teacher enrichment for a given school
-- `fetch-teacher-prospects` — Apify-driven teacher prospect pull per city
-- Shared modules: `_shared/cityGeo.ts`, `_shared/metricFetchers.ts`, `_shared/scoring.ts`
+- `HOW_IT_WORKS.md` — new
+- `APIS.md` — new
+- `PROJECT_CONTEXT.md` — add Maintenance section at top (no other changes)
+- `README.md` — add the two new files to the file map
 
----
+### Out of scope (intentionally not doing)
 
-## 4. Third-party APIs wired in
-
-| Provider | Purpose | Secret name | Status |
-|---|---|---|---|
-| US Census ACS | Population, children, income, density | `CENSUS_API_KEY` | Live |
-| BLS | STEM jobs, labor force participation | `BLS_API_KEY` | Live |
-| BEA | Regional income metrics | `BEA_API_KEY` | Live |
-| FRED (Federal Reserve) | Regional median income, COLI | _(no key — public)_ | Live |
-| NCES CCD (Urban Institute) | Public elementary school counts | _(no key — public)_ | Live |
-| Apify (Google Maps actor) | Competitor + teacher scraping | `APIFY_API_TOKEN`, `APIFY_GOOGLE_MAPS_ACTOR_ID` | Live |
-| Firecrawl | Web scraping / enrichment | `FIRECRAWL_API_KEY` | Live |
-| Lovable AI Gateway | In-app AI (fit scoring, summaries) | `LOVABLE_API_KEY` | Live |
-| Supabase (Lovable Cloud) | DB / Auth / Edge / Storage | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_PUBLISHABLE_KEY(S)`, `SUPABASE_SECRET_KEYS`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWKS`, `SUPABASE_DB_URL` | Live |
-| GreatSchools | Private + charter school counts | _not yet set_ (`GREATSCHOOLS_API_KEY` pending) | **Blocked — waiting on Brett's key** |
-| SmartLead ("Integral Leads") | Email outreach send | _not yet set_ | **Not wired — sprint task #17** |
-| Apollo | Teacher sourcing | _not yet set_ | **Not wired — sourcing decision open** |
-| DonorsChoose | Teacher fit signal | _none (public API)_ | **Not wired** |
-| Clay | Email enrichment waterfall | _not yet set_ | **Not wired** |
-
----
-
-## 5. Known bugs / broken or incomplete features
-
-Active limitations:
-- **City Search uses live per-city fetches** — 5+ min per city. National ranked list not yet possible. Fix in progress = Task #0 database layer (`us_cities_scored` table, due May 20).
-- **Teacher Search reads placeholder/Apify-only data** — `teacher_prospects_master` table not yet built; no Apollo / vendor list / DonorsChoose integration.
-- **Email Outreach** — SmartLead not connected; no real sends.
-- **Candidate Pipeline** — populated with placeholder candidates, not yet wired to Teacher → Lead conversion.
-- **GreatSchools** — private/charter elementary counts missing on every city (waiting on API key purchase).
-- **Multiple named favorites lists** — only a single favorites list works; multi-list UI not built.
-- **PDF export of candidate lead sheet** — not implemented.
-
-Auth / config notes (intentional, not bugs):
-- Google / Microsoft / SSO sign-in removed from `/auth` by request.
-- HIBP leaked-password check disabled (`password_hibp_enabled: false`) so users can pick any password meeting length rules.
-- Email auto-confirm is OFF — users must verify email before sign-in.
-
-No open console errors reported in current session.
-
----
-
-*Generated from a live read of `src/App.tsx`, `supabase/functions/`, Supabase schema, secrets list, and `OPEN_TASKS.md` on May 17, 2026. Re-generate before each weekly client review.*
+- No code changes
+- No DB migrations
+- Not refactoring `PROJECT_CONTEXT.md` content (just prepending the Maintenance section)
+- Not touching `CLAUDE.md` (rules unchanged)

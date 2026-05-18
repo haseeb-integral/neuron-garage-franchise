@@ -2144,6 +2144,8 @@ const CityScoring = () => {
               >›</button>
             </div>
           </div>
+          </>
+          )}
         </div>
 
         {/* Center: Selected Market Detail */}

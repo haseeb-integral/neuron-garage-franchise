@@ -140,11 +140,17 @@ The AI fit score (1–100) stored in `teacher_prospects_master.fit_score` should
 | School counselor or psychologist background | Growth mindset expertise |
 | 3–5 years experience | Decent experience, not yet at director threshold |
 
+### Moderate-fit signals (secondary tier — added May 18)
+| Signal | Reasoning |
+|---|---|
+| Middle/high school teacher, hands-on subject (STEM, maker, shop, robotics, CS, art, design) | Summer-free, subject maps to camp model, common camp-staff profile |
+| Middle/high school STEM teacher who has run an after-school maker/robotics club | Proven in hands-on youth context |
+
 ### Neutral / lower fit signals (low weight)
 | Signal | Reasoning |
 |---|---|
-| High school teacher only | Camp is K–6, no direct age-group experience |
-| Subject: purely academic (math, English, history) | Less hands-on, may need more convincing |
+| Middle/high school teacher, purely academic (English, history, social studies) | No hands-on subject match |
+| Subject: purely academic at any grade (math, English, history) | Less hands-on, may need more convincing |
 | Less than 3 years experience | Not enough experience for director role |
 | College student studying education | Better fit as camp guide, not director |
 

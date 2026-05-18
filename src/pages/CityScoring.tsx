@@ -2396,7 +2396,7 @@ const CityScoring = () => {
                     </button>
                   )}
                 </>
-              ) : (
+              ) : SHOW_LIVE_REFRESH ? (
                 <div className="rounded-md border border-dashed border-[#dbe4f2] bg-[#f7faff] px-3 py-4 text-center">
                   <p className="text-[11.5px] text-[#526078] leading-snug">
                     No live signals yet for this market.
@@ -2409,6 +2409,12 @@ const CityScoring = () => {
                   >
                     {refreshingMarket ? "Refreshing…" : "Refresh This Market"}
                   </button>
+                </div>
+              ) : (
+                <div className="rounded-md border border-dashed border-[#dbe4f2] bg-[#f7faff] px-3 py-4 text-center">
+                  <p className="text-[11.5px] text-[#526078] leading-snug">
+                    Showing pre-seeded scores. Live signal scraping is paused.
+                  </p>
                 </div>
               )}
             </div>

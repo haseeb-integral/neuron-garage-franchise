@@ -87,6 +87,8 @@ No storage buckets configured.
 - `fetch-city-market-data` — legacy city data refresh
 - `fetch-city-market-data-sow` — SOW-aligned city refresh (46-metric pull → scoring)
 - `fetch-school-counts` — NCES CCD public-elementary counts per city
+- `seed-cities-database` — bulk seed of `us_cities_scored` (Census/BLS/BEA/FRED/NCES). 909/960 cities seeded.
+- `backfill-public-schools` — iterates seeded cities, refetches NCES K-12 list, upserts into `public_schools` (one row per school, on `nces_id`)
 - `enrich-school-staff` — staff/teacher enrichment for a given school
 - `fetch-teacher-prospects` — Apify-driven teacher prospect pull per city
 - Shared modules: `_shared/cityGeo.ts`, `_shared/metricFetchers.ts`, `_shared/scoring.ts`

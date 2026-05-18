@@ -1,64 +1,78 @@
-# City Search — End-to-End Fix (Implementation Plan)
+# City Search Rewire — Execution (Steps 3-7)
 
 [For Haseeb — implementation]
 
-## Goal
+Locked decisions from your Q&A:
+- **Q1 market_type buckets:** Urban ≥ 3000/km², Suburb 500–3000, Rural < 500 (derived from `population_density`)
+- **Q2 tier cutoffs:** A ≥ 80, B ≥ 65, C ≥ 50, D < 50 (from `composite_score_default`)
+- **Q3 Add City:** hide the button (keep code in place; seed-on-demand edge function deferred)
+- **Q4 Watchlist:** repoint `watchlist_items.city_id` to `us_cities_scored.id`; wipe existing rows on cutover (you have ~0 saved)
 
-Collapse to ONE ranked table sourced from `us_cities_scored`. Delete Table N + Top-10/Top-20 toggle. Rewire center panel, drawer, watchlist, compare, Show Formula. Fix Ask AI auth.
+## Steps
 
-## Step 0 — Schema mapping (read-only, show before editing)
+### Step 3 — Rewire data source (`cities` → `us_cities_scored`)
 
-Read `us_cities_scored` columns and produce an old→new field map (e.g. `cities.median_income` → `us_cities_scored.median_household_income`, `cities.elementary_schools` → `public_elementary_count`, `cities.children_pct` → derived from `children_5_12 / population`, etc.). Post the table in chat. Wait for "go" before component edits.
+Replace `.from('cities')` reads + column references in:
+- `src/pages/CityScoring.tsx` (lines 776, 893 + selection state keyed on `us_cities_scored.id`)
+- `src/lib/cityScoringLiveData.ts` (lines 123, 357, 375 — main loader + helpers)
+- `src/components/city-scoring/MarketDetailDrawer.tsx` (line 202 detail fetch)
+- `src/components/city-scoring/MarketsMap.tsx` (line 59 map pins)
+- `src/components/city-scoring/MarketReportModal.tsx` (line 125 report fetch)
 
-## Step 1 — Fix Ask AI auth (smallest, isolated)
+Column map applied per row read:
+```
+city_name        → city
+state_name       → state (full)
+state_abbr       → state code
+population, latitude, longitude, metro_area → same
+median_household_income           → median_income
+children_5_12 / population * 100  → children_pct
+public_elementary_count           → elementary_schools
+summer_camp_count                 → competitor_count
+composite_score_default           → composite_score
+score_demand / score_pricing_power / score_competitive /
+score_franchise_supply / score_ease_of_operation /
+score_parent_mindset              → 6 category scores
+!is_registration_state            → is_non_registration
+scored_at                         → last_scraped_at
+```
 
-`src/components/city-scoring/AskAiBar.tsx` + invoke site:
-- `await supabase.auth.getSession()`; if missing/expired call `refreshSession()`
-- Pass explicit `Authorization: Bearer <token>` to `supabase.functions.invoke('ai-city-query', ...)`
-- On 401, refresh once and retry; else show toast "Session expired — sign in again"
+Derived client-side:
+- `tier` = `score >= 80 ? 'A' : score >= 65 ? 'B' : score >= 50 ? 'C' : 'D'`
+- `market_type` from `population_density`: `>=3000 Urban`, `>=500 Suburb`, else `Rural`
 
-No edge function changes.
+### Step 4 — Watchlist + Compare id alignment
 
-## Step 2 — Delete Table N
+- Insert/select `watchlist_items.city_id` using `us_cities_scored.id`
+- Migration: `DELETE FROM watchlist_items` (wipe stale legacy ids) — one-time
+- Compare modal selection set keyed on new id
 
-In `src/pages/CityScoring.tsx`:
-- Remove `RankedMarketsList` import + render block (around line 58 / 2020)
-- Remove Top-10/Top-20 (`TopN`) state, toggle UI, and the side-by-side preview
-- Keep the single existing ranked table (`CityTable` / equivalent) as the only list
+### Step 5 — Tier labels A/B/C/D
 
-## Step 3 — Rewire data source `cities` → `us_cities_scored`
+`TierBadge.tsx` + table render: `A — Top`, `B — Strong`, `C — Watch`, `D — Pass`.
 
-Files: `CityScoring.tsx`, `CityTable.tsx`, `MarketDetailDrawer.tsx`, `CityDetailDrawer.tsx`, `NearbyMarketsPanel.tsx`, `CompareModal.tsx`/`MarketCompareModal.tsx`, `SourceDataPanel.tsx`, `StatCards.tsx`, `MarketsMap.tsx`, `AddCityModal.tsx`, `MarketReportModal.tsx`, `src/lib/cityScoringLiveData.ts`.
+### Step 6 — Show Formula modal
 
-- Selection key becomes `us_cities_scored.id`
-- All `.from('cities')` reads replaced with `.from('us_cities_scored')` using mapped columns
-- Center panel resolves selected row by `us_cities_scored.id` so clicks fill metrics, formulas, deltas
+Pull from new `score_*` columns + active scoring config; same Σ(weight × normalized) breakdown.
 
-## Step 4 — Watchlist + Compare id alignment
+### Step 7 — Cleanup + hide Add City
 
-`watchlist_items.city_id` will now reference `us_cities_scored.id`. No DB schema change (column is plain uuid, no FK). Update insert/select code paths and any compare selection set.
+- Remove dead `from('cities')` calls + legacy helpers in `cityScoringLiveData.ts`
+- Hide "Add City" button in `CityScoring.tsx` (comment out trigger; modal code stays)
+- `AddCityModal.tsx` left untouched for future seed-on-demand wiring
 
-## Step 5 — Adopt A/B/C/D tier labels
+### Step 8 — Brett-friendly Telegram message
 
-In the surviving table + `TierBadge.tsx`: `A — Top`, `B — Strong`, `C — Watch`, `D — Pass`. Derive tier from `composite_score_default` thresholds (preserve current cutoffs).
+Plain-English baby-step message you can copy/paste to Brett on how to grab the GreatSchools API free trial key. Posted at end of this turn (no code change).
 
-## Step 6 — Show Formula modal
+### Step 9 — Doc-sync draft (Mode A)
 
-Pull inputs/weights from `us_cities_scored` score_* columns + the active scoring config. Display the same Σ(weight × normalized metric) breakdown using new column names.
-
-## Step 7 — Cleanup
-
-- Remove dead `from('cities')` calls and legacy helpers in `cityScoringLiveData.ts`
-- Keep hidden live-fetch widgets code intact (out of scope)
-
-## Step 8 — Doc-sync draft (Mode A)
-
-After code lands, draft one-line summaries of updates needed in `PROJECT_CONTEXT.md`, `OPEN_TASKS.md`, `HOW_IT_WORKS.md`, `GLOSSARY.md`. Wait for explicit "go" before writing per AGENTS.md Rule 9.
+One-line draft summaries for `PROJECT_CONTEXT.md`, `OPEN_TASKS.md`, `HOW_IT_WORKS.md`, `GLOSSARY.md` — wait for "go" before writing per AGENTS.md Rule 9.
 
 ## Risk + undo
 
-Medium. Column name mismatches are the main hazard — mitigated by Step 0 mapping confirmation. Each component edit reversible via Lovable history. No destructive DB changes.
+Medium. Column mismatches mitigated by the map above. Reversible via Lovable history. One destructive op: `DELETE FROM watchlist_items` (you confirmed OK).
 
 ## Out of scope
 
-SmartLead integration (waiting on Brett). Hidden live-fetch widgets. Scoring math changes.
+SmartLead (waiting on Brett). Hidden live-fetch widgets. Scoring math changes. Add City seed-on-demand function.

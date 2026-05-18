@@ -32,9 +32,9 @@ export type RankedMarketFilters = {
 const NON_REGISTRATION_STATES = new Set(["Texas", "Florida"]);
 
 export function tierFromScore(score: number): "A" | "B" | "C" | "D" {
-  if (score >= 85) return "A";
-  if (score >= 75) return "B";
-  if (score >= 65) return "C";
+  if (score >= 80) return "A";
+  if (score >= 65) return "B";
+  if (score >= 50) return "C";
   return "D";
 }
 
@@ -92,21 +92,21 @@ export function mapSampleCityToRankedMarket(city: CityData): RankedMarket {
   };
 }
 
-function marketTypeFromPopulation(pop: number): string {
-  if (pop >= 250000) return "Urban";
-  if (pop >= 50000) return "Suburb";
-  return "Exurb";
+function marketTypeFromDensity(density: number): string {
+  // Per locked Q1: Urban ≥ 3000/km², Suburb 500-3000, Rural < 500.
+  if (density >= 3000) return "Urban";
+  if (density >= 500) return "Suburb";
+  return "Rural";
 }
 
 export async function loadLiveRankedMarkets(): Promise<RankedMarket[]> {
-  // PRIMARY source: us_cities_scored (Sam's pre-seeded 948-city dataset with
-  // composite_score_default). Supersedes the old `cities` table for ranking.
-  // We still cross-reference `cities` so that watchlist/detail linkage by
-  // cities.id keeps working for the subset of cities that exist in both.
+  // Canonical source: us_cities_scored (Sam's pre-seeded ~948-city dataset).
+  // `cityId` now references us_cities_scored.id (not legacy cities.id) so the
+  // watchlist + drawer + compare are all keyed on the same uuid space.
   const { data: scoredRows, error: scoredErr } = await supabase
     .from("us_cities_scored")
     .select(
-      "id, city_name, state_name, state_abbr, metro_area, population, composite_score_default, score_demand, score_pricing_power, score_competitive, score_franchise_supply, score_ease_of_operation, score_parent_mindset, is_registration_state, scored_at",
+      "id, city_name, state_name, state_abbr, metro_area, population, population_density, composite_score_default, score_demand, score_pricing_power, score_competitive, score_franchise_supply, score_ease_of_operation, score_parent_mindset, is_registration_state, scored_at, summer_camp_count",
     )
     .order("composite_score_default", { ascending: false, nullsFirst: false })
     .limit(2000);
@@ -117,38 +117,26 @@ export async function loadLiveRankedMarkets(): Promise<RankedMarket[]> {
   }
   if (!scoredRows?.length) return [];
 
-  // Pull legacy `cities` rows once so we can attach a stable cityId for
-  // watchlist/notes/competitor counts where a row already exists.
-  const { data: cityRows } = await supabase
-    .from("cities")
-    .select("id, city, state, county, market_type, notes, last_scraped_at, competitor_count");
-  const cityByKey = new Map<string, any>();
-  (cityRows ?? []).forEach((c: any) => {
-    const key = `${(c.city ?? "").trim().toLowerCase()}|${normalizeState(c.state).toLowerCase()}`;
-    cityByKey.set(key, c);
-  });
-
   const mapped: RankedMarket[] = scoredRows.map((row: any, index: number) => {
     const state = normalizeState(row.state_name ?? row.state_abbr);
     const city = row.city_name ?? "Unknown";
-    const key = `${city.trim().toLowerCase()}|${state.toLowerCase()}`;
-    const legacy = cityByKey.get(key);
     const composite = toNumber(row.composite_score_default, 0);
     const hasLiveData = composite > 0;
+    const density = toNumber(row.population_density, 0);
     return {
       id: 200000 + index,
-      cityId: legacy?.id ?? row.id, // prefer cities.id for watchlist linkage
+      cityId: row.id, // us_cities_scored.id is now canonical
       city,
       state,
-      county: legacy?.county ?? null,
+      county: null,
       metroArea: row.metro_area ?? null,
       tier: tierFromScore(composite),
       compositeScore: composite,
       population: toNumber(row.population, 0),
-      competitorCount: toNumber(legacy?.competitor_count, 0),
-      marketType: legacy?.market_type ?? marketTypeFromPopulation(toNumber(row.population, 0)),
+      competitorCount: toNumber(row.summer_camp_count, 0),
+      marketType: marketTypeFromDensity(density),
       isNonRegistration: row.is_registration_state === false,
-      lastScrapedAt: row.scored_at ?? legacy?.last_scraped_at ?? null,
+      lastScrapedAt: row.scored_at ?? null,
       source: "live",
       hasLiveData,
     };
@@ -351,15 +339,16 @@ export async function getNearbyMarkets(opts: {
 
   const collected: any[] = [];
   const seen = new Set<string>([opts.cityId]);
+  const selectCols = "id, city_name, state_name, state_abbr, metro_area, composite_score_default, population";
 
   if (opts.metroArea) {
     const { data } = await supabase
-      .from("cities")
-      .select("id, city, state, metro_area, county, composite_score, tier, population")
+      .from("us_cities_scored")
+      .select(selectCols)
       .eq("metro_area", opts.metroArea)
-      .gt("composite_score", 0)
+      .gt("composite_score_default", 0)
       .neq("id", opts.cityId)
-      .order("composite_score", { ascending: false })
+      .order("composite_score_default", { ascending: false })
       .limit(limit);
     (data ?? []).forEach((row: any) => {
       if (!seen.has(row.id)) {
@@ -372,12 +361,12 @@ export async function getNearbyMarkets(opts: {
   if (collected.length < limit && opts.state) {
     const remaining = limit - collected.length;
     const { data } = await supabase
-      .from("cities")
-      .select("id, city, state, metro_area, county, composite_score, tier, population")
-      .eq("state", opts.state)
-      .gt("composite_score", 0)
+      .from("us_cities_scored")
+      .select(selectCols)
+      .eq("state_name", opts.state)
+      .gt("composite_score_default", 0)
       .neq("id", opts.cityId)
-      .order("composite_score", { ascending: false })
+      .order("composite_score_default", { ascending: false })
       .limit(remaining + seen.size);
     (data ?? []).forEach((row: any) => {
       if (collected.length >= limit) return;
@@ -388,16 +377,19 @@ export async function getNearbyMarkets(opts: {
     });
   }
 
-  return collected.slice(0, limit).map((row: any) => ({
-    cityId: row.id,
-    city: row.city,
-    state: normalizeState(row.state),
-    metroArea: row.metro_area ?? null,
-    county: row.county ?? null,
-    compositeScore: toNumber(row.composite_score, 0),
-    tier: row.tier ?? tierFromScore(toNumber(row.composite_score, 0)),
-    population: toNumber(row.population, 0),
-  }));
+  return collected.slice(0, limit).map((row: any) => {
+    const composite = toNumber(row.composite_score_default, 0);
+    return {
+      cityId: row.id,
+      city: row.city_name,
+      state: normalizeState(row.state_name ?? row.state_abbr),
+      metroArea: row.metro_area ?? null,
+      county: null,
+      compositeScore: composite,
+      tier: tierFromScore(composite),
+      population: toNumber(row.population, 0),
+    };
+  });
 }
 
 export function buildRankedMarketsCsv(markets: RankedMarket[]) {

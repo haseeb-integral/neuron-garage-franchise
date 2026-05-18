@@ -56,7 +56,7 @@ export function MarketsMap({ markets, onSelect }: Props) {
     let cancelled = false;
     setLoading(true);
     supabase
-      .from("cities")
+      .from("us_cities_scored")
       .select("id, latitude, longitude")
       .in("id", cityIds)
       .then(({ data, error }) => {

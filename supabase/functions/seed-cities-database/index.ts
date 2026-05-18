@@ -317,12 +317,12 @@ const NCES_CITY_ALIASES: Record<string, string[]> = {
 async function fetchNcesForCity(cityName: string, stateAbbr: string) {
   try {
     const fips = STATE_FIPS[stateAbbr];
-    if (!fips) return { data: null, error: "no state fips" };
+    if (!fips) return { data: null, schools: [], error: "no state fips" };
     let all = NCES_STATE_CACHE.get(stateAbbr);
     if (!all) {
       const url = `https://educationdata.urban.org/api/v1/schools/ccd/directory/${NCES_YEAR}/?fips=${fips}`;
       const r = await fetch(url);
-      if (!r.ok) return { data: null, error: `NCES ${r.status}` };
+      if (!r.ok) return { data: null, schools: [], error: `NCES ${r.status}` };
       const j = await r.json();
       all = (j?.results ?? []) as any[];
       NCES_STATE_CACHE.set(stateAbbr, all);
@@ -330,19 +330,15 @@ async function fetchNcesForCity(cityName: string, stateAbbr: string) {
     const key = `${cityName.trim().toUpperCase()}|${stateAbbr}`;
     const aliases = NCES_CITY_ALIASES[key];
     const targets = new Set(aliases ?? [cityName.trim().toUpperCase()]);
-    // CCD `city_location` is uppercase. Match exact city OR mailing city as fallback.
     const inCity = all.filter((s) => {
       const loc = String(s.city_location ?? "").toUpperCase();
       const mail = String(s.city_mailing ?? "").toUpperCase();
       return targets.has(loc) || targets.has(mail);
     });
-    // All open public schools in the city (any grade level, K–12)
     const openSchools = inCity.filter((s) => Number(s.school_status) === 1);
     const schoolCount = openSchools.length;
     const schoolEnrollment = openSchools.reduce((sum, s) => sum + (num(s.enrollment) ?? 0), 0);
 
-    // Elementary subset: serves grade 5 or lower (matches NCES "elementary serving")
-    // CCD `lowest_grade_offered` is numeric: -1=PK, 0=KG, 1..12=grades
     const elem = openSchools.filter((s) => {
       const lg = Number(s.lowest_grade_offered);
       return Number.isFinite(lg) && lg <= 5;
@@ -358,11 +354,64 @@ async function fetchNcesForCity(cityName: string, stateAbbr: string) {
         public_elementary_enrollment: elemEnrollment || null,
         nces_last_updated: NCES_LAST_UPDATED,
       },
+      schools: openSchools,
       error: null,
     };
   } catch (e) {
-    return { data: null, error: (e as Error).message };
+    return { data: null, schools: [], error: (e as Error).message };
   }
+}
+
+// Map an NCES grade code ("-1"=PK, "0"=KG, "1".."12") to the text our public_schools table uses.
+function ncesGradeToText(g: unknown): string | null {
+  const n = Number(g);
+  if (!Number.isFinite(n)) return null;
+  if (n === -1) return "PK";
+  if (n === 0) return "KG";
+  if (n >= 1 && n <= 12) return String(n).padStart(2, "0");
+  return null;
+}
+
+// Derive school_level from lowest/highest grade per NCES convention.
+function deriveSchoolLevel(lowG: unknown, highG: unknown): string | null {
+  const lo = Number(lowG), hi = Number(highG);
+  if (!Number.isFinite(lo) || !Number.isFinite(hi)) return null;
+  if (hi <= 5) return "elementary";
+  if (lo >= 6 && hi <= 8) return "middle";
+  if (lo >= 9) return "high";
+  if (lo <= 5 && hi >= 9) return "other"; // combined
+  if (lo >= 6 && hi >= 9) return "high";
+  return "other";
+}
+
+function mapNcesSchoolRow(s: any, cityScoredId: string | null) {
+  return {
+    nces_id: String(s.ncessch ?? s.nces_school_id ?? ""),
+    school_name: String(s.school_name ?? "(unknown)"),
+    district_name: s.lea_name ?? null,
+    district_nces_id: s.leaid != null ? String(s.leaid) : null,
+    street_address: s.street_location ?? s.street_mailing ?? null,
+    city_name: s.city_location ?? s.city_mailing ?? null,
+    state_abbr: s.state_location ?? s.state_mailing ?? null,
+    zip: s.zip_location ?? s.zip_mailing ?? null,
+    latitude: num(s.latitude),
+    longitude: num(s.longitude),
+    phone: s.phone ?? null,
+    us_cities_scored_id: cityScoredId,
+    lowest_grade_offered: ncesGradeToText(s.lowest_grade_offered),
+    highest_grade_offered: ncesGradeToText(s.highest_grade_offered),
+    school_level: deriveSchoolLevel(s.lowest_grade_offered, s.highest_grade_offered),
+    school_type: s.school_type != null ? String(s.school_type) : null,
+    is_charter: s.charter === 1 || s.charter === "1" || s.charter === true,
+    is_magnet: s.magnet === 1 || s.magnet === "1" || s.magnet === true,
+    school_status: s.school_status != null ? String(s.school_status) : null,
+    enrollment: num(s.enrollment),
+    teachers_fte: num(s.teachers_fte),
+    nces_year: NCES_YEAR,
+    nces_last_updated: NCES_LAST_UPDATED,
+    raw: s,
+    updated_at: new Date().toISOString(),
+  };
 }
 
 function percentileRank(sortedAsc: number[], v: number): number {

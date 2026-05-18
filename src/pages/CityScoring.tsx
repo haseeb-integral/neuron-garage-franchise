@@ -1970,6 +1970,7 @@ const CityScoring = () => {
                   title="Top-N ranked view"
                 >Top-N</button>
               </div>
+              <button
                 onClick={() => setWatchlistOnly((v) => !v)}
                 className={`flex items-center gap-1 text-xs font-medium hover:underline ${watchlistOnly ? "text-[#0ea66e]" : "text-[#526078]"}`}
                 title="Show only saved cities"

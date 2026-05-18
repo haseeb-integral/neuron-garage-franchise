@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_query_history: {
+        Row: {
+          created_at: string
+          id: string
+          parent_id: string | null
+          query: string
+          response: Json
+          thread_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          parent_id?: string | null
+          query: string
+          response: Json
+          thread_id: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          parent_id?: string | null
+          query?: string
+          response?: Json
+          thread_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_query_history_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_query_history"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidate_checklist_items: {
         Row: {
           candidate_id: string

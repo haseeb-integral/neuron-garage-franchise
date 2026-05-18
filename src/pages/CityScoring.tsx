@@ -1962,18 +1962,7 @@ const CityScoring = () => {
               <p className="text-[11px] text-[#8794ab]">({filtered.length} markets found)</p>
             </div>
             <div className="flex items-center gap-3">
-              <div className="inline-flex rounded-md border border-[#dbe4f2] overflow-hidden text-[10px] font-semibold">
-                <button
-                  onClick={() => setLeftViewMode("table")}
-                  className={`px-2 py-1 ${leftViewMode === "table" ? "bg-[#174be8] text-white" : "bg-white text-[#526078] hover:bg-[#f3f6fc]"}`}
-                  title="Classic paginated table"
-                >Table</button>
-                <button
-                  onClick={() => setLeftViewMode("topn")}
-                  className={`px-2 py-1 ${leftViewMode === "topn" ? "bg-[#174be8] text-white" : "bg-white text-[#526078] hover:bg-[#f3f6fc]"}`}
-                  title="Top-N ranked view"
-                >Top-N</button>
-              </div>
+
               <button
                 onClick={() => setWatchlistOnly((v) => !v)}
                 className={`flex items-center gap-1 text-xs font-medium hover:underline ${watchlistOnly ? "text-[#0ea66e]" : "text-[#526078]"}`}

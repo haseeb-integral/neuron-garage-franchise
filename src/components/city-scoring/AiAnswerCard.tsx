@@ -1,0 +1,134 @@
+import { useState } from "react";
+import { ChevronDown, ChevronUp, Sparkles, AlertTriangle, Loader2, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+
+export type AiResult = {
+  summary: string;
+  filters: { state: string | null; minScore: number | null; tier: string | null };
+  weightAdjustments: Record<string, number>;
+  reasoning_steps: string[];
+  dataGaps: string[];
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  demand: "Demand",
+  pricingPower: "Pricing Power",
+  competitiveLandscape: "Competition",
+  franchiseeSupply: "Franchisee Supply",
+  easeOfOperations: "Ops",
+  parentMindset: "Parent Mindset",
+};
+
+export interface AiAnswerCardProps {
+  result: AiResult;
+  query: string;
+  turnCount: number;
+  onRefine: (followUp: string) => void;
+  loading: boolean;
+}
+
+export function AiAnswerCard({ result, query, turnCount, onRefine, loading }: AiAnswerCardProps) {
+  const [showReasoning, setShowReasoning] = useState(false);
+  const [followUp, setFollowUp] = useState("");
+
+  const filterChips: string[] = [];
+  if (result.filters.state) filterChips.push(`state: ${result.filters.state}`);
+  if (result.filters.tier) filterChips.push(`tier: ${result.filters.tier}`);
+  if (result.filters.minScore != null) filterChips.push(`score ≥ ${result.filters.minScore}`);
+
+  const weightChips = Object.entries(result.weightAdjustments)
+    .filter(([, v]) => v !== 0)
+    .map(([k, v]) => `${CATEGORY_LABELS[k] ?? k} ${v > 0 ? "+" : ""}${v}`);
+
+  const atCap = turnCount >= 6;
+
+  return (
+    <div className="mb-4 bg-white border border-[#d6cdf5] rounded-xl p-4 shadow-sm">
+      <div className="flex items-start gap-2 mb-2">
+        <Sparkles size={16} className="text-[#7c3aed] mt-0.5" />
+        <div className="flex-1">
+          <div className="text-xs text-[#8794ab] mb-1">You asked: "{query}"</div>
+          <div className="text-sm text-[#343a40] leading-relaxed">{result.summary}</div>
+        </div>
+      </div>
+
+      {(filterChips.length > 0 || weightChips.length > 0) && (
+        <div className="flex flex-wrap gap-1.5 mt-3">
+          {filterChips.map((c) => (
+            <span key={c} className="text-[11px] px-2 py-0.5 rounded-full bg-[#eaf0ff] text-[#174be8] font-medium">
+              filter · {c}
+            </span>
+          ))}
+          {weightChips.map((c) => (
+            <span key={c} className="text-[11px] px-2 py-0.5 rounded-full bg-[#f1ebff] text-[#7c3aed] font-medium">
+              weight · {c}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {result.dataGaps.length > 0 && (
+        <div className="mt-3 flex items-start gap-2 p-2 rounded-md bg-[#fff7ed] border border-[#fed7aa]">
+          <AlertTriangle size={14} className="text-[#ea580c] mt-0.5" />
+          <div className="text-xs text-[#9a3412]">
+            <span className="font-medium">Data gaps:</span> {result.dataGaps.join(" · ")}
+          </div>
+        </div>
+      )}
+
+      {result.reasoning_steps.length > 0 && (
+        <div className="mt-3">
+          <button
+            onClick={() => setShowReasoning((v) => !v)}
+            className="flex items-center gap-1 text-xs font-medium text-[#6c757d] hover:text-[#343a40]"
+          >
+            {showReasoning ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+            {showReasoning ? "Hide" : "Show"} AI reasoning ({result.reasoning_steps.length} steps)
+          </button>
+          {showReasoning && (
+            <ol className="mt-2 space-y-1 text-xs text-[#495057] list-decimal list-inside">
+              {result.reasoning_steps.map((s, i) => (
+                <li key={i}>{s}</li>
+              ))}
+            </ol>
+          )}
+        </div>
+      )}
+
+      <div className="mt-4 pt-3 border-t border-[#eee]">
+        {atCap ? (
+          <div className="text-xs text-[#8794ab]">
+            Refinement limit reached (6 turns). Start a new search to keep exploring.
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <Input
+              value={followUp}
+              onChange={(e) => setFollowUp(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && followUp.trim()) {
+                  onRefine(followUp.trim());
+                  setFollowUp("");
+                }
+              }}
+              placeholder={`Refine →  e.g. "now only show A-tier" (${6 - turnCount} refinements left)`}
+              className="h-9 text-sm"
+              disabled={loading}
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={loading || !followUp.trim()}
+              onClick={() => { onRefine(followUp.trim()); setFollowUp(""); }}
+              className={cn("h-9")}
+            >
+              {loading ? <Loader2 size={14} className="animate-spin" /> : <ArrowRight size={14} />}
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -1,107 +1,103 @@
-## Goal
+# City Search — End-to-End Audit & Fix Plan
 
-Add AI-powered "Ask" search + Top-N ranked view to City Search, using Lovable AI Gateway (Gemini 2.5 Flash). Replace default table view with a ranked Top-N list, add a prominent Ask AI bar that re-ranks results and explains its reasoning, with multi-turn refinement and saved query history.
+## Plain-English summary (for Brett + Haseeb)
 
-## Scope
+Right now the City Search page is showing **two tables stacked on top of each other**:
 
-In:
-- New `ai-city-query` edge function (Lovable AI Gateway, structured JSON output)
-- New `ai_query_history` table (per-user, threaded for multi-turn)
-- New UI: `AskAiBar`, `AiAnswerCard` (with collapsible reasoning chain), `RankedMarketsList`
-- Wire into existing `cityScoringStore` + `clientSubWeightScoring.ts`
-- Default landing = Top 20 ranked **by user's current weights** (recomputed client-side)
-- View toggle: 10 / 20 / 50 / All (table view stays available)
-- Query history dropdown (Google-style) reading from `ai_query_history`
-- Doc sync (PROJECT_CONTEXT, HOW_IT_WORKS, OPEN_TASKS, GLOSSARY, APIS)
+1. **The original ranked table** — connected to the legacy `cities` source. Has the good stuff: click a row → center panel fills in, "Show Formula", Save to Watchlist, Compare, suburb expansion, tier labels.
+2. **"Table N" (the Top-10 / Top-20 list)** — connected to the new pre-seeded `us_cities_scored` database layer. Looks ugly (oversized unaligned fonts), and when you click a row **nothing happens** in the center panel because the center panel is still wired to the *old* table's data source.
 
-Out:
-- New metrics / data pulls (AI only operates on 14 live metrics)
-- Edits to scoring math (AGENTS Rule: Sam only)
-- Voice input, sharing threads across users
+That's the root cause of every symptom you described:
+- Two tables = confusing
+- Top-10 / Top-20 toggle is pointless because the table is already sorted
+- Clicking Table N rows = dead clicks (center panel can't find the city in the old data source)
+- Tier labels in Table N (A-Top, B-Strong…) are the *good* ones we want to keep
+- "Ask AI" still 401s because the edge function call doesn't wait for a fresh session token
 
-## UI Flow
+**The fix is to delete Table N, keep ONE table, and rewire everything (center panel, drawer, watchlist, formula, compare, Ask AI) to the new `us_cities_scored` pre-seeded database layer.** Old `cities` references get removed.
 
-```text
-┌─ City Search ───────────────────────────────────────────────┐
-│ [Ask AI: "best Texas markets for young families…"   ↵]  ▾   │  ← query history dropdown
-│   ↑ prominent at top                                         │
-├──────────────────────────────────────────────────────────────┤
-│ ┌─ AI Answer ─────────────────────────────────────────────┐ │
-│ │ Summary: Frisco, Plano, Round Rock lead on demand+      │ │
-│ │ schools. Filtered TX, min_income ≥ $90k.                │ │
-│ │ Applied: state=TX, weights demand+15, schools+10        │ │
-│ │ ▾ Show AI reasoning (4 steps)                           │ │
-│ │ [Refine →                                          ↵]   │ │  ← multi-turn
-│ └─────────────────────────────────────────────────────────┘ │
-├──────────────────────────────────────────────────────────────┤
-│ View: ◉ Top 20  ○ Top 10  ○ Top 50  ○ All  |  ⊞ Table       │
-│ ─────────────────────────────────────────────────────────── │
-│ 1.  Frisco, TX        92  Tier A   [why?]                   │
-│ 2.  Plano, TX         90  Tier A   [why?]                   │
-│ ... (re-ranked using user's current weights + AI nudges)    │
-└──────────────────────────────────────────────────────────────┘
-```
+---
 
-## Architecture
+## What changes
 
-**Edge function** (`supabase/functions/ai-city-query/index.ts`)
-- Input: `{ query, threadId?, previousMessages?[] }`
-- Calls Lovable AI Gateway (`google/gemini-2.5-flash`) with structured output schema
-- Returns: `{ summary, filters:{state?, minScore?, tier?}, weightAdjustments:{[category]:delta}, reasoning_steps:string[], dataGaps:string[] }`
-- Validates all metric/category keys against `sowMetricRegistry.ts` before returning — strips hallucinated keys
-- Handles 429 / 402 with explicit error codes for frontend toast
-- Persists query+response to `ai_query_history`
+### 1. Remove Table N entirely
+- Delete the Top-10 / Top-20 toggle and the Table N component
+- Delete the "Top N swap" side-by-side preview (was a temporary comparison)
+- Keep **one** ranked table as the primary view
 
-**Database** (one migration)
-```sql
-create table ai_query_history (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null default auth.uid(),
-  thread_id uuid not null,         -- groups multi-turn conversations
-  parent_id uuid,                  -- previous turn in thread
-  query text not null,
-  response jsonb not null,         -- full structured response
-  created_at timestamptz default now()
-);
--- RLS: user_id = auth.uid() for all ops
--- Index on (user_id, created_at desc) for history dropdown
-```
+### 2. Adopt the good bits from Table N into the surviving table
+- Tier label format: `A — Top`, `B — Strong`, `C — Watch`, `D — Pass` (from Table N)
+- Keep original table's: row click → center panel, Save to Watchlist, Compare checkbox, Suburb expand, Show Formula
 
-**Frontend** (3 components + store changes)
-- `AskAiBar.tsx` — input + history dropdown (last 10 queries) + Enter/Esc/↑↓ keyboard nav
-- `AiAnswerCard.tsx` — summary, applied filters/weights chips, collapsible reasoning chain, "Refine →" input for multi-turn
-- `RankedMarketsList.tsx` — Top-N card/row view with rank number, composite score, tier badge, click to open existing `MarketDetailDrawer`
-- `cityScoringStore.ts` adds: `aiThreadId`, `aiTurns: AiTurn[]`, `viewMode: 'ranked'|'table'`, `topN: 10|20|50|'all'`
-- Ranking uses **user's current applied weights** (Q1 = option A). When AI returns weight nudges, they apply on top via existing `clientSubWeightScoring.ts`. User sees badge "ranked by your weights + AI adjustments".
+### 3. Rewire data source: `cities` → `us_cities_scored`
+Files that currently read from the old `cities` table and need to point at `us_cities_scored`:
+- `src/pages/CityScoring.tsx` — main page state + row selection
+- `src/components/city-scoring/MarketDetailDrawer.tsx` — right-side drawer
+- `src/components/city-scoring/NearbyMarketsPanel.tsx` — suburb / nearby logic
+- Center metrics panel — currently can't resolve `city_id` from new rows
+- Watchlist insert/read — needs to store the `us_cities_scored.id`, not legacy id
+- Compare modal — same id alignment
+- "Show Formula" modal — pull inputs/weights from `us_cities_scored` columns
 
-## Build Steps
+### 4. Fix "Ask AI is not authenticated"
+- `ai-city-query` edge function call must:
+  - `await supabase.auth.getSession()` and refresh if expired before calling
+  - Pass the bearer token explicitly in `Authorization` header
+  - On 401, retry once after `supabase.auth.refreshSession()`
+- Add a user-visible "Session expired — sign in again" toast instead of a silent fail
 
-1. Migration: create `ai_query_history` + RLS + index
-2. Edge function `ai-city-query` with system prompt referencing `sowMetricRegistry`, structured output, history persistence
-3. Provision `LOVABLE_API_KEY` (already present per secrets list — verify)
-4. Build `AskAiBar` + history dropdown (queries from `ai_query_history`)
-5. Build `AiAnswerCard` with collapsible reasoning + Refine input
-6. Build `RankedMarketsList` + view toggle (10/20/50/all + table)
-7. Wire into `CityScoring.tsx` page above existing `FilterBar`
-8. Store additions + multi-turn thread handling (cap 6 turns)
-9. Doc sync: draft updates, wait for "go"
+### 5. Cleanup
+- Remove any remaining `from('cities')` queries in City Search code paths
+- Remove dead helpers in `src/lib/cityScoringLiveData.ts` that referenced the legacy source
+- Keep live API widgets hidden (already done), code preserved
 
-## Key Decisions (locked from your answers)
+---
 
-- **Default ranking when user has custom weights:** Top 20 by user's current weights (option A)
-- **Query history:** Supabase table `ai_query_history`, Google-style dropdown
-- **Multi-turn:** Yes, "Refine →" on answer card, cap 6 turns per thread
-- **Reasoning chain:** Yes, collapsed by default, shows data gaps explicitly
-- **AI provider:** Lovable AI Gateway, model `google/gemini-2.5-flash`
+## Why one table, not two
 
-## Risks
+The Top-10 / Top-20 toggle in Table N was redundant because the main table is already sorted by composite score — the top N are just the first N rows. A separate widget for "the first 10 rows of the table directly below it" adds no information and doubles the maintenance surface. One sorted, filterable, clickable table is the right primitive.
 
-- AI hallucinates metric keys → mitigated by registry validation in edge function
-- Multi-turn token cost → mitigated by 6-turn cap + history truncation
-- User confusion "why did ranking change?" → mitigated by visible applied-filters/weights chips on AiAnswerCard
+---
 
-## What I'm NOT doing
+## Files touched (technical)
 
-- New data sources, scoring math changes, new categories
-- Replacing the existing table view (it stays as toggle option)
-- Sharing queries across users
+- `src/pages/CityScoring.tsx` — remove Table N + toggle, single table, rewire selection state to `us_cities_scored.id`
+- `src/components/city-scoring/CityScoringTable.tsx` (or equivalent) — adopt A/B/C/D tier labels
+- `src/components/city-scoring/MarketDetailDrawer.tsx` — query `us_cities_scored` by id
+- `src/components/city-scoring/NearbyMarketsPanel.tsx` — same
+- `src/components/city-scoring/ShowFormulaModal.tsx` — pull from new schema columns
+- Watchlist + Compare components — update foreign key target
+- `src/lib/cityScoringLiveData.ts` — remove dead legacy helpers
+- `supabase/functions/ai-city-query/index.ts` — none (server unchanged); client call site gets the auth fix
+- Client AI call site (likely in `CityScoring.tsx` or an `AskAI` component) — session-aware invoke
+
+No database migrations needed — `us_cities_scored` already exists and is seeded.
+
+---
+
+## Risk + undo
+
+- **Risk:** Medium. Multiple components rewired in one pass. If a column name in `us_cities_scored` doesn't match what the old drawer expected, that field shows blank until mapped.
+- **Mitigation:** Before writing, I'll read the actual `us_cities_scored` schema and write a column-mapping table (old field → new field) and confirm with you before editing components.
+- **Undo:** Each component edit is reversible via Lovable history. No destructive DB changes.
+
+---
+
+## Order of execution (if approved)
+
+1. Read `us_cities_scored` schema and write the old→new field mapping (show you before editing)
+2. Fix Ask AI auth (smallest, isolated, unblocks Brett's testing)
+3. Delete Table N + Top-N toggle
+4. Rewire center panel + drawer to `us_cities_scored`
+5. Rewire watchlist + compare + formula modal
+6. Adopt A/B/C/D tier labels in surviving table
+7. Remove dead legacy `cities` queries
+8. Doc sync draft for `PROJECT_CONTEXT.md` + `OPEN_TASKS.md` (per AGENTS.md Rule 9 — wait for your "go" before writing docs)
+
+---
+
+## Note on chat preservation
+
+Noted — when Brett asks something I'll keep that thread distinct from your implementation thread so you can scroll back to either independently. I can't physically split the chat UI, but I'll **label every reply** with `[For Brett]` or `[For Haseeb — implementation]` so you can visually separate them.
+
+Reply **"go"** to implement, or tell me which step to drop/reorder.

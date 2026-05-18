@@ -416,14 +416,18 @@ const CityScoring = () => {
         return;
       }
 
-      const invokeOnce = () =>
-        supabase.functions.invoke("ai-city-query", {
+      const invokeOnce = async () => {
+        const { data: s } = await supabase.auth.getSession();
+        const token = s?.session?.access_token;
+        return supabase.functions.invoke("ai-city-query", {
           body: {
             query,
             threadId: aiThreadId,
             previousTurns: aiTurns.map((t) => ({ query: t.query, response: t.response })),
           },
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
+      };
 
       let { data, error } = await invokeOnce();
       // One retry on auth failure after forcing a refresh — handles edge cases

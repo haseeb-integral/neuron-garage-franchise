@@ -146,7 +146,6 @@ Deno.serve(async (req) => {
     // Small pause between batches to stay friendly with Open-Meteo
     await new Promise((res) => setTimeout(res, 250));
   }
-  }
 
   const returned = cities?.length ?? 0;
   const nextOffset = returned === limit ? offset + limit : null;

@@ -202,7 +202,9 @@ async function fetchStateSignals(stateAbbr: string): Promise<StateSignals> {
             const sN = num(stem.value), tN = num(tot.value);
             if (sN != null && tN != null && tN > 0) {
               out.stem_job_concentration = Math.round((sN / tN) * 10000) / 100;
-              out.bls_last_updated = `${stem.year}-${String(["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].indexOf(stem.periodName)+1).padStart(2,"0")}-01`;
+              const monthIdx = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].indexOf(stem.periodName);
+              const monthNum = monthIdx >= 0 ? monthIdx + 1 : 12; // fall back to Dec for Annual / unknown
+              out.bls_last_updated = `${stem.year}-${String(monthNum).padStart(2,"0")}-01`;
             }
           }
         }

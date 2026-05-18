@@ -39,19 +39,22 @@ interface WeatherMetrics {
   summer_weather_index: number;
 }
 
-async function fetchWeather(lat: number, lng: number): Promise<WeatherMetrics | null> {
-  // 5 years of daily data, Fahrenheit + inches for client-friendly units
+async function fetchWeather(lat: number, lng: number): Promise<{ metrics: WeatherMetrics | null; err: string | null }> {
+  // 3 years of daily data (smaller payload = far fewer rate-limit hits on Open-Meteo free tier)
   const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}` +
-    `&start_date=2020-01-01&end_date=2024-12-31` +
+    `&start_date=2022-01-01&end_date=2024-12-31` +
     `&daily=temperature_2m_max,precipitation_sum` +
     `&temperature_unit=fahrenheit&precipitation_unit=inch&timezone=auto`;
   const r = await fetch(url);
-  if (!r.ok) return null;
+  if (!r.ok) {
+    const txt = await r.text().catch(() => "");
+    return { metrics: null, err: `HTTP ${r.status}: ${txt.slice(0, 120)}` };
+  }
   const j = await r.json();
   const dates: string[] = j?.daily?.time ?? [];
   const tmax: (number | null)[] = j?.daily?.temperature_2m_max ?? [];
   const precip: (number | null)[] = j?.daily?.precipitation_sum ?? [];
-  if (dates.length === 0) return null;
+  if (dates.length === 0) return { metrics: null, err: "empty daily array" };
 
   let summerTempSum = 0, summerTempN = 0;
   let summerPrecipDays = 0;

@@ -2020,22 +2020,8 @@ const CityScoring = () => {
               </button>
             </div>
           )}
-          {leftViewMode === "topn" ? (
-            <RankedMarketsList
-              markets={filtered}
-              topN={topN}
-              onTopNChange={setTopN}
-              selectedKey={{ city: selectedCity, state: selectedState }}
-              rankedByLabel={hasOverrides ? "Ranked by your weights" : "Ranked by default weights"}
-              onSelect={(m) => {
-                const sample = sampleCities.find((s) => sameMarket(s.city, s.state, m.city, m.state));
-                setSelectedMarketKey({ city: m.city, state: m.state });
-                if (sample) setSelectedId(sample.id);
-                else setSelectedId(m.id);
-              }}
-            />
-          ) : (
           <>
+
           <div className="overflow-hidden flex-1">
             <div className="grid grid-cols-[16px_14px_minmax(0,1fr)_46px_72px_18px_16px] items-center gap-x-2 px-1 py-2 text-[9.5px] uppercase tracking-wide text-[#8794ab] border-b border-[#eef2f7]">
               <span></span>

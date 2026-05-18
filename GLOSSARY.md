@@ -9,7 +9,7 @@
 ## Product
 
 - **City Search** — the `/city-scoring` screen; ranks U.S. cities by composite fit score.
-- **Teacher Search** — the `/teacher-prospects` screen; finds K–6 / retired / camp teachers in target cities. (Route name still says "teacher-prospects".)
+- **Teacher Search** — the `/teacher-prospects` screen; finds K–6, retired, camp/enrichment, and secondary middle/high hands-on (STEM/maker/shop/art) teachers in target cities. (Route name still says "teacher-prospects".)
 - **Email Outreach** — the `/email-outreach` screen; AI-personalized outbound emails via SmartLead.
 - **Candidate Pipeline** — the `/candidate-pipeline` Kanban: New Lead → Qualification → Confirmation → Signing.
 - **Onboarding** — the `/onboarding` screen; 7-step tracker per franchisee from signing through grand opening.

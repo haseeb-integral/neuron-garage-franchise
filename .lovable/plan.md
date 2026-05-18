@@ -1,107 +1,151 @@
+## Goal
 
-## Part 1 — The proactive walk you asked for
+Take honest metric coverage in `us_cities_scored` from ~14 of 46 fully populated to ~26 of 46, **without spending a dollar or adding a single API key**. All sources below are either already wired, free + keyless, or already have a working `*_API_KEY` in Lovable Cloud.
 
-I walked every current screen + every future screen on `OPEN_TASKS.md` and pattern-matched what data each one needs. Here is the full gap list, grouped by urgency.
+After this, the only remaining gaps are Apify (~$5.8k/yr decision for Brett) and GreatSchools ($630/yr for Brett).
 
-### A. Gaps that are now blocking — fix this sprint
+## Order of execution (cheapest → most valuable first)
 
-| # | Gap | Why it matters | Screens affected |
-|---|---|---|---|
-| A1 | `seed-cities-database` doesn't upsert into `public_schools` | The moment anyone re-seeds or adds new cities, `public_schools` drifts from cached counts. Same NCES response, zero extra API calls. | City Search, Teacher Search seeding, "Show Formula" school list |
-| A2 | `us_cities_scored.composite_score_default` is null on all 948 rows | City Search can't rank nationally — the whole point of the seeded table. Cause: seed function only populated raw signals, never ran the normalize/score pass. | City Search (national ranked list) |
-| A3 | `teacher_prospects` has no FK to `public_schools` (only free-text `school`) | Can't join a teacher to her school record, can't compute "schools with ≥3 prospects" cluster signal, can't dedupe Apollo + Apify hits on the same school. | Teacher Search, Email Outreach personalization |
-| A4 | `teacher_prospects` has no FK to `us_cities_scored` (only free-text `city`/`state`) | Same problem at city level — can't reliably filter "teachers in my favorited cities". Today's matching is string compare. | Teacher Search, Dashboard counts |
-| A5 | No `teacher_type` / `subject` / `segment` columns on `teacher_prospects` | Fit scoring per `TEACHER_IDEAL_PROFILE.md` needs these. Right now everything is mapped to `K-2 / 3-5 / 6-8` via fragile string parsing of `grade`. | Teacher Search fit score, all four target segments |
+### Step 1 — NCES rollups we already have raw data for
+**Zero new API calls.** All 38,196 rows in `public_schools` are already cached.
 
-### B. Gaps that block the next sprint (Task #11, #12, #17, #18, #19)
+In `seed-cities-database`, add post-loop aggregation per city:
+- `charter_elementary_count` = COUNT(`public_schools` WHERE `us_cities_scored_id = X AND is_charter = true AND is_elementary_serving = true`)
+- `school_hosted_camp_count` — derive later from Firecrawl pass; **for now, leave null** (don't fake the number — Rule from AGENTS.md)
+- `school_based_summer_camp_count` — same, leave null until Firecrawl runs
 
-| # | Gap | When it bites |
+Run as `{ rollups_only: true }` — ~5 seconds, no external API calls.
+
+**Closes:** `charter_elementary_count` for all 948 cities.
+
+### Step 2 — Name-vs-Meaning rename (forced by Step 1)
+Per AGENTS.md Rule 10. Currently:
+- `charter_elementary_count` ← only counts elementary-serving charters (correct)
+- `private_elementary_count` ← will be filled in Step 6 with **all** private K–12 in city, not just elementary
+
+If Step 6 will populate the field with all-grade private schools, the name lies. Two choices:
+- **(a)** Keep name strict — Step 6 only writes elementary-serving private schools. Adds a private-school grade filter to NCES PSS query.
+- **(b)** Rename `private_elementary_count` → `private_school_count` + add a separate `private_elementary_count` populated from grade filter.
+
+**Recommended: (a)** — keeps existing column meaning intact, smaller migration. Step 6 will filter by `lowest_grade_offered ≤ 5`.
+
+### Step 3 — BLS OEWS Occupational Wages
+**Zero new keys** (`BLS_API_KEY` already in env).
+
+Add two new BLS series to `metricFetchers.ts`:
+- OEWS code `39-9011` (Childcare Workers) → `childcare_nanny_hourly_rate_proxy`
+- OEWS code `25-3099` or `39-9032` (Recreation/Camp Counselors) → `guide_wage_proxy`
+
+Pulled per metro, mapped to all cities in that metro. ~948 calls, well under daily limit, batched over an hour.
+
+**Closes:** 2 metrics (1 pricing_power, 1 ease_of_operations).
+
+### Step 4 — Weather (Open-Meteo, free, keyless)
+**Zero new keys.** Open-Meteo Historical Weather API is fully free, no signup.
+
+New file: `supabase/functions/_shared/weatherFetcher.ts`. For each city, pull 5-year climate normals for lat/lng and derive:
+- `summer_weather_index` (composite of June–Aug temps + precipitation days)
+- `avg_peak_summer_temperature` (mean Jul–Aug daily high)
+- `days_above_100f` (annual count)
+
+948 calls, batched 50/sec per Open-Meteo limits → ~20 seconds. One-time pull, never needs refresh.
+
+**Closes:** 3 demand metrics.
+
+### Step 5 — Google Trends (free, keyless)
+**Zero new keys.** Use the `google-trends-api` npm package via Deno's npm: specifier.
+
+New `seed-cities-google-trends` edge function. For each city:
+- Query: `"summer camp [city]"` → 12-month relative interest → `google_search_demand_summer_camp`
+- Query: `"summer day camp [city]"` → `google_search_demand_summer_day_camp`
+
+Rate-limit: Google Trends silently blocks at ~1 req/sec. Run 948 cities × 2 queries = 1,896 calls over ~32 min with 1s delay. Schedule as a one-time invocation.
+
+**Closes:** 2 competitive_landscape metrics.
+
+### Step 6 — BEA state-level RPP fallback + NCES PSS for private schools
+**Zero new keys.** Both already wired.
+
+Two patches to `seed-cities-database`:
+
+**6a — BEA RPP fallback:** Today only 471/948 cities have `cost_of_living_index` (metros only). Add fallback: when metro RPP missing, use state-level RPP (always available). Note in `raw` JSON that value is state-imputed. Brings coverage to 948/948 with a confidence flag.
+
+**6b — NCES Private School Universe (PSS):** Same free Urban Institute endpoint as CCD. Pull all private schools per city, filter `lowest_grade_offered ≤ 5`, count, write to `private_elementary_count`. ~3,000 cities-worth of API calls; rate-limited, runs in ~10 min.
+
+**Closes:** `cost_of_living_index` coverage gap + `private_elementary_count`.
+
+## What this unlocks
+
+| Metric | Before | After |
 |---|---|---|
-| B1 | `teacher_prospects_master` table doesn't exist (only `teacher_prospects` with placeholder schema) | The whole Task #0 teacher half is unfinished. Apollo / vendor CSV / DonorsChoose have nowhere to land. |
-| B2 | No email-send tracking columns (`smartlead_campaign_id`, `last_contacted_at`, `reply_status`, `unsubscribed_at`) on `teacher_prospects` | Task #17 SmartLead integration has no place to write back. |
-| B3 | `candidates` has `prospect_id` but no `school_nces_id` / `us_cities_scored_id` / `source_segment` | Lead Sheet PDF (Task #20), source-funnel analytics, and "show me where this candidate came from" all stay weak. |
-| B4 | `candidates.city` / `state` are free text, not FKs | Same problem as A4 — can't join candidates to a scored city to show market context on the candidate card. |
-| B5 | `cities` table and `us_cities_scored` table duplicate each other | Two sources of truth for the same city. Eventually one must absorb the other. |
-| B6 | No `donorschoose_id` / `linkedin_url` / `years_experience` (proper int) / `has_summer_camp_exp` (real signal) on teacher rows | Fit scoring per the ideal profile can't read what isn't there. |
+| Live, populated, all 948 cities | 14 of 46 | **24 of 46** |
+| Partial (BEA-metro-only) | 4 | 0 |
+| Awaiting Apify (Brett to approve) | 12 | 12 |
+| Awaiting GreatSchools (Brett key) | 3 | 3 |
+| Defined as `status: "missing"`/`"blocked"` in registry — defer indefinitely | 10 | 10 |
+| Honest count of "active" sub-metrics feeding composite | 18 | **28** |
 
-### C. Gaps that don't bite yet but will
+After this, every category score is computed from at least 3 real metrics (today, `score_competitive` only has 1 weak proxy for half the cities).
 
-| # | Gap |
-|---|---|
-| C1 | No `nces_id` on `public_schools` is set as UNIQUE constraint visibly — verify before next backfill (today it's PK, fine — flagging for audit) |
-| C2 | `public_schools.us_cities_scored_id` set via "last city wins" on alias overlap — accepted, but document it on the column so future readers don't think it's authoritative |
-| C3 | No `school_district` table — district-level recruiting (one Apollo search per district instead of per school) will want it |
-| C4 | No `school_principal` / `school_contact_email` columns — Apify and Firecrawl already pull these, currently discarded |
+## Files to touch
 
----
+1. `supabase/functions/seed-cities-database/index.ts` — add `rollups_only` mode (Step 1), BEA fallback (Step 6a), NCES PSS pass (Step 6b)
+2. `supabase/functions/_shared/metricFetchers.ts` — add BLS OEWS series (Step 3)
+3. `supabase/functions/_shared/weatherFetcher.ts` — **new** (Step 4)
+4. `supabase/functions/seed-cities-weather/index.ts` — **new** wrapper (Step 4)
+5. `supabase/functions/seed-cities-google-trends/index.ts` — **new** (Step 5)
+6. No migration needed if Step 2 option (a) is chosen — existing columns absorb all new data.
 
-## Part 2 — What to do NOW (this turn, after you approve)
-
-### Step 1 — Migration: add the missing structural columns + FKs
+## Verification queries (after each step)
 
 ```sql
--- A3 + A5 + B6
-alter table public.teacher_prospects
-  add column if not exists school_nces_id text references public.public_schools(nces_id) on delete set null,
-  add column if not exists us_cities_scored_id uuid references public.us_cities_scored(id) on delete set null,
-  add column if not exists teacher_type text,        -- 'active_k6' | 'retired' | 'camp_enrichment' | 'secondary_hands_on'
-  add column if not exists subject text,             -- 'stem' | 'maker' | 'art' | 'general_elementary' | 'robotics' | etc.
-  add column if not exists segment text,             -- denormalized segment label for filtering
-  add column if not exists linkedin_url text,
-  add column if not exists donorschoose_id text,
-  add column if not exists last_enriched_at timestamptz,
-  add column if not exists enrichment_source text;   -- 'apollo' | 'apify' | 'vendor_csv' | 'firecrawl'
+-- After Step 1
+SELECT COUNT(*) FROM us_cities_scored WHERE charter_elementary_count IS NOT NULL;  -- expect 948
 
-create index if not exists idx_tp_school_nces on public.teacher_prospects(school_nces_id);
-create index if not exists idx_tp_city_scored on public.teacher_prospects(us_cities_scored_id);
-create index if not exists idx_tp_type on public.teacher_prospects(teacher_type);
+-- After Step 3
+SELECT COUNT(*) FROM city_market_signals WHERE signal_key IN ('childcare_nanny_hourly_rate_proxy','guide_wage_proxy');
+
+-- After Step 4
+SELECT COUNT(*) FROM city_market_signals WHERE signal_key = 'days_above_100f';  -- expect 948
+
+-- After Step 5
+SELECT COUNT(*) FROM city_market_signals WHERE signal_key LIKE 'google_search_demand_%';  -- expect ~1,896
+
+-- After Step 6
+SELECT COUNT(*) FROM us_cities_scored WHERE cost_of_living_index IS NOT NULL;  -- expect 948
+SELECT COUNT(*) FROM us_cities_scored WHERE private_elementary_count IS NOT NULL;  -- expect 948
+
+-- Final: re-run normalize pass so new metrics flow into category + composite scores
+-- Invoke seed-cities-database with { normalize_only: true }
 ```
-
-This **adds** columns only — no rename, no widening of existing column meaning. Safe.
-
-### Step 2 — Wire `seed-cities-database` to also upsert into `public_schools` (A1)
-
-In the inner loop right after `fetchNcesForCity` returns, take the raw `openSchools` array (already in memory — no extra API call) and upsert each row into `public_schools` on `nces_id`, setting `us_cities_scored_id` to the city being processed. ~30 lines added. Same upsert shape `backfill-public-schools` uses today, so the two functions stay consistent.
-
-### Step 3 — Run the normalize/score pass to fix A2
-
-Call `seed-cities-database` with `{ normalize_only: true }`. This is already implemented (lines 406–470 of the function) — it reads all 948 rows, computes percentile ranks, writes `score_demand` / `score_pricing_power` / `score_competitive` / `score_franchise_supply` / `score_ease_of_operation` / `score_parent_mindset` and `composite_score_default`. Takes ~30 seconds. Unblocks City Search national ranking immediately.
-
-### Step 4 — Verify
-
-- `select count(*) from us_cities_scored where composite_score_default is not null;` → expect 948
-- `select count(*) from public_schools;` → expect ≥ 38,196 (slightly higher if seed run picks up any new aliases)
-- Top 10 by composite for sanity check (Frisco/Austin/Plano should be near the top per Sam's gut check)
-
-### Step 5 — Doc updates (Mode A — drafts shown in chat, wait for "go")
-
-- `PROJECT_CONTEXT.md` § 2 — new columns on `teacher_prospects`
-- `PROJECT_CONTEXT.md` § 5 — drop the "composite null on all rows" entry
-- `HOW_IT_WORKS.md` § 3 — Teacher Search: school + city are now FK-linked, not text-matched
-- `APIS.md` — note `seed-cities-database` now writes to both `us_cities_scored` and `public_schools`
-- `OPEN_TASKS.md` — close 11d (now done) and the "composite null" gap; open new line-items B1–B6 as deferred follow-ups so they're tracked, not floating in my head
-
----
-
-## Part 3 — What I am explicitly NOT doing in this turn
-
-To keep the change reviewable:
-- Not building `teacher_prospects_master` (B1) — that's a big design moment, deserves its own plan after Brett's sourcing decision
-- Not touching `candidates` columns (B3, B4) — additive, but better to bundle with the Teacher → Candidate promotion wiring
-- Not consolidating `cities` ↔ `us_cities_scored` (B5) — high blast radius, separate plan
-- Not adding `school_district` or `principal` columns (C3, C4) — wait for the use case to be real
-
-These all become tracked OPEN_TASKS items in Step 5 so nothing slips.
-
----
 
 ## Risk
 
-- **Step 1 (migration):** low. Pure additive, all new columns nullable, no data backfill required.
-- **Step 2 (seed function edit):** low-medium. Logic change to a deployed function. Mitigated by: same upsert shape as `backfill-public-schools` (already proven), tested via a dry-run invocation first.
-- **Step 3 (normalize pass):** low. Already written, idempotent, only writes to `us_cities_scored` columns that are currently null.
+- **Step 1, 6a:** low — pure SQL aggregation / column patch.
+- **Step 3:** low — same BLS pattern already in use, just two more series IDs.
+- **Step 4:** low — Open-Meteo is rock-solid and free; one-time pull.
+- **Step 5:** medium — Google Trends has informal rate limits and can return empty results for low-volume cities. Mitigation: 1s delay, retry once on empty, store nulls explicitly with `confidence: 0`.
+- **Step 6b:** low-medium — NCES PSS endpoint is the same as CCD; same auth, same parsing pattern.
 
 ## How to undo
-- Step 1: `alter table teacher_prospects drop column ...` per added column.
-- Step 2: revert the seed function file from git.
-- Step 3: `update us_cities_scored set composite_score_default = null, score_demand = null, ...;` — no harm done, just back to today's state.
+
+Each step is additive. Roll back by:
+- Reverting the relevant edge function file from git
+- `UPDATE us_cities_scored SET <column> = NULL` for the columns that step populated
+- `DELETE FROM city_market_signals WHERE signal_key IN (...)` for the signals that step inserted
+
+No schema migration in this plan = no rollback complexity at the structure level.
+
+## Doc updates after each step (Mode A — draft, wait for "go")
+
+- `APIS.md` — add Open-Meteo and Google Trends to Section A; update BLS block to list new OEWS codes
+- `PROJECT_CONTEXT.md` § 4 — three new lines in the inventory table
+- `HOW_IT_WORKS.md` § City Search → metric coverage map
+- `OPEN_TASKS.md` — close the relevant B-items; open new B-items for Apify approval ($X to Brett) and GreatSchools sign-up
+- `GLOSSARY.md` — add OEWS, RPP, PSS, Open-Meteo
+
+## Sequence
+
+I'll do Steps 1 → 2 → 3 → 4 → 5 → 6 in order, pausing after each step's verification query before moving on. After Step 6, run the `normalize_only` pass and show you the new top-20 ranked list. Total estimated execution time: ~1 hour of edge function work + ~1 hour of wait time for the rate-limited pulls (mostly Google Trends).
+
+Ready to start with Step 1 on your approval.

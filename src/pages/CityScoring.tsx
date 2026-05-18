@@ -53,6 +53,8 @@ import { tierFromScore } from "@/lib/cityScoringLiveData";
 import { useCustomCriteria } from "@/hooks/useCustomCriteria";
 import { useScoringConfig, useDebouncedSaveScoringConfig } from "@/hooks/useScoringConfig";
 import { SCORING_PRESETS, PRESET_NAMES, PRESET_DESCRIPTIONS, detectPreset, type PresetName } from "@/lib/scoringPresets";
+import { AskAiBar } from "@/components/city-scoring/AskAiBar";
+import { AiAnswerCard, type AiResult } from "@/components/city-scoring/AiAnswerCard";
 
 function rebalanceWeights<K extends string>(
   prev: Record<K, number>,

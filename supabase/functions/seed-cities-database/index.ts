@@ -181,7 +181,8 @@ async function fetchStateSignals(stateAbbr: string): Promise<StateSignals> {
     try {
       const fips = STATE_FIPS[stateAbbr];
       if (fips) {
-        const stemId = `SMS${fips}000005400000001`;
+        // Supersector 60 = Professional & Business Services (free BLS proxy for STEM/knowledge-worker concentration)
+        const stemId = `SMS${fips}000006000000001`;
         const totalId = `SMS${fips}000000000000001`;
         const r = await fetch("https://api.bls.gov/publicAPI/v2/timeseries/data/", {
           method: "POST",
@@ -201,7 +202,9 @@ async function fetchStateSignals(stateAbbr: string): Promise<StateSignals> {
             const sN = num(stem.value), tN = num(tot.value);
             if (sN != null && tN != null && tN > 0) {
               out.stem_job_concentration = Math.round((sN / tN) * 10000) / 100;
-              out.bls_last_updated = `${stem.year}-${String(["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].indexOf(stem.periodName)+1).padStart(2,"0")}-01`;
+              const monthIdx = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].indexOf(stem.periodName);
+              const monthNum = monthIdx >= 0 ? monthIdx + 1 : 12; // fall back to Dec for Annual / unknown
+              out.bls_last_updated = `${stem.year}-${String(monthNum).padStart(2,"0")}-01`;
             }
           }
         }
@@ -253,7 +256,9 @@ const NCES_LAST_UPDATED = "2023-06-30";
 
 async function fetchNcesForCity(cityName: string, stateAbbr: string) {
   try {
-    const url = `https://educationdata.urban.org/api/v1/schools/ccd/directory/${NCES_YEAR}/?fips=${stateAbbr}&city_location=${encodeURIComponent(cityName.toUpperCase())}`;
+    const fips = STATE_FIPS[stateAbbr];
+    if (!fips) return { data: null, error: "no state fips" };
+    const url = `https://educationdata.urban.org/api/v1/schools/ccd/directory/${NCES_YEAR}/?fips=${fips}&city_location=${encodeURIComponent(cityName.toUpperCase())}`;
     const r = await fetch(url);
     if (!r.ok) return { data: null, error: `NCES ${r.status}` };
     const j = await r.json();

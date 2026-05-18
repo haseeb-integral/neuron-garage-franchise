@@ -336,7 +336,7 @@ async function fetchNcesForCity(cityName: string, stateAbbr: string) {
       const mail = String(s.city_mailing ?? "").toUpperCase();
       return targets.has(loc) || targets.has(mail);
     });
-    const elem = inCity.filter((s) => Number(s.school_level) === 1 && Number(s.school_status) === 1);
+    const elem = inCity.filter((s) => [1, 4].includes(Number(s.school_level)) && Number(s.school_status) === 1);
     const count = elem.length;
     const enrollment = elem.reduce((sum, s) => sum + (num(s.enrollment) ?? 0), 0);
     return {

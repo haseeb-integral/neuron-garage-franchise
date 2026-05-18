@@ -44,6 +44,8 @@
 ## Data / Architecture
 
 - **`us_cities_scored`** — planned seed table for all ~800 U.S. cities with pre-computed scores. Replaces per-city live fetches. Task #0 deliverable.
+- **Elementary-serving school** — an NCES open public school (`school_status = 1`) with `lowest_grade_offered ≤ 5` (PK / KG / 01–05). The K–6 camper-relevant subset of the broader public-schools dataset.
+- **`public_school_count` vs `public_elementary_count`** — on `us_cities_scored`, `public_school_count` is all open public schools in the city (any grade). `public_elementary_count` is the derived subset of elementary-serving schools. Same pattern for `_enrollment`. (Renamed May 18 — was previously `public_elementary_*` storing only K–6.)
 - **`teacher_prospects_master`** — planned seed table for the teacher recruiting database. Task #0 deliverable.
 - **Per-row live fetch** — today's pattern: edge function calls Census / BLS / etc. once per city on demand. Slow (5+ min/city).
 - **Bulk seed** — new pattern: one batch pull across all cities, refreshed on a schedule.

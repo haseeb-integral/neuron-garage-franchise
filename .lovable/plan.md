@@ -1,76 +1,68 @@
-## Phase 1 — `us_cities_scored` (free APIs only, cities by Tuesday)
+## Goal
 
-Approved scope: Census ACS, BLS, BEA, FRED, NCES CCD. Apify, Firecrawl, GreatSchools deferred to Phase 1b. Teachers deferred to next sprint.
+Store **all** public schools per city (K–12, not just elementary) without breaking the live City Search UI. Rename the misleading `public_elementary_*` columns to `public_school_*`, and add explicit elementary-subset columns derived at write time. UI/signal_key rename and scoring formula decisions are deferred.
 
----
+## Scope of this task (do now)
 
-### Step 1 — Migration: `us_cities_scored` table
+1. **Migration on `us_cities_scored`**
+   - Rename `public_elementary_count` → `public_school_count`
+   - Rename `public_elementary_enrollment` → `public_school_enrollment`
+   - Add new columns:
+     - `public_elementary_count` (int, nullable) — schools where `low_grade ≤ 05`
+     - `public_elementary_enrollment` (int, nullable) — enrollment sum for that subset
+   - Leave `private_elementary_count` and `charter_elementary_count` untouched (currently unwritten; rename later when we populate them).
 
-Create the table per `DATABASE_LAYER_SPEC.md`:
-- Identity: `city_name`, `state_abbr`, `state_name`, `population`, `latitude`, `longitude`, `metro_area`, `is_registration_state`
-- Raw signals: `children_5_12`, `median_household_income`, `dual_working_families_pct`, `college_degree_pct`, `population_density`, `stem_job_concentration`, `labor_force_participation`, `regional_median_income`, `cost_of_living_index`, `public_elementary_count`, `public_elementary_enrollment`
-- Phase 1b raw signals included as nullable columns (so we don't migrate again later): `private_elementary_count`, `charter_elementary_count`, `summer_camp_count`, `avg_camp_price_per_hour`, `school_hosted_camp_count`, `camp_waitlist_signals`
-- Normalized scores: `score_demand`, `score_pricing_power`, `score_competitive`, `score_franchise_supply`, `score_ease_of_operation`, `score_parent_mindset`
-- Composite: `composite_score_default`
-- Freshness columns (each gets the vintage date returned by the source, NOT seed time): `census_last_updated`, `bls_last_updated`, `bea_last_updated`, `fred_last_updated`, `nces_last_updated`, `greatschools_last_updated`, `apify_last_updated`, `firecrawl_last_updated`
-- Run-tracking columns: `scored_at` (timestamptz, last full re-score), `seed_run_id` (uuid), `refresh_count` (int, increments on each re-score)
-- Indexes: `composite_score_default desc`, `state_abbr`, `population desc`
-- RLS: authenticated SELECT; INSERT/UPDATE/DELETE only via service role (edge function)
+2. **Edge function: `seed-cities-database`**
+   - In `fetchNcesForCity()`:
+     - Drop the `school_level IN (1,4)` filter — keep ALL open schools (`school_status === 1`) in the alias-matched city.
+     - Compute `public_school_count` = total open schools, `public_school_enrollment` = sum of enrollment.
+     - Compute `public_elementary_count` / `public_elementary_enrollment` from rows where `low_grade` parses to ≤ 5 (treat `PK`/`KG`/`KH` as ≤5).
+   - In the upsert row (~line 509) write all four fields.
+   - In `normalizeOnly` select (~line 396) and `supplyParts` (~line 424): **keep using `public_elementary_count` / `public_elementary_enrollment`** for the franchise-supply scoring — formula stays accurate to K–6 camper base.
 
-Also create `city_seed_runs` audit table: `id`, `started_at`, `completed_at`, `phase` (`'phase_1_free'` | `'phase_1b_paid'` | `'refresh'`), `cities_processed`, `cities_failed`, `error_summary jsonb`. This is the "how many times updated" log.
+3. **Edge function: `_shared/metricFetchers.ts`**
+   - No column writes here; only internal field names on `NcesElementaryStaffing`. Leave as-is (still semantically about elementary teacher FTE, which is correct).
 
-### Step 2 — Edge function: `seed-cities-database`
+4. **Edge function: `fetch-school-counts`**
+   - Signal_keys `public_elementary_count` / `public_elementary_enrollment` stay (UI reads them). No change.
 
-Logic:
-1. Insert row into `city_seed_runs` with phase `'phase_1_free'`
-2. Read `us_cities_geo` WHERE `population >= 50000` (~800 rows)
-3. Process in batches of 25, with per-city try/catch so one failure doesn't kill the run
-4. For each city call the 5 free APIs and capture the vintage date each API returns (Census ACS year, BLS period, BEA year, FRED observation date, NCES school year) — store in the matching `*_last_updated` column
-5. Upsert into `us_cities_scored` keyed on `(city_name, state_abbr)`
-6. After all cities seeded, run a second pass to compute percentile-normalized 0–100 scores per category and `composite_score_default` using the default weights from `src/lib/scoringPresets.ts`
-7. Update `city_seed_runs` row with `completed_at`, counts, and any failures
+5. **Regenerate Supabase types** (auto on migration apply).
 
-Manual trigger only. No cron in Phase 1.
+6. **Verify Boston**
+   - Re-run seed for Boston only.
+   - Expected: `public_school_count` ≈ 115, `public_elementary_count` ≈ 83.
 
-### Step 3 — Wire City Search to read from `us_cities_scored`
+7. **Then run all 800.**
 
-- Replace live-fetch path with a single query: `SELECT * FROM us_cities_scored ORDER BY composite_score_default DESC`
-- Slider re-rank stays client-side (already in `clientSubWeightScoring.ts`)
-- Leave `cities`, `city_market_signals`, `city_fetch_jobs` untouched — they still power the per-city detail drawer
+## Deferred to LATER.md / OPEN_TASKS.md
 
-### Step 4 — Verification (Haseeb runs)
+- **UI rename pass**: `CityScoring.tsx` lookups by `signal_key` "public_elementary_count" still display elementary numbers (correct today). When we later want to surface "total schools" as its own row, add a new `public_school_count` signal in `fetch-school-counts` and a row in `CityScoring.tsx`. Tracked as new task: **"City Search: add total-schools widget alongside elementary"**.
+- **Rename `private_elementary_count` / `charter_elementary_count`** → `_school_count` + add elementary subset siblings. Do when those data sources are wired (currently unpopulated).
+- **Scoring re-decision**: confirm with Sam whether `score_franchise_supply` should later blend elementary + middle/high once we recruit camp-only enrichment teachers from middle schools. Tracked.
+- **Teacher search**: gains access to the wider school pool automatically once columns exist; teacher edge function work itself is already a separate open task.
 
-- City Search loads full ranked list in < 3 sec
-- Slider moves re-rank instantly
-- Show Formula on top 3 cities → raw values match what's stored
-- Export CSV → ~800 rows
-- Open `city_seed_runs` row → confirm 1 run, ~800 processed, 0 failed (or list failures)
-- Spot-check 3 cities for `census_last_updated`, `bls_last_updated`, etc. → real vintage dates, not seed time
+## Risk + rollback
 
-### Step 5 — Doc updates (Mode A: I draft, you say "go")
+- **Risk: low.** Column rename is a single `ALTER TABLE`. Existing rows keep data (rename preserves values). UI reads via `signal_key` strings on `city_market_signals`, not directly from `us_cities_scored` columns, so the rename does not break the City Search screen.
+- **One file writes the renamed columns**: `seed-cities-database/index.ts`. Updated in same deploy.
+- **Rollback**: reverse `ALTER` + revert edge function. No data loss.
 
-After verification passes:
-- `PROJECT_CONTEXT.md` — add `us_cities_scored` + `city_seed_runs` tables, add `seed-cities-database` function
-- `OPEN_TASKS.md` — Task #0 → split into #0a (cities, mark done) + #0b (teachers, blocked on Brett)
-- `DATABASE_LAYER_SPEC.md` — split scope into Phase 1 / Phase 1b / Phase 2; remove "both tables by Tuesday"; note freshness columns store source vintage dates and `city_seed_runs` tracks run history
-- `APIS.md` — mark Census/BLS/BEA/FRED/NCES as "used in Phase 1 seed"; mark GreatSchools/Apify/Firecrawl as "Phase 1b deferred"
-- `HOW_IT_WORKS.md` — City Search now reads from pre-seeded table; slider re-rank is client-side over stored normalized scores
+## Acceptance
 
----
+- Migration applied, types regenerated.
+- `seed-cities-database` deployed.
+- Boston row shows `public_school_count` ≈ 115 and `public_elementary_count` ≈ 83.
+- City Search UI for Boston still renders the same "Public Elementary Schools" number as before (≈83 now, since we switched to the low_grade ≤ 05 definition — this is the more defensible NCES-matching number we agreed on).
+- LATER.md / OPEN_TASKS.md drafts prepared for Haseeb approval (per Doc-sync Mode A).
 
-### Risk / undo
+## Technical notes
 
-- Risk: **Low**. New table, new function, City Search read path swap. Old tables stay in place.
-- Undo: revert City Search to read from `cities` (one file change). Drop `us_cities_scored` + `city_seed_runs` via migration. Edge function can stay dormant.
+```text
+NCES low_grade values seen in CCD: "PK","KG","01"-"12","UG","AE"
+Elementary filter: low_grade in {"PK","KG","01","02","03","04","05"}
+                   AND school_status = 1 (open)
+                   AND city matches alias set
+Total filter:      school_status = 1 AND city matches alias set
+```
 
-### What I am NOT doing in this sprint
-
-- No teacher table, no teacher edge function
-- No Apify, Firecrawl, GreatSchools calls
-- No cron / scheduled refresh (manual trigger only)
-- No UI changes beyond swapping the data source
-- No doc writes until you say "go" after verification
-
----
-
-On approval I'll start with the migration (Step 1), wait for your confirmation it ran clean, then build the edge function (Step 2).
+Will draft the migration SQL + the `fetchNcesForCity` rewrite as the first two steps on implementation.

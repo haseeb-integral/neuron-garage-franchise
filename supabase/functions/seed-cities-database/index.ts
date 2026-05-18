@@ -336,13 +336,26 @@ async function fetchNcesForCity(cityName: string, stateAbbr: string) {
       const mail = String(s.city_mailing ?? "").toUpperCase();
       return targets.has(loc) || targets.has(mail);
     });
-    const elem = inCity.filter((s) => [1, 4].includes(Number(s.school_level)) && Number(s.school_status) === 1);
-    const count = elem.length;
-    const enrollment = elem.reduce((sum, s) => sum + (num(s.enrollment) ?? 0), 0);
+    // All open public schools in the city (any grade level, K–12)
+    const openSchools = inCity.filter((s) => Number(s.school_status) === 1);
+    const schoolCount = openSchools.length;
+    const schoolEnrollment = openSchools.reduce((sum, s) => sum + (num(s.enrollment) ?? 0), 0);
+
+    // Elementary subset: serves grade 5 or lower (matches NCES "elementary serving")
+    // CCD `lowest_grade_offered` is numeric: -1=PK, 0=KG, 1..12=grades
+    const elem = openSchools.filter((s) => {
+      const lg = Number(s.lowest_grade_offered);
+      return Number.isFinite(lg) && lg <= 5;
+    });
+    const elemCount = elem.length;
+    const elemEnrollment = elem.reduce((sum, s) => sum + (num(s.enrollment) ?? 0), 0);
+
     return {
       data: {
-        public_elementary_count: count || null,
-        public_elementary_enrollment: enrollment || null,
+        public_school_count: schoolCount || null,
+        public_school_enrollment: schoolEnrollment || null,
+        public_elementary_count: elemCount || null,
+        public_elementary_enrollment: elemEnrollment || null,
         nces_last_updated: NCES_LAST_UPDATED,
       },
       error: null,
@@ -506,6 +519,8 @@ Deno.serve(async (req) => {
           bea_last_updated: stateSig.bea_last_updated,
           cost_of_living_index: stateSig.cost_of_living_index,
           fred_last_updated: stateSig.fred_last_updated,
+          public_school_count: (nces as any).public_school_count ?? null,
+          public_school_enrollment: (nces as any).public_school_enrollment ?? null,
           public_elementary_count: (nces as any).public_elementary_count ?? null,
           public_elementary_enrollment: (nces as any).public_elementary_enrollment ?? null,
           nces_last_updated: (nces as any).nces_last_updated ?? null,

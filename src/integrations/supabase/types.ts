@@ -890,6 +890,8 @@ export type Database = {
           private_elementary_count: number | null
           public_elementary_count: number | null
           public_elementary_enrollment: number | null
+          public_school_count: number | null
+          public_school_enrollment: number | null
           refresh_count: number
           regional_median_income: number | null
           school_hosted_camp_count: number | null
@@ -938,6 +940,8 @@ export type Database = {
           private_elementary_count?: number | null
           public_elementary_count?: number | null
           public_elementary_enrollment?: number | null
+          public_school_count?: number | null
+          public_school_enrollment?: number | null
           refresh_count?: number
           regional_median_income?: number | null
           school_hosted_camp_count?: number | null
@@ -986,6 +990,8 @@ export type Database = {
           private_elementary_count?: number | null
           public_elementary_count?: number | null
           public_elementary_enrollment?: number | null
+          public_school_count?: number | null
+          public_school_enrollment?: number | null
           refresh_count?: number
           regional_median_income?: number | null
           school_hosted_camp_count?: number | null

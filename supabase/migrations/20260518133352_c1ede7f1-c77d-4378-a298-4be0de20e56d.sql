@@ -1,0 +1,4 @@
+ALTER TABLE public.us_cities_scored RENAME COLUMN public_elementary_count TO public_school_count;
+ALTER TABLE public.us_cities_scored RENAME COLUMN public_elementary_enrollment TO public_school_enrollment;
+ALTER TABLE public.us_cities_scored ADD COLUMN public_elementary_count integer;
+ALTER TABLE public.us_cities_scored ADD COLUMN public_elementary_enrollment integer;

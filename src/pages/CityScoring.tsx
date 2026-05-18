@@ -1971,12 +1971,8 @@ const CityScoring = () => {
                 {watchlistOnly ? <BookmarkCheck size={12} /> : <Bookmark size={12} />}
                 Watchlist {watchlistOnly ? "On" : `(${watchlistCityIds.size})`}
               </button>
-              <button
-                onClick={() => setAddCityOpen(true)}
-                className="flex items-center gap-1 text-xs font-medium text-[#174be8] hover:underline"
-              >
-                <Plus size={12} /> Add City
-              </button>
+              {/* Add City hidden until seed-on-demand edge fn is wired (per plan Step 7).
+                  Modal code intentionally preserved in AddCityModal.tsx + state below. */}
               <button
                 onClick={openCompare}
                 disabled={selectedForCompare.length < 2}

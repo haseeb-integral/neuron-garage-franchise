@@ -516,6 +516,8 @@ Deno.serve(async (req) => {
           bea_last_updated: stateSig.bea_last_updated,
           cost_of_living_index: stateSig.cost_of_living_index,
           fred_last_updated: stateSig.fred_last_updated,
+          public_school_count: (nces as any).public_school_count ?? null,
+          public_school_enrollment: (nces as any).public_school_enrollment ?? null,
           public_elementary_count: (nces as any).public_elementary_count ?? null,
           public_elementary_enrollment: (nces as any).public_elementary_enrollment ?? null,
           nces_last_updated: (nces as any).nces_last_updated ?? null,

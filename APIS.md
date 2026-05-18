@@ -62,6 +62,24 @@ Every API below has a configured secret in Lovable Cloud AND is read by deployed
 - **Docs:** https://educationdata.urban.org/documentation/
 - **Status:** Live ✅
 
+### NCES PSS (Private School Survey) — embedded dataset
+- **Purpose:** Private elementary school counts + enrollment per city (`private_elementary_count`, `private_elementary_enrollment` on `us_cities_scored`).
+- **Secret:** _none — not an API_. NCES only ships PSS as a downloadable Excel file (no public API endpoint, Urban Institute does not expose PSS).
+- **Source:** https://nces.ed.gov/surveys/pss/ (2021–22 release embedded as a static lookup inside `seed-cities-database`).
+- **Coverage today:** 636 / 960 seeded cities matched (incl. Winston-Salem manual fix May 18). ~340 cities missing — full re-pull pending as **OPEN_TASKS B10a**.
+- **Refresh cadence:** Every 2 years (matches NCES PSS release cycle).
+- **Cost / limit:** Free.
+- **Status:** Live ✅ (partial coverage)
+
+### Open-Meteo — Historical Weather Archive
+- **Purpose:** Climate signals per city — annual snowfall, avg temp, sunny days, severe-weather days. Feeds "outdoor program viability" + "year-round indoor demand" metrics on `us_cities_scored`.
+- **Secret:** _none — public endpoint, no key required_.
+- **Called from:** `seed-cities-weather` edge function.
+- **Cost / limit:** Free for non-commercial / low-volume use. ~10,000 requests/day soft limit.
+- **Coverage today:** 506 / 960 cities seeded; remaining 454 in background batches (see OPEN_TASKS B8).
+- **Docs:** https://open-meteo.com/en/docs/historical-weather-api
+- **Status:** Live ✅
+
 ### Apify — Google Maps Crawler actor
 - **Purpose:** Competitor scraping (City Search) + teacher / school directory scraping (Teacher Search).
 - **Secrets:** `APIFY_API_TOKEN`, `APIFY_GOOGLE_MAPS_ACTOR_ID` (default `compass/crawler-google-places`)

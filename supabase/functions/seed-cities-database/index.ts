@@ -342,8 +342,11 @@ async function fetchNcesForCity(cityName: string, stateAbbr: string) {
     const schoolEnrollment = openSchools.reduce((sum, s) => sum + (num(s.enrollment) ?? 0), 0);
 
     // Elementary subset: serves grade 5 or lower (matches NCES "elementary serving")
-    const ELEM_LOW_GRADES = new Set(["PK", "KG", "KH", "01", "02", "03", "04", "05"]);
-    const elem = openSchools.filter((s) => ELEM_LOW_GRADES.has(String(s.lowest_grade_offered ?? s.low_grade ?? "").toUpperCase()));
+    // CCD `lowest_grade_offered` is numeric: -1=PK, 0=KG, 1..12=grades
+    const elem = openSchools.filter((s) => {
+      const lg = Number(s.lowest_grade_offered);
+      return Number.isFinite(lg) && lg <= 5;
+    });
     const elemCount = elem.length;
     const elemEnrollment = elem.reduce((sum, s) => sum + (num(s.enrollment) ?? 0), 0);
 

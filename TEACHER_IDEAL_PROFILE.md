@@ -99,6 +99,21 @@ The Location Director:
 
 **Source:** Apollo (search "camp director", "enrichment teacher", "maker space"), LinkedIn, Apify (summer camp staff pages)
 
+### Segment 4: Middle / High School STEM, Maker, Shop, Art Teachers ✅ (Added May 18 — secondary tier)
+
+**Who:** Currently employed middle-school or high-school teachers whose subject is hands-on: STEM, engineering, robotics, shop, maker, computer science, design, or visual/studio art.
+
+**Why they fit (as a secondary tier, ranked below K–6 and retired):**
+- Summers are free — same school calendar as elementary teachers
+- Hands-on subject expertise maps directly to Neuron Garage's recycled-materials building model
+- Many already moonlight at summer camps and enrichment programs (camp-staff pipeline)
+- Often more comfortable than K–6 teachers with tools, fabrication, and open-ended project work
+- The website only locks **campers** at K–6; it does **not** require the Location Director to be an elementary teacher ("Each of our locations is run by an experienced educator with years of classroom experience")
+
+**How to weight them:** Lower base weight than K–6 / retired, but **boosted by hands-on subject match**. A high-school robotics teacher should outrank a K–6 generalist with no STEM/maker signal. A high-school English-only teacher should rank low.
+
+**Source:** Apollo (search "high school STEM teacher", "robotics teacher", "shop teacher", "maker teacher", "art teacher" + city), LinkedIn, school staff pages via Firecrawl.
+
 ---
 
 ## Fit Scoring Criteria

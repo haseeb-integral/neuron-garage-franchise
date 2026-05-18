@@ -90,7 +90,7 @@ async function fetchWeather(lat: number, lng: number): Promise<{ metrics: Weathe
   const precipPenalty = Math.min(40, summer_precip_days * 2);
   const summer_weather_index = Math.max(0, Math.min(100, Math.round(tempScore - precipPenalty)));
 
-  return { avg_peak_summer_temperature, days_above_90f, summer_precip_days, summer_weather_index };
+  return { metrics: { avg_peak_summer_temperature, days_above_90f, summer_precip_days, summer_weather_index }, err: null };
 }
 
 Deno.serve(async (req) => {

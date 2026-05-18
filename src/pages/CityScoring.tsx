@@ -1705,8 +1705,26 @@ const CityScoring = () => {
         }
       />
 
+      {/* AI-powered natural-language search (Lovable AI Gateway) */}
+      <AskAiBar
+        onSubmit={askAi}
+        loading={aiLoading}
+        hasResult={aiTurns.length > 0}
+        onClear={clearAi}
+      />
+      {lastAiTurn && (
+        <AiAnswerCard
+          result={lastAiTurn.response}
+          query={lastAiTurn.query}
+          turnCount={aiTurns.length}
+          onRefine={askAi}
+          loading={aiLoading}
+        />
+      )}
+
       {/* Filters row */}
       <TooltipProvider delayDuration={150}>
+
       <div className="mb-4 rounded-lg bg-white border border-[#eef2f7] p-3 flex flex-wrap items-end gap-3">
         {/* Searchable State combobox */}
         <div className="flex flex-col gap-1 min-w-[180px]">

@@ -92,21 +92,21 @@ export function mapSampleCityToRankedMarket(city: CityData): RankedMarket {
   };
 }
 
-function marketTypeFromPopulation(pop: number): string {
-  if (pop >= 250000) return "Urban";
-  if (pop >= 50000) return "Suburb";
-  return "Exurb";
+function marketTypeFromDensity(density: number): string {
+  // Per locked Q1: Urban ≥ 3000/km², Suburb 500-3000, Rural < 500.
+  if (density >= 3000) return "Urban";
+  if (density >= 500) return "Suburb";
+  return "Rural";
 }
 
 export async function loadLiveRankedMarkets(): Promise<RankedMarket[]> {
-  // PRIMARY source: us_cities_scored (Sam's pre-seeded 948-city dataset with
-  // composite_score_default). Supersedes the old `cities` table for ranking.
-  // We still cross-reference `cities` so that watchlist/detail linkage by
-  // cities.id keeps working for the subset of cities that exist in both.
+  // Canonical source: us_cities_scored (Sam's pre-seeded ~948-city dataset).
+  // `cityId` now references us_cities_scored.id (not legacy cities.id) so the
+  // watchlist + drawer + compare are all keyed on the same uuid space.
   const { data: scoredRows, error: scoredErr } = await supabase
     .from("us_cities_scored")
     .select(
-      "id, city_name, state_name, state_abbr, metro_area, population, composite_score_default, score_demand, score_pricing_power, score_competitive, score_franchise_supply, score_ease_of_operation, score_parent_mindset, is_registration_state, scored_at",
+      "id, city_name, state_name, state_abbr, metro_area, population, population_density, composite_score_default, score_demand, score_pricing_power, score_competitive, score_franchise_supply, score_ease_of_operation, score_parent_mindset, is_registration_state, scored_at, summer_camp_count",
     )
     .order("composite_score_default", { ascending: false, nullsFirst: false })
     .limit(2000);
@@ -117,38 +117,26 @@ export async function loadLiveRankedMarkets(): Promise<RankedMarket[]> {
   }
   if (!scoredRows?.length) return [];
 
-  // Pull legacy `cities` rows once so we can attach a stable cityId for
-  // watchlist/notes/competitor counts where a row already exists.
-  const { data: cityRows } = await supabase
-    .from("cities")
-    .select("id, city, state, county, market_type, notes, last_scraped_at, competitor_count");
-  const cityByKey = new Map<string, any>();
-  (cityRows ?? []).forEach((c: any) => {
-    const key = `${(c.city ?? "").trim().toLowerCase()}|${normalizeState(c.state).toLowerCase()}`;
-    cityByKey.set(key, c);
-  });
-
   const mapped: RankedMarket[] = scoredRows.map((row: any, index: number) => {
     const state = normalizeState(row.state_name ?? row.state_abbr);
     const city = row.city_name ?? "Unknown";
-    const key = `${city.trim().toLowerCase()}|${state.toLowerCase()}`;
-    const legacy = cityByKey.get(key);
     const composite = toNumber(row.composite_score_default, 0);
     const hasLiveData = composite > 0;
+    const density = toNumber(row.population_density, 0);
     return {
       id: 200000 + index,
-      cityId: legacy?.id ?? row.id, // prefer cities.id for watchlist linkage
+      cityId: row.id, // us_cities_scored.id is now canonical
       city,
       state,
-      county: legacy?.county ?? null,
+      county: null,
       metroArea: row.metro_area ?? null,
       tier: tierFromScore(composite),
       compositeScore: composite,
       population: toNumber(row.population, 0),
-      competitorCount: toNumber(legacy?.competitor_count, 0),
-      marketType: legacy?.market_type ?? marketTypeFromPopulation(toNumber(row.population, 0)),
+      competitorCount: toNumber(row.summer_camp_count, 0),
+      marketType: marketTypeFromDensity(density),
       isNonRegistration: row.is_registration_state === false,
-      lastScrapedAt: row.scored_at ?? legacy?.last_scraped_at ?? null,
+      lastScrapedAt: row.scored_at ?? null,
       source: "live",
       hasLiveData,
     };

@@ -2135,7 +2135,7 @@ const CityScoring = () => {
             </div>
           </div>
           </>
-          )}
+
         </div>
 
         {/* Center: Selected Market Detail */}

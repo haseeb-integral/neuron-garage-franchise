@@ -55,7 +55,7 @@ Every API below has a configured secret in Lovable Cloud AND is read by deployed
 - **Secret:** _none — public endpoint_
 - **Called from:** `fetch-school-counts`, `seed-cities-database`, `backfill-public-schools`
 - **What we store (as of May 18):**
-  - **Per-row table `public_schools`** (source of truth, populated by `backfill-public-schools`): one row per NCES school nationally with name, district, address, lat/lng, grades, type, enrollment. `is_elementary_serving` is a generated column. 38,196 rows live across 948 cities.
+  - **Per-row table `public_schools`** (source of truth): one row per NCES school nationally with name, district, address, lat/lng, grades, type, enrollment. `is_elementary_serving` is a generated column. 38,196 rows live across 948 cities. Populated by **both** `seed-cities-database` (per-school upsert during normal seeding — same NCES response, no extra calls) and `backfill-public-schools` (for full rebuilds).
   - **Cached counts on `us_cities_scored`** (populated by `seed-cities-database`): `public_school_count` / `public_school_enrollment` (all open public schools) and the derived `public_elementary_count` / `public_elementary_enrollment` (`lowest_grade_offered ≤ 5`). *Renamed May 18 from `public_elementary_*` to avoid name-vs-meaning drift.*
 - **Cost / limit:** Free.
 - **Match rate today:** 48 / 50 sample cities matched. Boston verified: 129 total public schools / 94 elementary-serving — `public_schools` table matches exactly.

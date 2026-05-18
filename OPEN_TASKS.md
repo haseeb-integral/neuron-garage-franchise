@@ -105,10 +105,11 @@ See **`TEACHER_IDEAL_PROFILE.md`** for who we are recruiting and why — read th
 - If/when Segment 4 (middle/high STEM/maker teachers) becomes a real recruiting channel, Sam may want to blend in the broader public-school pool
 - **Owner:** Sam (scoring math)
 
-### 11d. Wire `seed-cities-database` to also upsert into `public_schools` (deferred, added May 18)
-- Today only `backfill-public-schools` writes to `public_schools`. If anyone re-runs `seed-cities-database` or adds new cities, `public_schools` will drift out of sync with the cached counts on `us_cities_scored`
-- Add the same NCES → `public_schools` upsert (on `nces_id`) inside `seed-cities-database` after it computes counts, using the rows it already fetched (no extra API call)
-- **Risk:** low (~30 min, additive). Only critical the moment new cities are seeded.
+~~### 11d. Wire `seed-cities-database` to also upsert into `public_schools`~~ ✅ May 18
+- `mapNcesSchoolRow()` added; per-school upsert into `public_schools` runs inside the seed loop using the already-fetched NCES rows (no extra API call). Re-seeds and new cities now keep `public_schools` in sync with cached counts.
+
+### 11e. Backfill `composite_score_default` on seeded cities ✅ May 18
+- All 948 seeded cities now have `composite_score_default` populated via `normalize_only: true` pass. City Search national ranking unblocked.
 
 
 ---
@@ -140,6 +141,34 @@ See **`TEACHER_IDEAL_PROFILE.md`** for who we are recruiting and why — read th
 ### 15. Prospect segmentation / tagged lists + CSV export
 - Tag into named lists ("High Potential Austin", "Follow-Up Needed", "Not a Fit")
 - **Risk:** low-medium
+
+---
+
+## ⚡ Data-layer follow-ups (deferred, added May 18 after screen-walk)
+
+### B1. Build `teacher_prospects_master` table
+- Master multi-source teacher pool that Apollo / vendor CSV / DonorsChoose all land in, distinct from per-search `teacher_prospects`. Blocked on Brett sourcing decision.
+- **Risk:** medium
+
+### B3. Add `school_nces_id`, `us_cities_scored_id`, `source_segment` FKs to `candidates`
+- So a promoted teacher carries city + school + segment context into the pipeline. Today `candidates.city`/`state` are free-text.
+- **Risk:** low
+
+### B4. Add FKs from `candidates.city/state` (or replace with `us_cities_scored_id`)
+- Pairs with B3. Decide replace-vs-augment.
+- **Risk:** low
+
+### B5. Consolidate `cities` ↔ `us_cities_scored`
+- Two overlapping city tables. Pick one source of truth, migrate references, drop the other.
+- **Risk:** medium (touches City Search, Teacher Search, watchlist)
+
+### B6. SmartLead send/reply tracking columns on `teacher_prospects`
+- `smartlead_campaign_id`, `last_sent_at`, `last_replied_at`, `reply_status`. Required before Task #17 wiring.
+- **Risk:** low
+
+### C3 / C4. `school_district` table + `school_principal` / `school_contact_email` columns on `public_schools`
+- District-level rollups and direct school contacts for outreach. Not blocking current sprint.
+- **Risk:** low (additive)
 
 ---
 

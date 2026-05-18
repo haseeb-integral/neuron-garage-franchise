@@ -32,9 +32,9 @@ export type RankedMarketFilters = {
 const NON_REGISTRATION_STATES = new Set(["Texas", "Florida"]);
 
 export function tierFromScore(score: number): "A" | "B" | "C" | "D" {
-  if (score >= 85) return "A";
-  if (score >= 75) return "B";
-  if (score >= 65) return "C";
+  if (score >= 80) return "A";
+  if (score >= 65) return "B";
+  if (score >= 50) return "C";
   return "D";
 }
 

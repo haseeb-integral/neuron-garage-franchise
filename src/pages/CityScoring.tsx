@@ -2438,11 +2438,13 @@ const CityScoring = () => {
 
         {/* Right column */}
         <div className="min-w-0 space-y-3 flex flex-col">
-          <SourceDataPanel
-            cityId={liveCity?.id ?? null}
-            refreshKey={marketRefreshVersion}
-            onViewEvidence={() => setDetailDrawerOpen(true)}
-          />
+          {SHOW_LIVE_REFRESH && (
+            <SourceDataPanel
+              cityId={liveCity?.id ?? null}
+              refreshKey={marketRefreshVersion}
+              onViewEvidence={() => setDetailDrawerOpen(true)}
+            />
+          )}
 
           <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
             <h4 className="text-xs font-bold text-[#07142f] mb-1">Market Research Report</h4>

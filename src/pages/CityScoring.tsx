@@ -505,8 +505,8 @@ const CityScoring = () => {
   const setPage = useCityScoringStore((s) => s.setPage);
 
   // Left-panel view toggle: classic paginated table vs. Top-N ranked list.
-  const [leftViewMode, setLeftViewMode] = useState<"table" | "topn">("table");
-  const [topN, setTopN] = useState<TopN>(20);
+
+
 
 
   // Live DB-backed data for the selected market (falls back to sample data when missing)

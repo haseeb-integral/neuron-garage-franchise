@@ -150,8 +150,11 @@ const STATE_SIGNAL_CACHE = new Map<string, StateSignals>();
 
 async function fetchStateSignals(stateAbbr: string): Promise<StateSignals> {
   const cached = STATE_SIGNAL_CACHE.get(stateAbbr);
-  if (cached) return cached;
-  const out: StateSignals = {
+  // Only return cache when ALL three values are present; otherwise refetch missing pieces.
+  if (cached && cached.stem_job_concentration != null
+    && cached.regional_median_income != null
+    && cached.cost_of_living_index != null) return cached;
+  const out: StateSignals = cached ? { ...cached } : {
     stem_job_concentration: null, bls_last_updated: null,
     regional_median_income: null, bea_last_updated: null,
     cost_of_living_index: null, fred_last_updated: null,

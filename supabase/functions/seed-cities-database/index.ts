@@ -268,16 +268,30 @@ function stateAbbrToName(abbr: string): string {
 const NCES_YEAR = 2022;
 const NCES_LAST_UPDATED = "2023-06-30";
 
+// Cache full state directory (one request returns all schools, no pagination needed).
+const NCES_STATE_CACHE = new Map<string, any[]>();
+
 async function fetchNcesForCity(cityName: string, stateAbbr: string) {
   try {
     const fips = STATE_FIPS[stateAbbr];
     if (!fips) return { data: null, error: "no state fips" };
-    const url = `https://educationdata.urban.org/api/v1/schools/ccd/directory/${NCES_YEAR}/?fips=${fips}&city_location=${encodeURIComponent(cityName.toUpperCase())}`;
-    const r = await fetch(url);
-    if (!r.ok) return { data: null, error: `NCES ${r.status}` };
-    const j = await r.json();
-    const results: any[] = j?.results ?? [];
-    const elem = results.filter((s) => Number(s.school_level) === 1 && Number(s.school_status) === 1);
+    let all = NCES_STATE_CACHE.get(stateAbbr);
+    if (!all) {
+      const url = `https://educationdata.urban.org/api/v1/schools/ccd/directory/${NCES_YEAR}/?fips=${fips}`;
+      const r = await fetch(url);
+      if (!r.ok) return { data: null, error: `NCES ${r.status}` };
+      const j = await r.json();
+      all = (j?.results ?? []) as any[];
+      NCES_STATE_CACHE.set(stateAbbr, all);
+    }
+    const target = cityName.trim().toUpperCase();
+    // CCD `city_location` is uppercase. Match exact city OR mailing city as fallback.
+    const inCity = all.filter((s) => {
+      const loc = String(s.city_location ?? "").toUpperCase();
+      const mail = String(s.city_mailing ?? "").toUpperCase();
+      return loc === target || mail === target;
+    });
+    const elem = inCity.filter((s) => Number(s.school_level) === 1 && Number(s.school_status) === 1);
     const count = elem.length;
     const enrollment = elem.reduce((sum, s) => sum + (num(s.enrollment) ?? 0), 0);
     return {

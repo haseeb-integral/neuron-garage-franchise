@@ -55,7 +55,7 @@ import { useScoringConfig, useDebouncedSaveScoringConfig } from "@/hooks/useScor
 import { SCORING_PRESETS, PRESET_NAMES, PRESET_DESCRIPTIONS, detectPreset, type PresetName } from "@/lib/scoringPresets";
 import { AskAiBar } from "@/components/city-scoring/AskAiBar";
 import { AiAnswerCard, type AiResult } from "@/components/city-scoring/AiAnswerCard";
-import { RankedMarketsList, type TopN } from "@/components/city-scoring/RankedMarketsList";
+
 
 // Feature flag: hide live on-demand API widgets on the detail panel.
 // Per May 18 Brett note + Haseeb decision: detail panel reads pre-seeded

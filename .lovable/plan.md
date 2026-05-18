@@ -1,84 +1,107 @@
 ## Goal
 
-Close the last free metric gap (private elementary schools via NCES PSS), then document the remaining paid asks so Brett has exact numbers to approve.
+Add AI-powered "Ask" search + Top-N ranked view to City Search, using Lovable AI Gateway (Gemini 2.5 Flash). Replace default table view with a ranked Top-N list, add a prominent Ask AI bar that re-ranks results and explains its reasoning, with multi-turn refinement and saved query history.
 
-## Step A — NCES PSS one-time backfill (free, ~30 min)
+## Scope
 
-PSS is not exposed by Urban Institute API. Only available as bulk download from `nces.ed.gov/surveys/pss/`.
+In:
+- New `ai-city-query` edge function (Lovable AI Gateway, structured JSON output)
+- New `ai_query_history` table (per-user, threaded for multi-turn)
+- New UI: `AskAiBar`, `AiAnswerCard` (with collapsible reasoning chain), `RankedMarketsList`
+- Wire into existing `cityScoringStore` + `clientSubWeightScoring.ts`
+- Default landing = Top 20 ranked **by user's current weights** (recomputed client-side)
+- View toggle: 10 / 20 / 50 / All (table view stays available)
+- Query history dropdown (Google-style) reading from `ai_query_history`
+- Doc sync (PROJECT_CONTEXT, HOW_IT_WORKS, OPEN_TASKS, GLOSSARY, APIS)
 
-1. Create `supabase/functions/seed-cities-pss/index.ts`:
-   - Fetch the 2021–22 PSS school-level CSV from NCES public download URL (~24 MB)
-   - Parse with Deno's CSV reader, stream rows (don't load all into memory)
-   - Filter: `PSCHLEVEL == "1"` (elementary) OR `LOWGRADE` numeric ≤ 5
-   - For each row, normalize `PCITY` + `PSTABB` → match to `us_cities_scored` by `(lower(city_name), state_code)`
-   - Aggregate counts per matched city_id
-   - `UPDATE us_cities_scored SET private_elementary_count = X WHERE id = Y`
-   - Write a `city_market_signals` row with `signal_key = 'private_elementary_count'`, `source = 'NCES PSS 2021-22'`, `confidence = 0.9`
-2. Invoke once. No cron — PSS only refreshes every 2 years.
-3. Verify: `SELECT COUNT(*) FROM us_cities_scored WHERE private_elementary_count IS NOT NULL` — expect ~900+ of 960.
-4. Re-run `seed-cities-database` with `{ normalize_only: true }` so the new metric flows into `score_parent_mindset` and the composite.
+Out:
+- New metrics / data pulls (AI only operates on 14 live metrics)
+- Edits to scoring math (AGENTS Rule: Sam only)
+- Voice input, sharing threads across users
 
-**Risk:** Low. PSS city names sometimes use abbreviations (e.g. "ST LOUIS" vs "Saint Louis") — need a small alias map for ~20 known cases. I'll log unmatched rows and fix the top offenders.
+## UI Flow
 
-## Step B — Finish the weather seed (free, ~2 min)
-
-480 of 960 cities are still missing weather signals from the Open-Meteo rate limit. Re-invoke `seed-cities-weather` with `{ resume: true }` after adding a 1.2-second delay between cities. No code changes beyond the delay.
-
-## Step C — Document paid asks in OPEN_TASKS.md
-
-Add three new B-items so Brett has a clean ask, not buried in chat:
-
-- **B7 — Apify nationwide competitor scrape**
-  - Unlocks: 15 of 46 metrics (full list above)
-  - Cost: $900–$1,200 one-time + $4k/yr if quarterly refresh
-  - Recommend: 10-city test first ($15) to confirm per-city cost
-  - Blocker: Brett's $ approval
-
-- **B8 — GreatSchools API subscription**
-  - Unlocks: `quality_weighted_elementary_score` + weights the 2 existing school count metrics by rating
-  - Cost: $52.50/mo = $630/yr
-  - Blocker: Brett to sign up at greatschools.org/api and paste key into Lovable Cloud
-
-- **B9 — BLS OEWS metro wage pulls (free, larger effort)**
-  - Unlocks: `childcare_nanny_hourly_rate_proxy`, `guide_wage_proxy`
-  - Effort: ~4 hours code + 2 days of rate-limited background pulls
-  - Blocker: schedule it for next sprint
-
-## Step D — Move to LATER.md
-
-- **Google Trends** — only feeds 2 soft metrics. Paid alternatives ($30–50/mo SerpAPI or DataForSEO) not worth it pre-PMF. Park it.
-
-## Files touched
-
-- New: `supabase/functions/seed-cities-pss/index.ts`
-- Edited: `OPEN_TASKS.md` (add B7, B8, B9)
-- Edited: `LATER.md` (add Google Trends entry)
-- Edited: `APIS.md` (add NCES PSS to Section A as Live ✅ after Step A runs; add SerpAPI/DataForSEO to "considered, deferred")
-- Edited: `PROJECT_CONTEXT.md` § 4 (one row: private_elementary_count now populated)
-
-## Verification after Step A
-
-```sql
-SELECT COUNT(*) FROM us_cities_scored WHERE private_elementary_count IS NOT NULL;
-SELECT city_name, state_code, private_elementary_count
-FROM us_cities_scored
-ORDER BY private_elementary_count DESC NULLS LAST LIMIT 20;
+```text
+┌─ City Search ───────────────────────────────────────────────┐
+│ [Ask AI: "best Texas markets for young families…"   ↵]  ▾   │  ← query history dropdown
+│   ↑ prominent at top                                         │
+├──────────────────────────────────────────────────────────────┤
+│ ┌─ AI Answer ─────────────────────────────────────────────┐ │
+│ │ Summary: Frisco, Plano, Round Rock lead on demand+      │ │
+│ │ schools. Filtered TX, min_income ≥ $90k.                │ │
+│ │ Applied: state=TX, weights demand+15, schools+10        │ │
+│ │ ▾ Show AI reasoning (4 steps)                           │ │
+│ │ [Refine →                                          ↵]   │ │  ← multi-turn
+│ └─────────────────────────────────────────────────────────┘ │
+├──────────────────────────────────────────────────────────────┤
+│ View: ◉ Top 20  ○ Top 10  ○ Top 50  ○ All  |  ⊞ Table       │
+│ ─────────────────────────────────────────────────────────── │
+│ 1.  Frisco, TX        92  Tier A   [why?]                   │
+│ 2.  Plano, TX         90  Tier A   [why?]                   │
+│ ... (re-ranked using user's current weights + AI nudges)    │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-Expected top-5: NYC, LA, Chicago, Houston, Philadelphia.
+## Architecture
 
-## What this changes for honest coverage
+**Edge function** (`supabase/functions/ai-city-query/index.ts`)
+- Input: `{ query, threadId?, previousMessages?[] }`
+- Calls Lovable AI Gateway (`google/gemini-2.5-flash`) with structured output schema
+- Returns: `{ summary, filters:{state?, minScore?, tier?}, weightAdjustments:{[category]:delta}, reasoning_steps:string[], dataGaps:string[] }`
+- Validates all metric/category keys against `sowMetricRegistry.ts` before returning — strips hallucinated keys
+- Handles 429 / 402 with explicit error codes for frontend toast
+- Persists query+response to `ai_query_history`
 
-| | Before today | After Step A+B |
-|---|---|---|
-| Fully populated metrics, all 960 cities | 18 of 46 | **22 of 46** |
-| Awaiting Brett (Apify) | 15 | 15 |
-| Awaiting Brett (GreatSchools) | 3 | 3 |
-| Deferred (Google Trends) | 2 | 2 |
-| Defer indefinitely / `missing` in registry | 4 | 4 |
+**Database** (one migration)
+```sql
+create table ai_query_history (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid(),
+  thread_id uuid not null,         -- groups multi-turn conversations
+  parent_id uuid,                  -- previous turn in thread
+  query text not null,
+  response jsonb not null,         -- full structured response
+  created_at timestamptz default now()
+);
+-- RLS: user_id = auth.uid() for all ops
+-- Index on (user_id, created_at desc) for history dropdown
+```
 
-## Sequence
+**Frontend** (3 components + store changes)
+- `AskAiBar.tsx` — input + history dropdown (last 10 queries) + Enter/Esc/↑↓ keyboard nav
+- `AiAnswerCard.tsx` — summary, applied filters/weights chips, collapsible reasoning chain, "Refine →" input for multi-turn
+- `RankedMarketsList.tsx` — Top-N card/row view with rank number, composite score, tier badge, click to open existing `MarketDetailDrawer`
+- `cityScoringStore.ts` adds: `aiThreadId`, `aiTurns: AiTurn[]`, `viewMode: 'ranked'|'table'`, `topN: 10|20|50|'all'`
+- Ranking uses **user's current applied weights** (Q1 = option A). When AI returns weight nudges, they apply on top via existing `clientSubWeightScoring.ts`. User sees badge "ranked by your weights + AI adjustments".
 
-A → B → C → D in order. Total: ~45 min of work, no spend, no new keys. Then I'll ping you with the new top-20 ranked city list so you can sanity-check before sending Brett the cost summary.
+## Build Steps
 
-Ready on your approval.
+1. Migration: create `ai_query_history` + RLS + index
+2. Edge function `ai-city-query` with system prompt referencing `sowMetricRegistry`, structured output, history persistence
+3. Provision `LOVABLE_API_KEY` (already present per secrets list — verify)
+4. Build `AskAiBar` + history dropdown (queries from `ai_query_history`)
+5. Build `AiAnswerCard` with collapsible reasoning + Refine input
+6. Build `RankedMarketsList` + view toggle (10/20/50/all + table)
+7. Wire into `CityScoring.tsx` page above existing `FilterBar`
+8. Store additions + multi-turn thread handling (cap 6 turns)
+9. Doc sync: draft updates, wait for "go"
+
+## Key Decisions (locked from your answers)
+
+- **Default ranking when user has custom weights:** Top 20 by user's current weights (option A)
+- **Query history:** Supabase table `ai_query_history`, Google-style dropdown
+- **Multi-turn:** Yes, "Refine →" on answer card, cap 6 turns per thread
+- **Reasoning chain:** Yes, collapsed by default, shows data gaps explicitly
+- **AI provider:** Lovable AI Gateway, model `google/gemini-2.5-flash`
+
+## Risks
+
+- AI hallucinates metric keys → mitigated by registry validation in edge function
+- Multi-turn token cost → mitigated by 6-turn cap + history truncation
+- User confusion "why did ranking change?" → mitigated by visible applied-filters/weights chips on AiAnswerCard
+
+## What I'm NOT doing
+
+- New data sources, scoring math changes, new categories
+- Replacing the existing table view (it stays as toggle option)
+- Sharing queries across users

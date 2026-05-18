@@ -54,7 +54,8 @@ All tables have RLS enabled. `authenticated` role can read/write unless noted.
 | `profiles` | User profile (auto-created on signup via `handle_new_user` trigger). Self-update only. |
 | `user_roles` | Role assignments (`app_role` enum: admin / manager / etc.). Admin-only writes. |
 | `cities` | Core city records (name, state, lat/lng, tier, composite score, population, etc.) |
-| `us_cities_scored` | Pre-scored city table (Task #0). Includes `public_school_count` / `public_school_enrollment` (all open K–12 public schools) and `public_elementary_count` / `public_elementary_enrollment` (derived subset, `lowest_grade_offered ≤ 5`). *Renamed May 18 — was `public_elementary_*`. Seed function now stores all K–12; elementary is a derived subset.* |
+| `us_cities_scored` | Pre-scored city table (Task #0). Includes `public_school_count` / `public_school_enrollment` (all open K–12 public schools) and `public_elementary_count` / `public_elementary_enrollment` (derived subset, `lowest_grade_offered ≤ 5`) as cached counts. *Renamed May 18 — was `public_elementary_*`. Seed function now stores all K–12; elementary is a derived subset.* |
+| `public_schools` | One row per NCES open public school nationally (PK = `nces_id`). Stores name, district, address, lat/lng, grades, level, type, enrollment. `is_elementary_serving` is a generated column (`lowest_grade_offered ≤ 5`). FK `us_cities_scored_id` links each school to its seeded city. **Source of truth for school-level data**; `us_cities_scored.public_*_count` columns remain as cached counts. Backfilled May 18 — 38,196 schools across 948 cities. *Added May 18 to unblock Teacher Search seeding, `enrich-school-staff`, and City Detail "Show Formula" school list.* |
 | `city_category_scores` | Per-city, per-category (6 categories) scores |
 | `city_market_signals` | Raw signal rows per city (label/value/source/delta) — drives "Show Formula" |
 | `city_competitors` | Apify-scraped competitor records per city |

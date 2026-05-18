@@ -4,6 +4,25 @@
 > Live URL: https://neuron-garage-franchise.lovable.app
 > Preview: https://id-preview--c74b81ad-10d7-4a10-b6c8-de17f48a663e.lovable.app
 > Stack: React + TS + Vite + Tailwind + shadcn, Lovable Cloud (Supabase) backend
+> Companion files: `HOW_IT_WORKS.md` (product behavior), `APIS.md` (integration reference)
+
+---
+
+## 0. Maintenance — which file to update when something changes
+
+| Change | Update file(s) |
+|---|---|
+| Added / removed a page or route | `PROJECT_CONTEXT.md` § 1 + `HOW_IT_WORKS.md` |
+| Added / removed / renamed a Supabase table or column | `PROJECT_CONTEXT.md` § 2 |
+| Added / removed an edge function | `PROJECT_CONTEXT.md` § 3 (+ `APIS.md` if it calls a new API) |
+| Wired a new third-party API | `APIS.md` (new block) + `PROJECT_CONTEXT.md` § 4 |
+| Removed an API or rotated key owner | `APIS.md` only |
+| Product behavior changed (flow, math, rule) | `HOW_IT_WORKS.md` (+ successor meeting-notes file if it was a client decision) |
+| Known bug fixed or new bug found | `PROJECT_CONTEXT.md` § 5 |
+| Sprint task done | `OPEN_TASKS.md` |
+| Visual rule changed | `DESIGN.md` (rule changes only — not for one-off tweaks) |
+
+Rule of thumb: `PROJECT_CONTEXT.md` is **high-churn inventory**, `HOW_IT_WORKS.md` is **low-churn behavior**, `APIS.md` is **medium-churn reference**. Regenerate this file before each weekly client review.
 
 ---
 

@@ -577,10 +577,29 @@ Deno.serve(async (req) => {
           updated_at: new Date().toISOString(),
         };
         if (!dryRun) {
-          const { error: upErr } = await supabase
+          const { data: upserted, error: upErr } = await supabase
             .from("us_cities_scored")
-            .upsert(row, { onConflict: "city_name,state_abbr" });
+            .upsert(row, { onConflict: "city_name,state_abbr" })
+            .select("id")
+            .single();
           if (upErr) throw new Error(`upsert: ${upErr.message}`);
+
+          // Also upsert per-school rows into public_schools (source of truth for school data).
+          // Same NCES response we already have in memory — no extra API call.
+          const ncesSchools = ncesRes.schools ?? [];
+          if (ncesSchools.length > 0 && upserted?.id) {
+            const schoolRows = ncesSchools
+              .map((s: any) => mapNcesSchoolRow(s, upserted.id))
+              .filter((r) => r.nces_id);
+            // Chunk to keep payload small (Supabase max row size)
+            const CHUNK = 200;
+            for (let k = 0; k < schoolRows.length; k += CHUNK) {
+              const { error: schErr } = await supabase
+                .from("public_schools")
+                .upsert(schoolRows.slice(k, k + CHUNK), { onConflict: "nces_id" });
+              if (schErr) throw new Error(`public_schools upsert: ${schErr.message}`);
+            }
+          }
         }
         processed++;
       } catch (e) {

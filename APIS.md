@@ -51,12 +51,14 @@ Every API below has a configured secret in Lovable Cloud AND is read by deployed
 - **Status:** Live ✅
 
 ### NCES CCD (via Urban Institute Education Data API)
-- **Purpose:** Public school counts per city — **all** open public schools (any grade), plus a derived elementary-serving subset.
+- **Purpose:** Public school records per city — **all** open public schools (any grade), plus a derived elementary-serving subset.
 - **Secret:** _none — public endpoint_
-- **Called from:** `fetch-school-counts`, `seed-cities-database`
-- **What we store (as of May 18):** All open public schools (`school_status = 1`) matched to the city alias set go into `us_cities_scored.public_school_count` / `public_school_enrollment`. The elementary subset (`lowest_grade_offered ≤ 5`) is derived at write time into `public_elementary_count` / `public_elementary_enrollment`. *Previously we only stored the elementary count — column names were renamed in the same migration to avoid name-vs-meaning drift.*
+- **Called from:** `fetch-school-counts`, `seed-cities-database`, `backfill-public-schools`
+- **What we store (as of May 18):**
+  - **Per-row table `public_schools`** (source of truth, populated by `backfill-public-schools`): one row per NCES school nationally with name, district, address, lat/lng, grades, type, enrollment. `is_elementary_serving` is a generated column. 38,196 rows live across 948 cities.
+  - **Cached counts on `us_cities_scored`** (populated by `seed-cities-database`): `public_school_count` / `public_school_enrollment` (all open public schools) and the derived `public_elementary_count` / `public_elementary_enrollment` (`lowest_grade_offered ≤ 5`). *Renamed May 18 from `public_elementary_*` to avoid name-vs-meaning drift.*
 - **Cost / limit:** Free.
-- **Match rate today:** 48 / 50 sample cities matched. Boston verified: 129 total public schools / 94 elementary-serving.
+- **Match rate today:** 48 / 50 sample cities matched. Boston verified: 129 total public schools / 94 elementary-serving — `public_schools` table matches exactly.
 - **Docs:** https://educationdata.urban.org/documentation/
 - **Status:** Live ✅
 

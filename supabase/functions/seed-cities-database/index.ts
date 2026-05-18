@@ -528,6 +528,47 @@ Deno.serve(async (req) => {
     return ok({ run_id: runId, normalized: updated });
   }
 
+  // ---- state_signals_backfill: refetch BEA RPP / regional income / BLS STEM for states
+  // that have any cities with NULL values, then propagate to all cities in that state.
+  // No new APIs — just retries the existing BEA/BLS calls. Used to fix earlier null-cache bugs.
+  if (stateSignalsBackfill) {
+    const { data: gaps, error: gapErr } = await supabase
+      .from("us_cities_scored")
+      .select("state_abbr, cost_of_living_index, regional_median_income, stem_job_concentration");
+    if (gapErr) return ok({ error: gapErr.message }, 500);
+    const states = new Set<string>();
+    for (const r of (gaps ?? []) as any[]) {
+      if (r.cost_of_living_index == null || r.regional_median_income == null || r.stem_job_concentration == null) {
+        states.add(r.state_abbr);
+      }
+    }
+    let statesFixed = 0, citiesUpdated = 0;
+    for (const st of states) {
+      const sig = await fetchStateSignals(st);
+      const patch: Record<string, unknown> = {};
+      if (sig.cost_of_living_index != null) { patch.cost_of_living_index = sig.cost_of_living_index; patch.fred_last_updated = sig.fred_last_updated; }
+      if (sig.regional_median_income != null) { patch.regional_median_income = sig.regional_median_income; patch.bea_last_updated = sig.bea_last_updated; }
+      if (sig.stem_job_concentration != null) { patch.stem_job_concentration = sig.stem_job_concentration; patch.bls_last_updated = sig.bls_last_updated; }
+      if (Object.keys(patch).length === 0) continue;
+      patch.updated_at = new Date().toISOString();
+      // Only update cities where the field is currently null (avoid stomping fresh values)
+      const { data: updRows, error: updErr } = await supabase
+        .from("us_cities_scored")
+        .update(patch)
+        .eq("state_abbr", st)
+        .or("cost_of_living_index.is.null,regional_median_income.is.null,stem_job_concentration.is.null")
+        .select("id");
+      if (!updErr) { statesFixed++; citiesUpdated += (updRows?.length ?? 0); }
+    }
+    await supabase.from("city_seed_runs").update({
+      completed_at: new Date().toISOString(),
+      cities_processed: citiesUpdated,
+      notes: `state_signals_backfill: ${statesFixed} states, ${citiesUpdated} cities`,
+    }).eq("id", runId);
+    return ok({ run_id: runId, states_fixed: statesFixed, cities_updated: citiesUpdated });
+  }
+
+
   const { data: cities, error: geoErr } = await supabase
     .from("us_cities_geo")
     .select("city, state_id, state_name, population, lat, lng, density")

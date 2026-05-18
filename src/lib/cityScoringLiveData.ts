@@ -339,15 +339,16 @@ export async function getNearbyMarkets(opts: {
 
   const collected: any[] = [];
   const seen = new Set<string>([opts.cityId]);
+  const selectCols = "id, city_name, state_name, state_abbr, metro_area, composite_score_default, population";
 
   if (opts.metroArea) {
     const { data } = await supabase
-      .from("cities")
-      .select("id, city, state, metro_area, county, composite_score, tier, population")
+      .from("us_cities_scored")
+      .select(selectCols)
       .eq("metro_area", opts.metroArea)
-      .gt("composite_score", 0)
+      .gt("composite_score_default", 0)
       .neq("id", opts.cityId)
-      .order("composite_score", { ascending: false })
+      .order("composite_score_default", { ascending: false })
       .limit(limit);
     (data ?? []).forEach((row: any) => {
       if (!seen.has(row.id)) {
@@ -360,12 +361,12 @@ export async function getNearbyMarkets(opts: {
   if (collected.length < limit && opts.state) {
     const remaining = limit - collected.length;
     const { data } = await supabase
-      .from("cities")
-      .select("id, city, state, metro_area, county, composite_score, tier, population")
-      .eq("state", opts.state)
-      .gt("composite_score", 0)
+      .from("us_cities_scored")
+      .select(selectCols)
+      .eq("state_name", opts.state)
+      .gt("composite_score_default", 0)
       .neq("id", opts.cityId)
-      .order("composite_score", { ascending: false })
+      .order("composite_score_default", { ascending: false })
       .limit(remaining + seen.size);
     (data ?? []).forEach((row: any) => {
       if (collected.length >= limit) return;
@@ -376,16 +377,19 @@ export async function getNearbyMarkets(opts: {
     });
   }
 
-  return collected.slice(0, limit).map((row: any) => ({
-    cityId: row.id,
-    city: row.city,
-    state: normalizeState(row.state),
-    metroArea: row.metro_area ?? null,
-    county: row.county ?? null,
-    compositeScore: toNumber(row.composite_score, 0),
-    tier: row.tier ?? tierFromScore(toNumber(row.composite_score, 0)),
-    population: toNumber(row.population, 0),
-  }));
+  return collected.slice(0, limit).map((row: any) => {
+    const composite = toNumber(row.composite_score_default, 0);
+    return {
+      cityId: row.id,
+      city: row.city_name,
+      state: normalizeState(row.state_name ?? row.state_abbr),
+      metroArea: row.metro_area ?? null,
+      county: null,
+      compositeScore: composite,
+      tier: tierFromScore(composite),
+      population: toNumber(row.population, 0),
+    };
+  });
 }
 
 export function buildRankedMarketsCsv(markets: RankedMarket[]) {

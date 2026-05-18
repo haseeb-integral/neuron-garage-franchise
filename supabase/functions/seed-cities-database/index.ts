@@ -246,7 +246,13 @@ async function fetchStateSignals(stateAbbr: string): Promise<StateSignals> {
     } catch (_) { }
   }
 
-  STATE_SIGNAL_CACHE.set(stateAbbr, out);
+  // Only cache if we got at least one non-null value — prevents a single failed BEA/BLS call
+  // from poisoning every city in that state for the rest of the invocation.
+  // (Was the root cause of 489/960 cities missing cost_of_living_index in earlier runs.)
+  const hasAnyValue = out.stem_job_concentration != null
+    || out.regional_median_income != null
+    || out.cost_of_living_index != null;
+  if (hasAnyValue) STATE_SIGNAL_CACHE.set(stateAbbr, out);
   return out;
 }
 

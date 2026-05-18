@@ -144,6 +144,34 @@ See **`TEACHER_IDEAL_PROFILE.md`** for who we are recruiting and why — read th
 
 ---
 
+## ⚡ Data-layer follow-ups (deferred, added May 18 after screen-walk)
+
+### B1. Build `teacher_prospects_master` table
+- Master multi-source teacher pool that Apollo / vendor CSV / DonorsChoose all land in, distinct from per-search `teacher_prospects`. Blocked on Brett sourcing decision.
+- **Risk:** medium
+
+### B3. Add `school_nces_id`, `us_cities_scored_id`, `source_segment` FKs to `candidates`
+- So a promoted teacher carries city + school + segment context into the pipeline. Today `candidates.city`/`state` are free-text.
+- **Risk:** low
+
+### B4. Add FKs from `candidates.city/state` (or replace with `us_cities_scored_id`)
+- Pairs with B3. Decide replace-vs-augment.
+- **Risk:** low
+
+### B5. Consolidate `cities` ↔ `us_cities_scored`
+- Two overlapping city tables. Pick one source of truth, migrate references, drop the other.
+- **Risk:** medium (touches City Search, Teacher Search, watchlist)
+
+### B6. SmartLead send/reply tracking columns on `teacher_prospects`
+- `smartlead_campaign_id`, `last_sent_at`, `last_replied_at`, `reply_status`. Required before Task #17 wiring.
+- **Risk:** low
+
+### C3 / C4. `school_district` table + `school_principal` / `school_contact_email` columns on `public_schools`
+- District-level rollups and direct school contacts for outreach. Not blocking current sprint.
+- **Risk:** low (additive)
+
+---
+
 ## ⚡ Email Outreach + Candidate Pipeline — Pending
 
 ### 17. SmartLead integration (Feature 3)

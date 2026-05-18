@@ -22,6 +22,8 @@
 - **Watchlist / Favorites** — same thing. UI says "Favorites", table is `watchlist_items`. Only one list works today.
 - **Non-registration state** — one of 38 U.S. states/territories where Kaylie's franchise cannot legally register. Hardcoded business logic. Do not change.
 - **Fit Score** (teacher) — 0–100 score in `teacher_prospects.fit_score`. See `TEACHER_IDEAL_PROFILE.md`.
+- **Teacher Type** — value in `teacher_prospects.teacher_type`. One of `active` (current K–6), `retired`, `camp_enrichment` (summer camp / after-school enrichment educators). Locked enum — see `DATABASE_LAYER_SPEC.md`.
+- **Segment** — value in `teacher_prospects.segment`. Maps to the 4 recruiting segments in `TEACHER_IDEAL_PROFILE.md` (1: active K–6, 2: retired K–6, 3: camp/enrichment, 4: middle/high STEM/maker/shop/art).
 - **Fit Tag** — qualitative label on a candidate (`Hot`, `Warm`, `Cold`, `Untagged`).
 - **Confirmation Gate** — Kanban rule: a candidate cannot move into "Signing" without passing "Confirmation". Already working — do not modify.
 - **Selection Committee** — group voting on candidate fit; rows in `candidate_votes`.

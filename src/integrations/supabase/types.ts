@@ -533,6 +533,39 @@ export type Database = {
           },
         ]
       }
+      city_seed_runs: {
+        Row: {
+          cities_failed: number
+          cities_processed: number
+          completed_at: string | null
+          error_summary: Json | null
+          id: string
+          notes: string | null
+          phase: string
+          started_at: string
+        }
+        Insert: {
+          cities_failed?: number
+          cities_processed?: number
+          completed_at?: string | null
+          error_summary?: Json | null
+          id?: string
+          notes?: string | null
+          phase: string
+          started_at?: string
+        }
+        Update: {
+          cities_failed?: number
+          cities_processed?: number
+          completed_at?: string | null
+          error_summary?: Json | null
+          id?: string
+          notes?: string | null
+          phase?: string
+          started_at?: string
+        }
+        Relationships: []
+      }
       custom_criteria: {
         Row: {
           category: string
@@ -824,6 +857,161 @@ export type Database = {
           state_name?: string
         }
         Relationships: []
+      }
+      us_cities_scored: {
+        Row: {
+          apify_last_updated: string | null
+          avg_camp_price_per_hour: number | null
+          bea_last_updated: string | null
+          bls_last_updated: string | null
+          camp_waitlist_signals: Json | null
+          census_last_updated: string | null
+          charter_elementary_count: number | null
+          children_5_12: number | null
+          city_name: string
+          college_degree_pct: number | null
+          composite_score_default: number | null
+          cost_of_living_index: number | null
+          created_at: string
+          dual_working_families_pct: number | null
+          firecrawl_last_updated: string | null
+          fred_last_updated: string | null
+          greatschools_last_updated: string | null
+          id: string
+          is_registration_state: boolean
+          labor_force_participation: number | null
+          latitude: number | null
+          longitude: number | null
+          median_household_income: number | null
+          metro_area: string | null
+          nces_last_updated: string | null
+          population: number | null
+          population_density: number | null
+          private_elementary_count: number | null
+          public_elementary_count: number | null
+          public_elementary_enrollment: number | null
+          refresh_count: number
+          regional_median_income: number | null
+          school_hosted_camp_count: number | null
+          score_competitive: number | null
+          score_demand: number | null
+          score_ease_of_operation: number | null
+          score_franchise_supply: number | null
+          score_parent_mindset: number | null
+          score_pricing_power: number | null
+          scored_at: string | null
+          seed_run_id: string | null
+          state_abbr: string
+          state_name: string
+          stem_job_concentration: number | null
+          summer_camp_count: number | null
+          updated_at: string
+        }
+        Insert: {
+          apify_last_updated?: string | null
+          avg_camp_price_per_hour?: number | null
+          bea_last_updated?: string | null
+          bls_last_updated?: string | null
+          camp_waitlist_signals?: Json | null
+          census_last_updated?: string | null
+          charter_elementary_count?: number | null
+          children_5_12?: number | null
+          city_name: string
+          college_degree_pct?: number | null
+          composite_score_default?: number | null
+          cost_of_living_index?: number | null
+          created_at?: string
+          dual_working_families_pct?: number | null
+          firecrawl_last_updated?: string | null
+          fred_last_updated?: string | null
+          greatschools_last_updated?: string | null
+          id?: string
+          is_registration_state?: boolean
+          labor_force_participation?: number | null
+          latitude?: number | null
+          longitude?: number | null
+          median_household_income?: number | null
+          metro_area?: string | null
+          nces_last_updated?: string | null
+          population?: number | null
+          population_density?: number | null
+          private_elementary_count?: number | null
+          public_elementary_count?: number | null
+          public_elementary_enrollment?: number | null
+          refresh_count?: number
+          regional_median_income?: number | null
+          school_hosted_camp_count?: number | null
+          score_competitive?: number | null
+          score_demand?: number | null
+          score_ease_of_operation?: number | null
+          score_franchise_supply?: number | null
+          score_parent_mindset?: number | null
+          score_pricing_power?: number | null
+          scored_at?: string | null
+          seed_run_id?: string | null
+          state_abbr: string
+          state_name: string
+          stem_job_concentration?: number | null
+          summer_camp_count?: number | null
+          updated_at?: string
+        }
+        Update: {
+          apify_last_updated?: string | null
+          avg_camp_price_per_hour?: number | null
+          bea_last_updated?: string | null
+          bls_last_updated?: string | null
+          camp_waitlist_signals?: Json | null
+          census_last_updated?: string | null
+          charter_elementary_count?: number | null
+          children_5_12?: number | null
+          city_name?: string
+          college_degree_pct?: number | null
+          composite_score_default?: number | null
+          cost_of_living_index?: number | null
+          created_at?: string
+          dual_working_families_pct?: number | null
+          firecrawl_last_updated?: string | null
+          fred_last_updated?: string | null
+          greatschools_last_updated?: string | null
+          id?: string
+          is_registration_state?: boolean
+          labor_force_participation?: number | null
+          latitude?: number | null
+          longitude?: number | null
+          median_household_income?: number | null
+          metro_area?: string | null
+          nces_last_updated?: string | null
+          population?: number | null
+          population_density?: number | null
+          private_elementary_count?: number | null
+          public_elementary_count?: number | null
+          public_elementary_enrollment?: number | null
+          refresh_count?: number
+          regional_median_income?: number | null
+          school_hosted_camp_count?: number | null
+          score_competitive?: number | null
+          score_demand?: number | null
+          score_ease_of_operation?: number | null
+          score_franchise_supply?: number | null
+          score_parent_mindset?: number | null
+          score_pricing_power?: number | null
+          scored_at?: string | null
+          seed_run_id?: string | null
+          state_abbr?: string
+          state_name?: string
+          stem_job_concentration?: number | null
+          summer_camp_count?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "us_cities_scored_seed_run_id_fkey"
+            columns: ["seed_run_id"]
+            isOneToOne: false
+            referencedRelation: "city_seed_runs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

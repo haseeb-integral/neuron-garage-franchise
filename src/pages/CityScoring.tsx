@@ -398,13 +398,34 @@ const CityScoring = () => {
   const askAi = async (query: string) => {
     setAiLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("ai-city-query", {
-        body: {
-          query,
-          threadId: aiThreadId,
-          previousTurns: aiTurns.map((t) => ({ query: t.query, response: t.response })),
-        },
-      });
+      // Pre-flight auth check: ensure we have a session before invoking, and
+      // refresh once if the token is stale (root cause of the prior 401s).
+      let { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session) {
+        await supabase.auth.refreshSession();
+        ({ data: sessionData } = await supabase.auth.getSession());
+      }
+      if (!sessionData?.session) {
+        toast.error("Please sign in again to use AI search");
+        return;
+      }
+
+      const invokeOnce = () =>
+        supabase.functions.invoke("ai-city-query", {
+          body: {
+            query,
+            threadId: aiThreadId,
+            previousTurns: aiTurns.map((t) => ({ query: t.query, response: t.response })),
+          },
+        });
+
+      let { data, error } = await invokeOnce();
+      // One retry on auth failure after forcing a refresh — handles edge cases
+      // where the token expired between the pre-flight check and the invoke.
+      if (error && /401|not authenticated|unauthor/i.test(String(error?.message ?? ""))) {
+        await supabase.auth.refreshSession();
+        ({ data, error } = await invokeOnce());
+      }
       if (error) {
         const msg = await getInvokeErrorMessage(error);
         toast.error(msg || "AI search failed");

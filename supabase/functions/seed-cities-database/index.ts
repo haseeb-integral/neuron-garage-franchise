@@ -271,6 +271,49 @@ const NCES_LAST_UPDATED = "2023-06-30";
 // Cache full state directory (one request returns all schools, no pagination needed).
 const NCES_STATE_CACHE = new Map<string, any[]>();
 
+// Consolidated cities — NCES codes schools under neighborhood/borough names rather than the
+// city's official name. Key = "CITY|STATE" uppercase. Value = list of NCES city_location values
+// (uppercase) that should roll up into that city's row.
+const NCES_CITY_ALIASES: Record<string, string[]> = {
+  // NYC — 5 boroughs (NCES uses borough names, not "NEW YORK")
+  "NEW YORK|NY": ["NEW YORK", "MANHATTAN", "BROOKLYN", "BRONX", "QUEENS", "STATEN ISLAND",
+    "ASTORIA", "LONG ISLAND CITY", "FLUSHING", "JAMAICA", "FAR ROCKAWAY", "ELMHURST",
+    "CORONA", "JACKSON HEIGHTS", "REGO PARK", "FOREST HILLS", "RIDGEWOOD",
+    "ROSEDALE", "SAINT ALBANS", "SOUTH RICHMOND HILL", "OZONE PARK", "WOODSIDE",
+    "MASPETH", "MIDDLE VILLAGE", "BAYSIDE", "WHITESTONE", "FRESH MEADOWS", "HOLLIS",
+    "SPRINGFIELD GARDENS", "CAMBRIA HEIGHTS", "QUEENS VILLAGE", "LAURELTON",
+    "ARVERNE", "BREEZY POINT", "BELLE HARBOR", "ROCKAWAY PARK", "ROCKAWAY BEACH",
+    "COLLEGE POINT", "DOUGLASTON", "LITTLE NECK", "GLEN OAKS", "NEW HYDE PARK", "FLORAL PARK",
+    "RICHMOND HILL", "KEW GARDENS", "BRIARWOOD", "SUNNYSIDE", "EAST ELMHURST",
+    "HOWARD BEACH", "BROAD CHANNEL"],
+  // Boston — many schools are listed under neighborhood names
+  "BOSTON|MA": ["BOSTON", "DORCHESTER", "ROXBURY", "JAMAICA PLAIN", "HYDE PARK", "MATTAPAN",
+    "ROSLINDALE", "WEST ROXBURY", "BRIGHTON", "ALLSTON", "CHARLESTOWN", "EAST BOSTON",
+    "SOUTH BOSTON", "DORCHESTER CENTER", "ROXBURY CROSSING"],
+  // Nashville-Davidson consolidated
+  "NASHVILLE|TN": ["NASHVILLE", "ANTIOCH", "HERMITAGE", "MADISON", "OLD HICKORY",
+    "WHITES CREEK", "JOELTON", "GOODLETTSVILLE"],
+  // Louisville-Jefferson consolidated
+  "LOUISVILLE|KY": ["LOUISVILLE", "FAIRDALE", "VALLEY STATION", "PLEASURE RIDGE PARK",
+    "OKOLONA", "JEFFERSONTOWN", "FERN CREEK", "PROSPECT", "ANCHORAGE"],
+  // Indianapolis-Marion consolidated
+  "INDIANAPOLIS|IN": ["INDIANAPOLIS", "BEECH GROVE", "LAWRENCE", "SPEEDWAY"],
+  // Jacksonville-Duval consolidated
+  "JACKSONVILLE|FL": ["JACKSONVILLE", "JACKSONVILLE BEACH", "ATLANTIC BEACH", "NEPTUNE BEACH"],
+  // Honolulu county (CDP)
+  "HONOLULU|HI": ["HONOLULU", "EWA BEACH", "KAILUA", "KANEOHE", "WAIPAHU", "PEARL CITY", "AIEA"],
+  // Anchorage municipality
+  "ANCHORAGE|AK": ["ANCHORAGE", "EAGLE RIVER", "CHUGIAK", "GIRDWOOD"],
+  // Augusta-Richmond consolidated
+  "AUGUSTA|GA": ["AUGUSTA", "HEPHZIBAH", "BLYTHE"],
+  // Lexington-Fayette consolidated
+  "LEXINGTON|KY": ["LEXINGTON"],
+  // Athens-Clarke consolidated
+  "ATHENS|GA": ["ATHENS", "BOGART", "WINTERVILLE"],
+  // DC has no neighborhoods in NCES but include alias for safety
+  "WASHINGTON|DC": ["WASHINGTON"],
+};
+
 async function fetchNcesForCity(cityName: string, stateAbbr: string) {
   try {
     const fips = STATE_FIPS[stateAbbr];
@@ -284,12 +327,14 @@ async function fetchNcesForCity(cityName: string, stateAbbr: string) {
       all = (j?.results ?? []) as any[];
       NCES_STATE_CACHE.set(stateAbbr, all);
     }
-    const target = cityName.trim().toUpperCase();
+    const key = `${cityName.trim().toUpperCase()}|${stateAbbr}`;
+    const aliases = NCES_CITY_ALIASES[key];
+    const targets = new Set(aliases ?? [cityName.trim().toUpperCase()]);
     // CCD `city_location` is uppercase. Match exact city OR mailing city as fallback.
     const inCity = all.filter((s) => {
       const loc = String(s.city_location ?? "").toUpperCase();
       const mail = String(s.city_mailing ?? "").toUpperCase();
-      return loc === target || mail === target;
+      return targets.has(loc) || targets.has(mail);
     });
     const elem = inCity.filter((s) => Number(s.school_level) === 1 && Number(s.school_status) === 1);
     const count = elem.length;

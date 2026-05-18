@@ -2153,7 +2153,7 @@ const CityScoring = () => {
           <div className="mb-3 flex items-start justify-between gap-3">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-[18px] leading-none font-bold text-[#07142f]">{selected.city}, {selected.state === "Texas" ? "TX" : selected.state === "Florida" ? "FL" : selected.state}</h2>
-              {lastScrapedRelative ? (
+              {SHOW_LIVE_REFRESH && (lastScrapedRelative ? (
                 <span
                   title={lastScrapedAbsolute ?? ""}
                   className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${isStale ? "bg-[#fff1e6] text-[#c2410c]" : "bg-[#e6f7ef] text-[#0ea66e]"}`}
@@ -2166,7 +2166,7 @@ const CityScoring = () => {
                   <span className="w-1.5 h-1.5 rounded-full bg-[#8794ab]" />
                   No live data yet
                 </span>
-              )}
+              ))}
             </div>
             {(() => {
               const detailCityId = liveCity?.id as string | undefined;

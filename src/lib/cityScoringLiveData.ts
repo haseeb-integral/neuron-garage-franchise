@@ -92,40 +92,68 @@ export function mapSampleCityToRankedMarket(city: CityData): RankedMarket {
   };
 }
 
-export async function loadLiveRankedMarkets(): Promise<RankedMarket[]> {
-  const { data: cityRows, error } = await supabase
-    .from("cities")
-    .select("*")
-    .order("composite_score", { ascending: false });
+function marketTypeFromPopulation(pop: number): string {
+  if (pop >= 250000) return "Urban";
+  if (pop >= 50000) return "Suburb";
+  return "Exurb";
+}
 
-  if (error) {
-    console.error("loadLiveRankedMarkets cities error", error);
+export async function loadLiveRankedMarkets(): Promise<RankedMarket[]> {
+  // PRIMARY source: us_cities_scored (Sam's pre-seeded 948-city dataset with
+  // composite_score_default). Supersedes the old `cities` table for ranking.
+  // We still cross-reference `cities` so that watchlist/detail linkage by
+  // cities.id keeps working for the subset of cities that exist in both.
+  const { data: scoredRows, error: scoredErr } = await supabase
+    .from("us_cities_scored")
+    .select(
+      "id, city_name, state_name, state_abbr, metro_area, population, composite_score_default, score_demand, score_pricing_power, score_competitive, score_franchise_supply, score_ease_of_operation, score_parent_mindset, is_registration_state, scored_at",
+    )
+    .order("composite_score_default", { ascending: false, nullsFirst: false })
+    .limit(2000);
+
+  if (scoredErr) {
+    console.error("loadLiveRankedMarkets us_cities_scored error", scoredErr);
     return [];
   }
+  if (!scoredRows?.length) return [];
 
-  if (!cityRows?.length) return [];
+  // Pull legacy `cities` rows once so we can attach a stable cityId for
+  // watchlist/notes/competitor counts where a row already exists.
+  const { data: cityRows } = await supabase
+    .from("cities")
+    .select("id, city, state, county, market_type, notes, last_scraped_at, competitor_count");
+  const cityByKey = new Map<string, any>();
+  (cityRows ?? []).forEach((c: any) => {
+    const key = `${(c.city ?? "").trim().toLowerCase()}|${normalizeState(c.state).toLowerCase()}`;
+    cityByKey.set(key, c);
+  });
 
-  const cityIds = cityRows.map((row: any) => row.id).filter(Boolean);
-  const competitorCounts = new Map<string, number>();
+  const mapped: RankedMarket[] = scoredRows.map((row: any, index: number) => {
+    const state = normalizeState(row.state_name ?? row.state_abbr);
+    const city = row.city_name ?? "Unknown";
+    const key = `${city.trim().toLowerCase()}|${state.toLowerCase()}`;
+    const legacy = cityByKey.get(key);
+    const composite = toNumber(row.composite_score_default, 0);
+    const hasLiveData = composite > 0;
+    return {
+      id: 200000 + index,
+      cityId: legacy?.id ?? row.id, // prefer cities.id for watchlist linkage
+      city,
+      state,
+      county: legacy?.county ?? null,
+      metroArea: row.metro_area ?? null,
+      tier: tierFromScore(composite),
+      compositeScore: composite,
+      population: toNumber(row.population, 0),
+      competitorCount: toNumber(legacy?.competitor_count, 0),
+      marketType: legacy?.market_type ?? marketTypeFromPopulation(toNumber(row.population, 0)),
+      isNonRegistration: row.is_registration_state === false,
+      lastScrapedAt: row.scored_at ?? legacy?.last_scraped_at ?? null,
+      source: "live",
+      hasLiveData,
+    };
+  });
 
-  if (cityIds.length) {
-    const { data: competitors, error: compError } = await supabase
-      .from("city_competitors")
-      .select("city_id")
-      .in("city_id", cityIds);
-
-    if (compError) {
-      console.error("loadLiveRankedMarkets competitors error", compError);
-    } else {
-      (competitors ?? []).forEach((row: any) => {
-        competitorCounts.set(row.city_id, (competitorCounts.get(row.city_id) ?? 0) + 1);
-      });
-    }
-  }
-
-  const mapped = cityRows.map((row: any, index: number) =>
-    mapLiveCityToRankedMarket(row, index, competitorCounts.get(row.id) ?? 0),
-  );
   return dedupeRankedMarkets(mapped);
 }
 

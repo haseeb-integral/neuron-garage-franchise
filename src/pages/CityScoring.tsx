@@ -55,6 +55,12 @@ import { useScoringConfig, useDebouncedSaveScoringConfig } from "@/hooks/useScor
 import { SCORING_PRESETS, PRESET_NAMES, PRESET_DESCRIPTIONS, detectPreset, type PresetName } from "@/lib/scoringPresets";
 import { AskAiBar } from "@/components/city-scoring/AskAiBar";
 import { AiAnswerCard, type AiResult } from "@/components/city-scoring/AiAnswerCard";
+import { RankedMarketsList, type TopN } from "@/components/city-scoring/RankedMarketsList";
+
+// Feature flag: hide live on-demand API widgets on the detail panel.
+// Per May 18 Brett note + Haseeb decision: detail panel reads pre-seeded
+// data only; refresh/scrape widgets stay in code but are hidden.
+const SHOW_LIVE_REFRESH = false;
 
 function rebalanceWeights<K extends string>(
   prev: Record<K, number>,
@@ -398,13 +404,34 @@ const CityScoring = () => {
   const askAi = async (query: string) => {
     setAiLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("ai-city-query", {
-        body: {
-          query,
-          threadId: aiThreadId,
-          previousTurns: aiTurns.map((t) => ({ query: t.query, response: t.response })),
-        },
-      });
+      // Pre-flight auth check: ensure we have a session before invoking, and
+      // refresh once if the token is stale (root cause of the prior 401s).
+      let { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session) {
+        await supabase.auth.refreshSession();
+        ({ data: sessionData } = await supabase.auth.getSession());
+      }
+      if (!sessionData?.session) {
+        toast.error("Please sign in again to use AI search");
+        return;
+      }
+
+      const invokeOnce = () =>
+        supabase.functions.invoke("ai-city-query", {
+          body: {
+            query,
+            threadId: aiThreadId,
+            previousTurns: aiTurns.map((t) => ({ query: t.query, response: t.response })),
+          },
+        });
+
+      let { data, error } = await invokeOnce();
+      // One retry on auth failure after forcing a refresh — handles edge cases
+      // where the token expired between the pre-flight check and the invoke.
+      if (error && /401|not authenticated|unauthor/i.test(String(error?.message ?? ""))) {
+        await supabase.auth.refreshSession();
+        ({ data, error } = await invokeOnce());
+      }
       if (error) {
         const msg = await getInvokeErrorMessage(error);
         toast.error(msg || "AI search failed");
@@ -472,6 +499,11 @@ const CityScoring = () => {
   const PAGE_SIZE = 8;
   const page = useCityScoringStore((s) => s.page);
   const setPage = useCityScoringStore((s) => s.setPage);
+
+  // Left-panel view toggle: classic paginated table vs. Top-N ranked list.
+  const [leftViewMode, setLeftViewMode] = useState<"table" | "topn">("table");
+  const [topN, setTopN] = useState<TopN>(20);
+
 
   // Live DB-backed data for the selected market (falls back to sample data when missing)
   const initialMarketKey = `${selectedMarketKey.city}|${selectedMarketKey.state}`;
@@ -1926,6 +1958,18 @@ const CityScoring = () => {
               <p className="text-[11px] text-[#8794ab]">({filtered.length} markets found)</p>
             </div>
             <div className="flex items-center gap-3">
+              <div className="inline-flex rounded-md border border-[#dbe4f2] overflow-hidden text-[10px] font-semibold">
+                <button
+                  onClick={() => setLeftViewMode("table")}
+                  className={`px-2 py-1 ${leftViewMode === "table" ? "bg-[#174be8] text-white" : "bg-white text-[#526078] hover:bg-[#f3f6fc]"}`}
+                  title="Classic paginated table"
+                >Table</button>
+                <button
+                  onClick={() => setLeftViewMode("topn")}
+                  className={`px-2 py-1 ${leftViewMode === "topn" ? "bg-[#174be8] text-white" : "bg-white text-[#526078] hover:bg-[#f3f6fc]"}`}
+                  title="Top-N ranked view"
+                >Top-N</button>
+              </div>
               <button
                 onClick={() => setWatchlistOnly((v) => !v)}
                 className={`flex items-center gap-1 text-xs font-medium hover:underline ${watchlistOnly ? "text-[#0ea66e]" : "text-[#526078]"}`}
@@ -1972,6 +2016,22 @@ const CityScoring = () => {
               </button>
             </div>
           )}
+          {leftViewMode === "topn" ? (
+            <RankedMarketsList
+              markets={filtered}
+              topN={topN}
+              onTopNChange={setTopN}
+              selectedKey={{ city: selectedCity, state: selectedState }}
+              rankedByLabel={hasOverrides ? "Ranked by your weights" : "Ranked by default weights"}
+              onSelect={(m) => {
+                const sample = sampleCities.find((s) => sameMarket(s.city, s.state, m.city, m.state));
+                setSelectedMarketKey({ city: m.city, state: m.state });
+                if (sample) setSelectedId(sample.id);
+                else setSelectedId(m.id);
+              }}
+            />
+          ) : (
+          <>
           <div className="overflow-hidden flex-1">
             <div className="grid grid-cols-[16px_14px_minmax(0,1fr)_46px_72px_18px_16px] items-center gap-x-2 px-1 py-2 text-[9.5px] uppercase tracking-wide text-[#8794ab] border-b border-[#eef2f7]">
               <span></span>
@@ -2084,6 +2144,8 @@ const CityScoring = () => {
               >›</button>
             </div>
           </div>
+          </>
+          )}
         </div>
 
         {/* Center: Selected Market Detail */}
@@ -2091,7 +2153,7 @@ const CityScoring = () => {
           <div className="mb-3 flex items-start justify-between gap-3">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-[18px] leading-none font-bold text-[#07142f]">{selected.city}, {selected.state === "Texas" ? "TX" : selected.state === "Florida" ? "FL" : selected.state}</h2>
-              {lastScrapedRelative ? (
+              {SHOW_LIVE_REFRESH && (lastScrapedRelative ? (
                 <span
                   title={lastScrapedAbsolute ?? ""}
                   className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${isStale ? "bg-[#fff1e6] text-[#c2410c]" : "bg-[#e6f7ef] text-[#0ea66e]"}`}
@@ -2104,7 +2166,7 @@ const CityScoring = () => {
                   <span className="w-1.5 h-1.5 rounded-full bg-[#8794ab]" />
                   No live data yet
                 </span>
-              )}
+              ))}
             </div>
             {(() => {
               const detailCityId = liveCity?.id as string | undefined;
@@ -2334,7 +2396,7 @@ const CityScoring = () => {
                     </button>
                   )}
                 </>
-              ) : (
+              ) : SHOW_LIVE_REFRESH ? (
                 <div className="rounded-md border border-dashed border-[#dbe4f2] bg-[#f7faff] px-3 py-4 text-center">
                   <p className="text-[11.5px] text-[#526078] leading-snug">
                     No live signals yet for this market.
@@ -2347,6 +2409,12 @@ const CityScoring = () => {
                   >
                     {refreshingMarket ? "Refreshing…" : "Refresh This Market"}
                   </button>
+                </div>
+              ) : (
+                <div className="rounded-md border border-dashed border-[#dbe4f2] bg-[#f7faff] px-3 py-4 text-center">
+                  <p className="text-[11.5px] text-[#526078] leading-snug">
+                    Showing pre-seeded scores. Live signal scraping is paused.
+                  </p>
                 </div>
               )}
             </div>
@@ -2370,11 +2438,13 @@ const CityScoring = () => {
 
         {/* Right column */}
         <div className="min-w-0 space-y-3 flex flex-col">
-          <SourceDataPanel
-            cityId={liveCity?.id ?? null}
-            refreshKey={marketRefreshVersion}
-            onViewEvidence={() => setDetailDrawerOpen(true)}
-          />
+          {SHOW_LIVE_REFRESH && (
+            <SourceDataPanel
+              cityId={liveCity?.id ?? null}
+              refreshKey={marketRefreshVersion}
+              onViewEvidence={() => setDetailDrawerOpen(true)}
+            />
+          )}
 
           <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
             <h4 className="text-xs font-bold text-[#07142f] mb-1">Market Research Report</h4>

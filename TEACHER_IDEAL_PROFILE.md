@@ -187,7 +187,7 @@ Use these exact-phrase searches when pulling teacher records:
 ## What This Is NOT
 
 - We are NOT recruiting camp guides/counselors (college students). The franchisee hires those locally.
-- We are NOT recruiting high school teachers as the primary target (wrong age group).
+- Middle and high school teachers are **not the primary target** for the Location Director role, but they are **in scope as a secondary tier** — especially STEM, shop, maker, robotics, CS, and art teachers. They are often summer-available and a strong fit for camp staffing. Fit scoring should rank them below K–6 and retired teachers, not exclude them. *(Correction logged May 18: an earlier draft framed "K–6 only" as a May 15 lock — it isn't. The website locks **campers** at K–6, not staff.)*
 - We are NOT recruiting school administrators (principals, superintendents) as the primary target — though they are high fit if they have classroom background.
 - This scope is a **starting point** — Kaylie may expand to middle school teachers, school counselors, or other educator profiles as the program grows.
 

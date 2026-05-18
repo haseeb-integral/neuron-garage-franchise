@@ -708,6 +708,104 @@ export type Database = {
         }
         Relationships: []
       }
+      public_schools: {
+        Row: {
+          city_name: string | null
+          created_at: string
+          district_name: string | null
+          district_nces_id: string | null
+          enrollment: number | null
+          highest_grade_offered: string | null
+          is_charter: boolean | null
+          is_elementary_serving: boolean | null
+          is_magnet: boolean | null
+          latitude: number | null
+          longitude: number | null
+          lowest_grade_offered: string | null
+          nces_id: string
+          nces_last_updated: string | null
+          nces_year: number | null
+          phone: string | null
+          raw: Json | null
+          school_level: string | null
+          school_name: string
+          school_status: string | null
+          school_type: string | null
+          state_abbr: string | null
+          street_address: string | null
+          teachers_fte: number | null
+          updated_at: string
+          us_cities_scored_id: string | null
+          zip: string | null
+        }
+        Insert: {
+          city_name?: string | null
+          created_at?: string
+          district_name?: string | null
+          district_nces_id?: string | null
+          enrollment?: number | null
+          highest_grade_offered?: string | null
+          is_charter?: boolean | null
+          is_elementary_serving?: boolean | null
+          is_magnet?: boolean | null
+          latitude?: number | null
+          longitude?: number | null
+          lowest_grade_offered?: string | null
+          nces_id: string
+          nces_last_updated?: string | null
+          nces_year?: number | null
+          phone?: string | null
+          raw?: Json | null
+          school_level?: string | null
+          school_name: string
+          school_status?: string | null
+          school_type?: string | null
+          state_abbr?: string | null
+          street_address?: string | null
+          teachers_fte?: number | null
+          updated_at?: string
+          us_cities_scored_id?: string | null
+          zip?: string | null
+        }
+        Update: {
+          city_name?: string | null
+          created_at?: string
+          district_name?: string | null
+          district_nces_id?: string | null
+          enrollment?: number | null
+          highest_grade_offered?: string | null
+          is_charter?: boolean | null
+          is_elementary_serving?: boolean | null
+          is_magnet?: boolean | null
+          latitude?: number | null
+          longitude?: number | null
+          lowest_grade_offered?: string | null
+          nces_id?: string
+          nces_last_updated?: string | null
+          nces_year?: number | null
+          phone?: string | null
+          raw?: Json | null
+          school_level?: string | null
+          school_name?: string
+          school_status?: string | null
+          school_type?: string | null
+          state_abbr?: string | null
+          street_address?: string | null
+          teachers_fte?: number | null
+          updated_at?: string
+          us_cities_scored_id?: string | null
+          zip?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_schools_us_cities_scored_id_fkey"
+            columns: ["us_cities_scored_id"]
+            isOneToOne: false
+            referencedRelation: "us_cities_scored"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       saved_searches: {
         Row: {
           created_at: string
@@ -1077,6 +1175,8 @@ export type Database = {
         Args: { _candidate_id: string }
         Returns: undefined
       }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       app_role: "admin" | "manager"

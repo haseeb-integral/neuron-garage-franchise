@@ -104,6 +104,8 @@ No storage buckets configured.
 | BEA | Regional income metrics | `BEA_API_KEY` | Live |
 | FRED (Federal Reserve) | Regional median income, COLI | _(no key — public)_ | Live |
 | NCES CCD (Urban Institute) | Public elementary school counts | _(no key — public)_ | Live |
+| NCES PSS (embedded Excel) | Private elementary counts + enrollment | _(no key — static lookup)_ | Live (636/960 cities; full re-pull = B10a) |
+| Open-Meteo Historical Weather | Climate signals per city (snowfall, temp, sunny days) | _(no key — public)_ | Live (506/960 seeded; remaining batched — B8) |
 | Apify (Google Maps actor) | Competitor + teacher scraping | `APIFY_API_TOKEN`, `APIFY_GOOGLE_MAPS_ACTOR_ID` | Live |
 | Firecrawl | Web scraping / enrichment | `FIRECRAWL_API_KEY` | Live |
 | Lovable AI Gateway | In-app AI (fit scoring, summaries) | `LOVABLE_API_KEY` | Live |

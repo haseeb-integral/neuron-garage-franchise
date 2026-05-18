@@ -83,12 +83,12 @@ See **`TEACHER_IDEAL_PROFILE.md`** for who we are recruiting and why — read th
 - Drop-down on "Add to Favorites" → pick list; create / rename / delete; move cities between lists
 - **Risk:** low-medium
 
-### 11. Wire GreatSchools API — private + charter elementary school count
+### 11. Wire GreatSchools API — `avg_school_rating` (trial-then-cancel strategy)
 - **BLOCKED — waiting on Brett's API key**
-- Brett: sign up at https://www.greatschools.org/api (School Essentials, free 14 days then $52.50/mo)
-- Haseeb: add key to Lovable env as `GREATSCHOOLS_API_KEY` once received
-- Store: `private_elementary_count`, `charter_elementary_count` in `city_market_signals`
-- **Cost decision:** confirm purchase before next client review
+- **Strategy (updated May 18):** 14-day free trial → pull all 960 cities in week 1 → cancel day 13. Ratings are stable, one snapshot lasts 12+ months. $0 cost.
+- Brett: sign up at https://www.greatschools.org/api, paste key into Lovable Cloud as `GREATSCHOOLS_API_KEY`
+- Store: `avg_school_rating` on `us_cities_scored` (private + charter elementary counts now covered free by NCES PSS + CCD — see B10a)
+- **Cost decision:** $0 if cancelled day 13; $52.50/mo if kept
 
 ### 11a. City Search: add "Total public schools" widget alongside "Public elementary" (deferred, added May 18)
 - Data already stored in `us_cities_scored.public_school_count` / `public_school_enrollment`
@@ -168,6 +168,28 @@ See **`TEACHER_IDEAL_PROFILE.md`** for who we are recruiting and why — read th
 
 ### C3 / C4. `school_district` table + `school_principal` / `school_contact_email` columns on `public_schools`
 - District-level rollups and direct school contacts for outreach. Not blocking current sprint.
+- **Risk:** low (additive)
+
+### B7. Apify nationwide competitor scrape — $15 test + ~$1,200 full seed (added May 18)
+- Unlocks 15 of 46 city-scoring metrics (competitor_count, competitor density, avg rating/review count, years-in-market, summer camp / tutoring / kids activity center counts, robotics clubs, avg competitor pricing, staffing signal, waitlist signal, national brand presence, etc.)
+- Pending Brett approval. $15 test on 10 cities first → $900–$1,200 one-time full seed of 960 cities.
+- **Risk:** low (additive — free fallback is OpenStreetMap/Firecrawl, both inferior)
+
+### B8. Weather seeding finish — Open-Meteo Historical (in progress, added May 18)
+- Source: Open-Meteo Archive API (free, no key). Edge function `seed-cities-weather`.
+- Status: 506/960 done; remaining 454 firing in background batches (offsets 500, 700, 900). ~1 hr to completion.
+- **Risk:** low
+
+### B9. BLS OEWS metro wages — free, ~4 hrs code + 2 days rate-limited pulls (added May 18)
+- Metro-area wages per occupation (childcare, K-12 teachers). Series IDs vary per metro × occupation; need verification table before bulk pull.
+- Schedule next sprint after B7/B10a complete.
+- **Risk:** low-medium (rate-limit pacing)
+
+### B10a. NCES PSS full re-pull — 340 missing cities (added May 18)
+- Current embedded PSS dataset has 636 rows; ~340 of the 960 seeded cities (incl. Dallas, St. Louis, St. Paul) are missing entirely.
+- Need one-time download of NCES PSS Excel (2021–22) + parse script → upsert `private_elementary_count` / `private_elementary_enrollment` on `us_cities_scored`.
+- Effort: ~30 min script + 5 min run. Free.
+- **Risk:** low
 - **Risk:** low (additive)
 
 ---

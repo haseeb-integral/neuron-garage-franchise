@@ -136,6 +136,21 @@ These are confirmed risks from the Day 6 Firecrawl implementation (Lovable’s o
 
 ---
 
+## Google Trends — `search_interest_stem_education` + `search_interest_kids_camps` (parked May 18)
+
+**What it is:** 2 low-weight soft-signal metrics measuring relative search interest by metro for STEM education + kids camps.
+
+**Why parked:**
+- Google Trends has no official API. `pytrends` (unofficial) gets aggressively rate-limited from server IPs — unusable from edge functions.
+- Running pytrends from a local machine works but requires Python + pip + Terminal + manual weekly runs. Not viable for Haseeb (non-technical).
+- Manual download via trends.google.com is 5 min/city × 960 cities = not viable.
+
+**Backup plan if Brett insists:** Wikipedia Pageviews API (free, no key, server-friendly) on pages like "Science, technology, engineering, and mathematics" + "Summer camp" — same signal shape, different source.
+
+**Decision:** Do nothing pre-PMF. Revisit if Sam upweights these in scoring.
+
+---
+
 ## How to use this file
 
 - Add items here instead of building them mid-sprint

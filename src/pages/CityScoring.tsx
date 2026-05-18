@@ -380,6 +380,88 @@ const CityScoring = () => {
     });
   };
 
+  // ─── AI City Query (Ask AI) ──────────────────────────────────────────────
+  // Lovable AI Gateway-powered natural-language search. Translates queries
+  // into existing filter state + draft weight nudges, plus shows reasoning
+  // and data gaps. Multi-turn refinement capped at 6 turns server-side.
+  type AiTurn = { query: string; response: AiResult };
+  const [aiThreadId, setAiThreadId] = useState<string | null>(null);
+  const [aiTurns, setAiTurns] = useState<AiTurn[]>([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  const lastAiTurn = aiTurns[aiTurns.length - 1];
+
+  const clearAi = () => {
+    setAiThreadId(null);
+    setAiTurns([]);
+  };
+
+  const askAi = async (query: string) => {
+    setAiLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-city-query", {
+        body: {
+          query,
+          threadId: aiThreadId,
+          previousTurns: aiTurns.map((t) => ({ query: t.query, response: t.response })),
+        },
+      });
+      if (error) {
+        const msg = await getInvokeErrorMessage(error);
+        toast.error(msg || "AI search failed");
+        return;
+      }
+      const result = data?.result as AiResult | undefined;
+      if (!result) {
+        toast.error("AI returned no result");
+        return;
+      }
+      setAiThreadId(data.threadId ?? null);
+      setAiTurns((prev) => [...prev, { query, response: result }]);
+
+      // Apply filters to existing filter state
+      const f = result.filters;
+      if (f.state) setStateFilter(f.state);
+      if (f.tier) setTierFilter(f.tier);
+      if (typeof f.minScore === "number") setMinScore(f.minScore);
+
+      // Apply weight nudges to draft master weights (user can review + Apply)
+      const adj = result.weightAdjustments ?? {};
+      const anyDelta = Object.values(adj).some((v) => v !== 0);
+      if (anyDelta) {
+        setWeights((prev) => {
+          const next = { ...prev } as Record<CategoryKey, number>;
+          (Object.keys(adj) as CategoryKey[]).forEach((k) => {
+            if (next[k] != null) next[k] = Math.max(0, Math.min(100, (next[k] ?? 0) + (adj[k] ?? 0)));
+          });
+          // Renormalize so sliders sum to 100
+          const sum = Object.values(next).reduce((s, v) => s + v, 0) || 1;
+          (Object.keys(next) as CategoryKey[]).forEach((k) => {
+            next[k] = Math.round((next[k] / sum) * 100);
+          });
+          // Reconcile drift
+          let diff = 100 - Object.values(next).reduce((s, v) => s + v, 0);
+          const keys = Object.keys(next) as CategoryKey[];
+          for (let i = 0; diff !== 0 && i < 6; i++) {
+            const k = keys[i % keys.length];
+            const step = diff > 0 ? 1 : -1;
+            if (next[k] + step >= 0) { next[k] += step; diff -= step; }
+          }
+          setAppliedWeights(next);
+          return next;
+        });
+        toast.success("AI adjusted your category weights — composite re-ranked.");
+      } else if (f.state || f.tier || typeof f.minScore === "number") {
+        toast.success("AI applied filters to your search.");
+      }
+    } catch (e) {
+      console.error("askAi", e);
+      toast.error(e instanceof Error ? e.message : "AI search failed");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+
   const selectedId = useCityScoringStore((s) => s.selectedId);
   const setSelectedId = useCityScoringStore((s) => s.setSelectedId);
   const selectedMarketKey = useCityScoringStore((s) => s.selectedMarketKey);

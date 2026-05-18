@@ -1,6 +1,6 @@
 # PROJECT_CONTEXT.md — Neuron Garage
 
-> Snapshot date: May 17, 2026
+> Snapshot date: May 18, 2026
 > Live URL: https://neuron-garage-franchise.lovable.app
 > Preview: https://id-preview--c74b81ad-10d7-4a10-b6c8-de17f48a663e.lovable.app
 > Stack: React + TS + Vite + Tailwind + shadcn, Lovable Cloud (Supabase) backend
@@ -65,7 +65,7 @@ All tables have RLS enabled. `authenticated` role can read/write unless noted.
 | `scoring_config` | Per-user master-weight preset |
 | `saved_searches` | Per-user saved slider configs (master + sub weights) |
 | `watchlist_items` | Per-user favorites (cities) |
-| `teacher_prospects` | Teacher records (city/state, school, fit_score, status, apify_run_id) |
+| `teacher_prospects` | Teacher records (city/state, school, fit_score, status, apify_run_id). FK columns `school_nces_id` (→ `public_schools.nces_id`) and `us_cities_scored_id` (→ `us_cities_scored.id`) added May 18 plus `teacher_type` (`active` / `retired` / `camp_enrichment`), `subject`, `segment`, `linkedin_url`, `donorschoose_id`, `enrichment_source`, `last_enriched_at` to support fit scoring + dedupe. |
 | `candidates` | Pipeline candidates (stage, fit_score, fit_tag, assignment) |
 | `candidate_profiles` | Long-form candidate profile (background, capital, motivation) |
 | `candidate_qualification` | Scored qualification rubric (financial / leadership / teaching / culture / market) |
@@ -87,8 +87,8 @@ No storage buckets configured.
 - `fetch-city-market-data` — legacy city data refresh
 - `fetch-city-market-data-sow` — SOW-aligned city refresh (46-metric pull → scoring)
 - `fetch-school-counts` — NCES CCD public-elementary counts per city
-- `seed-cities-database` — bulk seed of `us_cities_scored` (Census/BLS/BEA/FRED/NCES). 909/960 cities seeded.
-- `backfill-public-schools` — iterates seeded cities, refetches NCES K-12 list, upserts into `public_schools` (one row per school, on `nces_id`)
+- `seed-cities-database` — bulk seed of `us_cities_scored` (Census/BLS/BEA/FRED/NCES) **and** per-school upsert into `public_schools` using the same NCES response (no extra API calls). 948 cities seeded, all with `composite_score_default` populated.
+- `backfill-public-schools` — iterates seeded cities, refetches NCES K-12 list, upserts into `public_schools` (one row per school, on `nces_id`). Now redundant for newly-seeded cities since seed function writes both — keep for full rebuilds.
 - `enrich-school-staff` — staff/teacher enrichment for a given school
 - `fetch-teacher-prospects` — Apify-driven teacher prospect pull per city
 - Shared modules: `_shared/cityGeo.ts`, `_shared/metricFetchers.ts`, `_shared/scoring.ts`
@@ -119,8 +119,10 @@ No storage buckets configured.
 ## 5. Known bugs / broken or incomplete features
 
 Active limitations:
-- **City Search uses live per-city fetches** — 5+ min per city. National ranked list not yet possible. Fix in progress = Task #0 database layer (`us_cities_scored` table, due May 20).
-- **Teacher Search reads placeholder/Apify-only data** — `teacher_prospects_master` table not yet built; no Apollo / vendor list / DonorsChoose integration.
+- **City Search** — `us_cities_scored` seeded with 948 cities and composite scores; national ranked list now possible. UI wiring to read from seed table is the next step.
+- **Teacher Search reads placeholder/Apify-only data** — `teacher_prospects_master` table not yet built; no Apollo / vendor list / DonorsChoose integration. `teacher_prospects` now has the FK and enrichment columns waiting on the master table + sourcing.
+- **`candidates` table** — no FKs to `public_schools` / `us_cities_scored`, no `source_segment` column. Promotion from teacher → candidate cannot carry context until added (see OPEN_TASKS B3).
+- **`cities` vs `us_cities_scored`** — two overlapping city tables. Consolidation deferred (OPEN_TASKS B5).
 - **Email Outreach** — SmartLead not connected; no real sends.
 - **Candidate Pipeline** — populated with placeholder candidates, not yet wired to Teacher → Lead conversion.
 - **GreatSchools** — private/charter elementary counts missing on every city (waiting on API key purchase).

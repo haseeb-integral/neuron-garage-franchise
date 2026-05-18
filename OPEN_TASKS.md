@@ -105,10 +105,11 @@ See **`TEACHER_IDEAL_PROFILE.md`** for who we are recruiting and why — read th
 - If/when Segment 4 (middle/high STEM/maker teachers) becomes a real recruiting channel, Sam may want to blend in the broader public-school pool
 - **Owner:** Sam (scoring math)
 
-### 11d. Wire `seed-cities-database` to also upsert into `public_schools` (deferred, added May 18)
-- Today only `backfill-public-schools` writes to `public_schools`. If anyone re-runs `seed-cities-database` or adds new cities, `public_schools` will drift out of sync with the cached counts on `us_cities_scored`
-- Add the same NCES → `public_schools` upsert (on `nces_id`) inside `seed-cities-database` after it computes counts, using the rows it already fetched (no extra API call)
-- **Risk:** low (~30 min, additive). Only critical the moment new cities are seeded.
+~~### 11d. Wire `seed-cities-database` to also upsert into `public_schools`~~ ✅ May 18
+- `mapNcesSchoolRow()` added; per-school upsert into `public_schools` runs inside the seed loop using the already-fetched NCES rows (no extra API call). Re-seeds and new cities now keep `public_schools` in sync with cached counts.
+
+### 11e. Backfill `composite_score_default` on seeded cities ✅ May 18
+- All 948 seeded cities now have `composite_score_default` populated via `normalize_only: true` pass. City Search national ranking unblocked.
 
 
 ---

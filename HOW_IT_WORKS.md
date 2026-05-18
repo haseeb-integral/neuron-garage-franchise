@@ -46,9 +46,9 @@ What the user gets out of each step:
   - **Composite score is calculated client-side** in `src/lib/clientSubWeightScoring.ts` so slider changes update the table instantly.
   - When the user adds a brand-new city, `fetch-city-market-data-sow` runs: pulls 46 metrics from Census / BLS / BEA / FRED / NCES / Apify, normalizes them, writes rows to `city_market_signals` and `city_category_scores`, and updates `cities.composite_score`.
   - Audit row is written to `city_fetch_jobs`.
-- **Today's limitation:** Per-city refresh takes 5+ minutes, so a national ranked list is not possible until Task #0 (`us_cities_scored` seeded table) ships — see `DATABASE_LAYER_SPEC.md`.
+- **Today's status (May 18):** `us_cities_scored` is now seeded for 948 cities with `composite_score_default` populated, so a national ranked list is unblocked. City Search UI still reads the legacy `cities` table — wiring it to `us_cities_scored` is the next step.
 - **Public schools vs public elementary (added May 18):** We store **all** open public schools per city in `public_school_count` / `public_school_enrollment`. The "Public Elementary Schools" widget in the City Detail drawer reads the derived subset `public_elementary_count` / `public_elementary_enrollment`, defined as NCES schools with `lowest_grade_offered ≤ 5`. Camp franchise-supply scoring still uses the elementary subset (K–6 camper base); the total-schools number is reserved for a future widget and for the wider teacher-recruiting pool (middle/high STEM/maker teachers, see Segment 4 in `TEACHER_IDEAL_PROFILE.md`).
-- **School-level data store (added May 18):** Counts on `us_cities_scored` are cached aggregates. The **source of truth** is the `public_schools` table — one row per NCES school nationally, with name, district, address, lat/lng, grades, type, enrollment. Backfilled via `backfill-public-schools` from already-seeded cities (38,196 schools across 948 cities as of May 18). This is what Teacher Search seeding (Apollo school-name scoping), `enrich-school-staff`, and the upcoming "Show Formula" school list will read from. Counts and the per-school table can drift by a few rows in cities with overlapping aliases (last-processed city claims the school) — investigated and accepted; Boston spot-check matches exactly (129 / 94).
+- **School-level data store (May 18):** Counts on `us_cities_scored` are cached aggregates. The **source of truth** is the `public_schools` table — one row per NCES school nationally, with name, district, address, lat/lng, grades, type, enrollment. Populated by **both** `seed-cities-database` (during normal seeding, using the same NCES response — no extra API calls) and `backfill-public-schools` (for full rebuilds). 38,196 schools across 948 cities live. Cities with overlapping aliases can drift by a few rows (last-processed city claims the school); Boston spot-check matches exactly (129 / 94).
 
 ### `/teacher-prospects` Teacher Search — `TeacherProspects.tsx`
 - **User sees:** A table of teachers in the cities the user picked, with school, grade, fit score, and status.
@@ -57,7 +57,7 @@ What the user gets out of each step:
   - "Find prospects" calls `fetch-teacher-prospects`, which runs an Apify Google-Maps actor over schools in the target city.
   - `enrich-school-staff` fills missing teacher detail per school.
   - Fit score (0–100) is computed in `src/utils/fitScore.ts` from grade match (K–6), summer availability heuristic, and teacher type (`active` / `retired` / `camp_enrichment`).
-  - Writes to `teacher_prospects`.
+  - Writes to `teacher_prospects`. As of May 18, the table has FK columns (`school_nces_id` → `public_schools`, `us_cities_scored_id` → `us_cities_scored`) plus `teacher_type`, `subject`, `segment`, `linkedin_url`, `donorschoose_id`, `enrichment_source`, `last_enriched_at` — populated by future sourcing, not by the current Apify pull.
 - **Today's limitation:** Placeholder / Apify-only data. Apollo, vendor lists, and DonorsChoose are not wired (blocked on Brett's decision — see `APIS.md`).
 
 ### `/email-outreach` Email Outreach — `EmailOutreachV2.tsx`

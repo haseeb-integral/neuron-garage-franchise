@@ -1,10 +1,10 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const TIER_META: Record<string, { color: string; label: string; range: string }> = {
-  A: { color: "#0ea66e", label: "Top",      range: "85+" },
-  B: { color: "#174be8", label: "Strong",   range: "75–84" },
-  C: { color: "#b8860b", label: "Moderate", range: "65–74" },
-  D: { color: "#ea580c", label: "Weak",     range: "below 65" },
+  A: { color: "#0ea66e", label: "Top",    range: "80+" },
+  B: { color: "#174be8", label: "Strong", range: "65–79" },
+  C: { color: "#b8860b", label: "Watch",  range: "50–64" },
+  D: { color: "#ea580c", label: "Pass",   range: "below 50" },
 };
 
 interface Props {

@@ -1,86 +1,73 @@
 ## What to build
 
-Three documentation files for the GitHub repo, all generated from live Lovable Cloud state (secrets, tables, edge functions, routes) — not from memory.
+### Your question first: CLAUDE.md is Claude-specific
 
-### 1. Create `HOW_IT_WORKS.md`
+You're right. By filename convention:
+- **Claude Code** auto-loads `CLAUDE.md`
+- **Codex / Cursor / Aider** auto-load `AGENTS.md`
+- **Perplexity / generic agents** read `README.md` first
 
-Narrative of how the product actually works, end-to-end. Sections:
+The fix: keep `CLAUDE.md` (so Claude Code keeps working) but make **`AGENTS.md` the canonical file** that all agents (and humans) should read. `CLAUDE.md` becomes a 3-line stub that says *"→ See AGENTS.md"*. Same content, served under both filenames. README points everyone to `AGENTS.md`.
 
-- **The job the app does** — 2–3 sentences
-- **The user journey** — Dashboard → City Search → Teacher Search → Email Outreach → Candidate Pipeline → Onboarding (with what the user gets at each step)
-- **How each screen works** — for each of the 7 protected pages: what the user sees, what action they take, what fires behind the scenes (edge function / table / API), what comes out
-- **Key data flows** — city scoring math (46 metrics → normalized → weighted → composite), teacher fit score, candidate stage transitions, checklist auto-seeding on `confirmation`
-- **Cross-feature links** — favorites filter Teacher Search, promoting a teacher creates a candidate, candidate → onboarding handoff (flagged as built vs not-yet-built)
-- **What's manual vs automatic** — kanban moves manual, checklist seeding automatic, city refresh manual per-city (today)
+This is the emerging cross-tool standard — `AGENTS.md` is being adopted by OpenAI, Cursor, and others.
 
-### 2. Create `APIS.md`
+---
 
-Per-API reference page. Three sections:
+### 1. Rename rules file → `AGENTS.md` (canonical)
 
-**Section A — Live & wired** (one block per API using this template):
-```
-## Census ACS
-- Purpose: ...
-- Secret: CENSUS_API_KEY
-- Used in: supabase/functions/_shared/metricFetchers.ts
-- Called from: fetch-city-market-data-sow
-- Cost / rate limit: Free / 500 per day per key
-- Owner of key: Haseeb
-- Fallback if down: Cached last value in city_market_signals
-- Docs: <url>
-- Status: Live
-```
-Covers: Census ACS, BLS, BEA, FRED, NCES CCD, Apify (Google Maps actor), Firecrawl, Lovable AI Gateway, Supabase.
+- Move the full content of current `CLAUDE.md` into a new `AGENTS.md`.
+- Replace `CLAUDE.md` body with: *"This project's AI rules live in `AGENTS.md`. Read that file. Do not edit this stub."*
+- At the top of `AGENTS.md`, add a new section: **"Mandatory reading before any decision"** listing the 6 golden files in read order, with the instruction: *"You MUST read all six before answering a non-trivial question or writing any code. Do not rely on assumptions or older training data — these files are the source of truth."*
 
-**Section B — Approved but not wired**: GreatSchools, SmartLead ("Integral Leads"), Apollo, DonorsChoose, Clay — each with what it's for and what's blocking.
+The 6 mandatory files:
+1. `README.md` — orientation + file map
+2. `AGENTS.md` — rules + what not to touch (this file)
+3. `PROJECT_CONTEXT.md` — what exists right now
+4. `HOW_IT_WORKS.md` — how the product behaves
+5. `APIS.md` — integrations + seed plan
+6. `OPEN_TASKS.md` — what to build next
 
-**Section C — Database-seeding APIs (new sub-section per your question)**:
-Explicit table of which APIs feed which database table, separating the two patterns:
-- **Per-row live fetch** (today): Census/BLS/FRED/NCES/Apify called per city, writes to `city_market_signals` / `city_competitors`
-- **Bulk seed for `us_cities_scored`** (Task #0): which APIs are batch-pulled once and refreshed on a schedule
-- **Bulk seed for `teacher_prospects_master`** (Task #0): Apollo bulk export / vendor list / Apify school directory / DonorsChoose — including the open decision from May 15 (Brett picks A+B+D combo)
-- **Purchased data lists**: vendor lists (Exact Data, LeadsPlease, K12 Prospects) noted as one-time CSV ingest, not an API
+Plus: *"Read `GLOSSARY.md` whenever you encounter an unfamiliar domain term."*
 
-This directly answers your question: yes, `APIS.md` should call out which APIs are for live calls vs which feed the seeded database, and which data sources are purchased CSVs (no API at all).
+### 2. Update `README.md`
 
-### 3. Answer: which files need updating after app changes?
+Add a "Read these first" callout at the top, same 6-file list, aimed at any human or AI opening the repo cold on GitHub.
 
-I'll add a short "Maintenance" section at the top of `PROJECT_CONTEXT.md` with this table:
+### 3. Create `GLOSSARY.md`
 
-| Change | Update file(s) |
-|---|---|
-| Added/removed a page or route | `PROJECT_CONTEXT.md` § 1 + `HOW_IT_WORKS.md` |
-| Added/removed/renamed a Supabase table or column | `PROJECT_CONTEXT.md` § 2 |
-| Added/removed an edge function | `PROJECT_CONTEXT.md` § 3 + `APIS.md` (if it calls a new API) |
-| Wired a new third-party API | `APIS.md` (new block) + `PROJECT_CONTEXT.md` § 4 |
-| Removed an API or rotated key owner | `APIS.md` only |
-| Product behavior changed (flow, math, rules) | `HOW_IT_WORKS.md` + `MAY15_MEETING_NOTES.md` successor if it was a client decision |
-| Known bug fixed or new bug found | `PROJECT_CONTEXT.md` § 5 |
-| Sprint task done | `OPEN_TASKS.md` |
-| Anything visual | `DESIGN.md` (only if rule changes; not for one-off tweaks) |
+One page, ~30 terms, one-line definitions, grouped:
+- **Product** — Composite Score, Tier A/B/C, Sub-weight share, Master weight, Saved Search, Watchlist / Favorites, Non-registration state, Show Formula, City Search, Teacher Search, Fit Score, Fit Tag, Confirmation gate, Selection committee, Homework, Lead sheet, FDD countdown, 7-step onboarding
+- **Vendor aliases** — "Integral Leads" = SmartLead, "Lovable Cloud" = managed Supabase (don't say Supabase to client)
+- **Data** — `us_cities_scored`, `teacher_prospects_master`, Per-row live fetch, Bulk seed, Edge function, RLS policy, Seeded vendor CSV
+- **People / roles** — Kaylie (owner), Sam (scoring engine owner), Haseeb (build), Brett (ops + API keys), `manager` role default, `admin` role grant-only
 
-Rule of thumb: `PROJECT_CONTEXT.md` is high-churn inventory, `HOW_IT_WORKS.md` is low-churn behavior, `APIS.md` is medium-churn reference.
+Each entry one line. If a term has a deeper home, link there.
 
-### Data sources I'll use to generate
+### 4. Save Mode A (with pre-commit confirmation) as a project memory
 
-- Live secrets list (already have it: 8 third-party keys configured)
-- Live tables list (already have it: 21 tables)
-- `supabase/functions/` directory (6 functions + shared modules)
-- `src/App.tsx` routes
-- `MAY15_MEETING_NOTES.md` for the database-seeding decisions
-- `DATABASE_LAYER_SPEC.md` for the seed table plan
-- `OPEN_TASKS.md` for blocked/pending API status
+Write `mem://workflow/doc-sync`:
+
+> At the end of any session where I changed code, schema, or APIs, I draft updates to `PROJECT_CONTEXT.md`, `OPEN_TASKS.md`, `APIS.md`, and `HOW_IT_WORKS.md` as needed — then show you a one-line summary of each proposed change and wait for your "go" before writing the files. Never silently overwrite docs.
+
+Add this rule to `mem://index.md` Core section so every future session picks it up automatically.
+
+### Note on GitHub commits
+
+Lovable auto-syncs every file change to GitHub in real time — there is no separate "commit" step I can gate. So the confirmation gate is on the **doc edits themselves**: nothing gets written (and therefore nothing reaches GitHub) until you say "go."
+
+---
 
 ### Files created / edited
 
-- `HOW_IT_WORKS.md` — new
-- `APIS.md` — new
-- `PROJECT_CONTEXT.md` — add Maintenance section at top (no other changes)
-- `README.md` — add the two new files to the file map
+- `AGENTS.md` — new (canonical rules, with mandatory-reading section)
+- `CLAUDE.md` — replaced with a 3-line stub pointing to `AGENTS.md`
+- `GLOSSARY.md` — new
+- `README.md` — add "Read these first" callout
+- `mem://workflow/doc-sync` — new memory file
+- `mem://index.md` — add doc-sync rule + mandatory-reading rule to Core
 
-### Out of scope (intentionally not doing)
+### Out of scope
 
-- No code changes
-- No DB migrations
-- Not refactoring `PROJECT_CONTEXT.md` content (just prepending the Maintenance section)
-- Not touching `CLAUDE.md` (rules unchanged)
+- No code changes, no DB changes
+- Not editing `PROJECT_CONTEXT.md`, `HOW_IT_WORKS.md`, `APIS.md`, `OPEN_TASKS.md`, `DESIGN.md`, `WORKFLOW.md`, `QA_CHECKLIST.md`, `LATER.md`, `TEACHER_IDEAL_PROFILE.md`, `DATABASE_LAYER_SPEC.md`, `MAY15_MEETING_NOTES.md` in this pass
+- Not changing any Lovable / GitHub sync behavior — there's nothing to change there

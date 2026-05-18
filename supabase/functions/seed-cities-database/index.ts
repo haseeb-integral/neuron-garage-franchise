@@ -181,7 +181,8 @@ async function fetchStateSignals(stateAbbr: string): Promise<StateSignals> {
     try {
       const fips = STATE_FIPS[stateAbbr];
       if (fips) {
-        const stemId = `SMS${fips}000005400000001`;
+        // Supersector 60 = Professional & Business Services (free BLS proxy for STEM/knowledge-worker concentration)
+        const stemId = `SMS${fips}000006000000001`;
         const totalId = `SMS${fips}000000000000001`;
         const r = await fetch("https://api.bls.gov/publicAPI/v2/timeseries/data/", {
           method: "POST",

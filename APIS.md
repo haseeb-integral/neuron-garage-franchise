@@ -51,11 +51,12 @@ Every API below has a configured secret in Lovable Cloud AND is read by deployed
 - **Status:** Live ✅
 
 ### NCES CCD (via Urban Institute Education Data API)
-- **Purpose:** Public elementary school counts per city.
+- **Purpose:** Public school counts per city — **all** open public schools (any grade), plus a derived elementary-serving subset.
 - **Secret:** _none — public endpoint_
-- **Called from:** `fetch-school-counts`
+- **Called from:** `fetch-school-counts`, `seed-cities-database`
+- **What we store (as of May 18):** All open public schools (`school_status = 1`) matched to the city alias set go into `us_cities_scored.public_school_count` / `public_school_enrollment`. The elementary subset (`lowest_grade_offered ≤ 5`) is derived at write time into `public_elementary_count` / `public_elementary_enrollment`. *Previously we only stored the elementary count — column names were renamed in the same migration to avoid name-vs-meaning drift.*
 - **Cost / limit:** Free.
-- **Match rate today:** 48 / 50 sample cities matched.
+- **Match rate today:** 48 / 50 sample cities matched. Boston verified: 129 total public schools / 94 elementary-serving.
 - **Docs:** https://educationdata.urban.org/documentation/
 - **Status:** Live ✅
 

@@ -90,6 +90,22 @@ See **`TEACHER_IDEAL_PROFILE.md`** for who we are recruiting and why — read th
 - Store: `private_elementary_count`, `charter_elementary_count` in `city_market_signals`
 - **Cost decision:** confirm purchase before next client review
 
+### 11a. City Search: add "Total public schools" widget alongside "Public elementary" (deferred, added May 18)
+- Data already stored in `us_cities_scored.public_school_count` / `public_school_enrollment`
+- Add a new `signal_key` row in `fetch-school-counts` (e.g. `public_school_count`) and a corresponding row in `CityScoring.tsx` City Detail drawer below the existing "Public Elementary Schools" widget
+- **Risk:** low
+
+### 11b. Rename `private_elementary_count` / `charter_elementary_count` → `_school_count` + add elementary-subset siblings (deferred, added May 18)
+- Apply the same name-vs-meaning fix to GreatSchools-sourced columns once Task #11 is unblocked
+- Do this in the **same migration** that first populates those columns — do not ship the rename as a follow-up
+- **Risk:** low (columns currently unpopulated)
+
+### 11c. Decide whether `score_franchise_supply` should blend elementary + middle/high once camp-staff enrichment teachers are part of recruiting (deferred, added May 18)
+- Today the franchise-supply formula uses elementary-only (K–6 camper base)
+- If/when Segment 4 (middle/high STEM/maker teachers) becomes a real recruiting channel, Sam may want to blend in the broader public-school pool
+- **Owner:** Sam (scoring math)
+
+
 ---
 
 ## ⚡ Teacher Search — Pending (unblocked after Task #0)
@@ -99,6 +115,12 @@ See **`TEACHER_IDEAL_PROFILE.md`** for who we are recruiting and why — read th
 - Stack depends on sourcing decision (Apollo / vendor list / Apify + DonorsChoose + Clay)
 - Store in `teacher_prospects_master` table
 - **Risk:** medium-high — Clay webhook is the most complex piece if used
+
+### 12a. Expand Teacher Search sourcing to Segment 4 — middle/high STEM/maker/shop/art teachers (deferred, added May 18)
+- Per the May 18 correction in `TEACHER_IDEAL_PROFILE.md`: middle/high teachers in hands-on subjects are a **secondary** target, not out of scope (only campers are locked at K–6, not staff)
+- Add Apollo / vendor / Apify queries for: high-school robotics teacher, shop teacher, CS teacher, STEM teacher, maker teacher, art/design teacher
+- Fit scoring: lower base than K–6, boosted by hands-on subject match
+- **Risk:** low (additive)
 
 ### 13. Prospect list view + filters
 - Columns: name, school, city/state, email, fit score, teacher type

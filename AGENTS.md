@@ -92,6 +92,8 @@ Full per-API detail in `APIS.md`.
 
 9. **Doc sync.** At the end of any session where code, schema, or APIs changed, draft updates to `PROJECT_CONTEXT.md`, `OPEN_TASKS.md`, `APIS.md`, and `HOW_IT_WORKS.md` as needed. Show Haseeb a one-line summary of each proposed change and **wait for explicit "go" before writing**. Never silently overwrite docs.
 
+10. **Name-vs-Meaning check.** Before any change to what a column, table, signal_key, enum value, file, or function *contains*, re-read its current name out loud. If the new contents would make the name misleading to a new reader, the **rename is part of the same change** — not a follow-up task. Call this out explicitly in the plan: *"Field X currently means A. After this change it will mean B. Therefore rename / split / add sibling."* Never silently widen a field's meaning. The same rule applies to scope words like *elementary*, *active*, *verified*, *public*, *primary* — if you stop honoring the qualifier, the qualifier must leave the name. Origin: May 18, 2026 — caught after a near-miss where `public_elementary_count` was about to be populated with all K–12 schools.
+
 ---
 
 ## Working Style

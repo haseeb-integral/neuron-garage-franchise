@@ -99,6 +99,21 @@ The Location Director:
 
 **Source:** Apollo (search "camp director", "enrichment teacher", "maker space"), LinkedIn, Apify (summer camp staff pages)
 
+### Segment 4: Middle / High School STEM, Maker, Shop, Art Teachers ✅ (Added May 18 — secondary tier)
+
+**Who:** Currently employed middle-school or high-school teachers whose subject is hands-on: STEM, engineering, robotics, shop, maker, computer science, design, or visual/studio art.
+
+**Why they fit (as a secondary tier, ranked below K–6 and retired):**
+- Summers are free — same school calendar as elementary teachers
+- Hands-on subject expertise maps directly to Neuron Garage's recycled-materials building model
+- Many already moonlight at summer camps and enrichment programs (camp-staff pipeline)
+- Often more comfortable than K–6 teachers with tools, fabrication, and open-ended project work
+- The website only locks **campers** at K–6; it does **not** require the Location Director to be an elementary teacher ("Each of our locations is run by an experienced educator with years of classroom experience")
+
+**How to weight them:** Lower base weight than K–6 / retired, but **boosted by hands-on subject match**. A high-school robotics teacher should outrank a K–6 generalist with no STEM/maker signal. A high-school English-only teacher should rank low.
+
+**Source:** Apollo (search "high school STEM teacher", "robotics teacher", "shop teacher", "maker teacher", "art teacher" + city), LinkedIn, school staff pages via Firecrawl.
+
 ---
 
 ## Fit Scoring Criteria
@@ -125,11 +140,17 @@ The AI fit score (1–100) stored in `teacher_prospects_master.fit_score` should
 | School counselor or psychologist background | Growth mindset expertise |
 | 3–5 years experience | Decent experience, not yet at director threshold |
 
+### Moderate-fit signals (secondary tier — added May 18)
+| Signal | Reasoning |
+|---|---|
+| Middle/high school teacher, hands-on subject (STEM, maker, shop, robotics, CS, art, design) | Summer-free, subject maps to camp model, common camp-staff profile |
+| Middle/high school STEM teacher who has run an after-school maker/robotics club | Proven in hands-on youth context |
+
 ### Neutral / lower fit signals (low weight)
 | Signal | Reasoning |
 |---|---|
-| High school teacher only | Camp is K–6, no direct age-group experience |
-| Subject: purely academic (math, English, history) | Less hands-on, may need more convincing |
+| Middle/high school teacher, purely academic (English, history, social studies) | No hands-on subject match |
+| Subject: purely academic at any grade (math, English, history) | Less hands-on, may need more convincing |
 | Less than 3 years experience | Not enough experience for director role |
 | College student studying education | Better fit as camp guide, not director |
 
@@ -166,7 +187,7 @@ Use these exact-phrase searches when pulling teacher records:
 ## What This Is NOT
 
 - We are NOT recruiting camp guides/counselors (college students). The franchisee hires those locally.
-- We are NOT recruiting high school teachers as the primary target (wrong age group).
+- Middle and high school teachers are **not the primary target** for the Location Director role, but they are **in scope as a secondary tier** — especially STEM, shop, maker, robotics, CS, and art teachers. They are often summer-available and a strong fit for camp staffing. Fit scoring should rank them below K–6 and retired teachers, not exclude them. *(Correction logged May 18: an earlier draft framed "K–6 only" as a May 15 lock — it isn't. The website locks **campers** at K–6, not staff.)*
 - We are NOT recruiting school administrators (principals, superintendents) as the primary target — though they are high fit if they have classroom background.
 - This scope is a **starting point** — Kaylie may expand to middle school teachers, school counselors, or other educator profiles as the program grows.
 

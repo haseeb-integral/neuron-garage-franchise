@@ -47,6 +47,7 @@ What the user gets out of each step:
   - When the user adds a brand-new city, `fetch-city-market-data-sow` runs: pulls 46 metrics from Census / BLS / BEA / FRED / NCES / Apify, normalizes them, writes rows to `city_market_signals` and `city_category_scores`, and updates `cities.composite_score`.
   - Audit row is written to `city_fetch_jobs`.
 - **Today's limitation:** Per-city refresh takes 5+ minutes, so a national ranked list is not possible until Task #0 (`us_cities_scored` seeded table) ships — see `DATABASE_LAYER_SPEC.md`.
+- **Public schools vs public elementary (added May 18):** We store **all** open public schools per city in `public_school_count` / `public_school_enrollment`. The "Public Elementary Schools" widget in the City Detail drawer reads the derived subset `public_elementary_count` / `public_elementary_enrollment`, defined as NCES schools with `lowest_grade_offered ≤ 5`. Camp franchise-supply scoring still uses the elementary subset (K–6 camper base); the total-schools number is reserved for a future widget and for the wider teacher-recruiting pool (middle/high STEM/maker teachers, see Segment 4 in `TEACHER_IDEAL_PROFILE.md`).
 
 ### `/teacher-prospects` Teacher Search — `TeacherProspects.tsx`
 - **User sees:** A table of teachers in the cities the user picked, with school, grade, fit score, and status.

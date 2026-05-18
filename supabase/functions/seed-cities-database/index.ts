@@ -448,6 +448,7 @@ Deno.serve(async (req) => {
   const offset = Math.max(0, Number(body.offset ?? 0));
   const minPop = Math.max(0, Number(body.min_population ?? 50000));
   const normalizeOnly = Boolean(body.normalize_only);
+  const stateSignalsBackfill = Boolean(body.state_signals_backfill);
   const dryRun = Boolean(body.dry_run);
 
   let runId: string = body.seed_run_id;

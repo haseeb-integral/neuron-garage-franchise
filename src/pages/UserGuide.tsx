@@ -507,7 +507,33 @@ const UserGuide = () => {
           something feels clunky, slow, or wrong, tell Brett or Haseeb. We fix
           it forward, one change at a time.
         </p>
+        <button
+          onClick={() => openAssistant("general")}
+          className="mx-auto mt-5 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[13.5px] font-bold transition-all hover:-translate-y-0.5"
+          style={{ background: YELLOW, color: INK, boxShadow: "0 8px 22px rgba(0,0,0,0.18)" }}
+        >
+          <Sparkles size={14} /> Ask the AI Assistant
+        </button>
       </section>
+
+      {/* Floating AI Assistant launcher */}
+      <button
+        onClick={() => openAssistant("general")}
+        className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 rounded-full px-5 py-3 text-[13.5px] font-bold transition-all hover:-translate-y-0.5"
+        style={{
+          background: `linear-gradient(135deg, ${NAVY} 0%, ${BLUE} 100%)`,
+          color: "white",
+          boxShadow: `0 14px 32px ${NAVY}55`,
+        }}
+        aria-label="Open AI Assistant"
+      >
+        <span className="flex h-6 w-6 items-center justify-center rounded-full" style={{ background: YELLOW, color: INK }}>
+          <Sparkles size={13} />
+        </span>
+        Ask AI
+      </button>
+
+      <AiAssistant open={assistantOpen} onOpenChange={setAssistantOpen} context={assistantContext} />
     </div>
   );
 };

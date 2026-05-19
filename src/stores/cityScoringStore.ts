@@ -104,8 +104,8 @@ export const useCityScoringStore = create<CityScoringState>()(
       searchTerm: "",
       scoringModel: "Affluent Suburbs Model",
       stateFilter: "All",
-      minPop: "25000",
-      minScore: 35,
+      minPop: "0",
+      minScore: 0,
       tierFilter: "All",
       nonRegOnly: false,
       weights: { ...DEFAULT_WEIGHTS },
@@ -158,12 +158,16 @@ export const useCityScoringStore = create<CityScoringState>()(
     {
       name: "ng:city-scoring-v1",
       storage: createJSONStorage(() => localStorage),
-      version: 2,
+      version: 3,
       migrate: (persisted: any, version) => {
         if (!persisted) return persisted;
         if (version < 2) {
           persisted.subWeights = cloneSubWeights(DEFAULT_SUB_WEIGHTS);
           persisted.appliedSubWeights = cloneSubWeights(DEFAULT_SUB_WEIGHTS);
+        }
+        if (version < 3) {
+          persisted.minPop = "0";
+          persisted.minScore = 0;
         }
         return persisted;
       },

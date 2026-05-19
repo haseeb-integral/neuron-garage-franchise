@@ -118,8 +118,34 @@ export function SmartLeadConnectionPanel() {
 
   useEffect(() => {
     testConnection();
-    loadWebhooks();
     loadRecentEvents();
+    (async () => {
+      setLoadingWebhooks(true);
+      try {
+        const res = await callProxy("webhooks");
+        const list: Webhook[] = Array.isArray(res) ? res : [];
+        setWebhooks(list);
+        const alreadyRegistered = list.some((w) => (w.webhook_url ?? w.url) === webhookUrl);
+        if (!alreadyRegistered) {
+          try {
+            await callProxy("webhooks", "POST", {
+              name: "Neuron Garage app webhook",
+              webhook_url: webhookUrl,
+              event_types: EVENT_TYPES,
+            });
+            const after = await callProxy("webhooks");
+            setWebhooks(Array.isArray(after) ? after : []);
+            toast.success("SmartLead webhook auto-registered");
+          } catch (e) {
+            console.warn("Auto-register webhook failed", e);
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoadingWebhooks(false);
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

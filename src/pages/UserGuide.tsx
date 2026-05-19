@@ -361,6 +361,21 @@ const UserGuide = () => {
                   <p className="mt-5 flex items-center gap-2 text-[13.5px] font-semibold" style={{ color: NAVY }}>
                     <ArrowRight size={15} /> {f.next}
                   </p>
+
+                  <button
+                    onClick={() => openAssistant(f.id as AssistantContext)}
+                    className="group mt-5 inline-flex items-center gap-2 rounded-full px-4 py-2 text-[12.5px] font-bold transition-all hover:-translate-y-0.5"
+                    style={{
+                      background: "white",
+                      color: NAVY,
+                      border: `1.5px solid ${BLUE}33`,
+                      boxShadow: `0 6px 18px ${BLUE}14`,
+                    }}
+                  >
+                    <Sparkles size={13} style={{ color: BLUE }} />
+                    Ask AI about {f.title}
+                    <ArrowRight size={12} className="opacity-60 transition-transform group-hover:translate-x-0.5" />
+                  </button>
                 </div>
 
                 {/* Visual column */}

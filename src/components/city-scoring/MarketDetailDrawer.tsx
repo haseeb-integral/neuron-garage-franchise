@@ -727,7 +727,7 @@ export function MarketDetailDrawer({
                 const enabledRows = bucket.enabled;
                 const disabledRows = bucket.disabled;
                 const enabledTotal = enabledRows.length;
-                const totalInCategory = enabledRows.length + disabledRows.length;
+                
                 const liveProxy = enabledRows.filter((r) => r.status === "live" || r.status === "proxy").length;
                 return (
                   <div key={category.key} className="rounded-lg border border-[#eef2f7] bg-white">

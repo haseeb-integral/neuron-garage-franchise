@@ -33,6 +33,9 @@ import { deriveFitTag } from "@/utils/fitScore";
 import { SmartLeadConnectionPanel } from "@/components/email-outreach/SmartLeadConnectionPanel";
 import { ImportLeadsWizard } from "@/components/email-outreach/ImportLeadsWizard";
 import { ProspectBatchesPanel } from "@/components/email-outreach/ProspectBatchesPanel";
+import { AnalyticsPanel } from "@/components/email-outreach/AnalyticsPanel";
+import { NewCampaignDrawer } from "@/components/email-outreach/NewCampaignDrawer";
+import { EmailAccountsPanel } from "@/components/email-outreach/EmailAccountsPanel";
 
 
 

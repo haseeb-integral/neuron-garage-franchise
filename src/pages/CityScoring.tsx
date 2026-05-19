@@ -953,6 +953,15 @@ const CityScoring = () => {
       setLiveCategoryScores(cached.scores);
       setLiveCompetitors(cached.comps);
       setLiveJob(cached.job);
+    } else {
+      // No cache for the new city — clear stale state from the previous city
+      // so the center panel doesn't show the wrong score/signals for ~1s
+      // until loadLiveData() resolves.
+      setLiveCity(null);
+      setLiveSignals([]);
+      setLiveCategoryScores({});
+      setLiveCompetitors([]);
+      setLiveJob(null);
     }
     loadLiveData(selectedCity, selectedState);
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -202,6 +202,7 @@ export function MarketDetailDrawer({
   const [signals, setSignals] = useState<LiveSignal[]>([]);
   const [competitors, setCompetitors] = useState<LiveCompetitor[]>([]);
   const [latestJob, setLatestJob] = useState<any | null>(null);
+  const [legacyJob, setLegacyJob] = useState<any | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -216,6 +217,7 @@ export function MarketDetailDrawer({
           setSignals([]);
           setCompetitors([]);
           setLatestJob(null);
+          setLegacyJob(null);
           return;
         }
 
@@ -229,27 +231,34 @@ export function MarketDetailDrawer({
           .ilike("state", stateFull)
           .maybeSingle();
         const legacyId: string | null = (legacyCity as any)?.id ?? null;
-        const evidenceIds = [cityId, legacyId].filter((x): x is string => !!x);
-
-        const [{ data: signalRows }, { data: competitorRows }, { data: jobRows }] = await Promise.all([
-          supabase.from("city_market_signals").select("*").in("city_id", evidenceIds),
+        const [{ data: signalRows }, { data: competitorRows }, { data: canonicalJobRows }, { data: legacyJobRows }] = await Promise.all([
+          supabase.from("city_market_signals").select("*").eq("city_id", cityId),
           supabase
             .from("city_competitors")
             .select("*")
-            .in("city_id", evidenceIds)
+            .eq("city_id", cityId)
             .order("created_at", { ascending: false }),
           supabase
             .from("city_fetch_jobs")
             .select("*")
-            .in("city_id", evidenceIds)
+            .eq("city_id", cityId)
             .eq("source", "sow_metric_coverage")
             .order("created_at", { ascending: false })
             .limit(1),
+          legacyId
+            ? supabase
+                .from("city_fetch_jobs")
+                .select("*")
+                .eq("city_id", legacyId)
+                .eq("source", "sow_metric_coverage")
+                .order("created_at", { ascending: false })
+                .limit(1)
+            : Promise.resolve({ data: [] }),
         ]);
 
-        // Always merge: seeded fallback (from us_cities_scored) is the
-        // skeleton so seeded-only cities never show an empty drawer; legacy
-        // rows from city_market_signals override per-key when present.
+        // Canonical source of truth = us_cities_scored row + signals keyed to
+        // that scored-city UUID. We still read the legacy job separately for
+        // audit history, but we do NOT let it change Austin's visible counts.
         const fallbackSignals = buildSeededFallbackSignals(market);
         const liveByKey = new Map<string, LiveSignal>();
         (signalRows ?? []).forEach((r: any) => {
@@ -263,7 +272,8 @@ export function MarketDetailDrawer({
         ] as LiveSignal[];
         setSignals(merged);
         setCompetitors((competitorRows ?? []) as LiveCompetitor[]);
-        setLatestJob(jobRows?.[0] ?? null);
+        setLatestJob(canonicalJobRows?.[0] ?? null);
+        setLegacyJob(legacyJobRows?.[0] ?? null);
       } catch (error) {
         console.error("MarketDetailDrawer live evidence error", error);
       } finally {

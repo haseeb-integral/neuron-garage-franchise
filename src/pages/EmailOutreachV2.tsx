@@ -29,6 +29,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { deriveFitTag } from "@/utils/fitScore";
+import { SmartLeadConnectionPanel } from "@/components/email-outreach/SmartLeadConnectionPanel";
 
 type CampaignStatus = "Active" | "Draft" | "Paused" | "Complete";
 type EmailStatus = "Opened" | "Replied" | "Bounced" | "Queued" | "Sent";

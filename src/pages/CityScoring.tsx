@@ -182,7 +182,7 @@ const sameMarket = (cityA?: string | null, stateA?: string | null, cityB?: strin
 const CityScoring = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { profile, user, role, signOut } = useAuth();
+  const { profile, user, role, signOut, session } = useAuth();
 
   const displayName = profile?.full_name || profile?.email || user?.email || "Account";
   const initials = (displayName.match(/\b\w/g) || []).slice(0, 1).join("").toUpperCase() || "U";
@@ -404,14 +404,23 @@ const CityScoring = () => {
   const askAi = async (query: string) => {
     setAiLoading(true);
     try {
-      // Pre-flight auth check: ensure we have a session before calling, and
-      // refresh once if the token is stale (root cause of the prior 401s).
-      let { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData?.session) {
-        await supabase.auth.refreshSession();
-        ({ data: sessionData } = await supabase.auth.getSession());
-      }
-      if (!sessionData?.session) {
+      const getValidAccessToken = async () => {
+        let token = session?.access_token ?? "";
+        if (!token) {
+          const { data } = await supabase.auth.getSession();
+          token = data.session?.access_token ?? "";
+        }
+        if (!token) return "";
+
+        const { error: userError } = await supabase.auth.getUser(token);
+        if (!userError) return token;
+
+        const { data: refreshed } = await supabase.auth.refreshSession();
+        return refreshed.session?.access_token ?? "";
+      };
+
+      const initialToken = await getValidAccessToken();
+      if (!initialToken) {
         toast.error("Please sign in again to use AI search");
         return;
       }
@@ -421,9 +430,7 @@ const CityScoring = () => {
       const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-city-query`;
       const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-      const callOnce = async () => {
-        const { data: s } = await supabase.auth.getSession();
-        const token = s?.session?.access_token ?? "";
+      const callOnce = async (token: string) => {
         const resp = await fetch(FN_URL, {
           method: "POST",
           headers: {
@@ -442,10 +449,10 @@ const CityScoring = () => {
         return { resp, bodyJson };
       };
 
-      let { resp, bodyJson } = await callOnce();
+      let { resp, bodyJson } = await callOnce(initialToken);
       if (resp.status === 401) {
-        await supabase.auth.refreshSession();
-        ({ resp, bodyJson } = await callOnce());
+        const refreshedToken = await getValidAccessToken();
+        ({ resp, bodyJson } = await callOnce(refreshedToken));
       }
       if (!resp.ok) {
         const msg = bodyJson?.error || bodyJson?.detail || `AI search failed (HTTP ${resp.status})`;
@@ -609,8 +616,32 @@ const CityScoring = () => {
     if (watchlistOnly) {
       out = out.filter((m: any) => m.cityId && watchlistCityIds.has(m.cityId));
     }
-    return out;
-  }, [baseRankedMarkets, searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop, cityFilter, watchlistOnly, watchlistCityIds]);
+
+    const masterWeightsAreDefault = JSON.stringify(appliedWeights) === JSON.stringify(DEFAULT_WEIGHTS);
+    const reRanked = out.map((market) => {
+      if (!market.hasLiveData || !market.categoryScores || masterWeightsAreDefault) return market;
+      const cats = {
+        demand: market.categoryScores.demand ?? null,
+        pricingPower: market.categoryScores.pricingPower ?? null,
+        competitiveLandscape: market.categoryScores.competitiveLandscape ?? null,
+        franchiseeSupply: market.categoryScores.franchiseeSupply ?? null,
+        easeOfOperations: market.categoryScores.easeOfOperations ?? null,
+        parentMindset: market.categoryScores.parentMindset ?? null,
+      };
+      const { composite } = recomputeComposite(cats, appliedWeights);
+      return {
+        ...market,
+        compositeScore: composite,
+        tier: tierFromScore(composite),
+      };
+    });
+
+    return reRanked.sort((a, b) => {
+      if (a.hasLiveData !== b.hasLiveData) return a.hasLiveData ? -1 : 1;
+      if (a.hasLiveData) return b.compositeScore - a.compositeScore;
+      return a.city.localeCompare(b.city);
+    });
+  }, [baseRankedMarkets, searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop, cityFilter, watchlistOnly, watchlistCityIds, appliedWeights]);
 
   // Reset to page 1 when watchlist filter toggles
   useEffect(() => { setPage(1); }, [watchlistOnly]);
@@ -779,6 +810,7 @@ const CityScoring = () => {
     metroArea: liveCity?.metro_area ?? selectedRankedMarket?.metroArea ?? (selectedSample as any).metroArea,
     marketType: liveCity?.market_type ?? selectedRankedMarket?.marketType ?? (selectedSample as any).marketType,
     lastScrapedAt: liveCity?.last_scraped_at ?? selectedRankedMarket?.lastScrapedAt ?? null,
+    scored: liveCity?.scored ?? null,
   };
   const selectedHasLiveData =
     !!liveCity && (Number(liveCity?.composite_score ?? 0) > 0 || !!liveCity?.last_scraped_at);
@@ -1334,14 +1366,31 @@ const CityScoring = () => {
   const baseDetailCategoryScores = { ...cs, ...liveUiCategoryScores } as Record<CategoryKey, number>;
 
   // Build raw signal values keyed by SOW signal_key for the selected city.
+  const seededFallbackSignals = useMemo(() => {
+    const scored = liveCity?.scored;
+    if (!scored) return [] as any[];
+    const childrenPct = Number(liveCity?.children_pct ?? 0);
+    return [
+      { signal_key: "total_population", label: "Total Population", value: scored.population, source: "Pre-seeded" },
+      { signal_key: "children_5_12_count", label: "Children Ages 5–12", value: scored.children_5_12, source: "Pre-seeded" },
+      { signal_key: "children_5_12_pct", label: "% Population Ages 5–12", value: childrenPct > 0 ? childrenPct : null, source: "Pre-seeded" },
+      { signal_key: "median_household_income", label: "Median Household Income", value: scored.median_household_income, source: "Pre-seeded" },
+      { signal_key: "public_elementary_count", label: "Public elementary schools (NCES CCD)", value: scored.public_elementary_count, source: "Pre-seeded" },
+      { signal_key: "public_elementary_enrollment", label: "Public elementary enrollment", value: scored.public_elementary_enrollment, source: "Pre-seeded" },
+      { signal_key: "competitor_count", label: "Summer camps / enrichment competitors", value: scored.summer_camp_count, source: "Pre-seeded" },
+    ].filter((signal) => signal.value != null && signal.value !== "");
+  }, [liveCity]);
+
+  const signalsForDisplay = liveSignals.length > 0 ? liveSignals : seededFallbackSignals;
+
   const rawValuesByKey = useMemo(() => {
     const out: Record<string, number | null> = {};
-    for (const s of liveSignals) {
+    for (const s of signalsForDisplay) {
       if (!s?.signal_key) continue;
       out[s.signal_key] = parseSignalValue(s.value);
     }
     return out;
-  }, [liveSignals]);
+  }, [signalsForDisplay]);
 
   // Recompute each category score using the user's applied sub-weights when
   // available; otherwise fall back to the server-stored category score.
@@ -1428,7 +1477,7 @@ const CityScoring = () => {
     "public_elementary_enrollment",
   ];
 
-  const centerLiveSignals = [...liveSignals]
+  const centerLiveSignals = [...signalsForDisplay]
     .filter((s) => !CENTER_SIGNAL_EXCLUDE.includes(s.signal_key))
     .sort((a, b) => {
       const ai = SIGNAL_DISPLAY_PRIORITY.indexOf(a.signal_key);
@@ -1436,10 +1485,10 @@ const CityScoring = () => {
       return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
     });
   const visibleCenterSignals = centerLiveSignals.slice(0, 8);
-  const hasMoreSignals = liveSignals.length > visibleCenterSignals.length;
+  const hasMoreSignals = signalsForDisplay.length > visibleCenterSignals.length;
 
   // Find enrollment to fold into the public_elementary_count row
-  const elementaryEnrollmentSignal = liveSignals.find(
+  const elementaryEnrollmentSignal = signalsForDisplay.find(
     (s) => s.signal_key === "public_elementary_enrollment",
   );
 

@@ -1,62 +1,125 @@
-## The problem (plain English)
+# Neuron Garage — Locked Plan (revised May 19, 2026)
 
-Right now the Ask AI bar does **not** literally do what you ask. It only knows how to "nudge" the 6 sliders by at most ±20 points, then a frontend rule says "if one category was nudged up, make it 60% and split the rest 8/8/8/8/8". That's why you got `Demand 60 / others 8`, even though you said **100%**.
-
-The fix: teach the AI to return **absolute weights** (exact percentages) when you say things like "100%", "only", "exclusively", "just demand", or give explicit numbers like "demand 50, pricing 30". The frontend then sets the sliders to *exactly* those values — no rebalancing, no dominant-detection magic.
-
-We keep the old delta path for vague asks like "lean a bit more on pricing" — that one should still nudge softly.
+> Plan changes go in this doc FIRST, then code. Approve to execute Phase 1a + Phase 1. Phase 2 and 3 are sequenced but await separate go-ahead.
 
 ---
 
-## What changes
+## Mental model (unchanged)
 
-### 1. `supabase/functions/ai-city-query/index.ts`
+```
+City Search  →  Teacher Search  →  Email Outreach (cockpit)  →  Candidate Pipeline
+```
 
-- **Extend the JSON contract** the AI must return:
-  ```
-  weightMode: "absolute" | "delta"     // new
-  absoluteWeights: { demand, pricingPower, competitiveLandscape,
-                     franchiseeSupply, easeOfOperations, parentMindset }  // new, 0–100 each
-  weightAdjustments: { ... }            // kept, used only when mode = "delta"
-  ```
-- **Update SYSTEM_PROMPT** with a new rule block:
-  > If the user states an exact percentage, says "only / exclusively / 100% / just / pure / all", or names specific numbers for one or more categories, return `weightMode: "absolute"` and set `absoluteWeights` to exactly what they said. Any category the user did not mention must be set to 0. Do not normalize, do not round to "fair" values — match the user's words literally.
-  > Otherwise (vague intent like "lean toward demand"), return `weightMode: "delta"` and use `weightAdjustments` as today.
-- **Sanitize** `absoluteWeights`: clamp each to 0–100, only normalize if the user-stated total is wildly off (e.g. >120 or <80). For "100% demand" the AI returns `{demand:100, others:0}` and we pass it through untouched.
-
-### 2. `src/pages/CityScoring.tsx` (the `askAi` handler around lines 480–524)
-
-- Branch on `result.weightMode`:
-  - `"absolute"` → set `weights`, `appliedWeights`, and `customWeightsSnapshot` **directly** to `result.absoluteWeights`. No dominant detection, no 60/8/8/8/8/8 rebalance.
-  - `"delta"` → keep current behavior (the dominant detection + additive nudge path stays as a safety net for vague queries).
-- Toast copy for absolute mode: *"AI set your category weights exactly as requested."*
-
-### 3. `src/components/city-scoring/AiAnswerCard.tsx`
-
-- When `weightMode === "absolute"`, render the chips from `absoluteWeights` instead of `weightAdjustments`, and label them `weight · Demand 100%`, `weight · Pricing Power 0%`, etc. — so the user sees the literal compliance instead of "+20 / −20" deltas.
-- Hide zero-value chips in absolute mode to keep the card tidy (show only categories with weight > 0, plus a small "others: 0%" pill).
-
-### 4. Doc sync (Mode A — drafts, awaiting your "go" before I touch files)
-
-- **HOW_IT_WORKS.md** — Ask AI section: add "Absolute vs delta weight modes — literal requests like '100% demand' now set sliders exactly, not via a +20 nudge."
-- **PROJECT_CONTEXT.md** — note the new `weightMode` / `absoluteWeights` fields in the `ai-city-query` response.
-- **GLOSSARY.md** — add "Absolute weight mode = Ask AI sets sliders to the exact numbers the user named; everything else goes to 0."
-
-No DB migrations. No schema changes. Existing `ai_query_history.response` is JSONB so the extra fields slot in cleanly.
+- Email screen = cockpit. SmartLead is the engine (sends, warmup, deliverability).
+- City lists never go straight to Email. "Promote list" = pre-filter Teacher Search.
+- Test campaigns are the one exception — temp-email CSV bypasses City + Teacher on purpose.
 
 ---
 
-## What stays the same
+## Phase 1a — Strip mock data from Email screen (~30 min) [DO FIRST]
 
-- The 6 category keys and the scoring math (Sam-only — untouched).
-- The delta path for fuzzy/qualitative requests.
-- Filters (state, tier, minScore) — already work fine.
-- The 6-turn conversation cap and history.
+**Why first:** Once Phase 1 lands and real numbers start flowing, mock numbers next to real ones cause exactly the contamination the user flagged.
+
+**Remove:**
+- 6 hardcoded prospects (Emily Rogers, Jason Miller, etc.) in the prospects panel
+- "Prospects in Outreach: 1,248" stat tile
+- "Interested Leads: 58" stat tile
+- Hardcoded High / Med / Low fit-score badges next to fake prospects
+- "Recommended Next Step" suggestion card (hardcoded text)
+
+**Replace with empty states:**
+- Prospects panel: "No prospects yet — import leads to get started"
+- Stat tiles: "0" with subtle helper text "no live data yet"
+- Suggestion card: hidden until there are >0 real campaigns
+
+**Keep untouched (already real):** SmartLead Connection, Campaigns list, Inbox, Analytics, Email Accounts panels.
 
 ---
 
-## One small judgement call for you
+## Phase 1 — Email cockpit: write actions + test mode (~2–3 hours)
 
-When the user says **"100% demand"**, should the 5 other categories go to **exactly 0%** (so they contribute nothing to the composite — composite literally = demand score), or should we floor them at **1% each** so the composite still has a tiny stabilizing signal?
+1. **NewCampaignDrawer additions** (file already exists):
+   - **🧪 Test Mode toggle** at top of step 1. When ON:
+     - Yellow banner "Test Mode — sends only to your inbox"
+     - Recipient = logged-in user's email (from `auth.users.email`)
+     - Override field "Or send test to:" — paste a Gmail+alias or mailinator
+     - FROM address unchanged (still the SmartLead mailbox)
+   - **Daily send cap** field on step 2 (default 50/mailbox/day, hard cap 200).
+   - **Launch button** on step 4 — currently only "Create in SmartLead". Add "Create & Launch" which calls SmartLead `/campaigns/{id}/status` → `START`.
 
-Default I'll ship: **exactly 0%** — that's what "100%" means in plain English. Tell me if you want the 1% floor instead.
+2. **Campaign card actions** in SmartLeadCampaignsPanel:
+   - Launch / Pause / Stop buttons → SmartLead status API.
+   - Persistent "🧪 Test Mode" badge until toggled off.
+
+3. **CSV test-leads upload path** in ImportLeadsWizard:
+   - New top option "Upload test leads (CSV)" alongside existing "Import from Teacher Search".
+   - Accepts `email, first_name, last_name`. Pushes directly to SmartLead leads endpoint.
+   - Used until real teachers exist. Same flow handles real teachers later — zero rework.
+
+4. **End-to-end demo loop (the proof Kaylie wants):**
+   - Upload 5 Gmail+alias test emails → Launch in Test Mode → first email sends → reply from one alias → reply lands in Inbox panel → intent classifier tags HOT → click Promote to Pipeline → fake "teacher" appears in Candidate Pipeline kanban.
+
+---
+
+## Phase 2 — Multiple named favorites lists in City Search (~2–3 hours) [after Phase 1 demo]
+
+**Locked UI decisions:**
+- ⭐ button on city row → popover with checkboxes for each list + "➕ New list" row.
+- **Left rail** inside City Search page lists all watchlists with counts.
+- Per-list action **"Find teachers in these cities"** → jumps to Teacher Search pre-filtered (does NOT bypass Teachers, does NOT pipe straight to Email).
+
+**Schema:**
+- New `watchlists` table: `id, user_id, name, created_at`.
+- Add `watchlist_id` column to `watchlist_items`.
+- Migrate existing rows into a default list named "My watchlist".
+
+---
+
+## Phase 3 — AI on Email screen (~3–4 hours) [after Phase 2]
+
+1. **AI email body personalization** — per-teacher first sentence via `google/gemini-2.5-flash` (Lovable AI Gateway, no key needed). Fallback to generic line if data missing.
+2. **AI reply-intent classifier upgrade** — replace keyword regex with `gemini-2.5-flash-lite`. Catches "we already have a vendor" → NOT_INTERESTED, "circle back in fall" → NEUTRAL, etc.
+
+---
+
+## Phase 4 — BLOCKED on Brett (not our move)
+- Pick teacher data source (Apollo / CSV / Apify / DonorsChoose).
+- Seed `teacher_prospects_master` with first 100–500 Austin teachers.
+- Switch test campaigns over to real teachers. Same UI, same flow.
+
+---
+
+## Parked in LATER.md (will not build now)
+- Metro/county backfill for ~634 remaining cities (cosmetic, do day before demo).
+- Reply-intent override UI (needs real reply volume).
+- Suppression list viewer (needs real bounces).
+- Save campaign as template (needs 3–4 real campaigns first).
+- Share watchlist with other users.
+- AI "Suggest next campaign" recommender.
+
+---
+
+## Execution order on approval
+
+1. Phase 1a — strip mock data (30 min)
+2. Phase 1 — test mode + daily cap + CSV test leads + launch button (~2–3 hr)
+3. **STOP. Run end-to-end demo with Haseeb's temp emails. Confirm it works.**
+4. Phase 2 — named favorites lists (separate go-ahead)
+5. Phase 3 — AI on Email screen (separate go-ahead)
+
+## Doc updates after Phase 1a + 1 ship (Mode A — drafts, await "go")
+- `PROJECT_CONTEXT.md` — Email screen now writes (create/launch/pause campaigns); mock data removed; Test Mode + daily cap added.
+- `HOW_IT_WORKS.md` — new "Test Mode" section explaining TO swap, FROM unchanged, override field, CSV test path.
+- `OPEN_TASKS.md` — mark 11h (mock-data strip) and 11i (test-mode launch) ✅; add Phase 2 + 3 as upcoming.
+- `GLOSSARY.md` — add "Test Mode", "Test leads CSV", "Daily send cap".
+
+---
+
+## Technical notes (for the agent)
+
+- Test Mode TO swap happens **before** the SmartLead `/leads` upload call — we replace the lead list with `[{ email: profile.email }]` (or the override).
+- Daily cap maps to SmartLead `max_new_leads_per_day` in `/campaigns/{id}/schedule`.
+- Launch = POST `/campaigns/{id}/status` with body `{ status: "START" }`.
+- CSV test-leads path uses the existing `/campaigns/{id}/leads` endpoint — no new edge function.
+- Mock data lives entirely in component-local arrays inside `EmailOutreach.tsx` / `EmailOutreachV2.tsx` and child panel files. No DB rows to delete.
+- Phase 2 migration: `CREATE TABLE watchlists` + `ALTER TABLE watchlist_items ADD COLUMN watchlist_id` + backfill default list per user.

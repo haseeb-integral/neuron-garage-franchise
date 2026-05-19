@@ -202,7 +202,7 @@ export function ImportLeadsWizard({ open, onClose, onComplete }: { open: boolean
             <div className="space-y-3">
               <Field label="Batch name"><input value={batchName} onChange={(e) => setBatchName(e.target.value)} placeholder="e.g. Austin TX teachers — May 2026" className="input" /></Field>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Source"><select value={source} onChange={(e) => setSource(e.target.value)} className="input">{["Apollo", "Clay", "LinkedIn Navigator", "DonorsChoose", "Apify", "Manual CSV", "Other"].map((s) => <option key={s}>{s}</option>)}</select></Field>
+                <Field label="Source"><select value={source} onChange={(e) => setSource(e.target.value)} className="input">{["Test Leads (temp emails)", "Apollo", "Clay", "LinkedIn Navigator", "DonorsChoose", "Apify", "Manual CSV", "Other"].map((s) => <option key={s}>{s}</option>)}</select></Field>
                 <Field label="Segment"><select value={segment} onChange={(e) => setSegment(e.target.value as Segment)} className="input">{(["Teacher", "Retired Teacher", "Camp/Enrichment", "Other"] as Segment[]).map((s) => <option key={s}>{s}</option>)}</select></Field>
                 <Field label="City"><input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Austin" className="input" /></Field>
                 <Field label="State"><input value={state} onChange={(e) => setState(e.target.value)} placeholder="TX" className="input" /></Field>

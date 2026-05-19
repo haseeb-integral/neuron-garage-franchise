@@ -149,7 +149,7 @@ export function MarketReportModal({ open, onClose, market, categoryScores, refre
     };
 
     loadReportData();
-  }, [open, market.city, market.state, refreshVersion]);
+  }, [open, market.cityId, refreshVersion]);
 
   const liveCount = liveSignals.filter((s) => getStatus(s) === "live").length;
   const proxyCount = liveSignals.filter((s) => getStatus(s) === "proxy").length;

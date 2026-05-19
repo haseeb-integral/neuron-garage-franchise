@@ -87,7 +87,7 @@ No storage buckets configured.
 ## 3. Edge Functions (deployed)
 
 - `admin-create-user` — admin-only user provisioning
-- `ai-city-query` — Lovable AI Gateway proxy for "Ask AI" answers about a city
+- `ai-city-query` — Lovable AI Gateway proxy for "Ask AI" answers on the City Search screen. Returns `{ summary, filters, weightMode: "absolute" | "delta", absoluteWeights, weightAdjustments, reasoning_steps, dataGaps }`. **Absolute mode** (May 19) honors literal user requests like "100% demand" exactly — sliders snap to the named numbers, unmentioned categories go to 0. **Delta mode** keeps the old ±20 nudge for vague intents.
 - ~~`fetch-city-market-data`~~ — **DELETED May 19** (legacy)
 - ~~`fetch-city-market-data-sow`~~ — **DELETED May 19** (legacy SOW refresh; superseded by bulk `seed-cities-database`)
 - `fetch-school-counts` — NCES CCD public-elementary counts per city

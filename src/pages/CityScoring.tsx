@@ -404,7 +404,7 @@ const CityScoring = () => {
   const askAi = async (query: string) => {
     setAiLoading(true);
     try {
-      // Pre-flight auth check: ensure we have a session before invoking, and
+      // Pre-flight auth check: ensure we have a session before calling, and
       // refresh once if the token is stale (root cause of the prior 401s).
       let { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData?.session) {
@@ -416,31 +416,43 @@ const CityScoring = () => {
         return;
       }
 
-      const invokeOnce = async () => {
+      // Explicit fetch (not supabase.functions.invoke) so the Authorization
+      // header reliably reaches the edge function via the preview proxy.
+      const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-city-query`;
+      const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+      const callOnce = async () => {
         const { data: s } = await supabase.auth.getSession();
-        const token = s?.session?.access_token;
-        return supabase.functions.invoke("ai-city-query", {
-          body: {
+        const token = s?.session?.access_token ?? "";
+        const resp = await fetch(FN_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+            apikey: ANON_KEY,
+          },
+          body: JSON.stringify({
             query,
             threadId: aiThreadId,
             previousTurns: aiTurns.map((t) => ({ query: t.query, response: t.response })),
-          },
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          }),
         });
+        let bodyJson: any = null;
+        try { bodyJson = await resp.json(); } catch { /* not json */ }
+        return { resp, bodyJson };
       };
 
-      let { data, error } = await invokeOnce();
-      // One retry on auth failure after forcing a refresh — handles edge cases
-      // where the token expired between the pre-flight check and the invoke.
-      if (error && /401|not authenticated|unauthor/i.test(String(error?.message ?? ""))) {
+      let { resp, bodyJson } = await callOnce();
+      if (resp.status === 401) {
         await supabase.auth.refreshSession();
-        ({ data, error } = await invokeOnce());
+        ({ resp, bodyJson } = await callOnce());
       }
-      if (error) {
-        const msg = await getInvokeErrorMessage(error);
-        toast.error(msg || "AI search failed");
+      if (!resp.ok) {
+        const msg = bodyJson?.error || bodyJson?.detail || `AI search failed (HTTP ${resp.status})`;
+        toast.error(typeof msg === "string" ? msg : JSON.stringify(msg));
         return;
       }
+      const data = bodyJson;
       const result = data?.result as AiResult | undefined;
       if (!result) {
         toast.error("AI returned no result");

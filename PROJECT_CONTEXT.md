@@ -1,6 +1,6 @@
 # PROJECT_CONTEXT.md — Neuron Garage
 
-> Snapshot date: May 19, 2026 (Email Outreach / SmartLead Phases 1–5 complete; legacy `cities` / `city_category_scores` / `city_fetch_jobs` / `city_competitors` tables dropped; Add City rewired to `us_cities_scored`; in-app `/spec` page rewritten to v1.2 same day and is in sync with this file)
+> Snapshot date: May 19, 2026 (Ask AI absolute-weights mode shipped same day; Email Outreach / SmartLead Phases 1–5 complete; legacy `cities` / `city_category_scores` / `city_fetch_jobs` / `city_competitors` tables dropped; Add City rewired to `us_cities_scored`; `county_name` backfilled 960/960 from `us_cities_geo`; `metro_area` backfilled 326/960 — remainder pending; in-app `/spec` page rewritten to v1.2 same day and is in sync with this file)
 > Live URL: https://neuron-garage-franchise.lovable.app
 > Preview: https://id-preview--c74b81ad-10d7-4a10-b6c8-de17f48a663e.lovable.app
 > Stack: React + TS + Vite + Tailwind + shadcn, Lovable Cloud (Supabase) backend
@@ -87,7 +87,7 @@ No storage buckets configured.
 ## 3. Edge Functions (deployed)
 
 - `admin-create-user` — admin-only user provisioning
-- `ai-city-query` — Lovable AI Gateway proxy for "Ask AI" answers about a city
+- `ai-city-query` — Lovable AI Gateway proxy for "Ask AI" answers on the City Search screen. Returns `{ summary, filters, weightMode: "absolute" | "delta", absoluteWeights, weightAdjustments, reasoning_steps, dataGaps }`. **Absolute mode** (May 19) honors literal user requests like "100% demand" exactly — sliders snap to the named numbers, unmentioned categories go to 0. **Delta mode** keeps the old ±20 nudge for vague intents.
 - ~~`fetch-city-market-data`~~ — **DELETED May 19** (legacy)
 - ~~`fetch-city-market-data-sow`~~ — **DELETED May 19** (legacy SOW refresh; superseded by bulk `seed-cities-database`)
 - `fetch-school-counts` — NCES CCD public-elementary counts per city

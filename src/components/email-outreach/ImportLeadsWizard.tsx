@@ -53,13 +53,15 @@ export function ImportLeadsWizard({ open, onClose, onComplete }: { open: boolean
   const [campaigns, setCampaigns] = useState<SmartLeadCampaign[]>([]);
   const [destCampaignId, setDestCampaignId] = useState<string>("");
   const [importing, setImporting] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [sentSummary, setSentSummary] = useState<{ ok: number; total: number } | null>(null);
   const [progress, setProgress] = useState({ done: 0, total: 0, errors: 0 });
 
   useEffect(() => {
     if (!open) {
       setStep(1); setBatchName(""); setSource("Apollo"); setCity(""); setState(""); setSegment("Teacher");
       setCsvHeaders([]); setCsvRows([]); setMapping({ email: "", first_name: "", last_name: "", company: "", city: "", segment: "" });
-      setBatchId(null); setStaged([]); setCampaigns([]); setDestCampaignId(""); setImporting(false); setProgress({ done: 0, total: 0, errors: 0 });
+      setBatchId(null); setStaged([]); setCampaigns([]); setDestCampaignId(""); setImporting(false); setSent(false); setSentSummary(null); setProgress({ done: 0, total: 0, errors: 0 });
     }
   }, [open]);
 
@@ -151,6 +153,7 @@ export function ImportLeadsWizard({ open, onClose, onComplete }: { open: boolean
 
   const runImport = async () => {
     if (!destCampaignId || !batchId) { toast.error("Pick a destination campaign."); return; }
+    if (importing || sent) return; // hard guard against double-clicks / replays
     setImporting(true);
     await supabase.from("prospect_batches").update({ status: "importing", campaign_id: destCampaignId }).eq("id", batchId);
     const approved = staged.filter((r) => r.qa_status === "approved");
@@ -173,6 +176,8 @@ export function ImportLeadsWizard({ open, onClose, onComplete }: { open: boolean
     const finalStatus = errors === approved.length && approved.length > 0 ? "failed" : "complete";
     await supabase.from("prospect_batches").update({ status: finalStatus }).eq("id", batchId);
     setImporting(false);
+    setSent(true);
+    setSentSummary({ ok: approved.length - errors, total: approved.length });
     toast.success(`Import ${finalStatus}: ${approved.length - errors}/${approved.length} sent to SmartLead.`);
     onComplete?.();
   };
@@ -283,9 +288,19 @@ export function ImportLeadsWizard({ open, onClose, onComplete }: { open: boolean
                   <div className="mt-2 h-2 rounded-full bg-[#eef2f7]"><div className="h-2 rounded-full bg-[#174be8] transition-all" style={{ width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%` }} /></div>
                 </div>
               )}
+              {sent && sentSummary && (
+                <div className="rounded-lg border border-[#bce5cf] bg-[#e6f7ef] p-3 text-xs text-[#0a8f5a]">
+                  <div className="flex items-center gap-2 font-black"><CheckCircle2 size={14} /> Sent — {sentSummary.ok}/{sentSummary.total} imported to SmartLead</div>
+                  <div className="mt-1 text-[#0a8f5a]/80">This batch is locked. Close the wizard and start a new import to send more.</div>
+                </div>
+              )}
               <div className="flex justify-between pt-2">
-                <button onClick={() => setStep(3)} disabled={importing} className="btn-secondary disabled:opacity-50">Back</button>
-                <button onClick={runImport} disabled={importing || !destCampaignId} className="btn-primary disabled:opacity-50">{importing ? "Importing…" : `Send ${counts.approved} to SmartLead`}</button>
+                <button onClick={() => setStep(3)} disabled={importing || sent} className="btn-secondary disabled:opacity-50">Back</button>
+                {sent ? (
+                  <button onClick={onClose} className="btn-primary">Close</button>
+                ) : (
+                  <button onClick={runImport} disabled={importing || !destCampaignId} className="btn-primary disabled:opacity-50">{importing ? <span className="inline-flex items-center gap-1.5"><Loader2 size={12} className="animate-spin" /> Sending…</span> : `Send ${counts.approved} to SmartLead`}</button>
+                )}
               </div>
             </div>
           )}

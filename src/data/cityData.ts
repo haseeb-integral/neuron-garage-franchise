@@ -1,5 +1,6 @@
 export interface CityData {
   id: number;
+  cityId?: string; // us_cities_scored.id when sourced from live data
   city: string;
   state: string;
   tier: 'A' | 'B' | 'C' | 'D';

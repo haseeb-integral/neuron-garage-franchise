@@ -138,7 +138,7 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
     const endMinutes = toMinutes(endHour);
     if (startMinutes === null || endMinutes === null) return "Start and end time must be in HH:MM format.";
     if (startMinutes >= endMinutes) return "End time must be after start time.";
-    if (minGapMinutes < 1 || minGapMinutes > 180) return "Min gap must be between 1 and 180 minutes.";
+    if (minGapMinutes < 3 || minGapMinutes > 180) return "Min gap must be between 3 and 180 minutes (SmartLead requirement).";
     if (dailyCap < 1 || dailyCap > 200) return "Daily send cap must be between 1 and 200.";
     if (!sequences.length) return "Add at least one email step.";
     const badStep = sequences.find((sequence) => !sequence.subject.trim() || !sequence.body.trim() || sequence.day < 1);

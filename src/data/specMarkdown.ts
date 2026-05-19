@@ -38,9 +38,8 @@ export const SPEC_MARKDOWN = `# Neuron Garage Franchise Acquisition System — P
 - Source K–6, retired, camp/enrichment, and secondary STEM/maker teachers as candidate franchisees (Teacher Search).
 - Run AI-personalized outbound email campaigns via SmartLead, with live reply tracking (Email Outreach).
 - Qualify candidates through a structured 7-stage Kanban pipeline (Candidate Pipeline).
-- Qualify candidates through a structured 7-stage pipeline (Candidate Pipeline).
 
-> **Phase 2 (deferred):** Onboarding — a 7-step franchisee launch program. Code and the `/onboarding` route exist in the app today but are out of scope for Phase 1 and are not specified in this document.
+> **Phase 2 (deferred):** Onboarding — a 7-step franchisee launch program. Code and the \`/onboarding\` route exist in the app today but are out of scope for Phase 1 and are not specified in this document.
 
 The product is a React + TypeScript single-page app, backed by Lovable Cloud (managed Supabase: Postgres + Auth + Edge Functions + Storage).
 
@@ -64,12 +63,12 @@ The product is a React + TypeScript single-page app, backed by Lovable Cloud (ma
 
 Current build assumes one role: **Franchise Development Rep** (\`manager\`). Admin role exists for user-management actions.
 
-- **\`manager\`** — default role for every new user. Read/write access to cities, teachers, candidates, onboarding, email outreach.
+- **\`manager\`** — default role for every new user. Read/write access to cities, teachers, candidates, email outreach.
 - **\`admin\`** — required to write to \`user_roles\`. Manually granted; not handed out automatically.
 
 Roles are stored in a dedicated \`user_roles\` table with an \`app_role\` enum and a \`has_role()\` security-definer function so RLS policies never recurse.
 
-Future roles to consider: FD Manager, Selection Committee Member, Onboarding Specialist, external Franchisee (read-only).
+Future roles to consider: FD Manager, Selection Committee Member, external Franchisee (read-only).
 
 ---
 

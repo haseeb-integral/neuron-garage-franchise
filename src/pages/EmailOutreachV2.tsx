@@ -88,7 +88,8 @@ export default function EmailOutreachV2() {
   const [selectedCampaign, setSelectedCampaign] = useState(campaigns[0]);
   const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null);
   const [tab, setTab] = useState("All Prospects");
-  const [view, setView] = useState<SubView>("live");
+  const [connectionOpen, setConnectionOpen] = useState(false);
+
   const [promoted, setPromoted] = useState<Record<number, string>>({});
   const [promotingId, setPromotingId] = useState<number | null>(null);
   const safeToast = (message: string) => toast.info(message);

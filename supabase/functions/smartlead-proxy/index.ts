@@ -74,20 +74,23 @@ Deno.serve(async (req) => {
       }
       const text = await res.text();
       lastText = text;
-      const ct = res.headers.get("content-type") ?? "";
-      const isJson = ct.includes("application/json");
+      let parsed: unknown = text;
+      try { parsed = JSON.parse(text); } catch { /* keep raw */ }
+
+      // Always return 200 to the Supabase client so it doesn't swallow the body.
+      // Wrap the real SmartLead status/body so the frontend can show useful errors.
+      const ok = res.status >= 200 && res.status < 300;
       return new Response(
-        isJson ? text : JSON.stringify({ status: res.status, body: text }),
-        {
-          status: res.status,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
+        JSON.stringify(ok
+          ? (typeof parsed === "object" && parsed !== null ? parsed : { data: parsed })
+          : { ok: false, status: res.status, endpoint, method, error: typeof parsed === "object" ? parsed : String(parsed) }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
     return new Response(
-      JSON.stringify({ error: "Rate limit exceeded after retries", lastStatus, lastText }),
-      { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      JSON.stringify({ ok: false, status: 429, error: "Rate limit exceeded after retries", lastStatus, lastText }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
     console.error("smartlead-proxy error", err);

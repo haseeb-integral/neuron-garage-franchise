@@ -17,6 +17,14 @@ async function callProxy(endpoint: string, method = "GET", payload?: unknown) {
     body: { endpoint, method, payload },
   });
   if (error) throw new Error(error.message ?? String(error));
+  if (data && typeof data === "object" && (data as any).ok === false) {
+    const d = data as any;
+    const err = d.error;
+    const msg = typeof err === "string"
+      ? err
+      : (err?.message || err?.error || err?.msg || JSON.stringify(err));
+    throw new Error(`SmartLead ${d.status ?? ""} on ${endpoint}: ${msg}`);
+  }
   return data;
 }
 

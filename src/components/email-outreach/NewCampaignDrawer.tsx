@@ -169,13 +169,23 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
         } catch (e) { console.warn("test lead push failed", e); }
       }
 
-      if (launch) {
-        try {
-          await callProxy(`/campaigns/${id}/status`, "POST", { status: "START" });
-        } catch (e) {
-          console.warn("launch failed", e);
-          toast.warning("Campaign created but launch failed — start it manually in SmartLead.");
+      // Assign ALL connected email accounts to this campaign — SmartLead refuses to START without one.
+      try {
+        const accounts = await callProxy("/email-accounts/", "GET");
+        const ids = (Array.isArray(accounts) ? accounts : [])
+          .map((a: any) => a?.id)
+          .filter((x: any) => typeof x === "number" || typeof x === "string");
+        if (!ids.length) {
+          throw new Error("No email accounts connected in SmartLead. Connect one in Email Accounts tab first.");
         }
+        await callProxy(`/campaigns/${id}/email-accounts`, "POST", { email_account_ids: ids });
+      } catch (e) {
+        if (launch) throw e; // block launch when no inbox
+        console.warn("assign email accounts failed", e);
+      }
+
+      if (launch) {
+        await callProxy(`/campaigns/${id}/status`, "POST", { status: "START" });
       }
 
       toast.success(

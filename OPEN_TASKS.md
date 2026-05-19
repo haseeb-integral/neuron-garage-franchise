@@ -243,6 +243,63 @@ See **`TEACHER_IDEAL_PROFILE.md`** for who we are recruiting and why — read th
 
 ---
 
+## ⚡ Email Outreach — May 19 cockpit polish (locked plan, partial done)
+
+> Locked in chat May 19 across Phases 1a → 4. Promoted out of chat into this file so future sessions don't drop it. See PROJECT_CONTEXT § 5 + HOW_IT_WORKS `/email-outreach` for behavior detail.
+
+~~### 17a. Strip hardcoded mock data from Email screen~~ ✅ May 19
+- Removed: 6 placeholder prospects, "1,248 prospects in outreach", "58 interested leads" tile, hardcoded fit-score badges, "Recommended Next Step" card
+- Stats now read live from SmartLead `/analytics/overview` + `campaign_cache`
+
+~~### 17b. NewCampaignDrawer + Test Mode toggle~~ ✅ May 19
+- Launch a campaign from inside the app (no need to go to SmartLead website)
+- Test Mode: yellow toggle swaps recipient list with logged-in user's email (`auth.users.email`) + manual override field
+- `[TEST]` prefix automatically added to campaign name when Test Mode is on
+- FROM is always the SmartLead mailbox — Test Mode only swaps TO
+
+~~### 17c. Auto-generated default campaign name + min-gap floor~~ ✅ May 19
+- Default name format: `Outreach · MMM-DD · HH:mm TZ · vN`. `vN` increments via `localStorage.ng_campaign_seq` so two drafts in the same minute don't collide. Field stays editable.
+- `min_time_btw_emails` floor enforced at 3 (SmartLead `/campaigns/{id}/schedule` returns 400 below 3)
+
+~~### 17d. Inbox picker on campaign create~~ ✅ May 19
+- User selects which connected mailboxes the campaign sends from (default: all)
+- "All" / "None" toggle buttons
+- Helper text explains: per-inbox = parallel sends · single-inbox = sequential sends · SmartLead cron polls every ~10–15 min so launch time ≠ send time
+
+~~### 17e. End-to-end test loop proven~~ ✅ May 19
+- Gmail `+alias` CSV (5 leads) → Import Wizard → SmartLead → first email sent → reply arrived → Inbox classifier tagged it → Pause/Resume/Stop ✅ → manual Promote to Pipeline path verified
+- Reply detection ✅ confirmed by Haseeb (Isabella reply showed in Analytics)
+
+### 17f. Add `{{unsubscribe}}` to default sequence body 🔴 BLOCKER for real sends
+- `src/components/email-outreach/NewCampaignDrawer.tsx` ~line 125 (initial sequence text) + ~line 141 (follow-up body)
+- **CAN-SPAM legal requirement** — must exist before any non-test campaign launches
+- SmartLead replaces `{{unsubscribe}}` with the per-lead opt-out URL automatically
+- **Effort:** ~5 min · **Risk:** low
+
+### 17g. Open Rate tooltip — explain Gmail proxy / Apple MPP inflation
+- AnalyticsPanel: add (ⓘ) next to "Open Rate" → tooltip: "Gmail and Apple Mail pre-fetch tracking pixels automatically, so open rate is inflated to ~100% on those inboxes. Trust **clicks** and **replies** as real engagement signals."
+- **Effort:** ~15 min · **Risk:** low
+
+### 17h. Import Leads CSV end-to-end test (paused, resume after 17f)
+- 2-row dummy CSV → Import Wizard → batch appears in Import Batches panel → push to SmartLead → confirm leads visible in SmartLead campaign
+
+### 17i. Real (non-test) 1-lead launch (paused, resume after 17f)
+- Test Mode OFF → enter one real address Haseeb controls (not a `+alias`) → launch → confirm send
+
+### 17j. AI email body personalization per lead (deferred, added May 19)
+- Model: `google/gemini-2.5-flash` via Lovable AI Gateway (no extra key)
+- Template uses `{first_name}`, `{school}`, `{subject}`, `{years_experience}` from the lead row
+- Falls back to non-personalized body if any required merge field is missing
+- **Effort:** ~3–4 hrs · **Risk:** medium
+
+### 17k. AI reply-intent classifier (deferred, added May 19, supersedes part of #21)
+- Replace keyword regex in `smartlead-webhook` with `gemini-2.5-flash-lite` call
+- Better OOO + multi-language detection. Keeps HOT / NOT_INTERESTED / OOO / NEUTRAL enum unchanged.
+- **Effort:** ~1–2 hrs · **Risk:** low
+
+
+---
+
 ## 🚧 Current risk
 
 - **Database layer (Task #0) is the single critical path item.** Everything stacks behind it.

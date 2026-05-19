@@ -10,6 +10,7 @@ import { useCustomCriteria, CATEGORY_LABEL_TO_KEY } from "@/hooks/useCustomCrite
 import type { CategoryKey } from "@/stores/cityScoringStore";
 import { METRICS_BY_CATEGORY, SOW_METRIC_REGISTRY, type SowMetricEntry } from "@/lib/sowMetricRegistry";
 import { FETCHER_DIAGNOSTIC_KEYS, canonicalKey } from "@/lib/signalAliases";
+import { buildSeededFallbackSignalsFromScored } from "@/lib/cityScoringLiveData";
 
 export interface CustomCriterion {
   name: string;

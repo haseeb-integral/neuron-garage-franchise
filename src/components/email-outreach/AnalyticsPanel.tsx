@@ -129,13 +129,13 @@ export function AnalyticsPanel() {
       }
       const fresh = await fetchAggregated();
       setData(fresh);
-      await supabase.from("campaign_cache").upsert({
+      await supabase.from("campaign_cache").upsert([{
         id: CACHE_KEY,
         name: "Analytics Overview",
         status: fresh.source,
         last_synced: new Date().toISOString(),
         raw_data: fresh as unknown as Record<string, unknown>,
-      });
+      }]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load analytics");
     } finally {

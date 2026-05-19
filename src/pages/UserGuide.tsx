@@ -458,9 +458,9 @@ const UserGuide = () => {
           Stuck? Just ask.
         </h3>
         <p className="mx-auto mt-2 max-w-[520px] text-[15px] leading-relaxed" style={{ color: "#cfd9ef" }}>
-          This tool is built for the three of us — Kaylie, Sam, Haseeb. If
-          something feels clunky, slow, or wrong, tell Haseeb. We fix it
-          forward, one small change at a time.
+          This tool is built for the three of us — Kaylie, Sam and Team. If
+          something feels clunky, slow, or wrong, tell Brett or Haseeb. We fix
+          it forward, one change at a time.
         </p>
       </section>
     </div>

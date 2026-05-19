@@ -151,8 +151,21 @@ These are confirmed risks from the Day 6 Firecrawl implementation (Lovable’s o
 
 ---
 
+## Email Outreach — deferred polish (added May 19)
+
+Not built; not blocking the demo. Promote to OPEN_TASKS only if Kaylie hits the need in real use.
+
+- **Reply-intent manual override button** — let a user re-tag a reply the classifier got wrong. Needs real reply volume first.
+- **Suppression list viewer** — show who's unsubscribed / bounced / complained so they're never contacted again. Needs bounces and unsubscribes to start accumulating before it has data to show.
+- **Save campaign as template** — reuse send-time settings, tracking flags, schedule across campaigns. Premature until 3+ campaigns exist.
+- **"Suggest next campaign" AI** — looks at hot leads and winning subject lines, proposes next batch. Needs winning-subject-line history.
+- **Daily send cap UI** — hard ceiling per mailbox per day. SmartLead already enforces per-mailbox warmup ramp, so this is belt-and-suspenders. Add only if Kaylie explicitly wants the extra guardrail.
+
+---
+
 ## How to use this file
 
 - Add items here instead of building them mid-sprint
 - Review with Brett after the sprint — promote to OPEN_TASKS.md if prioritized
-- Don’t delete entries — they’re a decision log
+- Don't delete entries — they're a decision log
+

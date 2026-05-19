@@ -1703,6 +1703,11 @@ const CityScoring = () => {
             <span className="text-xs text-[#526078]">
               Total Weight: <span className={totalWeight === 100 ? "text-[#0ea66e] font-medium" : "text-[#ea580c] font-medium"}>{totalWeight}%</span>
             </span>
+            {JSON.stringify(weights) !== JSON.stringify(appliedWeights) && totalWeight === 100 && (
+              <span className="text-[11px] font-medium text-[#ea580c]">
+                Click Apply to recompute scores
+              </span>
+            )}
             <button onClick={resetWeights} className="text-xs font-medium text-[#174be8] hover:underline">Reset to Default</button>
             <Button
               size="sm"

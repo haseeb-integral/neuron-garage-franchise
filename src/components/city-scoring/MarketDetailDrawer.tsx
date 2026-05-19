@@ -756,6 +756,14 @@ export function MarketDetailDrawer({
                               <span className="rounded-full border border-[#f4df9a] bg-[#fff6dc] px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#b8860b]">
                                 Custom
                               </span>
+                              {Number(c.weight) === 0 && (
+                                <span
+                                  className="rounded-full border border-[#e5eaf2] bg-[#f3f6fb] px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#526078]"
+                                  title="This custom metric has weight 0, so it does not currently contribute to the composite score."
+                                >
+                                  Weight 0 — not contributing
+                                </span>
+                              )}
                               {c.data_source && (
                                 <span className="rounded-full border border-[#e5eaf2] bg-white px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#526078]">
                                   {c.data_source}

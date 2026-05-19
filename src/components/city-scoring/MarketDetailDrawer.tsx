@@ -454,8 +454,8 @@ export function MarketDetailDrawer({
   }, [customCriteriaRows]);
   const customCount = customCriteriaRows.length;
 
-  // Count ALL registry rows (enabled + disabled), not just enabled — the
-  // header chip is supposed to reflect total spec coverage.
+  // Count ALL registry rows (enabled + disabled), not just enabled. These
+  // counts must come from the same canonical merged dataset the rows use.
   const allCoverageCounts = useMemo(() => {
     let live = 0, proxy = 0, missing = 0, blocked = 0;
     Object.values(coverageByCategory).forEach(({ enabled, disabled }) => {
@@ -475,6 +475,15 @@ export function MarketDetailDrawer({
   const blockedCount = allCoverageCounts.blocked;
   const manualCount = 0;
   const totalRegistry = SOW_METRIC_REGISTRY.length;
+  const enabledAvailableCount = useMemo(
+    () => Object.values(coverageByCategory).reduce((sum, { enabled }) => sum + enabled.filter((r) => r.status === "live" || r.status === "proxy").length, 0),
+    [coverageByCategory],
+  );
+  const disabledAvailableCount = useMemo(
+    () => Object.values(coverageByCategory).reduce((sum, { disabled }) => sum + disabled.filter((r) => r.status === "live" || r.status === "proxy").length, 0),
+    [coverageByCategory],
+  );
+  const totalAvailableCount = enabledAvailableCount + disabledAvailableCount;
 
   const [showDiagnostics, setShowDiagnostics] = useState(false);
 
@@ -617,7 +626,7 @@ export function MarketDetailDrawer({
           </div>
           <div className="mt-2 flex items-center justify-between gap-3">
             <p className="text-[11px] text-[#526078]">
-              Latest refresh: <span className="font-semibold text-[#07142f]">{formatDate(latestJob?.completed_at)}</span>
+               Latest canonical refresh: <span className="font-semibold text-[#07142f]">{formatDate(latestJob?.completed_at)}</span>
             </p>
             <div className="flex flex-wrap gap-1.5 text-[11px]">
               <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#0ea66e]">{liveCount} Live</span>
@@ -631,6 +640,21 @@ export function MarketDetailDrawer({
               )}
               <span className="rounded-md bg-[#f3f6fb] px-1.5 py-0.5 font-semibold text-[#526078]">of {totalRegistry} metrics</span>
             </div>
+          </div>
+          <div className="mt-2 space-y-1 text-[11px] text-[#526078]">
+            <p>
+              Austin currently has <span className="font-semibold text-[#07142f]">{totalAvailableCount}</span> of {totalRegistry} registry metrics with a real backend value in the scored-city view.
+            </p>
+            {legacyJob && !latestJob && (
+              <p>
+                Legacy audit exists from <span className="font-semibold text-[#07142f]">{formatDate(legacyJob.completed_at)}</span>, but it is not used for the visible metric counts.
+              </p>
+            )}
+            {legacyJob && latestJob && (
+              <p>
+                Legacy Austin audit from <span className="font-semibold text-[#07142f]">{formatDate(legacyJob.completed_at)}</span> is shown only as historical context and does not affect the counts above.
+              </p>
+            )}
           </div>
           {loading && (
             <div className="mt-2 flex items-center gap-2 text-[11px] text-[#526078]">
@@ -656,6 +680,9 @@ export function MarketDetailDrawer({
                     ["Manual", manualCount],
                     ["Blocked", blockedCount],
                     ["Missing", missingCount],
+                    ["Registry metrics with value", totalAvailableCount],
+                    ["Enabled metrics with value", enabledAvailableCount],
+                    ["Tracked-not-scored metrics with value", disabledAvailableCount],
                     ["Total metrics", totalRegistry + customCount],
                   ].map(([label, value]) => (
                     <div key={String(label)} className="flex justify-between gap-2 rounded bg-[#f8fafe] px-2 py-1">

@@ -49,9 +49,9 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
   useEffect(() => {
     if (!open) {
       setStep(1); setBusy(false); setCreatedId(null); setName("");
-      setTestMode(true); setTestOverride("");
+      setTestMode(true); setTestOverride(""); setTestLeadCount(5);
       setTimezone("America/Chicago"); setStartHour("09:00"); setEndHour("18:00");
-      setDays(["1", "2", "3", "4", "5"]); setDailyCap(50);
+      setDays(["1", "2", "3", "4", "5"]); setDailyCap(50); setMinGapMinutes(10);
       setTrackOpens(true); setTrackClicks(true); setStopOnReply(true);
       setSequences([
         { day: 1, subject: "Quick question, {{first_name}}", body: "Hi {{first_name}},\n\n…" },

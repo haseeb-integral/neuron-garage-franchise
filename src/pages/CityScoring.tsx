@@ -480,27 +480,42 @@ const CityScoring = () => {
       // Apply weight nudges to draft + applied master weights so Ask AI behaves
       // like an immediate search refinement rather than a pending local edit.
       const adj = result.weightAdjustments ?? {};
-      const anyDelta = Object.values(adj).some((v) => v !== 0);
+      const adjEntries = (Object.entries(adj) as [CategoryKey, number][])
+        .filter(([, v]) => Number(v) !== 0);
+      const anyDelta = adjEntries.length > 0;
       if (anyDelta) {
         setScoringModel("Custom");
         setActiveSavedSearchId(null);
         setWeights((prev) => {
-          const next = { ...prev } as Record<CategoryKey, number>;
-          (Object.keys(adj) as CategoryKey[]).forEach((k) => {
-            if (next[k] != null) next[k] = Math.max(0, Math.min(100, (next[k] ?? 0) + (adj[k] ?? 0)));
-          });
-          // Renormalize so sliders sum to 100
-          const sum = Object.values(next).reduce((s, v) => s + v, 0) || 1;
-          (Object.keys(next) as CategoryKey[]).forEach((k) => {
-            next[k] = Math.round((next[k] / sum) * 100);
-          });
-          // Reconcile drift
-          let diff = 100 - Object.values(next).reduce((s, v) => s + v, 0);
-          const keys = Object.keys(next) as CategoryKey[];
-          for (let i = 0; diff !== 0 && i < 6; i++) {
-            const k = keys[i % keys.length];
-            const step = diff > 0 ? 1 : -1;
-            if (next[k] + step >= 0) { next[k] += step; diff -= step; }
+          const keys = Object.keys(prev) as CategoryKey[];
+          // Single-category dominant intent ("rank by demand", "focus on pricing power")
+          // should produce a clearly dominant slider, not a 17% nudge. Detect by:
+          //   - exactly one positive nudge AND any others are zero or negative.
+          const positives = adjEntries.filter(([, v]) => v > 0);
+          const isDominant = positives.length === 1
+            && adjEntries.every(([k, v]) => (k === positives[0][0] ? v > 0 : v <= 0));
+
+          let next = { ...prev } as Record<CategoryKey, number>;
+          if (isDominant) {
+            const dom = positives[0][0];
+            const others = keys.filter((k) => k !== dom);
+            const remainder = 40;
+            const each = Math.floor(remainder / others.length);
+            others.forEach((k) => { next[k] = each; });
+            next[dom] = 100 - each * others.length;
+          } else {
+            // Additive nudge path (multi-category intents) — preserve existing behavior.
+            adjEntries.forEach(([k, v]) => {
+              if (next[k] != null) next[k] = Math.max(0, Math.min(100, (next[k] ?? 0) + v));
+            });
+            const sum = Object.values(next).reduce((s, v) => s + v, 0) || 1;
+            keys.forEach((k) => { next[k] = Math.round((next[k] / sum) * 100); });
+            let diff = 100 - Object.values(next).reduce((s, v) => s + v, 0);
+            for (let i = 0; diff !== 0 && i < 6; i++) {
+              const k = keys[i % keys.length];
+              const step = diff > 0 ? 1 : -1;
+              if (next[k] + step >= 0) { next[k] += step; diff -= step; }
+            }
           }
           setAppliedWeights(next);
           setCustomWeightsSnapshot({ ...next });

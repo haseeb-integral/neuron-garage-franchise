@@ -36,23 +36,28 @@ You have access to ~960 pre-scored US cities. Each city has:
 
 When the user asks a question:
 1) Translate intent into FILTERS (state, minScore 0-100, tier) when appropriate.
-2) Suggest WEIGHT ADJUSTMENTS to the six categories as integer deltas (-20..+20). Positive = make this category matter more.
-3) Write a 1-2 sentence plain-English SUMMARY answering the user's question.
+2) Decide WEIGHT MODE:
+   - "absolute" — use this whenever the user states explicit percentages, or says words like "100%", "only", "exclusively", "just", "pure", "all", "entirely", "solely", or names specific numbers for one or more categories. Set absoluteWeights to EXACTLY what the user said. Any category the user did not mention must be 0. Do NOT normalize, do NOT round to "fair" values, do NOT spread leftover percentage across other categories. Match the user's words literally.
+   - "delta" — use this for vague qualitative intents like "lean toward demand" or "care more about pricing". Provide integer deltas (-20..+20) in weightAdjustments. Positive = matters more.
+3) Write a 1-2 sentence plain-English SUMMARY answering the user's question. In absolute mode, explicitly confirm the literal weights (e.g. "Ranking Texas cities purely by Demand — all other categories set to 0%.").
 4) Provide 3-6 short REASONING STEPS showing how you decided.
 5) Flag any DATA GAPS — metrics the user might expect that aren't fully populated yet (e.g. Google Trends data is not yet live; weather covers ~506/960 cities; GreatSchools quality data is not yet wired).
 
-Be concise. Never invent cities or categories. Only use the six categories listed above. If the user asks for something you cannot do (e.g. "rank by AP test scores"), say so honestly in summary + dataGaps and return empty filter/weight adjustments.
+Be concise. Never invent cities or categories. Only use the six categories listed above. If the user asks for something you cannot do (e.g. "rank by AP test scores"), say so honestly in summary + dataGaps and return mode "delta" with all zeros.
 
 Respond ONLY with a valid JSON object matching this exact shape (no markdown, no prose):
 {
   "summary": "string",
   "filters": { "state": "string | null", "minScore": "number | null", "tier": "A|B|C|D | null" },
+  "weightMode": "absolute" | "delta",
+  "absoluteWeights": { "demand": 0, "pricingPower": 0, "competitiveLandscape": 0, "franchiseeSupply": 0, "easeOfOperations": 0, "parentMindset": 0 },
   "weightAdjustments": { "demand": 0, "pricingPower": 0, "competitiveLandscape": 0, "franchiseeSupply": 0, "easeOfOperations": 0, "parentMindset": 0 },
   "reasoning_steps": ["string", "..."],
   "dataGaps": ["string", "..."]
 }`;
 
 function sanitizeResponse(raw: any) {
+  const mode = raw?.weightMode === "absolute" ? "absolute" : "delta";
   const out = {
     summary: typeof raw?.summary === "string" ? raw.summary.slice(0, 600) : "",
     filters: {
@@ -67,6 +72,8 @@ function sanitizeResponse(raw: any) {
           ? raw.filters.tier
           : null,
     },
+    weightMode: mode as "absolute" | "delta",
+    absoluteWeights: {} as Record<string, number>,
     weightAdjustments: {} as Record<string, number>,
     reasoning_steps: Array.isArray(raw?.reasoning_steps)
       ? raw.reasoning_steps
@@ -83,10 +90,36 @@ function sanitizeResponse(raw: any) {
   };
 
   for (const cat of VALID_CATEGORIES) {
-    const v = raw?.weightAdjustments?.[cat];
+    const d = raw?.weightAdjustments?.[cat];
     out.weightAdjustments[cat] =
-      typeof v === "number" ? Math.max(-20, Math.min(20, Math.round(v))) : 0;
+      typeof d === "number" ? Math.max(-20, Math.min(20, Math.round(d))) : 0;
+    const a = raw?.absoluteWeights?.[cat];
+    out.absoluteWeights[cat] =
+      typeof a === "number" ? Math.max(0, Math.min(100, Math.round(a))) : 0;
   }
+
+  // Absolute mode: only renormalize if AI gave a wildly-off total. Pass
+  // "100% demand → others 0" through untouched so users get literal compliance.
+  if (mode === "absolute") {
+    const sum = Object.values(out.absoluteWeights).reduce((s, v) => s + v, 0);
+    if (sum === 0) {
+      out.weightMode = "delta";
+    } else if (sum > 120 || sum < 80) {
+      const factor = 100 / sum;
+      const keys = Object.keys(out.absoluteWeights);
+      let running = 0;
+      keys.forEach((k, i) => {
+        if (i === keys.length - 1) {
+          out.absoluteWeights[k] = Math.max(0, 100 - running);
+        } else {
+          const v = Math.max(0, Math.round(out.absoluteWeights[k] * factor));
+          out.absoluteWeights[k] = v;
+          running += v;
+        }
+      });
+    }
+  }
+
   return out;
 }
 

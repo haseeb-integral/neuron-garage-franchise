@@ -353,7 +353,7 @@ Candidates are placeholder data. Teacher → Candidate promotion path exists in 
 
 ---
 
-## 12. Guided Tour
+## 11. Guided Tour
 
 First-time visitors see a Driver.js tour that highlights each main sidebar item. Ends with a "You're all set" panel that deep-links to City Search.
 
@@ -362,7 +362,7 @@ First-time visitors see a Driver.js tour that highlights each main sidebar item.
 
 ---
 
-## 13. Design System
+## 12. Design System
 
 ### Brand colors
 
@@ -390,7 +390,7 @@ Mobile-first; tested at 320, 375, 414, 768, 1024, 1280+. Tables scroll horizonta
 
 ---
 
-## 14. Data Model
+## 13. Data Model
 
 All tables have RLS enabled.
 
@@ -426,12 +426,8 @@ All tables have RLS enabled.
 - \`campaign_cache\` — local mirror of SmartLead campaigns.
 - \`prospects_staging\` — import-wizard staging (\`batch_id, source, qa_status, smartlead_lead_id, pushed_at\`).
 
-### Onboarding
-
-- \`onboarding_records\` — franchisee_name, city, state, status, current_step_index, total_steps.
-- \`onboarding_steps\` — per-step title, description, completion state.
-
 ### Auth
+
 
 - \`profiles\` — mirror of \`auth.users\` (email, full_name).
 - \`user_roles\` — \`(user_id, role)\` with \`app_role\` enum.
@@ -442,7 +438,7 @@ All tables have RLS enabled.
 
 ---
 
-## 15. Tech Stack
+## 14. Tech Stack
 
 - **React 18** + **TypeScript 5** + **Vite 5**
 - **Tailwind CSS v3** + **shadcn/ui** + **Radix UI**
@@ -457,7 +453,7 @@ All tables have RLS enabled.
 
 ---
 
-## 16. Backend & Edge Functions
+## 15. Backend & Edge Functions
 
 All deployed as Deno edge functions under \`supabase/functions/\`.
 
@@ -480,7 +476,7 @@ Shared modules: \`_shared/cityGeo.ts\`, \`_shared/metricFetchers.ts\`, \`_shared
 
 ---
 
-## 17. Third-Party APIs
+## 16. Third-Party APIs
 
 Full reference in \`APIS.md\`. Live wired today:
 
@@ -503,7 +499,7 @@ Pending / blocked: **GreatSchools** (waiting on Brett's key — 14-day-trial str
 
 ---
 
-## 18. Future Work
+## 17. Future Work
 
 Tracked in \`OPEN_TASKS.md\`. Highlights:
 

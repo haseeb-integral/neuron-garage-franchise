@@ -2,3 +2,6 @@ project_id = "hqvmltmboakixpwapzfe"
 
 [functions.ai-city-query]
 verify_jwt = false
+
+[functions.smartlead-webhook]
+verify_jwt = false

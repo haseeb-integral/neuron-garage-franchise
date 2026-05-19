@@ -52,6 +52,30 @@ export type Database = {
           },
         ]
       }
+      campaign_cache: {
+        Row: {
+          id: string
+          last_synced: string
+          name: string | null
+          raw_data: Json | null
+          status: string | null
+        }
+        Insert: {
+          id: string
+          last_synced?: string
+          name?: string | null
+          raw_data?: Json | null
+          status?: string | null
+        }
+        Update: {
+          id?: string
+          last_synced?: string
+          name?: string | null
+          raw_data?: Json | null
+          status?: string | null
+        }
+        Relationships: []
+      }
       candidate_checklist_items: {
         Row: {
           candidate_id: string
@@ -746,6 +770,104 @@ export type Database = {
         }
         Relationships: []
       }
+      prospect_batches: {
+        Row: {
+          approved_count: number
+          batch_name: string
+          campaign_id: string | null
+          city: string | null
+          created_at: string
+          id: string
+          record_count: number
+          segment: string | null
+          source: string | null
+          state: string | null
+          status: string
+        }
+        Insert: {
+          approved_count?: number
+          batch_name: string
+          campaign_id?: string | null
+          city?: string | null
+          created_at?: string
+          id?: string
+          record_count?: number
+          segment?: string | null
+          source?: string | null
+          state?: string | null
+          status?: string
+        }
+        Update: {
+          approved_count?: number
+          batch_name?: string
+          campaign_id?: string | null
+          city?: string | null
+          created_at?: string
+          id?: string
+          record_count?: number
+          segment?: string | null
+          source?: string | null
+          state?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
+      prospects_staging: {
+        Row: {
+          batch_id: string
+          city: string | null
+          company: string | null
+          created_at: string
+          email: string | null
+          first_name: string | null
+          id: string
+          last_name: string | null
+          qa_status: string
+          rejection_reason: string | null
+          segment: string | null
+          source: string | null
+          state: string | null
+        }
+        Insert: {
+          batch_id: string
+          city?: string | null
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          qa_status?: string
+          rejection_reason?: string | null
+          segment?: string | null
+          source?: string | null
+          state?: string | null
+        }
+        Update: {
+          batch_id?: string
+          city?: string | null
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          qa_status?: string
+          rejection_reason?: string | null
+          segment?: string | null
+          source?: string | null
+          state?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospects_staging_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "prospect_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       public_schools: {
         Row: {
           city_name: string | null
@@ -898,6 +1020,42 @@ export type Database = {
           singleton?: boolean | null
           updated_at?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      smartlead_events: {
+        Row: {
+          campaign_id: string | null
+          event_type: string
+          id: string
+          lead_email: string | null
+          lead_id: string | null
+          payload: Json | null
+          received_at: string
+          reply_message: string | null
+          reply_message_id: string | null
+        }
+        Insert: {
+          campaign_id?: string | null
+          event_type: string
+          id?: string
+          lead_email?: string | null
+          lead_id?: string | null
+          payload?: Json | null
+          received_at?: string
+          reply_message?: string | null
+          reply_message_id?: string | null
+        }
+        Update: {
+          campaign_id?: string | null
+          event_type?: string
+          id?: string
+          lead_email?: string | null
+          lead_id?: string | null
+          payload?: Json | null
+          received_at?: string
+          reply_message?: string | null
+          reply_message_id?: string | null
         }
         Relationships: []
       }

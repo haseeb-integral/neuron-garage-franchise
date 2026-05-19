@@ -17,6 +17,7 @@
 - **Tier A / B / C** — qualitative bucket assigned to a city based on composite score. A = top, C = weakest.
 - **Master Weight** — one of the 6 category-level sliders in City Search. Auto-rebalance to 100.
 - **Sub-weight Share** — relative-importance number per metric inside a category. Does NOT auto-rebalance; share = `sub_i / Σ(enabled sub-weights)`.
+- **Tracked-no-value** — a metric in the 46-metric registry that is flagged `enabled: false` and has no seeded value yet. Surfaced as its own chip in the City Detail drawer for visibility, but does **not** contribute to the composite score. Distinct from "Not seeded yet" (which is `enabled: true` + no value — will count once seeded). Flip `enabled: true` to promote.
 - **Show Formula** — the affordance (button / drawer / tooltip) that exposes inputs, weights, and the formula behind any calculated number. Non-negotiable per Rule 1.
 - **Saved Search** — user-saved slider configuration in `saved_searches` table.
 - **Watchlist / Favorites** — same thing. UI says "Favorites", table is `watchlist_items`. Only one list works today.

@@ -1,6 +1,6 @@
 # PROJECT_CONTEXT.md — Neuron Garage
 
-> Snapshot date: May 19, 2026 (Email Outreach / SmartLead Phases 1–5 complete; in-app `/spec` page rewritten to v1.2 same day and is in sync with this file)
+> Snapshot date: May 19, 2026 (Email Outreach / SmartLead Phases 1–5 complete; legacy `cities` / `city_category_scores` / `city_fetch_jobs` / `city_competitors` tables dropped; Add City rewired to `us_cities_scored`; in-app `/spec` page rewritten to v1.2 same day and is in sync with this file)
 > Live URL: https://neuron-garage-franchise.lovable.app
 > Preview: https://id-preview--c74b81ad-10d7-4a10-b6c8-de17f48a663e.lovable.app
 > Stack: React + TS + Vite + Tailwind + shadcn, Lovable Cloud (Supabase) backend
@@ -53,14 +53,14 @@ All tables have RLS enabled. `authenticated` role can read/write unless noted.
 |---|---|
 | `profiles` | User profile (auto-created on signup via `handle_new_user` trigger). Self-update only. |
 | `user_roles` | Role assignments (`app_role` enum: admin / manager / etc.). Admin-only writes. |
-| `cities` | Core city records (name, state, lat/lng, tier, composite score, population, etc.) |
-| `us_cities_scored` | Pre-scored city table (Task #0). Includes `public_school_count` / `public_school_enrollment` (all open K–12 public schools) and `public_elementary_count` / `public_elementary_enrollment` (derived subset, `lowest_grade_offered ≤ 5`) as cached counts. *Renamed May 18 — was `public_elementary_*`. Seed function now stores all K–12; elementary is a derived subset.* |
+| `cities` | **DROPPED May 19** — legacy table, superseded by `us_cities_scored`. |
+| `us_cities_scored` | **Canonical city table.** Pre-scored (Task #0). Includes `public_school_count` / `public_school_enrollment` (all open K–12 public schools) and `public_elementary_count` / `public_elementary_enrollment` (derived subset, `lowest_grade_offered ≤ 5`) as cached counts. *Renamed May 18.* Authenticated users can now INSERT (Add City flow via `AddCityModal`). |
 | `public_schools` | One row per NCES open public school nationally (PK = `nces_id`). Stores name, district, address, lat/lng, grades, level, type, enrollment. `is_elementary_serving` is a generated column (`lowest_grade_offered ≤ 5`). FK `us_cities_scored_id` links each school to its seeded city. **Source of truth for school-level data**; `us_cities_scored.public_*_count` columns remain as cached counts. Backfilled May 18 — 38,196 schools across 948 cities. *Added May 18 to unblock Teacher Search seeding, `enrich-school-staff`, and City Detail "Show Formula" school list.* |
-| `city_category_scores` | Per-city, per-category (6 categories) scores |
+| `city_category_scores` | **DROPPED May 19** — legacy per-category scores now stored on `us_cities_scored`. |
 | `city_market_signals` | Raw signal rows per city (label/value/source/delta) — drives "Show Formula" |
-| `city_competitors` | Apify-scraped competitor records per city |
-| `city_fetch_jobs` | Audit log for per-city data refresh jobs |
-| `us_cities_geo` | Reference table of US cities (lat/lng/pop) — read-only |
+| `city_competitors` | **DROPPED May 19** — legacy Apify competitor cache; competitor data will be re-seeded into a new table when B7 runs. |
+| `city_fetch_jobs` | **DROPPED May 19** — legacy refresh audit log; new seed flow logs centrally. |
+| `us_cities_geo` | Reference table of US cities (lat/lng/pop) — read-only. Used by `AddCityModal` for case-insensitive city+state lookup before inserting into `us_cities_scored`. |
 | `custom_criteria` | User-defined extra scoring criteria |
 | `scoring_config` | Per-user master-weight preset |
 | `saved_searches` | Per-user saved slider configs (master + sub weights) |
@@ -88,8 +88,8 @@ No storage buckets configured.
 
 - `admin-create-user` — admin-only user provisioning
 - `ai-city-query` — Lovable AI Gateway proxy for "Ask AI" answers about a city
-- `fetch-city-market-data` — legacy city data refresh
-- `fetch-city-market-data-sow` — SOW-aligned city refresh (46-metric pull → scoring)
+- ~~`fetch-city-market-data`~~ — **DELETED May 19** (legacy)
+- ~~`fetch-city-market-data-sow`~~ — **DELETED May 19** (legacy SOW refresh; superseded by bulk `seed-cities-database`)
 - `fetch-school-counts` — NCES CCD public-elementary counts per city
 - `seed-cities-database` — bulk seed of `us_cities_scored` (Census/BLS/BEA/FRED/NCES) **and** per-school upsert into `public_schools` using the same NCES response (no extra API calls). 948 cities seeded, all with `composite_score_default` populated.
 - `seed-cities-weather` — Open-Meteo Historical Weather seed into `us_cities_scored` (snowfall, avg temp, sunny days, severe-weather days)
@@ -131,7 +131,7 @@ Active limitations:
 - **City Search** — `us_cities_scored` seeded with 948 cities and composite scores; national ranked list now possible. UI wiring to read from seed table is the next step.
 - **Teacher Search reads placeholder/Apify-only data** — `teacher_prospects_master` table not yet built; no Apollo / vendor list / DonorsChoose integration. `teacher_prospects` now has the FK and enrichment columns waiting on the master table + sourcing.
 - **`candidates` table** — no FKs to `public_schools` / `us_cities_scored`, no `source_segment` column. Promotion from teacher → candidate cannot carry context until added (see OPEN_TASKS B3).
-- **`cities` vs `us_cities_scored`** — two overlapping city tables. Consolidation deferred (OPEN_TASKS B5).
+- ~~**`cities` vs `us_cities_scored`** — consolidated.~~ ✅ May 19 — legacy `cities` (+ `city_category_scores`, `city_fetch_jobs`, `city_competitors`) dropped; `us_cities_scored` is the canonical city table. Add City flow now writes there via `us_cities_geo` lookup.
 - **Email Outreach** — SmartLead wired end-to-end (connection, campaigns, lead import wizard, analytics, inbox, webhooks, reply-intent classification). Still needs Teacher Search → Import Wizard handoff before daily use.
 - **Candidate Pipeline** — populated with placeholder candidates, not yet wired to Teacher → Lead conversion (SmartLead reply → candidate promotion is the next link).
 - **GreatSchools** — private/charter elementary counts missing on every city (waiting on API key purchase).

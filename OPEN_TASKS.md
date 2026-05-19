@@ -298,6 +298,18 @@ See **`TEACHER_IDEAL_PROFILE.md`** for who we are recruiting and why — read th
 - **Effort:** ~1–2 hrs · **Risk:** low
 
 
+### 17l. Import Wizard Step 4 — inline "Create new campaign" option (added May 19)
+- Step 4 dropdown only lets you pick an existing campaign. If every existing campaign is PAUSED/STOPPED/DRAFTED, the user has no in-flow way to make a fresh ACTIVE campaign — they must Back → close wizard → open New Campaign drawer → re-open wizard.
+- Add a "+ Create new campaign…" item at the top of the dropdown → inline lightweight form (name + inbox picker) → calls `smartlead-proxy` create-campaign → auto-selects it → user clicks Send.
+- **Effort:** ~2 hrs · **Risk:** low · **File:** `src/components/email-outreach/ImportLeadsWizard.tsx`
+
+### 17m. Import Wizard — prevent double-send + dedup guardrails (added May 19) ✅ v1 shipped May 19
+- **Background:** May 19 — user clicked "Send 2 to SmartLead" twice. SmartLead deduped by email (verified: same `lead_id` reused, no duplicate rows) so no harm done, but our UI had zero post-success terminal state — only `importing` disabled the button, which then re-enabled after the first run, inviting a second click.
+- **v1 shipped (May 19, this commit):** added `sent` terminal state in `ImportLeadsWizard.tsx`. After a successful run the Send button is replaced with a green "✓ Sent — N/N imported" pill + a Close button. Back is also locked. Re-import requires closing and re-opening the wizard. Hard guard `if (importing || sent) return` inside `runImport`.
+- **Still to do (v2):** idempotency key per batch — pass `prospect_batches.id` as `x-idempotency-key` header to `smartlead-proxy`; proxy keeps a small in-memory LRU (60s TTL) and returns the cached response on replay. Also a "this batch was already pushed to campaign X 5 min ago — re-send?" warning keyed off `prospect_batches.batch_name + campaign_id + day`.
+- **Effort remaining:** ~1.5 hrs · **Risk:** low · **Files:** `supabase/functions/smartlead-proxy/index.ts` (idempotency cache).
+
+
 ---
 
 ## 🚧 Current risk

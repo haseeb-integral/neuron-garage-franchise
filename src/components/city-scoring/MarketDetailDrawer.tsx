@@ -198,14 +198,12 @@ export function MarketDetailDrawer({
     const loadLiveEvidence = async () => {
       setLoading(true);
       try {
-        const { data: cityRow } = await supabase
-          .from("cities")
-          .select("*")
-          .eq("city", market.city)
-          .eq("state", market.state)
-          .maybeSingle();
-
-        if (!cityRow) {
+        // cityId now references us_cities_scored.id. The historical
+        // signals/competitors/jobs tables are still keyed by legacy cities.id,
+        // so seeded-only rows will return empty until seed-on-demand wires
+        // these child tables to the new id. UI handles empty gracefully.
+        const cityId = market.cityId;
+        if (!cityId) {
           setSignals([]);
           setCompetitors([]);
           setLatestJob(null);
@@ -213,29 +211,24 @@ export function MarketDetailDrawer({
         }
 
         const [{ data: signalRows }, { data: competitorRows }, { data: jobRows }] = await Promise.all([
-          supabase
-            .from("city_market_signals")
-            .select("*")
-            .eq("city_id", cityRow.id),
+          supabase.from("city_market_signals").select("*").eq("city_id", cityId),
           supabase
             .from("city_competitors")
             .select("*")
-            .eq("city_id", cityRow.id)
+            .eq("city_id", cityId)
             .order("created_at", { ascending: false }),
           supabase
             .from("city_fetch_jobs")
             .select("*")
-            .eq("city_id", cityRow.id)
+            .eq("city_id", cityId)
             .eq("source", "sow_metric_coverage")
             .order("created_at", { ascending: false })
             .limit(1),
         ]);
 
-        const latestSowJob = jobRows?.[0] ?? null;
-
         setSignals((signalRows ?? []) as LiveSignal[]);
         setCompetitors((competitorRows ?? []) as LiveCompetitor[]);
-        setLatestJob(latestSowJob);
+        setLatestJob(jobRows?.[0] ?? null);
       } catch (error) {
         console.error("MarketDetailDrawer live evidence error", error);
       } finally {
@@ -244,7 +237,7 @@ export function MarketDetailDrawer({
     };
 
     loadLiveEvidence();
-  }, [open, market.city, market.state, refreshVersion]);
+  }, [open, market.cityId, refreshVersion]);
 
   const handleExportRawSignals = () => {
     if (!signals.length) {

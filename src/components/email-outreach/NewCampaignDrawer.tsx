@@ -34,6 +34,34 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
   const [days, setDays] = useState<string[]>(["1", "2", "3", "4", "5"]);
   const [dailyCap, setDailyCap] = useState(200);
   const [minGapMinutes, setMinGapMinutes] = useState(5);
+  // Sending inboxes — loaded from SmartLead on open, all selected by default.
+  type SLAccount = { id: number | string; from_name?: string; from_email?: string; email?: string };
+  const [availableAccounts, setAvailableAccounts] = useState<SLAccount[]>([]);
+  const [accountsLoading, setAccountsLoading] = useState(false);
+  const [selectedAccountIds, setSelectedAccountIds] = useState<Array<number | string>>([]);
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      setAccountsLoading(true);
+      try {
+        const res = await callSmartLeadProxy("/email-accounts", "GET");
+        const list: SLAccount[] = Array.isArray(res) ? res : [];
+        if (cancelled) return;
+        setAvailableAccounts(list);
+        setSelectedAccountIds(
+          list.map((a) => a.id).filter((x) => typeof x === "number" || typeof x === "string"),
+        );
+      } catch {
+        if (!cancelled) setAvailableAccounts([]);
+      } finally {
+        if (!cancelled) setAccountsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open]);
+  const toggleAccount = (id: number | string) =>
+    setSelectedAccountIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
 
   // Auto-generate a default campaign name on drawer open
   function defaultCampaignName() {
@@ -140,6 +168,7 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
     if (startMinutes >= endMinutes) return "End time must be after start time.";
     if (minGapMinutes > 180) return "Min gap can't exceed 180 minutes.";
     if (dailyCap < 1 || dailyCap > 200) return "Daily send cap must be between 1 and 200.";
+    if (availableAccounts.length > 0 && selectedAccountIds.length === 0) return "Pick at least one sending inbox.";
     if (!sequences.length) return "Add at least one email step.";
     const badStep = sequences.find((sequence) => !sequence.subject.trim() || !sequence.body.trim() || sequence.day < 1);
     if (badStep) return "Each sequence step needs a valid day, subject, and body.";
@@ -220,12 +249,15 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
         }, "test lead push failed");
       }
 
-      // Assign ALL connected email accounts to this campaign — SmartLead refuses to START without one.
+      // Assign the SELECTED inboxes to this campaign (fall back to all if picker was empty).
       await runStep(async () => {
-        const accounts = await callSmartLeadProxy("/email-accounts", "GET");
-        const ids = (Array.isArray(accounts) ? accounts : [])
-          .map((a: any) => a?.id)
-          .filter((x: any) => typeof x === "number" || typeof x === "string");
+        let ids: Array<number | string> = selectedAccountIds;
+        if (!ids.length) {
+          const accounts = await callSmartLeadProxy("/email-accounts", "GET");
+          ids = (Array.isArray(accounts) ? accounts : [])
+            .map((a: any) => a?.id)
+            .filter((x: any) => typeof x === "number" || typeof x === "string");
+        }
         if (!ids.length) {
           throw new Error("No email accounts connected in SmartLead. Connect one in Email Accounts tab first.");
         }
@@ -372,8 +404,53 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
               <label className="block">
                 <span className="text-xs font-bold text-[#34445f]">Min gap between emails (minutes)</span>
                 <input type="number" min={3} max={180} value={minGapMinutes} onChange={(e) => setMinGapMinutes(Number(e.target.value) || 5)} className="mt-1 h-10 w-full rounded-lg border border-[#dbe4f2] px-3" />
-                <div className="mt-1 text-[11px] text-[#526078]"><b>SmartLead minimum is 3 minutes.</b> Production: keep 10+ for deliverability.</div>
+                <div className="mt-1 text-[11px] text-[#526078]"><b>SmartLead minimum is 3 min.</b> This is the gap <b>per sending inbox</b> — with multiple inboxes, emails go out in parallel.</div>
               </label>
+
+              {/* Sending inboxes picker */}
+              <div className="rounded-lg border border-[#dbe4f2] bg-[#fbfdff] p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[#34445f]">Send from ({selectedAccountIds.length}/{availableAccounts.length} selected)</span>
+                  {availableAccounts.length > 0 && (
+                    <div className="flex gap-2 text-[11px] font-bold">
+                      <button type="button" onClick={() => setSelectedAccountIds(availableAccounts.map((a) => a.id))} className="text-[#174be8] hover:underline">All</button>
+                      <button type="button" onClick={() => setSelectedAccountIds([])} className="text-[#526078] hover:underline">None</button>
+                    </div>
+                  )}
+                </div>
+                {accountsLoading ? (
+                  <div className="mt-2 text-[11px] text-[#526078]">Loading inboxes…</div>
+                ) : availableAccounts.length === 0 ? (
+                  <div className="mt-2 text-[11px] text-amber-700">No inboxes connected — connect one in the Email Accounts tab, or launch will fail.</div>
+                ) : (
+                  <div className="mt-2 max-h-44 space-y-1 overflow-y-auto">
+                    {availableAccounts.map((a) => {
+                      const checked = selectedAccountIds.includes(a.id);
+                      const label = a.from_email || a.email || `Account ${a.id}`;
+                      const name = a.from_name;
+                      return (
+                        <label key={String(a.id)} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-xs hover:bg-white">
+                          <input type="checkbox" checked={checked} onChange={() => toggleAccount(a.id)} />
+                          <span className="truncate">
+                            {name && <span className="font-bold text-[#07142f]">{name}</span>}
+                            <span className="text-[#526078]">{name ? ` · ${label}` : label}</span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+                <div className="mt-2 text-[11px] text-[#526078]">
+                  {selectedAccountIds.length > 1
+                    ? <>⚠ Up to <b>{selectedAccountIds.length} emails</b> can go out in parallel each tick. Each lead only gets one inbox — your test recipient sees them all because all the leads are you.</>
+                    : selectedAccountIds.length === 1
+                    ? <>Single inbox — sends will be sequential, one every {Math.max(3, minGapMinutes)} min.</>
+                    : <>Select at least one inbox.</>}
+                </div>
+                <div className="mt-1 text-[11px] text-[#174be8]">
+                  ⏱ SmartLead polls every ~10–15 min. First batch goes at the next poll — <b>not</b> exactly at launch time.
+                </div>
+              </div>
             </div>
           )}
 

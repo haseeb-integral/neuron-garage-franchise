@@ -147,7 +147,14 @@ export function SmartLeadConnectionPanel() {
       .order("received_at", { ascending: false })
       .limit(5);
     setRecentEvents(data ?? []);
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { count } = await supabase
+      .from("smartlead_events")
+      .select("id", { count: "exact", head: true })
+      .gte("received_at", cutoff);
+    setWebhookFired24h((count ?? 0) > 0);
   };
+
 
   useEffect(() => {
     (async () => {

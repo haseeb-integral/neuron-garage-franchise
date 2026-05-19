@@ -27,9 +27,14 @@ export interface AiAnswerCardProps {
   turnCount: number;
   onRefine: (followUp: string) => void;
   loading: boolean;
+  /**
+   * Final applied weights AFTER the frontend rebalanced to total 100%.
+   * Shown as percentage chips so the card matches the actual sliders the user sees.
+   */
+  appliedWeights?: Record<string, number>;
 }
 
-export function AiAnswerCard({ result, query, turnCount, onRefine, loading }: AiAnswerCardProps) {
+export function AiAnswerCard({ result, query, turnCount, onRefine, loading, appliedWeights }: AiAnswerCardProps) {
   const [showReasoning, setShowReasoning] = useState(false);
   const [followUp, setFollowUp] = useState("");
 
@@ -38,9 +43,17 @@ export function AiAnswerCard({ result, query, turnCount, onRefine, loading }: Ai
   if (result.filters.tier) filterChips.push(`tier: ${result.filters.tier}`);
   if (result.filters.minScore != null) filterChips.push(`score ≥ ${result.filters.minScore}`);
 
-  const weightChips = Object.entries(result.weightAdjustments)
-    .filter(([, v]) => v !== 0)
-    .map(([k, v]) => `${CATEGORY_LABELS[k] ?? k} ${v > 0 ? "+" : ""}${v}`);
+  // Prefer the FINAL applied weights (post-rebalance) over the raw backend
+  // deltas, so chips match the actual sliders. Fall back to deltas only if
+  // applied weights weren't passed in.
+  const usedAnyAdjustment = Object.values(result.weightAdjustments ?? {}).some((v) => v !== 0);
+  const weightChips = appliedWeights && usedAnyAdjustment
+    ? Object.entries(appliedWeights)
+        .sort((a, b) => Number(b[1]) - Number(a[1]))
+        .map(([k, v]) => `${CATEGORY_LABELS[k] ?? k} ${Math.round(Number(v))}%`)
+    : Object.entries(result.weightAdjustments)
+        .filter(([, v]) => v !== 0)
+        .map(([k, v]) => `${CATEGORY_LABELS[k] ?? k} ${v > 0 ? "+" : ""}${v}`);
 
   const atCap = turnCount >= 6;
 

@@ -234,6 +234,25 @@ const UserGuide = () => {
               </a>
             ))}
           </div>
+
+          <button
+            onClick={() => openAssistant("general")}
+            className="group mt-6 inline-flex items-center gap-2.5 rounded-full px-5 py-3 text-[14px] font-bold transition-all hover:-translate-y-0.5"
+            style={{
+              background: `linear-gradient(135deg, ${NAVY} 0%, ${BLUE} 100%)`,
+              color: "white",
+              boxShadow: `0 12px 28px ${BLUE}33`,
+            }}
+          >
+            <span
+              className="flex h-6 w-6 items-center justify-center rounded-full"
+              style={{ background: YELLOW, color: INK }}
+            >
+              <Sparkles size={13} />
+            </span>
+            Ask AI Assistant
+            <ArrowRight size={15} className="transition-transform group-hover:translate-x-0.5" />
+          </button>
         </div>
       </section>
 

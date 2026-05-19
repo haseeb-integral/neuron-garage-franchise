@@ -1,64 +1,106 @@
+## Locked findings
 
-# City Search Stabilization — Austin First
+- **AI reasoning is wrong because two layers disagree.** The backend returns a raw nudge like `demand +20`, but the frontend then converts a single-category intent into a full rebalance (`60 / 8 / 8 / 8 / 8 / 8`). The card is still showing the raw backend story, not the final sliders the user actually sees.
+- **County is blank because the current source row has no county field wired.** `us_cities_scored` has `metro_area` but no live `county_name` column right now, and `CityScoring.tsx` currently hardcodes Austin's mapped `county` to `null`.
+- **Austin is still split across two city identities.** The ranked page uses `us_cities_scored.id = 9241bf5b-e311-4fbd-be5d-ef0256e70233`, but Austin fetch jobs still live under legacy `cities.id = 6f6ccba5-7d70-4058-8744-12d76bddb52a`. That split is why drawer counts/statuses drift.
+- **The drawer is showing the full 46-metric registry, not 46 populated Austin values.** Austin has one seeded `us_cities_scored` row plus only **5** `city_market_signals` rows on the scored-city UUID today, **0** competitor rows on that UUID, and **6** fetch-job rows only on the old legacy city id.
+- **“Not in current scoring model” is intentional today.** Those rows are the registry metrics with `enabled: false` in `src/lib/sowMetricRegistry.ts`. There are **10** of them. They are visible for transparency, but they are not part of the composite formula.
 
-Goal: make Austin, Texas correct end-to-end on the City Search page, then apply the same fixes globally. No legacy `cities` table reads anywhere in City Search.
+## Austin facts to lock before implementation
 
-## 1. Single source of truth: `us_cities_scored`
+- `us_cities_scored` Austin row exists and currently has:
+  - `population = 967862`
+  - `metro_area = Austin-Round Rock-Georgetown, TX`
+  - `children_5_12 = 77659`
+  - `median_household_income = 91461`
+  - `dual_working_families_pct = 95.6`
+  - `college_degree_pct = 58.2`
+  - `cost_of_living_index = 97.057`
+  - `public_school_count = 271`
+  - `public_elementary_count = 177`
+  - `private_elementary_count = 46`
+  - `charter_elementary_count = 42`
+  - `composite_score_default = 70`
+- Legacy `cities` Austin row still exists separately and has `county = Travis`, older score fields, and old job history.
+- **County answer:** for Austin city, the county should be **one county: Travis**. The **five-county list** belongs to the metro, not to the city county field. So we should not stuff all five counties into `county`.
 
-- Rip out every read of the legacy `cities` table from the City Search page, drawer, compare modal, map, stat cards, and Ask AI. `us_cities_scored` is the only source. No merge, no fallback, no "sample" hydration.
-- `cityScoringLiveData.ts` already loads from `us_cities_scored`; remove the `sampleCities` merge path used by the page so a city either exists in `us_cities_scored` or it doesn't appear.
-- Drawer (`MarketDetailDrawer.tsx`) reads its population, income, school counts, scores, and metro from the same `scoredRow` the table row came from — never re-queries `cities`.
-- The legacy `cities` table itself stays in the database for now (still referenced by `watchlist_items`, `city_market_signals`, `city_competitors`, `city_fetch_jobs`, `city_category_scores`). Dropping it is tracked separately in `OPEN_TASKS.md` B5 and requires migrating `watchlist_items.city_id` first.
+## Implementation plan
 
-## 2. Backfill Austin's missing geography
+### 1. Fix the AI reasoning mismatch
+- Keep the existing rebalance behavior for now.
+- Change the AI answer UI so it explains the **final applied weights**, not the raw backend delta.
+- Replace chips like `Demand +20` with final weights such as `Demand 60%`, `Pricing Power 8%`, etc.
+- Update the reasoning sentence so it says the dominant category was raised and the remaining categories were automatically rebalanced to keep total weight at 100.
 
-- One-off data update on `us_cities_scored` for Austin: set `metro_area = "Austin-Round Rock-Georgetown, TX"`. County belongs on a separate `county_name` column — add it if not present and set `county_name = "Travis"` for Austin (and seed the full dataset later as a follow-up).
-- Verify Austin row values match the seeded baseline (population ~967,862, public_elementary_count 177, etc.) and that the drawer renders them.
+### 2. Fix Austin geography with correct field meaning
+- Add a real **`county_name`** field to `us_cities_scored` and backfill Austin with `Travis`.
+- Add a separate **metro-counties field** (text array or text) for the metro coverage list, and backfill Austin with `Bastrop, Caldwell, Hays, Travis, Williamson`.
+- Update the UI labels so:
+  - **County** = city county (`Travis`)
+  - **Metro area** = `Austin-Round Rock-Georgetown, TX`
+  - **Metro counties** = 5-county metro list
+- Name-vs-meaning rule: do **not** overload `county_name` with metro counties.
 
-## 3. Table UI fix (the "8 rows, empty bottom" look)
+### 3. Stop the drawer from mixing scored-city and legacy-city evidence incorrectly
+- Create a single resolver for the selected market that knows:
+  - canonical scored city id
+  - optional legacy city id
+- Use `us_cities_scored` as the truth for ranked-market facts and seeded values.
+- For legacy evidence tables (`city_fetch_jobs`, old audit/status rows), read them through the mapped legacy id only as a temporary bridge.
+- Remove the current `county: null` façade mapping in `CityScoring.tsx`.
 
-- `CityTable` page size stays at 8 but the surrounding container no longer stretches to fill the viewport. Either shrink the wrapper to fit content, or fill the empty rows with neutral placeholder rows so the table doesn't look broken. Pagination count (120 pages × 8 = 960) is mathematically correct — just stop the dead whitespace.
+### 4. Make drawer counts match actual Austin data
+- Recompute the header counts from the **merged Austin evidence set** instead of whichever side happens to answer first.
+- Count seeded/proxy/live/missing/blocked from a deterministic merged source:
+  - scored-row fallback metrics
+  - signal rows on scored uuid
+  - legacy status map only when needed for historical audit rows
+- Ensure the header count and row-level badges come from the same merged dataset so they cannot disagree.
 
-## 4. Ask AI — Google-style history dropdown
+### 5. Cross-check every Austin value shown in the center panel and drawer
+- Verify each visible Austin value against the backend before showing it.
+- Fix labels that are using the wrong source or the wrong meaning.
+- Ensure center-panel values come only from real Austin backend fields, never mock/sample values.
+- Keep Austin as the only target for this pass; after approval of Austin, apply the same root-cause fix globally.
 
-- Click into the Ask AI input → a dropdown appears under it listing recent queries from `ai_query_history` for this user (most-recent first, max 8).
-- Typing filters the dropdown by substring. Clicking an item fills the input AND re-runs the query.
-- Empty submit is blocked: the **Ask** button is disabled when the trimmed input is empty, and Enter on empty input does nothing. No more accidental fires.
-- Remove the separate "history icon" popover — the dropdown replaces it.
+### 6. Make missing metrics honest instead of misleading
+- Keep showing the 46 registry rows for audit transparency, but distinguish clearly between:
+  - seeded and available
+  - historically fetched live data
+  - not seeded yet
+  - source unavailable
+- Change copy like `Not collected yet` / `Pre-seeded score · audit pending` where it currently implies there should already be a value when there is no Austin field or signal row.
 
-## 5. Demand slider snap fix
+### 7. Clarify “Not in current scoring model” without changing scoring math
+- Keep those rows out of the formula because scoring-math changes are out of scope.
+- Rename the section to something clearer, e.g. **Tracked, not used in score**.
+- Add a short explanation that these are visible for audit transparency but are excluded because the current scoring registry marks them `enabled: false`.
 
-- "Rank by demand" intent should not nudge the demand weight to 17%. New rule: when the user explicitly says "rank by X", set that master weight to a dominant share (e.g. 60%) and split the remaining 40% evenly across the other 5 categories, then rebalance to 100%. Apply the same logic for any single-category intent.
-- Show the resulting weights in the AI answer card so the user can see why the slider moved.
+## Technical details
 
-## 6. Stale UI labels
+**Files likely to change**
+- `src/pages/CityScoring.tsx`
+- `src/components/city-scoring/AiAnswerCard.tsx`
+- `src/components/city-scoring/MarketDetailDrawer.tsx`
+- `src/lib/cityScoringLiveData.ts`
+- `supabase/functions/ai-city-query/index.ts` (only if needed for cleaner structured explanation text)
+- database migration for Austin geography fields
 
-- Drawer suppresses "Live / Proxy" chips for seeded values — they read **Pre-seeded** instead, matching `buildSeededFallbackSignalsFromScored`.
-- Metric labels in the drawer match `us_cities_scored` column meanings exactly (e.g. "Private Elementary Schools" → `private_elementary_count`).
+**Backend changes**
+- Add `county_name`
+- Add `metro_counties`
+- Backfill Austin values
 
-## 7. Out of scope this pass (deferred)
+**Risk**
+- Medium: touches the scored/legacy bridge and drawer audit logic.
 
-- Dropping the legacy `cities` table.
-- "Saved lists inside watchlists" feature.
-- Backfilling `county_name` / `metro_area` for all 948 cities (Austin only now; bulk seed = follow-up task).
-- Full Ask AI semantic rewrite — only the history dropdown + empty-guard + slider-rebalance changes here.
+**Undo path**
+- Revert the Austin-first bridge changes and geography fields; ranking source remains `us_cities_scored`.
 
-## Technical notes
+## Out of scope for this pass
+- Changing the 46-metric scoring formula itself
+- Globally backfilling county and metro-county data for all cities
+- Dropping the legacy `cities` table entirely
+- Rebuilding all historical fetch-job rows onto the scored-city uuid space
 
-Files touched:
-
-- `src/pages/CityScoring.tsx` — drop sample merge, fix pagination wrapper, wire up `rebalanceWeights` rule, gate empty Ask submits.
-- `src/lib/cityScoringLiveData.ts` — remove `sampleRankedMarkets` usage path, keep `us_cities_scored` only.
-- `src/components/city-scoring/AskAiBar.tsx` — new dropdown UI fed by `ai_query_history`, filter-as-you-type, click-to-rerun.
-- `src/components/city-scoring/CityTable.tsx` — container height fix.
-- `src/components/city-scoring/MarketDetailDrawer.tsx` — label cleanup, kill misleading status chips for seeded rows.
-- Data: one Supabase insert/update for Austin's `metro_area` and (new column) `county_name`.
-
-Verification:
-
-1. Austin appears with correct pop/income/schools, drawer matches table.
-2. Table no longer shows empty bottom half at 1044×779.
-3. Click into Ask AI → dropdown of past queries; empty Ask does nothing; "rank by demand" pushes demand slider to ~60%.
-4. No code path in `src/pages/CityScoring.tsx` or `src/components/city-scoring/*` reads `from("cities")`.
-
-Approve and I'll implement in build mode.
+If you approve, I’ll implement Austin-first and verify the drawer against the backend before claiming it fixed.

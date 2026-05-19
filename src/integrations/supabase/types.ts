@@ -1211,6 +1211,7 @@ export type Database = {
           college_degree_pct: number | null
           composite_score_default: number | null
           cost_of_living_index: number | null
+          county_name: string | null
           created_at: string
           dual_working_families_pct: number | null
           firecrawl_last_updated: string | null
@@ -1223,6 +1224,7 @@ export type Database = {
           longitude: number | null
           median_household_income: number | null
           metro_area: string | null
+          metro_counties: string[] | null
           nces_last_updated: string | null
           population: number | null
           population_density: number | null
@@ -1261,6 +1263,7 @@ export type Database = {
           college_degree_pct?: number | null
           composite_score_default?: number | null
           cost_of_living_index?: number | null
+          county_name?: string | null
           created_at?: string
           dual_working_families_pct?: number | null
           firecrawl_last_updated?: string | null
@@ -1273,6 +1276,7 @@ export type Database = {
           longitude?: number | null
           median_household_income?: number | null
           metro_area?: string | null
+          metro_counties?: string[] | null
           nces_last_updated?: string | null
           population?: number | null
           population_density?: number | null
@@ -1311,6 +1315,7 @@ export type Database = {
           college_degree_pct?: number | null
           composite_score_default?: number | null
           cost_of_living_index?: number | null
+          county_name?: string | null
           created_at?: string
           dual_working_families_pct?: number | null
           firecrawl_last_updated?: string | null
@@ -1323,6 +1328,7 @@ export type Database = {
           longitude?: number | null
           median_household_income?: number | null
           metro_area?: string | null
+          metro_counties?: string[] | null
           nces_last_updated?: string | null
           population?: number | null
           population_density?: number | null

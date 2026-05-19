@@ -51,6 +51,33 @@ type LiveCompetitor = {
   source_url?: string | null;
 };
 
+function buildSeededFallbackSignals(market: CityData): LiveSignal[] {
+  const scored = (market as any).scored;
+  if (!scored) return [];
+  const childrenPct = Number((market as any).childrenPct ?? (market as any).children_pct ?? 0);
+  const seeded = (
+    signal_key: string,
+    label: string,
+    value: string | number | null | undefined,
+    metric_category: MetricCategory,
+    used_in_score: boolean,
+  ): LiveSignal => ({
+    signal_key,
+    label,
+    value: value ?? null,
+    source: "Pre-seeded",
+    raw_data: { status: "proxy", used_in_score, metric_category },
+  });
+  return [
+    seeded("children_5_12_count", "Children Ages 5–12", scored.children_5_12, "demand", true),
+    seeded("children_5_12_pct", "% Population Ages 5–12", childrenPct || null, "demand", true),
+    seeded("median_household_income", "Median Household Income", scored.median_household_income, "demand", true),
+    seeded("public_elementary_count", "Public elementary schools (NCES CCD)", scored.public_elementary_count, "franchisee_supply", true),
+    seeded("public_elementary_enrollment", "Public elementary enrollment", scored.public_elementary_enrollment, "franchisee_supply", false),
+    seeded("competitor_count", "Summer camps / enrichment competitors", scored.summer_camp_count, "competitive_landscape", true),
+  ].filter((row) => row.value != null);
+}
+
 const CAT_LABELS: { key: string; dbKey: MetricCategory; label: string }[] = [
   { key: "demand", dbKey: "demand", label: "Demand" },
   { key: "pricingPower", dbKey: "pricing_power", label: "Pricing Power" },
@@ -138,7 +165,8 @@ export function MarketReportModal({ open, onClose, market, categoryScores, refre
           supabase.from("city_fetch_jobs").select("*").eq("city_id", cityId).order("created_at", { ascending: false }).limit(1),
         ]);
 
-        setLiveSignals((signals ?? []) as LiveSignal[]);
+        const fallbackSignals = buildSeededFallbackSignals(market);
+        setLiveSignals(((signals?.length ? signals : fallbackSignals) ?? []) as LiveSignal[]);
         setLiveCompetitors((competitors ?? []) as LiveCompetitor[]);
         setLatestJob(jobs?.[0] ?? null);
       } catch (err) {

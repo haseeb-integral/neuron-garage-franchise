@@ -84,13 +84,6 @@ export function SmartLeadCampaignsPanel() {
             {loading ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
             Refresh
           </button>
-          <button
-            onClick={handleCreate}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-[#1f5bff] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#0757ff]"
-          >
-            <Plus size={13} />
-            Create Campaign
-          </button>
         </div>
       </div>
 

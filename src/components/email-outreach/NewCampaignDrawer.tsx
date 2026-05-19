@@ -178,7 +178,7 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
         await callSmartLeadProxy(`/campaigns/${id}/schedule`, "POST", {
           timezone, days_of_the_week: days.map(Number),
           start_hour: startHour, end_hour: endHour,
-          min_time_btw_emails: Math.max(1, Math.min(180, minGapMinutes)),
+          min_time_btw_emails: Math.max(3, Math.min(180, minGapMinutes)),
           max_new_leads_per_day: Math.max(1, Math.min(200, dailyCap)),
         });
       }, "schedule failed");

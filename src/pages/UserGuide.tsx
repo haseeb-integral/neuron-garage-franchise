@@ -156,6 +156,14 @@ const SectionTitle = ({ children }: { children: React.ReactNode }) => (
 );
 
 const UserGuide = () => {
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [assistantContext, setAssistantContext] = useState<AssistantContext>("general");
+
+  const openAssistant = (ctx: AssistantContext) => {
+    setAssistantContext(ctx);
+    setAssistantOpen(true);
+  };
+
   return (
     <div className="max-w-[1100px]">
       <PageHeader

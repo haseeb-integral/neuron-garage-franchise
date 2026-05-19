@@ -97,6 +97,10 @@ export default function EmailOutreachV2() {
   const [connectionOpen, setConnectionOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [batchesRefresh, setBatchesRefresh] = useState(0);
+  const [view, setView] = useState<"dashboard" | "analytics" | "accounts">("dashboard");
+  const [newCampaignOpen, setNewCampaignOpen] = useState(false);
+
+
 
 
   const [promoted, setPromoted] = useState<Record<number, string>>({});

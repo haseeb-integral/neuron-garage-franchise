@@ -1,44 +1,71 @@
 ## Goal
 
-Prevent accidental double-sends from the Import Wizard's Step 4 "Send N to SmartLead" button, and document the gap in `OPEN_TASKS.md` as **Task 17m**.
+Make the Email Outreach screen self-sufficient for verifying what was imported, so users don't have to log into SmartLead to answer "which leads went into this batch?".
 
-Real-world impact today: SmartLead deduped your double-click by email, so no harm done. But the UI lets a user click "Send" 5 times in a row with no feedback — a future change to SmartLead settings or a different email-key field would silently produce duplicates.
+## Why
 
-## Task 17m — what to add to OPEN_TASKS.md
+Today, **Import Batches panel** shows batch-level summary only:
+- batch name, source, segment, city, status, **counts** (record_count / approved_count)
+- linked campaign name (via `campaign_id`)
 
-Insert after 17l, before `---`:
+What it doesn't show:
+- The actual email addresses sent
+- Per-lead QA outcome (approved vs rejected with reason)
+- Whether SmartLead reused an existing lead_id or created a new one (the "why 5 instead of 2" question)
+
+The `prospects_staging` table already stores every row from every CSV with its `qa_status` and `rejection_reason` — we just don't surface it.
+
+## Scope (v1 — read-only drill-down, no new data needed)
+
+1. **Make each Import Batches row clickable** → opens a side drawer
+2. **Drawer contents:**
+   - Batch metadata (name, source, city, segment, status, created_at, campaign link)
+   - Counts grid: total / approved / rejected / sent-to-smartlead
+   - **Leads table** (from `prospects_staging` filtered by `batch_id`):
+     - email · first_name · last_name · city · qa_status badge · rejection_reason (if any)
+   - "Open campaign in SmartLead" button (deep link to `https://app.smartlead.ai/campaigns/<id>`)
+3. **Small clarifying banner at the top** of any campaign that has more leads than this batch pushed: "This campaign contains N leads. M came from this batch — the other (N−M) were added separately (older imports, manual adds, or SmartLead account-wide email dedup reused existing lead IDs)." Pulled by comparing `total_leads` from `campaigns/<id>/leads` vs our `approved_count`.
+
+## Files
+
+- `src/components/email-outreach/ProspectBatchesPanel.tsx` — make rows clickable, manage drawer open state
+- `src/components/email-outreach/BatchDetailDrawer.tsx` *(new)* — drawer UI + query `prospects_staging` + optional `campaigns/<id>/leads` call
+
+No DB migration. No new edge function. `prospects_staging` already exists and is populated.
+
+## OPEN_TASKS entry — Task 17n
+
+Append after 17m:
 
 ```
-### 17m — Import Wizard: prevent double-send + dedup guardrails
-Step 4 "Send N to SmartLead" button has no protection against repeat clicks
-or re-submission of an already-imported batch. Today a user can click 5 times
-and we'd fire 5 push-to-SmartLead requests. SmartLead currently dedupes by
-email (verified May 19), but that's defensive luck, not our design.
-
-Standard imports (Apollo, Instantly, HubSpot, Lemlist) all do some combo of:
-  a) disable button on first click + show "Sending…" spinner until response
-  b) idempotency key per batch (UUID) sent in payload so backend can ignore replays
-  c) post-success state: replace button with green "✓ Sent — view batch" link
-  d) "This batch was already imported X min ago to campaign Y — re-send?" warning
-     keyed off prospect_batches.batch_name + campaign_id + day
-
-Scope for v1 (smallest useful guard):
-  - Disable Send button + show spinner the moment it's clicked
-  - On success → replace with disabled "✓ Sent — 2/2 imported" pill + Close button
-  - On error → re-enable with retry
-  - Store batch UUID in prospect_batches.id and pass to smartlead-proxy as
-    x-idempotency-key header; proxy can no-op identical replays within 60s
-
-Effort: ~3 hrs · Risk: low · Files:
-  - src/components/email-outreach/ImportLeadsWizard.tsx (button state)
-  - supabase/functions/smartlead-proxy/index.ts (idempotency cache)
+### 17n. Import Batches — per-batch lead drill-down (added May 19)
+- Today the Import Batches panel shows counts only. To see WHICH emails
+  went into a batch, user must open the campaign in SmartLead.
+- Add clickable rows → BatchDetailDrawer showing every row from
+  prospects_staging filtered by batch_id (email, name, city, qa_status,
+  rejection_reason) + a deep link to the SmartLead campaign + a
+  disambiguation banner when the campaign's total_leads differs from our
+  approved_count (explains SmartLead's account-wide dedup behavior).
+- Origin: May 19, 2026 — user pushed 2-lead CSV but SmartLead campaign
+  showed 5 leads. Cause: 3 leftover test leads in the campaign from
+  earlier work + SmartLead reused existing lead_ids for test1/test2.
+  No actual duplication — but UX gave no way to verify this without
+  leaving the app.
+- Effort: ~3 hrs · Risk: low · Files: ProspectBatchesPanel.tsx,
+  BatchDetailDrawer.tsx (new)
 ```
 
-## Implementation (build-mode work after this plan is approved)
+## Doc-sync (per AGENTS.md Rule 9)
 
-1. Append Task 17m to `OPEN_TASKS.md`.
-2. In `ImportLeadsWizard.tsx` Step 4: add `sending` and `sent` local state. While `sending` → button disabled + spinner. On success → set `sent=true`, replace button with "✓ Sent — N/N imported" + close. On error → reset.
-3. (Optional v1+) Pass `prospect_batches.id` as idempotency key to `smartlead-proxy`; proxy keeps a tiny in-memory LRU (60s TTL) and returns the cached response on replay.
-4. Doc-sync per AGENTS.md Rule 9: draft PROJECT_CONTEXT.md note ("Import Wizard now guards against double-clicks; see Task 17m") + one-line OPEN_TASKS update, show to Haseeb before writing.
+After implementation, draft one-line updates to:
+- `OPEN_TASKS.md` — add 17n
+- `PROJECT_CONTEXT.md` — "Import Batches panel now drills down to per-lead view; explains SmartLead's account-wide dedup"
+- `HOW_IT_WORKS.md` — short paragraph in the Email Outreach section explaining the dedup model (account-wide lead_id reuse) so future readers don't hit the same "why 5 not 2" confusion
 
-No DB migration. No SmartLead API changes. UI-only change for v1; proxy guard is nice-to-have.
+Show one-line summary to Haseeb before writing — do not silently overwrite.
+
+## Out of scope (v1)
+
+- Real-time lead-level status sync from SmartLead per lead (status: SCHEDULED / SENT / OPENED) — that's bigger, deferred to Task 21
+- Bulk re-push from a batch — deferred
+- Edit/delete prospects_staging rows — deferred

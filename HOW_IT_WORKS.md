@@ -1,6 +1,6 @@
 # HOW_IT_WORKS.md — Neuron Garage
 
-> Snapshot date: May 18, 2026
+> Snapshot date: May 19, 2026 (Email Outreach / SmartLead end-to-end live)
 > Audience: Anyone (Kaylie, Sam, Haseeb, any AI agent) who needs to understand the app as a working product, not as an inventory.
 > Companion files: `PROJECT_CONTEXT.md` (what exists), `APIS.md` (integrations).
 
@@ -61,9 +61,18 @@ What the user gets out of each step:
 - **Today's limitation:** Placeholder / Apify-only data. Apollo, vendor lists, and DonorsChoose are not wired (blocked on Brett's decision — see `APIS.md`).
 
 ### `/email-outreach` Email Outreach — `EmailOutreachV2.tsx`
-- **User sees:** A composer with AI-personalized templates and a recipient picker that pulls from `teacher_prospects` (status = hot/warm).
-- **User action:** Pick a template, generate AI body via Lovable AI Gateway, review, send.
-- **Behind the scenes:** AI personalization runs through `LOVABLE_API_KEY`. **Sending is not wired** — SmartLead ("Integral Leads") integration is sprint task #17.
+- **User sees:** A 3-panel layout (Connection / Campaigns / Inbox) by default, with a tab toggle to swap the Campaigns panel for the Analytics panel. Side panels for Email Accounts and Prospect Batches sit below. Top-right buttons: "New Campaign" (opens `NewCampaignDrawer`) and "Import Leads" (opens `ImportLeadsWizard`).
+- **Connection panel (`SmartLeadConnectionPanel.tsx`)** — shows API-key status, last successful API call timestamp, and a 24-hour webhook activity indicator. Health strip is the at-a-glance "is SmartLead working?" widget.
+- **Campaigns panel (`SmartLeadCampaignsPanel.tsx`)** — lists campaigns from `campaign_cache` (refreshed from SmartLead via `smartlead-proxy`). Click a row to see status / lead counts / send schedule.
+- **Analytics panel (`AnalyticsPanel.tsx`)** — pulls `GET /analytics/overview` in a single call (preferred over per-campaign loops to respect the 10 req / 2 s rate limit). Falls back to per-campaign aggregation only if the overview endpoint fails.
+- **Inbox panel (`SmartLeadInboxPanel.tsx`)** — live reply feed from `smartlead_events` (Supabase Realtime subscription). Each row shows the lead, campaign, reply snippet, and an **intent tag**: 🟢 HOT, ⚪ NOT INTERESTED, 🔵 OOO, 🟡 NEUTRAL — classified server-side by the webhook. Red unread badge counts `EMAIL_REPLIED` events since last view (persisted in `localStorage`); "Mark all read" clears it.
+- **Email Accounts panel (`EmailAccountsPanel.tsx`)** — lists connected mailboxes pulled from `GET /email-accounts`.
+- **Prospect Batches panel (`ProspectBatchesPanel.tsx`)** — groups `prospects_staging` rows by `batch_id`, resolves campaign names via `campaign_cache`, and exposes a "Retry" button per lead with `qa_status='rejected'` to re-push it to SmartLead.
+- **New Campaign drawer (`NewCampaignDrawer.tsx`)** — creates a campaign via `POST /campaigns/create`. Open/click/reply tracking toggles are emitted as SmartLead's NEGATIVE flags (`DONT_TRACK_EMAIL_OPEN`, `DONT_TRACK_LINK_CLICK`, `DONT_TRACK_REPLY_TO_AN_EMAIL`) — sending `TRACK_OPENS`/`TRACK_CLICKS` returns 400.
+- **Import Leads wizard (`ImportLeadsWizard.tsx`)** — Step 1 picks a Source (Apollo, Clay, LinkedIn Navigator, CSV, Manual). Step 2 maps fields. Step 3 QA-stages rows into `prospects_staging`. Step 4 pushes approved rows to SmartLead in a batch.
+- **Webhook → Inbox loop:** SmartLead POSTs to `smartlead-webhook` → row inserted into `smartlead_events` (with `reply_intent` set for replies) → Postgres realtime → Inbox panel updates without refresh.
+- **AI personalization** continues to run through `LOVABLE_API_KEY` for email-body generation.
+- **Today's status (May 19):** End-to-end live. Test sends only — connect to Teacher Search promotion path next.
 
 ### `/candidate-pipeline` Candidate Pipeline — `CandidatePipeline.tsx`
 - **User sees:** Kanban board with columns: New Lead → Qualification → Confirmation → Signing. Click a candidate to open the detail panel (Overview / Qualification / Committee Votes / Homework / Lead Sheet / Notes / Stage History).
@@ -118,7 +127,8 @@ Stored in `candidate_qualification` — five sub-scores (financial readiness, le
 | Favoriting a city in City Search → Teacher Search defaults to that city | **Working** |
 | Promoting a hot teacher → new row in `candidates` with `prospect_id` set | **UI exists, not wired end-to-end** |
 | Candidate reaches `signing` stage → seeds an `onboarding_records` row | **Not built** |
-| Email Outreach → updates `teacher_prospects.status` after send | **Not wired (no SmartLead)** |
+| Email Outreach → SmartLead campaigns + lead push + reply inbox | **Working (Phases 1–5, May 19)** |
+| Email Outreach → updates `teacher_prospects.status` after send | **Not wired** — needs Teacher Search → Import Wizard bridge |
 
 ---
 

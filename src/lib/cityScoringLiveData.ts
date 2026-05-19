@@ -10,6 +10,7 @@ export type RankedMarket = {
   state: string;
   county?: string | null;
   metroArea?: string | null;
+  metroCounties?: string[] | null;
   tier: "A" | "B" | "C" | "D" | string;
   compositeScore: number;
   population: number;

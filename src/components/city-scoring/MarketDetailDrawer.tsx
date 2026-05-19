@@ -202,7 +202,6 @@ export function MarketDetailDrawer({
   const [signals, setSignals] = useState<LiveSignal[]>([]);
   const [competitors, setCompetitors] = useState<LiveCompetitor[]>([]);
   const [latestJob, setLatestJob] = useState<any | null>(null);
-  const [legacyJob, setLegacyJob] = useState<any | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -210,28 +209,17 @@ export function MarketDetailDrawer({
     const loadLiveEvidence = async () => {
       setLoading(true);
       try {
-        // cityId references us_cities_scored.id. Historical signals/jobs are
-        // still keyed by the legacy cities.id, so we bridge by city+state.
+        // Canonical-only: cityId is us_cities_scored.id. We no longer read
+        // the discarded legacy `cities` table — its rows polluted counts.
         const cityId = market.cityId;
         if (!cityId) {
           setSignals([]);
           setCompetitors([]);
           setLatestJob(null);
-          setLegacyJob(null);
           return;
         }
 
-        // Bridge: find a matching legacy cities row by city+state so historical
-        // signals/competitors/fetch jobs (which still live on cities.id) show up.
-        const stateFull = market.state === "TX" ? "Texas" : market.state === "FL" ? "Florida" : market.state;
-        const { data: legacyCity } = await supabase
-          .from("cities")
-          .select("id")
-          .ilike("city", market.city)
-          .ilike("state", stateFull)
-          .maybeSingle();
-        const legacyId: string | null = (legacyCity as any)?.id ?? null;
-        const [{ data: signalRows }, { data: competitorRows }, { data: canonicalJobRows }, { data: legacyJobRows }] = await Promise.all([
+        const [{ data: signalRows }, { data: competitorRows }, { data: canonicalJobRows }] = await Promise.all([
           supabase.from("city_market_signals").select("*").eq("city_id", cityId),
           supabase
             .from("city_competitors")
@@ -245,20 +233,8 @@ export function MarketDetailDrawer({
             .eq("source", "sow_metric_coverage")
             .order("created_at", { ascending: false })
             .limit(1),
-          legacyId
-            ? supabase
-                .from("city_fetch_jobs")
-                .select("*")
-                .eq("city_id", legacyId)
-                .eq("source", "sow_metric_coverage")
-                .order("created_at", { ascending: false })
-                .limit(1)
-            : Promise.resolve({ data: [] }),
         ]);
 
-        // Canonical source of truth = us_cities_scored row + signals keyed to
-        // that scored-city UUID. We still read the legacy job separately for
-        // audit history, but we do NOT let it change Austin's visible counts.
         const fallbackSignals = buildSeededFallbackSignals(market);
         const liveByKey = new Map<string, LiveSignal>();
         (signalRows ?? []).forEach((r: any) => {
@@ -273,7 +249,6 @@ export function MarketDetailDrawer({
         setSignals(merged);
         setCompetitors((competitorRows ?? []) as LiveCompetitor[]);
         setLatestJob(canonicalJobRows?.[0] ?? null);
-        setLegacyJob(legacyJobRows?.[0] ?? null);
       } catch (error) {
         console.error("MarketDetailDrawer live evidence error", error);
       } finally {

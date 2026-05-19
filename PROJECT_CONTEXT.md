@@ -1,6 +1,6 @@
 # PROJECT_CONTEXT.md — Neuron Garage
 
-> Snapshot date: May 19, 2026 (Ask AI absolute-weights mode shipped same day; Email Outreach / SmartLead Phases 1–5 complete; legacy `cities` / `city_category_scores` / `city_fetch_jobs` / `city_competitors` tables dropped; Add City rewired to `us_cities_scored`; `county_name` backfilled 960/960 from `us_cities_geo`; `metro_area` backfilled 326/960 — remainder pending; in-app `/spec` page rewritten to v1.2 same day and is in sync with this file)
+> Snapshot date: May 19, 2026 (Ask AI absolute-weights mode shipped same day; Email Outreach / SmartLead Phases 1–5 complete + cockpit polish 17a–17e shipped — end-to-end test loop proven via Gmail +alias CSV; legacy `cities` / `city_category_scores` / `city_fetch_jobs` / `city_competitors` tables dropped; Add City rewired to `us_cities_scored`; `county_name` backfilled 960/960 from `us_cities_geo`; `metro_area` backfilled 326/960 — remainder pending; in-app `/spec` page rewritten to v1.2 same day and is in sync with this file)
 > Live URL: https://neuron-garage-franchise.lovable.app
 > Preview: https://id-preview--c74b81ad-10d7-4a10-b6c8-de17f48a663e.lovable.app
 > Stack: React + TS + Vite + Tailwind + shadcn, Lovable Cloud (Supabase) backend
@@ -132,7 +132,7 @@ Active limitations:
 - **Teacher Search reads placeholder/Apify-only data** — `teacher_prospects_master` table not yet built; no Apollo / vendor list / DonorsChoose integration. `teacher_prospects` now has the FK and enrichment columns waiting on the master table + sourcing.
 - **`candidates` table** — no FKs to `public_schools` / `us_cities_scored`, no `source_segment` column. Promotion from teacher → candidate cannot carry context until added (see OPEN_TASKS B3).
 - ~~**`cities` vs `us_cities_scored`** — consolidated.~~ ✅ May 19 — legacy `cities` (+ `city_category_scores`, `city_fetch_jobs`, `city_competitors`) dropped; `us_cities_scored` is the canonical city table. Add City flow now writes there via `us_cities_geo` lookup.
-- **Email Outreach** — SmartLead wired end-to-end (connection, campaigns, lead import wizard, analytics, inbox, webhooks, reply-intent classification). Still needs Teacher Search → Import Wizard handoff before daily use.
+- **Email Outreach** — SmartLead wired end-to-end (connection, campaigns, lead import wizard, analytics, inbox, webhooks, reply-intent classification). Cockpit polish 17a–17e shipped May 19: mock data stripped, Test Mode toggle, auto-named campaigns, inbox picker, end-to-end test loop proven via Gmail `+alias` CSV. **Blockers before real (non-test) teacher sends:** (a) **17f** — add `{{unsubscribe}}` to default sequence body (CAN-SPAM); (b) **17h** — Import Leads CSV end-to-end test; (c) **17i** — 1-lead real launch. Still needs Teacher Search → Import Wizard handoff for daily use (blocked on Brett teacher-source decision).
 - **Candidate Pipeline** — populated with placeholder candidates, not yet wired to Teacher → Lead conversion (SmartLead reply → candidate promotion is the next link).
 - **GreatSchools** — private/charter elementary counts missing on every city (waiting on API key purchase).
 - **Multiple named favorites lists** — only a single favorites list works; multi-list UI not built.

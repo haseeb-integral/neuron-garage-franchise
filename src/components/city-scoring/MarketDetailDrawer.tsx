@@ -733,8 +733,9 @@ export function MarketDetailDrawer({
                   <div key={category.key} className="rounded-lg border border-[#eef2f7] bg-white">
                     <div className="flex items-center justify-between border-b border-[#eef2f7] bg-[#f8fafe] px-3 py-1.5">
                       <h5 className="text-[12px] font-bold text-[#07142f]">{category.label}</h5>
-                      <span className="text-[10px] font-semibold text-[#8794ab]">
-                        {liveProxy}/{enabledTotal} wired · {totalInCategory} total
+                      <span className="text-[10px] font-semibold text-[#8794ab]" title="Count of enabled scoring metrics that have a value, out of total enabled scoring metrics in this category">
+                        {liveProxy} of {enabledTotal} scoring metrics have a value
+                        {disabledRows.length > 0 ? ` · +${disabledRows.length} tracked-only` : ""}
                         {customs.length > 0 ? ` · ${customs.length} custom` : ""}
                       </span>
                     </div>

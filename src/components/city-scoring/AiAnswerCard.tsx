@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 export type AiResult = {
   summary: string;
   filters: { state: string | null; minScore: number | null; tier: string | null };
+  weightMode?: "absolute" | "delta";
+  absoluteWeights?: Record<string, number>;
   weightAdjustments: Record<string, number>;
   reasoning_steps: string[];
   dataGaps: string[];

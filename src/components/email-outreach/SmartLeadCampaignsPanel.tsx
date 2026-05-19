@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Loader2, RefreshCw, Mail, ExternalLink, AlertCircle, Play, Pause, Square } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { callSmartLeadProxy, getSmartLeadErrorMessage } from "@/components/email-outreach/smartleadErrors";
 
 interface SLCampaign {
   id: number | string;
@@ -10,22 +10,6 @@ interface SLCampaign {
   created_at?: string;
   client_id?: number | string | null;
   track_settings?: unknown;
-}
-
-async function callProxy(endpoint: string, method = "GET", payload?: unknown) {
-  const { data, error } = await supabase.functions.invoke("smartlead-proxy", {
-    body: { endpoint, method, payload },
-  });
-  if (error) throw new Error(error.message ?? String(error));
-  if (data && typeof data === "object" && (data as any).ok === false) {
-    const d = data as any;
-    const err = d.error;
-    const msg = typeof err === "string"
-      ? err
-      : (err?.message || err?.error || err?.msg || JSON.stringify(err));
-    throw new Error(`SmartLead ${d.status ?? ""} on ${endpoint}: ${msg}`);
-  }
-  return data;
 }
 
 const statusTone = (s?: string) => {
@@ -47,7 +31,7 @@ export function SmartLeadCampaignsPanel() {
     setLoading(true);
     setError(null);
     try {
-      const res = await callProxy("campaigns/");
+      const res = await callSmartLeadProxy("campaigns/");
       setCampaigns(Array.isArray(res) ? res : []);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -60,15 +44,50 @@ export function SmartLeadCampaignsPanel() {
     load();
   }, []);
 
+  const applyDefaultLaunchSetup = async (campaignId: string | number) => {
+    const timezone = (() => {
+      try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+      } catch {
+        return "UTC";
+      }
+    })();
+
+    await callSmartLeadProxy(`/campaigns/${campaignId}/schedule`, "POST", {
+      timezone,
+      days_of_the_week: [1, 2, 3, 4, 5],
+      start_hour: "09:00",
+      end_hour: "18:00",
+      min_time_btw_emails: 10,
+      max_new_leads_per_day: 50,
+    });
+
+    const accounts = await callSmartLeadProxy("/email-accounts", "GET");
+    const emailAccountIds = (Array.isArray(accounts) ? accounts : [])
+      .map((account: any) => account?.id)
+      .filter((id: unknown) => typeof id === "number" || typeof id === "string");
+
+    if (!emailAccountIds.length) {
+      throw new Error("No email accounts connected in SmartLead. Connect one in Email Accounts tab first.");
+    }
+
+    await callSmartLeadProxy(`/campaigns/${campaignId}/email-accounts`, "POST", {
+      email_account_ids: emailAccountIds,
+    });
+  };
+
   const setStatus = async (c: SLCampaign, status: "START" | "PAUSED" | "STOPPED") => {
     const actionKey = `${c.id}-${status}`;
     setActing(actionKey);
     try {
-      await callProxy(`/campaigns/${c.id}/status`, "POST", { status });
+      if (status === "START") {
+        await applyDefaultLaunchSetup(c.id);
+      }
+      await callSmartLeadProxy(`/campaigns/${c.id}/status`, "POST", { status });
       toast.success(`Campaign "${c.name ?? c.id}" → ${status}`);
       await load();
     } catch (e) {
-      toast.error(`Failed: ${e instanceof Error ? e.message : String(e)}`);
+      toast.error(`Failed: ${getSmartLeadErrorMessage(e)}`);
     } finally {
       setActing(null);
     }

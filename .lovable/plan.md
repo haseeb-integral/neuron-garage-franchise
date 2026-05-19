@@ -1,49 +1,44 @@
-## What you asked for
+## Goal
 
-1. **Defer 17f** (`{{unsubscribe}}` merge tag) — move from 🔴 BLOCKER to LATER for now.
-2. **Generate a 2-row dummy CSV** using your profile email (`haseeb@integralassociates.com`) with `+alias` so SmartLead treats them as 2 distinct leads but both land in your real inbox.
-3. **Run 17h then 17i** — flip Test Mode OFF, send for real, confirm both arrive.
+Prevent accidental double-sends from the Import Wizard's Step 4 "Send N to SmartLead" button, and document the gap in `OPEN_TASKS.md` as **Task 17m**.
 
-## Step 1 — Update docs (defer 17f)
+Real-world impact today: SmartLead deduped your double-click by email, so no harm done. But the UI lets a user click "Send" 5 times in a row with no feedback — a future change to SmartLead settings or a different email-key field would silently produce duplicates.
 
-- `OPEN_TASKS.md` item 17f: change marker from 🔴 BLOCKER → 🟡 deferred, add note "Deferred per Haseeb May 19 — accepting CAN-SPAM risk for internal smoke tests with own inbox only. Must add before sending to real teachers."
-- `LATER.md`: append "Add `{{unsubscribe}}` merge tag to default sequence body — required before any non-self real send."
-- `PROJECT_CONTEXT.md` § 5: drop (a) from the blockers list, leave (b) CSV test and (c) 1-lead launch.
+## Task 17m — what to add to OPEN_TASKS.md
 
-## Step 2 — Write the dummy CSV to `/mnt/documents/dummy_test_leads.csv`
+Insert after 17l, before `---`:
 
-Columns match Import Wizard schema (`email, first_name, last_name, company, city, segment`):
+```
+### 17m — Import Wizard: prevent double-send + dedup guardrails
+Step 4 "Send N to SmartLead" button has no protection against repeat clicks
+or re-submission of an already-imported batch. Today a user can click 5 times
+and we'd fire 5 push-to-SmartLead requests. SmartLead currently dedupes by
+email (verified May 19), but that's defensive luck, not our design.
 
-```csv
-email,first_name,last_name,company,city,segment
-haseeb+test1@integralassociates.com,Haseeb,TestOne,Integral Test School,Austin,Teacher
-haseeb+test2@integralassociates.com,Haseeb,TestTwo,Integral Test Academy,Dallas,Teacher
+Standard imports (Apollo, Instantly, HubSpot, Lemlist) all do some combo of:
+  a) disable button on first click + show "Sending…" spinner until response
+  b) idempotency key per batch (UUID) sent in payload so backend can ignore replays
+  c) post-success state: replace button with green "✓ Sent — view batch" link
+  d) "This batch was already imported X min ago to campaign Y — re-send?" warning
+     keyed off prospect_batches.batch_name + campaign_id + day
+
+Scope for v1 (smallest useful guard):
+  - Disable Send button + show spinner the moment it's clicked
+  - On success → replace with disabled "✓ Sent — 2/2 imported" pill + Close button
+  - On error → re-enable with retry
+  - Store batch UUID in prospect_batches.id and pass to smartlead-proxy as
+    x-idempotency-key header; proxy can no-op identical replays within 60s
+
+Effort: ~3 hrs · Risk: low · Files:
+  - src/components/email-outreach/ImportLeadsWizard.tsx (button state)
+  - supabase/functions/smartlead-proxy/index.ts (idempotency cache)
 ```
 
-Both `+alias` addresses route to your real inbox at `haseeb@integralassociates.com` (standard plus-addressing) — but the wizard's dedupe sees them as 2 distinct rows.
+## Implementation (build-mode work after this plan is approved)
 
-Delivered via `<presentation-artifact>` so you can download in one click.
+1. Append Task 17m to `OPEN_TASKS.md`.
+2. In `ImportLeadsWizard.tsx` Step 4: add `sending` and `sent` local state. While `sending` → button disabled + spinner. On success → set `sent=true`, replace button with "✓ Sent — N/N imported" + close. On error → reset.
+3. (Optional v1+) Pass `prospect_batches.id` as idempotency key to `smartlead-proxy`; proxy keeps a tiny in-memory LRU (60s TTL) and returns the cached response on replay.
+4. Doc-sync per AGENTS.md Rule 9: draft PROJECT_CONTEXT.md note ("Import Wizard now guards against double-clicks; see Task 17m") + one-line OPEN_TASKS update, show to Haseeb before writing.
 
-## Step 3 — Your test loop (no code, you drive)
-
-1. Download CSV from chat
-2. Email Outreach → **Import Leads** → pick the file → map columns auto-detect → Continue → Approve both rows → Push to SmartLead
-3. Confirm batch appears in **Import Batches** panel (this completes 17h ✅)
-4. **New Campaign** → pick the batch → **turn Test Mode OFF** → pick 1 inbox → Launch
-5. Wait ~10–15 min for SmartLead cron tick → check `haseeb@integralassociates.com` inbox → expect 2 distinct emails (one per +alias)
-6. Reply to one → confirm it shows in Inbox panel with intent badge (this completes 17i ✅)
-
-## Step 4 — After both pass
-
-Green-light your scraped teacher CSV. You share it, I inspect columns + row count + source, we map any column mismatches, then full batch with Test Mode OFF.
-
-## Files touched (docs only)
-
-- `OPEN_TASKS.md` — flip 17f marker
-- `LATER.md` — append unsubscribe note
-- `PROJECT_CONTEXT.md` — update § 5 blocker list
-- `/mnt/documents/dummy_test_leads.csv` — new artifact
-
-No code changes. No new edge functions. No schema changes.
-
-**Switch to build mode and approve and I'll write the CSV + doc edits in one batch.**
+No DB migration. No SmartLead API changes. UI-only change for v1; proxy guard is nice-to-have.

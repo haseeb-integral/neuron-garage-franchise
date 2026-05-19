@@ -40,6 +40,7 @@ import {
   sampleRankedMarkets,
   downloadRankedMarketsCsv,
   buildSeededFallbackSignalsFromScored,
+  mergeSignalsPreferLive,
   type RankedMarket,
 } from "@/lib/cityScoringLiveData";
 import { useCityScoringStore, DEFAULT_WEIGHTS } from "@/stores/cityScoringStore";

@@ -1509,7 +1509,7 @@ const CityScoring = () => {
       const bi = SIGNAL_DISPLAY_PRIORITY.indexOf(b.signal_key);
       return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
     });
-  const visibleCenterSignals = centerLiveSignals.slice(0, 8);
+  const visibleCenterSignals = centerLiveSignals.slice(0, 12);
   const hasMoreSignals = signalsForDisplay.length > visibleCenterSignals.length;
 
   // Find enrollment to fold into the public_elementary_count row

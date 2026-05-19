@@ -1,79 +1,111 @@
-## API check — done
+## Goal
+Fix the City Search screen so it reads consistently from the seeded backend data and stops showing blank, stale, or contradictory values.
 
-I tested `SMARTLEAD_API_KEY` against the live SmartLead API just now:
+## What I found
+1. The page is still mixing two data models:
+   - canonical seeded table: `us_cities_scored`
+   - partial legacy child tables: `city_market_signals`, `city_category_scores`, `city_fetch_jobs`, `cities`
+2. That split is causing most of the issues you listed:
+   - center panel briefly shows old/default values before the selected row loads
+   - Metro Area / County / Market Type can be blank or misleading
+   - seeded-city drawer is empty because the drawer still tries legacy child tables first
+   - signal count is short because only legacy rows exist for some cities, while seeded fallback rows are not treated as the full source of truth
+   - AI history exists in the database, but the UI behavior is not surfacing it reliably
+3. The “486 cities” symptom matches an active filter state, not missing cities. The backend currently has:
+   - 960 scored rows total in `us_cities_scored`
+   - 948 with non-null composite scores
+   - about 463 when both `population >= 50000` and `score >= 50`
+4. Documentation is not what prevented the fix. The real blocker is inconsistent wiring. But missing doc sync did make the previous changes easier to misread and easier to regress.
 
-- `GET /campaigns/` → **HTTP 200**, returns `[]` (no campaigns yet — expected, fresh account)
-- `GET /email-accounts/?limit=5` → **HTTP 200**, returns a real mailbox (`rani@mailerss.co`, user_id `485132`, created 2026‑05‑18). So the account is live and wired.
-- `GET /analytics/overview` → **HTTP 404** ("Cannot GET /api/v1/analytics/overview"). This endpoint in the playbook **does not exist** on SmartLead V1. Real analytics live at `/campaigns/{id}/analytics` and `/campaigns/{id}/analytics-by-date` (per-campaign). The dashboard "overview KPIs" need to be **aggregated client-side** from per-campaign analytics.
+## Plan
+### 1. Make City Search use one canonical source
+Refactor the page so seeded `us_cities_scored` data is the default source for:
+- left ranked table
+- center selected-market panel
+- right-side/slide-out detail drawer
+- watchlist city ids
+- AI-driven reranking inputs
 
-**Bottom line: the key works, account is live, integration is unblocked.** The playbook has one wrong endpoint we'll route around.
+Legacy evidence tables will become optional enrichment only, never the thing that decides whether the UI is blank.
 
----
+### 2. Fix the selected-row stale/flash bug
+Remove the temporary fallback that shows the wrong city’s score/details for ~1 second.
 
-## Recommended approach
+I’ll change selection so the center panel only renders the currently selected market’s canonical row, with a proper loading/transition state instead of reusing stale cached values.
 
-The full 8-page build in your prompt is ~2–3 weeks of work. Per AGENTS.md rule #2 (no new features without explicit request) and rule #6 (one change at a time), I recommend a **phased rollout** rather than building all 8 pages in one shot. This also matches the current sprint where Task #0 (city/teacher database layer, due May 20) is still in progress.
+### 3. Fix center-panel metadata fields
+Correct these fields for seeded markets:
+- Market Type
+- Metro Area
+- County
 
-I'll build it in 4 phases, each shippable on its own. We pause between phases so you can sanity-check before continuing.
+Important note: `us_cities_scored` appears to have metro data, but not county. So I will:
+- stop showing fake/default county values
+- show an honest placeholder when county truly does not exist
+- remove the hardcoded “Suburb” fallback when the real market type is unavailable
 
----
+### 4. Fix Key Market Signals and drawer completeness
+Use seeded fallback signals as the base dataset for seeded cities, then merge in legacy live rows only when they exist.
 
-## Phase 1 — Foundation + connectivity proof (this session)
+That will fix:
+- only 4–5 signals showing
+- missing “View all signals” behavior
+- empty drawer for seeded cities
 
-**Backend**
-1. Create edge function `smartlead-proxy` — generic POST `{endpoint, method, payload}` → forwards to `https://server.smartlead.ai/api/v1/...?api_key=...` with 429 exponential backoff (3 retries), CORS, error logging. Uses `verify_jwt = true` (only authed app users can proxy).
-2. Create edge function `smartlead-webhook` — public (`verify_jwt = false`), accepts SmartLead's POST, inserts into `smartlead_events`, returns 200 immediately.
-3. Migration: create 4 tables exactly as your spec — `smartlead_events`, `prospect_batches`, `prospects_staging`, `campaign_cache`. RLS: authed users can read/write all rows (3‑user internal tool).
+I’ll also make the “View all signals” count use the same merged source as the visible list so the button is always accurate.
 
-**Frontend**
-4. Add **Email Outreach → SmartLead** subsection (or repurpose existing `EmailOutreachV2` page) with a minimal "Connection" panel:
-   - "Test Connection" button → calls proxy with `/campaigns/`, shows ✅ + campaign count or ❌ + error.
-   - Shows the linked email account (Rani Chung / rani@mailerss.co) pulled from `/email-accounts/`.
-   - "Register Webhook" button → POSTs to `/webhooks` with the `smartlead-webhook` function URL + all 4 event types.
-   - Lists existing webhooks from `GET /webhooks` with delete buttons.
+### 5. Fix left-table count and ranking behavior
+Clean up the filtered/ranked dataset so the left table reflects the real seeded inventory and current filters clearly.
 
-**Exit criteria for Phase 1:** you click "Test Connection" in the UI and see green; webhook is registered; we can demo a real reply landing in `smartlead_events`.
+I’ll verify:
+- default load shows the full seeded ranked set allowed by current business rules
+- filters are visible and not silently narrowing results
+- no stale persisted state keeps hiding cities after refresh
 
----
+### 6. Fix Rank/Market column overlap
+Adjust the left-table column widths and typography so the Rank / Market headers do not overlap and stay stable across viewport sizes.
 
-## Phase 2 — Read-only Campaigns + Inbox
+### 7. Fix Ask AI behavior end to end
+I’ll tighten the AI flow so it behaves like a real search control:
+- keep the user’s submitted query visible after submit
+- reliably show recent/saved AI queries from `ai_query_history`
+- make AI-applied filter/weight changes visible immediately on screen
+- ensure AI-driven weight changes and slider state stay in sync
 
-- Campaigns list page (read-only): `GET /campaigns/` → table with status badges, per-row Pause/Activate via `PATCH /campaigns/{id}/status`.
-- Campaign Detail tabs: Leads (`GET /campaigns/{id}/leads`), Email Accounts (`GET /campaigns/{id}/email-accounts`), basic stats (`GET /campaigns/{id}/analytics`).
-- Inbox page reading from `smartlead_events` with HOT/NOT INTERESTED/OOO keyword tagging + inline reply via `POST /campaigns/{id}/reply-email-thread`.
+### 8. Resolve slider-vs-AI conflict rules
+Implement one clear rule:
+- if the AI response returns category weight changes, those become the new live applied weights on screen
+- the sliders visibly move to match
+- the table reranks immediately from those applied weights
 
----
+That means your example should work: if the user had 100% Competitive Landscape, then asks for “Texas ranked by Demand only,” the sliders should visibly move to Demand-heavy / Demand-only according to the AI result, and the table should rerank from that applied state.
 
-## Phase 3 — Lead Import pipeline
+### 9. Fix watchlist visibility, not just save/remove
+You already have save/remove working in the background, but there is no real “view my saved list” experience.
 
-- Import Leads 4-step wizard (Batch → CSV upload + column mapping → QA approve/reject → Import in batches of 400 with 500ms gap).
-- `prospect_batches` + `prospects_staging` get populated; on import we call `POST /campaigns/{id}/leads`.
+Without adding a big new feature, I’ll make the existing watchlist flow clearer inside City Search by:
+- making saved-state behavior reliable
+- making the existing watchlist filter/count obvious
+- ensuring saved markets can be surfaced consistently from the main list
 
----
+### 10. Validate against the real failure list
+After the refactor, I’ll verify these exact items:
+- no blank/incorrect flash in center panel on row click
+- seeded cities show non-empty drawer content
+- more than 4–5 signals appear where seeded data exists
+- “View all signals” works
+- table count matches actual filter state
+- AI history appears
+- AI query text remains visible
+- AI-applied weights visibly move sliders and rerank the table
+- watchlist items can be found again in UI
 
-## Phase 4 — Analytics + Campaign Creation + Email Accounts
+## Technical notes
+- No scoring-math change will be made; only data wiring and UI state consistency.
+- No auth redesign.
+- No sidebar/layout redesign.
+- If county is not present in the seeded table, I will not invent it. I will show a truthful placeholder until a real county source is added.
+- After implementation, I will draft doc-sync updates for `PROJECT_CONTEXT.md`, `HOW_IT_WORKS.md`, `APIS.md`, and `OPEN_TASKS.md`, then wait for your explicit approval before writing them.
 
-- Aggregated dashboard KPIs (computed client-side from per-campaign analytics — works around the missing `/analytics/overview`).
-- Recharts visualizations.
-- "New Campaign" drawer (create → schedule → settings → sequences).
-- Email Accounts page (cards + warmup toggle + Add SMTP modal).
-
----
-
-## Technical notes / corrections to your playbook
-
-1. **`/analytics/overview` doesn't exist** — confirmed 404. We'll aggregate `/campaigns/{id}/analytics` results client-side and cache in `campaign_cache.raw_data`.
-2. **CORS** — proxy will use the SDK helper (`npm:@supabase/supabase-js@2/cors`) per Lovable edge-function conventions, not a hand-rolled object.
-3. **Auth on proxy** — your playbook says no auth on the proxy; I'll require a valid app session (`verify_jwt = true`) so random internet traffic can't burn your SmartLead quota. The webhook stays public (SmartLead can't send a JWT).
-4. **Rate limit** — SmartLead docs say 10 req / 2s. The proxy will queue serially per-request and only retry on 429.
-5. **localStorage** — your rule #12 conflicts with the existing Supabase auth client which uses localStorage for sessions. I'll honor the spirit (no SmartLead data in localStorage) but keep Supabase auth as-is.
-6. **`reply_message_id` storage** — confirmed in `smartlead_events` schema; required for threaded replies.
-7. **Layout rule** — AGENTS.md rule #7 locks the 5-item sidebar. SmartLead pages will live **under the existing "Email Outreach" nav item** as sub-routes/tabs (Dashboard, Campaigns, Leads, Inbox, Import, Analytics, Email Accounts, Settings), not as new top-level sidebar items.
-
----
-
-## What I need from you to start Phase 1
-
-Just a "go" — I have everything else (key works, account is live). After Phase 1 lands and you confirm the webhook fires on a real reply, we move to Phase 2.
-
-Also flag: do you want me to **pause the city-scoring bug fixes** from the previous turns and switch fully to SmartLead, or land Phase 1 of SmartLead alongside resuming those fixes next turn? Default if you don't answer: SmartLead Phase 1 first, then back to city bugs.
+## Risk
+Medium. This touches the main City Search page, but the work is mostly a cleanup of data flow rather than new functionality.

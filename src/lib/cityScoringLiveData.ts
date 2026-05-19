@@ -320,7 +320,16 @@ export function mergeSignalsPreferLive(
   });
 
   liveByCanonical.forEach((signal, key) => {
-    if (!merged.some((row) => row.signal_key === key)) merged.push(signal);
+    if (!merged.some((row) => row.signal_key === key)) {
+      merged.push({
+        source: signal.source ?? "Live",
+        signal_key: key,
+        label: signal.label ?? key,
+        value: signal.value ?? null,
+        raw_data: signal.raw_data ?? null,
+        ...signal,
+      } as any);
+    }
   });
 
   return merged;

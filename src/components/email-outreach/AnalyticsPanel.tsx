@@ -134,7 +134,7 @@ export function AnalyticsPanel() {
         name: "Analytics Overview",
         status: fresh.source,
         last_synced: new Date().toISOString(),
-        raw_data: fresh as unknown as Record<string, unknown>,
+        raw_data: JSON.parse(JSON.stringify(fresh)),
       }]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load analytics");

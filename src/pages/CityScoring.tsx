@@ -1401,7 +1401,12 @@ const CityScoring = () => {
     );
   }, [selected.scored, selectedLiveCity?.children_pct]);
 
-  const signalsForDisplay = selectedLiveSignals.length > 0 ? selectedLiveSignals : seededFallbackSignals;
+  // Always merge: seeded fallback is the skeleton (so user sees coverage gaps
+  // as "—" rather than a blank panel), live legacy signals override when present.
+  const signalsForDisplay = useMemo(
+    () => mergeSignalsPreferLive(selectedLiveSignals, selected.scored, Number(selectedLiveCity?.children_pct ?? 0) || undefined),
+    [selectedLiveSignals, selected.scored, selectedLiveCity?.children_pct],
+  );
 
   const rawValuesByKey = useMemo(() => {
     const out: Record<string, number | null> = {};

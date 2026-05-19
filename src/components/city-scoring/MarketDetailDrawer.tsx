@@ -237,7 +237,7 @@ export function MarketDetailDrawer({
     };
 
     loadLiveEvidence();
-  }, [open, market.city, market.state, refreshVersion]);
+  }, [open, market.cityId, refreshVersion]);
 
   const handleExportRawSignals = () => {
     if (!signals.length) {

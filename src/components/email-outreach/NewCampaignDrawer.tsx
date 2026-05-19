@@ -79,7 +79,7 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
         await callProxy(`/campaigns/${id}/schedule`, "POST", {
           timezone, days_of_the_week: days.map(Number),
           start_hour: startHour, end_hour: endHour,
-          min_time_btw_emails: 10,
+          min_time_btw_emails: Math.max(1, Math.min(180, minGapMinutes)),
           max_new_leads_per_day: Math.max(1, Math.min(200, dailyCap)),
         });
       } catch (e) { console.warn("schedule failed", e); }
@@ -104,17 +104,20 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
         });
       } catch (e) { console.warn("sequences failed", e); }
 
-      // Test Mode: push the safe recipient as the only lead in the campaign.
+      // Test Mode: push N safe recipients (gmail+aliases) as leads.
       if (testMode) {
         try {
-          await callProxy(`/campaigns/${id}/leads`, "POST", {
-            lead_list: [{
-              email: effectiveTestRecipient,
-              first_name: profile?.full_name?.split(" ")[0] ?? "Test",
-              last_name: "Recipient",
-              custom_fields: { test_mode: "true" },
-            }],
-          });
+          const base = effectiveTestRecipient;
+          const [local, domain] = base.split("@");
+          const cleanLocal = (local ?? "").split("+")[0];
+          const count = Math.max(1, Math.min(10, testLeadCount));
+          const lead_list = Array.from({ length: count }, (_, i) => ({
+            email: count === 1 ? base : `${cleanLocal}+test${i + 1}@${domain}`,
+            first_name: `Test${i + 1}`,
+            last_name: "Recipient",
+            custom_fields: { test_mode: "true" },
+          }));
+          await callProxy(`/campaigns/${id}/leads`, "POST", { lead_list });
         } catch (e) { console.warn("test lead push failed", e); }
       }
 

@@ -1032,6 +1032,7 @@ export type Database = {
           lead_id: string | null
           payload: Json | null
           received_at: string
+          reply_intent: string | null
           reply_message: string | null
           reply_message_id: string | null
         }
@@ -1043,6 +1044,7 @@ export type Database = {
           lead_id?: string | null
           payload?: Json | null
           received_at?: string
+          reply_intent?: string | null
           reply_message?: string | null
           reply_message_id?: string | null
         }
@@ -1054,6 +1056,7 @@ export type Database = {
           lead_id?: string | null
           payload?: Json | null
           received_at?: string
+          reply_intent?: string | null
           reply_message?: string | null
           reply_message_id?: string | null
         }

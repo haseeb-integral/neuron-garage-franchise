@@ -48,6 +48,10 @@ export function SmartLeadConnectionPanel() {
   const [recentEvents, setRecentEvents] = useState<
     Array<{ id: string; event_type: string; lead_email: string | null; received_at: string }>
   >([]);
+  const [lastSuccessfulCall, setLastSuccessfulCall] = useState<string | null>(
+    () => localStorage.getItem("smartlead_last_ok_call"),
+  );
+  const [webhookFired24h, setWebhookFired24h] = useState<boolean | null>(null);
 
   const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/smartlead-webhook`;
 
@@ -66,6 +70,9 @@ export function SmartLeadConnectionPanel() {
         setAccountEmail(accounts[0].from_email ?? accounts[0].username ?? null);
         setAccountName(accounts[0].from_name ?? null);
       }
+      const now = new Date().toISOString();
+      localStorage.setItem("smartlead_last_ok_call", now);
+      setLastSuccessfulCall(now);
       setState("ok");
     } catch (e) {
       setState("error");
@@ -73,6 +80,7 @@ export function SmartLeadConnectionPanel() {
       toast.error("SmartLead connection failed");
     }
   };
+
 
   const loadWebhooksForAllCampaigns = async (camps: Campaign[]) => {
     setLoadingWebhooks(true);
@@ -139,7 +147,14 @@ export function SmartLeadConnectionPanel() {
       .order("received_at", { ascending: false })
       .limit(5);
     setRecentEvents(data ?? []);
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { count } = await supabase
+      .from("smartlead_events")
+      .select("id", { count: "exact", head: true })
+      .gte("received_at", cutoff);
+    setWebhookFired24h((count ?? 0) > 0);
   };
+
 
   useEffect(() => {
     (async () => {
@@ -235,6 +250,26 @@ export function SmartLeadConnectionPanel() {
           )}
         </div>
       </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-4 rounded-lg border border-[#eef2f7] bg-[#f7faff] px-3 py-2 text-[11px]">
+        <div className="flex items-center gap-1.5">
+          <span className="font-semibold uppercase tracking-wider text-[#5a6b85]">Last successful API call:</span>
+          <span className="font-mono text-[#07142f]">
+            {lastSuccessfulCall ? new Date(lastSuccessfulCall).toLocaleString() : "—"}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="font-semibold uppercase tracking-wider text-[#5a6b85]">Webhook fired in last 24h:</span>
+          {webhookFired24h === null ? (
+            <span className="text-[#5a6b85]">…</span>
+          ) : webhookFired24h ? (
+            <span className="inline-flex items-center gap-1 font-bold text-emerald-700"><CheckCircle2 size={12} /> Yes</span>
+          ) : (
+            <span className="inline-flex items-center gap-1 font-bold text-amber-700"><AlertCircle size={12} /> No</span>
+          )}
+        </div>
+      </div>
+
 
       <div className="mt-5 border-t border-[#eef2f7] pt-4">
         <div className="mb-2 flex items-start justify-between gap-3">

@@ -26,12 +26,53 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
   const [testOverride, setTestOverride] = useState("");
   const [testLeadCount, setTestLeadCount] = useState(5);
   // Step 2
-  const [timezone, setTimezone] = useState("America/Chicago");
+  const detectedTz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; } })();
+  const allTimezones = (() => {
+    try {
+      // @ts-ignore - supportedValuesOf available in modern browsers
+      const list: string[] = typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [];
+      return list.length ? list : ["UTC", "America/Chicago", "America/New_York", "America/Denver", "America/Los_Angeles", "Asia/Karachi", "Asia/Kolkata", "Europe/London"];
+    } catch { return ["UTC", "America/Chicago", "America/New_York", "America/Denver", "America/Los_Angeles", "Asia/Karachi", "Asia/Kolkata", "Europe/London"]; }
+  })();
+  const [timezone, setTimezone] = useState(detectedTz);
   const [startHour, setStartHour] = useState("09:00");
   const [endHour, setEndHour] = useState("18:00");
   const [days, setDays] = useState<string[]>(["1", "2", "3", "4", "5"]);
-  const [dailyCap, setDailyCap] = useState(50);
-  const [minGapMinutes, setMinGapMinutes] = useState(10);
+  const [dailyCap, setDailyCap] = useState(200);
+  const [minGapMinutes, setMinGapMinutes] = useState(1);
+
+  // Live clock in the selected timezone
+  const [nowTick, setNowTick] = useState(Date.now());
+  useEffect(() => { const id = setInterval(() => setNowTick(Date.now()), 30_000); return () => clearInterval(id); }, []);
+  const tzNow = (() => {
+    try {
+      const fmt = new Intl.DateTimeFormat("en-US", { timeZone: timezone, hour: "2-digit", minute: "2-digit", weekday: "short", month: "short", day: "numeric", hour12: false });
+      return fmt.format(new Date(nowTick));
+    } catch { return ""; }
+  })();
+  const tzHHMM = (() => {
+    try {
+      const fmt = new Intl.DateTimeFormat("en-GB", { timeZone: timezone, hour: "2-digit", minute: "2-digit", hour12: false });
+      return fmt.format(new Date(nowTick));
+    } catch { return "09:00"; }
+  })();
+  const tzWeekday = (() => {
+    try {
+      const fmt = new Intl.DateTimeFormat("en-US", { timeZone: timezone, weekday: "short" });
+      // 0=Sun..6=Sat to match SmartLead (0=Sun)
+      const map: Record<string, string> = { Sun: "0", Mon: "1", Tue: "2", Wed: "3", Thu: "4", Fri: "5", Sat: "6" };
+      return map[fmt.format(new Date(nowTick))] ?? "1";
+    } catch { return "1"; }
+  })();
+  const setStartNow = () => {
+    setStartHour(tzHHMM);
+    // ensure today's weekday is enabled
+    setDays((prev) => prev.includes(tzWeekday) ? prev : [...prev, tzWeekday].sort());
+    // ensure end hour is after start
+    const [h] = tzHHMM.split(":").map(Number);
+    const endH = Math.min(23, h + 4);
+    setEndHour(`${String(endH).padStart(2, "0")}:59`);
+  };
   // Step 3
   const [trackOpens, setTrackOpens] = useState(true);
   const [trackClicks, setTrackClicks] = useState(true);

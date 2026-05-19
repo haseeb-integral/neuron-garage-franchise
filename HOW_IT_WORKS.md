@@ -73,10 +73,17 @@ What the user gets out of each step:
 - **Email Accounts panel (`EmailAccountsPanel.tsx`)** — lists connected mailboxes pulled from `GET /email-accounts`.
 - **Prospect Batches panel (`ProspectBatchesPanel.tsx`)** — groups `prospects_staging` rows by `batch_id`, resolves campaign names via `campaign_cache`, and exposes a "Retry" button per lead with `qa_status='rejected'` to re-push it to SmartLead.
 - **New Campaign drawer (`NewCampaignDrawer.tsx`)** — creates a campaign via `POST /campaigns/create`. Open/click/reply tracking toggles are emitted as SmartLead's NEGATIVE flags (`DONT_TRACK_EMAIL_OPEN`, `DONT_TRACK_LINK_CLICK`, `DONT_TRACK_REPLY_TO_AN_EMAIL`) — sending `TRACK_OPENS`/`TRACK_CLICKS` returns 400.
+  - **Default name** auto-fills as `Outreach · MMM-DD · HH:mm TZ · vN` (vN persisted in `localStorage.ng_campaign_seq`); user can overwrite.
+  - **Test Mode** (yellow toggle): swaps the recipient list (TO) with the logged-in user's `auth.users.email` plus an override field. FROM is always the SmartLead mailbox — Test Mode only swaps TO. Campaign name is prefixed `[TEST]` automatically so it never gets confused with real sends in the campaign list.
+  - **Inbox picker:** user selects which connected mailboxes the campaign sends from (default = all). All / None toggles. Per-inbox = parallel sends; single-inbox = sequential sends. SmartLead's cron polls every ~10–15 min so the time you click Launch is **not** the exact moment the first email goes out — there's a poll delay.
+  - **Min gap between emails** enforced at 3 minutes minimum (SmartLead `/campaigns/{id}/schedule` rejects values < 3).
+  - **Sequence body today does not include `{{unsubscribe}}`** — blocker tracked as OPEN_TASKS 17f. Real (non-test) sends should not launch until that merge tag is added (CAN-SPAM).
 - **Import Leads wizard (`ImportLeadsWizard.tsx`)** — Step 1 picks a Source (Apollo, Clay, LinkedIn Navigator, CSV, Manual). Step 2 maps fields. Step 3 QA-stages rows into `prospects_staging`. Step 4 pushes approved rows to SmartLead in a batch.
-- **Webhook → Inbox loop:** SmartLead POSTs to `smartlead-webhook` → row inserted into `smartlead_events` (with `reply_intent` set for replies) → Postgres realtime → Inbox panel updates without refresh.
+- **Webhook → Inbox loop:** SmartLead POSTs to `smartlead-webhook` → row inserted into `smartlead_events` (with `reply_intent` set for replies) → Postgres realtime → Inbox panel updates without refresh. From there: click a HOT reply → "Promote to Pipeline" → row created in `candidates` at the "New Lead" stage (manual today; auto-promotion on HOT intent is a future hardening item).
+- **Open-rate caveat:** Gmail's image proxy and Apple Mail Privacy Protection pre-fetch every tracking pixel as soon as an email lands, so the **Open Rate metric is inflated to ~100% on those inboxes**. Trust **clicks** and **replies** as real engagement signals, not opens. Tooltip on the Analytics panel is tracked as OPEN_TASKS 17g.
 - **AI personalization** continues to run through `LOVABLE_API_KEY` for email-body generation.
-- **Today's status (May 19):** End-to-end live. Test sends only — connect to Teacher Search promotion path next.
+- **Today's status (May 19):** End-to-end live and proven via Gmail `+alias` test loop (5 leads → send → reply → Inbox → manual Promote to Pipeline). Pause/Resume/Stop verified. **Not yet ready for real teacher sends** — see blockers above + need Teacher Search promotion path (blocked on Brett teacher-source decision).
+
 
 ### `/candidate-pipeline` Candidate Pipeline — `CandidatePipeline.tsx`
 - **User sees:** Kanban board with columns: New Lead → Qualification → Confirmation → Signing. Click a candidate to open the detail panel (Overview / Qualification / Committee Votes / Homework / Lead Sheet / Notes / Stage History).

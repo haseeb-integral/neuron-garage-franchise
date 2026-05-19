@@ -310,6 +310,13 @@ See **`TEACHER_IDEAL_PROFILE.md`** for who we are recruiting and why — read th
 - **Effort remaining:** ~1.5 hrs · **Risk:** low · **Files:** `supabase/functions/smartlead-proxy/index.ts` (idempotency cache).
 
 
+### 17n. Import Batches — per-batch lead drill-down (added May 19) ✅ v1 shipped May 19
+- **Background:** May 19 — user pushed a 2-row CSV but the destination SmartLead campaign showed 5 leads. Cause: 3 leftover test leads pre-existed in the campaign + SmartLead's account-wide dedup reused existing `lead_id`s for the 2 new emails. No duplicate sends occurred, but the UI gave the user no way to verify this without leaving the app.
+- **v1 shipped (May 19, this commit):** rows in the Import Batches panel are now clickable → opens `BatchDetailDrawer` showing every row from `prospects_staging` filtered by `batch_id` (email, name, city, QA status, rejection reason), a deep link to the SmartLead campaign analytics page, and an amber disambiguation banner whenever the campaign's `total_leads` (from `campaigns/<id>/leads`) differs from this batch's `approved_count`. Banner copy explains SmartLead's account-wide `lead_id` reuse so users don't think it's a bug.
+- **Still to do (v2):** real-time per-lead SmartLead status (SCHEDULED / SENT / OPENED / REPLIED) inside the drawer — currently rows only show our staging QA state, not what SmartLead is doing with each lead. Will fold into Task 21.
+- **Effort remaining:** ~4 hrs · **Risk:** low · **Files:** `BatchDetailDrawer.tsx` (extend), `smartlead-proxy` (per-lead status fetch).
+
+
 ---
 
 ## 🚧 Current risk

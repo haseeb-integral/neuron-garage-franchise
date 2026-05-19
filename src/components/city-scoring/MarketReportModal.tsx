@@ -121,14 +121,11 @@ export function MarketReportModal({ open, onClose, market, categoryScores, refre
     const loadReportData = async () => {
       setLoading(true);
       try {
-        const { data: cityRow } = await supabase
-          .from("cities")
-          .select("*")
-          .eq("city", market.city)
-          .eq("state", market.state)
-          .maybeSingle();
-
-        if (!cityRow) {
+        // cityId references us_cities_scored.id. Legacy signals/competitors/jobs
+        // tables are still keyed by legacy cities.id, so seeded-only rows will
+        // return empty until seed-on-demand wires them to the new id.
+        const cityId = market.cityId;
+        if (!cityId) {
           setLiveSignals([]);
           setLiveCompetitors([]);
           setLatestJob(null);
@@ -136,9 +133,9 @@ export function MarketReportModal({ open, onClose, market, categoryScores, refre
         }
 
         const [{ data: signals }, { data: competitors }, { data: jobs }] = await Promise.all([
-          supabase.from("city_market_signals").select("*").eq("city_id", cityRow.id),
-          supabase.from("city_competitors").select("*").eq("city_id", cityRow.id).order("created_at", { ascending: false }),
-          supabase.from("city_fetch_jobs").select("*").eq("city_id", cityRow.id).order("created_at", { ascending: false }).limit(1),
+          supabase.from("city_market_signals").select("*").eq("city_id", cityId),
+          supabase.from("city_competitors").select("*").eq("city_id", cityId).order("created_at", { ascending: false }),
+          supabase.from("city_fetch_jobs").select("*").eq("city_id", cityId).order("created_at", { ascending: false }).limit(1),
         ]);
 
         setLiveSignals((signals ?? []) as LiveSignal[]);

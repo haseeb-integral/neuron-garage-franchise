@@ -1,97 +1,62 @@
-# Fix: Metro Area + County missing for all cities except Austin
+## The problem (plain English)
 
-## What's actually broken
+Right now the Ask AI bar does **not** literally do what you ask. It only knows how to "nudge" the 6 sliders by at most ±20 points, then a frontend rule says "if one category was nudged up, make it 60% and split the rest 8/8/8/8/8". That's why you got `Demand 60 / others 8`, even though you said **100%**.
 
-I queried `us_cities_scored` directly:
+The fix: teach the AI to return **absolute weights** (exact percentages) when you say things like "100%", "only", "exclusively", "just demand", or give explicit numbers like "demand 50, pricing 30". The frontend then sets the sliders to *exactly* those values — no rebalancing, no dominant-detection magic.
 
-| total rows | with `county_name` | with `metro_area` |
-|---|---|---|
-| 960 | **1** | **1** |
-
-Only Austin has values. Every other city — Dallas, Fort Worth, Houston, Allen, Leander, etc. — shows `—` because the columns are NULL.
-
-**Root cause:** `seed-cities-database` never wrote `county_name` or `metro_area`. The single Austin row got them from a legacy manual insert. The hardcoded map in `supabase/functions/_shared/cityGeo.ts` only covers ~50 cities and is only used by the legacy (now-deleted) `fetch-city-market-data-sow` function.
-
-Good news: the reference table `us_cities_geo` already has `county_name` for every U.S. city — we just never copied it over.
+We keep the old delta path for vague asks like "lean a bit more on pricing" — that one should still nudge softly.
 
 ---
 
-## Fix (3 steps)
+## What changes
 
-### Step 1 — Backfill `county_name` for all 960 cities (instant, SQL only)
+### 1. `supabase/functions/ai-city-query/index.ts`
 
-One migration:
-```sql
-UPDATE public.us_cities_scored s
-SET county_name = g.county_name
-FROM public.us_cities_geo g
-WHERE s.county_name IS NULL
-  AND LOWER(g.state_name) = LOWER(s.state_name)
-  AND (LOWER(g.city_ascii) = LOWER(s.city_name)
-       OR LOWER(g.city)       = LOWER(s.city_name));
-```
-Expected: ~955+ cities filled in one shot. Any unmatched rows (typos, alt spellings) get logged so I can fix manually.
+- **Extend the JSON contract** the AI must return:
+  ```
+  weightMode: "absolute" | "delta"     // new
+  absoluteWeights: { demand, pricingPower, competitiveLandscape,
+                     franchiseeSupply, easeOfOperations, parentMindset }  // new, 0–100 each
+  weightAdjustments: { ... }            // kept, used only when mode = "delta"
+  ```
+- **Update SYSTEM_PROMPT** with a new rule block:
+  > If the user states an exact percentage, says "only / exclusively / 100% / just / pure / all", or names specific numbers for one or more categories, return `weightMode: "absolute"` and set `absoluteWeights` to exactly what they said. Any category the user did not mention must be set to 0. Do not normalize, do not round to "fair" values — match the user's words literally.
+  > Otherwise (vague intent like "lean toward demand"), return `weightMode: "delta"` and use `weightAdjustments` as today.
+- **Sanitize** `absoluteWeights`: clamp each to 0–100, only normalize if the user-stated total is wildly off (e.g. >120 or <80). For "100% demand" the AI returns `{demand:100, others:0}` and we pass it through untouched.
 
-### Step 2 — Backfill `metro_area` (CBSA) for all 960 cities
+### 2. `src/pages/CityScoring.tsx` (the `askAi` handler around lines 480–524)
 
-`us_cities_geo` does **not** have metro area, so I need a county → CBSA crosswalk. Plan:
+- Branch on `result.weightMode`:
+  - `"absolute"` → set `weights`, `appliedWeights`, and `customWeightsSnapshot` **directly** to `result.absoluteWeights`. No dominant detection, no 60/8/8/8/8/8 rebalance.
+  - `"delta"` → keep current behavior (the dominant detection + additive nudge path stays as a safety net for vague queries).
+- Toast copy for absolute mode: *"AI set your category weights exactly as requested."*
 
-1. Bundle the Census Bureau **March 2023 CBSA delineation file** as a static JSON inside a new one-shot edge function `backfill-city-metro`. ~3,100 counties → ~390 CBSAs. Public domain, ~150 KB. Key = `LOWER(state_abbr) + '|' + LOWER(county_name)`, value = the official CBSA title (e.g. `"Dallas-Fort Worth-Arlington, TX"`).
-2. Function reads all `us_cities_scored` rows, joins on (state_abbr, county_name), writes `metro_area`. Idempotent — only overwrites if currently NULL or differs.
-3. I run it once. Expected coverage: ~920+ cities. The ~40 that fall outside any CBSA (truly rural micropolitan or unmatched) stay NULL and are listed in the function response so Sam can decide.
+### 3. `src/components/city-scoring/AiAnswerCard.tsx`
 
-### Step 3 — Make future seeds populate both fields
+- When `weightMode === "absolute"`, render the chips from `absoluteWeights` instead of `weightAdjustments`, and label them `weight · Demand 100%`, `weight · Pricing Power 0%`, etc. — so the user sees the literal compliance instead of "+20 / −20" deltas.
+- Hide zero-value chips in absolute mode to keep the card tidy (show only categories with weight > 0, plus a small "others: 0%" pill).
 
-Update `seed-cities-database` so newly inserted/refreshed rows always set `county_name` (from `us_cities_geo`) and `metro_area` (from the same CBSA crosswalk, extracted into `_shared/cbsaLookup.ts`). Also patch `AddCityModal` so manually added cities get both immediately — same two lookups, no UI change.
+### 4. Doc sync (Mode A — drafts, awaiting your "go" before I touch files)
 
----
+- **HOW_IT_WORKS.md** — Ask AI section: add "Absolute vs delta weight modes — literal requests like '100% demand' now set sliders exactly, not via a +20 nudge."
+- **PROJECT_CONTEXT.md** — note the new `weightMode` / `absoluteWeights` fields in the `ai-city-query` response.
+- **GLOSSARY.md** — add "Absolute weight mode = Ask AI sets sliders to the exact numbers the user named; everything else goes to 0."
 
-## What the user will see (Dallas example, after fix)
-
-```
-Dallas, TX
-Tier: B (Tier 2)        Market Type: Suburb
-Metro Area: Dallas-Fort Worth-Arlington, TX
-County:     Dallas
-```
-
-(matches Austin's existing display)
+No DB migrations. No schema changes. Existing `ai_query_history.response` is JSONB so the extra fields slot in cleanly.
 
 ---
 
-## Files I will touch
+## What stays the same
 
-- new migration: `supabase/migrations/<ts>_backfill_county_from_geo.sql`
-- new edge function: `supabase/functions/backfill-city-metro/index.ts` + bundled `cbsaCrosswalk.json`
-- new shared module: `supabase/functions/_shared/cbsaLookup.ts`
-- edited: `supabase/functions/seed-cities-database/index.ts` (set both fields on insert)
-- edited: `src/components/city-scoring/AddCityModal.tsx` (set both fields on Add City)
-
-No UI/component changes to the drawer or table — they already render these fields, they're just NULL today.
+- The 6 category keys and the scoring math (Sam-only — untouched).
+- The delta path for fuzzy/qualitative requests.
+- Filters (state, tier, minScore) — already work fine.
+- The 6-turn conversation cap and history.
 
 ---
 
-## Risk / rollback
+## One small judgement call for you
 
-- **Risk: low.** Both columns are currently almost entirely NULL — any value is strictly better. Backfill is idempotent (only fills NULLs).
-- **Rollback:** `UPDATE us_cities_scored SET county_name = NULL, metro_area = NULL WHERE id <> '<austin-id>'`.
+When the user says **"100% demand"**, should the 5 other categories go to **exactly 0%** (so they contribute nothing to the composite — composite literally = demand score), or should we floor them at **1% each** so the composite still has a tiny stabilizing signal?
 
----
-
-## Doc-sync (after implementation, Mode A — drafts for your "go")
-
-- **PROJECT_CONTEXT.md** — `us_cities_scored` row: note county + metro now populated for ~960 cities; new `backfill-city-metro` edge function + `_shared/cbsaLookup.ts`.
-- **HOW_IT_WORKS.md** — Add City flow: also fills county + metro from `us_cities_geo` + CBSA crosswalk.
-- **OPEN_TASKS.md** — add `~~B12. Backfill metro+county~~ ✅` line under completed.
-- **GLOSSARY.md** — add **CBSA** = Core Based Statistical Area; the Census Bureau metro/micro area name we display as "Metro Area".
-
----
-
-## One clarifying question before I implement
-
-For the ~5–40 cities where the CBSA crosswalk has no match (truly rural cities outside any CBSA — e.g. some Montana/Wyoming towns above 50k that aren't in a metro), do you want:
-
-- **(a)** Leave `metro_area` NULL and the drawer keeps showing `—` for those, OR
-- **(b)** Fall back to `"{city_name} micropolitan area, {state_abbr}"` so the field is never empty?
-
-If you don't pick, I'll go with **(a)** — never invent a name.
+Default I'll ship: **exactly 0%** — that's what "100%" means in plain English. Tell me if you want the 1% floor instead.

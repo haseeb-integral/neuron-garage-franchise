@@ -477,13 +477,30 @@ const CityScoring = () => {
       if (f.tier) setTierFilter(f.tier);
       if (typeof f.minScore === "number") setMinScore(f.minScore);
 
-      // Apply weight nudges to draft + applied master weights so Ask AI behaves
-      // like an immediate search refinement rather than a pending local edit.
+      // Apply weights — absolute mode sets sliders to exactly what user asked;
+      // delta mode keeps the old nudge + dominant-detection behavior.
+      const mode = (result as any).weightMode === "absolute" ? "absolute" : "delta";
+      const abs = (result as any).absoluteWeights ?? {};
       const adj = result.weightAdjustments ?? {};
       const adjEntries = (Object.entries(adj) as [CategoryKey, number][])
         .filter(([, v]) => Number(v) !== 0);
-      const anyDelta = adjEntries.length > 0;
-      if (anyDelta) {
+
+      if (mode === "absolute") {
+        setScoringModel("Custom");
+        setActiveSavedSearchId(null);
+        setWeights((prev) => {
+          const keys = Object.keys(prev) as CategoryKey[];
+          const next = { ...prev } as Record<CategoryKey, number>;
+          keys.forEach((k) => {
+            const v = Number(abs[k]);
+            next[k] = Number.isFinite(v) ? Math.max(0, Math.min(100, Math.round(v))) : 0;
+          });
+          setAppliedWeights(next);
+          setCustomWeightsSnapshot({ ...next });
+          return next;
+        });
+        toast.success("AI set your category weights exactly as requested.");
+      } else if (adjEntries.length > 0) {
         setScoringModel("Custom");
         setActiveSavedSearchId(null);
         setWeights((prev) => {

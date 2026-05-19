@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 export type AiResult = {
   summary: string;
   filters: { state: string | null; minScore: number | null; tier: string | null };
+  weightMode?: "absolute" | "delta";
+  absoluteWeights?: Record<string, number>;
   weightAdjustments: Record<string, number>;
   reasoning_steps: string[];
   dataGaps: string[];
@@ -46,9 +48,13 @@ export function AiAnswerCard({ result, query, turnCount, onRefine, loading, appl
   // Prefer the FINAL applied weights (post-rebalance) over the raw backend
   // deltas, so chips match the actual sliders. Fall back to deltas only if
   // applied weights weren't passed in.
-  const usedAnyAdjustment = Object.values(result.weightAdjustments ?? {}).some((v) => v !== 0);
+  const isAbsolute = result.weightMode === "absolute";
+  const usedAnyAdjustment =
+    isAbsolute ||
+    Object.values(result.weightAdjustments ?? {}).some((v) => v !== 0);
   const weightChips = appliedWeights && usedAnyAdjustment
     ? Object.entries(appliedWeights)
+        .filter(([, v]) => !isAbsolute || Number(v) > 0)
         .sort((a, b) => Number(b[1]) - Number(a[1]))
         .map(([k, v]) => `${CATEGORY_LABELS[k] ?? k} ${Math.round(Number(v))}%`)
     : Object.entries(result.weightAdjustments)

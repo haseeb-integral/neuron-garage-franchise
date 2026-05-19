@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Copy, KeyRound, UserPlus, RefreshCw } from "lucide-react";
+import { Copy, KeyRound, UserPlus, RefreshCw, Mail } from "lucide-react";
 
 const APP_URL = "https://neuron-garage-franchise.lovable.app";
 

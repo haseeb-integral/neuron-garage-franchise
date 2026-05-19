@@ -196,20 +196,31 @@ See **`TEACHER_IDEAL_PROFILE.md`** for who we are recruiting and why — read th
 
 ## ⚡ Email Outreach + Candidate Pipeline — Pending
 
-### 17. SmartLead integration (Feature 3)
-- Wire SmartLead ("Integral Leads"); AI-personalized emails from teacher data
-- **Risk:** high — real emails go out; send 1 test email to yourself first
+~~### 17. SmartLead integration (Feature 3)~~ ✅ May 19 — Phases 1–5 complete
+- Phase 1: `smartlead-proxy` edge function + `SMARTLEAD_API_KEY` + Connection panel
+- Phase 2: Import Leads wizard + `prospects_staging` + Source dropdown (Apollo / Clay / LinkedIn Navigator / CSV / Manual)
+- Phase 3: Campaigns panel + `campaign_cache` + New Campaign drawer (with NEGATIVE `track_settings` flags)
+- Phase 4: Analytics panel (single `/analytics/overview` call, per-campaign fallback) + Email Accounts panel + Dashboard|Analytics tab toggle
+- Phase 5: `smartlead-webhook` + `smartlead_events` table + Realtime Inbox + intent classifier (HOT green / NOT_INTERESTED gray / OOO blue / NEUTRAL yellow) + unread badge + batch retry + connection health strip
 
-### 18. Teacher → Lead conversion
-- Teacher responds via SmartLead → enters Candidate Pipeline at "New Lead"
+### 18. Teacher → Lead conversion (next up)
+- Teacher promoted in Teacher Search → row staged in `prospects_staging` → pushed to a SmartLead campaign via the Import Wizard programmatically
+- Reply with intent `HOT` → auto-create row in `candidates` at "New Lead"
 - **Risk:** medium
 
 ### 19. Candidate Pipeline — real data wiring
-- Replace placeholder candidates with real leads from Email Outreach
+- Replace placeholder candidates with real leads from Email Outreach (depends on #18)
 - **Risk:** medium
 
 ### 20. PDF export of candidate lead sheet
 - Per-candidate PDF with all card details (Kaylie's ask, May 8)
+- **Risk:** low-medium
+
+### 21. Email Outreach — production hardening follow-ups (deferred, added May 19)
+- Replace keyword-based reply-intent classifier with Lovable AI Gateway (Gemini Flash) — better OOO detection on multi-language replies
+- Per-user inbox assignment / shared inbox views
+- Sequence A/B testing UI
+- Bounce / unsubscribe automation rules
 - **Risk:** low-medium
 
 ---

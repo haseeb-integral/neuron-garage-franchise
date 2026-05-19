@@ -43,6 +43,18 @@
 
 ---
 
+## Email Outreach (SmartLead)
+
+- **Reply Intent** — auto-tag on every `EMAIL_REPLIED` row in `smartlead_events`. Values: `HOT` (green), `NOT_INTERESTED` (gray), `OOO` / Out of Office (blue), `NEUTRAL` (yellow). Classified by keyword heuristic in `smartlead-webhook`; planned upgrade to Lovable AI in task #21.
+- **Import Batch** — a group of leads staged via the Import Leads wizard, sharing a `batch_id` in `prospects_staging`. Pushed to SmartLead as a single bulk call; failed rows keep `qa_status='rejected'` and expose a Retry button.
+- **Prospect Source** — value in `prospects_staging.source`. One of `apollo`, `clay`, `linkedin_navigator`, `csv`, `manual` (Step 1 of the wizard).
+- **Campaign Cache** — `campaign_cache` table. Local mirror of SmartLead campaigns so Batches/Inbox can resolve names without hitting the API on every render.
+- **Negative `track_settings`** — SmartLead's `POST /campaigns/create` expects opt-OUT flags (`DONT_TRACK_EMAIL_OPEN`, `DONT_TRACK_LINK_CLICK`, `DONT_TRACK_REPLY_TO_AN_EMAIL`), not opt-IN. Sending `TRACK_OPENS`/`TRACK_CLICKS` returns 400. (Phase 4 hotfix.)
+- **Connection Health Strip** — top-of-page widget in `SmartLeadConnectionPanel` showing "Last successful API call" timestamp + 24-hour webhook activity indicator.
+- **SmartLead rate limit** — 10 requests per 2 seconds per API key. Always prefer `/analytics/overview` (one call) over looping campaigns.
+
+---
+
 ## Data / Architecture
 
 - **`us_cities_scored`** — planned seed table for all ~800 U.S. cities with pre-computed scores. Replaces per-city live fetches. Task #0 deliverable.

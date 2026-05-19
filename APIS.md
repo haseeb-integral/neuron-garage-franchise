@@ -1,6 +1,6 @@
 # APIS.md — Neuron Garage
 
-> Snapshot date: May 18, 2026
+> Snapshot date: May 19, 2026 (SmartLead promoted to Section A)
 > Generated from the live Lovable Cloud secrets list, edge function source (`Deno.env.get(...)`), and the May 15 meeting decisions.
 > Update this file when an API is added, removed, blocked, or changes status. See `PROJECT_CONTEXT.md` for the short inventory table.
 
@@ -105,6 +105,25 @@ Every API below has a configured secret in Lovable Cloud AND is read by deployed
 - **Models in use:** `google/gemini-2.5-flash` for fast tasks, `openai/gpt-5-mini` for nuance.
 - **Status:** Live ✅
 
+### SmartLead ("Integral Leads")
+- **Purpose:** Outbound email — campaigns, lead push, analytics, reply tracking. Phases 1–5 complete May 19.
+- **Secret:** `SMARTLEAD_API_KEY`
+- **Used in:** `supabase/functions/smartlead-proxy/index.ts`, `supabase/functions/smartlead-webhook/index.ts`
+- **Endpoints called (via proxy):**
+  - `GET /campaigns` (list) and `GET /campaigns/:id`
+  - `POST /campaigns/create` (NewCampaignDrawer)
+  - `POST /campaigns/:id/leads` (bulk lead push from Import Wizard)
+  - `GET /analytics/overview` (preferred — single aggregate call; per-campaign loop only as fallback)
+  - `GET /email-accounts` (list connected mailboxes)
+  - `GET /campaigns/:id/statistics` (campaign-level open/reply/bounce)
+- **Webhooks:** POST → `…/functions/v1/smartlead-webhook` for `EMAIL_SENT`, `EMAIL_OPENED`, `EMAIL_CLICKED`, `EMAIL_REPLIED`, `EMAIL_BOUNCED`. Writes rows to `smartlead_events` and tags `reply_intent` for `EMAIL_REPLIED`.
+- **`track_settings` gotcha:** SmartLead expects a NEGATIVE list. Send `DONT_TRACK_EMAIL_OPEN` / `DONT_TRACK_LINK_CLICK` / `DONT_TRACK_REPLY_TO_AN_EMAIL` when the corresponding toggle is unchecked. Sending `TRACK_OPENS` / `TRACK_CLICKS` returns 400. (Fixed in `NewCampaignDrawer.tsx`, Phase 4 hotfix.)
+- **Rate limit:** 10 requests / 2 seconds per API key. Proxy enforces this; always prefer `/analytics/overview` over per-campaign loops.
+- **Owner of key:** Haseeb / Brett.
+- **Docs:** https://help.smartlead.ai/api
+- **Status:** Live ✅
+
+
 ### Supabase (Lovable Cloud)
 - **Purpose:** Auth, Postgres, Edge Functions, Storage (no buckets yet).
 - **Secrets:** `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_PUBLISHABLE_KEY(S)`, `SUPABASE_SECRET_KEYS`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWKS`, `SUPABASE_DB_URL`
@@ -122,11 +141,9 @@ These are decided-on but blocked by an external dependency.
 - **Blocker:** Brett to sign up at https://www.greatschools.org/api (14-day free trial → $52.50/mo) and paste the key into Lovable Cloud.
 - **Status:** ⏳ Waiting on Brett
 
-### SmartLead ("Integral Leads")
-- **Purpose:** Outbound email send + reply tracking for Email Outreach.
-- **Secret needed:** `SMARTLEAD_API_KEY`
-- **Blocker:** Sprint task #17. Account exists; integration code not built.
-- **Status:** ⏳ Sprint pending
+### SmartLead ("Integral Leads") — promoted to Section A on May 19
+See the SmartLead block in Section A for the live wiring. Section B entry retained for history only.
+
 
 ### Apollo
 - **Purpose:** Teacher sourcing — bulk export of email-enriched K–6 teachers in target cities.

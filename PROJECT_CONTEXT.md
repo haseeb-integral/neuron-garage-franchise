@@ -1,6 +1,6 @@
 # PROJECT_CONTEXT.md — Neuron Garage
 
-> Snapshot date: May 18, 2026
+> Snapshot date: May 19, 2026 (Email Outreach / SmartLead Phases 1–5 complete)
 > Live URL: https://neuron-garage-franchise.lovable.app
 > Preview: https://id-preview--c74b81ad-10d7-4a10-b6c8-de17f48a663e.lovable.app
 > Stack: React + TS + Vite + Tailwind + shadcn, Lovable Cloud (Supabase) backend
@@ -74,6 +74,9 @@ All tables have RLS enabled. `authenticated` role can read/write unless noted.
 | `candidate_checklist_items` | Stage-specific checklists (auto-seeded on entering `confirmation`) |
 | `onboarding_records` | Franchisee onboarding header rows |
 | `onboarding_steps` | Per-record step list |
+| `smartlead_events` | Webhook event log from SmartLead (event_type, campaign_id, lead_email, payload jsonb, `reply_intent` enum). Realtime-enabled — Inbox panel subscribes for live updates. *Added Phase 5, May 19.* |
+| `campaign_cache` | Cached snapshot of SmartLead campaigns (id, name, status, stats) refreshed by `smartlead-proxy`. Lets Batches/Inbox panels resolve campaign names without re-hitting the API. *Added Phase 3.* |
+| `prospects_staging` | Import-wizard staging table for leads en route to SmartLead. Columns include `batch_id`, `source` (Apollo / Clay / LinkedIn Navigator / CSV / Manual), `qa_status` (pending / approved / rejected), `smartlead_lead_id`, `pushed_at`. *Added Phase 2.* |
 
 DB functions: `handle_new_user`, `has_role`, `update_updated_at_column`, `fill_city_coords`, `seed_confirmation_checklist`, `trg_seed_confirmation_checklist`.
 
@@ -84,13 +87,17 @@ No storage buckets configured.
 ## 3. Edge Functions (deployed)
 
 - `admin-create-user` — admin-only user provisioning
+- `ai-city-query` — Lovable AI Gateway proxy for "Ask AI" answers about a city
 - `fetch-city-market-data` — legacy city data refresh
 - `fetch-city-market-data-sow` — SOW-aligned city refresh (46-metric pull → scoring)
 - `fetch-school-counts` — NCES CCD public-elementary counts per city
 - `seed-cities-database` — bulk seed of `us_cities_scored` (Census/BLS/BEA/FRED/NCES) **and** per-school upsert into `public_schools` using the same NCES response (no extra API calls). 948 cities seeded, all with `composite_score_default` populated.
+- `seed-cities-weather` — Open-Meteo Historical Weather seed into `us_cities_scored` (snowfall, avg temp, sunny days, severe-weather days)
 - `backfill-public-schools` — iterates seeded cities, refetches NCES K-12 list, upserts into `public_schools` (one row per school, on `nces_id`). Now redundant for newly-seeded cities since seed function writes both — keep for full rebuilds.
 - `enrich-school-staff` — staff/teacher enrichment for a given school
 - `fetch-teacher-prospects` — Apify-driven teacher prospect pull per city
+- `smartlead-proxy` — server-side proxy to the SmartLead REST API (lists/creates campaigns, pushes leads, pulls analytics overview, manages email accounts, runs connection-health check). Uses `SMARTLEAD_API_KEY`. Rate-limit aware (10 req / 2s).
+- `smartlead-webhook` — public webhook receiver for SmartLead events (`EMAIL_SENT`, `EMAIL_REPLIED`, `EMAIL_BOUNCED`, `EMAIL_OPENED`, `EMAIL_CLICKED`). Writes to `smartlead_events`; classifies replies into `reply_intent` (`HOT` / `NOT_INTERESTED` / `OOO` / `NEUTRAL`) via keyword classifier.
 - Shared modules: `_shared/cityGeo.ts`, `_shared/metricFetchers.ts`, `_shared/scoring.ts`
 
 ---
@@ -110,8 +117,8 @@ No storage buckets configured.
 | Firecrawl | Web scraping / enrichment | `FIRECRAWL_API_KEY` | Live |
 | Lovable AI Gateway | In-app AI (fit scoring, summaries) | `LOVABLE_API_KEY` | Live |
 | Supabase (Lovable Cloud) | DB / Auth / Edge / Storage | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_PUBLISHABLE_KEY(S)`, `SUPABASE_SECRET_KEYS`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWKS`, `SUPABASE_DB_URL` | Live |
+| SmartLead ("Integral Leads") | Email outreach: campaigns, lead push, analytics, webhooks | `SMARTLEAD_API_KEY` | **Live ✅ (Phases 1–5 complete, May 19)** |
 | GreatSchools | Private + charter school counts | _not yet set_ (`GREATSCHOOLS_API_KEY` pending) | **Blocked — waiting on Brett's key** |
-| SmartLead ("Integral Leads") | Email outreach send | _not yet set_ | **Not wired — sprint task #17** |
 | Apollo | Teacher sourcing | _not yet set_ | **Not wired — sourcing decision open** |
 | DonorsChoose | Teacher fit signal | _none (public API)_ | **Not wired** |
 | Clay | Email enrichment waterfall | _not yet set_ | **Not wired** |
@@ -125,8 +132,8 @@ Active limitations:
 - **Teacher Search reads placeholder/Apify-only data** — `teacher_prospects_master` table not yet built; no Apollo / vendor list / DonorsChoose integration. `teacher_prospects` now has the FK and enrichment columns waiting on the master table + sourcing.
 - **`candidates` table** — no FKs to `public_schools` / `us_cities_scored`, no `source_segment` column. Promotion from teacher → candidate cannot carry context until added (see OPEN_TASKS B3).
 - **`cities` vs `us_cities_scored`** — two overlapping city tables. Consolidation deferred (OPEN_TASKS B5).
-- **Email Outreach** — SmartLead not connected; no real sends.
-- **Candidate Pipeline** — populated with placeholder candidates, not yet wired to Teacher → Lead conversion.
+- **Email Outreach** — SmartLead wired end-to-end (connection, campaigns, lead import wizard, analytics, inbox, webhooks, reply-intent classification). Still needs Teacher Search → Import Wizard handoff before daily use.
+- **Candidate Pipeline** — populated with placeholder candidates, not yet wired to Teacher → Lead conversion (SmartLead reply → candidate promotion is the next link).
 - **GreatSchools** — private/charter elementary counts missing on every city (waiting on API key purchase).
 - **Multiple named favorites lists** — only a single favorites list works; multi-list UI not built.
 - **PDF export of candidate lead sheet** — not implemented.

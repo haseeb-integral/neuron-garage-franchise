@@ -1938,7 +1938,9 @@ const CityScoring = () => {
           turnCount={aiTurns.length}
           onRefine={askAi}
           loading={aiLoading}
+          appliedWeights={appliedWeights}
         />
+
       )}
 
       {/* Filters row */}

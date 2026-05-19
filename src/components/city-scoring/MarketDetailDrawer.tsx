@@ -454,6 +454,7 @@ export function MarketDetailDrawer({
   }, [coverageByCategory]);
 
   const totalRegistry = SOW_METRIC_REGISTRY.length;
+  const seedAtIso: string | null = ((market as any).scored?.scored_at ?? null) as string | null;
 
   const [showDiagnostics, setShowDiagnostics] = useState(false);
 

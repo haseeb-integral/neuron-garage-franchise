@@ -132,10 +132,10 @@ function getStatus(signal: LiveSignal): MetricStatus {
 }
 
 const STATUS_LABEL: Record<MetricStatus, string> = {
-  live: "Live",
-  proxy: "Estimated",
-  missing: "Missing",
-  blocked: "Unavailable",
+  live: "Pre-seeded",
+  proxy: "Pre-seeded",
+  missing: "Not seeded",
+  blocked: "Source unavailable",
   manual: "Manual",
 };
 

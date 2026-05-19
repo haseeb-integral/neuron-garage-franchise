@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
+import { AiAssistant, type AssistantContext } from "@/components/AiAssistant";
 import {
   Map,
   Users,
@@ -11,6 +13,7 @@ import {
   ArrowRight,
   CheckCircle2,
   Cog,
+  MessageCircle,
 } from "lucide-react";
 
 /**

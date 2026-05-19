@@ -92,6 +92,9 @@ export default function EmailOutreachV2() {
   const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null);
   const [tab, setTab] = useState("All Prospects");
   const [connectionOpen, setConnectionOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [batchesRefresh, setBatchesRefresh] = useState(0);
+
 
   const [promoted, setPromoted] = useState<Record<number, string>>({});
   const [promotingId, setPromotingId] = useState<number | null>(null);

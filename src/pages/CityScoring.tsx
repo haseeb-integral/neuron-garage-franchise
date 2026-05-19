@@ -37,7 +37,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   loadLiveRankedMarkets,
   filterRankedMarkets,
-  sampleRankedMarkets,
+  
   downloadRankedMarketsCsv,
   buildSeededFallbackSignalsFromScored,
   mergeSignalsPreferLive,

@@ -105,16 +105,22 @@ Deno.serve(async (req) => {
     }
 
     const authHeader = req.headers.get("Authorization") ?? "";
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
       { global: { headers: { Authorization: authHeader } } },
     );
 
-    const { data: userData } = await supabase.auth.getUser();
+    // Explicitly validate the JWT against auth — works regardless of how
+    // the global headers are forwarded by the edge runtime.
+    const { data: userData, error: userErr } = token
+      ? await supabase.auth.getUser(token)
+      : { data: { user: null }, error: null } as any;
     const userId = userData?.user?.id;
     if (!userId) {
-      return new Response(JSON.stringify({ error: "Not authenticated" }), {
+      console.error("ai-city-query auth failed", { hasToken: !!token, userErr });
+      return new Response(JSON.stringify({ error: "Not authenticated", detail: userErr?.message ?? "missing or invalid token" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

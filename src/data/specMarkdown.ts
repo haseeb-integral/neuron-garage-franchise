@@ -19,15 +19,14 @@ export const SPEC_MARKDOWN = `# Neuron Garage Franchise Acquisition System — P
 7. [Teacher Search](#7-teacher-search)
 8. [Email Outreach](#8-email-outreach)
 9. [Candidate Pipeline](#9-candidate-pipeline)
-10. [Onboarding](#10-onboarding)
-11. [Authentication](#11-authentication)
-12. [Guided Tour](#12-guided-tour)
-13. [Design System](#13-design-system)
-14. [Data Model](#14-data-model)
-15. [Tech Stack](#15-tech-stack)
-16. [Backend & Edge Functions](#16-backend--edge-functions)
-17. [Third-Party APIs](#17-third-party-apis)
-18. [Future Work](#18-future-work)
+10. [Authentication](#10-authentication)
+11. [Guided Tour](#11-guided-tour)
+12. [Design System](#12-design-system)
+13. [Data Model](#13-data-model)
+14. [Tech Stack](#14-tech-stack)
+15. [Backend & Edge Functions](#15-backend--edge-functions)
+16. [Third-Party APIs](#16-third-party-apis)
+17. [Future Work](#17-future-work)
 
 ---
 
@@ -39,7 +38,8 @@ export const SPEC_MARKDOWN = `# Neuron Garage Franchise Acquisition System — P
 - Source K–6, retired, camp/enrichment, and secondary STEM/maker teachers as candidate franchisees (Teacher Search).
 - Run AI-personalized outbound email campaigns via SmartLead, with live reply tracking (Email Outreach).
 - Qualify candidates through a structured 7-stage Kanban pipeline (Candidate Pipeline).
-- Onboard signed franchisees through a standardized 7-step launch program (Onboarding).
+
+> **Phase 2 (deferred):** Onboarding — a 7-step franchisee launch program. Code and the \`/onboarding\` route exist in the app today but are out of scope for Phase 1 and are not specified in this document.
 
 The product is a React + TypeScript single-page app, backed by Lovable Cloud (managed Supabase: Postgres + Auth + Edge Functions + Storage).
 
@@ -63,12 +63,12 @@ The product is a React + TypeScript single-page app, backed by Lovable Cloud (ma
 
 Current build assumes one role: **Franchise Development Rep** (\`manager\`). Admin role exists for user-management actions.
 
-- **\`manager\`** — default role for every new user. Read/write access to cities, teachers, candidates, onboarding, email outreach.
+- **\`manager\`** — default role for every new user. Read/write access to cities, teachers, candidates, email outreach.
 - **\`admin\`** — required to write to \`user_roles\`. Manually granted; not handed out automatically.
 
 Roles are stored in a dedicated \`user_roles\` table with an \`app_role\` enum and a \`has_role()\` security-definer function so RLS policies never recurse.
 
-Future roles to consider: FD Manager, Selection Committee Member, Onboarding Specialist, external Franchisee (read-only).
+Future roles to consider: FD Manager, Selection Committee Member, external Franchisee (read-only).
 
 ---
 
@@ -77,14 +77,13 @@ Future roles to consider: FD Manager, Selection Committee Member, Onboarding Spe
 The product follows a left-to-right funnel reflected in the sidebar order:
 
 \`\`\`
-Dashboard → City Search → Teacher Search → Email Outreach → Candidate Pipeline → Onboarding
+Dashboard → City Search → Teacher Search → Email Outreach → Candidate Pipeline
 \`\`\`
 
 1. **Score a city** — pick a U.S. metro with the right demographics, school density, and competitive landscape.
 2. **Find teachers** — surface K–6 / retired / camp / secondary-STEM teachers in that city, ranked by Fit Score.
 3. **Run outreach** — push prospects into a SmartLead campaign and track replies with auto-tagged intent (HOT / NOT INTERESTED / OOO / NEUTRAL).
 4. **Qualify candidates** — move a prospect through the 7-stage Kanban pipeline.
-5. **Onboard the franchisee** — execute the standardized 7-step launch program.
 
 ---
 
@@ -108,7 +107,7 @@ Protected (\`ProtectedRoute\` + \`AppLayout\`):
 - \`/teacher-prospects\` — Teacher Search (UI label was renamed; route slug retained)
 - \`/email-outreach\` — Email Outreach (V2; legacy \`EmailOutreach.tsx\` exists but is not routed)
 - \`/candidate-pipeline\` — Candidate Pipeline
-- \`/onboarding\` — Onboarding
+- \`/onboarding\` — Onboarding *(Phase 2 — route exists, out of scope for this spec)*
 - \`/settings/team\` & \`/users\` — Team Members
 - \`/spec\` — This document
 - \`*\` — 404
@@ -120,7 +119,7 @@ Protected (\`ProtectedRoute\` + \`AppLayout\`):
 **Purpose:** give the rep a one-screen answer to "what should I do next?"
 
 - **Next Action card** — personalized recommendation with a CTA that deep-links to the right city.
-- **Stat cards** — Total Cities Scored, Total Prospects Found, Candidates in Pipeline, Active Onboardings.
+- **Stat cards** — Total Cities Scored, Total Prospects Found, Candidates in Pipeline.
 - **Pipeline Snapshot** — horizontal bar chart of candidate count by stage.
 - **Recent Activity** — last 6 system events with relative timestamps.
 
@@ -333,9 +332,9 @@ Plus a parallel **Disqualified** column.
 
 A candidate **cannot** drop into "Signing" without passing "Confirmation". Hardcoded — do not change.
 
-### Signing → Onboarding handoff
+### Signing → Onboarding handoff *(Phase 2)*
 
-Cards in **Signing** show a **Start Onboarding →** button. On confirm, a new \`onboarding_records\` row is created at Step 1/7 (status **On Track**, days elapsed 0) and the user is navigated to \`/onboarding\`.
+The handoff from a "Signing" card into the Onboarding flow is deferred to Phase 2 and intentionally not specified here.
 
 ### Today's limitation
 
@@ -343,31 +342,7 @@ Candidates are placeholder data. Teacher → Candidate promotion path exists in 
 
 ---
 
-## 10. Onboarding
-
-**Purpose:** run a signed franchisee through the standardized 7-step launch program.
-
-### The 7 steps
-
-1. **Welcome & Kickoff** — welcome email, intro call, account setup.
-2. **Roadmap Review** — walk through the 90-day launch roadmap.
-3. **Market Plan** — finalize territory, schools targeted, year-1 revenue model.
-4. **FDD Countdown** — 14-day mandatory Franchise Disclosure Document waiting period (visualized via countdown).
-5. **Document Upload** — signed FDD, COI, LLC docs, void check.
-6. **Awarded** — final signature; ceremonial "Welcome to Neuron Garage" moment.
-7. **Active Franchisee Onboarding** — handoff to operations; "Send the donut" trigger.
-
-### Components
-
-- **Onboarding table** — current step, % progress bar, days elapsed, status (On Track / At Risk / Overdue).
-- **Onboarding Wizard** (sheet) — step progress bar, per-step form, Activity Log, Communication Triggers.
-- **Communication Triggers** — pre-canned emails auto-marked sent when the corresponding step is completed.
-
-No edge function — pure DB on \`onboarding_records\` + \`onboarding_steps\`. Template from \`src/lib/onboardingTemplate.ts\`.
-
----
-
-## 11. Authentication
+## 10. Authentication
 
 - **Email + password only.** Google / Microsoft / SSO buttons intentionally removed from \`/auth\` — do not re-add.
 - **HIBP leaked-password check is OFF** (\`password_hibp_enabled: false\`) so users can pick any password meeting length rules.
@@ -378,7 +353,7 @@ No edge function — pure DB on \`onboarding_records\` + \`onboarding_steps\`. T
 
 ---
 
-## 12. Guided Tour
+## 11. Guided Tour
 
 First-time visitors see a Driver.js tour that highlights each main sidebar item. Ends with a "You're all set" panel that deep-links to City Search.
 
@@ -387,7 +362,7 @@ First-time visitors see a Driver.js tour that highlights each main sidebar item.
 
 ---
 
-## 13. Design System
+## 12. Design System
 
 ### Brand colors
 
@@ -415,7 +390,7 @@ Mobile-first; tested at 320, 375, 414, 768, 1024, 1280+. Tables scroll horizonta
 
 ---
 
-## 14. Data Model
+## 13. Data Model
 
 All tables have RLS enabled.
 
@@ -451,12 +426,8 @@ All tables have RLS enabled.
 - \`campaign_cache\` — local mirror of SmartLead campaigns.
 - \`prospects_staging\` — import-wizard staging (\`batch_id, source, qa_status, smartlead_lead_id, pushed_at\`).
 
-### Onboarding
-
-- \`onboarding_records\` — franchisee_name, city, state, status, current_step_index, total_steps.
-- \`onboarding_steps\` — per-step title, description, completion state.
-
 ### Auth
+
 
 - \`profiles\` — mirror of \`auth.users\` (email, full_name).
 - \`user_roles\` — \`(user_id, role)\` with \`app_role\` enum.
@@ -467,7 +438,7 @@ All tables have RLS enabled.
 
 ---
 
-## 15. Tech Stack
+## 14. Tech Stack
 
 - **React 18** + **TypeScript 5** + **Vite 5**
 - **Tailwind CSS v3** + **shadcn/ui** + **Radix UI**
@@ -482,7 +453,7 @@ All tables have RLS enabled.
 
 ---
 
-## 16. Backend & Edge Functions
+## 15. Backend & Edge Functions
 
 All deployed as Deno edge functions under \`supabase/functions/\`.
 
@@ -505,7 +476,7 @@ Shared modules: \`_shared/cityGeo.ts\`, \`_shared/metricFetchers.ts\`, \`_shared
 
 ---
 
-## 17. Third-Party APIs
+## 16. Third-Party APIs
 
 Full reference in \`APIS.md\`. Live wired today:
 
@@ -528,7 +499,7 @@ Pending / blocked: **GreatSchools** (waiting on Brett's key — 14-day-trial str
 
 ---
 
-## 18. Future Work
+## 17. Future Work
 
 Tracked in \`OPEN_TASKS.md\`. Highlights:
 

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { RefreshCw, RotateCw, Loader2 } from "lucide-react";
+import { RefreshCw, RotateCw, Loader2, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { BatchDetailDrawer } from "./BatchDetailDrawer";
 
 type Batch = {
   id: string;
@@ -40,6 +41,7 @@ export function ProspectBatchesPanel({ refreshKey = 0 }: { refreshKey?: number }
   const [failedByBatch, setFailedByBatch] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
   const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [openBatch, setOpenBatch] = useState<Batch | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -124,8 +126,13 @@ export function ProspectBatchesPanel({ refreshKey = 0 }: { refreshKey?: number }
             const campaign = b.campaign_id ? campaignsById[String(b.campaign_id)] : null;
             const failedCount = failedByBatch[b.id] ?? 0;
             return (
-              <tr key={b.id} className="border-t border-[#edf2f8]">
-                <td className="px-4 py-2 font-bold">{b.batch_name}</td>
+              <tr key={b.id} onClick={() => setOpenBatch(b)} className="cursor-pointer border-t border-[#edf2f8] hover:bg-[#f7faff]">
+                <td className="px-4 py-2 font-bold">
+                  <span className="inline-flex items-center gap-1">
+                    <ChevronRight size={11} className="text-[#8794ab]" />
+                    {b.batch_name}
+                  </span>
+                </td>
                 <td>{b.source ?? "—"}</td>
                 <td>{b.city ?? "—"}{b.state ? `, ${b.state}` : ""}</td>
                 <td>{b.segment ?? "—"}</td>
@@ -140,7 +147,7 @@ export function ProspectBatchesPanel({ refreshKey = 0 }: { refreshKey?: number }
                 </td>
                 <td><span className={`inline-flex h-5 items-center rounded-md px-2 text-[10px] font-bold ${STATUS_STYLES[b.status] ?? STATUS_STYLES.pending}`}>{b.status}</span></td>
                 <td className="text-[10px] text-[#66728a]">{new Date(b.created_at).toLocaleString()}</td>
-                <td className="pr-3 text-right">
+                <td className="pr-3 text-right" onClick={(e) => e.stopPropagation()}>
                   {failedCount > 0 && (
                     <button
                       onClick={() => retryFailed(b)}
@@ -158,6 +165,11 @@ export function ProspectBatchesPanel({ refreshKey = 0 }: { refreshKey?: number }
           })}</tbody>
         </table>
       )}
+      <BatchDetailDrawer
+        batch={openBatch}
+        campaignName={openBatch?.campaign_id ? campaignsById[String(openBatch.campaign_id)]?.name ?? null : null}
+        onClose={() => setOpenBatch(null)}
+      />
     </div>
   );
 }

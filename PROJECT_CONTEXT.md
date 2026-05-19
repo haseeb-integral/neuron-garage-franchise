@@ -88,8 +88,8 @@ No storage buckets configured.
 
 - `admin-create-user` — admin-only user provisioning
 - `ai-city-query` — Lovable AI Gateway proxy for "Ask AI" answers about a city
-- `fetch-city-market-data` — legacy city data refresh
-- `fetch-city-market-data-sow` — SOW-aligned city refresh (46-metric pull → scoring)
+- ~~`fetch-city-market-data`~~ — **DELETED May 19** (legacy)
+- ~~`fetch-city-market-data-sow`~~ — **DELETED May 19** (legacy SOW refresh; superseded by bulk `seed-cities-database`)
 - `fetch-school-counts` — NCES CCD public-elementary counts per city
 - `seed-cities-database` — bulk seed of `us_cities_scored` (Census/BLS/BEA/FRED/NCES) **and** per-school upsert into `public_schools` using the same NCES response (no extra API calls). 948 cities seeded, all with `composite_score_default` populated.
 - `seed-cities-weather` — Open-Meteo Historical Weather seed into `us_cities_scored` (snowfall, avg temp, sunny days, severe-weather days)

@@ -1,55 +1,23 @@
-## What's actually breaking
+## Fix SmartLead "min_time_btw_emails ≥ 3" error + auto-name campaigns
 
-The toast tells us exactly what SmartLead is rejecting:
+### What's wrong
+`NewCampaignDrawer.tsx` defaults **Min gap between emails** to `1` minute and the validator allows `1–180`. SmartLead's `/campaigns/{id}/schedule` rejects anything `< 3`, so the launch fails with the 400 you saw.
 
-> `SmartLead 500 on /campaigns/3358536/status: Cron Exp value is empty! Please set the scheduler time and start the campaign!`
+### Changes (frontend only, single file: `src/components/email-outreach/NewCampaignDrawer.tsx`)
 
-That campaign (`[TEST] Sample Campaign`, id 3358536) is one of the **old drafted** campaigns. It was created before the drawer started POSTing a schedule, so SmartLead has no cron for it → `START` is refused.
+1. **Enforce SmartLead's floor of 3 min**
+   - `useState(minGapMinutes)` default → `5`
+   - Validator → `if (minGapMinutes < 3 || minGapMinutes > 180) return "Min gap must be between 3 and 180 minutes (SmartLead requirement)."`
+   - Clamp on send → `Math.max(3, Math.min(180, minGapMinutes))`
+   - Input `min={3}`, helper text "SmartLead minimum is 3 minutes."
 
-Separately, the new-campaign flow had three silent failure points: schedule / settings / sequences calls were each wrapped in `try { … } catch { console.warn }`. If any of those failed (e.g. malformed `min_time_btw_emails`, missing required field), the draft would still be created and the launch would later fail with "Cron Exp empty" or similar — and the user would see no warning.
+2. **Auto-generated default campaign name**
+   - Helper `defaultCampaignName()` → `"Outreach · {MMM-DD} · {HH:mm} {TZ-abbr} · v{n}"`  
+     e.g. `Outreach · May-19 · 22:45 PKT · v1`
+   - On drawer open (`useEffect` watching `open`), if `name` is empty, prefill via `setName(defaultCampaignName())`.
+   - `v{n}` increments using `localStorage.ng_campaign_seq` so every new draft gets a fresh suffix even within the same minute.
+   - Field stays fully editable — user can overwrite.
 
-Email accounts ARE connected (3 healthy SMTPs on `mailerss.co`), so that part is fine. The new drawer already assigns them.
+3. **Placeholder** in the name input updated to show the generated example.
 
-## Fix plan
-
-### 1. Make the "Launch" button on the campaigns list self-healing
-
-In `SmartLeadCampaignsPanel.tsx`, when the user clicks ▶ Launch on a `DRAFTED` campaign, before calling `/status { START }`:
-
-1. POST a **default schedule** to `/campaigns/{id}/schedule` (timezone = browser TZ, days Mon–Fri, 09:00–18:00, gap 10 min, cap 50/day). This fixes "Cron Exp empty" on legacy drafts.
-2. GET `/email-accounts/`. If the campaign has none assigned, POST all account ids to `/campaigns/{id}/email-accounts`.
-3. POST `/status { START }`.
-4. Any failure → show the **real** SmartLead error string in the toast (already wired via `callProxy`).
-
-This makes legacy drafted campaigns launchable in one click without recreating them.
-
-### 2. Stop swallowing errors in the New Campaign drawer
-
-In `NewCampaignDrawer.tsx submit(launch=true)`:
-
-- Remove the silent `try/catch console.warn` around `schedule`, `settings`, `sequences`, and `email-accounts assign` **when `launch === true`**. Let them throw so the toast shows the actual SmartLead error instead of a fake success.
-- Keep silent-warn behavior only when saving as Draft (so partial drafts are recoverable).
-- Validate inputs before any network call: name non-empty, ≥1 day selected, start_hour < end_hour, sequences non-empty with subject+body, gap 1–180, cap 1–200. Show an inline error and abort if invalid.
-
-### 3. One shared error surface
-
-Add a small helper `surfaceError(e)` used by both panels — strips `SmartLead 500 on …: ` noise into a short title + technical detail line. Errors that contain `Cron Exp` map to a friendlier "Schedule is missing — re-open the campaign and set the schedule, or click Launch to auto-apply the default schedule."
-
-### 4. Optional: dev-mode debug panel
-
-When `localStorage.getItem('debug') === '1'`, print every SmartLead request/response into the browser console with the endpoint + status + body. Off by default. Useful for the next round of testing without me needing to ask for screenshots.
-
-## Files touched
-
-- `src/components/email-outreach/SmartLeadCampaignsPanel.tsx` — self-healing Launch flow, shared error helper
-- `src/components/email-outreach/NewCampaignDrawer.tsx` — input validation, no silent catches on launch
-- (new) `src/components/email-outreach/smartleadErrors.ts` — `surfaceError` + debug logger
-
-## Out of scope
-
-- No changes to the `smartlead-proxy` edge function (it already returns the real error body wrapped as `{ok:false}`).
-- No new SmartLead endpoints, no schema changes, no new tables.
-
-## After this lands
-
-Click **▶ Launch** on `[TEST] Sample Campaign` → drawer auto-applies a default schedule + ensures inboxes are assigned → SmartLead accepts `START` → status flips to `ACTIVE` and emails begin sending within the gap window. If anything still fails, the toast tells you exactly which endpoint + why.
+No backend, schema, or proxy changes. Other behavior (test mode, schedule, sequences, launch self-heal) untouched.

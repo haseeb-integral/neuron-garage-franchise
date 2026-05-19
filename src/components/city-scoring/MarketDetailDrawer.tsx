@@ -209,10 +209,8 @@ export function MarketDetailDrawer({
     const loadLiveEvidence = async () => {
       setLoading(true);
       try {
-        // cityId now references us_cities_scored.id. The historical
-        // signals/competitors/jobs tables are still keyed by legacy cities.id,
-        // so seeded-only rows will return empty until seed-on-demand wires
-        // these child tables to the new id. UI handles empty gracefully.
+        // cityId references us_cities_scored.id. Historical signals/jobs are
+        // still keyed by the legacy cities.id, so we bridge by city+state.
         const cityId = market.cityId;
         if (!cityId) {
           setSignals([]);
@@ -221,17 +219,29 @@ export function MarketDetailDrawer({
           return;
         }
 
+        // Bridge: find a matching legacy cities row by city+state so historical
+        // signals/competitors/fetch jobs (which still live on cities.id) show up.
+        const stateFull = market.state === "TX" ? "Texas" : market.state === "FL" ? "Florida" : market.state;
+        const { data: legacyCity } = await supabase
+          .from("cities")
+          .select("id")
+          .ilike("city", market.city)
+          .ilike("state", stateFull)
+          .maybeSingle();
+        const legacyId: string | null = (legacyCity as any)?.id ?? null;
+        const evidenceIds = [cityId, legacyId].filter((x): x is string => !!x);
+
         const [{ data: signalRows }, { data: competitorRows }, { data: jobRows }] = await Promise.all([
-          supabase.from("city_market_signals").select("*").eq("city_id", cityId),
+          supabase.from("city_market_signals").select("*").in("city_id", evidenceIds),
           supabase
             .from("city_competitors")
             .select("*")
-            .eq("city_id", cityId)
+            .in("city_id", evidenceIds)
             .order("created_at", { ascending: false }),
           supabase
             .from("city_fetch_jobs")
             .select("*")
-            .eq("city_id", cityId)
+            .in("city_id", evidenceIds)
             .eq("source", "sow_metric_coverage")
             .order("created_at", { ascending: false })
             .limit(1),
@@ -262,7 +272,7 @@ export function MarketDetailDrawer({
     };
 
     loadLiveEvidence();
-  }, [open, market.cityId, refreshVersion]);
+  }, [open, market.cityId, market.city, market.state, refreshVersion]);
 
   const handleExportRawSignals = () => {
     if (!signals.length) {

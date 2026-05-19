@@ -270,21 +270,21 @@ See **`TEACHER_IDEAL_PROFILE.md`** for who we are recruiting and why — read th
 - Gmail `+alias` CSV (5 leads) → Import Wizard → SmartLead → first email sent → reply arrived → Inbox classifier tagged it → Pause/Resume/Stop ✅ → manual Promote to Pipeline path verified
 - Reply detection ✅ confirmed by Haseeb (Isabella reply showed in Analytics)
 
-### 17f. Add `{{unsubscribe}}` to default sequence body 🔴 BLOCKER for real sends
+### 17f. Add `{{unsubscribe}}` to default sequence body 🟡 DEFERRED (May 19)
 - `src/components/email-outreach/NewCampaignDrawer.tsx` ~line 125 (initial sequence text) + ~line 141 (follow-up body)
-- **CAN-SPAM legal requirement** — must exist before any non-test campaign launches
+- **Deferred per Haseeb May 19** — accepting CAN-SPAM risk for internal smoke tests targeting his own inbox only. **Must add before sending to any real teacher.**
 - SmartLead replaces `{{unsubscribe}}` with the per-lead opt-out URL automatically
-- **Effort:** ~5 min · **Risk:** low
+- **Effort:** ~5 min · **Risk:** low now, high once real teachers are in the loop
 
 ### 17g. Open Rate tooltip — explain Gmail proxy / Apple MPP inflation
 - AnalyticsPanel: add (ⓘ) next to "Open Rate" → tooltip: "Gmail and Apple Mail pre-fetch tracking pixels automatically, so open rate is inflated to ~100% on those inboxes. Trust **clicks** and **replies** as real engagement signals."
 - **Effort:** ~15 min · **Risk:** low
 
-### 17h. Import Leads CSV end-to-end test (paused, resume after 17f)
-- 2-row dummy CSV → Import Wizard → batch appears in Import Batches panel → push to SmartLead → confirm leads visible in SmartLead campaign
+### 17h. Import Leads CSV end-to-end test (in progress May 19)
+- 2-row dummy CSV (`/mnt/documents/dummy_test_leads.csv`, `haseeb+test1` / `haseeb+test2` `@integralassociates.com`) → Import Wizard → batch appears in Import Batches panel → push to SmartLead → confirm leads visible in SmartLead campaign
 
-### 17i. Real (non-test) 1-lead launch (paused, resume after 17f)
-- Test Mode OFF → enter one real address Haseeb controls (not a `+alias`) → launch → confirm send
+### 17i. Real (non-test) 1-lead launch (in progress May 19, follows 17h)
+- Test Mode OFF → use the 2-alias dummy batch above → launch → confirm both emails arrive in `haseeb@integralassociates.com` inbox within ~10–15 min
 
 ### 17j. AI email body personalization per lead (deferred, added May 19)
 - Model: `google/gemini-2.5-flash` via Lovable AI Gateway (no extra key)

@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { CityData, sampleCities } from "@/data/cityData";
+import type { CategoryKey } from "@/stores/cityScoringStore";
 
 export type RankedMarket = {
   id: number;
@@ -17,6 +18,7 @@ export type RankedMarket = {
   lastScrapedAt?: string | null;
   source: "live" | "sample";
   hasLiveData: boolean;
+  categoryScores?: Partial<Record<CategoryKey, number>>;
   sample?: CityData;
 };
 
@@ -139,6 +141,14 @@ export async function loadLiveRankedMarkets(): Promise<RankedMarket[]> {
       lastScrapedAt: row.scored_at ?? null,
       source: "live",
       hasLiveData,
+      categoryScores: {
+        demand: row.score_demand == null ? undefined : toNumber(row.score_demand, 0),
+        pricingPower: row.score_pricing_power == null ? undefined : toNumber(row.score_pricing_power, 0),
+        competitiveLandscape: row.score_competitive == null ? undefined : toNumber(row.score_competitive, 0),
+        franchiseeSupply: row.score_franchise_supply == null ? undefined : toNumber(row.score_franchise_supply, 0),
+        easeOfOperations: row.score_ease_of_operation == null ? undefined : toNumber(row.score_ease_of_operation, 0),
+        parentMindset: row.score_parent_mindset == null ? undefined : toNumber(row.score_parent_mindset, 0),
+      },
     };
   });
 

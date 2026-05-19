@@ -1,22 +1,8 @@
 import { useEffect, useState } from "react";
 import { X, Loader2, Check, Rocket } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-
-async function callProxy(endpoint: string, method = "GET", payload?: unknown) {
-  const { data, error } = await supabase.functions.invoke("smartlead-proxy", { body: { endpoint, method, payload } });
-  if (error) throw new Error(error.message ?? String(error));
-  if (data && typeof data === "object" && (data as any).ok === false) {
-    const d = data as any;
-    const err = d.error;
-    const msg = typeof err === "string"
-      ? err
-      : (err?.message || err?.error || err?.msg || JSON.stringify(err));
-    throw new Error(`SmartLead ${d.status ?? ""} on ${endpoint}: ${msg}`);
-  }
-  return data;
-}
+import { callSmartLeadProxy, getSmartLeadErrorMessage } from "@/components/email-outreach/smartleadErrors";
 
 type SequenceStep = { day: number; subject: string; body: string };
 
@@ -25,6 +11,7 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
   const [step, setStep] = useState(1);
   const [busy, setBusy] = useState(false);
   const [createdId, setCreatedId] = useState<string | number | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   // Step 1
   const [name, setName] = useState("");
@@ -113,48 +100,91 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
 
   const toggleDay = (d: string) => setDays((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort());
 
+  const toMinutes = (value: string) => {
+    const match = value.match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) return null;
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+    return hours * 60 + minutes;
+  };
+
+  const validate = () => {
+    if (!name.trim()) return "Campaign name required.";
+    if (testMode && !effectiveTestRecipient) return "Test mode needs a recipient email.";
+    if (!days.length) return "Pick at least one sending day.";
+    const startMinutes = toMinutes(startHour);
+    const endMinutes = toMinutes(endHour);
+    if (startMinutes === null || endMinutes === null) return "Start and end time must be in HH:MM format.";
+    if (startMinutes >= endMinutes) return "End time must be after start time.";
+    if (minGapMinutes < 1 || minGapMinutes > 180) return "Min gap must be between 1 and 180 minutes.";
+    if (dailyCap < 1 || dailyCap > 200) return "Daily send cap must be between 1 and 200.";
+    if (!sequences.length) return "Add at least one email step.";
+    const badStep = sequences.find((sequence) => !sequence.subject.trim() || !sequence.body.trim() || sequence.day < 1);
+    if (badStep) return "Each sequence step needs a valid day, subject, and body.";
+    return null;
+  };
+
   const submit = async (launch: boolean) => {
-    if (!name.trim()) { toast.error("Campaign name required"); return; }
-    if (testMode && !effectiveTestRecipient) { toast.error("Test mode needs a recipient email (your profile email is missing — set an override)."); return; }
+    const error = validate();
+    if (error) {
+      setValidationError(error);
+      toast.error(error);
+      return;
+    }
+
+    setValidationError(null);
     setBusy(true);
     try {
-      const created = await callProxy("/campaigns/create", "POST", { name: testMode ? `[TEST] ${name.trim()}` : name.trim() });
+      const created = await callSmartLeadProxy("/campaigns/create", "POST", { name: testMode ? `[TEST] ${name.trim()}` : name.trim() });
       const id = created?.id ?? created?.campaign_id ?? created?.data?.id;
       if (!id) throw new Error("SmartLead did not return a campaign id");
       setCreatedId(id);
 
-      try {
-        await callProxy(`/campaigns/${id}/schedule`, "POST", {
+      const runStep = async (action: () => Promise<void>, fallbackLabel: string) => {
+        if (launch) {
+          await action();
+          return;
+        }
+        try {
+          await action();
+        } catch (stepError) {
+          console.warn(fallbackLabel, stepError);
+        }
+      };
+
+      await runStep(async () => {
+        await callSmartLeadProxy(`/campaigns/${id}/schedule`, "POST", {
           timezone, days_of_the_week: days.map(Number),
           start_hour: startHour, end_hour: endHour,
           min_time_btw_emails: Math.max(1, Math.min(180, minGapMinutes)),
           max_new_leads_per_day: Math.max(1, Math.min(200, dailyCap)),
         });
-      } catch (e) { console.warn("schedule failed", e); }
+      }, "schedule failed");
 
-      try {
+      await runStep(async () => {
         const track_settings = [
           !trackOpens ? "DONT_TRACK_EMAIL_OPEN" : null,
           !trackClicks ? "DONT_TRACK_LINK_CLICK" : null,
         ].filter(Boolean);
-        await callProxy(`/campaigns/${id}/settings`, "POST", {
+        await callSmartLeadProxy(`/campaigns/${id}/settings`, "POST", {
           track_settings,
           stop_lead_settings: stopOnReply ? "REPLY_TO_AN_EMAIL" : "CLICK_ON_A_LINK",
         });
-      } catch (e) { console.warn("settings failed", e); }
+      }, "settings failed");
 
-      try {
-        await callProxy(`/campaigns/${id}/sequences`, "POST", {
+      await runStep(async () => {
+        await callSmartLeadProxy(`/campaigns/${id}/sequences`, "POST", {
           sequences: sequences.map((s, i) => ({
             seq_number: i + 1, seq_delay_details: { delay_in_days: s.day },
             subject: s.subject, email_body: s.body,
           })),
         });
-      } catch (e) { console.warn("sequences failed", e); }
+      }, "sequences failed");
 
       // Test Mode: push N safe recipients (gmail+aliases) as leads.
       if (testMode) {
-        try {
+        await runStep(async () => {
           const base = effectiveTestRecipient;
           const [local, domain] = base.split("@");
           const cleanLocal = (local ?? "").split("+")[0];
@@ -165,27 +195,24 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
             last_name: "Recipient",
             custom_fields: { test_mode: "true" },
           }));
-          await callProxy(`/campaigns/${id}/leads`, "POST", { lead_list });
-        } catch (e) { console.warn("test lead push failed", e); }
+          await callSmartLeadProxy(`/campaigns/${id}/leads`, "POST", { lead_list });
+        }, "test lead push failed");
       }
 
       // Assign ALL connected email accounts to this campaign — SmartLead refuses to START without one.
-      try {
-        const accounts = await callProxy("/email-accounts/", "GET");
+      await runStep(async () => {
+        const accounts = await callSmartLeadProxy("/email-accounts", "GET");
         const ids = (Array.isArray(accounts) ? accounts : [])
           .map((a: any) => a?.id)
           .filter((x: any) => typeof x === "number" || typeof x === "string");
         if (!ids.length) {
           throw new Error("No email accounts connected in SmartLead. Connect one in Email Accounts tab first.");
         }
-        await callProxy(`/campaigns/${id}/email-accounts`, "POST", { email_account_ids: ids });
-      } catch (e) {
-        if (launch) throw e; // block launch when no inbox
-        console.warn("assign email accounts failed", e);
-      }
+        await callSmartLeadProxy(`/campaigns/${id}/email-accounts`, "POST", { email_account_ids: ids });
+      }, "assign email accounts failed");
 
       if (launch) {
-        await callProxy(`/campaigns/${id}/status`, "POST", { status: "START" });
+        await callSmartLeadProxy(`/campaigns/${id}/status`, "POST", { status: "START" });
       }
 
       toast.success(
@@ -196,7 +223,7 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
       onCreated?.();
       onClose();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to create campaign");
+      toast.error(getSmartLeadErrorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -230,6 +257,11 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
         )}
 
         <div className="space-y-4 p-5 text-sm">
+          {validationError && (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
+              {validationError}
+            </div>
+          )}
           {step === 1 && (
             <div className="space-y-4">
               <h3 className="text-base font-black">1. Create campaign</h3>

@@ -139,7 +139,9 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
   useEffect(() => {
     if (!open) {
       setStep(1); setBusy(false); setCreatedId(null); setName("");
-      setTestMode(true); setTestOverride(""); setTestLeadCount(5);
+      // Task 17o: preserve user's last Test Mode choice instead of forcing ON.
+      try { setTestMode(localStorage.getItem("ng.newCampaign.testMode") === "1"); } catch { setTestMode(false); }
+      setTestOverride(""); setTestLeadCount(5);
       setTimezone(detectedTz); setStartHour("09:00"); setEndHour("18:00");
       setDays(["1", "2", "3", "4", "5"]); setDailyCap(200); setMinGapMinutes(1);
       setTrackOpens(true); setTrackClicks(true); setStopOnReply(true);

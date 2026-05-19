@@ -160,6 +160,7 @@ Not built; not blocking the demo. Promote to OPEN_TASKS only if Kaylie hits the 
 - **Save campaign as template** — reuse send-time settings, tracking flags, schedule across campaigns. Premature until 3+ campaigns exist.
 - **"Suggest next campaign" AI** — looks at hot leads and winning subject lines, proposes next batch. Needs winning-subject-line history.
 - **Daily send cap UI** — hard ceiling per mailbox per day. SmartLead already enforces per-mailbox warmup ramp, so this is belt-and-suspenders. Add only if Kaylie explicitly wants the extra guardrail.
+- **Add `{{unsubscribe}}` merge tag to default sequence body (was Task 17f)** — deferred May 19 per Haseeb for self-inbox smoke tests. **Must be promoted back to OPEN_TASKS and shipped before the first real teacher send** — CAN-SPAM legal requirement and Gmail/Outlook deliverability tank without it. ~5 min edit in `NewCampaignDrawer.tsx`.
 
 ---
 

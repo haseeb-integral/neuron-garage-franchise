@@ -1,6 +1,6 @@
 # PROJECT_CONTEXT.md — Neuron Garage
 
-> Snapshot date: May 19, 2026 (Email Outreach / SmartLead Phases 1–5 complete; legacy `cities` / `city_category_scores` / `city_fetch_jobs` / `city_competitors` tables dropped; Add City rewired to `us_cities_scored`; in-app `/spec` page rewritten to v1.2 same day and is in sync with this file)
+> Snapshot date: May 19, 2026 (Ask AI absolute-weights mode shipped same day; Email Outreach / SmartLead Phases 1–5 complete; legacy `cities` / `city_category_scores` / `city_fetch_jobs` / `city_competitors` tables dropped; Add City rewired to `us_cities_scored`; `county_name` backfilled 960/960 from `us_cities_geo`; `metro_area` backfilled 326/960 — remainder pending; in-app `/spec` page rewritten to v1.2 same day and is in sync with this file)
 > Live URL: https://neuron-garage-franchise.lovable.app
 > Preview: https://id-preview--c74b81ad-10d7-4a10-b6c8-de17f48a663e.lovable.app
 > Stack: React + TS + Vite + Tailwind + shadcn, Lovable Cloud (Supabase) backend

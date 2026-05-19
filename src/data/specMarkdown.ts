@@ -3,7 +3,8 @@
 export const SPEC_MARKDOWN = `# Neuron Garage Franchise Acquisition System — Product Specification
 
 > Detailed specification of the Neuron Garage Franchise Acquisition System.
-> Document version 1.1 · For internal review.
+> Document version 1.2 · Updated May 19, 2026 · For internal review.
+> Live URL: neuron-garage-franchise.lovable.app
 
 ---
 
@@ -14,55 +15,60 @@ export const SPEC_MARKDOWN = `# Neuron Garage Franchise Acquisition System — P
 3. [End-to-End Journey](#3-end-to-end-journey)
 4. [Navigation & Layout](#4-navigation--layout)
 5. [Dashboard](#5-dashboard)
-6. [City Scoring](#6-city-scoring)
-7. [Teacher Search](#7-teacher-prospects)
+6. [City Search](#6-city-search)
+7. [Teacher Search](#7-teacher-search)
 8. [Email Outreach](#8-email-outreach)
 9. [Candidate Pipeline](#9-candidate-pipeline)
 10. [Onboarding](#10-onboarding)
-11. [Guided Tour](#11-guided-tour)
-12. [Design System](#12-design-system)
-13. [Data Model](#13-data-model)
-14. [Tech Stack](#14-tech-stack)
-15. [Backend & Edge Functions](#15-backend--edge-functions)
-16. [Future Work](#16-future-work)
+11. [Authentication](#11-authentication)
+12. [Guided Tour](#12-guided-tour)
+13. [Design System](#13-design-system)
+14. [Data Model](#14-data-model)
+15. [Tech Stack](#15-tech-stack)
+16. [Backend & Edge Functions](#16-backend--edge-functions)
+17. [Third-Party APIs](#17-third-party-apis)
+18. [Future Work](#18-future-work)
 
 ---
 
 ## 1. Overview
 
-**Neuron Garage Franchise Acquisition System** is an internal tool that helps the Neuron Garage franchise development team:
+**Neuron Garage Franchise Acquisition System** is an internal tool for the Neuron Garage franchise-development team (3 users: Kaylie, Sam, Haseeb). It is **not public-facing**. The system helps the team:
 
-- Identify the best U.S. markets for new franchises.
-- Source elementary-school teachers as candidate franchisees.
-- Qualify candidates through a structured 7-step pipeline.
-- Onboard signed franchisees through a standardized 7-step launch program.
+- Identify the best U.S. markets for new franchises (City Search).
+- Source K–6, retired, camp/enrichment, and secondary STEM/maker teachers as candidate franchisees (Teacher Search).
+- Run AI-personalized outbound email campaigns via SmartLead, with live reply tracking (Email Outreach).
+- Qualify candidates through a structured 7-stage Kanban pipeline (Candidate Pipeline).
+- Onboard signed franchisees through a standardized 7-step launch program (Onboarding).
 
-The product is a single-page React web application optimized for desktop, tablet, and mobile. It is backed by Lovable Cloud (Postgres + edge functions) for live market data, scoring, and persistence.
+The product is a React + TypeScript single-page app, backed by Lovable Cloud (managed Supabase: Postgres + Auth + Edge Functions + Storage).
 
 ### Goals
 
 - Replace ad-hoc spreadsheets and email threads with a single source of truth.
 - Use scoring + AI assists to focus the team on the highest-value cities and prospects.
-- Make every stage of the pipeline observable, accountable, and time-bound.
-- Give new franchise development reps a guided "what do I do next?" experience.
+- Make every stage observable, accountable, and time-bound.
+- **Show the math.** Every calculated number exposes its inputs, weights, and formula via "Show Formula" — non-negotiable.
 
 ### Non-Goals
 
 - No payment processing or contract execution; e-sign is represented as a status only.
-- No public-facing franchisee portal in this build.
+- No public-facing franchisee portal.
+- No multi-tenancy or mobile app.
+- No Google / Microsoft / SSO sign-in (intentionally removed — email-only).
 
 ---
 
 ## 2. Users & Roles
 
-The current build assumes a single role: **Franchise Development Rep**. Future roles to consider:
+Current build assumes one role: **Franchise Development Rep** (\`manager\`). Admin role exists for user-management actions.
 
-- **FD Manager** — sees all reps' pipelines, assigns leads, approves Selection Committee votes.
-- **Selection Committee Member** — votes on candidates in the Immersion stage.
-- **Onboarding Specialist** — owns the 7-step franchisee onboarding program.
-- **Franchisee** (external) — read-only view of their own onboarding progress.
+- **\`manager\`** — default role for every new user. Read/write access to cities, teachers, candidates, onboarding, email outreach.
+- **\`admin\`** — required to write to \`user_roles\`. Manually granted; not handed out automatically.
 
 Roles are stored in a dedicated \`user_roles\` table with an \`app_role\` enum and a \`has_role()\` security-definer function so RLS policies never recurse.
+
+Future roles to consider: FD Manager, Selection Committee Member, Onboarding Specialist, external Franchisee (read-only).
 
 ---
 
@@ -70,9 +76,13 @@ Roles are stored in a dedicated \`user_roles\` table with an \`app_role\` enum a
 
 The product follows a left-to-right funnel reflected in the sidebar order:
 
+\`\`\`
+Dashboard → City Search → Teacher Search → Email Outreach → Candidate Pipeline → Onboarding
+\`\`\`
+
 1. **Score a city** — pick a U.S. metro with the right demographics, school density, and competitive landscape.
-2. **Find prospects** — surface elementary teachers in that city, ranked by Fit Score.
-3. **Run outreach** — send personalized email sequences and track replies.
+2. **Find teachers** — surface K–6 / retired / camp / secondary-STEM teachers in that city, ranked by Fit Score.
+3. **Run outreach** — push prospects into a SmartLead campaign and track replies with auto-tagged intent (HOT / NOT INTERESTED / OOO / NEUTRAL).
 4. **Qualify candidates** — move a prospect through the 7-stage Kanban pipeline.
 5. **Onboard the franchisee** — execute the standardized 7-step launch program.
 
@@ -82,20 +92,26 @@ The product follows a left-to-right funnel reflected in the sidebar order:
 
 ### App Shell
 
-- Persistent left sidebar on desktop (≥ 768 px), drawer on mobile. Collapsible to an icon rail.
+- Persistent left sidebar on desktop (≥ 768 px), drawer on mobile. Collapsible to an icon rail. **Sidebar layout is locked** — 5 main items: Dashboard, City Search, Teacher Search, Email Outreach, Candidate Pipeline.
 - Help icon (?) top-right — restarts the guided tour.
 - Mobile top bar with hamburger, brand mark, and help icon. Touch targets ≥ 44 px.
 
 ### Routes
 
+Public:
+- \`/auth\` — Sign-in / sign-up
+- \`/reset-password\` — Password reset
+
+Protected (\`ProtectedRoute\` + \`AppLayout\`):
 - \`/\` — Dashboard
 - \`/city-scoring\` — City Search
-- \`/teacher-prospects\` — Teacher Search
-- \`/email-outreach\` — Email Outreach
+- \`/teacher-prospects\` — Teacher Search (UI label was renamed; route slug retained)
+- \`/email-outreach\` — Email Outreach (V2; legacy \`EmailOutreach.tsx\` exists but is not routed)
 - \`/candidate-pipeline\` — Candidate Pipeline
 - \`/onboarding\` — Onboarding
-- \`/settings/team\` — Team Members / Settings
+- \`/settings/team\` & \`/users\` — Team Members
 - \`/spec\` — This document
+- \`*\` — 404
 
 ---
 
@@ -103,74 +119,181 @@ The product follows a left-to-right funnel reflected in the sidebar order:
 
 **Purpose:** give the rep a one-screen answer to "what should I do next?"
 
-- **Next Action card** — orange-accented banner with a personalized recommendation and a CTA that deep-links to the right city.
+- **Next Action card** — personalized recommendation with a CTA that deep-links to the right city.
 - **Stat cards** — Total Cities Scored, Total Prospects Found, Candidates in Pipeline, Active Onboardings.
 - **Pipeline Snapshot** — horizontal bar chart of candidate count by stage.
 - **Recent Activity** — last 6 system events with relative timestamps.
 
+Reads from \`candidates\` and \`teacher_prospects\` via the Supabase client. No edge functions.
+
 ---
 
-## 6. City Scoring
+## 6. City Search
 
 **Purpose:** rank U.S. cities by their suitability for a new Neuron Garage franchise.
 
-### Starter Markets
+### National seed table
 
-The Ranked Markets table is seeded with 30+ starter markets across multiple states (Texas, Florida, Arizona, Colorado, North Carolina, Georgia, Virginia) so the screen feels like a real national market search even before any city is refreshed. When live data exists in Lovable Cloud for a market, it overrides the starter row via a deterministic dedupe (live source wins; otherwise newest \`last_scraped_at\` wins).
+\`us_cities_scored\` is seeded with **948 U.S. cities** (population ≥ 50,000), all carrying a pre-computed \`composite_score_default\` so the national ranking is instant — no live API call at query time. Refreshed by scheduled background jobs, not per-user clicks.
 
-### Filters
+### Scoring model (46 metrics across 6 categories)
 
-- State (dynamic — built from whatever markets are loaded), tier (A/B/C/D), registration status, free-text search, min population, min score.
-- Adjustable scoring weights for: population, % children 5–12, median income, school density, competitor count, growth rate.
+| Category | Weight slider (master) |
+|---|---|
+| Market Strength | adjustable, auto-rebalances |
+| Family Demographics | adjustable, auto-rebalances |
+| Franchise Supply | adjustable, auto-rebalances |
+| Cost & Climate | adjustable, auto-rebalances |
+| Talent Pipeline | adjustable, auto-rebalances |
+| Brand & Competition | adjustable, auto-rebalances |
 
-### Refresh Data flow
+**Math** (computed client-side in \`src/lib/clientSubWeightScoring.ts\`):
 
-Clicking **Refresh Data** for the selected city always runs both edge functions in sequence and is non-blocking — if the live API attempt fails, SOW scoring still runs:
+\`\`\`
+metric_normalized = sowNormalize(raw_value, metric_definition)    // 0–100
+sub_share_i       = sub_weight_i / Σ(enabled sub_weights in category)
+category_score    = Σ( sub_share_i × metric_normalized_i ) × 100
+master_share_c    = master_weight_c / Σ(master_weights)
+composite         = Σ( master_share_c × category_score_c )        // 0–100
+\`\`\`
 
-1. \`fetch-city-market-data\` (live API attempt — Census, BLS, Firecrawl, Apify).
-2. \`fetch-city-market-data-sow\` (official 46-metric SOW framework).
-3. Poll \`city_market_signals\` until exactly 46 SOW signals are present, then reload the UI.
+- **Master sliders auto-rebalance to 100.**
+- **Sub-weights do NOT auto-rebalance** — they're typed as relative-importance numbers (no upper bound). Share = \`sub_i / Σ(enabled sub-weights)\`.
+- Empty category falls back to the server-stored \`city_category_scores.score\`.
+- Sub-metric weights live in a per-category drawer (\`SubMetricWeightsDrawer.tsx\`); each enabled metric can be re-weighted or disabled.
 
-The official **SOW composite score and category scores** become the displayed score. Categories with fewer than 3 usable metrics fall back to blended values; missing metrics are tracked as evidence gaps, not counted as zero.
+### Show Formula (non-negotiable)
 
-### Outputs
+Every widget with a calculated number exposes a **Show Formula** affordance that opens a raw / normalized / share / contribution table, with column tooltips, a legend, and a plain-English master-weight contribution sentence. Score changes also fire a delta toast: \`old → new\` for both the category and composite.
 
-- Stat cards showing total cities, A-tier count, average score, and registered states.
-- Sortable city table; row click opens a detail drawer with full demographics, competitor list, schools, and notes.
-- **Source Evidence drawer** — groups all 46 SOW signals by category with source URLs and confidence values.
-- **Compare mode** — select up to 4 cities and open a side-by-side modal.
+### Filter bar & top-level UI
 
-### Key actions
+- State multi-select (dynamic), tier (A/B/C/D), registration status (38 non-registration states are hard-coded), free-text search, min population, min score.
+- Stat cards: total cities, A-tier count, average score, registered states.
+- Sortable city table with sticky header.
+- **Add to Favorites** writes to \`watchlist_items\` (single list today; multi-list rolled over to OPEN_TASKS #9).
+- **Save Search** persists current master + sub weights to \`saved_searches\` per user.
+- **Export CSV** (toolbar) — full ranked table.
+- **Ask AI** bar — natural-language query → \`ai-city-query\` edge function (Lovable AI Gateway).
 
-- From the detail drawer: *"Find Teachers in this City"* button → navigates to Teacher Search pre-filtered to that city.
+### City Detail drawer
+
+Row click opens \`CityDetailDrawer\` with:
+
+- Composite gauge + verdict label + plain-English reason.
+- **Source Data panel** — all 46 SOW signals grouped by category, with source URLs and confidence values.
+- Public Elementary Schools widget — count + enrollment from \`us_cities_scored.public_elementary_count\` / \`public_elementary_enrollment\` (NCES schools with \`lowest_grade_offered ≤ 5\`).
+- **Total public schools** is also stored (\`public_school_count\` / \`public_school_enrollment\`) but its widget is deferred (OPEN_TASKS 11a).
+- Private elementary count + enrollment from NCES PSS (embedded 2021–22 dataset; 636 / 960 cities covered, full re-pull tracked as B10a).
+- Climate signals (annual snowfall, avg temp, sunny days, severe-weather days) from Open-Meteo Historical (506 / 960 seeded, B8 in progress).
+- Competitor list (\`city_competitors\`), nearby markets panel, map.
+- **Export Raw Signals** — downloads the open city's \`city_market_signals\` rows as \`{city-slug}-source-data-{date}.csv\`.
+- **Find Teachers in this City** button → navigates to Teacher Search pre-filtered.
+
+### Refresh Data flow (per-city, manual)
+
+Clicking **Refresh Data** for a city runs:
+
+1. \`fetch-city-market-data-sow\` — official 46-metric SOW framework; writes \`city_market_signals\`, recomputes \`city_category_scores\` and \`cities.composite_score\`.
+2. \`fetch-school-counts\` — non-blocking NCES CCD refresh.
+3. (Legacy \`fetch-city-market-data\` retained as fallback path.)
+
+Categories with fewer than 3 usable metrics fall back to blended values; missing metrics are tracked as evidence gaps, not counted as zero.
+
+### School-level source of truth
+
+\`public_schools\` is the per-row table of every open public K–12 school nationally (38,196 rows across 948 cities, PK = \`nces_id\`). Stores name, district, address, lat/lng, grades, type, enrollment; \`is_elementary_serving\` is a generated column. Populated by **both** \`seed-cities-database\` (same NCES response as the seed pass — no extra API calls) and \`backfill-public-schools\` (for full rebuilds). Counts on \`us_cities_scored\` are cached aggregates.
+
+### Compare mode
+
+Select up to 4 cities and open a side-by-side modal (\`MarketCompareModal\`).
 
 ---
 
 ## 7. Teacher Search
 
-**Purpose:** discover and shortlist elementary-school teachers who could become franchisees.
+**Purpose:** discover, score, and shortlist teachers who could become franchisees.
+
+### Target segments
+
+Defined in \`TEACHER_IDEAL_PROFILE.md\`. \`teacher_prospects.teacher_type\` is a locked enum: \`active\` | \`retired\` | \`camp_enrichment\`. \`segment\` maps to:
+
+1. **Active K–6** elementary teachers (primary)
+2. **Retired K–6** elementary teachers (primary)
+3. **Camp / enrichment** educators — summer camp, after-school STEM/maker (primary)
+4. **Middle/high STEM/maker/shop/art** teachers (secondary — campers stay K–6, but staff can come from grades 6–12)
+
+### UI
 
 - **Filter bar** — city, fit-score range, tag, enrichment status, search.
-- **Find Prospects modal** — simulated AI search by city + grade band + keywords; returns a ranked list of new teachers.
-- **Outreach Intelligence panel** — shows best send-time, recommended channel, and a draft message template per selection.
-- **Prospect table** — name, school, city, masked email, LinkedIn, Fit Score, tag, enrichment status, Promote action.
-- **Bulk action bar** — appears when one or more rows are selected: bulk-promote, bulk-tag, export.
-- **Detail panel** — full profile with bio, contact, school info, signals (years of experience, leadership roles, side hustles), activity log.
+- **Find Prospects modal** — calls \`fetch-teacher-prospects\` (Apify Google-Maps actor over schools in the target city).
+- **Outreach Intelligence panel** — best send-time, recommended channel, draft message template per selection.
+- **Prospect table** — name, school, city, masked email, LinkedIn, Fit Score, tag, enrichment status, Promote.
+- **Bulk action bar** — bulk-promote, bulk-tag, export.
+- **Detail panel** — full profile (bio, contact, school, signals, activity log).
 
-### Promote flow
+### Fit Score (0–100)
 
-Clicking *Promote* on a teacher creates a corresponding entry in the Candidate Pipeline at the **New Lead** stage.
+Computed in \`src/utils/fitScore.ts\`. Inputs: grade match (K–6 heavy weighting), teacher type, summer availability heuristic, DonorsChoose activity (planned), subject match for Segment 4. Full criteria in \`TEACHER_IDEAL_PROFILE.md\`.
+
+### Promote → Candidate Pipeline
+
+Clicking **Promote** creates a row in \`candidates\` at the **New Lead** stage. (UI exists; end-to-end wiring with FKs back to \`public_schools\` / \`us_cities_scored\` is OPEN_TASKS B3.)
+
+### Today's limitation
+
+Apify-only data. Apollo, purchased vendor lists, and DonorsChoose are not yet wired (blocked on Brett's sourcing decision). \`teacher_prospects_master\` table not yet built (Task #0 / B1).
 
 ---
 
 ## 8. Email Outreach
 
-**Purpose:** run multi-step outreach sequences to selected prospects.
+**Purpose:** outbound email campaigns to teacher prospects via **SmartLead** (Kaylie's branding: "Integral Leads"). End-to-end live as of May 19, 2026 (Phases 1–5 complete).
 
-- Templates with merge tags (\`{{first_name}}\`, \`{{city}}\`, \`{{school}}\`).
-- Sequence builder — step delay, channel, conditional branches.
-- Inbox-style reply view with thread grouping.
-- Per-prospect status: queued → sent → opened → replied → bounced.
+### Page layout
+
+\`EmailOutreachV2.tsx\` — 3-panel default layout with a tab toggle to swap Campaigns for Analytics. Top-right buttons: **New Campaign**, **Import Leads**.
+
+| Panel | Purpose |
+|---|---|
+| **SmartLeadConnectionPanel** | API-key status, "Last successful API call" timestamp, 24-hour webhook activity indicator |
+| **SmartLeadCampaignsPanel** | Lists campaigns from \`campaign_cache\`; click a row for status / lead counts / schedule |
+| **AnalyticsPanel** | Single \`GET /analytics/overview\` call (per-campaign loop only as fallback) to respect 10 req / 2 s rate limit |
+| **SmartLeadInboxPanel** | Live reply feed from \`smartlead_events\` via Supabase Realtime; unread badge + "Mark all read"; intent chips |
+| **EmailAccountsPanel** | Connected mailboxes from \`GET /email-accounts\` |
+| **ProspectBatchesPanel** | Groups \`prospects_staging\` rows by \`batch_id\`; per-row Retry for \`qa_status='rejected'\` |
+
+### New Campaign drawer
+
+\`NewCampaignDrawer.tsx\` calls \`POST /campaigns/create\`. **Important:** SmartLead's \`track_settings\` is a NEGATIVE list — the UI emits \`DONT_TRACK_EMAIL_OPEN\`, \`DONT_TRACK_LINK_CLICK\`, \`DONT_TRACK_REPLY_TO_AN_EMAIL\` when toggles are off. Sending \`TRACK_OPENS\` / \`TRACK_CLICKS\` returns 400 (Phase 4 hotfix).
+
+### Import Leads wizard
+
+\`ImportLeadsWizard.tsx\` — 4 steps:
+
+1. **Source** — Apollo / Clay / LinkedIn Navigator / CSV / Manual
+2. **Field mapping**
+3. **QA staging** into \`prospects_staging\`
+4. **Bulk push** to chosen SmartLead campaign via \`POST /campaigns/:id/leads\`
+
+### Webhook → Inbox loop
+
+SmartLead POSTs to \`smartlead-webhook\` (\`EMAIL_SENT\`, \`EMAIL_OPENED\`, \`EMAIL_CLICKED\`, \`EMAIL_REPLIED\`, \`EMAIL_BOUNCED\`). The function inserts into \`smartlead_events\`; for replies it sets \`reply_intent\` via a keyword classifier:
+
+- 🟢 **HOT** — green chip
+- ⚪ **NOT_INTERESTED** — gray chip
+- 🔵 **OOO** (Out of Office) — blue chip
+- 🟡 **NEUTRAL** — yellow chip
+
+Postgres realtime → Inbox panel updates without refresh.
+
+### AI personalization
+
+Email body generation runs through the Lovable AI Gateway (\`LOVABLE_API_KEY\`). Today: Gemini 2.5 Flash for fast tasks, GPT-5 Mini for nuance.
+
+### Next link
+
+**Task #18** (Teacher → Lead conversion) connects Teacher Search's Promote action directly to a SmartLead campaign push, and auto-creates a Candidate row when a reply's \`reply_intent = HOT\`. Paused pending Teacher Search data-layer readiness.
 
 ---
 
@@ -194,20 +317,29 @@ Plus a parallel **Disqualified** column.
 
 - Kanban with horizontal scroll on small screens; "Jump to" pill nav above the board.
 - Pipeline Analytics bar above the board (count per stage, conversion rates).
-- Each card shows name, fit score, days in stage, last activity, owner.
+- Each card: name, fit score, days in stage, last activity, owner.
 
 ### Detail panel (sheet)
 
 - **Overview** — contact, source, fit score, deal owner.
-- **Qualification** — six 1–5 star ratings (capital, motivation, market knowledge, time commitment, leadership, culture fit) with auto-calc total.
+- **Qualification** — six 1–5 star ratings (capital, motivation, market knowledge, time commitment, leadership, culture fit) with auto-calc composite stored in \`candidate_qualification\`.
 - **Notes & Activity** — chronological log; add a note inline.
 - **Homework** — trial-close checklist (territory selected, financing in place, family aligned, etc.).
-- **Selection Committee** (Immersion only) — three named members, each casts an Approve / Decline vote.
-- **Confirmation checklist** — auto-seeded by a database trigger when a candidate enters the Confirmation stage.
+- **Selection Committee** (Immersion only) — three named members, each casts Approve / Decline.
+- **Confirmation checklist** — auto-seeded by DB trigger \`trg_seed_confirmation_checklist\` when stage = \`confirmation\`.
+- **Stage History** — every transition with notes (\`candidate_stage_history\`).
+
+### Confirmation Gate (locked)
+
+A candidate **cannot** drop into "Signing" without passing "Confirmation". Hardcoded — do not change.
 
 ### Signing → Onboarding handoff
 
-Cards in the **Signing** column display a **Start Onboarding →** button. On confirm, a new Onboarding record is created at Step 1/7, status **On Track**, days elapsed = 0, and the user is navigated to \`/onboarding\`.
+Cards in **Signing** show a **Start Onboarding →** button. On confirm, a new \`onboarding_records\` row is created at Step 1/7 (status **On Track**, days elapsed 0) and the user is navigated to \`/onboarding\`.
+
+### Today's limitation
+
+Candidates are placeholder data. Teacher → Candidate promotion path exists in UI but is not wired end-to-end (Task #18).
 
 ---
 
@@ -220,10 +352,10 @@ Cards in the **Signing** column display a **Start Onboarding →** button. On co
 1. **Welcome & Kickoff** — welcome email, intro call, account setup.
 2. **Roadmap Review** — walk through the 90-day launch roadmap.
 3. **Market Plan** — finalize territory, schools targeted, year-1 revenue model.
-4. **FDD Countdown** — 14-day mandatory FDD waiting period (visualized via countdown).
+4. **FDD Countdown** — 14-day mandatory Franchise Disclosure Document waiting period (visualized via countdown).
 5. **Document Upload** — signed FDD, COI, LLC docs, void check.
 6. **Awarded** — final signature; ceremonial "Welcome to Neuron Garage" moment.
-7. **Active Franchisee Onboarding** — handoff to the operations team; "Send the donut" trigger.
+7. **Active Franchisee Onboarding** — handoff to operations; "Send the donut" trigger.
 
 ### Components
 
@@ -231,18 +363,31 @@ Cards in the **Signing** column display a **Start Onboarding →** button. On co
 - **Onboarding Wizard** (sheet) — step progress bar, per-step form, Activity Log, Communication Triggers.
 - **Communication Triggers** — pre-canned emails auto-marked sent when the corresponding step is completed.
 
+No edge function — pure DB on \`onboarding_records\` + \`onboarding_steps\`. Template from \`src/lib/onboardingTemplate.ts\`.
+
 ---
 
-## 11. Guided Tour
+## 11. Authentication
 
-First-time visitors see a Driver.js tour that highlights each main sidebar item. The tour ends with a "You're all set" panel that deep-links to City Search.
+- **Email + password only.** Google / Microsoft / SSO buttons intentionally removed from \`/auth\` — do not re-add.
+- **HIBP leaked-password check is OFF** (\`password_hibp_enabled: false\`) so users can pick any password meeting length rules.
+- **Email auto-confirm is OFF** — new users must verify their email before sign-in.
+- New users land with the \`manager\` role via the \`handle_new_user\` trigger, which also creates a row in \`profiles\`.
+- The \`admin\` role is grant-only and required to mutate \`user_roles\`.
+- Admin user provisioning goes through the \`admin-create-user\` edge function.
+
+---
+
+## 12. Guided Tour
+
+First-time visitors see a Driver.js tour that highlights each main sidebar item. Ends with a "You're all set" panel that deep-links to City Search.
 
 - Auto-runs on first visit; persists completion in \`localStorage\` under \`ng:tour-completed-v1\`.
 - Restartable any time via the **?** icon in the top-right header.
 
 ---
 
-## 12. Design System
+## 13. Design System
 
 ### Brand colors
 
@@ -250,7 +395,10 @@ First-time visitors see a Driver.js tour that highlights each main sidebar item.
 - **Accent blue** \`#0757ff\` / \`#1f5bff\` — active nav, primary CTAs.
 - **Accent orange** \`#fd7e14\` — secondary CTAs, progress bars.
 - **Success teal** \`#20c997\` · **Warning amber** \`#ffc107\` · **Danger red** \`#dc3545\`.
+- **Reply intent chips** — HOT green, NOT_INTERESTED gray, OOO blue, NEUTRAL yellow.
 - **Neutrals** — backgrounds \`#f2f4f6\` / \`#f8f9fa\`, borders \`#dee2e6\` / \`#eef2f7\`, body text \`#343a40\`, muted \`#6c757d\`.
+
+All colors are tokenized as HSL CSS variables in \`src/index.css\` and \`tailwind.config.ts\`.
 
 ### Typography & spacing
 
@@ -267,24 +415,41 @@ Mobile-first; tested at 320, 375, 414, 768, 1024, 1280+. Tables scroll horizonta
 
 ---
 
-## 13. Data Model
+## 14. Data Model
+
+All tables have RLS enabled.
 
 ### Cities & market data
 
-- \`cities\` — \`city, state, county, metro_area, market_type, tier, composite_score, population, children_pct, median_income, elementary_schools, competitor_count, is_non_registration, last_scraped_at, notes\`.
-- \`city_category_scores\` — per-category SOW scores (one row per category per city).
-- \`city_market_signals\` — every SOW evidence row (\`signal_key, label, value, delta, source, source_url, confidence, raw_data\`).
-- \`city_competitors\` — local competitor records (\`name, type, pricing, capacity, source_url\`).
-- \`city_fetch_jobs\` — audit trail of every edge-function refresh (status, request payload, response summary, error message).
+- \`us_cities_scored\` — **national seed table** (948 cities). Pre-computed \`composite_score_default\` + the 46 metric columns. Cached school counts (\`public_school_count\`, \`public_elementary_count\`, \`public_school_enrollment\`, \`public_elementary_enrollment\`, \`private_elementary_count\`, \`private_elementary_enrollment\`) + climate columns.
+- \`public_schools\` — one row per NCES open public K–12 school nationally (PK \`nces_id\`). 38,196 rows across 948 cities. \`is_elementary_serving\` is a generated column (\`lowest_grade_offered ≤ 5\`). FK \`us_cities_scored_id\`. **Source of truth** for school-level data.
+- \`cities\` — legacy per-city table (City Search UI still reads this; consolidation tracked as B5).
+- \`city_category_scores\` — per-category SOW scores.
+- \`city_market_signals\` — every SOW evidence row (\`signal_key, label, value, delta, source, source_url, confidence, raw_data\`). Drives "Show Formula".
+- \`city_competitors\` — Apify-scraped competitor records.
+- \`city_fetch_jobs\` — audit trail of every edge-function refresh.
+- \`us_cities_geo\` — reference table (lat/lng/pop), read-only.
+- \`custom_criteria\` — user-defined extra scoring criteria.
+- \`scoring_config\` — per-user master-weight preset.
+- \`saved_searches\` — per-user saved \`master_weights\` + \`sub_weights\` jsonb.
+- \`watchlist_items\` — per-user Favorites (cities).
 
-### Candidates
+### Teachers & candidates
 
+- \`teacher_prospects\` — \`city, state, school, fit_score, status, apify_run_id, teacher_type (active|retired|camp_enrichment), subject, segment, linkedin_url, donorschoose_id, enrichment_source, last_enriched_at\`. FKs \`school_nces_id\` → \`public_schools\`, \`us_cities_scored_id\` → \`us_cities_scored\`.
+- \`teacher_prospects_master\` — **planned** master multi-source teacher pool (Task #0 / B1).
 - \`candidates\` — \`first_name, last_name, email, phone, city, state, current_stage, fit_score, fit_tag, assigned_to\`.
-- \`candidate_profiles\` — motivation, background, liquid_capital, net_worth, timeline, partner_involved, location_preferences.
-- \`candidate_qualification\` — six 0–100 sub-scores plus composite.
-- \`candidate_stage_history\` — every stage transition with notes.
-- \`candidate_votes\` — Selection Committee vote rows.
+- \`candidate_profiles\` — motivation, background, liquid capital, net worth, timeline, partner involvement, location preferences.
+- \`candidate_qualification\` — 5 sub-scores (financial / leadership / teaching / culture / market) + composite.
+- \`candidate_stage_history\` — every transition with notes.
+- \`candidate_votes\` — Selection Committee rows.
 - \`candidate_checklist_items\` — per-stage checklist (auto-seeded for Confirmation via trigger).
+
+### Email Outreach (SmartLead)
+
+- \`smartlead_events\` — webhook event log (\`event_type, campaign_id, lead_email, payload jsonb, reply_intent\`). Realtime-enabled.
+- \`campaign_cache\` — local mirror of SmartLead campaigns.
+- \`prospects_staging\` — import-wizard staging (\`batch_id, source, qa_status, smartlead_lead_id, pushed_at\`).
 
 ### Onboarding
 
@@ -296,45 +461,86 @@ Mobile-first; tested at 320, 375, 414, 768, 1024, 1280+. Tables scroll horizonta
 - \`profiles\` — mirror of \`auth.users\` (email, full_name).
 - \`user_roles\` — \`(user_id, role)\` with \`app_role\` enum.
 
-All tables have RLS enabled. Authenticated users can read/write app data; role mutation requires \`has_role(auth.uid(), 'admin')\`.
+### DB functions & triggers
+
+\`handle_new_user\`, \`has_role\`, \`update_updated_at_column\`, \`fill_city_coords\`, \`seed_confirmation_checklist\`, \`trg_seed_confirmation_checklist\`.
 
 ---
 
-## 14. Tech Stack
+## 15. Tech Stack
 
 - **React 18** + **TypeScript 5** + **Vite 5**
 - **Tailwind CSS v3** + **shadcn/ui** + **Radix UI**
 - **React Router v6** for routing
 - **TanStack Query** for server-state caching
+- **Zustand** for client-side stores (city scoring, teacher prospects, candidate pipeline)
 - **Driver.js** for the guided tour
 - **Sonner** + shadcn Toaster for notifications
 - **Lucide** icon set
 - **Vitest** for unit tests
-- **Lovable Cloud** (managed Supabase) — Postgres, Auth, Storage, Edge Functions
+- **Lovable Cloud** (managed Supabase) — Postgres, Auth, Storage, Edge Functions, Realtime
 
 ---
 
-## 15. Backend & Edge Functions
+## 16. Backend & Edge Functions
 
-Backend logic runs as Lovable Cloud edge functions (Deno):
+All deployed as Deno edge functions under \`supabase/functions/\`.
 
-- \`fetch-city-market-data\` — live-API path. Calls Census, BLS, Firecrawl, and Apify connectors and writes \`city_market_signals\` rows tagged \`source = 'live_api'\`.
-- \`fetch-city-market-data-sow\` — official 46-metric SOW framework. Always writes exactly 46 rows tagged \`source = 'sow_metric_coverage'\` and recomputes \`city_category_scores\` + \`cities.composite_score\` / \`tier\`.
-- Shared scoring code lives under \`supabase/functions/_shared/scoring.ts\` and uses category-blend fallback when a category has fewer than 3 usable metrics.
+| Function | Purpose |
+|---|---|
+| \`admin-create-user\` | Admin-only user provisioning |
+| \`ai-city-query\` | Lovable AI Gateway proxy for the "Ask AI" bar |
+| \`fetch-city-market-data\` | Legacy live city refresh |
+| \`fetch-city-market-data-sow\` | Official 46-metric SOW refresh; writes \`city_market_signals\`, recomputes scores |
+| \`fetch-school-counts\` | NCES CCD public-elementary counts per city |
+| \`seed-cities-database\` | Bulk seed of \`us_cities_scored\` (Census/BLS/BEA/FRED/NCES) **and** per-school upsert into \`public_schools\` from the same NCES response |
+| \`seed-cities-weather\` | Open-Meteo Historical Weather seed into \`us_cities_scored\` |
+| \`backfill-public-schools\` | Full-rebuild iterator for \`public_schools\` |
+| \`enrich-school-staff\` | Staff/teacher enrichment for a given school (Firecrawl + Apify) |
+| \`fetch-teacher-prospects\` | Apify-driven teacher prospect pull per city |
+| \`smartlead-proxy\` | Server-side proxy to the SmartLead REST API (campaigns, lead push, analytics, email accounts, health check). Respects 10 req / 2 s rate limit |
+| \`smartlead-webhook\` | Public webhook receiver for SmartLead events; writes \`smartlead_events\` and tags \`reply_intent\` |
 
-Secrets used: \`CENSUS_API_KEY\`, \`BLS_API_KEY\`, \`FIRECRAWL_API_KEY\`, \`APIFY_API_TOKEN\`, \`APIFY_GOOGLE_MAPS_ACTOR_ID\`, \`LOVABLE_API_KEY\`.
+Shared modules: \`_shared/cityGeo.ts\`, \`_shared/metricFetchers.ts\`, \`_shared/scoring.ts\` (category-blend fallback when a category has fewer than 3 usable metrics).
 
 ---
 
-## 16. Future Work
+## 17. Third-Party APIs
 
-- Manager dashboards, role-based access controls, and assignment rules.
-- Real-time collaboration on candidate cards (Supabase Realtime).
-- AI assists: auto-draft outreach emails, summarize candidate notes, recommend next-best stage moves.
-- Email & calendar integration (Gmail / Google Calendar) for the activity log and outreach send.
-- E-signature via DocuSign or Dropbox Sign for FDD and franchise agreement.
-- Public franchisee portal — read-only view of their own onboarding journey.
-- Expand SOW framework to additional verticals beyond elementary STEM.
+Full reference in \`APIS.md\`. Live wired today:
+
+| Provider | Purpose | Secret |
+|---|---|---|
+| US Census ACS | Population, children, income, density | \`CENSUS_API_KEY\` |
+| BLS | STEM jobs, labor force | \`BLS_API_KEY\` |
+| BEA | Regional income | \`BEA_API_KEY\` |
+| FRED | Median income, COLI | _public_ |
+| NCES CCD (Urban Institute) | Public-school records | _public_ |
+| NCES PSS (embedded Excel) | Private elementary counts | _static lookup_ |
+| Open-Meteo Historical | Climate signals | _public_ |
+| Apify Google Maps actor | Competitor + teacher scraping | \`APIFY_API_TOKEN\`, \`APIFY_GOOGLE_MAPS_ACTOR_ID\` |
+| Firecrawl | Web scraping / enrichment | \`FIRECRAWL_API_KEY\` |
+| Lovable AI Gateway | In-app AI (fit narratives, email body, Ask AI) | \`LOVABLE_API_KEY\` |
+| SmartLead ("Integral Leads") | Outbound email | \`SMARTLEAD_API_KEY\` |
+| Supabase (Lovable Cloud) | DB / Auth / Edge / Storage / Realtime | \`SUPABASE_*\` |
+
+Pending / blocked: **GreatSchools** (waiting on Brett's key — 14-day-trial strategy), **Apollo** / **DonorsChoose** / **Clay** (awaiting Brett's teacher-sourcing decision).
+
+---
+
+## 18. Future Work
+
+Tracked in \`OPEN_TASKS.md\`. Highlights:
+
+- **Task #0** — \`teacher_prospects_master\` table + initial seed (BLOCKER for Teacher Search v2).
+- **Task #11** — Wire GreatSchools API once key is provided (trial-then-cancel strategy, $0 cost).
+- **Task #18** — Teacher → Lead conversion: Teacher Search Promote → SmartLead campaign push; \`reply_intent = HOT\` auto-creates a Candidate at "New Lead". Paused pending Teacher Search data-layer readiness.
+- **Task #19** — Replace placeholder candidates with real leads from Email Outreach.
+- **Task #20** — PDF export of candidate lead sheet.
+- **Task #21** — Email Outreach production hardening: AI-powered reply classifier (replace keyword heuristic), per-user inbox assignment, A/B testing UI, bounce/unsubscribe automation.
+- **Data-layer follow-ups (B-series)** — \`teacher_prospects_master\`, candidate FK backfill, \`cities\` ↔ \`us_cities_scored\` consolidation, Apify nationwide competitor scrape, BLS OEWS metro wages, NCES PSS full re-pull.
+
+Explicitly out of scope: Google / Microsoft / SSO login, multi-tenancy, mobile app, public franchisee portal, e-signature via DocuSign.
 
 ---
 

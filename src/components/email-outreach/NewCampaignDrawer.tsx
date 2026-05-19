@@ -68,8 +68,13 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
       } catch (e) { console.warn("schedule failed", e); }
 
       try {
+        // SmartLead uses a negative list: include a DONT_* flag to DISABLE tracking.
+        const track_settings = [
+          !trackOpens ? "DONT_TRACK_EMAIL_OPEN" : null,
+          !trackClicks ? "DONT_TRACK_LINK_CLICK" : null,
+        ].filter(Boolean);
         await callProxy(`/campaigns/${id}/settings`, "POST", {
-          track_settings: [trackOpens ? "TRACK_OPENS" : null, trackClicks ? "TRACK_CLICKS" : null].filter(Boolean),
+          track_settings,
           stop_lead_settings: stopOnReply ? "REPLY_TO_AN_EMAIL" : "CLICK_ON_A_LINK",
         });
       } catch (e) { console.warn("settings failed", e); }

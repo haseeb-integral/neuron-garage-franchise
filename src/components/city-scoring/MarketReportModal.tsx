@@ -159,15 +159,17 @@ export function MarketReportModal({ open, onClose, market, categoryScores, refre
           return;
         }
 
-        const [{ data: signals }, { data: competitors }, { data: jobs }] = await Promise.all([
-          supabase.from("city_market_signals").select("*").eq("city_id", cityId),
-          supabase.from("city_competitors").select("*").eq("city_id", cityId).order("created_at", { ascending: false }),
-          supabase.from("city_fetch_jobs").select("*").eq("city_id", cityId).order("created_at", { ascending: false }).limit(1),
-        ]);
+        const { data: signals } = await supabase
+          .from("city_market_signals")
+          .select("*")
+          .eq("city_id", cityId);
+        // Legacy city_competitors and city_fetch_jobs were dropped May 19.
+        const competitors: any[] = [];
+        const jobs: any[] = [];
 
         const fallbackSignals = buildSeededFallbackSignals(market);
         setLiveSignals(((signals?.length ? signals : fallbackSignals) ?? []) as LiveSignal[]);
-        setLiveCompetitors((competitors ?? []) as LiveCompetitor[]);
+        setLiveCompetitors(competitors as LiveCompetitor[]);
         setLatestJob(jobs?.[0] ?? null);
       } catch (err) {
         console.error("MarketReportModal load error", err);

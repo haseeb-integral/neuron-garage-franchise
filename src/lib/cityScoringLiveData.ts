@@ -386,17 +386,13 @@ function jobStatusToRowStatus(status: string | null | undefined): CitySourceRow[
 export async function getCitySourceData(cityId: string): Promise<CitySourceRow[]> {
   if (!cityId) return [];
 
-  const [{ data: jobs }, { data: signals }] = await Promise.all([
-    supabase
-      .from("city_fetch_jobs")
-      .select("source, status, started_at, completed_at, created_at, error_message, response_summary")
-      .eq("city_id", cityId)
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("city_market_signals")
-      .select("source, source_url, updated_at")
-      .eq("city_id", cityId),
-  ]);
+  // Legacy city_fetch_jobs was dropped May 19 — Source Data panel now reflects
+  // only signal-source coverage from city_market_signals.
+  const jobs: any[] = [];
+  const { data: signals } = await supabase
+    .from("city_market_signals")
+    .select("source, source_url, updated_at")
+    .eq("city_id", cityId);
 
   // Latest job per source.
   const latestJobBySource = new Map<string, any>();

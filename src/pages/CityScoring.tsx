@@ -736,16 +736,16 @@ const CityScoring = () => {
     }
     let cancelled = false;
     (async () => {
-      const [{ data: signals }, { data: scores }] = await Promise.all([
+      const [{ data: signals }, scoresRes] = await Promise.all([
         supabase
           .from("city_market_signals")
           .select("city_id,signal_key,value")
           .in("city_id", visibleCityIds),
-        supabase
-          .from("city_category_scores")
-          .select("city_id,category,score")
-          .in("city_id", visibleCityIds),
+        // Legacy city_category_scores dropped — composite overrides now rely
+        // on score_* columns already loaded on the scored row.
+        Promise.resolve({ data: [] as { city_id: string; category: string; score: number }[] }),
       ]);
+      const { data: scores } = scoresRes;
       if (cancelled) return;
 
       const DB_TO_UI: Record<string, CategoryKey> = {
@@ -924,23 +924,13 @@ const CityScoring = () => {
       addScore("parent_mindset", scoredRow.score_parent_mindset);
 
       // Canonical-only: read evidence keyed to the scored-city UUID.
-      // Legacy `cities` table is intentionally NOT read — the live-fetch
-      // system was discarded and its rows would only pollute counts.
-      const [{ data: signals }, { data: comps }, { data: jobs }] = await Promise.all([
-        supabase.from("city_market_signals").select("*").eq("city_id", scoredRow.id),
-        supabase
-          .from("city_competitors")
-          .select("*")
-          .eq("city_id", scoredRow.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("city_fetch_jobs")
-          .select("*")
-          .eq("city_id", scoredRow.id)
-          .eq("source", "sow_metric_coverage")
-          .order("created_at", { ascending: false })
-          .limit(1),
-      ]);
+      // Legacy `cities` / `city_competitors` / `city_fetch_jobs` are dropped.
+      const { data: signals } = await supabase
+        .from("city_market_signals")
+        .select("*")
+        .eq("city_id", scoredRow.id);
+      const comps: any[] = [];
+      const jobs: any[] = [];
 
       setLiveCity(cityRow);
       setLiveSignals(signals ?? []);
@@ -1017,106 +1007,20 @@ const CityScoring = () => {
     ]);
   };
 
-  const waitForCompleteSowEvidence = async ({
-    city,
-    state,
-    startedAfter,
-    expectedJobId,
-    expectedCompositeScore,
-    expectedTier,
-  }: {
+  // Legacy live-fetch verification path (cities/city_fetch_jobs/city_category_scores
+  // were dropped on May 19). Refresh UI is gated off via SHOW_LIVE_REFRESH=false;
+  // this stub keeps the call site compiling without touching dropped tables.
+  const waitForCompleteSowEvidence = async (_args: {
     city: string;
     state: string;
     startedAfter: string;
     expectedJobId?: string | null;
     expectedCompositeScore?: number | null;
     expectedTier?: string | null;
-  }) => {
-    let lastDetail = "SOW evidence rows are not ready yet";
-
-    for (let attempt = 0; attempt < 10; attempt += 1) {
-      const { data: cityRow, error: cityError } = await supabase
-        .from("cities")
-        .select("id, composite_score, tier, last_scraped_at")
-        .eq("city", city)
-        .eq("state", state)
-        .maybeSingle();
-
-      if (cityError) {
-        lastDetail = cityError.message;
-      } else if (cityRow?.id) {
-        const latestSowJobQuery = expectedJobId
-          ? supabase
-              .from("city_fetch_jobs")
-              .select("id,status,response_summary,created_at,completed_at")
-              .eq("id", expectedJobId)
-              .maybeSingle()
-          : supabase
-              .from("city_fetch_jobs")
-              .select("id,status,response_summary,created_at,completed_at")
-              .eq("city_id", cityRow.id)
-              .eq("source", "sow_metric_coverage")
-              .gte("created_at", startedAfter)
-              .order("created_at", { ascending: false })
-              .limit(1)
-              .maybeSingle();
-
-        const [{ data: sowJob, error: jobError }, { count: signalCount, error: signalError }, { count: categoryCount, error: categoryError }] = await Promise.all([
-          latestSowJobQuery,
-          supabase
-            .from("city_market_signals")
-            .select("id", { count: "exact", head: true })
-            .eq("city_id", cityRow.id),
-          supabase
-            .from("city_category_scores")
-            .select("id", { count: "exact", head: true })
-            .eq("city_id", cityRow.id),
-        ]);
-
-        const jobSummary = sowJob?.response_summary as any;
-        const totalSowMetrics = Number(jobSummary?.counts?.total_sow_metrics ?? 0);
-        const scoreMatches = expectedCompositeScore == null || cityRow.composite_score === expectedCompositeScore;
-        const tierMatches = expectedTier == null || cityRow.tier === expectedTier;
-        const jobMatchesRequest = expectedJobId
-          ? sowJob?.id === expectedJobId
-          : !!sowJob?.created_at && new Date(sowJob.created_at).getTime() >= new Date(startedAfter).getTime();
-        const jobCompleted = sowJob?.status === "completed" || sowJob?.status === "completed_with_warnings";
-
-        if (
-          !jobError
-          && !signalError
-          && !categoryError
-          && jobMatchesRequest
-          && jobCompleted
-          && totalSowMetrics === 46
-          && signalCount === 46
-          && (categoryCount ?? 0) >= CATEGORIES.length
-          && scoreMatches
-          && tierMatches
-        ) {
-          return { ready: true };
-        }
-
-        lastDetail = [
-          jobError?.message,
-          signalError?.message,
-          categoryError?.message,
-          `signals=${signalCount ?? 0}`,
-          `categories=${categoryCount ?? 0}`,
-          `expected=${totalSowMetrics || 0}`,
-          scoreMatches ? null : `score=${cityRow.composite_score ?? "?"}`,
-          tierMatches ? null : `tier=${cityRow.tier ?? "?"}`,
-          sowJob?.status ? `status=${sowJob.status}` : null,
-        ].filter(Boolean).join(", ");
-      } else {
-        lastDetail = "City row not found after refresh";
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, attempt === 0 ? 350 : 800));
-    }
-
-    return { ready: false, detail: lastDetail };
+  }): Promise<{ ready: boolean; detail?: string }> => {
+    return { ready: false, detail: "Live refresh path retired — data comes from seed runs only." };
   };
+
 
   const totalWeight = Object.values(weights).reduce((s, v) => s + v, 0);
 
@@ -1157,15 +1061,17 @@ const CityScoring = () => {
       const scoresByCity: Record<string, Partial<Record<CategoryKey, number>>> = {};
 
       if (cityIds.length > 0) {
-        const [{ data: signals }, { data: scores }] = await Promise.all([
-          supabase.from("city_market_signals").select("city_id,signal_key,value").in("city_id", cityIds),
-          supabase.from("city_category_scores").select("city_id,category,score").in("city_id", cityIds),
-        ]);
+        const { data: signals } = await supabase
+          .from("city_market_signals")
+          .select("city_id,signal_key,value")
+          .in("city_id", cityIds);
+        // Legacy city_category_scores dropped — CSV uses score_* columns instead.
+        const scores: { city_id: string; category: string; score: number }[] = [];
         (signals ?? []).forEach((s: any) => {
           if (!sigByCity[s.city_id]) sigByCity[s.city_id] = {};
           sigByCity[s.city_id][s.signal_key] = parseSignalValue(s.value);
         });
-        (scores ?? []).forEach((s: any) => {
+        scores.forEach((s: any) => {
           const ui = DB_TO_UI[s.category];
           if (!ui) return;
           if (!scoresByCity[s.city_id]) scoresByCity[s.city_id] = {};

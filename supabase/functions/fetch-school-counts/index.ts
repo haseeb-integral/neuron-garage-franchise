@@ -93,10 +93,11 @@ Deno.serve(async (req) => {
   try { body = await req.json(); } catch (_) { /* empty body ok */ }
   const cityIds: string[] | undefined = Array.isArray(body?.cityIds) ? body.cityIds : undefined;
 
-  // Load target cities
-  let q = admin.from("cities").select("id, city, state");
+  // Load target cities from canonical us_cities_scored table.
+  let q = admin.from("us_cities_scored").select("id, city_name, state_name");
   if (cityIds?.length) q = q.in("id", cityIds);
-  const { data: cities, error: citiesErr } = await q;
+  const { data: rawCities, error: citiesErr } = await q;
+  const cities = (rawCities ?? []).map((r: any) => ({ id: r.id, city: r.city_name, state: r.state_name }));
   if (citiesErr) {
     return new Response(JSON.stringify({ error: citiesErr.message }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },

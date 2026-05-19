@@ -248,6 +248,11 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
                 <input type="number" min={1} max={200} value={dailyCap} onChange={(e) => setDailyCap(Number(e.target.value) || 50)} className="mt-1 h-10 w-full rounded-lg border border-[#dbe4f2] px-3" />
                 <div className="mt-1 text-[11px] text-[#526078]">Hard limit 200/day. Default 50 protects deliverability and your domain reputation.</div>
               </label>
+              <label className="block">
+                <span className="text-xs font-bold text-[#34445f]">Min gap between emails (minutes)</span>
+                <input type="number" min={1} max={180} value={minGapMinutes} onChange={(e) => setMinGapMinutes(Number(e.target.value) || 10)} className="mt-1 h-10 w-full rounded-lg border border-[#dbe4f2] px-3" />
+                <div className="mt-1 text-[11px] text-[#526078]">Production: keep 10+ for deliverability. <b>For rapid testing set to 1</b> → one email per minute across your test leads.</div>
+              </label>
             </div>
           )}
 

@@ -249,12 +249,15 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
         }, "test lead push failed");
       }
 
-      // Assign ALL connected email accounts to this campaign — SmartLead refuses to START without one.
+      // Assign the SELECTED inboxes to this campaign (fall back to all if picker was empty).
       await runStep(async () => {
-        const accounts = await callSmartLeadProxy("/email-accounts", "GET");
-        const ids = (Array.isArray(accounts) ? accounts : [])
-          .map((a: any) => a?.id)
-          .filter((x: any) => typeof x === "number" || typeof x === "string");
+        let ids: Array<number | string> = selectedAccountIds;
+        if (!ids.length) {
+          const accounts = await callSmartLeadProxy("/email-accounts", "GET");
+          ids = (Array.isArray(accounts) ? accounts : [])
+            .map((a: any) => a?.id)
+            .filter((x: any) => typeof x === "number" || typeof x === "string");
+        }
         if (!ids.length) {
           throw new Error("No email accounts connected in SmartLead. Connect one in Email Accounts tab first.");
         }

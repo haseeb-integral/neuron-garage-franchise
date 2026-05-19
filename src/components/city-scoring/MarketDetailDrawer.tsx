@@ -240,8 +240,21 @@ export function MarketDetailDrawer({
             .limit(1),
         ]);
 
+        // Always merge: seeded fallback (from us_cities_scored) is the
+        // skeleton so seeded-only cities never show an empty drawer; legacy
+        // rows from city_market_signals override per-key when present.
         const fallbackSignals = buildSeededFallbackSignals(market);
-        setSignals(((signalRows?.length ? signalRows : fallbackSignals) ?? []) as LiveSignal[]);
+        const liveByKey = new Map<string, LiveSignal>();
+        (signalRows ?? []).forEach((r: any) => {
+          if (r?.signal_key) liveByKey.set(r.signal_key, r as LiveSignal);
+        });
+        const merged: LiveSignal[] = [
+          ...fallbackSignals.map((s) => liveByKey.get(s.signal_key!) ?? s),
+          ...(signalRows ?? []).filter(
+            (r: any) => r?.signal_key && !fallbackSignals.some((s) => s.signal_key === r.signal_key),
+          ),
+        ] as LiveSignal[];
+        setSignals(merged);
         setCompetitors((competitorRows ?? []) as LiveCompetitor[]);
         setLatestJob(jobRows?.[0] ?? null);
       } catch (error) {

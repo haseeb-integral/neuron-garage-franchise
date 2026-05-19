@@ -79,9 +79,14 @@ See **`TEACHER_IDEAL_PROFILE.md`** for who we are recruiting and why — read th
 
 ## ⚡ City Search — Pending (unblocked after Task #0)
 
-### 9. Multiple named favorites lists (rolled over from Day 1)
-- Drop-down on "Add to Favorites" → pick list; create / rename / delete; move cities between lists
-- **Risk:** low-medium
+### 9. Multiple named favorites lists / "campaign list" on City Search (rolled over from Day 1, locked May 19)
+- ⭐ button on city row → popover with checkboxes per list + "➕ New list" inline create
+- Left rail inside City Search with list names + per-list counts (NOT chip strip — UI locked with user May 19)
+- "Promote list" button per list = jump to Teacher Search **pre-filtered by those cities**. Does NOT bypass the natural City → Teacher → Email flow.
+- New `watchlists` table (id, user_id, name, created_at) + `watchlist_id uuid` FK on `watchlist_items`
+- Migration: move existing `watchlist_items` rows into a default "My watchlist" list per user
+- **Risk:** low-medium · **Effort:** ~2–3 hrs
+
 
 ### 11. Wire GreatSchools API — `avg_school_rating` (trial-then-cancel strategy)
 - **BLOCKED — waiting on Brett's API key**

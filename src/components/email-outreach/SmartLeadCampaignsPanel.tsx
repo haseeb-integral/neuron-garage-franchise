@@ -108,13 +108,6 @@ export function SmartLeadCampaignsPanel() {
             Use the "+ Campaign" button at the top of the page to create one. Test Mode is on by default — it sends only to your inbox until you switch it off.
           </p>
         </div>
-          <button
-            onClick={handleCreate}
-            className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-[#1f5bff] px-4 py-2 text-xs font-semibold text-white hover:bg-[#0757ff]"
-          >
-            <Plus size={13} /> Create Campaign
-          </button>
-        </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-[#eef2f7]">
           <table className="w-full text-sm">
@@ -127,34 +120,58 @@ export function SmartLeadCampaignsPanel() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#eef2f7]">
-              {campaigns.map((c) => (
-                <tr key={String(c.id)} className="hover:bg-[#f7faff]">
-                  <td className="px-3 py-2.5">
-                    <div className="font-medium text-[#07142f]">{c.name ?? `Campaign ${c.id}`}</div>
-                    <div className="text-[10px] text-[#5a6b85]">ID {c.id}</div>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <span
-                      className={`inline-flex rounded-md border px-2 py-0.5 text-[10px] font-semibold ${statusTone(c.status)}`}
-                    >
-                      {(c.status ?? "—").toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2.5 text-xs text-[#5a6b85]">
-                    {c.created_at ? new Date(c.created_at).toLocaleDateString() : "—"}
-                  </td>
-                  <td className="px-3 py-2.5 text-right">
-                    <a
-                      href={`https://app.smartlead.ai/app/email-campaign/${c.id}/analytics`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 text-xs font-medium text-[#1f5bff] hover:underline"
-                    >
-                      Open <ExternalLink size={11} />
-                    </a>
-                  </td>
-                </tr>
-              ))}
+              {campaigns.map((c) => {
+                const s = (c.status ?? "").toUpperCase();
+                const isRunning = s === "ACTIVE" || s === "RUNNING";
+                const isPaused = s === "PAUSED";
+                const isTest = (c.name ?? "").startsWith("[TEST]");
+                return (
+                  <tr key={String(c.id)} className="hover:bg-[#f7faff]">
+                    <td className="px-3 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-[#07142f]">{c.name ?? `Campaign ${c.id}`}</span>
+                        {isTest && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-800">🧪 TEST</span>}
+                      </div>
+                      <div className="text-[10px] text-[#5a6b85]">ID {c.id}</div>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <span className={`inline-flex rounded-md border px-2 py-0.5 text-[10px] font-semibold ${statusTone(c.status)}`}>
+                        {s || "—"}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 text-xs text-[#5a6b85]">
+                      {c.created_at ? new Date(c.created_at).toLocaleDateString() : "—"}
+                    </td>
+                    <td className="px-3 py-2.5 text-right">
+                      <div className="inline-flex items-center gap-1">
+                        {!isRunning && (
+                          <button onClick={() => setStatus(c, "START")} disabled={acting === `${c.id}-START`} className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50" title="Launch">
+                            {acting === `${c.id}-START` ? <Loader2 size={10} className="animate-spin" /> : <Play size={10} />} Launch
+                          </button>
+                        )}
+                        {isRunning && (
+                          <button onClick={() => setStatus(c, "PAUSED")} disabled={acting === `${c.id}-PAUSED`} className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700 hover:bg-amber-100 disabled:opacity-50" title="Pause">
+                            {acting === `${c.id}-PAUSED` ? <Loader2 size={10} className="animate-spin" /> : <Pause size={10} />} Pause
+                          </button>
+                        )}
+                        {(isRunning || isPaused) && (
+                          <button onClick={() => setStatus(c, "STOPPED")} disabled={acting === `${c.id}-STOPPED`} className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-[10px] font-bold text-red-700 hover:bg-red-100 disabled:opacity-50" title="Stop">
+                            {acting === `${c.id}-STOPPED` ? <Loader2 size={10} className="animate-spin" /> : <Square size={10} />} Stop
+                          </button>
+                        )}
+                        <a
+                          href={`https://app.smartlead.ai/app/email-campaign/${c.id}/analytics`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 rounded-md border border-[#dbe4f2] px-2 py-1 text-[10px] font-bold text-[#1f5bff] hover:bg-[#f7faff]"
+                        >
+                          Open <ExternalLink size={10} />
+                        </a>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

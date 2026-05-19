@@ -39,8 +39,10 @@ export function AskAiBar({ onSubmit, loading, hasResult, onClear }: AskAiBarProp
     const trimmed = q.trim();
     if (!trimmed || loading) return;
     onSubmit(trimmed);
-    setValue("");
+    // Keep the query visible in the input so the user sees what they asked.
+    // Close the history popover and refresh the saved list right away.
     setOpen(false);
+    refreshHistory();
     setTimeout(refreshHistory, 1500);
   };
 

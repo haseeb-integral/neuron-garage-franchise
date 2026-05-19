@@ -526,10 +526,10 @@ export function MarketDetailDrawer({
     dimmed = false,
   ) => {
     const used = metric.enabled && (status === "live" || status === "proxy");
-    const value = signal && status !== "missing" ? displayValue(signal.value) : "Not collected yet";
+    const value = signal && status !== "missing" ? displayValue(signal.value) : "Not seeded for this city yet";
     const sub =
       status === "missing" && metric.status !== "blocked"
-        ? "Pre-seeded score · audit pending"
+        ? "No backend value — composite uses pre-seeded category score"
         : status === "blocked"
         ? "Source unavailable"
         : relativeTime(signal?.updated_at);

@@ -7,7 +7,14 @@ import { useAuth } from "@/contexts/AuthContext";
 async function callProxy(endpoint: string, method = "GET", payload?: unknown) {
   const { data, error } = await supabase.functions.invoke("smartlead-proxy", { body: { endpoint, method, payload } });
   if (error) throw new Error(error.message ?? String(error));
-  if (data?.ok === false) throw new Error(data?.error ?? "SmartLead error");
+  if (data && typeof data === "object" && (data as any).ok === false) {
+    const d = data as any;
+    const err = d.error;
+    const msg = typeof err === "string"
+      ? err
+      : (err?.message || err?.error || err?.msg || JSON.stringify(err));
+    throw new Error(`SmartLead ${d.status ?? ""} on ${endpoint}: ${msg}`);
+  }
   return data;
 }
 

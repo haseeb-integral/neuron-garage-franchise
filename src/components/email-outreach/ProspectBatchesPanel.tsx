@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { RefreshCw, RotateCw, Loader2 } from "lucide-react";
+import { RefreshCw, RotateCw, Loader2, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { BatchDetailDrawer } from "./BatchDetailDrawer";
 
 type Batch = {
   id: string;
@@ -40,6 +41,7 @@ export function ProspectBatchesPanel({ refreshKey = 0 }: { refreshKey?: number }
   const [failedByBatch, setFailedByBatch] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
   const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [openBatch, setOpenBatch] = useState<Batch | null>(null);
 
   const load = async () => {
     setLoading(true);

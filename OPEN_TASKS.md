@@ -158,9 +158,12 @@ See **`TEACHER_IDEAL_PROFILE.md`** for who we are recruiting and why — read th
 - Pairs with B3. Decide replace-vs-augment.
 - **Risk:** low
 
-### B5. Consolidate `cities` ↔ `us_cities_scored`
-- Two overlapping city tables. Pick one source of truth, migrate references, drop the other.
-- **Risk:** medium (touches City Search, Teacher Search, watchlist)
+~~### B5. Consolidate `cities` ↔ `us_cities_scored`~~ ✅ May 19
+- Dropped legacy `cities`, `city_category_scores`, `city_fetch_jobs`, `city_competitors`. Deleted edge functions `fetch-city-market-data` and `fetch-city-market-data-sow`. `AddCityModal` rewired to look up in `us_cities_geo` and INSERT into `us_cities_scored` (RLS: authenticated users can INSERT). Drawer / Compare / Report modals neutralized of legacy reads.
+
+### B11. Seed the 8 "Tracked-no-value" metrics (low priority, added May 19)
+- 8 metrics are flagged `enabled: false` in the registry — audit-only, no values yet, do not affect composite score. If/when Sam wants them to count, flip `enabled: true` and seed values; they will auto-move from the "Tracked-no-value" chip into "Not seeded yet".
+- **Risk:** low (additive, opt-in)
 
 ### B6. SmartLead send/reply tracking columns on `teacher_prospects`
 - `smartlead_campaign_id`, `last_sent_at`, `last_replied_at`, `reply_status`. Required before Task #17 wiring.

@@ -96,12 +96,11 @@ export default function TeamMembers() {
   };
 
   useEffect(() => {
-    if (currentRole === "admin") load();
-  }, [currentRole]);
+    load();
+  }, []);
 
-  if (!authLoading && currentRole !== "admin") {
-    return <Navigate to="/" replace />;
-  }
+  const isAdmin = currentRole === "admin";
+
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();

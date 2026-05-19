@@ -288,7 +288,10 @@ export function buildSeededFallbackSignalsFromScored(
     seeded("public_school_count", "Total Public Schools", scoredRow.public_school_count, "franchisee_supply", false),
     seeded("private_school_count", "Private Elementary Schools", scoredRow.private_elementary_count, "franchisee_supply", false),
     seeded("charter_school_count", "Charter Elementary Schools", scoredRow.charter_elementary_count, "franchisee_supply", false),
-  ].filter((row) => row.value != null && row.value !== "");
+  ];
+  // Note: rows with null values are KEPT — the UI shows them as "—" so the
+  // user can see exactly which metrics are not yet seeded for this city,
+  // instead of getting a near-empty panel that looks like a UI bug.
 }
 
 export function mergeSignalsPreferLive(

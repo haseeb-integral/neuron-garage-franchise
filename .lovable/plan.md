@@ -1,78 +1,89 @@
-# City Search Rewire — Execution (Steps 3-7)
+# City Search bug-fix plan
 
-[For Haseeb — implementation]
+## What’s actually broken
 
-Locked decisions from your Q&A:
-- **Q1 market_type buckets:** Urban ≥ 3000/km², Suburb 500–3000, Rural < 500 (derived from `population_density`)
-- **Q2 tier cutoffs:** A ≥ 80, B ≥ 65, C ≥ 50, D < 50 (from `composite_score_default`)
-- **Q3 Add City:** hide the button (keep code in place; seed-on-demand edge function deferred)
-- **Q4 Watchlist:** repoint `watchlist_items.city_id` to `us_cities_scored.id`; wipe existing rows on cutover (you have ~0 saved)
+1. **Center panel is still loading from the wrong table**
+   - `CityScoring.tsx` still calls `from('cities')` in `loadLiveData()`.
+   - Seeded markets like **Silver Spring, Maryland** only exist in `us_cities_scored`, so the lookup returns nothing.
+   - Result: center panel shows **No live data**, watchlist/detail IDs are missing, nearby markets/report context is wrong.
 
-## Steps
+2. **Drawer/report are opening with the wrong market identity**
+   - The selected market object passed into `MarketDetailDrawer` / `MarketReportModal` does not reliably carry the canonical `cityId` from `us_cities_scored`.
+   - Those components now query by `market.cityId`, so when that field is missing they short-circuit and render mostly empty / all-missing states.
+   - Result: drawer looks empty and the tags read like nothing is wired.
 
-### Step 3 — Rewire data source (`cities` → `us_cities_scored`)
+3. **Ask AI still fails auth in practice**
+   - Direct function probe returns `401 Not authenticated`.
+   - Current frontend uses `supabase.functions.invoke()` with a manual header retry, but preview auth is still not reliably reaching the edge function.
+   - Result: user enters a query and nothing useful happens.
 
-Replace `.from('cities')` reads + column references in:
-- `src/pages/CityScoring.tsx` (lines 776, 893 + selection state keyed on `us_cities_scored.id`)
-- `src/lib/cityScoringLiveData.ts` (lines 123, 357, 375 — main loader + helpers)
-- `src/components/city-scoring/MarketDetailDrawer.tsx` (line 202 detail fetch)
-- `src/components/city-scoring/MarketsMap.tsx` (line 59 map pins)
-- `src/components/city-scoring/MarketReportModal.tsx` (line 125 report fetch)
+4. **Drawer tags are technically consistent with empty evidence, but misleading for seeded markets**
+   - The drawer is built as a source-of-truth audit against `city_market_signals` + latest `city_fetch_jobs.response_summary.metric_status_map`.
+   - For seeded-only cities with no seeded audit rows, it falls back to “Missing / No fetcher wired yet,” which reads like a bug.
+   - Result: confusing UX even when the market has valid pre-scored data in `us_cities_scored`.
 
-Column map applied per row read:
-```
-city_name        → city
-state_name       → state (full)
-state_abbr       → state code
-population, latitude, longitude, metro_area → same
-median_household_income           → median_income
-children_5_12 / population * 100  → children_pct
-public_elementary_count           → elementary_schools
-summer_camp_count                 → competitor_count
-composite_score_default           → composite_score
-score_demand / score_pricing_power / score_competitive /
-score_franchise_supply / score_ease_of_operation /
-score_parent_mindset              → 6 category scores
-!is_registration_state            → is_non_registration
-scored_at                         → last_scraped_at
-```
+## Fix plan
 
-Derived client-side:
-- `tier` = `score >= 80 ? 'A' : score >= 65 ? 'B' : score >= 50 ? 'C' : 'D'`
-- `market_type` from `population_density`: `>=3000 Urban`, `>=500 Suburb`, else `Rural`
+### Step 1 — Rewire selected-market loading to `us_cities_scored`
+- Replace the remaining `loadLiveData()` legacy `cities` lookup in `CityScoring.tsx` with `us_cities_scored`.
+- Hydrate the selected market from the canonical row:
+  - `cityId = us_cities_scored.id`
+  - `compositeScore = composite_score_default`
+  - category scores from `score_*`
+  - `metroArea`, `marketType`, `population`, `county` fallback logic preserved
+- Keep old child-table queries (`city_market_signals`, `city_competitors`, `city_fetch_jobs`) as best-effort only.
 
-### Step 4 — Watchlist + Compare id alignment
+### Step 2 — Pass canonical market identity everywhere
+- Ensure the selected market object passed into:
+  - `MarketDetailDrawer`
+  - `MarketReportModal`
+  - `NearbyMarketsPanel`
+  - watchlist actions
+  always includes the canonical `cityId` from `us_cities_scored`.
+- Make the center panel “has data” decision use seeded score presence instead of legacy `liveCity.composite_score`.
 
-- Insert/select `watchlist_items.city_id` using `us_cities_scored.id`
-- Migration: `DELETE FROM watchlist_items` (wipe stale legacy ids) — one-time
-- Compare modal selection set keyed on new id
+### Step 3 — Fix Ask AI auth path
+- Replace the `supabase.functions.invoke('ai-city-query')` call with an explicit `fetch()` to the backend function endpoint using:
+  - `Authorization: Bearer <access_token>`
+  - publishable key header
+  - JSON body
+- Keep the pre-flight session check + one forced refresh retry.
+- Surface the backend error text in toast so failure is visible instead of feeling like a dead click.
 
-### Step 5 — Tier labels A/B/C/D
+### Step 4 — Make drawer/report messaging honest for seeded markets
+- If a market has seeded score data but no evidence rows in `city_market_signals`, show seeded-state copy instead of “No fetcher wired yet” everywhere.
+- Keep the audit UI, but change empty-state language so it reads as:
+  - pre-scored market available
+  - source audit not yet seeded for this city
+  - live evidence tables will populate once seed-on-demand/backfill exists
+- Do not invent fake evidence rows.
 
-`TierBadge.tsx` + table render: `A — Top`, `B — Strong`, `C — Watch`, `D — Pass`.
+### Step 5 — Validate on the exact failures you reported
+- Check one seeded-only market (Silver Spring) and confirm:
+  - center panel shows score/tier/category values
+  - drawer opens with correct city chips and non-broken messaging
+  - Ask AI returns a result or a visible actionable error
+- Confirm no remaining critical `from('cities')` reads in City Search display paths.
 
-### Step 6 — Show Formula modal
+## Technical notes
+- **Name-vs-meaning check:** no silent widening; `cityId` should consistently mean `us_cities_scored.id` in City Search UI paths.
+- I will **not** change scoring math, auth methods, or add new features.
+- I will **not** add seed-on-demand yet; only fix the broken current experience.
 
-Pull from new `score_*` columns + active scoring config; same Σ(weight × normalized) breakdown.
+## Recommendation on Ask AI interface
+- **Keep results in the table as the primary output.** That is the right interaction model because the real action is ranking/filtering markets.
+- Add/keep a **small explanation card under the Ask AI bar** with:
+  - summary of what AI changed
+  - filters applied
+  - weight nudges
+  - data gaps
+- Do **not** build a separate visual canvas or chat UI right now. For this workflow, a separate interface would add noise, not clarity.
 
-### Step 7 — Cleanup + hide Add City
+## Risk
+- **Medium**: touches the selection/data-loading path and Ask AI request path, but scope is contained to City Search.
 
-- Remove dead `from('cities')` calls + legacy helpers in `cityScoringLiveData.ts`
-- Hide "Add City" button in `CityScoring.tsx` (comment out trigger; modal code stays)
-- `AddCityModal.tsx` left untouched for future seed-on-demand wiring
+## Undo
+- Revert the City Search page and Ask AI request wiring from history if needed.
+- No schema change required for this fix.
 
-### Step 8 — Brett-friendly Telegram message
-
-Plain-English baby-step message you can copy/paste to Brett on how to grab the GreatSchools API free trial key. Posted at end of this turn (no code change).
-
-### Step 9 — Doc-sync draft (Mode A)
-
-One-line draft summaries for `PROJECT_CONTEXT.md`, `OPEN_TASKS.md`, `HOW_IT_WORKS.md`, `GLOSSARY.md` — wait for "go" before writing per AGENTS.md Rule 9.
-
-## Risk + undo
-
-Medium. Column mismatches mitigated by the map above. Reversible via Lovable history. One destructive op: `DELETE FROM watchlist_items` (you confirmed OK).
-
-## Out of scope
-
-SmartLead (waiting on Brett). Hidden live-fetch widgets. Scoring math changes. Add City seed-on-demand function.
+If you approve, I’ll implement this exact fix set next.

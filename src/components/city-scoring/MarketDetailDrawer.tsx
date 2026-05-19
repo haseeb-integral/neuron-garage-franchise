@@ -491,7 +491,7 @@ export function MarketDetailDrawer({
     const value = signal && status !== "missing" ? displayValue(signal.value) : "Not collected yet";
     const sub =
       status === "missing" && metric.status !== "blocked"
-        ? "No fetcher wired yet"
+        ? "Pre-seeded score · audit pending"
         : status === "blocked"
         ? "Source unavailable"
         : relativeTime(signal?.updated_at);

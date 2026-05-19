@@ -404,7 +404,7 @@ const CityScoring = () => {
   const askAi = async (query: string) => {
     setAiLoading(true);
     try {
-      // Pre-flight auth check: ensure we have a session before invoking, and
+      // Pre-flight auth check: ensure we have a session before calling, and
       // refresh once if the token is stale (root cause of the prior 401s).
       let { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData?.session) {
@@ -416,31 +416,43 @@ const CityScoring = () => {
         return;
       }
 
-      const invokeOnce = async () => {
+      // Explicit fetch (not supabase.functions.invoke) so the Authorization
+      // header reliably reaches the edge function via the preview proxy.
+      const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-city-query`;
+      const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+      const callOnce = async () => {
         const { data: s } = await supabase.auth.getSession();
-        const token = s?.session?.access_token;
-        return supabase.functions.invoke("ai-city-query", {
-          body: {
+        const token = s?.session?.access_token ?? "";
+        const resp = await fetch(FN_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+            apikey: ANON_KEY,
+          },
+          body: JSON.stringify({
             query,
             threadId: aiThreadId,
             previousTurns: aiTurns.map((t) => ({ query: t.query, response: t.response })),
-          },
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          }),
         });
+        let bodyJson: any = null;
+        try { bodyJson = await resp.json(); } catch { /* not json */ }
+        return { resp, bodyJson };
       };
 
-      let { data, error } = await invokeOnce();
-      // One retry on auth failure after forcing a refresh — handles edge cases
-      // where the token expired between the pre-flight check and the invoke.
-      if (error && /401|not authenticated|unauthor/i.test(String(error?.message ?? ""))) {
+      let { resp, bodyJson } = await callOnce();
+      if (resp.status === 401) {
         await supabase.auth.refreshSession();
-        ({ data, error } = await invokeOnce());
+        ({ resp, bodyJson } = await callOnce());
       }
-      if (error) {
-        const msg = await getInvokeErrorMessage(error);
-        toast.error(msg || "AI search failed");
+      if (!resp.ok) {
+        const msg = bodyJson?.error || bodyJson?.detail || `AI search failed (HTTP ${resp.status})`;
+        toast.error(typeof msg === "string" ? msg : JSON.stringify(msg));
         return;
       }
+      const data = bodyJson;
       const result = data?.result as AiResult | undefined;
       if (!result) {
         toast.error("AI returned no result");
@@ -757,6 +769,8 @@ const CityScoring = () => {
     ...selectedSample,
     city: selectedCity,
     state: selectedState,
+    // Canonical cityId = us_cities_scored.id. Used by drawer, report, watchlist.
+    cityId: liveCity?.id ?? selectedRankedMarket?.cityId ?? (selectedSample as any).cityId,
     compositeScore: liveCity?.composite_score ?? selectedRankedMarket?.compositeScore ?? selectedSample.compositeScore,
     tier: liveCity?.tier ?? selectedRankedMarket?.tier ?? selectedSample.tier,
     population: liveCity?.population ?? selectedRankedMarket?.population ?? selectedSample.population,
@@ -770,16 +784,27 @@ const CityScoring = () => {
     !!liveCity && (Number(liveCity?.composite_score ?? 0) > 0 || !!liveCity?.last_scraped_at);
 
   // Load live DB-backed data for the currently selected market.
+  // Canonical source: us_cities_scored (Sam's pre-seeded ~948-city dataset).
+  // Maps the scored row into a legacy `cities`-shaped object so all the
+  // downstream UI (which references liveCity.composite_score, .metro_area,
+  // .market_type, .county, .last_scraped_at, .notes, .competitor_count,
+  // .median_income, .children_pct, .elementary_schools, .population, .id)
+  // keeps working without a wider refactor. Category scores come from the
+  // `score_*` columns on the same row. Evidence tables (signals / competitors
+  // / fetch jobs) remain best-effort and may be empty for seeded-only cities.
   const loadLiveData = async (city: string, state: string) => {
     try {
-      const { data: cityRow } = await supabase
-        .from("cities")
+      // Match by city_name + (state_name OR state_abbr). State filter in this
+      // app is the full name (e.g. "Maryland") but we accept abbr too.
+      const stateAbbr = state === "Texas" ? "TX" : state === "Florida" ? "FL" : state;
+      const { data: scoredRow } = await supabase
+        .from("us_cities_scored")
         .select("*")
-        .eq("city", city)
-        .eq("state", state)
+        .ilike("city_name", city)
+        .or(`state_name.ilike.${state},state_abbr.ilike.${stateAbbr}`)
         .maybeSingle();
 
-      if (!cityRow) {
+      if (!scoredRow) {
         setLiveCity(null);
         setLiveSignals([]);
         setLiveCategoryScores({});
@@ -788,23 +813,72 @@ const CityScoring = () => {
         return;
       }
 
-      const [{ data: signals }, { data: scores }, { data: comps }, { data: jobs }] = await Promise.all([
-        supabase.from("city_market_signals").select("*").eq("city_id", cityRow.id),
-        supabase.from("city_category_scores").select("*").eq("city_id", cityRow.id),
-        supabase.from("city_competitors").select("*").eq("city_id", cityRow.id).order("created_at", { ascending: false }),
+      const density = Number(scoredRow.population_density ?? 0);
+      const marketTypeDerived = density >= 3000 ? "Urban" : density >= 500 ? "Suburb" : "Rural";
+      const composite = Number(scoredRow.composite_score_default ?? 0);
+      const tierDerived =
+        composite >= 80 ? "A" : composite >= 65 ? "B" : composite >= 50 ? "C" : "D";
+      const pop = Number(scoredRow.population ?? 0);
+      const kids = Number(scoredRow.children_5_12 ?? 0);
+      const childrenPct = pop > 0 ? Math.round((kids / pop) * 1000) / 10 : null;
+      const stateNormalized = state === "TX" ? "Texas" : state === "FL" ? "Florida" : state;
+
+      // Build a `cities`-shaped façade so downstream code can keep reading the
+      // same field names. `id` IS the us_cities_scored uuid — that's now the
+      // canonical cityId across watchlist, drawer, report, and nearby panels.
+      const cityRow: any = {
+        id: scoredRow.id,
+        city: scoredRow.city_name,
+        state: stateNormalized,
+        composite_score: composite,
+        tier: tierDerived,
+        population: pop,
+        competitor_count: Number(scoredRow.summer_camp_count ?? 0),
+        county: null,
+        metro_area: scoredRow.metro_area ?? null,
+        market_type: marketTypeDerived,
+        last_scraped_at: scoredRow.scored_at ?? null,
+        notes: null,
+        median_income: scoredRow.median_household_income ?? null,
+        children_pct: childrenPct,
+        elementary_schools: scoredRow.public_elementary_count ?? null,
+        latitude: scoredRow.latitude ?? null,
+        longitude: scoredRow.longitude ?? null,
+        is_non_registration: scoredRow.is_registration_state === false,
+        scored: scoredRow, // keep the raw row available if anything needs it
+      };
+
+      // Category scores come straight from us_cities_scored.score_*.
+      const scoresMap: Record<string, number> = {};
+      const addScore = (k: string, v: any) => {
+        if (v != null) scoresMap[k] = Number(v);
+      };
+      addScore("demand", scoredRow.score_demand);
+      addScore("pricing_power", scoredRow.score_pricing_power);
+      addScore("competitive_landscape", scoredRow.score_competitive);
+      addScore("franchisee_supply", scoredRow.score_franchise_supply);
+      addScore("ease_of_operations", scoredRow.score_ease_of_operation);
+      addScore("parent_mindset", scoredRow.score_parent_mindset);
+
+      // Best-effort evidence pull from legacy child tables. These are still
+      // keyed by legacy cities.id, so seeded-only rows will return empty.
+      // UI handles empty gracefully.
+      const [{ data: signals }, { data: comps }, { data: jobs }] = await Promise.all([
+        supabase.from("city_market_signals").select("*").eq("city_id", scoredRow.id),
+        supabase
+          .from("city_competitors")
+          .select("*")
+          .eq("city_id", scoredRow.id)
+          .order("created_at", { ascending: false }),
         supabase
           .from("city_fetch_jobs")
           .select("*")
-          .eq("city_id", cityRow.id)
+          .eq("city_id", scoredRow.id)
           .eq("source", "sow_metric_coverage")
           .order("created_at", { ascending: false })
           .limit(1),
       ]);
 
-      const scoresMap = (scores ?? []).reduce(
-        (acc: Record<string, number>, s: any) => ({ ...acc, [s.category]: s.score }),
-        {},
-      );
       setLiveCity(cityRow);
       setLiveSignals(signals ?? []);
       setLiveCategoryScores(scoresMap);

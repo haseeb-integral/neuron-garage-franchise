@@ -1,105 +1,97 @@
+# Fix: Metro Area + County missing for all cities except Austin
 
-## Part 1 — Why 10 + 26 ≠ 46 (plain English, final)
+## What's actually broken
 
-Austin's drawer shows **10 Pre-seeded** + **26 Not seeded yet** = 36. The missing 10 split as: **2 Source unavailable** + **8 Tracked-no-value** (silent today) + **0 Tracked-not-scored-with-value**. Plus **1 Custom** sits outside the 46. Total: 10 + 26 + 2 + 8 + 0 = **46**. ✓
+I queried `us_cities_scored` directly:
 
-### Why "Tracked-no-value (8)" is its own bucket and not merged into "Not seeded yet"
+| total rows | with `county_name` | with `metro_area` |
+|---|---|---|
+| 960 | **1** | **1** |
 
-Both have no value — true. They're split by **why**, not whether:
+Only Austin has values. Every other city — Dallas, Fort Worth, Houston, Allen, Leander, etc. — shows `—` because the columns are NULL.
 
-- **Stack A — "Counts toward the score" (38 metrics for Austin).** Seeding these moves Austin's number. Missing one = real scoring gap. → home of **"Not seeded yet (26)"**. Urgent.
-- **Stack B — "Tracked for context only, never moves the score" (8 metrics).** Sam flagged them `enabled: false` in the registry on purpose. Even if we seed them tomorrow the composite is unchanged. → home of **"Tracked-no-value (8)"**. Not urgent.
+**Root cause:** `seed-cities-database` never wrote `county_name` or `metro_area`. The single Austin row got them from a legacy manual insert. The hardcoded map in `supabase/functions/_shared/cityGeo.ts` only covers ~50 cities and is only used by the legacy (now-deleted) `fetch-city-market-data-sow` function.
 
-Yes we should still seed the 8 eventually — they are real metrics. They get their own bucket so urgency stays visible. If Sam ever flips one to `enabled: true`, it auto-moves into "Not seeded yet" with no code change.
-
-### UI fixes (small, on top of what we already shipped)
-
-1. **Button label** → `"View all signals →"` (drop the number).
-2. **Add a 5th chip** in the top row: `8 Tracked-no-value` (conditional `>0`), hover = *"Audit-only metrics with no value yet — not part of the score."*
-3. **One-line caption under the chips:** *"Chips total 46 of 46 scoring metrics. Custom metrics shown separately."*
-
-Files:
-```text
-src/components/city-scoring/MarketDetailDrawer.tsx
-```
+Good news: the reference table `us_cities_geo` already has `county_name` for every U.S. city — we just never copied it over.
 
 ---
 
-## Part 2 — Drop the 4 legacy tables
+## Fix (3 steps)
 
-Confirmed by Haseeb. None are read by the new City Search screen.
+### Step 1 — Backfill `county_name` for all 960 cities (instant, SQL only)
 
+One migration:
 ```sql
-DROP TABLE IF EXISTS public.city_category_scores;
-DROP TABLE IF EXISTS public.city_fetch_jobs;
-DROP TABLE IF EXISTS public.city_competitors;
-DROP TABLE IF EXISTS public.cities;
+UPDATE public.us_cities_scored s
+SET county_name = g.county_name
+FROM public.us_cities_geo g
+WHERE s.county_name IS NULL
+  AND LOWER(g.state_name) = LOWER(s.state_name)
+  AND (LOWER(g.city_ascii) = LOWER(s.city_name)
+       OR LOWER(g.city)       = LOWER(s.city_name));
 ```
+Expected: ~955+ cities filled in one shot. Any unmatched rows (typos, alt spellings) get logged so I can fix manually.
 
-Dead readers to remove so build stays green:
-- **Delete** edge function `supabase/functions/fetch-city-market-data/` (writes to all 4 legacy tables).
-- **Delete** edge function `supabase/functions/fetch-city-market-data-sow/` (same).
-- Grep + clean any remaining import of those table names in `src/`.
+### Step 2 — Backfill `metro_area` (CBSA) for all 960 cities
+
+`us_cities_geo` does **not** have metro area, so I need a county → CBSA crosswalk. Plan:
+
+1. Bundle the Census Bureau **March 2023 CBSA delineation file** as a static JSON inside a new one-shot edge function `backfill-city-metro`. ~3,100 counties → ~390 CBSAs. Public domain, ~150 KB. Key = `LOWER(state_abbr) + '|' + LOWER(county_name)`, value = the official CBSA title (e.g. `"Dallas-Fort Worth-Arlington, TX"`).
+2. Function reads all `us_cities_scored` rows, joins on (state_abbr, county_name), writes `metro_area`. Idempotent — only overwrites if currently NULL or differs.
+3. I run it once. Expected coverage: ~920+ cities. The ~40 that fall outside any CBSA (truly rural micropolitan or unmatched) stay NULL and are listed in the function response so Sam can decide.
+
+### Step 3 — Make future seeds populate both fields
+
+Update `seed-cities-database` so newly inserted/refreshed rows always set `county_name` (from `us_cities_geo`) and `metro_area` (from the same CBSA crosswalk, extracted into `_shared/cbsaLookup.ts`). Also patch `AddCityModal` so manually added cities get both immediately — same two lookups, no UI change.
 
 ---
 
-## Part 3 — Rewire "Add City" to `us_cities_scored`
+## What the user will see (Dallas example, after fix)
 
-Confirmed: option (b). Behavior:
-
-1. User opens **Add City** modal → types City + State (county/metro fields removed — they come from the lookup).
-2. We look up the row in `us_cities_geo` by `(LOWER(state_name), LOWER(city_ascii) OR LOWER(city))`.
-   - No match → toast *"We don't have geographic data for that city. Please check spelling or contact Haseeb."* and abort.
-3. Check for existing row in `us_cities_scored` by `(city_name, state_name)`.
-   - If exists → toast *"Already in your list"*, close.
-4. Insert into `us_cities_scored` with:
-   - `city_name`, `state_name`, `state_abbr`, `county_name`, `latitude`, `longitude`, `population` (all from the geo row)
-   - `is_registration_state` = derived from the 38 non-registration states hardcoded list
-   - everything else NULL (scores blank until next seed run)
-5. Toast: *"Added {City}, {State}. Scores will populate on the next seed run."*
-6. New row shows up in the City Search table immediately with empty score columns and "Seed pending" in the drawer.
-
-Schema work: `us_cities_scored` currently blocks INSERT for authenticated (`Can't INSERT`). New migration adds:
-```sql
-CREATE POLICY "Authenticated can insert scored cities"
-ON public.us_cities_scored FOR INSERT TO authenticated WITH CHECK (true);
 ```
-(No update/delete policy — adds only. Matches the "canonical seeded universe" model.)
-
-Files:
-```text
-src/components/city-scoring/AddCityModal.tsx     (rewrite — lookup us_cities_geo, insert us_cities_scored)
+Dallas, TX
+Tier: B (Tier 2)        Market Type: Suburb
+Metro Area: Dallas-Fort Worth-Arlington, TX
+County:     Dallas
 ```
+
+(matches Austin's existing display)
 
 ---
 
-## Part 4 — `cities.notes` is NOT worth copying
+## Files I will touch
 
-Queried it: 320 rows, 9 have non-empty notes. 8 of the 9 = literal string `"SOW metric coverage refresh"` (machine stamp). 9th = San Diego `"Live API + Census ACS 2022 (place 66000)"` (also machine-generated). **Zero human content.**
+- new migration: `supabase/migrations/<ts>_backfill_county_from_geo.sql`
+- new edge function: `supabase/functions/backfill-city-metro/index.ts` + bundled `cbsaCrosswalk.json`
+- new shared module: `supabase/functions/_shared/cbsaLookup.ts`
+- edited: `supabase/functions/seed-cities-database/index.ts` (set both fields on insert)
+- edited: `src/components/city-scoring/AddCityModal.tsx` (set both fields on Add City)
 
-**Decision: do NOT add `us_cities_scored.notes`.** Drop `cities` clean. If you ever want a per-city scratchpad we add it then as a new feature.
+No UI/component changes to the drawer or table — they already render these fields, they're just NULL today.
 
 ---
 
-## Execution order (so nothing breaks mid-flight)
+## Risk / rollback
 
-1. **Drawer UI tweaks** (Part 1) — no schema, ship first, instant verify.
-2. **Add City rewrite + INSERT policy migration** (Part 3) — verify by adding "Carmel, Indiana" and seeing it appear.
-3. **Delete the 2 dead edge functions** (Part 2 prep).
-4. **DROP TABLE migration** for the 4 legacy tables (Part 2 final). Done last so any straggler imports surface in build first.
+- **Risk: low.** Both columns are currently almost entirely NULL — any value is strictly better. Backfill is idempotent (only fills NULLs).
+- **Rollback:** `UPDATE us_cities_scored SET county_name = NULL, metro_area = NULL WHERE id <> '<austin-id>'`.
 
-## Out of scope
+---
 
-- Scoring math.
-- Backfilling the 26 "Not seeded yet" metrics (`OPEN_TASKS` B7/B9/B10a) — separate task.
-- Seeding the 8 "Tracked-no-value" metrics — also separate, lower priority.
+## Doc-sync (after implementation, Mode A — drafts for your "go")
 
-## Doc-sync (Mode A — drafts, I will wait for your "go")
+- **PROJECT_CONTEXT.md** — `us_cities_scored` row: note county + metro now populated for ~960 cities; new `backfill-city-metro` edge function + `_shared/cbsaLookup.ts`.
+- **HOW_IT_WORKS.md** — Add City flow: also fills county + metro from `us_cities_geo` + CBSA crosswalk.
+- **OPEN_TASKS.md** — add `~~B12. Backfill metro+county~~ ✅` line under completed.
+- **GLOSSARY.md** — add **CBSA** = Core Based Statistical Area; the Census Bureau metro/micro area name we display as "Metro Area".
 
-After implementation I'll summarize one-line proposed edits to:
-- `PROJECT_CONTEXT.md` — legacy tables dropped; Add City now writes to `us_cities_scored`.
-- `OPEN_TASKS.md` — close B5 (drop legacy tables); add "seed the 8 tracked-only metrics" as low-priority.
-- `GLOSSARY.md` — add "Tracked-no-value" definition; clarify "Tracked-not-scored" already covers both buckets.
-- `HOW_IT_WORKS.md` — Add City flow now goes through `us_cities_geo` lookup.
+---
 
-No file written without your "go".
+## One clarifying question before I implement
+
+For the ~5–40 cities where the CBSA crosswalk has no match (truly rural cities outside any CBSA — e.g. some Montana/Wyoming towns above 50k that aren't in a metro), do you want:
+
+- **(a)** Leave `metro_area` NULL and the drawer keeps showing `—` for those, OR
+- **(b)** Fall back to `"{city_name} micropolitan area, {state_abbr}"` so the field is never empty?
+
+If you don't pick, I'll go with **(a)** — never invent a name.

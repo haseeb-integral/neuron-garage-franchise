@@ -168,6 +168,7 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
     if (startMinutes >= endMinutes) return "End time must be after start time.";
     if (minGapMinutes > 180) return "Min gap can't exceed 180 minutes.";
     if (dailyCap < 1 || dailyCap > 200) return "Daily send cap must be between 1 and 200.";
+    if (availableAccounts.length > 0 && selectedAccountIds.length === 0) return "Pick at least one sending inbox.";
     if (!sequences.length) return "Add at least one email step.";
     const badStep = sequences.find((sequence) => !sequence.subject.trim() || !sequence.body.trim() || sequence.day < 1);
     if (badStep) return "Each sequence step needs a valid day, subject, and body.";

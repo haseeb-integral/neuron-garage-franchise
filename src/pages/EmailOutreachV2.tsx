@@ -30,6 +30,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { deriveFitTag } from "@/utils/fitScore";
 import { SmartLeadConnectionPanel } from "@/components/email-outreach/SmartLeadConnectionPanel";
+import { SmartLeadCampaignsPanel } from "@/components/email-outreach/SmartLeadCampaignsPanel";
+import { SmartLeadInboxPanel } from "@/components/email-outreach/SmartLeadInboxPanel";
+
+type SubView = "live" | "preview";
 
 type CampaignStatus = "Active" | "Draft" | "Paused" | "Complete";
 type EmailStatus = "Opened" | "Replied" | "Bounced" | "Queued" | "Sent";
@@ -86,6 +90,7 @@ export default function EmailOutreachV2() {
   const [selectedCampaign, setSelectedCampaign] = useState(campaigns[0]);
   const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null);
   const [tab, setTab] = useState("All Prospects");
+  const [view, setView] = useState<SubView>("live");
   const [promoted, setPromoted] = useState<Record<number, string>>({});
   const [promotingId, setPromotingId] = useState<number | null>(null);
   const safeToast = (message: string) => toast.info(message);

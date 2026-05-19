@@ -596,35 +596,22 @@ export function MarketDetailDrawer({
           </div>
           <div className="mt-2 flex items-center justify-between gap-3">
             <p className="text-[11px] text-[#526078]">
-               Latest canonical refresh: <span className="font-semibold text-[#07142f]">{formatDate(latestJob?.completed_at)}</span>
+               Last seeded: <span className="font-semibold text-[#07142f]">{formatDate(seedAtIso)}</span>
             </p>
             <div className="flex flex-wrap gap-1.5 text-[11px]">
-              <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#0ea66e]">{liveCount} Live</span>
-              <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#174be8]">{estimatedCount} Estimated</span>
-              <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#526078]">{missingCount} Missing</span>
-              {blockedCount > 0 && (
-                <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#ea580c]">{blockedCount} Blocked</span>
+              <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#0ea66e]" title="Enabled scoring metric with a pre-seeded value">{coverageCounts.preSeeded} Pre-seeded</span>
+              {coverageCounts.trackedNotScored > 0 && (
+                <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#b8860b]" title="Tracked-not-scored metric with a value (audit only)">{coverageCounts.trackedNotScored} Tracked-not-scored</span>
+              )}
+              <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#526078]" title="Enabled scoring metric with no backend value seeded yet">{coverageCounts.notSeededYet} Not seeded yet</span>
+              {coverageCounts.sourceUnavailable > 0 && (
+                <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#ea580c]" title="Registry marks this metric blocked — no data source wired">{coverageCounts.sourceUnavailable} Source unavailable</span>
               )}
               {customCount > 0 && (
-                <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#b8860b]">{customCount} Custom</span>
+                <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#174be8]" title="User-defined custom metrics (additive — not part of the 46-metric registry)">{customCount} Custom</span>
               )}
-              <span className="rounded-md bg-[#f3f6fb] px-1.5 py-0.5 font-semibold text-[#526078]">of {totalRegistry} metrics</span>
+              <span className="rounded-md bg-[#f3f6fb] px-1.5 py-0.5 font-semibold text-[#526078]">of {totalRegistry} scoring metrics</span>
             </div>
-          </div>
-          <div className="mt-2 space-y-1 text-[11px] text-[#526078]">
-            <p>
-              Austin currently has <span className="font-semibold text-[#07142f]">{totalAvailableCount}</span> of {totalRegistry} registry metrics with a real backend value in the scored-city view.
-            </p>
-            {legacyJob && !latestJob && (
-              <p>
-                Legacy audit exists from <span className="font-semibold text-[#07142f]">{formatDate(legacyJob.completed_at)}</span>, but it is not used for the visible metric counts.
-              </p>
-            )}
-            {legacyJob && latestJob && (
-              <p>
-                Legacy Austin audit from <span className="font-semibold text-[#07142f]">{formatDate(legacyJob.completed_at)}</span> is shown only as historical context and does not affect the counts above.
-              </p>
-            )}
           </div>
           {loading && (
             <div className="mt-2 flex items-center gap-2 text-[11px] text-[#526078]">

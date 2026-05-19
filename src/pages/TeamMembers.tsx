@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
+
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Copy, KeyRound, UserPlus, RefreshCw } from "lucide-react";
+import { Copy, KeyRound, UserPlus, RefreshCw, Mail } from "lucide-react";
 
 const APP_URL = "https://neuron-garage-franchise.lovable.app";
 
@@ -96,12 +96,11 @@ export default function TeamMembers() {
   };
 
   useEffect(() => {
-    if (currentRole === "admin") load();
-  }, [currentRole]);
+    load();
+  }, []);
 
-  if (!authLoading && currentRole !== "admin") {
-    return <Navigate to="/" replace />;
-  }
+  const isAdmin = currentRole === "admin";
+
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -181,13 +180,16 @@ Please log in and change your password using the "Forgot password?" link on the 
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Team members</h1>
-          <p className="text-sm text-muted-foreground">Manage team members and their roles.</p>
+          <p className="text-sm text-muted-foreground">Neuron Garage team — access levels and contacts.</p>
         </div>
-        <Button onClick={() => setOpen(true)}>
-          <UserPlus className="w-4 h-4 mr-2" />
-          Add user
-        </Button>
+        {isAdmin && (
+          <Button onClick={() => setOpen(true)}>
+            <UserPlus className="w-4 h-4 mr-2" />
+            Add user
+          </Button>
+        )}
       </div>
+
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
@@ -211,33 +213,54 @@ Please log in and change your password using the "Forgot password?" link on the 
               {rows.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell className="font-medium">{r.full_name || "—"}</TableCell>
-                  <TableCell>{r.email}</TableCell>
                   <TableCell>
-                    <Select
-                      value={r.role ?? "manager"}
-                      onValueChange={(v) => handleChangeRole(r, v as Role)}
-                      disabled={r.id === user?.id}
-                    >
-                      <SelectTrigger className="w-32 h-8">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="admin">admin</SelectItem>
-                        <SelectItem value="manager">manager</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <a href={`mailto:${r.email}`} className="text-primary hover:underline">
+                      {r.email}
+                    </a>
+                  </TableCell>
+                  <TableCell>
+                    {isAdmin ? (
+                      <Select
+                        value={r.role ?? "manager"}
+                        onValueChange={(v) => handleChangeRole(r, v as Role)}
+                        disabled={r.id === user?.id}
+                      >
+                        <SelectTrigger className="w-32 h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="admin">admin</SelectItem>
+                          <SelectItem value="manager">manager</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Badge variant={r.role === "admin" ? "default" : "secondary"}>
+                        {r.role ?? "manager"}
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell className="text-muted-foreground text-xs">
                     {new Date(r.created_at).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="outline" size="sm" onClick={() => handleSendReset(r.email)}>
-                      <KeyRound className="w-3.5 h-3.5 mr-1.5" />
-                      Send reset
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      <Button asChild variant="outline" size="sm">
+                        <a href={`mailto:${r.email}`}>
+                          <Mail className="w-3.5 h-3.5 mr-1.5" />
+                          Contact
+                        </a>
+                      </Button>
+                      {isAdmin && (
+                        <Button variant="outline" size="sm" onClick={() => handleSendReset(r.email)}>
+                          <KeyRound className="w-3.5 h-3.5 mr-1.5" />
+                          Send reset
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
+
               {rows.length === 0 && !loading && (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground py-8">

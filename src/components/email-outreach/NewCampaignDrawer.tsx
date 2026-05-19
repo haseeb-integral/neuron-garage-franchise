@@ -24,12 +24,14 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
   // Test mode
   const [testMode, setTestMode] = useState(true);
   const [testOverride, setTestOverride] = useState("");
+  const [testLeadCount, setTestLeadCount] = useState(5);
   // Step 2
   const [timezone, setTimezone] = useState("America/Chicago");
   const [startHour, setStartHour] = useState("09:00");
   const [endHour, setEndHour] = useState("18:00");
   const [days, setDays] = useState<string[]>(["1", "2", "3", "4", "5"]);
   const [dailyCap, setDailyCap] = useState(50);
+  const [minGapMinutes, setMinGapMinutes] = useState(10);
   // Step 3
   const [trackOpens, setTrackOpens] = useState(true);
   const [trackClicks, setTrackClicks] = useState(true);

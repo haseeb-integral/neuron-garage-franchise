@@ -33,7 +33,28 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
   const [endHour, setEndHour] = useState("18:00");
   const [days, setDays] = useState<string[]>(["1", "2", "3", "4", "5"]);
   const [dailyCap, setDailyCap] = useState(200);
-  const [minGapMinutes, setMinGapMinutes] = useState(1);
+  const [minGapMinutes, setMinGapMinutes] = useState(5);
+
+  // Auto-generate a default campaign name on drawer open
+  function defaultCampaignName() {
+    const d = new Date();
+    const month = d.toLocaleString("en-US", { month: "short" });
+    const day = String(d.getDate()).padStart(2, "0");
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mm = String(d.getMinutes()).padStart(2, "0");
+    let tzAbbr = "";
+    try {
+      const parts = new Intl.DateTimeFormat("en-US", { timeZoneName: "short" }).formatToParts(d);
+      tzAbbr = parts.find((p) => p.type === "timeZoneName")?.value || "";
+    } catch {}
+    const seq = (Number(localStorage.getItem("ng_campaign_seq") || "0") || 0) + 1;
+    localStorage.setItem("ng_campaign_seq", String(seq));
+    return `Outreach · ${month}-${day} · ${hh}:${mm}${tzAbbr ? ` ${tzAbbr}` : ""} · v${seq}`;
+  }
+  useEffect(() => {
+    if (open && !name.trim()) setName(defaultCampaignName());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   // Live clock in the selected timezone
   const [nowTick, setNowTick] = useState(Date.now());

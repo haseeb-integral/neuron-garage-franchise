@@ -16,7 +16,13 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
   // Step 1
   const [name, setName] = useState("");
   // Test mode
-  const [testMode, setTestMode] = useState(true);
+  // Default OFF; remember last choice across opens (localStorage). Origin: Task 17o.
+  const [testMode, setTestMode] = useState<boolean>(() => {
+    try { return localStorage.getItem("ng.newCampaign.testMode") === "1"; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("ng.newCampaign.testMode", testMode ? "1" : "0"); } catch { /* ignore */ }
+  }, [testMode]);
   const [testOverride, setTestOverride] = useState("");
   const [testLeadCount, setTestLeadCount] = useState(5);
   // Step 2

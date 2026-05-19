@@ -111,6 +111,16 @@ See **`TEACHER_IDEAL_PROFILE.md`** for who we are recruiting and why — read th
 ### 11e. Backfill `composite_score_default` on seeded cities ✅ May 18
 - All 948 seeded cities now have `composite_score_default` populated via `normalize_only: true` pass. City Search national ranking unblocked.
 
+### 11f. Backfill `county_name` + `metro_area` on `us_cities_scored` (in progress, added May 19)
+- **`county_name`:** ✅ 960/960 — joined against `us_cities_geo`.
+- **`metro_area`:** ⚠️ 326/960 done via CBSA crosswalk. Houston, Fort Worth, San Antonio, and most non-major-metro cities still NULL because the bulk SQL UPDATE was truncated. **Next session:** finish the remaining ~634 in smaller batches, then patch `seed-cities-database` and `AddCityModal` to populate both fields on insert so this never regresses.
+- **Risk:** low
+
+### 11g. Ask AI literal-compliance mode ✅ May 19
+- `ai-city-query` now returns `weightMode: "absolute" | "delta"` + `absoluteWeights`. Requests like "rank Texas cities by 100% demand weight" now snap sliders to Demand 100 / others 0 instead of being rewritten to 60/8/8/8/8/8. Vague intents still use the old delta path.
+
+
+
 
 ---
 

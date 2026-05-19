@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2, XCircle, Loader2, RefreshCw, Link2, Trash2, AlertCircle } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, RefreshCw, Link2, Trash2, AlertCircle, Info } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -12,6 +12,13 @@ interface Webhook {
   url?: string;
   event_types?: string[];
   name?: string;
+  campaign_id?: string | number;
+}
+
+interface Campaign {
+  id: number | string;
+  name?: string;
+  status?: string;
 }
 
 const EVENT_TYPES = [
@@ -31,11 +38,11 @@ async function callProxy(endpoint: string, method = "GET", payload?: unknown) {
 
 export function SmartLeadConnectionPanel() {
   const [state, setState] = useState<ConnState>("idle");
-  const [campaignCount, setCampaignCount] = useState<number | null>(null);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [accountEmail, setAccountEmail] = useState<string | null>(null);
   const [accountName, setAccountName] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [webhooks, setWebhooks] = useState<Webhook[]>([]);
+  const [webhooksByCampaign, setWebhooksByCampaign] = useState<Record<string, Webhook[]>>({});
   const [loadingWebhooks, setLoadingWebhooks] = useState(false);
   const [registering, setRegistering] = useState(false);
   const [recentEvents, setRecentEvents] = useState<
@@ -48,11 +55,11 @@ export function SmartLeadConnectionPanel() {
     setState("testing");
     setErrorMsg(null);
     try {
-      const campaigns = await callProxy("campaigns/");
-      if (!Array.isArray(campaigns)) {
-        throw new Error(typeof campaigns === "object" ? JSON.stringify(campaigns) : String(campaigns));
+      const camps = await callProxy("campaigns/");
+      if (!Array.isArray(camps)) {
+        throw new Error(typeof camps === "object" ? JSON.stringify(camps) : String(camps));
       }
-      setCampaignCount(campaigns.length);
+      setCampaigns(camps as Campaign[]);
 
       const accounts = await callProxy("email-accounts/?limit=1");
       if (Array.isArray(accounts) && accounts[0]) {
@@ -60,7 +67,6 @@ export function SmartLeadConnectionPanel() {
         setAccountName(accounts[0].from_name ?? null);
       }
       setState("ok");
-      toast.success(`Connected — ${campaigns.length} campaign(s) found`);
     } catch (e) {
       setState("error");
       setErrorMsg(String(e instanceof Error ? e.message : e));
@@ -68,40 +74,59 @@ export function SmartLeadConnectionPanel() {
     }
   };
 
-  const loadWebhooks = async () => {
+  const loadWebhooksForAllCampaigns = async (camps: Campaign[]) => {
     setLoadingWebhooks(true);
-    try {
-      const res = await callProxy("webhooks");
-      setWebhooks(Array.isArray(res) ? res : []);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingWebhooks(false);
+    const result: Record<string, Webhook[]> = {};
+    for (const c of camps) {
+      try {
+        const res = await callProxy(`campaigns/${c.id}/webhooks`);
+        result[String(c.id)] = Array.isArray(res) ? res : [];
+      } catch (e) {
+        console.warn(`webhooks load failed for campaign ${c.id}`, e);
+        result[String(c.id)] = [];
+      }
     }
+    setWebhooksByCampaign(result);
+    setLoadingWebhooks(false);
   };
 
-  const registerWebhook = async () => {
+  const registerOnAllCampaigns = async () => {
+    if (campaigns.length === 0) {
+      toast.info("No campaigns yet — create a campaign in SmartLead first, then register the webhook.");
+      return;
+    }
     setRegistering(true);
-    try {
-      await callProxy("webhooks", "POST", {
-        name: "Neuron Garage app webhook",
-        webhook_url: webhookUrl,
-        event_types: EVENT_TYPES,
-      });
-      toast.success("Webhook registered");
-      await loadWebhooks();
-    } catch (e) {
-      toast.error(`Register failed: ${e instanceof Error ? e.message : e}`);
-    } finally {
-      setRegistering(false);
+    let success = 0;
+    let skipped = 0;
+    let failed = 0;
+    for (const c of campaigns) {
+      const existing = webhooksByCampaign[String(c.id)] ?? [];
+      if (existing.some((w) => (w.webhook_url ?? w.url) === webhookUrl)) {
+        skipped++;
+        continue;
+      }
+      try {
+        await callProxy(`campaigns/${c.id}/webhooks`, "POST", {
+          name: "Neuron Garage app webhook",
+          webhook_url: webhookUrl,
+          event_types: EVENT_TYPES,
+        });
+        success++;
+      } catch (e) {
+        console.error(`register failed for campaign ${c.id}`, e);
+        failed++;
+      }
     }
+    await loadWebhooksForAllCampaigns(campaigns);
+    setRegistering(false);
+    toast.success(`Webhook sync done — registered ${success}, already present ${skipped}, failed ${failed}`);
   };
 
-  const deleteWebhook = async (id: string | number) => {
+  const deleteWebhook = async (campaignId: string | number, webhookId: string | number) => {
     try {
-      await callProxy(`webhooks/${id}`, "DELETE");
+      await callProxy(`campaigns/${campaignId}/webhooks/${webhookId}`, "DELETE");
       toast.success("Webhook removed");
-      await loadWebhooks();
+      await loadWebhooksForAllCampaigns(campaigns);
     } catch (e) {
       toast.error(`Delete failed: ${e instanceof Error ? e.message : e}`);
     }
@@ -117,37 +142,27 @@ export function SmartLeadConnectionPanel() {
   };
 
   useEffect(() => {
-    testConnection();
-    loadRecentEvents();
     (async () => {
-      setLoadingWebhooks(true);
-      try {
-        const res = await callProxy("webhooks");
-        const list: Webhook[] = Array.isArray(res) ? res : [];
-        setWebhooks(list);
-        const alreadyRegistered = list.some((w) => (w.webhook_url ?? w.url) === webhookUrl);
-        if (!alreadyRegistered) {
-          try {
-            await callProxy("webhooks", "POST", {
-              name: "Neuron Garage app webhook",
-              webhook_url: webhookUrl,
-              event_types: EVENT_TYPES,
-            });
-            const after = await callProxy("webhooks");
-            setWebhooks(Array.isArray(after) ? after : []);
-            toast.success("SmartLead webhook auto-registered");
-          } catch (e) {
-            console.warn("Auto-register webhook failed", e);
-          }
-        }
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoadingWebhooks(false);
-      }
+      await testConnection();
+      await loadRecentEvents();
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // When campaigns load, fetch webhooks for each
+  useEffect(() => {
+    if (campaigns.length > 0) {
+      loadWebhooksForAllCampaigns(campaigns);
+    } else {
+      setWebhooksByCampaign({});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaigns.length]);
+
+  const allWebhooks = Object.entries(webhooksByCampaign).flatMap(([cid, ws]) =>
+    ws.map((w) => ({ ...w, campaign_id: cid })),
+  );
+  const ourRegisteredCount = allWebhooks.filter((w) => (w.webhook_url ?? w.url) === webhookUrl).length;
 
   return (
     <div className="rounded-2xl border border-[#eef2f7] bg-white p-6 shadow-sm">
@@ -155,7 +170,7 @@ export function SmartLeadConnectionPanel() {
         <div>
           <h2 className="text-base font-semibold text-[#07142f]">SmartLead Connection</h2>
           <p className="mt-0.5 text-xs text-[#5a6b85]">
-            Live link between this app and SmartLead. Replies and bounces flow in via webhook.
+            Live link between this app and SmartLead. Replies and bounces flow in via per-campaign webhooks.
           </p>
         </div>
         <button
@@ -174,16 +189,14 @@ export function SmartLeadConnectionPanel() {
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <div className="rounded-lg border border-[#eef2f7] bg-[#f7faff] p-3">
-          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[#5a6b85]">
-            API status
-          </div>
+          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[#5a6b85]">API status</div>
           <div className="flex items-center gap-2">
             {state === "ok" && <CheckCircle2 size={16} className="text-emerald-600" />}
             {state === "error" && <XCircle size={16} className="text-red-600" />}
             {state === "testing" && <Loader2 size={16} className="animate-spin text-[#0757ff]" />}
             {state === "idle" && <AlertCircle size={16} className="text-amber-600" />}
             <span className="text-sm font-medium text-[#07142f]">
-              {state === "ok" && `Connected · ${campaignCount} campaigns`}
+              {state === "ok" && `Connected · ${campaigns.length} campaigns`}
               {state === "error" && "Failed"}
               {state === "testing" && "Testing…"}
               {state === "idle" && "Not tested"}
@@ -193,9 +206,7 @@ export function SmartLeadConnectionPanel() {
         </div>
 
         <div className="rounded-lg border border-[#eef2f7] bg-[#f7faff] p-3">
-          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[#5a6b85]">
-            Sending mailbox
-          </div>
+          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[#5a6b85]">Sending mailbox</div>
           {accountEmail ? (
             <>
               <div className="text-sm font-medium text-[#07142f]">{accountName ?? "—"}</div>
@@ -226,46 +237,62 @@ export function SmartLeadConnectionPanel() {
       </div>
 
       <div className="mt-5 border-t border-[#eef2f7] pt-4">
-        <div className="mb-2 flex items-center justify-between">
-          <div>
+        <div className="mb-2 flex items-start justify-between gap-3">
+          <div className="min-w-0">
             <div className="text-sm font-semibold text-[#07142f]">Webhook</div>
             <div className="break-all font-mono text-[11px] text-[#5a6b85]">{webhookUrl}</div>
+            <div className="mt-1 text-[11px] text-[#5a6b85]">
+              {campaigns.length === 0
+                ? "Registered on 0 of 0 campaigns"
+                : `Registered on ${ourRegisteredCount} of ${campaigns.length} campaigns`}
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <button
-              onClick={loadWebhooks}
-              disabled={loadingWebhooks}
-              className="inline-flex items-center gap-1 rounded-lg border border-[#eef2f7] bg-white px-2.5 py-1.5 text-xs font-medium text-[#14233b] hover:bg-[#f7faff]"
+              onClick={() => loadWebhooksForAllCampaigns(campaigns)}
+              disabled={loadingWebhooks || campaigns.length === 0}
+              className="inline-flex items-center gap-1 rounded-lg border border-[#eef2f7] bg-white px-2.5 py-1.5 text-xs font-medium text-[#14233b] hover:bg-[#f7faff] disabled:opacity-50"
             >
               {loadingWebhooks ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
               Refresh
             </button>
             <button
-              onClick={registerWebhook}
-              disabled={registering}
-              className="inline-flex items-center gap-1 rounded-lg bg-[#1f5bff] px-2.5 py-1.5 text-xs font-medium text-white hover:bg-[#0757ff] disabled:opacity-60"
+              onClick={registerOnAllCampaigns}
+              disabled={registering || campaigns.length === 0}
+              className="inline-flex items-center gap-1 rounded-lg bg-[#1f5bff] px-2.5 py-1.5 text-xs font-medium text-white hover:bg-[#0757ff] disabled:opacity-50"
             >
               {registering ? <Loader2 size={12} className="animate-spin" /> : <Link2 size={12} />}
-              Register in SmartLead
+              Register on all campaigns
             </button>
           </div>
         </div>
 
-        {webhooks.length === 0 ? (
+        {campaigns.length === 0 ? (
+          <div className="flex items-start gap-2 rounded-lg border border-dashed border-[#dbe4f2] bg-[#fbfdff] p-3 text-xs text-[#5a6b85]">
+            <Info size={14} className="mt-0.5 shrink-0 text-[#1f5bff]" />
+            <span>
+              SmartLead webhooks are attached <b>per campaign</b>, not globally. You have no
+              campaigns yet — create one in SmartLead (or wait until Phase 4 of this app), then
+              click <b>Register on all campaigns</b> to wire replies into the Inbox.
+            </span>
+          </div>
+        ) : allWebhooks.length === 0 ? (
           <div className="rounded-lg border border-dashed border-[#eef2f7] p-3 text-xs text-[#5a6b85]">
-            No webhooks registered yet. Click "Register in SmartLead" so replies flow into this app.
+            No webhooks registered on any campaign yet. Click <b>Register on all campaigns</b> to
+            attach this app's webhook URL to every campaign.
           </div>
         ) : (
           <ul className="space-y-1.5">
-            {webhooks.map((w, i) => {
+            {allWebhooks.map((w, i) => {
               const id = w.id ?? w.webhook_id ?? i;
               const url = w.webhook_url ?? w.url ?? "";
               const events = w.event_types ?? [];
               const matchesOurs = url === webhookUrl;
+              const campaign = campaigns.find((c) => String(c.id) === String(w.campaign_id));
               return (
                 <li
-                  key={String(id)}
-                  className="flex items-center justify-between rounded-lg border border-[#eef2f7] bg-white p-2.5"
+                  key={`${w.campaign_id}-${id}`}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-[#eef2f7] bg-white p-2.5"
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 text-xs">
@@ -274,16 +301,19 @@ export function SmartLeadConnectionPanel() {
                       ) : (
                         <AlertCircle size={12} className="text-amber-600" />
                       )}
-                      <span className="break-all font-mono text-[11px] text-[#14233b]">{url}</span>
+                      <span className="font-semibold text-[#14233b]">
+                        {campaign?.name ?? `Campaign ${w.campaign_id}`}
+                      </span>
                     </div>
+                    <div className="mt-0.5 break-all font-mono text-[10px] text-[#5a6b85]">{url}</div>
                     {events.length > 0 && (
-                      <div className="mt-1 text-[10px] text-[#5a6b85]">{events.join(" · ")}</div>
+                      <div className="mt-0.5 text-[10px] text-[#5a6b85]">{events.join(" · ")}</div>
                     )}
                   </div>
-                  {(w.id ?? w.webhook_id) !== undefined && (
+                  {(w.id ?? w.webhook_id) !== undefined && w.campaign_id !== undefined && (
                     <button
-                      onClick={() => deleteWebhook((w.id ?? w.webhook_id)!)}
-                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                      onClick={() => deleteWebhook(w.campaign_id!, (w.id ?? w.webhook_id)!)}
+                      className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs text-red-600 hover:bg-red-50"
                     >
                       <Trash2 size={12} /> Remove
                     </button>

@@ -53,14 +53,14 @@ All tables have RLS enabled. `authenticated` role can read/write unless noted.
 |---|---|
 | `profiles` | User profile (auto-created on signup via `handle_new_user` trigger). Self-update only. |
 | `user_roles` | Role assignments (`app_role` enum: admin / manager / etc.). Admin-only writes. |
-| `cities` | Core city records (name, state, lat/lng, tier, composite score, population, etc.) |
-| `us_cities_scored` | Pre-scored city table (Task #0). Includes `public_school_count` / `public_school_enrollment` (all open K–12 public schools) and `public_elementary_count` / `public_elementary_enrollment` (derived subset, `lowest_grade_offered ≤ 5`) as cached counts. *Renamed May 18 — was `public_elementary_*`. Seed function now stores all K–12; elementary is a derived subset.* |
+| `cities` | **DROPPED May 19** — legacy table, superseded by `us_cities_scored`. |
+| `us_cities_scored` | **Canonical city table.** Pre-scored (Task #0). Includes `public_school_count` / `public_school_enrollment` (all open K–12 public schools) and `public_elementary_count` / `public_elementary_enrollment` (derived subset, `lowest_grade_offered ≤ 5`) as cached counts. *Renamed May 18.* Authenticated users can now INSERT (Add City flow via `AddCityModal`). |
 | `public_schools` | One row per NCES open public school nationally (PK = `nces_id`). Stores name, district, address, lat/lng, grades, level, type, enrollment. `is_elementary_serving` is a generated column (`lowest_grade_offered ≤ 5`). FK `us_cities_scored_id` links each school to its seeded city. **Source of truth for school-level data**; `us_cities_scored.public_*_count` columns remain as cached counts. Backfilled May 18 — 38,196 schools across 948 cities. *Added May 18 to unblock Teacher Search seeding, `enrich-school-staff`, and City Detail "Show Formula" school list.* |
-| `city_category_scores` | Per-city, per-category (6 categories) scores |
+| `city_category_scores` | **DROPPED May 19** — legacy per-category scores now stored on `us_cities_scored`. |
 | `city_market_signals` | Raw signal rows per city (label/value/source/delta) — drives "Show Formula" |
-| `city_competitors` | Apify-scraped competitor records per city |
-| `city_fetch_jobs` | Audit log for per-city data refresh jobs |
-| `us_cities_geo` | Reference table of US cities (lat/lng/pop) — read-only |
+| `city_competitors` | **DROPPED May 19** — legacy Apify competitor cache; competitor data will be re-seeded into a new table when B7 runs. |
+| `city_fetch_jobs` | **DROPPED May 19** — legacy refresh audit log; new seed flow logs centrally. |
+| `us_cities_geo` | Reference table of US cities (lat/lng/pop) — read-only. Used by `AddCityModal` for case-insensitive city+state lookup before inserting into `us_cities_scored`. |
 | `custom_criteria` | User-defined extra scoring criteria |
 | `scoring_config` | Per-user master-weight preset |
 | `saved_searches` | Per-user saved slider configs (master + sub weights) |

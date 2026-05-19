@@ -15,10 +15,10 @@ export const SPEC_MARKDOWN = `# Neuron Garage Franchise Acquisition System — P
 3. [End-to-End Journey](#3-end-to-end-journey)
 4. [Navigation & Layout](#4-navigation--layout)
 5. [Dashboard](#5-dashboard)
-6. [City Search](#6-city-search)
-7. [Teacher Search](#7-teacher-search)
-8. [Email Outreach](#8-email-outreach)
-9. [Candidate Pipeline](#9-candidate-pipeline)
+6. [Feature 1 — City Search](#6-feature-1--city-search)
+7. [Feature 2 — Teacher Search](#7-feature-2--teacher-search)
+8. [Feature 3 — Email Outreach](#8-feature-3--email-outreach)
+9. [Feature 4 — Candidate Pipeline](#9-feature-4--candidate-pipeline)
 10. [Authentication](#10-authentication)
 11. [Guided Tour](#11-guided-tour)
 12. [Design System](#12-design-system)
@@ -116,6 +116,8 @@ Protected (\`ProtectedRoute\` + \`AppLayout\`):
 
 ## 5. Dashboard
 
+> The Dashboard is the home screen, not a feature in itself — it's the "what should I do next?" view across the 4 numbered features below.
+
 **Purpose:** give the rep a one-screen answer to "what should I do next?"
 
 - **Next Action card** — personalized recommendation with a CTA that deep-links to the right city.
@@ -127,7 +129,7 @@ Reads from \`candidates\` and \`teacher_prospects\` via the Supabase client. No 
 
 ---
 
-## 6. City Search
+## 6. Feature 1 — City Search
 
 **Purpose:** rank U.S. cities by their suitability for a new Neuron Garage franchise.
 
@@ -209,7 +211,7 @@ Select up to 4 cities and open a side-by-side modal (\`MarketCompareModal\`).
 
 ---
 
-## 7. Teacher Search
+## 7. Feature 2 — Teacher Search
 
 **Purpose:** discover, score, and shortlist teachers who could become franchisees.
 
@@ -245,7 +247,7 @@ Apify-only data. Apollo, purchased vendor lists, and DonorsChoose are not yet wi
 
 ---
 
-## 8. Email Outreach
+## 8. Feature 3 — Email Outreach
 
 **Purpose:** outbound email campaigns to teacher prospects via **SmartLead** (Kaylie's branding: "Integral Leads"). End-to-end live as of May 19, 2026 (Phases 1–5 complete).
 
@@ -296,7 +298,7 @@ Email body generation runs through the Lovable AI Gateway (\`LOVABLE_API_KEY\`).
 
 ---
 
-## 9. Candidate Pipeline
+## 9. Feature 4 — Candidate Pipeline
 
 **Purpose:** move candidates through a structured 7-stage qualification flow.
 

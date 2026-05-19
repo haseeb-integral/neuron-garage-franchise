@@ -233,7 +233,7 @@ export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
   { key: "education_bachelors_plus_pct",        category: "demand", label: "Parent Education / Bachelor's+",          enabled: true,  weight_within_category: 0.09, status: "live"    },
   { key: "summer_weather_index",                category: "demand", label: "Summer Weather Index",                    enabled: true,  weight_within_category: 0.08, status: "live"    },
   { key: "avg_peak_summer_temperature",         category: "demand", label: "Avg Peak Summer Temperature",             enabled: true,  weight_within_category: 0.04, status: "live"    },
-  { key: "days_above_100f",                     category: "demand", label: "Number of 100°+ Days",                    enabled: true,  weight_within_category: 0.03, status: "live"    },
+  { key: "days_above_90f",                      category: "demand", label: "Number of 90°+ Days",                     enabled: true,  weight_within_category: 0.03, status: "live"    },
 
   // ─────────── PRICING POWER ───────────
   { key: "avg_weekly_camp_tuition",             category: "pricing_power", label: "Average Weekly Camp Tuition",                       enabled: true,  weight_within_category: 0.20, status: "live" },

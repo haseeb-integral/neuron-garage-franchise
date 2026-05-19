@@ -33,7 +33,28 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
   const [endHour, setEndHour] = useState("18:00");
   const [days, setDays] = useState<string[]>(["1", "2", "3", "4", "5"]);
   const [dailyCap, setDailyCap] = useState(200);
-  const [minGapMinutes, setMinGapMinutes] = useState(1);
+  const [minGapMinutes, setMinGapMinutes] = useState(5);
+
+  // Auto-generate a default campaign name on drawer open
+  function defaultCampaignName() {
+    const d = new Date();
+    const month = d.toLocaleString("en-US", { month: "short" });
+    const day = String(d.getDate()).padStart(2, "0");
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mm = String(d.getMinutes()).padStart(2, "0");
+    let tzAbbr = "";
+    try {
+      const parts = new Intl.DateTimeFormat("en-US", { timeZoneName: "short" }).formatToParts(d);
+      tzAbbr = parts.find((p) => p.type === "timeZoneName")?.value || "";
+    } catch {}
+    const seq = (Number(localStorage.getItem("ng_campaign_seq") || "0") || 0) + 1;
+    localStorage.setItem("ng_campaign_seq", String(seq));
+    return `Outreach · ${month}-${day} · ${hh}:${mm}${tzAbbr ? ` ${tzAbbr}` : ""} · v${seq}`;
+  }
+  useEffect(() => {
+    if (open && !name.trim()) setName(defaultCampaignName());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   // Live clock in the selected timezone
   const [nowTick, setNowTick] = useState(Date.now());
@@ -117,7 +138,7 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
     const endMinutes = toMinutes(endHour);
     if (startMinutes === null || endMinutes === null) return "Start and end time must be in HH:MM format.";
     if (startMinutes >= endMinutes) return "End time must be after start time.";
-    if (minGapMinutes < 1 || minGapMinutes > 180) return "Min gap must be between 1 and 180 minutes.";
+    if (minGapMinutes < 3 || minGapMinutes > 180) return "Min gap must be between 3 and 180 minutes (SmartLead requirement).";
     if (dailyCap < 1 || dailyCap > 200) return "Daily send cap must be between 1 and 200.";
     if (!sequences.length) return "Add at least one email step.";
     const badStep = sequences.find((sequence) => !sequence.subject.trim() || !sequence.body.trim() || sequence.day < 1);
@@ -157,7 +178,7 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
         await callSmartLeadProxy(`/campaigns/${id}/schedule`, "POST", {
           timezone, days_of_the_week: days.map(Number),
           start_hour: startHour, end_hour: endHour,
-          min_time_btw_emails: Math.max(1, Math.min(180, minGapMinutes)),
+          min_time_btw_emails: Math.max(3, Math.min(180, minGapMinutes)),
           max_new_leads_per_day: Math.max(1, Math.min(200, dailyCap)),
         });
       }, "schedule failed");
@@ -306,7 +327,7 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
 
               <label className="block">
                 <span className="text-xs font-bold text-[#34445f]">Campaign name</span>
-                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Austin TX — Spring 2026" className="mt-1 h-10 w-full rounded-lg border border-[#dbe4f2] px-3 outline-none" />
+                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Outreach · May-19 · 22:45 PKT · v1" className="mt-1 h-10 w-full rounded-lg border border-[#dbe4f2] px-3 outline-none" />
                 {testMode && name && <div className="mt-1 text-[11px] text-amber-700">SmartLead name will be: <b>[TEST] {name}</b></div>}
               </label>
             </div>
@@ -350,8 +371,8 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
               </label>
               <label className="block">
                 <span className="text-xs font-bold text-[#34445f]">Min gap between emails (minutes)</span>
-                <input type="number" min={1} max={180} value={minGapMinutes} onChange={(e) => setMinGapMinutes(Number(e.target.value) || 10)} className="mt-1 h-10 w-full rounded-lg border border-[#dbe4f2] px-3" />
-                <div className="mt-1 text-[11px] text-[#526078]">Production: keep 10+ for deliverability. <b>For rapid testing set to 1</b> → one email per minute across your test leads.</div>
+                <input type="number" min={3} max={180} value={minGapMinutes} onChange={(e) => setMinGapMinutes(Number(e.target.value) || 5)} className="mt-1 h-10 w-full rounded-lg border border-[#dbe4f2] px-3" />
+                <div className="mt-1 text-[11px] text-[#526078]"><b>SmartLead minimum is 3 minutes.</b> Production: keep 10+ for deliverability.</div>
               </label>
             </div>
           )}

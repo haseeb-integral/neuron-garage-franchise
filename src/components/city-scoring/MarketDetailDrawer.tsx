@@ -629,19 +629,16 @@ export function MarketDetailDrawer({
 
           <TabsContent value="overview" className="mt-3 space-y-4">
             <section>
-              <h4 className="mb-2 text-[12.5px] font-bold text-[#07142f]">Refresh Summary</h4>
+              <h4 className="mb-2 text-[12.5px] font-bold text-[#07142f]">Seed Coverage</h4>
               <div className="rounded-md border border-[#eef2f7] p-3">
                 <div className="grid grid-cols-2 gap-1.5 text-[11px]">
                   {[
-                    ["Live", liveCount],
-                    ["Estimated", estimatedCount],
-                    ["Manual", manualCount],
-                    ["Blocked", blockedCount],
-                    ["Missing", missingCount],
-                    ["Registry metrics with value", totalAvailableCount],
-                    ["Enabled metrics with value", enabledAvailableCount],
-                    ["Tracked-not-scored metrics with value", disabledAvailableCount],
-                    ["Total metrics", totalRegistry + customCount],
+                    ["Pre-seeded value", coverageCounts.preSeeded],
+                    ["Tracked-not-scored w/ value", coverageCounts.trackedNotScored],
+                    ["Not seeded yet", coverageCounts.notSeededYet],
+                    ["Source unavailable", coverageCounts.sourceUnavailable],
+                    ["Custom metrics", customCount],
+                    ["Total scoring metrics", totalRegistry],
                   ].map(([label, value]) => (
                     <div key={String(label)} className="flex justify-between gap-2 rounded bg-[#f8fafe] px-2 py-1">
                       <span className="truncate text-[#526078]">{label}</span>
@@ -649,9 +646,12 @@ export function MarketDetailDrawer({
                     </div>
                   ))}
                 </div>
+                <p className="mt-2 text-[10.5px] text-[#526078]">
+                  Last seeded: <span className="font-semibold text-[#07142f]">{formatDate(seedAtIso)}</span>. Pre-seeded values come from the canonical <code>us_cities_scored</code> row + <code>city_market_signals</code> for this scored-city UUID. "Not seeded yet" means the metric is enabled for scoring but no source has been wired for this city yet.
+                </p>
                 {customCount > 0 && (
-                  <p className="mt-2 text-[10.5px] text-[#526078]">
-                    Includes {customCount} custom metric{customCount === 1 ? "" : "s"} (counted as Estimated — uses neutral 50 until live data is wired).
+                  <p className="mt-1 text-[10.5px] text-[#526078]">
+                    {customCount} custom metric{customCount === 1 ? "" : "s"} are tracked separately from the {totalRegistry}-metric registry. Custom metrics with weight 0 are shown for audit transparency but do not contribute to the score.
                   </p>
                 )}
                 <div className="mt-3 border-t border-[#eef2f7] pt-2 text-[11px]">

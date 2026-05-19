@@ -39,6 +39,7 @@ import {
   filterRankedMarkets,
   sampleRankedMarkets,
   downloadRankedMarketsCsv,
+  buildSeededFallbackSignalsFromScored,
   type RankedMarket,
 } from "@/lib/cityScoringLiveData";
 import { useCityScoringStore, DEFAULT_WEIGHTS } from "@/stores/cityScoringStore";
@@ -796,24 +797,29 @@ const CityScoring = () => {
   const selectedCity = selectedMarketKey.city || selectedSample.city;
   const selectedState = selectedMarketKey.state || selectedSample.state;
   const selectedRankedMarket = baseRankedMarkets.find((market) => sameMarket(market.city, market.state, selectedCity, selectedState));
+  const liveCityMatchesSelection = sameMarket(liveCity?.city, liveCity?.state, selectedCity, selectedState);
+  const selectedLiveCity = liveCityMatchesSelection ? liveCity : null;
+  const selectedLiveSignals = liveCityMatchesSelection ? liveSignals : [];
+  const selectedLiveCategoryScores = liveCityMatchesSelection ? liveCategoryScores : {};
+  const selectedLiveJob = liveCityMatchesSelection ? liveJob : null;
   const selected = {
     ...selectedSample,
     city: selectedCity,
     state: selectedState,
     // Canonical cityId = us_cities_scored.id. Used by drawer, report, watchlist.
-    cityId: liveCity?.id ?? selectedRankedMarket?.cityId ?? (selectedSample as any).cityId,
-    compositeScore: liveCity?.composite_score ?? selectedRankedMarket?.compositeScore ?? selectedSample.compositeScore,
-    tier: liveCity?.tier ?? selectedRankedMarket?.tier ?? selectedSample.tier,
-    population: liveCity?.population ?? selectedRankedMarket?.population ?? selectedSample.population,
-    competitorCount: liveCity?.competitor_count ?? selectedRankedMarket?.competitorCount ?? selectedSample.competitorCount,
-    county: liveCity?.county ?? selectedRankedMarket?.county ?? (selectedSample as any).county,
-    metroArea: liveCity?.metro_area ?? selectedRankedMarket?.metroArea ?? (selectedSample as any).metroArea,
-    marketType: liveCity?.market_type ?? selectedRankedMarket?.marketType ?? (selectedSample as any).marketType,
-    lastScrapedAt: liveCity?.last_scraped_at ?? selectedRankedMarket?.lastScrapedAt ?? null,
-    scored: liveCity?.scored ?? null,
+    cityId: selectedLiveCity?.id ?? selectedRankedMarket?.cityId ?? (selectedSample as any).cityId,
+    compositeScore: selectedLiveCity?.composite_score ?? selectedRankedMarket?.compositeScore ?? selectedSample.compositeScore,
+    tier: selectedLiveCity?.tier ?? selectedRankedMarket?.tier ?? selectedSample.tier,
+    population: selectedLiveCity?.population ?? selectedRankedMarket?.population ?? selectedSample.population,
+    competitorCount: selectedLiveCity?.competitor_count ?? selectedRankedMarket?.competitorCount ?? selectedSample.competitorCount,
+    county: selectedLiveCity?.county ?? selectedRankedMarket?.county ?? (selectedSample as any).county,
+    metroArea: selectedLiveCity?.metro_area ?? selectedRankedMarket?.metroArea ?? (selectedSample as any).metroArea,
+    marketType: selectedLiveCity?.market_type ?? selectedRankedMarket?.marketType ?? (selectedSample as any).marketType,
+    lastScrapedAt: selectedLiveCity?.last_scraped_at ?? selectedRankedMarket?.lastScrapedAt ?? null,
+    scored: selectedLiveCity?.scored ?? selectedRankedMarket?.scoredRow ?? null,
   };
   const selectedHasLiveData =
-    !!liveCity && (Number(liveCity?.composite_score ?? 0) > 0 || !!liveCity?.last_scraped_at);
+    !!selected.cityId && (Number(selected.compositeScore ?? 0) > 0 || !!selected.lastScrapedAt);
 
   // Load live DB-backed data for the currently selected market.
   // Canonical source: us_cities_scored (Sam's pre-seeded ~948-city dataset).
@@ -1354,34 +1360,32 @@ const CityScoring = () => {
     child_population: "parentMindset",
   };
   const liveUiCategoryScores: Partial<Record<CategoryKey, number>> = {};
-  Object.entries(liveCategoryScores).forEach(([k, v]) => {
+  Object.entries(selectedLiveCategoryScores).forEach(([k, v]) => {
     const uiKey = DB_CAT_TO_UI[k];
     if (uiKey) liveUiCategoryScores[uiKey] = v as number;
   });
 
-  const detailScore = liveCity?.composite_score
-    ? liveCity.composite_score
+  if (selectedRankedMarket?.categoryScores) {
+    Object.entries(selectedRankedMarket.categoryScores).forEach(([k, v]) => {
+      if (v != null) liveUiCategoryScores[k as CategoryKey] = Number(v);
+    });
+  }
+
+  const detailScore = selectedLiveCity?.composite_score
+    ? selectedLiveCity.composite_score
     : selected.compositeScore;
 
   const baseDetailCategoryScores = { ...cs, ...liveUiCategoryScores } as Record<CategoryKey, number>;
 
   // Build raw signal values keyed by SOW signal_key for the selected city.
   const seededFallbackSignals = useMemo(() => {
-    const scored = liveCity?.scored;
-    if (!scored) return [] as any[];
-    const childrenPct = Number(liveCity?.children_pct ?? 0);
-    return [
-      { signal_key: "total_population", label: "Total Population", value: scored.population, source: "Pre-seeded" },
-      { signal_key: "children_5_12_count", label: "Children Ages 5–12", value: scored.children_5_12, source: "Pre-seeded" },
-      { signal_key: "children_5_12_pct", label: "% Population Ages 5–12", value: childrenPct > 0 ? childrenPct : null, source: "Pre-seeded" },
-      { signal_key: "median_household_income", label: "Median Household Income", value: scored.median_household_income, source: "Pre-seeded" },
-      { signal_key: "public_elementary_count", label: "Public elementary schools (NCES CCD)", value: scored.public_elementary_count, source: "Pre-seeded" },
-      { signal_key: "public_elementary_enrollment", label: "Public elementary enrollment", value: scored.public_elementary_enrollment, source: "Pre-seeded" },
-      { signal_key: "competitor_count", label: "Summer camps / enrichment competitors", value: scored.summer_camp_count, source: "Pre-seeded" },
-    ].filter((signal) => signal.value != null && signal.value !== "");
-  }, [liveCity]);
+    return buildSeededFallbackSignalsFromScored(
+      selected.scored,
+      Number(selectedLiveCity?.children_pct ?? 0) || undefined,
+    );
+  }, [selected.scored, selectedLiveCity?.children_pct]);
 
-  const signalsForDisplay = liveSignals.length > 0 ? liveSignals : seededFallbackSignals;
+  const signalsForDisplay = selectedLiveSignals.length > 0 ? selectedLiveSignals : seededFallbackSignals;
 
   const rawValuesByKey = useMemo(() => {
     const out: Record<string, number | null> = {};
@@ -1516,7 +1520,7 @@ const CityScoring = () => {
   const sigRows = liveSigRows;
   const hasLiveSignals = sigRows.length > 0;
 
-  const lastScrapedAt = liveCity?.last_scraped_at ?? liveJob?.completed_at ?? null;
+  const lastScrapedAt = selectedLiveCity?.last_scraped_at ?? selectedLiveJob?.completed_at ?? null;
   const lastScrapedAtMs = lastScrapedAt ? new Date(lastScrapedAt).getTime() : null;
   const lastScrapedAbsolute = lastScrapedAt
     ? new Date(lastScrapedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
@@ -1537,9 +1541,9 @@ const CityScoring = () => {
   const isStale = lastScrapedAtMs ? Date.now() - lastScrapedAtMs > 24 * 60 * 60 * 1000 : false;
 
   // Derived display values for metro, county, market type — wired to live DB, with honest fallbacks
-  const displayMetroArea = liveCity?.metro_area ?? (selected as any).metroArea ?? "\u2014";
-  const displayCounty = liveCity?.county ?? (selected as any).county ?? "\u2014";
-  const displayMarketType = liveCity?.market_type ?? (selected as any).marketType ?? "Suburb";
+  const displayMetroArea = selectedLiveCity?.metro_area ?? (selected as any).metroArea ?? "\u2014";
+  const displayCounty = selectedLiveCity?.county ?? (selected as any).county ?? "\u2014";
+  const displayMarketType = selectedLiveCity?.market_type ?? (selected as any).marketType ?? "Suburb";
 
   return (
     <div className="-mx-3 md:-mx-5 lg:-mx-6 -my-3 px-3 md:px-5 lg:px-6 py-3 min-h-screen bg-white">
@@ -2272,7 +2276,7 @@ const CityScoring = () => {
               ))}
             </div>
             {(() => {
-              const detailCityId = liveCity?.id as string | undefined;
+              const detailCityId = selected.cityId as string | undefined;
               const isSaved = !!detailCityId && watchlistCityIds.has(detailCityId);
               return (
                 <button
@@ -2443,10 +2447,10 @@ const CityScoring = () => {
                 </div>
               </div>
 
-              {liveCity?.notes && (
+              {selectedLiveCity?.notes && (
                 <div>
                   <p className="mb-0.5 text-[12px] font-semibold text-[#3a4c72]">Market Summary</p>
-                  <p className="text-[11.5px] leading-snug text-[#14233b]">{liveCity.notes}</p>
+                  <p className="text-[11.5px] leading-snug text-[#14233b]">{selectedLiveCity.notes}</p>
                 </div>
               )}
             </div>
@@ -2495,7 +2499,7 @@ const CityScoring = () => {
                       onClick={() => setDetailDrawerOpen(true)}
                       className="mt-2 inline-flex items-center gap-1 rounded-md border border-[#dbe4f2] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#174be8] hover:bg-[#f1f5ff]"
                     >
-                      View all {liveSignals.length} signals →
+                      View all {signalsForDisplay.length} signals →
                     </button>
                   )}
                 </>
@@ -2558,9 +2562,9 @@ const CityScoring = () => {
           </div>
 
           <NearbyMarketsPanel
-            cityId={liveCity?.id ?? null}
+            cityId={selected.cityId ?? null}
             state={selectedState}
-            metroArea={liveCity?.metro_area ?? (selected as any).metroArea ?? null}
+            metroArea={selectedLiveCity?.metro_area ?? (selected as any).metroArea ?? null}
             refreshKey={marketRefreshVersion}
             onSelect={(m) => {
               setSelectedMarketKey({ city: m.city, state: m.state });

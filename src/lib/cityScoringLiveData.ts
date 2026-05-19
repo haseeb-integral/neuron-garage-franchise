@@ -19,7 +19,28 @@ export type RankedMarket = {
   source: "live" | "sample";
   hasLiveData: boolean;
   categoryScores?: Partial<Record<CategoryKey, number>>;
+  scoredRow?: Record<string, any> | null;
   sample?: CityData;
+};
+
+type SeededMetricCategory =
+  | "demand"
+  | "pricing_power"
+  | "competitive_landscape"
+  | "franchisee_supply"
+  | "ease_of_operations"
+  | "parent_mindset";
+
+export type SeededFallbackSignal = {
+  signal_key: string;
+  label: string;
+  value: string | number | null;
+  source: "Pre-seeded";
+  raw_data: {
+    status: "proxy";
+    used_in_score: boolean;
+    metric_category: SeededMetricCategory;
+  };
 };
 
 export type RankedMarketFilters = {
@@ -108,7 +129,7 @@ export async function loadLiveRankedMarkets(): Promise<RankedMarket[]> {
   const { data: scoredRows, error: scoredErr } = await supabase
     .from("us_cities_scored")
     .select(
-      "id, city_name, state_name, state_abbr, metro_area, population, population_density, composite_score_default, score_demand, score_pricing_power, score_competitive, score_franchise_supply, score_ease_of_operation, score_parent_mindset, is_registration_state, scored_at, summer_camp_count",
+      "id, city_name, state_name, state_abbr, metro_area, population, population_density, children_5_12, median_household_income, dual_working_families_pct, college_degree_pct, cost_of_living_index, public_school_count, public_school_enrollment, public_elementary_count, public_elementary_enrollment, private_elementary_count, charter_elementary_count, summer_camp_count, avg_camp_price_per_hour, school_hosted_camp_count, camp_waitlist_signals, composite_score_default, score_demand, score_pricing_power, score_competitive, score_franchise_supply, score_ease_of_operation, score_parent_mindset, is_registration_state, scored_at",
     )
     .order("composite_score_default", { ascending: false, nullsFirst: false })
     .limit(2000);
@@ -141,6 +162,7 @@ export async function loadLiveRankedMarkets(): Promise<RankedMarket[]> {
       lastScrapedAt: row.scored_at ?? null,
       source: "live",
       hasLiveData,
+      scoredRow: row,
       categoryScores: {
         demand: row.score_demand == null ? undefined : toNumber(row.score_demand, 0),
         pricingPower: row.score_pricing_power == null ? undefined : toNumber(row.score_pricing_power, 0),
@@ -221,6 +243,51 @@ export function filterRankedMarkets(markets: RankedMarket[], filters: RankedMark
 
 export function sampleRankedMarkets() {
   return sampleCities.map(mapSampleCityToRankedMarket);
+}
+
+export function buildSeededFallbackSignalsFromScored(
+  scoredRow?: Record<string, any> | null,
+  childrenPct?: number | null,
+): SeededFallbackSignal[] {
+  if (!scoredRow) return [];
+
+  const kids = toNumber(scoredRow.children_5_12, 0);
+  const pct = childrenPct ?? (toNumber(scoredRow.population, 0) > 0 ? Math.round((kids / toNumber(scoredRow.population, 0)) * 1000) / 10 : null);
+  const campCount = toNumber(scoredRow.summer_camp_count, 0);
+  const campsPer10k = kids > 0 ? Math.round((campCount / kids) * 10000 * 10) / 10 : null;
+  const seeded = (
+    signal_key: string,
+    label: string,
+    value: string | number | null | undefined,
+    metric_category: SeededMetricCategory,
+    used_in_score: boolean,
+  ): SeededFallbackSignal => ({
+    signal_key,
+    label,
+    value: value ?? null,
+    source: "Pre-seeded",
+    raw_data: { status: "proxy", used_in_score, metric_category },
+  });
+
+  return [
+    seeded("total_population", "Total Population", scoredRow.population, "demand", false),
+    seeded("children_5_12_count", "Children Ages 5–12", scoredRow.children_5_12, "demand", true),
+    seeded("children_5_12_pct", "% Population Ages 5–12", pct, "demand", true),
+    seeded("median_household_income", "Median Household Income", scoredRow.median_household_income, "demand", true),
+    seeded("dual_income_household_pct", "% Dual-Income Households", scoredRow.dual_working_families_pct, "demand", true),
+    seeded("education_bachelors_plus_pct", "Bachelor's+ Attainment", scoredRow.college_degree_pct, "demand", true),
+    seeded("avg_hourly_camp_pricing", "Average Hourly Camp Pricing", scoredRow.avg_camp_price_per_hour, "pricing_power", true),
+    seeded("summer_camps_per_10k_children", "Summer Camps per 10k Children", campsPer10k, "competitive_landscape", true),
+    seeded("competitor_count", "Summer Camps / Enrichment Competitors", scoredRow.summer_camp_count, "competitive_landscape", false),
+    seeded("school_based_summer_camp_count", "School-Based Summer Camps", scoredRow.school_hosted_camp_count, "competitive_landscape", true),
+    seeded("waitlist_sold_out_signal_count", "Waitlist / Sold-Out Signals", scoredRow.camp_waitlist_signals, "competitive_landscape", true),
+    seeded("elementary_school_count", "Elementary Schools", scoredRow.public_elementary_count, "franchisee_supply", true),
+    seeded("public_elementary_enrollment", "Public Elementary Enrollment", scoredRow.public_elementary_enrollment, "franchisee_supply", false),
+    seeded("cost_of_living_index", "Cost of Living Index", scoredRow.cost_of_living_index, "franchisee_supply", true),
+    seeded("public_school_count", "Total Public Schools", scoredRow.public_school_count, "franchisee_supply", false),
+    seeded("private_school_count", "Private Elementary Schools", scoredRow.private_elementary_count, "franchisee_supply", false),
+    seeded("charter_school_count", "Charter Elementary Schools", scoredRow.charter_elementary_count, "franchisee_supply", false),
+  ].filter((row) => row.value != null && row.value !== "");
 }
 
 // ============================================================================

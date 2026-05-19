@@ -34,6 +34,34 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
   const [days, setDays] = useState<string[]>(["1", "2", "3", "4", "5"]);
   const [dailyCap, setDailyCap] = useState(200);
   const [minGapMinutes, setMinGapMinutes] = useState(5);
+  // Sending inboxes — loaded from SmartLead on open, all selected by default.
+  type SLAccount = { id: number | string; from_name?: string; from_email?: string; email?: string };
+  const [availableAccounts, setAvailableAccounts] = useState<SLAccount[]>([]);
+  const [accountsLoading, setAccountsLoading] = useState(false);
+  const [selectedAccountIds, setSelectedAccountIds] = useState<Array<number | string>>([]);
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      setAccountsLoading(true);
+      try {
+        const res = await callSmartLeadProxy("/email-accounts", "GET");
+        const list: SLAccount[] = Array.isArray(res) ? res : [];
+        if (cancelled) return;
+        setAvailableAccounts(list);
+        setSelectedAccountIds(
+          list.map((a) => a.id).filter((x) => typeof x === "number" || typeof x === "string"),
+        );
+      } catch {
+        if (!cancelled) setAvailableAccounts([]);
+      } finally {
+        if (!cancelled) setAccountsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open]);
+  const toggleAccount = (id: number | string) =>
+    setSelectedAccountIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
 
   // Auto-generate a default campaign name on drawer open
   function defaultCampaignName() {

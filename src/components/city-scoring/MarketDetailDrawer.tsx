@@ -71,15 +71,11 @@ type LiveCompetitor = {
 function buildSeededFallbackSignals(market: CityData): LiveSignal[] {
   const scored = (market as any).scored;
   if (!scored) return [];
-  const childrenPct = Number((market as any).childrenPct ?? (market as any).children_pct ?? 0);
-  return [
-    { signal_key: "children_5_12_count", label: "Children Ages 5–12", value: scored.children_5_12 ?? null, source: "Pre-seeded" },
-    { signal_key: "children_5_12_pct", label: "% Population Ages 5–12", value: childrenPct || null, source: "Pre-seeded" },
-    { signal_key: "median_household_income", label: "Median Household Income", value: scored.median_household_income ?? null, source: "Pre-seeded" },
-    { signal_key: "public_elementary_count", label: "Public elementary schools (NCES CCD)", value: scored.public_elementary_count ?? null, source: "Pre-seeded" },
-    { signal_key: "public_elementary_enrollment", label: "Public elementary enrollment", value: scored.public_elementary_enrollment ?? null, source: "Pre-seeded" },
-    { signal_key: "competitor_count", label: "Summer camps / enrichment competitors", value: scored.summer_camp_count ?? null, source: "Pre-seeded" },
-  ].filter((row) => row.value != null);
+  const childrenPct = Number((market as any).childrenPct ?? (market as any).children_pct ?? 0) || undefined;
+  // Use the shared seeded-signal builder so the drawer stays in sync with the
+  // center panel. Null values are kept and rendered as "—" so coverage gaps
+  // are visible instead of looking like a UI bug.
+  return buildSeededFallbackSignalsFromScored(scored, childrenPct) as unknown as LiveSignal[];
 }
 
 const SOW_CATEGORIES: { key: MetricCategory; label: string }[] = [

@@ -605,6 +605,9 @@ export function MarketDetailDrawer({
                 <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#b8860b]" title="Tracked-not-scored metric with a value (audit only)">{coverageCounts.trackedNotScored} Tracked-not-scored</span>
               )}
               <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#526078]" title="Enabled scoring metric with no backend value seeded yet">{coverageCounts.notSeededYet} Not seeded yet</span>
+              {coverageCounts.trackedNoValue > 0 && (
+                <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#8794ab]" title="Audit-only metrics with no value yet — not part of the score">{coverageCounts.trackedNoValue} Tracked-no-value</span>
+              )}
               {coverageCounts.sourceUnavailable > 0 && (
                 <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#ea580c]" title="Registry marks this metric blocked — no data source wired">{coverageCounts.sourceUnavailable} Source unavailable</span>
               )}
@@ -614,6 +617,7 @@ export function MarketDetailDrawer({
               <span className="rounded-md bg-[#f3f6fb] px-1.5 py-0.5 font-semibold text-[#526078]">of {totalRegistry} scoring metrics</span>
             </div>
           </div>
+          <p className="mt-1 text-[10.5px] text-[#8794ab]">Chips total {totalRegistry} of {totalRegistry} scoring metrics. Custom metrics shown separately.</p>
           {loading && (
             <div className="mt-2 flex items-center gap-2 text-[11px] text-[#526078]">
               <RefreshCw size={12} className="animate-spin" /> Loading live evidence…

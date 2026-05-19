@@ -89,7 +89,7 @@ const SOW_CATEGORIES: { key: MetricCategory; label: string }[] = [
 
 const STATUS_STYLES: Record<MetricStatus, string> = {
   live: "bg-[#e6f7ef] text-[#0ea66e] border-[#bfead6]",
-  proxy: "bg-[#eaf0ff] text-[#174be8] border-[#cbd8ff]",
+  proxy: "bg-[#e6f7ef] text-[#0ea66e] border-[#bfead6]",
   missing: "bg-[#f3f6fb] text-[#526078] border-[#e5eaf2]",
   blocked: "bg-[#ffeede] text-[#ea580c] border-[#ffd0a8]",
   manual: "bg-[#fff6dc] text-[#b8860b] border-[#f4df9a]",

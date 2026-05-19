@@ -89,14 +89,14 @@ const SOW_CATEGORIES: { key: MetricCategory; label: string }[] = [
 
 const STATUS_STYLES: Record<MetricStatus, string> = {
   live: "bg-[#e6f7ef] text-[#0ea66e] border-[#bfead6]",
-  proxy: "bg-[#eaf0ff] text-[#174be8] border-[#cbd8ff]",
+  proxy: "bg-[#e6f7ef] text-[#0ea66e] border-[#bfead6]",
   missing: "bg-[#f3f6fb] text-[#526078] border-[#e5eaf2]",
   blocked: "bg-[#ffeede] text-[#ea580c] border-[#ffd0a8]",
   manual: "bg-[#fff6dc] text-[#b8860b] border-[#f4df9a]",
 };
 
 function formatDate(value?: string | null) {
-  if (!value) return "Not refreshed yet";
+  if (!value) return "Seed pending";
   return new Date(value).toLocaleString(undefined, {
     month: "short",
     day: "numeric",
@@ -132,10 +132,10 @@ function getStatus(signal: LiveSignal): MetricStatus {
 }
 
 const STATUS_LABEL: Record<MetricStatus, string> = {
-  live: "Live",
-  proxy: "Estimated",
-  missing: "Missing",
-  blocked: "Unavailable",
+  live: "Pre-seeded",
+  proxy: "Pre-seeded",
+  missing: "Not seeded",
+  blocked: "Source unavailable",
   manual: "Manual",
 };
 
@@ -202,7 +202,6 @@ export function MarketDetailDrawer({
   const [signals, setSignals] = useState<LiveSignal[]>([]);
   const [competitors, setCompetitors] = useState<LiveCompetitor[]>([]);
   const [latestJob, setLatestJob] = useState<any | null>(null);
-  const [legacyJob, setLegacyJob] = useState<any | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -210,28 +209,17 @@ export function MarketDetailDrawer({
     const loadLiveEvidence = async () => {
       setLoading(true);
       try {
-        // cityId references us_cities_scored.id. Historical signals/jobs are
-        // still keyed by the legacy cities.id, so we bridge by city+state.
+        // Canonical-only: cityId is us_cities_scored.id. We no longer read
+        // the discarded legacy `cities` table — its rows polluted counts.
         const cityId = market.cityId;
         if (!cityId) {
           setSignals([]);
           setCompetitors([]);
           setLatestJob(null);
-          setLegacyJob(null);
           return;
         }
 
-        // Bridge: find a matching legacy cities row by city+state so historical
-        // signals/competitors/fetch jobs (which still live on cities.id) show up.
-        const stateFull = market.state === "TX" ? "Texas" : market.state === "FL" ? "Florida" : market.state;
-        const { data: legacyCity } = await supabase
-          .from("cities")
-          .select("id")
-          .ilike("city", market.city)
-          .ilike("state", stateFull)
-          .maybeSingle();
-        const legacyId: string | null = (legacyCity as any)?.id ?? null;
-        const [{ data: signalRows }, { data: competitorRows }, { data: canonicalJobRows }, { data: legacyJobRows }] = await Promise.all([
+        const [{ data: signalRows }, { data: competitorRows }, { data: canonicalJobRows }] = await Promise.all([
           supabase.from("city_market_signals").select("*").eq("city_id", cityId),
           supabase
             .from("city_competitors")
@@ -245,20 +233,8 @@ export function MarketDetailDrawer({
             .eq("source", "sow_metric_coverage")
             .order("created_at", { ascending: false })
             .limit(1),
-          legacyId
-            ? supabase
-                .from("city_fetch_jobs")
-                .select("*")
-                .eq("city_id", legacyId)
-                .eq("source", "sow_metric_coverage")
-                .order("created_at", { ascending: false })
-                .limit(1)
-            : Promise.resolve({ data: [] }),
         ]);
 
-        // Canonical source of truth = us_cities_scored row + signals keyed to
-        // that scored-city UUID. We still read the legacy job separately for
-        // audit history, but we do NOT let it change Austin's visible counts.
         const fallbackSignals = buildSeededFallbackSignals(market);
         const liveByKey = new Map<string, LiveSignal>();
         (signalRows ?? []).forEach((r: any) => {
@@ -273,7 +249,6 @@ export function MarketDetailDrawer({
         setSignals(merged);
         setCompetitors((competitorRows ?? []) as LiveCompetitor[]);
         setLatestJob(canonicalJobRows?.[0] ?? null);
-        setLegacyJob(legacyJobRows?.[0] ?? null);
       } catch (error) {
         console.error("MarketDetailDrawer live evidence error", error);
       } finally {
@@ -454,36 +429,32 @@ export function MarketDetailDrawer({
   }, [customCriteriaRows]);
   const customCount = customCriteriaRows.length;
 
-  // Count ALL registry rows (enabled + disabled), not just enabled. These
-  // counts must come from the same canonical merged dataset the rows use.
-  const allCoverageCounts = useMemo(() => {
-    let live = 0, proxy = 0, missing = 0, blocked = 0;
+  // New, honest counting model. Each registry metric falls into exactly one
+  // bucket. Custom metrics are reported separately (additive), not folded
+  // into the denominator.
+  const coverageCounts = useMemo(() => {
+    let preSeeded = 0;          // enabled + value present
+    let trackedNotScored = 0;   // disabled + value present
+    let notSeededYet = 0;       // enabled + no value + not blocked
+    let sourceUnavailable = 0;  // registry status === "blocked"
+    let trackedNoValue = 0;     // disabled + no value (audit only)
     Object.values(coverageByCategory).forEach(({ enabled, disabled }) => {
-      [...enabled, ...disabled].forEach(({ status }) => {
-        if (status === "live") live++;
-        else if (status === "proxy") proxy++;
-        else if (status === "blocked") blocked++;
-        else missing++;
+      enabled.forEach(({ status }) => {
+        if (status === "blocked") sourceUnavailable++;
+        else if (status === "live" || status === "proxy") preSeeded++;
+        else notSeededYet++;
+      });
+      disabled.forEach(({ status }) => {
+        if (status === "blocked") sourceUnavailable++;
+        else if (status === "live" || status === "proxy") trackedNotScored++;
+        else trackedNoValue++;
       });
     });
-    return { live, proxy, missing, blocked };
+    return { preSeeded, trackedNotScored, notSeededYet, sourceUnavailable, trackedNoValue };
   }, [coverageByCategory]);
 
-  const liveCount = allCoverageCounts.live;
-  const estimatedCount = allCoverageCounts.proxy;
-  const missingCount = allCoverageCounts.missing;
-  const blockedCount = allCoverageCounts.blocked;
-  const manualCount = 0;
   const totalRegistry = SOW_METRIC_REGISTRY.length;
-  const enabledAvailableCount = useMemo(
-    () => Object.values(coverageByCategory).reduce((sum, { enabled }) => sum + enabled.filter((r) => r.status === "live" || r.status === "proxy").length, 0),
-    [coverageByCategory],
-  );
-  const disabledAvailableCount = useMemo(
-    () => Object.values(coverageByCategory).reduce((sum, { disabled }) => sum + disabled.filter((r) => r.status === "live" || r.status === "proxy").length, 0),
-    [coverageByCategory],
-  );
-  const totalAvailableCount = enabledAvailableCount + disabledAvailableCount;
+  const seedAtIso: string | null = ((market as any).scored?.scored_at ?? null) as string | null;
 
   const [showDiagnostics, setShowDiagnostics] = useState(false);
 
@@ -626,35 +597,22 @@ export function MarketDetailDrawer({
           </div>
           <div className="mt-2 flex items-center justify-between gap-3">
             <p className="text-[11px] text-[#526078]">
-               Latest canonical refresh: <span className="font-semibold text-[#07142f]">{formatDate(latestJob?.completed_at)}</span>
+               Last seeded: <span className="font-semibold text-[#07142f]">{formatDate(seedAtIso)}</span>
             </p>
             <div className="flex flex-wrap gap-1.5 text-[11px]">
-              <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#0ea66e]">{liveCount} Live</span>
-              <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#174be8]">{estimatedCount} Estimated</span>
-              <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#526078]">{missingCount} Missing</span>
-              {blockedCount > 0 && (
-                <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#ea580c]">{blockedCount} Blocked</span>
+              <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#0ea66e]" title="Enabled scoring metric with a pre-seeded value">{coverageCounts.preSeeded} Pre-seeded</span>
+              {coverageCounts.trackedNotScored > 0 && (
+                <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#b8860b]" title="Tracked-not-scored metric with a value (audit only)">{coverageCounts.trackedNotScored} Tracked-not-scored</span>
+              )}
+              <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#526078]" title="Enabled scoring metric with no backend value seeded yet">{coverageCounts.notSeededYet} Not seeded yet</span>
+              {coverageCounts.sourceUnavailable > 0 && (
+                <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#ea580c]" title="Registry marks this metric blocked — no data source wired">{coverageCounts.sourceUnavailable} Source unavailable</span>
               )}
               {customCount > 0 && (
-                <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#b8860b]">{customCount} Custom</span>
+                <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#174be8]" title="User-defined custom metrics (additive — not part of the 46-metric registry)">{customCount} Custom</span>
               )}
-              <span className="rounded-md bg-[#f3f6fb] px-1.5 py-0.5 font-semibold text-[#526078]">of {totalRegistry} metrics</span>
+              <span className="rounded-md bg-[#f3f6fb] px-1.5 py-0.5 font-semibold text-[#526078]">of {totalRegistry} scoring metrics</span>
             </div>
-          </div>
-          <div className="mt-2 space-y-1 text-[11px] text-[#526078]">
-            <p>
-              Austin currently has <span className="font-semibold text-[#07142f]">{totalAvailableCount}</span> of {totalRegistry} registry metrics with a real backend value in the scored-city view.
-            </p>
-            {legacyJob && !latestJob && (
-              <p>
-                Legacy audit exists from <span className="font-semibold text-[#07142f]">{formatDate(legacyJob.completed_at)}</span>, but it is not used for the visible metric counts.
-              </p>
-            )}
-            {legacyJob && latestJob && (
-              <p>
-                Legacy Austin audit from <span className="font-semibold text-[#07142f]">{formatDate(legacyJob.completed_at)}</span> is shown only as historical context and does not affect the counts above.
-              </p>
-            )}
           </div>
           {loading && (
             <div className="mt-2 flex items-center gap-2 text-[11px] text-[#526078]">
@@ -671,19 +629,16 @@ export function MarketDetailDrawer({
 
           <TabsContent value="overview" className="mt-3 space-y-4">
             <section>
-              <h4 className="mb-2 text-[12.5px] font-bold text-[#07142f]">Refresh Summary</h4>
+              <h4 className="mb-2 text-[12.5px] font-bold text-[#07142f]">Seed Coverage</h4>
               <div className="rounded-md border border-[#eef2f7] p-3">
                 <div className="grid grid-cols-2 gap-1.5 text-[11px]">
                   {[
-                    ["Live", liveCount],
-                    ["Estimated", estimatedCount],
-                    ["Manual", manualCount],
-                    ["Blocked", blockedCount],
-                    ["Missing", missingCount],
-                    ["Registry metrics with value", totalAvailableCount],
-                    ["Enabled metrics with value", enabledAvailableCount],
-                    ["Tracked-not-scored metrics with value", disabledAvailableCount],
-                    ["Total metrics", totalRegistry + customCount],
+                    ["Pre-seeded value", coverageCounts.preSeeded],
+                    ["Tracked-not-scored w/ value", coverageCounts.trackedNotScored],
+                    ["Not seeded yet", coverageCounts.notSeededYet],
+                    ["Source unavailable", coverageCounts.sourceUnavailable],
+                    ["Custom metrics", customCount],
+                    ["Total scoring metrics", totalRegistry],
                   ].map(([label, value]) => (
                     <div key={String(label)} className="flex justify-between gap-2 rounded bg-[#f8fafe] px-2 py-1">
                       <span className="truncate text-[#526078]">{label}</span>
@@ -691,9 +646,12 @@ export function MarketDetailDrawer({
                     </div>
                   ))}
                 </div>
+                <p className="mt-2 text-[10.5px] text-[#526078]">
+                  Last seeded: <span className="font-semibold text-[#07142f]">{formatDate(seedAtIso)}</span>. Pre-seeded values come from the canonical <code>us_cities_scored</code> row + <code>city_market_signals</code> for this scored-city UUID. "Not seeded yet" means the metric is enabled for scoring but no source has been wired for this city yet.
+                </p>
                 {customCount > 0 && (
-                  <p className="mt-2 text-[10.5px] text-[#526078]">
-                    Includes {customCount} custom metric{customCount === 1 ? "" : "s"} (counted as Estimated — uses neutral 50 until live data is wired).
+                  <p className="mt-1 text-[10.5px] text-[#526078]">
+                    {customCount} custom metric{customCount === 1 ? "" : "s"} are tracked separately from the {totalRegistry}-metric registry. Custom metrics with weight 0 are shown for audit transparency but do not contribute to the score.
                   </p>
                 )}
                 <div className="mt-3 border-t border-[#eef2f7] pt-2 text-[11px]">
@@ -769,14 +727,15 @@ export function MarketDetailDrawer({
                 const enabledRows = bucket.enabled;
                 const disabledRows = bucket.disabled;
                 const enabledTotal = enabledRows.length;
-                const totalInCategory = enabledRows.length + disabledRows.length;
+                
                 const liveProxy = enabledRows.filter((r) => r.status === "live" || r.status === "proxy").length;
                 return (
                   <div key={category.key} className="rounded-lg border border-[#eef2f7] bg-white">
                     <div className="flex items-center justify-between border-b border-[#eef2f7] bg-[#f8fafe] px-3 py-1.5">
                       <h5 className="text-[12px] font-bold text-[#07142f]">{category.label}</h5>
-                      <span className="text-[10px] font-semibold text-[#8794ab]">
-                        {liveProxy}/{enabledTotal} wired · {totalInCategory} total
+                      <span className="text-[10px] font-semibold text-[#8794ab]" title="Count of enabled scoring metrics that have a value, out of total enabled scoring metrics in this category">
+                        {liveProxy} of {enabledTotal} scoring metrics have a value
+                        {disabledRows.length > 0 ? ` · +${disabledRows.length} tracked-only` : ""}
                         {customs.length > 0 ? ` · ${customs.length} custom` : ""}
                       </span>
                     </div>
@@ -797,6 +756,14 @@ export function MarketDetailDrawer({
                               <span className="rounded-full border border-[#f4df9a] bg-[#fff6dc] px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#b8860b]">
                                 Custom
                               </span>
+                              {Number(c.weight) === 0 && (
+                                <span
+                                  className="rounded-full border border-[#e5eaf2] bg-[#f3f6fb] px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#526078]"
+                                  title="This custom metric has weight 0, so it does not currently contribute to the composite score."
+                                >
+                                  Weight 0 — not contributing
+                                </span>
+                              )}
                               {c.data_source && (
                                 <span className="rounded-full border border-[#e5eaf2] bg-white px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#526078]">
                                   {c.data_source}

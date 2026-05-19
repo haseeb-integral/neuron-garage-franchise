@@ -923,32 +923,20 @@ const CityScoring = () => {
       addScore("ease_of_operations", scoredRow.score_ease_of_operation);
       addScore("parent_mindset", scoredRow.score_parent_mindset);
 
-      // Bridge to legacy `cities` table for historical evidence (signals,
-      // competitors, fetch_jobs). Those tables are still keyed by the
-      // legacy cities.id, so we match by city+state to find it. This is a
-      // temporary bridge until the legacy table is fully retired (B5).
-      const { data: legacyCity } = await supabase
-        .from("cities")
-        .select("id")
-        .ilike("city", city)
-        .ilike("state", stateNormalized)
-        .maybeSingle();
-      const legacyId: string | null = (legacyCity as any)?.id ?? null;
-      cityRow.legacy_city_id = legacyId;
-
-      // Best-effort evidence pull — try scored uuid first, fall back to legacy id.
-      const evidenceIds = [scoredRow.id, legacyId].filter((x): x is string => !!x);
+      // Canonical-only: read evidence keyed to the scored-city UUID.
+      // Legacy `cities` table is intentionally NOT read — the live-fetch
+      // system was discarded and its rows would only pollute counts.
       const [{ data: signals }, { data: comps }, { data: jobs }] = await Promise.all([
-        supabase.from("city_market_signals").select("*").in("city_id", evidenceIds),
+        supabase.from("city_market_signals").select("*").eq("city_id", scoredRow.id),
         supabase
           .from("city_competitors")
           .select("*")
-          .in("city_id", evidenceIds)
+          .eq("city_id", scoredRow.id)
           .order("created_at", { ascending: false }),
         supabase
           .from("city_fetch_jobs")
           .select("*")
-          .in("city_id", evidenceIds)
+          .eq("city_id", scoredRow.id)
           .eq("source", "sow_metric_coverage")
           .order("created_at", { ascending: false })
           .limit(1),

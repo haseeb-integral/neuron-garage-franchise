@@ -29,7 +29,7 @@ const SIGNAL_KEY_OVERRIDES: Record<string, GeoInfo> = {
   // not the city proper.
   summer_weather_index: { level: "metro", short: "Metro", full: "Metro · weather station" },
   avg_peak_summer_temperature: { level: "metro", short: "Metro", full: "Metro · weather station" },
-  days_above_100f: { level: "metro", short: "Metro", full: "Metro · weather station" },
+  days_above_90f: { level: "metro", short: "Metro", full: "Metro · weather station" },
   // State-level regulatory data
   state_camp_regulation_complexity: { level: "metro", short: "State", full: "State-level regulation index" },
 };

@@ -18,6 +18,7 @@
 - **Master Weight** — one of the 6 category-level sliders in City Search. Auto-rebalance to 100.
 - **Sub-weight Share** — relative-importance number per metric inside a category. Does NOT auto-rebalance; share = `sub_i / Σ(enabled sub-weights)`.
 - **Tracked-no-value** — a metric in the 46-metric registry that is flagged `enabled: false` and has no seeded value yet. Surfaced as its own chip in the City Detail drawer for visibility, but does **not** contribute to the composite score. Distinct from "Not seeded yet" (which is `enabled: true` + no value — will count once seeded). Flip `enabled: true` to promote.
+- **Ask AI — Absolute weight mode** — when the user gives Ask AI an exact/literal request ("100% demand", "only pricing", "demand 50 pricing 30"), the assistant returns `weightMode: "absolute"` and `absoluteWeights` (0-100 per category). The frontend sets the 6 master sliders to exactly those numbers — any category the user did not name goes to **0%**. No auto-rebalance, no dominant-detection. Vague requests ("lean toward demand") still use `weightMode: "delta"` with ±20 nudges. Added May 19, 2026.
 - **Show Formula** — the affordance (button / drawer / tooltip) that exposes inputs, weights, and the formula behind any calculated number. Non-negotiable per Rule 1.
 - **Saved Search** — user-saved slider configuration in `saved_searches` table.
 - **Watchlist / Favorites** — same thing. UI says "Favorites", table is `watchlist_items`. Only one list works today.

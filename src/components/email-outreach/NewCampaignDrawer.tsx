@@ -194,7 +194,23 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
                     placeholder={profileEmail || "your-email@example.com"}
                     className="mt-2 h-9 w-full rounded-lg border border-[#dbe4f2] px-3 text-sm outline-none"
                   />
-                  <div className="mt-1 text-[11px] text-[#0a8f5a]">→ Will send to: <b>{effectiveTestRecipient || "(empty)"}</b></div>
+                  <div className="mt-1 text-[11px] text-[#0a8f5a]">→ Base address: <b>{effectiveTestRecipient || "(empty)"}</b></div>
+
+                  <div className="mt-3 border-t border-[#dbe4f2] pt-3">
+                    <div className="text-xs font-bold text-[#34445f]">Test leads count (1–10)</div>
+                    <div className="mt-1 text-[11px] text-[#526078]">Auto-generates <code>you+test1@…</code> … <code>you+testN@…</code> aliases. Combine with a short "Min gap" in Step 2 for rapid back-to-back sends.</div>
+                    <input
+                      type="number" min={1} max={10}
+                      value={testLeadCount}
+                      onChange={(e) => setTestLeadCount(Math.max(1, Math.min(10, Number(e.target.value) || 1)))}
+                      className="mt-2 h-9 w-full rounded-lg border border-[#dbe4f2] px-3 text-sm"
+                    />
+                    {effectiveTestRecipient.includes("@") && testLeadCount > 1 && (() => {
+                      const [l, d] = effectiveTestRecipient.split("@");
+                      const base = (l ?? "").split("+")[0];
+                      return <div className="mt-1 text-[11px] text-[#0a8f5a]">→ Will create {testLeadCount} leads: <b>{base}+test1@{d}</b> … <b>{base}+test{testLeadCount}@{d}</b></div>;
+                    })()}
+                  </div>
                 </div>
               )}
 

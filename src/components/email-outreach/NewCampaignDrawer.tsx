@@ -267,15 +267,25 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
             <div className="space-y-3">
               <h3 className="text-base font-black">2. Schedule & send rate</h3>
               <label className="block">
-                <span className="text-xs font-bold text-[#34445f]">Timezone</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[#34445f]">Timezone</span>
+                  <button type="button" onClick={() => setTimezone(detectedTz)} className="text-[11px] font-bold text-[#174be8] hover:underline">Use my timezone ({detectedTz})</button>
+                </div>
                 <select value={timezone} onChange={(e) => setTimezone(e.target.value)} className="mt-1 h-10 w-full rounded-lg border border-[#dbe4f2] px-3">
-                  {["America/Chicago", "America/New_York", "America/Denver", "America/Los_Angeles"].map((t) => <option key={t}>{t}</option>)}
+                  {!allTimezones.includes(timezone) && <option value={timezone}>{timezone}</option>}
+                  {allTimezones.map((t) => <option key={t} value={t}>{t}</option>)}
                 </select>
+                <div className="mt-1 rounded-md bg-[#eef4ff] px-2 py-1.5 text-[11px] text-[#174be8]">
+                  🕒 Now in <b>{timezone}</b>: <b>{tzNow}</b> — use this to pick a Start hour just after the current time.
+                </div>
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <label className="block"><span className="text-xs font-bold text-[#34445f]">Start hour</span><input value={startHour} onChange={(e) => setStartHour(e.target.value)} placeholder="09:00" className="mt-1 h-10 w-full rounded-lg border border-[#dbe4f2] px-3" /></label>
                 <label className="block"><span className="text-xs font-bold text-[#34445f]">End hour</span><input value={endHour} onChange={(e) => setEndHour(e.target.value)} placeholder="18:00" className="mt-1 h-10 w-full rounded-lg border border-[#dbe4f2] px-3" /></label>
               </div>
+              <button type="button" onClick={setStartNow} className="rounded-lg border border-[#174be8] bg-white px-3 py-1.5 text-[11px] font-bold text-[#174be8] hover:bg-[#eef4ff]">
+                ⚡ Send starting now ({tzHHMM} in {timezone}) — also enables today
+              </button>
               <div>
                 <span className="text-xs font-bold text-[#34445f]">Sending days</span>
                 <div className="mt-1 flex gap-1.5">

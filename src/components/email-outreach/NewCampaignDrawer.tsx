@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { X, Loader2, Check } from "lucide-react";
+import { useEffect, useState } from "react";
+import { X, Loader2, Check, Rocket } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 async function callProxy(endpoint: string, method = "GET", payload?: unknown) {
   const { data, error } = await supabase.functions.invoke("smartlead-proxy", { body: { endpoint, method, payload } });
@@ -13,17 +14,22 @@ async function callProxy(endpoint: string, method = "GET", payload?: unknown) {
 type SequenceStep = { day: number; subject: string; body: string };
 
 export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated?: () => void }) {
+  const { user, profile } = useAuth();
   const [step, setStep] = useState(1);
   const [busy, setBusy] = useState(false);
   const [createdId, setCreatedId] = useState<string | number | null>(null);
 
   // Step 1
   const [name, setName] = useState("");
+  // Test mode
+  const [testMode, setTestMode] = useState(true);
+  const [testOverride, setTestOverride] = useState("");
   // Step 2
   const [timezone, setTimezone] = useState("America/Chicago");
   const [startHour, setStartHour] = useState("09:00");
   const [endHour, setEndHour] = useState("18:00");
   const [days, setDays] = useState<string[]>(["1", "2", "3", "4", "5"]);
+  const [dailyCap, setDailyCap] = useState(50);
   // Step 3
   const [trackOpens, setTrackOpens] = useState(true);
   const [trackClicks, setTrackClicks] = useState(true);
@@ -35,26 +41,34 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
     { day: 7, subject: "Last note", body: "Closing the loop." },
   ]);
 
-  const reset = () => {
-    setStep(1); setBusy(false); setCreatedId(null); setName("");
-    setTimezone("America/Chicago"); setStartHour("09:00"); setEndHour("18:00"); setDays(["1", "2", "3", "4", "5"]);
-    setTrackOpens(true); setTrackClicks(true); setStopOnReply(true);
-    setSequences([
-      { day: 1, subject: "Quick question, {{first_name}}", body: "Hi {{first_name}},\n\n…" },
-      { day: 3, subject: "Following up", body: "Just wanted to bump this." },
-      { day: 7, subject: "Last note", body: "Closing the loop." },
-    ]);
-  };
+  const profileEmail = profile?.email ?? user?.email ?? "";
+  const effectiveTestRecipient = testOverride.trim() || profileEmail;
+
+  useEffect(() => {
+    if (!open) {
+      setStep(1); setBusy(false); setCreatedId(null); setName("");
+      setTestMode(true); setTestOverride("");
+      setTimezone("America/Chicago"); setStartHour("09:00"); setEndHour("18:00");
+      setDays(["1", "2", "3", "4", "5"]); setDailyCap(50);
+      setTrackOpens(true); setTrackClicks(true); setStopOnReply(true);
+      setSequences([
+        { day: 1, subject: "Quick question, {{first_name}}", body: "Hi {{first_name}},\n\n…" },
+        { day: 3, subject: "Following up", body: "Just wanted to bump this." },
+        { day: 7, subject: "Last note", body: "Closing the loop." },
+      ]);
+    }
+  }, [open]);
 
   if (!open) return null;
 
   const toggleDay = (d: string) => setDays((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort());
 
-  const submit = async () => {
+  const submit = async (launch: boolean) => {
     if (!name.trim()) { toast.error("Campaign name required"); return; }
+    if (testMode && !effectiveTestRecipient) { toast.error("Test mode needs a recipient email (your profile email is missing — set an override)."); return; }
     setBusy(true);
     try {
-      const created = await callProxy("/campaigns/create", "POST", { name: name.trim() });
+      const created = await callProxy("/campaigns/create", "POST", { name: testMode ? `[TEST] ${name.trim()}` : name.trim() });
       const id = created?.id ?? created?.campaign_id ?? created?.data?.id;
       if (!id) throw new Error("SmartLead did not return a campaign id");
       setCreatedId(id);
@@ -63,12 +77,12 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
         await callProxy(`/campaigns/${id}/schedule`, "POST", {
           timezone, days_of_the_week: days.map(Number),
           start_hour: startHour, end_hour: endHour,
-          min_time_btw_emails: 10, max_new_leads_per_day: 20,
+          min_time_btw_emails: 10,
+          max_new_leads_per_day: Math.max(1, Math.min(200, dailyCap)),
         });
       } catch (e) { console.warn("schedule failed", e); }
 
       try {
-        // SmartLead uses a negative list: include a DONT_* flag to DISABLE tracking.
         const track_settings = [
           !trackOpens ? "DONT_TRACK_EMAIL_OPEN" : null,
           !trackClicks ? "DONT_TRACK_LINK_CLICK" : null,
@@ -88,9 +102,35 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
         });
       } catch (e) { console.warn("sequences failed", e); }
 
-      toast.success(`Campaign "${name}" created in SmartLead`);
+      // Test Mode: push the safe recipient as the only lead in the campaign.
+      if (testMode) {
+        try {
+          await callProxy(`/campaigns/${id}/leads`, "POST", {
+            lead_list: [{
+              email: effectiveTestRecipient,
+              first_name: profile?.full_name?.split(" ")[0] ?? "Test",
+              last_name: "Recipient",
+              custom_fields: { test_mode: "true" },
+            }],
+          });
+        } catch (e) { console.warn("test lead push failed", e); }
+      }
+
+      if (launch) {
+        try {
+          await callProxy(`/campaigns/${id}/status`, "POST", { status: "START" });
+        } catch (e) {
+          console.warn("launch failed", e);
+          toast.warning("Campaign created but launch failed — start it manually in SmartLead.");
+        }
+      }
+
+      toast.success(
+        launch
+          ? `Campaign "${name}" launched${testMode ? ` (TEST → ${effectiveTestRecipient})` : ""}`
+          : `Campaign "${name}" created as draft in SmartLead`,
+      );
       onCreated?.();
-      reset();
       onClose();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to create campaign");
@@ -117,20 +157,53 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
           <button onClick={onClose} className="rounded-full p-1 text-[#526078] hover:bg-[#f7faff]"><X size={20} /></button>
         </div>
 
+        {testMode && step === 1 && (
+          <div className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-xs">
+            <div className="font-bold text-amber-900">🧪 Test Mode is ON</div>
+            <div className="mt-0.5 text-amber-800">
+              This campaign will send <b>only to {effectiveTestRecipient || "(no email on file)"}</b> — no real teachers. Flip the toggle below to disable once you've verified the test.
+            </div>
+          </div>
+        )}
+
         <div className="space-y-4 p-5 text-sm">
           {step === 1 && (
-            <div className="space-y-3">
+            <div className="space-y-4">
               <h3 className="text-base font-black">1. Create campaign</h3>
+
+              <label className="flex cursor-pointer items-start justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
+                <div className="flex-1">
+                  <div className="text-sm font-bold text-amber-900">🧪 Test Mode — send only to my inbox</div>
+                  <div className="mt-0.5 text-xs text-amber-800">Replaces the recipient list with a single safe address. FROM stays unchanged (your SmartLead mailbox).</div>
+                </div>
+                <input type="checkbox" checked={testMode} onChange={(e) => setTestMode(e.target.checked)} className="mt-1" />
+              </label>
+
+              {testMode && (
+                <div className="rounded-lg border border-[#dbe4f2] bg-[#fbfdff] p-3">
+                  <div className="text-xs font-bold text-[#34445f]">Test recipient</div>
+                  <div className="mt-1 text-[11px] text-[#526078]">Defaults to your profile email. Override with a Gmail+alias (e.g. <code>you+test1@gmail.com</code>) or a mailinator address.</div>
+                  <input
+                    value={testOverride}
+                    onChange={(e) => setTestOverride(e.target.value)}
+                    placeholder={profileEmail || "your-email@example.com"}
+                    className="mt-2 h-9 w-full rounded-lg border border-[#dbe4f2] px-3 text-sm outline-none"
+                  />
+                  <div className="mt-1 text-[11px] text-[#0a8f5a]">→ Will send to: <b>{effectiveTestRecipient || "(empty)"}</b></div>
+                </div>
+              )}
+
               <label className="block">
                 <span className="text-xs font-bold text-[#34445f]">Campaign name</span>
                 <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Austin TX — Spring 2026" className="mt-1 h-10 w-full rounded-lg border border-[#dbe4f2] px-3 outline-none" />
+                {testMode && name && <div className="mt-1 text-[11px] text-amber-700">SmartLead name will be: <b>[TEST] {name}</b></div>}
               </label>
             </div>
           )}
 
           {step === 2 && (
             <div className="space-y-3">
-              <h3 className="text-base font-black">2. Schedule</h3>
+              <h3 className="text-base font-black">2. Schedule & send rate</h3>
               <label className="block">
                 <span className="text-xs font-bold text-[#34445f]">Timezone</span>
                 <select value={timezone} onChange={(e) => setTimezone(e.target.value)} className="mt-1 h-10 w-full rounded-lg border border-[#dbe4f2] px-3">
@@ -149,6 +222,11 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
                   ))}
                 </div>
               </div>
+              <label className="block">
+                <span className="text-xs font-bold text-[#34445f]">Daily send cap (per mailbox)</span>
+                <input type="number" min={1} max={200} value={dailyCap} onChange={(e) => setDailyCap(Number(e.target.value) || 50)} className="mt-1 h-10 w-full rounded-lg border border-[#dbe4f2] px-3" />
+                <div className="mt-1 text-[11px] text-[#526078]">Hard limit 200/day. Default 50 protects deliverability and your domain reputation.</div>
+              </label>
             </div>
           )}
 
@@ -187,9 +265,15 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
           {step < 4 ? (
             <button onClick={() => setStep(step + 1)} disabled={step === 1 && !name.trim()} className="rounded-lg bg-[#174be8] px-4 py-2 text-xs font-bold text-white disabled:opacity-50">Next</button>
           ) : (
-            <button onClick={submit} disabled={busy} className="inline-flex items-center gap-1.5 rounded-lg bg-[#174be8] px-4 py-2 text-xs font-bold text-white disabled:opacity-60">
-              {busy && <Loader2 size={12} className="animate-spin" />} Create in SmartLead
-            </button>
+            <div className="flex gap-2">
+              <button onClick={() => submit(false)} disabled={busy} className="inline-flex items-center gap-1.5 rounded-lg border border-[#dbe4f2] bg-white px-4 py-2 text-xs font-bold text-[#174be8] disabled:opacity-60">
+                {busy && <Loader2 size={12} className="animate-spin" />} Save as Draft
+              </button>
+              <button onClick={() => submit(true)} disabled={busy} className="inline-flex items-center gap-1.5 rounded-lg bg-[#174be8] px-4 py-2 text-xs font-bold text-white disabled:opacity-60">
+                {busy ? <Loader2 size={12} className="animate-spin" /> : <Rocket size={12} />}
+                {testMode ? "Create & Launch (TEST)" : "Create & Launch"}
+              </button>
+            </div>
           )}
         </div>
         {createdId && <div className="px-5 pb-4 text-[11px] text-[#0a8f5a]">Created campaign id: {String(createdId)}</div>}

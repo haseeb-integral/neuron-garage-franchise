@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
+import { AiAssistant, type AssistantContext } from "@/components/AiAssistant";
 import {
   Map,
   Users,
@@ -153,6 +155,14 @@ const SectionTitle = ({ children }: { children: React.ReactNode }) => (
 );
 
 const UserGuide = () => {
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [assistantContext, setAssistantContext] = useState<AssistantContext>("general");
+
+  const openAssistant = (ctx: AssistantContext) => {
+    setAssistantContext(ctx);
+    setAssistantOpen(true);
+  };
+
   return (
     <div className="max-w-[1100px]">
       <PageHeader
@@ -223,6 +233,25 @@ const UserGuide = () => {
               </a>
             ))}
           </div>
+
+          <button
+            onClick={() => openAssistant("general")}
+            className="group mt-6 inline-flex items-center gap-2.5 rounded-full px-5 py-3 text-[14px] font-bold transition-all hover:-translate-y-0.5"
+            style={{
+              background: `linear-gradient(135deg, ${NAVY} 0%, ${BLUE} 100%)`,
+              color: "white",
+              boxShadow: `0 12px 28px ${BLUE}33`,
+            }}
+          >
+            <span
+              className="flex h-6 w-6 items-center justify-center rounded-full"
+              style={{ background: YELLOW, color: INK }}
+            >
+              <Sparkles size={13} />
+            </span>
+            Ask AI Assistant
+            <ArrowRight size={15} className="transition-transform group-hover:translate-x-0.5" />
+          </button>
         </div>
       </section>
 
@@ -331,6 +360,21 @@ const UserGuide = () => {
                   <p className="mt-5 flex items-center gap-2 text-[13.5px] font-semibold" style={{ color: NAVY }}>
                     <ArrowRight size={15} /> {f.next}
                   </p>
+
+                  <button
+                    onClick={() => openAssistant(f.id as AssistantContext)}
+                    className="group mt-5 inline-flex items-center gap-2 rounded-full px-4 py-2 text-[12.5px] font-bold transition-all hover:-translate-y-0.5"
+                    style={{
+                      background: "white",
+                      color: NAVY,
+                      border: `1.5px solid ${BLUE}33`,
+                      boxShadow: `0 6px 18px ${BLUE}14`,
+                    }}
+                  >
+                    <Sparkles size={13} style={{ color: BLUE }} />
+                    Ask AI about {f.title}
+                    <ArrowRight size={12} className="opacity-60 transition-transform group-hover:translate-x-0.5" />
+                  </button>
                 </div>
 
                 {/* Visual column */}
@@ -462,7 +506,33 @@ const UserGuide = () => {
           something feels clunky, slow, or wrong, tell Brett or Haseeb. We fix
           it forward, one change at a time.
         </p>
+        <button
+          onClick={() => openAssistant("general")}
+          className="mx-auto mt-5 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[13.5px] font-bold transition-all hover:-translate-y-0.5"
+          style={{ background: YELLOW, color: INK, boxShadow: "0 8px 22px rgba(0,0,0,0.18)" }}
+        >
+          <Sparkles size={14} /> Ask the AI Assistant
+        </button>
       </section>
+
+      {/* Floating AI Assistant launcher */}
+      <button
+        onClick={() => openAssistant("general")}
+        className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 rounded-full px-5 py-3 text-[13.5px] font-bold transition-all hover:-translate-y-0.5"
+        style={{
+          background: `linear-gradient(135deg, ${NAVY} 0%, ${BLUE} 100%)`,
+          color: "white",
+          boxShadow: `0 14px 32px ${NAVY}55`,
+        }}
+        aria-label="Open AI Assistant"
+      >
+        <span className="flex h-6 w-6 items-center justify-center rounded-full" style={{ background: YELLOW, color: INK }}>
+          <Sparkles size={13} />
+        </span>
+        Ask AI
+      </button>
+
+      <AiAssistant open={assistantOpen} onOpenChange={setAssistantOpen} context={assistantContext} />
     </div>
   );
 };

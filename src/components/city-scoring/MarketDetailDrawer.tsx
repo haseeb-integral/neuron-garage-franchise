@@ -96,7 +96,7 @@ const STATUS_STYLES: Record<MetricStatus, string> = {
 };
 
 function formatDate(value?: string | null) {
-  if (!value) return "Not refreshed yet";
+  if (!value) return "Seed pending";
   return new Date(value).toLocaleString(undefined, {
     month: "short",
     day: "numeric",

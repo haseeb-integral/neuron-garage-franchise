@@ -251,6 +251,26 @@ export function SmartLeadConnectionPanel() {
         </div>
       </div>
 
+      <div className="mt-3 flex flex-wrap items-center gap-4 rounded-lg border border-[#eef2f7] bg-[#f7faff] px-3 py-2 text-[11px]">
+        <div className="flex items-center gap-1.5">
+          <span className="font-semibold uppercase tracking-wider text-[#5a6b85]">Last successful API call:</span>
+          <span className="font-mono text-[#07142f]">
+            {lastSuccessfulCall ? new Date(lastSuccessfulCall).toLocaleString() : "—"}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="font-semibold uppercase tracking-wider text-[#5a6b85]">Webhook fired in last 24h:</span>
+          {webhookFired24h === null ? (
+            <span className="text-[#5a6b85]">…</span>
+          ) : webhookFired24h ? (
+            <span className="inline-flex items-center gap-1 font-bold text-emerald-700"><CheckCircle2 size={12} /> Yes</span>
+          ) : (
+            <span className="inline-flex items-center gap-1 font-bold text-amber-700"><AlertCircle size={12} /> No</span>
+          )}
+        </div>
+      </div>
+
+
       <div className="mt-5 border-t border-[#eef2f7] pt-4">
         <div className="mb-2 flex items-start justify-between gap-3">
           <div className="min-w-0">

@@ -640,6 +640,7 @@ export function MarketDetailDrawer({
                     ["Pre-seeded value", coverageCounts.preSeeded],
                     ["Tracked-not-scored w/ value", coverageCounts.trackedNotScored],
                     ["Not seeded yet", coverageCounts.notSeededYet],
+                    ["Tracked-no-value (audit only)", coverageCounts.trackedNoValue],
                     ["Source unavailable", coverageCounts.sourceUnavailable],
                     ["Custom metrics", customCount],
                     ["Total scoring metrics", totalRegistry],

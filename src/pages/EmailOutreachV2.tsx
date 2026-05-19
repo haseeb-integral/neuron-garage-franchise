@@ -31,6 +31,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { deriveFitTag } from "@/utils/fitScore";
 import { SmartLeadConnectionPanel } from "@/components/email-outreach/SmartLeadConnectionPanel";
+import { ImportLeadsWizard } from "@/components/email-outreach/ImportLeadsWizard";
+import { ProspectBatchesPanel } from "@/components/email-outreach/ProspectBatchesPanel";
+
 
 
 type CampaignStatus = "Active" | "Draft" | "Paused" | "Complete";

@@ -545,10 +545,10 @@ export function MarketDetailDrawer({
     dimmed = false,
   ) => {
     const used = metric.enabled && (status === "live" || status === "proxy");
-    const value = signal && status !== "missing" ? displayValue(signal.value) : "Not seeded for this city yet";
+    const value = signal && status !== "missing" ? displayValue(signal.value) : "No backend value for Austin yet";
     const sub =
       status === "missing" && metric.status !== "blocked"
-        ? "No backend value — composite uses pre-seeded category score"
+        ? "No metric-level backend value — category score falls back to pre-seeded score"
         : status === "blocked"
         ? "Source unavailable"
         : relativeTime(signal?.updated_at);
@@ -817,7 +817,7 @@ export function MarketDetailDrawer({
                       ))}
                       {disabledRows.length > 0 && (
                         <>
-                          <div className="flex items-center justify-between border-t border-[#eef2f7] bg-[#fbfcff] px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#8794ab]" title="These metrics are shown for audit transparency but are excluded from the composite formula in the current scoring registry.">
+                          <div className="flex items-center justify-between border-t border-[#eef2f7] bg-[#fbfcff] px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#8794ab]" title="These metrics are tracked for audit transparency, but the current scoring registry marks them enabled: false so they do not enter the composite formula.">
                             <span>Tracked, not used in score</span>
                             <span>{disabledRows.length}</span>
                           </div>

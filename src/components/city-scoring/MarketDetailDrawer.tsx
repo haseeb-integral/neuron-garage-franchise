@@ -429,36 +429,31 @@ export function MarketDetailDrawer({
   }, [customCriteriaRows]);
   const customCount = customCriteriaRows.length;
 
-  // Count ALL registry rows (enabled + disabled), not just enabled. These
-  // counts must come from the same canonical merged dataset the rows use.
-  const allCoverageCounts = useMemo(() => {
-    let live = 0, proxy = 0, missing = 0, blocked = 0;
+  // New, honest counting model. Each registry metric falls into exactly one
+  // bucket. Custom metrics are reported separately (additive), not folded
+  // into the denominator.
+  const coverageCounts = useMemo(() => {
+    let preSeeded = 0;          // enabled + value present
+    let trackedNotScored = 0;   // disabled + value present
+    let notSeededYet = 0;       // enabled + no value + not blocked
+    let sourceUnavailable = 0;  // registry status === "blocked"
+    let trackedNoValue = 0;     // disabled + no value (audit only)
     Object.values(coverageByCategory).forEach(({ enabled, disabled }) => {
-      [...enabled, ...disabled].forEach(({ status }) => {
-        if (status === "live") live++;
-        else if (status === "proxy") proxy++;
-        else if (status === "blocked") blocked++;
-        else missing++;
+      enabled.forEach(({ status }) => {
+        if (status === "blocked") sourceUnavailable++;
+        else if (status === "live" || status === "proxy") preSeeded++;
+        else notSeededYet++;
+      });
+      disabled.forEach(({ status }) => {
+        if (status === "blocked") sourceUnavailable++;
+        else if (status === "live" || status === "proxy") trackedNotScored++;
+        else trackedNoValue++;
       });
     });
-    return { live, proxy, missing, blocked };
+    return { preSeeded, trackedNotScored, notSeededYet, sourceUnavailable, trackedNoValue };
   }, [coverageByCategory]);
 
-  const liveCount = allCoverageCounts.live;
-  const estimatedCount = allCoverageCounts.proxy;
-  const missingCount = allCoverageCounts.missing;
-  const blockedCount = allCoverageCounts.blocked;
-  const manualCount = 0;
   const totalRegistry = SOW_METRIC_REGISTRY.length;
-  const enabledAvailableCount = useMemo(
-    () => Object.values(coverageByCategory).reduce((sum, { enabled }) => sum + enabled.filter((r) => r.status === "live" || r.status === "proxy").length, 0),
-    [coverageByCategory],
-  );
-  const disabledAvailableCount = useMemo(
-    () => Object.values(coverageByCategory).reduce((sum, { disabled }) => sum + disabled.filter((r) => r.status === "live" || r.status === "proxy").length, 0),
-    [coverageByCategory],
-  );
-  const totalAvailableCount = enabledAvailableCount + disabledAvailableCount;
 
   const [showDiagnostics, setShowDiagnostics] = useState(false);
 

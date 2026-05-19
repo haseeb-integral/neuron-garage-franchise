@@ -327,7 +327,7 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
 
               <label className="block">
                 <span className="text-xs font-bold text-[#34445f]">Campaign name</span>
-                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Austin TX — Spring 2026" className="mt-1 h-10 w-full rounded-lg border border-[#dbe4f2] px-3 outline-none" />
+                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Outreach · May-19 · 22:45 PKT · v1" className="mt-1 h-10 w-full rounded-lg border border-[#dbe4f2] px-3 outline-none" />
                 {testMode && name && <div className="mt-1 text-[11px] text-amber-700">SmartLead name will be: <b>[TEST] {name}</b></div>}
               </label>
             </div>

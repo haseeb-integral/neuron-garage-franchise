@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { CityData, sampleCities } from "@/data/cityData";
 import type { CategoryKey } from "@/stores/cityScoringStore";
+import { canonicalKey } from "@/lib/signalAliases";
 
 export type RankedMarket = {
   id: number;
@@ -288,6 +289,41 @@ export function buildSeededFallbackSignalsFromScored(
     seeded("private_school_count", "Private Elementary Schools", scoredRow.private_elementary_count, "franchisee_supply", false),
     seeded("charter_school_count", "Charter Elementary Schools", scoredRow.charter_elementary_count, "franchisee_supply", false),
   ].filter((row) => row.value != null && row.value !== "");
+}
+
+export function mergeSignalsPreferLive(
+  liveSignals: Array<Record<string, any>> | null | undefined,
+  scoredRow?: Record<string, any> | null,
+  childrenPct?: number | null,
+) {
+  const seededSignals = buildSeededFallbackSignalsFromScored(scoredRow, childrenPct);
+  const liveByCanonical = new Map<string, Record<string, any>>();
+
+  (liveSignals ?? []).forEach((signal) => {
+    const key = canonicalKey(signal?.signal_key);
+    if (!key) return;
+    liveByCanonical.set(key, { ...signal, signal_key: key });
+  });
+
+  const merged = seededSignals.map((seeded) => {
+    const live = liveByCanonical.get(seeded.signal_key);
+    return live
+      ? {
+          ...seeded,
+          ...live,
+          signal_key: seeded.signal_key,
+          label: live.label ?? seeded.label,
+          value: live.value ?? seeded.value,
+          raw_data: live.raw_data ?? seeded.raw_data,
+        }
+      : seeded;
+  });
+
+  liveByCanonical.forEach((signal, key) => {
+    if (!merged.some((row) => row.signal_key === key)) merged.push(signal);
+  });
+
+  return merged;
 }
 
 // ============================================================================

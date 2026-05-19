@@ -51,6 +51,7 @@ import { METRICS_BY_CATEGORY } from "@/lib/sowMetricRegistry";
 import { parseSignalValue } from "@/lib/sowNormalize";
 import { recomputeCategoryScore, recomputeComposite } from "@/lib/clientSubWeightScoring";
 import { tierFromScore } from "@/lib/cityScoringLiveData";
+import { canonicalKey } from "@/lib/signalAliases";
 import { useCustomCriteria } from "@/hooks/useCustomCriteria";
 import { useScoringConfig, useDebouncedSaveScoringConfig } from "@/hooks/useScoringConfig";
 import { SCORING_PRESETS, PRESET_NAMES, PRESET_DESCRIPTIONS, detectPreset, type PresetName } from "@/lib/scoringPresets";
@@ -475,10 +476,13 @@ const CityScoring = () => {
       if (f.tier) setTierFilter(f.tier);
       if (typeof f.minScore === "number") setMinScore(f.minScore);
 
-      // Apply weight nudges to draft master weights (user can review + Apply)
+      // Apply weight nudges to draft + applied master weights so Ask AI behaves
+      // like an immediate search refinement rather than a pending local edit.
       const adj = result.weightAdjustments ?? {};
       const anyDelta = Object.values(adj).some((v) => v !== 0);
       if (anyDelta) {
+        setScoringModel("Custom");
+        setActiveSavedSearchId(null);
         setWeights((prev) => {
           const next = { ...prev } as Record<CategoryKey, number>;
           (Object.keys(adj) as CategoryKey[]).forEach((k) => {
@@ -498,6 +502,7 @@ const CityScoring = () => {
             if (next[k] + step >= 0) { next[k] += step; diff -= step; }
           }
           setAppliedWeights(next);
+          setCustomWeightsSnapshot({ ...next });
           return next;
         });
         toast.success("AI adjusted your category weights — composite re-ranked.");
@@ -583,9 +588,9 @@ const CityScoring = () => {
   }, []);
 
   const baseRankedMarkets = useMemo<RankedMarket[]>(
-    // Always include starter sample markets so users can discover/refresh any city.
-    // Live DB rows override sample rows via dedupeRankedMarkets (live wins).
-    () => [...liveRankedMarkets, ...sampleRankedMarkets()],
+    // Canonical list is the seeded backend dataset. Only fall back to sample
+    // rows before the seeded list loads.
+    () => (liveRankedMarkets.length > 0 ? liveRankedMarkets : sampleRankedMarkets()),
     [liveRankedMarkets],
   );
 
@@ -619,16 +624,28 @@ const CityScoring = () => {
     }
 
     const masterWeightsAreDefault = JSON.stringify(appliedWeights) === JSON.stringify(DEFAULT_WEIGHTS);
+    const subWeightsAreDefault = JSON.stringify(appliedSubWeights) === JSON.stringify(DEFAULT_SUB_WEIGHTS);
     const reRanked = out.map((market) => {
-      if (!market.hasLiveData || !market.categoryScores || masterWeightsAreDefault) return market;
-      const cats = {
-        demand: market.categoryScores.demand ?? null,
-        pricingPower: market.categoryScores.pricingPower ?? null,
-        competitiveLandscape: market.categoryScores.competitiveLandscape ?? null,
-        franchiseeSupply: market.categoryScores.franchiseeSupply ?? null,
-        easeOfOperations: market.categoryScores.easeOfOperations ?? null,
-        parentMindset: market.categoryScores.parentMindset ?? null,
-      };
+      if (!market.hasLiveData || !market.categoryScores) return market;
+      if (masterWeightsAreDefault && subWeightsAreDefault) return market;
+
+      const seededSignalValues = Object.fromEntries(
+        buildSeededFallbackSignalsFromScored(market.scoredRow).map((signal) => [
+          signal.signal_key,
+          parseSignalValue(signal.value),
+        ]),
+      );
+
+      const cats = {} as Record<CategoryKey, number | null>;
+      (Object.keys(METRICS_BY_CATEGORY) as CategoryKey[]).forEach((key) => {
+        cats[key] = recomputeCategoryScore(
+          METRICS_BY_CATEGORY[key] ?? [],
+          seededSignalValues,
+          appliedSubWeights[key] ?? {},
+          market.categoryScores?.[key] ?? null,
+        ).score;
+      });
+
       const { composite } = recomputeComposite(cats, appliedWeights);
       return {
         ...market,
@@ -642,7 +659,7 @@ const CityScoring = () => {
       if (a.hasLiveData) return b.compositeScore - a.compositeScore;
       return a.city.localeCompare(b.city);
     });
-  }, [baseRankedMarkets, searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop, cityFilter, watchlistOnly, watchlistCityIds, appliedWeights]);
+  }, [baseRankedMarkets, searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop, cityFilter, watchlistOnly, watchlistCityIds, appliedWeights, appliedSubWeights]);
 
   // Reset to page 1 when watchlist filter toggles
   useEffect(() => { setPage(1); }, [watchlistOnly]);
@@ -763,20 +780,9 @@ const CityScoring = () => {
   }, [visibleCityIds.join(","), subWeightsKey, appliedWeightsKey]);
 
   // Apply overrides to the visible page and re-sort by the override-aware score.
-  const pageItems = useMemo(() => {
-    const merged = rawPageItems.map((m) => {
-      const o = m.cityId ? compositeOverrides[m.cityId] : undefined;
-      if (!o) return m;
-      return { ...m, compositeScore: o.composite, tier: o.tier };
-    });
-    return [...merged].sort((a, b) => {
-      if (a.hasLiveData !== b.hasLiveData) return a.hasLiveData ? -1 : 1;
-      if (a.hasLiveData) return b.compositeScore - a.compositeScore;
-      return a.city.localeCompare(b.city);
-    });
-  }, [rawPageItems, compositeOverrides]);
+  const pageItems = rawPageItems;
 
-  const hasOverrides = Object.keys(compositeOverrides).length > 0 && !subWeightsAreDefault;
+  const hasOverrides = !subWeightsAreDefault || appliedWeightsKey !== defaultMasterWeightsKey;
 
   const pageNumbers = useMemo<(number | "...")[]>(() => {
     if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);

@@ -155,7 +155,7 @@ export default function EmailOutreachV2() {
       </button>
       {connectionOpen && <div className="border-t border-[#edf2f8] p-4"><SmartLeadConnectionPanel /></div>}
     </div>
-    <>
+    {view === "dashboard" && <>
 
     <div className="mb-3 grid gap-2 md:grid-cols-3 xl:grid-cols-6">{[[Mail, "Active Campaigns", "4", "Across 4 cities", "blue"], [Users, "Prospects in Outreach", "1,248", "+128 this week", "purple"], [Send, "Open Rate", "42.6%", "+6.3 pp", "green"], [Reply, "Replies", "186", "14.9% reply rate", "green"], [Target, "Interested Leads", "58", "31.2% of replies", "gold"], [Mail, "Promoted to Pipeline", 23 + Object.keys(promoted).length, "+8 this week", "blue"]].map(([Icon, label, value, sub, tone]) => { const IconCmp = Icon as React.ComponentType<{ size?: number }>; return <Card key={label as string} className="px-3 py-2.5"><div className="flex items-center gap-2"><IconBox tone={tone as "blue" | "green" | "gold" | "purple"}><IconCmp size={17} /></IconBox><div className="min-w-0"><div className="truncate text-[11px] font-bold text-[#34445f]">{label as string}</div><div className="text-[21px] font-black leading-6">{value as string | number}</div><div className="truncate text-[11px] font-bold text-[#0a8f5a]">{sub as string}</div></div></div></Card>; })}</div>
     <div className="grid gap-3 xl:grid-cols-[260px_minmax(0,1fr)_250px]">

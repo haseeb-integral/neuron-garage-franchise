@@ -780,8 +780,8 @@ export function MarketDetailDrawer({
                       ))}
                       {disabledRows.length > 0 && (
                         <>
-                          <div className="flex items-center justify-between border-t border-[#eef2f7] bg-[#fbfcff] px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#8794ab]">
-                            <span>Not in current scoring model</span>
+                          <div className="flex items-center justify-between border-t border-[#eef2f7] bg-[#fbfcff] px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#8794ab]" title="These metrics are shown for audit transparency but are excluded from the composite formula in the current scoring registry.">
+                            <span>Tracked, not used in score</span>
                             <span>{disabledRows.length}</span>
                           </div>
                           {disabledRows.map(({ metric, signal, status }) =>

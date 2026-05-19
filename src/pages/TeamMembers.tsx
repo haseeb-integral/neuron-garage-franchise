@@ -213,33 +213,54 @@ Please log in and change your password using the "Forgot password?" link on the 
               {rows.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell className="font-medium">{r.full_name || "—"}</TableCell>
-                  <TableCell>{r.email}</TableCell>
                   <TableCell>
-                    <Select
-                      value={r.role ?? "manager"}
-                      onValueChange={(v) => handleChangeRole(r, v as Role)}
-                      disabled={r.id === user?.id}
-                    >
-                      <SelectTrigger className="w-32 h-8">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="admin">admin</SelectItem>
-                        <SelectItem value="manager">manager</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <a href={`mailto:${r.email}`} className="text-primary hover:underline">
+                      {r.email}
+                    </a>
+                  </TableCell>
+                  <TableCell>
+                    {isAdmin ? (
+                      <Select
+                        value={r.role ?? "manager"}
+                        onValueChange={(v) => handleChangeRole(r, v as Role)}
+                        disabled={r.id === user?.id}
+                      >
+                        <SelectTrigger className="w-32 h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="admin">admin</SelectItem>
+                          <SelectItem value="manager">manager</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Badge variant={r.role === "admin" ? "default" : "secondary"}>
+                        {r.role ?? "manager"}
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell className="text-muted-foreground text-xs">
                     {new Date(r.created_at).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="outline" size="sm" onClick={() => handleSendReset(r.email)}>
-                      <KeyRound className="w-3.5 h-3.5 mr-1.5" />
-                      Send reset
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      <Button asChild variant="outline" size="sm">
+                        <a href={`mailto:${r.email}`}>
+                          <Mail className="w-3.5 h-3.5 mr-1.5" />
+                          Contact
+                        </a>
+                      </Button>
+                      {isAdmin && (
+                        <Button variant="outline" size="sm" onClick={() => handleSendReset(r.email)}>
+                          <KeyRound className="w-3.5 h-3.5 mr-1.5" />
+                          Send reset
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
+
               {rows.length === 0 && !loading && (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground py-8">

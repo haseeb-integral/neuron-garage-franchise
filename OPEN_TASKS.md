@@ -316,6 +316,11 @@ See **`TEACHER_IDEAL_PROFILE.md`** for who we are recruiting and why — read th
 - **Still to do (v2):** real-time per-lead SmartLead status (SCHEDULED / SENT / OPENED / REPLIED) inside the drawer — currently rows only show our staging QA state, not what SmartLead is doing with each lead. Will fold into Task 21.
 - **Effort remaining:** ~4 hrs · **Risk:** low · **Files:** `BatchDetailDrawer.tsx` (extend), `smartlead-proxy` (per-lead status fetch).
 
+### 17o. New Campaign Drawer — Test Mode default OFF + persist (added & shipped May 20)
+- **Background:** May 20 — user toggled Test Mode OFF for the smoke-test campaign, closed the wizard, reopened it, and the checkbox was back to ON. Misleading: looks like the previous launched campaign got flipped, when really only the local form state resets. Risk: user accidentally launches a real campaign in TEST mode (or vice versa) because the UI lies about the default.
+- **Shipped (May 20):** `NewCampaignDrawer.tsx` — initial state reads from `localStorage["ng.newCampaign.testMode"]` (default OFF if unset), persists on every toggle, and the close/reset effect now restores from localStorage instead of hard-coding `true`. Already-launched campaigns are unaffected — this is pure form-state UX.
+- **Files:** `src/components/email-outreach/NewCampaignDrawer.tsx`. **Effort:** 15 min · **Risk:** low.
+
 
 ---
 

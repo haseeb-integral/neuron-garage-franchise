@@ -165,6 +165,11 @@ export function ProspectBatchesPanel({ refreshKey = 0 }: { refreshKey?: number }
           })}</tbody>
         </table>
       )}
+      <BatchDetailDrawer
+        batch={openBatch}
+        campaignName={openBatch?.campaign_id ? campaignsById[String(openBatch.campaign_id)]?.name ?? null : null}
+        onClose={() => setOpenBatch(null)}
+      />
     </div>
   );
 }

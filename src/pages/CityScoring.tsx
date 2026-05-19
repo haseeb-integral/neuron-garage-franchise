@@ -757,6 +757,8 @@ const CityScoring = () => {
     ...selectedSample,
     city: selectedCity,
     state: selectedState,
+    // Canonical cityId = us_cities_scored.id. Used by drawer, report, watchlist.
+    cityId: liveCity?.id ?? selectedRankedMarket?.cityId ?? (selectedSample as any).cityId,
     compositeScore: liveCity?.composite_score ?? selectedRankedMarket?.compositeScore ?? selectedSample.compositeScore,
     tier: liveCity?.tier ?? selectedRankedMarket?.tier ?? selectedSample.tier,
     population: liveCity?.population ?? selectedRankedMarket?.population ?? selectedSample.population,

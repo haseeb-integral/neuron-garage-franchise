@@ -131,7 +131,7 @@ Active limitations:
 - **City Search** — `us_cities_scored` seeded with 948 cities and composite scores; national ranked list now possible. UI wiring to read from seed table is the next step.
 - **Teacher Search reads placeholder/Apify-only data** — `teacher_prospects_master` table not yet built; no Apollo / vendor list / DonorsChoose integration. `teacher_prospects` now has the FK and enrichment columns waiting on the master table + sourcing.
 - **`candidates` table** — no FKs to `public_schools` / `us_cities_scored`, no `source_segment` column. Promotion from teacher → candidate cannot carry context until added (see OPEN_TASKS B3).
-- **`cities` vs `us_cities_scored`** — two overlapping city tables. Consolidation deferred (OPEN_TASKS B5).
+- ~~**`cities` vs `us_cities_scored`** — consolidated.~~ ✅ May 19 — legacy `cities` (+ `city_category_scores`, `city_fetch_jobs`, `city_competitors`) dropped; `us_cities_scored` is the canonical city table. Add City flow now writes there via `us_cities_geo` lookup.
 - **Email Outreach** — SmartLead wired end-to-end (connection, campaigns, lead import wizard, analytics, inbox, webhooks, reply-intent classification). Still needs Teacher Search → Import Wizard handoff before daily use.
 - **Candidate Pipeline** — populated with placeholder candidates, not yet wired to Teacher → Lead conversion (SmartLead reply → candidate promotion is the next link).
 - **GreatSchools** — private/charter elementary counts missing on every city (waiting on API key purchase).

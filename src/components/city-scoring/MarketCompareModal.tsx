@@ -72,7 +72,8 @@ export function MarketCompareModal({ open, onClose, markets }: Props) {
     setLoading(true);
     Promise.all([
       supabase.from("city_market_signals").select("city_id, signal_key, label, value, delta").in("city_id", cityIds),
-      supabase.from("city_category_scores").select("city_id, category, score").in("city_id", cityIds),
+      // Legacy city_category_scores dropped — compare modal uses canonical score_* columns now.
+      Promise.resolve({ data: [] as { city_id: string; category: string; score: number }[] }),
     ])
       .then(([sigRes, catRes]) => {
         const sigMap: Record<string, Record<string, SignalRow>> = {};

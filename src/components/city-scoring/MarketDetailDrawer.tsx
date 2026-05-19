@@ -219,21 +219,13 @@ export function MarketDetailDrawer({
           return;
         }
 
-        const [{ data: signalRows }, { data: competitorRows }, { data: canonicalJobRows }] = await Promise.all([
-          supabase.from("city_market_signals").select("*").eq("city_id", cityId),
-          supabase
-            .from("city_competitors")
-            .select("*")
-            .eq("city_id", cityId)
-            .order("created_at", { ascending: false }),
-          supabase
-            .from("city_fetch_jobs")
-            .select("*")
-            .eq("city_id", cityId)
-            .eq("source", "sow_metric_coverage")
-            .order("created_at", { ascending: false })
-            .limit(1),
-        ]);
+        const { data: signalRows } = await supabase
+          .from("city_market_signals")
+          .select("*")
+          .eq("city_id", cityId);
+        // Legacy city_competitors and city_fetch_jobs were dropped May 19.
+        const competitorRows: any[] = [];
+        const canonicalJobRows: any[] = [];
 
         const fallbackSignals = buildSeededFallbackSignals(market);
         const liveByKey = new Map<string, LiveSignal>();
@@ -247,7 +239,7 @@ export function MarketDetailDrawer({
           ),
         ] as LiveSignal[];
         setSignals(merged);
-        setCompetitors((competitorRows ?? []) as LiveCompetitor[]);
+        setCompetitors(competitorRows as LiveCompetitor[]);
         setLatestJob(canonicalJobRows?.[0] ?? null);
       } catch (error) {
         console.error("MarketDetailDrawer live evidence error", error);
@@ -605,6 +597,9 @@ export function MarketDetailDrawer({
                 <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#b8860b]" title="Tracked-not-scored metric with a value (audit only)">{coverageCounts.trackedNotScored} Tracked-not-scored</span>
               )}
               <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#526078]" title="Enabled scoring metric with no backend value seeded yet">{coverageCounts.notSeededYet} Not seeded yet</span>
+              {coverageCounts.trackedNoValue > 0 && (
+                <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#8794ab]" title="Audit-only metrics with no value yet — not part of the score">{coverageCounts.trackedNoValue} Tracked-no-value</span>
+              )}
               {coverageCounts.sourceUnavailable > 0 && (
                 <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#ea580c]" title="Registry marks this metric blocked — no data source wired">{coverageCounts.sourceUnavailable} Source unavailable</span>
               )}
@@ -614,6 +609,7 @@ export function MarketDetailDrawer({
               <span className="rounded-md bg-[#f3f6fb] px-1.5 py-0.5 font-semibold text-[#526078]">of {totalRegistry} scoring metrics</span>
             </div>
           </div>
+          <p className="mt-1 text-[10.5px] text-[#8794ab]">Chips total {totalRegistry} of {totalRegistry} scoring metrics. Custom metrics shown separately.</p>
           {loading && (
             <div className="mt-2 flex items-center gap-2 text-[11px] text-[#526078]">
               <RefreshCw size={12} className="animate-spin" /> Loading live evidence…
@@ -636,6 +632,7 @@ export function MarketDetailDrawer({
                     ["Pre-seeded value", coverageCounts.preSeeded],
                     ["Tracked-not-scored w/ value", coverageCounts.trackedNotScored],
                     ["Not seeded yet", coverageCounts.notSeededYet],
+                    ["Tracked-no-value (audit only)", coverageCounts.trackedNoValue],
                     ["Source unavailable", coverageCounts.sourceUnavailable],
                     ["Custom metrics", customCount],
                     ["Total scoring metrics", totalRegistry],

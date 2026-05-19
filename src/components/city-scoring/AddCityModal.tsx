@@ -18,6 +18,10 @@ const US_STATES = [
   "Wisconsin","Wyoming",
 ];
 
+// Per cityScoringLiveData.ts — currently only TX + FL flagged as non-registration.
+// Keep in sync with src/lib/cityScoringLiveData.ts.
+const NON_REGISTRATION_STATES = new Set(["Texas", "Florida"]);
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -27,11 +31,9 @@ interface Props {
 export function AddCityModal({ open, onClose, onAdded }: Props) {
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
-  const [county, setCounty] = useState("");
-  const [metro, setMetro] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const reset = () => { setCity(""); setState(""); setCounty(""); setMetro(""); };
+  const reset = () => { setCity(""); setState(""); };
 
   const handleSubmit = async () => {
     const c = city.trim();
@@ -42,25 +44,49 @@ export function AddCityModal({ open, onClose, onAdded }: Props) {
     }
     setSaving(true);
     try {
-      // Check for existing
+      // 1. Look up geo row (case-insensitive on city/city_ascii + state_name)
+      const { data: geoRows, error: geoErr } = await supabase
+        .from("us_cities_geo")
+        .select("city, city_ascii, state_name, state_id, county_name, lat, lng, population")
+        .ilike("state_name", s)
+        .or(`city.ilike.${c},city_ascii.ilike.${c}`)
+        .limit(1);
+      if (geoErr) throw geoErr;
+      const geo = geoRows?.[0];
+      if (!geo) {
+        toast.error(`We don't have geographic data for "${c}, ${s}". Please check spelling or contact Haseeb.`);
+        return;
+      }
+
+      // 2. Check for existing scored row
       const { data: existing } = await supabase
-        .from("cities").select("id").eq("city", c).eq("state", s).maybeSingle();
+        .from("us_cities_scored")
+        .select("id")
+        .eq("city_name", geo.city)
+        .eq("state_name", geo.state_name)
+        .maybeSingle();
       if (existing) {
-        toast.info(`${c}, ${s} is already in your list`);
-        onAdded(c, s);
+        toast.info(`${geo.city}, ${geo.state_name} is already in your list`);
+        onAdded(geo.city, geo.state_name);
         reset();
         onClose();
         return;
       }
-      const { error } = await supabase.from("cities").insert({
-        city: c,
-        state: s,
-        county: county.trim() || null,
-        metro_area: metro.trim() || null,
+
+      // 3. Insert into canonical scored cities table (scores blank until next seed run)
+      const { error } = await supabase.from("us_cities_scored").insert({
+        city_name: geo.city,
+        state_name: geo.state_name,
+        state_abbr: geo.state_id,
+        county_name: geo.county_name ?? null,
+        latitude: geo.lat ?? null,
+        longitude: geo.lng ?? null,
+        population: geo.population ?? null,
+        is_registration_state: !NON_REGISTRATION_STATES.has(geo.state_name),
       });
       if (error) throw error;
-      toast.success(`Added ${c}, ${s}. Click "Refresh This Market" to fetch data.`);
-      onAdded(c, s);
+      toast.success(`Added ${geo.city}, ${geo.state_name}. Scores will populate on the next seed run.`);
+      onAdded(geo.city, geo.state_name);
       reset();
       onClose();
     } catch (e: any) {
@@ -76,7 +102,8 @@ export function AddCityModal({ open, onClose, onAdded }: Props) {
         <DialogHeader>
           <DialogTitle>Add City</DialogTitle>
           <DialogDescription>
-            Add a new market to the Ranked list. It will appear with "No data" until you refresh it.
+            Look up a US city by name + state. County, metro area, and coordinates are filled
+            automatically from our geo database. Scores will be blank until the next seed run.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -92,14 +119,6 @@ export function AddCityModal({ open, onClose, onAdded }: Props) {
                 {US_STATES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
               </SelectContent>
             </Select>
-          </div>
-          <div>
-            <Label htmlFor="add-city-county">County (optional)</Label>
-            <Input id="add-city-county" value={county} onChange={(e) => setCounty(e.target.value)} placeholder="e.g. Hamilton" />
-          </div>
-          <div>
-            <Label htmlFor="add-city-metro">Metro Area (optional)</Label>
-            <Input id="add-city-metro" value={metro} onChange={(e) => setMetro(e.target.value)} placeholder="e.g. Indianapolis" />
           </div>
         </div>
         <div className="mt-4 flex justify-end gap-2">

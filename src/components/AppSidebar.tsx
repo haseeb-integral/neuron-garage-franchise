@@ -1,4 +1,4 @@
-import { Home, Map, Users, Kanban, ChevronLeft, ChevronRight, Mail, FileText } from "lucide-react";
+import { Home, Map, Users, Kanban, ChevronLeft, ChevronRight, Mail, FileText, BookOpen } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import logo from "@/assets/neuron-garage-logo.png";
 import { useSidebarCollapsed } from "@/lib/sidebarState";
@@ -14,6 +14,7 @@ const primaryNavItems = [
 
 const utilityNavItems = [
   { title: "Team Members", url: "/settings/team", icon: Users },
+  { title: "User's Guide", url: "/users-guide", icon: BookOpen },
   { title: "Specification", url: "/spec", icon: FileText },
 ];
 

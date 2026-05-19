@@ -470,6 +470,9 @@ export function MarketDetailDrawer({
 
   const metroArea = (market as any).metroArea ?? null;
   const county = (market as any).county ?? null;
+  const metroCounties: string[] | null = Array.isArray((market as any).metroCounties)
+    ? (market as any).metroCounties
+    : null;
   const marketType = (market as any).marketType ?? null;
 
   const renderSignalRow = (signal: LiveSignal, key: string) => {

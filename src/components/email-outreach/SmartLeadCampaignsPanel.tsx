@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2, RefreshCw, Plus, Mail, ExternalLink, AlertCircle } from "lucide-react";
+import { Loader2, RefreshCw, Mail, ExternalLink, AlertCircle, Play, Pause, Square } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -33,6 +33,7 @@ export function SmartLeadCampaignsPanel() {
   const [loading, setLoading] = useState(true);
   const [campaigns, setCampaigns] = useState<SLCampaign[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [acting, setActing] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -51,12 +52,18 @@ export function SmartLeadCampaignsPanel() {
     load();
   }, []);
 
-  const handleCreate = () => {
-    toast.info(
-      "Campaign creation comes in Phase 4. For now create it inside SmartLead — it will appear here automatically.",
-      { duration: 6000 },
-    );
-    window.open("https://app.smartlead.ai/app/campaigns", "_blank");
+  const setStatus = async (c: SLCampaign, status: "START" | "PAUSED" | "STOPPED") => {
+    const actionKey = `${c.id}-${status}`;
+    setActing(actionKey);
+    try {
+      await callProxy(`/campaigns/${c.id}/status`, "POST", { status });
+      toast.success(`Campaign "${c.name ?? c.id}" → ${status}`);
+      await load();
+    } catch (e) {
+      toast.error(`Failed: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setActing(null);
+    }
   };
 
   return (

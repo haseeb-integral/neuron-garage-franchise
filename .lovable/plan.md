@@ -1,125 +1,55 @@
-# Neuron Garage — Locked Plan (revised May 19, 2026)
+## What's actually breaking
 
-> Plan changes go in this doc FIRST, then code. Approve to execute Phase 1a + Phase 1. Phase 2 and 3 are sequenced but await separate go-ahead.
+The toast tells us exactly what SmartLead is rejecting:
 
----
+> `SmartLead 500 on /campaigns/3358536/status: Cron Exp value is empty! Please set the scheduler time and start the campaign!`
 
-## Mental model (unchanged)
+That campaign (`[TEST] Sample Campaign`, id 3358536) is one of the **old drafted** campaigns. It was created before the drawer started POSTing a schedule, so SmartLead has no cron for it → `START` is refused.
 
-```
-City Search  →  Teacher Search  →  Email Outreach (cockpit)  →  Candidate Pipeline
-```
+Separately, the new-campaign flow had three silent failure points: schedule / settings / sequences calls were each wrapped in `try { … } catch { console.warn }`. If any of those failed (e.g. malformed `min_time_btw_emails`, missing required field), the draft would still be created and the launch would later fail with "Cron Exp empty" or similar — and the user would see no warning.
 
-- Email screen = cockpit. SmartLead is the engine (sends, warmup, deliverability).
-- City lists never go straight to Email. "Promote list" = pre-filter Teacher Search.
-- Test campaigns are the one exception — temp-email CSV bypasses City + Teacher on purpose.
+Email accounts ARE connected (3 healthy SMTPs on `mailerss.co`), so that part is fine. The new drawer already assigns them.
 
----
+## Fix plan
 
-## Phase 1a — Strip mock data from Email screen (~30 min) [DO FIRST]
+### 1. Make the "Launch" button on the campaigns list self-healing
 
-**Why first:** Once Phase 1 lands and real numbers start flowing, mock numbers next to real ones cause exactly the contamination the user flagged.
+In `SmartLeadCampaignsPanel.tsx`, when the user clicks ▶ Launch on a `DRAFTED` campaign, before calling `/status { START }`:
 
-**Remove:**
-- 6 hardcoded prospects (Emily Rogers, Jason Miller, etc.) in the prospects panel
-- "Prospects in Outreach: 1,248" stat tile
-- "Interested Leads: 58" stat tile
-- Hardcoded High / Med / Low fit-score badges next to fake prospects
-- "Recommended Next Step" suggestion card (hardcoded text)
+1. POST a **default schedule** to `/campaigns/{id}/schedule` (timezone = browser TZ, days Mon–Fri, 09:00–18:00, gap 10 min, cap 50/day). This fixes "Cron Exp empty" on legacy drafts.
+2. GET `/email-accounts/`. If the campaign has none assigned, POST all account ids to `/campaigns/{id}/email-accounts`.
+3. POST `/status { START }`.
+4. Any failure → show the **real** SmartLead error string in the toast (already wired via `callProxy`).
 
-**Replace with empty states:**
-- Prospects panel: "No prospects yet — import leads to get started"
-- Stat tiles: "0" with subtle helper text "no live data yet"
-- Suggestion card: hidden until there are >0 real campaigns
+This makes legacy drafted campaigns launchable in one click without recreating them.
 
-**Keep untouched (already real):** SmartLead Connection, Campaigns list, Inbox, Analytics, Email Accounts panels.
+### 2. Stop swallowing errors in the New Campaign drawer
 
----
+In `NewCampaignDrawer.tsx submit(launch=true)`:
 
-## Phase 1 — Email cockpit: write actions + test mode (~2–3 hours)
+- Remove the silent `try/catch console.warn` around `schedule`, `settings`, `sequences`, and `email-accounts assign` **when `launch === true`**. Let them throw so the toast shows the actual SmartLead error instead of a fake success.
+- Keep silent-warn behavior only when saving as Draft (so partial drafts are recoverable).
+- Validate inputs before any network call: name non-empty, ≥1 day selected, start_hour < end_hour, sequences non-empty with subject+body, gap 1–180, cap 1–200. Show an inline error and abort if invalid.
 
-1. **NewCampaignDrawer additions** (file already exists):
-   - **🧪 Test Mode toggle** at top of step 1. When ON:
-     - Yellow banner "Test Mode — sends only to your inbox"
-     - Recipient = logged-in user's email (from `auth.users.email`)
-     - Override field "Or send test to:" — paste a Gmail+alias or mailinator
-     - FROM address unchanged (still the SmartLead mailbox)
-   - **Daily send cap** field on step 2 (default 50/mailbox/day, hard cap 200).
-   - **Launch button** on step 4 — currently only "Create in SmartLead". Add "Create & Launch" which calls SmartLead `/campaigns/{id}/status` → `START`.
+### 3. One shared error surface
 
-2. **Campaign card actions** in SmartLeadCampaignsPanel:
-   - Launch / Pause / Stop buttons → SmartLead status API.
-   - Persistent "🧪 Test Mode" badge until toggled off.
+Add a small helper `surfaceError(e)` used by both panels — strips `SmartLead 500 on …: ` noise into a short title + technical detail line. Errors that contain `Cron Exp` map to a friendlier "Schedule is missing — re-open the campaign and set the schedule, or click Launch to auto-apply the default schedule."
 
-3. **CSV test-leads upload path** in ImportLeadsWizard:
-   - New top option "Upload test leads (CSV)" alongside existing "Import from Teacher Search".
-   - Accepts `email, first_name, last_name`. Pushes directly to SmartLead leads endpoint.
-   - Used until real teachers exist. Same flow handles real teachers later — zero rework.
+### 4. Optional: dev-mode debug panel
 
-4. **End-to-end demo loop (the proof Kaylie wants):**
-   - Upload 5 Gmail+alias test emails → Launch in Test Mode → first email sends → reply from one alias → reply lands in Inbox panel → intent classifier tags HOT → click Promote to Pipeline → fake "teacher" appears in Candidate Pipeline kanban.
+When `localStorage.getItem('debug') === '1'`, print every SmartLead request/response into the browser console with the endpoint + status + body. Off by default. Useful for the next round of testing without me needing to ask for screenshots.
 
----
+## Files touched
 
-## Phase 2 — Multiple named favorites lists in City Search (~2–3 hours) [after Phase 1 demo]
+- `src/components/email-outreach/SmartLeadCampaignsPanel.tsx` — self-healing Launch flow, shared error helper
+- `src/components/email-outreach/NewCampaignDrawer.tsx` — input validation, no silent catches on launch
+- (new) `src/components/email-outreach/smartleadErrors.ts` — `surfaceError` + debug logger
 
-**Locked UI decisions:**
-- ⭐ button on city row → popover with checkboxes for each list + "➕ New list" row.
-- **Left rail** inside City Search page lists all watchlists with counts.
-- Per-list action **"Find teachers in these cities"** → jumps to Teacher Search pre-filtered (does NOT bypass Teachers, does NOT pipe straight to Email).
+## Out of scope
 
-**Schema:**
-- New `watchlists` table: `id, user_id, name, created_at`.
-- Add `watchlist_id` column to `watchlist_items`.
-- Migrate existing rows into a default list named "My watchlist".
+- No changes to the `smartlead-proxy` edge function (it already returns the real error body wrapped as `{ok:false}`).
+- No new SmartLead endpoints, no schema changes, no new tables.
 
----
+## After this lands
 
-## Phase 3 — AI on Email screen (~3–4 hours) [after Phase 2]
-
-1. **AI email body personalization** — per-teacher first sentence via `google/gemini-2.5-flash` (Lovable AI Gateway, no key needed). Fallback to generic line if data missing.
-2. **AI reply-intent classifier upgrade** — replace keyword regex with `gemini-2.5-flash-lite`. Catches "we already have a vendor" → NOT_INTERESTED, "circle back in fall" → NEUTRAL, etc.
-
----
-
-## Phase 4 — BLOCKED on Brett (not our move)
-- Pick teacher data source (Apollo / CSV / Apify / DonorsChoose).
-- Seed `teacher_prospects_master` with first 100–500 Austin teachers.
-- Switch test campaigns over to real teachers. Same UI, same flow.
-
----
-
-## Parked in LATER.md (will not build now)
-- Metro/county backfill for ~634 remaining cities (cosmetic, do day before demo).
-- Reply-intent override UI (needs real reply volume).
-- Suppression list viewer (needs real bounces).
-- Save campaign as template (needs 3–4 real campaigns first).
-- Share watchlist with other users.
-- AI "Suggest next campaign" recommender.
-
----
-
-## Execution order on approval
-
-1. Phase 1a — strip mock data (30 min)
-2. Phase 1 — test mode + daily cap + CSV test leads + launch button (~2–3 hr)
-3. **STOP. Run end-to-end demo with Haseeb's temp emails. Confirm it works.**
-4. Phase 2 — named favorites lists (separate go-ahead)
-5. Phase 3 — AI on Email screen (separate go-ahead)
-
-## Doc updates after Phase 1a + 1 ship (Mode A — drafts, await "go")
-- `PROJECT_CONTEXT.md` — Email screen now writes (create/launch/pause campaigns); mock data removed; Test Mode + daily cap added.
-- `HOW_IT_WORKS.md` — new "Test Mode" section explaining TO swap, FROM unchanged, override field, CSV test path.
-- `OPEN_TASKS.md` — mark 11h (mock-data strip) and 11i (test-mode launch) ✅; add Phase 2 + 3 as upcoming.
-- `GLOSSARY.md` — add "Test Mode", "Test leads CSV", "Daily send cap".
-
----
-
-## Technical notes (for the agent)
-
-- Test Mode TO swap happens **before** the SmartLead `/leads` upload call — we replace the lead list with `[{ email: profile.email }]` (or the override).
-- Daily cap maps to SmartLead `max_new_leads_per_day` in `/campaigns/{id}/schedule`.
-- Launch = POST `/campaigns/{id}/status` with body `{ status: "START" }`.
-- CSV test-leads path uses the existing `/campaigns/{id}/leads` endpoint — no new edge function.
-- Mock data lives entirely in component-local arrays inside `EmailOutreach.tsx` / `EmailOutreachV2.tsx` and child panel files. No DB rows to delete.
-- Phase 2 migration: `CREATE TABLE watchlists` + `ALTER TABLE watchlist_items ADD COLUMN watchlist_id` + backfill default list per user.
+Click **▶ Launch** on `[TEST] Sample Campaign` → drawer auto-applies a default schedule + ensures inboxes are assigned → SmartLead accepts `START` → status flips to `ACTIVE` and emails begin sending within the gap window. If anything still fails, the toast tells you exactly which endpoint + why.

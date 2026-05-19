@@ -10,6 +10,7 @@ export type RankedMarket = {
   state: string;
   county?: string | null;
   metroArea?: string | null;
+  metroCounties?: string[] | null;
   tier: "A" | "B" | "C" | "D" | string;
   compositeScore: number;
   population: number;
@@ -130,7 +131,7 @@ export async function loadLiveRankedMarkets(): Promise<RankedMarket[]> {
   const { data: scoredRows, error: scoredErr } = await supabase
     .from("us_cities_scored")
     .select(
-      "id, city_name, state_name, state_abbr, metro_area, population, population_density, children_5_12, median_household_income, dual_working_families_pct, college_degree_pct, cost_of_living_index, public_school_count, public_school_enrollment, public_elementary_count, public_elementary_enrollment, private_elementary_count, charter_elementary_count, summer_camp_count, avg_camp_price_per_hour, school_hosted_camp_count, camp_waitlist_signals, composite_score_default, score_demand, score_pricing_power, score_competitive, score_franchise_supply, score_ease_of_operation, score_parent_mindset, is_registration_state, scored_at",
+      "id, city_name, state_name, state_abbr, metro_area, county_name, metro_counties, population, population_density, children_5_12, median_household_income, dual_working_families_pct, college_degree_pct, cost_of_living_index, public_school_count, public_school_enrollment, public_elementary_count, public_elementary_enrollment, private_elementary_count, charter_elementary_count, summer_camp_count, avg_camp_price_per_hour, school_hosted_camp_count, camp_waitlist_signals, composite_score_default, score_demand, score_pricing_power, score_competitive, score_franchise_supply, score_ease_of_operation, score_parent_mindset, is_registration_state, scored_at",
     )
     .order("composite_score_default", { ascending: false, nullsFirst: false })
     .limit(2000);
@@ -152,8 +153,9 @@ export async function loadLiveRankedMarkets(): Promise<RankedMarket[]> {
       cityId: row.id, // us_cities_scored.id is now canonical
       city,
       state,
-      county: null,
+      county: row.county_name ?? null,
       metroArea: row.metro_area ?? null,
+      metroCounties: Array.isArray(row.metro_counties) ? row.metro_counties : null,
       tier: tierFromScore(composite),
       compositeScore: composite,
       population: toNumber(row.population, 0),

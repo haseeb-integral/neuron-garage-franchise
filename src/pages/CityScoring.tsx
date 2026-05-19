@@ -835,8 +835,9 @@ const CityScoring = () => {
     tier: selectedLiveCity?.tier ?? selectedRankedMarket?.tier ?? selectedSample.tier,
     population: selectedLiveCity?.population ?? selectedRankedMarket?.population ?? selectedSample.population,
     competitorCount: selectedLiveCity?.competitor_count ?? selectedRankedMarket?.competitorCount ?? selectedSample.competitorCount,
-    county: selectedLiveCity?.county ?? selectedRankedMarket?.county ?? (selectedSample as any).county,
+    county: selectedLiveCity?.county ?? selectedRankedMarket?.county ?? (selectedSample as any).county ?? null,
     metroArea: selectedLiveCity?.metro_area ?? selectedRankedMarket?.metroArea ?? (selectedSample as any).metroArea,
+    metroCounties: selectedLiveCity?.metro_counties ?? selectedRankedMarket?.metroCounties ?? null,
     marketType: selectedLiveCity?.market_type ?? selectedRankedMarket?.marketType ?? (selectedSample as any).marketType,
     lastScrapedAt: selectedLiveCity?.last_scraped_at ?? selectedRankedMarket?.lastScrapedAt ?? null,
     scored: selectedLiveCity?.scored ?? selectedRankedMarket?.scoredRow ?? null,
@@ -895,8 +896,9 @@ const CityScoring = () => {
         tier: tierDerived,
         population: pop,
         competitor_count: Number(scoredRow.summer_camp_count ?? 0),
-        county: null,
+        county: scoredRow.county_name ?? null,
         metro_area: scoredRow.metro_area ?? null,
+        metro_counties: Array.isArray(scoredRow.metro_counties) ? scoredRow.metro_counties : null,
         market_type: marketTypeDerived,
         last_scraped_at: scoredRow.scored_at ?? null,
         notes: null,
@@ -921,20 +923,32 @@ const CityScoring = () => {
       addScore("ease_of_operations", scoredRow.score_ease_of_operation);
       addScore("parent_mindset", scoredRow.score_parent_mindset);
 
-      // Best-effort evidence pull from legacy child tables. These are still
-      // keyed by legacy cities.id, so seeded-only rows will return empty.
-      // UI handles empty gracefully.
+      // Bridge to legacy `cities` table for historical evidence (signals,
+      // competitors, fetch_jobs). Those tables are still keyed by the
+      // legacy cities.id, so we match by city+state to find it. This is a
+      // temporary bridge until the legacy table is fully retired (B5).
+      const { data: legacyCity } = await supabase
+        .from("cities")
+        .select("id")
+        .ilike("city", city)
+        .ilike("state", stateNormalized)
+        .maybeSingle();
+      const legacyId: string | null = (legacyCity as any)?.id ?? null;
+      cityRow.legacy_city_id = legacyId;
+
+      // Best-effort evidence pull — try scored uuid first, fall back to legacy id.
+      const evidenceIds = [scoredRow.id, legacyId].filter((x): x is string => !!x);
       const [{ data: signals }, { data: comps }, { data: jobs }] = await Promise.all([
-        supabase.from("city_market_signals").select("*").eq("city_id", scoredRow.id),
+        supabase.from("city_market_signals").select("*").in("city_id", evidenceIds),
         supabase
           .from("city_competitors")
           .select("*")
-          .eq("city_id", scoredRow.id)
+          .in("city_id", evidenceIds)
           .order("created_at", { ascending: false }),
         supabase
           .from("city_fetch_jobs")
           .select("*")
-          .eq("city_id", scoredRow.id)
+          .in("city_id", evidenceIds)
           .eq("source", "sow_metric_coverage")
           .order("created_at", { ascending: false })
           .limit(1),

@@ -209,10 +209,8 @@ export function MarketDetailDrawer({
     const loadLiveEvidence = async () => {
       setLoading(true);
       try {
-        // cityId now references us_cities_scored.id. The historical
-        // signals/competitors/jobs tables are still keyed by legacy cities.id,
-        // so seeded-only rows will return empty until seed-on-demand wires
-        // these child tables to the new id. UI handles empty gracefully.
+        // cityId references us_cities_scored.id. Historical signals/jobs are
+        // still keyed by the legacy cities.id, so we bridge by city+state.
         const cityId = market.cityId;
         if (!cityId) {
           setSignals([]);
@@ -221,17 +219,29 @@ export function MarketDetailDrawer({
           return;
         }
 
+        // Bridge: find a matching legacy cities row by city+state so historical
+        // signals/competitors/fetch jobs (which still live on cities.id) show up.
+        const stateFull = market.state === "TX" ? "Texas" : market.state === "FL" ? "Florida" : market.state;
+        const { data: legacyCity } = await supabase
+          .from("cities")
+          .select("id")
+          .ilike("city", market.city)
+          .ilike("state", stateFull)
+          .maybeSingle();
+        const legacyId: string | null = (legacyCity as any)?.id ?? null;
+        const evidenceIds = [cityId, legacyId].filter((x): x is string => !!x);
+
         const [{ data: signalRows }, { data: competitorRows }, { data: jobRows }] = await Promise.all([
-          supabase.from("city_market_signals").select("*").eq("city_id", cityId),
+          supabase.from("city_market_signals").select("*").in("city_id", evidenceIds),
           supabase
             .from("city_competitors")
             .select("*")
-            .eq("city_id", cityId)
+            .in("city_id", evidenceIds)
             .order("created_at", { ascending: false }),
           supabase
             .from("city_fetch_jobs")
             .select("*")
-            .eq("city_id", cityId)
+            .in("city_id", evidenceIds)
             .eq("source", "sow_metric_coverage")
             .order("created_at", { ascending: false })
             .limit(1),
@@ -262,7 +272,7 @@ export function MarketDetailDrawer({
     };
 
     loadLiveEvidence();
-  }, [open, market.cityId, refreshVersion]);
+  }, [open, market.cityId, market.city, market.state, refreshVersion]);
 
   const handleExportRawSignals = () => {
     if (!signals.length) {
@@ -460,6 +470,9 @@ export function MarketDetailDrawer({
 
   const metroArea = (market as any).metroArea ?? null;
   const county = (market as any).county ?? null;
+  const metroCounties: string[] | null = Array.isArray((market as any).metroCounties)
+    ? (market as any).metroCounties
+    : null;
   const marketType = (market as any).marketType ?? null;
 
   const renderSignalRow = (signal: LiveSignal, key: string) => {
@@ -513,10 +526,10 @@ export function MarketDetailDrawer({
     dimmed = false,
   ) => {
     const used = metric.enabled && (status === "live" || status === "proxy");
-    const value = signal && status !== "missing" ? displayValue(signal.value) : "Not collected yet";
+    const value = signal && status !== "missing" ? displayValue(signal.value) : "Not seeded for this city yet";
     const sub =
       status === "missing" && metric.status !== "blocked"
-        ? "Pre-seeded score · audit pending"
+        ? "No backend value — composite uses pre-seeded category score"
         : status === "blocked"
         ? "Source unavailable"
         : relativeTime(signal?.updated_at);
@@ -582,6 +595,14 @@ export function MarketDetailDrawer({
             <span className="rounded-full bg-white px-2 py-0.5 font-semibold text-[#07142f]">City: {market.city}</span>
             {metroArea && <span className="rounded-full bg-white px-2 py-0.5">Metro: {metroArea}</span>}
             {county && <span className="rounded-full bg-white px-2 py-0.5">County: {county}</span>}
+            {metroCounties && metroCounties.length > 0 && (
+              <span
+                className="rounded-full bg-white px-2 py-0.5"
+                title="All counties covered by this metro area"
+              >
+                Metro counties: {metroCounties.join(", ")}
+              </span>
+            )}
             {marketType && <span className="rounded-full bg-white px-2 py-0.5">Type: {marketType}</span>}
           </div>
           <div className="mt-2 flex items-center justify-between gap-3">
@@ -759,8 +780,8 @@ export function MarketDetailDrawer({
                       ))}
                       {disabledRows.length > 0 && (
                         <>
-                          <div className="flex items-center justify-between border-t border-[#eef2f7] bg-[#fbfcff] px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#8794ab]">
-                            <span>Not in current scoring model</span>
+                          <div className="flex items-center justify-between border-t border-[#eef2f7] bg-[#fbfcff] px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#8794ab]" title="These metrics are shown for audit transparency but are excluded from the composite formula in the current scoring registry.">
+                            <span>Tracked, not used in score</span>
                             <span>{disabledRows.length}</span>
                           </div>
                           {disabledRows.map(({ metric, signal, status }) =>

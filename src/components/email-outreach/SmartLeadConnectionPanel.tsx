@@ -48,6 +48,10 @@ export function SmartLeadConnectionPanel() {
   const [recentEvents, setRecentEvents] = useState<
     Array<{ id: string; event_type: string; lead_email: string | null; received_at: string }>
   >([]);
+  const [lastSuccessfulCall, setLastSuccessfulCall] = useState<string | null>(
+    () => localStorage.getItem("smartlead_last_ok_call"),
+  );
+  const [webhookFired24h, setWebhookFired24h] = useState<boolean | null>(null);
 
   const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/smartlead-webhook`;
 
@@ -66,6 +70,9 @@ export function SmartLeadConnectionPanel() {
         setAccountEmail(accounts[0].from_email ?? accounts[0].username ?? null);
         setAccountName(accounts[0].from_name ?? null);
       }
+      const now = new Date().toISOString();
+      localStorage.setItem("smartlead_last_ok_call", now);
+      setLastSuccessfulCall(now);
       setState("ok");
     } catch (e) {
       setState("error");
@@ -73,6 +80,7 @@ export function SmartLeadConnectionPanel() {
       toast.error("SmartLead connection failed");
     }
   };
+
 
   const loadWebhooksForAllCampaigns = async (camps: Campaign[]) => {
     setLoadingWebhooks(true);

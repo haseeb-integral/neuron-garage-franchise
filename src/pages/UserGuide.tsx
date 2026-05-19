@@ -13,7 +13,6 @@ import {
   ArrowRight,
   CheckCircle2,
   Cog,
-  MessageCircle,
 } from "lucide-react";
 
 /**

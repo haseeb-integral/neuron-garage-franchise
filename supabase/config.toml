@@ -1,1 +1,4 @@
 project_id = "hqvmltmboakixpwapzfe"
+
+[functions.ai-city-query]
+verify_jwt = false

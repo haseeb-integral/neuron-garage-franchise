@@ -589,9 +589,10 @@ const CityScoring = () => {
   }, []);
 
   const baseRankedMarkets = useMemo<RankedMarket[]>(
-    // Canonical list is the seeded backend dataset. Only fall back to sample
-    // rows before the seeded list loads.
-    () => (liveRankedMarkets.length > 0 ? liveRankedMarkets : sampleRankedMarkets()),
+    // Single source of truth: us_cities_scored. No sample fallback — if the
+    // seeded list hasn't loaded yet, the list is empty (loading state) rather
+    // than showing mock cities that don't exist in the backend.
+    () => liveRankedMarkets,
     [liveRankedMarkets],
   );
 

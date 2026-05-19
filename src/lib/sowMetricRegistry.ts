@@ -77,8 +77,8 @@ export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
   { key: "avg_peak_summer_temperature", category: "demand", label: "Avg Peak Summer Temperature",
     description: "Average July/August high. Extreme heat pushes parents toward indoor or AC-required camps.",
     enabled: true,  weight_within_category: 0.04, status: "live" },
-  { key: "days_above_100f", category: "demand", label: "Number of 100°+ Days",
-    description: "Count of dangerously hot days. High counts limit operating days for outdoor camps.",
+  { key: "days_above_90f", category: "demand", label: "Number of 90°+ Days",
+    description: "Count of hot days (≥90°F). High counts push parents toward indoor / AC-required camps.",
     enabled: true,  weight_within_category: 0.03, status: "live" },
 
   // ─────────── PRICING POWER ───────────

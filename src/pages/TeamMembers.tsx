@@ -180,13 +180,16 @@ Please log in and change your password using the "Forgot password?" link on the 
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Team members</h1>
-          <p className="text-sm text-muted-foreground">Manage team members and their roles.</p>
+          <p className="text-sm text-muted-foreground">Neuron Garage team — access levels and contacts.</p>
         </div>
-        <Button onClick={() => setOpen(true)}>
-          <UserPlus className="w-4 h-4 mr-2" />
-          Add user
-        </Button>
+        {isAdmin && (
+          <Button onClick={() => setOpen(true)}>
+            <UserPlus className="w-4 h-4 mr-2" />
+            Add user
+          </Button>
+        )}
       </div>
+
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">

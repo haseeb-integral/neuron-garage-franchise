@@ -595,6 +595,14 @@ export function MarketDetailDrawer({
             <span className="rounded-full bg-white px-2 py-0.5 font-semibold text-[#07142f]">City: {market.city}</span>
             {metroArea && <span className="rounded-full bg-white px-2 py-0.5">Metro: {metroArea}</span>}
             {county && <span className="rounded-full bg-white px-2 py-0.5">County: {county}</span>}
+            {metroCounties && metroCounties.length > 0 && (
+              <span
+                className="rounded-full bg-white px-2 py-0.5"
+                title="All counties covered by this metro area"
+              >
+                Metro counties: {metroCounties.join(", ")}
+              </span>
+            )}
             {marketType && <span className="rounded-full bg-white px-2 py-0.5">Type: {marketType}</span>}
           </div>
           <div className="mt-2 flex items-center justify-between gap-3">

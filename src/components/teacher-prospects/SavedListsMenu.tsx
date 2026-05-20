@@ -15,11 +15,27 @@ import { toast } from "sonner";
 import type { SourceFilter } from "@/lib/teacherSourceLabels";
 
 export type TeacherListFilters = {
-  cityFilter: string;
+  /** Empty array = all cities. */
+  cityFilters: string[];
   sourceFilter: SourceFilter;
   search: string;
   hideInOutreach: boolean;
+  /** @deprecated kept for back-compat with v1 saved rows */
+  cityFilter?: string;
 };
+
+/** Normalize saved rows that may pre-date multi-city (had `cityFilter: string`). */
+export function normalizeListFilters(f: Partial<TeacherListFilters> | null | undefined): TeacherListFilters {
+  const raw = f ?? {};
+  const explicit = Array.isArray(raw.cityFilters) ? raw.cityFilters : null;
+  const legacy = typeof raw.cityFilter === "string" && raw.cityFilter && raw.cityFilter !== "All" ? [raw.cityFilter] : [];
+  return {
+    cityFilters: explicit && explicit.length ? explicit : legacy,
+    sourceFilter: (raw.sourceFilter ?? "all") as SourceFilter,
+    search: raw.search ?? "",
+    hideInOutreach: !!raw.hideInOutreach,
+  };
+}
 
 type SavedRow = {
   id: string;

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Trash2, MailPlus, ExternalLink, Loader2, AlertCircle } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { RefreshCw, Trash2, MailPlus, ExternalLink, Loader2, AlertCircle, ChevronDown, Check } from "lucide-react";
 import { syncAndGetRealCampaigns, isRealCampaignId, type RealCampaign } from "@/lib/smartleadCampaigns";
 
 interface QueueRow {

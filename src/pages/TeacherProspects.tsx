@@ -302,11 +302,70 @@ const TeacherProspects = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prospects]);
 
-  const handleExport = () => {
-    if (prospects.length === 0) { toast.info("No prospects to export on this page."); return; }
-    downloadCsv(prospects);
-    toast.success(`Exported ${prospects.length.toLocaleString()} rows (current page) to CSV.`);
+  // Build the same query as loadPage but without pagination — used for full-export
+  const buildFilteredQuery = () => {
+    let q = supabase
+      .from("teacher_prospects")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (cityFilter && cityFilter !== "All") q = q.eq("city", cityFilter);
+    if (debouncedSearch?.trim()) {
+      const s = debouncedSearch.trim().replace(/[%_]/g, "");
+      q = q.or(`name.ilike.%${s}%,school.ilike.%${s}%,city.ilike.%${s}%,email.ilike.%${s}%`);
+    }
+    if (sourceFilter === "smartlead") q = q.ilike("enrichment_source", "smartlead%");
+    else if (sourceFilter === "linkedin") q = q.ilike("enrichment_source", "linkedin%");
+    else if (sourceFilter === "needs_email") q = q.eq("needs_email_enrichment", true);
+    return q;
   };
+
+  const handleExport = async () => {
+    const expected = stats.total || totalCount;
+    if (expected === 0) { toast.info("Nothing to export with the current filters."); return; }
+    const t = toast.loading(`Exporting ${expected.toLocaleString()} rows…`);
+    const chunkSize = 1000;
+    const all: TeacherProspect[] = [];
+    let from = 0;
+    try {
+      // page through Supabase 1k-row cap
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await buildFilteredQuery().range(from, from + chunkSize - 1);
+        if (error) throw error;
+        const batch = (data ?? []).map((r) => mapRow(r as unknown as DbRow));
+        all.push(...batch);
+        if (batch.length < chunkSize) break;
+        from += chunkSize;
+        if (from > 50000) break; // safety
+      }
+      downloadCsv(all, "all-filtered");
+      toast.success(`Exported ${all.length.toLocaleString()} rows to CSV.`, { id: t });
+    } catch (e) {
+      toast.error(`Export failed: ${e instanceof Error ? e.message : String(e)}`, { id: t });
+    }
+  };
+
+  const handleExportSelected = async () => {
+    const selectedProspects = prospects.filter((p) => selected.includes(p.id));
+    if (selectedProspects.length === 0) return;
+    downloadCsv(selectedProspects, "selected");
+    toast.success(`Exported ${selectedProspects.length} selected ${selectedProspects.length === 1 ? "row" : "rows"} to CSV.`);
+  };
+
+  const handleBulkAddTag = async (tag: string) => {
+    const selectedProspects = prospects.filter((p) => selected.includes(p.id));
+    const uuids = selectedProspects.map((p) => p.uuid);
+    if (uuids.length === 0) return;
+    // Fetch current tags, then write merged arrays per row (postgrest can't array_append in bulk via single update)
+    await Promise.all(selectedProspects.map(async (p) => {
+      const next = Array.from(new Set([...(p.tags ?? []), tag]));
+      await supabase.from("teacher_prospects").update({ tags: next }).eq("id", p.uuid);
+    }));
+    setProspects((prev) => prev.map((x) => uuids.includes(x.uuid) ? { ...x, tags: Array.from(new Set([...(x.tags ?? []), tag])) } : x));
+    toast.success(`Tag "${tag}" applied to ${uuids.length} ${uuids.length === 1 ? "teacher" : "teachers"}.`);
+  };
+
+
 
   const toggleSelect = (id: number) => setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   const toggleAll = () => {

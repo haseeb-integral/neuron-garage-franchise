@@ -567,17 +567,37 @@ const TeacherProspects = () => {
           }
         />
 
-        {/* 3 honest stat cards — values come from server RPC, always reflect filter scope */}
+        {/* 3 honest stat cards — values come from server RPC, always reflect filter scope.
+            stats === null → skeleton. Never render literal "0" while loading. */}
         <div className="mb-3 grid gap-3 sm:grid-cols-3">
-          <StatCard title="Total Imported" value={stats.total.toLocaleString()} sub={`across ${stats.cities.toLocaleString()} cities`} />
-          <StatCard title="Email-Ready" value={stats.withEmail.toLocaleString()} sub="can send to SmartLead today" tone="emerald" />
+          <StatCard
+            title="Total Imported"
+            value={stats ? stats.total.toLocaleString() : "—"}
+            sub={stats ? `across ${stats.cities.toLocaleString()} cities` : undefined}
+            loading={stats === null && !statsError}
+            error={statsError}
+            onRetry={loadStats}
+          />
+          <StatCard
+            title="Email-Ready"
+            value={stats ? stats.withEmail.toLocaleString() : "—"}
+            sub="can send to SmartLead today"
+            tone="emerald"
+            loading={stats === null && !statsError}
+            error={statsError}
+            onRetry={loadStats}
+          />
           <StatCard
             title="Needs Email Enrichment"
-            value={stats.needsEnrichment.toLocaleString()}
+            value={stats ? stats.needsEnrichment.toLocaleString() : "—"}
             tone="amber"
             sub={<button onClick={() => toast.info("Enrichment tool integration coming soon.")} className="text-[11px] font-bold text-[#174be8]">Connect Enrichment Tool →</button>}
+            loading={stats === null && !statsError}
+            error={statsError}
+            onRetry={loadStats}
           />
         </div>
+
 
         <div className="grid items-start gap-3 xl:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-w-0 space-y-3">

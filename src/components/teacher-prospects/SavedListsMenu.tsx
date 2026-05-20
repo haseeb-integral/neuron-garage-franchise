@@ -61,10 +61,7 @@ export function SavedListsMenu({ current, onApply }: Props) {
   const handleSave = async () => {
     if (!name.trim()) { toast.error("Give the list a name."); return; }
     setSaving(true);
-    const { data: u } = await supabase.auth.getUser();
-    if (!u?.user) { toast.error("Sign in required."); setSaving(false); return; }
     const { error } = await supabase.from("teacher_saved_lists").insert({
-      user_id: u.user.id,
       name: name.trim(),
       notes: notes.trim() || null,
       filters: current as unknown as Record<string, unknown>,

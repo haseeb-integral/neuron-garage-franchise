@@ -320,6 +320,10 @@ const TeacherProspects = () => {
   };
 
   const handleExport = async () => {
+    // If user has rows selected, header Export should export ONLY those (avoids accidental 11k dump)
+    if (selected.length > 0) {
+      return handleExportSelected();
+    }
     const expected = stats.total || totalCount;
     if (expected === 0) { toast.info("Nothing to export with the current filters."); return; }
     const t = toast.loading(`Exporting ${expected.toLocaleString()} rows…`);
@@ -442,7 +446,7 @@ const TeacherProspects = () => {
           action={
             <div className="flex flex-wrap items-center gap-2">
               <Button size="sm" variant="outline" onClick={handleExport} className="h-9 rounded-lg border-[#dbe4f2] bg-white px-4 text-[#174be8] shadow-none hover:bg-[#f4f7ff]">
-                <Download size={14} /> Export CSV
+                <Download size={14} /> {selected.length > 0 ? `Export ${selected.length} Selected` : "Export CSV"}
               </Button>
               <Button size="sm" variant="outline" onClick={() => setImportOpen(true)} className="h-9 rounded-lg border-[#dbe4f2] bg-white px-4 text-[#174be8] shadow-none hover:bg-[#f4f7ff]">
                 <Upload size={14} /> Import CSV

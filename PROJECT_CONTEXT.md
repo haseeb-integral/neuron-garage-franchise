@@ -99,7 +99,7 @@ No storage buckets configured.
 - `enrich-school-staff` — staff/teacher enrichment for a given school
 - `fetch-teacher-prospects` — Apify-driven teacher prospect pull per city
 - `smartlead-proxy` — server-side proxy to the SmartLead REST API (lists/creates campaigns, pushes leads, pulls analytics overview, manages email accounts, runs connection-health check). Uses `SMARTLEAD_API_KEY`. Rate-limit aware (10 req / 2s).
-- `smartlead-webhook` — public webhook receiver for SmartLead events (`EMAIL_SENT`, `EMAIL_REPLIED`, `EMAIL_BOUNCED`, `EMAIL_OPENED`, `EMAIL_CLICKED`). Writes to `smartlead_events`; classifies replies into `reply_intent` (`HOT` / `NOT_INTERESTED` / `OOO` / `NEUTRAL`) via keyword classifier.
+- `smartlead-webhook` — public webhook receiver for SmartLead events (`EMAIL_SENT`, `EMAIL_REPLIED`, `EMAIL_BOUNCED`, `EMAIL_OPENED`, `EMAIL_CLICKED`, `LEAD_UNSUBSCRIBED`). Two-tier classifier on replies: (1) keyword/regex pre-pass covering the 7 Smartlead-mirror buckets, (2) Lovable AI fallback via `gemini-2.5-flash-lite` (uses `LOVABLE_API_KEY`) for anything regex misses. Writes `reply_intent`, `reply_intent_confidence`, `reply_intent_reason` to `smartlead_events`. **No `HOT`/`NEUTRAL` anymore** — see GLOSSARY "Reply Intent (7-bucket)".
 - Shared modules: `_shared/cityGeo.ts`, `_shared/metricFetchers.ts`, `_shared/scoring.ts`
 
 ---

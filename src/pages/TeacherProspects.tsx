@@ -172,6 +172,9 @@ const TeacherProspects = () => {
   const [active, setActive] = useState<TeacherProspect | null>(null);
   const [selected, setSelected] = useState<number[]>([]);
   const [promotedUuids, setPromotedUuids] = useState<Set<string>>(new Set());
+  const [promotedInfo, setPromotedInfo] = useState<Map<string, { campaign_id: string | null; state: string }>>(new Map());
+  const [allPromotedIds, setAllPromotedIds] = useState<string[]>([]);
+  const [campaignNames, setCampaignNames] = useState<Map<string, string>>(new Map());
   const [campaignModalOpen, setCampaignModalOpen] = useState(false);
   const [campaignTargets, setCampaignTargets] = useState<{ uuid: string; name: string }[]>([]);
   const [searchParams, setSearchParams] = useSearchParams();

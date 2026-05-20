@@ -143,32 +143,38 @@ export function ReplyTriagePanel() {
 
   const setBusy = (id: string, v: boolean) => setActing((p) => { const n = { ...p }; if (v) n[id] = true; else delete n[id]; return n; });
 
-  // Optimistic remove from local list; returns a restore() to roll back on error.
-  const optimisticRemove = (queueId: string) => {
-    let removed: TriageCard | null = null;
-    let index = -1;
-    setCards((prev) => {
-      index = prev.findIndex((x) => x.queueId === queueId);
-      if (index === -1) return prev;
-      removed = prev[index];
-      const next = prev.slice();
-      next.splice(index, 1);
-      return next;
-    });
+  const visible = cards.filter((c) => {
+    // Always show cards just handled in this session so the user sees the greyed-out
+    // result of their action, even when the active filter would normally hide it.
+    if (justHandled.has(c.queueId)) return true;
+    if (filter === "all") return true;
+    if (filter === "needs_action") return c.reply.category === "INFO_REQUEST" || (c.reply.confidence ?? 0) < 0.6;
+    if (filter === "promotable") return isAutoPromotable(c.reply.category, c.reply.confidence) && !["promoted", "snoozed", "suppressed"].includes(c.state);
+    if (filter === "handled") return ["promoted", "snoozed", "suppressed"].includes(c.state);
+    return true;
+  });
+
+  const setBusy = (id: string, v: boolean) => setActing((p) => { const n = { ...p }; if (v) n[id] = true; else delete n[id]; return n; });
+
+  // Optimistically mark a card as handled locally (state change, no removal).
+  // Returns a restore() to revert on error.
+  const optimisticMarkHandled = (queueId: string, newState: "promoted" | "snoozed" | "suppressed") => {
+    let prevState: string | null = null;
+    setCards((prev) => prev.map((x) => {
+      if (x.queueId !== queueId) return x;
+      prevState = x.state;
+      return { ...x, state: newState };
+    }));
+    setJustHandled((s) => { const n = new Set(s); n.add(queueId); return n; });
     return () => {
-      if (!removed) return;
-      setCards((prev) => {
-        const next = prev.slice();
-        const at = Math.min(index, next.length);
-        next.splice(at, 0, removed!);
-        return next;
-      });
+      setCards((prev) => prev.map((x) => (x.queueId === queueId && prevState !== null) ? { ...x, state: prevState! } : x));
+      setJustHandled((s) => { const n = new Set(s); n.delete(queueId); return n; });
     };
   };
 
   const promote = async (c: TriageCard, opts: { meeting?: boolean; manual?: boolean } = {}) => {
     setBusy(c.queueId, true);
-    const restore = optimisticRemove(c.queueId);
+    const restore = optimisticMarkHandled(c.queueId, "promoted");
     const previousState = c.state;
     try {
       const [first, ...rest] = (c.name ?? "").split(/\s+/);
@@ -185,23 +191,42 @@ export function ReplyTriagePanel() {
         fit_tag: opts.meeting ? "Meeting Requested" : "Interested",
         assigned_to: opts.meeting ? "needs_meeting" : opts.manual ? "manual_promote" : "auto_promote",
       }).select("id").single();
-      if (insErr) throw insErr;
-      const candidateId = inserted?.id as string | undefined;
+
+      let candidateId: string | undefined = inserted?.id;
+      let wasAlreadyPromoted = false;
+
+      if (insErr) {
+        // Duplicate key (already promoted before) — recover gracefully instead of bailing.
+        const code = (insErr as { code?: string }).code;
+        if (code === "23505") {
+          wasAlreadyPromoted = true;
+          const { data: existing } = await supabase
+            .from("candidates")
+            .select("id")
+            .eq("email", c.email)
+            .maybeSingle();
+          candidateId = existing?.id;
+        } else {
+          throw insErr;
+        }
+      }
 
       const { error: updErr } = await supabase.from("outreach_queue").update({ state: "promoted" }).eq("id", c.queueId);
       if (updErr) {
-        // Roll back the candidate insert so Kanban + Triage stay consistent
-        if (candidateId) await supabase.from("candidates").delete().eq("id", candidateId);
+        if (candidateId && !wasAlreadyPromoted) await supabase.from("candidates").delete().eq("id", candidateId);
         throw updErr;
       }
 
-      toast.success(`Promoted ${c.name} to Pipeline`, {
+      const msg = wasAlreadyPromoted
+        ? `${c.name} was already in the Pipeline — queue marked promoted.`
+        : `Promoted ${c.name} to Pipeline`;
+      toast.success(msg, {
         duration: 8000,
         action: candidateId ? {
           label: "View in Pipeline",
           onClick: () => navigate(`/candidate-pipeline?candidate=${candidateId}`),
         } : undefined,
-        cancel: {
+        cancel: wasAlreadyPromoted ? undefined : {
           label: "Undo",
           onClick: async () => {
             if (candidateId) await supabase.from("candidates").delete().eq("id", candidateId);
@@ -214,7 +239,7 @@ export function ReplyTriagePanel() {
       });
     } catch (e) {
       restore();
-      toast.error(`Promote failed: ${e instanceof Error ? e.message : String(e)}`);
+      toast.error(`Promote failed: ${fmtErr(e)}`);
     } finally { setBusy(c.queueId, false); }
   };
 

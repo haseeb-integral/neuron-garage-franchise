@@ -39,7 +39,18 @@ See **`TEACHER_IDEAL_PROFILE.md`** for who we are recruiting and why — read th
 
 ---
 
+### Outreach Queue — Teacher Search → SmartLead push path (shipped May 20)
+- New `outreach_queue` table + `OutreachQueuePanel` on `/email-outreach`. Parallel to the older Import Wizard / `prospects_staging` flow — no CSV step.
+- States: `queued` → `assigned` → `sending` → `sent` (stores `smartlead_lead_id`, `pushed_at`) or `failed` (stores `last_error`).
+- Push wired to `smartlead-proxy → POST campaigns/{id}/leads` (single-lead payload built from `teacher_prospects` row).
+- `AddToCampaignModal` dropdown now filters `campaign_cache` to real SmartLead campaigns only (numeric id + real lifecycle status), so synthetic cache rows (e.g. legacy "Analytics Overview" analytics-fallback marker) can't be selected. Existing rows with a synthetic `campaign_id` show a red "invalid — reassign" pill and Push is blocked.
+- One-time cleanup (May 20): deleted `campaign_cache.id = 'smartlead_analytics_overview'`; reset Anna Weisberg's row to `queued` with `campaign_id = NULL`.
+- **Still open:** UI in Teacher Search to show which campaign a teacher is currently queued in (currently only visible from the Outreach Queue panel side). Also: webhook hookup from `smartlead_events` back into `outreach_queue` (auto-flip `sent → opened/replied/bounced`).
+
+---
+
 ## ✅ Completed — Day 1 (May 12–14)
+
 
 ~~**Task 1: Fix "Dallas-Fort Worth" metro label bug**~~ ✅ May 12
 

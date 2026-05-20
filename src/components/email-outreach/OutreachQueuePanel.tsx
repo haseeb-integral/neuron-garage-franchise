@@ -274,3 +274,81 @@ export function OutreachQueuePanel() {
     </div>
   );
 }
+
+function CampaignPicker({
+  assignedId, assignedName, realCampaign, locked, options, busy, syncing, onPick, onSync,
+}: {
+  assignedId: string | null;
+  assignedName?: string;
+  realCampaign: boolean;
+  locked: boolean;
+  options: RealCampaign[];
+  busy: boolean;
+  syncing: boolean;
+  onPick: (id: string) => void;
+  onSync: () => void;
+}) {
+  // Locked (sent/sending): show static pill, no menu
+  if (locked && realCampaign) {
+    return (
+      <span className="inline-flex max-w-full items-center gap-1 truncate rounded-md bg-[#eef4ff] px-2 py-1 text-xs font-bold text-[#174be8]" title={assignedName ?? `id ${assignedId}`}>
+        <span className="truncate">{assignedName ?? `id ${assignedId}`}</span>
+      </span>
+    );
+  }
+
+  const triggerLabel = realCampaign
+    ? (assignedName ?? `id ${assignedId}`)
+    : assignedId
+      ? "Invalid — pick one"
+      : "Select campaign…";
+
+  const triggerClass = realCampaign
+    ? "border-[#dbe4f2] bg-[#eef4ff] text-[#174be8]"
+    : assignedId
+      ? "border-[#fecaca] bg-[#fef2f2] text-[#b91c1c]"
+      : "border-[#dbe4f2] bg-white text-[#07142f]";
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        disabled={busy}
+        className={`inline-flex h-7 w-full max-w-[200px] items-center justify-between gap-1 rounded-md border px-2 text-xs font-bold hover:bg-[#fafbfd] disabled:opacity-50 ${triggerClass}`}
+        title={triggerLabel}
+      >
+        <span className="flex min-w-0 items-center gap-1">
+          {!realCampaign && assignedId && <AlertCircle size={11} className="shrink-0" />}
+          <span className="truncate">{triggerLabel}</span>
+        </span>
+        {busy ? <Loader2 size={11} className="shrink-0 animate-spin" /> : <ChevronDown size={12} className="shrink-0 opacity-60" />}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="max-h-[300px] w-[280px] overflow-y-auto">
+        <DropdownMenuLabel className="text-[10px] uppercase tracking-wide text-[#8794ab]">
+          {realCampaign ? "Change campaign" : "Pick a SmartLead campaign"}
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {options.length === 0 ? (
+          <div className="px-2 py-3 text-xs text-[#526078]">
+            <div className="mb-2">No SmartLead campaigns loaded.</div>
+            <button onClick={onSync} disabled={syncing} className="inline-flex items-center gap-1 rounded border border-[#dbe4f2] bg-white px-2 py-1 text-[11px] font-bold text-[#174be8] hover:bg-[#eef4ff] disabled:opacity-50">
+              {syncing ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />} Sync now
+            </button>
+          </div>
+        ) : (
+          options.map((c) => {
+            const isCurrent = c.id === assignedId;
+            return (
+              <DropdownMenuItem key={c.id} onSelect={() => !isCurrent && onPick(c.id)} className="flex items-center justify-between gap-2 text-xs">
+                <span className="flex min-w-0 items-center gap-1.5">
+                  {isCurrent && <Check size={12} className="shrink-0 text-[#174be8]" />}
+                  <span className="truncate">{c.name}</span>
+                </span>
+                {c.status && <span className="shrink-0 text-[10px] uppercase text-[#8794ab]">{c.status}</span>}
+              </DropdownMenuItem>
+            );
+          })
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}

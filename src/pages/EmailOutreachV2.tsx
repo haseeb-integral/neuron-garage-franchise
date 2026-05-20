@@ -21,6 +21,7 @@ import { AnalyticsPanel } from "@/components/email-outreach/AnalyticsPanel";
 import { NewCampaignDrawer } from "@/components/email-outreach/NewCampaignDrawer";
 import { EmailAccountsPanel } from "@/components/email-outreach/EmailAccountsPanel";
 import { OutreachQueuePanel } from "@/components/email-outreach/OutreachQueuePanel";
+import { syncAndGetRealCampaigns } from "@/lib/smartleadCampaigns";
 
 type SLCampaign = { id: number | string; name?: string; status?: string; created_at?: string };
 

@@ -419,7 +419,7 @@ function TriageCardRow({ card, busy, onPromote, onManualPromote, onSnooze, onSup
   }
 
   return (
-    <div className="rounded-xl border border-[#eef2f7] bg-white p-3 transition hover:border-[#dbe4f2] hover:shadow-sm">
+    <div className={`rounded-xl border bg-white p-3 transition ${handled ? "border-[#e2e8f0] bg-[#f8fafc] opacity-70" : "border-[#eef2f7] hover:border-[#dbe4f2] hover:shadow-sm"}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">

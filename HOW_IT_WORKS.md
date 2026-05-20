@@ -79,10 +79,16 @@ What the user gets out of each step:
   - **Min gap between emails** enforced at 3 minutes minimum (SmartLead `/campaigns/{id}/schedule` rejects values < 3).
   - **Sequence body today does not include `{{unsubscribe}}`** — blocker tracked as OPEN_TASKS 17f. Real (non-test) sends should not launch until that merge tag is added (CAN-SPAM).
 - **Import Leads wizard (`ImportLeadsWizard.tsx`)** — Step 1 picks a Source (Apollo, Clay, LinkedIn Navigator, CSV, Manual). Step 2 maps fields. Step 3 QA-stages rows into `prospects_staging`. Step 4 pushes approved rows to SmartLead in a batch.
-- **Webhook → Inbox loop:** SmartLead POSTs to `smartlead-webhook` → row inserted into `smartlead_events` (with `reply_intent` set for replies) → Postgres realtime → Inbox panel updates without refresh. From there: click a HOT reply → "Promote to Pipeline" → row created in `candidates` at the "New Lead" stage (manual today; auto-promotion on HOT intent is a future hardening item).
+- **Webhook → Inbox → Pipeline loop:** SmartLead POSTs to `smartlead-webhook` → row inserted into `smartlead_events` (replies classified into 7 buckets with confidence + reason via regex pre-pass → Lovable AI `gemini-2.5-flash-lite` fallback) → Postgres realtime → Inbox panel + Outreach Queue row update live. The Queue row's action is **category-driven** (`src/lib/replyCategories.ts::isAutoPromotable`):
+  - `INTERESTED` / `MEETING_REQUEST` @ confidence ≥ 0.7 → **Promote to Pipeline** (creates `candidates` row at "New Lead")
+  - `INFO_REQUEST` → **Reply needed** (no promote)
+  - `SOFT_NO` → **Snooze 6mo** (sets `outreach_queue.snoozed_until`)
+  - `WRONG_PERSON` → **Capture referral**
+  - `NOT_INTERESTED` / `OOO` → read-only
+  A `⋯` menu on every row exposes Manual Promote / Snooze 3mo / 6mo / Suppress regardless of category. The summer-camp failure mode ("not available for summer" being treated as HOT) is closed — that reply now classifies as `SOFT_NO` and never reaches a Promote button.
 - **Open-rate caveat:** Gmail's image proxy and Apple Mail Privacy Protection pre-fetch every tracking pixel as soon as an email lands, so the **Open Rate metric is inflated to ~100% on those inboxes**. Trust **clicks** and **replies** as real engagement signals, not opens. Tooltip on the Analytics panel is tracked as OPEN_TASKS 17g.
 - **AI personalization** continues to run through `LOVABLE_API_KEY` for email-body generation.
-- **Today's status (May 19):** End-to-end live and proven via Gmail `+alias` test loop (5 leads → send → reply → Inbox → manual Promote to Pipeline). Pause/Resume/Stop verified. **Not yet ready for real teacher sends** — see blockers above + need Teacher Search promotion path (blocked on Brett teacher-source decision).
+- **Today's status (May 20):** End-to-end live with the 7-bucket classifier. Verified SOFT_NO replies show Snooze instead of Promote; manual override menu on all rows; legacy `HOT`/`NEUTRAL` rows backfilled (`HOT→INTERESTED`, `NEUTRAL→INFO_REQUEST @ 0.3`). Pause/Resume/Stop verified earlier. Still not ready for real teacher sends — blocked on Brett teacher-source decision.
 
 - **Outreach Queue panel (`OutreachQueuePanel.tsx`, added May 20):** Newer per-teacher push path that bypasses the CSV Import Wizard. Reads `outreach_queue` (any rows added via Teacher Search → "Add to Campaign"). Each row carries a lifecycle `state`:
   - `queued` — added to outreach but no SmartLead campaign chosen yet (draft).

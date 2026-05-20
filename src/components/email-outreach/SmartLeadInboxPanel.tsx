@@ -3,7 +3,8 @@ import { Loader2, RefreshCw, Inbox, Mail, AlertTriangle, UserMinus, Tag, MoreHor
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { CATEGORY_META, REPLY_CATEGORIES, categoryMeta, type ReplyCategory } from "@/lib/replyCategories";
+import { CATEGORY_META, REPLY_CATEGORIES, type ReplyCategory } from "@/lib/replyCategories";
+import { ReplyCategoryChip, SourceBadge } from "./ReplyCategoryChip";
 
 interface EventRow {
   id: string;
@@ -144,9 +145,7 @@ export function SmartLeadInboxPanel() {
       ) : (
         <ul className="divide-y divide-[#eef2f7] rounded-xl border border-[#eef2f7]">
           {events.map((e) => {
-            const meta = categoryMeta(e.reply_intent);
             const isUnread = e.event_type === "EMAIL_REPLIED" && e.received_at > lastViewed;
-            const conf = e.reply_intent_confidence;
             const isReply = e.event_type === "EMAIL_REPLIED";
             return (
               <li key={e.id} className={`flex items-start gap-3 p-3 hover:bg-[#f7faff] ${isUnread ? "bg-[#fbfdff]" : ""}`}>
@@ -155,16 +154,18 @@ export function SmartLeadInboxPanel() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm">
                       <span className="font-semibold text-[#07142f]">{e.event_type}</span>
-                      {meta && (
-                        <span
-                          className={`inline-flex h-5 items-center gap-1 rounded-md px-2 text-[10px] font-bold ${meta.cls}`}
-                          title={`${meta.description}${conf != null ? ` · confidence ${(conf * 100).toFixed(0)}%` : ""}${e.reply_intent_overridden_by ? " · manually set" : ""}`}
-                        >
-                          {meta.short}
-                          {conf != null && conf < 0.6 && (
-                            <span className="opacity-70">?</span>
-                          )}
-                        </span>
+                      {isReply && e.reply_intent && (
+                        <>
+                          <ReplyCategoryChip data={{
+                            category: e.reply_intent as ReplyCategory,
+                            confidence: e.reply_intent_confidence,
+                            reason: e.reply_intent_reason,
+                            overriddenBy: e.reply_intent_overridden_by,
+                            message: e.reply_message,
+                            receivedAt: e.received_at,
+                          }} />
+                          <SourceBadge overriddenBy={e.reply_intent_overridden_by} />
+                        </>
                       )}
                       {e.lead_email && (
                         <span className="truncate text-[#5a6b85]">· {e.lead_email}</span>

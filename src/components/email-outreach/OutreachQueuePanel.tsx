@@ -4,8 +4,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { RefreshCw, Trash2, MailPlus, ExternalLink, Loader2, AlertCircle, ChevronDown, Check, MoreHorizontal, Send, Pause, UserX, UserPlus, Sparkles, CalendarClock } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { syncAndGetRealCampaigns, isRealCampaignId, type RealCampaign } from "@/lib/smartleadCampaigns";
-import { CATEGORY_META, REPLY_CATEGORIES, categoryMeta, isAutoPromotable, type ReplyCategory } from "@/lib/replyCategories";
+import { CATEGORY_META, REPLY_CATEGORIES, isAutoPromotable, type ReplyCategory } from "@/lib/replyCategories";
+import { ReplyCategoryChip, SourceBadge, QueueStateChip } from "./ReplyCategoryChip";
 
 interface QueueRow {
   id: string;
@@ -25,6 +27,8 @@ interface LatestReply {
   reply_intent: ReplyCategory | null;
   reply_intent_confidence: number | null;
   reply_intent_reason: string | null;
+  reply_intent_overridden_by: string | null;
+  reply_message: string | null;
   received_at: string;
 }
 
@@ -93,7 +97,7 @@ export function OutreachQueuePanel() {
     if (emails.length) {
       const { data: events } = await supabase
         .from("smartlead_events")
-        .select("lead_email, reply_intent, reply_intent_confidence, reply_intent_reason, received_at")
+        .select("lead_email, reply_intent, reply_intent_confidence, reply_intent_reason, reply_intent_overridden_by, reply_message, received_at")
         .eq("event_type", "EMAIL_REPLIED")
         .in("lead_email", emails)
         .order("received_at", { ascending: false })
@@ -106,6 +110,8 @@ export function OutreachQueuePanel() {
           reply_intent: (ev.reply_intent ?? null) as ReplyCategory | null,
           reply_intent_confidence: ev.reply_intent_confidence,
           reply_intent_reason: ev.reply_intent_reason,
+          reply_intent_overridden_by: ev.reply_intent_overridden_by,
+          reply_message: ev.reply_message,
           received_at: ev.received_at,
         };
       }
@@ -335,7 +341,7 @@ export function OutreachQueuePanel() {
                   const realCampaign = isRealCampaignId(r.campaign_id);
                   const emailKey = r.teacher_prospects?.email?.toLowerCase();
                   const reply = emailKey ? latestReplyByEmail[emailKey] : undefined;
-                  const meta = categoryMeta(reply?.reply_intent ?? null);
+                  const hasReply = !!reply?.reply_intent;
                   return (
                     <tr key={r.id} className="border-b border-[#edf2f8] last:border-0 hover:bg-[#fafbfd]">
                       <td className="py-2 pr-3 font-semibold">{r.teacher_prospects?.name ?? "—"}</td>
@@ -360,16 +366,20 @@ export function OutreachQueuePanel() {
                       <td className="py-2 pr-3">
                         <div className="flex flex-col gap-1">
                           <span className={`inline-flex w-fit items-center rounded-md px-1.5 py-0.5 text-[11px] font-bold ${stateTone[r.state] ?? "bg-[#eef2f7] text-[#526078]"}`}>{r.state}</span>
-                          {meta && (
-                            <span
-                              className={`inline-flex w-fit items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold ${meta.cls}`}
-                              title={`${meta.description}${reply?.reply_intent_confidence != null ? ` · ${(reply.reply_intent_confidence * 100).toFixed(0)}% confidence` : ""}${reply?.reply_intent_reason ? ` · ${reply.reply_intent_reason}` : ""}`}
-                            >
-                              Replied · {meta.short}
-                            </span>
-                          )}
-                          {r.state === "snoozed" && r.snoozed_until && (
-                            <span className="text-[10px] text-[#8794ab]">until {new Date(r.snoozed_until).toLocaleDateString()}</span>
+                          {hasReply ? (
+                            <div className="flex flex-wrap items-center gap-1">
+                              <ReplyCategoryChip data={{
+                                category: reply!.reply_intent,
+                                confidence: reply!.reply_intent_confidence,
+                                reason: reply!.reply_intent_reason,
+                                overriddenBy: reply!.reply_intent_overridden_by,
+                                message: reply!.reply_message,
+                                receivedAt: reply!.received_at,
+                              }} />
+                              <SourceBadge overriddenBy={reply!.reply_intent_overridden_by} />
+                            </div>
+                          ) : (
+                            <QueueStateChip state={r.state} pushedAt={r.pushed_at} snoozedUntil={r.snoozed_until} />
                           )}
                           {r.state === "failed" && r.last_error && (
                             <div className="max-w-[220px] truncate text-[10px] text-[#b91c1c]" title={r.last_error}>{r.last_error}</div>

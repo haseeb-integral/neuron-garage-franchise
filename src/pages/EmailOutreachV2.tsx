@@ -154,25 +154,25 @@ export default function EmailOutreachV2() {
       </div>
     </div>
 
-    {/* Stat strip */}
-    <div className="mb-5 grid gap-2 md:grid-cols-3 xl:grid-cols-6">
+    {/* Stat strip — compact */}
+    <div className="mb-3 grid gap-1.5 md:grid-cols-3 xl:grid-cols-6">
       {stats.map(({ Icon, label, value, sub, tone, loading, error }) => (
-        <Card key={label} className="px-3 py-2.5">
+        <Card key={label} className="px-2.5 py-1.5">
           <div className="flex items-center gap-2" title={error ?? undefined}>
-            <IconBox tone={tone}><Icon size={17} /></IconBox>
+            <IconBox tone={tone}><Icon size={14} /></IconBox>
             <div className="min-w-0 flex-1">
-              <div className="truncate text-[11px] font-bold text-[#34445f]">{label}</div>
+              <div className="truncate text-[10px] font-bold uppercase tracking-wide text-[#8794ab]">{label}</div>
               {loading ? (
-                <div className="my-1 h-5 w-12 animate-pulse rounded bg-[#edf2f8]" aria-label={`${label} loading`} />
+                <div className="my-0.5 h-4 w-10 animate-pulse rounded bg-[#edf2f8]" aria-label={`${label} loading`} />
               ) : error ? (
-                <div className="text-[21px] font-black leading-6 text-[#b7791f]" title={error}>—</div>
+                <div className="text-[17px] font-black leading-5 text-[#b7791f]" title={error}>—</div>
               ) : (
-                <div className="text-[21px] font-black leading-6">{value}</div>
+                <div className="text-[17px] font-black leading-5">{value}</div>
               )}
               {loading ? (
-                <div className="h-3 w-20 animate-pulse rounded bg-[#edf2f8]" />
+                <div className="mt-0.5 h-2.5 w-16 animate-pulse rounded bg-[#edf2f8]" />
               ) : (
-                <div className="truncate text-[11px] font-bold text-[#8794ab]">{sub}</div>
+                <div className="truncate text-[10px] text-[#8794ab]">{sub}</div>
               )}
             </div>
           </div>
@@ -181,28 +181,28 @@ export default function EmailOutreachV2() {
     </div>
 
     {/* SECTION 1 — Act on replies */}
-    <Section step={1} title="Act on replies" subtitle="every reply, auto-classified — start here" storageKey="replies" defaultOpen>
+    <Section step={1} title="Act on replies" subtitle="Reply here first. Approve or skip each one." storageKey="replies" defaultOpen>
       <ReplyTriagePanel />
     </Section>
 
     {/* SECTION 2 — Campaigns & sending */}
-    <Section step={2} title="Campaigns & sending" subtitle="active campaigns and outbox" storageKey="campaigns" defaultOpen>
+    <Section step={2} title="Campaigns & sending" subtitle="Your live campaigns and outbox." storageKey="campaigns" defaultOpen>
       {campaignsLoading ? (
-        <Card className="flex items-center justify-center py-16 text-sm text-[#526078]">Loading campaigns from SmartLead…</Card>
+        <Card className="flex items-center justify-center py-10 text-sm text-[#526078]">Loading campaigns from SmartLead…</Card>
       ) : campaignsError ? (
-        <Card className="p-6 text-sm text-[#ef4444]">
+        <Card className="p-4 text-sm text-[#ef4444]">
           <div className="font-bold">Could not load campaigns</div>
           <div className="mt-1 text-xs">{campaignsError}</div>
-          <button onClick={loadCampaigns} className="mt-3 rounded-lg border border-[#dbe4f2] px-3 py-1.5 text-xs font-bold text-[#174be8]">Retry</button>
+          <button onClick={loadCampaigns} className="mt-2 rounded-lg border border-[#dbe4f2] px-3 py-1.5 text-xs font-bold text-[#174be8]">Retry</button>
         </Card>
       ) : campaigns.length === 0 ? (
-        <Card className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-[#eef4ff] text-[#174be8]"><Mail size={26} /></div>
-          <h3 className="text-lg font-black">No campaigns yet</h3>
-          <p className="mt-1 max-w-md text-sm text-[#526078]">Create your first campaign — use Test Mode to send to your own inbox first so nothing reaches real teachers until you flip the switch.</p>
-          <div className="mt-4 flex gap-2">
-            <button onClick={() => setNewCampaignOpen(true)} className="inline-flex items-center gap-1.5 rounded-lg bg-[#174be8] px-4 py-2 text-xs font-bold text-white"><Plus size={14} /> New Campaign</button>
-            <button onClick={() => setImportOpen(true)} className="inline-flex items-center gap-1.5 rounded-lg border border-[#dbe4f2] bg-white px-4 py-2 text-xs font-bold text-[#174be8]"><Upload size={14} /> Upload Test Leads</button>
+        <Card className="flex flex-col items-center justify-center py-10 text-center">
+          <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-[#eef4ff] text-[#174be8]"><Mail size={20} /></div>
+          <h3 className="text-sm font-black">No campaigns yet</h3>
+          <p className="mt-1 max-w-md text-xs text-[#526078]">Create your first campaign — use Test Mode to send to your own inbox first.</p>
+          <div className="mt-3 flex gap-2">
+            <button onClick={() => setNewCampaignOpen(true)} className="inline-flex items-center gap-1.5 rounded-lg bg-[#174be8] px-3 py-1.5 text-xs font-bold text-white"><Plus size={12} /> New Campaign</button>
+            <button onClick={() => setImportOpen(true)} className="inline-flex items-center gap-1.5 rounded-lg border border-[#dbe4f2] bg-white px-3 py-1.5 text-xs font-bold text-[#174be8]"><Upload size={12} /> Upload Test Leads</button>
           </div>
         </Card>
       ) : (
@@ -212,11 +212,11 @@ export default function EmailOutreachV2() {
     </Section>
 
     {/* SECTION 3 — Setup & reference */}
-    <Section step={3} title="Setup & reference" subtitle="connection, accounts, batches, full analytics" storageKey="setup" defaultOpen={false}>
+    <Section step={3} title="Setup & reference" subtitle="Mailboxes, imports, full stats. Open when you need them." storageKey="setup" defaultOpen={false}>
       <div className="rounded-xl border border-[#e7edf5] bg-white">
-        <button onClick={() => setConnectionOpen((v) => !v)} className="flex w-full items-center justify-between px-4 py-3 text-left">
-          <div className="flex items-center gap-2"><LinkIcon size={14} className="text-[#174be8]" /><span className="text-sm font-black">SmartLead Connection</span><span className="text-[11px] text-[#66728a]">{connectionOpen ? "Hide details" : "Show details"}</span></div>
-          <ChevronDown size={16} className={`text-[#526078] transition-transform ${connectionOpen ? "rotate-180" : ""}`} />
+        <button onClick={() => setConnectionOpen((v) => !v)} className="flex w-full items-center justify-between px-3 py-2 text-left">
+          <div className="flex items-center gap-2"><LinkIcon size={13} className="text-[#174be8]" /><span className="text-xs font-black">SmartLead Connection</span><span className="text-[10px] text-[#66728a]">{connectionOpen ? "Hide details" : "Show details"}</span></div>
+          <ChevronDown size={14} className={`text-[#526078] transition-transform ${connectionOpen ? "rotate-180" : ""}`} />
         </button>
         {connectionOpen && <div className="border-t border-[#edf2f8] p-4"><SmartLeadConnectionPanel /></div>}
       </div>

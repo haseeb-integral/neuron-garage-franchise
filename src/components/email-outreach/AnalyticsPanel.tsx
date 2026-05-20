@@ -115,17 +115,17 @@ export function AnalyticsPanel() {
         </button>
       </div>
 
-      <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-5">
+      <div className="grid gap-1.5 md:grid-cols-3 xl:grid-cols-5">
         {kpis.map((k) => {
           const Icon = k.icon;
           return (
-            <div key={k.label} className="rounded-xl border border-[#e7edf5] bg-white px-3 py-2.5">
+            <div key={k.label} className="rounded-xl border border-[#e7edf5] bg-white px-2.5 py-1.5">
               <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#eef4ff] text-[#174be8]"><Icon size={17} /></div>
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#eef4ff] text-[#174be8]"><Icon size={13} /></div>
                 <div className="min-w-0">
-                  <div className="truncate text-[11px] font-bold text-[#34445f]">{k.label}</div>
-                  <div className={`text-[21px] font-black leading-6 ${k.tone}`}>{k.value}</div>
-                  <div className="truncate text-[11px] font-bold text-[#66728a]">{k.sub}</div>
+                  <div className="truncate text-[10px] font-bold uppercase tracking-wide text-[#8794ab]">{k.label}</div>
+                  <div className={`text-[17px] font-black leading-5 ${k.tone}`}>{k.value}</div>
+                  <div className="truncate text-[10px] text-[#66728a]">{k.sub}</div>
                 </div>
               </div>
             </div>

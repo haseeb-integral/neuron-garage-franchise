@@ -110,43 +110,43 @@ export function ProspectBatchesPanel({ refreshKey = 0 }: { refreshKey?: number }
 
   return (
     <div className="rounded-xl border border-[#e7edf5] bg-white">
-      <div className="flex items-center justify-between border-b border-[#edf2f8] px-4 py-3">
+      <div className="flex items-center justify-between border-b border-[#edf2f8] px-3 py-2">
         <div>
-          <h2 className="text-sm font-black">Import Batches</h2>
-          <p className="text-[11px] text-[#66728a]">History of lead uploads pushed to SmartLead</p>
+          <h2 className="text-xs font-black">Import Batches</h2>
+          <p className="text-[11px] text-[#66728a]">Past uploads pushed to SmartLead.</p>
         </div>
         <button onClick={load} className="inline-flex items-center gap-1 rounded-lg border border-[#dbe4f2] px-2 py-1 text-[11px] font-bold text-[#174be8]"><RefreshCw size={11} className={loading ? "animate-spin" : ""} /> Refresh</button>
       </div>
       {batches.length === 0 ? (
-        <div className="px-4 py-6 text-center text-[12px] text-[#66728a]">No import batches yet. Click "Import Leads" to create one.</div>
+        <div className="px-4 py-5 text-center text-[12px] text-[#66728a]">No import batches yet. Click "Import Leads" to create one.</div>
       ) : (
         <table className="w-full text-[11px]">
-          <thead><tr className="text-left text-[9px] uppercase text-[#8794ab]"><th className="px-4 py-2">Batch</th><th>Source</th><th>City</th><th>Segment</th><th>Records</th><th>Approved</th><th>Campaign</th><th>Status</th><th>Created</th><th></th></tr></thead>
+          <thead><tr className="text-left text-[9px] uppercase text-[#8794ab]"><th className="px-3 py-1.5">Batch</th><th>Source</th><th>City</th><th>Segment</th><th>Records</th><th>Approved</th><th>Campaign</th><th>Status</th><th>Created</th><th></th></tr></thead>
           <tbody>{batches.map((b) => {
             const campaign = b.campaign_id ? campaignsById[String(b.campaign_id)] : null;
             const failedCount = failedByBatch[b.id] ?? 0;
             return (
               <tr key={b.id} onClick={() => setOpenBatch(b)} className="cursor-pointer border-t border-[#edf2f8] hover:bg-[#f7faff]">
-                <td className="px-4 py-2 font-bold">
+                <td className="px-3 py-1.5 font-bold">
                   <span className="inline-flex items-center gap-1">
-                    <ChevronRight size={11} className="text-[#8794ab]" />
+                    <ChevronRight size={10} className="text-[#8794ab]" />
                     {b.batch_name}
                   </span>
                 </td>
-                <td>{b.source ?? "—"}</td>
-                <td>{b.city ?? "—"}{b.state ? `, ${b.state}` : ""}</td>
-                <td>{b.segment ?? "—"}</td>
-                <td>{b.record_count}</td>
-                <td>{b.approved_count}</td>
-                <td className="max-w-[160px] truncate" title={campaign?.name ?? b.campaign_id ?? ""}>
+                <td className="py-1.5">{b.source ?? "—"}</td>
+                <td className="py-1.5">{b.city ?? "—"}{b.state ? `, ${b.state}` : ""}</td>
+                <td className="py-1.5">{b.segment ?? "—"}</td>
+                <td className="py-1.5">{b.record_count}</td>
+                <td className="py-1.5">{b.approved_count}</td>
+                <td className="max-w-[160px] truncate py-1.5" title={campaign?.name ?? b.campaign_id ?? ""}>
                   {campaign?.name ? (
                     <span className="text-[11px] font-medium text-[#07142f]">{campaign.name}</span>
                   ) : b.campaign_id ? (
                     <span className="font-mono text-[10px]">{b.campaign_id}</span>
                   ) : "—"}
                 </td>
-                <td><span className={`inline-flex h-5 items-center rounded-md px-2 text-[10px] font-bold ${STATUS_STYLES[b.status] ?? STATUS_STYLES.pending}`}>{b.status}</span></td>
-                <td className="text-[10px] text-[#66728a]">{new Date(b.created_at).toLocaleString()}</td>
+                <td className="py-1.5"><span className={`inline-flex h-4 items-center rounded-md px-1.5 text-[10px] font-bold ${STATUS_STYLES[b.status] ?? STATUS_STYLES.pending}`}>{b.status}</span></td>
+                <td className="py-1.5 text-[10px] text-[#66728a]">{new Date(b.created_at).toLocaleString()}</td>
                 <td className="pr-3 text-right" onClick={(e) => e.stopPropagation()}>
                   {failedCount > 0 && (
                     <button

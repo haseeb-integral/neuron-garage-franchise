@@ -299,41 +299,41 @@ export function OutreachQueuePanel() {
 
   return (
     <div className="rounded-xl border border-[#e7edf5] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.02)]">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf2f8] px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#edf2f8] px-3 py-2">
         <div className="flex items-center gap-2">
-          <MailPlus size={16} className="text-[#174be8]" />
-          <h3 className="text-sm font-black text-[#07142f]">Outreach Queue</h3>
-          <span className="text-xs text-[#66728a]">push to SmartLead — replies are auto-classified into 7 buckets, only Interested / Meeting trigger Promote</span>
+          <MailPlus size={14} className="text-[#174be8]" />
+          <h3 className="text-xs font-black text-[#07142f]">Outreach Queue</h3>
+          <span className="text-[11px] text-[#66728a]">Leads waiting to send. Only "Interested" or "Meeting" replies offer Promote.</span>
         </div>
-        <Button variant="outline" size="sm" onClick={() => { load(); loadCampaignOptions(); }} className="h-8 rounded-lg border-[#dbe4f2] bg-white text-xs text-[#174be8]"><RefreshCw size={12} /> Refresh</Button>
+        <Button variant="outline" size="sm" onClick={() => { load(); loadCampaignOptions(); }} className="h-7 rounded-lg border-[#dbe4f2] bg-white px-2 text-[11px] text-[#174be8]"><RefreshCw size={11} /> Refresh</Button>
       </div>
 
-      <div className="flex flex-wrap gap-1.5 px-4 pt-3">
+      <div className="flex flex-wrap gap-1 px-3 pt-2">
         {(["all", "queued", "sent", "replied", "failed"] as const).map((k) => (
-          <button key={k} onClick={() => setFilter(k)} className={`rounded-full px-2.5 py-1 text-[11px] font-bold capitalize ${filter === k ? "bg-[#174be8] text-white" : "bg-[#eef2f7] text-[#526078] hover:bg-[#dbe4f2]"}`}>
+          <button key={k} onClick={() => setFilter(k)} className={`rounded-full px-2 py-0.5 text-[10px] font-bold capitalize ${filter === k ? "bg-[#174be8] text-white" : "bg-[#eef2f7] text-[#526078] hover:bg-[#dbe4f2]"}`}>
             {k} · {counts[k]}
           </button>
         ))}
       </div>
 
-      <div className="p-4">
+      <div className="p-3">
         {loading ? (
-          <div className="py-8 text-center text-sm text-[#8794ab]">Loading queue…</div>
+          <div className="py-6 text-center text-xs text-[#8794ab]">Loading queue…</div>
         ) : visible.length === 0 ? (
-          <div className="py-8 text-center text-sm text-[#8794ab]">
+          <div className="py-6 text-center text-xs text-[#8794ab]">
             {rows.length === 0 ? "No teachers added to outreach yet." : "No rows match this filter."}
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[960px] text-sm">
-              <thead className="text-left text-[11px] font-bold uppercase tracking-wide text-[#66728a]">
+            <table className="w-full min-w-[960px] text-[13px]">
+              <thead className="text-left text-[10px] font-bold uppercase tracking-wide text-[#66728a]">
                 <tr className="border-b border-[#edf2f8]">
-                  <th className="py-2 pr-3">Teacher</th>
-                  <th className="py-2 pr-3">Email</th>
-                  <th className="py-2 pr-3">School / City</th>
-                  <th className="py-2 pr-3">Campaign</th>
-                  <th className="py-2 pr-3">State / Reply</th>
-                  <th className="py-2 pr-3 text-right">Action</th>
+                  <th className="py-1.5 pr-3">Teacher</th>
+                  <th className="py-1.5 pr-3">Email</th>
+                  <th className="py-1.5 pr-3">School / City</th>
+                  <th className="py-1.5 pr-3">Campaign</th>
+                  <th className="py-1.5 pr-3">State / Reply</th>
+                  <th className="py-1.5 pr-3 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="text-[#07142f]">
@@ -344,13 +344,13 @@ export function OutreachQueuePanel() {
                   const hasReply = !!reply?.reply_intent;
                   return (
                     <tr key={r.id} className="border-b border-[#edf2f8] last:border-0 hover:bg-[#fafbfd]">
-                      <td className="py-2 pr-3 font-semibold">{r.teacher_prospects?.name ?? "—"}</td>
-                      <td className="py-2 pr-3 text-[#526078]">{r.teacher_prospects?.email || <span className="italic text-[#b0bbd0]">no email</span>}</td>
-                      <td className="py-2 pr-3 text-[#526078]">
-                        <div>{r.teacher_prospects?.school ?? "—"}</div>
-                        <div className="text-[11px] text-[#8794ab]">{r.teacher_prospects?.city}{r.teacher_prospects?.state ? `, ${r.teacher_prospects.state}` : ""}</div>
+                      <td className="py-1.5 pr-3 font-semibold">{r.teacher_prospects?.name ?? "—"}</td>
+                      <td className="py-1.5 pr-3 text-[#526078]">{r.teacher_prospects?.email || <span className="italic text-[#b0bbd0]">no email</span>}</td>
+                      <td className="py-1.5 pr-3 text-[#526078]">
+                        <div className="leading-tight">{r.teacher_prospects?.school ?? "—"}</div>
+                        <div className="text-[10px] leading-tight text-[#8794ab]">{r.teacher_prospects?.city}{r.teacher_prospects?.state ? `, ${r.teacher_prospects.state}` : ""}</div>
                       </td>
-                      <td className="w-[220px] py-2 pr-3 text-[#526078]">
+                      <td className="w-[220px] py-1.5 pr-3 text-[#526078]">
                         <CampaignPicker
                           assignedId={r.campaign_id}
                           assignedName={r.campaign_id ? campaignNames[r.campaign_id] : undefined}
@@ -363,9 +363,9 @@ export function OutreachQueuePanel() {
                           onSync={loadCampaignOptions}
                         />
                       </td>
-                      <td className="py-2 pr-3">
-                        <div className="flex flex-col gap-1">
-                          <span className={`inline-flex w-fit items-center rounded-md px-1.5 py-0.5 text-[11px] font-bold ${stateTone[r.state] ?? "bg-[#eef2f7] text-[#526078]"}`}>{r.state}</span>
+                      <td className="py-1.5 pr-3">
+                        <div className="flex flex-col gap-0.5">
+                          <span className={`inline-flex w-fit items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold ${stateTone[r.state] ?? "bg-[#eef2f7] text-[#526078]"}`}>{r.state}</span>
                           {hasReply ? (
                             <div className="flex flex-wrap items-center gap-1">
                               <ReplyCategoryChip data={{
@@ -386,7 +386,7 @@ export function OutreachQueuePanel() {
                           )}
                         </div>
                       </td>
-                      <td className="whitespace-nowrap py-2 pr-3 text-right">
+                      <td className="whitespace-nowrap py-1.5 pr-3 text-right">
                         <RowAction
                           row={r}
                           reply={reply}

@@ -916,6 +916,7 @@ export type Database = {
           linkedin_url: string | null
           name: string | null
           needs_email_enrichment: boolean
+          notes: string | null
           raw: Json | null
           school: string | null
           school_nces_id: string | null
@@ -923,6 +924,7 @@ export type Database = {
           state: string
           status: string
           subject: string | null
+          tags: string[]
           teacher_type: string | null
           updated_at: string
           us_cities_scored_id: string | null
@@ -944,6 +946,7 @@ export type Database = {
           linkedin_url?: string | null
           name?: string | null
           needs_email_enrichment?: boolean
+          notes?: string | null
           raw?: Json | null
           school?: string | null
           school_nces_id?: string | null
@@ -951,6 +954,7 @@ export type Database = {
           state: string
           status?: string
           subject?: string | null
+          tags?: string[]
           teacher_type?: string | null
           updated_at?: string
           us_cities_scored_id?: string | null
@@ -972,6 +976,7 @@ export type Database = {
           linkedin_url?: string | null
           name?: string | null
           needs_email_enrichment?: boolean
+          notes?: string | null
           raw?: Json | null
           school?: string | null
           school_nces_id?: string | null
@@ -979,6 +984,7 @@ export type Database = {
           state?: string
           status?: string
           subject?: string | null
+          tags?: string[]
           teacher_type?: string | null
           updated_at?: string
           us_cities_scored_id?: string | null

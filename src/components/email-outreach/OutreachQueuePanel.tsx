@@ -228,16 +228,50 @@ export function OutreachQueuePanel() {
                       <div className="text-[11px] text-[#8794ab]">{r.teacher_prospects?.city}{r.teacher_prospects?.state ? `, ${r.teacher_prospects.state}` : ""}</div>
                     </td>
                     <td className="py-2 pr-3 text-[#526078]">
-                      {!r.campaign_id ? (
-                        <span className="italic text-[#b0bbd0]">draft (no campaign yet)</span>
-                      ) : !realCampaign ? (
-                        <span className="inline-flex items-center gap-1 rounded-md bg-[#fee2e2] px-2 py-0.5 text-xs font-bold text-[#b91c1c]" title={r.campaign_id}>
-                          <AlertCircle size={11} /> invalid — reassign
-                        </span>
-                      ) : campaignNames[r.campaign_id] ? (
-                        <span className="inline-flex items-center gap-1 rounded-md bg-[#eef4ff] px-2 py-0.5 text-xs font-bold text-[#174be8]">{campaignNames[r.campaign_id]}</span>
+                      {realCampaign && r.state !== "sent" && r.state !== "sending" ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-[#eef4ff] px-2 py-0.5 text-xs font-bold text-[#174be8]">{campaignNames[r.campaign_id!] ?? `id ${r.campaign_id}`}</span>
+                          <select
+                            value=""
+                            onChange={(e) => assignCampaign(r.id, e.target.value)}
+                            disabled={!!assigning[r.id] || campaignOptions.length === 0}
+                            className="h-6 rounded border border-[#dbe4f2] bg-white px-1 text-[10px] text-[#526078] hover:bg-[#fafbfd]"
+                            title="Change campaign"
+                          >
+                            <option value="">change…</option>
+                            {campaignOptions.filter((c) => c.id !== r.campaign_id).map((c) => (
+                              <option key={c.id} value={c.id}>{c.name}{c.status ? ` · ${c.status}` : ""}</option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : realCampaign ? (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-[#eef4ff] px-2 py-0.5 text-xs font-bold text-[#174be8]">{campaignNames[r.campaign_id!] ?? `id ${r.campaign_id}`}</span>
                       ) : (
-                        <span className="text-xs text-[#8794ab]">id {r.campaign_id}</span>
+                        // Unassigned OR invalid synthetic id → show inline picker
+                        <div className="flex flex-col gap-1">
+                          {!r.campaign_id ? (
+                            <span className="text-[11px] italic text-[#b0bbd0]">no campaign yet — pick one:</span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#b91c1c]">
+                              <AlertCircle size={11} /> invalid — pick a real one:
+                            </span>
+                          )}
+                          {campaignOptions.length === 0 ? (
+                            <span className="text-[11px] text-[#8794ab]">No SmartLead campaigns synced. Create one above ↑</span>
+                          ) : (
+                            <select
+                              value=""
+                              onChange={(e) => assignCampaign(r.id, e.target.value)}
+                              disabled={!!assigning[r.id]}
+                              className="h-7 max-w-[220px] rounded border border-[#dbe4f2] bg-white px-1.5 text-xs text-[#07142f] focus:outline-none focus:ring-1 focus:ring-[#174be8]"
+                            >
+                              <option value="">Select campaign…</option>
+                              {campaignOptions.map((c) => (
+                                <option key={c.id} value={c.id}>{c.name}{c.status ? ` · ${c.status}` : ""}</option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
                       )}
                     </td>
                     <td className="py-2 pr-3 text-xs text-[#526078]">{new Date(r.added_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</td>

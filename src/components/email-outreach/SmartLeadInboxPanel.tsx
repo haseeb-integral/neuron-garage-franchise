@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
-import { Loader2, RefreshCw, Inbox, Mail, AlertTriangle, UserMinus, Tag } from "lucide-react";
+import { Loader2, RefreshCw, Inbox, Mail, AlertTriangle, UserMinus, Tag, MoreHorizontal } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { CATEGORY_META, REPLY_CATEGORIES, categoryMeta, type ReplyCategory } from "@/lib/replyCategories";
 
 interface EventRow {
   id: string;
@@ -9,6 +12,9 @@ interface EventRow {
   lead_email: string | null;
   reply_message: string | null;
   reply_intent: string | null;
+  reply_intent_confidence: number | null;
+  reply_intent_reason: string | null;
+  reply_intent_overridden_by: string | null;
   received_at: string;
 }
 
@@ -18,17 +24,6 @@ const iconForEvent = (type: string) => {
   if (type === "LEAD_UNSUBSCRIBED") return <UserMinus size={14} className="text-amber-600" />;
   if (type === "LEAD_CATEGORY_UPDATED") return <Tag size={14} className="text-blue-600" />;
   return <Mail size={14} className="text-slate-600" />;
-};
-
-// Intent badge colors per Phase 5 spec
-const intentStyle = (intent: string | null) => {
-  switch (intent) {
-    case "HOT":            return { label: "HOT",            cls: "bg-[#e6f7ef] text-[#0a8f5a]" };          // green
-    case "NOT_INTERESTED": return { label: "NOT INTERESTED", cls: "bg-[#eef2f7] text-[#526078]" };          // gray
-    case "OOO":            return { label: "OOO",            cls: "bg-[#e6f0ff] text-[#1f5bff]" };          // blue
-    case "NEUTRAL":        return { label: "NEUTRAL",        cls: "bg-[#fff4df] text-[#b7791f]" };          // yellow
-    default: return null;
-  }
 };
 
 const LAST_VIEWED_KEY = "smartlead_inbox_last_viewed";
@@ -44,7 +39,7 @@ export function SmartLeadInboxPanel() {
     setLoading(true);
     const { data } = await supabase
       .from("smartlead_events")
-      .select("id, event_type, campaign_id, lead_email, reply_message, reply_intent, received_at")
+      .select("id, event_type, campaign_id, lead_email, reply_message, reply_intent, reply_intent_confidence, reply_intent_reason, reply_intent_overridden_by, received_at")
       .order("received_at", { ascending: false })
       .limit(100);
     setEvents((data ?? []) as EventRow[]);
@@ -72,6 +67,25 @@ export function SmartLeadInboxPanel() {
     };
   }, []);
 
+  const overrideCategory = async (row: EventRow, newCat: ReplyCategory) => {
+    const { error } = await supabase
+      .from("smartlead_events")
+      .update({
+        reply_intent: newCat,
+        reply_intent_confidence: 1.0,
+        reply_intent_reason: `manual override (was ${row.reply_intent ?? "—"})`,
+        reply_intent_overridden_by: "user",
+        reply_intent_overridden_at: new Date().toISOString(),
+      })
+      .eq("id", row.id);
+    if (error) {
+      toast.error(`Couldn't override: ${error.message}`);
+      return;
+    }
+    setEvents((prev) => prev.map((e) => e.id === row.id ? { ...e, reply_intent: newCat, reply_intent_confidence: 1, reply_intent_overridden_by: "user" } : e));
+    toast.success(`Category set to ${CATEGORY_META[newCat].label}`);
+  };
+
   const unreadReplies = events.filter(
     (e) => e.event_type === "EMAIL_REPLIED" && e.received_at > lastViewed,
   ).length;
@@ -89,7 +103,7 @@ export function SmartLeadInboxPanel() {
             )}
           </div>
           <p className="mt-0.5 text-xs text-[#5a6b85]">
-            Live feed of replies, bounces, unsubscribes and category updates from SmartLead.
+            Live feed of replies, bounces, unsubscribes and category updates. Each reply is auto-classified into one of 7 buckets.
           </p>
         </div>
         <div className="flex gap-2">
@@ -130,30 +144,71 @@ export function SmartLeadInboxPanel() {
       ) : (
         <ul className="divide-y divide-[#eef2f7] rounded-xl border border-[#eef2f7]">
           {events.map((e) => {
-            const intent = intentStyle(e.reply_intent);
+            const meta = categoryMeta(e.reply_intent);
             const isUnread = e.event_type === "EMAIL_REPLIED" && e.received_at > lastViewed;
+            const conf = e.reply_intent_confidence;
+            const isReply = e.event_type === "EMAIL_REPLIED";
             return (
               <li key={e.id} className={`flex items-start gap-3 p-3 hover:bg-[#f7faff] ${isUnread ? "bg-[#fbfdff]" : ""}`}>
                 <div className="mt-0.5">{iconForEvent(e.event_type)}</div>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm">
                       <span className="font-semibold text-[#07142f]">{e.event_type}</span>
-                      {intent && (
-                        <span className={`inline-flex h-5 items-center rounded-md px-2 text-[10px] font-bold ${intent.cls}`}>
-                          {intent.label}
+                      {meta && (
+                        <span
+                          className={`inline-flex h-5 items-center gap-1 rounded-md px-2 text-[10px] font-bold ${meta.cls}`}
+                          title={`${meta.description}${conf != null ? ` · confidence ${(conf * 100).toFixed(0)}%` : ""}${e.reply_intent_overridden_by ? " · manually set" : ""}`}
+                        >
+                          {meta.short}
+                          {conf != null && conf < 0.6 && (
+                            <span className="opacity-70">?</span>
+                          )}
                         </span>
                       )}
                       {e.lead_email && (
                         <span className="truncate text-[#5a6b85]">· {e.lead_email}</span>
                       )}
                     </div>
-                    <span className="shrink-0 text-[10px] text-[#8794ab]">
-                      {new Date(e.received_at).toLocaleString()}
-                    </span>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="text-[10px] text-[#8794ab]">
+                        {new Date(e.received_at).toLocaleString()}
+                      </span>
+                      {isReply && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger className="rounded p-1 text-[#8794ab] hover:bg-[#eef2f7] hover:text-[#07142f]" aria-label="Override category">
+                            <MoreHorizontal size={14} />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-[220px]">
+                            <DropdownMenuLabel className="text-[10px] uppercase tracking-wide text-[#8794ab]">
+                              Override category
+                            </DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            {REPLY_CATEGORIES.map((cat) => {
+                              const m = CATEGORY_META[cat];
+                              const isCurrent = e.reply_intent === cat;
+                              return (
+                                <DropdownMenuItem key={cat} onSelect={() => !isCurrent && overrideCategory(e, cat)} className="flex items-center justify-between gap-2 text-xs">
+                                  <span className="flex items-center gap-2">
+                                    <span className="inline-block h-2 w-2 rounded-full" style={{ background: m.dot }} />
+                                    {m.label}
+                                  </span>
+                                  {isCurrent && <span className="text-[9px] uppercase text-[#8794ab]">current</span>}
+                                </DropdownMenuItem>
+                              );
+                            })}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
                   </div>
                   {e.reply_message && (
                     <p className="mt-1 line-clamp-2 text-xs text-[#34445f]">{e.reply_message}</p>
+                  )}
+                  {e.reply_intent_reason && (
+                    <div className="mt-1 text-[10px] italic text-[#8794ab]">
+                      why: {e.reply_intent_reason}
+                    </div>
                   )}
                   {e.campaign_id && (
                     <div className="mt-1 text-[10px] text-[#8794ab]">Campaign {e.campaign_id}</div>

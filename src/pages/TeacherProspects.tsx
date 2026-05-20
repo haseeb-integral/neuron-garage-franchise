@@ -411,8 +411,10 @@ const TeacherProspects = () => {
               onToggleAll={toggleAll}
               onRowClick={(p) => { setActive(p); setSelected([]); }}
               onPromote={handlePromote}
-              promotedIds={promotedIds}
-              promotingId={promotingId}
+              onShortlist={handleShortlist}
+              onEnrich={handleEnrich}
+              onMarkNotFit={handleMarkNotFit}
+              promotedUuids={promotedUuids}
               page={page}
               pageSize={pageSize}
               totalCount={totalCount}

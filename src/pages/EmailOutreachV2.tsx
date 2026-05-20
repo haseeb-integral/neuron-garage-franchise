@@ -115,7 +115,7 @@ export default function EmailOutreachV2() {
       { Icon: Mail, label: "Open Rate", value: a ? fmtPct(a.rates.openRate) : "—", sub: a ? `based on ${a.totals.sent.toLocaleString()} sent` : (analyticsError ?? "loading SmartLead"), tone: "green" as const, loading: analyticsLoading, error: analyticsError },
       { Icon: Mail, label: "Replies", value: a ? a.totals.reply.toLocaleString() : "—", sub: a ? fmtPct(a.rates.replyRate) + " reply rate" : (analyticsError ?? "loading SmartLead"), tone: "green" as const, loading: analyticsLoading, error: analyticsError },
       { Icon: Mail, label: "Interested Leads", value: a ? a.totals.interested.toLocaleString() : "—", sub: a ? fmtPct(a.rates.interestedRate) + " of replies" : (analyticsError ?? "loading SmartLead"), tone: "gold" as const, loading: analyticsLoading, error: analyticsError },
-      { Icon: Mail, label: "Promoted to Pipeline", value: queueCounts ? String(queueCounts.promoted) : "—", sub: "pushed to SmartLead", tone: "blue" as const, loading: queueLoading, error: null as string | null },
+      { Icon: Mail, label: "Promoted to Pipeline", value: queueCounts ? String(queueCounts.promoted) : "—", sub: "moved to Candidate Pipeline", tone: "blue" as const, loading: queueLoading, error: null as string | null },
     ];
   }, [campaigns, campaignsLoading, queueCounts, analytics, analyticsError]);
 

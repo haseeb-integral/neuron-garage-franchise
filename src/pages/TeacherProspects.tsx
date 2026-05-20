@@ -128,10 +128,19 @@ interface Stats {
   bySource: { key: SourceKey; label: string; count: number; pct: number }[];
 }
 
-const emptyStats: Stats = { total: 0, withEmail: 0, needsEnrichment: 0, cities: 0, bySource: [] };
+// Do NOT introduce an `emptyStats` zero-default — caught May 20, 2026.
+// `stats === null` means "still loading"; cards must render a skeleton, not "0".
+// A real zero only appears after the RPC resolves with `total: 0`.
 
-const StatCard = ({ title, value, sub, tone = "slate", action }: {
-  title: string; value: string | number; sub?: React.ReactNode; tone?: "slate" | "emerald" | "amber"; action?: React.ReactNode;
+const StatCard = ({ title, value, sub, tone = "slate", action, loading, error, onRetry }: {
+  title: string;
+  value: string | number;
+  sub?: React.ReactNode;
+  tone?: "slate" | "emerald" | "amber";
+  action?: React.ReactNode;
+  loading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
 }) => {
   const valueTone =
     tone === "emerald" ? "text-[#0a8f5a]" :
@@ -143,8 +152,20 @@ const StatCard = ({ title, value, sub, tone = "slate", action }: {
         <div className="text-[11px] font-bold uppercase tracking-wide text-[#66728a]">{title}</div>
         {action}
       </div>
-      <div className={`mt-1 text-2xl font-black leading-tight ${valueTone}`}>{value}</div>
-      {sub && <div className="mt-1 text-xs text-[#66728a]">{sub}</div>}
+      {loading ? (
+        <div className="mt-1 h-7 w-20 animate-pulse rounded-md bg-[#edf2f8]" aria-label={`${title} loading`} />
+      ) : error ? (
+        <div className={`mt-1 text-2xl font-black leading-tight text-[#b7791f]`} title={error}>
+          — <button onClick={onRetry} className="ml-2 align-middle text-[11px] font-bold text-[#174be8] hover:underline">Retry</button>
+        </div>
+      ) : (
+        <div className={`mt-1 text-2xl font-black leading-tight ${valueTone}`}>{value}</div>
+      )}
+      {loading ? (
+        <div className="mt-2 h-3 w-28 animate-pulse rounded bg-[#edf2f8]" />
+      ) : sub ? (
+        <div className="mt-1 text-xs text-[#66728a]">{sub}</div>
+      ) : null}
     </div>
   );
 };
@@ -162,7 +183,8 @@ const TeacherProspects = () => {
   const navigate = useNavigate();
   const [prospects, setProspects] = useState<TeacherProspect[]>([]);
   const [totalCount, setTotalCount] = useState(0);
-  const [stats, setStats] = useState<Stats>(emptyStats);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [statsError, setStatsError] = useState<string | null>(null);
   const [cities, setCities] = useState<string[]>([]);
   const [loadingProspects, setLoadingProspects] = useState(true);
   const [loadedAt, setLoadedAt] = useState<Date | null>(null);
@@ -203,6 +225,7 @@ const TeacherProspects = () => {
   }, []);
 
   const reqIdRef = useRef(0);
+  const statsReqIdRef = useRef(0);
 
   const loadPage = useCallback(async () => {
     setLoadingProspects(true);
@@ -260,14 +283,20 @@ const TeacherProspects = () => {
   }, [page, pageSize, cityFilter, debouncedSearch, sourceFilter, hideInOutreach, allPromotedIds]);
 
   const loadStats = useCallback(async () => {
-    const myReq = reqIdRef.current;
+    // Use a dedicated request id so the page-load request id (which bumps
+    // when filters or allPromotedIds change) cannot discard a valid stats response.
+    const myReq = ++statsReqIdRef.current;
+    setStatsError(null);
     const { data, error } = await supabase.rpc("teacher_prospects_stats", {
       p_search: debouncedSearch?.trim() || null,
       p_city: cityFilter || "All",
       p_source_filter: sourceFilter,
     });
-    if (myReq !== reqIdRef.current) return;
-    if (error || !data) return;
+    if (myReq !== statsReqIdRef.current) return;
+    if (error || !data) {
+      setStatsError(error?.message ?? "Stats unavailable");
+      return;
+    }
     const s = data as {
       total: number; email_ready: number; needs_enrichment: number; cities: number;
       sources: { source: string; count: number }[];
@@ -290,6 +319,19 @@ const TeacherProspects = () => {
   useEffect(() => { loadPage(); }, [loadPage]);
   // Re-fetch stats on filter change (not on page change — stats are filter-scoped)
   useEffect(() => { loadStats(); }, [loadStats]);
+
+  // Auto-refetch when the tab regains focus — prevents stale zeros after long idle.
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === "visible") {
+        loadStats();
+        loadPage();
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [loadStats, loadPage]);
+
 
   // Load campaign-state info for visible prospects (which campaign + state)
   useEffect(() => {
@@ -394,7 +436,7 @@ const TeacherProspects = () => {
     if (selected.length > 0) {
       return handleExportSelected();
     }
-    const expected = stats.total || totalCount;
+    const expected = (stats?.total ?? 0) || totalCount;
     if (expected === 0) { toast.info("Nothing to export with the current filters."); return; }
     const t = toast.loading(`Exporting ${expected.toLocaleString()} rows…`);
     const chunkSize = 1000;
@@ -499,12 +541,13 @@ const TeacherProspects = () => {
   const handleFindResults = async () => { await loadPage(); await loadStats(); };
 
   const subtitleText = useMemo(() => {
+    if (stats === null) return "Loading teachers…";
     if (stats.total > 0) {
       const when = loadedAt ? loadedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
       return `${stats.total.toLocaleString()} teachers across ${stats.cities.toLocaleString()} cities${when ? ` · live as of ${when}` : ""}`;
     }
     return "Discover and evaluate potential franchisee candidates from the teaching community.";
-  }, [stats.total, stats.cities, loadedAt]);
+  }, [stats, loadedAt]);
 
   return (
     <div className="-mx-3 -my-3 min-h-screen bg-white px-3 py-3 md:-mx-5 md:px-5 lg:-mx-6 lg:px-6">
@@ -527,17 +570,37 @@ const TeacherProspects = () => {
           }
         />
 
-        {/* 3 honest stat cards — values come from server RPC, always reflect filter scope */}
+        {/* 3 honest stat cards — values come from server RPC, always reflect filter scope.
+            stats === null → skeleton. Never render literal "0" while loading. */}
         <div className="mb-3 grid gap-3 sm:grid-cols-3">
-          <StatCard title="Total Imported" value={stats.total.toLocaleString()} sub={`across ${stats.cities.toLocaleString()} cities`} />
-          <StatCard title="Email-Ready" value={stats.withEmail.toLocaleString()} sub="can send to SmartLead today" tone="emerald" />
+          <StatCard
+            title="Total Imported"
+            value={stats ? stats.total.toLocaleString() : "—"}
+            sub={stats ? `across ${stats.cities.toLocaleString()} cities` : undefined}
+            loading={stats === null && !statsError}
+            error={statsError}
+            onRetry={loadStats}
+          />
+          <StatCard
+            title="Email-Ready"
+            value={stats ? stats.withEmail.toLocaleString() : "—"}
+            sub="can send to SmartLead today"
+            tone="emerald"
+            loading={stats === null && !statsError}
+            error={statsError}
+            onRetry={loadStats}
+          />
           <StatCard
             title="Needs Email Enrichment"
-            value={stats.needsEnrichment.toLocaleString()}
+            value={stats ? stats.needsEnrichment.toLocaleString() : "—"}
             tone="amber"
             sub={<button onClick={() => toast.info("Enrichment tool integration coming soon.")} className="text-[11px] font-bold text-[#174be8]">Connect Enrichment Tool →</button>}
+            loading={stats === null && !statsError}
+            error={statsError}
+            onRetry={loadStats}
           />
         </div>
+
 
         <div className="grid items-start gap-3 xl:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-w-0 space-y-3">
@@ -589,27 +652,44 @@ const TeacherProspects = () => {
                 <div className="text-[11px] font-bold uppercase tracking-wide text-[#66728a]">Sources</div>
                 <button onClick={() => { loadPage(); loadStats(); }} className="text-[10.5px] font-bold text-[#174be8] hover:underline">Refresh</button>
               </div>
-              {stats.bySource.length === 0 && <div className="text-xs text-[#8794ab]">No data yet.</div>}
-              <div className="space-y-3">
-                {stats.bySource.map((s) => (
-                  <div key={s.key}>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-medium text-[#07142f]">{s.label}</span>
-                      <span className="font-bold text-[#07142f]">{s.count.toLocaleString()} · {s.pct}%</span>
+              {stats === null && !statsError ? (
+                <div className="space-y-3">
+                  {[0, 1].map((i) => (
+                    <div key={i}>
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="h-3 w-24 animate-pulse rounded bg-[#edf2f8]" />
+                        <div className="h-3 w-14 animate-pulse rounded bg-[#edf2f8]" />
+                      </div>
+                      <div className="mt-1 h-1.5 w-full animate-pulse rounded-full bg-[#edf2f8]" />
                     </div>
-                    <div className="mt-1 h-1.5 rounded-full bg-[#edf2f8]">
-                      <div className="h-full rounded-full" style={{ width: `${s.pct}%`, backgroundColor: s.key === "smartlead" ? "#0a8f5a" : s.key === "linkedin" ? "#1e6fb8" : "#8794ab" }} />
+                  ))}
+                </div>
+              ) : statsError ? (
+                <div className="text-xs text-[#b7791f]" title={statsError}>— <button onClick={loadStats} className="ml-1 font-bold text-[#174be8] hover:underline">Retry</button></div>
+              ) : stats!.bySource.length === 0 ? (
+                <div className="text-xs text-[#8794ab]">No data yet.</div>
+              ) : (
+                <div className="space-y-3">
+                  {stats!.bySource.map((s) => (
+                    <div key={s.key}>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-medium text-[#07142f]">{s.label}</span>
+                        <span className="font-bold text-[#07142f]">{s.count.toLocaleString()} · {s.pct}%</span>
+                      </div>
+                      <div className="mt-1 h-1.5 rounded-full bg-[#edf2f8]">
+                        <div className="h-full rounded-full" style={{ width: `${s.pct}%`, backgroundColor: s.key === "smartlead" ? "#0a8f5a" : s.key === "linkedin" ? "#1e6fb8" : "#8794ab" }} />
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="rounded-xl border border-[#e7edf5] bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.02)]">
               <div className="mb-3 text-[11px] font-bold uppercase tracking-wide text-[#66728a]">Quick Stats</div>
               <div className="space-y-3 text-sm">
-                <div className="flex items-center justify-between"><span className="text-[#526078]">Cities</span><span className="font-bold text-[#07142f]">{stats.cities.toLocaleString()}</span></div>
-                <div className="flex items-center justify-between"><span className="text-[#526078]">Email-ready</span><span className="font-bold text-[#07142f]">{stats.withEmail.toLocaleString()}</span></div>
+                <div className="flex items-center justify-between"><span className="text-[#526078]">Cities</span>{stats === null && !statsError ? <div className="h-3 w-8 animate-pulse rounded bg-[#edf2f8]" /> : <span className="font-bold text-[#07142f]">{stats?.cities.toLocaleString() ?? "—"}</span>}</div>
+                <div className="flex items-center justify-between"><span className="text-[#526078]">Email-ready</span>{stats === null && !statsError ? <div className="h-3 w-10 animate-pulse rounded bg-[#edf2f8]" /> : <span className="font-bold text-[#07142f]">{stats?.withEmail.toLocaleString() ?? "—"}</span>}</div>
                 <div>
                   <div className="mb-1 text-xs text-[#526078]">Avg Fit Score</div>
                   <button onClick={() => toast.info("AI Fit Scoring (Task 14) — coming soon.")} className="w-full rounded-md border border-dashed border-[#dbe4f2] px-2 py-1.5 text-xs font-medium text-[#8794ab] hover:bg-[#f4f7ff] hover:text-[#174be8]">— Run AI Scoring</button>

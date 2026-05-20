@@ -101,21 +101,34 @@ export default function EmailOutreachV2() {
 
   const safeToast = (message: string) => toast.info(message);
 
-  // Every card MUST resolve to a live value or an explicit "—" with tooltip.
+  // Every card MUST resolve to a live value, a skeleton (loading), or an explicit "—" with tooltip (error).
   // Never ship hardcoded zeros — caught May 20, 2026.
   const stats = useMemo(() => {
     const active = campaigns.filter((c) => (c.status ?? "").toUpperCase() === "ACTIVE" || (c.status ?? "").toUpperCase() === "RUNNING").length;
     const fmtPct = (n: number) => `${n.toFixed(1)}%`;
     const a = analytics;
+    const analyticsLoading = !a && !analyticsError;
+    const queueLoading = queueCounts === null;
     return [
-      { Icon: Mail, label: "Active Campaigns", value: String(active), sub: campaigns.length ? `of ${campaigns.length} total` : "no campaigns yet", tone: "blue" as const, title: undefined },
-      { Icon: Mail, label: "Prospects in Outreach", value: queueCounts ? String(queueCounts.inOutreach) : "—", sub: "queued + assigned + sending", tone: "purple" as const, title: undefined },
-      { Icon: Mail, label: "Open Rate", value: a ? fmtPct(a.rates.openRate) : (analyticsError ? "—" : "…"), sub: a ? `based on ${a.totals.sent.toLocaleString()} sent` : (analyticsError ?? "loading SmartLead"), tone: "green" as const, title: analyticsError ?? undefined },
-      { Icon: Mail, label: "Replies", value: a ? a.totals.reply.toLocaleString() : (analyticsError ? "—" : "…"), sub: a ? fmtPct(a.rates.replyRate) + " reply rate" : (analyticsError ?? "loading SmartLead"), tone: "green" as const, title: analyticsError ?? undefined },
-      { Icon: Mail, label: "Interested Leads", value: a ? a.totals.interested.toLocaleString() : (analyticsError ? "—" : "…"), sub: a ? fmtPct(a.rates.interestedRate) + " of replies" : (analyticsError ?? "loading SmartLead"), tone: "gold" as const, title: analyticsError ?? undefined },
-      { Icon: Mail, label: "Promoted to Pipeline", value: queueCounts ? String(queueCounts.promoted) : "—", sub: "pushed to SmartLead", tone: "blue" as const, title: undefined },
+      { Icon: Mail, label: "Active Campaigns", value: String(active), sub: campaigns.length ? `of ${campaigns.length} total` : "no campaigns yet", tone: "blue" as const, loading: campaignsLoading, error: null as string | null },
+      { Icon: Mail, label: "Prospects in Outreach", value: queueCounts ? String(queueCounts.inOutreach) : "—", sub: "queued + assigned + sending", tone: "purple" as const, loading: queueLoading, error: null as string | null },
+      { Icon: Mail, label: "Open Rate", value: a ? fmtPct(a.rates.openRate) : "—", sub: a ? `based on ${a.totals.sent.toLocaleString()} sent` : (analyticsError ?? "loading SmartLead"), tone: "green" as const, loading: analyticsLoading, error: analyticsError },
+      { Icon: Mail, label: "Replies", value: a ? a.totals.reply.toLocaleString() : "—", sub: a ? fmtPct(a.rates.replyRate) + " reply rate" : (analyticsError ?? "loading SmartLead"), tone: "green" as const, loading: analyticsLoading, error: analyticsError },
+      { Icon: Mail, label: "Interested Leads", value: a ? a.totals.interested.toLocaleString() : "—", sub: a ? fmtPct(a.rates.interestedRate) + " of replies" : (analyticsError ?? "loading SmartLead"), tone: "gold" as const, loading: analyticsLoading, error: analyticsError },
+      { Icon: Mail, label: "Promoted to Pipeline", value: queueCounts ? String(queueCounts.promoted) : "—", sub: "pushed to SmartLead", tone: "blue" as const, loading: queueLoading, error: null as string | null },
     ];
-  }, [campaigns, queueCounts, analytics, analyticsError]);
+  }, [campaigns, campaignsLoading, queueCounts, analytics, analyticsError]);
+
+  // Last-updated stamp + auto-refetch on tab refocus
+  const [statsLoadedAt, setStatsLoadedAt] = useState<Date | null>(null);
+  useEffect(() => {
+    if (!campaignsLoading && queueCounts !== null) setStatsLoadedAt(new Date());
+  }, [campaignsLoading, queueCounts, analytics]);
+  useEffect(() => {
+    const onVis = () => { if (document.visibilityState === "visible") { loadCampaigns(); loadStats(); } };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
 
   return <div className="min-h-screen bg-white text-[#07142f]">
     <div className="mb-3 flex items-center justify-between gap-4">
@@ -130,7 +143,10 @@ export default function EmailOutreachV2() {
     <div className="mb-3 flex items-start justify-between gap-4">
       <div className="min-w-0">
         <h1 className="text-[26px] font-black tracking-tight">Email Outreach</h1>
-        <p className="mt-1 text-sm text-[#526078]">Cockpit for SmartLead campaigns. Create, launch, and promote interested replies into the candidate pipeline.</p>
+        <p className="mt-1 text-sm text-[#526078]">
+          Cockpit for SmartLead campaigns. Create, launch, and promote interested replies into the candidate pipeline.
+          {statsLoadedAt && <span className="ml-1 text-[#8794ab]">· updated {statsLoadedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
+        </p>
       </div>
       <div className="ml-auto flex shrink-0 flex-wrap justify-end gap-2 pt-1">
         <button onClick={() => safeToast("CSV export will be wired to real campaign data.")} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#dbe4f2] bg-white px-3 text-xs font-bold text-[#07142f]"><Download size={14} /> CSV</button>
@@ -158,14 +174,24 @@ export default function EmailOutreachV2() {
 
     {view === "dashboard" && <>
       <div className="mb-3 grid gap-2 md:grid-cols-3 xl:grid-cols-6">
-        {stats.map(({ Icon, label, value, sub, tone, title }) => (
+        {stats.map(({ Icon, label, value, sub, tone, loading, error }) => (
           <Card key={label} className="px-3 py-2.5" >
-            <div className="flex items-center gap-2" title={title}>
+            <div className="flex items-center gap-2" title={error ?? undefined}>
               <IconBox tone={tone}><Icon size={17} /></IconBox>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="truncate text-[11px] font-bold text-[#34445f]">{label}</div>
-                <div className="text-[21px] font-black leading-6">{value}</div>
-                <div className="truncate text-[11px] font-bold text-[#8794ab]">{sub}</div>
+                {loading ? (
+                  <div className="my-1 h-5 w-12 animate-pulse rounded bg-[#edf2f8]" aria-label={`${label} loading`} />
+                ) : error ? (
+                  <div className="text-[21px] font-black leading-6 text-[#b7791f]" title={error}>—</div>
+                ) : (
+                  <div className="text-[21px] font-black leading-6">{value}</div>
+                )}
+                {loading ? (
+                  <div className="h-3 w-20 animate-pulse rounded bg-[#edf2f8]" />
+                ) : (
+                  <div className="truncate text-[11px] font-bold text-[#8794ab]">{sub}</div>
+                )}
               </div>
             </div>
           </Card>

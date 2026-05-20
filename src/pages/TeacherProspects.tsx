@@ -244,12 +244,20 @@ const TeacherProspects = () => {
       setProspects([]);
       setTotalCount(0);
     } else {
-      setProspects((data ?? []).map((r) => mapRow(r as unknown as DbRow)));
-      setTotalCount(count ?? 0);
+      let rows = (data ?? []).map((r) => mapRow(r as unknown as DbRow));
+      let total = count ?? 0;
+      // Fallback client-side hide when allPromotedIds exceeds the URL safety cap
+      if (hideInOutreach && allPromotedIds.length > 2000) {
+        const hidden = new Set(allPromotedIds);
+        rows = rows.filter((r) => !hidden.has(r.uuid));
+        total = Math.max(0, total - allPromotedIds.length); // approximate
+      }
+      setProspects(rows);
+      setTotalCount(total);
       setLoadedAt(new Date());
     }
     setLoadingProspects(false);
-  }, [page, pageSize, cityFilter, debouncedSearch, sourceFilter]);
+  }, [page, pageSize, cityFilter, debouncedSearch, sourceFilter, hideInOutreach, allPromotedIds]);
 
   const loadStats = useCallback(async () => {
     const myReq = reqIdRef.current;

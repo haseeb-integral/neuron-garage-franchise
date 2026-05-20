@@ -49,7 +49,7 @@ export function ReplyTriagePanel() {
     if (!emails.length) { setCards([]); setLoading(false); return; }
     const { data: events } = await supabase
       .from("smartlead_events")
-      .select("lead_email, reply_intent, reply_intent_confidence, reply_intent_reason, reply_intent_overridden_by, reply_message, received_at")
+      .select("lead_email, reply_intent, reply_intent_confidence, reply_intent_reason, reply_intent_overridden_by, reply_message, received_at, payload")
       .eq("event_type", "EMAIL_REPLIED")
       .in("lead_email", emails)
       .order("received_at", { ascending: false })
@@ -66,6 +66,7 @@ export function ReplyTriagePanel() {
       if (!email) continue;
       const ev = latest.get(email);
       if (!ev) continue; // triage only shows leads that actually replied
+      const payload = (ev.payload ?? {}) as { source?: string };
       built.push({
         queueId: r.id,
         prospectId: r.teacher_prospect_id,
@@ -85,6 +86,7 @@ export function ReplyTriagePanel() {
           receivedAt: ev.received_at,
         },
         receivedAt: ev.received_at,
+        simulated: payload?.source === "simulated",
       });
     }
     // Sort: needs-action first, then promotable, then handled.

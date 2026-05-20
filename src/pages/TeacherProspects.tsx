@@ -538,12 +538,13 @@ const TeacherProspects = () => {
   const handleFindResults = async () => { await loadPage(); await loadStats(); };
 
   const subtitleText = useMemo(() => {
+    if (stats === null) return "Loading teachers…";
     if (stats.total > 0) {
       const when = loadedAt ? loadedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
       return `${stats.total.toLocaleString()} teachers across ${stats.cities.toLocaleString()} cities${when ? ` · live as of ${when}` : ""}`;
     }
     return "Discover and evaluate potential franchisee candidates from the teaching community.";
-  }, [stats.total, stats.cities, loadedAt]);
+  }, [stats, loadedAt]);
 
   return (
     <div className="-mx-3 -my-3 min-h-screen bg-white px-3 py-3 md:-mx-5 md:px-5 lg:-mx-6 lg:px-6">

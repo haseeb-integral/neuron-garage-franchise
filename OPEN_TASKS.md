@@ -309,10 +309,20 @@ See **`TEACHER_IDEAL_PROFILE.md`** for who we are recruiting and why — read th
 - Falls back to non-personalized body if any required merge field is missing
 - **Effort:** ~3–4 hrs · **Risk:** medium
 
-### 17k. AI reply-intent classifier (deferred, added May 19, supersedes part of #21)
-- Replace keyword regex in `smartlead-webhook` with `gemini-2.5-flash-lite` call
-- Better OOO + multi-language detection. Keeps HOT / NOT_INTERESTED / OOO / NEUTRAL enum unchanged.
-- **Effort:** ~1–2 hrs · **Risk:** low
+### 17k. AI reply-intent classifier ✅ shipped May 20 (supersedes part of #21)
+- Replaced 4-bucket `HOT/NOT_INTERESTED/OOO/NEUTRAL` keyword classifier with a 7-bucket Smartlead-mirror taxonomy: `INTERESTED / MEETING_REQUEST / INFO_REQUEST / SOFT_NO / WRONG_PERSON / NOT_INTERESTED / OOO`.
+- Two-tier: regex pre-pass (covers ~60% incl. OOO, hard-no, SOFT_NO "not this summer"); Lovable AI `gemini-2.5-flash-lite` fallback returns `{category, confidence, reason}` JSON.
+- Stores `reply_intent_reason`, `reply_intent_confidence`, `reply_intent_overridden_by`, `referral_contact` on `smartlead_events`. Adds `outreach_queue.snoozed_until`. Legacy rows backfilled (`HOT→INTERESTED`, `NEUTRAL→INFO_REQUEST @ 0.3`).
+- UI: category chip + tooltip (reason + confidence%) in Inbox; category-driven action button in Outreach Queue (Promote / Reply needed / Snooze / Capture referral); `⋯` menu always offers Manual Promote / Snooze 3mo / 6mo / Suppress.
+- Auto-promote rule lives in `src/lib/replyCategories.ts::isAutoPromotable` — only `INTERESTED + MEETING_REQUEST` @ confidence ≥ 0.7.
+- **Closes the false-promote regression** ("not available for summer" no longer reaches Promote).
+- **Files:** `src/lib/replyCategories.ts` (new), `supabase/functions/smartlead-webhook/index.ts`, `SmartLeadInboxPanel.tsx`, `OutreachQueuePanel.tsx`, migration `20260520114040_*.sql`.
+
+### 17k-followup. Smoke-test 7-bucket classifier with live replies (added May 20)
+- Send one reply per category from a Gmail `+alias`; verify chip color, tooltip reason, action button matches taxonomy, and override menu reclassifies + relogs.
+- Confirm `outreach_queue.snoozed_until` populated when Snooze chosen, and `candidates` row appears only when Promote clicked on `INTERESTED`/`MEETING` @ ≥0.7.
+- **Effort:** ~30 min · **Risk:** low — manual QA only.
+
 
 
 ### 17l. Import Wizard Step 4 — inline "Create new campaign" option (added May 19)

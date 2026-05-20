@@ -74,7 +74,8 @@ All tables have RLS enabled. `authenticated` role can read/write unless noted.
 | `candidate_checklist_items` | Stage-specific checklists (auto-seeded on entering `confirmation`) |
 | `onboarding_records` | Franchisee onboarding header rows |
 | `onboarding_steps` | Per-record step list |
-| `smartlead_events` | Webhook event log from SmartLead (event_type, campaign_id, lead_email, payload jsonb, `reply_intent` enum). Realtime-enabled — Inbox panel subscribes for live updates. *Added Phase 5, May 19.* |
+| `smartlead_events` | Webhook event log from SmartLead (event_type, campaign_id, lead_email, payload jsonb). Reply rows carry the 7-bucket `reply_intent` + `reply_intent_confidence` (0–1) + `reply_intent_reason` (one-line AI explanation) + `reply_intent_overridden_by` (user id if manually reclassified) + `referral_contact` (for WRONG_PERSON). Realtime-enabled — Inbox panel subscribes for live updates. *Added Phase 5 May 19; expanded May 20 (7-bucket migration).* |
+| `outreach_queue` | Per-lead queue row. Added `snoozed_until timestamptz` May 20 — SOFT_NO and manual snooze actions park rows here until the timestamp passes. |
 | `campaign_cache` | Cached snapshot of SmartLead campaigns (id, name, status, stats) refreshed by `smartlead-proxy`. Lets Batches/Inbox panels resolve campaign names without re-hitting the API. *Added Phase 3.* |
 | `prospects_staging` | Import-wizard staging table for leads en route to SmartLead. Columns include `batch_id`, `source` (Apollo / Clay / LinkedIn Navigator / CSV / Manual), `qa_status` (pending / approved / rejected), `smartlead_lead_id`, `pushed_at`. *Added Phase 2.* |
 | `outreach_queue` | Per-teacher push queue used by the newer Teacher Search → "Add to Campaign" flow (parallel to `prospects_staging`, no CSV step). Columns: `teacher_prospect_id`, `campaign_id` (nullable), `state` (`queued` / `assigned` / `sending` / `sent` / `failed`), `smartlead_lead_id`, `pushed_at`, `last_error`, `notes`. Driven by Outreach Queue panel on `/email-outreach`. *Added May 20.* |
@@ -98,7 +99,7 @@ No storage buckets configured.
 - `enrich-school-staff` — staff/teacher enrichment for a given school
 - `fetch-teacher-prospects` — Apify-driven teacher prospect pull per city
 - `smartlead-proxy` — server-side proxy to the SmartLead REST API (lists/creates campaigns, pushes leads, pulls analytics overview, manages email accounts, runs connection-health check). Uses `SMARTLEAD_API_KEY`. Rate-limit aware (10 req / 2s).
-- `smartlead-webhook` — public webhook receiver for SmartLead events (`EMAIL_SENT`, `EMAIL_REPLIED`, `EMAIL_BOUNCED`, `EMAIL_OPENED`, `EMAIL_CLICKED`). Writes to `smartlead_events`; classifies replies into `reply_intent` (`HOT` / `NOT_INTERESTED` / `OOO` / `NEUTRAL`) via keyword classifier.
+- `smartlead-webhook` — public webhook receiver for SmartLead events (`EMAIL_SENT`, `EMAIL_REPLIED`, `EMAIL_BOUNCED`, `EMAIL_OPENED`, `EMAIL_CLICKED`, `LEAD_UNSUBSCRIBED`). Two-tier classifier on replies: (1) keyword/regex pre-pass covering the 7 Smartlead-mirror buckets, (2) Lovable AI fallback via `gemini-2.5-flash-lite` (uses `LOVABLE_API_KEY`) for anything regex misses. Writes `reply_intent`, `reply_intent_confidence`, `reply_intent_reason` to `smartlead_events`. **No `HOT`/`NEUTRAL` anymore** — see GLOSSARY "Reply Intent (7-bucket)".
 - Shared modules: `_shared/cityGeo.ts`, `_shared/metricFetchers.ts`, `_shared/scoring.ts`
 
 ---

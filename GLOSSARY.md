@@ -47,7 +47,17 @@
 
 ## Email Outreach (SmartLead)
 
-- **Reply Intent** — auto-tag on every `EMAIL_REPLIED` row in `smartlead_events`. Values: `HOT` (green), `NOT_INTERESTED` (gray), `OOO` / Out of Office (blue), `NEUTRAL` (yellow). Classified by keyword heuristic in `smartlead-webhook`; planned upgrade to Lovable AI in task #21.
+- **Reply Intent (7-bucket)** — auto-tag on every `EMAIL_REPLIED` row in `smartlead_events`, mirrors Smartlead's Lead Categories. Values:
+  - `INTERESTED` 🟢 — auto-promotable to Candidate Pipeline (with confidence gate)
+  - `MEETING_REQUEST` 🟢 — auto-promotable; flag for scheduling
+  - `INFO_REQUEST` 🟡 — needs a human reply, never auto-promotes
+  - `SOFT_NO` 🟠 — "not now / not this summer / maybe next year"; offers Snooze, never promotes
+  - `WRONG_PERSON` 🟠 — capture forwarded contact; never promotes
+  - `NOT_INTERESTED` 🔴 — hard no / unsubscribe; auto-suppressed
+  - `OOO` ⚪ — auto-reply; Smartlead retries
+  Classified by `smartlead-webhook` (regex pre-pass → Lovable AI `gemini-2.5-flash-lite` fallback). Stores `reply_intent_reason` + `reply_intent_confidence` (0–1). Users can override category from the Inbox; override is logged in `reply_intent_overridden_by`. Replaces the deprecated `HOT / NEUTRAL` 4-bucket scheme (May 19); legacy rows backfilled (`HOT→INTERESTED`, `NEUTRAL→INFO_REQUEST` @ 0.3).
+- **Auto-Promote Rule** — a queue row auto-shows the Promote-to-Pipeline button only when `reply_intent ∈ {INTERESTED, MEETING_REQUEST}` AND `reply_intent_confidence ≥ 0.7` AND not bounced/suppressed. Single source: `src/lib/replyCategories.ts::isAutoPromotable`. A `⋯` menu always exposes Manual Promote / Snooze 3mo / Snooze 6mo / Suppress regardless of category.
+- **Snooze** — `outreach_queue.snoozed_until` timestamp. Set by SOFT_NO action or manual override. Row drops off active outreach until that date.
 - **Import Batch** — a group of leads staged via the Import Leads wizard, sharing a `batch_id` in `prospects_staging`. Pushed to SmartLead as a single bulk call; failed rows keep `qa_status='rejected'` and expose a Retry button.
 - **Prospect Source** — value in `prospects_staging.source`. One of `apollo`, `clay`, `linkedin_navigator`, `csv`, `manual` (Step 1 of the wizard).
 - **Campaign Cache** — `campaign_cache` table. Local mirror of SmartLead campaigns so Batches/Inbox can resolve names without hitting the API on every render.

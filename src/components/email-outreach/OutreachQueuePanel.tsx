@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Trash2, MailPlus, ExternalLink, Loader2, AlertCircle } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { RefreshCw, Trash2, MailPlus, ExternalLink, Loader2, AlertCircle, ChevronDown, Check } from "lucide-react";
 import { syncAndGetRealCampaigns, isRealCampaignId, type RealCampaign } from "@/lib/smartleadCampaigns";
 
 interface QueueRow {
@@ -203,7 +204,7 @@ export function OutreachQueuePanel() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-sm">
+            <table className="w-full min-w-[860px] text-sm">
               <thead className="text-left text-[11px] font-bold uppercase tracking-wide text-[#66728a]">
                 <tr className="border-b border-[#edf2f8]">
                   <th className="py-2 pr-3">Teacher</th>
@@ -227,57 +228,19 @@ export function OutreachQueuePanel() {
                       <div>{r.teacher_prospects?.school ?? "—"}</div>
                       <div className="text-[11px] text-[#8794ab]">{r.teacher_prospects?.city}{r.teacher_prospects?.state ? `, ${r.teacher_prospects.state}` : ""}</div>
                     </td>
-                    <td className="py-2 pr-3 text-[#526078]">
-                      {realCampaign && r.state !== "sent" && r.state !== "sending" ? (
-                        <div className="flex items-center gap-1.5">
-                          <span className="inline-flex items-center gap-1 rounded-md bg-[#eef4ff] px-2 py-0.5 text-xs font-bold text-[#174be8]">{campaignNames[r.campaign_id!] ?? `id ${r.campaign_id}`}</span>
-                          <select
-                            value=""
-                            onChange={(e) => assignCampaign(r.id, e.target.value)}
-                            disabled={!!assigning[r.id] || campaignOptions.length === 0}
-                            className="h-6 rounded border border-[#dbe4f2] bg-white px-1 text-[10px] text-[#526078] hover:bg-[#fafbfd]"
-                            title="Change campaign"
-                          >
-                            <option value="">change…</option>
-                            {campaignOptions.filter((c) => c.id !== r.campaign_id).map((c) => (
-                              <option key={c.id} value={c.id}>{c.name}{c.status ? ` · ${c.status}` : ""}</option>
-                            ))}
-                          </select>
-                        </div>
-                      ) : realCampaign ? (
-                        <span className="inline-flex items-center gap-1 rounded-md bg-[#eef4ff] px-2 py-0.5 text-xs font-bold text-[#174be8]">{campaignNames[r.campaign_id!] ?? `id ${r.campaign_id}`}</span>
-                      ) : (
-                        // Unassigned OR invalid synthetic id → show inline picker
-                        <div className="flex flex-col gap-1">
-                          {!r.campaign_id ? (
-                            <span className="text-[11px] italic text-[#b0bbd0]">no campaign yet — pick one:</span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#b91c1c]">
-                              <AlertCircle size={11} /> invalid — pick a real one:
-                            </span>
-                          )}
-                          {campaignOptions.length === 0 ? (
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-[11px] text-[#8794ab]">No SmartLead campaigns loaded.</span>
-                              <button onClick={loadCampaignOptions} disabled={syncingCampaigns} className="rounded border border-[#dbe4f2] bg-white px-1.5 py-0.5 text-[10px] font-bold text-[#174be8] hover:bg-[#eef4ff] disabled:opacity-50">
-                                {syncingCampaigns ? <Loader2 size={9} className="-mt-0.5 inline animate-spin" /> : <RefreshCw size={9} className="-mt-0.5 inline" />} Sync now
-                              </button>
-                            </div>
-                          ) : (
-                            <select
-                              value=""
-                              onChange={(e) => assignCampaign(r.id, e.target.value)}
-                              disabled={!!assigning[r.id]}
-                              className="h-7 max-w-[220px] rounded border border-[#dbe4f2] bg-white px-1.5 text-xs text-[#07142f] focus:outline-none focus:ring-1 focus:ring-[#174be8]"
-                            >
-                              <option value="">Select campaign…</option>
-                              {campaignOptions.map((c) => (
-                                <option key={c.id} value={c.id}>{c.name}{c.status ? ` · ${c.status}` : ""}</option>
-                              ))}
-                            </select>
-                          )}
-                        </div>
-                      )}
+                    {/* One control per cell. Do not stack a pill + a select — breaks row height. */}
+                    <td className="w-[220px] py-2 pr-3 text-[#526078]">
+                      <CampaignPicker
+                        assignedId={r.campaign_id}
+                        assignedName={r.campaign_id ? campaignNames[r.campaign_id] : undefined}
+                        realCampaign={realCampaign}
+                        locked={r.state === "sent" || r.state === "sending"}
+                        options={campaignOptions}
+                        busy={!!assigning[r.id]}
+                        syncing={syncingCampaigns}
+                        onPick={(cid) => assignCampaign(r.id, cid)}
+                        onSync={loadCampaignOptions}
+                      />
                     </td>
                     <td className="py-2 pr-3 text-xs text-[#526078]">{new Date(r.added_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</td>
                     <td className="py-2 pr-3">
@@ -286,7 +249,7 @@ export function OutreachQueuePanel() {
                         <div className="mt-1 max-w-[220px] truncate text-[10px] text-[#b91c1c]" title={r.last_error}>{r.last_error}</div>
                       )}
                     </td>
-                    <td className="py-2 pr-3 text-right">
+                    <td className="whitespace-nowrap py-2 pr-3 text-right">
                       <div className="inline-flex items-center gap-1">
                         <button
                           onClick={() => push(r)}
@@ -309,5 +272,83 @@ export function OutreachQueuePanel() {
         )}
       </div>
     </div>
+  );
+}
+
+function CampaignPicker({
+  assignedId, assignedName, realCampaign, locked, options, busy, syncing, onPick, onSync,
+}: {
+  assignedId: string | null;
+  assignedName?: string;
+  realCampaign: boolean;
+  locked: boolean;
+  options: RealCampaign[];
+  busy: boolean;
+  syncing: boolean;
+  onPick: (id: string) => void;
+  onSync: () => void;
+}) {
+  // Locked (sent/sending): show static pill, no menu
+  if (locked && realCampaign) {
+    return (
+      <span className="inline-flex max-w-full items-center gap-1 truncate rounded-md bg-[#eef4ff] px-2 py-1 text-xs font-bold text-[#174be8]" title={assignedName ?? `id ${assignedId}`}>
+        <span className="truncate">{assignedName ?? `id ${assignedId}`}</span>
+      </span>
+    );
+  }
+
+  const triggerLabel = realCampaign
+    ? (assignedName ?? `id ${assignedId}`)
+    : assignedId
+      ? "Invalid — pick one"
+      : "Select campaign…";
+
+  const triggerClass = realCampaign
+    ? "border-[#dbe4f2] bg-[#eef4ff] text-[#174be8]"
+    : assignedId
+      ? "border-[#fecaca] bg-[#fef2f2] text-[#b91c1c]"
+      : "border-[#dbe4f2] bg-white text-[#07142f]";
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        disabled={busy}
+        className={`inline-flex h-7 w-full max-w-[200px] items-center justify-between gap-1 rounded-md border px-2 text-xs font-bold hover:bg-[#fafbfd] disabled:opacity-50 ${triggerClass}`}
+        title={triggerLabel}
+      >
+        <span className="flex min-w-0 items-center gap-1">
+          {!realCampaign && assignedId && <AlertCircle size={11} className="shrink-0" />}
+          <span className="truncate">{triggerLabel}</span>
+        </span>
+        {busy ? <Loader2 size={11} className="shrink-0 animate-spin" /> : <ChevronDown size={12} className="shrink-0 opacity-60" />}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="max-h-[300px] w-[280px] overflow-y-auto">
+        <DropdownMenuLabel className="text-[10px] uppercase tracking-wide text-[#8794ab]">
+          {realCampaign ? "Change campaign" : "Pick a SmartLead campaign"}
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {options.length === 0 ? (
+          <div className="px-2 py-3 text-xs text-[#526078]">
+            <div className="mb-2">No SmartLead campaigns loaded.</div>
+            <button onClick={onSync} disabled={syncing} className="inline-flex items-center gap-1 rounded border border-[#dbe4f2] bg-white px-2 py-1 text-[11px] font-bold text-[#174be8] hover:bg-[#eef4ff] disabled:opacity-50">
+              {syncing ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />} Sync now
+            </button>
+          </div>
+        ) : (
+          options.map((c) => {
+            const isCurrent = c.id === assignedId;
+            return (
+              <DropdownMenuItem key={c.id} onSelect={() => !isCurrent && onPick(c.id)} className="flex items-center justify-between gap-2 text-xs">
+                <span className="flex min-w-0 items-center gap-1.5">
+                  {isCurrent && <Check size={12} className="shrink-0 text-[#174be8]" />}
+                  <span className="truncate">{c.name}</span>
+                </span>
+                {c.status && <span className="shrink-0 text-[10px] uppercase text-[#8794ab]">{c.status}</span>}
+              </DropdownMenuItem>
+            );
+          })
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

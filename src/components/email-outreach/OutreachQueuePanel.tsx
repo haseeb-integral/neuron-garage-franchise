@@ -24,6 +24,7 @@ const stateTone: Record<string, string> = {
 
 export function OutreachQueuePanel() {
   const [rows, setRows] = useState<QueueRow[]>([]);
+  const [campaignNames, setCampaignNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "queued" | "sent" | "failed">("all");
 
@@ -31,13 +32,29 @@ export function OutreachQueuePanel() {
     setLoading(true);
     const { data, error } = await supabase
       .from("outreach_queue")
-      .select("id, state, campaign_id, added_at, notes, teacher_prospect_id, teacher_prospects(name,email,school,city,state), campaign_cache(name)")
+      .select("id, state, campaign_id, added_at, notes, teacher_prospect_id, teacher_prospects(name,email,school,city,state)")
       .order("added_at", { ascending: false })
       .limit(500);
-    if (error) toast.error(`Couldn't load outreach queue: ${error.message}`);
-    else setRows((data ?? []) as unknown as QueueRow[]);
+    if (error) {
+      toast.error(`Couldn't load outreach queue: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+    const queueRows = (data ?? []) as unknown as QueueRow[];
+    setRows(queueRows);
+
+    const ids = Array.from(new Set(queueRows.map((r) => r.campaign_id).filter((x): x is string => !!x)));
+    if (ids.length) {
+      const { data: camps } = await supabase.from("campaign_cache").select("id,name").in("id", ids);
+      const map: Record<string, string> = {};
+      (camps ?? []).forEach((c) => { if (c.name) map[c.id] = c.name; });
+      setCampaignNames(map);
+    } else {
+      setCampaignNames({});
+    }
     setLoading(false);
   }, []);
+
 
   useEffect(() => { load(); }, [load]);
 

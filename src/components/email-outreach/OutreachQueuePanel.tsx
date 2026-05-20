@@ -124,8 +124,8 @@ export function OutreachQueuePanel() {
                       <div className="text-[11px] text-[#8794ab]">{r.teacher_prospects?.city}{r.teacher_prospects?.state ? `, ${r.teacher_prospects.state}` : ""}</div>
                     </td>
                     <td className="py-2 pr-3 text-[#526078]">
-                      {r.campaign_cache?.name ? (
-                        <span className="inline-flex items-center gap-1 rounded-md bg-[#eef4ff] px-2 py-0.5 text-xs font-bold text-[#174be8]">{r.campaign_cache.name}</span>
+                      {r.campaign_id && campaignNames[r.campaign_id] ? (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-[#eef4ff] px-2 py-0.5 text-xs font-bold text-[#174be8]">{campaignNames[r.campaign_id]}</span>
                       ) : r.campaign_id ? (
                         <span className="text-xs text-[#8794ab]">{r.campaign_id}</span>
                       ) : (

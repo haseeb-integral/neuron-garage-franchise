@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { TeacherProspect } from "@/data/teacherData";
 import { FitScoreBadge } from "./FitScoreBadge";
-import { Linkedin, Mail, Phone, GraduationCap, Calendar, X, Plus, Sparkles, MapPin, MailPlus, UserX } from "lucide-react";
+import { Linkedin, Mail, Phone, GraduationCap, Calendar, X, Plus, Sparkles, MapPin, MailPlus, UserX, Check, Loader2 } from "lucide-react";
 
 interface Props {
   prospect: TeacherProspect | null;
@@ -18,32 +19,61 @@ interface Props {
   isPromoting?: boolean;
 }
 
+type SaveState = "idle" | "saving" | "saved" | "error";
+
 export function TeacherDetailPanel({ prospect, onClose, onUpdate, onPromote, onMarkNotFit, isPromoted, isPromoting }: Props) {
   const [tags, setTags] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [newTag, setNewTag] = useState("");
+  const [notesState, setNotesState] = useState<SaveState>("idle");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSavedNotes = useRef("");
 
   useEffect(() => {
     if (prospect) {
-      setTags(prospect.tags);
-      setNotes(prospect.notes);
+      setTags(prospect.tags ?? []);
+      setNotes(prospect.notes ?? "");
+      lastSavedNotes.current = prospect.notes ?? "";
+      setNotesState("idle");
     }
   }, [prospect]);
 
   if (!prospect) return null;
 
-  const save = (nextTags: string[], nextNotes: string) => onUpdate({ ...prospect, tags: nextTags, notes: nextNotes });
+  const persistTags = async (nextTags: string[]) => {
+    const { error } = await supabase.from("teacher_prospects").update({ tags: nextTags }).eq("id", prospect.uuid);
+    if (error) { toast.error(`Couldn't save tag: ${error.message}`); return; }
+    onUpdate({ ...prospect, tags: nextTags });
+  };
+
+  const persistNotes = async (text: string) => {
+    if (text === lastSavedNotes.current) return;
+    setNotesState("saving");
+    const { error } = await supabase.from("teacher_prospects").update({ notes: text }).eq("id", prospect.uuid);
+    if (error) { setNotesState("error"); toast.error(`Couldn't save notes: ${error.message}`); return; }
+    lastSavedNotes.current = text;
+    setNotesState("saved");
+    onUpdate({ ...prospect, notes: text });
+  };
+
+  const onNotesChange = (val: string) => {
+    setNotes(val);
+    setNotesState("saving");
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => persistNotes(val), 700);
+  };
+
   const addTag = () => {
-    if (!newTag.trim()) return;
-    const next = [...tags, newTag.trim()];
-    setTags(next);
-    setNewTag("");
-    save(next, notes);
+    const t = newTag.trim();
+    if (!t || tags.includes(t)) { setNewTag(""); return; }
+    const next = [...tags, t];
+    setTags(next); setNewTag("");
+    persistTags(next);
   };
   const removeTag = (t: string) => {
-    const next = tags.filter(x => x !== t);
+    const next = tags.filter((x) => x !== t);
     setTags(next);
-    save(next, notes);
+    persistTags(next);
   };
 
   return (
@@ -102,7 +132,7 @@ export function TeacherDetailPanel({ prospect, onClose, onUpdate, onPromote, onM
               <h4 className="flex items-center gap-2 text-xs font-black uppercase tracking-wide text-[#174be8]"><Sparkles size={14} /> AI Fit Score</h4>
               <FitScoreBadge score={prospect.fitScore} />
             </div>
-            <p className="text-sm leading-6 text-[#34445f]">{prospect.aiReasoning}</p>
+            <p className="text-sm leading-6 text-[#34445f]">{prospect.aiReasoning || <span className="italic text-[#b0bbd0]">No reasoning yet — run AI scoring to generate.</span>}</p>
           </section>
 
           <section className="space-y-2">
@@ -122,8 +152,22 @@ export function TeacherDetailPanel({ prospect, onClose, onUpdate, onPromote, onM
           </section>
 
           <section className="space-y-2">
-            <h4 className="text-xs font-black uppercase tracking-wide text-[#8794ab]">Notes</h4>
-            <Textarea value={notes} onChange={e => setNotes(e.target.value)} onBlur={() => save(tags, notes)} placeholder="Add internal notes..." className="min-h-[86px] rounded-lg border-[#dbe4f2] bg-white focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0" />
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-black uppercase tracking-wide text-[#8794ab]">Notes</h4>
+              <span className="flex items-center gap-1 text-[11px] text-[#8794ab]">
+                {notesState === "saving" && <><Loader2 size={11} className="animate-spin" /> Saving…</>}
+                {notesState === "saved"  && <><Check size={11} className="text-[#0a8f5a]" /> Saved</>}
+                {notesState === "error"  && <span className="text-[#ef4444]">Couldn't save</span>}
+                {notesState === "idle" && notes && <span>Auto-saves as you type</span>}
+              </span>
+            </div>
+            <Textarea
+              value={notes}
+              onChange={(e) => onNotesChange(e.target.value)}
+              onBlur={() => { if (debounceRef.current) { clearTimeout(debounceRef.current); } persistNotes(notes); }}
+              placeholder="Add internal notes… (auto-saved)"
+              className="min-h-[96px] rounded-lg border-[#dbe4f2] bg-white focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+            />
           </section>
 
           <div className="grid grid-cols-2 gap-2 pt-2">

@@ -225,6 +225,7 @@ const TeacherProspects = () => {
   }, []);
 
   const reqIdRef = useRef(0);
+  const statsReqIdRef = useRef(0);
 
   const loadPage = useCallback(async () => {
     setLoadingProspects(true);

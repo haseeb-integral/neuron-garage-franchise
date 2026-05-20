@@ -23,6 +23,7 @@ import { EmailAccountsPanel } from "@/components/email-outreach/EmailAccountsPan
 import { OutreachQueuePanel } from "@/components/email-outreach/OutreachQueuePanel";
 
 import { ReplyTriagePanel } from "@/components/email-outreach/ReplyTriagePanel";
+import { AskAssistant } from "@/components/ask/AskAssistant";
 import { syncAndGetRealCampaigns } from "@/lib/smartleadCampaigns";
 import { getAnalyticsCachedOrFresh, type Aggregated } from "@/lib/smartleadAnalytics";
 

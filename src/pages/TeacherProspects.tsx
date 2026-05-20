@@ -31,6 +31,9 @@ type DbRow = {
   enrichment_source: string | null;
   verification_status: string | null;
   needs_email_enrichment: boolean | null;
+  linkedin_url: string | null;
+  school_nces_id: string | null;
+  raw: Record<string, unknown> | null;
 };
 
 const normalizeGrade = (g: string | null): GradeLevel => {
@@ -47,18 +50,31 @@ const stableId = (uuid: string) => {
   return Math.abs(h) || 1;
 };
 
+const pickStr = (raw: Record<string, unknown> | null, key: string): string | null => {
+  if (!raw) return null;
+  const v = raw[key];
+  return typeof v === "string" && v.trim() ? v : null;
+};
+
 const mapRow = (r: DbRow): TeacherProspect => ({
   id: stableId(r.id),
+  uuid: r.id,
   cityId: 0,
   name: r.name ?? "(Unknown)",
-  school: r.school ?? "—",
+  school: r.school ?? pickStr(r.raw, "companyName") ?? "—",
   district: r.district ?? null,
   gradeRaw: r.grade ?? null,
+  experienceYearsRaw: r.experience_years ?? null,
+  title: pickStr(r.raw, "title"),
+  schoolUrl: pickStr(r.raw, "companyWebsite"),
+  linkedinUrl: r.linkedin_url ?? pickStr(r.raw, "linkedin"),
+  schoolNcesId: r.school_nces_id,
+  status: (r.status as TeacherProspect["status"]) ?? "new",
   city: r.city,
   state: r.state,
   email: r.email ?? "",
   phone: "",
-  linkedin: "",
+  linkedin: r.linkedin_url ?? "",
   fitScore: (r.fit_score ?? 0) as number,
   tag: "Untagged" as TeacherTag,
   enrichmentStatus: (r.email ? "Enriched" : "Pending") as EnrichmentStatus,

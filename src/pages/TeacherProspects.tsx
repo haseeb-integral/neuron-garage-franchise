@@ -483,8 +483,15 @@ const TeacherProspects = () => {
           onUpdate={handleUpdate}
           onPromote={handlePromote}
           onMarkNotFit={handleMarkNotFit}
-          isPromoted={active ? promotedIds.has(active.id) : false}
-          isPromoting={active ? promotingId === active.id : false}
+          isPromoted={active ? promotedUuids.has(active.uuid) || active.status === "in_outreach" : false}
+          isPromoting={false}
+        />
+        <AddToCampaignModal
+          open={campaignModalOpen}
+          onOpenChange={setCampaignModalOpen}
+          prospectUuids={campaignTargets.map((t) => t.uuid)}
+          prospectNames={campaignTargets.map((t) => t.name)}
+          onAdded={handleAfterAddedToCampaign}
         />
       </div>
     </div>

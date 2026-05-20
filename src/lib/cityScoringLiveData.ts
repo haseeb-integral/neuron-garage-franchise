@@ -290,6 +290,12 @@ export function buildSeededFallbackSignalsFromScored(
     seeded("public_school_count", "Total Public Schools", scoredRow.public_school_count, "franchisee_supply", false),
     seeded("private_school_count", "Private Elementary Schools", scoredRow.private_elementary_count, "franchisee_supply", false),
     seeded("charter_school_count", "Charter Elementary Schools", scoredRow.charter_elementary_count, "franchisee_supply", false),
+    // Weather metrics — migrated from legacy city_market_signals into
+    // us_cities_scored columns on 2026-05-20. Sourced from Open-Meteo.
+    seeded("summer_weather_index", "Summer Weather Index", scoredRow.summer_weather_index, "demand", true),
+    seeded("avg_peak_summer_temperature", "Avg Peak Summer Temperature", scoredRow.avg_peak_summer_temperature, "demand", true),
+    seeded("days_above_90f", "Number of 90°+ Days", scoredRow.days_above_90f, "demand", true),
+    seeded("summer_precip_days", "Summer Precipitation Days", scoredRow.summer_precip_days, "demand", false),
   ];
   // Note: rows with null values are KEPT — the UI shows them as "—" so the
   // user can see exactly which metrics are not yet seeded for this city,

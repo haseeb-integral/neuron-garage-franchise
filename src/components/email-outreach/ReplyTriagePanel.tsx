@@ -133,15 +133,6 @@ export function ReplyTriagePanel() {
     handled: cards.filter((c) => ["promoted", "snoozed", "suppressed"].includes(c.state)).length,
   }), [cards]);
 
-  const visible = cards.filter((c) => {
-    if (filter === "all") return true;
-    if (filter === "needs_action") return c.reply.category === "INFO_REQUEST" || (c.reply.confidence ?? 0) < 0.6;
-    if (filter === "promotable") return isAutoPromotable(c.reply.category, c.reply.confidence) && !["promoted", "snoozed", "suppressed"].includes(c.state);
-    if (filter === "handled") return ["promoted", "snoozed", "suppressed"].includes(c.state);
-    return true;
-  });
-
-  const setBusy = (id: string, v: boolean) => setActing((p) => { const n = { ...p }; if (v) n[id] = true; else delete n[id]; return n; });
 
   const visible = cards.filter((c) => {
     // Always show cards just handled in this session so the user sees the greyed-out

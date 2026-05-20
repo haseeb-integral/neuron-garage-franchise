@@ -549,6 +549,9 @@ const TeacherProspects = () => {
               setSourceFilter={setSourceFilter}
               search={search}
               setSearch={setSearch}
+              hideInOutreach={hideInOutreach}
+              setHideInOutreach={setHideInOutreach}
+              inOutreachCount={allPromotedIds.length}
             />
             <BulkActionBar
               count={selected.length}
@@ -568,6 +571,8 @@ const TeacherProspects = () => {
               onEnrich={handleEnrich}
               onMarkNotFit={handleMarkNotFit}
               promotedUuids={promotedUuids}
+              promotedInfo={promotedInfo}
+              campaignNames={campaignNames}
               page={page}
               pageSize={pageSize}
               totalCount={totalCount}

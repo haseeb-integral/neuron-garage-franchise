@@ -341,7 +341,7 @@ export function OutreachQueuePanel() {
                   const realCampaign = isRealCampaignId(r.campaign_id);
                   const emailKey = r.teacher_prospects?.email?.toLowerCase();
                   const reply = emailKey ? latestReplyByEmail[emailKey] : undefined;
-                  const meta = categoryMeta(reply?.reply_intent ?? null);
+                  const hasReply = !!reply?.reply_intent;
                   return (
                     <tr key={r.id} className="border-b border-[#edf2f8] last:border-0 hover:bg-[#fafbfd]">
                       <td className="py-2 pr-3 font-semibold">{r.teacher_prospects?.name ?? "—"}</td>
@@ -366,16 +366,20 @@ export function OutreachQueuePanel() {
                       <td className="py-2 pr-3">
                         <div className="flex flex-col gap-1">
                           <span className={`inline-flex w-fit items-center rounded-md px-1.5 py-0.5 text-[11px] font-bold ${stateTone[r.state] ?? "bg-[#eef2f7] text-[#526078]"}`}>{r.state}</span>
-                          {meta && (
-                            <span
-                              className={`inline-flex w-fit items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold ${meta.cls}`}
-                              title={`${meta.description}${reply?.reply_intent_confidence != null ? ` · ${(reply.reply_intent_confidence * 100).toFixed(0)}% confidence` : ""}${reply?.reply_intent_reason ? ` · ${reply.reply_intent_reason}` : ""}`}
-                            >
-                              Replied · {meta.short}
-                            </span>
-                          )}
-                          {r.state === "snoozed" && r.snoozed_until && (
-                            <span className="text-[10px] text-[#8794ab]">until {new Date(r.snoozed_until).toLocaleDateString()}</span>
+                          {hasReply ? (
+                            <div className="flex flex-wrap items-center gap-1">
+                              <ReplyCategoryChip data={{
+                                category: reply!.reply_intent,
+                                confidence: reply!.reply_intent_confidence,
+                                reason: reply!.reply_intent_reason,
+                                overriddenBy: reply!.reply_intent_overridden_by,
+                                message: reply!.reply_message,
+                                receivedAt: reply!.received_at,
+                              }} />
+                              <SourceBadge overriddenBy={reply!.reply_intent_overridden_by} />
+                            </div>
+                          ) : (
+                            <QueueStateChip state={r.state} pushedAt={r.pushed_at} snoozedUntil={r.snoozed_until} />
                           )}
                           {r.state === "failed" && r.last_error && (
                             <div className="max-w-[220px] truncate text-[10px] text-[#b91c1c]" title={r.last_error}>{r.last_error}</div>

@@ -153,7 +153,7 @@ export function TeacherTable({
         </Table>
       </div>
       <div className="flex items-center justify-between border-t border-[#edf2f8] px-4 py-2 text-xs text-[#66728a]">
-        <span>Showing {fromIdx.toLocaleString()}–{toIdx.toLocaleString()} of {totalCount.toLocaleString()}</span>
+        <span>Showing {(fromIdx ?? 0).toLocaleString()}–{(toIdx ?? 0).toLocaleString()} of {(totalCount ?? 0).toLocaleString()}</span>
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => onPageChange(Math.max(1, page - 1))}

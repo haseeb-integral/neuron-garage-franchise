@@ -59,9 +59,12 @@ export function TeacherTable({
   }), [prospects, sortKey, sortDir]);
 
   const allSelected = prospects.length > 0 && prospects.every(p => selected.includes(p.id));
-  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-  const fromIdx = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
-  const toIdx = Math.min(totalCount, (page - 1) * pageSize + prospects.length);
+  const safeTotal = totalCount ?? 0;
+  const safePageSize = pageSize || 25;
+  const safePage = page || 1;
+  const totalPages = Math.max(1, Math.ceil(safeTotal / safePageSize));
+  const fromIdx = safeTotal === 0 ? 0 : (safePage - 1) * safePageSize + 1;
+  const toIdx = Math.min(safeTotal, (safePage - 1) * safePageSize + prospects.length);
 
   const SortHeader = ({ label, k }: { label: string; k: SortKey }) => (
     <TableHead className="h-9 cursor-pointer select-none whitespace-nowrap py-2 text-[10.5px] font-bold text-[#8794ab]" onClick={() => toggleSort(k)}>

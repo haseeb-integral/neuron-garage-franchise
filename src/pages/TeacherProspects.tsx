@@ -320,6 +320,10 @@ const TeacherProspects = () => {
   };
 
   const handleExport = async () => {
+    // If user has rows selected, header Export should export ONLY those (avoids accidental 11k dump)
+    if (selected.length > 0) {
+      return handleExportSelected();
+    }
     const expected = stats.total || totalCount;
     if (expected === 0) { toast.info("Nothing to export with the current filters."); return; }
     const t = toast.loading(`Exporting ${expected.toLocaleString()} rows…`);

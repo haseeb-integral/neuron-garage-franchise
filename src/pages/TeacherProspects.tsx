@@ -477,8 +477,8 @@ const TeacherProspects = () => {
             />
             <BulkActionBar
               count={selected.length}
-              onExport={() => toast.success(`Exported ${selected.length} prospects to CSV`)}
-              onAddTag={() => toast.info("Add tag dialog (placeholder)")}
+              onExport={handleExportSelected}
+              onAddTag={handleBulkAddTag}
               onPromote={handlePromoteBulk}
               onClear={() => setSelected([])}
             />

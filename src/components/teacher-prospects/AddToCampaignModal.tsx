@@ -94,8 +94,16 @@ export function AddToCampaignModal({ open, onOpenChange, prospectUuids, prospect
 
       const { error: insertErr } = await supabase
         .from("outreach_queue")
-        .upsert(rows, { onConflict: "teacher_prospect_id,campaign_id" });
-      if (insertErr) throw insertErr;
+        .insert(rows);
+      if (insertErr) {
+        // Duplicate-key on (teacher_prospect_id, COALESCE(campaign_id,'')) means already queued
+        if ((insertErr as { code?: string }).code === "23505") {
+          toast.info("Some prospects were already in this campaign — nothing new to add.");
+          onOpenChange(false);
+          return;
+        }
+        throw insertErr;
+      }
 
       // Mark teacher status
       const { error: updErr } = await supabase

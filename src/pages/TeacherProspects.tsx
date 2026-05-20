@@ -11,6 +11,7 @@ import { TeacherFilterBar } from "@/components/teacher-prospects/TeacherFilterBa
 import { TeacherTable } from "@/components/teacher-prospects/TeacherTable";
 import { TeacherDetailPanel } from "@/components/teacher-prospects/TeacherDetailPanel";
 import { BulkActionBar } from "@/components/teacher-prospects/BulkActionBar";
+import { AddToCampaignModal } from "@/components/teacher-prospects/AddToCampaignModal";
 import { PageHeader } from "@/components/PageHeader";
 import { useTeacherProspectsStore } from "@/stores/teacherProspectsStore";
 import { sourceKeyFor, sourceLabelFor, type SourceKey } from "@/lib/teacherSourceLabels";

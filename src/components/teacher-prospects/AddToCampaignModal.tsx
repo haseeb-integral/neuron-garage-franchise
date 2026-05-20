@@ -23,7 +23,8 @@ export function AddToCampaignModal({ open, onOpenChange, prospectUuids, prospect
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loadingCampaigns, setLoadingCampaigns] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState<string>("");
-  const [newCampaignName, setNewCampaignName] = useState("");
+  const defaultDraftName = `Outreach Draft — ${new Date().toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`;
+  const [newCampaignName, setNewCampaignName] = useState(defaultDraftName);
   const [mode, setMode] = useState<"existing" | "new">("existing");
   const [skipDuplicates, setSkipDuplicates] = useState(true);
   const [jumpAfter, setJumpAfter] = useState(false);
@@ -93,8 +94,16 @@ export function AddToCampaignModal({ open, onOpenChange, prospectUuids, prospect
 
       const { error: insertErr } = await supabase
         .from("outreach_queue")
-        .upsert(rows, { onConflict: "teacher_prospect_id,campaign_id" });
-      if (insertErr) throw insertErr;
+        .insert(rows);
+      if (insertErr) {
+        // Duplicate-key on (teacher_prospect_id, COALESCE(campaign_id,'')) means already queued
+        if ((insertErr as { code?: string }).code === "23505") {
+          toast.info("Some prospects were already in this campaign — nothing new to add.");
+          onOpenChange(false);
+          return;
+        }
+        throw insertErr;
+      }
 
       // Mark teacher status
       const { error: updErr } = await supabase

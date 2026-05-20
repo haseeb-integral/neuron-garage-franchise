@@ -75,22 +75,22 @@ export default function EmailOutreachV2() {
     }
   };
 
-  const loadStats = async () => {
+  const loadStats = async (opts?: { forceFresh?: boolean }) => {
     // Queue counts — always works (local DB)
     try {
       const { data: q } = await supabase.from("outreach_queue").select("state");
       const rows = q ?? [];
       setQueueCounts({
         inOutreach: rows.filter((r) => ["queued", "assigned", "sending"].includes(r.state)).length,
-        promoted: rows.filter((r) => r.state === "sent").length,
+        promoted: rows.filter((r) => r.state === "promoted").length,
       });
     } catch {
       setQueueCounts({ inOutreach: 0, promoted: 0 });
     }
-    // Analytics — SmartLead (cached 10min)
+    // Analytics — SmartLead (cached 10min unless forceFresh)
     try {
       setAnalyticsError(null);
-      const agg = await getAnalyticsCachedOrFresh();
+      const agg = await getAnalyticsCachedOrFresh(opts?.forceFresh ? 0 : undefined);
       setAnalytics(agg);
     } catch (e) {
       setAnalyticsError(e instanceof Error ? e.message : String(e));
@@ -109,13 +109,15 @@ export default function EmailOutreachV2() {
     const a = analytics;
     const analyticsLoading = !a && !analyticsError;
     const queueLoading = queueCounts === null;
+    const ageMin = a?.fetchedAt ? Math.max(0, Math.round((Date.now() - new Date(a.fetchedAt).getTime()) / 60000)) : null;
+    const ageLabel = ageMin === null ? "" : ageMin < 1 ? " · just now" : ` · ${ageMin}m ago`;
     return [
       { Icon: Mail, label: "Active Campaigns", value: String(active), sub: campaigns.length ? `of ${campaigns.length} total` : "no campaigns yet", tone: "blue" as const, loading: campaignsLoading, error: null as string | null },
       { Icon: Mail, label: "Prospects in Outreach", value: queueCounts ? String(queueCounts.inOutreach) : "—", sub: "queued + assigned + sending", tone: "purple" as const, loading: queueLoading, error: null as string | null },
-      { Icon: Mail, label: "Open Rate", value: a ? fmtPct(a.rates.openRate) : "—", sub: a ? `based on ${a.totals.sent.toLocaleString()} sent` : (analyticsError ?? "loading SmartLead"), tone: "green" as const, loading: analyticsLoading, error: analyticsError },
-      { Icon: Mail, label: "Replies", value: a ? a.totals.reply.toLocaleString() : "—", sub: a ? fmtPct(a.rates.replyRate) + " reply rate" : (analyticsError ?? "loading SmartLead"), tone: "green" as const, loading: analyticsLoading, error: analyticsError },
-      { Icon: Mail, label: "Interested Leads", value: a ? a.totals.interested.toLocaleString() : "—", sub: a ? fmtPct(a.rates.interestedRate) + " of replies" : (analyticsError ?? "loading SmartLead"), tone: "gold" as const, loading: analyticsLoading, error: analyticsError },
-      { Icon: Mail, label: "Promoted to Pipeline", value: queueCounts ? String(queueCounts.promoted) : "—", sub: "pushed to SmartLead", tone: "blue" as const, loading: queueLoading, error: null as string | null },
+      { Icon: Mail, label: "Open Rate", value: a ? fmtPct(a.rates.openRate) : "—", sub: a ? `${a.totals.sent.toLocaleString()} sent${ageLabel}` : (analyticsError ?? "loading SmartLead"), tone: "green" as const, loading: analyticsLoading, error: analyticsError },
+      { Icon: Mail, label: "Replies", value: a ? a.totals.reply.toLocaleString() : "—", sub: a ? `${fmtPct(a.rates.replyRate)} reply rate${ageLabel}` : (analyticsError ?? "loading SmartLead"), tone: "green" as const, loading: analyticsLoading, error: analyticsError },
+      { Icon: Mail, label: "Interested Leads", value: a ? a.totals.interested.toLocaleString() : "—", sub: a ? `${fmtPct(a.rates.interestedRate)} of replies${ageLabel}` : (analyticsError ?? "loading SmartLead"), tone: "gold" as const, loading: analyticsLoading, error: analyticsError },
+      { Icon: Mail, label: "Promoted to Pipeline", value: queueCounts ? String(queueCounts.promoted) : "—", sub: "moved to Candidate Pipeline", tone: "blue" as const, loading: queueLoading, error: null as string | null },
     ];
   }, [campaigns, campaignsLoading, queueCounts, analytics, analyticsError]);
 
@@ -150,7 +152,7 @@ export default function EmailOutreachV2() {
       </div>
       <div className="ml-auto flex shrink-0 flex-wrap justify-end gap-2 pt-1">
         <button onClick={() => safeToast("CSV export will be wired to real campaign data.")} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#dbe4f2] bg-white px-3 text-xs font-bold text-[#07142f]"><Download size={14} /> CSV</button>
-        <button onClick={() => { loadCampaigns(); loadStats(); }} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#dbe4f2] bg-white px-3 text-xs font-bold text-[#07142f]"><RefreshCw size={14} /> Refresh</button>
+        <button onClick={() => { loadCampaigns(); loadStats({ forceFresh: true }); }} title="Bypass 10-min analytics cache" className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#dbe4f2] bg-white px-3 text-xs font-bold text-[#07142f]"><RefreshCw size={14} /> Refresh</button>
         <button onClick={() => setImportOpen(true)} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#dbe4f2] bg-white px-3 text-xs font-bold text-[#174be8]"><Upload size={14} /> Import Leads</button>
         <button onClick={() => setNewCampaignOpen(true)} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#174be8] px-3 text-xs font-bold text-white"><Plus size={14} /> Campaign</button>
       </div>

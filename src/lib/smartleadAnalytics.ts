@@ -99,15 +99,17 @@ export async function fetchAggregated(): Promise<Aggregated> {
 export const ANALYTICS_CACHE_KEY = "smartlead_analytics_overview";
 
 /** Reads cached analytics from campaign_cache if fresh (10min); fetches otherwise. */
-export async function getAnalyticsCachedOrFresh(maxAgeMs = 10 * 60 * 1000): Promise<Aggregated> {
-  const { data: cached } = await supabase
-    .from("campaign_cache")
-    .select("raw_data, last_synced")
-    .eq("id", ANALYTICS_CACHE_KEY)
-    .maybeSingle();
-  if (cached?.raw_data && cached.last_synced) {
-    const ageMs = Date.now() - new Date(cached.last_synced).getTime();
-    if (ageMs < maxAgeMs) return cached.raw_data as unknown as Aggregated;
+export async function getAnalyticsCachedOrFresh(maxAgeMs: number = 10 * 60 * 1000): Promise<Aggregated> {
+  if (maxAgeMs > 0) {
+    const { data: cached } = await supabase
+      .from("campaign_cache")
+      .select("raw_data, last_synced")
+      .eq("id", ANALYTICS_CACHE_KEY)
+      .maybeSingle();
+    if (cached?.raw_data && cached.last_synced) {
+      const ageMs = Date.now() - new Date(cached.last_synced).getTime();
+      if (ageMs < maxAgeMs) return cached.raw_data as unknown as Aggregated;
+    }
   }
   const fresh = await fetchAggregated();
   await supabase.from("campaign_cache").upsert([{

@@ -36,6 +36,8 @@ export function ReplyTriagePanel() {
   const [cards, setCards] = useState<TriageCard[]>([]);
   const [acting, setActing] = useState<Record<string, boolean>>({});
   const [filter, setFilter] = useState<FilterKey>("needs_action");
+  const [inboxOpen, setInboxOpen] = useState(false);
+  const [simulateOpen, setSimulateOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);

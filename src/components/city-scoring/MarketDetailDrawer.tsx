@@ -800,9 +800,54 @@ export function MarketDetailDrawer({
                 const liveProxy = enabledRows.filter((r) => r.status === "live" || r.status === "proxy").length;
                 return (
                   <div key={category.key} className="rounded-lg border border-[#eef2f7] bg-white">
-                    <div className="flex items-center justify-between border-b border-[#eef2f7] bg-[#f8fafe] px-3 py-1.5">
-                      <h5 className="text-[12px] font-bold text-[#07142f]">{category.label}</h5>
-                      <span className="text-[10px] font-semibold text-[#8794ab]" title="Count of enabled scoring metrics that have a value, out of total enabled scoring metrics in this category">
+                    <div className="flex items-center justify-between gap-2 border-b border-[#eef2f7] bg-[#f8fafe] px-3 py-1.5">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <h5 className="text-[12px] font-bold text-[#07142f]">{category.label}</h5>
+                        {(() => {
+                          const f = CATEGORY_FORMULAS[category.key];
+                          const scoreProp = CATEGORY_KEY_TO_SCORE_PROP[category.key];
+                          const scoreVal = categoryScores?.[scoreProp];
+                          return (
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="inline-flex items-center gap-0.5 rounded-full border border-[#dbe4f2] bg-white px-1.5 py-0.5 text-[9.5px] font-semibold text-[#174be8] hover:bg-[#eef4ff]"
+                                  title="Show how this category score is computed"
+                                >
+                                  <Info size={9} /> Show formula
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent side="bottom" align="start" className="w-[360px] p-3 text-[11px] text-[#14233b]">
+                                <p className="font-bold text-[#07142f] mb-1">{category.label} — Score Formula</p>
+                                {typeof scoreVal === "number" && (
+                                  <p className="mb-2 text-[10.5px] text-[#526078]">
+                                    Current score for {market.city}: <span className="font-bold text-[#07142f]">{scoreVal}</span> / 100
+                                  </p>
+                                )}
+                                <p className="font-mono text-[10.5px] bg-[#f8fafe] border border-[#eef2f7] rounded px-2 py-1.5 mb-2 break-words leading-snug">
+                                  {f.formula}
+                                </p>
+                                <p className="font-semibold text-[10.5px] text-[#07142f] mb-1">Inputs & sources</p>
+                                <ul className="list-disc pl-4 space-y-0.5 text-[10.5px] text-[#3a4c72] mb-2">
+                                  {f.inputs.map((i, idx) => <li key={idx}>{i}</li>)}
+                                </ul>
+                                <p className="text-[10px] text-[#8794ab]">{f.clamp}</p>
+                                <p className="mt-2 text-[10px] text-[#8794ab]">
+                                  Source: <code>supabase/functions/_shared/scoring.ts</code> · <code>calculateCurrentCategoryScores</code>. Composite weights this category at {(() => {
+                                    const w: Record<MetricCategory, string> = {
+                                      demand: "25%", pricing_power: "20%", competitive_landscape: "20%",
+                                      franchisee_supply: "15%", ease_of_operations: "10%", parent_mindset: "10%",
+                                    };
+                                    return w[category.key];
+                                  })()} (default).
+                                </p>
+                              </PopoverContent>
+                            </Popover>
+                          );
+                        })()}
+                      </div>
+                      <span className="text-[10px] font-semibold text-[#8794ab] text-right" title="Count of enabled scoring metrics that have a value, out of total enabled scoring metrics in this category">
                         {liveProxy} of {enabledTotal} scoring metrics have a value
                         {disabledRows.length > 0 ? ` · +${disabledRows.length} tracked-only` : ""}
                         {customs.length > 0 ? ` · ${customs.length} custom` : ""}

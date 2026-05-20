@@ -6,6 +6,11 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { SourceBadge } from "./SourceBadge";
 import { statusBadgeFor } from "@/lib/teacherSourceLabels";
 
+export type OutreachInfo = {
+  campaign_id: string | null;
+  state: "queued" | "assigned" | "sending" | "sent" | "failed" | string;
+};
+
 interface Props {
   prospects: TeacherProspect[];
   selected: number[];
@@ -17,6 +22,8 @@ interface Props {
   onEnrich: (p: TeacherProspect) => void;
   onMarkNotFit: (p: TeacherProspect) => void;
   promotedUuids?: Set<string>;
+  promotedInfo?: Map<string, OutreachInfo>;
+  campaignNames?: Map<string, string>;
   page: number;
   pageSize: number;
   totalCount: number;
@@ -56,7 +63,8 @@ function pageList(current: number, total: number): (number | "…")[] {
 export function TeacherTable({
   prospects, selected, onToggleSelect, onToggleAll, onRowClick,
   onPromote, onShortlist, onEnrich, onMarkNotFit,
-  promotedUuids, page, pageSize, totalCount, onPageChange, onPageSizeChange, loading,
+  promotedUuids, promotedInfo, campaignNames,
+  page, pageSize, totalCount, onPageChange, onPageSizeChange, loading,
 }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
@@ -189,11 +197,32 @@ export function TeacherTable({
                   <td className={cellCls}>
                     <div className="flex items-center gap-1.5">
                       <SourceBadge badge={badge} />
-                      {isPromoted && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-[#eef2f7] px-1.5 py-0.5 text-[10px] font-bold text-[#526078]" title="In outreach queue">
-                          <UserCheck size={10} /> Outreach
-                        </span>
-                      )}
+                      {isPromoted && (() => {
+                        const info = promotedInfo?.get(p.uuid);
+                        const state = info?.state ?? "queued";
+                        const cname = info?.campaign_id ? (campaignNames?.get(info.campaign_id) ?? `Campaign #${info.campaign_id}`) : "Unassigned";
+                        const tone =
+                          state === "sent" ? "bg-[#dcfce7] text-[#0a8f5a]" :
+                          state === "sending" ? "bg-[#dbeafe] text-[#1e6fb8]" :
+                          state === "failed" ? "bg-[#fee2e2] text-[#b91c1c]" :
+                          state === "assigned" ? "bg-[#eef2f7] text-[#34445f]" :
+                          "bg-[#fef3c7] text-[#92400e]"; // queued
+                        const label =
+                          state === "sent" ? "Sent" :
+                          state === "sending" ? "Sending" :
+                          state === "failed" ? "Failed" :
+                          state === "assigned" ? "In" :
+                          "Queued";
+                        return (
+                          <span
+                            className={`inline-flex max-w-[180px] items-center gap-1 truncate rounded-full px-1.5 py-0.5 text-[10px] font-bold ${tone}`}
+                            title={`${label}: ${cname} — open Email Outreach to manage`}
+                          >
+                            <UserCheck size={10} className="shrink-0" />
+                            <span className="truncate">{label}: {cname}</span>
+                          </span>
+                        );
+                      })()}
                     </div>
                   </td>
                   <td className={`${cellCls} sticky right-0 z-10 bg-white text-right group-hover:bg-[#f7faff]`} onClick={e => e.stopPropagation()}>

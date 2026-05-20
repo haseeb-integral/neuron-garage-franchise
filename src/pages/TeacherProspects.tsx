@@ -172,6 +172,9 @@ const TeacherProspects = () => {
   const [active, setActive] = useState<TeacherProspect | null>(null);
   const [selected, setSelected] = useState<number[]>([]);
   const [promotedUuids, setPromotedUuids] = useState<Set<string>>(new Set());
+  const [promotedInfo, setPromotedInfo] = useState<Map<string, { campaign_id: string | null; state: string }>>(new Map());
+  const [allPromotedIds, setAllPromotedIds] = useState<string[]>([]);
+  const [campaignNames, setCampaignNames] = useState<Map<string, string>>(new Map());
   const [campaignModalOpen, setCampaignModalOpen] = useState(false);
   const [campaignTargets, setCampaignTargets] = useState<{ uuid: string; name: string }[]>([]);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -182,6 +185,8 @@ const TeacherProspects = () => {
   const setCityFilter = useTeacherProspectsStore((s) => s.setCityFilter);
   const sourceFilter = useTeacherProspectsStore((s) => s.sourceFilter);
   const setSourceFilter = useTeacherProspectsStore((s) => s.setSourceFilter);
+  const hideInOutreach = useTeacherProspectsStore((s) => s.hideInOutreach);
+  const setHideInOutreach = useTeacherProspectsStore((s) => s.setHideInOutreach);
   const page = useTeacherProspectsStore((s) => s.page);
   const setPage = useTeacherProspectsStore((s) => s.setPage);
   const pageSize = useTeacherProspectsStore((s) => s.pageSize);
@@ -221,6 +226,15 @@ const TeacherProspects = () => {
     else if (sourceFilter === "linkedin") q = q.ilike("enrichment_source", "linkedin%");
     else if (sourceFilter === "needs_email") q = q.eq("needs_email_enrichment", true);
 
+    // "Hide already in outreach" filter — applies the global active-queue id list
+    if (hideInOutreach && allPromotedIds.length > 0) {
+      // Safety cap: PostgREST URLs cap around ~8KB. UUIDs are 36 chars + comma → ~37.
+      // Stay well below: cap at 2000 ids. If exceeded, fall back to client-side hide below.
+      if (allPromotedIds.length <= 2000) {
+        q = q.not("id", "in", `(${allPromotedIds.join(",")})`);
+      }
+    }
+
     const { data, error, count } = await q.range(from, to);
 
     if (myReq !== reqIdRef.current) return; // stale
@@ -230,12 +244,20 @@ const TeacherProspects = () => {
       setProspects([]);
       setTotalCount(0);
     } else {
-      setProspects((data ?? []).map((r) => mapRow(r as unknown as DbRow)));
-      setTotalCount(count ?? 0);
+      let rows = (data ?? []).map((r) => mapRow(r as unknown as DbRow));
+      let total = count ?? 0;
+      // Fallback client-side hide when allPromotedIds exceeds the URL safety cap
+      if (hideInOutreach && allPromotedIds.length > 2000) {
+        const hidden = new Set(allPromotedIds);
+        rows = rows.filter((r) => !hidden.has(r.uuid));
+        total = Math.max(0, total - allPromotedIds.length); // approximate
+      }
+      setProspects(rows);
+      setTotalCount(total);
       setLoadedAt(new Date());
     }
     setLoadingProspects(false);
-  }, [page, pageSize, cityFilter, debouncedSearch, sourceFilter]);
+  }, [page, pageSize, cityFilter, debouncedSearch, sourceFilter, hideInOutreach, allPromotedIds]);
 
   const loadStats = useCallback(async () => {
     const myReq = reqIdRef.current;
@@ -269,19 +291,67 @@ const TeacherProspects = () => {
   // Re-fetch stats on filter change (not on page change — stats are filter-scoped)
   useEffect(() => { loadStats(); }, [loadStats]);
 
-  // Load which of the visible prospects are already in outreach_queue
+  // Load campaign-state info for visible prospects (which campaign + state)
   useEffect(() => {
     const uuids = prospects.map((p) => p.uuid);
-    if (uuids.length === 0) { setPromotedUuids(new Set()); return; }
+    if (uuids.length === 0) {
+      setPromotedUuids(new Set());
+      setPromotedInfo(new Map());
+      return;
+    }
     (async () => {
       const { data } = await supabase
         .from("outreach_queue")
-        .select("teacher_prospect_id")
+        .select("teacher_prospect_id, campaign_id, state, added_at")
         .in("teacher_prospect_id", uuids)
-        .in("state", ["queued", "assigned", "sending", "sent"]);
-      if (data) setPromotedUuids(new Set(data.map((r) => r.teacher_prospect_id as string)));
+        .in("state", ["queued", "assigned", "sending", "sent", "failed"])
+        .order("added_at", { ascending: false });
+      if (!data) return;
+      // Keep latest row per prospect (first wins because of DESC order)
+      const info = new Map<string, { campaign_id: string | null; state: string }>();
+      for (const r of data as { teacher_prospect_id: string; campaign_id: string | null; state: string }[]) {
+        if (!info.has(r.teacher_prospect_id)) {
+          info.set(r.teacher_prospect_id, { campaign_id: r.campaign_id, state: r.state });
+        }
+      }
+      // Active (non-failed) uuids drive the "already in outreach" UX
+      const activeOnly = new Set<string>();
+      for (const [uuid, v] of info.entries()) {
+        if (v.state !== "failed") activeOnly.add(uuid);
+      }
+      setPromotedUuids(activeOnly);
+      setPromotedInfo(info);
     })();
   }, [prospects]);
+
+  // Load the FULL list of active outreach prospect ids (used by Hide filter + counter)
+  const refreshAllPromoted = useCallback(async () => {
+    const { data } = await supabase
+      .from("outreach_queue")
+      .select("teacher_prospect_id")
+      .in("state", ["queued", "assigned", "sending", "sent"]);
+    if (data) {
+      // dedupe — a prospect could appear in multiple queue rows
+      const ids = Array.from(new Set((data as { teacher_prospect_id: string }[]).map((r) => r.teacher_prospect_id)));
+      setAllPromotedIds(ids);
+    }
+  }, []);
+  useEffect(() => { refreshAllPromoted(); }, [refreshAllPromoted]);
+
+  // Load campaign id → name map (small, cached)
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("campaign_cache").select("id, name");
+      if (data) {
+        const m = new Map<string, string>();
+        for (const c of data as { id: string; name: string | null }[]) {
+          if (c.name) m.set(c.id, c.name);
+        }
+        setCampaignNames(m);
+      }
+    })();
+  }, []);
+
 
   // URL ?city= and ?prospect= handling
   const consumedPromptRef = useRef(false);
@@ -421,6 +491,7 @@ const TeacherProspects = () => {
   const handleAfterAddedToCampaign = (addedUuids: string[]) => {
     setPromotedUuids((prev) => new Set([...prev, ...addedUuids]));
     setSelected([]);
+    refreshAllPromoted();
     loadPage();
   };
 
@@ -478,6 +549,9 @@ const TeacherProspects = () => {
               setSourceFilter={setSourceFilter}
               search={search}
               setSearch={setSearch}
+              hideInOutreach={hideInOutreach}
+              setHideInOutreach={setHideInOutreach}
+              inOutreachCount={allPromotedIds.length}
             />
             <BulkActionBar
               count={selected.length}
@@ -497,6 +571,8 @@ const TeacherProspects = () => {
               onEnrich={handleEnrich}
               onMarkNotFit={handleMarkNotFit}
               promotedUuids={promotedUuids}
+              promotedInfo={promotedInfo}
+              campaignNames={campaignNames}
               page={page}
               pageSize={pageSize}
               totalCount={totalCount}

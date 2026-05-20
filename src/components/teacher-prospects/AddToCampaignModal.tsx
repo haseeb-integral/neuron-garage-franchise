@@ -75,18 +75,24 @@ export function AddToCampaignModal({ open, onOpenChange, prospectUuids, prospect
     try {
       // Optional dedupe: drop uuids already queued in an active state
       let toInsert = prospectUuids;
+      let skippedCount = 0;
       if (skipDuplicates) {
         const { data: existing } = await supabase
           .from("outreach_queue")
           .select("teacher_prospect_id")
           .in("teacher_prospect_id", prospectUuids)
-          .in("state", ["queued", "assigned", "sending"]);
+          .in("state", ["queued", "assigned", "sending", "sent"]);
         const dup = new Set((existing ?? []).map((r) => r.teacher_prospect_id));
         toInsert = prospectUuids.filter((u) => !dup.has(u));
+        skippedCount = prospectUuids.length - toInsert.length;
       }
 
       if (toInsert.length === 0) {
-        toast.info("All selected prospects are already in an active campaign.");
+        toast.info(
+          prospectUuids.length === 1
+            ? "This prospect is already in an active campaign."
+            : `All ${prospectUuids.length.toLocaleString()} selected prospects are already in an active campaign.`
+        );
         setSubmitting(false);
         onOpenChange(false);
         return;
@@ -119,7 +125,10 @@ export function AddToCampaignModal({ open, onOpenChange, prospectUuids, prospect
         .in("id", toInsert);
       if (updErr) throw updErr;
 
-      toast.success(`${toInsert.length.toLocaleString()} added to ${campaignLabel}`, {
+      const headline = skippedCount > 0
+        ? `${toInsert.length.toLocaleString()} added, ${skippedCount.toLocaleString()} skipped (already in outreach)`
+        : `${toInsert.length.toLocaleString()} added to ${campaignLabel}`;
+      toast.success(headline, {
         description: campaignId ? "Will appear in Email Outreach → campaign queue." : "Queued unassigned — pick a SmartLead campaign in Email Outreach.",
         action: { label: "View Outreach", onClick: () => navigate("/email-outreach") },
       });

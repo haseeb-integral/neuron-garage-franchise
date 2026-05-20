@@ -249,7 +249,7 @@ export function OutreachQueuePanel() {
                         <div className="mt-1 max-w-[220px] truncate text-[10px] text-[#b91c1c]" title={r.last_error}>{r.last_error}</div>
                       )}
                     </td>
-                    <td className="py-2 pr-3 text-right">
+                    <td className="whitespace-nowrap py-2 pr-3 text-right">
                       <div className="inline-flex items-center gap-1">
                         <button
                           onClick={() => push(r)}

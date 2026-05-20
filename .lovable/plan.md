@@ -1,86 +1,41 @@
-## Goal
+## Phase A1–A5 — City → Teacher connection
 
-Add a top-bar **"Ask"** input on the Email Outreach screen that answers natural-language questions about what's happening on that screen (queue, replies, campaigns, candidates). Read-only — no writes. Built as a reusable `<AskAssistant />` so City Search, Teacher Search, and Pipeline can adopt it later with one line.
+**Status:** DB migration already executed (table `teacher_saved_lists` is live with per-user RLS). The plan below is the code-only remainder. Hit **Implement plan** to run it.
 
-## What the user gets (Phase 1)
+### A1 — Fix `?city`/`?state` plumbing
+- `src/components/city-scoring/CityDetailDrawer.tsx` — pass `state` alongside `city` in the navigate URL (currently dropped).
 
-A slim input in the Email Outreach page header: *"Ask about queue, replies, campaigns…"*. Press Enter → answer streams below it in a collapsible panel. Examples it can answer:
-- "How many leads are queued vs sent today?"
-- "Which campaign has the highest reply rate this week?"
-- "Why is Adra still in triage — what's her state?"
-- "Show me positive replies from yesterday I haven't promoted"
-- "Which prospect batches haven't been pushed to SmartLead yet?"
+### A2 — Market context banner
+- New `src/components/teacher-prospects/MarketContextBanner.tsx`:
+  - When `?city=` is present, queries `us_cities_scored` once for `composite_score_default`, tier band, population
+  - Shows: `← City Search` button · `📍 Bethesda, MD · Tier A · Composite 98` · `47 teachers · 12 email-ready · 3 in outreach` · `Clear ×`
+  - Clear removes `?city`/`?state` from URL and resets `cityFilter` to `"All"`
 
-## Architecture (reusable foundation)
+### A3 — Heading reflects active filter
+- `src/pages/TeacherProspects.tsx`:
+  - When `cityFilter !== "All"`, page title becomes `Teachers in {city}, {state}`; otherwise stays `Teacher Search`
+  - Subtitle counters re-scoped (already filter-aware via `teacher_prospects_stats` RPC — verified)
 
-```text
-src/components/ask/
-  AskAssistant.tsx        # Top-bar input + streaming answer panel (UI)
-  useAsk.ts               # AI SDK useChat hook wired to /functions/v1/ask
-  registry.ts             # Per-screen config: { screen, systemPrompt, tools[] }
-  screens/
-    email.ts              # Email screen's tools + system prompt
-    (city.ts, teacher.ts, pipeline.ts — added later)
+### A4 — Adaptive columns
+- `src/components/teacher-prospects/TeacherTable.tsx`:
+  - Add optional `hideCityColumn?: boolean` prop
+  - When true, hide the `City` column (redundant when filtered to one city)
+- `TeacherProspects.tsx` passes `hideCityColumn={cityFilter && cityFilter !== "All"}`
 
-supabase/functions/ask/
-  index.ts                # Single edge function, routes by `screen` param
-  _shared/ai-gateway.ts   # Lovable AI Gateway provider (already pattern in repo)
-```
+### A5 — Saved teacher lists UI
+- New `src/components/teacher-prospects/SavedListsMenu.tsx`:
+  - Dropdown next to filter bar: lists user's saved views, `+ Save current view` (modal: name + optional notes), per-row delete
+  - Saves `{ cityFilter, sourceFilter, search, hideInOutreach }` as `filters` jsonb
+  - Restoring a list applies all filters + updates URL `?city=`
+- Wired into `TeacherProspects.tsx` header action row
 
-**Usage on any screen** (after Phase 1):
-```tsx
-<AskAssistant screen="email" />
-```
+### Naming check (AGENTS Rule 10)
+- New table `teacher_saved_lists` ≠ existing `saved_searches` (which stores City Search scoring weights only). Keeping them separate preserves both names' meaning.
 
-## Tools exposed to the model (Email screen, read-only)
+### Doc-sync (Mode A — drafted after implementation, awaits explicit "go")
+- `PROJECT_CONTEXT.md`: add `teacher_saved_lists` table row + `MarketContextBanner` / `SavedListsMenu` components
+- `HOW_IT_WORKS.md`: upgrade "Favoriting a city → Teacher Search defaults to that city" to fully accurate (banner + heading + cleared filters)
+- `OPEN_TASKS.md`: mark A1–A5 done; add Phase B items (multi-city URL, Fit Score column, "Add all visible to outreach")
+- `GLOSSARY.md`: add "Market context banner", "Saved teacher list"
 
-All are thin wrappers over existing Supabase queries — same data the UI already reads:
-
-| Tool | Purpose |
-|---|---|
-| `query_outreach_queue` | Filter by state/date/campaign; returns counts + sample rows |
-| `query_reply_triage` | Filter by sentiment/state/date; returns counts + sample rows |
-| `query_campaigns` | SmartLead campaign list with stats (sent, replied, bounced) |
-| `query_prospect_batches` | Batch status, push status to SmartLead |
-| `get_candidate` | Look up a candidate by name/id, return profile + pipeline status |
-| `query_email_accounts` | Connected sender accounts and health |
-
-Each tool has a narrow Zod `inputSchema`, returns compact JSON (capped row counts), and is scoped to the authenticated user via RLS. No mutation tools in Phase 1.
-
-## Model & cost
-
-- **Model:** `google/gemini-3-flash-preview` via Lovable AI Gateway (no API key — already wired)
-- **Estimated cost at 3 users × ~50 questions/day:** under **$0.20/month**. Hard ceiling under $2/month even with heavy use.
-- **Latency:** sub-second first token via streaming.
-
-## UI behavior
-
-- Slim single-line input in the Email Outreach page header (next to existing title)
-- Enter → opens a slide-down panel below the header with the streamed answer
-- Answer renders markdown + small data tables (reuses existing table primitives)
-- "Show data sources" disclosure shows which tools were called + raw JSON (your **"Show the math"** rule applies here too)
-- Close panel = X button. State doesn't persist across reloads (Phase 1).
-- Doesn't touch any existing functionality, layouts, buttons, or data flows.
-
-## Technical details
-
-- **Backend:** new edge function `ask` using AI SDK `streamText` + `tool` + `stepCountIs(50)`, returns `toUIMessageStreamResponse`.
-- **Frontend:** AI SDK `useChat` + `DefaultChatTransport` pointed at the function. Render `message.parts` (text + tool parts) so the data-sources disclosure works.
-- **Auth:** function validates JWT, scopes all tool queries to `auth.uid()`.
-- **Tool deferral:** not needed at this size (~6 tools). Register directly.
-- **No new tables.** No schema changes. No new secrets (LOVABLE_API_KEY already present).
-
-## What this is NOT (deferred)
-
-- ❌ No write actions (no promote/snooze/draft) — Phase 2 if useful
-- ❌ No cross-screen memory or unified agent — only after 2+ screens prove value
-- ❌ No conversation history persistence — session-only for now
-- ❌ Not added to other screens yet — foundation is reusable, but only Email is wired
-
-## Doc sync after build
-
-Per AGENTS.md Rule 9, after implementation I'll draft one-line updates for `PROJECT_CONTEXT.md` (new component + edge function), `APIS.md` (Lovable AI Gateway usage), and `HOW_IT_WORKS.md` (Email screen now has an Ask bar). Will wait for your "go" before writing.
-
-## Risk: low
-
-Pure addition. No changes to existing email functionality, schema, or RLS. Easy to remove (delete one component + one edge function).
+### Risk: low across all five. No changes to scoring math, teacher data, or Email Outreach.

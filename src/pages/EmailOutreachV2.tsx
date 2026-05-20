@@ -152,7 +152,7 @@ export default function EmailOutreachV2() {
       </div>
       <div className="ml-auto flex shrink-0 flex-wrap justify-end gap-2 pt-1">
         <button onClick={() => safeToast("CSV export will be wired to real campaign data.")} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#dbe4f2] bg-white px-3 text-xs font-bold text-[#07142f]"><Download size={14} /> CSV</button>
-        <button onClick={() => { loadCampaigns(); loadStats(); }} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#dbe4f2] bg-white px-3 text-xs font-bold text-[#07142f]"><RefreshCw size={14} /> Refresh</button>
+        <button onClick={() => { loadCampaigns(); loadStats({ forceFresh: true }); }} title="Bypass 10-min analytics cache" className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#dbe4f2] bg-white px-3 text-xs font-bold text-[#07142f]"><RefreshCw size={14} /> Refresh</button>
         <button onClick={() => setImportOpen(true)} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#dbe4f2] bg-white px-3 text-xs font-bold text-[#174be8]"><Upload size={14} /> Import Leads</button>
         <button onClick={() => setNewCampaignOpen(true)} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#174be8] px-3 text-xs font-bold text-white"><Plus size={14} /> Campaign</button>
       </div>

@@ -542,12 +542,22 @@ const TeacherProspects = () => {
             </div>
 
             <div className="rounded-xl border border-[#e7edf5] bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.02)]">
-              <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-[#66728a]">Status Legend</div>
-              <ul className="space-y-1.5 text-[11.5px] text-[#526078]">
-                <li><span className="mr-1 inline-block rounded bg-[#e6f7ef] px-1.5 font-bold text-[#0a8f5a]">SmartLead · Verified</span> safe to send</li>
-                <li><span className="mr-1 inline-block rounded bg-[#fff4df] px-1.5 font-bold text-[#b7791f]">SmartLead · Unverified</span> excluded from campaigns</li>
-                <li><span className="mr-1 inline-block rounded bg-[#eef2f7] px-1.5 font-bold text-[#526078]">SmartLead · No Email</span> needs enrichment</li>
-                <li><span className="mr-1 inline-block rounded bg-[#e6f3ff] px-1.5 font-bold text-[#1e6fb8]">LinkedIn Import</span> needs email enrichment</li>
+              <div className="mb-3 text-[11px] font-bold uppercase tracking-wide text-[#66728a]">Status Legend</div>
+              <ul className="space-y-2.5 text-[12px] text-[#34445f]">
+                {[
+                  { dot: "#0a8f5a", label: "SmartLead · Verified", desc: "safe to send today" },
+                  { dot: "#b7791f", label: "SmartLead · Unverified", desc: "excluded from campaigns" },
+                  { dot: "#8794ab", label: "SmartLead · No Email", desc: "needs enrichment" },
+                  { dot: "#1e6fb8", label: "LinkedIn Import", desc: "needs email enrichment" },
+                ].map((s) => (
+                  <li key={s.label} className="flex items-start gap-2">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: s.dot }} />
+                    <div className="min-w-0">
+                      <div className="font-bold text-[#07142f]">{s.label}</div>
+                      <div className="text-[11px] text-[#66728a]">{s.desc}</div>
+                    </div>
+                  </li>
+                ))}
               </ul>
             </div>
           </aside>

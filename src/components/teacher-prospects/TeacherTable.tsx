@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
 import { TeacherProspect } from "@/data/teacherData";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowUpDown, Eye, MailPlus, MoreVertical, Send, Star, UserCheck, UserX } from "lucide-react";
+import { ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Eye, Loader2, MailPlus, MoreVertical, Send, Star, UserCheck, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SourceBadge } from "./SourceBadge";
@@ -21,6 +20,8 @@ interface Props {
   pageSize: number;
   totalCount: number;
   onPageChange: (n: number) => void;
+  onPageSizeChange?: (n: number) => void;
+  loading?: boolean;
 }
 
 type SortKey = "name" | "school" | "city";
@@ -34,19 +35,20 @@ function pageList(current: number, total: number): (number | "…")[] {
   const out: (number | "…")[] = [];
   const add = (n: number) => out[out.length - 1] !== n && out.push(n);
   add(1);
-  if (current > 3) out.push("…");
-  for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) add(i);
-  if (current < total - 2) out.push("…");
+  if (current > 4) out.push("…");
+  for (let i = Math.max(2, current - 2); i <= Math.min(total - 1, current + 2); i++) add(i);
+  if (current < total - 3) out.push("…");
   if (total > 1) add(total);
   return out;
 }
 
 export function TeacherTable({
   prospects, selected, onToggleSelect, onToggleAll, onRowClick, onPromote,
-  promotedIds, promotingId, page, pageSize, totalCount, onPageChange,
+  promotedIds, promotingId, page, pageSize, totalCount, onPageChange, onPageSizeChange, loading,
 }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [gotoInput, setGotoInput] = useState("");
 
   const toggleSort = (k: SortKey) => {
     if (sortKey === k) setSortDir(d => d === "asc" ? "desc" : "asc");
@@ -66,30 +68,41 @@ export function TeacherTable({
   const fromIdx = safeTotal === 0 ? 0 : (safePage - 1) * safePageSize + 1;
   const toIdx = Math.min(safeTotal, (safePage - 1) * safePageSize + prospects.length);
 
-  const SortHeader = ({ label, k }: { label: string; k: SortKey }) => (
-    <TableHead className="h-9 cursor-pointer select-none whitespace-nowrap py-2 text-[10.5px] font-bold text-[#8794ab]" onClick={() => toggleSort(k)}>
-      <span className="flex items-center gap-1">{label} <ArrowUpDown size={10} /></span>
-    </TableHead>
-  );
+  const headerCls = "sticky top-0 z-10 bg-[#f8fafc] h-8 px-3 text-left align-middle whitespace-nowrap text-[10.5px] font-bold uppercase tracking-wide text-[#66728a] border-b border-[#e7edf5]";
+  const cellCls = "px-3 py-1.5 align-middle text-[12.5px] text-[#374151] border-b border-[#f1f5f9]";
+
+  const handleGoto = () => {
+    const n = parseInt(gotoInput, 10);
+    if (!isNaN(n) && n >= 1 && n <= totalPages) { onPageChange(n); setGotoInput(""); }
+  };
 
   return (
-    <div className="overflow-hidden rounded-xl border border-[#e7edf5] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.025)]">
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader className="bg-white">
-            <TableRow className="h-9 border-[#edf2f8] hover:bg-white">
-              <TableHead className="h-9 w-11 py-2">
+    <div className="relative rounded-xl border border-[#e7edf5] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.025)]">
+      {/* Scroll container: horizontal scroll lives INSIDE the table pane */}
+      <div className="max-h-[calc(100vh-340px)] min-h-[300px] overflow-auto rounded-t-xl">
+        <table className="w-full min-w-[1100px] border-separate border-spacing-0 text-sm">
+          <thead>
+            <tr>
+              <th className={`${headerCls} sticky left-0 z-20 w-10 bg-[#f8fafc]`}>
                 <Checkbox className="border-[#dbe4f2] data-[state=checked]:border-[#174be8] data-[state=checked]:bg-[#174be8]" checked={allSelected} onCheckedChange={onToggleAll} />
-              </TableHead>
-              <SortHeader label="Name" k="name" />
-              <SortHeader label="School / District" k="school" />
-              <SortHeader label="City" k="city" />
-              <TableHead className="h-9 py-2 text-[10.5px] font-bold text-[#8794ab]">Source</TableHead>
-              <TableHead className="h-9 py-2 text-[10.5px] font-bold text-[#8794ab]">Fit Score</TableHead>
-              <TableHead className="h-9 py-2 text-right text-[10.5px] font-bold text-[#8794ab]">Action</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+              </th>
+              <th className={`${headerCls} sticky left-10 z-20 min-w-[200px] cursor-pointer bg-[#f8fafc]`} onClick={() => toggleSort("name")}>
+                <span className="inline-flex items-center gap-1">Name <ArrowUpDown size={10} /></span>
+              </th>
+              <th className={`${headerCls} min-w-[160px]`}>Email</th>
+              <th className={`${headerCls} min-w-[170px] cursor-pointer`} onClick={() => toggleSort("school")}>
+                <span className="inline-flex items-center gap-1">School <ArrowUpDown size={10} /></span>
+              </th>
+              <th className={`${headerCls} min-w-[140px]`}>District</th>
+              <th className={`${headerCls} min-w-[70px]`}>Grade</th>
+              <th className={`${headerCls} min-w-[150px] cursor-pointer`} onClick={() => toggleSort("city")}>
+                <span className="inline-flex items-center gap-1">City <ArrowUpDown size={10} /></span>
+              </th>
+              <th className={`${headerCls} min-w-[170px]`}>Source</th>
+              <th className={`${headerCls} sticky right-0 z-20 w-16 bg-[#f8fafc] text-right`}>Action</th>
+            </tr>
+          </thead>
+          <tbody>
             {sorted.map((p) => {
               const isSelected = selected.includes(p.id);
               const isPromoted = promotedIds?.has(p.id);
@@ -99,39 +112,46 @@ export function TeacherTable({
                 email: p.email,
               });
               return (
-                <TableRow key={p.id} className="h-[54px] cursor-pointer border-[#edf2f8] transition-colors hover:bg-[#f7faff]" onClick={() => onRowClick(p)}>
-                  <TableCell className="py-2" onClick={e => e.stopPropagation()}>
+                <tr key={p.id} className="cursor-pointer transition-colors hover:bg-[#f7faff]" onClick={() => onRowClick(p)}>
+                  <td className={`${cellCls} sticky left-0 z-10 bg-white hover:bg-[#f7faff]`} onClick={e => e.stopPropagation()}>
                     <Checkbox className="border-[#dbe4f2] data-[state=checked]:border-[#174be8] data-[state=checked]:bg-[#174be8]" checked={isSelected} onCheckedChange={() => onToggleSelect(p.id)} />
-                  </TableCell>
-                  <TableCell className="min-w-[205px] py-2">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#dbe7ff] text-[10px] font-black text-[#174be8]">{initials(p.name)}</div>
-                      <div>
-                        <div className="text-sm font-bold text-[#07142f]">{p.name}</div>
-                        <div className="text-[10.5px] text-[#8794ab]">{p.email || <span className="italic text-[#b0bbd0]">no email</span>}</div>
-                      </div>
+                  </td>
+                  <td className={`${cellCls} sticky left-10 z-10 bg-white hover:bg-[#f7faff]`}>
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#dbe7ff] text-[9.5px] font-black text-[#174be8]">{initials(p.name)}</div>
+                      <div className="truncate font-semibold text-[#07142f]" title={p.name}>{p.name}</div>
                     </div>
-                  </TableCell>
-                  <TableCell className="min-w-[170px] py-2 text-sm text-[#526078]">{p.school}</TableCell>
-                  <TableCell className="whitespace-nowrap py-2 text-sm text-[#526078]">{p.city}{p.state ? `, ${p.state}` : ""}</TableCell>
-                  <TableCell className="py-2">
-                    <div className="flex flex-wrap items-center gap-1.5">
+                  </td>
+                  <td className={cellCls}>
+                    {p.email ? (
+                      <span className="block max-w-[230px] truncate text-[#374151]" title={p.email}>{p.email}</span>
+                    ) : <span className="italic text-[#b0bbd0]">no email</span>}
+                  </td>
+                  <td className={cellCls}>
+                    <span className="block max-w-[240px] truncate" title={p.school}>{p.school}</span>
+                  </td>
+                  <td className={cellCls}>
+                    <span className="block max-w-[200px] truncate text-[#526078]" title={p.district ?? ""}>{p.district ?? "—"}</span>
+                  </td>
+                  <td className={cellCls}>
+                    <span className="text-[#526078]">{p.gradeRaw ?? "—"}</span>
+                  </td>
+                  <td className={`${cellCls} whitespace-nowrap`}>{p.city}{p.state ? `, ${p.state}` : ""}</td>
+                  <td className={cellCls}>
+                    <div className="flex items-center gap-1.5">
                       <SourceBadge badge={badge} />
                       {isPromoted && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-[#eef2f7] px-2 py-0.5 text-[10.5px] font-bold text-[#526078]">
-                          <UserCheck size={11} /> In Outreach
+                        <span className="inline-flex items-center gap-1 rounded-full bg-[#eef2f7] px-1.5 py-0.5 text-[10px] font-bold text-[#526078]">
+                          <UserCheck size={10} /> Outreach
                         </span>
                       )}
                     </div>
-                  </TableCell>
-                  <TableCell className="py-2 text-[#8794ab]">
-                    <span title="AI Fit Scoring not yet run (Task 14)">— <span className="text-[10.5px]">Score with AI</span></span>
-                  </TableCell>
-                  <TableCell onClick={e => e.stopPropagation()} className="py-2 text-right">
+                  </td>
+                  <td className={`${cellCls} sticky right-0 z-10 bg-white text-right hover:bg-[#f7faff]`} onClick={e => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#dbe4f2] bg-white text-[#526078] hover:bg-[#f4f7ff] hover:text-[#174be8]">
-                          <MoreVertical size={14} />
+                        <button className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-[#dbe4f2] bg-white text-[#526078] hover:bg-[#f4f7ff] hover:text-[#174be8]">
+                          <MoreVertical size={12} />
                         </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-52 bg-white">
@@ -145,40 +165,72 @@ export function TeacherTable({
                         <DropdownMenuItem onClick={() => toast.info(`${p.name} marked as not a fit.`)}><UserX className="mr-2 h-4 w-4" /> Mark not fit</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               );
             })}
-            {prospects.length === 0 && (
-              <TableRow><TableCell colSpan={7} className="py-8 text-center text-[#8794ab]">No prospects match your filters.</TableCell></TableRow>
+            {prospects.length === 0 && !loading && (
+              <tr><td colSpan={9} className="py-10 text-center text-[#8794ab]">No prospects match your filters.</td></tr>
             )}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
+        {loading && (
+          <div className="pointer-events-none absolute inset-x-0 top-8 flex justify-center">
+            <div className="flex items-center gap-2 rounded-full bg-white/95 px-3 py-1 text-xs font-medium text-[#526078] shadow-sm ring-1 ring-[#e7edf5]">
+              <Loader2 size={12} className="animate-spin" /> Loading…
+            </div>
+          </div>
+        )}
       </div>
-      <div className="flex items-center justify-between border-t border-[#edf2f8] px-4 py-2 text-xs text-[#66728a]">
-        <span>Showing {(fromIdx ?? 0).toLocaleString()}–{(toIdx ?? 0).toLocaleString()} of {(totalCount ?? 0).toLocaleString()}</span>
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => onPageChange(Math.max(1, page - 1))}
-            disabled={page <= 1}
-            className="h-7 min-w-7 rounded-md border border-[#dbe4f2] bg-white px-2 font-bold text-[#526078] disabled:opacity-40"
-          >‹</button>
-          {pageList(page, totalPages).map((p, i) =>
-            p === "…" ? (
+
+      {/* Pager */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#edf2f8] bg-[#fafbfd] px-4 py-2 text-xs text-[#66728a]">
+        <div className="flex items-center gap-3">
+          <span>
+            Showing <span className="font-bold text-[#07142f]">{fromIdx.toLocaleString()}–{toIdx.toLocaleString()}</span> of <span className="font-bold text-[#07142f]">{safeTotal.toLocaleString()}</span>
+          </span>
+          {onPageSizeChange && (
+            <label className="flex items-center gap-1.5">
+              <span className="text-[#8794ab]">Rows</span>
+              <select
+                value={safePageSize}
+                onChange={(e) => onPageSizeChange(parseInt(e.target.value, 10))}
+                className="h-7 rounded-md border border-[#dbe4f2] bg-white px-1.5 text-xs font-bold text-[#07142f] focus:outline-none focus:ring-1 focus:ring-[#174be8]"
+              >
+                {[25, 50, 100, 200].map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </label>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1">
+          <button onClick={() => onPageChange(1)} disabled={safePage <= 1} className="flex h-7 items-center rounded-md border border-[#dbe4f2] bg-white px-1.5 font-bold text-[#526078] disabled:opacity-40" title="First page"><ChevronsLeft size={12} /></button>
+          <button onClick={() => onPageChange(Math.max(1, safePage - 1))} disabled={safePage <= 1} className="flex h-7 items-center rounded-md border border-[#dbe4f2] bg-white px-1.5 font-bold text-[#526078] disabled:opacity-40"><ChevronLeft size={12} /></button>
+          {pageList(safePage, totalPages).map((pg, i) =>
+            pg === "…" ? (
               <span key={`e${i}`} className="px-1 text-[#8794ab]">…</span>
             ) : (
               <button
-                key={p}
-                onClick={() => onPageChange(p as number)}
-                className={`h-7 min-w-7 rounded-md border px-2 font-bold ${p === page ? "border-[#174be8] bg-[#174be8] text-white" : "border-[#dbe4f2] bg-white text-[#526078]"}`}
-              >{p}</button>
+                key={pg}
+                onClick={() => onPageChange(pg as number)}
+                className={`h-7 min-w-[28px] rounded-md border px-1.5 font-bold ${pg === safePage ? "border-[#174be8] bg-[#174be8] text-white" : "border-[#dbe4f2] bg-white text-[#526078] hover:bg-[#f4f7ff]"}`}
+              >{pg}</button>
             ),
           )}
-          <button
-            onClick={() => onPageChange(Math.min(totalPages, page + 1))}
-            disabled={page >= totalPages}
-            className="h-7 min-w-7 rounded-md border border-[#dbe4f2] bg-white px-2 font-bold text-[#526078] disabled:opacity-40"
-          >›</button>
+          <button onClick={() => onPageChange(Math.min(totalPages, safePage + 1))} disabled={safePage >= totalPages} className="flex h-7 items-center rounded-md border border-[#dbe4f2] bg-white px-1.5 font-bold text-[#526078] disabled:opacity-40"><ChevronRight size={12} /></button>
+          <button onClick={() => onPageChange(totalPages)} disabled={safePage >= totalPages} className="flex h-7 items-center rounded-md border border-[#dbe4f2] bg-white px-1.5 font-bold text-[#526078] disabled:opacity-40" title="Last page"><ChevronsRight size={12} /></button>
+
+          <div className="ml-2 flex items-center gap-1">
+            <span className="text-[#8794ab]">Go to</span>
+            <input
+              value={gotoInput}
+              onChange={(e) => setGotoInput(e.target.value.replace(/[^0-9]/g, ""))}
+              onKeyDown={(e) => { if (e.key === "Enter") handleGoto(); }}
+              placeholder={String(safePage)}
+              className="h-7 w-14 rounded-md border border-[#dbe4f2] bg-white px-1.5 text-center text-xs font-bold text-[#07142f] focus:outline-none focus:ring-1 focus:ring-[#174be8]"
+            />
+            <button onClick={handleGoto} className="h-7 rounded-md border border-[#dbe4f2] bg-white px-2 text-xs font-bold text-[#526078] hover:bg-[#f4f7ff]">Go</button>
+          </div>
         </div>
       </div>
     </div>

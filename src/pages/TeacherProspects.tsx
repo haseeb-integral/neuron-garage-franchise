@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Download, Search, Upload } from "lucide-react";
@@ -13,7 +13,7 @@ import { TeacherDetailPanel } from "@/components/teacher-prospects/TeacherDetail
 import { BulkActionBar } from "@/components/teacher-prospects/BulkActionBar";
 import { PageHeader } from "@/components/PageHeader";
 import { useTeacherProspectsStore } from "@/stores/teacherProspectsStore";
-import { matchesSourceFilter, sourceKeyFor, sourceLabelFor, type SourceKey } from "@/lib/teacherSourceLabels";
+import { sourceKeyFor, sourceLabelFor, type SourceKey } from "@/lib/teacherSourceLabels";
 
 type DbRow = {
   id: string;
@@ -51,7 +51,9 @@ const mapRow = (r: DbRow): TeacherProspect => ({
   id: stableId(r.id),
   cityId: 0,
   name: r.name ?? "(Unknown)",
-  school: r.school ?? (r.district ?? "—"),
+  school: r.school ?? "—",
+  district: r.district ?? null,
+  gradeRaw: r.grade ?? null,
   city: r.city,
   state: r.state,
   email: r.email ?? "",
@@ -72,12 +74,12 @@ const mapRow = (r: DbRow): TeacherProspect => ({
 });
 
 const downloadCsv = (rows: TeacherProspect[]) => {
-  const headers = ["Name", "School", "City", "State", "Email", "Source", "Verification", "Needs Email Enrichment"];
-  const escape = (v: string | number | boolean) => `"${String(v).replace(/"/g, '""')}"`;
+  const headers = ["Name", "School", "District", "Grade", "City", "State", "Email", "Source", "Verification", "Needs Email Enrichment"];
+  const escape = (v: string | number | boolean) => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const csv = [
     headers.join(","),
     ...rows.map((p) => [
-      p.name, p.school, p.city, p.state, p.email,
+      p.name, p.school, p.district ?? "", p.gradeRaw ?? "", p.city, p.state, p.email,
       sourceLabelFor(sourceKeyFor(p.enrichmentSource)),
       p.verificationStatus ?? "",
       p.needsEmailEnrichment ? "Yes" : "No",
@@ -123,65 +125,23 @@ const StatCard = ({ title, value, sub, tone = "slate", action }: {
   );
 };
 
+const useDebounced = <T,>(value: T, delay = 300) => {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
+};
+
 const TeacherProspects = () => {
   const navigate = useNavigate();
   const [prospects, setProspects] = useState<TeacherProspect[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [stats, setStats] = useState<Stats>(emptyStats);
+  const [cities, setCities] = useState<string[]>([]);
   const [loadingProspects, setLoadingProspects] = useState(true);
-
-  const loadStats = async () => {
-    const [totalQ, withEmailQ, needsQ, sourceQ, citiesQ] = await Promise.all([
-      supabase.from("teacher_prospects").select("id", { count: "exact", head: true }),
-      supabase.from("teacher_prospects").select("id", { count: "exact", head: true })
-        .not("email", "is", null).neq("email", "")
-        .or("verification_status.is.null,verification_status.eq.valid,verification_status.eq.verified"),
-      supabase.from("teacher_prospects").select("id", { count: "exact", head: true }).eq("needs_email_enrichment", true),
-      supabase.from("teacher_prospects").select("enrichment_source").limit(20000),
-      supabase.from("teacher_prospects").select("city").limit(20000),
-    ]);
-
-    const sourceRows = (sourceQ.data ?? []) as { enrichment_source: string | null }[];
-    const cityRows = (citiesQ.data ?? []) as { city: string }[];
-    const total = totalQ.count ?? 0;
-
-    const counts = new Map<SourceKey, number>();
-    for (const r of sourceRows) {
-      const k = sourceKeyFor(r.enrichment_source);
-      counts.set(k, (counts.get(k) ?? 0) + 1);
-    }
-    const bySource = Array.from(counts.entries())
-      .map(([key, count]) => ({ key, label: sourceLabelFor(key), count, pct: total ? Math.round((count / total) * 100) : 0 }))
-      .sort((a, b) => b.count - a.count);
-
-    const citySet = new Set<string>();
-    for (const r of cityRows) if (r.city) citySet.add(r.city);
-
-    setStats({
-      total,
-      withEmail: withEmailQ.count ?? 0,
-      needsEnrichment: needsQ.count ?? 0,
-      cities: citySet.size,
-      bySource,
-    });
-  };
-
-  const loadProspects = async () => {
-    setLoadingProspects(true);
-    const { data, error } = await supabase
-      .from("teacher_prospects")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(20000);
-    if (error) {
-      toast.error(`Failed to load prospects: ${error.message}`);
-      setProspects([]);
-    } else {
-      setProspects((data ?? []).map((r) => mapRow(r as unknown as DbRow)));
-    }
-    setLoadingProspects(false);
-  };
-
-  useEffect(() => { loadProspects(); loadStats(); }, []);
+  const [loadedAt, setLoadedAt] = useState<Date | null>(null);
 
   const [findOpen, setFindOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -200,11 +160,99 @@ const TeacherProspects = () => {
   const page = useTeacherProspectsStore((s) => s.page);
   const setPage = useTeacherProspectsStore((s) => s.setPage);
   const pageSize = useTeacherProspectsStore((s) => s.pageSize);
+  const setPageSize = useTeacherProspectsStore((s) => s.setPageSize);
 
-  // Apply URL ?city= override on first mount only.
+  const debouncedSearch = useDebounced(search, 350);
+
+  // Load complete city list (server-side; bypasses 1k cap)
   useEffect(() => {
+    (async () => {
+      const { data, error } = await supabase.rpc("teacher_prospects_cities");
+      if (!error && data) setCities((data as { city: string }[]).map((r) => r.city));
+    })();
+  }, []);
+
+  const reqIdRef = useRef(0);
+
+  const loadPage = useCallback(async () => {
+    setLoadingProspects(true);
+    const myReq = ++reqIdRef.current;
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    let q = supabase
+      .from("teacher_prospects")
+      .select("*", { count: "exact" })
+      .order("created_at", { ascending: false });
+
+    if (cityFilter && cityFilter !== "All") q = q.eq("city", cityFilter);
+
+    if (debouncedSearch?.trim()) {
+      const s = debouncedSearch.trim().replace(/[%_]/g, "");
+      q = q.or(`name.ilike.%${s}%,school.ilike.%${s}%,city.ilike.%${s}%,email.ilike.%${s}%`);
+    }
+
+    if (sourceFilter === "smartlead") q = q.ilike("enrichment_source", "smartlead%");
+    else if (sourceFilter === "linkedin") q = q.ilike("enrichment_source", "linkedin%");
+    else if (sourceFilter === "needs_email") q = q.eq("needs_email_enrichment", true);
+
+    const { data, error, count } = await q.range(from, to);
+
+    if (myReq !== reqIdRef.current) return; // stale
+
+    if (error) {
+      toast.error(`Failed to load prospects: ${error.message}`);
+      setProspects([]);
+      setTotalCount(0);
+    } else {
+      setProspects((data ?? []).map((r) => mapRow(r as unknown as DbRow)));
+      setTotalCount(count ?? 0);
+      setLoadedAt(new Date());
+    }
+    setLoadingProspects(false);
+  }, [page, pageSize, cityFilter, debouncedSearch, sourceFilter]);
+
+  const loadStats = useCallback(async () => {
+    const myReq = reqIdRef.current;
+    const { data, error } = await supabase.rpc("teacher_prospects_stats", {
+      p_search: debouncedSearch?.trim() || null,
+      p_city: cityFilter || "All",
+      p_source_filter: sourceFilter,
+    });
+    if (myReq !== reqIdRef.current) return;
+    if (error || !data) return;
+    const s = data as {
+      total: number; email_ready: number; needs_enrichment: number; cities: number;
+      sources: { source: string; count: number }[];
+    };
+    const total = s.total ?? 0;
+    const bySource = (s.sources ?? []).map((row) => {
+      const key = (row.source as SourceKey) ?? "other";
+      return { key, label: sourceLabelFor(key), count: row.count, pct: total ? Math.round((row.count / total) * 100) : 0 };
+    });
+    setStats({
+      total,
+      withEmail: s.email_ready ?? 0,
+      needsEnrichment: s.needs_enrichment ?? 0,
+      cities: s.cities ?? 0,
+      bySource,
+    });
+  }, [debouncedSearch, cityFilter, sourceFilter]);
+
+  // Re-fetch table page on filter/page change
+  useEffect(() => { loadPage(); }, [loadPage]);
+  // Re-fetch stats on filter change (not on page change — stats are filter-scoped)
+  useEffect(() => { loadStats(); }, [loadStats]);
+
+  // URL ?city= and ?prospect= handling
+  const consumedPromptRef = useRef(false);
+  useEffect(() => {
+    if (consumedPromptRef.current) return;
     const urlCity = searchParams.get("city");
-    if (urlCity) setCityFilter(urlCity);
+    if (urlCity) { setCityFilter(urlCity); consumedPromptRef.current = true; }
+  }, [searchParams, setCityFilter]);
+
+  useEffect(() => {
     const prospectId = searchParams.get("prospect");
     if (prospectId && prospects.length) {
       const found = prospects.find((p) => p.id === Number(prospectId));
@@ -215,44 +263,15 @@ const TeacherProspects = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prospects]);
 
-  const cities = useMemo(
-    () => Array.from(new Set(prospects.map((p) => p.city).filter(Boolean))).sort(),
-    [prospects],
-  );
-
-  const filtered = useMemo(() => prospects.filter((p) => {
-    if (search) {
-      const q = search.toLowerCase();
-      if (
-        !p.name.toLowerCase().includes(q) &&
-        !p.school.toLowerCase().includes(q) &&
-        !p.city.toLowerCase().includes(q)
-      ) return false;
-    }
-    if (cityFilter !== "All" && p.city !== cityFilter) return false;
-    if (!matchesSourceFilter(sourceFilter, {
-      enrichment_source: p.enrichmentSource,
-      email: p.email,
-      needs_email_enrichment: p.needsEmailEnrichment,
-    })) return false;
-    return true;
-  }), [prospects, search, cityFilter, sourceFilter]);
-
-  const pagedProspects = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return filtered.slice(start, start + pageSize);
-  }, [filtered, page, pageSize]);
-
   const handleExport = () => {
-    const rows = filtered;
-    if (rows.length === 0) { toast.info("No prospects to export."); return; }
-    downloadCsv(rows);
-    toast.success(`Exported ${rows.length.toLocaleString()} teacher prospects to CSV.`);
+    if (prospects.length === 0) { toast.info("No prospects to export on this page."); return; }
+    downloadCsv(prospects);
+    toast.success(`Exported ${prospects.length.toLocaleString()} rows (current page) to CSV.`);
   };
 
   const toggleSelect = (id: number) => setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   const toggleAll = () => {
-    const visibleIds = pagedProspects.map((p) => p.id);
+    const visibleIds = prospects.map((p) => p.id);
     const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.includes(id));
     setSelected(allSelected ? selected.filter((id) => !visibleIds.includes(id)) : Array.from(new Set([...selected, ...visibleIds])));
   };
@@ -270,18 +289,22 @@ const TeacherProspects = () => {
   };
   const handleMarkNotFit = (p: TeacherProspect) => { setActive(null); toast.info(`${p.name} marked as Not a Fit`); };
   const handleUpdate = (p: TeacherProspect) => setProspects((prev) => prev.map((x) => (x.id === p.id ? p : x)));
-  const handleFindResults = async () => { await loadProspects(); await loadStats(); };
+  const handleFindResults = async () => { await loadPage(); await loadStats(); };
+
+  const subtitleText = useMemo(() => {
+    if (stats.total > 0) {
+      const when = loadedAt ? loadedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+      return `${stats.total.toLocaleString()} teachers across ${stats.cities.toLocaleString()} cities${when ? ` · live as of ${when}` : ""}`;
+    }
+    return "Discover and evaluate potential franchisee candidates from the teaching community.";
+  }, [stats.total, stats.cities, loadedAt]);
 
   return (
     <div className="-mx-3 -my-3 min-h-screen bg-white px-3 py-3 md:-mx-5 md:px-5 lg:-mx-6 lg:px-6">
       <div className="mx-auto w-full max-w-[1360px]">
         <PageHeader
           title="Teacher Search"
-          subtitle={
-            stats.total > 0
-              ? `${stats.total.toLocaleString()} teachers imported across ${stats.cities.toLocaleString()} cities`
-              : "Discover and evaluate potential franchisee candidates from the teaching community."
-          }
+          subtitle={subtitleText}
           hideJourneyBar
           searchPlaceholder="Search teacher prospects, schools, cities, or specialization..."
           action={
@@ -299,7 +322,7 @@ const TeacherProspects = () => {
           }
         />
 
-        {/* 3 honest stat cards (v1.0) */}
+        {/* 3 honest stat cards — values come from server RPC, always reflect filter scope */}
         <div className="mb-3 grid gap-3 sm:grid-cols-3">
           <StatCard title="Total Imported" value={stats.total.toLocaleString()} sub={`across ${stats.cities.toLocaleString()} cities`} />
           <StatCard title="Email-Ready" value={stats.withEmail.toLocaleString()} sub="can send to SmartLead today" tone="emerald" />
@@ -330,7 +353,7 @@ const TeacherProspects = () => {
               onClear={() => setSelected([])}
             />
             <TeacherTable
-              prospects={pagedProspects}
+              prospects={prospects}
               selected={selected}
               onToggleSelect={toggleSelect}
               onToggleAll={toggleAll}
@@ -340,18 +363,20 @@ const TeacherProspects = () => {
               promotingId={promotingId}
               page={page}
               pageSize={pageSize}
-              totalCount={filtered.length}
+              totalCount={totalCount}
               onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+              loading={loadingProspects}
             />
-            {loadingProspects && (
-              <div className="rounded-xl border border-[#e7edf5] bg-white p-4 text-center text-xs text-[#8794ab]">Loading prospects…</div>
-            )}
           </div>
 
           {/* Sidebar */}
           <aside className="space-y-3">
             <div className="rounded-xl border border-[#e7edf5] bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.02)]">
-              <div className="mb-3 text-[11px] font-bold uppercase tracking-wide text-[#66728a]">Sources</div>
+              <div className="mb-3 flex items-center justify-between">
+                <div className="text-[11px] font-bold uppercase tracking-wide text-[#66728a]">Sources</div>
+                <button onClick={() => { loadPage(); loadStats(); }} className="text-[10.5px] font-bold text-[#174be8] hover:underline">Refresh</button>
+              </div>
               {stats.bySource.length === 0 && <div className="text-xs text-[#8794ab]">No data yet.</div>}
               <div className="space-y-3">
                 {stats.bySource.map((s) => (
@@ -397,7 +422,7 @@ const TeacherProspects = () => {
         </div>
 
         <FindProspectsModal open={findOpen} onOpenChange={setFindOpen} onResults={handleFindResults} />
-        <TeacherImportWizard open={importOpen} onClose={() => setImportOpen(false)} onComplete={() => { loadProspects(); loadStats(); }} />
+        <TeacherImportWizard open={importOpen} onClose={() => setImportOpen(false)} onComplete={() => { loadPage(); loadStats(); }} />
         <TeacherDetailPanel
           prospect={active}
           onClose={() => setActive(null)}

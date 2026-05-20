@@ -25,6 +25,8 @@ export interface TeacherProspect {
   enrichmentSource?: string | null;
   verificationStatus?: string | null;
   needsEmailEnrichment?: boolean;
+  district?: string | null;
+  gradeRaw?: string | null;
 }
 
 // Dummy seed data removed in v1.0 of Teacher Search. The page now reads from

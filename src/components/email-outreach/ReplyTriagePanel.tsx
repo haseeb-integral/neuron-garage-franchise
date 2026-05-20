@@ -21,6 +21,7 @@ interface TriageCard {
   st: string | null;
   reply: ReplyChipData;
   receivedAt: string;
+  simulated: boolean;
 }
 
 type FilterKey = "all" | "needs_action" | "promotable" | "handled";

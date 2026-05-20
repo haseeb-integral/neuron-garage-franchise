@@ -609,27 +609,20 @@ const TeacherProspects = () => {
     <div className="-mx-3 -my-3 min-h-screen bg-white px-3 py-3 md:-mx-5 md:px-5 lg:-mx-6 lg:px-6">
       <div className="mx-auto w-full max-w-[1360px]">
         <PageHeader
-          title={inMarket ? `Teachers in ${cityFilter}${urlState ? `, ${urlState}` : ""}` : "Teacher Search"}
+          title={headingTitle}
           subtitle={subtitleText}
           hideJourneyBar
           searchPlaceholder="Search teacher prospects, schools, cities, or specialization..."
           action={
             <div className="flex flex-wrap items-center gap-2">
               <SavedListsMenu
-                current={{ cityFilter, sourceFilter, search, hideInOutreach }}
+                current={{ cityFilters, sourceFilter, search, hideInOutreach }}
                 onApply={(f) => {
-                  setCityFilter(f.cityFilter ?? "All");
-                  setSourceFilter(f.sourceFilter ?? "all");
-                  setSearch(f.search ?? "");
-                  setHideInOutreach(!!f.hideInOutreach);
-                  // sync URL so banner reflects it
-                  if (f.cityFilter && f.cityFilter !== "All") {
-                    searchParams.set("city", f.cityFilter);
-                  } else {
-                    searchParams.delete("city");
-                    searchParams.delete("state");
-                  }
-                  setSearchParams(searchParams, { replace: true });
+                  setCityFilters(f.cityFilters);
+                  setSourceFilter(f.sourceFilter);
+                  setSearch(f.search);
+                  setHideInOutreach(f.hideInOutreach);
+                  writeCitiesToUrl(f.cityFilters);
                 }}
               />
               <Button size="sm" variant="outline" onClick={handleExport} className="h-9 rounded-lg border-[#dbe4f2] bg-white px-4 text-[#174be8] shadow-none hover:bg-[#f4f7ff]">
@@ -645,12 +638,12 @@ const TeacherProspects = () => {
 
         {inMarket && (
           <MarketContextBanner
-            city={cityFilter}
-            state={urlState}
+            cities={bannerCities}
             totalInMarket={stats?.total ?? null}
             emailReadyInMarket={stats?.withEmail ?? null}
             inOutreachInMarket={null}
-            onClear={handleClearMarket}
+            onRemoveCity={handleRemoveCity}
+            onClearAll={handleClearMarket}
           />
         )}
 
@@ -690,8 +683,8 @@ const TeacherProspects = () => {
           <div className="min-w-0 space-y-3">
             <TeacherFilterBar
               cities={cities}
-              cityFilter={cityFilter}
-              setCityFilter={setCityFilter}
+              cityFilters={cityFilters}
+              setCityFilters={(v) => { setCityFilters(v); writeCitiesToUrl(v); }}
               sourceFilter={sourceFilter}
               setSourceFilter={setSourceFilter}
               search={search}
@@ -726,7 +719,7 @@ const TeacherProspects = () => {
               onPageChange={setPage}
               onPageSizeChange={setPageSize}
               loading={loadingProspects}
-              hideCityColumn={!!inMarket}
+              hideCityColumn={isSingleMarket}
             />
           </div>
 

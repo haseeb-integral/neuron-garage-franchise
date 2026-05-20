@@ -667,15 +667,8 @@ const TeacherProspects = () => {
             error={statsError}
             onRetry={loadStats}
           />
-          <StatCard
-            title="Needs Email Enrichment"
-            value={stats ? stats.needsEnrichment.toLocaleString() : "—"}
-            tone="amber"
-            sub={<button onClick={() => toast.info("Enrichment tool integration coming soon.")} className="text-[11px] font-bold text-[#174be8]">Connect Enrichment Tool →</button>}
-            loading={stats === null && !statsError}
-            error={statsError}
-            onRetry={loadStats}
-          />
+          {/* Needs Email Enrichment card hidden for this version — may return later. */}
+
         </div>
 
 

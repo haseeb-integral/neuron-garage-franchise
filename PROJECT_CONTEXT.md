@@ -77,6 +77,7 @@ All tables have RLS enabled. `authenticated` role can read/write unless noted.
 | `smartlead_events` | Webhook event log from SmartLead (event_type, campaign_id, lead_email, payload jsonb, `reply_intent` enum). Realtime-enabled — Inbox panel subscribes for live updates. *Added Phase 5, May 19.* |
 | `campaign_cache` | Cached snapshot of SmartLead campaigns (id, name, status, stats) refreshed by `smartlead-proxy`. Lets Batches/Inbox panels resolve campaign names without re-hitting the API. *Added Phase 3.* |
 | `prospects_staging` | Import-wizard staging table for leads en route to SmartLead. Columns include `batch_id`, `source` (Apollo / Clay / LinkedIn Navigator / CSV / Manual), `qa_status` (pending / approved / rejected), `smartlead_lead_id`, `pushed_at`. *Added Phase 2.* |
+| `outreach_queue` | Per-teacher push queue used by the newer Teacher Search → "Add to Campaign" flow (parallel to `prospects_staging`, no CSV step). Columns: `teacher_prospect_id`, `campaign_id` (nullable), `state` (`queued` / `assigned` / `sending` / `sent` / `failed`), `smartlead_lead_id`, `pushed_at`, `last_error`, `notes`. Driven by Outreach Queue panel on `/email-outreach`. *Added May 20.* |
 
 DB functions: `handle_new_user`, `has_role`, `update_updated_at_column`, `fill_city_coords`, `seed_confirmation_checklist`, `trg_seed_confirmation_checklist`.
 

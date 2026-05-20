@@ -96,12 +96,6 @@ export function TeacherDetailPanel({ prospect, onClose, onUpdate, onPromote, onM
               {prospect.district && <div className="text-xs text-[#526078]"><span className="font-semibold text-[#07142f]">District:</span> {prospect.district}</div>}
             </div>
           </section>
-            <div className="grid gap-3 text-sm text-[#34445f]">
-              <div className="flex items-center gap-2"><GraduationCap size={14} className="text-[#8794ab]" /> Grade Level: <strong className="text-[#07142f]">{prospect.gradeLevel}</strong></div>
-              <div className="flex items-center gap-2"><Calendar size={14} className="text-[#8794ab]" /> {prospect.yearsExperience} years experience</div>
-              <div className="flex items-center gap-2"><span>Summer Camp Experience:</span><Badge className="border-0 bg-[#e6f7ef] text-[#0a8f5a]">{prospect.hasSummerCampExp ? "Yes" : "No"}</Badge></div>
-            </div>
-          </section>
 
           <section className="rounded-xl border border-[#e7edf5] bg-white p-4">
             <div className="mb-2 flex items-center justify-between">

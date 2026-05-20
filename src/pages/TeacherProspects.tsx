@@ -12,6 +12,8 @@ import { TeacherTable } from "@/components/teacher-prospects/TeacherTable";
 import { TeacherDetailPanel } from "@/components/teacher-prospects/TeacherDetailPanel";
 import { BulkActionBar } from "@/components/teacher-prospects/BulkActionBar";
 import { AddToCampaignModal } from "@/components/teacher-prospects/AddToCampaignModal";
+import { MarketContextBanner } from "@/components/teacher-prospects/MarketContextBanner";
+import { SavedListsMenu } from "@/components/teacher-prospects/SavedListsMenu";
 import { PageHeader } from "@/components/PageHeader";
 import { useTeacherProspectsStore } from "@/stores/teacherProspectsStore";
 import { sourceKeyFor, sourceLabelFor, type SourceKey } from "@/lib/teacherSourceLabels";
@@ -540,25 +542,55 @@ const TeacherProspects = () => {
   const handleUpdate = (p: TeacherProspect) => setProspects((prev) => prev.map((x) => (x.id === p.id ? p : x)));
   const handleFindResults = async () => { await loadPage(); await loadStats(); };
 
+  const inMarket = cityFilter && cityFilter !== "All";
+  const urlState = searchParams.get("state");
+
   const subtitleText = useMemo(() => {
     if (stats === null) return "Loading teachers…";
     if (stats.total > 0) {
       const when = loadedAt ? loadedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+      if (inMarket) {
+        return `${stats.total.toLocaleString()} teachers in this market${when ? ` · live as of ${when}` : ""}`;
+      }
       return `${stats.total.toLocaleString()} teachers across ${stats.cities.toLocaleString()} cities${when ? ` · live as of ${when}` : ""}`;
     }
     return "Discover and evaluate potential franchisee candidates from the teaching community.";
-  }, [stats, loadedAt]);
+  }, [stats, loadedAt, inMarket]);
+
+  const handleClearMarket = () => {
+    setCityFilter("All");
+    searchParams.delete("city");
+    searchParams.delete("state");
+    setSearchParams(searchParams, { replace: true });
+  };
 
   return (
     <div className="-mx-3 -my-3 min-h-screen bg-white px-3 py-3 md:-mx-5 md:px-5 lg:-mx-6 lg:px-6">
       <div className="mx-auto w-full max-w-[1360px]">
         <PageHeader
-          title="Teacher Search"
+          title={inMarket ? `Teachers in ${cityFilter}${urlState ? `, ${urlState}` : ""}` : "Teacher Search"}
           subtitle={subtitleText}
           hideJourneyBar
           searchPlaceholder="Search teacher prospects, schools, cities, or specialization..."
           action={
             <div className="flex flex-wrap items-center gap-2">
+              <SavedListsMenu
+                current={{ cityFilter, sourceFilter, search, hideInOutreach }}
+                onApply={(f) => {
+                  setCityFilter(f.cityFilter ?? "All");
+                  setSourceFilter(f.sourceFilter ?? "all");
+                  setSearch(f.search ?? "");
+                  setHideInOutreach(!!f.hideInOutreach);
+                  // sync URL so banner reflects it
+                  if (f.cityFilter && f.cityFilter !== "All") {
+                    searchParams.set("city", f.cityFilter);
+                  } else {
+                    searchParams.delete("city");
+                    searchParams.delete("state");
+                  }
+                  setSearchParams(searchParams, { replace: true });
+                }}
+              />
               <Button size="sm" variant="outline" onClick={handleExport} className="h-9 rounded-lg border-[#dbe4f2] bg-white px-4 text-[#174be8] shadow-none hover:bg-[#f4f7ff]">
                 <Download size={14} /> {selected.length > 0 ? `Export ${selected.length} Selected` : "Export CSV"}
               </Button>
@@ -569,6 +601,17 @@ const TeacherProspects = () => {
             </div>
           }
         />
+
+        {inMarket && (
+          <MarketContextBanner
+            city={cityFilter}
+            state={urlState}
+            totalInMarket={stats?.total ?? null}
+            emailReadyInMarket={stats?.withEmail ?? null}
+            inOutreachInMarket={null}
+            onClear={handleClearMarket}
+          />
+        )}
 
         {/* 3 honest stat cards — values come from server RPC, always reflect filter scope.
             stats === null → skeleton. Never render literal "0" while loading. */}

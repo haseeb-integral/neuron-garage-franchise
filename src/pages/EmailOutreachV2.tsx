@@ -75,22 +75,22 @@ export default function EmailOutreachV2() {
     }
   };
 
-  const loadStats = async () => {
+  const loadStats = async (opts?: { forceFresh?: boolean }) => {
     // Queue counts — always works (local DB)
     try {
       const { data: q } = await supabase.from("outreach_queue").select("state");
       const rows = q ?? [];
       setQueueCounts({
         inOutreach: rows.filter((r) => ["queued", "assigned", "sending"].includes(r.state)).length,
-        promoted: rows.filter((r) => r.state === "sent").length,
+        promoted: rows.filter((r) => r.state === "promoted").length,
       });
     } catch {
       setQueueCounts({ inOutreach: 0, promoted: 0 });
     }
-    // Analytics — SmartLead (cached 10min)
+    // Analytics — SmartLead (cached 10min unless forceFresh)
     try {
       setAnalyticsError(null);
-      const agg = await getAnalyticsCachedOrFresh();
+      const agg = await getAnalyticsCachedOrFresh(opts?.forceFresh ? 0 : undefined);
       setAnalytics(agg);
     } catch (e) {
       setAnalyticsError(e instanceof Error ? e.message : String(e));

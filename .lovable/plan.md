@@ -1,139 +1,132 @@
+## Task 13 — Wire Teacher Search to real data (v1.0 for Sam)
 
-## 1. Smoke test result
+### Guiding rule (your revision)
 
-Email arrived → SmartLead path is **proven end-to-end** (CSV → staging → batch → campaign → inbox via plus-aliases). Email Outreach is "good enough for v1" — no blocker remaining.
+> "Nothing fake on screen. If it doesn't work in v1.0, hide it. Never name the human source (no 'Danish'). Keep 'Connect SmartLead' style placeholders only where they're honest about what's coming."
 
-What's still parked behind it (will document, not build now):
-- 17j (analytics realtime polish), 17n-v2 (per-lead SmartLead status in the drawer), 17m-v2 (server-side idempotency key in proxy). All low priority.
+Everything below follows this rule.
 
----
+### Source labels — sanitized for Sam
 
-## 2. What's next — per AGENTS.md / OPEN_TASKS.md order
+Never display contributor names. Show provenance as neutral channel labels:
 
-The sprint order is locked: **City → Teacher → Email → Pipeline**. City + Email are functional. The real blocker right now is **Task #0 (database layer)** and **Teacher Search seeding**.
+| Internal `enrichment_source` value (DB) | What Sam sees on screen |
+|---|---|
+| `smartlead_csv` | **SmartLead Enriched** |
+| `linkedin_danish` | **LinkedIn Import** |
+| (future) `apollo` | **Apollo Enriched** |
+| (future) `apify_school_scrape` | **School Directory** |
 
-So the next move is exactly what you asked: **wire teacher import into the Teacher Search screen**, using your two real sources. This unblocks Teacher Search.
+The DB value stays as-is (don't break existing 11,752 rows). Display mapping lives in one constant: `src/lib/teacherSourceLabels.ts`. Anywhere we render a source — table badge, sidebar breakdown, filter dropdown — goes through this map. No raw DB strings leak to the UI.
 
----
+### What stays, what gets hidden, what changes (every element on the current screen)
 
-## 3. Where Teacher Search stands today (audit)
+| Element | Decision | Why |
+|---|---|---|
+| **"Total Prospects" card** | **Keep**, rename to "Total Imported", show real `11,752` + sublabel "across 188 cities" | Real, useful, honest |
+| **"Shortlisted" card** | **Hide in v1.0** | Shortlist column doesn't exist yet (Task 15) — fake number today |
+| **"Contacted This Week" card** | **Hide in v1.0** | Needs SmartLead send events (Task B6) — fake today |
+| **"In Outreach" card** | **Hide in v1.0** | Same — needs SmartLead campaign membership wired (Task B6) |
+| → Replacement | **Replace the 4 cards with 3 honest cards**: <br>1. **Total Imported** — 11,752 across 188 cities <br>2. **Email-Ready** — 5,705 (can be sent to SmartLead now) <br>3. **Needs Email Enrichment** — 5,253 (LinkedIn-only) with button "Connect Enrichment Tool" (placeholder, like Connect SmartLead) | All 3 numbers are real from DB today |
+| **"Sourcing Insights" sidebar** — Top Sourcing Channels (LinkedIn 41%, Referrals 24%, etc.) | **Replace** with real source breakdown from `enrichment_source` using sanitized labels: SmartLead Enriched 9,825 (84%) · LinkedIn Import 1,927 (16%) | Real + neutral naming |
+| **Sidebar "Quick Stats"** — Avg Fit Score 82, Avg Experience 6.2 yrs, Cities 28, Response Rate 36% | Replace with: <br>• Cities: **188** (real) <br>• Email-ready: **5,705** (real) <br>• Avg Fit Score: **"Not scored yet — Run AI Scoring"** placeholder button <br>• Response Rate: **"Connect SmartLead"** placeholder button (your call: retained) | Honest. Two real, two placeholders that telegraph what's coming. |
+| **Sidebar "Expand your reach" card** | **Hide in v1.0** | "Manage Channels" goes nowhere — fake CTA |
+| **Market Context banner** ("Finding teacher-operators for San Diego, Tier 3, score…") | **Hide in v1.0** unless user lands here via "Find Prospects in this city" from City Search | Pulls from hardcoded `sampleCities`, not real `us_cities_scored`. Defer wiring to a later task. Empty banner is worse than no banner. |
+| **Default city filter = "Frisco"** | **Change to "All Cities"** | We have 188 cities now; pinning to Frisco hides 99% of data |
+| **Table column "Signals"** (LinkedIn / mail / globe icons always on) | **Hide column in v1.0** — replace with real source badge | Icons today are decorative, not driven by data |
+| **Table column "Fit Score"** | **Keep**, but show "—" for all rows + tiny hint "Score with AI" until Task 14 lands | Honest — no fake scores |
+| **Table column "Fit Tag" ("Untagged")** | **Hide in v1.0** | Driven by fit score which doesn't exist yet |
+| **Table column "Status" ("Enriched")** | **Replace** with real status badge using sanitized source: <br>• **SmartLead · Verified** (green) <br>• **SmartLead · Unverified** (amber) <br>• **SmartLead · No Email** (gray) <br>• **LinkedIn Import** (blue, with subtle "needs email" dot) | Driven by real columns: `enrichment_source` + `verification_status` + `needs_email_enrichment` |
+| **Table column "Experience" (years)** | **Hide in v1.0** | Not populated for either source. All show "0 yrs" today = lie |
+| **Table filter "All Grades"** | **Hide in v1.0** | Grade column mostly empty in imports |
+| **Table filter "Has Camp Experience"** | **Hide in v1.0** | Camp signal logic not yet defined — see LATER.md note below |
+| **Table filter "All Fit Tags"** | **Hide in v1.0** | No tags yet |
+| **Table filter "All Status"** | **Replace** with "All Sources" dropdown: All / SmartLead Enriched / LinkedIn Import / Needs Email | Drives real value |
+| **Pagination** ("Showing 1–6 of 354") | **Fix** — real count, real pages, server-side pagination (25/page) | Currently caps at 1000 rows + lies about total |
+| **"Export CSV" button** | **Keep** — works | Honest |
+| **"Import CSV" button** | **Keep** — works (built last loop) | Honest |
+| **"Find Prospects" button** | **Keep but soften** — rename to "Find via Apify" or move to a "More" menu since the primary input now is CSV import | Still works, just no longer the headline action |
 
-- `teacher_prospects` table exists in backend with the right columns (email, name, school, district, city, state, grade, subject, segment, teacher_type, fit_score, status, enrichment_source, linkedin_url, donorschoose_id, raw jsonb, apify_run_id, last_enriched_at). **Backend table is ready.** No schema change needed for import.
-- `TeacherProspects.tsx` already reads from `teacher_prospects` via Supabase + has a "Find Prospects" path that calls `fetch-teacher-prospects` edge function (Apollo/Apify).
-- `src/data/teacherData.ts` still exports `sampleTeachers` dummy array (148 lines). Used as fallback / typing. **This is the dummy data to remove or quarantine.**
-- No CSV import UI exists for teachers yet — only the "Find Prospects" auto-search button.
+### New screen — ASCII wireframe
 
-So what's missing for your fast path:
-1. CSV import wizard for teachers (mirror of the Email Outreach `ImportLeadsWizard`, but writes to `teacher_prospects`).
-2. Source-aware column mapping for your **two sources** (SmartLead-enriched export, Danish's custom scrape).
-3. Dedup rule (email primary, fallback name+school).
-4. Kill / quarantine `sampleTeachers` dummy.
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│ Teacher Search       [Export CSV] [Import CSV] [Find via Apify ▾]     │
+│ 11,752 teachers imported across 188 cities                             │
+├────────────────────┬───────────────────┬──────────────────────────────┤
+│ Total Imported     │ Email-Ready       │ Needs Email Enrichment       │
+│ 11,752             │ 5,705             │ 5,253                        │
+│ 188 cities         │ can send today    │ [Connect Enrichment Tool]    │
+├────────────────────┴───────────────────┴──────────────────────────────┤
+│ [Search] [All Cities ▾] [All Sources ▾]                               │
+├─────────────────────────────────────────────────┬──────────────────────┤
+│ ☐  Name           School / District   Source ★ │ Sources              │
+│ ☐  Adra V.        Marin Country Day   [SL ✓]   │ SmartLead Enriched   │
+│ ☐  Diana Landry   Gilbert Public      [LI]     │  9,825 ███████  84%  │
+│ ☐  Marlease B.    UChicago            [SL ✓]   │ LinkedIn Import      │
+│ ☐  Yarilis Ruiz   Temple Univ         [SL ⚠]   │  1,927 █        16%  │
+│ ☐  Amanda Milz    Abington Friends    [SL ✉?]  │                      │
+│  …                                              │ Quick Stats          │
+│ Showing 1–25 of 11,752      ‹ 1 2 3 … 471 ›    │ Cities         188   │
+│                                                 │ Email-ready  5,705   │
+│                                                 │ Avg Fit Score        │
+│                                                 │  — [Run AI Scoring]  │
+│                                                 │ Response Rate        │
+│                                                 │  — [Connect SmartLead│
+└─────────────────────────────────────────────────┴──────────────────────┘
 
----
+Legend (rendered on screen too):
+ [SL ✓]   SmartLead Enriched · email verified
+ [SL ⚠]   SmartLead Enriched · email unverified (excluded from campaigns)
+ [SL ✉?]  SmartLead Enriched · no email returned
+ [LI]     LinkedIn Import · needs email enrichment
+```
 
-## 4. Foolproof plan for the two sources — the "smart" pre-import audit
+### MD file updates I will draft (your "remind me later" list)
 
-Before any code, I do exactly what you asked: **diff the two sources first**, then build one importer that handles both.
+Per AGENTS.md doc-sync rule, I will draft these and wait for your "go" before writing. Capturing them here so they're not lost:
 
-### Step A — You send me the two files (or 5-row samples)
+**`LATER.md` — add 2 entries:**
+1. **Camp Experience signal** — How do we determine if a teacher has summer-camp experience? Source options: scrape bio, LinkedIn description keywords (`camp counselor`, `summer program`, `enrichment`), tag at import via custom column, or AI inference at scoring time. Decide with Haseeb. Currently hidden from UI.
+2. **Market Context banner** — Wire to real `us_cities_scored` instead of hardcoded `sampleCities`. Only re-show when user enters Teacher Search from a City Search drill-down (`?city=&state=`).
 
-I need:
-- Source 1: SmartLead-enriched export (CSV/XLSX). 5–20 sample rows is enough.
-- Source 2: Danish's Upwork scrape (CSV/XLSX). 5–20 sample rows.
+**`OPEN_TASKS.md` — update:**
+- Mark Task 13 in progress with this scope
+- Note dependencies that **unhide** elements when complete:
+  - Task 14 (AI Fit Scoring) → unhides Fit Score values + Fit Tag column + Quick Stats avg
+  - Task 15 (Segmentation) → unhides Shortlisted card
+  - Task B6 (SmartLead send/reply) → unhides Contacted/Response Rate cards
+- Add sub-task: **Apollo enrichment for the 5,253 LinkedIn-only rows** (separate task, not in current sprint)
 
-I'll write a one-off audit script in the sandbox that prints:
-- Column list per source + row count
-- Column-name overlap matrix (which source-1 columns map to which source-2 columns by header similarity)
-- Per-column: % populated, sample values, detected type (email / url / phone / text / number)
-- Email validity rate per source
-- **Duplicate report**: intra-file dupes (email), cross-file dupes (same email in both)
-- Any column in one source that has *no equivalent* in the other → flagged "drop or add column"
+**`PROJECT_CONTEXT.md` — update:**
+- Teacher Search status: "Wired to live `teacher_prospects` (11,752 rows across 188 cities). v1.0 hides metrics that depend on unbuilt tasks (fit scoring, shortlist, send tracking, camp signal). Source names sanitized — no contributor names rendered."
 
-You get one markdown report. We agree on the canonical mapping → then I build the importer to that contract. No guessing.
+**`GLOSSARY.md` — add:**
+- **SmartLead Enriched** — internal label for rows imported from SmartLead's enriched CSV export (`enrichment_source = smartlead_csv`).
+- **LinkedIn Import** — internal label for rows imported from LinkedIn-derived CSVs (`enrichment_source = linkedin_danish`). Contributor names are never rendered.
 
-### Step B — Canonical column contract (proposed, may shift after audit)
+### Visual preview — what happens after you approve this plan
 
-Map both sources into `teacher_prospects` columns:
+The moment you click approve, I will:
+1. Generate **3 rendered HTML prototypes** of the new screen (you'll click to pick one)
+2. Variants:
+   - **A — Surgical:** keep your current shell, just hide/swap elements per the table above
+   - **B — Funnel-first:** replace the 3 cards with a horizontal funnel ribbon (Imported → Email-Ready → Verified → Scored → In Outreach) — makes the "what's working / what's not yet" story visual
+   - **C — Health dashboard:** keep the 3 cards but add a one-row "Data Health" strip above the table (verified % · enrichment-needed % · scored %) with progress bars
+3. After you pick one, I implement that direction. No code is written until you pick.
 
-| Canonical (DB)      | SmartLead export likely header | Danish scrape likely header | Required |
-|---------------------|--------------------------------|------------------------------|----------|
-| email               | email / Email                  | email / contact_email        | ✅       |
-| name                | full_name / first+last          | teacher_name                 | ✅       |
-| school              | company / school_name          | school                       | ✅       |
-| district            | district                        | district                     |          |
-| city                | city / location                | city                         | ✅       |
-| state               | state                           | state                        | ✅       |
-| grade               | custom.grade                   | grade_level                  |          |
-| subject             | custom.subject                 | subject                      |          |
-| teacher_type        | custom.segment                 | (default: "active")          | ✅       |
-| linkedin_url        | linkedin / linkedin_url        | linkedin                     |          |
-| enrichment_source   | (hard-coded "smartlead")       | (hard-coded "danish_scrape") | ✅       |
-| raw (jsonb)         | full original row              | full original row            | ✅       |
+### Files that will change
 
-Locked once you confirm.
+- `src/pages/TeacherProspects.tsx` — hide dummy cards, swap sidebar, default city = "All", remove `sampleCities` market banner for the no-context path
+- `src/components/teacher-prospects/TeacherTable.tsx` — drop Experience / Signals / Fit Tag columns, add Source badge, real pagination
+- `src/components/teacher-prospects/TeacherFilterBar.tsx` — drop Grades / Camp / FitTags / Status, add "All Sources"
+- `src/stores/teacherProspectsStore.ts` — replace `tagFilter` / `gradeFilter` / `enrichmentFilter` / `campOnly` with `sourceFilter`. Bump persist version to `2` so old localStorage doesn't poison the new shape.
+- **New** `src/lib/teacherSourceLabels.ts` — single source of truth for sanitized labels
+- **New** `src/components/teacher-prospects/SourceBadge.tsx`
+- `src/data/teacherData.ts` — delete `sampleTeachers` constant, keep `TeacherProspect` type
 
-### Step C — Build (after Step A report is approved)
+No DB migration needed.
 
-Mirroring the email-outreach wizard pattern (which you've validated end-to-end), one new component:
+### Risk
 
-1. **`TeacherImportWizard.tsx`** — 4 steps:
-   - Step 1: pick source ("SmartLead enriched export" / "Danish scrape" / "Other CSV") + city/state/segment defaults
-   - Step 2: CSV upload + auto-map columns (preset mapping per source, editable)
-   - Step 3: QA review — flag missing email, invalid email, intra-file dupe, **already-exists-in-DB dupe** (queries `teacher_prospects` by email)
-   - Step 4: Confirm + insert. Chunked inserts, idempotent (skip dupes by default, override per row)
-2. **"Import Teachers" button** on `TeacherProspects.tsx` next to "Find Prospects". Same drawer pattern.
-3. **Kill dummy**: remove `sampleTeachers` fallback from `TeacherProspects.tsx` — show empty-state CTA "Import teachers or Run Prospect Search". Keep the `TeacherProspect` *type* (it's used everywhere) but delete the seeded array.
-4. **Reuse Import Batches concept**: optional v2 — write a `teacher_import_batches` row so you get the same drill-down UI as Email Outreach. *I'd defer this to v2* — for v1 just insert directly with `enrichment_source` stamped and `raw` jsonb keeping provenance.
-
-### Step D — Standard guardrails (the "bare minimum" any web app does on bulk import)
-
-I'll bake these into the wizard — these are the things you asked me to recall from training:
-
-1. **File size / row cap** — reject files > 10 MB or > 10k rows in v1, with a clear toast.
-2. **Header normalization** — trim, lowercase, snake_case before mapping.
-3. **Email normalization** — trim, lowercase, regex validation.
-4. **Required column gate** — can't proceed past Step 2 without `email` mapped.
-5. **Intra-file dedup** — first occurrence wins, others flagged.
-6. **Cross-file dedup** — query DB for existing emails, show count, offer "skip / overwrite / import as new with suffix".
-7. **Preview before commit** — Step 3 shows first 100 rows with QA flags, total counts, before any DB write.
-8. **Chunked writes** — 500-row chunks like the email wizard, with progress bar.
-9. **Transactional feel** — if any chunk fails, surface error count and which chunk failed; don't roll back (Postgres can't across chunks) but log to UI.
-10. **Provenance** — every row gets `enrichment_source` + `raw` jsonb so we can trace back later.
-11. **Idempotency** — same source + same email = skip on re-upload (or flag "already imported MAY-20").
-12. **Audit row** — log import in `prospect_batches` equivalent (or a new `teacher_import_log` if you want clean separation; I lean toward reusing `prospect_batches` with a `kind` column → schema change → I'll ask before adding).
-13. **Empty-state UX** — when zero teachers, show "Import CSV" + "Find Prospects" CTAs instead of an empty table.
-14. **Undo escape hatch** — show "View last import" → bulk-delete-by-batch button (v2, not v1).
-
-I'll skip the heavy stuff that's overkill for 3 users: virus scan, multi-tenancy isolation, S3 staging, background worker queue. We're not building a SaaS — internal tool.
-
----
-
-## 5. Sequence — fastest path
-
-**Today (this loop):**
-- Approve this plan
-- You upload sample rows from both sources (drop them in chat — I'll copy them into the sandbox)
-
-**Next loop (build, ~2 hrs):**
-- I run the audit script → produce the diff report → confirm mapping with you
-- Build `TeacherImportWizard.tsx` + button on Teacher Search
-- Remove `sampleTeachers` dummy fallback
-- Smoke test with 5-row CSV from each source
-
-**Next-next loop (~30 min):**
-- You upload the full files → import → verify in DB + UI
-
-**Deferred to LATER.md:**
-- Per-batch teacher drill-down (mirror of 17n)
-- Bulk re-push from teachers → SmartLead campaigns (Email Outreach already does this via the prospects_staging path; we'd unify later)
-- Cross-source dedupe when same teacher exists in both (handled minimally in v1, full merge logic later)
-
----
-
-## 6. What I need from you to start
-
-1. **"Go" on this plan**, then
-2. **Sample rows from each source** (5–20 rows each, CSV/XLSX both fine). Even just column headers + 2 rows is enough to start the audit.
-
-Once I have those, the audit + build runs in one loop.
-
+Low. Pure presentation changes against an already-wired table. Only behavior change: real pagination (positive) and source-filter replaces 4 filters most of which were no-ops.

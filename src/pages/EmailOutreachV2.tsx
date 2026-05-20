@@ -57,7 +57,11 @@ export default function EmailOutreachV2() {
     setCampaignsError(null);
     try {
       const res = await callProxy("campaigns/");
-      setCampaigns(Array.isArray(res) ? res : []);
+      const list = Array.isArray(res) ? res : [];
+      setCampaigns(list);
+      // Mirror real campaigns into campaign_cache so the Outreach Queue picker
+      // and Teacher Search "Add to Campaign" modal see them immediately.
+      void syncAndGetRealCampaigns();
     } catch (e) {
       setCampaignsError(e instanceof Error ? e.message : String(e));
     } finally {

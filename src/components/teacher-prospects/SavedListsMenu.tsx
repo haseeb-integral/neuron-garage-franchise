@@ -15,11 +15,27 @@ import { toast } from "sonner";
 import type { SourceFilter } from "@/lib/teacherSourceLabels";
 
 export type TeacherListFilters = {
-  cityFilter: string;
+  /** Empty array = all cities. */
+  cityFilters: string[];
   sourceFilter: SourceFilter;
   search: string;
   hideInOutreach: boolean;
+  /** @deprecated kept for back-compat with v1 saved rows */
+  cityFilter?: string;
 };
+
+/** Normalize saved rows that may pre-date multi-city (had `cityFilter: string`). */
+export function normalizeListFilters(f: Partial<TeacherListFilters> | null | undefined): TeacherListFilters {
+  const raw = f ?? {};
+  const explicit = Array.isArray(raw.cityFilters) ? raw.cityFilters : null;
+  const legacy = typeof raw.cityFilter === "string" && raw.cityFilter && raw.cityFilter !== "All" ? [raw.cityFilter] : [];
+  return {
+    cityFilters: explicit && explicit.length ? explicit : legacy,
+    sourceFilter: (raw.sourceFilter ?? "all") as SourceFilter,
+    search: raw.search ?? "",
+    hideInOutreach: !!raw.hideInOutreach,
+  };
+}
 
 type SavedRow = {
   id: string;
@@ -98,28 +114,37 @@ export function SavedListsMenu({ current, onApply }: Props) {
           {rows && rows.length === 0 && (
             <div className="px-2 py-3 text-xs text-[#8794ab]">No saved lists yet.</div>
           )}
-          {rows && rows.map((r) => (
-            <DropdownMenuItem key={r.id} className="group flex items-start justify-between gap-2 py-1.5">
-              <button
-                onClick={() => { onApply(r.filters); setOpen(false); toast.success(`Loaded "${r.name}"`); }}
-                className="min-w-0 flex-1 text-left"
-              >
-                <div className="truncate text-sm font-medium text-[#07142f]">{r.name}</div>
-                <div className="truncate text-[10.5px] text-[#8794ab]">
-                  {r.filters?.cityFilter && r.filters.cityFilter !== "All" ? r.filters.cityFilter : "All cities"}
-                  {r.filters?.sourceFilter && r.filters.sourceFilter !== "all" ? ` · ${r.filters.sourceFilter}` : ""}
-                  {r.filters?.search ? ` · "${r.filters.search}"` : ""}
-                </div>
-              </button>
-              <button
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(r.id, r.name); }}
-                className="opacity-0 transition-opacity group-hover:opacity-100"
-                title="Delete saved list"
-              >
-                <Trash2 size={12} className="text-[#b0bbd0] hover:text-red-500" />
-              </button>
-            </DropdownMenuItem>
-          ))}
+          {rows && rows.map((r) => {
+            const nf = normalizeListFilters(r.filters);
+            const citySummary =
+              nf.cityFilters.length === 0
+                ? "All cities"
+                : nf.cityFilters.length === 1
+                  ? nf.cityFilters[0]
+                  : `${nf.cityFilters.length} cities`;
+            return (
+              <DropdownMenuItem key={r.id} className="group flex items-start justify-between gap-2 py-1.5">
+                <button
+                  onClick={() => { onApply(nf); setOpen(false); toast.success(`Loaded "${r.name}"`); }}
+                  className="min-w-0 flex-1 text-left"
+                >
+                  <div className="truncate text-sm font-medium text-[#07142f]">{r.name}</div>
+                  <div className="truncate text-[10.5px] text-[#8794ab]">
+                    {citySummary}
+                    {nf.sourceFilter !== "all" ? ` · ${nf.sourceFilter}` : ""}
+                    {nf.search ? ` · "${nf.search}"` : ""}
+                  </div>
+                </button>
+                <button
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(r.id, r.name); }}
+                  className="opacity-0 transition-opacity group-hover:opacity-100"
+                  title="Delete saved list"
+                >
+                  <Trash2 size={12} className="text-[#b0bbd0] hover:text-red-500" />
+                </button>
+              </DropdownMenuItem>
+            );
+          })}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={(e) => { e.preventDefault(); setSaveOpen(true); setOpen(false); }} className="text-[#174be8]">
             <BookmarkPlus size={13} className="mr-2" /> Save current view…
@@ -143,7 +168,7 @@ export function SavedListsMenu({ current, onApply }: Props) {
             </div>
             <div className="rounded-md border border-[#e7edf5] bg-[#f8fafc] p-2 text-[11px] text-[#526078]">
               <div className="mb-1 font-semibold text-[#34445f]">Filters being saved</div>
-              <div>City: <strong className="text-[#07142f]">{current.cityFilter || "All"}</strong></div>
+              <div>Cities: <strong className="text-[#07142f]">{current.cityFilters.length === 0 ? "All" : current.cityFilters.join(", ")}</strong></div>
               <div>Source: <strong className="text-[#07142f]">{current.sourceFilter}</strong></div>
               {current.search && <div>Search: <strong className="text-[#07142f]">"{current.search}"</strong></div>}
               <div>Hide in outreach: <strong className="text-[#07142f]">{current.hideInOutreach ? "yes" : "no"}</strong></div>

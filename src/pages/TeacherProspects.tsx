@@ -205,8 +205,9 @@ const TeacherProspects = () => {
 
   const search = useTeacherProspectsStore((s) => s.search);
   const setSearch = useTeacherProspectsStore((s) => s.setSearch);
-  const cityFilter = useTeacherProspectsStore((s) => s.cityFilter);
-  const setCityFilter = useTeacherProspectsStore((s) => s.setCityFilter);
+  const cityFilters = useTeacherProspectsStore((s) => s.cityFilters);
+  const setCityFilters = useTeacherProspectsStore((s) => s.setCityFilters);
+  const removeCityFilter = useTeacherProspectsStore((s) => s.removeCityFilter);
   const sourceFilter = useTeacherProspectsStore((s) => s.sourceFilter);
   const setSourceFilter = useTeacherProspectsStore((s) => s.setSourceFilter);
   const hideInOutreach = useTeacherProspectsStore((s) => s.hideInOutreach);
@@ -240,7 +241,7 @@ const TeacherProspects = () => {
       .select("*", { count: "exact" })
       .order("created_at", { ascending: false });
 
-    if (cityFilter && cityFilter !== "All") q = q.eq("city", cityFilter);
+    if (cityFilters.length > 0) q = q.in("city", cityFilters);
 
     if (debouncedSearch?.trim()) {
       const s = debouncedSearch.trim().replace(/[%_]/g, "");
@@ -282,7 +283,7 @@ const TeacherProspects = () => {
       setLoadedAt(new Date());
     }
     setLoadingProspects(false);
-  }, [page, pageSize, cityFilter, debouncedSearch, sourceFilter, hideInOutreach, allPromotedIds]);
+  }, [page, pageSize, cityFilters, debouncedSearch, sourceFilter, hideInOutreach, allPromotedIds]);
 
   const loadStats = useCallback(async () => {
     // Use a dedicated request id so the page-load request id (which bumps
@@ -291,8 +292,9 @@ const TeacherProspects = () => {
     setStatsError(null);
     const { data, error } = await supabase.rpc("teacher_prospects_stats", {
       p_search: debouncedSearch?.trim() || null,
-      p_city: cityFilter || "All",
+      p_city: cityFilters.length === 1 ? cityFilters[0] : "All",
       p_source_filter: sourceFilter,
+      p_cities: cityFilters.length > 0 ? cityFilters : null,
     });
     if (myReq !== statsReqIdRef.current) return;
     if (error || !data) {
@@ -315,7 +317,7 @@ const TeacherProspects = () => {
       cities: s.cities ?? 0,
       bySource,
     });
-  }, [debouncedSearch, cityFilter, sourceFilter]);
+  }, [debouncedSearch, cityFilters, sourceFilter]);
 
   // Re-fetch table page on filter/page change
   useEffect(() => { loadPage(); }, [loadPage]);
@@ -397,13 +399,17 @@ const TeacherProspects = () => {
   }, []);
 
 
-  // URL ?city= and ?prospect= handling
+  // URL ?city= (CSV, multi-city) and ?prospect= handling
   const consumedPromptRef = useRef(false);
   useEffect(() => {
     if (consumedPromptRef.current) return;
     const urlCity = searchParams.get("city");
-    if (urlCity) { setCityFilter(urlCity); consumedPromptRef.current = true; }
-  }, [searchParams, setCityFilter]);
+    if (urlCity) {
+      const list = urlCity.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 10);
+      if (list.length) setCityFilters(list);
+      consumedPromptRef.current = true;
+    }
+  }, [searchParams, setCityFilters]);
 
   useEffect(() => {
     const prospectId = searchParams.get("prospect");
@@ -422,7 +428,7 @@ const TeacherProspects = () => {
       .from("teacher_prospects")
       .select("*")
       .order("created_at", { ascending: false });
-    if (cityFilter && cityFilter !== "All") q = q.eq("city", cityFilter);
+    if (cityFilters.length > 0) q = q.in("city", cityFilters);
     if (debouncedSearch?.trim()) {
       const s = debouncedSearch.trim().replace(/[%_]/g, "");
       q = q.or(`name.ilike.%${s}%,school.ilike.%${s}%,city.ilike.%${s}%,email.ilike.%${s}%`);
@@ -542,53 +548,81 @@ const TeacherProspects = () => {
   const handleUpdate = (p: TeacherProspect) => setProspects((prev) => prev.map((x) => (x.id === p.id ? p : x)));
   const handleFindResults = async () => { await loadPage(); await loadStats(); };
 
-  const inMarket = cityFilter && cityFilter !== "All";
-  const urlState = searchParams.get("state");
+  const inMarket = cityFilters.length > 0;
+  const isSingleMarket = cityFilters.length === 1;
+  const urlStateRaw = searchParams.get("state");
+  const urlStates = urlStateRaw ? urlStateRaw.split(",").map((s) => s.trim()) : [];
+
+  const bannerCities = useMemo(
+    () => cityFilters.map((c, i) => ({ city: c, state: urlStates[i] ?? null })),
+    [cityFilters, urlStateRaw], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  const headingTitle = useMemo(() => {
+    if (!inMarket) return "Teacher Search";
+    if (isSingleMarket) {
+      const s = urlStates[0];
+      return `Teachers in ${cityFilters[0]}${s ? `, ${s}` : ""}`;
+    }
+    return `Teachers in ${cityFilters[0]} +${cityFilters.length - 1} more`;
+  }, [inMarket, isSingleMarket, cityFilters, urlStateRaw]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const subtitleText = useMemo(() => {
     if (stats === null) return "Loading teachers…";
     if (stats.total > 0) {
       const when = loadedAt ? loadedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
       if (inMarket) {
-        return `${stats.total.toLocaleString()} teachers in this market${when ? ` · live as of ${when}` : ""}`;
+        const scope = isSingleMarket ? "this market" : `${cityFilters.length} markets`;
+        return `${stats.total.toLocaleString()} teachers in ${scope}${when ? ` · live as of ${when}` : ""}`;
       }
       return `${stats.total.toLocaleString()} teachers across ${stats.cities.toLocaleString()} cities${when ? ` · live as of ${when}` : ""}`;
     }
     return "Discover and evaluate potential franchisee candidates from the teaching community.";
-  }, [stats, loadedAt, inMarket]);
+  }, [stats, loadedAt, inMarket, isSingleMarket, cityFilters.length]);
+
+  const writeCitiesToUrl = (cities: string[]) => {
+    if (cities.length === 0) {
+      searchParams.delete("city");
+      searchParams.delete("state");
+    } else {
+      searchParams.set("city", cities.join(","));
+      // Drop stale states; banner will re-resolve from us_cities_scored.
+      searchParams.delete("state");
+    }
+    setSearchParams(searchParams, { replace: true });
+  };
 
   const handleClearMarket = () => {
-    setCityFilter("All");
+    setCityFilters([]);
     searchParams.delete("city");
     searchParams.delete("state");
     setSearchParams(searchParams, { replace: true });
+  };
+
+  const handleRemoveCity = (city: string) => {
+    const next = cityFilters.filter((c) => c !== city);
+    removeCityFilter(city);
+    writeCitiesToUrl(next);
   };
 
   return (
     <div className="-mx-3 -my-3 min-h-screen bg-white px-3 py-3 md:-mx-5 md:px-5 lg:-mx-6 lg:px-6">
       <div className="mx-auto w-full max-w-[1360px]">
         <PageHeader
-          title={inMarket ? `Teachers in ${cityFilter}${urlState ? `, ${urlState}` : ""}` : "Teacher Search"}
+          title={headingTitle}
           subtitle={subtitleText}
           hideJourneyBar
           searchPlaceholder="Search teacher prospects, schools, cities, or specialization..."
           action={
             <div className="flex flex-wrap items-center gap-2">
               <SavedListsMenu
-                current={{ cityFilter, sourceFilter, search, hideInOutreach }}
+                current={{ cityFilters, sourceFilter, search, hideInOutreach }}
                 onApply={(f) => {
-                  setCityFilter(f.cityFilter ?? "All");
-                  setSourceFilter(f.sourceFilter ?? "all");
-                  setSearch(f.search ?? "");
-                  setHideInOutreach(!!f.hideInOutreach);
-                  // sync URL so banner reflects it
-                  if (f.cityFilter && f.cityFilter !== "All") {
-                    searchParams.set("city", f.cityFilter);
-                  } else {
-                    searchParams.delete("city");
-                    searchParams.delete("state");
-                  }
-                  setSearchParams(searchParams, { replace: true });
+                  setCityFilters(f.cityFilters);
+                  setSourceFilter(f.sourceFilter);
+                  setSearch(f.search);
+                  setHideInOutreach(f.hideInOutreach);
+                  writeCitiesToUrl(f.cityFilters);
                 }}
               />
               <Button size="sm" variant="outline" onClick={handleExport} className="h-9 rounded-lg border-[#dbe4f2] bg-white px-4 text-[#174be8] shadow-none hover:bg-[#f4f7ff]">
@@ -604,12 +638,12 @@ const TeacherProspects = () => {
 
         {inMarket && (
           <MarketContextBanner
-            city={cityFilter}
-            state={urlState}
+            cities={bannerCities}
             totalInMarket={stats?.total ?? null}
             emailReadyInMarket={stats?.withEmail ?? null}
             inOutreachInMarket={null}
-            onClear={handleClearMarket}
+            onRemoveCity={handleRemoveCity}
+            onClearAll={handleClearMarket}
           />
         )}
 
@@ -649,8 +683,8 @@ const TeacherProspects = () => {
           <div className="min-w-0 space-y-3">
             <TeacherFilterBar
               cities={cities}
-              cityFilter={cityFilter}
-              setCityFilter={setCityFilter}
+              cityFilters={cityFilters}
+              setCityFilters={(v) => { setCityFilters(v); writeCitiesToUrl(v); }}
               sourceFilter={sourceFilter}
               setSourceFilter={setSourceFilter}
               search={search}
@@ -685,7 +719,7 @@ const TeacherProspects = () => {
               onPageChange={setPage}
               onPageSizeChange={setPageSize}
               loading={loadingProspects}
-              hideCityColumn={!!inMarket}
+              hideCityColumn={isSingleMarket}
             />
           </div>
 

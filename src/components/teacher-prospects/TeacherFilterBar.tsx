@@ -9,8 +9,8 @@ import type { SourceFilter } from "@/lib/teacherSourceLabels";
 
 interface Props {
   cities: string[];
-  cityFilter: string;
-  setCityFilter: (v: string) => void;
+  cityFilters: string[];
+  setCityFilters: (v: string[]) => void;
   sourceFilter: SourceFilter;
   setSourceFilter: (v: SourceFilter) => void;
   search: string;
@@ -20,16 +20,34 @@ interface Props {
   inOutreachCount: number;
 }
 
+const MAX_CITIES = 10;
+
 export function TeacherFilterBar(p: Props) {
   const [cityOpen, setCityOpen] = useState(false);
-  const cityLabel = p.cityFilter && p.cityFilter !== "All" ? p.cityFilter : `All Cities (${p.cities.length})`;
+
+  const selected = new Set(p.cityFilters);
+  const cityLabel =
+    p.cityFilters.length === 0
+      ? `All Cities (${p.cities.length})`
+      : p.cityFilters.length === 1
+        ? p.cityFilters[0]
+        : `${p.cityFilters.length} cities selected`;
+
+  const toggle = (city: string) => {
+    if (selected.has(city)) {
+      p.setCityFilters(p.cityFilters.filter((c) => c !== city));
+    } else {
+      if (p.cityFilters.length >= MAX_CITIES) return;
+      p.setCityFilters([...p.cityFilters, city]);
+    }
+  };
 
   const selectClass =
     "h-9 rounded-lg border-[#dbe4f2] bg-white text-sm text-[#07142f] shadow-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 data-[state=open]:border-[#dbe4f2]";
 
   return (
     <div className="mb-0 rounded-xl border border-[#e7edf5] bg-white p-3 shadow-[0_1px_2px_rgba(15,23,42,0.02)]">
-      <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(220px,1fr)_220px_220px]">
+      <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(220px,1fr)_240px_220px]">
         <div className="relative min-w-0">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8794ab]" />
           <Input
@@ -47,24 +65,54 @@ export function TeacherFilterBar(p: Props) {
               <ChevronDown size={14} className="ml-2 shrink-0 text-[#8794ab]" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent align="start" className="w-[280px] bg-white p-0">
+          <PopoverContent align="start" className="w-[300px] bg-white p-0">
             <Command>
               <CommandInput placeholder={`Search ${p.cities.length} cities…`} className="h-9" />
+              <div className="flex items-center justify-between border-b border-[#eef2f7] px-2 py-1.5 text-[11px]">
+                <span className="text-[#526078]">
+                  {p.cityFilters.length === 0
+                    ? "All cities"
+                    : `${p.cityFilters.length}/${MAX_CITIES} selected`}
+                </span>
+                {p.cityFilters.length > 0 && (
+                  <button
+                    onClick={() => { p.setCityFilters([]); }}
+                    className="font-semibold text-[#174be8] hover:underline"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
               <CommandList className="max-h-72">
                 <CommandEmpty>No city matches.</CommandEmpty>
                 <CommandGroup>
-                  <CommandItem onSelect={() => { p.setCityFilter("All"); setCityOpen(false); }}>
-                    <Check size={14} className={`mr-2 ${p.cityFilter === "All" || !p.cityFilter ? "opacity-100" : "opacity-0"}`} />
-                    All Cities ({p.cities.length})
-                  </CommandItem>
-                  {p.cities.map((c) => (
-                    <CommandItem key={c} value={c} onSelect={() => { p.setCityFilter(c); setCityOpen(false); }}>
-                      <Check size={14} className={`mr-2 ${p.cityFilter === c ? "opacity-100" : "opacity-0"}`} />
-                      {c}
-                    </CommandItem>
-                  ))}
+                  {p.cities.map((c) => {
+                    const isOn = selected.has(c);
+                    const disabled = !isOn && p.cityFilters.length >= MAX_CITIES;
+                    return (
+                      <CommandItem
+                        key={c}
+                        value={c}
+                        onSelect={() => { if (!disabled) toggle(c); }}
+                        className={disabled ? "opacity-50" : ""}
+                      >
+                        <span className={`mr-2 flex h-4 w-4 items-center justify-center rounded border ${isOn ? "border-[#174be8] bg-[#174be8] text-white" : "border-[#cbd5e1] bg-white"}`}>
+                          {isOn && <Check size={11} />}
+                        </span>
+                        <span className="truncate">{c}</span>
+                      </CommandItem>
+                    );
+                  })}
                 </CommandGroup>
               </CommandList>
+              <div className="flex items-center justify-end border-t border-[#eef2f7] px-2 py-1.5">
+                <button
+                  onClick={() => setCityOpen(false)}
+                  className="rounded-md bg-[#174be8] px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-[#1240c9]"
+                >
+                  Done
+                </button>
+              </div>
             </Command>
           </PopoverContent>
         </Popover>

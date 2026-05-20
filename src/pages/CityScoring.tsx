@@ -1051,8 +1051,8 @@ const CityScoring = () => {
   const toggleCompare = (id: number) => {
     setSelectedForCompare((p) => {
       if (p.includes(id)) return p.filter((i) => i !== id);
-      if (p.length >= 4) {
-        toast.error("You can compare up to 4 markets at a time");
+      if (p.length >= 10) {
+        toast.error("You can select up to 10 markets at a time");
         return p;
       }
       return [...p, id];
@@ -1188,6 +1188,17 @@ const CityScoring = () => {
 
   const handleFindTeachers = () => {
     navigate(`/teacher-prospects?city=${encodeURIComponent(selected.city)}&state=${encodeURIComponent(selected.state)}`);
+  };
+
+  const handleFindTeachersForSelected = () => {
+    const picked = baseRankedMarkets.filter((m: any) => selectedForCompare.includes(m.id)).slice(0, 10);
+    if (picked.length === 0) {
+      toast.error("Select at least 1 market first (use the checkbox).");
+      return;
+    }
+    const cities = picked.map((m: any) => m.city).join(",");
+    const states = picked.map((m: any) => m.state).join(",");
+    navigate(`/teacher-prospects?city=${encodeURIComponent(cities)}&state=${encodeURIComponent(states)}`);
   };
 
   const handleRefreshData = async () => {
@@ -2069,6 +2080,14 @@ const CityScoring = () => {
               </button>
               {/* Add City hidden until seed-on-demand edge fn is wired (per plan Step 7).
                   Modal code intentionally preserved in AddCityModal.tsx + state below. */}
+              <button
+                onClick={handleFindTeachersForSelected}
+                disabled={selectedForCompare.length < 1}
+                className="flex items-center gap-1 text-xs font-medium text-[#174be8] hover:underline disabled:text-[#8794ab] disabled:no-underline disabled:cursor-not-allowed"
+                title="Find teachers across the checked markets"
+              >
+                <ArrowRight size={12} /> Find Teachers ({selectedForCompare.length})
+              </button>
               <button
                 onClick={openCompare}
                 disabled={selectedForCompare.length < 2}

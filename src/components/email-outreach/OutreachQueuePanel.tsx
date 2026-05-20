@@ -204,7 +204,7 @@ export function OutreachQueuePanel() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-sm">
+            <table className="w-full min-w-[860px] text-sm">
               <thead className="text-left text-[11px] font-bold uppercase tracking-wide text-[#66728a]">
                 <tr className="border-b border-[#edf2f8]">
                   <th className="py-2 pr-3">Teacher</th>

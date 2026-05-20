@@ -552,6 +552,7 @@ export type Database = {
           notes: string | null
           pushed_at: string | null
           smartlead_lead_id: string | null
+          snoozed_until: string | null
           state: string
           teacher_prospect_id: string
           updated_at: string
@@ -565,6 +566,7 @@ export type Database = {
           notes?: string | null
           pushed_at?: string | null
           smartlead_lead_id?: string | null
+          snoozed_until?: string | null
           state?: string
           teacher_prospect_id: string
           updated_at?: string
@@ -578,6 +580,7 @@ export type Database = {
           notes?: string | null
           pushed_at?: string | null
           smartlead_lead_id?: string | null
+          snoozed_until?: string | null
           state?: string
           teacher_prospect_id?: string
           updated_at?: string
@@ -878,7 +881,12 @@ export type Database = {
           lead_id: string | null
           payload: Json | null
           received_at: string
+          referral_contact: string | null
           reply_intent: string | null
+          reply_intent_confidence: number | null
+          reply_intent_overridden_at: string | null
+          reply_intent_overridden_by: string | null
+          reply_intent_reason: string | null
           reply_message: string | null
           reply_message_id: string | null
         }
@@ -890,7 +898,12 @@ export type Database = {
           lead_id?: string | null
           payload?: Json | null
           received_at?: string
+          referral_contact?: string | null
           reply_intent?: string | null
+          reply_intent_confidence?: number | null
+          reply_intent_overridden_at?: string | null
+          reply_intent_overridden_by?: string | null
+          reply_intent_reason?: string | null
           reply_message?: string | null
           reply_message_id?: string | null
         }
@@ -902,7 +915,12 @@ export type Database = {
           lead_id?: string | null
           payload?: Json | null
           received_at?: string
+          referral_contact?: string | null
           reply_intent?: string | null
+          reply_intent_confidence?: number | null
+          reply_intent_overridden_at?: string | null
+          reply_intent_overridden_by?: string | null
+          reply_intent_reason?: string | null
           reply_message?: string | null
           reply_message_id?: string | null
         }

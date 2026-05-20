@@ -283,13 +283,17 @@ const TeacherProspects = () => {
 
   const loadStats = useCallback(async () => {
     const myReq = reqIdRef.current;
+    setStatsError(null);
     const { data, error } = await supabase.rpc("teacher_prospects_stats", {
       p_search: debouncedSearch?.trim() || null,
       p_city: cityFilter || "All",
       p_source_filter: sourceFilter,
     });
     if (myReq !== reqIdRef.current) return;
-    if (error || !data) return;
+    if (error || !data) {
+      setStatsError(error?.message ?? "Stats unavailable");
+      return;
+    }
     const s = data as {
       total: number; email_ready: number; needs_enrichment: number; cities: number;
       sources: { source: string; count: number }[];
@@ -312,6 +316,19 @@ const TeacherProspects = () => {
   useEffect(() => { loadPage(); }, [loadPage]);
   // Re-fetch stats on filter change (not on page change — stats are filter-scoped)
   useEffect(() => { loadStats(); }, [loadStats]);
+
+  // Auto-refetch when the tab regains focus — prevents stale zeros after long idle.
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === "visible") {
+        loadStats();
+        loadPage();
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [loadStats, loadPage]);
+
 
   // Load campaign-state info for visible prospects (which campaign + state)
   useEffect(() => {

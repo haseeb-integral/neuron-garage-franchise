@@ -20,6 +20,7 @@ import { ProspectBatchesPanel } from "@/components/email-outreach/ProspectBatche
 import { AnalyticsPanel } from "@/components/email-outreach/AnalyticsPanel";
 import { NewCampaignDrawer } from "@/components/email-outreach/NewCampaignDrawer";
 import { EmailAccountsPanel } from "@/components/email-outreach/EmailAccountsPanel";
+import { OutreachQueuePanel } from "@/components/email-outreach/OutreachQueuePanel";
 
 type SLCampaign = { id: number | string; name?: string; status?: string; created_at?: string };
 
@@ -159,6 +160,7 @@ export default function EmailOutreachV2() {
     {view === "analytics" && <div className="mb-4"><AnalyticsPanel /></div>}
     {view === "accounts" && <div className="mb-4"><EmailAccountsPanel /></div>}
 
+    <div className="mt-4"><OutreachQueuePanel /></div>
     <div className="mt-4"><ProspectBatchesPanel refreshKey={batchesRefresh} /></div>
 
     <ImportLeadsWizard open={importOpen} onClose={() => setImportOpen(false)} onComplete={() => { setBatchesRefresh((k) => k + 1); loadCampaigns(); }} />

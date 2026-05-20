@@ -90,23 +90,30 @@ const mapRow = (r: DbRow): TeacherProspect => ({
   needsEmailEnrichment: !!r.needs_email_enrichment,
 });
 
-const downloadCsv = (rows: TeacherProspect[]) => {
-  const headers = ["Name", "School", "District", "Grade", "City", "State", "Email", "Source", "Verification", "Needs Email Enrichment"];
-  const escape = (v: string | number | boolean) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+const CSV_HEADERS = ["Name", "Title", "School", "School URL", "District", "Grade", "City", "State", "Email", "LinkedIn", "Source", "Verification", "Needs Email Enrichment", "Tags", "Notes"];
+
+const rowToCsvCells = (p: TeacherProspect) => [
+  p.name, p.title ?? "", p.school, p.schoolUrl ?? "", p.district ?? "", p.gradeRaw ?? "",
+  p.city, p.state, p.email, p.linkedinUrl ?? "",
+  sourceLabelFor(sourceKeyFor(p.enrichmentSource)),
+  p.verificationStatus ?? "",
+  p.needsEmailEnrichment ? "Yes" : "No",
+  (p.tags ?? []).join("; "),
+  p.notes ?? "",
+];
+
+const downloadCsv = (rows: TeacherProspect[], filenameSuffix = "") => {
+  const escape = (v: string | number | boolean | null | undefined) => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const csv = [
-    headers.join(","),
-    ...rows.map((p) => [
-      p.name, p.school, p.district ?? "", p.gradeRaw ?? "", p.city, p.state, p.email,
-      sourceLabelFor(sourceKeyFor(p.enrichmentSource)),
-      p.verificationStatus ?? "",
-      p.needsEmailEnrichment ? "Yes" : "No",
-    ].map(escape).join(",")),
+    CSV_HEADERS.join(","),
+    ...rows.map((p) => rowToCsvCells(p).map(escape).join(",")),
   ].join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `teacher-prospects-${new Date().toISOString().slice(0, 10)}.csv`;
+  const date = new Date().toISOString().slice(0, 10);
+  link.download = `teacher-prospects-${date}${filenameSuffix ? `-${filenameSuffix}` : ""}.csv`;
   document.body.appendChild(link);
   link.click();
   link.remove();
@@ -295,11 +302,70 @@ const TeacherProspects = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prospects]);
 
-  const handleExport = () => {
-    if (prospects.length === 0) { toast.info("No prospects to export on this page."); return; }
-    downloadCsv(prospects);
-    toast.success(`Exported ${prospects.length.toLocaleString()} rows (current page) to CSV.`);
+  // Build the same query as loadPage but without pagination — used for full-export
+  const buildFilteredQuery = () => {
+    let q = supabase
+      .from("teacher_prospects")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (cityFilter && cityFilter !== "All") q = q.eq("city", cityFilter);
+    if (debouncedSearch?.trim()) {
+      const s = debouncedSearch.trim().replace(/[%_]/g, "");
+      q = q.or(`name.ilike.%${s}%,school.ilike.%${s}%,city.ilike.%${s}%,email.ilike.%${s}%`);
+    }
+    if (sourceFilter === "smartlead") q = q.ilike("enrichment_source", "smartlead%");
+    else if (sourceFilter === "linkedin") q = q.ilike("enrichment_source", "linkedin%");
+    else if (sourceFilter === "needs_email") q = q.eq("needs_email_enrichment", true);
+    return q;
   };
+
+  const handleExport = async () => {
+    const expected = stats.total || totalCount;
+    if (expected === 0) { toast.info("Nothing to export with the current filters."); return; }
+    const t = toast.loading(`Exporting ${expected.toLocaleString()} rows…`);
+    const chunkSize = 1000;
+    const all: TeacherProspect[] = [];
+    let from = 0;
+    try {
+      // page through Supabase 1k-row cap
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await buildFilteredQuery().range(from, from + chunkSize - 1);
+        if (error) throw error;
+        const batch = (data ?? []).map((r) => mapRow(r as unknown as DbRow));
+        all.push(...batch);
+        if (batch.length < chunkSize) break;
+        from += chunkSize;
+        if (from > 50000) break; // safety
+      }
+      downloadCsv(all, "all-filtered");
+      toast.success(`Exported ${all.length.toLocaleString()} rows to CSV.`, { id: t });
+    } catch (e) {
+      toast.error(`Export failed: ${e instanceof Error ? e.message : String(e)}`, { id: t });
+    }
+  };
+
+  const handleExportSelected = async () => {
+    const selectedProspects = prospects.filter((p) => selected.includes(p.id));
+    if (selectedProspects.length === 0) return;
+    downloadCsv(selectedProspects, "selected");
+    toast.success(`Exported ${selectedProspects.length} selected ${selectedProspects.length === 1 ? "row" : "rows"} to CSV.`);
+  };
+
+  const handleBulkAddTag = async (tag: string) => {
+    const selectedProspects = prospects.filter((p) => selected.includes(p.id));
+    const uuids = selectedProspects.map((p) => p.uuid);
+    if (uuids.length === 0) return;
+    // Fetch current tags, then write merged arrays per row (postgrest can't array_append in bulk via single update)
+    await Promise.all(selectedProspects.map(async (p) => {
+      const next = Array.from(new Set([...(p.tags ?? []), tag]));
+      await supabase.from("teacher_prospects").update({ tags: next }).eq("id", p.uuid);
+    }));
+    setProspects((prev) => prev.map((x) => uuids.includes(x.uuid) ? { ...x, tags: Array.from(new Set([...(x.tags ?? []), tag])) } : x));
+    toast.success(`Tag "${tag}" applied to ${uuids.length} ${uuids.length === 1 ? "teacher" : "teachers"}.`);
+  };
+
+
 
   const toggleSelect = (id: number) => setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   const toggleAll = () => {
@@ -411,8 +477,8 @@ const TeacherProspects = () => {
             />
             <BulkActionBar
               count={selected.length}
-              onExport={() => toast.success(`Exported ${selected.length} prospects to CSV`)}
-              onAddTag={() => toast.info("Add tag dialog (placeholder)")}
+              onExport={handleExportSelected}
+              onAddTag={handleBulkAddTag}
               onPromote={handlePromoteBulk}
               onClear={() => setSelected([])}
             />
@@ -476,12 +542,22 @@ const TeacherProspects = () => {
             </div>
 
             <div className="rounded-xl border border-[#e7edf5] bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.02)]">
-              <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-[#66728a]">Status Legend</div>
-              <ul className="space-y-1.5 text-[11.5px] text-[#526078]">
-                <li><span className="mr-1 inline-block rounded bg-[#e6f7ef] px-1.5 font-bold text-[#0a8f5a]">SmartLead · Verified</span> safe to send</li>
-                <li><span className="mr-1 inline-block rounded bg-[#fff4df] px-1.5 font-bold text-[#b7791f]">SmartLead · Unverified</span> excluded from campaigns</li>
-                <li><span className="mr-1 inline-block rounded bg-[#eef2f7] px-1.5 font-bold text-[#526078]">SmartLead · No Email</span> needs enrichment</li>
-                <li><span className="mr-1 inline-block rounded bg-[#e6f3ff] px-1.5 font-bold text-[#1e6fb8]">LinkedIn Import</span> needs email enrichment</li>
+              <div className="mb-3 text-[11px] font-bold uppercase tracking-wide text-[#66728a]">Status Legend</div>
+              <ul className="space-y-2.5 text-[12px] text-[#34445f]">
+                {[
+                  { dot: "#0a8f5a", label: "SmartLead · Verified", desc: "safe to send today" },
+                  { dot: "#b7791f", label: "SmartLead · Unverified", desc: "excluded from campaigns" },
+                  { dot: "#8794ab", label: "SmartLead · No Email", desc: "needs enrichment" },
+                  { dot: "#1e6fb8", label: "LinkedIn Import", desc: "needs email enrichment" },
+                ].map((s) => (
+                  <li key={s.label} className="flex items-start gap-2">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: s.dot }} />
+                    <div className="min-w-0">
+                      <div className="font-bold text-[#07142f]">{s.label}</div>
+                      <div className="text-[11px] text-[#66728a]">{s.desc}</div>
+                    </div>
+                  </li>
+                ))}
               </ul>
             </div>
           </aside>

@@ -548,7 +548,10 @@ export type Database = {
           added_by: string | null
           campaign_id: string | null
           id: string
+          last_error: string | null
           notes: string | null
+          pushed_at: string | null
+          smartlead_lead_id: string | null
           state: string
           teacher_prospect_id: string
           updated_at: string
@@ -558,7 +561,10 @@ export type Database = {
           added_by?: string | null
           campaign_id?: string | null
           id?: string
+          last_error?: string | null
           notes?: string | null
+          pushed_at?: string | null
+          smartlead_lead_id?: string | null
           state?: string
           teacher_prospect_id: string
           updated_at?: string
@@ -568,7 +574,10 @@ export type Database = {
           added_by?: string | null
           campaign_id?: string | null
           id?: string
+          last_error?: string | null
           notes?: string | null
+          pushed_at?: string | null
+          smartlead_lead_id?: string | null
           state?: string
           teacher_prospect_id?: string
           updated_at?: string

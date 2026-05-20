@@ -1,9 +1,11 @@
 export type TeacherTag = "High Potential" | "Follow-Up" | "Not a Fit" | "Untagged";
 export type EnrichmentStatus = "Enriched" | "Pending";
 export type GradeLevel = "K-2" | "3-5" | "6-8";
+export type ProspectStatus = "new" | "shortlisted" | "in_outreach" | "not_fit" | "replied";
 
 export interface TeacherProspect {
-  id: number;
+  id: number;            // stable numeric (legacy — used for selection state)
+  uuid: string;          // real DB uuid — used for all backend writes
   cityId: number;
   name: string;
   school: string;
@@ -11,57 +13,34 @@ export interface TeacherProspect {
   state: string;
   email: string;
   phone: string;
-  linkedin: string;
+  linkedin: string;      // legacy free-text
   fitScore: number;
   tag: TeacherTag;
   enrichmentStatus: EnrichmentStatus;
-  gradeLevel: GradeLevel;
+  gradeLevel: GradeLevel; // legacy (avoid for new UI)
   yearsExperience: number;
   hasSummerCampExp: boolean;
   aiReasoning: string;
   tags: string[];
   notes: string;
-  // v1.0 — real source provenance from `teacher_prospects` rows
+  // v1.0 fields surfaced from teacher_prospects
   enrichmentSource?: string | null;
   verificationStatus?: string | null;
   needsEmailEnrichment?: boolean;
   district?: string | null;
-  gradeRaw?: string | null;
+  gradeRaw?: string | null;        // honest grade column (mostly null right now)
+  experienceYearsRaw?: number | null;
+  // v1.1 — surfaced from raw JSONB + flat columns
+  title?: string | null;           // raw.title — e.g. "5th Grade Teacher"
+  schoolUrl?: string | null;       // raw.companyWebsite
+  linkedinUrl?: string | null;     // flat linkedin_url column
+  status?: ProspectStatus;         // teacher_prospects.status
+  schoolNcesId?: string | null;
 }
 
-// Dummy seed data removed in v1.0 of Teacher Search. The page now reads from
-// the live `teacher_prospects` table. The empty export is retained so other
-// surfaces (GlobalSearch, JourneyBar) keep compiling until they are migrated.
+// Dummy seed data removed in v1.0. Empty export kept so other surfaces compile.
 export const sampleTeachers: TeacherProspect[] = [];
 
-export function generateProspectsForCity(cityId: number, city: string, state: string, startId: number): TeacherProspect[] {
-  const firstNames = ["Emily", "Daniel", "Sophia", "Ryan", "Olivia"];
-  const lastNames = ["Anderson", "Martinez", "Lee", "Walker", "Hall"];
-  const schools = [`${city} Elementary`, `${city} Heights Elementary`, `${city} Heritage Elementary`, `${city} Pioneer Elementary`, `${city} Oaks Elementary`];
-  const grades: GradeLevel[] = ["K-2", "3-5", "6-8"];
-  const tags: TeacherTag[] = ["High Potential", "Follow-Up", "Untagged"];
-
-  return Array.from({ length: 5 }, (_, i) => {
-    const fitScore = Math.floor(Math.random() * 50) + 45;
-    return {
-      id: startId + i,
-      cityId,
-      name: `${firstNames[i]} ${lastNames[i]}`,
-      school: schools[i],
-      city,
-      state,
-      email: `${firstNames[i].toLowerCase()}.${lastNames[i].toLowerCase()}@${city.toLowerCase().replace(/\s/g, "")}.edu`,
-      phone: `(555) 555-0${100 + i}0`,
-      linkedin: `linkedin.com/in/${firstNames[i].toLowerCase()}${lastNames[i].toLowerCase()}`,
-      fitScore,
-      tag: tags[i % tags.length],
-      enrichmentStatus: i % 2 === 0 ? "Enriched" : "Pending",
-      gradeLevel: grades[i % grades.length],
-      yearsExperience: Math.floor(Math.random() * 15) + 2,
-      hasSummerCampExp: i % 2 === 0,
-      aiReasoning: `Newly discovered prospect from ${city}. Initial scoring based on public profile data. Further enrichment recommended.`,
-      tags: [],
-      notes: "",
-    };
-  });
+export function generateProspectsForCity(): TeacherProspect[] {
+  return [];
 }

@@ -64,18 +64,36 @@ export function TeacherDetailPanel({ prospect, onClose, onUpdate, onPromote, onM
           <section className="rounded-xl border border-[#e7edf5] bg-white p-4">
             <h4 className="mb-3 text-xs font-black uppercase tracking-wide text-[#8794ab]">Contact</h4>
             <div className="space-y-2 text-sm text-[#34445f]">
-              <div className="flex items-center gap-2"><Mail size={14} className="text-[#8794ab]" /> {prospect.email}</div>
-              <div className="flex items-center gap-2"><Phone size={14} className="text-[#8794ab]" /> {prospect.phone}</div>
-              <a href={`https://${prospect.linkedin}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 font-medium text-[#0a66c2] hover:underline"><Linkedin size={14} /> {prospect.linkedin}</a>
+              <div className="flex items-center gap-2"><Mail size={14} className="text-[#8794ab]" /> {prospect.email || <span className="italic text-[#b0bbd0]">no email on file</span>}</div>
+              {prospect.phone && <div className="flex items-center gap-2"><Phone size={14} className="text-[#8794ab]" /> {prospect.phone}</div>}
+              {prospect.linkedinUrl ? (
+                <a href={/^https?:\/\//i.test(prospect.linkedinUrl) ? prospect.linkedinUrl : `https://${prospect.linkedinUrl}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 font-medium text-[#0a66c2] hover:underline"><Linkedin size={14} /> View LinkedIn profile</a>
+              ) : (
+                <div className="flex items-center gap-2 text-[#b0bbd0]"><Linkedin size={14} /> <span className="italic">no LinkedIn</span></div>
+              )}
+              {prospect.title && <div className="text-xs text-[#526078]"><span className="font-semibold text-[#07142f]">Title:</span> {prospect.title}</div>}
+              {prospect.schoolUrl && (
+                <a href={/^https?:\/\//i.test(prospect.schoolUrl) ? prospect.schoolUrl : `https://${prospect.schoolUrl}`} target="_blank" rel="noreferrer" className="block truncate text-xs text-[#174be8] hover:underline">{prospect.schoolUrl} ↗</a>
+              )}
             </div>
           </section>
 
           <section className="rounded-xl border border-[#e7edf5] bg-white p-4">
             <h4 className="mb-3 text-xs font-black uppercase tracking-wide text-[#8794ab]">Background</h4>
             <div className="grid gap-3 text-sm text-[#34445f]">
-              <div className="flex items-center gap-2"><GraduationCap size={14} className="text-[#8794ab]" /> Grade Level: <strong className="text-[#07142f]">{prospect.gradeLevel}</strong></div>
-              <div className="flex items-center gap-2"><Calendar size={14} className="text-[#8794ab]" /> {prospect.yearsExperience} years experience</div>
-              <div className="flex items-center gap-2"><span>Summer Camp Experience:</span><Badge className="border-0 bg-[#e6f7ef] text-[#0a8f5a]">{prospect.hasSummerCampExp ? "Yes" : "No"}</Badge></div>
+              <div className="flex items-center gap-2">
+                <GraduationCap size={14} className="text-[#8794ab]" /> Grade Level:{" "}
+                {prospect.gradeRaw
+                  ? <strong className="text-[#07142f]">{prospect.gradeRaw}</strong>
+                  : <span className="italic text-[#b0bbd0]">not yet enriched</span>}
+              </div>
+              <div className="flex items-center gap-2">
+                <Calendar size={14} className="text-[#8794ab]" />
+                {prospect.experienceYearsRaw != null
+                  ? <span>{prospect.experienceYearsRaw} years experience</span>
+                  : <span className="italic text-[#b0bbd0]">years experience not enriched</span>}
+              </div>
+              {prospect.district && <div className="text-xs text-[#526078]"><span className="font-semibold text-[#07142f]">District:</span> {prospect.district}</div>}
             </div>
           </section>
 

@@ -11,6 +11,7 @@ import { TeacherFilterBar } from "@/components/teacher-prospects/TeacherFilterBa
 import { TeacherTable } from "@/components/teacher-prospects/TeacherTable";
 import { TeacherDetailPanel } from "@/components/teacher-prospects/TeacherDetailPanel";
 import { BulkActionBar } from "@/components/teacher-prospects/BulkActionBar";
+import { AddToCampaignModal } from "@/components/teacher-prospects/AddToCampaignModal";
 import { PageHeader } from "@/components/PageHeader";
 import { useTeacherProspectsStore } from "@/stores/teacherProspectsStore";
 import { sourceKeyFor, sourceLabelFor, type SourceKey } from "@/lib/teacherSourceLabels";
@@ -31,6 +32,9 @@ type DbRow = {
   enrichment_source: string | null;
   verification_status: string | null;
   needs_email_enrichment: boolean | null;
+  linkedin_url: string | null;
+  school_nces_id: string | null;
+  raw: Record<string, unknown> | null;
 };
 
 const normalizeGrade = (g: string | null): GradeLevel => {
@@ -47,18 +51,31 @@ const stableId = (uuid: string) => {
   return Math.abs(h) || 1;
 };
 
+const pickStr = (raw: Record<string, unknown> | null, key: string): string | null => {
+  if (!raw) return null;
+  const v = raw[key];
+  return typeof v === "string" && v.trim() ? v : null;
+};
+
 const mapRow = (r: DbRow): TeacherProspect => ({
   id: stableId(r.id),
+  uuid: r.id,
   cityId: 0,
   name: r.name ?? "(Unknown)",
-  school: r.school ?? "—",
+  school: r.school ?? pickStr(r.raw, "companyName") ?? "—",
   district: r.district ?? null,
   gradeRaw: r.grade ?? null,
+  experienceYearsRaw: r.experience_years ?? null,
+  title: pickStr(r.raw, "title"),
+  schoolUrl: pickStr(r.raw, "companyWebsite"),
+  linkedinUrl: r.linkedin_url ?? pickStr(r.raw, "linkedin"),
+  schoolNcesId: r.school_nces_id,
+  status: (r.status as TeacherProspect["status"]) ?? "new",
   city: r.city,
   state: r.state,
   email: r.email ?? "",
   phone: "",
-  linkedin: "",
+  linkedin: r.linkedin_url ?? "",
   fitScore: (r.fit_score ?? 0) as number,
   tag: "Untagged" as TeacherTag,
   enrichmentStatus: (r.email ? "Enriched" : "Pending") as EnrichmentStatus,
@@ -147,8 +164,9 @@ const TeacherProspects = () => {
   const [importOpen, setImportOpen] = useState(false);
   const [active, setActive] = useState<TeacherProspect | null>(null);
   const [selected, setSelected] = useState<number[]>([]);
-  const [promotedIds, setPromotedIds] = useState<Set<number>>(new Set());
-  const [promotingId, setPromotingId] = useState<number | null>(null);
+  const [promotedUuids, setPromotedUuids] = useState<Set<string>>(new Set());
+  const [campaignModalOpen, setCampaignModalOpen] = useState(false);
+  const [campaignTargets, setCampaignTargets] = useState<{ uuid: string; name: string }[]>([]);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const search = useTeacherProspectsStore((s) => s.search);
@@ -244,6 +262,20 @@ const TeacherProspects = () => {
   // Re-fetch stats on filter change (not on page change — stats are filter-scoped)
   useEffect(() => { loadStats(); }, [loadStats]);
 
+  // Load which of the visible prospects are already in outreach_queue
+  useEffect(() => {
+    const uuids = prospects.map((p) => p.uuid);
+    if (uuids.length === 0) { setPromotedUuids(new Set()); return; }
+    (async () => {
+      const { data } = await supabase
+        .from("outreach_queue")
+        .select("teacher_prospect_id")
+        .in("teacher_prospect_id", uuids)
+        .in("state", ["queued", "assigned", "sending", "sent"]);
+      if (data) setPromotedUuids(new Set(data.map((r) => r.teacher_prospect_id as string)));
+    })();
+  }, [prospects]);
+
   // URL ?city= and ?prospect= handling
   const consumedPromptRef = useRef(false);
   useEffect(() => {
@@ -276,18 +308,52 @@ const TeacherProspects = () => {
     setSelected(allSelected ? selected.filter((id) => !visibleIds.includes(id)) : Array.from(new Set([...selected, ...visibleIds])));
   };
 
-  const handlePromote = async (p: TeacherProspect) => {
-    if (promotedIds.has(p.id) || promotingId === p.id) return;
-    setPromotingId(p.id);
-    setPromotedIds((prev) => new Set(prev).add(p.id));
-    setSelected((prev) => prev.filter((id) => id !== p.id));
-    setPromotingId(null);
-    toast.success("Added to Email Outreach", {
-      description: `${p.name} is queued for a SmartLead outreach campaign.`,
-      action: { label: "View Outreach", onClick: () => navigate("/email-outreach") },
+  const handlePromote = (p: TeacherProspect) => {
+    setCampaignTargets([{ uuid: p.uuid, name: p.name }]);
+    setCampaignModalOpen(true);
+  };
+  const handlePromoteBulk = () => {
+    const selectedProspects = prospects.filter((p) => selected.includes(p.id));
+    if (selectedProspects.length === 0) return;
+    setCampaignTargets(selectedProspects.map((p) => ({ uuid: p.uuid, name: p.name })));
+    setCampaignModalOpen(true);
+  };
+  const handleShortlist = async (p: TeacherProspect) => {
+    const nextStatus = p.status === "shortlisted" ? "new" : "shortlisted";
+    setProspects((prev) => prev.map((x) => (x.uuid === p.uuid ? { ...x, status: nextStatus } : x)));
+    const { error } = await supabase.from("teacher_prospects").update({ status: nextStatus }).eq("id", p.uuid);
+    if (error) {
+      toast.error(`Couldn't update: ${error.message}`);
+      loadPage();
+    } else {
+      toast.success(nextStatus === "shortlisted" ? `${p.name} added to shortlist` : `${p.name} removed from shortlist`);
+    }
+  };
+  const handleMarkNotFit = async (p: TeacherProspect) => {
+    setActive(null);
+    setProspects((prev) => prev.map((x) => (x.uuid === p.uuid ? { ...x, status: "not_fit" } : x)));
+    const { error } = await supabase.from("teacher_prospects").update({ status: "not_fit" }).eq("id", p.uuid);
+    if (error) { toast.error(`Couldn't update: ${error.message}`); loadPage(); return; }
+    toast.success(`${p.name} marked Not a Fit`, {
+      action: { label: "Undo", onClick: async () => {
+        await supabase.from("teacher_prospects").update({ status: "new" }).eq("id", p.uuid);
+        loadPage();
+      }},
     });
   };
-  const handleMarkNotFit = (p: TeacherProspect) => { setActive(null); toast.info(`${p.name} marked as Not a Fit`); };
+  const handleEnrich = async (p: TeacherProspect) => {
+    if (!p.schoolNcesId) { toast.info("School isn't linked to NCES yet — can't enrich automatically."); return; }
+    toast.info(`Enrichment queued for ${p.school}…`);
+    const { error } = await supabase.functions.invoke("enrich-school-staff", { body: { nces_id: p.schoolNcesId } });
+    if (error) toast.error(`Enrichment failed: ${error.message}`);
+    else toast.success("Enrichment complete. Reloading…", { action: { label: "Reload", onClick: () => loadPage() } });
+  };
+  const handleAfterAddedToCampaign = (addedUuids: string[]) => {
+    setPromotedUuids((prev) => new Set([...prev, ...addedUuids]));
+    setSelected([]);
+    loadPage();
+  };
+
   const handleUpdate = (p: TeacherProspect) => setProspects((prev) => prev.map((x) => (x.id === p.id ? p : x)));
   const handleFindResults = async () => { await loadPage(); await loadStats(); };
 
@@ -349,7 +415,7 @@ const TeacherProspects = () => {
               count={selected.length}
               onExport={() => toast.success(`Exported ${selected.length} prospects to CSV`)}
               onAddTag={() => toast.info("Add tag dialog (placeholder)")}
-              onPromote={() => { selected.forEach((id) => { const p = prospects.find((x) => x.id === id); if (p) handlePromote(p); }); }}
+              onPromote={handlePromoteBulk}
               onClear={() => setSelected([])}
             />
             <TeacherTable
@@ -359,8 +425,10 @@ const TeacherProspects = () => {
               onToggleAll={toggleAll}
               onRowClick={(p) => { setActive(p); setSelected([]); }}
               onPromote={handlePromote}
-              promotedIds={promotedIds}
-              promotingId={promotingId}
+              onShortlist={handleShortlist}
+              onEnrich={handleEnrich}
+              onMarkNotFit={handleMarkNotFit}
+              promotedUuids={promotedUuids}
               page={page}
               pageSize={pageSize}
               totalCount={totalCount}
@@ -429,8 +497,15 @@ const TeacherProspects = () => {
           onUpdate={handleUpdate}
           onPromote={handlePromote}
           onMarkNotFit={handleMarkNotFit}
-          isPromoted={active ? promotedIds.has(active.id) : false}
-          isPromoting={active ? promotingId === active.id : false}
+          isPromoted={active ? promotedUuids.has(active.uuid) || active.status === "in_outreach" : false}
+          isPromoting={false}
+        />
+        <AddToCampaignModal
+          open={campaignModalOpen}
+          onOpenChange={setCampaignModalOpen}
+          prospectUuids={campaignTargets.map((t) => t.uuid)}
+          prospectNames={campaignTargets.map((t) => t.name)}
+          onAdded={handleAfterAddedToCampaign}
         />
       </div>
     </div>

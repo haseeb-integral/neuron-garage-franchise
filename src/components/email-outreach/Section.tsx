@@ -33,24 +33,24 @@ export function Section({
   }, [open, fullKey]);
 
   return (
-    <section className="mb-4">
-      <div className="mb-2 flex items-center gap-3">
+    <section className="mb-3">
+      <div className="mb-1.5 flex items-center gap-2">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
           className="group flex items-center gap-2 text-left"
           aria-expanded={open}
         >
-          <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-[#07142f] text-[11px] font-black text-white">
+          <span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-[#07142f] text-[10px] font-black text-white">
             {step}
           </span>
-          <span className="text-[13px] font-black uppercase tracking-wider text-[#07142f]">{title}</span>
-          {subtitle && <span className="text-[11px] font-semibold text-[#8794ab]">— {subtitle}</span>}
-          <ChevronDown size={14} className={`text-[#526078] transition-transform ${open ? "rotate-180" : ""}`} />
+          <span className="text-[12px] font-black uppercase tracking-wider text-[#07142f]">{title}</span>
+          {subtitle && <span className="text-[11px] text-[#8794ab]">— {subtitle}</span>}
+          <ChevronDown size={13} className={`text-[#526078] transition-transform ${open ? "rotate-180" : ""}`} />
         </button>
         {right && <div className="ml-auto">{right}</div>}
       </div>
-      {open && <div className="space-y-3">{children}</div>}
+      {open && <div className="space-y-2">{children}</div>}
     </section>
   );
 }

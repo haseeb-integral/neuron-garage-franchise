@@ -1051,8 +1051,8 @@ const CityScoring = () => {
   const toggleCompare = (id: number) => {
     setSelectedForCompare((p) => {
       if (p.includes(id)) return p.filter((i) => i !== id);
-      if (p.length >= 4) {
-        toast.error("You can compare up to 4 markets at a time");
+      if (p.length >= 10) {
+        toast.error("You can select up to 10 markets at a time");
         return p;
       }
       return [...p, id];

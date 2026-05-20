@@ -257,7 +257,12 @@ export function OutreachQueuePanel() {
                             </span>
                           )}
                           {campaignOptions.length === 0 ? (
-                            <span className="text-[11px] text-[#8794ab]">No SmartLead campaigns synced. Create one above ↑</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[11px] text-[#8794ab]">No SmartLead campaigns loaded.</span>
+                              <button onClick={loadCampaignOptions} disabled={syncingCampaigns} className="rounded border border-[#dbe4f2] bg-white px-1.5 py-0.5 text-[10px] font-bold text-[#174be8] hover:bg-[#eef4ff] disabled:opacity-50">
+                                {syncingCampaigns ? <Loader2 size={9} className="-mt-0.5 inline animate-spin" /> : <RefreshCw size={9} className="-mt-0.5 inline" />} Sync now
+                              </button>
+                            </div>
                           ) : (
                             <select
                               value=""

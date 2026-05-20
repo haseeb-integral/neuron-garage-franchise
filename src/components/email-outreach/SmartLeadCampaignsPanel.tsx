@@ -137,13 +137,13 @@ export function SmartLeadCampaignsPanel() {
         </div>
       ) : (
         <div className="overflow-hidden rounded-lg border border-[#eef2f7]">
-          <table className="w-full text-[13px]">
+          <table className="w-full text-[12px]">
             <thead className="bg-[#f7faff] text-left text-[10px] font-semibold uppercase tracking-wider text-[#5a6b85]">
               <tr>
-                <th className="px-3 py-1.5">Name</th>
-                <th className="px-3 py-1.5">Status</th>
-                <th className="px-3 py-1.5">Created</th>
-                <th className="px-3 py-1.5 text-right">Actions</th>
+                <th className="px-3 py-1">Name</th>
+                <th className="px-3 py-1">Status</th>
+                <th className="px-3 py-1">Created</th>
+                <th className="px-3 py-1 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#eef2f7]">
@@ -152,37 +152,38 @@ export function SmartLeadCampaignsPanel() {
                 const isRunning = s === "ACTIVE" || s === "RUNNING";
                 const isPaused = s === "PAUSED";
                 const isTest = (c.name ?? "").startsWith("[TEST]");
+                const btn = "inline-flex h-6 items-center gap-1 rounded-md border px-1.5 text-[10px] font-bold disabled:opacity-50";
                 return (
                   <tr key={String(c.id)} className="hover:bg-[#f7faff]">
-                    <td className="px-3 py-1.5">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-[#07142f]">{c.name ?? `Campaign ${c.id}`}</span>
-                        {isTest && <span className="rounded bg-amber-100 px-1 py-0.5 text-[9px] font-bold text-amber-800">TEST</span>}
+                    <td className="px-3 py-1">
+                      <div className="flex items-center gap-1.5 whitespace-nowrap">
+                        <span className="truncate font-medium text-[#07142f]">{c.name ?? `Campaign ${c.id}`}</span>
+                        {isTest && <span className="rounded bg-amber-100 px-1 text-[9px] font-bold leading-4 text-amber-800">TEST</span>}
                         <span className="text-[10px] text-[#8794ab]">· {c.id}</span>
                       </div>
                     </td>
-                    <td className="px-3 py-1.5">
-                      <span className={`inline-flex rounded-md border px-1.5 py-0 text-[10px] font-semibold ${statusTone(c.status)}`}>
+                    <td className="px-3 py-1">
+                      <span className={`inline-flex items-center rounded px-1.5 text-[9px] font-bold uppercase leading-[18px] tracking-wider ${statusTone(c.status)}`}>
                         {s || "—"}
                       </span>
                     </td>
-                    <td className="px-3 py-1.5 text-[11px] text-[#5a6b85]">
+                    <td className="px-3 py-1 text-[11px] text-[#5a6b85]">
                       {c.created_at ? new Date(c.created_at).toLocaleDateString() : "—"}
                     </td>
-                    <td className="px-3 py-1.5 text-right">
+                    <td className="px-3 py-1 text-right">
                       <div className="inline-flex items-center gap-1">
                         {!isRunning && (
-                          <button onClick={() => setStatus(c, "START")} disabled={acting === `${c.id}-START`} className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50" title="Launch">
+                          <button onClick={() => setStatus(c, "START")} disabled={acting === `${c.id}-START`} className={`${btn} border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100`} title="Launch">
                             {acting === `${c.id}-START` ? <Loader2 size={10} className="animate-spin" /> : <Play size={10} />} Launch
                           </button>
                         )}
                         {isRunning && (
-                          <button onClick={() => setStatus(c, "PAUSED")} disabled={acting === `${c.id}-PAUSED`} className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700 hover:bg-amber-100 disabled:opacity-50" title="Pause">
+                          <button onClick={() => setStatus(c, "PAUSED")} disabled={acting === `${c.id}-PAUSED`} className={`${btn} border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100`} title="Pause">
                             {acting === `${c.id}-PAUSED` ? <Loader2 size={10} className="animate-spin" /> : <Pause size={10} />} Pause
                           </button>
                         )}
                         {(isRunning || isPaused) && (
-                          <button onClick={() => setStatus(c, "STOPPED")} disabled={acting === `${c.id}-STOPPED`} className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-[10px] font-bold text-red-700 hover:bg-red-100 disabled:opacity-50" title="Stop">
+                          <button onClick={() => setStatus(c, "STOPPED")} disabled={acting === `${c.id}-STOPPED`} className={`${btn} border-red-200 bg-red-50 text-red-700 hover:bg-red-100`} title="Stop">
                             {acting === `${c.id}-STOPPED` ? <Loader2 size={10} className="animate-spin" /> : <Square size={10} />} Stop
                           </button>
                         )}
@@ -190,7 +191,7 @@ export function SmartLeadCampaignsPanel() {
                           href={`https://app.smartlead.ai/app/email-campaign/${c.id}/analytics`}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1 rounded-md border border-[#dbe4f2] px-2 py-1 text-[10px] font-bold text-[#1f5bff] hover:bg-[#f7faff]"
+                          className={`${btn} border-[#dbe4f2] text-[#1f5bff] hover:bg-[#f7faff]`}
                         >
                           Open <ExternalLink size={10} />
                         </a>

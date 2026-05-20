@@ -344,13 +344,13 @@ export function OutreachQueuePanel() {
                   const hasReply = !!reply?.reply_intent;
                   return (
                     <tr key={r.id} className="border-b border-[#edf2f8] last:border-0 hover:bg-[#fafbfd]">
-                      <td className="py-1.5 pr-3 font-semibold">{r.teacher_prospects?.name ?? "—"}</td>
-                      <td className="py-1.5 pr-3 text-[#526078]">{r.teacher_prospects?.email || <span className="italic text-[#b0bbd0]">no email</span>}</td>
-                      <td className="py-1.5 pr-3 text-[#526078]">
-                        <div className="leading-tight">{r.teacher_prospects?.school ?? "—"}</div>
-                        <div className="text-[10px] leading-tight text-[#8794ab]">{r.teacher_prospects?.city}{r.teacher_prospects?.state ? `, ${r.teacher_prospects.state}` : ""}</div>
+                      <td className="py-1 pr-3 font-semibold whitespace-nowrap">{r.teacher_prospects?.name ?? "—"}</td>
+                      <td className="py-1 pr-3 text-[11px] text-[#526078] truncate max-w-[180px]" title={r.teacher_prospects?.email ?? ""}>{r.teacher_prospects?.email || <span className="italic text-[#b0bbd0]">no email</span>}</td>
+                      <td className="py-1 pr-3 text-[11px] text-[#526078] max-w-[220px]">
+                        <div className="truncate leading-tight" title={r.teacher_prospects?.school ?? ""}>{r.teacher_prospects?.school ?? "—"}</div>
+                        <div className="truncate text-[10px] leading-tight text-[#8794ab]">{r.teacher_prospects?.city}{r.teacher_prospects?.state ? `, ${r.teacher_prospects.state}` : ""}</div>
                       </td>
-                      <td className="w-[220px] py-1.5 pr-3 text-[#526078]">
+                      <td className="w-[200px] py-1 pr-3 text-[#526078]">
                         <CampaignPicker
                           assignedId={r.campaign_id}
                           assignedName={r.campaign_id ? campaignNames[r.campaign_id] : undefined}
@@ -363,11 +363,11 @@ export function OutreachQueuePanel() {
                           onSync={loadCampaignOptions}
                         />
                       </td>
-                      <td className="py-1.5 pr-3">
-                        <div className="flex flex-col gap-0.5">
-                          <span className={`inline-flex w-fit items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold ${stateTone[r.state] ?? "bg-[#eef2f7] text-[#526078]"}`}>{r.state}</span>
+                      <td className="py-1 pr-3">
+                        <div className="flex flex-wrap items-center gap-1">
+                          <span className={`inline-flex items-center rounded px-1.5 text-[9px] font-bold uppercase leading-[18px] tracking-wider ${stateTone[r.state] ?? "bg-[#eef2f7] text-[#526078]"}`}>{r.state}</span>
                           {hasReply ? (
-                            <div className="flex flex-wrap items-center gap-1">
+                            <>
                               <ReplyCategoryChip data={{
                                 category: reply!.reply_intent,
                                 confidence: reply!.reply_intent_confidence,
@@ -377,16 +377,16 @@ export function OutreachQueuePanel() {
                                 receivedAt: reply!.received_at,
                               }} />
                               <SourceBadge overriddenBy={reply!.reply_intent_overridden_by} />
-                            </div>
+                            </>
                           ) : (
                             <QueueStateChip state={r.state} pushedAt={r.pushed_at} snoozedUntil={r.snoozed_until} />
                           )}
                           {r.state === "failed" && r.last_error && (
-                            <div className="max-w-[220px] truncate text-[10px] text-[#b91c1c]" title={r.last_error}>{r.last_error}</div>
+                            <div className="max-w-[180px] truncate text-[10px] text-[#b91c1c]" title={r.last_error}>{r.last_error}</div>
                           )}
                         </div>
                       </td>
-                      <td className="whitespace-nowrap py-1.5 pr-3 text-right">
+                      <td className="whitespace-nowrap py-1 pr-3 text-right">
                         <RowAction
                           row={r}
                           reply={reply}

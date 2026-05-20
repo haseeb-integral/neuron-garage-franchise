@@ -63,7 +63,8 @@ function pageList(current: number, total: number): (number | "…")[] {
 export function TeacherTable({
   prospects, selected, onToggleSelect, onToggleAll, onRowClick,
   onPromote, onShortlist, onEnrich, onMarkNotFit,
-  promotedUuids, page, pageSize, totalCount, onPageChange, onPageSizeChange, loading,
+  promotedUuids, promotedInfo, campaignNames,
+  page, pageSize, totalCount, onPageChange, onPageSizeChange, loading,
 }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");

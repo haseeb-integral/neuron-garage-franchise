@@ -291,19 +291,67 @@ const TeacherProspects = () => {
   // Re-fetch stats on filter change (not on page change — stats are filter-scoped)
   useEffect(() => { loadStats(); }, [loadStats]);
 
-  // Load which of the visible prospects are already in outreach_queue
+  // Load campaign-state info for visible prospects (which campaign + state)
   useEffect(() => {
     const uuids = prospects.map((p) => p.uuid);
-    if (uuids.length === 0) { setPromotedUuids(new Set()); return; }
+    if (uuids.length === 0) {
+      setPromotedUuids(new Set());
+      setPromotedInfo(new Map());
+      return;
+    }
     (async () => {
       const { data } = await supabase
         .from("outreach_queue")
-        .select("teacher_prospect_id")
+        .select("teacher_prospect_id, campaign_id, state, added_at")
         .in("teacher_prospect_id", uuids)
-        .in("state", ["queued", "assigned", "sending", "sent"]);
-      if (data) setPromotedUuids(new Set(data.map((r) => r.teacher_prospect_id as string)));
+        .in("state", ["queued", "assigned", "sending", "sent", "failed"])
+        .order("added_at", { ascending: false });
+      if (!data) return;
+      // Keep latest row per prospect (first wins because of DESC order)
+      const info = new Map<string, { campaign_id: string | null; state: string }>();
+      for (const r of data as { teacher_prospect_id: string; campaign_id: string | null; state: string }[]) {
+        if (!info.has(r.teacher_prospect_id)) {
+          info.set(r.teacher_prospect_id, { campaign_id: r.campaign_id, state: r.state });
+        }
+      }
+      // Active (non-failed) uuids drive the "already in outreach" UX
+      const activeOnly = new Set<string>();
+      for (const [uuid, v] of info.entries()) {
+        if (v.state !== "failed") activeOnly.add(uuid);
+      }
+      setPromotedUuids(activeOnly);
+      setPromotedInfo(info);
     })();
   }, [prospects]);
+
+  // Load the FULL list of active outreach prospect ids (used by Hide filter + counter)
+  const refreshAllPromoted = useCallback(async () => {
+    const { data } = await supabase
+      .from("outreach_queue")
+      .select("teacher_prospect_id")
+      .in("state", ["queued", "assigned", "sending", "sent"]);
+    if (data) {
+      // dedupe — a prospect could appear in multiple queue rows
+      const ids = Array.from(new Set((data as { teacher_prospect_id: string }[]).map((r) => r.teacher_prospect_id)));
+      setAllPromotedIds(ids);
+    }
+  }, []);
+  useEffect(() => { refreshAllPromoted(); }, [refreshAllPromoted]);
+
+  // Load campaign id → name map (small, cached)
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("campaign_cache").select("id, name");
+      if (data) {
+        const m = new Map<string, string>();
+        for (const c of data as { id: string; name: string | null }[]) {
+          if (c.name) m.set(c.id, c.name);
+        }
+        setCampaignNames(m);
+      }
+    })();
+  }, []);
+
 
   // URL ?city= and ?prospect= handling
   const consumedPromptRef = useRef(false);

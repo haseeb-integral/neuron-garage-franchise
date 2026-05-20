@@ -198,6 +198,8 @@ export default function EmailOutreachV2() {
     {view === "analytics" && <div className="mb-4"><AnalyticsPanel /></div>}
     {view === "accounts" && <div className="mb-4"><EmailAccountsPanel /></div>}
 
+    <div className="mt-4"><SmartLeadInboxPanel /></div>
+    <div className="mt-4"><ReplyTriagePanel /></div>
     <div className="mt-4"><OutreachQueuePanel /></div>
     <div className="mt-4"><ProspectBatchesPanel refreshKey={batchesRefresh} /></div>
 

@@ -12,7 +12,6 @@ interface QueueRow {
   notes: string | null;
   teacher_prospect_id: string;
   teacher_prospects: { name: string | null; email: string | null; school: string | null; city: string | null; state: string | null } | null;
-  campaign_cache: { name: string | null } | null;
 }
 
 const stateTone: Record<string, string> = {

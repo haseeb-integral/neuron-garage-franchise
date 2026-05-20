@@ -262,6 +262,20 @@ const TeacherProspects = () => {
   // Re-fetch stats on filter change (not on page change — stats are filter-scoped)
   useEffect(() => { loadStats(); }, [loadStats]);
 
+  // Load which of the visible prospects are already in outreach_queue
+  useEffect(() => {
+    const uuids = prospects.map((p) => p.uuid);
+    if (uuids.length === 0) { setPromotedUuids(new Set()); return; }
+    (async () => {
+      const { data } = await supabase
+        .from("outreach_queue")
+        .select("teacher_prospect_id")
+        .in("teacher_prospect_id", uuids)
+        .in("state", ["queued", "assigned", "sending", "sent"]);
+      if (data) setPromotedUuids(new Set(data.map((r) => r.teacher_prospect_id as string)));
+    })();
+  }, [prospects]);
+
   // URL ?city= and ?prospect= handling
   const consumedPromptRef = useRef(false);
   useEffect(() => {

@@ -363,9 +363,9 @@ export function OutreachQueuePanel() {
                           onSync={loadCampaignOptions}
                         />
                       </td>
-                      <td className="py-2 pr-3">
-                        <div className="flex flex-col gap-1">
-                          <span className={`inline-flex w-fit items-center rounded-md px-1.5 py-0.5 text-[11px] font-bold ${stateTone[r.state] ?? "bg-[#eef2f7] text-[#526078]"}`}>{r.state}</span>
+                      <td className="py-1.5 pr-3">
+                        <div className="flex flex-col gap-0.5">
+                          <span className={`inline-flex w-fit items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold ${stateTone[r.state] ?? "bg-[#eef2f7] text-[#526078]"}`}>{r.state}</span>
                           {hasReply ? (
                             <div className="flex flex-wrap items-center gap-1">
                               <ReplyCategoryChip data={{
@@ -386,7 +386,7 @@ export function OutreachQueuePanel() {
                           )}
                         </div>
                       </td>
-                      <td className="whitespace-nowrap py-2 pr-3 text-right">
+                      <td className="whitespace-nowrap py-1.5 pr-3 text-right">
                         <RowAction
                           row={r}
                           reply={reply}

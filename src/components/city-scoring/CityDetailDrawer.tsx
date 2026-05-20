@@ -31,7 +31,7 @@ export function CityDetailDrawer({ city, open, onClose }: Props) {
 
   const handleFindTeachers = () => {
     onClose();
-    navigate(`/teacher-prospects?city=${encodeURIComponent(city.city)}`);
+    navigate(`/teacher-prospects?city=${encodeURIComponent(city.city)}&state=${encodeURIComponent(city.state)}`);
     toast.success(`Showing prospects for ${city.city}, ${city.state}.`);
   };
 

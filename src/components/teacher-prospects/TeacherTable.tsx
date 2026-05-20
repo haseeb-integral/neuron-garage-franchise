@@ -30,6 +30,7 @@ interface Props {
   onPageChange: (n: number) => void;
   onPageSizeChange?: (n: number) => void;
   loading?: boolean;
+  hideCityColumn?: boolean;
 }
 
 type SortKey = "name" | "school" | "city";
@@ -65,6 +66,7 @@ export function TeacherTable({
   onPromote, onShortlist, onEnrich, onMarkNotFit,
   promotedUuids, promotedInfo, campaignNames,
   page, pageSize, totalCount, onPageChange, onPageSizeChange, loading,
+  hideCityColumn,
 }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
@@ -112,9 +114,11 @@ export function TeacherTable({
               <th className={`${headerCls} min-w-[200px] cursor-pointer`} onClick={() => toggleSort("school")}>
                 <span className="inline-flex items-center gap-1">School <ArrowUpDown size={10} /></span>
               </th>
-              <th className={`${headerCls} min-w-[150px] cursor-pointer`} onClick={() => toggleSort("city")}>
-                <span className="inline-flex items-center gap-1">City <ArrowUpDown size={10} /></span>
-              </th>
+              {!hideCityColumn && (
+                <th className={`${headerCls} min-w-[150px] cursor-pointer`} onClick={() => toggleSort("city")}>
+                  <span className="inline-flex items-center gap-1">City <ArrowUpDown size={10} /></span>
+                </th>
+              )}
               <th className={`${headerCls} min-w-[180px]`}>Email</th>
               <th className={`${headerCls} w-12 text-center`}>In</th>
               <th className={`${headerCls} min-w-[170px]`}>Source</th>
@@ -173,7 +177,9 @@ export function TeacherTable({
                       )}
                     </div>
                   </td>
-                  <td className={`${cellCls} whitespace-nowrap`}>{p.city}{p.state ? `, ${p.state}` : ""}</td>
+                  {!hideCityColumn && (
+                    <td className={`${cellCls} whitespace-nowrap`}>{p.city}{p.state ? `, ${p.state}` : ""}</td>
+                  )}
                   <td className={cellCls}>
                     {p.email ? (
                       <span className="block max-w-[220px] truncate text-[#374151]" title={p.email}>{p.email}</span>

@@ -4,8 +4,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { RefreshCw, Trash2, MailPlus, ExternalLink, Loader2, AlertCircle, ChevronDown, Check, MoreHorizontal, Send, Pause, UserX, UserPlus, Sparkles, CalendarClock } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { syncAndGetRealCampaigns, isRealCampaignId, type RealCampaign } from "@/lib/smartleadCampaigns";
-import { CATEGORY_META, REPLY_CATEGORIES, categoryMeta, isAutoPromotable, type ReplyCategory } from "@/lib/replyCategories";
+import { CATEGORY_META, REPLY_CATEGORIES, isAutoPromotable, type ReplyCategory } from "@/lib/replyCategories";
+import { ReplyCategoryChip, SourceBadge, QueueStateChip } from "./ReplyCategoryChip";
 
 interface QueueRow {
   id: string;

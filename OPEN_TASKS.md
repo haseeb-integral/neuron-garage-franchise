@@ -143,10 +143,16 @@ See **`TEACHER_IDEAL_PROFILE.md`** for who we are recruiting and why — read th
 - Fit scoring: lower base than K–6, boosted by hands-on subject match
 - **Risk:** low (additive)
 
-### 13. Prospect list view + filters
-- Columns: name, school, city/state, email, fit score, teacher type
-- Filters: city, school, grade level, teacher type (active / retired / camp), fit score threshold
-- **Risk:** medium
+### 13. Prospect list view + filters ✅ May 20 (Variant A — Surgical)
+- Migrated `/teacher-prospects` from dummy data to live `teacher_prospects` (11,752 rows).
+- 3 honest stat cards: Total Imported, Email-Ready, Needs Email Enrichment.
+- Sanitized source labels via `src/lib/teacherSourceLabels.ts` (`smartlead_csv` → "SmartLead Enriched", `linkedin_danish` → "LinkedIn Import"). Contractor names never rendered.
+- New `SourceBadge` (emerald/amber/slate/sky/indigo) combines source + verification + email presence.
+- Source filter dropdown (All / SmartLead / LinkedIn / Needs Email). Default city = All.
+- Client pagination 25/page; pagination store keys persisted as `ng:teacher-prospects-v2`.
+- Removed v1.0 dummy columns (Experience, Signals, Fit Tag) and `sampleTeachers` from `src/data/teacherData.ts`.
+- **Hidden / deferred — see LATER.md "Hidden on Teacher Search (May 20)"** for the full restore list (Fit Score, Response Rate, Market Context, Expand Reach card, Camp Experience, Grades/Tags filters).
+
 
 ### 14. AI fit scoring (1–100)
 - Scoring criteria defined in `TEACHER_IDEAL_PROFILE.md` — use that as the AI prompt source

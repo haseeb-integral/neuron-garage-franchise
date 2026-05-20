@@ -170,3 +170,39 @@ Not built; not blocking the demo. Promote to OPEN_TASKS only if Kaylie hits the 
 - Review with Brett after the sprint — promote to OPEN_TASKS.md if prioritized
 - Don't delete entries — they're a decision log
 
+
+---
+
+## Hidden on Teacher Search (May 20, Variant A — Surgical)
+
+Task 13 shipped a cleaned-up `/teacher-prospects` page. The following UI was intentionally **hidden or stubbed** to avoid showing fake numbers. Restore each item when its blocking task lands. **Remind me of this list when those tasks come up.**
+
+| Hidden element | Where | Why hidden | Restore when |
+|---|---|---|---|
+| **Fit Score column values** | `TeacherTable.tsx` | No scoring engine yet; column shows "—" | Task 14 (AI fit scoring) |
+| **Avg Fit Score** Quick Stat | `TeacherProspects.tsx` sidebar | Same | Task 14 |
+| **Response Rate** Quick Stat | `TeacherProspects.tsx` sidebar | No SmartLead reply data joined yet | Task B6 (SmartLead send/reply tracking) |
+| **Shortlisted column / star** | `TeacherTable.tsx` | Feature not built | Task 15 (segmentation / tagged lists) |
+| **Experience column** | `TeacherTable.tsx` | v1.0 dummy field, no real data source | Optional — only if Apollo/enrichment returns years_experience |
+| **Signals column** (DonorsChoose, etc.) | `TeacherTable.tsx` | No signals pipeline | LATER: DonorsChoose wiring + camp signal |
+| **Fit Tag column** | `TeacherTable.tsx` | Depends on Fit Score | Task 14 + Task 15 |
+| **Grade-level filter** | `TeacherFilterBar.tsx` | No grade data on `teacher_prospects` rows | When teacher_prospects_master (B1) ships with grade field |
+| **Camp Experience filter** | `TeacherFilterBar.tsx` | No camp signal yet | LATER: camp signal logic |
+| **Fit Tags filter** | `TeacherFilterBar.tsx` | Depends on Fit Score | Task 14 + 15 |
+| **Status filter** (old) | `TeacherFilterBar.tsx` | Replaced by Source filter | N/A — superseded |
+| **"Expand your reach" card** | `TeacherProspects.tsx` | Marketing fluff, no real action | Optional — restore if/when a real action exists |
+| **Market Context banner** | `TeacherProspects.tsx` | Not wired to `us_cities_scored` | LATER: Market Context wiring (depends on `?city=&state=` query params) |
+| **Sourcing Insights (LinkedIn/Referrals %)** | `TeacherProspects.tsx` | Numbers were placeholders | Replaced by live `enrichment_source` breakdown — do not restore |
+
+**Apollo enrichment for 5,253 LinkedIn-only rows** is a separate task (not in OPEN_TASKS yet) — flag when sourcing decision lands.
+
+**Pagination behavior change:** previously the table silently capped at the Supabase 1000-row default. Now it fetches up to 20,000 rows and paginates client-side at 25/page. If row count grows past ~25k, switch to true server-side `.range()` pagination.
+
+**Files touched:**
+- created `src/components/teacher-prospects/SourceBadge.tsx`
+- created `src/lib/teacherSourceLabels.ts`
+- edited `src/components/teacher-prospects/TeacherFilterBar.tsx`
+- edited `src/components/teacher-prospects/TeacherTable.tsx`
+- edited `src/pages/TeacherProspects.tsx`
+- edited `src/stores/teacherProspectsStore.ts`
+- edited `src/data/teacherData.ts` (removed `sampleTeachers`)

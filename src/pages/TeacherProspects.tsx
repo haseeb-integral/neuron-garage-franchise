@@ -283,14 +283,16 @@ const TeacherProspects = () => {
   }, [page, pageSize, cityFilter, debouncedSearch, sourceFilter, hideInOutreach, allPromotedIds]);
 
   const loadStats = useCallback(async () => {
-    const myReq = reqIdRef.current;
+    // Use a dedicated request id so the page-load request id (which bumps
+    // when filters or allPromotedIds change) cannot discard a valid stats response.
+    const myReq = ++statsReqIdRef.current;
     setStatsError(null);
     const { data, error } = await supabase.rpc("teacher_prospects_stats", {
       p_search: debouncedSearch?.trim() || null,
       p_city: cityFilter || "All",
       p_source_filter: sourceFilter,
     });
-    if (myReq !== reqIdRef.current) return;
+    if (myReq !== statsReqIdRef.current) return;
     if (error || !data) {
       setStatsError(error?.message ?? "Stats unavailable");
       return;

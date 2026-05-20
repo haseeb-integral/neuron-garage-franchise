@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, RefreshCw, Sparkles, Pause, UserX, UserPlus, CalendarClock, Send, ChevronDown } from "lucide-react";
+import { Loader2, RefreshCw, Sparkles, Pause, UserX, UserPlus, CalendarClock, Send, ChevronDown, Inbox, FlaskConical } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { CATEGORY_META, REPLY_CATEGORIES, isAutoPromotable, type ReplyCategory } from "@/lib/replyCategories";
 import { ReplyCategoryChip, SourceBadge, type ReplyChipData } from "./ReplyCategoryChip";
+import { SmartLeadInboxPanel } from "./SmartLeadInboxPanel";
+import { SimulateReplyDialog } from "./SimulateReplyDialog";
 
 interface TriageCard {
   queueId: string;
@@ -18,6 +21,7 @@ interface TriageCard {
   st: string | null;
   reply: ReplyChipData;
   receivedAt: string;
+  simulated: boolean;
 }
 
 type FilterKey = "all" | "needs_action" | "promotable" | "handled";
@@ -32,6 +36,8 @@ export function ReplyTriagePanel() {
   const [cards, setCards] = useState<TriageCard[]>([]);
   const [acting, setActing] = useState<Record<string, boolean>>({});
   const [filter, setFilter] = useState<FilterKey>("needs_action");
+  const [inboxOpen, setInboxOpen] = useState(false);
+  const [simulateOpen, setSimulateOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -45,7 +51,7 @@ export function ReplyTriagePanel() {
     if (!emails.length) { setCards([]); setLoading(false); return; }
     const { data: events } = await supabase
       .from("smartlead_events")
-      .select("lead_email, reply_intent, reply_intent_confidence, reply_intent_reason, reply_intent_overridden_by, reply_message, received_at")
+      .select("lead_email, reply_intent, reply_intent_confidence, reply_intent_reason, reply_intent_overridden_by, reply_message, received_at, payload")
       .eq("event_type", "EMAIL_REPLIED")
       .in("lead_email", emails)
       .order("received_at", { ascending: false })
@@ -62,6 +68,7 @@ export function ReplyTriagePanel() {
       if (!email) continue;
       const ev = latest.get(email);
       if (!ev) continue; // triage only shows leads that actually replied
+      const payload = (ev.payload ?? {}) as { source?: string };
       built.push({
         queueId: r.id,
         prospectId: r.teacher_prospect_id,
@@ -81,6 +88,7 @@ export function ReplyTriagePanel() {
           receivedAt: ev.received_at,
         },
         receivedAt: ev.received_at,
+        simulated: payload?.source === "simulated",
       });
     }
     // Sort: needs-action first, then promotable, then handled.
@@ -188,9 +196,17 @@ export function ReplyTriagePanel() {
           <h3 className="text-sm font-black text-[#07142f]">Reply Triage</h3>
           <span className="text-xs text-[#66728a]">decision view — one card per reply, only actions that fit the category</span>
         </div>
-        <button onClick={load} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#dbe4f2] bg-white px-3 text-xs font-bold text-[#174be8]">
-          <RefreshCw size={12} /> Refresh
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button onClick={() => setSimulateOpen(true)} title="Score a fake reply to QA the AI classifier" className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#e9d5ff] bg-[#faf5ff] px-3 text-xs font-bold text-[#7c3aed] hover:bg-[#f3e8ff]">
+            <FlaskConical size={12} /> Simulate reply
+          </button>
+          <button onClick={() => setInboxOpen(true)} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#dbe4f2] bg-white px-3 text-xs font-bold text-[#526078] hover:bg-[#f7faff]">
+            <Inbox size={12} /> Raw inbox
+          </button>
+          <button onClick={load} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#dbe4f2] bg-white px-3 text-xs font-bold text-[#174be8]">
+            <RefreshCw size={12} /> Refresh
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-1.5 px-4 pt-3">
@@ -207,7 +223,7 @@ export function ReplyTriagePanel() {
         ) : visible.length === 0 ? (
           <div className="rounded-xl border border-dashed border-[#dbe4f2] bg-[#fbfdff] py-10 text-center text-sm text-[#5a6b85]">
             {cards.length === 0
-              ? "No replies yet. Once teachers respond, their messages will appear here, auto-classified into one of 7 buckets."
+              ? "No replies yet. Once teachers respond, their messages will appear here, auto-classified into one of 7 buckets. Use Simulate reply to QA scoring before real replies arrive."
               : "Nothing in this filter — try another tab."}
           </div>
         ) : visible.map((c) => (
@@ -223,6 +239,15 @@ export function ReplyTriagePanel() {
           />
         ))}
       </div>
+
+      <Sheet open={inboxOpen} onOpenChange={setInboxOpen}>
+        <SheetContent side="right" className="w-full max-w-2xl overflow-y-auto sm:max-w-2xl">
+          <SheetHeader><SheetTitle>Raw SmartLead Inbox</SheetTitle></SheetHeader>
+          <div className="mt-4"><SmartLeadInboxPanel /></div>
+        </SheetContent>
+      </Sheet>
+
+      <SimulateReplyDialog open={simulateOpen} onClose={() => setSimulateOpen(false)} onDone={load} />
     </div>
   );
 }
@@ -281,6 +306,9 @@ function TriageCardRow({ card, busy, onPromote, onManualPromote, onSnooze, onSup
             <span className="text-xs text-[#526078]">· {card.email}</span>
             <ReplyCategoryChip data={card.reply} />
             <SourceBadge overriddenBy={card.reply.overriddenBy} />
+            {card.simulated && (
+              <span className="rounded-md border border-[#e9d5ff] bg-[#faf5ff] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#7c3aed]">TEST</span>
+            )}
             {handled && (
               <span className="rounded-md bg-[#eef2f7] px-1.5 py-0.5 text-[10px] font-bold uppercase text-[#475569]">{card.state}</span>
             )}

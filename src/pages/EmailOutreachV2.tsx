@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+
 import {
   AlertCircle,
   ChevronDown,
@@ -21,7 +21,7 @@ import { AnalyticsPanel } from "@/components/email-outreach/AnalyticsPanel";
 import { NewCampaignDrawer } from "@/components/email-outreach/NewCampaignDrawer";
 import { EmailAccountsPanel } from "@/components/email-outreach/EmailAccountsPanel";
 import { OutreachQueuePanel } from "@/components/email-outreach/OutreachQueuePanel";
-import { SmartLeadInboxPanel } from "@/components/email-outreach/SmartLeadInboxPanel";
+
 import { ReplyTriagePanel } from "@/components/email-outreach/ReplyTriagePanel";
 import { syncAndGetRealCampaigns } from "@/lib/smartleadCampaigns";
 import { getAnalyticsCachedOrFresh, type Aggregated } from "@/lib/smartleadAnalytics";
@@ -42,12 +42,13 @@ function IconBox({ children, tone = "blue" }: { children: ReactNode; tone?: "blu
   return <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${styles[tone]}`}>{children}</div>;
 }
 
+import { Section } from "@/components/email-outreach/Section";
+
 export default function EmailOutreachV2() {
-  const navigate = useNavigate();
+  
   const [connectionOpen, setConnectionOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [batchesRefresh, setBatchesRefresh] = useState(0);
-  const [view, setView] = useState<"dashboard" | "analytics" | "accounts">("dashboard");
   const [newCampaignOpen, setNewCampaignOpen] = useState(false);
 
   // Live SmartLead campaigns (replaces hardcoded mock data — Phase 1a)
@@ -76,7 +77,6 @@ export default function EmailOutreachV2() {
   };
 
   const loadStats = async (opts?: { forceFresh?: boolean }) => {
-    // Queue counts — always works (local DB)
     try {
       const { data: q } = await supabase.from("outreach_queue").select("state");
       const rows = q ?? [];
@@ -87,7 +87,6 @@ export default function EmailOutreachV2() {
     } catch {
       setQueueCounts({ inOutreach: 0, promoted: 0 });
     }
-    // Analytics — SmartLead (cached 10min unless forceFresh)
     try {
       setAnalyticsError(null);
       const agg = await getAnalyticsCachedOrFresh(opts?.forceFresh ? 0 : undefined);
@@ -101,8 +100,6 @@ export default function EmailOutreachV2() {
 
   const safeToast = (message: string) => toast.info(message);
 
-  // Every card MUST resolve to a live value, a skeleton (loading), or an explicit "—" with tooltip (error).
-  // Never ship hardcoded zeros — caught May 20, 2026.
   const stats = useMemo(() => {
     const active = campaigns.filter((c) => (c.status ?? "").toUpperCase() === "ACTIVE" || (c.status ?? "").toUpperCase() === "RUNNING").length;
     const fmtPct = (n: number) => `${n.toFixed(1)}%`;
@@ -121,7 +118,6 @@ export default function EmailOutreachV2() {
     ];
   }, [campaigns, campaignsLoading, queueCounts, analytics, analyticsError]);
 
-  // Last-updated stamp + auto-refetch on tab refocus
   const [statsLoadedAt, setStatsLoadedAt] = useState<Date | null>(null);
   useEffect(() => {
     if (!campaignsLoading && queueCounts !== null) setStatsLoadedAt(new Date());
@@ -146,7 +142,7 @@ export default function EmailOutreachV2() {
       <div className="min-w-0">
         <h1 className="text-[26px] font-black tracking-tight">Email Outreach</h1>
         <p className="mt-1 text-sm text-[#526078]">
-          Cockpit for SmartLead campaigns. Create, launch, and promote interested replies into the candidate pipeline.
+          Daily flow: act on replies → manage active campaigns → setup &amp; analytics at the bottom.
           {statsLoadedAt && <span className="ml-1 text-[#8794ab]">· updated {statsLoadedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
         </p>
       </div>
@@ -158,48 +154,39 @@ export default function EmailOutreachV2() {
       </div>
     </div>
 
-    <div className="mb-3 flex items-center gap-1 border-b border-[#edf2f8]">
-      {(["dashboard", "analytics", "accounts"] as const).map((v) => (
-        <button key={v} onClick={() => setView(v)} className={`px-4 py-2 text-xs font-bold capitalize ${view === v ? "border-b-2 border-[#174be8] text-[#174be8]" : "text-[#526078]"}`}>
-          {v === "accounts" ? "Email Accounts" : v}
-        </button>
+    {/* Stat strip */}
+    <div className="mb-5 grid gap-2 md:grid-cols-3 xl:grid-cols-6">
+      {stats.map(({ Icon, label, value, sub, tone, loading, error }) => (
+        <Card key={label} className="px-3 py-2.5">
+          <div className="flex items-center gap-2" title={error ?? undefined}>
+            <IconBox tone={tone}><Icon size={17} /></IconBox>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[11px] font-bold text-[#34445f]">{label}</div>
+              {loading ? (
+                <div className="my-1 h-5 w-12 animate-pulse rounded bg-[#edf2f8]" aria-label={`${label} loading`} />
+              ) : error ? (
+                <div className="text-[21px] font-black leading-6 text-[#b7791f]" title={error}>—</div>
+              ) : (
+                <div className="text-[21px] font-black leading-6">{value}</div>
+              )}
+              {loading ? (
+                <div className="h-3 w-20 animate-pulse rounded bg-[#edf2f8]" />
+              ) : (
+                <div className="truncate text-[11px] font-bold text-[#8794ab]">{sub}</div>
+              )}
+            </div>
+          </div>
+        </Card>
       ))}
     </div>
 
-    <div className="mb-4 rounded-xl border border-[#e7edf5] bg-white">
-      <button onClick={() => setConnectionOpen((v) => !v)} className="flex w-full items-center justify-between px-4 py-3 text-left">
-        <div className="flex items-center gap-2"><LinkIcon size={14} className="text-[#174be8]" /><span className="text-sm font-black">SmartLead Connection</span><span className="text-[11px] text-[#66728a]">{connectionOpen ? "Hide details" : "Show details"}</span></div>
-        <ChevronDown size={16} className={`text-[#526078] transition-transform ${connectionOpen ? "rotate-180" : ""}`} />
-      </button>
-      {connectionOpen && <div className="border-t border-[#edf2f8] p-4"><SmartLeadConnectionPanel /></div>}
-    </div>
+    {/* SECTION 1 — Act on replies */}
+    <Section step={1} title="Act on replies" subtitle="every reply, auto-classified — start here" storageKey="replies" defaultOpen>
+      <ReplyTriagePanel />
+    </Section>
 
-    {view === "dashboard" && <>
-      <div className="mb-3 grid gap-2 md:grid-cols-3 xl:grid-cols-6">
-        {stats.map(({ Icon, label, value, sub, tone, loading, error }) => (
-          <Card key={label} className="px-3 py-2.5" >
-            <div className="flex items-center gap-2" title={error ?? undefined}>
-              <IconBox tone={tone}><Icon size={17} /></IconBox>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-[11px] font-bold text-[#34445f]">{label}</div>
-                {loading ? (
-                  <div className="my-1 h-5 w-12 animate-pulse rounded bg-[#edf2f8]" aria-label={`${label} loading`} />
-                ) : error ? (
-                  <div className="text-[21px] font-black leading-6 text-[#b7791f]" title={error}>—</div>
-                ) : (
-                  <div className="text-[21px] font-black leading-6">{value}</div>
-                )}
-                {loading ? (
-                  <div className="h-3 w-20 animate-pulse rounded bg-[#edf2f8]" />
-                ) : (
-                  <div className="truncate text-[11px] font-bold text-[#8794ab]">{sub}</div>
-                )}
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
-
+    {/* SECTION 2 — Campaigns & sending */}
+    <Section step={2} title="Campaigns & sending" subtitle="active campaigns and outbox" storageKey="campaigns" defaultOpen>
       {campaignsLoading ? (
         <Card className="flex items-center justify-center py-16 text-sm text-[#526078]">Loading campaigns from SmartLead…</Card>
       ) : campaignsError ? (
@@ -221,15 +208,22 @@ export default function EmailOutreachV2() {
       ) : (
         <SmartLeadCampaignsPanel />
       )}
-    </>}
+      <OutreachQueuePanel />
+    </Section>
 
-    {view === "analytics" && <div className="mb-4"><AnalyticsPanel /></div>}
-    {view === "accounts" && <div className="mb-4"><EmailAccountsPanel /></div>}
-
-    <div className="mt-4"><SmartLeadInboxPanel /></div>
-    <div className="mt-4"><ReplyTriagePanel /></div>
-    <div className="mt-4"><OutreachQueuePanel /></div>
-    <div className="mt-4"><ProspectBatchesPanel refreshKey={batchesRefresh} /></div>
+    {/* SECTION 3 — Setup & reference */}
+    <Section step={3} title="Setup & reference" subtitle="connection, accounts, batches, full analytics" storageKey="setup" defaultOpen={false}>
+      <div className="rounded-xl border border-[#e7edf5] bg-white">
+        <button onClick={() => setConnectionOpen((v) => !v)} className="flex w-full items-center justify-between px-4 py-3 text-left">
+          <div className="flex items-center gap-2"><LinkIcon size={14} className="text-[#174be8]" /><span className="text-sm font-black">SmartLead Connection</span><span className="text-[11px] text-[#66728a]">{connectionOpen ? "Hide details" : "Show details"}</span></div>
+          <ChevronDown size={16} className={`text-[#526078] transition-transform ${connectionOpen ? "rotate-180" : ""}`} />
+        </button>
+        {connectionOpen && <div className="border-t border-[#edf2f8] p-4"><SmartLeadConnectionPanel /></div>}
+      </div>
+      <EmailAccountsPanel />
+      <ProspectBatchesPanel refreshKey={batchesRefresh} />
+      <AnalyticsPanel />
+    </Section>
 
     <ImportLeadsWizard open={importOpen} onClose={() => setImportOpen(false)} onComplete={() => { setBatchesRefresh((k) => k + 1); loadCampaigns(); loadStats(); }} />
     <NewCampaignDrawer open={newCampaignOpen} onClose={() => setNewCampaignOpen(false)} onCreated={loadCampaigns} />

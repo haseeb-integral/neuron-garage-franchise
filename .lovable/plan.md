@@ -1,68 +1,100 @@
-## What I just verified (live, in your preview)
+# Email Outreach — Unified Workflow Redesign
 
-I opened both pages in a headless browser session signed in as you and inspected the real network responses.
+## Short answer to your question
 
-**Teacher Search** — `/teacher-prospects`
-- Header: **"11,752 teachers across 188 cities · live as of 05:17 AM"**
-- Total Imported = **11,752**
-- Email‑Ready = **3,922**
-- Needs Email Enrichment = **5,253**
-- Right rail Quick Stats: Cities **188**, Email‑ready **3,922**
-- Raw RPC response body confirmed: `{"total": 11752, "cities": 188, "email_ready": 3922, "needs_enrichment": 5253}`
+**You are right.** The current screen is confusing for 3 concrete reasons:
 
-**Email Outreach** — `/email-outreach`
-- Active Campaigns **2**, Prospects in Outreach **1**, Open Rate **50.0%**, Replies **1**, Interested **0**, Promoted **1**
+1. **Reverse flow.** A user reads top→down, but the actions live bottom→up: Stats → Campaigns → **Inbox** → **Triage** → **Queue (⋯ menu)** → Batches. The decision/action panels are buried at the bottom; the menu that changes a row's state is the *last* thing visible.
+2. **Hidden state changes.** "Manual override" hides inside a `⋯` dropdown on a queue row. Standard SaaS pattern (Apollo, Instantly, Lemlist, SmartLead itself) puts state actions on a **detail drawer** opened by clicking the row, not in a kebab menu.
+3. **Redundant panels per tab.** Inbox, Triage, Queue, Batches render under *every* tab (Dashboard / Analytics / Accounts). Tabs are meaningless if the content below them never changes.
 
-So the numbers are not broken — neither page is shipping zeros today. My previous fix did stick.
+This violates the standard "one screen = one job" rule (Linear, Front, Missive, Superhuman, HubSpot Sequences all follow it).
 
-## So why did you see zeros?
+---
 
-The zeros in your screenshot are the **initial render** before the RPC has answered. Look at the current Teacher Search code:
+## Proposed structure — single-screen, workflow-ordered
 
-```ts
-const emptyStats = { total: 0, withEmail: 0, needsEnrichment: 0, cities: 0, bySource: [] };
-// cards render stats.total.toLocaleString()  → "0"
+Remove the 3 tabs. Replace with **one stacked workflow**, top→down matching how work actually flows:
+
+```text
+┌─────────────────────────────────────────────────────────┐
+│ Header: title · last-updated · [Refresh][Import][+ Campaign] │
+├─────────────────────────────────────────────────────────┤
+│ Stat strip (6 cards) — unchanged                        │
+├─────────────────────────────────────────────────────────┤
+│ SECTION 1 · ACT ON REPLIES   ← do this first every day  │
+│   • Reply Triage (Interested / Question / Not now / OOO)│
+│   • Each row → click opens Detail Drawer with:          │
+│       - full thread                                     │
+│       - AI category + confidence + "why"                │
+│       - one-click: Promote / Reject / Snooze / Override │
+├─────────────────────────────────────────────────────────┤
+│ SECTION 2 · CAMPAIGNS & SENDING                         │
+│   • Campaigns list (existing SmartLeadCampaignsPanel)   │
+│   • Outreach Queue (collapsed by default, expand to see │
+│     send status; ⋯ menu removed — use row→drawer)       │
+├─────────────────────────────────────────────────────────┤
+│ SECTION 3 · DATA & SETUP   (collapsed by default)       │
+│   • Import Batches                                      │
+│   • Email Accounts                                      │
+│   • SmartLead Connection                                │
+│   • Full Analytics (the old "Analytics" tab content)    │
+└─────────────────────────────────────────────────────────┘
 ```
 
-So between mount and ~200ms later (when `teacher_prospects_stats` resolves) the cards literally render `0`. If you screenshot in that window — or if the tab was paused/throttled — you see all‑zero cards that look identical to "broken / no data". Same pattern on Email Outreach (`queueCounts` starts `null` → shows `—`, but Open Rate shows `…` while analytics loads, which is inconsistent).
+**Why this works**
+- Top of screen = most urgent (replies needing your decision).
+- Middle = active work (campaigns sending).
+- Bottom = setup/reference (rarely touched after day 1).
+- One detail drawer pattern for *all* state changes — no hidden kebab menus.
+- Inbox is **removed as a top-level panel** — its content is already inside Reply Triage (every reply is a triage row). The raw inbox stays accessible via a "View raw inbox" link in Section 1's header for the rare case you need it.
 
-**This is the real bug** — not the data layer, the loading state. It looks broken every page load for ~½ second, every time.
+---
 
-## Fix plan — make this category of mistake impossible to repeat
+## Section labels + collapse (the "optional polish" you asked to bundle)
 
-### 1. Never render a literal `0` while loading
-Replace the `emptyStats` default with `stats = null`. Cards show a skeleton bar (`<Skeleton className="h-7 w-16" />`) until the RPC actually returns. Apply the same rule on Email Outreach so every card consistently uses skeleton → number → error, never "0 / —/ …".
+- Each section has a bold label header: `1 · ACT ON REPLIES`, `2 · CAMPAIGNS & SENDING`, `3 · DATA & SETUP`.
+- Each panel header has a chevron to collapse/expand.
+- Collapse state persists in `localStorage` per-user.
+- Sections 1 and 2 default open; Section 3 defaults collapsed.
 
-### 2. Distinct empty‑states
-- **Loading** → skeleton bar
-- **Loaded + truly zero** → big "0" + faint "no data yet"  caption (so a real zero is visually distinct from a stale zero)
-- **Error** → "—" + tooltip with the error message + Retry link
+---
 
-### 3. Last‑updated stamp on every card group
-A small "Updated 12:17:09" footer under the card row (already present in the Teacher Search subtitle — add it to Email Outreach too) so you can tell at a glance whether the page is showing fresh data.
+## How to QA AI reply scoring without real teacher replies
 
-### 4. Auto‑refetch on tab refocus
-Add a `visibilitychange` listener that re‑runs `loadStats()` when the tab regains focus. If you keep the tab open overnight, you won't return to stale zeros from a connection that dropped.
+You can't wait for real replies, so add a dev-only "Simulate Reply" tool:
 
-### 5. Hard‑refresh button
-The page already has a Refresh button — wire it to also re‑run `loadStats()` (Teacher Search currently only refreshes the table on filter changes, not on the visible Refresh button).
+- New button in Reply Triage header (visible only when `import.meta.env.DEV` or for your 3 admin emails): **"Simulate Reply"**.
+- Opens a small form: pick a queue row (any sent email), paste reply text, click **Score**.
+- Inserts a synthetic row into the triage table marked `source: "simulated"` with a small "TEST" badge so it never gets confused with real data.
+- Runs the same AI classifier the real path uses → you see category, confidence, and reasoning immediately.
+- A "Clear all simulated" button wipes them in one click.
 
-### 6. Tiny test guard
-Add a one‑line vitest assertion: `expect(emptyStats).toBeUndefined()` — fails the build if anyone re‑introduces the hardcoded zero default.
+This lets you verify the AI scoring end-to-end today without any teacher ever replying.
 
-## Out of scope
-- No DB / RPC changes — verified end‑to‑end working.
-- No layout / copy changes to the cards themselves.
+---
 
-## Files I'll touch
-- `src/pages/TeacherProspects.tsx` — kill `emptyStats`, add skeletons, wire Refresh, add visibility listener.
-- `src/pages/EmailOutreachV2.tsx` — same skeleton treatment for the 6 dashboard stat cards; add Updated stamp.
-- `src/components/teacher-prospects/TeacherFilterBar.tsx` — skeletons in Quick Stats (right rail).
-- (new) `src/test/stats-loading.test.ts` — guard against the zero‑default regression.
+## Implementation steps (frontend-only, no schema changes)
 
-## Why this is the right diagnosis, not another guess
-- Browser network panel shows the RPC returning real data (11,752).
-- psql against the live DB shows `teacher_prospects_stats(NULL, 'All', 'all')` returning the same numbers.
-- The only path that produces "0/0/0" is the initial `useState(emptyStats)` render before the first fetch completes.
+1. **`EmailOutreachV2.tsx`**: delete the 3-tab switcher; render the 3 sections in order; move Inbox/Triage/Queue/Batches/Accounts/Analytics/Connection into their right section.
+2. **New `<Section>` wrapper component**: label header + collapse chevron + localStorage key.
+3. **`OutreachQueuePanel`**: remove the `⋯` dropdown; clicking a row opens a new `QueueRowDrawer` with the same actions (Manual Promote, Status Override, View Email) as buttons.
+4. **`ReplyTriagePanel`**: same — row click opens detail drawer with Promote/Reject/Snooze/Override.
+5. **Remove `SmartLeadInboxPanel`** from the page; add a "View raw inbox" link in Triage header that opens it as a drawer when clicked.
+6. **New `SimulateReplyDialog`**: dev/admin-only, posts to the existing classify edge function, inserts row with `source = "simulated"`.
 
-Confirm and I'll implement A–F in one pass.
+No backend, no DB migrations, no SmartLead changes. Pure UI consolidation.
+
+---
+
+## What you'll see after
+
+- One screen, top-to-bottom = your daily workflow.
+- No tabs, no redundancy, no hidden menus.
+- Click any row to act on it (standard pattern).
+- A "Simulate Reply" button so you can verify AI scoring today.
+
+## Questions before I build
+
+1. Inbox panel — agree to remove it from main scroll and only show via "View raw inbox" link? Or keep it as its own collapsed panel in Section 1?
+2. Simulate Reply — restrict to dev build only, or also enabled in production for your 3 emails (kaylie / sam / haseeb)?

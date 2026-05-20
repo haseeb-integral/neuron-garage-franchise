@@ -21,6 +21,7 @@ import { AnalyticsPanel } from "@/components/email-outreach/AnalyticsPanel";
 import { NewCampaignDrawer } from "@/components/email-outreach/NewCampaignDrawer";
 import { EmailAccountsPanel } from "@/components/email-outreach/EmailAccountsPanel";
 import { OutreachQueuePanel } from "@/components/email-outreach/OutreachQueuePanel";
+import { syncAndGetRealCampaigns } from "@/lib/smartleadCampaigns";
 
 type SLCampaign = { id: number | string; name?: string; status?: string; created_at?: string };
 
@@ -56,7 +57,11 @@ export default function EmailOutreachV2() {
     setCampaignsError(null);
     try {
       const res = await callProxy("campaigns/");
-      setCampaigns(Array.isArray(res) ? res : []);
+      const list = Array.isArray(res) ? res : [];
+      setCampaigns(list);
+      // Mirror real campaigns into campaign_cache so the Outreach Queue picker
+      // and Teacher Search "Add to Campaign" modal see them immediately.
+      void syncAndGetRealCampaigns();
     } catch (e) {
       setCampaignsError(e instanceof Error ? e.message : String(e));
     } finally {

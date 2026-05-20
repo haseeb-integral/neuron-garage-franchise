@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Trash2, MailPlus, ExternalLink, Loader2, AlertCircle } from "lucide-react";
+import { syncAndGetRealCampaigns, isRealCampaignId, type RealCampaign } from "@/lib/smartleadCampaigns";
 
 interface QueueRow {
   id: string;
@@ -25,10 +26,7 @@ const stateTone: Record<string, string> = {
   failed: "bg-[#fee2e2] text-[#b91c1c]",
 };
 
-// SmartLead real campaign ids are numeric strings; anything else is a synthetic cache row.
-const isRealCampaignId = (id: string | null | undefined) => !!id && /^\d+$/.test(id);
-
-interface CampaignOption { id: string; name: string; status: string | null }
+type CampaignOption = RealCampaign;
 
 export function OutreachQueuePanel() {
   const [rows, setRows] = useState<QueueRow[]>([]);
@@ -38,16 +36,18 @@ export function OutreachQueuePanel() {
   const [pushing, setPushing] = useState<Record<string, boolean>>({});
   const [assigning, setAssigning] = useState<Record<string, boolean>>({});
   const [filter, setFilter] = useState<"all" | "queued" | "sent" | "failed">("all");
+  const [syncingCampaigns, setSyncingCampaigns] = useState(false);
 
   const loadCampaignOptions = useCallback(async () => {
-    const { data } = await supabase
-      .from("campaign_cache")
-      .select("id, name, status")
-      .order("last_synced", { ascending: false })
-      .limit(100);
-    const REAL = new Set(["active", "paused", "stopped", "drafted", "completed"]);
-    const real = (data ?? []).filter((c) => /^\d+$/.test(c.id) && REAL.has((c.status ?? "").toLowerCase())) as CampaignOption[];
+    setSyncingCampaigns(true);
+    const real = await syncAndGetRealCampaigns();
     setCampaignOptions(real);
+    setCampaignNames((prev) => {
+      const next = { ...prev };
+      for (const c of real) next[c.id] = c.name;
+      return next;
+    });
+    setSyncingCampaigns(false);
   }, []);
 
   const load = useCallback(async () => {
@@ -183,7 +183,7 @@ export function OutreachQueuePanel() {
           <h3 className="text-sm font-black text-[#07142f]">Outreach Queue</h3>
           <span className="text-xs text-[#66728a]">teachers added from Teacher Search — push to SmartLead when ready</span>
         </div>
-        <Button variant="outline" size="sm" onClick={load} className="h-8 rounded-lg border-[#dbe4f2] bg-white text-xs text-[#174be8]"><RefreshCw size={12} /> Refresh</Button>
+        <Button variant="outline" size="sm" onClick={() => { load(); loadCampaignOptions(); }} className="h-8 rounded-lg border-[#dbe4f2] bg-white text-xs text-[#174be8]"><RefreshCw size={12} /> Refresh</Button>
       </div>
 
       <div className="flex flex-wrap gap-1.5 px-4 pt-3">
@@ -257,7 +257,12 @@ export function OutreachQueuePanel() {
                             </span>
                           )}
                           {campaignOptions.length === 0 ? (
-                            <span className="text-[11px] text-[#8794ab]">No SmartLead campaigns synced. Create one above ↑</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[11px] text-[#8794ab]">No SmartLead campaigns loaded.</span>
+                              <button onClick={loadCampaignOptions} disabled={syncingCampaigns} className="rounded border border-[#dbe4f2] bg-white px-1.5 py-0.5 text-[10px] font-bold text-[#174be8] hover:bg-[#eef4ff] disabled:opacity-50">
+                                {syncingCampaigns ? <Loader2 size={9} className="-mt-0.5 inline animate-spin" /> : <RefreshCw size={9} className="-mt-0.5 inline" />} Sync now
+                              </button>
+                            </div>
                           ) : (
                             <select
                               value=""

@@ -7,8 +7,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { Loader2, Mail, Plus } from "lucide-react";
+import { syncAndGetRealCampaigns, type RealCampaign } from "@/lib/smartleadCampaigns";
 
-interface Campaign { id: string; name: string; status: string | null }
+type Campaign = RealCampaign;
 
 interface Props {
   open: boolean;
@@ -34,22 +35,9 @@ export function AddToCampaignModal({ open, onOpenChange, prospectUuids, prospect
     if (!open) return;
     (async () => {
       setLoadingCampaigns(true);
-      const { data, error } = await supabase
-        .from("campaign_cache")
-        .select("id, name, status")
-        .order("last_synced", { ascending: false })
-        .limit(50);
-      if (!error && data) {
-        // Filter out synthetic / non-campaign cache rows (e.g. analytics fallback markers).
-        // Only show rows whose id is numeric (SmartLead's real campaign ids) AND whose
-        // status is a real SmartLead lifecycle value.
-        const REAL_STATUSES = new Set(["active", "paused", "stopped", "drafted", "completed"]);
-        const real = (data as Campaign[]).filter((c) =>
-          /^\d+$/.test(c.id) && REAL_STATUSES.has((c.status ?? "").toLowerCase())
-        );
-        setCampaigns(real);
-        if (real.length && !selectedCampaign) setSelectedCampaign(real[0].id);
-      }
+      const real = await syncAndGetRealCampaigns();
+      setCampaigns(real);
+      if (real.length && !selectedCampaign) setSelectedCampaign(real[0].id);
       setLoadingCampaigns(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps

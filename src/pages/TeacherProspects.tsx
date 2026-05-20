@@ -128,10 +128,19 @@ interface Stats {
   bySource: { key: SourceKey; label: string; count: number; pct: number }[];
 }
 
-const emptyStats: Stats = { total: 0, withEmail: 0, needsEnrichment: 0, cities: 0, bySource: [] };
+// Do NOT introduce an `emptyStats` zero-default — caught May 20, 2026.
+// `stats === null` means "still loading"; cards must render a skeleton, not "0".
+// A real zero only appears after the RPC resolves with `total: 0`.
 
-const StatCard = ({ title, value, sub, tone = "slate", action }: {
-  title: string; value: string | number; sub?: React.ReactNode; tone?: "slate" | "emerald" | "amber"; action?: React.ReactNode;
+const StatCard = ({ title, value, sub, tone = "slate", action, loading, error, onRetry }: {
+  title: string;
+  value: string | number;
+  sub?: React.ReactNode;
+  tone?: "slate" | "emerald" | "amber";
+  action?: React.ReactNode;
+  loading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
 }) => {
   const valueTone =
     tone === "emerald" ? "text-[#0a8f5a]" :
@@ -143,8 +152,20 @@ const StatCard = ({ title, value, sub, tone = "slate", action }: {
         <div className="text-[11px] font-bold uppercase tracking-wide text-[#66728a]">{title}</div>
         {action}
       </div>
-      <div className={`mt-1 text-2xl font-black leading-tight ${valueTone}`}>{value}</div>
-      {sub && <div className="mt-1 text-xs text-[#66728a]">{sub}</div>}
+      {loading ? (
+        <div className="mt-1 h-7 w-20 animate-pulse rounded-md bg-[#edf2f8]" aria-label={`${title} loading`} />
+      ) : error ? (
+        <div className={`mt-1 text-2xl font-black leading-tight text-[#b7791f]`} title={error}>
+          — <button onClick={onRetry} className="ml-2 align-middle text-[11px] font-bold text-[#174be8] hover:underline">Retry</button>
+        </div>
+      ) : (
+        <div className={`mt-1 text-2xl font-black leading-tight ${valueTone}`}>{value}</div>
+      )}
+      {loading ? (
+        <div className="mt-2 h-3 w-28 animate-pulse rounded bg-[#edf2f8]" />
+      ) : sub ? (
+        <div className="mt-1 text-xs text-[#66728a]">{sub}</div>
+      ) : null}
     </div>
   );
 };

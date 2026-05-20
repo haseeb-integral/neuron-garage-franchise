@@ -579,12 +579,12 @@ export function MarketDetailDrawer({
     dimmed = false,
   ) => {
     const used = metric.enabled && (status === "live" || status === "proxy");
-    const value = signal && status !== "missing" ? displayValue(signal.value) : "No backend value for Austin yet";
+    const value = signal && status !== "missing" ? displayValue(signal.value) : "—";
     const sub =
       status === "missing" && metric.status !== "blocked"
-        ? "No metric-level backend value — category score falls back to pre-seeded score"
+        ? `Tracked in the SOW framework; no per-metric source wired yet. Category score above is computed from the aggregated Census/BLS pull for ${market.city}.`
         : status === "blocked"
-        ? "Source unavailable"
+        ? "Source unavailable — registry blocks this metric."
         : relativeTime(signal?.updated_at);
     return (
       <div

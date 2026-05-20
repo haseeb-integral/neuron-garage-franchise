@@ -491,6 +491,7 @@ const TeacherProspects = () => {
   const handleAfterAddedToCampaign = (addedUuids: string[]) => {
     setPromotedUuids((prev) => new Set([...prev, ...addedUuids]));
     setSelected([]);
+    refreshAllPromoted();
     loadPage();
   };
 

@@ -156,9 +156,9 @@ export default function EmailOutreachV2() {
 
     {view === "dashboard" && <>
       <div className="mb-3 grid gap-2 md:grid-cols-3 xl:grid-cols-6">
-        {stats.map(({ Icon, label, value, sub, tone }) => (
-          <Card key={label} className="px-3 py-2.5">
-            <div className="flex items-center gap-2">
+        {stats.map(({ Icon, label, value, sub, tone, title }) => (
+          <Card key={label} className="px-3 py-2.5" >
+            <div className="flex items-center gap-2" title={title}>
               <IconBox tone={tone}><Icon size={17} /></IconBox>
               <div className="min-w-0">
                 <div className="truncate text-[11px] font-bold text-[#34445f]">{label}</div>

@@ -1034,6 +1034,36 @@ export type Database = {
           },
         ]
       }
+      teacher_saved_lists: {
+        Row: {
+          created_at: string
+          filters: Json
+          id: string
+          name: string
+          notes: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          filters?: Json
+          id?: string
+          name: string
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          filters?: Json
+          id?: string
+          name?: string
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       us_cities_geo: {
         Row: {
           city: string

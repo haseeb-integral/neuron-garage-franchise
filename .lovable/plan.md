@@ -1,100 +1,86 @@
-# Email Outreach — Unified Workflow Redesign
+## Goal
 
-## Short answer to your question
+Add a top-bar **"Ask"** input on the Email Outreach screen that answers natural-language questions about what's happening on that screen (queue, replies, campaigns, candidates). Read-only — no writes. Built as a reusable `<AskAssistant />` so City Search, Teacher Search, and Pipeline can adopt it later with one line.
 
-**You are right.** The current screen is confusing for 3 concrete reasons:
+## What the user gets (Phase 1)
 
-1. **Reverse flow.** A user reads top→down, but the actions live bottom→up: Stats → Campaigns → **Inbox** → **Triage** → **Queue (⋯ menu)** → Batches. The decision/action panels are buried at the bottom; the menu that changes a row's state is the *last* thing visible.
-2. **Hidden state changes.** "Manual override" hides inside a `⋯` dropdown on a queue row. Standard SaaS pattern (Apollo, Instantly, Lemlist, SmartLead itself) puts state actions on a **detail drawer** opened by clicking the row, not in a kebab menu.
-3. **Redundant panels per tab.** Inbox, Triage, Queue, Batches render under *every* tab (Dashboard / Analytics / Accounts). Tabs are meaningless if the content below them never changes.
+A slim input in the Email Outreach page header: *"Ask about queue, replies, campaigns…"*. Press Enter → answer streams below it in a collapsible panel. Examples it can answer:
+- "How many leads are queued vs sent today?"
+- "Which campaign has the highest reply rate this week?"
+- "Why is Adra still in triage — what's her state?"
+- "Show me positive replies from yesterday I haven't promoted"
+- "Which prospect batches haven't been pushed to SmartLead yet?"
 
-This violates the standard "one screen = one job" rule (Linear, Front, Missive, Superhuman, HubSpot Sequences all follow it).
-
----
-
-## Proposed structure — single-screen, workflow-ordered
-
-Remove the 3 tabs. Replace with **one stacked workflow**, top→down matching how work actually flows:
+## Architecture (reusable foundation)
 
 ```text
-┌─────────────────────────────────────────────────────────┐
-│ Header: title · last-updated · [Refresh][Import][+ Campaign] │
-├─────────────────────────────────────────────────────────┤
-│ Stat strip (6 cards) — unchanged                        │
-├─────────────────────────────────────────────────────────┤
-│ SECTION 1 · ACT ON REPLIES   ← do this first every day  │
-│   • Reply Triage (Interested / Question / Not now / OOO)│
-│   • Each row → click opens Detail Drawer with:          │
-│       - full thread                                     │
-│       - AI category + confidence + "why"                │
-│       - one-click: Promote / Reject / Snooze / Override │
-├─────────────────────────────────────────────────────────┤
-│ SECTION 2 · CAMPAIGNS & SENDING                         │
-│   • Campaigns list (existing SmartLeadCampaignsPanel)   │
-│   • Outreach Queue (collapsed by default, expand to see │
-│     send status; ⋯ menu removed — use row→drawer)       │
-├─────────────────────────────────────────────────────────┤
-│ SECTION 3 · DATA & SETUP   (collapsed by default)       │
-│   • Import Batches                                      │
-│   • Email Accounts                                      │
-│   • SmartLead Connection                                │
-│   • Full Analytics (the old "Analytics" tab content)    │
-└─────────────────────────────────────────────────────────┘
+src/components/ask/
+  AskAssistant.tsx        # Top-bar input + streaming answer panel (UI)
+  useAsk.ts               # AI SDK useChat hook wired to /functions/v1/ask
+  registry.ts             # Per-screen config: { screen, systemPrompt, tools[] }
+  screens/
+    email.ts              # Email screen's tools + system prompt
+    (city.ts, teacher.ts, pipeline.ts — added later)
+
+supabase/functions/ask/
+  index.ts                # Single edge function, routes by `screen` param
+  _shared/ai-gateway.ts   # Lovable AI Gateway provider (already pattern in repo)
 ```
 
-**Why this works**
-- Top of screen = most urgent (replies needing your decision).
-- Middle = active work (campaigns sending).
-- Bottom = setup/reference (rarely touched after day 1).
-- One detail drawer pattern for *all* state changes — no hidden kebab menus.
-- Inbox is **removed as a top-level panel** — its content is already inside Reply Triage (every reply is a triage row). The raw inbox stays accessible via a "View raw inbox" link in Section 1's header for the rare case you need it.
+**Usage on any screen** (after Phase 1):
+```tsx
+<AskAssistant screen="email" />
+```
 
----
+## Tools exposed to the model (Email screen, read-only)
 
-## Section labels + collapse (the "optional polish" you asked to bundle)
+All are thin wrappers over existing Supabase queries — same data the UI already reads:
 
-- Each section has a bold label header: `1 · ACT ON REPLIES`, `2 · CAMPAIGNS & SENDING`, `3 · DATA & SETUP`.
-- Each panel header has a chevron to collapse/expand.
-- Collapse state persists in `localStorage` per-user.
-- Sections 1 and 2 default open; Section 3 defaults collapsed.
+| Tool | Purpose |
+|---|---|
+| `query_outreach_queue` | Filter by state/date/campaign; returns counts + sample rows |
+| `query_reply_triage` | Filter by sentiment/state/date; returns counts + sample rows |
+| `query_campaigns` | SmartLead campaign list with stats (sent, replied, bounced) |
+| `query_prospect_batches` | Batch status, push status to SmartLead |
+| `get_candidate` | Look up a candidate by name/id, return profile + pipeline status |
+| `query_email_accounts` | Connected sender accounts and health |
 
----
+Each tool has a narrow Zod `inputSchema`, returns compact JSON (capped row counts), and is scoped to the authenticated user via RLS. No mutation tools in Phase 1.
 
-## How to QA AI reply scoring without real teacher replies
+## Model & cost
 
-You can't wait for real replies, so add a dev-only "Simulate Reply" tool:
+- **Model:** `google/gemini-3-flash-preview` via Lovable AI Gateway (no API key — already wired)
+- **Estimated cost at 3 users × ~50 questions/day:** under **$0.20/month**. Hard ceiling under $2/month even with heavy use.
+- **Latency:** sub-second first token via streaming.
 
-- New button in Reply Triage header (visible only when `import.meta.env.DEV` or for your 3 admin emails): **"Simulate Reply"**.
-- Opens a small form: pick a queue row (any sent email), paste reply text, click **Score**.
-- Inserts a synthetic row into the triage table marked `source: "simulated"` with a small "TEST" badge so it never gets confused with real data.
-- Runs the same AI classifier the real path uses → you see category, confidence, and reasoning immediately.
-- A "Clear all simulated" button wipes them in one click.
+## UI behavior
 
-This lets you verify the AI scoring end-to-end today without any teacher ever replying.
+- Slim single-line input in the Email Outreach page header (next to existing title)
+- Enter → opens a slide-down panel below the header with the streamed answer
+- Answer renders markdown + small data tables (reuses existing table primitives)
+- "Show data sources" disclosure shows which tools were called + raw JSON (your **"Show the math"** rule applies here too)
+- Close panel = X button. State doesn't persist across reloads (Phase 1).
+- Doesn't touch any existing functionality, layouts, buttons, or data flows.
 
----
+## Technical details
 
-## Implementation steps (frontend-only, no schema changes)
+- **Backend:** new edge function `ask` using AI SDK `streamText` + `tool` + `stepCountIs(50)`, returns `toUIMessageStreamResponse`.
+- **Frontend:** AI SDK `useChat` + `DefaultChatTransport` pointed at the function. Render `message.parts` (text + tool parts) so the data-sources disclosure works.
+- **Auth:** function validates JWT, scopes all tool queries to `auth.uid()`.
+- **Tool deferral:** not needed at this size (~6 tools). Register directly.
+- **No new tables.** No schema changes. No new secrets (LOVABLE_API_KEY already present).
 
-1. **`EmailOutreachV2.tsx`**: delete the 3-tab switcher; render the 3 sections in order; move Inbox/Triage/Queue/Batches/Accounts/Analytics/Connection into their right section.
-2. **New `<Section>` wrapper component**: label header + collapse chevron + localStorage key.
-3. **`OutreachQueuePanel`**: remove the `⋯` dropdown; clicking a row opens a new `QueueRowDrawer` with the same actions (Manual Promote, Status Override, View Email) as buttons.
-4. **`ReplyTriagePanel`**: same — row click opens detail drawer with Promote/Reject/Snooze/Override.
-5. **Remove `SmartLeadInboxPanel`** from the page; add a "View raw inbox" link in Triage header that opens it as a drawer when clicked.
-6. **New `SimulateReplyDialog`**: dev/admin-only, posts to the existing classify edge function, inserts row with `source = "simulated"`.
+## What this is NOT (deferred)
 
-No backend, no DB migrations, no SmartLead changes. Pure UI consolidation.
+- ❌ No write actions (no promote/snooze/draft) — Phase 2 if useful
+- ❌ No cross-screen memory or unified agent — only after 2+ screens prove value
+- ❌ No conversation history persistence — session-only for now
+- ❌ Not added to other screens yet — foundation is reusable, but only Email is wired
 
----
+## Doc sync after build
 
-## What you'll see after
+Per AGENTS.md Rule 9, after implementation I'll draft one-line updates for `PROJECT_CONTEXT.md` (new component + edge function), `APIS.md` (Lovable AI Gateway usage), and `HOW_IT_WORKS.md` (Email screen now has an Ask bar). Will wait for your "go" before writing.
 
-- One screen, top-to-bottom = your daily workflow.
-- No tabs, no redundancy, no hidden menus.
-- Click any row to act on it (standard pattern).
-- A "Simulate Reply" button so you can verify AI scoring today.
+## Risk: low
 
-## Questions before I build
-
-1. Inbox panel — agree to remove it from main scroll and only show via "View raw inbox" link? Or keep it as its own collapsed panel in Section 1?
-2. Simulate Reply — restrict to dev build only, or also enabled in production for your 3 emails (kaylie / sam / haseeb)?
+Pure addition. No changes to existing email functionality, schema, or RLS. Easy to remove (delete one component + one edge function).

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+
 import {
   AlertCircle,
   ChevronDown,
@@ -21,7 +21,7 @@ import { AnalyticsPanel } from "@/components/email-outreach/AnalyticsPanel";
 import { NewCampaignDrawer } from "@/components/email-outreach/NewCampaignDrawer";
 import { EmailAccountsPanel } from "@/components/email-outreach/EmailAccountsPanel";
 import { OutreachQueuePanel } from "@/components/email-outreach/OutreachQueuePanel";
-import { SmartLeadInboxPanel } from "@/components/email-outreach/SmartLeadInboxPanel";
+
 import { ReplyTriagePanel } from "@/components/email-outreach/ReplyTriagePanel";
 import { syncAndGetRealCampaigns } from "@/lib/smartleadCampaigns";
 import { getAnalyticsCachedOrFresh, type Aggregated } from "@/lib/smartleadAnalytics";
@@ -45,7 +45,7 @@ function IconBox({ children, tone = "blue" }: { children: ReactNode; tone?: "blu
 import { Section } from "@/components/email-outreach/Section";
 
 export default function EmailOutreachV2() {
-  const navigate = useNavigate();
+  
   const [connectionOpen, setConnectionOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [batchesRefresh, setBatchesRefresh] = useState(0);

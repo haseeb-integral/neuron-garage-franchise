@@ -401,7 +401,7 @@ const TeacherProspects = () => {
               count={selected.length}
               onExport={() => toast.success(`Exported ${selected.length} prospects to CSV`)}
               onAddTag={() => toast.info("Add tag dialog (placeholder)")}
-              onPromote={() => { selected.forEach((id) => { const p = prospects.find((x) => x.id === id); if (p) handlePromote(p); }); }}
+              onPromote={handlePromoteBulk}
               onClear={() => setSelected([])}
             />
             <TeacherTable

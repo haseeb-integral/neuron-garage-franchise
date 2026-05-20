@@ -33,6 +33,7 @@ type FilterKey = "all" | "needs_action" | "promotable" | "handled";
  * Backed by the same outreach_queue + smartlead_events tables — no schema changes.
  */
 export function ReplyTriagePanel() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [cards, setCards] = useState<TriageCard[]>([]);
   const [acting, setActing] = useState<Record<string, boolean>>({});

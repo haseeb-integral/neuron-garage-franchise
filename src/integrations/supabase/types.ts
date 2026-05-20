@@ -1336,10 +1336,24 @@ export type Database = {
           city: string
         }[]
       }
-      teacher_prospects_stats: {
-        Args: { p_city?: string; p_search?: string; p_source_filter?: string }
-        Returns: Json
-      }
+      teacher_prospects_stats:
+        | {
+            Args: {
+              p_city?: string
+              p_search?: string
+              p_source_filter?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_cities?: string[]
+              p_city?: string
+              p_search?: string
+              p_source_filter?: string
+            }
+            Returns: Json
+          }
     }
     Enums: {
       app_role: "admin" | "manager"

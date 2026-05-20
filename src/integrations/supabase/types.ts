@@ -874,6 +874,7 @@ export type Database = {
           last_enriched_at: string | null
           linkedin_url: string | null
           name: string | null
+          needs_email_enrichment: boolean
           raw: Json | null
           school: string | null
           school_nces_id: string | null
@@ -884,6 +885,7 @@ export type Database = {
           teacher_type: string | null
           updated_at: string
           us_cities_scored_id: string | null
+          verification_status: string | null
         }
         Insert: {
           apify_run_id?: string | null
@@ -900,6 +902,7 @@ export type Database = {
           last_enriched_at?: string | null
           linkedin_url?: string | null
           name?: string | null
+          needs_email_enrichment?: boolean
           raw?: Json | null
           school?: string | null
           school_nces_id?: string | null
@@ -910,6 +913,7 @@ export type Database = {
           teacher_type?: string | null
           updated_at?: string
           us_cities_scored_id?: string | null
+          verification_status?: string | null
         }
         Update: {
           apify_run_id?: string | null
@@ -926,6 +930,7 @@ export type Database = {
           last_enriched_at?: string | null
           linkedin_url?: string | null
           name?: string | null
+          needs_email_enrichment?: boolean
           raw?: Json | null
           school?: string | null
           school_nces_id?: string | null
@@ -936,6 +941,7 @@ export type Database = {
           teacher_type?: string | null
           updated_at?: string
           us_cities_scored_id?: string | null
+          verification_status?: string | null
         }
         Relationships: [
           {

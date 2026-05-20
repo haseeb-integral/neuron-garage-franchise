@@ -542,6 +542,47 @@ export type Database = {
           },
         ]
       }
+      outreach_queue: {
+        Row: {
+          added_at: string
+          added_by: string | null
+          campaign_id: string | null
+          id: string
+          notes: string | null
+          state: string
+          teacher_prospect_id: string
+          updated_at: string
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string | null
+          campaign_id?: string | null
+          id?: string
+          notes?: string | null
+          state?: string
+          teacher_prospect_id: string
+          updated_at?: string
+        }
+        Update: {
+          added_at?: string
+          added_by?: string | null
+          campaign_id?: string | null
+          id?: string
+          notes?: string | null
+          state?: string
+          teacher_prospect_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outreach_queue_teacher_prospect_id_fkey"
+            columns: ["teacher_prospect_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_prospects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string

@@ -40,8 +40,15 @@ export function AddToCampaignModal({ open, onOpenChange, prospectUuids, prospect
         .order("last_synced", { ascending: false })
         .limit(50);
       if (!error && data) {
-        setCampaigns(data as Campaign[]);
-        if (data.length && !selectedCampaign) setSelectedCampaign(data[0].id);
+        // Filter out synthetic / non-campaign cache rows (e.g. analytics fallback markers).
+        // Only show rows whose id is numeric (SmartLead's real campaign ids) AND whose
+        // status is a real SmartLead lifecycle value.
+        const REAL_STATUSES = new Set(["active", "paused", "stopped", "drafted", "completed"]);
+        const real = (data as Campaign[]).filter((c) =>
+          /^\d+$/.test(c.id) && REAL_STATUSES.has((c.status ?? "").toLowerCase())
+        );
+        setCampaigns(real);
+        if (real.length && !selectedCampaign) setSelectedCampaign(real[0].id);
       }
       setLoadingCampaigns(false);
     })();

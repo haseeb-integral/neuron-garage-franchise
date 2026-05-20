@@ -84,6 +84,18 @@ What the user gets out of each step:
 - **AI personalization** continues to run through `LOVABLE_API_KEY` for email-body generation.
 - **Today's status (May 19):** End-to-end live and proven via Gmail `+alias` test loop (5 leads → send → reply → Inbox → manual Promote to Pipeline). Pause/Resume/Stop verified. **Not yet ready for real teacher sends** — see blockers above + need Teacher Search promotion path (blocked on Brett teacher-source decision).
 
+- **Outreach Queue panel (`OutreachQueuePanel.tsx`, added May 20):** Newer per-teacher push path that bypasses the CSV Import Wizard. Reads `outreach_queue` (any rows added via Teacher Search → "Add to Campaign"). Each row carries a lifecycle `state`:
+  - `queued` — added to outreach but no SmartLead campaign chosen yet (draft).
+  - `assigned` — has a real `campaign_id` locally, **not yet pushed** to SmartLead.
+  - `sending` — push in progress.
+  - `sent` — SmartLead accepted the lead; `smartlead_lead_id` + `pushed_at` stored.
+  - `failed` — push failed; `last_error` stored and shown inline under the State pill.
+- **Push button:** calls `smartlead-proxy → POST campaigns/{id}/leads` with first/last name, email, school (as `company_name`), and city (as `location`). Disabled when there's no real campaign, no email, or the row is already sent/sending.
+- **Invalid-campaign guard:** `AddToCampaignModal` only lists real SmartLead campaigns (numeric ids + real lifecycle status). Any row that still points at a synthetic id (e.g. legacy "Analytics Overview" cache row) renders a red "invalid — reassign" pill in the panel and Push is blocked.
+
+
+
+
 
 ### `/candidate-pipeline` Candidate Pipeline — `CandidatePipeline.tsx`
 - **User sees:** Kanban board with columns: New Lead → Qualification → Confirmation → Signing. Click a candidate to open the detail panel (Overview / Qualification / Committee Votes / Homework / Lead Sheet / Notes / Stage History).

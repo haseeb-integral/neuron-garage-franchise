@@ -1226,6 +1226,16 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      teacher_prospects_cities: {
+        Args: never
+        Returns: {
+          city: string
+        }[]
+      }
+      teacher_prospects_stats: {
+        Args: { p_city?: string; p_search?: string; p_source_filter?: string }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "admin" | "manager"

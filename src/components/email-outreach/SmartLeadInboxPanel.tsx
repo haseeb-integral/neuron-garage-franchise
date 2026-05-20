@@ -3,7 +3,8 @@ import { Loader2, RefreshCw, Inbox, Mail, AlertTriangle, UserMinus, Tag, MoreHor
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { CATEGORY_META, REPLY_CATEGORIES, categoryMeta, type ReplyCategory } from "@/lib/replyCategories";
+import { CATEGORY_META, REPLY_CATEGORIES, type ReplyCategory } from "@/lib/replyCategories";
+import { ReplyCategoryChip, SourceBadge } from "./ReplyCategoryChip";
 
 interface EventRow {
   id: string;

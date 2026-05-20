@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { fetchAggregated, ANALYTICS_CACHE_KEY as CACHE_KEY, type Aggregated, type CampaignAnalytic } from "@/lib/smartleadAnalytics";
 
+const pct = (n: number, d: number) => (d > 0 ? (n / d) * 100 : 0);
+
 export function AnalyticsPanel() {
   const [data, setData] = useState<Aggregated | null>(null);
   const [loading, setLoading] = useState(true);

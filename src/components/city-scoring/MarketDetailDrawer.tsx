@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { CityData } from "@/data/cityData";
-import { ArrowRight, ChevronDown, ChevronRight, Download, ExternalLink, FileText, RefreshCw } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronRight, Download, ExternalLink, FileText, Info, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getSignalGeography, GEO_BADGE_CLASS } from "@/lib/signalGeography";
 import { useCustomCriteria, CATEGORY_LABEL_TO_KEY } from "@/hooks/useCustomCriteria";
@@ -86,6 +87,76 @@ const SOW_CATEGORIES: { key: MetricCategory; label: string }[] = [
   { key: "ease_of_operations", label: "Ease of Operations" },
   { key: "parent_mindset", label: "Parent Mindset" },
 ];
+
+// Per-category server-side formulas, extracted verbatim from
+// supabase/functions/_shared/scoring.ts (calculateCurrentCategoryScores).
+// Surfaced in the drawer so Sam can see how each 0–100 number is built
+// without reading code (AGENTS.md Rule 1: "Show the math").
+const CATEGORY_FORMULAS: Record<MetricCategory, { formula: string; inputs: string[]; clamp: string }> = {
+  demand: {
+    formula: "50 + (elementary_count × 3) + (preschool_count × 1.5) + (firecrawl_signal × 1) + censusBoost",
+    inputs: [
+      "censusBoost = min(15, log10(population) × 2.5) + min(10, (children_pct − 18) × 0.8)",
+      "Census ACS: total_population, % children 5–12",
+      "Counted: elementary schools, preschools, Firecrawl enrichment signals",
+    ],
+    clamp: "Result clamped to [40, 98].",
+  },
+  pricing_power: {
+    formula: "45 + (private_school_count × 4) + (parent_mindset_signal × 1) + incomeBoost",
+    inputs: [
+      "incomeBoost = min(20, (median_HHI − 60000) / 4000) + min(10, (income_100k_pct − 25) × 0.4) + min(8, (income_150k_pct − 10) × 0.5)",
+      "Census ACS: median household income, % $100k+, % $150k+",
+      "Counted: private schools",
+    ],
+    clamp: "Result clamped to [40, 98].",
+  },
+  competitive_landscape: {
+    formula: "95 − (competitor_count × 3) − (stem_camp_count × 1.5)",
+    inputs: [
+      "Apify/Google Maps: total summer camps, STEM/robotics/maker camps",
+      "Inverted: more competitors = lower score (95 is the unsaturated ceiling)",
+    ],
+    clamp: "Result clamped to [40, 98].",
+  },
+  franchisee_supply: {
+    formula: "55 + (elementary_count × 3) + (private_school_count × 2) + supplyAdj",
+    inputs: [
+      "supplyAdj = clamp(−6, +6, (65000 − BLS_teacher_mean_wage) / 4000)",
+      "BLS OEWS: teacher mean wage",
+      "NCES CCD: elementary + private school counts (proxy for teacher pool)",
+      "Lower teacher pay nudges the score up (more recruiting pull).",
+    ],
+    clamp: "Result clamped to [40, 98].",
+  },
+  ease_of_operations: {
+    formula: "55 + (rental_venue_count × 4) + easeAdj",
+    inputs: [
+      "easeAdj = clamp(−5, +5, (32000 − BLS_rec_or_childcare_wage) / 3000)",
+      "BLS OEWS: recreation worker wage (fallback: childcare worker wage)",
+      "Counted: rentable venues (schools, churches, rec centers)",
+    ],
+    clamp: "Result clamped to [40, 98].",
+  },
+  parent_mindset: {
+    formula: "50 + (parent_signal × 3) + (private_school_count × 1.5) + (firecrawl_signal × 0.5) + mindsetBoost",
+    inputs: [
+      "mindsetBoost = min(20, (bachelors_pct − 30) × 0.6) + min(6, (children_pct − 18) × 0.4)",
+      "Census ACS: % bachelor's degree or higher, % children 5–12",
+      "Counted: private schools, Firecrawl enrichment hits",
+    ],
+    clamp: "Result clamped to [40, 98].",
+  },
+};
+
+const CATEGORY_KEY_TO_SCORE_PROP: Record<MetricCategory, string> = {
+  demand: "demand",
+  pricing_power: "pricingPower",
+  competitive_landscape: "competitiveLandscape",
+  franchisee_supply: "franchiseeSupply",
+  ease_of_operations: "easeOfOperations",
+  parent_mindset: "parentMindset",
+};
 
 const STATUS_STYLES: Record<MetricStatus, string> = {
   live: "bg-[#e6f7ef] text-[#0ea66e] border-[#bfead6]",
@@ -193,6 +264,7 @@ export function MarketDetailDrawer({
   refreshVersion = 0,
   open,
   onClose,
+  categoryScores,
   onFindTeachers,
   onGenerateReport,
   onExport,
@@ -508,12 +580,12 @@ export function MarketDetailDrawer({
     dimmed = false,
   ) => {
     const used = metric.enabled && (status === "live" || status === "proxy");
-    const value = signal && status !== "missing" ? displayValue(signal.value) : "No backend value for Austin yet";
+    const value = signal && status !== "missing" ? displayValue(signal.value) : "—";
     const sub =
       status === "missing" && metric.status !== "blocked"
-        ? "No metric-level backend value — category score falls back to pre-seeded score"
+        ? `Tracked in the SOW framework; no per-metric source wired yet. Category score above is computed from the aggregated Census/BLS pull for ${market.city}.`
         : status === "blocked"
-        ? "Source unavailable"
+        ? "Source unavailable — registry blocks this metric."
         : relativeTime(signal?.updated_at);
     return (
       <div
@@ -728,9 +800,54 @@ export function MarketDetailDrawer({
                 const liveProxy = enabledRows.filter((r) => r.status === "live" || r.status === "proxy").length;
                 return (
                   <div key={category.key} className="rounded-lg border border-[#eef2f7] bg-white">
-                    <div className="flex items-center justify-between border-b border-[#eef2f7] bg-[#f8fafe] px-3 py-1.5">
-                      <h5 className="text-[12px] font-bold text-[#07142f]">{category.label}</h5>
-                      <span className="text-[10px] font-semibold text-[#8794ab]" title="Count of enabled scoring metrics that have a value, out of total enabled scoring metrics in this category">
+                    <div className="flex items-center justify-between gap-2 border-b border-[#eef2f7] bg-[#f8fafe] px-3 py-1.5">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <h5 className="text-[12px] font-bold text-[#07142f]">{category.label}</h5>
+                        {(() => {
+                          const f = CATEGORY_FORMULAS[category.key];
+                          const scoreProp = CATEGORY_KEY_TO_SCORE_PROP[category.key];
+                          const scoreVal = categoryScores?.[scoreProp];
+                          return (
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="inline-flex items-center gap-0.5 rounded-full border border-[#dbe4f2] bg-white px-1.5 py-0.5 text-[9.5px] font-semibold text-[#174be8] hover:bg-[#eef4ff]"
+                                  title="Show how this category score is computed"
+                                >
+                                  <Info size={9} /> Show formula
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent side="bottom" align="start" className="w-[360px] p-3 text-[11px] text-[#14233b]">
+                                <p className="font-bold text-[#07142f] mb-1">{category.label} — Score Formula</p>
+                                {typeof scoreVal === "number" && (
+                                  <p className="mb-2 text-[10.5px] text-[#526078]">
+                                    Current score for {market.city}: <span className="font-bold text-[#07142f]">{scoreVal}</span> / 100
+                                  </p>
+                                )}
+                                <p className="font-mono text-[10.5px] bg-[#f8fafe] border border-[#eef2f7] rounded px-2 py-1.5 mb-2 break-words leading-snug">
+                                  {f.formula}
+                                </p>
+                                <p className="font-semibold text-[10.5px] text-[#07142f] mb-1">Inputs & sources</p>
+                                <ul className="list-disc pl-4 space-y-0.5 text-[10.5px] text-[#3a4c72] mb-2">
+                                  {f.inputs.map((i, idx) => <li key={idx}>{i}</li>)}
+                                </ul>
+                                <p className="text-[10px] text-[#8794ab]">{f.clamp}</p>
+                                <p className="mt-2 text-[10px] text-[#8794ab]">
+                                  Source: <code>supabase/functions/_shared/scoring.ts</code> · <code>calculateCurrentCategoryScores</code>. Composite weights this category at {(() => {
+                                    const w: Record<MetricCategory, string> = {
+                                      demand: "25%", pricing_power: "20%", competitive_landscape: "20%",
+                                      franchisee_supply: "15%", ease_of_operations: "10%", parent_mindset: "10%",
+                                    };
+                                    return w[category.key];
+                                  })()} (default).
+                                </p>
+                              </PopoverContent>
+                            </Popover>
+                          );
+                        })()}
+                      </div>
+                      <span className="text-[10px] font-semibold text-[#8794ab] text-right" title="Count of enabled scoring metrics that have a value, out of total enabled scoring metrics in this category">
                         {liveProxy} of {enabledTotal} scoring metrics have a value
                         {disabledRows.length > 0 ? ` · +${disabledRows.length} tracked-only` : ""}
                         {customs.length > 0 ? ` · ${customs.length} custom` : ""}

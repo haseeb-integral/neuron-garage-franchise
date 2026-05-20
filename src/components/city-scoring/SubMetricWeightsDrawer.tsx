@@ -198,10 +198,11 @@ export function SubMetricWeightsDrawer({
                 return (
                   <div
                     key={m.key}
-                    className={`flex items-center gap-2 py-1.5 px-2 rounded border ${
+                    className={`flex flex-col py-1.5 px-2 rounded border ${
                       isDisabled ? "border-transparent bg-gray-50/50" : "border-transparent hover:bg-[#fafbfd]"
                     }`}
                   >
+                    <div className="flex items-center gap-2">
                     <div className="flex-1 min-w-0 flex items-center gap-1.5">
                       <span
                         className={`text-[12.5px] leading-tight ${
@@ -280,6 +281,14 @@ export function SubMetricWeightsDrawer({
                     >
                       {pill.label}
                     </span>
+                    </div>
+                    {m.source && (
+                      <p className={`text-[10.5px] leading-snug mt-1 pl-0.5 ${
+                        isDisabled ? "text-[#b6bfd0]" : "text-[#6b7894]"
+                      }`}>
+                        <span className="font-semibold">Data Source:</span> {m.source}
+                      </p>
+                    )}
                   </div>
                 );
               })}

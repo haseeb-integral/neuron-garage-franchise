@@ -236,7 +236,7 @@ export function ReplyTriagePanel() {
 
   const snooze = async (c: TriageCard, months: number) => {
     setBusy(c.queueId, true);
-    const restore = optimisticRemove(c.queueId);
+    const restore = optimisticMarkHandled(c.queueId, "snoozed");
     const previousState = c.state;
     const until = new Date(); until.setMonth(until.getMonth() + months);
     const { error } = await supabase
@@ -268,7 +268,7 @@ export function ReplyTriagePanel() {
 
   const suppress = async (c: TriageCard) => {
     setBusy(c.queueId, true);
-    const restore = optimisticRemove(c.queueId);
+    const restore = optimisticMarkHandled(c.queueId, "suppressed");
     const previousState = c.state;
     const { error } = await supabase.from("outreach_queue").update({ state: "suppressed" }).eq("id", c.queueId);
     setBusy(c.queueId, false);

@@ -88,6 +88,76 @@ const SOW_CATEGORIES: { key: MetricCategory; label: string }[] = [
   { key: "parent_mindset", label: "Parent Mindset" },
 ];
 
+// Per-category server-side formulas, extracted verbatim from
+// supabase/functions/_shared/scoring.ts (calculateCurrentCategoryScores).
+// Surfaced in the drawer so Sam can see how each 0–100 number is built
+// without reading code (AGENTS.md Rule 1: "Show the math").
+const CATEGORY_FORMULAS: Record<MetricCategory, { formula: string; inputs: string[]; clamp: string }> = {
+  demand: {
+    formula: "50 + (elementary_count × 3) + (preschool_count × 1.5) + (firecrawl_signal × 1) + censusBoost",
+    inputs: [
+      "censusBoost = min(15, log10(population) × 2.5) + min(10, (children_pct − 18) × 0.8)",
+      "Census ACS: total_population, % children 5–12",
+      "Counted: elementary schools, preschools, Firecrawl enrichment signals",
+    ],
+    clamp: "Result clamped to [40, 98].",
+  },
+  pricing_power: {
+    formula: "45 + (private_school_count × 4) + (parent_mindset_signal × 1) + incomeBoost",
+    inputs: [
+      "incomeBoost = min(20, (median_HHI − 60000) / 4000) + min(10, (income_100k_pct − 25) × 0.4) + min(8, (income_150k_pct − 10) × 0.5)",
+      "Census ACS: median household income, % $100k+, % $150k+",
+      "Counted: private schools",
+    ],
+    clamp: "Result clamped to [40, 98].",
+  },
+  competitive_landscape: {
+    formula: "95 − (competitor_count × 3) − (stem_camp_count × 1.5)",
+    inputs: [
+      "Apify/Google Maps: total summer camps, STEM/robotics/maker camps",
+      "Inverted: more competitors = lower score (95 is the unsaturated ceiling)",
+    ],
+    clamp: "Result clamped to [40, 98].",
+  },
+  franchisee_supply: {
+    formula: "55 + (elementary_count × 3) + (private_school_count × 2) + supplyAdj",
+    inputs: [
+      "supplyAdj = clamp(−6, +6, (65000 − BLS_teacher_mean_wage) / 4000)",
+      "BLS OEWS: teacher mean wage",
+      "NCES CCD: elementary + private school counts (proxy for teacher pool)",
+      "Lower teacher pay nudges the score up (more recruiting pull).",
+    ],
+    clamp: "Result clamped to [40, 98].",
+  },
+  ease_of_operations: {
+    formula: "55 + (rental_venue_count × 4) + easeAdj",
+    inputs: [
+      "easeAdj = clamp(−5, +5, (32000 − BLS_rec_or_childcare_wage) / 3000)",
+      "BLS OEWS: recreation worker wage (fallback: childcare worker wage)",
+      "Counted: rentable venues (schools, churches, rec centers)",
+    ],
+    clamp: "Result clamped to [40, 98].",
+  },
+  parent_mindset: {
+    formula: "50 + (parent_signal × 3) + (private_school_count × 1.5) + (firecrawl_signal × 0.5) + mindsetBoost",
+    inputs: [
+      "mindsetBoost = min(20, (bachelors_pct − 30) × 0.6) + min(6, (children_pct − 18) × 0.4)",
+      "Census ACS: % bachelor's degree or higher, % children 5–12",
+      "Counted: private schools, Firecrawl enrichment hits",
+    ],
+    clamp: "Result clamped to [40, 98].",
+  },
+};
+
+const CATEGORY_KEY_TO_SCORE_PROP: Record<MetricCategory, string> = {
+  demand: "demand",
+  pricing_power: "pricingPower",
+  competitive_landscape: "competitiveLandscape",
+  franchisee_supply: "franchiseeSupply",
+  ease_of_operations: "easeOfOperations",
+  parent_mindset: "parentMindset",
+};
+
 const STATUS_STYLES: Record<MetricStatus, string> = {
   live: "bg-[#e6f7ef] text-[#0ea66e] border-[#bfead6]",
   proxy: "bg-[#e6f7ef] text-[#0ea66e] border-[#bfead6]",

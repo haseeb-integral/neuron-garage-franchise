@@ -66,53 +66,53 @@ export function EmailAccountsPanel() {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-black">Email Accounts</h2>
-          <p className="text-xs text-[#526078]">Sending accounts connected to SmartLead. Warmup status and daily limits shown live.</p>
+          <h2 className="text-xs font-black uppercase tracking-wide text-[#07142f]">Email Accounts</h2>
+          <p className="text-[11px] text-[#526078]">Sending mailboxes connected to SmartLead. Live warmup &amp; daily limits.</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => void load()} className="inline-flex items-center gap-1.5 rounded-lg border border-[#dbe4f2] bg-white px-3 py-2 text-xs font-bold text-[#174be8]"><RefreshCw size={12} /> Refresh</button>
-          <button onClick={() => setShowAdd(true)} className="inline-flex items-center gap-1.5 rounded-lg bg-[#174be8] px-3 py-2 text-xs font-bold text-white"><Plus size={12} /> Add SMTP</button>
+          <button onClick={() => void load()} className="inline-flex items-center gap-1 rounded-lg border border-[#dbe4f2] bg-white px-2 py-1 text-[11px] font-bold text-[#174be8]"><RefreshCw size={11} /> Refresh</button>
+          <button onClick={() => setShowAdd(true)} className="inline-flex items-center gap-1 rounded-lg bg-[#174be8] px-2 py-1 text-[11px] font-bold text-white"><Plus size={11} /> Add SMTP</button>
         </div>
       </div>
 
       {accounts.length === 0 ? (
-        <div className="rounded-xl border border-[#e7edf5] bg-white p-10 text-center">
-          <Mail className="mx-auto mb-3 h-10 w-10 text-[#174be8]" />
-          <h3 className="text-base font-black">No email accounts connected</h3>
-          <p className="mx-auto mt-1 max-w-md text-sm text-[#526078]">Connect a sending mailbox to SmartLead before starting a campaign. We recommend warming each account for 2 weeks before sending.</p>
-          <button onClick={() => setShowAdd(true)} className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-[#174be8] px-3 py-2 text-xs font-bold text-white"><Plus size={14} /> Add SMTP Account</button>
+        <div className="rounded-xl border border-[#e7edf5] bg-white p-6 text-center">
+          <Mail className="mx-auto mb-2 h-8 w-8 text-[#174be8]" />
+          <h3 className="text-sm font-black">No email accounts connected</h3>
+          <p className="mx-auto mt-1 max-w-md text-xs text-[#526078]">Connect a sending mailbox before starting a campaign. Warm each account for ~2 weeks first.</p>
+          <button onClick={() => setShowAdd(true)} className="mt-3 inline-flex items-center gap-1 rounded-lg bg-[#174be8] px-3 py-1.5 text-xs font-bold text-white"><Plus size={12} /> Add SMTP Account</button>
         </div>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
           {accounts.map((a) => {
             const warmOn = (a.warmup_details?.status ?? "").toLowerCase() === "active";
             const dailyUsed = a.daily_sent_count ?? 0;
             const dailyMax = a.message_per_day ?? 50;
             const pct = Math.min(100, (dailyUsed / Math.max(1, dailyMax)) * 100);
             return (
-              <div key={a.id} className="rounded-xl border border-[#e7edf5] bg-white p-4">
+              <div key={a.id} className="rounded-xl border border-[#e7edf5] bg-white p-2.5">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-black">{a.from_name ?? a.username ?? "Unnamed"}</div>
-                    <div className="truncate text-xs text-[#526078]">{a.from_email ?? a.username}</div>
-                    <div className="mt-1 truncate text-[10px] text-[#8794ab]">{a.smtp_host ?? "SMTP"}</div>
+                    <div className="truncate text-[13px] font-black leading-tight">{a.from_name ?? a.username ?? "Unnamed"}</div>
+                    <div className="truncate text-[11px] leading-tight text-[#526078]">{a.from_email ?? a.username}</div>
                   </div>
-                  <span className={`inline-flex h-6 items-center gap-1 rounded-md px-2 text-[10px] font-bold ${a.is_smtp_success === false ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"}`}>
+                  <span className={`inline-flex h-5 items-center gap-1 rounded-md px-1.5 text-[10px] font-bold ${a.is_smtp_success === false ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"}`}>
                     {a.is_smtp_success === false ? "Issue" : "Healthy"}
                   </span>
                 </div>
 
-                <div className="mt-3">
-                  <div className="mb-1 flex items-center justify-between text-[10px] font-bold text-[#34445f]"><span>Daily sent</span><span>{dailyUsed} / {dailyMax}</span></div>
-                  <div className="h-1.5 rounded-full bg-[#edf2f8]"><div className="h-1.5 rounded-full bg-[#174be8]" style={{ width: `${pct}%` }} /></div>
+                <div className="mt-2 flex items-center gap-2 text-[10px] font-bold text-[#34445f]">
+                  <span className="shrink-0">Daily</span>
+                  <div className="h-1 flex-1 rounded-full bg-[#edf2f8]"><div className="h-1 rounded-full bg-[#174be8]" style={{ width: `${pct}%` }} /></div>
+                  <span className="shrink-0 tabular-nums">{dailyUsed}/{dailyMax}</span>
                 </div>
 
-                <div className="mt-3 flex items-center justify-between rounded-lg border border-[#edf2f8] bg-[#fbfdff] px-3 py-2">
-                  <div className="flex items-center gap-1.5 text-xs"><Flame size={13} className={warmOn ? "text-[#b7791f]" : "text-[#8794ab]"} /><span className="font-bold">Warmup</span><span className="text-[#526078]">{warmOn ? "Active" : "Off"}</span></div>
-                  <button onClick={() => toggleWarmup(a)} className={`rounded-md px-2.5 py-1 text-[10px] font-bold ${warmOn ? "border border-[#dbe4f2] text-[#526078]" : "bg-[#174be8] text-white"}`}>{warmOn ? "Disable" : "Enable"}</button>
+                <div className="mt-1.5 flex items-center justify-between text-[11px]">
+                  <span className="inline-flex items-center gap-1"><Flame size={11} className={warmOn ? "text-[#b7791f]" : "text-[#8794ab]"} /><span className="font-bold">Warmup</span><span className="text-[#526078]">{warmOn ? "Active" : "Off"}</span></span>
+                  <button onClick={() => toggleWarmup(a)} className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${warmOn ? "border border-[#dbe4f2] text-[#526078]" : "bg-[#174be8] text-white"}`}>{warmOn ? "Disable" : "Enable"}</button>
                 </div>
               </div>
             );

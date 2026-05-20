@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, RefreshCw, Sparkles, Pause, UserX, UserPlus, CalendarClock, Send, ChevronDown, Inbox, FlaskConical } from "lucide-react";
@@ -32,6 +33,7 @@ type FilterKey = "all" | "needs_action" | "promotable" | "handled";
  * Backed by the same outreach_queue + smartlead_events tables — no schema changes.
  */
 export function ReplyTriagePanel() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [cards, setCards] = useState<TriageCard[]>([]);
   const [acting, setActing] = useState<Record<string, boolean>>({});
@@ -129,12 +131,37 @@ export function ReplyTriagePanel() {
 
   const setBusy = (id: string, v: boolean) => setActing((p) => { const n = { ...p }; if (v) n[id] = true; else delete n[id]; return n; });
 
+  // Optimistic remove from local list; returns a restore() to roll back on error.
+  const optimisticRemove = (queueId: string) => {
+    let removed: TriageCard | null = null;
+    let index = -1;
+    setCards((prev) => {
+      index = prev.findIndex((x) => x.queueId === queueId);
+      if (index === -1) return prev;
+      removed = prev[index];
+      const next = prev.slice();
+      next.splice(index, 1);
+      return next;
+    });
+    return () => {
+      if (!removed) return;
+      setCards((prev) => {
+        const next = prev.slice();
+        const at = Math.min(index, next.length);
+        next.splice(at, 0, removed!);
+        return next;
+      });
+    };
+  };
+
   const promote = async (c: TriageCard, opts: { meeting?: boolean; manual?: boolean } = {}) => {
     setBusy(c.queueId, true);
+    const restore = optimisticRemove(c.queueId);
+    const previousState = c.state;
     try {
       const [first, ...rest] = (c.name ?? "").split(/\s+/);
       const last = rest.join(" ") || first || "—";
-      const { error } = await supabase.from("candidates").insert({
+      const { data: inserted, error: insErr } = await supabase.from("candidates").insert({
         first_name: first || c.name || "—",
         last_name: last,
         email: c.email,
@@ -145,29 +172,95 @@ export function ReplyTriagePanel() {
         status: "active",
         fit_tag: opts.meeting ? "Meeting Requested" : "Interested",
         assigned_to: opts.meeting ? "needs_meeting" : opts.manual ? "manual_promote" : "auto_promote",
+      }).select("id").single();
+      if (insErr) throw insErr;
+      const candidateId = inserted?.id as string | undefined;
+
+      const { error: updErr } = await supabase.from("outreach_queue").update({ state: "promoted" }).eq("id", c.queueId);
+      if (updErr) {
+        // Roll back the candidate insert so Kanban + Triage stay consistent
+        if (candidateId) await supabase.from("candidates").delete().eq("id", candidateId);
+        throw updErr;
+      }
+
+      toast.success(`Promoted ${c.name} to Pipeline`, {
+        duration: 8000,
+        action: candidateId ? {
+          label: "View in Pipeline",
+          onClick: () => navigate(`/candidate-pipeline?candidate=${candidateId}`),
+        } : undefined,
+        cancel: {
+          label: "Undo",
+          onClick: async () => {
+            if (candidateId) await supabase.from("candidates").delete().eq("id", candidateId);
+            await supabase.from("outreach_queue").update({ state: previousState }).eq("id", c.queueId);
+            restore();
+            toast.info(`Reverted ${c.name}`);
+            load();
+          },
+        },
       });
-      if (error) throw error;
-      await supabase.from("outreach_queue").update({ state: "promoted" }).eq("id", c.queueId);
-      toast.success(`Promoted ${c.name}`);
-      load();
     } catch (e) {
+      restore();
       toast.error(`Promote failed: ${e instanceof Error ? e.message : String(e)}`);
     } finally { setBusy(c.queueId, false); }
   };
 
   const snooze = async (c: TriageCard, months: number) => {
     setBusy(c.queueId, true);
+    const restore = optimisticRemove(c.queueId);
+    const previousState = c.state;
     const until = new Date(); until.setMonth(until.getMonth() + months);
-    const { error } = await supabase.from("outreach_queue").update({ state: "snoozed", snoozed_until: until.toISOString() }).eq("id", c.queueId);
+    const { error } = await supabase
+      .from("outreach_queue")
+      .update({ state: "snoozed", snoozed_until: until.toISOString() })
+      .eq("id", c.queueId);
     setBusy(c.queueId, false);
-    if (error) toast.error(`Snooze failed: ${error.message}`); else { toast.success(`Snoozed ${months} months`); load(); }
+    if (error) {
+      restore();
+      toast.error(`Snooze failed: ${error.message}`);
+      return;
+    }
+    toast.success(`Snoozed ${c.name} until ${until.toLocaleDateString()}`, {
+      duration: 8000,
+      cancel: {
+        label: "Undo",
+        onClick: async () => {
+          await supabase
+            .from("outreach_queue")
+            .update({ state: previousState, snoozed_until: null })
+            .eq("id", c.queueId);
+          restore();
+          toast.info(`Reverted ${c.name}`);
+          load();
+        },
+      },
+    });
   };
 
   const suppress = async (c: TriageCard) => {
     setBusy(c.queueId, true);
+    const restore = optimisticRemove(c.queueId);
+    const previousState = c.state;
     const { error } = await supabase.from("outreach_queue").update({ state: "suppressed" }).eq("id", c.queueId);
     setBusy(c.queueId, false);
-    if (error) toast.error(`Suppress failed: ${error.message}`); else { toast.success("Suppressed"); load(); }
+    if (error) {
+      restore();
+      toast.error(`Suppress failed: ${error.message}`);
+      return;
+    }
+    toast.success(`Suppressed ${c.name}`, {
+      duration: 8000,
+      cancel: {
+        label: "Undo",
+        onClick: async () => {
+          await supabase.from("outreach_queue").update({ state: previousState }).eq("id", c.queueId);
+          restore();
+          toast.info(`Reverted ${c.name}`);
+          load();
+        },
+      },
+    });
   };
 
   const overrideCategory = async (c: TriageCard, cat: ReplyCategory) => {

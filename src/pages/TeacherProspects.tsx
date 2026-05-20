@@ -293,18 +293,52 @@ const TeacherProspects = () => {
     setSelected(allSelected ? selected.filter((id) => !visibleIds.includes(id)) : Array.from(new Set([...selected, ...visibleIds])));
   };
 
-  const handlePromote = async (p: TeacherProspect) => {
-    if (promotedIds.has(p.id) || promotingId === p.id) return;
-    setPromotingId(p.id);
-    setPromotedIds((prev) => new Set(prev).add(p.id));
-    setSelected((prev) => prev.filter((id) => id !== p.id));
-    setPromotingId(null);
-    toast.success("Added to Email Outreach", {
-      description: `${p.name} is queued for a SmartLead outreach campaign.`,
-      action: { label: "View Outreach", onClick: () => navigate("/email-outreach") },
+  const handlePromote = (p: TeacherProspect) => {
+    setCampaignTargets([{ uuid: p.uuid, name: p.name }]);
+    setCampaignModalOpen(true);
+  };
+  const handlePromoteBulk = () => {
+    const selectedProspects = prospects.filter((p) => selected.includes(p.id));
+    if (selectedProspects.length === 0) return;
+    setCampaignTargets(selectedProspects.map((p) => ({ uuid: p.uuid, name: p.name })));
+    setCampaignModalOpen(true);
+  };
+  const handleShortlist = async (p: TeacherProspect) => {
+    const nextStatus = p.status === "shortlisted" ? "new" : "shortlisted";
+    setProspects((prev) => prev.map((x) => (x.uuid === p.uuid ? { ...x, status: nextStatus } : x)));
+    const { error } = await supabase.from("teacher_prospects").update({ status: nextStatus }).eq("id", p.uuid);
+    if (error) {
+      toast.error(`Couldn't update: ${error.message}`);
+      loadPage();
+    } else {
+      toast.success(nextStatus === "shortlisted" ? `${p.name} added to shortlist` : `${p.name} removed from shortlist`);
+    }
+  };
+  const handleMarkNotFit = async (p: TeacherProspect) => {
+    setActive(null);
+    setProspects((prev) => prev.map((x) => (x.uuid === p.uuid ? { ...x, status: "not_fit" } : x)));
+    const { error } = await supabase.from("teacher_prospects").update({ status: "not_fit" }).eq("id", p.uuid);
+    if (error) { toast.error(`Couldn't update: ${error.message}`); loadPage(); return; }
+    toast.success(`${p.name} marked Not a Fit`, {
+      action: { label: "Undo", onClick: async () => {
+        await supabase.from("teacher_prospects").update({ status: "new" }).eq("id", p.uuid);
+        loadPage();
+      }},
     });
   };
-  const handleMarkNotFit = (p: TeacherProspect) => { setActive(null); toast.info(`${p.name} marked as Not a Fit`); };
+  const handleEnrich = async (p: TeacherProspect) => {
+    if (!p.schoolNcesId) { toast.info("School isn't linked to NCES yet — can't enrich automatically."); return; }
+    toast.info(`Enrichment queued for ${p.school}…`);
+    const { error } = await supabase.functions.invoke("enrich-school-staff", { body: { nces_id: p.schoolNcesId } });
+    if (error) toast.error(`Enrichment failed: ${error.message}`);
+    else toast.success("Enrichment complete. Reloading…", { action: { label: "Reload", onClick: () => loadPage() } });
+  };
+  const handleAfterAddedToCampaign = (addedUuids: string[]) => {
+    setPromotedUuids((prev) => new Set([...prev, ...addedUuids]));
+    setSelected([]);
+    loadPage();
+  };
+
   const handleUpdate = (p: TeacherProspect) => setProspects((prev) => prev.map((x) => (x.id === p.id ? p : x)));
   const handleFindResults = async () => { await loadPage(); await loadStats(); };
 

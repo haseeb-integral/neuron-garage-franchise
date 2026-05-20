@@ -97,7 +97,7 @@ export function OutreachQueuePanel() {
     if (emails.length) {
       const { data: events } = await supabase
         .from("smartlead_events")
-        .select("lead_email, reply_intent, reply_intent_confidence, reply_intent_reason, received_at")
+        .select("lead_email, reply_intent, reply_intent_confidence, reply_intent_reason, reply_intent_overridden_by, reply_message, received_at")
         .eq("event_type", "EMAIL_REPLIED")
         .in("lead_email", emails)
         .order("received_at", { ascending: false })
@@ -110,6 +110,8 @@ export function OutreachQueuePanel() {
           reply_intent: (ev.reply_intent ?? null) as ReplyCategory | null,
           reply_intent_confidence: ev.reply_intent_confidence,
           reply_intent_reason: ev.reply_intent_reason,
+          reply_intent_overridden_by: ev.reply_intent_overridden_by,
+          reply_message: ev.reply_message,
           received_at: ev.received_at,
         };
       }

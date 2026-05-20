@@ -433,7 +433,7 @@ const TeacherProspects = () => {
     if (selected.length > 0) {
       return handleExportSelected();
     }
-    const expected = stats.total || totalCount;
+    const expected = (stats?.total ?? 0) || totalCount;
     if (expected === 0) { toast.info("Nothing to export with the current filters."); return; }
     const t = toast.loading(`Exporting ${expected.toLocaleString()} rows…`);
     const chunkSize = 1000;

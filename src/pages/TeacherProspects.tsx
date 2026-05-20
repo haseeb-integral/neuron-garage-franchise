@@ -226,6 +226,15 @@ const TeacherProspects = () => {
     else if (sourceFilter === "linkedin") q = q.ilike("enrichment_source", "linkedin%");
     else if (sourceFilter === "needs_email") q = q.eq("needs_email_enrichment", true);
 
+    // "Hide already in outreach" filter — applies the global active-queue id list
+    if (hideInOutreach && allPromotedIds.length > 0) {
+      // Safety cap: PostgREST URLs cap around ~8KB. UUIDs are 36 chars + comma → ~37.
+      // Stay well below: cap at 2000 ids. If exceeded, fall back to client-side hide below.
+      if (allPromotedIds.length <= 2000) {
+        q = q.not("id", "in", `(${allPromotedIds.join(",")})`);
+      }
+    }
+
     const { data, error, count } = await q.range(from, to);
 
     if (myReq !== reqIdRef.current) return; // stale

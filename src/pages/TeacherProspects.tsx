@@ -649,20 +649,37 @@ const TeacherProspects = () => {
                 <div className="text-[11px] font-bold uppercase tracking-wide text-[#66728a]">Sources</div>
                 <button onClick={() => { loadPage(); loadStats(); }} className="text-[10.5px] font-bold text-[#174be8] hover:underline">Refresh</button>
               </div>
-              {stats.bySource.length === 0 && <div className="text-xs text-[#8794ab]">No data yet.</div>}
-              <div className="space-y-3">
-                {stats.bySource.map((s) => (
-                  <div key={s.key}>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-medium text-[#07142f]">{s.label}</span>
-                      <span className="font-bold text-[#07142f]">{s.count.toLocaleString()} · {s.pct}%</span>
+              {stats === null && !statsError ? (
+                <div className="space-y-3">
+                  {[0, 1].map((i) => (
+                    <div key={i}>
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="h-3 w-24 animate-pulse rounded bg-[#edf2f8]" />
+                        <div className="h-3 w-14 animate-pulse rounded bg-[#edf2f8]" />
+                      </div>
+                      <div className="mt-1 h-1.5 w-full animate-pulse rounded-full bg-[#edf2f8]" />
                     </div>
-                    <div className="mt-1 h-1.5 rounded-full bg-[#edf2f8]">
-                      <div className="h-full rounded-full" style={{ width: `${s.pct}%`, backgroundColor: s.key === "smartlead" ? "#0a8f5a" : s.key === "linkedin" ? "#1e6fb8" : "#8794ab" }} />
+                  ))}
+                </div>
+              ) : statsError ? (
+                <div className="text-xs text-[#b7791f]" title={statsError}>— <button onClick={loadStats} className="ml-1 font-bold text-[#174be8] hover:underline">Retry</button></div>
+              ) : stats!.bySource.length === 0 ? (
+                <div className="text-xs text-[#8794ab]">No data yet.</div>
+              ) : (
+                <div className="space-y-3">
+                  {stats!.bySource.map((s) => (
+                    <div key={s.key}>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-medium text-[#07142f]">{s.label}</span>
+                        <span className="font-bold text-[#07142f]">{s.count.toLocaleString()} · {s.pct}%</span>
+                      </div>
+                      <div className="mt-1 h-1.5 rounded-full bg-[#edf2f8]">
+                        <div className="h-full rounded-full" style={{ width: `${s.pct}%`, backgroundColor: s.key === "smartlead" ? "#0a8f5a" : s.key === "linkedin" ? "#1e6fb8" : "#8794ab" }} />
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="rounded-xl border border-[#e7edf5] bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.02)]">

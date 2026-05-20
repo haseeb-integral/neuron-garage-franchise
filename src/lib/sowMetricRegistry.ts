@@ -22,6 +22,8 @@ export type SowMetricEntry = {
   enabled: boolean;
   weight_within_category: number;
   status: MetricStatus;
+  /** Human-readable data source shown in the UI under each metric row. */
+  source: string;
 };
 
 export const CATEGORY_KEY_MAP: Record<Exclude<RegistryCategory, "franchiseeSupply_legacy">, CategoryKey> = {

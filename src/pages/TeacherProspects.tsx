@@ -685,8 +685,8 @@ const TeacherProspects = () => {
             <div className="rounded-xl border border-[#e7edf5] bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.02)]">
               <div className="mb-3 text-[11px] font-bold uppercase tracking-wide text-[#66728a]">Quick Stats</div>
               <div className="space-y-3 text-sm">
-                <div className="flex items-center justify-between"><span className="text-[#526078]">Cities</span><span className="font-bold text-[#07142f]">{stats.cities.toLocaleString()}</span></div>
-                <div className="flex items-center justify-between"><span className="text-[#526078]">Email-ready</span><span className="font-bold text-[#07142f]">{stats.withEmail.toLocaleString()}</span></div>
+                <div className="flex items-center justify-between"><span className="text-[#526078]">Cities</span>{stats === null && !statsError ? <div className="h-3 w-8 animate-pulse rounded bg-[#edf2f8]" /> : <span className="font-bold text-[#07142f]">{stats?.cities.toLocaleString() ?? "—"}</span>}</div>
+                <div className="flex items-center justify-between"><span className="text-[#526078]">Email-ready</span>{stats === null && !statsError ? <div className="h-3 w-10 animate-pulse rounded bg-[#edf2f8]" /> : <span className="font-bold text-[#07142f]">{stats?.withEmail.toLocaleString() ?? "—"}</span>}</div>
                 <div>
                   <div className="mb-1 text-xs text-[#526078]">Avg Fit Score</div>
                   <button onClick={() => toast.info("AI Fit Scoring (Task 14) — coming soon.")} className="w-full rounded-md border border-dashed border-[#dbe4f2] px-2 py-1.5 text-xs font-medium text-[#8794ab] hover:bg-[#f4f7ff] hover:text-[#174be8]">— Run AI Scoring</button>

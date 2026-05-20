@@ -685,6 +685,7 @@ const TeacherProspects = () => {
               onPageChange={setPage}
               onPageSizeChange={setPageSize}
               loading={loadingProspects}
+              hideCityColumn={!!inMarket}
             />
           </div>
 

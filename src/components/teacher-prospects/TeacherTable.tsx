@@ -6,6 +6,11 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { SourceBadge } from "./SourceBadge";
 import { statusBadgeFor } from "@/lib/teacherSourceLabels";
 
+export type OutreachInfo = {
+  campaign_id: string | null;
+  state: "queued" | "assigned" | "sending" | "sent" | "failed" | string;
+};
+
 interface Props {
   prospects: TeacherProspect[];
   selected: number[];
@@ -17,6 +22,8 @@ interface Props {
   onEnrich: (p: TeacherProspect) => void;
   onMarkNotFit: (p: TeacherProspect) => void;
   promotedUuids?: Set<string>;
+  promotedInfo?: Map<string, OutreachInfo>;
+  campaignNames?: Map<string, string>;
   page: number;
   pageSize: number;
   totalCount: number;

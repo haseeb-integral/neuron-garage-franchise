@@ -1107,6 +1107,7 @@ export type Database = {
         Row: {
           apify_last_updated: string | null
           avg_camp_price_per_hour: number | null
+          avg_peak_summer_temperature: number | null
           bea_last_updated: string | null
           bls_last_updated: string | null
           camp_waitlist_signals: Json | null
@@ -1119,6 +1120,7 @@ export type Database = {
           cost_of_living_index: number | null
           county_name: string | null
           created_at: string
+          days_above_90f: number | null
           dual_working_families_pct: number | null
           firecrawl_last_updated: string | null
           fred_last_updated: string | null
@@ -1154,11 +1156,15 @@ export type Database = {
           state_name: string
           stem_job_concentration: number | null
           summer_camp_count: number | null
+          summer_precip_days: number | null
+          summer_weather_index: number | null
           updated_at: string
+          weather_last_updated: string | null
         }
         Insert: {
           apify_last_updated?: string | null
           avg_camp_price_per_hour?: number | null
+          avg_peak_summer_temperature?: number | null
           bea_last_updated?: string | null
           bls_last_updated?: string | null
           camp_waitlist_signals?: Json | null
@@ -1171,6 +1177,7 @@ export type Database = {
           cost_of_living_index?: number | null
           county_name?: string | null
           created_at?: string
+          days_above_90f?: number | null
           dual_working_families_pct?: number | null
           firecrawl_last_updated?: string | null
           fred_last_updated?: string | null
@@ -1206,11 +1213,15 @@ export type Database = {
           state_name: string
           stem_job_concentration?: number | null
           summer_camp_count?: number | null
+          summer_precip_days?: number | null
+          summer_weather_index?: number | null
           updated_at?: string
+          weather_last_updated?: string | null
         }
         Update: {
           apify_last_updated?: string | null
           avg_camp_price_per_hour?: number | null
+          avg_peak_summer_temperature?: number | null
           bea_last_updated?: string | null
           bls_last_updated?: string | null
           camp_waitlist_signals?: Json | null
@@ -1223,6 +1234,7 @@ export type Database = {
           cost_of_living_index?: number | null
           county_name?: string | null
           created_at?: string
+          days_above_90f?: number | null
           dual_working_families_pct?: number | null
           firecrawl_last_updated?: string | null
           fred_last_updated?: string | null
@@ -1258,7 +1270,10 @@ export type Database = {
           state_name?: string
           stem_job_concentration?: number | null
           summer_camp_count?: number | null
+          summer_precip_days?: number | null
+          summer_weather_index?: number | null
           updated_at?: string
+          weather_last_updated?: string | null
         }
         Relationships: [
           {

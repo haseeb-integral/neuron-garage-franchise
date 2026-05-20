@@ -64,7 +64,7 @@ export function SavedListsMenu({ current, onApply }: Props) {
     const { error } = await supabase.from("teacher_saved_lists").insert([{
       name: name.trim(),
       notes: notes.trim() || null,
-      filters: current as unknown as Record<string, unknown>,
+      filters: current as never,
     }]);
     setSaving(false);
     if (error) { toast.error(`Save failed: ${error.message}`); return; }

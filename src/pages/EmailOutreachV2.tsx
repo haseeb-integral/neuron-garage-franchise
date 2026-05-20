@@ -138,11 +138,11 @@ export default function EmailOutreachV2() {
         <button className="rounded-full border border-[#e7edf5] p-2 text-[#526078]"><AlertCircle size={18} /></button>
       </div>
     </div>
-    <div className="mb-3 flex items-start justify-between gap-4">
+    <div className="mb-2 flex items-start justify-between gap-4">
       <div className="min-w-0">
-        <h1 className="text-[26px] font-black tracking-tight">Email Outreach</h1>
-        <p className="mt-1 text-sm text-[#526078]">
-          Daily flow: act on replies → manage active campaigns → setup &amp; analytics at the bottom.
+        <h1 className="text-[22px] font-black tracking-tight">Email Outreach</h1>
+        <p className="mt-0.5 text-xs text-[#526078]">
+          Work top to bottom — replies first, campaigns next, setup at the end.
           {statsLoadedAt && <span className="ml-1 text-[#8794ab]">· updated {statsLoadedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
         </p>
       </div>

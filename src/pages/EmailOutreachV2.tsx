@@ -199,7 +199,7 @@ export default function EmailOutreachV2() {
     <div className="mt-4"><OutreachQueuePanel /></div>
     <div className="mt-4"><ProspectBatchesPanel refreshKey={batchesRefresh} /></div>
 
-    <ImportLeadsWizard open={importOpen} onClose={() => setImportOpen(false)} onComplete={() => { setBatchesRefresh((k) => k + 1); loadCampaigns(); }} />
+    <ImportLeadsWizard open={importOpen} onClose={() => setImportOpen(false)} onComplete={() => { setBatchesRefresh((k) => k + 1); loadCampaigns(); loadStats(); }} />
     <NewCampaignDrawer open={newCampaignOpen} onClose={() => setNewCampaignOpen(false)} onCreated={loadCampaigns} />
   </div>;
 }

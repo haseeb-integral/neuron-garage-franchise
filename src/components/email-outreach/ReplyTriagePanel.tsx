@@ -306,6 +306,9 @@ function TriageCardRow({ card, busy, onPromote, onManualPromote, onSnooze, onSup
             <span className="text-xs text-[#526078]">· {card.email}</span>
             <ReplyCategoryChip data={card.reply} />
             <SourceBadge overriddenBy={card.reply.overriddenBy} />
+            {card.simulated && (
+              <span className="rounded-md border border-[#e9d5ff] bg-[#faf5ff] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#7c3aed]">TEST</span>
+            )}
             {handled && (
               <span className="rounded-md bg-[#eef2f7] px-1.5 py-0.5 text-[10px] font-bold uppercase text-[#475569]">{card.state}</span>
             )}

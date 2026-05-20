@@ -27,6 +27,8 @@ interface LatestReply {
   reply_intent: ReplyCategory | null;
   reply_intent_confidence: number | null;
   reply_intent_reason: string | null;
+  reply_intent_overridden_by: string | null;
+  reply_message: string | null;
   received_at: string;
 }
 

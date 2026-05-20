@@ -32,6 +32,15 @@ type FilterKey = "all" | "needs_action" | "promotable" | "handled";
  * One card per reply, with only the actions that make sense for that category.
  * Backed by the same outreach_queue + smartlead_events tables — no schema changes.
  */
+// Format a Supabase/Postgrest error into a human-readable string (avoids "[object Object]")
+function fmtErr(e: unknown): string {
+  if (!e) return "Unknown error";
+  if (e instanceof Error) return e.message;
+  if (typeof e === "string") return e;
+  const o = e as { message?: string; details?: string; hint?: string; code?: string };
+  return o.message || o.details || o.hint || o.code || JSON.stringify(e);
+}
+
 export function ReplyTriagePanel() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -40,6 +49,9 @@ export function ReplyTriagePanel() {
   const [filter, setFilter] = useState<FilterKey>("needs_action");
   const [inboxOpen, setInboxOpen] = useState(false);
   const [simulateOpen, setSimulateOpen] = useState(false);
+  // Cards just handled in this session — keep them visible in their current filter view
+  // (greyed out) instead of vanishing, so the user gets clear feedback.
+  const [justHandled, setJustHandled] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     setLoading(true);

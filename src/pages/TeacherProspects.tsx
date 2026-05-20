@@ -185,6 +185,8 @@ const TeacherProspects = () => {
   const setCityFilter = useTeacherProspectsStore((s) => s.setCityFilter);
   const sourceFilter = useTeacherProspectsStore((s) => s.sourceFilter);
   const setSourceFilter = useTeacherProspectsStore((s) => s.setSourceFilter);
+  const hideInOutreach = useTeacherProspectsStore((s) => s.hideInOutreach);
+  const setHideInOutreach = useTeacherProspectsStore((s) => s.setHideInOutreach);
   const page = useTeacherProspectsStore((s) => s.page);
   const setPage = useTeacherProspectsStore((s) => s.setPage);
   const pageSize = useTeacherProspectsStore((s) => s.pageSize);

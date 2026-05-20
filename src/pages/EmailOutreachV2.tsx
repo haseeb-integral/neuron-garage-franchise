@@ -53,6 +53,11 @@ export default function EmailOutreachV2() {
   const [campaignsLoading, setCampaignsLoading] = useState(true);
   const [campaignsError, setCampaignsError] = useState<string | null>(null);
 
+  // Live queue + analytics counts (replaces hardcoded zeros — May 20, 2026)
+  const [queueCounts, setQueueCounts] = useState<{ inOutreach: number; promoted: number } | null>(null);
+  const [analytics, setAnalytics] = useState<Aggregated | null>(null);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+
   const loadCampaigns = async () => {
     setCampaignsLoading(true);
     setCampaignsError(null);
@@ -60,8 +65,6 @@ export default function EmailOutreachV2() {
       const res = await callProxy("campaigns/");
       const list = Array.isArray(res) ? res : [];
       setCampaigns(list);
-      // Mirror real campaigns into campaign_cache so the Outreach Queue picker
-      // and Teacher Search "Add to Campaign" modal see them immediately.
       void syncAndGetRealCampaigns();
     } catch (e) {
       setCampaignsError(e instanceof Error ? e.message : String(e));
@@ -69,21 +72,48 @@ export default function EmailOutreachV2() {
       setCampaignsLoading(false);
     }
   };
-  useEffect(() => { loadCampaigns(); }, []);
+
+  const loadStats = async () => {
+    // Queue counts — always works (local DB)
+    try {
+      const { data: q } = await supabase.from("outreach_queue").select("state");
+      const rows = q ?? [];
+      setQueueCounts({
+        inOutreach: rows.filter((r) => ["queued", "assigned", "sending"].includes(r.state)).length,
+        promoted: rows.filter((r) => r.state === "sent").length,
+      });
+    } catch {
+      setQueueCounts({ inOutreach: 0, promoted: 0 });
+    }
+    // Analytics — SmartLead (cached 10min)
+    try {
+      setAnalyticsError(null);
+      const agg = await getAnalyticsCachedOrFresh();
+      setAnalytics(agg);
+    } catch (e) {
+      setAnalyticsError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  useEffect(() => { loadCampaigns(); loadStats(); }, []);
 
   const safeToast = (message: string) => toast.info(message);
 
+  // Every card MUST resolve to a live value or an explicit "—" with tooltip.
+  // Never ship hardcoded zeros — caught May 20, 2026.
   const stats = useMemo(() => {
     const active = campaigns.filter((c) => (c.status ?? "").toUpperCase() === "ACTIVE" || (c.status ?? "").toUpperCase() === "RUNNING").length;
+    const fmtPct = (n: number) => `${n.toFixed(1)}%`;
+    const a = analytics;
     return [
-      { Icon: Mail, label: "Active Campaigns", value: String(active), sub: campaigns.length ? `of ${campaigns.length} total` : "no live data yet", tone: "blue" as const },
-      { Icon: Mail, label: "Prospects in Outreach", value: "0", sub: "no live data yet", tone: "purple" as const },
-      { Icon: Mail, label: "Open Rate", value: "—", sub: "no live data yet", tone: "green" as const },
-      { Icon: Mail, label: "Replies", value: "0", sub: "no live data yet", tone: "green" as const },
-      { Icon: Mail, label: "Interested Leads", value: "0", sub: "no live data yet", tone: "gold" as const },
-      { Icon: Mail, label: "Promoted to Pipeline", value: "0", sub: "no live data yet", tone: "blue" as const },
+      { Icon: Mail, label: "Active Campaigns", value: String(active), sub: campaigns.length ? `of ${campaigns.length} total` : "no campaigns yet", tone: "blue" as const, title: undefined },
+      { Icon: Mail, label: "Prospects in Outreach", value: queueCounts ? String(queueCounts.inOutreach) : "—", sub: "queued + assigned + sending", tone: "purple" as const, title: undefined },
+      { Icon: Mail, label: "Open Rate", value: a ? fmtPct(a.rates.openRate) : (analyticsError ? "—" : "…"), sub: a ? `based on ${a.totals.sent.toLocaleString()} sent` : (analyticsError ?? "loading SmartLead"), tone: "green" as const, title: analyticsError ?? undefined },
+      { Icon: Mail, label: "Replies", value: a ? a.totals.reply.toLocaleString() : (analyticsError ? "—" : "…"), sub: a ? fmtPct(a.rates.replyRate) + " reply rate" : (analyticsError ?? "loading SmartLead"), tone: "green" as const, title: analyticsError ?? undefined },
+      { Icon: Mail, label: "Interested Leads", value: a ? a.totals.interested.toLocaleString() : (analyticsError ? "—" : "…"), sub: a ? fmtPct(a.rates.interestedRate) + " of replies" : (analyticsError ?? "loading SmartLead"), tone: "gold" as const, title: analyticsError ?? undefined },
+      { Icon: Mail, label: "Promoted to Pipeline", value: queueCounts ? String(queueCounts.promoted) : "—", sub: "pushed to SmartLead", tone: "blue" as const, title: undefined },
     ];
-  }, [campaigns]);
+  }, [campaigns, queueCounts, analytics, analyticsError]);
 
   return <div className="min-h-screen bg-white text-[#07142f]">
     <div className="mb-3 flex items-center justify-between gap-4">

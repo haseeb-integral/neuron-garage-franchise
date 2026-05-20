@@ -139,6 +139,7 @@ export default function EmailOutreachV2() {
         <button className="rounded-full border border-[#e7edf5] p-2 text-[#526078]"><AlertCircle size={18} /></button>
       </div>
     </div>
+    <AskAssistant screen="email" />
     <div className="mb-2 flex items-start justify-between gap-4">
       <div className="min-w-0">
         <h1 className="text-[22px] font-black tracking-tight">Email Outreach</h1>

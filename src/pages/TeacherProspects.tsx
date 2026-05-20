@@ -381,9 +381,7 @@ const TeacherProspects = () => {
               <Button size="sm" variant="outline" onClick={() => setImportOpen(true)} className="h-9 rounded-lg border-[#dbe4f2] bg-white px-4 text-[#174be8] shadow-none hover:bg-[#f4f7ff]">
                 <Upload size={14} /> Import CSV
               </Button>
-              <Button size="sm" onClick={() => setFindOpen(true)} className="h-9 rounded-lg bg-[#174be8] px-4 text-white shadow-none hover:bg-[#123fc5]">
-                <Search size={14} /> Find via Apify
-              </Button>
+              {/* "Find via Apify" button hidden May 20 — see LATER.md. Modal code retained in FindProspectsModal.tsx. */}
             </div>
           }
         />

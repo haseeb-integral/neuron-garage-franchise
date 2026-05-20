@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, RefreshCw, Sparkles, Pause, UserX, UserPlus, CalendarClock, Send, ChevronDown } from "lucide-react";
+import { Loader2, RefreshCw, Sparkles, Pause, UserX, UserPlus, CalendarClock, Send, ChevronDown, Inbox, FlaskConical } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { CATEGORY_META, REPLY_CATEGORIES, isAutoPromotable, type ReplyCategory } from "@/lib/replyCategories";
 import { ReplyCategoryChip, SourceBadge, type ReplyChipData } from "./ReplyCategoryChip";
+import { SmartLeadInboxPanel } from "./SmartLeadInboxPanel";
+import { SimulateReplyDialog } from "./SimulateReplyDialog";
 
 interface TriageCard {
   queueId: string;

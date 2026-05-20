@@ -226,7 +226,7 @@ export function TeacherImportWizard({ open, onClose, onComplete }: { open: boole
       linkedin_url: r.linkedin_url, teacher_type: r.teacher_type,
       enrichment_source: r.enrichment_source, verification_status: r.verification_status,
       needs_email_enrichment: r.needs_email_enrichment, status: r.status,
-      raw: r.raw, last_enriched_at: new Date().toISOString(),
+      raw: r.raw as any, last_enriched_at: new Date().toISOString(),
     }));
     let inserted = 0;
     const CHUNK = 500;

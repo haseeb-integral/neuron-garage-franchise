@@ -164,8 +164,9 @@ const TeacherProspects = () => {
   const [importOpen, setImportOpen] = useState(false);
   const [active, setActive] = useState<TeacherProspect | null>(null);
   const [selected, setSelected] = useState<number[]>([]);
-  const [promotedIds, setPromotedIds] = useState<Set<number>>(new Set());
-  const [promotingId, setPromotingId] = useState<number | null>(null);
+  const [promotedUuids, setPromotedUuids] = useState<Set<string>>(new Set());
+  const [campaignModalOpen, setCampaignModalOpen] = useState(false);
+  const [campaignTargets, setCampaignTargets] = useState<{ uuid: string; name: string }[]>([]);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const search = useTeacherProspectsStore((s) => s.search);

@@ -15,6 +15,9 @@ interface Props {
   setSourceFilter: (v: SourceFilter) => void;
   search: string;
   setSearch: (v: string) => void;
+  hideInOutreach: boolean;
+  setHideInOutreach: (v: boolean) => void;
+  inOutreachCount: number;
 }
 
 export function TeacherFilterBar(p: Props) {
@@ -78,6 +81,21 @@ export function TeacherFilterBar(p: Props) {
           </SelectContent>
         </Select>
       </div>
+
+      <label className="mt-2 flex w-fit cursor-pointer select-none items-center gap-2 rounded-md px-1 py-1 text-xs text-[#34445f] hover:bg-[#f4f7ff]">
+        <input
+          type="checkbox"
+          checked={p.hideInOutreach}
+          onChange={(e) => p.setHideInOutreach(e.target.checked)}
+          className="h-3.5 w-3.5 cursor-pointer accent-[#174be8]"
+        />
+        <span>
+          Hide teachers already in outreach
+          {p.inOutreachCount > 0 && (
+            <span className="ml-1 text-[#8794ab]">({p.inOutreachCount.toLocaleString()} hidden when on)</span>
+          )}
+        </span>
+      </label>
     </div>
   );
 }

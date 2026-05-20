@@ -206,3 +206,18 @@ Task 13 shipped a cleaned-up `/teacher-prospects` page. The following UI was int
 - edited `src/pages/TeacherProspects.tsx`
 - edited `src/stores/teacherProspectsStore.ts`
 - edited `src/data/teacherData.ts` (removed `sampleTeachers`)
+
+---
+
+## 2026-05-20 — Hidden / deferred
+
+### Hidden: "Find via Apify" button (Teacher Search header)
+- Removed from `src/pages/TeacherProspects.tsx` header (Export CSV / Import CSV remain).
+- Modal code retained at `src/components/teacher-prospects/FindProspectsModal.tsx` — re-enable by restoring the `<Button onClick={() => setFindOpen(true)}>` block in `TeacherProspects.tsx`.
+- Reason: unclear if the "scrape teachers from already-scored cities via Apify" flow is still wanted in this sprint. Kaylie/Sam have not asked for it; SmartLead + LinkedIn imports are covering current pipeline.
+
+### Decision: filter-scoped stats stay as-is
+- Stat cards (Total Imported / Email-Ready / Needs Enrichment) reflect the active source filter. Confirmed desired behavior — numbers must never lie about what's currently shown on screen.
+
+### Clarification logged
+- The "wrong numbers" reported on May 20 (1,927 total / 0 email-ready / 1 source) were caused by the **LinkedIn Import** filter being active in the source dropdown — not a regression from the previous execution. DB had 11,752 rows total at the time (9,825 SmartLead + 1,927 LinkedIn + others).

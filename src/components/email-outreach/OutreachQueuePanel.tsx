@@ -183,7 +183,7 @@ export function OutreachQueuePanel() {
           <h3 className="text-sm font-black text-[#07142f]">Outreach Queue</h3>
           <span className="text-xs text-[#66728a]">teachers added from Teacher Search — push to SmartLead when ready</span>
         </div>
-        <Button variant="outline" size="sm" onClick={load} className="h-8 rounded-lg border-[#dbe4f2] bg-white text-xs text-[#174be8]"><RefreshCw size={12} /> Refresh</Button>
+        <Button variant="outline" size="sm" onClick={() => { load(); loadCampaignOptions(); }} className="h-8 rounded-lg border-[#dbe4f2] bg-white text-xs text-[#174be8]"><RefreshCw size={12} /> Refresh</Button>
       </div>
 
       <div className="flex flex-wrap gap-1.5 px-4 pt-3">

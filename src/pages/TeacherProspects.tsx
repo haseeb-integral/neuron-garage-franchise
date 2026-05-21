@@ -197,6 +197,7 @@ const TeacherProspects = () => {
 
   const [findOpen, setFindOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [masterImportOpen, setMasterImportOpen] = useState(false);
   const [active, setActive] = useState<TeacherProspect | null>(null);
   const [selected, setSelected] = useState<number[]>([]);
   const [promotedUuids, setPromotedUuids] = useState<Set<string>>(new Set());

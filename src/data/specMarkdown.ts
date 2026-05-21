@@ -3,7 +3,7 @@
 export const SPEC_MARKDOWN = `# Neuron Garage Franchise Acquisition System — Product Specification
 
 > Detailed specification of the Neuron Garage Franchise Acquisition System.
-> Document version 1.2 · Updated May 19, 2026 · For internal review.
+> Document version 1.3 · Updated May 21, 2026 · For internal review.
 > Live URL: neuron-garage-franchise.lovable.app
 
 ---
@@ -249,52 +249,96 @@ Apify-only data. Apollo, purchased vendor lists, and DonorsChoose are not yet wi
 
 ## 8. Feature 3 — Email Outreach
 
-**Purpose:** outbound email campaigns to teacher prospects via **SmartLead** (Kaylie's branding: "Integral Leads"). End-to-end live as of May 19, 2026 (Phases 1–5 complete).
+**Purpose:** maintain Neuron Garage's owned teacher recruiting database **and** run AI-personalized outbound campaigns to that database via **SmartLead** (Kaylie's branding: "Integral Leads"). End-to-end live as of May 21, 2026.
+
+> ⚠️ **Current phase: mailbox WARM-UP.** SmartLead is sending to internal staff + a warm-up pool to season our domains. **No teachers are being emailed yet.** The Email Outreach UI is phase-aware (see *Scope Switcher* below) so warm-up traffic is never confused with live teacher outreach. Live outreach is days-to-weeks away and is gated on (a) warm-up completion and (b) the \`{{unsubscribe}}\` merge tag landing in the sequence body (CAN-SPAM).
+
+### v1.2/v1.3 architecture — two pools
+
+Email Outreach treats the teacher database as **two pools** with a single scope toggle at the top of the page:
+
+| Pool | What it is |
+|---|---|
+| **Master Teacher DB (MTDB)** | The full \`teacher_prospects\` table. CSVs land here first, with **no SmartLead API cost**. This is Neuron Garage's owned recruiting asset. |
+| **SmartLead** | The subset of MTDB leads currently loaded into a SmartLead campaign for outreach. (In the warm-up phase, this represents test/plumbing pushes only.) |
+
+\`ScopeSwitcher\` (top of \`/email-outreach\`) gates which page sections render and which dataset the 6-card \`StatStripCards\` strip describes (Total Contacts, With Email, Verified, Catch-All, Invalid, No Email Found). Every card has a **Show Formula** popover (Rule 1) revealing the exact filter. A third pill, **Live Outreach**, is rendered disabled with "Not started" until the \`SMARTLEAD_PHASE\` flag flips from \`"warmup"\` to \`"live"\`; while in warm-up, the SmartLead pill itself is relabeled **Warm-Up** with an amber theme and a banner above the stat strip stating that the numbers reflect mailbox warming, not teacher outreach.
 
 ### Page layout
 
-\`EmailOutreachV2.tsx\` — 3-panel default layout with a tab toggle to swap Campaigns for Analytics. Top-right buttons: **New Campaign**, **Import Leads**.
+\`EmailOutreachV2.tsx\` — scope-aware single page. Top-right buttons: **Import to Master Pool** (primary), **Import to SmartLead (Legacy)**, **New Campaign**, **CSV**, **Refresh**.
 
-| Panel | Purpose |
-|---|---|
-| **SmartLeadConnectionPanel** | API-key status, "Last successful API call" timestamp, 24-hour webhook activity indicator |
-| **SmartLeadCampaignsPanel** | Lists campaigns from \`campaign_cache\`; click a row for status / lead counts / schedule |
-| **AnalyticsPanel** | Single \`GET /analytics/overview\` call (per-campaign loop only as fallback) to respect 10 req / 2 s rate limit |
-| **SmartLeadInboxPanel** | Live reply feed from \`smartlead_events\` via Supabase Realtime; unread badge + "Mark all read"; intent chips |
-| **EmailAccountsPanel** | Connected mailboxes from \`GET /email-accounts\` |
-| **ProspectBatchesPanel** | Groups \`prospects_staging\` rows by \`batch_id\`; per-row Retry for \`qa_status='rejected'\` |
+| Panel | Pool | Purpose |
+|---|---|---|
+| **MasterPoolImportWizard** | Master | 4-step CSV ingest with AI column mapping (see below). |
+| **PushToSmartLeadBanner / Modal** | Master | One-click "push N verified leads to SmartLead" with live dry-run preview. |
+| **ProspectBatchesPanel** | Master | Recent imports, color-coded by \`destination\` (master-only / master + SmartLead / legacy). |
+| **EnrichmentJobsPanel** | Both | Per-city email/contact enrichment runs across providers (Apollo / SmartLead / future Hunter). Cost + status. |
+| **SmartLeadConnectionPanel** | SmartLead | API-key status, last successful API call, 24-hour webhook activity. |
+| **SmartLeadCampaignsPanel** | SmartLead | Lists campaigns from \`campaign_cache\`; click for status / lead counts / schedule. |
+| **AnalyticsPanel** | SmartLead | Single \`GET /analytics/overview\` call (per-campaign fallback only) to respect 10 req / 2 s. |
+| **ReplyTriagePanel** | SmartLead | 7-bucket reply queue with category-driven actions (Promote / Reply needed / Snooze / Suppress). |
+| **OutreachQueuePanel** | SmartLead | Per-teacher push status (\`queued\` / \`assigned\` / \`sending\` / \`sent\` / \`failed\`) with retry. |
+| **EmailAccountsPanel** | SmartLead | Connected mailboxes from \`GET /email-accounts\`. |
+
+### Master Pool Import Wizard (new in v1.2)
+
+\`MasterPoolImportWizard.tsx\` — 4 steps:
+
+1. **Setup** — pick \`destination\` (\`master_only\` or \`master_and_smartlead\`); optional default city/state for rows missing geography.
+2. **Map** — upload CSV; \`csv-suggest-mapping\` edge function calls Lovable AI (\`google/gemini-3-flash-preview\`) with the headers + sample rows and returns a suggested source→target map. User can override any row; unmapped columns are stashed in \`teacher_prospects.raw\`.
+3. **QA preview** — live counts: valid emails, in-batch duplicates (via generated \`dedupe_key\`), cross-batch duplicates already in MTDB, and rows that will be skipped for missing required fields.
+4. **Import** — chunked 500/insert into \`teacher_prospects\`, stamped with a new \`teacher_import_batches.id\` (\`destination\`, \`column_mapping\`, \`unmapped_columns\` recorded). If \`master_and_smartlead\` was chosen, verified leads are immediately handed to \`smartlead-push-leads\` against a chosen campaign.
+
+### Push to SmartLead (new in v1.2)
+
+\`PushToSmartLeadBanner\` + \`PushToSmartLeadModal\` (Master scope only):
+
+- Banner shows "N verified emails ready to push" and opens the modal.
+- Modal: campaign picker (from \`campaign_cache\`), state/city filter, include-catch-all toggle, lead limit.
+- **Live dry-run preview** — debounced (400 ms), re-runs \`smartlead-push-leads { dry_run: true }\` on filter change. Returns candidate count, already-in-campaign count (joined via \`outreach_queue\`), and the "will push N" count.
+- **Push** — chunked 100/batch to \`POST /campaigns/{id}/leads\`. Writes one \`outreach_queue\` row per success (\`smartlead_lead_id\`, \`pushed_at\`) **and** stamps the source \`teacher_prospects\` row with \`status='in_smartlead'\` + \`last_pushed_at\` so the Master Pool view can filter on push state without re-joining \`outreach_queue\`.
+
+### Legacy Import Leads wizard (kept, to be retired)
+
+\`ImportLeadsWizard.tsx\` — 4-step direct-to-SmartLead path that bypasses MTDB. Source → field mapping → QA staging into \`prospects_staging\` → bulk push to a SmartLead campaign. Preserved for backwards compatibility; will be retired once Teacher Search → MTDB handoff is in daily use (deferred to v1.3).
 
 ### New Campaign drawer
 
-\`NewCampaignDrawer.tsx\` calls \`POST /campaigns/create\`. **Important:** SmartLead's \`track_settings\` is a NEGATIVE list — the UI emits \`DONT_TRACK_EMAIL_OPEN\`, \`DONT_TRACK_LINK_CLICK\`, \`DONT_TRACK_REPLY_TO_AN_EMAIL\` when toggles are off. Sending \`TRACK_OPENS\` / \`TRACK_CLICKS\` returns 400 (Phase 4 hotfix).
+\`NewCampaignDrawer.tsx\` calls \`POST /campaigns/create\`. **Important:** SmartLead's \`track_settings\` is a NEGATIVE list — the UI emits \`DONT_TRACK_EMAIL_OPEN\`, \`DONT_TRACK_LINK_CLICK\`, \`DONT_TRACK_REPLY_TO_AN_EMAIL\` when toggles are off. Default name auto-fills as \`Outreach · MMM-DD · HH:mm TZ · vN\`. **Test Mode** swaps the recipient list (TO) with the logged-in user's email and prefixes the campaign name \`[TEST]\`. Min gap between emails is enforced at 3 minutes (SmartLead schedule rejects values < 3).
 
-### Import Leads wizard
+### Reply classifier — 7 buckets (replaces v1.1 HOT/NOT/OOO/NEUTRAL)
 
-\`ImportLeadsWizard.tsx\` — 4 steps:
+SmartLead POSTs to \`smartlead-webhook\` (\`EMAIL_SENT\`, \`EMAIL_OPENED\`, \`EMAIL_CLICKED\`, \`EMAIL_REPLIED\`, \`EMAIL_BOUNCED\`). Replies are classified via regex pre-pass → Lovable AI (\`google/gemini-2.5-flash-lite\`) fallback. Each row stores the bucket, a one-line reason, and a confidence score (0–1).
 
-1. **Source** — Apollo / Clay / LinkedIn Navigator / CSV / Manual
-2. **Field mapping**
-3. **QA staging** into \`prospects_staging\`
-4. **Bulk push** to chosen SmartLead campaign via \`POST /campaigns/:id/leads\`
+| Bucket | Color | Default action (queue) |
+|---|---|---|
+| 🟢 \`INTERESTED\` | green | Promote to Pipeline (creates \`candidates\` row at "New Lead") if confidence ≥ 0.7 |
+| 🟢 \`MEETING_REQUEST\` | green | Promote to Pipeline if confidence ≥ 0.7 |
+| 🟡 \`INFO_REQUEST\` | yellow | Reply needed (no promote) |
+| 🟠 \`SOFT_NO\` | orange | Snooze 6mo (sets \`outreach_queue.snoozed_until\`) |
+| 🟠 \`WRONG_PERSON\` | orange | Capture referral |
+| 🔴 \`NOT_INTERESTED\` | red | Read-only |
+| ⚪ \`OOO\` | gray | Read-only |
 
-### Webhook → Inbox loop
+A \`⋯\` menu on every row exposes Manual Promote / Snooze 3mo / 6mo / Suppress regardless of category. Legacy \`HOT\`/\`NEUTRAL\` rows were backfilled (\`HOT→INTERESTED\`, \`NEUTRAL→INFO_REQUEST @ 0.3\`). Postgres realtime → Reply Triage panel + Outreach Queue update without refresh.
 
-SmartLead POSTs to \`smartlead-webhook\` (\`EMAIL_SENT\`, \`EMAIL_OPENED\`, \`EMAIL_CLICKED\`, \`EMAIL_REPLIED\`, \`EMAIL_BOUNCED\`). The function inserts into \`smartlead_events\`; for replies it sets \`reply_intent\` via a keyword classifier:
+### Outreach Queue (per-teacher lifecycle)
 
-- 🟢 **HOT** — green chip
-- ⚪ **NOT_INTERESTED** — gray chip
-- 🔵 **OOO** (Out of Office) — blue chip
-- 🟡 **NEUTRAL** — yellow chip
-
-Postgres realtime → Inbox panel updates without refresh.
+\`OutreachQueuePanel.tsx\` reads \`outreach_queue\` (any rows added via Teacher Search → Add to Campaign, or via the Push to SmartLead modal). Each row carries a lifecycle \`state\`: \`queued\` → \`assigned\` → \`sending\` → \`sent\` (\`smartlead_lead_id\` + \`pushed_at\` stored) or \`failed\` (\`last_error\` stored). Invalid-campaign guard: rows pointing at a synthetic campaign id render a red "invalid — reassign" pill and Push is blocked.
 
 ### AI personalization
 
 Email body generation runs through the Lovable AI Gateway (\`LOVABLE_API_KEY\`). Today: Gemini 2.5 Flash for fast tasks, GPT-5 Mini for nuance.
 
+### Known caveats
+
+- **Open Rate inflation:** Gmail's image proxy and Apple Mail Privacy Protection pre-fetch tracking pixels on delivery, inflating open rate to ~100% on those inboxes. Trust **clicks** and **replies** as real engagement.
+- **\`{{unsubscribe}}\` merge tag** is not yet in the sequence body (OPEN_TASKS 17f). Real teacher sends should not launch until this lands (CAN-SPAM).
+
 ### Next link
 
-**Task #18** (Teacher → Lead conversion) connects Teacher Search's Promote action directly to a SmartLead campaign push, and auto-creates a Candidate row when a reply's \`reply_intent = HOT\`. Paused pending Teacher Search data-layer readiness.
+**Task #18** (Teacher → Lead conversion) connects Teacher Search's Promote action to the MTDB → SmartLead push pipeline, and auto-creates a Candidate row when a reply classifies as \`INTERESTED\` or \`MEETING_REQUEST\` at confidence ≥ 0.7.
 
 ---
 
@@ -424,9 +468,13 @@ All tables have RLS enabled.
 
 ### Email Outreach (SmartLead)
 
-- \`smartlead_events\` — webhook event log (\`event_type, campaign_id, lead_email, payload jsonb, reply_intent\`). Realtime-enabled.
+- \`teacher_prospects\` *(Master Teacher DB — see §13.2 Teachers)* — extended in v1.2 with \`status\` (\`new\` | \`in_smartlead\` | \`suppressed\` | ...), \`last_pushed_at\`, \`needs_email_enrichment\`, \`verification_status\` (\`valid\` | \`catch_all\` | \`invalid\` | null), \`dedupe_key\` (generated), \`raw\` (jsonb of unmapped CSV columns), \`teacher_import_batch_id\` (FK).
+- \`teacher_import_batches\` — one row per CSV import. Columns: \`source\`, \`destination\` (\`master_only\` | \`master_and_smartlead\` | \`legacy\`), \`row_count\`, \`column_mapping\` (jsonb), \`unmapped_columns\` (jsonb), \`created_by\`, \`created_at\`.
+- \`outreach_queue\` — per-teacher SmartLead push lifecycle (\`state\`: \`queued\` | \`assigned\` | \`sending\` | \`sent\` | \`failed\` | \`promoted\`, \`smartlead_lead_id\`, \`smartlead_campaign_id\`, \`pushed_at\`, \`last_error\`, \`snoozed_until\`, \`reply_intent_overridden_by\`).
+- \`enrichment_jobs\` — per-city email/contact enrichment runs (\`provider\`, \`city\`, \`state\`, \`requested\`, \`succeeded\`, \`failed\`, \`cost_usd\`, \`status\`, \`finished_at\`).
+- \`smartlead_events\` — webhook event log (\`event_type, campaign_id, lead_email, payload jsonb, reply_intent, reply_category, reply_confidence, reply_reason\`). Realtime-enabled.
 - \`campaign_cache\` — local mirror of SmartLead campaigns.
-- \`prospects_staging\` — import-wizard staging (\`batch_id, source, qa_status, smartlead_lead_id, pushed_at\`).
+- \`prospects_staging\` — legacy import-wizard staging (\`batch_id, source, qa_status, smartlead_lead_id, pushed_at\`). Retiring once the legacy Import Leads wizard is removed.
 
 ### Auth
 
@@ -472,7 +520,9 @@ All deployed as Deno edge functions under \`supabase/functions/\`.
 | \`enrich-school-staff\` | Staff/teacher enrichment for a given school (Firecrawl + Apify) |
 | \`fetch-teacher-prospects\` | Apify-driven teacher prospect pull per city |
 | \`smartlead-proxy\` | Server-side proxy to the SmartLead REST API (campaigns, lead push, analytics, email accounts, health check). Respects 10 req / 2 s rate limit |
-| \`smartlead-webhook\` | Public webhook receiver for SmartLead events; writes \`smartlead_events\` and tags \`reply_intent\` |
+| \`smartlead-webhook\` | Public webhook receiver for SmartLead events; writes \`smartlead_events\` and runs the 7-bucket reply classifier (regex pre-pass → \`google/gemini-2.5-flash-lite\` fallback) |
+| \`smartlead-push-leads\` | Pushes verified Master Pool leads to a SmartLead campaign. Supports \`dry_run\` (used by the live filter preview in PushToSmartLeadModal). Stamps \`teacher_prospects.status='in_smartlead'\` + \`last_pushed_at\` and writes \`outreach_queue\` rows on success. |
+| \`csv-suggest-mapping\` | AI-powered CSV header → MTDB column mapper used by the Master Pool Import Wizard. Calls Lovable AI (\`google/gemini-3-flash-preview\`). |
 
 Shared modules: \`_shared/cityGeo.ts\`, \`_shared/metricFetchers.ts\`, \`_shared/scoring.ts\` (category-blend fallback when a category has fewer than 3 usable metrics).
 

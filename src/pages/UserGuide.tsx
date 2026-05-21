@@ -70,15 +70,15 @@ const features = [
     title: "Email Outreach",
     tag: "How do we start the conversation?",
     blurb:
-      "A full inbox built on top of Integral Leads (our SmartLead-powered sending engine). Import a list, write a personalized sequence with AI help, send it, and reply to every response from one screen.",
+      "Two pools, one screen. The Master Teacher DB is every teacher we know about — our owned recruiting asset, growing every time you import a CSV. SmartLead is the subset we've pushed into a live campaign. Flip between them with the Viewing toggle at the top of the page.",
     youCan: [
-      "Import prospects from Apollo, Clay, LinkedIn Navigator, a CSV, or by hand.",
-      "Use the Import Wizard to map fields, dedupe, and assign to a campaign.",
-      "Watch replies land live — the inbox updates the moment a teacher writes back.",
-      "Tap a reply chip — Interested, Not Now, Not Interested, Question — to sort responses in one click.",
+      "Import any CSV into the Master Pool — Lovable AI figures out the column mapping for you, no manual matching required.",
+      "Preview duplicates and verification quality before a single row hits the database.",
+      "Push verified leads to a SmartLead campaign with a live filter preview that tells you exactly how many will go.",
+      "Triage replies in seven colored buckets (Interested, Meeting, Info, Soft No, Wrong Person, Not Interested, OOO) — green replies promote straight into the Candidate Pipeline.",
     ],
-    pro: "Every email is personalized using what we already know about the teacher. No copy-paste blasts.",
-    next: "Got an interested reply? Promote them into the Candidate Pipeline to start the qualification clock.",
+    pro: "Heads up — SmartLead is in mailbox WARM-UP right now. The small numbers you see in the SmartLead/Warm-Up pill are internal staff + warm-up pool sends. We are NOT emailing teachers yet. The third pill, Live Outreach, stays disabled until warm-up completes.",
+    next: "Got an interested reply? It promotes into the Candidate Pipeline automatically — just open the new card to start qualifying.",
   },
   {
     id: "candidate-pipeline",
@@ -138,6 +138,10 @@ const faqs = [
   {
     q: "Who can see what I do?",
     a: "All three of us — Kaylie, Sam, Haseeb — see the same data. There's no private view. That's intentional.",
+  },
+  {
+    q: "Are we emailing teachers yet?",
+    a: "Not yet. SmartLead is in mailbox WARM-UP — we're sending to internal staff and a warm-up pool to season our domains so real teacher emails land in the inbox, not spam. You'll see that called out in amber on the Email Outreach page. Live teacher outreach is days to weeks away.",
   },
   {
     q: "What happens after Signing?",

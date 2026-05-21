@@ -747,9 +747,12 @@ const TeacherProspects = () => {
               <Button size="sm" variant="outline" onClick={handleExport} className="h-9 rounded-lg border-[#dbe4f2] bg-white px-4 text-[#174be8] shadow-none hover:bg-[#f4f7ff]">
                 <Download size={14} /> {selected.length > 0 ? `Export ${selected.length} Selected` : "Export CSV"}
               </Button>
-              <Button size="sm" variant="outline" onClick={() => setImportOpen(true)} className="h-9 rounded-lg border-[#dbe4f2] bg-white px-4 text-[#174be8] shadow-none hover:bg-[#f4f7ff]">
-                <Upload size={14} /> Import CSV
-              </Button>
+              <button onClick={() => setMasterImportOpen(true)} title="Smart CSV import to Master Teacher Pool (AI-mapped). Recommended during warm-up." className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#dbe4f2] bg-white px-3 text-xs font-bold text-[#174be8] hover:bg-[#f4f7ff]">
+                <Upload size={14} /> Import to Master Pool
+              </button>
+              <button onClick={() => setImportOpen(true)} title="Legacy: import straight into SmartLead (skips Master Pool)" className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#dbe4f2] bg-white px-3 text-xs font-bold text-[#526078] hover:bg-[#f4f7ff]">
+                <Upload size={14} /> Import to SmartLead
+              </button>
               {/* "Find via Apify" button hidden May 20 — see LATER.md. Modal code retained in FindProspectsModal.tsx. */}
             </div>
           }

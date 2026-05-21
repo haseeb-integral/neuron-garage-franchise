@@ -22,6 +22,7 @@ import { AnalyticsPanel } from "@/components/email-outreach/AnalyticsPanel";
 import { NewCampaignDrawer } from "@/components/email-outreach/NewCampaignDrawer";
 import { EmailAccountsPanel } from "@/components/email-outreach/EmailAccountsPanel";
 import { OutreachQueuePanel } from "@/components/email-outreach/OutreachQueuePanel";
+import { EnrichmentJobsPanel } from "@/components/email-outreach/EnrichmentJobsPanel";
 
 import { ReplyTriagePanel } from "@/components/email-outreach/ReplyTriagePanel";
 import { AskAssistant } from "@/components/ask/AskAssistant";

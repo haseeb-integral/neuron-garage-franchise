@@ -121,7 +121,10 @@ export function PushToSmartLeadModal({ open, onClose, onPushed, defaultState, de
 
           {preview && (
             <div className="rounded-lg border border-[#dbe4f2] bg-[#f7faff] p-2 text-xs">
-              <div className="font-bold">Preview · {selectedCampaign?.name}</div>
+              <div className="flex items-center justify-between">
+                <div className="font-bold">Live preview · {selectedCampaign?.name}</div>
+                {loadingPreview && <Loader2 size={12} className="animate-spin text-[#174be8]" />}
+              </div>
               <div className="mt-1 grid grid-cols-3 gap-2">
                 <Stat label="Candidates" value={preview.candidates} />
                 <Stat label="Already in campaign" value={preview.already_in_campaign} />
@@ -131,8 +134,8 @@ export function PushToSmartLeadModal({ open, onClose, onPushed, defaultState, de
           )}
         </div>
         <DialogFooter className="gap-2 sm:gap-2">
-          <Button variant="outline" onClick={runDryRun} disabled={loadingPreview || pushing}>
-            {loadingPreview ? <Loader2 size={14} className="mr-1 animate-spin" /> : null} Preview
+          <Button variant="outline" onClick={runDryRun} disabled={loadingPreview || pushing || !campaignId}>
+            {loadingPreview ? <Loader2 size={14} className="mr-1 animate-spin" /> : null} Refresh preview
           </Button>
           <Button onClick={runPush} disabled={pushing || !campaignId || (preview?.would_push === 0)} className="bg-[#174be8] hover:bg-[#0d3aa8]">
             {pushing ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Send size={14} className="mr-1" />}

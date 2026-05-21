@@ -1,180 +1,198 @@
 
-# v1.2 — Master Pool + SmartLead, with SmartLead-parity stat dashboards
+## What I'll create
 
-Everything from the previous plan (two-pool architecture, AI-assisted CSV importer, enrichment job, SmartLead dashboard) stays. v1.2 adds a **scoped stats dashboard** that mirrors SmartLead's Prospects screen but works for both pools, plus a clearly visible bridge between them.
+A new canonical doc at the repo root: **`THIRD_PARTY_DATA_PLAYBOOK.md`** (~1,500 words).
+
+I'll also add one line to `README.md`'s "Read These First" list and one bullet to `AGENTS.md` source-of-truth section so future agents know this playbook exists and is canonical.
+
+No code, no schema, no migrations in this step — just doctrine.
+
+## Why this is worth a canonical doc
+
+We've now hit the same pattern twice:
+1. **City Search** — Manus delivered an 817-row enriched city table; ours had 50.
+2. **Teacher Search** — similar pattern with Apollo / Apify imports earlier in the sprint.
+
+And it will keep happening. Without a written rule, each new rich third-party table tempts us to either (a) throw away our schema and adopt theirs, or (b) ignore the new data because integrating feels risky. Both are wrong. The playbook codifies the middle path: **their table is the universe (rows), ours is the scoring layer (columns + logic).**
+
+## Proposed contents of `THIRD_PARTY_DATA_PLAYBOOK.md`
+
+```
+# Third-Party Data Playbook
+
+Canonical rule for absorbing external enriched tables (Manus, Apollo, Apify,
+future vendors) into Neuron Garage without losing our scoring schema or
+re-litigating architecture each time.
+
+Status: canonical. When this conflicts with older docs, this wins.
+Cross-ref: AGENTS.md (source-of-truth hierarchy), DATABASE_LAYER_SPEC.md.
 
 ---
 
-## The new mental model: "Scope toggle"
+## 1. The Core Principle
 
-At the top of the Email Outreach page, a **prominent scope switcher** (NOT a small filter — a primary control, like a big tab) lets you see one of two views:
+> **Third-party tables are the UNIVERSE (rows). Our schema is the SCORING
+> LAYER (columns + logic). Never invert this.**
 
-```text
-┌────────────────────────────────────────────────────────────┐
-│  Viewing:  [ ● Master Teacher DB ]   [ ○ SmartLead ]       │
-│            500k+ teachers across U.S.    8,432 active leads│
-└────────────────────────────────────────────────────────────┘
+A vendor's job is to give us *which entities exist* (cities, teachers,
+schools, competitors). Our job is to decide *what those entities mean for
+franchise viability*. We import their rows. We keep our columns. We map
+between them explicitly.
+
+## 2. When This Playbook Applies
+
+Trigger any time someone hands us a rich, populated table that overlaps
+with an existing Neuron Garage entity. Examples:
+- Manus 817-city demographics table → `us_cities_scored`
+- Apollo / Apify teacher exports → `teacher_prospects`
+- Future: competitor landscape table, school enrollment files, ZIP-level
+  income data, etc.
+
+Does **not** apply to:
+- Live API calls that already write into our schema (Census, BLS, BEA)
+- One-off CSVs used only for a single chart or QA check
+
+## 3. The Five Steps
+
+### Step 1 — Universe Audit (before any code)
+Answer in writing:
+- How many rows does the vendor table have vs. ours?
+- What is the primary key of *their* table? (state+city, email, NCES id…)
+- What's our matching key? Is there a clean join, or do we need fuzzy
+  matching / normalization?
+- Are there rows in theirs that aren't in ours? (almost always yes — that's
+  the point)
+- Are there rows in ours that aren't in theirs? (decide: keep, archive, or
+  drop)
+
+Output: a one-page Universe Audit committed alongside the migration.
+
+### Step 2 — Column Triage
+Go column-by-column on the vendor table and tag each one:
+- **KEEP-AS-IS** — fills a gap in our schema cleanly, same geography /
+  granularity / units. Import directly.
+- **KEEP-RENAMED** — same data, different name. Map to our column. Never
+  add a duplicate column just because the vendor used a different label.
+- **RECOMPUTE** — vendor value is wrong granularity or stale. Example:
+  Manus "STEM %" is state-level BLS, not city-level. Import as `null` and
+  backfill from our own pipeline at correct geography.
+- **DROP** — redundant, lower quality than ours, or out of scope.
+- **NEW COLUMN** — vendor has a signal we don't track yet AND it matters
+  for scoring. Add to our schema via migration (not as a loose JSON blob).
+
+Output: a triage table in the migration's description.
+
+### Step 3 — Name-vs-Meaning Check (the AGENTS.md rule)
+For every KEEP-RENAMED or NEW COLUMN, re-read the destination column name
+out loud. If the vendor's data would make the name misleading, **rename
+the column in the same migration**. Do not silently widen meaning.
+
+Example: importing Manus "elementary enrollment" into our
+`public_elementary_enrollment` is fine — names align. Importing Manus
+"# elementary schools" (which includes private + charter) into
+`public_elementary_count` is NOT fine — rename or split first.
+
+### Step 4 — Idempotent Import, Never Bulk Replace
+The import job MUST be:
+- **Idempotent** — running it twice produces the same result.
+- **Upsert by stable key**, never `TRUNCATE + INSERT`. We have scored rows,
+  user watchlists, and FKs pointing at our ids.
+- **Additive** — adds missing rows, updates triaged columns, leaves
+  untouched columns alone (especially anything we computed: scores,
+  weather, enrichment results).
+- **Logged** — write a row to an `imports` log table: source, batch_id,
+  row counts (inserted / updated / skipped / errored), triage decisions.
+
+If the vendor file is too big or messy to upsert cleanly, stage it first
+(`staging_<source>_<date>`) and run the merge as a separate, reviewable
+SQL step.
+
+### Step 5 — Re-score the New Rows
+After import, scoring is a separate pass. The import job does NOT write
+to any `score_*` column. Trigger the scoring edge function over the
+affected rows and confirm:
+- New rows have non-null scores or a clear "not enough data" status.
+- Pre-existing rows' scores didn't move unexpectedly (diff the before /
+  after for a sample).
+
+## 4. What NEVER Happens
+
+- ❌ Adopting a vendor's table as our canonical table.
+- ❌ Dropping our schema columns because the vendor doesn't have them.
+- ❌ Storing vendor rows in a parallel table that the app then has to
+  query separately from our own. One table per entity.
+- ❌ Letting a vendor's pre-computed "score" or "rank" leak into our
+  composite. Their scores can ride along as a signal, but our composite
+  is computed by our engine, period.
+- ❌ Silent column meaning changes (see AGENTS.md Name-vs-Meaning rule).
+- ❌ `TRUNCATE` on a live entity table. Ever.
+
+## 5. Roles & Cadence
+
+- **Vendor delivery → Haseeb** receives the file, drops it in
+  `/data/incoming/<source>/<date>/`.
+- **Lovable agent** runs the 5-step playbook, produces:
+  1. Universe Audit (markdown)
+  2. Column Triage (markdown)
+  3. Migration (additive + import job)
+  4. Re-score pass + before/after diff
+- **Sam** reviews the column triage before migration runs. He is the only
+  approver for anything touching scoring inputs.
+- **Brett** signs off on which vendor table becomes "the universe" for a
+  given entity if there's ambiguity.
+
+Expected cadence: every 4–8 weeks a new enriched table will land
+(competitor data, school-level data, regional economics). Each one runs
+this playbook. No exceptions, no "this one is small".
+
+## 6. Worked Example — Manus 817 Cities (May 2026)
+
+- **Universe:** 817 Manus rows vs. ~50 of ours. Manus becomes the city
+  universe.
+- **Key:** `(state_abbr, city_name)` after normalization (`"New York
+  city"` → `"New York"`).
+- **Triage:**
+  - KEEP-AS-IS: state, city, population, median_household_income,
+    college_degree_pct, cost_of_living_index, elem enrollment
+  - KEEP-RENAMED: Manus "# districts" → new column
+    `school_district_count`
+  - RECOMPUTE: Manus "STEM %" and "metro income" (state-level) → import
+    as null, backfill from BLS / BEA at MSA geography
+  - DROP: none
+  - NEW COLUMN: `school_district_count`
+- **Import:** upsert into `us_cities_scored` on `(state_abbr, city_name)`.
+  Touches only the 7 triaged columns. Leaves weather, camp signals,
+  scores, and our enrichment columns alone.
+- **Re-score:** scoring edge function runs over the ~770 new rows; old 50
+  rows' scores are unchanged (verified by diff).
+
+## 7. Worked Example — Teacher Imports (Apollo / Apify)
+
+Same playbook. Apollo is the universe for "active teachers with
+contactable email"; our schema owns Fit Score, Tier, candidate pipeline
+linkage, outreach state. Apollo never writes Fit Score. We never drop
+our pipeline FKs because Apollo doesn't know about them.
+
+## 8. Checklist (copy into every import PR)
+
+- [ ] Universe Audit committed
+- [ ] Column Triage committed
+- [ ] Name-vs-Meaning check passed (or renames included in same migration)
+- [ ] Import is upsert + idempotent + logged
+- [ ] No writes to `score_*` columns from the import job
+- [ ] Sam reviewed triage
+- [ ] Re-score pass run; before/after diff attached
+- [ ] PROJECT_CONTEXT.md, APIS.md, OPEN_TASKS.md doc-sync drafted
 ```
 
-The chosen scope is:
-- **Color-coded** — Master DB uses neutral slate; SmartLead uses brand blue. Every stat card, table row, and badge on the page inherits that color so you can never confuse which pool you're looking at.
-- **Labeled in plain English** at the top: *"You are viewing the Master Teacher Database. These teachers have NOT been emailed. To email them, push them to SmartLead."* (or the inverse for SmartLead).
-- **Persistent across tabs** — Overview, Contacts, Campaigns, Inbox all respect the scope.
+## Doc-sync follow-ups (after this lands)
 
----
+- `README.md` — add `THIRD_PARTY_DATA_PLAYBOOK.md` to "Read These First"
+- `AGENTS.md` — add bullet under "Non-Negotiable Rules" pointing to the playbook for any third-party table import
+- `OPEN_TASKS.md` — reference the playbook on the Manus-import task and on the future Competitive Landscape import
 
-## The stat strip (works for BOTH scopes, parity with the SmartLead screenshot)
+Drafted per AGENTS.md doc-sync rule; will wait for explicit "go" before writing those.
 
-Six stat cards in a 3×2 grid, identical layout for both scopes. The labels stay the same; the *numbers* change based on scope.
+## Approve and I will
 
-| Card | Master DB scope | SmartLead scope |
-|---|---|---|
-| **Total Contacts** | Count of `teacher_prospects` (optionally filtered by city/state) | Count of leads pushed to SmartLead (sum across campaigns) |
-| **Total Emails** | Rows where `email` is not null. "X% of total contacts" | Rows in SmartLead with a deliverable email |
-| **Verified Emails** | `verification_status = 'valid'` | SmartLead-verified |
-| **Catch-All Emails** | `verification_status = 'catch_all'` | Same |
-| **Invalid Emails** | `verification_status = 'invalid'` | Same |
-| **No Email Found** | `needs_email_enrichment = true` OR email IS NULL | "Not pushable" — present in master but missing from SmartLead |
-
-Each card has the percentage subtitle (e.g. "66% of total contacts") matching the SmartLead screenshot exactly.
-
-Every card surfaces a **"Show formula"** popover (per AGENTS.md Rule 1) showing the SQL/source.
-
----
-
-## The bridge: "Push to SmartLead" workflow
-
-This is the explicit answer to *"we can't email until we move them into SmartLead"*. Three entry points, one backend (`smartlead-push-leads` edge function):
-
-### 1. From Master DB stat strip
-A persistent banner sits below the stat cards when scope = Master DB:
-
-```text
-┌────────────────────────────────────────────────────────────┐
-│  📤  3,995 verified emails in Master DB are NOT yet in     │
-│      SmartLead. → [ Push verified emails to SmartLead ]    │
-└────────────────────────────────────────────────────────────┘
-```
-
-Click → modal: pick campaign + filter (city, state, fit score, source) + see "will push N rows" → confirm.
-
-### 2. From Master DB contacts table
-Same multi-select / bulk action bar as Teacher Search: check rows → "Push to SmartLead". Same modal.
-
-### 3. From a city detail page (Teacher Search)
-Already in the v1.2 plan as part of the enrichment job — same backend.
-
-After push:
-- A `outreach_queue` row is written per teacher with `pushed_at`, `smartlead_lead_id`, `campaign_id`.
-- A new **`pushed_to_smartlead`** badge appears next to the teacher in Master DB views (subtle blue dot + tooltip "Pushed to [Campaign Name] on May 21").
-- The teacher now appears in the SmartLead scope's "Total Contacts" count.
-
----
-
-## The new Contacts tab (lives inside Email Outreach, scope-aware)
-
-A new tab **"Contacts"** sits between Overview and Campaigns. It's the in-app mirror of SmartLead's Prospects screen.
-
-When scope = **Master DB**: shows all `teacher_prospects` with filters (city, state, source, verification status, "in SmartLead? yes/no"). Big "Push selected to SmartLead" bulk action.
-
-When scope = **SmartLead**: shows only teachers pushed to SmartLead, with their per-campaign status (queued / sent / opened / replied / bounced / unsubscribed). Bulk actions: pause sending, remove from campaign, mark as interested.
-
-Both views use the same table component; columns swap based on scope.
-
----
-
-## What this adds to the previous plan
-
-### Schema additions (small)
-
-- `teacher_prospects.verification_status` already exists — but we'll **standardize the value set** to: `valid` | `catch_all` | `invalid` | `unknown` | `null`. Backfill existing data.
-- New view: `v_master_pool_stats(state, city)` — pre-aggregates the 6 stat-card numbers. Refreshed on demand.
-- New view: `v_smartlead_pool_stats(campaign_id?)` — same shape, sourced from `outreach_queue` + `smartlead_events`.
-- `outreach_queue` already exists — used as the "is this teacher in SmartLead?" lookup. Add unique index on `(teacher_prospect_id, campaign_id)`.
-
-### Edge function additions
-
-- `master-pool-stats` — returns the 6 numbers + percentages, with optional `{ state, city, source, fit_min }` filter. Cached 30s.
-- `smartlead-pool-stats` — same shape, sourced from SmartLead via existing proxy + local caches.
-- `smartlead-push-leads` (already in v1.2 plan) — gains a "verified-only" filter flag and writes the `pushed_to_smartlead` state.
-
-### UI additions
-
-- `<ScopeSwitcher>` — the big toggle, persists choice in `localStorage`.
-- `<StatStripCards>` — 6-card grid, scope-aware, color-themed, with Show Formula popovers.
-- `<PushToSmartLeadBanner>` — Master DB only, dismissible per session.
-- `<ContactsTab>` — new tab, replaces parts of the current Prospect Batches panel.
-- `<PushToSmartLeadModal>` — filter + preview + confirm.
-- `<PushedBadge>` — small badge component used on the contacts table.
-
----
-
-## Build order (updated, replaces v1.2 sprint plan)
-
-**Sprint 1 — Master Pool foundation + Scope-aware stats**
-- A1/A2/A3 schema migrations (master pool fields, rename `prospect_batches` → `teacher_import_batches`, new `enrichment_jobs` table)
-- Standardize `verification_status` values + backfill
-- `v_master_pool_stats` view + `master-pool-stats` edge function
-- `<ScopeSwitcher>` + `<StatStripCards>` on Email Outreach page (Master DB scope working first)
-- New `MasterPoolImportWizard` (steps 1–4, master-only path)
-- `csv-suggest-mapping` edge function
-
-**Sprint 2 — The bridge (push to SmartLead) + SmartLead-scope stats**
-- `smartlead-push-leads` edge function with verified-only flag
-- `<PushToSmartLeadBanner>` + `<PushToSmartLeadModal>`
-- `v_smartlead_pool_stats` view + `smartlead-pool-stats` edge function
-- SmartLead scope now functional in `<ScopeSwitcher>` and `<StatStripCards>`
-- `<PushedBadge>` everywhere a teacher is listed
-- `enrich-teachers` edge function (SmartLead provider) + both UI entry points
-
-**Sprint 3 — Contacts tab + SmartLead dashboard polish**
-- `<ContactsTab>` (scope-aware, replaces Prospect Batches Panel UI)
-- Campaign sync cron, Overview tab, Campaigns tab (from previous v1.2 plan)
-
-**Sprint 4 — Inbox + Mailboxes + Analytics + Reply promotion**
-
-(Sprint 5 deferred: Apollo + Hunter as alternate enrichment providers.)
-
----
-
-## Risks / things to flag
-
-1. **`verification_status` value standardization** is a backfill, not just a code change. ~250k rows today, mostly null. We'll write a one-time migration that maps existing free-text values to the new enum-like set. New rows from CSV imports / enrichment will use the standardized values from day one.
-2. **"Total Contacts" in Master DB scope can mean different things** depending on whether a city filter is active. The stat strip must clearly show the active filter ("Showing: All cities" vs "Showing: Austin, TX") so the number is never ambiguous.
-3. **The scope switcher is a paradigm shift** for anyone used to the current Email Outreach page. We'll add a one-time onboarding tooltip the first time it's seen.
-4. **Push-to-SmartLead is idempotent but irreversible from our side.** Once a teacher is in SmartLead, removing them from a campaign requires a SmartLead API call (we'll wire this in Sprint 4, not Sprint 2). Until then, the modal will warn: "This will add N teachers to [Campaign]. To remove them later, you'll need to do it in SmartLead directly."
-5. **Doc sync (AGENTS.md Rule 9)**: PROJECT_CONTEXT, HOW_IT_WORKS, APIS, OPEN_TASKS, GLOSSARY all need updates — drafts only after Sprint 1, awaiting Haseeb's explicit "go".
-
----
-
-## Quick sketch — Email Outreach page top-of-page in v1.2
-
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│ EMAIL OUTREACH                                                  │
-│                                                                 │
-│ Viewing:  [ ● Master Teacher DB ]   [ ○ SmartLead ]             │
-│ You are viewing the Master Teacher Database. These teachers     │
-│ have NOT been emailed. To email them, push them to SmartLead.   │
-│                                                                 │
-│ Filter: [ All cities ▾ ]  [ All sources ▾ ]  [ Fit ≥ — ▾ ]      │
-│                                                                 │
-│ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐              │
-│ │ Total        │ │ Total Emails │ │ Verified     │              │
-│ │ Contacts     │ │ 6,584        │ │ Emails       │              │
-│ │ 10,000       │ │ 66%          │ │ 3,995  40%   │              │
-│ └──────────────┘ └──────────────┘ └──────────────┘              │
-│ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐              │
-│ │ Catch-All    │ │ Invalid      │ │ No Email     │              │
-│ │ 1,795 18%    │ │ 794 8%       │ │ Found        │              │
-│ │              │ │              │ │ 3,416 34%    │              │
-│ └──────────────┘ └──────────────┘ └──────────────┘              │
-│                                                                 │
-│ ┌─────────────────────────────────────────────────────────────┐ │
-│ │ 📤 3,995 verified emails in Master DB are NOT yet in        │ │
-│ │    SmartLead.  [ Push verified emails to SmartLead → ]      │ │
-│ └─────────────────────────────────────────────────────────────┘ │
-│                                                                 │
-│ [Overview]  [Contacts]  [Campaigns]  [Inbox]  [Mailboxes]  …   │
-└─────────────────────────────────────────────────────────────────┘
-```
+Write `THIRD_PARTY_DATA_PLAYBOOK.md` with the content above, then surface the README / AGENTS / OPEN_TASKS one-liners for your "go".

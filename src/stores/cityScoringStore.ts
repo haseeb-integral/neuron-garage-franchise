@@ -162,7 +162,7 @@ export const useCityScoringStore = create<CityScoringState>()(
     {
       name: "ng:city-scoring-v1",
       storage: createJSONStorage(() => localStorage),
-      version: 4,
+      version: 5,
       migrate: (persisted: any, version) => {
         if (!persisted) return persisted;
         if (version < 2) {
@@ -170,12 +170,17 @@ export const useCityScoringStore = create<CityScoringState>()(
           persisted.appliedSubWeights = cloneSubWeights(DEFAULT_SUB_WEIGHTS);
         }
         if (version < 4) {
-          // Force-reset hidden filters that were silently hiding cities.
           persisted.minPop = "0";
           persisted.minScore = 0;
           persisted.tierFilter = "All";
           persisted.nonRegOnly = false;
           persisted.page = 1;
+        }
+        if (version < 5) {
+          // 6→3 category reshape (Sam+Brett May 21, 2026). Reset master
+          // weights to the new 40/30/30 default; zero out retired keys.
+          persisted.weights = { ...DEFAULT_WEIGHTS };
+          persisted.appliedWeights = { ...DEFAULT_WEIGHTS };
         }
         return persisted;
       },

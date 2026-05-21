@@ -285,8 +285,8 @@ export function buildSeededFallbackSignalsFromScored(
 
   return [
     seeded("total_population", "Total Population", scoredRow.population, "demand", false),
+    // Demand — 4-metric lock (Brett+Haseeb 2026-05-21)
     seeded("children_5_12_count", "Children Ages 5–12", scoredRow.children_5_12, "demand", true),
-    seeded("children_5_12_pct", "% Population Ages 5–12", pct, "demand", true),
     seeded("median_household_income", "Median Household Income", scoredRow.median_household_income, "demand", true),
     seeded("dual_income_household_pct", "% Dual-Income Households", scoredRow.dual_working_families_pct, "demand", true),
     seeded("education_bachelors_plus_pct", "Bachelor's+ Attainment", scoredRow.college_degree_pct, "demand", true),
@@ -301,11 +301,11 @@ export function buildSeededFallbackSignalsFromScored(
     seeded("private_charter_school_count", "Private + Charter Elementary Schools", ((scoredRow.private_elementary_count ?? 0) + (scoredRow.charter_elementary_count ?? 0)) || null, "franchisee_supply", true),
     seeded("public_elementary_enrollment", "Public Elementary Enrollment", scoredRow.public_elementary_enrollment, "franchisee_supply", true),
     seeded("col_salary_index", "Teacher Salary × Cost of Living Index", scoredRow.col_salary_index ?? scoredRow.cost_of_living_index, "franchisee_supply", true),
-    // Weather metrics — migrated from legacy city_market_signals into
-    // us_cities_scored columns on 2026-05-20. Sourced from Open-Meteo.
-    seeded("summer_weather_index", "Summer Weather Index", scoredRow.summer_weather_index, "demand", true),
-    seeded("avg_peak_summer_temperature", "Avg Peak Summer Temperature", scoredRow.avg_peak_summer_temperature, "demand", true),
-    seeded("days_above_90f", "Number of 90°+ Days", scoredRow.days_above_90f, "demand", true),
+    // Weather metrics — retained on the row for reference / future categories,
+    // but no longer part of Demand scoring after the 2026-05-21 lock.
+    seeded("summer_weather_index", "Summer Weather Index", scoredRow.summer_weather_index, "demand", false),
+    seeded("avg_peak_summer_temperature", "Avg Peak Summer Temperature", scoredRow.avg_peak_summer_temperature, "demand", false),
+    seeded("days_above_90f", "Number of 90°+ Days", scoredRow.days_above_90f, "demand", false),
     seeded("summer_precip_days", "Summer Precipitation Days", scoredRow.summer_precip_days, "demand", false),
   ];
   // Note: rows with null values are KEPT — the UI shows them as "—" so the

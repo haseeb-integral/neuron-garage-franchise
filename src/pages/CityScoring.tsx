@@ -2491,17 +2491,49 @@ const CityScoring = () => {
             </Button>
           </div>
 
-          <NearbyMarketsPanel
-            cityId={selected.cityId ?? null}
-            state={selectedState}
-            metroArea={selectedLiveCity?.metro_area ?? (selected as any).metroArea ?? null}
-            refreshKey={marketRefreshVersion}
-            onSelect={(m) => {
-              setSelectedMarketKey({ city: m.city, state: m.state });
-              const sample = sampleCities.find((s) => sameMarket(s.city, s.state, m.city, m.state));
-              if (sample) setSelectedId(sample.id);
-            }}
-          />
+          <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
+            <div className="mb-2 flex items-baseline justify-between gap-2">
+              <p className="text-[13px] font-semibold text-[#07142f]">Key Market Signals</p>
+              <span className="text-[10px] text-[#8794ab]">{preSeededCount} of 12 seeded</span>
+            </div>
+            {hasLiveSignals ? (
+              <div className="flex flex-col divide-y divide-[#f1f4f9]">
+                {sigRows.map((r) => (
+                  <div key={r.key} className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 py-1.5">
+                    <div className="min-w-0">
+                      <p className="text-[11.5px] font-medium text-[#07142f] leading-tight truncate" title={r.label}>{r.label}</p>
+                      <p className="text-[10px] text-[#8794ab] leading-tight truncate" title={r.source}>{r.source}</p>
+                    </div>
+                    <span className="text-right text-[11.5px] font-bold text-[#07142f] tabular-nums whitespace-nowrap">{r.value}</span>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setDetailDrawerOpen(true)}
+                  className="mt-2 self-start inline-flex items-center gap-1 rounded-md border border-[#dbe4f2] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#174be8] hover:bg-[#f1f5ff]"
+                >
+                  View all signals →
+                </button>
+              </div>
+            ) : SHOW_LIVE_REFRESH ? (
+              <div className="rounded-md border border-dashed border-[#dbe4f2] bg-[#f7faff] px-3 py-4 text-center">
+                <p className="text-[11.5px] text-[#526078] leading-snug">No seeded values for this market yet.</p>
+                <button
+                  type="button"
+                  onClick={handleRefreshData}
+                  disabled={refreshingMarket}
+                  className="mt-2 inline-flex items-center gap-1 rounded-md bg-[#174be8] px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-[#1240c9] disabled:opacity-60"
+                >
+                  {refreshingMarket ? "Refreshing…" : "Refresh This Market"}
+                </button>
+              </div>
+            ) : (
+              <div className="rounded-md border border-dashed border-[#dbe4f2] bg-[#f7faff] px-3 py-4 text-center">
+                <p className="text-[11.5px] text-[#526078] leading-snug">Showing pre-seeded scores.</p>
+              </div>
+            )}
+          </div>
+
         </div>
       </div>
       )}

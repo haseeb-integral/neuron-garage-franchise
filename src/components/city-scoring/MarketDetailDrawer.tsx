@@ -643,6 +643,31 @@ export function MarketDetailDrawer({
           )}
         </div>
 
+        {(() => {
+          // Manus 2026-05-21 CSI upload created duplicate rows whose
+          // city_name kept the Census suffix (" city", " town", " borough").
+          // Those rows have CSI/DAM populated but Census + NCES fields null,
+          // which surfaces in the drawer as a wall of "—". Surface a banner
+          // so users know it's a data-merge issue, not a UI bug.
+          const rawName = String(market.city ?? "").trim();
+          const suffixMatch = /\s+(city|town|borough|village)$/i.test(rawName);
+          const lowCoverage = keyMetricSeededCount > 0 && keyMetricSeededCount <= Math.floor(KEY_METRIC_KEYS.size / 2);
+          if (!suffixMatch || !lowCoverage) return null;
+          return (
+            <div className="mb-3 rounded-lg border border-[#f6d68a] bg-[#fff8e6] p-3 text-[11px] text-[#7a4d00]">
+              <p className="font-semibold mb-0.5">Manus-upload row — Census/NCES values live on the sibling row</p>
+              <p>
+                This row was loaded from Brett's 2026-05-21 Manus CSI upload, which joined on
+                <span className="font-mono"> "{rawName}" </span>
+                instead of the canonical Census name. Demographic and school metrics still live on the
+                <span className="font-mono"> "{rawName.replace(/\s+(city|town|borough|village)$/i, "")}" </span>
+                row in <span className="font-mono">us_cities_scored</span> and haven't been merged yet.
+              </p>
+            </div>
+          );
+        })()}
+
+
 
         <div className="space-y-3 mb-4">
           {SOW_CATEGORIES.map((category) => {

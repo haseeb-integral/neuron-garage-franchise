@@ -16,11 +16,8 @@ export type AiResult = {
 
 const CATEGORY_LABELS: Record<string, string> = {
   demand: "Demand",
-  pricingPower: "Pricing Power",
   competitiveLandscape: "Competition",
-  franchiseeSupply: "Franchisee Supply",
-  easeOfOperations: "Ops",
-  parentMindset: "Parent Mindset",
+  franchiseeSupply: "TAM Teachers",
 };
 
 export interface AiAnswerCardProps {

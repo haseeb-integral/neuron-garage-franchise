@@ -17,13 +17,14 @@ export interface CustomCriterionRow {
 }
 
 // Map the human "category" label stored on rows to our CategoryKey.
+// 3-category shape after Sam+Brett 2026-05-21 final purge. Rows persisted
+// under retired labels ("Pricing Power", "Ease of Operations", "Parent
+// Mindset Indicators") are silently ignored by groupCustomByCategory().
 export const CATEGORY_LABEL_TO_KEY: Record<string, CategoryKey> = {
   "Demand": "demand",
-  "Pricing Power": "pricingPower",
   "Competitive Landscape": "competitiveLandscape",
   "Franchisee Supply": "franchiseeSupply",
-  "Ease of Operations": "easeOfOperations",
-  "Parent Mindset Indicators": "parentMindset",
+  "TAM Teachers": "franchiseeSupply",
 };
 
 const QUERY_KEY = ["custom_criteria"] as const;
@@ -45,8 +46,7 @@ export function useCustomCriteria() {
 // Group custom criteria by CategoryKey for use inside the drawer / scoring helpers.
 export function groupCustomByCategory(rows: CustomCriterionRow[] | undefined): Record<CategoryKey, CustomCriterionRow[]> {
   const out: Record<CategoryKey, CustomCriterionRow[]> = {
-    demand: [], pricingPower: [], competitiveLandscape: [],
-    franchiseeSupply: [], easeOfOperations: [], parentMindset: [],
+    demand: [], competitiveLandscape: [], franchiseeSupply: [],
   };
   (rows ?? []).forEach((r) => {
     const key = CATEGORY_LABEL_TO_KEY[r.category];

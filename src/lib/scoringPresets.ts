@@ -1,48 +1,40 @@
 // Scoring model presets — drive the master category weights.
 // "Custom" is auto-selected when the active master weights don't match any preset.
+// 3-key shape after Sam+Brett 2026-05-21 final purge.
 
 import type { CategoryKey } from "@/stores/cityScoringStore";
 
-export type PresetName = "Balanced" | "Demand-Heavy" | "Pricing-Heavy" | "Custom";
+export type PresetName = "Balanced" | "Demand-Heavy" | "TAM-Heavy" | "Custom";
 
 export const SCORING_PRESETS: Record<Exclude<PresetName, "Custom">, Record<CategoryKey, number>> = {
-  // Even-ish split summing to 100 (17+17+17+17+16+16)
+  // Even-ish split across the 3 active categories.
   "Balanced": {
-    demand: 17,
-    pricingPower: 17,
-    competitiveLandscape: 17,
-    franchiseeSupply: 17,
-    easeOfOperations: 16,
-    parentMindset: 16,
+    demand: 34,
+    franchiseeSupply: 33,
+    competitiveLandscape: 33,
   },
-  // Demand at 40, others split 60 / 5 = 12
+  // Demand dominant.
   "Demand-Heavy": {
-    demand: 40,
-    pricingPower: 12,
-    competitiveLandscape: 12,
-    franchiseeSupply: 12,
-    easeOfOperations: 12,
-    parentMindset: 12,
+    demand: 60,
+    franchiseeSupply: 20,
+    competitiveLandscape: 20,
   },
-  // Pricing Power at 40, others split 60 / 5 = 12
-  "Pricing-Heavy": {
-    demand: 12,
-    pricingPower: 40,
-    competitiveLandscape: 12,
-    franchiseeSupply: 12,
-    easeOfOperations: 12,
-    parentMindset: 12,
+  // TAM Teachers (franchiseeSupply) dominant.
+  "TAM-Heavy": {
+    demand: 25,
+    franchiseeSupply: 50,
+    competitiveLandscape: 25,
   },
 };
 
 export const PRESET_DESCRIPTIONS: Record<PresetName, string> = {
-  "Balanced": "Equal weighting across all six scoring categories.",
-  "Demand-Heavy": "Demand is the dominant factor (40%). Other categories share the remaining 60% equally.",
-  "Pricing-Heavy": "Pricing Power is the dominant factor (40%). Other categories share the remaining 60% equally.",
+  "Balanced": "Roughly equal weighting across Demand, TAM Teachers, and Competitive Landscape.",
+  "Demand-Heavy": "Demand is the dominant factor (60%). TAM Teachers and Competitive Landscape share the rest.",
+  "TAM-Heavy": "TAM Teachers is the dominant factor (50%). Demand and Competitive Landscape share the rest.",
   "Custom": "Manually adjusted master weights — no preset matches.",
 };
 
-export const PRESET_NAMES: PresetName[] = ["Balanced", "Demand-Heavy", "Pricing-Heavy", "Custom"];
+export const PRESET_NAMES: PresetName[] = ["Balanced", "Demand-Heavy", "TAM-Heavy", "Custom"];
 
 // Returns the preset that exactly matches the given master weights (within ±1% tolerance per category),
 // or "Custom" if none match.

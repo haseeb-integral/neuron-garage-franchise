@@ -554,9 +554,94 @@ function FormulaPanel({
     </Tooltip>
   );
 
+  // Competitive Landscape is locked & sourced from Manus v2. The generic
+  // sub-metric × share math and the overall-city composite formula are not
+  // meaningful here — show the CSI formula and its inputs instead.
+  if (categoryKey === "competitiveLandscape") {
+    return (
+      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 text-[12px] text-[#07142f] leading-relaxed">
+        <section className="rounded-md border border-[#cfdcff] bg-[#f4f8ff] px-3 py-3">
+          <h4 className="text-[11px] font-bold uppercase tracking-wide text-[#174be8] mb-2">
+            Competitive Landscape formula{selectedCityLabel ? ` — ${selectedCityLabel}` : ""}
+          </h4>
+          <pre className="text-[11.5px] leading-relaxed text-[#07142f] whitespace-pre-wrap font-mono">
+{`CSI = (NB_STEM × 2.0 + NB_Other × 1.0 + Local_Estimate)
+      ÷  Demand_Adjusted_Market
+
+Local_Estimate         = elementary_enrollment × 0.003
+Demand_Adjusted_Market = elementary_enrollment × (median_HH_income ÷ 65,000)
+
+Contribution to composite = (100 − CSI) × Competitive Landscape master weight`}
+          </pre>
+          <p className="text-[10.5px] text-[#8794ab] italic mt-2 leading-snug">
+            CSI measures saturation: lower = less crowded = better opportunity. We invert it
+            to <span className="font-mono">(100 − CSI)</span> before feeding the composite so high
+            contribution = good, matching Demand and TAM Teachers.
+          </p>
+        </section>
+
+        <section>
+          <h4 className="text-[11px] font-bold uppercase tracking-wide text-[#526078] mb-1.5">
+            Inputs from Manus{selectedCityLabel ? ` — ${selectedCityLabel}` : ""}
+          </h4>
+          <div className="rounded border border-[#eef2f7] overflow-hidden">
+            <table className="w-full text-[11.5px] font-mono">
+              <thead className="bg-[#fafbfd] text-[#526078]">
+                <tr>
+                  <th className="text-left px-2 py-1.5 font-medium">Input</th>
+                  <th className="text-right px-2 py-1.5 font-medium">Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(previewRecompute?.contributions ?? []).map((c) => (
+                  <tr key={c.key} className="border-t border-[#eef2f7]">
+                    <td className="px-2 py-1 truncate max-w-[260px]" title={c.label}>{c.label}</td>
+                    <td className="px-2 py-1 text-right tabular-nums">
+                      {c.rawValue == null ? "—" : c.rawValue.toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+                {(!previewRecompute || previewRecompute.contributions.length === 0) && (
+                  <tr>
+                    <td colSpan={2} className="px-2 py-3 text-center text-[#8794ab] italic">
+                      Open this drawer from a selected city to see Manus inputs.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+              {serverCategoryScore != null && (
+                <tfoot className="bg-[#f7faff] border-t-2 border-[#eef2f7]">
+                  <tr>
+                    <td className="px-2 py-1.5 text-right font-semibold text-[#1a2540]">
+                      Competitive Landscape score (100 − CSI)
+                    </td>
+                    <td className="px-2 py-1.5 text-right font-bold tabular-nums text-[#174be8]">
+                      {serverCategoryScore.toFixed(1)}
+                    </td>
+                  </tr>
+                  {masterWeightPct != null && (
+                    <tr>
+                      <td className="px-2 py-1.5 text-right text-[#526078]">
+                        × master weight {masterWeightPct.toFixed(1)}% → composite contribution
+                      </td>
+                      <td className="px-2 py-1.5 text-right font-semibold tabular-nums text-[#174be8]">
+                        {((serverCategoryScore * masterWeightPct) / 100).toFixed(2)}
+                      </td>
+                    </tr>
+                  )}
+                </tfoot>
+              )}
+            </table>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <TooltipProvider delayDuration={150}>
     <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 text-[12px] text-[#07142f] leading-relaxed">
+
       {pendingEdits && (
         <div className="rounded border border-[#fde68a] bg-[#fffbe6] px-3 py-2 text-[11.5px] text-[#854d0e] leading-snug">
           <span className="font-semibold">Pending edits — not yet applied.</span>{" "}

@@ -207,13 +207,26 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         };
       }).filter(Boolean) as Array<Record<string, unknown>>;
 
-      // Chunked insert
+      // Chunked insert with progress
+      const CHUNK = 500;
+      const totalChunks = Math.max(1, Math.ceil(targetRows.length / CHUNK));
+      const tId = toast.loading(`Importing ${targetRows.length.toLocaleString()} rows… 0/${totalChunks}`);
       let inserted = 0;
-      for (let i = 0; i < targetRows.length; i += 500) {
-        const chunk = targetRows.slice(i, i + 500);
-        const { error } = await supabase.from("teacher_prospects").insert(chunk as never);
-        if (error) throw new Error(`chunk ${i}: ${error.message}`);
-        inserted += chunk.length;
+      try {
+        for (let i = 0; i < targetRows.length; i += CHUNK) {
+          const chunk = targetRows.slice(i, i + CHUNK);
+          const { error } = await supabase.from("teacher_prospects").insert(chunk as never);
+          if (error) throw new Error(`chunk starting at row ${i}: ${error.message}`);
+          inserted += chunk.length;
+          const done = Math.floor(i / CHUNK) + 1;
+          toast.loading(`Importing… ${done}/${totalChunks} (${inserted.toLocaleString()} rows)`, { id: tId });
+        }
+      } catch (e) {
+        await supabase.from("teacher_import_batches")
+          .update({ status: "failed", approved_count: inserted, record_count: targetRows.length, dedupe_stats: { error: (e as Error).message, inserted_before_failure: inserted } })
+          .eq("id", batch.id);
+        toast.error(`Import failed after ${inserted.toLocaleString()} rows: ${(e as Error).message}`, { id: tId });
+        throw e;
       }
 
       await supabase.from("teacher_import_batches")
@@ -221,10 +234,9 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         .eq("id", batch.id);
 
       setImportResult({ inserted, batch_id: batch.id });
-      toast.success(`Imported ${inserted.toLocaleString()} teachers into Master Pool`);
+      toast.success(`Imported ${inserted.toLocaleString()} teachers into Master Pool`, { id: tId });
 
       if (destination === "master_and_smartlead") {
-        // Preload campaigns for Step 5
         const { data } = await supabase.from("campaign_cache").select("id, name, status").order("name");
         setCampaigns((data ?? []) as SLCampaign[]);
         setStep(5);
@@ -233,6 +245,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         onClose();
       }
     } catch (e) {
+      console.error("Master pool import failed", e);
       toast.error((e as Error).message);
     } finally {
       setImporting(false);

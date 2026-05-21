@@ -215,7 +215,7 @@ async function runTool(
     }
     case "query_prospect_batches": {
       const limit = cap(args.limit, 15);
-      let q = supabase.from("prospect_batches").select("*").order("created_at", { ascending: false }).limit(limit);
+      let q = supabase.from("teacher_import_batches").select("*").order("created_at", { ascending: false }).limit(limit);
       if (args.status) q = q.eq("status", String(args.status));
       const { data, error } = await q;
       if (error) return { error: error.message };

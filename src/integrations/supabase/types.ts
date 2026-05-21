@@ -454,6 +454,72 @@ export type Database = {
         }
         Relationships: []
       }
+      enrichment_jobs: {
+        Row: {
+          auto_push: boolean
+          city: string | null
+          completed_at: string | null
+          created_at: string
+          error_summary: Json | null
+          failed_count: number
+          filter_payload: Json | null
+          id: string
+          notes: string | null
+          provider: string
+          requested_by: string | null
+          requested_count: number
+          smartlead_campaign_id: string | null
+          started_at: string | null
+          state: string | null
+          status: string
+          succeeded_count: number
+          total_cost_cents: number
+          updated_at: string
+        }
+        Insert: {
+          auto_push?: boolean
+          city?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error_summary?: Json | null
+          failed_count?: number
+          filter_payload?: Json | null
+          id?: string
+          notes?: string | null
+          provider?: string
+          requested_by?: string | null
+          requested_count?: number
+          smartlead_campaign_id?: string | null
+          started_at?: string | null
+          state?: string | null
+          status?: string
+          succeeded_count?: number
+          total_cost_cents?: number
+          updated_at?: string
+        }
+        Update: {
+          auto_push?: boolean
+          city?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error_summary?: Json | null
+          failed_count?: number
+          filter_payload?: Json | null
+          id?: string
+          notes?: string | null
+          provider?: string
+          requested_by?: string | null
+          requested_count?: number
+          smartlead_campaign_id?: string | null
+          started_at?: string | null
+          state?: string | null
+          status?: string
+          succeeded_count?: number
+          total_cost_cents?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       onboarding_records: {
         Row: {
           candidate_id: string | null
@@ -619,48 +685,6 @@ export type Database = {
         }
         Relationships: []
       }
-      prospect_batches: {
-        Row: {
-          approved_count: number
-          batch_name: string
-          campaign_id: string | null
-          city: string | null
-          created_at: string
-          id: string
-          record_count: number
-          segment: string | null
-          source: string | null
-          state: string | null
-          status: string
-        }
-        Insert: {
-          approved_count?: number
-          batch_name: string
-          campaign_id?: string | null
-          city?: string | null
-          created_at?: string
-          id?: string
-          record_count?: number
-          segment?: string | null
-          source?: string | null
-          state?: string | null
-          status?: string
-        }
-        Update: {
-          approved_count?: number
-          batch_name?: string
-          campaign_id?: string | null
-          city?: string | null
-          created_at?: string
-          id?: string
-          record_count?: number
-          segment?: string | null
-          source?: string | null
-          state?: string | null
-          status?: string
-        }
-        Relationships: []
-      }
       prospects_staging: {
         Row: {
           batch_id: string
@@ -712,7 +736,7 @@ export type Database = {
             foreignKeyName: "prospects_staging_batch_id_fkey"
             columns: ["batch_id"]
             isOneToOne: false
-            referencedRelation: "prospect_batches"
+            referencedRelation: "teacher_import_batches"
             referencedColumns: ["id"]
           },
         ]
@@ -926,20 +950,80 @@ export type Database = {
         }
         Relationships: []
       }
+      teacher_import_batches: {
+        Row: {
+          approved_count: number
+          batch_name: string
+          campaign_id: string | null
+          city: string | null
+          column_mapping: Json | null
+          created_at: string
+          dedupe_stats: Json | null
+          destination: string
+          id: string
+          record_count: number
+          segment: string | null
+          source: string | null
+          state: string | null
+          status: string
+          unmapped_columns: string[] | null
+        }
+        Insert: {
+          approved_count?: number
+          batch_name: string
+          campaign_id?: string | null
+          city?: string | null
+          column_mapping?: Json | null
+          created_at?: string
+          dedupe_stats?: Json | null
+          destination?: string
+          id?: string
+          record_count?: number
+          segment?: string | null
+          source?: string | null
+          state?: string | null
+          status?: string
+          unmapped_columns?: string[] | null
+        }
+        Update: {
+          approved_count?: number
+          batch_name?: string
+          campaign_id?: string | null
+          city?: string | null
+          column_mapping?: Json | null
+          created_at?: string
+          dedupe_stats?: Json | null
+          destination?: string
+          id?: string
+          record_count?: number
+          segment?: string | null
+          source?: string | null
+          state?: string | null
+          status?: string
+          unmapped_columns?: string[] | null
+        }
+        Relationships: []
+      }
       teacher_prospects: {
         Row: {
           apify_run_id: string | null
           city: string
           created_at: string
+          dedupe_key: string | null
           district: string | null
           donorschoose_id: string | null
           email: string | null
+          enrichment_cost_cents: number | null
+          enrichment_provider: string | null
           enrichment_source: string | null
           experience_years: number | null
+          first_name: string | null
           fit_score: number | null
           grade: string | null
           id: string
+          import_batch_id: string | null
           last_enriched_at: string | null
+          last_name: string | null
           linkedin_url: string | null
           name: string | null
           needs_email_enrichment: boolean
@@ -961,15 +1045,21 @@ export type Database = {
           apify_run_id?: string | null
           city: string
           created_at?: string
+          dedupe_key?: string | null
           district?: string | null
           donorschoose_id?: string | null
           email?: string | null
+          enrichment_cost_cents?: number | null
+          enrichment_provider?: string | null
           enrichment_source?: string | null
           experience_years?: number | null
+          first_name?: string | null
           fit_score?: number | null
           grade?: string | null
           id?: string
+          import_batch_id?: string | null
           last_enriched_at?: string | null
+          last_name?: string | null
           linkedin_url?: string | null
           name?: string | null
           needs_email_enrichment?: boolean
@@ -991,15 +1081,21 @@ export type Database = {
           apify_run_id?: string | null
           city?: string
           created_at?: string
+          dedupe_key?: string | null
           district?: string | null
           donorschoose_id?: string | null
           email?: string | null
+          enrichment_cost_cents?: number | null
+          enrichment_provider?: string | null
           enrichment_source?: string | null
           experience_years?: number | null
+          first_name?: string | null
           fit_score?: number | null
           grade?: string | null
           id?: string
+          import_batch_id?: string | null
           last_enriched_at?: string | null
+          last_name?: string | null
           linkedin_url?: string | null
           name?: string | null
           needs_email_enrichment?: boolean
@@ -1018,6 +1114,13 @@ export type Database = {
           verification_status?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "teacher_prospects_import_batch_id_fkey"
+            columns: ["import_batch_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_import_batches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "teacher_prospects_school_nces_id_fkey"
             columns: ["school_nces_id"]

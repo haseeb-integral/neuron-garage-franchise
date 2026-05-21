@@ -87,7 +87,7 @@ export function ImportLeadsWizard({ open, onClose, onComplete }: { open: boolean
   const goStep3 = async () => {
     if (!mapping.email) { toast.error("Map the 'email' column to continue."); return; }
     // create batch
-    const { data: batch, error } = await supabase.from("prospect_batches").insert({
+    const { data: batch, error } = await supabase.from("teacher_import_batches").insert({
       batch_name: batchName || `${source} • ${city || "—"} • ${new Date().toISOString().slice(0, 10)}`,
       source, city, state, segment, status: "pending", record_count: csvRows.length, approved_count: 0,
     }).select("id").single();
@@ -130,7 +130,7 @@ export function ImportLeadsWizard({ open, onClose, onComplete }: { open: boolean
       const { error } = await supabase.from("prospects_staging").insert(payload.slice(i, i + 500));
       if (error) { toast.error(`Failed to save staged rows: ${error.message}`); return; }
     }
-    await supabase.from("prospect_batches").update({ approved_count: approved }).eq("id", batchId);
+    await supabase.from("teacher_import_batches").update({ approved_count: approved }).eq("id", batchId);
     // fetch campaigns for destination dropdown
     try {
       const data = await callProxy("campaigns/", "GET");
@@ -155,7 +155,7 @@ export function ImportLeadsWizard({ open, onClose, onComplete }: { open: boolean
     if (!destCampaignId || !batchId) { toast.error("Pick a destination campaign."); return; }
     if (importing || sent) return; // hard guard against double-clicks / replays
     setImporting(true);
-    await supabase.from("prospect_batches").update({ status: "importing", campaign_id: destCampaignId }).eq("id", batchId);
+    await supabase.from("teacher_import_batches").update({ status: "importing", campaign_id: destCampaignId }).eq("id", batchId);
     const approved = staged.filter((r) => r.qa_status === "approved");
     const CHUNK = 400; let errors = 0;
     setProgress({ done: 0, total: approved.length, errors: 0 });
@@ -174,7 +174,7 @@ export function ImportLeadsWizard({ open, onClose, onComplete }: { open: boolean
       if (i + CHUNK < approved.length) await new Promise((r) => setTimeout(r, 500));
     }
     const finalStatus = errors === approved.length && approved.length > 0 ? "failed" : "complete";
-    await supabase.from("prospect_batches").update({ status: finalStatus }).eq("id", batchId);
+    await supabase.from("teacher_import_batches").update({ status: finalStatus }).eq("id", batchId);
     setImporting(false);
     setSent(true);
     setSentSummary({ ok: approved.length - errors, total: approved.length });

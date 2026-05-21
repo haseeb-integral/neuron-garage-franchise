@@ -46,7 +46,7 @@ export function ProspectBatchesPanel({ refreshKey = 0 }: { refreshKey?: number }
   const load = async () => {
     setLoading(true);
     const { data: rows } = await supabase
-      .from("prospect_batches").select("*").order("created_at", { ascending: false }).limit(50);
+      .from("teacher_import_batches").select("*").order("created_at", { ascending: false }).limit(50);
     const list = (rows ?? []) as Batch[];
     setBatches(list);
 

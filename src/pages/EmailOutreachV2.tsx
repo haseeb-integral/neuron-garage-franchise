@@ -26,6 +26,9 @@ import { ReplyTriagePanel } from "@/components/email-outreach/ReplyTriagePanel";
 import { AskAssistant } from "@/components/ask/AskAssistant";
 import { syncAndGetRealCampaigns } from "@/lib/smartleadCampaigns";
 import { getAnalyticsCachedOrFresh, type Aggregated } from "@/lib/smartleadAnalytics";
+import { ScopeSwitcher, readStoredScope, writeStoredScope, type PoolScope } from "@/components/email-outreach/ScopeSwitcher";
+import { StatStripCards } from "@/components/email-outreach/StatStripCards";
+import { PushToSmartLeadBanner } from "@/components/email-outreach/PushToSmartLeadBanner";
 
 type SLCampaign = { id: number | string; name?: string; status?: string; created_at?: string };
 
@@ -61,6 +64,13 @@ export default function EmailOutreachV2() {
   const [queueCounts, setQueueCounts] = useState<{ inOutreach: number; promoted: number } | null>(null);
   const [analytics, setAnalytics] = useState<Aggregated | null>(null);
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+
+  // v1.2 — scope toggle between Master Teacher DB and SmartLead
+  const [scope, setScope] = useState<PoolScope>(() => readStoredScope());
+  const [masterTotal, setMasterTotal] = useState<number | null>(null);
+  const [smartleadTotal, setSmartleadTotal] = useState<number | null>(null);
+  const [verifiedInMaster, setVerifiedInMaster] = useState<number | null>(null);
+  const handleScopeChange = (s: PoolScope) => { setScope(s); writeStoredScope(s); };
 
   const loadCampaigns = async () => {
     setCampaignsLoading(true);
@@ -98,6 +108,25 @@ export default function EmailOutreachV2() {
   };
 
   useEffect(() => { loadCampaigns(); loadStats(); }, []);
+
+  // Pre-fetch BOTH scope totals so the ScopeSwitcher always shows the inactive pool's count too.
+  useEffect(() => {
+    (async () => {
+      try {
+        const [{ count: masterCount }, { data: pushedRows }, { count: verified }] = await Promise.all([
+          supabase.from("teacher_prospects").select("*", { count: "exact", head: true }),
+          supabase.from("outreach_queue").select("teacher_prospect_id").not("pushed_at", "is", null),
+          supabase.from("teacher_prospects").select("*", { count: "exact", head: true }).eq("verification_status", "valid"),
+        ]);
+        setMasterTotal(masterCount ?? 0);
+        const unique = new Set((pushedRows ?? []).map((r) => r.teacher_prospect_id));
+        setSmartleadTotal(unique.size);
+        setVerifiedInMaster(verified ?? 0);
+      } catch {
+        // non-fatal — switcher just shows "—"
+      }
+    })();
+  }, []);
 
   const safeToast = (message: string) => toast.info(message);
 
@@ -156,7 +185,17 @@ export default function EmailOutreachV2() {
       </div>
     </div>
 
-    {/* Stat strip — compact */}
+    {/* v1.2 — Scope toggle + SmartLead-parity stat strip */}
+    <ScopeSwitcher scope={scope} onChange={handleScopeChange} masterCount={masterTotal} smartleadCount={smartleadTotal} />
+    <StatStripCards scope={scope} />
+    {scope === "master_db" && (
+      <PushToSmartLeadBanner
+        verifiedCount={verifiedInMaster}
+        onPush={() => toast.info("Push-to-SmartLead modal lands in Sprint 2.")}
+      />
+    )}
+
+    {/* Stat strip — compact (legacy, will consolidate in Sprint 3) */}
     <div className="mb-3 grid gap-1.5 md:grid-cols-3 xl:grid-cols-6">
       {stats.map(({ Icon, label, value, sub, tone, loading, error }) => (
         <Card key={label} className="px-2.5 py-1.5">

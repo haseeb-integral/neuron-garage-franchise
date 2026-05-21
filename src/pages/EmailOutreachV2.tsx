@@ -72,6 +72,7 @@ export default function EmailOutreachV2() {
   const [smartleadTotal, setSmartleadTotal] = useState<number | null>(null);
   const [verifiedInMaster, setVerifiedInMaster] = useState<number | null>(null);
   const handleScopeChange = (s: PoolScope) => { setScope(s); writeStoredScope(s); };
+  const [pushModalOpen, setPushModalOpen] = useState(false);
 
   const loadCampaigns = async () => {
     setCampaignsLoading(true);

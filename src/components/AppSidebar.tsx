@@ -17,7 +17,7 @@ const utilityNavItems = [
   { title: "User's Guide", url: "/users-guide", icon: BookOpen },
   { title: "SmartLead API Spec", url: "/smartlead-spec", icon: Send },
   { title: "Outreach Guide", url: "/email-outreach-docs", icon: MailOpen },
-  { title: "Demographics Methodology", url: "/demographics-methodology", icon: BarChart3 },
+  { title: "Demographics Method", url: "/demographics-methodology", icon: BarChart3 },
   { title: "Full Specification", url: "/spec", icon: FileText },
 ];
 

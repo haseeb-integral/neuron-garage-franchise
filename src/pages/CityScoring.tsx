@@ -1842,7 +1842,17 @@ const CityScoring = () => {
               )
             : []
         }
+        overallFormula={{
+          parts: VISIBLE_CATEGORIES.map((c) => ({
+            key: c.key,
+            label: c.label,
+            score: detailCategoryScores[c.key] ?? null,
+            weightPct: appliedTotal > 0 ? (appliedWeights[c.key] / appliedTotal) * 100 : 0,
+          })),
+          composite: weightedComposite ?? null,
+        }}
       />
+
 
       {/* AI-powered natural-language search (Lovable AI Gateway) */}
       <AskAiBar

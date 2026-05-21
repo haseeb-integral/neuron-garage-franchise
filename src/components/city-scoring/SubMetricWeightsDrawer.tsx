@@ -34,6 +34,11 @@ interface Props {
   currentComposite?: number; // composite before Apply (for delta toast)
   computeNewComposite?: (newCategoryScore: number) => number; // recompute composite swapping in new category score
   customMetricsForCategory?: CustomCriterionRow[]; // user-added metrics in this category
+  // Optional: full city-level breakdown for the "Overall city formula" line.
+  overallFormula?: {
+    parts: Array<{ key: CategoryKey; label: string; score: number | null; weightPct: number }>;
+    composite: number | null;
+  };
 }
 
 const STATUS_PILL: Record<SowMetricEntry["status"], { label: string; cls: string }> = {
@@ -43,15 +48,27 @@ const STATUS_PILL: Record<SowMetricEntry["status"], { label: string; cls: string
   blocked: { label: "Unavailable", cls: "bg-gray-200 text-gray-600" },
 };
 
+// Provenance line shown at the top of each drawer so anyone reading knows
+// where the default sub-weights came from. TAM Teachers: locked May 21 2026
+// by Brett + Haseeb (see sowMetricRegistry.ts line ~162).
+const PROVENANCE_BY_CATEGORY: Partial<Record<CategoryKey, string>> = {
+  franchiseeSupply:
+    "Default weights locked 2026-05-21 by Brett + Haseeb: 20 / 25 / 15 / 15 / 25. Edit below and click Apply.",
+};
+const DEFAULT_PROVENANCE =
+  "Default weights from the scoring registry. Edit below and click Apply.";
+
 const fmt = (n: number | null | undefined, decimals = 1) =>
   n == null || !Number.isFinite(n) ? "—" : n.toFixed(decimals);
+
 
 export function SubMetricWeightsDrawer({
   open, onOpenChange, categoryKey, categoryLabel, categoryColor, categoryBg,
   selectedCityLabel, rawValuesByKey, serverCategoryScore, masterWeightPct,
   masterWeightPendingPct, currentCategoryScore, currentComposite, computeNewComposite,
-  customMetricsForCategory,
+  customMetricsForCategory, overallFormula,
 }: Props) {
+
   const subWeights = useCityScoringStore((s) => s.subWeights);
   const setSubWeight = useCityScoringStore((s) => s.setSubWeight);
   const appliedSubWeights = useCityScoringStore((s) => s.appliedSubWeights);
@@ -128,7 +145,7 @@ export function SubMetricWeightsDrawer({
       : oldComp;
 
     if (enabledSum <= 0) {
-      toast.success(`${categoryLabel} reset — using server score as fallback`, { duration: 4000 });
+      toast.success(`${categoryLabel} — all sub-weights are 0. Raise at least one slider to compute a live score.`, { duration: 4000 });
     } else if (oldCat != null && newCatRounded != null) {
       const catLine = `${categoryLabel} updated: ${oldCat.toFixed(0)} → ${newCatRounded}`;
       const compLine = oldComp != null && newComp != null && oldComp !== newComp
@@ -184,7 +201,11 @@ export function SubMetricWeightsDrawer({
               Hover the <Info size={11} className="inline -mt-0.5" /> icon for what each metric means.
             </p>
           )}
+          <p className="text-[10.5px] leading-snug text-[#526078] italic">
+            {PROVENANCE_BY_CATEGORY[categoryKey] ?? DEFAULT_PROVENANCE}
+          </p>
         </SheetHeader>
+
 
         {view === "weights" ? (
           <TooltipProvider delayDuration={150}>
@@ -381,7 +402,9 @@ export function SubMetricWeightsDrawer({
             masterWeightPendingPct={masterWeightPendingPct ?? null}
             enabledSum={enabledSum}
             pendingEdits={pendingEdits}
+            overallFormula={overallFormula}
           />
+
         )}
 
         <AlertDialog open={confirmDeleteId !== null} onOpenChange={(o) => !o && setConfirmDeleteId(null)}>
@@ -413,7 +436,7 @@ export function SubMetricWeightsDrawer({
 
         <div className="border-t border-[#eef2f7] px-5 py-3 flex items-center justify-between gap-3 bg-[#fafbfd]">
           <p className="text-[10.5px] text-[#8794ab] leading-snug max-w-[260px]">
-            Auto-normalized to 100% on save. Empty category falls back to server score.
+            Auto-normalized to 100% on save. If all sub-weights are 0, the live score won't update until you raise one.
           </p>
           <div className="flex items-center gap-2">
             <Button
@@ -450,6 +473,7 @@ function FormulaPanel({
   masterWeightPendingPct,
   enabledSum,
   pendingEdits,
+  overallFormula,
 }: {
   categoryLabel: string;
   selectedCityLabel?: string;
@@ -459,7 +483,12 @@ function FormulaPanel({
   masterWeightPendingPct: number | null;
   enabledSum: number;
   pendingEdits: boolean;
+  overallFormula?: {
+    parts: Array<{ key: CategoryKey; label: string; score: number | null; weightPct: number }>;
+    composite: number | null;
+  };
 }) {
+
   const compositeContribution =
     previewRecompute?.score != null && masterWeightPct != null
       ? (previewRecompute.score * masterWeightPct) / 100
@@ -500,6 +529,16 @@ function FormulaPanel({
           The numbers below preview what scores would become if you click <em>Save &amp; Recalculate</em>.
         </div>
       )}
+
+      {/* Two-line formula panel (added 2026-05-21) — simple at-a-glance math.
+          Detailed Step 1/2/3 recipe and Live Values table still rendered below. */}
+      <TwoLineFormulaPanel
+        categoryLabel={categoryLabel}
+        cityLabel={selectedCityLabel}
+        previewRecompute={previewRecompute}
+        overallFormula={overallFormula}
+      />
+
       <section>
         <h4 className="text-[11px] font-bold uppercase tracking-wide text-[#526078] mb-2">
           How {selectedCityLabel ? `${selectedCityLabel} got its` : "this"} {categoryLabel} score
@@ -515,6 +554,7 @@ function FormulaPanel({
           masterWeightPct={masterWeightPct}
           serverCategoryScore={serverCategoryScore}
         />
+
       </section>
 
 
@@ -558,7 +598,6 @@ function FormulaPanel({
                   <tr>
                     <td colSpan={4} className="px-2 py-1.5 text-right font-semibold text-[#1a2540]">
                       {categoryLabel} score
-                      {previewRecompute.usedServerFallback && " (server fallback)"}
                     </td>
                     <td className="px-2 py-1.5 text-right font-bold tabular-nums text-[#1a2540]">
                       {previewRecompute.score == null ? "—" : previewRecompute.score.toFixed(1)}
@@ -584,13 +623,14 @@ function FormulaPanel({
                   {serverCategoryScore != null && (
                     <tr>
                       <td colSpan={4} className="px-2 py-1.5 text-right text-[#8794ab]">
-                        Server-stored {categoryLabel} score (fallback)
+                        Last stored {categoryLabel} score (for reference)
                       </td>
                       <td className="px-2 py-1.5 text-right tabular-nums text-[#8794ab]">
                         {fmt(serverCategoryScore, 0)}
                       </td>
                     </tr>
                   )}
+
                 </tfoot>
               </table>
             </div>
@@ -634,21 +674,36 @@ function RecipeBlock({
       ? (categoryScore * masterWeightPct) / 100
       : null;
 
-  // All-fallback case (no usable sub-weights)
+  // No usable sub-metrics. Two honest states (no "server fallback" wording):
+  //   (a) every metric value is null for this city → name the gap
+  //   (b) all sub-weights are zero → tell the user to move a slider
   if (used.length === 0) {
+    const anyRawValue = contribs.some((c) => c.rawValue != null && Number.isFinite(c.rawValue));
+    const allZeroWeights = !anyRawValue ? false : true; // if we have data but nothing used → weights are zero
+    const missingLabels = contribs.filter((c) => c.rawValue == null).map((c) => c.label);
     return (
-      <div className="rounded border border-[#fde68a] bg-[#fffbe6] px-3 py-2.5 text-[12px] text-[#854d0e] leading-snug">
-        <strong>All metrics unavailable</strong> — using the server's stored {categoryLabel} score of{" "}
-        <strong>{serverCategoryScore != null ? Math.round(serverCategoryScore) : "—"}</strong> as a fallback.
-        {masterWeightPct != null && categoryScore != null && (
-          <div className="mt-1.5 text-[#7c2d12]">
-            This category is <strong>{masterWeightPct.toFixed(0)}%</strong> of the overall city score, so it contributes{" "}
-            <strong>{((categoryScore * masterWeightPct) / 100).toFixed(1)} points</strong>.
-          </div>
+      <div className="rounded border border-[#e5eaf2] bg-[#f7faff] px-3 py-2.5 text-[12px] text-[#1a2540] leading-snug">
+        {allZeroWeights ? (
+          <>
+            <strong>All sub-weights are set to 0.</strong> Move at least one slider above 0
+            and click <em>Save &amp; Recalculate</em> to compute a live {categoryLabel} score.
+          </>
+        ) : (
+          <>
+            <strong>This city is missing raw data for:</strong>{" "}
+            {missingLabels.length > 0 ? missingLabels.join(", ") : "every metric in this category"}.
+            {serverCategoryScore != null && (
+              <>
+                {" "}Last stored {categoryLabel} score:{" "}
+                <strong>{Math.round(serverCategoryScore)}</strong>.
+              </>
+            )}
+          </>
         )}
       </div>
     );
   }
+
 
   // Step 1 + 2 + 3 recipe with real numbers
   return (
@@ -739,5 +794,102 @@ function RecipeBlock({
       )}
     </div>
   );
+}
+
+// ─────────────── Two-line Show Formula panel (added 2026-05-21) ───────────────
+// Renders one math line for the current category and one for the overall city
+// composite. Inputs (normalized 0–100 scores) × weights = output. No fallback
+// language, no extra story — the formula speaks for itself.
+function TwoLineFormulaPanel({
+  categoryLabel,
+  cityLabel,
+  previewRecompute,
+  overallFormula,
+}: {
+  categoryLabel: string;
+  cityLabel?: string;
+  previewRecompute: ReturnType<typeof recomputeCategoryScore> | null;
+  overallFormula?: {
+    parts: Array<{ key: CategoryKey; label: string; score: number | null; weightPct: number }>;
+    composite: number | null;
+  };
+}) {
+  const categoryParts = previewRecompute?.contributions.filter((c) => c.used) ?? [];
+  const categoryScore = previewRecompute?.score ?? null;
+
+  return (
+    <section className="rounded-md border border-[#cfdcff] bg-[#f4f8ff] px-3 py-3 space-y-3">
+      <h4 className="text-[11px] font-bold uppercase tracking-wide text-[#174be8]">
+        Show formula{cityLabel ? ` — ${cityLabel}` : ""}
+      </h4>
+
+      {/* Line 1 — category formula */}
+      <div>
+        <div className="text-[11px] font-semibold text-[#1a2540] mb-1">
+          {categoryLabel} category formula
+        </div>
+        {categoryParts.length === 0 ? (
+          <div className="text-[11.5px] italic text-[#8794ab]">
+            No metric inputs available for this city/category yet.
+          </div>
+        ) : (
+          <div className="text-[12px] font-mono text-[#1a2540] leading-relaxed break-words">
+            {categoryParts.map((c, i) => (
+              <span key={c.key}>
+                {i > 0 ? " + " : ""}
+                <span className="whitespace-nowrap">
+                  ({shortLabel(c.label)}{" "}
+                  <span className="text-[#174be8] font-semibold">
+                    {c.normalized == null ? "—" : c.normalized.toFixed(0)}
+                  </span>{" "}
+                  × <span className="text-[#526078]">{(c.subShare * 100).toFixed(0)}%</span>)
+                </span>
+              </span>
+            ))}
+            {" = "}
+            <span className="font-bold text-[14px] text-[#174be8]">
+              {categoryScore == null ? "—" : categoryScore.toFixed(1)}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Line 2 — overall city composite formula */}
+      <div className="pt-2 border-t border-[#cfdcff]">
+        <div className="text-[11px] font-semibold text-[#1a2540] mb-1">
+          Overall city formula{cityLabel ? ` — ${cityLabel}` : ""}
+        </div>
+        {!overallFormula || overallFormula.parts.length === 0 ? (
+          <div className="text-[11.5px] italic text-[#8794ab]">
+            No composite breakdown available.
+          </div>
+        ) : (
+          <div className="text-[12px] font-mono text-[#1a2540] leading-relaxed break-words">
+            {overallFormula.parts.map((p, i) => (
+              <span key={p.key}>
+                {i > 0 ? " + " : ""}
+                <span className="whitespace-nowrap">
+                  {shortLabel(p.label)}{" "}
+                  <span className="text-[#174be8] font-semibold">
+                    {p.score == null ? "—" : Math.round(p.score)}
+                  </span>{" "}
+                  × <span className="text-[#526078]">{p.weightPct.toFixed(0)}%</span>
+                </span>
+              </span>
+            ))}
+            {" = "}
+            <span className="font-bold text-[14px] text-[#174be8]">
+              {overallFormula.composite == null ? "—" : overallFormula.composite}
+            </span>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+// Trim long metric labels so the one-line formula stays readable.
+function shortLabel(label: string): string {
+  return label.length > 28 ? label.slice(0, 26) + "…" : label;
 }
 

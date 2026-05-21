@@ -28,6 +28,7 @@ import { MarketDetailDrawer } from "@/components/city-scoring/MarketDetailDrawer
 import { MarketCompareModal } from "@/components/city-scoring/MarketCompareModal";
 import { AddCityModal } from "@/components/city-scoring/AddCityModal";
 import { MarketReportModal } from "@/components/city-scoring/MarketReportModal";
+import CitySpreadsheetView from "@/components/city-scoring/CitySpreadsheetView";
 import { SourceDataPanel } from "@/components/city-scoring/SourceDataPanel";
 // NearbyMarketsPanel removed from /city-scoring 2026-05-21 (its slot now hosts Key Market Signals).
 import { MarketsMap } from "@/components/city-scoring/MarketsMap";
@@ -249,6 +250,16 @@ const CityScoring = () => {
   const setAppliedSubWeights = useCityScoringStore((s) => s.setAppliedSubWeights);
   const resetSubWeights = useCityScoringStore((s) => s.resetSubWeights);
   const [openSubMetricsFor, setOpenSubMetricsFor] = useState<CategoryKey | null>(null);
+  const [screenMode, setScreenMode] = useState<"dashboard" | "spreadsheet">(() => {
+    if (typeof window === "undefined") return "dashboard";
+    return (window.localStorage.getItem("citySearch.screenMode") as any) === "spreadsheet"
+      ? "spreadsheet"
+      : "dashboard";
+  });
+  const updateScreenMode = (m: "dashboard" | "spreadsheet") => {
+    setScreenMode(m);
+    try { window.localStorage.setItem("citySearch.screenMode", m); } catch {}
+  };
   const [cityFilter, setCityFilter] = useState("");
   const [stateOpen, setStateOpen] = useState(false);
   // Snapshot of the user's manually-tuned ("Custom") weights so switching to a
@@ -1689,6 +1700,36 @@ const CityScoring = () => {
         </div>
       </div>
 
+      {/* Screen mode toggle: Dashboard vs Spreadsheet */}
+      <div className="mb-3 flex items-center gap-1 rounded-lg border border-[#eef2f7] bg-white p-1 w-fit">
+        {(["dashboard", "spreadsheet"] as const).map((v) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => updateScreenMode(v)}
+            className={`px-3 h-7 rounded-md text-[11.5px] font-semibold transition-colors ${
+              screenMode === v ? "bg-[#174be8] text-white" : "text-[#526078] hover:bg-[#f3f6fc]"
+            }`}
+          >
+            {v === "dashboard" ? "Dashboard" : "Spreadsheet"}
+          </button>
+        ))}
+      </div>
+
+      {screenMode === "spreadsheet" && (
+        <CitySpreadsheetView
+          markets={baseRankedMarkets}
+          onExportCsv={buildCsvDownload}
+          onOpenCity={(m) => {
+            setSelectedMarketKey({ city: m.city, state: m.state });
+            setSelectedId(m.id);
+            setDetailDrawerOpen(true);
+          }}
+        />
+      )}
+
+      {screenMode === "dashboard" && (
+      <>
       {/* Scoring Weights */}
       <div className="mb-4 rounded-lg bg-white border border-[#eef2f7] p-4">
         <div className="mb-3 flex items-start justify-between gap-4">
@@ -2537,6 +2578,10 @@ const CityScoring = () => {
         </div>
       </div>
       )}
+      </>
+      )}
+
+
 
       <AddCriteriaDrawer
         open={addCritOpen}

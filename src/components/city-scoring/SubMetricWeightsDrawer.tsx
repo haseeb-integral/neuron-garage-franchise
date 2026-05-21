@@ -412,6 +412,7 @@ export function SubMetricWeightsDrawer({
               )}
             </div>
           </TooltipProvider>
+          )
         ) : (
           <FormulaPanel
             categoryKey={categoryKey}

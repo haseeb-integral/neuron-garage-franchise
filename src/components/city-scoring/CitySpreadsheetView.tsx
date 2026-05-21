@@ -11,18 +11,17 @@ import {
 } from "@/components/ui/select";
 import type { RankedMarket } from "@/lib/cityScoringLiveData";
 
-type SortKey =
-  | "state"
-  | "city"
-  | "population"
-  | "districts"
-  | "elem_schools"
-  | "median_income"
-  | "college_pct"
-  | "elem_enrollment"
-  | "col_index"
-  | "metro_income"
-  | "composite";
+type ColDef = {
+  key: string;
+  label: string;
+  align: "left" | "right";
+  group?: string;
+  // Extract sort value (number | string | null)
+  get: (m: RankedMarket, rank: number) => number | string | null;
+  // Render display
+  render: (m: RankedMarket, rank: number) => React.ReactNode;
+  className?: string;
+};
 
 type SortDir = "asc" | "desc";
 
@@ -52,40 +51,201 @@ const fmtNum1 = (v: any) =>
     ? "—"
     : Number(v).toFixed(1);
 
-function getValue(m: RankedMarket, key: SortKey): number | string | null {
-  const row: any = (m as any).scoredRow ?? {};
-  switch (key) {
-    case "state":
-      return m.state ?? "";
-    case "city":
-      return m.city ?? "";
-    case "population":
-      return m.population ?? row.population ?? null;
-    case "districts":
-      return row.school_district_count ?? null;
-    case "elem_schools":
-      return row.public_elementary_count ?? null;
-    case "median_income":
-      return row.median_household_income ?? null;
-    case "college_pct":
-      return row.college_degree_pct ?? null;
-    case "elem_enrollment":
-      return row.public_elementary_enrollment ?? null;
-    case "col_index":
-      return row.cost_of_living_index ?? null;
-    case "metro_income":
-      return row.median_household_income ?? null;
-    case "composite":
-      return m.compositeScore ?? null;
-  }
+const fmtNum2 = (v: any) =>
+  v == null || v === "" || Number.isNaN(Number(v))
+    ? "—"
+    : Number(v).toFixed(2);
+
+const tierBg: Record<string, string> = {
+  A: "bg-[#dcfce7] text-[#0a7c3a]",
+  B: "bg-[#dbeafe] text-[#174be8]",
+  C: "bg-[#fef3c7] text-[#a16207]",
+  D: "bg-[#fee2e2] text-[#b91c1c]",
+};
+
+function row(m: RankedMarket): any {
+  return (m as any).scoredRow ?? {};
 }
+function cat(m: RankedMarket, k: string): number | null {
+  const v = (m.categoryScores as any)?.[k];
+  return v == null ? null : Number(v);
+}
+
+const COLUMNS: ColDef[] = [
+  {
+    key: "rank", label: "#", align: "right",
+    get: (_m, r) => r,
+    render: (_m, r) => <span className="text-[#8794ab]">{r}</span>,
+  },
+  {
+    key: "state", label: "State", align: "left",
+    get: (m) => m.state ?? "",
+    render: (m) => (
+      <span className="inline-block rounded bg-[#eef2f7] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#526078]">
+        {m.state || "—"}
+      </span>
+    ),
+  },
+  {
+    key: "city", label: "City", align: "left",
+    get: (m) => m.city ?? "",
+    render: () => null, // rendered specially (link)
+  },
+  {
+    key: "county", label: "County", align: "left",
+    get: (m) => (m as any).county ?? "",
+    render: (m) => <span className="text-[#526078]">{(m as any).county ?? "—"}</span>,
+  },
+  {
+    key: "metro", label: "Metro Area", align: "left",
+    get: (m) => (m as any).metroArea ?? "",
+    render: (m) => <span className="text-[#526078]">{(m as any).metroArea ?? "—"}</span>,
+  },
+  {
+    key: "marketType", label: "Type", align: "left",
+    get: (m) => (m as any).marketType ?? "",
+    render: (m) => (
+      <span className="inline-block rounded-full bg-[#eaf0ff] text-[#174be8] text-[10px] font-medium px-1.5 py-0.5">
+        {(m as any).marketType ?? "—"}
+      </span>
+    ),
+  },
+  {
+    key: "tier", label: "Tier", align: "left",
+    get: (m) => m.tier ?? "",
+    render: (m) => (
+      <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-bold ${tierBg[m.tier as string] ?? "bg-[#eef2f7] text-[#526078]"}`}>
+        {m.tier || "—"}
+      </span>
+    ),
+  },
+  {
+    key: "composite", label: "Composite", align: "right", group: "Scores",
+    get: (m) => m.compositeScore ?? null,
+    render: (m) => <span className="font-semibold text-[#07142f]">{fmtNum1(m.compositeScore)}</span>,
+  },
+  {
+    key: "score_demand", label: "Demand", align: "right", group: "Scores",
+    get: (m) => cat(m, "demand"),
+    render: (m) => fmtNum1(cat(m, "demand")),
+  },
+  {
+    key: "score_tam", label: "TAM Teachers", align: "right", group: "Scores",
+    get: (m) => cat(m, "franchiseeSupply"),
+    render: (m) => fmtNum1(cat(m, "franchiseeSupply")),
+  },
+  {
+    key: "score_csi_opp", label: "Comp. Opportunity", align: "right", group: "Scores",
+    get: (m) => cat(m, "competitiveLandscape"),
+    render: (m) => fmtNum1(cat(m, "competitiveLandscape")),
+  },
+  // Demand inputs
+  {
+    key: "population", label: "Population", align: "right", group: "Demand",
+    get: (m) => m.population ?? row(m).population ?? null,
+    render: (m) => fmtInt(m.population ?? row(m).population),
+  },
+  {
+    key: "children_5_12", label: "Children 5–12", align: "right", group: "Demand",
+    get: (m) => row(m).children_5_12 ?? null,
+    render: (m) => fmtInt(row(m).children_5_12),
+  },
+  {
+    key: "median_income", label: "Median HH Income", align: "right", group: "Demand",
+    get: (m) => row(m).median_household_income ?? null,
+    render: (m) => <span className="text-[#0ea66e] font-medium">{fmtMoney(row(m).median_household_income)}</span>,
+  },
+  {
+    key: "dual_income_pct", label: "Dual-Income %", align: "right", group: "Demand",
+    get: (m) => row(m).dual_working_families_pct ?? null,
+    render: (m) => fmtPct(row(m).dual_working_families_pct),
+  },
+  {
+    key: "college_pct", label: "College %", align: "right", group: "Demand",
+    get: (m) => row(m).college_degree_pct ?? null,
+    render: (m) => fmtPct(row(m).college_degree_pct),
+  },
+  // TAM Teachers
+  {
+    key: "districts", label: "Districts", align: "right", group: "TAM Teachers",
+    get: (m) => row(m).school_district_count ?? null,
+    render: (m) => fmtInt(row(m).school_district_count),
+  },
+  {
+    key: "elem_schools", label: "Public Elem. Schools", align: "right", group: "TAM Teachers",
+    get: (m) => row(m).public_elementary_count ?? null,
+    render: (m) => fmtInt(row(m).public_elementary_count),
+  },
+  {
+    key: "priv_charter", label: "Private+Charter Elem.", align: "right", group: "TAM Teachers",
+    get: (m) => {
+      const r = row(m);
+      const v = (r.private_elementary_count ?? 0) + (r.charter_elementary_count ?? 0);
+      return v || null;
+    },
+    render: (m) => {
+      const r = row(m);
+      const v = (r.private_elementary_count ?? 0) + (r.charter_elementary_count ?? 0);
+      return fmtInt(v || null);
+    },
+  },
+  {
+    key: "elem_teachers", label: "Elem. Teachers (FTE)", align: "right", group: "TAM Teachers",
+    get: (m) => row(m).public_elementary_teacher_count ?? null,
+    render: (m) => fmtInt(row(m).public_elementary_teacher_count),
+  },
+  {
+    key: "elem_enrollment", label: "Elem. Enrollment", align: "right", group: "TAM Teachers",
+    get: (m) => row(m).public_elementary_enrollment ?? null,
+    render: (m) => fmtInt(row(m).public_elementary_enrollment),
+  },
+  {
+    key: "col_index", label: "COL Index", align: "right", group: "TAM Teachers",
+    get: (m) => row(m).cost_of_living_index ?? null,
+    render: (m) => fmtNum1(row(m).cost_of_living_index),
+  },
+  // Competitive Landscape
+  {
+    key: "competitors", label: "Camps (count)", align: "right", group: "Competitive Landscape",
+    get: (m) => m.competitorCount ?? row(m).summer_camp_count ?? null,
+    render: (m) => fmtInt(m.competitorCount ?? row(m).summer_camp_count),
+  },
+  {
+    key: "csi_brand", label: "Nat'l Brand Supply (wtd)", align: "right", group: "Competitive Landscape",
+    get: (m) => row(m).csi_national_brand_count_weighted ?? null,
+    render: (m) => fmtNum2(row(m).csi_national_brand_count_weighted),
+  },
+  {
+    key: "csi_local", label: "Local Provider Est.", align: "right", group: "Competitive Landscape",
+    get: (m) => row(m).csi_local_provider_estimate ?? null,
+    render: (m) => fmtNum2(row(m).csi_local_provider_estimate),
+  },
+  {
+    key: "csi_dam", label: "Demand-Adj. Market", align: "right", group: "Competitive Landscape",
+    get: (m) => row(m).csi_demand_adjusted_market ?? null,
+    render: (m) => fmtInt(row(m).csi_demand_adjusted_market),
+  },
+  {
+    key: "csi_raw", label: "CSI (raw)", align: "right", group: "Competitive Landscape",
+    get: (m) => row(m).csi_score ?? null,
+    render: (m) => {
+      const v = row(m).csi_score;
+      return v == null ? "—" : Number(v).toFixed(5);
+    },
+  },
+  {
+    key: "csi_sat", label: "Saturation", align: "left", group: "Competitive Landscape",
+    get: (m) => row(m).csi_saturation_category ?? "",
+    render: (m) => <span className="text-[#526078]">{row(m).csi_saturation_category ?? "—"}</span>,
+  },
+];
 
 export default function CitySpreadsheetView({ markets, onOpenCity, onExportCsv }: Props) {
   const [search, setSearch] = useState("");
   const [stateFilter, setStateFilter] = useState<string>("All");
   const [pageSize, setPageSize] = useState<number>(50);
   const [page, setPage] = useState(1);
-  const [sortKey, setSortKey] = useState<SortKey>("composite");
+  const [sortKey, setSortKey] = useState<string>("composite");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const states = useMemo(() => {
@@ -106,11 +266,22 @@ export default function CitySpreadsheetView({ markets, onOpenCity, onExportCsv }
     });
   }, [markets, search, stateFilter]);
 
+  // Pre-rank markets by composite (desc) so the # column is stable
+  const rankedAll = useMemo(() => {
+    return [...markets]
+      .sort((a, b) => (b.compositeScore ?? 0) - (a.compositeScore ?? 0))
+      .reduce<Map<number | string, number>>((acc, m, i) => {
+        acc.set(m.id, i + 1);
+        return acc;
+      }, new Map());
+  }, [markets]);
+
+  const col = COLUMNS.find((c) => c.key === sortKey) ?? COLUMNS.find((c) => c.key === "composite")!;
   const sorted = useMemo(() => {
     const arr = [...filtered];
     arr.sort((a, b) => {
-      const av = getValue(a, sortKey);
-      const bv = getValue(b, sortKey);
+      const av = col.get(a, rankedAll.get(a.id) ?? 0);
+      const bv = col.get(b, rankedAll.get(b.id) ?? 0);
       const aNull = av == null || av === "";
       const bNull = bv == null || bv === "";
       if (aNull && bNull) return 0;
@@ -122,7 +293,7 @@ export default function CitySpreadsheetView({ markets, onOpenCity, onExportCsv }
       return sortDir === "asc" ? cmp : -cmp;
     });
     return arr;
-  }, [filtered, sortKey, sortDir]);
+  }, [filtered, col, sortDir, rankedAll]);
 
   const total = sorted.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -131,30 +302,13 @@ export default function CitySpreadsheetView({ markets, onOpenCity, onExportCsv }
   const end = Math.min(start + pageSize, total);
   const pageItems = sorted.slice(start, end);
 
-  const toggleSort = (key: SortKey) => {
+  const toggleSort = (key: string) => {
     if (sortKey === key) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     } else {
       setSortKey(key);
-      setSortDir(key === "city" || key === "state" ? "asc" : "desc");
+      setSortDir(key === "city" || key === "state" || key === "county" || key === "metro" ? "asc" : "desc");
     }
-  };
-
-  const Sortable = ({ k, label, align = "left" }: { k: SortKey; label: string; align?: "left" | "right" }) => {
-    const active = sortKey === k;
-    const Icon = !active ? ChevronsUpDown : sortDir === "asc" ? ChevronUp : ChevronDown;
-    return (
-      <button
-        type="button"
-        onClick={() => toggleSort(k)}
-        className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-[#526078] hover:text-[#07142f] ${
-          align === "right" ? "justify-end w-full" : ""
-        }`}
-      >
-        <span>{label}</span>
-        <Icon size={11} className={active ? "text-[#174be8]" : "text-[#8794ab]"} />
-      </button>
-    );
   };
 
   return (
@@ -222,65 +376,67 @@ export default function CitySpreadsheetView({ markets, onOpenCity, onExportCsv }
 
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="w-full text-[12px]">
-          <thead className="bg-[#f8fafe] sticky top-0">
+        <table className="w-full text-[12px] min-w-[1600px]">
+          <thead className="bg-[#f8fafe] sticky top-0 z-10">
             <tr className="border-b border-[#eef2f7]">
-              <th className="px-3 py-2 text-left"><Sortable k="state" label="State" /></th>
-              <th className="px-3 py-2 text-left"><Sortable k="city" label="City" /></th>
-              <th className="px-3 py-2 text-right"><Sortable k="population" label="Population" align="right" /></th>
-              <th className="px-3 py-2 text-right"><Sortable k="districts" label="Districts" align="right" /></th>
-              <th className="px-3 py-2 text-right"><Sortable k="elem_schools" label="Elem. Schools" align="right" /></th>
-              <th className="px-3 py-2 text-right"><Sortable k="median_income" label="Median HH Income" align="right" /></th>
-              <th className="px-3 py-2 text-right"><Sortable k="college_pct" label="College %" align="right" /></th>
-              <th className="px-3 py-2 text-right"><Sortable k="elem_enrollment" label="Elem. Enrollment" align="right" /></th>
-              <th className="px-3 py-2 text-right"><Sortable k="col_index" label="COL Index" align="right" /></th>
-              <th className="px-3 py-2 text-right"><Sortable k="metro_income" label="Metro Income" align="right" /></th>
-              <th className="px-3 py-2 text-right"><Sortable k="composite" label="Composite" align="right" /></th>
-              <th className="px-3 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-[#526078]">Actions</th>
+              {COLUMNS.map((c) => {
+                const active = sortKey === c.key;
+                const Icon = !active ? ChevronsUpDown : sortDir === "asc" ? ChevronUp : ChevronDown;
+                return (
+                  <th
+                    key={c.key}
+                    className={`px-3 py-2 whitespace-nowrap ${c.align === "right" ? "text-right" : "text-left"}`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => toggleSort(c.key)}
+                      className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-[#526078] hover:text-[#07142f] ${
+                        c.align === "right" ? "justify-end w-full" : ""
+                      }`}
+                      title={c.group ? `${c.group} • ${c.label}` : c.label}
+                    >
+                      <span>{c.label}</span>
+                      <Icon size={11} className={active ? "text-[#174be8]" : "text-[#8794ab]"} />
+                    </button>
+                  </th>
+                );
+              })}
+              <th className="px-3 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-[#526078] whitespace-nowrap">Actions</th>
             </tr>
           </thead>
           <tbody>
             {pageItems.length === 0 && (
               <tr>
-                <td colSpan={12} className="px-3 py-10 text-center text-[12px] text-[#8794ab]">
+                <td colSpan={COLUMNS.length + 1} className="px-3 py-10 text-center text-[12px] text-[#8794ab]">
                   No cities match your filters.
                 </td>
               </tr>
             )}
             {pageItems.map((m) => {
-              const row: any = (m as any).scoredRow ?? {};
+              const r = rankedAll.get(m.id) ?? 0;
               return (
                 <tr
                   key={m.id}
                   className="border-b border-[#f3f5f9] last:border-0 hover:bg-[#fbfcff]"
                 >
-                  <td className="px-3 py-2">
-                    <span className="inline-block rounded bg-[#eef2f7] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#526078]">
-                      {m.state || "—"}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2">
-                    <button
-                      type="button"
-                      onClick={() => onOpenCity(m)}
-                      className="text-[#174be8] font-medium hover:underline text-left"
+                  {COLUMNS.map((c) => (
+                    <td
+                      key={c.key}
+                      className={`px-3 py-2 whitespace-nowrap ${c.align === "right" ? "text-right tabular-nums" : ""}`}
                     >
-                      {m.city}
-                    </button>
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums">{fmtInt(m.population ?? row.population)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{fmtInt(row.school_district_count)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{fmtInt(row.public_elementary_count)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums text-[#0ea66e] font-medium">
-                    {fmtMoney(row.median_household_income)}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums">{fmtPct(row.college_degree_pct)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{fmtInt(row.public_elementary_enrollment)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{fmtNum1(row.cost_of_living_index)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(row.median_household_income)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums font-semibold text-[#07142f]">
-                    {fmtNum1(m.compositeScore)}
-                  </td>
+                      {c.key === "city" ? (
+                        <button
+                          type="button"
+                          onClick={() => onOpenCity(m)}
+                          className="text-[#174be8] font-medium hover:underline text-left"
+                        >
+                          {m.city}
+                        </button>
+                      ) : (
+                        c.render(m, r)
+                      )}
+                    </td>
+                  ))}
                   <td className="px-3 py-2 text-right">
                     <button
                       type="button"

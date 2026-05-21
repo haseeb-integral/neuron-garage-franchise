@@ -81,12 +81,26 @@ function buildSeededFallbackSignals(market: CityData): LiveSignal[] {
 
 const SOW_CATEGORIES: { key: MetricCategory; label: string }[] = [
   { key: "demand", label: "Demand" },
-  { key: "pricing_power", label: "Pricing Power" },
+  { key: "franchisee_supply", label: "TAM Teachers" },
   { key: "competitive_landscape", label: "Competitive Landscape" },
-  { key: "franchisee_supply", label: "Franchisee Supply" },
-  { key: "ease_of_operations", label: "Ease of Operations" },
-  { key: "parent_mindset", label: "Parent Mindset" },
 ];
+
+// 12-metric whitelist (Demand 4 + TAM Teachers 5 + Competitive Landscape 3)
+// — locks the drawer to the same inputs shown in Key Market Signals.
+const KEY_METRIC_KEYS: ReadonlySet<string> = new Set([
+  "children_5_12_count",
+  "median_household_income",
+  "dual_income_household_pct",
+  "education_bachelors_plus_pct",
+  "public_elementary_school_count",
+  "public_elementary_teacher_count",
+  "private_charter_school_count",
+  "public_elementary_enrollment",
+  "col_salary_index",
+  "csi_national_brand_supply",
+  "csi_local_camp_estimate",
+  "csi_demand_adjusted_market",
+]);
 
 // Per-category server-side formulas, extracted verbatim from
 // supabase/functions/_shared/scoring.ts (calculateCurrentCategoryScores).

@@ -309,14 +309,12 @@ export function normalizeSowMetric(
   if (value == null || !Number.isFinite(value)) return null;
   const v = Number(value);
   switch (signalKey) {
-    // Demand
-    case "children_5_12_count":               return lin(v, 0, 50000);
-    case "children_5_12_pct":                 return lin(v, 5, 18);
-    case "households_with_children_under_13": return lin(v, 0, 40000);
-    case "median_household_income":           return lin(v, 60000, 180000);
-    case "income_100k_plus_pct":              return lin(v, 20, 70);
-    case "income_150k_plus_pct":              return lin(v, 10, 50);
-    case "education_bachelors_plus_pct":      return lin(v, 25, 70);
+    // Demand (4-metric lock 2026-05-21 — real p5/p95 across 935 cities).
+    // Keep ranges in sync with src/lib/sowNormalize.ts.
+    case "children_5_12_count":               return lin(v, 3000, 110000);
+    case "median_household_income":           return lin(v, 45000, 150000);
+    case "dual_income_household_pct":         return lin(v, 85, 98);
+    case "education_bachelors_plus_pct":      return lin(v, 15, 70);
     // Pricing power
     case "childcare_nanny_hourly_rate_proxy": return lin(v, 11, 25); // BLS SOC 39-9011 hourly mean wage ($/hr)
     case "household_discretionary_income_proxy": return lin(v, 20000, 150000);

@@ -18,7 +18,7 @@ Read in this order:
 4. **`HOW_IT_WORKS.md`** — how the product behaves end-to-end
 5. **`APIS.md`** — third-party integrations + database seeding plan
 6. **`OPEN_TASKS.md`** — what to build next
-7. **`THIRD_PARTY_DATA_PLAYBOOK.md`** — canonical rules for absorbing external enriched tables (Manus, Apollo, Apify, future vendors)
+7. **`TPD.md`** — canonical rules for absorbing external enriched tables (Manus, Apollo, Apify, future vendors)
 
 Then: **read `GLOSSARY.md`** whenever you hit an unfamiliar term (Fit Score, Tier A, Non-registration state, Integral Leads, etc.).
 
@@ -41,7 +41,7 @@ Then: **read `GLOSSARY.md`** whenever you hit an unfamiliar term (Fit Score, Tie
 | `DESIGN.md` | UI/UX rules and component standards |
 | `WORKFLOW.md` | Branch, PR, deploy workflow |
 | `QA_CHECKLIST.md` | Pre-merge QA checklist |
-| `THIRD_PARTY_DATA_PLAYBOOK.md` | Canonical playbook for importing vendor tables (Manus, Apollo, Apify, etc.) as the row universe while keeping our scoring schema |
+| `TPD.md` | Canonical playbook for importing vendor tables (Manus, Apollo, Apify, etc.) as the row universe while keeping our scoring schema |
 | `LATER.md` | Deferred ideas — do not build without explicit instruction |
 
 ---

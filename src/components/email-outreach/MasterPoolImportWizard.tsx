@@ -151,7 +151,8 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         toast.loading(`Checking duplicates… ${done}/${totalChunks} batches`, { id: tId });
       }
       setQa({ total: csvRows.length, withEmail, validEmail, inBatchDupes, existingInMaster, missingRequired });
-      toast.success(`QA complete — ${csvRows.length.toLocaleString()} rows analyzed`, { id: tId });
+      toast.success(`QA complete — ${csvRows.length.toLocaleString()} rows analyzed. Advancing to import…`, { id: tId });
+      setStep(4);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       console.error("QA preview failed", e);

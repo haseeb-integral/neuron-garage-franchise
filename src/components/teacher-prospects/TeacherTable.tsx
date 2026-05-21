@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { TeacherProspect } from "@/data/teacherData";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ExternalLink, Eye, Linkedin, Loader2, MailPlus, MoreVertical, Sparkles, Star, UserCheck, UserX } from "lucide-react";
+import { ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ExternalLink, Eye, Link2, Loader2, MailPlus, MoreVertical, Sparkles, Star, UserCheck, UserX } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SourceBadge } from "./SourceBadge";
 import { statusBadgeFor } from "@/lib/teacherSourceLabels";
@@ -194,7 +194,7 @@ export function TeacherTable({
                         className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-[#eaf2fb] text-[#0a66c2] transition hover:bg-[#0a66c2] hover:text-white"
                         title={p.linkedinUrl ?? ""}
                       >
-                        <Linkedin size={12} />
+                        <Link2 size={12} />
                       </a>
                     ) : (
                       <span className="text-[#cdd5e0]" title="No LinkedIn">—</span>

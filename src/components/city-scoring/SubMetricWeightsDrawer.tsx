@@ -674,21 +674,36 @@ function RecipeBlock({
       ? (categoryScore * masterWeightPct) / 100
       : null;
 
-  // All-fallback case (no usable sub-weights)
+  // No usable sub-metrics. Two honest states (no "server fallback" wording):
+  //   (a) every metric value is null for this city → name the gap
+  //   (b) all sub-weights are zero → tell the user to move a slider
   if (used.length === 0) {
+    const anyRawValue = contribs.some((c) => c.rawValue != null && Number.isFinite(c.rawValue));
+    const allZeroWeights = !anyRawValue ? false : true; // if we have data but nothing used → weights are zero
+    const missingLabels = contribs.filter((c) => c.rawValue == null).map((c) => c.label);
     return (
-      <div className="rounded border border-[#fde68a] bg-[#fffbe6] px-3 py-2.5 text-[12px] text-[#854d0e] leading-snug">
-        <strong>All metrics unavailable</strong> — using the server's stored {categoryLabel} score of{" "}
-        <strong>{serverCategoryScore != null ? Math.round(serverCategoryScore) : "—"}</strong> as a fallback.
-        {masterWeightPct != null && categoryScore != null && (
-          <div className="mt-1.5 text-[#7c2d12]">
-            This category is <strong>{masterWeightPct.toFixed(0)}%</strong> of the overall city score, so it contributes{" "}
-            <strong>{((categoryScore * masterWeightPct) / 100).toFixed(1)} points</strong>.
-          </div>
+      <div className="rounded border border-[#e5eaf2] bg-[#f7faff] px-3 py-2.5 text-[12px] text-[#1a2540] leading-snug">
+        {allZeroWeights ? (
+          <>
+            <strong>All sub-weights are set to 0.</strong> Move at least one slider above 0
+            and click <em>Save &amp; Recalculate</em> to compute a live {categoryLabel} score.
+          </>
+        ) : (
+          <>
+            <strong>This city is missing raw data for:</strong>{" "}
+            {missingLabels.length > 0 ? missingLabels.join(", ") : "every metric in this category"}.
+            {serverCategoryScore != null && (
+              <>
+                {" "}Last stored {categoryLabel} score:{" "}
+                <strong>{Math.round(serverCategoryScore)}</strong>.
+              </>
+            )}
+          </>
         )}
       </div>
     );
   }
+
 
   // Step 1 + 2 + 3 recipe with real numbers
   return (

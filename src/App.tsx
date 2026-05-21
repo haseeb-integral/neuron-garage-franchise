@@ -19,6 +19,7 @@ import SmartLeadSpec from "./pages/SmartLeadSpec";
 import EmailOutreachDocs from "./pages/EmailOutreachDocs";
 import UserGuide from "./pages/UserGuide";
 import DemographicsMethodology from "./pages/DemographicsMethodology";
+import Methodology from "./pages/Methodology";
 import TeamMembers from "./pages/TeamMembers";
 import NotFound from "./pages/NotFound";
 

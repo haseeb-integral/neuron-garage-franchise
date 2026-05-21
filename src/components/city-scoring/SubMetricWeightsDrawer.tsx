@@ -201,7 +201,11 @@ export function SubMetricWeightsDrawer({
               Hover the <Info size={11} className="inline -mt-0.5" /> icon for what each metric means.
             </p>
           )}
+          <p className="text-[10.5px] leading-snug text-[#526078] italic">
+            {PROVENANCE_BY_CATEGORY[categoryKey] ?? DEFAULT_PROVENANCE}
+          </p>
         </SheetHeader>
+
 
         {view === "weights" ? (
           <TooltipProvider delayDuration={150}>

@@ -1417,84 +1417,60 @@ const CityScoring = () => {
     displayTier === "B" ? "Strong Opportunity" :
     displayTier === "C" ? "Moderate Opportunity" : "Limited Opportunity";
 
-  const SIGNAL_ICONS: Record<string, typeof Users> = {
-    competitor_count: Trophy,
-    public_elementary_school_count: GraduationCap,
-    public_elementary_count: GraduationCap,
-    public_elementary_teacher_count: GraduationCap,
-    private_charter_school_count: Building2,
-    stem_enrichment_count: Cog,
-    montessori_count: Star,
-    rental_venue_count: HomeIcon,
-    parent_mindset_places: Heart,
-    firecrawl_source_pages: FileText,
-    source_pages_found: FileText,
-    data_readiness: Star,
-    children_5_12: Users,
-    households_100k: HomeIcon,
-    premium_pricing: DollarSign,
-    teacher_density: GraduationCap,
-    school_access: Building2,
-  };
-
-  const SIGNAL_DISPLAY_PRIORITY = [
-    "total_population",
+  // Key Market Signals — locked to the 12 metrics that power the 3 visible
+  // categories (Demand 4 + TAM Teachers 5 + Competitive Landscape 3).
+  // Per Brett 2026-05-21: simple plain UI, no chips, source as subtitle.
+  const KEY_SIGNAL_KEYS: readonly string[] = [
+    // Demand (4)
+    "children_5_12_count",
     "median_household_income",
-    "children_population_proxy",
-    "income_100k_plus_proxy",
-    "education_bachelors_plus_proxy",
-    "competitor_count",
+    "dual_income_household_pct",
+    "education_bachelors_plus_pct",
+    // TAM Teachers (5)
     "public_elementary_school_count",
     "public_elementary_teacher_count",
     "private_charter_school_count",
-  ];
-
-  const CENTER_SIGNAL_EXCLUDE = [
-    "data_readiness",
-    "census_data_readiness",
-    "bls_data_readiness",
-    // Folded into the public_elementary_count row below
     "public_elementary_enrollment",
+    "col_salary_index",
+    // Competitive Landscape (3)
+    "csi_national_brand_supply",
+    "csi_local_camp_estimate",
+    "csi_demand_adjusted_market",
   ];
 
-  const centerLiveSignals = [...signalsForDisplay]
-    .filter((s) => !CENTER_SIGNAL_EXCLUDE.includes(s.signal_key))
-    .sort((a, b) => {
-      const ai = SIGNAL_DISPLAY_PRIORITY.indexOf(a.signal_key);
-      const bi = SIGNAL_DISPLAY_PRIORITY.indexOf(b.signal_key);
-      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
-    });
-  const visibleCenterSignals = centerLiveSignals.slice(0, 12);
-  const hasMoreSignals = signalsForDisplay.length > visibleCenterSignals.length;
-
-  // Find enrollment to fold into the public_elementary_count row
-  const elementaryEnrollmentSignal = signalsForDisplay.find(
-    (s) => s.signal_key === "public_elementary_enrollment",
-  );
-
-  const liveSigRows = visibleCenterSignals.map((s) => {
-    if (s.signal_key === "public_elementary_count") {
-      const countNum = Number(s.value);
-      const enrollNum = Number(elementaryEnrollmentSignal?.value ?? 0);
-      const countLabel = Number.isFinite(countNum) ? countNum.toLocaleString() : s.value;
-      const value = enrollNum > 0
-        ? `${countLabel} schools · ${enrollNum.toLocaleString()} enrolled`
-        : `${countLabel} schools`;
-      return {
-        icon: SIGNAL_ICONS[s.signal_key] ?? Star,
-        label: "Public elementary (NCES CCD 2022)",
-        value,
-      };
+  const KEY_SIGNAL_META: Record<string, { label: string; source: string }> = (() => {
+    const out: Record<string, { label: string; source: string }> = {};
+    for (const m of SOW_METRIC_REGISTRY) {
+      out[m.key] = { label: m.label, source: m.source };
     }
+    return out;
+  })();
+
+  const signalsByKey = useMemo(() => {
+    const out: Record<string, { value: string }> = {};
+    for (const s of signalsForDisplay) {
+      if (s?.signal_key) out[s.signal_key] = { value: s.value };
+    }
+    return out;
+  }, [signalsForDisplay]);
+
+  const sigRows = KEY_SIGNAL_KEYS.map((key) => {
+    const meta = KEY_SIGNAL_META[key];
+    const sig = signalsByKey[key];
+    const rawVal = sig?.value;
+    const value = rawVal === undefined || rawVal === null || rawVal === "" ? "—" : rawVal;
     return {
-      icon: SIGNAL_ICONS[s.signal_key] ?? Star,
-      label: s.label,
-      value: s.value,
+      key,
+      label: meta?.label ?? key,
+      source: meta?.source ?? "",
+      value,
     };
   });
 
-  const sigRows = liveSigRows;
-  const hasLiveSignals = sigRows.length > 0;
+  const hasLiveSignals = sigRows.some((r) => r.value !== "—");
+  const preSeededCount = sigRows.filter((r) => r.value !== "—").length;
+  const hasMoreSignals = false; // entire 12-metric list rendered inline; drawer just expands detail
+
 
   const lastScrapedAt = selectedLiveCity?.last_scraped_at ?? selectedLiveJob?.completed_at ?? null;
   const lastScrapedAtMs = lastScrapedAt ? new Date(lastScrapedAt).getTime() : null;

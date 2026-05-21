@@ -1950,7 +1950,7 @@ const CityScoring = () => {
             <SelectTrigger className="h-9 bg-white border-[#e5eaf2] text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="0">Any</SelectItem>
-              <SelectItem value="25000">25,000+</SelectItem>
+              
               <SelectItem value="50000">50,000+</SelectItem>
               <SelectItem value="100000">100,000+</SelectItem>
             </SelectContent>

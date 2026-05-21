@@ -1,6 +1,6 @@
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Download, Send } from "lucide-react";
+import { Download } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment

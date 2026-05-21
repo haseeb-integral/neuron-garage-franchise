@@ -69,7 +69,7 @@ export function AskAiBar({ onSubmit, loading, hasResult, onClear }: AskAiBarProp
         <Sparkles size={16} className="text-[#7c3aed]" />
         <span className="text-sm font-semibold text-[#343a40]">Ask AI</span>
         <span className="text-xs text-[#6c757d]">
-          Natural-language search across 960 markets. Re-ranks live.
+          Natural-language search across 817 markets. Re-ranks live.
         </span>
       </div>
       <div className="flex gap-2">

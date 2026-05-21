@@ -497,7 +497,15 @@ Deno.serve(async (req) => {
       const easeParts = [p("labor_force_participation"), colInv].filter((x): x is number => x != null);
       const mindsetParts = [p("college_degree_pct"), p("stem_job_concentration")].filter((x): x is number => x != null);
 
-      const avg = (xs: number[]) => xs.length ? Math.round(xs.reduce((s, n) => s + n, 0) / xs.length) : null;
+      // BUG A guard (2026-05-21): when ALL inputs to a category are NULL, the
+      // category score MUST be NULL — never default to 50, 100, or any other
+      // value. Per demographicsMethodology.md §4.4 nulls fall out of the
+      // weighted denominator. 8 cities had score_demand=100 inherited from the
+      // Manus seed with all 3 demand inputs NULL (Athens GA, Augusta GA, Macon
+      // GA, Nashville TN, Louisville KY, Lexington KY, Carson City NV, Ventura
+      // CA); those rows are NULL'd in the same change.
+      const avg = (xs: number[]): number | null =>
+        xs.length === 0 ? null : Math.round(xs.reduce((s, n) => s + n, 0) / xs.length);
       const sd = avg(demandParts);
       const sp = avg(pricingParts);
       const sc = avg(competitiveParts);

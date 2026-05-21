@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
 
   const zeroResults: { city: string; state: string }[] = [];
   const errors: { state: string; error: string }[] = [];
-  const upserts: any[] = [];
+  const scoredUpdates: { id: string; public_elementary_count: number; public_elementary_enrollment: number; nces_last_updated: string }[] = [];
   let withData = 0;
 
   for (const [fips, list] of byFips) {
@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
       errors.push({ state: stateName, error: e.message });
       continue;
     }
-    const sourceUrl = `${BASE}?fips=${fips}&school_level=${SCHOOL_LEVEL_ELEMENTARY}`;
+    const today = new Date().toISOString().slice(0, 10);
     for (const c of list) {
       const key = normalizeCity(c.city);
       const hit = bucket.get(key);
@@ -147,36 +147,42 @@ Deno.serve(async (req) => {
         continue;
       }
       withData += 1;
-      upserts.push({
-        city_id: c.id,
-        signal_key: "public_elementary_count",
-        label: "Public elementary schools",
-        value: String(hit.count),
-        source: "nces_ccd",
-        source_url: sourceUrl,
-      });
-      upserts.push({
-        city_id: c.id,
-        signal_key: "public_elementary_enrollment",
-        label: "Public elementary enrollment",
-        value: String(hit.enrollment),
-        source: "nces_ccd",
-        source_url: sourceUrl,
+      scoredUpdates.push({
+        id: c.id,
+        public_elementary_count: hit.count,
+        public_elementary_enrollment: hit.enrollment,
+        nces_last_updated: today,
       });
     }
+    // Reference the URL pattern in logs (legacy `city_market_signals` source_url
+    // column removed on 2026-05-21).
+    void `${BASE}?fips=${fips}&school_level=${SCHOOL_LEVEL_ELEMENTARY}`;
   }
 
-  if (upserts.length) {
-    const { error: upErr } = await admin
-      .from("city_market_signals")
-      .upsert(upserts, { onConflict: "city_id,signal_key" });
-    if (upErr) {
-      console.error("Upsert failed:", upErr.message);
-      return new Response(JSON.stringify({ error: upErr.message, processed: cities.length, withData, zeroResults, errors }), {
+  // Legacy `city_market_signals` write was severed on 2026-05-21.
+  // Counts now land directly on us_cities_scored.
+  if (scoredUpdates.length) {
+    const results = await Promise.all(
+      scoredUpdates.map((u) =>
+        admin
+          .from("us_cities_scored")
+          .update({
+            public_elementary_count: u.public_elementary_count,
+            public_elementary_enrollment: u.public_elementary_enrollment,
+            nces_last_updated: u.nces_last_updated,
+          })
+          .eq("id", u.id),
+      ),
+    );
+    const failed = results.filter((r: any) => r.error);
+    if (failed.length) {
+      console.error("us_cities_scored update failures:", failed.map((r: any) => r.error?.message));
+      return new Response(JSON.stringify({ error: failed[0].error?.message, processed: cities.length, withData, zeroResults, errors }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
   }
+
 
   return new Response(JSON.stringify({
     processed: cities.length,

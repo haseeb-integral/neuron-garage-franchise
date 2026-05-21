@@ -1,4 +1,4 @@
-import { Home, Map, Users, Kanban, ChevronLeft, ChevronRight, Mail, FileText, BookOpen, Send, MailOpen } from "lucide-react";
+import { Home, Map, Users, Kanban, ChevronLeft, ChevronRight, Mail, FileText, BookOpen, Send, MailOpen, BarChart3 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import logo from "@/assets/neuron-garage-logo.png";
 import { useSidebarCollapsed } from "@/lib/sidebarState";
@@ -17,6 +17,7 @@ const utilityNavItems = [
   { title: "User's Guide", url: "/users-guide", icon: BookOpen },
   { title: "SmartLead API Spec", url: "/smartlead-spec", icon: Send },
   { title: "Outreach Guide", url: "/email-outreach-docs", icon: MailOpen },
+  { title: "Demographics Methodology", url: "/demographics-methodology", icon: BarChart3 },
   { title: "Full Specification", url: "/spec", icon: FileText },
 ];
 

@@ -18,6 +18,7 @@ import Spec from "./pages/Spec";
 import SmartLeadSpec from "./pages/SmartLeadSpec";
 import EmailOutreachDocs from "./pages/EmailOutreachDocs";
 import UserGuide from "./pages/UserGuide";
+import DemographicsMethodology from "./pages/DemographicsMethodology";
 import TeamMembers from "./pages/TeamMembers";
 import NotFound from "./pages/NotFound";
 
@@ -46,6 +47,7 @@ const App = () => (
               <Route path="/spec" element={<Spec />} />
               <Route path="/smartlead-spec" element={<SmartLeadSpec />} />
               <Route path="/email-outreach-docs" element={<EmailOutreachDocs />} />
+              <Route path="/demographics-methodology" element={<DemographicsMethodology />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

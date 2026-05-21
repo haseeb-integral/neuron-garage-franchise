@@ -1059,20 +1059,42 @@ const CityScoring = () => {
 
   const buildCsvDownload = async () => {
     try {
-      // Sheet 1: raw backend rows, as-is. Identity columns come from the
-      // mapped UI row (m.city / m.state / m.county / m.metroArea) so they're
-      // always populated — scoredRow uses city_name/state_abbr/county_name,
-      // not the short keys, which is why the previous export had blank City.
-      const dbKeySet = new Set<string>();
-      filtered.forEach((m: any) => {
-        const r = m?.scoredRow;
-        if (r && typeof r === "object") Object.keys(r).forEach((k) => dbKeySet.add(k));
-      });
-      // Don't repeat identity-ish DB columns that we already render up front.
-      ["city_name", "state_abbr", "state_name", "county_name", "metro_area"].forEach((k) =>
-        dbKeySet.delete(k),
-      );
-      const dbKeys = Array.from(dbKeySet).sort();
+      // Sheet 1: only the backend columns the dashboard actually maps, so the
+      // Excel "Backend Data" sheet and the on-screen spreadsheet show the
+      // same picture. Identity columns (City/State/County/Metro) come from
+      // the mapped UI row so they're always populated.
+      const DASHBOARD_DB_KEYS = [
+        "place_type",
+        "is_registration_state",
+        "composite_score_default",
+        "score_demand",
+        "score_tam_teachers",
+        "score_csi",
+        "population",
+        "children_5_12",
+        "median_household_income",
+        "dual_working_families_pct",
+        "college_degree_pct",
+        "school_district_count",
+        "public_elementary_count",
+        "private_elementary_count",
+        "charter_elementary_count",
+        "public_elementary_teacher_count",
+        "public_elementary_enrollment",
+        "cost_of_living_index",
+        "col_salary_index",
+        "avg_elementary_teacher_salary_usd",
+        "summer_camp_count",
+        "csi_score",
+        "csi_saturation_category",
+        "csi_national_brand_count_weighted",
+        "csi_local_provider_estimate",
+        "csi_demand_adjusted_market",
+        "csi_confidence",
+        "scored_at",
+        "census_last_updated",
+      ];
+      const dbKeys = DASHBOARD_DB_KEYS;
       const backendHeader = ["City", "State", "County", "Metro Area", ...dbKeys];
       const backendRows: (string | number | null)[][] = filtered.map((m: any) => {
         const r = m?.scoredRow ?? {};
@@ -1083,9 +1105,10 @@ const CityScoring = () => {
           m.metroArea ?? null,
         ];
         const tail = dbKeys.map((k) => {
-          const v = r[k];
+          const v = (r as any)[k];
           if (v == null) return null;
           if (typeof v === "number" || typeof v === "string") return v;
+          if (typeof v === "boolean") return v ? "true" : "false";
           try { return JSON.stringify(v); } catch { return String(v); }
         });
         return [...head, ...tail];

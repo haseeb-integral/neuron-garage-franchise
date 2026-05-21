@@ -244,7 +244,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
       if (destination === "master_and_smartlead") {
         const { data } = await supabase.from("campaign_cache").select("id, name, status").order("name");
         setCampaigns((data ?? []) as SLCampaign[]);
-        setStep(5);
+        setStep(4);
       } else {
         onComplete?.();
         onClose();

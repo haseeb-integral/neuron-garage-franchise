@@ -2431,82 +2431,31 @@ const CityScoring = () => {
             </div>
           </div>
 
-          <div className="mt-3 grid grid-cols-[1fr_1.08fr] gap-5 border-t border-[#eef2f7] pt-3.5">
-            <div>
-              <p className="mb-2.5 text-[13px] font-semibold text-[#07142f]">Category Scores</p>
-              <div className="space-y-2">
-                {VISIBLE_CATEGORIES.map((cat) => {
-                  const v = selectedHasLiveData ? (detailCategoryScores[cat.key] ?? 0) : null;
-                  const wPct = appliedTotal > 0 ? (appliedWeights[cat.key] / appliedTotal) * 100 : 0;
-                  const isZeroWeighted = wPct <= 0.05;
-                  return (
-                    <div key={cat.key} className={isZeroWeighted ? "opacity-45" : ""} title={isZeroWeighted ? `${cat.label} is set to 0% — contributes nothing to the overall score` : undefined}>
-                      <div className="mb-1 flex items-center justify-between gap-3 text-[12px]">
-                        <span className="text-[#526078]">
-                          {cat.label}
-                          {isZeroWeighted && <span className="ml-1.5 text-[10px] uppercase tracking-wide text-[#8794ab]">· 0% weight</span>}
-                        </span>
-                        <span className="font-semibold text-[#07142f]">{v ?? "—"}</span>
-                      </div>
-                      <div className="h-1.5 w-full rounded-full bg-[#e8edf6]">
-                        <div className={`h-full rounded-full ${isZeroWeighted ? "bg-[#b6bfd0]" : "bg-[#1d4fff]"}`} style={{ width: `${v ?? 0}%` }} />
-                      </div>
+          <div className="mt-3 border-t border-[#eef2f7] pt-3.5">
+            <p className="mb-2.5 text-[13px] font-semibold text-[#07142f]">Category Scores</p>
+            <div className="space-y-2">
+              {VISIBLE_CATEGORIES.map((cat) => {
+                const v = selectedHasLiveData ? (detailCategoryScores[cat.key] ?? 0) : null;
+                const wPct = appliedTotal > 0 ? (appliedWeights[cat.key] / appliedTotal) * 100 : 0;
+                const isZeroWeighted = wPct <= 0.05;
+                return (
+                  <div key={cat.key} className={isZeroWeighted ? "opacity-45" : ""} title={isZeroWeighted ? `${cat.label} is set to 0% — contributes nothing to the overall score` : undefined}>
+                    <div className="mb-1 flex items-center justify-between gap-3 text-[12px]">
+                      <span className="text-[#526078]">
+                        {cat.label}
+                        {isZeroWeighted && <span className="ml-1.5 text-[10px] uppercase tracking-wide text-[#8794ab]">· 0% weight</span>}
+                      </span>
+                      <span className="font-semibold text-[#07142f]">{v ?? "—"}</span>
                     </div>
-                  );
-                })}
-              </div>
-
-            </div>
-
-            <div className="min-w-0 border-l border-[#eef2f7] pl-4">
-              <p className="mb-2.5 text-[13px] font-semibold text-[#07142f]">Key Market Signals</p>
-              {hasLiveSignals ? (
-                <>
-                  <div className="flex flex-col gap-y-2.5 min-w-0">
-                    {sigRows.map((r) => {
-                      const Icon = r.icon;
-                      return (
-                        <div key={r.label} className="grid grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-2 text-[10.5px]">
-                          <Icon size={15} className="text-[#174be8]" />
-                          <span className="min-w-0 truncate text-[#526078]">{r.label}</span>
-                          <span className="max-w-[120px] truncate text-right font-bold text-[#07142f]">{r.value}</span>
-                        </div>
-                      );
-                    })}
+                    <div className="h-1.5 w-full rounded-full bg-[#e8edf6]">
+                      <div className={`h-full rounded-full ${isZeroWeighted ? "bg-[#b6bfd0]" : "bg-[#1d4fff]"}`} style={{ width: `${v ?? 0}%` }} />
+                    </div>
                   </div>
-                  {hasMoreSignals && (
-                    <button
-                      type="button"
-                      onClick={() => setDetailDrawerOpen(true)}
-                      className="mt-2 inline-flex items-center gap-1 rounded-md border border-[#dbe4f2] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#174be8] hover:bg-[#f1f5ff]"
-                    >
-                      View all signals →
-                    </button>
-                  )}
-                </>
-              ) : SHOW_LIVE_REFRESH ? (
-                <div className="rounded-md border border-dashed border-[#dbe4f2] bg-[#f7faff] px-3 py-4 text-center">
-                  <p className="text-[11.5px] text-[#526078] leading-snug">
-                    No live signals yet for this market.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleRefreshData}
-                    disabled={refreshingMarket}
-                    className="mt-2 inline-flex items-center gap-1 rounded-md bg-[#174be8] px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-[#1240c9] disabled:opacity-60"
-                  >
-                    {refreshingMarket ? "Refreshing…" : "Refresh This Market"}
-                  </button>
-                </div>
-              ) : (
-                <div className="rounded-md border border-dashed border-[#dbe4f2] bg-[#f7faff] px-3 py-4 text-center">
-                  <p className="text-[11.5px] text-[#526078] leading-snug">
-                    Showing pre-seeded scores. Live signal scraping is paused.
-                  </p>
-                </div>
-              )}
+                );
+              })}
             </div>
           </div>
+
 
           <div className="mt-4 flex flex-wrap gap-2">
             <Button onClick={handleFindTeachers} className="h-9 flex-1 min-w-0 bg-[#174be8] hover:bg-[#1240c9] text-white gap-1.5 px-3 font-medium text-[11px]">

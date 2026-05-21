@@ -103,24 +103,50 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
   };
 
   /* ---------- Step 3: QA preview ---------- */
-  const computeQa = () => {
-    const emailCol = mapping.email;
-    const stateCol = mapping.state;
-    const cityCol = mapping.city;
-    const seen = new Set<string>();
-    let withEmail = 0, validEmail = 0, inBatchDupes = 0, missingRequired = 0;
-    for (const row of csvRows) {
-      const email = (emailCol ? (row[emailCol] ?? "") : "").trim().toLowerCase();
-      const cityV = cityCol ? (row[cityCol] ?? "").trim() : defaultCity.trim();
-      const stateV = stateCol ? (row[stateCol] ?? "").trim() : defaultState.trim();
-      if (!cityV || !stateV) missingRequired++;
-      if (email) {
-        withEmail++;
-        if (isEmail(email)) validEmail++;
-        if (seen.has(email)) inBatchDupes++; else seen.add(email);
+  const computeQa = async () => {
+    setQaLoading(true);
+    try {
+      const emailCol = mapping.email;
+      const fnCol = mapping.first_name;
+      const lnCol = mapping.last_name;
+      const stateCol = mapping.state;
+      const cityCol = mapping.city;
+      const seen = new Set<string>();
+      const dedupeKeys: string[] = [];
+      let withEmail = 0, validEmail = 0, inBatchDupes = 0, missingRequired = 0;
+      for (const row of csvRows) {
+        const email = (emailCol ? (row[emailCol] ?? "") : "").trim().toLowerCase();
+        const cityV = cityCol ? (row[cityCol] ?? "").trim() : defaultCity.trim();
+        const stateV = stateCol ? (row[stateCol] ?? "").trim() : defaultState.trim();
+        if (!cityV || !stateV) missingRequired++;
+        if (email) {
+          withEmail++;
+          if (isEmail(email)) validEmail++;
+          if (seen.has(email)) inBatchDupes++; else seen.add(email);
+          dedupeKeys.push(`email:${email}`);
+        } else {
+          const fn = (fnCol ? (row[fnCol] ?? "") : "").trim().toLowerCase();
+          const ln = (lnCol ? (row[lnCol] ?? "") : "").trim().toLowerCase();
+          dedupeKeys.push(`name:${fn}|${ln}||${stateV.toLowerCase()}|${cityV.toLowerCase()}`);
+        }
       }
+      // Cross-batch dedupe: ask DB which of these keys already exist.
+      // Chunk to keep URL length sane.
+      let existingInMaster = 0;
+      const unique = Array.from(new Set(dedupeKeys));
+      for (let i = 0; i < unique.length; i += 500) {
+        const chunk = unique.slice(i, i + 500);
+        const { data, error } = await supabase
+          .from("teacher_prospects")
+          .select("dedupe_key")
+          .in("dedupe_key", chunk);
+        if (error) { console.warn("dedupe check failed", error); break; }
+        existingInMaster += (data ?? []).length;
+      }
+      setQa({ total: csvRows.length, withEmail, validEmail, inBatchDupes, existingInMaster, missingRequired });
+    } finally {
+      setQaLoading(false);
     }
-    setQa({ total: csvRows.length, withEmail, validEmail, inBatchDupes, missingRequired });
   };
 
   /* ---------- Step 4: Insert into master pool ---------- */

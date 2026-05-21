@@ -777,7 +777,7 @@ function RecipeBlock({
           <div className="flex items-baseline gap-2 mb-1.5">
             <span className="text-[11px] font-bold text-[#174be8]">STEP 3</span>
             <span className="text-[12px] text-[#1a2540] font-medium">
-              {categoryLabel} is {masterWeightPct.toFixed(0)}% of the overall city score
+              Right now, {categoryLabel} is set to {masterWeightPct.toFixed(0)}% of the overall city score
             </span>
           </div>
           <div className="text-[12.5px] font-mono text-[#1a2540] text-center py-1">
@@ -787,11 +787,11 @@ function RecipeBlock({
             </span>
           </div>
           <p className="text-[10.5px] text-[#526078] text-center mt-1 leading-snug">
-            …toward {cityLabel ?? "this city"}'s composite score. The other{" "}
-            {(100 - masterWeightPct).toFixed(0)}% comes from the other categories (see their drawers).
+            …toward {cityLabel ?? "this city"}'s composite score with your current master sliders. Move the master sliders on the city screen to change this share.
           </p>
         </div>
       )}
+
     </div>
   );
 }

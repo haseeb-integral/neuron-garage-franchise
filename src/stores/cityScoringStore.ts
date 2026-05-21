@@ -163,7 +163,7 @@ export const useCityScoringStore = create<CityScoringState>()(
     {
       name: "ng:city-scoring-v1",
       storage: createJSONStorage(() => localStorage),
-      version: 8,
+      version: 9,
       migrate: (persisted: any, version) => {
         if (!persisted) return persisted;
         if (version < 2) {
@@ -178,30 +178,26 @@ export const useCityScoringStore = create<CityScoringState>()(
           persisted.page = 1;
         }
         if (version < 5) {
-          // 6→3 category reshape (Sam+Brett May 21, 2026). Reset master
-          // weights to the new 40/30/30 default; zero out retired keys.
           persisted.weights = { ...DEFAULT_WEIGHTS };
           persisted.appliedWeights = { ...DEFAULT_WEIGHTS };
         }
-        if (version < 6) {
-          // Reseed sub-weights so franchiseeSupply (TAM Teachers) gets its
-          // 5-metric default (was {} → caused "server fallback" wording).
+        if (version < 6 || version < 7 || version < 8) {
           persisted.subWeights = cloneSubWeights(DEFAULT_SUB_WEIGHTS);
           persisted.appliedSubWeights = cloneSubWeights(DEFAULT_SUB_WEIGHTS);
         }
-        if (version < 7) {
-          // CSI 3-metric lock (Brett+Haseeb 2026-05-21). Reseed for the new
-          // csi_* sub-metrics.
-          persisted.subWeights = cloneSubWeights(DEFAULT_SUB_WEIGHTS);
-          persisted.appliedSubWeights = cloneSubWeights(DEFAULT_SUB_WEIGHTS);
-        }
-        if (version < 8) {
-          // CSI read-only lock (Brett 2026-05-21c). The drawer no longer
-          // exposes 34/33/33 knobs — Manus's csi_score is the source of
-          // truth. Reseed so old 34/33/33 in localStorage clears to 0/0/0
-          // and the recompute helper falls back to the server score.
-          persisted.subWeights = cloneSubWeights(DEFAULT_SUB_WEIGHTS);
-          persisted.appliedSubWeights = cloneSubWeights(DEFAULT_SUB_WEIGHTS);
+        if (version < 9) {
+          // v9 (Sam+Brett May 21, 2026 — final purge): strip the 3 retired
+          // category keys from every persisted weight bag so the rehydrated
+          // store matches the new 3-key CategoryKey union.
+          const strip = (obj: any) => {
+            if (!obj || typeof obj !== "object") return obj;
+            RETIRED_CATEGORY_KEYS.forEach((k) => { delete obj[k]; });
+            return obj;
+          };
+          strip(persisted.weights);
+          strip(persisted.appliedWeights);
+          strip(persisted.subWeights);
+          strip(persisted.appliedSubWeights);
         }
         return persisted;
       },

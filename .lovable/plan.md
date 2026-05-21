@@ -1,198 +1,83 @@
 
-## What I'll create
+# Sprint Step 3 — CSI v2.0 Ingest Plan
 
-A new canonical doc at the repo root: **`THIRD_PARTY_DATA_PLAYBOOK.md`** (~1,500 words).
+Per TPD.md 5-step playbook. No DB changes execute until Sam ✅ this triage.
 
-I'll also add one line to `README.md`'s "Read These First" list and one bullet to `AGENTS.md` source-of-truth section so future agents know this playbook exists and is canonical.
+## 1. Universe decision
 
-No code, no schema, no migrations in this step — just doctrine.
+- Keep **960 rows** in `us_cities_scored` as our working universe (superset of Manus 817 + Census strict 583).
+- Add two **truth-toggle columns** so anyone can filter to the official Census view:
+  - `place_type` — `'incorporated_city' | 'cdp' | 'town' | 'unknown'` (backfilled from Census FIPS)
+  - `census_population_2020` — official Census Vintage 2020 count
+- Result: Sam can answer "how many real cities >50k?" three ways (583 / 817 / 960) on demand. Zero UI change today.
 
-## Why this is worth a canonical doc
+## 2. Join key
 
-We've now hit the same pattern twice:
-1. **City Search** — Manus delivered an 817-row enriched city table; ours had 50.
-2. **Teacher Search** — similar pattern with Apollo / Apify imports earlier in the sprint.
+- Strip trailing `" city" / " town" / " CDP" / " village"` from vendor `City`, match on `(state_abbr, normalized_city_name)`.
+- Manus rows not in ours: insert. Ours not in Manus (~143): keep, leave CSI columns NULL.
 
-And it will keep happening. Without a written rule, each new rich third-party table tempts us to either (a) throw away our schema and adopt theirs, or (b) ignore the new data because integrating feels risky. Both are wrong. The playbook codifies the middle path: **their table is the universe (rows), ours is the scoring layer (columns + logic).**
+## 3. Column triage (final)
 
-## Proposed contents of `THIRD_PARTY_DATA_PLAYBOOK.md`
+| Action | Columns |
+|---|---|
+| **DROP** | `score_pricing_power`, `score_ease_of_operation`, `score_parent_mindset`, vendor `ID` |
+| **RENAME (same migration)** | `score_franchise_supply` → `score_tam_teachers`; `score_competitive` → `score_csi` |
+| **NEW — CSI bundle (scored)** | `csi_score`, `csi_national_brand_count_weighted`, `csi_local_provider_estimate`, `csi_demand_adjusted_market`, `csi_saturation_category`, `csi_confidence`, `csi_last_updated`, `csi_brand_detail` (jsonb) |
+| **NEW — data only, NOT scored, NOT shown in UI yet** (await Brett+Sam review) | `private_elementary_count`, `charter_elementary_count`, `private_charter_share_pct` |
+| **NEW — truth toggle** | `place_type`, `census_population_2020` |
+| **NEW — misc** | `school_district_count` |
+| **KEEP-AS-IS** | `population`, `public_elementary_enrollment`, `median_household_income`, `college_degree_pct`, `cost_of_living_index`, `regional_median_income` |
+| **RECOMPUTE LATER** (import as NULL) | `stem_job_concentration` (vendor is state-level; backfill from our BLS pipeline) |
+| **IGNORE vendor column** | Vendor "Elementary Schools" total — our `public_elementary_count` stays public-only (NCES). Private/charter land in their own dedicated columns above. |
 
-```
-# Third-Party Data Playbook
+## 4. Demand category — UNCHANGED
 
-Canonical rule for absorbing external enriched tables (Manus, Apollo, Apify,
-future vendors) into Neuron Garage without losing our scoring schema or
-re-litigating architecture each time.
+Confirmed locked sub-metrics (no additions from this ingest):
+- a) Children ages 5–12 count
+- b) Median household income
+- c) Dual-income household %
+- d) Bachelor's degree or higher %
 
-Status: canonical. When this conflicts with older docs, this wins.
-Cross-ref: AGENTS.md (source-of-truth hierarchy), DATABASE_LAYER_SPEC.md.
+`private_charter_share_pct` is **imported but NOT wired** into Demand scoring or front-end. Awaits Brett+Sam review.
+
+## 5. 6→3 category reshape
+
+Frontend (`src/stores/cityScoringStore.ts`, `sowMetricRegistry.ts`, weights drawer, table columns):
+- Remove 3 categories: Pricing Power, Ease of Operations, Parent Mindset.
+- Rename Franchisee Supply → **TAM Teachers**.
+- Rename Competitive Landscape → **Competitive Saturation Index (CSI)**.
+- Default master weights redistributed across 3 surviving categories (Sam to approve split — proposed: Demand 40 / TAM Teachers 30 / CSI 30).
+
+## 6. Import job (idempotent, additive)
+
+- Stage CSV in `staging_competitive_landscape_2026_05_21`.
+- Upsert into `us_cities_scored` on `(state_abbr, normalized_city_name)`. **No TRUNCATE.**
+- Touches only triaged columns. Never writes `score_*`.
+- Logs to new `imports` table: source, batch id, file checksum, inserted/updated/skipped counts, link to this triage.
+
+## 7. Re-score pass (separate)
+
+- After import succeeds, trigger scoring edge function over affected rows.
+- Diff pre-existing rows' scores before/after — must be unchanged except where the rename touched them.
+- Attach diff sample to PR.
+
+## 8. Doc-sync (Mode A, draft only, awaits "go")
+
+Drafts for: `PROJECT_CONTEXT.md`, `APIS.md` (Manus CSI v2.0 source row), `OPEN_TASKS.md` (close Step 3, open Step 4 = re-score), `HOW_IT_WORKS.md` (6→3 categories), `GLOSSARY.md` (new terms: CSI, TAM Teachers, place_type).
+
+## 9. Open approval gate
+
+- **Sam** — sign off on this triage table + the proposed 40/30/30 default master weights.
+- **Brett** — confirm "import private/charter columns silently, do not score yet" matches his read.
+
+Once both ✅, I queue the migration in one call, then the import job, then the re-score pass.
 
 ---
 
-## 1. The Core Principle
+## Technical detail (collapsed reference)
 
-> **Third-party tables are the UNIVERSE (rows). Our schema is the SCORING
-> LAYER (columns + logic). Never invert this.**
-
-A vendor's job is to give us *which entities exist* (cities, teachers,
-schools, competitors). Our job is to decide *what those entities mean for
-franchise viability*. We import their rows. We keep our columns. We map
-between them explicitly.
-
-## 2. When This Playbook Applies
-
-Trigger any time someone hands us a rich, populated table that overlaps
-with an existing Neuron Garage entity. Examples:
-- Manus 817-city demographics table → `us_cities_scored`
-- Apollo / Apify teacher exports → `teacher_prospects`
-- Future: competitor landscape table, school enrollment files, ZIP-level
-  income data, etc.
-
-Does **not** apply to:
-- Live API calls that already write into our schema (Census, BLS, BEA)
-- One-off CSVs used only for a single chart or QA check
-
-## 3. The Five Steps
-
-### Step 1 — Universe Audit (before any code)
-Answer in writing:
-- How many rows does the vendor table have vs. ours?
-- What is the primary key of *their* table? (state+city, email, NCES id…)
-- What's our matching key? Is there a clean join, or do we need fuzzy
-  matching / normalization?
-- Are there rows in theirs that aren't in ours? (almost always yes — that's
-  the point)
-- Are there rows in ours that aren't in theirs? (decide: keep, archive, or
-  drop)
-
-Output: a one-page Universe Audit committed alongside the migration.
-
-### Step 2 — Column Triage
-Go column-by-column on the vendor table and tag each one:
-- **KEEP-AS-IS** — fills a gap in our schema cleanly, same geography /
-  granularity / units. Import directly.
-- **KEEP-RENAMED** — same data, different name. Map to our column. Never
-  add a duplicate column just because the vendor used a different label.
-- **RECOMPUTE** — vendor value is wrong granularity or stale. Example:
-  Manus "STEM %" is state-level BLS, not city-level. Import as `null` and
-  backfill from our own pipeline at correct geography.
-- **DROP** — redundant, lower quality than ours, or out of scope.
-- **NEW COLUMN** — vendor has a signal we don't track yet AND it matters
-  for scoring. Add to our schema via migration (not as a loose JSON blob).
-
-Output: a triage table in the migration's description.
-
-### Step 3 — Name-vs-Meaning Check (the AGENTS.md rule)
-For every KEEP-RENAMED or NEW COLUMN, re-read the destination column name
-out loud. If the vendor's data would make the name misleading, **rename
-the column in the same migration**. Do not silently widen meaning.
-
-Example: importing Manus "elementary enrollment" into our
-`public_elementary_enrollment` is fine — names align. Importing Manus
-"# elementary schools" (which includes private + charter) into
-`public_elementary_count` is NOT fine — rename or split first.
-
-### Step 4 — Idempotent Import, Never Bulk Replace
-The import job MUST be:
-- **Idempotent** — running it twice produces the same result.
-- **Upsert by stable key**, never `TRUNCATE + INSERT`. We have scored rows,
-  user watchlists, and FKs pointing at our ids.
-- **Additive** — adds missing rows, updates triaged columns, leaves
-  untouched columns alone (especially anything we computed: scores,
-  weather, enrichment results).
-- **Logged** — write a row to an `imports` log table: source, batch_id,
-  row counts (inserted / updated / skipped / errored), triage decisions.
-
-If the vendor file is too big or messy to upsert cleanly, stage it first
-(`staging_<source>_<date>`) and run the merge as a separate, reviewable
-SQL step.
-
-### Step 5 — Re-score the New Rows
-After import, scoring is a separate pass. The import job does NOT write
-to any `score_*` column. Trigger the scoring edge function over the
-affected rows and confirm:
-- New rows have non-null scores or a clear "not enough data" status.
-- Pre-existing rows' scores didn't move unexpectedly (diff the before /
-  after for a sample).
-
-## 4. What NEVER Happens
-
-- ❌ Adopting a vendor's table as our canonical table.
-- ❌ Dropping our schema columns because the vendor doesn't have them.
-- ❌ Storing vendor rows in a parallel table that the app then has to
-  query separately from our own. One table per entity.
-- ❌ Letting a vendor's pre-computed "score" or "rank" leak into our
-  composite. Their scores can ride along as a signal, but our composite
-  is computed by our engine, period.
-- ❌ Silent column meaning changes (see AGENTS.md Name-vs-Meaning rule).
-- ❌ `TRUNCATE` on a live entity table. Ever.
-
-## 5. Roles & Cadence
-
-- **Vendor delivery → Haseeb** receives the file, drops it in
-  `/data/incoming/<source>/<date>/`.
-- **Lovable agent** runs the 5-step playbook, produces:
-  1. Universe Audit (markdown)
-  2. Column Triage (markdown)
-  3. Migration (additive + import job)
-  4. Re-score pass + before/after diff
-- **Sam** reviews the column triage before migration runs. He is the only
-  approver for anything touching scoring inputs.
-- **Brett** signs off on which vendor table becomes "the universe" for a
-  given entity if there's ambiguity.
-
-Expected cadence: every 4–8 weeks a new enriched table will land
-(competitor data, school-level data, regional economics). Each one runs
-this playbook. No exceptions, no "this one is small".
-
-## 6. Worked Example — Manus 817 Cities (May 2026)
-
-- **Universe:** 817 Manus rows vs. ~50 of ours. Manus becomes the city
-  universe.
-- **Key:** `(state_abbr, city_name)` after normalization (`"New York
-  city"` → `"New York"`).
-- **Triage:**
-  - KEEP-AS-IS: state, city, population, median_household_income,
-    college_degree_pct, cost_of_living_index, elem enrollment
-  - KEEP-RENAMED: Manus "# districts" → new column
-    `school_district_count`
-  - RECOMPUTE: Manus "STEM %" and "metro income" (state-level) → import
-    as null, backfill from BLS / BEA at MSA geography
-  - DROP: none
-  - NEW COLUMN: `school_district_count`
-- **Import:** upsert into `us_cities_scored` on `(state_abbr, city_name)`.
-  Touches only the 7 triaged columns. Leaves weather, camp signals,
-  scores, and our enrichment columns alone.
-- **Re-score:** scoring edge function runs over the ~770 new rows; old 50
-  rows' scores are unchanged (verified by diff).
-
-## 7. Worked Example — Teacher Imports (Apollo / Apify)
-
-Same playbook. Apollo is the universe for "active teachers with
-contactable email"; our schema owns Fit Score, Tier, candidate pipeline
-linkage, outreach state. Apollo never writes Fit Score. We never drop
-our pipeline FKs because Apollo doesn't know about them.
-
-## 8. Checklist (copy into every import PR)
-
-- [ ] Universe Audit committed
-- [ ] Column Triage committed
-- [ ] Name-vs-Meaning check passed (or renames included in same migration)
-- [ ] Import is upsert + idempotent + logged
-- [ ] No writes to `score_*` columns from the import job
-- [ ] Sam reviewed triage
-- [ ] Re-score pass run; before/after diff attached
-- [ ] PROJECT_CONTEXT.md, APIS.md, OPEN_TASKS.md doc-sync drafted
-```
-
-## Doc-sync follow-ups (after this lands)
-
-- `README.md` — add `THIRD_PARTY_DATA_PLAYBOOK.md` to "Read These First"
-- `AGENTS.md` — add bullet under "Non-Negotiable Rules" pointing to the playbook for any third-party table import
-- `OPEN_TASKS.md` — reference the playbook on the Manus-import task and on the future Competitive Landscape import
-
-Drafted per AGENTS.md doc-sync rule; will wait for explicit "go" before writing those.
-
-## Approve and I will
-
-Write `THIRD_PARTY_DATA_PLAYBOOK.md` with the content above, then surface the README / AGENTS / OPEN_TASKS one-liners for your "go".
+- Migration adds ~15 columns to `us_cities_scored`, drops 3, renames 2. All additive except the 3 drops (those are pure removes — no app code reads them after the frontend reshape lands in the same PR).
+- `csi_brand_detail` stored as `jsonb` per Manus methodology (variable brand list per city).
+- `place_type` backfill: join on existing `us_cities_geo` + Census FIPS class code (already in our geo loader).
+- `census_population_2020` backfill: Census ACS 5-year endpoint (`B01003_001E`) — already wired in `metricFetchers.ts`.
+- Frontend store migration: bump `ng:city-scoring-v1` version 4 → 5, drop 3 obsolete keys from persisted `weights` / `appliedWeights` / `subWeights`, map old keys to new ones for any saved searches.

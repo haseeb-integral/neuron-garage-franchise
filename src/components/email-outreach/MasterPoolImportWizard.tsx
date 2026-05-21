@@ -390,12 +390,14 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         {step === 3 && (
           <div className="space-y-3 text-sm">
             {!qa ? (
-              <div className="flex items-center justify-center p-8">
-                <Button onClick={computeQa} disabled={qaLoading}>
+              <div className="flex flex-col items-center justify-center gap-2 p-8">
+                <Button onClick={computeQa} disabled={qaLoading} className="bg-[#174be8] hover:bg-[#0d3aa8]">
                   {qaLoading ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Sparkles size={14} className="mr-1" />}
                   Run QA preview
                 </Button>
+                <div className="text-[11px] text-[#8794ab]">Required — checks duplicates &amp; missing fields, then auto-advances to import.</div>
               </div>
+
             ) : (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-6">
                 <QaCard label="Total rows" value={qa.total} />

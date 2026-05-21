@@ -796,3 +796,100 @@ function RecipeBlock({
   );
 }
 
+// ─────────────── Two-line Show Formula panel (added 2026-05-21) ───────────────
+// Renders one math line for the current category and one for the overall city
+// composite. Inputs (normalized 0–100 scores) × weights = output. No fallback
+// language, no extra story — the formula speaks for itself.
+function TwoLineFormulaPanel({
+  categoryLabel,
+  cityLabel,
+  previewRecompute,
+  overallFormula,
+}: {
+  categoryLabel: string;
+  cityLabel?: string;
+  previewRecompute: ReturnType<typeof recomputeCategoryScore> | null;
+  overallFormula?: {
+    parts: Array<{ key: CategoryKey; label: string; score: number | null; weightPct: number }>;
+    composite: number | null;
+  };
+}) {
+  const categoryParts = previewRecompute?.contributions.filter((c) => c.used) ?? [];
+  const categoryScore = previewRecompute?.score ?? null;
+
+  return (
+    <section className="rounded-md border border-[#cfdcff] bg-[#f4f8ff] px-3 py-3 space-y-3">
+      <h4 className="text-[11px] font-bold uppercase tracking-wide text-[#174be8]">
+        Show formula{cityLabel ? ` — ${cityLabel}` : ""}
+      </h4>
+
+      {/* Line 1 — category formula */}
+      <div>
+        <div className="text-[11px] font-semibold text-[#1a2540] mb-1">
+          {categoryLabel} category formula
+        </div>
+        {categoryParts.length === 0 ? (
+          <div className="text-[11.5px] italic text-[#8794ab]">
+            No metric inputs available for this city/category yet.
+          </div>
+        ) : (
+          <div className="text-[12px] font-mono text-[#1a2540] leading-relaxed break-words">
+            {categoryParts.map((c, i) => (
+              <span key={c.key}>
+                {i > 0 ? " + " : ""}
+                <span className="whitespace-nowrap">
+                  ({shortLabel(c.label)}{" "}
+                  <span className="text-[#174be8] font-semibold">
+                    {c.normalized == null ? "—" : c.normalized.toFixed(0)}
+                  </span>{" "}
+                  × <span className="text-[#526078]">{(c.subShare * 100).toFixed(0)}%</span>)
+                </span>
+              </span>
+            ))}
+            {" = "}
+            <span className="font-bold text-[14px] text-[#174be8]">
+              {categoryScore == null ? "—" : categoryScore.toFixed(1)}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Line 2 — overall city composite formula */}
+      <div className="pt-2 border-t border-[#cfdcff]">
+        <div className="text-[11px] font-semibold text-[#1a2540] mb-1">
+          Overall city formula{cityLabel ? ` — ${cityLabel}` : ""}
+        </div>
+        {!overallFormula || overallFormula.parts.length === 0 ? (
+          <div className="text-[11.5px] italic text-[#8794ab]">
+            No composite breakdown available.
+          </div>
+        ) : (
+          <div className="text-[12px] font-mono text-[#1a2540] leading-relaxed break-words">
+            {overallFormula.parts.map((p, i) => (
+              <span key={p.key}>
+                {i > 0 ? " + " : ""}
+                <span className="whitespace-nowrap">
+                  {shortLabel(p.label)}{" "}
+                  <span className="text-[#174be8] font-semibold">
+                    {p.score == null ? "—" : Math.round(p.score)}
+                  </span>{" "}
+                  × <span className="text-[#526078]">{p.weightPct.toFixed(0)}%</span>
+                </span>
+              </span>
+            ))}
+            {" = "}
+            <span className="font-bold text-[14px] text-[#174be8]">
+              {overallFormula.composite == null ? "—" : overallFormula.composite}
+            </span>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+// Trim long metric labels so the one-line formula stays readable.
+function shortLabel(label: string): string {
+  return label.length > 28 ? label.slice(0, 26) + "…" : label;
+}
+

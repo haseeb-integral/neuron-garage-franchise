@@ -28,6 +28,7 @@ import { MarketDetailDrawer } from "@/components/city-scoring/MarketDetailDrawer
 import { MarketCompareModal } from "@/components/city-scoring/MarketCompareModal";
 import { AddCityModal } from "@/components/city-scoring/AddCityModal";
 import { MarketReportModal } from "@/components/city-scoring/MarketReportModal";
+import CitySpreadsheetView from "@/components/city-scoring/CitySpreadsheetView";
 import { SourceDataPanel } from "@/components/city-scoring/SourceDataPanel";
 // NearbyMarketsPanel removed from /city-scoring 2026-05-21 (its slot now hosts Key Market Signals).
 import { MarketsMap } from "@/components/city-scoring/MarketsMap";

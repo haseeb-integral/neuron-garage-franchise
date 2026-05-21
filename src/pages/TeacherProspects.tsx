@@ -938,6 +938,7 @@ const TeacherProspects = () => {
           prospectNames={campaignTargets.map((t) => t.name)}
           onAdded={handleAfterAddedToCampaign}
         />
+        <TeacherAiPanel context={aiContext} />
       </div>
     </div>
   );

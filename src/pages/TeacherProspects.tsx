@@ -766,33 +766,36 @@ const TeacherProspects = () => {
           />
         )}
 
-        {/* 3 honest stat cards — values come from server RPC, always reflect filter scope.
-            stats === null → skeleton. Never render literal "0" while loading. */}
-        <div className="mb-3 grid gap-3 sm:grid-cols-3">
-          <StatCard
-            title="Total Imported"
-            value={stats ? stats.total.toLocaleString() : "—"}
-            sub={stats ? `across ${stats.cities.toLocaleString()} cities` : undefined}
-            loading={stats === null && !statsError}
-            error={statsError}
-            onRetry={loadStats}
-          />
-          <StatCard
-            title="Email-Ready"
-            value={stats ? stats.withEmail.toLocaleString() : "—"}
-            sub="can send to SmartLead today"
-            tone="emerald"
-            loading={stats === null && !statsError}
-            error={statsError}
-            onRetry={loadStats}
-          />
-          {/* Needs Email Enrichment card hidden for this version — may return later. */}
+        <CitySearchRail
+          cityFilters={cityFilters}
+          onPick={handleRailPick}
+          onAddMore={() => {
+            const el = document.querySelector<HTMLElement>("[data-teacher-filter-bar]");
+            el?.scrollIntoView({ behavior: "smooth", block: "center" });
+          }}
+        />
 
+        <div className="mb-3 grid gap-3 md:grid-cols-2">
+          <FunnelWidget
+            total={stats?.total ?? null}
+            emailReady={stats?.withEmail ?? null}
+            needsEnrichment={stats?.needsEnrichment ?? null}
+            inOutreach={inOutreachInFilter}
+            loading={stats === null && !statsError}
+          />
+          <NextBestActionStrip
+            stats={stats}
+            visibleProspects={prospects.map((p) => ({ uuid: p.uuid, school: p.school, fitScore: p.fitScore ?? 0, needsEmailEnrichment: !!p.needsEmailEnrichment }))}
+            promotedUuids={promotedUuids}
+            onEnrichBatch={handleEnrichVisible}
+            onPromoteHighFit={handlePromoteHighFit}
+            onFocusSchool={handleFocusSchool}
+          />
         </div>
 
 
         <div className="grid items-start gap-3 xl:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="min-w-0 space-y-3">
+          <div className="min-w-0 space-y-3" data-teacher-filter-bar>
             <TeacherFilterBar
               cities={cities}
               cityFilters={cityFilters}
@@ -807,10 +810,14 @@ const TeacherProspects = () => {
             />
             <BulkActionBar
               count={selected.length}
+              enrichableCount={enrichableSelectedCount}
               onExport={handleExportSelected}
               onAddTag={handleBulkAddTag}
               onPromote={handlePromoteBulk}
               onClear={() => setSelected([])}
+              onPromoteToCandidate={handlePromoteToCandidate}
+              onEnrichSelected={handleEnrichSelected}
+              onSetStatus={handleBulkStatus}
             />
             <TeacherTable
               prospects={prospects}

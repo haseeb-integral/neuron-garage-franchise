@@ -476,7 +476,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
           </Button>
           <div className="text-[10px] text-[#8794ab]">Step {step} of {destination === "master_and_smartlead" ? 4 : 3}</div>
           {step < 3 && (
-            <Button size="sm" disabled={(step === 1 && !canNext2 ? false : false) || (step === 2 && !canNext3) || (step === 1 && !canNext2)} onClick={() => setStep((s) => (s + 1) as Step)}>
+            <Button size="sm" disabled={(step === 1 && (!defaultState && !defaultCity ? false : false)) || (step === 2 && (!canNext2 || !canNext3))} onClick={() => setStep((s) => (s + 1) as Step)}>
               Next <ArrowRight size={14} className="ml-1" />
             </Button>
           )}

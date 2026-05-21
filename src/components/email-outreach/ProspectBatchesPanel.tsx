@@ -128,7 +128,7 @@ export function ProspectBatchesPanel({ refreshKey = 0 }: { refreshKey?: number }
         <div className="px-4 py-5 text-center text-[12px] text-[#66728a]">No import batches yet. Click "Import Leads" to create one.</div>
       ) : (
         <table className="w-full text-[11px]">
-          <thead><tr className="text-left text-[9px] uppercase text-[#8794ab]"><th className="px-3 py-1.5">Batch</th><th>Source</th><th>City</th><th>Segment</th><th>Records</th><th>Approved</th><th>Campaign</th><th>Status</th><th>Created</th><th></th></tr></thead>
+          <thead><tr className="text-left text-[9px] uppercase text-[#8794ab]"><th className="px-3 py-1.5">Batch</th><th>Destination</th><th>Source</th><th>City</th><th>Segment</th><th>Records</th><th>Approved</th><th>Campaign</th><th>Status</th><th>Created</th><th></th></tr></thead>
           <tbody>{batches.map((b) => {
             const campaign = b.campaign_id ? campaignsById[String(b.campaign_id)] : null;
             const failedCount = failedByBatch[b.id] ?? 0;

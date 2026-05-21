@@ -295,12 +295,12 @@ export function buildSeededFallbackSignalsFromScored(
     seeded("competitor_count", "Summer Camps / Enrichment Competitors", scoredRow.summer_camp_count, "competitive_landscape", false),
     seeded("school_based_summer_camp_count", "School-Based Summer Camps", scoredRow.school_hosted_camp_count, "competitive_landscape", true),
     seeded("waitlist_sold_out_signal_count", "Waitlist / Sold-Out Signals", scoredRow.camp_waitlist_signals, "competitive_landscape", true),
-    seeded("elementary_school_count", "Elementary Schools", scoredRow.public_elementary_count, "franchisee_supply", true),
-    seeded("public_elementary_enrollment", "Public Elementary Enrollment", scoredRow.public_elementary_enrollment, "franchisee_supply", false),
-    seeded("cost_of_living_index", "Cost of Living Index", scoredRow.cost_of_living_index, "franchisee_supply", true),
-    seeded("public_school_count", "Total Public Schools", scoredRow.public_school_count, "franchisee_supply", false),
-    seeded("private_school_count", "Private Elementary Schools", scoredRow.private_elementary_count, "franchisee_supply", false),
-    seeded("charter_school_count", "Charter Elementary Schools", scoredRow.charter_elementary_count, "franchisee_supply", false),
+    // TAM Teachers — 5-metric lock (Brett+Haseeb 2026-05-21)
+    seeded("public_elementary_school_count", "Public Elementary Schools", scoredRow.public_elementary_count, "franchisee_supply", true),
+    seeded("public_elementary_teacher_count", "Public Elementary Teachers (NCES FTE)", scoredRow.public_elementary_teacher_count, "franchisee_supply", true),
+    seeded("private_charter_school_count", "Private + Charter Elementary Schools", ((scoredRow.private_elementary_count ?? 0) + (scoredRow.charter_elementary_count ?? 0)) || null, "franchisee_supply", true),
+    seeded("public_elementary_enrollment", "Public Elementary Enrollment", scoredRow.public_elementary_enrollment, "franchisee_supply", true),
+    seeded("col_salary_index", "Teacher Salary × Cost of Living Index", scoredRow.col_salary_index ?? scoredRow.cost_of_living_index, "franchisee_supply", true),
     // Weather metrics — migrated from legacy city_market_signals into
     // us_cities_scored columns on 2026-05-20. Sourced from Open-Meteo.
     seeded("summer_weather_index", "Summer Weather Index", scoredRow.summer_weather_index, "demand", true),

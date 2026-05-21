@@ -2,7 +2,6 @@ import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore — raw markdown import
 import SPEC from "@/data/smartleadSpec.md?raw";
@@ -46,7 +45,7 @@ const SmartLeadSpec = () => {
             prose-li:my-0.5
             prose-blockquote:border-[#0757ff] prose-blockquote:text-[#526078]"
         >
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{SPEC}</ReactMarkdown>
+          <ReactMarkdown>{SPEC}</ReactMarkdown>
         </article>
       </div>
     </div>

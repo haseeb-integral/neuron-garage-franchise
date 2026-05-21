@@ -402,7 +402,9 @@ export function SubMetricWeightsDrawer({
             masterWeightPendingPct={masterWeightPendingPct ?? null}
             enabledSum={enabledSum}
             pendingEdits={pendingEdits}
+            overallFormula={overallFormula}
           />
+
         )}
 
         <AlertDialog open={confirmDeleteId !== null} onOpenChange={(o) => !o && setConfirmDeleteId(null)}>

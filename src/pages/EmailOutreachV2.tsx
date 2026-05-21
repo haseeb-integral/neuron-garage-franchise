@@ -65,6 +65,13 @@ export default function EmailOutreachV2() {
   const [analytics, setAnalytics] = useState<Aggregated | null>(null);
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
 
+  // v1.2 — scope toggle between Master Teacher DB and SmartLead
+  const [scope, setScope] = useState<PoolScope>(() => readStoredScope());
+  const [masterTotal, setMasterTotal] = useState<number | null>(null);
+  const [smartleadTotal, setSmartleadTotal] = useState<number | null>(null);
+  const [verifiedInMaster, setVerifiedInMaster] = useState<number | null>(null);
+  const handleScopeChange = (s: PoolScope) => { setScope(s); writeStoredScope(s); };
+
   const loadCampaigns = async () => {
     setCampaignsLoading(true);
     setCampaignsError(null);

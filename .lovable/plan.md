@@ -1,122 +1,50 @@
-# Lock CSI to 3 sub-metrics (mirror TAM + Demand treatment)
+## What this does
 
-## Goal
+The Competitive Landscape (CSI) numbers come straight from Brett's Manus v2 table. They should not be re-weightable by the user. This change makes the drawer match that reality and cleans up two related display gaps.
 
-Restrict the **Competitive Saturation Index** category to exactly the 3 inputs Brett specified, lock the formula, fix the direction in the overall composite, and recompute every city's `csi_score` + `composite_score_default`.
+## Three fixes
 
-## The 3 locked sub-metrics
+### 1. Remove the 34 / 33 / 33 sub-weight knobs
+- In the CSI drawer, the three +/- counters and the Apply button go away.
+- They're replaced by a read-only panel showing each input's current value, the v2 formula, and a "Locked — pulled from Manus v2 table" note.
+- City rank already uses Manus's `csi_score` directly; this just makes the UI honest.
 
-| # | Metric key (frontend) | Label in UI | DB column | Default sub-weight |
-|---|---|---|---|---|
-| a | `csi_national_brand_supply` | National Brand Supply (weighted count) | `csi_national_brand_count_weighted` | **34%** |
-| b | `csi_local_camp_estimate` | Local Camp Supply (estimated) | `csi_local_provider_estimate` | **33%** |
-| c | `csi_demand_adjusted_market` | Demand-Adjusted Market (DAM) | `csi_demand_adjusted_market` | **33%** |
+### 2. Fix the slider/normalization ranges
+Internal numeric ranges used by the formula preview were too narrow. New ranges = real p99 across all 817 cities:
 
-The 3 raw inputs are **already populated** in `us_cities_scored` from Brett's 2026‑05‑21 Manus upload. We will **not** recompute `csi_local_provider_estimate` from `enrollment × 0.15` — we use Brett's stored values as the source of truth.
+| Input | Old cap | New cap |
+|---|---|---|
+| National Brand Supply | 25 | 60 |
+| Local Camp Estimate | 125 | 250 |
+| Demand-Adjusted Market | 45,000 | 100,000 |
 
-## The locked formula (Brett)
+Big metros (NYC, LA) will no longer all flat-line at 100 in the Show Formula view.
 
-```text
-CSI_raw = (csi_national_brand_count_weighted + csi_local_provider_estimate)
-          / csi_demand_adjusted_market
+### 3. Show which brands are in each city
+Manus stored a per-city brand list in `csi_brand_detail` (e.g. `"KinderCare(1)|Code Ninjas(2)"`). The drawer will display this as a small "Brands present" list so users can see *which* national brands are driving each city's CSI, not just the combined weighted number.
 
-csi_score = clamp( round(CSI_raw × 10000), 0, 100 )      // saturation, higher = more crowded
-```
+## Files touched (technical)
 
-Where (informational, already pre-baked by Manus):
-```text
-National_Brand_Locations  = scraped count of all national brands per city (weighted)
-Local_Camp_Estimate       = Brett's stored estimate (NOT enrollment × 0.15)
-Demand_Adjusted_Market    = Elementary_Enrollment × (Median_HH_Income / 65,000)
-```
+- `src/lib/sowMetricRegistry.ts` — CSI `weight_within_category` → 0 (forces server-score fallback)
+- `src/lib/sowNormalize.ts` — new ranges (60 / 250 / 100,000)
+- `src/stores/cityScoringStore.ts` — bump persist version 7→8, reseed sub-weights so old 34/33/33 from localStorage clears
+- `src/components/city-scoring/SubMetricWeightsDrawer.tsx` — when `categoryKey === "competitiveLandscape"`, render a locked read-only panel instead of editable controls; hide Apply + Reset; add "Brands present" list from `csi_brand_detail`
+- `src/lib/cityScoringLiveData.ts` — pass `csi_brand_detail` through to the drawer
 
-This is exactly the math currently in the DB (Austin 28, Denver 27, LA 36, NYC 76, Phoenix 34 — all verified).
+## Things NOT touched
 
-## Direction fix — **lower CSI is better**
+- The CSI formula itself (still Manus v2)
+- `csi_score` values in the DB
+- The composite math (still `0.40·Demand + 0.30·TAM + 0.30·(100 − CSI)`)
+- TAM and Demand drawers (still editable)
+- Anything outside `/city-scoring`
 
-Today the overall composite treats higher CSI as better. That's wrong: NYC at CSI 76 is *more* saturated and should *hurt* its opportunity score, not help it.
+## Verification
 
-Change the composite math (frontend AND backend) to invert CSI:
+- Hard-refresh (Cmd-Shift-R) clears the old store. Open Austin → CSI drawer should show 3 inputs with no +/- buttons, no Apply, plus a "Brands present" list.
+- City ranking order should not change (composite math is unchanged).
+- Open a big metro (NYC) → Show Formula panel should now show distinct sub-scores instead of three 100s.
 
-```text
-csi_contribution = 100 − csi_score        // "CSI Opportunity"
-composite        = 0.40 × score_demand
-                 + 0.30 × score_tam_teachers
-                 + 0.30 × csi_contribution
-```
+## Doc sync after merge (Mode A — needs your "go")
 
-The category card and Show‑Formula panel will show **both** numbers so there's no ambiguity:
-- "CSI (saturation): 76 — saturated"
-- "CSI Opportunity (used in composite): 24"
-
-## Code changes
-
-**Frontend**
-- `src/lib/sowMetricRegistry.ts` — replace all current `competitive_landscape` sub-metrics with the 3 above. Direction = "higher is worse" tag on each.
-- `src/lib/sowNormalize.ts` — add normalization for the 3 raw inputs based on p5/p95 across 935 cities (will run a quick distribution query before locking ranges).
-- `src/lib/cityScoringLiveData.ts` — seed the 3 metric values from `csi_national_brand_count_weighted`, `csi_local_provider_estimate`, `csi_demand_adjusted_market`.
-- `src/stores/cityScoringStore.ts` — default sub-weights `{ csi_national_brand_supply: 34, csi_local_camp_estimate: 33, csi_demand_adjusted_market: 33 }`.
-- `src/pages/CityScoring.tsx` — composite uses `100 − csi_score` for the CSI contribution. Category card shows raw `csi_score` + saturation label + "(100 − CSI) = N used in composite".
-- `src/components/city-scoring/SubMetricWeightsDrawer.tsx`:
-  - Provenance line: *"CSI inputs from Brett's 2026‑05‑21 Manus upload. Defaults locked 2026‑05‑21."*
-  - Step 2 formula block shows Brett's exact CSI formula + the inversion step.
-  - Kill the legacy 7 sub-metric rows (summer_camps_per_10k_children, stem_robotics_maker_camp_count, etc.).
-- `src/components/city-scoring/MarketDetailDrawer.tsx`, `MarketReportModal.tsx`, `MarketCompareModal.tsx` — drop dead refs to the retired 7 sub-metrics.
-
-**Backend**
-- `supabase/functions/_shared/scoring.ts` — replace CSI registry with the 3, recompute `csi_score` from the locked formula, store as-is (not inverted — inversion happens only in composite). Composite uses `100 − csi_score` for the CSI term.
-- `supabase/functions/_shared/metricFetchers.ts` — remove fetchers for retired CSI metrics if any.
-
-**Database backfill (no migration, no schema change)**
-One `UPDATE` across all ~935 rows:
-```sql
-UPDATE us_cities_scored
-SET csi_score = LEAST(100, GREATEST(0, ROUND(
-      ((COALESCE(csi_national_brand_count_weighted,0) + COALESCE(csi_local_provider_estimate,0))
-       / NULLIF(csi_demand_adjusted_market,0)) * 10000
-    )::int)),
-    composite_score_default = ROUND(
-        0.40 * COALESCE(score_demand,0)
-      + 0.30 * COALESCE(score_tam_teachers,0)
-      + 0.30 * (100 - COALESCE(csi_score,0))   -- inverted
-    )::int
-WHERE csi_demand_adjusted_market IS NOT NULL;
-```
-
-## Expected score shifts (spot-check)
-
-| City | CSI today | CSI after (same) | Old composite (CSI helping) | New composite (CSI inverted) |
-|------|-----------|------------------|------------------------------|------------------------------|
-| Denver | 27 | 27 | TAM+Demand + 0.30×27 = +8 | + 0.30×(100−27) = +22 ↑ |
-| NYC | 76 | 76 | + 0.30×76 = +23 | + 0.30×24 = +7 ↓ |
-| LA | 36 | 36 | +11 | +19 ↑ |
-
-Saturated metros go down. Opportunity metros go up. This is the correct direction.
-
-## Open items I'll resolve during build, not now
-
-- The exact p5/p95 normalization ranges for the 3 raw inputs (so the per-metric bars in the drawer have a meaningful 0–100 read). I'll query the distribution and report numbers in the build step before locking, same pattern as Demand.
-
-## Files to be edited
-
-- `src/lib/sowMetricRegistry.ts`
-- `src/lib/sowNormalize.ts`
-- `src/lib/cityScoringLiveData.ts`
-- `src/stores/cityScoringStore.ts`
-- `src/pages/CityScoring.tsx`
-- `src/components/city-scoring/SubMetricWeightsDrawer.tsx`
-- `src/components/city-scoring/MarketDetailDrawer.tsx`
-- `src/components/city-scoring/MarketReportModal.tsx`
-- `src/components/city-scoring/MarketCompareModal.tsx`
-- `supabase/functions/_shared/scoring.ts`
-- `supabase/functions/_shared/metricFetchers.ts`
-- DB: one `UPDATE` on `us_cities_scored` (no schema change)
-
-## What I will NOT touch
-
-- `csi_national_brand_count_weighted`, `csi_local_provider_estimate`, `csi_demand_adjusted_market` values (Brett's stored numbers).
-- The 2026‑05‑21 Manus staging table or import log.
-- TAM and Demand locks already shipped.
-- Auth, sidebar, kanban gate, 38 non-registration states.
-
-Hard‑refresh (Cmd‑Shift‑R) will be required after deploy.
+Will draft updates to `PROJECT_CONTEXT.md` (note CSI sub-weights locked), `HOW_IT_WORKS.md` (drawer behavior), `GLOSSARY.md` (CSI = read-only Manus v2 ratio) and summarize in chat before writing.

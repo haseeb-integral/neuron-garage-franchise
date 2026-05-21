@@ -95,24 +95,27 @@ export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
     enabled: true,  weight_within_category: 0.20, status: "proxy",
     source: "Derived: Census ACS median income ÷ BEA Regional Price Parity" },
 
-  // ─────────── CSI (3-metric lock — Brett+Haseeb 2026-05-21) ───────────
-  // CSI inputs from Brett's 2026-05-21 Manus upload (csi_* columns on
-  // us_cities_scored). Default sub-weights 34 / 33 / 33. CSI is SATURATION
-  // (higher = more crowded = worse opportunity). Sub-metrics are normalized
-  // on the OPPORTUNITY axis (NB and LCE inverted in sowNormalize.ts, DAM not
-  // inverted) so the recomputed category score reads high = good, matching
-  // Demand and TAM. Raw csi_score (saturation) is shown for reference.
+  // ─────────── CSI (3-metric lock — Brett+Haseeb 2026-05-21, read-only 2026-05-21c) ───────────
+  // CSI inputs from Brett's 2026-05-21 Manus v2 upload (csi_* columns on
+  // us_cities_scored). These are NOT independently re-weightable — Manus
+  // already combines them via the v2 formula:
+  //   CSI = (NB_weighted + Local_Estimate) / Demand_Adjusted_Market
+  // and stores the result in csi_score. We use csi_score directly (inverted
+  // 100 - csi_score → opportunity) as the category score in the composite.
+  // weight_within_category = 0 forces the recompute helper to fall back to
+  // the server score, so the drawer is read-only and no user-tweakable
+  // sub-weight can drift the category away from Manus.
   { key: "csi_national_brand_supply", category: "competitive_landscape", label: "National Brand Supply (weighted count)",
-    description: "Weighted count of national camp/enrichment brand locations in the city. Higher = more entrenched competition = worse opportunity.",
-    enabled: true,  weight_within_category: 0.34, status: "live",
-    source: "Manus 2026-05-21 batch — national brand scrape, weighted by brand strength" },
+    description: "Weighted count of national camp/enrichment brand locations (STEM brands ×2.0, general brands ×1.0). Higher = more entrenched competition.",
+    enabled: true,  weight_within_category: 0, status: "live",
+    source: "Manus 2026-05-21 v2 — 15-brand scrape, STEM 2.0× / Other 1.0× weighting" },
   { key: "csi_local_camp_estimate", category: "competitive_landscape", label: "Local Camp Supply (estimated)",
-    description: "Brett's estimated count of local independent camp providers. Higher = more crowded local market = worse opportunity.",
-    enabled: true,  weight_within_category: 0.33, status: "proxy",
-    source: "Manus 2026-05-21 batch — local provider estimate (stored value, not enrollment × 0.15)" },
+    description: "Estimated local independent camp providers = elementary enrollment × 0.003 (v2 corrected multiplier).",
+    enabled: true,  weight_within_category: 0, status: "proxy",
+    source: "Manus 2026-05-21 v2 — local provider estimate (enrollment × 0.003)" },
   { key: "csi_demand_adjusted_market", category: "competitive_landscape", label: "Demand-Adjusted Market (DAM)",
-    description: "Elementary enrollment scaled by household income vs $65k baseline. Higher = bigger addressable market = better opportunity.",
-    enabled: true,  weight_within_category: 0.33, status: "live",
+    description: "Elementary enrollment scaled by household income vs $65k baseline. The denominator in the CSI ratio.",
+    enabled: true,  weight_within_category: 0, status: "live",
     source: "Derived: public_elementary_enrollment × (median_household_income / 65,000)" },
 
   // ─────────── TAM TEACHERS (5-metric lock — Brett+Haseeb 2026-05-21) ───────────

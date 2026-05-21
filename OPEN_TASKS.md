@@ -6,6 +6,15 @@
 
 ---
 
+## 📘 Third-Party Data Imports — follow the Playbook
+
+Any rich vendor table (Manus 817-city demographics, Apollo / Apify teacher exports, the incoming Competitive Landscape table, and future refreshes) MUST be imported per **`THIRD_PARTY_DATA_PLAYBOOK.md`**. Universe Audit → Column Triage → Name-vs-Meaning check → idempotent upsert → separate re-score pass. Specifically:
+
+- **Manus 817 cities import** → `us_cities_scored`. Manus is the city UNIVERSE, our schema stays the SCORING LAYER. Upsert on `(state_abbr, city_name)`, do not touch `score_*` columns from the import.
+- **Competitive Landscape table (incoming)** → same playbook. Triage every column before it lands in our schema.
+
+---
+
 ## 🚨 Task #0 — Database Layer (BLOCKER — due Tuesday May 20)
 
 **This task blocks everything else. City Search and Teacher Search cannot move forward until this is live.**

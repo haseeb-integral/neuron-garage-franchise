@@ -59,7 +59,7 @@ export const useTeacherProspectsStore = create<TeacherProspectsState>()(
       },
       partialize: (s) => ({
         search: s.search,
-        cityFilters: s.cityFilters,
+        // cityFilters intentionally NOT persisted — Teacher Search should start with no city scope.
         sourceFilter: s.sourceFilter,
         hideInOutreach: s.hideInOutreach,
         pageSize: s.pageSize,

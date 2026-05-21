@@ -29,6 +29,7 @@ import { getAnalyticsCachedOrFresh, type Aggregated } from "@/lib/smartleadAnaly
 import { ScopeSwitcher, readStoredScope, writeStoredScope, type PoolScope } from "@/components/email-outreach/ScopeSwitcher";
 import { StatStripCards } from "@/components/email-outreach/StatStripCards";
 import { PushToSmartLeadBanner } from "@/components/email-outreach/PushToSmartLeadBanner";
+import { PushToSmartLeadModal } from "@/components/email-outreach/PushToSmartLeadModal";
 
 type SLCampaign = { id: number | string; name?: string; status?: string; created_at?: string };
 

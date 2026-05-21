@@ -140,6 +140,13 @@ export function ProspectBatchesPanel({ refreshKey = 0 }: { refreshKey?: number }
                     {b.batch_name}
                   </span>
                 </td>
+                <td className="py-1.5">
+                  {(() => {
+                    const dest = b.destination ?? "smartlead_only";
+                    const meta = DESTINATION_BADGES[dest] ?? DESTINATION_BADGES.smartlead_only;
+                    return <span title={meta.title} className={`inline-flex h-4 items-center rounded-md border px-1.5 text-[10px] font-bold ${meta.cls}`}>{meta.label}</span>;
+                  })()}
+                </td>
                 <td className="py-1.5">{b.source ?? "—"}</td>
                 <td className="py-1.5">{b.city ?? "—"}{b.state ? `, ${b.state}` : ""}</td>
                 <td className="py-1.5">{b.segment ?? "—"}</td>

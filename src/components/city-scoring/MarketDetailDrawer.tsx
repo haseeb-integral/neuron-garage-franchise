@@ -291,28 +291,16 @@ export function MarketDetailDrawer({
           return;
         }
 
-        const { data: signalRows } = await supabase
-          .from("city_market_signals")
-          .select("*")
-          .eq("city_id", cityId);
-        // Legacy city_competitors and city_fetch_jobs were dropped May 19.
+        // Legacy `city_market_signals` was severed on 2026-05-21.
+        // Live evidence rows are synthesized from us_cities_scored columns.
+        const fallbackSignals = buildSeededFallbackSignals(market);
         const competitorRows: any[] = [];
         const canonicalJobRows: any[] = [];
 
-        const fallbackSignals = buildSeededFallbackSignals(market);
-        const liveByKey = new Map<string, LiveSignal>();
-        (signalRows ?? []).forEach((r: any) => {
-          if (r?.signal_key) liveByKey.set(r.signal_key, r as LiveSignal);
-        });
-        const merged: LiveSignal[] = [
-          ...fallbackSignals.map((s) => liveByKey.get(s.signal_key!) ?? s),
-          ...(signalRows ?? []).filter(
-            (r: any) => r?.signal_key && !fallbackSignals.some((s) => s.signal_key === r.signal_key),
-          ),
-        ] as LiveSignal[];
-        setSignals(merged);
+        setSignals(fallbackSignals as LiveSignal[]);
         setCompetitors(competitorRows as LiveCompetitor[]);
         setLatestJob(canonicalJobRows?.[0] ?? null);
+
       } catch (error) {
         console.error("MarketDetailDrawer live evidence error", error);
       } finally {

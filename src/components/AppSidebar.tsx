@@ -10,12 +10,12 @@ const primaryNavItems = [
   { title: "Teacher Search", url: "/teacher-prospects", icon: Users },
   { title: "Email Outreach", url: "/email-outreach", icon: Mail },
   { title: "Candidate Pipeline", url: "/candidate-pipeline", icon: Kanban },
+  { title: "Full Specification", url: "/spec", icon: FileText },
 ];
 
 const utilityNavItems = [
   { title: "Team Members", url: "/settings/team", icon: Users },
   { title: "User's Guide", url: "/users-guide", icon: BookOpen },
-  { title: "Specification", url: "/spec", icon: FileText },
   { title: "SmartLead API Spec", url: "/smartlead-spec", icon: Send },
   { title: "Outreach Guide", url: "/email-outreach-docs", icon: MailOpen },
 ];

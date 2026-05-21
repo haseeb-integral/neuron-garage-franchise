@@ -16,6 +16,7 @@ import CandidatePipeline from "./pages/CandidatePipeline";
 import Onboarding from "./pages/Onboarding";
 import Spec from "./pages/Spec";
 import SmartLeadSpec from "./pages/SmartLeadSpec";
+import EmailOutreachDocs from "./pages/EmailOutreachDocs";
 import UserGuide from "./pages/UserGuide";
 import TeamMembers from "./pages/TeamMembers";
 import NotFound from "./pages/NotFound";
@@ -44,6 +45,7 @@ const App = () => (
               <Route path="/users-guide" element={<UserGuide />} />
               <Route path="/spec" element={<Spec />} />
               <Route path="/smartlead-spec" element={<SmartLeadSpec />} />
+              <Route path="/email-outreach-docs" element={<EmailOutreachDocs />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

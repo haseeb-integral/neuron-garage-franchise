@@ -1425,9 +1425,10 @@ const CityScoring = () => {
 
   const SIGNAL_ICONS: Record<string, typeof Users> = {
     competitor_count: Trophy,
-    elementary_school_count: GraduationCap,
+    public_elementary_school_count: GraduationCap,
     public_elementary_count: GraduationCap,
-    private_school_count: Building2,
+    public_elementary_teacher_count: GraduationCap,
+    private_charter_school_count: Building2,
     stem_enrichment_count: Cog,
     montessori_count: Star,
     rental_venue_count: HomeIcon,
@@ -1449,9 +1450,9 @@ const CityScoring = () => {
     "income_100k_plus_proxy",
     "education_bachelors_plus_proxy",
     "competitor_count",
-    "public_elementary_count",
-    "elementary_school_count",
-    "private_school_count",
+    "public_elementary_school_count",
+    "public_elementary_teacher_count",
+    "private_charter_school_count",
   ];
 
   const CENTER_SIGNAL_EXCLUDE = [

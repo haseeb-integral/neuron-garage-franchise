@@ -160,18 +160,16 @@ export function MarketReportModal({ open, onClose, market, categoryScores, refre
           return;
         }
 
-        const { data: signals } = await supabase
-          .from("city_market_signals")
-          .select("*")
-          .eq("city_id", cityId);
-        // Legacy city_competitors and city_fetch_jobs were dropped May 19.
+        // Legacy `city_market_signals` was severed on 2026-05-21.
+        // Evidence rows come from the seeded fallback (us_cities_scored).
+        const fallbackSignals = buildSeededFallbackSignals(market);
         const competitors: any[] = [];
         const jobs: any[] = [];
 
-        const fallbackSignals = buildSeededFallbackSignals(market);
-        setLiveSignals(((signals?.length ? signals : fallbackSignals) ?? []) as LiveSignal[]);
+        setLiveSignals(fallbackSignals as unknown as LiveSignal[]);
         setLiveCompetitors(competitors as LiveCompetitor[]);
         setLatestJob(jobs?.[0] ?? null);
+
       } catch (err) {
         console.error("MarketReportModal load error", err);
       } finally {

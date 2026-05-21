@@ -15,6 +15,7 @@ import EmailOutreach from "./pages/EmailOutreachV2";
 import CandidatePipeline from "./pages/CandidatePipeline";
 import Onboarding from "./pages/Onboarding";
 import Spec from "./pages/Spec";
+import SmartLeadSpec from "./pages/SmartLeadSpec";
 import UserGuide from "./pages/UserGuide";
 import TeamMembers from "./pages/TeamMembers";
 import NotFound from "./pages/NotFound";

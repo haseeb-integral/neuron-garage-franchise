@@ -601,3 +601,143 @@ function FormulaPanel({
     </TooltipProvider>
   );
 }
+
+// ─────────────────────────── Plain-English recipe ───────────────────────────
+
+function RecipeBlock({
+  categoryLabel,
+  cityLabel,
+  previewRecompute,
+  masterWeightPct,
+  serverCategoryScore,
+}: {
+  categoryLabel: string;
+  cityLabel?: string;
+  previewRecompute: ReturnType<typeof recomputeCategoryScore> | null;
+  masterWeightPct: number | null;
+  serverCategoryScore: number | null;
+}) {
+  if (!previewRecompute) {
+    return (
+      <p className="text-[11.5px] text-[#8794ab] italic">
+        Open this drawer from a selected city to see the step-by-step math with real numbers.
+      </p>
+    );
+  }
+
+  const contribs = previewRecompute.contributions;
+  const used = contribs.filter((c) => c.used);
+  const skipped = contribs.filter((c) => !c.used);
+  const categoryScore = previewRecompute.score;
+  const compositeContribution =
+    categoryScore != null && masterWeightPct != null
+      ? (categoryScore * masterWeightPct) / 100
+      : null;
+
+  // All-fallback case (no usable sub-weights)
+  if (used.length === 0) {
+    return (
+      <div className="rounded border border-[#fde68a] bg-[#fffbe6] px-3 py-2.5 text-[12px] text-[#854d0e] leading-snug">
+        <strong>All metrics unavailable</strong> — using the server's stored {categoryLabel} score of{" "}
+        <strong>{serverCategoryScore != null ? Math.round(serverCategoryScore) : "—"}</strong> as a fallback.
+        {masterWeightPct != null && categoryScore != null && (
+          <div className="mt-1.5 text-[#7c2d12]">
+            This category is <strong>{masterWeightPct.toFixed(0)}%</strong> of the overall city score, so it contributes{" "}
+            <strong>{((categoryScore * masterWeightPct) / 100).toFixed(1)} points</strong>.
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Step 1 + 2 + 3 recipe with real numbers
+  return (
+    <div className="space-y-3">
+      {/* Step 1 */}
+      <div className="rounded border border-[#e5eaf2] bg-white px-3 py-2.5">
+        <div className="flex items-baseline gap-2 mb-1.5">
+          <span className="text-[11px] font-bold text-[#174be8]">STEP 1</span>
+          <span className="text-[12px] text-[#1a2540] font-medium">Score each metric on a 0–100 scale</span>
+        </div>
+        <table className="w-full text-[11.5px]">
+          <tbody>
+            {used.map((c) => (
+              <tr key={c.key} className="border-t border-[#f3f6fb] first:border-0">
+                <td className="py-1 text-[#3a4256]">{c.label}</td>
+                <td className="py-1 text-right tabular-nums text-[#6b7894] pr-2">
+                  {c.rawValue == null ? "—" : c.rawValue.toLocaleString()}
+                </td>
+                <td className="py-1 text-right tabular-nums text-[#174be8] font-semibold w-[60px]">
+                  → {c.normalized == null ? "—" : c.normalized.toFixed(0)}
+                </td>
+              </tr>
+            ))}
+            {skipped.map((c) => (
+              <tr key={c.key} className="border-t border-[#f3f6fb] text-[#b6bfd0]">
+                <td className="py-1 italic">{c.label}</td>
+                <td className="py-1 text-right tabular-nums pr-2">n/a</td>
+                <td className="py-1 text-right text-[10.5px] italic w-[60px]">skipped</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Step 2 */}
+      <div className="rounded border border-[#e5eaf2] bg-white px-3 py-2.5">
+        <div className="flex items-baseline gap-2 mb-1.5">
+          <span className="text-[11px] font-bold text-[#174be8]">STEP 2</span>
+          <span className="text-[12px] text-[#1a2540] font-medium">Multiply each score by its weight (your sliders)</span>
+        </div>
+        <table className="w-full text-[11.5px] font-mono">
+          <tbody>
+            {used.map((c) => (
+              <tr key={c.key} className="border-t border-[#f3f6fb] first:border-0">
+                <td className="py-1 text-[#3a4256] truncate max-w-[200px] font-sans" title={c.label}>{c.label}</td>
+                <td className="py-1 text-right tabular-nums text-[#6b7894] w-[140px]">
+                  {c.normalized == null ? "—" : c.normalized.toFixed(0)} × {(c.subShare * 100).toFixed(0)}%
+                </td>
+                <td className="py-1 text-right tabular-nums text-[#1a2540] font-semibold w-[60px]">
+                  = {c.contribution.toFixed(1)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-[#cfdcff]">
+              <td colSpan={2} className="py-1.5 text-right text-[12px] font-sans font-semibold text-[#1a2540]">
+                {categoryLabel} category score =
+              </td>
+              <td className="py-1.5 text-right tabular-nums text-[14px] font-bold text-[#174be8]">
+                {categoryScore == null ? "—" : categoryScore.toFixed(1)}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      {/* Step 3 */}
+      {masterWeightPct != null && categoryScore != null && compositeContribution != null && (
+        <div className="rounded border border-[#cfdcff] bg-[#eef4ff] px-3 py-2.5">
+          <div className="flex items-baseline gap-2 mb-1.5">
+            <span className="text-[11px] font-bold text-[#174be8]">STEP 3</span>
+            <span className="text-[12px] text-[#1a2540] font-medium">
+              {categoryLabel} is {masterWeightPct.toFixed(0)}% of the overall city score
+            </span>
+          </div>
+          <div className="text-[12.5px] font-mono text-[#1a2540] text-center py-1">
+            {categoryScore.toFixed(1)} × {masterWeightPct.toFixed(0)}% ={" "}
+            <span className="font-bold text-[14px] text-[#174be8]">
+              {compositeContribution.toFixed(1)} points
+            </span>
+          </div>
+          <p className="text-[10.5px] text-[#526078] text-center mt-1 leading-snug">
+            …toward {cityLabel ?? "this city"}'s composite score. The other{" "}
+            {(100 - masterWeightPct).toFixed(0)}% comes from the other categories (see their drawers).
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+

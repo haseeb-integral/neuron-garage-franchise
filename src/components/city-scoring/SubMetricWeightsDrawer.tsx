@@ -460,7 +460,7 @@ export function SubMetricWeightsDrawer({
         {isCsiLocked ? (
           <div className="border-t border-[#eef2f7] px-5 py-3 bg-[#fafbfd]">
             <p className="text-[10.5px] text-[#8794ab] leading-snug">
-              Locked — pulled directly from Brett's Manus v2 table. CSI is computed by Manus and used as-is in the composite. No user-tunable knobs.
+              Locked — pulled directly from Brett's Manus v2 table. Competitive Landscape is computed by Manus and used as-is in the composite. No user-tunable knobs.
             </p>
           </div>
         ) : (
@@ -1005,7 +1005,7 @@ function CsiLockedPanel({
       <div className="rounded border border-[#eef2f7] bg-white px-3 py-3">
         <div className="flex items-baseline justify-between gap-3">
           <div className="text-[11px] uppercase tracking-wide text-[#526078] font-semibold">
-            CSI (saturation) {selectedCityLabel ? `· ${selectedCityLabel}` : ""}
+            Competitive Landscape (saturation) {selectedCityLabel ? `· ${selectedCityLabel}` : ""}
           </div>
           {csiSaturationCategory && (
             <span className="text-[10.5px] font-semibold rounded px-1.5 py-0.5 bg-[#fff6dc] text-[#8a6a00]">
@@ -1019,7 +1019,7 @@ function CsiLockedPanel({
         </div>
         <p className="text-[10.5px] text-[#8794ab] mt-0.5 leading-snug">
           Lower = less crowded = better opportunity. In the composite we use
-          <span className="font-mono"> (100 − CSI)</span> so high contribution = good.
+          <span className="font-mono"> (100 − score)</span> so high contribution = good.
         </p>
       </div>
 

@@ -29,7 +29,7 @@ import { MarketCompareModal } from "@/components/city-scoring/MarketCompareModal
 import { AddCityModal } from "@/components/city-scoring/AddCityModal";
 import { MarketReportModal } from "@/components/city-scoring/MarketReportModal";
 import { SourceDataPanel } from "@/components/city-scoring/SourceDataPanel";
-import { NearbyMarketsPanel } from "@/components/city-scoring/NearbyMarketsPanel";
+// NearbyMarketsPanel removed from /city-scoring 2026-05-21 (its slot now hosts Key Market Signals).
 import { MarketsMap } from "@/components/city-scoring/MarketsMap";
 import { TierBadge } from "@/components/city-scoring/TierBadge";
 import { toast } from "sonner";
@@ -44,7 +44,7 @@ import {
   type RankedMarket,
 } from "@/lib/cityScoringLiveData";
 import { useCityScoringStore, DEFAULT_WEIGHTS } from "@/stores/cityScoringStore";
-import { DEFAULT_SUB_WEIGHTS } from "@/lib/sowMetricRegistry";
+import { DEFAULT_SUB_WEIGHTS, SOW_METRIC_REGISTRY } from "@/lib/sowMetricRegistry";
 import { SubMetricWeightsDrawer } from "@/components/city-scoring/SubMetricWeightsDrawer";
 import { getCached, setCached } from "@/lib/pageCache";
 import { Settings2 } from "lucide-react";
@@ -135,7 +135,7 @@ const CATEGORIES: Category[] = [
     description: "Measures size of target families and program demand.", defaultWeight: 40 },
   { key: "franchiseeSupply", label: "TAM Teachers", icon: UserCheck, color: "#7c3aed", bg: "#f1ebff",
     description: "Total addressable pool of teachers available to recruit as franchise operators.", defaultWeight: 30 },
-  { key: "competitiveLandscape", label: "Competitive Saturation Index (CSI)", icon: Trophy, color: "#b8860b", bg: "#fff6dc",
+  { key: "competitiveLandscape", label: "Competitive Landscape", icon: Trophy, color: "#b8860b", bg: "#fff6dc",
     description: "How saturated the local kids-enrichment market is, weighted by national brand presence.", defaultWeight: 30 },
   // Retired May 21, 2026 — hidden via VISIBLE_CATEGORIES but kept in type
   // for store/persist stability. Will be fully removed in follow-up refactor.
@@ -1417,84 +1417,60 @@ const CityScoring = () => {
     displayTier === "B" ? "Strong Opportunity" :
     displayTier === "C" ? "Moderate Opportunity" : "Limited Opportunity";
 
-  const SIGNAL_ICONS: Record<string, typeof Users> = {
-    competitor_count: Trophy,
-    public_elementary_school_count: GraduationCap,
-    public_elementary_count: GraduationCap,
-    public_elementary_teacher_count: GraduationCap,
-    private_charter_school_count: Building2,
-    stem_enrichment_count: Cog,
-    montessori_count: Star,
-    rental_venue_count: HomeIcon,
-    parent_mindset_places: Heart,
-    firecrawl_source_pages: FileText,
-    source_pages_found: FileText,
-    data_readiness: Star,
-    children_5_12: Users,
-    households_100k: HomeIcon,
-    premium_pricing: DollarSign,
-    teacher_density: GraduationCap,
-    school_access: Building2,
-  };
-
-  const SIGNAL_DISPLAY_PRIORITY = [
-    "total_population",
+  // Key Market Signals — locked to the 12 metrics that power the 3 visible
+  // categories (Demand 4 + TAM Teachers 5 + Competitive Landscape 3).
+  // Per Brett 2026-05-21: simple plain UI, no chips, source as subtitle.
+  const KEY_SIGNAL_KEYS: readonly string[] = [
+    // Demand (4)
+    "children_5_12_count",
     "median_household_income",
-    "children_population_proxy",
-    "income_100k_plus_proxy",
-    "education_bachelors_plus_proxy",
-    "competitor_count",
+    "dual_income_household_pct",
+    "education_bachelors_plus_pct",
+    // TAM Teachers (5)
     "public_elementary_school_count",
     "public_elementary_teacher_count",
     "private_charter_school_count",
-  ];
-
-  const CENTER_SIGNAL_EXCLUDE = [
-    "data_readiness",
-    "census_data_readiness",
-    "bls_data_readiness",
-    // Folded into the public_elementary_count row below
     "public_elementary_enrollment",
+    "col_salary_index",
+    // Competitive Landscape (3)
+    "csi_national_brand_supply",
+    "csi_local_camp_estimate",
+    "csi_demand_adjusted_market",
   ];
 
-  const centerLiveSignals = [...signalsForDisplay]
-    .filter((s) => !CENTER_SIGNAL_EXCLUDE.includes(s.signal_key))
-    .sort((a, b) => {
-      const ai = SIGNAL_DISPLAY_PRIORITY.indexOf(a.signal_key);
-      const bi = SIGNAL_DISPLAY_PRIORITY.indexOf(b.signal_key);
-      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
-    });
-  const visibleCenterSignals = centerLiveSignals.slice(0, 12);
-  const hasMoreSignals = signalsForDisplay.length > visibleCenterSignals.length;
-
-  // Find enrollment to fold into the public_elementary_count row
-  const elementaryEnrollmentSignal = signalsForDisplay.find(
-    (s) => s.signal_key === "public_elementary_enrollment",
-  );
-
-  const liveSigRows = visibleCenterSignals.map((s) => {
-    if (s.signal_key === "public_elementary_count") {
-      const countNum = Number(s.value);
-      const enrollNum = Number(elementaryEnrollmentSignal?.value ?? 0);
-      const countLabel = Number.isFinite(countNum) ? countNum.toLocaleString() : s.value;
-      const value = enrollNum > 0
-        ? `${countLabel} schools · ${enrollNum.toLocaleString()} enrolled`
-        : `${countLabel} schools`;
-      return {
-        icon: SIGNAL_ICONS[s.signal_key] ?? Star,
-        label: "Public elementary (NCES CCD 2022)",
-        value,
-      };
+  const KEY_SIGNAL_META: Record<string, { label: string; source: string }> = (() => {
+    const out: Record<string, { label: string; source: string }> = {};
+    for (const m of SOW_METRIC_REGISTRY) {
+      out[m.key] = { label: m.label, source: m.source };
     }
+    return out;
+  })();
+
+  const signalsByKey = useMemo(() => {
+    const out: Record<string, { value: string }> = {};
+    for (const s of signalsForDisplay) {
+      if (s?.signal_key) out[s.signal_key] = { value: s.value };
+    }
+    return out;
+  }, [signalsForDisplay]);
+
+  const sigRows = KEY_SIGNAL_KEYS.map((key) => {
+    const meta = KEY_SIGNAL_META[key];
+    const sig = signalsByKey[key];
+    const rawVal = sig?.value;
+    const value = rawVal === undefined || rawVal === null || rawVal === "" ? "—" : rawVal;
     return {
-      icon: SIGNAL_ICONS[s.signal_key] ?? Star,
-      label: s.label,
-      value: s.value,
+      key,
+      label: meta?.label ?? key,
+      source: meta?.source ?? "",
+      value,
     };
   });
 
-  const sigRows = liveSigRows;
-  const hasLiveSignals = sigRows.length > 0;
+  const hasLiveSignals = sigRows.some((r) => r.value !== "—");
+  const preSeededCount = sigRows.filter((r) => r.value !== "—").length;
+  const hasMoreSignals = false; // entire 12-metric list rendered inline; drawer just expands detail
+
 
   const lastScrapedAt = selectedLiveCity?.last_scraped_at ?? selectedLiveJob?.completed_at ?? null;
   const lastScrapedAtMs = lastScrapedAt ? new Date(lastScrapedAt).getTime() : null;
@@ -2455,82 +2431,31 @@ const CityScoring = () => {
             </div>
           </div>
 
-          <div className="mt-3 grid grid-cols-[1fr_1.08fr] gap-5 border-t border-[#eef2f7] pt-3.5">
-            <div>
-              <p className="mb-2.5 text-[13px] font-semibold text-[#07142f]">Category Scores</p>
-              <div className="space-y-2">
-                {VISIBLE_CATEGORIES.map((cat) => {
-                  const v = selectedHasLiveData ? (detailCategoryScores[cat.key] ?? 0) : null;
-                  const wPct = appliedTotal > 0 ? (appliedWeights[cat.key] / appliedTotal) * 100 : 0;
-                  const isZeroWeighted = wPct <= 0.05;
-                  return (
-                    <div key={cat.key} className={isZeroWeighted ? "opacity-45" : ""} title={isZeroWeighted ? `${cat.label} is set to 0% — contributes nothing to the overall score` : undefined}>
-                      <div className="mb-1 flex items-center justify-between gap-3 text-[12px]">
-                        <span className="text-[#526078]">
-                          {cat.label}
-                          {isZeroWeighted && <span className="ml-1.5 text-[10px] uppercase tracking-wide text-[#8794ab]">· 0% weight</span>}
-                        </span>
-                        <span className="font-semibold text-[#07142f]">{v ?? "—"}</span>
-                      </div>
-                      <div className="h-1.5 w-full rounded-full bg-[#e8edf6]">
-                        <div className={`h-full rounded-full ${isZeroWeighted ? "bg-[#b6bfd0]" : "bg-[#1d4fff]"}`} style={{ width: `${v ?? 0}%` }} />
-                      </div>
+          <div className="mt-3 border-t border-[#eef2f7] pt-3.5">
+            <p className="mb-2.5 text-[13px] font-semibold text-[#07142f]">Category Scores</p>
+            <div className="space-y-2">
+              {VISIBLE_CATEGORIES.map((cat) => {
+                const v = selectedHasLiveData ? (detailCategoryScores[cat.key] ?? 0) : null;
+                const wPct = appliedTotal > 0 ? (appliedWeights[cat.key] / appliedTotal) * 100 : 0;
+                const isZeroWeighted = wPct <= 0.05;
+                return (
+                  <div key={cat.key} className={isZeroWeighted ? "opacity-45" : ""} title={isZeroWeighted ? `${cat.label} is set to 0% — contributes nothing to the overall score` : undefined}>
+                    <div className="mb-1 flex items-center justify-between gap-3 text-[12px]">
+                      <span className="text-[#526078]">
+                        {cat.label}
+                        {isZeroWeighted && <span className="ml-1.5 text-[10px] uppercase tracking-wide text-[#8794ab]">· 0% weight</span>}
+                      </span>
+                      <span className="font-semibold text-[#07142f]">{v ?? "—"}</span>
                     </div>
-                  );
-                })}
-              </div>
-
-            </div>
-
-            <div className="min-w-0 border-l border-[#eef2f7] pl-4">
-              <p className="mb-2.5 text-[13px] font-semibold text-[#07142f]">Key Market Signals</p>
-              {hasLiveSignals ? (
-                <>
-                  <div className="flex flex-col gap-y-2.5 min-w-0">
-                    {sigRows.map((r) => {
-                      const Icon = r.icon;
-                      return (
-                        <div key={r.label} className="grid grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-2 text-[10.5px]">
-                          <Icon size={15} className="text-[#174be8]" />
-                          <span className="min-w-0 truncate text-[#526078]">{r.label}</span>
-                          <span className="max-w-[120px] truncate text-right font-bold text-[#07142f]">{r.value}</span>
-                        </div>
-                      );
-                    })}
+                    <div className="h-1.5 w-full rounded-full bg-[#e8edf6]">
+                      <div className={`h-full rounded-full ${isZeroWeighted ? "bg-[#b6bfd0]" : "bg-[#1d4fff]"}`} style={{ width: `${v ?? 0}%` }} />
+                    </div>
                   </div>
-                  {hasMoreSignals && (
-                    <button
-                      type="button"
-                      onClick={() => setDetailDrawerOpen(true)}
-                      className="mt-2 inline-flex items-center gap-1 rounded-md border border-[#dbe4f2] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#174be8] hover:bg-[#f1f5ff]"
-                    >
-                      View all signals →
-                    </button>
-                  )}
-                </>
-              ) : SHOW_LIVE_REFRESH ? (
-                <div className="rounded-md border border-dashed border-[#dbe4f2] bg-[#f7faff] px-3 py-4 text-center">
-                  <p className="text-[11.5px] text-[#526078] leading-snug">
-                    No live signals yet for this market.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleRefreshData}
-                    disabled={refreshingMarket}
-                    className="mt-2 inline-flex items-center gap-1 rounded-md bg-[#174be8] px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-[#1240c9] disabled:opacity-60"
-                  >
-                    {refreshingMarket ? "Refreshing…" : "Refresh This Market"}
-                  </button>
-                </div>
-              ) : (
-                <div className="rounded-md border border-dashed border-[#dbe4f2] bg-[#f7faff] px-3 py-4 text-center">
-                  <p className="text-[11.5px] text-[#526078] leading-snug">
-                    Showing pre-seeded scores. Live signal scraping is paused.
-                  </p>
-                </div>
-              )}
+                );
+              })}
             </div>
           </div>
+
 
           <div className="mt-4 flex flex-wrap gap-2">
             <Button onClick={handleFindTeachers} className="h-9 flex-1 min-w-0 bg-[#174be8] hover:bg-[#1240c9] text-white gap-1.5 px-3 font-medium text-[11px]">
@@ -2566,17 +2491,49 @@ const CityScoring = () => {
             </Button>
           </div>
 
-          <NearbyMarketsPanel
-            cityId={selected.cityId ?? null}
-            state={selectedState}
-            metroArea={selectedLiveCity?.metro_area ?? (selected as any).metroArea ?? null}
-            refreshKey={marketRefreshVersion}
-            onSelect={(m) => {
-              setSelectedMarketKey({ city: m.city, state: m.state });
-              const sample = sampleCities.find((s) => sameMarket(s.city, s.state, m.city, m.state));
-              if (sample) setSelectedId(sample.id);
-            }}
-          />
+          <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
+            <div className="mb-2 flex items-baseline justify-between gap-2">
+              <p className="text-[13px] font-semibold text-[#07142f]">Key Market Signals</p>
+              <span className="text-[10px] text-[#8794ab]">{preSeededCount} of 12 seeded</span>
+            </div>
+            {hasLiveSignals ? (
+              <div className="flex flex-col divide-y divide-[#f1f4f9]">
+                {sigRows.map((r) => (
+                  <div key={r.key} className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 py-1.5">
+                    <div className="min-w-0">
+                      <p className="text-[11.5px] font-medium text-[#07142f] leading-tight truncate" title={r.label}>{r.label}</p>
+                      <p className="text-[10px] text-[#8794ab] leading-tight truncate" title={r.source}>{r.source}</p>
+                    </div>
+                    <span className="text-right text-[11.5px] font-bold text-[#07142f] tabular-nums whitespace-nowrap">{r.value}</span>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setDetailDrawerOpen(true)}
+                  className="mt-2 self-start inline-flex items-center gap-1 rounded-md border border-[#dbe4f2] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#174be8] hover:bg-[#f1f5ff]"
+                >
+                  View all signals →
+                </button>
+              </div>
+            ) : SHOW_LIVE_REFRESH ? (
+              <div className="rounded-md border border-dashed border-[#dbe4f2] bg-[#f7faff] px-3 py-4 text-center">
+                <p className="text-[11.5px] text-[#526078] leading-snug">No seeded values for this market yet.</p>
+                <button
+                  type="button"
+                  onClick={handleRefreshData}
+                  disabled={refreshingMarket}
+                  className="mt-2 inline-flex items-center gap-1 rounded-md bg-[#174be8] px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-[#1240c9] disabled:opacity-60"
+                >
+                  {refreshingMarket ? "Refreshing…" : "Refresh This Market"}
+                </button>
+              </div>
+            ) : (
+              <div className="rounded-md border border-dashed border-[#dbe4f2] bg-[#f7faff] px-3 py-4 text-center">
+                <p className="text-[11.5px] text-[#526078] leading-snug">Showing pre-seeded scores.</p>
+              </div>
+            )}
+          </div>
+
         </div>
       </div>
       )}

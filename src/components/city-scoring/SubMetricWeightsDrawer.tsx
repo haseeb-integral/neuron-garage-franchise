@@ -801,11 +801,13 @@ function RecipeBlock({
 // composite. Inputs (normalized 0–100 scores) × weights = output. No fallback
 // language, no extra story — the formula speaks for itself.
 function TwoLineFormulaPanel({
+  categoryKey,
   categoryLabel,
   cityLabel,
   previewRecompute,
   overallFormula,
 }: {
+  categoryKey: CategoryKey;
   categoryLabel: string;
   cityLabel?: string;
   previewRecompute: ReturnType<typeof recomputeCategoryScore> | null;
@@ -816,6 +818,28 @@ function TwoLineFormulaPanel({
 }) {
   const categoryParts = previewRecompute?.contributions.filter((c) => c.used) ?? [];
   const categoryScore = previewRecompute?.score ?? null;
+
+  // Substitute the live-recomputed category score (1-decimal precision) into
+  // the overall composite parts so the two lines reconcile exactly. Without
+  // this, the category line would show e.g. 93.2 while the overall line used
+  // the stored-rounded 93 — same drawer, two roundings of the same number.
+  const reconciledParts = (overallFormula?.parts ?? []).map((p) =>
+    p.key === categoryKey && categoryScore != null
+      ? { ...p, score: categoryScore }
+      : p,
+  );
+  // Recompute composite from reconciled parts so the "= NN.N" matches the
+  // category line. Falls back to stored composite when no parts available.
+  const reconciledComposite = (() => {
+    if (reconciledParts.length === 0) return overallFormula?.composite ?? null;
+    const totalWeight = reconciledParts.reduce((s, p) => s + p.weightPct, 0);
+    if (totalWeight <= 0) return overallFormula?.composite ?? null;
+    const sum = reconciledParts.reduce(
+      (s, p) => s + (p.score ?? 0) * p.weightPct,
+      0,
+    );
+    return sum / totalWeight;
+  })();
 
   return (
     <section className="rounded-md border border-[#cfdcff] bg-[#f4f8ff] px-3 py-3 space-y-3">
@@ -840,7 +864,7 @@ function TwoLineFormulaPanel({
                 <span className="whitespace-nowrap">
                   ({shortLabel(c.label)}{" "}
                   <span className="text-[#174be8] font-semibold">
-                    {c.normalized == null ? "—" : c.normalized.toFixed(0)}
+                    {c.normalized == null ? "—" : c.normalized.toFixed(1)}
                   </span>{" "}
                   × <span className="text-[#526078]">{(c.subShare * 100).toFixed(0)}%</span>)
                 </span>
@@ -854,24 +878,24 @@ function TwoLineFormulaPanel({
         )}
       </div>
 
-      {/* Line 2 — overall city composite formula */}
+      {/* Line 2 — overall city composite formula (reconciled to category line) */}
       <div className="pt-2 border-t border-[#cfdcff]">
         <div className="text-[11px] font-semibold text-[#1a2540] mb-1">
           Overall city formula{cityLabel ? ` — ${cityLabel}` : ""}
         </div>
-        {!overallFormula || overallFormula.parts.length === 0 ? (
+        {reconciledParts.length === 0 ? (
           <div className="text-[11.5px] italic text-[#8794ab]">
             No composite breakdown available.
           </div>
         ) : (
           <div className="text-[12px] font-mono text-[#1a2540] leading-relaxed break-words">
-            {overallFormula.parts.map((p, i) => (
+            {reconciledParts.map((p, i) => (
               <span key={p.key}>
                 {i > 0 ? " + " : ""}
                 <span className="whitespace-nowrap">
                   {shortLabel(p.label)}{" "}
                   <span className="text-[#174be8] font-semibold">
-                    {p.score == null ? "—" : Math.round(p.score)}
+                    {p.score == null ? "—" : p.score.toFixed(1)}
                   </span>{" "}
                   × <span className="text-[#526078]">{p.weightPct.toFixed(0)}%</span>
                 </span>
@@ -879,14 +903,18 @@ function TwoLineFormulaPanel({
             ))}
             {" = "}
             <span className="font-bold text-[14px] text-[#174be8]">
-              {overallFormula.composite == null ? "—" : overallFormula.composite}
+              {reconciledComposite == null ? "—" : reconciledComposite.toFixed(1)}
             </span>
           </div>
         )}
+        <p className="text-[10.5px] text-[#8794ab] italic mt-1 leading-snug">
+          Uses your current master sliders. Categories at 0% contribute nothing.
+        </p>
       </div>
     </section>
   );
 }
+
 
 // Trim long metric labels so the one-line formula stays readable.
 function shortLabel(label: string): string {

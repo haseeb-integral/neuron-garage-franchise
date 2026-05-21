@@ -7,6 +7,7 @@ import { TeacherProspect, TeacherTag, EnrichmentStatus, GradeLevel } from "@/dat
 import { supabase } from "@/integrations/supabase/client";
 import { FindProspectsModal } from "@/components/teacher-prospects/FindProspectsModal";
 import { TeacherImportWizard } from "@/components/teacher-prospects/TeacherImportWizard";
+import { MasterPoolImportWizard } from "@/components/email-outreach/MasterPoolImportWizard";
 import { TeacherFilterBar } from "@/components/teacher-prospects/TeacherFilterBar";
 import { TeacherTable } from "@/components/teacher-prospects/TeacherTable";
 import { TeacherDetailPanel } from "@/components/teacher-prospects/TeacherDetailPanel";

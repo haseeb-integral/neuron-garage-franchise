@@ -1,0 +1,1 @@
+-- See /tmp/upsert_manus.sql; inlined below

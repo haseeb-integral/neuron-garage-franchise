@@ -98,11 +98,11 @@ Every API below has a configured secret in Lovable Cloud AND is read by deployed
 - **Status:** Live ✅
 
 ### Lovable AI Gateway
-- **Purpose:** In-app AI — fit-score reasoning, candidate summaries, email personalization.
+- **Purpose:** In-app AI — fit-score reasoning, candidate summaries, email personalization, CSV header → schema mapping, SmartLead reply intent classification.
 - **Secret:** `LOVABLE_API_KEY` (managed by Lovable)
-- **Called from:** Email outreach AI generation, AI-assisted fit narratives.
+- **Called from:** Email outreach AI generation, AI-assisted fit narratives, `csv-suggest-mapping` (Master Pool Import Wizard, May 21), `smartlead-webhook` reply classifier fallback.
 - **Cost / limit:** Free monthly allowance, then usage-based.
-- **Models in use:** `google/gemini-2.5-flash` for fast tasks, `openai/gpt-5-mini` for nuance.
+- **Models in use:** `google/gemini-3-flash-preview` for CSV mapping, `google/gemini-2.5-flash` for fast tasks, `google/gemini-2.5-flash-lite` for reply-intent fallback, `openai/gpt-5-mini` for nuance.
 - **Status:** Live ✅
 
 ### SmartLead ("Integral Leads")
@@ -112,7 +112,7 @@ Every API below has a configured secret in Lovable Cloud AND is read by deployed
 - **Endpoints called (via proxy):**
   - `GET /campaigns` (list) and `GET /campaigns/:id`
   - `POST /campaigns/create` (NewCampaignDrawer)
-  - `POST /campaigns/:id/leads` (bulk lead push from Import Wizard)
+  - `POST /campaigns/:id/leads` (bulk lead push from Import Wizard **and** from the v1.2 `smartlead-push-leads` Master Pool → SmartLead path, chunked 100/batch with `dry_run` preview support)
   - `GET /analytics/overview` (preferred — single aggregate call; per-campaign loop only as fallback)
   - `GET /email-accounts` (list connected mailboxes)
   - `GET /campaigns/:id/statistics` (campaign-level open/reply/bounce)

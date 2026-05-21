@@ -64,6 +64,12 @@
 - **Negative `track_settings`** — SmartLead's `POST /campaigns/create` expects opt-OUT flags (`DONT_TRACK_EMAIL_OPEN`, `DONT_TRACK_LINK_CLICK`, `DONT_TRACK_REPLY_TO_AN_EMAIL`), not opt-IN. Sending `TRACK_OPENS`/`TRACK_CLICKS` returns 400. (Phase 4 hotfix.)
 - **Connection Health Strip** — top-of-page widget in `SmartLeadConnectionPanel` showing "Last successful API call" timestamp + 24-hour webhook activity indicator.
 - **SmartLead rate limit** — 10 requests per 2 seconds per API key. Always prefer `/analytics/overview` (one call) over looping campaigns.
+- **Master Pool** — the `teacher_prospects` table treated as Neuron Garage's owned teacher database. CSVs land here first (no SmartLead cost). Distinct from the **SmartLead pool**, which is the subset of leads actively loaded into a SmartLead campaign for outreach. The `ScopeSwitcher` on `/email-outreach` toggles which pool the stat strip + tables describe.
+- **Push to SmartLead** — the action of promoting verified Master Pool rows into a SmartLead campaign. Triggered from the `PushToSmartLeadBanner` (Master scope) → `PushToSmartLeadModal` → `smartlead-push-leads` edge function. Always offers a dry-run preview (candidates / already-in-campaign / will-push) before committing.
+- **Destination (import)** — `teacher_import_batches.destination`. One of `master_only` (CSV lands in Master Pool only) or `master_and_smartlead` (Master Pool, then immediately push verified rows to a chosen SmartLead campaign). Selected in Step 1 of the Master Pool Import Wizard.
+- **dedupe_key** — generated column on `teacher_prospects`. Lowercased email when present, otherwise `lower(name|school|city|state)` composite. Non-unique index — used by the wizard's QA step to flag in-batch and cross-batch duplicates before insert. Not enforced as unique (Manus-sourced CSVs vary too much).
+- **Unmapped columns** — CSV columns the AI mapper could not match to a `teacher_prospects` field. Stashed in `teacher_prospects.raw` (jsonb) and listed in `teacher_import_batches.unmapped_columns` so a future "promote-to-column" UI can lift recurring ones into real columns.
+- **AI-suggested mapping** — Step 2 of the Master Pool Import Wizard. `csv-suggest-mapping` sends headers + sample rows to `google/gemini-3-flash-preview` and returns a proposed source→target map. User can override every row before continuing.
 
 ---
 

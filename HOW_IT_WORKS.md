@@ -99,6 +99,34 @@ What the user gets out of each step:
 - **Push button:** calls `smartlead-proxy → POST campaigns/{id}/leads` with first/last name, email, school (as `company_name`), and city (as `location`). Disabled when there's no real campaign, no email, or the row is already sent/sending.
 - **Invalid-campaign guard:** `AddToCampaignModal` only lists real SmartLead campaigns (numeric ids + real lifecycle status). Any row that still points at a synthetic id (e.g. legacy "Analytics Overview" cache row) renders a red "invalid — reassign" pill in the panel and Push is blocked.
 
+#### Master Pool vs SmartLead (v1.2, May 21, 2026)
+
+Email Outreach now treats the teacher database as **two pools** with a single scope toggle at the top of the page:
+
+- **Master Teacher DB** (slate theme) — the full `teacher_prospects` table. CSVs are ingested here first, with no SmartLead API cost. This is Neuron Garage's owned recruiting asset.
+- **SmartLead** (blue theme) — the subset of leads currently loaded into a SmartLead campaign for active outreach.
+
+`ScopeSwitcher` (top of `/email-outreach`) swaps which pool the 6-card `StatStripCards` strip describes — Total Contacts, With Email, Verified, Catch-All, Invalid, No Email Found. Every card has a Show Formula popover (Rule 1) revealing the exact filter that produced the number.
+
+**Ingest flow — `MasterPoolImportWizard` (top-right "Import to Master Pool"):**
+1. **Setup** — pick `destination`: `master_only` or `master_and_smartlead`. Optionally set a default city/state for rows missing geography.
+2. **Map** — upload CSV; `csv-suggest-mapping` edge function calls `google/gemini-3-flash-preview` with headers + sample rows and returns a suggested source→target map. User can override any row. Unmapped columns are stashed in `teacher_prospects.raw` and listed on the batch.
+3. **QA** — live preview shows valid-email count, in-batch duplicates (via generated `dedupe_key`), and rows that will be skipped for missing required fields.
+4. **Import** — chunked 500/insert into `teacher_prospects`, all rows stamped with the new `teacher_import_batches.id` (`destination`, `column_mapping`, `unmapped_columns` recorded).
+5. **Optional Push** — if `master_and_smartlead` was chosen, verified leads are immediately handed to `smartlead-push-leads` against a chosen campaign.
+
+**Push flow — `PushToSmartLeadBanner` + `PushToSmartLeadModal` (Master scope only):**
+- Banner shows "N verified emails ready to push" and opens the modal.
+- Modal: campaign picker (from `campaign_cache`), state/city filter, include-catch-all toggle, lead limit.
+- "Preview" calls `smartlead-push-leads` with `dry_run=true` → returns candidate count, already-in-campaign count (joined via `outreach_queue`), and will-push count.
+- "Push" runs live: chunked 100/batch to `POST /campaigns/{id}/leads`, writes one `outreach_queue` row per success (`smartlead_lead_id`, `pushed_at`).
+
+The legacy 4-step "Import Leads" button is preserved as **"Import to SmartLead (Legacy)"** for the direct-to-SmartLead path that bypasses the Master Pool. It will be retired once Teacher Search → Master Pool handoff is in daily use.
+
+City-level enrichment (Apollo / SmartLead / future Hunter) is tracked in `enrichment_jobs`. One backend function services both Master DB and SmartLead surfaces so cost + status are visible regardless of which scope the user is in.
+
+
+
 
 
 

@@ -145,7 +145,7 @@ export function SubMetricWeightsDrawer({
       : oldComp;
 
     if (enabledSum <= 0) {
-      toast.success(`${categoryLabel} reset — using server score as fallback`, { duration: 4000 });
+      toast.success(`${categoryLabel} — all sub-weights are 0. Raise at least one slider to compute a live score.`, { duration: 4000 });
     } else if (oldCat != null && newCatRounded != null) {
       const catLine = `${categoryLabel} updated: ${oldCat.toFixed(0)} → ${newCatRounded}`;
       const compLine = oldComp != null && newComp != null && oldComp !== newComp

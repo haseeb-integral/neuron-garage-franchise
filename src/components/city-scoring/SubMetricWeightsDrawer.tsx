@@ -56,6 +56,8 @@ const PROVENANCE_BY_CATEGORY: Partial<Record<CategoryKey, string>> = {
     "Default weights locked 2026-05-21 by Brett + Haseeb: 20 / 25 / 15 / 15 / 25. Edit below and click Apply.",
   demand:
     "Default weights locked 2026-05-21 by Brett + Haseeb: 30 / 25 / 20 / 25 across the 4 Census ACS sub-metrics. Edit below and click Apply.",
+  competitiveLandscape:
+    "CSI inputs from Brett's 2026-05-21 Manus upload. Default weights 34 / 33 / 33 across National Brands, Local Camp Estimate, and DAM. CSI is saturation (high = crowded) — inverted to opportunity for the composite. Edit below and click Apply.",
 };
 const DEFAULT_PROVENANCE =
   "Default weights from the scoring registry. Edit below and click Apply.";

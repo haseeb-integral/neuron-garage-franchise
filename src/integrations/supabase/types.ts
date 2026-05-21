@@ -520,6 +520,51 @@ export type Database = {
         }
         Relationships: []
       }
+      imports: {
+        Row: {
+          batch_label: string | null
+          completed_at: string | null
+          errored_count: number
+          file_checksum: string | null
+          id: string
+          inserted_count: number
+          notes: string | null
+          skipped_count: number
+          source: string
+          started_at: string
+          triage_doc_path: string | null
+          updated_count: number
+        }
+        Insert: {
+          batch_label?: string | null
+          completed_at?: string | null
+          errored_count?: number
+          file_checksum?: string | null
+          id?: string
+          inserted_count?: number
+          notes?: string | null
+          skipped_count?: number
+          source: string
+          started_at?: string
+          triage_doc_path?: string | null
+          updated_count?: number
+        }
+        Update: {
+          batch_label?: string | null
+          completed_at?: string | null
+          errored_count?: number
+          file_checksum?: string | null
+          id?: string
+          inserted_count?: number
+          notes?: string | null
+          skipped_count?: number
+          source?: string
+          started_at?: string
+          triage_doc_path?: string | null
+          updated_count?: number
+        }
+        Relationships: []
+      }
       onboarding_records: {
         Row: {
           candidate_id: string | null
@@ -1218,6 +1263,7 @@ export type Database = {
           bls_last_updated: string | null
           camp_waitlist_signals: Json | null
           census_last_updated: string | null
+          census_population_2020: number | null
           charter_elementary_count: number | null
           children_5_12: number | null
           city_name: string
@@ -1226,6 +1272,14 @@ export type Database = {
           cost_of_living_index: number | null
           county_name: string | null
           created_at: string
+          csi_brand_detail: Json | null
+          csi_confidence: number | null
+          csi_demand_adjusted_market: number | null
+          csi_last_updated: string | null
+          csi_local_provider_estimate: number | null
+          csi_national_brand_count_weighted: number | null
+          csi_saturation_category: string | null
+          csi_score: number | null
           days_above_90f: number | null
           dual_working_families_pct: number | null
           firecrawl_last_updated: string | null
@@ -1240,8 +1294,10 @@ export type Database = {
           metro_area: string | null
           metro_counties: string[] | null
           nces_last_updated: string | null
+          place_type: string | null
           population: number | null
           population_density: number | null
+          private_charter_share_pct: number | null
           private_elementary_count: number | null
           public_elementary_count: number | null
           public_elementary_enrollment: number | null
@@ -1249,13 +1305,11 @@ export type Database = {
           public_school_enrollment: number | null
           refresh_count: number
           regional_median_income: number | null
+          school_district_count: number | null
           school_hosted_camp_count: number | null
-          score_competitive: number | null
+          score_csi: number | null
           score_demand: number | null
-          score_ease_of_operation: number | null
-          score_franchise_supply: number | null
-          score_parent_mindset: number | null
-          score_pricing_power: number | null
+          score_tam_teachers: number | null
           scored_at: string | null
           seed_run_id: string | null
           state_abbr: string
@@ -1275,6 +1329,7 @@ export type Database = {
           bls_last_updated?: string | null
           camp_waitlist_signals?: Json | null
           census_last_updated?: string | null
+          census_population_2020?: number | null
           charter_elementary_count?: number | null
           children_5_12?: number | null
           city_name: string
@@ -1283,6 +1338,14 @@ export type Database = {
           cost_of_living_index?: number | null
           county_name?: string | null
           created_at?: string
+          csi_brand_detail?: Json | null
+          csi_confidence?: number | null
+          csi_demand_adjusted_market?: number | null
+          csi_last_updated?: string | null
+          csi_local_provider_estimate?: number | null
+          csi_national_brand_count_weighted?: number | null
+          csi_saturation_category?: string | null
+          csi_score?: number | null
           days_above_90f?: number | null
           dual_working_families_pct?: number | null
           firecrawl_last_updated?: string | null
@@ -1297,8 +1360,10 @@ export type Database = {
           metro_area?: string | null
           metro_counties?: string[] | null
           nces_last_updated?: string | null
+          place_type?: string | null
           population?: number | null
           population_density?: number | null
+          private_charter_share_pct?: number | null
           private_elementary_count?: number | null
           public_elementary_count?: number | null
           public_elementary_enrollment?: number | null
@@ -1306,13 +1371,11 @@ export type Database = {
           public_school_enrollment?: number | null
           refresh_count?: number
           regional_median_income?: number | null
+          school_district_count?: number | null
           school_hosted_camp_count?: number | null
-          score_competitive?: number | null
+          score_csi?: number | null
           score_demand?: number | null
-          score_ease_of_operation?: number | null
-          score_franchise_supply?: number | null
-          score_parent_mindset?: number | null
-          score_pricing_power?: number | null
+          score_tam_teachers?: number | null
           scored_at?: string | null
           seed_run_id?: string | null
           state_abbr: string
@@ -1332,6 +1395,7 @@ export type Database = {
           bls_last_updated?: string | null
           camp_waitlist_signals?: Json | null
           census_last_updated?: string | null
+          census_population_2020?: number | null
           charter_elementary_count?: number | null
           children_5_12?: number | null
           city_name?: string
@@ -1340,6 +1404,14 @@ export type Database = {
           cost_of_living_index?: number | null
           county_name?: string | null
           created_at?: string
+          csi_brand_detail?: Json | null
+          csi_confidence?: number | null
+          csi_demand_adjusted_market?: number | null
+          csi_last_updated?: string | null
+          csi_local_provider_estimate?: number | null
+          csi_national_brand_count_weighted?: number | null
+          csi_saturation_category?: string | null
+          csi_score?: number | null
           days_above_90f?: number | null
           dual_working_families_pct?: number | null
           firecrawl_last_updated?: string | null
@@ -1354,8 +1426,10 @@ export type Database = {
           metro_area?: string | null
           metro_counties?: string[] | null
           nces_last_updated?: string | null
+          place_type?: string | null
           population?: number | null
           population_density?: number | null
+          private_charter_share_pct?: number | null
           private_elementary_count?: number | null
           public_elementary_count?: number | null
           public_elementary_enrollment?: number | null
@@ -1363,13 +1437,11 @@ export type Database = {
           public_school_enrollment?: number | null
           refresh_count?: number
           regional_median_income?: number | null
+          school_district_count?: number | null
           school_hosted_camp_count?: number | null
-          score_competitive?: number | null
+          score_csi?: number | null
           score_demand?: number | null
-          score_ease_of_operation?: number | null
-          score_franchise_supply?: number | null
-          score_parent_mindset?: number | null
-          score_pricing_power?: number | null
+          score_tam_teachers?: number | null
           scored_at?: string | null
           seed_run_id?: string | null
           state_abbr?: string

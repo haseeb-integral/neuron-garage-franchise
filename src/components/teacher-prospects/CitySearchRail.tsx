@@ -44,15 +44,18 @@ export function CitySearchRail({ cityFilters, onPick, onAddMore }: Props) {
         }
       }
 
-      // b) watchlist
-      const { data: wl } = await supabase
-        .from("watchlist_items")
-        .select("city_id, us_cities_scored:city_id ( city_name, state_abbr, composite_score_default )")
-        .limit(20);
-      for (const w of (wl ?? []) as Array<{ us_cities_scored: { city_name: string; state_abbr: string; composite_score_default: number | null } | null }>) {
-        const u = w.us_cities_scored;
-        if (u && !candidates.has(u.city_name)) {
-          candidates.set(u.city_name, { city: u.city_name, state: u.state_abbr, composite: u.composite_score_default });
+      // b) watchlist — two-step (no FK declared between watchlist_items and us_cities_scored)
+      const { data: wl } = await supabase.from("watchlist_items").select("city_id").limit(20);
+      const watchlistIds = (wl ?? []).map((w) => (w as { city_id: string }).city_id);
+      if (watchlistIds.length > 0) {
+        const { data: wlCities } = await supabase
+          .from("us_cities_scored")
+          .select("city_name, state_abbr, composite_score_default")
+          .in("id", watchlistIds);
+        for (const u of (wlCities ?? []) as Array<{ city_name: string; state_abbr: string; composite_score_default: number | null }>) {
+          if (!candidates.has(u.city_name)) {
+            candidates.set(u.city_name, { city: u.city_name, state: u.state_abbr, composite: u.composite_score_default });
+          }
         }
       }
 

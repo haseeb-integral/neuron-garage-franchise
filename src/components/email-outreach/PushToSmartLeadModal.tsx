@@ -42,7 +42,7 @@ export function PushToSmartLeadModal({ open, onClose, onPushed, defaultState, de
   }, [open, defaultState, defaultCity]);
 
   const runDryRun = async () => {
-    if (!campaignId) { toast.error("Pick a campaign first"); return; }
+    if (!campaignId) return;
     setLoadingPreview(true);
     const { data, error } = await supabase.functions.invoke("smartlead-push-leads", {
       body: { campaign_id: campaignId, state: state || null, city: city || null, include_catch_all: includeCatchAll, limit, dry_run: true },
@@ -51,6 +51,15 @@ export function PushToSmartLeadModal({ open, onClose, onPushed, defaultState, de
     if (error) { toast.error(error.message); return; }
     setPreview(data);
   };
+
+  // Live preview: re-run dry-run whenever filters change (debounced) so the
+  // user sees "Will push N" update as they type instead of clicking Preview.
+  useEffect(() => {
+    if (!open || !campaignId) return;
+    const t = setTimeout(() => { void runDryRun(); }, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, campaignId, state, city, includeCatchAll, limit]);
 
   const runPush = async () => {
     if (!campaignId) { toast.error("Pick a campaign first"); return; }

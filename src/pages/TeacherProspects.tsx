@@ -788,6 +788,16 @@ const TeacherProspects = () => {
             inOutreach={inOutreachInFilter}
             loading={stats === null && !statsError}
           />
+          <NextBestActionStrip
+            stats={stats}
+            visibleProspects={prospects.map((p) => ({ uuid: p.uuid, school: p.school, fitScore: p.fitScore ?? 0, needsEmailEnrichment: !!p.needsEmailEnrichment }))}
+            promotedUuids={promotedUuids}
+            onPromoteHighFit={handlePromoteHighFit}
+            onFocusSchool={handleFocusSchool}
+            onExportCsv={handleExport}
+            onOpenImport={() => setMasterImportOpen(true)}
+          />
+
         </div>
 
 

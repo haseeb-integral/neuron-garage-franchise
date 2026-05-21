@@ -272,6 +272,7 @@ export default function EmailOutreachV2() {
             {connectionOpen && <div className="border-t border-[#edf2f8] p-4"><SmartLeadConnectionPanel /></div>}
           </div>
           <EmailAccountsPanel />
+          <EnrichmentJobsPanel />
           <AnalyticsPanel />
         </Section>
       </>

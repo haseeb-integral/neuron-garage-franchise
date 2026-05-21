@@ -18,6 +18,7 @@ const utilityNavItems = [
   { title: "SmartLead API Spec", url: "/smartlead-spec", icon: Send },
   { title: "Outreach Guide", url: "/email-outreach-docs", icon: MailOpen },
   { title: "Demographics Method", url: "/demographics-methodology", icon: BarChart3 },
+  { title: "Methodology", url: "/methodology", icon: Calculator },
   { title: "Full Specification", url: "/spec", icon: FileText },
 ];
 

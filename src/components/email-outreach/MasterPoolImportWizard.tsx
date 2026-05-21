@@ -154,7 +154,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         return {
           first_name: get("first_name"),
           last_name: get("last_name"),
-          name: get("name") ?? [get("first_name"), get("last_name")].filter(Boolean).join(" ") || null,
+          name: get("name") ?? ([get("first_name"), get("last_name")].filter(Boolean).join(" ") || null),
           email,
           school: get("school"),
           district: get("district"),

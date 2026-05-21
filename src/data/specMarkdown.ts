@@ -520,7 +520,9 @@ All deployed as Deno edge functions under \`supabase/functions/\`.
 | \`enrich-school-staff\` | Staff/teacher enrichment for a given school (Firecrawl + Apify) |
 | \`fetch-teacher-prospects\` | Apify-driven teacher prospect pull per city |
 | \`smartlead-proxy\` | Server-side proxy to the SmartLead REST API (campaigns, lead push, analytics, email accounts, health check). Respects 10 req / 2 s rate limit |
-| \`smartlead-webhook\` | Public webhook receiver for SmartLead events; writes \`smartlead_events\` and tags \`reply_intent\` |
+| \`smartlead-webhook\` | Public webhook receiver for SmartLead events; writes \`smartlead_events\` and runs the 7-bucket reply classifier (regex pre-pass → \`google/gemini-2.5-flash-lite\` fallback) |
+| \`smartlead-push-leads\` | Pushes verified Master Pool leads to a SmartLead campaign. Supports \`dry_run\` (used by the live filter preview in PushToSmartLeadModal). Stamps \`teacher_prospects.status='in_smartlead'\` + \`last_pushed_at\` and writes \`outreach_queue\` rows on success. |
+| \`csv-suggest-mapping\` | AI-powered CSV header → MTDB column mapper used by the Master Pool Import Wizard. Calls Lovable AI (\`google/gemini-3-flash-preview\`). |
 
 Shared modules: \`_shared/cityGeo.ts\`, \`_shared/metricFetchers.ts\`, \`_shared/scoring.ts\` (category-blend fallback when a category has fewer than 3 usable metrics).
 

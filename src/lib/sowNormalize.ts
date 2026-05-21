@@ -42,10 +42,14 @@ export const NORMALIZATION_RANGES: Record<string, NormalizationRange> = {
   competitor_count:                    { lo: 0, hi: 35, invert: true },
   // Franchisee supply
   elementary_school_count:             { lo: 0, hi: 40, invert: false },
+  public_elementary_school_count:      { lo: 0, hi: 40, invert: false },
   teacher_salary_proxy:                { lo: 45000, hi: 90000, invert: true },
   public_elementary_teacher_count:     { lo: 0, hi: 2000, invert: false },
+  public_elementary_enrollment:        { lo: 0, hi: 40000, invert: false },
   private_charter_montessori_teacher_count: { lo: 0, hi: 800, invert: false },
+  private_charter_school_count:        { lo: 0, hi: 60, invert: false },
   cost_of_living_index:                { lo: 80, hi: 180, invert: true },
+  col_salary_index:                    { lo: 0.5, hi: 2.0, invert: true },
   summer_income_need_ratio:            { lo: 0, hi: 1, invert: false },
   // Ease of operations
   rental_venue_count:                  { lo: 0, hi: 25, invert: false },

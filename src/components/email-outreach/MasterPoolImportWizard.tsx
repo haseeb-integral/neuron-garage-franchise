@@ -364,15 +364,24 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
           <div className="space-y-3 text-sm">
             {!qa ? (
               <div className="flex items-center justify-center p-8">
-                <Button onClick={computeQa}><Sparkles size={14} className="mr-1" /> Run QA preview</Button>
+                <Button onClick={computeQa} disabled={qaLoading}>
+                  {qaLoading ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Sparkles size={14} className="mr-1" />}
+                  Run QA preview
+                </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-6">
                 <QaCard label="Total rows" value={qa.total} />
                 <QaCard label="With email" value={qa.withEmail} />
                 <QaCard label="Valid emails" value={qa.validEmail} tone="good" />
                 <QaCard label="In-batch dupes" value={qa.inBatchDupes} tone={qa.inBatchDupes > 0 ? "warn" : undefined} />
+                <QaCard label="Already in master" value={qa.existingInMaster} tone={qa.existingInMaster > 0 ? "warn" : undefined} />
                 <QaCard label="Missing city/state" value={qa.missingRequired} tone={qa.missingRequired > 0 ? "warn" : undefined} />
+              </div>
+            )}
+            {qa && qa.existingInMaster > 0 && (
+              <div className="rounded-md border border-[#fed7aa] bg-[#fff7ed] p-2 text-[11px] text-[#9a3412]">
+                {qa.existingInMaster.toLocaleString()} row{qa.existingInMaster === 1 ? "" : "s"} already exist in the Master Pool (matched by dedupe_key). Importing will create duplicate rows — clean the CSV first or accept duplicates.
               </div>
             )}
             {qa && qa.missingRequired > 0 && (
@@ -382,6 +391,8 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
             )}
           </div>
         )}
+
+
 
         {step === 4 && (
           <div className="space-y-3 text-sm">

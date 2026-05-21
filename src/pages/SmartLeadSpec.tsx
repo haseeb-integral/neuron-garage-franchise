@@ -1,7 +1,7 @@
-import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, Send } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { DocShell, DocCard, docProseClass } from "@/components/DocShell";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore — raw markdown import
 import SPEC from "@/data/smartleadSpec.md?raw";
@@ -20,35 +20,28 @@ const SmartLeadSpec = () => {
   };
 
   return (
-    <div>
-      <PageHeader
-        title="SmartLead API Spec"
-        subtitle="Engineering reference for the SmartLead integration (proxy, webhooks, schema, realtime)."
-        action={
-          <Button variant="outline" size="sm" onClick={handleDownload}>
-            <Download size={14} className="mr-1.5" /> Download .md
-          </Button>
-        }
-      />
-      <div className="mx-auto max-w-4xl px-6 py-6">
-        <article
-          className="prose prose-sm max-w-none
-            prose-headings:font-bold prose-headings:text-[#07142f]
-            prose-h1:text-2xl prose-h1:mt-8 prose-h1:mb-3
-            prose-h2:text-xl prose-h2:mt-7 prose-h2:mb-2 prose-h2:text-[#003c7e]
-            prose-h3:text-base prose-h3:mt-5 prose-h3:mb-1.5
-            prose-p:text-[#343a40] prose-p:leading-relaxed
-            prose-a:text-[#0757ff] prose-a:no-underline hover:prose-a:underline
-            prose-code:rounded prose-code:bg-[#eef2f7] prose-code:px-1 prose-code:py-0.5 prose-code:text-[12px] prose-code:before:content-none prose-code:after:content-none
-            prose-pre:bg-[#0b1220] prose-pre:text-[#e5e7eb] prose-pre:text-[12px] prose-pre:rounded-lg
-            prose-table:text-[13px] prose-th:bg-[#f7faff] prose-th:text-[#07142f]
-            prose-li:my-0.5
-            prose-blockquote:border-[#0757ff] prose-blockquote:text-[#526078]"
+    <DocShell
+      eyebrow="Integration reference"
+      eyebrowIcon={Send}
+      title={<>SmartLead API Spec</>}
+      subtitle="Engineering reference for the SmartLead integration — proxy, webhooks, schema, realtime."
+      action={
+        <Button
+          onClick={handleDownload}
+          className="gap-2 rounded-full px-5 py-5 text-[13px] font-bold"
+          style={{ background: "linear-gradient(135deg, #003c7e 0%, #0757ff 100%)", color: "white", boxShadow: "0 12px 28px rgba(7,87,255,0.25)" }}
         >
+          <Download size={15} />
+          Download .md
+        </Button>
+      }
+    >
+      <DocCard>
+        <article className={docProseClass}>
           <ReactMarkdown>{SPEC}</ReactMarkdown>
         </article>
-      </div>
-    </div>
+      </DocCard>
+    </DocShell>
   );
 };
 

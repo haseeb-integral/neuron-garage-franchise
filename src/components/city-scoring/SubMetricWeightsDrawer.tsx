@@ -34,6 +34,11 @@ interface Props {
   currentComposite?: number; // composite before Apply (for delta toast)
   computeNewComposite?: (newCategoryScore: number) => number; // recompute composite swapping in new category score
   customMetricsForCategory?: CustomCriterionRow[]; // user-added metrics in this category
+  // Optional: full city-level breakdown for the "Overall city formula" line.
+  overallFormula?: {
+    parts: Array<{ key: CategoryKey; label: string; score: number | null; weightPct: number }>;
+    composite: number | null;
+  };
 }
 
 const STATUS_PILL: Record<SowMetricEntry["status"], { label: string; cls: string }> = {
@@ -43,8 +48,19 @@ const STATUS_PILL: Record<SowMetricEntry["status"], { label: string; cls: string
   blocked: { label: "Unavailable", cls: "bg-gray-200 text-gray-600" },
 };
 
+// Provenance line shown at the top of each drawer so anyone reading knows
+// where the default sub-weights came from. TAM Teachers: locked May 21 2026
+// by Brett + Haseeb (see sowMetricRegistry.ts line ~162).
+const PROVENANCE_BY_CATEGORY: Partial<Record<CategoryKey, string>> = {
+  franchiseeSupply:
+    "Default weights locked 2026-05-21 by Brett + Haseeb: 20 / 25 / 15 / 15 / 25. Edit below and click Apply.",
+};
+const DEFAULT_PROVENANCE =
+  "Default weights from the scoring registry. Edit below and click Apply.";
+
 const fmt = (n: number | null | undefined, decimals = 1) =>
   n == null || !Number.isFinite(n) ? "—" : n.toFixed(decimals);
+
 
 export function SubMetricWeightsDrawer({
   open, onOpenChange, categoryKey, categoryLabel, categoryColor, categoryBg,

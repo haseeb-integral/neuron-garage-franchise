@@ -339,11 +339,12 @@ export function normalizeSowMetric(
     case "waitlist_sold_out_signal_count":    return lin(v, 0, 10);
     case "competitor_count":                  return lin(v, 0, 35, true);
     // TAM Teachers (5 sub-metrics, lock 2026-05-21)
-    case "public_elementary_school_count":    return lin(v, 0, 80);
-    case "public_elementary_teacher_count":   return lin(v, 0, 2000);
-    case "private_charter_school_count":      return lin(v, 0, 40);
-    case "public_elementary_enrollment":      return lin(v, 0, 30000);
+    case "public_elementary_school_count":    return lin(v, 0, 250);
+    case "public_elementary_teacher_count":   return lin(v, 0, 6000);
+    case "private_charter_school_count":      return lin(v, 0, 180);
+    case "public_elementary_enrollment":      return lin(v, 0, 90000);
     case "col_salary_index":                  return lin(v, 30000, 120000, true); // salary*COL/100; lower = stronger recruiting pull
+
     // Backstop: bare COL when col_salary_index not yet computed (Manus salary pending)
     case "cost_of_living_index":              return lin(v, 80, 180, true);
     // Ease of operations

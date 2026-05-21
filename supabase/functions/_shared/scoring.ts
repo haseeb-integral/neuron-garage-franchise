@@ -254,14 +254,12 @@ export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
   { key: "google_search_demand_summer_day_camps_year", category: "competitive_landscape", label: "Google Search Demand: Day Camps [Year]", enabled: false, weight_within_category: 0, status: "missing" },
   { key: "waitlist_sold_out_signal_count",      category: "competitive_landscape", label: "Waitlist / Sold-Out Signals",               enabled: true,  weight_within_category: 0.14, status: "live"    },
 
-  // ─────────── FRANCHISEE SUPPLY ───────────
-  { key: "public_elementary_teacher_count",     category: "franchisee_supply", label: "Public Elementary Teachers",                    enabled: true,  weight_within_category: 0.20, status: "live"    },
-  { key: "private_charter_montessori_teacher_count", category: "franchisee_supply", label: "Private / Charter / Montessori Teachers", enabled: true,  weight_within_category: 0.10, status: "live"    },
-  { key: "elementary_school_count",             category: "franchisee_supply", label: "Elementary Schools",                            enabled: true,  weight_within_category: 0.25, status: "live"    },
-  { key: "teacher_salary_proxy",                category: "franchisee_supply", label: "Average Teacher Salary Proxy",                  enabled: true,  weight_within_category: 0.20, status: "live"    },
-  { key: "cost_of_living_index",                category: "franchisee_supply", label: "Cost of Living Index",                          enabled: true,  weight_within_category: 0.15, status: "live"    },
-  { key: "student_teacher_ratio_elementary",    category: "franchisee_supply", label: "Elementary Student-Teacher Ratio",              enabled: true,  weight_within_category: 0.10, status: "live"    },
-  { key: "summer_income_need_ratio",            category: "franchisee_supply", label: "Summer Income Need Ratio",                      enabled: false, weight_within_category: 0,    status: "missing" },
+  // ─────────── TAM TEACHERS (5-metric lock — Brett+Haseeb 2026-05-21) ───────────
+  { key: "public_elementary_school_count",      category: "franchisee_supply", label: "Public Elementary Schools",                     enabled: true,  weight_within_category: 0.20, status: "live"    },
+  { key: "public_elementary_teacher_count",     category: "franchisee_supply", label: "Public Elementary Teachers (NCES FTE)",         enabled: true,  weight_within_category: 0.25, status: "live"    },
+  { key: "private_charter_school_count",        category: "franchisee_supply", label: "Private + Charter Elementary Schools",          enabled: true,  weight_within_category: 0.15, status: "live"    },
+  { key: "public_elementary_enrollment",        category: "franchisee_supply", label: "Public Elementary Enrollment",                  enabled: true,  weight_within_category: 0.15, status: "live"    },
+  { key: "col_salary_index",                    category: "franchisee_supply", label: "Teacher Salary × Cost of Living Index",         enabled: true,  weight_within_category: 0.25, status: "proxy"   },
 
   // ─────────── EASE OF OPERATIONS ───────────
   { key: "rental_venue_count",                  category: "ease_of_operations", label: "Rental Venues (Schools / Churches / Rec)",     enabled: true,  weight_within_category: 0.45, status: "proxy" },
@@ -340,13 +338,14 @@ export function normalizeSowMetric(
     case "national_brand_presence":           return lin(v, 0, 5);
     case "waitlist_sold_out_signal_count":    return lin(v, 0, 10);
     case "competitor_count":                  return lin(v, 0, 35, true);
-    // Franchisee supply
-    case "elementary_school_count":           return lin(v, 0, 40);
-    case "teacher_salary_proxy":              return lin(v, 45000, 90000, true);
+    // TAM Teachers (5 sub-metrics, lock 2026-05-21)
+    case "public_elementary_school_count":    return lin(v, 0, 80);
     case "public_elementary_teacher_count":   return lin(v, 0, 2000);
-    case "private_charter_montessori_teacher_count": return lin(v, 0, 800);
+    case "private_charter_school_count":      return lin(v, 0, 40);
+    case "public_elementary_enrollment":      return lin(v, 0, 30000);
+    case "col_salary_index":                  return lin(v, 30000, 120000, true); // salary*COL/100; lower = stronger recruiting pull
+    // Backstop: bare COL when col_salary_index not yet computed (Manus salary pending)
     case "cost_of_living_index":              return lin(v, 80, 180, true);
-    case "summer_income_need_ratio":          return lin(v, 0, 1);
     // Ease of operations
     case "rental_venue_count":                return lin(v, 0, 25);
     case "guide_wage_proxy":                  return lin(v, 11, 25, true); // BLS SOC 39-9011 hourly mean wage; lower wage = better unit economics

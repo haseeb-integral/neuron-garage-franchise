@@ -16,6 +16,13 @@ type Batch = {
   status: string;
   campaign_id: string | null;
   created_at: string;
+  destination: string | null;
+};
+
+const DESTINATION_BADGES: Record<string, { label: string; cls: string; title: string }> = {
+  master_only: { label: "Master only", cls: "bg-[#eef2f7] text-[#526078] border-[#dbe2ec]", title: "Imported into Master Pool only — not pushed to SmartLead" },
+  master_and_smartlead: { label: "Master + SmartLead", cls: "bg-[#eef4ff] text-[#174be8] border-[#c6d6f7]", title: "Imported into Master Pool AND pushed to a SmartLead campaign" },
+  smartlead_only: { label: "Legacy (SmartLead)", cls: "bg-[#fff4df] text-[#b7791f] border-[#fde4b3]", title: "Legacy direct-to-SmartLead import (no Master Pool row)" },
 };
 
 type CampaignLite = { id: string; name: string | null };

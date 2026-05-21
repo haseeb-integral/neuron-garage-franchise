@@ -62,7 +62,7 @@ const PROVENANCE_BY_CATEGORY: Partial<Record<CategoryKey, string>> = {
   demand:
     "Default weights locked 2026-05-21 by Brett + Haseeb: 30 / 25 / 20 / 25 across the 4 Census ACS sub-metrics. Edit below and click Apply.",
   competitiveLandscape:
-    "CSI inputs from Brett's 2026-05-21 Manus upload. Default weights 34 / 33 / 33 across National Brands, Local Camp Estimate, and DAM. CSI is saturation (high = crowded) — inverted to opportunity for the composite. Edit below and click Apply.",
+    "Locked — pulled from Manus v2 table. The three inputs feed Manus's CSI formula (NB×2 STEM + Other + Local) ÷ DAM; the stored csi_score is used directly (inverted to opportunity) in the composite. No user-tunable knobs by design.",
 };
 const DEFAULT_PROVENANCE =
   "Default weights from the scoring registry. Edit below and click Apply.";

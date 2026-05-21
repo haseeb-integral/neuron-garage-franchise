@@ -270,5 +270,6 @@ export default function EmailOutreachV2() {
 
     <ImportLeadsWizard open={importOpen} onClose={() => setImportOpen(false)} onComplete={() => { setBatchesRefresh((k) => k + 1); loadCampaigns(); loadStats(); }} />
     <NewCampaignDrawer open={newCampaignOpen} onClose={() => setNewCampaignOpen(false)} onCreated={loadCampaigns} />
+    <PushToSmartLeadModal open={pushModalOpen} onClose={() => setPushModalOpen(false)} onPushed={() => { loadStats(); }} />
   </div>;
 }

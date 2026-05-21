@@ -176,8 +176,13 @@ export async function loadLiveRankedMarkets(opts?: { includeExtras?: boolean }):
       scoredRow: row,
       categoryScores: {
         demand: row.score_demand == null ? undefined : toNumber(row.score_demand, 0),
-        // Renamed columns: score_competitive → score_csi, score_franchise_supply → score_tam_teachers.
-        competitiveLandscape: row.score_csi == null ? undefined : toNumber(row.score_csi, 0),
+        // CSI is stored as SATURATION (high = crowded = bad). For the UI
+        // category bar and the composite we invert to OPPORTUNITY so high =
+        // good, matching Demand and TAM. Raw csi_score is still available
+        // via scoredRow.score_csi / scoredRow.csi_score for the drawer.
+        competitiveLandscape: row.score_csi == null
+          ? undefined
+          : Math.max(0, Math.min(100, 100 - toNumber(row.score_csi, 0))),
         franchiseeSupply: row.score_tam_teachers == null ? undefined : toNumber(row.score_tam_teachers, 0),
         // Retired categories — undefined so the type stays stable while the
         // UI hides them via VISIBLE_CATEGORIES (CityScoring.tsx).

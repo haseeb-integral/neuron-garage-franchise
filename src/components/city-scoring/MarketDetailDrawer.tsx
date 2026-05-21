@@ -625,21 +625,7 @@ export function MarketDetailDrawer({
         </SheetHeader>
 
         <div className="mb-3 rounded-lg border border-[#eef2f7] bg-[#f8fafe] p-3">
-          <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-[#3a4c72]">
-            <span className="rounded-full bg-white px-2 py-0.5 font-semibold text-[#07142f]">City: {market.city}</span>
-            {metroArea && <span className="rounded-full bg-white px-2 py-0.5">Metro: {metroArea}</span>}
-            {county && <span className="rounded-full bg-white px-2 py-0.5">County: {county}</span>}
-            {metroCounties && metroCounties.length > 0 && (
-              <span
-                className="rounded-full bg-white px-2 py-0.5"
-                title="All counties covered by this metro area"
-              >
-                Metro counties: {metroCounties.join(", ")}
-              </span>
-            )}
-            {marketType && <span className="rounded-full bg-white px-2 py-0.5">Type: {marketType}</span>}
-          </div>
-          <div className="mt-2 space-y-0.5 text-[11px] text-[#526078]">
+          <div className="space-y-0.5 text-[11px] text-[#526078]">
             <p>City: <span className="font-semibold text-[#07142f]">{market.city}{stateAbbr ? `, ${stateAbbr}` : ""}</span></p>
             <p>Last seeded: <span className="font-semibold text-[#07142f]">{formatDate(seedAtIso)}</span></p>
             <p>Pre-seeded values: <span className="font-semibold text-[#07142f]">{keyMetricSeededCount} of {KEY_METRIC_KEYS.size}</span></p>
@@ -650,6 +636,7 @@ export function MarketDetailDrawer({
             </div>
           )}
         </div>
+
 
         <div className="space-y-3 mb-4">
           {SOW_CATEGORIES.map((category) => {

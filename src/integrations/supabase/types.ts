@@ -14,6 +14,75 @@ export type Database = {
   }
   public: {
     Tables: {
+      _manus_stage_2026_05_21: {
+        Row: {
+          college_degree_pct: number | null
+          cost_of_living_index: number | null
+          csi_brand_detail_text: string | null
+          csi_confidence_text: string | null
+          csi_demand_adjusted_market: number | null
+          csi_last_updated: string | null
+          csi_local_provider_estimate: number | null
+          csi_national_brand_count_weighted: number | null
+          csi_saturation_category: string | null
+          csi_score_raw: number | null
+          median_household_income: number | null
+          norm_name: string | null
+          place_type: string | null
+          population: number | null
+          public_elementary_enrollment: number | null
+          raw_city: string | null
+          regional_median_income: number | null
+          school_district_count: number | null
+          state_abbr: string | null
+          state_name: string | null
+        }
+        Insert: {
+          college_degree_pct?: number | null
+          cost_of_living_index?: number | null
+          csi_brand_detail_text?: string | null
+          csi_confidence_text?: string | null
+          csi_demand_adjusted_market?: number | null
+          csi_last_updated?: string | null
+          csi_local_provider_estimate?: number | null
+          csi_national_brand_count_weighted?: number | null
+          csi_saturation_category?: string | null
+          csi_score_raw?: number | null
+          median_household_income?: number | null
+          norm_name?: string | null
+          place_type?: string | null
+          population?: number | null
+          public_elementary_enrollment?: number | null
+          raw_city?: string | null
+          regional_median_income?: number | null
+          school_district_count?: number | null
+          state_abbr?: string | null
+          state_name?: string | null
+        }
+        Update: {
+          college_degree_pct?: number | null
+          cost_of_living_index?: number | null
+          csi_brand_detail_text?: string | null
+          csi_confidence_text?: string | null
+          csi_demand_adjusted_market?: number | null
+          csi_last_updated?: string | null
+          csi_local_provider_estimate?: number | null
+          csi_national_brand_count_weighted?: number | null
+          csi_saturation_category?: string | null
+          csi_score_raw?: number | null
+          median_household_income?: number | null
+          norm_name?: string | null
+          place_type?: string | null
+          population?: number | null
+          public_elementary_enrollment?: number | null
+          raw_city?: string | null
+          regional_median_income?: number | null
+          school_district_count?: number | null
+          state_abbr?: string | null
+          state_name?: string | null
+        }
+        Relationships: []
+      }
       ai_query_history: {
         Row: {
           created_at: string

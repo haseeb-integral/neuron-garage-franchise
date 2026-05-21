@@ -54,6 +54,8 @@ const STATUS_PILL: Record<SowMetricEntry["status"], { label: string; cls: string
 const PROVENANCE_BY_CATEGORY: Partial<Record<CategoryKey, string>> = {
   franchiseeSupply:
     "Default weights locked 2026-05-21 by Brett + Haseeb: 20 / 25 / 15 / 15 / 25. Edit below and click Apply.",
+  demand:
+    "Default weights locked 2026-05-21 by Brett + Haseeb: 30 / 25 / 20 / 25 across the 4 Census ACS sub-metrics. Edit below and click Apply.",
 };
 const DEFAULT_PROVENANCE =
   "Default weights from the scoring registry. Edit below and click Apply.";

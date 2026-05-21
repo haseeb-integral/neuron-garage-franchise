@@ -221,19 +221,11 @@ export type SowMetricEntry = {
 // Weights are placeholders for the future registry-driven composite; they are
 // NOT applied today. Total per category is informational only.
 export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
-  // Demand
-  { key: "children_5_12_count",                 category: "demand", label: "Children Ages 5–12",                     enabled: true,  weight_within_category: 0.13, status: "live"  },
-  { key: "children_5_12_pct",                   category: "demand", label: "% Population Ages 5–12",                  enabled: true,  weight_within_category: 0.08, status: "live"  },
-  { key: "households_with_children_under_13",   category: "demand", label: "Households With Children Under 13",       enabled: true,  weight_within_category: 0.08, status: "proxy" },
-  { key: "median_household_income",             category: "demand", label: "Median Household Income",                 enabled: true,  weight_within_category: 0.11, status: "live"  },
-  { key: "income_100k_plus_pct",                category: "demand", label: "Households Earning $100k+",               enabled: true,  weight_within_category: 0.08, status: "live"  },
-  { key: "income_150k_plus_pct",                category: "demand", label: "Households Earning $150k+",               enabled: true,  weight_within_category: 0.07, status: "live"  },
-  { key: "young_family_growth_rate",            category: "demand", label: "Growth Rate of Young Families",           enabled: true,  weight_within_category: 0.11, status: "live"    },
-  { key: "dual_income_household_pct",           category: "demand", label: "% Dual-Income Households",                enabled: true,  weight_within_category: 0.10, status: "live"    },
-  { key: "education_bachelors_plus_pct",        category: "demand", label: "Parent Education / Bachelor's+",          enabled: true,  weight_within_category: 0.09, status: "live"    },
-  { key: "summer_weather_index",                category: "demand", label: "Summer Weather Index",                    enabled: true,  weight_within_category: 0.08, status: "live"    },
-  { key: "avg_peak_summer_temperature",         category: "demand", label: "Avg Peak Summer Temperature",             enabled: true,  weight_within_category: 0.04, status: "live"    },
-  { key: "days_above_90f",                      category: "demand", label: "Number of 90°+ Days",                     enabled: true,  weight_within_category: 0.03, status: "live"    },
+  // ─────────── DEMAND (4-metric lock — Brett+Haseeb 2026-05-21) ───────────
+  { key: "children_5_12_count",                 category: "demand", label: "Children Ages 5–12",                       enabled: true,  weight_within_category: 0.30, status: "live"  },
+  { key: "median_household_income",             category: "demand", label: "Median Household Income",                  enabled: true,  weight_within_category: 0.25, status: "live"  },
+  { key: "dual_income_household_pct",           category: "demand", label: "% Dual-Income Households",                 enabled: true,  weight_within_category: 0.20, status: "live"  },
+  { key: "education_bachelors_plus_pct",        category: "demand", label: "Parent Education / Bachelor's+",           enabled: true,  weight_within_category: 0.25, status: "live"  },
 
   // ─────────── PRICING POWER ───────────
   { key: "avg_weekly_camp_tuition",             category: "pricing_power", label: "Average Weekly Camp Tuition",                       enabled: true,  weight_within_category: 0.20, status: "live" },
@@ -317,14 +309,12 @@ export function normalizeSowMetric(
   if (value == null || !Number.isFinite(value)) return null;
   const v = Number(value);
   switch (signalKey) {
-    // Demand
-    case "children_5_12_count":               return lin(v, 0, 50000);
-    case "children_5_12_pct":                 return lin(v, 5, 18);
-    case "households_with_children_under_13": return lin(v, 0, 40000);
-    case "median_household_income":           return lin(v, 60000, 180000);
-    case "income_100k_plus_pct":              return lin(v, 20, 70);
-    case "income_150k_plus_pct":              return lin(v, 10, 50);
-    case "education_bachelors_plus_pct":      return lin(v, 25, 70);
+    // Demand (4-metric lock 2026-05-21 — real p5/p95 across 935 cities).
+    // Keep ranges in sync with src/lib/sowNormalize.ts.
+    case "children_5_12_count":               return lin(v, 3000, 110000);
+    case "median_household_income":           return lin(v, 45000, 150000);
+    case "dual_income_household_pct":         return lin(v, 85, 98);
+    case "education_bachelors_plus_pct":      return lin(v, 15, 70);
     // Pricing power
     case "childcare_nanny_hourly_rate_proxy": return lin(v, 11, 25); // BLS SOC 39-9011 hourly mean wage ($/hr)
     case "household_discretionary_income_proxy": return lin(v, 20000, 150000);

@@ -762,11 +762,8 @@ const CityScoring = () => {
       // which already mirrors every signal_key used by the scoring registry.
       const DB_TO_UI: Record<string, CategoryKey> = {
         demand: "demand",
-        pricing_power: "pricingPower",
         competitive_landscape: "competitiveLandscape",
         franchisee_supply: "franchiseeSupply",
-        ease_of_operations: "easeOfOperations",
-        parent_mindset: "parentMindset",
       };
 
       const sigByCity: Record<string, Record<string, number | null>> = {};
@@ -1068,11 +1065,8 @@ const CityScoring = () => {
 
       const DB_TO_UI: Record<string, CategoryKey> = {
         demand: "demand",
-        pricing_power: "pricingPower",
         competitive_landscape: "competitiveLandscape",
         franchisee_supply: "franchiseeSupply",
-        ease_of_operations: "easeOfOperations",
-        parent_mindset: "parentMindset",
       };
 
       const sigByCity: Record<string, Record<string, number | null>> = {};
@@ -1309,21 +1303,15 @@ const CityScoring = () => {
 
   const cs = categoryScores(selected);
 
-  // DB → UI category-key mapping
+  // DB → UI category-key mapping (3-key shape after May 21, 2026 final purge).
   const DB_CAT_TO_UI: Record<string, CategoryKey> = {
     demand: "demand",
-    pricing_power: "pricingPower",
     competitive_landscape: "competitiveLandscape",
     franchisee_supply: "franchiseeSupply",
-    ease_of_operations: "easeOfOperations",
-    parent_mindset: "parentMindset",
     // Legacy keys (back-compat)
     summer_camp_demand: "demand",
-    dual_income_families: "pricingPower",
     competition_score: "competitiveLandscape",
     stem_jobs: "franchiseeSupply",
-    school_density: "easeOfOperations",
-    child_population: "parentMindset",
   };
   const liveUiCategoryScores: Partial<Record<CategoryKey, number>> = {};
   Object.entries(selectedLiveCategoryScores).forEach(([k, v]) => {

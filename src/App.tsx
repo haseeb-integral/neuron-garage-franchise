@@ -43,6 +43,7 @@ const App = () => (
               <Route path="/users" element={<TeamMembers />} />
               <Route path="/users-guide" element={<UserGuide />} />
               <Route path="/spec" element={<Spec />} />
+              <Route path="/smartlead-spec" element={<SmartLeadSpec />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -25,8 +25,7 @@ const SmartLeadSpec = () => {
       <PageHeader
         title="SmartLead API Spec"
         subtitle="Engineering reference for the SmartLead integration (proxy, webhooks, schema, realtime)."
-        icon={<Send size={20} />}
-        right={
+        action={
           <Button variant="outline" size="sm" onClick={handleDownload}>
             <Download size={14} className="mr-1.5" /> Download .md
           </Button>

@@ -3,7 +3,7 @@
 export const SPEC_MARKDOWN = `# Neuron Garage Franchise Acquisition System — Product Specification
 
 > Detailed specification of the Neuron Garage Franchise Acquisition System.
-> Document version 1.2 · Updated May 19, 2026 · For internal review.
+> Document version 1.3 · Updated May 21, 2026 · For internal review.
 > Live URL: neuron-garage-franchise.lovable.app
 
 ---

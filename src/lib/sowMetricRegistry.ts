@@ -95,39 +95,25 @@ export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
     enabled: true,  weight_within_category: 0.20, status: "proxy",
     source: "Derived: Census ACS median income ÷ BEA Regional Price Parity" },
 
-  // ─────────── COMPETITIVE LANDSCAPE ───────────
-  { key: "summer_camps_per_10k_children", category: "competitive_landscape", label: "Summer Camps per 10k Children",
-    description: "Camp density relative to kid population. Lower = under-served market with white space.",
-    enabled: true,  weight_within_category: 0.22, status: "proxy",
-    source: "Apify Google Maps camp count ÷ Census ACS children 5–12" },
-  { key: "stem_robotics_maker_camp_count", category: "competitive_landscape", label: "STEM / Robotics / Maker Camps",
-    description: "Count of direct competitors in the STEM camp niche. High count = saturated; low = open lane.",
-    enabled: true,  weight_within_category: 0.16, status: "proxy",
-    source: "Apify Google Maps (keyword: STEM/robotics/maker camps)" },
-  { key: "school_based_summer_camp_count", category: "competitive_landscape", label: "School-Based Summer Camps",
-    description: "Camps run by local school districts. They're cheap competition — a high count squeezes pricing.",
-    enabled: true,  weight_within_category: 0.10, status: "live",
-    source: "NCES Common Core of Data via Urban Institute API" },
-  { key: "national_brand_presence", category: "competitive_landscape", label: "National Brand Presence",
-    description: "Are big brands (Galileo, Steve & Kate's, etc.) already here? Validates demand but raises competition.",
-    enabled: true,  weight_within_category: 0.11, status: "live",
-    source: "Apify Google Maps + Firecrawl brand-location match" },
-  { key: "google_search_demand_summer_camp", category: "competitive_landscape", label: "Search Demand: 'summer camp [city]'",
-    description: "How often parents google for camps in this city. Higher = more in-market intent to capture.",
-    enabled: true,  weight_within_category: 0.15, status: "live",
-    source: "Estimated from Census population × national search benchmark (no Google Trends key)" },
-  { key: "google_search_demand_summer_day_camp", category: "competitive_landscape", label: "Search Demand: 'summer day camp'",
-    description: "Search volume specifically for day camps (your core product). Direct buyer-intent signal.",
-    enabled: true,  weight_within_category: 0.12, status: "live",
-    source: "Estimated from Census population × national search benchmark (no Google Trends key)" },
-  { key: "google_search_demand_summer_day_camps_year", category: "competitive_landscape", label: "Search Demand: 'Day Camps [Year]'",
-    description: "Dated camp searches show parents in active planning mode for the upcoming summer.",
-    enabled: false, weight_within_category: 0,    status: "missing",
-    source: "Not yet wired — requires Google Trends or SEMrush API" },
-  { key: "waitlist_sold_out_signal_count", category: "competitive_landscape", label: "Waitlist / Sold-Out Signals",
-    description: "Competitor camps that sell out or run waitlists. Strong evidence of unmet demand.",
-    enabled: true,  weight_within_category: 0.14, status: "live",
-    source: "Firecrawl scrape of competitor camp registration pages" },
+  // ─────────── CSI (3-metric lock — Brett+Haseeb 2026-05-21) ───────────
+  // CSI inputs from Brett's 2026-05-21 Manus upload (csi_* columns on
+  // us_cities_scored). Default sub-weights 34 / 33 / 33. CSI is SATURATION
+  // (higher = more crowded = worse opportunity). Sub-metrics are normalized
+  // on the OPPORTUNITY axis (NB and LCE inverted in sowNormalize.ts, DAM not
+  // inverted) so the recomputed category score reads high = good, matching
+  // Demand and TAM. Raw csi_score (saturation) is shown for reference.
+  { key: "csi_national_brand_supply", category: "competitive_landscape", label: "National Brand Supply (weighted count)",
+    description: "Weighted count of national camp/enrichment brand locations in the city. Higher = more entrenched competition = worse opportunity.",
+    enabled: true,  weight_within_category: 0.34, status: "live",
+    source: "Manus 2026-05-21 batch — national brand scrape, weighted by brand strength" },
+  { key: "csi_local_camp_estimate", category: "competitive_landscape", label: "Local Camp Supply (estimated)",
+    description: "Brett's estimated count of local independent camp providers. Higher = more crowded local market = worse opportunity.",
+    enabled: true,  weight_within_category: 0.33, status: "proxy",
+    source: "Manus 2026-05-21 batch — local provider estimate (stored value, not enrollment × 0.15)" },
+  { key: "csi_demand_adjusted_market", category: "competitive_landscape", label: "Demand-Adjusted Market (DAM)",
+    description: "Elementary enrollment scaled by household income vs $65k baseline. Higher = bigger addressable market = better opportunity.",
+    enabled: true,  weight_within_category: 0.33, status: "live",
+    source: "Derived: public_elementary_enrollment × (median_household_income / 65,000)" },
 
   // ─────────── TAM TEACHERS (5-metric lock — Brett+Haseeb 2026-05-21) ───────────
   { key: "public_elementary_school_count", category: "franchisee_supply", label: "Public Elementary Schools",

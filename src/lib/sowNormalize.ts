@@ -34,12 +34,15 @@ export const NORMALIZATION_RANGES: Record<string, NormalizationRange> = {
   avg_hourly_camp_pricing:             { lo: 8, hi: 20, invert: false },
   premium_stem_camp_pricing:           { lo: 300, hi: 800, invert: false },
   private_school_tuition_proxy:        { lo: 8000, hi: 35000, invert: false },
-  // Competitive landscape
-  summer_camps_per_10k_children:       { lo: 0, hi: 15, invert: true },
-  stem_robotics_maker_camp_count:      { lo: 0, hi: 20, invert: false },
-  national_brand_presence:             { lo: 0, hi: 5, invert: false },
-  waitlist_sold_out_signal_count:      { lo: 0, hi: 10, invert: false },
-  competitor_count:                    { lo: 0, hi: 35, invert: true },
+  // CSI (3-metric lock 2026-05-21 — Brett+Haseeb). Ranges = real p5/p95
+  // across 817 Manus-populated cities. NB and LCE invert=true (more
+  // competition = lower opportunity); DAM invert=false (bigger addressable
+  // market = higher opportunity). This way the recomputed category score
+  // is "opportunity" (high = good), and the overall composite stays
+  // directionally consistent with Demand and TAM.
+  csi_national_brand_supply:           { lo: 0, hi: 25,    invert: true },
+  csi_local_camp_estimate:             { lo: 0, hi: 125,   invert: true },
+  csi_demand_adjusted_market:          { lo: 0, hi: 45000, invert: false },
   // TAM Teachers (5-metric lock 2026-05-21) — ranges MUST match backend
   // supabase/functions/_shared/scoring.ts:normalizeSowMetric exactly so the
   // "Show Formula" drawer reproduces the same score the backend stored.

@@ -236,15 +236,13 @@ export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
   { key: "childcare_nanny_hourly_rate_proxy",   category: "pricing_power", label: "Childcare / Nanny Hourly Rate Proxy",               enabled: true,  weight_within_category: 0.35, status: "live"  },
   { key: "household_discretionary_income_proxy",category: "pricing_power", label: "Household Discretionary Income Estimate",           enabled: true,  weight_within_category: 0.20, status: "proxy" },
 
-  // ─────────── COMPETITIVE LANDSCAPE ───────────
-  { key: "summer_camps_per_10k_children",       category: "competitive_landscape", label: "Summer Camps per 10,000 Children",          enabled: true,  weight_within_category: 0.22, status: "proxy" },
-  { key: "stem_robotics_maker_camp_count",      category: "competitive_landscape", label: "STEM / Robotics / Maker Camps",             enabled: true,  weight_within_category: 0.16, status: "proxy" },
-  { key: "school_based_summer_camp_count",      category: "competitive_landscape", label: "School-Based Summer Camps",                 enabled: true,  weight_within_category: 0.10, status: "live" },
-  { key: "national_brand_presence",             category: "competitive_landscape", label: "National Brand Presence",                   enabled: true,  weight_within_category: 0.11, status: "live" },
-  { key: "google_search_demand_summer_camp",    category: "competitive_landscape", label: "Google Search Demand: summer camp [city]",  enabled: true,  weight_within_category: 0.15, status: "live"    },
-  { key: "google_search_demand_summer_day_camp",category: "competitive_landscape", label: "Google Search Demand: summer day camp",     enabled: true,  weight_within_category: 0.12, status: "live"    },
-  { key: "google_search_demand_summer_day_camps_year", category: "competitive_landscape", label: "Google Search Demand: Day Camps [Year]", enabled: false, weight_within_category: 0, status: "missing" },
-  { key: "waitlist_sold_out_signal_count",      category: "competitive_landscape", label: "Waitlist / Sold-Out Signals",               enabled: true,  weight_within_category: 0.14, status: "live"    },
+  // ─────────── CSI (3-metric lock — Brett+Haseeb 2026-05-21) ───────────
+  // Inputs from Brett's 2026-05-21 Manus upload. NB and LCE invert in
+  // normalizeSowMetric (more competition = lower opportunity); DAM not
+  // inverted. Recomputed category score is OPPORTUNITY (high = good).
+  { key: "csi_national_brand_supply",  category: "competitive_landscape", label: "National Brand Supply (weighted count)", enabled: true, weight_within_category: 0.34, status: "live"  },
+  { key: "csi_local_camp_estimate",    category: "competitive_landscape", label: "Local Camp Supply (estimated)",          enabled: true, weight_within_category: 0.33, status: "proxy" },
+  { key: "csi_demand_adjusted_market", category: "competitive_landscape", label: "Demand-Adjusted Market (DAM)",           enabled: true, weight_within_category: 0.33, status: "live"  },
 
   // ─────────── TAM TEACHERS (5-metric lock — Brett+Haseeb 2026-05-21) ───────────
   { key: "public_elementary_school_count",      category: "franchisee_supply", label: "Public Elementary Schools",                     enabled: true,  weight_within_category: 0.20, status: "live"    },
@@ -322,12 +320,13 @@ export function normalizeSowMetric(
     case "avg_hourly_camp_pricing":           return lin(v, 8, 20);
     case "premium_stem_camp_pricing":         return lin(v, 300, 800);
     case "private_school_tuition_proxy":      return lin(v, 8000, 35000);
-    // Competitive landscape
-    case "summer_camps_per_10k_children":     return lin(v, 0, 15, true);
-    case "stem_robotics_maker_camp_count":    return lin(v, 0, 20);
-    case "national_brand_presence":           return lin(v, 0, 5);
-    case "waitlist_sold_out_signal_count":    return lin(v, 0, 10);
-    case "competitor_count":                  return lin(v, 0, 35, true);
+    // CSI (3-metric lock 2026-05-21 — Brett+Haseeb). NB / LCE invert so
+    // more competition lowers the opportunity score; DAM not inverted.
+    // Ranges = real p5/p95 across 817 Manus-populated cities. Keep in
+    // sync with src/lib/sowNormalize.ts.
+    case "csi_national_brand_supply":         return lin(v, 0, 25,    true);
+    case "csi_local_camp_estimate":           return lin(v, 0, 125,   true);
+    case "csi_demand_adjusted_market":        return lin(v, 0, 45000, false);
     // TAM Teachers (5 sub-metrics, lock 2026-05-21)
     case "public_elementary_school_count":    return lin(v, 0, 250);
     case "public_elementary_teacher_count":   return lin(v, 0, 6000);

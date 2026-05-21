@@ -162,7 +162,7 @@ export const useCityScoringStore = create<CityScoringState>()(
     {
       name: "ng:city-scoring-v1",
       storage: createJSONStorage(() => localStorage),
-      version: 6,
+      version: 7,
       migrate: (persisted: any, version) => {
         if (!persisted) return persisted;
         if (version < 2) {
@@ -184,10 +184,16 @@ export const useCityScoringStore = create<CityScoringState>()(
         }
         if (version < 6) {
           // Reseed sub-weights so franchiseeSupply (TAM Teachers) gets its
-          // 5-metric default. Earlier versions persisted {} for this
-          // category, which caused the "Show Formula" panel to show
-          // "all metrics unavailable — using server fallback" even when
-          // every TAM input was present.
+          // 5-metric default (was {} → caused "server fallback" wording).
+          persisted.subWeights = cloneSubWeights(DEFAULT_SUB_WEIGHTS);
+          persisted.appliedSubWeights = cloneSubWeights(DEFAULT_SUB_WEIGHTS);
+        }
+        if (version < 7) {
+          // CSI 3-metric lock (Brett+Haseeb 2026-05-21). The old 7-metric
+          // competitive_landscape sub-weights (summer_camps_per_10k_children,
+          // stem_robotics_maker_camp_count, etc.) are gone — reseed so the
+          // new csi_national_brand_supply / csi_local_camp_estimate /
+          // csi_demand_adjusted_market defaults take effect.
           persisted.subWeights = cloneSubWeights(DEFAULT_SUB_WEIGHTS);
           persisted.appliedSubWeights = cloneSubWeights(DEFAULT_SUB_WEIGHTS);
         }

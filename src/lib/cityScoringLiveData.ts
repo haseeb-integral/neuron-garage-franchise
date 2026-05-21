@@ -176,8 +176,13 @@ export async function loadLiveRankedMarkets(opts?: { includeExtras?: boolean }):
       scoredRow: row,
       categoryScores: {
         demand: row.score_demand == null ? undefined : toNumber(row.score_demand, 0),
-        // Renamed columns: score_competitive → score_csi, score_franchise_supply → score_tam_teachers.
-        competitiveLandscape: row.score_csi == null ? undefined : toNumber(row.score_csi, 0),
+        // CSI is stored as SATURATION (high = crowded = bad). For the UI
+        // category bar and the composite we invert to OPPORTUNITY so high =
+        // good, matching Demand and TAM. Raw csi_score is still available
+        // via scoredRow.score_csi / scoredRow.csi_score for the drawer.
+        competitiveLandscape: row.score_csi == null
+          ? undefined
+          : Math.max(0, Math.min(100, 100 - toNumber(row.score_csi, 0))),
         franchiseeSupply: row.score_tam_teachers == null ? undefined : toNumber(row.score_tam_teachers, 0),
         // Retired categories — undefined so the type stays stable while the
         // UI hides them via VISIBLE_CATEGORIES (CityScoring.tsx).
@@ -291,10 +296,12 @@ export function buildSeededFallbackSignalsFromScored(
     seeded("dual_income_household_pct", "% Dual-Income Households", scoredRow.dual_working_families_pct, "demand", true),
     seeded("education_bachelors_plus_pct", "Bachelor's+ Attainment", scoredRow.college_degree_pct, "demand", true),
     seeded("avg_hourly_camp_pricing", "Average Hourly Camp Pricing", scoredRow.avg_camp_price_per_hour, "pricing_power", true),
-    seeded("summer_camps_per_10k_children", "Summer Camps per 10k Children", campsPer10k, "competitive_landscape", true),
-    seeded("competitor_count", "Summer Camps / Enrichment Competitors", scoredRow.summer_camp_count, "competitive_landscape", false),
-    seeded("school_based_summer_camp_count", "School-Based Summer Camps", scoredRow.school_hosted_camp_count, "competitive_landscape", true),
-    seeded("waitlist_sold_out_signal_count", "Waitlist / Sold-Out Signals", scoredRow.camp_waitlist_signals, "competitive_landscape", true),
+    // CSI — 3-metric lock (Brett+Haseeb 2026-05-21). Inputs from Brett's
+    // 2026-05-21 Manus upload. Raw csi_score (saturation) is shown on the
+    // card; here we expose the three contributing inputs.
+    seeded("csi_national_brand_supply", "National Brand Supply (weighted)", scoredRow.csi_national_brand_count_weighted, "competitive_landscape", true),
+    seeded("csi_local_camp_estimate", "Local Camp Supply (estimated)", scoredRow.csi_local_provider_estimate, "competitive_landscape", true),
+    seeded("csi_demand_adjusted_market", "Demand-Adjusted Market (DAM)", scoredRow.csi_demand_adjusted_market, "competitive_landscape", true),
     // TAM Teachers — 5-metric lock (Brett+Haseeb 2026-05-21)
     seeded("public_elementary_school_count", "Public Elementary Schools", scoredRow.public_elementary_count, "franchisee_supply", true),
     seeded("public_elementary_teacher_count", "Public Elementary Teachers (NCES FTE)", scoredRow.public_elementary_teacher_count, "franchisee_supply", true),

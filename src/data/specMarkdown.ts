@@ -468,9 +468,13 @@ All tables have RLS enabled.
 
 ### Email Outreach (SmartLead)
 
-- \`smartlead_events\` — webhook event log (\`event_type, campaign_id, lead_email, payload jsonb, reply_intent\`). Realtime-enabled.
+- \`teacher_prospects\` *(Master Teacher DB — see §13.2 Teachers)* — extended in v1.2 with \`status\` (\`new\` | \`in_smartlead\` | \`suppressed\` | ...), \`last_pushed_at\`, \`needs_email_enrichment\`, \`verification_status\` (\`valid\` | \`catch_all\` | \`invalid\` | null), \`dedupe_key\` (generated), \`raw\` (jsonb of unmapped CSV columns), \`teacher_import_batch_id\` (FK).
+- \`teacher_import_batches\` — one row per CSV import. Columns: \`source\`, \`destination\` (\`master_only\` | \`master_and_smartlead\` | \`legacy\`), \`row_count\`, \`column_mapping\` (jsonb), \`unmapped_columns\` (jsonb), \`created_by\`, \`created_at\`.
+- \`outreach_queue\` — per-teacher SmartLead push lifecycle (\`state\`: \`queued\` | \`assigned\` | \`sending\` | \`sent\` | \`failed\` | \`promoted\`, \`smartlead_lead_id\`, \`smartlead_campaign_id\`, \`pushed_at\`, \`last_error\`, \`snoozed_until\`, \`reply_intent_overridden_by\`).
+- \`enrichment_jobs\` — per-city email/contact enrichment runs (\`provider\`, \`city\`, \`state\`, \`requested\`, \`succeeded\`, \`failed\`, \`cost_usd\`, \`status\`, \`finished_at\`).
+- \`smartlead_events\` — webhook event log (\`event_type, campaign_id, lead_email, payload jsonb, reply_intent, reply_category, reply_confidence, reply_reason\`). Realtime-enabled.
 - \`campaign_cache\` — local mirror of SmartLead campaigns.
-- \`prospects_staging\` — import-wizard staging (\`batch_id, source, qa_status, smartlead_lead_id, pushed_at\`).
+- \`prospects_staging\` — legacy import-wizard staging (\`batch_id, source, qa_status, smartlead_lead_id, pushed_at\`). Retiring once the legacy Import Leads wizard is removed.
 
 ### Auth
 

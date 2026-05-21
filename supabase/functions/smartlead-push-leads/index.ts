@@ -135,6 +135,16 @@ Deno.serve(async (req) => {
     if (queueRows.length) {
       const { error: insErr } = await supabase.from("outreach_queue").insert(queueRows);
       if (insErr) errors.push(`queue insert: ${insErr.message}`);
+
+      // Stamp the source rows so the Master Pool view can instantly tell which
+      // teachers are already in SmartLead without joining outreach_queue.
+      const pushedIds = queueRows.map((r) => r.teacher_prospect_id as string);
+      const nowIso = new Date().toISOString();
+      const { error: updErr } = await supabase
+        .from("teacher_prospects")
+        .update({ status: "in_smartlead", last_pushed_at: nowIso })
+        .in("id", pushedIds);
+      if (updErr) errors.push(`source stamp: ${updErr.message}`);
     }
 
     return json({

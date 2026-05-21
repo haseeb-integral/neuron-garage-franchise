@@ -200,76 +200,103 @@ export default function EmailOutreachV2() {
       />
     )}
 
-    {/* Stat strip — compact (legacy, will consolidate in Sprint 3) */}
-    <div className="mb-3 grid gap-1.5 md:grid-cols-3 xl:grid-cols-6">
-      {stats.map(({ Icon, label, value, sub, tone, loading, error }) => (
-        <Card key={label} className="px-2.5 py-1.5">
-          <div className="flex items-center gap-2" title={error ?? undefined}>
-            <IconBox tone={tone}><Icon size={14} /></IconBox>
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-[10px] font-bold uppercase tracking-wide text-[#8794ab]">{label}</div>
-              {loading ? (
-                <div className="my-0.5 h-4 w-10 animate-pulse rounded bg-[#edf2f8]" aria-label={`${label} loading`} />
-              ) : error ? (
-                <div className="text-[17px] font-black leading-5 text-[#b7791f]" title={error}>—</div>
-              ) : (
-                <div className="text-[17px] font-black leading-5">{value}</div>
-              )}
-              {loading ? (
-                <div className="mt-0.5 h-2.5 w-16 animate-pulse rounded bg-[#edf2f8]" />
-              ) : (
-                <div className="truncate text-[10px] text-[#8794ab]">{sub}</div>
-              )}
+    {/* Legacy SmartLead-flavored mini stat strip — only meaningful in SmartLead scope. */}
+    {scope === "smartlead" && (
+      <div className="mb-3 grid gap-1.5 md:grid-cols-3 xl:grid-cols-6">
+        {stats.map(({ Icon, label, value, sub, tone, loading, error }) => (
+          <Card key={label} className="px-2.5 py-1.5">
+            <div className="flex items-center gap-2" title={error ?? undefined}>
+              <IconBox tone={tone}><Icon size={14} /></IconBox>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[10px] font-bold uppercase tracking-wide text-[#8794ab]">{label}</div>
+                {loading ? (
+                  <div className="my-0.5 h-4 w-10 animate-pulse rounded bg-[#edf2f8]" aria-label={`${label} loading`} />
+                ) : error ? (
+                  <div className="text-[17px] font-black leading-5 text-[#b7791f]" title={error}>—</div>
+                ) : (
+                  <div className="text-[17px] font-black leading-5">{value}</div>
+                )}
+                {loading ? (
+                  <div className="mt-0.5 h-2.5 w-16 animate-pulse rounded bg-[#edf2f8]" />
+                ) : (
+                  <div className="truncate text-[10px] text-[#8794ab]">{sub}</div>
+                )}
+              </div>
             </div>
-          </div>
-        </Card>
-      ))}
-    </div>
-
-    {/* SECTION 1 — Act on replies */}
-    <Section step={1} title="Act on replies" subtitle="Reply here first. Approve or skip each one." storageKey="replies" defaultOpen>
-      <ReplyTriagePanel />
-    </Section>
-
-    {/* SECTION 2 — Campaigns & sending */}
-    <Section step={2} title="Campaigns & sending" subtitle="Your live campaigns and outbox." storageKey="campaigns" defaultOpen>
-      {campaignsLoading ? (
-        <Card className="flex items-center justify-center py-10 text-sm text-[#526078]">Loading campaigns from SmartLead…</Card>
-      ) : campaignsError ? (
-        <Card className="p-4 text-sm text-[#ef4444]">
-          <div className="font-bold">Could not load campaigns</div>
-          <div className="mt-1 text-xs">{campaignsError}</div>
-          <button onClick={loadCampaigns} className="mt-2 rounded-lg border border-[#dbe4f2] px-3 py-1.5 text-xs font-bold text-[#174be8]">Retry</button>
-        </Card>
-      ) : campaigns.length === 0 ? (
-        <Card className="flex flex-col items-center justify-center py-10 text-center">
-          <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-[#eef4ff] text-[#174be8]"><Mail size={20} /></div>
-          <h3 className="text-sm font-black">No campaigns yet</h3>
-          <p className="mt-1 max-w-md text-xs text-[#526078]">Create your first campaign — use Test Mode to send to your own inbox first.</p>
-          <div className="mt-3 flex gap-2">
-            <button onClick={() => setNewCampaignOpen(true)} className="inline-flex items-center gap-1.5 rounded-lg bg-[#174be8] px-3 py-1.5 text-xs font-bold text-white"><Plus size={12} /> New Campaign</button>
-            <button onClick={() => setImportOpen(true)} className="inline-flex items-center gap-1.5 rounded-lg border border-[#dbe4f2] bg-white px-3 py-1.5 text-xs font-bold text-[#174be8]"><Upload size={12} /> Upload Test Leads</button>
-          </div>
-        </Card>
-      ) : (
-        <SmartLeadCampaignsPanel />
-      )}
-      <OutreachQueuePanel />
-    </Section>
-
-    {/* SECTION 3 — Setup & reference */}
-    <Section step={3} title="Setup & reference" subtitle="Mailboxes, imports, full stats. Open when you need them." storageKey="setup" defaultOpen={false}>
-      <div className="rounded-xl border border-[#e7edf5] bg-white">
-        <button onClick={() => setConnectionOpen((v) => !v)} className="flex w-full items-center justify-between px-3 py-2 text-left">
-          <div className="flex items-center gap-2"><LinkIcon size={13} className="text-[#174be8]" /><span className="text-xs font-black">SmartLead Connection</span><span className="text-[10px] text-[#66728a]">{connectionOpen ? "Hide details" : "Show details"}</span></div>
-          <ChevronDown size={14} className={`text-[#526078] transition-transform ${connectionOpen ? "rotate-180" : ""}`} />
-        </button>
-        {connectionOpen && <div className="border-t border-[#edf2f8] p-4"><SmartLeadConnectionPanel /></div>}
+          </Card>
+        ))}
       </div>
-      <EmailAccountsPanel />
-      <ProspectBatchesPanel refreshKey={batchesRefresh} />
-      <AnalyticsPanel />
-    </Section>
+    )}
+
+    {scope === "smartlead" ? (
+      <>
+        {/* SECTION 1 — Act on replies (SmartLead only) */}
+        <Section step={1} title="Act on replies" subtitle="Reply here first. Approve or skip each one." storageKey="replies" defaultOpen>
+          <ReplyTriagePanel />
+        </Section>
+
+        {/* SECTION 2 — Campaigns & sending (SmartLead only) */}
+        <Section step={2} title="Campaigns & sending" subtitle="Your live campaigns and outbox." storageKey="campaigns" defaultOpen>
+          {campaignsLoading ? (
+            <Card className="flex items-center justify-center py-10 text-sm text-[#526078]">Loading campaigns from SmartLead…</Card>
+          ) : campaignsError ? (
+            <Card className="p-4 text-sm text-[#ef4444]">
+              <div className="font-bold">Could not load campaigns</div>
+              <div className="mt-1 text-xs">{campaignsError}</div>
+              <button onClick={loadCampaigns} className="mt-2 rounded-lg border border-[#dbe4f2] px-3 py-1.5 text-xs font-bold text-[#174be8]">Retry</button>
+            </Card>
+          ) : campaigns.length === 0 ? (
+            <Card className="flex flex-col items-center justify-center py-10 text-center">
+              <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-[#eef4ff] text-[#174be8]"><Mail size={20} /></div>
+              <h3 className="text-sm font-black">No campaigns yet</h3>
+              <p className="mt-1 max-w-md text-xs text-[#526078]">Create your first campaign — use Test Mode to send to your own inbox first.</p>
+              <div className="mt-3 flex gap-2">
+                <button onClick={() => setNewCampaignOpen(true)} className="inline-flex items-center gap-1.5 rounded-lg bg-[#174be8] px-3 py-1.5 text-xs font-bold text-white"><Plus size={12} /> New Campaign</button>
+                <button onClick={() => setImportOpen(true)} className="inline-flex items-center gap-1.5 rounded-lg border border-[#dbe4f2] bg-white px-3 py-1.5 text-xs font-bold text-[#174be8]"><Upload size={12} /> Upload Test Leads</button>
+              </div>
+            </Card>
+          ) : (
+            <SmartLeadCampaignsPanel />
+          )}
+          <OutreachQueuePanel />
+        </Section>
+
+        {/* SECTION 3 — Setup & reference (SmartLead-side wiring) */}
+        <Section step={3} title="Setup & reference" subtitle="Mailboxes, full stats. Open when you need them." storageKey="setup" defaultOpen={false}>
+          <div className="rounded-xl border border-[#e7edf5] bg-white">
+            <button onClick={() => setConnectionOpen((v) => !v)} className="flex w-full items-center justify-between px-3 py-2 text-left">
+              <div className="flex items-center gap-2"><LinkIcon size={13} className="text-[#174be8]" /><span className="text-xs font-black">SmartLead Connection</span><span className="text-[10px] text-[#66728a]">{connectionOpen ? "Hide details" : "Show details"}</span></div>
+              <ChevronDown size={14} className={`text-[#526078] transition-transform ${connectionOpen ? "rotate-180" : ""}`} />
+            </button>
+            {connectionOpen && <div className="border-t border-[#edf2f8] p-4"><SmartLeadConnectionPanel /></div>}
+          </div>
+          <EmailAccountsPanel />
+          <AnalyticsPanel />
+        </Section>
+      </>
+    ) : (
+      <>
+        {/* MASTER DB SECTION 1 — Pool overview & quick actions */}
+        <Section step={1} title="Master Teacher DB" subtitle="Every teacher we know about. Push verified ones to SmartLead to start emailing." storageKey="master_overview" defaultOpen>
+          <Card className="p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-sm font-black">Browse, filter, and act on the master pool</div>
+                <p className="mt-0.5 text-xs text-[#526078]">Full table with city/state/verification filters lives on the Teacher Prospects page. Use the banner above to push verified leads to a SmartLead campaign.</p>
+              </div>
+              <a href="/teacher-prospects" className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#174be8] px-3 text-xs font-bold text-white">Open Teacher Prospects →</a>
+            </div>
+          </Card>
+        </Section>
+
+        {/* MASTER DB SECTION 2 — Recent imports */}
+        <Section step={2} title="Recent imports" subtitle="CSVs that landed in the Master Pool. Master-only vs. pushed-to-SmartLead is shown per row." storageKey="master_batches" defaultOpen>
+          <ProspectBatchesPanel refreshKey={batchesRefresh} />
+        </Section>
+      </>
+    )}
+
+
 
     <ImportLeadsWizard open={importOpen} onClose={() => setImportOpen(false)} onComplete={() => { setBatchesRefresh((k) => k + 1); loadCampaigns(); loadStats(); }} />
     <NewCampaignDrawer open={newCampaignOpen} onClose={() => setNewCampaignOpen(false)} onCreated={loadCampaigns} />

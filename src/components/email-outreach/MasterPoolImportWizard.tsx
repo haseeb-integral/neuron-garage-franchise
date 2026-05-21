@@ -45,7 +45,8 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
   const [aiReasoning, setAiReasoning] = useState<string>("");
   const [aiLoading, setAiLoading] = useState(false);
   // Step 3
-  const [qa, setQa] = useState<{ total: number; withEmail: number; validEmail: number; inBatchDupes: number; missingRequired: number } | null>(null);
+  const [qa, setQa] = useState<{ total: number; withEmail: number; validEmail: number; inBatchDupes: number; existingInMaster: number; missingRequired: number } | null>(null);
+  const [qaLoading, setQaLoading] = useState(false);
   // Step 4
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ inserted: number; batch_id: string } | null>(null);
@@ -102,24 +103,50 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
   };
 
   /* ---------- Step 3: QA preview ---------- */
-  const computeQa = () => {
-    const emailCol = mapping.email;
-    const stateCol = mapping.state;
-    const cityCol = mapping.city;
-    const seen = new Set<string>();
-    let withEmail = 0, validEmail = 0, inBatchDupes = 0, missingRequired = 0;
-    for (const row of csvRows) {
-      const email = (emailCol ? (row[emailCol] ?? "") : "").trim().toLowerCase();
-      const cityV = cityCol ? (row[cityCol] ?? "").trim() : defaultCity.trim();
-      const stateV = stateCol ? (row[stateCol] ?? "").trim() : defaultState.trim();
-      if (!cityV || !stateV) missingRequired++;
-      if (email) {
-        withEmail++;
-        if (isEmail(email)) validEmail++;
-        if (seen.has(email)) inBatchDupes++; else seen.add(email);
+  const computeQa = async () => {
+    setQaLoading(true);
+    try {
+      const emailCol = mapping.email;
+      const fnCol = mapping.first_name;
+      const lnCol = mapping.last_name;
+      const stateCol = mapping.state;
+      const cityCol = mapping.city;
+      const seen = new Set<string>();
+      const dedupeKeys: string[] = [];
+      let withEmail = 0, validEmail = 0, inBatchDupes = 0, missingRequired = 0;
+      for (const row of csvRows) {
+        const email = (emailCol ? (row[emailCol] ?? "") : "").trim().toLowerCase();
+        const cityV = cityCol ? (row[cityCol] ?? "").trim() : defaultCity.trim();
+        const stateV = stateCol ? (row[stateCol] ?? "").trim() : defaultState.trim();
+        if (!cityV || !stateV) missingRequired++;
+        if (email) {
+          withEmail++;
+          if (isEmail(email)) validEmail++;
+          if (seen.has(email)) inBatchDupes++; else seen.add(email);
+          dedupeKeys.push(`email:${email}`);
+        } else {
+          const fn = (fnCol ? (row[fnCol] ?? "") : "").trim().toLowerCase();
+          const ln = (lnCol ? (row[lnCol] ?? "") : "").trim().toLowerCase();
+          dedupeKeys.push(`name:${fn}|${ln}||${stateV.toLowerCase()}|${cityV.toLowerCase()}`);
+        }
       }
+      // Cross-batch dedupe: ask DB which of these keys already exist.
+      // Chunk to keep URL length sane.
+      let existingInMaster = 0;
+      const unique = Array.from(new Set(dedupeKeys));
+      for (let i = 0; i < unique.length; i += 500) {
+        const chunk = unique.slice(i, i + 500);
+        const { data, error } = await supabase
+          .from("teacher_prospects")
+          .select("dedupe_key")
+          .in("dedupe_key", chunk);
+        if (error) { console.warn("dedupe check failed", error); break; }
+        existingInMaster += (data ?? []).length;
+      }
+      setQa({ total: csvRows.length, withEmail, validEmail, inBatchDupes, existingInMaster, missingRequired });
+    } finally {
+      setQaLoading(false);
     }
-    setQa({ total: csvRows.length, withEmail, validEmail, inBatchDupes, missingRequired });
   };
 
   /* ---------- Step 4: Insert into master pool ---------- */
@@ -337,15 +364,24 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
           <div className="space-y-3 text-sm">
             {!qa ? (
               <div className="flex items-center justify-center p-8">
-                <Button onClick={computeQa}><Sparkles size={14} className="mr-1" /> Run QA preview</Button>
+                <Button onClick={computeQa} disabled={qaLoading}>
+                  {qaLoading ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Sparkles size={14} className="mr-1" />}
+                  Run QA preview
+                </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-6">
                 <QaCard label="Total rows" value={qa.total} />
                 <QaCard label="With email" value={qa.withEmail} />
                 <QaCard label="Valid emails" value={qa.validEmail} tone="good" />
                 <QaCard label="In-batch dupes" value={qa.inBatchDupes} tone={qa.inBatchDupes > 0 ? "warn" : undefined} />
+                <QaCard label="Already in master" value={qa.existingInMaster} tone={qa.existingInMaster > 0 ? "warn" : undefined} />
                 <QaCard label="Missing city/state" value={qa.missingRequired} tone={qa.missingRequired > 0 ? "warn" : undefined} />
+              </div>
+            )}
+            {qa && qa.existingInMaster > 0 && (
+              <div className="rounded-md border border-[#fed7aa] bg-[#fff7ed] p-2 text-[11px] text-[#9a3412]">
+                {qa.existingInMaster.toLocaleString()} row{qa.existingInMaster === 1 ? "" : "s"} already exist in the Master Pool (matched by dedupe_key). Importing will create duplicate rows — clean the CSV first or accept duplicates.
               </div>
             )}
             {qa && qa.missingRequired > 0 && (
@@ -355,6 +391,8 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
             )}
           </div>
         )}
+
+
 
         {step === 4 && (
           <div className="space-y-3 text-sm">

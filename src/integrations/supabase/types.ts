@@ -1024,6 +1024,7 @@ export type Database = {
           import_batch_id: string | null
           last_enriched_at: string | null
           last_name: string | null
+          last_pushed_at: string | null
           linkedin_url: string | null
           name: string | null
           needs_email_enrichment: boolean
@@ -1060,6 +1061,7 @@ export type Database = {
           import_batch_id?: string | null
           last_enriched_at?: string | null
           last_name?: string | null
+          last_pushed_at?: string | null
           linkedin_url?: string | null
           name?: string | null
           needs_email_enrichment?: boolean
@@ -1096,6 +1098,7 @@ export type Database = {
           import_batch_id?: string | null
           last_enriched_at?: string | null
           last_name?: string | null
+          last_pushed_at?: string | null
           linkedin_url?: string | null
           name?: string | null
           needs_email_enrichment?: boolean

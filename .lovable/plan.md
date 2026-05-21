@@ -1,80 +1,67 @@
-# Plan: Retired-Category Purge + Two-Sheet Workbook Export
+## What I found
 
-Two independent changes shipped in one PR.
+### Bug 1 — Redwood City drawer mostly shows "—"
 
----
+`us_cities_scored` has **two rows for Redwood City, CA**:
 
-## Part A — Full Retired-Category Purge
+| `city_name`         | population | children_5_12 | public_elementary_count | public_elementary_enrollment | csi_national_brand_count_weighted | csi_last_updated |
+|---------------------|------------|---------------|-------------------------|------------------------------|------------------------------------|------------------|
+| Redwood City        | 82,423     | 8,148         | 25                      | 12,491                       | NULL                               | NULL             |
+| Redwood City city   | 82,982     | NULL          | NULL                    | 4,840                        | 1                                  | 2026-05-21       |
 
-Remove `pricingPower`, `easeOfOperations`, `parentMindset` everywhere they still appear in the frontend. Backend already has zero retired columns, so no DB migrations.
+The drawer titled **"Redwood City city, California"** is loading the second row — Brett's Manus 2026-05-21 CSI upload, which has CSI/DAM populated but is missing the Census + NCES columns. That's why Children 5–12, % Dual-Income, Bachelor's+, Public Elementary Schools, Teachers (FTE), Private+Charter all show "—".
 
-### Guarantees (will NOT change)
-- Composite score formula, tier assignment, ranked table, key market signals, dashboard cards, Compare modal, Spreadsheet view.
-- Database schema, edge functions, `scoring_config` rows already saved per-user.
+This is the same pattern Brett warned about in `TPD.md` — Manus joined on a slightly different `city_name` and created a duplicate row instead of upserting onto the existing one.
 
-### Files touched
-| File | Change |
-|---|---|
-| `src/stores/cityScoringStore.ts` | Drop 3 retired members from `CategoryKey`. Remove from initial `masterWeights` + `subWeightsByCategory`. **Bump persist `version` from N → N+1 and add `migrate(state, v)`** that strips the 3 retired keys from any saved `masterWeights` / `subWeightsByCategory` / enabled-sets. One-time, idempotent, zero data loss for active categories. |
-| `src/pages/CityScoring.tsx` | Remove 3 entries from `CATEGORIES`; remove 3 lines from any mock `categoryScores`. Collapse `VISIBLE_CATEGORIES` alias. |
-| `src/lib/scoringPresets.ts` | Delete **Pricing-Heavy** preset. Rewrite **Balanced** as `demand: 40, franchiseeSupply: 30, competitiveLandscape: 30`. |
-| `src/hooks/useCustomCriteria.ts` | Remove 3 mappings + empty-array initializers. |
-| `src/lib/sowMetricRegistry.ts` | Remove 3 keys from category→metrics maps. |
-| `src/components/city-scoring/AiAnswerCard.tsx` | Remove 3 label/lookup entries. |
-| `src/components/city-scoring/AddCriteriaDrawer.tsx` | Remove 3 category strings. |
-| `src/components/city-scoring/MarketDetailDrawer.tsx` | Remove 3 entries from category map. |
-| `src/components/city-scoring/MarketReportModal.tsx` | Remove 3 entries from `CATEGORY_DEFS`. |
-| `src/components/city-scoring/MarketCompareModal.tsx` | Verify no stragglers (done last turn). |
+### Bug 2 — New York shows `NaN /100` and `Tier D`
 
-### Verification
-- `rg -n "pricingPower\|easeOfOperations\|parentMindset" src` → only the `migrate` function should match.
-- App smoke: composite, tiers, ranked table, Compare modal, Dashboard cards, XLSX all show 3 categories with identical numbers as before.
+NY's DB row is healthy: `composite_score_default = 53`, `score_demand = 60`, `score_csi = 40`, `score_tam_teachers = 71` → expected composite 53, expected tier C.
 
----
+What's happening in code:
 
-## Part B — Two-Sheet Workbook Export (XLSX)
+- `weightedComposite` (CityScoring.tsx ~1392) divides a sum of `categoryScore × masterWeight` by `appliedTotal`. When any `detailCategoryScores[c.key]` is `NaN`, the whole composite becomes `NaN`. `NaN >= 65` is false, so the tier check falls through to `"D"`. That matches the screenshot exactly.
+- `NaN ?? 0` does **not** fall back to 0 — `??` only catches null/undefined. So a single NaN slot poisons the composite.
+- Two upstream sources can feed a NaN in:
+  1. **Stale category-key map**: lines 1318–1322 still use the pre-purge keys `competition_score → competitiveLandscape` and `stem_jobs → franchiseeSupply`. The current DB writes `competitive_landscape` and `tam_teachers` into `liveCategoryScores`, so those two never make it into `liveUiCategoryScores`. NY then falls back to whatever `selectedSample` (sampleCities[0] mock) provides, and for cities not in the mock list we end up combining mismatched shapes.
+  2. **`recomputedByCategory`** can return `score = NaN` when `sum` accumulates a NaN contribution (e.g. a custom-criteria weight that became NaN, or a normalized value that went non-finite). The current code writes Math.round(NaN) back into `detailCategoryScores`.
 
-Replace single-sheet CSV with an `.xlsx` workbook containing two sheets. CSV format cannot hold multiple tabs — XLSX is the standard fix and opens natively in Excel / Numbers / Google Sheets. The "Possible Data Loss" banner you saw goes away.
+## Fix plan
 
-### Sheet 1 — `Snapshot`
-True snapshot of the spreadsheet view at the moment of export. Columns exactly match `CitySpreadsheetView` (3 active categories + their sub-metric inputs + Composite/Tier/State/City/County/Metro/Type). Reuses the already-fixed `buildCsvDownload` logic from `src/pages/CityScoring.tsx`, just written into Sheet 1 of the workbook.
+### A. Frontend (safe, no schema changes)
 
-### Sheet 2 — `Category Weights` (per-city, collapsible)
-**One row per city.** Even though master/sub-weights are user-global today, writing per-city rows means: (a) you can sort/filter by city and see its weights inline, (b) if we ever add per-city overrides in the future, the schema already supports it without breaking existing exports.
+1. **Patch the stale category-key map** in `src/pages/CityScoring.tsx` (~line 1318):
+   - `competition_score` → `competitive_landscape`
+   - `stem_jobs` → `tam_teachers`
+   - Keep `demand` → `demand`.
+   - This is the same retired-key trail we just purged everywhere else; this one was missed.
 
-**Collapsible category groups** via Excel's native row/column grouping (`xlsx` library supports this via `!cols` outlineLevel). User sees collapsed view by default:
+2. **NaN-proof the composite** in `src/pages/CityScoring.tsx`:
+   - In `detailCategoryScores`, only write `Math.round(r.score)` when `Number.isFinite(r.score)`.
+   - In `weightedComposite`, replace `(detailCategoryScores[c.key] ?? 0)` with a `Number.isFinite(v) ? v : 0` helper, and skip non-finite categories from both numerator and denominator so the average isn't biased.
+   - In `recomputeCategoryScore` (`src/lib/clientSubWeightScoring.ts`), guard the final `score` with `Number.isFinite(sum) ? Math.max(0, Math.min(100, sum)) : null` so a bad input always falls back to the server score instead of poisoning the UI.
 
-```
-City | State | Demand % | [+] | TAM % | [+] | Competitive % | [+]
-Austin    TX    40%      …    30%     …    30%             …
-Dallas    TX    40%      …    30%     …    30%             …
-```
+3. **Guard the Redwood "missing values look like a UI bug" case** — when the selected city's `scoredRow` has both `csi_last_updated` set AND core Census fields null, surface a small banner in the drawer ("This row was loaded from Brett's 2026-05-21 Manus CSI upload — Census/NCES values are on a separate row and haven't been merged yet"). Cosmetic only; no math changes.
 
-Click the `[+]` above a category to expand its sub-metric weight columns:
+### B. Database (Redwood-style duplicate cleanup — requires Haseeb's "go")
 
-```
-City | State | Demand % | Children 5-12 % | Median Income % | Dual-Income % | College % | Pop % | TAM % | Districts % | …
-Austin    TX    40%        30%               25%                20%             15%         10%    30%     20%            …
-```
+I won't run any migration without explicit approval per Rule 9 / Rule 11. Proposed:
 
-Where:
-- **Category %** = current `masterWeights[category]` from the Zustand store.
-- **Metric %** = normalized share = `subWeight[metric] / Σ(enabled sub-weights in that category) × 100`, per AGENTS.md Rule #5.
-- Disabled sub-metrics get no column.
-- Header row uses readable labels (e.g. "Children 5–12 Weight %"), matching your screenshot.
+1. Audit: list every city in `us_cities_scored` where two rows differ only by the trailing `" city"` / `" town"` / `" borough"` in `city_name` (likely 50–200 duplicates from the Manus upload).
+2. Per pair, merge into the canonical row (the one without the suffix): coalesce the Manus-only CSI columns onto it, keep its Census + NCES values, then delete the suffix row.
+3. Add a one-line invariant note in `APIS.md` + `TPD.md`: Manus uploads MUST upsert on `(state_abbr, normalized city_name)`, never insert.
 
-This sheet answers: *"For these cities, what weighting scheme produced these scores?"* — collapsed for quick scanning, expandable for audit.
+This is the right "snapshot = backend = spreadsheet" fix; the frontend banner in A.3 is the safety net while the data is being cleaned.
 
-### Implementation notes
-- `bun add xlsx` (SheetJS, ~400KB, no native deps).
-- New helper: `src/lib/cityScoringExport.ts` exporting `buildWorkbook(markets, store): Blob`.
-- Uses `XLSX.utils.book_new()`, `XLSX.utils.aoa_to_sheet()`, sets `!cols[i].level` for outline grouping, then `XLSX.write(...)` → Blob.
-- `CitySpreadsheetView` Export button → renamed **Export XLSX**, downloads `city-search-snapshot-YYYY-MM-DD.xlsx`.
-- `onExportCsv` prop renamed to `onExportWorkbook` (one call site in `CityScoring.tsx`).
+## Verification
 
----
+- Open NY drawer → Overall Score shows 53, Tier C (not NaN/D).
+- Open Redwood drawer → either the merged row shows all values, or the banner explains why and a working "Switch to Census row" link is offered (until DB cleanup runs).
+- Spreadsheet view, XLSX export, and Compare modal all show the same composite/tier/category values as the drawer for NY and Redwood (Rule: spreadsheet = dashboard = backend).
+- `rg "competition_score|stem_jobs"` returns no live references outside comments/migration docs.
 
-## Order of operations
-1. Part A purge (store + migrate first, then everything that consumes the enum).
-2. Part B workbook export.
-3. Manual smoke: rankings unchanged → click Export → open .xlsx → verify Sheet 1 matches on-screen table, Sheet 2 opens collapsed, expanding each category reveals normalized weights summing to ~100%.
+## Open question for you
+
+Do you want me to:
+
+- **(A only)** ship the frontend fixes now and leave the DB duplicates alone for this turn, or
+- **(A + B)** also draft the SQL migration to merge the duplicate Redwood-style rows? I'll show the audit query first and wait for "go" before any `UPDATE` / `DELETE`.

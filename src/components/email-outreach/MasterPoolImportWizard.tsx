@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Upload, Sparkles, Loader2, CheckCircle2, ArrowRight, ArrowLeft, Database, Send } from "lucide-react";
 
-type Step = 1 | 2 | 3 | 4 | 5;
+type Step = 1 | 2 | 3 | 4;
 type Destination = "master_only" | "master_and_smartlead";
 
 const TARGET_FIELDS = [

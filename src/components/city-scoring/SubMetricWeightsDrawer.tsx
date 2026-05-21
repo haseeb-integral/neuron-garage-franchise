@@ -500,52 +500,23 @@ function FormulaPanel({
           The numbers below preview what scores would become if you click <em>Save &amp; Recalculate</em>.
         </div>
       )}
-      {summary && (
-        <section>
-          <h4 className="text-[11px] font-bold uppercase tracking-wide text-[#526078] mb-1.5">
-            In plain English
-          </h4>
-          <p className="rounded bg-[#eef4ff] border border-[#cfdcff] px-3 py-2 text-[12.5px] text-[#1a2540] leading-snug">
-            {summary}
-          </p>
-        </section>
-      )}
       <section>
-        <h4 className="text-[11px] font-bold uppercase tracking-wide text-[#526078] mb-1.5">
-          1. Within-category normalization
+        <h4 className="text-[11px] font-bold uppercase tracking-wide text-[#526078] mb-2">
+          How {selectedCityLabel ? `${selectedCityLabel} got its` : "this"} {categoryLabel} score
         </h4>
-        <pre className="rounded bg-[#f7faff] border border-[#eef2f7] px-3 py-2 text-[11.5px] font-mono text-[#1a2540] overflow-x-auto">
-{`sub_share_i = sub_i / Σ(enabled sub-weights)
-            = sub_i / ${enabledSum || 0}`}
-        </pre>
-        <p className="text-[11px] text-[#526078] mt-1">
-          Your typed numbers express relative importance. They're divided by their
-          sum so each enabled metric contributes a share that totals 100%.
+        <p className="text-[10.5px] text-[#8794ab] italic mb-2 leading-snug">
+          This explains the <strong>{categoryLabel}</strong> category only. For how all categories combine into the overall city score, see the composite breakdown on the city row.
         </p>
+
+        <RecipeBlock
+          categoryLabel={categoryLabel}
+          cityLabel={selectedCityLabel}
+          previewRecompute={previewRecompute}
+          masterWeightPct={masterWeightPct}
+          serverCategoryScore={serverCategoryScore}
+        />
       </section>
 
-      <section>
-        <h4 className="text-[11px] font-bold uppercase tracking-wide text-[#526078] mb-1.5">
-          2. {categoryLabel} category score
-        </h4>
-        <pre className="rounded bg-[#f7faff] border border-[#eef2f7] px-3 py-2 text-[11.5px] font-mono text-[#1a2540] overflow-x-auto">
-{`categoryScore = Σ_i (sub_share_i × normalized_i)
-normalized_i  = raw_i scaled to 0..100 (per-metric range)`}
-        </pre>
-        <p className="text-[11px] text-[#526078] mt-1">
-          Falls back to the server-stored category score when all sub-weights
-          collapse to zero or no metrics have usable values.
-        </p>
-      </section>
-
-      <section>
-        <h4 className="text-[11px] font-bold uppercase tracking-wide text-[#526078] mb-1.5">
-          3. Composite score
-        </h4>
-        <pre className="rounded bg-[#f7faff] border border-[#eef2f7] px-3 py-2 text-[11.5px] font-mono text-[#1a2540] overflow-x-auto">
-{`composite = Σ_c (master_c / Σmaster) × categoryScore_c`}
-        </pre>
-      </section>
 
       <section>
         <h4 className="text-[11px] font-bold uppercase tracking-wide text-[#526078] mb-1.5">

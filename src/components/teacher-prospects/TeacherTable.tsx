@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { TeacherProspect } from "@/data/teacherData";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ExternalLink, Eye, Linkedin, Loader2, MailPlus, MoreVertical, Sparkles, Star, UserCheck, UserX } from "lucide-react";
+import { ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ExternalLink, Eye, Link2, Loader2, MailPlus, MoreVertical, Sparkles, Star, UserCheck, UserX } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SourceBadge } from "./SourceBadge";
 import { statusBadgeFor } from "@/lib/teacherSourceLabels";

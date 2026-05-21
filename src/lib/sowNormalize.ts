@@ -34,15 +34,15 @@ export const NORMALIZATION_RANGES: Record<string, NormalizationRange> = {
   avg_hourly_camp_pricing:             { lo: 8, hi: 20, invert: false },
   premium_stem_camp_pricing:           { lo: 300, hi: 800, invert: false },
   private_school_tuition_proxy:        { lo: 8000, hi: 35000, invert: false },
-  // CSI (3-metric lock 2026-05-21 — Brett+Haseeb). Ranges = real p5/p95
-  // across 817 Manus-populated cities. NB and LCE invert=true (more
+  // CSI (3-metric lock 2026-05-21, ranges widened 2026-05-21c to real p99
+  // across 817 Manus v2 cities so NYC/LA spread out in the Show Formula
+  // panel instead of saturating at 100). NB and LCE invert=true (more
   // competition = lower opportunity); DAM invert=false (bigger addressable
-  // market = higher opportunity). This way the recomputed category score
-  // is "opportunity" (high = good), and the overall composite stays
-  // directionally consistent with Demand and TAM.
-  csi_national_brand_supply:           { lo: 0, hi: 25,    invert: true },
-  csi_local_camp_estimate:             { lo: 0, hi: 125,   invert: true },
-  csi_demand_adjusted_market:          { lo: 0, hi: 45000, invert: false },
+  // market = higher opportunity). Display-only — sub-weights are 0 so this
+  // never feeds the composite; composite uses csi_score from the DB.
+  csi_national_brand_supply:           { lo: 0, hi: 60,     invert: true },
+  csi_local_camp_estimate:             { lo: 0, hi: 250,    invert: true },
+  csi_demand_adjusted_market:          { lo: 0, hi: 100000, invert: false },
   // TAM Teachers (5-metric lock 2026-05-21) — ranges MUST match backend
   // supabase/functions/_shared/scoring.ts:normalizeSowMetric exactly so the
   // "Show Formula" drawer reproduces the same score the backend stored.

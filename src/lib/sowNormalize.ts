@@ -40,16 +40,22 @@ export const NORMALIZATION_RANGES: Record<string, NormalizationRange> = {
   national_brand_presence:             { lo: 0, hi: 5, invert: false },
   waitlist_sold_out_signal_count:      { lo: 0, hi: 10, invert: false },
   competitor_count:                    { lo: 0, hi: 35, invert: true },
-  // Franchisee supply
-  elementary_school_count:             { lo: 0, hi: 40, invert: false },
-  public_elementary_school_count:      { lo: 0, hi: 40, invert: false },
+  // TAM Teachers (5-metric lock 2026-05-21) — ranges MUST match backend
+  // supabase/functions/_shared/scoring.ts:normalizeSowMetric exactly so the
+  // "Show Formula" drawer reproduces the same score the backend stored.
+  elementary_school_count:             { lo: 0, hi: 80, invert: false },
+  public_elementary_school_count:      { lo: 0, hi: 80, invert: false },
   teacher_salary_proxy:                { lo: 45000, hi: 90000, invert: true },
   public_elementary_teacher_count:     { lo: 0, hi: 2000, invert: false },
-  public_elementary_enrollment:        { lo: 0, hi: 40000, invert: false },
+  public_elementary_enrollment:        { lo: 0, hi: 30000, invert: false },
   private_charter_montessori_teacher_count: { lo: 0, hi: 800, invert: false },
-  private_charter_school_count:        { lo: 0, hi: 60, invert: false },
+  private_charter_school_count:        { lo: 0, hi: 40, invert: false },
   cost_of_living_index:                { lo: 80, hi: 180, invert: true },
-  col_salary_index:                    { lo: 0.5, hi: 2.0, invert: true },
+  // col_salary_index is normalized adaptively in normalizeSowMetric() —
+  // when the value is a salary×COL composite (large dollar number) it uses
+  // (30000, 120000, invert); when it's a bare COL Index fallback (< 1000)
+  // it uses (80, 180, invert). Range below is the salary-composite case.
+  col_salary_index:                    { lo: 30000, hi: 120000, invert: true },
   summer_income_need_ratio:            { lo: 0, hi: 1, invert: false },
   // Ease of operations
   rental_venue_count:                  { lo: 0, hi: 25, invert: false },
@@ -72,9 +78,17 @@ export function normalizeSowMetric(
   value: number | null | undefined,
 ): number | null {
   if (value == null || !Number.isFinite(value)) return null;
+  const n = Number(value);
+  // col_salary_index can arrive as either a real salary×COL composite
+  // (tens of thousands of dollars) or as a bare COL Index fallback
+  // (typically 70–200). Pick the matching range so the drawer reproduces
+  // the same value the backend stored.
+  if (signalKey === "col_salary_index" && n < 1000) {
+    return lin(n, 80, 180, true);
+  }
   const r = NORMALIZATION_RANGES[signalKey];
   if (!r) return null;
-  return lin(Number(value), r.lo, r.hi, r.invert);
+  return lin(n, r.lo, r.hi, r.invert);
 }
 
 // Best-effort numeric extraction from a city_market_signals.value text field.

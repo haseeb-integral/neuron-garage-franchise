@@ -125,18 +125,20 @@ Deno.serve(async (req) => {
         if (!w) { failed++; errors.push({ city: c.city_name, state: c.state_abbr, error: err ?? "no data" }); return; }
         if (dryRun) { processed++; return; }
         const now = new Date().toISOString();
-        const rows = [
-          { city_id: c.id, signal_key: "avg_peak_summer_temperature", label: "Avg peak summer temp (°F)", value: String(w.avg_peak_summer_temperature), source: "Open-Meteo (2022-2024)", confidence: 0.95, updated_at: now },
-          { city_id: c.id, signal_key: "days_above_90f", label: "Days/yr ≥ 90°F", value: String(w.days_above_90f), source: "Open-Meteo (2022-2024)", confidence: 0.95, updated_at: now },
-          { city_id: c.id, signal_key: "summer_precip_days", label: "Summer precip days/yr", value: String(w.summer_precip_days), source: "Open-Meteo (2022-2024)", confidence: 0.95, updated_at: now },
-          { city_id: c.id, signal_key: "summer_weather_index", label: "Summer weather index", value: String(w.summer_weather_index), source: "Open-Meteo composite", confidence: 0.9, updated_at: now },
-        ];
-        for (const row of rows) {
-          const { error } = await supabase
-            .from("city_market_signals")
-            .upsert(row, { onConflict: "city_id,signal_key" });
-          if (error) throw new Error(error.message);
-        }
+        // Legacy `city_market_signals` write was severed on 2026-05-21.
+        // Weather metrics now land directly on us_cities_scored columns.
+        const { error } = await supabase
+          .from("us_cities_scored")
+          .update({
+            avg_peak_summer_temperature: w.avg_peak_summer_temperature,
+            days_above_90f: w.days_above_90f,
+            summer_precip_days: w.summer_precip_days,
+            summer_weather_index: w.summer_weather_index,
+            weather_last_updated: now,
+          })
+          .eq("id", c.id);
+        if (error) throw new Error(error.message);
+
         processed++;
       } catch (e) {
         failed++;

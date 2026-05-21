@@ -218,6 +218,16 @@ export function SubMetricWeightsDrawer({
 
 
         {view === "weights" ? (
+          isCsiLocked ? (
+            <CsiLockedPanel
+              metrics={metrics}
+              rawValuesByKey={rawValuesByKey}
+              csiRawScore={csiRawScore ?? null}
+              csiSaturationCategory={csiSaturationCategory ?? null}
+              csiBrandDetail={csiBrandDetail ?? null}
+              selectedCityLabel={selectedCityLabel}
+            />
+          ) : (
           <TooltipProvider delayDuration={150}>
             <div className="flex-1 overflow-y-auto px-5 py-3 space-y-1.5">
               {metrics.map((m) => {

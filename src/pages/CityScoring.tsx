@@ -115,11 +115,8 @@ function rebalanceWeights<K extends string>(
 
 type CategoryKey =
   | "demand"
-  | "pricingPower"
   | "competitiveLandscape"
-  | "franchiseeSupply"
-  | "easeOfOperations"
-  | "parentMindset";
+  | "franchiseeSupply";
 
 interface Category {
   key: CategoryKey;
@@ -138,32 +135,20 @@ const CATEGORIES: Category[] = [
     description: "Total addressable pool of teachers available to recruit as franchise operators.", defaultWeight: 30 },
   { key: "competitiveLandscape", label: "Competitive Landscape", icon: Trophy, color: "#b8860b", bg: "#fff6dc",
     description: "How saturated the local kids-enrichment market is, weighted by national brand presence.", defaultWeight: 30 },
-  // Retired May 21, 2026 — hidden via VISIBLE_CATEGORIES but kept in type
-  // for store/persist stability. Will be fully removed in follow-up refactor.
-  { key: "pricingPower", label: "Pricing Power (retired)", icon: DollarSign, color: "#0ea66e", bg: "#e6f7ef",
-    description: "Retired category.", defaultWeight: 0 },
-  { key: "easeOfOperations", label: "Ease of Operations (retired)", icon: Cog, color: "#ea580c", bg: "#ffeede",
-    description: "Retired category.", defaultWeight: 0 },
-  { key: "parentMindset", label: "Parent Mindset (retired)", icon: Heart, color: "#e11d48", bg: "#ffe4ea",
-    description: "Retired category.", defaultWeight: 0 },
 ];
 
-// Only these 3 categories are rendered in the UI (sliders, score cards,
-// compare grid, AI panel, custom-criteria dropdown). The 3 retired ones
-// remain in CATEGORIES so the store/type stays stable. Per Sam+Brett May 21.
-const VISIBLE_CATEGORY_KEYS: ReadonlyArray<CategoryKey> = ["demand", "franchiseeSupply", "competitiveLandscape"];
-const VISIBLE_CATEGORIES = CATEGORIES.filter((c) => VISIBLE_CATEGORY_KEYS.includes(c.key));
+// Kept as an alias for backwards compatibility with code that previously
+// filtered out retired categories. After the May 21, 2026 final purge,
+// every entry in CATEGORIES is visible.
+const VISIBLE_CATEGORIES = CATEGORIES;
 
-// Map mock data scoreBreakdown into our 6 category scores deterministically
+// Map mock data scoreBreakdown into our 3 category scores deterministically
 function categoryScores(c: CityData): Record<CategoryKey, number> {
   const b = c.scoreBreakdown;
   return {
     demand: b.summerCampDemand,
-    pricingPower: Math.round((b.dualIncomeFamilies + (c.medianIncome > 90000 ? 10 : 0)) * 0.95),
     competitiveLandscape: b.competitionScore,
     franchiseeSupply: Math.round((b.stemJobs + b.schoolDensity) / 2),
-    easeOfOperations: Math.round((b.schoolDensity + b.dualIncomeFamilies) / 2),
-    parentMindset: Math.round((b.childPopulation + b.dualIncomeFamilies) / 2),
   };
 }
 
@@ -777,11 +762,8 @@ const CityScoring = () => {
       // which already mirrors every signal_key used by the scoring registry.
       const DB_TO_UI: Record<string, CategoryKey> = {
         demand: "demand",
-        pricing_power: "pricingPower",
         competitive_landscape: "competitiveLandscape",
         franchisee_supply: "franchiseeSupply",
-        ease_of_operations: "easeOfOperations",
-        parent_mindset: "parentMindset",
       };
 
       const sigByCity: Record<string, Record<string, number | null>> = {};
@@ -1083,11 +1065,8 @@ const CityScoring = () => {
 
       const DB_TO_UI: Record<string, CategoryKey> = {
         demand: "demand",
-        pricing_power: "pricingPower",
         competitive_landscape: "competitiveLandscape",
         franchisee_supply: "franchiseeSupply",
-        ease_of_operations: "easeOfOperations",
-        parent_mindset: "parentMindset",
       };
 
       const sigByCity: Record<string, Record<string, number | null>> = {};
@@ -1324,21 +1303,15 @@ const CityScoring = () => {
 
   const cs = categoryScores(selected);
 
-  // DB → UI category-key mapping
+  // DB → UI category-key mapping (3-key shape after May 21, 2026 final purge).
   const DB_CAT_TO_UI: Record<string, CategoryKey> = {
     demand: "demand",
-    pricing_power: "pricingPower",
     competitive_landscape: "competitiveLandscape",
     franchisee_supply: "franchiseeSupply",
-    ease_of_operations: "easeOfOperations",
-    parent_mindset: "parentMindset",
     // Legacy keys (back-compat)
     summer_camp_demand: "demand",
-    dual_income_families: "pricingPower",
     competition_score: "competitiveLandscape",
     stem_jobs: "franchiseeSupply",
-    school_density: "easeOfOperations",
-    child_population: "parentMindset",
   };
   const liveUiCategoryScores: Partial<Record<CategoryKey, number>> = {};
   Object.entries(selectedLiveCategoryScores).forEach(([k, v]) => {

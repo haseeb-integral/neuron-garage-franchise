@@ -184,11 +184,6 @@ export async function loadLiveRankedMarkets(opts?: { includeExtras?: boolean }):
           ? undefined
           : Math.max(0, Math.min(100, 100 - toNumber(row.score_csi, 0))),
         franchiseeSupply: row.score_tam_teachers == null ? undefined : toNumber(row.score_tam_teachers, 0),
-        // Retired categories — undefined so the type stays stable while the
-        // UI hides them via VISIBLE_CATEGORIES (CityScoring.tsx).
-        pricingPower: undefined,
-        easeOfOperations: undefined,
-        parentMindset: undefined,
       },
     };
   });

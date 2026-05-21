@@ -480,11 +480,8 @@ export function MarketDetailDrawer({
     };
     const KEY_TO_METRIC: Record<CategoryKey, MetricCategory> = {
       demand: "demand",
-      pricingPower: "pricing_power",
       competitiveLandscape: "competitive_landscape",
       franchiseeSupply: "franchisee_supply",
-      easeOfOperations: "ease_of_operations",
-      parentMindset: "parent_mindset",
     };
     customCriteriaRows.forEach((r) => {
       const ck = CATEGORY_LABEL_TO_KEY[r.category];

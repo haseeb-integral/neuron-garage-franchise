@@ -5,23 +5,24 @@ import { DEFAULT_SUB_WEIGHTS } from "@/lib/sowMetricRegistry";
 
 export type CategoryKey =
   | "demand"
-  | "pricingPower"
   | "competitiveLandscape"
-  | "franchiseeSupply"
-  | "easeOfOperations"
-  | "parentMindset";
+  | "franchiseeSupply";
 
-// Per Sam+Brett May 21, 2026: 6→3 category reshape. Retired categories
-// (pricingPower, easeOfOperations, parentMindset) default to weight 0 and
-// are hidden in the UI via VISIBLE_CATEGORIES (CityScoring.tsx). Kept in
-// the type for store stability — full removal in a follow-up refactor.
+// Per Sam+Brett May 21, 2026: 6→3 category reshape FINAL purge (v9).
+// Retired categories (pricingPower, easeOfOperations, parentMindset)
+// have been fully removed from the type. The persist migrate() below
+// strips any leftover retired keys from localStorage for users who had
+// the older 6-key store.
+export const RETIRED_CATEGORY_KEYS = [
+  "pricingPower",
+  "easeOfOperations",
+  "parentMindset",
+] as const;
+
 export const DEFAULT_WEIGHTS: Record<CategoryKey, number> = {
   demand: 40,
-  pricingPower: 0,
   competitiveLandscape: 30,
   franchiseeSupply: 30,
-  easeOfOperations: 0,
-  parentMindset: 0,
 };
 
 export type SubWeights = Record<CategoryKey, Record<string, number>>;
@@ -162,7 +163,7 @@ export const useCityScoringStore = create<CityScoringState>()(
     {
       name: "ng:city-scoring-v1",
       storage: createJSONStorage(() => localStorage),
-      version: 8,
+      version: 9,
       migrate: (persisted: any, version) => {
         if (!persisted) return persisted;
         if (version < 2) {
@@ -177,30 +178,26 @@ export const useCityScoringStore = create<CityScoringState>()(
           persisted.page = 1;
         }
         if (version < 5) {
-          // 6→3 category reshape (Sam+Brett May 21, 2026). Reset master
-          // weights to the new 40/30/30 default; zero out retired keys.
           persisted.weights = { ...DEFAULT_WEIGHTS };
           persisted.appliedWeights = { ...DEFAULT_WEIGHTS };
         }
-        if (version < 6) {
-          // Reseed sub-weights so franchiseeSupply (TAM Teachers) gets its
-          // 5-metric default (was {} → caused "server fallback" wording).
+        if (version < 6 || version < 7 || version < 8) {
           persisted.subWeights = cloneSubWeights(DEFAULT_SUB_WEIGHTS);
           persisted.appliedSubWeights = cloneSubWeights(DEFAULT_SUB_WEIGHTS);
         }
-        if (version < 7) {
-          // CSI 3-metric lock (Brett+Haseeb 2026-05-21). Reseed for the new
-          // csi_* sub-metrics.
-          persisted.subWeights = cloneSubWeights(DEFAULT_SUB_WEIGHTS);
-          persisted.appliedSubWeights = cloneSubWeights(DEFAULT_SUB_WEIGHTS);
-        }
-        if (version < 8) {
-          // CSI read-only lock (Brett 2026-05-21c). The drawer no longer
-          // exposes 34/33/33 knobs — Manus's csi_score is the source of
-          // truth. Reseed so old 34/33/33 in localStorage clears to 0/0/0
-          // and the recompute helper falls back to the server score.
-          persisted.subWeights = cloneSubWeights(DEFAULT_SUB_WEIGHTS);
-          persisted.appliedSubWeights = cloneSubWeights(DEFAULT_SUB_WEIGHTS);
+        if (version < 9) {
+          // v9 (Sam+Brett May 21, 2026 — final purge): strip the 3 retired
+          // category keys from every persisted weight bag so the rehydrated
+          // store matches the new 3-key CategoryKey union.
+          const strip = (obj: any) => {
+            if (!obj || typeof obj !== "object") return obj;
+            RETIRED_CATEGORY_KEYS.forEach((k) => { delete obj[k]; });
+            return obj;
+          };
+          strip(persisted.weights);
+          strip(persisted.appliedWeights);
+          strip(persisted.subWeights);
+          strip(persisted.appliedSubWeights);
         }
         return persisted;
       },

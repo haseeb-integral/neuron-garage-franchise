@@ -80,11 +80,8 @@ function buildSeededFallbackSignals(market: CityData): LiveSignal[] {
 
 const CAT_LABELS: { key: string; dbKey: MetricCategory; label: string }[] = [
   { key: "demand", dbKey: "demand", label: "Demand" },
-  { key: "pricingPower", dbKey: "pricing_power", label: "Pricing Power" },
   { key: "competitiveLandscape", dbKey: "competitive_landscape", label: "Competitive Landscape" },
-  { key: "franchiseeSupply", dbKey: "franchisee_supply", label: "Franchisee Supply" },
-  { key: "easeOfOperations", dbKey: "ease_of_operations", label: "Ease of Operations" },
-  { key: "parentMindset", dbKey: "parent_mindset", label: "Parent Mindset" },
+  { key: "franchiseeSupply", dbKey: "franchisee_supply", label: "TAM Teachers" },
 ];
 
 const PRIORITY_SIGNAL_KEYS = [

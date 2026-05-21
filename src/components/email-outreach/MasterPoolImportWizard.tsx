@@ -65,9 +65,13 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
     }
   }, [open]);
 
+  // Auto-run QA the moment user lands on Review step
   useEffect(() => {
-    if (step === 4 && !qa) setStep(3);
-  }, [step, qa]);
+    if (step === 3 && !qa && !qaLoading) {
+      computeQa();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
   /* ---------- Step 2: CSV + AI mapping ---------- */
   const handleCsv = (file: File) => {

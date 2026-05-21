@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import type { RankedMarket } from "@/lib/cityScoringLiveData";
+import { buildSeededFallbackSignalsFromScored, type RankedMarket } from "@/lib/cityScoringLiveData";
 
 const CATEGORY_ROWS: { key: string; label: string; dbKey: string }[] = [
   { key: "demand", label: "Demand", dbKey: "demand" },

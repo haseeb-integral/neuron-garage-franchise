@@ -193,7 +193,7 @@ export default function EmailOutreachV2() {
     {scope === "master_db" && (
       <PushToSmartLeadBanner
         verifiedCount={verifiedInMaster}
-        onPush={() => toast.info("Push-to-SmartLead modal lands in Sprint 2.")}
+        onPush={() => setPushModalOpen(true)}
       />
     )}
 

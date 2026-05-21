@@ -135,7 +135,7 @@ const CATEGORIES: Category[] = [
     description: "Measures size of target families and program demand.", defaultWeight: 40 },
   { key: "franchiseeSupply", label: "TAM Teachers", icon: UserCheck, color: "#7c3aed", bg: "#f1ebff",
     description: "Total addressable pool of teachers available to recruit as franchise operators.", defaultWeight: 30 },
-  { key: "competitiveLandscape", label: "Competitive Saturation Index (CSI)", icon: Trophy, color: "#b8860b", bg: "#fff6dc",
+  { key: "competitiveLandscape", label: "Competitive Landscape", icon: Trophy, color: "#b8860b", bg: "#fff6dc",
     description: "How saturated the local kids-enrichment market is, weighted by national brand presence.", defaultWeight: 30 },
   // Retired May 21, 2026 — hidden via VISIBLE_CATEGORIES but kept in type
   // for store/persist stability. Will be fully removed in follow-up refactor.

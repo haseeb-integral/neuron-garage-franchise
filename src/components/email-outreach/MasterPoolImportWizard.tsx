@@ -148,6 +148,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
 
       let existingInMaster = 0;
       let completed = 0;
+      toast.loading(`Checking duplicates… 0/${chunks.length} batches`, { id: tId });
 
       for (let i = 0; i < chunks.length; i += CONCURRENCY) {
         const wave = chunks.slice(i, i + CONCURRENCY);
@@ -158,13 +159,13 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
               .select("dedupe_key")
               .in("dedupe_key", chunk);
             if (error) throw new Error(`Dedupe check failed: ${error.message}`);
+            completed += 1;
+            toast.loading(`Checking duplicates… ${completed}/${chunks.length} batches`, { id: tId });
             return (data ?? []).length;
           }),
         );
 
         existingInMaster += results.reduce((sum, count) => sum + count, 0);
-        completed += wave.length;
-        toast.loading(`Checking duplicates… ${completed}/${chunks.length} batches`, { id: tId });
       }
 
       setQa({ total: csvRows.length, withEmail, validEmail, inBatchDupes, existingInMaster, missingRequired });

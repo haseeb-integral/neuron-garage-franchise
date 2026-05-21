@@ -11,13 +11,17 @@ export type CategoryKey =
   | "easeOfOperations"
   | "parentMindset";
 
+// Per Sam+Brett May 21, 2026: 6→3 category reshape. Retired categories
+// (pricingPower, easeOfOperations, parentMindset) default to weight 0 and
+// are hidden in the UI via VISIBLE_CATEGORIES (CityScoring.tsx). Kept in
+// the type for store stability — full removal in a follow-up refactor.
 export const DEFAULT_WEIGHTS: Record<CategoryKey, number> = {
-  demand: 25,
-  pricingPower: 20,
-  competitiveLandscape: 20,
-  franchiseeSupply: 15,
-  easeOfOperations: 10,
-  parentMindset: 10,
+  demand: 40,
+  pricingPower: 0,
+  competitiveLandscape: 30,
+  franchiseeSupply: 30,
+  easeOfOperations: 0,
+  parentMindset: 0,
 };
 
 export type SubWeights = Record<CategoryKey, Record<string, number>>;

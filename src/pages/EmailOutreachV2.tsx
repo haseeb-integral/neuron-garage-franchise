@@ -303,6 +303,11 @@ export default function EmailOutreachV2() {
         <Section step={2} title="Recent imports" subtitle="CSVs that landed in the Master Pool. Master-only vs. pushed-to-SmartLead is shown per row." storageKey="master_batches" defaultOpen>
           <ProspectBatchesPanel refreshKey={batchesRefresh} />
         </Section>
+
+        {/* MASTER DB SECTION 3 — Enrichment runs */}
+        <Section step={3} title="Enrichment runs" subtitle="Per-city email/contact enrichment across providers. Cost + status." storageKey="master_enrichment" defaultOpen={false}>
+          <EnrichmentJobsPanel />
+        </Section>
       </>
     )}
 

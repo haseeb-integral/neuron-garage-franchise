@@ -1,106 +1,113 @@
-## Goal
+## What I found
 
-Cut every live read and write of `city_market_signals` so the table becomes a true orphan. Until we drop it, no UI component, drawer, scoring path, edge function, or export touches it. Drop the table in a final cleanup step once the app is verified clean.
+- `city_market_signals` is already severed from the live UI/scoring code, but the table still exists and still has **9,420 rows**. It is safe to drop after a migration.
+- The scary line `TAM Teachers score (server fallback) 93` is coming from **`us_cities_scored.score_tam_teachers`** — not from the legacy table.
+- For **Denver**, the TAM metric values do exist in `us_cities_scored`:
+  - Public elementary schools = **143**
+  - Public elementary teachers = **3659**
+  - Private + charter elementary schools = **66**
+  - Public elementary enrollment = **56,320**
+  - COL / salary field available to UI = **107.33**
+- For **Denver**, the center-panel overall score is currently consistent with the visible 3-category UI formula:
+  - Demand **70**, TAM **93**, CSI **73**
+  - `70×0.4 + 93×0.3 + 73×0.3 = 77.8 → 78`
+- But across the seeded city table, the stored overall score is **not reliably aligned** with the current 3-category formula. I checked rows with all 3 category scores present:
+  - **766 rows checked**
+  - only **63 exact matches** to the current `40/30/30` formula
+- There is also a **client/backend scoring mismatch** today:
+  - frontend TAM normalization ranges differ from backend TAM normalization ranges
+  - that can make the drawer math disagree with stored scores
 
-This is a **read/write severance plan**, not a redesign. All replacement data already exists on `us_cities_scored` and is already exposed through `buildSeededFallbackSignalsFromScored(...)`.
+## Grade-8 truth check
 
----
+- **Yes** — TAM should come from the TAM metric values stored on `us_cities_scored`.
+- **Yes** — overall score should come from the category scores (Demand + TAM + CSI) using the master weights.
+- **No** — today I cannot honestly say every stored overall score in `us_cities_scored` matches the current visible 3-category formula.
+- **So your concern is valid.** Denver happens to line up, but the system as a whole needs a real alignment fix.
 
-## Current usage (what we are cutting)
+## Plan
 
-**Frontend reads (5):**
-1. `src/pages/CityScoring.tsx:766` — composite override loader (reads `signal_key,value` for visible city ids)
-2. `src/pages/CityScoring.tsx:954` — `loadLiveData` selects `*` for the open city → feeds `liveSignals` state
-3. `src/pages/CityScoring.tsx:1090` — CSV export loader (reads `signal_key,value` per city)
-4. `src/components/city-scoring/MarketDetailDrawer.tsx:295` — Live evidence in the drawer; merged with fallback
-5. `src/components/city-scoring/MarketReportModal.tsx:163` — Market Report Modal evidence list
-6. `src/components/city-scoring/MarketCompareModal.tsx:74` — Compare modal evidence
-7. `src/lib/cityScoringLiveData.ts:410` — `getCitySourceData` — Source Data panel coverage rows
+### 1) Drop the legacy table
+**What changes**
+- Create a migration to drop `public.city_market_signals`.
 
-**Edge function writes (2):**
-8. `supabase/functions/fetch-school-counts/index.ts:171` — upserts CCD school counts
-9. `supabase/functions/seed-cities-weather/index.ts:136` — upserts weather metrics
+**Why**
+- It is legacy, orphaned, and should not exist if it no longer feeds anything.
 
-Everything in `supabase/migrations/**` and `src/data/specMarkdown.ts` is historical / documentation and is fine to leave referencing the table by name.
+**Risk**
+- Low.
 
----
+**How to undo**
+- Restore from migration history / recreate from backup if ever needed.
 
-## Replacement strategy (no new tables, no new APIs)
+### 2) Remove the misleading fallback behavior in the TAM formula drawer
+**What changes**
+- Fix the formula UI so it computes from the real `us_cities_scored` metric values whenever those values exist.
+- Replace the misleading “server fallback” wording with honest states:
+  - if weights are zero: say that clearly
+  - if a metric value is missing in the city row: show that clearly
+  - only show a stored-score fallback when there is truly no calculable path
 
-`buildSeededFallbackSignalsFromScored(scoredRow, childrenPct)` already synthesizes `LiveSignal[]` rows directly from `us_cities_scored` columns. Every consumer that currently does `(rows ?? fallback)` will simply become `fallback` — same shape, same `signal_key` set, same UI.
+**Why**
+- Right now the drawer can imply “all metrics unavailable” even when the city row does have TAM inputs.
 
-### Per-call-site change
+**Risk**
+- Low.
 
-| # | File | Change |
-|---|---|---|
-| 1 | `CityScoring.tsx` composite override loader | Drop the `signals` query. Build `sigByCity` from each visible `scoredRow` via `buildSeededFallbackSignalsFromScored`. |
-| 2 | `CityScoring.tsx` `loadLiveData` | Replace the `*` query with `buildSeededFallbackSignalsFromScored(scoredRow)`. Cache + `setLiveSignals` unchanged. |
-| 3 | `CityScoring.tsx` CSV export | Same as #1 — build per-city signal map from each scored row. |
-| 4 | `MarketDetailDrawer.tsx` | Delete the query block. `setSignals(buildSeededFallbackSignals(market))`. Drop the merge logic. |
-| 5 | `MarketReportModal.tsx` | Same — fallback becomes the sole source. |
-| 6 | `MarketCompareModal.tsx` | Replace query with per-city `buildSeededFallbackSignalsFromScored(market.scoredRow)`. |
-| 7 | `cityScoringLiveData.ts` `getCitySourceData` | Source Data panel will derive coverage from the scored row's `*_last_updated` columns (`census_last_updated`, `bls_last_updated`, `apify_last_updated`, `firecrawl_last_updated`, etc.). Drop the `city_market_signals` query entirely. Row count column becomes the count of seeded signals for that source from the fallback signal list. |
-| 8 | `fetch-school-counts/index.ts` | Stop the `city_market_signals` upsert. The function already writes the same numbers to `us_cities_scored` columns (`public_elementary_count`, `public_elementary_teacher_count`, `public_elementary_enrollment`) — verify and keep only that path. |
-| 9 | `seed-cities-weather/index.ts` | Stop the `city_market_signals` upsert. Weather metrics already land in `us_cities_scored` columns (`summer_precip_days`, `days_above_90f`, `avg_peak_summer_temperature`, `summer_weather_index`) — verify and keep only that path. |
+**How to undo**
+- Revert the UI logic and wording change.
 
-No scoring math changes. The TAM "Show Formula" drawer already uses `buildSeededFallbackSignalsFromScored` after the last fix.
+### 3) Make one canonical scoring formula for both backend and frontend
+**What changes**
+- Align frontend and backend normalization ranges for TAM.
+- Ensure the formula drawer and the stored category scores use the same math.
+- Keep the agreed structure:
+  - category score from metric values
+  - overall score from Demand + TAM + CSI master weights
 
----
+**Why**
+- Today the frontend and backend do not use the exact same TAM scaling.
 
-## Verification before dropping the table
+**Risk**
+- Medium, because it changes how seeded scores are recomputed.
 
-After the code change, run a grep to prove zero live references:
+**How to undo**
+- Revert the shared scoring changes and restore the previous ranges.
 
-```
-rg "city_market_signals" src/ supabase/functions/
-```
+### 4) Recompute and backfill all stored scores in `us_cities_scored`
+**What changes**
+- Re-run a canonical backfill so stored `score_demand`, `score_tam_teachers`, `score_csi`, and `composite_score_default` are regenerated from the real city-row inputs using the same formula the UI explains.
 
-Expected: empty (or comments only). Then manually click through:
+**Why**
+- This is the real fix for your trust issue. After this, the stored score should match the explained score.
 
-- City Search list (composite recompute works, sliders move scores)
-- Open any city → Market Detail Drawer → Live values / Show Formula
-- Open Market Report modal
-- Compare 2 cities modal
-- Export CSV
-- Source Data panel still shows per-source freshness
+**Risk**
+- Medium.
 
-If all green, proceed to the drop migration.
+**How to undo**
+- Restore previous stored scores from backup / rerun prior seed logic.
 
----
+## Technical details
 
-## Drop migration (last step, only after the user says "go drop")
+- Files likely touched:
+  - `src/components/city-scoring/SubMetricWeightsDrawer.tsx`
+  - `src/lib/clientSubWeightScoring.ts`
+  - `src/lib/sowNormalize.ts`
+  - `src/lib/cityScoringLiveData.ts`
+  - `supabase/functions/_shared/scoring.ts`
+  - `supabase/functions/seed-cities-database/index.ts`
+- Database change:
+  - drop `public.city_market_signals`
+  - then run a score backfill on `public.us_cities_scored`
+- I will also keep the name-vs-meaning rule in check while doing this, especially around `col_salary_index` vs raw `cost_of_living_index` fallback behavior.
 
-```sql
-DROP TABLE IF EXISTS public.city_market_signals CASCADE;
-```
+## Expected result after implementation
 
-This is gated. Will be a separate single-statement migration so it can be reviewed and reverted independently of the code changes.
-
----
-
-## Risk and rollback
-
-- **Risk:** Low. Replacement helper already exists and is in use today; we are removing one read path and replacing with another that the same components already use as a fallback.
-- **Rollback:** Revert the 7 frontend / 2 edge function edits. No schema change in the severance step. The drop is a separate, later migration.
-
----
-
-## Doc-sync (draft only, not written until user says "go docs")
-
-- `PROJECT_CONTEXT.md` — remove `city_market_signals` from the live tables list; note severance + future drop.
-- `HOW_IT_WORKS.md` — replace "evidence rows come from `city_market_signals`" with "evidence rows come from `us_cities_scored` via `buildSeededFallbackSignalsFromScored`".
-- `APIS.md` — remove the `city_market_signals` write destinations from `fetch-school-counts` and `seed-cities-weather`.
-- `OPEN_TASKS.md` — close "Drop legacy `city_market_signals`" once the drop migration ships.
-- `GLOSSARY.md` — mark `city_market_signals` as deprecated → removed.
-- Per Rule 11 / Name-vs-Meaning: nothing to rename; the table goes away entirely.
-
----
-
-## Order of execution (when you approve)
-
-1. Sever 7 frontend reads (one PR-equivalent change).
-2. Sever 2 edge-function writes; redeploy auto.
-3. Run the verification grep + click-through.
-4. Report back to you with confirmation + console screenshots if anything unexpected.
-5. Wait for your explicit "drop it" → ship the `DROP TABLE` migration.
-6. Wait for your "go docs" → update the 5 docs.
+- No legacy `city_market_signals` table.
+- TAM “Show Formula” always shows real city-row inputs when they exist.
+- No fake-looking “server fallback” message for rows that actually have TAM inputs.
+- Stored overall score and displayed formula use the same math path.
+- We can tell Sam and Brett a simple honest story:
+  - “Each category comes from its city metrics.”
+  - “Overall score comes from Demand + TAM + CSI weights.”
+  - “The number in the table matches the number in Show Formula.”

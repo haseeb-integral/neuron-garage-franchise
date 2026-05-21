@@ -338,59 +338,6 @@ export type Database = {
         }
         Relationships: []
       }
-      city_market_signals: {
-        Row: {
-          city_id: string
-          confidence: number | null
-          delta: string | null
-          delta_type: string | null
-          id: string
-          label: string
-          raw_data: Json | null
-          signal_key: string
-          source: string | null
-          source_url: string | null
-          updated_at: string
-          value: string
-        }
-        Insert: {
-          city_id: string
-          confidence?: number | null
-          delta?: string | null
-          delta_type?: string | null
-          id?: string
-          label: string
-          raw_data?: Json | null
-          signal_key: string
-          source?: string | null
-          source_url?: string | null
-          updated_at?: string
-          value: string
-        }
-        Update: {
-          city_id?: string
-          confidence?: number | null
-          delta?: string | null
-          delta_type?: string | null
-          id?: string
-          label?: string
-          raw_data?: Json | null
-          signal_key?: string
-          source?: string | null
-          source_url?: string | null
-          updated_at?: string
-          value?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "city_market_signals_city_id_fkey"
-            columns: ["city_id"]
-            isOneToOne: false
-            referencedRelation: "us_cities_scored"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       city_seed_runs: {
         Row: {
           cities_failed: number

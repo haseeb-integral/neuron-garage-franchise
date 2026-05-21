@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS public.city_market_signals CASCADE;

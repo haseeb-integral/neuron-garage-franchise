@@ -17,6 +17,7 @@ const utilityNavItems = [
   { title: "User's Guide", url: "/users-guide", icon: BookOpen },
   { title: "Specification", url: "/spec", icon: FileText },
   { title: "SmartLead API Spec", url: "/smartlead-spec", icon: Send },
+  { title: "Email Outreach Documentation", url: "/email-outreach-docs", icon: Mail },
 ];
 
 interface Props {

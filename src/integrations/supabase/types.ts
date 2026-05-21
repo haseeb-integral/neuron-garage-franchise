@@ -1258,6 +1258,7 @@ export type Database = {
         Row: {
           apify_last_updated: string | null
           avg_camp_price_per_hour: number | null
+          avg_elementary_teacher_salary_usd: number | null
           avg_peak_summer_temperature: number | null
           bea_last_updated: string | null
           bls_last_updated: string | null
@@ -1267,6 +1268,7 @@ export type Database = {
           charter_elementary_count: number | null
           children_5_12: number | null
           city_name: string
+          col_salary_index: number | null
           college_degree_pct: number | null
           composite_score_default: number | null
           cost_of_living_index: number | null
@@ -1301,6 +1303,7 @@ export type Database = {
           private_elementary_count: number | null
           public_elementary_count: number | null
           public_elementary_enrollment: number | null
+          public_elementary_teacher_count: number | null
           public_school_count: number | null
           public_school_enrollment: number | null
           refresh_count: number
@@ -1324,6 +1327,7 @@ export type Database = {
         Insert: {
           apify_last_updated?: string | null
           avg_camp_price_per_hour?: number | null
+          avg_elementary_teacher_salary_usd?: number | null
           avg_peak_summer_temperature?: number | null
           bea_last_updated?: string | null
           bls_last_updated?: string | null
@@ -1333,6 +1337,7 @@ export type Database = {
           charter_elementary_count?: number | null
           children_5_12?: number | null
           city_name: string
+          col_salary_index?: number | null
           college_degree_pct?: number | null
           composite_score_default?: number | null
           cost_of_living_index?: number | null
@@ -1367,6 +1372,7 @@ export type Database = {
           private_elementary_count?: number | null
           public_elementary_count?: number | null
           public_elementary_enrollment?: number | null
+          public_elementary_teacher_count?: number | null
           public_school_count?: number | null
           public_school_enrollment?: number | null
           refresh_count?: number
@@ -1390,6 +1396,7 @@ export type Database = {
         Update: {
           apify_last_updated?: string | null
           avg_camp_price_per_hour?: number | null
+          avg_elementary_teacher_salary_usd?: number | null
           avg_peak_summer_temperature?: number | null
           bea_last_updated?: string | null
           bls_last_updated?: string | null
@@ -1399,6 +1406,7 @@ export type Database = {
           charter_elementary_count?: number | null
           children_5_12?: number | null
           city_name?: string
+          col_salary_index?: number | null
           college_degree_pct?: number | null
           composite_score_default?: number | null
           cost_of_living_index?: number | null
@@ -1433,6 +1441,7 @@ export type Database = {
           private_elementary_count?: number | null
           public_elementary_count?: number | null
           public_elementary_enrollment?: number | null
+          public_elementary_teacher_count?: number | null
           public_school_count?: number | null
           public_school_enrollment?: number | null
           refresh_count?: number

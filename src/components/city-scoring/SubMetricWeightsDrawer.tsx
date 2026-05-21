@@ -34,6 +34,11 @@ interface Props {
   currentComposite?: number; // composite before Apply (for delta toast)
   computeNewComposite?: (newCategoryScore: number) => number; // recompute composite swapping in new category score
   customMetricsForCategory?: CustomCriterionRow[]; // user-added metrics in this category
+  // CSI-only: per-city brand detail string from Manus (e.g. "Code Ninjas(2)|KinderCare(1)").
+  csiBrandDetail?: string | null;
+  // CSI-only: raw csi_score (0-100, saturation) and saturation category label from Manus.
+  csiRawScore?: number | null;
+  csiSaturationCategory?: string | null;
   // Optional: full city-level breakdown for the "Overall city formula" line.
   overallFormula?: {
     parts: Array<{ key: CategoryKey; label: string; score: number | null; weightPct: number }>;

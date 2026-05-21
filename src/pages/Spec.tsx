@@ -1,7 +1,10 @@
-import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, FileText } from "lucide-react";
 import { SPEC_MARKDOWN } from "@/data/specMarkdown";
+import { DocShell } from "@/components/DocShell";
+
+const NAVY = "#003c7e";
+const INK = "#0b1a36";
 
 const handleDownloadSpec = () => {
   const blob = new Blob([SPEC_MARKDOWN], { type: "text/markdown;charset=utf-8" });
@@ -17,20 +20,20 @@ const handleDownloadSpec = () => {
 
 const Section = ({ id, title, children }: { id: string; title: string; children: React.ReactNode }) => (
   <section id={id} className="scroll-mt-8 mb-10">
-    <h2 className="text-2xl font-bold mb-3" style={{ color: "#003c7e" }}>{title}</h2>
-    <div className="space-y-3 text-sm leading-relaxed" style={{ color: "#343a40" }}>
+    <h2 className="text-[22px] font-black tracking-tight mb-3" style={{ color: NAVY }}>{title}</h2>
+    <div className="space-y-3 text-[14.5px] leading-[1.7]" style={{ color: "#3a4a66" }}>
       {children}
     </div>
   </section>
 );
 
 const SubHeading = ({ children }: { children: React.ReactNode }) => (
-  <h3 className="text-base font-semibold mt-5 mb-2" style={{ color: "#1a1a2e" }}>{children}</h3>
+  <h3 className="text-[15px] font-bold mt-5 mb-2" style={{ color: INK }}>{children}</h3>
 );
 
-const Pill = ({ children, color = "#003c7e" }: { children: React.ReactNode; color?: string }) => (
+const Pill = ({ children, color = NAVY }: { children: React.ReactNode; color?: string }) => (
   <span
-    className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full mr-1.5"
+    className="inline-block text-[11px] font-bold uppercase tracking-[0.12em] px-2 py-0.5 rounded-full mr-1.5"
     style={{ backgroundColor: `${color}15`, color }}
   >
     {children}
@@ -56,35 +59,36 @@ const Spec = () => {
   ];
 
   return (
-    <div>
-      <PageHeader
-        title="Product Specification"
-        subtitle="Detailed specification of the Neuron Garage Franchise Acquisition System."
-        action={
-          <Button
-            onClick={handleDownloadSpec}
-            className="gap-2 bg-[#0757ff] text-white hover:bg-[#0644cc]"
-          >
-            <Download size={16} />
-            Download .md
-          </Button>
-        }
-      />
-
-      <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-8">
+    <DocShell
+      eyebrow="Engineering reference"
+      eyebrowIcon={FileText}
+      title={<>Full Specification</>}
+      subtitle="The complete product specification of the Neuron Garage Franchise Acquisition System — every screen, every flow, every data model."
+      action={
+        <Button
+          onClick={handleDownloadSpec}
+          className="gap-2 rounded-full px-5 py-5 text-[13px] font-bold"
+          style={{ background: "linear-gradient(135deg, #003c7e 0%, #0757ff 100%)", color: "white", boxShadow: "0 12px 28px rgba(7,87,255,0.25)" }}
+        >
+          <Download size={15} />
+          Download .md
+        </Button>
+      }
+    >
+      <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6">
         {/* Sidebar TOC */}
         <aside className="lg:sticky lg:top-4 self-start">
-          <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #dee2e6" }}>
-            <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: "#6c757d" }}>
+          <div className="rounded-2xl bg-white p-5" style={{ border: "1px solid #eef2f7", boxShadow: "0 4px 14px rgba(15,23,42,0.04)" }}>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] mb-3" style={{ color: NAVY }}>
               Contents
             </p>
-            <nav className="flex flex-col gap-1.5">
+            <nav className="flex flex-col gap-2">
               {toc.map((t) => (
                 <a
                   key={t.id}
                   href={`#${t.id}`}
-                  className="text-sm hover:underline"
-                  style={{ color: "#003c7e" }}
+                  className="text-[13.5px] font-medium hover:translate-x-0.5 transition-transform"
+                  style={{ color: INK }}
                 >
                   {t.label}
                 </a>
@@ -94,7 +98,7 @@ const Spec = () => {
         </aside>
 
         {/* Body */}
-        <article className="bg-white rounded-lg p-6 md:p-8 max-w-3xl" style={{ border: "1px solid #dee2e6" }}>
+        <article className="rounded-[24px] bg-white p-7 md:p-10 max-w-3xl" style={{ border: "1px solid #eef2f7", boxShadow: "0 10px 30px rgba(11,26,54,0.05)" }}>
           <Section id="overview" title="1. Overview">
             <p>
               <strong>Neuron Garage Franchise Acquisition System</strong> is an internal tool that helps the
@@ -394,12 +398,12 @@ const Spec = () => {
             </ul>
           </Section>
 
-          <p className="text-xs mt-8 pt-4" style={{ color: "#6c757d", borderTop: "1px solid #dee2e6" }}>
+          <p className="text-[11px] mt-8 pt-4" style={{ color: "#6c757d", borderTop: "1px solid #dee2e6" }}>
             Document version 1.0 · Prototype build · For internal review.
           </p>
         </article>
       </div>
-    </div>
+    </DocShell>
   );
 };
 

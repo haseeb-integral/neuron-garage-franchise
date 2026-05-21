@@ -1763,7 +1763,7 @@ const CityScoring = () => {
           </div>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {CATEGORIES.map((cat) => {
+          {VISIBLE_CATEGORIES.map((cat) => {
             const Icon = cat.icon;
             const customCount =
               customCriteria.filter((c) => c.category === cat.label).length +
@@ -2307,7 +2307,7 @@ const CityScoring = () => {
               {selectedHasLiveData && (() => {
                 // Rank by CONTRIBUTION = score × applied master weight, so
                 // categories the user weighted to 0% never count as drivers.
-                const enriched = CATEGORIES.map((c) => {
+                const enriched = VISIBLE_CATEGORIES.map((c) => {
                   const score = Math.round(detailCategoryScores[c.key] ?? 0);
                   const weight = appliedWeights[c.key] ?? 0;
                   return { label: c.label, score, weight, contribution: score * weight };
@@ -2351,7 +2351,7 @@ const CityScoring = () => {
                     </div>
                     {(() => {
                       const total = appliedTotal > 0 ? appliedTotal : 1;
-                      const rows = CATEGORIES.map((c) => {
+                      const rows = VISIBLE_CATEGORIES.map((c) => {
                         const weightPct = (appliedWeights[c.key] / total) * 100;
                         const score = detailCategoryScores[c.key] ?? 0;
                         const contribution = (weightPct * score) / 100;
@@ -2451,7 +2451,7 @@ const CityScoring = () => {
             <div>
               <p className="mb-2.5 text-[13px] font-semibold text-[#07142f]">Category Scores</p>
               <div className="space-y-2">
-                {CATEGORIES.map((cat) => {
+                {VISIBLE_CATEGORIES.map((cat) => {
                   const v = selectedHasLiveData ? (detailCategoryScores[cat.key] ?? 0) : null;
                   return (
                     <div key={cat.key}>

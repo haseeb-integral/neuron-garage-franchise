@@ -934,11 +934,11 @@ const CityScoring = () => {
         if (v != null) scoresMap[k] = Number(v);
       };
       addScore("demand", scoredRow.score_demand);
-      addScore("pricing_power", scoredRow.score_pricing_power);
-      addScore("competitive_landscape", scoredRow.score_competitive);
-      addScore("franchisee_supply", scoredRow.score_franchise_supply);
-      addScore("ease_of_operations", scoredRow.score_ease_of_operation);
-      addScore("parent_mindset", scoredRow.score_parent_mindset);
+      addScore("tam_teachers", scoredRow.score_tam_teachers);
+      addScore("csi", scoredRow.score_csi);
+      // Legacy category-score keys (pricing_power, ease_of_operations, parent_mindset,
+      // competitive_landscape, franchisee_supply) were retired in the May 21 6→3 reshape.
+      // The frontend store / sowMetricRegistry reshape lands in the next change.
 
       // Canonical-only: read evidence keyed to the scored-city UUID.
       // Legacy `cities` / `city_competitors` / `city_fetch_jobs` are dropped.

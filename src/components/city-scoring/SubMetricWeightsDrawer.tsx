@@ -473,6 +473,7 @@ function FormulaPanel({
   masterWeightPendingPct,
   enabledSum,
   pendingEdits,
+  overallFormula,
 }: {
   categoryLabel: string;
   selectedCityLabel?: string;
@@ -482,7 +483,12 @@ function FormulaPanel({
   masterWeightPendingPct: number | null;
   enabledSum: number;
   pendingEdits: boolean;
+  overallFormula?: {
+    parts: Array<{ key: CategoryKey; label: string; score: number | null; weightPct: number }>;
+    composite: number | null;
+  };
 }) {
+
   const compositeContribution =
     previewRecompute?.score != null && masterWeightPct != null
       ? (previewRecompute.score * masterWeightPct) / 100

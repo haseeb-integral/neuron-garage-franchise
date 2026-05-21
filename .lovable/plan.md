@@ -1,50 +1,99 @@
-## What this does
+## Goal
+Three UI cleanups on `/city-scoring`. No backend, no scoring math, no DB column changes. CSI wiring, formula, and `csi_score` usage stay untouched — only the user-facing label changes.
 
-The Competitive Landscape (CSI) numbers come straight from Brett's Manus v2 table. They should not be re-weightable by the user. This change makes the drawer match that reality and cleans up two related display gaps.
+---
 
-## Three fixes
+## 1. Rename "Competitive Saturation Index (CSI)" → "Competitive Landscape" (UI only)
 
-### 1. Remove the 34 / 33 / 33 sub-weight knobs
-- In the CSI drawer, the three +/- counters and the Apply button go away.
-- They're replaced by a read-only panel showing each input's current value, the v2 formula, and a "Locked — pulled from Manus v2 table" note.
-- City rank already uses Manus's `csi_score` directly; this just makes the UI honest.
+Change the visible label in every place a user sees it. Internal code names (`competitiveLandscape` key, `csi_*` columns, `csi_score`, helper comments, file headers) **stay as-is** — pure display string change.
 
-### 2. Fix the slider/normalization ranges
-Internal numeric ranges used by the formula preview were too narrow. New ranges = real p99 across all 817 cities:
+Files / lines touched:
+- `src/pages/CityScoring.tsx` line 138 — `CATEGORIES[].label` for `competitiveLandscape` → `"Competitive Landscape"`.
+- `src/components/city-scoring/SubMetricWeightsDrawer.tsx` — the locked CSI panel header text only:
+  - L1008 `"CSI (saturation)…"` → `"Competitive Landscape (saturation)…"`
+  - L1022 `"(100 − CSI)"` → leave as-is (it's the math identity); change surrounding sentence to read "Competitive Landscape opportunity" instead of "CSI opportunity".
+  - L463 user-facing caption: rephrase to "Locked — pulled from Manus v2 table. Competitive Landscape is computed by Manus and used as-is."
+- `src/components/city-scoring/MarketCompareModal.tsx` — if it prints the category label, it already reads from `CATEGORIES`, so the rename above propagates automatically. Quick verify, no extra edit expected.
+- `src/lib/cityScoringLiveData.ts` — no user-visible label to change (only internal `// CSI` comments — leave).
 
-| Input | Old cap | New cap |
-|---|---|---|
-| National Brand Supply | 25 | 60 |
-| Local Camp Estimate | 125 | 250 |
-| Demand-Adjusted Market | 45,000 | 100,000 |
+**No rename of:** registry `category: "competitive_landscape"`, store key `competitiveLandscape`, any `csi_*` column, any function or file name. Per AGENTS.md Name-vs-Meaning rule, the *meaning* hasn't changed — only the user-facing label — so internal names stay.
 
-Big metros (NYC, LA) will no longer all flat-line at 100 in the Show Formula view.
+---
 
-### 3. Show which brands are in each city
-Manus stored a per-city brand list in `csi_brand_detail` (e.g. `"KinderCare(1)|Code Ninjas(2)"`). The drawer will display this as a small "Brands present" list so users can see *which* national brands are driving each city's CSI, not just the combined weighted number.
+## 2. Right column: remove "Nearby Markets", move "Key Market Signals" into its slot
 
-## Files touched (technical)
+In `src/pages/CityScoring.tsx`:
+- Delete the `<NearbyMarketsPanel …/>` block (~L2569–2579) from the right column.
+- Move the entire "Key Market Signals" subtree (L2485–2532, the `<div className="min-w-0 border-l border-[#eef2f7] pl-4">`) out of the two-column `grid grid-cols-[1fr_1.08fr]` (L2458) into the right column where Nearby Markets used to live.
+- Collapse the now-single-column block (Category Scores) back to a normal full-width section instead of a 2-col grid.
+- Leave `NearbyMarketsPanel.tsx` file in place but unused (no deletion needed this turn — safer to keep). Mark with a one-line `// Unused 2026-05-21 — kept for history` comment at top.
 
-- `src/lib/sowMetricRegistry.ts` — CSI `weight_within_category` → 0 (forces server-score fallback)
-- `src/lib/sowNormalize.ts` — new ranges (60 / 250 / 100,000)
-- `src/stores/cityScoringStore.ts` — bump persist version 7→8, reseed sub-weights so old 34/33/33 from localStorage clears
-- `src/components/city-scoring/SubMetricWeightsDrawer.tsx` — when `categoryKey === "competitiveLandscape"`, render a locked read-only panel instead of editable controls; hide Apply + Reset; add "Brands present" list from `csi_brand_detail`
-- `src/lib/cityScoringLiveData.ts` — pass `csi_brand_detail` through to the drawer
+---
 
-## Things NOT touched
+## 3. Rebuild the "Key Market Signals" list + its drawer to the 3-category / 12-metric subset
 
-- The CSI formula itself (still Manus v2)
-- `csi_score` values in the DB
-- The composite math (still `0.40·Demand + 0.30·TAM + 0.30·(100 − CSI)`)
-- TAM and Demand drawers (still editable)
-- Anything outside `/city-scoring`
+The 12 metrics that may appear (everything else is hidden — including the old 46-metric pile):
 
-## Verification
+```text
+Demand (4)
+  children_5_12_count                — Source: U.S. Census ACS 5-yr
+  median_household_income            — Source: U.S. Census ACS 5-yr
+  dual_income_household_pct          — Source: U.S. Census ACS 5-yr
+  education_bachelors_plus_pct       — Source: U.S. Census ACS 5-yr
 
-- Hard-refresh (Cmd-Shift-R) clears the old store. Open Austin → CSI drawer should show 3 inputs with no +/- buttons, no Apply, plus a "Brands present" list.
-- City ranking order should not change (composite math is unchanged).
-- Open a big metro (NYC) → Show Formula panel should now show distinct sub-scores instead of three 100s.
+TAM Teachers (5)
+  public_elementary_school_count     — Source: NCES CCD
+  public_elementary_teacher_count    — Source: NCES CCD (teachers_fte)
+  private_charter_school_count       — Source: NCES PSS + CCD
+  public_elementary_enrollment       — Source: NCES CCD
+  col_salary_index                   — Source: BLS OEWS × BEA RPP
 
-## Doc sync after merge (Mode A — needs your "go")
+Competitive Landscape (3)
+  csi_national_brand_supply          — Source: Manus v2 brand scrape
+  csi_local_camp_estimate            — Source: Manus v2 estimate
+  csi_demand_adjusted_market         — Source: derived (enrollment × income ratio)
+```
 
-Will draft updates to `PROJECT_CONTEXT.md` (note CSI sub-weights locked), `HOW_IT_WORKS.md` (drawer behavior), `GLOSSARY.md` (CSI = read-only Manus v2 ratio) and summarize in chat before writing.
+### 3a. Right-column "Key Market Signals" panel (in `CityScoring.tsx`)
+- Replace the `centerLiveSignals` / `SIGNAL_DISPLAY_PRIORITY` / `CENTER_SIGNAL_EXCLUDE` logic (L1440–1497) with a simple filter: include only the 12 `signal_key`s above, in the order shown. Each row renders:
+  - Bold metric label (from registry — already correct).
+  - Value (from `selectedLiveCity` row's `signalsForDisplay`).
+  - Tiny gray subtitle = source string (pulled directly from `SOW_METRIC_REGISTRY[].source`).
+- Compact row height (`py-1`, `text-[10.5px]`). No icons-as-status, no chips, no "Tracked / not used".
+- Keep the existing "View all signals →" button (it opens the drawer).
+- If the value is missing for a given city, show `—`.
+
+### 3b. Drawer (`MarketDetailDrawer.tsx`) opened from "View all signals"
+- **Header (L635–678):** strip out all coverage chips and the "Chips total…" footnote. Replace with a clean 3-line block:
+  ```
+  City: <city, ST>
+  Last seeded: <date>
+  Pre-seeded values: <N> of 12
+  ```
+  where `N` = count of the 12 metrics that currently have a non-null value for this city.
+- **Body:** in the "Data Sources" tab (L781), filter `SOW_CATEGORIES` to the 3 visible categories only (`demand`, `franchisee_supply`, `competitive_landscape`), and within each, render only the metrics from the 12-list above. Hide the "Tracked, not used in score" sub-section (L887–897). Hide the "Fetcher diagnostics" collapsible (L903–924).
+- **Row density:** tighten `renderRegistryRow` padding from `py-1.5` to `py-1`, label to `text-[11.5px]`, description to `text-[10px]`. Drop any "Tracked / Not used in score / Tracked-no-value / Source unavailable" badges from the row template.
+- Remove the "Seed Coverage" section (the grid of counts at L686–732) — it was the old 46-metric audit, no longer relevant.
+- Default the drawer to the "Data Sources" tab (already does); the "Overview" tab can be dropped entirely since its only content was the retired Seed Coverage + Competitors list. → Remove `<Tabs>` wrapper and render the simplified metric list directly. (Competitors section is unrelated to Key Market Signals — drop it from this drawer to keep the UI "simple plain UI" as requested.)
+
+---
+
+## What stays untouched (guardrails)
+
+- All scoring math, normalization ranges, composite formula, `csi_score` ingestion.
+- Database, RLS, edge functions, registry `category` strings, store keys.
+- The 3 left-side weight widgets (Demand / TAM Teachers / Competitive Landscape).
+- `recomputeCategoryScore` fallback behavior, `sowNormalize.ts`, `cityScoringStore.ts`.
+- `SubMetricWeightsDrawer.tsx` locked-panel logic (only the visible text changes).
+
+## Files edited
+1. `src/pages/CityScoring.tsx` — label rename, right-column restructure, signal-list filter rewrite.
+2. `src/components/city-scoring/SubMetricWeightsDrawer.tsx` — 3 label strings.
+3. `src/components/city-scoring/MarketDetailDrawer.tsx` — simplified header, removed coverage chips/tabs/competitors, 3-category filter, denser rows.
+4. `src/components/city-scoring/NearbyMarketsPanel.tsx` — one-line "unused" comment, no functional change.
+
+## Risk & undo
+Low risk — pure presentation. Undo by reverting the four files above. No store version bump needed (no persisted shape changes).
+
+## Doc-sync (Mode A — drafted only, awaits "go")
+After implementing, I'll draft one-line summaries for `PROJECT_CONTEXT.md` (label rename + right-col reshuffle), `HOW_IT_WORKS.md` (Key Market Signals now mirrors the 12 scoring inputs), and `GLOSSARY.md` (add "Competitive Landscape = user-facing name for CSI / csi_score"). No file writes until you say go.

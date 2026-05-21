@@ -1847,6 +1847,9 @@ const CityScoring = () => {
               )
             : []
         }
+        csiBrandDetail={(selected as any)?.scoredRow?.csi_brand_detail ?? null}
+        csiRawScore={(selected as any)?.scoredRow?.csi_score ?? null}
+        csiSaturationCategory={(selected as any)?.scoredRow?.csi_saturation_category ?? null}
         overallFormula={{
           parts: VISIBLE_CATEGORIES.map((c) => ({
             key: c.key,

@@ -403,56 +403,44 @@ function jobStatusToRowStatus(status: string | null | undefined): CitySourceRow[
 export async function getCitySourceData(cityId: string): Promise<CitySourceRow[]> {
   if (!cityId) return [];
 
-  // Legacy city_fetch_jobs was dropped May 19 — Source Data panel now reflects
-  // only signal-source coverage from city_market_signals.
-  const jobs: any[] = [];
-  const { data: signals } = await supabase
-    .from("city_market_signals")
-    .select("source, source_url, updated_at")
-    .eq("city_id", cityId);
+  // Legacy `city_market_signals` and `city_fetch_jobs` were severed on 2026-05-21.
+  // Source Data panel now reads per-source freshness directly from the scored row.
+  const { data: scoredRow } = await supabase
+    .from("us_cities_scored")
+    .select(
+      "census_last_updated,bls_last_updated,apify_last_updated,firecrawl_last_updated,bea_last_updated,fred_last_updated,nces_last_updated,greatschools_last_updated,weather_last_updated",
+    )
+    .eq("id", cityId)
+    .maybeSingle();
 
-  // Latest job per source.
-  const latestJobBySource = new Map<string, any>();
-  (jobs ?? []).forEach((j: any) => {
-    if (!j.source) return;
-    if (!latestJobBySource.has(j.source)) latestJobBySource.set(j.source, j);
-  });
+  if (!scoredRow) return [];
 
-  // Signals grouped by source: count + latest URL + latest update.
-  const signalAgg = new Map<string, { count: number; url: string | null; latest: string | null }>();
-  (signals ?? []).forEach((s: any) => {
-    const src = s.source;
-    if (!src) return;
-    const cur = signalAgg.get(src) ?? { count: 0, url: null, latest: null };
-    cur.count += 1;
-    if (s.source_url && !cur.url) cur.url = s.source_url;
-    if (s.updated_at && (!cur.latest || s.updated_at > cur.latest)) cur.latest = s.updated_at;
-    signalAgg.set(src, cur);
-  });
+  // Only show sources that are real connected APIs.
+  const REAL_API_SOURCES: { key: string; column: string }[] = [
+    { key: "census", column: "census_last_updated" },
+    { key: "bls", column: "bls_last_updated" },
+    { key: "apify", column: "apify_last_updated" },
+    { key: "firecrawl", column: "firecrawl_last_updated" },
+  ];
 
-  // Only show sources that are real connected APIs. Hide proxy/seed/computed sources entirely.
-  const REAL_API_SOURCES = new Set(["census", "bls", "apify", "firecrawl"]);
-  const allSources = new Set<string>(
-    [...latestJobBySource.keys(), ...signalAgg.keys()].filter((s) => REAL_API_SOURCES.has(s)),
-  );
-  if (allSources.size === 0) return [];
+  const rows: CitySourceRow[] = REAL_API_SOURCES
+    .map(({ key, column }) => {
+      const lastFetchedAt = (scoredRow as any)[column] ?? null;
+      return {
+        source: key,
+        label: labelFor(key),
+        status: (lastFetchedAt ? "success" : "never") as CitySourceRow["status"],
+        lastFetchedAt,
+        recordCount: lastFetchedAt ? 1 : 0,
+        sourceUrl: null,
+        errorMessage: null,
+      };
+    })
+    .filter((r) => r.lastFetchedAt != null);
 
-  return Array.from(allSources).map((source) => {
-    const job = latestJobBySource.get(source);
-    const sig = signalAgg.get(source);
-    const status: CitySourceRow["status"] = job ? jobStatusToRowStatus(job.status) : sig ? "success" : "never";
-    const lastFetchedAt = job?.completed_at ?? job?.started_at ?? job?.created_at ?? sig?.latest ?? null;
-    return {
-      source,
-      label: labelFor(source),
-      status,
-      lastFetchedAt,
-      recordCount: sig?.count ?? 0,
-      sourceUrl: sig?.url ?? null,
-      errorMessage: job?.error_message ?? null,
-    };
-  }).sort((a, b) => a.label.localeCompare(b.label));
+  return rows.sort((a, b) => a.label.localeCompare(b.label));
 }
+
 
 // ============================================================================
 // Nearby Markets — same metro_area first, then same state fallback

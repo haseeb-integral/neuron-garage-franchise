@@ -3,8 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-import type { RankedMarket } from "@/lib/cityScoringLiveData";
+import { buildSeededFallbackSignalsFromScored, type RankedMarket } from "@/lib/cityScoringLiveData";
 
 const CATEGORY_ROWS: { key: string; label: string; dbKey: string }[] = [
   { key: "demand", label: "Demand", dbKey: "demand" },
@@ -70,30 +69,31 @@ export function MarketCompareModal({ open, onClose, markets }: Props) {
       return;
     }
     setLoading(true);
-    Promise.all([
-      supabase.from("city_market_signals").select("city_id, signal_key, label, value, delta").in("city_id", cityIds),
-      // Legacy city_category_scores dropped — compare modal uses canonical score_* columns now.
-      Promise.resolve({ data: [] as { city_id: string; category: string; score: number }[] }),
-    ])
-      .then(([sigRes, catRes]) => {
-        const sigMap: Record<string, Record<string, SignalRow>> = {};
-        const seen = new Map<string, string>(); // key -> label, preserves insertion order
-        (sigRes.data ?? []).forEach((r: any) => {
-          if (!sigMap[r.city_id]) sigMap[r.city_id] = {};
-          sigMap[r.city_id][r.signal_key] = { value: r.value, delta: r.delta ?? null, label: r.label };
+    try {
+      // Legacy `city_market_signals` was severed on 2026-05-21.
+      // Compare modal builds rows from each market's seeded fallback.
+      const sigMap: Record<string, Record<string, SignalRow>> = {};
+      const seen = new Map<string, string>();
+      markets.forEach((m) => {
+        if (!m.cityId || !m.scoredRow) return;
+        const seeded = buildSeededFallbackSignalsFromScored(m.scoredRow);
+        sigMap[m.cityId] = {};
+        seeded.forEach((r) => {
+          const valStr =
+            r.value == null ? "—" : typeof r.value === "number" ? String(r.value) : String(r.value);
+          sigMap[m.cityId][r.signal_key] = { value: valStr, delta: null, label: r.label };
           if (!seen.has(r.signal_key)) seen.set(r.signal_key, r.label || r.signal_key);
         });
-        const catMap: Record<string, Record<string, number>> = {};
-        (catRes.data ?? []).forEach((r: any) => {
-          if (!catMap[r.city_id]) catMap[r.city_id] = {};
-          catMap[r.city_id][r.category] = r.score;
-        });
-        setSignalsByCity(sigMap);
-        setScoresByCity(catMap);
-        setSignalRows(Array.from(seen.entries()).map(([key, label]) => ({ key, label })));
-      })
-      .catch((e) => console.error("compare modal load error", e))
-      .finally(() => setLoading(false));
+      });
+      setSignalsByCity(sigMap);
+      setScoresByCity({});
+      setSignalRows(Array.from(seen.entries()).map(([key, label]) => ({ key, label })));
+    } catch (e) {
+      console.error("compare modal load error", e);
+    } finally {
+      setLoading(false);
+    }
+
   }, [open, markets]);
 
   if (markets.length < 2) return null;

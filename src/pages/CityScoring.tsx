@@ -1059,29 +1059,42 @@ const CityScoring = () => {
 
   const buildCsvDownload = async () => {
     try {
-      // Sheet 1: raw backend rows, as-is. Collect union of all keys present on
-      // each filtered city's scoredRow so we don't drop columns when one row
-      // happens to be sparse.
-      const identityCols = ["city", "state", "county", "metro_area"];
-      const keySet = new Set<string>();
+      // Sheet 1: raw backend rows, as-is. Identity columns come from the
+      // mapped UI row (m.city / m.state / m.county / m.metroArea) so they're
+      // always populated — scoredRow uses city_name/state_abbr/county_name,
+      // not the short keys, which is why the previous export had blank City.
+      const dbKeySet = new Set<string>();
       filtered.forEach((m: any) => {
         const r = m?.scoredRow;
-        if (r && typeof r === "object") Object.keys(r).forEach((k) => keySet.add(k));
+        if (r && typeof r === "object") Object.keys(r).forEach((k) => dbKeySet.add(k));
       });
-      // Put identity columns first, then everything else alphabetised.
-      identityCols.forEach((k) => keySet.delete(k));
-      const orderedKeys = [...identityCols, ...Array.from(keySet).sort()];
-      const backendHeader = orderedKeys;
+      // Don't repeat identity-ish DB columns that we already render up front.
+      ["city_name", "state_abbr", "state_name", "county_name", "metro_area"].forEach((k) =>
+        dbKeySet.delete(k),
+      );
+      const dbKeys = Array.from(dbKeySet).sort();
+      const backendHeader = ["City", "State", "County", "Metro Area", ...dbKeys];
       const backendRows: (string | number | null)[][] = filtered.map((m: any) => {
         const r = m?.scoredRow ?? {};
-        return orderedKeys.map((k) => {
+        const head: (string | number | null)[] = [
+          m.city ?? null,
+          m.state ?? null,
+          m.county ?? null,
+          m.metroArea ?? null,
+        ];
+        const tail = dbKeys.map((k) => {
           const v = r[k];
           if (v == null) return null;
           if (typeof v === "number" || typeof v === "string") return v;
-          // Stringify objects/arrays/booleans so the cell stays printable.
           try { return JSON.stringify(v); } catch { return String(v); }
         });
+        return [...head, ...tail];
       });
+
+      const weightsCities = filtered.map((m: any) => ({
+        city: m.city ?? "",
+        state: m.state ?? "",
+      }));
 
       const { buildRankedMarketsWorkbook, downloadWorkbook } = await import(
         "@/lib/cityScoringExport"
@@ -1090,6 +1103,7 @@ const CityScoring = () => {
         categories: CATEGORIES.map((c) => ({ key: c.key, label: c.label })),
         backendHeader,
         backendRows,
+        weightsCities,
         appliedWeights: appliedWeights as Record<CategoryKey, number>,
         appliedSubWeights: appliedSubWeights as Record<CategoryKey, Record<string, number>>,
         exportedAt: new Date().toISOString(),
@@ -1097,7 +1111,7 @@ const CityScoring = () => {
       const filename = `ranked-markets-live-${new Date().toISOString().slice(0, 10)}.xlsx`;
       downloadWorkbook(wb, filename);
 
-      toast.success("Exported: backend data + weights snapshot");
+      toast.success("Exported: backend data + weights snapshot + per-city weights");
     } catch (err) {
       console.error("Export XLSX failed", err);
       toast.error("Export failed — see console");

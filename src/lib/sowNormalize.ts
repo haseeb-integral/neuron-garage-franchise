@@ -78,9 +78,17 @@ export function normalizeSowMetric(
   value: number | null | undefined,
 ): number | null {
   if (value == null || !Number.isFinite(value)) return null;
+  const n = Number(value);
+  // col_salary_index can arrive as either a real salary×COL composite
+  // (tens of thousands of dollars) or as a bare COL Index fallback
+  // (typically 70–200). Pick the matching range so the drawer reproduces
+  // the same value the backend stored.
+  if (signalKey === "col_salary_index" && n < 1000) {
+    return lin(n, 80, 180, true);
+  }
   const r = NORMALIZATION_RANGES[signalKey];
   if (!r) return null;
-  return lin(Number(value), r.lo, r.hi, r.invert);
+  return lin(n, r.lo, r.hi, r.invert);
 }
 
 // Best-effort numeric extraction from a city_market_signals.value text field.

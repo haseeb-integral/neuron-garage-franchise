@@ -7,16 +7,12 @@ import type { CategoryKey } from "@/stores/cityScoringStore";
 export type MetricStatus = "live" | "proxy" | "missing" | "blocked";
 export type RegistryCategory =
   | "demand"
-  | "pricing_power"
   | "competitive_landscape"
-  | "franchiseeSupply_legacy" // not used; placeholder to keep type unions tidy
-  | "franchisee_supply"
-  | "ease_of_operations"
-  | "parent_mindset";
+  | "franchisee_supply";
 
 export type SowMetricEntry = {
   key: string;
-  category: Exclude<RegistryCategory, "franchiseeSupply_legacy">;
+  category: RegistryCategory;
   label: string;
   description: string;
   enabled: boolean;
@@ -26,22 +22,16 @@ export type SowMetricEntry = {
   source: string;
 };
 
-export const CATEGORY_KEY_MAP: Record<Exclude<RegistryCategory, "franchiseeSupply_legacy">, CategoryKey> = {
+export const CATEGORY_KEY_MAP: Record<RegistryCategory, CategoryKey> = {
   demand: "demand",
-  pricing_power: "pricingPower",
   competitive_landscape: "competitiveLandscape",
   franchisee_supply: "franchiseeSupply",
-  ease_of_operations: "easeOfOperations",
-  parent_mindset: "parentMindset",
 };
 
 export const CATEGORY_PURPOSE: Record<CategoryKey, string> = {
   demand: "Are there enough affluent families with the right-aged kids in this city?",
-  pricingPower: "Will families pay premium prices for camp, and how much?",
   competitiveLandscape: "How crowded is the camp market — and how much room is there to win?",
   franchiseeSupply: "Are there enough teachers here to recruit as franchise operators?",
-  easeOfOperations: "How hard will it be to run camps here — venues, regulations, sprawl, wages?",
-  parentMindset: "Do parents in this city actively invest in enrichment, STEM, and learning?",
 };
 
 export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
@@ -65,35 +55,9 @@ export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
     enabled: true,  weight_within_category: 0.25, status: "live",
     source: "U.S. Census Bureau API — ACS 5-yr (B15003_022–025)" },
 
-  // ─────────── PRICING POWER ───────────
-  { key: "avg_weekly_camp_tuition", category: "pricing_power", label: "Average Weekly Camp Tuition",
-    description: "Going rate competitors charge per week. Sets the ceiling and floor for your pricing.",
-    enabled: true,  weight_within_category: 0.20, status: "live",
-    source: "Apify Google Maps scrape + Firecrawl camp-site pricing" },
-  { key: "avg_hourly_camp_pricing", category: "pricing_power", label: "Average Hourly Camp Pricing",
-    description: "Hourly equivalent of local camp rates. Useful for comparing partial-day or after-school programs.",
-    enabled: true,  weight_within_category: 0.10, status: "live",
-    source: "Derived from Apify / Firecrawl tuition scrape" },
-  { key: "premium_stem_camp_pricing", category: "pricing_power", label: "Premium STEM / Maker / Enrichment Pricing",
-    description: "What the top STEM/maker camps charge. Indicates if the market accepts premium positioning.",
-    enabled: true,  weight_within_category: 0.15, status: "live",
-    source: "Apify Google Maps (STEM/maker camps) + Firecrawl" },
-  { key: "private_school_tuition_proxy", category: "pricing_power", label: "Private Elementary School Tuition",
-    description: "Local private K-5 tuition. Proxy for what families already pay for premium kids' programs.",
-    enabled: false, weight_within_category: 0,    status: "missing",
-    source: "Not yet wired — Firecrawl scrape of Private School Review pending" },
-  { key: "private_school_student_count", category: "pricing_power", label: "Private School Students",
-    description: "How many kids attend private school — a built-in segment willing to pay for enrichment.",
-    enabled: false, weight_within_category: 0,    status: "missing",
-    source: "Not yet wired — NCES Private School Universe Survey pending" },
-  { key: "childcare_nanny_hourly_rate_proxy", category: "pricing_power", label: "Childcare / Nanny Hourly Rate",
-    description: "What local families already pay for childcare. Anchors what they'll comfortably pay for camp.",
-    enabled: true,  weight_within_category: 0.35, status: "live",
-    source: "BLS OEWS API — Childcare Workers (SOC 39-9011), metro-level" },
-  { key: "household_discretionary_income_proxy", category: "pricing_power", label: "Household Discretionary Income",
-    description: "Income left after essentials. Larger discretionary pool = more room for premium camp spend.",
-    enabled: true,  weight_within_category: 0.20, status: "proxy",
-    source: "Derived: Census ACS median income ÷ BEA Regional Price Parity" },
+  // Pricing Power, Ease of Operations, and Parent Mindset metrics were
+  // retired in the May 21, 2026 6→3 category reshape (final purge).
+  // See git history if you need the old entries.
 
   // ─────────── CSI (3-metric lock — Brett+Haseeb 2026-05-21, read-only 2026-05-21c) ───────────
   // CSI inputs from Brett's 2026-05-21 Manus v2 upload (csi_* columns on

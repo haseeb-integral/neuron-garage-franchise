@@ -1315,11 +1315,15 @@ const CityScoring = () => {
     demand: "demand",
     competitive_landscape: "competitiveLandscape",
     franchisee_supply: "franchiseeSupply",
-    // Legacy keys (back-compat)
+    // Post-2026-05-21 reshape, the live loader writes `tam_teachers` —
+    // map it onto the same UI category as franchisee_supply.
+    tam_teachers: "franchiseeSupply",
+    // Legacy keys (back-compat with older cached payloads)
     summer_camp_demand: "demand",
     competition_score: "competitiveLandscape",
     stem_jobs: "franchiseeSupply",
   };
+
   const liveUiCategoryScores: Partial<Record<CategoryKey, number>> = {};
   Object.entries(selectedLiveCategoryScores).forEach(([k, v]) => {
     const uiKey = DB_CAT_TO_UI[k];

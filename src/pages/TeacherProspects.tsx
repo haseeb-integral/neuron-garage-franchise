@@ -17,6 +17,10 @@ import { SavedListsMenu } from "@/components/teacher-prospects/SavedListsMenu";
 import { PageHeader } from "@/components/PageHeader";
 import { useTeacherProspectsStore } from "@/stores/teacherProspectsStore";
 import { sourceKeyFor, sourceLabelFor, type SourceKey } from "@/lib/teacherSourceLabels";
+import { CitySearchRail } from "@/components/teacher-prospects/CitySearchRail";
+import { FunnelWidget } from "@/components/teacher-prospects/FunnelWidget";
+import { NextBestActionStrip } from "@/components/teacher-prospects/NextBestActionStrip";
+import { TeacherAiPanel } from "@/components/teacher-prospects/TeacherAiPanel";
 
 type DbRow = {
   id: string;
@@ -134,7 +138,7 @@ interface Stats {
 // `stats === null` means "still loading"; cards must render a skeleton, not "0".
 // A real zero only appears after the RPC resolves with `total: 0`.
 
-const StatCard = ({ title, value, sub, tone = "slate", action, loading, error, onRetry }: {
+const StatCard: React.FC<any> = ({ title, value, sub, tone = "slate", action, loading, error, onRetry }: {
   title: string;
   value: string | number;
   sub?: React.ReactNode;
@@ -548,6 +552,121 @@ const TeacherProspects = () => {
   const handleUpdate = (p: TeacherProspect) => setProspects((prev) => prev.map((x) => (x.id === p.id ? p : x)));
   const handleFindResults = async () => { await loadPage(); await loadStats(); };
 
+  // --- Bulk dock handlers ---
+  const selectedProspects = useMemo(
+    () => prospects.filter((p) => selected.includes(p.id)),
+    [prospects, selected],
+  );
+  const enrichableSelectedCount = useMemo(
+    () => selectedProspects.filter((p) => p.needsEmailEnrichment && p.schoolNcesId).length,
+    [selectedProspects],
+  );
+
+  const handleEnrichSelected = async () => {
+    const targets = selectedProspects.filter((p) => p.needsEmailEnrichment && p.schoolNcesId);
+    if (targets.length === 0) { toast.info("No selected rows are enrichable (need NCES school id)."); return; }
+    const uniqueNces = Array.from(new Set(targets.map((p) => p.schoolNcesId!)));
+    const t = toast.loading(`Enriching ${uniqueNces.length} ${uniqueNces.length === 1 ? "school" : "schools"}…`);
+    let ok = 0, fail = 0;
+    // batch of 5 in parallel
+    for (let i = 0; i < uniqueNces.length; i += 5) {
+      const chunk = uniqueNces.slice(i, i + 5);
+      const results = await Promise.allSettled(chunk.map((nces_id) =>
+        supabase.functions.invoke("enrich-school-staff", { body: { nces_id } })
+      ));
+      for (const r of results) {
+        if (r.status === "fulfilled" && !r.value.error) ok++; else fail++;
+      }
+    }
+    toast.success(`Enrichment done — ${ok} ok, ${fail} failed.`, { id: t, action: { label: "Reload", onClick: loadPage } });
+  };
+
+  const handlePromoteToCandidate = async () => {
+    if (selectedProspects.length === 0) return;
+    const rows = selectedProspects.map((p) => {
+      const [first, ...rest] = (p.name || "").split(" ");
+      return {
+        prospect_id: p.uuid,
+        first_name: first || "(Unknown)",
+        last_name: rest.join(" ") || "—",
+        email: p.email || `noemail+${p.uuid.slice(0, 8)}@placeholder.local`,
+        city: p.city,
+        state: p.state,
+        fit_score: p.fitScore ?? 0,
+        current_stage: "new_lead" as const,
+      };
+    });
+    const { error } = await supabase.from("candidates").insert(rows);
+    if (error) { toast.error(`Couldn't promote: ${error.message}`); return; }
+    toast.success(`Promoted ${rows.length} ${rows.length === 1 ? "teacher" : "teachers"} to Candidate Pipeline.`);
+    setSelected([]);
+  };
+
+  const handleBulkStatus = async (status: "shortlisted" | "in_outreach" | "not_fit" | "new") => {
+    const uuids = selectedProspects.map((p) => p.uuid);
+    if (uuids.length === 0) return;
+    const { error } = await supabase.from("teacher_prospects").update({ status }).in("id", uuids);
+    if (error) { toast.error(`Status update failed: ${error.message}`); return; }
+    setProspects((prev) => prev.map((x) => uuids.includes(x.uuid) ? { ...x, status: status as TeacherProspect["status"] } : x));
+    toast.success(`Set ${uuids.length} ${uuids.length === 1 ? "row" : "rows"} → ${status.replace("_", " ")}.`);
+  };
+
+  // --- NBA handlers ---
+  const handleEnrichVisible = async () => {
+    const targets = prospects.filter((p) => p.needsEmailEnrichment && p.schoolNcesId);
+    if (targets.length === 0) { toast.info("Nothing enrichable on this page."); return; }
+    const uniqueNces = Array.from(new Set(targets.map((p) => p.schoolNcesId!)));
+    const t = toast.loading(`Enriching ${uniqueNces.length} schools…`);
+    for (let i = 0; i < uniqueNces.length; i += 5) {
+      const chunk = uniqueNces.slice(i, i + 5);
+      await Promise.allSettled(chunk.map((nces_id) =>
+        supabase.functions.invoke("enrich-school-staff", { body: { nces_id } })
+      ));
+    }
+    toast.success(`Enrichment requested.`, { id: t, action: { label: "Reload", onClick: loadPage } });
+  };
+  const handlePromoteHighFit = () => {
+    const ids = prospects.filter((p) => p.fitScore >= 70 && !promotedUuids.has(p.uuid)).map((p) => p.id);
+    if (ids.length === 0) return;
+    setSelected(ids);
+    const targets = prospects.filter((p) => ids.includes(p.id));
+    setCampaignTargets(targets.map((p) => ({ uuid: p.uuid, name: p.name })));
+    setCampaignModalOpen(true);
+  };
+  const handleFocusSchool = (school: string) => {
+    setSearch(school);
+    toast.info(`Filtered to "${school}"`);
+  };
+
+  // --- City rail handler ---
+  const handleRailPick = (city: string, _state: string | null) => {
+    const next = cityFilters.includes(city) ? cityFilters.filter((c) => c !== city) : [city];
+    setCityFilters(next);
+    writeCitiesToUrl(next);
+  };
+
+  // --- AI panel context (cap rows) ---
+  const inOutreachInFilter = useMemo(() => {
+    const ids = new Set(allPromotedIds);
+    return prospects.reduce((n, p) => n + (ids.has(p.uuid) ? 1 : 0), 0);
+  }, [prospects, allPromotedIds]);
+
+  const aiContext = useMemo(() => ({
+    cityFilters,
+    search,
+    funnel: stats ? {
+      found: stats.total,
+      enriched: Math.max(0, stats.total - stats.needsEnrichment),
+      emailReady: stats.withEmail,
+      inOutreach: inOutreachInFilter,
+    } : null,
+    topTeachers: prospects.slice(0, 50).map((p) => ({
+      name: p.name, school: p.school, city: p.city, state: p.state,
+      fitScore: p.fitScore ?? 0, status: p.status, hasEmail: !!p.email,
+    })),
+  }), [cityFilters, search, stats, inOutreachInFilter, prospects]);
+
+
   const inMarket = cityFilters.length > 0;
   const isSingleMarket = cityFilters.length === 1;
   const urlStateRaw = searchParams.get("state");
@@ -647,33 +766,36 @@ const TeacherProspects = () => {
           />
         )}
 
-        {/* 3 honest stat cards — values come from server RPC, always reflect filter scope.
-            stats === null → skeleton. Never render literal "0" while loading. */}
-        <div className="mb-3 grid gap-3 sm:grid-cols-3">
-          <StatCard
-            title="Total Imported"
-            value={stats ? stats.total.toLocaleString() : "—"}
-            sub={stats ? `across ${stats.cities.toLocaleString()} cities` : undefined}
-            loading={stats === null && !statsError}
-            error={statsError}
-            onRetry={loadStats}
-          />
-          <StatCard
-            title="Email-Ready"
-            value={stats ? stats.withEmail.toLocaleString() : "—"}
-            sub="can send to SmartLead today"
-            tone="emerald"
-            loading={stats === null && !statsError}
-            error={statsError}
-            onRetry={loadStats}
-          />
-          {/* Needs Email Enrichment card hidden for this version — may return later. */}
+        <CitySearchRail
+          cityFilters={cityFilters}
+          onPick={handleRailPick}
+          onAddMore={() => {
+            const el = document.querySelector<HTMLElement>("[data-teacher-filter-bar]");
+            el?.scrollIntoView({ behavior: "smooth", block: "center" });
+          }}
+        />
 
+        <div className="mb-3 grid gap-3 md:grid-cols-2">
+          <FunnelWidget
+            total={stats?.total ?? null}
+            emailReady={stats?.withEmail ?? null}
+            needsEnrichment={stats?.needsEnrichment ?? null}
+            inOutreach={inOutreachInFilter}
+            loading={stats === null && !statsError}
+          />
+          <NextBestActionStrip
+            stats={stats}
+            visibleProspects={prospects.map((p) => ({ uuid: p.uuid, school: p.school, fitScore: p.fitScore ?? 0, needsEmailEnrichment: !!p.needsEmailEnrichment }))}
+            promotedUuids={promotedUuids}
+            onEnrichBatch={handleEnrichVisible}
+            onPromoteHighFit={handlePromoteHighFit}
+            onFocusSchool={handleFocusSchool}
+          />
         </div>
 
 
         <div className="grid items-start gap-3 xl:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="min-w-0 space-y-3">
+          <div className="min-w-0 space-y-3" data-teacher-filter-bar>
             <TeacherFilterBar
               cities={cities}
               cityFilters={cityFilters}
@@ -688,10 +810,14 @@ const TeacherProspects = () => {
             />
             <BulkActionBar
               count={selected.length}
+              enrichableCount={enrichableSelectedCount}
               onExport={handleExportSelected}
               onAddTag={handleBulkAddTag}
               onPromote={handlePromoteBulk}
               onClear={() => setSelected([])}
+              onPromoteToCandidate={handlePromoteToCandidate}
+              onEnrichSelected={handleEnrichSelected}
+              onSetStatus={handleBulkStatus}
             />
             <TeacherTable
               prospects={prospects}
@@ -812,6 +938,7 @@ const TeacherProspects = () => {
           prospectNames={campaignTargets.map((t) => t.name)}
           onAdded={handleAfterAddedToCampaign}
         />
+        <TeacherAiPanel context={aiContext} />
       </div>
     </div>
   );

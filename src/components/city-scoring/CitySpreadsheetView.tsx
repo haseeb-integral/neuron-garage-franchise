@@ -368,7 +368,7 @@ export default function CitySpreadsheetView({ markets, onOpenCity, onExportCsv }
               className="h-9 border-[#dbe4f2] text-[#174be8] gap-1.5"
               onClick={onExportCsv}
             >
-              <Download size={14} /> Export CSV
+              <Download size={14} /> Export XLSX
             </Button>
           )}
         </div>

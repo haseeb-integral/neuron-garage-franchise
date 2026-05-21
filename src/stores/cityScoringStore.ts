@@ -5,23 +5,24 @@ import { DEFAULT_SUB_WEIGHTS } from "@/lib/sowMetricRegistry";
 
 export type CategoryKey =
   | "demand"
-  | "pricingPower"
   | "competitiveLandscape"
-  | "franchiseeSupply"
-  | "easeOfOperations"
-  | "parentMindset";
+  | "franchiseeSupply";
 
-// Per Sam+Brett May 21, 2026: 6→3 category reshape. Retired categories
-// (pricingPower, easeOfOperations, parentMindset) default to weight 0 and
-// are hidden in the UI via VISIBLE_CATEGORIES (CityScoring.tsx). Kept in
-// the type for store stability — full removal in a follow-up refactor.
+// Per Sam+Brett May 21, 2026: 6→3 category reshape FINAL purge (v9).
+// Retired categories (pricingPower, easeOfOperations, parentMindset)
+// have been fully removed from the type. The persist migrate() below
+// strips any leftover retired keys from localStorage for users who had
+// the older 6-key store.
+export const RETIRED_CATEGORY_KEYS = [
+  "pricingPower",
+  "easeOfOperations",
+  "parentMindset",
+] as const;
+
 export const DEFAULT_WEIGHTS: Record<CategoryKey, number> = {
   demand: 40,
-  pricingPower: 0,
   competitiveLandscape: 30,
   franchiseeSupply: 30,
-  easeOfOperations: 0,
-  parentMindset: 0,
 };
 
 export type SubWeights = Record<CategoryKey, Record<string, number>>;

@@ -124,17 +124,25 @@ function marketTypeFromDensity(density: number): string {
   return "Rural";
 }
 
-export async function loadLiveRankedMarkets(): Promise<RankedMarket[]> {
-  // Canonical source: us_cities_scored (Sam's pre-seeded ~948-city dataset).
-  // `cityId` now references us_cities_scored.id (not legacy cities.id) so the
-  // watchlist + drawer + compare are all keyed on the same uuid space.
-  const { data: scoredRows, error: scoredErr } = await supabase
+export async function loadLiveRankedMarkets(opts?: { includeExtras?: boolean }): Promise<RankedMarket[]> {
+  // Canonical source: us_cities_scored.
+  // Default lens = 817 Manus-confirmed cities (place_type in incorporated_city
+  // / town / cdp). The remaining ~143 rows (place_type='extra' or NULL) are
+  // hidden unless `includeExtras` is true.
+  // Per Haseeb decision May 21, 2026: UI sources from 817 only.
+  let query = supabase
     .from("us_cities_scored")
     .select(
-      "id, city_name, state_name, state_abbr, metro_area, county_name, metro_counties, population, population_density, children_5_12, median_household_income, dual_working_families_pct, college_degree_pct, cost_of_living_index, public_school_count, public_school_enrollment, public_elementary_count, public_elementary_enrollment, private_elementary_count, charter_elementary_count, summer_camp_count, avg_camp_price_per_hour, school_hosted_camp_count, camp_waitlist_signals, summer_weather_index, avg_peak_summer_temperature, days_above_90f, summer_precip_days, weather_last_updated, composite_score_default, score_demand, score_pricing_power, score_competitive, score_franchise_supply, score_ease_of_operation, score_parent_mindset, is_registration_state, scored_at",
+      "id, city_name, state_name, state_abbr, metro_area, county_name, metro_counties, population, population_density, children_5_12, median_household_income, dual_working_families_pct, college_degree_pct, cost_of_living_index, public_school_count, public_school_enrollment, public_elementary_count, public_elementary_enrollment, private_elementary_count, charter_elementary_count, school_district_count, summer_camp_count, avg_camp_price_per_hour, school_hosted_camp_count, camp_waitlist_signals, summer_weather_index, avg_peak_summer_temperature, days_above_90f, summer_precip_days, weather_last_updated, composite_score_default, score_demand, score_csi, score_tam_teachers, csi_score, csi_saturation_category, csi_confidence, csi_national_brand_count_weighted, csi_local_provider_estimate, csi_demand_adjusted_market, place_type, census_population_2020, is_registration_state, scored_at",
     )
     .order("composite_score_default", { ascending: false, nullsFirst: false })
     .limit(2000);
+
+  if (!opts?.includeExtras) {
+    query = query.in("place_type", ["incorporated_city", "town", "cdp"]);
+  }
+
+  const { data: scoredRows, error: scoredErr } = await query;
 
   if (scoredErr) {
     console.error("loadLiveRankedMarkets us_cities_scored error", scoredErr);
@@ -150,7 +158,7 @@ export async function loadLiveRankedMarkets(): Promise<RankedMarket[]> {
     const density = toNumber(row.population_density, 0);
     return {
       id: 200000 + index,
-      cityId: row.id, // us_cities_scored.id is now canonical
+      cityId: row.id,
       city,
       state,
       county: row.county_name ?? null,
@@ -168,11 +176,14 @@ export async function loadLiveRankedMarkets(): Promise<RankedMarket[]> {
       scoredRow: row,
       categoryScores: {
         demand: row.score_demand == null ? undefined : toNumber(row.score_demand, 0),
-        pricingPower: row.score_pricing_power == null ? undefined : toNumber(row.score_pricing_power, 0),
-        competitiveLandscape: row.score_competitive == null ? undefined : toNumber(row.score_competitive, 0),
-        franchiseeSupply: row.score_franchise_supply == null ? undefined : toNumber(row.score_franchise_supply, 0),
-        easeOfOperations: row.score_ease_of_operation == null ? undefined : toNumber(row.score_ease_of_operation, 0),
-        parentMindset: row.score_parent_mindset == null ? undefined : toNumber(row.score_parent_mindset, 0),
+        // Renamed columns: score_competitive → score_csi, score_franchise_supply → score_tam_teachers.
+        competitiveLandscape: row.score_csi == null ? undefined : toNumber(row.score_csi, 0),
+        franchiseeSupply: row.score_tam_teachers == null ? undefined : toNumber(row.score_tam_teachers, 0),
+        // Retired categories — undefined so the type stays stable while the
+        // UI hides them via VISIBLE_CATEGORIES (CityScoring.tsx).
+        pricingPower: undefined,
+        easeOfOperations: undefined,
+        parentMindset: undefined,
       },
     };
   });

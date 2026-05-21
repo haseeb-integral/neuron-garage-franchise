@@ -203,31 +203,37 @@ export default function EmailOutreachV2() {
 
     {/* Legacy SmartLead-flavored mini stat strip — only meaningful in SmartLead scope. */}
     {scope === "smartlead" && (
-      <div className="mb-3 grid gap-1.5 md:grid-cols-3 xl:grid-cols-6">
-        {stats.map(({ Icon, label, value, sub, tone, loading, error }) => (
-          <Card key={label} className="px-2.5 py-1.5">
-            <div className="flex items-center gap-2" title={error ?? undefined}>
-              <IconBox tone={tone}><Icon size={14} /></IconBox>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-[10px] font-bold uppercase tracking-wide text-[#8794ab]">{label}</div>
-                {loading ? (
-                  <div className="my-0.5 h-4 w-10 animate-pulse rounded bg-[#edf2f8]" aria-label={`${label} loading`} />
-                ) : error ? (
-                  <div className="text-[17px] font-black leading-5 text-[#b7791f]" title={error}>—</div>
-                ) : (
-                  <div className="text-[17px] font-black leading-5">{value}</div>
-                )}
-                {loading ? (
-                  <div className="mt-0.5 h-2.5 w-16 animate-pulse rounded bg-[#edf2f8]" />
-                ) : (
-                  <div className="truncate text-[10px] text-[#8794ab]">{sub}</div>
-                )}
+      <>
+        <div className="mb-2 rounded-lg border border-[#fcd34d] bg-[#fffbeb] px-3 py-2 text-[11px] text-[#92400e]">
+          <span className="font-black uppercase tracking-wide">Warm-Up Phase ·</span> the numbers below come from SmartLead but reflect mailbox warm-up sends (internal staff + warm-up pool) and a handful of test pushes — <span className="font-bold">no teachers are being emailed yet</span>.
+        </div>
+        <div className="mb-3 grid gap-1.5 md:grid-cols-3 xl:grid-cols-6">
+          {stats.map(({ Icon, label, value, sub, tone, loading, error }) => (
+            <Card key={label} className="px-2.5 py-1.5">
+              <div className="flex items-center gap-2" title={error ?? undefined}>
+                <IconBox tone={tone}><Icon size={14} /></IconBox>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[10px] font-bold uppercase tracking-wide text-[#8794ab]">{label}</div>
+                  {loading ? (
+                    <div className="my-0.5 h-4 w-10 animate-pulse rounded bg-[#edf2f8]" aria-label={`${label} loading`} />
+                  ) : error ? (
+                    <div className="text-[17px] font-black leading-5 text-[#b7791f]" title={error}>—</div>
+                  ) : (
+                    <div className="text-[17px] font-black leading-5">{value}</div>
+                  )}
+                  {loading ? (
+                    <div className="mt-0.5 h-2.5 w-16 animate-pulse rounded bg-[#edf2f8]" />
+                  ) : (
+                    <div className="truncate text-[10px] text-[#8794ab]">{sub}</div>
+                  )}
+                </div>
               </div>
-            </div>
-          </Card>
-        ))}
-      </div>
+            </Card>
+          ))}
+        </div>
+      </>
     )}
+
 
     {scope === "smartlead" ? (
       <>

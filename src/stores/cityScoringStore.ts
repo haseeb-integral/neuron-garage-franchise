@@ -162,7 +162,7 @@ export const useCityScoringStore = create<CityScoringState>()(
     {
       name: "ng:city-scoring-v1",
       storage: createJSONStorage(() => localStorage),
-      version: 5,
+      version: 6,
       migrate: (persisted: any, version) => {
         if (!persisted) return persisted;
         if (version < 2) {
@@ -181,6 +181,15 @@ export const useCityScoringStore = create<CityScoringState>()(
           // weights to the new 40/30/30 default; zero out retired keys.
           persisted.weights = { ...DEFAULT_WEIGHTS };
           persisted.appliedWeights = { ...DEFAULT_WEIGHTS };
+        }
+        if (version < 6) {
+          // Reseed sub-weights so franchiseeSupply (TAM Teachers) gets its
+          // 5-metric default. Earlier versions persisted {} for this
+          // category, which caused the "Show Formula" panel to show
+          // "all metrics unavailable — using server fallback" even when
+          // every TAM input was present.
+          persisted.subWeights = cloneSubWeights(DEFAULT_SUB_WEIGHTS);
+          persisted.appliedSubWeights = cloneSubWeights(DEFAULT_SUB_WEIGHTS);
         }
         return persisted;
       },

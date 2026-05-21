@@ -457,29 +457,37 @@ export function SubMetricWeightsDrawer({
         </AlertDialog>
 
 
-        <div className="border-t border-[#eef2f7] px-5 py-3 flex items-center justify-between gap-3 bg-[#fafbfd]">
-          <p className="text-[10.5px] text-[#8794ab] leading-snug max-w-[260px]">
-            Auto-normalized to 100% on save. If all sub-weights are 0, the live score won't update until you raise one.
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleResetCategory}
-              className="h-8 text-[11px] gap-1.5"
-            >
-              <RotateCcw size={12} />
-              Reset Category
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleApply}
-              className="h-8 bg-[#174be8] hover:bg-[#1240c9] text-white text-[11px] px-3"
-            >
-              Save &amp; Recalculate
-            </Button>
+        {isCsiLocked ? (
+          <div className="border-t border-[#eef2f7] px-5 py-3 bg-[#fafbfd]">
+            <p className="text-[10.5px] text-[#8794ab] leading-snug">
+              Locked — pulled directly from Brett's Manus v2 table. CSI is computed by Manus and used as-is in the composite. No user-tunable knobs.
+            </p>
           </div>
-        </div>
+        ) : (
+          <div className="border-t border-[#eef2f7] px-5 py-3 flex items-center justify-between gap-3 bg-[#fafbfd]">
+            <p className="text-[10.5px] text-[#8794ab] leading-snug max-w-[260px]">
+              Auto-normalized to 100% on save. If all sub-weights are 0, the live score won't update until you raise one.
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleResetCategory}
+                className="h-8 text-[11px] gap-1.5"
+              >
+                <RotateCcw size={12} />
+                Reset Category
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleApply}
+                className="h-8 bg-[#174be8] hover:bg-[#1240c9] text-white text-[11px] px-3"
+              >
+                Save &amp; Recalculate
+              </Button>
+            </div>
+          </div>
+        )}
       </SheetContent>
     </Sheet>
   );

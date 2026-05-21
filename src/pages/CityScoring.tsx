@@ -937,10 +937,15 @@ const CityScoring = () => {
       };
       addScore("demand", scoredRow.score_demand);
       addScore("tam_teachers", scoredRow.score_tam_teachers);
-      addScore("csi", scoredRow.score_csi);
+      // CSI is stored as SATURATION (high = crowded = bad). Invert to
+      // OPPORTUNITY (high = good) for the UI category bar + composite math
+      // so all three categories share the same direction. The raw
+      // saturation value is still available via scoredRow.score_csi.
+      if (scoredRow.score_csi != null) {
+        scoresMap["competitive_landscape"] = Math.max(0, Math.min(100, 100 - Number(scoredRow.score_csi)));
+      }
       // Legacy category-score keys (pricing_power, ease_of_operations, parent_mindset,
-      // competitive_landscape, franchisee_supply) were retired in the May 21 6→3 reshape.
-      // The frontend store / sowMetricRegistry reshape lands in the next change.
+      // franchisee_supply) were retired in the May 21 6→3 reshape.
 
       // Legacy `city_market_signals` was severed on 2026-05-21. Evidence rows
       // are synthesized directly from us_cities_scored via the seeded fallback.

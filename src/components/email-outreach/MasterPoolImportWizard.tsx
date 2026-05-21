@@ -65,6 +65,10 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
     }
   }, [open]);
 
+  useEffect(() => {
+    if (step === 4 && !qa) setStep(3);
+  }, [step, qa]);
+
   /* ---------- Step 2: CSV + AI mapping ---------- */
   const handleCsv = (file: File) => {
     Papa.parse<Record<string, string>>(file, {
@@ -283,6 +287,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
   /* ---------- Render ---------- */
   const canNext2 = csvRows.length > 0;
   const canNext3 = !!mapping.email || (!!defaultCity && !!defaultState); // at minimum geo OR email
+  const canNext4 = !!qa;
   const canImport = qa && qa.total > 0 && qa.missingRequired < qa.total;
 
   return (
@@ -417,6 +422,11 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
 
         {step === 4 && (
           <div className="space-y-3 text-sm">
+            {!qa && (
+              <div className="rounded-md border border-[#fed7aa] bg-[#fff7ed] p-2 text-[11px] text-[#9a3412]">
+                Run the QA preview in Step 3 before importing. The wizard was previously allowing this step too early.
+              </div>
+            )}
             {!importResult ? (
               <div className="flex flex-col items-center gap-3 p-6">
                 <div className="text-sm">Ready to insert <strong>{qa?.total.toLocaleString()}</strong> teachers into the Master Pool.</div>
@@ -462,7 +472,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
           </Button>
           <div className="text-[10px] text-[#8794ab]">Step {step} of {destination === "master_and_smartlead" ? 5 : 4}</div>
           {step < 4 && (
-            <Button size="sm" disabled={(step === 2 && !canNext2) || (step === 2 && !canNext3)} onClick={() => setStep((s) => (s + 1) as Step)}>
+            <Button size="sm" disabled={(step === 2 && !canNext2) || (step === 2 && !canNext3) || (step === 3 && !canNext4)} onClick={() => setStep((s) => (s + 1) as Step)}>
               Next <ArrowRight size={14} className="ml-1" />
             </Button>
           )}

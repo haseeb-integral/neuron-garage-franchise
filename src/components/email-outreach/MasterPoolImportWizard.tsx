@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Upload, Sparkles, Loader2, CheckCircle2, ArrowRight, ArrowLeft, Database, Send } from "lucide-react";
 
-type Step = 1 | 2 | 3 | 4 | 5;
+type Step = 1 | 2 | 3 | 4;
 type Destination = "master_only" | "master_and_smartlead";
 
 const TARGET_FIELDS = [
@@ -65,9 +65,13 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
     }
   }, [open]);
 
+  // Auto-run QA the moment user lands on Review step
   useEffect(() => {
-    if (step === 4 && !qa) setStep(3);
-  }, [step, qa]);
+    if (step === 3 && !qa && !qaLoading) {
+      computeQa();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
   /* ---------- Step 2: CSV + AI mapping ---------- */
   const handleCsv = (file: File) => {
@@ -244,7 +248,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
       if (destination === "master_and_smartlead") {
         const { data } = await supabase.from("campaign_cache").select("id, name, status").order("name");
         setCampaigns((data ?? []) as SLCampaign[]);
-        setStep(5);
+        setStep(4);
       } else {
         onComplete?.();
         onClose();
@@ -387,68 +391,65 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
           </div>
         )}
 
+        {/* Step 3 — Review & Import (QA runs automatically) */}
         {step === 3 && (
           <div className="space-y-3 text-sm">
-            {!qa ? (
-              <div className="flex flex-col items-center justify-center gap-2 p-8">
-                <Button onClick={computeQa} disabled={qaLoading} className="bg-[#174be8] hover:bg-[#0d3aa8]">
-                  {qaLoading ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Sparkles size={14} className="mr-1" />}
-                  Run QA preview
-                </Button>
-                <div className="text-[11px] text-[#8794ab]">Required — checks duplicates &amp; missing fields, then auto-advances to import.</div>
-              </div>
-
-            ) : (
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-6">
-                <QaCard label="Total rows" value={qa.total} />
-                <QaCard label="With email" value={qa.withEmail} />
-                <QaCard label="Valid emails" value={qa.validEmail} tone="good" />
-                <QaCard label="In-batch dupes" value={qa.inBatchDupes} tone={qa.inBatchDupes > 0 ? "warn" : undefined} />
-                <QaCard label="Already in master" value={qa.existingInMaster} tone={qa.existingInMaster > 0 ? "warn" : undefined} />
-                <QaCard label="Missing city/state" value={qa.missingRequired} tone={qa.missingRequired > 0 ? "warn" : undefined} />
+            {qaLoading && !qa && (
+              <div className="flex items-center justify-center gap-2 p-8 text-[#526078]">
+                <Loader2 size={16} className="animate-spin text-[#174be8]" />
+                <span className="text-xs">Running QA on {csvRows.length.toLocaleString()} rows…</span>
               </div>
             )}
-            {qa && qa.existingInMaster > 0 && (
-              <div className="rounded-md border border-[#fed7aa] bg-[#fff7ed] p-2 text-[11px] text-[#9a3412]">
-                {qa.existingInMaster.toLocaleString()} row{qa.existingInMaster === 1 ? "" : "s"} already exist in the Master Pool (matched by dedupe_key). Importing will create duplicate rows — clean the CSV first or accept duplicates.
-              </div>
-            )}
-            {qa && qa.missingRequired > 0 && (
-              <div className="rounded-md border border-[#fed7aa] bg-[#fff7ed] p-2 text-[11px] text-[#9a3412]">
-                {qa.missingRequired} row{qa.missingRequired === 1 ? "" : "s"} missing city/state will be skipped. Set defaults on Step 1 to keep them.
-              </div>
-            )}
-          </div>
-        )}
 
+            {qa && (
+              <>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-6">
+                  <QaCard label="Total rows" value={qa.total} />
+                  <QaCard label="With email" value={qa.withEmail} />
+                  <QaCard label="Valid emails" value={qa.validEmail} tone="good" />
+                  <QaCard label="In-batch dupes" value={qa.inBatchDupes} tone={qa.inBatchDupes > 0 ? "warn" : undefined} />
+                  <QaCard label="Already in master" value={qa.existingInMaster} tone={qa.existingInMaster > 0 ? "warn" : undefined} />
+                  <QaCard label="Missing city/state" value={qa.missingRequired} tone={qa.missingRequired > 0 ? "warn" : undefined} />
+                </div>
 
+                {qa.existingInMaster > 0 && (
+                  <div className="rounded-md border border-[#fed7aa] bg-[#fff7ed] p-2 text-[11px] text-[#9a3412]">
+                    {qa.existingInMaster.toLocaleString()} row{qa.existingInMaster === 1 ? "" : "s"} already exist in the Master Pool (matched by dedupe_key). Importing will create duplicate rows.
+                  </div>
+                )}
+                {qa.missingRequired > 0 && (
+                  <div className="rounded-md border border-[#fed7aa] bg-[#fff7ed] p-2 text-[11px] text-[#9a3412]">
+                    {qa.missingRequired} row{qa.missingRequired === 1 ? "" : "s"} missing city/state will be skipped. Go Back and set defaults on Setup to keep them.
+                  </div>
+                )}
 
-        {step === 4 && (
-          <div className="space-y-3 text-sm">
-            {!qa && (
-              <div className="rounded-md border border-[#fed7aa] bg-[#fff7ed] p-2 text-[11px] text-[#9a3412]">
-                Run the QA preview in Step 3 before importing. The wizard was previously allowing this step too early.
-              </div>
-            )}
-            {!importResult ? (
-              <div className="flex flex-col items-center gap-3 p-6">
-                <div className="text-sm">Ready to insert <strong>{qa?.total.toLocaleString()}</strong> teachers into the Master Pool.</div>
-                <Button onClick={runImport} disabled={importing || !canImport} className="bg-[#174be8] hover:bg-[#0d3aa8]">
-                  {importing ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Database size={14} className="mr-1" />}
-                  Import to Master Pool
-                </Button>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center gap-2 p-6">
-                <CheckCircle2 size={28} className="text-[#16a34a]" />
-                <div className="text-sm font-bold">Inserted {importResult.inserted.toLocaleString()} rows</div>
-                {destination === "master_only" && <div className="text-xs text-[#526078]">Done. Close this window to continue.</div>}
-              </div>
+                {!importResult ? (
+                  <div className="flex flex-col items-center gap-2 border-t border-[#edf2f8] pt-3">
+                    <div className="text-xs text-[#526078]">
+                      Ready to insert <strong className="text-[#07142f]">{(qa.total - qa.missingRequired).toLocaleString()}</strong> teachers into the Master Pool.
+                    </div>
+                    <Button onClick={runImport} disabled={importing || !canImport} className="bg-[#174be8] hover:bg-[#0d3aa8]">
+                      {importing ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Database size={14} className="mr-1" />}
+                      Import to Master Pool
+                    </Button>
+                    <button onClick={computeQa} disabled={qaLoading} className="text-[10px] text-[#8794ab] underline hover:text-[#526078]">
+                      Re-run QA
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2 border-t border-[#edf2f8] pt-3">
+                    <CheckCircle2 size={28} className="text-[#16a34a]" />
+                    <div className="text-sm font-bold">Inserted {importResult.inserted.toLocaleString()} rows</div>
+                    {destination === "master_only" && <div className="text-xs text-[#526078]">Done. Close this window to continue.</div>}
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
 
-        {step === 5 && importResult && (
+        {/* Step 4 — SmartLead push (only when destination = master_and_smartlead) */}
+        {step === 4 && importResult && (
           <div className="space-y-3 text-sm">
             <div className="text-xs text-[#526078]">Pick a SmartLead campaign to send the rows with valid emails into.</div>
             <Field label="Destination campaign">
@@ -470,20 +471,20 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
 
         {/* Footer nav */}
         <div className="mt-2 flex items-center justify-between border-t border-[#edf2f8] pt-3">
-          <Button variant="ghost" size="sm" disabled={step === 1 || importing || pushing} onClick={() => setStep((s) => (s - 1) as Step)}>
+          <Button variant="ghost" size="sm" disabled={step === 1 || importing || pushing || qaLoading} onClick={() => setStep((s) => (s - 1) as Step)}>
             <ArrowLeft size={14} className="mr-1" /> Back
           </Button>
-          <div className="text-[10px] text-[#8794ab]">Step {step} of {destination === "master_and_smartlead" ? 5 : 4}</div>
+          <div className="text-[10px] text-[#8794ab]">Step {step} of {destination === "master_and_smartlead" ? 4 : 3}</div>
           {step < 3 && (
-            <Button size="sm" disabled={(step === 1 && !canNext2) || (step === 2 && !canNext3)} onClick={() => setStep((s) => (s + 1) as Step)}>
+            <Button size="sm" disabled={(step === 1 && (!defaultState && !defaultCity ? false : false)) || (step === 2 && (!canNext2 || !canNext3))} onClick={() => setStep((s) => (s + 1) as Step)}>
               Next <ArrowRight size={14} className="ml-1" />
             </Button>
           )}
-          {step === 3 && <div className="w-[72px]" />}
-          {step === 4 && importResult && destination === "master_only" && (
+          {step === 3 && importResult && destination === "master_only" && (
             <Button size="sm" onClick={onClose}>Done</Button>
           )}
-          {step === 5 && (
+          {step === 3 && !importResult && <div className="w-[72px]" />}
+          {step === 4 && (
             <Button size="sm" variant="ghost" onClick={() => { onComplete?.(); onClose(); }}>Skip push</Button>
           )}
         </div>
@@ -515,13 +516,21 @@ function QaCard({ label, value, tone }: { label: string; value: number; tone?: "
   );
 }
 function StepBar({ step, destination }: { step: Step; destination: Destination }) {
-  const labels = ["Setup", "Map columns", "QA", "Import", "Push (optional)"];
-  const total = destination === "master_and_smartlead" ? 5 : 4;
+  const labels = destination === "master_and_smartlead"
+    ? ["Setup", "Map columns", "Review & Import", "Push to SmartLead"]
+    : ["Setup", "Map columns", "Review & Import"];
   return (
-    <div className="mb-2 flex gap-1">
-      {labels.slice(0, total).map((l, i) => (
-        <div key={l} className={`h-1 flex-1 rounded ${i < step ? "bg-[#174be8]" : "bg-[#e7edf5]"}`} title={l} />
-      ))}
+    <div className="mb-2">
+      <div className="flex gap-1">
+        {labels.map((l, i) => (
+          <div key={l} className={`h-1 flex-1 rounded ${i < step ? "bg-[#174be8]" : "bg-[#e7edf5]"}`} title={l} />
+        ))}
+      </div>
+      <div className="mt-1 flex gap-1">
+        {labels.map((l, i) => (
+          <div key={l} className={`flex-1 text-center text-[9px] font-bold uppercase tracking-wide ${i + 1 === step ? "text-[#174be8]" : "text-[#8794ab]"}`}>{l}</div>
+        ))}
+      </div>
     </div>
   );
 }

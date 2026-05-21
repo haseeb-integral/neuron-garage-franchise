@@ -105,6 +105,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
   /* ---------- Step 3: QA preview ---------- */
   const computeQa = async () => {
     setQaLoading(true);
+    const tId = toast.loading(`Running QA on ${csvRows.length.toLocaleString()} rows…`);
     try {
       const emailCol = mapping.email;
       const fnCol = mapping.first_name;
@@ -130,20 +131,27 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
           dedupeKeys.push(`name:${fn}|${ln}||${stateV.toLowerCase()}|${cityV.toLowerCase()}`);
         }
       }
-      // Cross-batch dedupe: ask DB which of these keys already exist.
-      // Chunk to keep URL length sane.
       let existingInMaster = 0;
       const unique = Array.from(new Set(dedupeKeys));
-      for (let i = 0; i < unique.length; i += 500) {
-        const chunk = unique.slice(i, i + 500);
+      const CHUNK = 500;
+      const totalChunks = Math.max(1, Math.ceil(unique.length / CHUNK));
+      for (let i = 0; i < unique.length; i += CHUNK) {
+        const chunk = unique.slice(i, i + CHUNK);
         const { data, error } = await supabase
           .from("teacher_prospects")
           .select("dedupe_key")
           .in("dedupe_key", chunk);
-        if (error) { console.warn("dedupe check failed", error); break; }
+        if (error) throw new Error(`Dedupe check failed: ${error.message}`);
         existingInMaster += (data ?? []).length;
+        const done = Math.floor(i / CHUNK) + 1;
+        toast.loading(`Checking duplicates… ${done}/${totalChunks} batches`, { id: tId });
       }
       setQa({ total: csvRows.length, withEmail, validEmail, inBatchDupes, existingInMaster, missingRequired });
+      toast.success(`QA complete — ${csvRows.length.toLocaleString()} rows analyzed`, { id: tId });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("QA preview failed", e);
+      toast.error(`QA preview failed: ${msg}`, { id: tId });
     } finally {
       setQaLoading(false);
     }

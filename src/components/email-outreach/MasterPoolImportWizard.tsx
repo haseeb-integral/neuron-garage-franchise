@@ -246,8 +246,8 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         setCampaigns((data ?? []) as SLCampaign[]);
         setStep(4);
       } else {
+        // Stay on step 3 to show the confirmation screen. User clicks "Done" to close.
         onComplete?.();
-        onClose();
       }
     } catch (e) {
       console.error("Master pool import failed", e);

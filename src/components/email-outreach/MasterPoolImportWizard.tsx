@@ -151,7 +151,8 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         toast.loading(`Checking duplicates… ${done}/${totalChunks} batches`, { id: tId });
       }
       setQa({ total: csvRows.length, withEmail, validEmail, inBatchDupes, existingInMaster, missingRequired });
-      toast.success(`QA complete — ${csvRows.length.toLocaleString()} rows analyzed`, { id: tId });
+      toast.success(`QA complete — ${csvRows.length.toLocaleString()} rows analyzed. Advancing to import…`, { id: tId });
+      setStep(4);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       console.error("QA preview failed", e);
@@ -389,12 +390,14 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         {step === 3 && (
           <div className="space-y-3 text-sm">
             {!qa ? (
-              <div className="flex items-center justify-center p-8">
-                <Button onClick={computeQa} disabled={qaLoading}>
+              <div className="flex flex-col items-center justify-center gap-2 p-8">
+                <Button onClick={computeQa} disabled={qaLoading} className="bg-[#174be8] hover:bg-[#0d3aa8]">
                   {qaLoading ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Sparkles size={14} className="mr-1" />}
                   Run QA preview
                 </Button>
+                <div className="text-[11px] text-[#8794ab]">Required — checks duplicates &amp; missing fields, then auto-advances to import.</div>
               </div>
+
             ) : (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-6">
                 <QaCard label="Total rows" value={qa.total} />
@@ -471,11 +474,12 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
             <ArrowLeft size={14} className="mr-1" /> Back
           </Button>
           <div className="text-[10px] text-[#8794ab]">Step {step} of {destination === "master_and_smartlead" ? 5 : 4}</div>
-          {step < 4 && (
-            <Button size="sm" disabled={(step === 2 && !canNext2) || (step === 2 && !canNext3) || (step === 3 && !canNext4)} onClick={() => setStep((s) => (s + 1) as Step)}>
+          {step < 3 && (
+            <Button size="sm" disabled={(step === 1 && !canNext2) || (step === 2 && !canNext3)} onClick={() => setStep((s) => (s + 1) as Step)}>
               Next <ArrowRight size={14} className="ml-1" />
             </Button>
           )}
+          {step === 3 && <div className="w-[72px]" />}
           {step === 4 && importResult && destination === "master_only" && (
             <Button size="sm" onClick={onClose}>Done</Button>
           )}

@@ -10,7 +10,6 @@ const primaryNavItems = [
   { title: "Teacher Search", url: "/teacher-prospects", icon: Users },
   { title: "Email Outreach", url: "/email-outreach", icon: Mail },
   { title: "Candidate Pipeline", url: "/candidate-pipeline", icon: Kanban },
-  { title: "Full Specification", url: "/spec", icon: FileText },
 ];
 
 const utilityNavItems = [
@@ -18,6 +17,7 @@ const utilityNavItems = [
   { title: "User's Guide", url: "/users-guide", icon: BookOpen },
   { title: "SmartLead API Spec", url: "/smartlead-spec", icon: Send },
   { title: "Outreach Guide", url: "/email-outreach-docs", icon: MailOpen },
+  { title: "Full Specification", url: "/spec", icon: FileText },
 ];
 
 interface Props {

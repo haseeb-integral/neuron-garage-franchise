@@ -104,63 +104,11 @@ export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
     enabled: true,  weight_within_category: 0.25, status: "proxy",
     source: "Composite: BLS OEWS SOC 25-2021 (Manus batch, pending) × BEA Regional Price Parity" },
 
-  // ─────────── EASE OF OPERATIONS ───────────
-  { key: "rental_venue_count", category: "ease_of_operations", label: "Rental Venues (Schools / Churches / Rec)",
-    description: "Available spaces to rent for camp sessions. More venues = easier expansion and lower real-estate risk.",
-    enabled: true,  weight_within_category: 0.45, status: "proxy",
-    source: "NCES CCD schools + Apify Google Maps (churches, rec centers)" },
-  { key: "classroom_rental_cost_weekly", category: "ease_of_operations", label: "Classroom Rental Cost / Week",
-    description: "Typical weekly rental rate for a classroom. Directly hits franchisee margin.",
-    enabled: false, weight_within_category: 0,    status: "missing",
-    source: "Not yet wired — no public source; requires manual outreach" },
-  { key: "commute_sprawl_index", category: "ease_of_operations", label: "Commute Times / Geographic Sprawl",
-    description: "How spread out the metro is. Sprawl forces multi-location operations and complicates logistics.",
-    enabled: true,  weight_within_category: 0.20, status: "live",
-    source: "U.S. Census Bureau API — ACS 5-yr commute time (B08303)" },
-  { key: "state_camp_regulation_complexity", category: "ease_of_operations", label: "State Camp Regulation Complexity",
-    description: "How heavy state licensing/inspections are. Heavy regulation = slower launches and higher overhead.",
-    enabled: false, weight_within_category: 0,    status: "missing",
-    source: "Not yet wired — requires manual coding of state camp statutes" },
-  { key: "guide_wage_proxy", category: "ease_of_operations", label: "Estimated Guide Wage",
-    description: "Local hourly wage for camp counselors / 'Guides'. Major recurring labor cost for the franchisee.",
-    enabled: true,  weight_within_category: 0.35, status: "live",
-    source: "BLS OEWS API — Recreation Workers (SOC 39-9032)" },
-
-  // ─────────── PARENT MINDSET ───────────
-  { key: "homeschool_population_proxy", category: "parent_mindset", label: "Homeschool Population Proxy",
-    description: "Size of the local homeschool community. They're heavy users of enrichment programs year-round.",
-    enabled: false, weight_within_category: 0,    status: "missing",
-    source: "Not yet wired — state DOE homeschool registrations vary by state" },
-  { key: "montessori_school_density", category: "parent_mindset", label: "Elementary Montessori School Density",
-    description: "Number of Montessori schools nearby. Strong indicator of parents who value experiential learning.",
-    enabled: true,  weight_within_category: 0.40, status: "proxy",
-    source: "NCES Private School Universe (name filter) + Apify Google Maps" },
-  { key: "childrens_museum_signal", category: "parent_mindset", label: "Children's Museum Signal",
-    description: "Presence of a children's museum signals a community that invests in kid-centered learning experiences.",
-    enabled: true,  weight_within_category: 0.20, status: "proxy",
-    source: "Apify Google Maps (keyword: children's museum)" },
-  { key: "robotics_maker_space_count", category: "parent_mindset", label: "Robotics Clubs / Maker Spaces",
-    description: "Local robotics clubs and maker spaces — direct evidence of demand for STEM enrichment.",
-    enabled: true,  weight_within_category: 0.40, status: "proxy",
-    source: "Apify Google Maps (keyword: robotics club, maker space)" },
-  { key: "library_children_program_signal", category: "parent_mindset", label: "Library Program Engagement",
-    description: "Attendance at library kids' programs. High engagement = parents who actively seek learning activities.",
-    enabled: false, weight_within_category: 0,    status: "missing",
-    source: "Not yet wired — IMLS Public Libraries Survey pending" },
-  { key: "parenting_facebook_group_activity", category: "parent_mindset", label: "Parenting Facebook Group Activity",
-    description: "Activity in local parenting groups. Strong signal of an engaged parent community for word-of-mouth.",
-    enabled: false, weight_within_category: 0,    status: "blocked",
-    source: "Blocked — Facebook API does not expose group activity" },
-  { key: "parent_community_activity_proxy", category: "parent_mindset", label: "Other Parent Communities Activity",
-    description: "Activity in PTAs, NextDoor, neighborhood groups — broader community engagement signal.",
-    enabled: false, weight_within_category: 0,    status: "blocked",
-    source: "Blocked — NextDoor / PTA data not publicly accessible" },
 ];
 
 export const METRICS_BY_CATEGORY: Record<CategoryKey, SowMetricEntry[]> = (() => {
   const out: Record<CategoryKey, SowMetricEntry[]> = {
-    demand: [], pricingPower: [], competitiveLandscape: [],
-    franchiseeSupply: [], easeOfOperations: [], parentMindset: [],
+    demand: [], competitiveLandscape: [], franchiseeSupply: [],
   };
   for (const m of SOW_METRIC_REGISTRY) out[CATEGORY_KEY_MAP[m.category]].push(m);
   return out;
@@ -168,8 +116,7 @@ export const METRICS_BY_CATEGORY: Record<CategoryKey, SowMetricEntry[]> = (() =>
 
 export const DEFAULT_SUB_WEIGHTS: Record<CategoryKey, Record<string, number>> = (() => {
   const out: Record<CategoryKey, Record<string, number>> = {
-    demand: {}, pricingPower: {}, competitiveLandscape: {},
-    franchiseeSupply: {}, easeOfOperations: {}, parentMindset: {},
+    demand: {}, competitiveLandscape: {}, franchiseeSupply: {},
   };
   for (const m of SOW_METRIC_REGISTRY) {
     out[CATEGORY_KEY_MAP[m.category]][m.key] = Math.round(m.weight_within_category * 100);

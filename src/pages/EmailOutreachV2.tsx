@@ -109,6 +109,25 @@ export default function EmailOutreachV2() {
 
   useEffect(() => { loadCampaigns(); loadStats(); }, []);
 
+  // Pre-fetch BOTH scope totals so the ScopeSwitcher always shows the inactive pool's count too.
+  useEffect(() => {
+    (async () => {
+      try {
+        const [{ count: masterCount }, { data: pushedRows }, { count: verified }] = await Promise.all([
+          supabase.from("teacher_prospects").select("*", { count: "exact", head: true }),
+          supabase.from("outreach_queue").select("teacher_prospect_id").not("pushed_at", "is", null),
+          supabase.from("teacher_prospects").select("*", { count: "exact", head: true }).eq("verification_status", "valid"),
+        ]);
+        setMasterTotal(masterCount ?? 0);
+        const unique = new Set((pushedRows ?? []).map((r) => r.teacher_prospect_id));
+        setSmartleadTotal(unique.size);
+        setVerifiedInMaster(verified ?? 0);
+      } catch {
+        // non-fatal — switcher just shows "—"
+      }
+    })();
+  }, []);
+
   const safeToast = (message: string) => toast.info(message);
 
   const stats = useMemo(() => {

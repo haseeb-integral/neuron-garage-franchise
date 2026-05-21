@@ -2453,19 +2453,25 @@ const CityScoring = () => {
               <div className="space-y-2">
                 {VISIBLE_CATEGORIES.map((cat) => {
                   const v = selectedHasLiveData ? (detailCategoryScores[cat.key] ?? 0) : null;
+                  const wPct = appliedTotal > 0 ? (appliedWeights[cat.key] / appliedTotal) * 100 : 0;
+                  const isZeroWeighted = wPct <= 0.05;
                   return (
-                    <div key={cat.key}>
+                    <div key={cat.key} className={isZeroWeighted ? "opacity-45" : ""} title={isZeroWeighted ? `${cat.label} is set to 0% — contributes nothing to the overall score` : undefined}>
                       <div className="mb-1 flex items-center justify-between gap-3 text-[12px]">
-                        <span className="text-[#526078]">{cat.label}</span>
+                        <span className="text-[#526078]">
+                          {cat.label}
+                          {isZeroWeighted && <span className="ml-1.5 text-[10px] uppercase tracking-wide text-[#8794ab]">· 0% weight</span>}
+                        </span>
                         <span className="font-semibold text-[#07142f]">{v ?? "—"}</span>
                       </div>
                       <div className="h-1.5 w-full rounded-full bg-[#e8edf6]">
-                        <div className="h-full rounded-full bg-[#1d4fff]" style={{ width: `${v ?? 0}%` }} />
+                        <div className={`h-full rounded-full ${isZeroWeighted ? "bg-[#b6bfd0]" : "bg-[#1d4fff]"}`} style={{ width: `${v ?? 0}%` }} />
                       </div>
                     </div>
                   );
                 })}
               </div>
+
             </div>
 
             <div className="min-w-0 border-l border-[#eef2f7] pl-4">

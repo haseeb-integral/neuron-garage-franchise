@@ -465,6 +465,7 @@ export function SubMetricWeightsDrawer({
 // ─────────────────────────── Show Formula panel ───────────────────────────
 
 function FormulaPanel({
+  categoryKey,
   categoryLabel,
   selectedCityLabel,
   previewRecompute,
@@ -475,6 +476,7 @@ function FormulaPanel({
   pendingEdits,
   overallFormula,
 }: {
+  categoryKey: CategoryKey;
   categoryLabel: string;
   selectedCityLabel?: string;
   previewRecompute: ReturnType<typeof recomputeCategoryScore> | null;
@@ -488,6 +490,7 @@ function FormulaPanel({
     composite: number | null;
   };
 }) {
+
 
   const compositeContribution =
     previewRecompute?.score != null && masterWeightPct != null

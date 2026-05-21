@@ -1096,7 +1096,8 @@ const CityScoring = () => {
       });
       header.push("Population", "Competitors", "Market Type", "Source", "Last Refreshed");
 
-      const rows: string[][] = [header];
+      const snapshotRows: (string | number | null)[][] = [];
+      const weightsCities: { city: string; state: string }[] = [];
 
       filtered.forEach((m: any, index: number) => {
         const raw = (m.cityId && sigByCity[m.cityId]) || {};
@@ -1114,51 +1115,57 @@ const CityScoring = () => {
         });
 
         let composite = 0;
-        const perCatRow: string[] = [];
+        const perCatRow: (string | number)[] = [];
         CATEGORIES.forEach((c) => {
           const weightPct = (appliedWeights[c.key] / masterTotal) * 100;
           const score = catScores[c.key];
           const contribution = (weightPct * score) / 100;
           composite += contribution;
-          perCatRow.push(String(score), weightPct.toFixed(1), contribution.toFixed(2));
+          perCatRow.push(score, Number(weightPct.toFixed(1)), Number(contribution.toFixed(2)));
         });
         const compositeRounded = Math.round(composite);
         const tier = m.hasLiveData ? tierFromScore(compositeRounded) : (m.tier ?? "");
 
-        rows.push([
-          String(index + 1),
+        snapshotRows.push([
+          index + 1,
           m.city ?? "",
           m.state ?? "",
           m.county ?? "",
           m.metroArea ?? "",
           String(tier),
-          m.hasLiveData ? String(compositeRounded) : "",
+          m.hasLiveData ? compositeRounded : "",
           ...perCatRow,
-          String(m.population ?? ""),
-          String(m.competitorCount ?? ""),
+          m.population ?? "",
+          m.competitorCount ?? "",
           m.marketType ?? "",
           m.source ?? "",
           m.lastScrapedAt ?? "",
         ]);
+
+        weightsCities.push({ city: m.city ?? "", state: m.state ?? "" });
       });
 
-      const csv = rows
-        .map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(","))
-        .join("\n");
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `ranked-markets-live-${new Date().toISOString().slice(0, 10)}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const { buildRankedMarketsWorkbook, downloadWorkbook } = await import(
+        "@/lib/cityScoringExport"
+      );
+      const wb = buildRankedMarketsWorkbook({
+        categories: CATEGORIES.map((c) => ({ key: c.key, label: c.label })),
+        snapshotHeader: header,
+        snapshotRows,
+        weightsCities,
+        appliedWeights: appliedWeights as Record<CategoryKey, number>,
+        appliedSubWeights: appliedSubWeights as Record<CategoryKey, Record<string, number>>,
+      });
+      const filename = `ranked-markets-live-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      downloadWorkbook(wb, filename);
 
-      toast.success("Ranked markets exported as CSV");
+      toast.success("Ranked markets exported as XLSX (2 sheets)");
     } catch (err) {
-      console.error("Export CSV failed", err);
+      console.error("Export XLSX failed", err);
       toast.error("Export failed — see console");
     }
   };
+
 
   const openCompare = () => {
     if (selectedForCompare.length < 2) {

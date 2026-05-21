@@ -140,6 +140,10 @@ const faqs = [
     a: "All three of us — Kaylie, Sam, Haseeb — see the same data. There's no private view. That's intentional.",
   },
   {
+    q: "Are we emailing teachers yet?",
+    a: "Not yet. SmartLead is in mailbox WARM-UP — we're sending to internal staff and a warm-up pool to season our domains so real teacher emails land in the inbox, not spam. You'll see that called out in amber on the Email Outreach page. Live teacher outreach is days to weeks away.",
+  },
+  {
     q: "What happens after Signing?",
     a: "Phase 2. The onboarding program is in the codebase but parked while we focus on getting the first signed franchisees through the door.",
   },

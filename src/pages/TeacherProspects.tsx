@@ -17,6 +17,10 @@ import { SavedListsMenu } from "@/components/teacher-prospects/SavedListsMenu";
 import { PageHeader } from "@/components/PageHeader";
 import { useTeacherProspectsStore } from "@/stores/teacherProspectsStore";
 import { sourceKeyFor, sourceLabelFor, type SourceKey } from "@/lib/teacherSourceLabels";
+import { CitySearchRail } from "@/components/teacher-prospects/CitySearchRail";
+import { FunnelWidget } from "@/components/teacher-prospects/FunnelWidget";
+import { NextBestActionStrip } from "@/components/teacher-prospects/NextBestActionStrip";
+import { TeacherAiPanel } from "@/components/teacher-prospects/TeacherAiPanel";
 
 type DbRow = {
   id: string;

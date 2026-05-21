@@ -436,7 +436,7 @@ export function SubMetricWeightsDrawer({
 
         <div className="border-t border-[#eef2f7] px-5 py-3 flex items-center justify-between gap-3 bg-[#fafbfd]">
           <p className="text-[10.5px] text-[#8794ab] leading-snug max-w-[260px]">
-            Auto-normalized to 100% on save. Empty category falls back to server score.
+            Auto-normalized to 100% on save. If all sub-weights are 0, the live score won't update until you raise one.
           </p>
           <div className="flex items-center gap-2">
             <Button

@@ -29,6 +29,7 @@ import { getAnalyticsCachedOrFresh, type Aggregated } from "@/lib/smartleadAnaly
 import { ScopeSwitcher, readStoredScope, writeStoredScope, type PoolScope } from "@/components/email-outreach/ScopeSwitcher";
 import { StatStripCards } from "@/components/email-outreach/StatStripCards";
 import { PushToSmartLeadBanner } from "@/components/email-outreach/PushToSmartLeadBanner";
+import { PushToSmartLeadModal } from "@/components/email-outreach/PushToSmartLeadModal";
 
 type SLCampaign = { id: number | string; name?: string; status?: string; created_at?: string };
 
@@ -71,6 +72,7 @@ export default function EmailOutreachV2() {
   const [smartleadTotal, setSmartleadTotal] = useState<number | null>(null);
   const [verifiedInMaster, setVerifiedInMaster] = useState<number | null>(null);
   const handleScopeChange = (s: PoolScope) => { setScope(s); writeStoredScope(s); };
+  const [pushModalOpen, setPushModalOpen] = useState(false);
 
   const loadCampaigns = async () => {
     setCampaignsLoading(true);
@@ -191,7 +193,7 @@ export default function EmailOutreachV2() {
     {scope === "master_db" && (
       <PushToSmartLeadBanner
         verifiedCount={verifiedInMaster}
-        onPush={() => toast.info("Push-to-SmartLead modal lands in Sprint 2.")}
+        onPush={() => setPushModalOpen(true)}
       />
     )}
 
@@ -268,5 +270,6 @@ export default function EmailOutreachV2() {
 
     <ImportLeadsWizard open={importOpen} onClose={() => setImportOpen(false)} onComplete={() => { setBatchesRefresh((k) => k + 1); loadCampaigns(); loadStats(); }} />
     <NewCampaignDrawer open={newCampaignOpen} onClose={() => setNewCampaignOpen(false)} onCreated={loadCampaigns} />
+    <PushToSmartLeadModal open={pushModalOpen} onClose={() => setPushModalOpen(false)} onPushed={() => { loadStats(); }} />
   </div>;
 }

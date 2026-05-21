@@ -927,6 +927,7 @@ const TeacherProspects = () => {
 
         <FindProspectsModal open={findOpen} onOpenChange={setFindOpen} onResults={handleFindResults} />
         <TeacherImportWizard open={importOpen} onClose={() => setImportOpen(false)} onComplete={() => { loadPage(); loadStats(); }} />
+        <MasterPoolImportWizard open={masterImportOpen} onClose={() => setMasterImportOpen(false)} onComplete={() => { loadPage(); loadStats(); }} />
         <TeacherDetailPanel
           prospect={active}
           onClose={() => setActive(null)}

@@ -45,7 +45,8 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
   const [aiReasoning, setAiReasoning] = useState<string>("");
   const [aiLoading, setAiLoading] = useState(false);
   // Step 3
-  const [qa, setQa] = useState<{ total: number; withEmail: number; validEmail: number; inBatchDupes: number; missingRequired: number } | null>(null);
+  const [qa, setQa] = useState<{ total: number; withEmail: number; validEmail: number; inBatchDupes: number; existingInMaster: number; missingRequired: number } | null>(null);
+  const [qaLoading, setQaLoading] = useState(false);
   // Step 4
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ inserted: number; batch_id: string } | null>(null);

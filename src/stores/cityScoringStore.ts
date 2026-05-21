@@ -162,7 +162,7 @@ export const useCityScoringStore = create<CityScoringState>()(
     {
       name: "ng:city-scoring-v1",
       storage: createJSONStorage(() => localStorage),
-      version: 7,
+      version: 8,
       migrate: (persisted: any, version) => {
         if (!persisted) return persisted;
         if (version < 2) {
@@ -189,11 +189,16 @@ export const useCityScoringStore = create<CityScoringState>()(
           persisted.appliedSubWeights = cloneSubWeights(DEFAULT_SUB_WEIGHTS);
         }
         if (version < 7) {
-          // CSI 3-metric lock (Brett+Haseeb 2026-05-21). The old 7-metric
-          // competitive_landscape sub-weights (summer_camps_per_10k_children,
-          // stem_robotics_maker_camp_count, etc.) are gone — reseed so the
-          // new csi_national_brand_supply / csi_local_camp_estimate /
-          // csi_demand_adjusted_market defaults take effect.
+          // CSI 3-metric lock (Brett+Haseeb 2026-05-21). Reseed for the new
+          // csi_* sub-metrics.
+          persisted.subWeights = cloneSubWeights(DEFAULT_SUB_WEIGHTS);
+          persisted.appliedSubWeights = cloneSubWeights(DEFAULT_SUB_WEIGHTS);
+        }
+        if (version < 8) {
+          // CSI read-only lock (Brett 2026-05-21c). The drawer no longer
+          // exposes 34/33/33 knobs — Manus's csi_score is the source of
+          // truth. Reseed so old 34/33/33 in localStorage clears to 0/0/0
+          // and the recompute helper falls back to the server score.
           persisted.subWeights = cloneSubWeights(DEFAULT_SUB_WEIGHTS);
           persisted.appliedSubWeights = cloneSubWeights(DEFAULT_SUB_WEIGHTS);
         }

@@ -394,6 +394,7 @@ export function SubMetricWeightsDrawer({
           </TooltipProvider>
         ) : (
           <FormulaPanel
+            categoryKey={categoryKey}
             categoryLabel={categoryLabel}
             selectedCityLabel={selectedCityLabel}
             previewRecompute={previewRecompute}
@@ -404,6 +405,7 @@ export function SubMetricWeightsDrawer({
             pendingEdits={pendingEdits}
             overallFormula={overallFormula}
           />
+
 
         )}
 

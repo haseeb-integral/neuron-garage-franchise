@@ -761,18 +761,9 @@ const CityScoring = () => {
     }
     let cancelled = false;
     (async () => {
-      const [{ data: signals }, scoresRes] = await Promise.all([
-        supabase
-          .from("city_market_signals")
-          .select("city_id,signal_key,value")
-          .in("city_id", visibleCityIds),
-        // Legacy city_category_scores dropped — composite overrides now rely
-        // on score_* columns already loaded on the scored row.
-        Promise.resolve({ data: [] as { city_id: string; category: string; score: number }[] }),
-      ]);
-      const { data: scores } = scoresRes;
-      if (cancelled) return;
-
+      // Legacy `city_market_signals` was severed on 2026-05-21.
+      // Per-city signal values now come from the scored row's seeded fallback,
+      // which already mirrors every signal_key used by the scoring registry.
       const DB_TO_UI: Record<string, CategoryKey> = {
         demand: "demand",
         pricing_power: "pricingPower",
@@ -783,17 +774,20 @@ const CityScoring = () => {
       };
 
       const sigByCity: Record<string, Record<string, number | null>> = {};
-      (signals ?? []).forEach((s: any) => {
-        if (!sigByCity[s.city_id]) sigByCity[s.city_id] = {};
-        sigByCity[s.city_id][s.signal_key] = parseSignalValue(s.value);
+      rawPageItems.forEach((m: any) => {
+        if (!m?.cityId || !m?.scoredRow) return;
+        const seeded = buildSeededFallbackSignalsFromScored(m.scoredRow);
+        const row: Record<string, number | null> = {};
+        seeded.forEach((s) => {
+          row[s.signal_key] = parseSignalValue(s.value as any);
+        });
+        sigByCity[m.cityId] = row;
       });
       const scoresByCity: Record<string, Partial<Record<CategoryKey, number>>> = {};
-      (scores ?? []).forEach((s: any) => {
-        const ui = DB_TO_UI[s.category];
-        if (!ui) return;
-        if (!scoresByCity[s.city_id]) scoresByCity[s.city_id] = {};
-        (scoresByCity[s.city_id] as any)[ui] = s.score;
-      });
+      // DB_TO_UI retained for future server-side category scores; currently unused.
+      void DB_TO_UI;
+      if (cancelled) return;
+
 
       const next: Record<string, CompositeOverride> = {};
       visibleCityIds.forEach((id) => {

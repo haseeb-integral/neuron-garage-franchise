@@ -47,6 +47,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
   // Step 3
   const [qa, setQa] = useState<{ total: number; withEmail: number; validEmail: number; inBatchDupes: number; existingInMaster: number; missingRequired: number } | null>(null);
   const [qaLoading, setQaLoading] = useState(false);
+  const [qaPhase, setQaPhase] = useState<string>("");
   // Step 4
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ inserted: number; batch_id: string } | null>(null);
@@ -115,6 +116,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
     setQaLoading(true);
     const tId = toast.loading(`Running QA on ${csvRows.length.toLocaleString()} rows…`);
     try {
+      setQaPhase("Scanning rows");
       const emailCol = mapping.email;
       const fnCol = mapping.first_name;
       const lnCol = mapping.last_name;
@@ -140,33 +142,13 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         }
       }
       const unique = Array.from(new Set(dedupeKeys));
-      const CHUNK = 500;
-      const CONCURRENCY = 8;
-      const chunks = Array.from({ length: Math.ceil(unique.length / CHUNK) }, (_, index) =>
-        unique.slice(index * CHUNK, (index + 1) * CHUNK),
-      ).filter((chunk) => chunk.length > 0);
-
-      let existingInMaster = 0;
-      let completed = 0;
-      toast.loading(`Checking duplicates… 0/${chunks.length} batches`, { id: tId });
-
-      for (let i = 0; i < chunks.length; i += CONCURRENCY) {
-        const wave = chunks.slice(i, i + CONCURRENCY);
-        const results = await Promise.all(
-          wave.map(async (chunk) => {
-            const { data, error } = await supabase
-              .from("teacher_prospects")
-              .select("dedupe_key")
-              .in("dedupe_key", chunk);
-            if (error) throw new Error(`Dedupe check failed: ${error.message}`);
-            completed += 1;
-            toast.loading(`Checking duplicates… ${completed}/${chunks.length} batches`, { id: tId });
-            return (data ?? []).length;
-          }),
-        );
-
-        existingInMaster += results.reduce((sum, count) => sum + count, 0);
-      }
+      setQaPhase("Checking existing duplicates in Master Pool");
+      toast.loading(`Checking duplicates in Master Pool…`, { id: tId });
+      const { data: dedupeData, error: dedupeError } = await supabase.functions.invoke("teacher-prospects-dedupe-count", {
+        body: { dedupe_keys: unique },
+      });
+      if (dedupeError) throw new Error(`Dedupe check failed: ${dedupeError.message}`);
+      const existingInMaster = Number((dedupeData as { existing_count?: number } | null)?.existing_count ?? 0);
 
       setQa({ total: csvRows.length, withEmail, validEmail, inBatchDupes, existingInMaster, missingRequired });
       toast.success(`QA complete — ${csvRows.length.toLocaleString()} rows analyzed.`, { id: tId });
@@ -175,6 +157,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
       console.error("QA preview failed", e);
       toast.error(`QA preview failed: ${msg}`, { id: tId });
     } finally {
+      setQaPhase("");
       setQaLoading(false);
     }
   };

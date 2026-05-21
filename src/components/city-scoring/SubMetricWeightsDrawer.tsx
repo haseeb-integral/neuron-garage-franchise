@@ -565,19 +565,36 @@ function FormulaPanel({
             Competitive Landscape formula{selectedCityLabel ? ` — ${selectedCityLabel}` : ""}
           </h4>
           <pre className="text-[11.5px] leading-relaxed text-[#07142f] whitespace-pre-wrap font-mono">
-{`CSI = (NB_STEM × 2.0 + NB_Other × 1.0 + Local_Estimate)
-      ÷  Demand_Adjusted_Market
-
-Local_Estimate         = elementary_enrollment × 0.003
-Demand_Adjusted_Market = elementary_enrollment × (median_HH_income ÷ 65,000)
-
-Contribution to composite = (100 − CSI) × Competitive Landscape master weight`}
+{`CSI = (National_Brand_Count_Weighted + Local_Provider_Estimate)
+      ÷ (Elementary_Enrollment × (Median_HH_Income ÷ 65,000))`}
           </pre>
-          <p className="text-[10.5px] text-[#8794ab] italic mt-2 leading-snug">
-            CSI measures saturation: lower = less crowded = better opportunity. We invert it
-            to <span className="font-mono">(100 − CSI)</span> before feeding the composite so high
-            contribution = good, matching Demand and TAM Teachers.
+          <div className="mt-3 space-y-2 text-[11.5px] leading-snug">
+            <div>
+              <span className="font-semibold text-[#174be8]">Numerator = Supply.</span>{" "}
+              <span className="text-[#526078]">
+                How many camp options exist in this city — national brands (STEM ×2.0, other ×1.0)
+                plus an estimate of local providers.
+              </span>
+            </div>
+            <div>
+              <span className="font-semibold text-[#174be8]">Denominator = Demand.</span>{" "}
+              <span className="text-[#526078]">
+                How many families want and can afford summer camps — kids in the right age range,
+                adjusted for local income.
+              </span>
+            </div>
+            <div className="text-[#526078]">
+              <span className="font-semibold text-[#07142f]">Interpretation:</span> a CSI of 0.10
+              means 0.10 supply units per demand-adjusted kid. Lower CSI = less competition relative
+              to the market = more room for a new camp.
+            </div>
+          </div>
+          <p className="text-[10.5px] text-[#8794ab] italic mt-3 leading-snug">
+            For the city composite we use <span className="font-mono">(100 − CSI score)</span> ×
+            Competitive Landscape master weight, so high contribution = good (matching Demand and
+            TAM Teachers).
           </p>
+
         </section>
 
         <section>

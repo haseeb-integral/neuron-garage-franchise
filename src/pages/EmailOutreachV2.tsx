@@ -74,6 +74,7 @@ export default function EmailOutreachV2() {
   const [verifiedInMaster, setVerifiedInMaster] = useState<number | null>(null);
   const handleScopeChange = (s: PoolScope) => { setScope(s); writeStoredScope(s); };
   const [pushModalOpen, setPushModalOpen] = useState(false);
+  const [masterImportOpen, setMasterImportOpen] = useState(false);
 
   const loadCampaigns = async () => {
     setCampaignsLoading(true);

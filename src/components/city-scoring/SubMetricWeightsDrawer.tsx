@@ -75,8 +75,9 @@ export function SubMetricWeightsDrawer({
   open, onOpenChange, categoryKey, categoryLabel, categoryColor, categoryBg,
   selectedCityLabel, rawValuesByKey, serverCategoryScore, masterWeightPct,
   masterWeightPendingPct, currentCategoryScore, currentComposite, computeNewComposite,
-  customMetricsForCategory, overallFormula,
+  customMetricsForCategory, csiBrandDetail, csiRawScore, csiSaturationCategory, overallFormula,
 }: Props) {
+  const isCsiLocked = categoryKey === "competitiveLandscape";
 
   const subWeights = useCityScoringStore((s) => s.subWeights);
   const setSubWeight = useCityScoringStore((s) => s.setSubWeight);

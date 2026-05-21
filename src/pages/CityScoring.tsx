@@ -1078,23 +1078,20 @@ const CityScoring = () => {
       const scoresByCity: Record<string, Partial<Record<CategoryKey, number>>> = {};
 
       if (cityIds.length > 0) {
-        const { data: signals } = await supabase
-          .from("city_market_signals")
-          .select("city_id,signal_key,value")
-          .in("city_id", cityIds);
-        // Legacy city_category_scores dropped — CSV uses score_* columns instead.
-        const scores: { city_id: string; category: string; score: number }[] = [];
-        (signals ?? []).forEach((s: any) => {
-          if (!sigByCity[s.city_id]) sigByCity[s.city_id] = {};
-          sigByCity[s.city_id][s.signal_key] = parseSignalValue(s.value);
+        // Legacy `city_market_signals` was severed on 2026-05-21.
+        // Per-city signal values come from each filtered row's seeded fallback.
+        filtered.forEach((m: any) => {
+          if (!m?.cityId || !m?.scoredRow) return;
+          const seeded = buildSeededFallbackSignalsFromScored(m.scoredRow);
+          const row: Record<string, number | null> = {};
+          seeded.forEach((s) => {
+            row[s.signal_key] = parseSignalValue(s.value as any);
+          });
+          sigByCity[m.cityId] = row;
         });
-        scores.forEach((s: any) => {
-          const ui = DB_TO_UI[s.category];
-          if (!ui) return;
-          if (!scoresByCity[s.city_id]) scoresByCity[s.city_id] = {};
-          (scoresByCity[s.city_id] as any)[ui] = s.score;
-        });
+        void DB_TO_UI; // reserved for future server-side category scores
       }
+
 
       const masterTotal = Object.values(appliedWeights).reduce((s, v) => s + v, 0) || 1;
 

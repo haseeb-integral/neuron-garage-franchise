@@ -49,6 +49,7 @@ const App = () => (
               <Route path="/smartlead-spec" element={<SmartLeadSpec />} />
               <Route path="/email-outreach-docs" element={<EmailOutreachDocs />} />
               <Route path="/demographics-methodology" element={<DemographicsMethodology />} />
+              <Route path="/methodology" element={<Methodology />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

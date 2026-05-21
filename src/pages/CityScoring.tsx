@@ -942,14 +942,12 @@ const CityScoring = () => {
       // competitive_landscape, franchisee_supply) were retired in the May 21 6→3 reshape.
       // The frontend store / sowMetricRegistry reshape lands in the next change.
 
-      // Canonical-only: read evidence keyed to the scored-city UUID.
-      // Legacy `cities` / `city_competitors` / `city_fetch_jobs` are dropped.
-      const { data: signals } = await supabase
-        .from("city_market_signals")
-        .select("*")
-        .eq("city_id", scoredRow.id);
+      // Legacy `city_market_signals` was severed on 2026-05-21. Evidence rows
+      // are synthesized directly from us_cities_scored via the seeded fallback.
+      const signals = buildSeededFallbackSignalsFromScored(scoredRow, childrenPct);
       const comps: any[] = [];
       const jobs: any[] = [];
+
 
       setLiveCity(cityRow);
       setLiveSignals(signals ?? []);

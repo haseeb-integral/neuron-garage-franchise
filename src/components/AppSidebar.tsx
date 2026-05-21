@@ -1,4 +1,4 @@
-import { Home, Map, Users, Kanban, ChevronLeft, ChevronRight, Mail, FileText, BookOpen, Send, MailOpen, BarChart3 } from "lucide-react";
+import { Home, Map, Users, Kanban, ChevronLeft, ChevronRight, Mail, FileText, BookOpen, Send, MailOpen, BarChart3, Calculator } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import logo from "@/assets/neuron-garage-logo.png";
 import { useSidebarCollapsed } from "@/lib/sidebarState";

@@ -221,19 +221,11 @@ export type SowMetricEntry = {
 // Weights are placeholders for the future registry-driven composite; they are
 // NOT applied today. Total per category is informational only.
 export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
-  // Demand
-  { key: "children_5_12_count",                 category: "demand", label: "Children Ages 5–12",                     enabled: true,  weight_within_category: 0.13, status: "live"  },
-  { key: "children_5_12_pct",                   category: "demand", label: "% Population Ages 5–12",                  enabled: true,  weight_within_category: 0.08, status: "live"  },
-  { key: "households_with_children_under_13",   category: "demand", label: "Households With Children Under 13",       enabled: true,  weight_within_category: 0.08, status: "proxy" },
-  { key: "median_household_income",             category: "demand", label: "Median Household Income",                 enabled: true,  weight_within_category: 0.11, status: "live"  },
-  { key: "income_100k_plus_pct",                category: "demand", label: "Households Earning $100k+",               enabled: true,  weight_within_category: 0.08, status: "live"  },
-  { key: "income_150k_plus_pct",                category: "demand", label: "Households Earning $150k+",               enabled: true,  weight_within_category: 0.07, status: "live"  },
-  { key: "young_family_growth_rate",            category: "demand", label: "Growth Rate of Young Families",           enabled: true,  weight_within_category: 0.11, status: "live"    },
-  { key: "dual_income_household_pct",           category: "demand", label: "% Dual-Income Households",                enabled: true,  weight_within_category: 0.10, status: "live"    },
-  { key: "education_bachelors_plus_pct",        category: "demand", label: "Parent Education / Bachelor's+",          enabled: true,  weight_within_category: 0.09, status: "live"    },
-  { key: "summer_weather_index",                category: "demand", label: "Summer Weather Index",                    enabled: true,  weight_within_category: 0.08, status: "live"    },
-  { key: "avg_peak_summer_temperature",         category: "demand", label: "Avg Peak Summer Temperature",             enabled: true,  weight_within_category: 0.04, status: "live"    },
-  { key: "days_above_90f",                      category: "demand", label: "Number of 90°+ Days",                     enabled: true,  weight_within_category: 0.03, status: "live"    },
+  // ─────────── DEMAND (4-metric lock — Brett+Haseeb 2026-05-21) ───────────
+  { key: "children_5_12_count",                 category: "demand", label: "Children Ages 5–12",                       enabled: true,  weight_within_category: 0.30, status: "live"  },
+  { key: "median_household_income",             category: "demand", label: "Median Household Income",                  enabled: true,  weight_within_category: 0.25, status: "live"  },
+  { key: "dual_income_household_pct",           category: "demand", label: "% Dual-Income Households",                 enabled: true,  weight_within_category: 0.20, status: "live"  },
+  { key: "education_bachelors_plus_pct",        category: "demand", label: "Parent Education / Bachelor's+",           enabled: true,  weight_within_category: 0.25, status: "live"  },
 
   // ─────────── PRICING POWER ───────────
   { key: "avg_weekly_camp_tuition",             category: "pricing_power", label: "Average Weekly Camp Tuition",                       enabled: true,  weight_within_category: 0.20, status: "live" },

@@ -516,13 +516,21 @@ function QaCard({ label, value, tone }: { label: string; value: number; tone?: "
   );
 }
 function StepBar({ step, destination }: { step: Step; destination: Destination }) {
-  const labels = ["Setup", "Map columns", "QA", "Import", "Push (optional)"];
-  const total = destination === "master_and_smartlead" ? 5 : 4;
+  const labels = destination === "master_and_smartlead"
+    ? ["Setup", "Map columns", "Review & Import", "Push to SmartLead"]
+    : ["Setup", "Map columns", "Review & Import"];
   return (
-    <div className="mb-2 flex gap-1">
-      {labels.slice(0, total).map((l, i) => (
-        <div key={l} className={`h-1 flex-1 rounded ${i < step ? "bg-[#174be8]" : "bg-[#e7edf5]"}`} title={l} />
-      ))}
+    <div className="mb-2">
+      <div className="flex gap-1">
+        {labels.map((l, i) => (
+          <div key={l} className={`h-1 flex-1 rounded ${i < step ? "bg-[#174be8]" : "bg-[#e7edf5]"}`} title={l} />
+        ))}
+      </div>
+      <div className="mt-1 flex gap-1">
+        {labels.map((l, i) => (
+          <div key={l} className={`flex-1 text-center text-[9px] font-bold uppercase tracking-wide ${i + 1 === step ? "text-[#174be8]" : "text-[#8794ab]"}`}>{l}</div>
+        ))}
+      </div>
     </div>
   );
 }

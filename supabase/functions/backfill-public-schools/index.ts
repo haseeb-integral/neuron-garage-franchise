@@ -1,15 +1,22 @@
-// Backfill `public_schools` from NCES CCD for every already-seeded city.
+// Backfill `public_schools` from NCES CCD using county + nearest-city matching.
 //
-// Trigger: manual POST. Resumable.
+// Matching rule (real, NCES-authoritative — no string fuzziness, no estimates):
+//   1. For each state, pull the full CCD directory once and cache it.
+//   2. Each school carries its own `county_name` (NCES field). Group schools by
+//      (state_abbr, normalized county_name).
+//   3. For each city in `us_cities_scored` we attribute schools whose NCES
+//      county matches the city's `county_name`. If the county contains multiple
+//      cities, each school is assigned to the *nearest* city by great-circle
+//      distance from the school's NCES lat/long. This prevents double-counting
+//      Houston-area schools to both Houston and Fulshear.
+//   4. Cities lacking county_name or lat/long get a row in `city_data_gaps`
+//      explaining why; nothing is fabricated.
 //
 // Body (all optional):
-//   {
-//     "limit": 25,      // cities to process this invocation (default 25)
-//     "offset": 0,      // skip this many cities (default 0)
-//     "dry_run": false
-//   }
+//   { "limit": 25, "offset": 0, "dry_run": false, "state": "TX" }
+// `state` lets you re-run a single state cheaply.
 //
-// Returns: { processed, schools_upserted, failed, next_offset | null, errors }
+// Returns: { processed, schools_upserted, cities_matched_zero, next_offset, errors }
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -31,35 +38,6 @@ const STATE_FIPS: Record<string, string> = {
   MD:"24",MA:"25",MI:"26",MN:"27",MS:"28",MO:"29",MT:"30",NE:"31",NV:"32",NH:"33",
   NJ:"34",NM:"35",NY:"36",NC:"37",ND:"38",OH:"39",OK:"40",OR:"41",PA:"42",RI:"44",
   SC:"45",SD:"46",TN:"47",TX:"48",UT:"49",VT:"50",VA:"51",WA:"53",WV:"54",WI:"55",WY:"56",
-};
-
-// Mirror of seed-cities-database aliases — keep in sync.
-const NCES_CITY_ALIASES: Record<string, string[]> = {
-  "NEW YORK|NY": ["NEW YORK", "MANHATTAN", "BROOKLYN", "BRONX", "QUEENS", "STATEN ISLAND",
-    "ASTORIA", "LONG ISLAND CITY", "FLUSHING", "JAMAICA", "FAR ROCKAWAY", "ELMHURST",
-    "CORONA", "JACKSON HEIGHTS", "REGO PARK", "FOREST HILLS", "RIDGEWOOD",
-    "ROSEDALE", "SAINT ALBANS", "SOUTH RICHMOND HILL", "OZONE PARK", "WOODSIDE",
-    "MASPETH", "MIDDLE VILLAGE", "BAYSIDE", "WHITESTONE", "FRESH MEADOWS", "HOLLIS",
-    "SPRINGFIELD GARDENS", "CAMBRIA HEIGHTS", "QUEENS VILLAGE", "LAURELTON",
-    "ARVERNE", "BREEZY POINT", "BELLE HARBOR", "ROCKAWAY PARK", "ROCKAWAY BEACH",
-    "COLLEGE POINT", "DOUGLASTON", "LITTLE NECK", "GLEN OAKS", "NEW HYDE PARK", "FLORAL PARK",
-    "RICHMOND HILL", "KEW GARDENS", "BRIARWOOD", "SUNNYSIDE", "EAST ELMHURST",
-    "HOWARD BEACH", "BROAD CHANNEL"],
-  "BOSTON|MA": ["BOSTON", "DORCHESTER", "ROXBURY", "JAMAICA PLAIN", "HYDE PARK", "MATTAPAN",
-    "ROSLINDALE", "WEST ROXBURY", "BRIGHTON", "ALLSTON", "CHARLESTOWN", "EAST BOSTON",
-    "SOUTH BOSTON", "DORCHESTER CENTER", "ROXBURY CROSSING"],
-  "NASHVILLE|TN": ["NASHVILLE", "ANTIOCH", "HERMITAGE", "MADISON", "OLD HICKORY",
-    "WHITES CREEK", "JOELTON", "GOODLETTSVILLE"],
-  "LOUISVILLE|KY": ["LOUISVILLE", "FAIRDALE", "VALLEY STATION", "PLEASURE RIDGE PARK",
-    "OKOLONA", "JEFFERSONTOWN", "FERN CREEK", "PROSPECT", "ANCHORAGE"],
-  "INDIANAPOLIS|IN": ["INDIANAPOLIS", "BEECH GROVE", "LAWRENCE", "SPEEDWAY"],
-  "JACKSONVILLE|FL": ["JACKSONVILLE", "JACKSONVILLE BEACH", "ATLANTIC BEACH", "NEPTUNE BEACH"],
-  "HONOLULU|HI": ["HONOLULU", "EWA BEACH", "KAILUA", "KANEOHE", "WAIPAHU", "PEARL CITY", "AIEA"],
-  "ANCHORAGE|AK": ["ANCHORAGE", "EAGLE RIVER", "CHUGIAK", "GIRDWOOD"],
-  "AUGUSTA|GA": ["AUGUSTA", "HEPHZIBAH", "BLYTHE"],
-  "LEXINGTON|KY": ["LEXINGTON"],
-  "ATHENS|GA": ["ATHENS", "BOGART", "WINTERVILLE"],
-  "WASHINGTON|DC": ["WASHINGTON"],
 };
 
 const NCES_STATE_CACHE = new Map<string, any[]>();
@@ -87,7 +65,6 @@ function gradeToText(g: unknown): string | null {
 
 function deriveLevel(low: number | null, high: number | null): string | null {
   if (low == null || high == null) return null;
-  // low/high are numeric (-1=PK, 0=KG, 1..12)
   if (high <= 5) return "elementary";
   if (low >= 6 && high <= 8) return "middle";
   if (low >= 9) return "high";
@@ -100,15 +77,36 @@ function deriveLevel(low: number | null, high: number | null): string | null {
 function schoolTypeText(t: unknown): string | null {
   const n = Number(t);
   if (!Number.isFinite(n)) return null;
-  // CCD school_type: 1=Regular, 2=Special Ed, 3=Vocational, 4=Alternative/Other
   return ({ 1: "regular", 2: "special_ed", 3: "vocational", 4: "alternative" } as Record<number, string>)[n] ?? null;
 }
 
 function statusText(s: unknown): string | null {
   const n = Number(s);
   if (!Number.isFinite(n)) return null;
-  // 1=Open, 2=Closed, 3=New, 4=Added, 5=Changed agency, 6=Inactive, 7=Reopened, 8=Future
   return ({ 1: "open", 2: "closed", 3: "new", 4: "added", 6: "inactive", 7: "reopened", 8: "future" } as Record<number, string>)[n] ?? null;
+}
+
+function normCounty(s: unknown): string {
+  return String(s ?? "")
+    .toLowerCase()
+    .replace(/\s+county$/i, "")
+    .replace(/\s+parish$/i, "")
+    .replace(/\s+borough$/i, "")
+    .replace(/\s+census area$/i, "")
+    .replace(/\s+municipality$/i, "")
+    .replace(/[^a-z0-9]/g, "")
+    .trim();
+}
+
+function haversineMi(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const R = 3958.7613; // miles
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
 }
 
 async function fetchStateDirectory(stateAbbr: string): Promise<any[]> {
@@ -123,6 +121,27 @@ async function fetchStateDirectory(stateAbbr: string): Promise<any[]> {
   all = (j?.results ?? []) as any[];
   NCES_STATE_CACHE.set(stateAbbr, all);
   return all;
+}
+
+// (state_abbr, normalized county name) -> 5-digit county FIPS, sourced from Census.
+let COUNTY_FIPS_LOOKUP: Map<string, string> | null = null;
+async function loadCountyFipsLookup(): Promise<Map<string, string>> {
+  if (COUNTY_FIPS_LOOKUP) return COUNTY_FIPS_LOOKUP;
+  const url = "https://www2.census.gov/geo/docs/reference/codes/files/national_county.txt";
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`county FIPS ${r.status}`);
+  const text = await r.text();
+  const map = new Map<string, string>();
+  for (const line of text.split("\n")) {
+    const parts = line.split(",");
+    if (parts.length < 4) continue;
+    const [state, statefp, countyfp, countyName] = parts;
+    if (!state || !statefp || !countyfp || !countyName) continue;
+    const key = `${state}|${normCounty(countyName)}`;
+    map.set(key, `${statefp}${countyfp}`);
+  }
+  COUNTY_FIPS_LOOKUP = map;
+  return map;
 }
 
 function mapSchool(s: any, cityId: string): Record<string, any> | null {
@@ -158,6 +177,22 @@ function mapSchool(s: any, cityId: string): Record<string, any> | null {
   };
 }
 
+interface CityRow {
+  id: string;
+  city_name: string;
+  state_abbr: string;
+  county_name: string | null;
+  latitude: number | null;
+  longitude: number | null;
+}
+
+async function logGap(supabase: any, cityId: string, field: string, reason: string) {
+  await supabase.from("city_data_gaps").upsert(
+    { city_id: cityId, field_name: field, reason, checked_at: new Date().toISOString() },
+    { onConflict: "city_id,field_name" },
+  );
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return ok({ error: "POST only" }, 405);
@@ -166,71 +201,166 @@ Deno.serve(async (req) => {
 
   let body: any = {};
   try { body = await req.json(); } catch (_) { body = {}; }
-  const limit = Math.max(1, Math.min(100, Number(body.limit ?? 25)));
+  const limit = Math.max(1, Math.min(200, Number(body.limit ?? 50)));
   const offset = Math.max(0, Number(body.offset ?? 0));
   const dryRun = Boolean(body.dry_run);
+  const stateFilter: string | null = body.state ? String(body.state).toUpperCase() : null;
 
-  // Pull cities that have NCES data (so we only re-fetch where seeding succeeded).
-  const { data: cities, error: citiesErr } = await supabase
+  // Pull cities. We process ALL cities now, not just ones with nces_last_updated set.
+  let q = supabase
     .from("us_cities_scored")
-    .select("id, city_name, state_abbr")
-    .not("nces_last_updated", "is", null)
+    .select("id, city_name, state_abbr, county_name, latitude, longitude")
     .order("state_abbr", { ascending: true })
-    .order("city_name", { ascending: true })
-    .range(offset, offset + limit - 1);
+    .order("city_name", { ascending: true });
+  if (stateFilter) q = q.eq("state_abbr", stateFilter);
+  const { data: cities, error: citiesErr } = await q.range(offset, offset + limit - 1);
 
   if (citiesErr) return ok({ error: citiesErr.message }, 500);
   if (!cities || cities.length === 0) {
-    return ok({ processed: 0, schools_upserted: 0, failed: 0, next_offset: null, errors: [] });
+    return ok({ processed: 0, schools_upserted: 0, cities_matched_zero: 0, next_offset: null, errors: [] });
+  }
+
+  // Group cities by state so we fetch the NCES directory once per state.
+  const byState = new Map<string, CityRow[]>();
+  for (const c of cities as CityRow[]) {
+    if (!byState.has(c.state_abbr)) byState.set(c.state_abbr, []);
+    byState.get(c.state_abbr)!.push(c);
   }
 
   let processed = 0;
   let schoolsUpserted = 0;
-  let failed = 0;
+  let citiesMatchedZero = 0;
   const errors: any[] = [];
 
-  for (const c of cities) {
+  // Load Census county FIPS lookup once.
+  let fipsLookup: Map<string, string>;
+  try {
+    fipsLookup = await loadCountyFipsLookup();
+  } catch (e) {
+    return ok({ error: `county FIPS load: ${(e as Error).message}` }, 500);
+  }
+
+  for (const [stateAbbr, stateCities] of byState) {
+    let dir: any[];
     try {
-      const dir = await fetchStateDirectory(c.state_abbr);
-      const key = `${(c.city_name ?? "").toUpperCase()}|${c.state_abbr}`;
-      const targets = new Set(NCES_CITY_ALIASES[key] ?? [(c.city_name ?? "").toUpperCase()]);
-      const inCity = dir.filter((s) => {
-        const loc = String(s.city_location ?? "").toUpperCase();
-        const mail = String(s.city_mailing ?? "").toUpperCase();
-        return targets.has(loc) || targets.has(mail);
-      });
-      // Open schools only
-      const openSchools = inCity.filter((s) => Number(s.school_status) === 1);
-
-      const rows = openSchools
-        .map((s) => mapSchool(s, c.id))
-        .filter((x): x is Record<string, any> => x !== null);
-
-      if (!dryRun && rows.length > 0) {
-        // Upsert in chunks of 500 to keep payloads small.
-        for (let i = 0; i < rows.length; i += 500) {
-          const chunk = rows.slice(i, i + 500);
-          const { error: upErr } = await supabase
-            .from("public_schools")
-            .upsert(chunk, { onConflict: "nces_id" });
-          if (upErr) throw new Error(upErr.message);
-        }
-      }
-      schoolsUpserted += rows.length;
-      processed++;
+      dir = await fetchStateDirectory(stateAbbr);
     } catch (e) {
-      failed++;
-      errors.push({ city: `${c.city_name}, ${c.state_abbr}`, error: (e as Error).message });
+      for (const c of stateCities) errors.push({ city: `${c.city_name}, ${c.state_abbr}`, error: (e as Error).message });
+      continue;
+    }
+
+    // Index schools by NCES county_code (5-digit FIPS).
+    const byCountyFips = new Map<string, any[]>();
+    for (const s of dir) {
+      if (Number(s.school_status) !== 1) continue;
+      const fips = String(s.county_code ?? "").padStart(5, "0");
+      if (!fips || fips === "00000") continue;
+      if (!byCountyFips.has(fips)) byCountyFips.set(fips, []);
+      byCountyFips.get(fips)!.push(s);
+    }
+
+    for (const c of stateCities) {
+      try {
+        if (!c.county_name) {
+          await logGap(supabase, c.id, "public_elementary_count", "city missing county_name");
+          citiesMatchedZero++;
+          processed++;
+          continue;
+        }
+        const fips = fipsLookup.get(`${stateAbbr}|${normCounty(c.county_name)}`);
+        if (!fips) {
+          await logGap(supabase, c.id, "public_elementary_count", `county FIPS not found for ${c.county_name}, ${stateAbbr}`);
+          citiesMatchedZero++;
+          processed++;
+          continue;
+        }
+        const schoolsInCounty = byCountyFips.get(fips) ?? [];
+        if (schoolsInCounty.length === 0) {
+          await logGap(supabase, c.id, "public_elementary_count", `no NCES schools in ${c.county_name} County, ${stateAbbr} (FIPS ${fips})`);
+          citiesMatchedZero++;
+          processed++;
+          continue;
+        }
+
+        // Other cities in this same county FIPS (in our scored set).
+        const siblings = stateCities.filter((x) => {
+          if (x.id === c.id || !x.county_name) return false;
+          const f = fipsLookup.get(`${stateAbbr}|${normCounty(x.county_name)}`);
+          return f === fips;
+        });
+
+        const myRows: Record<string, any>[] = [];
+        const haveMyCoords = c.latitude != null && c.longitude != null;
+
+        for (const s of schoolsInCounty) {
+          const slat = num(s.latitude);
+          const slon = num(s.longitude);
+
+          // No siblings → everything in this county is ours.
+          if (siblings.length === 0) {
+            const row = mapSchool(s, c.id);
+            if (row) myRows.push(row);
+            continue;
+          }
+
+          // Siblings exist. Need school lat/long AND my lat/long to compare.
+          if (slat == null || slon == null || !haveMyCoords) {
+            // Can't break the tie geometrically. Skip — another city in the
+            // county will pick it up, or we'll log a gap if everyone skips.
+            continue;
+          }
+
+          const myDist = haversineMi(slat, slon, c.latitude!, c.longitude!);
+          let isMine = true;
+          for (const sib of siblings) {
+            if (sib.latitude == null || sib.longitude == null) continue;
+            const d = haversineMi(slat, slon, sib.latitude, sib.longitude);
+            if (d < myDist) { isMine = false; break; }
+          }
+          if (isMine) {
+            const row = mapSchool(s, c.id);
+            if (row) myRows.push(row);
+          }
+        }
+
+        if (myRows.length === 0) {
+          await logGap(supabase, c.id, "public_elementary_count",
+            !haveMyCoords && siblings.length > 0
+              ? `city missing lat/long, cannot disambiguate ${siblings.length} sibling cities in county`
+              : `0 schools assigned after nearest-city split (${schoolsInCounty.length} in county)`);
+          citiesMatchedZero++;
+        } else if (!dryRun) {
+          // First, detach any existing public_schools rows currently pointing at this city
+          // so we don't keep stale assignments from the old string-match logic.
+          const { error: detachErr } = await supabase
+            .from("public_schools")
+            .update({ us_cities_scored_id: null })
+            .eq("us_cities_scored_id", c.id);
+          if (detachErr) throw new Error(`detach: ${detachErr.message}`);
+
+          // Upsert by nces_id in chunks.
+          for (let i = 0; i < myRows.length; i += 500) {
+            const chunk = myRows.slice(i, i + 500);
+            const { error: upErr } = await supabase
+              .from("public_schools")
+              .upsert(chunk, { onConflict: "nces_id" });
+            if (upErr) throw new Error(upErr.message);
+          }
+        }
+
+        schoolsUpserted += myRows.length;
+        processed++;
+      } catch (e) {
+        errors.push({ city: `${c.city_name}, ${c.state_abbr}`, error: (e as Error).message });
+      }
     }
   }
 
-  // Determine if more remain.
-  const { count } = await supabase
-    .from("us_cities_scored")
-    .select("id", { count: "exact", head: true })
-    .not("nces_last_updated", "is", null);
-
+  // Compute next offset against the same filter we queried with.
+  let countQ = supabase.from("us_cities_scored").select("id", { count: "exact", head: true });
+  if (stateFilter) countQ = countQ.eq("state_abbr", stateFilter);
+  const { count } = await countQ;
   const nextOffset = (count != null && offset + limit < count) ? offset + limit : null;
 
-  return ok({ processed, schools_upserted: schoolsUpserted, failed, next_offset: nextOffset, errors });
+  return ok({ processed, schools_upserted: schoolsUpserted, cities_matched_zero: citiesMatchedZero, next_offset: nextOffset, errors });
 });

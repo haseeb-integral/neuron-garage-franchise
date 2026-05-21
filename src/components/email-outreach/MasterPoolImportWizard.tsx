@@ -139,24 +139,15 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
           dedupeKeys.push(`name:${fn}|${ln}||${stateV.toLowerCase()}|${cityV.toLowerCase()}`);
         }
       }
-      let existingInMaster = 0;
       const unique = Array.from(new Set(dedupeKeys));
-      const CHUNK = 500;
-      const totalChunks = Math.max(1, Math.ceil(unique.length / CHUNK));
-      for (let i = 0; i < unique.length; i += CHUNK) {
-        const chunk = unique.slice(i, i + CHUNK);
-        const { data, error } = await supabase
-          .from("teacher_prospects")
-          .select("dedupe_key")
-          .in("dedupe_key", chunk);
-        if (error) throw new Error(`Dedupe check failed: ${error.message}`);
-        existingInMaster += (data ?? []).length;
-        const done = Math.floor(i / CHUNK) + 1;
-        toast.loading(`Checking duplicates… ${done}/${totalChunks} batches`, { id: tId });
-      }
+      toast.loading(`Checking duplicates in Master Pool…`, { id: tId });
+      const { data: existingInMaster, error: dedupeError } = await supabase.rpc(
+        "teacher_prospects_existing_dedupe_count",
+        { p_keys: unique },
+      );
+      if (dedupeError) throw new Error(`Dedupe check failed: ${dedupeError.message}`);
       setQa({ total: csvRows.length, withEmail, validEmail, inBatchDupes, existingInMaster, missingRequired });
-      toast.success(`QA complete — ${csvRows.length.toLocaleString()} rows analyzed. Advancing to import…`, { id: tId });
-      setStep(4);
+      toast.success(`QA complete — ${csvRows.length.toLocaleString()} rows analyzed.`, { id: tId });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       console.error("QA preview failed", e);

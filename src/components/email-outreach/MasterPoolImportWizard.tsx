@@ -393,7 +393,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
             {qaLoading && !qa && (
               <div className="flex items-center justify-center gap-2 p-8 text-[#526078]">
                 <Loader2 size={16} className="animate-spin text-[#174be8]" />
-                <span className="text-xs">Running QA on {csvRows.length.toLocaleString()} rows…</span>
+                <span className="text-xs">{qaPhase || "Running QA"} on {csvRows.length.toLocaleString()} rows…</span>
               </div>
             )}
 

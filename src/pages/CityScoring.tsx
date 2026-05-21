@@ -1059,90 +1059,28 @@ const CityScoring = () => {
 
   const buildCsvDownload = async () => {
     try {
-      const cityIds = Array.from(
-        new Set(filtered.map((m: any) => m.cityId).filter((x: any): x is string => !!x)),
-      );
-
-      const DB_TO_UI: Record<string, CategoryKey> = {
-        demand: "demand",
-        competitive_landscape: "competitiveLandscape",
-        franchisee_supply: "franchiseeSupply",
-      };
-
-      const sigByCity: Record<string, Record<string, number | null>> = {};
-      const scoresByCity: Record<string, Partial<Record<CategoryKey, number>>> = {};
-
-      if (cityIds.length > 0) {
-        // Legacy `city_market_signals` was severed on 2026-05-21.
-        // Per-city signal values come from each filtered row's seeded fallback.
-        filtered.forEach((m: any) => {
-          if (!m?.cityId || !m?.scoredRow) return;
-          const seeded = buildSeededFallbackSignalsFromScored(m.scoredRow);
-          const row: Record<string, number | null> = {};
-          seeded.forEach((s) => {
-            row[s.signal_key] = parseSignalValue(s.value as any);
-          });
-          sigByCity[m.cityId] = row;
-        });
-        void DB_TO_UI; // reserved for future server-side category scores
-      }
-
-
-      const masterTotal = Object.values(appliedWeights).reduce((s, v) => s + v, 0) || 1;
-
-      const header = ["Rank", "City", "State", "County", "Metro Area", "Tier", "Composite Score"];
-      CATEGORIES.forEach((c) => {
-        header.push(`${c.label} Score`, `${c.label} Weight%`, `${c.label} Contribution`);
+      // Sheet 1: raw backend rows, as-is. Collect union of all keys present on
+      // each filtered city's scoredRow so we don't drop columns when one row
+      // happens to be sparse.
+      const identityCols = ["city", "state", "county", "metro_area"];
+      const keySet = new Set<string>();
+      filtered.forEach((m: any) => {
+        const r = m?.scoredRow;
+        if (r && typeof r === "object") Object.keys(r).forEach((k) => keySet.add(k));
       });
-      header.push("Population", "Competitors", "Market Type", "Source", "Last Refreshed");
-
-      const snapshotRows: (string | number | null)[][] = [];
-      const weightsCities: { city: string; state: string }[] = [];
-
-      filtered.forEach((m: any, index: number) => {
-        const raw = (m.cityId && sigByCity[m.cityId]) || {};
-        const srv = (m.cityId && scoresByCity[m.cityId]) || {};
-
-        const catScores = {} as Record<CategoryKey, number>;
-        CATEGORIES.forEach((c) => {
-          const r = recomputeCategoryScore(
-            METRICS_BY_CATEGORY[c.key] ?? [],
-            raw,
-            (appliedSubWeights as any)[c.key] ?? {},
-            (srv as any)[c.key] ?? null,
-          );
-          catScores[c.key] = r.score != null ? Math.round(r.score) : 0;
+      // Put identity columns first, then everything else alphabetised.
+      identityCols.forEach((k) => keySet.delete(k));
+      const orderedKeys = [...identityCols, ...Array.from(keySet).sort()];
+      const backendHeader = orderedKeys;
+      const backendRows: (string | number | null)[][] = filtered.map((m: any) => {
+        const r = m?.scoredRow ?? {};
+        return orderedKeys.map((k) => {
+          const v = r[k];
+          if (v == null) return null;
+          if (typeof v === "number" || typeof v === "string") return v;
+          // Stringify objects/arrays/booleans so the cell stays printable.
+          try { return JSON.stringify(v); } catch { return String(v); }
         });
-
-        let composite = 0;
-        const perCatRow: (string | number)[] = [];
-        CATEGORIES.forEach((c) => {
-          const weightPct = (appliedWeights[c.key] / masterTotal) * 100;
-          const score = catScores[c.key];
-          const contribution = (weightPct * score) / 100;
-          composite += contribution;
-          perCatRow.push(score, Number(weightPct.toFixed(1)), Number(contribution.toFixed(2)));
-        });
-        const compositeRounded = Math.round(composite);
-        const tier = m.hasLiveData ? tierFromScore(compositeRounded) : (m.tier ?? "");
-
-        snapshotRows.push([
-          index + 1,
-          m.city ?? "",
-          m.state ?? "",
-          m.county ?? "",
-          m.metroArea ?? "",
-          String(tier),
-          m.hasLiveData ? compositeRounded : "",
-          ...perCatRow,
-          m.population ?? "",
-          m.competitorCount ?? "",
-          m.marketType ?? "",
-          m.source ?? "",
-          m.lastScrapedAt ?? "",
-        ]);
-
-        weightsCities.push({ city: m.city ?? "", state: m.state ?? "" });
       });
 
       const { buildRankedMarketsWorkbook, downloadWorkbook } = await import(
@@ -1150,16 +1088,16 @@ const CityScoring = () => {
       );
       const wb = buildRankedMarketsWorkbook({
         categories: CATEGORIES.map((c) => ({ key: c.key, label: c.label })),
-        snapshotHeader: header,
-        snapshotRows,
-        weightsCities,
+        backendHeader,
+        backendRows,
         appliedWeights: appliedWeights as Record<CategoryKey, number>,
         appliedSubWeights: appliedSubWeights as Record<CategoryKey, Record<string, number>>,
+        exportedAt: new Date().toISOString(),
       });
       const filename = `ranked-markets-live-${new Date().toISOString().slice(0, 10)}.xlsx`;
       downloadWorkbook(wb, filename);
 
-      toast.success("Ranked markets exported as XLSX (2 sheets)");
+      toast.success("Exported: backend data + weights snapshot");
     } catch (err) {
       console.error("Export XLSX failed", err);
       toast.error("Export failed — see console");

@@ -639,29 +639,11 @@ export function MarketDetailDrawer({
             )}
             {marketType && <span className="rounded-full bg-white px-2 py-0.5">Type: {marketType}</span>}
           </div>
-          <div className="mt-2 flex items-center justify-between gap-3">
-            <p className="text-[11px] text-[#526078]">
-               Last seeded: <span className="font-semibold text-[#07142f]">{formatDate(seedAtIso)}</span>
-            </p>
-            <div className="flex flex-wrap gap-1.5 text-[11px]">
-              <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#0ea66e]" title="Enabled scoring metric with a pre-seeded value">{coverageCounts.preSeeded} Pre-seeded</span>
-              {coverageCounts.trackedNotScored > 0 && (
-                <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#b8860b]" title="Tracked-not-scored metric with a value (audit only)">{coverageCounts.trackedNotScored} Tracked-not-scored</span>
-              )}
-              <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#526078]" title="Enabled scoring metric with no backend value seeded yet">{coverageCounts.notSeededYet} Not seeded yet</span>
-              {coverageCounts.trackedNoValue > 0 && (
-                <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#8794ab]" title="Audit-only metrics with no value yet — not part of the score">{coverageCounts.trackedNoValue} Tracked-no-value</span>
-              )}
-              {coverageCounts.sourceUnavailable > 0 && (
-                <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#ea580c]" title="Registry marks this metric blocked — no data source wired">{coverageCounts.sourceUnavailable} Source unavailable</span>
-              )}
-              {customCount > 0 && (
-                <span className="rounded-md bg-white px-1.5 py-0.5 font-bold text-[#174be8]" title="User-defined custom metrics (additive — not part of the 46-metric registry)">{customCount} Custom</span>
-              )}
-              <span className="rounded-md bg-[#f3f6fb] px-1.5 py-0.5 font-semibold text-[#526078]">of {totalRegistry} scoring metrics</span>
-            </div>
+          <div className="mt-2 space-y-0.5 text-[11px] text-[#526078]">
+            <p>City: <span className="font-semibold text-[#07142f]">{market.city}{stateAbbr ? `, ${stateAbbr}` : ""}</span></p>
+            <p>Last seeded: <span className="font-semibold text-[#07142f]">{formatDate(seedAtIso)}</span></p>
+            <p>Pre-seeded values: <span className="font-semibold text-[#07142f]">{keyMetricSeededCount} of {KEY_METRIC_KEYS.size}</span></p>
           </div>
-          <p className="mt-1 text-[10.5px] text-[#8794ab]">Chips total {totalRegistry} of {totalRegistry} scoring metrics. Custom metrics shown separately.</p>
           {loading && (
             <div className="mt-2 flex items-center gap-2 text-[11px] text-[#526078]">
               <RefreshCw size={12} className="animate-spin" /> Loading live evidence…
@@ -669,254 +651,33 @@ export function MarketDetailDrawer({
           )}
         </div>
 
-        <Tabs defaultValue="data-sources" className="mb-4">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="data-sources">Data Sources</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="mt-3 space-y-4">
-            <section>
-              <h4 className="mb-2 text-[12.5px] font-bold text-[#07142f]">Seed Coverage</h4>
-              <div className="rounded-md border border-[#eef2f7] p-3">
-                <div className="grid grid-cols-2 gap-1.5 text-[11px]">
-                  {[
-                    ["Pre-seeded value", coverageCounts.preSeeded],
-                    ["Tracked-not-scored w/ value", coverageCounts.trackedNotScored],
-                    ["Not seeded yet", coverageCounts.notSeededYet],
-                    ["Tracked-no-value (audit only)", coverageCounts.trackedNoValue],
-                    ["Source unavailable", coverageCounts.sourceUnavailable],
-                    ["Custom metrics", customCount],
-                    ["Total scoring metrics", totalRegistry],
-                  ].map(([label, value]) => (
-                    <div key={String(label)} className="flex justify-between gap-2 rounded bg-[#f8fafe] px-2 py-1">
-                      <span className="truncate text-[#526078]">{label}</span>
-                      <span className="font-semibold text-[#07142f]">{String(value)}</span>
-                    </div>
-                  ))}
+        <div className="space-y-3 mb-4">
+          {SOW_CATEGORIES.map((category) => {
+            const bucket = coverageByCategory[category.key];
+            const enabledRows = (bucket?.enabled ?? []).filter((r) => KEY_METRIC_KEYS.has(r.metric.key));
+            const seededRows = enabledRows.filter((r) => r.status === "live" || r.status === "proxy");
+            return (
+              <div key={category.key} className="rounded-lg border border-[#eef2f7] bg-white">
+                <div className="flex items-center justify-between gap-2 border-b border-[#eef2f7] bg-[#f8fafe] px-3 py-1.5">
+                  <h5 className="text-[12px] font-bold text-[#07142f]">{category.label}</h5>
+                  <span className="text-[10px] font-semibold text-[#8794ab]">
+                    {seededRows.length} of {enabledRows.length} seeded
+                  </span>
                 </div>
-                <p className="mt-2 text-[10.5px] text-[#526078]">
-                  Last seeded: <span className="font-semibold text-[#07142f]">{formatDate(seedAtIso)}</span>. Pre-seeded values come from the canonical <code>us_cities_scored</code> row + <code>city_market_signals</code> for this scored-city UUID. "Not seeded yet" means the metric is enabled for scoring but no source has been wired for this city yet.
-                </p>
-                {customCount > 0 && (
-                  <p className="mt-1 text-[10.5px] text-[#526078]">
-                    {customCount} custom metric{customCount === 1 ? "" : "s"} are tracked separately from the {totalRegistry}-metric registry. Custom metrics with weight 0 are shown for audit transparency but do not contribute to the score.
-                  </p>
-                )}
-                <div className="mt-3 border-t border-[#eef2f7] pt-2 text-[11px]">
-                  <p className="mb-1 font-semibold text-[#07142f]">Warnings</p>
-                  {Object.entries(warnings).length === 0 ? (
-                    <p className="text-[#0ea66e]">No warnings recorded.</p>
+                <div>
+                  {enabledRows.length === 0 ? (
+                    <p className="px-3 py-2 text-[11px] text-[#8794ab]">No metrics in this category.</p>
                   ) : (
-                    <div className="space-y-1">
-                      {Object.entries(warnings).map(([key, value]) => (
-                        <p key={key} className={value ? "text-[#b8860b]" : "text-[#0ea66e]"}>
-                          {key}: {value ? String(value) : "clean"}
-                        </p>
-                      ))}
-                    </div>
+                    enabledRows.map(({ metric, signal, status }) =>
+                      renderRegistryRow(metric, signal, status),
+                    )
                   )}
                 </div>
               </div>
-              {hasWarnings && (
-                <p className="mt-1 text-[10.5px] text-[#b8860b]">Some sources returned warnings — see Data Sources tab to inspect.</p>
-              )}
-            </section>
+            );
+          })}
+        </div>
 
-            <section>
-              <div className="mb-2 flex items-center justify-between">
-                <h4 className="text-[12.5px] font-bold text-[#07142f]">Competitors & Enrichment Programs</h4>
-                <span className="text-[11px] text-[#8794ab]">{competitors.length} rows</span>
-              </div>
-              <div className="space-y-1.5">
-                {competitors.length === 0 && !loading ? (
-                  <div className="rounded-md border border-[#eef2f7] p-3 text-[11.5px] text-[#526078]">
-                    No live competitor rows found yet.
-                  </div>
-                ) : (
-                  competitors.slice(0, 25).map((comp, index) => (
-                    <div key={comp.id ?? `${comp.name}-${index}`} className="flex items-center justify-between gap-3 rounded-md border border-[#eef2f7] bg-[#f8fafe] px-2.5 py-1.5">
-                      <div className="min-w-0">
-                        <p className="truncate text-[12px] font-semibold text-[#07142f]">{comp.name ?? "Unnamed competitor"}</p>
-                        <p className="mt-0.5 truncate text-[10.5px] text-[#526078]">{comp.type ?? comp.category ?? "Education / enrichment"}</p>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-2">
-                        {comp.source && (
-                          <span className="rounded-full bg-[#eef4ff] px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#174be8]">
-                            {comp.source}
-                          </span>
-                        )}
-                        {comp.source_url ? (
-                          <a
-                            href={comp.source_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-[#174be8] hover:text-[#1240c9]"
-                            title="Open source"
-                          >
-                            <ExternalLink size={11} />
-                          </a>
-                        ) : null}
-                      </div>
-                    </div>
-                  ))
-                )}
-                {competitors.length > 25 && (
-                  <p className="text-[10.5px] text-[#8794ab]">+{competitors.length - 25} more not shown</p>
-                )}
-              </div>
-            </section>
-          </TabsContent>
-
-          <TabsContent value="data-sources" className="mt-3">
-            <div className="space-y-3">
-              {SOW_CATEGORIES.map((category) => {
-                const bucket = coverageByCategory[category.key];
-                const customs = customByMetricCategory[category.key] ?? [];
-                const enabledRows = bucket.enabled;
-                const disabledRows = bucket.disabled;
-                const enabledTotal = enabledRows.length;
-                
-                const liveProxy = enabledRows.filter((r) => r.status === "live" || r.status === "proxy").length;
-                return (
-                  <div key={category.key} className="rounded-lg border border-[#eef2f7] bg-white">
-                    <div className="flex items-center justify-between gap-2 border-b border-[#eef2f7] bg-[#f8fafe] px-3 py-1.5">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <h5 className="text-[12px] font-bold text-[#07142f]">{category.label}</h5>
-                        {(() => {
-                          const f = CATEGORY_FORMULAS[category.key];
-                          const scoreProp = CATEGORY_KEY_TO_SCORE_PROP[category.key];
-                          const scoreVal = categoryScores?.[scoreProp];
-                          return (
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <button
-                                  type="button"
-                                  className="inline-flex items-center gap-0.5 rounded-full border border-[#dbe4f2] bg-white px-1.5 py-0.5 text-[9.5px] font-semibold text-[#174be8] hover:bg-[#eef4ff]"
-                                  title="Show how this category score is computed"
-                                >
-                                  <Info size={9} /> Show formula
-                                </button>
-                              </PopoverTrigger>
-                              <PopoverContent side="bottom" align="start" className="w-[360px] p-3 text-[11px] text-[#14233b]">
-                                <p className="font-bold text-[#07142f] mb-1">{category.label} — Score Formula</p>
-                                {typeof scoreVal === "number" && (
-                                  <p className="mb-2 text-[10.5px] text-[#526078]">
-                                    Current score for {market.city}: <span className="font-bold text-[#07142f]">{scoreVal}</span> / 100
-                                  </p>
-                                )}
-                                <p className="font-mono text-[10.5px] bg-[#f8fafe] border border-[#eef2f7] rounded px-2 py-1.5 mb-2 break-words leading-snug">
-                                  {f.formula}
-                                </p>
-                                <p className="font-semibold text-[10.5px] text-[#07142f] mb-1">Inputs & sources</p>
-                                <ul className="list-disc pl-4 space-y-0.5 text-[10.5px] text-[#3a4c72] mb-2">
-                                  {f.inputs.map((i, idx) => <li key={idx}>{i}</li>)}
-                                </ul>
-                                <p className="text-[10px] text-[#8794ab]">{f.clamp}</p>
-                                <p className="mt-2 text-[10px] text-[#8794ab]">
-                                  Source: <code>supabase/functions/_shared/scoring.ts</code> · <code>calculateCurrentCategoryScores</code>. Composite weights this category at {(() => {
-                                    const w: Record<MetricCategory, string> = {
-                                      demand: "25%", pricing_power: "20%", competitive_landscape: "20%",
-                                      franchisee_supply: "15%", ease_of_operations: "10%", parent_mindset: "10%",
-                                    };
-                                    return w[category.key];
-                                  })()} (default).
-                                </p>
-                              </PopoverContent>
-                            </Popover>
-                          );
-                        })()}
-                      </div>
-                      <span className="text-[10px] font-semibold text-[#8794ab] text-right" title="Count of enabled scoring metrics that have a value, out of total enabled scoring metrics in this category">
-                        {liveProxy} of {enabledTotal} scoring metrics have a value
-                        {disabledRows.length > 0 ? ` · +${disabledRows.length} tracked-only` : ""}
-                        {customs.length > 0 ? ` · ${customs.length} custom` : ""}
-                      </span>
-                    </div>
-                    <div>
-                      {enabledRows.map(({ metric, signal, status }) =>
-                        renderRegistryRow(metric, signal, status),
-                      )}
-                      {customs.map((c) => (
-                        <div
-                          key={`custom-${c.id}`}
-                          className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-[#f1f4f9] px-2 py-1.5 last:border-0 hover:bg-[#fbfcff]"
-                        >
-                          <div className="min-w-0">
-                            <p className="text-[12px] font-medium text-[#07142f] line-clamp-2" title={c.name}>
-                              {c.name}
-                            </p>
-                            <div className="mt-1 flex flex-wrap items-center gap-1">
-                              <span className="rounded-full border border-[#f4df9a] bg-[#fff6dc] px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#b8860b]">
-                                Custom
-                              </span>
-                              {Number(c.weight) === 0 && (
-                                <span
-                                  className="rounded-full border border-[#e5eaf2] bg-[#f3f6fb] px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#526078]"
-                                  title="This custom metric has weight 0, so it does not currently contribute to the composite score."
-                                >
-                                  Weight 0 — not contributing
-                                </span>
-                              )}
-                              {c.data_source && (
-                                <span className="rounded-full border border-[#e5eaf2] bg-white px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#526078]">
-                                  {c.data_source}
-                                </span>
-                              )}
-                            </div>
-                            {c.notes && (
-                              <p className="mt-0.5 text-[10.5px] text-[#8794ab] line-clamp-2">{c.notes}</p>
-                            )}
-                          </div>
-                          <div className="flex shrink-0 items-center gap-2 text-right">
-                            <div>
-                              <p className="text-[12px] font-bold text-[#07142f]">Neutral 50</p>
-                              <p className="text-[10px] text-[#8794ab]">no live data</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                      {disabledRows.length > 0 && (
-                        <>
-                          <div className="flex items-center justify-between border-t border-[#eef2f7] bg-[#fbfcff] px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#8794ab]" title="These metrics are tracked for audit transparency, but the current scoring registry marks them enabled: false so they do not enter the composite formula.">
-                            <span>Tracked, not used in score</span>
-                            <span>{disabledRows.length}</span>
-                          </div>
-                          {disabledRows.map(({ metric, signal, status }) =>
-                            renderRegistryRow(metric, signal, status, true),
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-
-              {diagnosticRows.length > 0 && (
-                <div className="rounded-lg border border-dashed border-[#eef2f7] bg-[#fbfcff]">
-                  <button
-                    type="button"
-                    onClick={() => setShowDiagnostics((v) => !v)}
-                    className="flex w-full items-center justify-between px-3 py-2 text-[11px] font-semibold text-[#526078] hover:text-[#07142f]"
-                  >
-                    <span className="flex items-center gap-1.5">
-                      {showDiagnostics ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                      Fetcher diagnostics
-                    </span>
-                    <span className="text-[10px] text-[#8794ab]">{diagnosticRows.length} rows · not metrics</span>
-                  </button>
-                  {showDiagnostics && (
-                    <div className="border-t border-[#eef2f7] bg-white">
-                      {diagnosticRows.map((signal, index) =>
-                        renderSignalRow(signal, signal.id ?? signal.signal_key ?? `diag-${index}`),
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </TabsContent>
-        </Tabs>
 
         </div>
 

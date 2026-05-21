@@ -132,18 +132,26 @@ interface Category {
 
 const CATEGORIES: Category[] = [
   { key: "demand", label: "Demand", icon: Users, color: "#174be8", bg: "#eaf0ff",
-    description: "Measures size of target families and program demand.", defaultWeight: 25 },
-  { key: "pricingPower", label: "Pricing Power", icon: DollarSign, color: "#0ea66e", bg: "#e6f7ef",
-    description: "Measures ability to sustain premium pricing.", defaultWeight: 20 },
-  { key: "competitiveLandscape", label: "Competitive Landscape", icon: Trophy, color: "#b8860b", bg: "#fff6dc",
-    description: "Measures level of competition and market saturation.", defaultWeight: 20 },
-  { key: "franchiseeSupply", label: "Franchisee Supply", icon: UserCheck, color: "#7c3aed", bg: "#f1ebff",
-    description: "Measures availability and quality of teacher-operators.", defaultWeight: 15 },
-  { key: "easeOfOperations", label: "Ease of Operations", icon: Cog, color: "#ea580c", bg: "#ffeede",
-    description: "Measures operational complexity and real estate access.", defaultWeight: 10 },
-  { key: "parentMindset", label: "Parent Mindset Indicators", icon: Heart, color: "#e11d48", bg: "#ffe4ea",
-    description: "Measures education priorities and willingness to invest.", defaultWeight: 10 },
+    description: "Measures size of target families and program demand.", defaultWeight: 40 },
+  { key: "franchiseeSupply", label: "TAM Teachers", icon: UserCheck, color: "#7c3aed", bg: "#f1ebff",
+    description: "Total addressable pool of teachers available to recruit as franchise operators.", defaultWeight: 30 },
+  { key: "competitiveLandscape", label: "Competitive Saturation Index (CSI)", icon: Trophy, color: "#b8860b", bg: "#fff6dc",
+    description: "How saturated the local kids-enrichment market is, weighted by national brand presence.", defaultWeight: 30 },
+  // Retired May 21, 2026 — hidden via VISIBLE_CATEGORIES but kept in type
+  // for store/persist stability. Will be fully removed in follow-up refactor.
+  { key: "pricingPower", label: "Pricing Power (retired)", icon: DollarSign, color: "#0ea66e", bg: "#e6f7ef",
+    description: "Retired category.", defaultWeight: 0 },
+  { key: "easeOfOperations", label: "Ease of Operations (retired)", icon: Cog, color: "#ea580c", bg: "#ffeede",
+    description: "Retired category.", defaultWeight: 0 },
+  { key: "parentMindset", label: "Parent Mindset (retired)", icon: Heart, color: "#e11d48", bg: "#ffe4ea",
+    description: "Retired category.", defaultWeight: 0 },
 ];
+
+// Only these 3 categories are rendered in the UI (sliders, score cards,
+// compare grid, AI panel, custom-criteria dropdown). The 3 retired ones
+// remain in CATEGORIES so the store/type stays stable. Per Sam+Brett May 21.
+const VISIBLE_CATEGORY_KEYS: ReadonlyArray<CategoryKey> = ["demand", "franchiseeSupply", "competitiveLandscape"];
+const VISIBLE_CATEGORIES = CATEGORIES.filter((c) => VISIBLE_CATEGORY_KEYS.includes(c.key));
 
 // Map mock data scoreBreakdown into our 6 category scores deterministically
 function categoryScores(c: CityData): Record<CategoryKey, number> {
@@ -1755,7 +1763,7 @@ const CityScoring = () => {
           </div>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {CATEGORIES.map((cat) => {
+          {VISIBLE_CATEGORIES.map((cat) => {
             const Icon = cat.icon;
             const customCount =
               customCriteria.filter((c) => c.category === cat.label).length +
@@ -2299,7 +2307,7 @@ const CityScoring = () => {
               {selectedHasLiveData && (() => {
                 // Rank by CONTRIBUTION = score × applied master weight, so
                 // categories the user weighted to 0% never count as drivers.
-                const enriched = CATEGORIES.map((c) => {
+                const enriched = VISIBLE_CATEGORIES.map((c) => {
                   const score = Math.round(detailCategoryScores[c.key] ?? 0);
                   const weight = appliedWeights[c.key] ?? 0;
                   return { label: c.label, score, weight, contribution: score * weight };
@@ -2343,7 +2351,7 @@ const CityScoring = () => {
                     </div>
                     {(() => {
                       const total = appliedTotal > 0 ? appliedTotal : 1;
-                      const rows = CATEGORIES.map((c) => {
+                      const rows = VISIBLE_CATEGORIES.map((c) => {
                         const weightPct = (appliedWeights[c.key] / total) * 100;
                         const score = detailCategoryScores[c.key] ?? 0;
                         const contribution = (weightPct * score) / 100;
@@ -2443,7 +2451,7 @@ const CityScoring = () => {
             <div>
               <p className="mb-2.5 text-[13px] font-semibold text-[#07142f]">Category Scores</p>
               <div className="space-y-2">
-                {CATEGORIES.map((cat) => {
+                {VISIBLE_CATEGORIES.map((cat) => {
                   const v = selectedHasLiveData ? (detailCategoryScores[cat.key] ?? 0) : null;
                   return (
                     <div key={cat.key}>

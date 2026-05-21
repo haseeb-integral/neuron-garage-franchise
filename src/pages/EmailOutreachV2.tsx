@@ -185,7 +185,17 @@ export default function EmailOutreachV2() {
       </div>
     </div>
 
-    {/* Stat strip — compact */}
+    {/* v1.2 — Scope toggle + SmartLead-parity stat strip */}
+    <ScopeSwitcher scope={scope} onChange={handleScopeChange} masterCount={masterTotal} smartleadCount={smartleadTotal} />
+    <StatStripCards scope={scope} />
+    {scope === "master_db" && (
+      <PushToSmartLeadBanner
+        verifiedCount={verifiedInMaster}
+        onPush={() => toast.info("Push-to-SmartLead modal lands in Sprint 2.")}
+      />
+    )}
+
+    {/* Stat strip — compact (legacy, will consolidate in Sprint 3) */}
     <div className="mb-3 grid gap-1.5 md:grid-cols-3 xl:grid-cols-6">
       {stats.map(({ Icon, label, value, sub, tone, loading, error }) => (
         <Card key={label} className="px-2.5 py-1.5">

@@ -529,6 +529,16 @@ function FormulaPanel({
           The numbers below preview what scores would become if you click <em>Save &amp; Recalculate</em>.
         </div>
       )}
+
+      {/* Two-line formula panel (added 2026-05-21) — simple at-a-glance math.
+          Detailed Step 1/2/3 recipe and Live Values table still rendered below. */}
+      <TwoLineFormulaPanel
+        categoryLabel={categoryLabel}
+        cityLabel={selectedCityLabel}
+        previewRecompute={previewRecompute}
+        overallFormula={overallFormula}
+      />
+
       <section>
         <h4 className="text-[11px] font-bold uppercase tracking-wide text-[#526078] mb-2">
           How {selectedCityLabel ? `${selectedCityLabel} got its` : "this"} {categoryLabel} score
@@ -544,6 +554,7 @@ function FormulaPanel({
           masterWeightPct={masterWeightPct}
           serverCategoryScore={serverCategoryScore}
         />
+
       </section>
 
 

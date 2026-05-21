@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { SmartLeadConnectionPanel } from "@/components/email-outreach/SmartLeadConnectionPanel";
 import { SmartLeadCampaignsPanel } from "@/components/email-outreach/SmartLeadCampaignsPanel";
 import { ImportLeadsWizard } from "@/components/email-outreach/ImportLeadsWizard";
+import { MasterPoolImportWizard } from "@/components/email-outreach/MasterPoolImportWizard";
 import { ProspectBatchesPanel } from "@/components/email-outreach/ProspectBatchesPanel";
 import { AnalyticsPanel } from "@/components/email-outreach/AnalyticsPanel";
 import { NewCampaignDrawer } from "@/components/email-outreach/NewCampaignDrawer";

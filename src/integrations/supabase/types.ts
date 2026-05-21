@@ -338,6 +338,30 @@ export type Database = {
         }
         Relationships: []
       }
+      city_data_gaps: {
+        Row: {
+          checked_at: string
+          city_id: string
+          field_name: string
+          id: string
+          reason: string
+        }
+        Insert: {
+          checked_at?: string
+          city_id: string
+          field_name: string
+          id?: string
+          reason: string
+        }
+        Update: {
+          checked_at?: string
+          city_id?: string
+          field_name?: string
+          id?: string
+          reason?: string
+        }
+        Relationships: []
+      }
       city_seed_runs: {
         Row: {
           cities_failed: number

@@ -1315,11 +1315,15 @@ const CityScoring = () => {
     demand: "demand",
     competitive_landscape: "competitiveLandscape",
     franchisee_supply: "franchiseeSupply",
-    // Legacy keys (back-compat)
+    // Post-2026-05-21 reshape, the live loader writes `tam_teachers` —
+    // map it onto the same UI category as franchisee_supply.
+    tam_teachers: "franchiseeSupply",
+    // Legacy keys (back-compat with older cached payloads)
     summer_camp_demand: "demand",
     competition_score: "competitiveLandscape",
     stem_jobs: "franchiseeSupply",
   };
+
   const liveUiCategoryScores: Partial<Record<CategoryKey, number>> = {};
   Object.entries(selectedLiveCategoryScores).forEach(([k, v]) => {
     const uiKey = DB_CAT_TO_UI[k];
@@ -1380,22 +1384,37 @@ const CityScoring = () => {
 
   const detailCategoryScores = (() => {
     const out = { ...baseDetailCategoryScores } as Record<CategoryKey, number>;
+    // Strip any non-finite leftovers from the base shape so they can't poison
+    // the composite math via `(NaN ?? 0) === NaN`.
     (Object.keys(out) as CategoryKey[]).forEach((k) => {
+      if (!Number.isFinite(out[k])) delete (out as any)[k];
+    });
+    (Object.keys(baseDetailCategoryScores) as CategoryKey[]).forEach((k) => {
       const r = recomputedByCategory[k];
-      if (r?.score != null) out[k] = Math.round(r.score);
+      if (r?.score != null && Number.isFinite(r.score)) out[k] = Math.round(r.score);
     });
     return out;
   })();
 
   // Frontend-only weighted composite using applied weights and recomputed scores.
+  // Only counts categories with a finite score so a missing/broken category
+  // doesn't bias the average toward 0.
   const appliedTotal = Object.values(appliedWeights).reduce((s, v) => s + v, 0);
-  const weightedComposite = appliedTotal > 0
-    ? Math.round(
-        CATEGORIES.reduce((s, c) => s + (detailCategoryScores[c.key] ?? 0) * appliedWeights[c.key], 0) / appliedTotal
-      )
-    : detailScore;
+  const liveCompositeNumer = CATEGORIES.reduce((s, c) => {
+    const v = detailCategoryScores[c.key];
+    return Number.isFinite(v) ? s + v * (appliedWeights[c.key] ?? 0) : s;
+  }, 0);
+  const liveCompositeDenom = CATEGORIES.reduce((s, c) => {
+    const v = detailCategoryScores[c.key];
+    return Number.isFinite(v) ? s + (appliedWeights[c.key] ?? 0) : s;
+  }, 0);
+  const weightedComposite = liveCompositeDenom > 0
+    ? Math.round(liveCompositeNumer / liveCompositeDenom)
+    : (Number.isFinite(detailScore as number) ? Math.round(detailScore as number) : 0);
+  void appliedTotal;
   const displayTier: "A" | "B" | "C" | "D" =
     weightedComposite >= 85 ? "A" : weightedComposite >= 75 ? "B" : weightedComposite >= 65 ? "C" : "D";
+
   const TIER_BADGE: Record<string, { bg: string; fg: string; label: string }> = {
     A: { bg: "#e6f7ef", fg: "#0ea66e", label: "A (Tier 1)" },
     B: { bg: "#eaf0ff", fg: "#174be8", label: "B (Tier 2)" },

@@ -115,8 +115,15 @@ export function recomputeCategoryScore(
     c.contribution = c.normalized * c.subShare;
     sum += c.contribution;
   }
+  if (!Number.isFinite(sum)) {
+    // A non-finite contribution (NaN custom weight, broken normalizer, etc.)
+    // should fall back to the server score, NOT poison the UI with NaN.
+    const fallback = typeof serverFallback === "number" ? serverFallback : null;
+    return { score: fallback, usedServerFallback: fallback != null, contributions, enabledSum, usableSum };
+  }
   const score = Math.max(0, Math.min(100, sum));
   return { score, usedServerFallback: false, contributions, enabledSum, usableSum };
+
 }
 
 export type CompositeRecomputeResult = {

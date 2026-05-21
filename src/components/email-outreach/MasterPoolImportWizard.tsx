@@ -139,24 +139,36 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
           dedupeKeys.push(`name:${fn}|${ln}||${stateV.toLowerCase()}|${cityV.toLowerCase()}`);
         }
       }
-      let existingInMaster = 0;
       const unique = Array.from(new Set(dedupeKeys));
       const CHUNK = 500;
-      const totalChunks = Math.max(1, Math.ceil(unique.length / CHUNK));
-      for (let i = 0; i < unique.length; i += CHUNK) {
-        const chunk = unique.slice(i, i + CHUNK);
-        const { data, error } = await supabase
-          .from("teacher_prospects")
-          .select("dedupe_key")
-          .in("dedupe_key", chunk);
-        if (error) throw new Error(`Dedupe check failed: ${error.message}`);
-        existingInMaster += (data ?? []).length;
-        const done = Math.floor(i / CHUNK) + 1;
-        toast.loading(`Checking duplicates… ${done}/${totalChunks} batches`, { id: tId });
+      const CONCURRENCY = 8;
+      const chunks = Array.from({ length: Math.ceil(unique.length / CHUNK) }, (_, index) =>
+        unique.slice(index * CHUNK, (index + 1) * CHUNK),
+      ).filter((chunk) => chunk.length > 0);
+
+      let existingInMaster = 0;
+      let completed = 0;
+
+      for (let i = 0; i < chunks.length; i += CONCURRENCY) {
+        const wave = chunks.slice(i, i + CONCURRENCY);
+        const results = await Promise.all(
+          wave.map(async (chunk) => {
+            const { data, error } = await supabase
+              .from("teacher_prospects")
+              .select("dedupe_key")
+              .in("dedupe_key", chunk);
+            if (error) throw new Error(`Dedupe check failed: ${error.message}`);
+            return (data ?? []).length;
+          }),
+        );
+
+        existingInMaster += results.reduce((sum, count) => sum + count, 0);
+        completed += wave.length;
+        toast.loading(`Checking duplicates… ${completed}/${chunks.length} batches`, { id: tId });
       }
+
       setQa({ total: csvRows.length, withEmail, validEmail, inBatchDupes, existingInMaster, missingRequired });
-      toast.success(`QA complete — ${csvRows.length.toLocaleString()} rows analyzed. Advancing to import…`, { id: tId });
-      setStep(4);
+      toast.success(`QA complete — ${csvRows.length.toLocaleString()} rows analyzed.`, { id: tId });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       console.error("QA preview failed", e);

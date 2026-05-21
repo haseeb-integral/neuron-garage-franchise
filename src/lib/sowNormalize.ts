@@ -19,14 +19,14 @@ export type NormalizationRange = {
 // Single source of truth for client-side normalization. Mirrors the backend
 // `normalizeSowMetric` switch in supabase/functions/_shared/scoring.ts.
 export const NORMALIZATION_RANGES: Record<string, NormalizationRange> = {
-  // Demand
-  children_5_12_count:                 { lo: 0, hi: 50000, invert: false },
-  children_5_12_pct:                   { lo: 5, hi: 18, invert: false },
-  households_with_children_under_13:   { lo: 0, hi: 40000, invert: false },
-  median_household_income:             { lo: 60000, hi: 180000, invert: false },
-  income_100k_plus_pct:                { lo: 20, hi: 70, invert: false },
-  income_150k_plus_pct:                { lo: 10, hi: 50, invert: false },
-  education_bachelors_plus_pct:        { lo: 25, hi: 70, invert: false },
+  // Demand (4-metric lock 2026-05-21 — Brett+Haseeb).
+  // Ranges set to real p5/p95 across 935 scored cities so big metros and
+  // small towns actually spread out instead of saturating. Keep in sync with
+  // backend supabase/functions/_shared/scoring.ts normalizeSowMetric().
+  children_5_12_count:                 { lo: 3000,  hi: 110000, invert: false },
+  median_household_income:             { lo: 45000, hi: 150000, invert: false },
+  dual_income_household_pct:           { lo: 85,    hi: 98,     invert: false },
+  education_bachelors_plus_pct:        { lo: 15,    hi: 70,     invert: false },
   // Pricing power
   childcare_nanny_hourly_rate_proxy:   { lo: 25000, hi: 60000, invert: false },
   household_discretionary_income_proxy:{ lo: 20000, hi: 150000, invert: false },

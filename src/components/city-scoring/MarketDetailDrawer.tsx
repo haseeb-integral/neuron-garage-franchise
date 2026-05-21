@@ -520,6 +520,15 @@ export function MarketDetailDrawer({
   }, [coverageByCategory]);
 
   const totalRegistry = SOW_METRIC_REGISTRY.length;
+  const keyMetricSeededCount = useMemo(() => {
+    let n = 0;
+    Object.values(coverageByCategory).forEach(({ enabled }) => {
+      enabled.forEach(({ metric, status }) => {
+        if (KEY_METRIC_KEYS.has(metric.key) && (status === "live" || status === "proxy")) n++;
+      });
+    });
+    return n;
+  }, [coverageByCategory]);
   const seedAtIso: string | null = ((market as any).scored?.scored_at ?? null) as string | null;
 
   const [showDiagnostics, setShowDiagnostics] = useState(false);

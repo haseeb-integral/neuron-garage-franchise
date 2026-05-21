@@ -176,7 +176,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
       let inserted = 0;
       for (let i = 0; i < targetRows.length; i += 500) {
         const chunk = targetRows.slice(i, i + 500);
-        const { error } = await supabase.from("teacher_prospects").insert(chunk);
+        const { error } = await supabase.from("teacher_prospects").insert(chunk as never);
         if (error) throw new Error(`chunk ${i}: ${error.message}`);
         inserted += chunk.length;
       }

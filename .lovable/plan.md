@@ -1,182 +1,180 @@
 
-# Teacher Search — 5-part UI upgrade
+# v1.2 — Master Pool + SmartLead, with SmartLead-parity stat dashboards
 
-Goal: turn the current "filter bar + table" page into an operational cockpit: bridge from City Search, show funnel progress, suggest next moves, deepen bulk actions, and add an AI co-pilot. The existing `TeacherTable` and filter bar stay where they are — everything is added **above and to the right** of them.
+Everything from the previous plan (two-pool architecture, AI-assisted CSV importer, enrichment job, SmartLead dashboard) stays. v1.2 adds a **scoped stats dashboard** that mirrors SmartLead's Prospects screen but works for both pools, plus a clearly visible bridge between them.
 
-## New layout
+---
+
+## The new mental model: "Scope toggle"
+
+At the top of the Email Outreach page, a **prominent scope switcher** (NOT a small filter — a primary control, like a big tab) lets you see one of two views:
 
 ```text
-┌─────────────────────────────── Page Header ───────────────────────────────┐
-│  [1] City Search Rail  (horizontal scroll tiles)                          │
-│  ┌──────────────────────────┐  ┌──────────────────────────┐               │
-│  │ [2] Funnel Widget        │  │ [3] Next Best Action     │   ┌────────┐  │
-│  │ Found→Enriched→Scored→…  │  │  3 suggestion cards      │   │        │  │
-│  └──────────────────────────┘  └──────────────────────────┘   │ [5]    │  │
-│                                                                │  AI    │  │
-│  Market Context Banner (existing, kept)                        │ Assist │  │
-│  Filter Bar (existing, kept)                                   │ panel  │  │
-│  [4] Sticky Bulk Dock (when selection > 0)                     │        │  │
-│  TeacherTable (existing, kept)                                 └────────┘  │
-└───────────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────┐
+│  Viewing:  [ ● Master Teacher DB ]   [ ○ SmartLead ]       │
+│            500k+ teachers across U.S.    8,432 active leads│
+└────────────────────────────────────────────────────────────┘
 ```
 
-The AI panel is a collapsible right rail — full width on mobile, 360px drawer on desktop, toggled by a floating "Ask AI" button so the page still works at 440px.
+The chosen scope is:
+- **Color-coded** — Master DB uses neutral slate; SmartLead uses brand blue. Every stat card, table row, and badge on the page inherits that color so you can never confuse which pool you're looking at.
+- **Labeled in plain English** at the top: *"You are viewing the Master Teacher Database. These teachers have NOT been emailed. To email them, push them to SmartLead."* (or the inverse for SmartLead).
+- **Persistent across tabs** — Overview, Contacts, Campaigns, Inbox all respect the scope.
 
 ---
 
-## Part 1 — City Search rail
+## The stat strip (works for BOTH scopes, parity with the SmartLead screenshot)
 
-**Component:** `src/components/teacher-prospects/CitySearchRail.tsx`
+Six stat cards in a 3×2 grid, identical layout for both scopes. The labels stay the same; the *numbers* change based on scope.
 
-Horizontal scrollable strip above the funnel. Each tile = one city:
-- City, ST · Tier badge · composite score
-- Teachers in DB count · enriched % · in-outreach count
-- Click → sets `cityFilters = [city]` and scrolls to table
-- "+" tile at the end → opens existing multi-select popover
+| Card | Master DB scope | SmartLead scope |
+|---|---|---|
+| **Total Contacts** | Count of `teacher_prospects` (optionally filtered by city/state) | Count of leads pushed to SmartLead (sum across campaigns) |
+| **Total Emails** | Rows where `email` is not null. "X% of total contacts" | Rows in SmartLead with a deliverable email |
+| **Verified Emails** | `verification_status = 'valid'` | SmartLead-verified |
+| **Catch-All Emails** | `verification_status = 'catch_all'` | Same |
+| **Invalid Emails** | `verification_status = 'invalid'` | Same |
+| **No Email Found** | `needs_email_enrichment = true` OR email IS NULL | "Not pushable" — present in master but missing from SmartLead |
 
-**Source of cities (priority order):**
-1. Cities currently in `cityFilters` (always visible)
-2. User's `watchlist_items` (join `us_cities_scored`)
-3. Top 5 Tier-A cities by `composite_score_default` that already have rows in `teacher_prospects`
+Each card has the percentage subtitle (e.g. "66% of total contacts") matching the SmartLead screenshot exactly.
 
-**Data:** one new RPC `teacher_search_city_rail()` returning `{city, state, tier, composite, total, enriched, in_outreach}` per city. Aggregates `teacher_prospects` grouped by `(city, state)` + joins `us_cities_scored`.
+Every card surfaces a **"Show formula"** popover (per AGENTS.md Rule 1) showing the SQL/source.
 
 ---
 
-## Part 2 — Funnel widget
+## The bridge: "Push to SmartLead" workflow
 
-**Component:** `src/components/teacher-prospects/FunnelWidget.tsx`
+This is the explicit answer to *"we can't email until we move them into SmartLead"*. Three entry points, one backend (`smartlead-push-leads` edge function):
 
-5 stacked horizontal bars respecting the SOW ("find → enrich → score → outreach → reply"):
+### 1. From Master DB stat strip
+A persistent banner sits below the stat cards when scope = Master DB:
 
 ```text
-Found      ████████████████████  3,400
-Enriched   ██████████             812  (24%)
-Scored     ██████                 412  (51%)
-In Outreach ███                    89  (22%)
-Replied    █                       12  (13%)
+┌────────────────────────────────────────────────────────────┐
+│  📤  3,995 verified emails in Master DB are NOT yet in     │
+│      SmartLead. → [ Push verified emails to SmartLead ]    │
+└────────────────────────────────────────────────────────────┘
 ```
 
-- Counts respect the **current filter set** (city/state/source/search) so the funnel narrates the filtered cohort, not global totals.
-- Click any bar → applies a saved scope:
-  - Found = no extra filter
-  - Enriched = `verification_status is not null`
-  - Scored = `fit_score is not null`
-  - In Outreach = exists in `outreach_queue`
-  - Replied = exists in `smartlead_events` where `event_type='reply'` for that email
-- "Show formula" popover per Rule #1 of AGENTS.md (show the SQL predicate in plain English).
+Click → modal: pick campaign + filter (city, state, fit score, source) + see "will push N rows" → confirm.
 
-**Data:** new RPC `teacher_funnel_counts(p_cities text[], p_states text[], p_search text)` returning the 5 counts.
+### 2. From Master DB contacts table
+Same multi-select / bulk action bar as Teacher Search: check rows → "Push to SmartLead". Same modal.
 
----
+### 3. From a city detail page (Teacher Search)
+Already in the v1.2 plan as part of the enrichment job — same backend.
 
-## Part 3 — Next Best Action strip
-
-**Component:** `src/components/teacher-prospects/NextBestActionStrip.tsx`
-
-3 small cards generated client-side from the funnel + filter state. Examples:
-- **"42 unenriched teachers in your Tier-A cities"** → button: "Enrich now" (calls existing `enrich-school-staff` in batch)
-- **"8 high-fit teachers not in any campaign"** → button: "Add to outreach" (opens `AddToCampaignModal` pre-selected)
-- **"3 schools have 4+ promising teachers"** → button: "View as school clusters" (sets group-by; placeholder if #5 group-by isn't built yet — degrade to filter)
-
-Rules are simple thresholds in `src/lib/teacherNextActions.ts` — no ML, no edge function. Each card has dismiss (×) that persists in localStorage for 24h.
+After push:
+- A `outreach_queue` row is written per teacher with `pushed_at`, `smartlead_lead_id`, `campaign_id`.
+- A new **`pushed_to_smartlead`** badge appears next to the teacher in Master DB views (subtle blue dot + tooltip "Pushed to [Campaign Name] on May 21").
+- The teacher now appears in the SmartLead scope's "Total Contacts" count.
 
 ---
 
-## Part 4 — Beefed-up Bulk Dock
+## The new Contacts tab (lives inside Email Outreach, scope-aware)
 
-**File:** edit `src/components/teacher-prospects/BulkActionBar.tsx`
+A new tab **"Contacts"** sits between Overview and Campaigns. It's the in-app mirror of SmartLead's Prospects screen.
 
-Add to existing dock (keep Export, Add Tag, Add to Outreach, Clear):
-- **Promote to Candidate ▾** — inserts rows into `candidates` (stage = `new_lead`, links `prospect_id`)
-- **Enrich missing emails (N)** — N = count of selected with `needs_email_enrichment=true`; button hidden if N=0; calls `enrich-school-staff` in batches of 5
-- **Status ▾** — set `status` to `shortlisted` / `in_outreach` / `not_fit`
-- Make sticky at **bottom** (currently top) so it doesn't fight with the new top widgets. Slide-up animation.
+When scope = **Master DB**: shows all `teacher_prospects` with filters (city, state, source, verification status, "in SmartLead? yes/no"). Big "Push selected to SmartLead" bulk action.
 
----
+When scope = **SmartLead**: shows only teachers pushed to SmartLead, with their per-campaign status (queued / sent / opened / replied / bounced / unsubscribed). Bulk actions: pause sending, remove from campaign, mark as interested.
 
-## Part 5 — AI assistant right rail
-
-**Component:** `src/components/teacher-prospects/TeacherAiPanel.tsx`
-**Edge function:** new `supabase/functions/teacher-search-ai/index.ts`
-
-- Collapsible right drawer, toggled by floating `Sparkles` button bottom-right (440px viewport: full-screen sheet).
-- Single-conversation, **localStorage** persistence (matches the chat-agent-ui contract — internal tool, no thread management needed). Per AGENTS.md "explain *why* not just *how*": this is a co-pilot, not a CRM.
-- Uses **AI Elements** (`conversation`, `message`, `prompt-input`, `shimmer`) — install with `bun x ai-elements@latest add conversation message prompt-input shimmer`.
-- Logo: reuse the existing app brand mark (not `Sparkles` as identity — only as toggle button icon).
-- System prompt grounds on: current `cityFilters`, current funnel counts, top 50 rows of current result set (name, school, city, fit_score, status). Sent as compact JSON in the system message.
-- Sample prompt chips above the composer:
-  - "Top 10 in current filter with verified email"
-  - "Which schools have 3+ promising teachers?"
-  - "Draft an outreach angle for {selected teacher}"
-  - "Why is this city's fit score low?"
-- Model: `google/gemini-2.5-flash` via Lovable AI Gateway (cheap, fast, good enough for list reasoning). No tool calling in v1 — pure Q&A over the grounded context.
-- Assistant messages: no background (per contract). User bubble: `bg-primary text-primary-foreground`.
+Both views use the same table component; columns swap based on scope.
 
 ---
 
-## Backend changes (one migration)
+## What this adds to the previous plan
 
-```sql
--- RPC 1: city rail aggregates
-create or replace function public.teacher_search_city_rail(p_user uuid)
-returns table(city text, state text, composite int, total int, enriched int, in_outreach int)
-language sql stable security definer set search_path = public as $$ ... $$;
+### Schema additions (small)
 
--- RPC 2: funnel counts under current filter
-create or replace function public.teacher_funnel_counts(
-  p_cities text[] default null, p_states text[] default null, p_search text default null
-) returns table(found int, enriched int, scored int, in_outreach int, replied int)
-language sql stable security definer set search_path = public as $$ ... $$;
+- `teacher_prospects.verification_status` already exists — but we'll **standardize the value set** to: `valid` | `catch_all` | `invalid` | `unknown` | `null`. Backfill existing data.
+- New view: `v_master_pool_stats(state, city)` — pre-aggregates the 6 stat-card numbers. Refreshed on demand.
+- New view: `v_smartlead_pool_stats(campaign_id?)` — same shape, sourced from `outreach_queue` + `smartlead_events`.
+- `outreach_queue` already exists — used as the "is this teacher in SmartLead?" lookup. Add unique index on `(teacher_prospect_id, campaign_id)`.
+
+### Edge function additions
+
+- `master-pool-stats` — returns the 6 numbers + percentages, with optional `{ state, city, source, fit_min }` filter. Cached 30s.
+- `smartlead-pool-stats` — same shape, sourced from SmartLead via existing proxy + local caches.
+- `smartlead-push-leads` (already in v1.2 plan) — gains a "verified-only" filter flag and writes the `pushed_to_smartlead` state.
+
+### UI additions
+
+- `<ScopeSwitcher>` — the big toggle, persists choice in `localStorage`.
+- `<StatStripCards>` — 6-card grid, scope-aware, color-themed, with Show Formula popovers.
+- `<PushToSmartLeadBanner>` — Master DB only, dismissible per session.
+- `<ContactsTab>` — new tab, replaces parts of the current Prospect Batches panel.
+- `<PushToSmartLeadModal>` — filter + preview + confirm.
+- `<PushedBadge>` — small badge component used on the contacts table.
+
+---
+
+## Build order (updated, replaces v1.2 sprint plan)
+
+**Sprint 1 — Master Pool foundation + Scope-aware stats**
+- A1/A2/A3 schema migrations (master pool fields, rename `prospect_batches` → `teacher_import_batches`, new `enrichment_jobs` table)
+- Standardize `verification_status` values + backfill
+- `v_master_pool_stats` view + `master-pool-stats` edge function
+- `<ScopeSwitcher>` + `<StatStripCards>` on Email Outreach page (Master DB scope working first)
+- New `MasterPoolImportWizard` (steps 1–4, master-only path)
+- `csv-suggest-mapping` edge function
+
+**Sprint 2 — The bridge (push to SmartLead) + SmartLead-scope stats**
+- `smartlead-push-leads` edge function with verified-only flag
+- `<PushToSmartLeadBanner>` + `<PushToSmartLeadModal>`
+- `v_smartlead_pool_stats` view + `smartlead-pool-stats` edge function
+- SmartLead scope now functional in `<ScopeSwitcher>` and `<StatStripCards>`
+- `<PushedBadge>` everywhere a teacher is listed
+- `enrich-teachers` edge function (SmartLead provider) + both UI entry points
+
+**Sprint 3 — Contacts tab + SmartLead dashboard polish**
+- `<ContactsTab>` (scope-aware, replaces Prospect Batches Panel UI)
+- Campaign sync cron, Overview tab, Campaigns tab (from previous v1.2 plan)
+
+**Sprint 4 — Inbox + Mailboxes + Analytics + Reply promotion**
+
+(Sprint 5 deferred: Apollo + Hunter as alternate enrichment providers.)
+
+---
+
+## Risks / things to flag
+
+1. **`verification_status` value standardization** is a backfill, not just a code change. ~250k rows today, mostly null. We'll write a one-time migration that maps existing free-text values to the new enum-like set. New rows from CSV imports / enrichment will use the standardized values from day one.
+2. **"Total Contacts" in Master DB scope can mean different things** depending on whether a city filter is active. The stat strip must clearly show the active filter ("Showing: All cities" vs "Showing: Austin, TX") so the number is never ambiguous.
+3. **The scope switcher is a paradigm shift** for anyone used to the current Email Outreach page. We'll add a one-time onboarding tooltip the first time it's seen.
+4. **Push-to-SmartLead is idempotent but irreversible from our side.** Once a teacher is in SmartLead, removing them from a campaign requires a SmartLead API call (we'll wire this in Sprint 4, not Sprint 2). Until then, the modal will warn: "This will add N teachers to [Campaign]. To remove them later, you'll need to do it in SmartLead directly."
+5. **Doc sync (AGENTS.md Rule 9)**: PROJECT_CONTEXT, HOW_IT_WORKS, APIS, OPEN_TASKS, GLOSSARY all need updates — drafts only after Sprint 1, awaiting Haseeb's explicit "go".
+
+---
+
+## Quick sketch — Email Outreach page top-of-page in v1.2
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│ EMAIL OUTREACH                                                  │
+│                                                                 │
+│ Viewing:  [ ● Master Teacher DB ]   [ ○ SmartLead ]             │
+│ You are viewing the Master Teacher Database. These teachers     │
+│ have NOT been emailed. To email them, push them to SmartLead.   │
+│                                                                 │
+│ Filter: [ All cities ▾ ]  [ All sources ▾ ]  [ Fit ≥ — ▾ ]      │
+│                                                                 │
+│ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐              │
+│ │ Total        │ │ Total Emails │ │ Verified     │              │
+│ │ Contacts     │ │ 6,584        │ │ Emails       │              │
+│ │ 10,000       │ │ 66%          │ │ 3,995  40%   │              │
+│ └──────────────┘ └──────────────┘ └──────────────┘              │
+│ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐              │
+│ │ Catch-All    │ │ Invalid      │ │ No Email     │              │
+│ │ 1,795 18%    │ │ 794 8%       │ │ Found        │              │
+│ │              │ │              │ │ 3,416 34%    │              │
+│ └──────────────┘ └──────────────┘ └──────────────┘              │
+│                                                                 │
+│ ┌─────────────────────────────────────────────────────────────┐ │
+│ │ 📤 3,995 verified emails in Master DB are NOT yet in        │ │
+│ │    SmartLead.  [ Push verified emails to SmartLead → ]      │ │
+│ └─────────────────────────────────────────────────────────────┘ │
+│                                                                 │
+│ [Overview]  [Contacts]  [Campaigns]  [Inbox]  [Mailboxes]  …   │
+└─────────────────────────────────────────────────────────────────┘
 ```
-
-No new tables. No RLS changes. Edge function `teacher-search-ai` uses existing `LOVABLE_API_KEY`.
-
----
-
-## File list
-
-**New**
-- `src/components/teacher-prospects/CitySearchRail.tsx`
-- `src/components/teacher-prospects/FunnelWidget.tsx`
-- `src/components/teacher-prospects/NextBestActionStrip.tsx`
-- `src/components/teacher-prospects/TeacherAiPanel.tsx`
-- `src/lib/teacherNextActions.ts`
-- `src/hooks/useTeacherFunnel.ts`
-- `src/hooks/useTeacherCityRail.ts`
-- `supabase/functions/teacher-search-ai/index.ts`
-- AI Elements installed under `src/components/ai-elements/`
-
-**Edited**
-- `src/pages/TeacherProspects.tsx` — wire new widgets above existing layout, add right-rail toggle
-- `src/components/teacher-prospects/BulkActionBar.tsx` — add Promote / Enrich / Status; move to bottom
-- 1 migration (2 RPCs)
-
-**Untouched**
-- `TeacherTable`, `TeacherFilterBar`, `MarketContextBanner`, `SavedListsMenu`, `TeacherDetailPanel`, store, types
-
----
-
-## Build order (one PR per step, each independently shippable)
-
-1. **Bulk Dock upgrade** (Part 4) — smallest, no backend, immediate value
-2. **Funnel widget** (Part 2) + RPC — establishes filter-aware aggregation pattern
-3. **City Search rail** (Part 1) + RPC — reuses funnel pattern
-4. **Next Best Action strip** (Part 3) — pure frontend on top of the above
-5. **AI assistant panel** (Part 5) — largest, ships last; everything below still works without it
-
----
-
-## Risks & guardrails
-
-- **Mobile (440px)**: rail scrolls horizontally; funnel + NBA stack vertically; AI panel becomes full-screen sheet. Verify at user's current viewport.
-- **Funnel "Replied"** requires joining `smartlead_events` on email — can be slow. Wrap RPC count in a materialized view if it lags > 500ms.
-- **AI grounding context size**: cap at 50 rows + funnel summary so prompt stays under ~8k tokens.
-- **NBA card thresholds** are hard-coded for v1. Document them in a code comment; do not invent ML.
-- **Doc-sync (AGENTS.md rule 9)**: after merge, draft updates to `PROJECT_CONTEXT.md` (new Teacher Search layout), `OPEN_TASKS.md` (close items), `APIS.md` (new edge function), `HOW_IT_WORKS.md` (funnel definitions). Wait for "go".
-
-## Out of scope (deferred to LATER.md)
-
-- Group-by toggle (#5), heatmap (#1), saved-market tabs (#6), card view (#8), signal sparklines (#7)
-- AI tool-calling (e.g., AI directly tagging teachers) — v2
-- Multi-thread AI history

@@ -44,16 +44,21 @@ export const useTeacherProspectsStore = create<TeacherProspectsState>()(
       setPageSize: (n) => set({ pageSize: n, page: 1 }),
     }),
     {
-      name: "ng:teacher-prospects-v4",
+      name: "ng:teacher-prospects-v5",
       storage: createJSONStorage(() => localStorage),
-      version: 4,
+      version: 5,
       migrate: (persisted: unknown, version) => {
         // v3 → v4: cityFilter:string → cityFilters:string[]
         if (version < 4 && persisted && typeof persisted === "object") {
           const p = persisted as Record<string, unknown>;
           const legacy = typeof p.cityFilter === "string" ? (p.cityFilter as string) : "";
           const cityFilters = legacy && legacy !== "All" ? [legacy] : [];
-          return { ...p, cityFilters } as unknown as TeacherProspectsState;
+          return { ...p, cityFilters: [] } as unknown as TeacherProspectsState;
+        }
+        // v4 → v5: stop persisting cityFilters — Teacher Search must not start scoped to a city.
+        if (version < 5 && persisted && typeof persisted === "object") {
+          const p = persisted as Record<string, unknown>;
+          return { ...p, cityFilters: [] } as unknown as TeacherProspectsState;
         }
         return persisted as TeacherProspectsState;
       },

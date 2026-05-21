@@ -26,6 +26,9 @@ import { ReplyTriagePanel } from "@/components/email-outreach/ReplyTriagePanel";
 import { AskAssistant } from "@/components/ask/AskAssistant";
 import { syncAndGetRealCampaigns } from "@/lib/smartleadCampaigns";
 import { getAnalyticsCachedOrFresh, type Aggregated } from "@/lib/smartleadAnalytics";
+import { ScopeSwitcher, readStoredScope, writeStoredScope, type PoolScope } from "@/components/email-outreach/ScopeSwitcher";
+import { StatStripCards } from "@/components/email-outreach/StatStripCards";
+import { PushToSmartLeadBanner } from "@/components/email-outreach/PushToSmartLeadBanner";
 
 type SLCampaign = { id: number | string; name?: string; status?: string; created_at?: string };
 

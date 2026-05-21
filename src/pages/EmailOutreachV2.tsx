@@ -22,6 +22,7 @@ import { AnalyticsPanel } from "@/components/email-outreach/AnalyticsPanel";
 import { NewCampaignDrawer } from "@/components/email-outreach/NewCampaignDrawer";
 import { EmailAccountsPanel } from "@/components/email-outreach/EmailAccountsPanel";
 import { OutreachQueuePanel } from "@/components/email-outreach/OutreachQueuePanel";
+import { EnrichmentJobsPanel } from "@/components/email-outreach/EnrichmentJobsPanel";
 
 import { ReplyTriagePanel } from "@/components/email-outreach/ReplyTriagePanel";
 import { AskAssistant } from "@/components/ask/AskAssistant";
@@ -271,6 +272,7 @@ export default function EmailOutreachV2() {
             {connectionOpen && <div className="border-t border-[#edf2f8] p-4"><SmartLeadConnectionPanel /></div>}
           </div>
           <EmailAccountsPanel />
+          <EnrichmentJobsPanel />
           <AnalyticsPanel />
         </Section>
       </>
@@ -278,20 +280,34 @@ export default function EmailOutreachV2() {
       <>
         {/* MASTER DB SECTION 1 — Pool overview & quick actions */}
         <Section step={1} title="Master Teacher DB" subtitle="Every teacher we know about. Push verified ones to SmartLead to start emailing." storageKey="master_overview" defaultOpen>
-          <Card className="p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="min-w-0">
-                <div className="text-sm font-black">Browse, filter, and act on the master pool</div>
-                <p className="mt-0.5 text-xs text-[#526078]">Full table with city/state/verification filters lives on the Teacher Prospects page. Use the banner above to push verified leads to a SmartLead campaign.</p>
+          {masterTotal === 0 ? (
+            <Card className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#eef2f7] text-[#526078]"><Upload size={20} /></div>
+              <h3 className="text-sm font-black">Your Master Pool is empty</h3>
+              <p className="max-w-md text-xs text-[#526078]">Drop in a teacher CSV from Manus, Apollo, or any source — Lovable AI will figure out the column mapping for you. No SmartLead cost until you push.</p>
+              <button onClick={() => setMasterImportOpen(true)} className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-[#174be8] px-3 py-2 text-xs font-bold text-white"><Upload size={12} /> Import your first CSV</button>
+            </Card>
+          ) : (
+            <Card className="p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-sm font-black">Browse, filter, and act on the master pool</div>
+                  <p className="mt-0.5 text-xs text-[#526078]">Full table with city/state/verification filters lives on the Teacher Prospects page. Use the banner above to push verified leads to a SmartLead campaign.</p>
+                </div>
+                <a href="/teacher-prospects" className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#174be8] px-3 text-xs font-bold text-white">Open Teacher Prospects →</a>
               </div>
-              <a href="/teacher-prospects" className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#174be8] px-3 text-xs font-bold text-white">Open Teacher Prospects →</a>
-            </div>
-          </Card>
+            </Card>
+          )}
         </Section>
 
         {/* MASTER DB SECTION 2 — Recent imports */}
         <Section step={2} title="Recent imports" subtitle="CSVs that landed in the Master Pool. Master-only vs. pushed-to-SmartLead is shown per row." storageKey="master_batches" defaultOpen>
           <ProspectBatchesPanel refreshKey={batchesRefresh} />
+        </Section>
+
+        {/* MASTER DB SECTION 3 — Enrichment runs */}
+        <Section step={3} title="Enrichment runs" subtitle="Per-city email/contact enrichment across providers. Cost + status." storageKey="master_enrichment" defaultOpen={false}>
+          <EnrichmentJobsPanel />
         </Section>
       </>
     )}

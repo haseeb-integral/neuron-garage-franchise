@@ -70,6 +70,8 @@
 - **dedupe_key** — generated column on `teacher_prospects`. Lowercased email when present, otherwise `lower(name|school|city|state)` composite. Non-unique index — used by the wizard's QA step to flag in-batch and cross-batch duplicates before insert. Not enforced as unique (Manus-sourced CSVs vary too much).
 - **Unmapped columns** — CSV columns the AI mapper could not match to a `teacher_prospects` field. Stashed in `teacher_prospects.raw` (jsonb) and listed in `teacher_import_batches.unmapped_columns` so a future "promote-to-column" UI can lift recurring ones into real columns.
 - **AI-suggested mapping** — Step 2 of the Master Pool Import Wizard. `csv-suggest-mapping` sends headers + sample rows to `google/gemini-3-flash-preview` and returns a proposed source→target map. User can override every row before continuing.
+- **`last_pushed_at`** — `teacher_prospects.last_pushed_at` (added Sprint 3, May 21). Timestamp the row was most recently sent to a SmartLead campaign by `smartlead-push-leads`. Paired with `status='in_smartlead'` so the Master Pool view can fast-filter "already in outreach" without joining `outreach_queue`.
+- **`in_smartlead` status** — value of `teacher_prospects.status` meaning the row has been pushed to at least one SmartLead campaign. Set by `smartlead-push-leads` alongside `last_pushed_at`. Other values: `new` (default), legacy ad-hoc values from older imports.
 
 ---
 

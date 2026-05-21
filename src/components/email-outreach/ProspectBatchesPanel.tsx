@@ -16,6 +16,13 @@ type Batch = {
   status: string;
   campaign_id: string | null;
   created_at: string;
+  destination: string | null;
+};
+
+const DESTINATION_BADGES: Record<string, { label: string; cls: string; title: string }> = {
+  master_only: { label: "Master only", cls: "bg-[#eef2f7] text-[#526078] border-[#dbe2ec]", title: "Imported into Master Pool only — not pushed to SmartLead" },
+  master_and_smartlead: { label: "Master + SmartLead", cls: "bg-[#eef4ff] text-[#174be8] border-[#c6d6f7]", title: "Imported into Master Pool AND pushed to a SmartLead campaign" },
+  smartlead_only: { label: "Legacy (SmartLead)", cls: "bg-[#fff4df] text-[#b7791f] border-[#fde4b3]", title: "Legacy direct-to-SmartLead import (no Master Pool row)" },
 };
 
 type CampaignLite = { id: string; name: string | null };
@@ -121,7 +128,7 @@ export function ProspectBatchesPanel({ refreshKey = 0 }: { refreshKey?: number }
         <div className="px-4 py-5 text-center text-[12px] text-[#66728a]">No import batches yet. Click "Import Leads" to create one.</div>
       ) : (
         <table className="w-full text-[11px]">
-          <thead><tr className="text-left text-[9px] uppercase text-[#8794ab]"><th className="px-3 py-1.5">Batch</th><th>Source</th><th>City</th><th>Segment</th><th>Records</th><th>Approved</th><th>Campaign</th><th>Status</th><th>Created</th><th></th></tr></thead>
+          <thead><tr className="text-left text-[9px] uppercase text-[#8794ab]"><th className="px-3 py-1.5">Batch</th><th>Destination</th><th>Source</th><th>City</th><th>Segment</th><th>Records</th><th>Approved</th><th>Campaign</th><th>Status</th><th>Created</th><th></th></tr></thead>
           <tbody>{batches.map((b) => {
             const campaign = b.campaign_id ? campaignsById[String(b.campaign_id)] : null;
             const failedCount = failedByBatch[b.id] ?? 0;
@@ -132,6 +139,13 @@ export function ProspectBatchesPanel({ refreshKey = 0 }: { refreshKey?: number }
                     <ChevronRight size={10} className="text-[#8794ab]" />
                     {b.batch_name}
                   </span>
+                </td>
+                <td className="py-1.5">
+                  {(() => {
+                    const dest = b.destination ?? "smartlead_only";
+                    const meta = DESTINATION_BADGES[dest] ?? DESTINATION_BADGES.smartlead_only;
+                    return <span title={meta.title} className={`inline-flex h-4 items-center rounded-md border px-1.5 text-[10px] font-bold ${meta.cls}`}>{meta.label}</span>;
+                  })()}
                 </td>
                 <td className="py-1.5">{b.source ?? "—"}</td>
                 <td className="py-1.5">{b.city ?? "—"}{b.state ? `, ${b.state}` : ""}</td>

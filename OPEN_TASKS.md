@@ -49,17 +49,18 @@ See **`TEACHER_IDEAL_PROFILE.md`** for who we are recruiting and why — read th
 
 ---
 
-### v1.2 — Two-pool architecture (Master Pool ↔ SmartLead) — Sprints 1 + 2 ✅ May 21
-- **Schema:** `teacher_prospects` extended with `first_name`, `last_name`, `enrichment_cost_cents`, `enrichment_provider`, `import_batch_id`, generated `dedupe_key` (non-unique index). `verification_status` standardized to `valid`/`catch_all`/`invalid`/`unknown`. `prospect_batches` renamed → `teacher_import_batches` + `destination`/`column_mapping`/`unmapped_columns`. New `enrichment_jobs` table.
-- **Edge functions:** `csv-suggest-mapping` (Gemini-powered AI header mapping), `smartlead-push-leads` (chunked push with `dry_run` preview, writes `outreach_queue` rows on success).
-- **UI:** `ScopeSwitcher` (Master DB ↔ SmartLead), `StatStripCards` (6-card SmartLead-parity strip with per-card Show Formula popovers per Rule 1), `PushToSmartLeadBanner` + `PushToSmartLeadModal`, `MasterPoolImportWizard` (5 steps: setup → AI-mapped CSV → QA dupe preview → chunked insert → optional push). Legacy "Import Leads" renamed "Import to SmartLead (Legacy)".
+### v1.2 — Two-pool architecture (Master Pool ↔ SmartLead) — Sprints 1 + 2 + 3 ✅ May 21
+- **Schema:** `teacher_prospects` extended with `first_name`, `last_name`, `enrichment_cost_cents`, `enrichment_provider`, `import_batch_id`, generated `dedupe_key` (non-unique index), and (Sprint 3) `last_pushed_at`. `verification_status` standardized to `valid`/`catch_all`/`invalid`/`unknown`. `prospect_batches` renamed → `teacher_import_batches` + `destination`/`column_mapping`/`unmapped_columns`. New `enrichment_jobs` table.
+- **Edge functions:** `csv-suggest-mapping` (Gemini-powered AI header mapping), `smartlead-push-leads` (chunked push with `dry_run` preview, writes `outreach_queue` rows AND stamps source `teacher_prospects` with `status='in_smartlead'` + `last_pushed_at` on success).
+- **UI:** `ScopeSwitcher` (Master DB ↔ SmartLead) now gates page sections — Master scope shows pool overview + recent imports; SmartLead scope shows replies + campaigns + queue + setup. `StatStripCards` (6-card SmartLead-parity strip with per-card Show Formula popovers per Rule 1), `PushToSmartLeadBanner` + `PushToSmartLeadModal` (live debounced dry-run preview), `MasterPoolImportWizard` (5 steps: setup → AI-mapped CSV → QA dupe preview w/ cross-batch `dedupe_key` check → chunked insert → optional push). Legacy "Import Leads" renamed "Import to SmartLead (Legacy)".
 
 ### v1.2 follow-ups (pending, added May 21)
-- **V12a.** Surface `enrichment_jobs` in the UI — a "Enrichment runs" drawer per city showing provider, cost, status. Single backend, both Master + SmartLead scopes.
+- ~~**V12a.** Surface `enrichment_jobs` in the UI~~ ✅ May 21 — `EnrichmentJobsPanel` lives in Master scope (Section 3) and SmartLead Setup; shows city/provider/status/cost across last 50 runs.
 - **V12b.** Add Apollo + Hunter providers behind the existing enrichment job runner (SmartLead is the first; the abstraction is in place).
 - **V12c.** "Promote-to-column" UI — list recurring keys in `teacher_import_batches.unmapped_columns` across batches; one-click "promote" to a real `teacher_prospects` column + add to the AI mapper's prompt allow-list.
-- **V12d.** Master-pool prospect list view with filters (state, city, verification, source, enrichment provider, has-email) — replaces the current SmartLead-only Teacher Search lens when scope = Master DB.
+- **V12d.** Master-pool prospect list view with filters (state, city, verification, source, enrichment provider, has-email) — replaces the current SmartLead-only Teacher Search lens when scope = Master DB. Sprint 3 currently links out to `/teacher-prospects`; deeper inline view still pending.
 - **V12e.** Retire the legacy 4-step "Import to SmartLead (Legacy)" button once Teacher Search is fully wired to the Master Pool path.
+- **Polish ✅ May 21:** verification-status backfill (already normalized by Sprint 1 migration — `valid`/`catch_all`/`invalid`/null); import batches now show a Destination badge (Master only / Master + SmartLead / Legacy); Master scope shows an empty-state CTA when `teacher_prospects` is 0 rows.
 - **Risk:** mostly low; V12b medium (provider quirks).
 
 ---

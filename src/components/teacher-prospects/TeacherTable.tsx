@@ -194,7 +194,7 @@ export function TeacherTable({
                         className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-[#eaf2fb] text-[#0a66c2] transition hover:bg-[#0a66c2] hover:text-white"
                         title={p.linkedinUrl ?? ""}
                       >
-                        <Linkedin size={12} />
+                        <Link2 size={12} />
                       </a>
                     ) : (
                       <span className="text-[#cdd5e0]" title="No LinkedIn">—</span>

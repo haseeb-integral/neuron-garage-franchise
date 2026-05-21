@@ -1700,6 +1700,36 @@ const CityScoring = () => {
         </div>
       </div>
 
+      {/* Screen mode toggle: Dashboard vs Spreadsheet */}
+      <div className="mb-3 flex items-center gap-1 rounded-lg border border-[#eef2f7] bg-white p-1 w-fit">
+        {(["dashboard", "spreadsheet"] as const).map((v) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => updateScreenMode(v)}
+            className={`px-3 h-7 rounded-md text-[11.5px] font-semibold transition-colors ${
+              screenMode === v ? "bg-[#174be8] text-white" : "text-[#526078] hover:bg-[#f3f6fc]"
+            }`}
+          >
+            {v === "dashboard" ? "Dashboard" : "Spreadsheet"}
+          </button>
+        ))}
+      </div>
+
+      {screenMode === "spreadsheet" && (
+        <CitySpreadsheetView
+          markets={baseRankedMarkets}
+          onExportCsv={buildCsvDownload}
+          onOpenCity={(m) => {
+            setSelectedMarketKey({ city: m.city, state: m.state });
+            setSelectedId(m.id);
+            setDetailDrawerOpen(true);
+          }}
+        />
+      )}
+
+      {screenMode === "dashboard" && (
+      <>
       {/* Scoring Weights */}
       <div className="mb-4 rounded-lg bg-white border border-[#eef2f7] p-4">
         <div className="mb-3 flex items-start justify-between gap-4">

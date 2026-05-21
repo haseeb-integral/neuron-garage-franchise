@@ -598,7 +598,6 @@ function FormulaPanel({
                   <tr>
                     <td colSpan={4} className="px-2 py-1.5 text-right font-semibold text-[#1a2540]">
                       {categoryLabel} score
-                      {previewRecompute.usedServerFallback && " (server fallback)"}
                     </td>
                     <td className="px-2 py-1.5 text-right font-bold tabular-nums text-[#1a2540]">
                       {previewRecompute.score == null ? "—" : previewRecompute.score.toFixed(1)}
@@ -624,13 +623,14 @@ function FormulaPanel({
                   {serverCategoryScore != null && (
                     <tr>
                       <td colSpan={4} className="px-2 py-1.5 text-right text-[#8794ab]">
-                        Server-stored {categoryLabel} score (fallback)
+                        Last stored {categoryLabel} score (for reference)
                       </td>
                       <td className="px-2 py-1.5 text-right tabular-nums text-[#8794ab]">
                         {fmt(serverCategoryScore, 0)}
                       </td>
                     </tr>
                   )}
+
                 </tfoot>
               </table>
             </div>

@@ -119,7 +119,10 @@ Email Outreach now treats the teacher database as **two pools** with a single sc
 - Banner shows "N verified emails ready to push" and opens the modal.
 - Modal: campaign picker (from `campaign_cache`), state/city filter, include-catch-all toggle, lead limit.
 - "Preview" calls `smartlead-push-leads` with `dry_run=true` → returns candidate count, already-in-campaign count (joined via `outreach_queue`), and will-push count.
-- "Push" runs live: chunked 100/batch to `POST /campaigns/{id}/leads`, writes one `outreach_queue` row per success (`smartlead_lead_id`, `pushed_at`).
+- "Push" runs live: chunked 100/batch to `POST /campaigns/{id}/leads`, writes one `outreach_queue` row per success (`smartlead_lead_id`, `pushed_at`), AND stamps the source `teacher_prospects` row with `status='in_smartlead'` + `last_pushed_at` so the Master Pool view can filter on push state without re-joining `outreach_queue`.
+- Modal dry-run preview re-runs automatically (400ms debounce) as filters change, so the "Will push N" counter updates live as the user types a state/city or toggles catch-all.
+
+**Scope-gated page (Sprint 3):** `ScopeSwitcher` no longer just changes stat formulas — it gates which page sections render. Master DB scope shows the pool overview + recent imports (`ProspectBatchesPanel`). SmartLead scope shows reply triage + campaigns + outreach queue + setup. The legacy mini stat strip is hidden in Master scope (its numbers come from SmartLead).
 
 The legacy 4-step "Import Leads" button is preserved as **"Import to SmartLead (Legacy)"** for the direct-to-SmartLead path that bypasses the Master Pool. It will be retired once Teacher Search → Master Pool handoff is in daily use.
 

@@ -184,7 +184,8 @@ export default function EmailOutreachV2() {
       <div className="ml-auto flex shrink-0 flex-wrap justify-end gap-2 pt-1">
         <button onClick={() => safeToast("CSV export will be wired to real campaign data.")} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#dbe4f2] bg-white px-3 text-xs font-bold text-[#07142f]"><Download size={14} /> CSV</button>
         <button onClick={() => { loadCampaigns(); loadStats({ forceFresh: true }); }} title="Bypass 10-min analytics cache" className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#dbe4f2] bg-white px-3 text-xs font-bold text-[#07142f]"><RefreshCw size={14} /> Refresh</button>
-        <button onClick={() => setImportOpen(true)} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#dbe4f2] bg-white px-3 text-xs font-bold text-[#174be8]"><Upload size={14} /> Import Leads</button>
+        <button onClick={() => setMasterImportOpen(true)} title="Smart CSV import to Master Teacher Pool (AI-mapped)" className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#dbe4f2] bg-white px-3 text-xs font-bold text-[#174be8]"><Upload size={14} /> Import to Master Pool</button>
+        <button onClick={() => setImportOpen(true)} title="Legacy: import straight into SmartLead" className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#dbe4f2] bg-white px-3 text-xs font-bold text-[#526078]"><Upload size={14} /> Import to SmartLead</button>
         <button onClick={() => setNewCampaignOpen(true)} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#174be8] px-3 text-xs font-bold text-white"><Plus size={14} /> Campaign</button>
       </div>
     </div>

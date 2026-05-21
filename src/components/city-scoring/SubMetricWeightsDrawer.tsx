@@ -66,8 +66,9 @@ export function SubMetricWeightsDrawer({
   open, onOpenChange, categoryKey, categoryLabel, categoryColor, categoryBg,
   selectedCityLabel, rawValuesByKey, serverCategoryScore, masterWeightPct,
   masterWeightPendingPct, currentCategoryScore, currentComposite, computeNewComposite,
-  customMetricsForCategory,
+  customMetricsForCategory, overallFormula,
 }: Props) {
+
   const subWeights = useCityScoringStore((s) => s.subWeights);
   const setSubWeight = useCityScoringStore((s) => s.setSubWeight);
   const appliedSubWeights = useCityScoringStore((s) => s.appliedSubWeights);

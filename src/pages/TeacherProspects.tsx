@@ -138,7 +138,7 @@ interface Stats {
 // `stats === null` means "still loading"; cards must render a skeleton, not "0".
 // A real zero only appears after the RPC resolves with `total: 0`.
 
-const StatCard = ({ title, value, sub, tone = "slate", action, loading, error, onRetry }: {
+const StatCard: React.FC<any> = ({ title, value, sub, tone = "slate", action, loading, error, onRetry }: {
   title: string;
   value: string | number;
   sub?: React.ReactNode;

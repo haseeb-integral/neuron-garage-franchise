@@ -650,9 +650,13 @@ const CityScoring = () => {
     const base = filterRankedMarkets(baseRankedMarkets, {
       searchTerm,
       stateFilter,
-      tierFilter,
+      // IMPORTANT: apply score/tier filters AFTER reranking. The stored
+      // baseline composite currently tops out at 74, so filtering by Tier A or
+      // minScore>=80 before recomputing makes slider-driven Tier A results
+      // impossible to surface even when the reranked composite should be 80+.
+      tierFilter: "All",
       nonRegOnly,
-      minScore,
+      minScore: 0,
       minPop,
     });
     const q = cityFilter.trim().toLowerCase();
@@ -701,12 +705,18 @@ const CityScoring = () => {
       };
     });
 
-
-    return reRanked.sort((a, b) => {
+    return reRanked
+      .filter((market) => {
+        if (!market.hasLiveData) return true;
+        if (tierFilter !== "All" && market.tier !== tierFilter) return false;
+        if (market.compositeScore < minScore) return false;
+        return true;
+      })
+      .sort((a, b) => {
       if (a.hasLiveData !== b.hasLiveData) return a.hasLiveData ? -1 : 1;
       if (a.hasLiveData) return b.compositeScore - a.compositeScore;
       return a.city.localeCompare(b.city);
-    });
+      });
   }, [baseRankedMarkets, searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop, cityFilter, watchlistOnly, watchlistCityIds, appliedWeights, appliedSubWeights]);
 
   // Markets shown on the map: same filters as the table EXCEPT we ignore the

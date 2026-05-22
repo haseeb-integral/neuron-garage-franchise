@@ -57,7 +57,7 @@ import { tierFromScore } from "@/lib/cityScoringLiveData";
 import { canonicalKey } from "@/lib/signalAliases";
 import { useCustomCriteria } from "@/hooks/useCustomCriteria";
 import { useScoringConfig, useDebouncedSaveScoringConfig } from "@/hooks/useScoringConfig";
-import { SCORING_PRESETS, PRESET_NAMES, PRESET_DESCRIPTIONS, detectPreset, type PresetName } from "@/lib/scoringPresets";
+import { SCORING_PRESETS, PRESET_NAMES, PRESET_DESCRIPTIONS, PRESET_TAGLINES, PRESET_TILE_ORDER, detectPreset, type PresetName } from "@/lib/scoringPresets";
 import { AskAiBar } from "@/components/city-scoring/AskAiBar";
 import { AiAnswerCard, type AiResult } from "@/components/city-scoring/AiAnswerCard";
 import { TierCountsBar, type TierCounts } from "@/components/city-scoring/TierCountsBar";

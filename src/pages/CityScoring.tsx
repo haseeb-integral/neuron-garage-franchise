@@ -124,63 +124,20 @@ type CategoryKey =
   | "competitiveLandscape"
   | "franchiseeSupply";
 
-interface Category {
-  key: CategoryKey;
-  label: string;
-  icon: typeof Users;
-  color: string;
-  bg: string;
-  description: string;
-  defaultWeight: number;
-}
-
-const CATEGORIES: Category[] = [
-  { key: "demand", label: "Demand", icon: Users, color: "#174be8", bg: "#eaf0ff",
-    description: "Size of the target-family market and signal strength of program demand — kids in the right age band, household income, parent intent.", defaultWeight: 40 },
-  { key: "franchiseeSupply", label: "TAM Teachers", icon: UserCheck, color: "#7c3aed", bg: "#f1ebff",
-    description: "Pool of teachers available locally to recruit as franchise operators — credentialed, in-area, plausible to convert into owners.", defaultWeight: 30 },
-  { key: "competitiveLandscape", label: "Competitive Opportunity", icon: Trophy, color: "#b8860b", bg: "#fff6dc",
-    description: "How wide-open the market is — fewer national-brand competitors, less saturation, more room for a new operator to win share.", defaultWeight: 30 },
-];
-
-// Kept as an alias for backwards compatibility with code that previously
-// filtered out retired categories. After the May 21, 2026 final purge,
-// every entry in CATEGORIES is visible.
-const VISIBLE_CATEGORIES = CATEGORIES;
-
-// Map mock data scoreBreakdown into our 3 category scores deterministically
-function categoryScores(c: CityData): Record<CategoryKey, number> {
-  const b = c.scoreBreakdown;
-  return {
-    demand: b.summerCampDemand,
-    competitiveLandscape: b.competitionScore,
-    franchiseeSupply: Math.round((b.stemJobs + b.schoolDensity) / 2),
-  };
-}
-
-const SOURCES: { name: string; icon: typeof Building2; status: "connected" | "planned" }[] = [
-  { name: "U.S. Census Bureau", icon: Building2, status: "connected" },
-  { name: "BLS (Occupational Data)", icon: Building2, status: "connected" },
-  { name: "Yelp / Google Maps / Apify", icon: MapPin, status: "connected" },
-  { name: "Firecrawl", icon: FileText, status: "connected" },
-  { name: "Google Trends", icon: Search, status: "planned" },
-  { name: "GreatSchools.org", icon: GraduationCap, status: "planned" },
-  { name: "State Education Databases", icon: GraduationCap, status: "planned" },
-  { name: "ACA Camp Regulations", icon: FileText, status: "planned" },
-  { name: "Internal Franchise Data", icon: HomeIcon, status: "planned" },
-];
-
-const normalizeMarketState = (state?: string | null) => {
-  if (!state) return "";
-  if (state === "TX") return "Texas";
-  if (state === "FL") return "Florida";
-  return state;
-};
-
-const sameMarket = (cityA?: string | null, stateA?: string | null, cityB?: string | null, stateB?: string | null) => {
-  return (cityA ?? "").trim().toLowerCase() === (cityB ?? "").trim().toLowerCase()
-    && normalizeMarketState(stateA).toLowerCase() === normalizeMarketState(stateB).toLowerCase();
-};
+// Page-level constants/helpers moved to lib/cityScoringPageHelpers.ts.
+// Re-exported as local aliases so the rest of this giant page file keeps
+// compiling unchanged until the column-split refactor lands.
+import {
+  CATEGORIES,
+  VISIBLE_CATEGORIES,
+  SOURCES,
+  normalizeMarketState,
+  sameMarket,
+  categoryScoresFromSample as categoryScores,
+  type Category,
+} from "@/lib/cityScoringPageHelpers";
+void Category; void VISIBLE_CATEGORIES; void SOURCES; void CATEGORIES;
+void normalizeMarketState; void sameMarket; void categoryScores;
 
 type TierLetter = _TierLetter;
 const percentileTierCutoffs = _percentileTierCutoffs;

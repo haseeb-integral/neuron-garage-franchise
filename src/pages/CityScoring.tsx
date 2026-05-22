@@ -599,6 +599,7 @@ const CityScoring = () => {
   const setLiveJob = setLiveJobState;
   const [marketRefreshVersion, setMarketRefreshVersion] = useState(0);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
+  const [execReportOpen, setExecReportOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportAutoPdf, setReportAutoPdf] = useState(false);

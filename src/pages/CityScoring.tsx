@@ -2017,20 +2017,28 @@ const CityScoring = () => {
         </div>
 
         {/* Preset tile grid — 2 rows × 3 columns. Click to apply; sliders below tween
-            from current values to the preset's target over ~320ms so the cause→effect
-            is visible. "Custom" appears as a chip (not a tile) when weights don't match
-            any preset. */}
+            from current values to the preset's target over ~480ms. A downward chevron
+            on the active tile + a temporary blue ring on the sliders below makes the
+            cause→effect obvious. "Custom" appears as a chip (not a tile) when weights
+            don't match any preset. */}
         <div className="mb-3">
+          {/* Plain-English explainer — the one sentence that makes the coupling click. */}
+          <div className="mb-2.5 rounded-md bg-[#f5f8ff] border border-[#dbe4f2] px-3 py-2 flex items-start gap-2">
+            <span className="mt-[1px] inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#174be8] text-[9px] font-bold text-white">i</span>
+            <div className="text-[11.5px] text-[#07142f] leading-snug">
+              <span className="font-semibold">Two ways to set the same dial.</span>{" "}
+              Pick a <span className="font-semibold">strategy</span> below to snap the three sliders into a preset balance, or drag a <span className="font-semibold">slider</span> directly to fine-tune. They always stay in sync — dragging a slider unlocks <span className="font-semibold text-[#7c3aed]">Custom</span>; clicking a strategy snaps back.
+            </div>
+          </div>
           <div className="mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase tracking-wide text-[#8794ab] font-semibold">Quick presets</span>
-              {scoringModel === "Custom" && (
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#f1ebff] text-[#7c3aed]">Custom</span>
+              <span className="text-[10px] uppercase tracking-wide text-[#8794ab] font-semibold">Strategy</span>
+              {scoringModel === "Custom" ? (
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#f1ebff] text-[#7c3aed]">Custom — you adjusted a slider</span>
+              ) : (
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#eaf0ff] text-[#174be8]">{scoringModel} is active</span>
               )}
             </div>
-            <p className="text-[10px] text-[#8794ab] leading-tight">
-              Click a strategy. Sliders below will animate to match — fine-tune from there.
-            </p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {PRESET_TILE_ORDER.map((name) => {
@@ -2043,9 +2051,9 @@ const CityScoring = () => {
                   onClick={() => applyPresetByName(name)}
                   aria-pressed={isActive}
                   className={cn(
-                    "text-left rounded-lg border p-2.5 transition-all bg-white hover:border-[#174be8]/60 hover:shadow-sm",
+                    "group relative text-left rounded-lg border p-2.5 transition-all bg-white hover:border-[#174be8]/60 hover:shadow-sm",
                     isActive
-                      ? "border-[#174be8] ring-2 ring-[#174be8]/30 bg-[#f5f8ff]"
+                      ? "border-[#174be8] ring-2 ring-[#174be8]/30 bg-[#f5f8ff] shadow-sm"
                       : "border-[#eef2f7]",
                   )}
                 >
@@ -2056,7 +2064,8 @@ const CityScoring = () => {
                   <p className="text-[10.5px] text-[#526078] leading-snug mt-0.5">
                     {PRESET_DESCRIPTIONS[name]}
                   </p>
-                  {/* Mini weight bar — three colored segments showing the split */}
+                  {/* Mini weight bar — three colored segments showing the split.
+                      Mirrors the slider colors so the eye can trace tile → slider. */}
                   <div className="mt-2 flex h-1.5 w-full overflow-hidden rounded-full bg-[#eef2f7]">
                     {VISIBLE_CATEGORIES.map((cat) => (
                       <div
@@ -2071,11 +2080,32 @@ const CityScoring = () => {
                     <span style={{ color: VISIBLE_CATEGORIES[1].color }}>{w.franchiseeSupply}</span>
                     <span style={{ color: VISIBLE_CATEGORIES[2].color }}>{w.competitiveLandscape}</span>
                   </div>
+                  {/* Active connector — small downward arrow that visually "points at"
+                      the sliders below, so the user reads the tile-to-slider relationship. */}
+                  {isActive && (
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "pointer-events-none absolute left-1/2 -translate-x-1/2 -bottom-[7px] h-3 w-3 rotate-45 border-r border-b border-[#174be8] bg-[#f5f8ff]",
+                        presetTweening && "animate-pulse",
+                      )}
+                    />
+                  )}
                 </button>
               );
             })}
           </div>
+          {/* "Syncing…" mini-label that appears only during the tween — reinforces
+              that the slider motion below is caused by the click above. */}
+          <div className="h-4 mt-1 flex items-center justify-center">
+            {presetTweening && (
+              <span className="text-[10px] font-semibold text-[#174be8] tracking-wide animate-pulse">
+                ↓ syncing sliders ↓
+              </span>
+            )}
+          </div>
         </div>
+
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {VISIBLE_CATEGORIES.map((cat) => {

@@ -753,11 +753,33 @@ const CityScoring = () => {
       return {
         ...market,
         compositeScore: composite,
-        tier: tierFromScore(composite),
+        // tier reassigned by percentile below
       };
     });
 
-    return reRanked
+    // Percentile-based tier assignment — top 5% = A, next 15% = B,
+    // next 30% = C, bottom 50% = D. Computed across the live-scored set so
+    // Tier A always has cities (was previously a fixed >=80 cutoff that no
+    // city in the dataset could ever reach). 2026-05-22.
+    const liveScored = reRanked
+      .filter((m: any) => m.hasLiveData)
+      .slice()
+      .sort((a: any, b: any) => b.compositeScore - a.compositeScore);
+    const n = liveScored.length;
+    const aCut = Math.max(1, Math.ceil(n * 0.05));
+    const bCut = aCut + Math.max(1, Math.ceil(n * 0.15));
+    const cCut = bCut + Math.max(1, Math.ceil(n * 0.30));
+    const tierById = new Map<any, "A" | "B" | "C" | "D">();
+    liveScored.forEach((m: any, i: number) => {
+      const t = i < aCut ? "A" : i < bCut ? "B" : i < cCut ? "C" : "D";
+      tierById.set(m.cityId ?? m.id, t);
+    });
+    const tiered = reRanked.map((market: any) => {
+      if (!market.hasLiveData) return { ...market, tier: "D" as const };
+      return { ...market, tier: tierById.get(market.cityId ?? market.id) ?? "D" };
+    });
+
+    return tiered
       .filter((market) => {
         if (!market.hasLiveData) return true;
         if (tierFilter !== "All" && market.tier !== tierFilter) return false;
@@ -770,6 +792,7 @@ const CityScoring = () => {
       return a.city.localeCompare(b.city);
       });
   }, [baseRankedMarkets, searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop, cityFilter, watchlistOnly, watchlistCityIds, appliedWeights, appliedSubWeights]);
+
 
   // ─── Tier counts (committed) + preview projection (draft weights) ──────
   // SINGLE-SOURCE-OF-TRUTH RULE: committed numbers come from `filtered`
@@ -796,9 +819,10 @@ const CityScoring = () => {
   const previewTierCounts = useMemo<TierCounts | null>(() => {
     if (!weightsPending) return null;
     const counts: TierCounts = { A: 0, B: 0, C: 0, D: 0 };
-    // Use the same baseline `filtered` set so apples-to-apples; we just
-    // re-weight category scores with draft `weights`. Cities without
-    // categoryScores keep their existing tier (rare; mirrors filtered logic).
+    // Recompute composite with draft weights, then assign tiers by
+    // percentile (top 5% A / next 15% B / next 30% C / rest D) to match
+    // the committed tier logic. 2026-05-22.
+    const scored: number[] = [];
     filtered.forEach((m: any) => {
       if (!m.hasLiveData) return;
       const cats = m.categoryScores as Record<CategoryKey, number | null> | undefined;
@@ -809,11 +833,21 @@ const CityScoring = () => {
       } else {
         composite = m.compositeScore ?? 0;
       }
-      const t = tierFromScore(composite);
-      if (counts[t] != null) counts[t] += 1;
+      scored.push(composite);
     });
+    scored.sort((a, b) => b - a);
+    const n = scored.length;
+    if (n === 0) return counts;
+    const aCut = Math.max(1, Math.ceil(n * 0.05));
+    const bCut = aCut + Math.max(1, Math.ceil(n * 0.15));
+    const cCut = bCut + Math.max(1, Math.ceil(n * 0.30));
+    counts.A = Math.min(aCut, n);
+    counts.B = Math.min(bCut, n) - counts.A;
+    counts.C = Math.min(cCut, n) - counts.A - counts.B;
+    counts.D = n - counts.A - counts.B - counts.C;
     return counts;
   }, [filtered, weights, weightsPending]);
+
 
   // Extra summary stats for the Tier Distribution strip (avg score, qualified %, top market).
   const tierBarExtras = useMemo(() => {

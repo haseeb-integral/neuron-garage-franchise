@@ -1901,43 +1901,42 @@ const CityScoring = () => {
               )}
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-3">
-            <span className="text-xs text-[#526078]">
-              Total Weight: <span className={totalWeight === 100 ? "text-[#0ea66e] font-medium" : "text-[#ea580c] font-medium"}>{totalWeight}%</span>
-            </span>
-            <PreviewBadge pending={weightsPending && totalWeight === 100} preview={previewTierCounts} committed={committedTierCounts} />
-            <button onClick={resetWeights} className="text-xs font-medium text-[#174be8] hover:underline">Reset to Default</button>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={totalWeight !== 100}
-              onClick={openSaveDialog}
-              className="h-7 border-[#dbe4f2] text-[#174be8] text-[11px] px-3 gap-1 disabled:opacity-50"
-            >
-              <Bookmark size={12} /> Save Search
-            </Button>
-            <Button
-              size="sm"
-              disabled={totalWeight !== 100}
-              onClick={applyWeights}
-              title={weightsPending ? "Click to commit slider changes to the table" : "No pending changes"}
-              className={cn(
-                "h-7 bg-[#174be8] hover:bg-[#1240c9] text-white text-[11px] px-3 disabled:opacity-50 transition-all",
-                weightsPending && totalWeight === 100 && "ring-2 ring-[#174be8]/40 ring-offset-1 shadow-md animate-pulse",
-              )}
-            >
-              Apply Weights
-            </Button>
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-[#526078]">
+                Total Weight: <span className={totalWeight === 100 ? "text-[#0ea66e] font-medium" : "text-[#ea580c] font-medium"}>{totalWeight}%</span>
+              </span>
+              <PreviewBadge pending={weightsPending && totalWeight === 100} preview={previewTierCounts} committed={committedTierCounts} />
+              <button onClick={resetWeights} className="text-xs font-medium text-[#174be8] hover:underline">Reset to Default</button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={totalWeight !== 100}
+                onClick={openSaveDialog}
+                className="h-7 border-[#dbe4f2] text-[#174be8] text-[11px] px-3 gap-1 disabled:opacity-50"
+              >
+                <Bookmark size={12} /> Save Search
+              </Button>
+              <Button
+                size="sm"
+                disabled={totalWeight !== 100}
+                onClick={applyWeights}
+                title={weightsPending ? "Click to commit slider changes to the table" : "No pending changes"}
+                className={cn(
+                  "h-7 bg-[#174be8] hover:bg-[#1240c9] text-white text-[11px] px-3 disabled:opacity-50 transition-all",
+                  weightsPending && totalWeight === 100 && "ring-2 ring-[#174be8]/40 ring-offset-1 shadow-md",
+                )}
+              >
+                Apply Weights
+              </Button>
+            </div>
+            {weightsPending && totalWeight === 100 && (
+              <p className="text-[11px] text-[#526078] leading-snug text-right max-w-[360px]">
+                <span className="font-semibold text-[#07142f]">Showing previous results.</span> Click <span className="font-semibold text-[#174be8]">Apply Weights</span> to recompute the table, map, and scores.
+              </p>
+            )}
           </div>
         </div>
-        {weightsPending && totalWeight === 100 && (
-          <div className="mb-3 -mt-1 flex items-center gap-2 rounded-md border border-[#fcd9b6] bg-[#fff7ed] px-3 py-1.5 text-[11.5px] text-[#9a3412]">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#ea580c]" />
-            <span>
-              <strong>Showing previous results.</strong> Slider changes are pending — click <strong>Apply Weights</strong> above to recompute the table, map, and scores.
-            </span>
-          </div>
-        )}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {VISIBLE_CATEGORIES.map((cat) => {
             const Icon = cat.icon;

@@ -237,15 +237,12 @@ const CityScoring = () => {
   const [savingSearch, setSavingSearch] = useState(false);
   const [activeSavedSearchId, setActiveSavedSearchId] = useState<string | null>(null);
 
-  // Tween the 3 master sliders from current values to a preset target over ~320ms,
-  // so clicking a preset tile produces a visible "the sliders just moved" cue instead
-  // of an instant snap. Snapshots the user's Custom weights on the way out so they can
-  // come back. On completion, commits via setAppliedWeights (same as Apply Weights).
+  // Preset clicks snap weights instantly (no tween) to avoid page jitter from
+  // rapid 60fps re-renders. The active-tile ring + slider repositioning provides
+  // the cause→effect cue without any animation.
   const presetTweenRef = useRef<number | null>(null);
-  // True while a preset → slider tween is in flight. Drives the visual "syncing"
-  // cue on the slider cards so the user sees that clicking a preset is what moved
-  // them. Also drives the connector chevron's pulse.
-  const [presetTweening, setPresetTweening] = useState(false);
+  const presetTweening = false;
+
   const applyPresetByName = useCallback((name: Exclude<PresetName, "Custom">) => {
     const target = SCORING_PRESETS[name];
     if (scoringModel === "Custom") {

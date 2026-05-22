@@ -2169,7 +2169,7 @@ const CityScoring = () => {
                     if (sample) setSelectedId(sample.id);
                     else setSelectedId(c.id);
                   }}
-                  className={`grid grid-cols-[16px_22px_minmax(0,1fr)_46px_84px_28px_16px] items-center gap-x-2 px-1 py-3 text-[11px] cursor-pointer border-b border-[#f3f5f9] last:border-0 ${isSel ? "bg-[#eaf0ff]" : "hover:bg-[#f7faff]"}`}
+                  className={`grid grid-cols-[16px_22px_minmax(0,1fr)_42px_70px_30px_30px_30px_28px_16px] items-center gap-x-2 px-1 py-2.5 text-[11px] cursor-pointer border-b border-[#f3f5f9] last:border-0 ${isSel ? "bg-[#eaf0ff]" : "hover:bg-[#f7faff]"}`}
                 >
                   <span className={compareMode ? "rounded ring-2 ring-[#174be8] ring-offset-1 ring-offset-white" : ""}>
                     <Checkbox checked={isCmp} onCheckedChange={() => toggleCompare(c.id)} onClick={(e) => e.stopPropagation()} />
@@ -2194,6 +2194,22 @@ const CityScoring = () => {
                       <span className="text-[#8794ab] font-medium">—</span>
                     )}
                   </div>
+                  {(() => {
+                    const cs = (c as any).categoryScores ?? {};
+                    const cell = (v: number | null | undefined, title: string) => {
+                      if (v == null || !c.hasLiveData) return <span className="justify-self-end text-[10.5px] text-[#cbd5e1] tabular-nums">—</span>;
+                      const n = Math.round(Number(v));
+                      const color = n >= 70 ? "text-[#0ea66e]" : n >= 40 ? "text-[#07142f]" : "text-[#c2410c]";
+                      return <span className={`justify-self-end text-[10.5px] font-semibold tabular-nums ${color}`} title={title}>{n}</span>;
+                    };
+                    return (
+                      <>
+                        {cell(cs.demand, "Demand score")}
+                        {cell(cs.franchiseeSupply, "TAM Teachers score")}
+                        {cell(cs.competitiveLandscape, "Competitive Landscape opportunity")}
+                      </>
+                    );
+                  })()}
                   {c.hasLiveData ? (
                     <span className="justify-self-end">
                       <TierBadge

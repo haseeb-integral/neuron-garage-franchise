@@ -71,6 +71,15 @@ function cat(m: RankedMarket, k: string): number | null {
   return v == null ? null : Number(v);
 }
 
+// Frozen-column geometry. Left edge is built up left-to-right so each frozen
+// column sticks just past the previous one. Widths are fixed so the layout
+// is deterministic regardless of cell content.
+const STICKY_LEFT: Record<string, { left: number; width: number }> = {
+  rank: { left: 0, width: 56 },
+  state: { left: 56, width: 112 },
+  city: { left: 168, width: 160 },
+};
+
 const COLUMNS: ColDef[] = [
   {
     key: "rank", label: "#", align: "right",
@@ -363,9 +372,8 @@ export default function CitySpreadsheetView({ markets, onOpenCity, onExportCsv }
           </span>
           {onExportCsv && (
             <Button
-              variant="outline"
               size="sm"
-              className="h-9 border-[#dbe4f2] text-[#174be8] gap-1.5"
+              className="h-9 bg-[#174be8] hover:bg-[#1240c9] text-white gap-1.5 font-medium"
               onClick={onExportCsv}
             >
               <Download size={14} /> Export XLSX
@@ -375,17 +383,29 @@ export default function CitySpreadsheetView({ markets, onOpenCity, onExportCsv }
       </div>
 
       {/* Table */}
+      {/* Sticky columns: rank (#), state, city on the left; Actions on the right.
+          Each frozen cell sets its own background so scrolled content doesn't
+          bleed through. A subtle inset shadow on the edge frozen cells signals
+          "more content to scroll" — same pattern Airtable / Linear use. */}
       <div className="overflow-x-auto">
-        <table className="w-full text-[12px] min-w-[1600px]">
-          <thead className="bg-[#f8fafe] sticky top-0 z-10">
-            <tr className="border-b border-[#eef2f7]">
+        <table className="w-full text-[12px] min-w-[1600px] border-separate border-spacing-0">
+          <thead className="bg-[#f8fafe] sticky top-0 z-20">
+            <tr>
               {COLUMNS.map((c) => {
                 const active = sortKey === c.key;
                 const Icon = !active ? ChevronsUpDown : sortDir === "asc" ? ChevronUp : ChevronDown;
+                const stickyStyle = STICKY_LEFT[c.key];
+                const isLastFrozen = c.key === "city";
                 return (
                   <th
                     key={c.key}
-                    className={`px-3 py-2 whitespace-nowrap ${c.align === "right" ? "text-right" : "text-left"}`}
+                    style={stickyStyle ? { left: stickyStyle.left, minWidth: stickyStyle.width, width: stickyStyle.width } : undefined}
+                    className={[
+                      "px-3 py-2 whitespace-nowrap border-b border-[#eef2f7] bg-[#f8fafe]",
+                      c.align === "right" ? "text-right" : "text-left",
+                      stickyStyle ? "sticky z-30" : "",
+                      isLastFrozen ? "shadow-[inset_-8px_0_8px_-8px_rgba(15,23,42,0.08)]" : "",
+                    ].join(" ")}
                   >
                     <button
                       type="button"
@@ -401,13 +421,18 @@ export default function CitySpreadsheetView({ markets, onOpenCity, onExportCsv }
                   </th>
                 );
               })}
-              <th className="px-3 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-[#526078] whitespace-nowrap">Actions</th>
+              <th
+                className="px-3 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-[#526078] whitespace-nowrap border-b border-[#eef2f7] bg-[#f8fafe] sticky right-0 z-30 shadow-[inset_8px_0_8px_-8px_rgba(15,23,42,0.08)]"
+                style={{ minWidth: 80, width: 80 }}
+              >
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
             {pageItems.length === 0 && (
               <tr>
-                <td colSpan={COLUMNS.length + 1} className="px-3 py-10 text-center text-[12px] text-[#8794ab]">
+                <td colSpan={COLUMNS.length + 1} className="px-3 py-10 text-center text-[12px] text-[#8794ab] border-b border-[#f3f5f9]">
                   No cities match your filters.
                 </td>
               </tr>
@@ -415,29 +440,39 @@ export default function CitySpreadsheetView({ markets, onOpenCity, onExportCsv }
             {pageItems.map((m) => {
               const r = rankedAll.get(m.id) ?? 0;
               return (
-                <tr
-                  key={m.id}
-                  className="border-b border-[#f3f5f9] last:border-0 hover:bg-[#fbfcff]"
-                >
-                  {COLUMNS.map((c) => (
-                    <td
-                      key={c.key}
-                      className={`px-3 py-2 whitespace-nowrap ${c.align === "right" ? "text-right tabular-nums" : ""}`}
-                    >
-                      {c.key === "city" ? (
-                        <button
-                          type="button"
-                          onClick={() => onOpenCity(m)}
-                          className="text-[#174be8] font-medium hover:underline text-left"
-                        >
-                          {m.city}
-                        </button>
-                      ) : (
-                        c.render(m, r)
-                      )}
-                    </td>
-                  ))}
-                  <td className="px-3 py-2 text-right">
+                <tr key={m.id} className="group hover:bg-[#fbfcff]">
+                  {COLUMNS.map((c) => {
+                    const stickyStyle = STICKY_LEFT[c.key];
+                    const isLastFrozen = c.key === "city";
+                    return (
+                      <td
+                        key={c.key}
+                        style={stickyStyle ? { left: stickyStyle.left, minWidth: stickyStyle.width, width: stickyStyle.width } : undefined}
+                        className={[
+                          "px-3 py-2 whitespace-nowrap border-b border-[#f3f5f9]",
+                          c.align === "right" ? "text-right tabular-nums" : "",
+                          stickyStyle ? "sticky z-10 bg-white group-hover:bg-[#fbfcff]" : "",
+                          isLastFrozen ? "shadow-[inset_-8px_0_8px_-8px_rgba(15,23,42,0.08)]" : "",
+                        ].join(" ")}
+                      >
+                        {c.key === "city" ? (
+                          <button
+                            type="button"
+                            onClick={() => onOpenCity(m)}
+                            className="text-[#174be8] font-medium hover:underline text-left"
+                          >
+                            {m.city}
+                          </button>
+                        ) : (
+                          c.render(m, r)
+                        )}
+                      </td>
+                    );
+                  })}
+                  <td
+                    className="px-3 py-2 text-right border-b border-[#f3f5f9] sticky right-0 z-10 bg-white group-hover:bg-[#fbfcff] shadow-[inset_8px_0_8px_-8px_rgba(15,23,42,0.08)]"
+                    style={{ minWidth: 80, width: 80 }}
+                  >
                     <button
                       type="button"
                       onClick={() => onOpenCity(m)}

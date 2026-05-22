@@ -653,6 +653,12 @@ const CityScoring = () => {
   const selectedForCompare = useCityScoringStore((s) => s.selectedForCompare);
   const setSelectedForCompare = useCityScoringStore((s) => s.setSelectedForCompare);
   const [refreshingMarket, setRefreshingMarket] = useState(false);
+  // True after the user explicitly picks a market (row click, map pin,
+  // deep link). While false, the SELECTED MARKET + EXECUTIVE SUMMARY
+  // columns auto-follow whatever sits at the top of the ranked list, so
+  // changing a preset or slider visibly re-points the right side to the
+  // new #1.
+  const [userPickedMarket, setUserPickedMarket] = useState(false);
   const PAGE_SIZE = 15;
   const page = useCityScoringStore((s) => s.page);
   const setPage = useCityScoringStore((s) => s.setPage);
@@ -702,6 +708,7 @@ const CityScoring = () => {
       if (found) {
         setSelectedId(found.id);
         setSelectedMarketKey({ city: found.city, state: found.state });
+        setUserPickedMarket(true);
       }
       searchParams.delete("city");
       setSearchParams(searchParams, { replace: true });
@@ -1033,12 +1040,27 @@ const CityScoring = () => {
     return out;
   }, [totalPages, safePage]);
 
+  // Auto-follow top-of-list until the user explicitly clicks a market.
+  // `userPickedMarket` is declared earlier (near `selectedId`). Reset to
+  // false whenever applied weights/sub-weights change so the right-hand
+  // detail + executive summary columns snap to the new #1 ranked market
+  // after a preset or slider change.
+  useEffect(() => {
+    setUserPickedMarket(false);
+  }, [appliedWeights, appliedSubWeights]);
+
+  const topRanked = filtered[0];
+  const autoFollowTop = !userPickedMarket && !!topRanked;
+  const effectiveMarketKey = autoFollowTop
+    ? { city: (topRanked as any).city, state: (topRanked as any).state }
+    : selectedMarketKey;
+
   const selectedFallback = sampleCities.find((c) => c.id === selectedId) ?? sampleCities[0];
   const selectedSample = sampleCities.find(
-    (c) => c.city === selectedMarketKey.city && c.state === selectedMarketKey.state,
+    (c) => c.city === effectiveMarketKey.city && c.state === effectiveMarketKey.state,
   ) ?? selectedFallback;
-  const selectedCity = selectedMarketKey.city || selectedSample.city;
-  const selectedState = selectedMarketKey.state || selectedSample.state;
+  const selectedCity = effectiveMarketKey.city || selectedSample.city;
+  const selectedState = effectiveMarketKey.state || selectedSample.state;
   const selectedRankedMarket = baseRankedMarkets.find((market) => sameMarket(market.city, market.state, selectedCity, selectedState));
   const liveCityMatchesSelection = sameMarket(liveCity?.city, liveCity?.state, selectedCity, selectedState);
   const selectedLiveCity = liveCityMatchesSelection ? liveCity : null;
@@ -1934,6 +1956,7 @@ const CityScoring = () => {
           onOpenCity={(m) => {
             setSelectedMarketKey({ city: m.city, state: m.state });
             setSelectedId(m.id);
+            setUserPickedMarket(true);
             setDetailDrawerOpen(true);
           }}
         />
@@ -2498,6 +2521,7 @@ const CityScoring = () => {
             setSelectedMarketKey({ city: m.city, state: m.state });
             const sample = sampleCities.find((s) => sameMarket(s.city, s.state, m.city, m.state));
             if (sample) setSelectedId(sample.id);
+            setUserPickedMarket(true);
             setViewMode("table");
           }}
         />
@@ -2598,6 +2622,7 @@ const CityScoring = () => {
                     setSelectedMarketKey({ city: c.city, state: c.state });
                     if (sample) setSelectedId(sample.id);
                     else setSelectedId(c.id);
+                    setUserPickedMarket(true);
                   }}
                   className={`grid grid-cols-[16px_22px_minmax(0,1fr)_42px_70px_30px_30px_30px_28px_16px] items-center gap-x-2 px-1 py-2.5 text-[11px] cursor-pointer border-b border-[#f3f5f9] last:border-0 ${isSel ? "bg-[#eaf0ff]" : "hover:bg-[#f7faff]"}`}
                 >
@@ -3308,6 +3333,7 @@ const CityScoring = () => {
         onAdded={async (city, state) => {
           await reloadSelectedMarketView(city, state);
           setSelectedMarketKey({ city, state });
+          setUserPickedMarket(true);
         }}
       />
     </div>

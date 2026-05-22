@@ -3333,6 +3333,7 @@ const CityScoring = () => {
         onAdded={async (city, state) => {
           await reloadSelectedMarketView(city, state);
           setSelectedMarketKey({ city, state });
+          setUserPickedMarket(true);
         }}
       />
     </div>

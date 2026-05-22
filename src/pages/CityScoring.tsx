@@ -1847,36 +1847,42 @@ const CityScoring = () => {
       <div className="mb-4 rounded-lg bg-white border border-[#eef2f7] p-4">
         <div className="mb-3 flex items-start justify-between gap-4">
           <div className="flex items-start gap-3 min-w-0">
-            {/* Budget donut — makes the 100% constraint visible. */}
+            {/* Budget pie — three solid slices showing the 100% share. */}
             {(() => {
               const segs = VISIBLE_CATEGORIES.map((c) => ({ key: c.key, color: c.color, value: weights[c.key] || 0 }));
               const total = segs.reduce((s, x) => s + x.value, 0) || 1;
-              const C = 2 * Math.PI * 18; // circumference for r=18
-              let offset = 0;
+              const cx = 28, cy = 28, r = 24;
+              let startAngle = -Math.PI / 2; // start at 12 o'clock
+              const slices = segs.map((s) => {
+                const frac = s.value / total;
+                const endAngle = startAngle + frac * Math.PI * 2;
+                const large = frac > 0.5 ? 1 : 0;
+                const x1 = cx + r * Math.cos(startAngle);
+                const y1 = cy + r * Math.sin(startAngle);
+                const x2 = cx + r * Math.cos(endAngle);
+                const y2 = cy + r * Math.sin(endAngle);
+                // Full circle edge-case: render as a full circle.
+                const d = frac >= 0.999
+                  ? `M ${cx - r} ${cy} A ${r} ${r} 0 1 1 ${cx + r} ${cy} A ${r} ${r} 0 1 1 ${cx - r} ${cy} Z`
+                  : `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z`;
+                const el = (
+                  <path
+                    key={s.key}
+                    d={d}
+                    fill={s.color}
+                    style={{ transition: "d 200ms ease" }}
+                  />
+                );
+                startAngle = endAngle;
+                return el;
+              });
               return (
                 <div className="relative shrink-0" style={{ width: 56, height: 56 }} aria-hidden>
-                  <svg width="56" height="56" viewBox="0 0 56 56" className="-rotate-90">
-                    <circle cx="28" cy="28" r="18" fill="none" stroke="#eef2f7" strokeWidth="8" />
-                    {segs.map((s) => {
-                      const len = (s.value / total) * C;
-                      const dash = `${len} ${C - len}`;
-                      const el = (
-                        <circle
-                          key={s.key}
-                          cx="28" cy="28" r="18"
-                          fill="none"
-                          stroke={s.color}
-                          strokeWidth="8"
-                          strokeDasharray={dash}
-                          strokeDashoffset={-offset}
-                          style={{ transition: "stroke-dasharray 200ms ease, stroke-dashoffset 200ms ease" }}
-                        />
-                      );
-                      offset += len;
-                      return el;
-                    })}
+                  <svg width="56" height="56" viewBox="0 0 56 56">
+                    <circle cx={cx} cy={cy} r={r} fill="#eef2f7" />
+                    {slices}
                   </svg>
-                  <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-[#07142f] tabular-nums">
+                  <div className="absolute inset-0 flex items-center justify-center text-[8.5px] font-bold text-white tabular-nums pointer-events-none" style={{ textShadow: "0 1px 2px rgba(0,0,0,0.45)" }}>
                     {totalWeight}%
                   </div>
                 </div>

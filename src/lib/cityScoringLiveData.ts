@@ -234,7 +234,7 @@ export function filterRankedMarkets(markets: RankedMarket[], filters: RankedMark
         if (filters.tierFilter !== "All" && market.tier !== filters.tierFilter) return false;
         if (filters.nonRegOnly && !market.isNonRegistration) return false;
         if (market.compositeScore < filters.minScore) return false;
-        if (minPopulation && market.population < minPopulation) return false;
+        if (minPopulation && (market.population ?? 0) < minPopulation) return false;
       } else {
         // Still respect the explicit non-registration toggle for no-data rows.
         if (filters.nonRegOnly && !market.isNonRegistration) return false;
@@ -284,8 +284,7 @@ export function buildSeededFallbackSignalsFromScored(
     seeded("median_household_income", "Median Household Income", scoredRow.median_household_income, "demand", true),
     seeded("dual_income_household_pct", "% Dual-Income Households", scoredRow.dual_working_families_pct, "demand", true),
     seeded("education_bachelors_plus_pct", "Bachelor's+ Attainment", scoredRow.college_degree_pct, "demand", true),
-    seeded("avg_hourly_camp_pricing", "Average Hourly Camp Pricing", scoredRow.avg_camp_price_per_hour, "pricing_power", true),
-    // CSI — 3-metric lock (Brett+Haseeb 2026-05-21). Inputs from Brett's
+    // CSI — Manus-owned (Brett+Haseeb 2026-05-21). Inputs from Brett's
     // 2026-05-21 Manus upload. Raw csi_score (saturation) is shown on the
     // card; here we expose the three contributing inputs.
     seeded("csi_national_brand_supply", "National Brand Supply (weighted)", scoredRow.csi_national_brand_count_weighted, "competitive_landscape", true),
@@ -297,12 +296,11 @@ export function buildSeededFallbackSignalsFromScored(
     seeded("private_charter_school_count", "Private + Charter Elementary Schools", ((scoredRow.private_elementary_count ?? 0) + (scoredRow.charter_elementary_count ?? 0)) || null, "franchisee_supply", true),
     seeded("public_elementary_enrollment", "Public Elementary Enrollment", scoredRow.public_elementary_enrollment, "franchisee_supply", true),
     seeded("col_salary_index", "Teacher Salary × Cost of Living Index", scoredRow.col_salary_index ?? scoredRow.cost_of_living_index, "franchisee_supply", true),
-    // Weather metrics — retained on the row for reference / future categories,
-    // but no longer part of Demand scoring after the 2026-05-21 lock.
-    seeded("summer_weather_index", "Summer Weather Index", scoredRow.summer_weather_index, "demand", false),
-    seeded("avg_peak_summer_temperature", "Avg Peak Summer Temperature", scoredRow.avg_peak_summer_temperature, "demand", false),
-    seeded("days_above_90f", "Number of 90°+ Days", scoredRow.days_above_90f, "demand", false),
-    seeded("summer_precip_days", "Summer Precipitation Days", scoredRow.summer_precip_days, "demand", false),
+    // Retired/orphan metrics removed 2026-05-22:
+    //   avg_camp_price_per_hour (pricing category retired May 15),
+    //   summer_weather_index / avg_peak_summer_temperature / days_above_90f /
+    //   summer_precip_days (weather is not in any live category).
+    // DB columns are preserved; UI no longer surfaces them.
   ];
   // Note: rows with null values are KEPT — the UI shows them as "—" so the
   // user can see exactly which metrics are not yet seeded for this city,

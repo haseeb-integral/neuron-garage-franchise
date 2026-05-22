@@ -5,6 +5,7 @@ import {
   Plus, RefreshCw, ArrowRight, GitCompare, Eye, Star, Users, DollarSign,
   Trophy, UserCheck, Cog, Heart, MapPin, Building2, GraduationCap, Home as HomeIcon,
   Check, ChevronsUpDown, Info, X, Bookmark, BookmarkCheck, Trash2,
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -562,7 +563,8 @@ const CityScoring = () => {
   const selectedForCompare = useCityScoringStore((s) => s.selectedForCompare);
   const setSelectedForCompare = useCityScoringStore((s) => s.setSelectedForCompare);
   const [refreshingMarket, setRefreshingMarket] = useState(false);
-  const PAGE_SIZE = 8;
+  const [rankedPageSize, setRankedPageSize] = useState<number>(10);
+  const PAGE_SIZE = rankedPageSize;
   const page = useCityScoringStore((s) => s.page);
   const setPage = useCityScoringStore((s) => s.setPage);
 
@@ -2218,33 +2220,76 @@ const CityScoring = () => {
               );
             })}
           </div>
-          <div className="mt-3 flex items-center justify-between text-[11px] text-[#8794ab]">
-            <span>Showing {showingFrom} to {showingTo} of {filtered.length} results</span>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={safePage <= 1}
-                className="px-1.5 h-6 rounded border border-[#eef2f7] text-[#526078] disabled:opacity-40 disabled:cursor-not-allowed"
-              >‹</button>
-              {pageNumbers.map((p, idx) =>
-                p === "..." ? (
-                  <span key={`ellipsis-${idx}`} className="px-1 text-[#8794ab]">…</span>
-                ) : (
+          <div className="mt-3 -mx-4 -mb-4 border-t border-[#eef2f7] bg-[#fafbfd] px-4 py-2.5 rounded-b-lg">
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-[12px] text-[#526078]">
+              <span className="font-medium">
+                Showing <span className="text-[#07142f] font-semibold">{showingFrom}</span>–<span className="text-[#07142f] font-semibold">{showingTo}</span> of <span className="text-[#07142f] font-semibold">{filtered.length}</span> markets
+              </span>
+              <div className="flex items-center gap-1">
+                {totalPages > 5 && (
                   <button
-                    key={p}
                     type="button"
-                    onClick={() => setPage(p)}
-                    className={`px-2 h-6 rounded font-medium ${p === safePage ? "bg-[#174be8] text-white" : "border border-[#eef2f7] text-[#14233b] hover:bg-[#f3f6fc]"}`}
-                  >{p}</button>
-                )
-              )}
-              <button
-                type="button"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={safePage >= totalPages}
-                className="px-1.5 h-6 rounded border border-[#eef2f7] text-[#526078] disabled:opacity-40 disabled:cursor-not-allowed"
-              >›</button>
+                    onClick={() => setPage(1)}
+                    disabled={safePage <= 1}
+                    className="inline-flex items-center justify-center h-8 w-8 rounded-md border border-[#e5eaf2] bg-white text-[#526078] hover:bg-[#f3f6fc] hover:text-[#07142f] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
+                    aria-label="First page"
+                  ><ChevronsLeft size={14} /></button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={safePage <= 1}
+                  className="inline-flex items-center justify-center h-8 w-8 rounded-md border border-[#e5eaf2] bg-white text-[#526078] hover:bg-[#f3f6fc] hover:text-[#07142f] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
+                  aria-label="Previous page"
+                ><ChevronLeft size={14} /></button>
+                {pageNumbers.map((p, idx) =>
+                  p === "..." ? (
+                    <span key={`ellipsis-${idx}`} className="px-1.5 text-[#8794ab] select-none">…</span>
+                  ) : (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setPage(p)}
+                      aria-current={p === safePage ? "page" : undefined}
+                      className={`inline-flex items-center justify-center h-8 min-w-8 px-2 rounded-md text-[12px] font-semibold transition-colors ${
+                        p === safePage
+                          ? "bg-[#174be8] text-white border border-[#174be8] shadow-sm"
+                          : "bg-white border border-[#e5eaf2] text-[#14233b] hover:bg-[#f3f6fc]"
+                      }`}
+                    >{p}</button>
+                  )
+                )}
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={safePage >= totalPages}
+                  className="inline-flex items-center justify-center h-8 w-8 rounded-md border border-[#e5eaf2] bg-white text-[#526078] hover:bg-[#f3f6fc] hover:text-[#07142f] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
+                  aria-label="Next page"
+                ><ChevronRight size={14} /></button>
+                {totalPages > 5 && (
+                  <button
+                    type="button"
+                    onClick={() => setPage(totalPages)}
+                    disabled={safePage >= totalPages}
+                    className="inline-flex items-center justify-center h-8 w-8 rounded-md border border-[#e5eaf2] bg-white text-[#526078] hover:bg-[#f3f6fc] hover:text-[#07142f] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
+                    aria-label="Last page"
+                  ><ChevronsRight size={14} /></button>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-[#8794ab]">Rows</span>
+                <Select value={String(rankedPageSize)} onValueChange={(v) => { setRankedPageSize(Number(v)); setPage(1); }}>
+                  <SelectTrigger className="h-8 w-[68px] bg-white border-[#e5eaf2] text-[12px] px-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
           </>

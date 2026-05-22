@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowRight, ChevronDown, ChevronUp, ChevronsUpDown, Download, Search, X } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronUp, ChevronsUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -302,11 +302,25 @@ export default function CitySpreadsheetView({ markets, onOpenCity, onExportCsv }
   }, [filtered, col, sortDir, rankedAll]);
 
   const total = sorted.length;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const showAll = pageSize === -1;
+  const effectivePageSize = showAll ? Math.max(1, total) : pageSize;
+  const totalPages = Math.max(1, Math.ceil(total / effectivePageSize));
   const safePage = Math.min(page, totalPages);
-  const start = (safePage - 1) * pageSize;
-  const end = Math.min(start + pageSize, total);
+  const start = (safePage - 1) * effectivePageSize;
+  const end = Math.min(start + effectivePageSize, total);
   const pageItems = sorted.slice(start, end);
+
+  const pageNumbers = useMemo<(number | "...")[]>(() => {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const set = new Set<number>([1, 2, totalPages - 1, totalPages, safePage - 1, safePage, safePage + 1]);
+    const sortedNums = Array.from(set).filter((n) => n >= 1 && n <= totalPages).sort((a, b) => a - b);
+    const out: (number | "...")[] = [];
+    sortedNums.forEach((n, i) => {
+      if (i > 0 && n - (sortedNums[i - 1] as number) > 1) out.push("...");
+      out.push(n);
+    });
+    return out;
+  }, [totalPages, safePage]);
 
   const toggleSort = (key: string) => {
     if (sortKey === key) {
@@ -353,13 +367,16 @@ export default function CitySpreadsheetView({ markets, onOpenCity, onExportCsv }
             </SelectContent>
           </Select>
           <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
-            <SelectTrigger className="h-9 w-[110px] bg-white border-[#e5eaf2] text-sm">
+            <SelectTrigger className="h-9 w-[140px] bg-white border-[#e5eaf2] text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="25">25 / page</SelectItem>
               <SelectItem value="50">50 / page</SelectItem>
               <SelectItem value="100">100 / page</SelectItem>
+              <SelectItem value="200">200 / page</SelectItem>
+              <SelectItem value="500">500 / page</SelectItem>
+              <SelectItem value="-1">All ({total.toLocaleString()})</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -486,22 +503,62 @@ export default function CitySpreadsheetView({ markets, onOpenCity, onExportCsv }
       </div>
 
       {/* Pagination */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#eef2f7] px-3 py-2 text-[11px] text-[#526078]">
-        <span>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-[#eef2f7] bg-[#fafbfd] px-4 py-2.5 text-[12px] text-[#526078]">
+        <span className="font-medium">
           {total === 0
             ? "Showing 0 of 0"
-            : `Showing ${start + 1}–${end} of ${total.toLocaleString()} cities`}
+            : showAll
+              ? <>Showing <span className="text-[#07142f] font-semibold">all {total.toLocaleString()}</span> cities</>
+              : <>Showing <span className="text-[#07142f] font-semibold">{start + 1}</span>–<span className="text-[#07142f] font-semibold">{end}</span> of <span className="text-[#07142f] font-semibold">{total.toLocaleString()}</span> cities</>}
         </span>
-        <div className="flex items-center gap-1">
-          <Button variant="outline" size="sm" className="h-7 px-2 text-[11px]"
-            disabled={safePage <= 1} onClick={() => setPage(1)}>First</Button>
-          <Button variant="outline" size="sm" className="h-7 px-2 text-[11px]"
-            disabled={safePage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Prev</Button>
-          <span className="px-2 tabular-nums">{safePage} / {totalPages}</span>
-          <Button variant="outline" size="sm" className="h-7 px-2 text-[11px]"
-            disabled={safePage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</Button>
-          <Button variant="outline" size="sm" className="h-7 px-2 text-[11px]"
-            disabled={safePage >= totalPages} onClick={() => setPage(totalPages)}>Last</Button>
+        {!showAll && totalPages > 1 && (
+          <div className="flex items-center gap-1">
+            {totalPages > 5 && (
+              <button type="button" onClick={() => setPage(1)} disabled={safePage <= 1}
+                className="inline-flex items-center justify-center h-8 w-8 rounded-md border border-[#e5eaf2] bg-white text-[#526078] hover:bg-[#f3f6fc] hover:text-[#07142f] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
+                aria-label="First page"><ChevronsLeft size={14} /></button>
+            )}
+            <button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage <= 1}
+              className="inline-flex items-center justify-center h-8 w-8 rounded-md border border-[#e5eaf2] bg-white text-[#526078] hover:bg-[#f3f6fc] hover:text-[#07142f] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
+              aria-label="Previous page"><ChevronLeft size={14} /></button>
+            {pageNumbers.map((p, idx) =>
+              p === "..." ? (
+                <span key={`ellipsis-${idx}`} className="px-1.5 text-[#8794ab] select-none">…</span>
+              ) : (
+                <button key={p} type="button" onClick={() => setPage(p)}
+                  aria-current={p === safePage ? "page" : undefined}
+                  className={`inline-flex items-center justify-center h-8 min-w-8 px-2 rounded-md text-[12px] font-semibold transition-colors ${
+                    p === safePage
+                      ? "bg-[#174be8] text-white border border-[#174be8] shadow-sm"
+                      : "bg-white border border-[#e5eaf2] text-[#14233b] hover:bg-[#f3f6fc]"
+                  }`}>{p}</button>
+              )
+            )}
+            <button type="button" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages}
+              className="inline-flex items-center justify-center h-8 w-8 rounded-md border border-[#e5eaf2] bg-white text-[#526078] hover:bg-[#f3f6fc] hover:text-[#07142f] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
+              aria-label="Next page"><ChevronRight size={14} /></button>
+            {totalPages > 5 && (
+              <button type="button" onClick={() => setPage(totalPages)} disabled={safePage >= totalPages}
+                className="inline-flex items-center justify-center h-8 w-8 rounded-md border border-[#e5eaf2] bg-white text-[#526078] hover:bg-[#f3f6fc] hover:text-[#07142f] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
+                aria-label="Last page"><ChevronsRight size={14} /></button>
+            )}
+          </div>
+        )}
+        <div className="flex items-center gap-1.5">
+          <span className="text-[11px] text-[#8794ab]">Rows</span>
+          <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
+            <SelectTrigger className="h-8 w-[120px] bg-white border-[#e5eaf2] text-[12px] px-2">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="25">25</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+              <SelectItem value="100">100</SelectItem>
+              <SelectItem value="200">200</SelectItem>
+              <SelectItem value="500">500</SelectItem>
+              <SelectItem value="-1">All ({total.toLocaleString()})</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
     </div>

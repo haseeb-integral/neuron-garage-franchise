@@ -71,6 +71,15 @@ function cat(m: RankedMarket, k: string): number | null {
   return v == null ? null : Number(v);
 }
 
+// Frozen-column geometry. Left edge is built up left-to-right so each frozen
+// column sticks just past the previous one. Widths are fixed so the layout
+// is deterministic regardless of cell content.
+const STICKY_LEFT: Record<string, { left: number; width: number }> = {
+  rank: { left: 0, width: 56 },
+  state: { left: 56, width: 112 },
+  city: { left: 168, width: 160 },
+};
+
 const COLUMNS: ColDef[] = [
   {
     key: "rank", label: "#", align: "right",

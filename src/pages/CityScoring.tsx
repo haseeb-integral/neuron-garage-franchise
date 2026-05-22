@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Bell, HelpCircle, ChevronDown, LogOut, Settings, Search, Download, FileText,
@@ -57,7 +57,7 @@ import { tierFromScore } from "@/lib/cityScoringLiveData";
 import { canonicalKey } from "@/lib/signalAliases";
 import { useCustomCriteria } from "@/hooks/useCustomCriteria";
 import { useScoringConfig, useDebouncedSaveScoringConfig } from "@/hooks/useScoringConfig";
-import { SCORING_PRESETS, PRESET_NAMES, PRESET_DESCRIPTIONS, detectPreset, type PresetName } from "@/lib/scoringPresets";
+import { SCORING_PRESETS, PRESET_NAMES, PRESET_DESCRIPTIONS, PRESET_TAGLINES, PRESET_TILE_ORDER, detectPreset, type PresetName } from "@/lib/scoringPresets";
 import { AskAiBar } from "@/components/city-scoring/AskAiBar";
 import { AiAnswerCard, type AiResult } from "@/components/city-scoring/AiAnswerCard";
 import { TierCountsBar, type TierCounts } from "@/components/city-scoring/TierCountsBar";
@@ -263,6 +263,48 @@ const CityScoring = () => {
   const [saveSearchName, setSaveSearchName] = useState("");
   const [savingSearch, setSavingSearch] = useState(false);
   const [activeSavedSearchId, setActiveSavedSearchId] = useState<string | null>(null);
+
+  // Tween the 3 master sliders from current values to a preset target over ~320ms,
+  // so clicking a preset tile produces a visible "the sliders just moved" cue instead
+  // of an instant snap. Snapshots the user's Custom weights on the way out so they can
+  // come back. On completion, commits via setAppliedWeights (same as Apply Weights).
+  const presetTweenRef = useRef<number | null>(null);
+  const applyPresetByName = useCallback((name: Exclude<PresetName, "Custom">) => {
+    const target = SCORING_PRESETS[name];
+    if (scoringModel === "Custom") {
+      setCustomWeightsSnapshot({ ...appliedWeights });
+    }
+    setActiveSavedSearchId(null);
+    setScoringModel(name);
+
+    const start: Record<CategoryKey, number> = { ...weights };
+    const duration = 320;
+    const t0 = performance.now();
+    if (presetTweenRef.current !== null) cancelAnimationFrame(presetTweenRef.current);
+
+    const step = (now: number) => {
+      const p = Math.min(1, (now - t0) / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      const next: Record<CategoryKey, number> = {
+        demand: Math.round(start.demand + (target.demand - start.demand) * eased),
+        franchiseeSupply: Math.round(start.franchiseeSupply + (target.franchiseeSupply - start.franchiseeSupply) * eased),
+        competitiveLandscape: Math.round(start.competitiveLandscape + (target.competitiveLandscape - start.competitiveLandscape) * eased),
+      };
+      setWeights(next);
+      if (p < 1) {
+        presetTweenRef.current = requestAnimationFrame(step);
+      } else {
+        setWeights(target);
+        setAppliedWeights(target);
+        presetTweenRef.current = null;
+      }
+    };
+    presetTweenRef.current = requestAnimationFrame(step);
+    toast.success(`Applied ${name} preset`);
+  }, [weights, appliedWeights, scoringModel, setWeights, setAppliedWeights, setScoringModel]);
+  useEffect(() => () => {
+    if (presetTweenRef.current !== null) cancelAnimationFrame(presetTweenRef.current);
+  }, []);
 
   const buildDefaultSearchName = (): string => {
     const dateStr = new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" });
@@ -1777,69 +1819,9 @@ const CityScoring = () => {
           )}
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center">
-            <Select
-              value={(PRESET_NAMES as string[]).includes(scoringModel) ? scoringModel : "Balanced"}
-              onValueChange={(name) => {
-                // Saved-search selection
-                if (name.startsWith("saved:")) {
-                  const id = name.slice("saved:".length);
-                  const found = savedSearches.find((s) => s.id === id);
-                  if (found) handleLoadSavedSearch(found);
-                  return;
-                }
-                // Leaving "Custom" → snapshot current weights so we can restore them later.
-                if (scoringModel === "Custom" && name !== "Custom") {
-                  setCustomWeightsSnapshot({ ...appliedWeights });
-                }
-                setActiveSavedSearchId(null);
-                setScoringModel(name);
-                if (name === "Custom") {
-                  // Restore the last custom snapshot if we have one.
-                  if (customWeightsSnapshot) {
-                    setWeights(customWeightsSnapshot);
-                    setAppliedWeights(customWeightsSnapshot);
-                    toast.success("Restored your custom weights");
-                  }
-                } else if (SCORING_PRESETS[name as Exclude<PresetName, "Custom">]) {
-                  const preset = SCORING_PRESETS[name as Exclude<PresetName, "Custom">];
-                  setWeights(preset);
-                  setAppliedWeights(preset);
-                  toast.success(`Applied ${name} preset`);
-                }
-              }}
-            >
-              <SelectTrigger className="h-9 w-[210px] bg-white border-[#e5eaf2] text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PRESET_NAMES.map((p) => (
-                  <SelectItem key={p} value={p}>{p}</SelectItem>
-                ))}
-                {savedSearches.length > 0 && (
-                  <>
-                    <div className="px-2 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-[#8794ab]">Saved Searches</div>
-                    {savedSearches.map((s) => (
-                      <div key={s.id} className="relative">
-                        <SelectItem value={`saved:${s.id}`} className="pr-8">
-                          <span className="truncate">{s.name}</span>
-                        </SelectItem>
-                        <button
-                          type="button"
-                          onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteSavedSearch(s); }}
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                          className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-[#fde8e8] text-[#9aa6bd] hover:text-[#dc2626]"
-                          aria-label={`Delete ${s.name}`}
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    ))}
-                  </>
-                )}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Preset dropdown removed May 22, 2026 — replaced by 2×3 PresetTileGrid
+              rendered inside the Scoring Weights card below. Saved-searches Select
+              remains separate. */}
           {savedSearches.length > 0 && (
             <Select
               value={activeSavedSearchId ?? ""}
@@ -2028,6 +2010,68 @@ const CityScoring = () => {
             )}
           </div>
         </div>
+
+        {/* Preset tile grid — 2 rows × 3 columns. Click to apply; sliders below tween
+            from current values to the preset's target over ~320ms so the cause→effect
+            is visible. "Custom" appears as a chip (not a tile) when weights don't match
+            any preset. */}
+        <div className="mb-3">
+          <div className="mb-2 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] uppercase tracking-wide text-[#8794ab] font-semibold">Quick presets</span>
+              {scoringModel === "Custom" && (
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#f1ebff] text-[#7c3aed]">Custom</span>
+              )}
+            </div>
+            <p className="text-[10px] text-[#8794ab] leading-tight">
+              Click a strategy. Sliders below will animate to match — fine-tune from there.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {PRESET_TILE_ORDER.map((name) => {
+              const w = SCORING_PRESETS[name];
+              const isActive = scoringModel === name;
+              return (
+                <button
+                  key={name}
+                  type="button"
+                  onClick={() => applyPresetByName(name)}
+                  aria-pressed={isActive}
+                  className={cn(
+                    "text-left rounded-lg border p-2.5 transition-all bg-white hover:border-[#174be8]/60 hover:shadow-sm",
+                    isActive
+                      ? "border-[#174be8] ring-2 ring-[#174be8]/30 bg-[#f5f8ff]"
+                      : "border-[#eef2f7]",
+                  )}
+                >
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-[12.5px] font-bold text-[#07142f] leading-tight">{name}</span>
+                    <span className="text-[9.5px] uppercase tracking-wide text-[#8794ab] font-semibold">{PRESET_TAGLINES[name]}</span>
+                  </div>
+                  <p className="text-[10.5px] text-[#526078] leading-snug mt-0.5">
+                    {PRESET_DESCRIPTIONS[name]}
+                  </p>
+                  {/* Mini weight bar — three colored segments showing the split */}
+                  <div className="mt-2 flex h-1.5 w-full overflow-hidden rounded-full bg-[#eef2f7]">
+                    {VISIBLE_CATEGORIES.map((cat) => (
+                      <div
+                        key={cat.key}
+                        style={{ width: `${w[cat.key]}%`, backgroundColor: cat.color }}
+                        title={`${cat.label}: ${w[cat.key]}%`}
+                      />
+                    ))}
+                  </div>
+                  <div className="mt-1 flex items-center justify-between text-[9.5px] tabular-nums text-[#8794ab] font-semibold">
+                    <span style={{ color: VISIBLE_CATEGORIES[0].color }}>{w.demand}</span>
+                    <span style={{ color: VISIBLE_CATEGORIES[1].color }}>{w.franchiseeSupply}</span>
+                    <span style={{ color: VISIBLE_CATEGORIES[2].color }}>{w.competitiveLandscape}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {VISIBLE_CATEGORIES.map((cat) => {
             const Icon = cat.icon;

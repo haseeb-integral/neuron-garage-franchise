@@ -59,6 +59,9 @@ import { useScoringConfig, useDebouncedSaveScoringConfig } from "@/hooks/useScor
 import { SCORING_PRESETS, PRESET_NAMES, PRESET_DESCRIPTIONS, detectPreset, type PresetName } from "@/lib/scoringPresets";
 import { AskAiBar } from "@/components/city-scoring/AskAiBar";
 import { AiAnswerCard, type AiResult } from "@/components/city-scoring/AiAnswerCard";
+import { TierCountsBar, type TierCounts } from "@/components/city-scoring/TierCountsBar";
+import { PreviewBadge } from "@/components/city-scoring/PreviewBadge";
+import { RowScorePopover } from "@/components/city-scoring/RowScorePopover";
 
 
 // Feature flag: hide live on-demand API widgets on the detail panel.
@@ -718,6 +721,50 @@ const CityScoring = () => {
       return a.city.localeCompare(b.city);
       });
   }, [baseRankedMarkets, searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop, cityFilter, watchlistOnly, watchlistCityIds, appliedWeights, appliedSubWeights]);
+
+  // ─── Tier counts (committed) + preview projection (draft weights) ──────
+  // SINGLE-SOURCE-OF-TRUTH RULE: committed numbers come from `filtered`
+  // (what the table renders). Preview is a cheap projection — composite
+  // recomputed with the draft `weights` on every market that has live
+  // category scores. Pure read, no sort, no render.
+  const weightsPending = useMemo(
+    () => JSON.stringify(weights) !== JSON.stringify(appliedWeights),
+    [weights, appliedWeights],
+  );
+  const committedTierCounts = useMemo<TierCounts>(() => {
+    const counts: TierCounts = { A: 0, B: 0, C: 0, D: 0 };
+    filtered.forEach((m: any) => {
+      if (!m.hasLiveData) return;
+      const t = m.tier as keyof TierCounts;
+      if (counts[t] != null) counts[t] += 1;
+    });
+    return counts;
+  }, [filtered]);
+  const liveScoredTotal = useMemo(
+    () => filtered.filter((m: any) => m.hasLiveData).length,
+    [filtered],
+  );
+  const previewTierCounts = useMemo<TierCounts | null>(() => {
+    if (!weightsPending) return null;
+    const counts: TierCounts = { A: 0, B: 0, C: 0, D: 0 };
+    // Use the same baseline `filtered` set so apples-to-apples; we just
+    // re-weight category scores with draft `weights`. Cities without
+    // categoryScores keep their existing tier (rare; mirrors filtered logic).
+    filtered.forEach((m: any) => {
+      if (!m.hasLiveData) return;
+      const cats = m.categoryScores as Record<CategoryKey, number | null> | undefined;
+      let composite: number;
+      if (cats) {
+        const { composite: c } = recomputeComposite(cats, weights);
+        composite = c;
+      } else {
+        composite = m.compositeScore ?? 0;
+      }
+      const t = tierFromScore(composite);
+      if (counts[t] != null) counts[t] += 1;
+    });
+    return counts;
+  }, [filtered, weights, weightsPending]);
 
   // Markets shown on the map: same filters as the table EXCEPT we ignore the
   // Tier dropdown and Min Score slider, so picking a state (e.g. Alabama) that
@@ -1768,11 +1815,7 @@ const CityScoring = () => {
             <span className="text-xs text-[#526078]">
               Total Weight: <span className={totalWeight === 100 ? "text-[#0ea66e] font-medium" : "text-[#ea580c] font-medium"}>{totalWeight}%</span>
             </span>
-            {JSON.stringify(weights) !== JSON.stringify(appliedWeights) && totalWeight === 100 && (
-              <span className="text-[11px] font-medium text-[#ea580c]">
-                Click Apply to recompute scores
-              </span>
-            )}
+            <PreviewBadge pending={weightsPending && totalWeight === 100} preview={previewTierCounts} committed={committedTierCounts} />
             <button onClick={resetWeights} className="text-xs font-medium text-[#174be8] hover:underline">Reset to Default</button>
             <Button
               size="sm"
@@ -1787,12 +1830,24 @@ const CityScoring = () => {
               size="sm"
               disabled={totalWeight !== 100}
               onClick={applyWeights}
-              className="h-7 bg-[#174be8] hover:bg-[#1240c9] text-white text-[11px] px-3 disabled:opacity-50"
+              title={weightsPending ? "Click to commit slider changes to the table" : "No pending changes"}
+              className={cn(
+                "h-7 bg-[#174be8] hover:bg-[#1240c9] text-white text-[11px] px-3 disabled:opacity-50 transition-all",
+                weightsPending && totalWeight === 100 && "ring-2 ring-[#174be8]/40 ring-offset-1 shadow-md animate-pulse",
+              )}
             >
               Apply Weights
             </Button>
           </div>
         </div>
+        {weightsPending && totalWeight === 100 && (
+          <div className="mb-3 -mt-1 flex items-center gap-2 rounded-md border border-[#fcd9b6] bg-[#fff7ed] px-3 py-1.5 text-[11.5px] text-[#9a3412]">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#ea580c]" />
+            <span>
+              <strong>Showing previous results.</strong> Slider changes are pending — click <strong>Apply Weights</strong> above to recompute the table, map, and scores.
+            </span>
+          </div>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {VISIBLE_CATEGORIES.map((cat) => {
             const Icon = cat.icon;
@@ -1812,7 +1867,37 @@ const CityScoring = () => {
                     <span className="text-[12.5px] font-semibold text-[#07142f] leading-tight">{cat.label}</span>
                   </div>
                 </div>
-                <div className="text-right text-base font-bold text-[#07142f]">{weights[cat.key]}%</div>
+                <div className="flex items-center justify-end gap-1.5">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={weights[cat.key]}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      if (raw === "") return;
+                      const parsed = Number(raw);
+                      if (!Number.isFinite(parsed)) return;
+                      const clamped = Math.max(0, Math.min(100, Math.round(parsed)));
+                      setWeights((w) => {
+                        const next = rebalanceWeights(w, cat.key, clamped);
+                        const detected = detectPreset(next);
+                        if (detected !== scoringModel) setScoringModel(detected);
+                        return next;
+                      });
+                    }}
+                    onBlur={(e) => {
+                      const parsed = Number(e.target.value);
+                      if (!Number.isFinite(parsed)) {
+                        // Revert to current weight on garbage input
+                        e.target.value = String(weights[cat.key]);
+                      }
+                    }}
+                    className="h-7 w-14 text-right text-[13px] font-bold text-[#07142f] tabular-nums px-1.5"
+                    aria-label={`${cat.label} weight percent`}
+                  />
+                  <span className="text-base font-bold text-[#07142f]">%</span>
+                </div>
                 <Slider
                   value={[weights[cat.key]]}
                   onValueChange={([v]) => {

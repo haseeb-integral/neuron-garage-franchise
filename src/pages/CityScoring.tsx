@@ -2759,6 +2759,7 @@ const CityScoring = () => {
 
         </div>
       </div>
+      </>
       )}
       </>
       )}

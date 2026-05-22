@@ -2276,7 +2276,7 @@ const CityScoring = () => {
         <div className="min-w-0 rounded-lg bg-white border border-[#eef2f7] p-4">
           <div className="mb-3 flex items-start justify-between gap-3">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-[18px] leading-none font-bold text-[#07142f]">{selected.city}, {selected.state === "Texas" ? "TX" : selected.state === "Florida" ? "FL" : selected.state}</h2>
+              <h2 className="text-[14px] leading-none font-bold uppercase tracking-wide text-[#526078]">Selected Market</h2>
               {SHOW_LIVE_REFRESH && (lastScrapedRelative ? (
                 <span
                   title={lastScrapedAbsolute ?? ""}
@@ -2309,6 +2309,7 @@ const CityScoring = () => {
               );
             })()}
           </div>
+
 
 
           <div className="grid grid-cols-[2fr_1fr_1fr] gap-4 items-start">

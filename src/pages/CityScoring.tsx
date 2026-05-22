@@ -2256,11 +2256,7 @@ const CityScoring = () => {
         />
       ) : (
       <>
-      <TierCountsBar
-        committed={committedTierCounts}
-        preview={previewTierCounts}
-        totalLive={liveScoredTotal}
-      />
+      {/* TierCountsBar moved up — now sits between Scoring Weights and Ask AI. */}
       {/* Three-column layout */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[2fr_1fr_1fr] items-start">
         {/* Left: Ranked Markets */}

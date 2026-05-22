@@ -2514,6 +2514,7 @@ const CityScoring = () => {
             setSelectedMarketKey({ city: m.city, state: m.state });
             const sample = sampleCities.find((s) => sameMarket(s.city, s.state, m.city, m.state));
             if (sample) setSelectedId(sample.id);
+            setUserPickedMarket(true);
             setViewMode("table");
           }}
         />

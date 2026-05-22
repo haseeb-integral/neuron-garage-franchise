@@ -34,7 +34,7 @@ export function AppLayout() {
         </SheetContent>
       </Sheet>
 
-      <main className={`flex-1 min-h-screen bg-white ${collapsed ? "md:ml-16" : "md:ml-[220px]"} transition-[margin] duration-200`}>
+      <main className={`flex-1 min-w-0 min-h-screen bg-white ${collapsed ? "md:ml-16" : "md:ml-[220px]"} transition-[margin] duration-200`}>
         <div className="md:hidden flex items-center justify-between px-4 py-3 border-b bg-white border-[#eef2f7]">
           <button
             onClick={() => setOpen(true)}
@@ -58,7 +58,7 @@ export function AppLayout() {
           </button>
         </div>
 
-        <div className="p-3 md:px-5 md:py-3 lg:px-6 lg:py-3">
+        <div className="p-3 md:px-5 md:py-3 lg:px-6 lg:py-3 min-w-0">
           <Outlet key={location.pathname} />
         </div>
       </main>

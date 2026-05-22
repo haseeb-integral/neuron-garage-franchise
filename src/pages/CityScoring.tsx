@@ -2200,7 +2200,13 @@ const CityScoring = () => {
           }}
         />
       ) : (
-      /* Three-column layout */
+      <>
+      <TierCountsBar
+        committed={committedTierCounts}
+        preview={previewTierCounts}
+        totalLive={liveScoredTotal}
+      />
+      {/* Three-column layout */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[2fr_1fr_1fr] items-start">
         {/* Left: Ranked Markets */}
         <div className="min-w-0 rounded-lg bg-white border border-[#eef2f7] p-3 flex flex-col">
@@ -2311,7 +2317,30 @@ const CityScoring = () => {
                   <div className="flex items-center gap-1.5">
                     {c.hasLiveData ? (
                       <>
-                        <span className="text-[#07142f] font-semibold tabular-nums">{c.compositeScore}</span>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-[#07142f] font-semibold tabular-nums hover:underline decoration-dotted underline-offset-2"
+                              title="Why this tier? Click to see the formula"
+                            >
+                              {c.compositeScore}
+                              <span className="ml-0.5 font-mono italic text-[9px] text-[#8794ab]">ƒx</span>
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent align="start" side="right" className="p-0 w-auto">
+                            <RowScorePopover
+                              city={c.city}
+                              state={c.state}
+                              categories={VISIBLE_CATEGORIES.map((cc) => ({ key: cc.key, label: cc.label }))}
+                              categoryScores={(c as any).categoryScores ?? {}}
+                              appliedWeights={appliedWeights}
+                              composite={c.compositeScore}
+                              tier={c.tier}
+                            />
+                          </PopoverContent>
+                        </Popover>
                         <div className="h-1.5 flex-1 rounded-full bg-[#eef2f7]">
                           <div className="h-full rounded-full bg-[#0ea66e]" style={{ width: `${c.compositeScore}%` }} />
                         </div>

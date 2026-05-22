@@ -1,6 +1,6 @@
 # Open Tasks — Neuron Garage
 
-> Last reviewed: May 18, 2026.
+> Last reviewed: May 22, 2026.
 > GitHub is single source of truth. Do not edit Space OPEN_TASKS.md.
 > Source of truth hierarchy: May 15 meeting decisions override May 8 where they conflict.
 
@@ -73,6 +73,16 @@ See **`TEACHER_IDEAL_PROFILE.md`** for who we are recruiting and why — read th
 - **Risk:** mostly low; V12b medium (provider quirks).
 
 ---
+
+### City universe + orphan-metric cleanup ✅ May 22
+- Deleted 160 non-Manus rows from `us_cities_scored` (`WHERE csi_last_updated IS NULL`) — universe locked at **817 cities** (Manus). Verified 0 `teacher_prospects` orphaned by the delete.
+- Removed `includeExtras` toggle + `csi_last_updated` filter from `loadLiveRankedMarkets`. City Search now reads the full table.
+- Removed from spreadsheet/drawer UI (DB columns kept): `avg_camp_price_per_hour` (Pricing retired May 15), `avg_school_rating` (legacy, not in 46-metric approved list), `summer_weather_index` / `avg_peak_summer_temperature` / `days_above_90f` / `summer_precip_days` (Ops weather orphans), `school_district_count` (not in any live category). `school_hosted_camp_count` stays Manus-owned (surface via CSI panel only if delivered).
+- Fixed NULL→0 coercion bug in `cityScoringLiveData.ts` — `RankedMarket.population` and `competitorCount` now typed `number | null`; mapper preserves NULL; spreadsheet renders NULL as "—" and 0 as "0". Composite math excludes NULL rows from the percentile pool. Rule going forward: **never default NULL to 0** in fetch/transform code.
+
+---
+
+
 
 ## ✅ Completed — Day 1 (May 12–14)
 
@@ -245,12 +255,15 @@ See **`TEACHER_IDEAL_PROFILE.md`** for who we are recruiting and why — read th
 - Schedule next sprint after B7/B10a complete.
 - **Risk:** low-medium (rate-limit pacing)
 
-### B10a. NCES PSS full re-pull — 340 missing cities (added May 18)
-- Current embedded PSS dataset has 636 rows; ~340 of the 960 seeded cities (incl. Dallas, St. Louis, St. Paul) are missing entirely.
+### B10a. NCES PSS full re-pull — 357 missing cities (added May 18, still open May 22)
+- Current embedded PSS dataset has 460 of 817 cities filled; ~357 of the 817 are missing entirely (incl. Dallas, St. Louis, St. Paul).
 - Need one-time download of NCES PSS Excel (2021–22) + parse script → upsert `private_elementary_count` / `private_elementary_enrollment` on `us_cities_scored`.
 - Effort: ~30 min script + 5 min run. Free.
-- **Risk:** low
 - **Risk:** low (additive)
+
+> `school_district_count` backfill **dropped** May 22 — column is not in any live scoring category; no point pulling.
+
+
 
 ---
 

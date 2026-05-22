@@ -699,6 +699,27 @@ const CityScoring = () => {
     });
   }, [baseRankedMarkets, searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop, cityFilter, watchlistOnly, watchlistCityIds, appliedWeights, appliedSubWeights]);
 
+  // Markets shown on the map: same filters as the table EXCEPT we ignore the
+  // Tier dropdown and Min Score slider, so picking a state (e.g. Alabama) that
+  // has no Tier A/B cities still plots its Tier C markets instead of going blank.
+  const mapMarkets = useMemo(() => {
+    const base = filterRankedMarkets(baseRankedMarkets, {
+      searchTerm,
+      stateFilter,
+      tierFilter: "All",
+      nonRegOnly,
+      minScore: 0,
+      minPop,
+    });
+    const q = cityFilter.trim().toLowerCase();
+    let out = q ? base.filter((m: any) => String(m.city ?? "").toLowerCase().includes(q)) : base;
+    if (watchlistOnly) {
+      out = out.filter((m: any) => m.cityId && watchlistCityIds.has(m.cityId));
+    }
+    return out;
+  }, [baseRankedMarkets, searchTerm, stateFilter, nonRegOnly, minPop, cityFilter, watchlistOnly, watchlistCityIds]);
+
+
   // Reset to page 1 when watchlist filter toggles
   useEffect(() => { setPage(1); }, [watchlistOnly]);
 

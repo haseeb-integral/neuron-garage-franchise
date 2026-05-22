@@ -1819,69 +1819,9 @@ const CityScoring = () => {
           )}
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center">
-            <Select
-              value={(PRESET_NAMES as string[]).includes(scoringModel) ? scoringModel : "Balanced"}
-              onValueChange={(name) => {
-                // Saved-search selection
-                if (name.startsWith("saved:")) {
-                  const id = name.slice("saved:".length);
-                  const found = savedSearches.find((s) => s.id === id);
-                  if (found) handleLoadSavedSearch(found);
-                  return;
-                }
-                // Leaving "Custom" → snapshot current weights so we can restore them later.
-                if (scoringModel === "Custom" && name !== "Custom") {
-                  setCustomWeightsSnapshot({ ...appliedWeights });
-                }
-                setActiveSavedSearchId(null);
-                setScoringModel(name);
-                if (name === "Custom") {
-                  // Restore the last custom snapshot if we have one.
-                  if (customWeightsSnapshot) {
-                    setWeights(customWeightsSnapshot);
-                    setAppliedWeights(customWeightsSnapshot);
-                    toast.success("Restored your custom weights");
-                  }
-                } else if (SCORING_PRESETS[name as Exclude<PresetName, "Custom">]) {
-                  const preset = SCORING_PRESETS[name as Exclude<PresetName, "Custom">];
-                  setWeights(preset);
-                  setAppliedWeights(preset);
-                  toast.success(`Applied ${name} preset`);
-                }
-              }}
-            >
-              <SelectTrigger className="h-9 w-[210px] bg-white border-[#e5eaf2] text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PRESET_NAMES.map((p) => (
-                  <SelectItem key={p} value={p}>{p}</SelectItem>
-                ))}
-                {savedSearches.length > 0 && (
-                  <>
-                    <div className="px-2 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-[#8794ab]">Saved Searches</div>
-                    {savedSearches.map((s) => (
-                      <div key={s.id} className="relative">
-                        <SelectItem value={`saved:${s.id}`} className="pr-8">
-                          <span className="truncate">{s.name}</span>
-                        </SelectItem>
-                        <button
-                          type="button"
-                          onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteSavedSearch(s); }}
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                          className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-[#fde8e8] text-[#9aa6bd] hover:text-[#dc2626]"
-                          aria-label={`Delete ${s.name}`}
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    ))}
-                  </>
-                )}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Preset dropdown removed May 22, 2026 — replaced by 2×3 PresetTileGrid
+              rendered inside the Scoring Weights card below. Saved-searches Select
+              remains separate. */}
           {savedSearches.length > 0 && (
             <Select
               value={activeSavedSearchId ?? ""}

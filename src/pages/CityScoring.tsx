@@ -1870,6 +1870,9 @@ const CityScoring = () => {
                     key={s.key}
                     d={d}
                     fill={s.color}
+                    stroke="#ffffff"
+                    strokeWidth={2}
+                    strokeLinejoin="round"
                     style={{ transition: "d 200ms ease" }}
                   />
                 );

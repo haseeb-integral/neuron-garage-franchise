@@ -302,11 +302,25 @@ export default function CitySpreadsheetView({ markets, onOpenCity, onExportCsv }
   }, [filtered, col, sortDir, rankedAll]);
 
   const total = sorted.length;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const showAll = pageSize === -1;
+  const effectivePageSize = showAll ? Math.max(1, total) : pageSize;
+  const totalPages = Math.max(1, Math.ceil(total / effectivePageSize));
   const safePage = Math.min(page, totalPages);
-  const start = (safePage - 1) * pageSize;
-  const end = Math.min(start + pageSize, total);
+  const start = (safePage - 1) * effectivePageSize;
+  const end = Math.min(start + effectivePageSize, total);
   const pageItems = sorted.slice(start, end);
+
+  const pageNumbers = useMemo<(number | "...")[]>(() => {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const set = new Set<number>([1, 2, totalPages - 1, totalPages, safePage - 1, safePage, safePage + 1]);
+    const sortedNums = Array.from(set).filter((n) => n >= 1 && n <= totalPages).sort((a, b) => a - b);
+    const out: (number | "...")[] = [];
+    sortedNums.forEach((n, i) => {
+      if (i > 0 && n - (sortedNums[i - 1] as number) > 1) out.push("...");
+      out.push(n);
+    });
+    return out;
+  }, [totalPages, safePage]);
 
   const toggleSort = (key: string) => {
     if (sortKey === key) {

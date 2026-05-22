@@ -2116,7 +2116,12 @@ const CityScoring = () => {
             return (
               <div
                 key={cat.key}
-                className="rounded-lg border border-[#eef2f7] bg-white p-3 flex flex-col gap-2 hover:border-[#174be8]/40 transition-colors"
+                className={cn(
+                  "rounded-lg border bg-white p-3 flex flex-col gap-2 transition-all",
+                  presetTweening
+                    ? "border-[#174be8] ring-2 ring-[#174be8]/30 shadow-sm"
+                    : "border-[#eef2f7] hover:border-[#174be8]/40",
+                )}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-start gap-2 min-w-0">

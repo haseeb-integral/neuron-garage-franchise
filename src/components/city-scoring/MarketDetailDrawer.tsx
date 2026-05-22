@@ -397,7 +397,6 @@ export function MarketDetailDrawer({
   const coverageByCategory = useMemo(() => {
     const out: Record<MetricCategory, { enabled: Coverage[]; disabled: Coverage[] }> = {
       demand: { enabled: [], disabled: [] },
-      pricing_power: { enabled: [], disabled: [] },
       competitive_landscape: { enabled: [], disabled: [] },
       franchisee_supply: { enabled: [], disabled: [] },
       ease_of_operations: { enabled: [], disabled: [] },
@@ -465,7 +464,7 @@ export function MarketDetailDrawer({
   const { data: customCriteriaRows = [] } = useCustomCriteria();
   const customByMetricCategory = useMemo(() => {
     const out: Record<MetricCategory, typeof customCriteriaRows> = {
-      demand: [], pricing_power: [], competitive_landscape: [],
+      demand: [], competitive_landscape: [],
       franchisee_supply: [], ease_of_operations: [], parent_mindset: [],
     };
     const KEY_TO_METRIC: Record<CategoryKey, MetricCategory> = {

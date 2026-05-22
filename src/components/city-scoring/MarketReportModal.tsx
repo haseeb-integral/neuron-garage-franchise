@@ -19,7 +19,6 @@ interface Props {
 type MetricStatus = "live" | "proxy" | "missing" | "blocked" | "manual";
 type MetricCategory =
   | "demand"
-  | "pricing_power"
   | "competitive_landscape"
   | "franchisee_supply"
   | "ease_of_operations"

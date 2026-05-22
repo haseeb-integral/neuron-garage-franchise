@@ -136,7 +136,7 @@ import {
   categoryScoresFromSample as categoryScores,
   type Category,
 } from "@/lib/cityScoringPageHelpers";
-void Category; void VISIBLE_CATEGORIES; void SOURCES; void CATEGORIES;
+void VISIBLE_CATEGORIES; void SOURCES; void CATEGORIES;
 void normalizeMarketState; void sameMarket; void categoryScores;
 
 type TierLetter = _TierLetter;

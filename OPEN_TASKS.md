@@ -74,6 +74,15 @@ See **`TEACHER_IDEAL_PROFILE.md`** for who we are recruiting and why — read th
 
 ---
 
+### 152-city public-school backfill + TAM recompute ✅ May 22 (B-minimal)
+- Linked the 152 previously-unlinked Manus cities to `public_schools` via `us_cities_scored_id` FK. 814/817 cities now have non-zero `public_elementary_count`; 461 have `charter_elementary_count`.
+- Ran `recompute-city-derived` across all affected rows: refreshed `public_elementary_count`, `charter_elementary_count`, `public_elementary_teacher_count`, and `score_tam_teachers` (range 4–91, avg 22, no nulls).
+- **Left `composite_score_default` as the Manus snapshot per plan** — the headline composite does NOT yet reflect the refreshed TAM. Tracked below as B-full.
+
+### B-full — Full 6-category re-score from SOW registry (deferred, post-Manus competitive refresh)
+- Build a real 817-city re-scoring pass that recomputes all 6 category scores + `composite_score_default` from the SOW registry as the single source of truth (`supabase/functions/_shared/scoring.ts`). Today nothing in production writes the composite — values are Manus's one-time CSV import.
+- Requires a new edge function (~half-day). Will shift every city's composite (not just the 152), so schedule alongside the next Manus competitive-landscape import so all inputs move together.
+
 ### City universe + orphan-metric cleanup ✅ May 22
 - Deleted 160 non-Manus rows from `us_cities_scored` (`WHERE csi_last_updated IS NULL`) — universe locked at **817 cities** (Manus). Verified 0 `teacher_prospects` orphaned by the delete.
 - Removed `includeExtras` toggle + `csi_last_updated` filter from `loadLiveRankedMarkets`. City Search now reads the full table.

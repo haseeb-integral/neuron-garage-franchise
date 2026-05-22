@@ -2521,6 +2521,35 @@ const CityScoring = () => {
             />
           )}
 
+          {(() => {
+            const score = Math.round(Number(detailScore) || 0);
+            const verdict = score >= 70 ? "high" : score >= 50 ? "moderate" : "low";
+            const catParts = CATEGORIES.map((c) => {
+              const v = Math.round(detailCategoryScores[c.key] ?? 0);
+              return `${c.label} ${v}`;
+            }).join(", ");
+            const topSignals = sigRows.filter((r) => r.value !== "—").slice(0, 3);
+            const sigText = topSignals.length
+              ? topSignals.map((s) => `${s.label} (${s.value})`).join(", ")
+              : "key market signals are still loading";
+            let argument = "";
+            if (verdict === "high") {
+              argument = `With a composite of ${score}, ${selectedCity} ranks as a high-priority market worth deep examination — the underlying signals point to durable family demand and a recruitable operator pool.`;
+            } else if (verdict === "moderate") {
+              argument = `A composite of ${score} places ${selectedCity} in the moderate band: worth examining as a secondary target, with category mix (${catParts}) determining whether it graduates to a priority market.`;
+            } else {
+              argument = `A composite of ${score} suggests ${selectedCity} is a low-priority market — category scores (${catParts}) do not yet justify outbound investment without a compelling local thesis.`;
+            }
+            const summary = `${selectedCity}, ${selectedState} scores ${score}/100 overall (${verdict} opportunity). Category breakdown: ${catParts}. Standout signals include ${sigText}. ${argument}`;
+            return (
+              <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
+                <h4 className="text-xs font-bold text-[#07142f] mb-1">{selectedCity}, {selectedState}</h4>
+                <p className="text-[10px] uppercase tracking-wide text-[#8794ab] mb-2">Executive Summary</p>
+                <p className="text-[11px] leading-relaxed text-[#3a4763]">{summary}</p>
+              </div>
+            );
+          })()}
+
           <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
             <h4 className="text-xs font-bold text-[#07142f] mb-1">Market Research Report</h4>
             <p className="text-[10px] text-[#8794ab] mb-2">Comprehensive PDF report with data, insights, recommendations, and competitor analysis.</p>
@@ -2528,6 +2557,7 @@ const CityScoring = () => {
               Generate PDF Report
             </Button>
           </div>
+
 
           <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
             <div className="mb-2 flex items-baseline justify-between gap-2">

@@ -2779,13 +2779,22 @@ const CityScoring = () => {
               </Button>
             </div>
 
-            {/* Market Summary at bottom, full width */}
+            {/* Market Summary at bottom, full width — mt-auto pushes it to fill leftover height */}
             {selectedLiveCity?.notes ? (
-              <div className="mt-5 w-full text-left border-t border-[#eef2f7] pt-3">
+              <div className="mt-auto pt-5 w-full text-left border-t border-[#eef2f7]">
                 <p className="mb-1.5 text-[12px] font-semibold text-[#3a4c72]">Market Summary</p>
                 <p className="text-[12px] leading-relaxed text-[#14233b]">{selectedLiveCity.notes}</p>
               </div>
-            ) : null}
+            ) : (
+              <div className="mt-auto pt-5 w-full text-left border-t border-[#eef2f7]">
+                <p className="mb-1.5 text-[12px] font-semibold text-[#3a4c72]">Market Summary</p>
+                <p className="text-[11.5px] leading-relaxed text-[#8794ab] italic">
+                  No analyst notes yet for {selected.city}. Refresh this market to pull the latest narrative summary,
+                  or open <span className="font-semibold not-italic text-[#526078]">Details</span> to review the full
+                  signal-by-signal evidence used to compute this score.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 

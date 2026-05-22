@@ -2311,7 +2311,7 @@ const CityScoring = () => {
           </div>
 
 
-          <div className="grid grid-cols-[1fr_1fr] gap-4 items-start">
+          <div className="grid grid-cols-[2fr_1fr_1fr] gap-4 items-start">
             {/* Col 1: Market Summary */}
             <div className="min-w-0 pt-1">
               {selectedLiveCity?.notes ? (

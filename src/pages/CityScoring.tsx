@@ -2004,23 +2004,29 @@ const CityScoring = () => {
             cause→effect obvious. "Custom" appears as a chip (not a tile) when weights
             don't match any preset. */}
         <div className="mb-3">
-          {/* Plain-English explainer — the one sentence that makes the coupling click. */}
-          <div className="mb-2.5 rounded-md bg-[#f5f8ff] border border-[#dbe4f2] px-3 py-2 flex items-start gap-2">
-            <span className="mt-[1px] inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#174be8] text-[9px] font-bold text-white">i</span>
-            <div className="text-[11.5px] text-[#07142f] leading-snug">
-              <span className="font-semibold">Two ways to set the same dial.</span>{" "}
-              Pick a <span className="font-semibold">strategy</span> below to snap the three sliders into a preset balance, or drag a <span className="font-semibold">slider</span> directly to fine-tune. They always stay in sync — dragging a slider unlocks <span className="font-semibold text-[#7c3aed]">Custom</span>; clicking a strategy snaps back.
-            </div>
-          </div>
-          <div className="mb-2 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase tracking-wide text-[#8794ab] font-semibold">Strategy</span>
+          {/* Presets header — make it unmistakable that the 6 tiles below are
+              clickable preset strategies that drive the sliders. */}
+          <div className="mb-2.5 rounded-md bg-[#f5f8ff] border border-[#dbe4f2] px-3 py-2.5">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className="inline-flex h-5 items-center rounded-md bg-[#174be8] px-1.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                6 Presets
+              </span>
+              <span className="text-[12.5px] font-bold text-[#07142f]">
+                Pick a scoring strategy below ↓
+              </span>
               {scoringModel === "Custom" ? (
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#f1ebff] text-[#7c3aed]">Custom — you adjusted a slider</span>
+                <span className="ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#f1ebff] text-[#7c3aed]">
+                  Custom — you adjusted a slider
+                </span>
               ) : (
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#eaf0ff] text-[#174be8]">{scoringModel} is active</span>
+                <span className="ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#eaf0ff] text-[#174be8]">
+                  Active preset: {scoringModel}
+                </span>
               )}
             </div>
+            <p className="text-[11.5px] text-[#526078] leading-snug">
+              A <span className="font-semibold text-[#07142f]">preset</span> is a one-click recipe that snaps the three weight sliders to a balance tuned for a specific goal (e.g. <em>most kids</em>, <em>most teachers</em>, <em>least competition</em>). Click any tile to apply it — the sliders below animate to match, then hit <span className="font-semibold">Apply Weights</span> to re-rank cities. Drag a slider yourself and you'll switch to <span className="font-semibold text-[#7c3aed]">Custom</span>.
+            </p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {PRESET_TILE_ORDER.map((name) => {

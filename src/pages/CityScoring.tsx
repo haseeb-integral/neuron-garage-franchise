@@ -2311,10 +2311,52 @@ const CityScoring = () => {
           </div>
 
 
-          <div className="grid grid-cols-[150px_1fr] gap-3 items-start">
-            <div className="flex flex-col items-center text-center pt-1">
+          <div className="grid grid-cols-[2fr_1fr_1fr] gap-4 items-start">
+            {/* Col 1 (50%): Category Scores + action buttons stacked below */}
+            <div className="min-w-0">
+              <p className="mb-2.5 text-[13px] font-semibold text-[#07142f]">Category Scores</p>
+              <div className="space-y-2">
+                {VISIBLE_CATEGORIES.map((cat) => {
+                  const v = selectedHasLiveData ? (detailCategoryScores[cat.key] ?? 0) : null;
+                  const wPct = appliedTotal > 0 ? (appliedWeights[cat.key] / appliedTotal) * 100 : 0;
+                  const isZeroWeighted = wPct <= 0.05;
+                  return (
+                    <div key={cat.key} className={isZeroWeighted ? "opacity-45" : ""} title={isZeroWeighted ? `${cat.label} is set to 0% — contributes nothing to the overall score` : undefined}>
+                      <div className="mb-1 flex items-center justify-between gap-3 text-[12px]">
+                        <span className="text-[#526078]">
+                          {cat.label}
+                          {isZeroWeighted && <span className="ml-1.5 text-[10px] uppercase tracking-wide text-[#8794ab]">· 0% weight</span>}
+                        </span>
+                        <span className="font-semibold text-[#07142f]">{v ?? "—"}</span>
+                      </div>
+                      <div className="h-1.5 w-full rounded-full bg-[#e8edf6]">
+                        <div className={`h-full rounded-full ${isZeroWeighted ? "bg-[#b6bfd0]" : "bg-[#1d4fff]"}`} style={{ width: `${v ?? 0}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-4 flex flex-col gap-2">
+                <Button onClick={handleFindTeachers} className="h-9 w-full bg-[#174be8] hover:bg-[#1240c9] text-white gap-1.5 px-3 font-medium text-[11px] justify-center">
+                  <span className="truncate">Find Teachers</span> <ArrowRight size={12} className="flex-shrink-0" />
+                </Button>
+                <Button variant="outline" onClick={openCompare} className="h-9 w-full border-[#dbe4f2] text-[#2250eb] gap-1.5 px-2.5 font-medium text-[11px] justify-center">
+                  <GitCompare size={12} /> Compare
+                </Button>
+                <Button variant="outline" onClick={() => setReportOpen(true)} className="h-9 w-full border-[#dbe4f2] text-[#2250eb] gap-1.5 px-2.5 font-medium text-[11px] justify-center">
+                  <FileText size={12} /> Report
+                </Button>
+                <Button variant="outline" className="h-9 w-full border-[#dbe4f2] text-[#2250eb] gap-1.5 px-2.5 font-medium text-[11px] justify-center" onClick={() => setDetailDrawerOpen(true)}>
+                  <Eye size={12} /> Details
+                </Button>
+              </div>
+            </div>
+
+            {/* Col 2 (25%): Overall Score full width, details stacked below */}
+            <div className="min-w-0 flex flex-col items-center text-center pt-1">
               <p className="mb-1.5 text-[12px] font-semibold text-[#3a4c72]">Overall Score</p>
-              <svg viewBox="0 0 200 120" className="h-[100px] w-[150px] max-w-full">
+              <svg viewBox="0 0 200 120" className="w-full h-auto max-w-[200px]">
                 <path d="M25 92 A75 75 0 0 1 175 92" fill="none" stroke="#e7ebf3" strokeWidth="14" strokeLinecap="round" />
                 {selectedHasLiveData && (
                   <path
@@ -2331,8 +2373,6 @@ const CityScoring = () => {
               </svg>
               <p className="-mt-1 text-[12px] font-semibold" style={{ color: selectedHasLiveData ? tierBadge.fg : "#8794ab" }}>{selectedHasLiveData ? opportunityLabel : "No live data"}</p>
               {selectedHasLiveData && (() => {
-                // Rank by CONTRIBUTION = score × applied master weight, so
-                // categories the user weighted to 0% never count as drivers.
                 const enriched = VISIBLE_CATEGORIES.map((c) => {
                   const score = Math.round(detailCategoryScores[c.key] ?? 0);
                   const weight = appliedWeights[c.key] ?? 0;
@@ -2347,7 +2387,7 @@ const CityScoring = () => {
                   ? `${drivers[0].label} (${drivers[0].score}) is driving this score.`
                   : `${drivers[0].label} (${drivers[0].score}) and ${drivers[1].label} (${drivers[1].score}) are driving this score.`;
                 return (
-                  <div className="mt-1.5 px-1 text-center text-[10.5px] italic leading-snug text-[#6b7a99] max-w-[180px]">
+                  <div className="mt-1.5 px-1 text-center text-[10.5px] italic leading-snug text-[#6b7a99]">
                     <p>{driverText}</p>
                     {showDrag && (
                       <p className="mt-0.5">{lowest.label} ({lowest.score}) is pulling the score down.</p>
@@ -2436,82 +2476,42 @@ const CityScoring = () => {
                   <span className="font-mono italic mr-0.5">ƒx</span> Show formula
                 </button>
               )}
-            </div>
 
-            <div className="space-y-2.5 pt-1 min-w-0">
-              <div className="text-[11px] space-y-1.5 min-w-0">
-                <div className="flex items-center gap-x-4 gap-y-1.5 flex-wrap">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[#6b7a96]">Tier</span>
-                    {selectedHasLiveData ? (
-                      <span className="rounded-full px-2 py-0.5 text-[10.5px] font-semibold leading-tight" style={{ backgroundColor: tierBadge.bg, color: tierBadge.fg }}>{tierBadge.label}</span>
-                    ) : (
-                      <span className="rounded-full bg-[#eef2f7] px-2 py-0.5 text-[10.5px] font-semibold leading-tight text-[#8794ab]">No data</span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[#6b7a96]">Market Type</span>
-                    <span className="rounded-full bg-[#eef3ff] px-2 py-0.5 text-[10.5px] font-medium leading-tight text-[#174be8]">{displayMarketType}</span>
-                  </div>
+              {/* Details stacked under the score */}
+              <div className="mt-3 w-full text-left text-[11px] space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-[#6b7a96]">Tier</span>
+                  {selectedHasLiveData ? (
+                    <span className="rounded-full px-2 py-0.5 text-[10.5px] font-semibold leading-tight" style={{ backgroundColor: tierBadge.bg, color: tierBadge.fg }}>{tierBadge.label}</span>
+                  ) : (
+                    <span className="rounded-full bg-[#eef2f7] px-2 py-0.5 text-[10.5px] font-semibold leading-tight text-[#8794ab]">No data</span>
+                  )}
                 </div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-[#6b7a96] w-[78px] flex-shrink-0">Metro Area</span>
-                  <span className="font-semibold text-[#07142f]">{displayMetroArea}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[#6b7a96]">Market Type</span>
+                  <span className="rounded-full bg-[#eef3ff] px-2 py-0.5 text-[10.5px] font-medium leading-tight text-[#174be8]">{displayMarketType}</span>
                 </div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-[#6b7a96] w-[78px] flex-shrink-0">County</span>
-                  <span className="font-semibold text-[#07142f]">{displayCounty}</span>
-                </div>
-              </div>
-
-              {selectedLiveCity?.notes && (
                 <div>
-                  <p className="mb-0.5 text-[12px] font-semibold text-[#3a4c72]">Market Summary</p>
-                  <p className="text-[11.5px] leading-snug text-[#14233b]">{selectedLiveCity.notes}</p>
+                  <div className="text-[#6b7a96]">Metro Area</div>
+                  <div className="font-semibold text-[#07142f] break-words">{displayMetroArea}</div>
                 </div>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-3 border-t border-[#eef2f7] pt-3.5 flex gap-4 items-start">
-            <div className="flex-1 min-w-0 max-w-[50%]">
-              <p className="mb-2.5 text-[13px] font-semibold text-[#07142f]">Category Scores</p>
-              <div className="space-y-2">
-                {VISIBLE_CATEGORIES.map((cat) => {
-                  const v = selectedHasLiveData ? (detailCategoryScores[cat.key] ?? 0) : null;
-                  const wPct = appliedTotal > 0 ? (appliedWeights[cat.key] / appliedTotal) * 100 : 0;
-                  const isZeroWeighted = wPct <= 0.05;
-                  return (
-                    <div key={cat.key} className={isZeroWeighted ? "opacity-45" : ""} title={isZeroWeighted ? `${cat.label} is set to 0% — contributes nothing to the overall score` : undefined}>
-                      <div className="mb-1 flex items-center justify-between gap-3 text-[12px]">
-                        <span className="text-[#526078]">
-                          {cat.label}
-                          {isZeroWeighted && <span className="ml-1.5 text-[10px] uppercase tracking-wide text-[#8794ab]">· 0% weight</span>}
-                        </span>
-                        <span className="font-semibold text-[#07142f]">{v ?? "—"}</span>
-                      </div>
-                      <div className="h-1.5 w-full rounded-full bg-[#e8edf6]">
-                        <div className={`h-full rounded-full ${isZeroWeighted ? "bg-[#b6bfd0]" : "bg-[#1d4fff]"}`} style={{ width: `${v ?? 0}%` }} />
-                      </div>
-                    </div>
-                  );
-                })}
+                <div>
+                  <div className="text-[#6b7a96]">County</div>
+                  <div className="font-semibold text-[#07142f] break-words">{displayCounty}</div>
+                </div>
               </div>
             </div>
 
-            <div className="flex flex-col gap-2 w-[180px] flex-shrink-0 pt-1">
-              <Button onClick={handleFindTeachers} className="h-9 w-full bg-[#174be8] hover:bg-[#1240c9] text-white gap-1.5 px-3 font-medium text-[11px] justify-center">
-                <span className="truncate">Find Teachers</span> <ArrowRight size={12} className="flex-shrink-0" />
-              </Button>
-              <Button variant="outline" onClick={openCompare} className="h-9 w-full border-[#dbe4f2] text-[#2250eb] gap-1.5 px-2.5 font-medium text-[11px] justify-center">
-                <GitCompare size={12} /> Compare
-              </Button>
-              <Button variant="outline" onClick={() => setReportOpen(true)} className="h-9 w-full border-[#dbe4f2] text-[#2250eb] gap-1.5 px-2.5 font-medium text-[11px] justify-center">
-                <FileText size={12} /> Report
-              </Button>
-              <Button variant="outline" className="h-9 w-full border-[#dbe4f2] text-[#2250eb] gap-1.5 px-2.5 font-medium text-[11px] justify-center" onClick={() => setDetailDrawerOpen(true)}>
-                <Eye size={12} /> Details
-              </Button>
+            {/* Col 3 (25%): Market Summary */}
+            <div className="min-w-0 pt-1">
+              {selectedLiveCity?.notes ? (
+                <>
+                  <p className="mb-1.5 text-[12px] font-semibold text-[#3a4c72]">Market Summary</p>
+                  <p className="text-[11.5px] leading-snug text-[#14233b]">{selectedLiveCity.notes}</p>
+                </>
+              ) : (
+                <p className="text-[11px] italic text-[#8794ab]">No market summary available.</p>
+              )}
             </div>
           </div>
         </div>

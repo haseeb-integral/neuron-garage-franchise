@@ -16,7 +16,7 @@
 // Reading the URL is intentionally one-shot (mount only) — once the user
 // is interacting we own the truth and just write changes back.
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useCityScoringStore } from "@/stores/cityScoringStore";
 import { sampleCities } from "@/data/cityData";
@@ -46,24 +46,8 @@ export function useMarketSelection(
   const setSelectedMarketKey = useCityScoringStore((s) => s.setSelectedMarketKey);
   const setSelectedId = useCityScoringStore((s) => s.setSelectedId);
 
-  // Local flag, not persisted — refreshing the page should re-snap to #1.
-  const userPickedRef = useRef(false);
-  // Re-render trigger when the flag flips (refs alone don't trigger).
-  const setTick = useCityScoringStore((s) => s.setPage); // benign no-op subscription
-  void setTick;
-
-  // Mirror into React state so consumers re-render on flip.
-  // Using zustand would persist it; useState wins.
-  const [, forceRender] = (require("react") as typeof import("react")).useReducer(
-    (n: number) => n + 1,
-    0,
-  );
-  const flip = useCallback((v: boolean) => {
-    if (userPickedRef.current !== v) {
-      userPickedRef.current = v;
-      forceRender();
-    }
-  }, [forceRender]);
+  const [userPickedMarket, setUserPickedMarket] = useState(false);
+  const flip = useCallback((v: boolean) => setUserPickedMarket(v), []);
 
   const [searchParams, setSearchParams] = useSearchParams();
 

@@ -181,35 +181,9 @@ const sameMarket = (cityA?: string | null, stateA?: string | null, cityB?: strin
     && normalizeMarketState(stateA).toLowerCase() === normalizeMarketState(stateB).toLowerCase();
 };
 
-type TierLetter = "A" | "B" | "C" | "D";
-
-function percentileTierCutoffs(n: number) {
-  const aCut = Math.max(1, Math.ceil(n * 0.05));
-  const bCut = aCut + Math.max(1, Math.ceil(n * 0.15));
-  const cCut = bCut + Math.max(1, Math.ceil(n * 0.30));
-  return { aCut, bCut, cCut };
-}
-
-function assignPercentileTiers<T extends { hasLiveData?: boolean | null; compositeScore?: number | null }>(markets: T[]): Array<T & { tier: TierLetter }> {
-  const withIndex = markets.map((market, index) => ({ market, index }));
-  const liveScored = withIndex
-    .filter(({ market }) => !!market.hasLiveData)
-    .slice()
-    .sort((a, b) => Number(b.market.compositeScore ?? 0) - Number(a.market.compositeScore ?? 0));
-
-  const { aCut, bCut, cCut } = percentileTierCutoffs(liveScored.length);
-  const tierByIndex = new Map<number, TierLetter>();
-
-  liveScored.forEach(({ index }, i) => {
-    const tier: TierLetter = i < aCut ? "A" : i < bCut ? "B" : i < cCut ? "C" : "D";
-    tierByIndex.set(index, tier);
-  });
-
-  return withIndex.map(({ market, index }) => {
-    if (!market.hasLiveData) return { ...market, tier: "D" as const };
-    return { ...market, tier: tierByIndex.get(index) ?? "D" };
-  });
-}
+type TierLetter = _TierLetter;
+const percentileTierCutoffs = _percentileTierCutoffs;
+const assignPercentileTiers = _assignPercentileTiers;
 
 function countLiveTiers<T extends { hasLiveData?: boolean | null; tier?: string | null }>(markets: T[]): TierCounts {
   const counts: TierCounts = { A: 0, B: 0, C: 0, D: 0 };

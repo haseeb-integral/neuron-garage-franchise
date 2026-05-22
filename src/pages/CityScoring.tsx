@@ -1949,6 +1949,7 @@ const CityScoring = () => {
           onOpenCity={(m) => {
             setSelectedMarketKey({ city: m.city, state: m.state });
             setSelectedId(m.id);
+            setUserPickedMarket(true);
             setDetailDrawerOpen(true);
           }}
         />

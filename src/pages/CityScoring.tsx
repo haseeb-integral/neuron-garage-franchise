@@ -3024,18 +3024,34 @@ const CityScoring = () => {
                           <h3 className="text-[13px] font-bold text-[#07142f] mb-1.5">Key market signals, explained</h3>
                           <p className="text-[12px] leading-relaxed text-[#526078] text-justify hyphens-auto mb-2">
                             These are the underlying data points feeding the score. Each one comes from a named public
-                            source — nothing is invented.
+                            source — nothing is invented. The colored badge under each value shows where this market
+                            sits relative to our benchmark thresholds across the 817-city universe.
                           </p>
                           <div className="divide-y divide-[#f1f4f9] rounded-md border border-[#eef2f7] bg-white">
-                            {signalRows.map((r) => (
-                              <div key={r.key} className="px-3 py-2.5">
-                                <div className="flex items-baseline justify-between gap-3">
-                                  <p className="text-[12px] font-semibold text-[#07142f]">{r.label}</p>
-                                  <span className="text-[12.5px] font-bold text-[#07142f] tabular-nums whitespace-nowrap">{r.value}</span>
+                            {signalRows.map((r) => {
+                              const tone = r.benchmark?.tone;
+                              const toneCls =
+                                tone === "good" ? "bg-[#e6f7ef] text-[#0ea66e] border-[#bde9d2]" :
+                                tone === "mid"  ? "bg-[#fff8e1] text-[#b88800] border-[#f3e0a8]" :
+                                tone === "bad"  ? "bg-[#fdecea] text-[#c2410c] border-[#f5cbb8]" :
+                                "bg-[#f1f4f9] text-[#526078] border-[#e5eaf2]";
+                              return (
+                                <div key={r.key} className="px-3 py-2.5">
+                                  <div className="flex items-baseline justify-between gap-3">
+                                    <p className="text-[12px] font-semibold text-[#07142f]">{r.label}</p>
+                                    <span className="text-[12.5px] font-bold text-[#07142f] tabular-nums whitespace-nowrap">{r.value}</span>
+                                  </div>
+                                  <div className="mt-1 flex items-center justify-between gap-3">
+                                    <p className="text-[10.5px] text-[#8794ab]">{r.source}</p>
+                                    {r.benchmark && (
+                                      <span className={`inline-flex items-center rounded-full border px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wide whitespace-nowrap ${toneCls}`}>
+                                        {r.benchmark.label}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
-                                <p className="text-[10.5px] text-[#8794ab] mt-0.5">{r.source}</p>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </section>
                       )}

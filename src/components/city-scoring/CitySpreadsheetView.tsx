@@ -211,11 +211,9 @@ const COLUMNS: ColDef[] = [
     render: (m) => fmtNum1(row(m).cost_of_living_index),
   },
   // Competitive Landscape
-  {
-    key: "competitors", label: "Camps (count)", align: "right", group: "Competitive Landscape",
-    get: (m) => m.competitorCount ?? row(m).summer_camp_count ?? null,
-    render: (m) => fmtInt(m.competitorCount ?? row(m).summer_camp_count),
-  },
+  // "Camps (count)" column removed 2026-05-22 — summer_camp_count was 0/817
+  // populated; CSI is fully covered by the three Manus-precomputed columns
+  // below (Nat'l Brand Supply Wtd, Local Provider Est., Demand-Adj. Market).
   {
     key: "csi_brand", label: "Nat'l Brand Supply (wtd)", align: "right", group: "Competitive Landscape",
     get: (m) => row(m).csi_national_brand_count_weighted ?? null,

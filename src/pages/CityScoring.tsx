@@ -771,7 +771,7 @@ const CityScoring = () => {
     const live = filtered.filter((m: any) => m.hasLiveData);
     const n = live.length;
     if (n === 0) {
-      return { avgScore: null, avgScorePreview: null, qualifiedPct: null, qualifiedPctPreview: null, topMarket: null };
+      return { avgScore: null, avgScorePreview: null, qualifiedPct: null, qualifiedPctPreview: null, topMarkets: [] };
     }
     const sum = live.reduce((s: number, m: any) => s + Number(m.compositeScore ?? 0), 0);
     const avgScore = sum / n;
@@ -797,19 +797,20 @@ const CityScoring = () => {
       }
     }
 
-    const top = live.reduce((best: any, m: any) =>
-      !best || Number(m.compositeScore ?? 0) > Number(best.compositeScore ?? 0) ? m : best,
-    null);
-    const topMarket = top
-      ? { label: `${top.city}, ${top.state}`, score: Math.round(Number(top.compositeScore ?? 0)) }
-      : null;
+    const topMarkets = [...live]
+      .sort((a: any, b: any) => Number(b.compositeScore ?? 0) - Number(a.compositeScore ?? 0))
+      .slice(0, 5)
+      .map((m: any) => ({
+        label: `${m.city}, ${m.state}`,
+        score: Math.round(Number(m.compositeScore ?? 0)),
+      }));
 
     return {
       avgScore,
       avgScorePreview: previewAvg,
       qualifiedPct,
       qualifiedPctPreview: previewQualPct,
-      topMarket,
+      topMarkets,
     };
   }, [filtered, committedTierCounts, previewTierCounts, weights, weightsPending]);
 

@@ -2473,45 +2473,46 @@ const CityScoring = () => {
             </div>
           </div>
 
-          <div className="mt-3 border-t border-[#eef2f7] pt-3.5">
-            <p className="mb-2.5 text-[13px] font-semibold text-[#07142f]">Category Scores</p>
-            <div className="space-y-2">
-              {VISIBLE_CATEGORIES.map((cat) => {
-                const v = selectedHasLiveData ? (detailCategoryScores[cat.key] ?? 0) : null;
-                const wPct = appliedTotal > 0 ? (appliedWeights[cat.key] / appliedTotal) * 100 : 0;
-                const isZeroWeighted = wPct <= 0.05;
-                return (
-                  <div key={cat.key} className={isZeroWeighted ? "opacity-45" : ""} title={isZeroWeighted ? `${cat.label} is set to 0% — contributes nothing to the overall score` : undefined}>
-                    <div className="mb-1 flex items-center justify-between gap-3 text-[12px]">
-                      <span className="text-[#526078]">
-                        {cat.label}
-                        {isZeroWeighted && <span className="ml-1.5 text-[10px] uppercase tracking-wide text-[#8794ab]">· 0% weight</span>}
-                      </span>
-                      <span className="font-semibold text-[#07142f]">{v ?? "—"}</span>
+          <div className="mt-3 border-t border-[#eef2f7] pt-3.5 flex gap-4 items-start">
+            <div className="flex-1 min-w-0 max-w-[50%]">
+              <p className="mb-2.5 text-[13px] font-semibold text-[#07142f]">Category Scores</p>
+              <div className="space-y-2">
+                {VISIBLE_CATEGORIES.map((cat) => {
+                  const v = selectedHasLiveData ? (detailCategoryScores[cat.key] ?? 0) : null;
+                  const wPct = appliedTotal > 0 ? (appliedWeights[cat.key] / appliedTotal) * 100 : 0;
+                  const isZeroWeighted = wPct <= 0.05;
+                  return (
+                    <div key={cat.key} className={isZeroWeighted ? "opacity-45" : ""} title={isZeroWeighted ? `${cat.label} is set to 0% — contributes nothing to the overall score` : undefined}>
+                      <div className="mb-1 flex items-center justify-between gap-3 text-[12px]">
+                        <span className="text-[#526078]">
+                          {cat.label}
+                          {isZeroWeighted && <span className="ml-1.5 text-[10px] uppercase tracking-wide text-[#8794ab]">· 0% weight</span>}
+                        </span>
+                        <span className="font-semibold text-[#07142f]">{v ?? "—"}</span>
+                      </div>
+                      <div className="h-1.5 w-full rounded-full bg-[#e8edf6]">
+                        <div className={`h-full rounded-full ${isZeroWeighted ? "bg-[#b6bfd0]" : "bg-[#1d4fff]"}`} style={{ width: `${v ?? 0}%` }} />
+                      </div>
                     </div>
-                    <div className="h-1.5 w-full rounded-full bg-[#e8edf6]">
-                      <div className={`h-full rounded-full ${isZeroWeighted ? "bg-[#b6bfd0]" : "bg-[#1d4fff]"}`} style={{ width: `${v ?? 0}%` }} />
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
 
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Button onClick={handleFindTeachers} className="h-9 flex-1 min-w-0 bg-[#174be8] hover:bg-[#1240c9] text-white gap-1.5 px-3 font-medium text-[11px]">
-              <span className="truncate">Find Teachers in This Market</span> <ArrowRight size={12} className="flex-shrink-0" />
-            </Button>
-            <Button variant="outline" onClick={openCompare} className="h-9 min-w-0 border-[#dbe4f2] text-[#2250eb] gap-1 px-2.5 font-medium text-[11px]">
-              <GitCompare size={12} /> Compare
-            </Button>
-            <Button variant="outline" onClick={() => setReportOpen(true)} className="h-9 min-w-0 border-[#dbe4f2] text-[#2250eb] gap-1 px-2.5 font-medium text-[11px]">
-              <FileText size={12} /> Report
-            </Button>
-            <Button variant="outline" className="h-9 min-w-0 border-[#dbe4f2] text-[#2250eb] gap-1 px-2.5 font-medium text-[11px]" onClick={() => setDetailDrawerOpen(true)}>
-              <Eye size={12} /> Details
-            </Button>
+            <div className="flex flex-col gap-2 w-[180px] flex-shrink-0 pt-1">
+              <Button onClick={handleFindTeachers} className="h-9 w-full bg-[#174be8] hover:bg-[#1240c9] text-white gap-1.5 px-3 font-medium text-[11px] justify-center">
+                <span className="truncate">Find Teachers</span> <ArrowRight size={12} className="flex-shrink-0" />
+              </Button>
+              <Button variant="outline" onClick={openCompare} className="h-9 w-full border-[#dbe4f2] text-[#2250eb] gap-1.5 px-2.5 font-medium text-[11px] justify-center">
+                <GitCompare size={12} /> Compare
+              </Button>
+              <Button variant="outline" onClick={() => setReportOpen(true)} className="h-9 w-full border-[#dbe4f2] text-[#2250eb] gap-1.5 px-2.5 font-medium text-[11px] justify-center">
+                <FileText size={12} /> Report
+              </Button>
+              <Button variant="outline" className="h-9 w-full border-[#dbe4f2] text-[#2250eb] gap-1.5 px-2.5 font-medium text-[11px] justify-center" onClick={() => setDetailDrawerOpen(true)}>
+                <Eye size={12} /> Details
+              </Button>
+            </div>
           </div>
         </div>
 

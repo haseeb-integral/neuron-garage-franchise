@@ -74,6 +74,16 @@ See **`TEACHER_IDEAL_PROFILE.md`** for who we are recruiting and why — read th
 
 ---
 
+### City universe + orphan-metric cleanup ✅ May 22
+- Deleted 160 non-Manus rows from `us_cities_scored` (`WHERE csi_last_updated IS NULL`) — universe locked at **817 cities** (Manus). Verified 0 `teacher_prospects` orphaned by the delete.
+- Removed `includeExtras` toggle + `csi_last_updated` filter from `loadLiveRankedMarkets`. City Search now reads the full table.
+- Removed from spreadsheet/drawer UI (DB columns kept): `avg_camp_price_per_hour` (Pricing retired May 15), `avg_school_rating` (legacy, not in 46-metric approved list), `summer_weather_index` / `avg_peak_summer_temperature` / `days_above_90f` / `summer_precip_days` (Ops weather orphans), `school_district_count` (not in any live category). `school_hosted_camp_count` stays Manus-owned (surface via CSI panel only if delivered).
+- Fixed NULL→0 coercion bug in `cityScoringLiveData.ts` — `RankedMarket.population` and `competitorCount` now typed `number | null`; mapper preserves NULL; spreadsheet renders NULL as "—" and 0 as "0". Composite math excludes NULL rows from the percentile pool. Rule going forward: **never default NULL to 0** in fetch/transform code.
+
+---
+
+
+
 ## ✅ Completed — Day 1 (May 12–14)
 
 

@@ -54,6 +54,7 @@ import { METRICS_BY_CATEGORY } from "@/lib/sowMetricRegistry";
 import { parseSignalValue } from "@/lib/sowNormalize";
 import { recomputeCategoryScore, recomputeComposite } from "@/lib/clientSubWeightScoring";
 import { tierFromScore } from "@/lib/cityScoringLiveData";
+import { assignPercentileTiers as _assignPercentileTiers, percentileTierCutoffs as _percentileTierCutoffs, type TierLetter as _TierLetter } from "@/lib/cityTiers";
 import { canonicalKey } from "@/lib/signalAliases";
 import { useCustomCriteria } from "@/hooks/useCustomCriteria";
 import { useScoringConfig, useDebouncedSaveScoringConfig } from "@/hooks/useScoringConfig";

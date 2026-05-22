@@ -2086,7 +2086,7 @@ const CityScoring = () => {
 
       {viewMode === "map" ? (
         <MarketsMap
-          markets={filtered}
+          markets={mapMarkets}
           onSelect={(m) => {
             setSelectedMarketKey({ city: m.city, state: m.state });
             const sample = sampleCities.find((s) => sameMarket(s.city, s.state, m.city, m.state));

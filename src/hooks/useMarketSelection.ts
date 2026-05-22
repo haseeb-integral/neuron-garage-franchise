@@ -16,7 +16,7 @@
 // Reading the URL is intentionally one-shot (mount only) — once the user
 // is interacting we own the truth and just write changes back.
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useCityScoringStore } from "@/stores/cityScoringStore";
 import { sampleCities } from "@/data/cityData";

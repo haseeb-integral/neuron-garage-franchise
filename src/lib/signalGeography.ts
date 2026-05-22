@@ -25,11 +25,8 @@ const SOURCE_MAP: Record<string, GeoInfo> = {
 // Per signal_key overrides for cases where the source label doesn't
 // match the actual geography of the value.
 const SIGNAL_KEY_OVERRIDES: Record<string, GeoInfo> = {
-  // Climate / weather signals are typically reported for the metro/airport,
-  // not the city proper.
-  summer_weather_index: { level: "metro", short: "Metro", full: "Metro · weather station" },
-  avg_peak_summer_temperature: { level: "metro", short: "Metro", full: "Metro · weather station" },
-  days_above_90f: { level: "metro", short: "Metro", full: "Metro · weather station" },
+  // Weather signal overrides removed 2026-05-22 (summer_weather_index,
+  // avg_peak_summer_temperature, days_above_90f) — not a live category.
   // State-level regulatory data
   state_camp_regulation_complexity: { level: "metro", short: "State", full: "State-level regulation index" },
 };

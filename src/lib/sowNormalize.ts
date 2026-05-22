@@ -31,7 +31,7 @@ export const NORMALIZATION_RANGES: Record<string, NormalizationRange> = {
   childcare_nanny_hourly_rate_proxy:   { lo: 25000, hi: 60000, invert: false },
   household_discretionary_income_proxy:{ lo: 20000, hi: 150000, invert: false },
   avg_weekly_camp_tuition:             { lo: 200, hi: 600, invert: false },
-  avg_hourly_camp_pricing:             { lo: 8, hi: 20, invert: false },
+  // avg_hourly_camp_pricing removed 2026-05-22 — pricing_power category retired.
   premium_stem_camp_pricing:           { lo: 300, hi: 800, invert: false },
   private_school_tuition_proxy:        { lo: 8000, hi: 35000, invert: false },
   // CSI (3-metric lock 2026-05-21, ranges widened 2026-05-21c to real p99

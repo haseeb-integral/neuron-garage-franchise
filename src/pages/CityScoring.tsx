@@ -133,11 +133,11 @@ interface Category {
 
 const CATEGORIES: Category[] = [
   { key: "demand", label: "Demand", icon: Users, color: "#174be8", bg: "#eaf0ff",
-    description: "Measures size of target families and program demand.", defaultWeight: 40 },
+    description: "Size of the target-family market and signal strength of program demand — kids in the right age band, household income, parent intent.", defaultWeight: 40 },
   { key: "franchiseeSupply", label: "TAM Teachers", icon: UserCheck, color: "#7c3aed", bg: "#f1ebff",
-    description: "Total addressable pool of teachers available to recruit as franchise operators.", defaultWeight: 30 },
+    description: "Pool of teachers available locally to recruit as franchise operators — credentialed, in-area, plausible to convert into owners.", defaultWeight: 30 },
   { key: "competitiveLandscape", label: "Competitive Opportunity", icon: Trophy, color: "#b8860b", bg: "#fff6dc",
-    description: "Wide-open-market score. Higher = less saturated, fewer national-brand competitors. Slide right to favor cities with low competition. (Opportunity = 100 − CSI.)", defaultWeight: 30 },
+    description: "How wide-open the market is. Higher = less saturated, fewer national-brand competitors crowding the space. (Opportunity = 100 − CSI.)", defaultWeight: 30 },
 ];
 
 // Kept as an alias for backwards compatibility with code that previously

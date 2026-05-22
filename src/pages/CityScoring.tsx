@@ -819,9 +819,10 @@ const CityScoring = () => {
   const previewTierCounts = useMemo<TierCounts | null>(() => {
     if (!weightsPending) return null;
     const counts: TierCounts = { A: 0, B: 0, C: 0, D: 0 };
-    // Use the same baseline `filtered` set so apples-to-apples; we just
-    // re-weight category scores with draft `weights`. Cities without
-    // categoryScores keep their existing tier (rare; mirrors filtered logic).
+    // Recompute composite with draft weights, then assign tiers by
+    // percentile (top 5% A / next 15% B / next 30% C / rest D) to match
+    // the committed tier logic. 2026-05-22.
+    const scored: number[] = [];
     filtered.forEach((m: any) => {
       if (!m.hasLiveData) return;
       const cats = m.categoryScores as Record<CategoryKey, number | null> | undefined;
@@ -832,11 +833,21 @@ const CityScoring = () => {
       } else {
         composite = m.compositeScore ?? 0;
       }
-      const t = tierFromScore(composite);
-      if (counts[t] != null) counts[t] += 1;
+      scored.push(composite);
     });
+    scored.sort((a, b) => b - a);
+    const n = scored.length;
+    if (n === 0) return counts;
+    const aCut = Math.max(1, Math.ceil(n * 0.05));
+    const bCut = aCut + Math.max(1, Math.ceil(n * 0.15));
+    const cCut = bCut + Math.max(1, Math.ceil(n * 0.30));
+    counts.A = Math.min(aCut, n);
+    counts.B = Math.min(bCut, n) - counts.A;
+    counts.C = Math.min(cCut, n) - counts.A - counts.B;
+    counts.D = n - counts.A - counts.B - counts.C;
     return counts;
   }, [filtered, weights, weightsPending]);
+
 
   // Extra summary stats for the Tier Distribution strip (avg score, qualified %, top market).
   const tierBarExtras = useMemo(() => {

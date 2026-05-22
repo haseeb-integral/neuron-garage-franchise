@@ -2326,8 +2326,11 @@ const CityScoring = () => {
             </div>
 
 
-            {/* Col 2 (25%): Overall Score full width, details stacked below */}
+            {/* Col 2 (25%): City name → Overall Score → details → categories → buttons */}
             <div className="min-w-0 flex flex-col items-center text-center pt-1">
+              <h3 className="mb-2 text-[16px] leading-tight font-bold text-[#07142f] text-center break-words w-full">
+                {selected.city}, {selected.state === "Texas" ? "TX" : selected.state === "Florida" ? "FL" : selected.state}
+              </h3>
               <p className="mb-1.5 text-[12px] font-semibold text-[#3a4c72]">Overall Score</p>
               <svg viewBox="0 0 200 120" className="w-full h-auto max-w-[200px]">
                 <path d="M25 92 A75 75 0 0 1 175 92" fill="none" stroke="#e7ebf3" strokeWidth="14" strokeLinecap="round" />

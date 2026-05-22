@@ -1,6 +1,6 @@
 # Open Tasks — Neuron Garage
 
-> Last reviewed: May 18, 2026.
+> Last reviewed: May 22, 2026.
 > GitHub is single source of truth. Do not edit Space OPEN_TASKS.md.
 > Source of truth hierarchy: May 15 meeting decisions override May 8 where they conflict.
 

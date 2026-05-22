@@ -1034,10 +1034,10 @@ const CityScoring = () => {
   }, [totalPages, safePage]);
 
   // Auto-follow top-of-list until the user explicitly clicks a market.
-  // Resets whenever applied weights/sub-weights change so the right-hand
+  // `userPickedMarket` is declared earlier (near `selectedId`). Reset to
+  // false whenever applied weights/sub-weights change so the right-hand
   // detail + executive summary columns snap to the new #1 ranked market
   // after a preset or slider change.
-  const [userPickedMarket, setUserPickedMarket] = useState(false);
   useEffect(() => {
     setUserPickedMarket(false);
   }, [appliedWeights, appliedSubWeights]);

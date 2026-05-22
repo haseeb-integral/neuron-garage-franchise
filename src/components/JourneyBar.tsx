@@ -1,7 +1,7 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
-import { sampleCities } from "@/data/cityData";
-import { sampleTeachers } from "@/data/teacherData";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useCandidateCount } from "@/hooks/useCandidateCount";
 
 interface Step {
@@ -11,18 +11,50 @@ interface Step {
   count: string;
 }
 
+/**
+ * Live counts for the journey bar. Previously these were sourced from
+ * `sampleCities.length` / `sampleTeachers.length`, which after the v1.0
+ * legacy-mock purge meant the bar always showed "32 cities" / "0 prospects"
+ * regardless of the real DB state. Now we query the live tables (cached
+ * 60s via React Query) so the bar matches the actual data the client sees.
+ */
+function useJourneyCounts() {
+  const cities = useQuery({
+    queryKey: ["journey-bar", "city-count"],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("us_cities_scored")
+        .select("id", { count: "exact", head: true });
+      return count ?? 0;
+    },
+    staleTime: 60_000,
+  });
+  const prospects = useQuery({
+    queryKey: ["journey-bar", "prospect-count"],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("teacher_prospects")
+        .select("id", { count: "exact", head: true });
+      return count ?? 0;
+    },
+    staleTime: 60_000,
+  });
+  return { cityCount: cities.data, prospectCount: prospects.data };
+}
+
+const fmt = (n: number | undefined) => (n == null ? "…" : n.toLocaleString());
+
 export function JourneyBar() {
   const navigate = useNavigate();
   const location = useLocation();
   const activePath = location.pathname;
 
   const { count: candidateCount } = useCandidateCount();
-  const cityCount = sampleCities?.length ?? 10;
-  const prospectCount = sampleTeachers?.length ?? 42;
+  const { cityCount, prospectCount } = useJourneyCounts();
 
   const steps: Step[] = [
-    { num: 1, label: "City Scoring", path: "/city-scoring", count: `${cityCount} cities` },
-    { num: 2, label: "Teacher Search", path: "/teacher-prospects", count: `${prospectCount} prospects` },
+    { num: 1, label: "City Scoring", path: "/city-scoring", count: `${fmt(cityCount)} cities` },
+    { num: 2, label: "Teacher Search", path: "/teacher-prospects", count: `${fmt(prospectCount)} prospects` },
     {
       num: 3,
       label: "Candidate Pipeline",

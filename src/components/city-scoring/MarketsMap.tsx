@@ -88,11 +88,12 @@ export function MarketsMap({ markets, onSelect }: Props) {
     return () => { cancelled = true; };
   }, [cityIds.join("|")]);
 
-  const mapped = markets
+  const mapped = visibleMarkets
     .map((m) => (m.cityId && coordsByCityId[m.cityId] ? { m, c: coordsByCityId[m.cityId] } : null))
     .filter((x): x is { m: RankedMarket; c: Coords } => !!x);
 
-  const unmappedCount = markets.length - mapped.length;
+  const unmappedCount = visibleMarkets.length - mapped.length;
+  const excludedCount = markets.length - visibleMarkets.length;
   const points = mapped.map((x) => x.c);
 
   return (
@@ -100,8 +101,9 @@ export function MarketsMap({ markets, onSelect }: Props) {
       <div className="mb-2">
         <h3 className="text-sm font-bold text-[#07142f]">Markets Map</h3>
         <p className="text-[11px] text-[#8794ab]">
-          {mapped.length} of {markets.length} markets mapped
+          {mapped.length} of {visibleMarkets.length} Tier A/B/C markets plotted
           {unmappedCount > 0 && ` • ${unmappedCount} missing coordinates`}
+          {excludedCount > 0 && ` • ${excludedCount} hidden (Tier D or unscored)`}
         </p>
       </div>
 
@@ -110,8 +112,9 @@ export function MarketsMap({ markets, onSelect }: Props) {
           <div className="flex h-full items-center justify-center text-[12px] text-[#8794ab]">Loading map…</div>
         ) : mapped.length === 0 ? (
           <div className="flex h-full items-center justify-center px-6 text-center text-[12px] text-[#8794ab]">
-            No mapped cities for the current filters.
+            No Tier A, B, or C markets in the current search.
           </div>
+
         ) : (
           <MapContainer center={[39.5, -98.35]} zoom={4} style={{ height: "100%", width: "100%" }} scrollWheelZoom>
             <TileLayer

@@ -1579,16 +1579,81 @@ const CityScoring = () => {
     return out;
   }, [signalsForDisplay]);
 
+  // Per-signal display config: number formatting + Low/Med/High benchmark.
+  // `higherIsBetter: false` means a HIGH raw value is a BAD thing for the franchise
+  // (e.g. lots of national-brand competitors = more saturation = less opportunity).
+  const SIGNAL_DISPLAY: Record<
+    string,
+    {
+      format: "int" | "money" | "pct" | "decimal";
+      thresholds: [number, number]; // [lowMax, medMax] — anything above medMax = high band
+      higherIsBetter: boolean;
+      goodLabel?: string; // override for "good" band (e.g. "Wide open" for competitive)
+      badLabel?: string;
+    }
+  > = {
+    children_5_12_count:           { format: "int",     thresholds: [3000, 15000],   higherIsBetter: true },
+    median_household_income:       { format: "money",   thresholds: [60000, 100000], higherIsBetter: true },
+    dual_income_household_pct:     { format: "pct",     thresholds: [60, 80],        higherIsBetter: true },
+    education_bachelors_plus_pct:  { format: "pct",     thresholds: [30, 50],        higherIsBetter: true },
+    public_elementary_school_count:{ format: "int",     thresholds: [5, 20],         higherIsBetter: true },
+    public_elementary_teacher_count:{format: "int",     thresholds: [100, 500],      higherIsBetter: true },
+    private_charter_school_count:  { format: "int",     thresholds: [2, 10],         higherIsBetter: true },
+    public_elementary_enrollment:  { format: "int",     thresholds: [2000, 10000],   higherIsBetter: true },
+    col_salary_index:              { format: "decimal", thresholds: [50000, 80000],  higherIsBetter: true },
+    csi_national_brand_supply:     { format: "int",     thresholds: [3, 10],         higherIsBetter: false, goodLabel: "Wide open", badLabel: "Saturated" },
+    csi_local_camp_estimate:       { format: "int",     thresholds: [3, 10],         higherIsBetter: false, goodLabel: "Few local rivals", badLabel: "Many local rivals" },
+    csi_demand_adjusted_market:    { format: "decimal", thresholds: [3000, 8000],    higherIsBetter: true },
+  };
+
+  const formatSignalValue = (raw: string | number, format: "int" | "money" | "pct" | "decimal"): string => {
+    const n = typeof raw === "number" ? raw : Number(String(raw).replace(/[, $%]/g, ""));
+    if (!Number.isFinite(n)) return String(raw);
+    if (format === "money") return `$${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+    if (format === "pct") return `${n.toLocaleString("en-US", { maximumFractionDigits: 1 })}%`;
+    if (format === "decimal") {
+      // Show decimals only when the number actually has a fractional part.
+      const hasFrac = Math.abs(n - Math.trunc(n)) > 1e-9;
+      return n.toLocaleString("en-US", { maximumFractionDigits: hasFrac ? 2 : 0 });
+    }
+    return Math.round(n).toLocaleString("en-US");
+  };
+
+  const benchmarkBand = (
+    rawValue: string,
+    cfg?: { thresholds: [number, number]; higherIsBetter: boolean; goodLabel?: string; badLabel?: string },
+  ): { label: string; tone: "good" | "mid" | "bad" } | null => {
+    if (!cfg) return null;
+    const n = Number(String(rawValue).replace(/[, $%]/g, ""));
+    if (!Number.isFinite(n)) return null;
+    const [lo, mid] = cfg.thresholds;
+    const band: "low" | "med" | "high" = n <= lo ? "low" : n <= mid ? "med" : "high";
+    if (cfg.higherIsBetter) {
+      if (band === "high") return { label: cfg.goodLabel ?? "High", tone: "good" };
+      if (band === "med") return { label: "Medium", tone: "mid" };
+      return { label: cfg.badLabel ?? "Low", tone: "bad" };
+    }
+    // lower is better (competitive signals)
+    if (band === "low") return { label: cfg.goodLabel ?? "Low", tone: "good" };
+    if (band === "med") return { label: "Medium", tone: "mid" };
+    return { label: cfg.badLabel ?? "High", tone: "bad" };
+  };
+
   const sigRows = KEY_SIGNAL_KEYS.map((key) => {
     const meta = KEY_SIGNAL_META[key];
     const sig = signalsByKey[key];
     const rawVal = sig?.value;
-    const value = rawVal === undefined || rawVal === null || rawVal === "" ? "—" : rawVal;
+    const isEmpty = rawVal === undefined || rawVal === null || rawVal === "" ;
+    const cfg = SIGNAL_DISPLAY[key];
+    const value = isEmpty ? "—" : (cfg ? formatSignalValue(rawVal, cfg.format) : String(rawVal));
+    const benchmark = isEmpty ? null : benchmarkBand(String(rawVal), cfg);
     return {
       key,
       label: meta?.label ?? key,
       source: meta?.source ?? "",
       value,
+      rawValue: isEmpty ? null : String(rawVal),
+      benchmark,
     };
   });
 

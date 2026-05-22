@@ -80,6 +80,7 @@ See **`TEACHER_IDEAL_PROFILE.md`** for who we are recruiting and why — read th
 - Removed from spreadsheet/drawer UI (DB columns kept): `avg_camp_price_per_hour` (Pricing retired May 15), `avg_school_rating` (legacy, not in 46-metric approved list), `summer_weather_index` / `avg_peak_summer_temperature` / `days_above_90f` / `summer_precip_days` (Ops weather orphans), `school_district_count` (not in any live category). `school_hosted_camp_count` stays Manus-owned (surface via CSI panel only if delivered).
 - Excel export (`DASHBOARD_DB_KEYS`) and live query (`loadLiveRankedMarkets` SELECT) also purged of `school_district_count` and `school_hosted_camp_count` — spreadsheet + export now fully aligned with live UI metrics only.
 - Fixed NULL→0 coercion bug in `cityScoringLiveData.ts` — `RankedMarket.population` and `competitorCount` now typed `number | null`; mapper preserves NULL; spreadsheet renders NULL as "—" and 0 as "0". Composite math excludes NULL rows from the percentile pool. Rule going forward: **never default NULL to 0** in fetch/transform code.
+- **Second sweep (legacy code, not DB columns):** removed dormant `pricing_power` category branch from `MarketDetailDrawer.tsx` + `MarketReportModal.tsx`; removed weather signal-key overrides (`summer_weather_index`, `avg_peak_summer_temperature`, `days_above_90f`) from `signalGeography.ts`; removed `avg_hourly_camp_pricing` normalization range from `sowNormalize.ts`. These had no live data feed but were still referenced in UI / lookup code.
 
 ---
 

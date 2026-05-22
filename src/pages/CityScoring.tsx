@@ -2030,6 +2030,14 @@ const CityScoring = () => {
       />
 
 
+      {/* Tier distribution strip — sits between Scoring Weights and Ask AI. */}
+      <TierCountsBar
+        committed={committedTierCounts}
+        preview={previewTierCounts}
+        totalLive={liveScoredTotal}
+        extras={tierBarExtras}
+      />
+
       {/* AI-powered natural-language search (Lovable AI Gateway) */}
       <AskAiBar
         onSubmit={askAi}

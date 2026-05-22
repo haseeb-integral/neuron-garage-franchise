@@ -2515,6 +2515,9 @@ const CityScoring = () => {
                 </Button>
               </div>
             </div>
+
+            {/* Col 3 (25%): reserved */}
+            <div className="min-w-0" />
           </div>
         </div>
 

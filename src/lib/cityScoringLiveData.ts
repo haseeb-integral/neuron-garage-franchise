@@ -131,7 +131,10 @@ export async function loadLiveRankedMarkets(_opts?: { includeExtras?: boolean })
   const query = supabase
     .from("us_cities_scored")
     .select(
-      "id, city_name, state_name, state_abbr, metro_area, county_name, metro_counties, population, population_density, children_5_12, median_household_income, dual_working_families_pct, college_degree_pct, cost_of_living_index, public_school_count, public_school_enrollment, public_elementary_count, public_elementary_enrollment, public_elementary_teacher_count, private_elementary_count, charter_elementary_count, summer_camp_count, camp_waitlist_signals, composite_score_default, score_demand, score_csi, score_tam_teachers, csi_score, csi_saturation_category, csi_confidence, csi_national_brand_count_weighted, csi_local_provider_estimate, csi_demand_adjusted_market, csi_brand_detail, csi_last_updated, place_type, census_population_2020, avg_elementary_teacher_salary_usd, col_salary_index, is_registration_state, scored_at",
+      // summer_camp_count dropped 2026-05-22 — 0/817 populated; CSI is fully
+      // covered by csi_national_brand_count_weighted, csi_local_provider_estimate,
+      // and csi_demand_adjusted_market (all 817/817 from Manus).
+      "id, city_name, state_name, state_abbr, metro_area, county_name, metro_counties, population, population_density, children_5_12, median_household_income, dual_working_families_pct, college_degree_pct, cost_of_living_index, public_school_count, public_school_enrollment, public_elementary_count, public_elementary_enrollment, public_elementary_teacher_count, private_elementary_count, charter_elementary_count, camp_waitlist_signals, composite_score_default, score_demand, score_csi, score_tam_teachers, csi_score, csi_saturation_category, csi_confidence, csi_national_brand_count_weighted, csi_local_provider_estimate, csi_demand_adjusted_market, csi_brand_detail, csi_last_updated, place_type, census_population_2020, avg_elementary_teacher_salary_usd, col_salary_index, is_registration_state, scored_at",
     )
     .order("composite_score_default", { ascending: false, nullsFirst: false })
     .limit(2000);
@@ -161,7 +164,8 @@ export async function loadLiveRankedMarkets(_opts?: { includeExtras?: boolean })
       tier: tierFromScore(composite),
       compositeScore: composite,
       population: row.population == null ? null : Number(row.population),
-      competitorCount: row.summer_camp_count == null ? null : Number(row.summer_camp_count),
+      // competitorCount retired 2026-05-22 — see SELECT comment above.
+      competitorCount: null,
       marketType: marketTypeFromDensity(density),
       isNonRegistration: row.is_registration_state === false,
       lastScrapedAt: row.scored_at ?? null,
@@ -261,8 +265,8 @@ export function buildSeededFallbackSignalsFromScored(
 
   const kids = toNumber(scoredRow.children_5_12, 0);
   const pct = childrenPct ?? (toNumber(scoredRow.population, 0) > 0 ? Math.round((kids / toNumber(scoredRow.population, 0)) * 1000) / 10 : null);
-  const campCount = toNumber(scoredRow.summer_camp_count, 0);
-  const campsPer10k = kids > 0 ? Math.round((campCount / kids) * 10000 * 10) / 10 : null;
+  // campCount / campsPer10k removed 2026-05-22 — summer_camp_count was 0/817
+  // populated and the derived per-10k value was never referenced.
   const seeded = (
     signal_key: string,
     label: string,

@@ -907,7 +907,9 @@ const CityScoring = () => {
         composite_score: composite,
         tier: tierDerived,
         population: pop,
-        competitor_count: Number(scoredRow.summer_camp_count ?? 0),
+        // competitor_count removed 2026-05-22 — summer_camp_count 0/817 populated.
+        // CSI saturation is read from scoredRow.csi_* fields directly.
+        competitor_count: null,
         county: scoredRow.county_name ?? null,
         metro_area: scoredRow.metro_area ?? null,
         metro_counties: Array.isArray(scoredRow.metro_counties) ? scoredRow.metro_counties : null,
@@ -1084,7 +1086,7 @@ const CityScoring = () => {
         "cost_of_living_index",
         "col_salary_index",
         "avg_elementary_teacher_salary_usd",
-        "summer_camp_count",
+        // "summer_camp_count" dropped from export 2026-05-22 — 0/817 populated.
         "csi_score",
         "csi_saturation_category",
         "csi_national_brand_count_weighted",

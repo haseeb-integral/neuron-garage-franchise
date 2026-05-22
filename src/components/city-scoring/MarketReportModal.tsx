@@ -73,7 +73,9 @@ function buildSeededFallbackSignals(market: CityData): LiveSignal[] {
     seeded("median_household_income", "Median Household Income", scored.median_household_income, "demand", true),
     seeded("public_elementary_count", "Public elementary schools (NCES CCD)", scored.public_elementary_count, "franchisee_supply", true),
     seeded("public_elementary_enrollment", "Public elementary enrollment", scored.public_elementary_enrollment, "franchisee_supply", false),
-    seeded("competitor_count", "Summer camps / enrichment competitors", scored.summer_camp_count, "competitive_landscape", true),
+    // competitor_count seeded row removed 2026-05-22 — summer_camp_count was
+    // 0/817 populated. CSI is surfaced via the three Manus-precomputed signals
+    // (csi_national_brand_supply, csi_local_camp_estimate, csi_demand_adjusted_market).
   ].filter((row) => row.value != null);
 }
 

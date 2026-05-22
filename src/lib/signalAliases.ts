@@ -11,9 +11,8 @@ export const LEGACY_TO_CANONICAL: Record<string, string> = {
   long_commute_pct: "commute_sprawl_index",
   montessori_count: "montessori_school_density",
   stem_enrichment_count: "stem_robotics_maker_camp_count",
-  // competitor_count is a raw count, not a per-10k rate; surfaced as a proxy
-  // until a true rate is computed by fetch-city-market-data.
-  competitor_count: "summer_camps_per_10k_children",
+  // competitor_count alias removed 2026-05-22 — backing column
+  // summer_camp_count was 0/817 populated and the UI surface is gone.
 };
 
 // Diagnostic / readiness rows that pollute the metric view — hidden from the

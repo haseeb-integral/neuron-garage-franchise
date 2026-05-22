@@ -117,12 +117,17 @@ const CATEGORY_FORMULAS: Record<MetricCategory, { formula: string; inputs: strin
   },
   // pricing_power formula removed 2026-05-22 — category retired.
   competitive_landscape: {
-    formula: "95 − (competitor_count × 3) − (stem_camp_count × 1.5)",
+    // Updated 2026-05-22: CSI is owned end-to-end by Manus. The old
+    // competitor_count / stem_camp_count formula was retired along with the
+    // unpopulated summer_camp_count column.
+    formula: "Manus CSI: f(National Brand Supply weighted, Local Provider Estimate, Demand-Adjusted Market)",
     inputs: [
-      "Apify/Google Maps: total summer camps, STEM/robotics/maker camps",
-      "Inverted: more competitors = lower score (95 is the unsaturated ceiling)",
+      "csi_national_brand_count_weighted — weighted count of national-brand camps",
+      "csi_local_provider_estimate — estimated local camp providers",
+      "csi_demand_adjusted_market — local providers scaled by child demand",
+      "Stored as SATURATION (high = crowded). UI inverts to OPPORTUNITY (high = good).",
     ],
-    clamp: "Result clamped to [40, 98].",
+    clamp: "Saturation 0–100; opportunity = 100 − saturation, clamped to [0, 100].",
   },
   franchisee_supply: {
     formula: "55 + (elementary_count × 3) + (private_school_count × 2) + supplyAdj",

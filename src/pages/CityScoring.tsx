@@ -1033,12 +1033,27 @@ const CityScoring = () => {
     return out;
   }, [totalPages, safePage]);
 
+  // Auto-follow top-of-list until the user explicitly clicks a market.
+  // Resets whenever applied weights/sub-weights change so the right-hand
+  // detail + executive summary columns snap to the new #1 ranked market
+  // after a preset or slider change.
+  const [userPickedMarket, setUserPickedMarket] = useState(false);
+  useEffect(() => {
+    setUserPickedMarket(false);
+  }, [appliedWeights, appliedSubWeights]);
+
+  const topRanked = filtered[0];
+  const autoFollowTop = !userPickedMarket && !!topRanked;
+  const effectiveMarketKey = autoFollowTop
+    ? { city: (topRanked as any).city, state: (topRanked as any).state }
+    : selectedMarketKey;
+
   const selectedFallback = sampleCities.find((c) => c.id === selectedId) ?? sampleCities[0];
   const selectedSample = sampleCities.find(
-    (c) => c.city === selectedMarketKey.city && c.state === selectedMarketKey.state,
+    (c) => c.city === effectiveMarketKey.city && c.state === effectiveMarketKey.state,
   ) ?? selectedFallback;
-  const selectedCity = selectedMarketKey.city || selectedSample.city;
-  const selectedState = selectedMarketKey.state || selectedSample.state;
+  const selectedCity = effectiveMarketKey.city || selectedSample.city;
+  const selectedState = effectiveMarketKey.state || selectedSample.state;
   const selectedRankedMarket = baseRankedMarkets.find((market) => sameMarket(market.city, market.state, selectedCity, selectedState));
   const liveCityMatchesSelection = sameMarket(liveCity?.city, liveCity?.state, selectedCity, selectedState);
   const selectedLiveCity = liveCityMatchesSelection ? liveCity : null;

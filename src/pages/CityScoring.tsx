@@ -2590,7 +2590,7 @@ const CityScoring = () => {
 
 
 
-          <div className="flex flex-col items-center text-center">
+          <div className="flex flex-col items-center text-center flex-1 w-full">
             {/* City name → Overall Score → details → categories → buttons → market summary, full width of middle column */}
             <h3 className="mb-2 text-[18px] leading-tight font-bold text-[#07142f] text-center break-words w-full">
               {selected.city}, {selected.state === "Texas" ? "TX" : selected.state === "Florida" ? "FL" : selected.state}

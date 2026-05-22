@@ -102,7 +102,6 @@ export function useMarketSelection(
     [setSelectedMarketKey, setSelectedId, flip, searchParams, setSearchParams],
   );
 
-  const userPickedMarket = userPickedRef.current;
   const autoFollowTop = !userPickedMarket && !!topRanked;
   const effectiveMarketKey: MarketKey = autoFollowTop
     ? { city: topRanked!.city, state: topRanked!.state }

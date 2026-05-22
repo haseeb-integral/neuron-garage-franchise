@@ -1,90 +1,107 @@
-## The Real Fix for Fulshear (and ~24 similar cities)
+## Updated plan — locked to your instructions
 
-No estimates, no dummies, no fabricated values. Every missing field gets filled from an authoritative source — or stays NULL with a logged reason.
+**Scope confirmed:**
+- Steps 1, 3, 4, 5 from the previous plan: **dropped, no changes.**
+- `csi_score`: **leave as is.**
+- `csi_local_camp_estimate` (Manus): **keep as is — Brett trusts Manus.**
+- New work: **get real `summer_camp_count` for the missing cities via a Manus brief + downloadable seed CSV.**
 
----
-
-### Root cause (confirmed)
-
-`backfill-public-schools` matches NCES schools by **exact `city_location` / `city_mailing` string**. For Fulshear, TX:
-- 0 NCES rows have `city_location = "FULSHEER"`/"FULSHEAR"
-- Schools serving Fulshear residents are coded under **Katy, Richmond, Houston** (Lamar CISD / Katy ISD mailing addresses)
-- Same pattern for ~23 other cities (e.g. Milford CT schools under New Haven, suburbs of consolidated metros, etc.)
-
-Result: `public_elementary_count`, `public_elementary_teacher_count`, `private_elementary_count`, `charter_elementary_count` = NULL.
-
-`col_salary_index` is NULL because the deterministic compute step (`avg_salary × 100 / cost_of_living_index`) was never wired — not because data is missing.
+**One correction up front (honest):** you said 817 cities. 817 is the BLS-salary number. `summer_camp_count` is actually **NULL for all 977 cities** in `us_cities_scored` (verified just now: `total=977, has_value=0, null_count=977`). The Manus brief below targets all 977.
 
 ---
 
-### Fix — 4 parts, all real data
+## Deliverable 1 — Seed CSV for Manus
 
-**1. Geo-radius school matching (replaces exact city-name match)**
+File: `cities-needing-camp-counts.csv` (977 rows, ~80 KB)
 
-Stop matching by string. Match by geography:
-- For each city in `us_cities_scored`, use its `latitude`/`longitude` + `metro_counties[]`
-- Pull NCES CCD schools within **10 mi radius** of the city centroid AND inside the city's county/metro
-- This is how NCES itself recommends attributing schools to "place served" — schools have lat/long in the CCD directory
+Columns (pulled straight from `us_cities_scored`, no derived fields):
 
-This is authoritative NCES data, just joined correctly. No fuzzy strings, no aliases to maintain.
+| Column | Source | Purpose |
+|---|---|---|
+| `city_id` | `us_cities_scored.id` (uuid) | Primary key for upsert back into our DB |
+| `city_name` | `us_cities_scored.city_name` | Scrape target |
+| `state_name` | `us_cities_scored.state_name` | Scrape target |
+| `state_abbr` | `us_cities_scored.state_abbr` | Scrape target |
+| `county_name` | `us_cities_scored.county_name` | Geo disambiguation (e.g. multiple "Springfield"s) |
+| `metro_area` | `us_cities_scored.metro_area` | Geo disambiguation |
+| `latitude` | `us_cities_scored.latitude` | Radius search center |
+| `longitude` | `us_cities_scored.longitude` | Radius search center |
+| `population` | `us_cities_scored.population` | Sanity check on counts |
+| `children_5_12` | `us_cities_scored.children_5_12` | Sanity check on demand |
+| `public_elementary_enrollment` | `us_cities_scored.public_elementary_enrollment` | Sanity check |
 
-**2. Rebuild the 4 counts from `public_schools` after re-match**
-
-Once `public_schools.us_cities_scored_id` is correctly assigned by geo-match:
-- `public_elementary_count` = COUNT where `school_level IN ('elementary','elementary_middle')` AND `is_charter=false` AND `school_type='regular'`
-- `charter_elementary_count` = same but `is_charter=true`
-- `public_elementary_teacher_count` = SUM(`teachers_fte`) over the elementary set
-- `private_elementary_count` = pull from **NCES PSS (Private School Survey)** — already listed in OPEN_TASKS as B10a. Apply same geo-radius logic.
-
-All values traceable to NCES rows. Zero estimation.
-
-**3. Deterministic `col_salary_index` compute**
-
-Where both inputs exist:
-```
-col_salary_index = round(avg_elementary_teacher_salary_usd × 100.0 / cost_of_living_index, 1)
-```
-Where either input is NULL → leave NULL. No imputation.
-
-**4. Gap log table**
-
-New table `city_data_gaps` (city_id, field_name, reason, checked_at). When the geo-match returns 0 schools for a city, we log *why* (e.g. "no NCES schools within 10mi", "lat/long missing", "county FIPS missing") instead of silently leaving NULL. This is what unblocks the next pass cleanly.
+(I can't write to `/mnt/documents/` while in plan mode — the CSV will be generated and download-linked the moment you approve this plan and switch to build mode. The SQL is ready: `COPY (SELECT id AS city_id, city_name, state_name, state_abbr, county_name, metro_area, latitude, longitude, population, children_5_12, public_elementary_enrollment FROM us_cities_scored ORDER BY state_abbr, city_name) TO STDOUT WITH CSV HEADER`.)
 
 ---
 
-### What this does NOT do
+## Deliverable 2 — Manus prompt (copy/paste, ready to send)
 
-- Does NOT copy values from neighboring cities
-- Does NOT use Manus enrollment as a proxy for counts
-- Does NOT estimate teacher counts from population
-- Does NOT touch `score_*` columns (separate re-score pass per TPD.md §3 Step 5)
+> **Task: Real `summer_camp_count` for 977 U.S. cities — Neuron Garage Competitive Landscape**
+>
+> **Context.** Neuron Garage is an internal franchise-recruiting tool for an after-school / summer STEM enrichment brand (Kaylie Reed's company). Competitive Landscape category currently uses your v2 modeled estimate (`elementary_enrollment × 0.003`). We now need a **real measured count** per city to replace the modeled value. Brett trusts your data — please apply the same rigor as the v2 brand-supply scrape.
+>
+> **Deliverable.** A CSV with one row per `city_id` from the attached seed file (`cities-needing-camp-counts.csv`, 977 rows). Required output columns:
+>
+> ```
+> city_id,
+> city_name,
+> state_abbr,
+> summer_camp_count,                  -- integer, the headline metric
+> summer_camp_count_method,           -- short text: "google_maps" | "yelp" | "state_license_db" | "composite" | "no_data"
+> summer_camp_count_radius_miles,     -- numeric, the radius used (default 10)
+> summer_camp_count_sources,          -- semicolon-separated source URLs / DB names actually consulted
+> summer_camp_count_last_verified,    -- ISO date you ran the scrape
+> summer_camp_count_confidence,       -- "high" | "medium" | "low"
+> notes                               -- free text (edge cases, why low confidence, etc.)
+> ```
+>
+> **Definition of "summer camp" (strict — please honor):**
+> - Day camp or week-long enrichment program serving children ages **5–12**
+> - Operates during summer break (June–August in most states)
+> - Located within **10 miles** of the city's `latitude` / `longitude`, OR inside the city's `county_name`
+> - **Include:** independent local camps, school-hosted summer programs, YMCA/JCC/Boys & Girls Club summer camps, STEM camps, sports camps, art camps, day-care-run summer programs
+> - **Exclude:** overnight / sleepaway camps, college-run pre-college programs for high-schoolers, year-round after-school programs that don't run a distinct summer offering, single-day workshops, virtual-only programs
+>
+> **Source hierarchy (use the most reputable available — your call):**
+> 1. **State / county child-care licensing databases** (most authoritative — e.g. TX HHSC Child Care Search, CA CCLD, NY OCFS). Many states publish a public list of licensed summer day-camp providers.
+> 2. **ACA (American Camp Association) accredited camps directory** — `https://find.acacamps.org`
+> 3. **Google Maps Places API** — query "summer camp" + city, filter by `type=primary_school|amusement_park|tourist_attraction` ruled out, manually verify top-N
+> 4. **Yelp Fusion API** — category `summercamps`, location radius 10 mi
+> 5. **YMCA / JCC / Boys & Girls Club official location directories** (national chains, deduplicate against #3/#4)
+> 6. **City Parks & Rec department websites** (Firecrawl is fine here)
+>
+> **If you find a more reputable source than the above for a given state, use it** — just record it in `summer_camp_count_sources`.
+>
+> **Quality rules:**
+> - Deduplicate by name + street address (same camp listed in Google Maps and Yelp = 1 count)
+> - If a single operator runs camps at multiple locations within the city, count each **location**, not each operator
+> - Where no source returns any camps, return `summer_camp_count = 0`, `confidence = "low"`, `method = "no_data"`, and note which sources you checked
+> - Do **not** model / estimate / extrapolate. If a city genuinely has 0 verifiable summer camps, that's the answer.
+> - Do **not** copy the `enrollment × 0.003` proxy into this column under any circumstances.
+>
+> **Sanity check columns we'll run on your output:**
+> - Cities with `population > 50000` AND `summer_camp_count = 0` → flagged for re-check
+> - Cities with `summer_camp_count > population / 500` → flagged as likely double-count
+> - Sum of `summer_camp_count` nationally compared to ACA's published total (~15,000 accredited day camps) for plausibility
+>
+> **Delivery format:** Same CSV format you used for the 2026-05-21 v2 Competitive Landscape upload. Drop into `data/incoming/competitive-landscape/<date>/` with a sibling `methodology-vX.md` describing source mix per state.
+>
+> **Attached:** `cities-needing-camp-counts.csv` (seed file with 977 rows + lat/lng + sanity-check columns).
 
 ---
 
-### Deliverables
+## What happens after Manus delivers
 
-1. **Migration**: add `city_data_gaps` table + RLS
-2. **Rewrite** `supabase/functions/backfill-public-schools/index.ts` — geo-radius matching, returns per-city match counts
-3. **New** `supabase/functions/backfill-private-schools/index.ts` — NCES PSS, same geo logic
-4. **New** `supabase/functions/recompute-city-derived/index.ts` — recomputes the 4 counts + `col_salary_index` from `public_schools` after re-match; writes to `city_data_gaps` on misses
-5. **Run** all three on the full 977-city universe
-6. **Re-score pass** (separate, per TPD.md) to refresh `score_tam_teachers` for affected rows
-7. **Diff report**: before/after for Fulshear, Milford, + 8 other prior-NULL cities — every filled value linked to its NCES source row
+1. New migration adds columns: `summer_camp_count_method`, `summer_camp_count_radius_miles`, `summer_camp_count_sources`, `summer_camp_count_last_verified`, `summer_camp_count_confidence` on `us_cities_scored`. `summer_camp_count` already exists (integer, currently NULL on all 977).
+2. CSV upsert by `city_id` (idempotent, per TPD.md §3).
+3. Re-score pass updates `score_csi` (Manus may want to recompute `csi_score` with this real number replacing `csi_local_provider_estimate` — that's a Brett-level decision, not ours).
+4. Doc-sync: append to `OPEN_TASKS.md` under "B7 Apify competitor scrape — superseded by Manus 2026-XX-XX run" and update `APIS.md` source list.
 
-### Technical notes
+---
 
-- NCES Urban Institute API supports `latitude`/`longitude` bbox filters — no need to pull full state directories
-- 10mi radius is the default; configurable per call so we can tighten/loosen during validation
-- Idempotent upserts on `public_schools.nces_id` (existing PK) — safe to re-run
-- PSS data is annual; cache the state dump in-memory per invocation like the current CCD code does
+## What I need from you
 
-### Open question for you before I build
+1. Approve this plan → switch to **Build mode**.
+2. On approval I will: generate the CSV at `/mnt/documents/manus-camp-scrape/cities-needing-camp-counts.csv` and surface the Manus prompt as `/mnt/documents/manus-camp-scrape/manus-brief.md` so you can download both and forward to Brett/Manus in one go.
 
-**Radius**: 10 miles is the NCES-recommended default for "place served." For dense metros (NYC boroughs) this over-matches; for rural TX exurbs (Fulshear) 10mi may still miss. Options:
-- (a) Fixed 10mi everywhere — simplest, ~95% coverage
-- (b) Adaptive: 5mi if population_density > 3000/sq mi, else 15mi
-- (c) County-bounded: any school in same county as city, no radius cap
-
-I'd pick **(c) county-bounded** — it's the most defensible ("schools in your county count"), needs no tuning, and Fulshear's Lamar CISD schools all sit in Fort Bend County alongside Fulshear itself.
-
-Want me to proceed with (c)?
+No code, no DB, no UI changes happen in this step — it's just the brief + CSV bundle.

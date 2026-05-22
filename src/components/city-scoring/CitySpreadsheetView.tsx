@@ -363,9 +363,8 @@ export default function CitySpreadsheetView({ markets, onOpenCity, onExportCsv }
           </span>
           {onExportCsv && (
             <Button
-              variant="outline"
               size="sm"
-              className="h-9 border-[#dbe4f2] text-[#174be8] gap-1.5"
+              className="h-9 bg-[#174be8] hover:bg-[#1240c9] text-white gap-1.5 font-medium"
               onClick={onExportCsv}
             >
               <Download size={14} /> Export XLSX

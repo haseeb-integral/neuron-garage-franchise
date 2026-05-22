@@ -116,11 +116,23 @@ export function MarketsMap({ markets, onSelect }: Props) {
           </div>
 
         ) : (
-          <MapContainer center={[39.5, -98.35]} zoom={4} style={{ height: "100%", width: "100%" }} scrollWheelZoom>
+          <MapContainer
+            center={[39.5, -98.35]}
+            zoom={4}
+            minZoom={3}
+            maxZoom={12}
+            maxBounds={[[15, -170], [72, -50]]}
+            maxBoundsViscosity={1.0}
+            worldCopyJump={false}
+            style={{ height: "100%", width: "100%" }}
+            scrollWheelZoom
+          >
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              noWrap
             />
+
             <FitBounds points={points} />
             {mapped.map(({ m, c }) => {
               const color = m.hasLiveData ? (TIER_COLOR[m.tier] ?? "#8794ab") : "#cbd5e1";

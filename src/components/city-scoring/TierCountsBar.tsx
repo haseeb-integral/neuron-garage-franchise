@@ -12,7 +12,7 @@ export type TierBarExtras = {
   avgScorePreview: number | null;
   qualifiedPct: number | null;       // % of live-scored in Tier A+B (committed)
   qualifiedPctPreview: number | null;
-  topMarket: { label: string; score: number } | null;
+  topMarkets: { label: string; score: number }[];
 };
 
 interface Props {
@@ -111,11 +111,22 @@ export function TierCountsBar({ committed, preview, totalLive, extras }: Props) 
                 : null
             }
           />
-          <Stat
-            label="Top Market"
-            value={extras.topMarket ? extras.topMarket.label : "—"}
-            valueSub={extras.topMarket ? `${extras.topMarket.score}` : null}
-          />
+          <div className="flex flex-col justify-center min-w-[180px]">
+            <span className="text-[10px] font-bold uppercase tracking-wide text-[#8794ab]">Top 5 Markets</span>
+            {extras.topMarkets.length === 0 ? (
+              <span className="mt-0.5 text-[11px] text-[#8794ab]">—</span>
+            ) : (
+              <ol className="mt-0.5 space-y-0.5">
+                {extras.topMarkets.map((m, i) => (
+                  <li key={`${m.label}-${i}`} className="flex items-baseline gap-1.5 text-[10.5px] text-[#526078] leading-snug">
+                    <span className="tabular-nums text-[#8794ab] w-3">{i + 1}.</span>
+                    <span className="truncate">{m.label}</span>
+                    <span className="tabular-nums text-[#8794ab] ml-auto pl-1">{m.score}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
           {showArrow && (
             <div className="flex items-center text-[10.5px] italic text-[#8794ab]">after Apply</div>
           )}

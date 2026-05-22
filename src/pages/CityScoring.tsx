@@ -667,21 +667,7 @@ const CityScoring = () => {
   const viewMode = useCityScoringStore((s) => s.viewMode);
   const setViewMode = useCityScoringStore((s) => s.setViewMode);
 
-  // Open city via global search ?city=ID
-  useEffect(() => {
-    const id = searchParams.get("city");
-    if (id) {
-      const found = sampleCities.find((c) => c.id === Number(id));
-      if (found) {
-        setSelectedId(found.id);
-        setSelectedMarketKey({ city: found.city, state: found.state });
-        setUserPickedMarket(true);
-      }
-      searchParams.delete("city");
-      setSearchParams(searchParams, { replace: true });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // (URL deep-link hydration moved into useMarketSelection.)
 
   // Load live ranked markets from Supabase once on mount
   useEffect(() => {

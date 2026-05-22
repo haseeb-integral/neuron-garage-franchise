@@ -2897,14 +2897,27 @@ const CityScoring = () => {
                   </p>
                 </div>
 
-                <Sheet open={execReportOpen} onOpenChange={setExecReportOpen}>
-                  <SheetContent side="right" className="w-screen sm:max-w-[50vw] sm:w-[50vw] overflow-y-auto">
-                    <SheetHeader>
-                      <SheetTitle className="text-[#07142f]">
+                {/* Custom slide-out panel — NO overlay so the ranked-markets list behind it stays visible & usable */}
+                {execReportOpen && (
+                  <div
+                    className="fixed inset-y-0 right-0 z-50 w-[50vw] bg-white border-l border-[#e5eaf2] shadow-2xl overflow-y-auto animate-in slide-in-from-right duration-300"
+                    role="dialog"
+                    aria-label={`${selectedCity}, ${selectedState} executive report`}
+                  >
+                    <div className="sticky top-0 z-10 flex items-center justify-between gap-3 bg-white/95 backdrop-blur px-6 py-4 border-b border-[#eef2f7]">
+                      <h2 className="text-[15px] font-bold text-[#07142f]">
                         {selectedCity}, {selectedState} — Executive Report
-                      </SheetTitle>
-                    </SheetHeader>
-                    <div className="mt-4 space-y-5 pb-12">
+                      </h2>
+                      <button
+                        type="button"
+                        onClick={() => setExecReportOpen(false)}
+                        className="rounded-md p-1.5 text-[#526078] hover:bg-[#f1f4f9] hover:text-[#07142f]"
+                        aria-label="Close"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                    <div className="px-6 py-5 space-y-5 pb-12">
                       <div className="rounded-lg bg-[#f7faff] border border-[#e5eaf2] px-4 py-3">
                         <div className="flex items-baseline justify-between">
                           <span className="text-[11px] uppercase tracking-wide text-[#8794ab]">Composite Score</span>
@@ -2973,8 +2986,8 @@ const CityScoring = () => {
                         </p>
                       </section>
                     </div>
-                  </SheetContent>
-                </Sheet>
+                  </div>
+                )}
               </>
             );
           })()}

@@ -993,20 +993,17 @@ const CityScoring = () => {
     return out;
   }, [totalPages, safePage]);
 
-  // Auto-follow top-of-list until the user explicitly clicks a market.
-  // `userPickedMarket` is declared earlier (near `selectedId`). Reset to
-  // false whenever applied weights/sub-weights change so the right-hand
-  // detail + executive summary columns snap to the new #1 ranked market
-  // after a preset or slider change.
-  useEffect(() => {
-    setUserPickedMarket(false);
-  }, [appliedWeights, appliedSubWeights]);
-
+  // Selection + auto-follow + URL deep-linking. The hook owns the
+  // "snap right-side columns to #1 until the user clicks" behavior and
+  // keeps ?city=&state= in the URL so any view is shareable.
   const topRanked = filtered[0];
-  const autoFollowTop = !userPickedMarket && !!topRanked;
-  const effectiveMarketKey = autoFollowTop
-    ? { city: (topRanked as any).city, state: (topRanked as any).state }
-    : selectedMarketKey;
+  const {
+    effectiveMarketKey,
+    autoFollowTop,
+    userPickedMarket,
+    pickMarket,
+  } = useMarketSelection({ topRanked, appliedWeights, appliedSubWeights });
+  void autoFollowTop; void userPickedMarket; // exposed for future use (debug strip / tests)
 
   const selectedFallback = sampleCities.find((c) => c.id === selectedId) ?? sampleCities[0];
   const selectedSample = sampleCities.find(

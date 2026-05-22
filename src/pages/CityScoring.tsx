@@ -2281,6 +2281,7 @@ const CityScoring = () => {
         committed={committedTierCounts}
         preview={previewTierCounts}
         totalLive={liveScoredTotal}
+        filteredLive={filteredLiveCount}
         extras={tierBarExtras}
       />
 

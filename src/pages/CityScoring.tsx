@@ -2010,6 +2010,68 @@ const CityScoring = () => {
             )}
           </div>
         </div>
+
+        {/* Preset tile grid — 2 rows × 3 columns. Click to apply; sliders below tween
+            from current values to the preset's target over ~320ms so the cause→effect
+            is visible. "Custom" appears as a chip (not a tile) when weights don't match
+            any preset. */}
+        <div className="mb-3">
+          <div className="mb-2 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] uppercase tracking-wide text-[#8794ab] font-semibold">Quick presets</span>
+              {scoringModel === "Custom" && (
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#f1ebff] text-[#7c3aed]">Custom</span>
+              )}
+            </div>
+            <p className="text-[10px] text-[#8794ab] leading-tight">
+              Click a strategy. Sliders below will animate to match — fine-tune from there.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {PRESET_TILE_ORDER.map((name) => {
+              const w = SCORING_PRESETS[name];
+              const isActive = scoringModel === name;
+              return (
+                <button
+                  key={name}
+                  type="button"
+                  onClick={() => applyPresetByName(name)}
+                  aria-pressed={isActive}
+                  className={cn(
+                    "text-left rounded-lg border p-2.5 transition-all bg-white hover:border-[#174be8]/60 hover:shadow-sm",
+                    isActive
+                      ? "border-[#174be8] ring-2 ring-[#174be8]/30 bg-[#f5f8ff]"
+                      : "border-[#eef2f7]",
+                  )}
+                >
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-[12.5px] font-bold text-[#07142f] leading-tight">{name}</span>
+                    <span className="text-[9.5px] uppercase tracking-wide text-[#8794ab] font-semibold">{PRESET_TAGLINES[name]}</span>
+                  </div>
+                  <p className="text-[10.5px] text-[#526078] leading-snug mt-0.5">
+                    {PRESET_DESCRIPTIONS[name]}
+                  </p>
+                  {/* Mini weight bar — three colored segments showing the split */}
+                  <div className="mt-2 flex h-1.5 w-full overflow-hidden rounded-full bg-[#eef2f7]">
+                    {VISIBLE_CATEGORIES.map((cat) => (
+                      <div
+                        key={cat.key}
+                        style={{ width: `${w[cat.key]}%`, backgroundColor: cat.color }}
+                        title={`${cat.label}: ${w[cat.key]}%`}
+                      />
+                    ))}
+                  </div>
+                  <div className="mt-1 flex items-center justify-between text-[9.5px] tabular-nums text-[#8794ab] font-semibold">
+                    <span style={{ color: VISIBLE_CATEGORIES[0].color }}>{w.demand}</span>
+                    <span style={{ color: VISIBLE_CATEGORIES[1].color }}>{w.franchiseeSupply}</span>
+                    <span style={{ color: VISIBLE_CATEGORIES[2].color }}>{w.competitiveLandscape}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {VISIBLE_CATEGORIES.map((cat) => {
             const Icon = cat.icon;

@@ -43,7 +43,7 @@ export function TierCountsBar({ committed, preview, totalLive, extras }: Props) 
       {/* Label cell */}
       <div className="flex flex-col justify-center min-w-[150px]">
         <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-[#526078]">
-          Tier distribution
+          Weighting Preview
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -58,6 +58,9 @@ export function TierCountsBar({ committed, preview, totalLive, extras }: Props) 
             </Tooltip>
           </TooltipProvider>
         </div>
+        <span className="mt-1 text-[10px] font-medium text-[#8794ab] leading-snug">
+          How your current slider settings would redistribute cities across tiers — click Apply Weights to commit.
+        </span>
         <span className="mt-0.5 text-[10.5px] font-medium text-[#8794ab]">
           {totalLive} markets scored
         </span>

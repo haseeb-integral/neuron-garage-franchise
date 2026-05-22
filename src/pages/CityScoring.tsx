@@ -253,36 +253,13 @@ const CityScoring = () => {
     }
     setActiveSavedSearchId(null);
     setScoringModel(name);
+    // Snap weights directly — the previous rAF tween caused visible page jitter
+    // (rapid re-renders + animate-pulse on the connector chevron). The active-tile
+    // ring + slider position change is enough to communicate cause→effect.
+    setWeights(target);
+    setAppliedWeights(target);
+  }, [scoringModel, appliedWeights, setWeights, setAppliedWeights, setScoringModel]);
 
-    const start: Record<CategoryKey, number> = { ...weights };
-    const duration = 480; // slowed slightly so the motion reads as intentional, not a snap
-    const t0 = performance.now();
-    if (presetTweenRef.current !== null) cancelAnimationFrame(presetTweenRef.current);
-    setPresetTweening(true);
-
-    const step = (now: number) => {
-      const p = Math.min(1, (now - t0) / duration);
-      const eased = 1 - Math.pow(1 - p, 3);
-      const next: Record<CategoryKey, number> = {
-        demand: Math.round(start.demand + (target.demand - start.demand) * eased),
-        franchiseeSupply: Math.round(start.franchiseeSupply + (target.franchiseeSupply - start.franchiseeSupply) * eased),
-        competitiveLandscape: Math.round(start.competitiveLandscape + (target.competitiveLandscape - start.competitiveLandscape) * eased),
-      };
-      setWeights(next);
-      if (p < 1) {
-        presetTweenRef.current = requestAnimationFrame(step);
-      } else {
-        setWeights(target);
-        setAppliedWeights(target);
-        presetTweenRef.current = null;
-        setPresetTweening(false);
-      }
-    };
-    presetTweenRef.current = requestAnimationFrame(step);
-  }, [weights, appliedWeights, scoringModel, setWeights, setAppliedWeights, setScoringModel]);
-  useEffect(() => () => {
-    if (presetTweenRef.current !== null) cancelAnimationFrame(presetTweenRef.current);
-  }, []);
 
   // URL ⇄ preset sync. On mount: ?preset=Quick+Launch (or hyphenated) applies
   // the preset. On change: mirror the active preset back to the URL so the

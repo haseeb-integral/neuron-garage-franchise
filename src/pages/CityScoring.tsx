@@ -1495,9 +1495,11 @@ const CityScoring = () => {
             className="pl-9 h-10 bg-white border-[#e5eaf2] text-sm"
           />
         </div>
-        <Button variant="outline" className="h-10 border-[#e5eaf2] text-[#14233b] gap-2 font-normal" onClick={buildCsvDownload}>
-          <Download size={15} /> Export Source Data
-        </Button>
+        {screenMode !== "spreadsheet" && (
+          <Button variant="outline" className="h-10 border-[#e5eaf2] text-[#14233b] gap-2 font-normal" onClick={buildCsvDownload}>
+            <Download size={15} /> Export Source Data
+          </Button>
+        )}
         <Button className="h-10 bg-[#174be8] hover:bg-[#1240c9] text-white gap-2 font-medium" onClick={() => setReportOpen(true)}>
           <FileText size={15} /> Generate Market Report
         </Button>

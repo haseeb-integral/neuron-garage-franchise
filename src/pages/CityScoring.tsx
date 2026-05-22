@@ -2781,22 +2781,37 @@ const CityScoring = () => {
               </Button>
             </div>
 
-            {/* Market Summary at bottom, full width — mt-auto pushes it to fill leftover height */}
-            {selectedLiveCity?.notes ? (
-              <div className="mt-auto pt-5 w-full text-left border-t border-[#eef2f7]">
-                <p className="mb-1.5 text-[12px] font-semibold text-[#3a4c72]">Market Summary</p>
-                <p className="text-[12px] leading-relaxed text-[#14233b]">{selectedLiveCity.notes}</p>
-              </div>
-            ) : (
-              <div className="mt-auto pt-5 w-full text-left border-t border-[#eef2f7]">
-                <p className="mb-1.5 text-[12px] font-semibold text-[#3a4c72]">Market Summary</p>
-                <p className="text-[11.5px] leading-relaxed text-[#8794ab] italic">
-                  No analyst notes yet for {selected.city}. Refresh this market to pull the latest narrative summary,
-                  or open <span className="font-semibold not-italic text-[#526078]">Details</span> to review the full
-                  signal-by-signal evidence used to compute this score.
-                </p>
-              </div>
-            )}
+            {/* Market Summary at bottom, full width — mt-auto pushes it to fill leftover height.
+                Always dynamic: uses analyst notes when present, otherwise auto-writes a brief
+                plain-English summary from the live score + category breakdown. */}
+            {(() => {
+              const mScore = Math.round(Number(detailScore) || 0);
+              const mDemand = Math.round(detailCategoryScores["demand"] ?? 0);
+              const mTam = Math.round(detailCategoryScores["tam"] ?? 0);
+              const mOpp = Math.round(detailCategoryScores["competitive"] ?? 0);
+              const mVerdict = mScore >= 70 ? "high" : mScore >= 50 ? "moderate" : "low";
+              const cats: { label: string; v: number }[] = [
+                { label: "family demand", v: mDemand },
+                { label: "teacher supply", v: mTam },
+                { label: "competitive openness", v: mOpp },
+              ];
+              const strongest = [...cats].sort((a, b) => b.v - a.v)[0];
+              const weakest = [...cats].sort((a, b) => a.v - b.v)[0];
+              const verdictPhrase =
+                mVerdict === "high"
+                  ? "a high-opportunity market"
+                  : mVerdict === "moderate"
+                  ? "a moderate-opportunity market"
+                  : "a low-opportunity market";
+              const autoSummary = `${selected.city}, ${selected.state === "Texas" ? "TX" : selected.state === "Florida" ? "FL" : selected.state} scores ${mScore}/100 — ${verdictPhrase} on our model. Its strongest signal is ${strongest.label} (${strongest.v}/100); the limiting factor is ${weakest.label} (${weakest.v}/100). Use the Executive Summary on the right for the full plain-English breakdown, or open Details for the signal-by-signal evidence.`;
+              const summaryText = selectedLiveCity?.notes ?? autoSummary;
+              return (
+                <div className="mt-auto pt-5 w-full text-left border-t border-[#eef2f7]">
+                  <p className="mb-1.5 text-[12px] font-semibold text-[#3a4c72]">Market Summary</p>
+                  <p className="text-[12px] leading-relaxed text-[#14233b]">{summaryText}</p>
+                </div>
+              );
+            })()}
           </div>
         </div>
 

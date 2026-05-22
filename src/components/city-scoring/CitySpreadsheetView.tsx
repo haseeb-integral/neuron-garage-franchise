@@ -355,14 +355,17 @@ export default function CitySpreadsheetView({ markets, onOpenCity, onExportCsv }
               ))}
             </SelectContent>
           </Select>
-          <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
-            <SelectTrigger className="h-9 w-[110px] bg-white border-[#e5eaf2] text-sm">
+          <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(v === "all" ? "all" : Number(v)); setPage(1); }}>
+            <SelectTrigger className="h-9 w-[130px] bg-white border-[#e5eaf2] text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="25">25 / page</SelectItem>
               <SelectItem value="50">50 / page</SelectItem>
               <SelectItem value="100">100 / page</SelectItem>
+              <SelectItem value="250">250 / page</SelectItem>
+              <SelectItem value="500">500 / page</SelectItem>
+              <SelectItem value="all">All</SelectItem>
             </SelectContent>
           </Select>
         </div>

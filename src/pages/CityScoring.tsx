@@ -1905,9 +1905,7 @@ const CityScoring = () => {
           markets={baseRankedMarkets}
           onExportCsv={buildCsvDownload}
           onOpenCity={(m) => {
-            setSelectedMarketKey({ city: m.city, state: m.state });
-            setSelectedId(m.id);
-            setUserPickedMarket(true);
+            pickMarket({ city: m.city, state: m.state, id: m.id });
             setDetailDrawerOpen(true);
           }}
         />

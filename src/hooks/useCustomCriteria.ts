@@ -22,7 +22,8 @@ export interface CustomCriterionRow {
 // Mindset Indicators") are silently ignored by groupCustomByCategory().
 export const CATEGORY_LABEL_TO_KEY: Record<string, CategoryKey> = {
   "Demand": "demand",
-  "Competitive Landscape": "competitiveLandscape",
+  "Competitive Opportunity": "competitiveLandscape",
+  "Competitive Landscape": "competitiveLandscape", // legacy label kept for rows persisted before 2026-05-22 rename
   "Franchisee Supply": "franchiseeSupply",
   "TAM Teachers": "franchiseeSupply",
 };

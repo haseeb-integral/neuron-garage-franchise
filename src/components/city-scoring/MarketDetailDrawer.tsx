@@ -81,7 +81,7 @@ function buildSeededFallbackSignals(market: CityData): LiveSignal[] {
 const SOW_CATEGORIES: { key: MetricCategory; label: string }[] = [
   { key: "demand", label: "Demand" },
   { key: "franchisee_supply", label: "TAM Teachers" },
-  { key: "competitive_landscape", label: "Competitive Landscape" },
+  { key: "competitive_landscape", label: "Competitive Opportunity" },
 ];
 
 // 12-metric whitelist (Demand 4 + TAM Teachers 5 + Competitive Landscape 3)

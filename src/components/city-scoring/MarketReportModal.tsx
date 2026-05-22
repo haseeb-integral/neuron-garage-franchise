@@ -81,7 +81,7 @@ function buildSeededFallbackSignals(market: CityData): LiveSignal[] {
 
 const CAT_LABELS: { key: string; dbKey: MetricCategory; label: string }[] = [
   { key: "demand", dbKey: "demand", label: "Demand" },
-  { key: "competitiveLandscape", dbKey: "competitive_landscape", label: "Competitive Landscape" },
+  { key: "competitiveLandscape", dbKey: "competitive_landscape", label: "Competitive Opportunity" },
   { key: "franchiseeSupply", dbKey: "franchisee_supply", label: "TAM Teachers" },
 ];
 

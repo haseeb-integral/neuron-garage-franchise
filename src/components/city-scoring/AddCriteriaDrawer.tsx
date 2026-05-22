@@ -10,7 +10,7 @@ import { useAddCustomCriterion } from "@/hooks/useCustomCriteria";
 export const SCORING_CATEGORIES = [
   "Demand",
   "TAM Teachers",
-  "Competitive Landscape",
+  "Competitive Opportunity",
 ] as const;
 
 interface Props {

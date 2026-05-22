@@ -136,8 +136,8 @@ const CATEGORIES: Category[] = [
     description: "Measures size of target families and program demand.", defaultWeight: 40 },
   { key: "franchiseeSupply", label: "TAM Teachers", icon: UserCheck, color: "#7c3aed", bg: "#f1ebff",
     description: "Total addressable pool of teachers available to recruit as franchise operators.", defaultWeight: 30 },
-  { key: "competitiveLandscape", label: "Competitive Landscape", icon: Trophy, color: "#b8860b", bg: "#fff6dc",
-    description: "How saturated the local kids-enrichment market is, weighted by national brand presence.", defaultWeight: 30 },
+  { key: "competitiveLandscape", label: "Competitive Opportunity", icon: Trophy, color: "#b8860b", bg: "#fff6dc",
+    description: "Wide-open-market score. Higher = less saturated, fewer national-brand competitors. Slide right to favor cities with low competition. (Opportunity = 100 − CSI.)", defaultWeight: 30 },
 ];
 
 // Kept as an alias for backwards compatibility with code that previously
@@ -2329,7 +2329,7 @@ const CityScoring = () => {
               <span>Score</span>
               <span className="text-right" title="Demand category score">Dem</span>
               <span className="text-right" title="TAM Teachers category score">TAM</span>
-              <span className="text-right" title="Competitive Landscape opportunity (higher = less saturated)">CSI</span>
+              <span className="text-right" title="Competitive Opportunity (higher = less saturated, fewer national-brand competitors). Opportunity = 100 − CSI.">Opp</span>
               <span className="text-right">Tier</span>
               <span></span>
             </div>
@@ -2412,7 +2412,7 @@ const CityScoring = () => {
                       <>
                         {cell(cs.demand, "Demand score")}
                         {cell(cs.franchiseeSupply, "TAM Teachers score")}
-                        {cell(cs.competitiveLandscape, "Competitive Landscape opportunity")}
+                        {cell(cs.competitiveLandscape, "Competitive Opportunity (higher = less saturated)")}
                       </>
                     );
                   })()}

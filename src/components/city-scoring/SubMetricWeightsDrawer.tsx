@@ -460,7 +460,7 @@ export function SubMetricWeightsDrawer({
         {isCsiLocked ? (
           <div className="border-t border-[#eef2f7] px-5 py-3 bg-[#fafbfd]">
             <p className="text-[10.5px] text-[#8794ab] leading-snug">
-              Locked — pulled directly from Brett's Manus v2 table. Competitive Landscape is computed by Manus and used as-is in the composite. No user-tunable knobs.
+              Locked — pulled directly from Brett's Manus v2 table. Competitive Opportunity is computed from Manus CSI (Opportunity = 100 − CSI) and used as-is in the composite. No user-tunable knobs.
             </p>
           </div>
         ) : (
@@ -562,7 +562,7 @@ function FormulaPanel({
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 text-[12px] text-[#07142f] leading-relaxed">
         <section className="rounded-md border border-[#cfdcff] bg-[#f4f8ff] px-3 py-3">
           <h4 className="text-[11px] font-bold uppercase tracking-wide text-[#174be8] mb-2">
-            Competitive Landscape formula{selectedCityLabel ? ` — ${selectedCityLabel}` : ""}
+            Competitive Opportunity formula{selectedCityLabel ? ` — ${selectedCityLabel}` : ""}
           </h4>
           <pre className="text-[11.5px] leading-relaxed text-[#07142f] whitespace-pre-wrap font-mono">
 {`CSI = (National_Brand_Count_Weighted + Local_Provider_Estimate)
@@ -590,10 +590,9 @@ function FormulaPanel({
             </div>
           </div>
           <p className="text-[10.5px] text-[#8794ab] italic mt-3 leading-snug">
-            For the city composite we use <span className="font-mono">(100 − CSI score)</span> ×
-            Competitive Landscape master weight, so high contribution = good (matching Demand and
-            TAM Teachers).
+            Bridge: <span className="font-mono">Competitive Opportunity = 100 − CSI</span>. Low CSI / low saturation = high opportunity. The composite uses <span className="font-mono">Opportunity × Competitive Opportunity master weight</span>, so high contribution = good (matching Demand and TAM Teachers).
           </p>
+
 
         </section>
 
@@ -630,7 +629,7 @@ function FormulaPanel({
                 <tfoot className="bg-[#f7faff] border-t-2 border-[#eef2f7]">
                   <tr>
                     <td className="px-2 py-1.5 text-right font-semibold text-[#1a2540]">
-                      Competitive Landscape score (100 − CSI)
+                      Competitive Opportunity score (100 − CSI)
                     </td>
                     <td className="px-2 py-1.5 text-right font-bold tabular-nums text-[#174be8]">
                       {serverCategoryScore.toFixed(1)}
@@ -1107,7 +1106,7 @@ function CsiLockedPanel({
       <div className="rounded border border-[#eef2f7] bg-white px-3 py-3">
         <div className="flex items-baseline justify-between gap-3">
           <div className="text-[11px] uppercase tracking-wide text-[#526078] font-semibold">
-            Competitive Landscape (saturation) {selectedCityLabel ? `· ${selectedCityLabel}` : ""}
+            Competitive Opportunity · Raw CSI (Saturation) {selectedCityLabel ? `· ${selectedCityLabel}` : ""}
           </div>
           {csiSaturationCategory && (
             <span className="text-[10.5px] font-semibold rounded px-1.5 py-0.5 bg-[#fff6dc] text-[#8a6a00]">

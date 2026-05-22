@@ -8,7 +8,7 @@ import { buildSeededFallbackSignalsFromScored, type RankedMarket } from "@/lib/c
 const CATEGORY_ROWS: { key: string; label: string; dbKey: string }[] = [
   { key: "demand", label: "Demand", dbKey: "demand" },
   { key: "franchiseeSupply", label: "TAM Teachers", dbKey: "franchisee_supply" },
-  { key: "competitiveLandscape", label: "Competitive Landscape", dbKey: "competitive_landscape" },
+  { key: "competitiveLandscape", label: "Competitive Opportunity", dbKey: "competitive_landscape" },
 ];
 
 // Signal rows are built dynamically from whatever signals exist for the

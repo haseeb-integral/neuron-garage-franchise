@@ -28,9 +28,9 @@ export const SCORING_PRESETS: Record<Exclude<PresetName, "Custom">, Record<Categ
 };
 
 export const PRESET_DESCRIPTIONS: Record<PresetName, string> = {
-  "Balanced": "Roughly equal weighting across Demand, TAM Teachers, and Competitive Landscape.",
-  "Demand-Heavy": "Demand is the dominant factor (60%). TAM Teachers and Competitive Landscape share the rest.",
-  "TAM-Heavy": "TAM Teachers is the dominant factor (50%). Demand and Competitive Landscape share the rest.",
+  "Balanced": "Roughly equal weighting across Demand, TAM Teachers, and Competitive Opportunity.",
+  "Demand-Heavy": "Demand is the dominant factor (60%). TAM Teachers and Competitive Opportunity share the rest.",
+  "TAM-Heavy": "TAM Teachers is the dominant factor (50%). Demand and Competitive Opportunity share the rest.",
   "Custom": "Manually adjusted master weights — no preset matches.",
 };
 

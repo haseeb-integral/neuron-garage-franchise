@@ -37,20 +37,7 @@ Every city demographic falls into exactly one of three buckets, which mirror our
 - `college_degree_pct` — academic-family proxy, correlates with enrichment spend
 - `dual_working_families_pct` — willingness-to-outsource signal
 - `cost_of_living_index` — normalizes income against local costs
-- `avg_camp_price_per_hour` — observed local price ceiling
-
-**C. Competitive Landscape — "How crowded is the market?"**
-- `summer_camp_count`, `summer_camps_per_10k_children` — competitor density
-- `school_hosted_camp_count` — substitute supply
-- `camp_waitlist_signals` — unmet demand evidence
-- `private_elementary_count`, `charter_elementary_count` — adjacent alternatives
-- (Incoming) the full Competitive Landscape table
-
-### 2.3 Identity / Filter Columns (not scored)
-`state_abbr`, `city_name`, `county_name`, `metro_area`, `metro_counties`, `population_density` (drives Urban/Suburb/Rural label). These are used for grouping and filtering, never for scoring.
-
-### 2.4 Weather Signals
-`summer_weather_index`, `avg_peak_summer_temperature`, `days_above_90f`, `summer_precip_days`. Folded into Market Size (Demand) — bad weather drives summer-camp demand. Sourced from Open-Meteo.
+_Removed 2026-05-22: `avg_camp_price_per_hour`, `school_hosted_camp_count`, `summer_weather_index`, `avg_peak_summer_temperature`, `days_above_90f`, `summer_precip_days` — none of these belong to a live category (Demand / Competitive Landscape / TAM Teachers). DB columns preserved; UI no longer surfaces them._
 
 ### 2.5 How Signals Become a Score
 Per AGENTS.md Rule 5:

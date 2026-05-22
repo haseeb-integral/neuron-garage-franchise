@@ -13,8 +13,8 @@ export type RankedMarket = {
   metroCounties?: string[] | null;
   tier: "A" | "B" | "C" | "D" | string;
   compositeScore: number;
-  population: number;
-  competitorCount: number;
+  population: number | null;
+  competitorCount: number | null;
   marketType?: string | null;
   isNonRegistration: boolean;
   lastScrapedAt?: string | null;
@@ -75,7 +75,7 @@ function toNumber(value: unknown, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
-export function mapLiveCityToRankedMarket(row: any, index: number, competitorCount = 0): RankedMarket {
+export function mapLiveCityToRankedMarket(row: any, index: number, competitorCount: number | null = null): RankedMarket {
   const state = normalizeState(row.state);
   const compositeScore = toNumber(row.composite_score, 0);
   const hasLiveData = compositeScore > 0 || !!row.last_scraped_at;
@@ -88,7 +88,7 @@ export function mapLiveCityToRankedMarket(row: any, index: number, competitorCou
     metroArea: row.metro_area ?? null,
     tier: row.tier ?? tierFromScore(compositeScore),
     compositeScore,
-    population: toNumber(row.population, 0),
+    population: row.population == null ? null : Number(row.population),
     competitorCount,
     marketType: row.market_type ?? null,
     isNonRegistration: NON_REGISTRATION_STATES.has(state),
@@ -124,23 +124,17 @@ function marketTypeFromDensity(density: number): string {
   return "Rural";
 }
 
-export async function loadLiveRankedMarkets(opts?: { includeExtras?: boolean }): Promise<RankedMarket[]> {
+export async function loadLiveRankedMarkets(_opts?: { includeExtras?: boolean }): Promise<RankedMarket[]> {
   // Canonical source: us_cities_scored.
-  // Default lens = strict 817 Manus universe (rows with csi_last_updated set).
-  // Per Haseeb decision May 21, 2026 (Option A): UI sources from the 817 Manus
-  // cities only. The other ~193 legacy rows stay in the DB but are hidden
-  // unless `includeExtras` is true.
-  let query = supabase
+  // Universe is the 817 Manus cities — the 160 legacy rows were hard-deleted
+  // on 2026-05-22 after verifying zero teacher_prospects referenced them.
+  const query = supabase
     .from("us_cities_scored")
     .select(
-      "id, city_name, state_name, state_abbr, metro_area, county_name, metro_counties, population, population_density, children_5_12, median_household_income, dual_working_families_pct, college_degree_pct, cost_of_living_index, public_school_count, public_school_enrollment, public_elementary_count, public_elementary_enrollment, public_elementary_teacher_count, private_elementary_count, charter_elementary_count, school_district_count, summer_camp_count, avg_camp_price_per_hour, school_hosted_camp_count, camp_waitlist_signals, summer_weather_index, avg_peak_summer_temperature, days_above_90f, summer_precip_days, weather_last_updated, composite_score_default, score_demand, score_csi, score_tam_teachers, csi_score, csi_saturation_category, csi_confidence, csi_national_brand_count_weighted, csi_local_provider_estimate, csi_demand_adjusted_market, csi_brand_detail, csi_last_updated, place_type, census_population_2020, avg_elementary_teacher_salary_usd, col_salary_index, is_registration_state, scored_at",
+      "id, city_name, state_name, state_abbr, metro_area, county_name, metro_counties, population, population_density, children_5_12, median_household_income, dual_working_families_pct, college_degree_pct, cost_of_living_index, public_school_count, public_school_enrollment, public_elementary_count, public_elementary_enrollment, public_elementary_teacher_count, private_elementary_count, charter_elementary_count, school_district_count, summer_camp_count, school_hosted_camp_count, camp_waitlist_signals, composite_score_default, score_demand, score_csi, score_tam_teachers, csi_score, csi_saturation_category, csi_confidence, csi_national_brand_count_weighted, csi_local_provider_estimate, csi_demand_adjusted_market, csi_brand_detail, csi_last_updated, place_type, census_population_2020, avg_elementary_teacher_salary_usd, col_salary_index, is_registration_state, scored_at",
     )
     .order("composite_score_default", { ascending: false, nullsFirst: false })
     .limit(2000);
-
-  if (!opts?.includeExtras) {
-    query = query.not("csi_last_updated", "is", null);
-  }
 
   const { data: scoredRows, error: scoredErr } = await query;
 
@@ -166,8 +160,8 @@ export async function loadLiveRankedMarkets(opts?: { includeExtras?: boolean }):
       metroCounties: Array.isArray(row.metro_counties) ? row.metro_counties : null,
       tier: tierFromScore(composite),
       compositeScore: composite,
-      population: toNumber(row.population, 0),
-      competitorCount: toNumber(row.summer_camp_count, 0),
+      population: row.population == null ? null : Number(row.population),
+      competitorCount: row.summer_camp_count == null ? null : Number(row.summer_camp_count),
       marketType: marketTypeFromDensity(density),
       isNonRegistration: row.is_registration_state === false,
       lastScrapedAt: row.scored_at ?? null,
@@ -240,7 +234,7 @@ export function filterRankedMarkets(markets: RankedMarket[], filters: RankedMark
         if (filters.tierFilter !== "All" && market.tier !== filters.tierFilter) return false;
         if (filters.nonRegOnly && !market.isNonRegistration) return false;
         if (market.compositeScore < filters.minScore) return false;
-        if (minPopulation && market.population < minPopulation) return false;
+        if (minPopulation && (market.population ?? 0) < minPopulation) return false;
       } else {
         // Still respect the explicit non-registration toggle for no-data rows.
         if (filters.nonRegOnly && !market.isNonRegistration) return false;
@@ -290,8 +284,7 @@ export function buildSeededFallbackSignalsFromScored(
     seeded("median_household_income", "Median Household Income", scoredRow.median_household_income, "demand", true),
     seeded("dual_income_household_pct", "% Dual-Income Households", scoredRow.dual_working_families_pct, "demand", true),
     seeded("education_bachelors_plus_pct", "Bachelor's+ Attainment", scoredRow.college_degree_pct, "demand", true),
-    seeded("avg_hourly_camp_pricing", "Average Hourly Camp Pricing", scoredRow.avg_camp_price_per_hour, "pricing_power", true),
-    // CSI — 3-metric lock (Brett+Haseeb 2026-05-21). Inputs from Brett's
+    // CSI — Manus-owned (Brett+Haseeb 2026-05-21). Inputs from Brett's
     // 2026-05-21 Manus upload. Raw csi_score (saturation) is shown on the
     // card; here we expose the three contributing inputs.
     seeded("csi_national_brand_supply", "National Brand Supply (weighted)", scoredRow.csi_national_brand_count_weighted, "competitive_landscape", true),
@@ -303,12 +296,11 @@ export function buildSeededFallbackSignalsFromScored(
     seeded("private_charter_school_count", "Private + Charter Elementary Schools", ((scoredRow.private_elementary_count ?? 0) + (scoredRow.charter_elementary_count ?? 0)) || null, "franchisee_supply", true),
     seeded("public_elementary_enrollment", "Public Elementary Enrollment", scoredRow.public_elementary_enrollment, "franchisee_supply", true),
     seeded("col_salary_index", "Teacher Salary × Cost of Living Index", scoredRow.col_salary_index ?? scoredRow.cost_of_living_index, "franchisee_supply", true),
-    // Weather metrics — retained on the row for reference / future categories,
-    // but no longer part of Demand scoring after the 2026-05-21 lock.
-    seeded("summer_weather_index", "Summer Weather Index", scoredRow.summer_weather_index, "demand", false),
-    seeded("avg_peak_summer_temperature", "Avg Peak Summer Temperature", scoredRow.avg_peak_summer_temperature, "demand", false),
-    seeded("days_above_90f", "Number of 90°+ Days", scoredRow.days_above_90f, "demand", false),
-    seeded("summer_precip_days", "Summer Precipitation Days", scoredRow.summer_precip_days, "demand", false),
+    // Retired/orphan metrics removed 2026-05-22:
+    //   avg_camp_price_per_hour (pricing category retired May 15),
+    //   summer_weather_index / avg_peak_summer_temperature / days_above_90f /
+    //   summer_precip_days (weather is not in any live category).
+    // DB columns are preserved; UI no longer surfaces them.
   ];
   // Note: rows with null values are KEPT — the UI shows them as "—" so the
   // user can see exactly which metrics are not yet seeded for this city,
@@ -531,8 +523,8 @@ export function buildRankedMarketsCsv(markets: RankedMarket[]) {
       market.state,
       String(market.tier),
       String(market.compositeScore),
-      String(market.population),
-      String(market.competitorCount),
+      market.population == null ? "" : String(market.population),
+      market.competitorCount == null ? "" : String(market.competitorCount),
       market.source,
       market.lastScrapedAt ?? "",
     ]),

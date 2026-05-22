@@ -175,11 +175,8 @@ const COLUMNS: ColDef[] = [
     render: (m) => fmtPct(row(m).college_degree_pct),
   },
   // TAM Teachers
-  {
-    key: "districts", label: "Districts", align: "right", group: "TAM Teachers",
-    get: (m) => row(m).school_district_count ?? null,
-    render: (m) => fmtInt(row(m).school_district_count),
-  },
+  // school_district_count removed 2026-05-22 — not in any live category
+  // (Demand / CSI / TAM Teachers). DB column preserved.
   {
     key: "elem_schools", label: "Public Elem. Schools", align: "right", group: "TAM Teachers",
     get: (m) => row(m).public_elementary_count ?? null,

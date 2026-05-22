@@ -54,8 +54,10 @@ import { METRICS_BY_CATEGORY } from "@/lib/sowMetricRegistry";
 import { parseSignalValue } from "@/lib/sowNormalize";
 import { recomputeCategoryScore, recomputeComposite } from "@/lib/clientSubWeightScoring";
 import { tierFromScore } from "@/lib/cityScoringLiveData";
+import { assignPercentileTiers as _assignPercentileTiers, percentileTierCutoffs as _percentileTierCutoffs, type TierLetter as _TierLetter } from "@/lib/cityTiers";
 import { canonicalKey } from "@/lib/signalAliases";
 import { useCustomCriteria } from "@/hooks/useCustomCriteria";
+import { useMarketSelection } from "@/hooks/useMarketSelection";
 import { useScoringConfig, useDebouncedSaveScoringConfig } from "@/hooks/useScoringConfig";
 import { SCORING_PRESETS, PRESET_NAMES, PRESET_DESCRIPTIONS, PRESET_TAGLINES, PRESET_TILE_ORDER, detectPreset, type PresetName } from "@/lib/scoringPresets";
 import { AskAiBar } from "@/components/city-scoring/AskAiBar";
@@ -122,93 +124,24 @@ type CategoryKey =
   | "competitiveLandscape"
   | "franchiseeSupply";
 
-interface Category {
-  key: CategoryKey;
-  label: string;
-  icon: typeof Users;
-  color: string;
-  bg: string;
-  description: string;
-  defaultWeight: number;
-}
+// Page-level constants/helpers moved to lib/cityScoringPageHelpers.ts.
+// Re-exported as local aliases so the rest of this giant page file keeps
+// compiling unchanged until the column-split refactor lands.
+import {
+  CATEGORIES,
+  VISIBLE_CATEGORIES,
+  SOURCES,
+  normalizeMarketState,
+  sameMarket,
+  categoryScoresFromSample as categoryScores,
+  type Category,
+} from "@/lib/cityScoringPageHelpers";
+void VISIBLE_CATEGORIES; void SOURCES; void CATEGORIES;
+void normalizeMarketState; void sameMarket; void categoryScores;
 
-const CATEGORIES: Category[] = [
-  { key: "demand", label: "Demand", icon: Users, color: "#174be8", bg: "#eaf0ff",
-    description: "Size of the target-family market and signal strength of program demand — kids in the right age band, household income, parent intent.", defaultWeight: 40 },
-  { key: "franchiseeSupply", label: "TAM Teachers", icon: UserCheck, color: "#7c3aed", bg: "#f1ebff",
-    description: "Pool of teachers available locally to recruit as franchise operators — credentialed, in-area, plausible to convert into owners.", defaultWeight: 30 },
-  { key: "competitiveLandscape", label: "Competitive Opportunity", icon: Trophy, color: "#b8860b", bg: "#fff6dc",
-    description: "How wide-open the market is — fewer national-brand competitors, less saturation, more room for a new operator to win share.", defaultWeight: 30 },
-];
-
-// Kept as an alias for backwards compatibility with code that previously
-// filtered out retired categories. After the May 21, 2026 final purge,
-// every entry in CATEGORIES is visible.
-const VISIBLE_CATEGORIES = CATEGORIES;
-
-// Map mock data scoreBreakdown into our 3 category scores deterministically
-function categoryScores(c: CityData): Record<CategoryKey, number> {
-  const b = c.scoreBreakdown;
-  return {
-    demand: b.summerCampDemand,
-    competitiveLandscape: b.competitionScore,
-    franchiseeSupply: Math.round((b.stemJobs + b.schoolDensity) / 2),
-  };
-}
-
-const SOURCES: { name: string; icon: typeof Building2; status: "connected" | "planned" }[] = [
-  { name: "U.S. Census Bureau", icon: Building2, status: "connected" },
-  { name: "BLS (Occupational Data)", icon: Building2, status: "connected" },
-  { name: "Yelp / Google Maps / Apify", icon: MapPin, status: "connected" },
-  { name: "Firecrawl", icon: FileText, status: "connected" },
-  { name: "Google Trends", icon: Search, status: "planned" },
-  { name: "GreatSchools.org", icon: GraduationCap, status: "planned" },
-  { name: "State Education Databases", icon: GraduationCap, status: "planned" },
-  { name: "ACA Camp Regulations", icon: FileText, status: "planned" },
-  { name: "Internal Franchise Data", icon: HomeIcon, status: "planned" },
-];
-
-const normalizeMarketState = (state?: string | null) => {
-  if (!state) return "";
-  if (state === "TX") return "Texas";
-  if (state === "FL") return "Florida";
-  return state;
-};
-
-const sameMarket = (cityA?: string | null, stateA?: string | null, cityB?: string | null, stateB?: string | null) => {
-  return (cityA ?? "").trim().toLowerCase() === (cityB ?? "").trim().toLowerCase()
-    && normalizeMarketState(stateA).toLowerCase() === normalizeMarketState(stateB).toLowerCase();
-};
-
-type TierLetter = "A" | "B" | "C" | "D";
-
-function percentileTierCutoffs(n: number) {
-  const aCut = Math.max(1, Math.ceil(n * 0.05));
-  const bCut = aCut + Math.max(1, Math.ceil(n * 0.15));
-  const cCut = bCut + Math.max(1, Math.ceil(n * 0.30));
-  return { aCut, bCut, cCut };
-}
-
-function assignPercentileTiers<T extends { hasLiveData?: boolean | null; compositeScore?: number | null }>(markets: T[]): Array<T & { tier: TierLetter }> {
-  const withIndex = markets.map((market, index) => ({ market, index }));
-  const liveScored = withIndex
-    .filter(({ market }) => !!market.hasLiveData)
-    .slice()
-    .sort((a, b) => Number(b.market.compositeScore ?? 0) - Number(a.market.compositeScore ?? 0));
-
-  const { aCut, bCut, cCut } = percentileTierCutoffs(liveScored.length);
-  const tierByIndex = new Map<number, TierLetter>();
-
-  liveScored.forEach(({ index }, i) => {
-    const tier: TierLetter = i < aCut ? "A" : i < bCut ? "B" : i < cCut ? "C" : "D";
-    tierByIndex.set(index, tier);
-  });
-
-  return withIndex.map(({ market, index }) => {
-    if (!market.hasLiveData) return { ...market, tier: "D" as const };
-    return { ...market, tier: tierByIndex.get(index) ?? "D" };
-  });
-}
+type TierLetter = _TierLetter;
+const percentileTierCutoffs = _percentileTierCutoffs;
+const assignPercentileTiers = _assignPercentileTiers;
 
 function countLiveTiers<T extends { hasLiveData?: boolean | null; tier?: string | null }>(markets: T[]): TierCounts {
   const counts: TierCounts = { A: 0, B: 0, C: 0, D: 0 };
@@ -350,6 +283,36 @@ const CityScoring = () => {
   useEffect(() => () => {
     if (presetTweenRef.current !== null) cancelAnimationFrame(presetTweenRef.current);
   }, []);
+
+  // URL ⇄ preset sync. On mount: ?preset=Quick+Launch (or hyphenated) applies
+  // the preset. On change: mirror the active preset back to the URL so the
+  // full view is shareable. "Custom" / "Balanced" stay implicit so the URL
+  // stays clean in the default case.
+  const presetHydratedRef = useRef(false);
+  useEffect(() => {
+    if (presetHydratedRef.current) return;
+    presetHydratedRef.current = true;
+    const raw = searchParams.get("preset");
+    if (!raw) return;
+    const decoded = decodeURIComponent(raw).replace(/-/g, " ");
+    const match = (PRESET_NAMES as string[]).find(
+      (n) => n.toLowerCase() === decoded.toLowerCase() && n !== "Custom",
+    ) as Exclude<PresetName, "Custom"> | undefined;
+    if (match) applyPresetByName(match);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    if (scoringModel && scoringModel !== "Custom" && scoringModel !== "Balanced") {
+      next.set("preset", scoringModel.replace(/\s+/g, "-"));
+    } else {
+      next.delete("preset");
+    }
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scoringModel]);
 
   const buildDefaultSearchName = (): string => {
     const dateStr = new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" });
@@ -647,18 +610,10 @@ const CityScoring = () => {
 
 
   const selectedId = useCityScoringStore((s) => s.selectedId);
-  const setSelectedId = useCityScoringStore((s) => s.setSelectedId);
   const selectedMarketKey = useCityScoringStore((s) => s.selectedMarketKey);
-  const setSelectedMarketKey = useCityScoringStore((s) => s.setSelectedMarketKey);
   const selectedForCompare = useCityScoringStore((s) => s.selectedForCompare);
   const setSelectedForCompare = useCityScoringStore((s) => s.setSelectedForCompare);
   const [refreshingMarket, setRefreshingMarket] = useState(false);
-  // True after the user explicitly picks a market (row click, map pin,
-  // deep link). While false, the SELECTED MARKET + EXECUTIVE SUMMARY
-  // columns auto-follow whatever sits at the top of the ranked list, so
-  // changing a preset or slider visibly re-points the right side to the
-  // new #1.
-  const [userPickedMarket, setUserPickedMarket] = useState(false);
   const PAGE_SIZE = 15;
   const page = useCityScoringStore((s) => s.page);
   const setPage = useCityScoringStore((s) => s.setPage);
@@ -700,21 +655,7 @@ const CityScoring = () => {
   const viewMode = useCityScoringStore((s) => s.viewMode);
   const setViewMode = useCityScoringStore((s) => s.setViewMode);
 
-  // Open city via global search ?city=ID
-  useEffect(() => {
-    const id = searchParams.get("city");
-    if (id) {
-      const found = sampleCities.find((c) => c.id === Number(id));
-      if (found) {
-        setSelectedId(found.id);
-        setSelectedMarketKey({ city: found.city, state: found.state });
-        setUserPickedMarket(true);
-      }
-      searchParams.delete("city");
-      setSearchParams(searchParams, { replace: true });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // (URL deep-link hydration moved into useMarketSelection.)
 
   // Load live ranked markets from Supabase once on mount
   useEffect(() => {
@@ -1040,20 +981,17 @@ const CityScoring = () => {
     return out;
   }, [totalPages, safePage]);
 
-  // Auto-follow top-of-list until the user explicitly clicks a market.
-  // `userPickedMarket` is declared earlier (near `selectedId`). Reset to
-  // false whenever applied weights/sub-weights change so the right-hand
-  // detail + executive summary columns snap to the new #1 ranked market
-  // after a preset or slider change.
-  useEffect(() => {
-    setUserPickedMarket(false);
-  }, [appliedWeights, appliedSubWeights]);
-
+  // Selection + auto-follow + URL deep-linking. The hook owns the
+  // "snap right-side columns to #1 until the user clicks" behavior and
+  // keeps ?city=&state= in the URL so any view is shareable.
   const topRanked = filtered[0];
-  const autoFollowTop = !userPickedMarket && !!topRanked;
-  const effectiveMarketKey = autoFollowTop
-    ? { city: (topRanked as any).city, state: (topRanked as any).state }
-    : selectedMarketKey;
+  const {
+    effectiveMarketKey,
+    autoFollowTop,
+    userPickedMarket,
+    pickMarket,
+  } = useMarketSelection({ topRanked, appliedWeights, appliedSubWeights });
+  void autoFollowTop; void userPickedMarket; // exposed for future use (debug strip / tests)
 
   const selectedFallback = sampleCities.find((c) => c.id === selectedId) ?? sampleCities[0];
   const selectedSample = sampleCities.find(
@@ -1954,9 +1892,7 @@ const CityScoring = () => {
           markets={baseRankedMarkets}
           onExportCsv={buildCsvDownload}
           onOpenCity={(m) => {
-            setSelectedMarketKey({ city: m.city, state: m.state });
-            setSelectedId(m.id);
-            setUserPickedMarket(true);
+            pickMarket({ city: m.city, state: m.state, id: m.id });
             setDetailDrawerOpen(true);
           }}
         />
@@ -2518,10 +2454,8 @@ const CityScoring = () => {
         <MarketsMap
           markets={mapMarkets}
           onSelect={(m) => {
-            setSelectedMarketKey({ city: m.city, state: m.state });
             const sample = sampleCities.find((s) => sameMarket(s.city, s.state, m.city, m.state));
-            if (sample) setSelectedId(sample.id);
-            setUserPickedMarket(true);
+            pickMarket({ city: m.city, state: m.state, id: sample?.id });
             setViewMode("table");
           }}
         />
@@ -2619,10 +2553,7 @@ const CityScoring = () => {
                   key={c.id}
                   onClick={() => {
                     const sample = sampleCities.find((s) => sameMarket(s.city, s.state, c.city, c.state));
-                    setSelectedMarketKey({ city: c.city, state: c.state });
-                    if (sample) setSelectedId(sample.id);
-                    else setSelectedId(c.id);
-                    setUserPickedMarket(true);
+                    pickMarket({ city: c.city, state: c.state, id: sample?.id ?? c.id });
                   }}
                   className={`grid grid-cols-[16px_22px_minmax(0,1fr)_42px_70px_30px_30px_30px_28px_16px] items-center gap-x-2 px-1 py-2.5 text-[11px] cursor-pointer border-b border-[#f3f5f9] last:border-0 ${isSel ? "bg-[#eaf0ff]" : "hover:bg-[#f7faff]"}`}
                 >
@@ -3332,8 +3263,7 @@ const CityScoring = () => {
         onClose={() => setAddCityOpen(false)}
         onAdded={async (city, state) => {
           await reloadSelectedMarketView(city, state);
-          setSelectedMarketKey({ city, state });
-          setUserPickedMarket(true);
+          pickMarket({ city, state });
         }}
       />
     </div>

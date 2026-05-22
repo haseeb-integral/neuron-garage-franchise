@@ -327,6 +327,36 @@ const CityScoring = () => {
     if (presetTweenRef.current !== null) cancelAnimationFrame(presetTweenRef.current);
   }, []);
 
+  // URL ⇄ preset sync. On mount: ?preset=Quick+Launch (or hyphenated) applies
+  // the preset. On change: mirror the active preset back to the URL so the
+  // full view is shareable. "Custom" / "Balanced" stay implicit so the URL
+  // stays clean in the default case.
+  const presetHydratedRef = useRef(false);
+  useEffect(() => {
+    if (presetHydratedRef.current) return;
+    presetHydratedRef.current = true;
+    const raw = searchParams.get("preset");
+    if (!raw) return;
+    const decoded = decodeURIComponent(raw).replace(/-/g, " ");
+    const match = (PRESET_NAMES as string[]).find(
+      (n) => n.toLowerCase() === decoded.toLowerCase() && n !== "Custom",
+    ) as Exclude<PresetName, "Custom"> | undefined;
+    if (match) applyPresetByName(match);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    if (scoringModel && scoringModel !== "Custom" && scoringModel !== "Balanced") {
+      next.set("preset", scoringModel.replace(/\s+/g, "-"));
+    } else {
+      next.delete("preset");
+    }
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scoringModel]);
+
   const buildDefaultSearchName = (): string => {
     const dateStr = new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" });
     if ((PRESET_NAMES as string[]).includes(scoringModel) && scoringModel !== "Custom") {

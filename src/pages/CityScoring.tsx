@@ -1944,59 +1944,65 @@ const CityScoring = () => {
                 className="rounded-lg border border-[#eef2f7] bg-white p-3 flex flex-col gap-2 hover:border-[#174be8]/40 transition-colors"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 28, height: 28, backgroundColor: cat.bg }}>
+                  <div className="flex items-start gap-2 min-w-0">
+                    <span className="flex items-center justify-center rounded-lg flex-shrink-0 mt-0.5" style={{ width: 28, height: 28, backgroundColor: cat.bg }}>
                       <Icon size={15} style={{ color: cat.color }} />
                     </span>
-                    <span className="text-[12.5px] font-semibold text-[#07142f] leading-tight">{cat.label}</span>
+                    <div className="min-w-0">
+                      <div className="text-[12.5px] font-semibold text-[#07142f] leading-tight">{cat.label}</div>
+                      <p className="text-[11px] text-[#526078] leading-snug mt-1">{cat.description}</p>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center justify-end gap-1.5">
-                  <Input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={weights[cat.key]}
-                    onChange={(e) => {
-                      const raw = e.target.value;
-                      if (raw === "") return;
-                      const parsed = Number(raw);
-                      if (!Number.isFinite(parsed)) return;
-                      const clamped = Math.max(0, Math.min(100, Math.round(parsed)));
+                <div className="mt-1 pt-2 border-t border-[#f3f5f9]">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="text-[10px] uppercase tracking-wide text-[#8794ab] font-semibold">Weight in ranking</span>
+                    <div className="flex items-center gap-1.5">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={weights[cat.key]}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          if (raw === "") return;
+                          const parsed = Number(raw);
+                          if (!Number.isFinite(parsed)) return;
+                          const clamped = Math.max(0, Math.min(100, Math.round(parsed)));
+                          setWeights((w) => {
+                            const next = rebalanceWeights(w, cat.key, clamped);
+                            const detected = detectPreset(next);
+                            if (detected !== scoringModel) setScoringModel(detected);
+                            return next;
+                          });
+                        }}
+                        onBlur={(e) => {
+                          const parsed = Number(e.target.value);
+                          if (!Number.isFinite(parsed)) {
+                            e.target.value = String(weights[cat.key]);
+                          }
+                        }}
+                        className="h-7 w-14 text-right text-[13px] font-bold text-[#07142f] tabular-nums px-1.5"
+                        aria-label={`${cat.label} weight percent`}
+                      />
+                      <span className="text-base font-bold text-[#07142f]">%</span>
+                    </div>
+                  </div>
+                  <Slider
+                    value={[weights[cat.key]]}
+                    onValueChange={([v]) => {
                       setWeights((w) => {
-                        const next = rebalanceWeights(w, cat.key, clamped);
+                        const next = rebalanceWeights(w, cat.key, v);
                         const detected = detectPreset(next);
                         if (detected !== scoringModel) setScoringModel(detected);
                         return next;
                       });
                     }}
-                    onBlur={(e) => {
-                      const parsed = Number(e.target.value);
-                      if (!Number.isFinite(parsed)) {
-                        // Revert to current weight on garbage input
-                        e.target.value = String(weights[cat.key]);
-                      }
-                    }}
-                    className="h-7 w-14 text-right text-[13px] font-bold text-[#07142f] tabular-nums px-1.5"
-                    aria-label={`${cat.label} weight percent`}
+                    max={100}
+                    step={1}
+                    className="[&>span:first-child]:bg-[#eaf0ff] [&>span:first-child]:h-1.5 [&_[role=slider]]:h-3.5 [&_[role=slider]]:w-3.5 [&_[role=slider]]:border-[#174be8] [&_[role=slider]]:bg-white [&>span:first-child_span]:bg-[#174be8]"
                   />
-                  <span className="text-base font-bold text-[#07142f]">%</span>
                 </div>
-                <Slider
-                  value={[weights[cat.key]]}
-                  onValueChange={([v]) => {
-                    setWeights((w) => {
-                      const next = rebalanceWeights(w, cat.key, v);
-                      const detected = detectPreset(next);
-                      if (detected !== scoringModel) setScoringModel(detected);
-                      return next;
-                    });
-                  }}
-                  max={100}
-                  step={1}
-                  className="[&>span:first-child]:bg-[#eaf0ff] [&>span:first-child]:h-1.5 [&_[role=slider]]:h-3.5 [&_[role=slider]]:w-3.5 [&_[role=slider]]:border-[#174be8] [&_[role=slider]]:bg-white [&>span:first-child_span]:bg-[#174be8]"
-                />
-                <p className="text-[11px] text-[#8794ab] leading-snug">{cat.description}</p>
                 {customCount > 0 && (
                   <button
                     type="button"

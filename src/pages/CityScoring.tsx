@@ -137,7 +137,7 @@ const CATEGORIES: Category[] = [
   { key: "franchiseeSupply", label: "TAM Teachers", icon: UserCheck, color: "#7c3aed", bg: "#f1ebff",
     description: "Pool of teachers available locally to recruit as franchise operators — credentialed, in-area, plausible to convert into owners.", defaultWeight: 30 },
   { key: "competitiveLandscape", label: "Competitive Opportunity", icon: Trophy, color: "#b8860b", bg: "#fff6dc",
-    description: "How wide-open the market is. Higher = less saturated, fewer national-brand competitors crowding the space. (Opportunity = 100 − CSI.)", defaultWeight: 30 },
+    description: "How wide-open the market is — fewer national-brand competitors, less saturation, more room for a new operator to win share.", defaultWeight: 30 },
 ];
 
 // Kept as an alias for backwards compatibility with code that previously

@@ -1807,10 +1807,30 @@ const CityScoring = () => {
           <Button variant="outline" className="h-9 border-[#e5eaf2] text-[#14233b] gap-1.5 font-normal" onClick={() => setAddCritOpen(true)}>
             <Plus size={14} /> Add Criteria
           </Button>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-[#14233b]">Compare Mode</span>
-            <Switch checked={compareMode} onCheckedChange={setCompareMode} />
-          </div>
+          <TooltipProvider delayDuration={150}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-2 cursor-help">
+                  <span className="text-sm text-[#14233b]">Compare Mode</span>
+                  <Info size={12} className="text-[#8794ab]" />
+                  <Switch
+                    checked={compareMode}
+                    onCheckedChange={(v) => {
+                      setCompareMode(v);
+                      if (v) {
+                        toast.message("Compare Mode on", {
+                          description: "Check 2–4 markets in the list below, then click Compare to view them side-by-side.",
+                        });
+                      }
+                    }}
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-[260px] text-xs">
+                Adds checkboxes to the market list. Select 2–4 markets, then click <span className="font-semibold">Compare</span> to view their scores side-by-side.
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
 

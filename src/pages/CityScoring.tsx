@@ -2467,10 +2467,8 @@ const CityScoring = () => {
         <MarketsMap
           markets={mapMarkets}
           onSelect={(m) => {
-            setSelectedMarketKey({ city: m.city, state: m.state });
             const sample = sampleCities.find((s) => sameMarket(s.city, s.state, m.city, m.state));
-            if (sample) setSelectedId(sample.id);
-            setUserPickedMarket(true);
+            pickMarket({ city: m.city, state: m.state, id: sample?.id });
             setViewMode("table");
           }}
         />

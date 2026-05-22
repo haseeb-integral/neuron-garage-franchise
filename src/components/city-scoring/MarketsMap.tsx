@@ -128,14 +128,15 @@ export function MarketsMap({ markets, onSelect }: Props) {
           <MapContainer
             center={[39.5, -98.35]}
             zoom={4}
-            minZoom={3}
+            minZoom={4}
             maxZoom={12}
-            maxBounds={[[15, -170], [72, -50]]}
+            maxBounds={[[18, -130], [52, -64]]}
             maxBoundsViscosity={1.0}
             worldCopyJump={false}
             style={{ height: "100%", width: "100%" }}
             scrollWheelZoom
           >
+
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

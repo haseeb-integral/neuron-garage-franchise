@@ -1,40 +1,93 @@
 // Scoring model presets — drive the master category weights.
 // "Custom" is auto-selected when the active master weights don't match any preset.
 // 3-key shape after Sam+Brett 2026-05-21 final purge.
+// May 22, 2026: expanded from 3 → 6 named presets (Blue Ocean, Quick Launch, High Upside added)
+// to support 2×3 preset-tile grid UI on City Search.
 
 import type { CategoryKey } from "@/stores/cityScoringStore";
 
-export type PresetName = "Balanced" | "Demand-Heavy" | "TAM-Heavy" | "Custom";
+export type PresetName =
+  | "Balanced"
+  | "Demand-Heavy"
+  | "TAM-Heavy"
+  | "Blue Ocean"
+  | "Quick Launch"
+  | "High Upside"
+  | "Custom";
 
 export const SCORING_PRESETS: Record<Exclude<PresetName, "Custom">, Record<CategoryKey, number>> = {
-  // Even-ish split across the 3 active categories.
   "Balanced": {
     demand: 34,
     franchiseeSupply: 33,
     competitiveLandscape: 33,
   },
-  // Demand dominant.
   "Demand-Heavy": {
     demand: 60,
     franchiseeSupply: 20,
     competitiveLandscape: 20,
   },
-  // TAM Teachers (franchiseeSupply) dominant.
   "TAM-Heavy": {
     demand: 25,
     franchiseeSupply: 50,
     competitiveLandscape: 25,
   },
+  "Blue Ocean": {
+    demand: 20,
+    franchiseeSupply: 20,
+    competitiveLandscape: 60,
+  },
+  "Quick Launch": {
+    demand: 15,
+    franchiseeSupply: 45,
+    competitiveLandscape: 40,
+  },
+  "High Upside": {
+    demand: 45,
+    franchiseeSupply: 15,
+    competitiveLandscape: 40,
+  },
 };
 
 export const PRESET_DESCRIPTIONS: Record<PresetName, string> = {
-  "Balanced": "Roughly equal weighting across Demand, TAM Teachers, and Competitive Opportunity.",
-  "Demand-Heavy": "Demand is the dominant factor (60%). TAM Teachers and Competitive Opportunity share the rest.",
-  "TAM-Heavy": "TAM Teachers is the dominant factor (50%). Demand and Competitive Opportunity share the rest.",
+  "Balanced": "Treat all three signals roughly equally.",
+  "Demand-Heavy": "Find markets with the most kids and parent demand.",
+  "TAM-Heavy": "Find markets with the deepest pool of teachers to recruit.",
+  "Blue Ocean": "Find markets where no one else is running camps yet.",
+  "Quick Launch": "Easy to open — lots of teachers and low competition.",
+  "High Upside": "Strong demand AND low competition — biggest growth runway.",
   "Custom": "Manually adjusted master weights — no preset matches.",
 };
 
-export const PRESET_NAMES: PresetName[] = ["Balanced", "Demand-Heavy", "TAM-Heavy", "Custom"];
+// Short 1–2 word tags shown under each tile name in the grid UI.
+export const PRESET_TAGLINES: Record<Exclude<PresetName, "Custom">, string> = {
+  "Balanced": "Equal weight",
+  "Demand-Heavy": "Most kids",
+  "TAM-Heavy": "Most teachers",
+  "Blue Ocean": "Low saturation",
+  "Quick Launch": "Easy to open",
+  "High Upside": "Best runway",
+};
+
+export const PRESET_NAMES: PresetName[] = [
+  "Balanced",
+  "Demand-Heavy",
+  "TAM-Heavy",
+  "Blue Ocean",
+  "Quick Launch",
+  "High Upside",
+  "Custom",
+];
+
+// Ordered list of the 6 tiles rendered in the 2×3 preset grid (excludes "Custom",
+// which is auto-applied as a chip when weights don't match any tile).
+export const PRESET_TILE_ORDER: Exclude<PresetName, "Custom">[] = [
+  "Balanced",
+  "Demand-Heavy",
+  "TAM-Heavy",
+  "Blue Ocean",
+  "Quick Launch",
+  "High Upside",
+];
 
 // Returns the preset that exactly matches the given master weights (within ±1% tolerance per category),
 // or "Custom" if none match.

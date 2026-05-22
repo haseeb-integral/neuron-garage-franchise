@@ -708,6 +708,7 @@ const CityScoring = () => {
       if (found) {
         setSelectedId(found.id);
         setSelectedMarketKey({ city: found.city, state: found.state });
+        setUserPickedMarket(true);
       }
       searchParams.delete("city");
       setSearchParams(searchParams, { replace: true });

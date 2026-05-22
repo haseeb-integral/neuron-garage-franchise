@@ -1947,15 +1947,19 @@ const CityScoring = () => {
               <TooltipContent className="max-w-[220px] text-xs">Only show cities with population above this threshold.</TooltipContent>
             </Tooltip>
           </label>
-          <Select value={minPop} onValueChange={setMinPop}>
-            <SelectTrigger className="h-9 bg-white border-[#e5eaf2] text-sm"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="0">Any</SelectItem>
-              
-              <SelectItem value="50000">50,000+</SelectItem>
-              <SelectItem value="100000">100,000+</SelectItem>
-            </SelectContent>
-          </Select>
+          <Input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            step={1000}
+            placeholder="Any"
+            value={minPop === "0" ? "" : minPop}
+            onChange={(e) => {
+              const v = e.target.value.replace(/[^0-9]/g, "");
+              setMinPop(v === "" ? "0" : v);
+            }}
+            className="h-9 bg-white border-[#e5eaf2] text-sm"
+          />
         </div>
         <div className="flex flex-col gap-1 min-w-[180px] flex-1 max-w-[260px]">
           <label className="text-[11px] text-[#526078] flex items-center gap-1">

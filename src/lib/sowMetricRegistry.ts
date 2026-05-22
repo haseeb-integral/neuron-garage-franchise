@@ -100,9 +100,9 @@ export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
     enabled: true,  weight_within_category: 0.15, status: "live",
     source: "NCES Common Core of Data — enrollment field, aggregated to city" },
   { key: "col_salary_index", category: "franchisee_supply", label: "Teacher Salary × Cost of Living Index",
-    description: "Average elementary teacher salary multiplied by local cost-of-living index. Lower value = stronger pull toward summer income and franchise ownership. Falls back to COL Index alone until Manus delivers BLS salary data.",
-    enabled: true,  weight_within_category: 0.25, status: "proxy",
-    source: "Composite: BLS OEWS SOC 25-2021 (Manus batch, pending) × BEA Regional Price Parity" },
+    description: "Average elementary teacher salary normalized by local cost-of-living index (salary × 100 / COL). Lower value = stronger pull toward summer income and franchise ownership.",
+    enabled: true,  weight_within_category: 0.25, status: "live",
+    source: "BLS OEWS May 2025 SOC 25-2021 (Manus batch, 817 cities) × BEA Regional Price Parity" },
 
 ];
 

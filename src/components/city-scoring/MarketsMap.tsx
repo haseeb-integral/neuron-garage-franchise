@@ -18,26 +18,35 @@ interface Props {
 
 type Coords = { lat: number; lng: number };
 
+// CONUS-focused bounding box. Alaska & Hawaii points get clamped so a single
+// Anchorage marker can't drag the fitBounds out to Asia/Africa.
+const US_BOUNDS: [[number, number], [number, number]] = [[24, -125], [50, -66]];
+
 function FitBounds({ points }: { points: Coords[] }) {
   const map = useMap();
   useEffect(() => {
-    if (points.length === 0) return;
-    if (points.length === 1) {
-      map.setView([points[0].lat, points[0].lng], 9);
+    if (points.length === 0) {
+      map.fitBounds(US_BOUNDS, { padding: [20, 20] });
       return;
     }
-    const lats = points.map((p) => p.lat);
-    const lngs = points.map((p) => p.lng);
+    if (points.length === 1) {
+      map.setView([points[0].lat, points[0].lng], 7);
+      return;
+    }
+    const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+    const lats = points.map((p) => clamp(p.lat, US_BOUNDS[0][0], US_BOUNDS[1][0]));
+    const lngs = points.map((p) => clamp(p.lng, US_BOUNDS[0][1], US_BOUNDS[1][1]));
     map.fitBounds(
       [
         [Math.min(...lats), Math.min(...lngs)],
         [Math.max(...lats), Math.max(...lngs)],
       ],
-      { padding: [30, 30] },
+      { padding: [30, 30], maxZoom: 7 },
     );
   }, [points, map]);
   return null;
 }
+
 
 const ALLOWED_TIERS = new Set(["A", "B", "C"]);
 

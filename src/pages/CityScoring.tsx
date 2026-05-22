@@ -2276,7 +2276,7 @@ const CityScoring = () => {
         <div className="min-w-0 rounded-lg bg-white border border-[#eef2f7] p-4">
           <div className="mb-3 flex items-start justify-between gap-3">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-[18px] leading-none font-bold text-[#07142f]">{selected.city}, {selected.state === "Texas" ? "TX" : selected.state === "Florida" ? "FL" : selected.state}</h2>
+              <h2 className="text-[14px] leading-none font-bold uppercase tracking-wide text-[#526078]">Selected Market</h2>
               {SHOW_LIVE_REFRESH && (lastScrapedRelative ? (
                 <span
                   title={lastScrapedAbsolute ?? ""}
@@ -2311,6 +2311,7 @@ const CityScoring = () => {
           </div>
 
 
+
           <div className="grid grid-cols-[2fr_1fr_1fr] gap-4 items-start">
             {/* Col 1: Market Summary */}
             <div className="min-w-0 pt-1">
@@ -2325,8 +2326,11 @@ const CityScoring = () => {
             </div>
 
 
-            {/* Col 2 (25%): Overall Score full width, details stacked below */}
+            {/* Col 2 (25%): City name → Overall Score → details → categories → buttons */}
             <div className="min-w-0 flex flex-col items-center text-center pt-1">
+              <h3 className="mb-2 text-[16px] leading-tight font-bold text-[#07142f] text-center break-words w-full">
+                {selected.city}, {selected.state === "Texas" ? "TX" : selected.state === "Florida" ? "FL" : selected.state}
+              </h3>
               <p className="mb-1.5 text-[12px] font-semibold text-[#3a4c72]">Overall Score</p>
               <svg viewBox="0 0 200 120" className="w-full h-auto max-w-[200px]">
                 <path d="M25 92 A75 75 0 0 1 175 92" fill="none" stroke="#e7ebf3" strokeWidth="14" strokeLinecap="round" />

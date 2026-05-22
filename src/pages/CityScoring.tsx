@@ -180,6 +180,46 @@ const sameMarket = (cityA?: string | null, stateA?: string | null, cityB?: strin
     && normalizeMarketState(stateA).toLowerCase() === normalizeMarketState(stateB).toLowerCase();
 };
 
+type TierLetter = "A" | "B" | "C" | "D";
+
+function percentileTierCutoffs(n: number) {
+  const aCut = Math.max(1, Math.ceil(n * 0.05));
+  const bCut = aCut + Math.max(1, Math.ceil(n * 0.15));
+  const cCut = bCut + Math.max(1, Math.ceil(n * 0.30));
+  return { aCut, bCut, cCut };
+}
+
+function assignPercentileTiers<T extends { hasLiveData?: boolean | null; compositeScore?: number | null }>(markets: T[]): Array<T & { tier: TierLetter }> {
+  const withIndex = markets.map((market, index) => ({ market, index }));
+  const liveScored = withIndex
+    .filter(({ market }) => !!market.hasLiveData)
+    .slice()
+    .sort((a, b) => Number(b.market.compositeScore ?? 0) - Number(a.market.compositeScore ?? 0));
+
+  const { aCut, bCut, cCut } = percentileTierCutoffs(liveScored.length);
+  const tierByIndex = new Map<number, TierLetter>();
+
+  liveScored.forEach(({ index }, i) => {
+    const tier: TierLetter = i < aCut ? "A" : i < bCut ? "B" : i < cCut ? "C" : "D";
+    tierByIndex.set(index, tier);
+  });
+
+  return withIndex.map(({ market, index }) => {
+    if (!market.hasLiveData) return { ...market, tier: "D" as const };
+    return { ...market, tier: tierByIndex.get(index) ?? "D" };
+  });
+}
+
+function countLiveTiers<T extends { hasLiveData?: boolean | null; tier?: string | null }>(markets: T[]): TierCounts {
+  const counts: TierCounts = { A: 0, B: 0, C: 0, D: 0 };
+  markets.forEach((market) => {
+    if (!market.hasLiveData) return;
+    const tier = market.tier as keyof TierCounts;
+    if (counts[tier] != null) counts[tier] += 1;
+  });
+  return counts;
+}
+
 const CityScoring = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -698,28 +738,10 @@ const CityScoring = () => {
     [],
   );
 
-  const filtered = useMemo(() => {
-    const base = filterRankedMarkets(baseRankedMarkets, {
-      searchTerm,
-      stateFilter,
-      // IMPORTANT: apply score/tier filters AFTER reranking. The stored
-      // baseline composite currently tops out at 74, so filtering by Tier A or
-      // minScore>=80 before recomputing makes slider-driven Tier A results
-      // impossible to surface even when the reranked composite should be 80+.
-      tierFilter: "All",
-      nonRegOnly,
-      minScore: 0,
-      minPop,
-    });
-    const q = cityFilter.trim().toLowerCase();
-    let out = q ? base.filter((m: any) => String(m.city ?? "").toLowerCase().includes(q)) : base;
-    if (watchlistOnly) {
-      out = out.filter((m: any) => m.cityId && watchlistCityIds.has(m.cityId));
-    }
-
+  const rerankedUniverse = useMemo(() => {
     const masterWeightsAreDefault = JSON.stringify(appliedWeights) === JSON.stringify(DEFAULT_WEIGHTS);
     const subWeightsAreDefault = JSON.stringify(appliedSubWeights) === JSON.stringify(DEFAULT_SUB_WEIGHTS);
-    const reRanked = out.map((market) => {
+    const reRanked = baseRankedMarkets.map((market) => {
       if (!market.hasLiveData || !market.categoryScores) return market;
       if (masterWeightsAreDefault && subWeightsAreDefault) return market;
 
@@ -753,45 +775,32 @@ const CityScoring = () => {
       return {
         ...market,
         compositeScore: composite,
-        // tier reassigned by percentile below
       };
     });
 
-    // Percentile-based tier assignment — top 5% = A, next 15% = B,
-    // next 30% = C, bottom 50% = D. Computed across the live-scored set so
-    // Tier A always has cities (was previously a fixed >=80 cutoff that no
-    // city in the dataset could ever reach). 2026-05-22.
-    const liveScored = reRanked
-      .filter((m: any) => m.hasLiveData)
-      .slice()
-      .sort((a: any, b: any) => b.compositeScore - a.compositeScore);
-    const n = liveScored.length;
-    const aCut = Math.max(1, Math.ceil(n * 0.05));
-    const bCut = aCut + Math.max(1, Math.ceil(n * 0.15));
-    const cCut = bCut + Math.max(1, Math.ceil(n * 0.30));
-    const tierById = new Map<any, "A" | "B" | "C" | "D">();
-    liveScored.forEach((m: any, i: number) => {
-      const t = i < aCut ? "A" : i < bCut ? "B" : i < cCut ? "C" : "D";
-      tierById.set(m.cityId ?? m.id, t);
-    });
-    const tiered = reRanked.map((market: any) => {
-      if (!market.hasLiveData) return { ...market, tier: "D" as const };
-      return { ...market, tier: tierById.get(market.cityId ?? market.id) ?? "D" };
-    });
+    return assignPercentileTiers(reRanked);
+  }, [baseRankedMarkets, appliedWeights, appliedSubWeights]);
 
-    return tiered
-      .filter((market) => {
-        if (!market.hasLiveData) return true;
-        if (tierFilter !== "All" && market.tier !== tierFilter) return false;
-        if (market.compositeScore < minScore) return false;
-        return true;
-      })
-      .sort((a, b) => {
+  const filtered = useMemo(() => {
+    const base = filterRankedMarkets(rerankedUniverse, {
+      searchTerm,
+      stateFilter,
+      tierFilter,
+      nonRegOnly,
+      minScore,
+      minPop,
+    });
+    const q = cityFilter.trim().toLowerCase();
+    let out = q ? base.filter((m: any) => String(m.city ?? "").toLowerCase().includes(q)) : base;
+    if (watchlistOnly) {
+      out = out.filter((m: any) => m.cityId && watchlistCityIds.has(m.cityId));
+    }
+    return out.sort((a, b) => {
       if (a.hasLiveData !== b.hasLiveData) return a.hasLiveData ? -1 : 1;
       if (a.hasLiveData) return b.compositeScore - a.compositeScore;
       return a.city.localeCompare(b.city);
-      });
-  }, [baseRankedMarkets, searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop, cityFilter, watchlistOnly, watchlistCityIds, appliedWeights, appliedSubWeights]);
+    });
+  }, [rerankedUniverse, searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop, cityFilter, watchlistOnly, watchlistCityIds]);
 
 
   // ─── Tier counts (committed) + preview projection (draft weights) ──────
@@ -804,54 +813,34 @@ const CityScoring = () => {
     [weights, appliedWeights],
   );
   const committedTierCounts = useMemo<TierCounts>(() => {
-    const counts: TierCounts = { A: 0, B: 0, C: 0, D: 0 };
-    filtered.forEach((m: any) => {
-      if (!m.hasLiveData) return;
-      const t = m.tier as keyof TierCounts;
-      if (counts[t] != null) counts[t] += 1;
-    });
-    return counts;
-  }, [filtered]);
+    return countLiveTiers(rerankedUniverse);
+  }, [rerankedUniverse]);
   const liveScoredTotal = useMemo(
+    () => rerankedUniverse.filter((m: any) => m.hasLiveData).length,
+    [rerankedUniverse],
+  );
+  const filteredLiveCount = useMemo(
     () => filtered.filter((m: any) => m.hasLiveData).length,
     [filtered],
   );
   const previewTierCounts = useMemo<TierCounts | null>(() => {
     if (!weightsPending) return null;
-    const counts: TierCounts = { A: 0, B: 0, C: 0, D: 0 };
-    // Recompute composite with draft weights, then assign tiers by
-    // percentile (top 5% A / next 15% B / next 30% C / rest D) to match
-    // the committed tier logic. 2026-05-22.
-    const scored: number[] = [];
-    filtered.forEach((m: any) => {
-      if (!m.hasLiveData) return;
+    const previewUniverse = baseRankedMarkets.map((m: any) => {
+      if (!m.hasLiveData) return m;
       const cats = m.categoryScores as Record<CategoryKey, number | null> | undefined;
-      let composite: number;
       if (cats) {
-        const { composite: c } = recomputeComposite(cats, weights);
-        composite = c;
-      } else {
-        composite = m.compositeScore ?? 0;
+        const { composite } = recomputeComposite(cats, weights);
+        return { ...m, compositeScore: composite };
       }
-      scored.push(composite);
+      return { ...m, compositeScore: m.compositeScore ?? 0 };
     });
-    scored.sort((a, b) => b - a);
-    const n = scored.length;
-    if (n === 0) return counts;
-    const aCut = Math.max(1, Math.ceil(n * 0.05));
-    const bCut = aCut + Math.max(1, Math.ceil(n * 0.15));
-    const cCut = bCut + Math.max(1, Math.ceil(n * 0.30));
-    counts.A = Math.min(aCut, n);
-    counts.B = Math.min(bCut, n) - counts.A;
-    counts.C = Math.min(cCut, n) - counts.A - counts.B;
-    counts.D = n - counts.A - counts.B - counts.C;
-    return counts;
-  }, [filtered, weights, weightsPending]);
+    return countLiveTiers(assignPercentileTiers(previewUniverse));
+  }, [baseRankedMarkets, weights, weightsPending]);
 
 
   // Extra summary stats for the Tier Distribution strip (avg score, qualified %, top market).
   const tierBarExtras = useMemo(() => {
-    const live = filtered.filter((m: any) => m.hasLiveData);
+    const live = rerankedUniverse.filter((m: any) => m.hasLiveData);
     const n = live.length;
     if (n === 0) {
       return { avgScore: null, avgScorePreview: null, qualifiedPct: null, qualifiedPctPreview: null, topMarkets: [] };
@@ -895,7 +884,7 @@ const CityScoring = () => {
       qualifiedPctPreview: previewQualPct,
       topMarkets,
     };
-  }, [filtered, committedTierCounts, previewTierCounts, weights, weightsPending]);
+  }, [rerankedUniverse, committedTierCounts, previewTierCounts, weights, weightsPending]);
 
   // Markets shown on the map: same filters as the table EXCEPT we ignore the
   // Tier dropdown and Min Score slider, so picking a state (e.g. Alabama) that

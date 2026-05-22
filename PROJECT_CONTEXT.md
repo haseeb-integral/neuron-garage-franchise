@@ -134,7 +134,7 @@ No storage buckets configured.
 ## 5. Known bugs / broken or incomplete features
 
 Active limitations:
-- **City Search** — `us_cities_scored` seeded with 948 cities and composite scores; national ranked list now possible. UI wiring to read from seed table is the next step.
+- **City Search** — `us_cities_scored` locked at **817 cities** (Manus universe). Live categories = Demand / CSI / TAM only. Retired/orphan metric columns preserved in DB but not surfaced in UI (see § 2). NULL rendering contract enforced: NULL → "—", 0 → "0"; NULL rows excluded from percentile pools.
 - **Teacher Search reads placeholder/Apify-only data** — `teacher_prospects_master` table not yet built; no Apollo / vendor list / DonorsChoose integration. `teacher_prospects` now has the FK and enrichment columns waiting on the master table + sourcing.
 - **`candidates` table** — no FKs to `public_schools` / `us_cities_scored`, no `source_segment` column. Promotion from teacher → candidate cannot carry context until added (see OPEN_TASKS B3).
 - ~~**`cities` vs `us_cities_scored`** — consolidated.~~ ✅ May 19 — legacy `cities` (+ `city_category_scores`, `city_fetch_jobs`, `city_competitors`) dropped; `us_cities_scored` is the canonical city table. Add City flow now writes there via `us_cities_geo` lookup.

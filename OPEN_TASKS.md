@@ -255,12 +255,15 @@ See **`TEACHER_IDEAL_PROFILE.md`** for who we are recruiting and why — read th
 - Schedule next sprint after B7/B10a complete.
 - **Risk:** low-medium (rate-limit pacing)
 
-### B10a. NCES PSS full re-pull — 340 missing cities (added May 18)
-- Current embedded PSS dataset has 636 rows; ~340 of the 960 seeded cities (incl. Dallas, St. Louis, St. Paul) are missing entirely.
+### B10a. NCES PSS full re-pull — 357 missing cities (added May 18, still open May 22)
+- Current embedded PSS dataset has 460 of 817 cities filled; ~357 of the 817 are missing entirely (incl. Dallas, St. Louis, St. Paul).
 - Need one-time download of NCES PSS Excel (2021–22) + parse script → upsert `private_elementary_count` / `private_elementary_enrollment` on `us_cities_scored`.
 - Effort: ~30 min script + 5 min run. Free.
-- **Risk:** low
 - **Risk:** low (additive)
+
+> `school_district_count` backfill **dropped** May 22 — column is not in any live scoring category; no point pulling.
+
+
 
 ---
 

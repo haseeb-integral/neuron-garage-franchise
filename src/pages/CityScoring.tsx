@@ -264,6 +264,48 @@ const CityScoring = () => {
   const [savingSearch, setSavingSearch] = useState(false);
   const [activeSavedSearchId, setActiveSavedSearchId] = useState<string | null>(null);
 
+  // Tween the 3 master sliders from current values to a preset target over ~320ms,
+  // so clicking a preset tile produces a visible "the sliders just moved" cue instead
+  // of an instant snap. Snapshots the user's Custom weights on the way out so they can
+  // come back. On completion, commits via setAppliedWeights (same as Apply Weights).
+  const presetTweenRef = useRef<number | null>(null);
+  const applyPresetByName = useCallback((name: Exclude<PresetName, "Custom">) => {
+    const target = SCORING_PRESETS[name];
+    if (scoringModel === "Custom") {
+      setCustomWeightsSnapshot({ ...appliedWeights });
+    }
+    setActiveSavedSearchId(null);
+    setScoringModel(name);
+
+    const start: Record<CategoryKey, number> = { ...weights };
+    const duration = 320;
+    const t0 = performance.now();
+    if (presetTweenRef.current !== null) cancelAnimationFrame(presetTweenRef.current);
+
+    const step = (now: number) => {
+      const p = Math.min(1, (now - t0) / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      const next: Record<CategoryKey, number> = {
+        demand: Math.round(start.demand + (target.demand - start.demand) * eased),
+        franchiseeSupply: Math.round(start.franchiseeSupply + (target.franchiseeSupply - start.franchiseeSupply) * eased),
+        competitiveLandscape: Math.round(start.competitiveLandscape + (target.competitiveLandscape - start.competitiveLandscape) * eased),
+      };
+      setWeights(next);
+      if (p < 1) {
+        presetTweenRef.current = requestAnimationFrame(step);
+      } else {
+        setWeights(target);
+        setAppliedWeights(target);
+        presetTweenRef.current = null;
+      }
+    };
+    presetTweenRef.current = requestAnimationFrame(step);
+    toast.success(`Applied ${name} preset`);
+  }, [weights, appliedWeights, scoringModel, setWeights, setAppliedWeights, setScoringModel]);
+  useEffect(() => () => {
+    if (presetTweenRef.current !== null) cancelAnimationFrame(presetTweenRef.current);
+  }, []);
+
   const buildDefaultSearchName = (): string => {
     const dateStr = new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" });
     if ((PRESET_NAMES as string[]).includes(scoringModel) && scoringModel !== "Custom") {

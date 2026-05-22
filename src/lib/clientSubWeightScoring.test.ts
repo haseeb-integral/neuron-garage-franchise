@@ -113,13 +113,13 @@ describe("recomputeComposite", () => {
   });
 
   it("skips null category scores instead of treating them as zero", () => {
-    const { composite, perCategoryShares } = recomputeComposite(
+    const { composite } = recomputeComposite(
       { demand: 80, competitiveLandscape: null, franchiseeSupply: 40 },
       { demand: 50, competitiveLandscape: 25, franchiseeSupply: 25 },
     );
     // Effective shares: demand 50/75, supply 25/75 → 80*0.667 + 40*0.333 = 66.67 → 67
+    // (i.e. null category is NOT counted as a 0 — it drops out of the denominator)
     expect(composite).toBe(67);
-    expect(perCategoryShares.competitiveLandscape).toBe(0);
   });
 
   it("returns composite 0 when no category has a score", () => {

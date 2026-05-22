@@ -2615,6 +2615,7 @@ const CityScoring = () => {
                     setSelectedMarketKey({ city: c.city, state: c.state });
                     if (sample) setSelectedId(sample.id);
                     else setSelectedId(c.id);
+                    setUserPickedMarket(true);
                   }}
                   className={`grid grid-cols-[16px_22px_minmax(0,1fr)_42px_70px_30px_30px_30px_28px_16px] items-center gap-x-2 px-1 py-2.5 text-[11px] cursor-pointer border-b border-[#f3f5f9] last:border-0 ${isSel ? "bg-[#eaf0ff]" : "hover:bg-[#f7faff]"}`}
                 >

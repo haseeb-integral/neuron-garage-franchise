@@ -2551,7 +2551,7 @@ const CityScoring = () => {
         </div>
 
         {/* Center: Selected Market Detail */}
-        <div className="min-w-0 rounded-lg bg-white border border-[#eef2f7] p-4">
+        <div className="min-w-0 rounded-lg bg-white border border-[#eef2f7] p-4 flex flex-col h-full">
           <div className="mb-3 flex items-start justify-between gap-3">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-[14px] leading-none font-bold uppercase tracking-wide text-[#526078]">Selected Market</h2>

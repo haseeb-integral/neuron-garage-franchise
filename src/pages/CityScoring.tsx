@@ -269,6 +269,10 @@ const CityScoring = () => {
   // of an instant snap. Snapshots the user's Custom weights on the way out so they can
   // come back. On completion, commits via setAppliedWeights (same as Apply Weights).
   const presetTweenRef = useRef<number | null>(null);
+  // True while a preset → slider tween is in flight. Drives the visual "syncing"
+  // cue on the slider cards so the user sees that clicking a preset is what moved
+  // them. Also drives the connector chevron's pulse.
+  const [presetTweening, setPresetTweening] = useState(false);
   const applyPresetByName = useCallback((name: Exclude<PresetName, "Custom">) => {
     const target = SCORING_PRESETS[name];
     if (scoringModel === "Custom") {
@@ -278,9 +282,10 @@ const CityScoring = () => {
     setScoringModel(name);
 
     const start: Record<CategoryKey, number> = { ...weights };
-    const duration = 320;
+    const duration = 480; // slowed slightly so the motion reads as intentional, not a snap
     const t0 = performance.now();
     if (presetTweenRef.current !== null) cancelAnimationFrame(presetTweenRef.current);
+    setPresetTweening(true);
 
     const step = (now: number) => {
       const p = Math.min(1, (now - t0) / duration);
@@ -297,10 +302,10 @@ const CityScoring = () => {
         setWeights(target);
         setAppliedWeights(target);
         presetTweenRef.current = null;
+        setPresetTweening(false);
       }
     };
     presetTweenRef.current = requestAnimationFrame(step);
-    toast.success(`Applied ${name} preset`);
   }, [weights, appliedWeights, scoringModel, setWeights, setAppliedWeights, setScoringModel]);
   useEffect(() => () => {
     if (presetTweenRef.current !== null) cancelAnimationFrame(presetTweenRef.current);

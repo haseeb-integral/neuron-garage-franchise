@@ -766,6 +766,53 @@ const CityScoring = () => {
     return counts;
   }, [filtered, weights, weightsPending]);
 
+  // Extra summary stats for the Tier Distribution strip (avg score, qualified %, top market).
+  const tierBarExtras = useMemo(() => {
+    const live = filtered.filter((m: any) => m.hasLiveData);
+    const n = live.length;
+    if (n === 0) {
+      return { avgScore: null, avgScorePreview: null, qualifiedPct: null, qualifiedPctPreview: null, topMarket: null };
+    }
+    const sum = live.reduce((s: number, m: any) => s + Number(m.compositeScore ?? 0), 0);
+    const avgScore = sum / n;
+    const ab = (committedTierCounts.A ?? 0) + (committedTierCounts.B ?? 0);
+    const qualifiedPct = (ab / n) * 100;
+
+    let previewAvg: number | null = null;
+    let previewQualPct: number | null = null;
+    if (weightsPending) {
+      let pSum = 0;
+      live.forEach((m: any) => {
+        const cats = m.categoryScores as Record<CategoryKey, number | null> | undefined;
+        if (cats) {
+          const { composite } = recomputeComposite(cats, weights);
+          pSum += composite;
+        } else {
+          pSum += Number(m.compositeScore ?? 0);
+        }
+      });
+      previewAvg = pSum / n;
+      if (previewTierCounts) {
+        previewQualPct = ((previewTierCounts.A + previewTierCounts.B) / n) * 100;
+      }
+    }
+
+    const top = live.reduce((best: any, m: any) =>
+      !best || Number(m.compositeScore ?? 0) > Number(best.compositeScore ?? 0) ? m : best,
+    null);
+    const topMarket = top
+      ? { label: `${top.city}, ${top.state}`, score: Math.round(Number(top.compositeScore ?? 0)) }
+      : null;
+
+    return {
+      avgScore,
+      avgScorePreview: previewAvg,
+      qualifiedPct,
+      qualifiedPctPreview: previewQualPct,
+      topMarket,
+    };
+  }, [filtered, committedTierCounts, previewTierCounts, weights, weightsPending]);
+
   // Markets shown on the map: same filters as the table EXCEPT we ignore the
   // Tier dropdown and Min Score slider, so picking a state (e.g. Alabama) that
   // has no Tier A/B cities still plots its Tier C markets instead of going blank.
@@ -1983,6 +2030,14 @@ const CityScoring = () => {
       />
 
 
+      {/* Tier distribution strip — sits between Scoring Weights and Ask AI. */}
+      <TierCountsBar
+        committed={committedTierCounts}
+        preview={previewTierCounts}
+        totalLive={liveScoredTotal}
+        extras={tierBarExtras}
+      />
+
       {/* AI-powered natural-language search (Lovable AI Gateway) */}
       <AskAiBar
         onSubmit={askAi}
@@ -2201,11 +2256,7 @@ const CityScoring = () => {
         />
       ) : (
       <>
-      <TierCountsBar
-        committed={committedTierCounts}
-        preview={previewTierCounts}
-        totalLive={liveScoredTotal}
-      />
+      {/* TierCountsBar moved up — now sits between Scoring Weights and Ask AI. */}
       {/* Three-column layout */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[2fr_1fr_1fr] items-start">
         {/* Left: Ranked Markets */}

@@ -653,6 +653,12 @@ const CityScoring = () => {
   const selectedForCompare = useCityScoringStore((s) => s.selectedForCompare);
   const setSelectedForCompare = useCityScoringStore((s) => s.setSelectedForCompare);
   const [refreshingMarket, setRefreshingMarket] = useState(false);
+  // True after the user explicitly picks a market (row click, map pin,
+  // deep link). While false, the SELECTED MARKET + EXECUTIVE SUMMARY
+  // columns auto-follow whatever sits at the top of the ranked list, so
+  // changing a preset or slider visibly re-points the right side to the
+  // new #1.
+  const [userPickedMarket, setUserPickedMarket] = useState(false);
   const PAGE_SIZE = 15;
   const page = useCityScoringStore((s) => s.page);
   const setPage = useCityScoringStore((s) => s.setPage);

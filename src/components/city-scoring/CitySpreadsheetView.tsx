@@ -249,7 +249,9 @@ const COLUMNS: ColDef[] = [
 export default function CitySpreadsheetView({ markets, onOpenCity, onExportCsv }: Props) {
   const [search, setSearch] = useState("");
   const [stateFilter, setStateFilter] = useState<string>("All");
-  const [pageSize, setPageSize] = useState<number>(50);
+  // "all" is a sentinel that collapses pagination to a single page.
+  // If the dataset grows past ~2k rows, revisit with react-window virtualization.
+  const [pageSize, setPageSize] = useState<number | "all">(50);
   const [page, setPage] = useState(1);
   const [sortKey, setSortKey] = useState<string>("composite");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -302,10 +304,11 @@ export default function CitySpreadsheetView({ markets, onOpenCity, onExportCsv }
   }, [filtered, col, sortDir, rankedAll]);
 
   const total = sorted.length;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const effectivePageSize = pageSize === "all" ? Math.max(total, 1) : pageSize;
+  const totalPages = Math.max(1, Math.ceil(total / effectivePageSize));
   const safePage = Math.min(page, totalPages);
-  const start = (safePage - 1) * pageSize;
-  const end = Math.min(start + pageSize, total);
+  const start = (safePage - 1) * effectivePageSize;
+  const end = Math.min(start + effectivePageSize, total);
   const pageItems = sorted.slice(start, end);
 
   const toggleSort = (key: string) => {
@@ -352,14 +355,17 @@ export default function CitySpreadsheetView({ markets, onOpenCity, onExportCsv }
               ))}
             </SelectContent>
           </Select>
-          <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
-            <SelectTrigger className="h-9 w-[110px] bg-white border-[#e5eaf2] text-sm">
+          <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(v === "all" ? "all" : Number(v)); setPage(1); }}>
+            <SelectTrigger className="h-9 w-[130px] bg-white border-[#e5eaf2] text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="25">25 / page</SelectItem>
               <SelectItem value="50">50 / page</SelectItem>
               <SelectItem value="100">100 / page</SelectItem>
+              <SelectItem value="250">250 / page</SelectItem>
+              <SelectItem value="500">500 / page</SelectItem>
+              <SelectItem value="all">All</SelectItem>
             </SelectContent>
           </Select>
         </div>

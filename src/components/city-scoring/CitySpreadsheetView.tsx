@@ -249,7 +249,9 @@ const COLUMNS: ColDef[] = [
 export default function CitySpreadsheetView({ markets, onOpenCity, onExportCsv }: Props) {
   const [search, setSearch] = useState("");
   const [stateFilter, setStateFilter] = useState<string>("All");
-  const [pageSize, setPageSize] = useState<number>(50);
+  // "all" is a sentinel that collapses pagination to a single page.
+  // If the dataset grows past ~2k rows, revisit with react-window virtualization.
+  const [pageSize, setPageSize] = useState<number | "all">(50);
   const [page, setPage] = useState(1);
   const [sortKey, setSortKey] = useState<string>("composite");
   const [sortDir, setSortDir] = useState<SortDir>("desc");

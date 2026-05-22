@@ -5,7 +5,6 @@ import {
   Plus, RefreshCw, ArrowRight, GitCompare, Eye, Star, Users, DollarSign,
   Trophy, UserCheck, Cog, Heart, MapPin, Building2, GraduationCap, Home as HomeIcon,
   Check, ChevronsUpDown, Info, X, Bookmark, BookmarkCheck, Trash2,
-  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -563,8 +562,7 @@ const CityScoring = () => {
   const selectedForCompare = useCityScoringStore((s) => s.selectedForCompare);
   const setSelectedForCompare = useCityScoringStore((s) => s.setSelectedForCompare);
   const [refreshingMarket, setRefreshingMarket] = useState(false);
-  const [rankedPageSize, setRankedPageSize] = useState<number>(8);
-  const PAGE_SIZE = rankedPageSize;
+  const PAGE_SIZE = 8;
   const page = useCityScoringStore((s) => s.page);
   const setPage = useCityScoringStore((s) => s.setPage);
 
@@ -2220,32 +2218,24 @@ const CityScoring = () => {
               );
             })}
           </div>
-          <div className="mt-3 flex items-center justify-between gap-3 text-[11px] text-[#526078]">
-            <span>
-              Showing {showingFrom} to {showingTo} of {filtered.length} results
-            </span>
+          <div className="mt-3 flex items-center justify-between text-[11px] text-[#8794ab]">
+            <span>Showing {showingFrom} to {showingTo} of {filtered.length} results</span>
             <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={safePage <= 1}
-                className="inline-flex items-center justify-center h-7 w-7 rounded-md border border-[#e5eaf2] bg-white text-[#526078] hover:bg-[#f3f6fc] hover:text-[#07142f] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
-                aria-label="Previous page"
-              ><ChevronLeft size={14} /></button>
+                className="px-1.5 h-6 rounded border border-[#eef2f7] text-[#526078] disabled:opacity-40 disabled:cursor-not-allowed"
+              >‹</button>
               {pageNumbers.map((p, idx) =>
                 p === "..." ? (
-                  <span key={`ellipsis-${idx}`} className="px-1 text-[#8794ab] select-none">…</span>
+                  <span key={`ellipsis-${idx}`} className="px-1 text-[#8794ab]">…</span>
                 ) : (
                   <button
                     key={p}
                     type="button"
                     onClick={() => setPage(p)}
-                    aria-current={p === safePage ? "page" : undefined}
-                    className={`inline-flex items-center justify-center h-7 min-w-7 px-2 rounded-md text-[11px] font-semibold transition-colors ${
-                      p === safePage
-                        ? "bg-[#174be8] text-white border border-[#174be8]"
-                        : "bg-white border border-[#e5eaf2] text-[#14233b] hover:bg-[#f3f6fc]"
-                    }`}
+                    className={`px-2 h-6 rounded font-medium ${p === safePage ? "bg-[#174be8] text-white" : "border border-[#eef2f7] text-[#14233b] hover:bg-[#f3f6fc]"}`}
                   >{p}</button>
                 )
               )}
@@ -2253,9 +2243,8 @@ const CityScoring = () => {
                 type="button"
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={safePage >= totalPages}
-                className="inline-flex items-center justify-center h-7 w-7 rounded-md border border-[#e5eaf2] bg-white text-[#526078] hover:bg-[#f3f6fc] hover:text-[#07142f] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
-                aria-label="Next page"
-              ><ChevronRight size={14} /></button>
+                className="px-1.5 h-6 rounded border border-[#eef2f7] text-[#526078] disabled:opacity-40 disabled:cursor-not-allowed"
+              >›</button>
             </div>
           </div>
           </>

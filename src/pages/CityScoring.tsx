@@ -3276,8 +3276,7 @@ const CityScoring = () => {
         onClose={() => setAddCityOpen(false)}
         onAdded={async (city, state) => {
           await reloadSelectedMarketView(city, state);
-          setSelectedMarketKey({ city, state });
-          setUserPickedMarket(true);
+          pickMarket({ city, state });
         }}
       />
     </div>

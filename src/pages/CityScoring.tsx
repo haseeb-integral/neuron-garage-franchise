@@ -1846,17 +1846,54 @@ const CityScoring = () => {
       {/* Scoring Weights */}
       <div className="mb-4 rounded-lg bg-white border border-[#eef2f7] p-4">
         <div className="mb-3 flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h3 className="text-sm font-bold text-[#07142f]">Scoring Weights</h3>
-            <p className="text-[10px] text-[#8794ab] leading-snug mt-1">
-              Set what matters most. 100% means scoring the market only by that category.
-            </p>
-            <p className="text-[10px] text-[#8794ab] leading-snug mt-0.5">
-              Score uses available enabled metrics from the 46-metric SOW framework. Missing metrics are tracked as evidence gaps, not counted as zero.
-            </p>
-            {totalWeight !== 100 && (
-              <p className="text-[11px] text-[#ea580c] mt-1">Weights must total 100% to apply scoring.</p>
-            )}
+          <div className="flex items-start gap-3 min-w-0">
+            {/* Budget donut — makes the 100% constraint visible. */}
+            {(() => {
+              const segs = VISIBLE_CATEGORIES.map((c) => ({ key: c.key, color: c.color, value: weights[c.key] || 0 }));
+              const total = segs.reduce((s, x) => s + x.value, 0) || 1;
+              const C = 2 * Math.PI * 18; // circumference for r=18
+              let offset = 0;
+              return (
+                <div className="relative shrink-0" style={{ width: 56, height: 56 }} aria-hidden>
+                  <svg width="56" height="56" viewBox="0 0 56 56" className="-rotate-90">
+                    <circle cx="28" cy="28" r="18" fill="none" stroke="#eef2f7" strokeWidth="8" />
+                    {segs.map((s) => {
+                      const len = (s.value / total) * C;
+                      const dash = `${len} ${C - len}`;
+                      const el = (
+                        <circle
+                          key={s.key}
+                          cx="28" cy="28" r="18"
+                          fill="none"
+                          stroke={s.color}
+                          strokeWidth="8"
+                          strokeDasharray={dash}
+                          strokeDashoffset={-offset}
+                          style={{ transition: "stroke-dasharray 200ms ease, stroke-dashoffset 200ms ease" }}
+                        />
+                      );
+                      offset += len;
+                      return el;
+                    })}
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-[#07142f] tabular-nums">
+                    {totalWeight}%
+                  </div>
+                </div>
+              );
+            })()}
+            <div className="min-w-0">
+              <h3 className="text-sm font-bold text-[#07142f]">Scoring Weights</h3>
+              <p className="text-[11px] text-[#07142f] leading-snug mt-1 max-w-[640px]">
+                These three weights <strong>share a budget of 100%</strong>. Raising one automatically lowers the others — the cities haven't changed, only how much each factor counts toward the ranking.
+              </p>
+              <p className="text-[10px] text-[#8794ab] leading-snug mt-1">
+                Score uses available enabled metrics from the 46-metric SOW framework. Missing metrics are tracked as evidence gaps, not counted as zero.
+              </p>
+              {totalWeight !== 100 && (
+                <p className="text-[11px] text-[#ea580c] mt-1">Weights must total 100% to apply scoring.</p>
+              )}
+            </div>
           </div>
           <div className="flex shrink-0 items-center gap-3">
             <span className="text-xs text-[#526078]">

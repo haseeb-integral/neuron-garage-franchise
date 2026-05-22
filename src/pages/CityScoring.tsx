@@ -2330,7 +2330,7 @@ const CityScoring = () => {
       <>
       {/* TierCountsBar moved up — now sits between Scoring Weights and Ask AI. */}
       {/* Three-column layout */}
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[2fr_1fr_1fr] items-start">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[2fr_1fr_1fr] items-stretch">
         {/* Left: Ranked Markets */}
         <div className="min-w-0 rounded-lg bg-white border border-[#eef2f7] p-3 flex flex-col">
           <div className="mb-3 flex items-center justify-between">
@@ -2551,7 +2551,7 @@ const CityScoring = () => {
         </div>
 
         {/* Center: Selected Market Detail */}
-        <div className="min-w-0 rounded-lg bg-white border border-[#eef2f7] p-4">
+        <div className="min-w-0 rounded-lg bg-white border border-[#eef2f7] p-4 flex flex-col h-full">
           <div className="mb-3 flex items-start justify-between gap-3">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-[14px] leading-none font-bold uppercase tracking-wide text-[#526078]">Selected Market</h2>
@@ -2590,7 +2590,7 @@ const CityScoring = () => {
 
 
 
-          <div className="flex flex-col items-center text-center">
+          <div className="flex flex-col items-center text-center flex-1 w-full">
             {/* City name → Overall Score → details → categories → buttons → market summary, full width of middle column */}
             <h3 className="mb-2 text-[18px] leading-tight font-bold text-[#07142f] text-center break-words w-full">
               {selected.city}, {selected.state === "Texas" ? "TX" : selected.state === "Florida" ? "FL" : selected.state}
@@ -2779,13 +2779,22 @@ const CityScoring = () => {
               </Button>
             </div>
 
-            {/* Market Summary at bottom, full width */}
+            {/* Market Summary at bottom, full width — mt-auto pushes it to fill leftover height */}
             {selectedLiveCity?.notes ? (
-              <div className="mt-5 w-full text-left border-t border-[#eef2f7] pt-3">
+              <div className="mt-auto pt-5 w-full text-left border-t border-[#eef2f7]">
                 <p className="mb-1.5 text-[12px] font-semibold text-[#3a4c72]">Market Summary</p>
                 <p className="text-[12px] leading-relaxed text-[#14233b]">{selectedLiveCity.notes}</p>
               </div>
-            ) : null}
+            ) : (
+              <div className="mt-auto pt-5 w-full text-left border-t border-[#eef2f7]">
+                <p className="mb-1.5 text-[12px] font-semibold text-[#3a4c72]">Market Summary</p>
+                <p className="text-[11.5px] leading-relaxed text-[#8794ab] italic">
+                  No analyst notes yet for {selected.city}. Refresh this market to pull the latest narrative summary,
+                  or open <span className="font-semibold not-italic text-[#526078]">Details</span> to review the full
+                  signal-by-signal evidence used to compute this score.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -2828,7 +2837,8 @@ const CityScoring = () => {
             );
           })()}
 
-          <div className="rounded-lg bg-white border border-[#eef2f7] p-3">
+          <div className="rounded-lg bg-white border border-[#eef2f7] p-3 flex-1 flex flex-col">
+
             <h4 className="text-xs font-bold text-[#07142f] mb-1">Market Research Report</h4>
             <p className="text-[10px] text-[#8794ab] mb-2">Comprehensive PDF report with data, insights, recommendations, and competitor analysis.</p>
             <Button variant="outline" className="w-full h-8 border-[#dbe4f2] text-[#2250eb] text-[11px] font-medium" onClick={() => { setReportAutoPdf(true); setReportOpen(true); }}>

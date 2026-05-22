@@ -5,6 +5,7 @@ import {
   Plus, RefreshCw, ArrowRight, GitCompare, Eye, Star, Users, DollarSign,
   Trophy, UserCheck, Cog, Heart, MapPin, Building2, GraduationCap, Home as HomeIcon,
   Check, ChevronsUpDown, Info, X, Bookmark, BookmarkCheck, Trash2,
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";

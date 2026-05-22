@@ -39,14 +39,24 @@ function FitBounds({ points }: { points: Coords[] }) {
   return null;
 }
 
+const ALLOWED_TIERS = new Set(["A", "B", "C"]);
+
 export function MarketsMap({ markets, onSelect }: Props) {
   const [coordsByCityId, setCoordsByCityId] = useState<Record<string, Coords>>({});
   const [loading, setLoading] = useState(false);
 
-  const cityIds = useMemo(
-    () => markets.map((m) => m.cityId).filter((x): x is string => !!x),
+  // Only plot Tier A / B / C markets with live data. Excludes Tier D and below
+  // so the map never shows weak/unscored cities to the client.
+  const visibleMarkets = useMemo(
+    () => markets.filter((m) => m.hasLiveData && ALLOWED_TIERS.has(m.tier)),
     [markets],
   );
+
+  const cityIds = useMemo(
+    () => visibleMarkets.map((m) => m.cityId).filter((x): x is string => !!x),
+    [visibleMarkets],
+  );
+
 
   useEffect(() => {
     if (cityIds.length === 0) {

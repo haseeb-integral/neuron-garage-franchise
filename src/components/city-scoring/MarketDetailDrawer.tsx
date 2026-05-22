@@ -36,7 +36,6 @@ interface Props {
 type MetricStatus = "live" | "proxy" | "missing" | "blocked" | "manual";
 type MetricCategory =
   | "demand"
-  | "pricing_power"
   | "competitive_landscape"
   | "franchisee_supply"
   | "ease_of_operations"
@@ -116,15 +115,7 @@ const CATEGORY_FORMULAS: Record<MetricCategory, { formula: string; inputs: strin
     ],
     clamp: "Result clamped to [40, 98].",
   },
-  pricing_power: {
-    formula: "45 + (private_school_count × 4) + (parent_mindset_signal × 1) + incomeBoost",
-    inputs: [
-      "incomeBoost = min(20, (median_HHI − 60000) / 4000) + min(10, (income_100k_pct − 25) × 0.4) + min(8, (income_150k_pct − 10) × 0.5)",
-      "Census ACS: median household income, % $100k+, % $150k+",
-      "Counted: private schools",
-    ],
-    clamp: "Result clamped to [40, 98].",
-  },
+  // pricing_power formula removed 2026-05-22 — category retired.
   competitive_landscape: {
     formula: "95 − (competitor_count × 3) − (stem_camp_count × 1.5)",
     inputs: [
@@ -165,7 +156,6 @@ const CATEGORY_FORMULAS: Record<MetricCategory, { formula: string; inputs: strin
 
 const CATEGORY_KEY_TO_SCORE_PROP: Record<MetricCategory, string> = {
   demand: "demand",
-  pricing_power: "pricingPower",
   competitive_landscape: "competitiveLandscape",
   franchisee_supply: "franchiseeSupply",
   ease_of_operations: "easeOfOperations",
@@ -407,7 +397,6 @@ export function MarketDetailDrawer({
   const coverageByCategory = useMemo(() => {
     const out: Record<MetricCategory, { enabled: Coverage[]; disabled: Coverage[] }> = {
       demand: { enabled: [], disabled: [] },
-      pricing_power: { enabled: [], disabled: [] },
       competitive_landscape: { enabled: [], disabled: [] },
       franchisee_supply: { enabled: [], disabled: [] },
       ease_of_operations: { enabled: [], disabled: [] },
@@ -475,7 +464,7 @@ export function MarketDetailDrawer({
   const { data: customCriteriaRows = [] } = useCustomCriteria();
   const customByMetricCategory = useMemo(() => {
     const out: Record<MetricCategory, typeof customCriteriaRows> = {
-      demand: [], pricing_power: [], competitive_landscape: [],
+      demand: [], competitive_landscape: [],
       franchisee_supply: [], ease_of_operations: [], parent_mindset: [],
     };
     const KEY_TO_METRIC: Record<CategoryKey, MetricCategory> = {

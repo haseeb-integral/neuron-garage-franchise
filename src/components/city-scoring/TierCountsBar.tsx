@@ -21,6 +21,8 @@ interface Props {
   preview: TierCounts | null;
   /** Total number of live-scored markets — for context. */
   totalLive: number;
+  /** Number of live-scored markets currently visible in the table after filters. */
+  filteredLive?: number;
   extras?: TierBarExtras;
 }
 
@@ -36,8 +38,9 @@ function fmt(n: number | null, suffix = "") {
   return `${Math.round(n)}${suffix}`;
 }
 
-export function TierCountsBar({ committed, preview, totalLive, extras }: Props) {
+export function TierCountsBar({ committed, preview, totalLive, filteredLive, extras }: Props) {
   const showArrow = !!preview;
+  const isFiltered = typeof filteredLive === "number" && filteredLive !== totalLive;
   return (
     <div className="mb-3 w-full rounded-lg border border-[#eef2f7] bg-white px-4 py-3 flex flex-wrap items-stretch gap-x-4 gap-y-3">
       {/* Label cell */}
@@ -62,8 +65,13 @@ export function TierCountsBar({ committed, preview, totalLive, extras }: Props) 
           How your current slider settings would redistribute cities across tiers — click Apply Weights to commit.
         </span>
         <span className="mt-0.5 text-[10.5px] font-medium text-[#8794ab]">
-          {totalLive} markets scored
+          Tiers always sum to the full scored universe: {totalLive} markets
         </span>
+        {isFiltered && (
+          <span className="mt-0.5 text-[10.5px] font-medium text-[#526078]">
+            Table is currently showing {filteredLive} of {totalLive} scored markets after filters
+          </span>
+        )}
       </div>
 
       {/* Tier chips - grow to fill */}

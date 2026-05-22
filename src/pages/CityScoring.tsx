@@ -562,7 +562,7 @@ const CityScoring = () => {
   const selectedForCompare = useCityScoringStore((s) => s.selectedForCompare);
   const setSelectedForCompare = useCityScoringStore((s) => s.setSelectedForCompare);
   const [refreshingMarket, setRefreshingMarket] = useState(false);
-  const PAGE_SIZE = 8;
+  const PAGE_SIZE = 15;
   const page = useCityScoringStore((s) => s.page);
   const setPage = useCityScoringStore((s) => s.setPage);
 

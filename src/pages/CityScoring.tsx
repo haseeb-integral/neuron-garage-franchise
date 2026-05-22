@@ -667,22 +667,31 @@ const CityScoring = () => {
       if (!market.hasLiveData || !market.categoryScores) return market;
       if (masterWeightsAreDefault && subWeightsAreDefault) return market;
 
-      const seededSignalValues = Object.fromEntries(
-        buildSeededFallbackSignalsFromScored(market.scoredRow).map((signal) => [
-          signal.signal_key,
-          parseSignalValue(signal.value),
-        ]),
-      );
+      let cats: Record<CategoryKey, number | null>;
 
-      const cats = {} as Record<CategoryKey, number | null>;
-      (Object.keys(METRICS_BY_CATEGORY) as CategoryKey[]).forEach((key) => {
-        cats[key] = recomputeCategoryScore(
-          METRICS_BY_CATEGORY[key] ?? [],
-          seededSignalValues,
-          appliedSubWeights[key] ?? {},
-          market.categoryScores?.[key] ?? null,
-        ).score;
-      });
+      if (subWeightsAreDefault) {
+        // User only touched the master sliders — keep the server's category
+        // scores verbatim (so a city with score_demand=100 stays at 100 when
+        // demand is weighted up). Recomputing from raw sub-signals here would
+        // suppress legitimate Tier A markets.
+        cats = { ...market.categoryScores } as Record<CategoryKey, number | null>;
+      } else {
+        const seededSignalValues = Object.fromEntries(
+          buildSeededFallbackSignalsFromScored(market.scoredRow).map((signal) => [
+            signal.signal_key,
+            parseSignalValue(signal.value),
+          ]),
+        );
+        cats = {} as Record<CategoryKey, number | null>;
+        (Object.keys(METRICS_BY_CATEGORY) as CategoryKey[]).forEach((key) => {
+          cats[key] = recomputeCategoryScore(
+            METRICS_BY_CATEGORY[key] ?? [],
+            seededSignalValues,
+            appliedSubWeights[key] ?? {},
+            market.categoryScores?.[key] ?? null,
+          ).score;
+        });
+      }
 
       const { composite } = recomputeComposite(cats, appliedWeights);
       return {
@@ -691,6 +700,7 @@ const CityScoring = () => {
         tier: tierFromScore(composite),
       };
     });
+
 
     return reRanked.sort((a, b) => {
       if (a.hasLiveData !== b.hasLiveData) return a.hasLiveData ? -1 : 1;

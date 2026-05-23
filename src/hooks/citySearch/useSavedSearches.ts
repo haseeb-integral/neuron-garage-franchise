@@ -21,6 +21,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   useCityScoringStore,
   type CategoryKey,
+  type SubWeights,
 } from "@/stores/cityScoringStore";
 import { CATEGORIES } from "@/lib/cityScoringPageHelpers";
 import { PRESET_NAMES } from "@/lib/scoringPresets";

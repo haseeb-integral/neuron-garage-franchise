@@ -82,6 +82,7 @@ import {
 import { useSavedSearches } from "@/hooks/citySearch/useSavedSearches";
 import { useAskAi } from "@/hooks/citySearch/useAskAi";
 import { useScreenMode } from "@/hooks/citySearch/useScreenMode";
+import { useLiveMarketDetail } from "@/hooks/citySearch/useLiveMarketDetail";
 
 
 // Feature flag: hide live on-demand API widgets on the detail panel.
@@ -392,29 +393,18 @@ const CityScoring = () => {
 
 
 
-  // Live DB-backed data for the selected market (falls back to sample data when missing)
-  const initialMarketKey = `${selectedMarketKey.city}|${selectedMarketKey.state}`;
-  const initialDetail = getCached<{
-    city: any | null; signals: any[]; scores: Record<string, number>; comps: any[]; job: any | null;
-  }>(`city:detail:${initialMarketKey}`);
-  const [liveCity, setLiveCityState] = useState<any | null>(initialDetail?.city ?? null);
-  const [liveSignals, setLiveSignalsState] = useState<any[]>(initialDetail?.signals ?? []);
-  const [liveCategoryScores, setLiveCategoryScoresState] = useState<Record<string, number>>(initialDetail?.scores ?? {});
-  const [liveCompetitors, setLiveCompetitorsState] = useState<any[]>(initialDetail?.comps ?? []);
-  const [liveRankedMarkets, setLiveRankedMarketsState] = useState<RankedMarket[]>(
-    () => getCached<RankedMarket[]>("city:rankedMarkets") ?? [],
-  );
-  const setLiveRankedMarkets = (v: RankedMarket[]) => {
-    setCached("city:rankedMarkets", v);
-    setLiveRankedMarketsState(v);
-  };
-  const [liveJob, setLiveJobState] = useState<any | null>(initialDetail?.job ?? null);
-  const setLiveCity = setLiveCityState;
-  const setLiveSignals = setLiveSignalsState;
-  const setLiveCategoryScores = setLiveCategoryScoresState;
-  const setLiveCompetitors = setLiveCompetitorsState;
-  const setLiveJob = setLiveJobState;
-  const [marketRefreshVersion, setMarketRefreshVersion] = useState(0);
+  // Live DB-backed data for the selected market — see useLiveMarketDetail.
+  const {
+    liveCity,
+    liveSignals,
+    liveCategoryScores,
+    liveCompetitors,
+    liveJob,
+    liveRankedMarkets,
+    marketRefreshVersion,
+    bumpRefresh,
+    reloadSelectedMarketView,
+  } = useLiveMarketDetail({ selectedCity, selectedState, selectedMarketKey });
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [execReportOpen, setExecReportOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
@@ -426,12 +416,7 @@ const CityScoring = () => {
 
   // (URL deep-link hydration moved into useMarketSelection.)
 
-  // Load live ranked markets from Supabase once on mount
-  useEffect(() => {
-    loadLiveRankedMarkets()
-      .then(setLiveRankedMarkets)
-      .catch((err) => console.error("loadLiveRankedMarkets error", err));
-  }, []);
+  // (live ranked markets + selected-detail effects moved into useLiveMarketDetail.)
 
   const baseRankedMarkets = useMemo<RankedMarket[]>(
     // Single source of truth: us_cities_scored. No sample fallback — if the
@@ -845,131 +830,7 @@ const CityScoring = () => {
   // keeps working without a wider refactor. Category scores come from the
   // `score_*` columns on the same row. Evidence tables (signals / competitors
   // / fetch jobs) remain best-effort and may be empty for seeded-only cities.
-  const loadLiveData = async (city: string, state: string) => {
-    try {
-      // Match by city_name + (state_name OR state_abbr). State filter in this
-      // app is the full name (e.g. "Maryland") but we accept abbr too.
-      const stateAbbr = state === "Texas" ? "TX" : state === "Florida" ? "FL" : state;
-      const { data: scoredRow } = await supabase
-        .from("us_cities_scored")
-        .select("*")
-        .ilike("city_name", city)
-        .or(`state_name.ilike.${state},state_abbr.ilike.${stateAbbr}`)
-        .maybeSingle();
-
-      if (!scoredRow) {
-        setLiveCity(null);
-        setLiveSignals([]);
-        setLiveCategoryScores({});
-        setLiveCompetitors([]);
-        setLiveJob(null);
-        return;
-      }
-
-      const density = Number(scoredRow.population_density ?? 0);
-      const marketTypeDerived = density >= 3000 ? "Urban" : density >= 500 ? "Suburb" : "Rural";
-      const composite = Number(scoredRow.composite_score_default ?? 0);
-      const tierDerived =
-        composite >= 80 ? "A" : composite >= 65 ? "B" : composite >= 50 ? "C" : "D";
-      const pop = Number(scoredRow.population ?? 0);
-      const kids = Number(scoredRow.children_5_12 ?? 0);
-      const childrenPct = pop > 0 ? Math.round((kids / pop) * 1000) / 10 : null;
-      const stateNormalized = state === "TX" ? "Texas" : state === "FL" ? "Florida" : state;
-
-      // Build a `cities`-shaped façade so downstream code can keep reading the
-      // same field names. `id` IS the us_cities_scored uuid — that's now the
-      // canonical cityId across watchlist, drawer, report, and nearby panels.
-      const cityRow: any = {
-        id: scoredRow.id,
-        city: scoredRow.city_name,
-        state: stateNormalized,
-        composite_score: composite,
-        tier: tierDerived,
-        population: pop,
-        // competitor_count removed 2026-05-22 — summer_camp_count 0/817 populated.
-        // CSI saturation is read from scoredRow.csi_* fields directly.
-        competitor_count: null,
-        county: scoredRow.county_name ?? null,
-        metro_area: scoredRow.metro_area ?? null,
-        metro_counties: Array.isArray(scoredRow.metro_counties) ? scoredRow.metro_counties : null,
-        market_type: marketTypeDerived,
-        last_scraped_at: scoredRow.scored_at ?? null,
-        notes: null,
-        median_income: scoredRow.median_household_income ?? null,
-        children_pct: childrenPct,
-        elementary_schools: scoredRow.public_elementary_count ?? null,
-        latitude: scoredRow.latitude ?? null,
-        longitude: scoredRow.longitude ?? null,
-        is_non_registration: scoredRow.is_registration_state === false,
-        scored: scoredRow, // keep the raw row available if anything needs it
-      };
-
-      // Category scores come straight from us_cities_scored.score_*.
-      const scoresMap: Record<string, number> = {};
-      const addScore = (k: string, v: any) => {
-        if (v != null) scoresMap[k] = Number(v);
-      };
-      addScore("demand", scoredRow.score_demand);
-      addScore("tam_teachers", scoredRow.score_tam_teachers);
-      // CSI is stored as SATURATION (high = crowded = bad). Invert to
-      // OPPORTUNITY (high = good) for the UI category bar + composite math
-      // so all three categories share the same direction. The raw
-      // saturation value is still available via scoredRow.score_csi.
-      if (scoredRow.score_csi != null) {
-        scoresMap["competitive_landscape"] = Math.max(0, Math.min(100, 100 - Number(scoredRow.score_csi)));
-      }
-      // Legacy category-score keys (pricing_power, ease_of_operations, parent_mindset,
-      // franchisee_supply) were retired in the May 21 6→3 reshape.
-
-      // Legacy `city_market_signals` was severed on 2026-05-21. Evidence rows
-      // are synthesized directly from us_cities_scored via the seeded fallback.
-      const signals = buildSeededFallbackSignalsFromScored(scoredRow, childrenPct);
-      const comps: any[] = [];
-      const jobs: any[] = [];
-
-
-      setLiveCity(cityRow);
-      setLiveSignals(signals ?? []);
-      setLiveCategoryScores(scoresMap);
-      setLiveCompetitors(comps ?? []);
-      setLiveJob(jobs?.[0] ?? null);
-      setCached(`city:detail:${city}|${state}`, {
-        city: cityRow,
-        signals: signals ?? [],
-        scores: scoresMap,
-        comps: comps ?? [],
-        job: jobs?.[0] ?? null,
-      });
-    } catch (err) {
-      console.error("loadLiveData error", err);
-    }
-  };
-
-  useEffect(() => {
-    if (!selectedCity || !selectedState) return;
-    // Hydrate immediately from cache so re-mounts/market-switches feel instant
-    const cached = getCached<{
-      city: any | null; signals: any[]; scores: Record<string, number>; comps: any[]; job: any | null;
-    }>(`city:detail:${selectedCity}|${selectedState}`);
-    if (cached) {
-      setLiveCity(cached.city);
-      setLiveSignals(cached.signals);
-      setLiveCategoryScores(cached.scores);
-      setLiveCompetitors(cached.comps);
-      setLiveJob(cached.job);
-    } else {
-      // No cache for the new city — clear stale state from the previous city
-      // so the center panel doesn't show the wrong score/signals for ~1s
-      // until loadLiveData() resolves.
-      setLiveCity(null);
-      setLiveSignals([]);
-      setLiveCategoryScores({});
-      setLiveCompetitors([]);
-      setLiveJob(null);
-    }
-    loadLiveData(selectedCity, selectedState);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCity, selectedState]);
+  // (loadLiveData + (selectedCity, selectedState) hydrate-then-refetch moved into useLiveMarketDetail.)
 
   const getInvokeErrorMessage = async (error: any) => {
     if (!error) return "Unknown error";
@@ -994,14 +855,7 @@ const CityScoring = () => {
     return error instanceof Error ? error.message : error?.message || String(error);
   };
 
-  const reloadSelectedMarketView = async (city: string, state: string) => {
-    await Promise.all([
-      loadLiveData(city, state),
-      loadLiveRankedMarkets()
-        .then(setLiveRankedMarkets)
-        .catch((err) => console.error("loadLiveRankedMarkets after refresh failed", err)),
-    ]);
-  };
+  // (reloadSelectedMarketView provided by useLiveMarketDetail.)
 
   // Legacy live-fetch verification path (cities/city_fetch_jobs/city_category_scores
   // were dropped on May 19). Refresh UI is gated off via SHOW_LIVE_REFRESH=false;

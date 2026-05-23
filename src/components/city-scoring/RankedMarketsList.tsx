@@ -168,10 +168,10 @@ function RankedMarketsListImpl({
               <span className="text-[#526078]">{pageStart + i + 1}</span>
               <div className="min-w-0">
                 <div className="truncate font-semibold text-[#07142f]">{c.city}, {c.state === "Texas" ? "TX" : c.state === "Florida" ? "FL" : c.state}</div>
-                <div className="truncate text-[10px] text-[#8794ab]">{(c as any).county ?? ""}</div>
+                <div className="truncate text-[10px] text-[#8794ab]">{c.county ?? ""}</div>
               </div>
               <span className="inline-block self-center w-fit rounded-full bg-[#eaf0ff] text-[#174be8] text-[9.5px] font-medium px-1.5 py-0.5">
-                {(c as any).marketType ?? ((c.population ?? 0) > 200000 ? "Urban" : "Suburb")}
+                {c.marketType ?? ((c.population ?? 0) > 200000 ? "Urban" : "Suburb")}
               </span>
               <div className="flex items-center gap-1.5">
                 {c.hasLiveData ? (
@@ -184,7 +184,7 @@ function RankedMarketsListImpl({
                           className="text-[#07142f] font-semibold tabular-nums hover:underline decoration-dotted underline-offset-2"
                           title="Why this tier? Click to see the formula"
                         >
-                          {c.compositeScore}
+                          {view.composite}
                           <span className="ml-0.5 font-mono italic text-[9px] text-[#8794ab]">ƒx</span>
                         </button>
                       </PopoverTrigger>
@@ -193,15 +193,15 @@ function RankedMarketsListImpl({
                           city={c.city}
                           state={c.state}
                           categories={VISIBLE_CATEGORIES.map((cc) => ({ key: cc.key, label: cc.label }))}
-                          categoryScores={(c as any).categoryScores ?? {}}
+                          categoryScores={c.categoryScores ?? {}}
                           appliedWeights={appliedWeights}
-                          composite={c.compositeScore}
+                          composite={view.composite}
                           tier={c.tier}
                         />
                       </PopoverContent>
                     </Popover>
-                    <div className="h-1.5 flex-1 rounded-full bg-[#eef2f7]">
-                      <div className="h-full rounded-full bg-[#0ea66e]" style={{ width: `${c.compositeScore}%` }} />
+                      <div className="h-1.5 flex-1 rounded-full bg-[#eef2f7]">
+                      <div className="h-full rounded-full bg-[#0ea66e]" style={{ width: `${view.composite}%` }} />
                     </div>
                   </>
                 ) : (
@@ -209,7 +209,7 @@ function RankedMarketsListImpl({
                 )}
               </div>
               {(() => {
-                const cs = (c as any).categoryScores ?? {};
+                const cs = c.categoryScores ?? {};
                 const cell = (v: number | null | undefined, title: string) => {
                   if (v == null || !c.hasLiveData) return <span className="justify-self-end text-[10.5px] text-[#cbd5e1] tabular-nums">—</span>;
                   const n = Math.round(Number(v));
@@ -228,7 +228,7 @@ function RankedMarketsListImpl({
                   <TierBadge
                     tier={c.tier}
                     compact
-                    score={c.compositeScore}
+                    score={view.composite}
                     percentile={percentileById.get(c.id)}
                   />
                 </span>

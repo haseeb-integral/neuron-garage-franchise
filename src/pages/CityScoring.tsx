@@ -1488,14 +1488,16 @@ const CityScoring = () => {
       </div>
 
       {viewMode === "map" ? (
-        <MarketsMap
-          markets={mapMarkets}
-          onSelect={(m) => {
-            const sample = sampleCities.find((s) => sameMarket(s.city, s.state, m.city, m.state));
-            pickMarket({ city: m.city, state: m.state, id: sample?.id });
-            setViewMode("table");
-          }}
-        />
+        <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading map…</div>}>
+          <MarketsMap
+            markets={mapMarkets}
+            onSelect={(m) => {
+              const sample = sampleCities.find((s) => sameMarket(s.city, s.state, m.city, m.state));
+              pickMarket({ city: m.city, state: m.state, id: sample?.id });
+              setViewMode("table");
+            }}
+          />
+        </Suspense>
       ) : (
       <>
       {/* TierCountsBar moved up — now sits between Scoring Weights and Ask AI. */}

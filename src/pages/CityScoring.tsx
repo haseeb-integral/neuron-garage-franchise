@@ -2380,12 +2380,12 @@ const CityScoring = () => {
                 <span className="cursor-help text-[#8794ab]"><Info size={11} /></span>
               </TooltipTrigger>
               <TooltipContent className="max-w-[280px] text-xs leading-relaxed">
-                Cities are auto-ranked into tiers by composite score.
+                Tiers are assigned by <b>percentile rank</b> across all live-scored cities, not by absolute score:
                 <br />
-                <b>A = Top (85+)</b>, <b>B = Strong (75–84)</b>,{" "}
-                <b>C = Moderate (65–74)</b>, <b>D = Weak (below 65)</b>.
+                <b>Tier I = Top 5%</b>, <b>Tier II = next 15%</b>,{" "}
+                <b>Tier III = next 30%</b>, <b>Tier IV = bottom 50%</b>.
                 <br />
-                Use this to jump straight to your best markets.
+                Composite scores tend to cluster in the 40s–70s, so a Tier I market may still score in the 60s.
               </TooltipContent>
             </Tooltip>
           </label>
@@ -2393,10 +2393,10 @@ const CityScoring = () => {
             <SelectTrigger className="h-9 bg-white border-[#e5eaf2] text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="All">All</SelectItem>
-              <SelectItem value="A">A — Top</SelectItem>
-              <SelectItem value="B">B — Strong</SelectItem>
-              <SelectItem value="C">C — Moderate</SelectItem>
-              <SelectItem value="D">D — Weak</SelectItem>
+              <SelectItem value="A">Tier I — Top 5%</SelectItem>
+              <SelectItem value="B">Tier II — Next 15%</SelectItem>
+              <SelectItem value="C">Tier III — Next 30%</SelectItem>
+              <SelectItem value="D">Tier IV — Bottom 50%</SelectItem>
             </SelectContent>
           </Select>
         </div>

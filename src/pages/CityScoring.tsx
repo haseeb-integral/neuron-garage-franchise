@@ -39,7 +39,10 @@ import { MarketReportModal } from "@/components/city-scoring/MarketReportModal";
 import CitySpreadsheetView from "@/components/city-scoring/CitySpreadsheetView";
 import { SourceDataPanel } from "@/components/city-scoring/SourceDataPanel";
 // NearbyMarketsPanel removed from /city-scoring 2026-05-21 (its slot now hosts Key Market Signals).
-import { MarketsMap } from "@/components/city-scoring/MarketsMap";
+// Lazy: react-leaflet (~84KB) only loads when the user toggles to Map view.
+const MarketsMap = lazy(() =>
+  import("@/components/city-scoring/MarketsMap").then((m) => ({ default: m.MarketsMap })),
+);
 import { TierBadge } from "@/components/city-scoring/TierBadge";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";

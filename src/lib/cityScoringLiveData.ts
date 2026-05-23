@@ -3,6 +3,67 @@ import { CityData, sampleCities } from "@/data/cityData";
 import type { CategoryKey } from "@/stores/cityScoringStore";
 import { canonicalKey } from "@/lib/signalAliases";
 
+/**
+ * Subset of `us_cities_scored` columns this module reads.
+ * Keep aligned with the SELECT in `loadLiveRankedMarkets`. All values come
+ * from PostgREST so numerics may surface as numbers or strings; consumers
+ * should run them through `toNumber`.
+ */
+export type ScoredCityRow = {
+  id: string;
+  city_name: string | null;
+  state_name: string | null;
+  state_abbr: string | null;
+  metro_area: string | null;
+  county_name: string | null;
+  metro_counties: string[] | null;
+  population: number | string | null;
+  population_density: number | string | null;
+  children_5_12: number | string | null;
+  median_household_income: number | string | null;
+  dual_working_families_pct: number | string | null;
+  college_degree_pct: number | string | null;
+  cost_of_living_index: number | string | null;
+  public_school_count: number | string | null;
+  public_school_enrollment: number | string | null;
+  public_elementary_count: number | string | null;
+  public_elementary_enrollment: number | string | null;
+  public_elementary_teacher_count: number | string | null;
+  private_elementary_count: number | string | null;
+  charter_elementary_count: number | string | null;
+  composite_score_default: number | string | null;
+  score_demand: number | string | null;
+  score_csi: number | string | null;
+  score_tam_teachers: number | string | null;
+  csi_score: number | string | null;
+  csi_saturation_category: string | null;
+  csi_confidence: number | string | null;
+  csi_national_brand_count_weighted: number | string | null;
+  csi_local_provider_estimate: number | string | null;
+  csi_demand_adjusted_market: number | string | null;
+  csi_brand_detail: unknown;
+  csi_last_updated: string | null;
+  place_type: string | null;
+  census_population_2020: number | string | null;
+  avg_elementary_teacher_salary_usd: number | string | null;
+  col_salary_index: number | string | null;
+  is_registration_state: boolean | null;
+  scored_at: string | null;
+  // Per-source freshness columns are read by `getCitySourceData` via a
+  // narrower SELECT; not required on the main scored-row union.
+};
+
+/** Live `market_signals` row as consumed by the merger. Fields are loose
+ * because legacy fetchers wrote varying shapes; everything is normalized
+ * via `canonicalKey` + the merger fallbacks. */
+export type LiveSignal = {
+  signal_key?: string | null;
+  label?: string | null;
+  value?: string | number | null;
+  source?: string | null;
+  raw_data?: unknown;
+};
+
 export type RankedMarket = {
   id: number;
   cityId?: string;
@@ -21,7 +82,7 @@ export type RankedMarket = {
   source: "live" | "sample";
   hasLiveData: boolean;
   categoryScores?: Partial<Record<CategoryKey, number>>;
-  scoredRow?: Record<string, any> | null;
+  scoredRow?: ScoredCityRow | null;
   sample?: CityData;
 };
 
@@ -75,41 +136,23 @@ function toNumber(value: unknown, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
-export function mapLiveCityToRankedMarket(row: any, index: number, competitorCount: number | null = null): RankedMarket {
-  const state = normalizeState(row.state);
-  const compositeScore = toNumber(row.composite_score, 0);
-  const hasLiveData = compositeScore > 0 || !!row.last_scraped_at;
-  return {
-    id: 100000 + index,
-    cityId: row.id,
-    city: row.city ?? "Unknown",
-    state,
-    county: row.county ?? null,
-    metroArea: row.metro_area ?? null,
-    tier: row.tier ?? tierFromScore(compositeScore),
-    compositeScore,
-    population: row.population == null ? null : Number(row.population),
-    competitorCount,
-    marketType: row.market_type ?? null,
-    isNonRegistration: NON_REGISTRATION_STATES.has(state),
-    lastScrapedAt: row.last_scraped_at ?? null,
-    source: "live",
-    hasLiveData,
-  };
-}
+// mapLiveCityToRankedMarket removed 2026-05-23 — unused. The live mapping
+// path runs inline inside `loadLiveRankedMarkets` against the wider
+// `us_cities_scored` SELECT; no caller ever exercised the legacy `cities`
+// shape this helper expected.
 
 export function mapSampleCityToRankedMarket(city: CityData): RankedMarket {
   return {
     id: city.id,
     city: city.city,
     state: city.state,
-    county: (city as any).county,
-    metroArea: (city as any).metroArea,
+    county: null,
+    metroArea: null,
     tier: city.tier,
     compositeScore: city.compositeScore,
     population: city.population,
     competitorCount: city.competitorCount,
-    marketType: (city as any).marketType,
+    marketType: null,
     isNonRegistration: city.isNonRegistration,
     source: "sample",
     hasLiveData: false,
@@ -149,7 +192,7 @@ export async function loadLiveRankedMarkets(_opts?: { includeExtras?: boolean })
   }
   if (!scoredRows?.length) return [];
 
-  const mapped: RankedMarket[] = scoredRows.map((row: any, index: number) => {
+  const mapped: RankedMarket[] = (scoredRows as ScoredCityRow[]).map((row, index) => {
     const state = normalizeState(row.state_name ?? row.state_abbr);
     const city = row.city_name ?? "Unknown";
     const composite = toNumber(row.composite_score_default, 0);
@@ -260,13 +303,13 @@ export function sampleRankedMarkets() {
 }
 
 export function buildSeededFallbackSignalsFromScored(
-  scoredRow?: Record<string, any> | null,
-  childrenPct?: number | null,
+  scoredRow?: Partial<ScoredCityRow> | null,
+  _childrenPct?: number | null,
 ): SeededFallbackSignal[] {
   if (!scoredRow) return [];
 
-  const kids = toNumber(scoredRow.children_5_12, 0);
-  const pct = childrenPct ?? (toNumber(scoredRow.population, 0) > 0 ? Math.round((kids / toNumber(scoredRow.population, 0)) * 1000) / 10 : null);
+  // (childrenPct param kept for backwards-compatible signature; not used here
+  // because the registry surfaces `children_5_12_count` directly.)
   // campCount / campsPer10k removed 2026-05-22 — summer_camp_count was 0/817
   // populated and the derived per-10k value was never referenced.
   const seeded = (
@@ -299,7 +342,7 @@ export function buildSeededFallbackSignalsFromScored(
     // TAM Teachers — 5-metric lock (Brett+Haseeb 2026-05-21)
     seeded("public_elementary_school_count", "Public Elementary Schools", scoredRow.public_elementary_count, "franchisee_supply", true),
     seeded("public_elementary_teacher_count", "Public Elementary Teachers (NCES FTE)", scoredRow.public_elementary_teacher_count, "franchisee_supply", true),
-    seeded("private_charter_school_count", "Private + Charter Elementary Schools", ((scoredRow.private_elementary_count ?? 0) + (scoredRow.charter_elementary_count ?? 0)) || null, "franchisee_supply", true),
+    seeded("private_charter_school_count", "Private + Charter Elementary Schools", (toNumber(scoredRow.private_elementary_count, 0) + toNumber(scoredRow.charter_elementary_count, 0)) || null, "franchisee_supply", true),
     seeded("public_elementary_enrollment", "Public Elementary Enrollment", scoredRow.public_elementary_enrollment, "franchisee_supply", true),
     seeded("col_salary_index", "Teacher Salary × Cost of Living Index", scoredRow.col_salary_index ?? scoredRow.cost_of_living_index, "franchisee_supply", true),
     // Retired/orphan metrics removed 2026-05-22:
@@ -313,21 +356,23 @@ export function buildSeededFallbackSignalsFromScored(
   // instead of getting a near-empty panel that looks like a UI bug.
 }
 
+export type MergedSignal = SeededFallbackSignal | (LiveSignal & { signal_key: string });
+
 export function mergeSignalsPreferLive(
-  liveSignals: Array<Record<string, any>> | null | undefined,
-  scoredRow?: Record<string, any> | null,
+  liveSignals: LiveSignal[] | null | undefined,
+  scoredRow?: Partial<ScoredCityRow> | null,
   childrenPct?: number | null,
-) {
+): MergedSignal[] {
   const seededSignals = buildSeededFallbackSignalsFromScored(scoredRow, childrenPct);
-  const liveByCanonical = new Map<string, Record<string, any>>();
+  const liveByCanonical = new Map<string, LiveSignal & { signal_key: string }>();
 
   (liveSignals ?? []).forEach((signal) => {
-    const key = canonicalKey(signal?.signal_key);
+    const key = canonicalKey(signal?.signal_key ?? null);
     if (!key) return;
     liveByCanonical.set(key, { ...signal, signal_key: key });
   });
 
-  const merged = seededSignals.map((seeded) => {
+  const merged: MergedSignal[] = seededSignals.map((seeded) => {
     const live = liveByCanonical.get(seeded.signal_key);
     return live
       ? {
@@ -344,13 +389,13 @@ export function mergeSignalsPreferLive(
   liveByCanonical.forEach((signal, key) => {
     if (!merged.some((row) => row.signal_key === key)) {
       merged.push({
+        ...signal,
         source: signal.source ?? "Live",
         signal_key: key,
         label: signal.label ?? key,
         value: signal.value ?? null,
         raw_data: signal.raw_data ?? null,
-        ...signal,
-      } as any);
+      });
     }
   });
 
@@ -423,9 +468,10 @@ export async function getCitySourceData(cityId: string): Promise<CitySourceRow[]
     { key: "firecrawl", column: "firecrawl_last_updated" },
   ];
 
+  const freshness = scoredRow as Record<string, string | null>;
   const rows: CitySourceRow[] = REAL_API_SOURCES
     .map(({ key, column }) => {
-      const lastFetchedAt = (scoredRow as any)[column] ?? null;
+      const lastFetchedAt = freshness[column] ?? null;
       return {
         source: key,
         label: labelFor(key),
@@ -465,7 +511,11 @@ export async function getNearbyMarkets(opts: {
   const limit = opts.limit ?? 5;
   if (!opts.cityId) return [];
 
-  const collected: any[] = [];
+  type NearbyRow = Pick<
+    ScoredCityRow,
+    "id" | "city_name" | "state_name" | "state_abbr" | "metro_area" | "composite_score_default" | "population"
+  >;
+  const collected: NearbyRow[] = [];
   const seen = new Set<string>([opts.cityId]);
   const selectCols = "id, city_name, state_name, state_abbr, metro_area, composite_score_default, population";
 
@@ -478,7 +528,7 @@ export async function getNearbyMarkets(opts: {
       .neq("id", opts.cityId)
       .order("composite_score_default", { ascending: false })
       .limit(limit);
-    (data ?? []).forEach((row: any) => {
+    ((data ?? []) as NearbyRow[]).forEach((row) => {
       if (!seen.has(row.id)) {
         seen.add(row.id);
         collected.push(row);
@@ -496,7 +546,7 @@ export async function getNearbyMarkets(opts: {
       .neq("id", opts.cityId)
       .order("composite_score_default", { ascending: false })
       .limit(remaining + seen.size);
-    (data ?? []).forEach((row: any) => {
+    ((data ?? []) as NearbyRow[]).forEach((row) => {
       if (collected.length >= limit) return;
       if (!seen.has(row.id)) {
         seen.add(row.id);
@@ -505,11 +555,11 @@ export async function getNearbyMarkets(opts: {
     });
   }
 
-  return collected.slice(0, limit).map((row: any) => {
+  return collected.slice(0, limit).map((row) => {
     const composite = toNumber(row.composite_score_default, 0);
     return {
       cityId: row.id,
-      city: row.city_name,
+      city: row.city_name ?? "Unknown",
       state: normalizeState(row.state_name ?? row.state_abbr),
       metroArea: row.metro_area ?? null,
       county: null,

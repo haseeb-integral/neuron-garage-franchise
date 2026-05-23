@@ -44,10 +44,6 @@ export function FormulaPanel({
   pendingEdits,
   overallFormula,
 }: FormulaPanelProps) {
-  const compositeContribution =
-    previewRecompute?.score != null && masterWeightPct != null
-      ? (previewRecompute.score * masterWeightPct) / 100
-      : null;
   const masterPending =
     masterWeightPendingPct != null &&
     masterWeightPct != null &&

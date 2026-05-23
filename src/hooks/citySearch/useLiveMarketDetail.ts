@@ -115,7 +115,7 @@ export function useLiveRankedMarkets() {
   const qc = useQueryClient();
   const query = useQuery({
     queryKey: rankedKey,
-    queryFn: loadLiveRankedMarkets,
+    queryFn: () => loadLiveRankedMarkets(),
     staleTime: 60_000,
     // Keep previous data on refetch so the list never flashes empty.
     placeholderData: (prev) => prev,

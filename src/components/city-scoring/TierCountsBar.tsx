@@ -43,9 +43,10 @@ function fmt(n: number | null, suffix = "") {
   return `${Math.round(n)}${suffix}`;
 }
 
-export function TierCountsBar({ committed, preview, totalLive, filteredLive, extras }: Props) {
+export function TierCountsBar({ committed, preview, totalLive, filteredLive, extras, activeTier, onTierClick }: Props) {
   const showArrow = !!preview;
   const isFiltered = typeof filteredLive === "number" && filteredLive !== totalLive;
+  const clickable = !!onTierClick;
   return (
     <div className="mb-3 w-full rounded-lg border border-[#eef2f7] bg-white px-4 py-3 flex flex-wrap items-stretch gap-x-4 gap-y-3">
       {/* Label cell */}
@@ -62,6 +63,7 @@ export function TierCountsBar({ committed, preview, totalLive, filteredLive, ext
               <TooltipContent side="bottom" className="max-w-[280px] text-[11px] leading-snug">
                 Counts of cities in each tier under the <strong>last Applied</strong> weights.
                 {showArrow && <> An arrow shows what each value <em>would become</em> after you click Apply Weights.</>}
+                {clickable && <> Click a tier pill to filter the table to that tier; click again to clear.</>}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -72,6 +74,11 @@ export function TierCountsBar({ committed, preview, totalLive, filteredLive, ext
         <span className="mt-0.5 text-[10.5px] font-medium text-[#8794ab]">
           Tiers always sum to the full scored universe: {totalLive} markets
         </span>
+        {clickable && (
+          <span className="mt-0.5 text-[10.5px] font-medium text-[#174be8]">
+            Click a tier pill to filter the table
+          </span>
+        )}
         {isFiltered && (
           <span className="mt-0.5 text-[10.5px] font-medium text-[#526078]">
             Table is currently showing {filteredLive} of {totalLive} scored markets after filters
@@ -79,17 +86,28 @@ export function TierCountsBar({ committed, preview, totalLive, filteredLive, ext
         )}
       </div>
 
-      {/* Tier chips - grow to fill */}
+      {/* Tier chips - grow to fill. Clickable when onTierClick provided. */}
       <div className="flex flex-1 flex-wrap items-center justify-around gap-2 min-w-[420px]">
         {TIER_META.map((t) => {
           const cur = committed[t.key];
           const next = preview ? preview[t.key] : null;
           const delta = next != null ? next - cur : 0;
+          const isActive = activeTier === t.key;
           return (
-            <div
+            <button
               key={t.key}
-              className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold"
-              style={{ backgroundColor: t.bg, color: t.fg, borderColor: t.border }}
+              type="button"
+              disabled={!clickable}
+              onClick={() => onTierClick?.(t.key)}
+              aria-pressed={isActive}
+              title={clickable ? (isActive ? `Clear ${t.label} filter` : `Filter table to ${t.label} only`) : undefined}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold transition-shadow ${clickable ? "cursor-pointer hover:shadow-md" : "cursor-default"}`}
+              style={{
+                backgroundColor: t.bg,
+                color: t.fg,
+                borderColor: isActive ? t.fg : t.border,
+                boxShadow: isActive ? `inset 0 0 0 1.5px ${t.fg}` : undefined,
+              }}
             >
               <span>{t.label}:</span>
               <span className="tabular-nums text-[13px]">{cur}</span>
@@ -98,7 +116,8 @@ export function TierCountsBar({ committed, preview, totalLive, filteredLive, ext
                   → {next} ({delta > 0 ? `+${delta}` : delta})
                 </span>
               )}
-            </div>
+              {isActive && <span className="ml-1 text-[10px] opacity-70">✕</span>}
+            </button>
           );
         })}
       </div>

@@ -408,7 +408,7 @@ const CityScoring = () => {
 
   // Ranked universe is mount-loaded; per-market detail is wired in below the
   // selectedCity/selectedState derivation.
-  const { liveRankedMarkets, setLiveRankedMarkets } = useLiveRankedMarkets();
+  const { liveRankedMarkets, setLiveRankedMarkets, error: rankedError, refetch: refetchRanked } = useLiveRankedMarkets();
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [execReportOpen, setExecReportOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);

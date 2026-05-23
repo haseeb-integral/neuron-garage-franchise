@@ -2088,7 +2088,7 @@ const CityScoring = () => {
                               className="text-[#07142f] font-semibold tabular-nums hover:underline decoration-dotted underline-offset-2"
                               title="Why this tier? Click to see the formula"
                             >
-                              {(c as any).view?.composite ?? c.compositeScore}
+                              {(c as any).view?.composite ?? 0}
                               <span className="ml-0.5 font-mono italic text-[9px] text-[#8794ab]">ƒx</span>
                             </button>
                           </PopoverTrigger>

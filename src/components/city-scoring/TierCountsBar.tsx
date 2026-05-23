@@ -143,22 +143,23 @@ export function TierCountsBar({ committed, preview, totalLive, filteredLive, ext
                 : null
             }
           />
-          <div className="flex flex-col justify-center min-w-[180px]">
-            <span className="text-[10px] font-bold uppercase tracking-wide text-[#8794ab]">Top 5 Markets</span>
+          <div className="flex flex-col justify-center flex-1 min-w-[420px]">
+            <span className="text-[10px] font-bold uppercase tracking-wide text-[#8794ab]">Top 12 Markets</span>
             {extras.topMarkets.length === 0 ? (
               <span className="mt-0.5 text-[11px] text-[#8794ab]">—</span>
             ) : (
-              <ol className="mt-0.5 space-y-0.5">
+              <div className="mt-1 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-0.5">
                 {extras.topMarkets.map((m, i) => (
-                  <li key={`${m.label}-${i}`} className="flex items-baseline gap-1.5 text-[10.5px] text-[#526078] leading-snug">
-                    <span className="tabular-nums text-[#8794ab] w-3">{i + 1}.</span>
+                  <div key={`${m.label}-${i}`} className="flex items-baseline gap-1.5 text-[10.5px] text-[#526078] leading-snug min-w-0">
+                    <span className="tabular-nums text-[#8794ab] w-4 shrink-0">{i + 1}.</span>
                     <span className="truncate">{m.label}</span>
-                    <span className="tabular-nums text-[#8794ab] ml-auto pl-1">{m.score}</span>
-                  </li>
+                    <span className="tabular-nums text-[#8794ab] ml-auto pl-1 shrink-0">{m.score}</span>
+                  </div>
                 ))}
-              </ol>
+              </div>
             )}
           </div>
+
           {showArrow && (
             <div className="flex items-center text-[10.5px] italic text-[#8794ab]">after Apply</div>
           )}

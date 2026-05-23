@@ -1989,7 +1989,7 @@ const CityScoring = () => {
                 These three weights <strong>share a budget of 100%</strong>. Raising one automatically lowers the others — the cities haven't changed, only how much each factor counts toward the ranking.
               </p>
               <p className="text-[10px] text-[#8794ab] leading-snug mt-1">
-                Score uses available enabled metrics from the 46-metric SOW framework. Missing metrics are tracked as evidence gaps, not counted as zero.
+                Score uses the 12-metric model across Demand, Competitive Opportunity, and TAM Teachers. Missing metrics are tracked as evidence gaps, not counted as zero.
               </p>
               {totalWeight !== 100 && (
                 <p className="text-[11px] text-[#ea580c] mt-1">Weights must total 100% to apply scoring.</p>

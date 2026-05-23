@@ -2,17 +2,13 @@
 // Used by MarketDetailDrawer to join old DB rows to the registry while we
 // transition fetchers to write canonical keys directly.
 
+// Only aliases whose canonical target is in the live 12-metric registry
+// (src/lib/sowMetricRegistry.ts) belong here. Ghost-metric aliases pruned
+// 2026-05-23 as part of the "kill the 46" cleanup.
 export const LEGACY_TO_CANONICAL: Record<string, string> = {
   children_population_proxy: "children_5_12_count",
-  income_100k_plus_proxy: "income_100k_plus_pct",
   education_bachelors_plus_proxy: "education_bachelors_plus_pct",
   dual_income_pct: "dual_income_household_pct",
-  young_families_growth_5yr: "young_family_growth_rate",
-  long_commute_pct: "commute_sprawl_index",
-  montessori_count: "montessori_school_density",
-  stem_enrichment_count: "stem_robotics_maker_camp_count",
-  // competitor_count alias removed 2026-05-22 — backing column
-  // summer_camp_count was 0/817 populated and the UI surface is gone.
 };
 
 // Diagnostic / readiness rows that pollute the metric view — hidden from the

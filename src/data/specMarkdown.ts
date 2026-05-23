@@ -137,16 +137,15 @@ Reads from \`candidates\` and \`teacher_prospects\` via the Supabase client. No 
 
 \`us_cities_scored\` is seeded with **948 U.S. cities** (population ≥ 50,000), all carrying a pre-computed \`composite_score_default\` so the national ranking is instant — no live API call at query time. Refreshed by scheduled background jobs, not per-user clicks.
 
-### Scoring model (46 metrics across 6 categories)
+### Scoring model (12 metrics across 3 categories)
 
-| Category | Weight slider (master) |
-|---|---|
-| Market Strength | adjustable, auto-rebalances |
-| Family Demographics | adjustable, auto-rebalances |
-| Franchise Supply | adjustable, auto-rebalances |
-| Cost & Climate | adjustable, auto-rebalances |
-| Talent Pipeline | adjustable, auto-rebalances |
-| Brand & Competition | adjustable, auto-rebalances |
+> Live source of truth: \`src/lib/sowMetricRegistry.ts\`. The earlier "46 metrics / 6 categories" language is historical — most of that list was never wired. Final 6→3 category reshape: May 21, 2026.
+
+| Category | Sub-metrics | Master slider |
+|---|---|---|
+| Demand | 4 (Census ACS) | adjustable, auto-rebalances |
+| Competitive Opportunity (CSI) | 3 (Manus v2, read-only) | adjustable, auto-rebalances |
+| TAM Teachers | 5 (NCES + BLS/BEA) | adjustable, auto-rebalances |
 
 **Math** (computed client-side in \`src/lib/clientSubWeightScoring.ts\`):
 
@@ -182,7 +181,7 @@ Every widget with a calculated number exposes a **Show Formula** affordance that
 Row click opens \`CityDetailDrawer\` with:
 
 - Composite gauge + verdict label + plain-English reason.
-- **Source Data panel** — all 46 SOW signals grouped by category, with source URLs and confidence values.
+- **Source Data panel** — the 12 live SOW signals grouped by category, with source URLs and confidence values.
 - Public Elementary Schools widget — count + enrollment from \`us_cities_scored.public_elementary_count\` / \`public_elementary_enrollment\` (NCES schools with \`lowest_grade_offered ≤ 5\`).
 - **Total public schools** is also stored (\`public_school_count\` / \`public_school_enrollment\`) but its widget is deferred (OPEN_TASKS 11a).
 - Private elementary count + enrollment from NCES PSS (embedded 2021–22 dataset; 636 / 960 cities covered, full re-pull tracked as B10a).
@@ -195,7 +194,7 @@ Row click opens \`CityDetailDrawer\` with:
 
 Clicking **Refresh Data** for a city runs:
 
-1. \`fetch-city-market-data-sow\` — official 46-metric SOW framework; writes \`city_market_signals\`, recomputes \`city_category_scores\` and \`cities.composite_score\`.
+1. \`fetch-city-market-data-sow\` — official SOW framework (12 live metrics across Demand / CSI / TAM Teachers); writes \`city_market_signals\`, recomputes \`city_category_scores\` and \`cities.composite_score\`.
 2. \`fetch-school-counts\` — non-blocking NCES CCD refresh.
 3. (Legacy \`fetch-city-market-data\` retained as fallback path.)
 

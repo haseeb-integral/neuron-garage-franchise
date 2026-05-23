@@ -172,6 +172,7 @@ export function useTeacherProspectsData(args: UseTeacherProspectsDataArgs) {
 
     if (error) {
       toast.error(`Failed to load prospects: ${error.message}`);
+      setLoadError(error.message);
       setProspects([]);
       setTotalCount(0);
     } else {

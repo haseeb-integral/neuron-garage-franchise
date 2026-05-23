@@ -13,8 +13,8 @@ export type OutreachInfo = {
 
 interface Props {
   prospects: TeacherProspect[];
-  selected: number[];
-  onToggleSelect: (id: number) => void;
+  selected: string[];
+  onToggleSelect: (uuid: string) => void;
   onToggleAll: () => void;
   onRowClick: (p: TeacherProspect) => void;
   onPromote: (p: TeacherProspect) => void;
@@ -82,7 +82,7 @@ export function TeacherTable({
     return sortDir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
   }), [prospects, sortKey, sortDir]);
 
-  const allSelected = prospects.length > 0 && prospects.every(p => selected.includes(p.id));
+  const allSelected = prospects.length > 0 && prospects.every(p => selected.includes(p.uuid));
   const safeTotal = totalCount ?? 0;
   const safePageSize = pageSize || 25;
   const safePage = page || 1;
@@ -127,7 +127,7 @@ export function TeacherTable({
           </thead>
           <tbody>
             {sorted.map((p) => {
-              const isSelected = selected.includes(p.id);
+              const isSelected = selected.includes(p.uuid);
               const isPromoted = (promotedUuids?.has(p.uuid)) || p.status === "in_outreach";
               const isShortlisted = p.status === "shortlisted";
               const isNotFit = p.status === "not_fit";
@@ -142,7 +142,7 @@ export function TeacherTable({
               return (
                 <tr key={p.uuid} className={`group cursor-pointer transition-colors hover:bg-[#f7faff] ${rowOpacity}`} onClick={() => onRowClick(p)}>
                   <td className={`${cellCls} sticky left-0 z-10 bg-white group-hover:bg-[#f7faff]`} onClick={e => e.stopPropagation()}>
-                    <Checkbox className="border-[#dbe4f2] data-[state=checked]:border-[#174be8] data-[state=checked]:bg-[#174be8]" checked={isSelected} onCheckedChange={() => onToggleSelect(p.id)} />
+                    <Checkbox className="border-[#dbe4f2] data-[state=checked]:border-[#174be8] data-[state=checked]:bg-[#174be8]" checked={isSelected} onCheckedChange={() => onToggleSelect(p.uuid)} />
                   </td>
                   <td className={`${cellCls} sticky left-10 z-10 bg-white group-hover:bg-[#f7faff]`}>
                     <div className="flex items-center gap-2">

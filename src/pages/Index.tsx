@@ -38,16 +38,18 @@ function useCitySearchSummary() {
     queryKey: ["dashboard", "city-summary"],
     staleTime: 60_000,
     queryFn: async () => {
-      const [scored, tierA] = await Promise.all([
+      const [scored, states] = await Promise.all([
         supabase.from("us_cities_scored").select("id", { count: "exact", head: true }),
-        supabase
-          .from("us_cities_scored")
-          .select("id", { count: "exact", head: true })
-          .eq("tier", "A"),
+        supabase.from("us_cities_scored").select("state"),
       ]);
+      const uniqueStates = new Set(
+        ((states.data ?? []) as { state: string | null }[])
+          .map((r) => r.state)
+          .filter((s): s is string => !!s),
+      );
       return {
         total: scored.count ?? 0,
-        tierA: tierA.count ?? 0,
+        states: uniqueStates.size,
       };
     },
   });
@@ -264,7 +266,7 @@ const Dashboard = () => {
               hint={
                 cities.isLoading
                   ? " "
-                  : `${fmt(cities.data?.tierA)} marked Tier A`
+                  : `Across ${fmt(cities.data?.states)} states`
               }
             />
           </div>

@@ -19,6 +19,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { PageHeader } from "@/components/PageHeader";
 import { supabase } from "@/integrations/supabase/client";
+import { calibrateCompositeForDisplay } from "@/lib/marketView";
 
 /**
  * Dashboard — pre-launch console for Sam and Kaylie.

@@ -1027,8 +1027,26 @@ const CityScoring = () => {
     lastScrapedAt: selectedLiveCity?.last_scraped_at ?? selectedRankedMarket?.lastScrapedAt ?? null,
     scored: selectedLiveCity?.scored ?? selectedRankedMarket?.scoredRow ?? null,
   };
-  const selectedHasLiveData =
-    !!selected.cityId && (Number(selected.compositeScore ?? 0) > 0 || !!selected.lastScrapedAt);
+  // Canonical MarketView for the selected market. ALL right-panel surfaces
+  // (gauge, executive summary, market summary, popover, CSV) MUST read
+  // composite/tier/formatted strings from `selectedView`, never compute their
+  // own. If you see code doing arithmetic on `selected.compositeScore` in JSX,
+  // route it through `selectedView` instead. See src/lib/marketView.ts.
+  const selectedView: MarketView = assertNoCompositeDrift(
+    buildMarketView({
+      city: selected.city,
+      state: selected.state,
+      cityId: selected.cityId,
+      compositeScore: selected.compositeScore as number | null,
+      tier: selected.tier as any,
+      hasLiveData: !!selected.cityId && (Number(selected.compositeScore ?? 0) > 0 || !!selected.lastScrapedAt),
+      population: (selected.population as number | null | undefined) ?? null,
+      competitorCount: (selected.competitorCount as number | null | undefined) ?? null,
+      lastScrapedAt: selected.lastScrapedAt ?? null,
+    }),
+    buildWeightsHash(appliedWeights, appliedSubWeights),
+  );
+  const selectedHasLiveData = selectedView.hasLiveData;
 
   // Load live DB-backed data for the currently selected market.
   // Canonical source: us_cities_scored (Sam's pre-seeded ~948-city dataset).

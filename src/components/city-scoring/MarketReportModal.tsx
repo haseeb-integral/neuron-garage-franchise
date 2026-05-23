@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import jsPDF from "jspdf";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { CityData } from "@/data/cityData";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import { getSignalGeography, GEO_BADGE_CLASS } from "@/lib/signalGeography";
+import { buildMarketReportPdf } from "./market-report/marketReportPdf";
+import type { LiveSignal, MetricCategory, MetricStatus } from "./market-report/marketReportTypes";
 
 interface Props {
   open: boolean;
@@ -14,69 +14,6 @@ interface Props {
   categoryScores: Record<string, number>;
   refreshVersion?: number;
   autoDownload?: boolean;
-}
-
-type MetricStatus = "live" | "proxy" | "missing" | "blocked" | "manual";
-type MetricCategory =
-  | "demand"
-  | "competitive_landscape"
-  | "franchisee_supply"
-  | "ease_of_operations"
-  | "parent_mindset";
-
-type LiveSignal = {
-  id?: string;
-  signal_key?: string;
-  label?: string;
-  value?: string | number | null;
-  source?: string | null;
-  source_url?: string | null;
-  confidence?: number | null;
-  raw_data?: {
-    status?: MetricStatus;
-    metric_category?: MetricCategory;
-    used_in_score?: boolean;
-    notes?: string | null;
-    [key: string]: unknown;
-  } | null;
-};
-
-type LiveCompetitor = {
-  id?: string;
-  name?: string;
-  type?: string | null;
-  category?: string | null;
-  source?: string | null;
-  source_url?: string | null;
-};
-
-function buildSeededFallbackSignals(market: CityData): LiveSignal[] {
-  const scored = (market as any).scored;
-  if (!scored) return [];
-  const childrenPct = Number((market as any).childrenPct ?? (market as any).children_pct ?? 0);
-  const seeded = (
-    signal_key: string,
-    label: string,
-    value: string | number | null | undefined,
-    metric_category: MetricCategory,
-    used_in_score: boolean,
-  ): LiveSignal => ({
-    signal_key,
-    label,
-    value: value ?? null,
-    source: "Pre-seeded",
-    raw_data: { status: "proxy", used_in_score, metric_category },
-  });
-  return [
-    seeded("children_5_12_count", "Children Ages 5–12", scored.children_5_12, "demand", true),
-    seeded("children_5_12_pct", "% Population Ages 5–12", childrenPct || null, "demand", true),
-    seeded("median_household_income", "Median Household Income", scored.median_household_income, "demand", true),
-    seeded("public_elementary_count", "Public elementary schools (NCES CCD)", scored.public_elementary_count, "franchisee_supply", true),
-    seeded("public_elementary_enrollment", "Public elementary enrollment", scored.public_elementary_enrollment, "franchisee_supply", false),
-    // competitor_count seeded row removed 2026-05-22 — summer_camp_count was
-    // 0/817 populated. CSI is surfaced via the three Manus-precomputed signals
-    // (csi_national_brand_supply, csi_local_camp_estimate, csi_demand_adjusted_market).
-  ].filter((row) => row.value != null);
 }
 
 const CAT_LABELS: { key: string; dbKey: MetricCategory; label: string }[] = [
@@ -101,13 +38,34 @@ const PRIORITY_SIGNAL_KEYS = [
   "sow_metric_coverage_readiness",
 ];
 
-function getStatus(signal: LiveSignal): MetricStatus {
-  return signal.raw_data?.status ?? "proxy";
+function buildSeededFallbackSignals(market: CityData): LiveSignal[] {
+  const scored = (market as any).scored;
+  if (!scored) return [];
+  const childrenPct = Number((market as any).childrenPct ?? (market as any).children_pct ?? 0);
+  const seeded = (
+    signal_key: string,
+    label: string,
+    value: string | number | null | undefined,
+    metric_category: MetricCategory,
+    used_in_score: boolean,
+  ): LiveSignal => ({
+    signal_key,
+    label,
+    value: value ?? null,
+    source: "Pre-seeded",
+    raw_data: { status: "proxy", used_in_score, metric_category },
+  });
+  return [
+    seeded("children_5_12_count", "Children Ages 5–12", scored.children_5_12, "demand", true),
+    seeded("children_5_12_pct", "% Population Ages 5–12", childrenPct || null, "demand", true),
+    seeded("median_household_income", "Median Household Income", scored.median_household_income, "demand", true),
+    seeded("public_elementary_count", "Public elementary schools (NCES CCD)", scored.public_elementary_count, "franchisee_supply", true),
+    seeded("public_elementary_enrollment", "Public elementary enrollment", scored.public_elementary_enrollment, "franchisee_supply", false),
+  ].filter((row) => row.value != null);
 }
 
-function getCategory(signal: LiveSignal): MetricCategory | null {
-  return signal.raw_data?.metric_category ?? null;
-}
+const getStatus = (s: LiveSignal): MetricStatus => s.raw_data?.status ?? "proxy";
+const getCategory = (s: LiveSignal): MetricCategory | null => s.raw_data?.metric_category ?? null;
 
 function statusClass(status: MetricStatus) {
   if (status === "live") return "bg-[#e6f7ef] text-[#0ea66e]";
@@ -116,9 +74,7 @@ function statusClass(status: MetricStatus) {
   return "bg-[#fff6dc] text-[#b8860b]";
 }
 
-function csvEscape(value: unknown) {
-  return `"${String(value ?? "").replace(/"/g, '""')}"`;
-}
+const csvEscape = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
 
 function downloadCsv(filename: string, rows: unknown[][]) {
   const csv = rows.map((row) => row.map(csvEscape).join(",")).join("\n");
@@ -135,48 +91,20 @@ export function MarketReportModal({ open, onClose, market, categoryScores, refre
   const stateAbbr = market.state === "Texas" ? "TX" : market.state === "Florida" ? "FL" : market.state;
   const [loading, setLoading] = useState(false);
   const [liveSignals, setLiveSignals] = useState<LiveSignal[]>([]);
-  const [liveCompetitors, setLiveCompetitors] = useState<LiveCompetitor[]>([]);
-  const [latestJob, setLatestJob] = useState<any | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
-  const reportRef = useRef<HTMLDivElement>(null);
   const autoFiredRef = useRef(false);
 
   useEffect(() => {
     if (!open) return;
-
-    const loadReportData = async () => {
-      setLoading(true);
-      try {
-        // cityId references us_cities_scored.id. Legacy signals/competitors/jobs
-        // tables are still keyed by legacy cities.id, so seeded-only rows will
-        // return empty until seed-on-demand wires them to the new id.
-        const cityId = market.cityId;
-        if (!cityId) {
-          setLiveSignals([]);
-          setLiveCompetitors([]);
-          setLatestJob(null);
-          return;
-        }
-
-        // Legacy `city_market_signals` was severed on 2026-05-21.
-        // Evidence rows come from the seeded fallback (us_cities_scored).
-        const fallbackSignals = buildSeededFallbackSignals(market);
-        const competitors: any[] = [];
-        const jobs: any[] = [];
-
-        setLiveSignals(fallbackSignals as unknown as LiveSignal[]);
-        setLiveCompetitors(competitors as LiveCompetitor[]);
-        setLatestJob(jobs?.[0] ?? null);
-
-      } catch (err) {
-        console.error("MarketReportModal load error", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadReportData();
-  }, [open, market.cityId, refreshVersion]);
+    setLoading(true);
+    try {
+      // Legacy `city_market_signals` was severed on 2026-05-21. Evidence rows
+      // come from the seeded fallback (us_cities_scored).
+      setLiveSignals(market.cityId ? buildSeededFallbackSignals(market) : []);
+    } finally {
+      setLoading(false);
+    }
+  }, [open, market, refreshVersion]);
 
   const liveCount = liveSignals.filter((s) => getStatus(s) === "live").length;
   const proxyCount = liveSignals.filter((s) => getStatus(s) === "proxy").length;
@@ -209,7 +137,6 @@ export function MarketReportModal({ open, onClose, market, categoryScores, refre
       toast.error("No live SOW signals found to export");
       return;
     }
-
     const rows = [
       ["Category", "Metric", "Value", "Geography", "Counts Toward Score", "Status", "Source", "Confidence", "Notes", "Source URL"],
       ...liveSignals.map((s) => {
@@ -227,12 +154,7 @@ export function MarketReportModal({ open, onClose, market, categoryScores, refre
           s.source_url ?? "",
         ];
       }),
-      [],
-      ["Competitors & Enrichment Programs"],
-      ["Name", "Type", "Source", "Source URL"],
-      ...liveCompetitors.map((c) => [c.name ?? "", c.type ?? c.category ?? "", c.source ?? "", c.source_url ?? ""]),
     ];
-
     downloadCsv(`${market.city.toLowerCase().replace(/\s+/g, "-")}-sow-source-evidence.csv`, rows);
     toast.success("SOW source evidence exported");
   };
@@ -244,232 +166,18 @@ export function MarketReportModal({ open, onClose, market, categoryScores, refre
     }
     setGeneratingPdf(true);
     try {
-      const pdf = new jsPDF({ unit: "pt", format: "a4" });
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
-      const marginX = 40;
-      const marginTop = 56;
-      const marginBottom = 48;
-      const contentW = pageW - marginX * 2;
+      const pdf = buildMarketReportPdf({
+        market,
+        stateAbbr,
+        categoryScores,
+        signals: liveSignals,
+        prioritySignals,
+        coverageByCategory,
+        liveCount,
+        proxyCount,
+        missingCount,
+      });
       const today = new Date().toISOString().slice(0, 10);
-      const headerText = `${market.city}, ${stateAbbr} — SOW Market Report  ·  Generated ${today}`;
-      let pageNum = 0;
-      let y = marginTop;
-
-      const setColor = (hex: string) => {
-        const n = parseInt(hex.replace("#", ""), 16);
-        pdf.setTextColor((n >> 16) & 255, (n >> 8) & 255, n & 255);
-      };
-      const setFill = (hex: string) => {
-        const n = parseInt(hex.replace("#", ""), 16);
-        pdf.setFillColor((n >> 16) & 255, (n >> 8) & 255, n & 255);
-      };
-      const setDraw = (hex: string) => {
-        const n = parseInt(hex.replace("#", ""), 16);
-        pdf.setDrawColor((n >> 16) & 255, (n >> 8) & 255, n & 255);
-      };
-
-      const drawChrome = () => {
-        pageNum++;
-        pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(8);
-        setColor("#8794ab");
-        pdf.text(headerText, marginX, 28);
-        setDraw("#e5eaf2");
-        pdf.setLineWidth(0.5);
-        pdf.line(marginX, 36, pageW - marginX, 36);
-        pdf.text(`Page ${pageNum}`, pageW - marginX, pageH - 24, { align: "right" });
-      };
-
-      const ensureSpace = (needed: number) => {
-        if (y + needed > pageH - marginBottom) {
-          pdf.addPage();
-          drawChrome();
-          y = marginTop;
-        }
-      };
-
-      const heading = (text: string) => {
-        ensureSpace(28);
-        pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(12);
-        setColor("#07142f");
-        pdf.text(text, marginX, y);
-        y += 6;
-        setDraw("#174be8");
-        pdf.setLineWidth(1.2);
-        pdf.line(marginX, y, marginX + 28, y);
-        y += 12;
-      };
-
-      const paragraph = (text: string, color = "#3a4c72", size = 9.5) => {
-        pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(size);
-        setColor(color);
-        const lines = pdf.splitTextToSize(text, contentW) as string[];
-        const lh = size * 1.35;
-        for (const line of lines) {
-          ensureSpace(lh);
-          pdf.text(line, marginX, y);
-          y += lh;
-        }
-      };
-
-      const row = (left: string, right: string, opts?: { bold?: boolean }) => {
-        const lh = 14;
-        ensureSpace(lh + 2);
-        pdf.setFont("helvetica", opts?.bold ? "bold" : "normal");
-        pdf.setFontSize(9.5);
-        setColor("#526078");
-        const leftLines = pdf.splitTextToSize(left, contentW * 0.66) as string[];
-        pdf.text(leftLines[0], marginX, y);
-        setColor("#07142f");
-        pdf.setFont("helvetica", "bold");
-        pdf.text(right, pageW - marginX, y, { align: "right" });
-        y += lh;
-        setDraw("#f3f5f9");
-        pdf.setLineWidth(0.4);
-        pdf.line(marginX, y - 4, pageW - marginX, y - 4);
-      };
-
-      // ===== Cover header =====
-      drawChrome();
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(22);
-      setColor("#07142f");
-      pdf.text(`${market.city}, ${stateAbbr}`, marginX, y + 10);
-      y += 26;
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(11);
-      setColor("#526078");
-      pdf.text("SOW Market Report", marginX, y);
-      y += 24;
-
-      // ===== Market summary =====
-      heading("Market Summary");
-      paragraph(
-        `This report uses the live SOW metric registry for ${market.city}. It separates confirmed live metrics, proxy-backed metrics, and missing source integrations so the score is auditable instead of relying on hardcoded sample signals.`
-      );
-      y += 8;
-
-      // ===== Coverage stats =====
-      heading("SOW Coverage Status");
-      const cardW = (contentW - 16) / 3;
-      const cardH = 52;
-      ensureSpace(cardH + 6);
-      const cards: { n: number; label: string; color: string }[] = [
-        { n: liveCount, label: "Live", color: "#0ea66e" },
-        { n: proxyCount, label: "Proxy", color: "#174be8" },
-        { n: missingCount, label: "Missing", color: "#8794ab" },
-      ];
-      cards.forEach((c, i) => {
-        const x = marginX + i * (cardW + 8);
-        setDraw("#eef2f7");
-        setFill("#ffffff");
-        pdf.setLineWidth(0.6);
-        pdf.roundedRect(x, y, cardW, cardH, 4, 4, "FD");
-        pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(20);
-        setColor(c.color);
-        pdf.text(String(c.n), x + cardW / 2, y + 24, { align: "center" });
-        pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(8);
-        setColor("#8794ab");
-        pdf.text(c.label.toUpperCase(), x + cardW / 2, y + 40, { align: "center" });
-      });
-      y += cardH + 14;
-
-      // ===== Six category scores =====
-      heading("Six Category Scores");
-      const colW = (contentW - 20) / 2;
-      const barH = 6;
-      const itemH = 26;
-      for (let i = 0; i < CAT_LABELS.length; i += 2) {
-        ensureSpace(itemH + 4);
-        for (let j = 0; j < 2 && i + j < CAT_LABELS.length; j++) {
-          const c = CAT_LABELS[i + j];
-          const x = marginX + j * (colW + 20);
-          const score = categoryScores[c.key] ?? 0;
-          pdf.setFont("helvetica", "normal");
-          pdf.setFontSize(9.5);
-          setColor("#526078");
-          pdf.text(c.label, x, y);
-          pdf.setFont("helvetica", "bold");
-          setColor("#07142f");
-          pdf.text(String(categoryScores[c.key] ?? "-"), x + colW, y, { align: "right" });
-          setFill("#e8edf6");
-          pdf.roundedRect(x, y + 5, colW, barH, 3, 3, "F");
-          setFill("#174be8");
-          pdf.roundedRect(x, y + 5, Math.max(0, Math.min(100, score)) / 100 * colW, barH, 3, 3, "F");
-        }
-        y += itemH;
-      }
-      y += 4;
-
-      // ===== Category coverage =====
-      heading("SOW Category Coverage");
-      coverageByCategory.forEach((c) => {
-        row(c.label, `${c.live} live · ${c.proxy} proxy · ${c.missing} missing`);
-      });
-      y += 8;
-
-      // ===== Key signals =====
-      heading("Key Live / Proxy Market Signals");
-      if (prioritySignals.length === 0) {
-        paragraph("No live/proxy SOW signals found yet. Run the SOW coverage refresh first.", "#526078");
-      } else {
-        prioritySignals.forEach((s) => {
-          const status = getStatus(s).toUpperCase();
-          const geo = getSignalGeography(s.source, s.signal_key);
-          const used = Boolean(s.raw_data?.used_in_score);
-          const tag = `[${status}] [${geo.short}] [${used ? "✓ Counts" : "Info"}]`;
-          const label = `${tag}  ${s.label ?? s.signal_key}`;
-          row(label, String(s.value ?? "—"));
-        });
-      }
-      y += 8;
-
-      // ===== Competitors =====
-      heading("Competitors & Enrichment Programs");
-      paragraph(`${liveCompetitors.length} live competitor rows are attached to this market.`, "#526078");
-      y += 4;
-      const names = liveCompetitors.slice(0, 24).map((c) => c.name).filter(Boolean) as string[];
-      if (names.length) {
-        pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(9.5);
-        setColor("#174be8");
-        // simple chip-style wrapped list
-        let cx = marginX;
-        const chipH = 16;
-        const chipPad = 6;
-        const chipGap = 6;
-        ensureSpace(chipH + 2);
-        for (const name of names) {
-          const w = pdf.getTextWidth(name) + chipPad * 2;
-          if (cx + w > marginX + contentW) {
-            cx = marginX;
-            y += chipH + 4;
-            ensureSpace(chipH + 2);
-          }
-          setFill("#eaf0ff");
-          pdf.roundedRect(cx, y - chipH + 4, w, chipH, 8, 8, "F");
-          setColor("#174be8");
-          pdf.text(name, cx + chipPad, y);
-          cx += w + chipGap;
-        }
-        y += chipH + 6;
-        if (liveCompetitors.length > names.length) {
-          paragraph(`+${liveCompetitors.length - names.length} more`, "#526078", 9);
-        }
-      }
-      y += 6;
-
-      // ===== Recommendation =====
-      heading("Recommendation");
-      paragraph(
-        `Treat ${market.city} as a high-priority market only after reviewing the proxy and missing metrics. The current live/proxy coverage is useful for screening, while pricing, weather, Google Trends, state education, and rental-cost integrations should be completed for a final investment-grade score.`
-      );
-
       const slug = market.city.toLowerCase().replace(/\s+/g, "-");
       pdf.save(`${slug}-${stateAbbr.toLowerCase()}-market-report-${today}.pdf`);
       toast.success("PDF report downloaded");
@@ -486,12 +194,12 @@ export function MarketReportModal({ open, onClose, market, categoryScores, refre
       autoFiredRef.current = false;
       return;
     }
-    if (autoDownload && !loading && !autoFiredRef.current && liveSignals.length >= 0) {
+    if (autoDownload && !loading && !autoFiredRef.current) {
       autoFiredRef.current = true;
-      // Wait one tick for DOM paint
       const t = setTimeout(() => { handleDownloadPdf(); }, 250);
       return () => clearTimeout(t);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, autoDownload, loading]);
 
   return (
@@ -500,7 +208,7 @@ export function MarketReportModal({ open, onClose, market, categoryScores, refre
         <DialogHeader>
           <DialogTitle className="text-[#07142f]">{market.city}, {stateAbbr} SOW Market Report Preview</DialogTitle>
         </DialogHeader>
-        <div ref={reportRef} className="space-y-5 text-[12.5px] text-[#14233b] bg-white">
+        <div className="space-y-5 text-[12.5px] text-[#14233b] bg-white">
           <section className="rounded-lg border border-[#eef2f7] bg-[#f8fafe] p-3">
             <h4 className="text-[13px] font-bold text-[#07142f] mb-1">Market Summary</h4>
             <p className="leading-snug text-[#3a4c72]">
@@ -525,13 +233,10 @@ export function MarketReportModal({ open, onClose, market, categoryScores, refre
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-[#8794ab]">Missing</p>
               </div>
             </div>
-            {latestJob?.response_summary?.mode && (
-              <p className="mt-2 text-[11px] text-[#526078]">Latest backend mode: {latestJob.response_summary.mode}</p>
-            )}
           </section>
 
           <section>
-            <h4 className="text-[13px] font-bold text-[#07142f] mb-2">Six Category Scores</h4>
+            <h4 className="text-[13px] font-bold text-[#07142f] mb-2">Category Scores</h4>
             <div className="grid grid-cols-2 gap-x-6 gap-y-2">
               {CAT_LABELS.map((c) => (
                 <div key={c.key}>
@@ -588,19 +293,6 @@ export function MarketReportModal({ open, onClose, market, categoryScores, refre
                 })}
               </ul>
             )}
-          </section>
-
-          <section>
-            <h4 className="text-[13px] font-bold text-[#07142f] mb-1">Competitors & Enrichment Programs</h4>
-            <p className="mb-2 text-[#526078]">{liveCompetitors.length} live competitor rows are attached to this market.</p>
-            <div className="flex flex-wrap gap-2">
-              {liveCompetitors.slice(0, 12).map((c, idx) => (
-                <span key={c.id ?? `${c.name}-${idx}`} className="rounded-full bg-[#eaf0ff] text-[#174be8] px-2 py-0.5 text-[11px]">
-                  {c.name}
-                </span>
-              ))}
-              {liveCompetitors.length > 12 && <span className="text-[11px] text-[#526078]">+{liveCompetitors.length - 12} more</span>}
-            </div>
           </section>
 
           <section>

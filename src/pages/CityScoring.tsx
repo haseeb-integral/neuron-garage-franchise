@@ -1524,26 +1524,26 @@ const CityScoring = () => {
     return out;
   })();
 
-  // Headline gauge MUST equal the SCORE column in the ranked table — both come
-  // from `selected.compositeScore` (the canonical re-ranked composite computed
-  // once for the whole universe). Previously this panel re-derived its own
-  // `weightedComposite` from category scores + applied weights, which produced
-  // a DIFFERENT number than the table (e.g. Honolulu table=83, gauge=38) because
-  // the recomputation only spanned categories present on the detail view, not
-  // all 6 master categories. One source of truth now.
+  // ─── SINGLE SOURCE OF TRUTH for the headline composite ─────────────────
+  // Every UI surface that shows a city's overall score (ranked table SCORE
+  // column, right-panel gauge, formula popover, what-if preview, CSV export)
+  // MUST read from `selected.compositeScore` — the value computed once in
+  // `rerankedUniverse` from the user's currently-applied weights.
+  //
+  // DO NOT re-derive a composite anywhere else in this file. Past bug:
+  // a local `liveCompositeNumer / liveCompositeDenom` recomputation here
+  // produced 23 in the gauge while the table showed 88 for the same city.
+  // If you need a "what if I changed weights X" preview, compute that in a
+  // clearly-named hypothetical (e.g. `previewComposite`) — never overload the
+  // headline number.
   const appliedTotal = Object.values(appliedWeights).reduce((s, v) => s + v, 0);
-  const liveCompositeNumer = CATEGORIES.reduce((s, c) => {
-    const v = detailCategoryScores[c.key];
-    return Number.isFinite(v) ? s + v * (appliedWeights[c.key] ?? 0) : s;
-  }, 0);
-  const liveCompositeDenom = CATEGORIES.reduce((s, c) => {
-    const v = detailCategoryScores[c.key];
-    return Number.isFinite(v) ? s + (appliedWeights[c.key] ?? 0) : s;
-  }, 0);
-  void liveCompositeNumer; void liveCompositeDenom; void appliedTotal;
-  const weightedComposite = Number.isFinite(selected.compositeScore as number)
+  const headlineComposite = Number.isFinite(selected.compositeScore as number)
     ? Math.round(selected.compositeScore as number)
     : (Number.isFinite(detailScore as number) ? Math.round(detailScore as number) : 0);
+  // Legacy alias — kept only because several JSX sites reference this name.
+  // New code MUST use `headlineComposite`. Will be removed after the full
+  // single-source-of-truth refactor lands.
+  const weightedComposite = headlineComposite;
   // Use the same percentile-based tier that the ranked table uses (top 5% = I,
   // next 15% = II, next 30% = III, rest = IV). Previously this panel recomputed
   // tier with absolute cutoffs (85/75/65) which contradicted the table badge —

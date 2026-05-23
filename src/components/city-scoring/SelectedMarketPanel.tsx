@@ -15,7 +15,7 @@ interface Props {
   lastScrapedAbsolute: string | null;
   isStale: boolean;
 
-  selected: RankedMarket;
+  selected: SelectedLike;
   selectedHasLiveData: boolean;
   selectedLiveCity: { notes?: string | null } | null | undefined;
 

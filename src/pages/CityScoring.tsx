@@ -814,11 +814,11 @@ const CityScoring = () => {
     }
 
     const topMarkets = [...live]
-      .sort((a: any, b: any) => Number(b.compositeScore ?? 0) - Number(a.compositeScore ?? 0))
+      .sort((a: any, b: any) => buildMarketView(b).composite - buildMarketView(a).composite)
       .slice(0, 12)
       .map((m: any) => ({
         label: `${m.city}, ${m.state}`,
-        score: Math.round(Number(m.compositeScore ?? 0)),
+        score: buildMarketView(m).composite,
       }));
 
 

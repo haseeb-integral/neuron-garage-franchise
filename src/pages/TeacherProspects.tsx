@@ -621,10 +621,10 @@ const TeacherProspects = () => {
     toast.success(`Enrichment requested.`, { id: t, action: { label: "Reload", onClick: loadPage } });
   };
   const handlePromoteHighFit = () => {
-    const ids = prospects.filter((p) => p.fitScore >= 70 && !promotedUuids.has(p.uuid)).map((p) => p.id);
-    if (ids.length === 0) return;
-    setSelected(ids);
-    const targets = prospects.filter((p) => ids.includes(p.id));
+    const uuids = prospects.filter((p) => p.fitScore >= 70 && !promotedUuids.has(p.uuid)).map((p) => p.uuid);
+    if (uuids.length === 0) return;
+    setSelected(uuids);
+    const targets = prospects.filter((p) => uuids.includes(p.uuid));
     setCampaignTargets(targets.map((p) => ({ uuid: p.uuid, name: p.name })));
     setCampaignModalOpen(true);
   };

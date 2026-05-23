@@ -805,13 +805,13 @@ const CityScoring = () => {
   };
 
 
-  const openCompare = () => {
+  const openCompare = useCallback(() => {
     if (selectedForCompare.length < 2) {
       toast.error("Select at least 2 markets to compare");
       return;
     }
     setCompareOpen(true);
-  };
+  }, [selectedForCompare]);
 
   const applyWeights = () => {
     if (totalWeight !== 100) return;

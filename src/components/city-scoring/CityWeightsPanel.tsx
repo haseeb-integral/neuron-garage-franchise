@@ -27,8 +27,8 @@ interface Props {
   resetWeights: () => void;
   openSaveDialog: () => void;
   applyWeights: () => void;
-  scoringModel: PresetName | "Custom";
-  setScoringModel: (m: PresetName | "Custom") => void;
+  scoringModel: string;
+  setScoringModel: (m: string) => void;
   applyPresetByName: (name: PresetName) => void;
   presetTweening: boolean;
   customCriteria: { category: string }[];

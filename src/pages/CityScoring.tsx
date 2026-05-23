@@ -823,11 +823,11 @@ const CityScoring = () => {
     toast.success("Composite score recalculated from current weights.");
   };
 
-  const handleFindTeachers = () => {
+  const handleFindTeachers = useCallback(() => {
     navigate(`/teacher-prospects?city=${encodeURIComponent(selected.city)}&state=${encodeURIComponent(selected.state)}`);
-  };
+  }, [navigate, selected.city, selected.state]);
 
-  const handleFindTeachersForSelected = () => {
+  const handleFindTeachersForSelected = useCallback(() => {
     const picked = baseRankedMarkets.filter((m: any) => selectedForCompare.includes(m.id)).slice(0, 10);
     if (picked.length === 0) {
       toast.error("Select at least 1 market first (use the checkbox).");
@@ -836,7 +836,7 @@ const CityScoring = () => {
     const cities = picked.map((m: any) => m.city).join(",");
     const states = picked.map((m: any) => m.state).join(",");
     navigate(`/teacher-prospects?city=${encodeURIComponent(cities)}&state=${encodeURIComponent(states)}`);
-  };
+  }, [baseRankedMarkets, selectedForCompare, navigate]);
 
   const handleRefreshData = async () => {
     if (!selectedCity || !selectedState) return;

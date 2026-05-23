@@ -2105,7 +2105,7 @@ const CityScoring = () => {
                           </PopoverContent>
                         </Popover>
                         <div className="h-1.5 flex-1 rounded-full bg-[#eef2f7]">
-                          <div className="h-full rounded-full bg-[#0ea66e]" style={{ width: `${(c as any).view?.composite ?? c.compositeScore}%` }} />
+                          <div className="h-full rounded-full bg-[#0ea66e]" style={{ width: `${(c as any).view?.composite ?? 0}%` }} />
                         </div>
                       </>
                     ) : (

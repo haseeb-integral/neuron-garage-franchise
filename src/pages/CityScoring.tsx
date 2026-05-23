@@ -79,6 +79,7 @@ import {
   weightsHash as buildWeightsHash,
   type MarketView,
 } from "@/lib/marketView";
+import { useSavedSearches } from "@/hooks/citySearch/useSavedSearches";
 
 
 // Feature flag: hide live on-demand API widgets on the detail panel.
@@ -188,13 +189,21 @@ const CityScoring = () => {
   const [customWeightsSnapshot, setCustomWeightsSnapshot] = useState<Record<CategoryKey, number> | null>(null);
   const [addCritOpen, setAddCritOpen] = useState(false);
 
-  // Saved searches (per-user)
-  type SavedSearch = { id: string; name: string; master_weights: any; sub_weights: any; created_at: string };
-  const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
-  const [saveSearchOpen, setSaveSearchOpen] = useState(false);
-  const [saveSearchName, setSaveSearchName] = useState("");
-  const [savingSearch, setSavingSearch] = useState(false);
-  const [activeSavedSearchId, setActiveSavedSearchId] = useState<string | null>(null);
+  // Saved searches (per-user) — see src/hooks/citySearch/useSavedSearches.ts
+  const {
+    savedSearches,
+    saveSearchOpen, setSaveSearchOpen,
+    saveSearchName, setSaveSearchName,
+    savingSearch,
+    activeSavedSearchId,
+    clearActive: clearActiveSavedSearch,
+    openSaveDialog,
+    handleSaveSearch,
+    handleLoadSavedSearch,
+    handleDeleteSavedSearch,
+  } = useSavedSearches({
+    onLoadedWeights: (mw) => setCustomWeightsSnapshot({ ...mw }),
+  });
 
   // Preset clicks snap weights instantly (no tween) to avoid page jitter from
   // rapid 60fps re-renders. The active-tile ring + slider repositioning provides
@@ -247,34 +256,7 @@ const CityScoring = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scoringModel]);
 
-  const buildDefaultSearchName = (): string => {
-    const dateStr = new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" });
-    if ((PRESET_NAMES as string[]).includes(scoringModel) && scoringModel !== "Custom") {
-      return `${scoringModel} – ${dateStr}`;
-    }
-    const top = (Object.entries(weights) as [CategoryKey, number][])
-      .sort((a, b) => b[1] - a[1])[0];
-    const label = CATEGORIES.find((c) => c.key === top?.[0])?.label ?? "Custom";
-    return `${label}-heavy – ${dateStr}`;
-  };
-  const openSaveDialog = () => {
-    setSaveSearchName(buildDefaultSearchName());
-    setSaveSearchOpen(true);
-  };
-
-  const refreshSavedSearches = async () => {
-    if (!user) return;
-    const { data, error } = await supabase
-      .from("saved_searches")
-      .select("id, name, master_weights, sub_weights, created_at")
-      .order("created_at", { ascending: false });
-    if (error) {
-      console.error("loadSavedSearches", error);
-      return;
-    }
-    setSavedSearches((data ?? []) as SavedSearch[]);
-  };
-  useEffect(() => { refreshSavedSearches(); }, [user?.id]);
+  // (saved-search default name, refresh effect, and openSaveDialog moved into useSavedSearches)
 
   // ─── Watchlist (per-user, persisted to Supabase) ───────────────────────
   const [watchlistCityIds, setWatchlistCityIds] = useState<Set<string>>(new Set());
@@ -317,68 +299,7 @@ const CityScoring = () => {
     }
   };
 
-  const handleSaveSearch = async () => {
-    const name = saveSearchName.trim();
-    if (!name) { toast.error("Name required"); return; }
-    if (!user) { toast.error("Sign in required"); return; }
-    setSavingSearch(true);
-    // Save the live draft (what the sliders show) and also apply it so saving
-    // doubles as Apply Weights — avoids saving stale appliedWeights.
-    setAppliedWeights(weights);
-    setAppliedSubWeights(subWeights);
-    const { error } = await supabase.from("saved_searches").insert({
-      user_id: user.id,
-      name,
-      master_weights: weights as any,
-      sub_weights: subWeights as any,
-    });
-    setSavingSearch(false);
-    if (error) {
-      console.error("saveSearch", error);
-      toast.error("Save failed");
-      return;
-    }
-    toast.success(`Saved "${name}" — find it under the Saved dropdown`);
-    setSaveSearchOpen(false);
-    setSaveSearchName("");
-    setActiveSavedSearchId(null);
-    refreshSavedSearches();
-  };
-
-  const handleLoadSavedSearch = (s: SavedSearch) => {
-    const mw = s.master_weights as Record<CategoryKey, number>;
-    const sw = s.sub_weights ?? {};
-    if (mw) {
-      setWeights(mw);
-      setAppliedWeights(mw);
-      setCustomWeightsSnapshot({ ...mw });
-    }
-    // Update both draft and applied sub-weights so any open drawer reflects the change
-    useCityScoringStore.setState({ subWeights: sw, appliedSubWeights: sw });
-    setScoringModel("Custom");
-    setActiveSavedSearchId(s.id);
-    toast.success(`Loaded "${s.name}"`);
-  };
-
-  const handleDeleteSavedSearch = (s: SavedSearch) => {
-    toast(`Delete "${s.name}"?`, {
-      action: {
-        label: "Delete",
-        onClick: async () => {
-          const { error } = await supabase.from("saved_searches").delete().eq("id", s.id);
-          if (error) {
-            console.error("deleteSavedSearch", error);
-            toast.error("Delete failed");
-            return;
-          }
-          toast.success(`Deleted "${s.name}"`);
-          if (activeSavedSearchId === s.id) setActiveSavedSearchId(null);
-          refreshSavedSearches();
-        },
-      },
-      cancel: { label: "Cancel", onClick: () => {} },
-    });
-  };
+  // (handleSaveSearch / handleLoadSavedSearch / handleDeleteSavedSearch moved into useSavedSearches)
 
   // ─── AI City Query (Ask AI) ──────────────────────────────────────────────
   // Lovable AI Gateway-powered natural-language search. Translates queries
@@ -478,7 +399,7 @@ const CityScoring = () => {
 
       if (mode === "absolute") {
         setScoringModel("Custom");
-        setActiveSavedSearchId(null);
+        clearActiveSavedSearch();
         setWeights((prev) => {
           const keys = Object.keys(prev) as CategoryKey[];
           const next = { ...prev } as Record<CategoryKey, number>;
@@ -493,7 +414,7 @@ const CityScoring = () => {
         toast.success("AI set your category weights exactly as requested.");
       } else if (adjEntries.length > 0) {
         setScoringModel("Custom");
-        setActiveSavedSearchId(null);
+        clearActiveSavedSearch();
         setWeights((prev) => {
           const keys = Object.keys(prev) as CategoryKey[];
           // Single-category dominant intent ("rank by demand", "focus on pricing power")

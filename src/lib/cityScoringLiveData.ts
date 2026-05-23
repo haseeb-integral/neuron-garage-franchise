@@ -192,7 +192,7 @@ export async function loadLiveRankedMarkets(_opts?: { includeExtras?: boolean })
   }
   if (!scoredRows?.length) return [];
 
-  const mapped: RankedMarket[] = scoredRows.map((row: any, index: number) => {
+  const mapped: RankedMarket[] = (scoredRows as ScoredCityRow[]).map((row, index) => {
     const state = normalizeState(row.state_name ?? row.state_abbr);
     const city = row.city_name ?? "Unknown";
     const composite = toNumber(row.composite_score_default, 0);

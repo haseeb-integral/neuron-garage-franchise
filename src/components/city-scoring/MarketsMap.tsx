@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from "react-leaf
 import "leaflet/dist/leaflet.css";
 import { supabase } from "@/integrations/supabase/client";
 import type { RankedMarket } from "@/lib/cityScoringLiveData";
+import { buildMarketView } from "@/lib/marketView";
 
 const TIER_COLOR: Record<string, string> = {
   A: "#0ea66e",

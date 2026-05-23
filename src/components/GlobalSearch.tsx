@@ -5,6 +5,7 @@ import { Search, Loader2 } from "lucide-react";
 import { STAGES } from "@/data/pipelineData";
 import { sampleTeachers } from "@/data/teacherData";
 import { sampleCities } from "@/data/cityData";
+import { buildMarketView } from "@/lib/marketView";
 import { supabase } from "@/integrations/supabase/client";
 
 interface ResultItem { key: string; label: string; sub: string; onSelect: () => void; }

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Search } from "lucide-react";
 import { sampleCities } from "@/data/cityData";
+import { buildMarketView } from "@/lib/marketView";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 

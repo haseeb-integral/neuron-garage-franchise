@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getNearbyMarkets, type NearbyMarket } from "@/lib/cityScoringLiveData";
+import { buildMarketView } from "@/lib/marketView";
 
 interface Props {
   cityId: string | null | undefined;

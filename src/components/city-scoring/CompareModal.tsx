@@ -1,6 +1,7 @@
 import { CityData } from "@/data/cityData";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { TierBadge } from "./TierBadge";
+import { buildMarketView } from "@/lib/marketView";
 
 const breakdownLabels: Record<string, string> = {
   summerCampDemand: "Summer Camp Demand",

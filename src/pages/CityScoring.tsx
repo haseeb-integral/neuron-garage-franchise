@@ -5,7 +5,7 @@
 // are deliberate. Drift is still caught at runtime by `assertNoCompositeDrift`.
 // New rendered composite values must go through marketView — do not add raw reads.
 /* eslint-disable no-restricted-syntax */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Bell, HelpCircle, ChevronDown, LogOut, Settings, Search, Download, FileText,

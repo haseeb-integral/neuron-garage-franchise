@@ -709,7 +709,7 @@ const CityScoring = () => {
     toast.success("Weights reset to defaults");
   };
 
-  const toggleCompare = (id: number) => {
+  const toggleCompare = useCallback((id: number) => {
     setSelectedForCompare((p) => {
       if (p.includes(id)) return p.filter((i) => i !== id);
       if (p.length >= 10) {
@@ -718,7 +718,7 @@ const CityScoring = () => {
       }
       return [...p, id];
     });
-  };
+  }, [setSelectedForCompare]);
 
   const buildCsvDownload = async () => {
     try {

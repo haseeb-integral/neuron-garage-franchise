@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { ArrowRight, Bookmark, BookmarkCheck, Eye, FileText, GitCompare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";

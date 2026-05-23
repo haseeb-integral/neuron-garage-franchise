@@ -356,21 +356,23 @@ export function buildSeededFallbackSignalsFromScored(
   // instead of getting a near-empty panel that looks like a UI bug.
 }
 
+export type MergedSignal = SeededFallbackSignal | (LiveSignal & { signal_key: string });
+
 export function mergeSignalsPreferLive(
-  liveSignals: Array<Record<string, any>> | null | undefined,
-  scoredRow?: Record<string, any> | null,
+  liveSignals: LiveSignal[] | null | undefined,
+  scoredRow?: Partial<ScoredCityRow> | null,
   childrenPct?: number | null,
-) {
+): MergedSignal[] {
   const seededSignals = buildSeededFallbackSignalsFromScored(scoredRow, childrenPct);
-  const liveByCanonical = new Map<string, Record<string, any>>();
+  const liveByCanonical = new Map<string, LiveSignal & { signal_key: string }>();
 
   (liveSignals ?? []).forEach((signal) => {
-    const key = canonicalKey(signal?.signal_key);
+    const key = canonicalKey(signal?.signal_key ?? null);
     if (!key) return;
     liveByCanonical.set(key, { ...signal, signal_key: key });
   });
 
-  const merged = seededSignals.map((seeded) => {
+  const merged: MergedSignal[] = seededSignals.map((seeded) => {
     const live = liveByCanonical.get(seeded.signal_key);
     return live
       ? {
@@ -387,13 +389,13 @@ export function mergeSignalsPreferLive(
   liveByCanonical.forEach((signal, key) => {
     if (!merged.some((row) => row.signal_key === key)) {
       merged.push({
+        ...signal,
         source: signal.source ?? "Live",
         signal_key: key,
         label: signal.label ?? key,
         value: signal.value ?? null,
         raw_data: signal.raw_data ?? null,
-        ...signal,
-      } as any);
+      });
     }
   });
 

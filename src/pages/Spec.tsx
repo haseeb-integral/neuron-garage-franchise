@@ -102,31 +102,33 @@ const Spec = () => {
         <article className="rounded-[24px] bg-white p-7 md:p-10 max-w-3xl" style={{ border: "1px solid #eef2f7", boxShadow: "0 10px 30px rgba(11,26,54,0.05)" }}>
           <Section id="overview" title="1. Overview">
             <p>
-              <strong>Neuron Garage Franchise Acquisition System</strong> is an internal tool that helps the
-              Neuron Garage franchise development team identify the best U.S. markets for new franchises,
-              source elementary-school teachers as candidate franchisees, qualify those candidates through a
-              structured 7-step pipeline, and onboard signed franchisees through a standardized 7-step
-              launch program.
+              <strong>Neuron Garage Franchise Acquisition System</strong> is the internal recruiting console
+              used by the Neuron Garage franchise development team to (1) identify the best U.S. markets for new
+              franchises, (2) source elementary-school teachers as candidate franchisees, (3) qualify those
+              candidates through a structured 7-stage pipeline, and (4) run targeted email outreach via
+              SmartLead.
             </p>
             <p>
-              The product is a single-page React web application optimized for desktop, tablet, and mobile.
-              The current build is a high-fidelity, fully clickable prototype using mock data — no backend
-              writes are persisted across sessions.
+              The product is a React + TypeScript single-page app running on Lovable Cloud (Supabase) — Postgres
+              for data, email/password auth, Edge Functions for vendor API proxies, Realtime for live inbox
+              updates. Live data integrations include Census ACS, BLS, BEA, FRED, NCES CCD, Apollo, Apify,
+              Firecrawl, and SmartLead. It is an internal tool for three users (Kaylie, Sam, Haseeb).
             </p>
             <SubHeading>Goals</SubHeading>
             <ul className="list-disc pl-5 space-y-1">
               <li>Replace ad-hoc spreadsheets and email threads with a single source of truth.</li>
               <li>Use scoring + AI assists to focus the team on the highest-value cities and prospects.</li>
               <li>Make every stage of the pipeline observable, accountable, and time-bound.</li>
-              <li>Give new franchise development reps a guided "what do I do next?" experience.</li>
+              <li>Give every score, badge, and ranked list a visible "Show Formula" so nothing is a black box.</li>
             </ul>
-            <SubHeading>Non-Goals (this prototype)</SubHeading>
+            <SubHeading>Non-Goals (current scope)</SubHeading>
             <ul className="list-disc pl-5 space-y-1">
-              <li>No real authentication, persistence, or multi-user collaboration.</li>
-              <li>No live data feeds (Census, Yelp, LinkedIn, ZoomInfo, etc.) — all data is mocked.</li>
+              <li>No public-facing surfaces — internal tool, three known users.</li>
               <li>No payment processing or contract execution; e-sign is represented as a status only.</li>
+              <li>Phase 2 Onboarding (signed-franchisee launch program) is in the codebase but parked until the first signings.</li>
             </ul>
           </Section>
+
 
           <Section id="users" title="2. Users & Roles">
             <p>
@@ -168,19 +170,22 @@ const Spec = () => {
             <SubHeading>App Shell</SubHeading>
             <ul className="list-disc pl-5 space-y-1">
               <li><strong>Persistent left sidebar</strong> on desktop (≥768 px), drawer on mobile. Brand color <code>#003c7e</code>.</li>
-              <li><strong>Help icon (?)</strong> top-right — restarts the guided tour.</li>
-              <li><strong>Mobile top bar</strong> with hamburger, brand mark, and help icon. Touch targets ≥44 px.</li>
+              <li><strong>Five primary nav items:</strong> Dashboard, City Search, Teacher Search, Email Outreach, Candidate Pipeline.</li>
+              <li><strong>Docs group:</strong> User's Guide, SmartLead API Spec, Outreach Guide, Demographics Method, CSI Methodology, Full Specification.</li>
+              <li><strong>Mobile top bar</strong> with hamburger and brand mark. Touch targets ≥44 px.</li>
             </ul>
             <SubHeading>Routes</SubHeading>
             <ul className="list-disc pl-5 space-y-1">
               <li><code>/</code> — Dashboard</li>
-              <li><code>/city-scoring</code> — City Scoring</li>
+              <li><code>/city-scoring</code> — City Search</li>
               <li><code>/teacher-prospects</code> — Teacher Search</li>
+              <li><code>/email-outreach</code> — Email Outreach (SmartLead)</li>
               <li><code>/candidate-pipeline</code> — Candidate Pipeline</li>
-              <li><code>/onboarding</code> — Onboarding</li>
-              <li><code>/spec</code> — This document</li>
+              <li><code>/users-guide</code>, <code>/smartlead-spec</code>, <code>/email-outreach-docs</code>, <code>/demographics-methodology</code>, <code>/methodology</code>, <code>/spec</code> — documentation pages</li>
+              <li><code>/auth</code> — email/password login</li>
             </ul>
           </Section>
+
 
           <Section id="dashboard" title="5. Dashboard">
             <SubHeading>Purpose</SubHeading>

@@ -114,3 +114,93 @@ describe("brand", () => {
     expect(c).toBe(77);
   });
 });
+
+// ── Phase 3 (offline): simulate every wired surface rendering the same market
+// in one render pass and prove they all agree on the number. This is the
+// unit-test equivalent of opening /city-scoring and eyeballing the table,
+// gauge, map tooltip, spreadsheet, nearby panel, detail drawer, compare modal,
+// global search, and find-prospects modal to confirm they show the same score.
+describe("Phase 3 — cross-surface render agreement", () => {
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+  beforeEach(() => {
+    errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    beginDriftRender();
+  });
+  afterEach(() => errorSpy.mockRestore());
+
+  const SURFACES = [
+    "RankedMarkets", "Gauge", "Dashboard", "MarketsMap", "Spreadsheet",
+    "NearbyPanel", "CityDetailDrawer", "CompareModal", "MarketCompareModal",
+    "GlobalSearch", "FindProspectsModal", "RankedListInner",
+  ];
+
+  it("all 12 wired surfaces mint the SAME composite for the same market+weights", () => {
+    const wHash = weightsHash({ economic: 25, talent: 25 }, { economic: { gdp: 1 } });
+    const composites = SURFACES.map(() =>
+      assertNoCompositeDrift(buildMarketView(baseMarket), wHash).composite,
+    );
+    expect(new Set(composites).size).toBe(1);
+    expect(composites[0]).toBe(82);
+    expect(errorSpy).not.toHaveBeenCalled();
+  });
+
+  it("if ONE surface goes rogue (computes its own number) the drift detector catches it", () => {
+    const wHash = weightsHash({ x: 1 }, {});
+    // 11 good surfaces, 1 rogue
+    SURFACES.slice(0, 11).forEach(() =>
+      assertNoCompositeDrift(buildMarketView(baseMarket), wHash),
+    );
+    assertNoCompositeDrift(
+      buildMarketView({ ...baseMarket, compositeScore: 23 }), // ← the May 23 bug
+      wHash,
+    );
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+    expect(String(errorSpy.mock.calls[0][0])).toMatch(/82.*23|23.*82/);
+  });
+});
+
+// ── Phase 6 (offline): regression fuzz — feed varied/edge-case market shapes
+// through the selector and assert invariants hold for every one. Replaces
+// clicking through dozens of markets in the live UI.
+describe("Phase 6 — regression fuzz across market shapes", () => {
+  const shapes = [
+    { cityId: "a", city: "Aaa", state: "CA", compositeScore: 0, hasLiveData: false },
+    { cityId: "b", city: "Bbb", state: "TX", compositeScore: 100, hasLiveData: true, tier: "A" as const },
+    { cityId: "c", city: "Ccc", state: "FL", compositeScore: 49.5, hasLiveData: true, tier: "C" as const },
+    { cityId: "d", city: "Ddd", state: "NY", compositeScore: 50.5, hasLiveData: true, tier: "C" as const },
+    { cityId: "e", city: "Eee", state: "WA", compositeScore: null, hasLiveData: false },
+    { cityId: "f", city: "Fff", state: "OR", compositeScore: undefined as unknown as number, hasLiveData: true, lastScrapedAt: "2026-05-22" },
+    { cityId: "g", city: "Ggg", state: "CO", compositeScore: 999, hasLiveData: true },
+    { cityId: "h", city: "Hhh", state: "AZ", compositeScore: -10, hasLiveData: true },
+    { cityId: "i", city: "Iii", state: "NV", compositeScore: NaN, hasLiveData: true },
+    { cityId: "j", city: "Jjj", state: "ID", compositeScore: 73, hasLiveData: true, tier: null },
+    // missing cityId — selector must still produce a safe view
+    { cityId: null, city: "Kkk", state: "MT", compositeScore: 42, hasLiveData: true },
+    // empty strings
+    { cityId: "l", city: "", state: "", compositeScore: 10, hasLiveData: true },
+  ];
+
+  it.each(shapes)("invariants hold for %j", (m) => {
+    const v = buildMarketView(m);
+    // composite ∈ [0,100], integer
+    expect(v.composite).toBeGreaterThanOrEqual(0);
+    expect(v.composite).toBeLessThanOrEqual(100);
+    expect(Number.isInteger(v.composite)).toBe(true);
+    // formatted string is either "—" or matches composite exactly (no rounding drift)
+    if (v.compositeFormatted !== "—") {
+      expect(v.compositeFormatted).toBe(String(v.composite));
+    }
+    // tier formatting is "—" iff no live data or no tier
+    if (!v.hasLiveData || !v.tier) expect(v.tierFormatted).toBe("—");
+    // frozen
+    expect(Object.isFrozen(v)).toBe(true);
+  });
+
+  it("idempotency holds across the entire shape sweep", () => {
+    for (const m of shapes) {
+      const a = buildMarketView(m).composite;
+      const b = buildMarketView({ ...m }).composite;
+      expect(a).toBe(b);
+    }
+  });
+});

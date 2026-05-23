@@ -3,6 +3,67 @@ import { CityData, sampleCities } from "@/data/cityData";
 import type { CategoryKey } from "@/stores/cityScoringStore";
 import { canonicalKey } from "@/lib/signalAliases";
 
+/**
+ * Subset of `us_cities_scored` columns this module reads.
+ * Keep aligned with the SELECT in `loadLiveRankedMarkets`. All values come
+ * from PostgREST so numerics may surface as numbers or strings; consumers
+ * should run them through `toNumber`.
+ */
+export type ScoredCityRow = {
+  id: string;
+  city_name: string | null;
+  state_name: string | null;
+  state_abbr: string | null;
+  metro_area: string | null;
+  county_name: string | null;
+  metro_counties: string[] | null;
+  population: number | string | null;
+  population_density: number | string | null;
+  children_5_12: number | string | null;
+  median_household_income: number | string | null;
+  dual_working_families_pct: number | string | null;
+  college_degree_pct: number | string | null;
+  cost_of_living_index: number | string | null;
+  public_school_count: number | string | null;
+  public_school_enrollment: number | string | null;
+  public_elementary_count: number | string | null;
+  public_elementary_enrollment: number | string | null;
+  public_elementary_teacher_count: number | string | null;
+  private_elementary_count: number | string | null;
+  charter_elementary_count: number | string | null;
+  composite_score_default: number | string | null;
+  score_demand: number | string | null;
+  score_csi: number | string | null;
+  score_tam_teachers: number | string | null;
+  csi_score: number | string | null;
+  csi_saturation_category: string | null;
+  csi_confidence: number | string | null;
+  csi_national_brand_count_weighted: number | string | null;
+  csi_local_provider_estimate: number | string | null;
+  csi_demand_adjusted_market: number | string | null;
+  csi_brand_detail: unknown;
+  csi_last_updated: string | null;
+  place_type: string | null;
+  census_population_2020: number | string | null;
+  avg_elementary_teacher_salary_usd: number | string | null;
+  col_salary_index: number | string | null;
+  is_registration_state: boolean | null;
+  scored_at: string | null;
+  // Per-source freshness columns are read by `getCitySourceData` via a
+  // narrower SELECT; not required on the main scored-row union.
+};
+
+/** Live `market_signals` row as consumed by the merger. Fields are loose
+ * because legacy fetchers wrote varying shapes; everything is normalized
+ * via `canonicalKey` + the merger fallbacks. */
+export type LiveSignal = {
+  signal_key?: string | null;
+  label?: string | null;
+  value?: string | number | null;
+  source?: string | null;
+  raw_data?: unknown;
+};
+
 export type RankedMarket = {
   id: number;
   cityId?: string;
@@ -21,7 +82,7 @@ export type RankedMarket = {
   source: "live" | "sample";
   hasLiveData: boolean;
   categoryScores?: Partial<Record<CategoryKey, number>>;
-  scoredRow?: Record<string, any> | null;
+  scoredRow?: ScoredCityRow | null;
   sample?: CityData;
 };
 

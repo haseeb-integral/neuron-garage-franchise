@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getNearbyMarkets, type NearbyMarket } from "@/lib/cityScoringLiveData";
+import { buildMarketView } from "@/lib/marketView";
 
 interface Props {
   cityId: string | null | undefined;
@@ -67,7 +68,7 @@ export function NearbyMarketsPanel({ cityId, state, metroArea, refreshKey = 0, o
                     <div className="truncate text-[9.5px] text-[#8794ab]">{m.county}</div>
                   )}
                 </div>
-                <span className="text-[11px] font-bold text-[#07142f] tabular-nums">{m.compositeScore}</span>
+                <span className="text-[11px] font-bold text-[#07142f] tabular-nums">{buildMarketView(m).compositeFormatted}</span>
                 <span
                   className="flex items-center justify-center rounded-full text-[9px] font-bold text-white flex-shrink-0"
                   style={{ width: 16, height: 16, backgroundColor: TIER_BG[m.tier] ?? "#8794ab" }}

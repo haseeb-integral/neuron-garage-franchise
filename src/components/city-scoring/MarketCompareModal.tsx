@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { toast } from "sonner";
 import { buildSeededFallbackSignalsFromScored, type RankedMarket } from "@/lib/cityScoringLiveData";
+import { buildMarketView } from "@/lib/marketView";
 
 const CATEGORY_ROWS: { key: string; label: string; dbKey: string }[] = [
   { key: "demand", label: "Demand", dbKey: "demand" },
@@ -136,7 +137,7 @@ export function MarketCompareModal({ open, onClose, markets }: Props) {
                   <td className="border-r border-[#e6edf7] px-3 py-2.5 font-semibold text-[#07142f]">Overall Score</td>
                   {markets.map((m) => (
                     <td key={m.id} className="border-r border-[#e6edf7] px-2 py-2.5 text-center last:border-r-0">
-                      <Gauge value={m.hasLiveData ? (m.compositeScore || null) : null} />
+                      <Gauge value={m.hasLiveData ? (buildMarketView(m).composite || null) : null} />
                     </td>
                   ))}
                 </tr>

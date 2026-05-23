@@ -1,6 +1,7 @@
 import { CityData } from "@/data/cityData";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { TierBadge } from "./TierBadge";
+import { buildMarketView } from "@/lib/marketView";
 
 const breakdownLabels: Record<string, string> = {
   summerCampDemand: "Summer Camp Demand",
@@ -38,7 +39,7 @@ export function CompareModal({ open, onClose, cities }: Props) {
           </div>
 
           {[
-            { label: "Composite Score", va: a.compositeScore, vb: b.compositeScore },
+            { label: "Composite Score", va: buildMarketView(a).compositeFormatted, vb: buildMarketView(b).compositeFormatted },
             { label: "Population", va: a.population.toLocaleString(), vb: b.population.toLocaleString() },
             { label: "Elem. Schools", va: a.elementarySchools, vb: b.elementarySchools },
             { label: "Children 5-12%", va: `${a.childrenPct}%`, vb: `${b.childrenPct}%` },

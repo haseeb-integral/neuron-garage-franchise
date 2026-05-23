@@ -5,6 +5,7 @@ import { Search, Loader2 } from "lucide-react";
 import { STAGES } from "@/data/pipelineData";
 import { sampleTeachers } from "@/data/teacherData";
 import { sampleCities } from "@/data/cityData";
+import { buildMarketView } from "@/lib/marketView";
 import { supabase } from "@/integrations/supabase/client";
 
 interface ResultItem { key: string; label: string; sub: string; onSelect: () => void; }
@@ -80,7 +81,7 @@ export function GlobalSearch({ placeholder = "Search candidates, prospects, citi
     const cityMatches: ResultItem[] = sampleCities
       .filter((c) => c.city.toLowerCase().includes(q) || c.state.toLowerCase().includes(q))
       .slice(0, 5)
-      .map((c) => ({ key: `city-${c.id}`, label: `${c.city}, ${c.state}`, sub: `Score: ${c.compositeScore} · Tier ${c.tier}`, onSelect: () => navigate(`/city-scoring?city=${c.id}`) }));
+      .map((c) => ({ key: `city-${c.id}`, label: `${c.city}, ${c.state}`, sub: `Score: ${buildMarketView(c).compositeFormatted} · Tier ${c.tier}`, onSelect: () => navigate(`/city-scoring?city=${c.id}`) }));
     return { candidateMatches, prospectMatches, cityMatches };
   }, [query, dbCandidates, navigate]);
 

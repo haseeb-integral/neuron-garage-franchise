@@ -23,4 +23,34 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": "off",
     },
   },
+  // ─── Rule 12 guard (May 23, 2026) ──────────────────────────────────────
+  // Any composite score displayed to a user must come from src/lib/marketView.ts.
+  // Components must never read raw `.compositeScore` off market objects — that
+  // is what caused the Honolulu 88-vs-23 drift. The selector is the only legal
+  // path. Allowed surfaces: the selector itself, the store/data builders that
+  // populate the raw field, and edge functions (server-side).
+  {
+    files: ["src/components/**/*.{ts,tsx}", "src/pages/**/*.{ts,tsx}"],
+    ignores: [
+      "src/lib/marketView.ts",
+      "src/lib/cityScoringLiveData.ts",
+      "src/lib/cityScoringExport.ts",
+      "src/lib/cityScoringPageHelpers.ts",
+      "src/lib/clientSubWeightScoring.ts",
+      "src/lib/clientSubWeightScoring.test.ts",
+      "src/data/**",
+      "src/stores/**",
+      "src/integrations/**",
+    ],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "MemberExpression[property.name='compositeScore']",
+          message:
+            "Rule 12: read composite via buildMarketView(market).composite / .compositeFormatted from @/lib/marketView. Never touch raw .compositeScore in UI code — see AGENTS.md Rule 12 and the May 23 2026 incident.",
+        },
+      ],
+    },
+  },
 );

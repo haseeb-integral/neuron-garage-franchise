@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { RankedMarket } from "@/lib/cityScoringLiveData";
+import { buildMarketView } from "@/lib/marketView";
 
 type ColDef = {
   key: string;
@@ -130,8 +131,8 @@ const COLUMNS: ColDef[] = [
   },
   {
     key: "composite", label: "Composite", align: "right", group: "Scores",
-    get: (m) => m.compositeScore ?? null,
-    render: (m) => <span className="font-semibold text-[#07142f]">{fmtNum1(m.compositeScore)}</span>,
+    get: (m) => buildMarketView(m).composite,
+    render: (m) => <span className="font-semibold text-[#07142f]">{buildMarketView(m).compositeFormatted}</span>,
   },
   {
     key: "score_demand", label: "Demand", align: "right", group: "Scores",
@@ -275,7 +276,7 @@ export default function CitySpreadsheetView({ markets, onOpenCity, onExportCsv }
   // Pre-rank markets by composite (desc) so the # column is stable
   const rankedAll = useMemo(() => {
     return [...markets]
-      .sort((a, b) => (b.compositeScore ?? 0) - (a.compositeScore ?? 0))
+      .sort((a, b) => buildMarketView(b).composite - buildMarketView(a).composite)
       .reduce<Map<number | string, number>>((acc, m, i) => {
         acc.set(m.id, i + 1);
         return acc;

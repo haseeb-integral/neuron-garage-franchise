@@ -1863,7 +1863,11 @@ const CityScoring = () => {
 
       {screenMode === "spreadsheet" && (
         <CitySpreadsheetView
-          markets={baseRankedMarkets}
+          // Use the percentile-tiered universe (top 5% = A, next 15% = B,
+          // next 30% = C, rest = D) so the Spreadsheet matches the Dashboard.
+          // baseRankedMarkets carries the legacy score-based tier (A ≥ 80),
+          // which gives zero A's because top composite is ~74.
+          markets={rerankedUniverse}
           onExportCsv={buildCsvDownload}
           onOpenCity={(m) => {
             pickMarket({ city: m.city, state: m.state, id: m.id });
@@ -1871,6 +1875,7 @@ const CityScoring = () => {
           }}
         />
       )}
+
 
       {screenMode === "dashboard" && (
       <>

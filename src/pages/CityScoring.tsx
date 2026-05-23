@@ -89,6 +89,7 @@ import { CityFiltersRow } from "@/components/city-scoring/CityFiltersRow";
 import { CityWeightsPanel } from "@/components/city-scoring/CityWeightsPanel";
 import { RankedMarketsList } from "@/components/city-scoring/RankedMarketsList";
 import { SelectedMarketPanel } from "@/components/city-scoring/SelectedMarketPanel";
+import { ExecutiveSummaryPanel } from "@/components/city-scoring/ExecutiveSummaryPanel";
 
 
 // Feature flag: hide live on-demand API widgets on the detail panel.

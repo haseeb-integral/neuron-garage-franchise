@@ -216,7 +216,7 @@ const CityScoring = () => {
     if (scoringModel === "Custom") {
       setCustomWeightsSnapshot({ ...appliedWeights });
     }
-    setActiveSavedSearchId(null);
+    clearActiveSavedSearch();
     setScoringModel(name);
     // Snap weights directly — the previous rAF tween caused visible page jitter
     // (rapid re-renders + animate-pulse on the connector chevron). The active-tile

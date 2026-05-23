@@ -158,7 +158,8 @@ describe("Phase 3 — cross-surface render agreement", () => {
       wHash,
     );
     expect(errorSpy).toHaveBeenCalledTimes(1);
-    expect(String(errorSpy.mock.calls[0][0])).toMatch(/82.*23|23.*82/);
+    // Raw 82→98, raw 23→58 after calibration. Drift detector reports both.
+    expect(String(errorSpy.mock.calls[0][0])).toMatch(/98.*58|58.*98/);
   });
 });
 

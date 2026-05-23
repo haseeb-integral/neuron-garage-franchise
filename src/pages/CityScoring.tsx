@@ -632,8 +632,10 @@ const CityScoring = () => {
       city: selected.city,
       state: selected.state,
       cityId: selected.cityId,
+      // eslint-disable-next-line no-restricted-syntax -- feeding marketView with the data-shaped value
       compositeScore: selected.compositeScore as number | null,
       tier: selected.tier as any,
+      // eslint-disable-next-line no-restricted-syntax -- feeding marketView with the data-shaped value
       hasLiveData: !!selected.cityId && (Number(selected.compositeScore ?? 0) > 0 || !!selected.lastScrapedAt),
       population: (selected.population as number | null | undefined) ?? null,
       competitorCount: (selected.competitorCount as number | null | undefined) ?? null,

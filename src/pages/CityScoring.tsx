@@ -83,6 +83,7 @@ import { useSavedSearches } from "@/hooks/citySearch/useSavedSearches";
 import { useAskAi } from "@/hooks/citySearch/useAskAi";
 import { useScreenMode } from "@/hooks/citySearch/useScreenMode";
 import { useLiveRankedMarkets, useLiveSelectedMarket } from "@/hooks/citySearch/useLiveMarketDetail";
+import { useCityRanking } from "@/hooks/citySearch/useCityRanking";
 
 
 // Feature flag: hide live on-demand API widgets on the detail panel.
@@ -431,209 +432,35 @@ const CityScoring = () => {
     [],
   );
 
-  const rerankedUniverse = useMemo(() => {
-    // Mark the start of a render pass for the dev-only composite-drift detector.
-    // Any (cityId, weightsHash) → composite logged twice with different values
-    // in the same pass throws a red error in dev. See src/lib/marketView.ts.
-    beginDriftRender();
-    const wHash = buildWeightsHash(appliedWeights, appliedSubWeights);
-
-    const masterWeightsAreDefault = JSON.stringify(appliedWeights) === JSON.stringify(DEFAULT_WEIGHTS);
-    const subWeightsAreDefault = JSON.stringify(appliedSubWeights) === JSON.stringify(DEFAULT_SUB_WEIGHTS);
-    const reRanked = baseRankedMarkets.map((market) => {
-      if (!market.hasLiveData || !market.categoryScores) return market;
-      if (masterWeightsAreDefault && subWeightsAreDefault) return market;
-
-      let cats: Record<CategoryKey, number | null>;
-
-      if (subWeightsAreDefault) {
-        // User only touched the master sliders — keep the server's category
-        // scores verbatim (so a city with score_demand=100 stays at 100 when
-        // demand is weighted up). Recomputing from raw sub-signals here would
-        // suppress legitimate Tier A markets.
-        cats = { ...market.categoryScores } as Record<CategoryKey, number | null>;
-      } else {
-        const seededSignalValues = Object.fromEntries(
-          buildSeededFallbackSignalsFromScored(market.scoredRow).map((signal) => [
-            signal.signal_key,
-            parseSignalValue(signal.value),
-          ]),
-        );
-        cats = {} as Record<CategoryKey, number | null>;
-        (Object.keys(METRICS_BY_CATEGORY) as CategoryKey[]).forEach((key) => {
-          cats[key] = recomputeCategoryScore(
-            METRICS_BY_CATEGORY[key] ?? [],
-            seededSignalValues,
-            appliedSubWeights[key] ?? {},
-            market.categoryScores?.[key] ?? null,
-          ).score;
-        });
-      }
-
-      const { composite } = recomputeComposite(cats, appliedWeights);
-      return {
-        ...market,
-        compositeScore: composite,
-      };
-    });
-
-    const tiered = assignPercentileTiers(reRanked);
-
-    // Attach a frozen MarketView to every row. This is the single object the
-    // UI is supposed to read for composite/tier/formatted strings. Tagging it
-    // here means table + drawer + gauge + CSV + exports all consume the same
-    // view, and the drift detector watches every mint.
-    return tiered.map((m: any) => ({
-      ...m,
-      view: assertNoCompositeDrift(buildMarketView(m), wHash),
-    }));
-  }, [baseRankedMarkets, appliedWeights, appliedSubWeights]);
-
-  const filtered = useMemo(() => {
-    const base = filterRankedMarkets(rerankedUniverse, {
+  const {
+    rerankedUniverse,
+    filtered,
+    weightsPending,
+    committedTierCounts,
+    liveScoredTotal,
+    filteredLiveCount,
+    previewTierCounts,
+    tierBarExtras,
+    mapMarkets,
+    percentileById,
+  } = useCityRanking({
+    baseRankedMarkets,
+    appliedWeights,
+    appliedSubWeights,
+    weights,
+    filters: {
       searchTerm,
       stateFilter,
       tierFilter,
       nonRegOnly,
       minScore,
       minPop,
-    });
-    const q = cityFilter.trim().toLowerCase();
-    let out = q ? base.filter((m: any) => String(m.city ?? "").toLowerCase().includes(q)) : base;
-    if (watchlistOnly) {
-      out = out.filter((m: any) => m.cityId && watchlistCityIds.has(m.cityId));
-    }
-    return out.sort((a, b) => {
-      if (a.hasLiveData !== b.hasLiveData) return a.hasLiveData ? -1 : 1;
-      if (a.hasLiveData) return b.compositeScore - a.compositeScore;
-      return a.city.localeCompare(b.city);
-    });
-  }, [rerankedUniverse, searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop, cityFilter, watchlistOnly, watchlistCityIds]);
+      cityFilter,
+      watchlistOnly,
+      watchlistCityIds,
+    },
+  });
 
-
-  // ─── Tier counts (committed) + preview projection (draft weights) ──────
-  // SINGLE-SOURCE-OF-TRUTH RULE: committed numbers come from `filtered`
-  // (what the table renders). Preview is a cheap projection — composite
-  // recomputed with the draft `weights` on every market that has live
-  // category scores. Pure read, no sort, no render.
-  const weightsPending = useMemo(
-    () => JSON.stringify(weights) !== JSON.stringify(appliedWeights),
-    [weights, appliedWeights],
-  );
-  const committedTierCounts = useMemo<TierCounts>(() => {
-    return countLiveTiers(rerankedUniverse);
-  }, [rerankedUniverse]);
-  const liveScoredTotal = useMemo(
-    () => rerankedUniverse.filter((m: any) => m.hasLiveData).length,
-    [rerankedUniverse],
-  );
-  const filteredLiveCount = useMemo(
-    () => filtered.filter((m: any) => m.hasLiveData).length,
-    [filtered],
-  );
-  const previewTierCounts = useMemo<TierCounts | null>(() => {
-    if (!weightsPending) return null;
-    const previewUniverse = baseRankedMarkets.map((m: any) => {
-      if (!m.hasLiveData) return m;
-      const cats = m.categoryScores as Record<CategoryKey, number | null> | undefined;
-      if (cats) {
-        const { composite } = recomputeComposite(cats, weights);
-        return { ...m, compositeScore: composite };
-      }
-      return { ...m, compositeScore: m.compositeScore ?? 0 };
-    });
-    return countLiveTiers(assignPercentileTiers(previewUniverse));
-  }, [baseRankedMarkets, weights, weightsPending]);
-
-
-  // Extra summary stats for the Tier Distribution strip (avg score, qualified %, top market).
-  const tierBarExtras = useMemo(() => {
-    const live = rerankedUniverse.filter((m: any) => m.hasLiveData);
-    const n = live.length;
-    if (n === 0) {
-      return { avgScore: null, avgScorePreview: null, qualifiedPct: null, qualifiedPctPreview: null, topMarkets: [] };
-    }
-    const sum = live.reduce((s: number, m: any) => s + Number(m.compositeScore ?? 0), 0);
-    const avgScore = sum / n;
-    const ab = (committedTierCounts.A ?? 0) + (committedTierCounts.B ?? 0);
-    const qualifiedPct = (ab / n) * 100;
-
-    let previewAvg: number | null = null;
-    let previewQualPct: number | null = null;
-    if (weightsPending) {
-      let pSum = 0;
-      live.forEach((m: any) => {
-        const cats = m.categoryScores as Record<CategoryKey, number | null> | undefined;
-        if (cats) {
-          const { composite } = recomputeComposite(cats, weights);
-          pSum += composite;
-        } else {
-          pSum += Number(m.compositeScore ?? 0);
-        }
-      });
-      previewAvg = pSum / n;
-      if (previewTierCounts) {
-        previewQualPct = ((previewTierCounts.A + previewTierCounts.B) / n) * 100;
-      }
-    }
-
-    const topMarkets = [...live]
-      .sort((a: any, b: any) => buildMarketView(b).composite - buildMarketView(a).composite)
-      .slice(0, 12)
-      .map((m: any) => ({
-        label: `${m.city}, ${m.state}`,
-        score: buildMarketView(m).composite,
-      }));
-
-
-    return {
-      avgScore,
-      avgScorePreview: previewAvg,
-      qualifiedPct,
-      qualifiedPctPreview: previewQualPct,
-      topMarkets,
-    };
-  }, [rerankedUniverse, committedTierCounts, previewTierCounts, weights, weightsPending]);
-
-  // Markets shown on the map: same filters as the table EXCEPT we ignore the
-  // Tier dropdown and Min Score slider, so picking a state (e.g. Alabama) that
-  // has no Tier A/B cities still plots its Tier C markets instead of going blank.
-  const mapMarkets = useMemo(() => {
-    const base = filterRankedMarkets(baseRankedMarkets, {
-      searchTerm,
-      stateFilter,
-      tierFilter: "All",
-      nonRegOnly,
-      minScore: 0,
-      minPop,
-    });
-    const q = cityFilter.trim().toLowerCase();
-    let out = q ? base.filter((m: any) => String(m.city ?? "").toLowerCase().includes(q)) : base;
-    if (watchlistOnly) {
-      out = out.filter((m: any) => m.cityId && watchlistCityIds.has(m.cityId));
-    }
-    return out;
-  }, [baseRankedMarkets, searchTerm, stateFilter, nonRegOnly, minPop, cityFilter, watchlistOnly, watchlistCityIds]);
-
-
-  // Reset to page 1 when watchlist filter toggles
-  useEffect(() => { setPage(1); }, [watchlistOnly]);
-
-  // Percentile rank within currently filtered list (only live-data rows are ranked).
-  // 100 = top scorer, 0 = bottom. Used in the Tier badge tooltip.
-  const percentileById = useMemo(() => {
-    const live = filtered.filter((m: any) => m.hasLiveData);
-    const sorted = [...live].sort(
-      (a: any, b: any) => Number(b.compositeScore ?? 0) - Number(a.compositeScore ?? 0),
-    );
-    const total = sorted.length;
-    const map = new Map<string | number, number>();
-    sorted.forEach((m: any, idx) => {
-      const pct = total <= 1 ? 100 : Math.round((1 - idx / (total - 1)) * 100);
-      map.set(m.id, pct);
-    });
-    return map;
-  }, [filtered]);
 
   // Reset pagination whenever filter inputs change
   useEffect(() => {

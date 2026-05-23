@@ -24,7 +24,12 @@ interface Props {
   /** Number of live-scored markets currently visible in the table after filters. */
   filteredLive?: number;
   extras?: TierBarExtras;
+  /** Currently active tier filter ("All" or "A"/"B"/"C"/"D"). */
+  activeTier?: string;
+  /** Toggle the table's tier filter — click a pill to filter, click again to clear. */
+  onTierClick?: (tier: "A" | "B" | "C" | "D") => void;
 }
+
 
 const TIER_META: { key: keyof TierCounts; label: string; bg: string; fg: string; border: string }[] = [
   { key: "A", label: "Tier A", bg: "#e6f7ef", fg: "#0ea66e", border: "#bfe7d3" },

@@ -110,6 +110,7 @@ export function useTeacherProspectsData(args: UseTeacherProspectsDataArgs) {
   const [totalCount, setTotalCount] = useState(0);
   const [stats, setStats] = useState<Stats | null>(null);
   const [statsError, setStatsError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [cities, setCities] = useState<string[]>([]);
   const [loadingProspects, setLoadingProspects] = useState(true);
   const [loadedAt, setLoadedAt] = useState<Date | null>(null);

@@ -65,6 +65,13 @@ import { AiAnswerCard, type AiResult } from "@/components/city-scoring/AiAnswerC
 import { TierCountsBar, type TierCounts } from "@/components/city-scoring/TierCountsBar";
 import { PreviewBadge } from "@/components/city-scoring/PreviewBadge";
 import { RowScorePopover } from "@/components/city-scoring/RowScorePopover";
+import {
+  buildMarketView,
+  beginDriftRender,
+  assertNoCompositeDrift,
+  weightsHash as buildWeightsHash,
+  type MarketView,
+} from "@/lib/marketView";
 
 
 // Feature flag: hide live on-demand API widgets on the detail panel.
@@ -661,6 +668,12 @@ const CityScoring = () => {
   );
 
   const rerankedUniverse = useMemo(() => {
+    // Mark the start of a render pass for the dev-only composite-drift detector.
+    // Any (cityId, weightsHash) → composite logged twice with different values
+    // in the same pass throws a red error in dev. See src/lib/marketView.ts.
+    beginDriftRender();
+    const wHash = buildWeightsHash(appliedWeights, appliedSubWeights);
+
     const masterWeightsAreDefault = JSON.stringify(appliedWeights) === JSON.stringify(DEFAULT_WEIGHTS);
     const subWeightsAreDefault = JSON.stringify(appliedSubWeights) === JSON.stringify(DEFAULT_SUB_WEIGHTS);
     const reRanked = baseRankedMarkets.map((market) => {
@@ -700,7 +713,16 @@ const CityScoring = () => {
       };
     });
 
-    return assignPercentileTiers(reRanked);
+    const tiered = assignPercentileTiers(reRanked);
+
+    // Attach a frozen MarketView to every row. This is the single object the
+    // UI is supposed to read for composite/tier/formatted strings. Tagging it
+    // here means table + drawer + gauge + CSV + exports all consume the same
+    // view, and the drift detector watches every mint.
+    return tiered.map((m: any) => ({
+      ...m,
+      view: assertNoCompositeDrift(buildMarketView(m), wHash),
+    }));
   }, [baseRankedMarkets, appliedWeights, appliedSubWeights]);
 
   const filtered = useMemo(() => {
@@ -1005,8 +1027,26 @@ const CityScoring = () => {
     lastScrapedAt: selectedLiveCity?.last_scraped_at ?? selectedRankedMarket?.lastScrapedAt ?? null,
     scored: selectedLiveCity?.scored ?? selectedRankedMarket?.scoredRow ?? null,
   };
-  const selectedHasLiveData =
-    !!selected.cityId && (Number(selected.compositeScore ?? 0) > 0 || !!selected.lastScrapedAt);
+  // Canonical MarketView for the selected market. ALL right-panel surfaces
+  // (gauge, executive summary, market summary, popover, CSV) MUST read
+  // composite/tier/formatted strings from `selectedView`, never compute their
+  // own. If you see code doing arithmetic on `selected.compositeScore` in JSX,
+  // route it through `selectedView` instead. See src/lib/marketView.ts.
+  const selectedView: MarketView = assertNoCompositeDrift(
+    buildMarketView({
+      city: selected.city,
+      state: selected.state,
+      cityId: selected.cityId,
+      compositeScore: selected.compositeScore as number | null,
+      tier: selected.tier as any,
+      hasLiveData: !!selected.cityId && (Number(selected.compositeScore ?? 0) > 0 || !!selected.lastScrapedAt),
+      population: (selected.population as number | null | undefined) ?? null,
+      competitorCount: (selected.competitorCount as number | null | undefined) ?? null,
+      lastScrapedAt: selected.lastScrapedAt ?? null,
+    }),
+    buildWeightsHash(appliedWeights, appliedSubWeights),
+  );
+  const selectedHasLiveData = selectedView.hasLiveData;
 
   // Load live DB-backed data for the currently selected market.
   // Canonical source: us_cities_scored (Sam's pre-seeded ~948-city dataset).
@@ -1464,11 +1504,9 @@ const CityScoring = () => {
     });
   }
 
-  // detailScore MUST match the table SCORE + gauge — read from the canonical
-  // reranked composite, NOT the raw DB row. Was producing wrong numbers in the
-  // Market Summary and Executive Summary prose (e.g. "Louisville scores 23/100"
-  // while the gauge correctly showed 88).
-  const detailScore = selected.compositeScore;
+  // detailScore MUST match the table SCORE + gauge. Sourced from the canonical
+  // MarketView built once per render (src/lib/marketView.ts). Do not recompute.
+  const detailScore = selectedView.composite;
 
   const baseDetailCategoryScores = { ...cs, ...liveUiCategoryScores } as Record<CategoryKey, number>;
 
@@ -1529,22 +1567,14 @@ const CityScoring = () => {
   // ─── SINGLE SOURCE OF TRUTH for the headline composite ─────────────────
   // Every UI surface that shows a city's overall score (ranked table SCORE
   // column, right-panel gauge, formula popover, what-if preview, CSV export)
-  // MUST read from `selected.compositeScore` — the value computed once in
-  // `rerankedUniverse` from the user's currently-applied weights.
-  //
-  // DO NOT re-derive a composite anywhere else in this file. Past bug:
-  // a local `liveCompositeNumer / liveCompositeDenom` recomputation here
-  // produced 23 in the gauge while the table showed 88 for the same city.
-  // If you need a "what if I changed weights X" preview, compute that in a
-  // clearly-named hypothetical (e.g. `previewComposite`) — never overload the
-  // headline number.
+  // reads from `selectedView.composite` — a CompositeScore minted exactly
+  // once per render by src/lib/marketView.ts and watched by the drift
+  // detector. Branded TS type prevents components from substituting a raw
+  // number. Past bug: a local recomputation produced 23 in the gauge while
+  // the table showed 88 for the same city — now structurally impossible.
   const appliedTotal = Object.values(appliedWeights).reduce((s, v) => s + v, 0);
-  const headlineComposite = Number.isFinite(selected.compositeScore as number)
-    ? Math.round(selected.compositeScore as number)
-    : (Number.isFinite(detailScore as number) ? Math.round(detailScore as number) : 0);
+  const headlineComposite: number = selectedView.composite;
   // Legacy alias — kept only because several JSX sites reference this name.
-  // New code MUST use `headlineComposite`. Will be removed after the full
-  // single-source-of-truth refactor lands.
   const weightedComposite = headlineComposite;
   // Use the same percentile-based tier that the ranked table uses (top 5% = I,
   // next 15% = II, next 30% = III, rest = IV). Previously this panel recomputed

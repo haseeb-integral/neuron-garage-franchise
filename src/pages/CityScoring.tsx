@@ -793,11 +793,12 @@ const CityScoring = () => {
 
     const topMarkets = [...live]
       .sort((a: any, b: any) => Number(b.compositeScore ?? 0) - Number(a.compositeScore ?? 0))
-      .slice(0, 5)
+      .slice(0, 12)
       .map((m: any) => ({
         label: `${m.city}, ${m.state}`,
         score: Math.round(Number(m.compositeScore ?? 0)),
       }));
+
 
     return {
       avgScore,

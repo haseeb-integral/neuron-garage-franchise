@@ -1504,11 +1504,9 @@ const CityScoring = () => {
     });
   }
 
-  // detailScore MUST match the table SCORE + gauge — read from the canonical
-  // reranked composite, NOT the raw DB row. Was producing wrong numbers in the
-  // Market Summary and Executive Summary prose (e.g. "Louisville scores 23/100"
-  // while the gauge correctly showed 88).
-  const detailScore = selected.compositeScore;
+  // detailScore MUST match the table SCORE + gauge. Sourced from the canonical
+  // MarketView built once per render (src/lib/marketView.ts). Do not recompute.
+  const detailScore = selectedView.composite;
 
   const baseDetailCategoryScores = { ...cs, ...liveUiCategoryScores } as Record<CategoryKey, number>;
 

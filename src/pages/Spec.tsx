@@ -47,15 +47,16 @@ const Spec = () => {
     { id: "journey", label: "3. End-to-End Journey" },
     { id: "navigation", label: "4. Navigation & Layout" },
     { id: "dashboard", label: "5. Dashboard" },
-    { id: "city-scoring", label: "6. City Scoring" },
+    { id: "city-scoring", label: "6. City Search" },
     { id: "teacher-prospects", label: "7. Teacher Search" },
-    { id: "candidate-pipeline", label: "8. Candidate Pipeline" },
-    { id: "onboarding", label: "9. Onboarding" },
-    { id: "tour", label: "10. Guided Tour" },
+    { id: "email-outreach", label: "8. Email Outreach" },
+    { id: "candidate-pipeline", label: "9. Candidate Pipeline" },
+    { id: "onboarding", label: "10. Onboarding (Phase 2)" },
     { id: "design", label: "11. Design System" },
     { id: "data", label: "12. Data Model" },
     { id: "tech", label: "13. Tech Stack" },
-    { id: "future", label: "14. Future Work" },
+    { id: "reliability", label: "14. Reliability & Correctness" },
+    { id: "future", label: "15. Future Work" },
   ];
 
   return (

@@ -1,10 +1,9 @@
 // Rule 12 (AGENTS.md): every UI surface in this file routes through
-// `selectedView` / `buildMarketView()` for displayed composites. The raw
-// `.compositeScore` reads that remain below are data-shaping (sorts,
-// reductions, and the `selected` builder that *feeds* `selectedView`) and
-// are deliberate. Drift is still caught at runtime by `assertNoCompositeDrift`.
+// `selectedView` / `buildMarketView()` for displayed composites. The few raw
+// `.compositeScore` reads that remain are data-shaping in the `selected`
+// builder that *feeds* `selectedView` and are tagged with inline
+// `eslint-disable-next-line` so the file no longer carries a blanket disable.
 // New rendered composite values must go through marketView — do not add raw reads.
-/* eslint-disable no-restricted-syntax */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -611,6 +610,7 @@ const CityScoring = () => {
     cityId: selectedLiveCity?.id ?? selectedRankedMarket?.cityId ?? (selectedSample as any).cityId,
     // Reranked first (matches the table). Fallback only when the market isn't
     // in the live-scored universe at all.
+    // eslint-disable-next-line no-restricted-syntax -- data-shaping that feeds selectedView
     compositeScore: selectedRerankedMarket?.compositeScore ?? selectedLiveCity?.composite_score ?? selectedRankedMarket?.compositeScore ?? selectedSample.compositeScore,
     tier: selectedRerankedMarket?.tier ?? selectedLiveCity?.tier ?? selectedRankedMarket?.tier ?? selectedSample.tier,
     population: selectedLiveCity?.population ?? selectedRankedMarket?.population ?? selectedSample.population,
@@ -632,8 +632,10 @@ const CityScoring = () => {
       city: selected.city,
       state: selected.state,
       cityId: selected.cityId,
+      // eslint-disable-next-line no-restricted-syntax -- feeding marketView with the data-shaped value
       compositeScore: selected.compositeScore as number | null,
       tier: selected.tier as any,
+      // eslint-disable-next-line no-restricted-syntax -- feeding marketView with the data-shaped value
       hasLiveData: !!selected.cityId && (Number(selected.compositeScore ?? 0) > 0 || !!selected.lastScrapedAt),
       population: (selected.population as number | null | undefined) ?? null,
       competitorCount: (selected.competitorCount as number | null | undefined) ?? null,
@@ -2086,7 +2088,7 @@ const CityScoring = () => {
                               className="text-[#07142f] font-semibold tabular-nums hover:underline decoration-dotted underline-offset-2"
                               title="Why this tier? Click to see the formula"
                             >
-                              {c.compositeScore}
+                              {(c as any).view?.composite ?? 0}
                               <span className="ml-0.5 font-mono italic text-[9px] text-[#8794ab]">ƒx</span>
                             </button>
                           </PopoverTrigger>
@@ -2097,13 +2099,13 @@ const CityScoring = () => {
                               categories={VISIBLE_CATEGORIES.map((cc) => ({ key: cc.key, label: cc.label }))}
                               categoryScores={(c as any).categoryScores ?? {}}
                               appliedWeights={appliedWeights}
-                              composite={c.compositeScore}
+                              composite={(c as any).view?.composite ?? 0}
                               tier={c.tier}
                             />
                           </PopoverContent>
                         </Popover>
                         <div className="h-1.5 flex-1 rounded-full bg-[#eef2f7]">
-                          <div className="h-full rounded-full bg-[#0ea66e]" style={{ width: `${c.compositeScore}%` }} />
+                          <div className="h-full rounded-full bg-[#0ea66e]" style={{ width: `${(c as any).view?.composite ?? 0}%` }} />
                         </div>
                       </>
                     ) : (
@@ -2131,7 +2133,7 @@ const CityScoring = () => {
                       <TierBadge
                         tier={c.tier}
                         compact
-                        score={c.compositeScore}
+                        score={(c as any).view?.composite ?? 0}
                         percentile={percentileById.get(c.id)}
                       />
                     </span>

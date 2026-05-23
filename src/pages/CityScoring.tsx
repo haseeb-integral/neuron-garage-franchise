@@ -35,7 +35,10 @@ import { AddCriteriaDrawer } from "@/components/city-scoring/AddCriteriaDrawer";
 import { MarketDetailDrawer } from "@/components/city-scoring/MarketDetailDrawer";
 import { MarketCompareModal } from "@/components/city-scoring/MarketCompareModal";
 import { AddCityModal } from "@/components/city-scoring/AddCityModal";
-import { MarketReportModal } from "@/components/city-scoring/MarketReportModal";
+// Lazy: jspdf (~165KB) only loads when the user opens the report modal.
+const MarketReportModal = lazy(() =>
+  import("@/components/city-scoring/MarketReportModal").then((m) => ({ default: m.MarketReportModal })),
+);
 import CitySpreadsheetView from "@/components/city-scoring/CitySpreadsheetView";
 import { SourceDataPanel } from "@/components/city-scoring/SourceDataPanel";
 // NearbyMarketsPanel removed from /city-scoring 2026-05-21 (its slot now hosts Key Market Signals).

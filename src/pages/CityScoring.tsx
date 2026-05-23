@@ -5,7 +5,7 @@
 // are deliberate. Drift is still caught at runtime by `assertNoCompositeDrift`.
 // New rendered composite values must go through marketView — do not add raw reads.
 /* eslint-disable no-restricted-syntax */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Bell, HelpCircle, ChevronDown, LogOut, Settings, Search, Download, FileText,
@@ -35,11 +35,17 @@ import { AddCriteriaDrawer } from "@/components/city-scoring/AddCriteriaDrawer";
 import { MarketDetailDrawer } from "@/components/city-scoring/MarketDetailDrawer";
 import { MarketCompareModal } from "@/components/city-scoring/MarketCompareModal";
 import { AddCityModal } from "@/components/city-scoring/AddCityModal";
-import { MarketReportModal } from "@/components/city-scoring/MarketReportModal";
+// Lazy: jspdf (~165KB) only loads when the user opens the report modal.
+const MarketReportModal = lazy(() =>
+  import("@/components/city-scoring/MarketReportModal").then((m) => ({ default: m.MarketReportModal })),
+);
 import CitySpreadsheetView from "@/components/city-scoring/CitySpreadsheetView";
 import { SourceDataPanel } from "@/components/city-scoring/SourceDataPanel";
 // NearbyMarketsPanel removed from /city-scoring 2026-05-21 (its slot now hosts Key Market Signals).
-import { MarketsMap } from "@/components/city-scoring/MarketsMap";
+// Lazy: react-leaflet (~84KB) only loads when the user toggles to Map view.
+const MarketsMap = lazy(() =>
+  import("@/components/city-scoring/MarketsMap").then((m) => ({ default: m.MarketsMap })),
+);
 import { TierBadge } from "@/components/city-scoring/TierBadge";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -1485,14 +1491,16 @@ const CityScoring = () => {
       </div>
 
       {viewMode === "map" ? (
-        <MarketsMap
-          markets={mapMarkets}
-          onSelect={(m) => {
-            const sample = sampleCities.find((s) => sameMarket(s.city, s.state, m.city, m.state));
-            pickMarket({ city: m.city, state: m.state, id: sample?.id });
-            setViewMode("table");
-          }}
-        />
+        <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading map…</div>}>
+          <MarketsMap
+            markets={mapMarkets}
+            onSelect={(m) => {
+              const sample = sampleCities.find((s) => sameMarket(s.city, s.state, m.city, m.state));
+              pickMarket({ city: m.city, state: m.state, id: sample?.id });
+              setViewMode("table");
+            }}
+          />
+        </Suspense>
       ) : (
       <>
       {/* TierCountsBar moved up — now sits between Scoring Weights and Ask AI. */}
@@ -1662,14 +1670,18 @@ const CityScoring = () => {
         markets={baseRankedMarkets.filter((m) => selectedForCompare.includes(m.id)).slice(0, 4)}
       />
 
-      <MarketReportModal
-        open={reportOpen}
-        onClose={() => { setReportOpen(false); setReportAutoPdf(false); }}
-        market={selected}
-        categoryScores={detailCategoryScores}
-        refreshVersion={marketRefreshVersion}
-        autoDownload={reportAutoPdf}
-      />
+      {reportOpen && (
+        <Suspense fallback={null}>
+          <MarketReportModal
+            open={reportOpen}
+            onClose={() => { setReportOpen(false); setReportAutoPdf(false); }}
+            market={selected}
+            categoryScores={detailCategoryScores}
+            refreshVersion={marketRefreshVersion}
+            autoDownload={reportAutoPdf}
+          />
+        </Suspense>
+      )}
 
       <Dialog open={saveSearchOpen} onOpenChange={setSaveSearchOpen}>
         <DialogContent className="max-w-sm bg-white">

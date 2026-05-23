@@ -1,16 +1,9 @@
 // useLiveMarketDetail — owns every piece of "live, DB-backed market detail"
-// state for /city-scoring:
+// state for /city-scoring. Split into two surfaces so the page can call each
+// at the point in its render where its inputs are actually defined:
 //
-//   - liveRankedMarkets       — the full ranked universe (loaded once on mount)
-//   - liveCity                — the cities-shaped façade for the SELECTED market
-//   - liveSignals             — seeded evidence rows for the selected market
-//   - liveCategoryScores      — score_demand / score_tam_teachers / inverted CSI
-//   - liveCompetitors         — kept for downstream callers (currently always [])
-//   - liveJob                 — last fetch job (currently always null)
-//   - marketRefreshVersion    — bumped after a manual refresh; widgets reload
-//
-// Reloads automatically whenever (selectedCity, selectedState) changes, with
-// cache-first hydration so market switching doesn't flash stale data.
+//   - useLiveRankedMarkets()           — mount-once load of the ranked universe
+//   - useLiveSelectedMarket({...})     — cache-first detail for SELECTED market
 
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,11 +14,15 @@ import {
   type RankedMarket,
 } from "@/lib/cityScoringLiveData";
 
-// Façade-shaped row that downstream UI reads from. Kept loose because too many
-// places reach into legacy `cities.*` fields to type strictly today.
-type LiveCityRow = Record<string, unknown> & { id?: string; city?: string; state?: string };
-type LiveSignalRow = Record<string, unknown>;
-type LiveJobRow = Record<string, unknown>;
+// Façade-shaped rows. Kept as `any` to match the page's existing read sites,
+// which reach into legacy `cities.*` fields too freely to type strictly today.
+// Tightening is a follow-up.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type LiveCityRow = any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type LiveSignalRow = any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type LiveJobRow = any;
 
 type DetailCache = {
   city: LiveCityRow | null;
@@ -35,17 +32,37 @@ type DetailCache = {
   job: LiveJobRow | null;
 };
 
-interface Options {
+export function useLiveRankedMarkets() {
+  const [liveRankedMarkets, setLiveRankedMarketsRaw] = useState<RankedMarket[]>(
+    () => getCached<RankedMarket[]>("city:rankedMarkets") ?? [],
+  );
+  const setLiveRankedMarkets = useCallback((v: RankedMarket[]) => {
+    setCached("city:rankedMarkets", v);
+    setLiveRankedMarketsRaw(v);
+  }, []);
+
+  useEffect(() => {
+    loadLiveRankedMarkets()
+      .then(setLiveRankedMarkets)
+      .catch((err) => console.error("loadLiveRankedMarkets error", err));
+  }, [setLiveRankedMarkets]);
+
+  return { liveRankedMarkets, setLiveRankedMarkets };
+}
+
+interface SelectedOptions {
   selectedCity: string | null | undefined;
   selectedState: string | null | undefined;
   selectedMarketKey: { city: string; state: string };
+  setLiveRankedMarkets: (v: RankedMarket[]) => void;
 }
 
-export function useLiveMarketDetail({
+export function useLiveSelectedMarket({
   selectedCity,
   selectedState,
   selectedMarketKey,
-}: Options) {
+  setLiveRankedMarkets,
+}: SelectedOptions) {
   const initialMarketKey = `${selectedMarketKey.city}|${selectedMarketKey.state}`;
   const initialDetail = getCached<DetailCache>(`city:detail:${initialMarketKey}`);
 
@@ -56,25 +73,8 @@ export function useLiveMarketDetail({
   const [liveJob, setLiveJob] = useState<LiveJobRow | null>(initialDetail?.job ?? null);
   const [marketRefreshVersion, setMarketRefreshVersion] = useState(0);
 
-  const [liveRankedMarketsRaw, setLiveRankedMarketsRaw] = useState<RankedMarket[]>(
-    () => getCached<RankedMarket[]>("city:rankedMarkets") ?? [],
-  );
-  const setLiveRankedMarkets = useCallback((v: RankedMarket[]) => {
-    setCached("city:rankedMarkets", v);
-    setLiveRankedMarketsRaw(v);
-  }, []);
-
-  // Mount: load the ranked universe once.
-  useEffect(() => {
-    loadLiveRankedMarkets()
-      .then(setLiveRankedMarkets)
-      .catch((err) => console.error("loadLiveRankedMarkets error", err));
-  }, [setLiveRankedMarkets]);
-
   const loadLiveData = useCallback(async (city: string, state: string) => {
     try {
-      // Match by city_name + (state_name OR state_abbr). State filter in this
-      // app is the full name (e.g. "Maryland") but we accept abbr too.
       const stateAbbr = state === "Texas" ? "TX" : state === "Florida" ? "FL" : state;
       const { data: scoredRow } = await supabase
         .from("us_cities_scored")
@@ -102,9 +102,9 @@ export function useLiveMarketDetail({
       const childrenPct = pop > 0 ? Math.round((kids / pop) * 1000) / 10 : null;
       const stateNormalized = state === "TX" ? "Texas" : state === "FL" ? "Florida" : state;
 
-      // Build a `cities`-shaped façade so downstream code can keep reading the
-      // same field names. `id` IS the us_cities_scored uuid — that's now the
-      // canonical cityId across watchlist, drawer, report, and nearby panels.
+      // `cities`-shaped façade so downstream code keeps reading the same names.
+      // `id` IS the us_cities_scored uuid — canonical cityId across watchlist,
+      // drawer, report, and nearby panels.
       const cityRow: LiveCityRow = {
         id: scoredRow.id,
         city: scoredRow.city_name,
@@ -113,7 +113,6 @@ export function useLiveMarketDetail({
         tier: tierDerived,
         population: pop,
         // competitor_count removed 2026-05-22 — summer_camp_count 0/817 populated.
-        // CSI saturation is read from scoredRow.csi_* fields directly.
         competitor_count: null,
         county: scoredRow.county_name ?? null,
         metro_area: scoredRow.metro_area ?? null,
@@ -130,7 +129,6 @@ export function useLiveMarketDetail({
         scored: scoredRow,
       };
 
-      // Category scores come straight from us_cities_scored.score_*.
       const scoresMap: Record<string, number> = {};
       const addScore = (k: string, v: unknown) => {
         if (v != null) scoresMap[k] = Number(v);
@@ -138,14 +136,10 @@ export function useLiveMarketDetail({
       addScore("demand", scoredRow.score_demand);
       addScore("tam_teachers", scoredRow.score_tam_teachers);
       // CSI is stored as SATURATION (high = crowded = bad). Invert to
-      // OPPORTUNITY (high = good) for the UI category bar + composite math
-      // so all three categories share the same direction. The raw
-      // saturation value is still available via scoredRow.score_csi.
+      // OPPORTUNITY (high = good) so all three categories share direction.
       if (scoredRow.score_csi != null) {
         scoresMap["competitive_landscape"] = Math.max(0, Math.min(100, 100 - Number(scoredRow.score_csi)));
       }
-      // Legacy category-score keys (pricing_power, ease_of_operations, parent_mindset,
-      // franchisee_supply) were retired in the May 21 6→3 reshape.
 
       // Legacy `city_market_signals` was severed on 2026-05-21. Evidence rows
       // are synthesized directly from us_cities_scored via the seeded fallback.
@@ -170,7 +164,6 @@ export function useLiveMarketDetail({
     }
   }, []);
 
-  // (selectedCity, selectedState) change: cache-first hydrate, then refetch.
   useEffect(() => {
     if (!selectedCity || !selectedState) return;
     const cached = getCached<DetailCache>(`city:detail:${selectedCity}|${selectedState}`);
@@ -181,8 +174,6 @@ export function useLiveMarketDetail({
       setLiveCompetitors(cached.comps);
       setLiveJob(cached.job);
     } else {
-      // No cache for the new city — clear stale state so the center panel
-      // doesn't show the wrong score/signals for ~1s until loadLiveData resolves.
       setLiveCity(null);
       setLiveSignals([]);
       setLiveCategoryScores({});
@@ -209,8 +200,6 @@ export function useLiveMarketDetail({
     liveCategoryScores,
     liveCompetitors,
     liveJob,
-    liveRankedMarkets: liveRankedMarketsRaw,
-    setLiveRankedMarkets,
     marketRefreshVersion,
     bumpRefresh,
     reloadSelectedMarketView,

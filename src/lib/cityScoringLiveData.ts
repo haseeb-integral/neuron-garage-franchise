@@ -511,7 +511,11 @@ export async function getNearbyMarkets(opts: {
   const limit = opts.limit ?? 5;
   if (!opts.cityId) return [];
 
-  const collected: any[] = [];
+  type NearbyRow = Pick<
+    ScoredCityRow,
+    "id" | "city_name" | "state_name" | "state_abbr" | "metro_area" | "composite_score_default" | "population"
+  >;
+  const collected: NearbyRow[] = [];
   const seen = new Set<string>([opts.cityId]);
   const selectCols = "id, city_name, state_name, state_abbr, metro_area, composite_score_default, population";
 
@@ -524,7 +528,7 @@ export async function getNearbyMarkets(opts: {
       .neq("id", opts.cityId)
       .order("composite_score_default", { ascending: false })
       .limit(limit);
-    (data ?? []).forEach((row: any) => {
+    ((data ?? []) as NearbyRow[]).forEach((row) => {
       if (!seen.has(row.id)) {
         seen.add(row.id);
         collected.push(row);
@@ -542,7 +546,7 @@ export async function getNearbyMarkets(opts: {
       .neq("id", opts.cityId)
       .order("composite_score_default", { ascending: false })
       .limit(remaining + seen.size);
-    (data ?? []).forEach((row: any) => {
+    ((data ?? []) as NearbyRow[]).forEach((row) => {
       if (collected.length >= limit) return;
       if (!seen.has(row.id)) {
         seen.add(row.id);
@@ -551,11 +555,11 @@ export async function getNearbyMarkets(opts: {
     });
   }
 
-  return collected.slice(0, limit).map((row: any) => {
+  return collected.slice(0, limit).map((row) => {
     const composite = toNumber(row.composite_score_default, 0);
     return {
       cityId: row.id,
-      city: row.city_name,
+      city: row.city_name ?? "Unknown",
       state: normalizeState(row.state_name ?? row.state_abbr),
       metroArea: row.metro_area ?? null,
       county: null,

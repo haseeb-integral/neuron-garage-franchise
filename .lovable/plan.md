@@ -1,74 +1,132 @@
-# Self-Run Audit: marketView Refactor
+# City Search + Teacher Search Turnaround Plan
 
-You approve once. I run all 7 phases end-to-end and deliver a single pass/fail report with evidence. No further prompts unless something is broken badly enough to need your call.
+Goal: Take the existing app from "engine is great, dashboard is held together with zip ties" to a clean, honest, maintainable product. No new features. No backend redesign. Just disciplined cleanup, decomposition, and guard rails — in the right order so each step makes the next one easier.
 
----
-
-## Phase 1 — Architecture sanity (static code scan)
-
-- Read `src/lib/marketView.ts` end-to-end. Confirm single `getMarketView()` export and `CompositeScore` branded type.
-- `rg` for `composite`, `toFixed`, `Math.round`, `* weight`, `weights[` across `src/pages` and `src/components`. Any score math outside `marketView.ts` is a finding.
-- Confirm `CityScoring.tsx` and the ranked-markets table both import from `marketView.ts` and do zero recomputation.
-- Output: list of files touched + any leaked math hits.
-
-## Phase 2 — Type safety
-
-- `grep` for `as CompositeScore` casts. Casts outside `marketView.ts` are flagged as smells.
-- Read tsc output from the harness. Zero errors required.
-
-## Phase 3 — Runtime drift detector (browser)
-
-- Open preview in dev mode via browser tool.
-- Navigate to 5 cities spanning the score range (high/mid-high/mid/low-mid/low — I pick from the live data).
-- For each: capture console logs, screenshot the gauge, screenshot the table row. Confirm no red "composite drift" error.
-
-## Phase 4 — Number reconciliation
-
-- For the same 5 cities: read table composite, gauge composite, tier badge bucket. Assert all three agree.
-- Open "Show Formula" on the detail page, confirm category sub-scores weight-sum back to the displayed composite (±0.5 for rounding).
-- Move a master weight slider, confirm table + gauge update together to the same new value. Reset, confirm both snap back.
-
-## Phase 5 — Docs match reality
-
-- Read AGENTS.md Rule 12, HOW_IT_WORKS.md § 4 score invariant, PROJECT_CONTEXT.md § 5 May 23 entry.
-- Confirm each references `src/lib/marketView.ts` and that the file actually exists.
-
-## Phase 6 — Regression sweep
-
-- Ranked Markets loads, sorts, filters.
-- Reset filters → market count returns to 817.
-- City detail renders all 6 category cards + gauge + tier badge.
-- Master sliders auto-rebalance (Rule 5); sub-weights do not.
-- "Show Formula" works on every widget I can reach (Rule 1).
-
-## Phase 7 — Destructive test (proves the guard rail works)
-
-- Temporarily edit `CityScoring.tsx` to render a hardcoded wrong composite for one city.
-- Reload page, capture console — drift detector MUST fire red error.
-- Revert the edit. Confirm console clean again.
-- If detector does not fire, that is a P0 finding.
+Scope: City Search (primary), Teacher Search (secondary). Email Outreach explicitly out of scope. No work on auth/login.
 
 ---
 
-## Deliverable
+## Step 1 — Metric Truth Cleanup (the "kill the 46" pass)
 
-A single report with:
-- Phase-by-phase PASS / FAIL / WARN
-- Screenshots from Phase 3, 4, 7
-- List of any leaked math, suspicious casts, or doc/reality mismatches
-- One-line verdict: "ship it" or "these N things need fixing first"
+**Why first:** Every refactor downstream is easier once the registry is the only source of truth and ghost metrics are gone. This also fixes the false "46 metrics" story in the UI.
 
-## Stop conditions (I'll wake you)
+**What:**
+- Treat `src/lib/sowMetricRegistry.ts` as the single source of truth. Live total = **12 sub-metrics across 3 categories** (Demand 4 / CSI 3 / TAM Teachers 5).
+- Grep the codebase for "46", "comprehensive scoring", "46-factor", "46-metric" — replace with accurate copy ("12-metric model across Demand, Competitive Opportunity, TAM Teachers").
+- Prune `src/lib/signalAliases.ts` `LEGACY_TO_CANONICAL` map: remove any alias whose target key is not in the registry (montessori_count, stem_enrichment_count, long_commute_pct, young_families_growth_5yr, etc.). Keep only aliases that map to a live registry key.
+- Prune `FETCHER_DIAGNOSTIC_KEYS` set to only what fetchers actually emit today.
+- Add a one-liner to `_ARCHIVED_DO_NOT_USE/README.md`: "The 46-metric list in these archived MDs is historical. Live count is 12 — see `src/lib/sowMetricRegistry.ts`."
+- Delete `src/data/cityData.ts` `sampleCities` usage from any production code path; keep only if a test imports it, otherwise delete the file.
+- Drop vestigial DB columns from `us_cities_scored` that are 0% populated and no longer in the registry: `summer_camp_count`, `school_hosted_camp_count`, `avg_camp_price_per_hour`, `camp_waitlist_signals`, `summer_weather_index`, `summer_precip_days`, `days_above_90f`, `avg_peak_summer_temperature`, `weather_last_updated`. (Pre-release, no migration concerns.)
+- Remove `fit_score` from `teacher_prospects` if unused (confirm via grep first).
 
-- Phase 7 destructive test fails (guard rail is fake)
-- Phase 4 reconciliation fails on any city (the original bug is back)
-- More than 3 findings of leaked score math in components
-- Anything that needs a product decision (e.g., the formula itself looks wrong)
+**Done when:** No code references a metric key that isn't in `sowMetricRegistry.ts`. No UI string says "46". `signalAliases.ts` is < 20 lines.
 
-Otherwise I run straight through and you get the report.
+---
 
-## Technical notes
+## Step 2 — Decompose `CityScoring.tsx` (3,323 → ~300 lines + hooks)
 
-- Phase 7 edit will be on a throwaway line, reverted in the same session via `code--line_replace`. No git commits — Lovable autosync is fine because I revert before finishing.
-- Browser checks use the `browser--*` tools against the preview URL, not your local session.
-- Estimated runtime: 8–12 minutes of tool calls. No cost concerns.
+**Why second:** This file is the bottleneck for every future change. It has 17 `useState`, 22 raw `compositeScore` reads, and an `eslint-disable` at the top.
+
+**What:**
+- Extract feature hooks (one file each, under `src/hooks/citySearch/`):
+  - `useCityFilters.ts` — wraps the Zustand filter slice + derived predicates
+  - `useCityRanking.ts` — wraps the marketView call + sort/order
+  - `useCitySelection.ts` — single + compare selection, replaces 4 useStates
+  - `useCityPagination.ts` — page + pageSize
+  - `useCityWeights.ts` — master + sub-weights, apply/reset semantics
+- Extract presentational components:
+  - `CitySearchToolbar.tsx` — search box, model picker, view toggle
+  - `CitySearchResults.tsx` — table/map/spreadsheet switch
+  - `CitySearchEmptyState.tsx`
+- Move every raw `compositeScore` read behind `marketView` (already the SoT — Step 1 of the previous audit). Delete the `eslint-disable`.
+- Target: `CityScoring.tsx` becomes a thin orchestrator (~300 lines, 0 local `useState`, all data via hooks).
+
+**Done when:** `CityScoring.tsx` < 350 lines, no `eslint-disable`, all score reads route through `marketView`.
+
+---
+
+## Step 3 — Decompose `SubMetricWeightsDrawer.tsx` (1,194 → ~250 lines)
+
+**Why third:** Second-largest file, touched every time weights change, and currently mixes UI + normalization + persistence + retired-category dead code.
+
+**What:**
+- Extract `src/lib/subWeightNormalization.ts` — pure functions: `normalizeToHundred`, `applySubWeights`, `diffFromDefault`. Unit-tested.
+- Extract `<CategoryWeightSection />` — renders one category's sub-metrics. Drawer becomes a map over 3 categories.
+- Extract `<CsiReadOnlySection />` — CSI is read-only by design (Manus owns the formula). Make this an obvious separate component so no one accidentally adds editable sliders.
+- Delete all branches that reference retired categories (`pricingPower`, `easeOfOperations`, `parentMindset`). The store migration already strips them; the drawer shouldn't carry the code.
+- Add a small explainer header per category that pulls from `CATEGORY_PURPOSE`.
+
+**Done when:** Drawer < 300 lines, normalization is pure + tested, zero references to retired category keys.
+
+---
+
+## Step 4 — Decompose other oversized City Search files
+
+- `MarketDetailDrawer.tsx` (712) → split into `<MetricRow />`, `<CategorySection />`, `<DataSourceFootnote />`. Move the legacy → canonical key join into `signalAliases.ts` (already partially there).
+- `MarketReportModal.tsx` (623) → split header / scorecard / per-category sections / actions.
+- `CitySpreadsheetView.tsx` (514) → extract column defs to `cityColumns.ts`; view becomes ~200 lines.
+- Delete `CompareModal.tsx` (older one). Keep `MarketCompareModal.tsx` as the single compare surface. Update imports.
+
+**Done when:** No City Search component file is over 500 lines. One compare modal.
+
+---
+
+## Step 5 — Teacher Search cleanup
+
+**What:**
+- **Kill the dual-ID system.** Today `teacher_prospects` rows are addressed by both a legacy `id: number` and a real `uuid: string`. Pick `uuid` everywhere. Sweep `TeacherProspects.tsx`, `TeacherTable.tsx`, `TeacherDetailPanel.tsx`, `BulkActionBar.tsx`, store, and the dedupe edge function. Remove the numeric `id` field from any local types.
+- **Consolidate `teacher_prospects_stats` RPC.** Drop the older overload, keep the one the UI actually calls. (Migration step — pre-release, safe.)
+- **Drop `fit_score` column** from `teacher_prospects` and `FitScoreBadge` component if not in use; confirm via grep first.
+- Decompose `TeacherProspects.tsx` (955 lines, 19 useState) using the same hook pattern as Step 2: `useTeacherFilters`, `useTeacherSelection`, `useTeacherStats`, `useTeacherPagination`. Target < 350 lines.
+- Replace cascading `useEffect` chains (promoted / campaign data) with React Query dependent queries.
+
+**Done when:** One ID system (uuid). One stats RPC. Page < 350 lines, ≤ 3 `useEffect`s.
+
+---
+
+## Step 6 — Caching + typing hygiene (cross-cutting)
+
+- Delete `src/lib/pageCache.ts`. Move any remaining consumers to React Query with sensible `staleTime`. One cache, one mental model.
+- Type-tighten `src/lib/cityScoringLiveData.ts`. Replace the ~17 `any`s with real types derived from `sowMetricRegistry` and the DB row type. No `any` left at module boundary.
+- Turn the `eslint-disable` removals from Step 2 into a permanent lint rule: no raw `compositeScore` reads outside `marketView.ts` (already exists per prior audit — verify and harden).
+
+**Done when:** Grep for `any` in `cityScoringLiveData.ts` returns 0 hits. `pageCache.ts` deleted.
+
+---
+
+## Step 7 — Test coverage on the 5 highest-traffic surfaces
+
+Add focused component/integration tests (Vitest + Testing Library). Not exhaustive — just the surfaces that, if they break, the product is dead:
+
+1. `CityTable` — renders rows, sorts by score, respects filter
+2. `SubMetricWeightsDrawer` — apply normalizes to 100, reset restores defaults, CSI section is read-only
+3. `MarketDetailDrawer` — every registry metric renders a row with a real or "no data" value
+4. `TeacherTable` — renders, selects, bulk-acts using uuid only
+5. `marketView` red-path — drift detector throws when a screen tries to compute its own score (already exists; ensure it survives the refactor)
+
+**Done when:** `bunx vitest run` is green, these 5 suites exist and cover the contracts above.
+
+---
+
+## Execution order and self-check between steps
+
+Steps must run in order — each one removes ambiguity the next one would otherwise inherit. After each step I'll:
+1. Run `bunx vitest run` (must stay green).
+2. Run the dev build (typecheck must stay green — no new errors introduced).
+3. Spot-check the City Search and Teacher Search pages in preview.
+4. Commit the step as a single logical change with a one-line summary.
+
+If any step grows past its scope mid-flight, I stop and surface it instead of expanding silently.
+
+## Out of scope (will not touch)
+
+- Email Outreach / SmartLead
+- Auth / login flows
+- Edge functions other than the teacher dedupe consolidation in Step 5
+- Any new features
+- Any of the archived MD files (they stay archived, untouched)
+
+## Rough size
+
+~12–18 focused PR-sized commits. No single step should take more than a few hundred lines of net change once dead code is removed. Net line count for the repo should go **down**, not up.

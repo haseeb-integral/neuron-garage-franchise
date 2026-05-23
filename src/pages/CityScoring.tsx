@@ -2603,7 +2603,7 @@ const CityScoring = () => {
                     const cell = (v: number | null | undefined, title: string) => {
                       if (v == null || !c.hasLiveData) return <span className="justify-self-end text-[10.5px] text-[#cbd5e1] tabular-nums">—</span>;
                       const n = Math.round(Number(v));
-                      const color = n >= 70 ? "text-[#0ea66e]" : n >= 40 ? "text-[#07142f]" : "text-[#c2410c]";
+                      const color = "text-[#07142f]";
                       return <span className={`justify-self-end text-[10.5px] font-semibold tabular-nums ${color}`} title={title}>{n}</span>;
                     };
                     return (

@@ -2227,7 +2227,16 @@ const CityScoring = () => {
         totalLive={liveScoredTotal}
         filteredLive={filteredLiveCount}
         extras={tierBarExtras}
+        activeTier={tierFilter}
+        onTierClick={(t) => {
+          // Toggle: clicking the active tier clears the filter, clicking a
+          // different tier switches to it. Resets page so the user lands on
+          // the top of the filtered list.
+          setTierFilter(tierFilter === t ? "All" : t);
+          setPage(1);
+        }}
       />
+
 
       {/* AI-powered natural-language search (Lovable AI Gateway) */}
       <AskAiBar

@@ -11,239 +11,13 @@ import {
 } from "@/components/ui/select";
 import type { RankedMarket } from "@/lib/cityScoringLiveData";
 import { buildMarketView } from "@/lib/marketView";
-
-type ColDef = {
-  key: string;
-  label: string;
-  align: "left" | "right";
-  group?: string;
-  // Extract sort value (number | string | null)
-  get: (m: RankedMarket, rank: number) => number | string | null;
-  // Render display
-  render: (m: RankedMarket, rank: number) => React.ReactNode;
-  className?: string;
-};
-
-type SortDir = "asc" | "desc";
+import { COLUMNS, STICKY_LEFT, type SortDir } from "./cityColumns";
 
 interface Props {
   markets: RankedMarket[];
   onOpenCity: (m: RankedMarket) => void;
   onExportCsv?: () => void;
 }
-
-const fmtInt = (v: any) =>
-  v == null || v === "" || Number.isNaN(Number(v))
-    ? "—"
-    : Number(v).toLocaleString();
-
-const fmtMoney = (v: any) =>
-  v == null || v === "" || Number.isNaN(Number(v))
-    ? "—"
-    : `$${Number(v).toLocaleString()}`;
-
-const fmtPct = (v: any) =>
-  v == null || v === "" || Number.isNaN(Number(v))
-    ? "—"
-    : `${Number(v).toFixed(1)}%`;
-
-const fmtNum1 = (v: any) =>
-  v == null || v === "" || Number.isNaN(Number(v))
-    ? "—"
-    : Number(v).toFixed(1);
-
-const fmtNum2 = (v: any) =>
-  v == null || v === "" || Number.isNaN(Number(v))
-    ? "—"
-    : Number(v).toFixed(2);
-
-const tierBg: Record<string, string> = {
-  A: "bg-[#dcfce7] text-[#0a7c3a]",
-  B: "bg-[#dbeafe] text-[#174be8]",
-  C: "bg-[#fef3c7] text-[#a16207]",
-  D: "bg-[#fee2e2] text-[#b91c1c]",
-};
-
-function row(m: RankedMarket): any {
-  return (m as any).scoredRow ?? {};
-}
-function cat(m: RankedMarket, k: string): number | null {
-  const v = (m.categoryScores as any)?.[k];
-  return v == null ? null : Number(v);
-}
-
-// Frozen-column geometry. Left edge is built up left-to-right so each frozen
-// column sticks just past the previous one. Widths are fixed so the layout
-// is deterministic regardless of cell content.
-const STICKY_LEFT: Record<string, { left: number; width: number }> = {
-  rank: { left: 0, width: 56 },
-  state: { left: 56, width: 112 },
-  city: { left: 168, width: 160 },
-};
-
-const COLUMNS: ColDef[] = [
-  {
-    key: "rank", label: "#", align: "right",
-    get: (_m, r) => r,
-    render: (_m, r) => <span className="text-[#8794ab]">{r}</span>,
-  },
-  {
-    key: "state", label: "State", align: "left",
-    get: (m) => m.state ?? "",
-    render: (m) => (
-      <span className="inline-block rounded bg-[#eef2f7] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#526078]">
-        {m.state || "—"}
-      </span>
-    ),
-  },
-  {
-    key: "city", label: "City", align: "left",
-    get: (m) => m.city ?? "",
-    render: () => null, // rendered specially (link)
-  },
-  {
-    key: "county", label: "County", align: "left",
-    get: (m) => (m as any).county ?? "",
-    render: (m) => <span className="text-[#526078]">{(m as any).county ?? "—"}</span>,
-  },
-  {
-    key: "metro", label: "Metro Area", align: "left",
-    get: (m) => (m as any).metroArea ?? "",
-    render: (m) => <span className="text-[#526078]">{(m as any).metroArea ?? "—"}</span>,
-  },
-  {
-    key: "marketType", label: "Type", align: "left",
-    get: (m) => (m as any).marketType ?? "",
-    render: (m) => (
-      <span className="inline-block rounded-full bg-[#eaf0ff] text-[#174be8] text-[10px] font-medium px-1.5 py-0.5">
-        {(m as any).marketType ?? "—"}
-      </span>
-    ),
-  },
-  {
-    key: "tier", label: "Tier", align: "left",
-    get: (m) => m.tier ?? "",
-    render: (m) => (
-      <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-bold ${tierBg[m.tier as string] ?? "bg-[#eef2f7] text-[#526078]"}`}>
-        {m.tier || "—"}
-      </span>
-    ),
-  },
-  {
-    key: "composite", label: "Composite", align: "right", group: "Scores",
-    get: (m) => buildMarketView(m).composite,
-    render: (m) => <span className="font-semibold text-[#07142f]">{buildMarketView(m).compositeFormatted}</span>,
-  },
-  {
-    key: "score_demand", label: "Demand", align: "right", group: "Scores",
-    get: (m) => cat(m, "demand"),
-    render: (m) => fmtNum1(cat(m, "demand")),
-  },
-  {
-    key: "score_tam", label: "TAM Teachers", align: "right", group: "Scores",
-    get: (m) => cat(m, "franchiseeSupply"),
-    render: (m) => fmtNum1(cat(m, "franchiseeSupply")),
-  },
-  {
-    key: "score_csi_opp", label: "Comp. Opportunity", align: "right", group: "Scores",
-    get: (m) => cat(m, "competitiveLandscape"),
-    render: (m) => fmtNum1(cat(m, "competitiveLandscape")),
-  },
-  // Demand inputs
-  {
-    key: "population", label: "Population", align: "right", group: "Demand",
-    get: (m) => m.population ?? row(m).population ?? null,
-    render: (m) => fmtInt(m.population ?? row(m).population),
-  },
-  {
-    key: "children_5_12", label: "Children 5–12", align: "right", group: "Demand",
-    get: (m) => row(m).children_5_12 ?? null,
-    render: (m) => fmtInt(row(m).children_5_12),
-  },
-  {
-    key: "median_income", label: "Median HH Income", align: "right", group: "Demand",
-    get: (m) => row(m).median_household_income ?? null,
-    render: (m) => <span className="font-medium">{fmtMoney(row(m).median_household_income)}</span>,
-  },
-  {
-    key: "dual_income_pct", label: "Dual-Income %", align: "right", group: "Demand",
-    get: (m) => row(m).dual_working_families_pct ?? null,
-    render: (m) => fmtPct(row(m).dual_working_families_pct),
-  },
-  {
-    key: "college_pct", label: "College %", align: "right", group: "Demand",
-    get: (m) => row(m).college_degree_pct ?? null,
-    render: (m) => fmtPct(row(m).college_degree_pct),
-  },
-  // TAM Teachers
-  // school_district_count removed 2026-05-22 — not in any live category
-  // (Demand / CSI / TAM Teachers). DB column preserved.
-  {
-    key: "elem_schools", label: "Public Elem. Schools", align: "right", group: "TAM Teachers",
-    get: (m) => row(m).public_elementary_count ?? null,
-    render: (m) => fmtInt(row(m).public_elementary_count),
-  },
-  {
-    key: "priv_charter", label: "Private+Charter Elem.", align: "right", group: "TAM Teachers",
-    get: (m) => {
-      const r = row(m);
-      const v = (r.private_elementary_count ?? 0) + (r.charter_elementary_count ?? 0);
-      return v || null;
-    },
-    render: (m) => {
-      const r = row(m);
-      const v = (r.private_elementary_count ?? 0) + (r.charter_elementary_count ?? 0);
-      return fmtInt(v || null);
-    },
-  },
-  {
-    key: "elem_teachers", label: "Elem. Teachers (FTE)", align: "right", group: "TAM Teachers",
-    get: (m) => row(m).public_elementary_teacher_count ?? null,
-    render: (m) => fmtInt(row(m).public_elementary_teacher_count),
-  },
-  {
-    key: "elem_enrollment", label: "Elem. Enrollment", align: "right", group: "TAM Teachers",
-    get: (m) => row(m).public_elementary_enrollment ?? null,
-    render: (m) => fmtInt(row(m).public_elementary_enrollment),
-  },
-  {
-    key: "col_index", label: "COL Index", align: "right", group: "TAM Teachers",
-    get: (m) => row(m).cost_of_living_index ?? null,
-    render: (m) => fmtNum1(row(m).cost_of_living_index),
-  },
-  // Competitive Landscape
-  // "Camps (count)" column removed 2026-05-22 — summer_camp_count was 0/817
-  // populated; CSI is fully covered by the three Manus-precomputed columns
-  // below (Nat'l Brand Supply Wtd, Local Provider Est., Demand-Adj. Market).
-  {
-    key: "csi_brand", label: "Nat'l Brand Supply (wtd)", align: "right", group: "Competitive Landscape",
-    get: (m) => row(m).csi_national_brand_count_weighted ?? null,
-    render: (m) => fmtNum2(row(m).csi_national_brand_count_weighted),
-  },
-  {
-    key: "csi_local", label: "Local Provider Est.", align: "right", group: "Competitive Landscape",
-    get: (m) => row(m).csi_local_provider_estimate ?? null,
-    render: (m) => fmtNum2(row(m).csi_local_provider_estimate),
-  },
-  {
-    key: "csi_dam", label: "Demand-Adj. Market", align: "right", group: "Competitive Landscape",
-    get: (m) => row(m).csi_demand_adjusted_market ?? null,
-    render: (m) => fmtInt(row(m).csi_demand_adjusted_market),
-  },
-  {
-    key: "csi_raw", label: "CSI (raw)", align: "right", group: "Competitive Landscape",
-    get: (m) => row(m).csi_score ?? null,
-    render: (m) => {
-      const v = row(m).csi_score;
-      return v == null ? "—" : Number(v).toFixed(5);
-    },
-  },
-  {
-    key: "csi_sat", label: "Saturation", align: "left", group: "Competitive Landscape",
-    get: (m) => row(m).csi_saturation_category ?? "",
-    render: (m) => <span className="text-[#526078]">{row(m).csi_saturation_category ?? "—"}</span>,
-  },
-];
 
 export default function CitySpreadsheetView({ markets, onOpenCity, onExportCsv }: Props) {
   const [search, setSearch] = useState("");
@@ -273,7 +47,7 @@ export default function CitySpreadsheetView({ markets, onOpenCity, onExportCsv }
     });
   }, [markets, search, stateFilter]);
 
-  // Pre-rank markets by composite (desc) so the # column is stable
+  // Pre-rank markets by composite (desc) so the # column is stable.
   const rankedAll = useMemo(() => {
     return [...markets]
       .sort((a, b) => buildMarketView(b).composite - buildMarketView(a).composite)
@@ -384,11 +158,7 @@ export default function CitySpreadsheetView({ markets, onOpenCity, onExportCsv }
         </div>
       </div>
 
-      {/* Table */}
-      {/* Sticky columns: rank (#), state, city on the left; Actions on the right.
-          Each frozen cell sets its own background so scrolled content doesn't
-          bleed through. A subtle inset shadow on the edge frozen cells signals
-          "more content to scroll" — same pattern Airtable / Linear use. */}
+      {/* Table — sticky columns: rank/state/city on the left, Actions on the right. */}
       <div className="overflow-x-auto">
         <table className="w-full text-[12px] min-w-[1600px] border-separate border-spacing-0">
           <thead className="bg-[#f8fafe] sticky top-0 z-20">

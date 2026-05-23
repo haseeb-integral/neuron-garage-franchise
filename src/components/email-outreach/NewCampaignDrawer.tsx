@@ -29,7 +29,7 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
   const detectedTz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; } })();
   const allTimezones = (() => {
     try {
-      // @ts-ignore - supportedValuesOf available in modern browsers
+      // @ts-expect-error - supportedValuesOf available in modern browsers
       const list: string[] = typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [];
       return list.length ? list : ["UTC", "America/Chicago", "America/New_York", "America/Denver", "America/Los_Angeles", "Asia/Karachi", "Asia/Kolkata", "Europe/London"];
     } catch { return ["UTC", "America/Chicago", "America/New_York", "America/Denver", "America/Los_Angeles", "Asia/Karachi", "Asia/Kolkata", "Europe/London"]; }
@@ -80,7 +80,7 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
     try {
       const parts = new Intl.DateTimeFormat("en-US", { timeZoneName: "short" }).formatToParts(d);
       tzAbbr = parts.find((p) => p.type === "timeZoneName")?.value || "";
-    } catch {}
+    } catch { /* ignore */ }
     const seq = (Number(localStorage.getItem("ng_campaign_seq") || "0") || 0) + 1;
     localStorage.setItem("ng_campaign_seq", String(seq));
     return `Outreach · ${month}-${day} · ${hh}:${mm}${tzAbbr ? ` ${tzAbbr}` : ""} · v${seq}`;

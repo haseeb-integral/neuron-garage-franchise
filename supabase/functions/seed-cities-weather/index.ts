@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
   let body: any = {};
-  try { body = await req.json(); } catch (_) {}
+  try { body = await req.json(); } catch { /* ignore */ }
   const limit = Math.max(1, Math.min(500, Number(body.limit ?? 200)));
   const offset = Math.max(0, Number(body.offset ?? 0));
   const dryRun = Boolean(body.dry_run);

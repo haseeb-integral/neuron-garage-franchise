@@ -172,7 +172,7 @@ async function runTool(
 
       // Enrich with prospect name/email
       const ids = (data ?? []).map((r) => r.teacher_prospect_id).filter(Boolean);
-      let prospects: Record<string, { name?: string; email?: string; city?: string; school?: string }> = {};
+      const prospects: Record<string, { name?: string; email?: string; city?: string; school?: string }> = {};
       if (ids.length) {
         const { data: ps } = await supabase
           .from("teacher_prospects")

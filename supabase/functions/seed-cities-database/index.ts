@@ -177,7 +177,7 @@ async function fetchStateSignals(stateAbbr: string): Promise<StateSignals> {
           out.bea_last_updated = `${latest.TimePeriod}-12-31`;
         }
       }
-    } catch (_) { }
+    } catch { /* ignore */ }
   }
 
   if (BLS_KEY) {
@@ -226,7 +226,7 @@ async function fetchStateSignals(stateAbbr: string): Promise<StateSignals> {
           }
         }
       }
-    } catch (_) { }
+    } catch { /* ignore */ }
   }
 
   if (BEA_KEY) {
@@ -246,7 +246,7 @@ async function fetchStateSignals(stateAbbr: string): Promise<StateSignals> {
           out.fred_last_updated = `${latest.TimePeriod}-12-31`;
         }
       }
-    } catch (_) { }
+    } catch { /* ignore */ }
   }
 
   // Only cache if we got at least one non-null value — prevents a single failed BEA/BLS call

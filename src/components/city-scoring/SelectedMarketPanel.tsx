@@ -42,7 +42,7 @@ interface Props {
   onOpenDetailDrawer: () => void;
 }
 
-export function SelectedMarketPanel({
+function SelectedMarketPanelImpl({
   showLiveRefresh,
   lastScrapedRelative,
   lastScrapedAbsolute,

@@ -144,6 +144,7 @@ export function useTeacherProspectsData(args: UseTeacherProspectsDataArgs) {
 
   const loadPage = useCallback(async () => {
     setLoadingProspects(true);
+    setLoadError(null);
     const myReq = ++reqIdRef.current;
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;

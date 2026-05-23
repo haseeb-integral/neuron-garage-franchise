@@ -12,6 +12,7 @@ import { TierBadge } from "@/components/city-scoring/TierBadge";
 import { RowScorePopover } from "@/components/city-scoring/RowScorePopover";
 import { sampleCities } from "@/data/cityData";
 import { sameMarket, VISIBLE_CATEGORIES } from "@/lib/cityScoringPageHelpers";
+import { buildMarketView } from "@/lib/marketView";
 import { toast } from "sonner";
 
 type Props = {
@@ -149,8 +150,9 @@ function RankedMarketsListImpl({
         {pageItems.map((c, i) => {
           const isSel = c.city === selectedCity && c.state === selectedState;
           const isCmp = selectedForCompare.includes(c.id);
-          const rowCityId = (c as any).cityId as string | undefined;
+          const rowCityId = c.cityId;
           const isSaved = !!rowCityId && watchlistCityIds.has(rowCityId);
+          const view = buildMarketView(c);
           return (
             <div
               key={c.id}

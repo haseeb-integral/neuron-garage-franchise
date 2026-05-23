@@ -136,24 +136,24 @@ function toNumber(value: unknown, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
-export function mapLiveCityToRankedMarket(row: any, index: number, competitorCount: number | null = null): RankedMarket {
-  const state = normalizeState(row.state);
-  const compositeScore = toNumber(row.composite_score, 0);
-  const hasLiveData = compositeScore > 0 || !!row.last_scraped_at;
+export function mapLiveCityToRankedMarket(row: ScoredCityRow, index: number, competitorCount: number | null = null): RankedMarket {
+  const state = normalizeState(row.state_name ?? row.state_abbr);
+  const compositeScore = toNumber(row.composite_score_default, 0);
+  const hasLiveData = compositeScore > 0 || !!row.scored_at;
   return {
     id: 100000 + index,
     cityId: row.id,
-    city: row.city ?? "Unknown",
+    city: row.city_name ?? "Unknown",
     state,
-    county: row.county ?? null,
+    county: row.county_name ?? null,
     metroArea: row.metro_area ?? null,
-    tier: row.tier ?? tierFromScore(compositeScore),
+    tier: tierFromScore(compositeScore),
     compositeScore,
     population: row.population == null ? null : Number(row.population),
     competitorCount,
-    marketType: row.market_type ?? null,
+    marketType: null,
     isNonRegistration: NON_REGISTRATION_STATES.has(state),
-    lastScrapedAt: row.last_scraped_at ?? null,
+    lastScrapedAt: row.scored_at ?? null,
     source: "live",
     hasLiveData,
   };
@@ -164,13 +164,13 @@ export function mapSampleCityToRankedMarket(city: CityData): RankedMarket {
     id: city.id,
     city: city.city,
     state: city.state,
-    county: (city as any).county,
-    metroArea: (city as any).metroArea,
+    county: null,
+    metroArea: null,
     tier: city.tier,
     compositeScore: city.compositeScore,
     population: city.population,
     competitorCount: city.competitorCount,
-    marketType: (city as any).marketType,
+    marketType: null,
     isNonRegistration: city.isNonRegistration,
     source: "sample",
     hasLiveData: false,

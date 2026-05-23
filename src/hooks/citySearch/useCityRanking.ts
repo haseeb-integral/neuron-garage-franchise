@@ -68,7 +68,7 @@ export function useCityRanking({
 
     const masterWeightsAreDefault = JSON.stringify(appliedWeights) === JSON.stringify(DEFAULT_WEIGHTS);
     const subWeightsAreDefault = JSON.stringify(appliedSubWeights) === JSON.stringify(DEFAULT_SUB_WEIGHTS);
-    const reRanked = baseRankedMarkets.map((market: any) => {
+    const reRanked = baseRankedMarkets.map((market) => {
       if (!market.hasLiveData || !market.categoryScores) return market;
       if (masterWeightsAreDefault && subWeightsAreDefault) return market;
 

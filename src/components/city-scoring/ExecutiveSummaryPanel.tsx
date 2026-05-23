@@ -21,7 +21,7 @@ interface Props {
   setExecReportOpen: (v: boolean) => void;
 }
 
-export function ExecutiveSummaryPanel({
+function ExecutiveSummaryPanelImpl({
   selectedCity,
   selectedState,
   detailScore,

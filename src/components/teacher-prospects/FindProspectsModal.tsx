@@ -127,7 +127,7 @@ export function FindProspectsModal({ open, onOpenChange, onResults }: Props) {
               <SelectContent className="bg-white">
                 {sampleCities.map((c) => (
                   <SelectItem key={c.id} value={String(c.id)}>
-                    {c.city}, {c.state} — Tier {c.tier} ({c.compositeScore})
+                    {c.city}, {c.state} — Tier {c.tier} ({buildMarketView(c).compositeFormatted})
                   </SelectItem>
                 ))}
               </SelectContent>

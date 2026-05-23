@@ -1718,177 +1718,25 @@ const CityScoring = () => {
       )}
 
       {/* Filters row */}
-      <TooltipProvider delayDuration={150}>
-
-      <div className="mb-4 rounded-lg bg-white border border-[#eef2f7] p-3 flex flex-wrap items-end gap-3">
-        {/* Searchable State combobox */}
-        <div className="flex flex-col gap-1 min-w-[180px]">
-          <label className="text-[11px] text-[#526078]">State</label>
-          <Popover open={stateOpen} onOpenChange={setStateOpen}>
-            <PopoverTrigger asChild>
-              <button
-                role="combobox"
-                aria-expanded={stateOpen}
-                className="h-9 w-full flex items-center justify-between rounded-md border border-[#e5eaf2] bg-white px-3 text-sm text-[#07142f] hover:bg-[#fbfcff]"
-              >
-                <span className="truncate">{stateFilter === "All" ? "All States" : stateFilter}</span>
-                <ChevronsUpDown size={14} className="ml-2 shrink-0 text-[#8794ab]" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="p-0 w-[240px]" align="start">
-              <Command>
-                <CommandInput placeholder="Search state…" className="h-9" />
-                <CommandList>
-                  <CommandEmpty>No state found.</CommandEmpty>
-                  <CommandGroup>
-                    {(["All", ...availableStates] as string[]).map((s) => (
-                      <CommandItem
-                        key={s}
-                        value={s}
-                        onSelect={() => { setStateFilter(s); setStateOpen(false); }}
-                      >
-                        <Check className={cn("mr-2 h-4 w-4", stateFilter === s ? "opacity-100" : "opacity-0")} />
-                        {s === "All" ? "All States" : s}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
-        </div>
-
-        {/* City quick-search */}
-        <div className="flex flex-col gap-1 min-w-[180px]">
-          <label className="text-[11px] text-[#526078]">City</label>
-          <div className="relative h-9">
-            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#8794ab]" />
-            <Input
-              value={cityFilter}
-              onChange={(e) => setCityFilter(e.target.value)}
-              placeholder="Search city…"
-              className="h-9 pl-8 pr-7 bg-white border-[#e5eaf2] text-sm"
-            />
-            {cityFilter && (
-              <button
-                type="button"
-                onClick={() => setCityFilter("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-[#8794ab] hover:text-[#07142f]"
-                aria-label="Clear city filter"
-              >
-                <X size={13} />
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-1 min-w-[140px]">
-          <label className="text-[11px] text-[#526078] flex items-center gap-1">
-            Min Population
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="cursor-help text-[#8794ab]"><Info size={11} /></span>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-[220px] text-xs">Only show cities with population above this threshold.</TooltipContent>
-            </Tooltip>
-          </label>
-          <Input
-            type="number"
-            inputMode="numeric"
-            min={0}
-            step={1000}
-            placeholder="Any"
-            value={minPop === "0" ? "" : minPop}
-            onChange={(e) => {
-              const v = e.target.value.replace(/[^0-9]/g, "");
-              setMinPop(v === "" ? "0" : v);
-            }}
-            className="h-9 bg-white border-[#e5eaf2] text-sm"
-          />
-        </div>
-        <div className="flex flex-col gap-1 min-w-[180px] flex-1 max-w-[260px]">
-          <label className="text-[11px] text-[#526078] flex items-center gap-1">
-            Min Score
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="cursor-help text-[#8794ab]"><Info size={11} /></span>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-[220px] text-xs">Only show cities scoring at or above this number (0–100).</TooltipContent>
-            </Tooltip>
-          </label>
-          <div className="flex items-center gap-2 h-9">
-            <Slider
-              value={[minScore]}
-              onValueChange={([v]) => setMinScore(v)}
-              max={100}
-              step={1}
-              className="flex-1 [&>span:first-child]:bg-[#eaf0ff] [&>span:first-child]:h-1.5 [&_[role=slider]]:h-3.5 [&_[role=slider]]:w-3.5 [&_[role=slider]]:border-[#174be8] [&_[role=slider]]:bg-white [&>span:first-child_span]:bg-[#174be8]"
-            />
-            <span className="text-xs font-medium text-[#07142f] w-7 text-right">{minScore}</span>
-          </div>
-        </div>
-        <div className="flex flex-col gap-1 min-w-[120px]">
-          <label className="text-[11px] text-[#526078] flex items-center gap-1">
-            Tier
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="cursor-help text-[#8794ab]"><Info size={11} /></span>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-[280px] text-xs leading-relaxed">
-                Tiers are assigned by <b>percentile rank</b> across all live-scored cities, not by absolute score:
-                <br />
-                <b>Tier I = Top 5%</b>, <b>Tier II = next 15%</b>,{" "}
-                <b>Tier III = next 30%</b>, <b>Tier IV = bottom 50%</b>.
-                <br />
-                Composite scores tend to cluster in the 40s–70s, so a Tier I market may still score in the 60s.
-              </TooltipContent>
-            </Tooltip>
-          </label>
-          <Select value={tierFilter} onValueChange={setTierFilter}>
-            <SelectTrigger className="h-9 bg-white border-[#e5eaf2] text-sm"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="All">All</SelectItem>
-              <SelectItem value="A">Tier I — Top 5%</SelectItem>
-              <SelectItem value="B">Tier II — Next 15%</SelectItem>
-              <SelectItem value="C">Tier III — Next 30%</SelectItem>
-              <SelectItem value="D">Tier IV — Bottom 50%</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <label className="flex items-center gap-2 h-9 cursor-pointer">
-              <Checkbox
-                checked={nonRegOnly}
-                onCheckedChange={(v) => {
-                  const on = !!v;
-                  setNonRegOnly(on);
-                  if (on) toast.success("Non-registration state filter applied to available sample data.");
-                }}
-              />
-              <span className="text-xs text-[#14233b] whitespace-nowrap inline-flex items-center gap-1">
-                Non-Registration States Only
-                <Info size={11} className="text-[#8794ab]" />
-              </span>
-            </label>
-          </TooltipTrigger>
-          <TooltipContent className="max-w-[280px] text-xs">
-            Franchise registration states require extra legal filings. Check this to only see states where you can sell franchises without state registration.
-          </TooltipContent>
-        </Tooltip>
-        <div className="ml-auto h-9 flex items-end">
-          <Button
-            variant="outline"
-            className="h-9 border-[#e5eaf2] text-[#14233b] gap-1.5 font-normal"
-            disabled={refreshingMarket}
-            onClick={handleRefreshData}
-          >
-            <RefreshCw size={14} className={refreshingMarket ? "animate-spin" : ""} />
-            {refreshingMarket ? "Refreshing..." : "Refresh Data"}
-          </Button>
-        </div>
-      </div>
-      </TooltipProvider>
+      <CityFiltersRow
+        stateOpen={stateOpen}
+        setStateOpen={setStateOpen}
+        stateFilter={stateFilter}
+        setStateFilter={setStateFilter}
+        availableStates={availableStates}
+        cityFilter={cityFilter}
+        setCityFilter={setCityFilter}
+        minPop={minPop}
+        setMinPop={setMinPop}
+        minScore={minScore}
+        setMinScore={setMinScore}
+        tierFilter={tierFilter}
+        setTierFilter={setTierFilter}
+        nonRegOnly={nonRegOnly}
+        setNonRegOnly={setNonRegOnly}
+        refreshingMarket={refreshingMarket}
+        onRefreshData={handleRefreshData}
+      />
       <div className="mb-3 flex items-center gap-1 rounded-lg border border-[#eef2f7] bg-white p-1 w-fit">
         {(["table", "map"] as const).map((v) => (
           <button

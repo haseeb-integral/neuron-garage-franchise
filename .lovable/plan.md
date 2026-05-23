@@ -1,132 +1,77 @@
-# City Search + Teacher Search Turnaround Plan
+# Documentation Audit — Findings & Update Plan
 
-Goal: Take the existing app from "engine is great, dashboard is held together with zip ties" to a clean, honest, maintainable product. No new features. No backend redesign. Just disciplined cleanup, decomposition, and guard rails — in the right order so each step makes the next one easier.
+I audited the six docs reachable from the left sidebar against the work shipped in the last 24 hours and against your "no references to archived MD files" rule.
 
-Scope: City Search (primary), Teacher Search (secondary). Email Outreach explicitly out of scope. No work on auth/login.
+## Audit Summary
 
----
+| Doc (sidebar) | File | Refs archived MDs? | Stale vs. last 24h? | Verdict |
+|---|---|---|---|---|
+| User's Guide | `src/pages/UserGuide.tsx` | No | No | ✅ Leave as-is |
+| SmartLead API Spec | `src/data/smartleadSpec.md` | No | No | ✅ Leave as-is |
+| Outreach Guide | `src/data/emailOutreachDocs.md` | No | No | ✅ Leave as-is |
+| Demographics Method | `src/data/demographicsMethodology.md` | **Yes — heavy** | Partial | 🔴 Rewrite |
+| CSI Methodology | `src/pages/Methodology.tsx` | No | No | ✅ Leave as-is |
+| Full Specification | `src/pages/Spec.tsx` | No | **Yes — heavy** | 🔴 Rewrite sections |
 
-## Step 1 — Metric Truth Cleanup (the "kill the 46" pass)
+The other two `.tsx` doc shells (`SmartLeadSpec.tsx`, `EmailOutreachDocs.tsx`, `DemographicsMethodology.tsx`) just render the `.md` files via `?raw` — no content lives in them.
 
-**Why first:** Every refactor downstream is easier once the registry is the only source of truth and ghost metrics are gone. This also fixes the false "46 metrics" story in the UI.
+## Findings In Detail
 
-**What:**
-- Treat `src/lib/sowMetricRegistry.ts` as the single source of truth. Live total = **12 sub-metrics across 3 categories** (Demand 4 / CSI 3 / TAM Teachers 5).
-- Grep the codebase for "46", "comprehensive scoring", "46-factor", "46-metric" — replace with accurate copy ("12-metric model across Demand, Competitive Opportunity, TAM Teachers").
-- Prune `src/lib/signalAliases.ts` `LEGACY_TO_CANONICAL` map: remove any alias whose target key is not in the registry (montessori_count, stem_enrichment_count, long_commute_pct, young_families_growth_5yr, etc.). Keep only aliases that map to a live registry key.
-- Prune `FETCHER_DIAGNOSTIC_KEYS` set to only what fetchers actually emit today.
-- Add a one-liner to `_ARCHIVED_DO_NOT_USE/README.md`: "The 46-metric list in these archived MDs is historical. Live count is 12 — see `src/lib/sowMetricRegistry.ts`."
-- Delete `src/data/cityData.ts` `sampleCities` usage from any production code path; keep only if a test imports it, otherwise delete the file.
-- Drop vestigial DB columns from `us_cities_scored` that are 0% populated and no longer in the registry: `summer_camp_count`, `school_hosted_camp_count`, `avg_camp_price_per_hour`, `camp_waitlist_signals`, `summer_weather_index`, `summer_precip_days`, `days_above_90f`, `avg_peak_summer_temperature`, `weather_last_updated`. (Pre-release, no migration concerns.)
-- Remove `fit_score` from `teacher_prospects` if unused (confirm via grep first).
+### 🔴 1. Demographics Method — `src/data/demographicsMethodology.md`
+**Archived MD references (your hard rule):**
+- L5: "Pairs with `TPD.md` … and `AGENTS.md` Rule 11."
+- L24: "see `TPD.md` for how it was imported"
+- L42: "Per AGENTS.md Rule 5"
+- L63: "Per `TPD.md`, vendor tables are the universe"
+- L66: "See `TEACHER_IDEAL_PROFILE.md`"
+- L72: "(locked enum, see AGENTS.md)"
+- L98: "Name-vs-Meaning (AGENTS.md Rule 10)"
+- L139: "Doc-sync per AGENTS.md Rule 9"
+- L156–161: full "Cross-References" block listing `TPD.md`, `AGENTS.md`, `DATABASE_LAYER_SPEC.md`, `TEACHER_IDEAL_PROFILE.md`, `GLOSSARY.md`
 
-**Done when:** No code references a metric key that isn't in `sowMetricRegistry.ts`. No UI string says "46". `signalAliases.ts` is < 20 lines.
+**Structural bug:** numbering jumps 2.2 → 2.5 (sections 2.3, 2.4 are missing).
 
----
+**Stale vs. recent work:** doesn't mention the single-source `MarketView` rule (every composite mints from `src/lib/marketView.ts`) that we hardened in the last 24 hours.
 
-## Step 2 — Decompose `CityScoring.tsx` (3,323 → ~300 lines + hooks)
+### 🔴 2. Full Specification — `src/pages/Spec.tsx`
+No archived-MD references, but the content describes an old prototype, not the live product:
+- **L113–114, L122–127:** "high-fidelity, fully clickable prototype using mock data — no backend writes are persisted", "No real authentication, persistence", "No live data feeds (Census, Yelp, LinkedIn, ZoomInfo) — all data is mocked". All four are now false: Lovable Cloud is wired, email/password auth is live, Census/BLS/BEA/FRED/NCES/Apollo/SmartLead are all wired.
+- **L46–58 TOC + L173–181 Routes:** missing `/email-outreach`, `/users-guide`, `/smartlead-spec`, `/email-outreach-docs`, `/demographics-methodology`, `/methodology`. Sidebar item list is also wrong (5 items now: Dashboard, City Search, Teacher Search, Email Outreach, Candidate Pipeline — no Onboarding).
+- **L302–327:** Onboarding described as live; per User's Guide it is parked for Phase 2.
+- **L361–373 Data Model:** "All data lives in `src/data/*.ts`. State changes … do not survive a page reload." False — primary source of truth is Lovable Cloud Postgres.
+- **L376–387 Tech Stack:** missing Lovable Cloud / Supabase, TanStack Query usage, Playwright E2E, GitHub Actions CI.
+- **L389–399 Future Work:** lists already-shipped items (Lovable Cloud, Census/Apollo, AI assists) as future.
+- **No mention** of last-24h hardening: `MarketView` single-composite rule (Rule 12), `QueryErrorState` retry pattern, Teacher dual-ID fix, removal of `pageCache`, Playwright E2E suite, CI pipeline.
 
-**Why second:** This file is the bottleneck for every future change. It has 17 `useState`, 22 raw `compositeScore` reads, and an `eslint-disable` at the top.
+### ✅ Everything else
+- **User's Guide** — accurate, no archived refs, correctly notes SmartLead warm-up and Phase 2 onboarding parking.
+- **SmartLead API Spec** + **Outreach Guide** — current, technically accurate, no archived refs.
+- **CSI Methodology** — self-contained formula doc, no archived refs, still correct.
 
-**What:**
-- Extract feature hooks (one file each, under `src/hooks/citySearch/`):
-  - `useCityFilters.ts` — wraps the Zustand filter slice + derived predicates
-  - `useCityRanking.ts` — wraps the marketView call + sort/order
-  - `useCitySelection.ts` — single + compare selection, replaces 4 useStates
-  - `useCityPagination.ts` — page + pageSize
-  - `useCityWeights.ts` — master + sub-weights, apply/reset semantics
-- Extract presentational components:
-  - `CitySearchToolbar.tsx` — search box, model picker, view toggle
-  - `CitySearchResults.tsx` — table/map/spreadsheet switch
-  - `CitySearchEmptyState.tsx`
-- Move every raw `compositeScore` read behind `marketView` (already the SoT — Step 1 of the previous audit). Delete the `eslint-disable`.
-- Target: `CityScoring.tsx` becomes a thin orchestrator (~300 lines, 0 local `useState`, all data via hooks).
+## Update Plan
 
-**Done when:** `CityScoring.tsx` < 350 lines, no `eslint-disable`, all score reads route through `marketView`.
+### Step 1 — Rewrite `src/data/demographicsMethodology.md`
+- Strip every reference to `TPD.md`, `AGENTS.md`, `TEACHER_IDEAL_PROFILE.md`, `DATABASE_LAYER_SPEC.md`, `GLOSSARY.md`, `MAY*_MEETING_NOTES`, and the "Rule N" shorthand.
+- Inline any rule still in force (Show-Formula contract, name-vs-meaning, signals-not-scores, single MarketView composite) as first-class prose in this doc, not as cross-refs.
+- Fix the 2.3/2.4 numbering gap (renumber cleanly).
+- Replace the "Cross-References" section with a short "Where this lives in the app" pointer (City Search, Teacher Search, Show Formula buttons).
+- Add a brief note that all composite scores in the UI are minted by a single `MarketView` source so a city can never display two different scores in one render.
 
----
+### Step 2 — Rewrite the stale sections of `src/pages/Spec.tsx`
+Targeted edits only, keep the page structure / TOC / styling:
+- **§1 Overview:** drop "prototype / mocked / no persistence" language; describe the live product on Lovable Cloud.
+- **§4 Navigation & Routes:** update sidebar to the real 5 items + Docs group; update route list to match `AppSidebar.tsx`.
+- **§8 Candidate Pipeline:** keep the 7 stages, drop the Signing→Onboarding handoff section (mark Onboarding as parked for Phase 2).
+- **§9 Onboarding:** collapse to a one-paragraph "Parked for Phase 2" note.
+- **§12 Data Model:** replace "mock data in `src/data/*.ts`" with the real backend (Lovable Cloud Postgres, named tables: `us_cities_scored`, `teacher_prospects`, `candidates`, `smartlead_events`, `prospect_batches`, `prospects_staging`, `campaign_cache`).
+- **§13 Tech Stack:** add Lovable Cloud (Postgres + Auth + Edge Functions + Realtime), TanStack Query, Playwright E2E, GitHub Actions CI (lint + typecheck + test + build on every PR).
+- **§14 Future Work:** prune already-shipped items; keep only what's actually next (GreatSchools API key, live teacher outreach after warm-up, Phase 2 Onboarding).
+- **Add a new §15 "Reliability & Correctness Guarantees"** documenting the last-24h hardening: single `MarketView` composite source, `QueryErrorState` retry component on data-heavy surfaces, Teacher dual-ID push correctness, Playwright smoke coverage of City Search / Teacher Prospects / Candidate Pipeline, CI gate on PRs.
 
-## Step 3 — Decompose `SubMetricWeightsDrawer.tsx` (1,194 → ~250 lines)
+### Step 3 — No-op confirmation
+Confirm the other four docs need no edits (User's Guide, SmartLead Spec, Outreach Guide, CSI Methodology).
 
-**Why third:** Second-largest file, touched every time weights change, and currently mixes UI + normalization + persistence + retired-category dead code.
+## Risk
+Low. Pure documentation. No code paths, no schema, no runtime behavior touched.
 
-**What:**
-- Extract `src/lib/subWeightNormalization.ts` — pure functions: `normalizeToHundred`, `applySubWeights`, `diffFromDefault`. Unit-tested.
-- Extract `<CategoryWeightSection />` — renders one category's sub-metrics. Drawer becomes a map over 3 categories.
-- Extract `<CsiReadOnlySection />` — CSI is read-only by design (Manus owns the formula). Make this an obvious separate component so no one accidentally adds editable sliders.
-- Delete all branches that reference retired categories (`pricingPower`, `easeOfOperations`, `parentMindset`). The store migration already strips them; the drawer shouldn't carry the code.
-- Add a small explainer header per category that pulls from `CATEGORY_PURPOSE`.
-
-**Done when:** Drawer < 300 lines, normalization is pure + tested, zero references to retired category keys.
-
----
-
-## Step 4 — Decompose other oversized City Search files
-
-- `MarketDetailDrawer.tsx` (712) → split into `<MetricRow />`, `<CategorySection />`, `<DataSourceFootnote />`. Move the legacy → canonical key join into `signalAliases.ts` (already partially there).
-- `MarketReportModal.tsx` (623) → split header / scorecard / per-category sections / actions.
-- `CitySpreadsheetView.tsx` (514) → extract column defs to `cityColumns.ts`; view becomes ~200 lines.
-- Delete `CompareModal.tsx` (older one). Keep `MarketCompareModal.tsx` as the single compare surface. Update imports.
-
-**Done when:** No City Search component file is over 500 lines. One compare modal.
-
----
-
-## Step 5 — Teacher Search cleanup
-
-**What:**
-- **Kill the dual-ID system.** Today `teacher_prospects` rows are addressed by both a legacy `id: number` and a real `uuid: string`. Pick `uuid` everywhere. Sweep `TeacherProspects.tsx`, `TeacherTable.tsx`, `TeacherDetailPanel.tsx`, `BulkActionBar.tsx`, store, and the dedupe edge function. Remove the numeric `id` field from any local types.
-- **Consolidate `teacher_prospects_stats` RPC.** Drop the older overload, keep the one the UI actually calls. (Migration step — pre-release, safe.)
-- **Drop `fit_score` column** from `teacher_prospects` and `FitScoreBadge` component if not in use; confirm via grep first.
-- Decompose `TeacherProspects.tsx` (955 lines, 19 useState) using the same hook pattern as Step 2: `useTeacherFilters`, `useTeacherSelection`, `useTeacherStats`, `useTeacherPagination`. Target < 350 lines.
-- Replace cascading `useEffect` chains (promoted / campaign data) with React Query dependent queries.
-
-**Done when:** One ID system (uuid). One stats RPC. Page < 350 lines, ≤ 3 `useEffect`s.
-
----
-
-## Step 6 — Caching + typing hygiene (cross-cutting)
-
-- Delete `src/lib/pageCache.ts`. Move any remaining consumers to React Query with sensible `staleTime`. One cache, one mental model.
-- Type-tighten `src/lib/cityScoringLiveData.ts`. Replace the ~17 `any`s with real types derived from `sowMetricRegistry` and the DB row type. No `any` left at module boundary.
-- Turn the `eslint-disable` removals from Step 2 into a permanent lint rule: no raw `compositeScore` reads outside `marketView.ts` (already exists per prior audit — verify and harden).
-
-**Done when:** Grep for `any` in `cityScoringLiveData.ts` returns 0 hits. `pageCache.ts` deleted.
-
----
-
-## Step 7 — Test coverage on the 5 highest-traffic surfaces
-
-Add focused component/integration tests (Vitest + Testing Library). Not exhaustive — just the surfaces that, if they break, the product is dead:
-
-1. `CityTable` — renders rows, sorts by score, respects filter
-2. `SubMetricWeightsDrawer` — apply normalizes to 100, reset restores defaults, CSI section is read-only
-3. `MarketDetailDrawer` — every registry metric renders a row with a real or "no data" value
-4. `TeacherTable` — renders, selects, bulk-acts using uuid only
-5. `marketView` red-path — drift detector throws when a screen tries to compute its own score (already exists; ensure it survives the refactor)
-
-**Done when:** `bunx vitest run` is green, these 5 suites exist and cover the contracts above.
-
----
-
-## Execution order and self-check between steps
-
-Steps must run in order — each one removes ambiguity the next one would otherwise inherit. After each step I'll:
-1. Run `bunx vitest run` (must stay green).
-2. Run the dev build (typecheck must stay green — no new errors introduced).
-3. Spot-check the City Search and Teacher Search pages in preview.
-4. Commit the step as a single logical change with a one-line summary.
-
-If any step grows past its scope mid-flight, I stop and surface it instead of expanding silently.
-
-## Out of scope (will not touch)
-
-- Email Outreach / SmartLead
-- Auth / login flows
-- Edge functions other than the teacher dedupe consolidation in Step 5
-- Any new features
-- Any of the archived MD files (they stay archived, untouched)
-
-## Rough size
-
-~12–18 focused PR-sized commits. No single step should take more than a few hundred lines of net change once dead code is removed. Net line count for the repo should go **down**, not up.
+Approve and I'll execute Steps 1 + 2 in a single pass.

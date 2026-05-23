@@ -43,7 +43,7 @@ type Props = {
   setPage: (p: number | ((p: number) => number)) => void;
 };
 
-export function RankedMarketsList({
+function RankedMarketsListImpl({
   filteredCount,
   pageItems,
   pageStart,

@@ -1,161 +1,513 @@
-import { ArrowRight, BarChart3, CalendarDays, ClipboardCheck, Download, FileText, MapPin, TrendingUp, Upload, UserRound, Users } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  Circle,
+  Database,
+  FlaskConical,
+  Kanban,
+  Mail,
+  MapPin,
+  Send,
+  Sparkles,
+  Users,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 
 import { PageHeader } from "@/components/PageHeader";
-import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 
-const kpis = [
-  { title: "Target Cities", value: "42", delta: "12%", compare: "vs Apr 12 – May 11", icon: MapPin, bg: "#e4f7f4", color: "#05939a" },
-  { title: "Teacher Search", value: "354", delta: "25%", compare: "vs Apr 12 – May 11", icon: UserRound, bg: "#f0efff", color: "#174be8" },
-  { title: "Active Candidates", value: "128", delta: "18%", compare: "vs Apr 12 – May 11", icon: Users, bg: "#eef4ff", color: "#174be8" },
-  { title: "Onboarding in Progress", value: "23", delta: "21%", compare: "vs Apr 12 – May 11", icon: ClipboardCheck, bg: "#fff1e5", color: "#fd7e14" },
+/**
+ * Dashboard — pre-launch "what should I do today?" home screen
+ * for Sam and Kaylie. Live counts for City Search, Teacher Search,
+ * and Email Outreach. The Candidate Pipeline tile is clearly labeled
+ * as demo data because real candidates are weeks away.
+ */
+
+const NAVY = "#003c7e";
+const BLUE = "#0757ff";
+const YELLOW = "#FFD400";
+const INK = "#0b1a36";
+const MUTED = "#526078";
+const BORDER = "#eef2f7";
+
+// ---------- Live data hooks ------------------------------------------------
+
+function useCitySearchSummary() {
+  return useQuery({
+    queryKey: ["dashboard", "city-summary"],
+    staleTime: 60_000,
+    queryFn: async () => {
+      const [scored, registration] = await Promise.all([
+        supabase.from("us_cities_scored").select("id", { count: "exact", head: true }),
+        supabase
+          .from("us_cities_scored")
+          .select("id", { count: "exact", head: true })
+          .eq("is_registration_state", true),
+      ]);
+      return {
+        total: scored.count ?? 0,
+        registration: registration.count ?? 0,
+      };
+    },
+  });
+}
+
+function useTeacherSearchSummary() {
+  return useQuery({
+    queryKey: ["dashboard", "teacher-summary"],
+    staleTime: 60_000,
+    queryFn: async () => {
+      const [total, verified] = await Promise.all([
+        supabase.from("teacher_prospects").select("id", { count: "exact", head: true }),
+        supabase
+          .from("teacher_prospects")
+          .select("id", { count: "exact", head: true })
+          .eq("verification_status", "valid"),
+      ]);
+      return {
+        total: total.count ?? 0,
+        verified: verified.count ?? 0,
+      };
+    },
+  });
+}
+
+function useEmailOutreachSummary() {
+  return useQuery({
+    queryKey: ["dashboard", "outreach-summary"],
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("campaign_cache")
+        .select("id, status")
+        .neq("id", "smartlead_analytics_overview");
+      if (error) return { campaigns: 0, active: 0 };
+      const campaigns = data?.length ?? 0;
+      const active =
+        data?.filter((c) => /active|start/i.test(String(c.status ?? ""))).length ?? 0;
+      return { campaigns, active };
+    },
+  });
+}
+
+// ---------- Static framing (intentionally not from DB) --------------------
+
+const PRE_LAUNCH_CHECKLIST = [
+  {
+    id: "cities",
+    done: false,
+    title: "Lock in this month's target cities",
+    body: "Score, compare, and mark Tier A markets you want to work first.",
+    cta: "Open City Search",
+    href: "/city-scoring",
+    icon: MapPin,
+    accent: "#0d7a5f",
+    bg: "#dcf5e6",
+  },
+  {
+    id: "teachers",
+    done: false,
+    title: "Grow the Master Teacher Database",
+    body: "Import, verify, and tag teachers in your locked cities. Quality > quantity.",
+    cta: "Open Teacher Search",
+    href: "/teacher-prospects",
+    icon: Users,
+    accent: BLUE,
+    bg: "#eef4ff",
+  },
+  {
+    id: "outreach",
+    done: false,
+    title: "Confirm SmartLead mailbox health",
+    body: "Mailboxes are in WARM-UP. Check reputation and daily sends — live teacher outreach starts after warm-up clears.",
+    cta: "Open Email Outreach",
+    href: "/email-outreach",
+    icon: Mail,
+    accent: "#b88a00",
+    bg: "#fff8d6",
+  },
+  {
+    id: "pipeline",
+    done: false,
+    title: "Walk through the Candidate Pipeline",
+    body: "The Kanban is live and ready. Real candidates land here once warm-up completes and first replies come in.",
+    cta: "Open Candidate Pipeline",
+    href: "/candidate-pipeline",
+    icon: Kanban,
+    accent: "#7a4dff",
+    bg: "#f0ecff",
+  },
+] as const;
+
+// Demo pipeline shape — clearly labeled in the UI as sample data.
+const DEMO_PIPELINE = [
+  { stage: "New Lead", count: 0 },
+  { stage: "Initial Qual", count: 0 },
+  { stage: "Business Overview", count: 0 },
+  { stage: "FDD Review", count: 0 },
+  { stage: "Immersion", count: 0 },
+  { stage: "Confirmation", count: 0 },
+  { stage: "Signing", count: 0 },
 ];
 
-const pipeline = [
-  { stage: "New Lead", count: 12, percent: 9 },
-  { stage: "Initial Qual", count: 9, percent: 7 },
-  { stage: "Business Overview", count: 7, percent: 5 },
-  { stage: "FDD Review", count: 5, percent: 4 },
-  { stage: "Immersion", count: 4, percent: 3 },
-  { stage: "Confirmation", count: 3, percent: 2 },
-  { stage: "Signing", count: 2, percent: 2 },
-  { stage: "Disqualified", count: 6, percent: 5 },
-];
+// ---------- Small UI primitives -------------------------------------------
 
-const recentActivity = [
-  { text: "Sarah Mitchell moved to FDD Review", location: "Frisco, TX", time: "12 min ago", icon: Users, color: "#20c997", bg: "#e7f7ed" },
-  { text: "New prospect imported for Austin, TX", location: "Austin, TX", time: "1 hr ago", icon: FileText, color: "#174be8", bg: "#eef4ff" },
-  { text: "Marcus Johnson flagged as Overdue", location: "Plano, TX", time: "3 hr ago", icon: BarChart3, color: "#fd7e14", bg: "#fff1e5" },
-  { text: "Patricia Williams completed Business Immersion", location: "Dallas, TX", time: "Yesterday", icon: ClipboardCheck, color: "#174be8", bg: "#eef4ff" },
-  { text: "City score recalculated for Plano, TX (Tier A)", location: "Plano, TX", time: "Yesterday", icon: MapPin, color: "#20c997", bg: "#e7f7ed" },
-  { text: "Onboarding completed for Ankit Desai", location: "Houston, TX", time: "2 days ago", icon: FileText, color: "#6b5cff", bg: "#f0efff" },
-];
+const Stat = ({ label, value, hint }: { label: string; value: string; hint?: string }) => (
+  <div>
+    <p className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: MUTED }}>
+      {label}
+    </p>
+    <p className="mt-1 text-[26px] font-black leading-none" style={{ color: INK }}>
+      {value}
+    </p>
+    {hint && (
+      <p className="mt-1 text-[11.5px]" style={{ color: MUTED }}>
+        {hint}
+      </p>
+    )}
+  </div>
+);
 
-const nextActions = [
-  { text: "Follow up with 12 engaged candidates", sub: "Last contacted 5 days ago", priority: "High", icon: UserRound, bg: "#eef4ff", color: "#174be8", pill: "#ffe4e7", pillText: "#e11d48" },
-  { text: "Review 7 pending documents", sub: "Awaiting verification", priority: "Medium", icon: ClipboardCheck, bg: "#fff1e5", color: "#fd7e14", pill: "#fff1e5", pillText: "#d95f00" },
-  { text: "Score 6 shortlisted cities", sub: "Improve city pipeline", priority: "Low", icon: MapPin, bg: "#e4f7f4", color: "#05939a", pill: "#e4f7f4", pillText: "#047c80" },
-  { text: "Import new prospect list", sub: "Add teachers to pipeline", priority: "Low", icon: Upload, bg: "#eef4ff", color: "#174be8", pill: "#eef4ff", pillText: "#174be8" },
-];
+const fmt = (n: number | undefined) =>
+  typeof n === "number" ? n.toLocaleString("en-US") : "—";
 
-const insights = [
-  { title: "Active Candidates", value: "128", delta: "18%" },
-  { title: "New Prospects", value: "96", delta: "14%" },
-  { title: "Cities Scored", value: "27", delta: "8%" },
-  { title: "Onboardings Completed", value: "15", delta: "38%" },
-  { title: "Conversion Rate", value: "11.7%", delta: "2.4pp" },
-];
+// ---------- Page -----------------------------------------------------------
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const maxPipeline = Math.max(...pipeline.map((p) => p.count));
+
+  const cities = useCitySearchSummary();
+  const teachers = useTeacherSearchSummary();
+  const outreach = useEmailOutreachSummary();
+
+  const totalDemo = DEMO_PIPELINE.reduce((s, p) => s + p.count, 0);
+  const maxDemo = Math.max(1, ...DEMO_PIPELINE.map((p) => p.count));
 
   return (
-    <div className="max-w-[1280px] mx-auto w-full space-y-3">
+    <div className="mx-auto w-full max-w-[1280px] space-y-4">
       <PageHeader
-        title="Dashboard"
-        subtitle="Overview of your franchise acquisition and onboarding performance."
-        action={
-          <>
-            <button
-              type="button"
-              className="inline-flex items-center justify-center bg-[#174be8] text-white transition-colors hover:bg-[#0f3fd0]"
-              style={{ height: 36, minHeight: 36, paddingLeft: 16, paddingRight: 16, borderRadius: 8, fontSize: 13, fontWeight: 400, lineHeight: "13px", boxShadow: "none" }}
-            >
-              <Download className="mr-2 shrink-0" size={15} strokeWidth={1.9} />
-              <span>Export Report</span>
-            </button>
-            <button
-              type="button"
-              className="inline-flex items-center justify-center border border-[#eef2f7] bg-white font-semibold text-[#26364d] transition-colors hover:bg-[#f3f7ff]"
-              style={{ height: 34, minHeight: 34, paddingLeft: 16, paddingRight: 16, borderRadius: 8, fontSize: 13, lineHeight: "13px" }}
-            >
-              <CalendarDays className="mr-2 shrink-0 text-[#526078]" size={15} />
-              <span>May 12 – Jun 11, 2026</span>
-            </button>
-          </>
-        }
+        title="Welcome to Neuron Garage"
+        subtitle="Pre-launch console for Sam and Kaylie — lock the cities, stack the teachers, get the mailboxes warm. Real outreach starts the day warm-up clears."
       />
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {kpis.map((stat) => (
-          <div key={stat.title} className="rounded-2xl bg-white p-3 shadow-sm" style={{ border: "1px solid #eef2f7" }}>
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: stat.bg, color: stat.color }}>
-                <stat.icon size={22} />
+      {/* Pre-launch status banner — the single most important message */}
+      <section
+        className="relative overflow-hidden rounded-2xl p-5 md:p-6"
+        style={{
+          background: `linear-gradient(135deg, ${NAVY} 0%, ${BLUE} 100%)`,
+          color: "white",
+        }}
+      >
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-start gap-3">
+            <span
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+              style={{ background: YELLOW, color: INK }}
+            >
+              <FlaskConical size={20} />
+            </span>
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: YELLOW }}>
+                Pre-launch · Mailbox warm-up in progress
               </div>
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-[#26364d]">{stat.title}</p>
-                <p className="mt-1 text-xl font-black leading-none text-[#07142f]">{stat.value}</p>
-              </div>
+              <h2 className="mt-1 text-[20px] font-black leading-tight">
+                We are not emailing real teachers yet.
+              </h2>
+              <p className="mt-1 max-w-[640px] text-[13.5px] leading-relaxed text-white/85">
+                The three sending mailboxes are seasoning with internal staff and the SmartLead warm-up pool. Use
+                this window to finish picking cities and to keep the teacher database growing — so the day we go
+                live, every send hits a verified inbox in a market we actually want.
+              </p>
             </div>
-            <div className="mt-3 flex items-center gap-4 text-xs">
-              <span className="flex items-center gap-1 font-bold text-[#16a34a]"><TrendingUp size={14} /> {stat.delta}</span>
-              <span className="text-[#526078]">{stat.compare}</span>
-            </div>
           </div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.05fr_1fr_1.12fr]">
-        <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: "1px solid #eef2f7" }}>
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <div><h2 className="text-lg font-black text-[#07142f]">Pipeline Snapshot</h2><p className="text-xs text-[#526078]">Candidates by stage</p></div>
-            <Button variant="outline" className="h-8 rounded-lg border-[#eef2f7] px-3 text-xs font-semibold">All Stages</Button>
-          </div>
-          <div className="space-y-2.5">
-            <div className="grid grid-cols-[130px_1fr_42px_46px] items-center gap-3 text-[11px] font-bold text-[#526078]"><span>Stage</span><span /><span className="text-right">Candidates</span><span className="text-right">% Total</span></div>
-            {pipeline.map((p) => (
-              <div key={p.stage} className="grid grid-cols-[130px_1fr_42px_46px] items-center gap-3 text-xs">
-                <span className="font-semibold text-[#26364d]">{p.stage}</span>
-                <div className="h-3 overflow-hidden rounded-full bg-[#edf1f6]"><div className="h-full rounded-full bg-[#174be8]" style={{ width: `${(p.count / maxPipeline) * 100}%` }} /></div>
-                <span className="text-right font-bold text-[#07142f]">{p.count}</span><span className="text-right font-bold text-[#26364d]">{p.percent}%</span>
-              </div>
-            ))}
-            <div className="mt-2 grid grid-cols-[130px_1fr_42px_46px] items-center gap-3 border-t border-[#eef2f6] pt-3 text-sm font-black text-[#07142f]"><span>Total Candidates</span><span /><span className="text-right">48</span><span className="text-right">100%</span></div>
-          </div>
-        </section>
-
-        <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: "1px solid #eef2f7" }}>
-          <div className="mb-3 flex items-start justify-between gap-3"><div><h2 className="text-lg font-black text-[#07142f]">Recent Activity</h2><p className="text-xs text-[#526078]">Latest events across the system</p></div><button className="text-xs font-bold text-[#174be8] hover:underline">View All</button></div>
-          <div className="space-y-1">
-            {recentActivity.map((evt, i) => (
-              <div key={i} className="flex items-start gap-3 border-b border-[#eef2f6] py-2 last:border-b-0">
-                <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: evt.bg, color: evt.color }}><evt.icon size={13} /></div>
-                <div className="min-w-0 flex-1"><p className="truncate text-xs font-bold text-[#26364d]">{evt.text}</p><p className="text-[11px] text-[#526078]">{evt.location}</p></div>
-                <span className="shrink-0 text-[11px] text-[#526078]">{evt.time}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: "1px solid #eef2f7" }}>
-          <h2 className="mb-4 text-lg font-black text-[#07142f]">Next Best Actions</h2>
-          <div className="space-y-1">
-            {nextActions.map((action, i) => (
-              <button key={i} onClick={() => { if (i === 0) navigate("/candidate-pipeline"); if (i === 1) navigate("/onboarding"); if (i === 2) navigate("/city-scoring"); if (i === 3) navigate("/teacher-prospects"); }} className="flex w-full items-center gap-3 rounded-xl border-b border-[#eef2f6] px-1 py-3 text-left transition-colors last:border-b-0 hover:bg-[#f8fbff]">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: action.bg, color: action.color }}><action.icon size={18} /></span>
-                <span className="min-w-0 flex-1"><span className="block truncate text-xs font-bold text-[#26364d]">{action.text}</span><span className="block text-[11px] text-[#526078]">{action.sub}</span></span>
-                <span className="rounded-full px-3 py-1 text-xs font-bold" style={{ backgroundColor: action.pill, color: action.pillText }}>{action.priority}</span>
-                <ArrowRight className="h-4 w-4 shrink-0 text-[#526078]" />
-              </button>
-            ))}
-          </div>
-        </section>
-      </div>
-
-      <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: "1px solid #eef2f7" }}>
-        <div className="mb-3 flex items-start justify-between gap-3"><div><h2 className="text-lg font-black text-[#07142f]">Insights at a Glance</h2><p className="text-xs text-[#526078]">Key metrics over time</p></div><Button variant="outline" className="h-8 rounded-lg border-[#eef2f7] px-3 text-xs font-semibold">Last 6 Months</Button></div>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
-          {insights.map((item) => (
-            <div key={item.title} className="border-r border-[#eef2f6] pr-4 last:border-r-0">
-              <p className="text-xs font-semibold text-[#526078]">{item.title}</p>
-              <div className="mt-2 flex items-end gap-3"><span className="text-xl font-black text-[#07142f]">{item.value}</span><span className="flex items-center gap-1 text-xs font-bold text-[#16a34a]"><TrendingUp size={12} /> {item.delta}</span></div>
-              <svg viewBox="0 0 120 34" className="mt-2 h-8 w-full text-[#174be8]" fill="none" aria-hidden="true"><path d="M2 26 L18 23 L34 25 L50 18 L66 21 L82 8 L100 15 L118 13" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            </div>
-          ))}
+          <button
+            onClick={() => navigate("/email-outreach")}
+            className="inline-flex items-center gap-2 self-start rounded-full bg-white px-4 py-2 text-[13px] font-bold transition-transform hover:-translate-y-0.5"
+            style={{ color: NAVY }}
+          >
+            Check warm-up status
+            <ArrowRight size={14} />
+          </button>
         </div>
       </section>
+
+      {/* Four live feature tiles */}
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {/* City Search — LIVE */}
+        <button
+          onClick={() => navigate("/city-scoring")}
+          className="group rounded-2xl bg-white p-5 text-left transition-all hover:-translate-y-0.5 hover:shadow-md"
+          style={{ border: `1px solid ${BORDER}` }}
+        >
+          <div className="flex items-center justify-between">
+            <span
+              className="flex h-10 w-10 items-center justify-center rounded-xl"
+              style={{ background: "#dcf5e6", color: "#0d7a5f" }}
+            >
+              <MapPin size={20} />
+            </span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "#0d7a5f" }}>
+              Live data
+            </span>
+          </div>
+          <h3 className="mt-4 text-[14px] font-black" style={{ color: INK }}>
+            City Search
+          </h3>
+          <p className="mt-0.5 text-[12px] italic" style={{ color: MUTED }}>
+            Where should we open next?
+          </p>
+          <div className="mt-4">
+            <Stat
+              label="Cities scored"
+              value={cities.isLoading ? "…" : fmt(cities.data?.total)}
+              hint={
+                cities.isLoading
+                  ? " "
+                  : `${fmt(cities.data?.registration)} in registration states`
+              }
+            />
+          </div>
+          <span className="mt-4 inline-flex items-center gap-1 text-[12px] font-bold" style={{ color: NAVY }}>
+            Rank markets <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" />
+          </span>
+        </button>
+
+        {/* Teacher Search — LIVE */}
+        <button
+          onClick={() => navigate("/teacher-prospects")}
+          className="group rounded-2xl bg-white p-5 text-left transition-all hover:-translate-y-0.5 hover:shadow-md"
+          style={{ border: `1px solid ${BORDER}` }}
+        >
+          <div className="flex items-center justify-between">
+            <span
+              className="flex h-10 w-10 items-center justify-center rounded-xl"
+              style={{ background: "#eef4ff", color: BLUE }}
+            >
+              <Users size={20} />
+            </span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: BLUE }}>
+              Live data
+            </span>
+          </div>
+          <h3 className="mt-4 text-[14px] font-black" style={{ color: INK }}>
+            Teacher Search
+          </h3>
+          <p className="mt-0.5 text-[12px] italic" style={{ color: MUTED }}>
+            Who in those cities should we talk to?
+          </p>
+          <div className="mt-4">
+            <Stat
+              label="Teachers in master DB"
+              value={teachers.isLoading ? "…" : fmt(teachers.data?.total)}
+              hint={
+                teachers.isLoading
+                  ? " "
+                  : `${fmt(teachers.data?.verified)} with verified email`
+              }
+            />
+          </div>
+          <span className="mt-4 inline-flex items-center gap-1 text-[12px] font-bold" style={{ color: NAVY }}>
+            Find prospects <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" />
+          </span>
+        </button>
+
+        {/* Email Outreach — LIVE + warm-up callout */}
+        <button
+          onClick={() => navigate("/email-outreach")}
+          className="group rounded-2xl bg-white p-5 text-left transition-all hover:-translate-y-0.5 hover:shadow-md"
+          style={{ border: `1px solid ${BORDER}` }}
+        >
+          <div className="flex items-center justify-between">
+            <span
+              className="flex h-10 w-10 items-center justify-center rounded-xl"
+              style={{ background: "#fff8d6", color: "#b88a00" }}
+            >
+              <Send size={20} />
+            </span>
+            <span
+              className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em]"
+              style={{ background: "#fff8d6", color: "#7a5c00" }}
+            >
+              Warm-up
+            </span>
+          </div>
+          <h3 className="mt-4 text-[14px] font-black" style={{ color: INK }}>
+            Email Outreach
+          </h3>
+          <p className="mt-0.5 text-[12px] italic" style={{ color: MUTED }}>
+            How do we start the conversation?
+          </p>
+          <div className="mt-4">
+            <Stat
+              label="SmartLead campaigns"
+              value={outreach.isLoading ? "…" : fmt(outreach.data?.campaigns)}
+              hint={
+                outreach.isLoading
+                  ? " "
+                  : `${fmt(outreach.data?.active)} active · mailboxes seasoning`
+              }
+            />
+          </div>
+          <span className="mt-4 inline-flex items-center gap-1 text-[12px] font-bold" style={{ color: NAVY }}>
+            Review campaigns <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" />
+          </span>
+        </button>
+
+        {/* Candidate Pipeline — DEMO data tile */}
+        <button
+          onClick={() => navigate("/candidate-pipeline")}
+          className="group rounded-2xl bg-white p-5 text-left transition-all hover:-translate-y-0.5 hover:shadow-md"
+          style={{ border: `1px solid ${BORDER}` }}
+        >
+          <div className="flex items-center justify-between">
+            <span
+              className="flex h-10 w-10 items-center justify-center rounded-xl"
+              style={{ background: "#f0ecff", color: "#7a4dff" }}
+            >
+              <Kanban size={20} />
+            </span>
+            <span
+              className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em]"
+              style={{ background: "#f3f5f9", color: MUTED }}
+            >
+              Demo data
+            </span>
+          </div>
+          <h3 className="mt-4 text-[14px] font-black" style={{ color: INK }}>
+            Candidate Pipeline
+          </h3>
+          <p className="mt-0.5 text-[12px] italic" style={{ color: MUTED }}>
+            Who's getting close to signing?
+          </p>
+          <div className="mt-4">
+            <Stat
+              label="Sample candidates"
+              value="0"
+              hint="Real candidates land here after first replies"
+            />
+          </div>
+          <span className="mt-4 inline-flex items-center gap-1 text-[12px] font-bold" style={{ color: NAVY }}>
+            Tour the board <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" />
+          </span>
+        </button>
+      </div>
+
+      {/* Two-column: Pre-launch checklist + Pipeline (demo) */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.35fr_1fr]">
+        {/* Checklist */}
+        <section
+          className="rounded-2xl bg-white p-5"
+          style={{ border: `1px solid ${BORDER}` }}
+        >
+          <div className="mb-4 flex items-center gap-2">
+            <Sparkles size={16} style={{ color: BLUE }} />
+            <h2 className="text-[16px] font-black" style={{ color: INK }}>
+              What to do this week
+            </h2>
+          </div>
+          <ul className="space-y-2">
+            {PRE_LAUNCH_CHECKLIST.map((item) => (
+              <li key={item.id}>
+                <button
+                  onClick={() => navigate(item.href)}
+                  className="group flex w-full items-start gap-3 rounded-xl p-3 text-left transition-colors hover:bg-[#f8fbff]"
+                  style={{ border: `1px solid ${BORDER}` }}
+                >
+                  <span
+                    className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                    style={{ background: item.bg, color: item.accent }}
+                  >
+                    <item.icon size={17} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2">
+                      {item.done ? (
+                        <CheckCircle2 size={14} style={{ color: "#0d7a5f" }} />
+                      ) : (
+                        <Circle size={14} style={{ color: "#cbd5e1" }} />
+                      )}
+                      <span className="text-[13.5px] font-bold" style={{ color: INK }}>
+                        {item.title}
+                      </span>
+                    </span>
+                    <span className="mt-1 block text-[12.5px] leading-relaxed" style={{ color: MUTED }}>
+                      {item.body}
+                    </span>
+                  </span>
+                  <span
+                    className="inline-flex shrink-0 items-center gap-1 self-center rounded-full px-3 py-1 text-[11.5px] font-bold transition-transform group-hover:translate-x-0.5"
+                    style={{ background: "#f3f7ff", color: NAVY }}
+                  >
+                    {item.cta}
+                    <ArrowRight size={11} />
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* Pipeline snapshot — demo */}
+        <section
+          className="rounded-2xl bg-white p-5"
+          style={{ border: `1px solid ${BORDER}` }}
+        >
+          <div className="mb-1 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-[16px] font-black" style={{ color: INK }}>
+                Pipeline Snapshot
+              </h2>
+              <p className="text-[12px]" style={{ color: MUTED }}>
+                Candidates by stage
+              </p>
+            </div>
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.12em]"
+              style={{ background: "#f3f5f9", color: MUTED }}
+            >
+              <Database size={11} /> Demo · empty until first promotions
+            </span>
+          </div>
+
+          <div className="mt-4 space-y-2.5">
+            {DEMO_PIPELINE.map((p) => (
+              <div
+                key={p.stage}
+                className="grid grid-cols-[130px_1fr_36px] items-center gap-3 text-[12px]"
+              >
+                <span className="font-semibold" style={{ color: "#26364d" }}>
+                  {p.stage}
+                </span>
+                <div className="h-2.5 overflow-hidden rounded-full" style={{ background: "#edf1f6" }}>
+                  <div
+                    className="h-full rounded-full"
+                    style={{ width: `${(p.count / maxDemo) * 100}%`, background: BLUE }}
+                  />
+                </div>
+                <span className="text-right font-bold" style={{ color: INK }}>
+                  {p.count}
+                </span>
+              </div>
+            ))}
+            <div
+              className="mt-3 flex items-center justify-between border-t pt-3 text-[13px] font-black"
+              style={{ borderColor: "#eef2f6", color: INK }}
+            >
+              <span>Total Candidates</span>
+              <span>{totalDemo}</span>
+            </div>
+          </div>
+
+          <button
+            onClick={() => navigate("/candidate-pipeline")}
+            className="mt-4 inline-flex items-center gap-1.5 text-[12px] font-bold transition-transform hover:translate-x-0.5"
+            style={{ color: NAVY }}
+          >
+            Open Candidate Pipeline <ArrowRight size={12} />
+          </button>
+        </section>
+      </div>
     </div>
   );
 };

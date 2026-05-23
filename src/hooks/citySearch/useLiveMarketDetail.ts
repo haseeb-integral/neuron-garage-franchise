@@ -113,8 +113,8 @@ async function fetchSelectedMarketDetail(city: string, state: string): Promise<D
 // --- Hook 1: ranked universe -------------------------------------------------
 export function useLiveRankedMarkets() {
   const qc = useQueryClient();
-  const query = useQuery({
-    queryKey: rankedKey,
+  const query = useQuery<RankedMarket[]>({
+    queryKey: [...rankedKey],
     queryFn: () => loadLiveRankedMarkets(),
     staleTime: 60_000,
     // Keep previous data on refetch so the list never flashes empty.

@@ -273,7 +273,7 @@ const CityScoring = () => {
   };
   useEffect(() => { refreshWatchlist(); }, [user?.id]);
 
-  const toggleWatchlist = async (cityId: string | null | undefined) => {
+  const toggleWatchlist = useCallback(async (cityId: string | null | undefined) => {
     if (!cityId) { toast.error("Refresh this city's data before saving it"); return; }
     if (!user) { toast.error("Sign in required"); return; }
     const isSaved = watchlistCityIds.has(cityId);
@@ -298,7 +298,7 @@ const CityScoring = () => {
       if (error) { console.error(error); toast.error("Save failed"); refreshWatchlist(); return; }
       toast.success("Added to watchlist");
     }
-  };
+  }, [user, watchlistCityIds]);
 
   // (handleSaveSearch / handleLoadSavedSearch / handleDeleteSavedSearch moved into useSavedSearches)
 

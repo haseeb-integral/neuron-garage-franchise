@@ -441,7 +441,7 @@ All tables have RLS enabled.
 
 ### Cities & market data
 
-- \`us_cities_scored\` — **national seed table** (948 cities). Pre-computed \`composite_score_default\` + the 46 metric columns. Cached school counts (\`public_school_count\`, \`public_elementary_count\`, \`public_school_enrollment\`, \`public_elementary_enrollment\`, \`private_elementary_count\`, \`private_elementary_enrollment\`) + climate columns.
+- \`us_cities_scored\` — **national seed table** (948 cities). Pre-computed \`composite_score_default\` + columns backing the 12 live SOW metrics. Cached school counts (\`public_school_count\`, \`public_elementary_count\`, \`public_school_enrollment\`, \`public_elementary_enrollment\`, \`private_elementary_count\`, \`private_elementary_enrollment\`) + climate columns. (Some vestigial columns from the old "46 metrics" era remain physically present; they're not read by the scoring engine.)
 - \`public_schools\` — one row per NCES open public K–12 school nationally (PK \`nces_id\`). 38,196 rows across 948 cities. \`is_elementary_serving\` is a generated column (\`lowest_grade_offered ≤ 5\`). FK \`us_cities_scored_id\`. **Source of truth** for school-level data.
 - \`cities\` — legacy per-city table (City Search UI still reads this; consolidation tracked as B5).
 - \`city_category_scores\` — per-category SOW scores.
@@ -511,7 +511,7 @@ All deployed as Deno edge functions under \`supabase/functions/\`.
 | \`admin-create-user\` | Admin-only user provisioning |
 | \`ai-city-query\` | Lovable AI Gateway proxy for the "Ask AI" bar |
 | \`fetch-city-market-data\` | Legacy live city refresh |
-| \`fetch-city-market-data-sow\` | Official 46-metric SOW refresh; writes \`city_market_signals\`, recomputes scores |
+| \`fetch-city-market-data-sow\` | Official SOW refresh (12 live metrics across Demand / CSI / TAM Teachers); writes \`city_market_signals\`, recomputes scores |
 | \`fetch-school-counts\` | NCES CCD public-elementary counts per city |
 | \`seed-cities-database\` | Bulk seed of \`us_cities_scored\` (Census/BLS/BEA/FRED/NCES) **and** per-school upsert into \`public_schools\` from the same NCES response |
 | \`seed-cities-weather\` | Open-Meteo Historical Weather seed into \`us_cities_scored\` |

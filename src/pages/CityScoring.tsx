@@ -1579,7 +1579,7 @@ const CityScoring = () => {
   const signalsByKey = useMemo(() => {
     const out: Record<string, { value: string }> = {};
     for (const s of signalsForDisplay) {
-      if (s?.signal_key) out[s.signal_key] = { value: s.value };
+      if (s?.signal_key) out[s.signal_key] = { value: s.value == null ? "" : String(s.value) };
     }
     return out;
   }, [signalsForDisplay]);

@@ -610,6 +610,7 @@ const CityScoring = () => {
     cityId: selectedLiveCity?.id ?? selectedRankedMarket?.cityId ?? (selectedSample as any).cityId,
     // Reranked first (matches the table). Fallback only when the market isn't
     // in the live-scored universe at all.
+    // eslint-disable-next-line no-restricted-syntax -- data-shaping that feeds selectedView
     compositeScore: selectedRerankedMarket?.compositeScore ?? selectedLiveCity?.composite_score ?? selectedRankedMarket?.compositeScore ?? selectedSample.compositeScore,
     tier: selectedRerankedMarket?.tier ?? selectedLiveCity?.tier ?? selectedRankedMarket?.tier ?? selectedSample.tier,
     population: selectedLiveCity?.population ?? selectedRankedMarket?.population ?? selectedSample.population,

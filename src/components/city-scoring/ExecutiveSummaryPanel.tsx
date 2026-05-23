@@ -210,3 +210,6 @@ function ExecutiveSummaryPanelImpl({
     </>
   );
 }
+
+export const ExecutiveSummaryPanel = memo(ExecutiveSummaryPanelImpl);
+

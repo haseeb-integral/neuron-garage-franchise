@@ -172,6 +172,9 @@ composite = Σ( master_share_c × category_score_c )                // 0–100
 - An empty category falls back to the server-stored `city_category_scores.score`.
 - Every drawer exposes "Show Formula" with the raw / normalized / share / contribution table.
 
+#### Score display invariant (added May 23, 2026)
+There is exactly **one** composite score per market per applied-weight set. The ranked table SCORE column, right-panel gauge, market-summary prose, executive summary, formula popover, CSV export, dashboard cards, and map tooltip all read from the same `MarketView.composite` — minted exactly once per render by `src/lib/marketView.ts` and watched by a dev-only drift detector that throws a red `console.error` if the same `(cityId, weightsHash)` ever produces two values in one render pass. The branded `CompositeScore` TS type prevents any component from substituting a raw `number`. This invariant exists because on May 23, 2026 the table showed `88` while the gauge showed `23` for the same city — two files were holding two formulas under the same label "Score". After this fix, that class of bug is structurally impossible.
+
 ### Teacher fit score (0–100)
 Computed in `src/utils/fitScore.ts`. Inputs: grade match (K–6), teacher type (active/retired/camp_enrichment), summer availability heuristic. See `TEACHER_IDEAL_PROFILE.md` for full criteria.
 

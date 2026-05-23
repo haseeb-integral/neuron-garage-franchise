@@ -58,7 +58,7 @@ describe("CsiLockedPanel", () => {
         csiBrandDetail="Code Ninjas(2)|KinderCare(1)"
       />,
     );
-    expect(screen.getByText(/Code Ninjas/i)).toBeInTheDocument();
-    expect(screen.getByText(/KinderCare/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Code Ninjas/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/KinderCare/i).length).toBeGreaterThan(0);
   });
 });

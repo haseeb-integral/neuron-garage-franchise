@@ -162,7 +162,7 @@ const COLUMNS: ColDef[] = [
   {
     key: "median_income", label: "Median HH Income", align: "right", group: "Demand",
     get: (m) => row(m).median_household_income ?? null,
-    render: (m) => <span className="text-[#0ea66e] font-medium">{fmtMoney(row(m).median_household_income)}</span>,
+    render: (m) => <span className="font-medium">{fmtMoney(row(m).median_household_income)}</span>,
   },
   {
     key: "dual_income_pct", label: "Dual-Income %", align: "right", group: "Demand",

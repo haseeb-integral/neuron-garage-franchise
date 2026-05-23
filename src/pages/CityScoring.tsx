@@ -1,10 +1,9 @@
 // Rule 12 (AGENTS.md): every UI surface in this file routes through
-// `selectedView` / `buildMarketView()` for displayed composites. The raw
-// `.compositeScore` reads that remain below are data-shaping (sorts,
-// reductions, and the `selected` builder that *feeds* `selectedView`) and
-// are deliberate. Drift is still caught at runtime by `assertNoCompositeDrift`.
+// `selectedView` / `buildMarketView()` for displayed composites. The few raw
+// `.compositeScore` reads that remain are data-shaping in the `selected`
+// builder that *feeds* `selectedView` and are tagged with inline
+// `eslint-disable-next-line` so the file no longer carries a blanket disable.
 // New rendered composite values must go through marketView — do not add raw reads.
-/* eslint-disable no-restricted-syntax */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {

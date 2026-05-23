@@ -192,7 +192,7 @@ const TeacherProspects = () => {
   const [importOpen, setImportOpen] = useState(false);
   const [masterImportOpen, setMasterImportOpen] = useState(false);
   const [active, setActive] = useState<TeacherProspect | null>(null);
-  const [selected, setSelected] = useState<number[]>([]);
+  const [selected, setSelected] = useState<string[]>([]);
   const [promotedUuids, setPromotedUuids] = useState<Set<string>>(new Set());
   const [promotedInfo, setPromotedInfo] = useState<Map<string, { campaign_id: string | null; state: string }>>(new Map());
   const [allPromotedIds, setAllPromotedIds] = useState<string[]>([]);
@@ -412,7 +412,7 @@ const TeacherProspects = () => {
   useEffect(() => {
     const prospectId = searchParams.get("prospect");
     if (prospectId && prospects.length) {
-      const found = prospects.find((p) => p.id === Number(prospectId));
+      const found = prospects.find((p) => p.uuid === prospectId);
       if (found) setActive(found);
       searchParams.delete("prospect");
       setSearchParams(searchParams, { replace: true });
@@ -468,14 +468,14 @@ const TeacherProspects = () => {
   };
 
   const handleExportSelected = async () => {
-    const selectedProspects = prospects.filter((p) => selected.includes(p.id));
+    const selectedProspects = prospects.filter((p) => selected.includes(p.uuid));
     if (selectedProspects.length === 0) return;
     downloadCsv(selectedProspects, "selected");
     toast.success(`Exported ${selectedProspects.length} selected ${selectedProspects.length === 1 ? "row" : "rows"} to CSV.`);
   };
 
   const handleBulkAddTag = async (tag: string) => {
-    const selectedProspects = prospects.filter((p) => selected.includes(p.id));
+    const selectedProspects = prospects.filter((p) => selected.includes(p.uuid));
     const uuids = selectedProspects.map((p) => p.uuid);
     if (uuids.length === 0) return;
     // Fetch current tags, then write merged arrays per row (postgrest can't array_append in bulk via single update)
@@ -489,9 +489,10 @@ const TeacherProspects = () => {
 
 
 
-  const toggleSelect = (id: number) => setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+  const toggleSelect = (uuid: string) =>
+    setSelected((prev) => prev.includes(uuid) ? prev.filter((x) => x !== uuid) : [...prev, uuid]);
   const toggleAll = () => {
-    const visibleIds = prospects.map((p) => p.id);
+    const visibleIds = prospects.map((p) => p.uuid);
     const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.includes(id));
     setSelected(allSelected ? selected.filter((id) => !visibleIds.includes(id)) : Array.from(new Set([...selected, ...visibleIds])));
   };
@@ -501,7 +502,7 @@ const TeacherProspects = () => {
     setCampaignModalOpen(true);
   };
   const handlePromoteBulk = () => {
-    const selectedProspects = prospects.filter((p) => selected.includes(p.id));
+    const selectedProspects = prospects.filter((p) => selected.includes(p.uuid));
     if (selectedProspects.length === 0) return;
     setCampaignTargets(selectedProspects.map((p) => ({ uuid: p.uuid, name: p.name })));
     setCampaignModalOpen(true);
@@ -543,12 +544,12 @@ const TeacherProspects = () => {
     loadPage();
   };
 
-  const handleUpdate = (p: TeacherProspect) => setProspects((prev) => prev.map((x) => (x.id === p.id ? p : x)));
+  const handleUpdate = (p: TeacherProspect) => setProspects((prev) => prev.map((x) => (x.uuid === p.uuid ? p : x)));
   const handleFindResults = async () => { await loadPage(); await loadStats(); };
 
   // --- Bulk dock handlers ---
   const selectedProspects = useMemo(
-    () => prospects.filter((p) => selected.includes(p.id)),
+    () => prospects.filter((p) => selected.includes(p.uuid)),
     [prospects, selected],
   );
   const enrichableSelectedCount = useMemo(

@@ -764,7 +764,6 @@ const CityScoring = () => {
     liveCity, liveSignals, liveCategoryScores, liveCompetitors, liveJob,
     marketRefreshVersion, bumpRefresh, reloadSelectedMarketView,
   } = useLiveSelectedMarket({ selectedCity, selectedState, selectedMarketKey, setLiveRankedMarkets });
-  const selectedState = effectiveMarketKey.state || selectedSample.state;
   const selectedRankedMarket = baseRankedMarkets.find((market) => sameMarket(market.city, market.state, selectedCity, selectedState));
   // CRITICAL: the table's SCORE + TIER come from `rerankedUniverse` (which
   // applies the user's current weights). The right-panel gauge MUST read from

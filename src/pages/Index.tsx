@@ -312,7 +312,12 @@ const Dashboard = () => {
 
   const totalDemo = DEMO_PIPELINE.reduce((s, p) => s + p.count, 0);
   const maxDemo = Math.max(1, ...DEMO_PIPELINE.map((p) => p.count));
-  const maxTopCity = Math.max(1, ...(topCities.data ?? []).map((c) => c.composite_score_default ?? 0));
+  const maxTopCity = Math.max(
+    1,
+    ...(topCities.data ?? []).map((c) =>
+      Math.round(calibrateCompositeForDisplay(c.composite_score_default ?? 0)),
+    ),
+  );
   const maxTeacherCity = Math.max(1, ...(topTeacherCities.data ?? []).map((c) => c.n));
 
   const tTotal = teachers.data?.total ?? 0;

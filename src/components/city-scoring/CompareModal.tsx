@@ -38,7 +38,7 @@ export function CompareModal({ open, onClose, cities }: Props) {
           </div>
 
           {[
-            { label: "Composite Score", va: a.compositeScore, vb: b.compositeScore },
+            { label: "Composite Score", va: buildMarketView(a).compositeFormatted, vb: buildMarketView(b).compositeFormatted },
             { label: "Population", va: a.population.toLocaleString(), vb: b.population.toLocaleString() },
             { label: "Elem. Schools", va: a.elementarySchools, vb: b.elementarySchools },
             { label: "Children 5-12%", va: `${a.childrenPct}%`, vb: `${b.childrenPct}%` },

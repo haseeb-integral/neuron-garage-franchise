@@ -1,6 +1,7 @@
 import { CityData } from "@/data/cityData";
 import { Globe, Award, BarChart3, TrendingUp } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { buildMarketView } from "@/lib/marketView";
 
 interface Props {
   cities: CityData[];
@@ -12,7 +13,10 @@ export function StatCards({ cities, nonRegOnly, onToggleNonReg }: Props) {
   const total = cities.length;
   const aCount = cities.filter(c => c.tier === 'A').length;
   const bCount = cities.filter(c => c.tier === 'B').length;
-  const avgScore = total ? Math.round(cities.reduce((s, c) => s + c.compositeScore, 0) / total) : 0;
+  // Per Rule 12: composite values come from marketView, never recomputed in components.
+  const avgScore = total
+    ? Math.round(cities.reduce((s, c) => s + buildMarketView(c).composite, 0) / total)
+    : 0;
 
   const cards = [
     { label: "Total Cities Analyzed", value: total, icon: Globe },

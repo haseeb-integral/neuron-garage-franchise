@@ -7,6 +7,7 @@ import { Download, ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { buildMarketView } from "@/lib/marketView";
 
 interface Props {
   city: CityData | null;
@@ -42,7 +43,7 @@ export function CityDetailDrawer({ city, open, onClose }: Props) {
           <SheetTitle className="flex items-center gap-3" style={{ color: '#003c7e' }}>
             {city.city}, {city.state} <TierBadge tier={city.tier} />
           </SheetTitle>
-          <p className="text-sm" style={{ color: '#6c757d' }}>Composite Score: <strong>{city.compositeScore}</strong></p>
+          <p className="text-sm" style={{ color: '#6c757d' }}>Composite Score: <strong>{buildMarketView(city).compositeFormatted}</strong></p>
         </SheetHeader>
 
         <div className="mb-6">

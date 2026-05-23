@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CityData } from "@/data/cityData";
 import { TierBadge } from "./TierBadge";
 import { CheckCircle, Lock, StickyNote, ArrowUpDown } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { buildMarketView, type MarketView } from "@/lib/marketView";
 
 interface Props {
   cities: CityData[];
@@ -14,6 +15,10 @@ interface Props {
 
 type SortKey = 'city' | 'state' | 'tier' | 'compositeScore' | 'population' | 'elementarySchools' | 'childrenPct' | 'medianIncome' | 'competitorCount';
 
+// Rule 12: this is the bug-origin surface. Every row's Score MUST come from
+// the same MarketView the gauge reads. Do not reintroduce raw .compositeScore.
+type RowWithView = CityData & { __view: MarketView };
+
 export function CityTable({ cities, onSelectCity, compareMode, selectedForCompare, onToggleCompare }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>('compositeScore');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
@@ -23,7 +28,15 @@ export function CityTable({ cities, onSelectCity, compareMode, selectedForCompar
     else { setSortKey(key); setSortDir('desc'); }
   };
 
-  const sorted = [...cities].sort((a, b) => {
+  const viewed: RowWithView[] = useMemo(
+    () => cities.map((c) => ({ ...c, __view: buildMarketView(c) })),
+    [cities],
+  );
+
+  const sorted = [...viewed].sort((a, b) => {
+    if (sortKey === 'compositeScore') {
+      return sortDir === 'asc' ? a.__view.composite - b.__view.composite : b.__view.composite - a.__view.composite;
+    }
     const av = a[sortKey], bv = b[sortKey];
     if (typeof av === 'string') return sortDir === 'asc' ? (av as string).localeCompare(bv as string) : (bv as string).localeCompare(av as string);
     return sortDir === 'asc' ? (av as number) - (bv as number) : (bv as number) - (av as number);
@@ -83,9 +96,9 @@ export function CityTable({ cities, onSelectCity, compareMode, selectedForCompar
               <TableCell><TierBadge tier={city.tier} /></TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-sm" style={{ color: '#343a40' }}>{city.compositeScore}</span>
+                  <span className="font-semibold text-sm" style={{ color: '#343a40' }}>{city.__view.compositeFormatted}</span>
                   <div className="w-16 h-1.5 rounded-full" style={{ backgroundColor: '#e9ecef' }}>
-                    <div className="h-full rounded-full" style={{ width: `${city.compositeScore}%`, backgroundColor: '#fd7e14' }} />
+                    <div className="h-full rounded-full" style={{ width: `${city.__view.composite}%`, backgroundColor: '#fd7e14' }} />
                   </div>
                 </div>
               </TableCell>

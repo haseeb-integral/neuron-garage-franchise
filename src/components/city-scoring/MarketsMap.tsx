@@ -165,7 +165,7 @@ export function MarketsMap({ markets, onSelect }: Props) {
                       {m.metroArea && <div className="text-[10px] text-[#8794ab]">{m.metroArea}</div>}
                       <div className="flex items-center gap-2 pt-1">
                         <span className="font-bold text-[#07142f]">
-                          {m.hasLiveData ? `${m.compositeScore}/100` : "No data"}
+                          {m.hasLiveData ? `${buildMarketView(m).compositeFormatted}/100` : "No data"}
                         </span>
                         <span className="rounded-full px-2 py-0.5 text-[10px] font-bold text-white" style={{ backgroundColor: color }}>
                           {m.hasLiveData ? `Tier ${m.tier}` : "—"}

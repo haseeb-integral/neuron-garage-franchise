@@ -205,62 +205,49 @@ const Spec = () => {
             </ul>
           </Section>
 
-          <Section id="city-scoring" title="6. City Scoring">
+          <Section id="city-scoring" title="6. City Search">
             <SubHeading>Purpose</SubHeading>
-            <p>Rank U.S. cities by their suitability for a new Neuron Garage franchise.</p>
+            <p>Rank U.S. cities by their suitability for a new Neuron Garage franchise across the ~817 cities with population ≥ 50,000.</p>
             <SubHeading>Inputs / Filters</SubHeading>
             <ul className="list-disc pl-5 space-y-1">
               <li>State, tier (A/B/C), registration status, free-text search.</li>
-              <li>Adjustable <strong>Scoring Weights</strong> for: population, % children 5–12, median income, school density, competitor count, growth rate.</li>
+              <li>Adjustable <strong>Scoring Weights</strong> across three categories: Market Size, Pricing Power / Parent Profile, and Competitive Landscape. Master sliders auto-rebalance to 100%; sub-metric weights are relative-importance numbers.</li>
             </ul>
             <SubHeading>Outputs</SubHeading>
             <ul className="list-disc pl-5 space-y-1">
-              <li>
-                <strong>Stat cards</strong> showing total cities, A-tier count, average score, and registered
-                states.
-              </li>
-              <li>
-                <strong>City table</strong> — sortable by every numeric column; row click opens a detail
-                drawer with full demographics, competitor list, schools, and notes.
-              </li>
-              <li>
-                <strong>Compare mode</strong> — select up to 3 cities and open a side-by-side modal.
-              </li>
+              <li><strong>Stat cards</strong> showing total cities, A-tier count, average score, and registered states.</li>
+              <li><strong>Ranked markets table</strong> — sortable by every numeric column; row click opens a detail drawer with full demographics, competitor list, schools, and notes.</li>
+              <li><strong>Compare mode</strong> — select up to 3 cities and open a side-by-side modal.</li>
+              <li><strong>Show Formula</strong> affordance on every composite score, exposing inputs, weights, and arithmetic.</li>
             </ul>
+            <SubHeading>Live data sources</SubHeading>
+            <p>Census ACS, BLS, BEA, FRED, NCES CCD. Composite scores are minted by a single <code>MarketView</code> source — see §14.</p>
             <SubHeading>Key actions</SubHeading>
             <ul className="list-disc pl-5 space-y-1">
-              <li>From the detail drawer: <em>"Find Teachers in this City"</em> button → navigates to
-                Teacher Search pre-filtered to that city.</li>
+              <li>From the detail drawer: <em>"Find Teachers in this City"</em> → navigates to Teacher Search pre-filtered to that city.</li>
             </ul>
           </Section>
 
           <Section id="teacher-prospects" title="7. Teacher Search">
             <SubHeading>Purpose</SubHeading>
             <p>Discover and shortlist elementary-school teachers who could become franchisees.</p>
+            <SubHeading>Data sources</SubHeading>
+            <p>Apollo (primary, active teachers with contactable email), Apify scrapes, and CSV imports. Enrichment via Firecrawl.</p>
             <SubHeading>Components</SubHeading>
             <ul className="list-disc pl-5 space-y-1">
               <li><strong>Filter bar</strong> — city, fit-score range, tag, enrichment status, search.</li>
-              <li>
-                <strong>Find Prospects modal</strong> — simulated AI search by city + grade band + keywords;
-                returns a ranked list of new teachers.
-              </li>
-              <li>
-                <strong>Outreach Intelligence panel</strong> — shows best send-time, recommended channel,
-                and a draft message template per selection.
-              </li>
-              <li>
-                <strong>Prospect table</strong> — name, school, city, masked email, LinkedIn, Fit Score,
-                tag, enrichment status, Promote action.
-              </li>
-              <li>
-                <strong>Bulk action bar</strong> — appears when one or more rows are selected: bulk-promote,
-                bulk-tag, export.
-              </li>
-              <li>
-                <strong>Detail panel</strong> — full profile with bio, contact, school info, signals
-                (years of experience, leadership roles, side hustles), activity log.
-              </li>
+              <li><strong>Find Prospects modal</strong> — AI search by city + grade band + keywords; returns a ranked list.</li>
+              <li><strong>Outreach Intelligence panel</strong> — suggested send-time, recommended channel, and a draft message template per selection.</li>
+              <li><strong>Prospect table</strong> — name, school, city, masked email, LinkedIn, Fit Score, tag, enrichment status, Promote action.</li>
+              <li><strong>Bulk action bar</strong> — appears when one or more rows are selected: bulk-promote, bulk-tag, export.</li>
+              <li><strong>Detail panel</strong> — full profile with bio, contact, school info, signals (years experience, leadership roles, side hustles), activity log.</li>
             </ul>
+            <SubHeading>Push correctness — dual ID</SubHeading>
+            <p>
+              The internal <code>teacher_prospects.id</code> and the SmartLead <code>smartlead_lead_id</code> are kept strictly
+              separate. Synthetic <code>campaign_cache</code> rows are filtered out of push targets so we can never push to a
+              non-existent SmartLead lead.
+            </p>
             <SubHeading>Promote flow</SubHeading>
             <p>
               Clicking <em>Promote</em> on a teacher creates a corresponding entry in the Candidate Pipeline at the
@@ -268,7 +255,31 @@ const Spec = () => {
             </p>
           </Section>
 
-          <Section id="candidate-pipeline" title="8. Candidate Pipeline">
+          <Section id="email-outreach" title="8. Email Outreach">
+            <SubHeading>Purpose</SubHeading>
+            <p>
+              Run the SmartLead-powered outreach engine without leaving the app. Two pools live on one screen: the
+              <strong> Master Teacher Database</strong> (every teacher we know about) and the <strong>SmartLead</strong> subset
+              currently in a live campaign. A Viewing toggle flips between them.
+            </p>
+            <SubHeading>Components</SubHeading>
+            <ul className="list-disc pl-5 space-y-1">
+              <li><strong>Connection Health panel</strong> — API status, primary sending mailbox, recent webhook events, last successful API call.</li>
+              <li><strong>Campaigns panel</strong> — list, create (4-step wizard), activate / pause / stop.</li>
+              <li><strong>Import Wizard</strong> — 4 steps: batch info → CSV upload + AI column mapping → QA review → import to SmartLead in 400-lead chunks.</li>
+              <li><strong>Live Inbox</strong> — Supabase Realtime feed of replies, opens, bounces; auto-classified into HOT / NOT INTERESTED / OOO / NEUTRAL.</li>
+              <li><strong>Analytics</strong> — global KPI tiles + per-campaign performance table with 30-day-window chunking.</li>
+              <li><strong>Email Account Health</strong> — warmup status, daily progress, reputation score per mailbox.</li>
+            </ul>
+            <SubHeading>Current status</SubHeading>
+            <p>
+              Mailboxes are in <strong>warm-up</strong> — sends go to internal staff and the SmartLead warm-up pool. The
+              <em> Live Outreach</em> pill remains disabled until warm-up completes. See <em>Outreach Guide</em> and
+              <em> SmartLead API Spec</em> in the sidebar for the full picture.
+            </p>
+          </Section>
+
+          <Section id="candidate-pipeline" title="9. Candidate Pipeline">
             <SubHeading>Purpose</SubHeading>
             <p>Move candidates through a structured 7-stage qualification flow.</p>
             <SubHeading>Stages</SubHeading>
@@ -287,6 +298,7 @@ const Spec = () => {
               <li>Kanban with horizontal scroll on small screens; "Jump to" pill nav above the board.</li>
               <li>Pipeline Analytics bar above the board (count per stage, conversion rates).</li>
               <li>Each card shows name, fit score, days in stage, last activity, owner.</li>
+              <li><strong>Confirmation gate:</strong> a card cannot drop into Signing until it has passed Confirmation. Enforced by design.</li>
             </ul>
             <SubHeading>Detail panel (sheet)</SubHeading>
             <ul className="list-disc pl-5 space-y-1">
@@ -296,53 +308,15 @@ const Spec = () => {
               <li><strong>Homework</strong> — trial-close checklist (territory selected, financing in place, family aligned, etc.).</li>
               <li><strong>Selection Committee</strong> (Immersion only) — three named members, each casts an Approve / Decline vote.</li>
             </ul>
-            <SubHeading>Signing → Onboarding handoff</SubHeading>
-            <p>
-              Cards in the <strong>Signing</strong> column display a <Pill color="#fd7e14">Start Onboarding →</Pill>
-              button. Clicking opens a confirmation modal; on confirm, a new Onboarding record is created at
-              Step 1/7, status <strong>On Track</strong>, days elapsed = 0, the user is navigated to
-              <code>/onboarding</code>, and a success toast confirms the action.
-            </p>
           </Section>
 
-          <Section id="onboarding" title="9. Onboarding">
-            <SubHeading>Purpose</SubHeading>
-            <p>Run a signed franchisee through the standardized 7-step launch program.</p>
-            <SubHeading>The 7 steps</SubHeading>
-            <ol className="list-decimal pl-5 space-y-1">
-              <li><strong>Welcome & Kickoff</strong> — welcome email, intro call, account setup.</li>
-              <li><strong>Roadmap Review</strong> — walk through the 90-day launch roadmap.</li>
-              <li><strong>Market Plan</strong> — finalize territory, schools targeted, year-1 revenue model.</li>
-              <li><strong>FDD Countdown</strong> — 14-day mandatory FDD waiting period (visualized via countdown).</li>
-              <li><strong>Document Upload</strong> — signed FDD, COI, LLC docs, void check.</li>
-              <li><strong>Awarded</strong> — final signature; ceremonial "Welcome to Neuron Garage" moment.</li>
-              <li><strong>Active Franchisee Onboarding</strong> — handoff to the operations team; "Send the donut" trigger.</li>
-            </ol>
-            <SubHeading>Components</SubHeading>
-            <ul className="list-disc pl-5 space-y-1">
-              <li>
-                <strong>Onboarding table</strong> — current step, % progress bar, days elapsed, status (On Track / At Risk / Overdue).
-              </li>
-              <li>
-                <strong>Onboarding Wizard</strong> (sheet) — step progress bar, per-step form (TaskChecklist, DocumentUpload, FddCountdown, StepForm), Activity Log, Communication Triggers.
-              </li>
-              <li>
-                <strong>Communication Triggers</strong> — pre-canned emails (welcome, roadmap, market, FDD, awarded, donut) auto-marked sent when the corresponding step is completed.
-              </li>
-            </ul>
-          </Section>
-
-          <Section id="tour" title="10. Guided Tour">
+          <Section id="onboarding" title="10. Onboarding (Phase 2 — Parked)">
             <p>
-              First-time visitors see a 4-step Driver.js tour that highlights each main sidebar item:
-              City Scoring → Teacher Search → Candidate Pipeline → Onboarding. The tour ends with a
-              "You're all set" panel that deep-links to City Scoring.
+              A 7-step signed-franchisee onboarding program (Welcome &amp; Kickoff → Roadmap → Market Plan → FDD Countdown →
+              Document Upload → Awarded → Active Franchisee Onboarding) exists in the codebase but is <strong>parked for
+              Phase 2</strong> while the team focuses on getting the first signed franchisees through the door. It will be
+              re-activated once Signing volume justifies it.
             </p>
-            <ul className="list-disc pl-5 space-y-1">
-              <li>Auto-runs on first visit; persists completion in <code>localStorage</code> under <code>ng:tour-completed-v1</code>.</li>
-              <li>Restartable any time via the <strong>?</strong> icon in the top-right header.</li>
-              <li>Each step has an orange <em>Next</em> button and a muted <em>Skip tour</em> link.</li>
-            </ul>
           </Section>
 
           <Section id="design" title="11. Design System">
@@ -353,7 +327,7 @@ const Spec = () => {
               <li><strong>Success teal</strong> <code>#20c997</code> · <strong>Warning amber</strong> <code>#ffc107</code> · <strong>Danger red</strong> <code>#dc3545</code>.</li>
               <li><strong>Neutrals</strong>: backgrounds <code>#f2f4f6</code> / <code>#f8f9fa</code>, borders <code>#dee2e6</code>, body text <code>#343a40</code>, muted <code>#6c757d</code>.</li>
             </ul>
-            <SubHeading>Typography & spacing</SubHeading>
+            <SubHeading>Typography &amp; spacing</SubHeading>
             <ul className="list-disc pl-5 space-y-1">
               <li>System sans-serif font stack via Tailwind defaults.</li>
               <li>8-pt spacing grid; rounded-lg (8 px) on cards; subtle <code>shadow-sm</code> elevation.</li>
@@ -364,19 +338,23 @@ const Spec = () => {
             <p>Mobile-first; tested at 320, 375, 414, 768, 1024, 1280+. All tables scroll horizontally on narrow viewports; drawers go full-width below the <code>sm</code> breakpoint.</p>
           </Section>
 
-          <Section id="data" title="12. Data Model (mock)">
-            <SubHeading>City</SubHeading>
-            <p><code>id, city, state, tier, compositeScore, population, childrenPct, medianIncome, elementarySchools, competitorCount, growthRate, isNonRegistration, schools[], competitors[], notes</code></p>
-            <SubHeading>TeacherProspect</SubHeading>
-            <p><code>id, name, school, city, state, email, linkedin, fitScore, tag, enrichmentStatus, signals, activity[]</code></p>
-            <SubHeading>Candidate</SubHeading>
-            <p><code>id, name, city, state, email, stage, fitScore, qualificationScores, trialClose, votes, activity[]</code></p>
-            <SubHeading>Franchisee</SubHeading>
-            <p><code>id, name, city, state, email, currentStep (1–7), status, daysElapsed, stepData[1..7], activity[], comms[]</code></p>
-            <p className="italic" style={{ color: "#6c757d" }}>
-              All data lives in <code>src/data/*.ts</code>. State changes are kept in React component state and
-              do not survive a page reload.
+          <Section id="data" title="12. Data Model">
+            <p>
+              Primary source of truth is <strong>Lovable Cloud Postgres</strong>. Reads go through TanStack Query;
+              writes go through Supabase Edge Functions or the Supabase client. The legacy in-memory{" "}
+              <code>pageCache</code> layer has been removed — TanStack Query is the single cache.
             </p>
+            <SubHeading>Core tables</SubHeading>
+            <ul className="list-disc pl-5 space-y-1">
+              <li><code>us_cities_scored</code> — ~817 cities with composite + sub-category scores and live demographic signals.</li>
+              <li><code>teacher_prospects</code> — Master Teacher DB rows with Fit Score inputs, verification status, and SmartLead pipeline state.</li>
+              <li><code>candidates</code> — pipeline rows with stage, qualification scores, votes, activity.</li>
+              <li><code>smartlead_events</code> — Realtime-published webhook events (replies, opens, bounces) with intent classification.</li>
+              <li><code>prospect_batches</code>, <code>prospects_staging</code> — Import Wizard history and per-row QA state.</li>
+              <li><code>campaign_cache</code> — local mirror of SmartLead campaign data (10-minute TTL).</li>
+            </ul>
+            <SubHeading>Auth</SubHeading>
+            <p>Email/password via Supabase Auth. No social providers. RLS policies scope every table to the three authenticated users.</p>
           </Section>
 
           <Section id="tech" title="13. Tech Stack">
@@ -384,28 +362,64 @@ const Spec = () => {
               <li><strong>React 18</strong> + <strong>TypeScript 5</strong> + <strong>Vite 5</strong></li>
               <li><strong>Tailwind CSS v3</strong> + <strong>shadcn/ui</strong> + <strong>Radix UI</strong></li>
               <li><strong>React Router v6</strong> for routing</li>
-              <li><strong>TanStack Query</strong> wired for future API integration</li>
-              <li><strong>Driver.js</strong> for the guided tour</li>
+              <li><strong>TanStack Query</strong> — single source of cache truth for backend reads (replaces the deleted <code>pageCache</code> layer)</li>
+              <li><strong>Lovable Cloud (Supabase)</strong> — Postgres, Auth, Edge Functions (Deno), Realtime, Storage, Secrets</li>
+              <li><strong>Edge Functions</strong> — <code>smartlead-proxy</code>, <code>smartlead-webhook</code>, vendor enrichment proxies (Apollo, Firecrawl, etc.)</li>
               <li><strong>Sonner</strong> + shadcn Toaster for notifications</li>
               <li><strong>Lucide</strong> icon set</li>
-              <li><strong>Vitest</strong> for unit tests</li>
+              <li><strong>Vitest</strong> — 57 unit tests covering scoring + utility logic</li>
+              <li><strong>Playwright</strong> — end-to-end smoke tests for City Search, Teacher Prospects, and Candidate Pipeline search flows</li>
+              <li><strong>GitHub Actions CI</strong> — lint, typecheck, unit tests, and production build run in parallel on every pull request</li>
             </ul>
           </Section>
 
-          <Section id="future" title="14. Future Work">
+          <Section id="reliability" title="14. Reliability & Correctness Guarantees">
+            <SubHeading>One composite per city per render</SubHeading>
+            <p>
+              Every composite score, tier badge, and formatted score string rendered to the user is minted by a single
+              <code> MarketView</code> source (<code>src/lib/marketView.ts</code>). Components never compute, never re-derive,
+              and never round composites inside JSX. A dev-mode drift detector throws a red console error if the same
+              <code> (cityId, weightsHash)</code> ever mints two different composites in one render pass. This rule exists
+              because we previously shipped a bug where a table cell showed <code>88</code> while the gauge above it showed
+              <code> 23</code> for the same city.
+            </p>
+            <SubHeading>Friendly error states with retry</SubHeading>
+            <p>
+              Data-heavy surfaces (City Search ranked markets, Teacher Prospects, Candidate Pipeline) use a shared
+              <code> QueryErrorState</code> component that renders an alert card with a Retry button on backend failure.
+              A failed fetch never silently degrades to an empty list.
+            </p>
+            <SubHeading>Teacher push dual-ID separation</SubHeading>
+            <p>
+              The internal <code>teacher_prospects.id</code> and the SmartLead <code>smartlead_lead_id</code> are tracked as
+              distinct fields end-to-end. Synthetic <code>campaign_cache</code> rows are excluded from push targets so we
+              cannot push to a non-existent SmartLead lead.
+            </p>
+            <SubHeading>Smoke coverage and CI gate</SubHeading>
+            <p>
+              Playwright covers sidebar navigation and core search flows for the three data-heavy pages. Every pull
+              request runs lint, typecheck, unit tests, and a production build in parallel before it can merge.
+            </p>
+            <SubHeading>Show Formula contract</SubHeading>
+            <p>
+              Every score, sub-score, and ranked list surfaces a "Show Formula" affordance listing inputs, weights, and
+              arithmetic. No black boxes.
+            </p>
+          </Section>
+
+          <Section id="future" title="15. Future Work">
             <ul className="list-disc pl-5 space-y-1">
-              <li>Wire up Lovable Cloud (auth, Postgres, storage, edge functions) for real persistence and multi-user support.</li>
-              <li>Real data integrations: U.S. Census + ACS, GreatSchools, Yelp/Google Places (competitors), LinkedIn Sales Navigator / Apollo / ZoomInfo (teacher enrichment).</li>
-              <li>AI assists: auto-draft outreach emails, summarize candidate notes, recommend next-best stage moves.</li>
-              <li>Email & calendar integration (Gmail / Google Calendar) for the activity log and outreach send.</li>
-              <li>E-signature via DocuSign or Dropbox Sign for FDD and franchise agreement.</li>
-              <li>Manager dashboards, role-based access, and assignment rules.</li>
-              <li>Public franchisee portal — read-only view of their own onboarding journey.</li>
+              <li>Wire the GreatSchools API once the key arrives (currently blocked on Brett).</li>
+              <li>Move SmartLead from warm-up to live teacher outreach once mailbox reputation clears the threshold.</li>
+              <li>Re-activate Phase 2 Onboarding (signed-franchisee 7-step launch) once Signing volume justifies it.</li>
+              <li>AI assists: auto-draft outreach replies, summarize candidate notes, recommend next-best stage moves.</li>
+              <li>Calendar integration (Google Calendar) for activity log and interview scheduling.</li>
+              <li>E-signature integration (DocuSign or Dropbox Sign) for FDD and franchise agreement.</li>
             </ul>
           </Section>
 
           <p className="text-[11px] mt-8 pt-4" style={{ color: "#6c757d", borderTop: "1px solid #dee2e6" }}>
-            Document version 1.0 · Prototype build · For internal review.
+            Document version 2.0 · Live build on Lovable Cloud · Internal reference.
           </p>
         </article>
       </div>

@@ -12,6 +12,72 @@
 import { Building2, FileText, GraduationCap, Home as HomeIcon, MapPin, Search, Trophy, UserCheck, Users } from "lucide-react";
 import type { CityData } from "@/data/cityData";
 import type { CategoryKey } from "@/stores/cityScoringStore";
+import type { TierCounts } from "@/components/city-scoring/TierCountsBar";
+
+/**
+ * Pure weight-rebalancer. When one slider moves, redistribute the remainder
+ * across other keys proportional to their current share, then reconcile
+ * rounding drift so the total is exactly 100.
+ */
+export function rebalanceWeights<K extends string>(
+  prev: Record<K, number>,
+  changedKey: K,
+  rawValue: number,
+): Record<K, number> {
+  const newValue = Math.max(0, Math.min(100, Math.round(rawValue)));
+  const keys = Object.keys(prev) as K[];
+  const others = keys.filter((k) => k !== changedKey);
+  const pool = others.reduce((s, k) => s + prev[k], 0);
+  const remainder = 100 - newValue;
+
+  const next = { ...prev };
+  next[changedKey] = newValue;
+
+  if (others.length === 0) return next;
+
+  if (pool > 0) {
+    others.forEach((k) => {
+      next[k] = Math.max(0, (prev[k] / pool) * remainder);
+    });
+  } else {
+    const equal = remainder / others.length;
+    others.forEach((k) => {
+      next[k] = Math.max(0, equal);
+    });
+  }
+
+  keys.forEach((k) => {
+    next[k] = Math.round(next[k]);
+  });
+
+  let diff = 100 - keys.reduce((s, k) => s + next[k], 0);
+  while (diff !== 0 && others.length > 0) {
+    const sorted = [...others].sort((a, b) => next[b] - next[a]);
+    const target = diff > 0 ? sorted[sorted.length - 1] : sorted[0];
+    const step = diff > 0 ? 1 : -1;
+    if (next[target] + step < 0) break;
+    next[target] = next[target] + step;
+    diff -= step;
+  }
+
+  return next;
+}
+
+/**
+ * Count how many live-data markets fall into each tier letter. Markets
+ * without live data are excluded so counts reflect the trustable universe.
+ */
+export function countLiveTiers<T extends { hasLiveData?: boolean | null; tier?: string | null }>(
+  markets: T[],
+): TierCounts {
+  const counts: TierCounts = { A: 0, B: 0, C: 0, D: 0 };
+  markets.forEach((market) => {
+    if (!market.hasLiveData) return;
+    const tier = market.tier as keyof TierCounts;
+    if (counts[tier] != null) counts[tier] += 1;
+  });
+  return counts;
+}
 
 export interface Category {
   key: CategoryKey;

@@ -2086,7 +2086,7 @@ const CityScoring = () => {
                               className="text-[#07142f] font-semibold tabular-nums hover:underline decoration-dotted underline-offset-2"
                               title="Why this tier? Click to see the formula"
                             >
-                              {c.compositeScore}
+                              {(c as any).view?.composite ?? c.compositeScore}
                               <span className="ml-0.5 font-mono italic text-[9px] text-[#8794ab]">ƒx</span>
                             </button>
                           </PopoverTrigger>
@@ -2097,13 +2097,13 @@ const CityScoring = () => {
                               categories={VISIBLE_CATEGORIES.map((cc) => ({ key: cc.key, label: cc.label }))}
                               categoryScores={(c as any).categoryScores ?? {}}
                               appliedWeights={appliedWeights}
-                              composite={c.compositeScore}
+                              composite={(c as any).view?.composite ?? c.compositeScore}
                               tier={c.tier}
                             />
                           </PopoverContent>
                         </Popover>
                         <div className="h-1.5 flex-1 rounded-full bg-[#eef2f7]">
-                          <div className="h-full rounded-full bg-[#0ea66e]" style={{ width: `${c.compositeScore}%` }} />
+                          <div className="h-full rounded-full bg-[#0ea66e]" style={{ width: `${(c as any).view?.composite ?? c.compositeScore}%` }} />
                         </div>
                       </>
                     ) : (

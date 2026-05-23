@@ -2131,7 +2131,7 @@ const CityScoring = () => {
                       <TierBadge
                         tier={c.tier}
                         compact
-                        score={c.compositeScore}
+                        score={(c as any).view?.composite ?? c.compositeScore}
                         percentile={percentileById.get(c.id)}
                       />
                     </span>

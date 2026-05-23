@@ -11,7 +11,7 @@ const corsHeaders = {
 
 const FC_BASE = "https://api.firecrawl.dev/v2";
 const EMAIL_RE = /[a-z0-9._%+-]+@[a-z0-9.-]+\.(?:edu|org|us|net|com)/gi;
-const NAME_RE = /([A-Z][a-z]+(?:\s+[A-Z][a-z'\-]+){1,2})/g;
+const NAME_RE = /([A-Z][a-z]+(?:\s+[A-Z][a-z'-]+){1,2})/g;
 const GRADE_RE = /(Kindergarten|Pre-?K|1st Grade|2nd Grade|3rd Grade|4th Grade|5th Grade|6th Grade|Grade \d|Teacher|Principal|Counselor|Coach|Librarian)/i;
 
 function ok(body: unknown, status = 200) {

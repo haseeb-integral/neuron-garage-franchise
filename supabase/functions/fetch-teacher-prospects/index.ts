@@ -69,7 +69,7 @@ function parseNcesSchools(html: string): ParsedSchool[] {
     if (cells.length < 5) continue;
 
     const nameAndAddress = cells[1] ?? "";
-    const addrMatch = nameAndAddress.match(/(\d+\s+[A-Z0-9 .'\-]+,\s*[A-Z .'\-]+,\s*[A-Z]{2}\s*\d{5}.*)$/);
+    const addrMatch = nameAndAddress.match(/(\d+\s+[A-Z0-9 .'-]+,\s*[A-Z .'-]+,\s*[A-Z]{2}\s*\d{5}.*)$/);
     const address = addrMatch ? addrMatch[1].trim() : "";
     const name = (addrMatch
       ? nameAndAddress.slice(0, addrMatch.index).trim()

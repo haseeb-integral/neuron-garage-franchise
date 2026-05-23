@@ -94,6 +94,7 @@ import { CityTopBar } from "@/components/city-scoring/CityTopBar";
 import { CityFiltersRow } from "@/components/city-scoring/CityFiltersRow";
 import { CityWeightsPanel } from "@/components/city-scoring/CityWeightsPanel";
 import { RankedMarketsList } from "@/components/city-scoring/RankedMarketsList";
+import { QueryErrorState } from "@/components/QueryErrorState";
 import { SelectedMarketPanel } from "@/components/city-scoring/SelectedMarketPanel";
 import { ExecutiveSummaryPanel } from "@/components/city-scoring/ExecutiveSummaryPanel";
 

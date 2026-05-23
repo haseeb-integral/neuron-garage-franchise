@@ -277,8 +277,6 @@ export function FormulaPanel({
     </div>
     </TooltipProvider>
   );
-  // compositeContribution used inside RecipeBlock; reference to silence unused warning
-  void compositeContribution;
 }
 
 // ─────────────────────────── Plain-English recipe ───────────────────────────

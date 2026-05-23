@@ -176,7 +176,7 @@ function Stat({ label, value, valueSub, preview }: { label: string; value: strin
       <div className="flex items-baseline gap-1.5">
         <span className="text-[14px] font-bold text-[#07142f] tabular-nums leading-tight">{value}</span>
         {valueSub && <span className="text-[11px] font-medium text-[#526078] tabular-nums">({valueSub})</span>}
-        {preview && <span className="text-[11px] font-medium text-[#c2410c] tabular-nums">{preview}</span>}
+        {preview && <span className="text-[11px] font-medium text-[#07142f] tabular-nums">{preview}</span>}
       </div>
     </div>
   );

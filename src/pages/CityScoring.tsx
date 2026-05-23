@@ -82,7 +82,7 @@ import {
 import { useSavedSearches } from "@/hooks/citySearch/useSavedSearches";
 import { useAskAi } from "@/hooks/citySearch/useAskAi";
 import { useScreenMode } from "@/hooks/citySearch/useScreenMode";
-import { useLiveMarketDetail } from "@/hooks/citySearch/useLiveMarketDetail";
+import { useLiveRankedMarkets, useLiveSelectedMarket } from "@/hooks/citySearch/useLiveMarketDetail";
 
 
 // Feature flag: hide live on-demand API widgets on the detail panel.
@@ -393,18 +393,9 @@ const CityScoring = () => {
 
 
 
-  // Live DB-backed data for the selected market — see useLiveMarketDetail.
-  const {
-    liveCity,
-    liveSignals,
-    liveCategoryScores,
-    liveCompetitors,
-    liveJob,
-    liveRankedMarkets,
-    marketRefreshVersion,
-    bumpRefresh,
-    reloadSelectedMarketView,
-  } = useLiveMarketDetail({ selectedCity, selectedState, selectedMarketKey });
+  // Ranked universe is mount-loaded; per-market detail is wired in below the
+  // selectedCity/selectedState derivation.
+  const { liveRankedMarkets, setLiveRankedMarkets } = useLiveRankedMarkets();
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [execReportOpen, setExecReportOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
@@ -769,6 +760,11 @@ const CityScoring = () => {
   ) ?? selectedFallback;
   const selectedCity = effectiveMarketKey.city || selectedSample.city;
   const selectedState = effectiveMarketKey.state || selectedSample.state;
+  const {
+    liveCity, liveSignals, liveCategoryScores, liveCompetitors, liveJob,
+    marketRefreshVersion, bumpRefresh, reloadSelectedMarketView,
+  } = useLiveSelectedMarket({ selectedCity, selectedState, selectedMarketKey, setLiveRankedMarkets });
+  const selectedState = effectiveMarketKey.state || selectedSample.state;
   const selectedRankedMarket = baseRankedMarkets.find((market) => sameMarket(market.city, market.state, selectedCity, selectedState));
   // CRITICAL: the table's SCORE + TIER come from `rerankedUniverse` (which
   // applies the user's current weights). The right-panel gauge MUST read from
@@ -1090,7 +1086,7 @@ const CityScoring = () => {
       }
 
       await reloadSelectedMarketView(city, state);
-      setMarketRefreshVersion((version) => version + 1);
+      bumpRefresh();
 
       const where = `${city}, ${state}`;
       const liveOk = !liveError;

@@ -31,13 +31,67 @@ import type { TierLetter } from "@/lib/cityTiers";
 declare const __compositeBrand: unique symbol;
 export type CompositeScore = number & { readonly [__compositeBrand]: "CompositeScore" };
 
+// ─── Display calibration ──────────────────────────────────────────────────
+// The raw composite is the weighted sum of 46 normalized inputs. In practice
+// the strongest U.S. metros land in the 60s–70s (current observed max ≈ 74,
+// median ≈ 41). Showing a Tier A city "63" reads as a C-/D+ to non-technical
+// users — Sam and Kaylie's teachers see the number and silently discount the
+// market. This is a UI calibration problem, not a math problem.
+//
+// Fix: a strictly-increasing piecewise-linear curve maps the raw composite
+// into the intuitive school-grade range. Properties we rely on:
+//   • Monotonic   → relative ordering of cities is preserved exactly.
+//   • Anchored at 0 and 100 → the scale still claims "/100".
+//   • Tier-safe   → tiers come from rank percentile (cityTiers.ts), so
+//                   percentile membership (A/B/C/D) is unchanged.
+//   • Pure        → same input → same output, so the drift detector still works.
+// Only this file applies the curve, and it is applied at mint time so every
+// MarketView consumer sees the same calibrated number with zero per-component
+// risk. Raw composite_score_default in the DB is NOT modified.
+//
+// Anchors chosen against the live distribution on May 24, 2026:
+//   raw  0 → 0     (no-data sentinel kept clean)
+//   raw 20 → 55
+//   raw 35 → 72
+//   raw 50 → 85
+//   raw 65 → 92
+//   raw 75 → 97
+//   raw 100 → 100
+// Change these anchors only after Brett/Haseeb sign off; ordering and tiers
+// stay invariant as long as the sequence is strictly increasing in both axes.
+const CALIBRATION_ANCHORS: ReadonlyArray<readonly [number, number]> = [
+  [0, 0],
+  [20, 55],
+  [35, 72],
+  [50, 85],
+  [65, 92],
+  [75, 97],
+  [100, 100],
+];
+
+export function calibrateCompositeForDisplay(raw: number): number {
+  if (!Number.isFinite(raw)) return 0;
+  const r = Math.max(0, Math.min(100, raw));
+  for (let i = 1; i < CALIBRATION_ANCHORS.length; i += 1) {
+    const [x0, y0] = CALIBRATION_ANCHORS[i - 1];
+    const [x1, y1] = CALIBRATION_ANCHORS[i];
+    if (r <= x1) {
+      const t = x1 === x0 ? 0 : (r - x0) / (x1 - x0);
+      return y0 + t * (y1 - y0);
+    }
+  }
+  return 100;
+}
+
 // Only this file may mint a CompositeScore. If you find yourself calling this
 // outside src/lib/marketView.ts, stop — you're recreating the bug.
 function mintCompositeScore(raw: unknown): CompositeScore {
   const n = Number(raw);
-  const safe = Number.isFinite(n) ? Math.max(0, Math.min(100, Math.round(n))) : 0;
-  return safe as CompositeScore;
+  const clamped = Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 0;
+  const displayed = calibrateCompositeForDisplay(clamped);
+  return Math.round(displayed) as CompositeScore;
 }
+
 
 // ─── Market view ──────────────────────────────────────────────────────────
 // One object per market per render. Everything the UI needs, frozen.

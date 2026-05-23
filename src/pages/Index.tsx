@@ -19,6 +19,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { PageHeader } from "@/components/PageHeader";
 import { supabase } from "@/integrations/supabase/client";
+import { calibrateCompositeForDisplay } from "@/lib/marketView";
 
 /**
  * Dashboard — pre-launch console for Sam and Kaylie.
@@ -311,7 +312,12 @@ const Dashboard = () => {
 
   const totalDemo = DEMO_PIPELINE.reduce((s, p) => s + p.count, 0);
   const maxDemo = Math.max(1, ...DEMO_PIPELINE.map((p) => p.count));
-  const maxTopCity = Math.max(1, ...(topCities.data ?? []).map((c) => c.composite_score_default ?? 0));
+  const maxTopCity = Math.max(
+    1,
+    ...(topCities.data ?? []).map((c) =>
+      Math.round(calibrateCompositeForDisplay(c.composite_score_default ?? 0)),
+    ),
+  );
   const maxTeacherCity = Math.max(1, ...(topTeacherCities.data ?? []).map((c) => c.n));
 
   const tTotal = teachers.data?.total ?? 0;
@@ -510,7 +516,7 @@ const Dashboard = () => {
           ) : (
             <ol className="space-y-2.5">
               {topCities.data!.map((c, i) => {
-                const score = c.composite_score_default ?? 0;
+                const score = Math.round(calibrateCompositeForDisplay(c.composite_score_default ?? 0));
                 return (
                   <li key={c.id} className="grid grid-cols-[18px_1fr_auto] items-center gap-2.5">
                     <span className="text-[11px] font-black" style={{ color: MUTED }}>{i + 1}.</span>

@@ -80,6 +80,7 @@ import {
   type MarketView,
 } from "@/lib/marketView";
 import { useSavedSearches } from "@/hooks/citySearch/useSavedSearches";
+import { useAskAi } from "@/hooks/citySearch/useAskAi";
 
 
 // Feature flag: hide live on-demand API widgets on the detail panel.
@@ -302,163 +303,85 @@ const CityScoring = () => {
   // (handleSaveSearch / handleLoadSavedSearch / handleDeleteSavedSearch moved into useSavedSearches)
 
   // ─── AI City Query (Ask AI) ──────────────────────────────────────────────
-  // Lovable AI Gateway-powered natural-language search. Translates queries
-  // into existing filter state + draft weight nudges, plus shows reasoning
-  // and data gaps. Multi-turn refinement capped at 6 turns server-side.
-  type AiTurn = { query: string; response: AiResult };
-  const [aiThreadId, setAiThreadId] = useState<string | null>(null);
-  const [aiTurns, setAiTurns] = useState<AiTurn[]>([]);
-  const [aiLoading, setAiLoading] = useState(false);
-  const lastAiTurn = aiTurns[aiTurns.length - 1];
-
-  const clearAi = () => {
-    setAiThreadId(null);
-    setAiTurns([]);
-  };
+  // The fetch/threading/loading bookkeeping lives in src/hooks/citySearch/useAskAi.
+  // The page is only responsible for translating the AiResult into filter +
+  // weight state changes below.
+  const { aiThreadId: _aiThreadId, aiTurns, aiLoading, lastAiTurn, clearAi, ask } = useAskAi();
+  void _aiThreadId;
 
   const askAi = async (query: string) => {
-    setAiLoading(true);
-    try {
-      const getValidAccessToken = async () => {
-        let token = session?.access_token ?? "";
-        if (!token) {
-          const { data } = await supabase.auth.getSession();
-          token = data.session?.access_token ?? "";
-        }
-        if (!token) return "";
+    const result = await ask(query);
+    if (!result) return;
 
-        const { error: userError } = await supabase.auth.getUser(token);
-        if (!userError) return token;
+    // Apply filters to existing filter state
+    const f = result.filters;
+    if (f.state) setStateFilter(f.state);
+    if (f.tier) setTierFilter(f.tier);
+    if (typeof f.minScore === "number") setMinScore(f.minScore);
 
-        const { data: refreshed } = await supabase.auth.refreshSession();
-        return refreshed.session?.access_token ?? "";
-      };
+    // Apply weights — absolute mode sets sliders to exactly what user asked;
+    // delta mode keeps the old nudge + dominant-detection behavior.
+    const mode = (result as unknown as { weightMode?: string }).weightMode === "absolute" ? "absolute" : "delta";
+    const abs = (result as unknown as { absoluteWeights?: Record<string, number> }).absoluteWeights ?? {};
+    const adj = result.weightAdjustments ?? {};
+    const adjEntries = (Object.entries(adj) as [CategoryKey, number][])
+      .filter(([, v]) => Number(v) !== 0);
 
-      const initialToken = await getValidAccessToken();
-      if (!initialToken) {
-        toast.error("Please sign in again to use AI search");
-        return;
-      }
-
-      // Explicit fetch (not supabase.functions.invoke) so the Authorization
-      // header reliably reaches the edge function via the preview proxy.
-      const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-city-query`;
-      const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-      const callOnce = async (token: string) => {
-        const resp = await fetch(FN_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-            apikey: ANON_KEY,
-          },
-          body: JSON.stringify({
-            query,
-            threadId: aiThreadId,
-            previousTurns: aiTurns.map((t) => ({ query: t.query, response: t.response })),
-          }),
+    if (mode === "absolute") {
+      setScoringModel("Custom");
+      clearActiveSavedSearch();
+      setWeights((prev) => {
+        const keys = Object.keys(prev) as CategoryKey[];
+        const next = { ...prev } as Record<CategoryKey, number>;
+        keys.forEach((k) => {
+          const v = Number(abs[k]);
+          next[k] = Number.isFinite(v) ? Math.max(0, Math.min(100, Math.round(v))) : 0;
         });
-        let bodyJson: any = null;
-        try { bodyJson = await resp.json(); } catch { /* not json */ }
-        return { resp, bodyJson };
-      };
+        setAppliedWeights(next);
+        setCustomWeightsSnapshot({ ...next });
+        return next;
+      });
+      toast.success("AI set your category weights exactly as requested.");
+    } else if (adjEntries.length > 0) {
+      setScoringModel("Custom");
+      clearActiveSavedSearch();
+      setWeights((prev) => {
+        const keys = Object.keys(prev) as CategoryKey[];
+        // Single-category dominant intent ("rank by demand", "focus on pricing power")
+        // should produce a clearly dominant slider, not a 17% nudge.
+        const positives = adjEntries.filter(([, v]) => v > 0);
+        const isDominant = positives.length === 1
+          && adjEntries.every(([k, v]) => (k === positives[0][0] ? v > 0 : v <= 0));
 
-      let { resp, bodyJson } = await callOnce(initialToken);
-      if (resp.status === 401) {
-        const refreshedToken = await getValidAccessToken();
-        ({ resp, bodyJson } = await callOnce(refreshedToken));
-      }
-      if (!resp.ok) {
-        const msg = bodyJson?.error || bodyJson?.detail || `AI search failed (HTTP ${resp.status})`;
-        toast.error(typeof msg === "string" ? msg : JSON.stringify(msg));
-        return;
-      }
-      const data = bodyJson;
-      const result = data?.result as AiResult | undefined;
-      if (!result) {
-        toast.error("AI returned no result");
-        return;
-      }
-      setAiThreadId(data.threadId ?? null);
-      setAiTurns((prev) => [...prev, { query, response: result }]);
-
-      // Apply filters to existing filter state
-      const f = result.filters;
-      if (f.state) setStateFilter(f.state);
-      if (f.tier) setTierFilter(f.tier);
-      if (typeof f.minScore === "number") setMinScore(f.minScore);
-
-      // Apply weights — absolute mode sets sliders to exactly what user asked;
-      // delta mode keeps the old nudge + dominant-detection behavior.
-      const mode = (result as any).weightMode === "absolute" ? "absolute" : "delta";
-      const abs = (result as any).absoluteWeights ?? {};
-      const adj = result.weightAdjustments ?? {};
-      const adjEntries = (Object.entries(adj) as [CategoryKey, number][])
-        .filter(([, v]) => Number(v) !== 0);
-
-      if (mode === "absolute") {
-        setScoringModel("Custom");
-        clearActiveSavedSearch();
-        setWeights((prev) => {
-          const keys = Object.keys(prev) as CategoryKey[];
-          const next = { ...prev } as Record<CategoryKey, number>;
-          keys.forEach((k) => {
-            const v = Number(abs[k]);
-            next[k] = Number.isFinite(v) ? Math.max(0, Math.min(100, Math.round(v))) : 0;
+        const next = { ...prev } as Record<CategoryKey, number>;
+        if (isDominant) {
+          const dom = positives[0][0];
+          const others = keys.filter((k) => k !== dom);
+          const remainder = 40;
+          const each = Math.floor(remainder / others.length);
+          others.forEach((k) => { next[k] = each; });
+          next[dom] = 100 - each * others.length;
+        } else {
+          // Additive nudge path (multi-category intents) — preserve existing behavior.
+          adjEntries.forEach(([k, v]) => {
+            if (next[k] != null) next[k] = Math.max(0, Math.min(100, (next[k] ?? 0) + v));
           });
-          setAppliedWeights(next);
-          setCustomWeightsSnapshot({ ...next });
-          return next;
-        });
-        toast.success("AI set your category weights exactly as requested.");
-      } else if (adjEntries.length > 0) {
-        setScoringModel("Custom");
-        clearActiveSavedSearch();
-        setWeights((prev) => {
-          const keys = Object.keys(prev) as CategoryKey[];
-          // Single-category dominant intent ("rank by demand", "focus on pricing power")
-          // should produce a clearly dominant slider, not a 17% nudge. Detect by:
-          //   - exactly one positive nudge AND any others are zero or negative.
-          const positives = adjEntries.filter(([, v]) => v > 0);
-          const isDominant = positives.length === 1
-            && adjEntries.every(([k, v]) => (k === positives[0][0] ? v > 0 : v <= 0));
-
-          let next = { ...prev } as Record<CategoryKey, number>;
-          if (isDominant) {
-            const dom = positives[0][0];
-            const others = keys.filter((k) => k !== dom);
-            const remainder = 40;
-            const each = Math.floor(remainder / others.length);
-            others.forEach((k) => { next[k] = each; });
-            next[dom] = 100 - each * others.length;
-          } else {
-            // Additive nudge path (multi-category intents) — preserve existing behavior.
-            adjEntries.forEach(([k, v]) => {
-              if (next[k] != null) next[k] = Math.max(0, Math.min(100, (next[k] ?? 0) + v));
-            });
-            const sum = Object.values(next).reduce((s, v) => s + v, 0) || 1;
-            keys.forEach((k) => { next[k] = Math.round((next[k] / sum) * 100); });
-            let diff = 100 - Object.values(next).reduce((s, v) => s + v, 0);
-            for (let i = 0; diff !== 0 && i < 6; i++) {
-              const k = keys[i % keys.length];
-              const step = diff > 0 ? 1 : -1;
-              if (next[k] + step >= 0) { next[k] += step; diff -= step; }
-            }
+          const sum = Object.values(next).reduce((s, v) => s + v, 0) || 1;
+          keys.forEach((k) => { next[k] = Math.round((next[k] / sum) * 100); });
+          let diff = 100 - Object.values(next).reduce((s, v) => s + v, 0);
+          for (let i = 0; diff !== 0 && i < 6; i++) {
+            const k = keys[i % keys.length];
+            const step = diff > 0 ? 1 : -1;
+            if (next[k] + step >= 0) { next[k] += step; diff -= step; }
           }
-          setAppliedWeights(next);
-          setCustomWeightsSnapshot({ ...next });
-          return next;
-        });
-        toast.success("AI adjusted your category weights — composite re-ranked.");
-      } else if (f.state || f.tier || typeof f.minScore === "number") {
-        toast.success("AI applied filters to your search.");
-      }
-    } catch (e) {
-      console.error("askAi", e);
-      toast.error(e instanceof Error ? e.message : "AI search failed");
-    } finally {
-      setAiLoading(false);
+        }
+        setAppliedWeights(next);
+        setCustomWeightsSnapshot({ ...next });
+        return next;
+      });
+      toast.success("AI adjusted your category weights — composite re-ranked.");
+    } else if (f.state || f.tier || typeof f.minScore === "number") {
+      toast.success("AI applied filters to your search.");
     }
   };
 

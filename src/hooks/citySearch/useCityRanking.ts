@@ -36,7 +36,7 @@ export interface CityRankingFilters {
   tierFilter: string;
   nonRegOnly: boolean;
   minScore: number;
-  minPop: number;
+  minPop: string;
   cityFilter: string;
   watchlistOnly: boolean;
   watchlistCityIds: Set<string>;

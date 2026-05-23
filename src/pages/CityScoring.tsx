@@ -1670,14 +1670,18 @@ const CityScoring = () => {
         markets={baseRankedMarkets.filter((m) => selectedForCompare.includes(m.id)).slice(0, 4)}
       />
 
-      <MarketReportModal
-        open={reportOpen}
-        onClose={() => { setReportOpen(false); setReportAutoPdf(false); }}
-        market={selected}
-        categoryScores={detailCategoryScores}
-        refreshVersion={marketRefreshVersion}
-        autoDownload={reportAutoPdf}
-      />
+      {reportOpen && (
+        <Suspense fallback={null}>
+          <MarketReportModal
+            open={reportOpen}
+            onClose={() => { setReportOpen(false); setReportAutoPdf(false); }}
+            market={selected}
+            categoryScores={detailCategoryScores}
+            refreshVersion={marketRefreshVersion}
+            autoDownload={reportAutoPdf}
+          />
+        </Suspense>
+      )}
 
       <Dialog open={saveSearchOpen} onOpenChange={setSaveSearchOpen}>
         <DialogContent className="max-w-sm bg-white">

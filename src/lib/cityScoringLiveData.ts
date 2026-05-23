@@ -136,28 +136,10 @@ function toNumber(value: unknown, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
-export function mapLiveCityToRankedMarket(row: ScoredCityRow, index: number, competitorCount: number | null = null): RankedMarket {
-  const state = normalizeState(row.state_name ?? row.state_abbr);
-  const compositeScore = toNumber(row.composite_score_default, 0);
-  const hasLiveData = compositeScore > 0 || !!row.scored_at;
-  return {
-    id: 100000 + index,
-    cityId: row.id,
-    city: row.city_name ?? "Unknown",
-    state,
-    county: row.county_name ?? null,
-    metroArea: row.metro_area ?? null,
-    tier: tierFromScore(compositeScore),
-    compositeScore,
-    population: row.population == null ? null : Number(row.population),
-    competitorCount,
-    marketType: null,
-    isNonRegistration: NON_REGISTRATION_STATES.has(state),
-    lastScrapedAt: row.scored_at ?? null,
-    source: "live",
-    hasLiveData,
-  };
-}
+// mapLiveCityToRankedMarket removed 2026-05-23 — unused. The live mapping
+// path runs inline inside `loadLiveRankedMarkets` against the wider
+// `us_cities_scored` SELECT; no caller ever exercised the legacy `cities`
+// shape this helper expected.
 
 export function mapSampleCityToRankedMarket(city: CityData): RankedMarket {
   return {

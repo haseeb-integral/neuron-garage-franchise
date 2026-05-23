@@ -3,6 +3,7 @@
 // and per-row score popovers. Extracted from CityScoring.tsx so the page
 // no longer carries ~210 lines of dense JSX inline.
 
+import { memo } from "react";
 import { ArrowRight, Bookmark, BookmarkCheck, GitCompare } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";

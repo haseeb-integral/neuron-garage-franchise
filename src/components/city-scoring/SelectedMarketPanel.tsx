@@ -323,3 +323,6 @@ function SelectedMarketPanelImpl({
     </div>
   );
 }
+
+export const SelectedMarketPanel = memo(SelectedMarketPanelImpl);
+

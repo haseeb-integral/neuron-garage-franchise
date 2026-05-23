@@ -1162,7 +1162,7 @@ const CityScoring = () => {
     return { label: cfg.badLabel ?? "High", tone: "bad" };
   };
 
-  const sigRows = KEY_SIGNAL_KEYS.map((key) => {
+  const sigRows = useMemo(() => KEY_SIGNAL_KEYS.map((key) => {
     const meta = KEY_SIGNAL_META[key];
     const sig = signalsByKey[key];
     const rawVal = sig?.value;
@@ -1178,7 +1178,9 @@ const CityScoring = () => {
       rawValue: isEmpty ? null : String(rawVal),
       benchmark,
     };
-  });
+  // benchmarkBand/formatSignalValue/KEY_SIGNAL_META/SIGNAL_DISPLAY are module-level constants.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [signalsByKey]);
 
   const hasLiveSignals = sigRows.some((r) => r.value !== "—");
   const preSeededCount = sigRows.filter((r) => r.value !== "—").length;

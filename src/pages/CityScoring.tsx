@@ -2099,7 +2099,7 @@ const CityScoring = () => {
                               categories={VISIBLE_CATEGORIES.map((cc) => ({ key: cc.key, label: cc.label }))}
                               categoryScores={(c as any).categoryScores ?? {}}
                               appliedWeights={appliedWeights}
-                              composite={(c as any).view?.composite ?? c.compositeScore}
+                              composite={(c as any).view?.composite ?? 0}
                               tier={c.tier}
                             />
                           </PopoverContent>

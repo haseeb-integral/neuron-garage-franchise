@@ -130,7 +130,13 @@ export function useLiveRankedMarkets() {
     [qc],
   );
 
-  return { liveRankedMarkets, setLiveRankedMarkets };
+  return {
+    liveRankedMarkets,
+    setLiveRankedMarkets,
+    isLoading: query.isLoading,
+    error: query.error as Error | null,
+    refetch: () => query.refetch(),
+  };
 }
 
 interface SelectedOptions {

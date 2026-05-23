@@ -1,10 +1,13 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-const TIER_META: Record<string, { color: string; label: string; range: string }> = {
-  A: { color: "#0ea66e", label: "Top",    range: "80+" },
-  B: { color: "#174be8", label: "Strong", range: "65–79" },
-  C: { color: "#b8860b", label: "Watch",  range: "50–64" },
-  D: { color: "#ea580c", label: "Pass",   range: "below 50" },
+// Tiers are percentile-based, not absolute. Top 5% = I, next 15% = II,
+// next 30% = III, bottom 50% = IV. Internal keys stay A/B/C/D for store/filter
+// compatibility — only the display labels are Roman numerals.
+const TIER_META: Record<string, { color: string; roman: string; label: string; range: string }> = {
+  A: { color: "#0ea66e", roman: "I",   label: "Top Priority", range: "Top 5%" },
+  B: { color: "#174be8", roman: "II",  label: "Strong",       range: "Next 15%" },
+  C: { color: "#b8860b", roman: "III", label: "Watch",        range: "Next 30%" },
+  D: { color: "#ea580c", roman: "IV",  label: "Skip",         range: "Bottom 50%" },
 };
 
 interface Props {
@@ -25,14 +28,14 @@ export function TierBadge({ tier, compact = false, score, percentile }: Props) {
       className="inline-flex items-center justify-center rounded-full text-[10px] font-bold text-white"
       style={{ backgroundColor: meta.color, width: 22, height: 22 }}
     >
-      {tier}
+      {meta.roman}
     </span>
   ) : (
     <span
       className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold text-white whitespace-nowrap"
       style={{ backgroundColor: meta.color }}
     >
-      <span className="font-bold">{tier}</span>
+      <span className="font-bold">Tier {meta.roman}</span>
       <span className="opacity-90">·</span>
       <span>{meta.label}</span>
     </span>
@@ -62,7 +65,7 @@ export function TierBadge({ tier, compact = false, score, percentile }: Props) {
             </div>
           )}
           <div className="text-[#cbd5e1]">
-            Threshold: {meta.range} ({meta.label})
+            Tier {meta.roman}: {meta.range} ({meta.label})
           </div>
         </div>
       </TooltipContent>

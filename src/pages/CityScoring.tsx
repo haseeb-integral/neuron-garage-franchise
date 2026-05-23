@@ -1532,20 +1532,24 @@ const CityScoring = () => {
     ? Math.round(liveCompositeNumer / liveCompositeDenom)
     : (Number.isFinite(detailScore as number) ? Math.round(detailScore as number) : 0);
   void appliedTotal;
+  // Use the same percentile-based tier that the ranked table uses (top 5% = I,
+  // next 15% = II, next 30% = III, rest = IV). Previously this panel recomputed
+  // tier with absolute cutoffs (85/75/65) which contradicted the table badge —
+  // e.g. San Diego showed "A" in the list and "C (Tier 3)" here.
   const displayTier: "A" | "B" | "C" | "D" =
-    weightedComposite >= 85 ? "A" : weightedComposite >= 75 ? "B" : weightedComposite >= 65 ? "C" : "D";
+    (selected.tier as "A" | "B" | "C" | "D") ?? "D";
 
   const TIER_BADGE: Record<string, { bg: string; fg: string; label: string }> = {
-    A: { bg: "#e6f7ef", fg: "#0ea66e", label: "A (Tier 1)" },
-    B: { bg: "#eaf0ff", fg: "#174be8", label: "B (Tier 2)" },
-    C: { bg: "#fff6dc", fg: "#b8860b", label: "C (Tier 3)" },
-    D: { bg: "#ffeede", fg: "#ea580c", label: "D (Tier 4)" },
+    A: { bg: "#e6f7ef", fg: "#0ea66e", label: "Tier I" },
+    B: { bg: "#eaf0ff", fg: "#174be8", label: "Tier II" },
+    C: { bg: "#fff6dc", fg: "#b8860b", label: "Tier III" },
+    D: { bg: "#ffeede", fg: "#ea580c", label: "Tier IV" },
   };
   const tierBadge = TIER_BADGE[displayTier];
   const opportunityLabel =
-    displayTier === "A" ? "Excellent Opportunity" :
-    displayTier === "B" ? "Strong Opportunity" :
-    displayTier === "C" ? "Moderate Opportunity" : "Limited Opportunity";
+    displayTier === "A" ? "Top Priority Market" :
+    displayTier === "B" ? "Strong Market" :
+    displayTier === "C" ? "Watch Market" : "Skip Market";
 
   // Key Market Signals — locked to the 12 metrics that power the 3 visible
   // categories (Demand 4 + TAM Teachers 5 + Competitive Landscape 3).

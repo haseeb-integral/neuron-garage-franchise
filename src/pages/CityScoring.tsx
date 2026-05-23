@@ -1464,9 +1464,11 @@ const CityScoring = () => {
     });
   }
 
-  const detailScore = selectedLiveCity?.composite_score
-    ? selectedLiveCity.composite_score
-    : selected.compositeScore;
+  // detailScore MUST match the table SCORE + gauge — read from the canonical
+  // reranked composite, NOT the raw DB row. Was producing wrong numbers in the
+  // Market Summary and Executive Summary prose (e.g. "Louisville scores 23/100"
+  // while the gauge correctly showed 88).
+  const detailScore = selected.compositeScore;
 
   const baseDetailCategoryScores = { ...cs, ...liveUiCategoryScores } as Record<CategoryKey, number>;
 

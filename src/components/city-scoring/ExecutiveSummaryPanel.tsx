@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { X } from "lucide-react";
 import { CATEGORIES } from "@/lib/cityScoringPageHelpers";
 

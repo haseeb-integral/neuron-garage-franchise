@@ -239,7 +239,7 @@ export function useTeacherProspectsData(args: UseTeacherProspectsDataArgs) {
   }, [loadStats, loadPage]);
 
   return {
-    prospects, setProspects, totalCount, stats, statsError, cities,
+    prospects, setProspects, totalCount, stats, statsError, loadError, cities,
     loadingProspects, loadedAt, loadPage, loadStats, buildFilteredQuery,
   };
 }

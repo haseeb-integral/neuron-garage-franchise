@@ -86,6 +86,7 @@ import { useLiveRankedMarkets, useLiveSelectedMarket } from "@/hooks/citySearch/
 import { useCityRanking } from "@/hooks/citySearch/useCityRanking";
 import { CityTopBar } from "@/components/city-scoring/CityTopBar";
 import { CityFiltersRow } from "@/components/city-scoring/CityFiltersRow";
+import { CityWeightsPanel } from "@/components/city-scoring/CityWeightsPanel";
 
 
 // Feature flag: hide live on-demand API widgets on the detail panel.

@@ -77,7 +77,7 @@ export function GlobalSearch({ placeholder = "Search candidates, prospects, citi
     const prospectMatches: ResultItem[] = sampleTeachers
       .filter((p) => p.name.toLowerCase().includes(q) && !candNames.has(p.name.toLowerCase()))
       .slice(0, 5)
-      .map((p) => ({ key: `p-${p.id}`, label: p.name, sub: `${p.city}, ${p.state} · Score ${p.fitScore}`, onSelect: () => navigate(`/teacher-prospects?prospect=${p.id}`) }));
+      .map((p) => ({ key: `p-${p.uuid}`, label: p.name, sub: `${p.city}, ${p.state} · Score ${p.fitScore}`, onSelect: () => navigate(`/teacher-prospects?prospect=${p.uuid}`) }));
     const cityMatches: ResultItem[] = sampleCities
       .filter((c) => c.city.toLowerCase().includes(q) || c.state.toLowerCase().includes(q))
       .slice(0, 5)

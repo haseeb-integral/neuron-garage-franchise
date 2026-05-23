@@ -52,12 +52,6 @@ const normalizeGrade = (g: string | null): GradeLevel => {
   return "3-5";
 };
 
-const stableId = (uuid: string) => {
-  let h = 0;
-  for (let i = 0; i < uuid.length; i++) h = (h * 31 + uuid.charCodeAt(i)) | 0;
-  return Math.abs(h) || 1;
-};
-
 const pickStr = (raw: Record<string, unknown> | null, key: string): string | null => {
   if (!raw) return null;
   const v = raw[key];
@@ -65,9 +59,7 @@ const pickStr = (raw: Record<string, unknown> | null, key: string): string | nul
 };
 
 const mapRow = (r: DbRow): TeacherProspect => ({
-  id: stableId(r.id),
   uuid: r.id,
-  cityId: 0,
   name: r.name ?? "(Unknown)",
   school: r.school ?? pickStr(r.raw, "companyName") ?? "—",
   district: r.district ?? null,

@@ -1228,12 +1228,10 @@ export type Database = {
       us_cities_scored: {
         Row: {
           apify_last_updated: string | null
-          avg_camp_price_per_hour: number | null
           avg_elementary_teacher_salary_usd: number | null
           avg_peak_summer_temperature: number | null
           bea_last_updated: string | null
           bls_last_updated: string | null
-          camp_waitlist_signals: Json | null
           census_last_updated: string | null
           census_population_2020: number | null
           charter_elementary_count: number | null
@@ -1280,7 +1278,6 @@ export type Database = {
           refresh_count: number
           regional_median_income: number | null
           school_district_count: number | null
-          school_hosted_camp_count: number | null
           score_csi: number | null
           score_demand: number | null
           score_tam_teachers: number | null
@@ -1289,7 +1286,6 @@ export type Database = {
           state_abbr: string
           state_name: string
           stem_job_concentration: number | null
-          summer_camp_count: number | null
           summer_precip_days: number | null
           summer_weather_index: number | null
           updated_at: string
@@ -1297,12 +1293,10 @@ export type Database = {
         }
         Insert: {
           apify_last_updated?: string | null
-          avg_camp_price_per_hour?: number | null
           avg_elementary_teacher_salary_usd?: number | null
           avg_peak_summer_temperature?: number | null
           bea_last_updated?: string | null
           bls_last_updated?: string | null
-          camp_waitlist_signals?: Json | null
           census_last_updated?: string | null
           census_population_2020?: number | null
           charter_elementary_count?: number | null
@@ -1349,7 +1343,6 @@ export type Database = {
           refresh_count?: number
           regional_median_income?: number | null
           school_district_count?: number | null
-          school_hosted_camp_count?: number | null
           score_csi?: number | null
           score_demand?: number | null
           score_tam_teachers?: number | null
@@ -1358,7 +1351,6 @@ export type Database = {
           state_abbr: string
           state_name: string
           stem_job_concentration?: number | null
-          summer_camp_count?: number | null
           summer_precip_days?: number | null
           summer_weather_index?: number | null
           updated_at?: string
@@ -1366,12 +1358,10 @@ export type Database = {
         }
         Update: {
           apify_last_updated?: string | null
-          avg_camp_price_per_hour?: number | null
           avg_elementary_teacher_salary_usd?: number | null
           avg_peak_summer_temperature?: number | null
           bea_last_updated?: string | null
           bls_last_updated?: string | null
-          camp_waitlist_signals?: Json | null
           census_last_updated?: string | null
           census_population_2020?: number | null
           charter_elementary_count?: number | null
@@ -1418,7 +1408,6 @@ export type Database = {
           refresh_count?: number
           regional_median_income?: number | null
           school_district_count?: number | null
-          school_hosted_camp_count?: number | null
           score_csi?: number | null
           score_demand?: number | null
           score_tam_teachers?: number | null
@@ -1427,7 +1416,6 @@ export type Database = {
           state_abbr?: string
           state_name?: string
           stem_job_concentration?: number | null
-          summer_camp_count?: number | null
           summer_precip_days?: number | null
           summer_weather_index?: number | null
           updated_at?: string

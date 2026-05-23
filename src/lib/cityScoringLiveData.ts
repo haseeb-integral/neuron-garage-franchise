@@ -468,9 +468,10 @@ export async function getCitySourceData(cityId: string): Promise<CitySourceRow[]
     { key: "firecrawl", column: "firecrawl_last_updated" },
   ];
 
+  const freshness = scoredRow as Record<string, string | null>;
   const rows: CitySourceRow[] = REAL_API_SOURCES
     .map(({ key, column }) => {
-      const lastFetchedAt = (scoredRow as any)[column] ?? null;
+      const lastFetchedAt = freshness[column] ?? null;
       return {
         source: key,
         label: labelFor(key),

@@ -32,10 +32,10 @@ interface Props {
 
 
 const TIER_META: { key: keyof TierCounts; label: string; bg: string; fg: string; border: string }[] = [
-  { key: "A", label: "Tier A", bg: "#e6f7ef", fg: "#0ea66e", border: "#bfe7d3" },
-  { key: "B", label: "Tier B", bg: "#eaf0ff", fg: "#174be8", border: "#c8d6ff" },
-  { key: "C", label: "Tier C", bg: "#fff6dc", fg: "#b8860b", border: "#f0e0a8" },
-  { key: "D", label: "Tier D", bg: "#fff1e6", fg: "#c2410c", border: "#f5cdb3" },
+  { key: "A", label: "Tier I",   bg: "#e6f7ef", fg: "#0ea66e", border: "#bfe7d3" },
+  { key: "B", label: "Tier II",  bg: "#eaf0ff", fg: "#174be8", border: "#c8d6ff" },
+  { key: "C", label: "Tier III", bg: "#fff6dc", fg: "#b8860b", border: "#f0e0a8" },
+  { key: "D", label: "Tier IV",  bg: "#fff1e6", fg: "#c2410c", border: "#f5cdb3" },
 ];
 
 function fmt(n: number | null, suffix = "") {

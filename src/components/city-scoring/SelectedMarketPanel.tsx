@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { ArrowRight, Bookmark, BookmarkCheck, Eye, FileText, GitCompare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -41,7 +42,7 @@ interface Props {
   onOpenDetailDrawer: () => void;
 }
 
-export function SelectedMarketPanel({
+function SelectedMarketPanelImpl({
   showLiveRefresh,
   lastScrapedRelative,
   lastScrapedAbsolute,
@@ -322,3 +323,6 @@ export function SelectedMarketPanel({
     </div>
   );
 }
+
+export const SelectedMarketPanel = memo(SelectedMarketPanelImpl);
+

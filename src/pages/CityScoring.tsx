@@ -55,7 +55,7 @@ import {
 import { useCityScoringStore, DEFAULT_WEIGHTS } from "@/stores/cityScoringStore";
 import { DEFAULT_SUB_WEIGHTS, SOW_METRIC_REGISTRY } from "@/lib/sowMetricRegistry";
 import { SubMetricWeightsDrawer } from "@/components/city-scoring/SubMetricWeightsDrawer";
-import { getCached, setCached } from "@/lib/pageCache";
+
 import { Settings2 } from "lucide-react";
 import { METRICS_BY_CATEGORY } from "@/lib/sowMetricRegistry";
 import { parseSignalValue } from "@/lib/sowNormalize";
@@ -273,7 +273,7 @@ const CityScoring = () => {
   };
   useEffect(() => { refreshWatchlist(); }, [user?.id]);
 
-  const toggleWatchlist = async (cityId: string | null | undefined) => {
+  const toggleWatchlist = useCallback(async (cityId: string | null | undefined) => {
     if (!cityId) { toast.error("Refresh this city's data before saving it"); return; }
     if (!user) { toast.error("Sign in required"); return; }
     const isSaved = watchlistCityIds.has(cityId);
@@ -298,7 +298,7 @@ const CityScoring = () => {
       if (error) { console.error(error); toast.error("Save failed"); refreshWatchlist(); return; }
       toast.success("Added to watchlist");
     }
-  };
+  }, [user, watchlistCityIds]);
 
   // (handleSaveSearch / handleLoadSavedSearch / handleDeleteSavedSearch moved into useSavedSearches)
 
@@ -709,7 +709,7 @@ const CityScoring = () => {
     toast.success("Weights reset to defaults");
   };
 
-  const toggleCompare = (id: number) => {
+  const toggleCompare = useCallback((id: number) => {
     setSelectedForCompare((p) => {
       if (p.includes(id)) return p.filter((i) => i !== id);
       if (p.length >= 10) {
@@ -718,7 +718,7 @@ const CityScoring = () => {
       }
       return [...p, id];
     });
-  };
+  }, [setSelectedForCompare]);
 
   const buildCsvDownload = async () => {
     try {
@@ -805,13 +805,13 @@ const CityScoring = () => {
   };
 
 
-  const openCompare = () => {
+  const openCompare = useCallback(() => {
     if (selectedForCompare.length < 2) {
       toast.error("Select at least 2 markets to compare");
       return;
     }
     setCompareOpen(true);
-  };
+  }, [selectedForCompare]);
 
   const applyWeights = () => {
     if (totalWeight !== 100) return;
@@ -823,11 +823,11 @@ const CityScoring = () => {
     toast.success("Composite score recalculated from current weights.");
   };
 
-  const handleFindTeachers = () => {
+  const handleFindTeachers = useCallback(() => {
     navigate(`/teacher-prospects?city=${encodeURIComponent(selected.city)}&state=${encodeURIComponent(selected.state)}`);
-  };
+  }, [navigate, selected.city, selected.state]);
 
-  const handleFindTeachersForSelected = () => {
+  const handleFindTeachersForSelected = useCallback(() => {
     const picked = baseRankedMarkets.filter((m: any) => selectedForCompare.includes(m.id)).slice(0, 10);
     if (picked.length === 0) {
       toast.error("Select at least 1 market first (use the checkbox).");
@@ -836,7 +836,7 @@ const CityScoring = () => {
     const cities = picked.map((m: any) => m.city).join(",");
     const states = picked.map((m: any) => m.state).join(",");
     navigate(`/teacher-prospects?city=${encodeURIComponent(cities)}&state=${encodeURIComponent(states)}`);
-  };
+  }, [baseRankedMarkets, selectedForCompare, navigate]);
 
   const handleRefreshData = async () => {
     if (!selectedCity || !selectedState) return;
@@ -1020,7 +1020,7 @@ const CityScoring = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseDetailCategoryScores, rawValuesByKey, appliedSubWeights]);
 
-  const detailCategoryScores = (() => {
+  const detailCategoryScores = useMemo(() => {
     const out = { ...baseDetailCategoryScores } as Record<CategoryKey, number>;
     // Strip any non-finite leftovers from the base shape so they can't poison
     // the composite math via `(NaN ?? 0) === NaN`.
@@ -1032,7 +1032,7 @@ const CityScoring = () => {
       if (r?.score != null && Number.isFinite(r.score)) out[k] = Math.round(r.score);
     });
     return out;
-  })();
+  }, [baseDetailCategoryScores, recomputedByCategory]);
 
   // ─── SINGLE SOURCE OF TRUTH for the headline composite ─────────────────
   // Every UI surface that shows a city's overall score (ranked table SCORE
@@ -1162,7 +1162,7 @@ const CityScoring = () => {
     return { label: cfg.badLabel ?? "High", tone: "bad" };
   };
 
-  const sigRows = KEY_SIGNAL_KEYS.map((key) => {
+  const sigRows = useMemo(() => KEY_SIGNAL_KEYS.map((key) => {
     const meta = KEY_SIGNAL_META[key];
     const sig = signalsByKey[key];
     const rawVal = sig?.value;
@@ -1178,7 +1178,9 @@ const CityScoring = () => {
       rawValue: isEmpty ? null : String(rawVal),
       benchmark,
     };
-  });
+  // benchmarkBand/formatSignalValue/KEY_SIGNAL_META/SIGNAL_DISPLAY are module-level constants.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [signalsByKey]);
 
   const hasLiveSignals = sigRows.some((r) => r.value !== "—");
   const preSeededCount = sigRows.filter((r) => r.value !== "—").length;

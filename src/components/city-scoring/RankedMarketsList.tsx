@@ -3,6 +3,7 @@
 // and per-row score popovers. Extracted from CityScoring.tsx so the page
 // no longer carries ~210 lines of dense JSX inline.
 
+import { memo } from "react";
 import { ArrowRight, Bookmark, BookmarkCheck, GitCompare } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -42,7 +43,7 @@ type Props = {
   setPage: (p: number | ((p: number) => number)) => void;
 };
 
-export function RankedMarketsList({
+function RankedMarketsListImpl({
   filteredCount,
   pageItems,
   pageStart,
@@ -282,3 +283,9 @@ export function RankedMarketsList({
     </div>
   );
 }
+
+// Memoized — page re-renders on most state changes (filters, weights tweaks,
+// drawer toggles) don't change this component's props. Cuts ~15 row renders
+// per unrelated state update on /city-scoring.
+export const RankedMarketsList = memo(RankedMarketsListImpl);
+

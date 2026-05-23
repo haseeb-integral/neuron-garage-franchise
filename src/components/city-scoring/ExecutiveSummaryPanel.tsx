@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { X } from "lucide-react";
 import { CATEGORIES } from "@/lib/cityScoringPageHelpers";
 
@@ -20,7 +21,7 @@ interface Props {
   setExecReportOpen: (v: boolean) => void;
 }
 
-export function ExecutiveSummaryPanel({
+function ExecutiveSummaryPanelImpl({
   selectedCity,
   selectedState,
   detailScore,
@@ -209,3 +210,6 @@ export function ExecutiveSummaryPanel({
     </>
   );
 }
+
+export const ExecutiveSummaryPanel = memo(ExecutiveSummaryPanelImpl);
+

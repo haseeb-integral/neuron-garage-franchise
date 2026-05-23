@@ -303,13 +303,13 @@ export function sampleRankedMarkets() {
 }
 
 export function buildSeededFallbackSignalsFromScored(
-  scoredRow?: Record<string, any> | null,
-  childrenPct?: number | null,
+  scoredRow?: Partial<ScoredCityRow> | null,
+  _childrenPct?: number | null,
 ): SeededFallbackSignal[] {
   if (!scoredRow) return [];
 
-  const kids = toNumber(scoredRow.children_5_12, 0);
-  const pct = childrenPct ?? (toNumber(scoredRow.population, 0) > 0 ? Math.round((kids / toNumber(scoredRow.population, 0)) * 1000) / 10 : null);
+  // (childrenPct param kept for backwards-compatible signature; not used here
+  // because the registry surfaces `children_5_12_count` directly.)
   // campCount / campsPer10k removed 2026-05-22 — summer_camp_count was 0/817
   // populated and the derived per-10k value was never referenced.
   const seeded = (

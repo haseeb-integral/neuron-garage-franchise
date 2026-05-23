@@ -1020,7 +1020,7 @@ const CityScoring = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseDetailCategoryScores, rawValuesByKey, appliedSubWeights]);
 
-  const detailCategoryScores = (() => {
+  const detailCategoryScores = useMemo(() => {
     const out = { ...baseDetailCategoryScores } as Record<CategoryKey, number>;
     // Strip any non-finite leftovers from the base shape so they can't poison
     // the composite math via `(NaN ?? 0) === NaN`.
@@ -1032,7 +1032,7 @@ const CityScoring = () => {
       if (r?.score != null && Number.isFinite(r.score)) out[k] = Math.round(r.score);
     });
     return out;
-  })();
+  }, [baseDetailCategoryScores, recomputedByCategory]);
 
   // ─── SINGLE SOURCE OF TRUTH for the headline composite ─────────────────
   // Every UI surface that shows a city's overall score (ranked table SCORE

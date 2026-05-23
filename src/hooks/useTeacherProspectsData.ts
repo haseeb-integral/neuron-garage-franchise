@@ -94,6 +94,7 @@ export interface UseTeacherProspectsDataResult {
   totalCount: number;
   stats: Stats | null;
   statsError: string | null;
+  loadError: string | null;
   cities: string[];
   loadingProspects: boolean;
   loadedAt: Date | null;

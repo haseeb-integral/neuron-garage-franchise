@@ -975,6 +975,12 @@ const CityScoring = () => {
   const selectedCity = effectiveMarketKey.city || selectedSample.city;
   const selectedState = effectiveMarketKey.state || selectedSample.state;
   const selectedRankedMarket = baseRankedMarkets.find((market) => sameMarket(market.city, market.state, selectedCity, selectedState));
+  // CRITICAL: the table's SCORE + TIER come from `rerankedUniverse` (which
+  // applies the user's current weights). The right-panel gauge MUST read from
+  // the same source or the two views disagree (e.g. table=88, gauge=23).
+  // `selectedLiveCity?.composite_score` and `selectedRankedMarket?.compositeScore`
+  // are both pre-reweight DB values — never use them for the gauge.
+  const selectedRerankedMarket = rerankedUniverse.find((market) => sameMarket(market.city, market.state, selectedCity, selectedState));
   const liveCityMatchesSelection = sameMarket(liveCity?.city, liveCity?.state, selectedCity, selectedState);
   const selectedLiveCity = liveCityMatchesSelection ? liveCity : null;
   const selectedLiveSignals = liveCityMatchesSelection ? liveSignals : [];
@@ -986,8 +992,10 @@ const CityScoring = () => {
     state: selectedState,
     // Canonical cityId = us_cities_scored.id. Used by drawer, report, watchlist.
     cityId: selectedLiveCity?.id ?? selectedRankedMarket?.cityId ?? (selectedSample as any).cityId,
-    compositeScore: selectedLiveCity?.composite_score ?? selectedRankedMarket?.compositeScore ?? selectedSample.compositeScore,
-    tier: selectedLiveCity?.tier ?? selectedRankedMarket?.tier ?? selectedSample.tier,
+    // Reranked first (matches the table). Fallback only when the market isn't
+    // in the live-scored universe at all.
+    compositeScore: selectedRerankedMarket?.compositeScore ?? selectedLiveCity?.composite_score ?? selectedRankedMarket?.compositeScore ?? selectedSample.compositeScore,
+    tier: selectedRerankedMarket?.tier ?? selectedLiveCity?.tier ?? selectedRankedMarket?.tier ?? selectedSample.tier,
     population: selectedLiveCity?.population ?? selectedRankedMarket?.population ?? selectedSample.population,
     competitorCount: selectedLiveCity?.competitor_count ?? selectedRankedMarket?.competitorCount ?? selectedSample.competitorCount,
     county: selectedLiveCity?.county ?? selectedRankedMarket?.county ?? (selectedSample as any).county ?? null,

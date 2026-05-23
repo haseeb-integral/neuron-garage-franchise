@@ -1505,6 +1505,21 @@ const CityScoring = () => {
       ) : (
       <>
       {/* TierCountsBar moved up — now sits between Scoring Weights and Ask AI. */}
+      {rankedError && liveRankedMarkets.length === 0 && (
+        <QueryErrorState
+          title="Couldn't load markets"
+          message={rankedError.message}
+          onRetry={refetchRanked}
+        />
+      )}
+      {rankedError && liveRankedMarkets.length > 0 && (
+        <QueryErrorState
+          variant="banner"
+          title="Showing cached markets — latest refresh failed"
+          message={rankedError.message}
+          onRetry={refetchRanked}
+        />
+      )}
       {/* Three-column layout */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[2fr_1fr_1fr] items-stretch">
         {/* Left: Ranked Markets */}

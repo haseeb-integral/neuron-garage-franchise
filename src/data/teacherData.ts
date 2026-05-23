@@ -4,9 +4,10 @@ export type GradeLevel = "K-2" | "3-5" | "6-8";
 export type ProspectStatus = "new" | "shortlisted" | "in_outreach" | "not_fit" | "replied";
 
 export interface TeacherProspect {
-  id: number;            // stable numeric (legacy — used for selection state)
-  uuid: string;          // real DB uuid — used for all backend writes
-  cityId: number;
+  // Single ID surface — the DB uuid. The previous legacy `id: number`
+  // (a hash of `uuid`) was removed 2026-05-23 so selection state, URL
+  // params, and backend writes all use one identifier.
+  uuid: string;
   name: string;
   school: string;
   city: string;

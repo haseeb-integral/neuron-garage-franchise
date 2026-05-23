@@ -55,7 +55,7 @@ import {
 import { useCityScoringStore, DEFAULT_WEIGHTS } from "@/stores/cityScoringStore";
 import { DEFAULT_SUB_WEIGHTS, SOW_METRIC_REGISTRY } from "@/lib/sowMetricRegistry";
 import { SubMetricWeightsDrawer } from "@/components/city-scoring/SubMetricWeightsDrawer";
-import { getCached, setCached } from "@/lib/pageCache";
+
 import { Settings2 } from "lucide-react";
 import { METRICS_BY_CATEGORY } from "@/lib/sowMetricRegistry";
 import { parseSignalValue } from "@/lib/sowNormalize";

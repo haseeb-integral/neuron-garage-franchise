@@ -65,6 +65,13 @@ import { AiAnswerCard, type AiResult } from "@/components/city-scoring/AiAnswerC
 import { TierCountsBar, type TierCounts } from "@/components/city-scoring/TierCountsBar";
 import { PreviewBadge } from "@/components/city-scoring/PreviewBadge";
 import { RowScorePopover } from "@/components/city-scoring/RowScorePopover";
+import {
+  buildMarketView,
+  beginDriftRender,
+  assertNoCompositeDrift,
+  weightsHash as buildWeightsHash,
+  type MarketView,
+} from "@/lib/marketView";
 
 
 // Feature flag: hide live on-demand API widgets on the detail panel.

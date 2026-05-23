@@ -81,6 +81,7 @@ import {
 } from "@/lib/marketView";
 import { useSavedSearches } from "@/hooks/citySearch/useSavedSearches";
 import { useAskAi } from "@/hooks/citySearch/useAskAi";
+import { useScreenMode } from "@/hooks/citySearch/useScreenMode";
 
 
 // Feature flag: hide live on-demand API widgets on the detail panel.
@@ -173,16 +174,7 @@ const CityScoring = () => {
   const setAppliedSubWeights = useCityScoringStore((s) => s.setAppliedSubWeights);
   const resetSubWeights = useCityScoringStore((s) => s.resetSubWeights);
   const [openSubMetricsFor, setOpenSubMetricsFor] = useState<CategoryKey | null>(null);
-  const [screenMode, setScreenMode] = useState<"dashboard" | "spreadsheet">(() => {
-    if (typeof window === "undefined") return "dashboard";
-    return (window.localStorage.getItem("citySearch.screenMode") as any) === "spreadsheet"
-      ? "spreadsheet"
-      : "dashboard";
-  });
-  const updateScreenMode = (m: "dashboard" | "spreadsheet") => {
-    setScreenMode(m);
-    try { window.localStorage.setItem("citySearch.screenMode", m); } catch {}
-  };
+  const [screenMode, updateScreenMode] = useScreenMode();
   const [cityFilter, setCityFilter] = useState("");
   const [stateOpen, setStateOpen] = useState(false);
   // Snapshot of the user's manually-tuned ("Custom") weights so switching to a

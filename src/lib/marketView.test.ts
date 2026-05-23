@@ -27,8 +27,9 @@ const baseMarket = {
 };
 
 describe("buildMarketView", () => {
-  it("clamps + rounds the raw composite into a branded CompositeScore", () => {
-    expect(buildMarketView({ ...baseMarket, compositeScore: 82.6 }).composite).toBe(83);
+  it("clamps + applies display calibration into a branded CompositeScore", () => {
+    // Calibration anchors: 75→97, 100→100. Raw 82 / 82.6 land at ~98.
+    expect(buildMarketView({ ...baseMarket, compositeScore: 82.6 }).composite).toBe(98);
     expect(buildMarketView({ ...baseMarket, compositeScore: -5 }).composite).toBe(0);
     expect(buildMarketView({ ...baseMarket, compositeScore: 250 }).composite).toBe(100);
     expect(buildMarketView({ ...baseMarket, compositeScore: NaN }).composite).toBe(0);

@@ -30,7 +30,11 @@ export default tseslint.config(
   // path. Allowed surfaces: the selector itself, the store/data builders that
   // populate the raw field, and edge functions (server-side).
   {
-    files: ["src/components/**/*.{ts,tsx}", "src/pages/**/*.{ts,tsx}"],
+    files: [
+      "src/components/**/*.{ts,tsx}",
+      "src/pages/**/*.{ts,tsx}",
+      "src/hooks/**/*.{ts,tsx}",
+    ],
     ignores: [
       "src/lib/marketView.ts",
       "src/lib/cityScoringLiveData.ts",

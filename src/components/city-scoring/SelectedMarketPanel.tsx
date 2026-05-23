@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { VISIBLE_CATEGORIES, type Category } from "@/lib/cityScoringPageHelpers";
 import type { RankedMarket } from "@/lib/cityScoringLiveData";
+type SelectedLike = Pick<RankedMarket, "city" | "state"> & { cityId?: string | null };
 
 type CategoryKey = Category["key"];
 

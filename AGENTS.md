@@ -96,6 +96,8 @@ Full per-API detail in `APIS.md`.
 
 11. **Third-party enriched tables follow `TPD.md`.** Any rich vendor table (Manus city demographics, Apollo / Apify teacher exports, incoming Competitive Landscape table, future refreshes) is imported as the row UNIVERSE — our schema stays the SCORING LAYER. No `TRUNCATE`, no parallel vendor tables, no vendor scores in our composite. Universe Audit + Column Triage + Name-vs-Meaning check + idempotent upsert + separate re-score pass. No exceptions, no "this one is small."
 
+12. **One number per market per render.** Any composite score / tier / formatted score string rendered to a user comes from a `MarketView` minted by `src/lib/marketView.ts`. Components never compute, never re-derive, never round composite scores in JSX. The branded `CompositeScore` TS type enforces this at compile time; the dev-mode drift detector throws a red console error if the same `(cityId, weightsHash)` ever mints two different composites in one render pass. Origin: May 23, 2026 — the table showed `88` while the gauge showed `23` for the same city because two files held two formulas under the same label "Score". Violations are bugs, not stylistic preferences.
+
 ---
 
 ## Working Style

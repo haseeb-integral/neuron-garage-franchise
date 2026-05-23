@@ -668,6 +668,12 @@ const CityScoring = () => {
   );
 
   const rerankedUniverse = useMemo(() => {
+    // Mark the start of a render pass for the dev-only composite-drift detector.
+    // Any (cityId, weightsHash) → composite logged twice with different values
+    // in the same pass throws a red error in dev. See src/lib/marketView.ts.
+    beginDriftRender();
+    const wHash = buildWeightsHash(appliedWeights, appliedSubWeights);
+
     const masterWeightsAreDefault = JSON.stringify(appliedWeights) === JSON.stringify(DEFAULT_WEIGHTS);
     const subWeightsAreDefault = JSON.stringify(appliedSubWeights) === JSON.stringify(DEFAULT_SUB_WEIGHTS);
     const reRanked = baseRankedMarkets.map((market) => {
@@ -707,7 +713,16 @@ const CityScoring = () => {
       };
     });
 
-    return assignPercentileTiers(reRanked);
+    const tiered = assignPercentileTiers(reRanked);
+
+    // Attach a frozen MarketView to every row. This is the single object the
+    // UI is supposed to read for composite/tier/formatted strings. Tagging it
+    // here means table + drawer + gauge + CSV + exports all consume the same
+    // view, and the drift detector watches every mint.
+    return tiered.map((m: any) => ({
+      ...m,
+      view: assertNoCompositeDrift(buildMarketView(m), wHash),
+    }));
   }, [baseRankedMarkets, appliedWeights, appliedSubWeights]);
 
   const filtered = useMemo(() => {

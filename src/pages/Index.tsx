@@ -511,7 +511,7 @@ const Dashboard = () => {
           ) : (
             <ol className="space-y-2.5">
               {topCities.data!.map((c, i) => {
-                const score = c.composite_score_default ?? 0;
+                const score = Math.round(calibrateCompositeForDisplay(c.composite_score_default ?? 0));
                 return (
                   <li key={c.id} className="grid grid-cols-[18px_1fr_auto] items-center gap-2.5">
                     <span className="text-[11px] font-black" style={{ color: MUTED }}>{i + 1}.</span>

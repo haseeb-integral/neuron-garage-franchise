@@ -119,7 +119,7 @@ export function useSavedSearches({ onLoadedWeights }: Options = {}) {
 
   const handleLoadSavedSearch = useCallback((s: SavedSearch) => {
     const mw = s.master_weights as Record<CategoryKey, number> | null;
-    const sw = (s.sub_weights ?? {}) as Record<string, Record<string, number>>;
+    const sw = (s.sub_weights ?? {}) as unknown as SubWeights;
     if (mw) {
       setWeights(mw);
       setAppliedWeights(mw);

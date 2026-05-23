@@ -83,6 +83,7 @@ import { useSavedSearches } from "@/hooks/citySearch/useSavedSearches";
 import { useAskAi } from "@/hooks/citySearch/useAskAi";
 import { useScreenMode } from "@/hooks/citySearch/useScreenMode";
 import { useLiveRankedMarkets, useLiveSelectedMarket } from "@/hooks/citySearch/useLiveMarketDetail";
+import { useCityRanking } from "@/hooks/citySearch/useCityRanking";
 
 
 // Feature flag: hide live on-demand API widgets on the detail panel.

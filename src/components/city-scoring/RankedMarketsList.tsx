@@ -283,3 +283,9 @@ function RankedMarketsListImpl({
     </div>
   );
 }
+
+// Memoized — page re-renders on most state changes (filters, weights tweaks,
+// drawer toggles) don't change this component's props. Cuts ~15 row renders
+// per unrelated state update on /city-scoring.
+export const RankedMarketsList = memo(RankedMarketsListImpl);
+

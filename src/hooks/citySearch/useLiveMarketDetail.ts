@@ -152,8 +152,8 @@ export function useLiveSelectedMarket({
   const state = selectedState ?? "";
   const enabled = Boolean(city && state);
 
-  const query = useQuery({
-    queryKey: detailKey(city, state),
+  const query = useQuery<DetailPayload>({
+    queryKey: [...detailKey(city, state)],
     queryFn: () => fetchSelectedMarketDetail(city, state),
     enabled,
     staleTime: 60_000,

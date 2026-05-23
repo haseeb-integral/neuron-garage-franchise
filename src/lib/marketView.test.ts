@@ -62,15 +62,13 @@ describe("assertNoCompositeDrift", () => {
   let errorSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    // Dev-only guard — make sure the test env is treated as dev.
-    vi.stubEnv("DEV", true as unknown as string);
+    // Vitest sets import.meta.env.DEV = true by default, so the guard rail is live.
     errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     beginDriftRender();
   });
 
   afterEach(() => {
     errorSpy.mockRestore();
-    vi.unstubAllEnvs();
   });
 
   it("stays silent when the same market mints the same composite twice in one render", () => {

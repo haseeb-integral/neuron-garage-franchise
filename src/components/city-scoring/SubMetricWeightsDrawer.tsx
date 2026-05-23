@@ -1,3 +1,15 @@
+// Sub-Metric Weights Drawer — slim orchestrator.
+//
+// Responsibilities:
+//   - Read sub-weights from the store, render the +/- sliders for the active
+//     category, and persist normalized weights on Apply.
+//   - Show inline custom-metric rows (with delete confirm) when present.
+//   - Delegate the "Show Formula" view to <FormulaPanel />.
+//   - Delegate the locked Competitive Opportunity view to <CsiLockedPanel />.
+//
+// Normalization, equal-split, and pending-edit math live in
+// `src/lib/subWeightNormalization.ts` and are unit-tested independently.
+
 import { useState, useMemo } from "react";
 import { Info, RotateCcw, Minus, Plus, Calculator, Sliders, Trash2, AlertTriangle } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -14,8 +26,17 @@ import {
   type SowMetricEntry,
 } from "@/lib/sowMetricRegistry";
 import { useCityScoringStore, type CategoryKey } from "@/stores/cityScoringStore";
-import { recomputeCategoryScore, summarizeCategory, CUSTOM_METRIC_NEUTRAL_NORM } from "@/lib/clientSubWeightScoring";
+import { recomputeCategoryScore, CUSTOM_METRIC_NEUTRAL_NORM } from "@/lib/clientSubWeightScoring";
 import { useDeleteCustomCriterion, useUpdateCustomCriterionWeight, type CustomCriterionRow } from "@/hooks/useCustomCriteria";
+import {
+  sumEnabledWeights,
+  normalizeToHundred,
+  equalSplit,
+  hasPendingEdits,
+  effectivePct as effectivePctOf,
+} from "@/lib/subWeightNormalization";
+import { CsiLockedPanel } from "./sub-weights/CsiLockedPanel";
+import { FormulaPanel } from "./sub-weights/FormulaPanel";
 
 interface Props {
   open: boolean;
@@ -24,22 +45,18 @@ interface Props {
   categoryLabel: string;
   categoryColor: string;
   categoryBg: string;
-  // Optional: if provided, the Show Formula panel renders live values for this city.
   selectedCityLabel?: string;
   rawValuesByKey?: Record<string, number | null | undefined>;
   serverCategoryScore?: number | null;
-  masterWeightPct?: number; // 0..100, applied master share
-  masterWeightPendingPct?: number; // 0..100, share if pending master sliders were applied
-  currentCategoryScore?: number | null; // displayed category score before Apply (for delta toast)
-  currentComposite?: number; // composite before Apply (for delta toast)
-  computeNewComposite?: (newCategoryScore: number) => number; // recompute composite swapping in new category score
-  customMetricsForCategory?: CustomCriterionRow[]; // user-added metrics in this category
-  // CSI-only: per-city brand detail string from Manus (e.g. "Code Ninjas(2)|KinderCare(1)").
+  masterWeightPct?: number;
+  masterWeightPendingPct?: number;
+  currentCategoryScore?: number | null;
+  currentComposite?: number;
+  computeNewComposite?: (newCategoryScore: number) => number;
+  customMetricsForCategory?: CustomCriterionRow[];
   csiBrandDetail?: string | null;
-  // CSI-only: raw csi_score (0-100, saturation) and saturation category label from Manus.
   csiRawScore?: number | null;
   csiSaturationCategory?: string | null;
-  // Optional: full city-level breakdown for the "Overall city formula" line.
   overallFormula?: {
     parts: Array<{ key: CategoryKey; label: string; score: number | null; weightPct: number }>;
     composite: number | null;
@@ -67,10 +84,6 @@ const PROVENANCE_BY_CATEGORY: Partial<Record<CategoryKey, string>> = {
 const DEFAULT_PROVENANCE =
   "Default weights from the scoring registry. Edit below and click Apply.";
 
-const fmt = (n: number | null | undefined, decimals = 1) =>
-  n == null || !Number.isFinite(n) ? "—" : n.toFixed(decimals);
-
-
 export function SubMetricWeightsDrawer({
   open, onOpenChange, categoryKey, categoryLabel, categoryColor, categoryBg,
   selectedCityLabel, rawValuesByKey, serverCategoryScore, masterWeightPct,
@@ -96,56 +109,32 @@ export function SubMetricWeightsDrawer({
     [customs],
   );
 
-  // Live "effective %" preview — pure local arithmetic, no store writes.
-  const builtInSum = useMemo(
-    () => metrics.reduce((s, m) => s + (m.enabled ? (cur[m.key] ?? 0) : 0), 0),
-    [metrics, cur],
+  const enabledSum = useMemo(
+    () => sumEnabledWeights(metrics, cur, customMetricsForRecompute),
+    [metrics, cur, customMetricsForRecompute],
   );
-  const customSum = customMetricsForRecompute.reduce((s, c) => s + (c.weight || 0), 0);
-  const enabledSum = builtInSum + customSum;
-  const effectivePct = (weight: number, isEnabled: boolean) => {
-    if (!isEnabled || enabledSum <= 0) return null;
-    return (weight / enabledSum) * 100;
-  };
 
   // Live preview of what this category's score WOULD be if Apply were clicked.
-  // Uses the user's typed sub-weights (auto-normalized inside recompute via subShare).
   const previewRecompute = useMemo(() => {
     if (!rawValuesByKey) return null;
     return recomputeCategoryScore(metrics, rawValuesByKey, cur, serverCategoryScore ?? null, customMetricsForRecompute);
   }, [metrics, rawValuesByKey, cur, serverCategoryScore, customMetricsForRecompute]);
 
-  // True iff the user's typed (live) sub-weights, once normalized to 100%,
-  // differ from what was last applied. Used to surface a "Pending edits" pill
-  // and to remind the user that the city's score won't update until Apply.
   const pendingEdits = useMemo(() => {
     if (!categoryKey) return false;
-    const applied = appliedSubWeights[categoryKey] ?? {};
-    const norm: Record<string, number> = {};
-    metrics.forEach((m) => {
-      const v = m.enabled ? (cur[m.key] ?? 0) : 0;
-      norm[m.key] = enabledSum > 0 ? (v / enabledSum) * 100 : 0;
-    });
-    return metrics.some((m) => Math.abs((norm[m.key] ?? 0) - (applied[m.key] ?? 0)) > 0.05);
+    return hasPendingEdits(metrics, cur, enabledSum, appliedSubWeights[categoryKey] ?? {});
   }, [categoryKey, cur, metrics, enabledSum, appliedSubWeights]);
 
   if (!categoryKey) return null;
 
   const handleApply = () => {
-    // Auto-normalize: persist normalized (sum=100) sub-weights for enabled
-    // metrics; disabled metrics stay at 0. If everything is zero, we persist
-    // zeros — the scoring helper falls back to the server category score.
-    const normalized: Record<string, number> = {};
-    metrics.forEach((m) => {
-      const v = m.enabled ? (cur[m.key] ?? 0) : 0;
-      normalized[m.key] = enabledSum > 0 ? (v / enabledSum) * 100 : 0;
-    });
+    const normalized = normalizeToHundred(metrics, cur, enabledSum);
     setAppliedSubWeights({
       ...appliedSubWeights,
       [categoryKey]: normalized,
     });
 
-    // Compute old vs new for the delta toast.
+    // Delta toast.
     const newCatScoreRaw = previewRecompute?.score ?? null;
     const oldCat = currentCategoryScore;
     const newCatRounded = newCatScoreRaw != null ? Math.round(newCatScoreRaw) : null;
@@ -169,10 +158,8 @@ export function SubMetricWeightsDrawer({
   };
 
   const handleResetCategory = () => {
-    // Equal split across enabled metrics (integer rounding).
-    const enabled = metrics.filter((m) => m.enabled);
-    const equal = enabled.length > 0 ? Math.round(100 / enabled.length) : 0;
-    metrics.forEach((m) => setSubWeight(categoryKey, m.key, m.enabled ? equal : 0));
+    const split = equalSplit(metrics);
+    metrics.forEach((m) => setSubWeight(categoryKey, m.key, split[m.key] ?? 0));
     toast.success(`${categoryLabel} weights reset to equal split`);
   };
 
@@ -216,7 +203,6 @@ export function SubMetricWeightsDrawer({
           </p>
         </SheetHeader>
 
-
         {view === "weights" ? (
           isCsiLocked ? (
             <CsiLockedPanel
@@ -228,190 +214,189 @@ export function SubMetricWeightsDrawer({
               selectedCityLabel={selectedCityLabel}
             />
           ) : (
-          <TooltipProvider delayDuration={150}>
-            <div className="flex-1 overflow-y-auto px-5 py-3 space-y-1.5">
-              {metrics.map((m) => {
-                const value = cur[m.key] ?? 0;
-                const isDisabled = !m.enabled;
-                const pill = STATUS_PILL[m.status];
-                const eff = effectivePct(value, m.enabled);
-
-                return (
-                  <div
-                    key={m.key}
-                    className={`flex flex-col py-1.5 px-2 rounded border ${
-                      isDisabled ? "border-transparent bg-gray-50/50" : "border-transparent hover:bg-[#fafbfd]"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                    <div className="flex-1 min-w-0 flex items-center gap-1.5">
-                      <span
-                        className={`text-[12.5px] leading-tight ${
-                          isDisabled ? "text-[#9aa3b5]" : "text-[#07142f] font-medium"
-                        }`}
-                      >
-                        {m.label}
-                      </span>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            aria-label={`About ${m.label}`}
-                            className="text-[#8794ab] hover:text-[#174be8] transition-colors flex-shrink-0"
-                          >
-                            <Info size={12} />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-[280px] text-[12px] leading-snug">
-                          {m.description}
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-
+            <TooltipProvider delayDuration={150}>
+              <div className="flex-1 overflow-y-auto px-5 py-3 space-y-1.5">
+                {metrics.map((m) => {
+                  const value = cur[m.key] ?? 0;
+                  const isDisabled = !m.enabled;
+                  const pill = STATUS_PILL[m.status];
+                  const eff = effectivePctOf(value, m.enabled, enabledSum);
+                  return (
                     <div
-                      className={`flex items-center h-7 rounded border overflow-hidden ${
-                        isDisabled
-                          ? "border-[#eef2f7] bg-gray-50 opacity-60"
-                          : "border-[#e5eaf2] bg-white"
+                      key={m.key}
+                      className={`flex flex-col py-1.5 px-2 rounded border ${
+                        isDisabled ? "border-transparent bg-gray-50/50" : "border-transparent hover:bg-[#fafbfd]"
                       }`}
                     >
-                      <button
-                        type="button"
-                        aria-label="Decrease weight"
-                        disabled={isDisabled || value <= 0}
-                        onClick={() => setSubWeight(categoryKey, m.key, value - 1)}
-                        className="h-full w-7 flex items-center justify-center text-[#526078] hover:bg-[#f3f6fb] disabled:text-[#c5cdda] disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors"
-                      >
-                        <Minus size={12} />
-                      </button>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        disabled={isDisabled}
-                        value={value}
-                        onChange={(e) => {
-                          const n = parseInt(e.target.value.replace(/\D/g, ""), 10);
-                          setSubWeight(categoryKey, m.key, isNaN(n) ? 0 : n);
-                        }}
-                        className={`w-9 h-full text-[12px] text-center bg-transparent border-x border-[#eef2f7] focus:outline-none ${
-                          isDisabled ? "text-[#9aa3b5] cursor-not-allowed" : "text-[#07142f]"
-                        }`}
-                      />
-                      <button
-                        type="button"
-                        aria-label="Increase weight"
-                        disabled={isDisabled}
-                        onClick={() => setSubWeight(categoryKey, m.key, value + 1)}
-                        className="h-full w-7 flex items-center justify-center text-[#526078] hover:bg-[#f3f6fb] disabled:text-[#c5cdda] disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors"
-                      >
-                        <Plus size={12} />
-                      </button>
-                    </div>
-
-                    <span
-                      className={`text-[10.5px] tabular-nums whitespace-nowrap w-[54px] text-right ${
-                        isDisabled ? "text-[#c5cdda]" : "text-[#8794ab]"
-                      }`}
-                    >
-                      {eff == null ? "→ —" : `→ ${eff.toFixed(1)}%`}
-                    </span>
-
-                    <span
-                      className={`text-[10px] px-1.5 py-0.5 rounded font-medium whitespace-nowrap w-[68px] text-center ${pill.cls}`}
-                    >
-                      {pill.label}
-                    </span>
-                    </div>
-                    {m.source && (
-                      <p className={`text-[10.5px] leading-snug mt-1 pl-0.5 ${
-                        isDisabled ? "text-[#b6bfd0]" : "text-[#6b7894]"
-                      }`}>
-                        <span className="font-semibold">Data Source:</span> {m.source}
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-
-              {customs.length > 0 && (
-                <div className="pt-2 mt-2 border-t border-dashed border-[#e5eaf2]">
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-[#526078] mb-1.5 px-1">
-                    Custom metrics
-                  </p>
-                  {customs.map((cm) => {
-                    const w = Number(cm.weight) || 0;
-                    const eff = effectivePct(w, true);
-                    return (
-                      <div
-                        key={cm.id}
-                        className="flex items-center gap-2 py-1.5 px-2 rounded border border-transparent hover:bg-[#fafbfd]"
-                      >
+                      <div className="flex items-center gap-2">
                         <div className="flex-1 min-w-0 flex items-center gap-1.5">
-                          <span className="text-[12.5px] leading-tight text-[#07142f] font-medium truncate">
-                            {cm.name}
-                          </span>
-                          <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-[#eef4ff] text-[#174be8] font-semibold">
-                            CUSTOM
+                          <span
+                            className={`text-[12.5px] leading-tight ${
+                              isDisabled ? "text-[#9aa3b5]" : "text-[#07142f] font-medium"
+                            }`}
+                          >
+                            {m.label}
                           </span>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <span className="inline-flex items-center text-[#b45309]">
-                                <AlertTriangle size={11} />
-                              </span>
+                              <button
+                                type="button"
+                                aria-label={`About ${m.label}`}
+                                className="text-[#8794ab] hover:text-[#174be8] transition-colors flex-shrink-0"
+                              >
+                                <Info size={12} />
+                              </button>
                             </TooltipTrigger>
-                            <TooltipContent side="top" className="max-w-[260px] text-[12px] leading-snug">
-                              No live data — using neutral score ({CUSTOM_METRIC_NEUTRAL_NORM}) until a data source is connected.
+                            <TooltipContent side="top" className="max-w-[280px] text-[12px] leading-snug">
+                              {m.description}
                             </TooltipContent>
                           </Tooltip>
                         </div>
-                        <div className="flex items-center h-7 rounded border overflow-hidden border-[#e5eaf2] bg-white">
+
+                        <div
+                          className={`flex items-center h-7 rounded border overflow-hidden ${
+                            isDisabled
+                              ? "border-[#eef2f7] bg-gray-50 opacity-60"
+                              : "border-[#e5eaf2] bg-white"
+                          }`}
+                        >
                           <button
                             type="button"
                             aria-label="Decrease weight"
-                            disabled={w <= 0}
-                            onClick={() => updateCustomWeight.mutate({ id: cm.id, weight: Math.max(0, w - 1) })}
-                            className="h-full w-7 flex items-center justify-center text-[#526078] hover:bg-[#f3f6fb] disabled:text-[#c5cdda] disabled:cursor-not-allowed"
+                            disabled={isDisabled || value <= 0}
+                            onClick={() => setSubWeight(categoryKey, m.key, value - 1)}
+                            className="h-full w-7 flex items-center justify-center text-[#526078] hover:bg-[#f3f6fb] disabled:text-[#c5cdda] disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors"
                           >
                             <Minus size={12} />
                           </button>
                           <input
                             type="text"
                             inputMode="numeric"
-                            value={w}
+                            pattern="[0-9]*"
+                            disabled={isDisabled}
+                            value={value}
                             onChange={(e) => {
                               const n = parseInt(e.target.value.replace(/\D/g, ""), 10);
-                              updateCustomWeight.mutate({ id: cm.id, weight: isNaN(n) ? 0 : n });
+                              setSubWeight(categoryKey, m.key, isNaN(n) ? 0 : n);
                             }}
-                            className="w-9 h-full text-[12px] text-center bg-transparent border-x border-[#eef2f7] focus:outline-none text-[#07142f]"
+                            className={`w-9 h-full text-[12px] text-center bg-transparent border-x border-[#eef2f7] focus:outline-none ${
+                              isDisabled ? "text-[#9aa3b5] cursor-not-allowed" : "text-[#07142f]"
+                            }`}
                           />
                           <button
                             type="button"
                             aria-label="Increase weight"
-                            onClick={() => updateCustomWeight.mutate({ id: cm.id, weight: w + 1 })}
-                            className="h-full w-7 flex items-center justify-center text-[#526078] hover:bg-[#f3f6fb]"
+                            disabled={isDisabled}
+                            onClick={() => setSubWeight(categoryKey, m.key, value + 1)}
+                            className="h-full w-7 flex items-center justify-center text-[#526078] hover:bg-[#f3f6fb] disabled:text-[#c5cdda] disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors"
                           >
                             <Plus size={12} />
                           </button>
                         </div>
-                        <span className="text-[10.5px] tabular-nums whitespace-nowrap w-[54px] text-right text-[#8794ab]">
+
+                        <span
+                          className={`text-[10.5px] tabular-nums whitespace-nowrap w-[54px] text-right ${
+                            isDisabled ? "text-[#c5cdda]" : "text-[#8794ab]"
+                          }`}
+                        >
                           {eff == null ? "→ —" : `→ ${eff.toFixed(1)}%`}
                         </span>
-                        <button
-                          type="button"
-                          aria-label="Delete custom metric"
-                          onClick={() => setConfirmDeleteId(cm.id)}
-                          className="w-[68px] inline-flex items-center justify-center h-7 rounded text-[#b91c1c] hover:bg-[#fef2f2]"
+
+                        <span
+                          className={`text-[10px] px-1.5 py-0.5 rounded font-medium whitespace-nowrap w-[68px] text-center ${pill.cls}`}
                         >
-                          <Trash2 size={13} />
-                        </button>
+                          {pill.label}
+                        </span>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </TooltipProvider>
+                      {m.source && (
+                        <p className={`text-[10.5px] leading-snug mt-1 pl-0.5 ${
+                          isDisabled ? "text-[#b6bfd0]" : "text-[#6b7894]"
+                        }`}>
+                          <span className="font-semibold">Data Source:</span> {m.source}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {customs.length > 0 && (
+                  <div className="pt-2 mt-2 border-t border-dashed border-[#e5eaf2]">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-[#526078] mb-1.5 px-1">
+                      Custom metrics
+                    </p>
+                    {customs.map((cm) => {
+                      const w = Number(cm.weight) || 0;
+                      const eff = effectivePctOf(w, true, enabledSum);
+                      return (
+                        <div
+                          key={cm.id}
+                          className="flex items-center gap-2 py-1.5 px-2 rounded border border-transparent hover:bg-[#fafbfd]"
+                        >
+                          <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                            <span className="text-[12.5px] leading-tight text-[#07142f] font-medium truncate">
+                              {cm.name}
+                            </span>
+                            <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-[#eef4ff] text-[#174be8] font-semibold">
+                              CUSTOM
+                            </span>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex items-center text-[#b45309]">
+                                  <AlertTriangle size={11} />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-[260px] text-[12px] leading-snug">
+                                No live data — using neutral score ({CUSTOM_METRIC_NEUTRAL_NORM}) until a data source is connected.
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
+                          <div className="flex items-center h-7 rounded border overflow-hidden border-[#e5eaf2] bg-white">
+                            <button
+                              type="button"
+                              aria-label="Decrease weight"
+                              disabled={w <= 0}
+                              onClick={() => updateCustomWeight.mutate({ id: cm.id, weight: Math.max(0, w - 1) })}
+                              className="h-full w-7 flex items-center justify-center text-[#526078] hover:bg-[#f3f6fb] disabled:text-[#c5cdda] disabled:cursor-not-allowed"
+                            >
+                              <Minus size={12} />
+                            </button>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={w}
+                              onChange={(e) => {
+                                const n = parseInt(e.target.value.replace(/\D/g, ""), 10);
+                                updateCustomWeight.mutate({ id: cm.id, weight: isNaN(n) ? 0 : n });
+                              }}
+                              className="w-9 h-full text-[12px] text-center bg-transparent border-x border-[#eef2f7] focus:outline-none text-[#07142f]"
+                            />
+                            <button
+                              type="button"
+                              aria-label="Increase weight"
+                              onClick={() => updateCustomWeight.mutate({ id: cm.id, weight: w + 1 })}
+                              className="h-full w-7 flex items-center justify-center text-[#526078] hover:bg-[#f3f6fb]"
+                            >
+                              <Plus size={12} />
+                            </button>
+                          </div>
+                          <span className="text-[10.5px] tabular-nums whitespace-nowrap w-[54px] text-right text-[#8794ab]">
+                            {eff == null ? "→ —" : `→ ${eff.toFixed(1)}%`}
+                          </span>
+                          <button
+                            type="button"
+                            aria-label="Delete custom metric"
+                            onClick={() => setConfirmDeleteId(cm.id)}
+                            className="w-[68px] inline-flex items-center justify-center h-7 rounded text-[#b91c1c] hover:bg-[#fef2f2]"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </TooltipProvider>
           )
         ) : (
           <FormulaPanel
@@ -426,8 +411,6 @@ export function SubMetricWeightsDrawer({
             pendingEdits={pendingEdits}
             overallFormula={overallFormula}
           />
-
-
         )}
 
         <AlertDialog open={confirmDeleteId !== null} onOpenChange={(o) => !o && setConfirmDeleteId(null)}>
@@ -455,7 +438,6 @@ export function SubMetricWeightsDrawer({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-
 
         {isCsiLocked ? (
           <div className="border-t border-[#eef2f7] px-5 py-3 bg-[#fafbfd]">
@@ -492,703 +474,3 @@ export function SubMetricWeightsDrawer({
     </Sheet>
   );
 }
-
-// ─────────────────────────── Show Formula panel ───────────────────────────
-
-function FormulaPanel({
-  categoryKey,
-  categoryLabel,
-  selectedCityLabel,
-  previewRecompute,
-  serverCategoryScore,
-  masterWeightPct,
-  masterWeightPendingPct,
-  enabledSum,
-  pendingEdits,
-  overallFormula,
-}: {
-  categoryKey: CategoryKey;
-  categoryLabel: string;
-  selectedCityLabel?: string;
-  previewRecompute: ReturnType<typeof recomputeCategoryScore> | null;
-  serverCategoryScore: number | null;
-  masterWeightPct: number | null;
-  masterWeightPendingPct: number | null;
-  enabledSum: number;
-  pendingEdits: boolean;
-  overallFormula?: {
-    parts: Array<{ key: CategoryKey; label: string; score: number | null; weightPct: number }>;
-    composite: number | null;
-  };
-}) {
-
-
-  const compositeContribution =
-    previewRecompute?.score != null && masterWeightPct != null
-      ? (previewRecompute.score * masterWeightPct) / 100
-      : null;
-  const summary = previewRecompute
-    ? summarizeCategory(
-        previewRecompute,
-        selectedCityLabel,
-        categoryLabel,
-        masterWeightPct ?? undefined,
-        compositeContribution ?? undefined,
-      )
-    : null;
-  const masterPending =
-    masterWeightPendingPct != null &&
-    masterWeightPct != null &&
-    Math.abs(masterWeightPendingPct - masterWeightPct) > 0.05;
-
-  const Th = ({ label, tip }: { label: string; tip: string }) => (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <th className="text-right px-2 py-1.5 font-medium cursor-help underline decoration-dotted decoration-[#c5cdda] underline-offset-2">
-          {label}
-        </th>
-      </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-[260px] text-[12px] leading-snug">
-        {tip}
-      </TooltipContent>
-    </Tooltip>
-  );
-
-  // Competitive Landscape is locked & sourced from Manus v2. The generic
-  // sub-metric × share math and the overall-city composite formula are not
-  // meaningful here — show the CSI formula and its inputs instead.
-  if (categoryKey === "competitiveLandscape") {
-    return (
-      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 text-[12px] text-[#07142f] leading-relaxed">
-        <section className="rounded-md border border-[#cfdcff] bg-[#f4f8ff] px-3 py-3">
-          <h4 className="text-[11px] font-bold uppercase tracking-wide text-[#174be8] mb-2">
-            Competitive Opportunity formula{selectedCityLabel ? ` — ${selectedCityLabel}` : ""}
-          </h4>
-          <pre className="text-[11.5px] leading-relaxed text-[#07142f] whitespace-pre-wrap font-mono">
-{`CSI = (National_Brand_Count_Weighted + Local_Provider_Estimate)
-      ÷ (Elementary_Enrollment × (Median_HH_Income ÷ 65,000))`}
-          </pre>
-          <div className="mt-3 space-y-2 text-[11.5px] leading-snug">
-            <div>
-              <span className="font-semibold text-[#174be8]">Numerator = Supply.</span>{" "}
-              <span className="text-[#526078]">
-                How many camp options exist in this city — national brands (STEM ×2.0, other ×1.0)
-                plus an estimate of local providers.
-              </span>
-            </div>
-            <div>
-              <span className="font-semibold text-[#174be8]">Denominator = Demand.</span>{" "}
-              <span className="text-[#526078]">
-                How many families want and can afford summer camps — kids in the right age range,
-                adjusted for local income.
-              </span>
-            </div>
-            <div className="text-[#526078]">
-              <span className="font-semibold text-[#07142f]">Interpretation:</span> a CSI of 0.10
-              means 0.10 supply units per demand-adjusted kid. Lower CSI = less competition relative
-              to the market = more room for a new camp.
-            </div>
-          </div>
-          <p className="text-[10.5px] text-[#8794ab] italic mt-3 leading-snug">
-            Bridge: <span className="font-mono">Competitive Opportunity = 100 − CSI</span>. Low CSI / low saturation = high opportunity. The composite uses <span className="font-mono">Opportunity × Competitive Opportunity master weight</span>, so high contribution = good (matching Demand and TAM Teachers).
-          </p>
-
-
-        </section>
-
-        <section>
-          <h4 className="text-[11px] font-bold uppercase tracking-wide text-[#526078] mb-1.5">
-            Inputs from Manus{selectedCityLabel ? ` — ${selectedCityLabel}` : ""}
-          </h4>
-          <div className="rounded border border-[#eef2f7] overflow-hidden">
-            <table className="w-full text-[11.5px] font-mono">
-              <thead className="bg-[#fafbfd] text-[#526078]">
-                <tr>
-                  <th className="text-left px-2 py-1.5 font-medium">Input</th>
-                  <th className="text-right px-2 py-1.5 font-medium">Value</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(previewRecompute?.contributions ?? []).map((c) => (
-                  <tr key={c.key} className="border-t border-[#eef2f7]">
-                    <td className="px-2 py-1 truncate max-w-[260px]" title={c.label}>{c.label}</td>
-                    <td className="px-2 py-1 text-right tabular-nums">
-                      {c.rawValue == null ? "—" : c.rawValue.toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
-                {(!previewRecompute || previewRecompute.contributions.length === 0) && (
-                  <tr>
-                    <td colSpan={2} className="px-2 py-3 text-center text-[#8794ab] italic">
-                      Open this drawer from a selected city to see Manus inputs.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-              {serverCategoryScore != null && (
-                <tfoot className="bg-[#f7faff] border-t-2 border-[#eef2f7]">
-                  <tr>
-                    <td className="px-2 py-1.5 text-right font-semibold text-[#1a2540]">
-                      Competitive Opportunity score (100 − CSI)
-                    </td>
-                    <td className="px-2 py-1.5 text-right font-bold tabular-nums text-[#174be8]">
-                      {serverCategoryScore.toFixed(1)}
-                    </td>
-                  </tr>
-                  {masterWeightPct != null && (
-                    <tr>
-                      <td className="px-2 py-1.5 text-right text-[#526078]">
-                        × master weight {masterWeightPct.toFixed(1)}% → composite contribution
-                      </td>
-                      <td className="px-2 py-1.5 text-right font-semibold tabular-nums text-[#174be8]">
-                        {((serverCategoryScore * masterWeightPct) / 100).toFixed(2)}
-                      </td>
-                    </tr>
-                  )}
-                </tfoot>
-              )}
-            </table>
-          </div>
-        </section>
-      </div>
-    );
-  }
-
-  return (
-    <TooltipProvider delayDuration={150}>
-    <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 text-[12px] text-[#07142f] leading-relaxed">
-
-      {pendingEdits && (
-        <div className="rounded border border-[#fde68a] bg-[#fffbe6] px-3 py-2 text-[11.5px] text-[#854d0e] leading-snug">
-          <span className="font-semibold">Pending edits — not yet applied.</span>{" "}
-          The numbers below preview what scores would become if you click <em>Save &amp; Recalculate</em>.
-        </div>
-      )}
-
-      {/* Two-line formula panel (added 2026-05-21) — simple at-a-glance math.
-          Detailed Step 1/2/3 recipe and Live Values table still rendered below. */}
-      <TwoLineFormulaPanel
-        categoryKey={categoryKey}
-        categoryLabel={categoryLabel}
-        cityLabel={selectedCityLabel}
-        previewRecompute={previewRecompute}
-        overallFormula={overallFormula}
-      />
-
-
-      <section>
-        <h4 className="text-[11px] font-bold uppercase tracking-wide text-[#526078] mb-2">
-          How {selectedCityLabel ? `${selectedCityLabel} got its` : "this"} {categoryLabel} score
-        </h4>
-        <p className="text-[10.5px] text-[#8794ab] italic mb-2 leading-snug">
-          This explains the <strong>{categoryLabel}</strong> category only. For how all categories combine into the overall city score, see the composite breakdown on the city row.
-        </p>
-
-        <RecipeBlock
-          categoryLabel={categoryLabel}
-          cityLabel={selectedCityLabel}
-          previewRecompute={previewRecompute}
-          masterWeightPct={masterWeightPct}
-          serverCategoryScore={serverCategoryScore}
-        />
-
-      </section>
-
-
-      <section>
-        <h4 className="text-[11px] font-bold uppercase tracking-wide text-[#526078] mb-1.5">
-          Live values{selectedCityLabel ? ` — ${selectedCityLabel}` : ""}
-        </h4>
-        {!previewRecompute ? (
-          <p className="text-[11px] text-[#8794ab] italic">
-            Open this drawer from a selected city to see this category's metrics
-            with live raw → normalized → contribution math.
-          </p>
-        ) : (
-          <>
-            <p className="text-[11px] text-[#526078] mb-1.5 italic">
-              Raw → scaled to Norm (0–100) → weighted by your Share → contributes to category score. Hover any column header for details.
-            </p>
-            <div className="rounded border border-[#eef2f7] overflow-hidden">
-              <table className="w-full text-[11px] font-mono">
-                <thead className="bg-[#fafbfd] text-[#526078]">
-                  <tr>
-                    <th className="text-left px-2 py-1.5 font-medium">Metric</th>
-                    <Th label="Raw" tip="Raw — the actual measured value for this city (e.g. number of children, median income)." />
-                    <Th label="Norm" tip="Norm — the raw value rescaled to a 0–100 score using this metric's expected range, so different metrics can be compared." />
-                    <Th label="Share" tip="Share — this metric's slice of the category, after auto-normalizing your typed weights so they sum to 100%." />
-                    <Th label="Contrib" tip="Contrib — Norm × Share. Adding all Contrib values together gives this category's score." />
-                  </tr>
-                </thead>
-                <tbody>
-                  {previewRecompute.contributions.map((c) => (
-                    <tr key={c.key} className={`border-t border-[#eef2f7] ${c.used ? "" : "text-[#9aa3b5]"}`}>
-                      <td className="px-2 py-1 truncate max-w-[160px]" title={c.label}>{c.label}</td>
-                      <td className="px-2 py-1 text-right tabular-nums">{c.rawValue == null ? "—" : c.rawValue.toLocaleString()}</td>
-                      <td className="px-2 py-1 text-right tabular-nums">{c.normalized == null ? "—" : c.normalized.toFixed(1)}</td>
-                      <td className="px-2 py-1 text-right tabular-nums">{c.used ? `${(c.subShare * 100).toFixed(1)}%` : "—"}</td>
-                      <td className="px-2 py-1 text-right tabular-nums">{c.used ? c.contribution.toFixed(2) : "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot className="bg-[#f7faff] border-t-2 border-[#eef2f7]">
-                  <tr>
-                    <td colSpan={4} className="px-2 py-1.5 text-right font-semibold text-[#1a2540]">
-                      {categoryLabel} score
-                    </td>
-                    <td className="px-2 py-1.5 text-right font-bold tabular-nums text-[#1a2540]">
-                      {previewRecompute.score == null ? "—" : previewRecompute.score.toFixed(1)}
-                    </td>
-                  </tr>
-                  {masterWeightPct != null && previewRecompute.score != null && (
-                    <tr>
-                      <td colSpan={4} className="px-2 py-1.5 text-right text-[#526078]">
-                        × master weight {masterWeightPct.toFixed(1)}% → composite contribution
-                      </td>
-                      <td className="px-2 py-1.5 text-right font-semibold tabular-nums text-[#174be8]">
-                        {((previewRecompute.score * masterWeightPct) / 100).toFixed(2)}
-                      </td>
-                    </tr>
-                  )}
-                  {masterPending && (
-                    <tr>
-                      <td colSpan={5} className="px-2 py-1.5 text-[11px] text-[#854d0e] bg-[#fffbe6] border-t border-[#fde68a] leading-snug">
-                        ⚠ You've dragged this category's master slider to <strong>{masterWeightPendingPct!.toFixed(1)}%</strong> on the city screen but haven't clicked <strong>Apply Weights</strong> yet. The composite still uses {masterWeightPct!.toFixed(1)}%.
-                      </td>
-                    </tr>
-                  )}
-                  {serverCategoryScore != null && (
-                    <tr>
-                      <td colSpan={4} className="px-2 py-1.5 text-right text-[#8794ab]">
-                        Last stored {categoryLabel} score (for reference)
-                      </td>
-                      <td className="px-2 py-1.5 text-right tabular-nums text-[#8794ab]">
-                        {fmt(serverCategoryScore, 0)}
-                      </td>
-                    </tr>
-                  )}
-
-                </tfoot>
-              </table>
-            </div>
-          </>
-        )}
-      </section>
-    </div>
-    </TooltipProvider>
-  );
-}
-
-// ─────────────────────────── Plain-English recipe ───────────────────────────
-
-function RecipeBlock({
-  categoryLabel,
-  cityLabel,
-  previewRecompute,
-  masterWeightPct,
-  serverCategoryScore,
-}: {
-  categoryLabel: string;
-  cityLabel?: string;
-  previewRecompute: ReturnType<typeof recomputeCategoryScore> | null;
-  masterWeightPct: number | null;
-  serverCategoryScore: number | null;
-}) {
-  if (!previewRecompute) {
-    return (
-      <p className="text-[11.5px] text-[#8794ab] italic">
-        Open this drawer from a selected city to see the step-by-step math with real numbers.
-      </p>
-    );
-  }
-
-  const contribs = previewRecompute.contributions;
-  const used = contribs.filter((c) => c.used);
-  const skipped = contribs.filter((c) => !c.used);
-  const categoryScore = previewRecompute.score;
-  const compositeContribution =
-    categoryScore != null && masterWeightPct != null
-      ? (categoryScore * masterWeightPct) / 100
-      : null;
-
-  // No usable sub-metrics. Two honest states (no "server fallback" wording):
-  //   (a) every metric value is null for this city → name the gap
-  //   (b) all sub-weights are zero → tell the user to move a slider
-  if (used.length === 0) {
-    const anyRawValue = contribs.some((c) => c.rawValue != null && Number.isFinite(c.rawValue));
-    const allZeroWeights = !anyRawValue ? false : true; // if we have data but nothing used → weights are zero
-    const missingLabels = contribs.filter((c) => c.rawValue == null).map((c) => c.label);
-    return (
-      <div className="rounded border border-[#e5eaf2] bg-[#f7faff] px-3 py-2.5 text-[12px] text-[#1a2540] leading-snug">
-        {allZeroWeights ? (
-          <>
-            <strong>All sub-weights are set to 0.</strong> Move at least one slider above 0
-            and click <em>Save &amp; Recalculate</em> to compute a live {categoryLabel} score.
-          </>
-        ) : (
-          <>
-            <strong>This city is missing raw data for:</strong>{" "}
-            {missingLabels.length > 0 ? missingLabels.join(", ") : "every metric in this category"}.
-            {serverCategoryScore != null && (
-              <>
-                {" "}Last stored {categoryLabel} score:{" "}
-                <strong>{Math.round(serverCategoryScore)}</strong>.
-              </>
-            )}
-          </>
-        )}
-      </div>
-    );
-  }
-
-
-  // Step 1 + 2 + 3 recipe with real numbers
-  return (
-    <div className="space-y-3">
-      {/* Step 1 */}
-      <div className="rounded border border-[#e5eaf2] bg-white px-3 py-2.5">
-        <div className="flex items-baseline gap-2 mb-1.5">
-          <span className="text-[11px] font-bold text-[#174be8]">STEP 1</span>
-          <span className="text-[12px] text-[#1a2540] font-medium">Score each metric on a 0–100 scale</span>
-        </div>
-        <table className="w-full text-[11.5px]">
-          <tbody>
-            {used.map((c) => (
-              <tr key={c.key} className="border-t border-[#f3f6fb] first:border-0">
-                <td className="py-1 text-[#3a4256]">{c.label}</td>
-                <td className="py-1 text-right tabular-nums text-[#6b7894] pr-2">
-                  {c.rawValue == null ? "—" : c.rawValue.toLocaleString()}
-                </td>
-                <td className="py-1 text-right tabular-nums text-[#174be8] font-semibold w-[60px]">
-                  → {c.normalized == null ? "—" : c.normalized.toFixed(0)}
-                </td>
-              </tr>
-            ))}
-            {skipped.map((c) => (
-              <tr key={c.key} className="border-t border-[#f3f6fb] text-[#b6bfd0]">
-                <td className="py-1 italic">{c.label}</td>
-                <td className="py-1 text-right tabular-nums pr-2">n/a</td>
-                <td className="py-1 text-right text-[10.5px] italic w-[60px]">skipped</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Step 2 */}
-      <div className="rounded border border-[#e5eaf2] bg-white px-3 py-2.5">
-        <div className="flex items-baseline gap-2 mb-1.5">
-          <span className="text-[11px] font-bold text-[#174be8]">STEP 2</span>
-          <span className="text-[12px] text-[#1a2540] font-medium">Multiply each score by its weight (your sliders)</span>
-        </div>
-        <table className="w-full text-[11.5px] font-mono">
-          <tbody>
-            {used.map((c) => (
-              <tr key={c.key} className="border-t border-[#f3f6fb] first:border-0">
-                <td className="py-1 text-[#3a4256] truncate max-w-[200px] font-sans" title={c.label}>{c.label}</td>
-                <td className="py-1 text-right tabular-nums text-[#6b7894] w-[140px]">
-                  {c.normalized == null ? "—" : c.normalized.toFixed(0)} × {(c.subShare * 100).toFixed(0)}%
-                </td>
-                <td className="py-1 text-right tabular-nums text-[#1a2540] font-semibold w-[60px]">
-                  = {c.contribution.toFixed(1)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr className="border-t-2 border-[#cfdcff]">
-              <td colSpan={2} className="py-1.5 text-right text-[12px] font-sans font-semibold text-[#1a2540]">
-                {categoryLabel} category score =
-              </td>
-              <td className="py-1.5 text-right tabular-nums text-[14px] font-bold text-[#174be8]">
-                {categoryScore == null ? "—" : categoryScore.toFixed(1)}
-              </td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-
-      {/* Step 3 */}
-      {masterWeightPct != null && categoryScore != null && compositeContribution != null && (
-        <div className="rounded border border-[#cfdcff] bg-[#eef4ff] px-3 py-2.5">
-          <div className="flex items-baseline gap-2 mb-1.5">
-            <span className="text-[11px] font-bold text-[#174be8]">STEP 3</span>
-            <span className="text-[12px] text-[#1a2540] font-medium">
-              Right now, {categoryLabel} is set to {masterWeightPct.toFixed(0)}% of the overall city score
-            </span>
-          </div>
-          <div className="text-[12.5px] font-mono text-[#1a2540] text-center py-1">
-            {categoryScore.toFixed(1)} × {masterWeightPct.toFixed(0)}% ={" "}
-            <span className="font-bold text-[14px] text-[#174be8]">
-              {compositeContribution.toFixed(1)} points
-            </span>
-          </div>
-          <p className="text-[10.5px] text-[#526078] text-center mt-1 leading-snug">
-            …toward {cityLabel ?? "this city"}'s composite score with your current master sliders. Move the master sliders on the city screen to change this share.
-          </p>
-        </div>
-      )}
-
-    </div>
-  );
-}
-
-// ─────────────── Two-line Show Formula panel (added 2026-05-21) ───────────────
-// Renders one math line for the current category and one for the overall city
-// composite. Inputs (normalized 0–100 scores) × weights = output. No fallback
-// language, no extra story — the formula speaks for itself.
-function TwoLineFormulaPanel({
-  categoryKey,
-  categoryLabel,
-  cityLabel,
-  previewRecompute,
-  overallFormula,
-}: {
-  categoryKey: CategoryKey;
-  categoryLabel: string;
-  cityLabel?: string;
-  previewRecompute: ReturnType<typeof recomputeCategoryScore> | null;
-  overallFormula?: {
-    parts: Array<{ key: CategoryKey; label: string; score: number | null; weightPct: number }>;
-    composite: number | null;
-  };
-}) {
-  const categoryParts = previewRecompute?.contributions.filter((c) => c.used) ?? [];
-  const categoryScore = previewRecompute?.score ?? null;
-
-  // Substitute the live-recomputed category score (1-decimal precision) into
-  // the overall composite parts so the two lines reconcile exactly. Without
-  // this, the category line would show e.g. 93.2 while the overall line used
-  // the stored-rounded 93 — same drawer, two roundings of the same number.
-  const reconciledParts = (overallFormula?.parts ?? []).map((p) =>
-    p.key === categoryKey && categoryScore != null
-      ? { ...p, score: categoryScore }
-      : p,
-  );
-  // Recompute composite from reconciled parts so the "= NN.N" matches the
-  // category line. Falls back to stored composite when no parts available.
-  const reconciledComposite = (() => {
-    if (reconciledParts.length === 0) return overallFormula?.composite ?? null;
-    const totalWeight = reconciledParts.reduce((s, p) => s + p.weightPct, 0);
-    if (totalWeight <= 0) return overallFormula?.composite ?? null;
-    const sum = reconciledParts.reduce(
-      (s, p) => s + (p.score ?? 0) * p.weightPct,
-      0,
-    );
-    return sum / totalWeight;
-  })();
-
-  return (
-    <section className="rounded-md border border-[#cfdcff] bg-[#f4f8ff] px-3 py-3 space-y-3">
-      <h4 className="text-[11px] font-bold uppercase tracking-wide text-[#174be8]">
-        Show formula{cityLabel ? ` — ${cityLabel}` : ""}
-      </h4>
-
-      {/* Line 1 — category formula */}
-      <div>
-        <div className="text-[11px] font-semibold text-[#1a2540] mb-1">
-          {categoryLabel} category formula
-        </div>
-        {categoryParts.length === 0 ? (
-          <div className="text-[11.5px] italic text-[#8794ab]">
-            No metric inputs available for this city/category yet.
-          </div>
-        ) : (
-          <div className="text-[12px] font-mono text-[#1a2540] leading-relaxed break-words">
-            {categoryParts.map((c, i) => (
-              <span key={c.key}>
-                {i > 0 ? " + " : ""}
-                <span className="whitespace-nowrap">
-                  ({shortLabel(c.label)}{" "}
-                  <span className="text-[#174be8] font-semibold">
-                    {c.normalized == null ? "—" : c.normalized.toFixed(1)}
-                  </span>{" "}
-                  × <span className="text-[#526078]">{(c.subShare * 100).toFixed(0)}%</span>)
-                </span>
-              </span>
-            ))}
-            {" = "}
-            <span className="font-bold text-[14px] text-[#174be8]">
-              {categoryScore == null ? "—" : categoryScore.toFixed(1)}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Line 2 — overall city composite formula (reconciled to category line) */}
-      <div className="pt-2 border-t border-[#cfdcff]">
-        <div className="text-[11px] font-semibold text-[#1a2540] mb-1">
-          Overall city formula{cityLabel ? ` — ${cityLabel}` : ""}
-        </div>
-        {reconciledParts.length === 0 ? (
-          <div className="text-[11.5px] italic text-[#8794ab]">
-            No composite breakdown available.
-          </div>
-        ) : (
-          <div className="text-[12px] font-mono text-[#1a2540] leading-relaxed break-words">
-            {reconciledParts.map((p, i) => (
-              <span key={p.key}>
-                {i > 0 ? " + " : ""}
-                <span className="whitespace-nowrap">
-                  {shortLabel(p.label)}{" "}
-                  <span className="text-[#174be8] font-semibold">
-                    {p.score == null ? "—" : p.score.toFixed(1)}
-                  </span>{" "}
-                  × <span className="text-[#526078]">{p.weightPct.toFixed(0)}%</span>
-                </span>
-              </span>
-            ))}
-            {" = "}
-            <span className="font-bold text-[14px] text-[#174be8]">
-              {reconciledComposite == null ? "—" : reconciledComposite.toFixed(1)}
-            </span>
-          </div>
-        )}
-        <p className="text-[10.5px] text-[#8794ab] italic mt-1 leading-snug">
-          Uses your current master sliders. Categories at 0% contribute nothing.
-        </p>
-      </div>
-    </section>
-  );
-}
-
-
-// Trim long metric labels so the one-line formula stays readable.
-function shortLabel(label: string): string {
-  return label.length > 28 ? label.slice(0, 26) + "…" : label;
-}
-
-// ─────────────────────────── CSI Locked Panel ───────────────────────────
-// CSI is computed by Manus and stored in us_cities_scored.csi_score. The
-// three inputs below are read-only — no +/- knobs, no Apply. The category
-// score in the composite comes from csi_score directly (inverted: 100 -
-// csi_score → opportunity). This panel exists so users can SEE the inputs
-// and the v2 formula, not so they can re-weight them.
-function CsiLockedPanel({
-  metrics,
-  rawValuesByKey,
-  csiRawScore,
-  csiSaturationCategory,
-  csiBrandDetail,
-  selectedCityLabel,
-}: {
-  metrics: SowMetricEntry[];
-  rawValuesByKey?: Record<string, number | null | undefined>;
-  csiRawScore: number | null;
-  csiSaturationCategory: string | null;
-  csiBrandDetail: string | null;
-  selectedCityLabel?: string;
-}) {
-  const formatValue = (v: number | null | undefined): string => {
-    if (v == null || !Number.isFinite(v)) return "—";
-    if (v >= 1000) return Math.round(v).toLocaleString();
-    if (v >= 10) return v.toFixed(1);
-    return v.toFixed(2);
-  };
-
-  // Parse csi_brand_detail string: "Code Ninjas(2)|KinderCare(1)|..."
-  const brands: Array<{ name: string; count: number }> = (() => {
-    if (!csiBrandDetail || typeof csiBrandDetail !== "string") return [];
-    return csiBrandDetail
-      .split("|")
-      .map((chunk) => chunk.trim())
-      .filter(Boolean)
-      .map((chunk) => {
-        const m = chunk.match(/^(.+?)\((\d+)\)\s*$/);
-        if (!m) return { name: chunk, count: 1 };
-        return { name: m[1].trim(), count: parseInt(m[2], 10) || 1 };
-      })
-      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
-  })();
-
-  return (
-    <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 text-[12px] text-[#07142f] leading-relaxed">
-      <div className="rounded border border-[#eef2f7] bg-white px-3 py-3">
-        <div className="flex items-baseline justify-between gap-3">
-          <div className="text-[11px] uppercase tracking-wide text-[#526078] font-semibold">
-            Competitive Opportunity · Raw CSI (Saturation) {selectedCityLabel ? `· ${selectedCityLabel}` : ""}
-          </div>
-          {csiSaturationCategory && (
-            <span className="text-[10.5px] font-semibold rounded px-1.5 py-0.5 bg-[#fff6dc] text-[#8a6a00]">
-              {csiSaturationCategory}
-            </span>
-          )}
-        </div>
-        <div className="mt-1 text-[22px] font-bold tabular-nums text-[#07142f]">
-          {csiRawScore == null ? "—" : csiRawScore.toFixed(0)}
-          <span className="text-[11px] font-normal text-[#8794ab] ml-2">/ 100</span>
-        </div>
-        <p className="text-[10.5px] text-[#8794ab] mt-0.5 leading-snug">
-          Lower = less crowded = better opportunity. In the composite we use
-          <span className="font-mono"> (100 − score)</span> so high contribution = good.
-        </p>
-      </div>
-
-      <div className="rounded border border-[#eef2f7] bg-[#fafbfd] px-3 py-3">
-        <p className="text-[11px] uppercase tracking-wide text-[#526078] font-semibold mb-1.5">
-          Manus v2 formula (read-only)
-        </p>
-        <pre className="text-[11px] leading-relaxed text-[#07142f] whitespace-pre-wrap font-mono">
-{`CSI = (NB_STEM × 2.0 + NB_Other × 1.0 + Local_Estimate)
-      ÷  Demand_Adjusted_Market
-
-Local_Estimate         = elementary_enrollment × 0.003
-Demand_Adjusted_Market = elementary_enrollment × (median_HH_income ÷ 65,000)`}
-        </pre>
-      </div>
-
-      <div>
-        <p className="text-[11px] uppercase tracking-wide text-[#526078] font-semibold mb-1.5">
-          Inputs from Manus (this city)
-        </p>
-        <div className="space-y-1">
-          {metrics.map((m) => {
-            const v = rawValuesByKey?.[m.key];
-            return (
-              <div
-                key={m.key}
-                className="flex items-center justify-between gap-3 px-2 py-1.5 rounded border border-[#eef2f7] bg-white"
-              >
-                <span className="text-[12px] text-[#07142f]">{m.label}</span>
-                <span className="text-[12.5px] font-semibold tabular-nums text-[#07142f]">
-                  {formatValue(typeof v === "number" ? v : null)}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div>
-        <p className="text-[11px] uppercase tracking-wide text-[#526078] font-semibold mb-1.5">
-          National brands present {brands.length > 0 && `(${brands.length})`}
-        </p>
-        {brands.length === 0 ? (
-          <p className="text-[11.5px] text-[#8794ab] italic">
-            No national brands detected in this city.
-          </p>
-        ) : (
-          <div className="flex flex-wrap gap-1.5">
-            {brands.map((b) => (
-              <span
-                key={b.name}
-                className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-[#eef4ff] text-[#174be8] font-medium"
-              >
-                {b.name}
-                <span className="text-[10px] text-[#526078]">×{b.count}</span>
-              </span>
-            ))}
-          </div>
-        )}
-        <p className="text-[10.5px] text-[#8794ab] mt-1.5 leading-snug">
-          STEM brands (Code Ninjas, Snapology, Engineering For Kids, Bricks 4 Kidz,
-          iD Tech, Camp Invention, Mad Science, Galileo Learning, Challenge Island)
-          are weighted ×2.0. General enrichment brands (Young Chefs Academy, Primrose,
-          Goddard, KinderCare, i9 Sports, Wiz Kids) are weighted ×1.0.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-

@@ -1079,10 +1079,11 @@ const CityScoring = () => {
     (selected.tier as "A" | "B" | "C" | "D") ?? "D";
 
   const TIER_BADGE: Record<string, { bg: string; fg: string; label: string }> = {
-    A: { bg: "#e6f7ef", fg: "#0ea66e", label: "Tier I" },
-    B: { bg: "#eaf0ff", fg: "#174be8", label: "Tier II" },
-    C: { bg: "#fff6dc", fg: "#b8860b", label: "Tier III" },
-    D: { bg: "#ffeede", fg: "#ea580c", label: "Tier IV" },
+    A: { bg: "#e6f7ef", fg: "#0ea66e", label: "Tier A" },
+    B: { bg: "#eaf0ff", fg: "#174be8", label: "Tier B" },
+    C: { bg: "#fff6dc", fg: "#b8860b", label: "Tier C" },
+    D: { bg: "#ffeede", fg: "#ea580c", label: "Tier D" },
+
   };
   const tierBadge = TIER_BADGE[displayTier];
   const opportunityLabel =

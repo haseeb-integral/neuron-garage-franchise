@@ -153,10 +153,10 @@ export function CityFiltersRow({
               <TooltipContent className="max-w-[280px] text-xs leading-relaxed">
                 Tiers are assigned by <b>percentile rank</b> across all live-scored cities, not by absolute score:
                 <br />
-                <b>Tier I = Top 5%</b>, <b>Tier II = next 15%</b>,{" "}
-                <b>Tier III = next 30%</b>, <b>Tier IV = bottom 50%</b>.
+                <b>Tier A = Top 5%</b>, <b>Tier B = next 15%</b>,{" "}
+                <b>Tier C = next 30%</b>, <b>Tier D = bottom 50%</b>.
                 <br />
-                Composite scores tend to cluster in the 40s–70s, so a Tier I market may still score in the 60s.
+                Tiers are assigned from the <b>raw Weighted Composite Index</b> (rank-percentile), so the display calibration on the Total Score doesn't shift any city between tiers.
               </TooltipContent>
             </Tooltip>
           </label>
@@ -164,10 +164,11 @@ export function CityFiltersRow({
             <SelectTrigger className="h-9 bg-white border-[#e5eaf2] text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="All">All</SelectItem>
-              <SelectItem value="A">Tier I — Top 5%</SelectItem>
-              <SelectItem value="B">Tier II — Next 15%</SelectItem>
-              <SelectItem value="C">Tier III — Next 30%</SelectItem>
-              <SelectItem value="D">Tier IV — Bottom 50%</SelectItem>
+              <SelectItem value="A">Tier A — Top 5%</SelectItem>
+              <SelectItem value="B">Tier B — Next 15%</SelectItem>
+              <SelectItem value="C">Tier C — Next 30%</SelectItem>
+              <SelectItem value="D">Tier D — Bottom 50%</SelectItem>
+
             </SelectContent>
           </Select>
         </div>

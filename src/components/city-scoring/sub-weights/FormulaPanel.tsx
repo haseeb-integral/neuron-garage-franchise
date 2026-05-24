@@ -94,7 +94,8 @@ export function FormulaPanel({
             <div className="text-[#526078]">
               <span className="font-semibold text-[#07142f]">Interpretation:</span> a CSI of 0.10
               means 0.10 supply units per demand-adjusted kid. Lower CSI = less competition relative
-              to the market = more room for a new camp.
+              to the market = more room for a new camp. National-brand presence is what differentiates
+              cities — the local-camp estimate adds a roughly constant baseline to every market.
             </div>
           </div>
           <p className="text-[10.5px] text-[#8794ab] italic mt-3 leading-snug">

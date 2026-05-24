@@ -138,7 +138,7 @@ function RankedMarketsListImpl({
           <span>Score</span>
           <span className="text-right" title="Demand category score">Dem</span>
           <span className="text-right" title="TAM Teachers category score">TAM</span>
-          <span className="text-right" title="Competitive Opportunity (higher = less saturated, fewer national-brand competitors). Opportunity = 100 − CSI.">Opp</span>
+          <span className="text-right" title="Competitive Opportunity (higher = less saturated). Opportunity = 100 − CSI. CSI counts national brands + a baseline local-camp estimate; national-brand presence is what differentiates markets.">Opp</span>
           <span className="text-right">Tier</span>
           <span></span>
         </div>

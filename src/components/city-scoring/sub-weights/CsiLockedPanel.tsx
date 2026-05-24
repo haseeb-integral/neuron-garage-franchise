@@ -62,7 +62,7 @@ export function CsiLockedPanel({
           <span className="text-[11px] font-normal text-[#8794ab] ml-2">/ 100</span>
         </div>
         <p className="text-[10.5px] text-[#8794ab] mt-0.5 leading-snug">
-          Lower = less crowded = better opportunity. In the composite we use
+          Lower = less crowded = better opportunity. The formula counts national brands + a baseline local-camp estimate; national-brand presence is what differentiates markets. In the composite we use
           <span className="font-mono"> (100 − score)</span> so high contribution = good.
         </p>
       </div>

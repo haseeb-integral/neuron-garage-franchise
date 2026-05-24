@@ -83,8 +83,9 @@ export function RowScorePopover({ city, state, categories, categoryScores, appli
         </table>
       </div>
       <p className="text-[11px] text-[#526078] mt-2 leading-snug">
-        Formula: <strong>Weighted Composite Index</strong> = Σ (master weight % × category score). The <strong>Total Score</strong> is the same number on a school-grade scale (monotonic curve, order &amp; tiers preserved). Tier boundaries (on the raw Index): A ≥ 80, B ≥ 65, C ≥ 50, D &lt; 50.
+        Formula: <strong>Weighted Composite Index</strong> = Σ (master weight % × category score). The <strong>Total Score</strong> is the same number passed through a <strong>monotonic curve</strong> so it reads on the A–F grade scale (order &amp; tiers preserved). Tier boundaries (on the raw Index): A ≥ 80, B ≥ 65, C ≥ 50, D &lt; 50. <a href="/scoring-method" className="text-[#174be8] underline">Scoring Method →</a>
       </p>
+
 
       {missingCount > 0 && (
         <p className="text-[10.5px] text-[#c2410c] mt-1 leading-snug italic">

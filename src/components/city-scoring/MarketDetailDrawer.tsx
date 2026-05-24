@@ -90,6 +90,7 @@ export function MarketDetailDrawer({
   refreshVersion = 0,
   open,
   onClose,
+  categoryScores,
   onFindTeachers,
   onGenerateReport,
 }: Props) {

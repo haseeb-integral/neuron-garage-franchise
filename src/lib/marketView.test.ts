@@ -111,9 +111,9 @@ describe("assertNoCompositeDrift", () => {
 
 describe("brand", () => {
   it("unsafeAsCompositeScore is the only other path to a CompositeScore", () => {
-    // Raw 77.4 lands between anchors 75→97 and 100→100, calibrated to ~97.
+    // Raw 77.4 lands between anchors 74→100 and 100→100, calibrated to 100.
     const c = unsafeAsCompositeScore(77.4);
-    expect(c).toBe(97);
+    expect(c).toBe(100);
   });
 });
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, MapPin, Loader2, Info, Send, Star, Trophy, Filter } from "lucide-react";
+import { Plus, MapPin, Loader2, Info, Send, Star, Trophy, Filter, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 // A market tile can come from one of four sources. The badge on each tile
@@ -22,6 +22,7 @@ interface Props {
   cityFilters: string[];
   onPick: (city: string, state: string | null) => void;
   onAddMore: () => void;
+  onRemove?: (city: string) => void;
 }
 
 const SOURCE_META: Record<RailSource, { label: string; color: string; icon: typeof Filter }> = {
@@ -31,7 +32,7 @@ const SOURCE_META: Record<RailSource, { label: string; color: string; icon: type
   tier_a:    { label: "Top Tier-A",    color: "#0a8f5a", icon: Trophy },
 };
 
-export function CitySearchRail({ cityFilters, onPick, onAddMore }: Props) {
+export function CitySearchRail({ cityFilters, onPick, onAddMore, onRemove }: Props) {
   const [items, setItems] = useState<RailCity[] | null>(null);
 
   useEffect(() => {
@@ -211,47 +212,58 @@ export function CitySearchRail({ cityFilters, onPick, onAddMore }: Props) {
             const meta = SOURCE_META[it.source];
             const Icon = meta.icon;
             return (
-              <button
-                key={`${it.city}-${it.state}`}
-                onClick={() => onPick(it.city, it.state)}
-                title={`${meta.label} · ${it.city}${it.state ? `, ${it.state}` : ""}`}
-                className={`shrink-0 min-w-[172px] rounded-lg border p-2.5 text-left transition ${
-                  it.active
-                    ? "border-[#174be8] bg-[#eef4ff] ring-1 ring-[#174be8]/20"
-                    : "border-[#e7edf5] bg-white hover:border-[#bfd0f0] hover:bg-[#f4f7ff]"
-                }`}
-              >
-                <div className="mb-1 flex items-center gap-1">
-                  <span
-                    className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide"
-                    style={{ backgroundColor: `${meta.color}14`, color: meta.color }}
-                  >
-                    <Icon size={9} /> {meta.label}
-                  </span>
-                  {typeof it.composite === "number" && (
-                    <span className="ml-auto rounded-full bg-[#f0f4fb] px-1.5 py-0.5 text-[10px] font-bold text-[#34445f]">{it.composite}</span>
-                  )}
-                </div>
-                <div className="flex items-center gap-1 text-[11px] text-[#66728a]">
-                  <MapPin size={10} />
-                  <span className="truncate">{it.state ?? "—"}</span>
-                </div>
-                <div className="mt-0.5 truncate text-[13px] font-bold text-[#07142f]">{it.city}</div>
-                <div className="mt-1 flex items-baseline gap-2 text-[11px]">
-                  <span className="font-bold text-[#07142f]">{it.total.toLocaleString()}</span>
-                  <span className="text-[#66728a]">teachers</span>
-                </div>
-                <div className="mt-0.5 flex items-center gap-2 text-[10.5px]">
-                  <span className="text-[#0a8f5a]">
-                    {it.total > 0 ? `${Math.round((it.enriched / it.total) * 100)}% enriched` : "no teachers yet"}
-                  </span>
-                  {it.inOutreach > 0 && (
-                    <span className="inline-flex items-center gap-0.5 font-medium text-[#b7791f]">
-                      <Send size={9} /> {it.inOutreach} in outreach
+              <div key={`${it.city}-${it.state}`} className="relative shrink-0">
+                <button
+                  onClick={() => onPick(it.city, it.state)}
+                  title={`${meta.label} · ${it.city}${it.state ? `, ${it.state}` : ""}`}
+                  className={`shrink-0 min-w-[172px] rounded-lg border p-2.5 text-left transition ${
+                    it.active
+                      ? "border-[#174be8] bg-[#eef4ff] ring-1 ring-[#174be8]/20"
+                      : "border-[#e7edf5] bg-white hover:border-[#bfd0f0] hover:bg-[#f4f7ff]"
+                  }`}
+                >
+                  <div className="mb-1 flex items-center gap-1">
+                    <span
+                      className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide"
+                      style={{ backgroundColor: `${meta.color}14`, color: meta.color }}
+                    >
+                      <Icon size={9} /> {meta.label}
                     </span>
-                  )}
-                </div>
-              </button>
+                    {typeof it.composite === "number" && (
+                      <span className={`ml-auto rounded-full bg-[#f0f4fb] px-1.5 py-0.5 text-[10px] font-bold text-[#34445f] ${it.active && onRemove ? "mr-5" : ""}`}>{it.composite}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 text-[11px] text-[#66728a]">
+                    <MapPin size={10} />
+                    <span className="truncate">{it.state ?? "—"}</span>
+                  </div>
+                  <div className="mt-0.5 truncate text-[13px] font-bold text-[#07142f]">{it.city}</div>
+                  <div className="mt-1 flex items-baseline gap-2 text-[11px]">
+                    <span className="font-bold text-[#07142f]">{it.total.toLocaleString()}</span>
+                    <span className="text-[#66728a]">teachers</span>
+                  </div>
+                  <div className="mt-0.5 flex items-center gap-2 text-[10.5px]">
+                    <span className="text-[#0a8f5a]">
+                      {it.total > 0 ? `${Math.round((it.enriched / it.total) * 100)}% enriched` : "no teachers yet"}
+                    </span>
+                    {it.inOutreach > 0 && (
+                      <span className="inline-flex items-center gap-0.5 font-medium text-[#b7791f]">
+                        <Send size={9} /> {it.inOutreach} in outreach
+                      </span>
+                    )}
+                  </div>
+                </button>
+                {it.active && onRemove && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onRemove(it.city); }}
+                    title={`Remove ${it.city} from filters`}
+                    aria-label={`Remove ${it.city}`}
+                    className="absolute right-1.5 top-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full border border-[#174be8]/30 bg-white text-[#174be8] hover:bg-[#174be8] hover:text-white"
+                  >
+                    <X size={11} strokeWidth={2.5} />
+                  </button>
+                )}
+              </div>
             );
           })
         )}

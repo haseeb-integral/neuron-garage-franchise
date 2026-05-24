@@ -405,6 +405,7 @@ const TeacherProspects = () => {
         <CitySearchRail
           cityFilters={cityFilters}
           onPick={handleRailPick}
+          onRemove={handleRemoveCity}
           onAddMore={() => {
             const el = document.querySelector<HTMLElement>("[data-teacher-filter-bar]");
             el?.scrollIntoView({ behavior: "smooth", block: "center" });

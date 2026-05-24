@@ -33,9 +33,13 @@ function ExecutiveSummaryPanelImpl({
   const score = Math.round(Number(detailScore) || 0);
   const verdict = score >= 70 ? "high" : score >= 50 ? "moderate" : "low";
   const verdictLabel = verdict === "high" ? "high-opportunity" : verdict === "moderate" ? "moderate-opportunity" : "low-opportunity";
+  // CATEGORY KEYS — must match src/lib/cityScoringPageHelpers.ts (`demand`,
+  // `franchiseeSupply`, `competitiveLandscape`). Reading the wrong keys here
+  // silently returns 0 and makes the expand panel narrate "thin / crowded"
+  // for every city. Bug fixed May 24, 2026 after Brett caught it on Stillwater.
   const demand = Math.round(detailCategoryScores["demand"] ?? 0);
-  const tam = Math.round(detailCategoryScores["tam"] ?? 0);
-  const opp = Math.round(detailCategoryScores["competitive"] ?? 0);
+  const tam = Math.round(detailCategoryScores["franchiseeSupply"] ?? 0);
+  const opp = Math.round(detailCategoryScores["competitiveLandscape"] ?? 0);
   const catParts = CATEGORIES.map((c) => {
     const v = Math.round(detailCategoryScores[c.key] ?? 0);
     return `${c.label} ${v}`;

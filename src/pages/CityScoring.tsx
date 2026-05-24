@@ -765,24 +765,42 @@ const CityScoring = () => {
         "census_last_updated",
       ];
       const dbKeys = DASHBOARD_DB_KEYS;
-      const backendHeader = ["City", "State", "County", "Metro Area", ...dbKeys];
+      // Two display-layer columns sit at the front so non-technical reviewers
+      // immediately see both numbers side-by-side:
+      //   • "Weighted Composite Index (raw)" — the raw weighted math (drives sort + tiers)
+      //   • "Total Score (calibrated)"       — the school-grade display number
+      // composite_score_default in dbKeys is the same as the raw Index.
+      const { buildMarketView } = await import("@/lib/marketView");
+      const backendHeader = [
+        "City",
+        "State",
+        "County",
+        "Metro Area",
+        "Weighted Composite Index (raw)",
+        "Total Score (calibrated)",
+        ...dbKeys,
+      ];
       const backendRows: (string | number | null)[][] = filtered.map((m: any) => {
         const r = m?.scoredRow ?? {};
+        const v = buildMarketView(m);
         const head: (string | number | null)[] = [
           m.city ?? null,
           m.state ?? null,
           m.county ?? null,
           m.metroArea ?? null,
+          v.hasLiveData ? v.rawComposite : null,
+          v.hasLiveData ? v.composite : null,
         ];
         const tail = dbKeys.map((k) => {
-          const v = (r as any)[k];
-          if (v == null) return null;
-          if (typeof v === "number" || typeof v === "string") return v;
-          if (typeof v === "boolean") return v ? "true" : "false";
-          try { return JSON.stringify(v); } catch { return String(v); }
+          const val = (r as any)[k];
+          if (val == null) return null;
+          if (typeof val === "number" || typeof val === "string") return val;
+          if (typeof val === "boolean") return val ? "true" : "false";
+          try { return JSON.stringify(val); } catch { return String(val); }
         });
         return [...head, ...tail];
       });
+
 
       const weightsCities = filtered.map((m: any) => ({
         city: m.city ?? "",

@@ -52,6 +52,33 @@ export type Database = {
           },
         ]
       }
+      ask_city_conversations: {
+        Row: {
+          city_id: string
+          created_at: string
+          id: string
+          messages: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          city_id: string
+          created_at?: string
+          id?: string
+          messages?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          city_id?: string
+          created_at?: string
+          id?: string
+          messages?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       campaign_cache: {
         Row: {
           id: string
@@ -338,6 +365,51 @@ export type Database = {
         }
         Relationships: []
       }
+      city_briefs: {
+        Row: {
+          brief: Json
+          city_id: string
+          city_name: string
+          composite_score: number
+          metro_area: string | null
+          pillar_demand: number | null
+          pillar_opp: number | null
+          pillar_tam: number | null
+          state_abbr: string
+          state_name: string
+          tier: string
+          updated_at: string
+        }
+        Insert: {
+          brief?: Json
+          city_id: string
+          city_name: string
+          composite_score: number
+          metro_area?: string | null
+          pillar_demand?: number | null
+          pillar_opp?: number | null
+          pillar_tam?: number | null
+          state_abbr: string
+          state_name: string
+          tier: string
+          updated_at?: string
+        }
+        Update: {
+          brief?: Json
+          city_id?: string
+          city_name?: string
+          composite_score?: number
+          metro_area?: string | null
+          pillar_demand?: number | null
+          pillar_opp?: number | null
+          pillar_tam?: number | null
+          state_abbr?: string
+          state_name?: string
+          tier?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       city_data_gaps: {
         Row: {
           checked_at: string
@@ -359,6 +431,54 @@ export type Database = {
           field_name?: string
           id?: string
           reason?: string
+        }
+        Relationships: []
+      }
+      city_narratives: {
+        Row: {
+          city_id: string
+          created_at: string
+          executive_summary: string
+          id: string
+          input_payload: Json
+          model_id: string
+          prompt_version: string
+          report_demand: string
+          report_next_move: string
+          report_snapshot: string
+          report_supply: string
+          updated_at: string
+          weights_hash: string
+        }
+        Insert: {
+          city_id: string
+          created_at?: string
+          executive_summary: string
+          id?: string
+          input_payload?: Json
+          model_id?: string
+          prompt_version?: string
+          report_demand: string
+          report_next_move: string
+          report_snapshot: string
+          report_supply: string
+          updated_at?: string
+          weights_hash?: string
+        }
+        Update: {
+          city_id?: string
+          created_at?: string
+          executive_summary?: string
+          id?: string
+          input_payload?: Json
+          model_id?: string
+          prompt_version?: string
+          report_demand?: string
+          report_next_move?: string
+          report_snapshot?: string
+          report_supply?: string
+          updated_at?: string
+          weights_hash?: string
         }
         Relationships: []
       }

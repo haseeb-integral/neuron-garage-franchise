@@ -1,5 +1,5 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
-import { encode as base64Encode } from "https://deno.land/std@0.224.0/encoding/base64.ts";
+import { encodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
 
 // Deepgram Aura "asteria" — light, friendly, confident female voice.
 // See https://developers.deepgram.com/docs/tts-models for full list.
@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
     }
 
     const audioBuffer = await upstream.arrayBuffer();
-    const audioBase64 = base64Encode(new Uint8Array(audioBuffer));
+    const audioBase64 = encodeBase64(new Uint8Array(audioBuffer));
 
     return new Response(JSON.stringify({ audio: audioBase64, mime: "audio/mpeg" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

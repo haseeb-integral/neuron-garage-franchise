@@ -6,6 +6,7 @@ import { HelpCircle, Menu } from "lucide-react";
 import logo from "@/assets/neuron-garage-logo.png";
 import { maybeStartTourOnFirstVisit, startTour } from "@/lib/tour";
 import { useDefaultCollapsedForRoute, useSidebarCollapsed } from "@/lib/sidebarState";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 export function AppLayout() {
   const [open, setOpen] = useState(false);
@@ -59,7 +60,9 @@ export function AppLayout() {
         </div>
 
         <div className="p-3 md:px-5 md:py-3 lg:px-6 lg:py-3 min-w-0">
-          <Outlet key={location.pathname} />
+          <ErrorBoundary key={location.pathname}>
+            <Outlet />
+          </ErrorBoundary>
         </div>
       </main>
     </div>

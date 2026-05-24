@@ -39,10 +39,8 @@ const tierBg: Record<string, string> = {
 };
 
 const row = (m: RankedMarket): any => (m as any).scoredRow ?? {};
-// Mint pillars once per market — branded PillarsView guarantees every column
-// here is the calibrated (school-grade) value, not raw.
-const pillar = (m: RankedMarket, k: PillarKey) =>
-  buildPillarView(m.categoryScores).[k as never] as never; // placeholder, replaced below
+// Mint pillars per market — branded PillarsView guarantees every column here
+// is the calibrated (school-grade) value, not raw.
 const pillarDisplay = (m: RankedMarket, k: PillarKey): number | null =>
   buildPillarView(m.categoryScores)[k].display;
 
@@ -116,9 +114,9 @@ export const COLUMNS: ColDef[] = [
       );
     },
   },
-  { key: "score_demand", label: "Demand", align: "right", group: "Scores", get: (m) => calibratePillarForDisplay(cat(m, "demand")), render: (m) => fmtScore(calibratePillarForDisplay(cat(m, "demand"))) },
-  { key: "score_tam", label: "TAM Teachers", align: "right", group: "Scores", get: (m) => calibratePillarForDisplay(cat(m, "franchiseeSupply")), render: (m) => fmtScore(calibratePillarForDisplay(cat(m, "franchiseeSupply"))) },
-  { key: "score_csi_opp", label: "Comp. Opportunity", align: "right", group: "Scores", get: (m) => calibratePillarForDisplay(cat(m, "competitiveLandscape")), render: (m) => fmtScore(calibratePillarForDisplay(cat(m, "competitiveLandscape"))) },
+  { key: "score_demand", label: "Demand", align: "right", group: "Scores", get: (m) => pillarDisplay(m, "demand"), render: (m) => fmtScore(pillarDisplay(m, "demand")) },
+  { key: "score_tam", label: "TAM Teachers", align: "right", group: "Scores", get: (m) => pillarDisplay(m, "franchiseeSupply"), render: (m) => fmtScore(pillarDisplay(m, "franchiseeSupply")) },
+  { key: "score_csi_opp", label: "Comp. Opportunity", align: "right", group: "Scores", get: (m) => pillarDisplay(m, "competitiveLandscape"), render: (m) => fmtScore(pillarDisplay(m, "competitiveLandscape")) },
 
   // Demand inputs
   { key: "population", label: "Population", align: "right", group: "Demand", get: (m) => m.population ?? row(m).population ?? null, render: (m) => fmtInt(m.population ?? row(m).population) },

@@ -9,7 +9,8 @@
 // and ran the curve a second time, which silently double-calibrated.
 
 import type { CategoryKey } from "@/stores/cityScoringStore";
-import { calibratePillarForDisplay } from "@/lib/marketView";
+import { buildPillarView, type PillarKey } from "@/lib/marketView";
+import { DISPLAY_TIER_CUTOFFS } from "@/lib/cityTiers";
 
 interface Cat {
   key: CategoryKey;

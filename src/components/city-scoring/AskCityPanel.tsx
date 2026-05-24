@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { Send, Sparkles, Loader2 } from "lucide-react";
+import { Send, Sparkles, Loader2, GitCompareArrows, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { CityNarrative, CityNarrativeContext } from "@/lib/useCityNarrative";
 
@@ -8,6 +8,9 @@ interface Msg {
   role: "user" | "assistant";
   content: string;
 }
+
+interface CityHit { id: string; city_name: string; state_abbr: string; }
+
 
 interface Props {
   cityId: string | null;
@@ -22,19 +25,48 @@ export function AskCityPanel({ cityId, cityName, stateName, totalScore, narrativ
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [compareOpen, setCompareOpen] = useState(false);
+  const [compareQuery, setCompareQuery] = useState("");
+  const [compareHits, setCompareHits] = useState<CityHit[]>([]);
+  const [compareLoading, setCompareLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const suggested = [
     `Why is ${cityName} scored ${totalScore}/100?`,
     `What would have to change for ${cityName} to move up a tier?`,
     `Who are the realistic competitors I'd face here?`,
-    `Compare ${cityName} to a Tier-A alternative.`,
     `What teachers should I recruit first in ${cityName}?`,
   ];
 
   useEffect(() => {
     setMessages([]);
+    setCompareOpen(false);
+    setCompareQuery("");
+    setCompareHits([]);
   }, [cityId]);
+
+  // Debounced city search for the "Compare to…" picker
+  useEffect(() => {
+    if (!compareOpen) return;
+    const q = compareQuery.trim();
+    if (q.length < 2) { setCompareHits([]); return; }
+    let cancelled = false;
+    setCompareLoading(true);
+    const t = setTimeout(async () => {
+      const { data } = await supabase
+        .from("us_cities_scored")
+        .select("id, city_name, state_abbr")
+        .ilike("city_name", `${q}%`)
+        .order("population", { ascending: false })
+        .limit(8);
+      if (!cancelled) {
+        setCompareHits((data ?? []).filter((c) => c.id !== cityId) as CityHit[]);
+        setCompareLoading(false);
+      }
+    }, 200);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [compareQuery, compareOpen, cityId]);
+
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });

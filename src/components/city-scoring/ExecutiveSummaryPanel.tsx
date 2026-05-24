@@ -133,7 +133,7 @@ function ExecutiveSummaryPanelImpl({
           <div className="px-6 py-5 space-y-5 pb-12">
             <div className="rounded-lg bg-[#f7faff] border border-[#e5eaf2] px-4 py-3">
               <div className="flex items-baseline justify-between">
-                <span className="text-[11px] uppercase tracking-wide text-[#8794ab]">Composite Score</span>
+                <span className="text-[11px] uppercase tracking-wide text-[#8794ab]">Total Score</span>
                 <span className="text-[22px] font-bold text-[#07142f] tabular-nums">{score}<span className="text-[12px] text-[#8794ab] font-normal">/100</span></span>
               </div>
               <p className="mt-1 text-[12px] font-semibold text-[#174be8] capitalize">{verdictLabel.replace("-", " ")} market</p>

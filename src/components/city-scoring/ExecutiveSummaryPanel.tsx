@@ -299,6 +299,22 @@ function ExecutiveSummaryPanelImpl({
               stateName={selectedState}
               totalScore={score}
               narrativeContext={narrative ?? null}
+              focusContext={{
+                total_score: score,
+                tier: `Tier ${tier}`,
+                pillars: {
+                  demand: pillarDisplay("demand"),
+                  tam_teachers: pillarDisplay("franchiseeSupply"),
+                  competitive_opportunity: pillarDisplay("competitiveLandscape"),
+                },
+                signals: signalRows.map((r) => ({
+                  key: r.key,
+                  label: r.label,
+                  source: r.source,
+                  value: r.value,
+                  benchmark: r.benchmark?.label ?? null,
+                })),
+              }}
             />
           </div>
         </div>

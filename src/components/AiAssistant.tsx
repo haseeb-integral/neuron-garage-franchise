@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sparkles, Send, Volume2, VolumeX, Loader2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { stripMarkdownForSpeech } from "@/lib/stripMarkdown";
 import { useToast } from "@/hooks/use-toast";
 
 const NAVY = "#003c7e";

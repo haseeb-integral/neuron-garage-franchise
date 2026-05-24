@@ -8,6 +8,7 @@ import { FETCHER_DIAGNOSTIC_KEYS, canonicalKey } from "@/lib/signalAliases";
 import { buildSeededFallbackSignalsFromScored } from "@/lib/cityScoringLiveData";
 import type { CategoryKey } from "@/stores/cityScoringStore";
 import { MetricRow, type LiveSignal, type MetricStatus } from "./market-detail/MetricRow";
+import { DrawerHeroSummary } from "./market-detail/DrawerHeroSummary";
 
 export interface CustomCriterion {
   name: string;
@@ -206,6 +207,17 @@ export function MarketDetailDrawer({
               Source-of-truth audit for every metric powering this market's score.
             </p>
           </SheetHeader>
+
+          {/* Hero summary — total score, tier, pillars, deterministic bottom line. */}
+          <DrawerHeroSummary
+            rawComposite={Number((market as any).compositeScore ?? 0)}
+            tier={(market as any).tier ?? null}
+            categoryScores={{
+              demand: categoryScores?.demand ?? null,
+              franchiseeSupply: (categoryScores as any)?.franchiseeSupply ?? null,
+              competitiveLandscape: (categoryScores as any)?.competitiveLandscape ?? null,
+            }}
+          />
 
           <div className="mb-3 rounded-lg border border-[#eef2f7] bg-[#f8fafe] p-3">
             <div className="space-y-0.5 text-[11px] text-[#526078]">

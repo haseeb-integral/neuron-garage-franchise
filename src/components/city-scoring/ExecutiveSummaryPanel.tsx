@@ -6,6 +6,7 @@ import { buildPillarView, type PillarKey } from "@/lib/marketView";
 import { bandFromDisplayScore, tierFromDisplayScore } from "@/lib/cityTiers";
 import { useCityNarrative } from "@/lib/useCityNarrative";
 import { AskCityPanel } from "./AskCityPanel";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export interface SigRow {
   key: string;
@@ -173,7 +174,15 @@ function ExecutiveSummaryPanelImpl({
           <Sparkles size={10} className="text-[#174be8]" /> AI Executive Summary
         </p>
         {loading && !narrative ? (
-          <p className="text-[11px] text-[#8794ab] flex items-center gap-2"><Loader2 size={11} className="animate-spin" /> Generating analyst summary…</p>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-[11px] text-[#8794ab]">
+              <Loader2 size={11} className="animate-spin" />
+              <span>Loading live signals…</span>
+            </div>
+            <Skeleton className="h-3 w-full" />
+            <Skeleton className="h-3 w-[92%]" />
+            <Skeleton className="h-3 w-[78%]" />
+          </div>
         ) : error ? (
           <p className="text-[11px] text-[#c2410c]">
             Narrative unavailable. <button onClick={() => regenerate({ force: true })} className="underline">Retry</button>
@@ -241,9 +250,44 @@ function ExecutiveSummaryPanelImpl({
             </div>
 
             {loading && !narrative ? (
-              <div className="rounded-lg border border-[#eef2f7] bg-white px-4 py-8 text-center text-[12px] text-[#8794ab]">
-                <Loader2 size={16} className="mx-auto animate-spin mb-2" />
-                Generating analyst write-up for {selectedCity}…
+              <div className="space-y-5">
+                <div className="flex items-center gap-2 text-[12px] text-[#8794ab]">
+                  <Loader2 size={14} className="animate-spin" />
+                  <span>Loading live signals for {selectedCity}…</span>
+                </div>
+                <div className="space-y-4">
+                  <Skeleton className="h-4 w-[180px]" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-3 w-[96%]" />
+                    <Skeleton className="h-3 w-[88%]" />
+                    <Skeleton className="h-3 w-[72%]" />
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <Skeleton className="h-4 w-[160px]" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-3 w-[94%]" />
+                    <Skeleton className="h-3 w-[80%]" />
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <Skeleton className="h-4 w-[200px]" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-3 w-[90%]" />
+                    <Skeleton className="h-3 w-[76%]" />
+                    <Skeleton className="h-3 w-[64%]" />
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <Skeleton className="h-4 w-[170px]" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-3 w-[82%]" />
+                  </div>
+                </div>
               </div>
             ) : error ? (
               <div className="rounded-lg border border-[#f5cbb8] bg-[#fdecea] px-4 py-3 text-[12px] text-[#c2410c]">

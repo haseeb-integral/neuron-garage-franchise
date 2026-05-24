@@ -12,7 +12,7 @@ import { TierBadge } from "@/components/city-scoring/TierBadge";
 import { RowScorePopover } from "@/components/city-scoring/RowScorePopover";
 import { sampleCities } from "@/data/cityData";
 import { sameMarket, VISIBLE_CATEGORIES } from "@/lib/cityScoringPageHelpers";
-import { buildMarketView, calibratePillarForDisplay } from "@/lib/marketView";
+import { buildMarketView, buildPillarView } from "@/lib/marketView";
 import { toast } from "sonner";
 
 type Props = {

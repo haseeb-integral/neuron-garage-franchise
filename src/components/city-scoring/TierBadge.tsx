@@ -28,14 +28,14 @@ export function TierBadge({ tier, compact = false, score, percentile }: Props) {
       className="inline-flex items-center justify-center rounded-full text-[10px] font-bold text-white"
       style={{ backgroundColor: meta.color, width: 22, height: 22 }}
     >
-      {meta.roman}
+      {meta.letter}
     </span>
   ) : (
     <span
       className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold text-white whitespace-nowrap"
       style={{ backgroundColor: meta.color }}
     >
-      <span className="font-bold">Tier {meta.roman}</span>
+      <span className="font-bold">Tier {meta.letter}</span>
       <span className="opacity-90">·</span>
       <span>{meta.label}</span>
     </span>
@@ -65,7 +65,7 @@ export function TierBadge({ tier, compact = false, score, percentile }: Props) {
             </div>
           )}
           <div className="text-[#cbd5e1]">
-            Tier {meta.roman}: {meta.range} ({meta.label})
+            Tier {meta.letter}: {meta.range} ({meta.label})
           </div>
         </div>
       </TooltipContent>

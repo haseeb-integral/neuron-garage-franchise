@@ -1,8 +1,21 @@
 // Teacher Search co-pilot — grounded Q&A over the user's current filter/result set.
-// Non-streaming for v1: takes { messages, context } → returns { reply }.
+// Non-streaming for v1: takes { messages, context } → returns { reply, followups }.
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
 type Msg = { role: "user" | "assistant" | "system"; content: string };
+
+function extractFollowups(raw: string): { reply: string; followups: string[] } {
+  if (!raw) return { reply: "", followups: [] };
+  const re = /\[\[FOLLOWUPS\]\]\s*(\[[\s\S]*?\])\s*$/;
+  const m = raw.match(re);
+  if (!m) return { reply: raw.trim(), followups: [] };
+  let arr: string[] = [];
+  try {
+    const parsed = JSON.parse(m[1]);
+    if (Array.isArray(parsed)) arr = parsed.filter((x) => typeof x === "string").slice(0, 3);
+  } catch { /* ignore */ }
+  return { reply: raw.slice(0, m.index).trim(), followups: arr };
+}
 
 const SYSTEM = `You are the Teacher Search co-pilot inside Neuron Garage, an internal franchise-recruiting tool for Kaylie Reed's elementary-school enrichment camps.
 
@@ -10,7 +23,12 @@ You help the team reason about the teachers currently visible on the Teacher Sea
 
 When you reference a teacher, use their name and city. When asked for "top N", rank by fit_score (higher = better). If the user asks something the grounding context can't answer, say so plainly and suggest what filter they should apply.
 
-Format: short markdown, bullets where helpful, no headers.`;
+Format: short markdown, bullets where helpful, no headers.
+
+CRITICAL — FOLLOW-UPS:
+After your answer, ALWAYS append exactly this on the final line (nothing after it):
+[[FOLLOWUPS]]["question 1","question 2","question 3"]
+Provide 2-3 short, natural next-step questions the user is most likely to ask next, that you can confidently answer from the current filter context. Keep each under 9 words. Phrase them as the user (first person). Never repeat the user's previous questions.`;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -71,8 +89,9 @@ Deno.serve(async (req) => {
     }
 
     const data = await r.json();
-    const reply = data?.choices?.[0]?.message?.content ?? "";
-    return new Response(JSON.stringify({ reply }), {
+    const raw = data?.choices?.[0]?.message?.content ?? "";
+    const { reply, followups } = extractFollowups(raw);
+    return new Response(JSON.stringify({ reply, followups }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

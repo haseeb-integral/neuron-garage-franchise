@@ -1,6 +1,19 @@
 import { ASSISTANT_KNOWLEDGE_BASE } from "../_shared/aiAssistantKB.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
+function extractFollowups(raw: string): { reply: string; followups: string[] } {
+  if (!raw) return { reply: "", followups: [] };
+  const re = /\[\[FOLLOWUPS\]\]\s*(\[[\s\S]*?\])\s*$/;
+  const m = raw.match(re);
+  if (!m) return { reply: raw.trim(), followups: [] };
+  let arr: string[] = [];
+  try {
+    const parsed = JSON.parse(m[1]);
+    if (Array.isArray(parsed)) arr = parsed.filter((x) => typeof x === "string").slice(0, 3);
+  } catch { /* ignore */ }
+  return { reply: raw.slice(0, m.index).trim(), followups: arr };
+}
+
 const SYSTEM_PROMPT = `You are the Neuron Garage AI Assistant — an in-app helper for Kaylie Reed (founder), Sam, and the Neuron Garage recruiting and marketing team. You are warm, upbeat, professional, and concise.
 
 Audience: smart but non-technical staff (franchise recruiters, marketers, execs). Plain English only. No jargon unless they use it first. Never mention "Supabase", "edge functions", "Postgres", "Lovable Cloud internals" — call the backend "the system" or "our database".
@@ -13,6 +26,11 @@ How to answer:
 - Always end multi-step answers with a clear next action ("Then click Promote to move them into the Candidate Pipeline.").
 
 If asked about something outside Neuron Garage (general world questions, jokes, etc.), politely steer back: "I'm here to help you navigate the Neuron Garage console — want me to walk you through City Search, Teacher Search, Email Outreach, or the Candidate Pipeline?"
+
+CRITICAL — FOLLOW-UPS:
+After your answer, ALWAYS append exactly this on the final line (nothing after it):
+[[FOLLOWUPS]]["question 1","question 2","question 3"]
+Provide 2-3 short, natural next-step questions the user is most likely to ask next, that you can confidently answer from the KNOWLEDGE BASE. Keep each under 9 words. Phrase them as the user (first person) — e.g. "How do I…", "What does … mean?", "Show me…". Never repeat the user's previous questions.
 
 KNOWLEDGE BASE
 ==============
@@ -76,9 +94,10 @@ Deno.serve(async (req) => {
     }
 
     const data = await upstream.json();
-    const reply = data?.choices?.[0]?.message?.content ?? "";
+    const raw = data?.choices?.[0]?.message?.content ?? "";
+    const { reply, followups } = extractFollowups(raw);
 
-    return new Response(JSON.stringify({ reply }), {
+    return new Response(JSON.stringify({ reply, followups }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {

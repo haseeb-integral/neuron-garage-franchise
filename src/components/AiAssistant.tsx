@@ -11,7 +11,7 @@ const BLUE = "#0757ff";
 const YELLOW = "#FFD400";
 const INK = "#0b1a36";
 
-type Msg = { role: "user" | "assistant"; content: string };
+type Msg = { role: "user" | "assistant"; content: string; followups?: string[] };
 
 export type AssistantContext = "general" | "city-search" | "teacher-search" | "email-outreach" | "candidate-pipeline";
 
@@ -103,7 +103,8 @@ export function AiAssistant({ open, onOpenChange, context }: Props) {
       });
       if (error) throw error;
       const reply = (data as { reply?: string })?.reply ?? "Sorry — I didn't catch a response.";
-      const newMessages = [...next, { role: "assistant" as const, content: reply }];
+      const followups = (data as { followups?: string[] })?.followups ?? [];
+      const newMessages: Msg[] = [...next, { role: "assistant" as const, content: reply, followups }];
       setMessages(newMessages);
       if (voiceOn) playTts(reply, newMessages.length - 1);
     } catch (err) {
@@ -228,7 +229,7 @@ export function AiAssistant({ open, onOpenChange, context }: Props) {
 
           <div className="space-y-3">
             {messages.map((m, idx) => (
-              <div key={idx} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div key={idx} className={`flex flex-col ${m.role === "user" ? "items-end" : "items-start"}`}>
                 <div
                   className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 text-[13.5px] leading-relaxed ${m.role === "user" ? "rounded-tr-sm" : "rounded-tl-sm"}`}
                   style={
@@ -260,6 +261,24 @@ export function AiAssistant({ open, onOpenChange, context }: Props) {
                     </div>
                   )}
                 </div>
+                {m.role === "assistant" && idx === messages.length - 1 && !sending && m.followups && m.followups.length > 0 && (
+                  <div className="mt-2 max-w-[88%] space-y-1.5">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: NAVY, opacity: 0.7 }}>
+                      Suggested follow-ups
+                    </div>
+                    {m.followups.map((f) => (
+                      <button
+                        key={f}
+                        onClick={() => send(f)}
+                        className="flex w-full items-start gap-2 rounded-lg bg-white px-3 py-2 text-left text-[12.5px] transition-all hover:-translate-y-0.5"
+                        style={{ color: INK, border: "1px solid #e6ecf8", boxShadow: "0 2px 6px rgba(15,23,42,0.04)" }}
+                      >
+                        <Sparkles size={12} style={{ color: BLUE }} className="mt-0.5 flex-shrink-0" />
+                        <span>{f}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
             {sending && (

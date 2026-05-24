@@ -4,7 +4,7 @@ import { Sparkles, Send, Trash2, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import ReactMarkdown from "react-markdown";
 
-type Msg = { role: "user" | "assistant"; content: string };
+type Msg = { role: "user" | "assistant"; content: string; followups?: string[] };
 
 interface Context {
   cityFilters: string[];
@@ -65,9 +65,10 @@ export function TeacherAiPanel({ context }: Props) {
       });
       if (error) throw new Error(error.message);
       const reply = (data as { reply?: string; error?: string })?.reply ?? "";
+      const followups = (data as { followups?: string[] })?.followups ?? [];
       const err = (data as { error?: string })?.error;
       if (err) throw new Error(err);
-      setMsgs([...next, { role: "assistant", content: reply || "_(no response)_" }]);
+      setMsgs([...next, { role: "assistant", content: reply || "_(no response)_", followups }]);
     } catch (e) {
       setMsgs([...next, { role: "assistant", content: `⚠️ ${e instanceof Error ? e.message : String(e)}` }]);
     } finally {
@@ -129,15 +130,34 @@ export function TeacherAiPanel({ context }: Props) {
           ) : (
             <div className="space-y-3">
               {msgs.map((m, i) => (
-                <div key={i} className={m.role === "user" ? "flex justify-end" : "flex"}>
+                <div key={i} className={m.role === "user" ? "flex justify-end" : "flex flex-col items-start"}>
                   {m.role === "user" ? (
                     <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-[#174be8] px-3 py-2 text-[13px] text-white">
                       {m.content}
                     </div>
                   ) : (
-                    <div className="prose prose-sm max-w-none text-[13px] text-[#07142f] [&>p]:my-1.5 [&>ul]:my-1.5 [&>ol]:my-1.5 [&_code]:rounded [&_code]:bg-[#f0f4fb] [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[12px]">
-                      <ReactMarkdown>{m.content}</ReactMarkdown>
-                    </div>
+                    <>
+                      <div className="prose prose-sm max-w-none text-[13px] text-[#07142f] [&>p]:my-1.5 [&>ul]:my-1.5 [&>ol]:my-1.5 [&_code]:rounded [&_code]:bg-[#f0f4fb] [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[12px]">
+                        <ReactMarkdown>{m.content}</ReactMarkdown>
+                      </div>
+                      {i === msgs.length - 1 && !sending && m.followups && m.followups.length > 0 && (
+                        <div className="mt-2 w-full space-y-1.5">
+                          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#66728a]">
+                            Suggested follow-ups
+                          </div>
+                          {m.followups.map((f) => (
+                            <button
+                              key={f}
+                              onClick={() => send(f)}
+                              className="flex w-full items-start gap-2 rounded-lg border border-[#e7edf5] bg-white px-3 py-2 text-left text-[12px] text-[#07142f] hover:border-[#bfd0f0] hover:bg-[#f4f7ff]"
+                            >
+                              <Sparkles size={11} className="mt-0.5 flex-shrink-0 text-[#174be8]" />
+                              <span>{f}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               ))}

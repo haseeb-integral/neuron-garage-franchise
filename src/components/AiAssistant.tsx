@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sparkles, Send, Volume2, VolumeX, Loader2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { stripMarkdownForSpeech } from "@/lib/stripMarkdown";
 import { useToast } from "@/hooks/use-toast";
 
 const NAVY = "#003c7e";
@@ -238,7 +240,13 @@ export function AiAssistant({ open, onOpenChange, context }: Props) {
                       : { background: "white", color: INK, border: "1px solid #e6ecf8" }
                   }
                 >
-                  <div className="whitespace-pre-wrap">{m.content}</div>
+                  <div className="prose prose-sm max-w-none [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0">
+                    {m.role === "assistant" ? (
+                      <ReactMarkdown>{m.content}</ReactMarkdown>
+                    ) : (
+                      <div className="whitespace-pre-wrap">{m.content}</div>
+                    )}
+                  </div>
                   {m.role === "assistant" && (
                     <div className="mt-2 flex items-center gap-2">
                       {speakingIdx === idx ? (
@@ -251,7 +259,7 @@ export function AiAssistant({ open, onOpenChange, context }: Props) {
                         </button>
                       ) : (
                         <button
-                          onClick={() => playTts(m.content, idx)}
+                          onClick={() => playTts(stripMarkdownForSpeech(m.content), idx)}
                           className="inline-flex items-center gap-1 text-[11px] font-semibold opacity-70 hover:opacity-100"
                           style={{ color: NAVY }}
                         >

@@ -81,9 +81,10 @@ Deno.serve(async (req) => {
     }
 
     const data = await upstream.json();
-    const reply = data?.choices?.[0]?.message?.content ?? "";
+    const raw = data?.choices?.[0]?.message?.content ?? "";
+    const { reply, followups } = extractFollowups(raw);
 
-    return new Response(JSON.stringify({ reply }), {
+    return new Response(JSON.stringify({ reply, followups }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {

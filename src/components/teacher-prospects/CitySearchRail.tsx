@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, MapPin, Loader2, Info, Send, Star, Trophy, Filter } from "lucide-react";
+import { Plus, MapPin, Loader2, Info, Send, Star, Trophy, Filter, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 // A market tile can come from one of four sources. The badge on each tile

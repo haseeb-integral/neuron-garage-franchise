@@ -28,19 +28,20 @@ function SectionTitle({ n, children }: { n: number; children: React.ReactNode })
 // Calibration anchors mirror src/lib/marketView.ts. Keep in sync.
 const ANCHORS: Array<[number, number]> = [
   [0, 0],
-  [20, 55],
-  [35, 72],
-  [50, 85],
-  [65, 92],
-  [75, 97],
+  [20, 40],
+  [35, 60],
+  [41, 70],
+  [50, 80],
+  [59, 90],
+  [74, 100],
   [100, 100],
 ];
 
 const TIER_ROWS = [
-  { tier: "A", percentile: "Top 5%",   gradeBand: "A (≈ 90–100)", bg: "#e6f7ef", fg: "#0a7a3d" },
-  { tier: "B", percentile: "Next 15%", gradeBand: "B (≈ 80–89)",  bg: "#eaf0ff", fg: "#174be8" },
-  { tier: "C", percentile: "Next 30%", gradeBand: "C (≈ 70–79)",  bg: "#fff6dc", fg: "#b8860b" },
-  { tier: "D", percentile: "Bottom 50%", gradeBand: "D / F (< 70)", bg: "#fff1e6", fg: "#c2410c" },
+  { tier: "A", scoreBand: "90 – 100", rawBand: "raw ≥ 59", reads: "A — top of the class",      bg: "#e6f7ef", fg: "#0a7a3d" },
+  { tier: "B", scoreBand: "80 – 89",  rawBand: "raw 50 – 58", reads: "B — strong market",      bg: "#eaf0ff", fg: "#174be8" },
+  { tier: "C", scoreBand: "70 – 79",  rawBand: "raw 41 – 49", reads: "C — passable",           bg: "#fff6dc", fg: "#b8860b" },
+  { tier: "D", scoreBand: "< 70",     rawBand: "raw < 41",    reads: "D / F — below cutoff",   bg: "#fff1e6", fg: "#c2410c" },
 ];
 
 export default function ScoringMethod() {

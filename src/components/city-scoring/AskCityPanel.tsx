@@ -11,15 +11,7 @@ interface Msg {
 
 interface CityHit { id: string; city_name: string; state_abbr: string; }
 
-
-interface Props {
-  cityId: string | null;
-  cityName: string;
-  stateName: string;
-  totalScore: number;
-  narrativeContext?: CityNarrative | null;
-  focusContext?: CityNarrativeContext | null;
-}
+const LISTBOX_ID = "compare-city-listbox";
 
 export function AskCityPanel({ cityId, cityName, stateName, totalScore, narrativeContext, focusContext }: Props) {
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -29,7 +21,11 @@ export function AskCityPanel({ cityId, cityName, stateName, totalScore, narrativ
   const [compareQuery, setCompareQuery] = useState("");
   const [compareHits, setCompareHits] = useState<CityHit[]>([]);
   const [compareLoading, setCompareLoading] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const suggested = [
     `Why is ${cityName} scored ${totalScore}/100?`,
@@ -43,13 +39,14 @@ export function AskCityPanel({ cityId, cityName, stateName, totalScore, narrativ
     setCompareOpen(false);
     setCompareQuery("");
     setCompareHits([]);
+    setActiveIndex(-1);
   }, [cityId]);
 
   // Debounced city search for the "Compare to…" picker
   useEffect(() => {
     if (!compareOpen) return;
     const q = compareQuery.trim();
-    if (q.length < 2) { setCompareHits([]); return; }
+    if (q.length < 2) { setCompareHits([]); setActiveIndex(-1); return; }
     let cancelled = false;
     setCompareLoading(true);
     const t = setTimeout(async () => {
@@ -60,12 +57,68 @@ export function AskCityPanel({ cityId, cityName, stateName, totalScore, narrativ
         .order("population", { ascending: false })
         .limit(8);
       if (!cancelled) {
-        setCompareHits((data ?? []).filter((c) => c.id !== cityId) as CityHit[]);
+        const hits = (data ?? []).filter((c) => c.id !== cityId) as CityHit[];
+        setCompareHits(hits);
+        setActiveIndex(hits.length > 0 ? 0 : -1);
         setCompareLoading(false);
       }
     }, 200);
     return () => { cancelled = true; clearTimeout(t); };
   }, [compareQuery, compareOpen, cityId]);
+
+  // Keyboard navigation for the compare picker
+  useEffect(() => {
+    if (!compareOpen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setCompareOpen(false);
+        triggerRef.current?.focus();
+        return;
+      }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setActiveIndex((idx) => {
+          if (compareHits.length === 0) return -1;
+          const next = idx + 1;
+          return next >= compareHits.length ? 0 : next;
+        });
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActiveIndex((idx) => {
+          if (compareHits.length === 0) return -1;
+          const next = idx - 1;
+          return next < 0 ? compareHits.length - 1 : next;
+        });
+        return;
+      }
+      if (e.key === "Enter" && activeIndex >= 0 && activeIndex < compareHits.length) {
+        e.preventDefault();
+        const hit = compareHits[activeIndex];
+        setCompareOpen(false);
+        setCompareQuery("");
+        setActiveIndex(-1);
+        send(`Compare ${cityName}, ${stateName} to ${hit.city_name}, ${hit.state_abbr}.`);
+        return;
+      }
+      if (e.key === "Tab") {
+        // Close on Tab out (standard combobox behavior)
+        setCompareOpen(false);
+        return;
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [compareOpen, compareHits, activeIndex, cityName, stateName]);
+
+  // Scroll active option into view
+  useEffect(() => {
+    if (activeIndex >= 0 && itemRefs.current[activeIndex]) {
+      itemRefs.current[activeIndex]?.scrollIntoView({ block: "nearest" });
+    }
+  }, [activeIndex]);
 
 
   useEffect(() => {

@@ -174,7 +174,15 @@ function ExecutiveSummaryPanelImpl({
           <Sparkles size={10} className="text-[#174be8]" /> AI Executive Summary
         </p>
         {loading && !narrative ? (
-          <p className="text-[11px] text-[#8794ab] flex items-center gap-2"><Loader2 size={11} className="animate-spin" /> Generating analyst summary…</p>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-[11px] text-[#8794ab]">
+              <Loader2 size={11} className="animate-spin" />
+              <span>Loading live signals…</span>
+            </div>
+            <Skeleton className="h-3 w-full" />
+            <Skeleton className="h-3 w-[92%]" />
+            <Skeleton className="h-3 w-[78%]" />
+          </div>
         ) : error ? (
           <p className="text-[11px] text-[#c2410c]">
             Narrative unavailable. <button onClick={() => regenerate({ force: true })} className="underline">Retry</button>

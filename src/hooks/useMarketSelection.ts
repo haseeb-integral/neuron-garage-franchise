@@ -103,9 +103,10 @@ export function useMarketSelection(
   );
 
   const autoFollowTop = !userPickedMarket && !!topRanked;
+  const safeSelected: MarketKey = selectedMarketKey ?? { city: "", state: "" };
   const effectiveMarketKey: MarketKey = autoFollowTop
-    ? { city: topRanked!.city, state: topRanked!.state }
-    : selectedMarketKey;
+    ? { city: topRanked!.city ?? "", state: topRanked!.state ?? "" }
+    : safeSelected;
 
   return {
     selectedMarketKey,

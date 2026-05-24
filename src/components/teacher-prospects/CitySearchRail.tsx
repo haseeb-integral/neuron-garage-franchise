@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, MapPin, Loader2, Info, Send, Star, Trophy, Filter, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { calibrateCompositeForDisplay } from "@/lib/marketView";
+
+const toDisplay = (raw: number | null | undefined): number | null =>
+  raw == null ? null : Math.round(calibrateCompositeForDisplay(Number(raw)));
 
 // A market tile can come from one of four sources. The badge on each tile
 // explains *why* it's shown so the user is never guessing.
@@ -54,7 +58,7 @@ export function CitySearchRail({ cityFilters, onPick, onAddMore, onRemove }: Pro
         const byCity = new Map((data ?? []).map((r) => [r.city_name, r] as const));
         for (const c of cityFilters) {
           const row = byCity.get(c);
-          setIfNew(c, { city: c, state: row?.state_abbr ?? null, composite: row?.composite_score_default ?? null, source: "active" });
+          setIfNew(c, { city: c, state: row?.state_abbr ?? null, composite: toDisplay(row?.composite_score_default), source: "active" });
         }
       }
 
@@ -82,7 +86,7 @@ export function CitySearchRail({ cityFilters, onPick, onAddMore, onRemove }: Pro
         const byCity = new Map((ocScored ?? []).map((r) => [r.city_name, r] as const));
         for (const c of outreachCities) {
           const row = byCity.get(c);
-          setIfNew(c, { city: c, state: row?.state_abbr ?? null, composite: row?.composite_score_default ?? null, source: "outreach" });
+          setIfNew(c, { city: c, state: row?.state_abbr ?? null, composite: toDisplay(row?.composite_score_default), source: "outreach" });
         }
       }
 
@@ -95,7 +99,7 @@ export function CitySearchRail({ cityFilters, onPick, onAddMore, onRemove }: Pro
           .select("city_name, state_abbr, composite_score_default")
           .in("id", watchlistIds);
         for (const u of (wlCities ?? []) as Array<{ city_name: string; state_abbr: string; composite_score_default: number | null }>) {
-          setIfNew(u.city_name, { city: u.city_name, state: u.state_abbr, composite: u.composite_score_default, source: "watchlist" });
+          setIfNew(u.city_name, { city: u.city_name, state: u.state_abbr, composite: toDisplay(u.composite_score_default), source: "watchlist" });
         }
       }
 
@@ -108,7 +112,7 @@ export function CitySearchRail({ cityFilters, onPick, onAddMore, onRemove }: Pro
           .limit(50);
         for (const c of topCities ?? []) {
           if (candidates.size >= 8) break;
-          setIfNew(c.city_name, { city: c.city_name, state: c.state_abbr, composite: c.composite_score_default, source: "tier_a" });
+          setIfNew(c.city_name, { city: c.city_name, state: c.state_abbr, composite: toDisplay(c.composite_score_default), source: "tier_a" });
         }
       }
 

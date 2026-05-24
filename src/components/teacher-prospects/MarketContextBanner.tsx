@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, MapPin, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { calibrateCompositeForDisplay } from "@/lib/marketView";
+import { tierFromDisplayScore, type TierLetter } from "@/lib/cityTiers";
 
 interface Props {
   /** Active city filter. 1 = single-market layout. ≥2 = multi-market chip layout. */
@@ -15,23 +17,17 @@ interface Props {
 
 type CityMeta = {
   city: string;
-  composite: number | null;
-  tier: "A" | "B" | "C" | null;
+  composite: number | null; // calibrated display score (0-100, school-grade scale)
+  tier: TierLetter | null;
   population: number | null;
   state_abbr: string | null;
 };
 
-function tierFromComposite(c: number | null): "A" | "B" | "C" | null {
-  if (c == null) return null;
-  if (c >= 80) return "A";
-  if (c >= 60) return "B";
-  return "C";
-}
-
-const tierColors: Record<"A" | "B" | "C", string> = {
+const tierColors: Record<TierLetter, string> = {
   A: "bg-emerald-100 text-emerald-700 border-emerald-200",
   B: "bg-amber-100 text-amber-700 border-amber-200",
-  C: "bg-slate-100 text-slate-700 border-slate-200",
+  C: "bg-sky-100 text-sky-700 border-sky-200",
+  D: "bg-slate-100 text-slate-600 border-slate-200",
 };
 
 export function MarketContextBanner({
@@ -62,10 +58,12 @@ export function MarketContextBanner({
       }
       setMetas(cities.map((c) => {
         const row = byCity.get(c.city);
+        const raw = row?.composite_score_default ?? null;
+        const display = raw != null ? Math.round(calibrateCompositeForDisplay(raw)) : null;
         return {
           city: c.city,
-          composite: row?.composite_score_default ?? null,
-          tier: tierFromComposite(row?.composite_score_default ?? null),
+          composite: display,
+          tier: display != null ? tierFromDisplayScore(display) : null,
           population: row?.population ?? null,
           state_abbr: row?.state_abbr ?? c.state ?? null,
         };

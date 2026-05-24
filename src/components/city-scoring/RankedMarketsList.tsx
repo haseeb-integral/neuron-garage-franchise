@@ -12,7 +12,7 @@ import { TierBadge } from "@/components/city-scoring/TierBadge";
 import { RowScorePopover } from "@/components/city-scoring/RowScorePopover";
 import { sampleCities } from "@/data/cityData";
 import { sameMarket, VISIBLE_CATEGORIES } from "@/lib/cityScoringPageHelpers";
-import { buildMarketView, calibratePillarForDisplay } from "@/lib/marketView";
+import { buildMarketView, buildPillarView } from "@/lib/marketView";
 import { toast } from "sonner";
 
 type Props = {
@@ -210,17 +210,20 @@ function RankedMarketsListImpl({
                 )}
               </div>
               {(() => {
-                const cs = c.categoryScores ?? {};
-                const cell = (raw: number | null | undefined, title: string) => {
-                  if (raw == null || !c.hasLiveData) return <span className="justify-self-end text-[10.5px] text-[#cbd5e1] tabular-nums">—</span>;
-                  const n = calibratePillarForDisplay(Number(raw));
-                  return <span className="justify-self-end text-[10.5px] font-semibold tabular-nums text-[#07142f]" title={title}>{n}</span>;
+                // Branded PillarsView: every cell reads pre-minted display
+                // scores, so a raw 0-74 number can never leak into the UI.
+                const pillars = buildPillarView(c.categoryScores);
+                const cell = (p: { display: number | null; displayFormatted: string }, title: string) => {
+                  if (!c.hasLiveData || p.display == null) {
+                    return <span className="justify-self-end text-[10.5px] text-[#cbd5e1] tabular-nums">—</span>;
+                  }
+                  return <span className="justify-self-end text-[10.5px] font-semibold tabular-nums text-[#07142f]" title={title}>{p.displayFormatted}</span>;
                 };
                 return (
                   <>
-                    {cell(cs.demand, "Demand score (calibrated)")}
-                    {cell(cs.franchiseeSupply, "TAM Teachers score (calibrated)")}
-                    {cell(cs.competitiveLandscape, "Competitive Opportunity (calibrated, higher = less saturated)")}
+                    {cell(pillars.demand, "Demand score (calibrated)")}
+                    {cell(pillars.franchiseeSupply, "TAM Teachers score (calibrated)")}
+                    {cell(pillars.competitiveLandscape, "Competitive Opportunity (calibrated, higher = less saturated)")}
                   </>
                 );
               })()}

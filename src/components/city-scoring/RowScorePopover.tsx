@@ -9,7 +9,8 @@
 // and ran the curve a second time, which silently double-calibrated.
 
 import type { CategoryKey } from "@/stores/cityScoringStore";
-import { calibratePillarForDisplay } from "@/lib/marketView";
+import { buildPillarView, type PillarKey } from "@/lib/marketView";
+import { DISPLAY_TIER_CUTOFFS } from "@/lib/cityTiers";
 
 interface Cat {
   key: CategoryKey;
@@ -40,10 +41,16 @@ export function RowScorePopover({
   tier,
 }: Props) {
   const total = Object.values(appliedWeights).reduce((s, v) => s + v, 0) || 1;
+  const pillars = buildPillarView(categoryScores as Partial<Record<PillarKey, number>>);
   const rows = categories.map((c) => {
     const raw = categoryScores[c.key];
     const rawScore = raw == null ? null : Math.round(Number(raw));
-    const displayScore = raw == null ? null : calibratePillarForDisplay(Number(raw));
+    // displayScore comes from the branded PillarsView when the key is a known
+    // pillar; for any other category fall back to the raw scale (rare).
+    const displayScore =
+      c.key === "demand" || c.key === "franchiseeSupply" || c.key === "competitiveLandscape"
+        ? pillars[c.key as PillarKey].display
+        : rawScore;
     const weightPct = (appliedWeights[c.key] / total) * 100;
     const contribution = rawScore == null ? null : (weightPct * rawScore) / 100;
     return { key: c.key, label: c.label, weightPct, rawScore, displayScore, contribution };
@@ -96,7 +103,7 @@ export function RowScorePopover({
         </table>
       </div>
       <p className="text-[11px] text-[#526078] mt-2 leading-snug">
-        Formula: <strong>Weighted Composite Index</strong> = Σ (master weight % × raw category score). The <strong>Total Score</strong> is the same number passed through a <strong>monotonic curve</strong> so it reads on the A–F grade scale (order &amp; tiers preserved). Tier boundaries are on the <strong>Total Score</strong>: A ≥ 90, B ≥ 80, C ≥ 70, D &lt; 70. <a href="/scoring-method" className="text-[#174be8] underline">Scoring Method →</a>
+        Formula: <strong>Weighted Composite Index</strong> = Σ (master weight % × raw category score). The <strong>Total Score</strong> is the same number passed through a <strong>monotonic curve</strong> so it reads on the A–F grade scale (order &amp; tiers preserved). Tier boundaries are on the <strong>Total Score</strong>: A ≥ {DISPLAY_TIER_CUTOFFS.A}, B ≥ {DISPLAY_TIER_CUTOFFS.B}, C ≥ {DISPLAY_TIER_CUTOFFS.C}, D &lt; {DISPLAY_TIER_CUTOFFS.C}. <a href="/scoring-method" className="text-[#174be8] underline">Scoring Method →</a>
       </p>
 
       {missingCount > 0 && (

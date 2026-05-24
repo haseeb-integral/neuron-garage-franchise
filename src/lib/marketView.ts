@@ -113,6 +113,45 @@ export function calibratePillarForDisplay(raw: number | null | undefined): numbe
   return Math.round(calibrateCompositeForDisplay(Number(raw)));
 }
 
+// ─── Branded pillar display scores ─────────────────────────────────────────
+// Same pattern as CompositeScore: only `buildPillarView()` can mint a
+// PillarDisplayScore, so a raw 0-74 number cannot be passed to UI props
+// expecting the calibrated school-grade value. Catches the May 24 bug
+// (raw pillar in the dashboard, calibrated in the spreadsheet) at compile
+// time instead of in production.
+declare const __pillarBrand: unique symbol;
+export type PillarDisplayScore = number & { readonly [__pillarBrand]: "PillarDisplayScore" };
+
+export type PillarKey = "demand" | "franchiseeSupply" | "competitiveLandscape";
+
+export type PillarView = Readonly<{
+  raw: number | null;             // Pre-calibration (used in composite math)
+  display: PillarDisplayScore | null; // School-grade 0-100 (used in UI only)
+  displayFormatted: string;       // "86" or "—"
+}>;
+
+export type PillarsView = Readonly<Record<PillarKey, PillarView>>;
+
+function mintPillar(raw: number | null | undefined): PillarView {
+  if (raw == null || !Number.isFinite(Number(raw))) {
+    return Object.freeze({ raw: null, display: null, displayFormatted: "—" });
+  }
+  const r = Number(raw);
+  const display = Math.round(calibrateCompositeForDisplay(r)) as PillarDisplayScore;
+  return Object.freeze({ raw: r, display, displayFormatted: String(display) });
+}
+
+export function buildPillarView(
+  categoryScores: Partial<Record<PillarKey, number | null>> | null | undefined,
+): PillarsView {
+  const cs = categoryScores ?? {};
+  return Object.freeze({
+    demand: mintPillar(cs.demand),
+    franchiseeSupply: mintPillar(cs.franchiseeSupply),
+    competitiveLandscape: mintPillar(cs.competitiveLandscape),
+  });
+}
+
 // ─── Competitive Opportunity helper ────────────────────────────────────────
 // Manus' CSI saturation score is LOWER = better. Every UI surface that wants
 // the friendly "Competitive Opportunity" pillar (higher = better) MUST flip

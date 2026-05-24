@@ -2,8 +2,14 @@
 // Shows the same math the central recomputeComposite uses: weight × score per
 // category, summed to composite. Numbers are committed (last Apply) — this
 // popover never displays preview math, to keep it consistent with the table.
+//
+// Transparency note (May 24, 2026): we surface BOTH the Weighted Composite
+// Index (raw math, used for sort + tier assignment) and the Total Score
+// (calibrated for readability) so power users can audit the calibration.
 
 import type { CategoryKey } from "@/stores/cityScoringStore";
+import { calibrateCompositeForDisplay } from "@/lib/marketView";
+
 
 interface Cat {
   key: CategoryKey;

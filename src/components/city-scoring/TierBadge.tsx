@@ -1,13 +1,13 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-// Tiers are percentile-based, not absolute. Top 5% = I, next 15% = II,
-// next 30% = III, bottom 50% = IV. Internal keys stay A/B/C/D for store/filter
-// compatibility — only the display labels are Roman numerals.
-const TIER_META: Record<string, { color: string; roman: string; label: string; range: string }> = {
-  A: { color: "#0ea66e", roman: "I",   label: "Top Priority", range: "Top 5%" },
-  B: { color: "#174be8", roman: "II",  label: "Strong",       range: "Next 15%" },
-  C: { color: "#b8860b", roman: "III", label: "Watch",        range: "Next 30%" },
-  D: { color: "#ea580c", roman: "IV",  label: "Skip",         range: "Bottom 50%" },
+// Tiers are score-based on the displayed Total Score: A ≥ 90, B ≥ 80,
+// C ≥ 70, D < 70 — same A–F vocabulary as school grades. Tier counts move
+// when weights change because each cutoff is a fixed score.
+const TIER_META: Record<string, { color: string; letter: string; label: string; range: string }> = {
+  A: { color: "#0ea66e", letter: "A", label: "Top Priority", range: "90 – 100" },
+  B: { color: "#174be8", letter: "B", label: "Strong",       range: "80 – 89"  },
+  C: { color: "#b8860b", letter: "C", label: "Watch",        range: "70 – 79"  },
+  D: { color: "#ea580c", letter: "D", label: "Skip",         range: "below 70" },
 };
 
 interface Props {

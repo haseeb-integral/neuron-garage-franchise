@@ -175,6 +175,20 @@ Voice & number rules apply. Every figure you cite must appear verbatim
 in the payload below. If a value is "n/a", say the data is missing for
 that signal — do not invent.
 
+HARD FORMATTING RULES (violation = unusable output):
+- NEVER write raw database field names, snake_case identifiers, or
+  developer-style keys (e.g. "csi_national_brand_count_weighted",
+  "col_salary_index", "public_elementary_enrollment"). Always use the
+  plain-English label from the payload, or rephrase naturally.
+- ALL integers ≥ 1,000 must include thousands separators (write
+  "27,039" not "27039", "24,297" not "24297").
+- Currency must include the dollar sign and commas ("$64,250").
+- Percentages must include the % sign.
+- Use the composite score, tier, and pillar scores EXACTLY as given —
+  do not recompute or round differently.
+- Write for a franchise recruiting partner (Kaylie & Sam). Confident,
+  specific, no hedging, no developer jargon.
+
 # Input payload
 \`\`\`json
 ${JSON.stringify(payload, null, 2)}

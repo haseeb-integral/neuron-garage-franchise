@@ -32,7 +32,7 @@ const SOURCE_META: Record<RailSource, { label: string; color: string; icon: type
   tier_a:    { label: "Top Tier-A",    color: "#0a8f5a", icon: Trophy },
 };
 
-export function CitySearchRail({ cityFilters, onPick, onAddMore }: Props) {
+export function CitySearchRail({ cityFilters, onPick, onAddMore, onRemove }: Props) {
   const [items, setItems] = useState<RailCity[] | null>(null);
 
   useEffect(() => {

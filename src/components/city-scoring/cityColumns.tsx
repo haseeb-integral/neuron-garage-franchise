@@ -1,5 +1,6 @@
 import type { RankedMarket } from "@/lib/cityScoringLiveData";
-import { buildMarketView } from "@/lib/marketView";
+import { buildMarketView, calibratePillarForDisplay } from "@/lib/marketView";
+
 
 export type ColDef = {
   key: string;

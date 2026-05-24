@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 
+// jsdom polyfills for scroll APIs used inside AskCityPanel
+Element.prototype.scrollTo = Element.prototype.scrollTo ?? (() => {});
+Element.prototype.scrollIntoView = Element.prototype.scrollIntoView ?? (() => {});
+
 // Mock supabase client used by AskCityPanel
 const orderMock = vi.fn();
 const ilikeMock = vi.fn(() => ({

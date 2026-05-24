@@ -120,7 +120,7 @@ export function MarketsMap({ markets, onSelect }: Props) {
           {mapped.length} of {visibleMarkets.length} Tier A/B/C markets plotted
 
           {unmappedCount > 0 && ` • ${unmappedCount} missing coordinates`}
-          {excludedCount > 0 && ` • ${excludedCount} hidden (Tier IV or unscored)`}
+          {excludedCount > 0 && ` • ${excludedCount} hidden (Tier D or unscored)`}
         </p>
       </div>
 
@@ -129,7 +129,7 @@ export function MarketsMap({ markets, onSelect }: Props) {
           <div className="flex h-full items-center justify-center text-[12px] text-[#8794ab]">Loading map…</div>
         ) : mapped.length === 0 ? (
           <div className="flex h-full items-center justify-center px-6 text-center text-[12px] text-[#8794ab]">
-            No Tier I, II, or III markets in the current search.
+            No Tier A, B, or C markets in the current search.
           </div>
 
         ) : (

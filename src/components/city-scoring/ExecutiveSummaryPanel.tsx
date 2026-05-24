@@ -68,7 +68,7 @@ function ExecutiveSummaryPanelImpl({
     .sort((a, b) => a.v - b.v)[0];
   let argument = "";
   if (verdict === "high") {
-    argument = `Taken together, a Total Score of ${score} puts ${selectedCity} firmly in our high-priority Tier-A bucket — the underlying signals point to durable family demand and a recruitable operator pool that, in our experience, translate into a franchise location worth a serious conversation rather than another data refresh.`;
+    argument = `Taken together, a Total Score of ${score} puts ${selectedCity} firmly in the high-priority Tier-A bucket — the underlying signals point to durable family demand and a recruitable operator pool that, in this analysis, translate into a franchise location worth a serious conversation rather than another data refresh.`;
   } else if (verdict === "moderate") {
     argument = `Netted out, a Total Score of ${score} lands ${selectedCity} in the moderate Tier-B/C band: worth keeping on the watchlist as a secondary target, with the ${weakestCat.label.toLowerCase()} side of the equation determining whether it eventually graduates into a priority market.`;
   } else {

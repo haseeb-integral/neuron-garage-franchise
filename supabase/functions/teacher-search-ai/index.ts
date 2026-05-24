@@ -89,8 +89,9 @@ Deno.serve(async (req) => {
     }
 
     const data = await r.json();
-    const reply = data?.choices?.[0]?.message?.content ?? "";
-    return new Response(JSON.stringify({ reply }), {
+    const raw = data?.choices?.[0]?.message?.content ?? "";
+    const { reply, followups } = extractFollowups(raw);
+    return new Response(JSON.stringify({ reply, followups }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

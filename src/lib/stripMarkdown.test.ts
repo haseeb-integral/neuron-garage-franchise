@@ -58,7 +58,6 @@ describe("stripMarkdownForSpeech", () => {
   it("strips image syntax, keeping alt text", () => {
     const out = stripMarkdownForSpeech("![A cat photo](https://cats.com/cat.jpg) Cute!");
     expect(out).toBe("A cat photo Cute!");
-    expect(out).not.toContain("!");
     expect(out).not.toContain("[");
   });
 

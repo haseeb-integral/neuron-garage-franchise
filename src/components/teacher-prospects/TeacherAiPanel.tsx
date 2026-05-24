@@ -65,9 +65,10 @@ export function TeacherAiPanel({ context }: Props) {
       });
       if (error) throw new Error(error.message);
       const reply = (data as { reply?: string; error?: string })?.reply ?? "";
+      const followups = (data as { followups?: string[] })?.followups ?? [];
       const err = (data as { error?: string })?.error;
       if (err) throw new Error(err);
-      setMsgs([...next, { role: "assistant", content: reply || "_(no response)_" }]);
+      setMsgs([...next, { role: "assistant", content: reply || "_(no response)_", followups }]);
     } catch (e) {
       setMsgs([...next, { role: "assistant", content: `⚠️ ${e instanceof Error ? e.message : String(e)}` }]);
     } finally {

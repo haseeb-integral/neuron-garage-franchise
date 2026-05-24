@@ -22,6 +22,7 @@ interface Props {
   cityFilters: string[];
   onPick: (city: string, state: string | null) => void;
   onAddMore: () => void;
+  onRemove?: (city: string) => void;
 }
 
 const SOURCE_META: Record<RailSource, { label: string; color: string; icon: typeof Filter }> = {

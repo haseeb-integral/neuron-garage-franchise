@@ -1,55 +1,59 @@
 // Tier cutoffs for the ranked-markets list.
-// Sam-tunable in one place — used to live as inline 0.05/0.15/0.30 magic
-// numbers in CityScoring.tsx. Change here and the Tier Counts bar, the table
-// badges, and any future export all stay in sync.
 //
-// Distribution (Brett+Haseeb, May 22, 2026): top 5% = A, next 15% = B,
-// next 30% = C, remainder = D. Every live-scored city gets a letter.
+// As of May 24, 2026 (Brett): tiers are assigned by ABSOLUTE DISPLAY SCORE,
+// not by percentile rank. This is what every teacher already knows from
+// school: A = 90–100, B = 80–89, C = 70–79, D = below 70. The benefit over
+// percentile tiers is that tier COUNTS now respond to weight changes — if a
+// preset boosts ten cities above 90, you actually see "+10 Tier A" in the
+// Weighting Preview pills, instead of the counts being frozen at the fixed
+// 5/15/30/50 split.
+//
+// The display-score cutoffs map cleanly through the monotonic calibration
+// curve (src/lib/marketView.ts) to raw-composite cutoffs, which is what we
+// actually compare against because every market carries its RAW composite.
 
-export const TIER_DISTRIBUTION = {
-  A: 0.05,
-  B: 0.15,
-  C: 0.30,
-  // D is the implicit remainder.
-} as const;
+import { calibrateCompositeForDisplay } from "@/lib/marketView";
 
 export type TierLetter = "A" | "B" | "C" | "D";
 
-export function percentileTierCutoffs(n: number) {
-  if (n <= 0) return { aCut: 0, bCut: 0, cCut: 0 };
-  const aCut = Math.max(1, Math.ceil(n * TIER_DISTRIBUTION.A));
-  const bCut = aCut + Math.max(1, Math.ceil(n * TIER_DISTRIBUTION.B));
-  const cCut = bCut + Math.max(1, Math.ceil(n * TIER_DISTRIBUTION.C));
-  return { aCut, bCut, cCut };
-}
+// Public, user-facing cutoffs on the displayed Total Score.
+export const DISPLAY_TIER_CUTOFFS = {
+  A: 90,
+  B: 80,
+  C: 70,
+  // D is "everything else" (display < 70).
+} as const;
 
-export function tierFromRank(rankIndex: number, totalLive: number): TierLetter {
-  const { aCut, bCut, cCut } = percentileTierCutoffs(totalLive);
-  if (rankIndex < aCut) return "A";
-  if (rankIndex < bCut) return "B";
-  if (rankIndex < cCut) return "C";
+export function tierFromDisplayScore(display: number): TierLetter {
+  if (display >= DISPLAY_TIER_CUTOFFS.A) return "A";
+  if (display >= DISPLAY_TIER_CUTOFFS.B) return "B";
+  if (display >= DISPLAY_TIER_CUTOFFS.C) return "C";
   return "D";
 }
 
-export function assignPercentileTiers<
+export function tierFromRawComposite(raw: number): TierLetter {
+  return tierFromDisplayScore(calibrateCompositeForDisplay(raw));
+}
+
+export function assignDisplayScoreTiers<
   T extends { hasLiveData?: boolean | null; compositeScore?: number | null },
 >(markets: T[]): Array<T & { tier: TierLetter }> {
-  const withIndex = markets.map((market, index) => ({ market, index }));
-  const liveScored = withIndex
-    .filter(({ market }) => !!market.hasLiveData)
-    .slice()
-    .sort(
-      (a, b) =>
-        Number(b.market.compositeScore ?? 0) - Number(a.market.compositeScore ?? 0),
-    );
-
-  const tierByIndex = new Map<number, TierLetter>();
-  liveScored.forEach(({ index }, i) => {
-    tierByIndex.set(index, tierFromRank(i, liveScored.length));
-  });
-
-  return withIndex.map(({ market, index }) => {
+  return markets.map((market) => {
     if (!market.hasLiveData) return { ...market, tier: "D" as const };
-    return { ...market, tier: tierByIndex.get(index) ?? "D" };
+    const raw = Number(market.compositeScore ?? 0);
+    return { ...market, tier: tierFromRawComposite(raw) };
   });
+}
+
+// ─── Legacy aliases ────────────────────────────────────────────────────────
+// Older surfaces import `assignPercentileTiers` / `percentileTierCutoffs`.
+// They now resolve to the score-based implementation so behavior is consistent
+// everywhere; existing imports keep working without a sweeping refactor.
+export const assignPercentileTiers = assignDisplayScoreTiers;
+
+export function percentileTierCutoffs(_n: number) {
+  // Kept only for legacy callers that still destructure { aCut, bCut, cCut }.
+  // Score-based tiers don't have rank cutoffs; return zeros so any caller that
+  // still uses these values produces a no-op rather than wrong rank math.
+  return { aCut: 0, bCut: 0, cCut: 0 };
 }

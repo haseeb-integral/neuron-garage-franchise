@@ -268,19 +268,35 @@ export function AskCityPanel({ cityId, cityName, stateName, totalScore, narrativ
         <div className="flex items-center gap-2">
           <div className="relative">
             <button
+              ref={triggerRef}
               type="button"
               onClick={() => setCompareOpen((v) => !v)}
               disabled={streaming}
               className="inline-flex items-center gap-1 rounded-full border border-[#dbe4f2] bg-[#f7faff] px-2.5 py-1.5 text-[11px] font-semibold text-[#174be8] hover:bg-[#eaf1ff] disabled:opacity-50"
-              title="Compare to another city"
+              aria-haspopup="listbox"
+              aria-expanded={compareOpen}
+              aria-controls={LISTBOX_ID}
             >
-              <GitCompareArrows size={12} /> Compare to…
+              <GitCompareArrows size={12} aria-hidden="true" /> Compare to…
             </button>
             {compareOpen && (
-              <div className="absolute bottom-full left-0 mb-2 z-20 w-72 rounded-lg border border-[#dbe4f2] bg-white shadow-lg">
+              <div
+                ref={dropdownRef}
+                id={LISTBOX_ID}
+                role="listbox"
+                aria-label="Compare to another city"
+                className="absolute bottom-full left-0 mb-2 z-20 w-72 rounded-lg border border-[#dbe4f2] bg-white shadow-lg"
+              >
                 <div className="flex items-center gap-1 border-b border-[#eef2f7] px-2 py-1.5">
                   <input
                     autoFocus
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-controls={LISTBOX_ID}
+                    aria-expanded={compareOpen}
+                    aria-activedescendant={
+                      activeIndex >= 0 ? `${LISTBOX_ID}-option-${activeIndex}` : undefined
+                    }
                     value={compareQuery}
                     onChange={(e) => setCompareQuery(e.target.value)}
                     placeholder="Search city…"
@@ -288,11 +304,14 @@ export function AskCityPanel({ cityId, cityName, stateName, totalScore, narrativ
                   />
                   <button
                     type="button"
-                    onClick={() => setCompareOpen(false)}
+                    onClick={() => {
+                      setCompareOpen(false);
+                      triggerRef.current?.focus();
+                    }}
                     className="rounded p-1 text-[#8794ab] hover:bg-[#f1f4f9]"
-                    aria-label="Close"
+                    aria-label="Close compare picker"
                   >
-                    <X size={12} />
+                    <X size={12} aria-hidden="true" />
                   </button>
                 </div>
                 <div className="max-h-56 overflow-y-auto py-1">
@@ -305,16 +324,26 @@ export function AskCityPanel({ cityId, cityName, stateName, totalScore, narrativ
                   {!compareLoading && compareQuery.trim().length >= 2 && compareHits.length === 0 && (
                     <p className="px-3 py-2 text-[11px] text-[#8794ab]">No matches.</p>
                   )}
-                  {compareHits.map((c) => (
+                  {compareHits.map((c, i) => (
                     <button
                       key={c.id}
+                      ref={(el) => { itemRefs.current[i] = el; }}
                       type="button"
+                      role="option"
+                      id={`${LISTBOX_ID}-option-${i}`}
+                      aria-selected={i === activeIndex}
+                      onMouseEnter={() => setActiveIndex(i)}
                       onClick={() => {
                         setCompareOpen(false);
                         setCompareQuery("");
+                        setActiveIndex(-1);
                         send(`Compare ${cityName}, ${stateName} to ${c.city_name}, ${c.state_abbr}.`);
                       }}
-                      className="block w-full text-left px-3 py-1.5 text-[12px] text-[#07142f] hover:bg-[#f7faff]"
+                      className={
+                        i === activeIndex
+                          ? "block w-full text-left px-3 py-1.5 text-[12px] text-[#07142f] bg-[#eaf1ff] outline-none"
+                          : "block w-full text-left px-3 py-1.5 text-[12px] text-[#07142f] hover:bg-[#f7faff]"
+                      }
                     >
                       {c.city_name}, {c.state_abbr}
                     </button>

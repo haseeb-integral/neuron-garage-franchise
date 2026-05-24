@@ -8,6 +8,28 @@ const VOICE_MODEL = "aura-asteria-en";
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  // Defensive: strip markdown so the voice never reads "star star" for **bold**
+  // or "hash" for # headings, regardless of caller.
+  function stripMarkdownForSpeech(input: string): string {
+    let s = input ?? "";
+    s = s.replace(/```[\s\S]*?```/g, " ");
+    s = s.replace(/`([^`]+)`/g, "$1");
+    s = s.replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1");
+    s = s.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1");
+    s = s.replace(/(\*\*\*|___)(.*?)\1/g, "$2");
+    s = s.replace(/(\*\*|__)(.*?)\1/g, "$2");
+    s = s.replace(/(?<!\w)([*_])(?=\S)(.+?)(?<=\S)\1(?!\w)/g, "$2");
+    s = s.replace(/^\s{0,3}#{1,6}\s+/gm, "");
+    s = s.replace(/^\s{0,3}>\s?/gm, "");
+    s = s.replace(/^\s*[-*+]\s+/gm, "");
+    s = s.replace(/^\s*\d+\.\s+/gm, "");
+    s = s.replace(/^\s*([-*_])\1{2,}\s*$/gm, "");
+    s = s.replace(/\|/g, " ");
+    s = s.replace(/[*_`]+/g, "");
+    s = s.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").replace(/[ \t]{2,}/g, " ");
+    return s.trim();
+  }
+
   try {
     const { text } = await req.json();
     if (!text || typeof text !== "string") {
@@ -25,8 +47,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Deepgram caps a single TTS request at ~2000 chars; truncate kindly.
-    const safeText = text.length > 1800 ? text.slice(0, 1800) + "…" : text;
+    // Strip markdown FIRST, then enforce Deepgram's ~2000-char per-request cap.
+    const cleaned = stripMarkdownForSpeech(text);
+    const safeText = cleaned.length > 1800 ? cleaned.slice(0, 1800) + "…" : cleaned;
 
     const upstream = await fetch(
       `https://api.deepgram.com/v1/speak?model=${VOICE_MODEL}&encoding=mp3`,

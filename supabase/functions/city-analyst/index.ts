@@ -132,30 +132,24 @@ Deno.serve(async (req) => {
       signals: context?.signals?.length
         ? context.signals
         : {
-            children_5_12: fmtInt(num(city.children_5_12)),
-            median_household_income: fmtUSD(num(city.median_household_income)),
-            dual_income_household_pct: fmtPct(num(city.dual_working_families_pct)),
-            education_bachelors_plus_pct: fmtPct(num(city.college_degree_pct)),
-            public_elementary_teacher_count: fmtInt(
-              num(city.public_elementary_teacher_count),
-            ),
-            public_elementary_school_count: fmtInt(num(city.public_elementary_count)),
-            private_charter_school_count: fmtInt(
+            "Children ages 5–12": fmtInt(num(city.children_5_12)),
+            "Median household income": fmtUSD(num(city.median_household_income)),
+            "Dual-income household share": fmtPct(num(city.dual_working_families_pct)),
+            "Adults with bachelor's degree or higher": fmtPct(num(city.college_degree_pct)),
+            "Public elementary teachers": fmtInt(num(city.public_elementary_teacher_count)),
+            "Public elementary schools": fmtInt(num(city.public_elementary_count)),
+            "Private and charter elementary schools": fmtInt(
               (num(city.private_elementary_count) ?? 0) +
                 (num(city.charter_elementary_count) ?? 0),
             ),
-            public_elementary_enrollment: fmtInt(num(city.public_elementary_enrollment)),
-            col_salary_index: num(city.col_salary_index)?.toFixed(2) ?? "n/a",
-            avg_elementary_teacher_salary_usd: fmtUSD(
-              num(city.avg_elementary_teacher_salary_usd),
-            ),
-            csi_national_brand_count_weighted:
+            "Public elementary enrollment": fmtInt(num(city.public_elementary_enrollment)),
+            "Cost-of-living adjusted salary index": num(city.col_salary_index)?.toFixed(2) ?? "n/a",
+            "Average elementary teacher salary": fmtUSD(num(city.avg_elementary_teacher_salary_usd)),
+            "National brand competitor count (weighted)":
               num(city.csi_national_brand_count_weighted)?.toFixed(1) ?? "n/a",
-            csi_local_camp_estimate:
-              num(city.csi_local_provider_estimate)?.toFixed(0) ?? "n/a",
-            csi_saturation_category: city.csi_saturation_category ?? "n/a",
-            csi_demand_adjusted_market:
-              num(city.csi_demand_adjusted_market)?.toFixed(0) ?? "n/a",
+            "Local camp / provider count": fmtInt(num(city.csi_local_provider_estimate)),
+            "Competitive saturation category": city.csi_saturation_category ?? "n/a",
+            "Demand-adjusted addressable market": fmtInt(num(city.csi_demand_adjusted_market)),
           },
     };
 

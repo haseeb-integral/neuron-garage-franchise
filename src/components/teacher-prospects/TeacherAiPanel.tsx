@@ -4,7 +4,7 @@ import { Sparkles, Send, Trash2, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import ReactMarkdown from "react-markdown";
 
-type Msg = { role: "user" | "assistant"; content: string };
+type Msg = { role: "user" | "assistant"; content: string; followups?: string[] };
 
 interface Context {
   cityFilters: string[];

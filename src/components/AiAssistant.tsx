@@ -103,7 +103,8 @@ export function AiAssistant({ open, onOpenChange, context }: Props) {
       });
       if (error) throw error;
       const reply = (data as { reply?: string })?.reply ?? "Sorry — I didn't catch a response.";
-      const newMessages = [...next, { role: "assistant" as const, content: reply }];
+      const followups = (data as { followups?: string[] })?.followups ?? [];
+      const newMessages: Msg[] = [...next, { role: "assistant" as const, content: reply, followups }];
       setMessages(newMessages);
       if (voiceOn) playTts(reply, newMessages.length - 1);
     } catch (err) {

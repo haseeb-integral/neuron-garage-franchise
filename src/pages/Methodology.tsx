@@ -242,6 +242,9 @@ export default function Methodology() {
           </div>
         </div>
       </section>
-    </div>
+        </div>
+      </DocCard>
+    </DocShell>
   );
+
 }

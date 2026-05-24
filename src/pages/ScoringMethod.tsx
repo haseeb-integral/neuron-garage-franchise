@@ -1,8 +1,8 @@
 // Scoring Method — explains the two-number contract for every market:
-//   1. Weighted Composite Index (raw math, drives sort + tier assignment)
+//   1. Weighted Composite Index (raw math, drives sort)
 //   2. Total Score (display, calibrated via a monotonic curve to match A–F grades)
-// Plus how the four tiers (A/B/C/D) are assigned by rank percentile, NOT by
-// the displayed number — so the curve cannot move a city between tiers.
+// Plus how the four tiers (A/B/C/D) are assigned by absolute Total Score
+// (A ≥ 90, B ≥ 80, C ≥ 70, D < 70) so tier counts respond to weight changes.
 
 import { Gauge, Info, ArrowRight } from "lucide-react";
 

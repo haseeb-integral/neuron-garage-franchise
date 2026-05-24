@@ -58,10 +58,12 @@ export function MarketContextBanner({
       }
       setMetas(cities.map((c) => {
         const row = byCity.get(c.city);
+        const raw = row?.composite_score_default ?? null;
+        const display = raw != null ? Math.round(calibrateCompositeForDisplay(raw)) : null;
         return {
           city: c.city,
-          composite: row?.composite_score_default ?? null,
-          tier: tierFromComposite(row?.composite_score_default ?? null),
+          composite: display,
+          tier: display != null ? tierFromDisplayScore(display) : null,
           population: row?.population ?? null,
           state_abbr: row?.state_abbr ?? c.state ?? null,
         };

@@ -103,10 +103,10 @@ function ExecutiveSummaryPanelImpl({
 
   const oppSentence =
     opp >= STRONG
-      ? `Competitive Opportunity scores ${opp}/100 — wide open. National-brand STEM and enrichment competitors are under-represented in this market, so a new entrant has real white space to capture.`
+      ? `Competitive Opportunity scores ${opp}/100 — wide open. National-brand STEM and enrichment competitors are under-represented relative to demand, so a new entrant has real white space to capture. (The CSI formula also includes a baseline local-camp estimate, but that term is roughly constant across all markets — national-brand presence is what differentiates this city.)`
       : opp >= MODERATE
-      ? `Competitive Opportunity scores ${opp}/100 — contested. National brands already have some presence. Entry is possible but requires sharper positioning and a credible local differentiator.`
-      : `Competitive Opportunity scores ${opp}/100 — crowded. The market is already well-served by national-brand competitors. Remember: a low score here means high saturation, not low demand.`;
+      ? `Competitive Opportunity scores ${opp}/100 — contested. National brands already have some presence. Entry is possible but requires sharper positioning and a credible local differentiator. (The CSI formula also includes a baseline local-camp estimate, but that term is roughly constant across all markets — national-brand presence is what differentiates this city.)`
+      : `Competitive Opportunity scores ${opp}/100 — crowded. The market is already well-served by national-brand competitors relative to its size. Remember: a low score here means high saturation, not low demand. (The CSI formula also includes a baseline local-camp estimate, but that term is roughly constant across all markets — national-brand presence is what differentiates this city.)`;
 
   const signalRows = sigRows.filter((r) => r.value !== "—");
 

@@ -21,6 +21,8 @@ const EmailOutreachDocs = lazy(() => import("./pages/EmailOutreachDocs"));
 const UserGuide = lazy(() => import("./pages/UserGuide"));
 const DemographicsMethodology = lazy(() => import("./pages/DemographicsMethodology"));
 const Methodology = lazy(() => import("./pages/Methodology"));
+const ScoringMethod = lazy(() => import("./pages/ScoringMethod"));
+
 const TeamMembers = lazy(() => import("./pages/TeamMembers"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -54,6 +56,8 @@ const App = () => (
                 <Route path="/email-outreach-docs" element={<EmailOutreachDocs />} />
                 <Route path="/demographics-methodology" element={<DemographicsMethodology />} />
                 <Route path="/methodology" element={<Methodology />} />
+                <Route path="/scoring-method" element={<ScoringMethod />} />
+
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>

@@ -109,7 +109,7 @@ export function useMarketSelection(
     : safeSelected;
 
   return {
-    selectedMarketKey,
+    selectedMarketKey: safeSelected,
     effectiveMarketKey,
     userPickedMarket,
     autoFollowTop,

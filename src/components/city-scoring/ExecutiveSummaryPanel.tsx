@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { X } from "lucide-react";
 import { CATEGORIES } from "@/lib/cityScoringPageHelpers";
+import { calibratePillarForDisplay } from "@/lib/marketView";
 
 export interface SigRow {
   key: string;
@@ -14,12 +15,19 @@ export interface SigRow {
 interface Props {
   selectedCity: string;
   selectedState: string;
+  /** Total Score (calibrated 0-100), already minted by marketView. */
   detailScore: number | string;
+  /** RAW pillar scores (0-100, pre-calibration). */
   detailCategoryScores: Record<string, number>;
   sigRows: SigRow[];
   execReportOpen: boolean;
   setExecReportOpen: (v: boolean) => void;
 }
+
+// Calibrate a raw pillar to the display (school-grade) scale, matching the
+// spreadsheet view, MarketContextBanner, and the ranked-list pillar cells.
+const pill = (raw: number | null | undefined): number =>
+  raw == null ? 0 : (calibratePillarForDisplay(Number(raw)) ?? 0);
 
 function ExecutiveSummaryPanelImpl({
   selectedCity,
@@ -31,17 +39,17 @@ function ExecutiveSummaryPanelImpl({
   setExecReportOpen,
 }: Props) {
   const score = Math.round(Number(detailScore) || 0);
-  const verdict = score >= 70 ? "high" : score >= 50 ? "moderate" : "low";
+  // Tier-aligned verdict (matches A ≥ 90, B ≥ 80, C ≥ 70, D < 70).
+  const verdict = score >= 90 ? "high" : score >= 70 ? "moderate" : "low";
   const verdictLabel = verdict === "high" ? "high-opportunity" : verdict === "moderate" ? "moderate-opportunity" : "low-opportunity";
-  // CATEGORY KEYS — must match src/lib/cityScoringPageHelpers.ts (`demand`,
-  // `franchiseeSupply`, `competitiveLandscape`). Reading the wrong keys here
-  // silently returns 0 and makes the expand panel narrate "thin / crowded"
-  // for every city. Bug fixed May 24, 2026 after Brett caught it on Stillwater.
-  const demand = Math.round(detailCategoryScores["demand"] ?? 0);
-  const tam = Math.round(detailCategoryScores["franchiseeSupply"] ?? 0);
-  const opp = Math.round(detailCategoryScores["competitiveLandscape"] ?? 0);
+
+  // Pillars displayed on the school-grade scale so prose, table, spreadsheet,
+  // and dashboard list all describe the same number.
+  const demand = Math.round(pill(detailCategoryScores["demand"]));
+  const tam = Math.round(pill(detailCategoryScores["franchiseeSupply"]));
+  const opp = Math.round(pill(detailCategoryScores["competitiveLandscape"]));
   const catParts = CATEGORIES.map((c) => {
-    const v = Math.round(detailCategoryScores[c.key] ?? 0);
+    const v = Math.round(pill(detailCategoryScores[c.key]));
     return `${c.label} ${v}`;
   }).join(", ");
   const topSignals = sigRows.filter((r) => r.value !== "—").slice(0, 3);
@@ -49,20 +57,20 @@ function ExecutiveSummaryPanelImpl({
     ? topSignals.map((s) => `${s.label} (${s.value})`).join(", ")
     : "key market signals are still loading";
   const strongestCat = CATEGORIES
-    .map((c) => ({ label: c.label, v: Math.round(detailCategoryScores[c.key] ?? 0) }))
+    .map((c) => ({ label: c.label, v: Math.round(pill(detailCategoryScores[c.key])) }))
     .sort((a, b) => b.v - a.v)[0];
   const weakestCat = CATEGORIES
-    .map((c) => ({ label: c.label, v: Math.round(detailCategoryScores[c.key] ?? 0) }))
+    .map((c) => ({ label: c.label, v: Math.round(pill(detailCategoryScores[c.key])) }))
     .sort((a, b) => a.v - b.v)[0];
   let argument = "";
   if (verdict === "high") {
-    argument = `Taken together, a composite of ${score} puts ${selectedCity} firmly in our high-priority bucket — the underlying signals point to durable family demand and a recruitable operator pool that, in our experience, translate into a franchise location worth a serious conversation rather than another data refresh.`;
+    argument = `Taken together, a Total Score of ${score} puts ${selectedCity} firmly in our high-priority Tier-A bucket — the underlying signals point to durable family demand and a recruitable operator pool that, in our experience, translate into a franchise location worth a serious conversation rather than another data refresh.`;
   } else if (verdict === "moderate") {
-    argument = `Netted out, a composite of ${score} lands ${selectedCity} squarely in the moderate band: worth keeping on the watchlist as a secondary target, with the ${weakestCat.label.toLowerCase()} side of the equation determining whether it eventually graduates into a priority market.`;
+    argument = `Netted out, a Total Score of ${score} lands ${selectedCity} in the moderate Tier-B/C band: worth keeping on the watchlist as a secondary target, with the ${weakestCat.label.toLowerCase()} side of the equation determining whether it eventually graduates into a priority market.`;
   } else {
-    argument = `On balance, a composite of ${score} reads as a low-priority market today — the category mix simply does not yet justify outbound investment in ${selectedCity} without a compelling local thesis (an inbound operator, a real-estate opening, or a partner referral) to change the calculus.`;
+    argument = `On balance, a Total Score of ${score} reads as a low-priority Tier-D market today — the category mix simply does not yet justify outbound investment in ${selectedCity} without a compelling local thesis (an inbound operator, a real-estate opening, or a partner referral) to change the calculus.`;
   }
-  const summary = `${selectedCity}, ${selectedState} earns a ${score}/100 composite, placing it in the ${verdictLabel.replace("-", " ")} band of our 817-city universe. The score is anchored by ${strongestCat.label} at ${strongestCat.v} and pulled down most by ${weakestCat.label} at ${weakestCat.v} (full breakdown: ${catParts}). Standout signals beneath the score include ${sigText} — concrete, sourced data points rather than impressions. ${argument}`;
+  const summary = `${selectedCity}, ${selectedState} earns a ${score}/100 Total Score, placing it in the ${verdictLabel.replace("-", " ")} band of our 817-city universe. The score is anchored by ${strongestCat.label} at ${strongestCat.v} and pulled down most by ${weakestCat.label} at ${weakestCat.v} (full breakdown: ${catParts}). Standout signals beneath the score include ${sigText} — concrete, sourced data points rather than impressions. ${argument}`;
 
   const verdictSentence =
     verdict === "high"
@@ -71,24 +79,26 @@ function ExecutiveSummaryPanelImpl({
       ? `${selectedCity} is a moderate-opportunity market. There is enough underlying demand and supply to make it worth a closer look, but at least one category is holding the overall score back — we would want a clear local thesis before pushing it into the top tier.`
       : `${selectedCity} is currently a low-opportunity market on our scoring model. That does not mean it is a bad city — it means the combination of family demand, teacher supply, and competitive openness is not strong enough today to justify outbound investment without a compelling local reason (an existing operator, a real-estate opening, a referral, etc.).`;
 
+  // Pillar thresholds align with the tier-letter scale: ≥90 strong (A),
+  // ≥70 middling (B/C), <70 weak (D).
   const demandSentence =
-    demand >= 70
+    demand >= 90
       ? `Demand scores ${demand}/100 — strong. Families in this market have the income, the children in the right age band, and the education-spending behavior we look for. This is the single biggest signal that the product will sell here.`
-      : demand >= 40
+      : demand >= 70
       ? `Demand scores ${demand}/100 — middling. The household-income, child-population, and education-spend signals are mixed: some are healthy, others are softer than our top markets. It is workable, but not a slam dunk.`
       : `Demand scores ${demand}/100 — weak. Either the children-in-target-age count, the household income, or the dual-income share is well below what our top markets show. Without strong demand, even cheap operations and zero competition would not produce a sustainable franchise.`;
 
   const tamSentence =
-    tam >= 70
+    tam >= 90
       ? `TAM Teachers scores ${tam}/100 — excellent. There is a large, recruitable pool of elementary teachers in this metro, which means hiring qualified operators and instructors should not be the bottleneck.`
-      : tam >= 40
+      : tam >= 70
       ? `TAM Teachers scores ${tam}/100 — adequate. There are teachers to recruit, but the pool is not deep. Plan for a longer hiring cycle and budget for at least one fallback candidate per role.`
       : `TAM Teachers scores ${tam}/100 — thin. The supply of recruitable elementary teachers is small relative to our benchmark markets. Operator and instructor hiring will likely be the rate-limiting step here.`;
 
   const oppSentence =
-    opp >= 70
+    opp >= 90
       ? `Competitive Opportunity scores ${opp}/100 — wide open. National-brand STEM and enrichment competitors are under-represented in this market, so a new entrant has real white space to capture.`
-      : opp >= 40
+      : opp >= 70
       ? `Competitive Opportunity scores ${opp}/100 — contested. National brands already have some presence. Entry is possible but requires sharper positioning and a credible local differentiator.`
       : `Competitive Opportunity scores ${opp}/100 — crowded. The market is already well-served by national-brand competitors. Remember: a low score here means high saturation, not low demand.`;
 

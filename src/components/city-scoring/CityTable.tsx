@@ -98,7 +98,7 @@ export function CityTable({ cities, onSelectCity, compareMode, selectedForCompar
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-sm" style={{ color: '#343a40' }}>{city.__view.compositeFormatted}</span>
                   <div className="w-16 h-1.5 rounded-full" style={{ backgroundColor: '#e9ecef' }}>
-                    <div className="h-full rounded-full" style={{ width: `${city.__view.composite}%`, backgroundColor: '#fd7e14' }} />
+                    <div className="h-full rounded-full" style={{ width: `${city.__view.composite}%`, backgroundColor: '#0ea66e' }} />
                   </div>
                 </div>
               </TableCell>

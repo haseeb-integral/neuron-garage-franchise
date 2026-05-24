@@ -12,7 +12,7 @@ import { TierBadge } from "@/components/city-scoring/TierBadge";
 import { RowScorePopover } from "@/components/city-scoring/RowScorePopover";
 import { sampleCities } from "@/data/cityData";
 import { sameMarket, VISIBLE_CATEGORIES } from "@/lib/cityScoringPageHelpers";
-import { buildMarketView } from "@/lib/marketView";
+import { buildMarketView, calibratePillarForDisplay } from "@/lib/marketView";
 import { toast } from "sonner";
 
 type Props = {
@@ -195,7 +195,8 @@ function RankedMarketsListImpl({
                           categories={VISIBLE_CATEGORIES.map((cc) => ({ key: cc.key, label: cc.label }))}
                           categoryScores={c.categoryScores ?? {}}
                           appliedWeights={appliedWeights}
-                          composite={view.composite}
+                          rawComposite={view.rawComposite}
+                          displayComposite={view.composite}
                           tier={c.tier}
                         />
                       </PopoverContent>
@@ -210,16 +211,16 @@ function RankedMarketsListImpl({
               </div>
               {(() => {
                 const cs = c.categoryScores ?? {};
-                const cell = (v: number | null | undefined, title: string) => {
-                  if (v == null || !c.hasLiveData) return <span className="justify-self-end text-[10.5px] text-[#cbd5e1] tabular-nums">—</span>;
-                  const n = Math.round(Number(v));
+                const cell = (raw: number | null | undefined, title: string) => {
+                  if (raw == null || !c.hasLiveData) return <span className="justify-self-end text-[10.5px] text-[#cbd5e1] tabular-nums">—</span>;
+                  const n = calibratePillarForDisplay(Number(raw));
                   return <span className="justify-self-end text-[10.5px] font-semibold tabular-nums text-[#07142f]" title={title}>{n}</span>;
                 };
                 return (
                   <>
-                    {cell(cs.demand, "Demand score")}
-                    {cell(cs.franchiseeSupply, "TAM Teachers score")}
-                    {cell(cs.competitiveLandscape, "Competitive Opportunity (higher = less saturated)")}
+                    {cell(cs.demand, "Demand score (calibrated)")}
+                    {cell(cs.franchiseeSupply, "TAM Teachers score (calibrated)")}
+                    {cell(cs.competitiveLandscape, "Competitive Opportunity (calibrated, higher = less saturated)")}
                   </>
                 );
               })()}

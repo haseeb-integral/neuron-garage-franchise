@@ -194,7 +194,7 @@ function ExecutiveSummaryPanelImpl({
 
       {execReportOpen && (
         <div
-          className="fixed inset-y-0 right-0 z-50 w-[50vw] bg-white border-l border-[#e5eaf2] shadow-2xl overflow-y-auto animate-in slide-in-from-right duration-300"
+          className="fixed inset-y-0 right-0 z-50 w-full sm:w-[92vw] md:w-[80vw] lg:w-[65vw] xl:w-[55vw] 2xl:w-[50vw] max-w-[1100px] bg-white border-l border-[#e5eaf2] shadow-2xl overflow-y-auto animate-in slide-in-from-right duration-300"
           role="dialog"
           aria-label={`${selectedCity}, ${selectedState} executive report`}
         >

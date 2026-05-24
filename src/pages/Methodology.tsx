@@ -1,4 +1,5 @@
 import { Calculator, Info, AlertTriangle } from "lucide-react";
+import { DocShell, DocCard } from "@/components/DocShell";
 
 const TIERS = [
   { range: "< 0.0010", label: "Very High Opportunity", bg: "#dcf5e6", fg: "#0a7a3d", dot: "#0ea66e" },
@@ -49,20 +50,15 @@ function SectionTitle({ n, children }: { n: number; children: React.ReactNode })
 
 export default function Methodology() {
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8 text-[#07142f]">
-      {/* Header */}
-      <header className="mb-8 border-b border-[#eef2f7] pb-5">
-        <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-[#174be8] mb-2">
-          <Calculator size={14} />
-          Methodology
-        </div>
-        <h1 className="text-2xl font-black tracking-tight text-[#07142f]">
-          How the CSI Score is Calculated
-        </h1>
-        <p className="text-sm text-[#526078] mt-1">
-          Methodology &amp; Data Documentation — Version 2.0
-        </p>
-      </header>
+    <DocShell
+      eyebrow="Methodology"
+      eyebrowIcon={Calculator}
+      title={<>How the CSI Score is Calculated</>}
+      subtitle="Methodology & Data Documentation — Version 2.0"
+    >
+      <DocCard>
+        <div className="text-[#07142f]">
+
 
       {/* Section 1 */}
       <section className="mb-10">

@@ -24,6 +24,28 @@ export const DISPLAY_TIER_CUTOFFS = {
   // D is "everything else" (display < 70).
 } as const;
 
+// ─── Narrative thresholds ──────────────────────────────────────────────────
+// Single source of truth for prose/verdict bands across all panels. Aligned
+// with display-score tier cutoffs so every UI surface that grades a pillar or
+// composite reads the SAME school-grade scale (no raw 0-74 sneaking in).
+//   strong   → Tier A territory (≥90)
+//   moderate → Tier B/C territory (70-89)
+//   weak     → Tier D territory (<70)
+// Origin: May 24, 2026 audit — multiple panels had drifted to raw-scale
+// thresholds (70/40), labeling almost every market "weak".
+export const NARRATIVE_BANDS = {
+  strong: DISPLAY_TIER_CUTOFFS.A,    // 90
+  moderate: DISPLAY_TIER_CUTOFFS.C,  // 70
+} as const;
+
+export type NarrativeBand = "strong" | "moderate" | "weak";
+
+export function bandFromDisplayScore(display: number): NarrativeBand {
+  if (display >= NARRATIVE_BANDS.strong) return "strong";
+  if (display >= NARRATIVE_BANDS.moderate) return "moderate";
+  return "weak";
+}
+
 export function tierFromDisplayScore(display: number): TierLetter {
   if (display >= DISPLAY_TIER_CUTOFFS.A) return "A";
   if (display >= DISPLAY_TIER_CUTOFFS.B) return "B";

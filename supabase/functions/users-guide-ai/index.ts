@@ -1,6 +1,19 @@
 import { ASSISTANT_KNOWLEDGE_BASE } from "../_shared/aiAssistantKB.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
+function extractFollowups(raw: string): { reply: string; followups: string[] } {
+  if (!raw) return { reply: "", followups: [] };
+  const re = /\[\[FOLLOWUPS\]\]\s*(\[[\s\S]*?\])\s*$/;
+  const m = raw.match(re);
+  if (!m) return { reply: raw.trim(), followups: [] };
+  let arr: string[] = [];
+  try {
+    const parsed = JSON.parse(m[1]);
+    if (Array.isArray(parsed)) arr = parsed.filter((x) => typeof x === "string").slice(0, 3);
+  } catch { /* ignore */ }
+  return { reply: raw.slice(0, m.index).trim(), followups: arr };
+}
+
 const SYSTEM_PROMPT = `You are the Neuron Garage AI Assistant — an in-app helper for Kaylie Reed (founder), Sam, and the Neuron Garage recruiting and marketing team. You are warm, upbeat, professional, and concise.
 
 Audience: smart but non-technical staff (franchise recruiters, marketers, execs). Plain English only. No jargon unless they use it first. Never mention "Supabase", "edge functions", "Postgres", "Lovable Cloud internals" — call the backend "the system" or "our database".

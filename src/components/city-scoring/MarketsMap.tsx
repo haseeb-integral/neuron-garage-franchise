@@ -117,7 +117,8 @@ export function MarketsMap({ markets, onSelect }: Props) {
       <div className="mb-2">
         <h3 className="text-sm font-bold text-[#07142f]">Markets Map</h3>
         <p className="text-[11px] text-[#8794ab]">
-          {mapped.length} of {visibleMarkets.length} Tier I/II/III markets plotted
+          {mapped.length} of {visibleMarkets.length} Tier A/B/C markets plotted
+
           {unmappedCount > 0 && ` • ${unmappedCount} missing coordinates`}
           {excludedCount > 0 && ` • ${excludedCount} hidden (Tier IV or unscored)`}
         </p>

@@ -20,8 +20,9 @@ export function StatCards({ cities, nonRegOnly, onToggleNonReg }: Props) {
 
   const cards = [
     { label: "Total Cities Analyzed", value: total, icon: Globe },
-    { label: "Tier I Count",  value: aCount, icon: Award },
-    { label: "Tier II Count", value: bCount, icon: TrendingUp },
+    { label: "Tier A Count", value: aCount, icon: Award },
+    { label: "Tier B Count", value: bCount, icon: TrendingUp },
+
     { label: "Average Score", value: avgScore, icon: BarChart3 },
   ];
 

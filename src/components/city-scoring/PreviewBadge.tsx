@@ -21,7 +21,7 @@ export function PreviewBadge({ pending, preview, committed }: Props) {
       title="Projection — click Apply Weights to commit"
     >
       <span className="uppercase tracking-wide text-[9.5px] text-[#8794ab]">Preview</span>
-      <span className="tabular-nums">{preview.A} Tier I</span>
+      <span className="tabular-nums">{preview.A} Tier A</span>
       {delta !== 0 && <span className={`tabular-nums ${color}`}>({sign}{delta})</span>}
     </span>
   );

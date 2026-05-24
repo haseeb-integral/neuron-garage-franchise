@@ -1,77 +1,144 @@
-# Documentation Audit — Findings & Update Plan
 
-I audited the six docs reachable from the left sidebar against the work shipped in the last 24 hours and against your "no references to archived MD files" rule.
+# Neuron Garage v1.0 — Final-Day Ship Plan
 
-## Audit Summary
+Goal: regardless of how Kaylie, Sam, or anyone else clicks around, the app feels finished, fast, internally consistent, and trustworthy. No dead ends, no contradictory numbers, no scary errors, no half-built screens visible.
 
-| Doc (sidebar) | File | Refs archived MDs? | Stale vs. last 24h? | Verdict |
-|---|---|---|---|---|
-| User's Guide | `src/pages/UserGuide.tsx` | No | No | ✅ Leave as-is |
-| SmartLead API Spec | `src/data/smartleadSpec.md` | No | No | ✅ Leave as-is |
-| Outreach Guide | `src/data/emailOutreachDocs.md` | No | No | ✅ Leave as-is |
-| Demographics Method | `src/data/demographicsMethodology.md` | **Yes — heavy** | Partial | 🔴 Rewrite |
-| CSI Methodology | `src/pages/Methodology.tsx` | No | No | ✅ Leave as-is |
-| Full Specification | `src/pages/Spec.tsx` | No | **Yes — heavy** | 🔴 Rewrite sections |
+The plan is grouped by **severity**. Tier 0 is non-negotiable for v1.0. Tier 1 is "do unless we run out of time." Tier 2 is polish that elevates the demo.
 
-The other two `.tsx` doc shells (`SmartLeadSpec.tsx`, `EmailOutreachDocs.tsx`, `DemographicsMethodology.tsx`) just render the `.md` files via `?raw` — no content lives in them.
+---
 
-## Findings In Detail
+## Tier 0 — Ship-blockers (must land before client sees it)
 
-### 🔴 1. Demographics Method — `src/data/demographicsMethodology.md`
-**Archived MD references (your hard rule):**
-- L5: "Pairs with `TPD.md` … and `AGENTS.md` Rule 11."
-- L24: "see `TPD.md` for how it was imported"
-- L42: "Per AGENTS.md Rule 5"
-- L63: "Per `TPD.md`, vendor tables are the universe"
-- L66: "See `TEACHER_IDEAL_PROFILE.md`"
-- L72: "(locked enum, see AGENTS.md)"
-- L98: "Name-vs-Meaning (AGENTS.md Rule 10)"
-- L139: "Doc-sync per AGENTS.md Rule 9"
-- L156–161: full "Cross-References" block listing `TPD.md`, `AGENTS.md`, `DATABASE_LAYER_SPEC.md`, `TEACHER_IDEAL_PROFILE.md`, `GLOSSARY.md`
+### A. One source of truth for every visible number
+Rule 12 already mandates `MarketView` for composites. Final-pass audit:
+1. Grep every file that renders a score, tier, pillar, or percentage. Confirm it routes through `buildPillarView` / `MarketView` / `bandFromDisplayScore`. Fix any stragglers in drawers, PDF, AI panel, Executive Summary, ranked list, map popovers.
+2. Turn on the dev drift detector in preview and click through 20 cities; fail the build if it fires.
+3. Same audit for Teacher Search "fit score" and Pipeline "stage progress" if they compute anything.
 
-**Structural bug:** numbering jumps 2.2 → 2.5 (sections 2.3, 2.4 are missing).
+### B. Dead-code & dead-route purge
+1. Delete `CityDetailDrawer.tsx` + references in `specMarkdown.ts` and `marketView.test.ts` (already flagged earlier).
+2. Delete or hide internal-only routes from the sidebar/nav so the client never lands on raw spec pages: `/spec`, `/smartlead-spec`, `/email-outreach-docs`, `/demographics-methodology`, `/methodology`, `/scoring-method`. Keep them reachable from a single "Methodology & Docs" entry under a settings/help menu — don't expose 6 separate doc routes.
+3. Remove the older `EmailOutreach.tsx` page if `EmailOutreachV2` is the shipped version.
+4. Remove `PlaceholderPage`, `JourneyBar`, or any "TODO" / "Coming soon" copy still visible.
 
-**Stale vs. recent work:** doesn't mention the single-source `MarketView` rule (every composite mints from `src/lib/marketView.ts`) that we hardened in the last 24 hours.
+### C. Error & empty states everywhere
+For each of the 5 features, exercise: no data, 1 row, 1000 rows, failed fetch, slow fetch (throttled), auth expired, no permissions.
+- Replace red React error overlays with `QueryErrorState` + a Retry button.
+- Every list/table needs a real empty state with a CTA ("No markets yet — Run a search").
+- Wrap each page in an ErrorBoundary that logs and shows a friendly fallback.
 
-### 🔴 2. Full Specification — `src/pages/Spec.tsx`
-No archived-MD references, but the content describes an old prototype, not the live product:
-- **L113–114, L122–127:** "high-fidelity, fully clickable prototype using mock data — no backend writes are persisted", "No real authentication, persistence", "No live data feeds (Census, Yelp, LinkedIn, ZoomInfo) — all data is mocked". All four are now false: Lovable Cloud is wired, email/password auth is live, Census/BLS/BEA/FRED/NCES/Apollo/SmartLead are all wired.
-- **L46–58 TOC + L173–181 Routes:** missing `/email-outreach`, `/users-guide`, `/smartlead-spec`, `/email-outreach-docs`, `/demographics-methodology`, `/methodology`. Sidebar item list is also wrong (5 items now: Dashboard, City Search, Teacher Search, Email Outreach, Candidate Pipeline — no Onboarding).
-- **L302–327:** Onboarding described as live; per User's Guide it is parked for Phase 2.
-- **L361–373 Data Model:** "All data lives in `src/data/*.ts`. State changes … do not survive a page reload." False — primary source of truth is Lovable Cloud Postgres.
-- **L376–387 Tech Stack:** missing Lovable Cloud / Supabase, TanStack Query usage, Playwright E2E, GitHub Actions CI.
-- **L389–399 Future Work:** lists already-shipped items (Lovable Cloud, Census/Apollo, AI assists) as future.
-- **No mention** of last-24h hardening: `MarketView` single-composite rule (Rule 12), `QueryErrorState` retry pattern, Teacher dual-ID fix, removal of `pageCache`, Playwright E2E suite, CI pipeline.
+### D. Auth + roles hardening
+1. Confirm `user_roles` table + `has_role()` pattern is in place (per system rules). No role checks against `profiles`.
+2. RLS audit on every table the 4 features touch. Run `supabase--linter` and fix every critical finding.
+3. Reset-password and email-verify flows work end-to-end on the live `lovable.app` URL.
+4. Logout works from every page; session expiry shows a clean modal, not a console error.
 
-### ✅ Everything else
-- **User's Guide** — accurate, no archived refs, correctly notes SmartLead warm-up and Phase 2 onboarding parking.
-- **SmartLead API Spec** + **Outreach Guide** — current, technically accurate, no archived refs.
-- **CSI Methodology** — self-contained formula doc, no archived refs, still correct.
+### E. Refresh / long-running actions
+"Refresh data" on City Search currently errored earlier in the chat. Audit every button that triggers an edge function:
+- Disable while in-flight, show spinner + ETA copy ("This usually takes ~30s").
+- Toast on success/failure with actionable message.
+- Edge functions return structured `{ok, error, code}` — no 500s leaking raw stack traces to the UI.
 
-## Update Plan
+### F. Performance smoke test
+1. `bun run build` clean; bundle under 1.5 MB gzipped main chunk. Lazy-load heavy panels (PDF generator, map, charts) — looks like PDF is already heavy.
+2. City Search list of 800+ rows must scroll at 60fps. If not, virtualize.
+3. First contentful paint on `/` under 2s on a throttled connection.
 
-### Step 1 — Rewrite `src/data/demographicsMethodology.md`
-- Strip every reference to `TPD.md`, `AGENTS.md`, `TEACHER_IDEAL_PROFILE.md`, `DATABASE_LAYER_SPEC.md`, `GLOSSARY.md`, `MAY*_MEETING_NOTES`, and the "Rule N" shorthand.
-- Inline any rule still in force (Show-Formula contract, name-vs-meaning, signals-not-scores, single MarketView composite) as first-class prose in this doc, not as cross-refs.
-- Fix the 2.3/2.4 numbering gap (renumber cleanly).
-- Replace the "Cross-References" section with a short "Where this lives in the app" pointer (City Search, Teacher Search, Show Formula buttons).
-- Add a brief note that all composite scores in the UI are minted by a single `MarketView` source so a city can never display two different scores in one render.
+---
 
-### Step 2 — Rewrite the stale sections of `src/pages/Spec.tsx`
-Targeted edits only, keep the page structure / TOC / styling:
-- **§1 Overview:** drop "prototype / mocked / no persistence" language; describe the live product on Lovable Cloud.
-- **§4 Navigation & Routes:** update sidebar to the real 5 items + Docs group; update route list to match `AppSidebar.tsx`.
-- **§8 Candidate Pipeline:** keep the 7 stages, drop the Signing→Onboarding handoff section (mark Onboarding as parked for Phase 2).
-- **§9 Onboarding:** collapse to a one-paragraph "Parked for Phase 2" note.
-- **§12 Data Model:** replace "mock data in `src/data/*.ts`" with the real backend (Lovable Cloud Postgres, named tables: `us_cities_scored`, `teacher_prospects`, `candidates`, `smartlead_events`, `prospect_batches`, `prospects_staging`, `campaign_cache`).
-- **§13 Tech Stack:** add Lovable Cloud (Postgres + Auth + Edge Functions + Realtime), TanStack Query, Playwright E2E, GitHub Actions CI (lint + typecheck + test + build on every PR).
-- **§14 Future Work:** prune already-shipped items; keep only what's actually next (GreatSchools API key, live teacher outreach after warm-up, Phase 2 Onboarding).
-- **Add a new §15 "Reliability & Correctness Guarantees"** documenting the last-24h hardening: single `MarketView` composite source, `QueryErrorState` retry component on data-heavy surfaces, Teacher dual-ID push correctness, Playwright smoke coverage of City Search / Teacher Prospects / Candidate Pipeline, CI gate on PRs.
+## Tier 1 — Feature completeness per the four pillars
 
-### Step 3 — No-op confirmation
-Confirm the other four docs need no edits (User's Guide, SmartLead Spec, Outreach Guide, CSI Methodology).
+### 1. Dashboard (`/`, `Index.tsx`)
+The dashboard is the first thing the client sees. Today it's likely thin. Bring it to "executive cockpit":
+- 4 KPI tiles, one per feature: # markets scored, # teacher prospects, # emails sent (last 7d), # candidates in pipeline by stage.
+- "Recent activity" feed (last 10 actions across features).
+- "Top 5 markets right now" mini-table linking into City Search drawer.
+- "Pipeline funnel" mini-chart linking to Candidate Pipeline.
+- All tiles deep-link into the relevant feature with the same filter applied.
 
-## Risk
-Low. Pure documentation. No code paths, no schema, no runtime behavior touched.
+### 2. City Search
+- Drawer Tier 1 upgrades from prior message (hero block w/ pillars + tier, percentile chips, peer comparison, bottom-line one-liner) — these were already designed; ship them.
+- Ensure "Ask AI" only answers from real data (already hardened to A grade per prior message).
+- Executive Report PDF: re-QA every section renders, no clipped text, brand color, footer with date + user.
+- Map: zoom/pan smooth, markers clickable, tier color legend visible.
+- CSI copy updates from last turn are in — verify all 4 files render correctly.
 
-Approve and I'll execute Steps 1 + 2 in a single pass.
+### 3. Teacher Search
+- Confirm the search→results→detail flow works on a fresh user.
+- Fit Score must show its formula (Rule 1). Add "Show Formula" if missing.
+- Bulk actions: select N teachers → "Add to Outreach List" → routes into Email Outreach with the list pre-loaded.
+- Dedupe banner: "12 duplicates merged" visibility.
+- Apollo / Apify quotas surfaced as a tiny chip ("API credits: 4,210 left this month") so Sam knows when we're burning budget.
+
+### 4. Email Outreach (V2)
+- SmartLead connection status banner (green/red dot).
+- "Send test email to myself" button on every template — single most reassuring demo feature.
+- Per-lead status from `smartlead-webhook` reflected in UI within 5s (poll or realtime).
+- Unsubscribe / bounce list visible and filterable.
+- Template editor: AI personalize button works, preview shows merged fields with real lead data.
+
+### 5. Candidate Pipeline
+- Drag-and-drop between columns: prospect → qualification → confirmation → signing. Confirmation gate enforced (Rule: cannot skip into Signing).
+- Card shows: name, source market, fit score, last contact, owner.
+- Click card → drawer with full history (emails sent, market context, notes).
+- Add-note + assign-owner work and persist.
+- Empty pipeline state with "Promote a teacher from Teacher Search" CTA.
+
+---
+
+## Tier 2 — Demo polish (do all of these if time permits, they're each <30 min)
+
+1. **Global command palette** (Cmd-K) already partially exists (`GlobalSearch.tsx`) — make sure it jumps to any city, teacher, candidate, or page.
+2. **Keyboard shortcuts cheatsheet** modal (`?` key).
+3. **Onboarding tour** for first login (5 tooltips: sidebar → city search → teacher search → outreach → pipeline). Stored as `seen_tour_v1` flag on profile.
+4. **Consistent loading skeletons** in place of spinners.
+5. **Dark mode parity** — pick one, lock it, remove the toggle if half-broken.
+6. **404 page** is on-brand, links back to dashboard.
+7. **Favicon + page title** per route (`<title>` swap) — current title likely says "Lovable" or generic.
+8. **Print stylesheet** so anything Sam screenshots looks clean.
+9. **"What's new in v1.0" modal** that auto-opens once — sets the tone that this is a release.
+10. **Analytics**: Posthog or simple event log for clicks on the 4 main features, so we know during demo what gets used.
+
+---
+
+## Pre-demo checklist (run morning of)
+
+```text
+[ ] bun run build → no warnings
+[ ] supabase linter → zero critical
+[ ] Click every sidebar item logged out → redirects to /auth
+[ ] Click every sidebar item logged in → renders, no console errors
+[ ] City Search: search a city, open drawer, generate PDF, ask AI, refresh data
+[ ] Teacher Search: search a city, add 3 to outreach
+[ ] Outreach: send test email to self, verify receipt
+[ ] Pipeline: drag a card across all 4 stages, then back
+[ ] Dashboard: every tile is non-zero and links work
+[ ] Logout → log back in → state persists where it should
+[ ] Mobile viewport (440px): no horizontal scroll, sidebar collapses
+```
+
+---
+
+## Execution order I'd run today
+
+1. **Morning (2–3h):** Tier 0 A, B, D, E — math integrity, dead-code purge, auth/roles, error states. Highest risk of embarrassment.
+2. **Midday (2h):** Tier 0 C + F — empty/error states for every page, perf pass.
+3. **Afternoon (3h):** Tier 1 — Dashboard build-out, then Teacher Search + Outreach + Pipeline gap-fills in parallel since they're separate files.
+4. **Late afternoon (1h):** Tier 2 polish #1, #6, #7, #4 minimum.
+5. **End of day:** Run the pre-demo checklist. Fix anything that blinks red. Publish.
+
+---
+
+## What I'd explicitly NOT do
+
+- No new features beyond what's listed (per Rule 2).
+- No scoring engine math changes (per Rule — Sam only).
+- No nav redesign (Rule 7).
+- No new third-party providers (Rule 8).
+- No optimistic "AI summarizes the whole pipeline" — too risky to hallucinate in front of the client.
+
+---
+
+**Confidence after this plan executes:** the client can mash buttons in any order across all 5 surfaces and will see consistent numbers, friendly errors, real data, and a coherent narrative from market → teacher → email → pipeline. That's v1.0.
+
+Want me to start executing Tier 0 now, or do you want to edit the plan first?

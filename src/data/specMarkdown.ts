@@ -178,7 +178,7 @@ Every widget with a calculated number exposes a **Show Formula** affordance that
 
 ### City Detail drawer
 
-Row click opens \`CityDetailDrawer\` with:
+Row click opens \`MarketDetailDrawer\` with:
 
 - Composite gauge + verdict label + plain-English reason.
 - **Source Data panel** — the 12 live SOW signals grouped by category, with source URLs and confidence values.

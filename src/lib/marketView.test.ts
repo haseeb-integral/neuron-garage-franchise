@@ -132,7 +132,7 @@ describe("Phase 3 — cross-surface render agreement", () => {
 
   const SURFACES = [
     "RankedMarkets", "Gauge", "Dashboard", "MarketsMap", "Spreadsheet",
-    "NearbyPanel", "CityDetailDrawer", "CompareModal", "MarketCompareModal",
+    "NearbyPanel", "MarketDetailDrawer", "CompareModal", "MarketCompareModal",
     "GlobalSearch", "FindProspectsModal", "RankedListInner",
   ];
 

@@ -1,4 +1,5 @@
-import { Home, Map, Users, Kanban, ChevronLeft, ChevronRight, Mail, FileText, BookOpen, Send, MailOpen, BarChart3, Calculator, Gauge } from "lucide-react";
+import { useState } from "react";
+import { Home, Map, Users, Kanban, ChevronLeft, ChevronRight, ChevronDown, Mail, FileText, BookOpen, Send, MailOpen, BarChart3, Calculator, Gauge, LibraryBig } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import logo from "@/assets/neuron-garage-logo.png";
 import { useSidebarCollapsed } from "@/lib/sidebarState";
@@ -15,11 +16,14 @@ const primaryNavItems = [
 const utilityNavItems = [
   { title: "Team Members", url: "/settings/team", icon: Users },
   { title: "User's Guide", url: "/users-guide", icon: BookOpen },
-  { title: "SmartLead API Spec", url: "/smartlead-spec", icon: Send },
-  { title: "Outreach Guide", url: "/email-outreach-docs", icon: MailOpen },
-  { title: "Demographics Method", url: "/demographics-methodology", icon: BarChart3 },
+];
+
+const docsNavItems = [
   { title: "Scoring Method", url: "/scoring-method", icon: Gauge },
   { title: "CSI Methodology", url: "/methodology", icon: Calculator },
+  { title: "Demographics Method", url: "/demographics-methodology", icon: BarChart3 },
+  { title: "Outreach Guide", url: "/email-outreach-docs", icon: MailOpen },
+  { title: "SmartLead API Spec", url: "/smartlead-spec", icon: Send },
   { title: "Full Specification", url: "/spec", icon: FileText },
 ];
 
@@ -36,6 +40,8 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
   const [collapsed, setCollapsed] = useSidebarCollapsed();
   const isCollapsed = variant === "fixed" && collapsed;
   const widthClass = isCollapsed ? "w-16" : "w-[220px]";
+  const docsActive = docsNavItems.some((d) => location.pathname.startsWith(d.url));
+  const [docsOpen, setDocsOpen] = useState(docsActive);
 
   const isActive = (url: string) => (url === "/" ? location.pathname === "/" : location.pathname.startsWith(url));
 
@@ -92,6 +98,40 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
 
         <nav className={`flex flex-col ${isCollapsed ? "gap-2 px-2" : "gap-2.5 px-3.5"}`}>
           {utilityNavItems.map((item) => renderLink(item))}
+
+          {/* Methodology & Docs — collapsible group keeps the sidebar tidy for v1.0 */}
+          {isCollapsed ? (
+            <Tooltip delayDuration={150}>
+              <TooltipTrigger asChild>
+                <NavLink
+                  to={docsNavItems[0].url}
+                  onClick={onNavigate}
+                  className={`group flex min-h-[34px] items-center justify-center rounded-lg text-[13px] transition-all ${docsActive ? "bg-[#1f5bff] font-medium text-white" : "font-medium text-[#14233b] hover:bg-[#f7faff] hover:text-[#0757ff]"}`}
+                >
+                  <LibraryBig size={17} strokeWidth={1.75} />
+                </NavLink>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={8}>Methodology &amp; Docs</TooltipContent>
+            </Tooltip>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => setDocsOpen((v) => !v)}
+                className={`flex min-h-[34px] items-center gap-3 rounded-lg px-3 text-[13px] font-medium transition-all ${docsActive ? "text-[#0757ff]" : "text-[#14233b] hover:bg-[#f7faff] hover:text-[#0757ff]"}`}
+                aria-expanded={docsOpen}
+              >
+                <LibraryBig size={17} strokeWidth={1.75} />
+                <span className="flex-1 whitespace-nowrap text-left">Methodology &amp; Docs</span>
+                <ChevronDown size={14} className={`transition-transform ${docsOpen ? "rotate-180" : ""}`} />
+              </button>
+              {docsOpen && (
+                <div className="flex flex-col gap-1 pl-2">
+                  {docsNavItems.map((item) => renderLink(item))}
+                </div>
+              )}
+            </>
+          )}
         </nav>
       </aside>
     </TooltipProvider>

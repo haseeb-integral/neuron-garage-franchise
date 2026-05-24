@@ -17,9 +17,7 @@ vi.mock("@/hooks/use-toast", () => ({
 // Stub HTMLMediaElement.play
 beforeEach(() => {
   invokeMock.mockReset();
-  // @ts-expect-error jsdom
-  window.HTMLMediaElement.prototype.play = vi.fn().mockResolvedValue(undefined);
-  // @ts-expect-error jsdom
+  window.HTMLMediaElement.prototype.play = vi.fn().mockResolvedValue(undefined as never);
   window.HTMLMediaElement.prototype.pause = vi.fn();
 });
 

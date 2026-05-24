@@ -5,6 +5,8 @@
 // (A ≥ 90, B ≥ 80, C ≥ 70, D < 70) so tier counts respond to weight changes.
 
 import { Gauge, Info, ArrowRight } from "lucide-react";
+import { DocShell, DocCard } from "@/components/DocShell";
+
 
 function FormulaBlock({ children }: { children: React.ReactNode }) {
   return (

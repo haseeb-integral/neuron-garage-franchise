@@ -28,8 +28,8 @@ const baseMarket = {
 
 describe("buildMarketView", () => {
   it("clamps + applies display calibration into a branded CompositeScore", () => {
-    // Calibration anchors: 75→97, 100→100. Raw 82 / 82.6 land at ~98.
-    expect(buildMarketView({ ...baseMarket, compositeScore: 82.6 }).composite).toBe(98);
+    // Calibration anchors: 74→100, 100→100. Raw 82 / 82.6 land at 100.
+    expect(buildMarketView({ ...baseMarket, compositeScore: 82.6 }).composite).toBe(100);
     expect(buildMarketView({ ...baseMarket, compositeScore: -5 }).composite).toBe(0);
     expect(buildMarketView({ ...baseMarket, compositeScore: 250 }).composite).toBe(100);
     expect(buildMarketView({ ...baseMarket, compositeScore: NaN }).composite).toBe(0);
@@ -111,9 +111,9 @@ describe("assertNoCompositeDrift", () => {
 
 describe("brand", () => {
   it("unsafeAsCompositeScore is the only other path to a CompositeScore", () => {
-    // Raw 77.4 lands between anchors 75→97 and 100→100, calibrated to ~97.
+    // Raw 77.4 lands between anchors 74→100 and 100→100, calibrated to 100.
     const c = unsafeAsCompositeScore(77.4);
-    expect(c).toBe(97);
+    expect(c).toBe(100);
   });
 });
 
@@ -142,8 +142,8 @@ describe("Phase 3 — cross-surface render agreement", () => {
       assertNoCompositeDrift(buildMarketView(baseMarket), wHash).composite,
     );
     expect(new Set(composites).size).toBe(1);
-    // Raw 82 calibrated → 98 (anchor 75→97, 100→100).
-    expect(composites[0]).toBe(98);
+    // Raw 82 calibrated → 100 (anchor 74→100, 100→100).
+    expect(composites[0]).toBe(100);
     expect(errorSpy).not.toHaveBeenCalled();
   });
 
@@ -158,8 +158,8 @@ describe("Phase 3 — cross-surface render agreement", () => {
       wHash,
     );
     expect(errorSpy).toHaveBeenCalledTimes(1);
-    // Raw 82→98, raw 23→58 after calibration. Drift detector reports both.
-    expect(String(errorSpy.mock.calls[0][0])).toMatch(/98.*58|58.*98/);
+    // Raw 82→100, raw 23→44 after calibration. Drift detector reports both.
+    expect(String(errorSpy.mock.calls[0][0])).toMatch(/100.*44|44.*100/);
   });
 });
 

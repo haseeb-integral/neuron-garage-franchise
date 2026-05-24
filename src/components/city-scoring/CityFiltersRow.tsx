@@ -151,12 +151,12 @@ export function CityFiltersRow({
                 <span className="cursor-help text-[#8794ab]"><Info size={11} /></span>
               </TooltipTrigger>
               <TooltipContent className="max-w-[280px] text-xs leading-relaxed">
-                Tiers are assigned by <b>percentile rank</b> across all live-scored cities, not by absolute score:
+                Tiers are assigned by <b>absolute Total Score</b>, same as school grades:
                 <br />
-                <b>Tier A = Top 5%</b>, <b>Tier B = next 15%</b>,{" "}
-                <b>Tier C = next 30%</b>, <b>Tier D = bottom 50%</b>.
+                <b>Tier A = 90–100</b>, <b>Tier B = 80–89</b>,{" "}
+                <b>Tier C = 70–79</b>, <b>Tier D = below 70</b>.
                 <br />
-                Tiers are assigned from the <b>raw Weighted Composite Index</b> (rank-percentile), so the display calibration on the Total Score doesn't shift any city between tiers.
+                Because each cutoff is a fixed score, tier counts respond to weight changes — a stronger preset can push cities up a tier.
               </TooltipContent>
             </Tooltip>
           </label>
@@ -164,10 +164,10 @@ export function CityFiltersRow({
             <SelectTrigger className="h-9 bg-white border-[#e5eaf2] text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="All">All</SelectItem>
-              <SelectItem value="A">Tier A — Top 5%</SelectItem>
-              <SelectItem value="B">Tier B — Next 15%</SelectItem>
-              <SelectItem value="C">Tier C — Next 30%</SelectItem>
-              <SelectItem value="D">Tier D — Bottom 50%</SelectItem>
+              <SelectItem value="A">Tier A — 90–100</SelectItem>
+              <SelectItem value="B">Tier B — 80–89</SelectItem>
+              <SelectItem value="C">Tier C — 70–79</SelectItem>
+              <SelectItem value="D">Tier D — below 70</SelectItem>
 
             </SelectContent>
           </Select>

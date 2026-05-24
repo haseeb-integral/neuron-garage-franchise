@@ -1,8 +1,8 @@
 // Scoring Method — explains the two-number contract for every market:
-//   1. Weighted Composite Index (raw math, drives sort + tier assignment)
+//   1. Weighted Composite Index (raw math, drives sort)
 //   2. Total Score (display, calibrated via a monotonic curve to match A–F grades)
-// Plus how the four tiers (A/B/C/D) are assigned by rank percentile, NOT by
-// the displayed number — so the curve cannot move a city between tiers.
+// Plus how the four tiers (A/B/C/D) are assigned by absolute Total Score
+// (A ≥ 90, B ≥ 80, C ≥ 70, D < 70) so tier counts respond to weight changes.
 
 import { Gauge, Info, ArrowRight } from "lucide-react";
 
@@ -28,19 +28,20 @@ function SectionTitle({ n, children }: { n: number; children: React.ReactNode })
 // Calibration anchors mirror src/lib/marketView.ts. Keep in sync.
 const ANCHORS: Array<[number, number]> = [
   [0, 0],
-  [20, 55],
-  [35, 72],
-  [50, 85],
-  [65, 92],
-  [75, 97],
+  [20, 40],
+  [35, 60],
+  [41, 70],
+  [50, 80],
+  [59, 90],
+  [74, 100],
   [100, 100],
 ];
 
 const TIER_ROWS = [
-  { tier: "A", percentile: "Top 5%",   gradeBand: "A (≈ 90–100)", bg: "#e6f7ef", fg: "#0a7a3d" },
-  { tier: "B", percentile: "Next 15%", gradeBand: "B (≈ 80–89)",  bg: "#eaf0ff", fg: "#174be8" },
-  { tier: "C", percentile: "Next 30%", gradeBand: "C (≈ 70–79)",  bg: "#fff6dc", fg: "#b8860b" },
-  { tier: "D", percentile: "Bottom 50%", gradeBand: "D / F (< 70)", bg: "#fff1e6", fg: "#c2410c" },
+  { tier: "A", scoreBand: "90 – 100", rawBand: "raw ≥ 59", reads: "A — top of the class",      bg: "#e6f7ef", fg: "#0a7a3d" },
+  { tier: "B", scoreBand: "80 – 89",  rawBand: "raw 50 – 58", reads: "B — strong market",      bg: "#eaf0ff", fg: "#174be8" },
+  { tier: "C", scoreBand: "70 – 79",  rawBand: "raw 41 – 49", reads: "C — passable",           bg: "#fff6dc", fg: "#b8860b" },
+  { tier: "D", scoreBand: "< 70",     rawBand: "raw < 41",    reads: "D / F — below cutoff",   bg: "#fff1e6", fg: "#c2410c" },
 ];
 
 export default function ScoringMethod() {
@@ -143,9 +144,9 @@ where master weights are normalized to sum to 100%.`}</FormulaBlock>
           <p className="text-[12.5px] text-[#526078] italic">
             Properties of the curve we rely on: <strong>monotonic</strong> (relative ordering is
             preserved exactly), <strong>anchored at 0 and 100</strong> (the scale still claims
-            "/100"), <strong>tier-safe</strong> (tiers come from rank percentile, so percentile
-            membership is unchanged), <strong>pure</strong> (same input → same output, so the
-            drift detector still works).
+            "/100"), <strong>tier-aligned</strong> (the 70/80/90 display cutoffs correspond to
+            fixed raw cutoffs so tier counts respond to weight changes),
+            <strong> pure</strong> (same input → same output, so the drift detector still works).
           </p>
         </div>
       </section>
@@ -188,21 +189,21 @@ where master weights are normalized to sum to 100%.`}</FormulaBlock>
 
       {/* Section 5 — tiers */}
       <section className="mb-10">
-        <SectionTitle n={5}>Tiers A–D: by percentile rank, not by score</SectionTitle>
+        <SectionTitle n={5}>Tiers A–D: by absolute Total Score</SectionTitle>
         <div className="space-y-3 text-[13.5px] leading-relaxed text-[#1a2540]">
           <p>
-            Tiers are assigned by <strong>percentile rank</strong> across all live-scored cities,
-            computed on the <strong>raw Weighted Composite Index</strong> — not on the displayed
-            Total Score. Because the calibration curve is monotonic, the two ordering bases are
-            identical, but anchoring tier logic to the raw Index makes it impossible for a future
-            curve tweak to bump any city across a tier boundary.
+            Tiers are assigned by <strong>absolute Total Score</strong> using the same A–F cutoffs
+            every teacher knows from school. Because each cutoff is a fixed score, tier
+            <em> counts</em> respond to weight changes: bump a preset and you'll see cities cross
+            the 90 / 80 / 70 thresholds in the Weighting Preview pills.
           </p>
           <div className="rounded-md border border-[#eef2f7] overflow-hidden">
             <table className="w-full text-[13px]">
               <thead className="bg-[#fafbfd] text-[#526078]">
                 <tr>
                   <th className="text-left px-4 py-2 font-semibold">Tier</th>
-                  <th className="text-left px-4 py-2 font-semibold">Percentile Rank</th>
+                  <th className="text-left px-4 py-2 font-semibold">Total Score</th>
+                  <th className="text-left px-4 py-2 font-semibold">Equivalent Raw Index</th>
                   <th className="text-left px-4 py-2 font-semibold">Reads Like</th>
                 </tr>
               </thead>
@@ -214,8 +215,9 @@ where master weights are normalized to sum to 100%.`}</FormulaBlock>
                         Tier {r.tier}
                       </span>
                     </td>
-                    <td className="px-4 py-2 text-[#1a2540]">{r.percentile}</td>
-                    <td className="px-4 py-2 text-[#526078]">{r.gradeBand}</td>
+                    <td className="px-4 py-2 font-mono tabular-nums text-[#07142f]">{r.scoreBand}</td>
+                    <td className="px-4 py-2 font-mono tabular-nums text-[#526078]">{r.rawBand}</td>
+                    <td className="px-4 py-2 text-[#526078]">{r.reads}</td>
                   </tr>
                 ))}
               </tbody>
@@ -224,9 +226,10 @@ where master weights are normalized to sum to 100%.`}</FormulaBlock>
           <div className="mt-3 rounded-md border border-[#cfdcff] bg-[#f4f8ff] p-3 flex gap-2 items-start">
             <Info size={14} className="mt-0.5 text-[#174be8] flex-shrink-0" />
             <p className="text-[12.5px] text-[#1a2540] leading-relaxed">
-              We use the four letters <strong>A, B, C, D</strong> — not Roman numerals — so the
-              tier label and the displayed Total Score read as the same A–F grade vocabulary that
-              every teacher already knows.
+              The raw-Index cutoffs are derived from the monotonic curve, so the two columns are
+              two views of the same boundary. We compare against the raw Index internally so the
+              tier of a city is determined the instant its weighted composite is computed — no
+              extra rounding step.
             </p>
           </div>
         </div>

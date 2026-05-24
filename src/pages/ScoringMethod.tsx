@@ -144,9 +144,9 @@ where master weights are normalized to sum to 100%.`}</FormulaBlock>
           <p className="text-[12.5px] text-[#526078] italic">
             Properties of the curve we rely on: <strong>monotonic</strong> (relative ordering is
             preserved exactly), <strong>anchored at 0 and 100</strong> (the scale still claims
-            "/100"), <strong>tier-safe</strong> (tiers come from rank percentile, so percentile
-            membership is unchanged), <strong>pure</strong> (same input → same output, so the
-            drift detector still works).
+            "/100"), <strong>tier-aligned</strong> (the 70/80/90 display cutoffs correspond to
+            fixed raw cutoffs so tier counts respond to weight changes),
+            <strong> pure</strong> (same input → same output, so the drift detector still works).
           </p>
         </div>
       </section>

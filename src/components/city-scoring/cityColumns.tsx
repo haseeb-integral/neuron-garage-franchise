@@ -1,5 +1,5 @@
 import type { RankedMarket } from "@/lib/cityScoringLiveData";
-import { buildMarketView, calibratePillarForDisplay } from "@/lib/marketView";
+import { buildMarketView, buildPillarView, type PillarKey } from "@/lib/marketView";
 
 
 export type ColDef = {
@@ -39,10 +39,12 @@ const tierBg: Record<string, string> = {
 };
 
 const row = (m: RankedMarket): any => (m as any).scoredRow ?? {};
-const cat = (m: RankedMarket, k: string): number | null => {
-  const v = (m.categoryScores as any)?.[k];
-  return v == null ? null : Number(v);
-};
+// Mint pillars once per market — branded PillarsView guarantees every column
+// here is the calibrated (school-grade) value, not raw.
+const pillar = (m: RankedMarket, k: PillarKey) =>
+  buildPillarView(m.categoryScores).[k as never] as never; // placeholder, replaced below
+const pillarDisplay = (m: RankedMarket, k: PillarKey): number | null =>
+  buildPillarView(m.categoryScores)[k].display;
 
 // Frozen-column geometry. Left edge is built up left-to-right.
 export const STICKY_LEFT: Record<string, { left: number; width: number }> = {

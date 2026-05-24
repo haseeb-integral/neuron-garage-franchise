@@ -129,7 +129,15 @@ export default function Methodology() {
 
         <h3 className="text-[13px] font-bold text-[#07142f] mt-5 mb-2">Step 3 — Divide</h3>
         <FormulaBlock>{`CSI = Supply ÷ Demand`}</FormulaBlock>
+
+        <div className="mt-5 rounded-md border border-[#cfe0ff] bg-[#eef5ff] p-4 text-[13px] leading-relaxed text-[#1a2540]">
+          <p className="font-semibold text-[#174be8] mb-1">Important — CSI direction vs. Competitive Opportunity</p>
+          <p>
+            The raw <strong>CSI score</strong> from this methodology is a <strong>saturation</strong> measure where <strong>lower = better</strong> (less competition = more opportunity). The rest of the app speaks in <strong>Competitive Opportunity</strong> — a 0–100 pillar where <strong>higher = better</strong>, so it aligns with Demand and TAM Teachers. The single shared helper <code>competitiveOpportunityFromCsi(csi)</code> in <code>src/lib/marketView.ts</code> performs the flip. No UI surface inverts CSI inline; everything reads through that helper so the polarity can never get out of sync.
+          </p>
+        </div>
       </section>
+
 
       {/* Section 3 */}
       <section className="mb-10">

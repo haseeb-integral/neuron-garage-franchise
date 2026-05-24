@@ -11,7 +11,7 @@ const BLUE = "#0757ff";
 const YELLOW = "#FFD400";
 const INK = "#0b1a36";
 
-type Msg = { role: "user" | "assistant"; content: string };
+type Msg = { role: "user" | "assistant"; content: string; followups?: string[] };
 
 export type AssistantContext = "general" | "city-search" | "teacher-search" | "email-outreach" | "candidate-pipeline";
 

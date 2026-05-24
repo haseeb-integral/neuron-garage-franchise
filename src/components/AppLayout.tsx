@@ -6,6 +6,7 @@ import { HelpCircle, Menu } from "lucide-react";
 import logo from "@/assets/neuron-garage-logo.png";
 import { maybeStartTourOnFirstVisit, startTour } from "@/lib/tour";
 import { useDefaultCollapsedForRoute, useSidebarCollapsed } from "@/lib/sidebarState";
+import { useRouteTitle } from "@/lib/usePageTitle";
 import { ErrorBoundary } from "./ErrorBoundary";
 
 export function AppLayout() {
@@ -14,6 +15,7 @@ export function AppLayout() {
   const [collapsed] = useSidebarCollapsed();
 
   useDefaultCollapsedForRoute(["/candidate-pipeline"]);
+  useRouteTitle();
 
   const closeDrawer = () => setOpen(false);
 

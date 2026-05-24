@@ -151,6 +151,20 @@ function ExecutiveSummaryPanelImpl({
     },
   });
 
+  if (!cityId) {
+    return (
+      <div className="rounded-lg bg-white border border-[#eef2f7] p-3 flex-1 flex flex-col">
+        <h4 className="text-xs font-bold text-[#07142f] mb-1">{selectedCity}, {selectedState}</h4>
+        <p className="text-[10px] uppercase tracking-wide text-[#8794ab] mb-2 flex items-center gap-1">
+          <Sparkles size={10} className="text-[#174be8]" /> AI Executive Summary
+        </p>
+        <p className="text-[11px] leading-relaxed text-[#8794ab]">
+          No data for this market yet. Refresh this city to pull live signals before generating a summary.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="rounded-lg bg-white border border-[#eef2f7] p-3 flex-1 flex flex-col">

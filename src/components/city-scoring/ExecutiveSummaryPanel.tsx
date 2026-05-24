@@ -44,15 +44,21 @@ function ExecutiveSummaryPanelImpl({
   const sigText = topSignals.length
     ? topSignals.map((s) => `${s.label} (${s.value})`).join(", ")
     : "key market signals are still loading";
+  const strongestCat = CATEGORIES
+    .map((c) => ({ label: c.label, v: Math.round(detailCategoryScores[c.key] ?? 0) }))
+    .sort((a, b) => b.v - a.v)[0];
+  const weakestCat = CATEGORIES
+    .map((c) => ({ label: c.label, v: Math.round(detailCategoryScores[c.key] ?? 0) }))
+    .sort((a, b) => a.v - b.v)[0];
   let argument = "";
   if (verdict === "high") {
-    argument = `With a composite of ${score}, ${selectedCity} ranks as a high-priority market worth deep examination — the underlying signals point to durable family demand and a recruitable operator pool.`;
+    argument = `Taken together, a composite of ${score} puts ${selectedCity} firmly in our high-priority bucket — the underlying signals point to durable family demand and a recruitable operator pool that, in our experience, translate into a franchise location worth a serious conversation rather than another data refresh.`;
   } else if (verdict === "moderate") {
-    argument = `A composite of ${score} places ${selectedCity} in the moderate band: worth examining as a secondary target, with category mix (${catParts}) determining whether it graduates to a priority market.`;
+    argument = `Netted out, a composite of ${score} lands ${selectedCity} squarely in the moderate band: worth keeping on the watchlist as a secondary target, with the ${weakestCat.label.toLowerCase()} side of the equation determining whether it eventually graduates into a priority market.`;
   } else {
-    argument = `A composite of ${score} suggests ${selectedCity} is a low-priority market — category scores (${catParts}) do not yet justify outbound investment without a compelling local thesis.`;
+    argument = `On balance, a composite of ${score} reads as a low-priority market today — the category mix simply does not yet justify outbound investment in ${selectedCity} without a compelling local thesis (an inbound operator, a real-estate opening, or a partner referral) to change the calculus.`;
   }
-  const summary = `${selectedCity}, ${selectedState} scores ${score}/100 overall (${verdict} opportunity). Category breakdown: ${catParts}. Standout signals include ${sigText}. ${argument}`;
+  const summary = `${selectedCity}, ${selectedState} earns a ${score}/100 composite, placing it in the ${verdictLabel.replace("-", " ")} band of our 817-city universe. The score is anchored by ${strongestCat.label} at ${strongestCat.v} and pulled down most by ${weakestCat.label} at ${weakestCat.v} (full breakdown: ${catParts}). Standout signals beneath the score include ${sigText} — concrete, sourced data points rather than impressions. ${argument}`;
 
   const verdictSentence =
     verdict === "high"

@@ -19,10 +19,17 @@ const fmtMoney = (v: any) =>
   v == null || v === "" || Number.isNaN(Number(v)) ? "—" : `$${Number(v).toLocaleString()}`;
 const fmtPct = (v: any) =>
   v == null || v === "" || Number.isNaN(Number(v)) ? "—" : `${Number(v).toFixed(1)}%`;
+// Scores are shown as whole integers everywhere (Total Score, pillars) so the
+// dashboard list and spreadsheet read identically. Use fmtNum1 only for COL
+// Index and similar non-score ratios.
+const fmtScore = (v: any) =>
+  v == null || v === "" || Number.isNaN(Number(v)) ? "—" : String(Math.round(Number(v)));
 const fmtNum1 = (v: any) =>
   v == null || v === "" || Number.isNaN(Number(v)) ? "—" : Number(v).toFixed(1);
 const fmtNum2 = (v: any) =>
   v == null || v === "" || Number.isNaN(Number(v)) ? "—" : Number(v).toFixed(2);
+const fmtNum3 = (v: any) =>
+  v == null || v === "" || Number.isNaN(Number(v)) ? "—" : Number(v).toFixed(3);
 
 const tierBg: Record<string, string> = {
   A: "bg-[#dcfce7] text-[#0a7c3a]",
@@ -107,9 +114,9 @@ export const COLUMNS: ColDef[] = [
       );
     },
   },
-  { key: "score_demand", label: "Demand", align: "right", group: "Scores", get: (m) => calibratePillarForDisplay(cat(m, "demand")), render: (m) => fmtNum1(calibratePillarForDisplay(cat(m, "demand"))) },
-  { key: "score_tam", label: "TAM Teachers", align: "right", group: "Scores", get: (m) => calibratePillarForDisplay(cat(m, "franchiseeSupply")), render: (m) => fmtNum1(calibratePillarForDisplay(cat(m, "franchiseeSupply"))) },
-  { key: "score_csi_opp", label: "Comp. Opportunity", align: "right", group: "Scores", get: (m) => calibratePillarForDisplay(cat(m, "competitiveLandscape")), render: (m) => fmtNum1(calibratePillarForDisplay(cat(m, "competitiveLandscape"))) },
+  { key: "score_demand", label: "Demand", align: "right", group: "Scores", get: (m) => calibratePillarForDisplay(cat(m, "demand")), render: (m) => fmtScore(calibratePillarForDisplay(cat(m, "demand"))) },
+  { key: "score_tam", label: "TAM Teachers", align: "right", group: "Scores", get: (m) => calibratePillarForDisplay(cat(m, "franchiseeSupply")), render: (m) => fmtScore(calibratePillarForDisplay(cat(m, "franchiseeSupply"))) },
+  { key: "score_csi_opp", label: "Comp. Opportunity", align: "right", group: "Scores", get: (m) => calibratePillarForDisplay(cat(m, "competitiveLandscape")), render: (m) => fmtScore(calibratePillarForDisplay(cat(m, "competitiveLandscape"))) },
 
   // Demand inputs
   { key: "population", label: "Population", align: "right", group: "Demand", get: (m) => m.population ?? row(m).population ?? null, render: (m) => fmtInt(m.population ?? row(m).population) },
@@ -142,10 +149,7 @@ export const COLUMNS: ColDef[] = [
   {
     key: "csi_raw", label: "CSI (raw)", align: "right", group: "Competitive Landscape",
     get: (m) => row(m).csi_score ?? null,
-    render: (m) => {
-      const v = row(m).csi_score;
-      return v == null ? "—" : Number(v).toFixed(5);
-    },
+    render: (m) => fmtNum3(row(m).csi_score),
   },
   { key: "csi_sat", label: "Saturation", align: "left", group: "Competitive Landscape", get: (m) => row(m).csi_saturation_category ?? "", render: (m) => <span className="text-[#526078]">{row(m).csi_saturation_category ?? "—"}</span> },
 ];

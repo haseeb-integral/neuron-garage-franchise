@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { CityData } from "@/data/cityData";
 import { toast } from "sonner";
 import { getSignalGeography, GEO_BADGE_CLASS } from "@/lib/signalGeography";
+import { calibratePillarForDisplay } from "@/lib/marketView";
 import { buildMarketReportPdf } from "./market-report/marketReportPdf";
 import type { LiveSignal, MetricCategory, MetricStatus } from "./market-report/marketReportTypes";
 
@@ -238,17 +239,21 @@ export function MarketReportModal({ open, onClose, market, categoryScores, refre
           <section>
             <h4 className="text-[13px] font-bold text-[#07142f] mb-2">Category Scores</h4>
             <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-              {CAT_LABELS.map((c) => (
-                <div key={c.key}>
-                  <div className="flex justify-between text-[12px]">
-                    <span className="text-[#526078]">{c.label}</span>
-                    <span className="font-semibold text-[#07142f]">{categoryScores[c.key] ?? "-"}</span>
+              {CAT_LABELS.map((c) => {
+                const raw = categoryScores[c.key];
+                const display = raw == null ? null : calibratePillarForDisplay(Number(raw));
+                return (
+                  <div key={c.key}>
+                    <div className="flex justify-between text-[12px]">
+                      <span className="text-[#526078]">{c.label}</span>
+                      <span className="font-semibold text-[#07142f]">{display ?? "—"}</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-[#e8edf6] mt-1">
+                      <div className="h-full rounded-full bg-[#174be8]" style={{ width: `${display ?? 0}%` }} />
+                    </div>
                   </div>
-                  <div className="h-1.5 rounded-full bg-[#e8edf6] mt-1">
-                    <div className="h-full rounded-full bg-[#174be8]" style={{ width: `${categoryScores[c.key] ?? 0}%` }} />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </section>
 

@@ -1,15 +1,15 @@
 // RowScorePopover — "Why this tier?" popover content for a single market row.
-// Shows the same math the central recomputeComposite uses: weight × score per
-// category, summed to composite. Numbers are committed (last Apply) — this
-// popover never displays preview math, to keep it consistent with the table.
 //
-// Transparency note (May 24, 2026): we surface BOTH the Weighted Composite
-// Index (raw math, used for sort + tier assignment) and the Total Score
-// (calibrated for readability) so power users can audit the calibration.
+// Shows BOTH numbers a user sees on the row:
+//   • Weighted Composite Index (raw)  = Σ (weight% × raw category score)
+//   • Total Score (calibrated)        = same number on the school-grade curve
+//
+// The popover receives both pre-minted from marketView so it does NOT
+// re-calibrate. Previously it received only the already-calibrated composite
+// and ran the curve a second time, which silently double-calibrated.
 
 import type { CategoryKey } from "@/stores/cityScoringStore";
-import { calibrateCompositeForDisplay } from "@/lib/marketView";
-
+import { calibratePillarForDisplay } from "@/lib/marketView";
 
 interface Cat {
   key: CategoryKey;
@@ -22,24 +22,37 @@ interface Props {
   categories: Cat[];
   categoryScores: Partial<Record<CategoryKey, number | null>>;
   appliedWeights: Record<CategoryKey, number>;
-  composite: number;
+  /** Raw Weighted Composite Index (pre-calibration). */
+  rawComposite: number;
+  /** Calibrated Total Score (display). */
+  displayComposite: number;
   tier: "A" | "B" | "C" | "D" | string;
 }
 
-export function RowScorePopover({ city, state, categories, categoryScores, appliedWeights, composite, tier }: Props) {
+export function RowScorePopover({
+  city,
+  state,
+  categories,
+  categoryScores,
+  appliedWeights,
+  rawComposite,
+  displayComposite,
+  tier,
+}: Props) {
   const total = Object.values(appliedWeights).reduce((s, v) => s + v, 0) || 1;
   const rows = categories.map((c) => {
     const raw = categoryScores[c.key];
-    const score = raw == null ? null : Math.round(Number(raw));
+    const rawScore = raw == null ? null : Math.round(Number(raw));
+    const displayScore = raw == null ? null : calibratePillarForDisplay(Number(raw));
     const weightPct = (appliedWeights[c.key] / total) * 100;
-    const contribution = score == null ? null : (weightPct * score) / 100;
-    return { key: c.key, label: c.label, weightPct, score, contribution };
+    const contribution = rawScore == null ? null : (weightPct * rawScore) / 100;
+    return { key: c.key, label: c.label, weightPct, rawScore, displayScore, contribution };
   });
   const sumContribution = rows.reduce((s, r) => s + (r.contribution ?? 0), 0);
-  const missingCount = rows.filter((r) => r.score == null).length;
+  const missingCount = rows.filter((r) => r.rawScore == null).length;
 
   return (
-    <div className="w-[360px] p-3">
+    <div className="w-[380px] p-3">
       <div className="mb-2">
         <p className="text-[12px] font-semibold text-[#07142f]">{city}, {state}</p>
         <p className="text-[11px] font-bold uppercase tracking-wide text-[#526078]">Why Tier {tier}?</p>
@@ -50,8 +63,8 @@ export function RowScorePopover({ city, state, categories, categoryScores, appli
             <tr>
               <th className="text-left px-2 py-1.5 font-medium">Category</th>
               <th className="text-right px-2 py-1.5 font-medium">Weight</th>
-              <th className="text-right px-2 py-1.5 font-medium">Score</th>
-              <th className="text-right px-2 py-1.5 font-medium">Contribution</th>
+              <th className="text-right px-2 py-1.5 font-medium" title="Calibrated pillar score (school-grade)">Score</th>
+              <th className="text-right px-2 py-1.5 font-medium" title="Weight% × raw pillar score">Contrib.</th>
             </tr>
           </thead>
           <tbody className="text-[#1a2540]">
@@ -60,9 +73,9 @@ export function RowScorePopover({ city, state, categories, categoryScores, appli
                 <td className="text-left px-2 py-1.5">{r.label}</td>
                 <td className="text-right px-2 py-1.5 tabular-nums">{r.weightPct.toFixed(1)}%</td>
                 <td className="text-right px-2 py-1.5 tabular-nums">
-                  {r.score == null
+                  {r.displayScore == null
                     ? <span className="text-[#c2410c]" title="No data — excluded from composite">—</span>
-                    : r.score}
+                    : r.displayScore}
                 </td>
                 <td className="text-right px-2 py-1.5 tabular-nums">
                   {r.contribution == null ? "—" : r.contribution.toFixed(1)}
@@ -72,20 +85,19 @@ export function RowScorePopover({ city, state, categories, categoryScores, appli
             <tr className="border-t-2 border-[#c5cdda] bg-[#fafbfd] font-bold">
               <td className="text-left px-2 py-1.5" colSpan={2}>Weighted Composite Index (raw)</td>
               <td className="text-right px-2 py-1.5 tabular-nums text-[#526078]" title={`Σ contributions = ${sumContribution.toFixed(1)}`}>=</td>
-              <td className="text-right px-2 py-1.5 tabular-nums text-[#07142f]">{Math.round(composite)}</td>
+              <td className="text-right px-2 py-1.5 tabular-nums text-[#07142f]">{Math.round(rawComposite)}</td>
             </tr>
             <tr className="bg-[#eef5ff] font-bold">
               <td className="text-left px-2 py-1.5 text-[#174be8]" colSpan={2}>Total Score (calibrated)</td>
               <td className="text-right px-2 py-1.5 tabular-nums text-[#526078]" title="Monotonic display curve — sort order and tier are preserved">→</td>
-              <td className="text-right px-2 py-1.5 tabular-nums text-[#174be8]">{Math.round(calibrateCompositeForDisplay(composite))}</td>
+              <td className="text-right px-2 py-1.5 tabular-nums text-[#174be8]">{Math.round(displayComposite)}</td>
             </tr>
           </tbody>
         </table>
       </div>
       <p className="text-[11px] text-[#526078] mt-2 leading-snug">
-        Formula: <strong>Weighted Composite Index</strong> = Σ (master weight % × category score). The <strong>Total Score</strong> is the same number passed through a <strong>monotonic curve</strong> so it reads on the A–F grade scale (order &amp; tiers preserved). Tier boundaries (on the raw Index): A ≥ 80, B ≥ 65, C ≥ 50, D &lt; 50. <a href="/scoring-method" className="text-[#174be8] underline">Scoring Method →</a>
+        Formula: <strong>Weighted Composite Index</strong> = Σ (master weight % × raw category score). The <strong>Total Score</strong> is the same number passed through a <strong>monotonic curve</strong> so it reads on the A–F grade scale (order &amp; tiers preserved). Tier boundaries are on the <strong>Total Score</strong>: A ≥ 90, B ≥ 80, C ≥ 70, D &lt; 70. <a href="/scoring-method" className="text-[#174be8] underline">Scoring Method →</a>
       </p>
-
 
       {missingCount > 0 && (
         <p className="text-[10.5px] text-[#c2410c] mt-1 leading-snug italic">

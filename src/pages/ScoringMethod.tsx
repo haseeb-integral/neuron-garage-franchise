@@ -5,6 +5,8 @@
 // (A ≥ 90, B ≥ 80, C ≥ 70, D < 70) so tier counts respond to weight changes.
 
 import { Gauge, Info, ArrowRight } from "lucide-react";
+import { DocShell, DocCard } from "@/components/DocShell";
+
 
 function FormulaBlock({ children }: { children: React.ReactNode }) {
   return (
@@ -46,20 +48,15 @@ const TIER_ROWS = [
 
 export default function ScoringMethod() {
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8 text-[#07142f]">
-      {/* Header */}
-      <header className="mb-8 border-b border-[#eef2f7] pb-5">
-        <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-[#174be8] mb-2">
-          <Gauge size={14} />
-          Scoring Method
-        </div>
-        <h1 className="text-2xl font-black tracking-tight text-[#07142f]">
-          From Weighted Composite Index to Total Score
-        </h1>
-        <p className="text-sm text-[#526078] mt-1">
-          How city scores are computed, calibrated for display, and bucketed into Tiers A–D.
-        </p>
-      </header>
+    <DocShell
+      eyebrow="Scoring Method"
+      eyebrowIcon={Gauge}
+      title={<>From Weighted Composite Index to Total Score</>}
+      subtitle="How city scores are computed, calibrated for display, and bucketed into Tiers A–D."
+    >
+      <DocCard>
+        <div className="text-[#07142f]">
+
 
       {/* Section 1 */}
       <section className="mb-10">
@@ -267,6 +264,9 @@ where master weights are normalized to sum to 100%.`}</FormulaBlock>
           </ul>
         </div>
       </section>
-    </div>
+        </div>
+      </DocCard>
+    </DocShell>
   );
+
 }

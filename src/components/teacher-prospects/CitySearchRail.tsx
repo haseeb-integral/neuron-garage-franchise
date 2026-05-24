@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, MapPin, Loader2, Info, Send, Star, Trophy, Filter, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { calibrateCompositeForDisplay } from "@/lib/marketView";
+
+const toDisplay = (raw: number | null | undefined): number | null =>
+  raw == null ? null : Math.round(calibrateCompositeForDisplay(Number(raw)));
 
 // A market tile can come from one of four sources. The badge on each tile
 // explains *why* it's shown so the user is never guessing.

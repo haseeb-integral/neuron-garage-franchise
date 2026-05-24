@@ -240,7 +240,13 @@ export function AiAssistant({ open, onOpenChange, context }: Props) {
                       : { background: "white", color: INK, border: "1px solid #e6ecf8" }
                   }
                 >
-                  <div className="whitespace-pre-wrap">{m.content}</div>
+                  <div className="prose prose-sm max-w-none [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0">
+                    {m.role === "assistant" ? (
+                      <ReactMarkdown>{m.content}</ReactMarkdown>
+                    ) : (
+                      <div className="whitespace-pre-wrap">{m.content}</div>
+                    )}
+                  </div>
                   {m.role === "assistant" && (
                     <div className="mt-2 flex items-center gap-2">
                       {speakingIdx === idx ? (
@@ -253,7 +259,7 @@ export function AiAssistant({ open, onOpenChange, context }: Props) {
                         </button>
                       ) : (
                         <button
-                          onClick={() => playTts(m.content, idx)}
+                          onClick={() => playTts(stripMarkdownForSpeech(m.content), idx)}
                           className="inline-flex items-center gap-1 text-[11px] font-semibold opacity-70 hover:opacity-100"
                           style={{ color: NAVY }}
                         >

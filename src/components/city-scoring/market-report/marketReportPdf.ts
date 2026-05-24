@@ -4,6 +4,7 @@
 import jsPDF from "jspdf";
 import type { CityData } from "@/data/cityData";
 import { getSignalGeography } from "@/lib/signalGeography";
+import { buildPillarView, type PillarKey } from "@/lib/marketView";
 import type { LiveSignal, MetricCategory } from "./marketReportTypes";
 
 const CAT_LABELS: { key: string; label: string }[] = [
@@ -162,7 +163,10 @@ export function buildMarketReportPdf(args: BuildPdfArgs): jsPDF {
   y += cardH + 14;
 
   // ===== Category scores =====
+  // Pillars rendered on the calibrated (school-grade) scale so the PDF matches
+  // the modal, dashboard, and spreadsheet.
   heading("Category Scores");
+  const pdfPillars = buildPillarView(categoryScores as Partial<Record<PillarKey, number>>);
   const colW = (contentW - 20) / 2;
   const barH = 6;
   const itemH = 26;
@@ -171,14 +175,19 @@ export function buildMarketReportPdf(args: BuildPdfArgs): jsPDF {
     for (let j = 0; j < 2 && i + j < CAT_LABELS.length; j++) {
       const c = CAT_LABELS[i + j];
       const x = marginX + j * (colW + 20);
-      const score = categoryScores[c.key] ?? 0;
+      const p =
+        c.key === "demand" || c.key === "franchiseeSupply" || c.key === "competitiveLandscape"
+          ? pdfPillars[c.key as PillarKey]
+          : null;
+      const score = p?.display ?? 0;
+      const label = p?.displayFormatted ?? "-";
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(9.5);
       setColor("#526078");
       pdf.text(c.label, x, y);
       pdf.setFont("helvetica", "bold");
       setColor("#07142f");
-      pdf.text(String(categoryScores[c.key] ?? "-"), x + colW, y, { align: "right" });
+      pdf.text(label, x + colW, y, { align: "right" });
       setFill("#e8edf6");
       pdf.roundedRect(x, y + 5, colW, barH, 3, 3, "F");
       setFill("#174be8");

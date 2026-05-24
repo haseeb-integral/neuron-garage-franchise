@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface CityNarrative {
@@ -40,6 +40,7 @@ export function useCityNarrative({
   const [data, setData] = useState<CityNarrative | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
   const serializedContext = useMemo(
     () => (context ? JSON.stringify(context) : null),
     [context],
@@ -48,6 +49,7 @@ export function useCityNarrative({
   const fetchNarrative = useCallback(
     async (opts?: { force?: boolean; model?: "default" | "pro" }) => {
       if (!cityId) return;
+      const requestId = ++requestIdRef.current;
       setLoading(true);
       setError(null);
       try {
@@ -65,11 +67,14 @@ export function useCityNarrative({
         );
         if (fnErr) throw fnErr;
         if ((resp as any)?.error) throw new Error((resp as any).error);
+        if (requestId !== requestIdRef.current) return;
         setData(resp as CityNarrative);
       } catch (e) {
+        if (requestId !== requestIdRef.current) return;
         setError(e instanceof Error ? e.message : "Failed to load narrative");
         setData(null);
       } finally {
+        if (requestId !== requestIdRef.current) return;
         setLoading(false);
       }
     },

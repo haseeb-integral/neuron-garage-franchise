@@ -2,6 +2,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { CityData, sampleCities } from "@/data/cityData";
 import type { CategoryKey } from "@/stores/cityScoringStore";
 import { canonicalKey } from "@/lib/signalAliases";
+import { competitiveOpportunityFromCsi } from "@/lib/marketView";
+
 
 /**
  * Subset of `us_cities_scored` columns this module reads.
@@ -219,17 +221,17 @@ export async function loadLiveRankedMarkets(_opts?: { includeExtras?: boolean })
       scoredRow: row,
       categoryScores: {
         demand: row.score_demand == null ? undefined : toNumber(row.score_demand, 0),
-        // CSI is stored as SATURATION (high = crowded = bad). For the UI
-        // category bar and the composite we invert to OPPORTUNITY so high =
-        // good, matching Demand and TAM. Raw csi_score is still available
-        // via scoredRow.score_csi / scoredRow.csi_score for the drawer.
-        competitiveLandscape: row.score_csi == null
-          ? undefined
-          : Math.max(0, Math.min(100, 100 - toNumber(row.score_csi, 0))),
+        // CSI is stored as SATURATION (higher = crowded = bad). The single
+        // shared helper `competitiveOpportunityFromCsi` flips it into the
+        // Competitive Opportunity pillar (higher = better). Never inline
+        // `100 - score_csi` — always go through the helper.
+        competitiveLandscape:
+          competitiveOpportunityFromCsi(row.score_csi == null ? null : toNumber(row.score_csi, 0)) ?? undefined,
         franchiseeSupply: row.score_tam_teachers == null ? undefined : toNumber(row.score_tam_teachers, 0),
       },
     };
   });
+
 
   return dedupeRankedMarkets(mapped);
 }

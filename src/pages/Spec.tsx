@@ -374,15 +374,29 @@ const Spec = () => {
           </Section>
 
           <Section id="reliability" title="14. Reliability & Correctness Guarantees">
+            <SubHeading>Weighted Composite Index vs. Total Score</SubHeading>
+            <p>
+              Each market carries two numbers that describe the same underlying truth on two different scales:
+            </p>
+            <ul>
+              <li><strong>Weighted Composite Index</strong> (0–100, raw math) — the weighted sum of the three pillars (Demand, TAM Teachers, Competitive Opportunity). This is what the engine uses internally for sort order and Tier A/B/C/D assignment.</li>
+              <li><strong>Total Score</strong> (0–100, calibrated for display) — the same number passed through a strictly-increasing piecewise-linear curve so the scale reads like a school grade. Because the curve is monotonic, City A still outranks City B by the same margin in ordering; only the displayed numbers shift up.</li>
+            </ul>
+            <p>
+              Both numbers are surfaced side-by-side anywhere the formula is exposed: the "Why this tier?" popover, the city detail drawer, and the XLSX export. The single mint point is <code>src/lib/marketView.ts</code> — components never compute, never re-derive, and never round either value inside JSX.
+            </p>
+            <SubHeading>Competitive Opportunity helper</SubHeading>
+            <p>
+              Manus' CSI is a <strong>saturation</strong> score (lower = better). The single shared helper <code>competitiveOpportunityFromCsi(csi)</code> in <code>marketView.ts</code> flips it into the friendly Competitive Opportunity pillar (higher = better). No surface inlines <code>100 − score_csi</code> directly — that's a banned pattern.
+            </p>
             <SubHeading>One composite per city per render</SubHeading>
             <p>
-              Every composite score, tier badge, and formatted score string rendered to the user is minted by a single
-              <code> MarketView</code> source (<code>src/lib/marketView.ts</code>). Components never compute, never re-derive,
-              and never round composites inside JSX. A dev-mode drift detector throws a red console error if the same
+              A dev-mode drift detector throws a red console error if the same
               <code> (cityId, weightsHash)</code> ever mints two different composites in one render pass. This rule exists
               because we previously shipped a bug where a table cell showed <code>88</code> while the gauge above it showed
               <code> 23</code> for the same city.
             </p>
+
             <SubHeading>Friendly error states with retry</SubHeading>
             <p>
               Data-heavy surfaces (City Search ranked markets, Teacher Prospects, Candidate Pipeline) use a shared

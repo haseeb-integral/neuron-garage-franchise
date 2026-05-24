@@ -93,14 +93,47 @@ function mintCompositeScore(raw: unknown): CompositeScore {
 }
 
 
+// ─── Pillar display calibration ────────────────────────────────────────────
+// The same monotonic curve, exposed for the 3 pillar scores (Demand, TAM
+// Teachers, Competitive Opportunity). DISPLAY ONLY — never feed the result
+// back into composite math (categoryScores stay raw so the client-side
+// recompute matches the server composite).
+export function calibratePillarForDisplay(raw: number | null | undefined): number | null {
+  if (raw == null || !Number.isFinite(Number(raw))) return null;
+  return Math.round(calibrateCompositeForDisplay(Number(raw)));
+}
+
+// ─── Competitive Opportunity helper ────────────────────────────────────────
+// Manus' CSI saturation score is LOWER = better. Every UI surface that wants
+// the friendly "Competitive Opportunity" pillar (higher = better) MUST flip
+// through this single helper — never inline `100 - score_csi` again. Returns
+// a RAW pillar value (0–100, higher = more opportunity). Pass through
+// calibratePillarForDisplay() for the user-facing number.
+export function competitiveOpportunityFromCsi(csi: number | null | undefined): number | null {
+  if (csi == null || !Number.isFinite(Number(csi))) return null;
+  const v = 100 - Number(csi);
+  return Math.max(0, Math.min(100, v));
+}
+
 // ─── Market view ──────────────────────────────────────────────────────────
 // One object per market per render. Everything the UI needs, frozen.
+//
+// Naming convention (locked May 24, 2026):
+//   • Weighted Composite Index = the RAW math result (used for sort/tier).
+//     Exposed as `rawComposite` / `rawCompositeFormatted`.
+//   • Total Score              = the CALIBRATED display number (school-grade
+//     scale). Exposed as `composite` / `compositeFormatted`.
+// Both are shown side-by-side in popovers, drawers, and CSV exports so the
+// user can audit the calibration at any time. They are the same underlying
+// truth on two different scales (like Celsius vs. Fahrenheit).
 export type MarketView = Readonly<{
   cityId: string | null;
   city: string;
   state: string;
-  composite: CompositeScore;        // ← the ONLY composite any UI should read
-  compositeFormatted: string;       // "82" or "—"
+  composite: CompositeScore;        // Total Score (calibrated) — the ONLY composite any UI should read
+  compositeFormatted: string;       // "91" or "—"
+  rawComposite: number;             // Weighted Composite Index (pre-calibration)
+  rawCompositeFormatted: string;    // "63" or "—"
   tier: TierLetter | null;
   tierFormatted: string;            // "A" or "—"
   hasLiveData: boolean;
@@ -121,6 +154,9 @@ type MarketLike = {
 };
 
 export function buildMarketView(market: MarketLike): MarketView {
+  const rawN = Number(market.compositeScore ?? 0);
+  const rawClamped = Number.isFinite(rawN) ? Math.max(0, Math.min(100, rawN)) : 0;
+  const rawComposite = Math.round(rawClamped);
   const composite = mintCompositeScore(market.compositeScore ?? 0);
   const hasLiveData =
     market.hasLiveData === true ||
@@ -134,6 +170,8 @@ export function buildMarketView(market: MarketLike): MarketView {
     state: String(market.state ?? ""),
     composite,
     compositeFormatted: hasLiveData ? String(composite) : "—",
+    rawComposite,
+    rawCompositeFormatted: hasLiveData ? String(rawComposite) : "—",
     tier: tier ?? null,
     tierFormatted: tier && hasLiveData ? String(tier) : "—",
     hasLiveData,
@@ -147,6 +185,7 @@ export function buildMarketView(market: MarketLike): MarketView {
         : null,
   });
 }
+
 
 // ─── Weights hash ──────────────────────────────────────────────────────────
 // Stable, cheap hash of applied master + sub weights. Used to key the drift

@@ -1,5 +1,6 @@
 import type { RankedMarket } from "@/lib/cityScoringLiveData";
-import { buildMarketView } from "@/lib/marketView";
+import { buildMarketView, calibratePillarForDisplay } from "@/lib/marketView";
+
 
 export type ColDef = {
   key: string;
@@ -92,13 +93,24 @@ export const COLUMNS: ColDef[] = [
     ),
   },
   {
-    key: "composite", label: "Composite", align: "right", group: "Scores",
+    key: "composite", label: "Total Score", align: "right", group: "Scores",
     get: (m) => buildMarketView(m).composite,
-    render: (m) => <span className="font-semibold text-[#07142f]">{buildMarketView(m).compositeFormatted}</span>,
+    render: (m) => {
+      const v = buildMarketView(m);
+      return (
+        <span
+          className="font-semibold text-[#07142f]"
+          title={`Total Score (calibrated for readability): ${v.compositeFormatted}\nWeighted Composite Index (raw math): ${v.rawCompositeFormatted}`}
+        >
+          {v.compositeFormatted}
+        </span>
+      );
+    },
   },
-  { key: "score_demand", label: "Demand", align: "right", group: "Scores", get: (m) => cat(m, "demand"), render: (m) => fmtNum1(cat(m, "demand")) },
-  { key: "score_tam", label: "TAM Teachers", align: "right", group: "Scores", get: (m) => cat(m, "franchiseeSupply"), render: (m) => fmtNum1(cat(m, "franchiseeSupply")) },
-  { key: "score_csi_opp", label: "Comp. Opportunity", align: "right", group: "Scores", get: (m) => cat(m, "competitiveLandscape"), render: (m) => fmtNum1(cat(m, "competitiveLandscape")) },
+  { key: "score_demand", label: "Demand", align: "right", group: "Scores", get: (m) => calibratePillarForDisplay(cat(m, "demand")), render: (m) => fmtNum1(calibratePillarForDisplay(cat(m, "demand"))) },
+  { key: "score_tam", label: "TAM Teachers", align: "right", group: "Scores", get: (m) => calibratePillarForDisplay(cat(m, "franchiseeSupply")), render: (m) => fmtNum1(calibratePillarForDisplay(cat(m, "franchiseeSupply"))) },
+  { key: "score_csi_opp", label: "Comp. Opportunity", align: "right", group: "Scores", get: (m) => calibratePillarForDisplay(cat(m, "competitiveLandscape")), render: (m) => fmtNum1(calibratePillarForDisplay(cat(m, "competitiveLandscape"))) },
+
   // Demand inputs
   { key: "population", label: "Population", align: "right", group: "Demand", get: (m) => m.population ?? row(m).population ?? null, render: (m) => fmtInt(m.population ?? row(m).population) },
   { key: "children_5_12", label: "Children 5–12", align: "right", group: "Demand", get: (m) => row(m).children_5_12 ?? null, render: (m) => fmtInt(row(m).children_5_12) },

@@ -2,8 +2,14 @@
 // Shows the same math the central recomputeComposite uses: weight × score per
 // category, summed to composite. Numbers are committed (last Apply) — this
 // popover never displays preview math, to keep it consistent with the table.
+//
+// Transparency note (May 24, 2026): we surface BOTH the Weighted Composite
+// Index (raw math, used for sort + tier assignment) and the Total Score
+// (calibrated for readability) so power users can audit the calibration.
 
 import type { CategoryKey } from "@/stores/cityScoringStore";
+import { calibrateCompositeForDisplay } from "@/lib/marketView";
+
 
 interface Cat {
   key: CategoryKey;
@@ -64,16 +70,22 @@ export function RowScorePopover({ city, state, categories, categoryScores, appli
               </tr>
             ))}
             <tr className="border-t-2 border-[#c5cdda] bg-[#fafbfd] font-bold">
-              <td className="text-left px-2 py-1.5" colSpan={2}>Composite</td>
+              <td className="text-left px-2 py-1.5" colSpan={2}>Weighted Composite Index (raw)</td>
               <td className="text-right px-2 py-1.5 tabular-nums text-[#526078]" title={`Σ contributions = ${sumContribution.toFixed(1)}`}>=</td>
               <td className="text-right px-2 py-1.5 tabular-nums text-[#07142f]">{Math.round(composite)}</td>
+            </tr>
+            <tr className="bg-[#eef5ff] font-bold">
+              <td className="text-left px-2 py-1.5 text-[#174be8]" colSpan={2}>Total Score (calibrated)</td>
+              <td className="text-right px-2 py-1.5 tabular-nums text-[#526078]" title="Monotonic display curve — sort order and tier are preserved">→</td>
+              <td className="text-right px-2 py-1.5 tabular-nums text-[#174be8]">{Math.round(calibrateCompositeForDisplay(composite))}</td>
             </tr>
           </tbody>
         </table>
       </div>
       <p className="text-[11px] text-[#526078] mt-2 leading-snug">
-        Formula: Composite = Σ (master weight % × category score). Tier boundaries: A ≥ 80, B ≥ 65, C ≥ 50, D &lt; 50.
+        Formula: <strong>Weighted Composite Index</strong> = Σ (master weight % × category score). The <strong>Total Score</strong> is the same number on a school-grade scale (monotonic curve, order &amp; tiers preserved). Tier boundaries (on the raw Index): A ≥ 80, B ≥ 65, C ≥ 50, D &lt; 50.
       </p>
+
       {missingCount > 0 && (
         <p className="text-[10.5px] text-[#c2410c] mt-1 leading-snug italic">
           {missingCount} categor{missingCount === 1 ? "y has" : "ies have"} no data and {missingCount === 1 ? "is" : "are"} excluded from the composite.

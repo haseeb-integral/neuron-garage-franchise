@@ -132,6 +132,11 @@ const faqs = [
     a: "Yes — and you can verify them. Every score has a 'Show Formula' button revealing the raw inputs and weighting. If something looks off, tell Haseeb and we'll tune it.",
   },
   {
+    q: "Why do I see two numbers — 'Total Score' and 'Weighted Composite Index'?",
+    a: "Same truth, two scales. The Weighted Composite Index (raw) is the math the engine uses to sort cities and assign Tiers A–D. The Total Score is the same number on a school-grade scale so a strong city reads like 91 instead of 63. Order and tiers are identical — only the displayed number shifts up. Both are shown side-by-side in the 'Why this tier?' popover, the city drawer, and the XLSX export.",
+  },
+
+  {
     q: "What if I promote the wrong teacher?",
     a: "No harm done. Move the card to the Disqualified column in the Candidate Pipeline. They stay in Teacher Search for future review.",
   },

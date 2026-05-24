@@ -43,7 +43,18 @@ export function CityDetailDrawer({ city, open, onClose }: Props) {
           <SheetTitle className="flex items-center gap-3" style={{ color: '#003c7e' }}>
             {city.city}, {city.state} <TierBadge tier={city.tier} />
           </SheetTitle>
-          <p className="text-sm" style={{ color: '#6c757d' }}>Composite Score: <strong>{buildMarketView(city).compositeFormatted}</strong></p>
+          {(() => {
+            const v = buildMarketView(city);
+            return (
+              <p className="text-sm" style={{ color: '#6c757d' }}>
+                Total Score: <strong style={{ color: '#003c7e' }}>{v.compositeFormatted}</strong>
+                <span className="ml-2 text-[11px]" title="Weighted Composite Index — raw math, used for sorting and tier assignment">
+                  (raw Index: <strong>{v.rawCompositeFormatted}</strong>)
+                </span>
+              </p>
+            );
+          })()}
+
         </SheetHeader>
 
         <div className="mb-6">

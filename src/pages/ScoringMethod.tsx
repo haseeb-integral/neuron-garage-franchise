@@ -264,6 +264,9 @@ where master weights are normalized to sum to 100%.`}</FormulaBlock>
           </ul>
         </div>
       </section>
-    </div>
+        </div>
+      </DocCard>
+    </DocShell>
   );
+
 }

@@ -80,7 +80,7 @@ function ExecutiveSummaryPanelImpl({
     verdict === "high"
       ? `${selectedCity} is a strong, high-opportunity market for a Neuron Garage location. The numbers point to durable family demand, a deep teacher pool to recruit from, and a competitive landscape that still has room for a new branded operator.`
       : verdict === "moderate"
-      ? `${selectedCity} is a moderate-opportunity market. There is enough underlying demand and supply to make it worth a closer look, but at least one category is holding the overall score back — we would want a clear local thesis before pushing it into the top tier.`
+      ? `${selectedCity} is a moderate-opportunity market. There is enough underlying demand and supply to make it worth a closer look, but at least one category is holding the overall score back — this analysis suggests a clear local thesis is needed before pushing it into the top tier.`
       : `${selectedCity} is currently a low-opportunity market on our scoring model. That does not mean it is a bad city — it means the combination of family demand, teacher supply, and competitive openness is not strong enough today to justify outbound investment without a compelling local reason (an existing operator, a real-estate opening, a referral, etc.).`;
 
   // Pillar narratives use the SAME NARRATIVE_BANDS constants as the verdict.

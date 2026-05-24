@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { VISIBLE_CATEGORIES, type Category } from "@/lib/cityScoringPageHelpers";
 import type { RankedMarket } from "@/lib/cityScoringLiveData";
+import { buildPillarView, type PillarKey } from "@/lib/marketView";
+import { bandFromDisplayScore } from "@/lib/cityTiers";
 type SelectedLike = Pick<RankedMarket, "city" | "state"> & { cityId?: string | null };
 
 type CategoryKey = Category["key"];
@@ -293,10 +295,18 @@ function SelectedMarketPanelImpl({
         {/* Market Summary */}
         {(() => {
           const mScore = Math.round(Number(detailScore) || 0);
-          const mDemand = Math.round(detailCategoryScores["demand"] ?? 0);
-          const mTam = Math.round(detailCategoryScores["tam"] ?? 0);
-          const mOpp = Math.round(detailCategoryScores["competitive"] ?? 0);
-          const mVerdict = mScore >= 70 ? "high" : mScore >= 50 ? "moderate" : "low";
+          // Use the branded PillarsView so this summary reads the same
+          // calibrated values as the dashboard list & spreadsheet. Previously
+          // this block read keys "tam"/"competitive" which don't exist in
+          // categoryScores (real keys are "franchiseeSupply"/"competitiveLandscape"),
+          // so demand/tam/opp were silently always 0.
+          const pillars = buildPillarView(detailCategoryScores as Partial<Record<PillarKey, number>>);
+          const mDemand = pillars.demand.display ?? 0;
+          const mTam = pillars.franchiseeSupply.display ?? 0;
+          const mOpp = pillars.competitiveLandscape.display ?? 0;
+          // Verdict bands centralized in cityTiers (strong ≥90, moderate ≥70).
+          const mBand = bandFromDisplayScore(mScore);
+          const mVerdict = mBand === "strong" ? "high" : mBand === "moderate" ? "moderate" : "low";
           const cats: { label: string; v: number }[] = [
             { label: "family demand", v: mDemand },
             { label: "teacher supply", v: mTam },

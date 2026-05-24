@@ -1,8 +1,11 @@
 import { memo } from "react";
-import { X } from "lucide-react";
+import { X, RefreshCw, Sparkles, Loader2 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import { CATEGORIES } from "@/lib/cityScoringPageHelpers";
 import { buildPillarView, type PillarKey } from "@/lib/marketView";
-import { bandFromDisplayScore, NARRATIVE_BANDS } from "@/lib/cityTiers";
+import { bandFromDisplayScore } from "@/lib/cityTiers";
+import { useCityNarrative } from "@/lib/useCityNarrative";
+import { AskCityPanel } from "./AskCityPanel";
 
 export interface SigRow {
   key: string;
@@ -16,18 +19,83 @@ export interface SigRow {
 interface Props {
   selectedCity: string;
   selectedState: string;
-  /** Total Score (calibrated 0-100), already minted by marketView. */
+  cityId: string | null;
   detailScore: number | string;
-  /** RAW pillar scores (0-100, pre-calibration). */
   detailCategoryScores: Record<string, number>;
   sigRows: SigRow[];
   execReportOpen: boolean;
   setExecReportOpen: (v: boolean) => void;
 }
 
+// Per-signal one-line explanations kept deterministic — short, factual,
+// real value to the reader. The long prose is AI-generated.
+const SIGNAL_EXPLAIN: Record<string, { good: string; mid: string; bad: string }> = {
+  children_5_12_count: {
+    good: "A large pool of elementary-age children — the core target customer is well-represented here.",
+    mid: "A moderate pool of elementary-age children — the target customer base is present but not unusually deep.",
+    bad: "A thin pool of elementary-age children — the core target customer base is small relative to top markets.",
+  },
+  median_household_income: {
+    good: "Household income is high enough to comfortably support discretionary education spending.",
+    mid: "Household income is workable for the program's price point, but not a tailwind.",
+    bad: "Household income is below the level where after-school STEM spend is reliably discretionary — pricing or financial-aid messaging matters more here.",
+  },
+  dual_income_household_pct: {
+    good: "A high share of dual-income households — strong demand driver for after-school programming.",
+    mid: "A moderate share of dual-income households — some after-school demand pull, but not dominant.",
+    bad: "A low share of dual-income households — less structural pull for paid after-school care.",
+  },
+  education_bachelors_plus_pct: {
+    good: "Parents are highly educated, which correlates with willingness to pay for enrichment.",
+    mid: "Parent education levels are average — receptive but not a standout driver.",
+    bad: "Parent education levels are below benchmark — expect more friction explaining the value proposition.",
+  },
+  public_elementary_school_count: {
+    good: "A dense network of elementary schools — many natural marketing and partnership channels.",
+    mid: "A moderate elementary school footprint — workable for school-channel marketing.",
+    bad: "A sparse elementary school footprint — fewer obvious distribution channels into families.",
+  },
+  public_elementary_teacher_count: {
+    good: "A large pool of public-elementary teachers to recruit instructors and operators from.",
+    mid: "An adequate teacher pool — hiring is possible but not abundant.",
+    bad: "A small teacher pool — instructor and operator hiring will likely be the constraint.",
+  },
+  private_charter_school_count: {
+    good: "Many private and charter schools — secondary partnership and enrollment channels are deep.",
+    mid: "A moderate private/charter footprint — useful but not a primary driver.",
+    bad: "Few private or charter schools — limited alternative distribution channels.",
+  },
+  public_elementary_enrollment: {
+    good: "Total elementary enrollment is large — the addressable market of in-school children is substantial.",
+    mid: "Elementary enrollment is moderate — workable addressable base.",
+    bad: "Elementary enrollment is small — the in-school addressable base is limited.",
+  },
+  col_salary_index: {
+    good: "Teacher salaries (cost-of-living adjusted) are favorable for recruiting at our payable wage.",
+    mid: "Teacher salaries are in line with cost of living — recruiting economics are neutral.",
+    bad: "Teacher salaries are high relative to cost of living — expect upward pressure on instructor pay.",
+  },
+  csi_national_brand_supply: {
+    good: "National-brand STEM and enrichment competitors are under-represented — genuine white space for a new entrant.",
+    mid: "Some national-brand competitors are present — entry is workable but requires sharper positioning.",
+    bad: "The market is saturated with national-brand competitors — a new entrant needs a clear differentiator to win share.",
+  },
+  csi_local_camp_estimate: {
+    good: "Few local camp and enrichment alternatives — local competitive pressure is limited.",
+    mid: "A moderate field of local camp and enrichment alternatives — some competitive pressure on share of wallet.",
+    bad: "Many local camp and enrichment alternatives — families already have plenty of substitutes for share of wallet.",
+  },
+  csi_demand_adjusted_market: {
+    good: "Demand-adjusted market size (enrollment × income index) is large — the underlying spendable market is strong.",
+    mid: "Demand-adjusted market size is moderate — workable but not a standout.",
+    bad: "Demand-adjusted market size is small — the spendable market is limited relative to top metros.",
+  },
+};
+
 function ExecutiveSummaryPanelImpl({
   selectedCity,
   selectedState,
+  cityId,
   detailScore,
   detailCategoryScores,
   sigRows,
@@ -35,178 +103,19 @@ function ExecutiveSummaryPanelImpl({
   setExecReportOpen,
 }: Props) {
   const score = Math.round(Number(detailScore) || 0);
-  // Tier-aligned verdict via the shared NARRATIVE_BANDS so this panel can
-  // never drift from the dashboard, spreadsheet, or tier badges.
   const band = bandFromDisplayScore(score);
-  const verdict = band === "strong" ? "high" : band === "moderate" ? "moderate" : "low";
-  const verdictLabel = verdict === "high" ? "high-opportunity" : verdict === "moderate" ? "moderate-opportunity" : "low-opportunity";
+  const verdictLabel = band === "strong" ? "high-opportunity" : band === "moderate" ? "moderate-opportunity" : "low-opportunity";
 
-  // All pillars on the school-grade scale, minted once via buildPillarView so
-  // every consumer in this panel shares the same calibrated numbers.
   const pillars = buildPillarView(detailCategoryScores as Partial<Record<PillarKey, number>>);
-  const demand = pillars.demand.display ?? 0;
-  const tam = pillars.franchiseeSupply.display ?? 0;
-  const opp = pillars.competitiveLandscape.display ?? 0;
   const pillarDisplay = (key: string): number => {
     if (key === "demand" || key === "franchiseeSupply" || key === "competitiveLandscape") {
       return pillars[key as PillarKey].display ?? 0;
     }
-    // Other categories not in PillarsView fall back to direct calibration.
     const v = detailCategoryScores[key];
     return v == null ? 0 : Math.round(Number(v));
   };
-  const catParts = CATEGORIES.map((c) => `${c.label} ${pillarDisplay(c.key)}`).join(", ");
-  const topSignals = sigRows.filter((r) => r.value !== "—").slice(0, 3);
-  const sigText = topSignals.length
-    ? topSignals.map((s) => `${s.label} (${s.value})`).join(", ")
-    : "key market signals are still loading";
-  const strongestCat = CATEGORIES
-    .map((c) => ({ label: c.label, v: pillarDisplay(c.key) }))
-    .sort((a, b) => b.v - a.v)[0];
-  const weakestCat = CATEGORIES
-    .map((c) => ({ label: c.label, v: pillarDisplay(c.key) }))
-    .sort((a, b) => a.v - b.v)[0];
-  let argument = "";
-  if (verdict === "high") {
-    argument = `Taken together, a Total Score of ${score} puts ${selectedCity} firmly in the high-priority Tier-A bucket — the underlying signals point to durable family demand and a recruitable operator pool that, in this analysis, translate into a franchise location worth a serious conversation rather than another data refresh.`;
-  } else if (verdict === "moderate") {
-    argument = `Netted out, a Total Score of ${score} lands ${selectedCity} in the moderate Tier-B/C band: worth keeping on the watchlist as a secondary target, with the ${weakestCat.label.toLowerCase()} side of the equation determining whether it eventually graduates into a priority market.`;
-  } else {
-    argument = `On balance, a Total Score of ${score} reads as a low-priority Tier-D market today — the category mix simply does not yet justify outbound investment in ${selectedCity} without a compelling local thesis (an inbound operator, a real-estate opening, or a partner referral) to change the calculus.`;
-  }
-  const summary = `${selectedCity}, ${selectedState} earns a ${score}/100 Total Score, placing it in the ${verdictLabel.replace("-", " ")} band of our 817-city universe. The score is anchored by ${strongestCat.label} at ${strongestCat.v} and pulled down most by ${weakestCat.label} at ${weakestCat.v} (full breakdown: ${catParts}). Standout signals beneath the score include ${sigText} — concrete, sourced data points rather than impressions. ${argument}`;
 
-  const verdictSentence =
-    verdict === "high"
-      ? `${selectedCity} is a strong, high-opportunity market for a Neuron Garage location. The numbers point to durable family demand, a deep teacher pool to recruit from, and a competitive landscape that still has room for a new branded operator.`
-      : verdict === "moderate"
-      ? `${selectedCity} is a moderate-opportunity market. There is enough underlying demand and supply to make it worth a closer look, but at least one category is holding the overall score back — this analysis suggests a clear local thesis is needed before pushing it into the top tier.`
-      : `${selectedCity} is currently a low-opportunity market on our scoring model. That does not mean it is a bad city — it means the combination of family demand, teacher supply, and competitive openness is not strong enough today to justify outbound investment without a compelling local reason (an existing operator, a real-estate opening, a referral, etc.).`;
-
-  // Pillar narratives use the SAME NARRATIVE_BANDS constants as the verdict.
-  const STRONG = NARRATIVE_BANDS.strong;     // 90
-  const MODERATE = NARRATIVE_BANDS.moderate; // 70
-
-  const demandSentence =
-    demand >= STRONG
-      ? `Demand scores ${demand}/100 — strong. Families in this market have the income, the children in the right age band, and the education-spending behavior we look for. This is the single biggest signal that the product will sell here.`
-      : demand >= MODERATE
-      ? `Demand scores ${demand}/100 — middling. The household-income, child-population, and education-spend signals are mixed: some are healthy, others are softer than our top markets. It is workable, but not a slam dunk.`
-      : `Demand scores ${demand}/100 — weak. Either the children-in-target-age count, the household income, or the dual-income share is well below what our top markets show. Without strong demand, even cheap operations and zero competition would not produce a sustainable franchise.`;
-
-  const tamSentence =
-    tam >= STRONG
-      ? `TAM Teachers scores ${tam}/100 — excellent. There is a large, recruitable pool of elementary teachers in this metro, which means hiring qualified operators and instructors should not be the bottleneck.`
-      : tam >= MODERATE
-      ? `TAM Teachers scores ${tam}/100 — adequate. There are teachers to recruit, but the pool is not deep. Plan for a longer hiring cycle and budget for at least one fallback candidate per role.`
-      : `TAM Teachers scores ${tam}/100 — thin. The supply of recruitable elementary teachers is small relative to our benchmark markets. Operator and instructor hiring will likely be the rate-limiting step here.`;
-
-  const oppSentence =
-    opp >= STRONG
-      ? `Competitive Opportunity scores ${opp}/100 — wide open. National-brand STEM and enrichment competitors are under-represented relative to demand, so a new entrant has real white space to capture. (The CSI formula also includes a baseline local-camp estimate, but that term is roughly constant across all markets — national-brand presence is what differentiates this city.)`
-      : opp >= MODERATE
-      ? `Competitive Opportunity scores ${opp}/100 — contested. National brands already have some presence. Entry is possible but requires sharper positioning and a credible local differentiator. (The CSI formula also includes a baseline local-camp estimate, but that term is roughly constant across all markets — national-brand presence is what differentiates this city.)`
-      : `Competitive Opportunity scores ${opp}/100 — crowded. The market is already well-served by national-brand competitors relative to its size. Remember: a low score here means high saturation, not low demand. (The CSI formula also includes a baseline local-camp estimate, but that term is roughly constant across all markets — national-brand presence is what differentiates this city.)`;
-
-  // Multi-paragraph, market-research-style write-up shown at the top of the
-  // expanded Executive Report. Longer than the teaser paragraph on the prior
-  // panel; all numbers route through the same minted pillar/score views.
-  const tierLabel = band === "strong" ? "Tier A (top-priority)" : band === "moderate" ? "Tier B/C (watchlist)" : "Tier D (deprioritized)";
-  const demandPhrase = demand >= STRONG
-    ? `a strong demand profile (${demand}/100) — family income, child-population density, and dual-income share all clear our top-market thresholds`
-    : demand >= MODERATE
-      ? `a mixed demand profile (${demand}/100) — some household signals are healthy, others sit below our top-market thresholds`
-      : `a soft demand profile (${demand}/100) — the combination of income, child-age population, and dual-income share trails our benchmark markets`;
-  const tamPhrase = tam >= STRONG
-    ? `a deep recruitable teacher pool (${tam}/100), which de-risks hiring operators and instructors`
-    : tam >= MODERATE
-      ? `an adequate teacher pool (${tam}/100), workable but not abundant`
-      : `a thin recruitable teacher pool (${tam}/100), which will likely be the rate-limiting step on staffing`;
-  const oppPhrase = opp >= STRONG
-    ? `genuine competitive white space (${opp}/100): national-brand STEM and enrichment operators are under-represented relative to demand`
-    : opp >= MODERATE
-      ? `a contested competitive field (${opp}/100): national brands already have a foothold and entry requires sharper positioning`
-      : `a crowded competitive field (${opp}/100): national-brand saturation is high relative to market size, so any entry needs a clear differentiator`;
-  const nextStepSentence = verdict === "high"
-    ? `On that basis, ${selectedCity} warrants promotion into active recruiting — pull the top teacher candidates from this metro, queue a personalized outreach sequence, and commission a deeper on-the-ground competitive review before any signing conversation.`
-    : verdict === "moderate"
-      ? `On that basis, ${selectedCity} belongs on the secondary watchlist rather than the active recruiting board — re-score after the next data refresh and only escalate it if a specific local catalyst emerges (a strong inbound operator, a confirmed real-estate opening, or a partner referral).`
-      : `On that basis, ${selectedCity} should be parked unless a specific local catalyst appears — outbound spend is unlikely to clear the bar today, but the score will be re-evaluated automatically on every data refresh.`;
-  const detailedExplanationParagraphs: string[] = [
-    `${selectedCity}, ${selectedState} earns a Total Score of ${score}/100 across our 817-city universe, placing it in the ${verdictLabel.replace("-", " ")} band and mapping to ${tierLabel}. The composite is built from three category pillars — Demand ${demand}, TAM Teachers ${tam}, Competitive Opportunity ${opp} — each derived from third-party data (U.S. Census ACS, BLS OEWS, NCES Common Core of Data, and our national-brand competitive landscape scrape) rather than analyst opinion. The strongest pillar in this market is ${strongestCat.label} at ${strongestCat.v}; the limiting pillar is ${weakestCat.label} at ${weakestCat.v}.`,
-    `Read together, the underlying signals describe ${demandPhrase}, paired with ${tamPhrase} and ${oppPhrase}. The most informative data points feeding the score include ${sigText}. These are the figures a partner conversation should anchor on, because they reflect either the household-economics base (income, child population, dual-income share, parent education) or the operating environment (recruitable teachers, school footprint, national-brand saturation) — not derived indices invented for this report.`,
-    nextStepSentence,
-  ];
-
-  // Per-signal, per-tone one-sentence explanation of what the colored pill
-  // actually means for this metric. Keyed by signal_key + tone so we can speak
-  // plainly about each data point rather than just labeling it HIGH/LOW.
-  const explainSignalPill = (key: string, tone?: "good" | "mid" | "bad"): string => {
-    if (!tone) return "";
-    const map: Record<string, { good: string; mid: string; bad: string }> = {
-      children_5_12_count: {
-        good: "A large pool of elementary-age children — the core target customer is well-represented here.",
-        mid: "A moderate pool of elementary-age children — the target customer base is present but not unusually deep.",
-        bad: "A thin pool of elementary-age children — the core target customer base is small relative to top markets.",
-      },
-      median_household_income: {
-        good: "Household income is high enough to comfortably support discretionary education spending.",
-        mid: "Household income is workable for the program's price point, but not a tailwind.",
-        bad: "Household income is below the level where after-school STEM spend is reliably discretionary — pricing or financial-aid messaging matters more here.",
-      },
-      dual_income_household_pct: {
-        good: "A high share of dual-income households — strong demand driver for after-school programming.",
-        mid: "A moderate share of dual-income households — some after-school demand pull, but not dominant.",
-        bad: "A low share of dual-income households — less structural pull for paid after-school care.",
-      },
-      education_bachelors_plus_pct: {
-        good: "Parents are highly educated, which correlates with willingness to pay for enrichment.",
-        mid: "Parent education levels are average — receptive but not a standout driver.",
-        bad: "Parent education levels are below benchmark — expect more friction explaining the value proposition.",
-      },
-      public_elementary_school_count: {
-        good: "A dense network of elementary schools — many natural marketing and partnership channels.",
-        mid: "A moderate elementary school footprint — workable for school-channel marketing.",
-        bad: "A sparse elementary school footprint — fewer obvious distribution channels into families.",
-      },
-      public_elementary_teacher_count: {
-        good: "A large pool of public-elementary teachers to recruit instructors and operators from.",
-        mid: "An adequate teacher pool — hiring is possible but not abundant.",
-        bad: "A small teacher pool — instructor and operator hiring will likely be the constraint.",
-      },
-      private_charter_school_count: {
-        good: "Many private and charter schools — secondary partnership and enrollment channels are deep.",
-        mid: "A moderate private/charter footprint — useful but not a primary driver.",
-        bad: "Few private or charter schools — limited alternative distribution channels.",
-      },
-      public_elementary_enrollment: {
-        good: "Total elementary enrollment is large — the addressable market of in-school children is substantial.",
-        mid: "Elementary enrollment is moderate — workable addressable base.",
-        bad: "Elementary enrollment is small — the in-school addressable base is limited.",
-      },
-      col_salary_index: {
-        good: "Teacher salaries (cost-of-living adjusted) are favorable for recruiting at our payable wage.",
-        mid: "Teacher salaries are in line with cost of living — recruiting economics are neutral.",
-        bad: "Teacher salaries are high relative to cost of living — expect upward pressure on instructor pay.",
-      },
-      csi_national_brand_supply: {
-        good: "National-brand STEM and enrichment competitors are under-represented — genuine white space for a new entrant.",
-        mid: "Some national-brand competitors are present — entry is workable but requires sharper positioning.",
-        bad: "The market is saturated with national-brand competitors — a new entrant needs a clear differentiator to win share.",
-      },
-      csi_local_camp_estimate: {
-        good: "Few local camp and enrichment alternatives — local competitive pressure is limited.",
-        mid: "A moderate field of local camp and enrichment alternatives — some competitive pressure on share of wallet.",
-        bad: "Many local camp and enrichment alternatives — families already have plenty of substitutes for share of wallet.",
-      },
-      csi_demand_adjusted_market: {
-        good: "Demand-adjusted market size (enrollment × income index) is large — the underlying spendable market is strong.",
-        mid: "Demand-adjusted market size is moderate — workable but not a standout.",
-        bad: "Demand-adjusted market size is small — the spendable market is limited relative to top metros.",
-      },
-    };
-    return map[key]?.[tone] ?? "";
-  };
+  const { data: narrative, loading, error, regenerate } = useCityNarrative(cityId);
 
   const signalRows = sigRows.filter((r) => r.value !== "—");
 
@@ -214,17 +123,27 @@ function ExecutiveSummaryPanelImpl({
     <>
       <div className="rounded-lg bg-white border border-[#eef2f7] p-3 flex-1 flex flex-col">
         <h4 className="text-xs font-bold text-[#07142f] mb-1">{selectedCity}, {selectedState}</h4>
-        <p className="text-[10px] uppercase tracking-wide text-[#8794ab] mb-2">Executive Summary</p>
-        <p className="text-[11px] leading-relaxed text-[#3a4763] text-justify hyphens-auto">
-          {summary}{" "}
-          <button
-            type="button"
-            onClick={() => setExecReportOpen(true)}
-            className="font-semibold text-[#174be8] hover:underline whitespace-nowrap"
-          >
-            [Expand]
-          </button>
+        <p className="text-[10px] uppercase tracking-wide text-[#8794ab] mb-2 flex items-center gap-1">
+          <Sparkles size={10} className="text-[#174be8]" /> AI Executive Summary
         </p>
+        {loading && !narrative ? (
+          <p className="text-[11px] text-[#8794ab] flex items-center gap-2"><Loader2 size={11} className="animate-spin" /> Generating analyst summary…</p>
+        ) : error ? (
+          <p className="text-[11px] text-[#c2410c]">
+            Narrative unavailable. <button onClick={() => regenerate({ force: true })} className="underline">Retry</button>
+          </p>
+        ) : narrative ? (
+          <p className="text-[11px] leading-relaxed text-[#3a4763] text-justify hyphens-auto">
+            {narrative.executive_summary}{" "}
+            <button
+              type="button"
+              onClick={() => setExecReportOpen(true)}
+              className="font-semibold text-[#174be8] hover:underline whitespace-nowrap"
+            >
+              [Expand]
+            </button>
+          </p>
+        ) : null}
       </div>
 
       {execReportOpen && (
@@ -235,16 +154,36 @@ function ExecutiveSummaryPanelImpl({
         >
           <div className="sticky top-0 z-10 flex items-center justify-between gap-3 bg-white/95 backdrop-blur px-6 py-4 border-b border-[#eef2f7]">
             <h2 className="text-[15px] font-bold text-[#07142f]">
-              {selectedCity}, {selectedState} — Executive Report
+              {selectedCity}, {selectedState} — Market Research Report
             </h2>
-            <button
-              type="button"
-              onClick={() => setExecReportOpen(false)}
-              className="rounded-md p-1.5 text-[#526078] hover:bg-[#f1f4f9] hover:text-[#07142f]"
-              aria-label="Close"
-            >
-              <X size={16} />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => regenerate({ force: true })}
+                disabled={loading}
+                className="inline-flex items-center gap-1 rounded-md border border-[#dbe4f2] px-2 py-1 text-[10.5px] text-[#174be8] hover:bg-[#f7faff] disabled:opacity-50"
+                title="Regenerate (Flash)"
+              >
+                <RefreshCw size={11} className={loading ? "animate-spin" : ""} /> Regenerate
+              </button>
+              <button
+                type="button"
+                onClick={() => regenerate({ force: true, model: "pro" })}
+                disabled={loading}
+                className="inline-flex items-center gap-1 rounded-md border border-[#dbe4f2] bg-[#f7faff] px-2 py-1 text-[10.5px] text-[#174be8] hover:bg-[#eaf1ff] disabled:opacity-50"
+                title="Regenerate using the higher-quality Pro model"
+              >
+                <Sparkles size={11} /> Pro
+              </button>
+              <button
+                type="button"
+                onClick={() => setExecReportOpen(false)}
+                className="rounded-md p-1.5 text-[#526078] hover:bg-[#f1f4f9] hover:text-[#07142f]"
+                aria-label="Close"
+              >
+                <X size={16} />
+              </button>
+            </div>
           </div>
           <div className="px-6 py-5 space-y-5 pb-12">
             <div className="rounded-lg bg-[#f7faff] border border-[#e5eaf2] px-4 py-3">
@@ -255,50 +194,39 @@ function ExecutiveSummaryPanelImpl({
               <p className="mt-1 text-[12px] font-semibold text-[#174be8] capitalize">{verdictLabel.replace("-", " ")} market</p>
             </div>
 
-            <section>
-              <h3 className="text-[13px] font-bold text-[#07142f] mb-1.5">Detailed Explanation</h3>
-              <div className="space-y-2.5">
-                {detailedExplanationParagraphs.map((para, i) => (
-                  <p key={i} className="text-[12.5px] leading-relaxed text-[#14233b] text-justify hyphens-auto">{para}</p>
-                ))}
+            {loading && !narrative ? (
+              <div className="rounded-lg border border-[#eef2f7] bg-white px-4 py-8 text-center text-[12px] text-[#8794ab]">
+                <Loader2 size={16} className="mx-auto animate-spin mb-2" />
+                Generating analyst write-up for {selectedCity}…
               </div>
-            </section>
-
-            <section>
-              <h3 className="text-[13px] font-bold text-[#07142f] mb-1.5">The bottom line</h3>
-              <p className="text-[12.5px] leading-relaxed text-[#14233b] text-justify hyphens-auto">{verdictSentence}</p>
-            </section>
-
-            <section>
-              <h3 className="text-[13px] font-bold text-[#07142f] mb-1.5">Why this score, in plain English</h3>
-              <p className="text-[12.5px] leading-relaxed text-[#14233b] text-justify hyphens-auto mb-2">
-                Every market is scored on three categories. Each category is built from real third-party data
-                (U.S. Census, BLS, NCES, and our competitive landscape scrape). Here is how {selectedCity} did
-                on each one:
-              </p>
-              <div className="space-y-2.5">
-                <div className="rounded-md border border-[#eef2f7] bg-white p-3">
-                  <p className="text-[12px] font-bold text-[#07142f] mb-1">1. Demand <span className="text-[#8794ab] font-normal">— do families here want and afford after-school STEM?</span></p>
-                  <p className="text-[12px] leading-relaxed text-[#3a4763] text-justify hyphens-auto">{demandSentence}</p>
-                </div>
-                <div className="rounded-md border border-[#eef2f7] bg-white p-3">
-                  <p className="text-[12px] font-bold text-[#07142f] mb-1">2. TAM Teachers <span className="text-[#8794ab] font-normal">— can we staff this location?</span></p>
-                  <p className="text-[12px] leading-relaxed text-[#3a4763] text-justify hyphens-auto">{tamSentence}</p>
-                </div>
-                <div className="rounded-md border border-[#eef2f7] bg-white p-3">
-                  <p className="text-[12px] font-bold text-[#07142f] mb-1">3. Competitive Opportunity <span className="text-[#8794ab] font-normal">— how crowded is this market?</span></p>
-                  <p className="text-[12px] leading-relaxed text-[#3a4763] text-justify hyphens-auto">{oppSentence}</p>
-                </div>
+            ) : error ? (
+              <div className="rounded-lg border border-[#f5cbb8] bg-[#fdecea] px-4 py-3 text-[12px] text-[#c2410c]">
+                Narrative unavailable. {error}.{" "}
+                <button onClick={() => regenerate({ force: true })} className="underline font-semibold">Retry</button>
               </div>
-            </section>
+            ) : narrative ? (
+              <div className="prose prose-sm max-w-none text-[12.5px] leading-relaxed text-[#14233b]">
+                <h3 className="text-[13px] font-bold text-[#07142f] mb-1.5">Market Snapshot</h3>
+                <ReactMarkdown>{narrative.report_snapshot}</ReactMarkdown>
+                <h3 className="text-[13px] font-bold text-[#07142f] mt-4 mb-1.5">Demand-Side Read</h3>
+                <ReactMarkdown>{narrative.report_demand}</ReactMarkdown>
+                <h3 className="text-[13px] font-bold text-[#07142f] mt-4 mb-1.5">Supply &amp; Competitive Read</h3>
+                <ReactMarkdown>{narrative.report_supply}</ReactMarkdown>
+                <h3 className="text-[13px] font-bold text-[#07142f] mt-4 mb-1.5">Recommended Next Move</h3>
+                <ReactMarkdown>{narrative.report_next_move}</ReactMarkdown>
+                {narrative.model_id && (
+                  <p className="mt-3 text-[10px] text-[#8794ab] not-prose">
+                    Generated by {narrative.model_id}{narrative.cached ? " (cached)" : ""}.
+                  </p>
+                )}
+              </div>
+            ) : null}
 
             {signalRows.length > 0 && (
               <section>
                 <h3 className="text-[13px] font-bold text-[#07142f] mb-1.5">Key market signals, explained</h3>
                 <p className="text-[12px] leading-relaxed text-[#526078] text-justify hyphens-auto mb-2">
-                  These are the underlying data points feeding the score. Each one comes from a named public
-                  source — nothing is invented. The colored badge under each value shows where this market
-                  sits relative to our benchmark thresholds across the 817-city universe.
+                  These are the underlying data points feeding the score. Each comes from a named public source — nothing invented.
                 </p>
                 <div className="divide-y divide-[#f1f4f9] rounded-md border border-[#eef2f7] bg-white">
                   {signalRows.map((r) => {
@@ -308,7 +236,7 @@ function ExecutiveSummaryPanelImpl({
                       tone === "mid"  ? "bg-[#fff8e1] text-[#b88800] border-[#f3e0a8]" :
                       tone === "bad"  ? "bg-[#fdecea] text-[#c2410c] border-[#f5cbb8]" :
                       "bg-[#f1f4f9] text-[#526078] border-[#e5eaf2]";
-                    const pillExplain = explainSignalPill(r.key, tone);
+                    const pillExplain = tone ? SIGNAL_EXPLAIN[r.key]?.[tone] ?? "" : "";
                     return (
                       <div key={r.key} className="px-3 py-2.5">
                         <div className="flex items-baseline justify-between gap-3">
@@ -333,16 +261,12 @@ function ExecutiveSummaryPanelImpl({
               </section>
             )}
 
-            <section>
-              <h3 className="text-[13px] font-bold text-[#07142f] mb-1.5">What we would do next</h3>
-              <p className="text-[12.5px] leading-relaxed text-[#14233b] text-justify hyphens-auto">
-                {verdict === "high"
-                  ? `Move ${selectedCity} into active recruiting. Pull the top teacher candidates from this metro, draft a personalized outreach sequence, and queue this market for a deeper competitive landscape review before any signing conversation.`
-                  : verdict === "moderate"
-                  ? `Hold ${selectedCity} as a secondary target. Re-run the score after the next data refresh, and only escalate it if a specific local thesis emerges (a strong inbound candidate, a confirmed real-estate opportunity, or a partner referral).`
-                  : `Park ${selectedCity} unless a specific local catalyst appears. The current data does not support spending outbound effort here, but the score will be re-evaluated automatically on every data refresh.`}
-              </p>
-            </section>
+            <AskCityPanel
+              cityId={cityId}
+              cityName={selectedCity}
+              stateName={selectedState}
+              totalScore={score}
+            />
           </div>
         </div>
       )}
@@ -351,4 +275,3 @@ function ExecutiveSummaryPanelImpl({
 }
 
 export const ExecutiveSummaryPanel = memo(ExecutiveSummaryPanelImpl);
-

@@ -7,9 +7,8 @@ import { buildMarketView } from "@/lib/marketView";
 
 const TIER_COLOR: Record<string, string> = {
   A: "#0ea66e",
-  B: "#174be8",
-  C: "#b8860b",
-  D: "#ea580c",
+  B: "#e8852b",
+  C: "#174be8",
 };
 
 interface Props {

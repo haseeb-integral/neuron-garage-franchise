@@ -49,23 +49,33 @@ export type CompositeScore = number & { readonly [__compositeBrand]: "CompositeS
 // MarketView consumer sees the same calibrated number with zero per-component
 // risk. Raw composite_score_default in the DB is NOT modified.
 //
-// Anchors chosen against the live distribution on May 24, 2026:
-//   raw  0 → 0     (no-data sentinel kept clean)
-//   raw 20 → 55
-//   raw 35 → 72
-//   raw 50 → 85
-//   raw 65 → 92
-//   raw 75 → 97
+// Anchors re-tuned May 24, 2026 (Brett+Haseeb) so the display score actually
+// SPANS the A–F school-grade range and tier cutoffs can be score-based:
+//   Tier A = display ≥ 90  (≈ top 5%   of live scored, raw ≥ 59)
+//   Tier B = display ≥ 80  (≈ next 15%, raw ≥ 50)
+//   Tier C = display ≥ 70  (≈ next 30%, raw ≥ 41 — at the raw median)
+//   Tier D = display  < 70 (≈ bottom 50%, raw < 41)
+//
+// Anchors fitted to the live distribution (min raw 21, median 41, p80 50,
+// p95 59, p99 69, observed max 74):
+//   raw  0 → 0
+//   raw 20 → 40
+//   raw 35 → 60
+//   raw 41 → 70    ← Tier C boundary
+//   raw 50 → 80    ← Tier B boundary
+//   raw 59 → 90    ← Tier A boundary
+//   raw 74 → 100   (top of observed range pins to a perfect 100)
 //   raw 100 → 100
-// Change these anchors only after Brett/Haseeb sign off; ordering and tiers
-// stay invariant as long as the sequence is strictly increasing in both axes.
+// Change these anchors only after Brett/Haseeb sign off; ordering stays
+// invariant as long as the sequence is strictly increasing in both axes.
 const CALIBRATION_ANCHORS: ReadonlyArray<readonly [number, number]> = [
   [0, 0],
-  [20, 55],
-  [35, 72],
-  [50, 85],
-  [65, 92],
-  [75, 97],
+  [20, 40],
+  [35, 60],
+  [41, 70],
+  [50, 80],
+  [59, 90],
+  [74, 100],
   [100, 100],
 ];
 

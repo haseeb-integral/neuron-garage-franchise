@@ -250,9 +250,44 @@ function ExecutiveSummaryPanelImpl({
             </div>
 
             {loading && !narrative ? (
-              <div className="rounded-lg border border-[#eef2f7] bg-white px-4 py-8 text-center text-[12px] text-[#8794ab]">
-                <Loader2 size={16} className="mx-auto animate-spin mb-2" />
-                Generating analyst write-up for {selectedCity}…
+              <div className="space-y-5">
+                <div className="flex items-center gap-2 text-[12px] text-[#8794ab]">
+                  <Loader2 size={14} className="animate-spin" />
+                  <span>Loading live signals for {selectedCity}…</span>
+                </div>
+                <div className="space-y-4">
+                  <Skeleton className="h-4 w-[180px]" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-3 w-[96%]" />
+                    <Skeleton className="h-3 w-[88%]" />
+                    <Skeleton className="h-3 w-[72%]" />
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <Skeleton className="h-4 w-[160px]" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-3 w-[94%]" />
+                    <Skeleton className="h-3 w-[80%]" />
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <Skeleton className="h-4 w-[200px]" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-3 w-[90%]" />
+                    <Skeleton className="h-3 w-[76%]" />
+                    <Skeleton className="h-3 w-[64%]" />
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <Skeleton className="h-4 w-[170px]" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-3 w-[82%]" />
+                  </div>
+                </div>
               </div>
             ) : error ? (
               <div className="rounded-lg border border-[#f5cbb8] bg-[#fdecea] px-4 py-3 text-[12px] text-[#c2410c]">

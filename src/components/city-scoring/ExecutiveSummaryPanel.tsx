@@ -108,6 +108,106 @@ function ExecutiveSummaryPanelImpl({
       ? `Competitive Opportunity scores ${opp}/100 — contested. National brands already have some presence. Entry is possible but requires sharper positioning and a credible local differentiator. (The CSI formula also includes a baseline local-camp estimate, but that term is roughly constant across all markets — national-brand presence is what differentiates this city.)`
       : `Competitive Opportunity scores ${opp}/100 — crowded. The market is already well-served by national-brand competitors relative to its size. Remember: a low score here means high saturation, not low demand. (The CSI formula also includes a baseline local-camp estimate, but that term is roughly constant across all markets — national-brand presence is what differentiates this city.)`;
 
+  // Multi-paragraph, market-research-style write-up shown at the top of the
+  // expanded Executive Report. Longer than the teaser paragraph on the prior
+  // panel; all numbers route through the same minted pillar/score views.
+  const tierLabel = band === "strong" ? "Tier A (top-priority)" : band === "moderate" ? "Tier B/C (watchlist)" : "Tier D (deprioritized)";
+  const demandPhrase = demand >= STRONG
+    ? `a strong demand profile (${demand}/100) — family income, child-population density, and dual-income share all clear our top-market thresholds`
+    : demand >= MODERATE
+      ? `a mixed demand profile (${demand}/100) — some household signals are healthy, others sit below our top-market thresholds`
+      : `a soft demand profile (${demand}/100) — the combination of income, child-age population, and dual-income share trails our benchmark markets`;
+  const tamPhrase = tam >= STRONG
+    ? `a deep recruitable teacher pool (${tam}/100), which de-risks hiring operators and instructors`
+    : tam >= MODERATE
+      ? `an adequate teacher pool (${tam}/100), workable but not abundant`
+      : `a thin recruitable teacher pool (${tam}/100), which will likely be the rate-limiting step on staffing`;
+  const oppPhrase = opp >= STRONG
+    ? `genuine competitive white space (${opp}/100): national-brand STEM and enrichment operators are under-represented relative to demand`
+    : opp >= MODERATE
+      ? `a contested competitive field (${opp}/100): national brands already have a foothold and entry requires sharper positioning`
+      : `a crowded competitive field (${opp}/100): national-brand saturation is high relative to market size, so any entry needs a clear differentiator`;
+  const nextStepSentence = verdict === "high"
+    ? `On that basis, ${selectedCity} warrants promotion into active recruiting — pull the top teacher candidates from this metro, queue a personalized outreach sequence, and commission a deeper on-the-ground competitive review before any signing conversation.`
+    : verdict === "moderate"
+      ? `On that basis, ${selectedCity} belongs on the secondary watchlist rather than the active recruiting board — re-score after the next data refresh and only escalate it if a specific local catalyst emerges (a strong inbound operator, a confirmed real-estate opening, or a partner referral).`
+      : `On that basis, ${selectedCity} should be parked unless a specific local catalyst appears — outbound spend is unlikely to clear the bar today, but the score will be re-evaluated automatically on every data refresh.`;
+  const detailedExplanationParagraphs: string[] = [
+    `${selectedCity}, ${selectedState} earns a Total Score of ${score}/100 across our 817-city universe, placing it in the ${verdictLabel.replace("-", " ")} band and mapping to ${tierLabel}. The composite is built from three category pillars — Demand ${demand}, TAM Teachers ${tam}, Competitive Opportunity ${opp} — each derived from third-party data (U.S. Census ACS, BLS OEWS, NCES Common Core of Data, and our national-brand competitive landscape scrape) rather than analyst opinion. The strongest pillar in this market is ${strongestCat.label} at ${strongestCat.v}; the limiting pillar is ${weakestCat.label} at ${weakestCat.v}.`,
+    `Read together, the underlying signals describe ${demandPhrase}, paired with ${tamPhrase} and ${oppPhrase}. The most informative data points feeding the score include ${sigText}. These are the figures a partner conversation should anchor on, because they reflect either the household-economics base (income, child population, dual-income share, parent education) or the operating environment (recruitable teachers, school footprint, national-brand saturation) — not derived indices invented for this report.`,
+    nextStepSentence,
+  ];
+
+  // Per-signal, per-tone one-sentence explanation of what the colored pill
+  // actually means for this metric. Keyed by signal_key + tone so we can speak
+  // plainly about each data point rather than just labeling it HIGH/LOW.
+  const explainSignalPill = (key: string, tone?: "good" | "mid" | "bad"): string => {
+    if (!tone) return "";
+    const map: Record<string, { good: string; mid: string; bad: string }> = {
+      children_5_12_count: {
+        good: "A large pool of elementary-age children — the core target customer is well-represented here.",
+        mid: "A moderate pool of elementary-age children — the target customer base is present but not unusually deep.",
+        bad: "A thin pool of elementary-age children — the core target customer base is small relative to top markets.",
+      },
+      median_household_income: {
+        good: "Household income is high enough to comfortably support discretionary education spending.",
+        mid: "Household income is workable for the program's price point, but not a tailwind.",
+        bad: "Household income is below the level where after-school STEM spend is reliably discretionary — pricing or financial-aid messaging matters more here.",
+      },
+      dual_income_household_pct: {
+        good: "A high share of dual-income households — strong demand driver for after-school programming.",
+        mid: "A moderate share of dual-income households — some after-school demand pull, but not dominant.",
+        bad: "A low share of dual-income households — less structural pull for paid after-school care.",
+      },
+      education_bachelors_plus_pct: {
+        good: "Parents are highly educated, which correlates with willingness to pay for enrichment.",
+        mid: "Parent education levels are average — receptive but not a standout driver.",
+        bad: "Parent education levels are below benchmark — expect more friction explaining the value proposition.",
+      },
+      public_elementary_school_count: {
+        good: "A dense network of elementary schools — many natural marketing and partnership channels.",
+        mid: "A moderate elementary school footprint — workable for school-channel marketing.",
+        bad: "A sparse elementary school footprint — fewer obvious distribution channels into families.",
+      },
+      public_elementary_teacher_count: {
+        good: "A large pool of public-elementary teachers to recruit instructors and operators from.",
+        mid: "An adequate teacher pool — hiring is possible but not abundant.",
+        bad: "A small teacher pool — instructor and operator hiring will likely be the constraint.",
+      },
+      private_charter_school_count: {
+        good: "Many private and charter schools — secondary partnership and enrollment channels are deep.",
+        mid: "A moderate private/charter footprint — useful but not a primary driver.",
+        bad: "Few private or charter schools — limited alternative distribution channels.",
+      },
+      public_elementary_enrollment: {
+        good: "Total elementary enrollment is large — the addressable market of in-school children is substantial.",
+        mid: "Elementary enrollment is moderate — workable addressable base.",
+        bad: "Elementary enrollment is small — the in-school addressable base is limited.",
+      },
+      col_salary_index: {
+        good: "Teacher salaries (cost-of-living adjusted) are favorable for recruiting at our payable wage.",
+        mid: "Teacher salaries are in line with cost of living — recruiting economics are neutral.",
+        bad: "Teacher salaries are high relative to cost of living — expect upward pressure on instructor pay.",
+      },
+      csi_national_brand_supply: {
+        good: "National-brand STEM and enrichment competitors are under-represented — genuine white space for a new entrant.",
+        mid: "Some national-brand competitors are present — entry is workable but requires sharper positioning.",
+        bad: "The market is saturated with national-brand competitors — a new entrant needs a clear differentiator to win share.",
+      },
+      csi_local_camp_estimate: {
+        good: "Few local camp and enrichment alternatives — local competitive pressure is limited.",
+        mid: "A moderate field of local camp and enrichment alternatives — some competitive pressure on share of wallet.",
+        bad: "Many local camp and enrichment alternatives — families already have plenty of substitutes for share of wallet.",
+      },
+      csi_demand_adjusted_market: {
+        good: "Demand-adjusted market size (enrollment × income index) is large — the underlying spendable market is strong.",
+        mid: "Demand-adjusted market size is moderate — workable but not a standout.",
+        bad: "Demand-adjusted market size is small — the spendable market is limited relative to top metros.",
+      },
+    };
+    return map[key]?.[tone] ?? "";
+  };
+
   const signalRows = sigRows.filter((r) => r.value !== "—");
 
   return (

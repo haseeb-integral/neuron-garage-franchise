@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { cityId, weightsHash = "default", force = false, model: modelOverride } =
+    const { cityId, weightsHash = "default", force = false, model: modelOverride, context } =
       await req.json();
 
     if (!cityId || typeof cityId !== "string") {
@@ -109,11 +109,13 @@ Deno.serve(async (req) => {
       });
     }
 
-    const composite = Math.round(num(city.composite_score_default) ?? 0);
-    const pillarDemand = Math.round(num(city.score_demand) ?? 0);
-    const pillarTam = Math.round(num(city.score_tam_teachers) ?? 0);
-    const pillarOpp = Math.round(num(city.score_csi) ?? 0);
-    const tier = tierFromScore(composite);
+    const composite = Math.round(num(context?.total_score) ?? num(city.composite_score_default) ?? 0);
+    const pillarDemand = Math.round(num(context?.pillars?.demand) ?? num(city.score_demand) ?? 0);
+    const pillarTam = Math.round(num(context?.pillars?.tam_teachers) ?? num(city.score_tam_teachers) ?? 0);
+    const pillarOpp = Math.round(num(context?.pillars?.competitive_opportunity) ?? num(city.score_csi) ?? 0);
+    const tier = typeof context?.tier === "string"
+      ? context.tier.replace(/^Tier\s+/i, "")
+      : tierFromScore(composite);
 
     const payload = {
       city: city.city_name,
@@ -127,32 +129,34 @@ Deno.serve(async (req) => {
         tam_teachers: pillarTam,
         competitive_opportunity: pillarOpp,
       },
-      signals: {
-        children_5_12: fmtInt(num(city.children_5_12)),
-        median_household_income: fmtUSD(num(city.median_household_income)),
-        dual_income_household_pct: fmtPct(num(city.dual_working_families_pct)),
-        education_bachelors_plus_pct: fmtPct(num(city.college_degree_pct)),
-        public_elementary_teacher_count: fmtInt(
-          num(city.public_elementary_teacher_count),
-        ),
-        public_elementary_school_count: fmtInt(num(city.public_elementary_count)),
-        private_charter_school_count: fmtInt(
-          (num(city.private_elementary_count) ?? 0) +
-            (num(city.charter_elementary_count) ?? 0),
-        ),
-        public_elementary_enrollment: fmtInt(num(city.public_elementary_enrollment)),
-        col_salary_index: num(city.col_salary_index)?.toFixed(2) ?? "n/a",
-        avg_elementary_teacher_salary_usd: fmtUSD(
-          num(city.avg_elementary_teacher_salary_usd),
-        ),
-        csi_national_brand_count_weighted:
-          num(city.csi_national_brand_count_weighted)?.toFixed(1) ?? "n/a",
-        csi_local_camp_estimate:
-          num(city.csi_local_provider_estimate)?.toFixed(0) ?? "n/a",
-        csi_saturation_category: city.csi_saturation_category ?? "n/a",
-        csi_demand_adjusted_market:
-          num(city.csi_demand_adjusted_market)?.toFixed(0) ?? "n/a",
-      },
+      signals: context?.signals?.length
+        ? context.signals
+        : {
+            children_5_12: fmtInt(num(city.children_5_12)),
+            median_household_income: fmtUSD(num(city.median_household_income)),
+            dual_income_household_pct: fmtPct(num(city.dual_working_families_pct)),
+            education_bachelors_plus_pct: fmtPct(num(city.college_degree_pct)),
+            public_elementary_teacher_count: fmtInt(
+              num(city.public_elementary_teacher_count),
+            ),
+            public_elementary_school_count: fmtInt(num(city.public_elementary_count)),
+            private_charter_school_count: fmtInt(
+              (num(city.private_elementary_count) ?? 0) +
+                (num(city.charter_elementary_count) ?? 0),
+            ),
+            public_elementary_enrollment: fmtInt(num(city.public_elementary_enrollment)),
+            col_salary_index: num(city.col_salary_index)?.toFixed(2) ?? "n/a",
+            avg_elementary_teacher_salary_usd: fmtUSD(
+              num(city.avg_elementary_teacher_salary_usd),
+            ),
+            csi_national_brand_count_weighted:
+              num(city.csi_national_brand_count_weighted)?.toFixed(1) ?? "n/a",
+            csi_local_camp_estimate:
+              num(city.csi_local_provider_estimate)?.toFixed(0) ?? "n/a",
+            csi_saturation_category: city.csi_saturation_category ?? "n/a",
+            csi_demand_adjusted_market:
+              num(city.csi_demand_adjusted_market)?.toFixed(0) ?? "n/a",
+          },
     };
 
     const systemPrompt = `${KB_FULL_CONTEXT}

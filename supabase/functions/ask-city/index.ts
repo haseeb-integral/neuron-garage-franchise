@@ -220,7 +220,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { cityId, messages = [] } = await req.json();
+    const { cityId, messages = [], narrativeContext = null, focusContext = null } = await req.json();
     if (!cityId) {
       return new Response(JSON.stringify({ error: "cityId required" }), {
         status: 400,
@@ -244,17 +244,26 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const focusBrief = briefForCity(city);
+    const focusBrief = focusContext
+      ? {
+          ...briefForCity(city),
+          composite_score: focusContext.total_score ?? briefForCity(city).composite_score,
+          tier: focusContext.tier ?? briefForCity(city).tier,
+          pillars: focusContext.pillars ?? briefForCity(city).pillars,
+          signals: focusContext.signals ?? briefForCity(city).signals,
+        }
+      : briefForCity(city);
 
-    // Try to attach the cached analyst narrative if it exists
-    const { data: narrative } = await supabase
+    // Prefer the exact narrative the UI is currently showing; otherwise fall back to cache.
+    const narrative = narrativeContext ?? (await supabase
       .from("city_narratives")
       .select(
         "executive_summary,report_snapshot,report_demand,report_supply,report_next_move",
       )
       .eq("city_id", cityId)
-      .eq("weights_hash", "default")
-      .maybeSingle();
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()).data;
 
     const systemPrompt = `${KB_FULL_CONTEXT}
 

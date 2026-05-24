@@ -3,7 +3,7 @@ import { X, RefreshCw, Sparkles, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { CATEGORIES } from "@/lib/cityScoringPageHelpers";
 import { buildPillarView, type PillarKey } from "@/lib/marketView";
-import { bandFromDisplayScore } from "@/lib/cityTiers";
+import { bandFromDisplayScore, tierFromDisplayScore } from "@/lib/cityTiers";
 import { useCityNarrative } from "@/lib/useCityNarrative";
 import { AskCityPanel } from "./AskCityPanel";
 
@@ -104,6 +104,7 @@ function ExecutiveSummaryPanelImpl({
 }: Props) {
   const score = Math.round(Number(detailScore) || 0);
   const band = bandFromDisplayScore(score);
+  const tier = tierFromDisplayScore(score);
   const verdictLabel = band === "strong" ? "high-opportunity" : band === "moderate" ? "moderate-opportunity" : "low-opportunity";
 
   const pillars = buildPillarView(detailCategoryScores as Partial<Record<PillarKey, number>>);
@@ -115,9 +116,40 @@ function ExecutiveSummaryPanelImpl({
     return v == null ? 0 : Math.round(Number(v));
   };
 
-  const { data: narrative, loading, error, regenerate } = useCityNarrative(cityId);
-
   const signalRows = sigRows.filter((r) => r.value !== "—");
+  const { data: narrative, loading, error, regenerate } = useCityNarrative({
+    cityId,
+    weightsHash: JSON.stringify({
+      score,
+      tier,
+      pillars: {
+        demand: pillarDisplay("demand"),
+        tam_teachers: pillarDisplay("franchiseeSupply"),
+        competitive_opportunity: pillarDisplay("competitiveLandscape"),
+      },
+      signals: signalRows.map((r) => ({
+        key: r.key,
+        value: r.value,
+        benchmark: r.benchmark?.label ?? null,
+      })),
+    }),
+    context: {
+      total_score: score,
+      tier: `Tier ${tier}`,
+      pillars: {
+        demand: pillarDisplay("demand"),
+        tam_teachers: pillarDisplay("franchiseeSupply"),
+        competitive_opportunity: pillarDisplay("competitiveLandscape"),
+      },
+      signals: signalRows.map((r) => ({
+        key: r.key,
+        label: r.label,
+        source: r.source,
+        value: r.value,
+        benchmark: r.benchmark?.label ?? null,
+      })),
+    },
+  });
 
   return (
     <>
@@ -266,6 +298,23 @@ function ExecutiveSummaryPanelImpl({
               cityName={selectedCity}
               stateName={selectedState}
               totalScore={score}
+              narrativeContext={narrative ?? null}
+              focusContext={{
+                total_score: score,
+                tier: `Tier ${tier}`,
+                pillars: {
+                  demand: pillarDisplay("demand"),
+                  tam_teachers: pillarDisplay("franchiseeSupply"),
+                  competitive_opportunity: pillarDisplay("competitiveLandscape"),
+                },
+                signals: signalRows.map((r) => ({
+                  key: r.key,
+                  label: r.label,
+                  source: r.source,
+                  value: r.value,
+                  benchmark: r.benchmark?.label ?? null,
+                })),
+              }}
             />
           </div>
         </div>

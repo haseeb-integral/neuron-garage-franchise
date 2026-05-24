@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Send, Sparkles, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import type { CityNarrative, CityNarrativeContext } from "@/lib/useCityNarrative";
 
 interface Msg {
   role: "user" | "assistant";
@@ -13,9 +14,11 @@ interface Props {
   cityName: string;
   stateName: string;
   totalScore: number;
+  narrativeContext?: CityNarrative | null;
+  focusContext?: CityNarrativeContext | null;
 }
 
-export function AskCityPanel({ cityId, cityName, stateName, totalScore }: Props) {
+export function AskCityPanel({ cityId, cityName, stateName, totalScore, narrativeContext, focusContext }: Props) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -54,7 +57,7 @@ export function AskCityPanel({ cityId, cityName, stateName, totalScore }: Props)
           "Content-Type": "application/json",
           Authorization: `Bearer ${session?.access_token ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ cityId, messages: nextMessages }),
+        body: JSON.stringify({ cityId, messages: nextMessages, narrativeContext, focusContext }),
       });
       if (!resp.ok || !resp.body) {
         const errText = await resp.text();

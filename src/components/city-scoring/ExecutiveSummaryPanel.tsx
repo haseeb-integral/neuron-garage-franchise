@@ -68,7 +68,7 @@ function ExecutiveSummaryPanelImpl({
     .sort((a, b) => a.v - b.v)[0];
   let argument = "";
   if (verdict === "high") {
-    argument = `Taken together, a Total Score of ${score} puts ${selectedCity} firmly in our high-priority Tier-A bucket — the underlying signals point to durable family demand and a recruitable operator pool that, in our experience, translate into a franchise location worth a serious conversation rather than another data refresh.`;
+    argument = `Taken together, a Total Score of ${score} puts ${selectedCity} firmly in the high-priority Tier-A bucket — the underlying signals point to durable family demand and a recruitable operator pool that, in this analysis, translate into a franchise location worth a serious conversation rather than another data refresh.`;
   } else if (verdict === "moderate") {
     argument = `Netted out, a Total Score of ${score} lands ${selectedCity} in the moderate Tier-B/C band: worth keeping on the watchlist as a secondary target, with the ${weakestCat.label.toLowerCase()} side of the equation determining whether it eventually graduates into a priority market.`;
   } else {
@@ -80,7 +80,7 @@ function ExecutiveSummaryPanelImpl({
     verdict === "high"
       ? `${selectedCity} is a strong, high-opportunity market for a Neuron Garage location. The numbers point to durable family demand, a deep teacher pool to recruit from, and a competitive landscape that still has room for a new branded operator.`
       : verdict === "moderate"
-      ? `${selectedCity} is a moderate-opportunity market. There is enough underlying demand and supply to make it worth a closer look, but at least one category is holding the overall score back — we would want a clear local thesis before pushing it into the top tier.`
+      ? `${selectedCity} is a moderate-opportunity market. There is enough underlying demand and supply to make it worth a closer look, but at least one category is holding the overall score back — this analysis suggests a clear local thesis is needed before pushing it into the top tier.`
       : `${selectedCity} is currently a low-opportunity market on our scoring model. That does not mean it is a bad city — it means the combination of family demand, teacher supply, and competitive openness is not strong enough today to justify outbound investment without a compelling local reason (an existing operator, a real-estate opening, a referral, etc.).`;
 
   // Pillar narratives use the SAME NARRATIVE_BANDS constants as the verdict.

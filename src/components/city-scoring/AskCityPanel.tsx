@@ -11,7 +11,6 @@ interface Msg {
 
 interface CityHit { id: string; city_name: string; state_abbr: string; }
 
-
 interface Props {
   cityId: string | null;
   cityName: string;
@@ -21,6 +20,8 @@ interface Props {
   focusContext?: CityNarrativeContext | null;
 }
 
+const LISTBOX_ID = "compare-city-listbox";
+
 export function AskCityPanel({ cityId, cityName, stateName, totalScore, narrativeContext, focusContext }: Props) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
@@ -29,7 +30,11 @@ export function AskCityPanel({ cityId, cityName, stateName, totalScore, narrativ
   const [compareQuery, setCompareQuery] = useState("");
   const [compareHits, setCompareHits] = useState<CityHit[]>([]);
   const [compareLoading, setCompareLoading] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const suggested = [
     `Why is ${cityName} scored ${totalScore}/100?`,
@@ -43,13 +48,14 @@ export function AskCityPanel({ cityId, cityName, stateName, totalScore, narrativ
     setCompareOpen(false);
     setCompareQuery("");
     setCompareHits([]);
+    setActiveIndex(-1);
   }, [cityId]);
 
   // Debounced city search for the "Compare to…" picker
   useEffect(() => {
     if (!compareOpen) return;
     const q = compareQuery.trim();
-    if (q.length < 2) { setCompareHits([]); return; }
+    if (q.length < 2) { setCompareHits([]); setActiveIndex(-1); return; }
     let cancelled = false;
     setCompareLoading(true);
     const t = setTimeout(async () => {
@@ -60,12 +66,68 @@ export function AskCityPanel({ cityId, cityName, stateName, totalScore, narrativ
         .order("population", { ascending: false })
         .limit(8);
       if (!cancelled) {
-        setCompareHits((data ?? []).filter((c) => c.id !== cityId) as CityHit[]);
+        const hits = (data ?? []).filter((c) => c.id !== cityId) as CityHit[];
+        setCompareHits(hits);
+        setActiveIndex(hits.length > 0 ? 0 : -1);
         setCompareLoading(false);
       }
     }, 200);
     return () => { cancelled = true; clearTimeout(t); };
   }, [compareQuery, compareOpen, cityId]);
+
+  // Keyboard navigation for the compare picker
+  useEffect(() => {
+    if (!compareOpen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setCompareOpen(false);
+        triggerRef.current?.focus();
+        return;
+      }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setActiveIndex((idx) => {
+          if (compareHits.length === 0) return -1;
+          const next = idx + 1;
+          return next >= compareHits.length ? 0 : next;
+        });
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActiveIndex((idx) => {
+          if (compareHits.length === 0) return -1;
+          const next = idx - 1;
+          return next < 0 ? compareHits.length - 1 : next;
+        });
+        return;
+      }
+      if (e.key === "Enter" && activeIndex >= 0 && activeIndex < compareHits.length) {
+        e.preventDefault();
+        const hit = compareHits[activeIndex];
+        setCompareOpen(false);
+        setCompareQuery("");
+        setActiveIndex(-1);
+        send(`Compare ${cityName}, ${stateName} to ${hit.city_name}, ${hit.state_abbr}.`);
+        return;
+      }
+      if (e.key === "Tab") {
+        // Close on Tab out (standard combobox behavior)
+        setCompareOpen(false);
+        return;
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [compareOpen, compareHits, activeIndex, cityName, stateName]);
+
+  // Scroll active option into view
+  useEffect(() => {
+    if (activeIndex >= 0 && itemRefs.current[activeIndex]) {
+      itemRefs.current[activeIndex]?.scrollIntoView({ block: "nearest" });
+    }
+  }, [activeIndex]);
 
 
   useEffect(() => {
@@ -206,19 +268,35 @@ export function AskCityPanel({ cityId, cityName, stateName, totalScore, narrativ
         <div className="flex items-center gap-2">
           <div className="relative">
             <button
+              ref={triggerRef}
               type="button"
               onClick={() => setCompareOpen((v) => !v)}
               disabled={streaming}
               className="inline-flex items-center gap-1 rounded-full border border-[#dbe4f2] bg-[#f7faff] px-2.5 py-1.5 text-[11px] font-semibold text-[#174be8] hover:bg-[#eaf1ff] disabled:opacity-50"
-              title="Compare to another city"
+              aria-haspopup="listbox"
+              aria-expanded={compareOpen}
+              aria-controls={LISTBOX_ID}
             >
-              <GitCompareArrows size={12} /> Compare to…
+              <GitCompareArrows size={12} aria-hidden="true" /> Compare to…
             </button>
             {compareOpen && (
-              <div className="absolute bottom-full left-0 mb-2 z-20 w-72 rounded-lg border border-[#dbe4f2] bg-white shadow-lg">
+              <div
+                ref={dropdownRef}
+                id={LISTBOX_ID}
+                role="listbox"
+                aria-label="Compare to another city"
+                className="absolute bottom-full left-0 mb-2 z-20 w-72 rounded-lg border border-[#dbe4f2] bg-white shadow-lg"
+              >
                 <div className="flex items-center gap-1 border-b border-[#eef2f7] px-2 py-1.5">
                   <input
                     autoFocus
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-controls={LISTBOX_ID}
+                    aria-expanded={compareOpen}
+                    aria-activedescendant={
+                      activeIndex >= 0 ? `${LISTBOX_ID}-option-${activeIndex}` : undefined
+                    }
                     value={compareQuery}
                     onChange={(e) => setCompareQuery(e.target.value)}
                     placeholder="Search city…"
@@ -226,11 +304,14 @@ export function AskCityPanel({ cityId, cityName, stateName, totalScore, narrativ
                   />
                   <button
                     type="button"
-                    onClick={() => setCompareOpen(false)}
+                    onClick={() => {
+                      setCompareOpen(false);
+                      triggerRef.current?.focus();
+                    }}
                     className="rounded p-1 text-[#8794ab] hover:bg-[#f1f4f9]"
-                    aria-label="Close"
+                    aria-label="Close compare picker"
                   >
-                    <X size={12} />
+                    <X size={12} aria-hidden="true" />
                   </button>
                 </div>
                 <div className="max-h-56 overflow-y-auto py-1">
@@ -243,16 +324,26 @@ export function AskCityPanel({ cityId, cityName, stateName, totalScore, narrativ
                   {!compareLoading && compareQuery.trim().length >= 2 && compareHits.length === 0 && (
                     <p className="px-3 py-2 text-[11px] text-[#8794ab]">No matches.</p>
                   )}
-                  {compareHits.map((c) => (
+                  {compareHits.map((c, i) => (
                     <button
                       key={c.id}
+                      ref={(el) => { itemRefs.current[i] = el; }}
                       type="button"
+                      role="option"
+                      id={`${LISTBOX_ID}-option-${i}`}
+                      aria-selected={i === activeIndex}
+                      onMouseEnter={() => setActiveIndex(i)}
                       onClick={() => {
                         setCompareOpen(false);
                         setCompareQuery("");
+                        setActiveIndex(-1);
                         send(`Compare ${cityName}, ${stateName} to ${c.city_name}, ${c.state_abbr}.`);
                       }}
-                      className="block w-full text-left px-3 py-1.5 text-[12px] text-[#07142f] hover:bg-[#f7faff]"
+                      className={
+                        i === activeIndex
+                          ? "block w-full text-left px-3 py-1.5 text-[12px] text-[#07142f] bg-[#eaf1ff] outline-none"
+                          : "block w-full text-left px-3 py-1.5 text-[12px] text-[#07142f] hover:bg-[#f7faff]"
+                      }
                     >
                       {c.city_name}, {c.state_abbr}
                     </button>

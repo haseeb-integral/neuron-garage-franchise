@@ -11,6 +11,15 @@ interface Msg {
 
 interface CityHit { id: string; city_name: string; state_abbr: string; }
 
+interface Props {
+  cityId: string | null;
+  cityName: string;
+  stateName: string;
+  totalScore: number;
+  narrativeContext?: CityNarrative | null;
+  focusContext?: CityNarrativeContext | null;
+}
+
 const LISTBOX_ID = "compare-city-listbox";
 
 export function AskCityPanel({ cityId, cityName, stateName, totalScore, narrativeContext, focusContext }: Props) {

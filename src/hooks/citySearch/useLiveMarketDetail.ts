@@ -91,11 +91,11 @@ async function fetchSelectedMarketDetail(city: string, state: string): Promise<D
   };
   addScore("demand", scoredRow.score_demand);
   addScore("tam_teachers", scoredRow.score_tam_teachers);
-  // CSI is stored as SATURATION (high = crowded = bad). Invert to
-  // OPPORTUNITY (high = good) so all three categories share direction.
-  if (scoredRow.score_csi != null) {
-    scoresMap["competitive_landscape"] = Math.max(0, Math.min(100, 100 - Number(scoredRow.score_csi)));
-  }
+  // CSI saturation → Competitive Opportunity via the single shared helper.
+  // Never inline `100 - score_csi` here — go through competitiveOpportunityFromCsi.
+  const oppRaw = competitiveOpportunityFromCsi(scoredRow.score_csi as number | null | undefined);
+  if (oppRaw != null) scoresMap["competitive_landscape"] = oppRaw;
+
 
   // Legacy `city_market_signals` was severed on 2026-05-21. Evidence rows
   // are synthesized directly from us_cities_scored via the seeded fallback.

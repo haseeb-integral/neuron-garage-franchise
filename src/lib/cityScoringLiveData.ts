@@ -2,6 +2,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { CityData, sampleCities } from "@/data/cityData";
 import type { CategoryKey } from "@/stores/cityScoringStore";
 import { canonicalKey } from "@/lib/signalAliases";
+import { competitiveOpportunityFromCsi } from "@/lib/marketView";
+
 
 /**
  * Subset of `us_cities_scored` columns this module reads.

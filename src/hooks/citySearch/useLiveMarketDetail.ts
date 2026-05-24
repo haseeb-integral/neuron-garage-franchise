@@ -17,6 +17,8 @@ import {
   loadLiveRankedMarkets,
   type RankedMarket,
 } from "@/lib/cityScoringLiveData";
+import { competitiveOpportunityFromCsi } from "@/lib/marketView";
+
 
 // Façade-shaped rows. Kept loose to match the page's existing read sites,
 // which reach into legacy `cities.*` fields too freely to type strictly today.

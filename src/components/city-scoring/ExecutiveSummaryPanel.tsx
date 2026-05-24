@@ -308,6 +308,7 @@ function ExecutiveSummaryPanelImpl({
                       tone === "mid"  ? "bg-[#fff8e1] text-[#b88800] border-[#f3e0a8]" :
                       tone === "bad"  ? "bg-[#fdecea] text-[#c2410c] border-[#f5cbb8]" :
                       "bg-[#f1f4f9] text-[#526078] border-[#e5eaf2]";
+                    const pillExplain = explainSignalPill(r.key, tone);
                     return (
                       <div key={r.key} className="px-3 py-2.5">
                         <div className="flex items-baseline justify-between gap-3">
@@ -322,6 +323,9 @@ function ExecutiveSummaryPanelImpl({
                             </span>
                           )}
                         </div>
+                        {pillExplain && (
+                          <p className="mt-1.5 text-[11px] leading-relaxed text-[#3a4763]">{pillExplain}</p>
+                        )}
                       </div>
                     );
                   })}

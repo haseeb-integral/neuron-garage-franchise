@@ -1612,7 +1612,7 @@ const CityScoring = () => {
           <ExecutiveSummaryPanel
             selectedCity={selectedCity}
             selectedState={selectedState}
-            cityId={liveCity?.id ?? null}
+            cityId={selected.cityId ?? null}
             detailScore={detailScore}
             detailCategoryScores={detailCategoryScores}
             sigRows={sigRows}

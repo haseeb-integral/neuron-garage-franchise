@@ -256,6 +256,15 @@ function ExecutiveSummaryPanelImpl({
             </div>
 
             <section>
+              <h3 className="text-[13px] font-bold text-[#07142f] mb-1.5">Detailed Explanation</h3>
+              <div className="space-y-2.5">
+                {detailedExplanationParagraphs.map((para, i) => (
+                  <p key={i} className="text-[12.5px] leading-relaxed text-[#14233b] text-justify hyphens-auto">{para}</p>
+                ))}
+              </div>
+            </section>
+
+            <section>
               <h3 className="text-[13px] font-bold text-[#07142f] mb-1.5">The bottom line</h3>
               <p className="text-[12.5px] leading-relaxed text-[#14233b] text-justify hyphens-auto">{verdictSentence}</p>
             </section>

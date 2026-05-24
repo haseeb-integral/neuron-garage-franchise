@@ -6,6 +6,7 @@ import { buildPillarView, type PillarKey } from "@/lib/marketView";
 import { bandFromDisplayScore, tierFromDisplayScore } from "@/lib/cityTiers";
 import { useCityNarrative } from "@/lib/useCityNarrative";
 import { AskCityPanel } from "./AskCityPanel";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export interface SigRow {
   key: string;

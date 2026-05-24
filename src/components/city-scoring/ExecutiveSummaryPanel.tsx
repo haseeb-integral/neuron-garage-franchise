@@ -151,6 +151,20 @@ function ExecutiveSummaryPanelImpl({
     },
   });
 
+  if (!cityId) {
+    return (
+      <div className="rounded-lg bg-white border border-[#eef2f7] p-3 flex-1 flex flex-col">
+        <h4 className="text-xs font-bold text-[#07142f] mb-1">{selectedCity}, {selectedState}</h4>
+        <p className="text-[10px] uppercase tracking-wide text-[#8794ab] mb-2 flex items-center gap-1">
+          <Sparkles size={10} className="text-[#174be8]" /> AI Executive Summary
+        </p>
+        <p className="text-[11px] leading-relaxed text-[#8794ab]">
+          No data for this market yet. Refresh this city to pull live signals before generating a summary.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="rounded-lg bg-white border border-[#eef2f7] p-3 flex-1 flex flex-col">
@@ -180,7 +194,7 @@ function ExecutiveSummaryPanelImpl({
 
       {execReportOpen && (
         <div
-          className="fixed inset-y-0 right-0 z-50 w-[50vw] bg-white border-l border-[#e5eaf2] shadow-2xl overflow-y-auto animate-in slide-in-from-right duration-300"
+          className="fixed inset-y-0 right-0 z-50 w-full sm:w-[92vw] md:w-[80vw] lg:w-[65vw] xl:w-[55vw] 2xl:w-[50vw] max-w-[1100px] bg-white border-l border-[#e5eaf2] shadow-2xl overflow-y-auto animate-in slide-in-from-right duration-300"
           role="dialog"
           aria-label={`${selectedCity}, ${selectedState} executive report`}
         >

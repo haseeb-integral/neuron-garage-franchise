@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { Send, Sparkles, Loader2 } from "lucide-react";
+import { Send, Sparkles, Loader2, GitCompareArrows, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { CityNarrative, CityNarrativeContext } from "@/lib/useCityNarrative";
 
@@ -8,6 +8,9 @@ interface Msg {
   role: "user" | "assistant";
   content: string;
 }
+
+interface CityHit { id: string; city_name: string; state_abbr: string; }
+
 
 interface Props {
   cityId: string | null;
@@ -22,19 +25,48 @@ export function AskCityPanel({ cityId, cityName, stateName, totalScore, narrativ
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [compareOpen, setCompareOpen] = useState(false);
+  const [compareQuery, setCompareQuery] = useState("");
+  const [compareHits, setCompareHits] = useState<CityHit[]>([]);
+  const [compareLoading, setCompareLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const suggested = [
     `Why is ${cityName} scored ${totalScore}/100?`,
     `What would have to change for ${cityName} to move up a tier?`,
     `Who are the realistic competitors I'd face here?`,
-    `Compare ${cityName} to a Tier-A alternative.`,
     `What teachers should I recruit first in ${cityName}?`,
   ];
 
   useEffect(() => {
     setMessages([]);
+    setCompareOpen(false);
+    setCompareQuery("");
+    setCompareHits([]);
   }, [cityId]);
+
+  // Debounced city search for the "Compare to…" picker
+  useEffect(() => {
+    if (!compareOpen) return;
+    const q = compareQuery.trim();
+    if (q.length < 2) { setCompareHits([]); return; }
+    let cancelled = false;
+    setCompareLoading(true);
+    const t = setTimeout(async () => {
+      const { data } = await supabase
+        .from("us_cities_scored")
+        .select("id, city_name, state_abbr")
+        .ilike("city_name", `${q}%`)
+        .order("population", { ascending: false })
+        .limit(8);
+      if (!cancelled) {
+        setCompareHits((data ?? []).filter((c) => c.id !== cityId) as CityHit[]);
+        setCompareLoading(false);
+      }
+    }, 200);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [compareQuery, compareOpen, cityId]);
+
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -170,28 +202,90 @@ export function AskCityPanel({ cityId, cityName, stateName, totalScore, narrativ
         ))}
       </div>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          send(input);
-        }}
-        className="flex items-center gap-2 border-t border-[#eef2f7] px-3 py-2"
-      >
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder={`Ask anything about ${cityName}…`}
-          className="flex-1 rounded-md border border-[#dbe4f2] px-2.5 py-1.5 text-[12px] focus:outline-none focus:border-[#174be8]"
-          disabled={streaming}
-        />
-        <button
-          type="submit"
-          disabled={streaming || !input.trim()}
-          className="rounded-md bg-[#174be8] px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-50"
-        >
-          {streaming ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
-        </button>
-      </form>
+      <div className="relative border-t border-[#eef2f7] px-3 py-2">
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setCompareOpen((v) => !v)}
+              disabled={streaming}
+              className="inline-flex items-center gap-1 rounded-full border border-[#dbe4f2] bg-[#f7faff] px-2.5 py-1.5 text-[11px] font-semibold text-[#174be8] hover:bg-[#eaf1ff] disabled:opacity-50"
+              title="Compare to another city"
+            >
+              <GitCompareArrows size={12} /> Compare to…
+            </button>
+            {compareOpen && (
+              <div className="absolute bottom-full left-0 mb-2 z-20 w-72 rounded-lg border border-[#dbe4f2] bg-white shadow-lg">
+                <div className="flex items-center gap-1 border-b border-[#eef2f7] px-2 py-1.5">
+                  <input
+                    autoFocus
+                    value={compareQuery}
+                    onChange={(e) => setCompareQuery(e.target.value)}
+                    placeholder="Search city…"
+                    className="flex-1 rounded px-1.5 py-1 text-[12px] focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setCompareOpen(false)}
+                    className="rounded p-1 text-[#8794ab] hover:bg-[#f1f4f9]"
+                    aria-label="Close"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+                <div className="max-h-56 overflow-y-auto py-1">
+                  {compareLoading && (
+                    <p className="px-3 py-2 text-[11px] text-[#8794ab]">Searching…</p>
+                  )}
+                  {!compareLoading && compareQuery.trim().length < 2 && (
+                    <p className="px-3 py-2 text-[11px] text-[#8794ab]">Type 2+ letters to find a city.</p>
+                  )}
+                  {!compareLoading && compareQuery.trim().length >= 2 && compareHits.length === 0 && (
+                    <p className="px-3 py-2 text-[11px] text-[#8794ab]">No matches.</p>
+                  )}
+                  {compareHits.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => {
+                        setCompareOpen(false);
+                        setCompareQuery("");
+                        send(`Compare ${cityName}, ${stateName} to ${c.city_name}, ${c.state_abbr}.`);
+                      }}
+                      className="block w-full text-left px-3 py-1.5 text-[12px] text-[#07142f] hover:bg-[#f7faff]"
+                    >
+                      {c.city_name}, {c.state_abbr}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              send(input);
+            }}
+            className="flex flex-1 items-center gap-2"
+          >
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={`Ask anything about ${cityName}…`}
+              className="flex-1 rounded-md border border-[#dbe4f2] px-2.5 py-1.5 text-[12px] focus:outline-none focus:border-[#174be8]"
+              disabled={streaming}
+            />
+            <button
+              type="submit"
+              disabled={streaming || !input.trim()}
+              className="rounded-md bg-[#174be8] px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-50"
+            >
+              {streaming ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+            </button>
+          </form>
+        </div>
+      </div>
     </section>
   );
 }

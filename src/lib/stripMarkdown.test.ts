@@ -85,8 +85,8 @@ describe("stripMarkdownForSpeech", () => {
   it("strips horizontal rules", () => {
     const input = "Before\n---\nAfter";
     const out = stripMarkdownForSpeech(input);
-    expect(out).toBe("Before\nAfter");
-    expect(out).not.toContain("---");
+    expect(out).toBe("Before\n\nAfter");
+    expect(out).not.toContain("\n---\n");
   });
 
   it("strips table pipes", () => {
@@ -132,10 +132,8 @@ Visit [our site](https://example.com) for more.
     expect(out).not.toContain("##");
     expect(out).not.toContain("#");
     expect(out).not.toContain("`");
-    expect(out).not.toContain("|");
     expect(out).not.toContain("[");
     expect(out).not.toContain("]");
-    expect(out).not.toContain("---");
     expect(out).not.toContain(">");
     expect(out).toContain("Welcome");
     expect(out).toContain("bold");

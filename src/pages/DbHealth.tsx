@@ -5,6 +5,7 @@ import { HealthStatus, rollup } from "@/lib/dbHealth/thresholds";
 import { DomainCard } from "@/components/dbHealth/DomainCard";
 import { StatusPill } from "@/components/dbHealth/StatusPill";
 import { AccuracyTab } from "@/components/dbHealth/AccuracyTab";
+import { AlertsTab } from "@/components/dbHealth/AlertsTab";
 import { useIsManager } from "@/hooks/dbHealth/useIsManager";
 
 /**
@@ -16,7 +17,7 @@ export default function DbHealth() {
   const { loading: roleLoading, isManager } = useIsManager();
   const [perDomain, setPerDomain] = useState<Record<string, HealthStatus>>({});
   const [refreshTick, setRefreshTick] = useState(0);
-  const [tab, setTab] = useState<"status" | "accuracy">("status");
+  const [tab, setTab] = useState<"status" | "accuracy" | "alerts">("status");
 
   const overall = useMemo(() => rollup(Object.values(perDomain)), [perDomain]);
 

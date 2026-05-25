@@ -1553,6 +1553,7 @@ const CityScoring = () => {
           onRefine={askAi}
           loading={aiLoading}
           appliedWeights={appliedWeights}
+          priorWeights={priorWeights ?? undefined}
         />
 
       )}

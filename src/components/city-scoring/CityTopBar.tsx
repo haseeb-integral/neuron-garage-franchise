@@ -89,6 +89,7 @@ export function CityTopBar({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      </div>
     </div>
   );
 }

@@ -7,13 +7,19 @@ import { supabase } from "@/integrations/supabase/client";
 // Errors are surfaced as inline assistant messages (red), not corner toasts.
 // ============================================================================
 
+export type ActionType =
+  | "navigate"
+  | "apply_screen_state"
+  | "add_to_watchlist"
+  | "remove_from_watchlist"
+  | "change_candidate_stage";
+
 export type AssistantReply =
   | { kind: "answer"; summary: string; followups?: string[] }
-  | { kind: "navigate_and_apply"; summary: string; route: string; apply: Record<string, unknown> }
   | {
       kind: "propose_action";
       summary: string;
-      action_type: "add_to_watchlist" | "remove_from_watchlist" | "change_candidate_stage";
+      action_type: ActionType;
       payload: Record<string, unknown>;
       preview_text: string;
     }

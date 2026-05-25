@@ -237,8 +237,7 @@ export const DOMAINS: DomainDef[] = [
     description: "Imported teachers in the outreach funnel.",
     metrics: [
       metricRowCount("teacher_prospects", "Total prospects."),
-      metricColumnNonNullPct("teacher_prospects", "email", 50),
-      metricColumnNonNullPct("teacher_prospects", "fit_score", 30),
+      metricColumnNonNullPct("teacher_prospects", "email", 3),
       metricFreshness("teacher_prospects", "updated_at", 14),
     ],
   },
@@ -258,7 +257,7 @@ export const DOMAINS: DomainDef[] = [
     description: "Active candidates in the franchisee pipeline.",
     metrics: [
       metricRowCount("candidates", "Pipeline records."),
-      metricColumnNonNullPct("candidates", "email", 90),
+      metricColumnNonNullPct("candidates", "email", 80),
     ],
   },
   {

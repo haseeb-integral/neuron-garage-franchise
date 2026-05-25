@@ -120,8 +120,7 @@ function RankedMarketsListImpl({
       {hasOverrides && (
         <div className="mb-2 rounded-md bg-[#fffbe6] border border-[#fde68a] px-2 py-1.5 text-[11px] text-[#854d0e] flex items-center justify-between gap-2">
           <span>
-            <span className="font-semibold">Re-ranked with your weights</span> — this page recomputed
-            from your sub-metric edits.
+            <span className="font-semibold">Composite re-ranked with your weights</span> — cities are ordered by the new overall score, not by any single metric.
           </span>
           <button
             type="button"

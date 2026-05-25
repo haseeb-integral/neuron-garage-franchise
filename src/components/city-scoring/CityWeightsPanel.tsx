@@ -152,7 +152,7 @@ export function CityWeightsPanel({
             )}
           </div>
           <p className="text-[11.5px] text-[#526078] leading-snug">
-            A <span className="font-semibold text-[#07142f]">preset</span> is a one-click recipe that snaps the three weight sliders to a balance tuned for a specific goal (e.g. <em>most kids</em>, <em>most teachers</em>, <em>least competition</em>). Click any tile to apply it — the sliders below animate to match, then hit <span className="font-semibold">Apply Weights</span> to re-rank cities. Drag a slider yourself and you'll switch to <span className="font-semibold text-[#7c3aed]">Custom</span>.
+            A <span className="font-semibold text-[#07142f]">preset</span> is a one-click recipe for the three weight sliders — it only changes <span className="font-semibold">how much each category counts toward the composite score</span>. The table is always sorted by that composite (highest overall score first), <span className="font-semibold">not</span> by any single category. So "Demand-Heavy" makes Demand worth 60% of each city's overall score — top cities will lean demand-strong, but TAM and Competition still influence the final rank and act as tie-breakers. Drag a slider yourself and you'll switch to <span className="font-semibold text-[#7c3aed]">Custom</span>; click <span className="font-semibold">Apply Weights</span> to re-rank.
           </p>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">

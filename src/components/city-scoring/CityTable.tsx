@@ -71,6 +71,11 @@ export function CityTable({ cities, onSelectCity, compareMode, selectedForCompar
             <SortHeader label="Children 5-12%" k="childrenPct" />
             <SortHeader label="Median Income" k="medianIncome" />
             <SortHeader label="Competitors" k="competitorCount" />
+            <TableHead className="text-xs whitespace-nowrap" style={{ color: '#6c757d' }}>
+              <span title="Teacher prospects in this city, and what share of them have a school name on file. Empty = no prospects sourced yet.">
+                School Coverage
+              </span>
+            </TableHead>
             <TableHead className="w-10" />
           </TableRow>
         </TableHeader>

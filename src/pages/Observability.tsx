@@ -85,10 +85,19 @@ export default function Observability() {
     };
   }, [perDomain]);
 
+  // Suppress public_schools issues from the top banner. Column-level gaps
+  // (e.g. city_name blank on most rows) aren't actionable for our workflow —
+  // we only care about school coverage for cities we're actively enriching,
+  // which the per-city panel below already shows. The domain card itself
+  // still surfaces details for anyone who wants them.
   const allIssues = useMemo(
-    () => Object.values(perDomainIssues).flat(),
+    () =>
+      Object.entries(perDomainIssues)
+        .filter(([key]) => key !== "public_schools")
+        .flatMap(([, v]) => v),
     [perDomainIssues],
   );
+
 
   const handleDomainStatus = useCallback((key: string, s: HealthStatus) => {
     setPerDomain((prev) => (prev[key] === s ? prev : { ...prev, [key]: s }));

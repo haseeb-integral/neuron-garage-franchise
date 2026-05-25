@@ -222,7 +222,13 @@ export function NeuronAiPanel() {
 // ----------------------------------------------------------------------------
 // Welcome state
 // ----------------------------------------------------------------------------
-function WelcomeState({ onPick, routeLabel }: { onPick: (p: string) => void; routeLabel: string }) {
+function WelcomeState({
+  onPick, routeLabel, suggestions,
+}: {
+  onPick: (p: string) => void;
+  routeLabel: string;
+  suggestions: { label: string; prompt: string }[];
+}) {
   return (
     <div className="mx-auto max-w-md space-y-6 pt-6">
       <div className="text-center">
@@ -231,8 +237,8 @@ function WelcomeState({ onPick, routeLabel }: { onPick: (p: string) => void; rou
         </div>
         <h2 className="text-[18px] font-bold text-[#0b1a36]">Hi, I'm Neuron AI</h2>
         <p className="mx-auto mt-1.5 max-w-[320px] text-[13px] leading-relaxed text-[#5a6a85]">
-          I can help across the whole app — find cities, explain scores, navigate
-          between screens, and take actions on your behalf. I know you're on <b>{routeLabel}</b>.
+          I can look up live data, explain scores, and take actions for you —
+          with your confirmation. You're on <b>{routeLabel}</b>.
         </p>
       </div>
 
@@ -241,16 +247,13 @@ function WelcomeState({ onPick, routeLabel }: { onPick: (p: string) => void; rou
           Try one of these
         </div>
         <div className="space-y-1.5">
-          {SLASH_COMMANDS.map((s) => (
+          {suggestions.map((s) => (
             <button
-              key={s.cmd}
+              key={s.label}
               onClick={() => onPick(s.prompt)}
               className="group flex w-full items-center gap-3 rounded-xl border border-[#eef2f7] bg-white px-3.5 py-2.5 text-left transition-all hover:-translate-y-px hover:border-[#d6cdf5] hover:shadow-[0_3px_10px_rgba(124,58,237,0.07)]"
             >
-              <code className="rounded-md bg-[#f4f0ff] px-2 py-0.5 font-mono text-[11px] font-semibold text-[#7c3aed]">
-                {s.cmd}
-              </code>
-              <span className="flex-1 text-[12.5px] text-[#3a4a66]">{s.desc}</span>
+              <span className="flex-1 text-[12.5px] font-medium text-[#3a4a66]">{s.label}</span>
               <ArrowRight size={13} className="text-[#c5cdde] transition-transform group-hover:translate-x-0.5 group-hover:text-[#7c3aed]" />
             </button>
           ))}

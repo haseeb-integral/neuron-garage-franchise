@@ -273,7 +273,8 @@ Deno.serve(async (req) => {
   try {
     // Auth
     const authHeader = req.headers.get("Authorization") ?? "";
-    if (!authHeader.toLowerCase().startsWith("bearer ")) {
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+    if (!token) {
       return new Response(JSON.stringify({ error: "Missing Authorization" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -284,7 +285,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseAnon, {
       global: { headers: { Authorization: authHeader } },
     });
-    const { data: userData, error: userErr } = await supabase.auth.getUser();
+    const { data: userData, error: userErr } = await supabase.auth.getUser(token);
     if (userErr || !userData?.user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,

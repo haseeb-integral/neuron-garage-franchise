@@ -64,14 +64,20 @@ export function NeuronAiPanel() {
   const handleSend = async (text: string) => {
     if (!text.trim() || sending) return;
     setInput("");
-    const reply = await send(text.trim(), {
+    await send(text.trim(), {
       route: screenContext.route,
       screenState: screenContext.state,
     });
-    if (reply?.kind === "navigate_and_apply") {
-      navigate(reply.route);
+  };
+
+  // Apply a nav/screen-state action after user confirms.
+  const applyNavAction = (action_type: string, payload: Record<string, unknown>) => {
+    const route = typeof payload.route === "string" ? payload.route : undefined;
+    if (!route) return;
+    navigate(route);
+    if (action_type === "apply_screen_state" && payload.apply && typeof payload.apply === "object") {
       (window as unknown as { __neuronAiApply?: unknown }).__neuronAiApply = {
-        route: reply.route, apply: reply.apply, ts: Date.now(),
+        route, apply: payload.apply as Record<string, unknown>, ts: Date.now(),
       };
     }
   };

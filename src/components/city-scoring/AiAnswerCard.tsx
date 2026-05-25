@@ -4,19 +4,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
+export type AiSubMetricBoost = { key: string; delta: number; pillar: string; label: string };
+
 export type AiResult = {
   summary: string;
   filters: { state: string | null; minScore: number | null; tier: string | null };
   weightMode?: "absolute" | "delta";
   absoluteWeights?: Record<string, number>;
   weightAdjustments: Record<string, number>;
+  subMetricBoosts?: AiSubMetricBoost[];
   reasoning_steps: string[];
   dataGaps: string[];
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
   demand: "Demand",
-  competitiveLandscape: "Competition",
+  competitiveLandscape: "Competitive Opportunity",
   franchiseeSupply: "TAM Teachers",
 };
 
@@ -34,7 +37,10 @@ export interface AiAnswerCardProps {
 }
 
 export function AiAnswerCard({ result, query, turnCount, onRefine, loading, appliedWeights }: AiAnswerCardProps) {
-  const [showReasoning, setShowReasoning] = useState(false);
+  // Reasoning is OPEN by default — the user explicitly asked that AI never
+  // hide its reasoning. They can collapse to save space, but the default is
+  // full transparency.
+  const [showReasoning, setShowReasoning] = useState(true);
   const [followUp, setFollowUp] = useState("");
 
   const filterChips: string[] = [];
@@ -70,7 +76,7 @@ export function AiAnswerCard({ result, query, turnCount, onRefine, loading, appl
         </div>
       </div>
 
-      {(filterChips.length > 0 || weightChips.length > 0) && (
+      {(filterChips.length > 0 || weightChips.length > 0 || (result.subMetricBoosts && result.subMetricBoosts.length > 0)) && (
         <div className="flex flex-wrap gap-1.5 mt-3">
           {filterChips.map((c) => (
             <span key={c} className="text-[11px] px-2 py-0.5 rounded-full bg-[#eaf0ff] text-[#174be8] font-medium">
@@ -80,6 +86,11 @@ export function AiAnswerCard({ result, query, turnCount, onRefine, loading, appl
           {weightChips.map((c) => (
             <span key={c} className="text-[11px] px-2 py-0.5 rounded-full bg-[#f1ebff] text-[#7c3aed] font-medium">
               weight · {c}
+            </span>
+          ))}
+          {(result.subMetricBoosts ?? []).map((b) => (
+            <span key={`${b.pillar}:${b.key}`} className="text-[11px] px-2 py-0.5 rounded-full bg-[#eafff4] text-[#0ea66e] font-medium">
+              boost · {b.label} {b.delta > 0 ? "+" : ""}{b.delta}
             </span>
           ))}
         </div>

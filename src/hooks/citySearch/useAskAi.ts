@@ -13,9 +13,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { AiResult } from "@/components/city-scoring/AiAnswerCard";
 
+export type AskAiSession = {
+  appliedFilters: { state: string | null; tier: string | null; minScore: number | null };
+  appliedWeights: Record<string, number>;
+  visibleCount: number;
+  totalCount: number;
+  watchlistCount: number;
+};
+
 export type AiTurn = { query: string; response: AiResult };
 
-export function useAskAi() {
+export function useAskAi(getSession?: () => AskAiSession) {
   const { session } = useAuth();
   const [aiThreadId, setAiThreadId] = useState<string | null>(null);
   const [aiTurns, setAiTurns] = useState<AiTurn[]>([]);
@@ -68,6 +76,7 @@ export function useAskAi() {
             query,
             threadId: aiThreadId,
             previousTurns: aiTurns.map((t) => ({ query: t.query, response: t.response })),
+            session: getSession ? getSession() : undefined,
           }),
         });
         let bodyJson: unknown = null;

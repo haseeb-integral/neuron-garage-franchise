@@ -313,7 +313,25 @@ const CityScoring = () => {
   // The fetch/threading/loading bookkeeping lives in src/hooks/citySearch/useAskAi.
   // The page is only responsible for translating the AiResult into filter +
   // weight state changes below.
-  const { aiThreadId: _aiThreadId, aiTurns, aiLoading, lastAiTurn, clearAi, ask } = useAskAi();
+  // useAskAi gets a getter so every request sends the CURRENT live session
+  // state (filters, applied weights, visible count) — the AI can't reason
+  // about "of these markets" / "Tier A markets" sensibly without it.
+  const askAiSessionRef = useRef<{
+    appliedFilters: { state: string | null; tier: string | null; minScore: number | null };
+    appliedWeights: Record<string, number>;
+    visibleCount: number;
+    totalCount: number;
+    watchlistCount: number;
+  }>({
+    appliedFilters: { state: null, tier: null, minScore: null },
+    appliedWeights: { ...DEFAULT_WEIGHTS },
+    visibleCount: 0,
+    totalCount: 0,
+    watchlistCount: 0,
+  });
+  const { aiThreadId: _aiThreadId, aiTurns, aiLoading, lastAiTurn, clearAi, ask } = useAskAi(
+    () => askAiSessionRef.current,
+  );
   void _aiThreadId;
 
   const askAi = async (query: string) => {
@@ -389,6 +407,40 @@ const CityScoring = () => {
       toast.success("AI adjusted your category weights — composite re-ranked.");
     } else if (f.state || f.tier || typeof f.minScore === "number") {
       toast.success("AI applied filters to your search.");
+    }
+
+    // Apply sub-metric boosts (additive, then re-normalize within each pillar
+    // to keep the slider invariant: each pillar's sub-weights sum to 100).
+    const boosts = (result as unknown as { subMetricBoosts?: Array<{ key: string; delta: number; pillar: string; label: string }> }).subMetricBoosts ?? [];
+    if (boosts.length > 0) {
+      const grouped: Record<string, Array<{ key: string; delta: number }>> = {};
+      for (const b of boosts) {
+        const p = b.pillar as CategoryKey;
+        if (!grouped[p]) grouped[p] = [];
+        grouped[p].push({ key: b.key, delta: b.delta });
+      }
+      const nextSub = JSON.parse(JSON.stringify(appliedSubWeights)) as typeof appliedSubWeights;
+      for (const pillar of Object.keys(grouped) as CategoryKey[]) {
+        const pillarWeights = { ...(nextSub[pillar] ?? {}) };
+        for (const { key, delta } of grouped[pillar]) {
+          if (pillarWeights[key] == null) continue;
+          pillarWeights[key] = Math.max(0, Math.min(100, pillarWeights[key] + delta));
+        }
+        const sum = Object.values(pillarWeights).reduce((s, v) => s + v, 0) || 1;
+        const keys = Object.keys(pillarWeights);
+        let running = 0;
+        keys.forEach((k, i) => {
+          if (i === keys.length - 1) pillarWeights[k] = Math.max(0, 100 - running);
+          else {
+            const v = Math.round((pillarWeights[k] / sum) * 100);
+            pillarWeights[k] = v;
+            running += v;
+          }
+        });
+        nextSub[pillar] = pillarWeights;
+      }
+      setAppliedSubWeights(nextSub);
+      toast.success(`AI nudged ${boosts.length} sub-metric${boosts.length > 1 ? "s" : ""} — ranking refined.`);
     }
   };
 
@@ -479,6 +531,24 @@ const CityScoring = () => {
   useEffect(() => {
     setPage(1);
   }, [searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop, cityFilter]);
+
+  // Keep the Ask AI session ref synced with live UI state. Every Ask AI
+  // request reads from this ref so the model reasons about what the user
+  // actually sees on screen right now.
+  useEffect(() => {
+    askAiSessionRef.current = {
+      appliedFilters: {
+        state: stateFilter && stateFilter !== "All" ? stateFilter : null,
+        tier: tierFilter && tierFilter !== "All" ? tierFilter : null,
+        minScore: Number(minScore) > 0 ? Number(minScore) : null,
+      },
+      appliedWeights: { ...appliedWeights },
+      visibleCount: filtered.length,
+      totalCount: baseRankedMarkets.length,
+      watchlistCount: watchlistCityIds.size,
+    };
+  }, [stateFilter, tierFilter, minScore, appliedWeights, filtered.length, baseRankedMarkets.length, watchlistCityIds]);
+
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);

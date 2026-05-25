@@ -408,6 +408,40 @@ const CityScoring = () => {
     } else if (f.state || f.tier || typeof f.minScore === "number") {
       toast.success("AI applied filters to your search.");
     }
+
+    // Apply sub-metric boosts (additive, then re-normalize within each pillar
+    // to keep the slider invariant: each pillar's sub-weights sum to 100).
+    const boosts = (result as unknown as { subMetricBoosts?: Array<{ key: string; delta: number; pillar: string; label: string }> }).subMetricBoosts ?? [];
+    if (boosts.length > 0) {
+      const grouped: Record<string, Array<{ key: string; delta: number }>> = {};
+      for (const b of boosts) {
+        const p = b.pillar as CategoryKey;
+        if (!grouped[p]) grouped[p] = [];
+        grouped[p].push({ key: b.key, delta: b.delta });
+      }
+      const nextSub = JSON.parse(JSON.stringify(appliedSubWeights)) as typeof appliedSubWeights;
+      for (const pillar of Object.keys(grouped) as CategoryKey[]) {
+        const pillarWeights = { ...(nextSub[pillar] ?? {}) };
+        for (const { key, delta } of grouped[pillar]) {
+          if (pillarWeights[key] == null) continue;
+          pillarWeights[key] = Math.max(0, Math.min(100, pillarWeights[key] + delta));
+        }
+        const sum = Object.values(pillarWeights).reduce((s, v) => s + v, 0) || 1;
+        const keys = Object.keys(pillarWeights);
+        let running = 0;
+        keys.forEach((k, i) => {
+          if (i === keys.length - 1) pillarWeights[k] = Math.max(0, 100 - running);
+          else {
+            const v = Math.round((pillarWeights[k] / sum) * 100);
+            pillarWeights[k] = v;
+            running += v;
+          }
+        });
+        nextSub[pillar] = pillarWeights;
+      }
+      setAppliedSubWeights(nextSub);
+      toast.success(`AI nudged ${boosts.length} sub-metric${boosts.length > 1 ? "s" : ""} — ranking refined.`);
+    }
   };
 
 

@@ -5,6 +5,7 @@ import { HealthStatus, rollup, statusColor } from "@/lib/dbHealth/thresholds";
 import { DomainCard } from "@/components/dbHealth/DomainCard";
 import { useIsManager } from "@/hooks/dbHealth/useIsManager";
 import { AccuracySection } from "@/components/observability/AccuracySection";
+import { AlertsSection } from "@/components/observability/AlertsSection";
 
 /**
  * /observability — Data Observability Dashboard (Tier 1: Status & Structure).
@@ -175,13 +176,14 @@ export default function Observability() {
       {/* Tier 2 — Accuracy & Rules */}
       <AccuracySection />
 
-      {/* ────────────────────────────────────────────────────────────────
-          Footer — quietly sets expectations for what's coming next.
-          ──────────────────────────────────────────────────────────────── */}
+      <div className="my-16 h-px bg-[#eef2f7]" />
+
+      {/* Tier 3 — Alerts & History */}
+      <AlertsSection />
+
       <footer className="mt-16 text-center">
         <p className="text-[12px] text-[#94a3b8]">
-          Tier 1 (Status &amp; Structure) and Tier 2 (Accuracy &amp; Rules) are live.
-          Tier 3 (Alerts &amp; History) ships next.
+          All three tiers — Status, Accuracy, and Alerts — are live.
         </p>
       </footer>
     </div>

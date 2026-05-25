@@ -26,6 +26,7 @@ const DbHealth = lazy(() => import("./pages/DbHealth"));
 const Observability = lazy(() => import("./pages/Observability"));
 
 const TeamMembers = lazy(() => import("./pages/TeamMembers"));
+const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 30000, refetchOnWindowFocus: true } } });
@@ -43,6 +44,7 @@ const App = () => (
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/unsubscribe" element={<Unsubscribe />} />
               <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                 <Route path="/" element={<Index />} />
                 <Route path="/city-scoring" element={<CityScoring />} />

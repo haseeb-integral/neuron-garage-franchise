@@ -103,29 +103,37 @@ sheet, stage history.
 // Keeps token budget tight for off-route turns.
 export const SCREEN_KNOWLEDGE: Record<string, string> = {
   "/city-scoring": `
-You are currently on City Search. You can:
-- navigate_and_apply with route="/city-scoring" and apply: { stateFilter, tierFilter, minScore, weights }
-- propose_action add_to_watchlist (payload: { cityId }) or remove_from_watchlist
-- answer factual questions about specific cities
+You are on City Search. To answer "best/top cities" questions, ALWAYS call
+query_cities FIRST and quote the numbers in your answer. Don't just navigate
+without showing what the user would find.
 
-The user's currently visible filters, weights, and counts are in the
-context.screenState block.
+Actions you can propose:
+- apply_screen_state with route="/city-scoring" and apply: { stateFilter, tierFilter, minScore, weights }
+- navigate with payload: { route: "/city-scoring" }
+- add_to_watchlist / remove_from_watchlist (payload: { cityId })
+
+For "why is X city Tier A/B/etc." use explain_city first.
 `,
-  "/teacher-prospects": `
-You are currently on Teacher Search. You can:
-- navigate_and_apply with route="/teacher-prospects" and apply: { city, search, sourceFilter }
-- answer factual questions about teacher counts, top cities, etc.
+  "/teacher-search": `
+You are on Teacher Search.
+
+Actions you can propose:
+- apply_screen_state with route="/teacher-search" and apply: { city, search, sourceFilter }
+- navigate with payload: { route: "/teacher-search" }
 `,
   "/email-outreach": `
-You are currently on Email Outreach. You can:
-- answer factual questions about campaigns, reply rates, sends.
-- propose_action queue_email is reserved for future v1.1 — do NOT offer it yet.
+You are on Email Outreach. Use query_campaigns for any campaign question.
+
+Actions you can propose:
+- navigate with payload: { route: "/email-outreach" }
 `,
   "/candidate-pipeline": `
-You are currently on Candidate Pipeline. You can:
-- propose_action change_candidate_stage (payload: { candidateId, toStage })
-  Allowed toStage values: new_lead, qualified, discovery, confirmation,
-  selection_committee, signing, signed.
-- answer factual questions about candidate counts per stage.
+You are on Candidate Pipeline. Use query_candidates for any pipeline question.
+
+Actions you can propose:
+- change_candidate_stage (payload: { candidateId, toStage }) — stages:
+  new_lead, qualified, discovery, confirmation, selection_committee, signing, signed.
+- navigate with payload: { route: "/candidate-pipeline" }
 `,
 };
+

@@ -183,36 +183,46 @@ Deno.serve(async (req) => {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
     if (!LOVABLE_API_KEY) {
+      console.error("neuron-ai: LOVABLE_API_KEY not configured");
       return new Response(JSON.stringify({ error: "LOVABLE_API_KEY not configured" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const authHeader = req.headers.get("Authorization") ?? "";
-    const supa = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: userData } = await supa.auth.getUser();
-    const user = userData?.user;
-    if (!user) {
-      return new Response(JSON.stringify({ error: "Not signed in" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    console.log("neuron-ai: hasAuthHeader=", !!authHeader);
 
-    // Role lookup (best-effort; default to viewer).
+    // Try to identify the user, but DON'T require sign-in — degrade to guest.
+    let userId = "guest";
+    let userEmail: string | undefined;
     let role = "viewer";
-    const { data: roleRows } = await supa.from("user_roles").select("role").eq("user_id", user.id);
-    if (roleRows && roleRows.length > 0) {
-      const roles = roleRows.map((r: { role: string }) => r.role);
-      if (roles.includes("admin")) role = "admin";
-      else if (roles.includes("manager")) role = "manager";
+    if (authHeader) {
+      try {
+        const supa = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+          global: { headers: { Authorization: authHeader } },
+        });
+        const { data: userData } = await supa.auth.getUser();
+        if (userData?.user) {
+          userId = userData.user.id;
+          userEmail = userData.user.email;
+          const { data: roleRows } = await supa.from("user_roles").select("role").eq("user_id", userId);
+          if (roleRows && roleRows.length > 0) {
+            const roles = roleRows.map((r: { role: string }) => r.role);
+            if (roles.includes("admin")) role = "admin";
+            else if (roles.includes("manager")) role = "manager";
+          }
+        }
+      } catch (e) {
+        console.error("neuron-ai: auth lookup failed", e);
+      }
     }
 
     const body = await req.json().catch(() => ({} as Record<string, unknown>));
     const messages = Array.isArray(body.messages) ? (body.messages as ChatMsg[]) : [];
     const route = typeof body.route === "string" ? body.route : "/";
     const screenState = (body.screenState ?? null) as ScreenState;
+    console.log("neuron-ai: route=", route, "msgs=", messages.length, "user=", userId);
+
     if (messages.length === 0) {
       return new Response(JSON.stringify({ error: "messages required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -224,7 +234,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    const ctx: Context = { route, screenState, user: { id: user.id, email: user.email, role } };
+    const ctx: Context = { route, screenState, user: { id: userId, email: userEmail, role } };
+
     const systemPrompt = buildSystemPrompt(ctx);
 
     const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {

@@ -49,13 +49,13 @@ export const SCORING_PRESETS: Record<Exclude<PresetName, "Custom">, Record<Categ
 };
 
 export const PRESET_DESCRIPTIONS: Record<PresetName, string> = {
-  "Balanced": "Treat all three signals roughly equally.",
-  "Demand-Heavy": "Find markets with the most kids and parent demand.",
-  "TAM-Heavy": "Find markets with the deepest pool of teachers to recruit.",
-  "Blue Ocean": "Find markets where no one else is running camps yet.",
-  "Quick Launch": "Easy to open — lots of teachers and low competition.",
-  "High Upside": "Strong demand AND low competition — biggest growth runway.",
-  "Custom": "Manually adjusted master weights — no preset matches.",
+  "Balanced": "All three signals share roughly equal weight in the composite rank.",
+  "Demand-Heavy": "Demand counts 60% in the composite — cities are still ranked by overall score, not by Demand alone.",
+  "TAM-Heavy": "TAM Teachers counts 50% in the composite — cities are still ranked by overall score, not by TAM alone.",
+  "Blue Ocean": "Competitive Opportunity counts 60% in the composite — cities are still ranked by overall score, not by saturation alone.",
+  "Quick Launch": "TAM 45% + Competitive Opportunity 40% in the composite — cities are still ranked by overall score.",
+  "High Upside": "Demand 45% + Competitive Opportunity 40% in the composite — cities are still ranked by overall score.",
+  "Custom": "Manually adjusted master weights — no preset matches. Cities are still ranked by the composite overall score.",
 };
 
 // Short 1–2 word tags shown under each tile name in the grid UI.

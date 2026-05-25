@@ -19,6 +19,7 @@ interface Props {
   anchorId?: string;
   onStatusChange?: (status: ReturnType<typeof getDomainStatus>) => void;
   onIssuesChange?: (issues: DomainIssue[]) => void;
+  onRegisterRefresh?: (key: string, fn: () => Promise<void>) => void;
 }
 
 function explain(domainLabel: string, metricLabel: string, status: HealthStatus, display: string): string {

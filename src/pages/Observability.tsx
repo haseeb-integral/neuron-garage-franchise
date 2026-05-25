@@ -418,8 +418,8 @@ function AdvancedModeIntro() {
 }
 
 // ----------------------------------------------------------------------------
-
-// the tab content so a non-technical user knows what they're looking at.
+// TabIntro — plain-English description of each tab using the same
+// what / measures / means / why-care format.
 // ----------------------------------------------------------------------------
 function TabIntro({ tab }: { tab: "status" | "accuracy" | "alerts" }) {
   const copy: Record<

@@ -386,25 +386,58 @@ function StatCard({
 // the tab content so a non-technical user knows what they're looking at.
 // ----------------------------------------------------------------------------
 function TabIntro({ tab }: { tab: "status" | "accuracy" | "alerts" }) {
-  const copy: Record<typeof tab, { title: string; body: string }> = {
+  const copy: Record<
+    typeof tab,
+    { title: string; purpose: string; measures: string; means: string; care: string }
+  > = {
     status: {
-      title: "Is the data there, and is it fresh?",
-      body: "Every card below is one table that powers Neuron Garage. Green dot = full and recently updated. Yellow = a soft target missed (e.g. a few % of rows have a blank column). Red = empty, stale, or unreachable. Click a card to see the underlying SQL.",
+      title: "Status & Structure — is the data there, and is it fresh?",
+      purpose:
+        "Confirms every table the app reads from actually exists, has rows in it, and was updated recently.",
+      measures:
+        "For each table: row count, time since the last write, and whether the key columns are populated.",
+      means:
+        "Green = full and fresh. Yellow = a soft target missed (e.g. updated a bit later than expected). Red = empty, stale, or unreachable.",
+      care:
+        "If anything here is red, features that depend on that table (City Search, Teacher Outreach, Pipeline) will silently show wrong or empty results to users.",
     },
     accuracy: {
-      title: "Is the data correct?",
-      body: "Rules (\"invariants\") are statements that should always be true — e.g. \"every city has a non-negative population.\" Below the rules, two helpers: pull a random city to eyeball, or scan a column for statistical outliers.",
+      title: "Accuracy & Rules — is the data correct?",
+      purpose:
+        "Catches data that exists but is wrong — negative populations, duplicate IDs, impossible dates, values out of the range we expect.",
+      measures:
+        "A set of invariants (statements that should always be true) run as SQL against the live tables, plus on-demand spot-checks (random row, column outlier scan).",
+      means:
+        "Pass = the rule held for every row. Fail = at least one row violates it; the count and a sample are shown so you can see the actual bad rows.",
+      care:
+        "Fresh, full tables can still be garbage. A failing rule here usually means an upstream import or an edge function wrote something it shouldn't have.",
     },
     alerts: {
-      title: "What happened, and what should I be told about?",
-      body: "Sparklines show the last 30 days of snapshots per table. The incidents log records anything that stayed red across a snapshot. Toggle Notify me on any rule you want to hear about (email turns on as soon as the sender is wired).",
+      title: "Alerts & History — what happened, and what should I be told about?",
+      purpose:
+        "Gives you a history view so you can tell whether today's number is normal, and lets you subscribe to the rules you actually want to hear about.",
+      measures:
+        "30-day sparklines of row counts and freshness per table, plus an incidents log of anything that stayed red across a snapshot.",
+      means:
+        "A flat line = stable. A cliff = something broke or got fixed on that date. An open incident = the same check has been failing for more than one snapshot.",
+      care:
+        "Without this, a slow leak (e.g. enrichment quietly stopping) looks fine in the moment because each individual check still passes the threshold.",
     },
   };
   const c = copy[tab];
   return (
     <div className="mt-5 rounded-xl border border-[#dbeafe] bg-[#f0f7ff] p-4">
       <div className="text-[13px] font-bold text-[#07142f]">{c.title}</div>
-      <div className="mt-1 text-[12px] leading-relaxed text-[#526078]">{c.body}</div>
+      <dl className="mt-2 grid gap-x-6 gap-y-1.5 text-[12px] leading-relaxed sm:grid-cols-[auto_1fr]">
+        <dt className="font-bold text-[#07142f]">What it's for</dt>
+        <dd className="text-[#526078]">{c.purpose}</dd>
+        <dt className="font-bold text-[#07142f]">What it measures</dt>
+        <dd className="text-[#526078]">{c.measures}</dd>
+        <dt className="font-bold text-[#07142f]">What it means</dt>
+        <dd className="text-[#526078]">{c.means}</dd>
+        <dt className="font-bold text-[#07142f]">Why you should care</dt>
+        <dd className="text-[#526078]">{c.care}</dd>
+      </dl>
     </div>
   );
 }

@@ -13,6 +13,8 @@ import { fetchRules, HealthRule } from "@/lib/dbHealth/accuracy";
 import { statusColor } from "@/lib/dbHealth/thresholds";
 import { Sparkline } from "@/components/dbHealth/Sparkline";
 import { AskAiButton } from "@/components/observability/ObservabilityAi";
+import { InfoHint, FriendlyErrorPanel } from "@/components/observability/InfoHint";
+import { friendlyError } from "@/lib/dbHealth/friendlyError";
 
 
 const TRACKED_DOMAINS: { key: string; label: string }[] = [

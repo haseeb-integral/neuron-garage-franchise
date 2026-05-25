@@ -1,25 +1,82 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, RotateCw } from "lucide-react";
 import { DomainDef, getDomainStatus, MetricRunResult } from "@/lib/dbHealth/queries";
 import { useDomainMetrics } from "@/hooks/dbHealth/useDomainMetrics";
 import { StatusPill } from "./StatusPill";
-import { statusColor } from "@/lib/dbHealth/thresholds";
+import { statusColor, HealthStatus } from "@/lib/dbHealth/thresholds";
+
+export interface DomainIssue {
+  domainKey: string;
+  domainLabel: string;
+  metricLabel: string;
+  status: HealthStatus;
+  display: string;
+  plainEnglish: string;
+}
 
 interface Props {
   domain: DomainDef;
-  /** Scroll anchor id, used by the top status row. */
   anchorId?: string;
-  /** Surface the rolled-up status to the parent for the top status row. */
   onStatusChange?: (status: ReturnType<typeof getDomainStatus>) => void;
+  onIssuesChange?: (issues: DomainIssue[]) => void;
+  onRegisterRefresh?: (key: string, fn: () => Promise<void>) => void;
 }
 
-export function DomainCard({ domain, anchorId, onStatusChange }: Props) {
+function explain(domainLabel: string, metricLabel: string, status: HealthStatus, display: string): string {
+  if (status === "red") {
+    if (metricLabel.startsWith("% with")) return `${metricLabel.replace("% with ", "")} is missing on most rows in ${domainLabel}.`;
+    if (metricLabel === "Row count") return `${domainLabel} table looks empty or unreachable.`;
+    if (metricLabel.startsWith("Oldest")) return `${domainLabel} has not been refreshed in a long time.`;
+    return `${domainLabel} — ${metricLabel.toLowerCase()} is failing (${display}).`;
+  }
+  if (status === "yellow") {
+    if (metricLabel.startsWith("% with")) return `${metricLabel.replace("% with ", "")} on ${domainLabel} is below our soft target (${display}).`;
+    if (metricLabel === "Row count") return `${domainLabel} row count is below the expected floor (${display}).`;
+    if (metricLabel.startsWith("Oldest")) return `${domainLabel} is older than our soft freshness target (${display}).`;
+    if (metricLabel.endsWith("range")) return `${domainLabel} values are outside the expected range (${display}).`;
+    return `${domainLabel} — ${metricLabel.toLowerCase()} (${display}).`;
+  }
+  return `${domainLabel} — ${metricLabel} (${display}).`;
+}
+
+export function DomainCard({ domain, anchorId, onStatusChange, onIssuesChange, onRegisterRefresh }: Props) {
   const { results, loading, lastRefreshedAt, refresh, refreshMetric } = useDomainMetrics(domain);
   const rolled = getDomainStatus(results);
+  const lastStatusRef = useRef<HealthStatus | null>(null);
+  const lastIssuesKeyRef = useRef<string>("");
 
-  // Notify parent — done in render is fine, parent uses functional setState.
-  // We use a microtask to avoid setState-during-render warnings.
-  if (onStatusChange) queueMicrotask(() => onStatusChange(rolled));
+  useEffect(() => {
+    if (onRegisterRefresh) onRegisterRefresh(domain.key, refresh);
+  }, [domain.key, refresh, onRegisterRefresh]);
+
+  useEffect(() => {
+    if (onStatusChange && lastStatusRef.current !== rolled) {
+      lastStatusRef.current = rolled;
+      onStatusChange(rolled);
+    }
+    if (onIssuesChange) {
+      const issues: DomainIssue[] = Object.entries(results)
+        .filter(([, r]) => r && (r.status === "red" || r.status === "yellow"))
+        .map(([, r]) => {
+          const m = domain.metrics.find((x) => results[x.key] === r);
+          return {
+            domainKey: domain.key,
+            domainLabel: domain.label,
+            metricLabel: m?.label ?? "metric",
+            status: r.status,
+            display: r.display,
+            plainEnglish: explain(domain.label, m?.label ?? "metric", r.status, r.display),
+          };
+        });
+      const key = issues.map((i) => `${i.metricLabel}:${i.status}`).join("|");
+      if (lastIssuesKeyRef.current !== key) {
+        lastIssuesKeyRef.current = key;
+        onIssuesChange(issues);
+      }
+    }
+  });
+
+
 
   return (
     <section

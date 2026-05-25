@@ -1,8 +1,9 @@
-import { useCallback, useMemo, useState } from "react";
-import { RotateCw, ShieldCheck, Info } from "lucide-react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { RotateCw, ShieldCheck, Info, CheckCircle2, AlertTriangle } from "lucide-react";
+import { toast } from "sonner";
 import { DOMAINS } from "@/lib/dbHealth/queries";
 import { HealthStatus, rollup, statusColor } from "@/lib/dbHealth/thresholds";
-import { DomainCard } from "@/components/dbHealth/DomainCard";
+import { DomainCard, type DomainIssue } from "@/components/dbHealth/DomainCard";
 import { useIsManager } from "@/hooks/dbHealth/useIsManager";
 import { AccuracySection } from "@/components/observability/AccuracySection";
 import { AlertsSection } from "@/components/observability/AlertsSection";
@@ -10,7 +11,6 @@ import { PageHeader } from "@/components/PageHeader";
 import {
   ObservabilityAiProvider,
   AskAiButton,
-  useObservabilityAi,
 } from "@/components/observability/ObservabilityAi";
 
 
@@ -24,10 +24,10 @@ import {
  */
 
 const FRIENDLY: Record<HealthStatus, { label: string; tone: string }> = {
-  green: { label: "Healthy", tone: "All checks passing" },
-  yellow: { label: "Watch", tone: "Some checks below target" },
-  red: { label: "Needs attention", tone: "One or more checks failing" },
-  unknown: { label: "Checking…", tone: "Running checks" },
+  green: { label: "All systems healthy", tone: "Every data source is fresh, full, and within expected ranges." },
+  yellow: { label: "Minor issues — review when you can", tone: "A soft target was missed. Nothing is broken." },
+  red: { label: "Something needs a human", tone: "At least one data source is empty, stale, or unreachable." },
+  unknown: { label: "Running checks…", tone: "Live values are still loading." },
 };
 
 const PLAIN_ENGLISH: Record<string, string> = {
@@ -48,8 +48,10 @@ const PLAIN_ENGLISH: Record<string, string> = {
 export default function Observability() {
   const { loading: roleLoading, isManager } = useIsManager();
   const [perDomain, setPerDomain] = useState<Record<string, HealthStatus>>({});
-  const [refreshTick, setRefreshTick] = useState(0);
+  const [perDomainIssues, setPerDomainIssues] = useState<Record<string, DomainIssue[]>>({});
+  const [isRunningAll, setIsRunningAll] = useState(false);
   const [tab, setTab] = useState<"status" | "accuracy" | "alerts">("status");
+  const refreshersRef = useRef<Record<string, () => Promise<void>>>({});
 
   const overall = useMemo(() => rollup(Object.values(perDomain)), [perDomain]);
 
@@ -70,8 +72,45 @@ export default function Observability() {
     };
   }, [perDomain]);
 
+  const allIssues = useMemo(
+    () => Object.values(perDomainIssues).flat(),
+    [perDomainIssues],
+  );
+
   const handleDomainStatus = useCallback((key: string, s: HealthStatus) => {
     setPerDomain((prev) => (prev[key] === s ? prev : { ...prev, [key]: s }));
+  }, []);
+
+  const handleDomainIssues = useCallback((key: string, issues: DomainIssue[]) => {
+    setPerDomainIssues((prev) => ({ ...prev, [key]: issues }));
+  }, []);
+
+  const registerRefresh = useCallback((key: string, fn: () => Promise<void>) => {
+    refreshersRef.current[key] = fn;
+  }, []);
+
+  const runAllChecks = useCallback(async () => {
+    const fns = Object.values(refreshersRef.current);
+    if (fns.length === 0) {
+      toast.info("Checks are still warming up — try again in a second.");
+      return;
+    }
+    setIsRunningAll(true);
+    const toastId = toast.loading(`Re-running ${fns.length} health checks…`);
+    try {
+      await Promise.all(fns.map((fn) => fn()));
+      toast.success("All checks complete", {
+        id: toastId,
+        description: "Every domain on the page has been refreshed.",
+      });
+    } catch (e: any) {
+      toast.error("Some checks failed to refresh", {
+        id: toastId,
+        description: e?.message ?? "See individual cards for details.",
+      });
+    } finally {
+      setIsRunningAll(false);
+    }
   }, []);
 
   if (roleLoading) {
@@ -113,11 +152,12 @@ export default function Observability() {
               ]}
             />
             <button
-              onClick={() => setRefreshTick((t) => t + 1)}
-              className="inline-flex items-center gap-1.5 rounded-md border border-[#eef2f7] bg-white px-3.5 py-2 text-[13px] font-bold text-[#07142f] transition-colors hover:bg-[#f7faff]"
+              onClick={runAllChecks}
+              disabled={isRunningAll}
+              className="inline-flex items-center gap-1.5 rounded-md border border-[#eef2f7] bg-white px-3.5 py-2 text-[13px] font-bold text-[#07142f] transition-colors hover:bg-[#f7faff] disabled:opacity-60"
             >
-              <RotateCw size={13} />
-              Run all checks
+              <RotateCw size={13} className={isRunningAll ? "animate-spin" : ""} />
+              {isRunningAll ? "Running…" : "Run all checks"}
             </button>
           </div>
         }
@@ -179,29 +219,7 @@ export default function Observability() {
 
       {tab === "status" && (
         <div className="mt-5 space-y-4">
-          <div className="flex items-start justify-between gap-3 rounded-xl border border-[#eef2f7] bg-[#f7faff] p-4">
-            <div className="flex items-start gap-3">
-              <Info size={16} className="mt-0.5 shrink-0 text-[#174be8]" strokeWidth={1.75} />
-              <div className="text-[13px] leading-relaxed text-[#07142f]">
-                <p className="font-bold">How to read this page</p>
-                <p className="mt-1 text-[#526078]">
-                  The <strong>Trust Score</strong> above is the percentage of domains currently passing every health
-                  check. Each card below is one domain. Green = within expected ranges, yellow = soft warning, red = at
-                  least one check failing.
-                </p>
-              </div>
-            </div>
-            <AskAiButton
-              section="status"
-              sectionLabel="Status & Structure"
-              suggestions={[
-                "Which domain has the lowest health right now?",
-                "Are any tables stale beyond their SLA?",
-                "Which required columns are under-populated?",
-                "Give me row counts vs expected floors for every domain",
-              ]}
-            />
-          </div>
+          <IssuesPanel issues={allIssues} overall={overall} />
 
           <div className="grid gap-3">
             {DOMAINS.map((d) => {
@@ -209,10 +227,12 @@ export default function Observability() {
               const friendlyDomain = { ...d, description };
               return (
                 <DomainCard
-                  key={`${d.key}-${refreshTick}`}
+                  key={d.key}
                   domain={friendlyDomain}
                   anchorId={`domain-${d.key}`}
                   onStatusChange={(s) => handleDomainStatus(d.key, s)}
+                  onIssuesChange={(issues) => handleDomainIssues(d.key, issues)}
+                  onRegisterRefresh={registerRefresh}
                 />
               );
             })}
@@ -267,6 +287,105 @@ function StatCard({
         {suffix && <span className="text-[12px] text-[#526078]">{suffix}</span>}
       </div>
       <div className="mt-1 text-[11px] text-[#526078]">{footnote}</div>
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// IssuesPanel — top-of-page plain-English explanation of what's healthy and
+// what isn't. Replaces the abstract "needs attention" label.
+// ----------------------------------------------------------------------------
+function IssuesPanel({ issues, overall }: { issues: DomainIssue[]; overall: HealthStatus }) {
+  if (overall === "unknown") {
+    return (
+      <div className="flex items-start gap-3 rounded-xl border border-[#eef2f7] bg-[#f7faff] p-4">
+        <Info size={16} className="mt-0.5 shrink-0 text-[#174be8]" strokeWidth={1.75} />
+        <div className="text-[13px] leading-relaxed text-[#07142f]">
+          <p className="font-bold">Running checks…</p>
+          <p className="mt-1 text-[#526078]">
+            Live values are loading from the database. This usually takes 1–3 seconds.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (issues.length === 0) {
+    return (
+      <div className="flex items-start justify-between gap-3 rounded-xl border border-[#d1fae5] bg-[#ecfdf5] p-4">
+        <div className="flex items-start gap-3">
+          <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-[#16a34a]" strokeWidth={1.75} />
+          <div className="text-[13px] leading-relaxed text-[#07142f]">
+            <p className="font-bold">All data sources are healthy right now.</p>
+            <p className="mt-1 text-[#526078]">
+              Every table that powers Neuron Garage is full, recently updated, and within expected ranges. No action
+              needed — you can keep using City Search, Teacher Outreach, and the Candidate Pipeline with confidence.
+            </p>
+          </div>
+        </div>
+        <AskAiButton
+          section="status"
+          sectionLabel="Status & Structure"
+          suggestions={[
+            "Walk me through what 'healthy' means here.",
+            "What would cause this page to turn yellow or red?",
+            "How often do these checks run?",
+          ]}
+        />
+      </div>
+    );
+  }
+
+  const reds = issues.filter((i) => i.status === "red");
+  const yellows = issues.filter((i) => i.status === "yellow");
+  const headline =
+    reds.length > 0
+      ? `${reds.length} item${reds.length === 1 ? "" : "s"} need a human, ${yellows.length} soft warning${yellows.length === 1 ? "" : "s"}`
+      : `${yellows.length} soft warning${yellows.length === 1 ? "" : "s"} — nothing is broken`;
+  const bg = reds.length > 0 ? "bg-[#fef2f2] border-[#fecaca]" : "bg-[#fffbeb] border-[#fde68a]";
+  const iconColor = reds.length > 0 ? "text-[#dc2626]" : "text-[#d97706]";
+
+  return (
+    <div className={`flex items-start justify-between gap-3 rounded-xl border p-4 ${bg}`}>
+      <div className="flex items-start gap-3 min-w-0">
+        <AlertTriangle size={16} className={`mt-0.5 shrink-0 ${iconColor}`} strokeWidth={1.75} />
+        <div className="text-[13px] leading-relaxed text-[#07142f] min-w-0">
+          <p className="font-bold">{headline}</p>
+          <ul className="mt-2 space-y-1.5">
+            {[...reds, ...yellows].slice(0, 6).map((issue, idx) => (
+              <li key={idx} className="flex items-start gap-2">
+                <span
+                  className="mt-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{ background: statusColor(issue.status) }}
+                  aria-hidden
+                />
+                <span className="text-[#07142f]">
+                  <a
+                    href={`#domain-${issue.domainKey}`}
+                    className="font-bold underline-offset-2 hover:underline"
+                  >
+                    {issue.domainLabel}
+                  </a>{" "}
+                  <span className="text-[#526078]">— {issue.plainEnglish}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+          {issues.length > 6 && (
+            <p className="mt-2 text-[11px] text-[#526078]">+ {issues.length - 6} more — scroll down to see every domain.</p>
+          )}
+        </div>
+      </div>
+      <AskAiButton
+        section="status"
+        sectionLabel="Status & Structure"
+        suggestions={[
+          "Explain each of these issues in plain English.",
+          "Which of these actually affect the product right now?",
+          "What should we do about each issue, in priority order?",
+          "Are any of these expected (e.g. a feature not yet launched)?",
+        ]}
+      />
     </div>
   );
 }

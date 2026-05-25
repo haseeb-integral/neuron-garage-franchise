@@ -1,41 +1,53 @@
-# Responsive UI fixes (3 spots)
+## Problem
 
-## 1. CityTopBar — notification + user avatar overflowing right edge
+On the Teacher Search page, loading with no filters + "SmartLead Enriched" source selected times out:
 
-File: `src/components/city-scoring/CityTopBar.tsx`
+> "The database took too long to respond. Try a narrower search or a single city filter."
 
-Today everything sits in a single non-wrapping flex row: search → Export Source Data → Market Report → Bell → Avatar. At narrow viewports the bell + Haseeb avatar get pushed past the viewport edge (visible in screenshots 1 & 2).
+### Root cause
 
-Change:
-- Wrap the row with `flex-wrap` and give the search `min-w-0 flex-1`.
-- Group bell + avatar in their own `ml-auto` cluster so they always anchor to the right and stay together.
-- On `< md`, hide the avatar's name+role text (already conditional) and let action buttons collapse to icon-only via `<span className="hidden sm:inline">` on labels.
-- Keep Market Report visible at all widths but allow it to drop to a second line via `flex-wrap` rather than overflow.
+`useTeacherProspectsData.loadPage()` runs:
 
-Mirror the same `ml-auto` grouping in `src/components/PageHeader.tsx` for the Teacher Search header so bell + avatar always sit hard-right and don't get squeezed by the Market Report / Saved Lists action cluster.
+```ts
+supabase.from("teacher_prospects")
+  .select("*", { count: "estimated" })
+  .order("created_at", { ascending: false })
+  .ilike("enrichment_source", "smartlead%")
+  .range(0, 24);
+```
 
-## 2. City Scoring → Scoring Weights header row messed up on mobile
+Against a **167,698-row** table. Two compounding issues:
 
-File: `src/components/city-scoring/CityWeightsPanel.tsx` (lines 97–131)
+1. **`ilike "smartlead%"` is not sargable** against the existing `lower(enrichment_source)` index, so the planner can't use it for the source filter. The actual stored values are a tiny known set (`Manus`, `smartlead_csv`, `linkedin_danish`) — a plain equality / `IN` would be index-friendly.
+2. **`count: "estimated"` falls back to exact `COUNT(*)`** in PostgREST whenever a filter is present and the planner's estimate is below the threshold. With an `ilike` over 167k rows and no usable index, the exact count is a full seq-scan → statement timeout. The 25-row page itself returns quickly; it's the count that kills the request.
 
-The right-side control cluster (`Total Weight`, `Reset to Default`, `Save Search`, `Apply Weights`) is `flex-wrap` with mixed text + buttons of different heights, producing the cramped layout in the user's screenshot.
+## Fix (surgical, low risk)
 
-Change:
-- On mobile: stack into two clean rows — row 1 = "Total Weight: 100% • Reset to Default" (text/link), row 2 = Save Search + Apply Weights as equal-width buttons (`flex-1`).
-- Use `grid grid-cols-2 gap-2 md:flex md:items-center md:gap-3` for the buttons so they're full-width on phones, inline on desktop.
-- Move `PreviewBadge` under the Total Weight line on mobile (it's currently inline and adds horizontal pressure).
-- Keep desktop layout identical.
+### 1. `src/hooks/useTeacherProspectsData.ts`
 
-## 3. Teacher Search → Actions cards squished
+- Replace the `ilike("enrichment_source", "smartlead%" | "linkedin%")` branches with `.in("enrichment_source", [...])` using the known stored values:
+  - `smartlead` → `["smartlead_csv"]`
+  - `linkedin` → `["linkedin_danish"]`
+  - `needs_email` → unchanged (already `.eq` on indexed partial)
+- Apply the same change in `buildFilteredQuery()` (used by bulk Export / Add-to-Campaign).
+- Change `count: "estimated"` → `count: "planned"` on the page query. `planned` uses only `EXPLAIN` row estimates and never escalates to exact `COUNT(*)`, so it cannot time out. The "Quick Stats" sidebar already gets exact totals from the `teacher_prospects_stats` RPC, so the page-level count is purely for pagination — an estimate is fine and is what `"estimated"` was already trying to be.
 
-Files: `src/pages/TeacherProspects.tsx` (line 415), `src/components/teacher-prospects/NextBestActionStrip.tsx` (line 125)
+### 2. Migration: add an index for equality on `enrichment_source`
 
-`NextBestActionStrip` sits in the right column of a 2-col grid (`md:grid-cols-2`), and inside it uses `md:grid-cols-2 lg:grid-cols-4` — so each card ends up ~120px wide, making "Export current view" wrap into a vertical word column (visible in screenshot 3).
+```sql
+CREATE INDEX IF NOT EXISTS idx_teacher_prospects_enrichment_source
+  ON public.teacher_prospects (enrichment_source);
+```
 
-Change:
-- In `TeacherProspects.tsx`: change the wrapping grid from `md:grid-cols-2` to `lg:grid-cols-2` so Funnel + Actions stack on tablets and only sit side-by-side at `lg+`, giving cards real width.
-- In `NextBestActionStrip.tsx`: change inner grid from `md:grid-cols-2 lg:grid-cols-4` to `sm:grid-cols-2 xl:grid-cols-4`. At `lg` (when sharing a row with Funnel) it renders 2 columns of comfortably-sized cards; on full-width mobile/tablet it also goes 2-col cleanly.
-- Allow card titles to wrap naturally (`leading-tight`) instead of being forced into ultra-narrow columns.
+Lets the planner pick this index for the `IN (...)` filter when combined with the `created_at DESC` order; the cost stays bounded even as the table grows past 200k.
+
+### 3. Verify
+
+- Reload `/teacher-prospects` with default filters and with "SmartLead Enriched" / "LinkedIn" / "Needs Email" selected — each should return <1s, no toast.
+- Confirm pagination still works (Next/Prev advances by 25; estimated total is shown as the page count basis; sidebar "Quick Stats → Total" remains exact from the RPC).
+- Confirm bulk Export / Add-to-Campaign still pull the right rows (these use `buildFilteredQuery`, which gets the same source-filter fix).
 
 ## Out of scope
-No logic, data, or backend changes. Pure layout/Tailwind class adjustments.
+
+- No schema changes to columns, no RLS changes, no UI changes, no business logic changes.
+- The stats RPC (`teacher_prospects_stats`) is untouched.

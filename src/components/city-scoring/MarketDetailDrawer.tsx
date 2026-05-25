@@ -211,7 +211,16 @@ export function MarketDetailDrawer({
 
           {/* Hero summary — total score, tier, pillars, deterministic bottom line. */}
           <DrawerHeroSummary
-            rawComposite={Number((market as any).compositeScore ?? 0)}
+            rawComposite={(() => {
+              // Rule 12: composites must flow through the marketView selector.
+              const view = (() => {
+                // Lazy require to avoid a top-level circular import risk.
+                // eslint-disable-next-line @typescript-eslint/no-require-imports
+                const { buildMarketView } = require("@/lib/marketView");
+                return buildMarketView(market);
+              })();
+              return view.rawComposite ?? 0;
+            })()}
             tier={(market as any).tier ?? null}
             categoryScores={{
               demand: categoryScores?.demand ?? null,

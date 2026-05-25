@@ -1596,7 +1596,7 @@ const CityScoring = () => {
             setTierFilter("All");
             setNonRegOnly(false);
             setMinScore(0);
-            setMinPop(0);
+            setMinPop("");
             setCityFilter("");
             setSearchTerm("");
             toast.success("Filters cleared.");

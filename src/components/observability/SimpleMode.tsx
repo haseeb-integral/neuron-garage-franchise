@@ -124,7 +124,7 @@ function SimpleSummary({
 
   const body =
     overall === "unknown"
-      ? "This usually takes 1–3 seconds. You can keep using the app while we check."
+      ? "This usually takes around 30 seconds. You can keep using the app while we check."
       : overall === "green"
       ? "Every data source that powers Neuron Garage is full, fresh, and within expected ranges. Keep going."
       : overall === "yellow"

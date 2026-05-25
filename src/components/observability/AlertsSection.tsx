@@ -92,17 +92,14 @@ export function AlertsSection() {
 
   return (
     <div className="grid gap-6">
-      <header className="text-center">
-        <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#94a3b8]">Tier 3</p>
-        <h2 className="mt-2 text-[22px] font-black tracking-tight text-[#0b1a36] md:text-[26px]">
-          Alerts &amp; History
-        </h2>
-        <p className="mx-auto mt-2 max-w-2xl text-[13px] leading-relaxed text-[#526078]">
-          Tier 1 and 2 tell you about <em>now</em>. Tier 3 remembers the past and
-          asks to be told about the future. Snapshots run automatically every six
-          hours; subscribe to anything you want to be notified about.
+      <header>
+        <h2 className="text-[18px] font-black tracking-tight text-[#07142f]">Alerts &amp; History</h2>
+        <p className="mt-1 max-w-3xl text-[13px] leading-relaxed text-[#526078]">
+          Status &amp; Accuracy tell you about <em>now</em>. This remembers the past and asks to be told about the
+          future. Snapshots run automatically every six hours; subscribe to anything you want to be notified about.
         </p>
       </header>
+
 
       {error && (
         <div className="rounded-xl border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-[12px] text-[#dc2626]">

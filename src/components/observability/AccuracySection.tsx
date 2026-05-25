@@ -38,11 +38,13 @@ const SEVERITY_LABEL: Record<string, string> = {
 export function AccuracySection() {
   return (
     <div className="grid gap-6">
-      <SectionHeader
-        eyebrow="Tier 2"
-        title="Accuracy & Rules"
-        body="Tier 1 told you the data is there. Tier 2 asks: is it correct? Each rule below is a single sentence that should always be true. If it isn't, we tell you exactly which rows broke it."
-      />
+      <header>
+        <h2 className="text-[18px] font-black tracking-tight text-[#07142f]">Accuracy &amp; Rules</h2>
+        <p className="mt-1 max-w-3xl text-[13px] leading-relaxed text-[#526078]">
+          Status &amp; Structure tells you the data is there. This asks: is it correct? Each rule below is a single
+          sentence that should always be true. If it isn't, we tell you exactly which rows broke it.
+        </p>
+      </header>
       <RulesBoard />
       <div className="grid gap-6 md:grid-cols-2">
         <SampleInspector />
@@ -52,15 +54,6 @@ export function AccuracySection() {
   );
 }
 
-function SectionHeader({ eyebrow, title, body }: { eyebrow: string; title: string; body: string }) {
-  return (
-    <header className="text-center">
-      <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#94a3b8]">{eyebrow}</p>
-      <h2 className="mt-2 text-[22px] font-black tracking-tight text-[#0b1a36] md:text-[26px]">{title}</h2>
-      <p className="mx-auto mt-2 max-w-2xl text-[13px] leading-relaxed text-[#526078]">{body}</p>
-    </header>
-  );
-}
 
 // -----------------------------------------------------------------------------
 // Rules board

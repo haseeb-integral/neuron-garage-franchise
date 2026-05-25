@@ -545,6 +545,36 @@ export type Database = {
         }
         Relationships: []
       }
+      db_health_rules: {
+        Row: {
+          created_at: string
+          description: string
+          expected_zero: boolean
+          name: string
+          severity: string
+          sql: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          expected_zero?: boolean
+          name: string
+          severity?: string
+          sql: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          expected_zero?: boolean
+          name?: string
+          severity?: string
+          sql?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       enrichment_jobs: {
         Row: {
           auto_push: boolean
@@ -1598,6 +1628,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      db_health_outliers: {
+        Args: { _column: string; _n?: number }
+        Returns: Json
+      }
+      db_health_random_city: { Args: never; Returns: Json }
+      db_health_run_rule: { Args: { _name: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

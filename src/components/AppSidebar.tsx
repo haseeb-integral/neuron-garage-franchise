@@ -23,6 +23,7 @@ const docsNavItems = [
   { title: "Scoring Method", url: "/scoring-method", icon: Gauge },
   { title: "CSI Methodology", url: "/methodology", icon: Calculator },
   { title: "Demographics Method", url: "/demographics-methodology", icon: BarChart3 },
+  { title: "Observability Guide", url: "/observability-guide", icon: Activity },
   { title: "Outreach Guide", url: "/email-outreach-docs", icon: MailOpen },
   { title: "SmartLead API Spec", url: "/smartlead-spec", icon: Send },
   { title: "Full Specification", url: "/spec", icon: FileText },

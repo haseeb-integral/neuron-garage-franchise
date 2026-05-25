@@ -143,6 +143,10 @@ export function NeuronAiPanel() {
                   isError={m.error}
                   userInitial={userInitial}
                   onConfirm={async (action) => {
+                    if (action.action_type === "navigate" || action.action_type === "apply_screen_state") {
+                      applyNavAction(action.action_type, action.payload);
+                      return { ok: true };
+                    }
                     const res = await confirm(action, screenContext.route);
                     return res;
                   }}

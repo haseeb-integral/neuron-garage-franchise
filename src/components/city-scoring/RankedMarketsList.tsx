@@ -42,6 +42,10 @@ type Props = {
   totalPages: number;
   pageNumbers: Array<number | "...">;
   setPage: (p: number | ((p: number) => number)) => void;
+  // Active filter chips for empty-state messaging + a one-click reset.
+  activeFilterSummary?: string;
+  hasActiveFilters?: boolean;
+  onClearAllFilters?: () => void;
 };
 
 function RankedMarketsListImpl({
@@ -70,6 +74,9 @@ function RankedMarketsListImpl({
   totalPages,
   pageNumbers,
   setPage,
+  activeFilterSummary,
+  hasActiveFilters,
+  onClearAllFilters,
 }: Props) {
   return (
     <div className="min-w-0 rounded-lg bg-white border border-[#eef2f7] p-3 flex flex-col">
@@ -145,6 +152,23 @@ function RankedMarketsListImpl({
         {pageItems.length === 0 && watchlistOnly && (
           <div className="px-2 py-8 text-center text-[11px] text-[#8794ab]">
             No saved markets yet — click the bookmark on any city to save it.
+          </div>
+        )}
+        {pageItems.length === 0 && !watchlistOnly && (
+          <div className="px-3 py-8 text-center">
+            <div className="text-[12px] font-semibold text-[#07142f]">0 markets match your filters.</div>
+            {activeFilterSummary && (
+              <div className="mt-1 text-[11px] text-[#8794ab]">Active: {activeFilterSummary}</div>
+            )}
+            {hasActiveFilters && onClearAllFilters && (
+              <button
+                type="button"
+                onClick={onClearAllFilters}
+                className="mt-3 text-[11px] font-semibold text-[#174be8] hover:underline"
+              >
+                Clear all filters
+              </button>
+            )}
           </div>
         )}
         {pageItems.map((c, i) => {

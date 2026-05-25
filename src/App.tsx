@@ -25,6 +25,8 @@ const ScoringMethod = lazy(() => import("./pages/ScoringMethod"));
 const DbHealth = lazy(() => import("./pages/DbHealth"));
 const Observability = lazy(() => import("./pages/Observability"));
 const ObservabilityGuide = lazy(() => import("./pages/ObservabilityGuide"));
+const ObservabilitySpec = lazy(() => import("./pages/ObservabilitySpec"));
+
 
 const TeamMembers = lazy(() => import("./pages/TeamMembers"));
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
@@ -64,6 +66,8 @@ const App = () => (
                 <Route path="/scoring-method" element={<ScoringMethod />} />
                 <Route path="/observability" element={<Observability />} />
                 <Route path="/observability-guide" element={<ObservabilityGuide />} />
+                <Route path="/observability-spec" element={<ObservabilitySpec />} />
+
                 <Route path="/db-health" element={<Observability />} />
 
               </Route>

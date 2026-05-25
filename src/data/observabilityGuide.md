@@ -80,17 +80,6 @@ No login required to read it — everything important is in the email itself.
 
 ---
 
-## A normal workflow
-
-1. **Monday morning** — Brett/Sam read the weekly email over coffee. If the Trust Score is green and no incidents are open, they move on.
-2. **If something is red** — click the link in the email or open the Data Observability page in the sidebar.
-3. **Start at Level 1** — find the red table.
-4. **Drop into Level 2** — see which rule failed and which exact rows are the problem.
-5. **Fix the data** — update the source (e.g. re‑run the import, correct the row, ask the teammate who owns it).
-6. **The tool re‑checks automatically** — within a few hours the score recovers and the incident closes.
-
----
-
 ## Who can see what
 
 - **Everyone on the team** — Kaylie, Sam, Brett, and Haseeb are all managers and have full access to the Data Observability page. Any future teammate added to Neuron Garage automatically becomes a manager too.

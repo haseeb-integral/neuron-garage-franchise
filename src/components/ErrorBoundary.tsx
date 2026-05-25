@@ -25,6 +25,27 @@ export class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, info: { componentStack: string }) {
     // eslint-disable-next-line no-console
     console.error("[ErrorBoundary]", this.props.label ?? "page", error, info.componentStack);
+
+    // HMR hook-count drift auto-recovery (dev only).
+    // When a hook is added/removed in an already-mounted component, React throws
+    // "Should have a queue" / "Rendered more/fewer hooks" / "change in the order
+    // of Hooks". A full reload fixes it because both renders restart with the
+    // new hook count. We only auto-reload in dev, once per session, to avoid
+    // masking real production bugs or looping on a persistent error.
+    if (import.meta.env.DEV) {
+      const msg = String(error?.message ?? "");
+      const isHookDrift =
+        /Should have a queue/i.test(msg) ||
+        /Rendered (more|fewer) hooks/i.test(msg) ||
+        /change in the order of Hooks/i.test(msg);
+      const KEY = "__lov_hmr_hook_reload__";
+      if (isHookDrift && !sessionStorage.getItem(KEY)) {
+        sessionStorage.setItem(KEY, String(Date.now()));
+        // eslint-disable-next-line no-console
+        console.warn("[ErrorBoundary] HMR hook drift detected — auto-reloading once.");
+        setTimeout(() => window.location.reload(), 150);
+      }
+    }
   }
 
   reset = () => this.setState({ error: null });

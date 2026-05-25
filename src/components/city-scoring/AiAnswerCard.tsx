@@ -37,7 +37,10 @@ export interface AiAnswerCardProps {
 }
 
 export function AiAnswerCard({ result, query, turnCount, onRefine, loading, appliedWeights }: AiAnswerCardProps) {
-  const [showReasoning, setShowReasoning] = useState(false);
+  // Reasoning is OPEN by default — the user explicitly asked that AI never
+  // hide its reasoning. They can collapse to save space, but the default is
+  // full transparency.
+  const [showReasoning, setShowReasoning] = useState(true);
   const [followUp, setFollowUp] = useState("");
 
   const filterChips: string[] = [];

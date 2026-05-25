@@ -334,12 +334,20 @@ const CityScoring = () => {
   );
   void _aiThreadId;
 
+  const [priorWeights, setPriorWeights] = useState<Record<string, number> | null>(null);
+
   const askAi = async (query: string) => {
+    // Snapshot weights BEFORE the AI changes them, so the answer card can
+    // show a "Demand 40 → 25" diff.
+    const snapshot = { ...appliedWeights } as Record<string, number>;
     const result = await ask(query);
     if (!result) return;
+    setPriorWeights(snapshot);
 
-    // Apply filters to existing filter state
-    const f = result.filters;
+    // Defensive defaults — `answer_factual` returns no filters/weights blocks.
+    // Without these guards the page crashes on every factual question with
+    // "Cannot read properties of undefined (reading 'state')".
+    const f = result.filters ?? { state: null, tier: null, minScore: null };
     if (f.state) setStateFilter(f.state);
     if (f.tier) setTierFilter(f.tier);
     if (typeof f.minScore === "number") setMinScore(f.minScore);

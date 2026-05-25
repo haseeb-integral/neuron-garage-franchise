@@ -1,117 +1,96 @@
+## What's wrong right now
 
-# Step 2 — Global "Neuron AI" assistant (v1)
+Looking at your screenshots and the code, three real problems:
 
-Confirmed inputs from you:
-- **Button placement:** inline next to the sidebar collapse arrow (top-left of the sidebar header). Visible whether the sidebar is expanded or collapsed.
-- **First open:** ChatGPT-style welcome — short greeting + a list of slash commands the user can click.
-- **Action scope:** reads, navigations, filter/weight changes, and cheap writes behind a Confirm preview. NO multi-step plans, NO deep-reasoning model, NO charts/images. (Locked from the previous plan.)
-- **Knowledge brain reviewer:** Haseeb now; Brett later.
-- **City Search Ask AI bar:** stays for ~2 weeks alongside Global, then retired.
+1. **Neuron AI button is in the wrong place** — tucked into the sidebar header next to the collapse arrow. Cramped, easy to miss, and it makes the "Neuron Garage / Franchise" logo block ugly.
+2. **The panel doesn't actually answer** — you sent the same question twice, no reply. Bottom-right toast says "Not signed in." You ARE signed in (Haseeb ADMIN). It's a real bug, not UX confusion.
+3. **The panel UI is dated** — purple→blue gradient header, plain input, no avatars, no typing dots, no model pill. Far from ChatGPT polish.
 
----
-
-## What gets built
-
-### 1. The button (top-left, next to the collapse arrow)
-Small sparkle pill labeled **"Neuron AI"** with the ⌘K hint. Lives inside `AppSidebar.tsx` next to the existing collapse chevron. When the sidebar is collapsed (icon-only mode), the button shrinks to just the sparkle icon. Clicking it opens the assistant panel. Keyboard shortcut **⌘K / Ctrl+K** opens it from anywhere.
-
-### 2. The assistant panel (right-side slide-in sheet)
-460px wide on desktop, full-screen on mobile. Built on the existing `Sheet` component (same pattern as the User's Guide `AiAssistant`).
-
-**On first open — ChatGPT-style welcome:**
-> 👋 Hi, I'm Neuron AI. I can help you across the whole app.
->
-> **Try one of these:**
-> - `/find` — find cities, teachers, or candidates
-> - `/why` — explain a score or a tier
-> - `/explain` — walk me through a feature
-> - `/add` — add to watchlist or a campaign
-> - `/stage` — change a candidate's pipeline stage
->
-> Or just type your question.
-
-The slash commands aren't required — they're discoverability. The user can also type freeform. Clicking a slash chip pre-fills the input.
-
-**On every turn the assistant knows:**
-- The current route (`/city-scoring`, `/teacher-search`, etc.)
-- The current screen's state (filters, selected row, visible counts) via a tiny `getScreenContext()` hook each page registers
-- The signed-in user + their role (admin / manager / viewer)
-
-**Three response modes:**
-1. **Answer** — factual / explainer. Pure read, no side effects.
-2. **Navigate + apply state** — "OK, going to City Search and filtering Tier A in Texas." Routes + applies state. Shows a one-line summary of what was applied.
-3. **Propose action** — for writes. Shows a preview card with what will happen, a **Confirm** button, and a **Cancel** button. Nothing writes until Confirm. Allowed v1 writes: add/remove from city watchlist, change candidate pipeline stage, queue an email send.
-
-**Clarifying questions:** when the AI can't tell what you meant (e.g. "find Frisco" — Texas or Colorado?), it asks one short follow-up with 2-3 chip suggestions instead of guessing.
-
-### 3. The knowledge brain
-New file `supabase/functions/_shared/appKnowledge.ts` loaded by the assistant on every call. Plain prose, small (~4 KB), human-readable so Brett can review it without TypeScript knowledge. Contents:
-- **App purpose:** what Neuron Garage is, who it's for
-- **The 4 main screens:** City Search, Teacher Search, Email Outreach, Candidate Pipeline — what each does, what data it reads, what actions it offers
-- **People:** Sam (data/scoring owner), Kaylie (ops), Brett (product lead, approver), Haseeb (engineering lead, approver)
-- **Glossary:** Tier A–D, TAM Teachers, Demand, Competitive Opportunity, the 12 sub-metrics
-- **Data sources:** what's live (Census, NCES, BLS, BEA, Apify, Smartlead), what's stub
-- **Hard limits:** no scoring math changes, no destructive deletes, no auth changes, no cross-user data exposure
-
-I'll draft this; you review; Brett re-reviews on his next pass.
-
-### 4. The edge functions
-- **`supabase/functions/neuron-ai/index.ts`** — main assistant call. Uses `google/gemini-3-flash-preview` (cheap, fast, good enough). Tools: `answer`, `navigate_and_apply`, `propose_action`, `clarify`. For `propose_action`, returns a preview object only — no DB write.
-- **`supabase/functions/neuron-ai-confirm/index.ts`** — executes a previously-previewed action after the user clicks Confirm. Writes the row + appends to `ai_action_log`. Role-gated server-side.
-
-### 5. Database (one migration)
-- `ai_action_log (id, user_id, route, action_type, payload jsonb, status, error, created_at)` — RLS: users see only their own rows; admins see all.
-- `ai_threads (id, user_id, route_at_start, created_at, last_message_at)` + `ai_thread_messages (id, thread_id, role, content, created_at)` — for cross-screen thread persistence; RLS user-scoped.
-
-### 6. Per-page screen-context hooks
-Each of the 4 main pages exposes a tiny `useNeuronAiContext()` that returns the page's current filters + selected row + counts. The global assistant reads this so it always has accurate context. No behavior change to those pages.
+Plus the small bonus issues you didn't name: the `?` help icon in the City Search top bar does nothing, and the "on /city-scoring" text in the panel header reads like a raw URL.
 
 ---
 
-## Files
+## Plan
 
-**New:**
-- `src/components/neuron-ai/NeuronAiButton.tsx` — the sidebar pill button
-- `src/components/neuron-ai/NeuronAiPanel.tsx` — the slide-in chat panel (welcome + slash commands + message thread + confirm cards)
-- `src/components/neuron-ai/NeuronAiProvider.tsx` — context provider (open/close state, current screen context, keyboard shortcut)
-- `src/hooks/useNeuronAi.ts` — thread state, screen-context collector, function caller
-- `src/hooks/useNeuronAiContext.ts` — registry each page calls to publish its current state
-- `supabase/functions/_shared/appKnowledge.ts` — the knowledge brain (prose)
-- `supabase/functions/neuron-ai/index.ts` — main assistant edge function
-- `supabase/functions/neuron-ai-confirm/index.ts` — confirm-and-execute endpoint
+### 1. Move Neuron AI button → City Search top bar
 
-**Light edits:**
-- `src/App.tsx` — wrap with `NeuronAiProvider`
-- `src/components/AppSidebar.tsx` — place the button next to the collapse chevron
-- `src/components/AppLayout.tsx` — mount the panel
-- `src/pages/CityScoring.tsx`, `src/pages/TeacherProspects.tsx`, `src/pages/EmailOutreachV2.tsx`, `src/pages/CandidatePipeline.tsx` — register screen context (tiny hook call each, no behavior change)
-- `CHANGELOG_HASEEB.md` — log every decision for Brett
+- Remove `<NeuronAiButton />` from the sidebar header (it goes back to being just logo + collapse arrow — clean).
+- Replace the dead `?` icon in `CityTopBar.tsx` with the Neuron AI pill — sparkle + "Neuron AI" + `⌘K` hint, positioned right before the notification bell.
+- Shrink "Generate Market Report" slightly (icon + "Market Report", keep blue) so the row fits without scroll.
+- Other pages (Dashboard, Teacher Search, Email Outreach, Pipeline, Observability) keep the **⌘K / Ctrl+K** global shortcut — no visible button on them in this pass. Once Brett signs off on placement we can add it to those pages' headers too.
+
+### 2. Fix "Not signed in" — the real bug
+
+The frontend hook calls the edge function with raw `fetch` and a manually-grabbed `session.access_token`. When that token is near expiry, Supabase doesn't auto-refresh it, the edge function gets a stale JWT, `auth.getUser()` returns null → "Not signed in." That's why your second message also failed.
+
+Fix: switch `useNeuronAi` to `supabase.functions.invoke("neuron-ai", { body })` and the same for `neuron-ai-confirm`. `invoke` handles token refresh automatically. Also surface the real error in the chat (red bubble that says what happened) instead of a tiny corner toast you can barely see.
+
+### 3. Beautify the panel — ChatGPT-grade
+
+```text
+┌─────────────────────────────────────────┐
+│  ✨  Neuron AI                  ⋯   ✕  │  ← clean white header, soft border
+│      Gemini 2.5 Flash · City Search    │     small model pill, friendly route
+├─────────────────────────────────────────┤
+│                                         │
+│  ✨ Hi, I'm Neuron AI.                  │  ← centered welcome, big sparkle
+│  I can help across the whole app.       │
+│                                         │
+│  ┌──────────────────────────────────┐   │  ← suggested prompt CARDS
+│  │  /find  find cities or teachers  │   │     (already exist, restyled)
+│  └──────────────────────────────────┘   │
+│  ┌──────────────────────────────────┐   │
+│  │  /why   explain a score          │   │
+│  └──────────────────────────────────┘   │
+│                                         │
+├─────────────────────────────────────────┤
+│  ┌───────────────────────────────┐  ↑  │  ← rounded composer like ChatGPT
+│  │ Ask Neuron AI…                │     │     send button inside the input
+│  └───────────────────────────────┘     │
+│  Neuron AI can make mistakes.          │  ← disclaimer line
+└─────────────────────────────────────────┘
+```
+
+Concrete style changes:
+- Drop the navy→blue→purple gradient header. Use **white header, soft border, small sparkle avatar** (matches ChatGPT/Claude).
+- Add a tiny **"Gemini 2.5 Flash · on City Search"** subtitle pill — feels intentional, not raw.
+- Assistant messages get a **sparkle avatar circle** next to them; user messages a small "H" initial circle. Both bubbles flatter (less aggressive rounding), more breathing room.
+- Replace "Thinking…" spinner with **three pulsing dots** (the ChatGPT one).
+- Composer: rounded-2xl pill, send icon **inside** the input on the right, soft focus ring, auto-grow up to 4 lines.
+- Add subtle "Neuron AI can make mistakes. Verify important info." footer line.
+- Width: 480px → **520px** on desktop so longer assistant answers don't feel cramped.
+
+### 4. Small bonus cleanups (the "fix all issues I haven't said" part)
+
+- Remove the dead `?` help icon (replaced by Neuron AI button, no orphan).
+- Strip the duplicated empty user-message rendering bug if it shows up after the auth fix (right now the second click sent a duplicate before the first response failed — should be gated by the `sending` state, double-check).
+- Markdown rendering already exists; tighten line spacing so code/lists feel native.
 
 ---
 
-## What's deliberately NOT in v1
+## Files touched
 
-- Multi-step agentic plans ("find top 3 then queue enrichment for each")
-- Deep-reasoning model calls (`gemini-2.5-pro`)
-- Chart / image generation
-- Voice in/out
-- Full natural-language-to-SQL across all tables
-- Streaming responses (v1 returns the full answer at once; can add streaming later if you want)
+**Edit:**
+- `src/components/AppSidebar.tsx` — remove `NeuronAiButton` import + render
+- `src/components/city-scoring/CityTopBar.tsx` — drop `?`, add `NeuronAiButton`, shrink Generate Market Report label
+- `src/components/neuron-ai/NeuronAiPanel.tsx` — full visual overhaul, sparkle avatars, typing dots, composer redesign, footer line
+- `src/components/neuron-ai/NeuronAiButton.tsx` — slight tweak so it looks right on a white header (already mostly fine)
+- `src/hooks/useNeuronAi.ts` — switch to `supabase.functions.invoke`, surface errors inline
 
-All of these stay deferred per your "defer expensive and very expensive" call.
+**No DB changes. No new files. No edge function changes.**
+
+---
+
+## Out of scope (saving for later)
+
+- Putting the button on Dashboard / Teacher Search / Email Outreach / Pipeline headers — wait for Brett's sign-off on the City Search placement first.
+- Streaming token-by-token responses — Step 2 already deferred.
+- Retiring the old City Search "Ask AI" bar — still runs alongside for 2 weeks as agreed.
 
 ---
 
 ## Risk
 
-Low-medium. The new code is additive — nothing existing changes behavior. The only failure modes:
-- Edge function fails → assistant shows an error toast, app keeps working
-- User confirms a write → logged to `ai_action_log` so we can audit/undo
-- Role gate is enforced server-side, not just in the UI
+Low. All frontend + one hook change. The auth fix is a strict upgrade (`invoke` is what Supabase recommends). UI changes are additive and reversible.
 
----
-
-## What I need from you before I build
-
-Nothing — your last message had the two answers I needed. Switch to build mode and I'll ship the whole Step 2 in one go (button + panel + welcome + slash commands + edge function + knowledge brain + DB migration + screen-context hooks for all 4 pages).
-
+Hit **Implement plan** when you're ready.

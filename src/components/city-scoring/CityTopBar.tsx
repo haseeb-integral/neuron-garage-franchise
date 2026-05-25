@@ -1,10 +1,11 @@
-import { Bell, ChevronDown, Download, FileText, HelpCircle, LogOut, Search, Settings } from "lucide-react";
+import { Bell, ChevronDown, Download, FileText, LogOut, Search, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { NeuronAiButton } from "@/components/neuron-ai/NeuronAiButton";
 
 interface Props {
   searchTerm: string;
@@ -40,9 +41,10 @@ export function CityTopBar({
           <Download size={15} /> Export Source Data
         </Button>
       )}
-      <Button className="h-10 bg-[#174be8] hover:bg-[#1240c9] text-white gap-2 font-medium" onClick={onOpenReport}>
-        <FileText size={15} /> Generate Market Report
+      <Button className="h-10 bg-[#174be8] hover:bg-[#1240c9] text-white gap-2 font-medium px-3.5" onClick={onOpenReport}>
+        <FileText size={15} /> Market Report
       </Button>
+      <NeuronAiButton />
       <button
         type="button"
         className="relative flex items-center justify-center rounded-full bg-white text-[#526078] hover:bg-[#f3f6fb]"
@@ -51,12 +53,6 @@ export function CityTopBar({
       >
         <Bell size={16} strokeWidth={1.75} />
         <span className="absolute -right-0.5 -top-0.5 flex items-center justify-center rounded-full bg-[#e11d48] text-[9px] font-bold text-white" style={{ width: 14, height: 14 }}>3</span>
-      </button>
-      <button
-        className="flex items-center justify-center rounded-full bg-white text-[#526078] hover:bg-[#f3f6fb]"
-        style={{ width: 36, height: 36, border: "1px solid #eef2f7" }}
-      >
-        <HelpCircle size={16} strokeWidth={1.75} />
       </button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

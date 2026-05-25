@@ -1,9 +1,10 @@
 import { useCallback, useState } from "react";
-import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 // ============================================================================
-// useNeuronAi — call neuron-ai + neuron-ai-confirm edge functions.
+// useNeuronAi — calls neuron-ai + neuron-ai-confirm via supabase.functions.invoke
+// (which auto-refreshes the JWT, avoiding the stale-token "Not signed in" bug).
+// Errors are surfaced as inline assistant messages (red), not corner toasts.
 // ============================================================================
 
 export type AssistantReply =
@@ -18,20 +19,12 @@ export type AssistantReply =
     }
   | { kind: "clarify"; summary: string; question: string; chip_suggestions: string[] };
 
-export type ThreadMsg = { role: "user" | "assistant"; content: string; reply?: AssistantReply };
-
-const FN = (path: string) => `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${path}`;
-const ANON = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-async function authHeaders(): Promise<Record<string, string>> {
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token ?? "";
-  return {
-    "Content-Type": "application/json",
-    Authorization: token ? `Bearer ${token}` : "",
-    apikey: ANON,
-  };
-}
+export type ThreadMsg = {
+  role: "user" | "assistant";
+  content: string;
+  reply?: AssistantReply;
+  error?: boolean;
+};
 
 export function useNeuronAi() {
   const [messages, setMessages] = useState<ThreadMsg[]>([]);
@@ -47,25 +40,24 @@ export function useNeuronAi() {
     setMessages(next);
     setSending(true);
     try {
-      const resp = await fetch(FN("neuron-ai"), {
-        method: "POST",
-        headers: await authHeaders(),
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke("neuron-ai", {
+        body: {
           messages: next.map((m) => ({ role: m.role, content: m.content })),
           route: ctx.route,
           screenState: ctx.screenState,
-        }),
+        },
       });
-      const json = await resp.json().catch(() => ({}));
-      if (!resp.ok) {
-        toast.error(json?.error ?? `Neuron AI failed (${resp.status})`);
+      if (error) {
+        const msg = error.message ?? "Neuron AI failed.";
+        setMessages((prev) => [...prev, { role: "assistant", content: `⚠️ ${msg}`, error: true }]);
         return null;
       }
-      const reply = json as AssistantReply;
-      setMessages((prev) => [...prev, { role: "assistant", content: reply.summary ?? "", reply }]);
+      const reply = data as AssistantReply;
+      setMessages((prev) => [...prev, { role: "assistant", content: reply?.summary ?? "", reply }]);
       return reply;
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Neuron AI failed");
+      const msg = e instanceof Error ? e.message : "Neuron AI failed.";
+      setMessages((prev) => [...prev, { role: "assistant", content: `⚠️ ${msg}`, error: true }]);
       return null;
     } finally {
       setSending(false);
@@ -75,24 +67,16 @@ export function useNeuronAi() {
   const confirm = useCallback(async (
     action: { action_type: string; payload: Record<string, unknown> },
     route: string,
-  ): Promise<boolean> => {
+  ): Promise<{ ok: boolean; message?: string }> => {
     setConfirming(true);
     try {
-      const resp = await fetch(FN("neuron-ai-confirm"), {
-        method: "POST",
-        headers: await authHeaders(),
-        body: JSON.stringify({ ...action, route }),
+      const { data, error } = await supabase.functions.invoke("neuron-ai-confirm", {
+        body: { ...action, route },
       });
-      const json = await resp.json().catch(() => ({}));
-      if (!resp.ok) {
-        toast.error(json?.error ?? `Confirm failed (${resp.status})`);
-        return false;
-      }
-      toast.success(json?.message ?? "Done.");
-      return true;
+      if (error) return { ok: false, message: error.message ?? "Confirm failed." };
+      return { ok: true, message: (data as { message?: string })?.message };
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Confirm failed");
-      return false;
+      return { ok: false, message: e instanceof Error ? e.message : "Confirm failed." };
     } finally {
       setConfirming(false);
     }

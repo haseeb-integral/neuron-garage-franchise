@@ -5,7 +5,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import logo from "@/assets/neuron-garage-logo.png";
 import { useSidebarCollapsed } from "@/lib/sidebarState";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { NeuronAiButton } from "@/components/neuron-ai/NeuronAiButton";
+
 
 const primaryNavItems = [
   { title: "Dashboard", url: "/", icon: Home },
@@ -90,12 +90,9 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
             )}
           </div>
           {variant === "fixed" && (
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              <NeuronAiButton />
-              <button onClick={() => setCollapsed(!collapsed)} className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl border border-[#eef2f7] bg-white text-[#14233b] shadow-[0_4px_10px_rgba(15,23,42,0.03)] hover:bg-[#f7faff] hover:text-[#0757ff]" aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
-                {collapsed ? <ChevronRight size={17} /> : <ChevronLeft size={17} />}
-              </button>
-            </div>
+            <button onClick={() => setCollapsed(!collapsed)} className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl border border-[#eef2f7] bg-white text-[#14233b] shadow-[0_4px_10px_rgba(15,23,42,0.03)] hover:bg-[#f7faff] hover:text-[#0757ff]" aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
+              {collapsed ? <ChevronRight size={17} /> : <ChevronLeft size={17} />}
+            </button>
           )}
         </div>
 

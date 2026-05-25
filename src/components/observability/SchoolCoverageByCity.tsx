@@ -37,10 +37,13 @@ export function SchoolCoverageByCity() {
             {loading && <Loader2 size={12} className="animate-spin text-[#94a3b8]" />}
           </div>
           <p className="mt-0.5 text-[11px] leading-relaxed text-[#526078]">
-            Only cities with teacher prospects are listed. <b>With name</b> = a free-text
-            school is on file. <b>Matched</b> = teacher is linked to a row in <code>public_schools</code>.
-            School data only matters for cities you're actively enriching.
+            This is a <b>progress meter</b>, not a health check. Teachers don't
+            carry a school name until we enrich them, and the NCES matcher
+            hasn't been run yet — so <b>0% is the expected starting point</b>
+            for every city. Numbers climb as you enrich cities you're actively
+            targeting. Empty here means "not done yet," not "broken."
           </p>
+
 
           {error && (
             <div className="mt-3 rounded-md border border-[#fecaca] bg-[#fef2f2] p-2.5 text-[11px] text-[#7f1d1d]">
@@ -112,16 +115,20 @@ export function SchoolCoverageByCity() {
 }
 
 function PctChip({ pct }: { pct: number }) {
+  // Neutral baseline: 0% just means "not enriched yet" — not a failure.
+  // Color only kicks in once there's real progress to celebrate.
   const color =
-    pct >= 70 ? { bg: "#ecfdf5", fg: "#0a8f5a" } :
-    pct >= 30 ? { bg: "#fffbeb", fg: "#b7791f" } :
-                { bg: "#fef2f2", fg: "#dc2626" };
+    pct === 0   ? { bg: "#f1f5f9", fg: "#64748b" } :
+    pct >= 70   ? { bg: "#ecfdf5", fg: "#0a8f5a" } :
+    pct >= 30   ? { bg: "#eef4ff", fg: "#174be8" } :
+                  { bg: "#f7faff", fg: "#526078" };
   return (
     <span
       className="inline-flex min-w-[42px] justify-center rounded-full px-2 py-0.5 text-[10.5px] font-bold tabular-nums"
       style={{ background: color.bg, color: color.fg }}
     >
-      {pct}%
+      {pct === 0 ? "—" : `${pct}%`}
     </span>
   );
 }
+

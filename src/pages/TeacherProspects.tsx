@@ -412,7 +412,7 @@ const TeacherProspects = () => {
           }}
         />
 
-        <div className="mb-3 grid gap-3 md:grid-cols-2">
+        <div className="mb-3 grid gap-3 lg:grid-cols-2">
           <FunnelWidget
             total={stats?.total ?? null}
             emailReady={stats?.withEmail ?? null}

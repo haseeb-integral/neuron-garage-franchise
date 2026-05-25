@@ -84,7 +84,7 @@ function useTeacherSearchSummary() {
     staleTime: 60_000,
     queryFn: async () => {
       const [total, verified, needs] = await Promise.all([
-        supabase.from("teacher_prospects").select("id", { count: "exact", head: true }),
+        supabase.from("teacher_prospects").select("id", { count: "estimated", head: true }),
         supabase
           .from("teacher_prospects")
           .select("id", { count: "exact", head: true })

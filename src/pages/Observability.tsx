@@ -292,9 +292,39 @@ export default function Observability() {
           <AlertsSection />
         </div>
       )}
+      </>
+      )}
     </ObservabilityAiProvider>
   );
 }
+
+function ModeToggle({ mode, setMode }: { mode: ViewMode; setMode: (m: ViewMode) => void }) {
+  return (
+    <div className="inline-flex rounded-md border border-[#eef2f7] bg-white p-0.5">
+      <button
+        onClick={() => setMode("simple")}
+        className={`inline-flex items-center gap-1 rounded-[5px] px-2.5 py-1.5 text-[12px] font-bold transition-colors ${
+          mode === "simple" ? "bg-[#0b1a36] text-white" : "text-[#526078] hover:text-[#07142f]"
+        }`}
+        aria-pressed={mode === "simple"}
+      >
+        <Sparkles size={12} />
+        Simple
+      </button>
+      <button
+        onClick={() => setMode("advanced")}
+        className={`inline-flex items-center gap-1 rounded-[5px] px-2.5 py-1.5 text-[12px] font-bold transition-colors ${
+          mode === "advanced" ? "bg-[#0b1a36] text-white" : "text-[#526078] hover:text-[#07142f]"
+        }`}
+        aria-pressed={mode === "advanced"}
+      >
+        <SlidersHorizontal size={12} />
+        Advanced
+      </button>
+    </div>
+  );
+}
+
 
 
 // ----------------------------------------------------------------------------

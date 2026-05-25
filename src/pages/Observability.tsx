@@ -263,6 +263,8 @@ export default function Observability() {
         <div className="mt-5 space-y-4">
           <IssuesPanel issues={allIssues} overall={overall} />
 
+          <SchoolCoverageByCity />
+
           <div className="grid gap-3">
             {DOMAINS.map((d) => {
               const description = PLAIN_ENGLISH[d.key] ?? d.description;

@@ -123,11 +123,12 @@ FROM public.${table};`,
       const total = totalRes.count ?? 0;
       const nonNull = nonNullRes.count ?? 0;
       const pct = total > 0 ? (nonNull / total) * 100 : null;
+      const err = totalRes.error?.message ?? nonNullRes.error?.message ?? null;
       return {
         raw: pct,
-        display: `${fmtPct(pct)} (${fmtNum(nonNull)} / ${fmtNum(total)})`,
-        status: checkPct(pct, minPct),
-        error: totalRes.error?.message ?? nonNullRes.error?.message ?? null,
+        display: err ? "—" : `${fmtPct(pct)} (${fmtNum(nonNull)} / ${fmtNum(total)})`,
+        status: err ? "unknown" : checkPct(pct, minPct),
+        error: err,
         ms: ms1 + ms2,
       };
     },

@@ -79,6 +79,12 @@ function fmtAge(iso: string | null | undefined): string {
 
 // ---------- metric builders -------------------------------------------------
 
+// Large tables where `count: "exact"` blows past Postgres's statement_timeout.
+// For these we use planner estimates (accurate enough for a health dashboard).
+const LARGE_TABLES = new Set(["teacher_prospects", "public_schools", "us_cities_geo"]);
+const countMode = (table: string): "exact" | "estimated" =>
+  LARGE_TABLES.has(table) ? "estimated" : "exact";
+
 function metricRowCount(table: string, friendly: string): MetricDef {
   return {
     key: `${table}.row_count`,
@@ -86,7 +92,7 @@ function metricRowCount(table: string, friendly: string): MetricDef {
     sql: `SELECT count(*) FROM public.${table};`,
     run: async () => {
       const { value, ms } = await timed(() =>
-        supabase.from(table as any).select("*", { count: "exact", head: true }),
+        supabase.from(table as any).select("*", { count: countMode(table), head: true }),
       );
       const count = value.count ?? null;
       const t = DOMAIN_THRESHOLDS[table];
@@ -114,11 +120,12 @@ function metricColumnNonNullPct(
     sql: `SELECT 100.0 * count(${column})::float / nullif(count(*), 0) AS pct
 FROM public.${table};`,
     run: async () => {
+      const mode = countMode(table);
       const { value: totalRes, ms: ms1 } = await timed(() =>
-        supabase.from(table as any).select("*", { count: "exact", head: true }),
+        supabase.from(table as any).select("*", { count: mode, head: true }),
       );
       const { value: nonNullRes, ms: ms2 } = await timed(() =>
-        supabase.from(table as any).select("*", { count: "exact", head: true }).not(column, "is", null),
+        supabase.from(table as any).select("*", { count: mode, head: true }).not(column, "is", null),
       );
       const total = totalRes.count ?? 0;
       const nonNull = nonNullRes.count ?? 0;
@@ -134,6 +141,7 @@ FROM public.${table};`,
     },
   };
 }
+
 
 function metricFreshness(table: string, column: string, maxDays: number): MetricDef {
   return {

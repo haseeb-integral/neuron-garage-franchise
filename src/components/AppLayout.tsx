@@ -9,6 +9,7 @@ import { useDefaultCollapsedForRoute, useSidebarCollapsed } from "@/lib/sidebarS
 import { useRouteTitle } from "@/lib/usePageTitle";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { DbDebugFooter } from "./dbHealth/DbDebugFooter";
+import { NeuronAiPanel } from "./neuron-ai/NeuronAiPanel";
 
 export function AppLayout() {
   const [open, setOpen] = useState(false);
@@ -69,6 +70,7 @@ export function AppLayout() {
         </div>
       </main>
       <DbDebugFooter />
+      <NeuronAiPanel />
     </div>
   );
 }

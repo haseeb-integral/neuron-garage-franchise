@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_action_log: {
+        Row: {
+          action_type: string
+          created_at: string
+          error: string | null
+          id: string
+          payload: Json
+          route: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          payload?: Json
+          route: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          payload?: Json
+          route?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_query_history: {
         Row: {
           created_at: string
@@ -51,6 +84,62 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ai_thread_messages: {
+        Row: {
+          content: Json
+          created_at: string
+          id: string
+          role: string
+          thread_id: string
+        }
+        Insert: {
+          content: Json
+          created_at?: string
+          id?: string
+          role: string
+          thread_id: string
+        }
+        Update: {
+          content?: Json
+          created_at?: string
+          id?: string
+          role?: string
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_thread_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "ai_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_threads: {
+        Row: {
+          created_at: string
+          id: string
+          last_message_at: string
+          route_at_start: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          route_at_start?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          route_at_start?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       ask_city_conversations: {
         Row: {

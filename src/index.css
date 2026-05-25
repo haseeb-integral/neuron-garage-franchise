@@ -183,3 +183,9 @@ button[role="checkbox"]:focus-visible {
   outline: 2px solid #fd7e14;
   outline-offset: 2px;
 }
+
+/* Neuron AI typing indicator dots */
+@keyframes neuron-dot {
+  0%, 80%, 100% { opacity: 0.3; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-2px); }
+}

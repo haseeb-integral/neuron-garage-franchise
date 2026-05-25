@@ -32,7 +32,7 @@ const TeamMembers = lazy(() => import("./pages/TeamMembers"));
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
-const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 30000, refetchOnWindowFocus: true } } });
+const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 30000, refetchOnWindowFocus: false } } });
 
 const RouteFallback = () => <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
 

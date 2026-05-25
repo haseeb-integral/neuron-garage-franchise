@@ -62,9 +62,25 @@ export function NeuronAiProvider({ children }: { children: React.ReactNode }) {
   return <NeuronAiCtx.Provider value={value}>{children}</NeuronAiCtx.Provider>;
 }
 
+const NOOP_CTX: Ctx = {
+  open: false,
+  setOpen: () => {},
+  toggle: () => {},
+  screenContext: { route: "/", state: {} },
+  setScreenContext: () => {},
+};
+
 export function useNeuronAi() {
   const c = useContext(NeuronAiCtx);
-  if (!c) throw new Error("useNeuronAi must be used inside <NeuronAiProvider>");
+  // Fallback to a no-op context if used outside the provider (e.g. during
+  // HMR or in routes mounted before the provider wraps them). Prevents
+  // a hard crash and a blank screen.
+  if (!c) {
+    if (typeof console !== "undefined") {
+      console.warn("useNeuronAi used outside <NeuronAiProvider> — using no-op context.");
+    }
+    return NOOP_CTX;
+  }
   return c;
 }
 

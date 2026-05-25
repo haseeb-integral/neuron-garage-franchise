@@ -37,10 +37,13 @@ export function SchoolCoverageByCity() {
             {loading && <Loader2 size={12} className="animate-spin text-[#94a3b8]" />}
           </div>
           <p className="mt-0.5 text-[11px] leading-relaxed text-[#526078]">
-            Only cities with teacher prospects are listed. <b>With name</b> = a free-text
-            school is on file. <b>Matched</b> = teacher is linked to a row in <code>public_schools</code>.
-            School data only matters for cities you're actively enriching.
+            This is a <b>progress meter</b>, not a health check. Teachers don't
+            carry a school name until we enrich them, and the NCES matcher
+            hasn't been run yet — so <b>0% is the expected starting point</b>
+            for every city. Numbers climb as you enrich cities you're actively
+            targeting. Empty here means "not done yet," not "broken."
           </p>
+
 
           {error && (
             <div className="mt-3 rounded-md border border-[#fecaca] bg-[#fef2f2] p-2.5 text-[11px] text-[#7f1d1d]">

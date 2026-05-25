@@ -134,7 +134,14 @@ function RulesBoard() {
     <section className="rounded-3xl border border-[#eef2f7] bg-white p-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="text-[16px] font-black text-[#0b1a36]">Invariants</h3>
+          <div className="flex items-center gap-1.5">
+            <h3 className="text-[16px] font-black text-[#0b1a36]">Invariants</h3>
+            <InfoHint title="What's an invariant?">
+              A sentence about your data that should <strong>always</strong> be true — e.g. "every city has a non-negative
+              population." We turn each one into a SQL query that looks for rows breaking the rule. <strong>Zero
+              violating rows = pass.</strong> Run them whenever you suspect bad data, or before a demo.
+            </InfoHint>
+          </div>
           <p className="mt-1 text-[12px] leading-relaxed text-[#526078]">
             Each rule is a question we ask the database. A rule passes when the answer
             is "zero rows broke it". Click <strong>Show query</strong> to see the SQL.

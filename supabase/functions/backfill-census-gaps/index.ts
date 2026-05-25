@@ -90,15 +90,16 @@ async function fetchCensusForPlace(stateFips: string, placeFips: string) {
 // Manual overrides for consolidated city-counties and renamed places whose
 // official Census place names don't start with the common city name.
 const PLACE_FIPS_OVERRIDES: Record<string, string> = {
-  "athens|GA": "03436",       // Athens-Clarke County unified government (balance)
-  "augusta|GA": "04604",      // Augusta-Richmond County consolidated government (balance)
-  "carson city|NV": "10000",  // Carson City
-  "lexington|KY": "46027",    // Lexington-Fayette
+  "athens|GA": "03440",       // Athens-Clarke County unified government (balance)
+  "augusta|GA": "04204",      // Augusta-Richmond County consolidated government (balance)
+  "carson city|NV": "09700",  // Carson City
+  "lexington|KY": "46027",    // Lexington-Fayette urban county
   "louisville|KY": "48006",   // Louisville/Jefferson County metro government (balance)
   "macon|GA": "49008",        // Macon-Bibb County
   "nashville|TN": "52006",    // Nashville-Davidson metropolitan government (balance)
   "ventura|CA": "65042",      // San Buenaventura (Ventura)
 };
+
 
 const PLACE_CACHE = new Map<string, Array<{ name: string; fips: string }>>();
 async function resolvePlaceFips(city: string, stateAbbr: string): Promise<string | null> {

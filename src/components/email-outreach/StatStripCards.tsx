@@ -154,13 +154,23 @@ export function StatStripCards({ scope, filter = {}, onTotalChange }: Props) {
 
   const total = stats?.total_contacts ?? 0;
   const pct = (n: number) => (total > 0 ? `${Math.round((n / total) * 100)}%` : "0%");
+  const cards = CARDS_BY_SCOPE[scope];
+  const showEmptyHint = !loading && !error && scope === "smartlead" && total === 0;
 
   return (
     <div
       className="mb-3 grid gap-2 rounded-xl border p-3 md:grid-cols-3"
       style={{ borderColor: colors.border, background: colors.bg }}
     >
-      {CARDS.map(({ key, label, Icon }) => {
+      {showEmptyHint && (
+        <div
+          className="md:col-span-3 rounded-lg border border-dashed bg-white p-3 text-[11px] text-[#526078]"
+          style={{ borderColor: colors.border }}
+        >
+          No teachers have been pushed to SmartLead yet for this filter. Counts below reflect the SmartLead pool only — switch to the Master DB tab to see the full upstream pool.
+        </div>
+      )}
+      {cards.map(({ key, label, Icon }) => {
         const value = stats?.[key];
         const isTotal = key === "total_contacts";
         return (

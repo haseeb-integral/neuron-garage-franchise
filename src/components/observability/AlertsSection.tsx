@@ -276,7 +276,14 @@ export function AlertsSection() {
       {/* ── Rule subscriptions ──────────────────────────────────────────── */}
       <section className="rounded-3xl border border-[#eef2f7] bg-white p-6">
         <header>
-          <h3 className="text-[16px] font-black text-[#0b1a36]">Rule subscriptions</h3>
+          <div className="flex items-center gap-1.5">
+            <h3 className="text-[16px] font-black text-[#0b1a36]">Rule subscriptions</h3>
+            <InfoHint title="How notifications work">
+              Toggle <strong>Notify me</strong> on any rule you care about. We log the subscription right away; the
+              email goes out as soon as a rule you subscribed to flips from passing to failing. You'll never get
+              spammed for transient blips — only confirmed incidents trigger a send.
+            </InfoHint>
+          </div>
           <p className="mt-1 max-w-2xl text-[12px] leading-relaxed text-[#526078]">
             Pick the specific invariants you care about. We record your subscription
             now; email delivery turns on as soon as we wire a sender (one short

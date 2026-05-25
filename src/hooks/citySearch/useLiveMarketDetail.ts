@@ -9,7 +9,7 @@
 //   - Re-mount / tab-switch shows cached data instantly with background refetch
 //   - Invalidation is centralized (`reloadSelectedMarketView` invalidates both keys)
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -121,7 +121,25 @@ export function useLiveRankedMarkets() {
     staleTime: 60_000,
     // Keep previous data on refetch so the list never flashes empty.
     placeholderData: (prev) => prev,
+    // Auto-retry once on transient failures (covers brief network hiccups
+    // and stale JWTs that get refreshed on the second attempt).
+    retry: 1,
+    retryDelay: 500,
   });
+
+  // When auth state changes (sign-in, token refresh, etc.), invalidate the
+  // ranked cache so the list reloads with a fresh JWT. This is the primary
+  // defense against the "silent empty list after token revocation" failure.
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event) => {
+        if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+          qc.invalidateQueries({ queryKey: [...rankedKey] });
+        }
+      },
+    );
+    return () => subscription.unsubscribe();
+  }, [qc]);
 
   const liveRankedMarkets = query.data ?? [];
 

@@ -76,6 +76,7 @@ export function useAskAi(getSession?: () => AskAiSession) {
             query,
             threadId: aiThreadId,
             previousTurns: aiTurns.map((t) => ({ query: t.query, response: t.response })),
+            session: getSession ? getSession() : undefined,
           }),
         });
         let bodyJson: unknown = null;

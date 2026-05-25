@@ -1,9 +1,10 @@
 import { useCallback, useMemo, useState } from "react";
 import { RotateCw } from "lucide-react";
 import { DOMAINS } from "@/lib/dbHealth/queries";
-import { HealthStatus, rollup, statusLabel } from "@/lib/dbHealth/thresholds";
+import { HealthStatus, rollup } from "@/lib/dbHealth/thresholds";
 import { DomainCard } from "@/components/dbHealth/DomainCard";
 import { StatusPill } from "@/components/dbHealth/StatusPill";
+import { AccuracyTab } from "@/components/dbHealth/AccuracyTab";
 import { useIsManager } from "@/hooks/dbHealth/useIsManager";
 
 /**
@@ -15,6 +16,7 @@ export default function DbHealth() {
   const { loading: roleLoading, isManager } = useIsManager();
   const [perDomain, setPerDomain] = useState<Record<string, HealthStatus>>({});
   const [refreshTick, setRefreshTick] = useState(0);
+  const [tab, setTab] = useState<"status" | "accuracy">("status");
 
   const overall = useMemo(() => rollup(Object.values(perDomain)), [perDomain]);
 

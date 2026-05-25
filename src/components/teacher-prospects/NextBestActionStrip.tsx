@@ -122,7 +122,7 @@ export function NextBestActionStrip({ stats, visibleProspects, promotedUuids, on
       <div className="mb-2 flex items-center justify-between px-1">
         <div className="text-[11px] font-bold uppercase tracking-wide text-[#66728a]">Actions</div>
       </div>
-      <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((c) => (
           <div key={c.id} className="relative">
             {c.node}

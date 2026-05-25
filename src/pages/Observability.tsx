@@ -386,7 +386,39 @@ function StatCard({
 }
 
 // ----------------------------------------------------------------------------
-// TabIntro — plain-English description of what each tab is for. Shown above
+// AdvancedModeIntro — explains what the whole Advanced view is, in the same
+// "what / measures / means / why care" format used per tab below.
+// ----------------------------------------------------------------------------
+function AdvancedModeIntro() {
+  return (
+    <div className="mt-4 rounded-xl border border-[#eef2f7] bg-white p-4">
+      <div className="text-[13px] font-bold text-[#07142f]">
+        Advanced Mode — the raw health of the database behind Neuron Garage
+      </div>
+      <dl className="mt-2 grid gap-x-6 gap-y-1.5 text-[12px] leading-relaxed sm:grid-cols-[auto_1fr]">
+        <dt className="font-bold text-[#07142f]">What it's for</dt>
+        <dd className="text-[#526078]">
+          A single page that proves, with live SQL, that the data powering the app is present, fresh, and correct — so you can answer "is anything broken?" without opening the database.
+        </dd>
+        <dt className="font-bold text-[#07142f]">What it measures</dt>
+        <dd className="text-[#526078]">
+          Per-table row counts, freshness, key-column fill rates, invariant rules, 30-day trends, and any incidents that stayed red across snapshots.
+        </dd>
+        <dt className="font-bold text-[#07142f]">What it means</dt>
+        <dd className="text-[#526078]">
+          The Trust Score at the top rolls everything into one number. The three tabs below drill in: <strong>Status</strong> = is it there, <strong>Accuracy</strong> = is it correct, <strong>Alerts</strong> = has it been stable.
+        </dd>
+        <dt className="font-bold text-[#07142f]">Why you should care</dt>
+        <dd className="text-[#526078]">
+          This page is the difference between "the client trusts the numbers we send them" and "we find out a table was empty for a week because a user complained."
+        </dd>
+      </dl>
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------------------
+
 // the tab content so a non-technical user knows what they're looking at.
 // ----------------------------------------------------------------------------
 function TabIntro({ tab }: { tab: "status" | "accuracy" | "alerts" }) {

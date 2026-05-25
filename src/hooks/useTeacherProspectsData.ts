@@ -151,7 +151,7 @@ export function useTeacherProspectsData(args: UseTeacherProspectsDataArgs) {
 
     let q = supabase
       .from("teacher_prospects")
-      .select("*", { count: "exact" })
+      .select("*", { count: "estimated" })
       .order("created_at", { ascending: false });
 
     if (cityFilters.length > 0) q = q.in("city", cityFilters);
@@ -171,8 +171,12 @@ export function useTeacherProspectsData(args: UseTeacherProspectsDataArgs) {
     if (myReq !== reqIdRef.current) return;
 
     if (error) {
-      toast.error(`Failed to load prospects: ${error.message}`);
-      setLoadError(error.message);
+      const isTimeout = /statement timeout|canceling statement/i.test(error.message);
+      const friendly = isTimeout
+        ? "The database took too long to respond. Try a narrower search or a single city filter."
+        : `Failed to load prospects: ${error.message}`;
+      toast.error(friendly);
+      setLoadError(friendly);
       setProspects([]);
       setTotalCount(0);
     } else {

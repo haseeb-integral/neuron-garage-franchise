@@ -127,7 +127,14 @@ export function AlertsSection() {
       <section className="rounded-3xl border border-[#eef2f7] bg-white p-6">
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="text-[16px] font-black text-[#0b1a36]">30-day history</h3>
+            <div className="flex items-center gap-1.5">
+              <h3 className="text-[16px] font-black text-[#0b1a36]">30-day history</h3>
+              <InfoHint title="How to read a sparkline">
+                Each tiny tick is one snapshot from a 6-hour interval. Read left-to-right: oldest to newest.
+                A flat green line is what you want. A patch of red means a check was failing at that point — hover the
+                sparkline for the exact timestamps.
+              </InfoHint>
+            </div>
             <p className="mt-1 max-w-lg text-[12px] leading-relaxed text-[#526078]">
               One snapshot every six hours. Each tick below is one snapshot, oldest
               on the left. Green is healthy, yellow is a warning, red means at

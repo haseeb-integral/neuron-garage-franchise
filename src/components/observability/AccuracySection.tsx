@@ -327,7 +327,14 @@ function SampleInspector() {
     <section className="rounded-3xl border border-[#eef2f7] bg-white p-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h3 className="text-[16px] font-black text-[#0b1a36]">Sample inspector</h3>
+          <div className="flex items-center gap-1.5">
+            <h3 className="text-[16px] font-black text-[#0b1a36]">Sample inspector</h3>
+            <InfoHint title="How to use this">
+              Click <strong>Roll again</strong> and we pull one random scored city with every column. Skim the values
+              and look for anything that feels obviously wrong (e.g. population of 7, score of 999, blanks where there
+              shouldn't be any). It's a 5-second sanity check — way faster than writing SQL.
+            </InfoHint>
+          </div>
           <p className="mt-1 max-w-md text-[12px] leading-relaxed text-[#526078]">
             Pull one random scored city, with every column visible. The fastest way
             to spot weird values without writing SQL.

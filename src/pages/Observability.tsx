@@ -7,6 +7,12 @@ import { useIsManager } from "@/hooks/dbHealth/useIsManager";
 import { AccuracySection } from "@/components/observability/AccuracySection";
 import { AlertsSection } from "@/components/observability/AlertsSection";
 import { PageHeader } from "@/components/PageHeader";
+import {
+  ObservabilityAiProvider,
+  AskAiButton,
+  useObservabilityAi,
+} from "@/components/observability/ObservabilityAi";
+
 
 /**
  * /observability — Data Observability Dashboard.

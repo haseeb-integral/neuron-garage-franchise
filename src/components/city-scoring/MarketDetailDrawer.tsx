@@ -9,6 +9,7 @@ import { buildSeededFallbackSignalsFromScored } from "@/lib/cityScoringLiveData"
 import type { CategoryKey } from "@/stores/cityScoringStore";
 import { MetricRow, type LiveSignal, type MetricStatus } from "./market-detail/MetricRow";
 import { DrawerHeroSummary } from "./market-detail/DrawerHeroSummary";
+import { buildMarketView } from "@/lib/marketView";
 
 export interface CustomCriterion {
   name: string;
@@ -211,16 +212,10 @@ export function MarketDetailDrawer({
 
           {/* Hero summary — total score, tier, pillars, deterministic bottom line. */}
           <DrawerHeroSummary
-            rawComposite={(() => {
+            rawComposite={
               // Rule 12: composites must flow through the marketView selector.
-              const view = (() => {
-                // Lazy require to avoid a top-level circular import risk.
-                // eslint-disable-next-line @typescript-eslint/no-require-imports
-                const { buildMarketView } = require("@/lib/marketView");
-                return buildMarketView(market);
-              })();
-              return view.rawComposite ?? 0;
-            })()}
+              buildMarketView(market).rawComposite ?? 0
+            }
             tier={(market as any).tier ?? null}
             categoryScores={{
               demand: categoryScores?.demand ?? null,

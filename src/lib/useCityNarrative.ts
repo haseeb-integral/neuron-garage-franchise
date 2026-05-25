@@ -74,7 +74,10 @@ export function useCityNarrative({
         setError(e instanceof Error ? e.message : "Failed to load narrative");
         setData(null);
       } finally {
-        if (requestId !== requestIdRef.current) return;
+        // Always clear the spinner. If a newer request has started, that
+        // request owns the loading state and will set it again on its own
+        // path — a stale `setLoading(false)` here is harmless because React
+        // bails on identical updates.
         setLoading(false);
       }
     },

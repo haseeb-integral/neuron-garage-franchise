@@ -5,7 +5,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { NeuronAiButton } from "@/components/neuron-ai/NeuronAiButton";
+// NeuronAiButton import removed — global Ask AI hidden per Haseeb's request.
 
 interface Props {
   searchTerm: string;
@@ -45,7 +45,6 @@ export function CityTopBar({
         <FileText size={15} /> Market Report
       </Button>
       {/* Neuron AI badge hidden for now — not shown to clients */}
-      {false && <NeuronAiButton />}
       <button
         type="button"
         className="relative flex items-center justify-center rounded-full bg-white text-[#526078] hover:bg-[#f3f6fb]"

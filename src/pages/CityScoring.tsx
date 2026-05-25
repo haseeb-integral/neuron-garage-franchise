@@ -858,7 +858,7 @@ const CityScoring = () => {
         "Total Score (calibrated)",
         ...dbKeys,
       ];
-      const backendRows: (string | number | null)[][] = filtered.map((m: any) => {
+      const buildBackendRow = (m: any): (string | number | null)[] => {
         const r = m?.scoredRow ?? {};
         const v = buildMarketView(m);
         const head: (string | number | null)[] = [
@@ -877,8 +877,15 @@ const CityScoring = () => {
           try { return JSON.stringify(val); } catch { return String(val); }
         });
         return [...head, ...tail];
-      });
+      };
 
+      const backendRows: (string | number | null)[][] = filtered.map(buildBackendRow);
+
+      // 4th sheet: the FULL underlying dataset (all ~817 cities), independent
+      // of the user's current filter. Same column shape as Backend Data.
+      const fullDatabaseHeader = backendHeader;
+      const fullDatabaseRows: (string | number | null)[][] =
+        baseRankedMarkets.map(buildBackendRow);
 
       const weightsCities = filtered.map((m: any) => ({
         city: m.city ?? "",
@@ -892,6 +899,8 @@ const CityScoring = () => {
         categories: CATEGORIES.map((c) => ({ key: c.key, label: c.label })),
         backendHeader,
         backendRows,
+        fullDatabaseHeader,
+        fullDatabaseRows,
         weightsCities,
         appliedWeights: appliedWeights as Record<CategoryKey, number>,
         appliedSubWeights: appliedSubWeights as Record<CategoryKey, Record<string, number>>,
@@ -900,7 +909,9 @@ const CityScoring = () => {
       const filename = `ranked-markets-live-${new Date().toISOString().slice(0, 10)}.xlsx`;
       downloadWorkbook(wb, filename);
 
-      toast.success("Exported: backend data + weights snapshot + per-city weights");
+      toast.success(
+        `Exported: filtered selection (${filtered.length}) + full database (${baseRankedMarkets.length}) + weights snapshot + per-city weights`,
+      );
     } catch (err) {
       console.error("Export XLSX failed", err);
       toast.error("Export failed — see console");

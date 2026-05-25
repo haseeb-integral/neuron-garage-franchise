@@ -9,6 +9,7 @@ import { buildSeededFallbackSignalsFromScored } from "@/lib/cityScoringLiveData"
 import type { CategoryKey } from "@/stores/cityScoringStore";
 import { MetricRow, type LiveSignal, type MetricStatus } from "./market-detail/MetricRow";
 import { DrawerHeroSummary } from "./market-detail/DrawerHeroSummary";
+import { buildMarketView } from "@/lib/marketView";
 
 export interface CustomCriterion {
   name: string;
@@ -211,7 +212,10 @@ export function MarketDetailDrawer({
 
           {/* Hero summary — total score, tier, pillars, deterministic bottom line. */}
           <DrawerHeroSummary
-            rawComposite={Number((market as any).compositeScore ?? 0)}
+            rawComposite={
+              // Rule 12: composites must flow through the marketView selector.
+              buildMarketView(market).rawComposite ?? 0
+            }
             tier={(market as any).tier ?? null}
             categoryScores={{
               demand: categoryScores?.demand ?? null,

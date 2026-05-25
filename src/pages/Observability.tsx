@@ -62,7 +62,9 @@ export default function Observability() {
     return (localStorage.getItem(MODE_KEY) as ViewMode) || "simple";
   });
   useEffect(() => {
-    try { localStorage.setItem(MODE_KEY, mode); } catch {}
+    try { localStorage.setItem(MODE_KEY, mode); } catch {
+      // localStorage write failed (private mode / quota) — non-critical, ignore.
+    }
   }, [mode]);
   const refreshersRef = useRef<Record<string, () => Promise<void>>>({});
 

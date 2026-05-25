@@ -4,19 +4,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
+export type AiSubMetricBoost = { key: string; delta: number; pillar: string; label: string };
+
 export type AiResult = {
   summary: string;
   filters: { state: string | null; minScore: number | null; tier: string | null };
   weightMode?: "absolute" | "delta";
   absoluteWeights?: Record<string, number>;
   weightAdjustments: Record<string, number>;
+  subMetricBoosts?: AiSubMetricBoost[];
   reasoning_steps: string[];
   dataGaps: string[];
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
   demand: "Demand",
-  competitiveLandscape: "Competition",
+  competitiveLandscape: "Competitive Opportunity",
   franchiseeSupply: "TAM Teachers",
 };
 

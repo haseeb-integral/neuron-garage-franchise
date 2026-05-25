@@ -152,11 +152,12 @@ export default function Observability() {
               ]}
             />
             <button
-              onClick={() => setRefreshTick((t) => t + 1)}
-              className="inline-flex items-center gap-1.5 rounded-md border border-[#eef2f7] bg-white px-3.5 py-2 text-[13px] font-bold text-[#07142f] transition-colors hover:bg-[#f7faff]"
+              onClick={runAllChecks}
+              disabled={isRunningAll}
+              className="inline-flex items-center gap-1.5 rounded-md border border-[#eef2f7] bg-white px-3.5 py-2 text-[13px] font-bold text-[#07142f] transition-colors hover:bg-[#f7faff] disabled:opacity-60"
             >
-              <RotateCw size={13} />
-              Run all checks
+              <RotateCw size={13} className={isRunningAll ? "animate-spin" : ""} />
+              {isRunningAll ? "Running…" : "Run all checks"}
             </button>
           </div>
         }

@@ -188,11 +188,39 @@ export async function loadLiveRankedMarkets(_opts?: { includeExtras?: boolean })
 
   const { data: scoredRows, error: scoredErr } = await query;
 
+  // Telemetry breadcrumb so next time anyone reports "no data" we can read
+  // exactly what happened from their browser console.
+  const { data: sessionData } = await supabase.auth.getSession();
+  const sess = sessionData?.session ?? null;
+  console.info("[CitySearch] loadLiveRankedMarkets", {
+    rowCount: scoredRows?.length ?? 0,
+    hasSession: !!sess,
+    sessionExpiresAt: sess?.expires_at
+      ? new Date(sess.expires_at * 1000).toISOString()
+      : null,
+    error: scoredErr?.message ?? null,
+  });
+
   if (scoredErr) {
+    // Throw so React Query surfaces an error state instead of rendering
+    // a silent empty list (which is what the May-25 "no data" report was).
     console.error("loadLiveRankedMarkets us_cities_scored error", scoredErr);
+    throw new Error(`City database query failed: ${scoredErr.message}`);
+  }
+
+  // Sanity check: if we got 0 rows back but the table actually has data,
+  // it's an auth/RLS problem — surface as an error, don't silently empty.
+  if (!scoredRows?.length) {
+    const { count, error: countErr } = await supabase
+      .from("us_cities_scored")
+      .select("id", { count: "exact", head: true });
+    if (!countErr && (count ?? 0) > 0) {
+      throw new Error(
+        `City list returned 0 rows but database has ${count}. Your session may have expired — please sign out and back in.`,
+      );
+    }
     return [];
   }
-  if (!scoredRows?.length) return [];
 
   const mapped: RankedMarket[] = (scoredRows as ScoredCityRow[]).map((row, index) => {
     const state = normalizeState(row.state_name ?? row.state_abbr);

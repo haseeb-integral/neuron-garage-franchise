@@ -151,11 +151,12 @@ function metricFreshness(table: string, column: string, maxDays: number): Metric
           .maybeSingle(),
       );
       const iso = (value.data as any)?.[column] ?? null;
+      const err = value.error?.message ?? null;
       return {
         raw: iso,
-        display: fmtAge(iso),
-        status: checkStaleness(iso, { minRows: 0, maxStalenessDays: maxDays }),
-        error: value.error?.message ?? null,
+        display: err ? "—" : fmtAge(iso),
+        status: err ? "unknown" : checkStaleness(iso, { minRows: 0, maxStalenessDays: maxDays }),
+        error: err,
         ms,
       };
     },

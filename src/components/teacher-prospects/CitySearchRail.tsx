@@ -119,20 +119,37 @@ export function CitySearchRail({ cityFilters, onPick, onAddMore, onRemove }: Pro
       const cityNames = Array.from(candidates.keys());
       if (cityNames.length === 0) { if (!cancel) setItems([]); return; }
 
-      // 2. Pull teacher counts for those cities.
-      const { data: tp } = await supabase
-        .from("teacher_prospects")
-        .select("city, email, verification_status, needs_email_enrichment")
-        .in("city", cityNames)
-        .limit(5000);
-
+      // 2. Per-city aggregate counts via HEAD requests (no row payload).
+      // We previously pulled up to 5,000 raw rows and aggregated client-side,
+      // but cities with very large prospect counts (e.g. Chicago ≈ 23k) ate
+      // the entire 5k budget and starved every other tile to 0. Counting per
+      // city is exact regardless of dataset size and uses the city index.
       const agg = new Map<string, { total: number; enriched: number }>();
-      for (const t of (tp ?? []) as Array<{ city: string; email: string | null; verification_status: string | null; needs_email_enrichment: boolean | null }>) {
-        const cur = agg.get(t.city) ?? { total: 0, enriched: 0 };
-        cur.total += 1;
-        if (!t.needs_email_enrichment && (t.email ?? "").length > 0) cur.enriched += 1;
-        agg.set(t.city, cur);
-      }
+      await Promise.all(
+        cityNames.flatMap((name) => [
+          supabase
+            .from("teacher_prospects")
+            .select("*", { count: "planned", head: true })
+            .eq("city", name)
+            .then(({ count }) => {
+              const cur = agg.get(name) ?? { total: 0, enriched: 0 };
+              cur.total = count ?? 0;
+              agg.set(name, cur);
+            }),
+          supabase
+            .from("teacher_prospects")
+            .select("*", { count: "planned", head: true })
+            .eq("city", name)
+            .eq("needs_email_enrichment", false)
+            .not("email", "is", null)
+            .neq("email", "")
+            .then(({ count }) => {
+              const cur = agg.get(name) ?? { total: 0, enriched: 0 };
+              cur.enriched = count ?? 0;
+              agg.set(name, cur);
+            }),
+        ]),
+      );
 
       const out: RailCity[] = cityNames.map((name) => {
         const cand = candidates.get(name)!;

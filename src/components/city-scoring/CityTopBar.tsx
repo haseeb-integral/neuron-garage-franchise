@@ -44,7 +44,8 @@ export function CityTopBar({
       <Button className="h-10 bg-[#174be8] hover:bg-[#1240c9] text-white gap-2 font-medium px-3.5" onClick={onOpenReport}>
         <FileText size={15} /> Market Report
       </Button>
-      <NeuronAiButton />
+      {/* Neuron AI badge hidden for now — not shown to clients */}
+      {false && <NeuronAiButton />}
       <button
         type="button"
         className="relative flex items-center justify-center rounded-full bg-white text-[#526078] hover:bg-[#f3f6fb]"

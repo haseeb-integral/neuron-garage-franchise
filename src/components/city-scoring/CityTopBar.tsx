@@ -26,8 +26,8 @@ export function CityTopBar({
   initials, displayName, role, email, onNavigateTeam, onLogout,
 }: Props) {
   return (
-    <div className="mb-4 flex items-center gap-3">
-      <div className="relative flex-1 max-w-[680px]">
+    <div className="mb-4 flex flex-wrap items-center gap-3">
+      <div className="relative min-w-0 flex-1 md:max-w-[680px]">
         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8794ab]" />
         <Input
           value={searchTerm}
@@ -38,13 +38,14 @@ export function CityTopBar({
       </div>
       {screenMode !== "spreadsheet" && (
         <Button variant="outline" className="h-10 border-[#e5eaf2] text-[#14233b] gap-2 font-normal" onClick={onExportCsv}>
-          <Download size={15} /> Export Source Data
+          <Download size={15} /> <span className="hidden sm:inline">Export Source Data</span>
         </Button>
       )}
       <Button className="h-10 bg-[#174be8] hover:bg-[#1240c9] text-white gap-2 font-medium px-3.5" onClick={onOpenReport}>
-        <FileText size={15} /> Market Report
+        <FileText size={15} /> <span className="hidden sm:inline">Market Report</span>
       </Button>
       {/* Neuron AI badge hidden for now — not shown to clients */}
+      <div className="ml-auto flex items-center gap-3">
       <button
         type="button"
         className="relative flex items-center justify-center rounded-full bg-white text-[#526078] hover:bg-[#f3f6fb]"

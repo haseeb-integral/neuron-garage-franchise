@@ -1,76 +1,58 @@
-## What's wrong today
+## Problem
 
-`MarketReportModal` is a relic from when `city_market_signals` existed. That table was severed on 2026-05-21. The modal now:
+Right now Neuron AI has two modes:
+- **answer** → just talks (info, safe).
+- **navigate_and_apply** → immediately navigates + applies filters to the screen.
+- **propose_action** → only used for writes (watchlist, candidate stage); shows a Confirm card.
+- **clarify** → asks a follow-up.
 
-- Invents a **"Live / Proxy / Missing"** coverage framework that has no meaning — every row is hardcoded to `proxy` from the seeded fallback.
-- Shows a **"SOW Coverage Status"** block (`0 LIVE · 5 PROXY · 0 MISSING`) that is pure theatre.
-- Renders a **boilerplate "Market Summary"** (`"This report preview uses the live SOW metric registry…"`) that has nothing to do with the actual AI Executive Summary the user already sees on screen.
-- Lists only **5 fields** as "Key Market Signals", a different and smaller set than the 12 the right-hand "Key Market Signals" panel actually displays.
-- Ends with a **canned "Recommendation"** paragraph that is the same generic prose for every city.
+When you said "best cities to set up franchise", it picked `navigate_and_apply` and yanked you to /city-scoring with a Tier A filter — no preview, no consent. That's the "stops there" feeling: the chat answer becomes a one-liner ("Navigating to…") because the action *is* the answer.
 
-Three buttons open it:
-1. `CityTopBar` → **Market Report** button.
-2. Right-column **"Generate PDF Report"** card (auto-downloads PDF).
-3. `MarketDetailDrawer` → **Generate Report**.
+You want every action (not just writes) to:
+1. First give a real **information answer** in chat (what it found / what it would do, with reasoning).
+2. Then show a **"Apply to screen?"** confirm card.
+3. Only navigate / apply filters after you click Confirm.
 
-## What to build
+## Plan
 
-Replace the modal contents with the exact same data the user sees on screen — nothing invented. Apply the same change to the PDF builder.
+### 1. Collapse navigation into the existing confirm flow
+Treat navigation + filter application as just another previewable action, the same way watchlist writes already work.
 
-### Sections in the new modal (in order)
+- Extend `propose_action` to support two new action types:
+  - `navigate` — route only.
+  - `apply_screen_state` — route + filter/weight payload (replaces today's `navigate_and_apply`).
+- Remove the `navigate_and_apply` tool from the AI's tool list so the model can't bypass confirmation.
+- Keep `answer`, `clarify`, and the existing write actions (`add_to_watchlist`, etc.) unchanged.
 
-1. **Header** — `{City}, {ST} — Market Research Report` (drop "SOW … Preview" wording).
-2. **Total Score card** — `score / 100` + tier label + verdict (high/moderate/low-opportunity). Same source as `ExecutiveSummaryPanel`.
-3. **Category Scores** — Demand, TAM Teachers, Competitive Opportunity bars using `buildPillarView(detailCategoryScores)`. Keep this; it's already correct.
-4. **AI Executive Summary** — pulled via `useCityNarrative` (the same hook the on-screen Executive Summary uses, cached). Shows `narrative.executive_summary`, then the four expanded sections when available: Market Snapshot, Demand-Side Read, Supply & Competitive Read, Recommended Next Move. Loading + retry states copied from `ExecutiveSummaryPanel`.
-5. **Key Market Signals** — render the same `sigRows` array (12 metrics) the right-column panel renders, with the same source label, value, and tone-coloured benchmark pill (good / mid / bad). One-liner from `SIGNAL_EXPLAIN` when a tone is present. No "live/proxy/missing", no "✓ Counts / Info", no geography pill.
-6. **Footer actions** — `Download Source CSV`, `Download PDF Report`, `Close` (unchanged behaviour).
+### 2. Make the AI answer first, then propose
+Update the system prompt in `neuron-ai/index.ts` so that for any request that would change the screen, the model MUST:
+- Put the actual finding / explanation in `preview_text` (2–6 sentences with the why — e.g. "Tier A markets are the strongest 12 cities by composite score. Top 3 right now: Frisco TX, Plano TX, Cary NC. Applying this would filter City Search to those 12 cities."),
+- Then expose Confirm / Cancel.
 
-### Sections to DELETE outright
+So the chat bubble itself reads like a real answer, not "Navigating to…".
 
-- "Market Summary" boilerplate paragraph.
-- "SOW Coverage Status" 3-tile block (Live / Proxy / Missing counters).
-- "SOW Category Coverage" rows ("0 live · 3 proxy · 0 missing").
-- "Recommendation" paragraph.
-- Status / Counts / geography pills on each signal row.
+### 3. Client: handle confirm for navigation actions
+In `useNeuronAi.ts` + `NeuronAiPanel.tsx`:
+- When `propose_action.action_type === "navigate"` or `"apply_screen_state"`, the Confirm button (instead of calling `neuron-ai-confirm`) runs `navigate(route)` and sets `window.__neuronAiApply` exactly like today's auto-apply path.
+- Cancel just dismisses, no side effect.
+- Writes (`add_to_watchlist`, `change_candidate_stage`) keep going through `neuron-ai-confirm` as today.
 
-### Data plumbing
+### 4. Confirm card copy
+- For navigation: button label = "Show me" (instead of "Confirm"), secondary = "Stay here".
+- For filters on the current screen: button label = "Apply filters", secondary = "Keep current view".
+- For writes: keep "Confirm" / "Cancel".
 
-- `MarketReportModal` needs `sigRows: SigRow[]` and `cityId` as new props. `CityScoring.tsx` already computes both — pass them through the three call sites:
-  - `setReportOpen(true)` from `CityTopBar` (line 1331)
-  - `setReportAutoPdf(true); setReportOpen(true)` from the right-column card (line 1740)
-  - `onGenerateReport` from `MarketDetailDrawer` (line 1811)
-- Drop `buildSeededFallbackSignals` and the `liveSignals` state — no more fetching pretend evidence.
-- `useCityNarrative` is already idempotent and caches per `weightsHash`, so opening the modal will reuse the narrative the right-column panel already loaded.
+### 5. Settings escape hatch (optional, keep simple)
+Not building a toggle right now — confirm-before-act becomes the default for everything. If you later want a "just do it" power-user mode, we can add a switch in the panel header. Let me know.
 
-### CSV export
+## Files to touch
 
-Keep the button but emit a useful CSV based on `sigRows`:
+- `supabase/functions/neuron-ai/index.ts` — tool list + system prompt.
+- `src/hooks/useNeuronAi.ts` — `AssistantReply` union, confirm routing for nav vs write.
+- `src/components/neuron-ai/NeuronAiPanel.tsx` — Confirm card labels per action_type, navigation on confirm.
 
-```
-Metric, Value, Source, Benchmark
-```
+No DB or schema changes. No new edge function.
 
-Drop the Geography / Counts Toward Score / Status / Confidence / Notes columns — they were derived from the dead live-signal model.
+## Open question
 
-### PDF rewrite
-
-`src/components/city-scoring/market-report/marketReportPdf.ts` currently mirrors the modal section-for-section. Update it to the same five sections (Total Score, Category Scores, AI Executive Summary, Key Market Signals, no Recommendation). Pass `narrative` and `sigRows` into `buildMarketReportPdf` instead of the live-signal types. Filename stays `{slug}-{st}-market-report-{date}.pdf`.
-
-### Files touched
-
-- `src/components/city-scoring/MarketReportModal.tsx` — full rewrite (≈150 lines down from 326).
-- `src/components/city-scoring/market-report/marketReportPdf.ts` — rewrite renderer; same call signature shape but inputs change.
-- `src/components/city-scoring/market-report/marketReportTypes.ts` — drop `LiveSignal` / `MetricStatus` types if nothing else uses them (check first).
-- `src/pages/CityScoring.tsx` — pass `sigRows` and `cityId` into `MarketReportModal`; no other logic changes.
-- `src/components/city-scoring/MarketDetailDrawer.tsx` — no change (already calls `onGenerateReport`).
-
-### Out of scope
-
-- The CityTopBar button label/placement (not requested here).
-- Adding new buttons that open the modal elsewhere.
-- Re-enabling or replacing `city_market_signals` ingestion.
-
-### Risk
-
-Low. The narrative + sigRows are already rendered live on the same page; we're just mirroring them into the modal/PDF instead of fetching dead data. No DB / RLS / edge-function changes.
+Should `/find` (and similar discovery commands) ever auto-navigate without confirmation when the user *explicitly* typed a navigation verb ("take me to", "open city search")? Default in this plan: no — always confirm. Tell me if you want an exception for explicit verbs.

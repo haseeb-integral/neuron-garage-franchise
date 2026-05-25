@@ -1081,6 +1081,45 @@ export type Database = {
           },
         ]
       }
+      public_school_aliases: {
+        Row: {
+          city_name: string
+          created_at: string
+          district_name: string | null
+          id: string
+          nces_id: string | null
+          notes: string | null
+          school_name: string
+          source: string
+          state_abbr: string
+          updated_at: string
+        }
+        Insert: {
+          city_name: string
+          created_at?: string
+          district_name?: string | null
+          id?: string
+          nces_id?: string | null
+          notes?: string | null
+          school_name: string
+          source?: string
+          state_abbr: string
+          updated_at?: string
+        }
+        Update: {
+          city_name?: string
+          created_at?: string
+          district_name?: string | null
+          id?: string
+          nces_id?: string | null
+          notes?: string | null
+          school_name?: string
+          source?: string
+          state_abbr?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       public_schools: {
         Row: {
           city_name: string | null
@@ -1865,6 +1904,23 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      match_teachers_to_schools: {
+        Args: {
+          p_city: string
+          p_dry_run?: boolean
+          p_state: string
+          p_threshold?: number
+        }
+        Returns: {
+          action: string
+          best_match_name: string
+          best_match_nces_id: string
+          similarity: number
+          source: string
+          teacher_id: string
+          teacher_school: string
+        }[]
       }
       move_to_dlq: {
         Args: {

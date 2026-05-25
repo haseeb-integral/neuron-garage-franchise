@@ -38,7 +38,7 @@ export function DbDebugFooter() {
   const errorCount = entries.filter((e) => e.error).length;
 
   return (
-    <div className="fixed bottom-3 right-3 z-50 max-w-[min(420px,calc(100vw-24px))]">
+    <div className="fixed bottom-3 left-3 z-50 max-w-[min(420px,calc(100vw-24px))]">
       <div className="rounded-xl border border-[#eef2f7] bg-white shadow-lg overflow-hidden">
         <button
           onClick={() => setOpen((o) => !o)}

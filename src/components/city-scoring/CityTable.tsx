@@ -4,6 +4,8 @@ import { TierBadge } from "./TierBadge";
 import { CheckCircle, Lock, StickyNote, ArrowUpDown } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { buildMarketView, type MarketView } from "@/lib/marketView";
+import { useCitySchoolCoverage, lookupCoverage } from "@/hooks/useCitySchoolCoverage";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Props {
   cities: CityData[];

@@ -48,8 +48,15 @@ interface Props {
 
 // We need one hook call per domain. DOMAINS is a module-level constant so the
 // hook order is stable across renders — safe by the Rules of Hooks.
+// We deliberately exclude `public_schools` from Simple Mode. A global "X% of
+// teachers are missing a school name" warning isn't actionable for our
+// workflow — teachers are only enriched on a per-target-city basis, so a
+// system-wide nag adds noise without helping anyone decide anything. The
+// per-city school coverage view in Advanced Mode replaces it.
+const SIMPLE_MODE_DOMAINS = DOMAINS.filter((d) => d.key !== "public_schools");
+
 export function SimpleMode({ onSwitchToAdvanced }: Props) {
-  const perDomain = DOMAINS.map((d) => {
+  const perDomain = SIMPLE_MODE_DOMAINS.map((d) => {
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const state = useDomainMetrics(d);
     const vals = Object.values(state.results);

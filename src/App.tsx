@@ -22,6 +22,7 @@ const UserGuide = lazy(() => import("./pages/UserGuide"));
 const DemographicsMethodology = lazy(() => import("./pages/DemographicsMethodology"));
 const Methodology = lazy(() => import("./pages/Methodology"));
 const ScoringMethod = lazy(() => import("./pages/ScoringMethod"));
+const DbHealth = lazy(() => import("./pages/DbHealth"));
 
 const TeamMembers = lazy(() => import("./pages/TeamMembers"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -57,6 +58,7 @@ const App = () => (
                 <Route path="/demographics-methodology" element={<DemographicsMethodology />} />
                 <Route path="/methodology" element={<Methodology />} />
                 <Route path="/scoring-method" element={<ScoringMethod />} />
+                <Route path="/db-health" element={<DbHealth />} />
 
               </Route>
               <Route path="*" element={<NotFound />} />

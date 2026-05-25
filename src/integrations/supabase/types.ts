@@ -545,6 +545,123 @@ export type Database = {
         }
         Relationships: []
       }
+      db_health_history: {
+        Row: {
+          domain: string
+          error: string | null
+          id: string
+          metric: string
+          status: string
+          ts: string
+          value: Json | null
+        }
+        Insert: {
+          domain: string
+          error?: string | null
+          id?: string
+          metric: string
+          status: string
+          ts?: string
+          value?: Json | null
+        }
+        Update: {
+          domain?: string
+          error?: string | null
+          id?: string
+          metric?: string
+          status?: string
+          ts?: string
+          value?: Json | null
+        }
+        Relationships: []
+      }
+      db_health_incidents: {
+        Row: {
+          closed_at: string | null
+          domain: string
+          id: string
+          last_status: string
+          metric: string
+          notes: string | null
+          opened_at: string
+        }
+        Insert: {
+          closed_at?: string | null
+          domain: string
+          id?: string
+          last_status: string
+          metric: string
+          notes?: string | null
+          opened_at?: string
+        }
+        Update: {
+          closed_at?: string | null
+          domain?: string
+          id?: string
+          last_status?: string
+          metric?: string
+          notes?: string | null
+          opened_at?: string
+        }
+        Relationships: []
+      }
+      db_health_rules: {
+        Row: {
+          created_at: string
+          description: string
+          expected_zero: boolean
+          name: string
+          severity: string
+          sql: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          expected_zero?: boolean
+          name: string
+          severity?: string
+          sql: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          expected_zero?: boolean
+          name?: string
+          severity?: string
+          sql?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      db_health_subscriptions: {
+        Row: {
+          channel: string
+          created_at: string
+          domain: string | null
+          id: string
+          rule_name: string | null
+          user_id: string
+        }
+        Insert: {
+          channel?: string
+          created_at?: string
+          domain?: string | null
+          id?: string
+          rule_name?: string | null
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          domain?: string | null
+          id?: string
+          rule_name?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       enrichment_jobs: {
         Row: {
           auto_push: boolean
@@ -1598,6 +1715,31 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      db_health_history_for: {
+        Args: { _days?: number; _domain: string }
+        Returns: {
+          domain: string
+          error: string | null
+          id: string
+          metric: string
+          status: string
+          ts: string
+          value: Json | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "db_health_history"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      db_health_outliers: {
+        Args: { _column: string; _n?: number }
+        Returns: Json
+      }
+      db_health_random_city: { Args: never; Returns: Json }
+      db_health_run_rule: { Args: { _name: string }; Returns: Json }
+      db_health_snapshot: { Args: never; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

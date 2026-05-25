@@ -532,6 +532,24 @@ const CityScoring = () => {
     setPage(1);
   }, [searchTerm, stateFilter, tierFilter, nonRegOnly, minScore, minPop, cityFilter]);
 
+  // Keep the Ask AI session ref synced with live UI state. Every Ask AI
+  // request reads from this ref so the model reasons about what the user
+  // actually sees on screen right now.
+  useEffect(() => {
+    askAiSessionRef.current = {
+      appliedFilters: {
+        state: stateFilter && stateFilter !== "All" ? stateFilter : null,
+        tier: tierFilter && tierFilter !== "All" ? tierFilter : null,
+        minScore: Number(minScore) > 0 ? Number(minScore) : null,
+      },
+      appliedWeights: { ...appliedWeights },
+      visibleCount: filtered.length,
+      totalCount: baseRankedMarkets.length,
+      watchlistCount: watchlistCityIds.size,
+    };
+  }, [stateFilter, tierFilter, minScore, appliedWeights, filtered.length, baseRankedMarkets.length, watchlistCityIds]);
+
+
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const pageStart = (safePage - 1) * PAGE_SIZE;

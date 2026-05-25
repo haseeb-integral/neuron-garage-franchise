@@ -8,6 +8,7 @@ import { useIsManager } from "@/hooks/dbHealth/useIsManager";
 import { AccuracySection } from "@/components/observability/AccuracySection";
 import { AlertsSection } from "@/components/observability/AlertsSection";
 import { PageHeader } from "@/components/PageHeader";
+import { InfoHint } from "@/components/observability/InfoHint";
 import {
   ObservabilityAiProvider,
   AskAiButton,
@@ -172,6 +173,10 @@ export default function Observability() {
           suffix={trust == null ? "" : "/ 100"}
           accent={overallColor}
           footnote={`${friendly.label} · ${friendly.tone}`}
+          help={{
+            title: "Trust Score",
+            body: "The % of data domains that are fully healthy right now. 100 means every table on the page passed every check. Below 100 means at least one warning or failure — see the cards below for what.",
+          }}
         />
         <StatCard
           label="Healthy Domains"
@@ -179,6 +184,10 @@ export default function Observability() {
           suffix={`/ ${counts.total}`}
           accent="#16a34a"
           footnote="All checks passing"
+          help={{
+            title: "Healthy domains",
+            body: "Tables where every check (row count, freshness, ranges) passed. Safe to rely on for City Search, Teacher Outreach, etc.",
+          }}
         />
         <StatCard
           label="Warnings"
@@ -186,6 +195,10 @@ export default function Observability() {
           suffix={`/ ${counts.total}`}
           accent="#f59e0b"
           footnote="Below soft target"
+          help={{
+            title: "Warnings",
+            body: "A soft target was missed — for example a table has fewer rows than we'd ideally like, or an update is slightly older than expected. Nothing is broken, but it's worth a glance when you have time.",
+          }}
         />
         <StatCard
           label="Failing"
@@ -193,8 +206,15 @@ export default function Observability() {
           suffix={`/ ${counts.total}`}
           accent="#dc2626"
           footnote="Needs attention"
+          help={{
+            title: "Failing",
+            body: "A check tripped a hard threshold — empty table, very stale data, or a value out of bounds. Click the matching domain card to see exactly which check failed and the SQL behind it.",
+          }}
         />
       </div>
+
+      {/* Per-tab plain-English intro */}
+      <TabIntro tab={tab} />
 
       {/* Tabs — same pattern as DbHealth / Email Outreach */}
       <div className="mt-6 border-b border-[#eef2f7] flex gap-6">
@@ -265,12 +285,14 @@ function StatCard({
   suffix,
   accent,
   footnote,
+  help,
 }: {
   label: string;
   value: string;
   suffix?: string;
   accent: string;
   footnote: string;
+  help?: { title: string; body: string };
 }) {
   return (
     <div className="rounded-xl border border-[#eef2f7] bg-white p-4">
@@ -280,13 +302,46 @@ function StatCard({
           style={{ background: accent, boxShadow: `0 0 0 3px ${accent}22` }}
           aria-hidden
         />
-        {label}
+        <span>{label}</span>
+        {help && (
+          <InfoHint title={help.title} size={12}>
+            {help.body}
+          </InfoHint>
+        )}
       </div>
       <div className="mt-2 flex items-baseline gap-1.5">
         <span className="text-[28px] font-black tabular-nums leading-none text-[#07142f]">{value}</span>
         {suffix && <span className="text-[12px] text-[#526078]">{suffix}</span>}
       </div>
       <div className="mt-1 text-[11px] text-[#526078]">{footnote}</div>
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// TabIntro — plain-English description of what each tab is for. Shown above
+// the tab content so a non-technical user knows what they're looking at.
+// ----------------------------------------------------------------------------
+function TabIntro({ tab }: { tab: "status" | "accuracy" | "alerts" }) {
+  const copy: Record<typeof tab, { title: string; body: string }> = {
+    status: {
+      title: "Is the data there, and is it fresh?",
+      body: "Every card below is one table that powers Neuron Garage. Green dot = full and recently updated. Yellow = a soft target missed (e.g. a few % of rows have a blank column). Red = empty, stale, or unreachable. Click a card to see the underlying SQL.",
+    },
+    accuracy: {
+      title: "Is the data correct?",
+      body: "Rules (\"invariants\") are statements that should always be true — e.g. \"every city has a non-negative population.\" Below the rules, two helpers: pull a random city to eyeball, or scan a column for statistical outliers.",
+    },
+    alerts: {
+      title: "What happened, and what should I be told about?",
+      body: "Sparklines show the last 30 days of snapshots per table. The incidents log records anything that stayed red across a snapshot. Toggle Notify me on any rule you want to hear about (email turns on as soon as the sender is wired).",
+    },
+  };
+  const c = copy[tab];
+  return (
+    <div className="mt-5 rounded-xl border border-[#dbeafe] bg-[#f0f7ff] p-4">
+      <div className="text-[13px] font-bold text-[#07142f]">{c.title}</div>
+      <div className="mt-1 text-[12px] leading-relaxed text-[#526078]">{c.body}</div>
     </div>
   );
 }

@@ -90,11 +90,12 @@ function metricRowCount(table: string, friendly: string): MetricDef {
       );
       const count = value.count ?? null;
       const t = DOMAIN_THRESHOLDS[table];
+      const err = value.error?.message ?? null;
       return {
         raw: count,
-        display: `${fmtNum(count)} rows`,
-        status: t ? checkRowCount(count, t) : count != null && count > 0 ? "green" : "red",
-        error: value.error?.message ?? null,
+        display: err ? "—" : `${fmtNum(count)} rows`,
+        status: err ? "unknown" : t ? checkRowCount(count, t) : count != null && count > 0 ? "green" : "red",
+        error: err,
         ms,
         note: friendly,
       };
@@ -122,11 +123,12 @@ FROM public.${table};`,
       const total = totalRes.count ?? 0;
       const nonNull = nonNullRes.count ?? 0;
       const pct = total > 0 ? (nonNull / total) * 100 : null;
+      const err = totalRes.error?.message ?? nonNullRes.error?.message ?? null;
       return {
         raw: pct,
-        display: `${fmtPct(pct)} (${fmtNum(nonNull)} / ${fmtNum(total)})`,
-        status: checkPct(pct, minPct),
-        error: totalRes.error?.message ?? nonNullRes.error?.message ?? null,
+        display: err ? "—" : `${fmtPct(pct)} (${fmtNum(nonNull)} / ${fmtNum(total)})`,
+        status: err ? "unknown" : checkPct(pct, minPct),
+        error: err,
         ms: ms1 + ms2,
       };
     },
@@ -149,11 +151,12 @@ function metricFreshness(table: string, column: string, maxDays: number): Metric
           .maybeSingle(),
       );
       const iso = (value.data as any)?.[column] ?? null;
+      const err = value.error?.message ?? null;
       return {
         raw: iso,
-        display: fmtAge(iso),
-        status: checkStaleness(iso, { minRows: 0, maxStalenessDays: maxDays }),
-        error: value.error?.message ?? null,
+        display: err ? "—" : fmtAge(iso),
+        status: err ? "unknown" : checkStaleness(iso, { minRows: 0, maxStalenessDays: maxDays }),
+        error: err,
         ms,
       };
     },
@@ -193,11 +196,12 @@ function metricNumericRange(
       const hi = (maxRes.data as any)?.[column] ?? null;
       const inRange =
         lo != null && hi != null && lo >= expectedMin && hi <= expectedMax;
+      const err = minRes.error?.message ?? maxRes.error?.message ?? null;
       return {
         raw: lo,
-        display: `min ${lo ?? "—"} · max ${hi ?? "—"} (expected ${expectedMin}–${expectedMax})`,
-        status: inRange ? "green" : "yellow",
-        error: minRes.error?.message ?? maxRes.error?.message ?? null,
+        display: err ? "—" : `min ${lo ?? "—"} · max ${hi ?? "—"} (expected ${expectedMin}–${expectedMax})`,
+        status: err ? "unknown" : inRange ? "green" : "yellow",
+        error: err,
         ms: m1 + m2,
       };
     },

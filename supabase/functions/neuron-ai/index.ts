@@ -116,38 +116,18 @@ const TOOLS = [
   {
     type: "function",
     function: {
-      name: "navigate_and_apply",
-      description: "Take the user to a screen and apply state (filters, weights, etc).",
-      parameters: {
-        type: "object",
-        properties: {
-          summary: { type: "string" },
-          route: {
-            type: "string",
-            enum: ["/city-scoring", "/teacher-search", "/email-outreach", "/candidate-pipeline"],
-          },
-          apply: { type: "object", additionalProperties: true },
-        },
-        required: ["summary", "route", "apply"],
-        additionalProperties: false,
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
       name: "propose_action",
-      description: "Preview a write action. Client shows a Confirm card; nothing runs yet.",
+      description: "Preview an action (navigation, filter apply, or write). Client shows a Confirm card; nothing runs yet.",
       parameters: {
         type: "object",
         properties: {
-          summary: { type: "string" },
+          summary: { type: "string", description: "Real information answer shown in the chat bubble (2-6 sentences, markdown OK)." },
           action_type: {
             type: "string",
-            enum: ["add_to_watchlist", "remove_from_watchlist", "change_candidate_stage"],
+            enum: ["navigate", "apply_screen_state", "add_to_watchlist", "remove_from_watchlist", "change_candidate_stage"],
           },
-          payload: { type: "object", additionalProperties: true },
-          preview_text: { type: "string", description: "Sentence shown on the Confirm card." },
+          payload: { type: "object", additionalProperties: true, description: "For navigate: { route }. For apply_screen_state: { route, apply }. For writes: write-specific fields." },
+          preview_text: { type: "string", description: "Short sentence shown on the Confirm card." },
         },
         required: ["summary", "action_type", "payload", "preview_text"],
         additionalProperties: false,

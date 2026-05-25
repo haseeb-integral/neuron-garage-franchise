@@ -202,7 +202,14 @@ export function AlertsSection() {
       <section className="rounded-3xl border border-[#eef2f7] bg-white p-6">
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h3 className="text-[16px] font-black text-[#0b1a36]">Incidents</h3>
+            <div className="flex items-center gap-1.5">
+              <h3 className="text-[16px] font-black text-[#0b1a36]">Incidents</h3>
+              <InfoHint title="What counts as an incident?">
+                Anything that stayed red for at least one full snapshot (so brief blips don't count). Open incidents
+                are still happening; closed ones resolved themselves when the underlying check went green again.
+                Use this as your "what was actually broken, and for how long" log.
+              </InfoHint>
+            </div>
             <p className="mt-1 max-w-lg text-[12px] leading-relaxed text-[#526078]">
               Every time a check stayed red across a snapshot, it's recorded here.
               Open incidents are at the top; they close automatically when the

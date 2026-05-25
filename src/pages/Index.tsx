@@ -431,7 +431,7 @@ const Dashboard = () => {
             <Stat
               label="Teachers in master DB"
               value={teachers.isLoading ? "…" : fmt(teachers.data?.total)}
-              hint={teachers.isLoading ? " " : `${fmt(teachers.data?.verified)} verified · ${fmt(teachers.data?.needs)} need enrichment`}
+              hint={teachers.isLoading ? " " : `${fmt(teachers.data?.verified)} verified`}
             />
           </div>
           <span className="mt-4 inline-flex items-center gap-1 text-[12px] font-bold" style={{ color: NAVY }}>

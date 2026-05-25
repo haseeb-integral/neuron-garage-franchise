@@ -25,14 +25,24 @@ interface CardSpec {
   formula: string;
 }
 
-const CARDS: CardSpec[] = [
-  { key: "total_contacts", label: "Total Contacts", Icon: Users, formula: "" },
-  { key: "total_emails", label: "Total Emails", Icon: Mail, formula: "" },
-  { key: "verified", label: "Verified Emails", Icon: ShieldCheck, formula: "" },
-  { key: "catch_all", label: "Catch-All Emails", Icon: MailQuestion, formula: "" },
-  { key: "invalid", label: "Invalid Emails", Icon: MailX, formula: "" },
-  { key: "no_email", label: "No Email Found", Icon: MailMinus, formula: "" },
-];
+const CARDS_BY_SCOPE: Record<PoolScope, CardSpec[]> = {
+  master_db: [
+    { key: "total_contacts", label: "Total Contacts", Icon: Users, formula: "" },
+    { key: "total_emails", label: "Total Emails", Icon: Mail, formula: "" },
+    { key: "verified", label: "Verified Emails", Icon: ShieldCheck, formula: "" },
+    { key: "catch_all", label: "Catch-All Emails", Icon: MailQuestion, formula: "" },
+    { key: "invalid", label: "Invalid Emails", Icon: MailX, formula: "" },
+    { key: "no_email", label: "No Email Found", Icon: MailMinus, formula: "" },
+  ],
+  smartlead: [
+    { key: "total_contacts", label: "Pushed to SmartLead", Icon: Users, formula: "" },
+    { key: "total_emails", label: "With Email", Icon: Mail, formula: "" },
+    { key: "verified", label: "Verified", Icon: ShieldCheck, formula: "" },
+    { key: "catch_all", label: "Catch-All", Icon: MailQuestion, formula: "" },
+    { key: "invalid", label: "Invalid", Icon: MailX, formula: "" },
+    { key: "no_email", label: "No Email", Icon: MailMinus, formula: "" },
+  ],
+};
 
 const FORMULAS: Record<PoolScope, Record<keyof StatNumbers, string>> = {
   master_db: {
@@ -45,7 +55,7 @@ const FORMULAS: Record<PoolScope, Record<keyof StatNumbers, string>> = {
   },
   smartlead: {
     total_contacts: "COUNT(DISTINCT teacher_prospect_id) FROM outreach_queue WHERE pushed_at IS NOT NULL",
-    total_emails: "Same as Total Contacts (only teachers with emails can be pushed)",
+    total_emails: "Same as Pushed to SmartLead (only teachers with emails can be pushed)",
     verified: "COUNT(*) joined to teacher_prospects WHERE verification_status = 'valid'",
     catch_all: "COUNT(*) joined to teacher_prospects WHERE verification_status = 'catch_all'",
     invalid: "COUNT(*) joined to teacher_prospects WHERE verification_status = 'invalid'",

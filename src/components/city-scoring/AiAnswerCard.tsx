@@ -34,9 +34,14 @@ export interface AiAnswerCardProps {
    * Shown as percentage chips so the card matches the actual sliders the user sees.
    */
   appliedWeights?: Record<string, number>;
+  /**
+   * Weights snapshot from BEFORE this AI turn applied changes. Used to render
+   * a one-line "what changed" diff like "Demand 40 → 25 · TAM Teachers 30 → 60".
+   */
+  priorWeights?: Record<string, number>;
 }
 
-export function AiAnswerCard({ result, query, turnCount, onRefine, loading, appliedWeights }: AiAnswerCardProps) {
+export function AiAnswerCard({ result, query, turnCount, onRefine, loading, appliedWeights, priorWeights }: AiAnswerCardProps) {
   // Reasoning is OPEN by default — the user explicitly asked that AI never
   // hide its reasoning. They can collapse to save space, but the default is
   // full transparency.
@@ -66,15 +71,43 @@ export function AiAnswerCard({ result, query, turnCount, onRefine, loading, appl
 
   const atCap = turnCount >= 6;
 
+  // Build "what changed" diff. Only show when weights actually moved AND we
+  // have a prior snapshot. Format: "Demand 40 → 25 · TAM Teachers 30 → 60".
+  const weightDiff: string[] = [];
+  if (priorWeights && appliedWeights) {
+    for (const k of Object.keys(appliedWeights)) {
+      const before = Math.round(Number(priorWeights[k] ?? 0));
+      const after = Math.round(Number(appliedWeights[k] ?? 0));
+      if (before !== after) {
+        weightDiff.push(`${CATEGORY_LABELS[k] ?? k} ${before} → ${after}`);
+      }
+    }
+  }
+
   return (
     <div className="mb-4 bg-white border border-[#d6cdf5] rounded-xl p-4 shadow-sm">
+      {/* Strong "Searched:" header so the user always sees what was sent, not
+          just the AI's rewritten summary. Bumped from a small grey line to a
+          first-class header per Haseeb's feedback. */}
+      <div className="mb-3 pb-3 border-b border-[#f1ecff]">
+        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#7c3aed] mb-1">
+          Searched
+        </div>
+        <div className="text-sm font-medium text-[#1f2540] leading-snug">"{query}"</div>
+      </div>
+
       <div className="flex items-start gap-2 mb-2">
         <Sparkles size={16} className="text-[#7c3aed] mt-0.5" />
         <div className="flex-1">
-          <div className="text-xs text-[#8794ab] mb-1">You asked: "{query}"</div>
           <div className="text-sm text-[#343a40] leading-relaxed">{result.summary}</div>
         </div>
       </div>
+
+      {weightDiff.length > 0 && (
+        <div className="mt-2 text-[12px] text-[#5b3fbf] font-medium">
+          What changed: {weightDiff.join(" · ")}
+        </div>
+      )}
 
       {(filterChips.length > 0 || weightChips.length > 0 || (result.subMetricBoosts && result.subMetricBoosts.length > 0)) && (
         <div className="flex flex-wrap gap-1.5 mt-3">

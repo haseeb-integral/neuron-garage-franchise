@@ -290,3 +290,102 @@ function StatCard({
     </div>
   );
 }
+
+// ----------------------------------------------------------------------------
+// IssuesPanel — top-of-page plain-English explanation of what's healthy and
+// what isn't. Replaces the abstract "needs attention" label.
+// ----------------------------------------------------------------------------
+function IssuesPanel({ issues, overall }: { issues: DomainIssue[]; overall: HealthStatus }) {
+  if (overall === "unknown") {
+    return (
+      <div className="flex items-start gap-3 rounded-xl border border-[#eef2f7] bg-[#f7faff] p-4">
+        <Info size={16} className="mt-0.5 shrink-0 text-[#174be8]" strokeWidth={1.75} />
+        <div className="text-[13px] leading-relaxed text-[#07142f]">
+          <p className="font-bold">Running checks…</p>
+          <p className="mt-1 text-[#526078]">
+            Live values are loading from the database. This usually takes 1–3 seconds.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (issues.length === 0) {
+    return (
+      <div className="flex items-start justify-between gap-3 rounded-xl border border-[#d1fae5] bg-[#ecfdf5] p-4">
+        <div className="flex items-start gap-3">
+          <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-[#16a34a]" strokeWidth={1.75} />
+          <div className="text-[13px] leading-relaxed text-[#07142f]">
+            <p className="font-bold">All data sources are healthy right now.</p>
+            <p className="mt-1 text-[#526078]">
+              Every table that powers Neuron Garage is full, recently updated, and within expected ranges. No action
+              needed — you can keep using City Search, Teacher Outreach, and the Candidate Pipeline with confidence.
+            </p>
+          </div>
+        </div>
+        <AskAiButton
+          section="status"
+          sectionLabel="Status & Structure"
+          suggestions={[
+            "Walk me through what 'healthy' means here.",
+            "What would cause this page to turn yellow or red?",
+            "How often do these checks run?",
+          ]}
+        />
+      </div>
+    );
+  }
+
+  const reds = issues.filter((i) => i.status === "red");
+  const yellows = issues.filter((i) => i.status === "yellow");
+  const headline =
+    reds.length > 0
+      ? `${reds.length} item${reds.length === 1 ? "" : "s"} need a human, ${yellows.length} soft warning${yellows.length === 1 ? "" : "s"}`
+      : `${yellows.length} soft warning${yellows.length === 1 ? "" : "s"} — nothing is broken`;
+  const bg = reds.length > 0 ? "bg-[#fef2f2] border-[#fecaca]" : "bg-[#fffbeb] border-[#fde68a]";
+  const iconColor = reds.length > 0 ? "text-[#dc2626]" : "text-[#d97706]";
+
+  return (
+    <div className={`flex items-start justify-between gap-3 rounded-xl border p-4 ${bg}`}>
+      <div className="flex items-start gap-3 min-w-0">
+        <AlertTriangle size={16} className={`mt-0.5 shrink-0 ${iconColor}`} strokeWidth={1.75} />
+        <div className="text-[13px] leading-relaxed text-[#07142f] min-w-0">
+          <p className="font-bold">{headline}</p>
+          <ul className="mt-2 space-y-1.5">
+            {[...reds, ...yellows].slice(0, 6).map((issue, idx) => (
+              <li key={idx} className="flex items-start gap-2">
+                <span
+                  className="mt-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{ background: statusColor(issue.status) }}
+                  aria-hidden
+                />
+                <span className="text-[#07142f]">
+                  <a
+                    href={`#domain-${issue.domainKey}`}
+                    className="font-bold underline-offset-2 hover:underline"
+                  >
+                    {issue.domainLabel}
+                  </a>{" "}
+                  <span className="text-[#526078]">— {issue.plainEnglish}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+          {issues.length > 6 && (
+            <p className="mt-2 text-[11px] text-[#526078]">+ {issues.length - 6} more — scroll down to see every domain.</p>
+          )}
+        </div>
+      </div>
+      <AskAiButton
+        section="status"
+        sectionLabel="Status & Structure"
+        suggestions={[
+          "Explain each of these issues in plain English.",
+          "Which of these actually affect the product right now?",
+          "What should we do about each issue, in priority order?",
+          "Are any of these expected (e.g. a feature not yet launched)?",
+        ]}
+      />
+    </div>
+  );
+}

@@ -8,6 +8,7 @@ import { maybeStartTourOnFirstVisit, startTour } from "@/lib/tour";
 import { useDefaultCollapsedForRoute, useSidebarCollapsed } from "@/lib/sidebarState";
 import { useRouteTitle } from "@/lib/usePageTitle";
 import { ErrorBoundary } from "./ErrorBoundary";
+import { DbDebugFooter } from "./dbHealth/DbDebugFooter";
 
 export function AppLayout() {
   const [open, setOpen] = useState(false);
@@ -67,6 +68,7 @@ export function AppLayout() {
           </ErrorBoundary>
         </div>
       </main>
+      <DbDebugFooter />
     </div>
   );
 }

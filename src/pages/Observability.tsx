@@ -6,17 +6,17 @@ import { DomainCard } from "@/components/dbHealth/DomainCard";
 import { useIsManager } from "@/hooks/dbHealth/useIsManager";
 import { AccuracySection } from "@/components/observability/AccuracySection";
 import { AlertsSection } from "@/components/observability/AlertsSection";
+import { PageHeader } from "@/components/PageHeader";
 
 /**
- * /observability — Data Observability Dashboard (Tier 1: Status & Structure).
+ * /observability — Data Observability Dashboard.
  *
- * Designed to answer one question at a glance: "Is our data trustworthy
- * right now?". Calm typography, generous whitespace, plain-English labels,
- * and every number is backed by a visible SQL query.
+ * Visual style matches the rest of Neuron Garage (City Search, Teacher
+ * Search, Email Outreach, Candidate Pipeline): top PageHeader with global
+ * search + account, left-aligned title, stat-strip cards, then section
+ * cards with subtle borders. No centered hero.
  */
 
-// Friendly status vocabulary used across this page (overrides the
-// engineer-ish "Failing/Degraded" labels from thresholds.ts).
 const FRIENDLY: Record<HealthStatus, { label: string; tone: string }> = {
   green: { label: "Healthy", tone: "All checks passing" },
   yellow: { label: "Watch", tone: "Some checks below target" },
@@ -24,8 +24,6 @@ const FRIENDLY: Record<HealthStatus, { label: string; tone: string }> = {
   unknown: { label: "Checking…", tone: "Running checks" },
 };
 
-// One-line plain-English description per domain key. Falls back to
-// the domain's built-in description when missing.
 const PLAIN_ENGLISH: Record<string, string> = {
   us_cities_scored:
     "The U.S. cities we score for franchise fit. Healthy means the table is full, fresh, and the key columns are populated.",
@@ -45,15 +43,25 @@ export default function Observability() {
   const { loading: roleLoading, isManager } = useIsManager();
   const [perDomain, setPerDomain] = useState<Record<string, HealthStatus>>({});
   const [refreshTick, setRefreshTick] = useState(0);
+  const [tab, setTab] = useState<"status" | "accuracy" | "alerts">("status");
 
   const overall = useMemo(() => rollup(Object.values(perDomain)), [perDomain]);
 
-  // Trust Score: % of domains currently green. Calm, single number.
   const trust = useMemo(() => {
     const vals = Object.values(perDomain);
     if (vals.length === 0) return null;
     const greens = vals.filter((v) => v === "green").length;
     return Math.round((greens / vals.length) * 100);
+  }, [perDomain]);
+
+  const counts = useMemo(() => {
+    const vals = Object.values(perDomain);
+    return {
+      total: DOMAINS.length,
+      green: vals.filter((v) => v === "green").length,
+      yellow: vals.filter((v) => v === "yellow").length,
+      red: vals.filter((v) => v === "red").length,
+    };
   }, [perDomain]);
 
   const handleDomainStatus = useCallback((key: string, s: HealthStatus) => {
@@ -80,112 +88,155 @@ export default function Observability() {
   const friendly = FRIENDLY[overall];
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 md:py-12">
-      {/* ────────────────────────────────────────────────────────────────
-          Hero — single focal point: the Trust Score.
-          ──────────────────────────────────────────────────────────────── */}
-      <header className="mb-10 flex flex-col items-center text-center">
-        <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#94a3b8]">
-          Data Observability
-        </p>
-        <h1 className="mt-3 text-[28px] font-black tracking-tight text-[#0b1a36] md:text-[34px]">
-          Is our data trustworthy right now?
-        </h1>
-        <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-[#526078]">
-          A single, honest answer about every table that powers Neuron Garage.
-          Each number below is live, and every check shows its exact SQL.
-        </p>
-
-        <div className="mt-8 flex flex-col items-center gap-3">
-          <div
-            className="flex h-32 w-32 items-center justify-center rounded-full border-[6px] bg-white"
-            style={{ borderColor: overallColor }}
-            aria-label={`Trust score ${trust ?? "calculating"}`}
-          >
-            <span className="text-[36px] font-black tabular-nums text-[#0b1a36]">
-              {trust == null ? "—" : `${trust}`}
-            </span>
-          </div>
-          <div className="flex items-center gap-2 text-[13px]">
-            <span
-              className="inline-block h-2.5 w-2.5 rounded-full"
-              style={{ background: overallColor, boxShadow: `0 0 0 4px ${overallColor}22` }}
-            />
-            <span className="font-bold text-[#0b1a36]">{friendly.label}</span>
-            <span className="text-[#526078]">· {friendly.tone}</span>
-          </div>
+    <>
+      <PageHeader
+        title="Data Observability"
+        subtitle="Live view of every table that powers Neuron Garage. Each number is backed by a visible SQL query."
+        searchPlaceholder="Search domains, rules, incidents…"
+        action={
           <button
             onClick={() => setRefreshTick((t) => t + 1)}
-            className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-[#eef2f7] bg-white px-4 py-1.5 text-[12px] font-bold text-[#0b1a36] transition-colors hover:bg-[#f7faff]"
+            className="inline-flex items-center gap-1.5 rounded-md border border-[#eef2f7] bg-white px-3.5 py-2 text-[13px] font-bold text-[#07142f] transition-colors hover:bg-[#f7faff]"
           >
-            <RotateCw size={12} />
-            Run all checks now
+            <RotateCw size={13} />
+            Run all checks
           </button>
-        </div>
-      </header>
+        }
+      />
 
-      {/* ────────────────────────────────────────────────────────────────
-          What this page tells you — explicit, friendly explainer.
-          ──────────────────────────────────────────────────────────────── */}
-      <section className="mb-8 rounded-2xl border border-[#eef2f7] bg-[#f7faff] p-5">
-        <div className="flex items-start gap-3">
-          <Info size={18} className="mt-0.5 shrink-0 text-[#0757ff]" strokeWidth={1.75} />
-          <div className="text-[13px] leading-relaxed text-[#0b1a36]">
-            <p className="font-bold">How to read this page</p>
-            <p className="mt-1 text-[#526078]">
-              The <strong>Trust Score</strong> above is the percentage of data
-              domains currently passing every health check. Each card below is one
-              domain (one part of the database). A green dot means everything is
-              within expected ranges. A yellow dot is a soft warning. A red dot
-              means at least one check failed — open the card to see exactly which.
-            </p>
-            <p className="mt-2 text-[#526078]">
-              Press <strong>Show query</strong> on any metric to see the SQL we
-              ran. Press <strong>Run now</strong> to re-check a single number
-              without refreshing the whole page.
-            </p>
+      {/* Stat strip — same pattern as Email Outreach / Candidate Pipeline */}
+      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+        <StatCard
+          label="Trust Score"
+          value={trust == null ? "—" : `${trust}`}
+          suffix={trust == null ? "" : "/ 100"}
+          accent={overallColor}
+          footnote={`${friendly.label} · ${friendly.tone}`}
+        />
+        <StatCard
+          label="Healthy Domains"
+          value={`${counts.green}`}
+          suffix={`/ ${counts.total}`}
+          accent="#16a34a"
+          footnote="All checks passing"
+        />
+        <StatCard
+          label="Warnings"
+          value={`${counts.yellow}`}
+          suffix={`/ ${counts.total}`}
+          accent="#f59e0b"
+          footnote="Below soft target"
+        />
+        <StatCard
+          label="Failing"
+          value={`${counts.red}`}
+          suffix={`/ ${counts.total}`}
+          accent="#dc2626"
+          footnote="Needs attention"
+        />
+      </div>
+
+      {/* Tabs — same pattern as DbHealth / Email Outreach */}
+      <div className="mt-6 border-b border-[#eef2f7] flex gap-6">
+        {([
+          ["status", "Status & Structure"],
+          ["accuracy", "Accuracy & Rules"],
+          ["alerts", "Alerts & History"],
+        ] as const).map(([t, label]) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`px-1 py-2.5 text-[13px] font-bold border-b-2 -mb-px transition-colors ${
+              tab === t
+                ? "border-[#174be8] text-[#07142f]"
+                : "border-transparent text-[#526078] hover:text-[#07142f]"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "status" && (
+        <div className="mt-5 space-y-4">
+          <div className="rounded-xl border border-[#eef2f7] bg-[#f7faff] p-4">
+            <div className="flex items-start gap-3">
+              <Info size={16} className="mt-0.5 shrink-0 text-[#174be8]" strokeWidth={1.75} />
+              <div className="text-[13px] leading-relaxed text-[#07142f]">
+                <p className="font-bold">How to read this page</p>
+                <p className="mt-1 text-[#526078]">
+                  The <strong>Trust Score</strong> above is the percentage of domains currently passing every health
+                  check. Each card below is one domain (one part of the database). Green = within expected ranges,
+                  yellow = soft warning, red = at least one check failing. Press <strong>Show query</strong> to see
+                  the SQL we ran or <strong>Run now</strong> to re-check a single number.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-3">
+            {DOMAINS.map((d) => {
+              const description = PLAIN_ENGLISH[d.key] ?? d.description;
+              const friendlyDomain = { ...d, description };
+              return (
+                <DomainCard
+                  key={`${d.key}-${refreshTick}`}
+                  domain={friendlyDomain}
+                  anchorId={`domain-${d.key}`}
+                  onStatusChange={(s) => handleDomainStatus(d.key, s)}
+                />
+              );
+            })}
           </div>
         </div>
-      </section>
+      )}
 
-      {/* ────────────────────────────────────────────────────────────────
-          Domain grid — calm, one card per domain.
-          ──────────────────────────────────────────────────────────────── */}
-      <section aria-label="Data domains" className="grid gap-4">
-        {DOMAINS.map((d) => {
-          const description = PLAIN_ENGLISH[d.key] ?? d.description;
-          // We pass a shallow-cloned domain with the friendlier description
-          // so DomainCard's existing layout picks it up.
-          const friendlyDomain = { ...d, description };
-          return (
-            <DomainCard
-              key={`${d.key}-${refreshTick}`}
-              domain={friendlyDomain}
-              anchorId={`domain-${d.key}`}
-              onStatusChange={(s) => handleDomainStatus(d.key, s)}
-            />
-          );
-        })}
-      </section>
+      {tab === "accuracy" && (
+        <div className="mt-5">
+          <AccuracySection />
+        </div>
+      )}
 
-      {/* ────────────────────────────────────────────────────────────────
-          Divider between Tier 1 and Tier 2.
-          ──────────────────────────────────────────────────────────────── */}
-      <div className="my-16 h-px bg-[#eef2f7]" />
+      {tab === "alerts" && (
+        <div className="mt-5">
+          <AlertsSection />
+        </div>
+      )}
+    </>
+  );
+}
 
-      {/* Tier 2 — Accuracy & Rules */}
-      <AccuracySection />
-
-      <div className="my-16 h-px bg-[#eef2f7]" />
-
-      {/* Tier 3 — Alerts & History */}
-      <AlertsSection />
-
-      <footer className="mt-16 text-center">
-        <p className="text-[12px] text-[#94a3b8]">
-          All three tiers — Status, Accuracy, and Alerts — are live.
-        </p>
-      </footer>
+// ----------------------------------------------------------------------------
+// Stat card — matches the simple bordered card pattern used elsewhere in app.
+// ----------------------------------------------------------------------------
+function StatCard({
+  label,
+  value,
+  suffix,
+  accent,
+  footnote,
+}: {
+  label: string;
+  value: string;
+  suffix?: string;
+  accent: string;
+  footnote: string;
+}) {
+  return (
+    <div className="rounded-xl border border-[#eef2f7] bg-white p-4">
+      <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-[#526078]">
+        <span
+          className="inline-block h-2 w-2 rounded-full"
+          style={{ background: accent, boxShadow: `0 0 0 3px ${accent}22` }}
+          aria-hidden
+        />
+        {label}
+      </div>
+      <div className="mt-2 flex items-baseline gap-1.5">
+        <span className="text-[28px] font-black tabular-nums leading-none text-[#07142f]">{value}</span>
+        {suffix && <span className="text-[12px] text-[#526078]">{suffix}</span>}
+      </div>
+      <div className="mt-1 text-[11px] text-[#526078]">{footnote}</div>
     </div>
   );
 }

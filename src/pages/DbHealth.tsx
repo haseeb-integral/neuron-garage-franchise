@@ -69,7 +69,7 @@ export default function DbHealth() {
       </header>
 
       <div className="border-b border-[#eef2f7] mb-4 flex gap-4">
-        {(["status", "accuracy"] as const).map((t) => (
+        {(["status", "accuracy", "alerts"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -79,12 +79,12 @@ export default function DbHealth() {
                 : "border-transparent text-[#526078] hover:text-[#0b1a36]"
             }`}
           >
-            {t === "status" ? "Status & Structure" : "Accuracy"}
+            {t === "status" ? "Status & Structure" : t === "accuracy" ? "Accuracy" : "Alerts & History"}
           </button>
         ))}
       </div>
 
-      {tab === "status" ? (
+      {tab === "status" && (
         <>
           <div className="rounded-2xl border border-[#eef2f7] bg-[#f7faff] p-3 mb-4 flex flex-wrap gap-2">
             {DOMAINS.map((d) => (
@@ -109,9 +109,9 @@ export default function DbHealth() {
             ))}
           </div>
         </>
-      ) : (
-        <AccuracyTab />
       )}
+      {tab === "accuracy" && <AccuracyTab />}
+      {tab === "alerts" && <AlertsTab />}
 
       <p className="text-[11px] text-[#94a3b8] mt-6 text-center">
         Thresholds, queries, and invariant rules live in <code>src/lib/dbHealth/</code>{" "}

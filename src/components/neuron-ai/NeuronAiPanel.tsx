@@ -64,14 +64,20 @@ export function NeuronAiPanel() {
   const handleSend = async (text: string) => {
     if (!text.trim() || sending) return;
     setInput("");
-    const reply = await send(text.trim(), {
+    await send(text.trim(), {
       route: screenContext.route,
       screenState: screenContext.state,
     });
-    if (reply?.kind === "navigate_and_apply") {
-      navigate(reply.route);
+  };
+
+  // Apply a nav/screen-state action after user confirms.
+  const applyNavAction = (action_type: string, payload: Record<string, unknown>) => {
+    const route = typeof payload.route === "string" ? payload.route : undefined;
+    if (!route) return;
+    navigate(route);
+    if (action_type === "apply_screen_state" && payload.apply && typeof payload.apply === "object") {
       (window as unknown as { __neuronAiApply?: unknown }).__neuronAiApply = {
-        route: reply.route, apply: reply.apply, ts: Date.now(),
+        route, apply: payload.apply as Record<string, unknown>, ts: Date.now(),
       };
     }
   };
@@ -137,6 +143,10 @@ export function NeuronAiPanel() {
                   isError={m.error}
                   userInitial={userInitial}
                   onConfirm={async (action) => {
+                    if (action.action_type === "navigate" || action.action_type === "apply_screen_state") {
+                      applyNavAction(action.action_type, action.payload);
+                      return { ok: true };
+                    }
                     const res = await confirm(action, screenContext.route);
                     return res;
                   }}
@@ -307,18 +317,22 @@ function MessageRow({
           </div>
         </div>
 
-        {reply?.kind === "navigate_and_apply" && (
-          <div className="flex items-center gap-1.5 text-[11px] text-[#5a6a85]">
-            <ArrowRight size={11} /> Navigated to {reply.route}
-          </div>
-        )}
-
-        {reply?.kind === "propose_action" && !dismissed && (
+        {reply?.kind === "propose_action" && !dismissed && (() => {
+          const isNav = reply.action_type === "navigate" || reply.action_type === "apply_screen_state";
+          const confirmLabel =
+            reply.action_type === "navigate" ? "Show me"
+            : reply.action_type === "apply_screen_state" ? "Apply filters"
+            : "Confirm";
+          const cancelLabel =
+            reply.action_type === "navigate" ? "Stay here"
+            : reply.action_type === "apply_screen_state" ? "Keep current view"
+            : "Cancel";
+          return (
           <div className="max-w-[92%] rounded-xl border border-[#d6cdf5] bg-[#fbfaff] p-3">
             <div className="mb-2 text-[12.5px] font-medium text-[#0b1a36]">{reply.preview_text}</div>
             {confirmed ? (
               <div className="flex items-center gap-1.5 text-[11px] font-medium text-[#0ea66e]">
-                <Check size={12} /> Confirmed
+                <Check size={12} /> {isNav ? "Done" : "Confirmed"}
               </div>
             ) : (
               <>
@@ -329,17 +343,17 @@ function MessageRow({
                       setConfirmError(null);
                       const res = await onConfirm({ action_type: reply.action_type, payload: reply.payload });
                       if (res.ok) setConfirmed(true);
-                      else setConfirmError(res.message ?? "Confirm failed.");
+                      else setConfirmError(res.message ?? "Action failed.");
                     }}
                     className="flex h-7 items-center gap-1 rounded-md bg-[#7c3aed] px-3 text-[11px] font-semibold text-white hover:bg-[#6b2ed1] disabled:opacity-60"
                   >
-                    {confirming ? <Loader2 size={11} className="animate-spin" /> : "Confirm"}
+                    {confirming ? <Loader2 size={11} className="animate-spin" /> : confirmLabel}
                   </button>
                   <button
                     onClick={() => setDismissed(true)}
                     className="h-7 rounded-md border border-[#dde3ee] px-3 text-[11px] font-medium text-[#5a6a85] hover:bg-[#f3f6fb]"
                   >
-                    Cancel
+                    {cancelLabel}
                   </button>
                 </div>
                 {confirmError && (
@@ -348,7 +362,8 @@ function MessageRow({
               </>
             )}
           </div>
-        )}
+          );
+        })()}
 
         {reply?.kind === "clarify" && (
           <div className="space-y-1.5">

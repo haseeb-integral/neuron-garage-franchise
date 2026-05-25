@@ -11,6 +11,40 @@ Format per entry:
 
 ---
 
+## 2026-05-25 (later) — Ask AI: crash fix + 3 City improvements + Global Ask AI v1 plan locked
+
+**What.**
+
+1. **Crash fix.** Asking any factual question (e.g. "why is Stillwater Tier A?") crashed the whole City Search page with "Cannot read properties of undefined (reading 'state')". Root cause: the `answer_factual` tool path returns no `filters` block, but the page read `result.filters.state` unconditionally. Added a `?? { state: null, tier: null, minScore: null }` default. No more crash.
+
+2. **"Searched: <your query>" header in the answer card.** Previously the query was a tiny grey caption under the AI's rewritten summary. Bumped to a first-class header at the top of the card with a purple "Searched" label, so the user always sees what was sent into Ask AI, not just the AI's paraphrase. The input bar itself was already keeping the submitted text — this just makes it obvious in the answer card too.
+
+3. **"What changed" weight diff.** When the AI moves master weights, the card now shows a one-liner like `What changed: Demand 40 → 25 · TAM Teachers 30 → 60 · Competitive Opportunity 30 → 15`. Snapshots `appliedWeights` right before the AI call and compares to the post-AI values. Pure presentation; no scoring math changed.
+
+4. **"Never invent a state" rule** added to `ai-city-query` system prompt. The model used to silently set `filters.state = "Texas"` for queries like "good cities for X" because Texas dominates the current top-markets list. Now it must leave state null unless the user names a US state explicitly (full name or 2-letter code).
+
+5. **Number correction.** System prompt said "~960 pre-scored cities" — Brett's actual number is **817** (verified against `us_cities_scored`). Fixed.
+
+**Decisions logged for Brett.**
+
+- **Global Ask AI v1 scope (Brett to confirm later).** Going to build a top-bar ⌘K assistant labeled **"Neuron AI"** that works on every screen. v1 will do: answer factual questions, navigate + apply state, propose cheap write actions (watchlist add/remove, candidate stage change, queue an email) behind a Confirm preview, ask a clarifying question when intent is ambiguous, and log every write to an `ai_action_log` table.
+- **Deferred (Brett to revisit).** Multi-step agentic plans, deep-reasoning model calls (`gemini-2.5-pro`), chart/image generation, full natural-language-to-SQL. These are the "expensive" and "very expensive" actions per the cost table — kept out of v1 to control token burn.
+- **Knowledge brain reviewer.** Haseeb reviews now; Brett reviews on his next pass. The brain file (app purpose, 4 screens, people, glossary, data sources) will live at `supabase/functions/_shared/appKnowledge.ts` so Brett can read it without diving into TypeScript.
+- **City Ask AI bar.** Not retired yet. Will run side-by-side with Global Ask AI for ~2 weeks, then replace the inline bar with a single "Ask AI about this screen" button that opens Global pre-seeded.
+
+**Touches.**
+- `src/pages/CityScoring.tsx` — crash guard, `priorWeights` snapshot
+- `src/components/city-scoring/AiAnswerCard.tsx` — new "Searched" header, "What changed" diff line, new `priorWeights` prop
+- `supabase/functions/ai-city-query/index.ts` — "never invent state" hard rule, 960→817 correction, redeployed
+
+**Risk.** Low. Defensive default + presentation tweaks + prompt rule. No scoring math touched. No DB changes.
+
+**Revert.** Remove the `?? { state: null, ... }` default to restore the old behavior (will re-introduce the crash). Revert AiAnswerCard to drop the Searched header and What changed line. Revert the system prompt edits and redeploy `ai-city-query`.
+
+---
+
+
+
 ## 2026-05-25 — Ask AI on City Search: 3-tier TAM intent rule + real session context + smarter sub-metric boosts
 
 **What.** Three connected fixes after Haseeb caught Ask AI rotating to 60% TAM on a within-set question ("which Tier A markets are good for TAM Teachers"):

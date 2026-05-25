@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS idx_teacher_prospects_updated_at ON public.teacher_prospects USING btree (updated_at) WHERE updated_at IS NOT NULL;

@@ -54,19 +54,19 @@ const FORMULAS: Record<PoolScope, Record<keyof StatNumbers, string>> = {
 };
 
 async function fetchMasterStats(filter: ScopeFilter): Promise<StatNumbers> {
-  const base = supabase.from("teacher_prospects").select("*", { count: "exact", head: true });
+  const base = supabase.from("teacher_prospects").select("*", { count: "estimated", head: true });
   const apply = <T extends typeof base>(q: T) => {
     if (filter.state) q.eq("state", filter.state);
     if (filter.city) q.eq("city", filter.city);
     return q;
   };
   const [total, withEmail, valid, catchAll, invalid, noEmail] = await Promise.all([
-    apply(supabase.from("teacher_prospects").select("*", { count: "exact", head: true })),
-    apply(supabase.from("teacher_prospects").select("*", { count: "exact", head: true })).not("email", "is", null).neq("email", ""),
-    apply(supabase.from("teacher_prospects").select("*", { count: "exact", head: true })).eq("verification_status", "valid"),
-    apply(supabase.from("teacher_prospects").select("*", { count: "exact", head: true })).eq("verification_status", "catch_all"),
-    apply(supabase.from("teacher_prospects").select("*", { count: "exact", head: true })).eq("verification_status", "invalid"),
-    apply(supabase.from("teacher_prospects").select("*", { count: "exact", head: true })).or("email.is.null,email.eq.,needs_email_enrichment.eq.true"),
+    apply(supabase.from("teacher_prospects").select("*", { count: "estimated", head: true })),
+    apply(supabase.from("teacher_prospects").select("*", { count: "estimated", head: true })).not("email", "is", null).neq("email", ""),
+    apply(supabase.from("teacher_prospects").select("*", { count: "estimated", head: true })).eq("verification_status", "valid"),
+    apply(supabase.from("teacher_prospects").select("*", { count: "estimated", head: true })).eq("verification_status", "catch_all"),
+    apply(supabase.from("teacher_prospects").select("*", { count: "estimated", head: true })).eq("verification_status", "invalid"),
+    apply(supabase.from("teacher_prospects").select("*", { count: "estimated", head: true })).or("email.is.null,email.eq.,needs_email_enrichment.eq.true"),
   ]);
   return {
     total_contacts: total.count ?? 0,

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Home, Map, Users, Kanban, ChevronLeft, ChevronRight, ChevronDown, Mail, FileText, BookOpen, Send, MailOpen, BarChart3, Calculator, Gauge, LibraryBig, Activity } from "lucide-react";
+import { Home, Map, Users, Kanban, ChevronLeft, ChevronRight, ChevronDown, Mail, FileText, BookOpen, Send, MailOpen, BarChart3, Calculator, Gauge, LibraryBig, Activity, FileCode2 } from "lucide-react";
+
 import { NavLink, useLocation } from "react-router-dom";
 import logo from "@/assets/neuron-garage-logo.png";
 import { useSidebarCollapsed } from "@/lib/sidebarState";
@@ -24,6 +25,8 @@ const docsNavItems = [
   { title: "CSI Methodology", url: "/methodology", icon: Calculator },
   { title: "Demographics Method", url: "/demographics-methodology", icon: BarChart3 },
   { title: "Observability Guide", url: "/observability-guide", icon: Activity },
+  { title: "Observability Spec", url: "/observability-spec", icon: FileCode2 },
+
   { title: "Outreach Guide", url: "/email-outreach-docs", icon: MailOpen },
   { title: "SmartLead API Spec", url: "/smartlead-spec", icon: Send },
   { title: "Full Specification", url: "/spec", icon: FileText },

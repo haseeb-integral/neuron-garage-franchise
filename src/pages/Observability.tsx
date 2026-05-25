@@ -152,6 +152,7 @@ export default function Observability() {
         searchPlaceholder="Search domains, rules, incidents…"
         action={
           <div className="flex items-center gap-2">
+            <ModeToggle mode={mode} setMode={setMode} />
             <AskAiButton
               section="global"
               sectionLabel="Overall data trustworthiness"
@@ -163,17 +164,26 @@ export default function Observability() {
                 "What changed in the last 7 days?",
               ]}
             />
-            <button
-              onClick={runAllChecks}
-              disabled={isRunningAll}
-              className="inline-flex items-center gap-1.5 rounded-md border border-[#eef2f7] bg-white px-3.5 py-2 text-[13px] font-bold text-[#07142f] transition-colors hover:bg-[#f7faff] disabled:opacity-60"
-            >
-              <RotateCw size={13} className={isRunningAll ? "animate-spin" : ""} />
-              {isRunningAll ? "Running…" : "Run all checks"}
-            </button>
+            {mode === "advanced" && (
+              <button
+                onClick={runAllChecks}
+                disabled={isRunningAll}
+                className="inline-flex items-center gap-1.5 rounded-md border border-[#eef2f7] bg-white px-3.5 py-2 text-[13px] font-bold text-[#07142f] transition-colors hover:bg-[#f7faff] disabled:opacity-60"
+              >
+                <RotateCw size={13} className={isRunningAll ? "animate-spin" : ""} />
+                {isRunningAll ? "Running…" : "Run all checks"}
+              </button>
+            )}
           </div>
         }
       />
+
+      {mode === "simple" && (
+        <SimpleMode onSwitchToAdvanced={() => setMode("advanced")} />
+      )}
+      {mode === "advanced" && (
+      <>
+
 
 
       {/* Stat strip — same pattern as Email Outreach / Candidate Pipeline */}

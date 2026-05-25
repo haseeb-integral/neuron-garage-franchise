@@ -34,9 +34,14 @@ export interface AiAnswerCardProps {
    * Shown as percentage chips so the card matches the actual sliders the user sees.
    */
   appliedWeights?: Record<string, number>;
+  /**
+   * Weights snapshot from BEFORE this AI turn applied changes. Used to render
+   * a one-line "what changed" diff like "Demand 40 → 25 · TAM Teachers 30 → 60".
+   */
+  priorWeights?: Record<string, number>;
 }
 
-export function AiAnswerCard({ result, query, turnCount, onRefine, loading, appliedWeights }: AiAnswerCardProps) {
+export function AiAnswerCard({ result, query, turnCount, onRefine, loading, appliedWeights, priorWeights }: AiAnswerCardProps) {
   // Reasoning is OPEN by default — the user explicitly asked that AI never
   // hide its reasoning. They can collapse to save space, but the default is
   // full transparency.

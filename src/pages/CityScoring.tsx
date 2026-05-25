@@ -807,10 +807,10 @@ const CityScoring = () => {
 
   const buildCsvDownload = async () => {
     try {
-      // Sheet 1: only the backend columns the dashboard actually maps, so the
-      // Excel "Backend Data" sheet and the on-screen spreadsheet show the
-      // same picture. Identity columns (City/State/County/Metro) come from
-      // the mapped UI row so they're always populated.
+      // Sheet 1 ("Selected Cities (Raw Metrics)"): only the backend columns
+      // the dashboard actually maps, so the exported sheet and the on-screen
+      // spreadsheet show the same picture. Identity columns (City/State/
+      // County/Metro) come from the mapped UI row so they're always populated.
       const DASHBOARD_DB_KEYS = [
         "place_type",
         "is_registration_state",
@@ -881,8 +881,9 @@ const CityScoring = () => {
 
       const backendRows: (string | number | null)[][] = filtered.map(buildBackendRow);
 
-      // 4th sheet: the FULL underlying dataset (all ~817 cities), independent
-      // of the user's current filter. Same column shape as Backend Data.
+      // Sheet 4 ("All Cities (Raw Metrics)"): the FULL underlying dataset
+      // (all ~817 cities), independent of the user's current filter. Same
+      // column shape as the Selected Cities sheet.
       const fullDatabaseHeader = backendHeader;
       const fullDatabaseRows: (string | number | null)[][] =
         baseRankedMarkets.map(buildBackendRow);
@@ -910,7 +911,7 @@ const CityScoring = () => {
       downloadWorkbook(wb, filename);
 
       toast.success(
-        `Exported: filtered selection (${filtered.length}) + full database (${baseRankedMarkets.length}) + weights snapshot + per-city weights`,
+        `Exported: Selected Cities (${filtered.length}) + Weights Snapshot + Per-City Weights + All Cities (${baseRankedMarkets.length})`,
       );
     } catch (err) {
       console.error("Export XLSX failed", err);

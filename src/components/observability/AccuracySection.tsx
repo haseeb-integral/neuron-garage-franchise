@@ -35,15 +35,29 @@ const SEVERITY_LABEL: Record<string, string> = {
 // Public component
 // -----------------------------------------------------------------------------
 
+import { AskAiButton } from "@/components/observability/ObservabilityAi";
+
 export function AccuracySection() {
   return (
     <div className="grid gap-6">
-      <header>
-        <h2 className="text-[18px] font-black tracking-tight text-[#07142f]">Accuracy &amp; Rules</h2>
-        <p className="mt-1 max-w-3xl text-[13px] leading-relaxed text-[#526078]">
-          Status &amp; Structure tells you the data is there. This asks: is it correct? Each rule below is a single
-          sentence that should always be true. If it isn't, we tell you exactly which rows broke it.
-        </p>
+      <header className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-[18px] font-black tracking-tight text-[#07142f]">Accuracy &amp; Rules</h2>
+          <p className="mt-1 max-w-3xl text-[13px] leading-relaxed text-[#526078]">
+            Status &amp; Structure tells you the data is there. This asks: is it correct? Each rule below is a single
+            sentence that should always be true. If it isn't, we tell you exactly which rows broke it.
+          </p>
+        </div>
+        <AskAiButton
+          section="accuracy"
+          sectionLabel="Accuracy & Rules"
+          suggestions={[
+            "Run every invariant and summarize what's failing",
+            "Which critical rules are red?",
+            "Find outliers in composite_score_default",
+            "Pull a random scored city so I can sanity-check it",
+          ]}
+        />
       </header>
       <RulesBoard />
       <div className="grid gap-6 md:grid-cols-2">
@@ -53,6 +67,7 @@ export function AccuracySection() {
     </div>
   );
 }
+
 
 
 // -----------------------------------------------------------------------------

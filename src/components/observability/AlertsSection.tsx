@@ -12,6 +12,8 @@ import {
 import { fetchRules, HealthRule } from "@/lib/dbHealth/accuracy";
 import { statusColor } from "@/lib/dbHealth/thresholds";
 import { Sparkline } from "@/components/dbHealth/Sparkline";
+import { AskAiButton } from "@/components/observability/ObservabilityAi";
+
 
 const TRACKED_DOMAINS: { key: string; label: string }[] = [
   { key: "us_cities_scored", label: "City Scores" },
@@ -92,13 +94,26 @@ export function AlertsSection() {
 
   return (
     <div className="grid gap-6">
-      <header>
-        <h2 className="text-[18px] font-black tracking-tight text-[#07142f]">Alerts &amp; History</h2>
-        <p className="mt-1 max-w-3xl text-[13px] leading-relaxed text-[#526078]">
-          Status &amp; Accuracy tell you about <em>now</em>. This remembers the past and asks to be told about the
-          future. Snapshots run automatically every six hours; subscribe to anything you want to be notified about.
-        </p>
+      <header className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-[18px] font-black tracking-tight text-[#07142f]">Alerts &amp; History</h2>
+          <p className="mt-1 max-w-3xl text-[13px] leading-relaxed text-[#526078]">
+            Status &amp; Accuracy tell you about <em>now</em>. This remembers the past and asks to be told about the
+            future. Snapshots run automatically every six hours; subscribe to anything you want to be notified about.
+          </p>
+        </div>
+        <AskAiButton
+          section="alerts"
+          sectionLabel="Alerts & History"
+          suggestions={[
+            "How many incidents opened in the last 7 days?",
+            "Which incidents are still open?",
+            "Show the 30-day trend for teacher_prospects",
+            "What am I subscribed to?",
+          ]}
+        />
       </header>
+
 
 
       {error && (

@@ -7,6 +7,12 @@ import { useIsManager } from "@/hooks/dbHealth/useIsManager";
 import { AccuracySection } from "@/components/observability/AccuracySection";
 import { AlertsSection } from "@/components/observability/AlertsSection";
 import { PageHeader } from "@/components/PageHeader";
+import {
+  ObservabilityAiProvider,
+  AskAiButton,
+  useObservabilityAi,
+} from "@/components/observability/ObservabilityAi";
+
 
 /**
  * /observability — Data Observability Dashboard.
@@ -88,21 +94,35 @@ export default function Observability() {
   const friendly = FRIENDLY[overall];
 
   return (
-    <>
+    <ObservabilityAiProvider>
       <PageHeader
         title="Data Observability"
         subtitle="Live view of every table that powers Neuron Garage. Each number is backed by a visible SQL query."
         searchPlaceholder="Search domains, rules, incidents…"
         action={
-          <button
-            onClick={() => setRefreshTick((t) => t + 1)}
-            className="inline-flex items-center gap-1.5 rounded-md border border-[#eef2f7] bg-white px-3.5 py-2 text-[13px] font-bold text-[#07142f] transition-colors hover:bg-[#f7faff]"
-          >
-            <RotateCw size={13} />
-            Run all checks
-          </button>
+          <div className="flex items-center gap-2">
+            <AskAiButton
+              section="global"
+              sectionLabel="Overall data trustworthiness"
+              variant="primary"
+              suggestions={[
+                "Is our data healthy right now?",
+                "What's the single biggest data risk this week?",
+                "Summarize any open incidents",
+                "What changed in the last 7 days?",
+              ]}
+            />
+            <button
+              onClick={() => setRefreshTick((t) => t + 1)}
+              className="inline-flex items-center gap-1.5 rounded-md border border-[#eef2f7] bg-white px-3.5 py-2 text-[13px] font-bold text-[#07142f] transition-colors hover:bg-[#f7faff]"
+            >
+              <RotateCw size={13} />
+              Run all checks
+            </button>
+          </div>
         }
       />
+
 
       {/* Stat strip — same pattern as Email Outreach / Candidate Pipeline */}
       <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
@@ -159,19 +179,28 @@ export default function Observability() {
 
       {tab === "status" && (
         <div className="mt-5 space-y-4">
-          <div className="rounded-xl border border-[#eef2f7] bg-[#f7faff] p-4">
+          <div className="flex items-start justify-between gap-3 rounded-xl border border-[#eef2f7] bg-[#f7faff] p-4">
             <div className="flex items-start gap-3">
               <Info size={16} className="mt-0.5 shrink-0 text-[#174be8]" strokeWidth={1.75} />
               <div className="text-[13px] leading-relaxed text-[#07142f]">
                 <p className="font-bold">How to read this page</p>
                 <p className="mt-1 text-[#526078]">
                   The <strong>Trust Score</strong> above is the percentage of domains currently passing every health
-                  check. Each card below is one domain (one part of the database). Green = within expected ranges,
-                  yellow = soft warning, red = at least one check failing. Press <strong>Show query</strong> to see
-                  the SQL we ran or <strong>Run now</strong> to re-check a single number.
+                  check. Each card below is one domain. Green = within expected ranges, yellow = soft warning, red = at
+                  least one check failing.
                 </p>
               </div>
             </div>
+            <AskAiButton
+              section="status"
+              sectionLabel="Status & Structure"
+              suggestions={[
+                "Which domain has the lowest health right now?",
+                "Are any tables stale beyond their SLA?",
+                "Which required columns are under-populated?",
+                "Give me row counts vs expected floors for every domain",
+              ]}
+            />
           </div>
 
           <div className="grid gap-3">
@@ -202,9 +231,10 @@ export default function Observability() {
           <AlertsSection />
         </div>
       )}
-    </>
+    </ObservabilityAiProvider>
   );
 }
+
 
 // ----------------------------------------------------------------------------
 // Stat card — matches the simple bordered card pattern used elsewhere in app.

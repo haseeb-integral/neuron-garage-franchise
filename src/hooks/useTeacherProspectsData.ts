@@ -136,8 +136,8 @@ export function useTeacherProspectsData(args: UseTeacherProspectsDataArgs) {
       const s = debouncedSearch.trim().replace(/[%_]/g, "");
       q = q.or(`name.ilike.%${s}%,school.ilike.%${s}%,city.ilike.%${s}%,email.ilike.%${s}%`);
     }
-    if (sourceFilter === "smartlead") q = q.ilike("enrichment_source", "smartlead%");
-    else if (sourceFilter === "linkedin") q = q.ilike("enrichment_source", "linkedin%");
+    if (sourceFilter === "smartlead") q = q.in("enrichment_source", ["smartlead_csv"]);
+    else if (sourceFilter === "linkedin") q = q.in("enrichment_source", ["linkedin_danish"]);
     else if (sourceFilter === "needs_email") q = q.eq("needs_email_enrichment", true);
     return q;
   }, [cityFilters, debouncedSearch, sourceFilter]);

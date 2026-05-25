@@ -13,6 +13,8 @@ import {
 } from "@/lib/dbHealth/accuracy";
 import { supabase } from "@/integrations/supabase/client";
 import { HealthStatus, statusColor } from "@/lib/dbHealth/thresholds";
+import { friendlyError } from "@/lib/dbHealth/friendlyError";
+import { InfoHint, FriendlyErrorPanel } from "@/components/observability/InfoHint";
 
 // -----------------------------------------------------------------------------
 // Helpers

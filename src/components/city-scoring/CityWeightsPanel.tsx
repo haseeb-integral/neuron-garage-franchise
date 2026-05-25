@@ -95,18 +95,22 @@ export function CityWeightsPanel({
           </div>
         </div>
         <div className="flex md:shrink-0 flex-col md:items-end gap-2 w-full md:w-auto">
-          <div className="flex items-center gap-2 md:gap-3 flex-wrap">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 w-full md:w-auto md:justify-end">
             <span className="text-xs text-[#526078]">
               Total Weight: <span className={totalWeight === 100 ? "text-[#0ea66e] font-medium" : "text-[#ea580c] font-medium"}>{totalWeight}%</span>
             </span>
-            <PreviewBadge pending={weightsPending && totalWeight === 100} preview={previewTierCounts} committed={committedTierCounts} />
             <button onClick={resetWeights} className="text-xs font-medium text-[#174be8] hover:underline">Reset to Default</button>
+            <div className="ml-auto md:ml-0">
+              <PreviewBadge pending={weightsPending && totalWeight === 100} preview={previewTierCounts} committed={committedTierCounts} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 w-full md:flex md:w-auto md:items-center md:gap-3">
             <Button
               size="sm"
               variant="outline"
               disabled={totalWeight !== 100}
               onClick={openSaveDialog}
-              className="h-7 border-[#dbe4f2] text-[#174be8] text-[11px] px-3 gap-1 disabled:opacity-50"
+              className="h-8 md:h-7 border-[#dbe4f2] text-[#174be8] text-[11px] px-3 gap-1 disabled:opacity-50 w-full md:w-auto"
             >
               <Bookmark size={12} /> Save Search
             </Button>
@@ -116,7 +120,7 @@ export function CityWeightsPanel({
               onClick={applyWeights}
               title={weightsPending ? "Click to commit slider changes to the table" : "No pending changes"}
               className={cn(
-                "h-7 bg-[#174be8] hover:bg-[#1240c9] text-white text-[11px] px-3 disabled:opacity-50 transition-all",
+                "h-8 md:h-7 bg-[#174be8] hover:bg-[#1240c9] text-white text-[11px] px-3 disabled:opacity-50 transition-all w-full md:w-auto",
                 weightsPending && totalWeight === 100 && "ring-2 ring-[#174be8]/40 ring-offset-1 shadow-md",
               )}
             >

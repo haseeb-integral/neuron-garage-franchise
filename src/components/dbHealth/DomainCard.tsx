@@ -4,6 +4,7 @@ import { DomainDef, getDomainStatus, MetricRunResult } from "@/lib/dbHealth/quer
 import { useDomainMetrics } from "@/hooks/dbHealth/useDomainMetrics";
 import { StatusPill } from "./StatusPill";
 import { statusColor, HealthStatus } from "@/lib/dbHealth/thresholds";
+import { friendlyError } from "@/lib/dbHealth/friendlyError";
 
 export interface DomainIssue {
   domainKey: string;

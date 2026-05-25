@@ -173,6 +173,10 @@ export default function Observability() {
           suffix={trust == null ? "" : "/ 100"}
           accent={overallColor}
           footnote={`${friendly.label} · ${friendly.tone}`}
+          help={{
+            title: "Trust Score",
+            body: "The % of data domains that are fully healthy right now. 100 means every table on the page passed every check. Below 100 means at least one warning or failure — see the cards below for what.",
+          }}
         />
         <StatCard
           label="Healthy Domains"
@@ -180,6 +184,10 @@ export default function Observability() {
           suffix={`/ ${counts.total}`}
           accent="#16a34a"
           footnote="All checks passing"
+          help={{
+            title: "Healthy domains",
+            body: "Tables where every check (row count, freshness, ranges) passed. Safe to rely on for City Search, Teacher Outreach, etc.",
+          }}
         />
         <StatCard
           label="Warnings"
@@ -187,6 +195,10 @@ export default function Observability() {
           suffix={`/ ${counts.total}`}
           accent="#f59e0b"
           footnote="Below soft target"
+          help={{
+            title: "Warnings",
+            body: "A soft target was missed — for example a table has fewer rows than we'd ideally like, or an update is slightly older than expected. Nothing is broken, but it's worth a glance when you have time.",
+          }}
         />
         <StatCard
           label="Failing"
@@ -194,8 +206,15 @@ export default function Observability() {
           suffix={`/ ${counts.total}`}
           accent="#dc2626"
           footnote="Needs attention"
+          help={{
+            title: "Failing",
+            body: "A check tripped a hard threshold — empty table, very stale data, or a value out of bounds. Click the matching domain card to see exactly which check failed and the SQL behind it.",
+          }}
         />
       </div>
+
+      {/* Per-tab plain-English intro */}
+      <TabIntro tab={tab} />
 
       {/* Tabs — same pattern as DbHealth / Email Outreach */}
       <div className="mt-6 border-b border-[#eef2f7] flex gap-6">

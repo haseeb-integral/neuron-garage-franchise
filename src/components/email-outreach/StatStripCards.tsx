@@ -25,14 +25,24 @@ interface CardSpec {
   formula: string;
 }
 
-const CARDS: CardSpec[] = [
-  { key: "total_contacts", label: "Total Contacts", Icon: Users, formula: "" },
-  { key: "total_emails", label: "Total Emails", Icon: Mail, formula: "" },
-  { key: "verified", label: "Verified Emails", Icon: ShieldCheck, formula: "" },
-  { key: "catch_all", label: "Catch-All Emails", Icon: MailQuestion, formula: "" },
-  { key: "invalid", label: "Invalid Emails", Icon: MailX, formula: "" },
-  { key: "no_email", label: "No Email Found", Icon: MailMinus, formula: "" },
-];
+const CARDS_BY_SCOPE: Record<PoolScope, CardSpec[]> = {
+  master_db: [
+    { key: "total_contacts", label: "Total Contacts", Icon: Users, formula: "" },
+    { key: "total_emails", label: "Total Emails", Icon: Mail, formula: "" },
+    { key: "verified", label: "Verified Emails", Icon: ShieldCheck, formula: "" },
+    { key: "catch_all", label: "Catch-All Emails", Icon: MailQuestion, formula: "" },
+    { key: "invalid", label: "Invalid Emails", Icon: MailX, formula: "" },
+    { key: "no_email", label: "No Email Found", Icon: MailMinus, formula: "" },
+  ],
+  smartlead: [
+    { key: "total_contacts", label: "Pushed to SmartLead", Icon: Users, formula: "" },
+    { key: "total_emails", label: "With Email", Icon: Mail, formula: "" },
+    { key: "verified", label: "Verified", Icon: ShieldCheck, formula: "" },
+    { key: "catch_all", label: "Catch-All", Icon: MailQuestion, formula: "" },
+    { key: "invalid", label: "Invalid", Icon: MailX, formula: "" },
+    { key: "no_email", label: "No Email", Icon: MailMinus, formula: "" },
+  ],
+};
 
 const FORMULAS: Record<PoolScope, Record<keyof StatNumbers, string>> = {
   master_db: {
@@ -45,7 +55,7 @@ const FORMULAS: Record<PoolScope, Record<keyof StatNumbers, string>> = {
   },
   smartlead: {
     total_contacts: "COUNT(DISTINCT teacher_prospect_id) FROM outreach_queue WHERE pushed_at IS NOT NULL",
-    total_emails: "Same as Total Contacts (only teachers with emails can be pushed)",
+    total_emails: "Same as Pushed to SmartLead (only teachers with emails can be pushed)",
     verified: "COUNT(*) joined to teacher_prospects WHERE verification_status = 'valid'",
     catch_all: "COUNT(*) joined to teacher_prospects WHERE verification_status = 'catch_all'",
     invalid: "COUNT(*) joined to teacher_prospects WHERE verification_status = 'invalid'",
@@ -144,13 +154,23 @@ export function StatStripCards({ scope, filter = {}, onTotalChange }: Props) {
 
   const total = stats?.total_contacts ?? 0;
   const pct = (n: number) => (total > 0 ? `${Math.round((n / total) * 100)}%` : "0%");
+  const cards = CARDS_BY_SCOPE[scope];
+  const showEmptyHint = !loading && !error && scope === "smartlead" && total === 0;
 
   return (
     <div
       className="mb-3 grid gap-2 rounded-xl border p-3 md:grid-cols-3"
       style={{ borderColor: colors.border, background: colors.bg }}
     >
-      {CARDS.map(({ key, label, Icon }) => {
+      {showEmptyHint && (
+        <div
+          className="md:col-span-3 rounded-lg border border-dashed bg-white p-3 text-[11px] text-[#526078]"
+          style={{ borderColor: colors.border }}
+        >
+          No teachers have been pushed to SmartLead yet for this filter. Counts below reflect the SmartLead pool only — switch to the Master DB tab to see the full upstream pool.
+        </div>
+      )}
+      {cards.map(({ key, label, Icon }) => {
         const value = stats?.[key];
         const isTotal = key === "total_contacts";
         return (

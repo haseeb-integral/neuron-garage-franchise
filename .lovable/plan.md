@@ -1,105 +1,70 @@
 
-# Database Health — Tiers 1, 2, 3
+# Data Observability Dashboard — Tier 1 + Tier 2
 
-Build a manager-only `/db-health` page that is the single URL you send Sam to answer "is everything working?" Plus a global footer debug widget on every page.
+A dedicated, calm, intuitive page that answers one question at a glance: **"Is our data trustworthy right now?"** Tier 3 (alerts/history) comes in a later sprint.
 
-## Tier 1 — Status & Structure (ship first)
+## What we're building
 
-**Route:** `/db-health`, gated to managers via existing `useRole`/`has_role`. Non-managers get a 403 card.
+A new top-level page at `/observability` titled **Data Observability**, designed in a Jony Ive spirit: generous whitespace, one clear focal point, soft shadows, no chart-junk, plain-English labels with quiet "Learn more" affordances. Every metric and rule explains — in one sentence — what it checks, why it matters, and what a green/yellow/red result means.
 
-**Top status row:** one pill per domain — green / yellow / red — computed from the rules below. Click a pill to scroll to its section.
+Linked in the left sidebar **directly under Candidate Pipeline**, above the divider that separates primary nav from Team Members.
 
-**Domain cards** (one per data area):
-- `us_cities_scored` — row count, % with non-null `composite_score`, oldest `scored_at`, min/max/avg composite, count missing any of the 46 signal columns
-- `teachers` — row count, % with verified email, % with `fit_score`, last insert
-- Reference tables (`us_cities_geo`, `cost_of_living`, `crime_stats`, etc.) — row counts and last update
-- Edge functions — last invocation, last error (pulled from `function_edge_logs` via an edge function wrapper)
-- Seeding/import runs — most recent row from existing run-log table if present
+## Sprint plan
 
-**Every metric has:**
-- The raw SQL string in a collapsible "Show query" block
-- A "Run now" button that re-fetches just that metric
-- Timestamp of last fetch + a manual "Refresh all" at top
+### Sprint 1 — Tier 1: Status & Structure (the "Vitals")
+The "is the data there, fresh, and shaped right?" layer.
 
-**Thresholds (encoded once in `src/lib/dbHealth/thresholds.ts`):**
-- Green: row count > expected_min AND no nulls in required columns AND data freshness < 7d
-- Yellow: one threshold missed
-- Red: zero rows OR query errored OR required column 100% null
+1. **Navigation & shell**
+   - Move/repoint sidebar: add **Data Observability** as a primary nav item under Candidate Pipeline, above the divider. Retire the existing "Database Health" utility link (or alias `/db-health` → `/observability`).
+   - New page `src/pages/Observability.tsx` with a hero header: overall **Trust Score** (single number, large, calm), last-checked timestamp, and a "Run all checks now" button.
 
-**Global footer debug widget** (`<DbDebugFooter />` mounted in `AppLayout`, manager+ only):
-- Shows last 5 queries made by the current page: table, row count, ms, error
-- Implemented via a tiny `queryLogger` wrapper around `supabase.from(...).select(...)` calls — opt-in; we wire it into the high-value hooks (`useLiveRankedMarkets`, teacher list, etc.) not every call
-- Collapsed by default, fixed bottom-right, click to expand
+2. **Domain cards (reuse `DomainCard`, restyled)**
+   - One card per core domain: City Scores, Teachers, Public Schools, Private Schools, Demographics, Outreach.
+   - Each card shows: row count, freshness (last updated), null-rate on key columns, and a single status pill (Green / Yellow / Needs attention).
+   - "Show formula" disclosure on every metric — exact SQL + threshold, matching Rule #1 (Show the math).
 
-## Tier 2 — Accuracy Tab
+3. **Plain-English overlay**
+   - Every card has a one-line description ("Tracks the 41,000+ U.S. cities we score. Healthy means counts and freshness are within expected ranges.").
+   - Hover/tap "What does this mean?" → short popover written for a non-technical reader.
 
-Second tab on `/db-health`:
+4. **Polish pass**
+   - Typography scale, soft dividers, no gradients, single accent color from the existing token system. Mobile-friendly.
 
-**Invariants panel.** Rules table `db_health_rules` (name, sql, expected_result, severity). Each rule runs on demand; pass/fail badge + actual vs expected. Seed with 6 starter rules:
-1. Every `us_cities_scored` row has `composite_score BETWEEN 0 AND 100`
-2. Every scored city joins to `us_cities_geo` by `geoid`
-3. No duplicate `(city, state)` in `us_cities_scored`
-4. `population` matches between `us_cities_geo` and `us_cities_scored` (within 1%)
-5. `cost_of_living_index` not null for any city with `composite_score > 0`
-6. `teachers.email` is unique and lowercase
+### Sprint 2 — Tier 2: Accuracy & Rules (the "Inspector")
+The "is the data *correct*?" layer.
 
-**Sample inspector.** "Pick random city" button → shows the city + all 46 raw signal columns + computed composite via `buildMarketView` (Rule 12 compliant). One-click "compare to top-10 average".
+1. **Rules board**
+   - Surface `db_health_rules` as a clean list grouped by domain. Each rule: name, plain-English description, last result, "Run now," and a "Show SQL" disclosure.
+   - Examples: no duplicate `(city, state)` rows; CSI scores between 0–100; every teacher has a valid email shape; school NCES IDs unique.
 
-**Outlier flags.** Top 10 cities >3σ from national mean on each major signal; flag for review.
+2. **Sample Inspector**
+   - "Show me 10 random rows" per domain with a refresh button. Helps Sam/Kaylie eyeball reality without writing SQL.
 
-**Cross-source reconciliation.** Side-by-side: stored value vs source-of-truth value, with diff %.
+3. **Outlier finder**
+   - Per numeric column: flag rows beyond 3σ. Result shown as a small table with a one-line explanation of why an outlier matters.
 
-## Tier 3 — Alerts & History
+4. **Add-a-rule (manager only)**
+   - Simple form: name, domain, description, SQL predicate, severity. Saves to `db_health_rules`. No code deploy needed to add a check.
 
-- New table `db_health_history` (timestamp, domain, metric, value, status). Populated by a `pg_cron` job every 6h running an edge function `db-health-snapshot`.
-- Sparklines on each domain card showing 30-day history.
-- "Notify me" button per rule → inserts into `db_health_subscriptions`. When a snapshot flips green→red, edge function `db-health-alert` sends an email via Resend to subscribers (uses existing Resend secret if present; otherwise we add the secret).
-- "Incidents" tab listing past red events with start/end timestamps.
+### Sprint 3 (later, not now) — Tier 3
+History sparklines, scheduled snapshots, incidents log, email/Slack alerts, subscriptions. Most plumbing already exists from the prior pass; we'll wire it into the new page once Tier 1+2 are signed off.
 
-## Technical Details
+## Design principles for the page
+- One focal Trust Score, then a calm grid of domain cards, then rules below the fold.
+- Every number has a "Show formula" and a "What does this mean?" — no mystery values.
+- Status uses three states only: **Healthy**, **Watch**, **Needs attention**. No traffic-light overload.
+- Manager-only (reuse `useIsManager`); non-managers get a friendly "Restricted" state.
 
-**Files added:**
-- `src/pages/DbHealth.tsx` — page shell, tabs, route
-- `src/components/dbHealth/StatusRow.tsx`
-- `src/components/dbHealth/DomainCard.tsx` — metric row + Show-query + Run-now
-- `src/components/dbHealth/AccuracyTab.tsx`
-- `src/components/dbHealth/AlertsTab.tsx`
-- `src/components/dbHealth/DbDebugFooter.tsx`
-- `src/lib/dbHealth/thresholds.ts` — single source of truth for green/yellow/red
-- `src/lib/dbHealth/queries.ts` — exported `{ name, sql, run() }` objects so the UI can show + execute
-- `src/lib/dbHealth/queryLogger.ts` — thin wrapper feeding `DbDebugFooter`
-- `src/hooks/dbHealth/useDomainMetrics.ts` — React Query per domain
+## Technical notes
+- Reuse: `src/components/dbHealth/*`, `src/hooks/dbHealth/*`, `src/lib/dbHealth/*`, existing tables `db_health_rules`, `db_health_history`, `db_health_incidents`.
+- New: `src/pages/Observability.tsx`, `src/components/observability/` (TrustScore, DomainGrid, RuleList, SampleInspector, OutlierFinder, AddRuleDialog).
+- Routing: register `/observability` in `App.tsx`; keep `/db-health` as a redirect for one release.
+- Sidebar: edit `AppSidebar.tsx` — append to `primaryNavItems` (under Candidate Pipeline), remove from `utilityNavItems`.
+- No schema changes required for Sprint 1. Sprint 2 only adds rows via the existing `db_health_rules` table; "Add a rule" uses the existing insert path.
 
-**Files edited:**
-- `src/App.tsx` — add `/db-health` route inside the manager-only guard
-- `src/components/AppLayout.tsx` — mount `<DbDebugFooter />` for managers
-- `src/lib/cityScoringLiveData.ts` and the teacher hook — wire `queryLogger` in
+## Deliverable per sprint
+- **Sprint 1:** `/observability` live with Trust Score + domain cards + plain-English descriptions + sidebar move.
+- **Sprint 2:** Rules board, Sample Inspector, Outlier finder, Add-a-rule dialog.
+- **Sprint 3 (deferred):** Alerts, history sparklines, subscriptions.
 
-**Database changes (Tier 2 + 3):**
-- `db_health_rules` (name text pk, sql text, expected jsonb, severity text)
-- `db_health_history` (id, ts timestamptz, domain text, metric text, value jsonb, status text)
-- `db_health_subscriptions` (id, user_id, rule_name, channel)
-- RLS: read = manager via `has_role(auth.uid(),'manager')`; write same
-- Seed 6 starter rules
-- Edge functions: `db-health-snapshot`, `db-health-alert`
-- `pg_cron` schedule (Tier 3)
-
-**Routing & data access pattern:**
-- All metric queries go through Supabase RPC functions (`SECURITY DEFINER`, manager-only) rather than raw SELECTs from the client. This keeps RLS intact and lets us show the exact SQL the server ran.
-
-**Rule 12 compliance:** Sample inspector and any UI showing composite uses `buildMarketView` from `@/lib/marketView`. No direct `.compositeScore` access.
-
-## Order of work
-
-1. Tier 1 page + footer widget + thresholds + 4 domain cards (no DB migration needed)
-2. Migration: `db_health_rules` + seed + `accuracy_*` RPC functions → Accuracy tab
-3. Migration: `db_health_history` + `db_health_subscriptions` + cron + edge functions → Alerts tab
-
-I will pause for approval after each tier so you can show Sam Tier 1 before we commit to Tier 2/3 effort.
-
-## Contingency
-
-- Every change is additive (new route, new components, new tables). Nothing existing is modified except `App.tsx` (1 route) and `AppLayout.tsx` (1 mount).
-- If anything misbehaves, revert the last History entry — `/db-health` and the footer disappear, app keeps working.
-- Migrations are pure CREATE statements; safe to drop if needed.
-
+Confirm and I'll start Sprint 1.

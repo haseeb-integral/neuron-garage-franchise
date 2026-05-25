@@ -11,11 +11,11 @@ const primaryNavItems = [
   { title: "Teacher Search", url: "/teacher-prospects", icon: Users },
   { title: "Email Outreach", url: "/email-outreach", icon: Mail },
   { title: "Candidate Pipeline", url: "/candidate-pipeline", icon: Kanban },
+  { title: "Data Observability", url: "/observability", icon: Activity },
 ];
 
 const utilityNavItems = [
   { title: "Team Members", url: "/settings/team", icon: Users },
-  { title: "Database Health", url: "/db-health", icon: Activity },
   { title: "User's Guide", url: "/users-guide", icon: BookOpen },
 ];
 

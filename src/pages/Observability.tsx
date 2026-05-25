@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useRef, useState } from "react";
-import { RotateCw, ShieldCheck, Info, CheckCircle2, AlertTriangle } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { RotateCw, ShieldCheck, Info, CheckCircle2, AlertTriangle, Sparkles, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { DOMAINS } from "@/lib/dbHealth/queries";
 import { HealthStatus, rollup, statusColor } from "@/lib/dbHealth/thresholds";
@@ -9,10 +9,14 @@ import { AccuracySection } from "@/components/observability/AccuracySection";
 import { AlertsSection } from "@/components/observability/AlertsSection";
 import { PageHeader } from "@/components/PageHeader";
 import { InfoHint } from "@/components/observability/InfoHint";
+import { SimpleMode } from "@/components/observability/SimpleMode";
 import {
   ObservabilityAiProvider,
   AskAiButton,
 } from "@/components/observability/ObservabilityAi";
+
+type ViewMode = "simple" | "advanced";
+const MODE_KEY = "observability:viewMode";
 
 
 /**

@@ -5,6 +5,7 @@ import { HealthStatus, rollup, statusColor } from "@/lib/dbHealth/thresholds";
 import { DomainCard } from "@/components/dbHealth/DomainCard";
 import { useIsManager } from "@/hooks/dbHealth/useIsManager";
 import { AccuracySection } from "@/components/observability/AccuracySection";
+import { AlertsSection } from "@/components/observability/AlertsSection";
 
 /**
  * /observability — Data Observability Dashboard (Tier 1: Status & Structure).

@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useRef, useState } from "react";
-import { RotateCw, ShieldCheck, Info, CheckCircle2, AlertTriangle } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { RotateCw, ShieldCheck, Info, CheckCircle2, AlertTriangle, Sparkles, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { DOMAINS } from "@/lib/dbHealth/queries";
 import { HealthStatus, rollup, statusColor } from "@/lib/dbHealth/thresholds";
@@ -9,10 +9,14 @@ import { AccuracySection } from "@/components/observability/AccuracySection";
 import { AlertsSection } from "@/components/observability/AlertsSection";
 import { PageHeader } from "@/components/PageHeader";
 import { InfoHint } from "@/components/observability/InfoHint";
+import { SimpleMode } from "@/components/observability/SimpleMode";
 import {
   ObservabilityAiProvider,
   AskAiButton,
 } from "@/components/observability/ObservabilityAi";
+
+type ViewMode = "simple" | "advanced";
+const MODE_KEY = "observability:viewMode";
 
 
 /**
@@ -52,6 +56,13 @@ export default function Observability() {
   const [perDomainIssues, setPerDomainIssues] = useState<Record<string, DomainIssue[]>>({});
   const [isRunningAll, setIsRunningAll] = useState(false);
   const [tab, setTab] = useState<"status" | "accuracy" | "alerts">("status");
+  const [mode, setMode] = useState<ViewMode>(() => {
+    if (typeof window === "undefined") return "simple";
+    return (localStorage.getItem(MODE_KEY) as ViewMode) || "simple";
+  });
+  useEffect(() => {
+    try { localStorage.setItem(MODE_KEY, mode); } catch {}
+  }, [mode]);
   const refreshersRef = useRef<Record<string, () => Promise<void>>>({});
 
   const overall = useMemo(() => rollup(Object.values(perDomain)), [perDomain]);
@@ -141,6 +152,7 @@ export default function Observability() {
         searchPlaceholder="Search domains, rules, incidents…"
         action={
           <div className="flex items-center gap-2">
+            <ModeToggle mode={mode} setMode={setMode} />
             <AskAiButton
               section="global"
               sectionLabel="Overall data trustworthiness"
@@ -152,17 +164,26 @@ export default function Observability() {
                 "What changed in the last 7 days?",
               ]}
             />
-            <button
-              onClick={runAllChecks}
-              disabled={isRunningAll}
-              className="inline-flex items-center gap-1.5 rounded-md border border-[#eef2f7] bg-white px-3.5 py-2 text-[13px] font-bold text-[#07142f] transition-colors hover:bg-[#f7faff] disabled:opacity-60"
-            >
-              <RotateCw size={13} className={isRunningAll ? "animate-spin" : ""} />
-              {isRunningAll ? "Running…" : "Run all checks"}
-            </button>
+            {mode === "advanced" && (
+              <button
+                onClick={runAllChecks}
+                disabled={isRunningAll}
+                className="inline-flex items-center gap-1.5 rounded-md border border-[#eef2f7] bg-white px-3.5 py-2 text-[13px] font-bold text-[#07142f] transition-colors hover:bg-[#f7faff] disabled:opacity-60"
+              >
+                <RotateCw size={13} className={isRunningAll ? "animate-spin" : ""} />
+                {isRunningAll ? "Running…" : "Run all checks"}
+              </button>
+            )}
           </div>
         }
       />
+
+      {mode === "simple" && (
+        <SimpleMode onSwitchToAdvanced={() => setMode("advanced")} />
+      )}
+      {mode === "advanced" && (
+      <>
+
 
 
       {/* Stat strip — same pattern as Email Outreach / Candidate Pipeline */}
@@ -271,9 +292,39 @@ export default function Observability() {
           <AlertsSection />
         </div>
       )}
+      </>
+      )}
     </ObservabilityAiProvider>
   );
 }
+
+function ModeToggle({ mode, setMode }: { mode: ViewMode; setMode: (m: ViewMode) => void }) {
+  return (
+    <div className="inline-flex rounded-md border border-[#eef2f7] bg-white p-0.5">
+      <button
+        onClick={() => setMode("simple")}
+        className={`inline-flex items-center gap-1 rounded-[5px] px-2.5 py-1.5 text-[12px] font-bold transition-colors ${
+          mode === "simple" ? "bg-[#0b1a36] text-white" : "text-[#526078] hover:text-[#07142f]"
+        }`}
+        aria-pressed={mode === "simple"}
+      >
+        <Sparkles size={12} />
+        Simple
+      </button>
+      <button
+        onClick={() => setMode("advanced")}
+        className={`inline-flex items-center gap-1 rounded-[5px] px-2.5 py-1.5 text-[12px] font-bold transition-colors ${
+          mode === "advanced" ? "bg-[#0b1a36] text-white" : "text-[#526078] hover:text-[#07142f]"
+        }`}
+        aria-pressed={mode === "advanced"}
+      >
+        <SlidersHorizontal size={12} />
+        Advanced
+      </button>
+    </div>
+  );
+}
+
 
 
 // ----------------------------------------------------------------------------

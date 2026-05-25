@@ -39,7 +39,7 @@ function explain(domainLabel: string, metricLabel: string, status: HealthStatus,
   return `${domainLabel} — ${metricLabel} (${display}).`;
 }
 
-export function DomainCard({ domain, anchorId, onStatusChange, onIssuesChange }: Props) {
+export function DomainCard({ domain, anchorId, onStatusChange, onIssuesChange, onRegisterRefresh }: Props) {
   const { results, loading, lastRefreshedAt, refresh, refreshMetric } = useDomainMetrics(domain);
   const rolled = getDomainStatus(results);
   const lastStatusRef = useRef<HealthStatus | null>(null);

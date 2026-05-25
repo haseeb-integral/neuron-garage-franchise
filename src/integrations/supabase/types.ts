@@ -1994,6 +1994,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_staff: { Args: { _user_id: string }; Returns: boolean }
       match_teachers_to_schools: {
         Args: {
           p_city: string

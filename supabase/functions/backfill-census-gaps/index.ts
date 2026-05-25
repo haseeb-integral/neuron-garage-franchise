@@ -57,9 +57,13 @@ async function fetchCensusForPlace(stateFips: string, placeFips: string) {
   const url = `https://api.census.gov/data/${CENSUS_VINTAGE}/acs/acs5?get=${vars.join(",")}&for=place:${placeFips}&in=state:${stateFips}&key=${CENSUS_KEY}`;
   const r = await fetch(url);
   if (!r.ok) return { data: null, error: `Census ${r.status}` };
-  const arr = await r.json() as string[][];
+  const text = await r.text();
+  if (!text || !text.trim().startsWith("[")) return { data: null, error: "Census empty body" };
+  let arr: string[][];
+  try { arr = JSON.parse(text); } catch { return { data: null, error: "Census bad JSON" }; }
   const row = arr?.[1];
   if (!row) return { data: null, error: "Census empty row" };
+
   const pop = num(row[0]);
   const age5_14 = (num(row[1]) ?? 0) + (num(row[2]) ?? 0) + (num(row[3]) ?? 0) + (num(row[4]) ?? 0);
   const children_5_12 = age5_14 > 0 ? Math.round(age5_14 * 0.8) : null;
@@ -87,10 +91,26 @@ async function fetchCensusForPlace(stateFips: string, placeFips: string) {
   };
 }
 
+// Manual overrides for consolidated city-counties and renamed places whose
+// official Census place names don't start with the common city name.
+const PLACE_FIPS_OVERRIDES: Record<string, string> = {
+  "athens|GA": "03440",       // Athens-Clarke County unified government (balance)
+  "augusta|GA": "04204",      // Augusta-Richmond County consolidated government (balance)
+  "carson city|NV": "09700",  // Carson City
+  "lexington|KY": "46027",    // Lexington-Fayette urban county
+  "louisville|KY": "48006",   // Louisville/Jefferson County metro government (balance)
+  "macon|GA": "49008",        // Macon-Bibb County
+  "nashville|TN": "52006",    // Nashville-Davidson metropolitan government (balance)
+  "ventura|CA": "65042",      // San Buenaventura (Ventura)
+};
+
+
 const PLACE_CACHE = new Map<string, Array<{ name: string; fips: string }>>();
 async function resolvePlaceFips(city: string, stateAbbr: string): Promise<string | null> {
   const stateFips = STATE_FIPS[stateAbbr];
   if (!stateFips) return null;
+  const override = PLACE_FIPS_OVERRIDES[`${city.toLowerCase().trim()}|${stateAbbr}`];
+  if (override) return override;
   let list = PLACE_CACHE.get(stateAbbr);
   if (!list) {
     const url = `https://api.census.gov/data/${CENSUS_VINTAGE}/acs/acs5?get=NAME&for=place:*&in=state:${stateFips}&key=${CENSUS_KEY}`;
@@ -111,6 +131,7 @@ async function resolvePlaceFips(city: string, stateAbbr: string): Promise<string
   const loose = list.find((p) => p.name.startsWith(target + " "));
   return loose?.fips ?? null;
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });

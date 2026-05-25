@@ -164,6 +164,8 @@ export default function EmailOutreachV2() {
   }, []);
 
   return <div className="min-h-screen bg-white text-[#07142f]">
+    {/* Brett's per-screen Ask AI — pinned at the top so it's always visible */}
+    <AskAssistant screen="email" />
     <div className="mb-3 flex items-center justify-between gap-4">
       <div className="relative w-full max-w-[520px]">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8794ab]" />
@@ -173,7 +175,6 @@ export default function EmailOutreachV2() {
         <button className="rounded-full border border-[#e7edf5] p-2 text-[#526078]"><AlertCircle size={18} /></button>
       </div>
     </div>
-    <AskAssistant screen="email" />
     <div className="mb-2 flex items-start justify-between gap-4">
       <div className="min-w-0">
         <h1 className="text-[22px] font-black tracking-tight">Email Outreach</h1>

@@ -8,6 +8,7 @@ import { useIsManager } from "@/hooks/dbHealth/useIsManager";
 import { AccuracySection } from "@/components/observability/AccuracySection";
 import { AlertsSection } from "@/components/observability/AlertsSection";
 import { PageHeader } from "@/components/PageHeader";
+import { InfoHint } from "@/components/observability/InfoHint";
 import {
   ObservabilityAiProvider,
   AskAiButton,

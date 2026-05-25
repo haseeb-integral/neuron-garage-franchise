@@ -25,12 +25,34 @@ const ROUTE_LABELS: Record<string, string> = {
   "/observability": "Data Observability",
 };
 
-const SLASH_COMMANDS = [
-  { cmd: "/find", desc: "find cities, teachers, or candidates", prompt: "/find " },
-  { cmd: "/why", desc: "explain a score or a tier", prompt: "/why is " },
-  { cmd: "/explain", desc: "walk me through a feature", prompt: "/explain " },
-  { cmd: "/add", desc: "add to a watchlist or campaign", prompt: "/add " },
-  { cmd: "/stage", desc: "change a candidate's pipeline stage", prompt: "/stage " },
+// Route-aware suggestions. Each is a ready-to-send prompt that exercises the
+// AI's real lookup tools — not generic slash placeholders.
+const ROUTE_SUGGESTIONS: Record<string, { label: string; prompt: string }[]> = {
+  "/city-scoring": [
+    { label: "Top 5 cities right now", prompt: "What are the top 5 cities by composite score right now?" },
+    { label: "Best Texas markets", prompt: "Show me the best Texas cities for a franchise." },
+    { label: "Explain a city's score", prompt: "Explain Frisco TX's composite score and pillar breakdown." },
+    { label: "What can you do here?", prompt: "/help" },
+  ],
+  "/teacher-search": [
+    { label: "Open Teacher Search", prompt: "Take me to Teacher Search." },
+    { label: "What can you do here?", prompt: "/help" },
+  ],
+  "/email-outreach": [
+    { label: "List active campaigns", prompt: "List active email campaigns and their status." },
+    { label: "What can you do here?", prompt: "/help" },
+  ],
+  "/candidate-pipeline": [
+    { label: "Count by stage", prompt: "How many candidates are in each pipeline stage?" },
+    { label: "Who's in confirmation?", prompt: "List candidates currently in the confirmation stage." },
+    { label: "What can you do here?", prompt: "/help" },
+  ],
+};
+
+const DEFAULT_SUGGESTIONS = [
+  { label: "Top cities right now", prompt: "What are the top 5 cities by composite score?" },
+  { label: "Pipeline overview", prompt: "How many candidates are in each pipeline stage?" },
+  { label: "What can you do?", prompt: "/help" },
 ];
 
 export function NeuronAiPanel() {

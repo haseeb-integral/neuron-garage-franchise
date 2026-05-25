@@ -1,8 +1,9 @@
-import { useCallback, useMemo, useState } from "react";
-import { RotateCw, ShieldCheck, Info } from "lucide-react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { RotateCw, ShieldCheck, Info, CheckCircle2, AlertTriangle } from "lucide-react";
+import { toast } from "sonner";
 import { DOMAINS } from "@/lib/dbHealth/queries";
 import { HealthStatus, rollup, statusColor } from "@/lib/dbHealth/thresholds";
-import { DomainCard } from "@/components/dbHealth/DomainCard";
+import { DomainCard, type DomainIssue } from "@/components/dbHealth/DomainCard";
 import { useIsManager } from "@/hooks/dbHealth/useIsManager";
 import { AccuracySection } from "@/components/observability/AccuracySection";
 import { AlertsSection } from "@/components/observability/AlertsSection";
@@ -10,7 +11,6 @@ import { PageHeader } from "@/components/PageHeader";
 import {
   ObservabilityAiProvider,
   AskAiButton,
-  useObservabilityAi,
 } from "@/components/observability/ObservabilityAi";
 
 

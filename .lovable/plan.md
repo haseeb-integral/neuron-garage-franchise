@@ -1,53 +1,53 @@
-## Problem
+# Verify the "0 teachers" fix on the MARKETS rail
 
-On the Teacher Search page, loading with no filters + "SmartLead Enriched" source selected times out:
+## What I checked
 
-> "The database took too long to respond. Try a narrower search or a single city filter."
+DB has the rows (per-city aggregates):
 
-### Root cause
+- Chicago — 25,006 total / 1,185 enriched
+- Indianapolis — 13,583 / 228
+- Detroit — 10,468 / 0
+- Philadelphia — 6,525 / 266
+- Grand Rapids — 6,040 / 0
+- … etc.
 
-`useTeacherProspectsData.loadPage()` runs:
+So data is not the problem. The remaining risk is in the new query itself.
+
+## Concern with the current fix
+
+`CitySearchRail.tsx` uses:
 
 ```ts
-supabase.from("teacher_prospects")
-  .select("*", { count: "estimated" })
-  .order("created_at", { ascending: false })
-  .ilike("enrichment_source", "smartlead%")
-  .range(0, 24);
+.select("*", { count: "planned", head: true })
 ```
 
-Against a **167,698-row** table. Two compounding issues:
+`count: "planned"` returns the **Postgres planner's row estimate** from `pg_class` / filtered query plan — not a real count. For a filter like `.eq("city", name)` on `teacher_prospects`, the planner estimate can be:
 
-1. **`ilike "smartlead%"` is not sargable** against the existing `lower(enrichment_source)` index, so the planner can't use it for the source filter. The actual stored values are a tiny known set (`Manus`, `smartlead_csv`, `linkedin_danish`) — a plain equality / `IN` would be index-friendly.
-2. **`count: "estimated"` falls back to exact `COUNT(*)`** in PostgREST whenever a filter is present and the planner's estimate is below the threshold. With an `ilike` over 167k rows and no usable index, the exact count is a full seq-scan → statement timeout. The 25-row page itself returns quickly; it's the count that kills the request.
+- significantly off from the true count, or
+- `null` / `0` when planner stats are stale or the predicate isn't well-covered by statistics.
 
-## Fix (surgical, low risk)
+That means tiles could still show wrong numbers (including 0) for some cities even though the DB has rows — the exact symptom we're trying to fix. The "no rows starved by 5k cap" bug is gone, but a different inaccuracy can replace it.
 
-### 1. `src/hooks/useTeacherProspectsData.ts`
+## Proposed change
 
-- Replace the `ilike("enrichment_source", "smartlead%" | "linkedin%")` branches with `.in("enrichment_source", [...])` using the known stored values:
-  - `smartlead` → `["smartlead_csv"]`
-  - `linkedin` → `["linkedin_danish"]`
-  - `needs_email` → unchanged (already `.eq` on indexed partial)
-- Apply the same change in `buildFilteredQuery()` (used by bulk Export / Add-to-Campaign).
-- Change `count: "estimated"` → `count: "planned"` on the page query. `planned` uses only `EXPLAIN` row estimates and never escalates to exact `COUNT(*)`, so it cannot time out. The "Quick Stats" sidebar already gets exact totals from the `teacher_prospects_stats` RPC, so the page-level count is purely for pagination — an estimate is fine and is what `"estimated"` was already trying to be.
+Switch both HEAD queries from `count: "planned"` to `count: "exact"`:
 
-### 2. Migration: add an index for equality on `enrichment_source`
-
-```sql
-CREATE INDEX IF NOT EXISTS idx_teacher_prospects_enrichment_source
-  ON public.teacher_prospects (enrichment_source);
+```ts
+.select("*", { count: "exact", head: true })
 ```
 
-Lets the planner pick this index for the `IN (...)` filter when combined with the `created_at DESC` order; the cost stays bounded even as the table grows past 200k.
+`exact` still uses `head: true` (no row payload — just a `COUNT(*)` against the filtered query), is index-backed on `city`, and returns the true number every time. Cost for 8 cities × 2 queries is negligible.
 
-### 3. Verify
+No other files change. No schema change.
 
-- Reload `/teacher-prospects` with default filters and with "SmartLead Enriched" / "LinkedIn" / "Needs Email" selected — each should return <1s, no toast.
-- Confirm pagination still works (Next/Prev advances by 25; estimated total is shown as the page count basis; sidebar "Quick Stats → Total" remains exact from the RPC).
-- Confirm bulk Export / Add-to-Campaign still pull the right rows (these use `buildFilteredQuery`, which gets the same source-filter fix).
+## How to verify after the change
 
-## Out of scope
+1. Load `/teacher-prospects` with no filter — every tile should show the same totals as the DB aggregates above (Chicago 25,006, Philadelphia 6,525, Detroit 10,468, etc.).
+2. Apply a single-city filter (e.g. Philadelphia) — banner and tile must match.
+3. Confirm no tile shows `0 teachers` for a city that genuinely has rows.
 
-- No schema changes to columns, no RLS changes, no UI changes, no business logic changes.
-- The stats RPC (`teacher_prospects_stats`) is untouched.
+## Technical notes
+
+- File touched: `src/components/teacher-prospects/CitySearchRail.tsx` (lines 124–145 only).
+- Behavior of the rest of the component (candidate selection, sort, outreach overlay) is unchanged.
+- `count: "exact"` on a `head: true` request does not transfer rows; only the count header is returned.

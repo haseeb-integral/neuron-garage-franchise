@@ -129,7 +129,7 @@ export function CitySearchRail({ cityFilters, onPick, onAddMore, onRemove }: Pro
         cityNames.flatMap((name) => [
           supabase
             .from("teacher_prospects")
-            .select("*", { count: "planned", head: true })
+            .select("*", { count: "exact", head: true })
             .eq("city", name)
             .then(({ count }) => {
               const cur = agg.get(name) ?? { total: 0, enriched: 0 };
@@ -138,7 +138,7 @@ export function CitySearchRail({ cityFilters, onPick, onAddMore, onRemove }: Pro
             }),
           supabase
             .from("teacher_prospects")
-            .select("*", { count: "planned", head: true })
+            .select("*", { count: "exact", head: true })
             .eq("city", name)
             .eq("needs_email_enrichment", false)
             .not("email", "is", null)

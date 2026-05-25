@@ -46,6 +46,10 @@ export function DomainCard({ domain, anchorId, onStatusChange, onIssuesChange, o
   const lastIssuesKeyRef = useRef<string>("");
 
   useEffect(() => {
+    if (onRegisterRefresh) onRegisterRefresh(domain.key, refresh);
+  }, [domain.key, refresh, onRegisterRefresh]);
+
+  useEffect(() => {
     if (onStatusChange && lastStatusRef.current !== rolled) {
       lastStatusRef.current = rolled;
       onStatusChange(rolled);

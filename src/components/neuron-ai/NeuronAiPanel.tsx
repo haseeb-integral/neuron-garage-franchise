@@ -25,12 +25,34 @@ const ROUTE_LABELS: Record<string, string> = {
   "/observability": "Data Observability",
 };
 
-const SLASH_COMMANDS = [
-  { cmd: "/find", desc: "find cities, teachers, or candidates", prompt: "/find " },
-  { cmd: "/why", desc: "explain a score or a tier", prompt: "/why is " },
-  { cmd: "/explain", desc: "walk me through a feature", prompt: "/explain " },
-  { cmd: "/add", desc: "add to a watchlist or campaign", prompt: "/add " },
-  { cmd: "/stage", desc: "change a candidate's pipeline stage", prompt: "/stage " },
+// Route-aware suggestions. Each is a ready-to-send prompt that exercises the
+// AI's real lookup tools — not generic slash placeholders.
+const ROUTE_SUGGESTIONS: Record<string, { label: string; prompt: string }[]> = {
+  "/city-scoring": [
+    { label: "Top 5 cities right now", prompt: "What are the top 5 cities by composite score right now?" },
+    { label: "Best Texas markets", prompt: "Show me the best Texas cities for a franchise." },
+    { label: "Explain a city's score", prompt: "Explain Frisco TX's composite score and pillar breakdown." },
+    { label: "What can you do here?", prompt: "/help" },
+  ],
+  "/teacher-search": [
+    { label: "Open Teacher Search", prompt: "Take me to Teacher Search." },
+    { label: "What can you do here?", prompt: "/help" },
+  ],
+  "/email-outreach": [
+    { label: "List active campaigns", prompt: "List active email campaigns and their status." },
+    { label: "What can you do here?", prompt: "/help" },
+  ],
+  "/candidate-pipeline": [
+    { label: "Count by stage", prompt: "How many candidates are in each pipeline stage?" },
+    { label: "Who's in confirmation?", prompt: "List candidates currently in the confirmation stage." },
+    { label: "What can you do here?", prompt: "/help" },
+  ],
+};
+
+const DEFAULT_SUGGESTIONS = [
+  { label: "Top cities right now", prompt: "What are the top 5 cities by composite score?" },
+  { label: "Pipeline overview", prompt: "How many candidates are in each pipeline stage?" },
+  { label: "What can you do?", prompt: "/help" },
 ];
 
 export function NeuronAiPanel() {
@@ -126,11 +148,9 @@ export function NeuronAiPanel() {
         <div ref={scrollRef} className="flex-1 overflow-y-auto bg-white px-5 py-6">
           {messages.length === 0 ? (
             <WelcomeState
-              onPick={(prompt) => {
-                setInput(prompt);
-                inputRef.current?.focus();
-              }}
+              onPick={(prompt) => handleSend(prompt)}
               routeLabel={routeLabel}
+              suggestions={ROUTE_SUGGESTIONS[screenContext.route] ?? DEFAULT_SUGGESTIONS}
             />
           ) : (
             <div className="space-y-4">
@@ -202,7 +222,13 @@ export function NeuronAiPanel() {
 // ----------------------------------------------------------------------------
 // Welcome state
 // ----------------------------------------------------------------------------
-function WelcomeState({ onPick, routeLabel }: { onPick: (p: string) => void; routeLabel: string }) {
+function WelcomeState({
+  onPick, routeLabel, suggestions,
+}: {
+  onPick: (p: string) => void;
+  routeLabel: string;
+  suggestions: { label: string; prompt: string }[];
+}) {
   return (
     <div className="mx-auto max-w-md space-y-6 pt-6">
       <div className="text-center">
@@ -211,8 +237,8 @@ function WelcomeState({ onPick, routeLabel }: { onPick: (p: string) => void; rou
         </div>
         <h2 className="text-[18px] font-bold text-[#0b1a36]">Hi, I'm Neuron AI</h2>
         <p className="mx-auto mt-1.5 max-w-[320px] text-[13px] leading-relaxed text-[#5a6a85]">
-          I can help across the whole app — find cities, explain scores, navigate
-          between screens, and take actions on your behalf. I know you're on <b>{routeLabel}</b>.
+          I can look up live data, explain scores, and take actions for you —
+          with your confirmation. You're on <b>{routeLabel}</b>.
         </p>
       </div>
 
@@ -221,16 +247,13 @@ function WelcomeState({ onPick, routeLabel }: { onPick: (p: string) => void; rou
           Try one of these
         </div>
         <div className="space-y-1.5">
-          {SLASH_COMMANDS.map((s) => (
+          {suggestions.map((s) => (
             <button
-              key={s.cmd}
+              key={s.label}
               onClick={() => onPick(s.prompt)}
               className="group flex w-full items-center gap-3 rounded-xl border border-[#eef2f7] bg-white px-3.5 py-2.5 text-left transition-all hover:-translate-y-px hover:border-[#d6cdf5] hover:shadow-[0_3px_10px_rgba(124,58,237,0.07)]"
             >
-              <code className="rounded-md bg-[#f4f0ff] px-2 py-0.5 font-mono text-[11px] font-semibold text-[#7c3aed]">
-                {s.cmd}
-              </code>
-              <span className="flex-1 text-[12.5px] text-[#3a4a66]">{s.desc}</span>
+              <span className="flex-1 text-[12.5px] font-medium text-[#3a4a66]">{s.label}</span>
               <ArrowRight size={13} className="text-[#c5cdde] transition-transform group-hover:translate-x-0.5 group-hover:text-[#7c3aed]" />
             </button>
           ))}

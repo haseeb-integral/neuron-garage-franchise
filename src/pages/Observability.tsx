@@ -10,6 +10,7 @@ import { AlertsSection } from "@/components/observability/AlertsSection";
 import { PageHeader } from "@/components/PageHeader";
 import { InfoHint } from "@/components/observability/InfoHint";
 import { SimpleMode } from "@/components/observability/SimpleMode";
+import { SchoolCoverageByCity } from "@/components/observability/SchoolCoverageByCity";
 import {
   ObservabilityAiProvider,
   AskAiButton,

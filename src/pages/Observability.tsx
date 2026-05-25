@@ -48,8 +48,10 @@ const PLAIN_ENGLISH: Record<string, string> = {
 export default function Observability() {
   const { loading: roleLoading, isManager } = useIsManager();
   const [perDomain, setPerDomain] = useState<Record<string, HealthStatus>>({});
-  const [refreshTick, setRefreshTick] = useState(0);
+  const [perDomainIssues, setPerDomainIssues] = useState<Record<string, DomainIssue[]>>({});
+  const [isRunningAll, setIsRunningAll] = useState(false);
   const [tab, setTab] = useState<"status" | "accuracy" | "alerts">("status");
+  const refreshersRef = useRef<Record<string, () => Promise<void>>>({});
 
   const overall = useMemo(() => rollup(Object.values(perDomain)), [perDomain]);
 
@@ -70,8 +72,45 @@ export default function Observability() {
     };
   }, [perDomain]);
 
+  const allIssues = useMemo(
+    () => Object.values(perDomainIssues).flat(),
+    [perDomainIssues],
+  );
+
   const handleDomainStatus = useCallback((key: string, s: HealthStatus) => {
     setPerDomain((prev) => (prev[key] === s ? prev : { ...prev, [key]: s }));
+  }, []);
+
+  const handleDomainIssues = useCallback((key: string, issues: DomainIssue[]) => {
+    setPerDomainIssues((prev) => ({ ...prev, [key]: issues }));
+  }, []);
+
+  const registerRefresh = useCallback((key: string, fn: () => Promise<void>) => {
+    refreshersRef.current[key] = fn;
+  }, []);
+
+  const runAllChecks = useCallback(async () => {
+    const fns = Object.values(refreshersRef.current);
+    if (fns.length === 0) {
+      toast.info("Checks are still warming up — try again in a second.");
+      return;
+    }
+    setIsRunningAll(true);
+    const toastId = toast.loading(`Re-running ${fns.length} health checks…`);
+    try {
+      await Promise.all(fns.map((fn) => fn()));
+      toast.success("All checks complete", {
+        id: toastId,
+        description: "Every domain on the page has been refreshed.",
+      });
+    } catch (e: any) {
+      toast.error("Some checks failed to refresh", {
+        id: toastId,
+        description: e?.message ?? "See individual cards for details.",
+      });
+    } finally {
+      setIsRunningAll(false);
+    }
   }, []);
 
   if (roleLoading) {

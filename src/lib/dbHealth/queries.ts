@@ -196,11 +196,12 @@ function metricNumericRange(
       const hi = (maxRes.data as any)?.[column] ?? null;
       const inRange =
         lo != null && hi != null && lo >= expectedMin && hi <= expectedMax;
+      const err = minRes.error?.message ?? maxRes.error?.message ?? null;
       return {
         raw: lo,
-        display: `min ${lo ?? "—"} · max ${hi ?? "—"} (expected ${expectedMin}–${expectedMax})`,
-        status: inRange ? "green" : "yellow",
-        error: minRes.error?.message ?? maxRes.error?.message ?? null,
+        display: err ? "—" : `min ${lo ?? "—"} · max ${hi ?? "—"} (expected ${expectedMin}–${expectedMax})`,
+        status: err ? "unknown" : inRange ? "green" : "yellow",
+        error: err,
         ms: m1 + m2,
       };
     },

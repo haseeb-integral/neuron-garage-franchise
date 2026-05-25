@@ -194,6 +194,10 @@ export default function Observability() {
       {mode === "advanced" && (
       <>
 
+      <AdvancedModeIntro />
+
+
+
 
 
       {/* Stat strip — same pattern as Email Outreach / Candidate Pipeline */}

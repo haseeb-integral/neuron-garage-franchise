@@ -313,7 +313,25 @@ const CityScoring = () => {
   // The fetch/threading/loading bookkeeping lives in src/hooks/citySearch/useAskAi.
   // The page is only responsible for translating the AiResult into filter +
   // weight state changes below.
-  const { aiThreadId: _aiThreadId, aiTurns, aiLoading, lastAiTurn, clearAi, ask } = useAskAi();
+  // useAskAi gets a getter so every request sends the CURRENT live session
+  // state (filters, applied weights, visible count) — the AI can't reason
+  // about "of these markets" / "Tier A markets" sensibly without it.
+  const askAiSessionRef = useRef<{
+    appliedFilters: { state: string | null; tier: string | null; minScore: number | null };
+    appliedWeights: Record<string, number>;
+    visibleCount: number;
+    totalCount: number;
+    watchlistCount: number;
+  }>({
+    appliedFilters: { state: null, tier: null, minScore: null },
+    appliedWeights: { ...DEFAULT_WEIGHTS },
+    visibleCount: 0,
+    totalCount: 0,
+    watchlistCount: 0,
+  });
+  const { aiThreadId: _aiThreadId, aiTurns, aiLoading, lastAiTurn, clearAi, ask } = useAskAi(
+    () => askAiSessionRef.current,
+  );
   void _aiThreadId;
 
   const askAi = async (query: string) => {

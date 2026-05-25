@@ -1825,7 +1825,8 @@ const CityScoring = () => {
             onClose={() => { setReportOpen(false); setReportAutoPdf(false); }}
             market={selected}
             categoryScores={detailCategoryScores}
-            refreshVersion={marketRefreshVersion}
+            sigRows={sigRows}
+            cityId={selected.cityId ?? null}
             autoDownload={reportAutoPdf}
           />
         </Suspense>

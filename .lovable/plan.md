@@ -1,96 +1,76 @@
-## What's wrong right now
+## What's wrong today
 
-Looking at your screenshots and the code, three real problems:
+`MarketReportModal` is a relic from when `city_market_signals` existed. That table was severed on 2026-05-21. The modal now:
 
-1. **Neuron AI button is in the wrong place** — tucked into the sidebar header next to the collapse arrow. Cramped, easy to miss, and it makes the "Neuron Garage / Franchise" logo block ugly.
-2. **The panel doesn't actually answer** — you sent the same question twice, no reply. Bottom-right toast says "Not signed in." You ARE signed in (Haseeb ADMIN). It's a real bug, not UX confusion.
-3. **The panel UI is dated** — purple→blue gradient header, plain input, no avatars, no typing dots, no model pill. Far from ChatGPT polish.
+- Invents a **"Live / Proxy / Missing"** coverage framework that has no meaning — every row is hardcoded to `proxy` from the seeded fallback.
+- Shows a **"SOW Coverage Status"** block (`0 LIVE · 5 PROXY · 0 MISSING`) that is pure theatre.
+- Renders a **boilerplate "Market Summary"** (`"This report preview uses the live SOW metric registry…"`) that has nothing to do with the actual AI Executive Summary the user already sees on screen.
+- Lists only **5 fields** as "Key Market Signals", a different and smaller set than the 12 the right-hand "Key Market Signals" panel actually displays.
+- Ends with a **canned "Recommendation"** paragraph that is the same generic prose for every city.
 
-Plus the small bonus issues you didn't name: the `?` help icon in the City Search top bar does nothing, and the "on /city-scoring" text in the panel header reads like a raw URL.
+Three buttons open it:
+1. `CityTopBar` → **Market Report** button.
+2. Right-column **"Generate PDF Report"** card (auto-downloads PDF).
+3. `MarketDetailDrawer` → **Generate Report**.
 
----
+## What to build
 
-## Plan
+Replace the modal contents with the exact same data the user sees on screen — nothing invented. Apply the same change to the PDF builder.
 
-### 1. Move Neuron AI button → City Search top bar
+### Sections in the new modal (in order)
 
-- Remove `<NeuronAiButton />` from the sidebar header (it goes back to being just logo + collapse arrow — clean).
-- Replace the dead `?` icon in `CityTopBar.tsx` with the Neuron AI pill — sparkle + "Neuron AI" + `⌘K` hint, positioned right before the notification bell.
-- Shrink "Generate Market Report" slightly (icon + "Market Report", keep blue) so the row fits without scroll.
-- Other pages (Dashboard, Teacher Search, Email Outreach, Pipeline, Observability) keep the **⌘K / Ctrl+K** global shortcut — no visible button on them in this pass. Once Brett signs off on placement we can add it to those pages' headers too.
+1. **Header** — `{City}, {ST} — Market Research Report` (drop "SOW … Preview" wording).
+2. **Total Score card** — `score / 100` + tier label + verdict (high/moderate/low-opportunity). Same source as `ExecutiveSummaryPanel`.
+3. **Category Scores** — Demand, TAM Teachers, Competitive Opportunity bars using `buildPillarView(detailCategoryScores)`. Keep this; it's already correct.
+4. **AI Executive Summary** — pulled via `useCityNarrative` (the same hook the on-screen Executive Summary uses, cached). Shows `narrative.executive_summary`, then the four expanded sections when available: Market Snapshot, Demand-Side Read, Supply & Competitive Read, Recommended Next Move. Loading + retry states copied from `ExecutiveSummaryPanel`.
+5. **Key Market Signals** — render the same `sigRows` array (12 metrics) the right-column panel renders, with the same source label, value, and tone-coloured benchmark pill (good / mid / bad). One-liner from `SIGNAL_EXPLAIN` when a tone is present. No "live/proxy/missing", no "✓ Counts / Info", no geography pill.
+6. **Footer actions** — `Download Source CSV`, `Download PDF Report`, `Close` (unchanged behaviour).
 
-### 2. Fix "Not signed in" — the real bug
+### Sections to DELETE outright
 
-The frontend hook calls the edge function with raw `fetch` and a manually-grabbed `session.access_token`. When that token is near expiry, Supabase doesn't auto-refresh it, the edge function gets a stale JWT, `auth.getUser()` returns null → "Not signed in." That's why your second message also failed.
+- "Market Summary" boilerplate paragraph.
+- "SOW Coverage Status" 3-tile block (Live / Proxy / Missing counters).
+- "SOW Category Coverage" rows ("0 live · 3 proxy · 0 missing").
+- "Recommendation" paragraph.
+- Status / Counts / geography pills on each signal row.
 
-Fix: switch `useNeuronAi` to `supabase.functions.invoke("neuron-ai", { body })` and the same for `neuron-ai-confirm`. `invoke` handles token refresh automatically. Also surface the real error in the chat (red bubble that says what happened) instead of a tiny corner toast you can barely see.
+### Data plumbing
 
-### 3. Beautify the panel — ChatGPT-grade
+- `MarketReportModal` needs `sigRows: SigRow[]` and `cityId` as new props. `CityScoring.tsx` already computes both — pass them through the three call sites:
+  - `setReportOpen(true)` from `CityTopBar` (line 1331)
+  - `setReportAutoPdf(true); setReportOpen(true)` from the right-column card (line 1740)
+  - `onGenerateReport` from `MarketDetailDrawer` (line 1811)
+- Drop `buildSeededFallbackSignals` and the `liveSignals` state — no more fetching pretend evidence.
+- `useCityNarrative` is already idempotent and caches per `weightsHash`, so opening the modal will reuse the narrative the right-column panel already loaded.
 
-```text
-┌─────────────────────────────────────────┐
-│  ✨  Neuron AI                  ⋯   ✕  │  ← clean white header, soft border
-│      Gemini 2.5 Flash · City Search    │     small model pill, friendly route
-├─────────────────────────────────────────┤
-│                                         │
-│  ✨ Hi, I'm Neuron AI.                  │  ← centered welcome, big sparkle
-│  I can help across the whole app.       │
-│                                         │
-│  ┌──────────────────────────────────┐   │  ← suggested prompt CARDS
-│  │  /find  find cities or teachers  │   │     (already exist, restyled)
-│  └──────────────────────────────────┘   │
-│  ┌──────────────────────────────────┐   │
-│  │  /why   explain a score          │   │
-│  └──────────────────────────────────┘   │
-│                                         │
-├─────────────────────────────────────────┤
-│  ┌───────────────────────────────┐  ↑  │  ← rounded composer like ChatGPT
-│  │ Ask Neuron AI…                │     │     send button inside the input
-│  └───────────────────────────────┘     │
-│  Neuron AI can make mistakes.          │  ← disclaimer line
-└─────────────────────────────────────────┘
+### CSV export
+
+Keep the button but emit a useful CSV based on `sigRows`:
+
+```
+Metric, Value, Source, Benchmark
 ```
 
-Concrete style changes:
-- Drop the navy→blue→purple gradient header. Use **white header, soft border, small sparkle avatar** (matches ChatGPT/Claude).
-- Add a tiny **"Gemini 2.5 Flash · on City Search"** subtitle pill — feels intentional, not raw.
-- Assistant messages get a **sparkle avatar circle** next to them; user messages a small "H" initial circle. Both bubbles flatter (less aggressive rounding), more breathing room.
-- Replace "Thinking…" spinner with **three pulsing dots** (the ChatGPT one).
-- Composer: rounded-2xl pill, send icon **inside** the input on the right, soft focus ring, auto-grow up to 4 lines.
-- Add subtle "Neuron AI can make mistakes. Verify important info." footer line.
-- Width: 480px → **520px** on desktop so longer assistant answers don't feel cramped.
+Drop the Geography / Counts Toward Score / Status / Confidence / Notes columns — they were derived from the dead live-signal model.
 
-### 4. Small bonus cleanups (the "fix all issues I haven't said" part)
+### PDF rewrite
 
-- Remove the dead `?` help icon (replaced by Neuron AI button, no orphan).
-- Strip the duplicated empty user-message rendering bug if it shows up after the auth fix (right now the second click sent a duplicate before the first response failed — should be gated by the `sending` state, double-check).
-- Markdown rendering already exists; tighten line spacing so code/lists feel native.
+`src/components/city-scoring/market-report/marketReportPdf.ts` currently mirrors the modal section-for-section. Update it to the same five sections (Total Score, Category Scores, AI Executive Summary, Key Market Signals, no Recommendation). Pass `narrative` and `sigRows` into `buildMarketReportPdf` instead of the live-signal types. Filename stays `{slug}-{st}-market-report-{date}.pdf`.
 
----
+### Files touched
 
-## Files touched
+- `src/components/city-scoring/MarketReportModal.tsx` — full rewrite (≈150 lines down from 326).
+- `src/components/city-scoring/market-report/marketReportPdf.ts` — rewrite renderer; same call signature shape but inputs change.
+- `src/components/city-scoring/market-report/marketReportTypes.ts` — drop `LiveSignal` / `MetricStatus` types if nothing else uses them (check first).
+- `src/pages/CityScoring.tsx` — pass `sigRows` and `cityId` into `MarketReportModal`; no other logic changes.
+- `src/components/city-scoring/MarketDetailDrawer.tsx` — no change (already calls `onGenerateReport`).
 
-**Edit:**
-- `src/components/AppSidebar.tsx` — remove `NeuronAiButton` import + render
-- `src/components/city-scoring/CityTopBar.tsx` — drop `?`, add `NeuronAiButton`, shrink Generate Market Report label
-- `src/components/neuron-ai/NeuronAiPanel.tsx` — full visual overhaul, sparkle avatars, typing dots, composer redesign, footer line
-- `src/components/neuron-ai/NeuronAiButton.tsx` — slight tweak so it looks right on a white header (already mostly fine)
-- `src/hooks/useNeuronAi.ts` — switch to `supabase.functions.invoke`, surface errors inline
+### Out of scope
 
-**No DB changes. No new files. No edge function changes.**
+- The CityTopBar button label/placement (not requested here).
+- Adding new buttons that open the modal elsewhere.
+- Re-enabling or replacing `city_market_signals` ingestion.
 
----
+### Risk
 
-## Out of scope (saving for later)
-
-- Putting the button on Dashboard / Teacher Search / Email Outreach / Pipeline headers — wait for Brett's sign-off on the City Search placement first.
-- Streaming token-by-token responses — Step 2 already deferred.
-- Retiring the old City Search "Ask AI" bar — still runs alongside for 2 weeks as agreed.
-
----
-
-## Risk
-
-Low. All frontend + one hook change. The auth fix is a strict upgrade (`invoke` is what Supabase recommends). UI changes are additive and reversible.
-
-Hit **Implement plan** when you're ready.
+Low. The narrative + sigRows are already rendered live on the same page; we're just mirroring them into the modal/PDF instead of fetching dead data. No DB / RLS / edge-function changes.

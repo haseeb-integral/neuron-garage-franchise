@@ -90,11 +90,12 @@ function metricRowCount(table: string, friendly: string): MetricDef {
       );
       const count = value.count ?? null;
       const t = DOMAIN_THRESHOLDS[table];
+      const err = value.error?.message ?? null;
       return {
         raw: count,
-        display: `${fmtNum(count)} rows`,
-        status: t ? checkRowCount(count, t) : count != null && count > 0 ? "green" : "red",
-        error: value.error?.message ?? null,
+        display: err ? "—" : `${fmtNum(count)} rows`,
+        status: err ? "unknown" : t ? checkRowCount(count, t) : count != null && count > 0 ? "green" : "red",
+        error: err,
         ms,
         note: friendly,
       };

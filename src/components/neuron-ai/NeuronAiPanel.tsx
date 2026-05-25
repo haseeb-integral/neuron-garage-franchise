@@ -148,11 +148,9 @@ export function NeuronAiPanel() {
         <div ref={scrollRef} className="flex-1 overflow-y-auto bg-white px-5 py-6">
           {messages.length === 0 ? (
             <WelcomeState
-              onPick={(prompt) => {
-                setInput(prompt);
-                inputRef.current?.focus();
-              }}
+              onPick={(prompt) => handleSend(prompt)}
               routeLabel={routeLabel}
+              suggestions={ROUTE_SUGGESTIONS[screenContext.route] ?? DEFAULT_SUGGESTIONS}
             />
           ) : (
             <div className="space-y-4">

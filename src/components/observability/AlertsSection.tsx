@@ -118,11 +118,10 @@ export function AlertsSection() {
 
 
 
-      {error && (
-        <div className="rounded-xl border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-[12px] text-[#dc2626]">
-          {error}
-        </div>
-      )}
+      {error && (() => {
+        const f = friendlyError(error);
+        return <FriendlyErrorPanel message={f.message} hint={f.hint} onRetry={loadAll} />;
+      })()}
 
       {/* ── 30-day history ──────────────────────────────────────────────── */}
       <section className="rounded-3xl border border-[#eef2f7] bg-white p-6">

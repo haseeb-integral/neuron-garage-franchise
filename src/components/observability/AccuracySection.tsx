@@ -423,7 +423,15 @@ function OutlierFinder() {
     <section className="rounded-3xl border border-[#eef2f7] bg-white p-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h3 className="text-[16px] font-black text-[#0b1a36]">Outlier finder</h3>
+          <div className="flex items-center gap-1.5">
+            <h3 className="text-[16px] font-black text-[#0b1a36]">Outlier finder</h3>
+            <InfoHint title="What's an outlier?">
+              A value that's unusually far from the average. We use "more than 3 standard deviations" — a statistics
+              shorthand that means roughly "would happen by chance less than 1 time in 300." Pick a column, hit
+              <strong> Find outliers</strong>, and we list the most extreme cities. Real cities sometimes show up here
+              (NYC for density), but unfamiliar surprises are often data bugs worth checking.
+            </InfoHint>
+          </div>
           <p className="mt-1 max-w-md text-[12px] leading-relaxed text-[#526078]">
             Surfaces cities more than 3 standard deviations from the national mean
             on the chosen column. Outliers are usually either bugs or interesting

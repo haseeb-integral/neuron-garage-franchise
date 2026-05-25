@@ -24,10 +24,10 @@ import {
  */
 
 const FRIENDLY: Record<HealthStatus, { label: string; tone: string }> = {
-  green: { label: "Healthy", tone: "All checks passing" },
-  yellow: { label: "Watch", tone: "Some checks below target" },
-  red: { label: "Needs attention", tone: "One or more checks failing" },
-  unknown: { label: "Checking…", tone: "Running checks" },
+  green: { label: "All systems healthy", tone: "Every data source is fresh, full, and within expected ranges." },
+  yellow: { label: "Minor issues — review when you can", tone: "A soft target was missed. Nothing is broken." },
+  red: { label: "Something needs a human", tone: "At least one data source is empty, stale, or unreachable." },
+  unknown: { label: "Running checks…", tone: "Live values are still loading." },
 };
 
 const PLAIN_ENGLISH: Record<string, string> = {

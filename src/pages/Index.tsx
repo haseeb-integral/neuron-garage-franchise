@@ -614,7 +614,6 @@ const Dashboard = () => {
               {/* Stacked bar */}
               <div className="flex h-3 w-full overflow-hidden rounded-full" style={{ background: "#eef2f7" }}>
                 <div style={{ width: `${pct(tVerified)}%`, background: "#0d7a5f" }} />
-                <div style={{ width: `${pct(tNeeds)}%`, background: "#e8a23a" }} />
                 <div style={{ width: `${pct(tOther)}%`, background: "#cbd5e1" }} />
               </div>
               <ul className="mt-4 space-y-2 text-[12.5px]">
@@ -629,15 +628,6 @@ const Dashboard = () => {
                 </li>
                 <li className="flex items-center justify-between">
                   <span className="flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#e8a23a" }} />
-                    <span style={{ color: INK }}>Needs enrichment</span>
-                  </span>
-                  <span className="tabular-nums font-bold" style={{ color: INK }}>
-                    {fmt(tNeeds)} <span style={{ color: MUTED }}>· {pct(tNeeds)}%</span>
-                  </span>
-                </li>
-                <li className="flex items-center justify-between">
-                  <span className="flex items-center gap-2">
                     <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#cbd5e1" }} />
                     <span style={{ color: INK }}>Other / unverified</span>
                   </span>
@@ -646,6 +636,7 @@ const Dashboard = () => {
                   </span>
                 </li>
               </ul>
+
               <div className="mt-3 flex items-center gap-1.5 text-[11.5px]" style={{ color: MUTED }}>
                 <TrendingUp size={12} /> {fmt(tTotal)} total teachers tracked
               </div>

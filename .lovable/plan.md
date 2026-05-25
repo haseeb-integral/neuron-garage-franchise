@@ -1,36 +1,41 @@
-Plan: Clarify preset behavior (weight recipes, not sort overrides) across the City Search UI
+# Responsive UI fixes (3 spots)
 
-### Problem
-Users select a preset like "Demand-Heavy" and expect the table to sort by Demand score descending. In reality, presets are **weight recipes** that feed the composite score — Demand-Heavy means Demand counts 60% in the composite, and the table is still sorted by that composite. This causes confusion.
+## 1. CityTopBar — notification + user avatar overflowing right edge
 
-### Solution
-Keep the exact same ranking/composite behavior. Only change text/copy in 3 places to make the "weight recipe → composite rank" flow unmistakable.
+File: `src/components/city-scoring/CityTopBar.tsx`
 
-### Changes
+Today everything sits in a single non-wrapping flex row: search → Export Source Data → Market Report → Bell → Avatar. At narrow viewports the bell + Haseeb avatar get pushed past the viewport edge (visible in screenshots 1 & 2).
 
-1. **Preset descriptions (`src/lib/scoringPresets.ts`)**
-   Rewrite `PRESET_DESCRIPTIONS` so every description ends with an explicit "…counts X% toward the composite rank" clause instead of open-ended goal language.
-   - "Balanced": "All three signals share roughly equal weight in the composite rank."
-   - "Demand-Heavy": "Demand counts 60% in the composite — still ranked by overall score, not demand alone."
-   - "TAM-Heavy": "TAM counts 50% in the composite — still ranked by overall score, not teachers alone."
-   - "Blue Ocean": "Competition counts 60% in the composite — still ranked by overall score, not saturation alone."
-   - "Quick Launch": "TAM 45% + Competition 40% in the composite — still ranked by overall score."
-   - "High Upside": "Demand 45% + Competition 40% in the composite — still ranked by overall score."
+Change:
+- Wrap the row with `flex-wrap` and give the search `min-w-0 flex-1`.
+- Group bell + avatar in their own `ml-auto` cluster so they always anchor to the right and stay together.
+- On `< md`, hide the avatar's name+role text (already conditional) and let action buttons collapse to icon-only via `<span className="hidden sm:inline">` on labels.
+- Keep Market Report visible at all widths but allow it to drop to a second line via `flex-wrap` rather than overflow.
 
-2. **Preset tile explainer (`src/components/city-scoring/CityWeightsPanel.tsx`, line ~155)**
-   Rewrite the paragraph inside the blue "6 Presets" callout. Replace the generic "recipe…re-rank cities" copy with a sentence that explicitly states the table stays sorted by the **composite score** and the preset only changes how much each category contributes to that composite.
+Mirror the same `ml-auto` grouping in `src/components/PageHeader.tsx` for the Teacher Search header so bell + avatar always sit hard-right and don't get squeezed by the Market Report / Saved Lists action cluster.
 
-3. **Yellow sub-metric override banner (`src/components/city-scoring/RankedMarketsList.tsx`, lines 123–124)**
-   Rewrite from:
-   > "Re-ranked with your weights — this page recomputed from your sub-metric edits."
-   To something like:
-   > "Composite re-ranked with your weights — cities ordered by the new overall score, not by any single metric."
+## 2. City Scoring → Scoring Weights header row messed up on mobile
 
-### Out of scope
-- No code/algorithm changes. Ranking, tiers, composite math stay exactly the same.
-- No UI layout changes beyond the text strings above.
+File: `src/components/city-scoring/CityWeightsPanel.tsx` (lines 97–131)
 
-### Files touched
-- `src/lib/scoringPresets.ts` (PRESET_DESCRIPTIONS copy)
-- `src/components/city-scoring/CityWeightsPanel.tsx` (preset explainer paragraph)
-- `src/components/city-scoring/RankedMarketsList.tsx` (yellow banner text)
+The right-side control cluster (`Total Weight`, `Reset to Default`, `Save Search`, `Apply Weights`) is `flex-wrap` with mixed text + buttons of different heights, producing the cramped layout in the user's screenshot.
+
+Change:
+- On mobile: stack into two clean rows — row 1 = "Total Weight: 100% • Reset to Default" (text/link), row 2 = Save Search + Apply Weights as equal-width buttons (`flex-1`).
+- Use `grid grid-cols-2 gap-2 md:flex md:items-center md:gap-3` for the buttons so they're full-width on phones, inline on desktop.
+- Move `PreviewBadge` under the Total Weight line on mobile (it's currently inline and adds horizontal pressure).
+- Keep desktop layout identical.
+
+## 3. Teacher Search → Actions cards squished
+
+Files: `src/pages/TeacherProspects.tsx` (line 415), `src/components/teacher-prospects/NextBestActionStrip.tsx` (line 125)
+
+`NextBestActionStrip` sits in the right column of a 2-col grid (`md:grid-cols-2`), and inside it uses `md:grid-cols-2 lg:grid-cols-4` — so each card ends up ~120px wide, making "Export current view" wrap into a vertical word column (visible in screenshot 3).
+
+Change:
+- In `TeacherProspects.tsx`: change the wrapping grid from `md:grid-cols-2` to `lg:grid-cols-2` so Funnel + Actions stack on tablets and only sit side-by-side at `lg+`, giving cards real width.
+- In `NextBestActionStrip.tsx`: change inner grid from `md:grid-cols-2 lg:grid-cols-4` to `sm:grid-cols-2 xl:grid-cols-4`. At `lg` (when sharing a row with Funnel) it renders 2 columns of comfortably-sized cards; on full-width mobile/tablet it also goes 2-col cleanly.
+- Allow card titles to wrap naturally (`leading-tight`) instead of being forced into ultra-narrow columns.
+
+## Out of scope
+No logic, data, or backend changes. Pure layout/Tailwind class adjustments.

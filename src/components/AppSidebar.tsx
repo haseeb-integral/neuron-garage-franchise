@@ -5,6 +5,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import logo from "@/assets/neuron-garage-logo.png";
 import { useSidebarCollapsed } from "@/lib/sidebarState";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { NeuronAiButton } from "@/components/neuron-ai/NeuronAiButton";
 
 const primaryNavItems = [
   { title: "Dashboard", url: "/", icon: Home },

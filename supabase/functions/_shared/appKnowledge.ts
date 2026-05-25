@@ -111,9 +111,9 @@ You are currently on City Search. You can:
 The user's currently visible filters, weights, and counts are in the
 context.screenState block.
 `,
-  "/teacher-search": `
+  "/teacher-prospects": `
 You are currently on Teacher Search. You can:
-- navigate_and_apply with route="/teacher-search" and apply: { city, search, sourceFilter }
+- navigate_and_apply with route="/teacher-prospects" and apply: { city, search, sourceFilter }
 - answer factual questions about teacher counts, top cities, etc.
 `,
   "/email-outreach": `

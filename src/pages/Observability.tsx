@@ -10,7 +10,7 @@ import { AlertsSection } from "@/components/observability/AlertsSection";
 import { PageHeader } from "@/components/PageHeader";
 import { InfoHint } from "@/components/observability/InfoHint";
 import { SimpleMode } from "@/components/observability/SimpleMode";
-import { SchoolCoverageByCity } from "@/components/observability/SchoolCoverageByCity";
+
 import {
   ObservabilityAiProvider,
   AskAiButton,
@@ -272,7 +272,7 @@ export default function Observability() {
         <div className="mt-5 space-y-4">
           <IssuesPanel issues={allIssues} overall={overall} />
 
-          <SchoolCoverageByCity />
+
 
           <div className="grid gap-3">
             {DOMAINS.map((d) => {

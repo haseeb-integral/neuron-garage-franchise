@@ -1,87 +1,117 @@
-## What I'm doing (and what I'm NOT)
 
-**NOT doing:**
-- Not renaming any internal key (`franchiseeSupply`, `competitiveLandscape`, `demand` all stay).
-- Not changing scoring math, database columns, types, or JSON tool schemas.
-- Not overriding any Brett decision. The friendly labels **are** Brett's standard — `cityScoringPageHelpers.ts:95–97` is the source of truth, and 10+ files already use them. Three edge functions just never got the memo.
-- Not deleting `_ARCHIVED_DO_NOT_USE/` (only `README.md` references it; deferring per your decision).
-- Not building a global top-bar Ask AI (deferred per your decision).
+# Step 2 — Global "Neuron AI" assistant (v1)
 
-**Doing:**
-1. Stop Ask AI from showing internal keys to the user.
-2. Fix "0 markets found" after Ask AI sets a tier filter.
-3. Start a Haseeb→Brett changelog file at repo root.
+Confirmed inputs from you:
+- **Button placement:** inline next to the sidebar collapse arrow (top-left of the sidebar header). Visible whether the sidebar is expanded or collapsed.
+- **First open:** ChatGPT-style welcome — short greeting + a list of slash commands the user can click.
+- **Action scope:** reads, navigations, filter/weight changes, and cheap writes behind a Confirm preview. NO multi-step plans, NO deep-reasoning model, NO charts/images. (Locked from the previous plan.)
+- **Knowledge brain reviewer:** Haseeb now; Brett later.
+- **City Search Ask AI bar:** stays for ~2 weeks alongside Global, then retired.
 
 ---
 
-## 1. Stop Ask AI from leaking internal keys
+## What gets built
 
-### Files
-- `supabase/functions/ai-city-query/index.ts`
-- `supabase/functions/ask-city/index.ts`
-- `supabase/functions/city-analyst/index.ts`
+### 1. The button (top-left, next to the collapse arrow)
+Small sparkle pill labeled **"Neuron AI"** with the ⌘K hint. Lives inside `AppSidebar.tsx` next to the existing collapse chevron. When the sidebar is collapsed (icon-only mode), the button shrinks to just the sparkle icon. Clicking it opens the assistant panel. Keyboard shortcut **⌘K / Ctrl+K** opens it from anywhere.
 
-### Change
-In each function:
-- Add a `USER_FACING_LABELS = { demand: "Demand", franchiseeSupply: "TAM Teachers", competitiveLandscape: "Competitive Opportunity" }` map.
-- Add a rule to the system prompt: *"In any prose written to the user (summary, reasoning_steps, dataGaps), always use the friendly labels. The JSON tool-call fields keep the original keys — do NOT change those."*
-- After the model returns, post-process `summary`, every `reasoning_steps[i]`, and `dataGaps[]` with a string replace from internal key → friendly label as a safety net.
+### 2. The assistant panel (right-side slide-in sheet)
+460px wide on desktop, full-screen on mobile. Built on the existing `Sheet` component (same pattern as the User's Guide `AiAssistant`).
 
-`AiAnswerCard.tsx` already maps chips correctly — no change there.
+**On first open — ChatGPT-style welcome:**
+> 👋 Hi, I'm Neuron AI. I can help you across the whole app.
+>
+> **Try one of these:**
+> - `/find` — find cities, teachers, or candidates
+> - `/why` — explain a score or a tier
+> - `/explain` — walk me through a feature
+> - `/add` — add to watchlist or a campaign
+> - `/stage` — change a candidate's pipeline stage
+>
+> Or just type your question.
 
-### Verification
-- Re-run the screenshot query. Expect reasoning to read "increase **TAM Teachers** and decrease **Competitive Opportunity**" instead of the raw keys.
-- Sanity check: log the raw JSON response in dev console; confirm `weightAdjustments.franchiseeSupply` is still present (proves we didn't touch the contract).
+The slash commands aren't required — they're discoverability. The user can also type freeform. Clicking a slash chip pre-fills the input.
 
-### Risk
-Low. Reversible by reverting the three function files.
+**On every turn the assistant knows:**
+- The current route (`/city-scoring`, `/teacher-search`, etc.)
+- The current screen's state (filters, selected row, visible counts) via a tiny `getScreenContext()` hook each page registers
+- The signed-in user + their role (admin / manager / viewer)
 
----
+**Three response modes:**
+1. **Answer** — factual / explainer. Pure read, no side effects.
+2. **Navigate + apply state** — "OK, going to City Search and filtering Tier A in Texas." Routes + applies state. Shows a one-line summary of what was applied.
+3. **Propose action** — for writes. Shows a preview card with what will happen, a **Confirm** button, and a **Cancel** button. Nothing writes until Confirm. Allowed v1 writes: add/remove from city watchlist, change candidate pipeline stage, queue an email send.
 
-## 2. Fix "0 markets found" after AI tier filter
+**Clarifying questions:** when the AI can't tell what you meant (e.g. "find Frisco" — Texas or Colorado?), it asks one short follow-up with 2-3 chip suggestions instead of guessing.
 
-### Files (read first, then surgical edit)
-- `src/hooks/citySearch/useCityRanking.ts` (filter block)
-- `src/pages/CityScoring.tsx` (where `aiResult.filters.tier` is applied)
+### 3. The knowledge brain
+New file `supabase/functions/_shared/appKnowledge.ts` loaded by the assistant on every call. Plain prose, small (~4 KB), human-readable so Brett can review it without TypeScript knowledge. Contents:
+- **App purpose:** what Neuron Garage is, who it's for
+- **The 4 main screens:** City Search, Teacher Search, Email Outreach, Candidate Pipeline — what each does, what data it reads, what actions it offers
+- **People:** Sam (data/scoring owner), Kaylie (ops), Brett (product lead, approver), Haseeb (engineering lead, approver)
+- **Glossary:** Tier A–D, TAM Teachers, Demand, Competitive Opportunity, the 12 sub-metrics
+- **Data sources:** what's live (Census, NCES, BLS, BEA, Apify, Smartlead), what's stub
+- **Hard limits:** no scoring math changes, no destructive deletes, no auth changes, no cross-user data exposure
 
-### Root cause (to confirm by reading)
-AI sets `filters.tier = "A"` based on pre-reweight tiers. Page re-ranks under new weights, only 5 cities are now Tier A. Filter likely compares against the stale base-tier field on the row, so 0 matches. Weighting Preview ribbon correctly shows the 5 cities → data exists.
+I'll draft this; you review; Brett re-reviews on his next pass.
 
-### Change
-- Make the tier filter read the **re-ranked** tier (the one computed from the new composite), not the base tier.
-- When the combined filter returns 0 rows, render an inline notice in the table:
-  *"Your filter `tier: A` matches 0 cities under these weights — showing Tier A + B instead."*
-  and widen automatically. No silent empty grid.
+### 4. The edge functions
+- **`supabase/functions/neuron-ai/index.ts`** — main assistant call. Uses `google/gemini-3-flash-preview` (cheap, fast, good enough). Tools: `answer`, `navigate_and_apply`, `propose_action`, `clarify`. For `propose_action`, returns a preview object only — no DB write.
+- **`supabase/functions/neuron-ai-confirm/index.ts`** — executes a previously-previewed action after the user clicks Confirm. Writes the row + appends to `ai_action_log`. Role-gated server-side.
 
-### Verification
-- Same screenshot query → table populates with the 5 Tier A cities from the preview ribbon.
-- Unit test for the re-tier filter case.
+### 5. Database (one migration)
+- `ai_action_log (id, user_id, route, action_type, payload jsonb, status, error, created_at)` — RLS: users see only their own rows; admins see all.
+- `ai_threads (id, user_id, route_at_start, created_at, last_message_at)` + `ai_thread_messages (id, thread_id, role, content, created_at)` — for cross-screen thread persistence; RLS user-scoped.
 
-### Risk
-Low–medium. Filter logic only, no scoring math.
-
----
-
-## 3. Haseeb → Brett changelog
-
-### File
-- `CHANGELOG_HASEEB.md` at repo root (new file).
-
-### Format
-Reverse-chronological. One entry per change with: date · what · why · files touched · risk · how to revert. First two entries today: this fix + the dashboard hint fix from earlier.
-
-### Why this and not adding to README
-- Keeps Brett's README clean.
-- Single discoverable file Brett can scan in 30 seconds.
-- Not in `_ARCHIVED_DO_NOT_USE/`; doesn't conflict with the memory rule (you explicitly asked for it).
-
-### Risk
-Zero. Pure documentation.
+### 6. Per-page screen-context hooks
+Each of the 4 main pages exposes a tiny `useNeuronAiContext()` that returns the page's current filters + selected row + counts. The global assistant reads this so it always has accurate context. No behavior change to those pages.
 
 ---
 
-## Order of operations
-1. Create `CHANGELOG_HASEEB.md` with today's two entries.
-2. Patch the three edge functions + deploy.
-3. Read the two ranking files, fix the tier filter + add empty-state notice.
-4. Live-test in the preview with the exact screenshot query and report back what changed.
+## Files
+
+**New:**
+- `src/components/neuron-ai/NeuronAiButton.tsx` — the sidebar pill button
+- `src/components/neuron-ai/NeuronAiPanel.tsx` — the slide-in chat panel (welcome + slash commands + message thread + confirm cards)
+- `src/components/neuron-ai/NeuronAiProvider.tsx` — context provider (open/close state, current screen context, keyboard shortcut)
+- `src/hooks/useNeuronAi.ts` — thread state, screen-context collector, function caller
+- `src/hooks/useNeuronAiContext.ts` — registry each page calls to publish its current state
+- `supabase/functions/_shared/appKnowledge.ts` — the knowledge brain (prose)
+- `supabase/functions/neuron-ai/index.ts` — main assistant edge function
+- `supabase/functions/neuron-ai-confirm/index.ts` — confirm-and-execute endpoint
+
+**Light edits:**
+- `src/App.tsx` — wrap with `NeuronAiProvider`
+- `src/components/AppSidebar.tsx` — place the button next to the collapse chevron
+- `src/components/AppLayout.tsx` — mount the panel
+- `src/pages/CityScoring.tsx`, `src/pages/TeacherProspects.tsx`, `src/pages/EmailOutreachV2.tsx`, `src/pages/CandidatePipeline.tsx` — register screen context (tiny hook call each, no behavior change)
+- `CHANGELOG_HASEEB.md` — log every decision for Brett
+
+---
+
+## What's deliberately NOT in v1
+
+- Multi-step agentic plans ("find top 3 then queue enrichment for each")
+- Deep-reasoning model calls (`gemini-2.5-pro`)
+- Chart / image generation
+- Voice in/out
+- Full natural-language-to-SQL across all tables
+- Streaming responses (v1 returns the full answer at once; can add streaming later if you want)
+
+All of these stay deferred per your "defer expensive and very expensive" call.
+
+---
+
+## Risk
+
+Low-medium. The new code is additive — nothing existing changes behavior. The only failure modes:
+- Edge function fails → assistant shows an error toast, app keeps working
+- User confirms a write → logged to `ai_action_log` so we can audit/undo
+- Role gate is enforced server-side, not just in the UI
+
+---
+
+## What I need from you before I build
+
+Nothing — your last message had the two answers I needed. Switch to build mode and I'll ship the whole Step 2 in one go (button + panel + welcome + slash commands + edge function + knowledge brain + DB migration + screen-context hooks for all 4 pages).
+

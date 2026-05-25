@@ -1195,7 +1195,11 @@ const CityScoring = () => {
     const isEmpty = rawVal === undefined || rawVal === null || rawVal === "" ;
     const cfg = SIGNAL_DISPLAY[key];
     const value = isEmpty ? "—" : (cfg ? formatSignalValue(rawVal, cfg.format) : String(rawVal));
-    const benchmark = isEmpty ? null : benchmarkBand(String(rawVal), cfg);
+    let benchmark = isEmpty ? null : benchmarkBand(String(rawVal), cfg);
+    // Every city has many summer camps — show as neutral/yellow until we have better data.
+    if (key === "csi_local_camp_estimate" && !isEmpty) {
+      benchmark = { label: "Many Local Summer Camps", tone: "mid" };
+    }
     return {
       key,
       label: meta?.label ?? key,

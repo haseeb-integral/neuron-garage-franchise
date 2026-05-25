@@ -186,7 +186,9 @@ export async function loadLiveRankedMarkets(_opts?: { includeExtras?: boolean })
     .order("composite_score_default", { ascending: false, nullsFirst: false })
     .limit(2000);
 
+  const t0 = performance.now();
   const { data: scoredRows, error: scoredErr } = await query;
+  const queryMs = Math.round(performance.now() - t0);
 
   // Telemetry breadcrumb so next time anyone reports "no data" we can read
   // exactly what happened from their browser console.
@@ -200,6 +202,17 @@ export async function loadLiveRankedMarkets(_opts?: { includeExtras?: boolean })
       : null,
     error: scoredErr?.message ?? null,
   });
+
+  // Surface to the manager-only <DbDebugFooter />.
+  void import("@/lib/dbHealth/queryLogger").then(({ logDbQuery }) =>
+    logDbQuery({
+      label: "loadLiveRankedMarkets",
+      table: "us_cities_scored",
+      rowCount: scoredRows?.length ?? 0,
+      ms: queryMs,
+      error: scoredErr?.message ?? null,
+    }),
+  );
 
   if (scoredErr) {
     // Throw so React Query surfaces an error state instead of rendering

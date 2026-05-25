@@ -57,9 +57,13 @@ async function fetchCensusForPlace(stateFips: string, placeFips: string) {
   const url = `https://api.census.gov/data/${CENSUS_VINTAGE}/acs/acs5?get=${vars.join(",")}&for=place:${placeFips}&in=state:${stateFips}&key=${CENSUS_KEY}`;
   const r = await fetch(url);
   if (!r.ok) return { data: null, error: `Census ${r.status}` };
-  const arr = await r.json() as string[][];
+  const text = await r.text();
+  if (!text || !text.trim().startsWith("[")) return { data: null, error: "Census empty body" };
+  let arr: string[][];
+  try { arr = JSON.parse(text); } catch { return { data: null, error: "Census bad JSON" }; }
   const row = arr?.[1];
   if (!row) return { data: null, error: "Census empty row" };
+
   const pop = num(row[0]);
   const age5_14 = (num(row[1]) ?? 0) + (num(row[2]) ?? 0) + (num(row[3]) ?? 0) + (num(row[4]) ?? 0);
   const children_5_12 = age5_14 > 0 ? Math.round(age5_14 * 0.8) : null;

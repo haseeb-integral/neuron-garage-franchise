@@ -38,7 +38,7 @@ export async function fetchRules(): Promise<HealthRule[]> {
     .order("severity", { ascending: true })
     .order("name", { ascending: true });
   if (error) throw error;
-  return (data ?? []) as HealthRule[];
+  return (data ?? []) as unknown as HealthRule[];
 }
 
 export async function runRule(name: string): Promise<RuleResult> {

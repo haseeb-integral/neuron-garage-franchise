@@ -67,33 +67,55 @@ export default function DbHealth() {
         </div>
       </header>
 
-      <div className="rounded-2xl border border-[#eef2f7] bg-[#f7faff] p-3 mb-4 flex flex-wrap gap-2">
-        {DOMAINS.map((d) => (
-          <StatusPill
-            key={d.key}
-            status={perDomain[d.key] ?? "unknown"}
-            label={d.label}
-            onClick={() => scrollTo(`domain-${d.key}`)}
-            compact
-          />
+      <div className="border-b border-[#eef2f7] mb-4 flex gap-4">
+        {(["status", "accuracy"] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`px-1 py-2 text-[13px] font-bold capitalize border-b-2 -mb-px ${
+              tab === t
+                ? "border-[#0757ff] text-[#0b1a36]"
+                : "border-transparent text-[#526078] hover:text-[#0b1a36]"
+            }`}
+          >
+            {t === "status" ? "Status & Structure" : "Accuracy"}
+          </button>
         ))}
       </div>
 
-      <div className="grid gap-4">
-        {DOMAINS.map((d) => (
-          <DomainCard
-            // Remount on refresh-all to re-run all metrics
-            key={`${d.key}-${refreshTick}`}
-            domain={d}
-            anchorId={`domain-${d.key}`}
-            onStatusChange={(s) => handleDomainStatus(d.key, s)}
-          />
-        ))}
-      </div>
+      {tab === "status" ? (
+        <>
+          <div className="rounded-2xl border border-[#eef2f7] bg-[#f7faff] p-3 mb-4 flex flex-wrap gap-2">
+            {DOMAINS.map((d) => (
+              <StatusPill
+                key={d.key}
+                status={perDomain[d.key] ?? "unknown"}
+                label={d.label}
+                onClick={() => scrollTo(`domain-${d.key}`)}
+                compact
+              />
+            ))}
+          </div>
+
+          <div className="grid gap-4">
+            {DOMAINS.map((d) => (
+              <DomainCard
+                key={`${d.key}-${refreshTick}`}
+                domain={d}
+                anchorId={`domain-${d.key}`}
+                onStatusChange={(s) => handleDomainStatus(d.key, s)}
+              />
+            ))}
+          </div>
+        </>
+      ) : (
+        <AccuracyTab />
+      )}
 
       <p className="text-[11px] text-[#94a3b8] mt-6 text-center">
-        Thresholds and queries live in <code>src/lib/dbHealth/</code> — tune them
-        there. Send this URL to anyone asking "is the data healthy?"
+        Thresholds, queries, and invariant rules live in <code>src/lib/dbHealth/</code>{" "}
+        and the <code>db_health_rules</code> table. Send this URL to anyone asking
+        "is the data healthy?"
       </p>
     </div>
   );

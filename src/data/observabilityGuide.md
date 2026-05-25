@@ -16,7 +16,7 @@ Instead of someone manually spot‑checking spreadsheets every week, this tool d
 
 ## How to open it
 
-In the left sidebar, click **Data Observability** (the activity / heartbeat icon). Access is restricted to managers (Brett, Haseeb, and other admins).
+In the left sidebar, click **Data Observability** (the activity / heartbeat icon). Every registered user of Neuron Garage is a manager and has access — currently that's Kaylie, Sam, Brett, and Haseeb.
 
 ---
 
@@ -93,8 +93,7 @@ No login required to read it — everything important is in the email itself.
 
 ## Who can see what
 
-- **Managers / admins** (Brett, Haseeb, etc.) — full access to the Data Observability page and all controls.
-- **Regular team members** — don't see the page in their sidebar. This is intentional: it keeps the operational side of data quality with the people responsible for fixing it.
+- **Everyone on the team** — Kaylie, Sam, Brett, and Haseeb are all managers and have full access to the Data Observability page. Any future teammate added to Neuron Garage automatically becomes a manager too.
 - **The weekly email** — currently sent to Brett and Sam only. Easy to add more recipients if you want them.
 
 ---

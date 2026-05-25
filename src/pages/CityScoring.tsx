@@ -823,6 +823,7 @@ const CityScoring = () => {
         "median_household_income",
         "dual_working_families_pct",
         "college_degree_pct",
+        "stem_job_concentration",
         // school_district_count removed 2026-05-22 — not in any live category
         "public_elementary_count",
         "private_elementary_count",

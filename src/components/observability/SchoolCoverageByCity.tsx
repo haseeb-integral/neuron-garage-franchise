@@ -115,16 +115,20 @@ export function SchoolCoverageByCity() {
 }
 
 function PctChip({ pct }: { pct: number }) {
+  // Neutral baseline: 0% just means "not enriched yet" — not a failure.
+  // Color only kicks in once there's real progress to celebrate.
   const color =
-    pct >= 70 ? { bg: "#ecfdf5", fg: "#0a8f5a" } :
-    pct >= 30 ? { bg: "#fffbeb", fg: "#b7791f" } :
-                { bg: "#fef2f2", fg: "#dc2626" };
+    pct === 0   ? { bg: "#f1f5f9", fg: "#64748b" } :
+    pct >= 70   ? { bg: "#ecfdf5", fg: "#0a8f5a" } :
+    pct >= 30   ? { bg: "#eef4ff", fg: "#174be8" } :
+                  { bg: "#f7faff", fg: "#526078" };
   return (
     <span
       className="inline-flex min-w-[42px] justify-center rounded-full px-2 py-0.5 text-[10.5px] font-bold tabular-nums"
       style={{ background: color.bg, color: color.fg }}
     >
-      {pct}%
+      {pct === 0 ? "—" : `${pct}%`}
     </span>
   );
 }
+

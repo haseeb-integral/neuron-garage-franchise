@@ -118,12 +118,18 @@ export function CityTable({ cities, onSelectCity, compareMode, selectedForCompar
               <TableCell style={{ color: '#6c757d' }}>{city.childrenPct}%</TableCell>
               <TableCell style={{ color: '#6c757d' }}>${city.medianIncome.toLocaleString()}</TableCell>
               <TableCell style={{ color: '#6c757d' }}>{city.competitorCount}</TableCell>
+              <TableCell>
+                <SchoolCoverageBadge
+                  cov={lookupCoverage(coverage, city.city, city.state)}
+                  loading={coverage.loading}
+                />
+              </TableCell>
               <TableCell><StickyNote size={14} style={{ color: '#adb5bd' }} /></TableCell>
             </TableRow>
           ))}
           {sorted.length === 0 && (
             <TableRow>
-              <TableCell colSpan={compareMode ? 12 : 11} className="text-center py-8" style={{ color: '#adb5bd' }}>
+              <TableCell colSpan={compareMode ? 13 : 12} className="text-center py-8" style={{ color: '#adb5bd' }}>
                 No cities match your filters.
               </TableCell>
             </TableRow>

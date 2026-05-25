@@ -335,7 +335,7 @@ function SampleInspector() {
           {loading ? "Rolling…" : row ? "Roll again" : "Pick a random city"}
         </button>
       </header>
-      {error && <div className="mt-3 text-[11px] text-[#dc2626]">{error}</div>}
+      {error && (() => { const f = friendlyError(error); return <FriendlyErrorPanel message={f.message} hint={f.hint} onRetry={roll} />; })()}
       {row && (
         <div className="mt-4">
           <div className="mb-2 text-[14px] font-bold text-[#0b1a36]">

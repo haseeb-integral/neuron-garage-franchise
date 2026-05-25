@@ -67,7 +67,7 @@ export function CityWeightsPanel({
 
   return (
     <div className="mb-4 rounded-lg bg-white border border-[#eef2f7] p-4">
-      <div className="mb-3 flex items-start justify-between gap-4">
+      <div className="mb-3 flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div className="flex items-start gap-3 min-w-0">
           <div className="relative shrink-0" style={{ width: 56, height: 56 }} aria-hidden>
             <svg width="56" height="56" viewBox="0 0 56 56">
@@ -94,8 +94,8 @@ export function CityWeightsPanel({
             )}
           </div>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-2">
-          <div className="flex items-center gap-3">
+        <div className="flex md:shrink-0 flex-col md:items-end gap-2 w-full md:w-auto">
+          <div className="flex items-center gap-2 md:gap-3 flex-wrap">
             <span className="text-xs text-[#526078]">
               Total Weight: <span className={totalWeight === 100 ? "text-[#0ea66e] font-medium" : "text-[#ea580c] font-medium"}>{totalWeight}%</span>
             </span>
@@ -124,12 +124,13 @@ export function CityWeightsPanel({
             </Button>
           </div>
           {weightsPending && totalWeight === 100 && (
-            <p className="text-[11px] text-[#526078] leading-snug text-right max-w-[360px]">
+            <p className="text-[11px] text-[#526078] leading-snug md:text-right max-w-[360px]">
               <span className="font-semibold text-[#07142f]">Showing previous results.</span> Click <span className="font-semibold text-[#174be8]">Apply Weights</span> to recompute the table, map, and scores.
             </p>
           )}
         </div>
       </div>
+
 
       <div className="mb-3">
         <div className="mb-2.5 rounded-md bg-[#f5f8ff] border border-[#dbe4f2] px-3 py-2.5">

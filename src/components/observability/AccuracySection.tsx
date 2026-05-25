@@ -436,7 +436,7 @@ function OutlierFinder() {
           </button>
         </div>
       </header>
-      {error && <div className="mt-3 text-[11px] text-[#dc2626]">{error}</div>}
+      {error && (() => { const f = friendlyError(error); return <FriendlyErrorPanel message={f.message} hint={f.hint} onRetry={run} />; })()}
       {!hasRun && !loading && (
         <div className="mt-4 rounded-xl bg-[#f7faff] p-4 text-[12px] text-[#526078]">
           Pick a column and press <strong>Find outliers</strong>.

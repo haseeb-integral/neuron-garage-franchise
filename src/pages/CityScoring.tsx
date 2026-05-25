@@ -1573,7 +1573,36 @@ const CityScoring = () => {
           totalPages={totalPages}
           pageNumbers={pageNumbers}
           setPage={setPage}
+          activeFilterSummary={[
+            stateFilter !== "All" && `State: ${stateFilter}`,
+            tierFilter !== "All" && `Tier: ${tierFilter}`,
+            nonRegOnly && "Non-registration only",
+            Number(minScore) > 0 && `Min score: ${minScore}`,
+            Number(minPop) > 0 && `Min pop: ${Number(minPop).toLocaleString()}`,
+            cityFilter.trim() && `City: "${cityFilter.trim()}"`,
+            searchTerm.trim() && `Search: "${searchTerm.trim()}"`,
+          ].filter(Boolean).join(" · ") || undefined}
+          hasActiveFilters={
+            stateFilter !== "All" ||
+            tierFilter !== "All" ||
+            nonRegOnly ||
+            Number(minScore) > 0 ||
+            Number(minPop) > 0 ||
+            cityFilter.trim().length > 0 ||
+            searchTerm.trim().length > 0
+          }
+          onClearAllFilters={() => {
+            setStateFilter("All");
+            setTierFilter("All");
+            setNonRegOnly(false);
+            setMinScore(0);
+            setMinPop("");
+            setCityFilter("");
+            setSearchTerm("");
+            toast.success("Filters cleared.");
+          }}
         />
+
 
         {/* Center: Selected Market Detail */}
         <SelectedMarketPanel

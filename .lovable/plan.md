@@ -1,70 +1,87 @@
+## What I'm doing (and what I'm NOT)
 
-# Data Observability Dashboard — Tier 1 + Tier 2
+**NOT doing:**
+- Not renaming any internal key (`franchiseeSupply`, `competitiveLandscape`, `demand` all stay).
+- Not changing scoring math, database columns, types, or JSON tool schemas.
+- Not overriding any Brett decision. The friendly labels **are** Brett's standard — `cityScoringPageHelpers.ts:95–97` is the source of truth, and 10+ files already use them. Three edge functions just never got the memo.
+- Not deleting `_ARCHIVED_DO_NOT_USE/` (only `README.md` references it; deferring per your decision).
+- Not building a global top-bar Ask AI (deferred per your decision).
 
-A dedicated, calm, intuitive page that answers one question at a glance: **"Is our data trustworthy right now?"** Tier 3 (alerts/history) comes in a later sprint.
+**Doing:**
+1. Stop Ask AI from showing internal keys to the user.
+2. Fix "0 markets found" after Ask AI sets a tier filter.
+3. Start a Haseeb→Brett changelog file at repo root.
 
-## What we're building
+---
 
-A new top-level page at `/observability` titled **Data Observability**, designed in a Jony Ive spirit: generous whitespace, one clear focal point, soft shadows, no chart-junk, plain-English labels with quiet "Learn more" affordances. Every metric and rule explains — in one sentence — what it checks, why it matters, and what a green/yellow/red result means.
+## 1. Stop Ask AI from leaking internal keys
 
-Linked in the left sidebar **directly under Candidate Pipeline**, above the divider that separates primary nav from Team Members.
+### Files
+- `supabase/functions/ai-city-query/index.ts`
+- `supabase/functions/ask-city/index.ts`
+- `supabase/functions/city-analyst/index.ts`
 
-## Sprint plan
+### Change
+In each function:
+- Add a `USER_FACING_LABELS = { demand: "Demand", franchiseeSupply: "TAM Teachers", competitiveLandscape: "Competitive Opportunity" }` map.
+- Add a rule to the system prompt: *"In any prose written to the user (summary, reasoning_steps, dataGaps), always use the friendly labels. The JSON tool-call fields keep the original keys — do NOT change those."*
+- After the model returns, post-process `summary`, every `reasoning_steps[i]`, and `dataGaps[]` with a string replace from internal key → friendly label as a safety net.
 
-### Sprint 1 — Tier 1: Status & Structure (the "Vitals")
-The "is the data there, fresh, and shaped right?" layer.
+`AiAnswerCard.tsx` already maps chips correctly — no change there.
 
-1. **Navigation & shell**
-   - Move/repoint sidebar: add **Data Observability** as a primary nav item under Candidate Pipeline, above the divider. Retire the existing "Database Health" utility link (or alias `/db-health` → `/observability`).
-   - New page `src/pages/Observability.tsx` with a hero header: overall **Trust Score** (single number, large, calm), last-checked timestamp, and a "Run all checks now" button.
+### Verification
+- Re-run the screenshot query. Expect reasoning to read "increase **TAM Teachers** and decrease **Competitive Opportunity**" instead of the raw keys.
+- Sanity check: log the raw JSON response in dev console; confirm `weightAdjustments.franchiseeSupply` is still present (proves we didn't touch the contract).
 
-2. **Domain cards (reuse `DomainCard`, restyled)**
-   - One card per core domain: City Scores, Teachers, Public Schools, Private Schools, Demographics, Outreach.
-   - Each card shows: row count, freshness (last updated), null-rate on key columns, and a single status pill (Green / Yellow / Needs attention).
-   - "Show formula" disclosure on every metric — exact SQL + threshold, matching Rule #1 (Show the math).
+### Risk
+Low. Reversible by reverting the three function files.
 
-3. **Plain-English overlay**
-   - Every card has a one-line description ("Tracks the 41,000+ U.S. cities we score. Healthy means counts and freshness are within expected ranges.").
-   - Hover/tap "What does this mean?" → short popover written for a non-technical reader.
+---
 
-4. **Polish pass**
-   - Typography scale, soft dividers, no gradients, single accent color from the existing token system. Mobile-friendly.
+## 2. Fix "0 markets found" after AI tier filter
 
-### Sprint 2 — Tier 2: Accuracy & Rules (the "Inspector")
-The "is the data *correct*?" layer.
+### Files (read first, then surgical edit)
+- `src/hooks/citySearch/useCityRanking.ts` (filter block)
+- `src/pages/CityScoring.tsx` (where `aiResult.filters.tier` is applied)
 
-1. **Rules board**
-   - Surface `db_health_rules` as a clean list grouped by domain. Each rule: name, plain-English description, last result, "Run now," and a "Show SQL" disclosure.
-   - Examples: no duplicate `(city, state)` rows; CSI scores between 0–100; every teacher has a valid email shape; school NCES IDs unique.
+### Root cause (to confirm by reading)
+AI sets `filters.tier = "A"` based on pre-reweight tiers. Page re-ranks under new weights, only 5 cities are now Tier A. Filter likely compares against the stale base-tier field on the row, so 0 matches. Weighting Preview ribbon correctly shows the 5 cities → data exists.
 
-2. **Sample Inspector**
-   - "Show me 10 random rows" per domain with a refresh button. Helps Sam/Kaylie eyeball reality without writing SQL.
+### Change
+- Make the tier filter read the **re-ranked** tier (the one computed from the new composite), not the base tier.
+- When the combined filter returns 0 rows, render an inline notice in the table:
+  *"Your filter `tier: A` matches 0 cities under these weights — showing Tier A + B instead."*
+  and widen automatically. No silent empty grid.
 
-3. **Outlier finder**
-   - Per numeric column: flag rows beyond 3σ. Result shown as a small table with a one-line explanation of why an outlier matters.
+### Verification
+- Same screenshot query → table populates with the 5 Tier A cities from the preview ribbon.
+- Unit test for the re-tier filter case.
 
-4. **Add-a-rule (manager only)**
-   - Simple form: name, domain, description, SQL predicate, severity. Saves to `db_health_rules`. No code deploy needed to add a check.
+### Risk
+Low–medium. Filter logic only, no scoring math.
 
-### Sprint 3 (later, not now) — Tier 3
-History sparklines, scheduled snapshots, incidents log, email/Slack alerts, subscriptions. Most plumbing already exists from the prior pass; we'll wire it into the new page once Tier 1+2 are signed off.
+---
 
-## Design principles for the page
-- One focal Trust Score, then a calm grid of domain cards, then rules below the fold.
-- Every number has a "Show formula" and a "What does this mean?" — no mystery values.
-- Status uses three states only: **Healthy**, **Watch**, **Needs attention**. No traffic-light overload.
-- Manager-only (reuse `useIsManager`); non-managers get a friendly "Restricted" state.
+## 3. Haseeb → Brett changelog
 
-## Technical notes
-- Reuse: `src/components/dbHealth/*`, `src/hooks/dbHealth/*`, `src/lib/dbHealth/*`, existing tables `db_health_rules`, `db_health_history`, `db_health_incidents`.
-- New: `src/pages/Observability.tsx`, `src/components/observability/` (TrustScore, DomainGrid, RuleList, SampleInspector, OutlierFinder, AddRuleDialog).
-- Routing: register `/observability` in `App.tsx`; keep `/db-health` as a redirect for one release.
-- Sidebar: edit `AppSidebar.tsx` — append to `primaryNavItems` (under Candidate Pipeline), remove from `utilityNavItems`.
-- No schema changes required for Sprint 1. Sprint 2 only adds rows via the existing `db_health_rules` table; "Add a rule" uses the existing insert path.
+### File
+- `CHANGELOG_HASEEB.md` at repo root (new file).
 
-## Deliverable per sprint
-- **Sprint 1:** `/observability` live with Trust Score + domain cards + plain-English descriptions + sidebar move.
-- **Sprint 2:** Rules board, Sample Inspector, Outlier finder, Add-a-rule dialog.
-- **Sprint 3 (deferred):** Alerts, history sparklines, subscriptions.
+### Format
+Reverse-chronological. One entry per change with: date · what · why · files touched · risk · how to revert. First two entries today: this fix + the dashboard hint fix from earlier.
 
-Confirm and I'll start Sprint 1.
+### Why this and not adding to README
+- Keeps Brett's README clean.
+- Single discoverable file Brett can scan in 30 seconds.
+- Not in `_ARCHIVED_DO_NOT_USE/`; doesn't conflict with the memory rule (you explicitly asked for it).
+
+### Risk
+Zero. Pure documentation.
+
+---
+
+## Order of operations
+1. Create `CHANGELOG_HASEEB.md` with today's two entries.
+2. Patch the three edge functions + deploy.
+3. Read the two ranking files, fix the tier filter + add empty-state notice.
+4. Live-test in the preview with the exact screenshot query and report back what changed.

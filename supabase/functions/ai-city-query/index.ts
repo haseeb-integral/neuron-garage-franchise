@@ -42,11 +42,35 @@ const corsHeaders = {
 const PILLAR_KEYS = ["demand", "competitiveLandscape", "franchiseeSupply"] as const;
 type PillarKey = typeof PILLAR_KEYS[number];
 
+// User-facing labels. The INTERNAL keys (franchiseeSupply, competitiveLandscape,
+// demand) are the schema contract — never rename them. These labels are what
+// the user reads in summary / reasoning / dataGaps. Source of truth:
+// src/lib/cityScoringPageHelpers.ts (Brett, May 22–24).
+const PILLAR_LABELS: Record<PillarKey, string> = {
+  demand: "Demand",
+  competitiveLandscape: "Competitive Opportunity",
+  franchiseeSupply: "TAM Teachers",
+};
+
 const PILLAR_PURPOSE: Record<PillarKey, string> = {
   demand: "Are there enough affluent families with the right-aged kids?",
   competitiveLandscape: "How crowded is the camp market — opportunity = 100 - saturation.",
   franchiseeSupply: "Are there enough teachers here to recruit as franchise operators?",
 };
+
+// Post-processor: scrub any leaked internal pillar keys out of user-facing
+// prose. Defense-in-depth — the system prompt also forbids them, but models
+// occasionally echo schema keys verbatim. Whole-word, case-insensitive.
+function scrubPillarKeys(text: string): string {
+  if (!text || typeof text !== "string") return text;
+  let out = text;
+  for (const key of PILLAR_KEYS) {
+    const label = PILLAR_LABELS[key];
+    // Match the bare key as a whole word (not as a substring of another id).
+    out = out.replace(new RegExp(`\\b${key}\\b`, "gi"), label);
+  }
+  return out;
+}
 
 type SubMetric = {
   key: string;
@@ -176,7 +200,7 @@ function buildSystemPrompt(
   }).join("\n");
 
   const pillarLines = PILLAR_KEYS.map(
-    (p) => `  - ${p}: ${PILLAR_PURPOSE[p]}`,
+    (p) => `  - internal key: ${p}  →  USER-FACING LABEL: "${PILLAR_LABELS[p]}"  — ${PILLAR_PURPOSE[p]}`,
   ).join("\n");
 
   const topLines = topMarkets
@@ -195,6 +219,7 @@ VOICE RULES (apply to every response):
 - Never claim lived experience, history, or track record. This is a new analytical tool, not a veteran operator. Forbidden phrases: "in our experience", "we've seen", "we have seen", "from experience", "in our view", "we've found", "we would want", "historically we", "in our practice".
 - Instead use neutral analytical framing: "in this analysis", "this analysis suggests", "the data indicates", "the signals suggest", "the model ranks".
 - Speak about the data, not about us. Prefer "the score reflects…" over "we think…".
+- LABEL RULES (strict): In any USER-FACING PROSE — summary, reasoning_steps, dataGaps — ALWAYS use the friendly labels: "Demand", "Competitive Opportunity", "TAM Teachers". NEVER write the raw internal keys "demand", "competitiveLandscape", or "franchiseeSupply" in user-facing prose. The JSON tool-call FIELDS (absoluteWeights.franchiseeSupply, weightAdjustments.competitiveLandscape, etc.) still use the original internal keys exactly — that is the schema contract and must not change. Keys in JSON: internal. Words to the user: friendly labels.
 
 
 THE THREE PILLARS (each city has a 0-100 score per pillar; composite is a weighted blend):
@@ -648,6 +673,21 @@ Deno.serve(async (req) => {
     } else {
       // Default + fallback: treat as apply.
       result = sanitizeApply(parsed);
+    }
+
+    // Safety net: scrub any leaked internal pillar keys out of user-facing
+    // prose. JSON tool fields (absoluteWeights.franchiseeSupply, etc.) are
+    // untouched — only the human-readable strings get relabeled.
+    if (result) {
+      if (typeof result.summary === "string") result.summary = scrubPillarKeys(result.summary);
+      if (Array.isArray(result.reasoning_steps)) {
+        result.reasoning_steps = result.reasoning_steps.map((s: any) =>
+          typeof s === "string" ? scrubPillarKeys(s) : s);
+      }
+      if (Array.isArray(result.dataGaps)) {
+        result.dataGaps = result.dataGaps.map((s: any) =>
+          typeof s === "string" ? scrubPillarKeys(s) : s);
+      }
     }
 
     const finalThreadId = threadId ?? crypto.randomUUID();

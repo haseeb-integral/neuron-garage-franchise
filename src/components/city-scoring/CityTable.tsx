@@ -24,6 +24,10 @@ type RowWithView = CityData & { __view: MarketView };
 export function CityTable({ cities, onSelectCity, compareMode, selectedForCompare, onToggleCompare }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>('compositeScore');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  // One global fetch — see useCitySchoolCoverage. Returns a Map we look up by
+  // (city, state). Cities with no teacher prospects render a dash; this is the
+  // expected case for most rows and tells the user "nothing to enrich here yet."
+  const coverage = useCitySchoolCoverage();
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');

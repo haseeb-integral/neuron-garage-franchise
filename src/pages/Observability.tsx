@@ -56,6 +56,13 @@ export default function Observability() {
   const [perDomainIssues, setPerDomainIssues] = useState<Record<string, DomainIssue[]>>({});
   const [isRunningAll, setIsRunningAll] = useState(false);
   const [tab, setTab] = useState<"status" | "accuracy" | "alerts">("status");
+  const [mode, setMode] = useState<ViewMode>(() => {
+    if (typeof window === "undefined") return "simple";
+    return (localStorage.getItem(MODE_KEY) as ViewMode) || "simple";
+  });
+  useEffect(() => {
+    try { localStorage.setItem(MODE_KEY, mode); } catch {}
+  }, [mode]);
   const refreshersRef = useRef<Record<string, () => Promise<void>>>({});
 
   const overall = useMemo(() => rollup(Object.values(perDomain)), [perDomain]);

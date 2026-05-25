@@ -278,7 +278,7 @@ function RuleRow({
               {rule.sql}
             </pre>
           )}
-          {error && <div className="mt-1 break-words text-[11px] text-[#dc2626]">error: {error}</div>}
+          {error && (() => { const f = friendlyError(error); return <FriendlyErrorPanel message={f.message} hint={f.hint} onRetry={onRun} />; })()}
           {result && result.count > 0 && result.rows.length > 0 && (
             <details className="mt-2">
               <summary className="cursor-pointer text-[11px] text-[#0757ff] hover:underline">

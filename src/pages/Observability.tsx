@@ -219,29 +219,7 @@ export default function Observability() {
 
       {tab === "status" && (
         <div className="mt-5 space-y-4">
-          <div className="flex items-start justify-between gap-3 rounded-xl border border-[#eef2f7] bg-[#f7faff] p-4">
-            <div className="flex items-start gap-3">
-              <Info size={16} className="mt-0.5 shrink-0 text-[#174be8]" strokeWidth={1.75} />
-              <div className="text-[13px] leading-relaxed text-[#07142f]">
-                <p className="font-bold">How to read this page</p>
-                <p className="mt-1 text-[#526078]">
-                  The <strong>Trust Score</strong> above is the percentage of domains currently passing every health
-                  check. Each card below is one domain. Green = within expected ranges, yellow = soft warning, red = at
-                  least one check failing.
-                </p>
-              </div>
-            </div>
-            <AskAiButton
-              section="status"
-              sectionLabel="Status & Structure"
-              suggestions={[
-                "Which domain has the lowest health right now?",
-                "Are any tables stale beyond their SLA?",
-                "Which required columns are under-populated?",
-                "Give me row counts vs expected floors for every domain",
-              ]}
-            />
-          </div>
+          <IssuesPanel issues={allIssues} overall={overall} />
 
           <div className="grid gap-3">
             {DOMAINS.map((d) => {
@@ -249,10 +227,12 @@ export default function Observability() {
               const friendlyDomain = { ...d, description };
               return (
                 <DomainCard
-                  key={`${d.key}-${refreshTick}`}
+                  key={d.key}
                   domain={friendlyDomain}
                   anchorId={`domain-${d.key}`}
                   onStatusChange={(s) => handleDomainStatus(d.key, s)}
+                  onIssuesChange={(issues) => handleDomainIssues(d.key, issues)}
+                  onRegisterRefresh={registerRefresh}
                 />
               );
             })}

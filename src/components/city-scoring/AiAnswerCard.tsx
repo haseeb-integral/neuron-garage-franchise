@@ -76,7 +76,7 @@ export function AiAnswerCard({ result, query, turnCount, onRefine, loading, appl
         </div>
       </div>
 
-      {(filterChips.length > 0 || weightChips.length > 0) && (
+      {(filterChips.length > 0 || weightChips.length > 0 || (result.subMetricBoosts && result.subMetricBoosts.length > 0)) && (
         <div className="flex flex-wrap gap-1.5 mt-3">
           {filterChips.map((c) => (
             <span key={c} className="text-[11px] px-2 py-0.5 rounded-full bg-[#eaf0ff] text-[#174be8] font-medium">
@@ -86,6 +86,11 @@ export function AiAnswerCard({ result, query, turnCount, onRefine, loading, appl
           {weightChips.map((c) => (
             <span key={c} className="text-[11px] px-2 py-0.5 rounded-full bg-[#f1ebff] text-[#7c3aed] font-medium">
               weight · {c}
+            </span>
+          ))}
+          {(result.subMetricBoosts ?? []).map((b) => (
+            <span key={`${b.pillar}:${b.key}`} className="text-[11px] px-2 py-0.5 rounded-full bg-[#eafff4] text-[#0ea66e] font-medium">
+              boost · {b.label} {b.delta > 0 ? "+" : ""}{b.delta}
             </span>
           ))}
         </div>

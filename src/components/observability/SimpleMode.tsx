@@ -4,14 +4,13 @@
 // One-glance view for non-technical users (Brett, Kaylie, Sam). Renders:
 //   - One big Trust Score dial with plain-English verdict
 //   - A friendly tile per data domain (one traffic light, one sentence)
-//   - A "what this means for you" panel
 //   - A nudge to flip to Advanced Mode for the granular per-metric view
 //
 // We deliberately re-run the same metrics under the hood (useDomainMetrics) so
 // Simple and Advanced agree, but we hide row counts / percentages / SQL.
 // ============================================================================
 
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { ArrowRight, CheckCircle2, AlertTriangle, XCircle, Loader2 } from "lucide-react";
 import { DOMAINS, DomainDef } from "@/lib/dbHealth/queries";
 import { HealthStatus, rollup, statusColor } from "@/lib/dbHealth/thresholds";
@@ -33,7 +32,7 @@ const WHAT_IT_POWERS: Record<string, string> = {
   teacher_prospects: "Powers Teacher Search and the outreach campaigns.",
   public_schools: "Powers school directories and lets us attach teachers to schools.",
   candidates: "Powers the Candidate Pipeline kanban board.",
-  city_seed_runs: "Keeps city data refreshed in the background — no user-facing impact when this lags briefly.",
+  city_seed_runs: "Keeps city data refreshed in the background — small lags here don't affect the app.",
 };
 
 const STATUS_VERDICT: Record<HealthStatus, string> = {
@@ -47,42 +46,66 @@ interface Props {
   onSwitchToAdvanced: () => void;
 }
 
+// We need one hook call per domain. DOMAINS is a module-level constant so the
+// hook order is stable across renders — safe by the Rules of Hooks.
 export function SimpleMode({ onSwitchToAdvanced }: Props) {
-  const tiles = DOMAINS.map((d) => <DomainTile key={d.key} domain={d} />);
-  return (
-    <div className="mt-5 space-y-5">
-      <SimpleSummary onSwitchToAdvanced={onSwitchToAdvanced} />
-      <div>
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-[14px] font-black text-[#07142f]">Your data sources</h2>
-          <span className="text-[11px] text-[#526078]">Hover a tile for what it powers.</span>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{tiles}</div>
-      </div>
-      <FooterSwitch onSwitchToAdvanced={onSwitchToAdvanced} />
-    </div>
-  );
-}
-
-// ----------------------------------------------------------------------------
-// Top summary: gauge + plain-English verdict + Ask AI.
-// We re-aggregate from per-tile status via a tiny context store on window —
-// keeping this simple by listening to a custom event the tiles emit.
-// ----------------------------------------------------------------------------
-function SimpleSummary({ onSwitchToAdvanced }: { onSwitchToAdvanced: () => void }) {
-  // Live aggregate computed from per-domain hooks we re-run here.
-  const perDomain = DOMAINS.map((d) => ({ key: d.key, state: useDomainMetrics(d) }));
-  const statuses = perDomain.map((p) => {
-    const vals = Object.values(p.state.results);
-    if (p.state.loading && vals.length === 0) return "unknown" as HealthStatus;
-    return rollup(vals.map((v) => v.status));
+  const perDomain = DOMAINS.map((d) => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const state = useDomainMetrics(d);
+    const vals = Object.values(state.results);
+    const status: HealthStatus =
+      state.loading && vals.length === 0 ? "unknown" : rollup(vals.map((v) => v.status));
+    return { domain: d, status };
   });
+
+  const statuses = perDomain.map((p) => p.status);
   const overall = rollup(statuses);
   const greens = statuses.filter((s) => s === "green").length;
   const yellows = statuses.filter((s) => s === "yellow").length;
   const reds = statuses.filter((s) => s === "red").length;
   const score = statuses.length === 0 ? null : Math.round((greens / statuses.length) * 100);
 
+  return (
+    <div className="mt-5 space-y-5">
+      <SimpleSummary
+        overall={overall}
+        score={score}
+        greens={greens}
+        yellows={yellows}
+        reds={reds}
+        onSwitchToAdvanced={onSwitchToAdvanced}
+      />
+      <div>
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-[14px] font-black text-[#07142f]">Your data sources</h2>
+          <span className="text-[11px] text-[#526078]">One tile per table that powers the app.</span>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {perDomain.map(({ domain, status }) => (
+            <DomainTile key={domain.key} domain={domain} status={status} />
+          ))}
+        </div>
+      </div>
+      <FooterSwitch onSwitchToAdvanced={onSwitchToAdvanced} />
+    </div>
+  );
+}
+
+function SimpleSummary({
+  overall,
+  score,
+  greens,
+  yellows,
+  reds,
+  onSwitchToAdvanced,
+}: {
+  overall: HealthStatus;
+  score: number | null;
+  greens: number;
+  yellows: number;
+  reds: number;
+  onSwitchToAdvanced: () => void;
+}) {
   const headline =
     overall === "unknown"
       ? "Checking your data now…"
@@ -138,10 +161,6 @@ function SimpleSummary({ onSwitchToAdvanced }: { onSwitchToAdvanced: () => void 
   );
 }
 
-// ----------------------------------------------------------------------------
-// Gauge — circular dial showing the trust score, colored by overall status.
-// Pure SVG, no extra libs. Stroke arc from 0–100.
-// ----------------------------------------------------------------------------
 function Gauge({ value, status }: { value: number | null; status: HealthStatus }) {
   const size = 140;
   const stroke = 12;
@@ -190,16 +209,7 @@ function Pill({ color, label }: { color: string; label: string }) {
   );
 }
 
-// ----------------------------------------------------------------------------
-// DomainTile — one friendly card per data source. Big icon, one sentence,
-// no row counts, no SQL.
-// ----------------------------------------------------------------------------
-function DomainTile({ domain }: { domain: DomainDef }) {
-  const { results, loading } = useDomainMetrics(domain);
-  const vals = Object.values(results);
-  const status: HealthStatus =
-    loading && vals.length === 0 ? "unknown" : rollup(vals.map((v) => v.status));
-
+function DomainTile({ domain, status }: { domain: DomainDef; status: HealthStatus }) {
   const label = FRIENDLY_NAME[domain.key] ?? domain.label;
   const powers = WHAT_IT_POWERS[domain.key] ?? domain.description;
 
@@ -232,9 +242,6 @@ function DomainTile({ domain }: { domain: DomainDef }) {
   );
 }
 
-// ----------------------------------------------------------------------------
-// Footer nudge to switch to Advanced Mode.
-// ----------------------------------------------------------------------------
 function FooterSwitch({ onSwitchToAdvanced }: { onSwitchToAdvanced: () => void }) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-xl border border-dashed border-[#cbd5e1] bg-[#f7faff] p-4">

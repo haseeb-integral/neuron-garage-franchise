@@ -158,11 +158,15 @@ function MetricRow({
           {result?.note && (
             <div className="text-[11px] text-[#526078] mt-0.5">{result.note}</div>
           )}
-          {result?.error && (
-            <div className="text-[11px] text-[#dc2626] mt-1 break-words">
-              error: {result.error}
-            </div>
-          )}
+          {result?.error && (() => {
+            const f = friendlyError(result.error);
+            return (
+              <div className="mt-1 rounded-md border border-[#fde68a] bg-[#fffbeb] px-2.5 py-1.5 text-[11px] leading-relaxed text-[#7c4a03]">
+                <div className="font-bold">{f.message}</div>
+                {f.hint && <div className="text-[#92611a]">{f.hint}</div>}
+              </div>
+            );
+          })()}
           <div className="mt-1.5 flex items-center gap-2">
             <button
               onClick={() => setOpen((o) => !o)}

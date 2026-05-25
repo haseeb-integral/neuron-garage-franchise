@@ -87,13 +87,14 @@ function useTeacherSearchSummary() {
         supabase.from("teacher_prospects").select("id", { count: "estimated", head: true }),
         supabase
           .from("teacher_prospects")
-          .select("id", { count: "exact", head: true })
+          .select("id", { count: "estimated", head: true })
           .eq("verification_status", "valid"),
         supabase
           .from("teacher_prospects")
-          .select("id", { count: "exact", head: true })
+          .select("id", { count: "estimated", head: true })
           .eq("needs_email_enrichment", true),
       ]);
+
       const t = total.count ?? 0;
       const v = verified.count ?? 0;
       const n = needs.count ?? 0;

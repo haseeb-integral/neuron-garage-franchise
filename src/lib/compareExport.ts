@@ -113,7 +113,7 @@ export function buildCompareWorkbook(
   exportedAt: Date = new Date(),
 ): XLSX.WorkBook {
   const wb = XLSX.utils.book_new();
-  const data = assemble(markets, appliedSubWeights);
+  const data = assemble(markets, appliedSubWeights, appliedWeights);
   const headerCols = markets.map(cityHeader);
 
   // Sheet 1: Overview

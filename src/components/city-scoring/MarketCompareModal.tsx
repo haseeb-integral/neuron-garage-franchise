@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Download, FileSpreadsheet, FileText } from "lucide-react";
 import { toast } from "sonner";
+import * as XLSX from "xlsx";
 import { buildSeededFallbackSignalsFromScored, type RankedMarket } from "@/lib/cityScoringLiveData";
 import { buildMarketView, buildPillarView, type PillarKey } from "@/lib/marketView";
 import { buildRecomputedPillarScores, type AppliedSubWeights } from "@/lib/recomputedPillars";
 import { tierFromDisplayScore } from "@/lib/cityTiers";
 import { formatMetric } from "@/lib/numberFormat";
+import { buildCompareWorkbook, buildComparePdf, buildCompareFilename } from "@/lib/compareExport";
+import type { CategoryKey } from "@/stores/cityScoringStore";
 
 const CATEGORY_ROWS: { key: PillarKey; label: string }[] = [
   { key: "demand", label: "Demand" },
@@ -25,6 +29,8 @@ interface Props {
   onClose: () => void;
   markets: RankedMarket[];
   appliedSubWeights?: AppliedSubWeights;
+  appliedWeights?: Partial<Record<CategoryKey, number>>;
+  presetName?: string | null;
 }
 
 function shortState(state: string) {
@@ -56,7 +62,7 @@ function Gauge({ value }: { value: number | null }) {
 
 type SignalRow = { value: string; delta: string | null; label: string };
 
-export function MarketCompareModal({ open, onClose, markets, appliedSubWeights }: Props) {
+export function MarketCompareModal({ open, onClose, markets, appliedSubWeights, appliedWeights, presetName }: Props) {
   const [signalsByCity, setSignalsByCity] = useState<Record<string, Record<string, SignalRow>>>({});
   const [signalRows, setSignalRows] = useState<{ key: string; label: string }[]>([]);
   const [loading, setLoading] = useState(false);
@@ -227,13 +233,55 @@ export function MarketCompareModal({ open, onClose, markets, appliedSubWeights }
           </div>
 
           <div className="mt-3 grid grid-cols-2 gap-3">
-            <Button
-              variant="outline"
-              className="h-10 rounded-lg border-[#dbe4f0] text-[#174be8]"
-              onClick={() => toast.success("Comparison export will be connected later.")}
-            >
-              <Download className="mr-2 h-4 w-4" /> Export Comparison
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="h-10 rounded-lg border-[#dbe4f0] text-[#174be8]"
+                >
+                  <Download className="mr-2 h-4 w-4" /> Export Comparison
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56 bg-white">
+                <DropdownMenuItem
+                  onClick={() => {
+                    try {
+                      const wb = buildCompareWorkbook(
+                        markets,
+                        appliedSubWeights ?? {},
+                        appliedWeights ?? {},
+                        presetName ?? null,
+                      );
+                      XLSX.writeFile(wb, buildCompareFilename(markets, "xlsx"), { compression: true });
+                      toast.success("Excel comparison downloaded");
+                    } catch (e) {
+                      console.error("compare xlsx export failed", e);
+                      toast.error("Excel export failed");
+                    }
+                  }}
+                >
+                  <FileSpreadsheet className="mr-2 h-4 w-4" /> Excel (.xlsx)
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    try {
+                      const doc = buildComparePdf(
+                        markets,
+                        appliedSubWeights ?? {},
+                        presetName ?? null,
+                      );
+                      doc.save(buildCompareFilename(markets, "pdf"));
+                      toast.success("PDF comparison downloaded");
+                    } catch (e) {
+                      console.error("compare pdf export failed", e);
+                      toast.error("PDF export failed");
+                    }
+                  }}
+                >
+                  <FileText className="mr-2 h-4 w-4" /> PDF (.pdf)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button className="h-10 rounded-lg bg-[#174be8] text-white hover:bg-[#1240c9]" onClick={onClose}>
               Close
             </Button>

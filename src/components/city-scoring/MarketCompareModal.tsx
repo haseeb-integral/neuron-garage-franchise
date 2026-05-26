@@ -5,6 +5,7 @@ import { Download } from "lucide-react";
 import { toast } from "sonner";
 import { buildSeededFallbackSignalsFromScored, type RankedMarket } from "@/lib/cityScoringLiveData";
 import { buildMarketView, buildPillarView, type PillarKey } from "@/lib/marketView";
+import { buildRecomputedPillarScores, type AppliedSubWeights } from "@/lib/recomputedPillars";
 import { tierFromDisplayScore } from "@/lib/cityTiers";
 import { formatMetric } from "@/lib/numberFormat";
 
@@ -23,6 +24,7 @@ interface Props {
   open: boolean;
   onClose: () => void;
   markets: RankedMarket[];
+  appliedSubWeights?: AppliedSubWeights;
 }
 
 function shortState(state: string) {
@@ -54,7 +56,7 @@ function Gauge({ value }: { value: number | null }) {
 
 type SignalRow = { value: string; delta: string | null; label: string };
 
-export function MarketCompareModal({ open, onClose, markets }: Props) {
+export function MarketCompareModal({ open, onClose, markets, appliedSubWeights }: Props) {
   const [signalsByCity, setSignalsByCity] = useState<Record<string, Record<string, SignalRow>>>({});
   const [signalRows, setSignalRows] = useState<{ key: string; label: string }[]>([]);
   const [loading, setLoading] = useState(false);
@@ -95,12 +97,16 @@ export function MarketCompareModal({ open, onClose, markets }: Props) {
 
   if (markets.length < 2) return null;
 
-  // Pillar (category) scores read from the SAME calibrated PillarsView used
-  // by the table/center panel/spreadsheet, so the compare modal can never
-  // disagree with the screen. No separate fetch, no blank `—` regression.
+  // Pillar (category) scores read through the SAME recompute pipeline used
+  // by the selected-market center panel, drawer, and Market Report:
+  //   raw signals + appliedSubWeights → recomputeCategoryScore → buildPillarView.
+  // Per Brett's May-24 "one calibrated number everywhere" rule, the Compare
+  // modal must not read DB-stored raw pillars directly (May-26 bug: Compare
+  // showed 100/79/68 for Nashville while panel/drawer/report showed 83/73/68).
   const getCategory = (m: RankedMarket, key: PillarKey): number | null => {
     if (!m.hasLiveData) return null;
-    return buildPillarView(m.categoryScores)[key].display ?? null;
+    const recomputed = buildRecomputedPillarScores(m, appliedSubWeights ?? {});
+    return buildPillarView(recomputed)[key].display ?? null;
   };
   const getSignal = (m: RankedMarket, key: string): SignalRow | null => {
     if (!m.cityId) return null;

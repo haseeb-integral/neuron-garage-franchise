@@ -13,7 +13,7 @@ interface Props {
 const CRITERIA: { key: keyof QualificationScores; label: string; hint?: string }[] = [
   { key: "teaching", label: "Teaching Experience" },
   { key: "leadership", label: "Leadership" },
-  { key: "financial", label: "Financial Readiness", hint: "Confirm $1K initial + $15K working capital minimum" },
+  { key: "financial", label: "Ability to Invest in Neuron Garage", hint: "Confirm $1K initial + $15K working capital minimum" },
   { key: "marketFit", label: "Market Fit" },
   { key: "cultureFit", label: "Culture Fit" },
 ];

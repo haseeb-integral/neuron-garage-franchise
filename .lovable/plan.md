@@ -1,59 +1,61 @@
-# Sam's Punchlist — Triage Plan (May 25 Meeting Follow-up)
+# Sam's Punchlist — Triage Plan v2 (Merged: Lovable + Manus AI)
 
-**Context:** Sam sent Brett a punchlist after the v1 dot-release demo. Brett asked Haseeb to triage into 3 tiers before touching anything. Brett will personally handle Tier 3. Haseeb is approved (after Brett's sign-off) to execute **Tier 1 only**; Tier 2 needs Brett's review of the detailed plan; Tier 3 is hands-off for the AI/Haseeb.
-
-This plan will be saved at `.lovable/plan.md` (overwriting the previous archived-folder cleanup plan, which is already done) so it survives across sessions and either Brett or Haseeb can re-open it any time.
+**Context:** Sam's May 25 punchlist, triaged by two AIs (Lovable + Manus) and reconciled. Brett handles Tier 3; Tier 2 needs Brett's per-item sign-off; Haseeb is approved to execute the **intersection of both AIs' Tier 1** only.
 
 ---
 
-## TIER 1 — Low Risk / Low-Hanging Fruit (safe to execute)
-Pure UI / label / formatting / additive-field changes. No schema migrations, no scoring logic, no architectural shifts. Worst case = a cosmetic regression that's trivial to revert.
+## ✅ TIER 1 — APPROVED FOR HASEEB TO EXECUTE NOW
+**Definition:** items that BOTH Lovable and Manus independently classified as safe/low-risk. Pure UI label + formatting. No DB schema changes, no scoring, no architecture.
 
-1. **City Search — number formatting:** add `$`, thousands separators, %, etc. to existing numeric displays. Display-only.
-2. **Candidate Pipeline — "Days in Stage" filter:** computed from existing `candidate_stage_history.changed_at`. Read-only filter UI.
-3. **Candidate Record — rename labels (UI-only, no DB column rename):**
-   - "Location Preferences" → "Desired Markets"
-   - Financial qualification fields → "Ability to Invest in Neuron Garage"
-4. **Candidate Record — add long-form text field:** "Other Opportunities Being Considered" (additive nullable column on `candidate_profiles`, no impact on existing data).
-5. **Candidate Record — add Mailing Address fields** (additive nullable columns; street/city/state/zip).
-6. **Candidate Record — make existing profile fields editable** in the detail panel (phone, email, source). Form-binding work, no schema change.
-7. **Partner toggle reveals spouse/partner contact fields** (additive nullable columns + conditional UI).
-8. **Notes & Activity tab — paste Sam's full 6-step process text** as a structured, read-only reference panel with completion checkboxes per action item. Checkboxes reuse the existing `candidate_checklist_items` table pattern already used for the Confirmation stage Homework tab — just seed the new items per stage.
-9. **Homework tab — completion checkboxes** for every stage (extend the existing checklist mechanism that already works for Confirmation to all 6 stages).
-10. **Compliance Audit Log — add two date fields** on the candidate record: `fdd_sent_date` (already exists in mock data; promote to real column) and `fa_signed_date`. Additive only. The 16-day rule is already implemented in `HomeworkTab.tsx`.
+1. **City Search — number formatting** — add `$`, thousands separators, `%` to existing numeric displays. Display-only.
+2. **Rename "Location Preferences" → "Desired Markets"** — UI label only, DB column unchanged.
+3. **Rename financial qualification fields → "Ability to Invest in Neuron Garage"** — UI label only, DB column unchanged.
+
+That's it for Haseeb-execute. All three are pure presentation, individually revertable, zero data risk.
 
 ---
 
-## TIER 2 — Medium Risk (needs Brett's sign-off on a detailed plan before building)
-Touches storage buckets, file uploads, larger UI flows, or non-trivial new tables. Reversible but requires care.
+## ⏸️ TIER 1 — DEFERRED (one AI flagged, the other didn't agree)
+Haseeb does NOT touch these until Brett approves.
 
-1. **Manual file uploads on candidate records** — needs a new Supabase Storage bucket + RLS policies + a `candidate_files` table. Same pattern for Step 4 facility prospect form / marketing plan uploads and Step 2 background/credit authorization uploads.
-2. **Compliance Audit Log — proof-of-send screenshot upload** for FDD sent + FA signed (depends on #1 above).
-3. **City Search — internal notes/comments per city** — new `city_notes` table with RLS, plus UI panel.
-4. **Selection Committee voting simplification** — let a staff user manually record votes on behalf of committee members without those members having accounts. Schema-wise the `candidate_votes` table already supports a free-text `voter` field, but the UI/UX rework is non-trivial and changes a governance flow.
-5. **Documentation deliverables for Sam** (AI tools/models used, data flow & architecture, integrations/enrichment, existing guardrails, all prompts & AI workflows, ownership/credentials handoff). Not code — but high-effort, high-visibility, and we should agree on scope/format with Brett before producing it.
+- **Documentation deliverables for Sam** (prompts, AI workflows, architecture overview). Manus marked Tier 1; Lovable marked Tier 2 because writing accurate architecture docs requires real understanding and risks misrepresenting the system to the client. → **Treat as Tier 2.**
+- **Credentials & ownership handoff to Sam.** Manus marked Tier 1; Lovable disagrees — this is a Brett-only governance decision (transferring Lovable/Supabase/Resend ownership). → **Tier 3, Brett only.**
 
 ---
 
-## TIER 3 — High Risk / Brett Handles Personally (DO NOT TOUCH)
-Changes scoring math, candidate scoring semantics, or the pipeline architecture itself.
+## 🟡 TIER 2 — Medium Risk (needs Brett's per-item sign-off before building)
+Reversible but touches schema, storage, or non-trivial flows.
 
-1. **Manual override of candidate scores** — changes the meaning of the qualification score and how it relates to the composite. Scoring is the heart of the product.
-2. **Show composite score on pipeline cards** — looks cosmetic but it's a product/strategy decision about what number we're publicly committing to per candidate; Brett should decide.
-3. **Account/credentials/ownership transfer to Sam** — Lovable project ownership, Supabase project ownership, domain, third-party connectors (SmartLead, etc.). Brett-only.
-4. **Anything not explicitly listed in Tier 1 or Tier 2 above** that turns out, on closer reading, to alter the database structure, scoring, or architecture — escalate to Brett rather than guess.
+1. **Days-in-Stage filter** on Candidate Pipeline (computed from `candidate_stage_history`).
+2. **Add long-form field "Other Opportunities Being Considered"** (additive nullable column on `candidate_profiles`).
+3. **Add Mailing Address fields** (additive nullable columns).
+4. **Make existing profile fields editable** (phone, email, source) in the detail panel.
+5. **Partner toggle reveals spouse/partner contact fields** (additive nullable columns + conditional UI).
+6. **Notes & Activity tab — paste Sam's full 6-step process** as a structured reference panel with per-action checkboxes (reuses existing `candidate_checklist_items` table).
+7. **Homework tab — completion checkboxes for every stage** (extend the existing checklist mechanism that already works for Confirmation to all 6 stages).
+8. **Compliance Audit Log — add `fdd_sent_date` + `fa_signed_date` columns.** The 16-day FDD lock rule is **already implemented** in `HomeworkTab.tsx` — only the date fields are new.
+9. **Manual file uploads on candidate records** — new Supabase Storage bucket + RLS + `candidate_files` table. Covers Step 2 BG/credit authorizations and Step 4 facility/marketing uploads.
+10. **Compliance Audit Log — proof-of-send screenshot upload** for FDD/FA (depends on #9).
+11. **City Search — internal notes/comments per city** — new `city_notes` table with RLS + UI panel.
+12. **Selection Committee voting simplification** — staff records votes on behalf of committee members without accounts (uses existing `candidate_votes.voter` free-text field; UX rework only).
+13. **Documentation deliverables for Sam** (moved from Tier 1 deferred — see above).
 
 ---
 
-## Where this plan lives
-- This document → `.lovable/plan.md` (single source of truth in repo; survives sessions; either Brett or Haseeb can re-open).
-- Will be updated as Tier 1 items are completed (checkboxes ticked) and as Tier 2 items get detailed sub-plans approved by Brett.
+## 🔴 TIER 3 — Brett Personally / DO NOT TOUCH
+Changes scoring math, public-facing scoring semantics, or transfers ownership.
 
-## Proposed next step
-On approval, I will:
-1. Write this triage to `.lovable/plan.md`.
-2. Execute **Tier 1 only**, item by item, with one focused commit-equivalent change per item so anything can be reverted individually.
-3. Stop and return to you with a per-Tier-2-item detailed plan (schema, RLS, UI) for Brett's review before touching Tier 2.
-4. Never touch Tier 3.
+1. **Manual override of candidate qualification scores** — changes scoring semantics.
+2. **Composite score on Kanban cards** — product/strategy decision about what number we publicly stake per candidate.
+3. **Account/credentials/ownership transfer to Sam** — Lovable, Supabase, Resend, SmartLead, domain.
+4. **Anything not explicitly listed above** that on closer reading alters DB structure, scoring, or architecture — escalate to Brett.
 
-Reply "approve" (or edit any tier assignment) and I'll proceed.
+---
+
+## Execution rules for this session
+1. Haseeb (on Brett's approval) executes Tier 1 (3 items) one at a time, each independently revertable.
+2. Stop after Tier 1. Do not start any Tier 2 item without Brett naming it explicitly.
+3. Tier 3: never touched by AI/Haseeb.
+
+## Where this lives
+`.lovable/plan.md` — single source of truth across sessions.

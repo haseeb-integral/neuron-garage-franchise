@@ -18,8 +18,30 @@ export type LiveSignal = {
   } | null;
 };
 
-function displayValue(value: unknown): string {
+function formatByKey(key: string | undefined, num: number): string {
+  const k = (key ?? "").toLowerCase();
+  // Percentages: keys containing "pct", "percent", or "rate"
+  if (/(pct|percent|rate)\b|_pct$|_percent$/.test(k)) {
+    // If value already looks like a fraction (0-1), convert; otherwise treat as %
+    const pct = Math.abs(num) <= 1 ? num * 100 : num;
+    return `${pct.toLocaleString(undefined, { maximumFractionDigits: 1 })}%`;
+  }
+  // Currency: income, spend, capital, price, revenue, cost
+  if (/(income|spend|capital|price|revenue|cost|earnings|wage)/.test(k)) {
+    return `$${Math.round(num).toLocaleString()}`;
+  }
+  // Plain integer with thousands separators
+  if (Number.isInteger(num)) return num.toLocaleString();
+  // Decimal — keep up to 2 dp with separators
+  return num.toLocaleString(undefined, { maximumFractionDigits: 2 });
+}
+
+function displayValue(value: unknown, key?: string): string {
   if (value === null || value === undefined || value === "") return "—";
+  const num = typeof value === "number" ? value : Number(value);
+  if (typeof value !== "boolean" && Number.isFinite(num) && String(value).trim() !== "") {
+    return formatByKey(key, num);
+  }
   return String(value);
 }
 
@@ -30,7 +52,10 @@ interface Props {
 }
 
 export function MetricRow({ metric, signal, status }: Props) {
-  const value = signal && status !== "missing" ? displayValue(signal.value) : "—";
+  const value =
+    signal && status !== "missing"
+      ? displayValue(signal.value, signal.signal_key ?? metric.key)
+      : "—";
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-[#f1f4f9] px-2 py-1 last:border-0">
       <div className="min-w-0">

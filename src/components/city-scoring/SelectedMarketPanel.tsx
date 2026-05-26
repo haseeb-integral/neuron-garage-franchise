@@ -308,7 +308,6 @@ function SelectedMarketPanelImpl({
           // this block read keys "tam"/"competitive" which don't exist in
           // categoryScores (real keys are "franchiseeSupply"/"competitiveLandscape"),
           // so demand/tam/opp were silently always 0.
-          const pillars = buildPillarView(detailCategoryScores as Partial<Record<PillarKey, number>>);
           const mDemand = pillars.demand.display ?? 0;
           const mTam = pillars.franchiseeSupply.display ?? 0;
           const mOpp = pillars.competitiveLandscape.display ?? 0;

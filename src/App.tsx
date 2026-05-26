@@ -30,6 +30,7 @@ const ObservabilitySpec = lazy(() => import("./pages/ObservabilitySpec"));
 
 
 const TeamMembers = lazy(() => import("./pages/TeamMembers"));
+const Handover = lazy(() => import("./pages/Handover"));
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -59,6 +60,7 @@ const App = () => (
                 <Route path="/onboarding" element={<Onboarding />} />
                 <Route path="/settings/team" element={<TeamMembers />} />
                 <Route path="/users" element={<TeamMembers />} />
+                <Route path="/handover" element={<Handover />} />
                 <Route path="/users-guide" element={<UserGuide />} />
                 <Route path="/spec" element={<Spec />} />
                 <Route path="/smartlead-spec" element={<SmartLeadSpec />} />

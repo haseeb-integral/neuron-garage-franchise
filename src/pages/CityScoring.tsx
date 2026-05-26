@@ -491,6 +491,15 @@ const CityScoring = () => {
     [liveRankedMarkets],
   );
 
+  // Effective compare selection: drop any ids that aren't in the live
+  // universe (defensive — handles stale localStorage from earlier versions
+  // and the deduper) and cap at 4 so the count badge and the modal agree.
+  // May 26 bug: user selected 2 rows but the Compare modal opened with 4.
+  const effectiveSelectedForCompare = useMemo(() => {
+    const live = new Set(baseRankedMarkets.map((m: any) => m.id));
+    return selectedForCompare.filter((id) => live.has(id)).slice(0, 4);
+  }, [selectedForCompare, baseRankedMarkets]);
+
   const availableStates = useMemo(
     () => [
       "Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut",

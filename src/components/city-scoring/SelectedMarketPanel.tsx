@@ -176,7 +176,7 @@ function SelectedMarketPanelImpl({
                 const total = appliedTotal > 0 ? appliedTotal : 1;
                 const rows = VISIBLE_CATEGORIES.map((c) => {
                   const weightPct = (appliedWeights[c.key] / total) * 100;
-                  const score = detailCategoryScores[c.key] ?? 0;
+                  const score = calibratedScore(c.key);
                   const contribution = (weightPct * score) / 100;
                   return { key: c.key, label: c.label, weightPct, score, contribution };
                 });

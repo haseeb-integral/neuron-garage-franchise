@@ -216,7 +216,9 @@ export const useCityScoringStore = create<CityScoringState>()(
         appliedSubWeights: s.appliedSubWeights,
         selectedId: s.selectedId,
         selectedMarketKey: s.selectedMarketKey,
-        selectedForCompare: s.selectedForCompare,
+        // selectedForCompare intentionally NOT persisted — checked rows from a
+        // prior session were leaking into the Compare modal (May 26 bug: user
+        // selected 2, modal opened with 4). Compare is an ephemeral action.
         compareMode: s.compareMode,
         viewMode: s.viewMode,
         page: s.page,

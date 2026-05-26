@@ -100,7 +100,7 @@ export function MarketCompareModal({ open, onClose, markets }: Props) {
   // disagree with the screen. No separate fetch, no blank `—` regression.
   const getCategory = (m: RankedMarket, key: PillarKey): number | null => {
     if (!m.hasLiveData) return null;
-    return buildPillarView(m.categoryScores).[key].display ?? null;
+    return buildPillarView(m.categoryScores)[key].display ?? null;
   };
   const getSignal = (m: RankedMarket, key: string): SignalRow | null => {
     if (!m.cityId) return null;

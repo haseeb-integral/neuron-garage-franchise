@@ -72,6 +72,14 @@ function SelectedMarketPanelImpl({
   const detailCityId = selected.cityId as string | undefined;
   const isSaved = !!detailCityId && watchlistCityIds.has(detailCityId);
 
+  // Brett May-24 rule: every user-facing pillar score must go through the
+  // shared calibration (buildPillarView). Compute once and reuse across the
+  // driver text, formula popover, and Category Scores bars so this panel
+  // matches the drawer / report / compare surfaces.
+  const pillars = buildPillarView(detailCategoryScores as Partial<Record<PillarKey, number>>);
+  const calibratedScore = (key: string): number =>
+    pillars[key as PillarKey]?.display ?? 0;
+
   return (
     <div className="min-w-0 rounded-lg bg-white border border-[#eef2f7] p-4 flex flex-col h-full">
       <div className="mb-3 flex items-start justify-between gap-3">
@@ -127,7 +135,7 @@ function SelectedMarketPanelImpl({
         <p className="-mt-1 text-[13px] font-semibold" style={{ color: selectedHasLiveData ? tierBadge.fg : "#8794ab" }}>{selectedHasLiveData ? opportunityLabel : "No live data"}</p>
         {selectedHasLiveData && (() => {
           const enriched = VISIBLE_CATEGORIES.map((c) => {
-            const score = Math.round(detailCategoryScores[c.key] ?? 0);
+            const score = Math.round(calibratedScore(c.key));
             const weight = appliedWeights[c.key] ?? 0;
             return { label: c.label, score, weight, contribution: score * weight };
           }).filter((x) => x.weight > 0);
@@ -168,7 +176,7 @@ function SelectedMarketPanelImpl({
                 const total = appliedTotal > 0 ? appliedTotal : 1;
                 const rows = VISIBLE_CATEGORIES.map((c) => {
                   const weightPct = (appliedWeights[c.key] / total) * 100;
-                  const score = detailCategoryScores[c.key] ?? 0;
+                  const score = calibratedScore(c.key);
                   const contribution = (weightPct * score) / 100;
                   return { key: c.key, label: c.label, weightPct, score, contribution };
                 });
@@ -255,7 +263,7 @@ function SelectedMarketPanelImpl({
           <p className="mb-2.5 text-[13px] font-semibold text-[#07142f]">Category Scores</p>
           <div className="space-y-2">
             {VISIBLE_CATEGORIES.map((cat) => {
-              const v = selectedHasLiveData ? (detailCategoryScores[cat.key] ?? 0) : null;
+              const v = selectedHasLiveData ? Math.round(calibratedScore(cat.key)) : null;
               const wPct = appliedTotal > 0 ? (appliedWeights[cat.key] / appliedTotal) * 100 : 0;
               const isZeroWeighted = wPct <= 0.05;
               return (
@@ -300,7 +308,6 @@ function SelectedMarketPanelImpl({
           // this block read keys "tam"/"competitive" which don't exist in
           // categoryScores (real keys are "franchiseeSupply"/"competitiveLandscape"),
           // so demand/tam/opp were silently always 0.
-          const pillars = buildPillarView(detailCategoryScores as Partial<Record<PillarKey, number>>);
           const mDemand = pillars.demand.display ?? 0;
           const mTam = pillars.franchiseeSupply.display ?? 0;
           const mOpp = pillars.competitiveLandscape.display ?? 0;

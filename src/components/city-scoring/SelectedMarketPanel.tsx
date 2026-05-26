@@ -263,7 +263,7 @@ function SelectedMarketPanelImpl({
           <p className="mb-2.5 text-[13px] font-semibold text-[#07142f]">Category Scores</p>
           <div className="space-y-2">
             {VISIBLE_CATEGORIES.map((cat) => {
-              const v = selectedHasLiveData ? (detailCategoryScores[cat.key] ?? 0) : null;
+              const v = selectedHasLiveData ? Math.round(calibratedScore(cat.key)) : null;
               const wPct = appliedTotal > 0 ? (appliedWeights[cat.key] / appliedTotal) * 100 : 0;
               const isZeroWeighted = wPct <= 0.05;
               return (

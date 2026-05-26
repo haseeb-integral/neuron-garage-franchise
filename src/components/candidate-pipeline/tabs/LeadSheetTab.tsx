@@ -120,18 +120,23 @@ export function LeadSheetTab({ candidate }: Props) {
         <Textarea id="ls-motivation" rows={3} value={form.motivation}
           onChange={(e) => update("motivation", e.target.value)} />
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="ls-liquid">Liquid Capital ($)</Label>
-          <Input id="ls-liquid" type="number" inputMode="decimal" value={form.liquid_capital}
-            onChange={(e) => update("liquid_capital", e.target.value)} />
+      <fieldset className="space-y-3 rounded-md border p-3">
+        <legend className="px-1 text-sm font-medium text-[#003c7e]">
+          Ability to Invest in Neuron Garage
+        </legend>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="ls-liquid">Liquid Capital ($)</Label>
+            <Input id="ls-liquid" type="number" inputMode="decimal" value={form.liquid_capital}
+              onChange={(e) => update("liquid_capital", e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="ls-networth">Net Worth ($)</Label>
+            <Input id="ls-networth" type="number" inputMode="decimal" value={form.net_worth}
+              onChange={(e) => update("net_worth", e.target.value)} />
+          </div>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="ls-networth">Net Worth ($)</Label>
-          <Input id="ls-networth" type="number" inputMode="decimal" value={form.net_worth}
-            onChange={(e) => update("net_worth", e.target.value)} />
-        </div>
-      </div>
+      </fieldset>
       <div className="space-y-2">
         <Label htmlFor="ls-timeline">Timeline</Label>
         <Input id="ls-timeline" value={form.timeline}

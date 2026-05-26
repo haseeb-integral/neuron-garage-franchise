@@ -1,17 +1,19 @@
 import { useEffect, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { toast } from "sonner";
 import { buildSeededFallbackSignalsFromScored, type RankedMarket } from "@/lib/cityScoringLiveData";
-import { buildMarketView } from "@/lib/marketView";
+import { buildMarketView, buildPillarView, type PillarKey } from "@/lib/marketView";
+import { tierFromDisplayScore } from "@/lib/cityTiers";
 import { formatMetric } from "@/lib/numberFormat";
 
-const CATEGORY_ROWS: { key: string; label: string; dbKey: string }[] = [
-  { key: "demand", label: "Demand", dbKey: "demand" },
-  { key: "franchiseeSupply", label: "TAM Teachers", dbKey: "franchisee_supply" },
-  { key: "competitiveLandscape", label: "Competitive Opportunity", dbKey: "competitive_landscape" },
+const CATEGORY_ROWS: { key: PillarKey; label: string }[] = [
+  { key: "demand", label: "Demand" },
+  { key: "franchiseeSupply", label: "TAM Teachers" },
+  { key: "competitiveLandscape", label: "Competitive Opportunity" },
 ];
+
 
 // Signal rows are built dynamically from whatever signals exist for the
 // selected cities, so the modal always shows ALL available data — not a

@@ -1,60 +1,119 @@
-## Tier 1 — Task 1: City Search number formatting
+## What I found
 
-### Goal
-Every number shown in City Search displays with proper units: `$` + commas for money, commas for large counts, `%` for percentages. Score/formula numbers stay raw. Exports stay raw.
+**Source of truth:** the **table score and selected-market center panel are the correct ones right now**.
+- Nashville is showing **99 / Tier A** on the main City Search screen.
+- That matches the newer shared score system in `src/lib/marketView.ts` + `src/lib/cityTiers.ts`.
 
-### Approach
-Centralize one formatter, then route all City Search display sites through it. No DB changes, no scoring changes, no export changes — purely presentational. Each edit is independently revertable.
+**What “already formatted” meant:**
+- The **main table** and **spreadsheet view** were **already using number-format helpers** for dollars, commas, and % signs before the last change.
+- So I did **not** change those files for formatting because they were already doing the right display work.
 
-### Step 1 — Create shared helper
-New file `src/lib/numberFormat.ts` exporting:
-- `formatMetric(value, key?, opts?)` — auto-detects unit from a key or explicit override (`"currency" | "percent" | "integer" | "decimal"`).
-- Internal explicit overrides map for known metric keys whose name doesn't self-describe (e.g. `disposable_household_income → currency`, `under_18_population → integer`, `unemployment → percent`).
-- Heuristic fallback (same regex family already in `MetricRow.tsx`) for unknown keys.
-- Returns `"—"` for null/blank/non-finite.
+## Root causes of the bugs
 
-### Step 2 — Replace local copy in `MetricRow.tsx`
-Delete its inline `formatByKey` / `displayValue` and import from the new util.
+### 1) Market Report is using the wrong score path
+`src/components/city-scoring/MarketReportModal.tsx`
+- It does **not** trust the canonical screen score.
+- It rebuilds a `detailScore` by **averaging the 3 pillar display scores**.
+- That can disagree with the real city score shown in the table/center panel.
+- This is why you saw **Tier C / 75** in the report while the screen showed **Tier A / 99**.
 
-### Step 3 — Apply to City Search display surfaces
-Audit + update only these files (display strings only):
-- `CityTable.tsx` + `cityColumns.tsx` — main table cells
-- `CitySpreadsheetView.tsx` — spreadsheet cells
-- `MarketDetailDrawer.tsx` + `market-detail/DrawerHeroSummary.tsx` — drawer KPIs
-- `StatCards.tsx` — top stat tiles
-- `MarketCompareModal.tsx` — compare columns
-- `MarketReportModal.tsx` — on-screen preview only (PDF/CSV unchanged)
-- `RankedMarketsList.tsx`, `NearbyMarketsPanel.tsx`, `SelectedMarketPanel.tsx`, `SourceDataPanel.tsx`, `ExecutiveSummaryPanel.tsx` — list values
+**Conclusion:** the report view is the wrong one.
 
-For each: where a raw number is rendered next to a metric label, wrap it in `formatMetric(value, metricKey)`.
+### 2) Compare modal is reading stale / legacy tier data
+`src/lib/cityScoringLiveData.ts`
+- Live rows still get `tier` from old `tierFromScore()` raw cutoffs:
+  - A >= 80
+  - B >= 65
+  - C >= 50
+- That is the old system.
 
-### Step 4 — Explicitly skip
-These render scoring math, not user-facing metrics. **Do not touch:**
-- `sub-weights/FormulaPanel.tsx`
-- `sub-weights/CsiLockedPanel.tsx`
-- `RowScorePopover.tsx`
-- Tier badges, composite scores, normalized 0–100 scores anywhere
-- CSV download in `MarketReportModal.tsx` and PDF generator in `market-report/marketReportPdf.ts` (keep raw for re-import)
+`src/lib/cityTiers.ts`
+- New approved rule says tiers come from the **display score**:
+  - A >= 90
+  - B >= 80
+  - C >= 70
+  - D < 70
 
-### Step 5 — Verify
-- Visit City Search → confirm `$`, commas, `%` show on table, drawer, stat cards, compare modal.
-- Confirm scores (e.g. `73.4`) still render as plain numbers — no `$73.4` regressions.
-- Confirm CSV/PDF export still emit raw numbers.
+**Conclusion:** Brett’s newer change is the correct rule. Some surfaces still use older tier assignment.
 
-### Out of scope
-- Adding a `unit` column to `sowMetricRegistry` (schema change — Tier 2/3).
-- Changing any computed value, scoring, or stored data.
-- Reformatting numbers outside City Search (Candidates, Pipeline, etc.).
+### 3) Compare modal category scores are blank because they are never populated
+`src/components/city-scoring/MarketCompareModal.tsx`
+- `scoresByCity` is initialized
+- then explicitly set to `{}`
+- and never filled with category scores
+- so the modal shows `—` for Demand / TAM / Competitive Opportunity
 
-### Technical notes
-- `formatMetric` signature:
-  ```ts
-  type Unit = "currency" | "percent" | "integer" | "decimal";
-  formatMetric(value: unknown, key?: string, opts?: { unit?: Unit; maxFractionDigits?: number }): string
-  ```
-- Percent rule: if `|value| ≤ 1` treat as fraction and ×100; else treat as already-percent. Append `%`.
-- Currency rule: round to integer dollars, prefix `$`, thousands separators.
-- Integer/decimal: `toLocaleString` with thousands separators.
+### 4) Compare modal can show more markets than the user thinks they selected
+`src/stores/cityScoringStore.ts`
+- `selectedForCompare` is persisted in localStorage
 
-### Your prompt vs. this plan
-Your prompt captures the three formatting rules correctly. This plan adds: (a) one shared helper instead of per-file fixes so we don't drift again, (b) an explicit do-not-touch list for score/formula displays, (c) keeps exports raw. With those additions, your prompt is sufficient — no further clarification needed from you to execute.
+`src/pages/CityScoring.tsx`
+- compare modal uses `selectedForCompare` from the store directly
+- so old checked rows can survive across sessions / screen changes
+- that can make the modal open with stale extra cities
+
+## What I will change
+
+### Step 1 — Make one tier system everywhere
+Use the approved display-score tier logic everywhere:
+- `src/lib/cityTiers.ts`
+- `src/lib/cityScoringLiveData.ts`
+- `src/components/city-scoring/MarketCompareModal.tsx`
+- `src/components/city-scoring/cityColumns.tsx`
+
+Plan:
+- stop using old `tierFromScore()` logic for user-facing tiers
+- compute tier from the canonical display score / canonical market view
+- make spreadsheet, table, compare modal, and report all read the same tier rule
+
+### Step 2 — Make Market Report use the canonical score
+Files:
+- `src/components/city-scoring/MarketReportModal.tsx`
+- `src/pages/CityScoring.tsx`
+
+Plan:
+- pass the already-correct selected market score/tier into the report
+- remove the local report-only recomputation that averages pillars
+- keep pillar bars for display, but stop using them to decide total score/tier
+
+### Step 3 — Fix compare modal category rows
+File:
+- `src/components/city-scoring/MarketCompareModal.tsx`
+
+Plan:
+- build category scores directly from each market’s existing category data using the shared pillar-display path
+- remove the dead `scoresByCity` blank-state behavior
+- make compare rows show the same calibrated pillar numbers as the main UI
+
+### Step 4 — Fix compare selection truth
+Files:
+- `src/pages/CityScoring.tsx`
+- `src/stores/cityScoringStore.ts`
+- possibly `src/components/city-scoring/RankedMarketsList.tsx`
+
+Plan:
+- sanitize `selectedForCompare` against the live current market universe
+- cap it cleanly at 4
+- remove stale ids that no longer exist or are no longer intended
+- make the compare count and modal input come from the same cleaned list
+
+## Validation after the fix
+
+I will verify these exact cases:
+- Nashville row, center panel, spreadsheet, report, and compare all agree on **score + tier**
+- compare modal shows only the cities actually selected
+- compare modal category scores are no longer blank
+- no old `Tier B / 99` or `Tier C / 75` drift remains
+
+## Technical details
+
+**Correct source of truth now:**
+- `src/lib/marketView.ts` for displayed score
+- `src/lib/cityTiers.ts` for tier cutoffs
+
+**Wrong / stale paths to remove from user-facing UI:**
+- local recomputed report total in `MarketReportModal.tsx`
+- legacy raw-cutoff `tierFromScore()` behavior from `cityScoringLiveData.ts`
+- empty `scoresByCity` path in `MarketCompareModal.tsx`
+
+Once you approve, I’ll implement only these fixes and then smoke-test them in the preview.

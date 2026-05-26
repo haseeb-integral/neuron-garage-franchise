@@ -281,6 +281,7 @@ export function MarketCompareModal({ open, onClose, markets, appliedSubWeights, 
                       const doc = buildComparePdf(
                         markets,
                         appliedSubWeights ?? {},
+                        appliedWeights ?? {},
                         presetName ?? null,
                       );
                       doc.save(buildCompareFilename(markets, "pdf"));

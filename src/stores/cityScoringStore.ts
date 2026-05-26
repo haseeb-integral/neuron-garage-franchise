@@ -163,7 +163,7 @@ export const useCityScoringStore = create<CityScoringState>()(
     {
       name: "ng:city-scoring-v1",
       storage: createJSONStorage(() => localStorage),
-      version: 9,
+      version: 10,
       migrate: (persisted: any, version) => {
         if (!persisted) return persisted;
         if (version < 2) {
@@ -199,6 +199,12 @@ export const useCityScoringStore = create<CityScoringState>()(
           strip(persisted.subWeights);
           strip(persisted.appliedSubWeights);
         }
+        if (version < 10) {
+          // v10 (May 26, 2026): selectedForCompare is no longer persisted.
+          // Drop any leftover ids so the Compare modal can never open with
+          // stale checked rows from a prior session.
+          delete persisted.selectedForCompare;
+        }
         return persisted;
       },
       partialize: (s) => ({
@@ -216,7 +222,9 @@ export const useCityScoringStore = create<CityScoringState>()(
         appliedSubWeights: s.appliedSubWeights,
         selectedId: s.selectedId,
         selectedMarketKey: s.selectedMarketKey,
-        selectedForCompare: s.selectedForCompare,
+        // selectedForCompare intentionally NOT persisted — checked rows from a
+        // prior session were leaking into the Compare modal (May 26 bug: user
+        // selected 2, modal opened with 4). Compare is an ephemeral action.
         compareMode: s.compareMode,
         viewMode: s.viewMode,
         page: s.page,

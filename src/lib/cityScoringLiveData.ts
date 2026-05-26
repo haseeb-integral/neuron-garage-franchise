@@ -3,6 +3,8 @@ import { CityData, sampleCities } from "@/data/cityData";
 import type { CategoryKey } from "@/stores/cityScoringStore";
 import { canonicalKey } from "@/lib/signalAliases";
 import { competitiveOpportunityFromCsi } from "@/lib/marketView";
+import { tierFromRawComposite } from "@/lib/cityTiers";
+
 
 
 /**
@@ -119,11 +121,12 @@ export type RankedMarketFilters = {
 
 const NON_REGISTRATION_STATES = new Set(["Texas", "Florida"]);
 
+// Display-score tiers (May 24, 2026 Brett rule). Input is the RAW composite
+// (0–100); the calibration curve maps it to the school-grade display score
+// before tier assignment, so this stays consistent with the table/center
+// panel/spreadsheet/compare/report (all driven by cityTiers + marketView).
 export function tierFromScore(score: number): "A" | "B" | "C" | "D" {
-  if (score >= 80) return "A";
-  if (score >= 65) return "B";
-  if (score >= 50) return "C";
-  return "D";
+  return tierFromRawComposite(Number.isFinite(score) ? score : 0);
 }
 
 function normalizeState(state?: string | null) {

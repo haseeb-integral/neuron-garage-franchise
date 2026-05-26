@@ -491,6 +491,15 @@ const CityScoring = () => {
     [liveRankedMarkets],
   );
 
+  // Effective compare selection: drop any ids that aren't in the live
+  // universe (defensive — handles stale localStorage from earlier versions
+  // and the deduper) and cap at 4 so the count badge and the modal agree.
+  // May 26 bug: user selected 2 rows but the Compare modal opened with 4.
+  const effectiveSelectedForCompare = useMemo(() => {
+    const live = new Set(baseRankedMarkets.map((m: any) => m.id));
+    return selectedForCompare.filter((id) => live.has(id)).slice(0, 4);
+  }, [selectedForCompare, baseRankedMarkets]);
+
   const availableStates = useMemo(
     () => [
       "Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut",
@@ -797,8 +806,8 @@ const CityScoring = () => {
   const toggleCompare = useCallback((id: number) => {
     setSelectedForCompare((p) => {
       if (p.includes(id)) return p.filter((i) => i !== id);
-      if (p.length >= 10) {
-        toast.error("You can select up to 10 markets at a time");
+      if (p.length >= 4) {
+        toast.error("You can compare up to 4 markets at a time");
         return p;
       }
       return [...p, id];
@@ -922,12 +931,12 @@ const CityScoring = () => {
 
 
   const openCompare = useCallback(() => {
-    if (selectedForCompare.length < 2) {
+    if (effectiveSelectedForCompare.length < 2) {
       toast.error("Select at least 2 markets to compare");
       return;
     }
     setCompareOpen(true);
-  }, [selectedForCompare]);
+  }, [effectiveSelectedForCompare]);
 
   const applyWeights = () => {
     if (totalWeight !== 100) return;
@@ -944,7 +953,7 @@ const CityScoring = () => {
   }, [navigate, selected.city, selected.state]);
 
   const handleFindTeachersForSelected = useCallback(() => {
-    const picked = baseRankedMarkets.filter((m: any) => selectedForCompare.includes(m.id)).slice(0, 10);
+    const picked = baseRankedMarkets.filter((m: any) => effectiveSelectedForCompare.includes(m.id)).slice(0, 10);
     if (picked.length === 0) {
       toast.error("Select at least 1 market first (use the checkbox).");
       return;
@@ -952,7 +961,7 @@ const CityScoring = () => {
     const cities = picked.map((m: any) => m.city).join(",");
     const states = picked.map((m: any) => m.state).join(",");
     navigate(`/teacher-prospects?city=${encodeURIComponent(cities)}&state=${encodeURIComponent(states)}`);
-  }, [baseRankedMarkets, selectedForCompare, navigate]);
+  }, [baseRankedMarkets, effectiveSelectedForCompare, navigate]);
 
   const handleRefreshData = async () => {
     if (!selectedCity || !selectedState) return;
@@ -1645,7 +1654,7 @@ const CityScoring = () => {
           selectedCity={selectedCity}
           selectedState={selectedState}
           pickMarket={pickMarket}
-          selectedForCompare={selectedForCompare}
+          selectedForCompare={effectiveSelectedForCompare}
           toggleCompare={toggleCompare}
           compareMode={compareMode}
           watchlistOnly={watchlistOnly}
@@ -1828,7 +1837,7 @@ const CityScoring = () => {
       <MarketCompareModal
         open={compareOpen}
         onClose={() => setCompareOpen(false)}
-        markets={baseRankedMarkets.filter((m) => selectedForCompare.includes(m.id)).slice(0, 4)}
+        markets={baseRankedMarkets.filter((m) => effectiveSelectedForCompare.includes(m.id)).slice(0, 4)}
       />
 
       {reportOpen && (
@@ -1841,6 +1850,7 @@ const CityScoring = () => {
             sigRows={sigRows}
             cityId={selected.cityId ?? null}
             autoDownload={reportAutoPdf}
+            detailScore={Number(detailScore) || 0}
           />
         </Suspense>
       )}

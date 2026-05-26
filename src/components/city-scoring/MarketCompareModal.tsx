@@ -1,17 +1,19 @@
 import { useEffect, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { toast } from "sonner";
 import { buildSeededFallbackSignalsFromScored, type RankedMarket } from "@/lib/cityScoringLiveData";
-import { buildMarketView } from "@/lib/marketView";
+import { buildMarketView, buildPillarView, type PillarKey } from "@/lib/marketView";
+import { tierFromDisplayScore } from "@/lib/cityTiers";
 import { formatMetric } from "@/lib/numberFormat";
 
-const CATEGORY_ROWS: { key: string; label: string; dbKey: string }[] = [
-  { key: "demand", label: "Demand", dbKey: "demand" },
-  { key: "franchiseeSupply", label: "TAM Teachers", dbKey: "franchisee_supply" },
-  { key: "competitiveLandscape", label: "Competitive Opportunity", dbKey: "competitive_landscape" },
+const CATEGORY_ROWS: { key: PillarKey; label: string }[] = [
+  { key: "demand", label: "Demand" },
+  { key: "franchiseeSupply", label: "TAM Teachers" },
+  { key: "competitiveLandscape", label: "Competitive Opportunity" },
 ];
+
 
 // Signal rows are built dynamically from whatever signals exist for the
 // selected cities, so the modal always shows ALL available data — not a
@@ -55,7 +57,6 @@ type SignalRow = { value: string; delta: string | null; label: string };
 export function MarketCompareModal({ open, onClose, markets }: Props) {
   const [signalsByCity, setSignalsByCity] = useState<Record<string, Record<string, SignalRow>>>({});
   const [signalRows, setSignalRows] = useState<{ key: string; label: string }[]>([]);
-  const [scoresByCity, setScoresByCity] = useState<Record<string, Record<string, number>>>({});
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -63,7 +64,6 @@ export function MarketCompareModal({ open, onClose, markets }: Props) {
     const cityIds = markets.map((m) => m.cityId).filter((x): x is string => !!x);
     if (cityIds.length === 0) {
       setSignalsByCity({});
-      setScoresByCity({});
       setSignalRows([]);
       return;
     }
@@ -84,7 +84,6 @@ export function MarketCompareModal({ open, onClose, markets }: Props) {
         });
       });
       setSignalsByCity(sigMap);
-      setScoresByCity({});
       setSignalRows(Array.from(seen.entries()).map(([key, label]) => ({ key, label })));
     } catch (e) {
       console.error("compare modal load error", e);
@@ -96,9 +95,12 @@ export function MarketCompareModal({ open, onClose, markets }: Props) {
 
   if (markets.length < 2) return null;
 
-  const getCategory = (m: RankedMarket, dbKey: string): number | null => {
-    if (!m.cityId) return null;
-    return scoresByCity[m.cityId]?.[dbKey] ?? null;
+  // Pillar (category) scores read from the SAME calibrated PillarsView used
+  // by the table/center panel/spreadsheet, so the compare modal can never
+  // disagree with the screen. No separate fetch, no blank `—` regression.
+  const getCategory = (m: RankedMarket, key: PillarKey): number | null => {
+    if (!m.hasLiveData) return null;
+    return buildPillarView(m.categoryScores)[key].display ?? null;
   };
   const getSignal = (m: RankedMarket, key: string): SignalRow | null => {
     if (!m.cityId) return null;
@@ -143,15 +145,22 @@ export function MarketCompareModal({ open, onClose, markets }: Props) {
                 </tr>
                 <tr className="border-b border-[#e6edf7]">
                   <td className="border-r border-[#e6edf7] px-3 py-2.5 font-semibold text-[#07142f]">Tier</td>
-                  {markets.map((m) => (
-                    <td key={m.id} className="border-r border-[#e6edf7] px-2 py-2.5 text-center last:border-r-0">
-                      {m.hasLiveData ? (
-                        <span className="rounded-full bg-[#e6f7ef] px-2 py-1 text-[11px] font-bold text-[#0a8f5a]">{m.tier}</span>
-                      ) : (
-                        <span className="rounded-full bg-[#eef2f7] px-2 py-1 text-[11px] font-bold text-[#8794ab]">No data</span>
-                      )}
-                    </td>
-                  ))}
+                  {markets.map((m) => {
+                    // Derive tier from the canonical display score so the
+                    // compare modal matches the table row exactly (May 26
+                    // bug: row showed Tier A, compare showed Tier B).
+                    const composite = buildMarketView(m).composite;
+                    const derivedTier = m.hasLiveData ? tierFromDisplayScore(composite) : null;
+                    return (
+                      <td key={m.id} className="border-r border-[#e6edf7] px-2 py-2.5 text-center last:border-r-0">
+                        {derivedTier ? (
+                          <span className="rounded-full bg-[#e6f7ef] px-2 py-1 text-[11px] font-bold text-[#0a8f5a]">{derivedTier}</span>
+                        ) : (
+                          <span className="rounded-full bg-[#eef2f7] px-2 py-1 text-[11px] font-bold text-[#8794ab]">No data</span>
+                        )}
+                      </td>
+                    );
+                  })}
                 </tr>
                 <tr>
                   <td colSpan={markets.length + 1} className="px-3 pb-1 pt-2.5 text-sm font-black text-[#07142f]">Category Scores</td>
@@ -160,7 +169,7 @@ export function MarketCompareModal({ open, onClose, markets }: Props) {
                   <tr key={row.key} className="border-b border-[#eef2f7] last:border-b-0">
                     <td className="border-r border-[#e6edf7] px-3 py-1.5 text-[11.5px] font-semibold leading-tight text-[#34445f]">{row.label}</td>
                     {markets.map((m) => {
-                      const value = getCategory(m, row.dbKey);
+                      const value = getCategory(m, row.key);
                       return (
                         <td key={m.id} className="border-r border-[#e6edf7] px-3 py-1.5 last:border-r-0">
                           <div className="flex items-center gap-2">
@@ -174,6 +183,7 @@ export function MarketCompareModal({ open, onClose, markets }: Props) {
                     })}
                   </tr>
                 ))}
+
                 <tr>
                   <td colSpan={markets.length + 1} className="px-3 pb-1 pt-2.5 text-sm font-black text-[#07142f]">
                     Key Market Signals {signalRows.length > 0 && <span className="font-medium text-[#8794ab]">({signalRows.length})</span>}

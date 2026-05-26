@@ -56,7 +56,7 @@ function Gauge({ value }: { value: number | null }) {
 
 type SignalRow = { value: string; delta: string | null; label: string };
 
-export function MarketCompareModal({ open, onClose, markets }: Props) {
+export function MarketCompareModal({ open, onClose, markets, appliedSubWeights }: Props) {
   const [signalsByCity, setSignalsByCity] = useState<Record<string, Record<string, SignalRow>>>({});
   const [signalRows, setSignalRows] = useState<{ key: string; label: string }[]>([]);
   const [loading, setLoading] = useState(false);

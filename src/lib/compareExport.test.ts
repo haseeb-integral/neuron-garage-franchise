@@ -4,7 +4,7 @@ import type { RankedMarket } from "@/lib/cityScoringLiveData";
 import { buildCompareWorkbook, buildComparePdf, buildCompareFilename } from "./compareExport";
 
 // Minimal scored-row stub. cityScoringLiveData seeds from these fields.
-function makeMarket(id: string, city: string, state: string): RankedMarket {
+function makeMarket(id: string, city: string, state: string) {
   return {
     id,
     cityId: id,
@@ -29,7 +29,7 @@ function makeMarket(id: string, city: string, state: string): RankedMarket {
       score_csi: 40,
       composite_score_default: 65,
     } as any,
-  } as RankedMarket;
+  } as unknown as RankedMarket;
 }
 
 describe("compareExport", () => {

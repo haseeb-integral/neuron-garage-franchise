@@ -1839,6 +1839,8 @@ const CityScoring = () => {
         onClose={() => setCompareOpen(false)}
         markets={baseRankedMarkets.filter((m) => effectiveSelectedForCompare.includes(m.id)).slice(0, 4)}
         appliedSubWeights={appliedSubWeights as Record<string, Record<string, number>>}
+        appliedWeights={appliedWeights}
+        presetName={scoringModel}
       />
 
       {reportOpen && (

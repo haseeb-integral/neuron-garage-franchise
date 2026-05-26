@@ -24,6 +24,7 @@ interface Props {
   open: boolean;
   onClose: () => void;
   markets: RankedMarket[];
+  appliedSubWeights?: AppliedSubWeights;
 }
 
 function shortState(state: string) {

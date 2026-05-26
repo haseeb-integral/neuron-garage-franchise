@@ -152,7 +152,7 @@ export function LeadSheetTab({ candidate }: Props) {
           onCheckedChange={(v) => update("partner_involved", v)} />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="ls-location">Location Preferences</Label>
+        <Label htmlFor="ls-location">Desired Markets</Label>
         <Textarea id="ls-location" rows={2} value={form.location_preferences}
           onChange={(e) => update("location_preferences", e.target.value)} />
       </div>

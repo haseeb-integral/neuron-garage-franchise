@@ -21,6 +21,14 @@ interface Props {
   sigRows: SigRow[];
   cityId: string | null;
   autoDownload?: boolean;
+  /**
+   * Canonical Total Score for the selected market — the SAME number shown in
+   * the table row, center-panel gauge, and spreadsheet. Sourced from
+   * marketView.composite via CityScoring.tsx. The report MUST NOT recompute
+   * this from pillar averages (that drift was the May 26 Nashville bug:
+   * report said 75/Tier C while the screen said 99/Tier A).
+   */
+  detailScore: number;
 }
 
 const CAT_LABELS: { key: PillarKey; label: string }[] = [
@@ -42,31 +50,23 @@ function downloadCsv(filename: string, rows: unknown[][]) {
   URL.revokeObjectURL(url);
 }
 
-export function MarketReportModal({ open, onClose, market, categoryScores, sigRows, cityId, autoDownload = false }: Props) {
+export function MarketReportModal({ open, onClose, market, categoryScores, sigRows, cityId, autoDownload = false, detailScore }: Props) {
   const stateAbbr = market.state === "Texas" ? "TX" : market.state === "Florida" ? "FL" : market.state;
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const autoFiredRef = useRef(false);
 
-  const score = Math.round(Number((market as any).score ?? 0) || 0);
-  const detailScore = useMemo(() => {
-    // Prefer the freshly computed Demand pillar driven from categoryScores when present.
-    const pillars = buildPillarView(categoryScores as Partial<Record<PillarKey, number>>);
-    const d = pillars.demand?.display;
-    const t = pillars.franchiseeSupply?.display;
-    const c = pillars.competitiveLandscape?.display;
-    if (d != null && t != null && c != null) {
-      return Math.round((d + t + c) / 3);
-    }
-    return score;
-  }, [categoryScores, score]);
+  // Canonical Total Score comes from CityScoring.tsx (marketView.composite).
+  // Round defensively in case a string slipped through.
+  const totalScore = Math.round(Number(detailScore) || 0);
 
-  const band = bandFromDisplayScore(detailScore);
-  const tier = tierFromDisplayScore(detailScore);
+  const band = bandFromDisplayScore(totalScore);
+  const tier = tierFromDisplayScore(totalScore);
   const verdictLabel = band === "strong" ? "high-opportunity" : band === "moderate" ? "moderate-opportunity" : "low-opportunity";
 
   const pillars = buildPillarView(categoryScores as Partial<Record<PillarKey, number>>);
   const pillarDisplay = (key: PillarKey): number => pillars[key]?.display ?? 0;
   const signalRows = useMemo(() => sigRows.filter((r) => r.value !== "—"), [sigRows]);
+
 
   const { data: narrative, loading: narrativeLoading, error: narrativeError, regenerate } = useCityNarrative({
     cityId,

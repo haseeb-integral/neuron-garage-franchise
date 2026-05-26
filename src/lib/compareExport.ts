@@ -17,6 +17,7 @@ import {
 } from "@/lib/cityScoringLiveData";
 import {
   buildRecomputedPillarScores,
+  buildRecomputedRawComposite,
   type AppliedSubWeights,
 } from "@/lib/recomputedPillars";
 import { METRICS_BY_CATEGORY } from "@/lib/sowMetricRegistry";

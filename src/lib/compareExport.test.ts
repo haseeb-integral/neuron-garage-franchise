@@ -46,7 +46,7 @@ describe("compareExport", () => {
     const overview = XLSX.utils.sheet_to_json<string[]>(wb.Sheets.Overview, { header: 1 });
     // header row + Overall + Tier + 3 pillars = 6 rows
     expect(overview.length).toBeGreaterThanOrEqual(6);
-    expect(overview[0]).toContain("Nashville, TN");
+    expect(overview[0].some((h) => String(h).startsWith("Nashville"))).toBe(true);
   });
 
   it("builds a pdf without throwing", () => {

@@ -931,12 +931,12 @@ const CityScoring = () => {
 
 
   const openCompare = useCallback(() => {
-    if (selectedForCompare.length < 2) {
+    if (effectiveSelectedForCompare.length < 2) {
       toast.error("Select at least 2 markets to compare");
       return;
     }
     setCompareOpen(true);
-  }, [selectedForCompare]);
+  }, [effectiveSelectedForCompare]);
 
   const applyWeights = () => {
     if (totalWeight !== 100) return;
@@ -953,7 +953,7 @@ const CityScoring = () => {
   }, [navigate, selected.city, selected.state]);
 
   const handleFindTeachersForSelected = useCallback(() => {
-    const picked = baseRankedMarkets.filter((m: any) => selectedForCompare.includes(m.id)).slice(0, 10);
+    const picked = baseRankedMarkets.filter((m: any) => effectiveSelectedForCompare.includes(m.id)).slice(0, 10);
     if (picked.length === 0) {
       toast.error("Select at least 1 market first (use the checkbox).");
       return;
@@ -961,7 +961,7 @@ const CityScoring = () => {
     const cities = picked.map((m: any) => m.city).join(",");
     const states = picked.map((m: any) => m.state).join(",");
     navigate(`/teacher-prospects?city=${encodeURIComponent(cities)}&state=${encodeURIComponent(states)}`);
-  }, [baseRankedMarkets, selectedForCompare, navigate]);
+  }, [baseRankedMarkets, effectiveSelectedForCompare, navigate]);
 
   const handleRefreshData = async () => {
     if (!selectedCity || !selectedState) return;

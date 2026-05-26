@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { buildSeededFallbackSignalsFromScored, type RankedMarket } from "@/lib/cityScoringLiveData";
 import { buildMarketView, buildPillarView, type PillarKey } from "@/lib/marketView";
-import { buildRecomputedPillarScores, type AppliedSubWeights } from "@/lib/recomputedPillars";
+import { buildRecomputedPillarScores, buildRecomputedRawComposite, type AppliedSubWeights } from "@/lib/recomputedPillars";
 import { tierFromDisplayScore } from "@/lib/cityTiers";
 import { formatMetric } from "@/lib/numberFormat";
 import { buildCompareWorkbook, buildComparePdf, buildCompareFilename } from "@/lib/compareExport";
@@ -149,19 +149,32 @@ export function MarketCompareModal({ open, onClose, markets, appliedSubWeights, 
               <tbody>
                 <tr className="border-b border-[#e6edf7]">
                   <td className="border-r border-[#e6edf7] px-3 py-2.5 font-semibold text-[#07142f]">Overall Score</td>
-                  {markets.map((m) => (
-                    <td key={m.id} className="border-r border-[#e6edf7] px-2 py-2.5 text-center last:border-r-0">
-                      <Gauge value={m.hasLiveData ? (buildMarketView(m).composite || null) : null} />
-                    </td>
-                  ))}
+                  {markets.map((m) => {
+                    // Use the SAME re-ranked composite the table sorts by, so
+                    // the modal's Overall Score matches the SCORE column when
+                    // the user has tweaked weights or picked a preset.
+                    // (May-27 fix — companion to the May-26 pillar fix.)
+                    const rawComposite = m.hasLiveData
+                      ? buildRecomputedRawComposite(m, appliedSubWeights ?? {}, appliedWeights ?? {})
+                      : 0;
+                    const display = m.hasLiveData
+                      ? buildMarketView({ ...m, compositeScore: rawComposite }).composite
+                      : null;
+                    return (
+                      <td key={m.id} className="border-r border-[#e6edf7] px-2 py-2.5 text-center last:border-r-0">
+                        <Gauge value={display || null} />
+                      </td>
+                    );
+                  })}
                 </tr>
                 <tr className="border-b border-[#e6edf7]">
                   <td className="border-r border-[#e6edf7] px-3 py-2.5 font-semibold text-[#07142f]">Tier</td>
                   {markets.map((m) => {
-                    // Derive tier from the canonical display score so the
-                    // compare modal matches the table row exactly (May 26
-                    // bug: row showed Tier A, compare showed Tier B).
-                    const composite = buildMarketView(m).composite;
+                    // Tier follows the same recomputed display score.
+                    const rawComposite = m.hasLiveData
+                      ? buildRecomputedRawComposite(m, appliedSubWeights ?? {}, appliedWeights ?? {})
+                      : 0;
+                    const composite = buildMarketView({ ...m, compositeScore: rawComposite }).composite;
                     const derivedTier = m.hasLiveData ? tierFromDisplayScore(composite) : null;
                     return (
                       <td key={m.id} className="border-r border-[#e6edf7] px-2 py-2.5 text-center last:border-r-0">
@@ -268,6 +281,7 @@ export function MarketCompareModal({ open, onClose, markets, appliedSubWeights, 
                       const doc = buildComparePdf(
                         markets,
                         appliedSubWeights ?? {},
+                        appliedWeights ?? {},
                         presetName ?? null,
                       );
                       doc.save(buildCompareFilename(markets, "pdf"));

@@ -17,6 +17,7 @@ import {
 } from "@/lib/cityScoringLiveData";
 import {
   buildRecomputedPillarScores,
+  buildRecomputedRawComposite,
   type AppliedSubWeights,
 } from "@/lib/recomputedPillars";
 import { METRICS_BY_CATEGORY } from "@/lib/sowMetricRegistry";
@@ -57,13 +58,20 @@ type SignalRow = { key: string; label: string; values: string[] };
 function assemble(
   markets: RankedMarket[],
   appliedSubWeights: AppliedSubWeights,
+  appliedWeights: Partial<Record<CategoryKey, number>>,
 ) {
-  const overall = markets.map((m) =>
-    m.hasLiveData ? (buildMarketView(m).composite || null) : null,
-  );
-  const tiers = markets.map((m) =>
-    m.hasLiveData ? tierFromDisplayScore(buildMarketView(m).composite) : null,
-  );
+  // Use the re-ranked composite (same pipeline as the table SCORE column)
+  // so exports always match what the user sees on screen.
+  const displayComposite = (m: RankedMarket): number | null => {
+    if (!m.hasLiveData) return null;
+    const raw = buildRecomputedRawComposite(m, appliedSubWeights, appliedWeights);
+    return buildMarketView({ ...m, compositeScore: raw }).composite || null;
+  };
+  const overall = markets.map(displayComposite);
+  const tiers = markets.map((m) => {
+    const v = displayComposite(m);
+    return v == null ? null : tierFromDisplayScore(v);
+  });
 
   const pillarRows: PillarRow[] = PILLARS.map(({ key, label }) => ({
     label,
@@ -105,7 +113,7 @@ export function buildCompareWorkbook(
   exportedAt: Date = new Date(),
 ): XLSX.WorkBook {
   const wb = XLSX.utils.book_new();
-  const data = assemble(markets, appliedSubWeights);
+  const data = assemble(markets, appliedSubWeights, appliedWeights);
   const headerCols = markets.map(cityHeader);
 
   // Sheet 1: Overview
@@ -177,11 +185,12 @@ export function buildCompareWorkbook(
 export function buildComparePdf(
   markets: RankedMarket[],
   appliedSubWeights: AppliedSubWeights,
+  appliedWeights: Partial<Record<CategoryKey, number>>,
   presetName: string | null,
   exportedAt: Date = new Date(),
 ): jsPDF {
   const doc = new jsPDF({ unit: "pt", format: "letter" });
-  const data = assemble(markets, appliedSubWeights);
+  const data = assemble(markets, appliedSubWeights, appliedWeights);
   const headerCols = markets.map(cityHeader);
 
   // Header

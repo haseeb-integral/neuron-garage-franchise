@@ -89,3 +89,30 @@ export function buildRecomputedPillarScores(
   }
   return out;
 }
+
+// ─── Composite recomputation ───────────────────────────────────────────────
+// Same pipeline `useCityRanking` uses for the re-ranked table SCORE column.
+// Lifted here so the Compare modal + exports produce the SAME raw composite
+// the table is sorted by — fixes the May-27 "table=100, modal=99" drift.
+// Returns the RAW composite (pre-calibration). Pass through buildMarketView
+// (or calibrateCompositeForDisplay) to get the displayed 0-100 value.
+import { recomputeComposite } from "@/lib/clientSubWeightScoring";
+
+export function buildRecomputedRawComposite(
+  market: RankedMarket,
+  appliedSubWeights: AppliedSubWeights,
+  appliedWeights: Partial<Record<CategoryKey, number>>,
+): number {
+  if (!market.hasLiveData) return 0;
+  const pillars = buildRecomputedPillarScores(market, appliedSubWeights);
+  const cats: Partial<Record<CategoryKey, number | null>> = {
+    demand: pillars.demand ?? null,
+    franchiseeSupply: pillars.franchiseeSupply ?? null,
+    competitiveLandscape: pillars.competitiveLandscape ?? null,
+  };
+  const { composite } = recomputeComposite(
+    cats,
+    appliedWeights as Record<CategoryKey, number>,
+  );
+  return composite;
+}

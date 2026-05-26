@@ -1654,7 +1654,7 @@ const CityScoring = () => {
           selectedCity={selectedCity}
           selectedState={selectedState}
           pickMarket={pickMarket}
-          selectedForCompare={selectedForCompare}
+          selectedForCompare={effectiveSelectedForCompare}
           toggleCompare={toggleCompare}
           compareMode={compareMode}
           watchlistOnly={watchlistOnly}
@@ -1837,7 +1837,7 @@ const CityScoring = () => {
       <MarketCompareModal
         open={compareOpen}
         onClose={() => setCompareOpen(false)}
-        markets={baseRankedMarkets.filter((m) => selectedForCompare.includes(m.id)).slice(0, 4)}
+        markets={baseRankedMarkets.filter((m) => effectiveSelectedForCompare.includes(m.id)).slice(0, 4)}
       />
 
       {reportOpen && (

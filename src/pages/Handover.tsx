@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ShieldAlert, ExternalLink, FileText } from "lucide-react";
 
-const GOOGLE_DOC_PATH = "Shared with me → Neuron Garage → 00_Admin → Account Inventory";
+const VAULT_STATUS = "🟡 Pending Brett — vault location (Google Doc / Drive folder) not yet chosen.";
 const REPO_FILE_PATH = "docs/handover/accounts.md";
 
 interface AccountRow {
@@ -34,7 +34,7 @@ const platforms: AccountRow[] = [
   },
   {
     name: "🐙 GitHub",
-    purpose: "Source code + version history. Repo is public.",
+    purpose: "Source code + version history.",
     owner: "haseeb-integral (personal)",
     samAccess: "Admin collaborator now; org transfer post-release",
     howTo: "Repo → Settings → Collaborators → add Sam with Admin role.",
@@ -103,12 +103,10 @@ export default function Handover() {
         <AlertDescription className="space-y-1">
           <div>
             This page (and the matching <code className="font-mono text-xs">{REPO_FILE_PATH}</code> file
-            in our public repo) lists <strong>what accounts exist</strong> — never passwords or API keys.
+            in the repo) lists <strong>what accounts exist</strong> — never passwords or API keys.
           </div>
           <div>
-            Actual credentials live in the shared Google Doc:{" "}
-            <span className="font-medium">{GOOGLE_DOC_PATH}</span>
-            <span className="text-xs ml-1 opacity-80">(adhoc path until Brett confirms final Drive)</span>
+            <span className="font-medium">Vault: </span>{VAULT_STATUS}
           </div>
         </AlertDescription>
       </Alert>
@@ -197,9 +195,16 @@ export default function Handover() {
         </CardContent>
       </Card>
 
-      <div className="text-xs text-muted-foreground flex items-center gap-1">
-        <FileText className="w-3 h-3" />
-        Mirrored in repo at <code className="font-mono">{REPO_FILE_PATH}</code>
+      <div className="text-xs text-muted-foreground space-y-1">
+        <div className="flex items-center gap-1">
+          <FileText className="w-3 h-3" />
+          Mirrored in repo at <code className="font-mono">{REPO_FILE_PATH}</code>
+        </div>
+        <div>
+          <em>Future option:</em> once Brett picks the canonical Google Doc / Drive folder, that Doc
+          can be linked to this app via a Google Docs connector so the app itself can read/write the
+          vault directly. Parked until Brett decides.
+        </div>
       </div>
     </div>
   );

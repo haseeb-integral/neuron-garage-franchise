@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Download, FileSpreadsheet, FileText } from "lucide-react";
 import { toast } from "sonner";
+import * as XLSX from "xlsx";
 import { buildSeededFallbackSignalsFromScored, type RankedMarket } from "@/lib/cityScoringLiveData";
 import { buildMarketView, buildPillarView, type PillarKey } from "@/lib/marketView";
 import { buildRecomputedPillarScores, type AppliedSubWeights } from "@/lib/recomputedPillars";
 import { tierFromDisplayScore } from "@/lib/cityTiers";
 import { formatMetric } from "@/lib/numberFormat";
+import { buildCompareWorkbook, buildComparePdf, buildCompareFilename } from "@/lib/compareExport";
+import type { CategoryKey } from "@/stores/cityScoringStore";
 
 const CATEGORY_ROWS: { key: PillarKey; label: string }[] = [
   { key: "demand", label: "Demand" },
@@ -25,6 +29,8 @@ interface Props {
   onClose: () => void;
   markets: RankedMarket[];
   appliedSubWeights?: AppliedSubWeights;
+  appliedWeights?: Partial<Record<CategoryKey, number>>;
+  presetName?: string | null;
 }
 
 function shortState(state: string) {

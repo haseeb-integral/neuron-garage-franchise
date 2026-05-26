@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { buildSeededFallbackSignalsFromScored, type RankedMarket } from "@/lib/cityScoringLiveData";
 import { buildMarketView, buildPillarView, type PillarKey } from "@/lib/marketView";
-import { buildRecomputedPillarScores, type AppliedSubWeights } from "@/lib/recomputedPillars";
+import { buildRecomputedPillarScores, buildRecomputedRawComposite, type AppliedSubWeights } from "@/lib/recomputedPillars";
 import { tierFromDisplayScore } from "@/lib/cityTiers";
 import { formatMetric } from "@/lib/numberFormat";
 import { buildCompareWorkbook, buildComparePdf, buildCompareFilename } from "@/lib/compareExport";

@@ -58,13 +58,20 @@ type SignalRow = { key: string; label: string; values: string[] };
 function assemble(
   markets: RankedMarket[],
   appliedSubWeights: AppliedSubWeights,
+  appliedWeights: Partial<Record<CategoryKey, number>>,
 ) {
-  const overall = markets.map((m) =>
-    m.hasLiveData ? (buildMarketView(m).composite || null) : null,
-  );
-  const tiers = markets.map((m) =>
-    m.hasLiveData ? tierFromDisplayScore(buildMarketView(m).composite) : null,
-  );
+  // Use the re-ranked composite (same pipeline as the table SCORE column)
+  // so exports always match what the user sees on screen.
+  const displayComposite = (m: RankedMarket): number | null => {
+    if (!m.hasLiveData) return null;
+    const raw = buildRecomputedRawComposite(m, appliedSubWeights, appliedWeights);
+    return buildMarketView({ ...m, compositeScore: raw }).composite || null;
+  };
+  const overall = markets.map(displayComposite);
+  const tiers = markets.map((m) => {
+    const v = displayComposite(m);
+    return v == null ? null : tierFromDisplayScore(v);
+  });
 
   const pillarRows: PillarRow[] = PILLARS.map(({ key, label }) => ({
     label,

@@ -1841,6 +1841,7 @@ const CityScoring = () => {
             sigRows={sigRows}
             cityId={selected.cityId ?? null}
             autoDownload={reportAutoPdf}
+            detailScore={Number(detailScore) || 0}
           />
         </Suspense>
       )}

@@ -166,7 +166,7 @@ export function MarketReportModal({ open, onClose, market, categoryScores, sigRo
             <div className="flex items-baseline justify-between">
               <span className="text-[11px] uppercase tracking-wide text-[#8794ab]">Total Score</span>
               <span className="text-[22px] font-bold text-[#07142f] tabular-nums">
-                {detailScore}
+                {totalScore}
                 <span className="text-[12px] text-[#8794ab] font-normal">/100</span>
               </span>
             </div>

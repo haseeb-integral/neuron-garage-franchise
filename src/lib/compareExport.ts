@@ -185,11 +185,12 @@ export function buildCompareWorkbook(
 export function buildComparePdf(
   markets: RankedMarket[],
   appliedSubWeights: AppliedSubWeights,
+  appliedWeights: Partial<Record<CategoryKey, number>>,
   presetName: string | null,
   exportedAt: Date = new Date(),
 ): jsPDF {
   const doc = new jsPDF({ unit: "pt", format: "letter" });
-  const data = assemble(markets, appliedSubWeights);
+  const data = assemble(markets, appliedSubWeights, appliedWeights);
   const headerCols = markets.map(cityHeader);
 
   // Header

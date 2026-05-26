@@ -5,6 +5,7 @@ import { Download } from "lucide-react";
 import { toast } from "sonner";
 import { buildSeededFallbackSignalsFromScored, type RankedMarket } from "@/lib/cityScoringLiveData";
 import { buildMarketView } from "@/lib/marketView";
+import { formatMetric } from "@/lib/numberFormat";
 
 const CATEGORY_ROWS: { key: string; label: string; dbKey: string }[] = [
   { key: "demand", label: "Demand", dbKey: "demand" },
@@ -77,8 +78,7 @@ export function MarketCompareModal({ open, onClose, markets }: Props) {
         const seeded = buildSeededFallbackSignalsFromScored(m.scoredRow);
         sigMap[m.cityId] = {};
         seeded.forEach((r) => {
-          const valStr =
-            r.value == null ? "—" : typeof r.value === "number" ? String(r.value) : String(r.value);
+          const valStr = formatMetric(r.value, r.signal_key);
           sigMap[m.cityId][r.signal_key] = { value: valStr, delta: null, label: r.label };
           if (!seen.has(r.signal_key)) seen.set(r.signal_key, r.label || r.signal_key);
         });

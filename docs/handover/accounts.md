@@ -1,9 +1,8 @@
 # Neuron Garage — Credentials & Handover Index
 
-> **CRITICAL SECURITY RULE:** This file lives in a **public** GitHub repo. It contains **NO** passwords, API keys, recovery codes, or secrets — ever. Real credentials live only in the **shared Google Doc** (path below). If you're tempted to paste a secret here, stop.
+> **CRITICAL SECURITY RULE:** This file is committed to the GitHub repo. It contains **NO** passwords, API keys, recovery codes, or secrets — ever. Real credentials live only in the **shared vault** (see below). If you're tempted to paste a secret here, stop.
 
-**Where the actual secrets live:** Google Doc — `Shared with me → Neuron Garage → 00_Admin → Account Inventory`
-*(adhoc path until Brett confirms the final Google Drive location)*
+**Vault location:** 🟡 **Pending Brett** — Brett to confirm the Google Drive folder / Doc that will hold the actual credentials. Until then, secrets are not written down anywhere shared.
 
 **Audience:** Sam (incoming), Haseeb (current), Brett (owner/approver).
 **App size:** 3–6 internal users. Pre-release. No customers yet.
@@ -13,7 +12,7 @@
 ## How to use this file
 
 1. This file is the **index** — names of accounts, who owns them, what Sam needs.
-2. The **Google Doc** is the **vault** — actual emails, temp passwords, API keys, recovery codes.
+2. The **vault** (once Brett confirms it) is where actual emails, temp passwords, API keys, recovery codes live.
 3. Anything marked **🟡 Pending Brett** must not be touched until Brett approves.
 
 ---
@@ -23,7 +22,7 @@
 ### 💻 Lovable.dev — Frontend & dev environment
 - **Purpose:** Where this app is built, previewed, and published.
 - **Project URL:** https://lovable.dev (project ID `c74b81ad-10d7-4a10-b6c8-de17f48a663e`)
-- **Master account:** *[see Google Doc]*
+- **Master account:** *[see vault]*
 - **Access for Sam:** Full admin (co-owner)
 - **How to hand over:** Lovable → Project → Settings → Team → Invite Sam's email as Admin.
 
@@ -36,22 +35,22 @@
 
 ### 🐙 GitHub — source code
 - **Purpose:** Stores source code and version history.
-- **Repository:** *[confirm URL — currently on Haseeb's personal account, public]*
+- **Repository:** *[confirm URL — currently on Haseeb's personal account]*
 - **Owner:** `haseeb-integral` (personal account)
 - **Access for Sam:** Admin collaborator (immediate). **Later:** move repo into a `neuron-garage` GitHub org with both as owners — parked until post-release.
 - **How to hand over:** GitHub repo → Settings → Collaborators → Add Sam's GitHub username with Admin role.
-- **⚠️ Repo is public** so Claude/Manus AI can read it. Never commit secrets — use Lovable Cloud secrets instead.
+- **Never commit secrets** to this repo. Use Lovable Cloud secrets for anything sensitive.
 
 ### 🌐 Domain & DNS
 - **Domain:** *[confirm — `neurongarage.com`?]*
-- **Registrar:** *[see Google Doc]*
-- **Renewal date / card on file:** *[see Google Doc]*
+- **Registrar:** *[see vault]*
+- **Renewal date / card on file:** *[see vault]*
 - **Access for Sam:** Add as account contact / admin.
 - **How to hand over:** Registrar dashboard → Account → Add user.
 
 ### 📬 Google Workspace (email + shared Drive)
-- **Purpose:** Email (`*@neurongarage.com`), shared Drive where this very Google Doc lives.
-- **Super admin:** *[see Google Doc]*
+- **Purpose:** Email (`*@neurongarage.com`), shared Drive where the vault will live (once Brett picks it).
+- **Super admin:** *[see vault]*
 - **Access for Sam:** Super admin.
 - **How to hand over:** admin.google.com → Account → Admin roles → assign Super Admin to Sam.
 
@@ -79,7 +78,7 @@ These are all on **Brett's accounts**. API keys are already wired into Lovable C
 ## 3. Marketing & Outreach
 
 ### LinkedIn
-- **Company page / personal handles used for outreach:** *[list in Google Doc]*
+- **Company page / personal handles used for outreach:** *[list in vault]*
 - **Access for Sam:** Add as page admin.
 
 ### Analytics (if any exist)
@@ -93,7 +92,7 @@ These are all on **Brett's accounts**. API keys are already wired into Lovable C
 Managed live in-app at **`/settings/team`** (Team Members page). This is the source of truth — do not duplicate the list here.
 
 For each user the Team Members page handles:
-- Creating accounts with a temp password (shown once, share via Google Doc / 1:1 channel)
+- Creating accounts with a temp password (shown once, share via vault / 1:1 channel)
 - Sending password reset links
 - Role changes (admin / manager)
 
@@ -107,15 +106,18 @@ Current users to confirm exist with correct role:
 
 ## 5. Handover checklist (do these in order)
 
+- [ ] 🟡 Brett confirms vault location (which Google Doc / Drive folder holds the secrets)
 - [ ] Sam confirms his email address for all the below
 - [ ] Add Sam to Lovable project (Admin)
 - [ ] Add Sam to GitHub repo (Admin collaborator)
 - [ ] Add Sam to Google Workspace (Super Admin)
 - [ ] Add Sam as domain registrar contact
 - [ ] Create Sam's app login at `/settings/team` (role: admin)
-- [ ] Share the Google Doc with Sam (view + edit)
+- [ ] Share the vault with Sam (view + edit) once it exists
 - [ ] 🟡 Talk to Brett re: SmartLead + other API accounts
 - [ ] Later (post-release): create `neuron-garage` GitHub org, transfer repo
+
+**Future option:** once Brett picks the canonical Google Doc / Drive folder, that Doc can be linked to this Lovable app via a Google Docs connector so the app itself can read/write the vault doc directly. Parked until Brett decides.
 
 ---
 

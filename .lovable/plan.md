@@ -1,41 +1,70 @@
-## Goal
+## Scope
 
-Save the Nashville score-mismatch explanation + fix plan in TWO places so you can hand it to Brett later, while Tier 1 stays the priority. No code changes to the app.
+Three small changes + a recap for Brett. No new features.
 
-## Files to create
+---
 
-### 1. `docs/pending-approval/2026-05-27-nashville-score-mismatch.md`
-A dedicated doc for Brett's review. Self-contained so Brett can read it without any other context.
+## 1. Remove "public repo" wording
 
-### 2. `.lovable/parked-fixes.md`
-A running "parked, awaiting approval" list. The Nashville issue becomes the first entry. Future parked fixes append here so nothing gets lost.
+Currently `docs/handover/accounts.md` and `src/pages/Handover.tsx` both say things like *"this file lives in a public GitHub repo"* and *"Repo is currently public — no secrets ever"*. You asked to drop that wording (repo visibility may change; either way it shouldn't be advertised in the doc).
 
-Both files contain the same explanation in plain English, written exactly the way I explained it to you:
+**Edits:**
 
-- **What the user sees** — table shows different Dem/TAM/Opp than the center panel for the same city (Nashville), while Overall Score can still match (e.g. both 100).
-- **Grade-8 explanation** — report-card analogy. Original DB grade vs re-graded with your weights. Two slightly different category mixes can still round to the same overall, which is why the big number matches but the small ones don't.
-- **Why this is troubling for a normal user** — feels like the app contradicts itself.
-- **Role of presets / sliders** — master sliders change how much each category counts in the overall; sub-weight sliders change how a category itself is built. Both should update every visible number, but today they don't update every surface consistently.
-- **Is it a bug?** — Yes. Not Brett-instructed. It's a leftover from the May-26 / May-27 fixes that solved the compare modal but didn't finish the table-row vs center-panel cleanup.
-- **Did I (the AI) err earlier?** — Yes, partially. The earlier fixes were correct but incomplete.
-- **Fix plan** — one shared scoring helper used by: ranked table row cells, center panel category bars, compare modal, exports. Files likely touched: `useCityRanking.ts`, `RankedMarketsList.tsx`, `CityScoring.tsx`, `recomputedPillars.ts`.
-- **Risk** — display-only unification; no DB / edge function / formula / calibration changes.
-- **Status** — PARKED. Tier 1 is priority. Do NOT implement until Brett approves.
+- `docs/handover/accounts.md`
+  - Top banner: change "This file lives in a **public** GitHub repo" → "This file lives in the GitHub repo."
+  - GitHub section: remove the "⚠️ Repo is public so Claude/Manus AI can read it" bullet. Keep the "Never commit secrets — use Lovable Cloud secrets instead" rule (rephrased generically).
+- `src/pages/Handover.tsx`
+  - Alert copy: drop "in our public repo"; just say "and the matching `docs/handover/accounts.md` file in the repo."
+  - GitHub platform row: change purpose from "Source code + version history. Repo is public." → "Source code + version history."
 
-## Reminder responsibility
+## 2. Hold the Google Doc path until Brett confirms
 
-I will add this line at the top of BOTH files in bold:
+Right now both files name an adhoc path: `Shared with me → Neuron Garage → 00_Admin → Account Inventory`. You want to wait on Brett before locking any path.
 
-> **REMINDER FOR HASEEB:** Tier 1 is the current priority. After Tier 1 is finished, Lovable must remind Haseeb to get Brett's approval on this parked fix before any work begins.
+**Edits:**
 
-I will also add a memory rule so I proactively surface this in future chats once Tier 1 is marked done. Memory entry:
+- `docs/handover/accounts.md` — replace the path line with: *"**Vault location:** 🟡 Pending Brett — Brett to confirm the Google Drive folder / Doc that holds the actual credentials. Until then, secrets are not written down anywhere shared."*
+- `src/pages/Handover.tsx` — same change in the destructive Alert; the `GOOGLE_DOC_PATH` constant becomes a "pending Brett" string and the surrounding copy is reworded so we are not implying secrets already exist somewhere.
 
-- **Core rule added:** "Parked fix awaiting Brett approval: table vs center-panel category-score mismatch (docs/pending-approval/2026-05-27-nashville-score-mismatch.md). Remind Haseeb after Tier 1 is finished. Do not implement until Brett approves."
+## 3. Mention the future Google Doc connector option (so Brett knows)
 
-## Out of scope
+Add one short note under §5 (Handover checklist) in `accounts.md` and as a small footer line on the `/handover` page:
 
-- No changes to `.lovable/plan.md` content (that already holds the compare-modal fix).
-- No code edits to scoring, table, panel, or modal.
-- No DB / migration / edge function changes.
+> *Future option:* once Brett picks the canonical Google Doc / Drive folder, that Doc can be linked to this app via a Google Docs connector so the app itself can read/write the vault doc directly. Parked until Brett decides.
 
-After you approve, I'll switch to build mode and create the two files + memory entry. Nothing else.
+No connector is wired up now — this is just a flagged option.
+
+## 4. Recap of Tier 1 item #1 for Brett (what exists, where)
+
+This is the part you asked me to "remember." Nothing to build — just listing the artifacts created so far for **"Document Credentials & Logins"** so you can point Brett at them:
+
+| Artifact | Path | Audience |
+|---|---|---|
+| Handover index (markdown, in repo) | `docs/handover/accounts.md` | Anyone with repo access — names of accounts only, no secrets |
+| In-app handover page (admin only) | route `/handover`, source `src/pages/Handover.tsx` | Admin users inside the app, sidebar → "Credentials & Handover" |
+| Sidebar link | `src/components/AppSidebar.tsx` (KeyRound icon, utility nav) | All admins |
+| Route registration | `src/App.tsx` | n/a |
+| Parked fix (separate Tier 1 item) | `docs/pending-approval/2026-05-27-nashville-score-mismatch.md` + `.lovable/parked-fixes.md` | Awaiting Brett's approval — not part of this handover doc |
+
+**What still needs Brett's input (called out in both the .md and the /handover page):**
+
+1. Final Google Doc / Drive folder to use as the vault.
+2. Per-API decision (SmartLead, Apify, Firecrawl, Deepgram, Census, BLS, BEA) — transfer / add Sam / leave on Brett's account.
+3. Whether to link a Google Doc connector to this app later.
+4. (Carry-over reminder) Nashville score-mismatch parked fix.
+
+## Out of scope right now
+
+- Writing actual credentials anywhere.
+- Adding the Google Docs connector (waiting on Brett's chosen doc).
+- Creating a `neuron-garage` GitHub org / transferring the repo (post-release).
+- Any change to `/settings/team` (already source of truth for app logins).
+
+---
+
+## Files touched
+
+- `docs/handover/accounts.md` — wording edits only
+- `src/pages/Handover.tsx` — wording edits only
+
+No DB, no routes, no new components, no dependencies.

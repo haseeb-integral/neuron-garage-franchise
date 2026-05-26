@@ -72,6 +72,14 @@ function SelectedMarketPanelImpl({
   const detailCityId = selected.cityId as string | undefined;
   const isSaved = !!detailCityId && watchlistCityIds.has(detailCityId);
 
+  // Brett May-24 rule: every user-facing pillar score must go through the
+  // shared calibration (buildPillarView). Compute once and reuse across the
+  // driver text, formula popover, and Category Scores bars so this panel
+  // matches the drawer / report / compare surfaces.
+  const pillars = buildPillarView(detailCategoryScores as Partial<Record<PillarKey, number>>);
+  const calibratedScore = (key: string): number =>
+    pillars[key as PillarKey]?.display ?? 0;
+
   return (
     <div className="min-w-0 rounded-lg bg-white border border-[#eef2f7] p-4 flex flex-col h-full">
       <div className="mb-3 flex items-start justify-between gap-3">

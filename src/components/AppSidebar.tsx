@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Home, Map, Users, Kanban, ChevronLeft, ChevronRight, ChevronDown, Mail, FileText, BookOpen, Send, MailOpen, BarChart3, Calculator, Gauge, LibraryBig, Activity, FileCode2 } from "lucide-react";
+import { Home, Map, Users, Kanban, ChevronLeft, ChevronRight, ChevronDown, Mail, FileText, BookOpen, Send, MailOpen, BarChart3, Calculator, Gauge, LibraryBig, Activity, FileCode2, KeyRound } from "lucide-react";
 
 import { NavLink, useLocation } from "react-router-dom";
 import logo from "@/assets/neuron-garage-logo.png";
@@ -18,6 +18,7 @@ const primaryNavItems = [
 
 const utilityNavItems = [
   { title: "Team Members", url: "/settings/team", icon: Users },
+  { title: "Credentials & Handover", url: "/handover", icon: KeyRound },
   { title: "User's Guide", url: "/users-guide", icon: BookOpen },
 ];
 

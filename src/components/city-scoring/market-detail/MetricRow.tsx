@@ -1,5 +1,6 @@
 import { ExternalLink } from "lucide-react";
 import type { SowMetricEntry } from "@/lib/sowMetricRegistry";
+import { formatMetric } from "@/lib/numberFormat";
 
 export type MetricStatus = "live" | "proxy" | "missing" | "blocked" | "manual";
 
@@ -17,33 +18,6 @@ export type LiveSignal = {
     [key: string]: unknown;
   } | null;
 };
-
-function formatByKey(key: string | undefined, num: number): string {
-  const k = (key ?? "").toLowerCase();
-  // Percentages: keys containing "pct", "percent", or "rate"
-  if (/(pct|percent|rate)\b|_pct$|_percent$/.test(k)) {
-    // If value already looks like a fraction (0-1), convert; otherwise treat as %
-    const pct = Math.abs(num) <= 1 ? num * 100 : num;
-    return `${pct.toLocaleString(undefined, { maximumFractionDigits: 1 })}%`;
-  }
-  // Currency: income, spend, capital, price, revenue, cost
-  if (/(income|spend|capital|price|revenue|cost|earnings|wage)/.test(k)) {
-    return `$${Math.round(num).toLocaleString()}`;
-  }
-  // Plain integer with thousands separators
-  if (Number.isInteger(num)) return num.toLocaleString();
-  // Decimal — keep up to 2 dp with separators
-  return num.toLocaleString(undefined, { maximumFractionDigits: 2 });
-}
-
-function displayValue(value: unknown, key?: string): string {
-  if (value === null || value === undefined || value === "") return "—";
-  const num = typeof value === "number" ? value : Number(value);
-  if (typeof value !== "boolean" && Number.isFinite(num) && String(value).trim() !== "") {
-    return formatByKey(key, num);
-  }
-  return String(value);
-}
 
 interface Props {
   metric: SowMetricEntry;

@@ -50,7 +50,7 @@ describe("compareExport", () => {
   });
 
   it("builds a pdf without throwing", () => {
-    const doc = buildComparePdf(markets, subs, "Demand Heavy");
+    const doc = buildComparePdf(markets, subs, masters, "Demand Heavy");
     expect(doc.getNumberOfPages()).toBeGreaterThanOrEqual(1);
   });
 

@@ -28,7 +28,7 @@ interface Props {
 export function MetricRow({ metric, signal, status }: Props) {
   const value =
     signal && status !== "missing"
-      ? displayValue(signal.value, signal.signal_key ?? metric.key)
+      ? formatMetric(signal.value, signal.signal_key ?? metric.key)
       : "—";
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-[#f1f4f9] px-2 py-1 last:border-0">

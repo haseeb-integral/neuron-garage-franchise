@@ -1,73 +1,41 @@
-## What you're seeing
+## Goal
 
-**Table shows 100. Compare modal shows 99. Same city (Nashville), same moment.**
+Save the Nashville score-mismatch explanation + fix plan in TWO places so you can hand it to Brett later, while Tier 1 stays the priority. No code changes to the app.
 
-That is a bug — and it's the **same family of bug** we fixed on May 26 for the pillar numbers (Demand/TAM/Opportunity). Back then, the modal was reading stale DB pillar values instead of the recomputed ones. We fixed the pillars but **forgot to fix the Overall Score** on top.
+## Files to create
 
-## Grade-8 explanation
+### 1. `docs/pending-approval/2026-05-27-nashville-score-mismatch.md`
+A dedicated doc for Brett's review. Self-contained so Brett can read it without any other context.
 
-Think of it like a school report card:
+### 2. `.lovable/parked-fixes.md`
+A running "parked, awaiting approval" list. The Nashville issue becomes the first entry. Future parked fixes append here so nothing gets lost.
 
-1. The app starts with each city's **original score from the database** (let's call it "default homework grade").
-2. When you change the sliders / pick a preset like *Demand-Heavy*, the app **re-grades every city** using your new rules. This new grade is what the **Ranked Markets table** shows you (the yellow banner literally says "Composite re-ranked with your weights").
-3. The **Compare modal**, however, never got the memo. It still reads the **original default grade** from the database and just runs it through the display polish (the 0-100 calibration curve).
+Both files contain the same explanation in plain English, written exactly the way I explained it to you:
 
-So for Nashville:
-- Re-ranked grade → calibrates to **100** (table)
-- Original DB grade → calibrates to **99** (modal)
+- **What the user sees** — table shows different Dem/TAM/Opp than the center panel for the same city (Nashville), while Overall Score can still match (e.g. both 100).
+- **Grade-8 explanation** — report-card analogy. Original DB grade vs re-graded with your weights. Two slightly different category mixes can still round to the same overall, which is why the big number matches but the small ones don't.
+- **Why this is troubling for a normal user** — feels like the app contradicts itself.
+- **Role of presets / sliders** — master sliders change how much each category counts in the overall; sub-weight sliders change how a category itself is built. Both should update every visible number, but today they don't update every surface consistently.
+- **Is it a bug?** — Yes. Not Brett-instructed. It's a leftover from the May-26 / May-27 fixes that solved the compare modal but didn't finish the table-row vs center-panel cleanup.
+- **Did I (the AI) err earlier?** — Yes, partially. The earlier fixes were correct but incomplete.
+- **Fix plan** — one shared scoring helper used by: ranked table row cells, center panel category bars, compare modal, exports. Files likely touched: `useCityRanking.ts`, `RankedMarketsList.tsx`, `CityScoring.tsx`, `recomputedPillars.ts`.
+- **Risk** — display-only unification; no DB / edge function / formula / calibration changes.
+- **Status** — PARKED. Tier 1 is priority. Do NOT implement until Brett approves.
 
-One point difference today. With a heavier preset it could be a 5–10 point gap. The pillars below (83 / 73 / 68) are already correct because we fixed those last time — only the big number on top is wrong.
+## Reminder responsibility
 
-## Will this affect scoring math or other components?
+I will add this line at the top of BOTH files in bold:
 
-**No.** This is purely a display fix in **one place** — the modal already receives `appliedSubWeights` and `appliedWeights`. We just need to use them.
+> **REMINDER FOR HASEEB:** Tier 1 is the current priority. After Tier 1 is finished, Lovable must remind Haseeb to get Brett's approval on this parked fix before any work begins.
 
-- No database changes.
-- No edge function changes.
-- No change to the calibration curve, tier cutoffs, or the formulas.
-- The table, drawer, Market Report, and Export buttons keep showing exactly what they show today.
-- Tier (the "A" badge) is derived from the overall score, so it will also become consistent automatically.
+I will also add a memory rule so I proactively surface this in future chats once Tier 1 is marked done. Memory entry:
 
-## The fix (1 file, ~15 lines)
-
-**File:** `src/components/city-scoring/MarketCompareModal.tsx`
-
-Right now line 154 / 164 reads:
-```ts
-buildMarketView(m).composite          // uses DB compositeScore (stale)
-```
-
-Change it to use the **same recompute pipeline the pillars already use** inside the modal:
-
-1. Import `buildRecomputedPillarScores` (already used in the modal for pillars) and `recomputeCompositeFromPillars` helper.
-2. For each market in the modal:
-   - Recompute the 3 pillar **raw** scores with `buildRecomputedPillarScores(m, appliedSubWeights)`.
-   - Combine them with `appliedWeights` (master weights) into a raw composite — same math the ranking hook uses.
-   - Pass that raw value through `calibrateCompositeForDisplay()` → the calibrated 0-100 number.
-3. Use that number for **both** the Overall Score gauge AND the Tier derivation.
-
-If `recomputeCompositeFromPillars` doesn't already exist as a shared helper, I'll extract the 4-line weighted-average from `useCityRanking` into `src/lib/recomputedPillars.ts` (next to the pillar helper we added on May 26) so the modal and the table call the **exact same function** — no second source of truth.
-
-## Export side effect (good news)
-
-The Excel and PDF exports we just shipped already call `buildMarketView(m).composite` for the Overall row. Once the modal switches to the recomputed composite, the exports will pick up the same fix automatically (they share the `assemble()` function in `compareExport.ts`).
-
-## Risk
-
-- **Low.** One display value in one modal. Tier letter on the same row will follow automatically.
-- **No risk to:** ranking, table, drawer, Market Report, scoring formulas, DB, edge functions.
-
-## Verification after fix
-
-1. Open Nashville + Louisville with default preset → modal Overall Score should match the table SCORE column for each row.
-2. Switch to **Demand-Heavy** preset → both numbers should still match (this is the case that exposed the bug).
-3. Pillars (83/73/68) should remain unchanged.
-4. Export Excel → "Overall Score" row in *Overview* sheet should match the modal and the table.
+- **Core rule added:** "Parked fix awaiting Brett approval: table vs center-panel category-score mismatch (docs/pending-approval/2026-05-27-nashville-score-mismatch.md). Remind Haseeb after Tier 1 is finished. Do not implement until Brett approves."
 
 ## Out of scope
 
-- No changes to scoring math, calibration curve, presets, or tier cutoffs.
-- No changes to the table, drawer, report, or any backend.
-- No new tests beyond the existing `compareExport.test.ts` smoke check.
+- No changes to `.lovable/plan.md` content (that already holds the compare-modal fix).
+- No code edits to scoring, table, panel, or modal.
+- No DB / migration / edge function changes.
 
-Awaiting your approval (or Brett's) before I switch to build mode and apply the one-file change.
+After you approve, I'll switch to build mode and create the two files + memory entry. Nothing else.

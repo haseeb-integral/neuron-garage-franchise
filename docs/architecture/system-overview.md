@@ -116,33 +116,26 @@ These keep both humans and the in-app AI assistant from breaking the system.
 
 ### 8. Repo map
 
-```text
-src/
-  pages/                   One file per route. App.tsx wires routes.
-  components/
-    <feature>/             Feature-scoped components (city-scoring, teacher-prospects,
-                           email-outreach, candidate-pipeline, observability, dbHealth,
-                           neuron-ai, ask, onboarding)
-    ui/                    shadcn primitives
-    AppSidebar.tsx         Nav surface
-    DocShell.tsx           Shared doc-page wrapper (this page uses it)
-  hooks/                   Data + UI hooks, grouped by feature
-  stores/                  Zustand stores
-  lib/                     Pure helpers (scoring, normalization, formatting)
-  data/                    Markdown specs imported via Vite `?raw`
-  integrations/supabase/   Auto-generated client + types — DO NOT EDIT
-supabase/
-  functions/<name>/        Edge functions (Deno)
-  functions/_shared/       Cross-function libs + AI knowledge bases
-  migrations/              SQL migrations
-docs/
-  architecture/            This file
-  handover/                Credential handover sheet (no secrets in repo)
-  pending-approval/        Parked fixes waiting on Brett
-.lovable/
-  plan.md                  Current loop's plan
-  parked-fixes.md          Index of parked work
-```
+| Path | What lives here |
+|---|---|
+| `src/pages/` | One file per route. `App.tsx` wires routes. |
+| `src/components/<feature>/` | Feature-scoped components: city-scoring, teacher-prospects, email-outreach, candidate-pipeline, observability, dbHealth, neuron-ai, ask, onboarding. |
+| `src/components/ui/` | shadcn primitives. |
+| `src/components/AppSidebar.tsx` | Nav surface. |
+| `src/components/DocShell.tsx` | Shared doc-page wrapper (this page uses it). |
+| `src/hooks/` | Data + UI hooks, grouped by feature. |
+| `src/stores/` | Zustand stores. |
+| `src/lib/` | Pure helpers (scoring, normalization, formatting). |
+| `src/data/` | Markdown specs imported via Vite `?raw`. |
+| `src/integrations/supabase/` | Auto-generated client + types — **do not edit**. |
+| `supabase/functions/<name>/` | Edge functions (Deno). |
+| `supabase/functions/_shared/` | Cross-function libs + AI knowledge bases. |
+| `supabase/migrations/` | SQL migrations. |
+| `docs/architecture/` | This file. |
+| `docs/handover/` | Credential handover sheet (no secrets in repo). |
+| `docs/pending-approval/` | Parked fixes waiting on Brett. |
+| `.lovable/plan.md` | Current loop's plan. |
+| `.lovable/parked-fixes.md` | Index of parked work. |
 
 ### 9. Edge function inventory
 

@@ -70,7 +70,7 @@ This is how teacher prospects get from Apollo or Clay into SmartLead. The Neuron
 **The 4 steps:**
 
 **Step 1 — Batch Info**  
-Name your batch (e.g., "Austin Retired Teachers — May 2026"), select the source (Apollo, Clay, LinkedIn Navigator, DonorsChoose, Manual CSV), pick the city, state, and segment (Teacher or Retired Teacher).
+Name your batch (e.g., "Austin Retired Teachers — May 2026"), select the source (Apollo, Clay, LinkedIn Navigator, Manual CSV), pick the city, state, and segment (Teacher or Retired Teacher).
 
 **Step 2 — Upload \+ Map**  
 Drag and drop your CSV file. The app reads the columns and lets you map them to the right fields: email, first name, last name, school/company, city, state, segment, source. Only the email column is required. Preview the first 10 rows before proceeding.

@@ -234,7 +234,7 @@ Select up to 4 cities and open a side-by-side modal (\`MarketCompareModal\`).
 
 ### Fit Score (0–100)
 
-Computed in \`src/utils/fitScore.ts\`. Inputs: grade match (K–6 heavy weighting), teacher type, summer availability heuristic, DonorsChoose activity (planned), subject match for Segment 4.
+Computed in \`src/utils/fitScore.ts\`. Inputs: grade match (K–6 heavy weighting), teacher type, summer availability heuristic, subject match for Segment 4.
 
 ### Promote → Candidate Pipeline
 

@@ -30,17 +30,34 @@ The job of the app moves left → right. Each screen hands a clean payload to th
 
 ### 3. AI models we use
 
-All AI is routed through the **Lovable AI Gateway** — no third-party AI keys live in this project.
+All AI is routed through the **Lovable AI Gateway** — no third-party AI keys live in this project. For the screen-by-screen view of which AI surfaces are live, beta, or absent, see **Section 3a**. For the Neuron AI internals, see **Section 11**.
 
 | Model | Where it's called (edge function) | What it does | Why this model |
 |---|---|---|---|
-| `google/gemini-2.5-pro` | `ask`, `neuron-ai`, `city-analyst` | Long-context reasoning over city data + tool calling. | Best for big-context + multi-step reasoning. |
-| `google/gemini-2.5-flash` | `observability-ai`, `teacher-search-ai`, `ai-city-query`, `users-guide-ai` | Fast structured answers, filter generation, doc Q&A. | Balanced cost/latency, good tool use. |
-| `google/gemini-2.5-flash-lite` | `csv-suggest-mapping`, `enrich-school-staff` | Classification, field-mapping suggestions. | Cheapest tier for high-volume simple tasks. |
-| `google/gemini-2.5-flash-image` (Nano Banana) | not currently invoked in prod paths | Reserved for any future image generation. | Free in-gateway image model. |
-| `openai/gpt-5-mini` | fallback for `neuron-ai` when Gemini rate-limits | Drop-in alternative for tool-calling chat. | Resilience. |
+| `google/gemini-3-flash-preview` | `ask-city`, `city-analyst` (default), `csv-suggest-mapping` | City inline Ask-AI, "why Tier?" explainability, CSV field-mapping. | Fast, cheap, strong tool use. |
+| `google/gemini-2.5-flash` | `ask`, `neuron-ai`, `observability-ai`, `teacher-search-ai`, `users-guide-ai`, `ai-city-query` | Most chat + structured-answer surfaces, NL → filter translation, doc Q&A. | Balanced cost/latency, good tool calling. |
+| `google/gemini-2.5-flash-lite` | `smartlead-webhook` (reply classification) | Categorize inbound replies into 4 chips (interested / not / wrong / unsub). | Cheapest tier for high-volume classification. |
+| `google/gemini-2.5-pro` | `city-analyst` (opt-in deep-explain only) | Long-context narrative when the user requests the "pro" explanation. | Used sparingly — most paths run the flash default. |
 
 > **Rule:** if a new feature needs AI, it must use Lovable AI Gateway models. No raw OpenAI/Anthropic/Google API keys are added to this project.
+
+> **Not wired up today (avoid claiming otherwise):** there is no `openai/gpt-5-mini` fallback on `neuron-ai`, and `enrich-school-staff` does not call the AI Gateway. The image model `gemini-2.5-flash-image` is available on the gateway but not invoked from any prod path.
+
+### 3a. Where AI shows up in the UI
+
+One row per screen. "Beta-hidden" means the surface exists in code but has no visible launcher and is open only via keyboard (Cmd/Ctrl+K) pending Haseeb's sign-off.
+
+| Screen | Ask-AI surface | Edge function(s) | Status |
+|---|---|---|---|
+| City Search (`/city-scoring`) | Inline Ask-AI bar + "why Tier?" explainer | `ask-city`, `ai-city-query`, `city-analyst` | 🟢 Production |
+| Teacher Search (`/teacher-prospects`) | Right-side AI panel | `teacher-search-ai` | 🟢 Production |
+| Observability (`/observability`) | Observability AI panel | `observability-ai` | 🟢 Production |
+| User's Guide + docs pages | Docs chatbot | `users-guide-ai` | 🟢 Production |
+| Email Outreach (`/email-outreach`) | — (no per-screen Ask-AI) | covered only by global Neuron AI | ⚪ Gap |
+| Candidate Pipeline (`/candidate-pipeline`) | — (no per-screen Ask-AI) | covered only by global Neuron AI | ⚪ Gap |
+| Global, all screens | Floating Neuron AI panel | `neuron-ai`, `neuron-ai-confirm`, with `ask` as a generic fallback chat | 🟡 Beta-hidden (Cmd/Ctrl+K only — see Section 11) |
+
+
 
 ### 4. Data sources and integrations
 

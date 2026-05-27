@@ -74,9 +74,6 @@ One row per screen. "Beta-hidden" means the surface exists in code but has no vi
 | SmartLead | 🟢 Live | Email sending engine, reply ingestion |
 | Resend | 🟢 Live | Transactional email (digests, password reset) |
 | Deepgram | 🟢 Live | Voice playback for AI assistant |
-| GreatSchools API | 🟡 Pending Brett's key | School quality enrichment |
-| DonorsChoose | 🔴 Stub | Teacher side-hustle signal |
-| Google Trends | 🔴 Not wired | Demand-signal data gap |
 
 ### 5. Data-flow diagram
 

@@ -546,7 +546,7 @@ Full reference: see the **APIs & Data Sources** page in the sidebar. Live wired 
 | SmartLead ("Integral Leads") | Outbound email | \`SMARTLEAD_API_KEY\` |
 | Supabase (Lovable Cloud) | DB / Auth / Edge / Storage / Realtime | \`SUPABASE_*\` |
 
-Pending / blocked: **GreatSchools** (waiting on Brett's key — 14-day-trial strategy), **Apollo** / **DonorsChoose** / **Clay** (awaiting Brett's teacher-sourcing decision).
+Pending / blocked: **Apollo** / **Clay** (awaiting Brett's teacher-sourcing decision).
 
 ---
 

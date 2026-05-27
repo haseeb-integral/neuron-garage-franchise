@@ -1,52 +1,51 @@
+# Rewrite: Prompts & AI Workflows (Sam-first)
 
-## What's wrong today in `docs/architecture/system-overview.md`
+You're right on every count. The current doc is two stitched-together documents pointed at the wrong reader, Part A is a developer handoff in disguise, the collapsed `Show the actual system prompt` blocks render as ugly walls of monospace in-app, and Transcript C is the literal conversation we're having about this very document. Fix it by restructuring around Sam, not around the codebase.
 
-**Section 3 ("AI models we use") is inaccurate.** Verified against the actual edge-function source:
+## New structure (one page, Sam-first, top to bottom)
 
-| Function | Doc says | Actually uses |
-|---|---|---|
-| `ask` | gemini-2.5-pro | **gemini-2.5-flash** |
-| `neuron-ai` | gemini-2.5-pro | **gemini-2.5-flash** |
-| `city-analyst` | gemini-2.5-pro | **gemini-3-flash-preview** (default) + 2.5-pro (opt-in) |
-| `csv-suggest-mapping` | gemini-2.5-flash-lite | **gemini-3-flash-preview** |
-| `ask-city` | — (missing) | **gemini-3-flash-preview** |
-| `smartlead-webhook` (reply classification) | — (missing) | **gemini-2.5-flash-lite** |
-| `enrich-school-staff` | listed as AI caller | **does not call the AI Gateway** — remove |
-| `openai/gpt-5-mini` "fallback for neuron-ai" | listed | **not wired up in code** — remove or mark "planned" |
+```text
+HERO  →  Part 1 (Sam's Playground)  →  Part 2 (Talking to Lovable like Brett)  →  Part 3 (Appendix: AI surfaces, collapsed)
+```
 
-Correct callers per model:
-- `gemini-3-flash-preview`: `ask-city`, `city-analyst` (default), `csv-suggest-mapping`
-- `gemini-2.5-flash`: `ask`, `neuron-ai`, `observability-ai`, `teacher-search-ai`, `users-guide-ai`, `ai-city-query`
-- `gemini-2.5-flash-lite`: `smartlead-webhook` (reply categorization)
-- `gemini-2.5-pro`: `city-analyst` (opt-in deep-explain only)
+### Part 1 — Sam's Playground (NEW, opens the doc)
 
-## Per-screen AI is not documented
+The thing the current doc is missing entirely. A short, confident list of *what Sam can do on his own, today, without calling anyone*. Written in second person, plain language.
 
-The doc lumps all Ask-AI together. In reality there are **two tiers** and the screen→function mapping is invisible:
+Sections:
+- **You can do these any time** — add notes to candidates, move candidates between stages, rename pipeline column labels, export the teacher list, ask the City Ask-AI anything about a city, use the natural-language filter on City Search, send/snooze items in Email Outreach (via the UI buttons), open any city detail panel, save a search.
+- **You can ask Lovable for these** — small text changes, label renames, color tweaks on a badge, a new column in a table, a new filter chip, a fix to a display bug you can see.
+- **Ask Brett or Haseeb first for these** — anything that touches scoring math, the tier cutoffs, the database schema, auth/login, the AI models themselves, or anything in Email Outreach that sends real emails.
 
-- **Global Neuron AI** (floating panel, Cmd/Ctrl+K) — `neuron-ai` + `neuron-ai-confirm`. **Hidden in the UI right now**: `NeuronAiPanel` is mounted in `AppLayout` but the `NeuronAiButton` launcher is **not rendered**, so it's keyboard-only and effectively in **internal beta** pending Haseeb's robustness pass.
-- **Per-screen Ask-AI** (production, visible on each screen):
-  - City Search → `ask-city` + `ai-city-query` + `city-analyst`
-  - Teacher Search → `teacher-search-ai` (right-side panel)
-  - Observability → `observability-ai`
-  - User's Guide / docs pages → `users-guide-ai`
-  - Email Outreach + Candidate Pipeline → **no dedicated per-screen Ask-AI today** (covered only by global Neuron AI)
-  - Global fallback chat → `ask`
+Tone: encouraging. The current doc only lists what *not* to touch; this flips it.
 
-## Proposed edits (single file: `docs/architecture/system-overview.md`)
+### Part 2 — Talking to Lovable like Brett
 
-1. **Rewrite Section 3 table** with the corrected model→callers mapping above. Drop the unused `gpt-5-mini` row and the `gemini-2.5-flash-image` row (not invoked). Drop `enrich-school-staff`.
-2. **Add a new short subsection "3a. Where AI shows up in the UI"** with a clean table:
-   - Screen | Ask-AI surface | Edge function(s) | Status (Production / Beta-hidden)
-   - One row per screen including the two screens with no per-screen AI, so the gap is explicit.
-3. **Promote a one-line beta callout** under the "Neuron AI assistant architecture" heading (Section 11):
-   > **Status: internal beta.** The floating launcher button is intentionally not mounted in `AppLayout` yet. Open via Cmd/Ctrl+K only. Do not promote to all users until Haseeb signs off on tool-call safety + rate-limit handling.
-4. **Cross-reference** from Section 3 to Section 3a and Section 11 so a reader landing on the model table immediately sees the per-screen map and beta note.
+Keep the existing B1 mindset, B2 Golden Rule, and B3 five worked examples — they're good. Two changes:
 
-No code changes. No changes to other docs.
+1. **All transcript examples use Brett.** Strip the current Transcript A (DocShell.tsx jargon), Transcript B (journey bar), and Transcript C (the circular "this document" one). Replace with 2 short, real Brett-style exchanges pulled from chat history — pick ones that show (a) Brett asking for a plan before a risky change, and (b) Brett describing a visible bug in plain words. No file paths, no component names in the body — if a transcript mentions one, paraphrase it ("the city detail panel" not "`CityDetailPanel.tsx`").
+2. **Drop the "don't-touch" list from Part 2** — it now lives positively in Part 1's "Ask Brett or Haseeb first" section.
 
-## Out of scope (will not touch)
+### Part 3 — Appendix: AI surfaces (for Brett & Haseeb)
 
-- Actually wiring the gpt-5-mini fallback (separate decision for Brett).
-- Mounting/unmounting the Neuron AI launcher button.
-- Any model swap.
+Move the current Part A here, behind a clear divider and a one-line warning that says: *"This appendix is a reference for Brett and Haseeb. Sam — you can skip it."*
+
+Also fix the formatting problems:
+- **Kill the `Show the actual system prompt` collapsed code blocks in the body.** They render as ugly oversized monospace walls in the in-app doc viewer. Instead, each surface gets a 2-line plain-English summary plus a single link line: *"Verbatim prompt: see `supabase/functions/<name>/index.ts` on GitHub."* The GitHub markdown file already formats them nicely for anyone who wants the raw text; the in-app page doesn't need to duplicate that.
+- Each surface row collapses to: **Name → Where you see it → What we tell it (3 bullets max, plain English) → Model → File**. No more, no less.
+- Keep the 9 surfaces and the single Neuron AI footnote unchanged.
+
+## What gets edited
+
+- `docs/architecture/prompts-and-ai-workflows.md` — full rewrite with the new order and the formatting fixes above.
+- No code or component changes. The page, route, and sidebar entry stay as they are.
+
+## What does NOT change
+
+- No prompts, models, knowledge files, or edge functions touched.
+- Nashville score-mismatch fix stays parked, waiting on Brett.
+- Neuron AI stays mentioned exactly once, as a footnote in the appendix.
+
+## Transcript sourcing
+
+Before writing Part 2, search chat history for 2 short Brett exchanges that fit (one "plan-before-build", one "I can see this bug, here's what's wrong"). If nothing clean turns up, write 2 Brett-voiced examples in the same style rather than reaching for Haseeb's transcripts.

@@ -38,11 +38,11 @@ export function DbDebugFooter() {
   const errorCount = entries.filter((e) => e.error).length;
 
   return (
-    <div className="fixed bottom-3 left-3 z-50 max-w-[min(420px,calc(100vw-24px))]">
-      <div className="rounded-xl border border-[#eef2f7] bg-white shadow-lg overflow-hidden">
+    <div className="fixed bottom-3 right-3 z-50 max-w-[min(420px,calc(100vw-24px))]">
+      <div className={`${open ? "rounded-xl" : "rounded-full"} border border-[#eef2f7] bg-white shadow-lg overflow-hidden`}>
         <button
           onClick={() => setOpen((o) => !o)}
-          className="w-full flex items-center justify-between px-3 py-1.5 text-[11px] font-bold text-[#0b1a36] hover:bg-[#f7faff]"
+          className={`w-full flex items-center justify-between ${open ? "px-3 py-1.5" : "px-2.5 py-1"} text-[11px] font-bold text-[#0b1a36] hover:bg-[#f7faff]`}
         >
           <span className="flex items-center gap-2">
             <span
@@ -59,7 +59,7 @@ export function DbDebugFooter() {
               <span className="text-[#dc2626]">· {errorCount} error{errorCount === 1 ? "" : "s"}</span>
             )}
           </span>
-          {open ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
+          {open ? <ChevronDown size={12} /> : <ChevronUp size={12} className="ml-1.5" />}
         </button>
         {open && (
           <div className="border-t border-[#eef2f7]">

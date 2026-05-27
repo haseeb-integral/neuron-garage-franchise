@@ -97,49 +97,51 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
           )}
         </div>
 
-        <nav className={`flex flex-col ${isCollapsed ? "gap-2 px-2" : "gap-2.5 px-3.5"}`}>
-          {primaryNavItems.map((item) => renderLink(item))}
-        </nav>
+        <div className="flex-1 min-h-0 overflow-y-auto pb-12">
+          <nav className={`flex flex-col ${isCollapsed ? "gap-2 px-2" : "gap-2.5 px-3.5"}`}>
+            {primaryNavItems.map((item) => renderLink(item))}
+          </nav>
 
-        <div className={`${isCollapsed ? "mx-3 my-5" : "mx-3.5 my-5"} h-px bg-[#eef2f7]`} />
+          <div className={`${isCollapsed ? "mx-3 my-5" : "mx-3.5 my-5"} h-px bg-[#eef2f7]`} />
 
-        <nav className={`flex flex-col ${isCollapsed ? "gap-2 px-2" : "gap-2.5 px-3.5"}`}>
-          {utilityNavItems.map((item) => renderLink(item))}
+          <nav className={`flex flex-col ${isCollapsed ? "gap-2 px-2" : "gap-2.5 px-3.5"}`}>
+            {utilityNavItems.map((item) => renderLink(item))}
 
-          {/* Methodology & Docs — collapsible group keeps the sidebar tidy for v1.0 */}
-          {isCollapsed ? (
-            <Tooltip delayDuration={150}>
-              <TooltipTrigger asChild>
-                <NavLink
-                  to={docsNavItems[0].url}
-                  onClick={onNavigate}
-                  className={`group flex min-h-[34px] items-center justify-center rounded-lg text-[13px] transition-all ${docsActive ? "bg-[#1f5bff] font-medium text-white" : "font-medium text-[#14233b] hover:bg-[#f7faff] hover:text-[#0757ff]"}`}
+            {/* Methodology & Docs — collapsible group keeps the sidebar tidy for v1.0 */}
+            {isCollapsed ? (
+              <Tooltip delayDuration={150}>
+                <TooltipTrigger asChild>
+                  <NavLink
+                    to={docsNavItems[0].url}
+                    onClick={onNavigate}
+                    className={`group flex min-h-[34px] items-center justify-center rounded-lg text-[13px] transition-all ${docsActive ? "bg-[#1f5bff] font-medium text-white" : "font-medium text-[#14233b] hover:bg-[#f7faff] hover:text-[#0757ff]"}`}
+                  >
+                    <LibraryBig size={17} strokeWidth={1.75} />
+                  </NavLink>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={8}>Methodology &amp; Docs</TooltipContent>
+              </Tooltip>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setDocsOpen((v) => !v)}
+                  className={`flex min-h-[34px] items-center gap-3 rounded-lg px-3 text-[13px] font-medium transition-all ${docsActive ? "text-[#0757ff]" : "text-[#14233b] hover:bg-[#f7faff] hover:text-[#0757ff]"}`}
+                  aria-expanded={docsOpen}
                 >
                   <LibraryBig size={17} strokeWidth={1.75} />
-                </NavLink>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={8}>Methodology &amp; Docs</TooltipContent>
-            </Tooltip>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => setDocsOpen((v) => !v)}
-                className={`flex min-h-[34px] items-center gap-3 rounded-lg px-3 text-[13px] font-medium transition-all ${docsActive ? "text-[#0757ff]" : "text-[#14233b] hover:bg-[#f7faff] hover:text-[#0757ff]"}`}
-                aria-expanded={docsOpen}
-              >
-                <LibraryBig size={17} strokeWidth={1.75} />
-                <span className="flex-1 whitespace-nowrap text-left">Methodology &amp; Docs</span>
-                <ChevronDown size={14} className={`transition-transform ${docsOpen ? "rotate-180" : ""}`} />
-              </button>
-              {docsOpen && (
-                <div className="flex flex-col gap-1 pl-2">
-                  {docsNavItems.map((item) => renderLink(item))}
-                </div>
-              )}
-            </>
-          )}
-        </nav>
+                  <span className="flex-1 whitespace-nowrap text-left">Methodology &amp; Docs</span>
+                  <ChevronDown size={14} className={`transition-transform ${docsOpen ? "rotate-180" : ""}`} />
+                </button>
+                {docsOpen && (
+                  <div className="flex flex-col gap-1 pl-2">
+                    {docsNavItems.map((item) => renderLink(item))}
+                  </div>
+                )}
+              </>
+            )}
+          </nav>
+        </div>
       </aside>
     </TooltipProvider>
   );

@@ -29,10 +29,10 @@ This is the single page that lists every external service Neuron Garage talks to
 | **Apollo** | Teacher contact enrichment (email, LinkedIn). | Teacher Search (enrichment) | Paid | Brett |
 | **Lovable Cloud** (Supabase under the hood) | Our database, auth, file storage, edge functions, realtime. | Everything | Paid (Lovable plan) | Managed by Lovable |
 
-### Status legend
-- 🟢 **Live** — wired and actively used in production code paths.
-- 🟡 **Pending** — Brett still needs to provide a key or pick an account.
-- 🔴 **Stub / not wired** — data gap acknowledged; no code path yet.
+> Everything listed above is live in production today. Pending or stubbed services have been removed from this page.
+
+
+
 
 ---
 

@@ -80,7 +80,7 @@ One row per screen. "Beta-hidden" means the surface exists in code but has no vi
 ```text
                 ┌────────────────── External data sources ──────────────────┐
                 │                                                            │
-   Census · BLS · BEA · FRED · NCES · Apollo · Apify · Firecrawl · GreatSchools (pending)
+   Census · BLS · BEA · FRED · NCES · Apollo · Apify · Firecrawl
                 │                                                            │
                 └─────────────┬──────────────────────────────────────────────┘
                               ▼

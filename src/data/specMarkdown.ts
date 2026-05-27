@@ -555,7 +555,7 @@ Pending / blocked: **Apollo** / **Clay** (awaiting Brett's teacher-sourcing deci
 Highlights of remaining work:
 
 - **Task #0** — \`teacher_prospects_master\` table + initial seed (BLOCKER for Teacher Search v2).
-- **Task #11** — Wire GreatSchools API once key is provided (trial-then-cancel strategy, $0 cost).
+
 - **Task #18** — Teacher → Lead conversion: Teacher Search Promote → SmartLead campaign push; \`reply_intent = HOT\` auto-creates a Candidate at "New Lead". Paused pending Teacher Search data-layer readiness.
 - **Task #19** — Replace placeholder candidates with real leads from Email Outreach.
 - **Task #20** — PDF export of candidate lead sheet.

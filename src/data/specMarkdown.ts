@@ -234,7 +234,7 @@ Select up to 4 cities and open a side-by-side modal (\`MarketCompareModal\`).
 
 ### Fit Score (0–100)
 
-Computed in \`src/utils/fitScore.ts\`. Inputs: grade match (K–6 heavy weighting), teacher type, summer availability heuristic, DonorsChoose activity (planned), subject match for Segment 4.
+Computed in \`src/utils/fitScore.ts\`. Inputs: grade match (K–6 heavy weighting), teacher type, summer availability heuristic, subject match for Segment 4.
 
 ### Promote → Candidate Pipeline
 
@@ -242,7 +242,7 @@ Clicking **Promote** creates a row in \`candidates\` at the **New Lead** stage. 
 
 ### Today's limitation
 
-Apify-only data. Apollo, purchased vendor lists, and DonorsChoose are not yet wired (blocked on Brett's sourcing decision). \`teacher_prospects_master\` table not yet built (Task #0 / B1).
+Apify-only data. Apollo and purchased vendor lists are not yet wired (blocked on Brett's sourcing decision). \`teacher_prospects_master\` table not yet built (Task #0 / B1).
 
 ---
 
@@ -456,7 +456,7 @@ All tables have RLS enabled.
 
 ### Teachers & candidates
 
-- \`teacher_prospects\` — \`city, state, school, fit_score, status, apify_run_id, teacher_type (active|retired|camp_enrichment), subject, segment, linkedin_url, donorschoose_id, enrichment_source, last_enriched_at\`. FKs \`school_nces_id\` → \`public_schools\`, \`us_cities_scored_id\` → \`us_cities_scored\`.
+- \`teacher_prospects\` — \`city, state, school, fit_score, status, apify_run_id, teacher_type (active|retired|camp_enrichment), subject, segment, linkedin_url, enrichment_source, last_enriched_at\`. FKs \`school_nces_id\` → \`public_schools\`, \`us_cities_scored_id\` → \`us_cities_scored\`.
 - \`teacher_prospects_master\` — **planned** master multi-source teacher pool (Task #0 / B1).
 - \`candidates\` — \`first_name, last_name, email, phone, city, state, current_stage, fit_score, fit_tag, assigned_to\`.
 - \`candidate_profiles\` — motivation, background, liquid capital, net worth, timeline, partner involvement, location preferences.
@@ -546,7 +546,7 @@ Full reference: see the **APIs & Data Sources** page in the sidebar. Live wired 
 | SmartLead ("Integral Leads") | Outbound email | \`SMARTLEAD_API_KEY\` |
 | Supabase (Lovable Cloud) | DB / Auth / Edge / Storage / Realtime | \`SUPABASE_*\` |
 
-Pending / blocked: **GreatSchools** (waiting on Brett's key — 14-day-trial strategy), **Apollo** / **DonorsChoose** / **Clay** (awaiting Brett's teacher-sourcing decision).
+Pending / blocked: **Apollo** / **Clay** (awaiting Brett's teacher-sourcing decision).
 
 ---
 
@@ -555,7 +555,7 @@ Pending / blocked: **GreatSchools** (waiting on Brett's key — 14-day-trial str
 Highlights of remaining work:
 
 - **Task #0** — \`teacher_prospects_master\` table + initial seed (BLOCKER for Teacher Search v2).
-- **Task #11** — Wire GreatSchools API once key is provided (trial-then-cancel strategy, $0 cost).
+
 - **Task #18** — Teacher → Lead conversion: Teacher Search Promote → SmartLead campaign push; \`reply_intent = HOT\` auto-creates a Candidate at "New Lead". Paused pending Teacher Search data-layer readiness.
 - **Task #19** — Replace placeholder candidates with real leads from Email Outreach.
 - **Task #20** — PDF export of candidate lead sheet.

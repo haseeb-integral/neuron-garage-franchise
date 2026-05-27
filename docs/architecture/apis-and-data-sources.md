@@ -27,9 +27,6 @@ This is the single page that lists every external service Neuron Garage talks to
 | **NCES PSS** (embedded Excel) | Private elementary counts. | City Detail drawer (private schools widget) | Free (static lookup) | — |
 | **Open-Meteo Historical** | Climate signals — snowfall, avg temp, sunny days, severe-weather days. | City Detail drawer (climate panel) | Free (no key) | — |
 | **Apollo** | Teacher contact enrichment (email, LinkedIn). | Teacher Search (enrichment) | Paid | Brett |
-| **GreatSchools API** | School quality enrichment. | Not wired yet | Free trial → paid | 🟡 Pending Brett's key |
-| **DonorsChoose** | Teacher side-hustle signal. | Not wired yet (stub) | Free | — |
-| **Google Trends** | Demand-signal data gap. | Not wired | Free | — |
 | **Lovable Cloud** (Supabase under the hood) | Our database, auth, file storage, edge functions, realtime. | Everything | Paid (Lovable plan) | Managed by Lovable |
 
 ### Status legend

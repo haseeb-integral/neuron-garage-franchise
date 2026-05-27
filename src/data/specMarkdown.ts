@@ -216,7 +216,7 @@ Select up to 4 cities and open a side-by-side modal (\`MarketCompareModal\`).
 
 ### Target segments
 
-Defined in \`TEACHER_IDEAL_PROFILE.md\`. \`teacher_prospects.teacher_type\` is a locked enum: \`active\` | \`retired\` | \`camp_enrichment\`. \`segment\` maps to:
+\`teacher_prospects.teacher_type\` is a locked enum: \`active\` | \`retired\` | \`camp_enrichment\`. \`segment\` maps to:
 
 1. **Active K–6** elementary teachers (primary)
 2. **Retired K–6** elementary teachers (primary)
@@ -234,7 +234,7 @@ Defined in \`TEACHER_IDEAL_PROFILE.md\`. \`teacher_prospects.teacher_type\` is a
 
 ### Fit Score (0–100)
 
-Computed in \`src/utils/fitScore.ts\`. Inputs: grade match (K–6 heavy weighting), teacher type, summer availability heuristic, DonorsChoose activity (planned), subject match for Segment 4. Full criteria in \`TEACHER_IDEAL_PROFILE.md\`.
+Computed in \`src/utils/fitScore.ts\`. Inputs: grade match (K–6 heavy weighting), teacher type, summer availability heuristic, DonorsChoose activity (planned), subject match for Segment 4.
 
 ### Promote → Candidate Pipeline
 
@@ -529,7 +529,7 @@ Shared modules: \`_shared/cityGeo.ts\`, \`_shared/metricFetchers.ts\`, \`_shared
 
 ## 16. Third-Party APIs
 
-Full reference in \`APIS.md\`. Live wired today:
+Full reference: see the **APIs & Data Sources** page in the sidebar. Live wired today:
 
 | Provider | Purpose | Secret |
 |---|---|---|
@@ -552,7 +552,7 @@ Pending / blocked: **GreatSchools** (waiting on Brett's key — 14-day-trial str
 
 ## 17. Future Work
 
-Tracked in \`OPEN_TASKS.md\`. Highlights:
+Highlights of remaining work:
 
 - **Task #0** — \`teacher_prospects_master\` table + initial seed (BLOCKER for Teacher Search v2).
 - **Task #11** — Wire GreatSchools API once key is provided (trial-then-cancel strategy, $0 cost).

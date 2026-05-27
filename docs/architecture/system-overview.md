@@ -3,7 +3,7 @@
 - **Audience:** Brett (product/operations) and any future engineer joining the project.
 - **Last updated:** 2026-05-27
 - **Owner:** Haseeb &nbsp; · &nbsp; **Approver:** Brett
-- **Companion docs:** [SmartLead API Spec](/smartlead-spec) · [Observability Spec](/observability-spec) · [Credentials & Handover](/handover)
+- **Companion pages (left sidebar → Methodology & Docs):** Credentials & Handover · APIs & Data Sources · Prompts & AI Workflows · SmartLead API Spec · Observability Spec
 
 
 > Read **Part A** first. It's everything a non-engineer needs to understand the system. **Part B** is for developers.
@@ -148,11 +148,9 @@ These keep both humans and the in-app AI assistant from breaking the system.
 | `supabase/functions/<name>/` | Edge functions (Deno). |
 | `supabase/functions/_shared/` | Cross-function libs + AI knowledge bases. |
 | `supabase/migrations/` | SQL migrations. |
-| `docs/architecture/` | This file. |
-| `docs/handover/` | Credential handover sheet (no secrets in repo). |
-| `docs/pending-approval/` | Parked fixes waiting on Brett. |
-| `.lovable/plan.md` | Current loop's plan. |
-| `.lovable/parked-fixes.md` | Index of parked work. |
+| `docs/architecture/` | Source markdown for sidebar doc pages (System Architecture, Prompts & AI Workflows, APIs & Data Sources). |
+| `docs/handover/` | Source markdown for the Credentials & Handover sidebar page (no secrets in repo). |
+| `docs/pending-approval/` | Internal-only — parked fixes waiting on Brett. Not surfaced in the sidebar. |
 
 ### 9. Edge function inventory
 
@@ -233,9 +231,10 @@ Knowledge sources live in `supabase/functions/_shared/appKnowledge.ts` (system r
 ### 13. Observability subsystem
 
 Self-contained — do not duplicate here. See:
-- **Operator guide:** `/observability-guide` (`src/data/observabilityGuide.md`)
-- **Engineering spec:** `/observability-spec` (`src/data/observabilitySpec.md`)
-- **Live dashboard:** `/observability`
+- **Operator guide:** Observability Guide page (sidebar)
+- **Engineering spec:** Observability Spec page (sidebar)
+- **Live dashboard:** Data Observability (sidebar → top group)
+
 
 ### 14. Security model
 
@@ -244,7 +243,7 @@ Self-contained — do not duplicate here. See:
 - **Roles via `user_roles` + `has_role()` security-definer function.** Never on `profiles`. Never client-side.
 - **Edge function secrets** are scoped to `supabase/functions/*` env, never bundled.
 - **Auth:** email/password only. Email verification on. No anonymous sign-ins.
-- **Repo is private to the org.** Even so, never commit secrets — `docs/handover/accounts.md` references a vault, never the values.
+- **Repo is private to the org.** Even so, never commit secrets — the Credentials & Handover sidebar page references a vault, never the values.
 
 ### 15. How to extend safely — checklist for new contributors
 

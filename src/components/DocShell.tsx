@@ -96,8 +96,9 @@ export const docProseClass =
   "prose-li:text-[14.5px] prose-li:leading-[1.65] prose-li:text-[#3a4a66] prose-li:my-1 " +
   "prose-ul:my-3 prose-ol:my-3 " +
   "prose-code:rounded prose-code:bg-[#eef2f7] prose-code:px-1.5 prose-code:py-0.5 prose-code:text-[12.5px] prose-code:text-[#0b1a36] prose-code:font-semibold prose-code:before:content-none prose-code:after:content-none " +
-  "prose-pre:bg-[#0b1a36] prose-pre:text-[#e5e7eb] prose-pre:text-[12.5px] prose-pre:rounded-2xl prose-pre:p-5 prose-pre:leading-relaxed " +
-  "prose-table:text-[13.5px] prose-th:bg-[#fffaea] prose-th:text-[#0b1a36] prose-th:font-bold prose-th:border-[#eef2f7] prose-td:border-[#eef2f7] prose-td:text-[#3a4a66] " +
+  "prose-pre:bg-[#f7faff] prose-pre:text-[#0b1a36] prose-pre:text-[12.5px] prose-pre:rounded-2xl prose-pre:p-5 prose-pre:leading-relaxed prose-pre:border prose-pre:border-[#e3e9f3] prose-pre:whitespace-pre-wrap prose-pre:break-words " +
+  "[&_pre_code]:bg-transparent [&_pre_code]:text-[#0b1a36] [&_pre_code]:p-0 [&_pre_code]:font-mono [&_pre_code]:whitespace-pre-wrap [&_pre_code]:break-words " +
+  "prose-table:text-[13.5px] prose-th:bg-[#fffaea] prose-th:text-[#0b1a36] prose-th:font-bold prose-th:border-[#eef2f7] prose-th:px-3 prose-th:py-2 prose-td:border-[#eef2f7] prose-td:text-[#3a4a66] prose-td:px-3 prose-td:py-2 prose-td:align-top " +
   "prose-blockquote:border-l-4 prose-blockquote:border-[#FFD400] prose-blockquote:bg-[#fffaea] prose-blockquote:rounded-r-xl prose-blockquote:py-1 prose-blockquote:px-4 prose-blockquote:not-italic prose-blockquote:text-[#3a4a66] " +
   "prose-hr:border-[#eef2f7]";
 

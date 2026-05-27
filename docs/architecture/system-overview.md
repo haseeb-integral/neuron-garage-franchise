@@ -20,18 +20,13 @@ The job of the app: take the team from *"which US city should we open in next?"*
 
 ### 2. The four screens and how they hand off
 
-```text
-City Search ──▶ Teacher Search ──▶ Email Outreach ──▶ Candidate Pipeline
-   (rank          (find          (start the          (qualify, vote,
-   markets)       teachers)       conversation)       sign)
-```
+The job of the app moves left → right. Each screen hands a clean payload to the next.
 
-| Screen | What it answers | Handoff |
-|---|---|---|
-| **City Search** (`/city-scoring`) | "Where should we open next?" Scores 817+ US cities on Demand, Competitive Opportunity, TAM Teachers. | Button: *Find Teachers in this City* → opens Teacher Search pre-filtered. |
-| **Teacher Search** (`/teacher-prospects`) | "Who in that city should we talk to?" Scores teachers on fit. | Button: *Promote* → creates a card in Candidate Pipeline as **New Lead**. Or: *Add to Campaign* → Email Outreach. |
-| **Email Outreach** (`/email-outreach`) | "How do we start the conversation?" Multi-step AI-personalized campaigns over SmartLead. | Reply tagged **Interested** → *Promote to Pipeline*. |
-| **Candidate Pipeline** (`/candidate-pipeline`) | "Who's close to signing?" Kanban with 7 stages. Selection Committee votes during Immersion. | Final stage **Signing** is hard-gated by **Confirmation**. |
+| 1. City Search — `/city-scoring` | 2. Teacher Search — `/teacher-prospects` | 3. Email Outreach — `/email-outreach` | 4. Candidate Pipeline — `/candidate-pipeline` |
+|---|---|---|---|
+| Rank markets | Find teachers | Start the conversation | Qualify, vote, sign |
+| Scores 817+ US cities on Demand, Competitive Opportunity, TAM Teachers. | Scores teachers in the chosen city on fit. | Multi-step AI-personalized campaigns over SmartLead. | Kanban with 7 stages; Selection Committee votes during Immersion. |
+| → *Find Teachers in this City* opens Teacher Search pre-filtered. | → *Promote* creates a New Lead card. → *Add to Campaign* sends to Outreach. | → Reply tagged Interested → *Promote to Pipeline*. | Final stage Signing is hard-gated by Confirmation. |
 
 ### 3. AI models we use
 
@@ -121,33 +116,26 @@ These keep both humans and the in-app AI assistant from breaking the system.
 
 ### 8. Repo map
 
-```text
-src/
-  pages/                   One file per route. App.tsx wires routes.
-  components/
-    <feature>/             Feature-scoped components (city-scoring, teacher-prospects,
-                           email-outreach, candidate-pipeline, observability, dbHealth,
-                           neuron-ai, ask, onboarding)
-    ui/                    shadcn primitives
-    AppSidebar.tsx         Nav surface
-    DocShell.tsx           Shared doc-page wrapper (this page uses it)
-  hooks/                   Data + UI hooks, grouped by feature
-  stores/                  Zustand stores
-  lib/                     Pure helpers (scoring, normalization, formatting)
-  data/                    Markdown specs imported via Vite `?raw`
-  integrations/supabase/   Auto-generated client + types — DO NOT EDIT
-supabase/
-  functions/<name>/        Edge functions (Deno)
-  functions/_shared/       Cross-function libs + AI knowledge bases
-  migrations/              SQL migrations
-docs/
-  architecture/            This file
-  handover/                Credential handover sheet (no secrets in repo)
-  pending-approval/        Parked fixes waiting on Brett
-.lovable/
-  plan.md                  Current loop's plan
-  parked-fixes.md          Index of parked work
-```
+| Path | What lives here |
+|---|---|
+| `src/pages/` | One file per route. `App.tsx` wires routes. |
+| `src/components/<feature>/` | Feature-scoped components: city-scoring, teacher-prospects, email-outreach, candidate-pipeline, observability, dbHealth, neuron-ai, ask, onboarding. |
+| `src/components/ui/` | shadcn primitives. |
+| `src/components/AppSidebar.tsx` | Nav surface. |
+| `src/components/DocShell.tsx` | Shared doc-page wrapper (this page uses it). |
+| `src/hooks/` | Data + UI hooks, grouped by feature. |
+| `src/stores/` | Zustand stores. |
+| `src/lib/` | Pure helpers (scoring, normalization, formatting). |
+| `src/data/` | Markdown specs imported via Vite `?raw`. |
+| `src/integrations/supabase/` | Auto-generated client + types — **do not edit**. |
+| `supabase/functions/<name>/` | Edge functions (Deno). |
+| `supabase/functions/_shared/` | Cross-function libs + AI knowledge bases. |
+| `supabase/migrations/` | SQL migrations. |
+| `docs/architecture/` | This file. |
+| `docs/handover/` | Credential handover sheet (no secrets in repo). |
+| `docs/pending-approval/` | Parked fixes waiting on Brett. |
+| `.lovable/plan.md` | Current loop's plan. |
+| `.lovable/parked-fixes.md` | Index of parked work. |
 
 ### 9. Edge function inventory
 

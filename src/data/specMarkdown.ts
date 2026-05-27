@@ -456,7 +456,7 @@ All tables have RLS enabled.
 
 ### Teachers & candidates
 
-- \`teacher_prospects\` — \`city, state, school, fit_score, status, apify_run_id, teacher_type (active|retired|camp_enrichment), subject, segment, linkedin_url, donorschoose_id, enrichment_source, last_enriched_at\`. FKs \`school_nces_id\` → \`public_schools\`, \`us_cities_scored_id\` → \`us_cities_scored\`.
+- \`teacher_prospects\` — \`city, state, school, fit_score, status, apify_run_id, teacher_type (active|retired|camp_enrichment), subject, segment, linkedin_url, enrichment_source, last_enriched_at\`. FKs \`school_nces_id\` → \`public_schools\`, \`us_cities_scored_id\` → \`us_cities_scored\`.
 - \`teacher_prospects_master\` — **planned** master multi-source teacher pool (Task #0 / B1).
 - \`candidates\` — \`first_name, last_name, email, phone, city, state, current_stage, fit_score, fit_tag, assigned_to\`.
 - \`candidate_profiles\` — motivation, background, liquid capital, net worth, timeline, partner involvement, location preferences.

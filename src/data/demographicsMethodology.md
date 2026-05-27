@@ -79,7 +79,7 @@ Every teacher demographic falls into one of three buckets that feed Fit Score:
 - `current_role`, `school_type` — public / private / charter
 
 **B. Entrepreneurial Signal — "Could they run a franchise?"**
-- Side projects, secondary income roles (DonorsChoose activity, tutoring sites)
+- Side projects, secondary income roles (tutoring sites, summer programs)
 - Leadership titles (dept head, grade chair, principal)
 - Continuing education, certifications beyond baseline
 - Geographic mobility / recent moves

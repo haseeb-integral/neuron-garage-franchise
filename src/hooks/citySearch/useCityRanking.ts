@@ -95,7 +95,13 @@ export function useCityRanking({
       }
 
       const { composite } = recomputeComposite(cats, appliedWeights);
-      return { ...market, compositeScore: composite };
+      // Brett-approved 2026-05-27: write recomputed pillar scores back onto
+      // the row so the ranked-table small Dem/TAM/Opp cells AND the
+      // RowScorePopover use the SAME numbers the selected-market panel,
+      // compare modal, and exports already read. Fixes Nashville mismatch
+      // (table row showed stored 100/79/68 while center panel showed
+      // recomputed 72/78/67). "One calibrated number everywhere."
+      return { ...market, compositeScore: composite, categoryScores: cats };
     });
 
     const tiered = assignPercentileTiers(reRanked);

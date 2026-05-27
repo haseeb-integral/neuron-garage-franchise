@@ -8,12 +8,13 @@
 import { useMemo } from "react";
 import {
   filterRankedMarkets,
-  buildSeededFallbackSignalsFromScored,
   type RankedMarket,
 } from "@/lib/cityScoringLiveData";
-import { METRICS_BY_CATEGORY } from "@/lib/sowMetricRegistry";
-import { parseSignalValue } from "@/lib/sowNormalize";
-import { recomputeCategoryScore, recomputeComposite } from "@/lib/clientSubWeightScoring";
+import { recomputeComposite } from "@/lib/clientSubWeightScoring";
+import {
+  buildRecomputedPillarScores,
+  buildRecomputedRawComposite,
+} from "@/lib/recomputedPillars";
 import {
   assignPercentileTiers,
 } from "@/lib/cityTiers";
@@ -23,8 +24,6 @@ import {
   assertNoCompositeDrift,
   weightsHash as buildWeightsHash,
 } from "@/lib/marketView";
-import { DEFAULT_WEIGHTS } from "@/stores/cityScoringStore";
-import { DEFAULT_SUB_WEIGHTS } from "@/lib/sowMetricRegistry";
 import { countLiveTiers } from "@/lib/cityScoringPageHelpers";
 import type { TierCounts } from "@/components/city-scoring/TierCountsBar";
 
@@ -66,41 +65,27 @@ export function useCityRanking({
     beginDriftRender();
     const wHash = buildWeightsHash(appliedWeights, appliedSubWeights);
 
-    const masterWeightsAreDefault = JSON.stringify(appliedWeights) === JSON.stringify(DEFAULT_WEIGHTS);
-    const subWeightsAreDefault = JSON.stringify(appliedSubWeights) === JSON.stringify(DEFAULT_SUB_WEIGHTS);
+    // Brett-approved 2026-05-27 (v2): ALWAYS route every row through the same
+    // shared score builder the Compare modal and selected-market panel use
+    // (`buildRecomputedPillarScores` + `buildRecomputedRawComposite`). No more
+    // "default branch returns stored values" — that's exactly what produced
+    // the Nashville mismatch (table=100 / panel=100 / compare=79 for the same
+    // city under the same weights). Cost is negligible: with default weights
+    // the recompute reproduces the stored composite to within rounding.
+    // "One calibrated number everywhere."
     const reRanked = baseRankedMarkets.map((market) => {
       if (!market.hasLiveData || !market.categoryScores) return market;
-      if (masterWeightsAreDefault && subWeightsAreDefault) return market;
 
-      let cats: Record<CategoryKey, number | null>;
+      const pillars = buildRecomputedPillarScores(market, appliedSubWeights);
+      const cats: Record<CategoryKey, number | null> = {
+        demand: pillars.demand ?? market.categoryScores.demand ?? null,
+        franchiseeSupply:
+          pillars.franchiseeSupply ?? market.categoryScores.franchiseeSupply ?? null,
+        competitiveLandscape:
+          pillars.competitiveLandscape ?? market.categoryScores.competitiveLandscape ?? null,
+      };
+      const composite = buildRecomputedRawComposite(market, appliedSubWeights, appliedWeights);
 
-      if (subWeightsAreDefault) {
-        cats = { ...market.categoryScores } as Record<CategoryKey, number | null>;
-      } else {
-        const seededSignalValues = Object.fromEntries(
-          buildSeededFallbackSignalsFromScored(market.scoredRow).map((signal) => [
-            signal.signal_key,
-            parseSignalValue(signal.value),
-          ]),
-        );
-        cats = {} as Record<CategoryKey, number | null>;
-        (Object.keys(METRICS_BY_CATEGORY) as CategoryKey[]).forEach((key) => {
-          cats[key] = recomputeCategoryScore(
-            METRICS_BY_CATEGORY[key] ?? [],
-            seededSignalValues,
-            appliedSubWeights[key] ?? {},
-            market.categoryScores?.[key] ?? null,
-          ).score;
-        });
-      }
-
-      const { composite } = recomputeComposite(cats, appliedWeights);
-      // Brett-approved 2026-05-27: write recomputed pillar scores back onto
-      // the row so the ranked-table small Dem/TAM/Opp cells AND the
-      // RowScorePopover use the SAME numbers the selected-market panel,
-      // compare modal, and exports already read. Fixes Nashville mismatch
-      // (table row showed stored 100/79/68 while center panel showed
-      // recomputed 72/78/67). "One calibrated number everywhere."
       return { ...market, compositeScore: composite, categoryScores: cats };
     });
 

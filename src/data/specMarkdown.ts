@@ -242,7 +242,7 @@ Clicking **Promote** creates a row in \`candidates\` at the **New Lead** stage. 
 
 ### Today's limitation
 
-Apify-only data. Apollo, purchased vendor lists, and DonorsChoose are not yet wired (blocked on Brett's sourcing decision). \`teacher_prospects_master\` table not yet built (Task #0 / B1).
+Apify-only data. Apollo and purchased vendor lists are not yet wired (blocked on Brett's sourcing decision). \`teacher_prospects_master\` table not yet built (Task #0 / B1).
 
 ---
 

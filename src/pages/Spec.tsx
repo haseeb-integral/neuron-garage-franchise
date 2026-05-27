@@ -423,7 +423,7 @@ const Spec = () => {
 
           <Section id="future" title="15. Future Work">
             <ul className="list-disc pl-5 space-y-1">
-              <li>Wire the GreatSchools API once the key arrives (currently blocked on Brett).</li>
+              
               <li>Move SmartLead from warm-up to live teacher outreach once mailbox reputation clears the threshold.</li>
               <li>Re-activate Phase 2 Onboarding (signed-franchisee 7-step launch) once Signing volume justifies it.</li>
               <li>AI assists: auto-draft outreach replies, summarize candidate notes, recommend next-best stage moves.</li>

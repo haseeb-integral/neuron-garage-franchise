@@ -199,27 +199,30 @@ Full canonical schema lives in `src/integrations/supabase/types.ts` (auto-genera
 
 ### 11. Neuron AI assistant architecture
 
+> **Status: internal beta.** The floating launcher button is intentionally **not mounted** in `AppLayout` today. Neuron AI opens via **Cmd/Ctrl+K only**. Do not promote to all users until Haseeb signs off on tool-call safety + rate-limit handling. Per-screen Ask-AIs (Section 3a) are the production AI surfaces in the meantime.
+
 ```text
-NeuronAiButton ──▶ NeuronAiPanel ──▶ useNeuronAi
-                                       │
-                                       ▼
-                          POST /functions/neuron-ai
-                                       │
-        ┌──────────────────────────────┴──────────────────────────────┐
-        │  Grounding: APP_KNOWLEDGE + SCREEN_KNOWLEDGE[currentRoute]  │
-        │  Tools: query_cities · explain_city · apply_screen_state ·  │
-        │         query_candidates · query_campaigns · navigate ·     │
-        │         add_to_watchlist · change_candidate_stage           │
-        └──────────────────────────────┬──────────────────────────────┘
-                                       ▼
-                       Model: google/gemini-2.5-pro (default)
-                                       ▼
-                Tool calls → DB (RLS-scoped) → response + action chips
-                                       ▼
-                 Destructive actions (stage change) ──▶ neuron-ai-confirm
+(launcher hidden) ──▶ Cmd/Ctrl+K ──▶ NeuronAiPanel ──▶ useNeuronAi
+                                                         │
+                                                         ▼
+                                            POST /functions/neuron-ai
+                                                         │
+         ┌───────────────────────────────────────────────┴───────────────┐
+         │  Grounding: APP_KNOWLEDGE + SCREEN_KNOWLEDGE[currentRoute]    │
+         │  Tools: query_cities · explain_city · apply_screen_state ·    │
+         │         query_candidates · query_campaigns · navigate ·       │
+         │         add_to_watchlist · change_candidate_stage             │
+         └───────────────────────────────────────────────┬───────────────┘
+                                                         ▼
+                                  Model: google/gemini-2.5-flash
+                                                         ▼
+                  Tool calls → DB (RLS-scoped) → response + action chips
+                                                         ▼
+                   Destructive actions (stage change) ──▶ neuron-ai-confirm
 ```
 
 Knowledge sources live in `supabase/functions/_shared/appKnowledge.ts` (system rules) and `aiAssistantKB.ts` (factual KB). These files are **AI-only** — the human-facing version is this doc.
+
 
 ### 12. Realtime paths
 

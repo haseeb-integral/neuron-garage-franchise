@@ -8,34 +8,15 @@ When a fix is approved, move it out of this list and into an active task.
 
 ---
 
-## 1. Table row vs Center panel — category scores don't match for the same city
-
-**Filed:** 2026-05-27
-**Status:** PARKED — awaiting Brett's approval
-**Full write-up:** [`docs/pending-approval/2026-05-27-nashville-score-mismatch.md`](../docs/pending-approval/2026-05-27-nashville-score-mismatch.md)
-
-### One-line summary
-
-For the same city (e.g. Nashville), the ranked table row shows one set of Dem / TAM / Opp numbers, and the center "Selected Market" panel shows a different set — even though the big Overall Score on top can be the same `100` in both places.
-
-### Why the big number still matches
-
-Two slightly different small-grade combinations can round to the same big grade after weighting and calibration, especially near `100`. So a matching Overall Score is **not** proof that the underlying category scores are consistent.
-
-### Why it's a bug, not a feature
-
-Brett's May-24 rule is **"one calibrated number everywhere."** The May-26 and May-27 fixes closed this for the compare modal but didn't finish the cleanup for the ranked table row vs center panel. This is the leftover.
-
-### Fix (for when approved)
-
-One shared scoring helper, called by:
-- ranked table row cells (Dem / TAM / Opp / Score)
-- center panel (overall score + category bars + driver text + formula popover)
-- compare modal
-- Excel + PDF exports
-
-Files likely touched: `useCityRanking.ts`, `RankedMarketsList.tsx`, `CityScoring.tsx`, `recomputedPillars.ts`.
-
-**Risk:** Low. Display-only unification. No DB / edge function / formula / calibration changes.
+_No parked fixes at the moment._
 
 ---
+
+## Resolved
+
+### Table row vs Center panel — category scores don't match for the same city
+- **Filed:** 2026-05-27
+- **Approved by Brett:** 2026-05-27
+- **Shipped:** 2026-05-27
+- **Fix:** `useCityRanking.ts` now writes the recomputed pillar scores (`categoryScores`) back onto each market row, so the ranked-table small Dem/TAM/Opp cells and the RowScorePopover read the same numbers that the selected-market panel, compare modal, and exports already used. One calibrated number everywhere.
+- **Write-up retained at:** `docs/pending-approval/2026-05-27-nashville-score-mismatch.md`

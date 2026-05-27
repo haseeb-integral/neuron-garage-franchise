@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Download, Network } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { DocShell, DocCard, docProseClass } from "@/components/DocShell";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore — raw markdown import
@@ -38,7 +39,7 @@ const SystemOverview = () => {
     >
       <DocCard>
         <article className={docProseClass}>
-          <ReactMarkdown>{DOCS}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{DOCS}</ReactMarkdown>
         </article>
       </DocCard>
     </DocShell>

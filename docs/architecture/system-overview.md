@@ -1,8 +1,10 @@
 # Neuron Garage — System Architecture Overview
 
-**Audience:** Brett (product/operations) and any future engineer joining the project.
-**Last updated:** 2026-05-27 · **Owner:** Haseeb · **Approver:** Brett
-**Companion docs:** [SmartLead API Spec](/smartlead-spec) · [Observability Spec](/observability-spec) · [Credentials & Handover](/handover)
+- **Audience:** Brett (product/operations) and any future engineer joining the project.
+- **Last updated:** 2026-05-27
+- **Owner:** Haseeb &nbsp; · &nbsp; **Approver:** Brett
+- **Companion docs:** [SmartLead API Spec](/smartlead-spec) · [Observability Spec](/observability-spec) · [Credentials & Handover](/handover)
+
 
 > Read **Part A** first. It's everything a non-engineer needs to understand the system. **Part B** is for developers.
 

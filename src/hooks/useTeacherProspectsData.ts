@@ -125,6 +125,9 @@ export function useTeacherProspectsData(args: UseTeacherProspectsDataArgs) {
 
   const reqIdRef = useRef(0);
   const statsReqIdRef = useRef(0);
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
+
 
   const buildFilteredQuery = useCallback(() => {
     let q = supabase
@@ -168,7 +171,8 @@ export function useTeacherProspectsData(args: UseTeacherProspectsDataArgs) {
     }
 
     const { data, error, count } = await q.range(from, to);
-    if (myReq !== reqIdRef.current) return;
+    if (myReq !== reqIdRef.current || !mountedRef.current) return;
+
 
     if (error) {
       const isTimeout = /statement timeout|canceling statement/i.test(error.message);

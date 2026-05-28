@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, KeyboardEvent } from "react";
 import { Candidate, STAGES, stateRequiresRegistration } from "@/data/pipelineData";
-import { AlertTriangle, Mail, Phone, MapPin, Calendar, User, Tag, Camera, Pencil, Check, X } from "lucide-react";
+import { AlertTriangle, Mail, Phone, MapPin, Calendar, User, Tag, Camera, Pencil, Check, X, Lock } from "lucide-react";
 import { CandidateAvatar } from "@/components/ui/CandidateAvatar";
 import { toast } from "sonner";
 
@@ -12,7 +12,9 @@ interface Props {
   onSave?: (patch: Record<string, any>, localPatch: Partial<Candidate>) => Promise<void> | void;
 }
 
-type FieldKey = "name" | "email" | "phone" | "location" | "assignedTo" | "source";
+type FieldKey = "name" | "otherEmail" | "phone" | "location" | "assignedTo" | "source";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const SOURCE_OPTIONS = ["Referral", "Web Form", "LinkedIn", "Discovery Day", "Event", "Outbound", "Other"];
 
@@ -43,7 +45,7 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
     if (readOnly) return;
     setEditing(key);
     if (key === "name") setDraft(candidate.name);
-    else if (key === "email") setDraft(candidate.email);
+    else if (key === "otherEmail") setDraft(candidate.otherEmail ?? "");
     else if (key === "phone") setDraft(candidate.phone);
     else if (key === "location") { setDraft(candidate.city); setDraft2(candidate.state); }
     else if (key === "assignedTo") setDraft(candidate.assignedTo);
@@ -65,9 +67,9 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
       const last = parts.join(" ");
       dbPatch = { first_name: first, last_name: last };
       localPatch = { name: v };
-    } else if (editing === "email") {
-      if (!v) { toast.error("Email cannot be empty"); return; }
-      dbPatch = { email: v }; localPatch = { email: v };
+    } else if (editing === "otherEmail") {
+      if (v && !EMAIL_RE.test(v)) { toast.error("Enter a valid email address"); return; }
+      dbPatch = { other_email: v || null }; localPatch = { otherEmail: v };
     } else if (editing === "phone") {
       dbPatch = { phone: v || null }; localPatch = { phone: v };
     } else if (editing === "location") {
@@ -142,8 +144,9 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
                 </select>
               ) : (
                 <input
-                  autoFocus type={key === "email" ? "email" : "text"}
+                  autoFocus type={key === "otherEmail" ? "email" : "text"}
                   value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onKey}
+                  placeholder={key === "otherEmail" ? "Add alternate email..." : undefined}
                   className="text-sm px-1.5 py-0.5 border rounded w-full min-w-0"
                   style={{ borderColor: "#003c7e" }}
                 />
@@ -163,7 +166,13 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
               className="text-sm font-medium text-left w-full flex items-center gap-1.5 hover:underline disabled:no-underline disabled:cursor-default"
               title={readOnly ? "" : "Click to edit"}
             >
-              <span className="truncate">{displayValue || <span style={{ color: "#adb5bd" }}>—</span>}</span>
+              <span className="truncate">
+                {displayValue || (
+                  <span style={{ color: "#adb5bd" }}>
+                    {key === "otherEmail" ? "Add alternate email..." : "—"}
+                  </span>
+                )}
+              </span>
               {!readOnly && (
                 <Pencil size={11} className="opacity-0 group-hover:opacity-60 flex-shrink-0" style={{ color: "#6c757d" }} />
               )}
@@ -265,7 +274,28 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
           )}
         </h4>
         <div className="grid grid-cols-2 gap-3">
-          {renderRow("email", Mail, "Email", candidate.email)}
+          {/* Verified Email — LOCKED. This is the address Smartlead used for cold outreach.
+              Editing it would risk duplicate sends to two addresses for the same person. */}
+          <div className="flex items-start gap-2">
+            <Mail size={14} style={{ color: "#6c757d" }} className="mt-1" />
+            <div className="min-w-0 flex-1">
+              <div className="text-xs flex items-center gap-1" style={{ color: "#6c757d" }}>
+                Verified Email
+                <Lock
+                  size={11}
+                  style={{ color: "#adb5bd" }}
+                  aria-label="Locked"
+                />
+              </div>
+              <div
+                className="text-sm font-medium truncate"
+                title="This is the email used in outreach. It cannot be changed to protect against duplicate sends."
+              >
+                {candidate.email || <span style={{ color: "#adb5bd" }}>—</span>}
+              </div>
+            </div>
+          </div>
+          {renderRow("otherEmail", Mail, "Other Email", candidate.otherEmail ?? "")}
           {renderRow("phone", Phone, "Phone", candidate.phone)}
           {renderRow("location", MapPin, "Location", `${candidate.city}${candidate.state ? `, ${candidate.state}` : ""}`)}
           {renderRow("assignedTo", User, "Assigned To", candidate.assignedTo)}

@@ -94,13 +94,14 @@ export function LeadSheetTab({ candidate }: Props) {
       location_preferences: form.location_preferences || null,
       additional_notes: form.additional_notes || null,
     };
-    const [{ error: profileError }, { error: candidateError }] = await Promise.all([
-      supabase.from("candidate_profiles").upsert(profilePayload, { onConflict: "candidate_id" }),
-      supabase.from("candidates").update({ partner_involved: form.partner_involved }).eq("id", dbId),
-    ]);
+    // NOTE: partner_involved is owned by the Overview tab toggle (auto-saves on click).
+    // Do NOT write it here or we'll clobber a fresh toggle with this form's stale value.
+    const { error: profileError } = await supabase
+      .from("candidate_profiles")
+      .upsert(profilePayload, { onConflict: "candidate_id" });
     setSaving(false);
-    if (profileError || candidateError) {
-      toast.error("Failed to save lead sheet: " + (profileError?.message || candidateError?.message));
+    if (profileError) {
+      toast.error("Failed to save lead sheet: " + profileError.message);
     } else {
       toast.success("Lead sheet saved");
     }

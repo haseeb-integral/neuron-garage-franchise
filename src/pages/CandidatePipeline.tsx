@@ -570,13 +570,17 @@ const CandidatePipeline = () => {
       // local-only field (e.g. source)
       return;
     }
-    const { error } = await supabase.from("candidates").update(dbPatch as any).eq("id", dbId);
-    if (error) {
+    const { data: updatedRows, error } = await supabase
+      .from("candidates")
+      .update(dbPatch as any)
+      .eq("id", dbId)
+      .select("id");
+    if (error || !updatedRows || updatedRows.length === 0) {
       setCandidates((prev) =>
         prev.map((candidate) => (matchesTarget(candidate) ? { ...candidate, ...revertPatch } : candidate)),
       );
       setActive((prev) => (prev && matchesTarget(prev) ? { ...prev, ...revertPatch } : prev));
-      throw new Error(error.message);
+      throw new Error(error?.message ?? "Update did not affect any row (permission or missing record).");
     }
 
     // Sync safe fields back to teacher_prospects (master record).

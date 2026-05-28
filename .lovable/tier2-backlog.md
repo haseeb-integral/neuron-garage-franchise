@@ -49,22 +49,21 @@ These are explicitly excluded from Tier 2 execution.
 
 ## Awaiting Brett Approval
 
-Items where work is done or partially done, but a product decision from Brett is needed before continuing.
+*(empty — see Resolved below)*
 
-### #4 — Editable profile fields (Candidate Pipeline → Overview tab)
+---
 
-**Status:** UI shipped. Edits to Name, Email, Phone, Location, Assigned To, and Source persist to the `candidates` table. `source` column was added.
+## Resolved
 
-**Open question for Brett — edit propagation back to upstream records:**
+### #4 — Editable profile fields (Candidate Pipeline → Overview tab) ✅
 
-Flow in production: Teacher Search → Email Outreach → Candidate Pipeline. The `candidates` row is a copy linked via `prospect_id` back to `teacher_prospects`. Today, edits in Pipeline only update the candidate row, not the original teacher record.
+**Shipped 2026-05-28.**
 
-Three options:
+- All profile fields editable in Overview tab (name, phone, location, assigned_to, source, other_email).
+- **Verified Email is locked** with a lock icon + tooltip: *"This is the email used in outreach. It cannot be changed to protect against duplicate sends."* — protects Smartlead deliverability.
+- New **Other Email** field added (nullable text) on both `candidates` and `teacher_prospects`. Placeholder: *"Add alternate email…"*. Basic email-format validation only.
+- **Sync-back to master:** when a candidate row is edited and `prospect_id` is set, safe fields (`first_name, last_name, phone, city, state, other_email`) also update `teacher_prospects`. `email`, `assigned_to`, `source`, `fit_*` are never synced.
 
-- **(a) Keep separate** *(current behavior)* — candidate is the sales working copy; teacher record is cold-outreach source of truth. Clean, but a phone fix here won't show on Teacher Search.
-- **(b) Sync all edits back to `teacher_prospects`** — one source of truth. Risk: overwrites verified enrichment data.
-- **(c) Sync only safe fields** (phone, city, state) but NOT email — email drives Smartlead deliverability, isolate it from pipeline edits.
+Brett's decision (verbatim): client who owns the app should be able to modify all records and have them sync to master with one exception — the original Verified Email used by Smartlead.
 
-Haseeb's gut: (c). Awaiting Brett's pick. Once decided, Part 3 wires in ~10 min.
 
-**Brett message draft (copy-paste ready):** see chat log.

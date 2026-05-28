@@ -68,8 +68,10 @@ export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboardi
         <CandidateAvatar name={candidate.name} photoUrl={candidate.photoUrl} size={36} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="font-semibold text-sm truncate flex-1" style={{ color: "#212529", lineHeight: 1.2 }}>
-              {candidate.name}
+            <FitScoreBadge score={candidate.fitScore} />
+            <CompositeScoreBadge scores={candidate.qualificationScores} />
+          </div>
+
             </div>
             <FitScoreBadge score={candidate.fitScore} />
           </div>

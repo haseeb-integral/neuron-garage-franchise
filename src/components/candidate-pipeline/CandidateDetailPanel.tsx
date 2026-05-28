@@ -80,7 +80,23 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
                 </p>
               </div>
             </div>
-            <FitScoreBadge score={candidate.fitScore} />
+            <div className="flex items-start gap-3 shrink-0">
+              <FitScoreBadge score={candidate.fitScore} />
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs gap-1.5"
+                onClick={async () => {
+                  try {
+                    await exportResearchPacket(candidate);
+                  } catch (e: any) {
+                    toast.error("Couldn't build packet", { description: e?.message ?? String(e) });
+                  }
+                }}
+              >
+                <FileDown size={13} /> Export Packet
+              </Button>
+            </div>
           </div>
         </SheetHeader>
 

@@ -216,6 +216,18 @@ const CandidatePipeline = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, candidates]);
 
+  useEffect(() => {
+    setActive((prev) => {
+      if (!prev) return prev;
+      const prevDbId = (prev as any).dbId as string | undefined;
+      const next = candidates.find((c: any) => {
+        const candidateDbId = c.dbId as string | undefined;
+        return prevDbId ? candidateDbId === prevDbId : c.id === prev.id;
+      });
+      return next ?? prev;
+    });
+  }, [candidates]);
+
   // Filters
   const ownerFilter = useCandidatePipelineStore((s) => s.ownerFilter);
   const setOwnerFilter = useCandidatePipelineStore((s) => s.setOwnerFilter);
@@ -535,9 +547,20 @@ const CandidatePipeline = () => {
   ) => {
     if (!active) return;
     const dbId = (active as any).dbId as string | undefined;
-    const prevSnapshot = active;
-    const optimistic = { ...active, ...localPatch } as Candidate;
-    handleUpdate(optimistic);
+    const localId = active.id;
+    const matchesTarget = (candidate: Candidate) => {
+      const candidateDbId = (candidate as any).dbId as string | undefined;
+      return dbId ? candidateDbId === dbId : candidate.id === localId;
+    };
+    const revertPatch = Object.keys(localPatch).reduce((acc, key) => {
+      (acc as any)[key] = (active as any)[key];
+      return acc;
+    }, {} as Partial<Candidate>);
+
+    setCandidates((prev) =>
+      prev.map((candidate) => (matchesTarget(candidate) ? { ...candidate, ...localPatch } : candidate)),
+    );
+    setActive((prev) => (prev && matchesTarget(prev) ? { ...prev, ...localPatch } : prev));
 
     if (!dbId) {
       toast.warning("Saved locally — no database record linked.");
@@ -549,7 +572,10 @@ const CandidatePipeline = () => {
     }
     const { error } = await supabase.from("candidates").update(dbPatch as any).eq("id", dbId);
     if (error) {
-      handleUpdate(prevSnapshot);
+      setCandidates((prev) =>
+        prev.map((candidate) => (matchesTarget(candidate) ? { ...candidate, ...revertPatch } : candidate)),
+      );
+      setActive((prev) => (prev && matchesTarget(prev) ? { ...prev, ...revertPatch } : prev));
       throw new Error(error.message);
     }
 

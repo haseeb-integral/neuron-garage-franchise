@@ -414,6 +414,7 @@ export type Database = {
           last_name: string
           phone: string | null
           prospect_id: string | null
+          source: string | null
           state: string
           status: string
           updated_at: string
@@ -431,6 +432,7 @@ export type Database = {
           last_name: string
           phone?: string | null
           prospect_id?: string | null
+          source?: string | null
           state?: string
           status?: string
           updated_at?: string
@@ -448,6 +450,7 @@ export type Database = {
           last_name?: string
           phone?: string | null
           prospect_id?: string | null
+          source?: string | null
           state?: string
           status?: string
           updated_at?: string

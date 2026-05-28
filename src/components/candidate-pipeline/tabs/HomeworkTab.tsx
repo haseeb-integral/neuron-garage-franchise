@@ -272,7 +272,6 @@ export function HomeworkTab({ candidate, onTrialCloseChange }: Props) {
           )
         ) : (
 
-        ) : (
           // Fallback: legacy in-memory trial close (used outside Confirmation / mock data)
           <div className="space-y-2">
             {([

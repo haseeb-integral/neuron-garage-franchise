@@ -379,6 +379,63 @@ const CandidatePipeline = () => {
       toast.warning(`Stage saved, but history not logged: ${histErr.message}`);
     }
 
+    // Carry forward completed homework labels into the new stage.
+    // If the new stage has no rows yet, seed STAGE_HOMEWORK[toStage] and mark
+    // any label that was completed in the prior stage as completed here too.
+    try {
+      const toDbStage = uiStageToDb[toStage] as any;
+      const fromDbStage = uiStageToDb[fromStage] as any;
+      const toHomework = STAGE_HOMEWORK[toStage] ?? [];
+      if (toHomework.length > 0) {
+        const { data: completedFrom } = await supabase
+          .from("candidate_checklist_items")
+          .select("label")
+          .eq("candidate_id", dbId)
+          .eq("stage", fromDbStage)
+          .eq("is_completed", true);
+        const completedLabels = new Set((completedFrom ?? []).map((r: any) => r.label));
+
+        const { data: existingTo } = await supabase
+          .from("candidate_checklist_items")
+          .select("id, label, is_completed")
+          .eq("candidate_id", dbId)
+          .eq("stage", toDbStage);
+
+        if (!existingTo || existingTo.length === 0) {
+          // Seed with carry-forward applied.
+          const nowIso = new Date().toISOString();
+          const rows = toHomework.map((label) => {
+            const carry = completedLabels.has(label);
+            return {
+              candidate_id: dbId,
+              stage: toDbStage,
+              label,
+              is_completed: carry,
+              completed_at: carry ? nowIso : null,
+              completed_by: carry ? changedBy : null,
+            };
+          });
+          await supabase.from("candidate_checklist_items").insert(rows as any);
+        } else {
+          // Update matching, currently-unchecked rows to completed.
+          const toCheck = existingTo.filter(
+            (r: any) => !r.is_completed && completedLabels.has(r.label),
+          );
+          if (toCheck.length > 0) {
+            const nowIso = new Date().toISOString();
+            await supabase
+              .from("candidate_checklist_items")
+              .update({ is_completed: true, completed_at: nowIso, completed_by: changedBy })
+              .in("id", toCheck.map((r: any) => r.id));
+          }
+        }
+      }
+    } catch (e: any) {
+      // Non-fatal: stage move already succeeded.
+      console.warn("Carry-forward of homework failed:", e?.message ?? e);
+    }
+
+
     computeMetrics();
     qc.invalidateQueries({ queryKey: ["candidates"] });
 

@@ -115,6 +115,7 @@ const CandidatePipeline = () => {
       },
       votes: { Kaylie: null, Sam: null, Skylar: null },
       dbId: r.id,
+      prospectId: r.prospect_id ?? null,
     } as unknown as Candidate;
   };
 

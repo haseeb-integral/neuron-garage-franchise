@@ -1,36 +1,70 @@
-## Plan
 
-Add a new section at the bottom of `.lovable/tier2-backlog.md` that tracks Tier 2 items with open questions for Brett. This becomes the durable home for the parked Brett questions (so they don't get clobbered by `plan--create` overwriting `.lovable/plan.md` again).
+# Brett's decision — wire it up
 
-### New section to append
+Brett picked option (c) with a twist: client owns all edits and they sync to the master DB, **except** the original email (Smartlead-protected). Add a second "Other Email" field for emails collected later (phone, Zoom, reply).
 
-```markdown
 ---
 
-## Awaiting Brett Approval
+## Backend (one migration)
 
-Items where work is done or partially done, but a product decision from Brett is needed before continuing.
+Add `other_email` column (nullable text) to both tables:
+- `public.candidates.other_email`
+- `public.teacher_prospects.other_email`
 
-### #4 — Editable profile fields (Candidate Pipeline → Overview tab)
+No rename of existing `email` column — we just treat it as "Verified Email" in the UI.
 
-**Status:** UI shipped. Edits to Name, Email, Phone, Location, Assigned To, and Source persist to the `candidates` table. `source` column was added.
+## Frontend — Pipeline → Overview tab
 
-**Open question for Brett — edit propagation back to upstream records:**
+`src/components/candidate-pipeline/tabs/OverviewTab.tsx`
 
-Flow in production: Teacher Search → Email Outreach → Candidate Pipeline. The `candidates` row is a copy linked via `prospect_id` back to `teacher_prospects`. Today, edits in Pipeline only update the candidate row, not the original teacher record.
+1. **Email row → relabel "Verified Email"**
+   - Remove edit affordance (no pencil, no click-to-edit)
+   - Add small `Lock` icon (lucide-react) next to the value
+   - Tooltip on hover: *"This is the email used in outreach. It cannot be changed to protect against duplicate sends."*
 
-Three options:
+2. **New "Other Email" row** (right after Verified Email)
+   - Editable like Phone (click-to-edit, Enter to save, Esc to cancel)
+   - Placeholder when empty: *"Add alternate email…"*
+   - Basic email format validation only (regex), no uniqueness check
 
-- **(a) Keep separate** *(current behavior)* — candidate is the sales working copy; teacher record is cold-outreach source of truth. Clean, but a phone fix here won't show on Teacher Search.
-- **(b) Sync all edits back to `teacher_prospects`** — one source of truth. Risk: overwrites verified enrichment data.
-- **(c) Sync only safe fields** (phone, city, state) but NOT email — email drives Smartlead deliverability, isolate it from pipeline edits.
+## Frontend — sync-back wiring
 
-Haseeb's gut: (c). Awaiting Brett's pick. Once decided, Part 3 wires in ~10 min.
+`src/pages/CandidatePipeline.tsx` → `onSaveProfile` handler
 
-**Brett message draft (copy-paste ready):** see chat log.
+After updating the `candidates` row, if `candidate.prospect_id` exists, also `UPDATE public.teacher_prospects SET ... WHERE id = prospect_id` for the **safe fields only**:
+
+```
+first_name, last_name, phone, city, state, other_email
 ```
 
-### Files touched
-- `.lovable/tier2-backlog.md` — append the section above. No other edits.
+**Never** sync `email` (Smartlead protection). `assigned_to` and `source` are candidate-only concepts, so they don't sync either.
 
-That's it. Self-contained, won't get overwritten by future plan calls.
+If the teacher_prospects update fails, log it but don't block the candidate save (candidate is source of truth for pipeline UI).
+
+## Type updates
+
+- Extend `Candidate` in `src/data/pipelineData.ts` with `otherEmail?: string`
+- Map `other_email` ↔ `otherEmail` in the load + save paths
+
+## Tier 2 backlog update
+
+Move #4 out of "Awaiting Brett Approval" → mark as shipped with the resolution recorded:
+> Brett picked: lock Verified Email + add Other Email + sync safe fields back to teacher_prospects.
+
+---
+
+## Out of scope (intentional)
+
+- Teacher Search detail panel / Email Outreach UI updates to show `other_email` — separate ticket, not asked for here
+- Verified-email change workflow (admin override) — not requested
+- Backfilling `other_email` from anywhere — column starts empty
+
+---
+
+## Files touched
+
+- new migration: add `other_email` to `candidates` + `teacher_prospects`
+- `src/data/pipelineData.ts` — add `otherEmail` to `Candidate`
+- `src/pages/CandidatePipeline.tsx` — load + sync-back in `onSaveProfile`
+- `src/components/candidate-pipeline/tabs/OverviewTab.tsx` — lock Verified Email, add Other Email row, tooltips
+- `.lovable/tier2-backlog.md` — mark #4 resolved

@@ -412,6 +412,7 @@ export type Database = {
           fit_tag: string
           id: string
           last_name: string
+          other_email: string | null
           phone: string | null
           prospect_id: string | null
           source: string | null
@@ -430,6 +431,7 @@ export type Database = {
           fit_tag?: string
           id?: string
           last_name: string
+          other_email?: string | null
           phone?: string | null
           prospect_id?: string | null
           source?: string | null
@@ -448,6 +450,7 @@ export type Database = {
           fit_tag?: string
           id?: string
           last_name?: string
+          other_email?: string | null
           phone?: string | null
           prospect_id?: string | null
           source?: string | null
@@ -1524,6 +1527,7 @@ export type Database = {
           name: string | null
           needs_email_enrichment: boolean
           notes: string | null
+          other_email: string | null
           raw: Json | null
           school: string | null
           school_nces_id: string | null
@@ -1561,6 +1565,7 @@ export type Database = {
           name?: string | null
           needs_email_enrichment?: boolean
           notes?: string | null
+          other_email?: string | null
           raw?: Json | null
           school?: string | null
           school_nces_id?: string | null
@@ -1598,6 +1603,7 @@ export type Database = {
           name?: string | null
           needs_email_enrichment?: boolean
           notes?: string | null
+          other_email?: string | null
           raw?: Json | null
           school?: string | null
           school_nces_id?: string | null

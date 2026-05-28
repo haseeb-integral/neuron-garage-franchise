@@ -7,6 +7,7 @@ import { Lock, BookOpen, Plus, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { StageDocumentsSection } from "../StageDocumentsSection";
+import { ComplianceSection } from "../ComplianceSection";
 
 
 interface Props {
@@ -190,6 +191,7 @@ export function HomeworkTab({ candidate, onTrialCloseChange }: Props) {
       </div>
 
       {dbId && <StageDocumentsSection candidateDbId={dbId} stage={candidate.stage} />}
+      {dbId && <ComplianceSection candidateDbId={dbId} stage={candidate.stage} />}
 
 
 

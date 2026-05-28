@@ -48,30 +48,30 @@ export function LeadSheetTab({ candidate }: Props) {
     }
     (async () => {
       setLoading(true);
-      const { data } = await supabase
-        .from("candidate_profiles")
-        .select("*")
-        .eq("candidate_id", dbId)
-        .maybeSingle();
+      const [{ data: profileData }, { data: candidateData }] = await Promise.all([
+        supabase.from("candidate_profiles").select("*").eq("candidate_id", dbId).maybeSingle(),
+        supabase.from("candidates").select("partner_involved").eq("id", dbId).maybeSingle(),
+      ]);
       if (cancelled) return;
-      if (data) {
+      if (profileData) {
         setForm({
-          background: data.background ?? "",
-          motivation: data.motivation ?? "",
-          liquid_capital: data.liquid_capital != null ? String(data.liquid_capital) : "",
-          net_worth: data.net_worth != null ? String(data.net_worth) : "",
-          timeline: data.timeline ?? "",
-          partner_involved: !!data.partner_involved,
-          location_preferences: data.location_preferences ?? "",
-          additional_notes: data.additional_notes ?? "",
+          background: profileData.background ?? "",
+          motivation: profileData.motivation ?? "",
+          liquid_capital: profileData.liquid_capital != null ? String(profileData.liquid_capital) : "",
+          net_worth: profileData.net_worth != null ? String(profileData.net_worth) : "",
+          timeline: profileData.timeline ?? "",
+          partner_involved: !!candidateData?.partner_involved,
+          location_preferences: profileData.location_preferences ?? "",
+          additional_notes: profileData.additional_notes ?? "",
         });
       } else {
-        setForm(empty);
+        setForm({
+          ...empty,
+          partner_involved: !!candidateData?.partner_involved,
+        });
       }
       setLoading(false);
     })();
-    return () => { cancelled = true; };
-  }, [dbId]);
 
   const update = <K extends keyof ProfileForm>(k: K, v: ProfileForm[K]) =>
     setForm((f) => ({ ...f, [k]: v }));

@@ -180,39 +180,8 @@ const CandidatePipeline = () => {
         setLoading(false);
         return;
       }
-      const mapped: Candidate[] = (data ?? []).map((r: any, idx: number) => {
-        const fullName = `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim();
-        const created = r.created_at ? new Date(r.created_at) : new Date();
-        const days = Math.max(0, Math.floor((Date.now() - created.getTime()) / (1000 * 60 * 60 * 24)));
-        return {
-          id: idx + 1, // local numeric id for legacy UI; real uuid kept in __dbId
-          name: fullName || r.email,
-          city: r.city ?? "",
-          state: r.state ?? "",
-          email: r.email ?? "",
-          otherEmail: r.other_email ?? "",
-          phone: r.phone ?? "",
-          fitScore: r.fit_score ?? 0,
-          stage: dbStageToUi[r.current_stage] ?? "new_lead",
-          daysInStage: days,
-          assignedTo: r.assigned_to ?? "",
-          tag: r.fit_tag ?? "Untagged",
-          source: r.source ?? "",
-          createdDate: r.created_at ?? new Date().toISOString(),
-          qualificationScores: { teaching: 0, leadership: 0, financial: 0, marketFit: 0, cultureFit: 0 },
-          activity: [],
-          trialClose: {
-            answeredQuestions: false,
-            prospectSummarized: false,
-            askedToMoveForward: false,
-            scheduledNextCall: false,
-            assignedHomework: false,
-          },
-          votes: { Kaylie: null, Sam: null, Skylar: null },
-          dbId: r.id,
-          prospectId: r.prospect_id ?? null,
-        } as unknown as Candidate;
-      });
+      const mapped: Candidate[] = (data ?? []).map((r: any, idx: number) => mapRowToCandidate(r, idx + 1));
+
       setCandidates(mapped);
       setLoading(false);
 

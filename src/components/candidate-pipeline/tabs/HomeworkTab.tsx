@@ -69,6 +69,7 @@ export function HomeworkTab({ candidate, onTrialCloseChange }: Props) {
           stage: candidate.stage as any,
           label,
           is_completed: false,
+          kind: "homework",
         }));
         const { data: inserted, error: insertErr } = await supabase
           .from("candidate_checklist_items")

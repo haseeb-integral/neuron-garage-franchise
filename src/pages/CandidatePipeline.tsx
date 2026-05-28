@@ -493,7 +493,7 @@ const CandidatePipeline = () => {
       // local-only field (e.g. source)
       return;
     }
-    const { error } = await supabase.from("candidates").update(dbPatch).eq("id", dbId);
+    const { error } = await supabase.from("candidates").update(dbPatch as any).eq("id", dbId);
     if (error) {
       handleUpdate(prevSnapshot);
       throw new Error(error.message);

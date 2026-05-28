@@ -1,5 +1,6 @@
 import { Candidate } from "@/data/pipelineData";
 import { FitScoreBadge } from "@/components/teacher-prospects/FitScoreBadge";
+import { CompositeScoreBadge } from "@/components/candidate-pipeline/CompositeScoreBadge";
 import { CandidateAvatar } from "@/components/ui/CandidateAvatar";
 import { ArrowRight } from "lucide-react";
 import { MouseEvent } from "react";
@@ -48,6 +49,7 @@ export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboardi
           {candidate.name}
         </div>
         <FitScoreBadge score={candidate.fitScore} />
+        <CompositeScoreBadge scores={candidate.qualificationScores} />
       </div>
     );
   }
@@ -68,6 +70,7 @@ export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboardi
               {candidate.name}
             </div>
             <FitScoreBadge score={candidate.fitScore} />
+            <CompositeScoreBadge scores={candidate.qualificationScores} />
           </div>
           <div className="text-[11px] truncate mt-0.5" style={{ color: "#6c757d", lineHeight: 1.2 }}>
             {candidate.city}, {candidate.state}

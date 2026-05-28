@@ -24,8 +24,11 @@ interface ChecklistItem {
 export function HomeworkTab({ candidate, onTrialCloseChange }: Props) {
   const dbId = (candidate as any).dbId as string | undefined;
   const homework = STAGE_HOMEWORK[candidate.stage] ?? [];
-  const showFddLock = candidate.stage === "fdd_review" && candidate.fddSentDate;
   const [items, setItems] = useState<ChecklistItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [newLabel, setNewLabel] = useState("");
+  const [adding, setAdding] = useState(false);
+
   const [loading, setLoading] = useState(false);
 
   let daysRemaining = 0;

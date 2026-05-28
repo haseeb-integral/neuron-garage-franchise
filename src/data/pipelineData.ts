@@ -49,12 +49,6 @@ export interface TrialClose {
   assignedHomework: boolean;
 }
 
-export interface CommitteeVotes {
-  Kaylie: "approve" | "decline" | null;
-  Sam: "approve" | "decline" | null;
-  Skylar: "approve" | "decline" | null;
-}
-
 export interface Candidate {
   id: number;
   name: string;
@@ -71,6 +65,26 @@ export interface Candidate {
   source: string;
   createdDate: string;
   fddSentDate?: string;
+  /** Optional candidate portrait URL. When set, CandidateAvatar renders the image; otherwise initials. */
+  photoUrl?: string;
+  // Tier 2 additions (all optional, candidate-only)
+  otherOpportunities?: string;
+  mailingStreet?: string;
+  mailingCity?: string;
+  mailingState?: string;
+  mailingZip?: string;
+  partnerInvolved?: boolean;
+  partnerName?: string;
+  partnerEmail?: string;
+  partnerPhone?: string;
+  backgroundCheckCompletedAt?: string; // ISO date (YYYY-MM-DD)
+  creditCheckCompletedAt?: string;
+  qualificationScores: QualificationScores;
+  activity: ActivityEntry[];
+  trialClose: TrialClose;
+  votes: CommitteeVotes;
+}
+
   /** Optional candidate portrait URL. When set, CandidateAvatar renders the image; otherwise initials. */
   photoUrl?: string;
   qualificationScores: QualificationScores;

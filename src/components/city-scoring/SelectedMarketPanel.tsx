@@ -271,6 +271,7 @@ function SelectedMarketPanelImpl({
           <div className="space-y-2">
             {VISIBLE_CATEGORIES.map((cat) => {
               const v = selectedHasLiveData ? Math.round(calibratedScore(cat.key)) : null;
+              const rawV = selectedHasLiveData ? pillars[cat.key as PillarKey]?.raw ?? null : null;
               const wPct = appliedTotal > 0 ? (appliedWeights[cat.key] / appliedTotal) * 100 : 0;
               const isZeroWeighted = wPct <= 0.05;
               return (
@@ -285,11 +286,15 @@ function SelectedMarketPanelImpl({
                   <div className="h-1.5 w-full rounded-full bg-[#e8edf6]">
                     <div className={`h-full rounded-full ${isZeroWeighted ? "bg-[#b6bfd0]" : "bg-[#1d4fff]"}`} style={{ width: `${v ?? 0}%` }} />
                   </div>
+                  {rawV != null && (
+                    <p className="mt-0.5 text-right text-[9.5px] text-[#8794ab]" title="Math score — the un-curved value used in the composite formula.">math {Math.round(rawV)}</p>
+                  )}
                 </div>
               );
             })}
           </div>
         </div>
+
 
         {/* Action buttons */}
         <div className="mt-4 w-full flex flex-col gap-2">

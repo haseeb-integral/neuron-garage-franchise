@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { Candidate, STAGE_HOMEWORK, TrialClose } from "@/data/pipelineData";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Lock, BookOpen } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Lock, BookOpen, Plus, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
 
 interface Props {
   candidate: Candidate;

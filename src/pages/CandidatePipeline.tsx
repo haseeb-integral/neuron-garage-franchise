@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { UserPlus, Rows3, Rows2, Minimize2, Filter, X, Plus } from "lucide-react";
 import { NewCandidateModal } from "@/components/candidate-pipeline/NewCandidateModal";
 import { toast } from "sonner";
-import { Candidate, StageId, STAGES } from "@/data/pipelineData";
+import { Candidate, StageId, STAGES, STAGE_HOMEWORK } from "@/data/pipelineData";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { KanbanBoard } from "@/components/candidate-pipeline/KanbanBoard";

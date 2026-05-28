@@ -134,7 +134,7 @@ export function useTeacherProspectsData(args: UseTeacherProspectsDataArgs) {
     if (cityFilters.length > 0) q = q.in("city", cityFilters);
     if (debouncedSearch?.trim()) {
       const s = debouncedSearch.trim().replace(/[%_]/g, "");
-      q = q.or(`name.ilike.%${s}%,school.ilike.%${s}%,city.ilike.%${s}%,email.ilike.%${s}%`);
+      q = q.or(`name.ilike.%${s}%,school.ilike.%${s}%,city.ilike.%${s}%,state.ilike.%${s}%,email.ilike.%${s}%`);
     }
     if (sourceFilter === "smartlead") q = q.in("enrichment_source", ["smartlead_csv"]);
     else if (sourceFilter === "linkedin") q = q.in("enrichment_source", ["linkedin_danish"]);
@@ -157,7 +157,7 @@ export function useTeacherProspectsData(args: UseTeacherProspectsDataArgs) {
     if (cityFilters.length > 0) q = q.in("city", cityFilters);
     if (debouncedSearch?.trim()) {
       const s = debouncedSearch.trim().replace(/[%_]/g, "");
-      q = q.or(`name.ilike.%${s}%,school.ilike.%${s}%,city.ilike.%${s}%,email.ilike.%${s}%`);
+      q = q.or(`name.ilike.%${s}%,school.ilike.%${s}%,city.ilike.%${s}%,state.ilike.%${s}%,email.ilike.%${s}%`);
     }
     if (sourceFilter === "smartlead") q = q.in("enrichment_source", ["smartlead_csv"]);
     else if (sourceFilter === "linkedin") q = q.in("enrichment_source", ["linkedin_danish"]);

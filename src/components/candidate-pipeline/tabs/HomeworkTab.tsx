@@ -51,6 +51,7 @@ export function HomeworkTab({ candidate, onTrialCloseChange }: Props) {
         .select("id, label, is_completed, completed_at, completed_by")
         .eq("candidate_id", dbId)
         .eq("stage", candidate.stage as any)
+        .eq("kind", "homework")
         .order("created_at", { ascending: true });
       if (cancelled) return;
       if (error) {

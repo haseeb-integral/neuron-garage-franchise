@@ -1,6 +1,13 @@
-import { Info } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { buildPillarView, calibratePillarForDisplay, unsafeAsCompositeScore, type CompositeScore } from "@/lib/marketView";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  buildPillarView,
+  CALIBRATION_ANCHORS,
+  unsafeAsCompositeScore,
+  type CompositeScore,
+} from "@/lib/marketView";
 import type { TierLetter } from "@/lib/cityTiers";
 
 interface Props {
@@ -23,11 +30,17 @@ const TIER_STYLE: Record<string, { bg: string; color: string; label: string }> =
   D: { bg: "#fde2e2", color: "#a83232", label: "Bottom half — proceed with caution" },
 };
 
-const PILLARS: Array<{ key: "demand" | "franchiseeSupply" | "competitiveLandscape"; label: string }> = [
-  { key: "demand", label: "Demand" },
-  { key: "franchiseeSupply", label: "TAM Teachers" },
-  { key: "competitiveLandscape", label: "Competitive Opp" },
+const PILLARS: Array<{ key: "demand" | "franchiseeSupply" | "competitiveLandscape"; label: string; short: string }> = [
+  { key: "demand", label: "Demand", short: "Demand" },
+  { key: "franchiseeSupply", label: "TAM Teachers", short: "TAM" },
+  { key: "competitiveLandscape", label: "Competitive Opp", short: "Comp Opp" },
 ];
+
+const ANCHOR_NOTE: Record<number, string> = {
+  41: "Tier C cutoff",
+  50: "Tier B cutoff",
+  59: "Tier A cutoff",
+};
 
 function bottomLine(
   total: CompositeScore,
@@ -43,16 +56,36 @@ function bottomLine(
   const top = sorted[0];
   const bottom = sorted[sorted.length - 1];
   const gap = top.v - bottom.v;
-  if (total >= 90) return `Tier A market: strongest signal in ${top.label.toLowerCase()} (${top.v}). Recruit aggressively.`;
-  if (total >= 80) return `Solid Tier B market — ${top.label} (${top.v}) carries it; watch ${bottom.label.toLowerCase()} (${bottom.v}).`;
-  if (total >= 70) return `Average market overall. Lean in only if ${top.label.toLowerCase()} (${top.v}) aligns with the candidate's strengths.`;
-  if (gap >= 25)
-    return `Below-average overall, but ${top.label} is ${top.v}/100. Could work for a teacher whose strength matches this pillar.`;
-  return `Below-average across the board (top pillar only ${top.v}). Most candidates should look elsewhere.`;
+  if (total >= 90) return `Tier A: strongest in ${top.label.toLowerCase()} (${top.v}). Recruit aggressively.`;
+  if (total >= 80) return `Solid Tier B — ${top.label} (${top.v}) carries it; watch ${bottom.label.toLowerCase()} (${bottom.v}).`;
+  if (total >= 70) return `Average overall — best fit if the candidate's strength is ${top.label.toLowerCase()} (${top.v}).`;
+  if (gap >= 25) return `Below average overall, but ${top.label} is ${top.v}/100 — could work for a matched candidate.`;
+  return `Below average across the board (top pillar only ${top.v}).`;
+}
+
+/** Find the two anchors that bracket a raw value and return the interp arithmetic. */
+function interpLine(label: string, raw: number | null): { label: string; text: string; display: number } | null {
+  if (raw == null || !Number.isFinite(raw)) return null;
+  const r = Math.max(0, Math.min(100, raw));
+  for (let i = 1; i < CALIBRATION_ANCHORS.length; i += 1) {
+    const [x0, y0] = CALIBRATION_ANCHORS[i - 1];
+    const [x1, y1] = CALIBRATION_ANCHORS[i];
+    if (r <= x1) {
+      const t = x1 === x0 ? 0 : (r - x0) / (x1 - x0);
+      const display = Math.round(y0 + t * (y1 - y0));
+      const rawFmt = Number.isInteger(r) ? String(r) : r.toFixed(1);
+      return {
+        label,
+        text: `${y0} + (${rawFmt} − ${x0}) / (${x1} − ${x0}) × ${y1 - y0} = ${display}`,
+        display,
+      };
+    }
+  }
+  return { label, text: `clamps to 100`, display: 100 };
 }
 
 export function DrawerHeroSummary({ rawComposite, tier, categoryScores }: Props) {
-  // Mint a calibrated composite via the source-of-truth selector — never recompute here.
+  const [curveOpen, setCurveOpen] = useState(false);
   const composite = unsafeAsCompositeScore(rawComposite);
   const pillars = buildPillarView(categoryScores);
 
@@ -64,6 +97,13 @@ export function DrawerHeroSummary({ rawComposite, tier, categoryScores }: Props)
     tam: pillars.franchiseeSupply.display ?? null,
     comp: pillars.competitiveLandscape.display ?? null,
   });
+
+  const interpRows = [
+    interpLine("Demand", pillars.demand.raw),
+    interpLine("TAM", pillars.franchiseeSupply.raw),
+    interpLine("Comp Opp", pillars.competitiveLandscape.raw),
+    interpLine("Total", rawComposite),
+  ].filter((r): r is { label: string; text: string; display: number } => r != null);
 
   return (
     <div className="mb-3 rounded-xl border border-[#eef2f7] bg-white p-4">
@@ -78,7 +118,6 @@ export function DrawerHeroSummary({ rawComposite, tier, categoryScores }: Props)
           <p className="mt-1 text-[10.5px] text-[#8794ab]">
             Display score 0–100 · math score {Math.round(rawComposite)}
           </p>
-
         </div>
         <div
           className="rounded-xl px-3 py-2 text-center"
@@ -136,6 +175,50 @@ export function DrawerHeroSummary({ rawComposite, tier, categoryScores }: Props)
         })}
       </div>
 
+      {/* Show curve — expandable calibration table + per-city interp */}
+      <Collapsible open={curveOpen} onOpenChange={setCurveOpen} className="mt-3">
+        <CollapsibleTrigger className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-[#2250eb] hover:underline">
+          <ChevronDown className={`h-3 w-3 transition-transform ${curveOpen ? "rotate-180" : ""}`} />
+          {curveOpen ? "Hide" : "Show"} curve — how math turns into display
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-2 rounded-lg border border-[#eef2f7] bg-[#fafbfd] p-3">
+          <p className="text-[10.5px] font-bold uppercase tracking-[0.1em] text-[#8794ab]">Calibration anchors</p>
+          <table className="mt-1 w-full text-[11px] font-mono tabular-nums text-[#07142f]">
+            <thead>
+              <tr className="text-left text-[10px] uppercase tracking-[0.08em] text-[#8794ab]">
+                <th className="py-0.5 pr-3 font-bold">math</th>
+                <th className="py-0.5 pr-3 font-bold">→ display</th>
+                <th className="py-0.5 font-bold">note</th>
+              </tr>
+            </thead>
+            <tbody>
+              {CALIBRATION_ANCHORS.map(([x, y]) => (
+                <tr key={`${x}-${y}`}>
+                  <td className="py-0.5 pr-3">{String(x).padStart(3, " ")}</td>
+                  <td className="py-0.5 pr-3">{String(y).padStart(3, " ")}</td>
+                  <td className="py-0.5 text-[10px] italic text-[#8794ab]">{ANCHOR_NOTE[x] ?? ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <p className="mt-3 text-[10.5px] font-bold uppercase tracking-[0.1em] text-[#8794ab]">
+            This city, step by step
+          </p>
+          <div className="mt-1 space-y-0.5 font-mono text-[10.5px] text-[#07142f]">
+            {interpRows.map((r) => (
+              <div key={r.label}>
+                <span className="inline-block w-[64px] font-semibold">{r.label}:</span>
+                <span>{r.text}</span>
+              </div>
+            ))}
+          </div>
+
+          <p className="mt-2 text-[10px] italic text-[#8794ab]">
+            The display score bends the math onto a friendlier 0–100 scale. Rankings are identical either way.
+          </p>
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* Bottom-line one-liner — deterministic, no LLM. */}
       <div className="mt-3 rounded-lg bg-[#f7faff] px-3 py-2 text-[11.5px] leading-snug text-[#07142f]">

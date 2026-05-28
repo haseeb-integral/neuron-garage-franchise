@@ -104,6 +104,17 @@ const CandidatePipeline = () => {
       tag: r.fit_tag ?? "Untagged",
       source: r.source ?? "",
       createdDate: r.created_at ?? new Date().toISOString(),
+      otherOpportunities: r.other_opportunities ?? "",
+      mailingStreet: r.mailing_street ?? "",
+      mailingCity: r.mailing_city ?? "",
+      mailingState: r.mailing_state ?? "",
+      mailingZip: r.mailing_zip ?? "",
+      partnerInvolved: !!r.partner_involved,
+      partnerName: r.partner_name ?? "",
+      partnerEmail: r.partner_email ?? "",
+      partnerPhone: r.partner_phone ?? "",
+      backgroundCheckCompletedAt: r.background_check_completed_at ?? "",
+      creditCheckCompletedAt: r.credit_check_completed_at ?? "",
       qualificationScores: { teaching: 0, leadership: 0, financial: 0, marketFit: 0, cultureFit: 0 },
       activity: [],
       trialClose: {
@@ -118,6 +129,7 @@ const CandidatePipeline = () => {
       prospectId: r.prospect_id ?? null,
     } as unknown as Candidate;
   };
+
 
   const handleCandidateCreated = (row: any) => {
     setCandidates((prev) => {
@@ -168,39 +180,8 @@ const CandidatePipeline = () => {
         setLoading(false);
         return;
       }
-      const mapped: Candidate[] = (data ?? []).map((r: any, idx: number) => {
-        const fullName = `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim();
-        const created = r.created_at ? new Date(r.created_at) : new Date();
-        const days = Math.max(0, Math.floor((Date.now() - created.getTime()) / (1000 * 60 * 60 * 24)));
-        return {
-          id: idx + 1, // local numeric id for legacy UI; real uuid kept in __dbId
-          name: fullName || r.email,
-          city: r.city ?? "",
-          state: r.state ?? "",
-          email: r.email ?? "",
-          otherEmail: r.other_email ?? "",
-          phone: r.phone ?? "",
-          fitScore: r.fit_score ?? 0,
-          stage: dbStageToUi[r.current_stage] ?? "new_lead",
-          daysInStage: days,
-          assignedTo: r.assigned_to ?? "",
-          tag: r.fit_tag ?? "Untagged",
-          source: r.source ?? "",
-          createdDate: r.created_at ?? new Date().toISOString(),
-          qualificationScores: { teaching: 0, leadership: 0, financial: 0, marketFit: 0, cultureFit: 0 },
-          activity: [],
-          trialClose: {
-            answeredQuestions: false,
-            prospectSummarized: false,
-            askedToMoveForward: false,
-            scheduledNextCall: false,
-            assignedHomework: false,
-          },
-          votes: { Kaylie: null, Sam: null, Skylar: null },
-          dbId: r.id,
-          prospectId: r.prospect_id ?? null,
-        } as unknown as Candidate;
-      });
+      const mapped: Candidate[] = (data ?? []).map((r: any, idx: number) => mapRowToCandidate(r, idx + 1));
+
       setCandidates(mapped);
       setLoading(false);
 
@@ -242,6 +223,8 @@ const CandidatePipeline = () => {
   const setTagFilter = useCandidatePipelineStore((s) => s.setTagFilter);
   const fitFilter = useCandidatePipelineStore((s) => s.fitFilter);
   const setFitFilter = useCandidatePipelineStore((s) => s.setFitFilter);
+  const daysFilter = useCandidatePipelineStore((s) => s.daysInStageFilter);
+  const setDaysFilter = useCandidatePipelineStore((s) => s.setDaysInStageFilter);
 
   const filteredCandidates = useMemo(() => {
     return candidates.filter((c) => {
@@ -249,16 +232,22 @@ const CandidatePipeline = () => {
       if (tagFilter !== "all" && c.tag !== tagFilter) return false;
       if (fitFilter === "90" && c.fitScore < 90) return false;
       if (fitFilter === "75" && c.fitScore < 75) return false;
+      if (daysFilter === "fresh" && c.daysInStage > 3) return false;
+      if (daysFilter === "watch" && (c.daysInStage < 4 || c.daysInStage > 7)) return false;
+      if (daysFilter === "stalled" && c.daysInStage < 8) return false;
       return true;
     });
-  }, [candidates, ownerFilter, tagFilter, fitFilter]);
+  }, [candidates, ownerFilter, tagFilter, fitFilter, daysFilter]);
 
-  const filtersActive = ownerFilter !== "all" || tagFilter !== "all" || fitFilter !== "all";
+  const filtersActive =
+    ownerFilter !== "all" || tagFilter !== "all" || fitFilter !== "all" || daysFilter !== "all";
   const clearFilters = () => {
     setOwnerFilter("all");
     setTagFilter("all");
     setFitFilter("all");
+    setDaysFilter("all");
   };
+
 
   const handleStartOnboarding = (c: Candidate) => setConfirmCandidate(c);
 
@@ -508,7 +497,11 @@ const CandidatePipeline = () => {
     // assigned_to / source / fit_* are candidate-only concepts.
     const prospectId = (active as any).prospectId as string | null | undefined;
     if (prospectId) {
-      const SYNC_FIELDS = ["first_name", "last_name", "phone", "city", "state", "other_email"] as const;
+      const SYNC_FIELDS = [
+        "first_name", "last_name", "phone", "city", "state", "other_email",
+        "mailing_street", "mailing_city", "mailing_state", "mailing_zip",
+      ] as const;
+
       const tpPatch: Record<string, any> = {};
       for (const k of SYNC_FIELDS) {
         if (k in dbPatch) tpPatch[k] = (dbPatch as any)[k];
@@ -656,6 +649,26 @@ const CandidatePipeline = () => {
             </button>
           ))}
         </div>
+
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[11px] font-medium" style={{ color: "#6c757d" }}>Days in stage:</span>
+          {([
+            { id: "all" as const, label: "All" },
+            { id: "fresh" as const, label: "Fresh (≤3)" },
+            { id: "watch" as const, label: "Watch (4–7)" },
+            { id: "stalled" as const, label: "Stalled (8+)" },
+          ]).map((d) => (
+            <button
+              key={d.id}
+              onClick={() => setDaysFilter(d.id)}
+              className={chipBase}
+              style={daysFilter === d.id ? chipActive : chipInactive}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
+
 
         {filtersActive && (
           <button

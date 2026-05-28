@@ -55,6 +55,7 @@ export interface CommitteeVotes {
   Skylar: "approve" | "decline" | null;
 }
 
+
 export interface Candidate {
   id: number;
   name: string;
@@ -73,11 +74,25 @@ export interface Candidate {
   fddSentDate?: string;
   /** Optional candidate portrait URL. When set, CandidateAvatar renders the image; otherwise initials. */
   photoUrl?: string;
+  // Tier 2 additions (all optional, candidate-only)
+  otherOpportunities?: string;
+  mailingStreet?: string;
+  mailingCity?: string;
+  mailingState?: string;
+  mailingZip?: string;
+  partnerInvolved?: boolean;
+  partnerName?: string;
+  partnerEmail?: string;
+  partnerPhone?: string;
+  backgroundCheckCompletedAt?: string; // ISO date (YYYY-MM-DD)
+  creditCheckCompletedAt?: string;
   qualificationScores: QualificationScores;
   activity: ActivityEntry[];
   trialClose: TrialClose;
   votes: CommitteeVotes;
 }
+
+
 
 const REGISTRATION_STATES = ["NY", "CA", "IL", "MD", "MN", "ND", "RI", "SD", "VA", "WA", "WI", "HI", "IN", "MI"];
 export const stateRequiresRegistration = (state: string) => REGISTRATION_STATES.includes(state);

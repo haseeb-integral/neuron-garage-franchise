@@ -49,21 +49,40 @@ These are explicitly excluded from Tier 2 execution.
 
 ## Awaiting Brett Approval
 
-*(empty — see Resolved below)*
+*(empty)*
 
 ---
 
 ## Resolved
 
-### #4 — Editable profile fields (Candidate Pipeline → Overview tab) ✅
+### #4 — Editable profile fields ✅ (shipped 2026-05-28)
+See prior entry — Overview tab inline edits with locked Verified Email.
 
-**Shipped 2026-05-28.**
+### #2 — Other Opportunities textarea ✅ (shipped 2026-05-28)
+New `candidates.other_opportunities text` column. Textarea card on Overview tab with Save/Cancel. Candidate-only (not synced to prospects).
 
-- All profile fields editable in Overview tab (name, phone, location, assigned_to, source, other_email).
-- **Verified Email is locked** with a lock icon + tooltip: *"This is the email used in outreach. It cannot be changed to protect against duplicate sends."* — protects Smartlead deliverability.
-- New **Other Email** field added (nullable text) on both `candidates` and `teacher_prospects`. Placeholder: *"Add alternate email…"*. Basic email-format validation only.
-- **Sync-back to master:** when a candidate row is edited and `prospect_id` is set, safe fields (`first_name, last_name, phone, city, state, other_email`) also update `teacher_prospects`. `email`, `assigned_to`, `source`, `fit_*` are never synced.
+### #3 — Mailing Address ✅ (shipped 2026-05-28)
+New `mailing_street / mailing_city / mailing_state / mailing_zip` on both `candidates` and `teacher_prospects`. Address card on Overview tab. Address edits sync back to the master prospect record via existing `SYNC_FIELDS` mechanism.
 
-Brett's decision (verbatim): client who owns the app should be able to modify all records and have them sync to master with one exception — the original Verified Email used by Smartlead.
+### #5 — Partner toggle + conditional fields ✅ (shipped 2026-05-28)
+New `partner_involved bool` + `partner_name / partner_email / partner_phone` on `candidates`. Checkbox reveals/hides the three inputs. Turning the toggle off clears the fields on save. Candidate-only.
 
+### #8 — Compliance Audit dates ✅ (shipped 2026-05-28)
+New `background_check_completed_at date` + `credit_check_completed_at date` on `candidates`. Two shadcn date pickers on Overview. Inline save (no Save button — selecting/clearing a date persists immediately).
+
+### #1 — Days in Stage filter ✅ (shipped 2026-05-28)
+New `daysInStageFilter` chip group on the Pipeline page (All / Fresh ≤3 / Watch 4–7 / Stalled 8+). Pure client-side filter, persisted in the existing Zustand store (bumped to v2). Counts toward "Clear filters".
+
+---
+
+## Deferred (still in safe group, but need design input)
+
+### #7 — Homework checkboxes for all 6 stages
+Existing `HomeworkTab` only shows DB-backed checklist for Confirmation. Other stages fall back to a hard-coded 5-item Trial Close list. Extending DB-backed checklists to all stages needs (a) a seeding strategy (auto-create rows on first view? or one-time backfill?), and (b) clarity on whether the existing 5 Trial Close items apply to all stages or whether each stage gets a different checklist. Punted until Brett confirms.
+
+### #6 — Notes & Activity 6-step process
+Requires defining the 6 step labels per stage. Sam's notes don't specify them. Punted until labels are confirmed.
+
+### #13 — Documentation deliverables
+Per project memory, docs are not updated unless explicitly requested. This backlog file is the exception. Other architecture/handover MDs stay untouched.
 

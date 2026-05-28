@@ -1,8 +1,17 @@
 import { useRef, useState, useEffect, KeyboardEvent } from "react";
 import { Candidate, STAGES, stateRequiresRegistration } from "@/data/pipelineData";
-import { AlertTriangle, Mail, Phone, MapPin, Calendar, User, Tag, Camera, Pencil, Check, X, Lock } from "lucide-react";
+import {
+  AlertTriangle, Mail, Phone, MapPin, Calendar as CalendarIcon, User, Tag, Camera,
+  Pencil, Check, X, Lock, Briefcase, Home, Users, ShieldCheck,
+} from "lucide-react";
 import { CandidateAvatar } from "@/components/ui/CandidateAvatar";
 import { toast } from "sonner";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface TeamMember { email: string; firstName: string; }
 
@@ -97,6 +106,16 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
   const onKey = (e: KeyboardEvent<HTMLInputElement | HTMLSelectElement>) => {
     if (e.key === "Enter") commit();
     if (e.key === "Escape") cancelEdit();
+  };
+
+  // Generic save used by Tier-2 cards (Other Opportunities, Mailing, Partner, Compliance)
+  const savePatch = async (dbPatch: Record<string, any>, localPatch: Partial<Candidate>) => {
+    if (!onSave) return;
+    try {
+      await onSave(dbPatch, localPatch);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to save");
+    }
   };
 
   const renderRow = (key: FieldKey, Icon: any, label: string, displayValue: string) => {
@@ -301,7 +320,7 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
           {renderRow("assignedTo", User, "Assigned To", candidate.assignedTo)}
           {renderRow("source", Tag, "Source", candidate.source)}
           <div className="flex items-start gap-2">
-            <Calendar size={14} style={{ color: "#6c757d" }} className="mt-1" />
+            <CalendarIcon size={14} style={{ color: "#6c757d" }} className="mt-1" />
             <div>
               <div className="text-xs" style={{ color: "#6c757d" }}>Created</div>
               <div className="text-sm font-medium">{candidate.createdDate}</div>
@@ -309,6 +328,32 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
           </div>
         </div>
       </div>
+
+      {/* === Tier 2 cards === */}
+
+      <OtherOpportunitiesCard
+        candidate={candidate}
+        readOnly={readOnly}
+        onSave={savePatch}
+      />
+
+      <MailingAddressCard
+        candidate={candidate}
+        readOnly={readOnly}
+        onSave={savePatch}
+      />
+
+      <PartnerCard
+        candidate={candidate}
+        readOnly={readOnly}
+        onSave={savePatch}
+      />
+
+      <ComplianceAuditCard
+        candidate={candidate}
+        readOnly={readOnly}
+        onSave={savePatch}
+      />
 
       <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #dee2e6" }}>
         <h4 className="font-semibold mb-3 text-sm" style={{ color: "#003c7e" }}>Pipeline Status</h4>
@@ -330,5 +375,334 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
         </div>
       </div>
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tier 2 sub-cards
+// ─────────────────────────────────────────────────────────────────────────────
+
+type SaveFn = (dbPatch: Record<string, any>, localPatch: Partial<Candidate>) => Promise<void> | void;
+
+function CardShell({ icon: Icon, title, children }: { icon: any; title: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #dee2e6" }}>
+      <div className="flex items-center gap-2 mb-3">
+        <Icon size={16} style={{ color: "#003c7e" }} />
+        <h4 className="font-semibold text-sm" style={{ color: "#003c7e" }}>{title}</h4>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function OtherOpportunitiesCard({
+  candidate, readOnly, onSave,
+}: { candidate: Candidate; readOnly: boolean; onSave: SaveFn }) {
+  const [value, setValue] = useState(candidate.otherOpportunities ?? "");
+  useEffect(() => setValue(candidate.otherOpportunities ?? ""), [candidate.id]);
+  const dirty = (candidate.otherOpportunities ?? "") !== value;
+
+  return (
+    <CardShell icon={Briefcase} title="Other Opportunities Being Considered">
+      <textarea
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        disabled={readOnly}
+        rows={3}
+        placeholder="e.g. other franchises, business ideas, or career moves they're evaluating…"
+        className="w-full text-sm rounded-md border px-2 py-1.5 focus:outline-none focus:ring-2 disabled:bg-[#f8f9fa]"
+        style={{ borderColor: "#dee2e6" }}
+      />
+      {!readOnly && dirty && (
+        <div className="mt-2 flex justify-end gap-2">
+          <Button size="sm" variant="outline" onClick={() => setValue(candidate.otherOpportunities ?? "")}>
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            className="text-white"
+            style={{ backgroundColor: "#003c7e" }}
+            onClick={() => onSave(
+              { other_opportunities: value.trim() || null },
+              { otherOpportunities: value.trim() },
+            )}
+          >
+            Save
+          </Button>
+        </div>
+      )}
+    </CardShell>
+  );
+}
+
+function MailingAddressCard({
+  candidate, readOnly, onSave,
+}: { candidate: Candidate; readOnly: boolean; onSave: SaveFn }) {
+  const [street, setStreet] = useState(candidate.mailingStreet ?? "");
+  const [city, setCity] = useState(candidate.mailingCity ?? "");
+  const [state, setState] = useState(candidate.mailingState ?? "");
+  const [zip, setZip] = useState(candidate.mailingZip ?? "");
+
+  useEffect(() => {
+    setStreet(candidate.mailingStreet ?? "");
+    setCity(candidate.mailingCity ?? "");
+    setState(candidate.mailingState ?? "");
+    setZip(candidate.mailingZip ?? "");
+  }, [candidate.id]);
+
+  const dirty =
+    (candidate.mailingStreet ?? "") !== street ||
+    (candidate.mailingCity ?? "") !== city ||
+    (candidate.mailingState ?? "") !== state ||
+    (candidate.mailingZip ?? "") !== zip;
+
+  const inputCls = "w-full text-sm rounded-md border px-2 py-1.5 focus:outline-none focus:ring-2 disabled:bg-[#f8f9fa]";
+
+  return (
+    <CardShell icon={Home} title="Mailing Address">
+      <div className="grid grid-cols-1 sm:grid-cols-6 gap-2">
+        <input
+          className={cn(inputCls, "sm:col-span-6")}
+          placeholder="Street address"
+          disabled={readOnly}
+          value={street} onChange={(e) => setStreet(e.target.value)}
+          style={{ borderColor: "#dee2e6" }}
+        />
+        <input
+          className={cn(inputCls, "sm:col-span-3")}
+          placeholder="City"
+          disabled={readOnly}
+          value={city} onChange={(e) => setCity(e.target.value)}
+          style={{ borderColor: "#dee2e6" }}
+        />
+        <input
+          className={cn(inputCls, "sm:col-span-1")}
+          placeholder="ST" maxLength={2}
+          disabled={readOnly}
+          value={state} onChange={(e) => setState(e.target.value.toUpperCase())}
+          style={{ borderColor: "#dee2e6" }}
+        />
+        <input
+          className={cn(inputCls, "sm:col-span-2")}
+          placeholder="ZIP"
+          disabled={readOnly}
+          value={zip} onChange={(e) => setZip(e.target.value)}
+          style={{ borderColor: "#dee2e6" }}
+        />
+      </div>
+      {!readOnly && dirty && (
+        <div className="mt-2 flex justify-end gap-2">
+          <Button
+            size="sm" variant="outline"
+            onClick={() => {
+              setStreet(candidate.mailingStreet ?? "");
+              setCity(candidate.mailingCity ?? "");
+              setState(candidate.mailingState ?? "");
+              setZip(candidate.mailingZip ?? "");
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            size="sm" className="text-white" style={{ backgroundColor: "#003c7e" }}
+            onClick={() => onSave(
+              {
+                mailing_street: street.trim() || null,
+                mailing_city: city.trim() || null,
+                mailing_state: state.trim() || null,
+                mailing_zip: zip.trim() || null,
+              },
+              {
+                mailingStreet: street.trim(),
+                mailingCity: city.trim(),
+                mailingState: state.trim(),
+                mailingZip: zip.trim(),
+              },
+            )}
+          >
+            Save
+          </Button>
+        </div>
+      )}
+    </CardShell>
+  );
+}
+
+function PartnerCard({
+  candidate, readOnly, onSave,
+}: { candidate: Candidate; readOnly: boolean; onSave: SaveFn }) {
+  const [involved, setInvolved] = useState(!!candidate.partnerInvolved);
+  const [name, setName] = useState(candidate.partnerName ?? "");
+  const [email, setEmail] = useState(candidate.partnerEmail ?? "");
+  const [phone, setPhone] = useState(candidate.partnerPhone ?? "");
+
+  useEffect(() => {
+    setInvolved(!!candidate.partnerInvolved);
+    setName(candidate.partnerName ?? "");
+    setEmail(candidate.partnerEmail ?? "");
+    setPhone(candidate.partnerPhone ?? "");
+  }, [candidate.id]);
+
+  const dirty =
+    !!candidate.partnerInvolved !== involved ||
+    (candidate.partnerName ?? "") !== name ||
+    (candidate.partnerEmail ?? "") !== email ||
+    (candidate.partnerPhone ?? "") !== phone;
+
+  const inputCls = "w-full text-sm rounded-md border px-2 py-1.5 focus:outline-none focus:ring-2 disabled:bg-[#f8f9fa]";
+
+  const handleSave = () => {
+    if (involved && email && !EMAIL_RE.test(email)) {
+      toast.error("Enter a valid partner email address");
+      return;
+    }
+    // If toggle is off, clear partner fields.
+    const dbPatch = involved
+      ? {
+          partner_involved: true,
+          partner_name: name.trim() || null,
+          partner_email: email.trim() || null,
+          partner_phone: phone.trim() || null,
+        }
+      : {
+          partner_involved: false,
+          partner_name: null,
+          partner_email: null,
+          partner_phone: null,
+        };
+    const localPatch: Partial<Candidate> = involved
+      ? { partnerInvolved: true, partnerName: name.trim(), partnerEmail: email.trim(), partnerPhone: phone.trim() }
+      : { partnerInvolved: false, partnerName: "", partnerEmail: "", partnerPhone: "" };
+    onSave(dbPatch, localPatch);
+  };
+
+  return (
+    <CardShell icon={Users} title="Spouse / Partner">
+      <label className="flex items-center gap-2 cursor-pointer">
+        <Checkbox
+          checked={involved}
+          disabled={readOnly}
+          onCheckedChange={(v) => setInvolved(!!v)}
+        />
+        <span className="text-sm">Partner is involved in this decision</span>
+      </label>
+      {involved && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
+          <input
+            className={inputCls}
+            placeholder="Partner name"
+            disabled={readOnly}
+            value={name} onChange={(e) => setName(e.target.value)}
+            style={{ borderColor: "#dee2e6" }}
+          />
+          <input
+            type="email"
+            className={inputCls}
+            placeholder="Partner email"
+            disabled={readOnly}
+            value={email} onChange={(e) => setEmail(e.target.value)}
+            style={{ borderColor: "#dee2e6" }}
+          />
+          <input
+            className={inputCls}
+            placeholder="Partner phone"
+            disabled={readOnly}
+            value={phone} onChange={(e) => setPhone(e.target.value)}
+            style={{ borderColor: "#dee2e6" }}
+          />
+        </div>
+      )}
+      {!readOnly && dirty && (
+        <div className="mt-2 flex justify-end gap-2">
+          <Button
+            size="sm" variant="outline"
+            onClick={() => {
+              setInvolved(!!candidate.partnerInvolved);
+              setName(candidate.partnerName ?? "");
+              setEmail(candidate.partnerEmail ?? "");
+              setPhone(candidate.partnerPhone ?? "");
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            size="sm" className="text-white" style={{ backgroundColor: "#003c7e" }}
+            onClick={handleSave}
+          >
+            Save
+          </Button>
+        </div>
+      )}
+    </CardShell>
+  );
+}
+
+function DateField({
+  label, value, onChange, disabled,
+}: { label: string; value?: string; onChange: (iso: string | null) => void; disabled?: boolean }) {
+  const date = value ? new Date(value) : undefined;
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-xs" style={{ color: "#6c757d" }}>{label}</span>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={disabled}
+            className={cn("justify-start text-left font-normal", !date && "text-muted-foreground")}
+          >
+            <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+            {date ? format(date, "PPP") : <span>Pick a date</span>}
+            {date && !disabled && (
+              <X
+                className="ml-auto h-3.5 w-3.5 opacity-60 hover:opacity-100"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onChange(null); }}
+              />
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={date}
+            onSelect={(d) => onChange(d ? format(d, "yyyy-MM-dd") : null)}
+            initialFocus
+            className={cn("p-3 pointer-events-auto")}
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
+function ComplianceAuditCard({
+  candidate, readOnly, onSave,
+}: { candidate: Candidate; readOnly: boolean; onSave: SaveFn }) {
+  return (
+    <CardShell icon={ShieldCheck} title="Compliance Audit">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <DateField
+          label="Background check completed"
+          value={candidate.backgroundCheckCompletedAt}
+          disabled={readOnly}
+          onChange={(iso) => onSave(
+            { background_check_completed_at: iso },
+            { backgroundCheckCompletedAt: iso ?? "" },
+          )}
+        />
+        <DateField
+          label="Credit check completed"
+          value={candidate.creditCheckCompletedAt}
+          disabled={readOnly}
+          onChange={(iso) => onSave(
+            { credit_check_completed_at: iso },
+            { creditCheckCompletedAt: iso ?? "" },
+          )}
+        />
+      </div>
+    </CardShell>
   );
 }

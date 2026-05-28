@@ -18,7 +18,7 @@ function tone(score: number): { bg: string; fg: string } {
 }
 
 export function CompositeScoreBadge({ scores }: Props) {
-export function CompositeScoreBadge({ scores }: Props) {
+
   const value = computeComposite(scores);
   if (value <= 0) return null; // hide until candidate has been scored
   const { bg, fg } = tone(value);

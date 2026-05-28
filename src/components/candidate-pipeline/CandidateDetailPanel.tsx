@@ -94,7 +94,7 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
           </div>
 
           <TabsContent value="overview">
-            <OverviewTab candidate={candidate} />
+            <OverviewTab candidate={candidate} teamMembers={teamMembers} onSave={onSaveProfile} />
           </TabsContent>
           <TabsContent value="lead-sheet">
             <LeadSheetTab candidate={candidate} />

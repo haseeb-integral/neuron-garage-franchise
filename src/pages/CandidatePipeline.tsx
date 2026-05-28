@@ -475,6 +475,33 @@ const CandidatePipeline = () => {
     setActive(updated);
   };
 
+  const handleSaveProfile = async (
+    dbPatch: Record<string, any>,
+    localPatch: Partial<Candidate>,
+  ) => {
+    if (!active) return;
+    const dbId = (active as any).dbId as string | undefined;
+    const prevSnapshot = active;
+    const optimistic = { ...active, ...localPatch } as Candidate;
+    handleUpdate(optimistic);
+
+    if (!dbId) {
+      toast.warning("Saved locally — no database record linked.");
+      return;
+    }
+    if (Object.keys(dbPatch).length === 0) {
+      // local-only field (e.g. source)
+      return;
+    }
+    const { error } = await supabase.from("candidates").update(dbPatch).eq("id", dbId);
+    if (error) {
+      handleUpdate(prevSnapshot);
+      throw new Error(error.message);
+    }
+    toast.success("Saved");
+    qc.invalidateQueries({ queryKey: ["candidates"] });
+  };
+
   const toggleCollapse = (stageId: StageId) => {
     setCollapsed((prev) => {
       const next = new Set(prev);

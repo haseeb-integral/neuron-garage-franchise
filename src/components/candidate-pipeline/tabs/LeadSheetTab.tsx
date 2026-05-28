@@ -72,6 +72,8 @@ export function LeadSheetTab({ candidate }: Props) {
       }
       setLoading(false);
     })();
+    return () => { cancelled = true; };
+  }, [dbId]);
 
   const update = <K extends keyof ProfileForm>(k: K, v: ProfileForm[K]) =>
     setForm((f) => ({ ...f, [k]: v }));

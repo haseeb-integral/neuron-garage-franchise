@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { Candidate, STAGE_HOMEWORK, TrialClose } from "@/data/pipelineData";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Lock, BookOpen } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Lock, BookOpen, Plus, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
 
 interface Props {
   candidate: Candidate;
@@ -24,6 +27,9 @@ export function HomeworkTab({ candidate, onTrialCloseChange }: Props) {
   const showFddLock = candidate.stage === "fdd_review" && candidate.fddSentDate;
   const [items, setItems] = useState<ChecklistItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [newLabel, setNewLabel] = useState("");
+  const [adding, setAdding] = useState(false);
+
 
   let daysRemaining = 0;
   if (showFddLock && candidate.fddSentDate) {
@@ -118,7 +124,45 @@ export function HomeworkTab({ candidate, onTrialCloseChange }: Props) {
     }
   };
 
+  const handleAdd = async () => {
+    const label = newLabel.trim();
+    if (!label || !dbId) return;
+    setAdding(true);
+    const { data, error } = await supabase
+      .from("candidate_checklist_items")
+      .insert({
+        candidate_id: dbId,
+        stage: candidate.stage as any,
+        label,
+        is_completed: false,
+      })
+      .select("id, label, is_completed, completed_at, completed_by")
+      .single();
+    setAdding(false);
+    if (error || !data) {
+      toast.error("Couldn't add item", { description: error?.message });
+      return;
+    }
+    setItems((prev) => [...prev, data]);
+    setNewLabel("");
+  };
+
+  const handleDelete = async (item: ChecklistItem) => {
+    if (!dbId) return;
+    const previous = items;
+    setItems((prev) => prev.filter((i) => i.id !== item.id));
+    const { error } = await supabase
+      .from("candidate_checklist_items")
+      .delete()
+      .eq("id", item.id);
+    if (error) {
+      setItems(previous);
+      toast.error("Couldn't delete item", { description: error.message });
+    }
+  };
+
   const showDbChecklist = !!dbId;
+
 
   return (
     <div className="space-y-4 pt-4">
@@ -168,22 +212,66 @@ export function HomeworkTab({ candidate, onTrialCloseChange }: Props) {
         {showDbChecklist ? (
           loading ? (
             <p className="text-xs" style={{ color: "#6c757d" }}>Loading…</p>
-          ) : items.length === 0 ? (
-            <p className="text-xs" style={{ color: "#6c757d" }}>No checklist items for this stage yet.</p>
           ) : (
-            <div className="space-y-2">
-              {items.map((item) => (
-                <label key={item.id} className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox
-                    checked={item.is_completed}
-                    onCheckedChange={(v) => handleToggle(item, !!v)}
-                  />
-                  <span className="text-sm">{item.label}</span>
-                </label>
-              ))}
-            </div>
+            <>
+              {items.length === 0 ? (
+                <p className="text-xs mb-3" style={{ color: "#6c757d" }}>
+                  No checklist items for this stage yet.
+                </p>
+              ) : (
+                <div className="space-y-2 mb-3">
+                  {items.map((item) => (
+                    <div key={item.id} className="flex items-center gap-2 group">
+                      <label className="flex items-center gap-2 cursor-pointer flex-1">
+                        <Checkbox
+                          checked={item.is_completed}
+                          onCheckedChange={(v) => handleToggle(item, !!v)}
+                        />
+                        <span className="text-sm">{item.label}</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(item)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive p-1"
+                        aria-label={`Delete ${item.label}`}
+                        title="Delete item"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center gap-2 pt-2 border-t" style={{ borderColor: "#dee2e6" }}>
+                <Input
+                  value={newLabel}
+                  onChange={(e) => setNewLabel(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAdd();
+                    }
+                  }}
+                  placeholder="Add a checklist item…"
+                  className="h-8 text-sm"
+                  disabled={adding}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleAdd}
+                  disabled={adding || !newLabel.trim()}
+                  className="h-8"
+                >
+                  <Plus size={14} className="mr-1" />
+                  Add
+                </Button>
+              </div>
+            </>
           )
         ) : (
+
           // Fallback: legacy in-memory trial close (used outside Confirmation / mock data)
           <div className="space-y-2">
             {([

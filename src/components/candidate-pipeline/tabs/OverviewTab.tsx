@@ -144,8 +144,9 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
                 </select>
               ) : (
                 <input
-                  autoFocus type={key === "email" ? "email" : "text"}
+                  autoFocus type={key === "otherEmail" ? "email" : "text"}
                   value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onKey}
+                  placeholder={key === "otherEmail" ? "Add alternate email..." : undefined}
                   className="text-sm px-1.5 py-0.5 border rounded w-full min-w-0"
                   style={{ borderColor: "#003c7e" }}
                 />

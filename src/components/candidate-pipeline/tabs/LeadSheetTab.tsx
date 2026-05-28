@@ -48,25 +48,27 @@ export function LeadSheetTab({ candidate }: Props) {
     }
     (async () => {
       setLoading(true);
-      const { data } = await supabase
-        .from("candidate_profiles")
-        .select("*")
-        .eq("candidate_id", dbId)
-        .maybeSingle();
+      const [{ data: profileData }, { data: candidateData }] = await Promise.all([
+        supabase.from("candidate_profiles").select("*").eq("candidate_id", dbId).maybeSingle(),
+        supabase.from("candidates").select("partner_involved").eq("id", dbId).maybeSingle(),
+      ]);
       if (cancelled) return;
-      if (data) {
+      if (profileData) {
         setForm({
-          background: data.background ?? "",
-          motivation: data.motivation ?? "",
-          liquid_capital: data.liquid_capital != null ? String(data.liquid_capital) : "",
-          net_worth: data.net_worth != null ? String(data.net_worth) : "",
-          timeline: data.timeline ?? "",
-          partner_involved: !!data.partner_involved,
-          location_preferences: data.location_preferences ?? "",
-          additional_notes: data.additional_notes ?? "",
+          background: profileData.background ?? "",
+          motivation: profileData.motivation ?? "",
+          liquid_capital: profileData.liquid_capital != null ? String(profileData.liquid_capital) : "",
+          net_worth: profileData.net_worth != null ? String(profileData.net_worth) : "",
+          timeline: profileData.timeline ?? "",
+          partner_involved: !!candidateData?.partner_involved,
+          location_preferences: profileData.location_preferences ?? "",
+          additional_notes: profileData.additional_notes ?? "",
         });
       } else {
-        setForm(empty);
+        setForm({
+          ...empty,
+          partner_involved: !!candidateData?.partner_involved,
+        });
       }
       setLoading(false);
     })();
@@ -82,23 +84,23 @@ export function LeadSheetTab({ candidate }: Props) {
       return;
     }
     setSaving(true);
-    const payload = {
+    const profilePayload = {
       candidate_id: dbId,
       background: form.background || null,
       motivation: form.motivation || null,
       liquid_capital: form.liquid_capital ? Number(form.liquid_capital) : null,
       net_worth: form.net_worth ? Number(form.net_worth) : null,
       timeline: form.timeline || null,
-      partner_involved: form.partner_involved,
       location_preferences: form.location_preferences || null,
       additional_notes: form.additional_notes || null,
     };
-    const { error } = await supabase
-      .from("candidate_profiles")
-      .upsert(payload, { onConflict: "candidate_id" });
+    const [{ error: profileError }, { error: candidateError }] = await Promise.all([
+      supabase.from("candidate_profiles").upsert(profilePayload, { onConflict: "candidate_id" }),
+      supabase.from("candidates").update({ partner_involved: form.partner_involved }).eq("id", dbId),
+    ]);
     setSaving(false);
-    if (error) {
-      toast.error("Failed to save lead sheet: " + error.message);
+    if (profileError || candidateError) {
+      toast.error("Failed to save lead sheet: " + (profileError?.message || candidateError?.message));
     } else {
       toast.success("Lead sheet saved");
     }

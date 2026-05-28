@@ -1,3 +1,5 @@
+import { Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { buildPillarView, calibratePillarForDisplay, unsafeAsCompositeScore, type CompositeScore } from "@/lib/marketView";
 import type { TierLetter } from "@/lib/cityTiers";
 
@@ -111,7 +113,19 @@ export function DrawerHeroSummary({ rawComposite, tier, categoryScores }: Props)
                 />
               </div>
               {raw != null && (
-                <p className="mt-1 text-[9.5px] text-[#8794ab]">raw {Math.round(raw)}</p>
+                <TooltipProvider delayDuration={150}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <p className="mt-1 inline-flex cursor-help items-center gap-0.5 text-[9.5px] text-[#8794ab]">
+                        raw {Math.round(raw)}
+                        <Info className="h-2.5 w-2.5" aria-label="What does raw mean?" />
+                      </p>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-[240px] text-[11px] leading-snug">
+                      "Raw" is this pillar's re-weighted 0–100 score before the school-grade curve. The big number above is the same score, calibrated so 90s = A, 80s = B, etc.
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               )}
             </div>
           );

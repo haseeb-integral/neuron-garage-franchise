@@ -392,58 +392,70 @@ const CandidatePipeline = () => {
       toast.warning(`Stage saved, but history not logged: ${histErr.message}`);
     }
 
-    // Carry forward completed homework labels into the new stage.
-    // If the new stage has no rows yet, seed STAGE_HOMEWORK[toStage] and mark
-    // any label that was completed in the prior stage as completed here too.
+    // Carry forward ALL homework into the new stage.
+    // A stage move must never make user-added homework disappear.
+    // We merge the destination stage defaults with every homework item from the
+    // prior stage, then preserve completion for anything already checked.
     try {
       const toDbStage = uiStageToDb[toStage] as any;
       const fromDbStage = uiStageToDb[fromStage] as any;
       const toHomework = STAGE_HOMEWORK[toStage] ?? [];
-      if (toHomework.length > 0) {
-        const { data: completedFrom } = await supabase
-          .from("candidate_checklist_items")
-          .select("label")
-          .eq("candidate_id", dbId)
-          .eq("stage", fromDbStage)
-          .eq("kind", "homework")
-          .eq("is_completed", true);
-        const completedLabels = new Set((completedFrom ?? []).map((r: any) => r.label));
+      const { data: fromItems } = await supabase
+        .from("candidate_checklist_items")
+        .select("label, is_completed, completed_at, completed_by")
+        .eq("candidate_id", dbId)
+        .eq("stage", fromDbStage)
+        .eq("kind", "homework");
 
+      const fromByLabel = new Map(
+        (fromItems ?? []).map((row: any) => [row.label, row]),
+      );
+      const labelsToEnsure = new Set<string>([
+        ...toHomework,
+        ...(fromItems ?? []).map((row: any) => row.label),
+      ]);
+
+      if (labelsToEnsure.size > 0) {
         const { data: existingTo } = await supabase
           .from("candidate_checklist_items")
           .select("id, label, is_completed")
           .eq("candidate_id", dbId)
           .eq("stage", toDbStage)
-          .eq("kind", "homework");
+          .eq("kind", "homework")
+;
+        const existingLabels = new Set((existingTo ?? []).map((row: any) => row.label));
 
-        if (!existingTo || existingTo.length === 0) {
-          // Seed with carry-forward applied.
-          const nowIso = new Date().toISOString();
-          const rows = toHomework.map((label) => {
-            const carry = completedLabels.has(label);
+        const rowsToInsert = Array.from(labelsToEnsure)
+          .filter((label) => !existingLabels.has(label))
+          .map((label) => {
+            const source = fromByLabel.get(label);
+            const carry = !!source?.is_completed;
             return {
               candidate_id: dbId,
               stage: toDbStage,
               label,
               kind: "homework",
               is_completed: carry,
-              completed_at: carry ? nowIso : null,
-              completed_by: carry ? changedBy : null,
+              completed_at: carry ? source?.completed_at ?? new Date().toISOString() : null,
+              completed_by: carry ? source?.completed_by ?? changedBy : null,
             };
           });
-          await supabase.from("candidate_checklist_items").insert(rows as any);
-        } else {
-          // Update matching, currently-unchecked rows to completed.
-          const toCheck = existingTo.filter(
-            (r: any) => !r.is_completed && completedLabels.has(r.label),
-          );
-          if (toCheck.length > 0) {
-            const nowIso = new Date().toISOString();
-            await supabase
-              .from("candidate_checklist_items")
-              .update({ is_completed: true, completed_at: nowIso, completed_by: changedBy })
-              .in("id", toCheck.map((r: any) => r.id));
-          }
+
+        if (rowsToInsert.length > 0) {
+          await supabase.from("candidate_checklist_items").insert(rowsToInsert as any);
+        }
+
+        const toCheck = (existingTo ?? []).filter((row: any) => {
+          const source = fromByLabel.get(row.label);
+          return !row.is_completed && !!source?.is_completed;
+        });
+
+        if (toCheck.length > 0) {
+          const nowIso = new Date().toISOString();
+          await supabase
+            .from("candidate_checklist_items")
+            .update({ is_completed: true, completed_at: nowIso, completed_by: changedBy })
+            .in("id", toCheck.map((row: any) => row.id));
         }
       }
     } catch (e: any) {

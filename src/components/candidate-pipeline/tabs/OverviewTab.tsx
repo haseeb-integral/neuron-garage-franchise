@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, KeyboardEvent } from "react";
 import { Candidate, STAGES, stateRequiresRegistration } from "@/data/pipelineData";
-import { AlertTriangle, Mail, Phone, MapPin, Calendar, User, Tag, Camera, Pencil, Check, X } from "lucide-react";
+import { AlertTriangle, Mail, Phone, MapPin, Calendar, User, Tag, Camera, Pencil, Check, X, Lock } from "lucide-react";
 import { CandidateAvatar } from "@/components/ui/CandidateAvatar";
 import { toast } from "sonner";
 

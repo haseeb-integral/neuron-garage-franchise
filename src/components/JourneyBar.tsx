@@ -34,7 +34,8 @@ function useJourneyCounts() {
     queryFn: async () => {
       const { count } = await supabase
         .from("teacher_prospects")
-        .select("id", { count: "exact", head: true });
+        .select("id", { count: "estimated", head: true });
+
       return count ?? 0;
     },
     staleTime: 60_000,

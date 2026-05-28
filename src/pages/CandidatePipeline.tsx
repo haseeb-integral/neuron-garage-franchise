@@ -719,6 +719,8 @@ const CandidatePipeline = () => {
         candidate={active}
         onClose={() => setActive(null)}
         onUpdate={handleUpdate}
+        onSaveProfile={handleSaveProfile}
+        teamMembers={teamMembers}
       />
 
       {/* Drag-drop confirm */}

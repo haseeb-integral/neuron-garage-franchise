@@ -49,19 +49,20 @@ function bottomLine(
   const parts = [
     { label: "Demand", v: pillars.demand },
     { label: "TAM Teachers", v: pillars.tam },
-    { label: "Competitive Opportunity", v: pillars.comp },
+    { label: "Competitive Opp", v: pillars.comp },
   ].filter((p): p is { label: string; v: number } => p.v != null);
   if (parts.length < 2) return `Total Score ${total} — limited pillar data.`;
   const sorted = [...parts].sort((a, b) => b.v - a.v);
   const top = sorted[0];
   const bottom = sorted[sorted.length - 1];
   const gap = top.v - bottom.v;
-  if (total >= 90) return `Tier A: strongest in ${top.label.toLowerCase()} (${top.v}). Recruit aggressively.`;
-  if (total >= 80) return `Solid Tier B — ${top.label} (${top.v}) carries it; watch ${bottom.label.toLowerCase()} (${bottom.v}).`;
-  if (total >= 70) return `Average overall — best fit if the candidate's strength is ${top.label.toLowerCase()} (${top.v}).`;
-  if (gap >= 25) return `Below average overall, but ${top.label} is ${top.v}/100 — could work for a matched candidate.`;
-  return `Below average across the board (top pillar only ${top.v}).`;
+  if (total >= 90) return `Top-tier market. Open recruiting now.`;
+  if (total >= 80) return `Strong market. Move forward; keep an eye on ${bottom.label} (${bottom.v}).`;
+  if (total >= 70) return `Borderline. Worth a closer look at ${top.label} (${top.v}) before committing.`;
+  if (gap >= 25) return `Skip as a primary market, but ${top.label} (${top.v}) is unusually strong — niche play possible.`;
+  return `Skip — no pillar above ${top.v}.`;
 }
+
 
 /** Find the two anchors that bracket a raw value and return the interp arithmetic. */
 function interpLine(label: string, raw: number | null): { label: string; text: string; display: number } | null {

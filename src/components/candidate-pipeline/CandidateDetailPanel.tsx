@@ -11,6 +11,10 @@ import { HomeworkTab } from "./tabs/HomeworkTab";
 import { CommitteeVotesTab } from "./tabs/CommitteeVotesTab";
 import { SelectionCommittee } from "./SelectionCommittee";
 import { CandidateAvatar } from "@/components/ui/CandidateAvatar";
+import { Button } from "@/components/ui/button";
+import { FileDown } from "lucide-react";
+import { exportResearchPacket } from "./exportResearchPacket";
+import { toast } from "sonner";
 
 interface TeamMember { email: string; firstName: string; }
 
@@ -76,7 +80,23 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
                 </p>
               </div>
             </div>
-            <FitScoreBadge score={candidate.fitScore} />
+            <div className="flex items-start gap-3 shrink-0">
+              <FitScoreBadge score={candidate.fitScore} />
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs gap-1.5"
+                onClick={async () => {
+                  try {
+                    await exportResearchPacket(candidate);
+                  } catch (e: any) {
+                    toast.error("Couldn't build packet", { description: e?.message ?? String(e) });
+                  }
+                }}
+              >
+                <FileDown size={13} /> Export Packet
+              </Button>
+            </div>
           </div>
         </SheetHeader>
 

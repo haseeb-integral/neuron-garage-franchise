@@ -5,7 +5,6 @@ import { CandidateAvatar } from "@/components/ui/CandidateAvatar";
 import { ArrowRight } from "lucide-react";
 import { MouseEvent } from "react";
 
-
 interface Props {
   candidate: Candidate;
   onDragStart: (id: number) => void;
@@ -48,10 +47,9 @@ export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboardi
         <CandidateAvatar name={candidate.name} photoUrl={candidate.photoUrl} size={20} />
         <div className="text-xs font-semibold flex-1 truncate" style={{ color: "#212529" }}>
           {candidate.name}
+        </div>
         <FitScoreBadge score={candidate.fitScore} />
         <CompositeScoreBadge scores={candidate.qualificationScores} />
-      </div>
-
       </div>
     );
   }
@@ -68,12 +66,11 @@ export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboardi
         <CandidateAvatar name={candidate.name} photoUrl={candidate.photoUrl} size={36} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 min-w-0">
-            <FitScoreBadge score={candidate.fitScore} />
-            <CompositeScoreBadge scores={candidate.qualificationScores} />
-          </div>
-
+            <div className="font-semibold text-sm truncate flex-1" style={{ color: "#212529", lineHeight: 1.2 }}>
+              {candidate.name}
             </div>
             <FitScoreBadge score={candidate.fitScore} />
+            <CompositeScoreBadge scores={candidate.qualificationScores} />
           </div>
           <div className="text-[11px] truncate mt-0.5" style={{ color: "#6c757d", lineHeight: 1.2 }}>
             {candidate.city}, {candidate.state}

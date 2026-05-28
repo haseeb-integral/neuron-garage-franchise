@@ -182,7 +182,7 @@ const CandidatePipeline = () => {
           daysInStage: days,
           assignedTo: r.assigned_to ?? "",
           tag: r.fit_tag ?? "Untagged",
-          source: "—",
+          source: r.source ?? "",
           createdDate: r.created_at ?? new Date().toISOString(),
           qualificationScores: { teaching: 0, leadership: 0, financial: 0, marketFit: 0, cultureFit: 0 },
           activity: [],

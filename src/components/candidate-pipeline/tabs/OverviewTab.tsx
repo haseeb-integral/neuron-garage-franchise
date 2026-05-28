@@ -536,13 +536,14 @@ function PartnerCard({
   const [name, setName] = useState(candidate.partnerName ?? "");
   const [email, setEmail] = useState(candidate.partnerEmail ?? "");
   const [phone, setPhone] = useState(candidate.partnerPhone ?? "");
+  const [savingToggle, setSavingToggle] = useState(false);
 
   useEffect(() => {
     setInvolved(!!candidate.partnerInvolved);
     setName(candidate.partnerName ?? "");
     setEmail(candidate.partnerEmail ?? "");
     setPhone(candidate.partnerPhone ?? "");
-  }, [candidate.id]);
+  }, [candidate.id, candidate.partnerInvolved, candidate.partnerName, candidate.partnerEmail, candidate.partnerPhone]);
 
   const dirty =
     !!candidate.partnerInvolved !== involved ||
@@ -582,11 +583,47 @@ function PartnerCard({
       <label className="flex items-center gap-2 cursor-pointer">
         <Checkbox
           checked={involved}
-          disabled={readOnly}
-          onCheckedChange={(v) => setInvolved(!!v)}
+          disabled={readOnly || savingToggle}
+          onCheckedChange={async (v) => {
+            if (!onSave) return;
+            const next = !!v;
+            const prevInvolved = involved;
+            const prevName = name;
+            const prevEmail = email;
+            const prevPhone = phone;
+            setInvolved(next);
+            // Auto-save toggle immediately so it survives stage moves / re-fetches.
+            const dbPatch = next
+              ? { partner_involved: true }
+              : {
+                  partner_involved: false,
+                  partner_name: null,
+                  partner_email: null,
+                  partner_phone: null,
+                };
+            const localPatch: Partial<Candidate> = next
+              ? { partnerInvolved: true }
+              : { partnerInvolved: false, partnerName: "", partnerEmail: "", partnerPhone: "" };
+            if (!next) {
+              setName(""); setEmail(""); setPhone("");
+            }
+            setSavingToggle(true);
+            try {
+              await onSave(dbPatch, localPatch);
+            } catch (e: any) {
+              setInvolved(prevInvolved);
+              setName(prevName);
+              setEmail(prevEmail);
+              setPhone(prevPhone);
+              toast.error(e?.message ?? "Failed to save");
+            } finally {
+              setSavingToggle(false);
+            }
+          }}
         />
         <span className="text-sm">Partner is involved in this decision</span>
       </label>
+
       {involved && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
           <input

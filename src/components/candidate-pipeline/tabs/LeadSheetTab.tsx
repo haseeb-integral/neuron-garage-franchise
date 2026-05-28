@@ -150,9 +150,29 @@ export function LeadSheetTab({ candidate }: Props) {
           <Label htmlFor="ls-partner" className="cursor-pointer">Partner Involved</Label>
           <p className="text-xs text-muted-foreground">Spouse or business partner participating</p>
         </div>
-        <Switch id="ls-partner" checked={form.partner_involved}
-          onCheckedChange={(v) => update("partner_involved", v)} />
+        <Switch
+          id="ls-partner"
+          checked={form.partner_involved}
+          onCheckedChange={async (v) => {
+            if (!dbId) {
+              toast.error("Cannot save: candidate not linked to database.");
+              return;
+            }
+            // Optimistic update
+            const prev = form.partner_involved;
+            update("partner_involved", v);
+            const { error } = await supabase
+              .from("candidates")
+              .update({ partner_involved: v })
+              .eq("id", dbId);
+            if (error) {
+              update("partner_involved", prev);
+              toast.error("Failed to save: " + error.message);
+            }
+          }}
+        />
       </div>
+
       <div className="space-y-2">
         <Label htmlFor="ls-location">Desired Markets</Label>
         <Textarea id="ls-location" rows={2} value={form.location_preferences}

@@ -45,7 +45,7 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
     if (readOnly) return;
     setEditing(key);
     if (key === "name") setDraft(candidate.name);
-    else if (key === "email") setDraft(candidate.email);
+    else if (key === "otherEmail") setDraft(candidate.otherEmail ?? "");
     else if (key === "phone") setDraft(candidate.phone);
     else if (key === "location") { setDraft(candidate.city); setDraft2(candidate.state); }
     else if (key === "assignedTo") setDraft(candidate.assignedTo);

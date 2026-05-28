@@ -268,7 +268,28 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
           )}
         </h4>
         <div className="grid grid-cols-2 gap-3">
-          {renderRow("email", Mail, "Email", candidate.email)}
+          {/* Verified Email — LOCKED. This is the address Smartlead used for cold outreach.
+              Editing it would risk duplicate sends to two addresses for the same person. */}
+          <div className="flex items-start gap-2">
+            <Mail size={14} style={{ color: "#6c757d" }} className="mt-1" />
+            <div className="min-w-0 flex-1">
+              <div className="text-xs flex items-center gap-1" style={{ color: "#6c757d" }}>
+                Verified Email
+                <Lock
+                  size={11}
+                  style={{ color: "#adb5bd" }}
+                  aria-label="Locked"
+                />
+              </div>
+              <div
+                className="text-sm font-medium truncate"
+                title="This is the email used in outreach. It cannot be changed to protect against duplicate sends."
+              >
+                {candidate.email || <span style={{ color: "#adb5bd" }}>—</span>}
+              </div>
+            </div>
+          </div>
+          {renderRow("otherEmail", Mail, "Other Email", candidate.otherEmail ?? "")}
           {renderRow("phone", Phone, "Phone", candidate.phone)}
           {renderRow("location", MapPin, "Location", `${candidate.city}${candidate.state ? `, ${candidate.state}` : ""}`)}
           {renderRow("assignedTo", User, "Assigned To", candidate.assignedTo)}

@@ -104,6 +104,17 @@ const CandidatePipeline = () => {
       tag: r.fit_tag ?? "Untagged",
       source: r.source ?? "",
       createdDate: r.created_at ?? new Date().toISOString(),
+      otherOpportunities: r.other_opportunities ?? "",
+      mailingStreet: r.mailing_street ?? "",
+      mailingCity: r.mailing_city ?? "",
+      mailingState: r.mailing_state ?? "",
+      mailingZip: r.mailing_zip ?? "",
+      partnerInvolved: !!r.partner_involved,
+      partnerName: r.partner_name ?? "",
+      partnerEmail: r.partner_email ?? "",
+      partnerPhone: r.partner_phone ?? "",
+      backgroundCheckCompletedAt: r.background_check_completed_at ?? "",
+      creditCheckCompletedAt: r.credit_check_completed_at ?? "",
       qualificationScores: { teaching: 0, leadership: 0, financial: 0, marketFit: 0, cultureFit: 0 },
       activity: [],
       trialClose: {
@@ -118,6 +129,7 @@ const CandidatePipeline = () => {
       prospectId: r.prospect_id ?? null,
     } as unknown as Candidate;
   };
+
 
   const handleCandidateCreated = (row: any) => {
     setCandidates((prev) => {

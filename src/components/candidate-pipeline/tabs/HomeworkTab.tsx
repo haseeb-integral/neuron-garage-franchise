@@ -124,7 +124,45 @@ export function HomeworkTab({ candidate, onTrialCloseChange }: Props) {
     }
   };
 
+  const handleAdd = async () => {
+    const label = newLabel.trim();
+    if (!label || !dbId) return;
+    setAdding(true);
+    const { data, error } = await supabase
+      .from("candidate_checklist_items")
+      .insert({
+        candidate_id: dbId,
+        stage: candidate.stage as any,
+        label,
+        is_completed: false,
+      })
+      .select("id, label, is_completed, completed_at, completed_by")
+      .single();
+    setAdding(false);
+    if (error || !data) {
+      toast.error("Couldn't add item", { description: error?.message });
+      return;
+    }
+    setItems((prev) => [...prev, data]);
+    setNewLabel("");
+  };
+
+  const handleDelete = async (item: ChecklistItem) => {
+    if (!dbId) return;
+    const previous = items;
+    setItems((prev) => prev.filter((i) => i.id !== item.id));
+    const { error } = await supabase
+      .from("candidate_checklist_items")
+      .delete()
+      .eq("id", item.id);
+    if (error) {
+      setItems(previous);
+      toast.error("Couldn't delete item", { description: error.message });
+    }
+  };
+
   const showDbChecklist = !!dbId;
+
 
   return (
     <div className="space-y-4 pt-4">

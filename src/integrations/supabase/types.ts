@@ -236,6 +236,48 @@ export type Database = {
           },
         ]
       }
+      candidate_files: {
+        Row: {
+          bucket_path: string
+          candidate_id: string
+          category: string
+          created_at: string
+          deleted_at: string | null
+          file_name: string
+          id: string
+          mime_type: string | null
+          size_bytes: number | null
+          uploaded_by: string | null
+          uploaded_by_email: string | null
+        }
+        Insert: {
+          bucket_path: string
+          candidate_id: string
+          category?: string
+          created_at?: string
+          deleted_at?: string | null
+          file_name: string
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          uploaded_by?: string | null
+          uploaded_by_email?: string | null
+        }
+        Update: {
+          bucket_path?: string
+          candidate_id?: string
+          category?: string
+          created_at?: string
+          deleted_at?: string | null
+          file_name?: string
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          uploaded_by?: string | null
+          uploaded_by_email?: string | null
+        }
+        Relationships: []
+      }
       candidate_profiles: {
         Row: {
           additional_notes: string | null

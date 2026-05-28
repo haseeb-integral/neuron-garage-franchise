@@ -166,7 +166,7 @@ export function DrawerHeroSummary({ rawComposite, tier, categoryScores }: Props)
                       </p>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="max-w-[260px] text-[11px] leading-snug">
-                      <strong className="font-semibold">Two numbers, one truth.</strong> The big number ({v}) is the <strong className="font-semibold">display score</strong> — easy to read on a 0–100 scale. The small number ({Math.round(raw)}) is the <strong className="font-semibold">math score</strong> — the actual weighted average of this pillar's inputs, used to rank cities. The display bends the math onto a friendlier scale so top markets land in the 80s–90s. Rankings are identical either way.
+                      <strong className="font-semibold">Two numbers, one truth.</strong> The small number ({Math.round(raw)}) is the <strong className="font-semibold">math score</strong> — the actual weighted average of this pillar's inputs (0–100), used to rank cities. The big number ({v}) is the <strong className="font-semibold">display score</strong> — that same math calibrated onto a friendlier 0–100 scale so only the very best markets in the country reach the top tier. This makes every city easy to compare against any other city in the list. Rankings are identical either way.
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>

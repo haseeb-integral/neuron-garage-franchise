@@ -583,10 +583,30 @@ function PartnerCard({
         <Checkbox
           checked={involved}
           disabled={readOnly}
-          onCheckedChange={(v) => setInvolved(!!v)}
+          onCheckedChange={(v) => {
+            const next = !!v;
+            setInvolved(next);
+            // Auto-save toggle immediately so it survives stage moves / re-fetches.
+            const dbPatch = next
+              ? { partner_involved: true }
+              : {
+                  partner_involved: false,
+                  partner_name: null,
+                  partner_email: null,
+                  partner_phone: null,
+                };
+            const localPatch: Partial<Candidate> = next
+              ? { partnerInvolved: true }
+              : { partnerInvolved: false, partnerName: "", partnerEmail: "", partnerPhone: "" };
+            if (!next) {
+              setName(""); setEmail(""); setPhone("");
+            }
+            onSave(dbPatch, localPatch);
+          }}
         />
         <span className="text-sm">Partner is involved in this decision</span>
       </label>
+
       {involved && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
           <input

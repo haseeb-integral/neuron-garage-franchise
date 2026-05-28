@@ -139,6 +139,11 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
           <TabsContent value="committee">
             <CommitteeVotesTab candidate={candidate} />
           </TabsContent>
+          {isEnabled("FF_DOCUMENTS") && (
+            <TabsContent value="documents">
+              <DocumentsTab candidate={candidate} />
+            </TabsContent>
+          )}
         </Tabs>
 
         {candidate.stage === "immersion" && (

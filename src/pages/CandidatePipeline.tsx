@@ -95,6 +95,7 @@ const CandidatePipeline = () => {
       city: r.city ?? "",
       state: r.state ?? "",
       email: r.email ?? "",
+      otherEmail: r.other_email ?? "",
       phone: r.phone ?? "",
       fitScore: r.fit_score ?? 0,
       stage: dbStageToUi[r.current_stage] ?? "new_lead",

@@ -78,8 +78,7 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
     } else if (editing === "assignedTo") {
       dbPatch = { assigned_to: v || null }; localPatch = { assignedTo: v };
     } else if (editing === "source") {
-      // Source is not on candidates table — local only for now
-      localPatch = { source: v };
+      dbPatch = { source: v || null }; localPatch = { source: v };
     }
 
     setSaving(true);

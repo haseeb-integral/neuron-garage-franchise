@@ -236,6 +236,72 @@ export type Database = {
           },
         ]
       }
+      candidate_compliance: {
+        Row: {
+          candidate_id: string
+          compliance_override: boolean
+          created_at: string
+          fa_signed_at: string | null
+          fdd_sent_at: string | null
+          override_at: string | null
+          override_by: string | null
+          override_reason: string | null
+          updated_at: string
+        }
+        Insert: {
+          candidate_id: string
+          compliance_override?: boolean
+          created_at?: string
+          fa_signed_at?: string | null
+          fdd_sent_at?: string | null
+          override_at?: string | null
+          override_by?: string | null
+          override_reason?: string | null
+          updated_at?: string
+        }
+        Update: {
+          candidate_id?: string
+          compliance_override?: boolean
+          created_at?: string
+          fa_signed_at?: string | null
+          fdd_sent_at?: string | null
+          override_at?: string | null
+          override_by?: string | null
+          override_reason?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      candidate_compliance_audit: {
+        Row: {
+          candidate_id: string
+          changed_at: string
+          changed_by: string | null
+          field: string
+          id: string
+          new_value: Json | null
+          old_value: Json | null
+        }
+        Insert: {
+          candidate_id: string
+          changed_at?: string
+          changed_by?: string | null
+          field: string
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+        }
+        Update: {
+          candidate_id?: string
+          changed_at?: string
+          changed_by?: string | null
+          field?: string
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+        }
+        Relationships: []
+      }
       candidate_files: {
         Row: {
           bucket_path: string

@@ -1145,19 +1145,31 @@ const CityScoring = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseDetailCategoryScores, rawValuesByKey, appliedSubWeights]);
 
+  // 2026-05-27 unification: the displayed pillar scores MUST match what the
+  // table row + RowScorePopover + Compare modal show for the same city under
+  // the same weights. All three of those read the recomputed pillars written
+  // back onto each row by `useCityRanking` (which calls
+  // `buildRecomputedPillarScores`). Reading from `selectedRerankedMarket`
+  // here makes this panel use exactly the same numbers — "one calibrated
+  // number everywhere." `recomputedByCategory` below still drives the per-
+  // metric Show-formula popover (which legitimately wants the merged-live-
+  // signals view, including childrenPct overrides for the selected market).
   const detailCategoryScores = useMemo(() => {
+    const rerankedCats = selectedRerankedMarket?.categoryScores as
+      | Partial<Record<CategoryKey, number | null>>
+      | undefined;
     const out = { ...baseDetailCategoryScores } as Record<CategoryKey, number>;
-    // Strip any non-finite leftovers from the base shape so they can't poison
-    // the composite math via `(NaN ?? 0) === NaN`.
     (Object.keys(out) as CategoryKey[]).forEach((k) => {
       if (!Number.isFinite(out[k])) delete (out as any)[k];
     });
-    (Object.keys(baseDetailCategoryScores) as CategoryKey[]).forEach((k) => {
-      const r = recomputedByCategory[k];
-      if (r?.score != null && Number.isFinite(r.score)) out[k] = Math.round(r.score);
-    });
+    if (rerankedCats) {
+      (Object.keys(rerankedCats) as CategoryKey[]).forEach((k) => {
+        const v = rerankedCats[k];
+        if (v != null && Number.isFinite(Number(v))) out[k] = Math.round(Number(v));
+      });
+    }
     return out;
-  }, [baseDetailCategoryScores, recomputedByCategory]);
+  }, [baseDetailCategoryScores, selectedRerankedMarket]);
 
   // ─── SINGLE SOURCE OF TRUTH for the headline composite ─────────────────
   // Every UI surface that shows a city's overall score (ranked table SCORE

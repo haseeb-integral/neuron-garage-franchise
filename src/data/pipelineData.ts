@@ -61,6 +61,7 @@ export interface Candidate {
   city: string;
   state: string;
   email: string;
+  otherEmail?: string;
   phone: string;
   fitScore: number;
   stage: StageId;

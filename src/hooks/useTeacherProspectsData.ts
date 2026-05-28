@@ -125,6 +125,9 @@ export function useTeacherProspectsData(args: UseTeacherProspectsDataArgs) {
 
   const reqIdRef = useRef(0);
   const statsReqIdRef = useRef(0);
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
+
 
   const buildFilteredQuery = useCallback(() => {
     let q = supabase

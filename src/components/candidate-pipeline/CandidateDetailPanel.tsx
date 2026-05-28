@@ -9,11 +9,13 @@ import { NotesActivityTab } from "./tabs/NotesActivityTab";
 import { StageHistoryTab } from "./tabs/StageHistoryTab";
 import { HomeworkTab } from "./tabs/HomeworkTab";
 import { CommitteeVotesTab } from "./tabs/CommitteeVotesTab";
+import { DocumentsTab } from "./tabs/DocumentsTab";
 import { SelectionCommittee } from "./SelectionCommittee";
 import { CandidateAvatar } from "@/components/ui/CandidateAvatar";
 import { Button } from "@/components/ui/button";
 import { FileDown } from "lucide-react";
 import { exportResearchPacket } from "./exportResearchPacket";
+import { isEnabled } from "@/lib/featureFlags";
 import { toast } from "sonner";
 
 interface TeamMember { email: string; firstName: string; }
@@ -110,6 +112,9 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
               <TabsTrigger value="stage-history" className="whitespace-nowrap px-3">Stage History</TabsTrigger>
               <TabsTrigger value="homework" className="whitespace-nowrap px-3">Homework</TabsTrigger>
               <TabsTrigger value="committee" className="whitespace-nowrap px-3">Committee Votes</TabsTrigger>
+              {isEnabled("FF_DOCUMENTS") && (
+                <TabsTrigger value="documents" className="whitespace-nowrap px-3">Documents</TabsTrigger>
+              )}
             </TabsList>
           </div>
 
@@ -134,6 +139,11 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
           <TabsContent value="committee">
             <CommitteeVotesTab candidate={candidate} />
           </TabsContent>
+          {isEnabled("FF_DOCUMENTS") && (
+            <TabsContent value="documents">
+              <DocumentsTab candidate={candidate} />
+            </TabsContent>
+          )}
         </Tabs>
 
         {candidate.stage === "immersion" && (

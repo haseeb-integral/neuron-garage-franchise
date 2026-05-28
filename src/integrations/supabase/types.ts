@@ -403,8 +403,10 @@ export type Database = {
       candidates: {
         Row: {
           assigned_to: string | null
+          background_check_completed_at: string | null
           city: string
           created_at: string
+          credit_check_completed_at: string | null
           current_stage: Database["public"]["Enums"]["candidate_stage"]
           email: string
           first_name: string
@@ -412,7 +414,15 @@ export type Database = {
           fit_tag: string
           id: string
           last_name: string
+          mailing_city: string | null
+          mailing_state: string | null
+          mailing_street: string | null
+          mailing_zip: string | null
           other_email: string | null
+          other_opportunities: string | null
+          partner_email: string | null
+          partner_name: string | null
+          partner_phone: string | null
           phone: string | null
           prospect_id: string | null
           source: string | null
@@ -422,8 +432,10 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string | null
+          background_check_completed_at?: string | null
           city?: string
           created_at?: string
+          credit_check_completed_at?: string | null
           current_stage?: Database["public"]["Enums"]["candidate_stage"]
           email: string
           first_name: string
@@ -431,7 +443,15 @@ export type Database = {
           fit_tag?: string
           id?: string
           last_name: string
+          mailing_city?: string | null
+          mailing_state?: string | null
+          mailing_street?: string | null
+          mailing_zip?: string | null
           other_email?: string | null
+          other_opportunities?: string | null
+          partner_email?: string | null
+          partner_name?: string | null
+          partner_phone?: string | null
           phone?: string | null
           prospect_id?: string | null
           source?: string | null
@@ -441,8 +461,10 @@ export type Database = {
         }
         Update: {
           assigned_to?: string | null
+          background_check_completed_at?: string | null
           city?: string
           created_at?: string
+          credit_check_completed_at?: string | null
           current_stage?: Database["public"]["Enums"]["candidate_stage"]
           email?: string
           first_name?: string
@@ -450,7 +472,15 @@ export type Database = {
           fit_tag?: string
           id?: string
           last_name?: string
+          mailing_city?: string | null
+          mailing_state?: string | null
+          mailing_street?: string | null
+          mailing_zip?: string | null
           other_email?: string | null
+          other_opportunities?: string | null
+          partner_email?: string | null
+          partner_name?: string | null
+          partner_phone?: string | null
           phone?: string | null
           prospect_id?: string | null
           source?: string | null
@@ -1524,6 +1554,10 @@ export type Database = {
           last_name: string | null
           last_pushed_at: string | null
           linkedin_url: string | null
+          mailing_city: string | null
+          mailing_state: string | null
+          mailing_street: string | null
+          mailing_zip: string | null
           name: string | null
           needs_email_enrichment: boolean
           notes: string | null
@@ -1562,6 +1596,10 @@ export type Database = {
           last_name?: string | null
           last_pushed_at?: string | null
           linkedin_url?: string | null
+          mailing_city?: string | null
+          mailing_state?: string | null
+          mailing_street?: string | null
+          mailing_zip?: string | null
           name?: string | null
           needs_email_enrichment?: boolean
           notes?: string | null
@@ -1600,6 +1638,10 @@ export type Database = {
           last_name?: string | null
           last_pushed_at?: string | null
           linkedin_url?: string | null
+          mailing_city?: string | null
+          mailing_state?: string | null
+          mailing_street?: string | null
+          mailing_zip?: string | null
           name?: string | null
           needs_email_enrichment?: boolean
           notes?: string | null

@@ -18,16 +18,17 @@ function tone(score: number): { bg: string; fg: string } {
 }
 
 export function CompositeScoreBadge({ scores }: Props) {
+
   const value = computeComposite(scores);
+  if (value <= 0) return null; // hide until candidate has been scored
   const { bg, fg } = tone(value);
-  const label = value > 0 ? `Qual ${value}` : "Qual —";
   return (
     <span
       className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold"
       style={{ backgroundColor: bg, color: fg }}
       title={`Qualification composite score: ${value}/100`}
     >
-      {label}
+      Qual {value}
     </span>
   );
 }

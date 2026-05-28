@@ -502,6 +502,30 @@ const CandidatePipeline = () => {
       handleUpdate(prevSnapshot);
       throw new Error(error.message);
     }
+
+    // Sync safe fields back to teacher_prospects (master record).
+    // NEVER sync `email` — that's the Smartlead-verified address, locked by design.
+    // assigned_to / source / fit_* are candidate-only concepts.
+    const prospectId = (active as any).prospectId as string | null | undefined;
+    if (prospectId) {
+      const SYNC_FIELDS = ["first_name", "last_name", "phone", "city", "state", "other_email"] as const;
+      const tpPatch: Record<string, any> = {};
+      for (const k of SYNC_FIELDS) {
+        if (k in dbPatch) tpPatch[k] = (dbPatch as any)[k];
+      }
+      if (Object.keys(tpPatch).length > 0) {
+        const { error: tpErr } = await supabase
+          .from("teacher_prospects")
+          .update(tpPatch as any)
+          .eq("id", prospectId);
+        if (tpErr) {
+          // Don't block — candidate is the pipeline source of truth. Just warn.
+          console.warn("teacher_prospects sync failed:", tpErr.message);
+          toast.warning("Saved to candidate, but master sync failed");
+        }
+      }
+    }
+
     toast.success("Saved");
     qc.invalidateQueries({ queryKey: ["candidates"] });
   };

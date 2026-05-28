@@ -1,17 +1,33 @@
-import { useRef } from "react";
+import { useRef, useState, useEffect, KeyboardEvent } from "react";
 import { Candidate, STAGES, stateRequiresRegistration } from "@/data/pipelineData";
-import { AlertTriangle, Mail, Phone, MapPin, Calendar, User, Tag, Camera } from "lucide-react";
+import { AlertTriangle, Mail, Phone, MapPin, Calendar, User, Tag, Camera, Pencil, Check, X } from "lucide-react";
 import { CandidateAvatar } from "@/components/ui/CandidateAvatar";
 import { toast } from "sonner";
 
+interface TeamMember { email: string; firstName: string; }
+
 interface Props {
   candidate: Candidate;
+  teamMembers?: TeamMember[];
+  onSave?: (patch: Record<string, any>, localPatch: Partial<Candidate>) => Promise<void> | void;
 }
 
-export function OverviewTab({ candidate }: Props) {
+type FieldKey = "name" | "email" | "phone" | "location" | "assignedTo" | "source";
+
+const SOURCE_OPTIONS = ["Referral", "Web Form", "LinkedIn", "Discovery Day", "Event", "Outbound", "Other"];
+
+export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
   const stage = STAGES.find((s) => s.id === candidate.stage);
   const needsReg = stateRequiresRegistration(candidate.state);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [editing, setEditing] = useState<FieldKey | null>(null);
+  const [draft, setDraft] = useState<string>("");
+  const [draft2, setDraft2] = useState<string>(""); // for state when editing location
+  const [saving, setSaving] = useState(false);
+  const readOnly = !onSave;
+
+  useEffect(() => { setEditing(null); }, [candidate.id]);
 
   const handlePickPhoto = () => fileInputRef.current?.click();
   const handleFileChosen = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -23,14 +39,141 @@ export function OverviewTab({ candidate }: Props) {
     e.target.value = "";
   };
 
-  const rows = [
-    { icon: Mail, label: "Email", value: candidate.email },
-    { icon: Phone, label: "Phone", value: candidate.phone },
-    { icon: MapPin, label: "Location", value: `${candidate.city}, ${candidate.state}` },
-    { icon: User, label: "Assigned To", value: candidate.assignedTo },
-    { icon: Tag, label: "Source", value: candidate.source },
-    { icon: Calendar, label: "Created", value: candidate.createdDate },
-  ];
+  const startEdit = (key: FieldKey) => {
+    if (readOnly) return;
+    setEditing(key);
+    if (key === "name") setDraft(candidate.name);
+    else if (key === "email") setDraft(candidate.email);
+    else if (key === "phone") setDraft(candidate.phone);
+    else if (key === "location") { setDraft(candidate.city); setDraft2(candidate.state); }
+    else if (key === "assignedTo") setDraft(candidate.assignedTo);
+    else if (key === "source") setDraft(candidate.source);
+  };
+
+  const cancelEdit = () => { setEditing(null); setDraft(""); setDraft2(""); };
+
+  const commit = async () => {
+    if (!editing || !onSave) return;
+    let dbPatch: Record<string, any> = {};
+    let localPatch: Partial<Candidate> = {};
+    const v = draft.trim();
+
+    if (editing === "name") {
+      if (!v) { toast.error("Name cannot be empty"); return; }
+      const parts = v.split(/\s+/);
+      const first = parts.shift() ?? "";
+      const last = parts.join(" ");
+      dbPatch = { first_name: first, last_name: last };
+      localPatch = { name: v };
+    } else if (editing === "email") {
+      if (!v) { toast.error("Email cannot be empty"); return; }
+      dbPatch = { email: v }; localPatch = { email: v };
+    } else if (editing === "phone") {
+      dbPatch = { phone: v || null }; localPatch = { phone: v };
+    } else if (editing === "location") {
+      const city = draft.trim();
+      const st = draft2.trim().toUpperCase();
+      dbPatch = { city: city || null, state: st || null };
+      localPatch = { city, state: st };
+    } else if (editing === "assignedTo") {
+      dbPatch = { assigned_to: v || null }; localPatch = { assignedTo: v };
+    } else if (editing === "source") {
+      // Source is not on candidates table — local only for now
+      localPatch = { source: v };
+    }
+
+    setSaving(true);
+    try {
+      await onSave(dbPatch, localPatch);
+      setEditing(null);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const onKey = (e: KeyboardEvent<HTMLInputElement | HTMLSelectElement>) => {
+    if (e.key === "Enter") commit();
+    if (e.key === "Escape") cancelEdit();
+  };
+
+  const renderRow = (key: FieldKey, Icon: any, label: string, displayValue: string) => {
+    const isEditing = editing === key;
+    return (
+      <div key={label} className="flex items-start gap-2 group">
+        <Icon size={14} style={{ color: "#6c757d" }} className="mt-1" />
+        <div className="min-w-0 flex-1">
+          <div className="text-xs" style={{ color: "#6c757d" }}>{label}</div>
+          {isEditing ? (
+            <div className="flex items-center gap-1 mt-0.5">
+              {key === "location" ? (
+                <>
+                  <input
+                    autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onKey}
+                    placeholder="City"
+                    className="text-sm px-1.5 py-0.5 border rounded w-full min-w-0"
+                    style={{ borderColor: "#003c7e" }}
+                  />
+                  <input
+                    value={draft2} onChange={(e) => setDraft2(e.target.value)} onKeyDown={onKey}
+                    placeholder="ST" maxLength={2}
+                    className="text-sm px-1.5 py-0.5 border rounded w-12"
+                    style={{ borderColor: "#003c7e" }}
+                  />
+                </>
+              ) : key === "assignedTo" && teamMembers.length > 0 ? (
+                <select
+                  autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onKey as any}
+                  className="text-sm px-1.5 py-0.5 border rounded w-full min-w-0"
+                  style={{ borderColor: "#003c7e" }}
+                >
+                  <option value="">Unassigned</option>
+                  {teamMembers.map((m) => (
+                    <option key={m.email} value={m.email}>{m.firstName} ({m.email})</option>
+                  ))}
+                </select>
+              ) : key === "source" ? (
+                <select
+                  autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onKey as any}
+                  className="text-sm px-1.5 py-0.5 border rounded w-full min-w-0"
+                  style={{ borderColor: "#003c7e" }}
+                >
+                  {SOURCE_OPTIONS.map((s) => (<option key={s} value={s}>{s}</option>))}
+                </select>
+              ) : (
+                <input
+                  autoFocus type={key === "email" ? "email" : "text"}
+                  value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onKey}
+                  className="text-sm px-1.5 py-0.5 border rounded w-full min-w-0"
+                  style={{ borderColor: "#003c7e" }}
+                />
+              )}
+              <button onClick={commit} disabled={saving} aria-label="Save" className="p-1 rounded hover:bg-gray-100">
+                <Check size={14} style={{ color: "#198754" }} />
+              </button>
+              <button onClick={cancelEdit} disabled={saving} aria-label="Cancel" className="p-1 rounded hover:bg-gray-100">
+                <X size={14} style={{ color: "#dc3545" }} />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => startEdit(key)}
+              disabled={readOnly}
+              className="text-sm font-medium text-left w-full flex items-center gap-1.5 hover:underline disabled:no-underline disabled:cursor-default"
+              title={readOnly ? "" : "Click to edit"}
+            >
+              <span className="truncate">{displayValue || <span style={{ color: "#adb5bd" }}>—</span>}</span>
+              {!readOnly && (
+                <Pencil size={11} className="opacity-0 group-hover:opacity-60 flex-shrink-0" style={{ color: "#6c757d" }} />
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-4 pt-4">
@@ -53,11 +196,37 @@ export function OverviewTab({ candidate }: Props) {
             <Camera size={20} className="text-white" />
           </span>
         </button>
-        <div className="min-w-0">
-          <div className="text-sm font-semibold" style={{ color: "#003c7e" }}>{candidate.name}</div>
+        <div className="min-w-0 flex-1">
+          {editing === "name" ? (
+            <div className="flex items-center gap-1">
+              <input
+                autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onKey}
+                className="text-sm font-semibold px-1.5 py-0.5 border rounded w-full"
+                style={{ borderColor: "#003c7e", color: "#003c7e" }}
+              />
+              <button onClick={commit} disabled={saving} aria-label="Save" className="p-1 rounded hover:bg-gray-100">
+                <Check size={14} style={{ color: "#198754" }} />
+              </button>
+              <button onClick={cancelEdit} disabled={saving} aria-label="Cancel" className="p-1 rounded hover:bg-gray-100">
+                <X size={14} style={{ color: "#dc3545" }} />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => startEdit("name")}
+              disabled={readOnly}
+              className="text-sm font-semibold flex items-center gap-1.5 hover:underline disabled:no-underline disabled:cursor-default"
+              style={{ color: "#003c7e" }}
+              title={readOnly ? "" : "Click to edit name"}
+            >
+              {candidate.name}
+              {!readOnly && <Pencil size={11} className="opacity-60" />}
+            </button>
+          )}
           <button
             onClick={handlePickPhoto}
-            className="text-xs font-medium mt-1 hover:underline"
+            className="text-xs font-medium mt-1 hover:underline block"
             style={{ color: "#003c7e" }}
           >
             {candidate.photoUrl ? "Change photo" : "Upload photo"}
@@ -88,17 +257,27 @@ export function OverviewTab({ candidate }: Props) {
       )}
 
       <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #dee2e6" }}>
-        <h4 className="font-semibold mb-3 text-sm" style={{ color: "#003c7e" }}>Contact Information</h4>
+        <h4 className="font-semibold mb-3 text-sm" style={{ color: "#003c7e" }}>
+          Contact Information
+          {!readOnly && (
+            <span className="ml-2 text-[11px] font-normal" style={{ color: "#adb5bd" }}>
+              Click any value to edit
+            </span>
+          )}
+        </h4>
         <div className="grid grid-cols-2 gap-3">
-          {rows.map((r) => (
-            <div key={r.label} className="flex items-start gap-2">
-              <r.icon size={14} style={{ color: "#6c757d" }} className="mt-1" />
-              <div>
-                <div className="text-xs" style={{ color: "#6c757d" }}>{r.label}</div>
-                <div className="text-sm font-medium">{r.value}</div>
-              </div>
+          {renderRow("email", Mail, "Email", candidate.email)}
+          {renderRow("phone", Phone, "Phone", candidate.phone)}
+          {renderRow("location", MapPin, "Location", `${candidate.city}${candidate.state ? `, ${candidate.state}` : ""}`)}
+          {renderRow("assignedTo", User, "Assigned To", candidate.assignedTo)}
+          {renderRow("source", Tag, "Source", candidate.source)}
+          <div className="flex items-start gap-2">
+            <Calendar size={14} style={{ color: "#6c757d" }} className="mt-1" />
+            <div>
+              <div className="text-xs" style={{ color: "#6c757d" }}>Created</div>
+              <div className="text-sm font-medium">{candidate.createdDate}</div>
             </div>
-          ))}
+          </div>
         </div>
       </div>
 

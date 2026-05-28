@@ -497,7 +497,11 @@ const CandidatePipeline = () => {
     // assigned_to / source / fit_* are candidate-only concepts.
     const prospectId = (active as any).prospectId as string | null | undefined;
     if (prospectId) {
-      const SYNC_FIELDS = ["first_name", "last_name", "phone", "city", "state", "other_email"] as const;
+      const SYNC_FIELDS = [
+        "first_name", "last_name", "phone", "city", "state", "other_email",
+        "mailing_street", "mailing_city", "mailing_state", "mailing_zip",
+      ] as const;
+
       const tpPatch: Record<string, any> = {};
       for (const k of SYNC_FIELDS) {
         if (k in dbPatch) tpPatch[k] = (dbPatch as any)[k];

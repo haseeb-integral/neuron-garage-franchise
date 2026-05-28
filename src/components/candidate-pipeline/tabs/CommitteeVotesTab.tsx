@@ -4,6 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Users } from "lucide-react";
 
@@ -18,6 +21,7 @@ interface VoteRow {
   voter: string;
   vote: VoteValue;
   comment: string | null;
+  recorded_by: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -34,6 +38,8 @@ const VOTE_COLOR: Record<VoteValue, string> = {
   reject: "#ff4438",
 };
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export function CommitteeVotesTab({ candidate }: Props) {
   const dbId = (candidate as any).dbId as string | undefined;
   const [votes, setVotes] = useState<VoteRow[]>([]);
@@ -43,6 +49,8 @@ export function CommitteeVotesTab({ candidate }: Props) {
   const [myEmail, setMyEmail] = useState<string | null>(null);
   const [voteValue, setVoteValue] = useState<VoteValue | "">("");
   const [comment, setComment] = useState("");
+  const [isProxy, setIsProxy] = useState(false);
+  const [proxyEmail, setProxyEmail] = useState("");
 
   const load = async () => {
     if (!dbId) return;
@@ -60,7 +68,9 @@ export function CommitteeVotesTab({ candidate }: Props) {
     const rows = (data ?? []) as VoteRow[];
     setVotes(rows);
 
-    const emails = Array.from(new Set(rows.map((r) => r.voter)));
+    const emails = Array.from(
+      new Set(rows.flatMap((r) => [r.voter, r.recorded_by].filter(Boolean) as string[])),
+    );
     if (emails.length > 0) {
       const { data: profs } = await supabase
         .from("profiles")
@@ -91,18 +101,26 @@ export function CommitteeVotesTab({ candidate }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dbId]);
 
+  const proxyEmailTrimmed = proxyEmail.trim().toLowerCase();
+  const proxyEmailValid = !isProxy || (EMAIL_RE.test(proxyEmailTrimmed) && proxyEmailTrimmed !== myEmail?.toLowerCase());
+
   const handleSubmit = async () => {
     if (!dbId || !voteValue || !myEmail) return;
+    if (isProxy && !proxyEmailValid) {
+      toast.error("Enter a valid teammate email different from your own.");
+      return;
+    }
+    const voter = isProxy ? proxyEmailTrimmed : myEmail;
     setSubmitting(true);
-    // Upsert: one row per voter per candidate
     const { error } = await supabase
       .from("candidate_votes")
       .upsert(
         {
           candidate_id: dbId,
-          voter: myEmail,
+          voter,
           vote: voteValue,
           comment: comment.trim() || null,
+          recorded_by: isProxy ? myEmail : null,
         },
         { onConflict: "candidate_id,voter" },
       );
@@ -113,7 +131,9 @@ export function CommitteeVotesTab({ candidate }: Props) {
     }
     setVoteValue("");
     setComment("");
-    toast.success("Vote recorded");
+    setIsProxy(false);
+    setProxyEmail("");
+    toast.success(isProxy ? `Proxy vote recorded for ${voter}` : "Vote recorded");
     load();
   };
 
@@ -122,6 +142,8 @@ export function CommitteeVotesTab({ candidate }: Props) {
     needs_info: votes.filter((v) => v.vote === "needs_info").length,
     reject: votes.filter((v) => v.vote === "reject").length,
   };
+
+  const displayName = (email: string) => profilesByEmail[email] || email;
 
   return (
     <div className="space-y-4 pt-4">
@@ -140,16 +162,44 @@ export function CommitteeVotesTab({ candidate }: Props) {
       </div>
 
       <div className="bg-white rounded-lg p-4 space-y-3" style={{ border: "1px solid #dee2e6" }}>
-        <h4 className="font-semibold text-sm" style={{ color: "#003c7e" }}>Add your vote</h4>
+        <h4 className="font-semibold text-sm" style={{ color: "#003c7e" }}>Add a vote</h4>
         {!myEmail ? (
           <p className="text-xs" style={{ color: "#6c757d" }}>You must be signed in to vote.</p>
         ) : !dbId ? (
           <p className="text-xs" style={{ color: "#6c757d" }}>Votes can only be recorded for saved candidates.</p>
         ) : (
           <>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="proxy-vote"
+                checked={isProxy}
+                onCheckedChange={(v) => setIsProxy(v === true)}
+              />
+              <Label htmlFor="proxy-vote" className="text-xs cursor-pointer" style={{ color: "#495057" }}>
+                Record on behalf of another committee member (proxy vote)
+              </Label>
+            </div>
+            {isProxy && (
+              <div className="space-y-1">
+                <Input
+                  type="email"
+                  placeholder="teammate@example.com"
+                  value={proxyEmail}
+                  onChange={(e) => setProxyEmail(e.target.value)}
+                />
+                {proxyEmail && !proxyEmailValid && (
+                  <p className="text-[11px]" style={{ color: "#ff4438" }}>
+                    Enter a valid email different from your own.
+                  </p>
+                )}
+                <p className="text-[11px]" style={{ color: "#6c757d" }}>
+                  Saved as their vote; you'll be shown as the recorder.
+                </p>
+              </div>
+            )}
             <Select value={voteValue} onValueChange={(v) => setVoteValue(v as VoteValue)}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select your vote" />
+                <SelectValue placeholder="Select vote" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="approve">Approve</SelectItem>
@@ -166,11 +216,11 @@ export function CommitteeVotesTab({ candidate }: Props) {
             <div className="flex justify-end">
               <Button
                 onClick={handleSubmit}
-                disabled={!voteValue || submitting}
+                disabled={!voteValue || submitting || (isProxy && !proxyEmailValid)}
                 className="text-white"
                 style={{ backgroundColor: "#003c7e" }}
               >
-                {submitting ? "Saving…" : "Add Vote"}
+                {submitting ? "Saving…" : isProxy ? "Record Proxy Vote" : "Add Vote"}
               </Button>
             </div>
           </>
@@ -188,7 +238,17 @@ export function CommitteeVotesTab({ candidate }: Props) {
             {votes.map((v) => (
               <li key={v.id} className="border-t pt-3 first:border-0 first:pt-0" style={{ borderColor: "#e9ecef" }}>
                 <div className="flex items-center justify-between gap-2">
-                  <div className="text-sm font-medium">{profilesByEmail[v.voter] || v.voter}</div>
+                  <div className="text-sm font-medium">
+                    {displayName(v.voter)}
+                    {v.recorded_by && (
+                      <span
+                        className="ml-2 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded"
+                        style={{ backgroundColor: "#eef2f7", color: "#526078" }}
+                      >
+                        Proxy
+                      </span>
+                    )}
+                  </div>
                   <span
                     className="text-xs font-semibold px-2 py-0.5 rounded"
                     style={{ backgroundColor: VOTE_COLOR[v.vote], color: "#ffffff" }}
@@ -201,6 +261,9 @@ export function CommitteeVotesTab({ candidate }: Props) {
                 )}
                 <div className="text-[11px] mt-1" style={{ color: "#adb5bd" }}>
                   {new Date(v.updated_at).toLocaleString()}
+                  {v.recorded_by && (
+                    <span> · recorded by {displayName(v.recorded_by)}</span>
+                  )}
                 </div>
               </li>
             ))}

@@ -371,6 +371,7 @@ export type Database = {
           comment: string | null
           created_at: string
           id: string
+          recorded_by: string | null
           updated_at: string
           vote: Database["public"]["Enums"]["candidate_vote_value"]
           voter: string
@@ -380,6 +381,7 @@ export type Database = {
           comment?: string | null
           created_at?: string
           id?: string
+          recorded_by?: string | null
           updated_at?: string
           vote: Database["public"]["Enums"]["candidate_vote_value"]
           voter: string
@@ -389,6 +391,7 @@ export type Database = {
           comment?: string | null
           created_at?: string
           id?: string
+          recorded_by?: string | null
           updated_at?: string
           vote?: Database["public"]["Enums"]["candidate_vote_value"]
           voter?: string

@@ -317,6 +317,7 @@ const CandidatePipeline = () => {
         .select("id", { count: "exact", head: true })
         .eq("candidate_id", dbId)
         .eq("stage", "confirmation" as any)
+        .eq("kind", "homework")
         .eq("is_completed", false);
       incomplete = count ?? 0;
     }
@@ -392,6 +393,7 @@ const CandidatePipeline = () => {
           .select("label")
           .eq("candidate_id", dbId)
           .eq("stage", fromDbStage)
+          .eq("kind", "homework")
           .eq("is_completed", true);
         const completedLabels = new Set((completedFrom ?? []).map((r: any) => r.label));
 
@@ -399,7 +401,8 @@ const CandidatePipeline = () => {
           .from("candidate_checklist_items")
           .select("id, label, is_completed")
           .eq("candidate_id", dbId)
-          .eq("stage", toDbStage);
+          .eq("stage", toDbStage)
+          .eq("kind", "homework");
 
         if (!existingTo || existingTo.length === 0) {
           // Seed with carry-forward applied.
@@ -410,6 +413,7 @@ const CandidatePipeline = () => {
               candidate_id: dbId,
               stage: toDbStage,
               label,
+              kind: "homework",
               is_completed: carry,
               completed_at: carry ? nowIso : null,
               completed_by: carry ? changedBy : null,

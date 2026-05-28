@@ -67,9 +67,9 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
       const last = parts.join(" ");
       dbPatch = { first_name: first, last_name: last };
       localPatch = { name: v };
-    } else if (editing === "email") {
-      if (!v) { toast.error("Email cannot be empty"); return; }
-      dbPatch = { email: v }; localPatch = { email: v };
+    } else if (editing === "otherEmail") {
+      if (v && !EMAIL_RE.test(v)) { toast.error("Enter a valid email address"); return; }
+      dbPatch = { other_email: v || null }; localPatch = { otherEmail: v };
     } else if (editing === "phone") {
       dbPatch = { phone: v || null }; localPatch = { phone: v };
     } else if (editing === "location") {

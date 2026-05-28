@@ -131,13 +131,13 @@ export function HomeworkTab({ candidate, onTrialCloseChange }: Props) {
     if (!label || !dbId) return;
     setAdding(true);
     const { data, error } = await supabase
+      .from("candidate_checklist_items")
       .insert({
         candidate_id: dbId,
         stage: candidate.stage as any,
         label,
         is_completed: false,
         kind: "homework",
-      })
       })
       .select("id, label, is_completed, completed_at, completed_by")
       .single();

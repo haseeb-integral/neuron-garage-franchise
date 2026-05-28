@@ -11,6 +11,10 @@ import { HomeworkTab } from "./tabs/HomeworkTab";
 import { CommitteeVotesTab } from "./tabs/CommitteeVotesTab";
 import { SelectionCommittee } from "./SelectionCommittee";
 import { CandidateAvatar } from "@/components/ui/CandidateAvatar";
+import { Button } from "@/components/ui/button";
+import { FileDown } from "lucide-react";
+import { exportResearchPacket } from "./exportResearchPacket";
+import { toast } from "sonner";
 
 interface TeamMember { email: string; firstName: string; }
 

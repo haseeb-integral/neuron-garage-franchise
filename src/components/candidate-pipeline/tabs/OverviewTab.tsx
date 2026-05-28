@@ -12,7 +12,9 @@ interface Props {
   onSave?: (patch: Record<string, any>, localPatch: Partial<Candidate>) => Promise<void> | void;
 }
 
-type FieldKey = "name" | "email" | "phone" | "location" | "assignedTo" | "source";
+type FieldKey = "name" | "otherEmail" | "phone" | "location" | "assignedTo" | "source";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const SOURCE_OPTIONS = ["Referral", "Web Form", "LinkedIn", "Discovery Day", "Event", "Outbound", "Other"];
 

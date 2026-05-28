@@ -200,6 +200,7 @@ export type Database = {
           created_at: string
           id: string
           is_completed: boolean
+          kind: string
           label: string
           stage: Database["public"]["Enums"]["candidate_stage"]
         }
@@ -210,6 +211,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_completed?: boolean
+          kind?: string
           label: string
           stage: Database["public"]["Enums"]["candidate_stage"]
         }
@@ -220,6 +222,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_completed?: boolean
+          kind?: string
           label?: string
           stage?: Database["public"]["Enums"]["candidate_stage"]
         }

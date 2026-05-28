@@ -253,3 +253,63 @@ export const STAGE_HOMEWORK: Partial<Record<StageId, string[]>> = {
   confirmation: ["Final review of franchise agreement", "Confirm funding readiness"],
   signing: ["Sign franchise agreement", "Wire initial franchise fee"],
 };
+
+// 6-step process roadmap per stage. Seeded once per candidate; any staff member can edit inline.
+export const STAGE_PROCESS_ROADMAP: Partial<Record<StageId, string[]>> = {
+  new_lead: [
+    "Confirm lead source and assigned owner",
+    "Send welcome email with intro materials",
+    "Schedule Initial Qualification Call",
+    "Log expectations and timeline",
+    "Confirm contact info and best channel",
+    "Set follow-up reminder",
+  ],
+  initial_qual: [
+    "Send RFC Part 1 (non-financial) prior to call",
+    "Hold Initial Qualification Call",
+    "Capture motivation, background, timeline",
+    "Score qualification rubric",
+    "Decide advance / hold / disqualify",
+    "Schedule Business Overview Call",
+  ],
+  business_overview: [
+    "Send RFC Part 2 (financial) prior to call",
+    "Hold Business Overview Call (unit economics)",
+    "Confirm liquid capital and net worth",
+    "Authorize background and credit check",
+    "Recommend reading: Mindset by Carol Dweck",
+    "Schedule FDD review",
+  ],
+  fdd_review: [
+    "Send FDD and start 16-day clock",
+    "Confirm receipt and acknowledgement",
+    "Offer Q&A with legal/financial advisors",
+    "Mid-period check-in",
+    "Collect outstanding questions",
+    "Schedule Immersion day after lock clears",
+  ],
+  immersion: [
+    "Coordinate HQ immersion day logistics",
+    "Host immersion: training, ops, culture",
+    "Selection Committee meet & greet",
+    "Capture committee impressions",
+    "Debrief with candidate",
+    "Schedule Confirmation Call",
+  ],
+  confirmation: [
+    "Send pre-call agenda and open items",
+    "Hold Confirmation Call",
+    "Answer remaining questions",
+    "Confirm funding readiness",
+    "Capture committee votes",
+    "Schedule Signing Call",
+  ],
+  signing: [
+    "Prepare franchise agreement package",
+    "Hold Signing Call",
+    "Execute franchise agreement",
+    "Wire initial franchise fee",
+    "Hand off to Onboarding",
+    "Mark candidate Qualified",
+  ],
+};

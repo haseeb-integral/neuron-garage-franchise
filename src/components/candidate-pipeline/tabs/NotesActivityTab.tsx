@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Candidate } from "@/data/pipelineData";
+import { Candidate, STAGE_PROCESS_ROADMAP, STAGES } from "@/data/pipelineData";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Phone, Mail, ArrowRight } from "lucide-react";
+import { MessageSquare, Phone, Mail, ArrowRight, ListChecks } from "lucide-react";
+import { ChecklistSection } from "../ChecklistSection";
 
 interface Props {
   candidate: Candidate;
@@ -18,6 +19,9 @@ const iconFor = (type: string) => {
 
 export function NotesActivityTab({ candidate, onAddNote }: Props) {
   const [text, setText] = useState("");
+  const dbId = (candidate as any).dbId as string | undefined;
+  const roadmap = STAGE_PROCESS_ROADMAP[candidate.stage] ?? [];
+  const stageLabel = STAGES.find((s) => s.id === candidate.stage)?.label ?? candidate.stage;
 
   const submit = () => {
     if (!text.trim()) return;
@@ -29,6 +33,28 @@ export function NotesActivityTab({ candidate, onAddNote }: Props) {
 
   return (
     <div className="space-y-4 pt-4">
+      {dbId && (
+        <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #dee2e6" }}>
+          <div className="flex items-center gap-2 mb-1">
+            <ListChecks size={16} style={{ color: "#003c7e" }} />
+            <h4 className="font-semibold text-sm" style={{ color: "#003c7e" }}>
+              Process Roadmap — {stageLabel}
+            </h4>
+          </div>
+          <p className="text-xs mb-3" style={{ color: "#6c757d" }}>
+            Per-candidate steps for this stage. Any staff member can check, add, or remove items.
+          </p>
+          <ChecklistSection
+            candidateDbId={dbId}
+            stage={candidate.stage}
+            kind="process"
+            seedLabels={roadmap}
+            addPlaceholder="Add a roadmap step…"
+            emptyText="No roadmap steps yet."
+          />
+        </div>
+      )}
+
       <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #dee2e6" }}>
         <h4 className="font-semibold mb-2 text-sm" style={{ color: "#003c7e" }}>Add Note</h4>
         <Textarea

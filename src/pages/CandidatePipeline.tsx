@@ -667,6 +667,7 @@ const CandidatePipeline = () => {
               {d.label}
             </button>
           ))}
+        </div>
 
 
         {filtersActive && (

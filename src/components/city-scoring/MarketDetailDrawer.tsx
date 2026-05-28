@@ -10,6 +10,7 @@ import type { CategoryKey } from "@/stores/cityScoringStore";
 import { MetricRow, type LiveSignal, type MetricStatus } from "./market-detail/MetricRow";
 import { DrawerHeroSummary } from "./market-detail/DrawerHeroSummary";
 import { buildMarketView } from "@/lib/marketView";
+import { CityNotesEditor } from "./market-detail/CityNotesEditor";
 
 export interface CustomCriterion {
   name: string;
@@ -249,6 +250,8 @@ export function MarketDetailDrawer({
               </p>
             </div>
           )}
+
+          <CityNotesEditor cityId={market.cityId ?? null} />
 
           <div className="space-y-3 mb-4">
             {SOW_CATEGORIES.map((category) => {

@@ -223,6 +223,8 @@ const CandidatePipeline = () => {
   const setTagFilter = useCandidatePipelineStore((s) => s.setTagFilter);
   const fitFilter = useCandidatePipelineStore((s) => s.fitFilter);
   const setFitFilter = useCandidatePipelineStore((s) => s.setFitFilter);
+  const daysFilter = useCandidatePipelineStore((s) => s.daysInStageFilter);
+  const setDaysFilter = useCandidatePipelineStore((s) => s.setDaysInStageFilter);
 
   const filteredCandidates = useMemo(() => {
     return candidates.filter((c) => {
@@ -230,16 +232,22 @@ const CandidatePipeline = () => {
       if (tagFilter !== "all" && c.tag !== tagFilter) return false;
       if (fitFilter === "90" && c.fitScore < 90) return false;
       if (fitFilter === "75" && c.fitScore < 75) return false;
+      if (daysFilter === "fresh" && c.daysInStage > 3) return false;
+      if (daysFilter === "watch" && (c.daysInStage < 4 || c.daysInStage > 7)) return false;
+      if (daysFilter === "stalled" && c.daysInStage < 8) return false;
       return true;
     });
-  }, [candidates, ownerFilter, tagFilter, fitFilter]);
+  }, [candidates, ownerFilter, tagFilter, fitFilter, daysFilter]);
 
-  const filtersActive = ownerFilter !== "all" || tagFilter !== "all" || fitFilter !== "all";
+  const filtersActive =
+    ownerFilter !== "all" || tagFilter !== "all" || fitFilter !== "all" || daysFilter !== "all";
   const clearFilters = () => {
     setOwnerFilter("all");
     setTagFilter("all");
     setFitFilter("all");
+    setDaysFilter("all");
   };
+
 
   const handleStartOnboarding = (c: Candidate) => setConfirmCandidate(c);
 

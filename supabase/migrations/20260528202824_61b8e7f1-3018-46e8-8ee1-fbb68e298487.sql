@@ -1,0 +1,1 @@
+ALTER TABLE public.candidate_votes ADD COLUMN IF NOT EXISTS recorded_by text;

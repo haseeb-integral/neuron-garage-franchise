@@ -112,6 +112,9 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
               <TabsTrigger value="stage-history" className="whitespace-nowrap px-3">Stage History</TabsTrigger>
               <TabsTrigger value="homework" className="whitespace-nowrap px-3">Homework</TabsTrigger>
               <TabsTrigger value="committee" className="whitespace-nowrap px-3">Committee Votes</TabsTrigger>
+              {isEnabled("FF_DOCUMENTS") && (
+                <TabsTrigger value="documents" className="whitespace-nowrap px-3">Documents</TabsTrigger>
+              )}
             </TabsList>
           </div>
 

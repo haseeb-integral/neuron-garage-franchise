@@ -84,7 +84,40 @@ export function HomeworkTab({ candidate, onTrialCloseChange }: Props) {
       cancelled = true;
     };
   }, [dbId, candidate.stage, homework]);
-...
+
+  const handleToggle = async (item: ChecklistItem, checked: boolean) => {
+    if (!dbId) return;
+    const previous = items;
+    setItems((prev) =>
+      prev.map((i) =>
+        i.id === item.id
+          ? {
+              ...i,
+              is_completed: checked,
+              completed_at: checked ? new Date().toISOString() : null,
+            }
+          : i,
+      ),
+    );
+
+    const { data: sess } = await supabase.auth.getUser();
+    const email = sess?.user?.email ?? null;
+
+    const { error } = await supabase
+      .from("candidate_checklist_items")
+      .update({
+        is_completed: checked,
+        completed_at: checked ? new Date().toISOString() : null,
+        completed_by: checked ? email : null,
+      })
+      .eq("id", item.id);
+
+    if (error) {
+      setItems(previous);
+      toast.error("Couldn't update item", { description: error.message });
+    }
+  };
+
   const showDbChecklist = !!dbId;
 
   return (

@@ -1,0 +1,1 @@
+ALTER TABLE public.us_cities_scored ADD COLUMN IF NOT EXISTS notes text;

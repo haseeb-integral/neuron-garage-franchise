@@ -1798,6 +1798,7 @@ export type Database = {
           metro_area: string | null
           metro_counties: string[] | null
           nces_last_updated: string | null
+          notes: string | null
           place_type: string | null
           population: number | null
           population_density: number | null
@@ -1863,6 +1864,7 @@ export type Database = {
           metro_area?: string | null
           metro_counties?: string[] | null
           nces_last_updated?: string | null
+          notes?: string | null
           place_type?: string | null
           population?: number | null
           population_density?: number | null
@@ -1928,6 +1930,7 @@ export type Database = {
           metro_area?: string | null
           metro_counties?: string[] | null
           nces_last_updated?: string | null
+          notes?: string | null
           place_type?: string | null
           population?: number | null
           population_density?: number | null

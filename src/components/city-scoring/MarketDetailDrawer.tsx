@@ -251,6 +251,8 @@ export function MarketDetailDrawer({
             </div>
           )}
 
+          <CityNotesEditor cityId={market.cityId ?? null} />
+
           <div className="space-y-3 mb-4">
             {SOW_CATEGORIES.map((category) => {
               const rows = (coverageByCategory[category.key] ?? []).filter((r) => KEY_METRIC_KEYS.has(r.metric.key));

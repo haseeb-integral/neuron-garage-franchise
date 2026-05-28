@@ -171,7 +171,8 @@ export function useTeacherProspectsData(args: UseTeacherProspectsDataArgs) {
     }
 
     const { data, error, count } = await q.range(from, to);
-    if (myReq !== reqIdRef.current) return;
+    if (myReq !== reqIdRef.current || !mountedRef.current) return;
+
 
     if (error) {
       const isTimeout = /statement timeout|canceling statement/i.test(error.message);

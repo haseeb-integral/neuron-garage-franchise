@@ -76,8 +76,9 @@ export function DrawerHeroSummary({ rawComposite, tier, categoryScores }: Props)
             <span className="text-[12px] text-[#526078]">/ 100</span>
           </div>
           <p className="mt-1 text-[10.5px] text-[#8794ab]">
-            Calibrated school-grade scale · raw WCI {Math.round(rawComposite)}
+            Display score 0–100 · math score {Math.round(rawComposite)}
           </p>
+
         </div>
         <div
           className="rounded-xl px-3 py-2 text-center"
@@ -94,7 +95,10 @@ export function DrawerHeroSummary({ rawComposite, tier, categoryScores }: Props)
       </p>
 
       {/* Pillar bars */}
-      <div className="mt-3 grid grid-cols-3 gap-2">
+      <p className="mt-3 text-[10px] italic text-[#8794ab]">
+        Each pillar shows two numbers: the big <strong className="font-semibold not-italic text-[#526078]">display score</strong>, and the smaller <strong className="font-semibold not-italic text-[#526078]">math score</strong> it came from.
+      </p>
+      <div className="mt-2 grid grid-cols-3 gap-2">
         {PILLARS.map(({ key, label }) => {
           const v = pillars[key].display;
           const raw = pillars[key].raw;
@@ -117,12 +121,12 @@ export function DrawerHeroSummary({ rawComposite, tier, categoryScores }: Props)
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <p className="mt-1 inline-flex cursor-help items-center gap-0.5 text-[9.5px] text-[#8794ab]">
-                        raw {Math.round(raw)}
-                        <Info className="h-2.5 w-2.5" aria-label="What does raw mean?" />
+                        math {Math.round(raw)}
+                        <Info className="h-2.5 w-2.5" aria-label="What does math score mean?" />
                       </p>
                     </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-[240px] text-[11px] leading-snug">
-                      "Raw" is this pillar's re-weighted 0–100 score before the school-grade curve. The big number above is the same score, calibrated so 90s = A, 80s = B, etc.
+                    <TooltipContent side="bottom" className="max-w-[260px] text-[11px] leading-snug">
+                      <strong className="font-semibold">Two numbers, one truth.</strong> The big number ({v}) is the <strong className="font-semibold">display score</strong> — easy to read on a 0–100 scale. The small number ({Math.round(raw)}) is the <strong className="font-semibold">math score</strong> — the actual weighted average of this pillar's inputs, used to rank cities. The display bends the math onto a friendlier scale so top markets land in the 80s–90s. Rankings are identical either way.
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -131,6 +135,7 @@ export function DrawerHeroSummary({ rawComposite, tier, categoryScores }: Props)
           );
         })}
       </div>
+
 
       {/* Bottom-line one-liner — deterministic, no LLM. */}
       <div className="mt-3 rounded-lg bg-[#f7faff] px-3 py-2 text-[11.5px] leading-snug text-[#07142f]">

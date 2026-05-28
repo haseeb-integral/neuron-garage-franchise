@@ -167,20 +167,23 @@ function SelectedMarketPanelImpl({
                 <span className="font-mono italic mr-0.5">ƒx</span> Show formula
               </button>
             </PopoverTrigger>
-            <PopoverContent align="start" side="bottom" className="w-[360px] p-3">
+            <PopoverContent align="start" side="bottom" className="w-[380px] p-3">
               <div className="mb-2">
                 <p className="text-[12px] font-semibold text-[#07142f]">{selected.city}, {selected.state}</p>
-                <p className="text-[11px] font-bold uppercase tracking-wide text-[#526078]">Overall Score breakdown</p>
+                <p className="text-[11px] font-bold uppercase tracking-wide text-[#526078]">How we got to {weightedComposite}</p>
               </div>
               {(() => {
                 const total = appliedTotal > 0 ? appliedTotal : 1;
                 const rows = VISIBLE_CATEGORIES.map((c) => {
                   const weightPct = (appliedWeights[c.key] / total) * 100;
-                  const score = calibratedScore(c.key);
-                  const contribution = (weightPct * score) / 100;
-                  return { key: c.key, label: c.label, weightPct, score, contribution };
+                  // Use RAW (math) pillar value — same number the Edit Config drawer
+                  // shows. The composite is computed from raw pillars, then the
+                  // display curve is applied once at the end.
+                  const rawPillar = pillars[c.key as PillarKey]?.raw ?? 0;
+                  const contribution = (weightPct * rawPillar) / 100;
+                  return { key: c.key, label: c.label, weightPct, rawPillar, contribution };
                 });
-                const sumContribution = rows.reduce((s, r) => s + r.contribution, 0);
+                const rawWci = rows.reduce((s, r) => s + r.contribution, 0);
                 return (
                   <>
                     <div className="rounded border border-[#eef2f7] overflow-hidden">
@@ -189,7 +192,7 @@ function SelectedMarketPanelImpl({
                           <tr>
                             <th className="text-left px-2 py-1.5 font-medium">Category</th>
                             <th className="text-right px-2 py-1.5 font-medium">Weight</th>
-                            <th className="text-right px-2 py-1.5 font-medium">Score</th>
+                            <th className="text-right px-2 py-1.5 font-medium" title="The pillar's math score (un-curved). Same number you see in the Edit Config drawer.">Pillar (math)</th>
                             <th className="text-right px-2 py-1.5 font-medium">Contribution</th>
                           </tr>
                         </thead>
@@ -198,20 +201,23 @@ function SelectedMarketPanelImpl({
                             <tr key={r.key} className="border-t border-[#eef2f7]">
                               <td className="text-left px-2 py-1.5">{r.label}</td>
                               <td className="text-right px-2 py-1.5 tabular-nums">{r.weightPct.toFixed(1)}%</td>
-                              <td className="text-right px-2 py-1.5 tabular-nums">{Math.round(r.score)}</td>
+                              <td className="text-right px-2 py-1.5 tabular-nums">{Math.round(r.rawPillar)}</td>
                               <td className="text-right px-2 py-1.5 tabular-nums">{r.contribution.toFixed(1)}</td>
                             </tr>
                           ))}
-                          <tr className="border-t-2 border-[#c5cdda] bg-[#fafbfd] font-bold">
-                            <td className="text-left px-2 py-1.5" colSpan={2}>Overall Score</td>
-                            <td className="text-right px-2 py-1.5 tabular-nums text-[#526078]" title={`Σ contributions = ${sumContribution.toFixed(1)}`}>=</td>
+                          <tr className="border-t-2 border-[#c5cdda] bg-[#fafbfd]">
+                            <td className="text-left px-2 py-1.5 font-semibold" colSpan={3}>Math total (raw WCI)</td>
+                            <td className="text-right px-2 py-1.5 tabular-nums font-semibold text-[#07142f]">{rawWci.toFixed(1)}</td>
+                          </tr>
+                          <tr className="bg-[#fafbfd] font-bold">
+                            <td className="text-left px-2 py-1.5" colSpan={3}>Display score (curve applied)</td>
                             <td className="text-right px-2 py-1.5 tabular-nums text-[#07142f]">{weightedComposite}</td>
                           </tr>
                         </tbody>
                       </table>
                     </div>
                     <p className="text-[11px] text-[#526078] mt-2 leading-snug">
-                      Formula: Overall Score = Σ (master weight % × category score)
+                      Math: raw WCI = Σ (weight % × pillar math score). The display score bends raw WCI onto an easier 0–100 scale — rankings don't change.
                     </p>
                     {Math.abs(appliedTotal - 100) > 0.5 && (
                       <p className="text-[10.5px] text-[#8794ab] mt-1 leading-snug italic">
@@ -223,6 +229,7 @@ function SelectedMarketPanelImpl({
               })()}
             </PopoverContent>
           </Popover>
+
         ) : (
           <button
             type="button"
@@ -264,6 +271,7 @@ function SelectedMarketPanelImpl({
           <div className="space-y-2">
             {VISIBLE_CATEGORIES.map((cat) => {
               const v = selectedHasLiveData ? Math.round(calibratedScore(cat.key)) : null;
+              const rawV = selectedHasLiveData ? pillars[cat.key as PillarKey]?.raw ?? null : null;
               const wPct = appliedTotal > 0 ? (appliedWeights[cat.key] / appliedTotal) * 100 : 0;
               const isZeroWeighted = wPct <= 0.05;
               return (
@@ -278,11 +286,15 @@ function SelectedMarketPanelImpl({
                   <div className="h-1.5 w-full rounded-full bg-[#e8edf6]">
                     <div className={`h-full rounded-full ${isZeroWeighted ? "bg-[#b6bfd0]" : "bg-[#1d4fff]"}`} style={{ width: `${v ?? 0}%` }} />
                   </div>
+                  {rawV != null && (
+                    <p className="mt-0.5 text-right text-[9.5px] text-[#8794ab]" title="Math score — the un-curved value used in the composite formula.">math {Math.round(rawV)}</p>
+                  )}
                 </div>
               );
             })}
           </div>
         </div>
+
 
         {/* Action buttons */}
         <div className="mt-4 w-full flex flex-col gap-2">

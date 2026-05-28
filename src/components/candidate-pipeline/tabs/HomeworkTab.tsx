@@ -212,21 +212,66 @@ export function HomeworkTab({ candidate, onTrialCloseChange }: Props) {
         {showDbChecklist ? (
           loading ? (
             <p className="text-xs" style={{ color: "#6c757d" }}>Loading…</p>
-          ) : items.length === 0 ? (
-            <p className="text-xs" style={{ color: "#6c757d" }}>No checklist items for this stage yet.</p>
           ) : (
-            <div className="space-y-2">
-              {items.map((item) => (
-                <label key={item.id} className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox
-                    checked={item.is_completed}
-                    onCheckedChange={(v) => handleToggle(item, !!v)}
-                  />
-                  <span className="text-sm">{item.label}</span>
-                </label>
-              ))}
-            </div>
+            <>
+              {items.length === 0 ? (
+                <p className="text-xs mb-3" style={{ color: "#6c757d" }}>
+                  No checklist items for this stage yet.
+                </p>
+              ) : (
+                <div className="space-y-2 mb-3">
+                  {items.map((item) => (
+                    <div key={item.id} className="flex items-center gap-2 group">
+                      <label className="flex items-center gap-2 cursor-pointer flex-1">
+                        <Checkbox
+                          checked={item.is_completed}
+                          onCheckedChange={(v) => handleToggle(item, !!v)}
+                        />
+                        <span className="text-sm">{item.label}</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(item)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive p-1"
+                        aria-label={`Delete ${item.label}`}
+                        title="Delete item"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center gap-2 pt-2 border-t" style={{ borderColor: "#dee2e6" }}>
+                <Input
+                  value={newLabel}
+                  onChange={(e) => setNewLabel(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAdd();
+                    }
+                  }}
+                  placeholder="Add a checklist item…"
+                  className="h-8 text-sm"
+                  disabled={adding}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleAdd}
+                  disabled={adding || !newLabel.trim()}
+                  className="h-8"
+                >
+                  <Plus size={14} className="mr-1" />
+                  Add
+                </Button>
+              </div>
+            </>
           )
+        ) : (
+
         ) : (
           // Fallback: legacy in-memory trial close (used outside Confirmation / mock data)
           <div className="space-y-2">

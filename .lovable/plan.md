@@ -1,85 +1,58 @@
-# Fix "Show formula" math + rewrite raw/calibrated wording
+## Plan
 
-## The actual bug (Nashville confirms it)
+Two surgical changes to `src/components/city-scoring/market-detail/DrawerHeroSummary.tsx`. No backend, no business logic — pure presentation.
 
-The two screens are telling two different math stories and **one of them is wrong**.
+### 1. Keep the "Bottom line" verdict (rewritten for clarity)
 
-**Edit Config drawer (correct math):**
-```
-raw Demand 53.3 × 60% master weight = 32.0 pts toward composite
-+ raw TAM 44 × 20% = 8.8
-+ raw Comp 40 × 20% = 8.0
-= raw WCI ~49  →  calibrated to display = 79
-```
+You said: keep it if it lines up with the city's executive summary. It already does — it's a deterministic one-liner derived from Total Score + strongest/weakest pillar (no LLM, drift-safe). I'll keep it but tighten the wording so the 70–79 case stops sounding hedged-and-confusing:
 
-**"Show formula" popover (wrong math — current code):**
-```
-display Demand 83 × 60% = 49.8
-+ display TAM 73 × 20% = 14.6
-+ display Comp 68 × 20% = 13.6
-= 78 ≈ 79   ← only coincidentally close
-```
+- 90+: "Tier A: strongest in {top} ({n}). Recruit aggressively."
+- 80–89: "Solid Tier B — {top} ({n}) carries it; watch {bottom} ({n})."
+- 70–79: "Average overall — best fit if the candidate's strength is {top} ({n})."
+- <70 with gap ≥25: "Below average overall, but {top} is {n}/100 — could work for a matched candidate."
+- <70 otherwise: "Below average across the board (top pillar only {n})."
 
-It's using the **already-calibrated** pillar numbers and multiplying them by weights, which is **not** how the composite is computed. It looks right today because the calibration curve happens to be near-linear in this range — for a market down at raw 25 the two stories will diverge by 10+ points and the popover will literally not add up to the displayed score. That is the "is this a bug?" feeling you have, and yes, it is one.
+### 2. Add "Show curve" expandable under the pillar bars (drawer only)
 
-Root cause: `src/components/city-scoring/SelectedMarketPanel.tsx` lines 175–211 use `calibratedScore(c.key)` in the breakdown table instead of the raw pillar value.
+Placement: directly under the 3 pillar bars in the drawer hero (`DrawerHeroSummary.tsx`). **Not** in the center panel — center panel stays clean; the drawer is where users go to audit a market, so calibration details belong there.
 
-## Fix 1 — Make the "Show formula" popover tell the real story
+A small text link "Show curve" toggles a collapsible panel containing:
 
-Rewrite the popover so it mirrors the drawer math exactly:
+**a) Anchor table** (the 7 fixed anchor points from `CALIBRATION_ANCHORS` in `marketView.ts`):
 
 ```
-Nashville, Tennessee — How we got to 79
-
-Category            Weight   Pillar score   Contribution
-Demand                60%      53 (math)        31.8
-TAM Teachers          20%      44 (math)         8.8
-Competitive Opp.      20%      40 (math)         8.0
-                                                ─────
-                              Math total (WCI):  48.6
-                              Display score:       79   ← curve maps 48.6 → 79
-
-Formula: WCI = Σ (weight % × pillar math score); Display = curve(WCI)
+math →  display
+   0  →    0
+  20  →   40
+  35  →   60
+  41  →   70   ← Tier C cutoff
+  50  →   80   ← Tier B cutoff
+  59  →   90   ← Tier A cutoff
+  74  →  100
 ```
 
-- Column header changes from "Score" to "Pillar score" with the small "(math)" tag, so it's obvious this is the un-calibrated number that matches the Edit Config drawer.
-- Add the **two-row footer**: "Math total (WCI)" and "Display score", with a one-line note that the curve is monotonic so rankings don't change.
-- Source the raw pillar value from `buildPillarView(detailCategoryScores)[key].raw` (already on the panel — `pillars` is built on line 79). Stop using `calibratedScore` in this table.
+**b) Per-city interpolation lines** (4 rows, one per pillar + total) showing the exact arithmetic for this city, e.g. for Nashville:
 
-Result: the popover's numbers will reconcile 1:1 with the Sub-Metric Weights drawer for every city, every weight setting.
+```
+Demand:    80 + (53 − 50) / (59 − 50) × 10 = 83
+TAM:       70 + (44 − 41) / (50 − 41) × 10 = 73
+Comp Opp:  60 + (40 − 35) / (41 − 35) × 10 = 68
+Total:     70 + (49 − 41) / (50 − 41) × 10 = 79
+```
 
-## Fix 2 — Rewrite the raw/calibrated wording in plain English
+A one-line footer: *"The display score bends the math onto a friendlier 0–100 scale. Rankings are identical either way."*
 
-Drop "school-grade" and "calibrated" from user-facing copy. They were grade-8 explainers in chat — they don't belong in the UI chrome.
+### Why expandable text, not a mini-chart
 
-**File:** `src/components/city-scoring/market-detail/DrawerHeroSummary.tsx`
+The anchor table is 7 numbers and the per-city math is 4 lines — readable at a glance. A line chart adds a chart library dependency and rendering surface for the same information, with less precision. If you later decide the chart is clearer, swapping in a tiny SVG line graph is a 30-line follow-up in the same component.
 
-| Where | Today | New |
-|---|---|---|
-| Subtitle under big composite | `Calibrated school-grade scale · raw WCI 49` | `Display score 0–100 · math score 49` |
-| Tier label "Worth a closer look" | (kept) | (kept) |
-| Tiny line under each pillar bar | `raw 53 ⓘ` | `math 53 ⓘ` |
-| Tooltip body | `"Raw" is this pillar's re-weighted 0–100 score before the school-grade curve. The big number above is the same score, calibrated so 90s = A, 80s = B, etc.` | **Two numbers, one truth.** The big number (83) is the **display score** — easy to read on a 0–100 scale. The small number (53) is the **math score** — the actual weighted average of this pillar's inputs, used to rank cities. The display score bends the math score so top markets land in the 80s–90s. Rankings are identical either way. |
+### Technical detail
 
-Also add a single one-liner above the three pillar bars (next to "Pillar Scores" if there's a header, or as a faint caption): `Each pillar shows two numbers: the big display score, and the smaller math score it came from.` — so the dual-number layout is self-explanatory without hovering.
+- Use existing `Collapsible` from `@/components/ui/collapsible` (already in the project).
+- Compute the interpolation rows inline using `CALIBRATION_ANCHORS` from `marketView.ts`. Export the anchors constant so the drawer can read them (currently module-private).
+- All numbers come from `buildPillarView()` and `rawComposite` already passed into the component — no new props.
 
-## Fix 3 — Same wording cleanup in the Selected Market panel
+### Files touched
 
-**File:** `src/components/city-scoring/SelectedMarketPanel.tsx`
-
-- The "Category Scores" bars on the right panel currently show only the display value (83 / 73 / 68). Add a faint `math 53` underneath each, identical to the drawer, so the user sees the same two-number pair everywhere. Same `buildPillarView` is already there.
-- Change popover title from `Overall Score breakdown` → `How we got to {composite}` (matches the new narrative).
-
-## Why this is safe
-
-- Pure presentation fix — no scoring, weighting, ranking, tier, or DB logic changes.
-- The composite number itself doesn't move (79 stays 79). Only the popover's explanation of how 79 was reached becomes truthful.
-- The "math" label is consistent vocabulary with the Edit Config drawer's "Step 2 / Step 3" breakdown, so the two surfaces finally agree.
-
-## Files touched
-
-1. `src/components/city-scoring/SelectedMarketPanel.tsx` — popover table uses `pillars[key].raw`, adds WCI→Display footer, retitles.
-2. `src/components/city-scoring/market-detail/DrawerHeroSummary.tsx` — rewrite subtitle, change "raw N" → "math N", rewrite tooltip, add caption above pillar bars.
-3. (Optional, same panel as #1) Add small `math N` under each Category Scores bar.
-
-No backend, no migrations, no tests broken (no test asserts on the popover copy or "raw" string).
+- `src/lib/marketView.ts` — export `CALIBRATION_ANCHORS`.
+- `src/components/city-scoring/market-detail/DrawerHeroSummary.tsx` — tighten verdict wording, add Collapsible "Show curve" block under pillar bars.

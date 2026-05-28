@@ -68,7 +68,7 @@ export type CompositeScore = number & { readonly [__compositeBrand]: "CompositeS
 //   raw 100 → 100
 // Change these anchors only after Brett/Haseeb sign off; ordering stays
 // invariant as long as the sequence is strictly increasing in both axes.
-const CALIBRATION_ANCHORS: ReadonlyArray<readonly [number, number]> = [
+export const CALIBRATION_ANCHORS: ReadonlyArray<readonly [number, number]> = [
   [0, 0],
   [20, 40],
   [35, 60],

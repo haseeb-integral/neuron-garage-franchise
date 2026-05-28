@@ -1,3 +1,5 @@
+import { Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { buildPillarView, calibratePillarForDisplay, unsafeAsCompositeScore, type CompositeScore } from "@/lib/marketView";
 import type { TierLetter } from "@/lib/cityTiers";
 

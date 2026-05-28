@@ -1,63 +1,35 @@
-## Background
+## What I found
 
-Two things are bundled here because they came out of the same Overview-tab edit work:
+I checked the DB and the read code. Both `assigned_to` and `source` columns exist on `candidates` (so writes succeed), but here's the catch:
 
-1. **Small backend fix** — the Source field doesn't persist because there's no column for it. Add the column so Source saves like the other fields.
-2. **Open product question for Brett** — when Sam edits a candidate's email / phone / city in the Candidate Pipeline, should that edit flow back to the original Teacher Search and Email Outreach records, or stay isolated to the candidate?
+**Source — NOT actually fixed end-to-end.** Last loop I added the column + write path, but `CandidatePipeline.tsx` still hardcodes `source: "—"` when reading rows from the DB (lines 104 and 185). So even though the value saves, the UI throws it away on refresh and shows "—". This is the bug you're seeing.
 
----
+**Assigned To — read path is correct** (`assignedTo: r.assigned_to ?? ""` on lines 102 and 183), and the column exists. Allison's DB row currently has `assigned_to = NULL` and `source = NULL`, which matches what your screenshot shows. So if Assigned To is also going blank after a real save, it's likely one of:
+- You picked "Unassigned" in the dropdown (value = empty → saves `null` on purpose), or
+- The save errored silently. I'll add a small guard to surface that.
 
-## Part 1 — Add `candidates.source` column
+## Plan
 
-**Migration (one column, nullable text):**
+### Fix 1 — Read `source` from the DB (the real source bug)
+In `src/pages/CandidatePipeline.tsx`, change both row-mapping spots:
+- line 104: `source: "—",` → `source: r.source ?? "",`
+- line 185: `source: "—",` → `source: r.source ?? "",`
 
-```sql
-ALTER TABLE public.candidates
-ADD COLUMN source text;
-```
+That's it for source. Column exists, write exists, this is the missing leg.
 
-No RLS / grant changes needed — `candidates` already has them.
+### Fix 2 — Make Assigned To save errors visible
+The save path already toasts "Saved" on success and throws on error, but errors only surface if `OverviewTab` catches them. Quick sanity check: OverviewTab does `catch (e) { toast.error(...) }`, so failures should be visible. No code change here unless after Fix 1 you still see Assigned To going blank — then we'll add a console log to confirm whether it's a save failure vs. a deliberate "Unassigned" pick.
 
-**Code change (one line in `CandidatePipeline.tsx > handleSaveProfile`):**
+### Verification (after you approve)
+1. Open Allison → Overview, set Source = "Referral" and Assigned To = a team member, hit save.
+2. Confirm "Saved" toast appears for each.
+3. I'll run `SELECT source, assigned_to FROM candidates WHERE first_name='Allison'` to confirm DB values.
+4. You refresh the page. Both should now persist on screen.
 
-Remove the special-case that skips `source` for the DB write. Source will now save into `candidates.source` like every other field.
+### Brett — still parked
+Part 3 (sync edits back to `teacher_prospects`) stays parked until Brett picks (a) / (b) / (c). Not touching that in this loop.
 
-Effort: ~5 minutes. No risk to existing rows (column is nullable).
+## Files touched
+- `src/pages/CandidatePipeline.tsx` (2 one-line changes)
 
----
-
-## Part 2 — Message to Brett (paste into Slack / email)
-
-> Hey Brett — quick heads-up and one product question.
->
-> **What I changed:** On the Candidate Pipeline detail panel → Overview tab, the contact fields (Name, Email, Phone, Location, Assigned To, Source) used to be read-only. I made them click-to-edit so Sam and the team can fix typos and update details without leaving the page. Edits save straight to the database, optimistic UI with rollback on error.
->
-> **The question — and I'd like your call before I build further:**
->
-> In production, a person travels through three screens before landing in the Pipeline:
->
-> 1. **Teacher Search** — we discover them (`teacher_prospects` table). Original email, school, city.
-> 2. **Email Outreach** — we cold-email them. Same `teacher_prospects` row + an `outreach_queue` entry.
-> 3. **Candidate Pipeline** — when they reply positively, Reply Triage creates a **new row** in `candidates` and links back to the teacher via `prospect_id`. So the candidate is a *copy*, not the same row.
->
-> Right now if Sam edits the candidate's email or phone in the Pipeline, only the candidate row updates. The Teacher Search and Email Outreach screens still show the original values. Three options:
->
-> - **(a) Keep them separate** *(current behavior)* — Teacher record is the cold-outreach source of truth; Candidate record is Sam's working copy. Cleanest, but if Sam corrects a typo it doesn't fix it on the teacher side.
-> - **(b) Sync back to `teacher_prospects`** — One person, one source of truth. Edit in Pipeline → also updates Teacher Search. Risk: could overwrite a verified email with a worse one.
-> - **(c) Sync back only for specific fields** — e.g. phone and city sync back, but email stays isolated (since email drives deliverability in Smartlead).
->
-> My recommendation is **(c)** — but it's your call. Once you decide I'll wire it in (~30 min of work either way).
-
----
-
-## Part 3 — What I'll do after Brett answers
-
-- **If (a):** nothing further. Current behavior is correct.
-- **If (b):** in `handleSaveProfile`, after the `candidates` update succeeds, also update `teacher_prospects` (matched by `candidates.prospect_id`) with the same patch. Skip if `prospect_id` is null (candidate was added manually, not from outreach).
-- **If (c):** same as (b) but filter the patch to allowed fields only (e.g. `phone`, `city`, `state` — not `email`).
-
----
-
-## Quick answer to your "is Candidate Pipeline dummy data?" question
-
-**No.** The page reads `supabase.from("candidates").select(...)` — it's real DB rows. Allison Wood is in your database right now. The data *looks* sparse because only a handful of test candidates have been created (some manually, some via Email Outreach → Reply Triage). It will fill up naturally as Sam works the funnel.
+No migration, no schema change, no other files.

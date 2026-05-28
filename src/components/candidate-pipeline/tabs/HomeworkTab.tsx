@@ -51,6 +51,30 @@ export function HomeworkTab({ candidate, onTrialCloseChange }: Props) {
         console.error("Failed to load checklist", error);
         toast.error("Couldn't load checklist", { description: error.message });
         setItems([]);
+        setLoading(false);
+        return;
+      }
+
+      // Lazy-seed from STAGE_HOMEWORK the first time a stage is opened with zero rows.
+      if ((data?.length ?? 0) === 0 && homework.length > 0) {
+        const seedRows = homework.map((label) => ({
+          candidate_id: dbId,
+          stage: candidate.stage as any,
+          label,
+          is_completed: false,
+        }));
+        const { data: inserted, error: insertErr } = await supabase
+          .from("candidate_checklist_items")
+          .insert(seedRows)
+          .select("id, label, is_completed, completed_at, completed_by");
+        if (cancelled) return;
+        if (insertErr) {
+          console.error("Failed to seed checklist", insertErr);
+          toast.error("Couldn't seed checklist", { description: insertErr.message });
+          setItems([]);
+        } else {
+          setItems(inserted ?? []);
+        }
       } else {
         setItems(data ?? []);
       }
@@ -59,12 +83,11 @@ export function HomeworkTab({ candidate, onTrialCloseChange }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [dbId, candidate.stage]);
+  }, [dbId, candidate.stage, homework]);
 
   const handleToggle = async (item: ChecklistItem, checked: boolean) => {
     if (!dbId) return;
     const previous = items;
-    // Optimistic
     setItems((prev) =>
       prev.map((i) =>
         i.id === item.id
@@ -95,7 +118,7 @@ export function HomeworkTab({ candidate, onTrialCloseChange }: Props) {
     }
   };
 
-  const showDbChecklist = candidate.stage === "confirmation" && !!dbId;
+  const showDbChecklist = !!dbId;
 
   return (
     <div className="space-y-4 pt-4">

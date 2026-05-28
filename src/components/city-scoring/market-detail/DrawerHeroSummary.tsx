@@ -76,8 +76,9 @@ export function DrawerHeroSummary({ rawComposite, tier, categoryScores }: Props)
             <span className="text-[12px] text-[#526078]">/ 100</span>
           </div>
           <p className="mt-1 text-[10.5px] text-[#8794ab]">
-            Calibrated school-grade scale · raw WCI {Math.round(rawComposite)}
+            Display score 0–100 · math score {Math.round(rawComposite)}
           </p>
+
         </div>
         <div
           className="rounded-xl px-3 py-2 text-center"

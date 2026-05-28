@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Lock, BookOpen, Plus, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { StageDocumentsSection } from "../StageDocumentsSection";
 
 
 interface Props {
@@ -187,6 +188,10 @@ export function HomeworkTab({ candidate, onTrialCloseChange }: Props) {
           </ul>
         )}
       </div>
+
+      {dbId && <StageDocumentsSection candidateDbId={dbId} stage={candidate.stage} />}
+
+
 
       {showFddLock && (
         <div

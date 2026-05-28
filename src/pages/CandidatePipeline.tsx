@@ -650,6 +650,25 @@ const CandidatePipeline = () => {
           ))}
         </div>
 
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[11px] font-medium" style={{ color: "#6c757d" }}>Days in stage:</span>
+          {([
+            { id: "all" as const, label: "All" },
+            { id: "fresh" as const, label: "Fresh (≤3)" },
+            { id: "watch" as const, label: "Watch (4–7)" },
+            { id: "stalled" as const, label: "Stalled (8+)" },
+          ]).map((d) => (
+            <button
+              key={d.id}
+              onClick={() => setDaysFilter(d.id)}
+              className={chipBase}
+              style={daysFilter === d.id ? chipActive : chipInactive}
+            >
+              {d.label}
+            </button>
+          ))}
+
+
         {filtersActive && (
           <button
             onClick={clearFilters}

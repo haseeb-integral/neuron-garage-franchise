@@ -12,13 +12,17 @@ import { CommitteeVotesTab } from "./tabs/CommitteeVotesTab";
 import { SelectionCommittee } from "./SelectionCommittee";
 import { CandidateAvatar } from "@/components/ui/CandidateAvatar";
 
+interface TeamMember { email: string; firstName: string; }
+
 interface Props {
   candidate: Candidate | null;
   onClose: () => void;
   onUpdate: (c: Candidate) => void;
+  onSaveProfile?: (patch: Record<string, any>, localPatch: Partial<Candidate>) => Promise<void> | void;
+  teamMembers?: TeamMember[];
 }
 
-export function CandidateDetailPanel({ candidate, onClose, onUpdate }: Props) {
+export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfile, teamMembers }: Props) {
   if (!candidate) return null;
 
   const handleScoreChange = (key: keyof QualificationScores, value: number) => {
@@ -90,7 +94,7 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate }: Props) {
           </div>
 
           <TabsContent value="overview">
-            <OverviewTab candidate={candidate} />
+            <OverviewTab candidate={candidate} teamMembers={teamMembers} onSave={onSaveProfile} />
           </TabsContent>
           <TabsContent value="lead-sheet">
             <LeadSheetTab candidate={candidate} />

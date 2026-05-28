@@ -49,6 +49,13 @@ export interface TrialClose {
   assignedHomework: boolean;
 }
 
+export interface CommitteeVotes {
+  Kaylie: "approve" | "decline" | null;
+  Sam: "approve" | "decline" | null;
+  Skylar: "approve" | "decline" | null;
+}
+
+
 export interface Candidate {
   id: number;
   name: string;

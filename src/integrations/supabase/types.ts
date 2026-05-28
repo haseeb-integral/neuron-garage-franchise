@@ -421,6 +421,7 @@ export type Database = {
           other_email: string | null
           other_opportunities: string | null
           partner_email: string | null
+          partner_involved: boolean
           partner_name: string | null
           partner_phone: string | null
           phone: string | null
@@ -450,6 +451,7 @@ export type Database = {
           other_email?: string | null
           other_opportunities?: string | null
           partner_email?: string | null
+          partner_involved?: boolean
           partner_name?: string | null
           partner_phone?: string | null
           phone?: string | null
@@ -479,6 +481,7 @@ export type Database = {
           other_email?: string | null
           other_opportunities?: string | null
           partner_email?: string | null
+          partner_involved?: boolean
           partner_name?: string | null
           partner_phone?: string | null
           phone?: string | null

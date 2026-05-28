@@ -85,13 +85,7 @@ export interface Candidate {
   votes: CommitteeVotes;
 }
 
-  /** Optional candidate portrait URL. When set, CandidateAvatar renders the image; otherwise initials. */
-  photoUrl?: string;
-  qualificationScores: QualificationScores;
-  activity: ActivityEntry[];
-  trialClose: TrialClose;
-  votes: CommitteeVotes;
-}
+
 
 const REGISTRATION_STATES = ["NY", "CA", "IL", "MD", "MN", "ND", "RI", "SD", "VA", "WA", "WI", "HI", "IN", "MI"];
 export const stateRequiresRegistration = (state: string) => REGISTRATION_STATES.includes(state);

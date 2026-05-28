@@ -166,7 +166,13 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
               className="text-sm font-medium text-left w-full flex items-center gap-1.5 hover:underline disabled:no-underline disabled:cursor-default"
               title={readOnly ? "" : "Click to edit"}
             >
-              <span className="truncate">{displayValue || <span style={{ color: "#adb5bd" }}>—</span>}</span>
+              <span className="truncate">
+                {displayValue || (
+                  <span style={{ color: "#adb5bd" }}>
+                    {key === "otherEmail" ? "Add alternate email..." : "—"}
+                  </span>
+                )}
+              </span>
               {!readOnly && (
                 <Pencil size={11} className="opacity-0 group-hover:opacity-60 flex-shrink-0" style={{ color: "#6c757d" }} />
               )}

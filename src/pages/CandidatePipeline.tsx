@@ -862,7 +862,7 @@ const CandidatePipeline = () => {
             </button>
           </div>
           <div className="hidden md:flex items-center gap-3 ml-4 pl-4 text-[11px]" style={{ color: "#6c757d", borderLeft: "1px solid #dee2e6" }}>
-            <span className="font-semibold uppercase tracking-wider text-[10px]">Card edge:</span>
+            <span className="font-semibold uppercase tracking-wider text-[10px]">Days in stage:</span>
             <span className="flex items-center gap-1.5">
               <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: "#20c997" }} />
               Fresh

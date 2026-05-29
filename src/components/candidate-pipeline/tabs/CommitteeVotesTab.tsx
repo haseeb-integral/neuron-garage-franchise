@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users } from "lucide-react";
+import { Users, UserPlus } from "lucide-react";
+import { isEnabled } from "@/lib/featureFlags";
 
 interface Props {
   candidate: Candidate;
@@ -19,6 +20,7 @@ type VoteValue = "approve" | "needs_info" | "reject";
 interface VoteRow {
   id: string;
   voter: string;
+  voter_name: string | null;
   vote: VoteValue;
   comment: string | null;
   recorded_by: string | null;

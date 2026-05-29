@@ -1,5 +1,7 @@
 # Tier 2 Backlog
 
+> **This file is SEPARATE from Sam's V1.0 punch list.** Sam's 4-item V1.0 punch list (Desired Markets rename / number formatting / Guardrails docs / manual committee votes) is **100% shipped and signed off**. This Tier 2 file tracks the broader backlog Haseeb + Lovable derived from Sam's original full punchlist. Items **#9 (City notes)** and **#12 (Proof-of-send)** remain OPEN as future work — do not delete this file until they are addressed or explicitly dropped.
+
 Source: Sam's punchlist, locked 2026-05-26.
 Last updated: 2026-05-29 by Lovable.
 
@@ -25,14 +27,14 @@ Last updated: 2026-05-29 by Lovable.
 4 → 2 → 3 → 5 → 8 → 1 → 7 → 6 → 13   (all done)
 ```
 
-## Riskier — Brett Only (new tables, RLS, Storage, auth rewrites) — STILL OPEN
+## Riskier — Brett Only (new tables, RLS, Storage, auth rewrites)
 
-| # | Item | Risk Level | Why Risky |
-|---|------|-----------|-----------|
-| 9 | **City notes table** | Medium-High | New public-schema table + RLS + GRANTs |
-| 10 | **Selection Committee voting without member accounts** | High | Rewrites auth/RLS logic |
-| 11 | **Candidate file uploads** | Highest | New Storage bucket + new table + RLS + upload UI — biggest blast radius |
-| 12 | **Proof-of-send screenshot upload** | High | Depends on #11's Storage bucket |
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| 9 | **City notes table** | ❌ Open | New public-schema table + RLS + GRANTs |
+| 10 | **Selection Committee voting without member accounts** | ✅ Shipped 2026-05-29 | Manual committee vote entry (Change #4), confirmed pass by Haseeb |
+| 11 | **Candidate file uploads** | ✅ Shipped | FF_DOCUMENTS / FF_STEP2_UPLOADS / FF_STEP4_UPLOADS all enabled, Storage bucket `candidate_documents` live |
+| 12 | **Proof-of-send screenshot upload** | ❌ Open | Depends on #11's Storage bucket (now available) |
 
 ## Tier 3 Items (Stay with Brett — not in this backlog)
 

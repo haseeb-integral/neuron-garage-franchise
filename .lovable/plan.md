@@ -2,7 +2,7 @@
 
 **Goal:** bring `/candidate-pipeline` visually in line with the redesigned City Search page (white surfaces, deep ink text, primary blue `#174be8`, light-blue borders `#cfe0ff`, soft surface tint `#f7faff`) without touching any business logic.
 
-**Status as of 2026-05-29:** Phase 1 shipped and visually verified live by Haseeb + agent. Phases 2 and 3 are not started. Brett may take over this chat.
+**Status as of 2026-05-29:** Phase 1 shipped and visually verified live by Haseeb + agent. Phases 2 and 3 NOT started (re-audited 2026-05-29 — `KanbanBoard.tsx`, `KanbanColumn.tsx`, `CompositeScoreBadge.tsx`, and pipeline tabs still carry old palette hex `#003c7e` / `#6c757d` / `#dee2e6`). Brett may take over this chat.
 
 ---
 

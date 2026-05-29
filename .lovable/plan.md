@@ -1,0 +1,1 @@
+Delete `.lovable/sam-punchlist-extras-pending.md` — all items confirmed shipped.

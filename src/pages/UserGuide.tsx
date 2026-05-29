@@ -556,7 +556,6 @@ const UserGuide = () => {
       {/* JOURNEY STRIP */}
       <section
 
-      <section
         className="mb-14 rounded-[24px] p-7 md:p-9"
         style={{ background: SOFT, border: "1px solid #eaeefb" }}
       >

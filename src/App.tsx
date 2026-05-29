@@ -30,6 +30,7 @@ const ObservabilitySpec = lazy(() => import("./pages/ObservabilitySpec"));
 const SystemOverview = lazy(() => import("./pages/SystemOverview"));
 const PromptsAndAiWorkflows = lazy(() => import("./pages/PromptsAndAiWorkflows"));
 const ApisAndDataSources = lazy(() => import("./pages/ApisAndDataSources"));
+const Guardrails = lazy(() => import("./pages/Guardrails"));
 
 
 const TeamMembers = lazy(() => import("./pages/TeamMembers"));
@@ -77,6 +78,7 @@ const App = () => (
                 <Route path="/architecture" element={<SystemOverview />} />
                 <Route path="/docs/prompts-and-ai-workflows" element={<PromptsAndAiWorkflows />} />
                 <Route path="/docs/apis" element={<ApisAndDataSources />} />
+                <Route path="/docs/guardrails" element={<Guardrails />} />
 
 
                 <Route path="/db-health" element={<Observability />} />

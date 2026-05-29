@@ -299,7 +299,15 @@ export function CommitteeVotesTab({ candidate }: Props) {
               <li key={v.id} className="border-t pt-3 first:border-0 first:pt-0" style={{ borderColor: "#e9ecef" }}>
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-sm font-medium">
-                    {displayName(v.voter)}
+                    {displayName(v)}
+                    {!v.recorded_by && v.voter_name && (
+                      <span
+                        className="ml-2 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded"
+                        style={{ backgroundColor: "#eef2f7", color: "#526078" }}
+                      >
+                        Manual
+                      </span>
+                    )}
                     {v.recorded_by && (
                       <span
                         className="ml-2 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded"

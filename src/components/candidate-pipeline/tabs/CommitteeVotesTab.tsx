@@ -287,6 +287,89 @@ export function CommitteeVotesTab({ candidate }: Props) {
         )}
       </div>
 
+      {manualVotesOn && dbId && myEmail && (
+        <div className="bg-white rounded-lg p-4 space-y-3" style={{ border: "1px solid #dee2e6" }}>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <UserPlus size={16} style={{ color: "#003c7e" }} />
+              <h4 className="font-semibold text-sm" style={{ color: "#003c7e" }}>
+                Record a committee member's vote (no account needed)
+              </h4>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setManualOpen((o) => !o)}
+            >
+              {manualOpen ? "Hide" : "Open"}
+            </Button>
+          </div>
+          {manualOpen && (
+            <>
+              <p className="text-[11px]" style={{ color: "#6c757d" }}>
+                Use this for committee members like Kaylie, Sam, or Skylar who don't have
+                a login. Their vote will be tagged "Manual" and you'll be shown as the recorder.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="manual-name" className="text-xs">Name</Label>
+                  <Input
+                    id="manual-name"
+                    placeholder="e.g. Kaylie Smith"
+                    value={manualName}
+                    onChange={(e) => setManualName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="manual-email" className="text-xs">Email (optional)</Label>
+                  <Input
+                    id="manual-email"
+                    type="email"
+                    placeholder="kaylie@example.com"
+                    value={manualEmail}
+                    onChange={(e) => setManualEmail(e.target.value)}
+                  />
+                  {manualEmail && !manualEmailValid && (
+                    <p className="text-[11px]" style={{ color: "#ff4438" }}>
+                      Enter a valid email or leave blank.
+                    </p>
+                  )}
+                </div>
+              </div>
+              <Select value={manualVote} onValueChange={(v) => setManualVote(v as VoteValue)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select vote" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="approve">Approve</SelectItem>
+                  <SelectItem value="needs_info">Needs more info</SelectItem>
+                  <SelectItem value="reject">Reject</SelectItem>
+                </SelectContent>
+              </Select>
+              <Textarea
+                placeholder="Optional comment"
+                value={manualComment}
+                onChange={(e) => setManualComment(e.target.value)}
+                rows={3}
+              />
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleManualSubmit}
+                  disabled={!manualReady || manualSubmitting}
+                  className="text-white"
+                  style={{ backgroundColor: "#003c7e" }}
+                >
+                  {manualSubmitting ? "Saving…" : "Record Vote"}
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+
+
       <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #dee2e6" }}>
         <h4 className="font-semibold text-sm mb-3" style={{ color: "#003c7e" }}>Committee votes</h4>
         {loading ? (

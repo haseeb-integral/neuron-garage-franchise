@@ -8,6 +8,7 @@ export const FEATURE_FLAGS = {
   FF_FDD_GATE: true,         // T3-06 16-day FDD hard-block (Phase C2)
 
   FF_SCORE_OVERRIDE: true,   // T3-04 manual score override (Phase D)
+  FF_MANUAL_VOTES: true,     // T2-03 record committee votes for members without accounts
 } as const;
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;

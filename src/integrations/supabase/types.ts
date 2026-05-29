@@ -543,6 +543,7 @@ export type Database = {
           updated_at: string
           vote: Database["public"]["Enums"]["candidate_vote_value"]
           voter: string
+          voter_name: string | null
         }
         Insert: {
           candidate_id: string
@@ -553,6 +554,7 @@ export type Database = {
           updated_at?: string
           vote: Database["public"]["Enums"]["candidate_vote_value"]
           voter: string
+          voter_name?: string | null
         }
         Update: {
           candidate_id?: string
@@ -563,6 +565,7 @@ export type Database = {
           updated_at?: string
           vote?: Database["public"]["Enums"]["candidate_vote_value"]
           voter?: string
+          voter_name?: string | null
         }
         Relationships: [
           {

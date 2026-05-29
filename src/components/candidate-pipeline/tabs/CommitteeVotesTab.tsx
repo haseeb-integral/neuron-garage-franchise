@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users } from "lucide-react";
+import { Users, UserPlus } from "lucide-react";
+import { isEnabled } from "@/lib/featureFlags";
 
 interface Props {
   candidate: Candidate;
@@ -19,6 +20,7 @@ type VoteValue = "approve" | "needs_info" | "reject";
 interface VoteRow {
   id: string;
   voter: string;
+  voter_name: string | null;
   vote: VoteValue;
   comment: string | null;
   recorded_by: string | null;
@@ -41,6 +43,7 @@ const VOTE_COLOR: Record<VoteValue, string> = {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function CommitteeVotesTab({ candidate }: Props) {
+  const manualVotesOn = isEnabled("FF_MANUAL_VOTES");
   const dbId = (candidate as any).dbId as string | undefined;
   const [votes, setVotes] = useState<VoteRow[]>([]);
   const [profilesByEmail, setProfilesByEmail] = useState<Record<string, string>>({});
@@ -51,6 +54,14 @@ export function CommitteeVotesTab({ candidate }: Props) {
   const [comment, setComment] = useState("");
   const [isProxy, setIsProxy] = useState(false);
   const [proxyEmail, setProxyEmail] = useState("");
+
+  // Manual committee-member vote (no account required).
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualName, setManualName] = useState("");
+  const [manualEmail, setManualEmail] = useState("");
+  const [manualVote, setManualVote] = useState<VoteValue | "">("");
+  const [manualComment, setManualComment] = useState("");
+  const [manualSubmitting, setManualSubmitting] = useState(false);
 
   const load = async () => {
     if (!dbId) return;
@@ -137,13 +148,62 @@ export function CommitteeVotesTab({ candidate }: Props) {
     load();
   };
 
+  const slugify = (s: string) =>
+    s.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
+  const manualNameTrimmed = manualName.trim();
+  const manualEmailTrimmed = manualEmail.trim().toLowerCase();
+  const manualEmailValid = manualEmailTrimmed === "" || EMAIL_RE.test(manualEmailTrimmed);
+  const manualReady =
+    !!manualNameTrimmed && !!manualVote && manualEmailValid && !!dbId && !!myEmail;
+
+  const handleManualSubmit = async () => {
+    if (!manualReady || !dbId || !myEmail || !manualVote) return;
+    // Voter key: email when provided, else a stable name-slug. Allows distinct
+    // members with the same first name as long as either email or slug differs.
+    const voterKey = manualEmailTrimmed || `manual:${slugify(manualNameTrimmed)}`;
+    if (voterKey === myEmail.toLowerCase()) {
+      toast.error("Use your own login to record your vote, not the manual form.");
+      return;
+    }
+    setManualSubmitting(true);
+    const { error } = await supabase
+      .from("candidate_votes")
+      .upsert(
+        {
+          candidate_id: dbId,
+          voter: voterKey,
+          voter_name: manualNameTrimmed,
+          vote: manualVote,
+          comment: manualComment.trim() || null,
+          recorded_by: myEmail,
+        },
+        { onConflict: "candidate_id,voter" },
+      );
+    setManualSubmitting(false);
+    if (error) {
+      toast.error("Couldn't save vote", { description: error.message });
+      return;
+    }
+    toast.success(`Vote recorded for ${manualNameTrimmed}`);
+    setManualName("");
+    setManualEmail("");
+    setManualVote("");
+    setManualComment("");
+    setManualOpen(false);
+    load();
+  };
+
   const counts = {
     approve: votes.filter((v) => v.vote === "approve").length,
     needs_info: votes.filter((v) => v.vote === "needs_info").length,
     reject: votes.filter((v) => v.vote === "reject").length,
   };
 
-  const displayName = (email: string) => profilesByEmail[email] || email;
+  const displayName = (v: { voter: string; voter_name?: string | null }) =>
+    v.voter_name || profilesByEmail[v.voter] || v.voter;
+  const displayEmail = (email: string) => profilesByEmail[email] || email;
+
 
   return (
     <div className="space-y-4 pt-4">
@@ -227,6 +287,89 @@ export function CommitteeVotesTab({ candidate }: Props) {
         )}
       </div>
 
+      {manualVotesOn && dbId && myEmail && (
+        <div className="bg-white rounded-lg p-4 space-y-3" style={{ border: "1px solid #dee2e6" }}>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <UserPlus size={16} style={{ color: "#003c7e" }} />
+              <h4 className="font-semibold text-sm" style={{ color: "#003c7e" }}>
+                Record a committee member's vote (no account needed)
+              </h4>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setManualOpen((o) => !o)}
+            >
+              {manualOpen ? "Hide" : "Open"}
+            </Button>
+          </div>
+          {manualOpen && (
+            <>
+              <p className="text-[11px]" style={{ color: "#6c757d" }}>
+                Use this for committee members like Kaylie, Sam, or Skylar who don't have
+                a login. Their vote will be tagged "Manual" and you'll be shown as the recorder.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="manual-name" className="text-xs">Name</Label>
+                  <Input
+                    id="manual-name"
+                    placeholder="e.g. Kaylie Smith"
+                    value={manualName}
+                    onChange={(e) => setManualName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="manual-email" className="text-xs">Email (optional)</Label>
+                  <Input
+                    id="manual-email"
+                    type="email"
+                    placeholder="kaylie@example.com"
+                    value={manualEmail}
+                    onChange={(e) => setManualEmail(e.target.value)}
+                  />
+                  {manualEmail && !manualEmailValid && (
+                    <p className="text-[11px]" style={{ color: "#ff4438" }}>
+                      Enter a valid email or leave blank.
+                    </p>
+                  )}
+                </div>
+              </div>
+              <Select value={manualVote} onValueChange={(v) => setManualVote(v as VoteValue)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select vote" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="approve">Approve</SelectItem>
+                  <SelectItem value="needs_info">Needs more info</SelectItem>
+                  <SelectItem value="reject">Reject</SelectItem>
+                </SelectContent>
+              </Select>
+              <Textarea
+                placeholder="Optional comment"
+                value={manualComment}
+                onChange={(e) => setManualComment(e.target.value)}
+                rows={3}
+              />
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleManualSubmit}
+                  disabled={!manualReady || manualSubmitting}
+                  className="text-white"
+                  style={{ backgroundColor: "#003c7e" }}
+                >
+                  {manualSubmitting ? "Saving…" : "Record Vote"}
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+
+
       <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #dee2e6" }}>
         <h4 className="font-semibold text-sm mb-3" style={{ color: "#003c7e" }}>Committee votes</h4>
         {loading ? (
@@ -239,7 +382,15 @@ export function CommitteeVotesTab({ candidate }: Props) {
               <li key={v.id} className="border-t pt-3 first:border-0 first:pt-0" style={{ borderColor: "#e9ecef" }}>
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-sm font-medium">
-                    {displayName(v.voter)}
+                    {displayName(v)}
+                    {!v.recorded_by && v.voter_name && (
+                      <span
+                        className="ml-2 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded"
+                        style={{ backgroundColor: "#eef2f7", color: "#526078" }}
+                      >
+                        Manual
+                      </span>
+                    )}
                     {v.recorded_by && (
                       <span
                         className="ml-2 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded"
@@ -262,7 +413,7 @@ export function CommitteeVotesTab({ candidate }: Props) {
                 <div className="text-[11px] mt-1" style={{ color: "#adb5bd" }}>
                   {new Date(v.updated_at).toLocaleString()}
                   {v.recorded_by && (
-                    <span> · recorded by {displayName(v.recorded_by)}</span>
+                    <span> · recorded by {displayEmail(v.recorded_by)}</span>
                   )}
                 </div>
               </li>

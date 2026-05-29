@@ -154,7 +154,7 @@ function AddSmtpModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4" onClick={onClose}>
       <div className="w-full max-w-md rounded-xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-[#edf2f8] p-4">
           <h3 className="text-base font-black">Add SMTP Account</h3>

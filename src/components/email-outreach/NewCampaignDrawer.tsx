@@ -291,7 +291,7 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/20" onClick={onClose}>
       <aside className="h-full w-full max-w-[560px] overflow-y-auto bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#edf2f8] bg-white px-5 py-4">
           <div>

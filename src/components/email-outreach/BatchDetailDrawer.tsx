@@ -104,7 +104,7 @@ export function BatchDetailDrawer({
   const slUrl = batch.campaign_id ? `https://app.smartlead.ai/app/email-campaign/${batch.campaign_id}/analytics` : null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/35" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/20" onClick={onClose}>
       <aside className="h-full w-full max-w-[820px] overflow-y-auto border-l border-[#e7edf5] bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between border-b border-[#edf2f8] px-5 py-4">
           <div className="min-w-0">

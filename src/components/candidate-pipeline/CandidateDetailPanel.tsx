@@ -150,9 +150,6 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
           )}
         </Tabs>
 
-        {candidate.stage === "immersion" && (
-          <SelectionCommittee candidate={candidate} onVote={handleVote} />
-        )}
       </SheetContent>
     </Sheet>
   );

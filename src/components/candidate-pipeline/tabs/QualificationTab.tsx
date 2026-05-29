@@ -81,10 +81,15 @@ export function QualificationTab({ candidate, onScoreChange, onScoresReplace }: 
         }
         setOverrides(ovs);
         setComposite(eff.composite);
-        // Sync effective scores into in-memory candidate so other tabs/badge see them
-        (Object.keys(eff.effective) as (keyof QualificationScores)[]).forEach((k) => {
-          if (candidate.qualificationScores[k] !== eff.effective[k]) onScoreChange(k, eff.effective[k]);
-        });
+        // Sync effective scores into in-memory candidate so other tabs/badge see them — batched in one update
+        const needsSync = (Object.keys(eff.effective) as (keyof QualificationScores)[])
+          .some((k) => candidate.qualificationScores[k] !== eff.effective[k]);
+        if (needsSync) {
+          if (onScoresReplace) onScoresReplace(eff.effective);
+          else (Object.keys(eff.effective) as (keyof QualificationScores)[]).forEach((k) => {
+            if (candidate.qualificationScores[k] !== eff.effective[k]) onScoreChange(k, eff.effective[k]);
+          });
+        }
       } else {
         setScores(candidate.qualificationScores);
         setOverrides({});

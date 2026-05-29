@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { STAGES, Candidate, StageId } from "@/data/pipelineData";
 import { KanbanColumn } from "./KanbanColumn";
 
@@ -22,6 +22,7 @@ export function KanbanBoard({
   compact,
 }: Props) {
   const [draggingId, setDraggingId] = useState<number | null>(null);
+  const [activeStage, setActiveStage] = useState<StageId | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const colRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -36,6 +37,8 @@ export function KanbanBoard({
     const scroller = scrollRef.current;
     if (!el || !scroller) return;
 
+    setActiveStage(stageId);
+
     el.scrollIntoView({
       behavior: "smooth",
       inline: "start",
@@ -49,6 +52,28 @@ export function KanbanBoard({
       scroller.scrollTo({ left, behavior: "smooth" });
     });
   };
+
+  // Track which stage column is most visible inside the horizontal scroller
+  useEffect(() => {
+    const scroller = scrollRef.current;
+    if (!scroller) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible) {
+          const stageId = (visible.target as HTMLElement).dataset.stageId as StageId | undefined;
+          if (stageId) setActiveStage(stageId);
+        }
+      },
+      { root: scroller, threshold: [0.5, 0.75, 1] }
+    );
+
+    Object.values(colRefs.current).forEach((el) => el && observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
 
   const stageColorMap: Record<string, string> = {
     new_lead: "#6f42c1",
@@ -74,26 +99,45 @@ export function KanbanBoard({
         {STAGES.map((s) => {
           const count = candidates.filter((c) => c.stage === s.id).length;
           const accent = stageColorMap[s.id] ?? "#003c7e";
+          const isActive = activeStage === s.id;
           return (
             <button
               key={s.id}
               onClick={() => scrollToStage(s.id)}
-              className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-white hover:shadow-sm transition-all"
-              style={{ border: "1px solid transparent" }}
-              onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#dee2e6")}
-              onMouseLeave={(e) => (e.currentTarget.style.borderColor = "transparent")}
+              className="flex items-center gap-1.5 px-2 py-1 rounded-md transition-all"
+              style={{
+                border: "1px solid transparent",
+                backgroundColor: isActive ? "#174be8" : "transparent",
+                boxShadow: isActive ? "0 1px 2px rgba(23,75,232,0.25)" : undefined,
+              }}
+              onMouseEnter={(e) => {
+                if (isActive) return;
+                e.currentTarget.style.borderColor = "#dee2e6";
+                e.currentTarget.style.backgroundColor = "#ffffff";
+              }}
+              onMouseLeave={(e) => {
+                if (isActive) return;
+                e.currentTarget.style.borderColor = "transparent";
+                e.currentTarget.style.backgroundColor = "transparent";
+              }}
               title={s.label}
             >
               <span
                 className="w-2 h-2 rounded-full"
                 style={{ backgroundColor: accent }}
               />
-              <span className="text-[11px] font-semibold" style={{ color: "#495057" }}>
+              <span
+                className="text-[11px] font-semibold"
+                style={{ color: isActive ? "#ffffff" : "#495057" }}
+              >
                 {s.short}
               </span>
               <span
                 className="text-[10px] font-bold px-1.5 rounded-full"
-                style={{ color: "#6c757d", backgroundColor: "#e9ecef" }}
+                style={{
+                  color: isActive ? "#ffffff" : "#6c757d",
+                  backgroundColor: isActive ? "rgba(255,255,255,0.22)" : "#e9ecef",
+                }}
               >
                 {count}
               </span>
@@ -112,6 +156,7 @@ export function KanbanBoard({
             <div
               key={stage.id}
               ref={(el) => (colRefs.current[stage.id] = el)}
+              data-stage-id={stage.id}
               className="flex-shrink-0"
             >
               <KanbanColumn

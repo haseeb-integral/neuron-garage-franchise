@@ -20,6 +20,7 @@ import { AdjustScoresModal } from "../AdjustScoresModal";
 interface Props {
   candidate: Candidate;
   onScoreChange: (key: keyof QualificationScores, value: number) => void;
+  onScoresReplace?: (scores: QualificationScores) => void;
 }
 
 const CRITERIA: { key: keyof QualificationScores; label: string; hint?: string }[] = [

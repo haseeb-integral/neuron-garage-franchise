@@ -231,7 +231,14 @@ const CityScoring = () => {
     // ring + slider position change is enough to communicate cause→effect.
     setWeights(target);
     setAppliedWeights(target);
-  }, [scoringModel, appliedWeights, setWeights, setAppliedWeights, setScoringModel]);
+    // Presets are a "one-click recipe" — they must also wipe any sub-metric
+    // overrides so a stale tweak from a past session can't silently skew the
+    // composite. Without this, clicking Balanced still leaves e.g. Opportunity's
+    // sub-weights pumped toward population → big cities float to the top and
+    // the yellow "re-ranked with your weights" banner stays on.
+    resetSubWeights();
+  }, [scoringModel, appliedWeights, setWeights, setAppliedWeights, setScoringModel, resetSubWeights, clearActiveSavedSearch]);
+
 
 
   // URL ⇄ preset sync. On mount: ?preset=Quick+Launch (or hyphenated) applies

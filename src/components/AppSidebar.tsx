@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Home, Map, Users, Kanban, ChevronLeft, ChevronRight, ChevronDown, Mail, FileText, BookOpen, Send, MailOpen, BarChart3, Calculator, Gauge, LibraryBig, Activity, FileCode2, KeyRound, Network, Sparkles, Plug, ShieldCheck, Key, Wand2, PieChart, BookMarked } from "lucide-react";
+import { Home, Map, Users, Kanban, ChevronLeft, ChevronRight, ChevronDown, Mail, FileText, BookOpen, Send, MailOpen, BarChart3, Calculator, Gauge, LibraryBig, Activity, FileCode2, KeyRound, Network, Sparkles, Plug, ShieldCheck, Key, Wand2, PieChart, BookMarked, Lock, MessageSquareCode } from "lucide-react";
 
 import { NavLink, useLocation } from "react-router-dom";
 import logo from "@/assets/neuron-garage-logo.png";

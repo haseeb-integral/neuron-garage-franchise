@@ -96,11 +96,11 @@ export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboardi
           </span>
           <div
             className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
-            style={{ backgroundColor: avatarColor(candidate.assignedTo) }}
+            style={{ backgroundColor: avatarColor(candidate.assignedTo ?? "?") }}
             title={ownerLabel}
             aria-label={ownerLabel}
           >
-            {candidate.assignedTo[0].toUpperCase()}
+            {ownerInitial}
           </div>
         </div>
       </div>

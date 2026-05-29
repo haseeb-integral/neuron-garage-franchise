@@ -100,10 +100,15 @@ export function QualificationTab({ candidate, onScoreChange }: Props) {
   const handleChange = (key: keyof QualificationScores, value: number) => {
     const next = { ...scores, [key]: value };
     setScores(next);
-    // Effective uses override when present, otherwise the new raw value
+    // Editing a star clears any override on that pillar — the new raw value becomes the truth.
+    const nextOverrides = { ...overrides };
+    const hadOverride = nextOverrides[key as PillarKey] !== undefined;
+    if (hadOverride) delete nextOverrides[key as PillarKey];
+    setOverrides(nextOverrides);
+
     const effective: QualificationScores = { ...next };
     for (const k of PILLAR_KEYS) {
-      if (overrides[k] !== undefined) effective[k] = overrides[k] as number;
+      if (nextOverrides[k] !== undefined) effective[k] = nextOverrides[k] as number;
     }
     const newComposite = computeComposite(effective);
     setComposite(newComposite);
@@ -113,20 +118,21 @@ export function QualificationTab({ candidate, onScoreChange }: Props) {
 
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(async () => {
+      const payload: Record<string, any> = {
+        candidate_id: dbId,
+        teaching_experience: next.teaching,
+        leadership: next.leadership,
+        financial_readiness: next.financial,
+        market_fit: next.marketFit,
+        culture_fit: next.cultureFit,
+        composite_score: newComposite,
+      };
+      if (hadOverride) {
+        payload[PILLAR_OVERRIDE_COL[key as PillarKey]] = null;
+      }
       const { error } = await supabase
         .from("candidate_qualification")
-        .upsert(
-          {
-            candidate_id: dbId,
-            teaching_experience: next.teaching,
-            leadership: next.leadership,
-            financial_readiness: next.financial,
-            market_fit: next.marketFit,
-            culture_fit: next.cultureFit,
-            composite_score: newComposite,
-          },
-          { onConflict: "candidate_id" }
-        );
+        .upsert(payload, { onConflict: "candidate_id" });
       if (error) {
         console.error("Failed to save qualification", error);
         toast.error("Couldn't save qualification", { description: error.message });
@@ -135,6 +141,7 @@ export function QualificationTab({ candidate, onScoreChange }: Props) {
       }
     }, 500);
   };
+
 
   const handleReset = async () => {
     if (!dbId || !isAdjusted) return;

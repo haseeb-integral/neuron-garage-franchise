@@ -10,7 +10,6 @@ import { StageHistoryTab } from "./tabs/StageHistoryTab";
 import { HomeworkTab } from "./tabs/HomeworkTab";
 import { CommitteeVotesTab } from "./tabs/CommitteeVotesTab";
 import { DocumentsTab } from "./tabs/DocumentsTab";
-import { SelectionCommittee } from "./SelectionCommittee";
 import { CandidateAvatar } from "@/components/ui/CandidateAvatar";
 import { Button } from "@/components/ui/button";
 import { FileDown } from "lucide-react";

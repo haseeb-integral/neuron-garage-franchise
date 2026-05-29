@@ -27,6 +27,7 @@ interface PageHeaderProps {
 export function PageHeader({ title, subtitle, action, hideJourneyBar = false, searchPlaceholder }: PageHeaderProps) {
   const navigate = useNavigate();
   const { profile, user, role, signOut } = useAuth();
+  const { unreadCount } = useNotifications();
   const displayName = profile?.full_name || profile?.email || user?.email || "Account";
   const initials = (displayName.match(/\b\w/g) || []).slice(0, 1).join("").toUpperCase() || "U";
 

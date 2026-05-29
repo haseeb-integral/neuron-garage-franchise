@@ -586,6 +586,7 @@ export type Database = {
           credit_check_completed_at: string | null
           current_stage: Database["public"]["Enums"]["candidate_stage"]
           email: string
+          email_source: string
           first_name: string
           fit_score: number
           fit_tag: string
@@ -616,6 +617,7 @@ export type Database = {
           credit_check_completed_at?: string | null
           current_stage?: Database["public"]["Enums"]["candidate_stage"]
           email: string
+          email_source?: string
           first_name: string
           fit_score?: number
           fit_tag?: string
@@ -646,6 +648,7 @@ export type Database = {
           credit_check_completed_at?: string | null
           current_stage?: Database["public"]["Enums"]["candidate_stage"]
           email?: string
+          email_source?: string
           first_name?: string
           fit_score?: number
           fit_tag?: string

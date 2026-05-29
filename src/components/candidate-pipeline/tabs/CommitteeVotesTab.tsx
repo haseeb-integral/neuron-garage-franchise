@@ -43,6 +43,7 @@ const VOTE_COLOR: Record<VoteValue, string> = {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function CommitteeVotesTab({ candidate }: Props) {
+  const manualVotesOn = isEnabled("FF_MANUAL_VOTES");
   const dbId = (candidate as any).dbId as string | undefined;
   const [votes, setVotes] = useState<VoteRow[]>([]);
   const [profilesByEmail, setProfilesByEmail] = useState<Record<string, string>>({});
@@ -53,6 +54,14 @@ export function CommitteeVotesTab({ candidate }: Props) {
   const [comment, setComment] = useState("");
   const [isProxy, setIsProxy] = useState(false);
   const [proxyEmail, setProxyEmail] = useState("");
+
+  // Manual committee-member vote (no account required).
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualName, setManualName] = useState("");
+  const [manualEmail, setManualEmail] = useState("");
+  const [manualVote, setManualVote] = useState<VoteValue | "">("");
+  const [manualComment, setManualComment] = useState("");
+  const [manualSubmitting, setManualSubmitting] = useState(false);
 
   const load = async () => {
     if (!dbId) return;

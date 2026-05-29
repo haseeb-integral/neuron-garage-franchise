@@ -21,7 +21,7 @@ interface Props {
   onSave?: (patch: Record<string, any>, localPatch: Partial<Candidate>) => Promise<void> | void;
 }
 
-type FieldKey = "name" | "otherEmail" | "phone" | "location" | "assignedTo" | "source";
+type FieldKey = "name" | "email" | "otherEmail" | "phone" | "location" | "assignedTo" | "source";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -54,6 +54,7 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
     if (readOnly) return;
     setEditing(key);
     if (key === "name") setDraft(candidate.name);
+    else if (key === "email") setDraft(candidate.email);
     else if (key === "otherEmail") setDraft(candidate.otherEmail ?? "");
     else if (key === "phone") setDraft(candidate.phone);
     else if (key === "location") { setDraft(candidate.city); setDraft2(candidate.state); }
@@ -76,6 +77,9 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
       const last = parts.join(" ");
       dbPatch = { first_name: first, last_name: last };
       localPatch = { name: v };
+    } else if (editing === "email") {
+      if (!v || !EMAIL_RE.test(v)) { toast.error("Enter a valid email address"); return; }
+      dbPatch = { email: v }; localPatch = { email: v };
     } else if (editing === "otherEmail") {
       if (v && !EMAIL_RE.test(v)) { toast.error("Enter a valid email address"); return; }
       dbPatch = { other_email: v || null }; localPatch = { otherEmail: v };

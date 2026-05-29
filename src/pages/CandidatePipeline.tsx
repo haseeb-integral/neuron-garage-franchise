@@ -331,11 +331,20 @@ const CandidatePipeline = () => {
       candidate.stage === "fdd_review" &&
       toStage !== "fdd_review"
     ) {
-      const { data: comp } = await supabase
+      console.log("[FDD_GATE] evaluating", { dbId, from: candidate.stage, to: toStage });
+      const { data: comp, error: compErr } = await supabase
         .from("candidate_compliance")
         .select("fdd_sent_at, compliance_override")
         .eq("candidate_id", dbId)
         .maybeSingle();
+      console.log("[FDD_GATE] compliance row", { comp, compErr });
+
+      if (compErr) {
+        toast.error("Compliance check failed", {
+          description: "Could not verify FDD lock. Move blocked. Try again or use override.",
+        });
+        return;
+      }
 
       if (!comp?.compliance_override) {
         if (!comp?.fdd_sent_at) {
@@ -347,6 +356,7 @@ const CandidatePipeline = () => {
         const sentMs = new Date(comp.fdd_sent_at).getTime();
         const daysElapsed = Math.floor((Date.now() - sentMs) / 86_400_000);
         const daysRemaining = 16 - daysElapsed;
+        console.log("[FDD_GATE] math", { sentMs, daysElapsed, daysRemaining });
         if (daysRemaining > 0) {
           toast.error("16-day FDD lock active", {
             description: `${daysRemaining} day${daysRemaining === 1 ? "" : "s"} remaining. Use compliance override on the Homework tab to bypass.`,
@@ -355,6 +365,7 @@ const CandidatePipeline = () => {
         }
       }
     }
+
 
 
     // Hard gate: moving INTO confirmation requires Trial Close checklist

@@ -6,6 +6,7 @@ import { Plus, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { StageId } from "@/data/pipelineData";
+import { toDbStage } from "@/lib/stageDbMapping";
 
 interface ChecklistItem {
   id: string;
@@ -49,7 +50,7 @@ export function ChecklistSection({
         .from("candidate_checklist_items")
         .select("id, label, is_completed, completed_at, completed_by")
         .eq("candidate_id", candidateDbId)
-        .eq("stage", stage as any)
+        .eq("stage", toDbStage(stage) as any)
         .eq("kind", kind)
         .order("created_at", { ascending: true });
       if (cancelled) return;
@@ -64,7 +65,7 @@ export function ChecklistSection({
       if ((data?.length ?? 0) === 0 && seedLabels.length > 0) {
         const seedRows = seedLabels.map((label) => ({
           candidate_id: candidateDbId,
-          stage: stage as any,
+          stage: toDbStage(stage) as any,
           label,
           is_completed: false,
           kind,
@@ -124,7 +125,7 @@ export function ChecklistSection({
       .from("candidate_checklist_items")
       .insert({
         candidate_id: candidateDbId,
-        stage: stage as any,
+        stage: toDbStage(stage) as any,
         label,
         is_completed: false,
         kind,

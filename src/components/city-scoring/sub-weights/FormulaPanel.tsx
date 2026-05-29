@@ -357,7 +357,7 @@ function RecipeBlock({
               <tr key={c.key} className="border-t border-[#f3f6fb] first:border-0">
                 <td className="py-1 text-[#3a4256]">{c.label}</td>
                 <td className="py-1 text-right tabular-nums text-[#6b7894] pr-2">
-                  {c.rawValue == null ? "—" : c.rawValue.toLocaleString()}
+                  {formatMetric(c.rawValue, c.key)}
                 </td>
                 <td className="py-1 text-right tabular-nums text-[#174be8] font-semibold w-[60px]">
                   → {c.normalized == null ? "—" : c.normalized.toFixed(0)}

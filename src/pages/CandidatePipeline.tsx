@@ -701,11 +701,11 @@ const CandidatePipeline = () => {
 
   // Filter chip styling
   const chipBase = "px-2.5 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap";
-  const chipActive = { backgroundColor: "#003c7e", color: "#ffffff" };
-  const chipInactive = { backgroundColor: "#ffffff", color: "#495057", border: "1px solid #dee2e6" };
+  const chipActive = { backgroundColor: "#174be8", color: "#ffffff" };
+  const chipInactive = { backgroundColor: "#ffffff", color: "#495057", border: "1px solid #cfe0ff" };
 
   return (
-    <div className="-mx-3 md:-mx-5 lg:-mx-6 -my-3 px-3 md:px-5 lg:px-6 py-3 min-h-screen" style={{ backgroundColor: "#f2f4f6" }}>
+    <div className="-mx-3 md:-mx-5 lg:-mx-6 -my-3 px-3 md:px-5 lg:px-6 py-3 min-h-screen" style={{ backgroundColor: "#ffffff" }}>
       <div className="max-w-[1400px] mx-auto w-full">
       <PageHeader
         title="Candidate Pipeline"
@@ -741,14 +741,14 @@ const CandidatePipeline = () => {
       />
 
       {/* Filter strip */}
-      <div className="bg-white rounded-xl px-3 py-2.5 mb-3 shadow-sm flex flex-wrap items-center gap-x-3 gap-y-2" style={{ border: "1px solid #dee2e6" }}>
-        <div className="flex items-center gap-1.5" style={{ color: "#6c757d" }}>
+      <div className="bg-white rounded-xl px-3 py-2.5 mb-3 shadow-sm flex flex-wrap items-center gap-x-3 gap-y-2" style={{ border: "1px solid #cfe0ff" }}>
+        <div className="flex items-center gap-1.5" style={{ color: "#526078" }}>
           <Filter size={13} />
           <span className="text-xs font-semibold uppercase tracking-wide">Filter</span>
         </div>
 
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[11px] font-medium" style={{ color: "#6c757d" }}>Owner:</span>
+          <span className="text-[11px] font-medium" style={{ color: "#526078" }}>Owner:</span>
           <button
             onClick={() => setOwnerFilter("all")}
             className={chipBase}
@@ -773,7 +773,7 @@ const CandidatePipeline = () => {
         </div>
 
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[11px] font-medium" style={{ color: "#6c757d" }}>Tag:</span>
+          <span className="text-[11px] font-medium" style={{ color: "#526078" }}>Tag:</span>
           {(["all", ...FIT_TAGS] as TagFilter[]).map((t) => (
             <button
               key={t}
@@ -787,7 +787,7 @@ const CandidatePipeline = () => {
         </div>
 
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[11px] font-medium" style={{ color: "#6c757d" }}>Fit:</span>
+          <span className="text-[11px] font-medium" style={{ color: "#526078" }}>Fit:</span>
           {([
             { id: "all" as FitFilter, label: "All" },
             { id: "90" as FitFilter, label: "90+" },
@@ -805,7 +805,7 @@ const CandidatePipeline = () => {
         </div>
 
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[11px] font-medium" style={{ color: "#6c757d" }}>Days in stage:</span>
+          <span className="text-[11px] font-medium" style={{ color: "#526078" }}>Days in stage:</span>
           {([
             { id: "all" as const, label: "All" },
             { id: "fresh" as const, label: "Fresh (≤3)" },
@@ -836,15 +836,15 @@ const CandidatePipeline = () => {
       </div>
 
       {/* Toolbar: density + collapse */}
-      <div className="flex items-center justify-between mb-3 bg-white rounded-xl px-3 py-2 shadow-sm" style={{ border: "1px solid #dee2e6" }}>
+      <div className="flex items-center justify-between mb-3 bg-white rounded-xl px-3 py-2 shadow-sm" style={{ border: "1px solid #cfe0ff" }}>
         <div className="flex items-center gap-2">
-          <span className="text-xs font-medium" style={{ color: "#6c757d" }}>Density:</span>
-          <div className="flex rounded-md overflow-hidden" style={{ border: "1px solid #dee2e6" }}>
+          <span className="text-xs font-medium" style={{ color: "#526078" }}>Density:</span>
+          <div className="flex rounded-md overflow-hidden" style={{ border: "1px solid #cfe0ff" }}>
             <button
               onClick={() => setCompact(false)}
               className="px-2 py-1 text-xs font-medium flex items-center gap-1"
               style={{
-                backgroundColor: !compact ? "#003c7e" : "#ffffff",
+                backgroundColor: !compact ? "#174be8" : "#ffffff",
                 color: !compact ? "#ffffff" : "#495057",
               }}
             >
@@ -854,14 +854,14 @@ const CandidatePipeline = () => {
               onClick={() => setCompact(true)}
               className="px-2 py-1 text-xs font-medium flex items-center gap-1"
               style={{
-                backgroundColor: compact ? "#003c7e" : "#ffffff",
+                backgroundColor: compact ? "#174be8" : "#ffffff",
                 color: compact ? "#ffffff" : "#495057",
               }}
             >
               <Rows2 size={12} /> Compact
             </button>
           </div>
-          <div className="hidden md:flex items-center gap-3 ml-4 pl-4 text-[11px]" style={{ color: "#6c757d", borderLeft: "1px solid #dee2e6" }}>
+          <div className="hidden md:flex items-center gap-3 ml-4 pl-4 text-[11px]" style={{ color: "#526078", borderLeft: "1px solid #cfe0ff" }}>
             <span className="font-semibold uppercase tracking-wider text-[10px]">Days in stage:</span>
             <span className="flex items-center gap-1.5">
               <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: "#20c997" }} />
@@ -882,16 +882,16 @@ const CandidatePipeline = () => {
           {collapsed.size > 0 && (
             <button
               onClick={() => setCollapsed(new Set())}
-              className="text-xs font-medium px-2 py-1 rounded-md hover:bg-[#f1f3f5]"
-              style={{ color: "#003c7e" }}
+              className="text-xs font-medium px-2 py-1 rounded-md hover:bg-[#f3f6fb]"
+              style={{ color: "#174be8" }}
             >
               Expand all
             </button>
           )}
           <button
             onClick={collapseEmpty}
-            className="text-xs font-medium px-2 py-1 rounded-md hover:bg-[#f1f3f5] flex items-center gap-1"
-            style={{ color: "#495057" }}
+            className="text-xs font-medium px-2 py-1 rounded-md hover:bg-[#f3f6fb] flex items-center gap-1"
+            style={{ color: "#526078" }}
           >
             <Minimize2 size={12} /> Collapse empty
           </button>

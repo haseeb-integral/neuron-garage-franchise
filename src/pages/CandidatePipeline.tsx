@@ -15,6 +15,8 @@ import { CandidateDetailPanel } from "@/components/candidate-pipeline/CandidateD
 import { PageHeader } from "@/components/PageHeader";
 import { useCandidatePipelineStore } from "@/stores/candidatePipelineStore";
 import { isEnabled } from "@/lib/featureFlags";
+import { getEffectivePillarScores } from "@/lib/candidateScoring";
+
 
 import {
   AlertDialog,

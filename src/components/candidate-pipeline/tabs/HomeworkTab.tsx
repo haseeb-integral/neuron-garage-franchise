@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { StageDocumentsSection } from "../StageDocumentsSection";
 import { ComplianceSection } from "../ComplianceSection";
+import { toDbStage } from "@/lib/stageDbMapping";
 
 
 interface Props {
@@ -52,7 +53,7 @@ export function HomeworkTab({ candidate, onTrialCloseChange }: Props) {
         .from("candidate_checklist_items")
         .select("id, label, is_completed, completed_at, completed_by")
         .eq("candidate_id", dbId)
-        .eq("stage", candidate.stage as any)
+        .eq("stage", toDbStage(candidate.stage) as any)
         .eq("kind", "homework")
         .order("created_at", { ascending: true });
       if (cancelled) return;
@@ -68,7 +69,7 @@ export function HomeworkTab({ candidate, onTrialCloseChange }: Props) {
       if ((data?.length ?? 0) === 0 && homework.length > 0) {
         const seedRows = homework.map((label) => ({
           candidate_id: dbId,
-          stage: candidate.stage as any,
+          stage: toDbStage(candidate.stage) as any,
           label,
           is_completed: false,
           kind: "homework",
@@ -136,7 +137,7 @@ export function HomeworkTab({ candidate, onTrialCloseChange }: Props) {
       .from("candidate_checklist_items")
       .insert({
         candidate_id: dbId,
-        stage: candidate.stage as any,
+        stage: toDbStage(candidate.stage) as any,
         label,
         is_completed: false,
         kind: "homework",

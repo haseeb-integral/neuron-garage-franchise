@@ -37,17 +37,8 @@ interface Props {
   onCreated: (row: any) => void;
 }
 
-// UI StageId -> DB enum
-const uiStageToDb: Record<StageId, string> = {
-  new_lead: "new_lead",
-  initial_qual: "initial_qualification",
-  business_overview: "business_overview",
-  fdd_review: "fdd_review",
-  immersion: "immersion",
-  confirmation: "confirmation",
-  signing: "signing",
-  disqualified: "disqualified",
-};
+import { toDbStage } from "@/lib/stageDbMapping";
+const uiStageToDb = (s: StageId): string => toDbStage(s);
 
 const ACTIVE_STAGES = STAGES.filter((s) => s.id !== "disqualified");
 

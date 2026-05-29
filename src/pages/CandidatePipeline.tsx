@@ -16,6 +16,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { useCandidatePipelineStore } from "@/stores/candidatePipelineStore";
 import { isEnabled } from "@/lib/featureFlags";
 import { getEffectivePillarScores } from "@/lib/candidateScoring";
+import { toDbStage, fromDbStage } from "@/lib/stageDbMapping";
 
 
 import {
@@ -66,29 +67,8 @@ const CandidatePipeline = () => {
     newThisWeek: 0,
   });
 
-  // DB enum stage -> local UI StageId
-  const dbStageToUi: Record<string, StageId> = {
-    new_lead: "new_lead",
-    initial_qualification: "initial_qual",
-    business_overview: "business_overview",
-    fdd_review: "fdd_review",
-    immersion: "immersion",
-    confirmation: "confirmation",
-    signing: "signing",
-    disqualified: "disqualified",
-  };
-
-  // UI StageId -> DB enum stage
-  const uiStageToDb: Record<StageId, string> = {
-    new_lead: "new_lead",
-    initial_qual: "initial_qualification",
-    business_overview: "business_overview",
-    fdd_review: "fdd_review",
-    immersion: "immersion",
-    confirmation: "confirmation",
-    signing: "signing",
-    disqualified: "disqualified",
-  };
+  const dbStageToUi = (s: string): StageId => fromDbStage(s);
+  const uiStageToDb = (s: StageId): string => toDbStage(s);
 
   const mapRowToCandidate = (r: any, idx: number): Candidate => {
     const fullName = `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim();

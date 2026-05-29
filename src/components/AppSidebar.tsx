@@ -18,7 +18,7 @@ const primaryNavItems = [
 
 const utilityNavItems = [
   { title: "Team Members", url: "/settings/team", icon: Users },
-  import { Home, Map, Users, Kanban, ChevronLeft, ChevronRight, ChevronDown, Mail, FileText, BookOpen, Send, MailOpen, BarChart3, Calculator, Gauge, LibraryBig, Activity, FileCode2, KeyRound, Network, Sparkles, Plug, ShieldCheck } from "lucide-react";
+  { title: "User's Guide", url: "/users-guide", icon: BookOpen },
 ];
 
 const docsNavItems = [

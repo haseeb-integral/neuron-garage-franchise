@@ -15,6 +15,8 @@ import { CandidateDetailPanel } from "@/components/candidate-pipeline/CandidateD
 import { PageHeader } from "@/components/PageHeader";
 import { useCandidatePipelineStore } from "@/stores/candidatePipelineStore";
 import { isEnabled } from "@/lib/featureFlags";
+import { getEffectivePillarScores } from "@/lib/candidateScoring";
+
 
 import {
   AlertDialog,
@@ -185,8 +187,27 @@ const CandidatePipeline = () => {
       }
       const mapped: Candidate[] = (data ?? []).map((r: any, idx: number) => mapRowToCandidate(r, idx + 1));
 
+      // Hydrate qualification scores so the Qual badge appears on cards without opening the tab
+      const dbIds = mapped.map((c) => (c as any).dbId).filter(Boolean);
+      if (dbIds.length > 0) {
+        const { data: qualRows } = await supabase
+          .from("candidate_qualification")
+          .select("*")
+          .in("candidate_id", dbIds);
+        if (qualRows && qualRows.length > 0) {
+          const byId = new Map<string, any>(qualRows.map((q: any) => [q.candidate_id, q]));
+          for (const c of mapped) {
+            const row = byId.get((c as any).dbId);
+            if (row) {
+              c.qualificationScores = getEffectivePillarScores(row).effective;
+            }
+          }
+        }
+      }
+
       setCandidates(mapped);
       setLoading(false);
+
 
       // Load team members for Owner filter
       const { data: profs } = await supabase.from("profiles").select("email, full_name");

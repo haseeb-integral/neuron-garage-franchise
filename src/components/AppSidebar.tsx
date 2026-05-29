@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Home, Map, Users, Kanban, ChevronLeft, ChevronRight, ChevronDown, Mail, FileText, BookOpen, Send, MailOpen, Calculator, Gauge, Activity, FileCode2, KeyRound, Network, Sparkles, Plug, ShieldCheck, PieChart, BookMarked } from "lucide-react";
+import { Home, Map, Users, Kanban, ChevronLeft, ChevronRight, ChevronDown, Mail, FileText, BookOpen, Send, MailOpen, Calculator, Gauge, Activity, FileCode2, KeyRound, Network, Wand2, Plug, ShieldCheck, PieChart, BookMarked } from "lucide-react";
 
 import { NavLink, useLocation } from "react-router-dom";
 import logo from "@/assets/neuron-garage-logo.png";
@@ -24,7 +24,7 @@ const utilityNavItems = [
 const docsNavItems = [
   { title: "Credentials & Handover", url: "/handover", icon: KeyRound },
   { title: "System Architecture", url: "/architecture", icon: Network },
-  { title: "Prompts & AI Workflows", url: "/docs/prompts-and-ai-workflows", icon: Sparkles },
+  { title: "Prompts & AI Workflows", url: "/docs/prompts-and-ai-workflows", icon: Wand2 },
   { title: "APIs & Data Sources", url: "/docs/apis", icon: Plug },
   { title: "Guardrails", url: "/docs/guardrails", icon: ShieldCheck },
   { title: "Scoring Method", url: "/scoring-method", icon: Gauge },

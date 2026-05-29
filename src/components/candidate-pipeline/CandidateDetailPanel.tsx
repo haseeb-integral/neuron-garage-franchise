@@ -35,6 +35,10 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
     onUpdate({ ...candidate, qualificationScores: { ...candidate.qualificationScores, [key]: value } });
   };
 
+  const handleScoresReplace = (scores: QualificationScores) => {
+    onUpdate({ ...candidate, qualificationScores: scores });
+  };
+
   const handleAddNote = (content: string) => {
     const next: ActivityEntry = {
       id: Math.max(0, ...candidate.activity.map((a) => a.id)) + 1,

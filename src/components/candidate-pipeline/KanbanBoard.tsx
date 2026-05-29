@@ -74,7 +74,6 @@ export function KanbanBoard({
         {STAGES.map((s) => {
           const count = candidates.filter((c) => c.stage === s.id).length;
           const accent = stageColorMap[s.id] ?? "#003c7e";
-          const isActive = activeStage === s.id;
           return (
             <button
               key={s.id}
@@ -85,20 +84,17 @@ export function KanbanBoard({
               className="flex items-center gap-1.5 px-2 py-1 rounded-md transition-all"
               style={{
                 border: "1px solid transparent",
-                backgroundColor: isActive ? "#eaf0ff" : "transparent",
-                boxShadow: isActive ? "inset 2px 0 0 #174be8" : undefined,
+                backgroundColor: "transparent",
               }}
               onMouseEnter={(e) => {
-                if (isActive) return;
                 e.currentTarget.style.borderColor = "#dee2e6";
                 e.currentTarget.style.backgroundColor = "#ffffff";
               }}
               onMouseLeave={(e) => {
-                if (isActive) return;
                 e.currentTarget.style.borderColor = "transparent";
                 e.currentTarget.style.backgroundColor = "transparent";
               }}
-              title={`${s.label} — currently in view`}
+              title={`Jump to ${s.label}`}
             >
               <span
                 className="w-2 h-2 rounded-full"
@@ -106,16 +102,13 @@ export function KanbanBoard({
               />
               <span
                 className="text-[11px] font-semibold"
-                style={{ color: isActive ? "#174be8" : "#495057" }}
+                style={{ color: "#495057" }}
               >
                 {s.short}
               </span>
               <span
                 className="text-[10px] font-bold px-1.5 rounded-full"
-                style={{
-                  color: isActive ? "#174be8" : "#6c757d",
-                  backgroundColor: isActive ? "#ffffff" : "#e9ecef",
-                }}
+                style={{ color: "#6c757d", backgroundColor: "#e9ecef" }}
               >
                 {count}
               </span>

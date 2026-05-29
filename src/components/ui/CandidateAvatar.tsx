@@ -8,18 +8,18 @@ interface Props {
   className?: string;
 }
 
-// Navy / teal / slate palette only — avoids red/green which signal status.
-const PALETTE = [
-  "#003c7e",
-  "#0d4f8b",
-  "#1a5fa3",
-  "#17506b",
-  "#1f6f8b",
-  "#2c7a7b",
-  "#274060",
-  "#3b5998",
-  "#4a6fa5",
-  "#475569",
+// Soft tinted pairs (bg + text), Linear/Notion/Vercel pattern.
+const PALETTE: Array<{ bg: string; fg: string }> = [
+  { bg: "#dbeafe", fg: "#1d4ed8" },
+  { bg: "#e0e7ff", fg: "#4338ca" },
+  { bg: "#cffafe", fg: "#0e7490" },
+  { bg: "#ccfbf1", fg: "#0f766e" },
+  { bg: "#dcfce7", fg: "#15803d" },
+  { bg: "#fef3c7", fg: "#a16207" },
+  { bg: "#fee2e2", fg: "#b91c1c" },
+  { bg: "#fce7f3", fg: "#be185d" },
+  { bg: "#ede9fe", fg: "#6d28d9" },
+  { bg: "#f1f5f9", fg: "#475569" },
 ];
 
 const initialsFor = (name: string) => {
@@ -38,7 +38,7 @@ const colorFor = (name: string) => {
 export function CandidateAvatar({ name, photoUrl, size = 40, title, className = "" }: Props) {
   const [errored, setErrored] = useState(false);
   const showPhoto = !!photoUrl && !errored;
-  const bg = colorFor(name);
+  const { bg, fg } = colorFor(name);
   const initials = initialsFor(name);
   const fontSize = Math.max(9, Math.round(size * 0.4));
 
@@ -62,7 +62,7 @@ export function CandidateAvatar({ name, photoUrl, size = 40, title, className = 
           style={{ borderRadius: "50%" }}
         />
       ) : (
-        <span className="font-bold text-white" style={{ fontSize, lineHeight: 1 }}>
+        <span className="font-semibold" style={{ fontSize, lineHeight: 1, color: fg }}>
           {initials}
         </span>
       )}

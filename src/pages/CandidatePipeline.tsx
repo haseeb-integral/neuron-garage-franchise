@@ -8,6 +8,8 @@ import { Candidate, StageId, STAGES, STAGE_HOMEWORK } from "@/data/pipelineData"
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { KanbanBoard } from "@/components/candidate-pipeline/KanbanBoard";
+import { CardLegendPopover } from "@/components/candidate-pipeline/CardLegendPopover";
+
 import { PipelineAnalyticsBar } from "@/components/candidate-pipeline/PipelineAnalyticsBar";
 import { CandidateDetailPanel } from "@/components/candidate-pipeline/CandidateDetailPanel";
 import { PageHeader } from "@/components/PageHeader";
@@ -877,6 +879,7 @@ const CandidatePipeline = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <CardLegendPopover />
           {collapsed.size > 0 && (
             <button
               onClick={() => setCollapsed(new Set())}
@@ -895,6 +898,7 @@ const CandidatePipeline = () => {
           </button>
         </div>
       </div>
+
 
       <KanbanBoard
         candidates={filteredCandidates}

@@ -11,6 +11,7 @@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { CategoryKey } from "@/stores/cityScoringStore";
 import type { recomputeCategoryScore } from "@/lib/clientSubWeightScoring";
+import { formatMetric } from "@/lib/numberFormat";
 
 type Recompute = ReturnType<typeof recomputeCategoryScore> | null;
 
@@ -120,7 +121,7 @@ export function FormulaPanel({
                   <tr key={c.key} className="border-t border-[#eef2f7]">
                     <td className="px-2 py-1 truncate max-w-[260px]" title={c.label}>{c.label}</td>
                     <td className="px-2 py-1 text-right tabular-nums">
-                      {c.rawValue == null ? "—" : c.rawValue.toLocaleString()}
+                      {formatMetric(c.rawValue, c.key)}
                     </td>
                   </tr>
                 ))}
@@ -226,7 +227,7 @@ export function FormulaPanel({
                   {previewRecompute.contributions.map((c) => (
                     <tr key={c.key} className={`border-t border-[#eef2f7] ${c.used ? "" : "text-[#9aa3b5]"}`}>
                       <td className="px-2 py-1 truncate max-w-[160px]" title={c.label}>{c.label}</td>
-                      <td className="px-2 py-1 text-right tabular-nums">{c.rawValue == null ? "—" : c.rawValue.toLocaleString()}</td>
+                      <td className="px-2 py-1 text-right tabular-nums">{formatMetric(c.rawValue, c.key)}</td>
                       <td className="px-2 py-1 text-right tabular-nums">{c.normalized == null ? "—" : c.normalized.toFixed(1)}</td>
                       <td className="px-2 py-1 text-right tabular-nums">{c.used ? `${(c.subShare * 100).toFixed(1)}%` : "—"}</td>
                       <td className="px-2 py-1 text-right tabular-nums">{c.used ? c.contribution.toFixed(2) : "—"}</td>
@@ -356,7 +357,7 @@ function RecipeBlock({
               <tr key={c.key} className="border-t border-[#f3f6fb] first:border-0">
                 <td className="py-1 text-[#3a4256]">{c.label}</td>
                 <td className="py-1 text-right tabular-nums text-[#6b7894] pr-2">
-                  {c.rawValue == null ? "—" : c.rawValue.toLocaleString()}
+                  {formatMetric(c.rawValue, c.key)}
                 </td>
                 <td className="py-1 text-right tabular-nums text-[#174be8] font-semibold w-[60px]">
                   → {c.normalized == null ? "—" : c.normalized.toFixed(0)}

@@ -121,7 +121,7 @@ export function FormulaPanel({
                   <tr key={c.key} className="border-t border-[#eef2f7]">
                     <td className="px-2 py-1 truncate max-w-[260px]" title={c.label}>{c.label}</td>
                     <td className="px-2 py-1 text-right tabular-nums">
-                      {c.rawValue == null ? "—" : c.rawValue.toLocaleString()}
+                      {formatMetric(c.rawValue, c.key)}
                     </td>
                   </tr>
                 ))}

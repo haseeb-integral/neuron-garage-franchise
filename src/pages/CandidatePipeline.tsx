@@ -138,8 +138,21 @@ const CandidatePipeline = () => {
     const weekAgo = now - 7 * dayMs;
 
     const hot = active.filter((c: any) => (c.fit_score ?? 0) >= 80).length;
-    const signing = all.filter((c: any) => c.current_stage === "signing").length;
-    const conv = totalEver > 0 ? Math.round((signing / totalEver) * 100) : 0;
+
+    // Conversion = candidates who EVER reached "signing" (qualified), not just those
+    // currently parked there. Reads from stage history so signed candidates who moved
+    // on (e.g., to onboarding) still count.
+    const { data: signingHistory } = await supabase
+      .from("candidate_stage_history")
+      .select("candidate_id")
+      .eq("to_stage", "signing");
+    const everSignedIds = new Set((signingHistory ?? []).map((r: any) => r.candidate_id));
+    // Also count candidates currently in signing in case history is missing the row.
+    all.forEach((c: any) => {
+      if (c.current_stage === "signing") everSignedIds.add(c.id);
+    });
+    const conv = totalEver > 0 ? Math.round((everSignedIds.size / totalEver) * 100) : 0;
+
     const newWeek = all.filter(
       (c: any) => new Date(c.created_at).getTime() >= weekAgo,
     ).length;

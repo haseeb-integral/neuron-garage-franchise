@@ -78,6 +78,7 @@ const App = () => (
                 <Route path="/architecture" element={<SystemOverview />} />
                 <Route path="/docs/prompts-and-ai-workflows" element={<PromptsAndAiWorkflows />} />
                 <Route path="/docs/apis" element={<ApisAndDataSources />} />
+                <Route path="/docs/guardrails" element={<Guardrails />} />
 
 
                 <Route path="/db-health" element={<Observability />} />

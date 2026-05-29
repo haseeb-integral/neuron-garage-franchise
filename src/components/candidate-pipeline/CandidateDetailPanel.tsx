@@ -1,4 +1,4 @@
-import { Candidate, QualificationScores, TrialClose, CommitteeVotes, ActivityEntry } from "@/data/pipelineData";
+import { Candidate, QualificationScores, TrialClose, ActivityEntry } from "@/data/pipelineData";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
@@ -10,7 +10,6 @@ import { StageHistoryTab } from "./tabs/StageHistoryTab";
 import { HomeworkTab } from "./tabs/HomeworkTab";
 import { CommitteeVotesTab } from "./tabs/CommitteeVotesTab";
 import { DocumentsTab } from "./tabs/DocumentsTab";
-import { SelectionCommittee } from "./SelectionCommittee";
 import { CandidateAvatar } from "@/components/ui/CandidateAvatar";
 import { Button } from "@/components/ui/button";
 import { FileDown } from "lucide-react";
@@ -54,13 +53,6 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
     onUpdate({ ...candidate, trialClose: { ...candidate.trialClose, [key]: value } });
   };
 
-  const handleVote = (member: keyof CommitteeVotes, vote: "approve" | "decline") => {
-    const current = candidate.votes[member];
-    onUpdate({
-      ...candidate,
-      votes: { ...candidate.votes, [member]: current === vote ? null : vote },
-    });
-  };
 
 
 
@@ -150,9 +142,6 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
           )}
         </Tabs>
 
-        {candidate.stage === "immersion" && (
-          <SelectionCommittee candidate={candidate} onVote={handleVote} />
-        )}
       </SheetContent>
     </Sheet>
   );

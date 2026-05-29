@@ -1,8 +1,11 @@
-# Tier 2 Backlog
+# Sam Punchlist — Extras Pending
 
-> **This file is SEPARATE from Sam's V1.0 punch list.** Sam's 4-item V1.0 punch list (Desired Markets rename / number formatting / Guardrails docs / manual committee votes) is **100% shipped and signed off**. This Tier 2 file tracks the broader backlog Haseeb + Lovable derived from Sam's original full punchlist. Items **#9 (City notes)** and **#12 (Proof-of-send)** remain OPEN as future work — do not delete this file until they are addressed or explicitly dropped.
+> **This file = the EXTRA items we tracked beyond Sam's V1.0 punchlist.**
+> Sam's V1.0 punchlist itself (Desired Markets rename / number formatting / Guardrails docs / manual committee votes) is **100% shipped and signed off**.
+> **Open items in this file: #9 (City notes table) and #12 (Proof-of-send screenshot upload).**
+> Items #1–#8, #10, #11, #13 are ✅ shipped.
 
-Source: Sam's punchlist, locked 2026-05-26.
+Source: extras derived from Sam's original full punchlist.
 Last updated: 2026-05-29 by Lovable.
 
 ---

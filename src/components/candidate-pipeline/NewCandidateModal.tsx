@@ -112,7 +112,7 @@ export function NewCandidateModal({ open, onOpenChange, teamMembers, onCreated }
       return;
     }
     setSubmitting(true);
-    const dbStage = uiStageToDb[form.initial_stage];
+    const dbStage = uiStageToDb(form.initial_stage);
 
     const { data: inserted, error } = await supabase
       .from("candidates")

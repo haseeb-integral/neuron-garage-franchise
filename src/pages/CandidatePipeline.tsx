@@ -83,7 +83,7 @@ const CandidatePipeline = () => {
       otherEmail: r.other_email ?? "",
       phone: r.phone ?? "",
       fitScore: r.fit_score ?? 0,
-      stage: dbStageToUi[r.current_stage] ?? "new_lead",
+      stage: dbStageToUi(r.current_stage) ?? "new_lead",
       daysInStage: days,
       assignedTo: r.assigned_to ?? "",
       tag: r.fit_tag ?? "Untagged",
@@ -418,7 +418,7 @@ const CandidatePipeline = () => {
 
     const { error: updErr } = await supabase
       .from("candidates")
-      .update({ current_stage: uiStageToDb[toStage] as any })
+      .update({ current_stage: uiStageToDb(toStage) as any })
       .eq("id", dbId);
 
     if (updErr) {
@@ -432,8 +432,8 @@ const CandidatePipeline = () => {
 
     const { error: histErr } = await supabase.from("candidate_stage_history").insert({
       candidate_id: dbId,
-      from_stage: uiStageToDb[fromStage] as any,
-      to_stage: uiStageToDb[toStage] as any,
+      from_stage: uiStageToDb(fromStage) as any,
+      to_stage: uiStageToDb(toStage) as any,
       changed_by: changedBy,
       notes: overrideNote,
     });
@@ -447,14 +447,14 @@ const CandidatePipeline = () => {
     // We merge the destination stage defaults with every homework item from the
     // prior stage, then preserve completion for anything already checked.
     try {
-      const toDbStage = uiStageToDb[toStage] as any;
-      const fromDbStage = uiStageToDb[fromStage] as any;
+      const toDbStageVal = uiStageToDb(toStage) as any;
+      const fromDbStageVal = uiStageToDb(fromStage) as any;
       const toHomework = STAGE_HOMEWORK[toStage] ?? [];
       const { data: fromItems } = await supabase
         .from("candidate_checklist_items")
         .select("label, is_completed, completed_at, completed_by")
         .eq("candidate_id", dbId)
-        .eq("stage", fromDbStage)
+        .eq("stage", fromDbStageVal)
         .eq("kind", "homework");
 
       const fromByLabel = new Map(
@@ -470,7 +470,7 @@ const CandidatePipeline = () => {
           .from("candidate_checklist_items")
           .select("id, label, is_completed")
           .eq("candidate_id", dbId)
-          .eq("stage", toDbStage)
+          .eq("stage", toDbStageVal)
           .eq("kind", "homework")
 ;
         const existingLabels = new Set((existingTo ?? []).map((row: any) => row.label));
@@ -482,7 +482,7 @@ const CandidatePipeline = () => {
             const carry = !!source?.is_completed;
             return {
               candidate_id: dbId,
-              stage: toDbStage,
+              stage: toDbStageVal,
               label,
               kind: "homework",
               is_completed: carry,
@@ -528,12 +528,12 @@ const CandidatePipeline = () => {
           );
           await supabase
             .from("candidates")
-            .update({ current_stage: uiStageToDb[fromStage] as any })
+            .update({ current_stage: uiStageToDb(fromStage) as any })
             .eq("id", dbId);
           await supabase.from("candidate_stage_history").insert({
             candidate_id: dbId,
-            from_stage: uiStageToDb[toStage] as any,
-            to_stage: uiStageToDb[fromStage] as any,
+            from_stage: uiStageToDb(toStage) as any,
+            to_stage: uiStageToDb(fromStage) as any,
             changed_by: changedBy,
             notes: "undo",
           });
@@ -584,7 +584,7 @@ const CandidatePipeline = () => {
 
     const { error: histErr } = await supabase.from("candidate_stage_history").insert({
       candidate_id: dbId,
-      from_stage: uiStageToDb[fromStage] as any,
+      from_stage: uiStageToDb(fromStage) as any,
       to_stage: "disqualified" as any,
       changed_by: changedBy,
       notes: reason,

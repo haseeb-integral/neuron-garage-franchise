@@ -13,7 +13,6 @@ import { RowScorePopover } from "@/components/city-scoring/RowScorePopover";
 import { sampleCities } from "@/data/cityData";
 import { sameMarket, VISIBLE_CATEGORIES } from "@/lib/cityScoringPageHelpers";
 import { buildMarketView, buildPillarView } from "@/lib/marketView";
-import { toast } from "sonner";
 
 type Props = {
   filteredCount: number;
@@ -32,7 +31,7 @@ type Props = {
   handleFindTeachersForSelected: () => void;
   openCompare: () => void;
   hasOverrides: boolean;
-  resetSubWeights: () => void;
+  resetWeights: () => void;
   appliedWeights: Record<string, number>;
   percentileById: Map<string | number, number>;
   showingFrom: number;
@@ -65,7 +64,7 @@ function RankedMarketsListImpl({
   handleFindTeachersForSelected,
   openCompare,
   hasOverrides,
-  resetSubWeights,
+  resetWeights,
   appliedWeights,
   percentileById,
   showingFrom,
@@ -120,14 +119,11 @@ function RankedMarketsListImpl({
       {hasOverrides && (
         <div className="mb-2 rounded-md bg-[#fffbe6] border border-[#fde68a] px-2 py-1.5 text-[11px] text-[#854d0e] flex items-center justify-between gap-2">
           <span>
-            <span className="font-semibold">Composite re-ranked with your weights</span> — cities are ordered by the new overall score, not by any single metric.
+            <span className="font-semibold">Custom weighting is on</span> — this list is using your manual weight changes, not the preset defaults.
           </span>
           <button
             type="button"
-            onClick={() => {
-              resetSubWeights();
-              toast.success("Sub-metric weights reset to defaults");
-            }}
+            onClick={resetWeights}
             className="font-semibold text-[#174be8] hover:underline whitespace-nowrap"
           >
             Reset to default

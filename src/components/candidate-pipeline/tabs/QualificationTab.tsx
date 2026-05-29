@@ -273,6 +273,7 @@ export function QualificationTab({ candidate, onScoreChange }: Props) {
           onSaved={() => setReloadKey((k) => k + 1)}
         />
       )}
+
     </div>
   );
 }

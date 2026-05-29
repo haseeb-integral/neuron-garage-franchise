@@ -58,7 +58,7 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
 
   return (
     <Sheet open={!!candidate} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-3xl overflow-y-auto p-0" style={{ backgroundColor: "#f2f4f6" }}>
+      <SheetContent side="right" className="w-full sm:max-w-3xl overflow-y-auto p-0" style={{ backgroundColor: "#ffffff" }}>
         <SheetHeader className="px-6 pt-6 pb-4" style={{ backgroundColor: "#f7faff", borderBottom: "1px solid #e3e8ef" }}>
           <div className="flex items-start justify-between pr-8 gap-3">
             <div className="flex items-start gap-3 min-w-0">

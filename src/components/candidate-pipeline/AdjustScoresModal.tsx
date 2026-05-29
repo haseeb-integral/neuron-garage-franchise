@@ -76,7 +76,7 @@ export function AdjustScoresModal({
 
       const { error } = await supabase
         .from("candidate_qualification")
-        .upsert(updates, { onConflict: "candidate_id" });
+        .upsert(updates as any, { onConflict: "candidate_id" });
       if (error) throw error;
 
       // Audit one row per changed pillar

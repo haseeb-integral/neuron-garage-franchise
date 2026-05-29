@@ -1,76 +1,75 @@
-# Sidebar icons + .lovable housekeeping
+# Candidate Pipeline — City Search Reskin Plan
 
-Four asks, handled together.
+_Status as of: 2026-05-29_
 
----
-
-## 1. Sidebar icons — why one looks missing and the fix
-
-Looking at the screenshot and `src/components/AppSidebar.tsx`:
-
-- **Credentials & Handover** — icon `KeyRound` IS present in the code AND visible in your screenshot (the small key inside the blue active pill). Nothing missing here.
-- **Prompts & AI Workflows** — icon `Sparkles` is wired in code but renders as a near-invisible speck at `size={17}, strokeWidth={1.75}` because Sparkles is mostly empty space with thin strokes. That is the one that looks blank in your screenshot.
-
-**Fix:** swap `Sparkles` → `Wand2` (a denser, clearly readable icon) for the Prompts & AI Workflows row only. All other docs icons (`KeyRound`, `Network`, `Plug`, `ShieldCheck`, `Gauge`, `Calculator`, `PieChart`, `Activity`, `FileCode2`, `MailOpen`, `Send`, `FileText`) already render fine — I will verify each visually after the swap. One-line change in `AppSidebar.tsx`.
-
-I have not "failed 1000 times" on sidebar icons — every docs row already has an icon assigned in code. The Sparkles icon just renders too faintly at sidebar size. That is the real bug and the swap fixes it.
+Goal: bring the Candidate Pipeline page into visual parity with the City Search / Dashboard reskin. Purely presentational — no scoring math, no DnD logic, no schema.
 
 ---
 
-## 2. `.lovable/tier2-backlog.md` vs Sam's punchlist — reconciliation
+## Phase 1 — KPI tiles, filter strip, density toolbar, legend
+**Status: ✅ SHIPPED & live-verified**
 
-The Tier 2 backlog was derived from Sam's punchlist (you and I built it together to survive across chat sessions). Here is the full audit:
-
-**Safe group — all 9 items shipped:**
-| # | Item | Shipped? |
-|---|---|---|
-| 1 | Days in Stage filter | ✅ |
-| 2 | Other Opportunities textarea | ✅ |
-| 3 | Mailing Address fields | ✅ |
-| 4 | Editable profile fields | ✅ |
-| 5 | Partner toggle conditional fields | ✅ |
-| 6 | Notes & Activity 6-step process | ✅ |
-| 7 | Homework checkboxes all stages | ✅ |
-| 8 | Compliance Audit Log dates | ✅ |
-| 13 | Documentation deliverables | ✅ N/A |
-
-**Brett-only riskier group — status:**
-| # | Item | Status |
-|---|---|---|
-| 9 | City notes table | ❌ NOT shipped |
-| 10 | Committee voting without member accounts | ✅ Shipped as "Change #4" (manual committee votes) — you confirmed pass |
-| 11 | Candidate file uploads (Storage bucket + RLS) | ✅ Shipped (FF_DOCUMENTS, FF_STEP2_UPLOADS, FF_STEP4_UPLOADS all true) |
-| 12 | Proof-of-send screenshot upload | ❌ NOT shipped |
-
-**Conclusion:** the Tier 2 backlog is NOT 100% complete — items **#9 (City notes)** and **#12 (Proof-of-send)** are still open. Those were never part of Sam's V1.0 4-item punchlist (Desired Markets rename / number formatting / Guardrails docs / manual committee votes) — they are extras you and I tracked separately.
-
-**Recommendation:** do NOT delete `.lovable/tier2-backlog.md` yet. Instead I will:
-- Mark #10 and #11 as ✅ Shipped (catch the file up).
-- Add a clear header that says "This is separate from Sam's V1.0 punch list, which is 100% shipped. Items #9 and #12 remain open as future work."
-
-That removes the confusion Brett ran into without losing the only record of #9 and #12.
-
-If you'd rather just delete it and lose the #9/#12 tracking, say the word and I will.
+Already in production. Header KPI tiles, top filter strip, density toolbar, and stage legend match City Search tonally.
 
 ---
 
-## 3. Rename `.lovable/plan.md` → `.lovable/Candidate Pipeline — City Search Reskin Plan.md`
+## Phase 2 — Board chrome
+**Status: 🟡 NOT STARTED** (medium risk, purely visual)
 
-Straight rename, stays inside `.lovable/`. No content change. Plan is still live (Phase 1 shipped, Phases 2–3 not started).
+Files:
+- `src/components/candidate-pipeline/KanbanBoard.tsx`
+  - "Jump to:" row: stage labels, count badges, active pill background (blue `#174be8`)
+- `src/components/candidate-pipeline/KanbanColumn.tsx`
+  - Column header restyle, "Drop candidates here" empty-state placeholder
+  - Disqualified column body: `opacity-65`
+- `src/index.css`
+  - Scoped custom scrollbar (pipeline container only — do NOT change global scrollbar)
+
+**Hard rule:** stage color identity lives **only** in the column-header dots. Do NOT blue-wash the stage dots — keep their distinct hues so users can scan stages at a glance.
 
 ---
 
-## 4. Delete `.lovable/parked-fixes.md`
+## Phase 3 — Cards + score badges
+**Status: 🟡 NOT STARTED** (higher risk, has one open question)
 
-File currently says "no active parks" and only contains one Resolved entry (Nashville score mismatch, already shipped 2026-05-27 with a permanent write-up at `docs/pending-approval/2026-05-27-nashville-score-mismatch.md`). Safe to delete — nothing is lost.
+Files:
+- `src/components/candidate-pipeline/CandidateCard.tsx`
+  - Remove the colored left border bar
+  - Hover state: border `#174be8`
+  - Owner avatar: `w-7 h-7 bg:#174be8`
+  - "Start Onboarding" CTA stays orange `#fd7e14` _unless_ the open question below resolves to a global swap
+- `src/components/candidate-pipeline/CompositeScoreBadge.tsx` — re-tone tier colors:
+  - ≥90 → bg `#e7efff` / text `#0a2f8a` / border `#174be8`
+  - 75–89 → bg `#eaf7f1` / text `#155d3a` / border `#20c997`
+  - 60–74 → bg `#fff4e5` / text `#7a3a00` / border `#fd7e14`
+  - <60 → bg `#fdecee` / text `#7a1620` / border `#dc3545`
+
+### Open question — ASK BEFORE STARTING PHASE 3
+
+CandidateCard's "Start Onboarding" CTA and the global `--primary` token are currently **orange**. City Search uses **blue `#174be8`** as primary.
+
+- **Option A (recommended):** local override inside the pipeline only — keep `--primary` orange globally, add a scoped blue accent for pipeline-specific surfaces.
+- **Option B:** global token swap (`--primary` orange → blue everywhere). Recolors every primary button across the entire app.
+
+Get Brett's confirmation before touching any token.
 
 ---
 
-## Technical change list
+## Out of scope (do not touch)
+- `CandidateDetailPanel.tsx` tabs
+- Scoring math / pillar weights
+- Drag-and-drop guards
+- FDD gate logic
+- Homework carry-forward
+- Global `--primary` token changes (unless Option B is explicitly approved)
 
-1. `src/components/AppSidebar.tsx` — import `Wand2` instead of `Sparkles`, use it on the Prompts & AI Workflows nav row.
-2. `.lovable/tier2-backlog.md` — update status table (#10, #11 → ✅) and add clarifying header.
-3. `mv .lovable/plan.md ".lovable/Candidate Pipeline — City Search Reskin Plan.md"`
-4. `rm .lovable/parked-fixes.md`
+---
 
-No business logic, schema, or RLS touched. Pure docs + one icon swap.
+## How to resume
+
+1. Read this file end-to-end.
+2. Switch to build mode.
+3. Ship Phase 2 first (lowest risk).
+4. After Phase 2 ships, ask Brett the Phase 3 open question.
+5. Ship Phase 3 once answered.
+6. Take a final full-page screenshot at 1070px and compare against `/city-scoring` for tonal consistency.

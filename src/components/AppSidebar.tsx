@@ -101,7 +101,7 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto pb-12">
-          <nav className={`flex flex-col ${isCollapsed ? "gap-2 px-2" : "gap-2.5 px-3.5"}`}>
+          <nav className={`flex flex-col ${isCollapsed ? "gap-2 px-2" : "gap-0.5 px-3.5"}`}>
             {primaryNavItems.map((item) => renderLink(item))}
           </nav>
 

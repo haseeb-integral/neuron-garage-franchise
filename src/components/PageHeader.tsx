@@ -13,6 +13,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { NotificationsPopover } from "@/components/NotificationsPopover";
+import { useNotifications } from "@/hooks/useNotifications";
 
 interface PageHeaderProps {
   title: string;

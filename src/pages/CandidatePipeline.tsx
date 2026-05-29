@@ -198,6 +198,34 @@ const CandidatePipeline = () => {
         }
       }
 
+      // Recompute daysInStage from candidate_stage_history (time since entering current stage),
+      // falling back to created_at when no matching history row exists.
+      if (dbIds.length > 0) {
+        const { data: histRows } = await supabase
+          .from("candidate_stage_history")
+          .select("candidate_id, to_stage, changed_at")
+          .in("candidate_id", dbIds)
+          .order("changed_at", { ascending: false });
+        if (histRows && histRows.length > 0) {
+          const latestByCand = new Map<string, Record<string, string>>();
+          for (const h of histRows as any[]) {
+            const m = latestByCand.get(h.candidate_id) ?? {};
+            if (!m[h.to_stage]) m[h.to_stage] = h.changed_at;
+            latestByCand.set(h.candidate_id, m);
+          }
+          const dayMs = 1000 * 60 * 60 * 24;
+          for (const c of mapped) {
+            const dbId = (c as any).dbId as string | undefined;
+            if (!dbId) continue;
+            const dbStage = uiStageToDb(c.stage);
+            const enteredAt = latestByCand.get(dbId)?.[dbStage];
+            if (enteredAt) {
+              c.daysInStage = Math.max(0, Math.floor((Date.now() - new Date(enteredAt).getTime()) / dayMs));
+            }
+          }
+        }
+      }
+
       setCandidates(mapped);
       setLoading(false);
 

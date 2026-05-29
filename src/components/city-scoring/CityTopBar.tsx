@@ -27,13 +27,12 @@ export function CityTopBar({
   searchTerm, setSearchTerm, screenMode, onExportCsv, onOpenReport,
   initials, displayName, role, email, onNavigateTeam, onLogout,
 }: Props) {
-}: Props) {
   const { unreadCount } = useNotifications();
   return (
     <div className="mb-4 flex flex-wrap items-center gap-3">
       <div className="relative min-w-0 flex-1 md:max-w-[680px]">
-
         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8794ab]" />
+
         <Input
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}

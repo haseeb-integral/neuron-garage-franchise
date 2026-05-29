@@ -1,52 +1,76 @@
-## Decisions locked
+## Part 1 — Fix the "Assigned To" (and other) Select fields
 
-- **Colors:** All orange CTAs in the Candidate Pipeline (card "Start Onboarding", modal "Add Candidate", drawer accents) → blue `#174be8` to match City Search. Local override only — no global token swap.
-- **Modal + drawer chrome:** Recolor to match City Search tones (`#f7faff` header strip, `#e3e8ef` borders, `#ffffff` body, `#07142f` titles semibold, `#526078` labels, focus ring `#174be8`).
-- **Email field (safe path, no schema change):**
-  - Rename modal field from `Email *` → **`Contact Email *`**
-  - Helper text: _"This will be saved as the candidate's primary contact email. It is not auto-verified."_
-  - Keep writing to `candidates.email`
-  - Stamp `email_source = 'manual'` on insert
-  - Auto-promoted rows already have a different source — drawer will show 🔒 lock only when `email_source != 'manual'`, and the unlocked pencil icon when `email_source = 'manual'`
-- **Days definition: Option A — days since last entered current stage.** Honest reason: I searched the full chat history. Brett never spelled out A/B/C/D. Sam's punchlist only said _"Add a Days in Stage filter"_ with no formula. The existing `Fresh ≤3 / Watch 4–7 / Stalled 8+` filter only makes sense if "days" resets when the card enters a new column — otherwise every old candidate is permanently "Stalled" regardless of recent activity. Option A is the SaaS-standard Kanban convention (Pipedrive, HubSpot, Trello Aging) and the only one consistent with the Fresh/Watch/Stalled buckets already shipped. Brian Thompson showing **Day 0** today is correct: he was dragged back into FDD Review at 02:50 UTC today.
-- **Out of scope:** scoring math, schema migration for verified-vs-other email split, City Search page.
+**Before:** In the New Candidate modal the selected value ("Haseeb…") sits visually centered inside the trigger, which looks broken compared to the text inputs above/below it.
 
-## Schema check
+**After:** Selected value left-aligned, single-line, truncates with ellipsis if the email is long — matching every other input in the modal.
 
-The DB already has the `candidates` table with an `email` column. I need to confirm an `email_source` column exists before the build step. If it doesn't, the build step will add a tiny migration:
+**Why it happens:** The SelectValue inside `SelectTrigger` becomes a flex child next to the chevron. With `justify-between`, when the trigger is wide and the value span shrinks to its content, it can look mis-centered (especially with `[&>span]:line-clamp-1`). The trigger also has no explicit `text-left` / `flex-1` on the value span.
 
-```sql
-ALTER TABLE public.candidates
-  ADD COLUMN IF NOT EXISTS email_source text NOT NULL DEFAULT 'imported';
--- 'imported' = came from teacher/outreach pipeline (default, shows 🔒)
--- 'manual'   = typed by hand in the New Candidate modal (shows pencil)
--- 'verified' = future state if we wire an actual verification step
-```
+**Fix (file: `src/components/candidate-pipeline/NewCandidateModal.tsx`):**
+- Wrap each `<SelectValue />` with an explicit left-aligned, flex-1, truncating span, or pass `className="[&>span]:flex-1 [&>span]:text-left [&>span]:truncate"` on each `<SelectTrigger>` used in this modal (Assigned To + Initial Stage).
+- No change to the shared `src/components/ui/select.tsx` (keeps other selects in the app untouched).
 
-This is purely additive, default-safe for existing rows, no RLS/grant changes needed (column inherits table grants).
+That's the only thing touching the modal.
 
-## Files to touch
+---
 
-- `src/components/candidate-pipeline/CandidateCard.tsx` — "Start Onboarding" button orange → blue
-- `src/components/candidate-pipeline/NewCandidateModal.tsx` — submit button blue, rename `Email *` → `Contact Email *`, add helper text, add `email_source: 'manual'` to insert payload, restyle modal chrome
-- `src/components/candidate-pipeline/CandidateDetailPanel.tsx` — drawer chrome to City Search tones, any orange accents → blue, conditionally show lock vs pencil based on `email_source`
-- `src/pages/CandidatePipeline.tsx` — no logic change for days (Option A confirmed)
-- One small migration if `email_source` column missing
+## Part 2 — Honest answer: what's NOT yet changed in the Candidate Drawer
 
-## Smoke test after build (959px viewport)
+Looking at the screenshot you sent (Allison Wood drawer) vs. what last turn actually shipped:
 
-1. Open New Candidate modal → field reads "Contact Email *" with helper line, "Add Candidate" button is blue
-2. Submit a test candidate → row inserted with `email_source = 'manual'`, drawer shows pencil (not lock) on email
-3. Open Brittany Cruz drawer → email shows 🔒 (auto-promoted, unchanged)
-4. Cards in Signing column → "Start Onboarding" button is blue, hover state blue-darker
-5. No orange anywhere in pipeline except the Day-chip warning tone (intentional)
-6. Brian Thompson still Day 0 in FDD Review (Option A, correct)
+What I DID change last turn in the drawer:
+- `OverviewTab.tsx` — added conditional pencil-vs-lock for manually-added emails (`emailSource === "manual"`).
+- That's it. No color, chrome, or typography changes.
 
-## Approval to proceed
+What I did NOT change (still default theme tokens):
+1. Drawer header strip still uses the page background, not the `#f7faff` City-Search tone I promised.
+2. Tab bar — active "Overview" pill still uses default white-on-shadow, not the blue underline treatment.
+3. Section card borders still default `border` token, not `#e3e8ef`.
+4. Section titles ("Contact Information", "Other Opportunities…", "Mailing Address") still render in `text-primary` (the existing dark navy), which is fine, but **the "Click any value to edit" helper, field labels, and field values still use default muted tones** — never reconciled to the `#526078` / `#07142f` palette I described.
+5. "Export Packet" button still uses the default outline button — no blue accent.
+6. No orange in the drawer today (good — nothing to swap), but no blue accent applied either.
 
-Switching to build mode will execute, in order:
-1. Migration to add `email_source` column (only if not already present)
-2. Code edits to the 3 files above
-3. Smoke test pass
+So when you said "where has not UI changes in the candidate drawer?" — you are right. Last turn's drawer work was functional (lock/pencil logic) only, not visual.
 
-Confirm and I'll ship.
+---
+
+## Part 3 — Drawer visual pass (this plan will do it)
+
+Files: `src/components/candidate-pipeline/CandidateDetailPanel.tsx`, `src/components/candidate-pipeline/tabs/OverviewTab.tsx`.
+
+Changes (Tailwind arbitrary values, local only — no token churn):
+
+| Element | Before | After |
+|---|---|---|
+| Drawer header background | inherited page bg | `bg-[#f7faff]` with `border-b border-[#e3e8ef]` |
+| Candidate name | `text-primary` bold | `text-[#07142f]` `font-semibold` |
+| Subtitle (city · email) | muted-foreground | `text-[#526078]` |
+| Owner line | muted-foreground | `text-[#8893a7] text-xs` |
+| Export Packet button | default outline | outline + `text-[#174be8] border-[#174be8] hover:bg-[#174be8]/5` |
+| Close (X) | default | `hover:bg-[#e3e8ef]` |
+| Tab bar | default shadcn tabs | active tab: `text-[#174be8]` with 2px `#174be8` underline; inactive: `text-[#526078]` |
+| Section card border | `border` | `border-[#e3e8ef]` |
+| Section titles | `text-primary` | `text-[#07142f] font-semibold` |
+| Field labels | muted | `text-[#526078] text-xs uppercase tracking-wide` |
+| Field values | default | `text-[#07142f]` |
+| Lock / pencil icons | current | `text-[#8893a7]` |
+| Verified-email lock | already in | unchanged |
+| Empty-state placeholders (Other Email, Mailing Address inputs) | default border | `border-[#e3e8ef]` `focus:ring-[#174be8]` |
+
+No business logic, no schema, no tab content reordering. Pure styling.
+
+---
+
+## Out of scope
+- Days-in-stage math (locked Option A last turn).
+- Pipeline scoring, fit thresholds.
+- Other tabs beyond Overview header chrome (Lead Sheet, Qualification, etc.) — they'll inherit the new tab-bar color but their card internals stay as-is unless you call them out.
+- The shared `select.tsx` component — fix is scoped to this modal only.
+
+---
+
+## Smoke test (after build)
+1. Open New Candidate → "Assigned To" + "Initial Stage" values are left-aligned, truncate cleanly.
+2. Open a candidate drawer → header is light blue tint, name navy semibold, tab underline blue, section cards have soft blue-gray borders.
+3. Allison Wood still shows 🔒 on Verified Email (auto-imported row).
+4. A manually-added candidate (email_source = 'manual') shows pencil instead of lock.

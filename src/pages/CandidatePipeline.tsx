@@ -741,7 +741,7 @@ const CandidatePipeline = () => {
       />
 
       {/* Filter strip */}
-      <div className="bg-white rounded-lg px-3 py-2 mb-3 flex flex-wrap items-center gap-x-3 gap-y-2" style={{ border: "1px solid #dee2e6" }}>
+      <div className="bg-white rounded-xl px-3 py-2.5 mb-3 shadow-sm flex flex-wrap items-center gap-x-3 gap-y-2" style={{ border: "1px solid #dee2e6" }}>
         <div className="flex items-center gap-1.5" style={{ color: "#6c757d" }}>
           <Filter size={13} />
           <span className="text-xs font-semibold uppercase tracking-wide">Filter</span>

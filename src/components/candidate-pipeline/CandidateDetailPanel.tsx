@@ -87,7 +87,7 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
               </div>
             </div>
             <div className="flex items-start gap-3 shrink-0">
-              <FitScoreBadge score={candidate.fitScore} />
+              
               <Button
                 variant="outline"
                 size="sm"

@@ -77,7 +77,7 @@ export function KanbanColumn({
           style={{
             writingMode: "vertical-rl",
             transform: "rotate(180deg)",
-            color: isDisq ? "#6c757d" : "#003c7e",
+            color: isDisq ? "#526078" : "#07142f",
             letterSpacing: "0.02em",
           }}
         >
@@ -113,17 +113,17 @@ export function KanbanColumn({
       <div
         className="flex items-center justify-between px-3 py-2 sticky top-0 z-10"
         style={{
-          backgroundColor: over ? "#e9ecef" : "#f8f9fa",
-          borderBottom: "1px solid #dee2e6",
+          backgroundColor: over ? "#e9ecef" : "#f7faff",
+          borderBottom: "1px solid #eef2f7",
         }}
       >
         <div className="flex items-center gap-2 min-w-0">
           <button
             onClick={() => onToggleCollapse(stage.id)}
-            className="flex-shrink-0 hover:bg-[#e9ecef] rounded p-0.5"
+            className="flex-shrink-0 hover:bg-[#eef2f7] rounded p-0.5"
             title="Collapse column"
           >
-            <ChevronLeft size={14} style={{ color: "#6c757d" }} />
+            <ChevronLeft size={14} style={{ color: "#526078" }} />
           </button>
           <span
             className="w-2 h-2 rounded-full flex-shrink-0"
@@ -131,14 +131,17 @@ export function KanbanColumn({
           />
           <h3
             className="text-sm font-bold truncate"
-            style={{ color: isDisq ? "#6c757d" : "#212529", letterSpacing: "-0.01em" }}
+            style={{ color: isDisq ? "#526078" : "#07142f", letterSpacing: "-0.01em" }}
           >
             {stage.short}
           </h3>
         </div>
         <span
           className="text-[11px] px-2 py-0.5 rounded-full font-bold flex-shrink-0"
-          style={{ backgroundColor: "#e9ecef", color: "#495057" }}
+          style={{
+            backgroundColor: "#eef2f7",
+            color: isDisq ? "#526078" : "#174be8",
+          }}
         >
           {candidates.length}
         </span>

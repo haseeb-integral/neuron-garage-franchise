@@ -14,18 +14,14 @@ Already in production. Header KPI tiles, top filter strip, density toolbar, and 
 ---
 
 ## Phase 2 — Board chrome
-**Status: 🟡 NOT STARTED** (medium risk, purely visual)
+**Status: ✅ SHIPPED 2026-05-29**
 
-Files:
-- `src/components/candidate-pipeline/KanbanBoard.tsx`
-  - "Jump to:" row: stage labels, count badges, active pill background (blue `#174be8`)
-- `src/components/candidate-pipeline/KanbanColumn.tsx`
-  - Column header restyle, "Drop candidates here" empty-state placeholder
-  - Disqualified column body: `opacity-65`
-- `src/index.css`
-  - Scoped custom scrollbar (pipeline container only — do NOT change global scrollbar)
+- `KanbanBoard.tsx`: Jump-to row tracks the currently-visible stage via IntersectionObserver; active pill renders blue `#174be8` with white text and translucent count badge.
+- `KanbanColumn.tsx`: header restyled to City Search tones (bg `#f7faff`, border `#eef2f7`, title `#07142f`, count `#174be8` on `#eef2f7`); disqualified header stays muted `#526078`. Stage dots keep their distinct hues (hard rule honored).
+- `KanbanColumn.tsx`: "Drop candidates here" empty state and Disqualified `opacity-65` already in place from Phase 1.
+- `index.css`: scoped `.kanban-scroll` scrollbar already in place from Phase 1.
 
-**Hard rule:** stage color identity lives **only** in the column-header dots. Do NOT blue-wash the stage dots — keep their distinct hues so users can scan stages at a glance.
+**Hard rule honored:** stage color identity lives **only** in the column-header dots — not blue-washed.
 
 ---
 

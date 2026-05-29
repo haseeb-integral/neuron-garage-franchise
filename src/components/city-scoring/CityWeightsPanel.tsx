@@ -82,17 +82,18 @@ export function CityWeightsPanel({
             </div>
           </div>
           <div className="min-w-0">
-            <h3 className="text-sm font-bold text-[#07142f]">Scoring Weights</h3>
+            <h3 className="text-sm font-bold text-[#07142f]">How should we rank cities?</h3>
             <p className="text-[11px] text-[#07142f] leading-snug mt-1 max-w-[640px]">
-              These three weights <strong>share a budget of 100%</strong>. Raising one automatically lowers the others — the cities haven't changed, only how much each factor counts toward the ranking.
+              Every city gets one overall score (0–100) built from three things: <strong style={{ color: VISIBLE_CATEGORIES[0].color }}>Demand</strong> (are families looking for tutoring?), <strong style={{ color: VISIBLE_CATEGORIES[1].color }}>TAM Teachers</strong> (can you hire enough tutors?), and <strong style={{ color: VISIBLE_CATEGORIES[2].color }}>Competitive Opportunity</strong> (is the market open or already crowded?). The sliders below decide how much each one counts — they always add up to 100%.
             </p>
             <p className="text-[10px] text-[#8794ab] leading-snug mt-1">
-              Score uses the 12-metric model across Demand, Competitive Opportunity, and TAM Teachers. Missing metrics are tracked as evidence gaps, not counted as zero.
+              Each of the three categories is built from several signals (population, income, competitor density, etc). Pick a preset to start, or fine-tune any category with <span className="font-medium">Configure metrics</span>.
             </p>
             {totalWeight !== 100 && (
               <p className="text-[11px] text-[#ea580c] mt-1">Weights must total 100% to apply scoring.</p>
             )}
           </div>
+
         </div>
         <div className="flex md:shrink-0 flex-col md:items-end gap-2 w-full md:w-auto">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 w-full md:w-auto md:justify-end">

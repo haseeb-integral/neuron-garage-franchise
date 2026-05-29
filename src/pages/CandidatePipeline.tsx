@@ -12,6 +12,7 @@ import { PipelineAnalyticsBar } from "@/components/candidate-pipeline/PipelineAn
 import { CandidateDetailPanel } from "@/components/candidate-pipeline/CandidateDetailPanel";
 import { PageHeader } from "@/components/PageHeader";
 import { useCandidatePipelineStore } from "@/stores/candidatePipelineStore";
+import { isEnabled } from "@/lib/featureFlags";
 
 import {
   AlertDialog,
@@ -303,7 +304,6 @@ const CandidatePipeline = () => {
       setDisqualifyTarget({ candidate, fromStage: candidate.stage });
       return;
     }
-
     // Signing prerequisite: must currently be in Confirmation OR have passed through it before
     if (toStage === "signing" && dbId) {
       if (candidate.stage !== "confirmation") {
@@ -320,6 +320,42 @@ const CandidatePipeline = () => {
         }
       }
     }
+
+    // Phase C2 — 16-day FDD hard-block (T3-06).
+    // Behind FF_FDD_GATE so it can be flipped off instantly if it misfires.
+    // Blocks any forward move OUT of fdd_review until 16 calendar days have
+    // elapsed since fdd_sent_at, unless compliance_override is on.
+    if (
+      isEnabled("FF_FDD_GATE") &&
+      dbId &&
+      candidate.stage === "fdd_review" &&
+      toStage !== "fdd_review"
+    ) {
+      const { data: comp } = await supabase
+        .from("candidate_compliance")
+        .select("fdd_sent_at, compliance_override")
+        .eq("candidate_id", dbId)
+        .maybeSingle();
+
+      if (!comp?.compliance_override) {
+        if (!comp?.fdd_sent_at) {
+          toast.error("FDD sent date required", {
+            description: "Set the FDD sent date on the Homework tab before advancing.",
+          });
+          return;
+        }
+        const sentMs = new Date(comp.fdd_sent_at).getTime();
+        const daysElapsed = Math.floor((Date.now() - sentMs) / 86_400_000);
+        const daysRemaining = 16 - daysElapsed;
+        if (daysRemaining > 0) {
+          toast.error("16-day FDD lock active", {
+            description: `${daysRemaining} day${daysRemaining === 1 ? "" : "s"} remaining. Use compliance override on the Homework tab to bypass.`,
+          });
+          return;
+        }
+      }
+    }
+
 
     // Hard gate: moving INTO confirmation requires Trial Close checklist
     let incomplete = 0;

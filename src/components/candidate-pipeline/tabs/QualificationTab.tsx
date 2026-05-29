@@ -207,17 +207,29 @@ export function QualificationTab({ candidate, onScoreChange }: Props) {
             }}
           />
         </div>
-        {overrideEnabled && dbId && (
-          <div className="flex items-center gap-2 mt-3">
-            <Button size="sm" variant="outline" onClick={() => setAdjustOpen(true)}>
-              <SlidersHorizontal className="w-3.5 h-3.5 mr-1.5" />
-              Adjust Scores
-            </Button>
-            {isAdjusted && (
-              <Button size="sm" variant="ghost" onClick={handleReset}>
-                <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
-                Reset to calculated
+        {overrideEnabled && (
+          <div className="mt-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => dbId && setAdjustOpen(true)}
+                disabled={!dbId}
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 mr-1.5" />
+                Adjust Scores
               </Button>
+              {isAdjusted && dbId && (
+                <Button size="sm" variant="ghost" onClick={handleReset}>
+                  <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+                  Reset to calculated
+                </Button>
+              )}
+            </div>
+            {!dbId && (
+              <p className="text-xs text-muted-foreground">
+                Save this record first to enable score adjustments.
+              </p>
             )}
           </div>
         )}

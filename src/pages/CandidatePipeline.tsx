@@ -329,8 +329,7 @@ const CandidatePipeline = () => {
       isEnabled("FF_FDD_GATE") &&
       dbId &&
       candidate.stage === "fdd_review" &&
-      toStage !== "fdd_review" &&
-      toStage !== "disqualified"
+      toStage !== "fdd_review"
     ) {
       const { data: comp } = await supabase
         .from("candidate_compliance")

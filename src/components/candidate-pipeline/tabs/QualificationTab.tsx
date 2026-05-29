@@ -1,9 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { Candidate, QualificationScores } from "@/data/pipelineData";
 import { StarRating } from "../StarRating";
-import { Sparkles } from "lucide-react";
+import { Sparkles, SlidersHorizontal, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { isEnabled } from "@/lib/featureFlags";
+import {
+  PILLAR_KEYS,
+  PILLAR_OVERRIDE_COL,
+  PILLAR_DB_COL,
+  computeComposite,
+  getEffectivePillarScores,
+  type PillarKey,
+} from "@/lib/candidateScoring";
+import { AdjustScoresModal } from "../AdjustScoresModal";
 
 interface Props {
   candidate: Candidate;
@@ -18,41 +30,30 @@ const CRITERIA: { key: keyof QualificationScores; label: string; hint?: string }
   { key: "cultureFit", label: "Culture Fit" },
 ];
 
-// Map between local UI keys and DB column names
-const COLUMN_BY_KEY: Record<keyof QualificationScores, string> = {
-  teaching: "teaching_experience",
-  leadership: "leadership",
-  financial: "financial_readiness",
-  marketFit: "market_fit",
-  cultureFit: "culture_fit",
-};
-
-const KEY_BY_COLUMN: Record<string, keyof QualificationScores> = {
-  teaching_experience: "teaching",
-  leadership: "leadership",
-  financial_readiness: "financial",
-  market_fit: "marketFit",
-  culture_fit: "cultureFit",
-};
-
-function computeComposite(scores: QualificationScores): number {
-  const total = Object.values(scores).reduce((a, b) => a + b, 0);
-  return Math.round((total / 25) * 100);
-}
-
 export function QualificationTab({ candidate, onScoreChange }: Props) {
   const dbId = (candidate as any).dbId as string | undefined;
+  const overrideEnabled = isEnabled("FF_SCORE_OVERRIDE");
+
   const [scores, setScores] = useState<QualificationScores>(candidate.qualificationScores);
+  const [overrides, setOverrides] = useState<Partial<Record<PillarKey, number>>>({});
   const [composite, setComposite] = useState<number>(computeComposite(candidate.qualificationScores));
   const [loaded, setLoaded] = useState(false);
+  const [adjustOpen, setAdjustOpen] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const saveTimer = useRef<number | null>(null);
 
-  // Load from DB on mount / candidate change
+  const isAdjusted = Object.keys(overrides).length > 0;
+  const adjustedKeys = new Set(
+    PILLAR_KEYS.filter((k) => overrides[k] !== undefined && overrides[k] !== scores[k])
+  );
+
+  // Load from DB on mount / candidate change / after override save
   useEffect(() => {
     let cancelled = false;
     setLoaded(false);
     if (!dbId) {
       setScores(candidate.qualificationScores);
+      setOverrides({});
       setComposite(computeComposite(candidate.qualificationScores));
       setLoaded(true);
       return;
@@ -70,21 +71,22 @@ export function QualificationTab({ candidate, onScoreChange }: Props) {
         return;
       }
       if (data) {
-        const next: QualificationScores = {
-          teaching: data.teaching_experience ?? 0,
-          leadership: data.leadership ?? 0,
-          financial: data.financial_readiness ?? 0,
-          marketFit: data.market_fit ?? 0,
-          cultureFit: data.culture_fit ?? 0,
-        };
-        setScores(next);
-        setComposite(data.composite_score ?? computeComposite(next));
-        // Sync into in-memory candidate so other tabs see it
-        (Object.keys(next) as (keyof QualificationScores)[]).forEach((k) => {
-          if (candidate.qualificationScores[k] !== next[k]) onScoreChange(k, next[k]);
+        const eff = getEffectivePillarScores(data as any);
+        setScores(eff.raw);
+        const ovs: Partial<Record<PillarKey, number>> = {};
+        for (const k of PILLAR_KEYS) {
+          const v = (data as any)[PILLAR_OVERRIDE_COL[k]];
+          if (v !== null && v !== undefined) ovs[k] = v as number;
+        }
+        setOverrides(ovs);
+        setComposite(eff.composite);
+        // Sync effective scores into in-memory candidate so other tabs/badge see them
+        (Object.keys(eff.effective) as (keyof QualificationScores)[]).forEach((k) => {
+          if (candidate.qualificationScores[k] !== eff.effective[k]) onScoreChange(k, eff.effective[k]);
         });
       } else {
         setScores(candidate.qualificationScores);
+        setOverrides({});
         setComposite(computeComposite(candidate.qualificationScores));
       }
       setLoaded(true);
@@ -93,18 +95,22 @@ export function QualificationTab({ candidate, onScoreChange }: Props) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dbId]);
+  }, [dbId, reloadKey]);
 
   const handleChange = (key: keyof QualificationScores, value: number) => {
     const next = { ...scores, [key]: value };
-    const newComposite = computeComposite(next);
     setScores(next);
+    // Effective uses override when present, otherwise the new raw value
+    const effective: QualificationScores = { ...next };
+    for (const k of PILLAR_KEYS) {
+      if (overrides[k] !== undefined) effective[k] = overrides[k] as number;
+    }
+    const newComposite = computeComposite(effective);
     setComposite(newComposite);
-    onScoreChange(key, value);
+    onScoreChange(key, effective[key]);
 
     if (!dbId) return;
 
-    // Debounce save so quick clicks coalesce
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(async () => {
       const { error } = await supabase
@@ -130,11 +136,66 @@ export function QualificationTab({ candidate, onScoreChange }: Props) {
     }, 500);
   };
 
+  const handleReset = async () => {
+    if (!dbId || !isAdjusted) return;
+    const { data: userData } = await supabase.auth.getUser();
+    const email = userData?.user?.email ?? null;
+
+    const newComposite = computeComposite(scores);
+    const { error } = await supabase
+      .from("candidate_qualification")
+      .update({
+        teaching_experience_override: null,
+        leadership_override: null,
+        financial_readiness_override: null,
+        market_fit_override: null,
+        culture_fit_override: null,
+        override_reason: null,
+        override_by: email,
+        override_at: new Date().toISOString(),
+        composite_score: newComposite,
+      } as any)
+      .eq("candidate_id", dbId);
+
+    if (error) {
+      toast.error("Couldn't reset adjustments", { description: error.message });
+      return;
+    }
+
+    // Audit: one reset row per pillar that had an override
+    const auditRows = PILLAR_KEYS
+      .filter((k) => overrides[k] !== undefined)
+      .map((k) => ({
+        candidate_id: dbId,
+        action: "reset",
+        field: PILLAR_DB_COL[k],
+        old_value: overrides[k] ?? null,
+        new_value: scores[k],
+        reason: null,
+        changed_by: email,
+      }));
+    if (auditRows.length > 0) {
+      await supabase.from("candidate_score_overrides_history").insert(auditRows);
+    }
+
+    toast.success("Reset to calculated scores");
+    setReloadKey((k) => k + 1);
+  };
+
+  // What we display per pillar = override if present, else raw
+  const displayValue = (k: keyof QualificationScores): number =>
+    overrides[k as PillarKey] !== undefined ? (overrides[k as PillarKey] as number) : scores[k];
+
   return (
     <div className="space-y-4 pt-4">
       <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #dee2e6" }}>
         <div className="flex items-center justify-between mb-2">
-          <h4 className="font-semibold text-sm" style={{ color: "#003c7e" }}>Composite Score</h4>
+          <div className="flex items-center gap-2">
+            <h4 className="font-semibold text-sm" style={{ color: "#003c7e" }}>Composite Score</h4>
+            {isAdjusted && (
+              <Badge variant="secondary" className="text-[10px]">Adjusted</Badge>
+            )}
+          </div>
           <span className="text-2xl font-bold" style={{ color: "#003c7e" }}>{composite}</span>
         </div>
         <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: "#e9ecef" }}>
@@ -146,17 +207,36 @@ export function QualificationTab({ candidate, onScoreChange }: Props) {
             }}
           />
         </div>
+        {overrideEnabled && dbId && (
+          <div className="flex items-center gap-2 mt-3">
+            <Button size="sm" variant="outline" onClick={() => setAdjustOpen(true)}>
+              <SlidersHorizontal className="w-3.5 h-3.5 mr-1.5" />
+              Adjust Scores
+            </Button>
+            {isAdjusted && (
+              <Button size="sm" variant="ghost" onClick={handleReset}>
+                <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+                Reset to calculated
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-lg p-4 space-y-4" style={{ border: "1px solid #dee2e6" }}>
         {CRITERIA.map((c) => (
           <div key={c.key} className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium">{c.label}</div>
-              {c.hint && <div className="text-xs" style={{ color: "#6c757d" }}>{c.hint}</div>}
+            <div className="flex items-center gap-2">
+              <div>
+                <div className="text-sm font-medium">{c.label}</div>
+                {c.hint && <div className="text-xs" style={{ color: "#6c757d" }}>{c.hint}</div>}
+              </div>
+              {adjustedKeys.has(c.key as PillarKey) && (
+                <Badge variant="secondary" className="text-[10px]">Adjusted</Badge>
+              )}
             </div>
             <StarRating
-              value={scores[c.key]}
+              value={displayValue(c.key)}
               onChange={(v) => handleChange(c.key, v)}
             />
           </div>
@@ -177,6 +257,17 @@ export function QualificationTab({ candidate, onScoreChange }: Props) {
           </div>
         </div>
       </div>
+
+      {overrideEnabled && dbId && (
+        <AdjustScoresModal
+          open={adjustOpen}
+          onOpenChange={setAdjustOpen}
+          candidateId={dbId}
+          rawScores={scores}
+          currentOverrides={overrides}
+          onSaved={() => setReloadKey((k) => k + 1)}
+        />
+      )}
     </div>
   );
 }

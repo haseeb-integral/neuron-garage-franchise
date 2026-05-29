@@ -302,7 +302,7 @@ export function NewCandidateModal({ open, onOpenChange, teamMembers, onCreated }
             onClick={submit}
             disabled={submitting}
             className="text-white"
-            style={{ backgroundColor: "#fd7e14" }}
+            style={{ backgroundColor: "#174be8" }}
           >
             {submitting ? "Adding..." : "Add Candidate"}
           </Button>

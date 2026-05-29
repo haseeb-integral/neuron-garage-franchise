@@ -49,18 +49,8 @@ export function CardLegendPopover() {
             title="Initials circle — Candidate avatar"
             body="The candidate's initials. Just identity, no score."
           />
-          <LegendRow
-            swatch={
-              <span
-                className="inline-flex px-1.5 h-5 rounded-full items-center text-[10px] font-bold text-white"
-                style={{ backgroundColor: "#198754" }}
-              >
-                90
-              </span>
-            }
-            title="Color pill (number) — Fit Score"
-            body="AI/recruiter overall fit, 0–100. Red <50, amber 50–79, green 80+. 0 = not yet scored."
-          />
+
+
           <LegendRow
             swatch={
               <span

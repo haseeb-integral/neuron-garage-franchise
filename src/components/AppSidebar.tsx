@@ -129,10 +129,10 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
                 <button
                   type="button"
                   onClick={() => setDocsOpen((v) => !v)}
-                  className={`flex min-h-[34px] items-center gap-3 rounded-lg px-3 text-[13px] font-medium transition-all ${docsActive ? "text-[#0757ff]" : "text-[#14233b] hover:bg-[#f7faff] hover:text-[#0757ff]"}`}
+                  className={`flex min-h-[28px] items-center gap-3 rounded-lg px-3 text-[13px] font-medium transition-all ${docsActive ? "text-[#0757ff]" : "text-[#14233b] hover:bg-[#f7faff] hover:text-[#0757ff]"}`}
                   aria-expanded={docsOpen}
                 >
-                  <LibraryBig size={17} strokeWidth={1.75} />
+                  <BookMarked size={17} strokeWidth={2} />
                   <span className="flex-1 whitespace-nowrap text-left">Methodology &amp; Docs</span>
                   <ChevronDown size={14} className={`transition-transform ${docsOpen ? "rotate-180" : ""}`} />
                 </button>

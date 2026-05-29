@@ -80,6 +80,7 @@ const CandidatePipeline = () => {
       city: r.city ?? "",
       state: r.state ?? "",
       email: r.email ?? "",
+      emailSource: (r.email_source ?? "imported") as "imported" | "manual" | "verified",
       otherEmail: r.other_email ?? "",
       phone: r.phone ?? "",
       fitScore: r.fit_score ?? 0,
@@ -769,7 +770,7 @@ const CandidatePipeline = () => {
               size="sm"
               onClick={() => setNewOpen(true)}
               className="text-white w-full sm:w-auto"
-              style={{ backgroundColor: "#fd7e14" }}
+              style={{ backgroundColor: "#174be8" }}
             >
               <Plus size={14} /> New Candidate
             </Button>
@@ -1064,7 +1065,7 @@ const CandidatePipeline = () => {
             <AlertDialogAction
               onClick={confirmStartOnboarding}
               className="text-white"
-              style={{ backgroundColor: "#fd7e14" }}
+              style={{ backgroundColor: "#174be8" }}
             >
               Start Onboarding
             </AlertDialogAction>

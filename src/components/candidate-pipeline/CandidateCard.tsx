@@ -127,7 +127,10 @@ export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboardi
       {showStartOnboarding && (
         <button
           onClick={handleStart}
-          className="mt-2 w-full text-primary-foreground bg-primary text-xs font-semibold rounded-md px-2 py-1.5 flex items-center justify-center gap-1 hover:bg-primary/90 transition-colors"
+          className="mt-2 w-full text-white text-xs font-semibold rounded-md px-2 py-1.5 flex items-center justify-center gap-1 transition-colors"
+          style={{ backgroundColor: "#174be8" }}
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#0f3fc7")}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#174be8")}
         >
           Start Onboarding <ArrowRight size={12} />
         </button>

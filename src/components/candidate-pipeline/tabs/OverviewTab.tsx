@@ -21,7 +21,7 @@ interface Props {
   onSave?: (patch: Record<string, any>, localPatch: Partial<Candidate>) => Promise<void> | void;
 }
 
-type FieldKey = "name" | "otherEmail" | "phone" | "location" | "assignedTo" | "source";
+type FieldKey = "name" | "email" | "otherEmail" | "phone" | "location" | "assignedTo" | "source";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -54,6 +54,7 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
     if (readOnly) return;
     setEditing(key);
     if (key === "name") setDraft(candidate.name);
+    else if (key === "email") setDraft(candidate.email);
     else if (key === "otherEmail") setDraft(candidate.otherEmail ?? "");
     else if (key === "phone") setDraft(candidate.phone);
     else if (key === "location") { setDraft(candidate.city); setDraft2(candidate.state); }
@@ -76,6 +77,9 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
       const last = parts.join(" ");
       dbPatch = { first_name: first, last_name: last };
       localPatch = { name: v };
+    } else if (editing === "email") {
+      if (!v || !EMAIL_RE.test(v)) { toast.error("Enter a valid email address"); return; }
+      dbPatch = { email: v }; localPatch = { email: v };
     } else if (editing === "otherEmail") {
       if (v && !EMAIL_RE.test(v)) { toast.error("Enter a valid email address"); return; }
       dbPatch = { other_email: v || null }; localPatch = { otherEmail: v };
@@ -293,27 +297,31 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
           )}
         </h4>
         <div className="grid grid-cols-2 gap-3">
-          {/* Verified Email — LOCKED. This is the address Smartlead used for cold outreach.
-              Editing it would risk duplicate sends to two addresses for the same person. */}
-          <div className="flex items-start gap-2">
-            <Mail size={14} style={{ color: "#6c757d" }} className="mt-1" />
-            <div className="min-w-0 flex-1">
-              <div className="text-xs flex items-center gap-1" style={{ color: "#6c757d" }}>
-                Verified Email
-                <Lock
-                  size={11}
-                  style={{ color: "#adb5bd" }}
-                  aria-label="Locked"
-                />
+          {/* Email — LOCKED only when sourced from outreach (Smartlead). Manually-added
+              candidates show as editable, since there's no upstream verification to protect. */}
+          {candidate.emailSource === "manual"
+            ? renderRow("email", Mail, "Contact Email", candidate.email)
+            : (
+              <div className="flex items-start gap-2">
+                <Mail size={14} style={{ color: "#6c757d" }} className="mt-1" />
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs flex items-center gap-1" style={{ color: "#6c757d" }}>
+                    Verified Email
+                    <Lock
+                      size={11}
+                      style={{ color: "#adb5bd" }}
+                      aria-label="Locked"
+                    />
+                  </div>
+                  <div
+                    className="text-sm font-medium truncate"
+                    title="This is the email used in outreach. It cannot be changed to protect against duplicate sends."
+                  >
+                    {candidate.email || <span style={{ color: "#adb5bd" }}>—</span>}
+                  </div>
+                </div>
               </div>
-              <div
-                className="text-sm font-medium truncate"
-                title="This is the email used in outreach. It cannot be changed to protect against duplicate sends."
-              >
-                {candidate.email || <span style={{ color: "#adb5bd" }}>—</span>}
-              </div>
-            </div>
-          </div>
+            )}
           {renderRow("otherEmail", Mail, "Other Email", candidate.otherEmail ?? "")}
           {renderRow("phone", Phone, "Phone", candidate.phone)}
           {renderRow("location", MapPin, "Location", `${candidate.city}${candidate.state ? `, ${candidate.state}` : ""}`)}

@@ -120,6 +120,7 @@ export function NewCandidateModal({ open, onOpenChange, teamMembers, onCreated }
         first_name: form.first_name.trim(),
         last_name: form.last_name.trim(),
         email: form.email.trim(),
+        email_source: "manual",
         phone: form.phone.trim() || null,
         city: form.city.trim(),
         state: form.state.trim().toUpperCase(),
@@ -193,13 +194,16 @@ export function NewCandidateModal({ open, onOpenChange, teamMembers, onCreated }
           </div>
 
           <div className="sm:col-span-2">
-            <Label htmlFor="email">Email *</Label>
+            <Label htmlFor="email">Contact Email *</Label>
             <Input
               id="email"
               type="email"
               value={form.email}
               onChange={(e) => set("email", e.target.value)}
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              This will be saved as the candidate's primary contact email. It is not auto-verified.
+            </p>
             {fieldErr("email")}
           </div>
 
@@ -298,7 +302,7 @@ export function NewCandidateModal({ open, onOpenChange, teamMembers, onCreated }
             onClick={submit}
             disabled={submitting}
             className="text-white"
-            style={{ backgroundColor: "#fd7e14" }}
+            style={{ backgroundColor: "#174be8" }}
           >
             {submitting ? "Adding..." : "Add Candidate"}
           </Button>

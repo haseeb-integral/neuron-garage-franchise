@@ -31,7 +31,7 @@ const CRITERIA: { key: keyof QualificationScores; label: string; hint?: string }
   { key: "cultureFit", label: "Culture Fit" },
 ];
 
-export function QualificationTab({ candidate, onScoreChange }: Props) {
+export function QualificationTab({ candidate, onScoreChange, onScoresReplace }: Props) {
   const dbId = (candidate as any).dbId as string | undefined;
   const overrideEnabled = isEnabled("FF_SCORE_OVERRIDE");
 

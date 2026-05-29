@@ -399,30 +399,54 @@ export type Database = {
           candidate_id: string
           composite_score: number
           culture_fit: number
+          culture_fit_override: number | null
           financial_readiness: number
+          financial_readiness_override: number | null
           leadership: number
+          leadership_override: number | null
           market_fit: number
+          market_fit_override: number | null
+          override_at: string | null
+          override_by: string | null
+          override_reason: string | null
           teaching_experience: number
+          teaching_experience_override: number | null
           updated_at: string
         }
         Insert: {
           candidate_id: string
           composite_score?: number
           culture_fit?: number
+          culture_fit_override?: number | null
           financial_readiness?: number
+          financial_readiness_override?: number | null
           leadership?: number
+          leadership_override?: number | null
           market_fit?: number
+          market_fit_override?: number | null
+          override_at?: string | null
+          override_by?: string | null
+          override_reason?: string | null
           teaching_experience?: number
+          teaching_experience_override?: number | null
           updated_at?: string
         }
         Update: {
           candidate_id?: string
           composite_score?: number
           culture_fit?: number
+          culture_fit_override?: number | null
           financial_readiness?: number
+          financial_readiness_override?: number | null
           leadership?: number
+          leadership_override?: number | null
           market_fit?: number
+          market_fit_override?: number | null
+          override_at?: string | null
+          override_by?: string | null
+          override_reason?: string | null
           teaching_experience?: number
+          teaching_experience_override?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -434,6 +458,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      candidate_score_overrides_history: {
+        Row: {
+          action: string
+          candidate_id: string
+          changed_at: string
+          changed_by: string | null
+          field: string | null
+          id: string
+          new_value: number | null
+          old_value: number | null
+          reason: string | null
+        }
+        Insert: {
+          action: string
+          candidate_id: string
+          changed_at?: string
+          changed_by?: string | null
+          field?: string | null
+          id?: string
+          new_value?: number | null
+          old_value?: number | null
+          reason?: string | null
+        }
+        Update: {
+          action?: string
+          candidate_id?: string
+          changed_at?: string
+          changed_by?: string | null
+          field?: string | null
+          id?: string
+          new_value?: number | null
+          old_value?: number | null
+          reason?: string | null
+        }
+        Relationships: []
       }
       candidate_stage_history: {
         Row: {

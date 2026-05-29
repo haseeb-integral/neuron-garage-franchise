@@ -461,18 +461,8 @@ const UserGuide = () => {
                 title: "Initials circle — Candidate avatar",
                 body: "The candidate's initials. Pure identity — no score, no signal.",
               },
-              {
-                swatch: (
-                  <span
-                    className="inline-flex px-2 h-6 rounded-full items-center text-xs font-bold text-white"
-                    style={{ backgroundColor: "#198754" }}
-                  >
-                    90
-                  </span>
-                ),
-                title: "Color pill (number) — Fit Score",
-                body: "The AI/recruiter overall fit rating, 0–100. Red below 50, amber 50–79, green 80+. A red 0 means no fit score has been assigned yet — not that the candidate is bad.",
-              },
+
+
               {
                 swatch: (
                   <span

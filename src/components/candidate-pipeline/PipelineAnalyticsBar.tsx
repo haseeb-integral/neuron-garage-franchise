@@ -1,3 +1,5 @@
+import { Users, Flame, TrendingUp, Sparkles } from "lucide-react";
+
 interface Props {
   totalInPipeline: number;
   hotLeads: number;
@@ -12,22 +14,37 @@ export function PipelineAnalyticsBar({
   newThisWeek,
 }: Props) {
   const stats = [
-    { label: "Total in Pipeline", value: totalInPipeline },
-    { label: "Hot Leads (Fit ≥ 80)", value: hotLeads },
-    { label: "Conversion Rate", value: `${conversionRate}%` },
-    { label: "New This Week", value: newThisWeek },
+    { label: "Total in Pipeline", value: totalInPipeline, Icon: Users, tint: "#003c7e" },
+    { label: "Hot Leads (Fit ≥ 80)", value: hotLeads, Icon: Flame, tint: "#fd7e14" },
+    { label: "Conversion Rate", value: `${conversionRate}%`, Icon: TrendingUp, tint: "#20c997" },
+    { label: "New This Week", value: newThisWeek, Icon: Sparkles, tint: "#6f42c1" },
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-      {stats.map((s) => (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+      {stats.map(({ label, value, Icon, tint }) => (
         <div
-          key={s.label}
-          className="bg-white rounded-lg p-4"
+          key={label}
+          className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow flex items-center gap-3"
           style={{ border: "1px solid #dee2e6" }}
         >
-          <div className="text-xs mb-1" style={{ color: "#6c757d" }}>{s.label}</div>
-          <div className="text-2xl font-bold" style={{ color: "#003c7e" }}>{s.value}</div>
+          <div
+            className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: `${tint}14`, color: tint }}
+          >
+            <Icon size={18} />
+          </div>
+          <div className="min-w-0">
+            <div
+              className="text-[10px] font-semibold uppercase tracking-wider mb-0.5"
+              style={{ color: "#6c757d" }}
+            >
+              {label}
+            </div>
+            <div className="text-2xl font-bold leading-none" style={{ color: "#003c7e" }}>
+              {value}
+            </div>
+          </div>
         </div>
       ))}
     </div>

@@ -107,18 +107,17 @@ export async function exportResearchPacket(candidate: Candidate): Promise<void> 
         .join("")
     : `<tr><td colspan="4" class="muted">No notes or activity.</td></tr>`;
 
-  const profileBlock = profile
-    ? `
+  const profileBlock = `
       <table class="kv">
-        <tr><th>Background</th><td>${esc(profile.background ?? "—")}</td></tr>
-        <tr><th>Motivation</th><td>${esc(profile.motivation ?? "—")}</td></tr>
-        <tr><th>Liquid Capital</th><td>${profile.liquid_capital != null ? "$" + Number(profile.liquid_capital).toLocaleString() : "—"}</td></tr>
-        <tr><th>Net Worth</th><td>${profile.net_worth != null ? "$" + Number(profile.net_worth).toLocaleString() : "—"}</td></tr>
-        <tr><th>Timeline</th><td>${esc(profile.timeline ?? "—")}</td></tr>
-        <tr><th>Desired Markets</th><td>${esc(profile.location_preferences ?? "—")}</td></tr>
-        <tr><th>Additional Notes</th><td>${esc(profile.additional_notes ?? "—")}</td></tr>
-      </table>`
-    : `<p class="muted">No extended profile on file.</p>`;
+        <tr><th>Background</th><td>${esc(profile?.background ?? "—")}</td></tr>
+        <tr><th>Motivation</th><td>${esc(profile?.motivation ?? "—")}</td></tr>
+        <tr><th>Liquid Capital</th><td>${profile?.liquid_capital != null ? "$" + Number(profile.liquid_capital).toLocaleString() : "—"}</td></tr>
+        <tr><th>Net Worth</th><td>${profile?.net_worth != null ? "$" + Number(profile.net_worth).toLocaleString() : "—"}</td></tr>
+        <tr><th>Timeline</th><td>${esc(profile?.timeline ?? "—")}</td></tr>
+        <tr><th>Desired Markets</th><td>${esc(profile?.location_preferences ?? "—")}</td></tr>
+        <tr><th>Additional Notes</th><td>${esc(profile?.additional_notes ?? "—")}</td></tr>
+      </table>
+      ${!profile ? `<p class="muted" style="margin-top:8px;">No extended profile on file — fields will populate once the candidate completes intake.</p>` : ""}`;
 
   const generatedAt = new Date().toLocaleString();
   const title = `Research Packet — ${candidate.name}`;

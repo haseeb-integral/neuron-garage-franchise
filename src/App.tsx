@@ -30,6 +30,7 @@ const ObservabilitySpec = lazy(() => import("./pages/ObservabilitySpec"));
 const SystemOverview = lazy(() => import("./pages/SystemOverview"));
 const PromptsAndAiWorkflows = lazy(() => import("./pages/PromptsAndAiWorkflows"));
 const ApisAndDataSources = lazy(() => import("./pages/ApisAndDataSources"));
+const Guardrails = lazy(() => import("./pages/Guardrails"));
 
 
 const TeamMembers = lazy(() => import("./pages/TeamMembers"));

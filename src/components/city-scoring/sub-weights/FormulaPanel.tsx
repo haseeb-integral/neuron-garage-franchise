@@ -11,6 +11,7 @@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { CategoryKey } from "@/stores/cityScoringStore";
 import type { recomputeCategoryScore } from "@/lib/clientSubWeightScoring";
+import { formatMetric } from "@/lib/numberFormat";
 
 type Recompute = ReturnType<typeof recomputeCategoryScore> | null;
 

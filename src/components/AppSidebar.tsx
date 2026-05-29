@@ -107,7 +107,7 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
 
           <div className={`${isCollapsed ? "mx-3 my-5" : "mx-3.5 my-5"} h-px bg-[#eef2f7]`} />
 
-          <nav className={`flex flex-col ${isCollapsed ? "gap-2 px-2" : "gap-2.5 px-3.5"}`}>
+          <nav className={`flex flex-col ${isCollapsed ? "gap-2 px-2" : "gap-0.5 px-3.5"}`}>
             {utilityNavItems.map((item) => renderLink(item))}
 
             {/* Methodology & Docs — collapsible group keeps the sidebar tidy for v1.0 */}

@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { StageDocumentsSection } from "../StageDocumentsSection";
 import { ComplianceSection } from "../ComplianceSection";
+import { toDbStage } from "@/lib/stageDbMapping";
 
 
 interface Props {

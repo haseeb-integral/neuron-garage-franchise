@@ -80,6 +80,7 @@ const CandidatePipeline = () => {
       city: r.city ?? "",
       state: r.state ?? "",
       email: r.email ?? "",
+      emailSource: (r.email_source ?? "imported") as "imported" | "manual" | "verified",
       otherEmail: r.other_email ?? "",
       phone: r.phone ?? "",
       fitScore: r.fit_score ?? 0,

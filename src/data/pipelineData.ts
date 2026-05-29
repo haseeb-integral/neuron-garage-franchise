@@ -62,6 +62,8 @@ export interface Candidate {
   city: string;
   state: string;
   email: string;
+  /** 'imported' (from teacher/outreach pipeline, shows lock) | 'manual' (typed in modal, editable) | 'verified' */
+  emailSource?: "imported" | "manual" | "verified";
   otherEmail?: string;
   phone: string;
   fitScore: number;

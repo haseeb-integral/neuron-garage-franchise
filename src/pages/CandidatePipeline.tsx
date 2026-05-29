@@ -35,7 +35,7 @@ import { FIT_TAGS, FitTag } from "@/constants/fitTags";
 type OwnerFilter = string; // "all" or a user email
 interface TeamMember { email: string; firstName: string; }
 type TagFilter = "all" | FitTag;
-type FitFilter = "all" | "90" | "75";
+type FitFilter = "all" | "90" | "75" | "60" | "lt60";
 
 interface PendingMove {
   candidate: Candidate;
@@ -260,7 +260,9 @@ const CandidatePipeline = () => {
       if (ownerFilter !== "all" && c.assignedTo !== ownerFilter) return false;
       if (tagFilter !== "all" && c.tag !== tagFilter) return false;
       if (fitFilter === "90" && c.fitScore < 90) return false;
-      if (fitFilter === "75" && c.fitScore < 75) return false;
+      if (fitFilter === "75" && (c.fitScore < 75 || c.fitScore >= 90)) return false;
+      if (fitFilter === "60" && (c.fitScore < 60 || c.fitScore >= 75)) return false;
+      if (fitFilter === "lt60" && c.fitScore >= 60) return false;
       if (daysFilter === "fresh" && c.daysInStage > 3) return false;
       if (daysFilter === "watch" && (c.daysInStage < 4 || c.daysInStage > 7)) return false;
       if (daysFilter === "stalled" && c.daysInStage < 8) return false;
@@ -804,7 +806,9 @@ const CandidatePipeline = () => {
           {([
             { id: "all" as FitFilter, label: "All" },
             { id: "90" as FitFilter, label: "90+" },
-            { id: "75" as FitFilter, label: "75+" },
+            { id: "75" as FitFilter, label: "75–89" },
+            { id: "60" as FitFilter, label: "60–74" },
+            { id: "lt60" as FitFilter, label: "<60" },
           ]).map((f) => (
             <button
               key={f.id}

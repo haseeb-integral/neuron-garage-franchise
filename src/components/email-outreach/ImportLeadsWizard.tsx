@@ -184,7 +184,7 @@ export function ImportLeadsWizard({ open, onClose, onComplete }: { open: boolean
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/35" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/20" onClick={onClose}>
       <aside className="h-full w-full max-w-[760px] overflow-y-auto border-l border-[#e7edf5] bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#edf2f8] bg-white px-5 py-4">
           <div>

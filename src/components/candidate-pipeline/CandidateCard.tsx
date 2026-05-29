@@ -107,16 +107,33 @@ export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboardi
         </div>
       </div>
       <div className="flex items-center justify-between gap-2">
-        <Badge
-          variant={tagVariant(candidate.tag)}
-          className="px-2 py-0 text-[10px] font-semibold rounded-full whitespace-nowrap"
-        >
-          {candidate.tag || "Untagged"}
-        </Badge>
+        {(() => {
+          const t = (candidate.tag ?? "").toLowerCase();
+          if (!candidate.tag || t === "untagged") {
+            return (
+              <span className="px-2 py-0.5 text-[10px] font-medium rounded-full whitespace-nowrap bg-transparent border" style={{ color: "#8893a7", borderColor: "#e3e8ef" }}>
+                Untagged
+              </span>
+            );
+          }
+          if (t === "not a fit") {
+            return (
+              <span className="px-2 py-0.5 text-[10px] font-medium rounded-full whitespace-nowrap" style={{ backgroundColor: "#fef2f2", color: "#b91c1c" }}>
+                {candidate.tag}
+              </span>
+            );
+          }
+          return (
+            <span className="px-2 py-0.5 text-[10px] font-medium rounded-full whitespace-nowrap" style={{ backgroundColor: "#eef2f7", color: "#526078" }}>
+              {candidate.tag}
+            </span>
+          );
+        })()}
         <div className="flex items-center gap-2 flex-shrink-0">
           <DayChip days={candidate.daysInStage} />
           <div
-            className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold bg-muted text-muted-foreground"
+            className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-semibold"
+            style={{ backgroundColor: "#f1f5f9", color: "#526078" }}
             title={ownerLabel}
             aria-label={ownerLabel}
           >

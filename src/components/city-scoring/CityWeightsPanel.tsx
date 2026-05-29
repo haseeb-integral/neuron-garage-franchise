@@ -136,8 +136,9 @@ export function CityWeightsPanel({
         </div>
       </div>
 
-
+      <div className="mb-3">
         <div className="mb-2.5 rounded-md bg-[#f5f8ff] border border-[#dbe4f2] px-3 py-2.5">
+
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className="inline-flex h-5 items-center rounded-md bg-[#174be8] px-1.5 text-[10px] font-bold uppercase tracking-wide text-white">
               Step 1

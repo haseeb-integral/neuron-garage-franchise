@@ -243,7 +243,7 @@ export function NewCandidateModal({ open, onOpenChange, teamMembers, onCreated }
               value={form.assigned_to}
               onValueChange={(v) => set("assigned_to", v)}
             >
-              <SelectTrigger>
+              <SelectTrigger className="[&>span]:flex-1 [&>span]:text-left [&>span]:truncate">
                 <SelectValue placeholder="Select owner" />
               </SelectTrigger>
               <SelectContent>

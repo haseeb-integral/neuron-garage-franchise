@@ -263,7 +263,7 @@ export function NewCandidateModal({ open, onOpenChange, teamMembers, onCreated }
               value={form.initial_stage}
               onValueChange={(v) => set("initial_stage", v as StageId)}
             >
-              <SelectTrigger>
+              <SelectTrigger className="[&>span]:flex-1 [&>span]:text-left [&>span]:truncate">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

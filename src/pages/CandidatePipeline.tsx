@@ -358,8 +358,6 @@ const CandidatePipeline = () => {
     }
 
 
-    }
-
     // Hard gate: moving INTO confirmation requires Trial Close checklist
     let incomplete = 0;
     if (toStage === "confirmation" && dbId) {

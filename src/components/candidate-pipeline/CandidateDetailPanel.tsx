@@ -129,7 +129,7 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
             <LeadSheetTab candidate={candidate} />
           </TabsContent>
           <TabsContent value="qualification">
-            <QualificationTab candidate={candidate} onScoreChange={handleScoreChange} />
+            <QualificationTab candidate={candidate} onScoreChange={handleScoreChange} onScoresReplace={handleScoresReplace} />
           </TabsContent>
           <TabsContent value="notes">
             <NotesActivityTab candidate={candidate} onAddNote={handleAddNote} />

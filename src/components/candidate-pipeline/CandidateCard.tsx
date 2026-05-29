@@ -69,8 +69,8 @@ export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboardi
             <div className="font-semibold text-sm truncate flex-1" style={{ color: "#212529", lineHeight: 1.2 }}>
               {candidate.name}
             </div>
-            <FitScoreBadge score={candidate.fitScore} />
             <CompositeScoreBadge scores={candidate.qualificationScores} />
+
           </div>
           <div className="text-[11px] truncate mt-0.5" style={{ color: "#6c757d", lineHeight: 1.2 }}>
             {candidate.city}, {candidate.state}

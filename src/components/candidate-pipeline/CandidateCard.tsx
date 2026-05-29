@@ -48,8 +48,8 @@ export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboardi
         <div className="text-xs font-semibold flex-1 truncate" style={{ color: "#212529" }}>
           {candidate.name}
         </div>
-        <FitScoreBadge score={candidate.fitScore} />
         <CompositeScoreBadge scores={candidate.qualificationScores} />
+
       </div>
     );
   }

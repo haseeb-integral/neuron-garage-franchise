@@ -65,7 +65,7 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
         onClick={onNavigate}
         className={`group flex min-h-[28px] items-center rounded-lg text-[13px] transition-all ${isCollapsed ? "justify-center px-0" : "gap-3 px-3"} ${active ? "bg-[#1f5bff] font-medium text-white" : "bg-transparent font-medium text-[#14233b] hover:bg-[#f7faff] hover:text-[#0757ff]"}`}
       >
-        <item.icon size={17} strokeWidth={1.75} />
+        <item.icon size={17} strokeWidth={2} className="shrink-0" aria-hidden="true" />
         {!isCollapsed && <span className="whitespace-nowrap">{item.title}</span>}
       </NavLink>
     );

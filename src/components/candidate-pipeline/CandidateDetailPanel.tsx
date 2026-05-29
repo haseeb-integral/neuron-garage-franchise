@@ -35,6 +35,10 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
     onUpdate({ ...candidate, qualificationScores: { ...candidate.qualificationScores, [key]: value } });
   };
 
+  const handleScoresReplace = (scores: QualificationScores) => {
+    onUpdate({ ...candidate, qualificationScores: scores });
+  };
+
   const handleAddNote = (content: string) => {
     const next: ActivityEntry = {
       id: Math.max(0, ...candidate.activity.map((a) => a.id)) + 1,
@@ -125,7 +129,7 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
             <LeadSheetTab candidate={candidate} />
           </TabsContent>
           <TabsContent value="qualification">
-            <QualificationTab candidate={candidate} onScoreChange={handleScoreChange} />
+            <QualificationTab candidate={candidate} onScoreChange={handleScoreChange} onScoresReplace={handleScoresReplace} />
           </TabsContent>
           <TabsContent value="notes">
             <NotesActivityTab candidate={candidate} onAddNote={handleAddNote} />

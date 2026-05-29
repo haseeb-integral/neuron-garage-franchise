@@ -20,6 +20,7 @@ import { AdjustScoresModal } from "../AdjustScoresModal";
 interface Props {
   candidate: Candidate;
   onScoreChange: (key: keyof QualificationScores, value: number) => void;
+  onScoresReplace?: (scores: QualificationScores) => void;
 }
 
 const CRITERIA: { key: keyof QualificationScores; label: string; hint?: string }[] = [
@@ -30,7 +31,7 @@ const CRITERIA: { key: keyof QualificationScores; label: string; hint?: string }
   { key: "cultureFit", label: "Culture Fit" },
 ];
 
-export function QualificationTab({ candidate, onScoreChange }: Props) {
+export function QualificationTab({ candidate, onScoreChange, onScoresReplace }: Props) {
   const dbId = (candidate as any).dbId as string | undefined;
   const overrideEnabled = isEnabled("FF_SCORE_OVERRIDE");
 
@@ -80,10 +81,15 @@ export function QualificationTab({ candidate, onScoreChange }: Props) {
         }
         setOverrides(ovs);
         setComposite(eff.composite);
-        // Sync effective scores into in-memory candidate so other tabs/badge see them
-        (Object.keys(eff.effective) as (keyof QualificationScores)[]).forEach((k) => {
-          if (candidate.qualificationScores[k] !== eff.effective[k]) onScoreChange(k, eff.effective[k]);
-        });
+        // Sync effective scores into in-memory candidate so other tabs/badge see them — batched in one update
+        const needsSync = (Object.keys(eff.effective) as (keyof QualificationScores)[])
+          .some((k) => candidate.qualificationScores[k] !== eff.effective[k]);
+        if (needsSync) {
+          if (onScoresReplace) onScoresReplace(eff.effective);
+          else (Object.keys(eff.effective) as (keyof QualificationScores)[]).forEach((k) => {
+            if (candidate.qualificationScores[k] !== eff.effective[k]) onScoreChange(k, eff.effective[k]);
+          });
+        }
       } else {
         setScores(candidate.qualificationScores);
         setOverrides({});

@@ -119,7 +119,7 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
                     onClick={onNavigate}
                     className={`group flex min-h-[28px] items-center justify-center rounded-lg text-[13px] transition-all ${docsActive ? "bg-[#1f5bff] font-medium text-white" : "font-medium text-[#14233b] hover:bg-[#f7faff] hover:text-[#0757ff]"}`}
                   >
-                    <LibraryBig size={17} strokeWidth={1.75} />
+                    <BookMarked size={17} strokeWidth={2} />
                   </NavLink>
                 </TooltipTrigger>
                 <TooltipContent side="right" sideOffset={8}>Methodology &amp; Docs</TooltipContent>

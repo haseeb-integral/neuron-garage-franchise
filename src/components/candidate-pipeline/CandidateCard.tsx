@@ -33,7 +33,8 @@ export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboardi
     onStartOnboarding?.(candidate);
   };
   const borderLeft = `3px solid ${daysBorderColor(candidate.daysInStage)}`;
-  const ownerLabel = `Owned by ${candidate.assignedTo}`;
+  const ownerInitial = (candidate.assignedTo?.[0] ?? "?").toUpperCase();
+  const ownerLabel = `Owned by ${candidate.assignedTo ?? "—"}`;
 
   if (compact) {
     return (

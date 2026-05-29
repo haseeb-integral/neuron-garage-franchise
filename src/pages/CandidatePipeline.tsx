@@ -770,7 +770,7 @@ const CandidatePipeline = () => {
               size="sm"
               onClick={() => setNewOpen(true)}
               className="text-white w-full sm:w-auto"
-              style={{ backgroundColor: "#fd7e14" }}
+              style={{ backgroundColor: "#174be8" }}
             >
               <Plus size={14} /> New Candidate
             </Button>
@@ -1065,7 +1065,7 @@ const CandidatePipeline = () => {
             <AlertDialogAction
               onClick={confirmStartOnboarding}
               className="text-white"
-              style={{ backgroundColor: "#fd7e14" }}
+              style={{ backgroundColor: "#174be8" }}
             >
               Start Onboarding
             </AlertDialogAction>

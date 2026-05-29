@@ -67,7 +67,7 @@ export function NotesActivityTab({ candidate, onAddNote }: Props) {
         <Button
           onClick={submit}
           className="text-white"
-          style={{ backgroundColor: "#fd7e14" }}
+          style={{ backgroundColor: "#174be8" }}
           size="sm"
         >
           Add Note

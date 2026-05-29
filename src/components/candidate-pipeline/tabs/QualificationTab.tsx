@@ -205,7 +205,7 @@ export function QualificationTab({ candidate, onScoreChange, onScoresReplace }: 
 
   return (
     <div className="space-y-4 pt-4">
-      <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #dee2e6" }}>
+      <div className="bg-white rounded-lg p-3" style={{ border: "1px solid #e3e8ef" }}>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <h4 className="font-semibold text-sm" style={{ color: "#003c7e" }}>Composite Score</h4>
@@ -245,7 +245,7 @@ export function QualificationTab({ candidate, onScoreChange, onScoresReplace }: 
 
       </div>
 
-      <div className="bg-white rounded-lg p-4 space-y-4" style={{ border: "1px solid #dee2e6" }}>
+      <div className="bg-white rounded-lg p-3 space-y-4" style={{ border: "1px solid #e3e8ef" }}>
         {CRITERIA.map((c) => (
           <div key={c.key} className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -268,7 +268,7 @@ export function QualificationTab({ candidate, onScoreChange, onScoresReplace }: 
         )}
       </div>
 
-      <div className="rounded-lg p-4" style={{ backgroundColor: "#e7f1ff", border: "1px solid #b6d4fe" }}>
+      <div className="rounded-lg p-3" style={{ backgroundColor: "#e7f1ff", border: "1px solid #b6d4fe" }}>
         <div className="flex items-start gap-2">
           <Sparkles size={16} style={{ color: "#003c7e" }} className="mt-0.5" />
           <div>

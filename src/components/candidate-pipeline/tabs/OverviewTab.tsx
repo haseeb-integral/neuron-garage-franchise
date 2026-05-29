@@ -207,10 +207,10 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
   };
 
   return (
-    <div className="space-y-4 pt-4">
+    <div className="space-y-3 pt-3">
       {/* Photo / avatar block */}
       <div
-        className="bg-white rounded-lg p-4 flex items-center gap-4"
+        className="bg-white rounded-lg p-3 flex items-center gap-4"
         style={{ border: "1px solid #e3e8ef" }}
       >
         <button
@@ -287,7 +287,7 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
         </div>
       )}
 
-      <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #e3e8ef" }}>
+      <div className="bg-white rounded-lg p-3" style={{ border: "1px solid #e3e8ef" }}>
         <h4 className="font-semibold mb-3 text-sm" style={{ color: "#07142f" }}>
           Contact Information
           {!readOnly && (
@@ -296,7 +296,7 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
             </span>
           )}
         </h4>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2.5">
           {/* Email — LOCKED only when sourced from outreach (Smartlead). Manually-added
               candidates show as editable, since there's no upstream verification to protect. */}
           {candidate.emailSource === "manual"
@@ -363,9 +363,9 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
         onSave={savePatch}
       />
 
-      <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #e3e8ef" }}>
+      <div className="bg-white rounded-lg p-3" style={{ border: "1px solid #e3e8ef" }}>
         <h4 className="font-semibold mb-3 text-sm" style={{ color: "#07142f" }}>Pipeline Status</h4>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2.5">
           <div>
             <div className="text-xs" style={{ color: "#526078" }}>Current Stage</div>
             <div className="text-sm font-medium">{stage?.label}</div>
@@ -394,7 +394,7 @@ type SaveFn = (dbPatch: Record<string, any>, localPatch: Partial<Candidate>) => 
 
 function CardShell({ icon: Icon, title, children }: { icon: any; title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #e3e8ef" }}>
+    <div className="bg-white rounded-lg p-3" style={{ border: "1px solid #e3e8ef" }}>
       <div className="flex items-center gap-2 mb-3">
         <Icon size={16} style={{ color: "#07142f" }} />
         <h4 className="font-semibold text-sm" style={{ color: "#07142f" }}>{title}</h4>
@@ -728,7 +728,7 @@ function ComplianceAuditCard({
 }: { candidate: Candidate; readOnly: boolean; onSave: SaveFn }) {
   return (
     <CardShell icon={ShieldCheck} title="Compliance Audit">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         <DateField
           label="Background check completed"
           value={candidate.backgroundCheckCompletedAt}

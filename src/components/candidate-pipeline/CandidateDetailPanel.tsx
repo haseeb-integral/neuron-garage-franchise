@@ -1,7 +1,7 @@
 import { Candidate, QualificationScores, TrialClose, CommitteeVotes, ActivityEntry } from "@/data/pipelineData";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { FitScoreBadge } from "@/components/teacher-prospects/FitScoreBadge";
+
 import { OverviewTab } from "./tabs/OverviewTab";
 import { LeadSheetTab } from "./tabs/LeadSheetTab";
 import { QualificationTab } from "./tabs/QualificationTab";
@@ -87,7 +87,7 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
               </div>
             </div>
             <div className="flex items-start gap-3 shrink-0">
-              <FitScoreBadge score={candidate.fitScore} />
+              
               <Button
                 variant="outline"
                 size="sm"

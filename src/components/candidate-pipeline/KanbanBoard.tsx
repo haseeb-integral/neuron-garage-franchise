@@ -50,29 +50,51 @@ export function KanbanBoard({
     });
   };
 
+  const stageColorMap: Record<string, string> = {
+    new_lead: "#6f42c1",
+    initial_qual: "#003c7e",
+    business_overview: "#0dcaf0",
+    fdd_review: "#6610f2",
+    immersion: "#20c997",
+    confirmation: "#198754",
+    signing: "#fd7e14",
+    disqualified: "#adb5bd",
+  };
+
   return (
     <div>
       {/* Stage navigator dots */}
-      <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-1">
-        <span className="text-xs font-medium" style={{ color: "#6c757d" }}>Jump to:</span>
+      <div className="flex items-center gap-1.5 mb-3 overflow-x-auto pb-1">
+        <span
+          className="text-[10px] font-semibold uppercase tracking-wider mr-1"
+          style={{ color: "#6c757d" }}
+        >
+          Jump to:
+        </span>
         {STAGES.map((s) => {
           const count = candidates.filter((c) => c.stage === s.id).length;
-          const isDisq = s.id === "disqualified";
+          const accent = stageColorMap[s.id] ?? "#003c7e";
           return (
             <button
               key={s.id}
               onClick={() => scrollToStage(s.id)}
-              className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-white transition-colors"
+              className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-white hover:shadow-sm transition-all"
+              style={{ border: "1px solid transparent" }}
+              onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#dee2e6")}
+              onMouseLeave={(e) => (e.currentTarget.style.borderColor = "transparent")}
               title={s.label}
             >
               <span
                 className="w-2 h-2 rounded-full"
-                style={{ backgroundColor: isDisq ? "#adb5bd" : "#003c7e" }}
+                style={{ backgroundColor: accent }}
               />
-              <span className="text-[11px] font-medium" style={{ color: "#495057" }}>
+              <span className="text-[11px] font-semibold" style={{ color: "#495057" }}>
                 {s.short}
               </span>
-              <span className="text-[10px]" style={{ color: "#6c757d" }}>
+              <span
+                className="text-[10px] font-bold px-1.5 rounded-full"
+                style={{ color: "#6c757d", backgroundColor: "#e9ecef" }}
+              >
                 {count}
               </span>
             </button>

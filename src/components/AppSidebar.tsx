@@ -22,17 +22,16 @@ const utilityNavItems = [
 ];
 
 const docsNavItems = [
-  { title: "Credentials & Handover", url: "/handover", icon: KeyRound },
+  { title: "Credentials & Handover", url: "/handover", icon: Key },
   { title: "System Architecture", url: "/architecture", icon: Network },
-  { title: "Prompts & AI Workflows", url: "/docs/prompts-and-ai-workflows", icon: Sparkles },
+  { title: "Prompts & AI Workflows", url: "/docs/prompts-and-ai-workflows", icon: Wand2 },
   { title: "APIs & Data Sources", url: "/docs/apis", icon: Plug },
   { title: "Guardrails", url: "/docs/guardrails", icon: ShieldCheck },
   { title: "Scoring Method", url: "/scoring-method", icon: Gauge },
   { title: "CSI Methodology", url: "/methodology", icon: Calculator },
-  { title: "Demographics Method", url: "/demographics-methodology", icon: BarChart3 },
+  { title: "Demographics Method", url: "/demographics-methodology", icon: PieChart },
   { title: "Observability Guide", url: "/observability-guide", icon: Activity },
   { title: "Observability Spec", url: "/observability-spec", icon: FileCode2 },
-
   { title: "Outreach Guide", url: "/email-outreach-docs", icon: MailOpen },
   { title: "SmartLead API Spec", url: "/smartlead-spec", icon: Send },
   { title: "Full Specification", url: "/spec", icon: FileText },

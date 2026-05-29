@@ -58,8 +58,8 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
 
   return (
     <Sheet open={!!candidate} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-3xl overflow-y-auto" style={{ backgroundColor: "#f2f4f6" }}>
-        <SheetHeader>
+      <SheetContent side="right" className="w-full sm:max-w-3xl overflow-y-auto p-0" style={{ backgroundColor: "#f2f4f6" }}>
+        <SheetHeader className="px-6 pt-6 pb-4" style={{ backgroundColor: "#f7faff", borderBottom: "1px solid #e3e8ef" }}>
           <div className="flex items-start justify-between pr-8 gap-3">
             <div className="flex items-start gap-3 min-w-0">
               <CandidateAvatar
@@ -69,11 +69,11 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
                 className="mt-1"
               />
               <div className="min-w-0">
-                <SheetTitle style={{ color: "#003c7e" }} className="text-2xl truncate">{candidate.name}</SheetTitle>
-                <p className="text-sm mt-1" style={{ color: "#6c757d" }}>
+                <SheetTitle style={{ color: "#07142f" }} className="text-2xl truncate font-semibold">{candidate.name}</SheetTitle>
+                <p className="text-sm mt-1" style={{ color: "#526078" }}>
                   {candidate.city}, {candidate.state} · {candidate.email}
                 </p>
-                <p className="text-[11px] mt-0.5" style={{ color: "#adb5bd" }}>
+                <p className="text-[11px] mt-0.5" style={{ color: "#8893a7" }}>
                   Owner: {candidate.assignedTo}
                 </p>
               </div>
@@ -83,7 +83,8 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 text-xs gap-1.5"
+                className="h-8 text-xs gap-1.5 hover:bg-[#174be8]/5"
+                style={{ color: "#174be8", borderColor: "#174be8" }}
                 onClick={async () => {
                   try {
                     await exportResearchPacket(candidate);
@@ -98,18 +99,18 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
           </div>
         </SheetHeader>
 
-        <Tabs defaultValue="overview" className="mt-6">
-          <div className="overflow-x-auto -mx-1 px-1">
-            <TabsList className="inline-flex w-max gap-1 h-auto p-1">
-              <TabsTrigger value="overview" className="whitespace-nowrap px-3">Overview</TabsTrigger>
-              <TabsTrigger value="lead-sheet" className="whitespace-nowrap px-3">Lead Sheet</TabsTrigger>
-              <TabsTrigger value="qualification" className="whitespace-nowrap px-3">Qualification</TabsTrigger>
-              <TabsTrigger value="notes" className="whitespace-nowrap px-3">Notes &amp; Activity</TabsTrigger>
-              <TabsTrigger value="stage-history" className="whitespace-nowrap px-3">Stage History</TabsTrigger>
-              <TabsTrigger value="homework" className="whitespace-nowrap px-3">Homework</TabsTrigger>
-              <TabsTrigger value="committee" className="whitespace-nowrap px-3">Committee Votes</TabsTrigger>
+        <Tabs defaultValue="overview" className="mt-0 px-6 pb-6">
+          <div className="overflow-x-auto -mx-1 px-1 pt-4">
+            <TabsList className="inline-flex w-max gap-1 h-auto p-1 bg-transparent">
+              <TabsTrigger value="overview" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Overview</TabsTrigger>
+              <TabsTrigger value="lead-sheet" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Lead Sheet</TabsTrigger>
+              <TabsTrigger value="qualification" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Qualification</TabsTrigger>
+              <TabsTrigger value="notes" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Notes &amp; Activity</TabsTrigger>
+              <TabsTrigger value="stage-history" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Stage History</TabsTrigger>
+              <TabsTrigger value="homework" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Homework</TabsTrigger>
+              <TabsTrigger value="committee" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Committee Votes</TabsTrigger>
               {isEnabled("FF_DOCUMENTS") && (
-                <TabsTrigger value="documents" className="whitespace-nowrap px-3">Documents</TabsTrigger>
+                <TabsTrigger value="documents" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Documents</TabsTrigger>
               )}
             </TabsList>
           </div>

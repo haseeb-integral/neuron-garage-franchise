@@ -12,6 +12,7 @@ import { PipelineAnalyticsBar } from "@/components/candidate-pipeline/PipelineAn
 import { CandidateDetailPanel } from "@/components/candidate-pipeline/CandidateDetailPanel";
 import { PageHeader } from "@/components/PageHeader";
 import { useCandidatePipelineStore } from "@/stores/candidatePipelineStore";
+import { isEnabled } from "@/lib/featureFlags";
 
 import {
   AlertDialog,

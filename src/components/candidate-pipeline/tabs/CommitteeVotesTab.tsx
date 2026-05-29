@@ -207,7 +207,7 @@ export function CommitteeVotesTab({ candidate }: Props) {
 
   return (
     <div className="space-y-4 pt-4">
-      <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #dee2e6" }}>
+      <div className="bg-white rounded-lg p-3" style={{ border: "1px solid #e3e8ef" }}>
         <div className="flex items-center gap-2 mb-3">
           <Users size={16} style={{ color: "#003c7e" }} />
           <h4 className="font-semibold text-sm" style={{ color: "#003c7e" }}>Vote summary</h4>
@@ -221,7 +221,7 @@ export function CommitteeVotesTab({ candidate }: Props) {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg p-4 space-y-3" style={{ border: "1px solid #dee2e6" }}>
+      <div className="bg-white rounded-lg p-3 space-y-3" style={{ border: "1px solid #e3e8ef" }}>
         <h4 className="font-semibold text-sm" style={{ color: "#003c7e" }}>Add a vote</h4>
         {!myEmail ? (
           <p className="text-xs" style={{ color: "#6c757d" }}>You must be signed in to vote.</p>
@@ -288,7 +288,7 @@ export function CommitteeVotesTab({ candidate }: Props) {
       </div>
 
       {manualVotesOn && dbId && myEmail && (
-        <div className="bg-white rounded-lg p-4 space-y-3" style={{ border: "1px solid #dee2e6" }}>
+        <div className="bg-white rounded-lg p-3 space-y-3" style={{ border: "1px solid #e3e8ef" }}>
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <UserPlus size={16} style={{ color: "#003c7e" }} />
@@ -370,7 +370,7 @@ export function CommitteeVotesTab({ candidate }: Props) {
 
 
 
-      <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #dee2e6" }}>
+      <div className="bg-white rounded-lg p-3" style={{ border: "1px solid #e3e8ef" }}>
         <h4 className="font-semibold text-sm mb-3" style={{ color: "#003c7e" }}>Committee votes</h4>
         {loading ? (
           <p className="text-xs" style={{ color: "#6c757d" }}>Loading…</p>

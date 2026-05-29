@@ -34,7 +34,7 @@ export function NotesActivityTab({ candidate, onAddNote }: Props) {
   return (
     <div className="space-y-4 pt-4">
       {dbId && (
-        <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #dee2e6" }}>
+        <div className="bg-white rounded-lg p-3" style={{ border: "1px solid #e3e8ef" }}>
           <div className="flex items-center gap-2 mb-1">
             <ListChecks size={16} style={{ color: "#003c7e" }} />
             <h4 className="font-semibold text-sm" style={{ color: "#003c7e" }}>
@@ -55,7 +55,7 @@ export function NotesActivityTab({ candidate, onAddNote }: Props) {
         </div>
       )}
 
-      <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #dee2e6" }}>
+      <div className="bg-white rounded-lg p-3" style={{ border: "1px solid #e3e8ef" }}>
         <h4 className="font-semibold mb-2 text-sm" style={{ color: "#003c7e" }}>Add Note</h4>
         <Textarea
           value={text}
@@ -74,7 +74,7 @@ export function NotesActivityTab({ candidate, onAddNote }: Props) {
         </Button>
       </div>
 
-      <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #dee2e6" }}>
+      <div className="bg-white rounded-lg p-3" style={{ border: "1px solid #e3e8ef" }}>
         <h4 className="font-semibold mb-3 text-sm" style={{ color: "#003c7e" }}>Activity Timeline</h4>
         <div className="space-y-3">
           {sorted.map((a) => {

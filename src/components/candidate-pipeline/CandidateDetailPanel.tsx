@@ -58,7 +58,7 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
 
   return (
     <Sheet open={!!candidate} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-3xl overflow-y-auto p-0" style={{ backgroundColor: "#f2f4f6" }}>
+      <SheetContent side="right" className="w-full sm:max-w-3xl overflow-y-auto p-0" style={{ backgroundColor: "#ffffff" }}>
         <SheetHeader className="px-6 pt-6 pb-4" style={{ backgroundColor: "#f7faff", borderBottom: "1px solid #e3e8ef" }}>
           <div className="flex items-start justify-between pr-8 gap-3">
             <div className="flex items-start gap-3 min-w-0">
@@ -99,8 +99,8 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
           </div>
         </SheetHeader>
 
-        <Tabs defaultValue="overview" className="mt-0 px-6 pb-6">
-          <div className="overflow-x-auto -mx-1 px-1 pt-4">
+        <Tabs defaultValue="overview" className="mt-0 px-5 pb-5">
+          <div className="overflow-x-auto -mx-1 px-1 pt-3 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
             <TabsList className="inline-flex w-max gap-1 h-auto p-1 bg-transparent">
               <TabsTrigger value="overview" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Overview</TabsTrigger>
               <TabsTrigger value="lead-sheet" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Lead Sheet</TabsTrigger>

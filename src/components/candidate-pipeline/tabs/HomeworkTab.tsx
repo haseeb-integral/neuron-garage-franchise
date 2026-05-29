@@ -172,7 +172,7 @@ export function HomeworkTab({ candidate, onTrialCloseChange }: Props) {
 
   return (
     <div className="space-y-4 pt-4">
-      <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #dee2e6" }}>
+      <div className="bg-white rounded-lg p-3" style={{ border: "1px solid #e3e8ef" }}>
         <div className="flex items-center gap-2 mb-3">
           <BookOpen size={16} style={{ color: "#003c7e" }} />
           <h4 className="font-semibold text-sm" style={{ color: "#003c7e" }}>Stage Homework</h4>
@@ -198,7 +198,7 @@ export function HomeworkTab({ candidate, onTrialCloseChange }: Props) {
 
       {showFddLock && (
         <div
-          className="rounded-lg p-4 flex items-start gap-2"
+          className="rounded-lg p-3 flex items-start gap-2"
           style={{ backgroundColor: "#fff4d1", border: "1px solid #ffca28" }}
         >
           <Lock size={16} style={{ color: "#7a5a00" }} className="mt-0.5" />
@@ -214,7 +214,7 @@ export function HomeworkTab({ candidate, onTrialCloseChange }: Props) {
         </div>
       )}
 
-      <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #dee2e6" }}>
+      <div className="bg-white rounded-lg p-3" style={{ border: "1px solid #e3e8ef" }}>
         <h4 className="font-semibold mb-3 text-sm" style={{ color: "#003c7e" }}>Trial Close Checklist</h4>
         <p className="text-xs mb-3" style={{ color: "#6c757d" }}>
           All items must be checked before advancing to next stage.
@@ -253,7 +253,7 @@ export function HomeworkTab({ candidate, onTrialCloseChange }: Props) {
                   ))}
                 </div>
               )}
-              <div className="flex items-center gap-2 pt-2 border-t" style={{ borderColor: "#dee2e6" }}>
+              <div className="flex items-center gap-2 pt-2 border-t" style={{ borderColor: "#e3e8ef" }}>
                 <Input
                   value={newLabel}
                   onChange={(e) => setNewLabel(e.target.value)}

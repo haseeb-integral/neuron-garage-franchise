@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { STAGES, Candidate, StageId } from "@/data/pipelineData";
 import { KanbanColumn } from "./KanbanColumn";
 
@@ -22,7 +22,6 @@ export function KanbanBoard({
   compact,
 }: Props) {
   const [draggingId, setDraggingId] = useState<number | null>(null);
-  const [activeStage, setActiveStage] = useState<StageId | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const colRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -37,8 +36,6 @@ export function KanbanBoard({
     const scroller = scrollRef.current;
     if (!el || !scroller) return;
 
-    setActiveStage(stageId);
-
     el.scrollIntoView({
       behavior: "smooth",
       inline: "start",
@@ -52,28 +49,6 @@ export function KanbanBoard({
       scroller.scrollTo({ left, behavior: "smooth" });
     });
   };
-
-  // Track which stage column is most visible inside the horizontal scroller
-  useEffect(() => {
-    const scroller = scrollRef.current;
-    if (!scroller) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (visible) {
-          const stageId = (visible.target as HTMLElement).dataset.stageId as StageId | undefined;
-          if (stageId) setActiveStage(stageId);
-        }
-      },
-      { root: scroller, threshold: [0.5, 0.75, 1] }
-    );
-
-    Object.values(colRefs.current).forEach((el) => el && observer.observe(el));
-    return () => observer.disconnect();
-  }, []);
 
   const stageColorMap: Record<string, string> = {
     new_lead: "#6f42c1",
@@ -99,7 +74,6 @@ export function KanbanBoard({
         {STAGES.map((s) => {
           const count = candidates.filter((c) => c.stage === s.id).length;
           const accent = stageColorMap[s.id] ?? "#003c7e";
-          const isActive = activeStage === s.id;
           return (
             <button
               key={s.id}
@@ -110,20 +84,17 @@ export function KanbanBoard({
               className="flex items-center gap-1.5 px-2 py-1 rounded-md transition-all"
               style={{
                 border: "1px solid transparent",
-                backgroundColor: isActive ? "#eaf0ff" : "transparent",
-                boxShadow: isActive ? "inset 2px 0 0 #174be8" : undefined,
+                backgroundColor: "transparent",
               }}
               onMouseEnter={(e) => {
-                if (isActive) return;
                 e.currentTarget.style.borderColor = "#dee2e6";
                 e.currentTarget.style.backgroundColor = "#ffffff";
               }}
               onMouseLeave={(e) => {
-                if (isActive) return;
                 e.currentTarget.style.borderColor = "transparent";
                 e.currentTarget.style.backgroundColor = "transparent";
               }}
-              title={`${s.label} — currently in view`}
+              title={`Jump to ${s.label}`}
             >
               <span
                 className="w-2 h-2 rounded-full"
@@ -131,16 +102,13 @@ export function KanbanBoard({
               />
               <span
                 className="text-[11px] font-semibold"
-                style={{ color: isActive ? "#174be8" : "#495057" }}
+                style={{ color: "#495057" }}
               >
                 {s.short}
               </span>
               <span
                 className="text-[10px] font-bold px-1.5 rounded-full"
-                style={{
-                  color: isActive ? "#174be8" : "#6c757d",
-                  backgroundColor: isActive ? "#ffffff" : "#e9ecef",
-                }}
+                style={{ color: "#6c757d", backgroundColor: "#e9ecef" }}
               >
                 {count}
               </span>

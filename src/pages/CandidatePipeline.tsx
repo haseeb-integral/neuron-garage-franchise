@@ -35,7 +35,7 @@ import { FIT_TAGS, FitTag } from "@/constants/fitTags";
 type OwnerFilter = string; // "all" or a user email
 interface TeamMember { email: string; firstName: string; }
 type TagFilter = "all" | FitTag;
-type FitFilter = "all" | "90" | "75";
+type FitFilter = "all" | "90" | "75" | "60" | "lt60";
 
 interface PendingMove {
   candidate: Candidate;
@@ -198,6 +198,34 @@ const CandidatePipeline = () => {
         }
       }
 
+      // Recompute daysInStage from candidate_stage_history (time since entering current stage),
+      // falling back to created_at when no matching history row exists.
+      if (dbIds.length > 0) {
+        const { data: histRows } = await supabase
+          .from("candidate_stage_history")
+          .select("candidate_id, to_stage, changed_at")
+          .in("candidate_id", dbIds)
+          .order("changed_at", { ascending: false });
+        if (histRows && histRows.length > 0) {
+          const latestByCand = new Map<string, Record<string, string>>();
+          for (const h of histRows as any[]) {
+            const m = latestByCand.get(h.candidate_id) ?? {};
+            if (!m[h.to_stage]) m[h.to_stage] = h.changed_at;
+            latestByCand.set(h.candidate_id, m);
+          }
+          const dayMs = 1000 * 60 * 60 * 24;
+          for (const c of mapped) {
+            const dbId = (c as any).dbId as string | undefined;
+            if (!dbId) continue;
+            const dbStage = uiStageToDb(c.stage);
+            const enteredAt = latestByCand.get(dbId)?.[dbStage];
+            if (enteredAt) {
+              c.daysInStage = Math.max(0, Math.floor((Date.now() - new Date(enteredAt).getTime()) / dayMs));
+            }
+          }
+        }
+      }
+
       setCandidates(mapped);
       setLoading(false);
 
@@ -260,7 +288,9 @@ const CandidatePipeline = () => {
       if (ownerFilter !== "all" && c.assignedTo !== ownerFilter) return false;
       if (tagFilter !== "all" && c.tag !== tagFilter) return false;
       if (fitFilter === "90" && c.fitScore < 90) return false;
-      if (fitFilter === "75" && c.fitScore < 75) return false;
+      if (fitFilter === "75" && (c.fitScore < 75 || c.fitScore >= 90)) return false;
+      if (fitFilter === "60" && (c.fitScore < 60 || c.fitScore >= 75)) return false;
+      if (fitFilter === "lt60" && c.fitScore >= 60) return false;
       if (daysFilter === "fresh" && c.daysInStage > 3) return false;
       if (daysFilter === "watch" && (c.daysInStage < 4 || c.daysInStage > 7)) return false;
       if (daysFilter === "stalled" && c.daysInStage < 8) return false;
@@ -804,7 +834,9 @@ const CandidatePipeline = () => {
           {([
             { id: "all" as FitFilter, label: "All" },
             { id: "90" as FitFilter, label: "90+" },
-            { id: "75" as FitFilter, label: "75+" },
+            { id: "75" as FitFilter, label: "75–89" },
+            { id: "60" as FitFilter, label: "60–74" },
+            { id: "lt60" as FitFilter, label: "<60" },
           ]).map((f) => (
             <button
               key={f.id}

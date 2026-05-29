@@ -126,9 +126,9 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
     const isEditing = editing === key;
     return (
       <div key={label} className="flex items-start gap-2 group">
-        <Icon size={14} style={{ color: "#6c757d" }} className="mt-1" />
+        <Icon size={14} style={{ color: "#526078" }} className="mt-1" />
         <div className="min-w-0 flex-1">
-          <div className="text-xs" style={{ color: "#6c757d" }}>{label}</div>
+          <div className="text-xs" style={{ color: "#526078" }}>{label}</div>
           {isEditing ? (
             <div className="flex items-center gap-1 mt-0.5">
               {key === "location" ? (
@@ -137,20 +137,20 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
                     autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onKey}
                     placeholder="City"
                     className="text-sm px-1.5 py-0.5 border rounded w-full min-w-0"
-                    style={{ borderColor: "#003c7e" }}
+                    style={{ borderColor: "#07142f" }}
                   />
                   <input
                     value={draft2} onChange={(e) => setDraft2(e.target.value)} onKeyDown={onKey}
                     placeholder="ST" maxLength={2}
                     className="text-sm px-1.5 py-0.5 border rounded w-12"
-                    style={{ borderColor: "#003c7e" }}
+                    style={{ borderColor: "#07142f" }}
                   />
                 </>
               ) : key === "assignedTo" && teamMembers.length > 0 ? (
                 <select
                   autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onKey as any}
                   className="text-sm px-1.5 py-0.5 border rounded w-full min-w-0"
-                  style={{ borderColor: "#003c7e" }}
+                  style={{ borderColor: "#07142f" }}
                 >
                   <option value="">Unassigned</option>
                   {teamMembers.map((m) => (
@@ -161,7 +161,7 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
                 <select
                   autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onKey as any}
                   className="text-sm px-1.5 py-0.5 border rounded w-full min-w-0"
-                  style={{ borderColor: "#003c7e" }}
+                  style={{ borderColor: "#07142f" }}
                 >
                   {SOURCE_OPTIONS.map((s) => (<option key={s} value={s}>{s}</option>))}
                 </select>
@@ -171,7 +171,7 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
                   value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onKey}
                   placeholder={key === "otherEmail" ? "Add alternate email..." : undefined}
                   className="text-sm px-1.5 py-0.5 border rounded w-full min-w-0"
-                  style={{ borderColor: "#003c7e" }}
+                  style={{ borderColor: "#07142f" }}
                 />
               )}
               <button onClick={commit} disabled={saving} aria-label="Save" className="p-1 rounded hover:bg-gray-100">
@@ -191,13 +191,13 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
             >
               <span className="truncate">
                 {displayValue || (
-                  <span style={{ color: "#adb5bd" }}>
+                  <span style={{ color: "#8893a7" }}>
                     {key === "otherEmail" ? "Add alternate email..." : "—"}
                   </span>
                 )}
               </span>
               {!readOnly && (
-                <Pencil size={11} className="opacity-0 group-hover:opacity-60 flex-shrink-0" style={{ color: "#6c757d" }} />
+                <Pencil size={11} className="opacity-0 group-hover:opacity-60 flex-shrink-0" style={{ color: "#526078" }} />
               )}
             </button>
           )}
@@ -211,7 +211,7 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
       {/* Photo / avatar block */}
       <div
         className="bg-white rounded-lg p-4 flex items-center gap-4"
-        style={{ border: "1px solid #dee2e6" }}
+        style={{ border: "1px solid #e3e8ef" }}
       >
         <button
           onClick={handlePickPhoto}
@@ -233,7 +233,7 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
               <input
                 autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onKey}
                 className="text-sm font-semibold px-1.5 py-0.5 border rounded w-full"
-                style={{ borderColor: "#003c7e", color: "#003c7e" }}
+                style={{ borderColor: "#07142f", color: "#07142f" }}
               />
               <button onClick={commit} disabled={saving} aria-label="Save" className="p-1 rounded hover:bg-gray-100">
                 <Check size={14} style={{ color: "#198754" }} />
@@ -248,7 +248,7 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
               onClick={() => startEdit("name")}
               disabled={readOnly}
               className="text-sm font-semibold flex items-center gap-1.5 hover:underline disabled:no-underline disabled:cursor-default"
-              style={{ color: "#003c7e" }}
+              style={{ color: "#07142f" }}
               title={readOnly ? "" : "Click to edit name"}
             >
               {candidate.name}
@@ -258,11 +258,11 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
           <button
             onClick={handlePickPhoto}
             className="text-xs font-medium mt-1 hover:underline block"
-            style={{ color: "#003c7e" }}
+            style={{ color: "#07142f" }}
           >
             {candidate.photoUrl ? "Change photo" : "Upload photo"}
           </button>
-          <div className="text-[11px] mt-0.5" style={{ color: "#adb5bd" }}>
+          <div className="text-[11px] mt-0.5" style={{ color: "#8893a7" }}>
             JPG or PNG. Auto-fits to circle.
           </div>
         </div>
@@ -287,11 +287,11 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
         </div>
       )}
 
-      <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #dee2e6" }}>
-        <h4 className="font-semibold mb-3 text-sm" style={{ color: "#003c7e" }}>
+      <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #e3e8ef" }}>
+        <h4 className="font-semibold mb-3 text-sm" style={{ color: "#07142f" }}>
           Contact Information
           {!readOnly && (
-            <span className="ml-2 text-[11px] font-normal" style={{ color: "#adb5bd" }}>
+            <span className="ml-2 text-[11px] font-normal" style={{ color: "#8893a7" }}>
               Click any value to edit
             </span>
           )}
@@ -303,13 +303,13 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
             ? renderRow("email", Mail, "Contact Email", candidate.email)
             : (
               <div className="flex items-start gap-2">
-                <Mail size={14} style={{ color: "#6c757d" }} className="mt-1" />
+                <Mail size={14} style={{ color: "#526078" }} className="mt-1" />
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs flex items-center gap-1" style={{ color: "#6c757d" }}>
+                  <div className="text-xs flex items-center gap-1" style={{ color: "#526078" }}>
                     Verified Email
                     <Lock
                       size={11}
-                      style={{ color: "#adb5bd" }}
+                      style={{ color: "#8893a7" }}
                       aria-label="Locked"
                     />
                   </div>
@@ -317,7 +317,7 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
                     className="text-sm font-medium truncate"
                     title="This is the email used in outreach. It cannot be changed to protect against duplicate sends."
                   >
-                    {candidate.email || <span style={{ color: "#adb5bd" }}>—</span>}
+                    {candidate.email || <span style={{ color: "#8893a7" }}>—</span>}
                   </div>
                 </div>
               </div>
@@ -328,9 +328,9 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
           {renderRow("assignedTo", User, "Assigned To", candidate.assignedTo)}
           {renderRow("source", Tag, "Source", candidate.source)}
           <div className="flex items-start gap-2">
-            <CalendarIcon size={14} style={{ color: "#6c757d" }} className="mt-1" />
+            <CalendarIcon size={14} style={{ color: "#526078" }} className="mt-1" />
             <div>
-              <div className="text-xs" style={{ color: "#6c757d" }}>Created</div>
+              <div className="text-xs" style={{ color: "#526078" }}>Created</div>
               <div className="text-sm font-medium">{candidate.createdDate}</div>
             </div>
           </div>
@@ -363,20 +363,20 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
         onSave={savePatch}
       />
 
-      <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #dee2e6" }}>
-        <h4 className="font-semibold mb-3 text-sm" style={{ color: "#003c7e" }}>Pipeline Status</h4>
+      <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #e3e8ef" }}>
+        <h4 className="font-semibold mb-3 text-sm" style={{ color: "#07142f" }}>Pipeline Status</h4>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <div className="text-xs" style={{ color: "#6c757d" }}>Current Stage</div>
+            <div className="text-xs" style={{ color: "#526078" }}>Current Stage</div>
             <div className="text-sm font-medium">{stage?.label}</div>
           </div>
           <div>
-            <div className="text-xs" style={{ color: "#6c757d" }}>Days in Stage</div>
+            <div className="text-xs" style={{ color: "#526078" }}>Days in Stage</div>
             <div className="text-sm font-medium">Day {candidate.daysInStage}</div>
           </div>
           {candidate.fddSentDate && (
             <div>
-              <div className="text-xs" style={{ color: "#6c757d" }}>FDD Sent</div>
+              <div className="text-xs" style={{ color: "#526078" }}>FDD Sent</div>
               <div className="text-sm font-medium">{candidate.fddSentDate}</div>
             </div>
           )}
@@ -394,10 +394,10 @@ type SaveFn = (dbPatch: Record<string, any>, localPatch: Partial<Candidate>) => 
 
 function CardShell({ icon: Icon, title, children }: { icon: any; title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #dee2e6" }}>
+    <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #e3e8ef" }}>
       <div className="flex items-center gap-2 mb-3">
-        <Icon size={16} style={{ color: "#003c7e" }} />
-        <h4 className="font-semibold text-sm" style={{ color: "#003c7e" }}>{title}</h4>
+        <Icon size={16} style={{ color: "#07142f" }} />
+        <h4 className="font-semibold text-sm" style={{ color: "#07142f" }}>{title}</h4>
       </div>
       {children}
     </div>
@@ -420,7 +420,7 @@ function OtherOpportunitiesCard({
         rows={3}
         placeholder="e.g. other franchises, business ideas, or career moves they're evaluating…"
         className="w-full text-sm rounded-md border px-2 py-1.5 focus:outline-none focus:ring-2 disabled:bg-[#f8f9fa]"
-        style={{ borderColor: "#dee2e6" }}
+        style={{ borderColor: "#e3e8ef" }}
       />
       {!readOnly && dirty && (
         <div className="mt-2 flex justify-end gap-2">
@@ -430,7 +430,7 @@ function OtherOpportunitiesCard({
           <Button
             size="sm"
             className="text-white"
-            style={{ backgroundColor: "#003c7e" }}
+            style={{ backgroundColor: "#07142f" }}
             onClick={() => onSave(
               { other_opportunities: value.trim() || null },
               { otherOpportunities: value.trim() },
@@ -475,28 +475,28 @@ function MailingAddressCard({
           placeholder="Street address"
           disabled={readOnly}
           value={street} onChange={(e) => setStreet(e.target.value)}
-          style={{ borderColor: "#dee2e6" }}
+          style={{ borderColor: "#e3e8ef" }}
         />
         <input
           className={cn(inputCls, "sm:col-span-3")}
           placeholder="City"
           disabled={readOnly}
           value={city} onChange={(e) => setCity(e.target.value)}
-          style={{ borderColor: "#dee2e6" }}
+          style={{ borderColor: "#e3e8ef" }}
         />
         <input
           className={cn(inputCls, "sm:col-span-1")}
           placeholder="ST" maxLength={2}
           disabled={readOnly}
           value={state} onChange={(e) => setState(e.target.value.toUpperCase())}
-          style={{ borderColor: "#dee2e6" }}
+          style={{ borderColor: "#e3e8ef" }}
         />
         <input
           className={cn(inputCls, "sm:col-span-2")}
           placeholder="ZIP"
           disabled={readOnly}
           value={zip} onChange={(e) => setZip(e.target.value)}
-          style={{ borderColor: "#dee2e6" }}
+          style={{ borderColor: "#e3e8ef" }}
         />
       </div>
       {!readOnly && dirty && (
@@ -513,7 +513,7 @@ function MailingAddressCard({
             Cancel
           </Button>
           <Button
-            size="sm" className="text-white" style={{ backgroundColor: "#003c7e" }}
+            size="sm" className="text-white" style={{ backgroundColor: "#07142f" }}
             onClick={() => onSave(
               {
                 mailing_street: street.trim() || null,
@@ -639,7 +639,7 @@ function PartnerCard({
             placeholder="Partner name"
             disabled={readOnly}
             value={name} onChange={(e) => setName(e.target.value)}
-            style={{ borderColor: "#dee2e6" }}
+            style={{ borderColor: "#e3e8ef" }}
           />
           <input
             type="email"
@@ -647,14 +647,14 @@ function PartnerCard({
             placeholder="Partner email"
             disabled={readOnly}
             value={email} onChange={(e) => setEmail(e.target.value)}
-            style={{ borderColor: "#dee2e6" }}
+            style={{ borderColor: "#e3e8ef" }}
           />
           <input
             className={inputCls}
             placeholder="Partner phone"
             disabled={readOnly}
             value={phone} onChange={(e) => setPhone(e.target.value)}
-            style={{ borderColor: "#dee2e6" }}
+            style={{ borderColor: "#e3e8ef" }}
           />
         </div>
       )}
@@ -672,7 +672,7 @@ function PartnerCard({
             Cancel
           </Button>
           <Button
-            size="sm" className="text-white" style={{ backgroundColor: "#003c7e" }}
+            size="sm" className="text-white" style={{ backgroundColor: "#07142f" }}
             onClick={handleSave}
           >
             Save
@@ -689,7 +689,7 @@ function DateField({
   const date = value ? new Date(value) : undefined;
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-xs" style={{ color: "#6c757d" }}>{label}</span>
+      <span className="text-xs" style={{ color: "#526078" }}>{label}</span>
       <Popover>
         <PopoverTrigger asChild>
           <Button

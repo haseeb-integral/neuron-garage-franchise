@@ -115,7 +115,7 @@ export async function exportResearchPacket(candidate: Candidate): Promise<void> 
         <tr><th>Liquid Capital</th><td>${profile.liquid_capital != null ? "$" + Number(profile.liquid_capital).toLocaleString() : "—"}</td></tr>
         <tr><th>Net Worth</th><td>${profile.net_worth != null ? "$" + Number(profile.net_worth).toLocaleString() : "—"}</td></tr>
         <tr><th>Timeline</th><td>${esc(profile.timeline ?? "—")}</td></tr>
-        <tr><th>Location Preferences</th><td>${esc(profile.location_preferences ?? "—")}</td></tr>
+        <tr><th>Desired Markets</th><td>${esc(profile.location_preferences ?? "—")}</td></tr>
         <tr><th>Additional Notes</th><td>${esc(profile.additional_notes ?? "—")}</td></tr>
       </table>`
     : `<p class="muted">No extended profile on file.</p>`;

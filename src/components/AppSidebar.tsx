@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Home, Map, Users, Kanban, ChevronLeft, ChevronRight, ChevronDown, Mail, FileText, BookOpen, Send, MailOpen, BarChart3, Calculator, Gauge, LibraryBig, Activity, FileCode2, KeyRound, Network, Sparkles, Plug, ShieldCheck } from "lucide-react";
+import { Home, Map, Users, Kanban, ChevronLeft, ChevronRight, ChevronDown, Mail, FileText, BookOpen, Send, MailOpen, BarChart3, Calculator, Gauge, LibraryBig, Activity, FileCode2, KeyRound, Network, Sparkles, Plug, ShieldCheck, Key, Wand2, PieChart, BookMarked } from "lucide-react";
 
 import { NavLink, useLocation } from "react-router-dom";
 import logo from "@/assets/neuron-garage-logo.png";
@@ -22,17 +22,16 @@ const utilityNavItems = [
 ];
 
 const docsNavItems = [
-  { title: "Credentials & Handover", url: "/handover", icon: KeyRound },
+  { title: "Credentials & Handover", url: "/handover", icon: Key },
   { title: "System Architecture", url: "/architecture", icon: Network },
-  { title: "Prompts & AI Workflows", url: "/docs/prompts-and-ai-workflows", icon: Sparkles },
+  { title: "Prompts & AI Workflows", url: "/docs/prompts-and-ai-workflows", icon: Wand2 },
   { title: "APIs & Data Sources", url: "/docs/apis", icon: Plug },
   { title: "Guardrails", url: "/docs/guardrails", icon: ShieldCheck },
   { title: "Scoring Method", url: "/scoring-method", icon: Gauge },
   { title: "CSI Methodology", url: "/methodology", icon: Calculator },
-  { title: "Demographics Method", url: "/demographics-methodology", icon: BarChart3 },
+  { title: "Demographics Method", url: "/demographics-methodology", icon: PieChart },
   { title: "Observability Guide", url: "/observability-guide", icon: Activity },
   { title: "Observability Spec", url: "/observability-spec", icon: FileCode2 },
-
   { title: "Outreach Guide", url: "/email-outreach-docs", icon: MailOpen },
   { title: "SmartLead API Spec", url: "/smartlead-spec", icon: Send },
   { title: "Full Specification", url: "/spec", icon: FileText },
@@ -64,7 +63,7 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
         to={item.url}
         end={item.url === "/"}
         onClick={onNavigate}
-        className={`group flex min-h-[34px] items-center rounded-lg text-[13px] transition-all ${isCollapsed ? "justify-center px-0" : "gap-3 px-3"} ${active ? "bg-[#1f5bff] font-medium text-white" : "bg-transparent font-medium text-[#14233b] hover:bg-[#f7faff] hover:text-[#0757ff]"}`}
+        className={`group flex min-h-[28px] items-center rounded-lg text-[13px] transition-all ${isCollapsed ? "justify-center px-0" : "gap-3 px-3"} ${active ? "bg-[#1f5bff] font-medium text-white" : "bg-transparent font-medium text-[#14233b] hover:bg-[#f7faff] hover:text-[#0757ff]"}`}
       >
         <item.icon size={17} strokeWidth={1.75} />
         {!isCollapsed && <span className="whitespace-nowrap">{item.title}</span>}
@@ -102,13 +101,13 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto pb-12">
-          <nav className={`flex flex-col ${isCollapsed ? "gap-2 px-2" : "gap-2.5 px-3.5"}`}>
+          <nav className={`flex flex-col ${isCollapsed ? "gap-2 px-2" : "gap-0.5 px-3.5"}`}>
             {primaryNavItems.map((item) => renderLink(item))}
           </nav>
 
           <div className={`${isCollapsed ? "mx-3 my-5" : "mx-3.5 my-5"} h-px bg-[#eef2f7]`} />
 
-          <nav className={`flex flex-col ${isCollapsed ? "gap-2 px-2" : "gap-2.5 px-3.5"}`}>
+          <nav className={`flex flex-col ${isCollapsed ? "gap-2 px-2" : "gap-0.5 px-3.5"}`}>
             {utilityNavItems.map((item) => renderLink(item))}
 
             {/* Methodology & Docs — collapsible group keeps the sidebar tidy for v1.0 */}
@@ -118,9 +117,9 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
                   <NavLink
                     to={docsNavItems[0].url}
                     onClick={onNavigate}
-                    className={`group flex min-h-[34px] items-center justify-center rounded-lg text-[13px] transition-all ${docsActive ? "bg-[#1f5bff] font-medium text-white" : "font-medium text-[#14233b] hover:bg-[#f7faff] hover:text-[#0757ff]"}`}
+                    className={`group flex min-h-[28px] items-center justify-center rounded-lg text-[13px] transition-all ${docsActive ? "bg-[#1f5bff] font-medium text-white" : "font-medium text-[#14233b] hover:bg-[#f7faff] hover:text-[#0757ff]"}`}
                   >
-                    <LibraryBig size={17} strokeWidth={1.75} />
+                    <BookMarked size={17} strokeWidth={2} />
                   </NavLink>
                 </TooltipTrigger>
                 <TooltipContent side="right" sideOffset={8}>Methodology &amp; Docs</TooltipContent>
@@ -130,10 +129,10 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
                 <button
                   type="button"
                   onClick={() => setDocsOpen((v) => !v)}
-                  className={`flex min-h-[34px] items-center gap-3 rounded-lg px-3 text-[13px] font-medium transition-all ${docsActive ? "text-[#0757ff]" : "text-[#14233b] hover:bg-[#f7faff] hover:text-[#0757ff]"}`}
+                  className={`flex min-h-[28px] items-center gap-3 rounded-lg px-3 text-[13px] font-medium transition-all ${docsActive ? "text-[#0757ff]" : "text-[#14233b] hover:bg-[#f7faff] hover:text-[#0757ff]"}`}
                   aria-expanded={docsOpen}
                 >
-                  <LibraryBig size={17} strokeWidth={1.75} />
+                  <BookMarked size={17} strokeWidth={2} />
                   <span className="flex-1 whitespace-nowrap text-left">Methodology &amp; Docs</span>
                   <ChevronDown size={14} className={`transition-transform ${docsOpen ? "rotate-180" : ""}`} />
                 </button>

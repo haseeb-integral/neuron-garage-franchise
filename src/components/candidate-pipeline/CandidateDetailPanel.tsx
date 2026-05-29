@@ -53,13 +53,6 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
     onUpdate({ ...candidate, trialClose: { ...candidate.trialClose, [key]: value } });
   };
 
-  const handleVote = (member: keyof CommitteeVotes, vote: "approve" | "decline") => {
-    const current = candidate.votes[member];
-    onUpdate({
-      ...candidate,
-      votes: { ...candidate.votes, [member]: current === vote ? null : vote },
-    });
-  };
 
 
 

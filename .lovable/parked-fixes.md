@@ -1,5 +1,9 @@
 # Parked Fixes — Awaiting Approval
 
+_Last reviewed: 2026-05-29 — no active parks._
+
+
+
 This is a running list of issues that are **identified, explained, and planned**, but **NOT to be implemented** until Brett (or Haseeb) approves. Tier 1 work always takes priority over anything on this list.
 
 > **REMINDER FOR HASEEB:** Tier 1 is the current priority. After Tier 1 is finished, Lovable must remind Haseeb to get Brett's approval on every entry below before any work begins.

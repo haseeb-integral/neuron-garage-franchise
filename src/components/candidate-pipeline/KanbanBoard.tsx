@@ -103,12 +103,15 @@ export function KanbanBoard({
           return (
             <button
               key={s.id}
-              onClick={() => scrollToStage(s.id)}
+              onClick={(e) => {
+                scrollToStage(s.id);
+                e.currentTarget.blur();
+              }}
               className="flex items-center gap-1.5 px-2 py-1 rounded-md transition-all"
               style={{
                 border: "1px solid transparent",
-                backgroundColor: isActive ? "#174be8" : "transparent",
-                boxShadow: isActive ? "0 1px 2px rgba(23,75,232,0.25)" : undefined,
+                backgroundColor: isActive ? "#eaf0ff" : "transparent",
+                boxShadow: isActive ? "inset 2px 0 0 #174be8" : undefined,
               }}
               onMouseEnter={(e) => {
                 if (isActive) return;
@@ -120,7 +123,7 @@ export function KanbanBoard({
                 e.currentTarget.style.borderColor = "transparent";
                 e.currentTarget.style.backgroundColor = "transparent";
               }}
-              title={s.label}
+              title={`${s.label} — currently in view`}
             >
               <span
                 className="w-2 h-2 rounded-full"
@@ -128,15 +131,15 @@ export function KanbanBoard({
               />
               <span
                 className="text-[11px] font-semibold"
-                style={{ color: isActive ? "#ffffff" : "#495057" }}
+                style={{ color: isActive ? "#174be8" : "#495057" }}
               >
                 {s.short}
               </span>
               <span
                 className="text-[10px] font-bold px-1.5 rounded-full"
                 style={{
-                  color: isActive ? "#ffffff" : "#6c757d",
-                  backgroundColor: isActive ? "rgba(255,255,255,0.22)" : "#e9ecef",
+                  color: isActive ? "#174be8" : "#6c757d",
+                  backgroundColor: isActive ? "#ffffff" : "#e9ecef",
                 }}
               >
                 {count}

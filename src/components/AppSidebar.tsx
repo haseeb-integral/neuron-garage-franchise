@@ -22,9 +22,9 @@ const utilityNavItems = [
 ];
 
 const docsNavItems = [
-  { title: "Credentials & Handover", url: "/handover", icon: Key },
+  { title: "Credentials & Handover", url: "/handover", icon: Lock },
   { title: "System Architecture", url: "/architecture", icon: Network },
-  { title: "Prompts & AI Workflows", url: "/docs/prompts-and-ai-workflows", icon: Wand2 },
+  { title: "Prompts & AI Workflows", url: "/docs/prompts-and-ai-workflows", icon: MessageSquareCode },
   { title: "APIs & Data Sources", url: "/docs/apis", icon: Plug },
   { title: "Guardrails", url: "/docs/guardrails", icon: ShieldCheck },
   { title: "Scoring Method", url: "/scoring-method", icon: Gauge },

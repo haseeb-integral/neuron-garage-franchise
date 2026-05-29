@@ -7,7 +7,7 @@ export const FEATURE_FLAGS = {
   FF_COMPLIANCE: true,       // T3-05 compliance audit log (Phase C1)
   FF_FDD_GATE: true,         // T3-06 16-day FDD hard-block (Phase C2)
 
-  FF_SCORE_OVERRIDE: false,  // T3-04 manual score override (Phase D)
+  FF_SCORE_OVERRIDE: true,   // T3-04 manual score override (Phase D)
 } as const;
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;

@@ -148,13 +148,62 @@ export function CommitteeVotesTab({ candidate }: Props) {
     load();
   };
 
+  const slugify = (s: string) =>
+    s.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
+  const manualNameTrimmed = manualName.trim();
+  const manualEmailTrimmed = manualEmail.trim().toLowerCase();
+  const manualEmailValid = manualEmailTrimmed === "" || EMAIL_RE.test(manualEmailTrimmed);
+  const manualReady =
+    !!manualNameTrimmed && !!manualVote && manualEmailValid && !!dbId && !!myEmail;
+
+  const handleManualSubmit = async () => {
+    if (!manualReady || !dbId || !myEmail || !manualVote) return;
+    // Voter key: email when provided, else a stable name-slug. Allows distinct
+    // members with the same first name as long as either email or slug differs.
+    const voterKey = manualEmailTrimmed || `manual:${slugify(manualNameTrimmed)}`;
+    if (voterKey === myEmail.toLowerCase()) {
+      toast.error("Use your own login to record your vote, not the manual form.");
+      return;
+    }
+    setManualSubmitting(true);
+    const { error } = await supabase
+      .from("candidate_votes")
+      .upsert(
+        {
+          candidate_id: dbId,
+          voter: voterKey,
+          voter_name: manualNameTrimmed,
+          vote: manualVote,
+          comment: manualComment.trim() || null,
+          recorded_by: myEmail,
+        },
+        { onConflict: "candidate_id,voter" },
+      );
+    setManualSubmitting(false);
+    if (error) {
+      toast.error("Couldn't save vote", { description: error.message });
+      return;
+    }
+    toast.success(`Vote recorded for ${manualNameTrimmed}`);
+    setManualName("");
+    setManualEmail("");
+    setManualVote("");
+    setManualComment("");
+    setManualOpen(false);
+    load();
+  };
+
   const counts = {
     approve: votes.filter((v) => v.vote === "approve").length,
     needs_info: votes.filter((v) => v.vote === "needs_info").length,
     reject: votes.filter((v) => v.vote === "reject").length,
   };
 
-  const displayName = (email: string) => profilesByEmail[email] || email;
+  const displayName = (v: { voter: string; voter_name?: string | null }) =>
+    v.voter_name || profilesByEmail[v.voter] || v.voter;
+  const displayEmail = (email: string) => profilesByEmail[email] || email;
+
 
   return (
     <div className="space-y-4 pt-4">

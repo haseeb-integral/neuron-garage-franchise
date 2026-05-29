@@ -835,26 +835,8 @@ const CandidatePipeline = () => {
         )}
       </div>
 
-      {/* Days-in-stage legend */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3 px-1 text-[11px]" style={{ color: "#6c757d" }}>
-        <span className="font-semibold uppercase tracking-wide">Days in stage:</span>
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: "#20c997" }} />
-          <span>Fresh (≤3 days)</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: "#fd7e14" }} />
-          <span>Watch (4–7)</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: "#dc3545" }} />
-          <span>Stalled (8+)</span>
-        </div>
-        <span className="ml-auto italic">Tip: drag a card to another column — you'll be asked to confirm.</span>
-      </div>
-
       {/* Toolbar: density + collapse */}
-      <div className="flex items-center justify-between mb-3 bg-white rounded-lg px-3 py-2" style={{ border: "1px solid #dee2e6" }}>
+      <div className="flex items-center justify-between mb-3 bg-white rounded-xl px-3 py-2 shadow-sm" style={{ border: "1px solid #dee2e6" }}>
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium" style={{ color: "#6c757d" }}>Density:</span>
           <div className="flex rounded-md overflow-hidden" style={{ border: "1px solid #dee2e6" }}>

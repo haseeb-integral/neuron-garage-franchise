@@ -1,70 +1,49 @@
+# Haseeb — two things
 
-# Brett's decision — wire it up
+## 1) Brett's changes since yesterday (grade-8 plain English)
 
-Brett picked option (c) with a twist: client owns all edits and they sync to the master DB, **except** the original email (Smartlead-protected). Add a second "Other Email" field for emails collected later (phone, Zoom, reply).
+Looking at the commit history from today, Brett's session did these user-visible things:
 
----
+- **Hid the Fit Score everywhere in the UI.** That single number on the candidate card and table is no longer shown. The data still exists, it's just not displayed.
+- **Removed the Selection Committee widget** from the candidate detail panel. The committee voting tab is still there; only the small summary widget was removed.
+- **Added a score override UI** in the Qualification tab so a person can manually set a pillar/star rating instead of only relying on the auto-computed one, and **fixed a bug** where those star overrides were getting wiped.
+- **Fixed a "batched score save" bug** — when you changed several scores quickly, some weren't saving. Now they all save.
+- **Synced qualification scores** so the score shown on the kanban card matches the score shown inside the detail panel (no more two different numbers for the same person). Cards now also **pre-fetch the qual scores** so the number shows instantly instead of after a delay.
+- **Added an "anatomy card" section** (a labeled walkthrough of what each part of a candidate card means — likely on the user guide / spec page).
+- **Lightened the sheet overlay** so when the candidate detail panel opens, the background behind it is less dark/dim.
+- **Kept the action button visible in the Qualification tab** when scrolling (it was getting hidden).
+- **Cleaned up unreachable mock data** — old sample candidates that the app never actually showed are gone from the code.
 
-## Backend (one migration)
+Net effect for a user: same app, but the candidate cards/panel feel more consistent (one score everywhere), the Qualification tab is more usable (override + always-visible button), and the Fit Score / Committee widget clutter is gone.
 
-Add `other_email` column (nullable text) to both tables:
-- `public.candidates.other_email`
-- `public.teacher_prospects.other_email`
+## 2) The "Couldn't load checklist" toast — root cause found
 
-No rename of existing `email` column — we just treat it as "Verified Email" in the UI.
+**What it is:** A database error surfaced as a toast. The exact text is `invalid input value for enum candidate_stage: "initial_qual"`.
 
-## Frontend — Pipeline → Overview tab
+**Why it happens:** The frontend's stage ID for the "Initial Qualification Call" column is `initial_qual`, but the **database's `candidate_stage` enum** spells it `initial_qualification`. The Candidate Pipeline page already has a small map that translates between the two when loading/saving candidates — but the **Homework tab queries the `candidate_checklist_items` table directly using the raw UI stage value**, skipping that map. Postgres rejects `initial_qual` because it's not in the enum, and the toast pops.
 
-`src/components/candidate-pipeline/tabs/OverviewTab.tsx`
+**Which candidates / columns are affected:** Any candidate currently sitting in the **Initial Qualification Call** column will show this toast when you open their Homework tab. Other columns are safe because their UI ids happen to match the DB enum exactly (`new_lead`, `business_overview`, `fdd_review`, `immersion`, `confirmation`, `signing`, `disqualified`). I verified by querying the DB enum.
 
-1. **Email row → relabel "Verified Email"**
-   - Remove edit affordance (no pencil, no click-to-edit)
-   - Add small `Lock` icon (lucide-react) next to the value
-   - Tooltip on hover: *"This is the email used in outreach. It cannot be changed to protect against duplicate sends."*
+There is also a latent risk: if anyone later renames another stage on either side, the same class of bug returns. The right fix is to centralize the translation.
 
-2. **New "Other Email" row** (right after Verified Email)
-   - Editable like Phone (click-to-edit, Enter to save, Esc to cancel)
-   - Placeholder when empty: *"Add alternate email…"*
-   - Basic email format validation only (regex), no uniqueness check
+## Fix plan
 
-## Frontend — sync-back wiring
+1. **Create a tiny mapping helper** `src/lib/stageDbMapping.ts` with two functions:
+   - `toDbStage(uiStage)` → DB enum string
+   - `fromDbStage(dbStage)` → UI `StageId`
+   
+   It will contain the single source of truth currently duplicated inline in `CandidatePipeline.tsx` and `NewCandidateModal.tsx`.
 
-`src/pages/CandidatePipeline.tsx` → `onSaveProfile` handler
+2. **Use `toDbStage` in `HomeworkTab.tsx`** in the three spots that send `candidate.stage` to Supabase: the SELECT filter, the seed INSERT, and the manual add INSERT.
 
-After updating the `candidates` row, if `candidate.prospect_id` exists, also `UPDATE public.teacher_prospects SET ... WHERE id = prospect_id` for the **safe fields only**:
+3. **Replace the inline maps** in `CandidatePipeline.tsx` and `NewCandidateModal.tsx` with calls to the helper, so we have one place to maintain stage names.
 
-```
-first_name, last_name, phone, city, state, other_email
-```
+4. **No DB migration** — the enum is correct; only the client was wrong.
 
-**Never** sync `email` (Smartlead protection). `assigned_to` and `source` are candidate-only concepts, so they don't sync either.
+## Manual test after the fix
 
-If the teacher_prospects update fails, log it but don't block the candidate save (candidate is source of truth for pipeline UI).
-
-## Type updates
-
-- Extend `Candidate` in `src/data/pipelineData.ts` with `otherEmail?: string`
-- Map `other_email` ↔ `otherEmail` in the load + save paths
-
-## Tier 2 backlog update
-
-Move #4 out of "Awaiting Brett Approval" → mark as shipped with the resolution recorded:
-> Brett picked: lock Verified Email + add Other Email + sync safe fields back to teacher_prospects.
-
----
-
-## Out of scope (intentional)
-
-- Teacher Search detail panel / Email Outreach UI updates to show `other_email` — separate ticket, not asked for here
-- Verified-email change workflow (admin override) — not requested
-- Backfilling `other_email` from anywhere — column starts empty
-
----
-
-## Files touched
-
-- new migration: add `other_email` to `candidates` + `teacher_prospects`
-- `src/data/pipelineData.ts` — add `otherEmail` to `Candidate`
-- `src/pages/CandidatePipeline.tsx` — load + sync-back in `onSaveProfile`
-- `src/components/candidate-pipeline/tabs/OverviewTab.tsx` — lock Verified Email, add Other Email row, tooltips
-- `.lovable/tier2-backlog.md` — mark #4 resolved
+1. Open the Candidate Pipeline.
+2. Click **Brittany Cruz** (or any candidate in the **Initial Qualification Call** column) → Homework tab.
+3. ✅ Expected: no red toast; "Trial Close Checklist" loads (either showing seeded items or "No checklist items for this stage yet" without an error).
+4. Open one candidate in each other column and click Homework — none should show the toast.
+5. Type a checklist item and click Add → it appears and persists after reload.

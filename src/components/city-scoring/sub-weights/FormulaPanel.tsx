@@ -227,7 +227,7 @@ export function FormulaPanel({
                   {previewRecompute.contributions.map((c) => (
                     <tr key={c.key} className={`border-t border-[#eef2f7] ${c.used ? "" : "text-[#9aa3b5]"}`}>
                       <td className="px-2 py-1 truncate max-w-[160px]" title={c.label}>{c.label}</td>
-                      <td className="px-2 py-1 text-right tabular-nums">{c.rawValue == null ? "—" : c.rawValue.toLocaleString()}</td>
+                      <td className="px-2 py-1 text-right tabular-nums">{formatMetric(c.rawValue, c.key)}</td>
                       <td className="px-2 py-1 text-right tabular-nums">{c.normalized == null ? "—" : c.normalized.toFixed(1)}</td>
                       <td className="px-2 py-1 text-right tabular-nums">{c.used ? `${(c.subShare * 100).toFixed(1)}%` : "—"}</td>
                       <td className="px-2 py-1 text-right tabular-nums">{c.used ? c.contribution.toFixed(2) : "—"}</td>

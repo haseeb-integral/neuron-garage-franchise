@@ -5,6 +5,8 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { NotificationsPopover } from "@/components/NotificationsPopover";
+import { useNotifications } from "@/hooks/useNotifications";
 // NeuronAiButton import removed — global Ask AI hidden per Haseeb's request.
 
 interface Props {

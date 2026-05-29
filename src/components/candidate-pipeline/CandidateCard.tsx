@@ -1,5 +1,5 @@
 import { Candidate } from "@/data/pipelineData";
-import { FitScoreBadge } from "@/components/teacher-prospects/FitScoreBadge";
+
 import { CompositeScoreBadge } from "@/components/candidate-pipeline/CompositeScoreBadge";
 import { CandidateAvatar } from "@/components/ui/CandidateAvatar";
 import { ArrowRight } from "lucide-react";

@@ -662,7 +662,9 @@ const CityScoring = () => {
   // Apply overrides to the visible page and re-sort by the override-aware score.
   const pageItems = rawPageItems;
 
-  const hasOverrides = !subWeightsAreDefault || appliedWeightsKey !== defaultMasterWeightsKey;
+  const hasOverrides =
+    subWeightsKey !== defaultSubWeightsKey ||
+    (scoringModel === "Custom" && appliedWeightsKey !== defaultMasterWeightsKey);
 
   const pageNumbers = useMemo<(number | "...")[]>(() => {
     if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -806,6 +808,7 @@ const CityScoring = () => {
   const resetWeights = () => {
     setWeights(defaultWeights);
     setAppliedWeights(defaultWeights);
+    setScoringModel("Balanced");
     resetSubWeights();
     toast.success("Weights reset to defaults");
   };
@@ -1683,7 +1686,7 @@ const CityScoring = () => {
           handleFindTeachersForSelected={handleFindTeachersForSelected}
           openCompare={openCompare}
           hasOverrides={hasOverrides}
-          resetSubWeights={resetSubWeights}
+          resetWeights={resetWeights}
           appliedWeights={appliedWeights}
           percentileById={percentileById}
           showingFrom={showingFrom}

@@ -82,17 +82,18 @@ export function CityWeightsPanel({
             </div>
           </div>
           <div className="min-w-0">
-            <h3 className="text-sm font-bold text-[#07142f]">Scoring Weights</h3>
+            <h3 className="text-sm font-bold text-[#07142f]">How should we rank cities?</h3>
             <p className="text-[11px] text-[#07142f] leading-snug mt-1 max-w-[640px]">
-              These three weights <strong>share a budget of 100%</strong>. Raising one automatically lowers the others — the cities haven't changed, only how much each factor counts toward the ranking.
+              Every city gets one overall score (0–100) built from three things: <strong style={{ color: VISIBLE_CATEGORIES[0].color }}>Demand</strong> (are families looking for tutoring?), <strong style={{ color: VISIBLE_CATEGORIES[1].color }}>TAM Teachers</strong> (can you hire enough tutors?), and <strong style={{ color: VISIBLE_CATEGORIES[2].color }}>Competitive Opportunity</strong> (is the market open or already crowded?). The sliders below decide how much each one counts — they always add up to 100%.
             </p>
             <p className="text-[10px] text-[#8794ab] leading-snug mt-1">
-              Score uses the 12-metric model across Demand, Competitive Opportunity, and TAM Teachers. Missing metrics are tracked as evidence gaps, not counted as zero.
+              Each of the three categories is built from several signals (population, income, competitor density, etc). Pick a preset to start, or fine-tune any category with <span className="font-medium">Configure metrics</span>.
             </p>
             {totalWeight !== 100 && (
               <p className="text-[11px] text-[#ea580c] mt-1">Weights must total 100% to apply scoring.</p>
             )}
           </div>
+
         </div>
         <div className="flex md:shrink-0 flex-col md:items-end gap-2 w-full md:w-auto">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 w-full md:w-auto md:justify-end">
@@ -135,15 +136,15 @@ export function CityWeightsPanel({
         </div>
       </div>
 
-
       <div className="mb-3">
         <div className="mb-2.5 rounded-md bg-[#f5f8ff] border border-[#dbe4f2] px-3 py-2.5">
+
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className="inline-flex h-5 items-center rounded-md bg-[#174be8] px-1.5 text-[10px] font-bold uppercase tracking-wide text-white">
-              6 Presets
+              Step 1
             </span>
             <span className="text-[12.5px] font-bold text-[#07142f]">
-              Pick a scoring strategy below ↓
+              Pick a starting strategy ↓
             </span>
             {scoringModel === "Custom" ? (
               <span className="ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#f1ebff] text-[#7c3aed]">
@@ -151,14 +152,16 @@ export function CityWeightsPanel({
               </span>
             ) : (
               <span className="ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#eaf0ff] text-[#174be8]">
-                Active preset: {scoringModel}
+                Active: {scoringModel}
               </span>
             )}
           </div>
           <p className="text-[11.5px] text-[#526078] leading-snug">
-            A <span className="font-semibold text-[#07142f]">preset</span> is a one-click recipe for the three weight sliders — it only changes <span className="font-semibold">how much each category counts toward the composite score</span>. The table is always sorted by that composite (highest overall score first), <span className="font-semibold">not</span> by any single category. So "Demand-Heavy" makes Demand worth 60% of each city's overall score — top cities will lean demand-strong, but TAM and Competition still influence the final rank and act as tie-breakers. Drag a slider yourself and you'll switch to <span className="font-semibold text-[#7c3aed]">Custom</span>; click <span className="font-semibold">Apply Weights</span> to re-rank.
+            Each preset is a recipe that sets the three sliders for you. For example, <span className="font-semibold text-[#07142f]">Demand-Heavy</span> makes Demand worth 60% of every city's overall score — so cities with lots of families looking for tutoring rise to the top, while TAM and Competition act as tie-breakers. Clicking a preset <span className="font-semibold">previews</span> the new ranking; click <span className="font-semibold">Apply Weights</span> to commit it. Drag any slider yourself and the strategy switches to <span className="font-semibold text-[#7c3aed]">Custom</span>.
           </p>
         </div>
+
+
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {PRESET_TILE_ORDER.map((name) => {
             const w = SCORING_PRESETS[name];

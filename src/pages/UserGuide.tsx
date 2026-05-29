@@ -424,8 +424,138 @@ const UserGuide = () => {
         </div>
       </section>
 
+      {/* ANATOMY OF A CANDIDATE CARD */}
+      <section className="mb-14">
+        <SectionTitle>Anatomy of a candidate card</SectionTitle>
+        <p className="mt-2 text-[15px]" style={{ color: "#5a6a85" }}>
+          Each Kanban card on the Candidate Pipeline packs four independent
+          signals. Here's what every element means — so the numbers, colors,
+          and letters never feel like a mystery.
+        </p>
+
+        <div
+          className="mt-6 rounded-2xl bg-white p-6 md:p-8"
+          style={{ border: "1px solid #eef2f7" }}
+        >
+          <div className="grid gap-4 md:grid-cols-2">
+            {[
+              {
+                swatch: (
+                  <span
+                    className="inline-block w-1.5 h-8 rounded-sm"
+                    style={{ backgroundColor: "#dc3545" }}
+                  />
+                ),
+                title: "Left stripe — Days in stage",
+                body: "Green ≤3 days (fresh), amber 4–7 (watch), red 8+ (stalled). Tells you at a glance which cards are going cold.",
+              },
+              {
+                swatch: (
+                  <span
+                    className="inline-flex w-9 h-9 rounded-full items-center justify-center text-xs font-bold text-white"
+                    style={{ backgroundColor: BLUE }}
+                  >
+                    AV
+                  </span>
+                ),
+                title: "Initials circle — Candidate avatar",
+                body: "The candidate's initials. Pure identity — no score, no signal.",
+              },
+              {
+                swatch: (
+                  <span
+                    className="inline-flex px-2 h-6 rounded-full items-center text-xs font-bold text-white"
+                    style={{ backgroundColor: "#198754" }}
+                  >
+                    90
+                  </span>
+                ),
+                title: "Color pill (number) — Fit Score",
+                body: "The AI/recruiter overall fit rating, 0–100. Red below 50, amber 50–79, green 80+. A red 0 means no fit score has been assigned yet — not that the candidate is bad.",
+              },
+              {
+                swatch: (
+                  <span
+                    className="inline-flex px-2 h-6 rounded-full items-center text-xs font-bold text-white"
+                    style={{ backgroundColor: "#198754" }}
+                  >
+                    Qual 100
+                  </span>
+                ),
+                title: '"Qual" pill — Qualification composite',
+                body: "Composite of the 5 star-pillar ratings you set in the detail panel: Teaching, Leadership, Financial, Market Fit, Culture Fit. Hidden until at least one pillar is rated.",
+              },
+              {
+                swatch: (
+                  <span
+                    className="inline-flex px-2.5 h-6 rounded-md items-center text-xs font-medium"
+                    style={{ backgroundColor: "#e7f1ff", color: BLUE }}
+                  >
+                    High Potential
+                  </span>
+                ),
+                title: "Blue tag — Qualitative label",
+                body: 'Short status label like "Interested", "High Potential", or "Follow-Up". Set from the detail panel.',
+              },
+              {
+                swatch: (
+                  <span className="text-xs font-medium" style={{ color: "#6c757d" }}>
+                    Day 8
+                  </span>
+                ),
+                title: '"Day N" — Time in current stage',
+                body: "How many days the candidate has been sitting in this pipeline stage. Resets when they're moved to a new stage.",
+              },
+              {
+                swatch: (
+                  <span
+                    className="inline-flex w-7 h-7 rounded-full items-center justify-center text-xs font-bold text-white"
+                    style={{ backgroundColor: "#198754" }}
+                  >
+                    h
+                  </span>
+                ),
+                title: "Small letter circle — Owner",
+                body: "First initial of the teammate assigned to the candidate. Color is deterministic from their name. Hover for the full name.",
+              },
+            ].map((row) => (
+              <div
+                key={row.title}
+                className="flex gap-4 items-start rounded-xl p-3"
+                style={{ background: SOFT }}
+              >
+                <div className="flex-shrink-0 w-16 flex items-center justify-center">
+                  {row.swatch}
+                </div>
+                <div className="flex-1">
+                  <div className="text-[14px] font-bold" style={{ color: INK }}>
+                    {row.title}
+                  </div>
+                  <div
+                    className="mt-1 text-[13px] leading-snug"
+                    style={{ color: "#5a6a85" }}
+                  >
+                    {row.body}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div
+            className="mt-5 rounded-xl px-4 py-3 text-[13px]"
+            style={{ background: `${YELLOW}22`, color: INK }}
+          >
+            <strong>Tip:</strong> the same legend is available right on the
+            Candidate Pipeline — click the <em>Card legend</em> button in the
+            toolbar above the board.
+          </div>
+        </div>
+      </section>
+
       {/* JOURNEY STRIP */}
       <section
+
         className="mb-14 rounded-[24px] p-7 md:p-9"
         style={{ background: SOFT, border: "1px solid #eaeefb" }}
       >

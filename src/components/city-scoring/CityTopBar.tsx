@@ -5,6 +5,8 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { NotificationsPopover } from "@/components/NotificationsPopover";
+import { useNotifications } from "@/hooks/useNotifications";
 // NeuronAiButton import removed — global Ask AI hidden per Haseeb's request.
 
 interface Props {
@@ -25,10 +27,12 @@ export function CityTopBar({
   searchTerm, setSearchTerm, screenMode, onExportCsv, onOpenReport,
   initials, displayName, role, email, onNavigateTeam, onLogout,
 }: Props) {
+  const { unreadCount } = useNotifications();
   return (
     <div className="mb-4 flex flex-wrap items-center gap-3">
       <div className="relative min-w-0 flex-1 md:max-w-[680px]">
         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8794ab]" />
+
         <Input
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -46,15 +50,21 @@ export function CityTopBar({
       </Button>
       {/* Neuron AI badge hidden for now — not shown to clients */}
       <div className="ml-auto flex items-center gap-3">
-      <button
-        type="button"
-        className="relative flex items-center justify-center rounded-full bg-white text-[#526078] hover:bg-[#f3f6fb]"
-        aria-label="Notifications"
-        style={{ width: 36, height: 36, border: "1px solid #eef2f7" }}
-      >
-        <Bell size={16} strokeWidth={1.75} />
-        <span className="absolute -right-0.5 -top-0.5 flex items-center justify-center rounded-full bg-[#e11d48] text-[9px] font-bold text-white" style={{ width: 14, height: 14 }}>3</span>
-      </button>
+      <NotificationsPopover>
+        <button
+          type="button"
+          className="relative flex items-center justify-center rounded-full bg-white text-[#526078] hover:bg-[#f3f6fb]"
+          aria-label="Notifications"
+          style={{ width: 36, height: 36, border: "1px solid #eef2f7" }}
+        >
+          <Bell size={16} strokeWidth={1.75} />
+          {unreadCount > 0 && (
+            <span className="absolute -right-0.5 -top-0.5 flex items-center justify-center rounded-full bg-[#e11d48] text-[9px] font-bold text-white" style={{ width: 14, height: 14 }}>
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
+        </button>
+      </NotificationsPopover>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button className="flex items-center gap-2 rounded-full px-1 py-0.5 hover:bg-[#f7faff]">

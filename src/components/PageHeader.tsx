@@ -13,6 +13,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { NotificationsPopover } from "@/components/NotificationsPopover";
+import { useNotifications } from "@/hooks/useNotifications";
 
 interface PageHeaderProps {
   title: string;
@@ -25,6 +27,7 @@ interface PageHeaderProps {
 export function PageHeader({ title, subtitle, action, hideJourneyBar = false, searchPlaceholder }: PageHeaderProps) {
   const navigate = useNavigate();
   const { profile, user, role, signOut } = useAuth();
+  const { unreadCount } = useNotifications();
   const displayName = profile?.full_name || profile?.email || user?.email || "Account";
   const initials = (displayName.match(/\b\w/g) || []).slice(0, 1).join("").toUpperCase() || "U";
 
@@ -41,17 +44,22 @@ export function PageHeader({ title, subtitle, action, hideJourneyBar = false, se
         </div>
 
         <div className="ml-auto flex items-center gap-3">
-          <button
-            type="button"
-            className="relative hidden items-center justify-center rounded-full bg-white text-[#526078] transition-colors hover:bg-[#f3f6fb] hover:text-[#174be8] md:flex"
-            aria-label="Notifications"
-            style={{ width: 36, height: 36, minWidth: 36, minHeight: 36, border: "1px solid #eef2f7" }}
-          >
-            <Bell size={16} strokeWidth={1.75} />
-            <span className="absolute -right-0.5 -top-0.5 flex items-center justify-center rounded-full bg-[#e11d48] text-[9px] font-bold text-white" style={{ width: 14, height: 14 }}>
-              3
-            </span>
-          </button>
+          <NotificationsPopover>
+            <button
+              type="button"
+              className="relative hidden items-center justify-center rounded-full bg-white text-[#526078] transition-colors hover:bg-[#f3f6fb] hover:text-[#174be8] md:flex"
+              aria-label="Notifications"
+              style={{ width: 36, height: 36, minWidth: 36, minHeight: 36, border: "1px solid #eef2f7" }}
+            >
+              <Bell size={16} strokeWidth={1.75} />
+              {unreadCount > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex items-center justify-center rounded-full bg-[#e11d48] text-[9px] font-bold text-white" style={{ width: 14, height: 14 }}>
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </button>
+          </NotificationsPopover>
+
 
           <button
             onClick={() => startTour()}

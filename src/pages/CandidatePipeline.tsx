@@ -710,6 +710,7 @@ const CandidatePipeline = () => {
       <PageHeader
         title="Candidate Pipeline"
         subtitle="Track and manage franchise candidates through every stage of the qualification process."
+        hideJourneyBar
         action={
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <Button

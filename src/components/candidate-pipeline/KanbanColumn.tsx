@@ -143,7 +143,10 @@ export function KanbanColumn({
           {candidates.length}
         </span>
       </div>
-      <div className="flex-1 overflow-y-auto px-2 pt-2 pb-2" style={{ backgroundColor: "#fbfcfd" }}>
+      <div
+        className={`flex-1 overflow-y-auto px-2 pt-2 pb-2 ${isDisq ? "opacity-65" : ""}`}
+        style={{ backgroundColor: isDisq ? "hsl(var(--muted) / 0.3)" : "#fbfcfd" }}
+      >
         {candidates.map((c) => (
           <CandidateCard
             key={c.id}

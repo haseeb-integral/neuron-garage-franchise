@@ -330,7 +330,7 @@ export function CommitteeVotesTab({ candidate }: Props) {
                 <div className="text-[11px] mt-1" style={{ color: "#adb5bd" }}>
                   {new Date(v.updated_at).toLocaleString()}
                   {v.recorded_by && (
-                    <span> · recorded by {displayName(v.recorded_by)}</span>
+                    <span> · recorded by {displayEmail(v.recorded_by)}</span>
                   )}
                 </div>
               </li>

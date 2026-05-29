@@ -118,7 +118,11 @@ export function QualificationTab({ candidate, onScoreChange, onScoresReplace }: 
     }
     const newComposite = computeComposite(effective);
     setComposite(newComposite);
-    onScoreChange(key, effective[key]);
+    if (onScoresReplace) {
+      onScoresReplace(effective);
+    } else {
+      onScoreChange(key, effective[key]);
+    }
 
     if (!dbId) return;
 

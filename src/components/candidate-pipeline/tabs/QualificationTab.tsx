@@ -132,7 +132,7 @@ export function QualificationTab({ candidate, onScoreChange }: Props) {
       }
       const { error } = await supabase
         .from("candidate_qualification")
-        .upsert(payload, { onConflict: "candidate_id" });
+        .upsert(payload as any, { onConflict: "candidate_id" });
       if (error) {
         console.error("Failed to save qualification", error);
         toast.error("Couldn't save qualification", { description: error.message });

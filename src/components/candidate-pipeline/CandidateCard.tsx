@@ -59,18 +59,20 @@ export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboardi
       draggable
       onDragStart={() => onDragStart(candidate.id)}
       onClick={onClick}
-      className="bg-white rounded-lg p-3 mb-2 cursor-pointer hover:shadow-md transition-shadow"
+      className="group bg-white rounded-lg p-3 mb-2 cursor-pointer hover:shadow-md hover:-translate-y-px transition-all shadow-sm"
       style={{ border: "1px solid #dee2e6", borderLeft }}
     >
       <div className="flex items-start mb-2.5 gap-2.5">
         <CandidateAvatar name={candidate.name} photoUrl={candidate.photoUrl} size={36} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="font-semibold text-sm truncate flex-1" style={{ color: "#212529", lineHeight: 1.2 }}>
+            <div
+              className="font-semibold text-sm truncate flex-1 group-hover:text-[#003c7e] transition-colors"
+              style={{ color: "#212529", lineHeight: 1.2 }}
+            >
               {candidate.name}
             </div>
             <CompositeScoreBadge scores={candidate.qualificationScores} />
-
           </div>
           <div className="text-[11px] truncate mt-0.5" style={{ color: "#6c757d", lineHeight: 1.2 }}>
             {candidate.city}, {candidate.state}
@@ -79,20 +81,25 @@ export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboardi
       </div>
       <div className="flex items-center justify-between">
         <span
-          className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium"
-          style={{ backgroundColor: "#e7f1ff", color: "#003c7e" }}
+          className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold"
+          style={{ backgroundColor: "#e7f1ff", color: "#003c7e", border: "1px solid #cfe2ff" }}
         >
           {candidate.tag}
         </span>
         <div className="flex items-center gap-2">
-          <span className="text-[10px]" style={{ color: "#6c757d" }}>Day {candidate.daysInStage}</span>
+          <span
+            className="text-[10px] font-medium px-1.5 py-0.5 rounded"
+            style={{ color: "#6c757d", backgroundColor: "#f1f3f5" }}
+          >
+            Day {candidate.daysInStage}
+          </span>
           <div
-            className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold text-white"
+            className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
             style={{ backgroundColor: avatarColor(candidate.assignedTo) }}
             title={ownerLabel}
             aria-label={ownerLabel}
           >
-            {candidate.assignedTo[0]}
+            {candidate.assignedTo[0].toUpperCase()}
           </div>
         </div>
       </div>

@@ -73,7 +73,7 @@ export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboardi
         className={`${cardClasses} px-2 py-1.5 mb-1.5 flex items-center gap-2`}
       >
         <CandidateAvatar name={candidate.name} photoUrl={candidate.photoUrl} size={20} />
-        <div className="text-xs font-semibold flex-1 truncate text-foreground">
+        <div className="text-xs font-medium flex-1 truncate text-foreground">
           {candidate.name}
         </div>
         <DayChip days={candidate.daysInStage} />
@@ -94,7 +94,7 @@ export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboardi
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 min-w-0">
             <div
-              className="font-semibold text-sm truncate flex-1 text-foreground group-hover:text-[hsl(var(--ring))] transition-colors"
+              className="font-medium text-sm truncate flex-1 text-foreground group-hover:text-[hsl(var(--ring))] transition-colors"
               style={{ lineHeight: 1.2 }}
             >
               {candidate.name}

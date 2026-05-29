@@ -1,53 +1,69 @@
-## Candidate Pipeline cleanup plan
+## 1) Fit filter buckets
 
-### What I will fix
-1. **Remove Jump To auto-highlight logic**
-   - Stop blue-selecting any jump pill based on horizontal scroll visibility.
-   - Keep all pills neutral unless explicitly clicked for navigation feedback, or remove active styling entirely if it remains confusing.
-   - This fixes the current misleading behavior where a pill turns blue just because a column is partly most-visible in the scroller.
+Replace the current non-overlapping bands with the cumulative buckets you asked for:
 
-2. **Fix Days in stage to use real stage-entry timing**
-   - Recompute each candidate’s `daysInStage` from the most recent `candidate_stage_history.changed_at` entry for that candidate’s current stage.
-   - Use `created_at` only as a fallback when no matching stage-history row exists.
-   - Keep the existing ranges unless a later product decision changes them:
-     - `Fresh (≤3)`
-     - `Watch (4–7)`
-     - `Stalled (8+)`
-   - This should fix the current bug where candidates are filtered by account age instead of time in their current stage.
+`All | 90+ | 80+ | 70+ | 60+ | <60`
 
-3. **Expand the Fit filter beyond only `90+` and `75+`**
-   - Replace the old coarse thresholds with explicit score buckets that match the pipeline’s scoring language:
-     - `All`
-     - `90+`
-     - `75–89`
-     - `60–74`
-     - `<60`
-   - Wire the filtering logic to the actual numeric `fitScore` values (0–100).
-   - Ensure the visible candidates in the board match the selected bucket exactly.
+- `90+` → fitScore ≥ 90
+- `80+` → fitScore ≥ 80
+- `70+` → fitScore ≥ 70
+- `60+` → fitScore ≥ 60
+- `<60` → fitScore < 60
 
-4. **Keep the four metric cards live and verify them**
-   - Preserve the top four cards as live backend-driven metrics, not dummy placeholders.
-   - Re-verify the current definitions:
-     - `Total in Pipeline` = active candidates
-     - `Hot Leads` = fit score `>= 80`
-     - `Conversion Rate` = candidates who ever reached signing / total candidates
-     - `New This Week` = created within last 7 days
-   - If smoke test reveals a mismatch after the stage-day fix, adjust only the affected metric logic.
+Files: `src/stores/candidatePipelineStore.ts` (FitFilter type + persisted value reset), `src/pages/CandidatePipeline.tsx` (filter logic + chip list).
 
-5. **Smoke test the page after changes**
-   - Verify no jump pill appears randomly selected while scrolling.
-   - Verify each Fit bucket shows the correct candidates.
-   - Verify each Days in stage filter shows the correct candidates.
-   - Verify metric cards still render live values and do not regress.
+Note: buckets will overlap on purpose (a 92-fit candidate appears in 90+, 80+, 70+, and 60+). That matches how thresholds normally read — "show me everyone at or above X."
 
-### Guidance recovered from earlier chat
-- **Sam’s punchlist explicitly asked for a Days in Stage filter.**
-- **The four top metric cards are intended to be live**, not dummy; earlier chat explicitly approved `Hot Leads (fit ≥ 80)` and `New This Week` as real metrics.
-- I **did not find any explicit Brett/Sam instruction** defining the exact Fit bucket labels (`90+`, `75+`, etc.) or asking for Jump To auto-highlighting. So I’ll normalize those to clearer behavior and clearer score bands.
+## 2) Days in stage — fix Brian Thompson "Day 0 in FDD Review"
 
-### Technical details
-- **Jump bar bug source:** current `KanbanBoard.tsx` uses an `IntersectionObserver` to mark the “most visible” column as active; that creates inconsistent-looking blue pills while horizontally scrolling.
-- **Days in stage bug source:** current `CandidatePipeline.tsx` derives `daysInStage` from `candidates.created_at`, which is candidate age, not time in current stage.
-- **Fit filter source:** current logic only supports `all | 90 | 75`, so the board cannot represent the full score range cleanly.
+**Current bug:** the page-level recompute I added earlier reads `candidate_stage_history.changed_at` for the latest row matching the candidate's current stage. If that join misses (no history row, or stage label mismatch between UI `fdd_review` and the DB enum), it silently falls back to `created_at` — and for candidates created today and dropped straight into FDD Review, that still shows the right number, but for older candidates moved between stages it can show 0 when the history insert failed.
 
-If you approve, I’ll implement these fixes and then smoke-test the preview.
+**Fix:**
+1. Verify the stage-history insert fires on **every** stage change (drag-drop + modal flows). Today only some code paths write to `candidate_stage_history`.
+2. Add a one-time backfill: for any candidate with no history row for their current stage, insert a synthetic row using `created_at` so the calc has a baseline.
+3. Compute `daysInStage = floor((now − latest changed_at for current stage) / 1 day)`. If still missing, fall back to `created_at` (not 0).
+
+Result: Brian Thompson in FDD Review will show days since he entered FDD Review, not since today.
+
+Files: `src/pages/CandidatePipeline.tsx` (recompute), wherever stage changes are persisted (search for `current_stage` updates), and one SQL backfill migration.
+
+## 3) Typography — column headers + candidate name weight
+
+You're right, the kanban looks heavier than the rest of the app. Compared to City Scoring / Teacher Prospects which use `font-medium` (500) / `font-semibold` (600) for table headers and `font-medium` for row primary text, the pipeline currently uses:
+
+- Column header (`KanbanColumn.tsx`): `text-sm font-bold` + `letterSpacing: -0.01em` + dark navy `#07142f`
+- Candidate name (`CandidateCard.tsx`): `text-sm font-semibold` but combined with hover color shift and the score badge it reads heavy
+
+**Fix (matches City Scoring conventions):**
+- Column header: `font-bold` → `font-semibold` (600), drop the negative letter-spacing, keep the accent dot.
+- Column count pill: `font-bold` → `font-semibold`.
+- Candidate name: `font-semibold` → `font-medium` (500), keep size at `text-sm`.
+- Jump-to pill labels: keep `font-semibold` (they're small chips, need the weight).
+- Day chip: keep current weight, it's already tiny.
+
+Font family stays Inter (same as the rest of the app — City Scoring uses Inter via `index.css`, so it's already consistent; only weight is the issue).
+
+Files: `src/components/candidate-pipeline/KanbanColumn.tsx`, `src/components/candidate-pipeline/CandidateCard.tsx`.
+
+## 4) Column background contrast
+
+Today: column body `#fbfcfd` (near-white), header strip `#f7faff` (very pale blue). The two are almost identical so the header doesn't read as a header, and against the page bg `#f2f4f6` the whole column looks like a flat gray slab.
+
+**Fix:**
+- Column body: `#ffffff` (pure white) — gives a clear card feel against page bg.
+- Header strip: `#f7faff` stays, but add a slightly stronger bottom border (`#e3e8ef`) so it reads as a banner.
+- Disqualified column keeps its muted treatment.
+
+File: `src/components/candidate-pipeline/KanbanColumn.tsx`.
+
+## Smoke test after build
+
+1. Fit chips: `All / 90+ / 80+ / 70+ / 60+ / <60` render in that order, each filters cumulatively.
+2. Click Brian Thompson in FDD Review → days-in-stage > 0 and equals (today − the row's latest `fdd_review` `changed_at`).
+3. Column headers + card names visibly lighter; column bodies clearly white, header strip clearly distinct.
+4. No regressions in Jump-to bar, day chips, score badge, drag-drop.
+
+## Out of scope
+
+- No changes to scoring math, metrics cards, or Jump To behavior (already fixed last round).
+- No changes to City Scoring or other pages.

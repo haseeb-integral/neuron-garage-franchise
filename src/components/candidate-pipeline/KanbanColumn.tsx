@@ -114,7 +114,7 @@ export function KanbanColumn({
         className="flex items-center justify-between px-3 py-2 sticky top-0 z-10"
         style={{
           backgroundColor: over ? "#e9ecef" : "#f7faff",
-          borderBottom: "1px solid #eef2f7",
+          borderBottom: "1px solid #e3e8ef",
         }}
       >
         <div className="flex items-center gap-2 min-w-0">
@@ -130,14 +130,14 @@ export function KanbanColumn({
             style={{ backgroundColor: accent }}
           />
           <h3
-            className="text-sm font-bold truncate"
-            style={{ color: isDisq ? "#526078" : "#07142f", letterSpacing: "-0.01em" }}
+            className="text-sm font-semibold truncate"
+            style={{ color: isDisq ? "#526078" : "#07142f" }}
           >
             {stage.short}
           </h3>
         </div>
         <span
-          className="text-[11px] px-2 py-0.5 rounded-full font-bold flex-shrink-0"
+          className="text-[11px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0"
           style={{
             backgroundColor: "#eef2f7",
             color: isDisq ? "#526078" : "#174be8",
@@ -148,7 +148,7 @@ export function KanbanColumn({
       </div>
       <div
         className={`flex-1 overflow-y-auto px-2 pt-2 pb-2 ${isDisq ? "opacity-65" : ""}`}
-        style={{ backgroundColor: isDisq ? "hsl(var(--muted) / 0.3)" : "#fbfcfd" }}
+        style={{ backgroundColor: isDisq ? "hsl(var(--muted) / 0.3)" : "#ffffff" }}
       >
         {candidates.map((c) => (
           <CandidateCard

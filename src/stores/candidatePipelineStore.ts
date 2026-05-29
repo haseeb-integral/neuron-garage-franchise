@@ -4,7 +4,7 @@ import type { FitTag } from "@/constants/fitTags";
 
 type OwnerFilter = string;
 type TagFilter = "all" | FitTag;
-type FitFilter = "all" | "90" | "75" | "60" | "lt60";
+type FitFilter = "all" | "90" | "80" | "70" | "60" | "lt60";
 type DaysInStageFilter = "all" | "fresh" | "watch" | "stalled";
 
 interface CandidatePipelineState {

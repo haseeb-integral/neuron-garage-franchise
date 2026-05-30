@@ -1,6 +1,8 @@
+> **AI summary of `transcript Sam meeting May 29.txt` (same folder). For exact wording, read the .txt — do not trust this file.**
+
 # Sam Meeting Transcript — May 29, 2026 (Plain-English Breakdown)
 
-> Original file: `sam-transcript-may-29.txt` (same folder).
+> Source file: `transcript Sam meeting May 29.txt`
 > Participants: Brett Thomas, Sam (Speaker 1), Speaker 2.
 > Purpose: capture key decisions and additions to Phase 2 scope.
 

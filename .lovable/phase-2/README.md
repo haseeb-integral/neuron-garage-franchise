@@ -14,17 +14,19 @@ This folder is the **single source of truth** for Phase 2 of the Neuron Garage A
 
 ```
 .lovable/phase-2/
-├── README.md                       ← this file
+├── README.md                                              ← this file
 ├── sources/
-│   ├── brett-5-point-sketch.md     ← Brett's Phase 2 rough notes (1.5 = upgrade, 1.0 = new)
-│   ├── sam-transcript-may-29.md    ← plain-English breakdown of the call
-│   ├── sam-transcript-may-29.txt   ← original transcript, verbatim
-│   ├── sam-v2-pdf-summary.md       ← plain-English breakdown of Sam's v2 PDF
-│   └── sam-v2-pdf-original.md      ← full text extraction of the PDF
-├── phase-2-sow.md                  ← merged SOW (NOT YET WRITTEN — see file)
-├── phase-2-status.md               ← living checklist of Phase 2 items
-└── CHANGELOG.md                    ← every edit, one line
+│   ├── brett-5-point-sketch.md                            ← Brett's Phase 2 rough notes (1.5 = upgrade, 1.0 = new)
+│   ├── neuron-garage-module1-enhancements-v2.pdf          ← Sam's v2 PDF (ORIGINAL — parse on demand)
+│   ├── transcript Sam meeting May 29.txt                  ← original transcript, verbatim
+│   ├── summary-neuron-garage-module1-enhancements-v2.md   ← AI summary of the PDF (secondary)
+│   └── summary-transcript Sam meeting May 29.md           ← AI summary of the transcript (secondary)
+├── phase-2-sow.md                                         ← merged SOW (NOT YET WRITTEN — see file)
+├── phase-2-status.md                                      ← living checklist of Phase 2 items
+└── CHANGELOG.md                                           ← every edit, one line
 ```
+
+**Rule:** Never re-type a PDF or transcript into markdown. Keep the binary / raw text and parse on demand. Any `summary-*.md` is AI-derived and is secondary to its source — for exact formulas, numbers, or wording, always go to the original.
 
 ## Who can approve
 

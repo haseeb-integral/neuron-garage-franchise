@@ -21,7 +21,8 @@ This folder is the **single source of truth** for Phase 2 of the Neuron Garage A
 │   ├── transcript Sam meeting May 29.txt                  ← original transcript, verbatim
 │   ├── summary-neuron-garage-module1-enhancements-v2.md   ← AI summary of the PDF (secondary)
 │   └── summary-transcript Sam meeting May 29.md           ← AI summary of the transcript (secondary)
-├── phase-2-sow.md                                         ← merged SOW (NOT YET WRITTEN — see file)
+├── phase-2-sow.md                                         ← merged SOW (THE CONTRACT — locked once Brett signs off)
+├── phase-2-execution-plan.md                              ← build plan for Lovable (sequencing, tickets, owners)
 ├── phase-2-status.md                                      ← living checklist of Phase 2 items
 └── CHANGELOG.md                                           ← every edit, one line
 ```

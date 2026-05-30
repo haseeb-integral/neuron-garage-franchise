@@ -1,6 +1,7 @@
+> **AI summary of `neuron-garage-module1-enhancements-v2.pdf` (same folder). For exact formulas, numbers, and wording, parse the PDF directly — do not trust this file.**
+
 # Sam's v2 PDF — Plain-English Breakdown
 
-> Original: `sam-v2-pdf-original.md` (same folder; full text extraction).
 > Source file: `neuron-garage-module1-enhancements-v2.pdf`, v2.0, May 2026.
 > Scope: Module 1 enhancements only — Feature 1A and Feature 1B. Does NOT cover Candidate Pipeline 1.5, Teacher Search 1.5, SmartLead 1.5, Video Training, or the 4th Manus CSI app.
 

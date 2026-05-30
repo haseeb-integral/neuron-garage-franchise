@@ -101,7 +101,7 @@ export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboardi
           <div className="flex items-center gap-2 min-w-0">
             <div
               className="font-medium text-sm truncate flex-1 transition-colors"
-              style={{ lineHeight: 1.2, color: hover ? accent : "hsl(var(--foreground))" }}
+              style={{ lineHeight: 1.2, color: hover && candidate.stage !== "disqualified" ? accent : "hsl(var(--foreground))" }}
             >
               {candidate.name}
             </div>

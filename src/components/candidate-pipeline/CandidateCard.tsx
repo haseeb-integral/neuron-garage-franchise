@@ -4,7 +4,8 @@ import { CompositeScoreBadge } from "@/components/candidate-pipeline/CompositeSc
 import { CandidateAvatar } from "@/components/ui/CandidateAvatar";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight } from "lucide-react";
-import { MouseEvent } from "react";
+import { MouseEvent, useState } from "react";
+import { getStageAccent } from "./stageColors";
 
 interface Props {
   candidate: Candidate;
@@ -12,14 +13,6 @@ interface Props {
   onClick: () => void;
   onStartOnboarding?: (candidate: Candidate) => void;
   compact?: boolean;
-}
-
-/** Map tag -> shadcn Badge variant for consistent chip styling */
-function tagVariant(tag: string): "secondary" | "outline" | "destructive" {
-  const t = (tag ?? "").toLowerCase();
-  if (t === "not a fit") return "destructive";
-  if (t === "untagged" || t === "") return "outline";
-  return "secondary";
 }
 
 /** Day-in-stage chip: encodes the freshness/watch/stalled urgency that the
@@ -58,11 +51,18 @@ export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboardi
   const ownerInitial = (candidate.assignedTo?.[0] ?? "?").toUpperCase();
   const ownerLabel = `Owned by ${candidate.assignedTo ?? "—"}`;
 
-  // Shared card surface + hover treatment. Hover uses the existing --ring
-  // accent (blue) already used app-wide for focus states.
+  // Stage accent drives the hover treatment so each column keeps its identity
+  // on hover instead of every card snapping to the same blue.
+  const accent = getStageAccent(candidate.stage);
+  const [hover, setHover] = useState(false);
+
+  // Shared card surface. Border + name color are driven by hover state inline
+  // so they can use the candidate's stage accent (runtime color).
   const cardClasses =
-    "group bg-card text-card-foreground border border-border rounded-lg shadow-sm cursor-pointer " +
-    "hover:-translate-y-px hover:shadow-md hover:border-[hsl(var(--ring))] transition-all duration-150";
+    "group bg-card text-card-foreground border rounded-lg shadow-sm cursor-pointer " +
+    "hover:-translate-y-px hover:shadow-md transition-all duration-150";
+
+  const borderStyle = { borderColor: hover ? accent : "hsl(var(--border))" };
 
   if (compact) {
     return (
@@ -70,6 +70,9 @@ export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboardi
         draggable
         onDragStart={() => onDragStart(candidate.id)}
         onClick={onClick}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        style={borderStyle}
         className={`${cardClasses} px-2 py-1.5 mb-1.5 flex items-center gap-2`}
       >
         <CandidateAvatar name={candidate.name} photoUrl={candidate.photoUrl} size={20} />
@@ -87,6 +90,9 @@ export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboardi
       draggable
       onDragStart={() => onDragStart(candidate.id)}
       onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={borderStyle}
       className={`${cardClasses} p-3 mb-2`}
     >
       <div className="flex items-start mb-2.5 gap-2.5">
@@ -94,8 +100,8 @@ export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboardi
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 min-w-0">
             <div
-              className="font-medium text-sm truncate flex-1 text-foreground group-hover:text-[hsl(var(--ring))] transition-colors"
-              style={{ lineHeight: 1.2 }}
+              className="font-medium text-sm truncate flex-1 transition-colors"
+              style={{ lineHeight: 1.2, color: hover ? accent : "hsl(var(--foreground))" }}
             >
               {candidate.name}
             </div>

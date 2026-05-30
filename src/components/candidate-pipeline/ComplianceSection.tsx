@@ -52,6 +52,11 @@ function fromDateInput(v: string): string | null {
 export function ComplianceSection({ candidateDbId, stage }: Props) {
   if (!isEnabled("FF_COMPLIANCE")) return null;
   if (stage !== "fdd_review" && stage !== "signing") return null;
+  return <ComplianceSectionInner candidateDbId={candidateDbId} stage={stage} />;
+}
+
+function ComplianceSectionInner({ candidateDbId }: Props) {
+
 
   const [row, setRow] = useState<ComplianceRow | null>(null);
   const [audit, setAudit] = useState<AuditRow[]>([]);

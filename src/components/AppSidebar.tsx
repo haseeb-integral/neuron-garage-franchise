@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Home, Map, Users, Kanban, ChevronLeft, ChevronRight, ChevronDown, Mail, FileText, BookOpen, Send, MailOpen, Calculator, Gauge, Activity, FileCode2, KeyRound, Network, Wand2, Plug, ShieldCheck, PieChart, BookMarked } from "lucide-react";
 
 import { NavLink, useLocation } from "react-router-dom";
+import { prefetchRoute } from "@/lib/routePrefetch";
 import logo from "@/assets/neuron-garage-logo.png";
 import { useSidebarCollapsed } from "@/lib/sidebarState";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -63,6 +64,8 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
         to={item.url}
         end={item.url === "/"}
         onClick={onNavigate}
+        onMouseEnter={() => prefetchRoute(item.url)}
+        onFocus={() => prefetchRoute(item.url)}
         className={`group flex min-h-[28px] items-center rounded-lg text-[13px] transition-all ${isCollapsed ? "justify-center px-0" : "gap-3 px-3"} ${active ? "bg-[#1f5bff] font-medium text-white" : "bg-transparent font-medium text-[#14233b] hover:bg-[#f7faff] hover:text-[#0757ff]"}`}
       >
         <item.icon size={17} strokeWidth={2} className="shrink-0" aria-hidden="true" />

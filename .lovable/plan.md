@@ -1,51 +1,104 @@
-## Plan — Stage-aware hover on candidate cards
+## Goal
 
-### Scope
-Two surgical changes in the candidate pipeline. No backend, no data, no score logic touched.
+Two independent fixes:
+1. Make GitHub Actions CI green — safely, without weakening any rule.
+2. Combo #1 + #2 for tab switching: route prefetch + page skeleton (kill the "Loading…" white flash).
 
-### 1. Stage-aware hover (replaces the global blue)
+---
 
-**Problem:** Every card's hover border + name text snap to `hsl(var(--ring))` (blue), regardless of which column the card lives in. Hovering kills the column identity.
+## Part 1 — GitHub Actions (safest fix)
 
-**Fix:** Hover border and name color use the card's **stage accent color** — the same palette already used by the column headers.
+### Diagnosis
+Lint is the only failing job. 11 real **errors** + 415 warnings. Warnings don't fail the build — only the 11 errors do, and they are all in **one file**:
 
-Stage palette (already defined in `KanbanColumn.tsx:33-42`):
-- `new_lead` → `#6f42c1` (purple)
-- `initial_qual` → `#003c7e` (navy)
-- `business_overview` → `#0dcaf0` (cyan)
-- `fdd_review` → `#6610f2` (violet)
-- `immersion` → `#20c997` (teal)
-- `confirmation` → `#198754` (green)
-- `signing` → `#fd7e14` (orange)
-- `disqualified` → `#adb5bd` (gray)
+`src/components/candidate-pipeline/ComplianceSection.tsx`
 
-**Implementation:**
-- Lift `stageColorMap` into a shared module: `src/components/candidate-pipeline/stageColors.ts` (export `STAGE_ACCENT: Record<StageId, string>` and a `getStageAccent(stageId)` helper). Update `KanbanColumn.tsx` and `KanbanBoard.tsx` to import from it (drop their local copies) so there is one source of truth.
-- In `CandidateCard.tsx`:
-  - Compute `const accent = getStageAccent(candidate.stage)` once at the top of the component.
-  - Remove the hardcoded `hover:border-[hsl(var(--ring))]` from `cardClasses`.
-  - Apply hover border via inline style + a small CSS-in-JS approach: add an `onMouseEnter`/`onMouseLeave` that toggles `borderColor` between `hsl(var(--border))` and `accent`. (Cleaner than dynamic Tailwind arbitrary classes for a runtime color.)
-  - Same toggle on the candidate name color: default `text-foreground`, hover → `accent`.
-  - Keep the existing lift (`-translate-y-px`) and shadow upgrade — those stay.
-- Disqualified cards: gray accent reads as "no change on hover," which is the right signal for that column.
-- Compact variant: skip the name-color swap (no large name shown); still apply the border-color swap so users see which stage they're hovering.
+```text
+react-hooks/rules-of-hooks
+  → useState / useCallback / useEffect called AFTER two early returns
+```
 
-### 2. Unscored cards — leave blank (no change)
+Lines 53–54 do:
+```ts
+if (!isEnabled("FF_COMPLIANCE")) return null;
+if (stage !== "fdd_review" && stage !== "signing") return null;
+```
+…then call `useState` etc. below. That violates the Rules of Hooks. It happens to work today because the gates are stable per-mount, but it's a real latent bug (if `stage` ever changes between `fdd_review`/`signing` and any other value while the component is mounted, React will crash). ESLint is correct to block this.
 
-Confirmed: `CompositeScoreBadge.tsx` returns `null` when composite ≤ 0. Keeping that behavior. No edit to this file.
+### Fix (surgical, safe)
+Split the component into a thin gate + an inner component that holds the hooks. No behavior change.
 
-### Files touched
-- **new:** `src/components/candidate-pipeline/stageColors.ts`
-- **edit:** `src/components/candidate-pipeline/CandidateCard.tsx` — stage-aware hover
-- **edit:** `src/components/candidate-pipeline/KanbanColumn.tsx` — import shared map
-- **edit:** `src/components/candidate-pipeline/KanbanBoard.tsx` — import shared map
+```ts
+export function ComplianceSection({ candidateDbId, stage }: Props) {
+  if (!isEnabled("FF_COMPLIANCE")) return null;
+  if (stage !== "fdd_review" && stage !== "signing") return null;
+  return <ComplianceSectionInner candidateDbId={candidateDbId} stage={stage} />;
+}
 
-### Smoke test (959px)
-- Hover Brittany Cruz (Initial Qual): border + name go navy `#003c7e`, not blue `--ring`.
-- Hover Allison Wood (Business Overview): border + name go cyan `#0dcaf0`.
-- Hover Sam Test1 (Immersion): border + name go teal `#20c997`.
-- Hover any Signing-stage card: border + name go orange `#fd7e14`; "Start Onboarding" button stays its own blue (unchanged).
-- Hover Disqualified card: border tints muted gray.
-- Unscored cards (Rebecca Foster, Sarah Mitchell, etc.) remain blank where the Qual pill would be.
+function ComplianceSectionInner({ candidateDbId, stage }: Props) {
+  // …all existing hooks + JSX move here unchanged…
+}
+```
 
-Approve and I'll ship.
+That's it. 11 errors → 0. Lint passes → Build job unblocks → all 4 CI jobs green.
+
+### Why not the alternatives
+- **Don't** disable the `react-hooks/rules-of-hooks` rule — it's a real correctness rule, not stylistic.
+- **Don't** delete `.github/workflows/ci.yml` — you lose the Rule 12 guard, typecheck, and tests.
+- **Don't** touch the 415 `no-explicit-any` warnings — they're warnings, not errors, and most are in edge functions. Leave them.
+
+### Out of scope (not done)
+- Node deprecation notices from `actions/checkout@v4` — cosmetic warnings only, do not fail CI.
+- GitHub email notification settings — your account-level preference, not a repo change.
+
+---
+
+## Part 2 — Loading flash fix (Combo #1 + #2)
+
+### #1 Route prefetch on hover + idle
+Replace bare `React.lazy(...)` with a small helper that exposes a `preload()` method, then:
+- Call `preload()` on `requestIdleCallback` after first paint for all routes.
+- Call `preload()` on `mouseenter` / `focus` of sidebar `NavLink`s for instant feel.
+
+Implementation:
+- New file `src/lib/lazyWithPreload.ts` — returns `{ Component, preload }`.
+- Update `src/App.tsx` — swap `lazy(() => import(...))` for `lazyWithPreload(() => import(...))`, keep the same `Routes` JSX.
+- New file `src/lib/routePrefetch.ts` — exports `prefetchAllRoutes()` (idle) and `prefetchRoute(path)` (map of path → preload fn).
+- `src/components/AppLayout.tsx` — `useEffect` calls `prefetchAllRoutes()` once after mount via `requestIdleCallback` (fallback `setTimeout(…, 1500)`).
+- `src/components/NavLink.tsx` — add `onMouseEnter` / `onFocus` → `prefetchRoute(href)`.
+
+Net effect: chunks download in the background, so by the time the user clicks a tab, the module is already in memory → no Suspense fallback shown.
+
+### #2 Skeleton chrome instead of "Loading…"
+Replace the global `RouteFallback` in `src/App.tsx` with a page-shell skeleton that mimics the standard page layout (title bar + a couple of content blocks), using the existing `<Skeleton />` primitive from `src/components/ui/skeleton.tsx`. Sidebar + header already stay mounted because they live in `AppLayout` (outside `<Suspense>`), so this only fills the `<Outlet />` area.
+
+- New file `src/components/RouteSkeleton.tsx` — header row + 3–4 shimmer blocks, matched to existing spacing (`p-3 md:px-5 md:py-3`).
+- `src/App.tsx` — `<Suspense fallback={<RouteSkeleton />}>`.
+
+### Result
+- First visit to any tab: prefetch usually wins → instant. If not, skeleton (not white "Loading…") fills the gap for ~200–800 ms.
+- Subsequent visits: instant (browser chunk cache).
+- Initial page load: unchanged — still code-split, still fast.
+
+---
+
+## Files touched
+
+**Part 1**
+- `src/components/candidate-pipeline/ComplianceSection.tsx` — split gate + inner component.
+
+**Part 2**
+- `src/lib/lazyWithPreload.ts` *(new)*
+- `src/lib/routePrefetch.ts` *(new)*
+- `src/components/RouteSkeleton.tsx` *(new)*
+- `src/App.tsx` — use `lazyWithPreload`, swap fallback to `<RouteSkeleton />`.
+- `src/components/AppLayout.tsx` — idle prefetch effect.
+- `src/components/NavLink.tsx` — hover/focus prefetch.
+
+No DB, no edge functions, no auth, no schema changes. No business logic touched.
+
+---
+
+## Verification
+- `bun run lint` → 0 errors locally → GitHub Actions Lint + Build go green on next push.
+- Manual: open app, switch tabs — no white "Loading…", tabs feel instant after ~1.5 s idle.

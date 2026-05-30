@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Stage, Candidate } from "@/data/pipelineData";
 import { CandidateCard } from "./CandidateCard";
+import { getStageAccent } from "./stageColors";
 
 interface Props {
   stage: Stage;

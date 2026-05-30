@@ -29,18 +29,7 @@ export function KanbanColumn({
   const [over, setOver] = useState(false);
   const isDisq = stage.id === "disqualified";
 
-  // Stage accent palette (consistent across the kanban)
-  const stageColorMap: Record<string, string> = {
-    new_lead: "#6f42c1",
-    initial_qual: "#003c7e",
-    business_overview: "#0dcaf0",
-    fdd_review: "#6610f2",
-    immersion: "#20c997",
-    confirmation: "#198754",
-    signing: "#fd7e14",
-    disqualified: "#adb5bd",
-  };
-  const accent = stageColorMap[stage.id] ?? "#003c7e";
+  const accent = getStageAccent(stage.id);
 
   if (collapsed) {
     return (

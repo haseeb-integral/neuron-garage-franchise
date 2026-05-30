@@ -10,6 +10,7 @@ import { useRouteTitle } from "@/lib/usePageTitle";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { DbDebugFooter } from "./dbHealth/DbDebugFooter";
 import { NeuronAiPanel } from "./neuron-ai/NeuronAiPanel";
+import { prefetchAllRoutes } from "@/lib/routePrefetch";
 
 export function AppLayout() {
   const [open, setOpen] = useState(false);
@@ -18,6 +19,8 @@ export function AppLayout() {
 
   useDefaultCollapsedForRoute(["/candidate-pipeline"]);
   useRouteTitle();
+
+  useEffect(() => { prefetchAllRoutes(); }, []);
 
   const closeDrawer = () => setOpen(false);
 

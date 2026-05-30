@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -11,36 +11,61 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Index from "./pages/Index";
-const CityScoring = lazy(() => import("./pages/CityScoring"));
-const TeacherProspects = lazy(() => import("./pages/TeacherProspects"));
-const EmailOutreach = lazy(() => import("./pages/EmailOutreachV2"));
-const CandidatePipeline = lazy(() => import("./pages/CandidatePipeline"));
-const Onboarding = lazy(() => import("./pages/Onboarding"));
-const Spec = lazy(() => import("./pages/Spec"));
-const SmartLeadSpec = lazy(() => import("./pages/SmartLeadSpec"));
-const EmailOutreachDocs = lazy(() => import("./pages/EmailOutreachDocs"));
-const UserGuide = lazy(() => import("./pages/UserGuide"));
-const DemographicsMethodology = lazy(() => import("./pages/DemographicsMethodology"));
-const Methodology = lazy(() => import("./pages/Methodology"));
-const ScoringMethod = lazy(() => import("./pages/ScoringMethod"));
-const DbHealth = lazy(() => import("./pages/DbHealth"));
-const Observability = lazy(() => import("./pages/Observability"));
-const ObservabilityGuide = lazy(() => import("./pages/ObservabilityGuide"));
-const ObservabilitySpec = lazy(() => import("./pages/ObservabilitySpec"));
-const SystemOverview = lazy(() => import("./pages/SystemOverview"));
-const PromptsAndAiWorkflows = lazy(() => import("./pages/PromptsAndAiWorkflows"));
-const ApisAndDataSources = lazy(() => import("./pages/ApisAndDataSources"));
-const Guardrails = lazy(() => import("./pages/Guardrails"));
+import { lazyWithPreload } from "./lib/lazyWithPreload";
+import { registerRoutePrefetch } from "./lib/routePrefetch";
+import { RouteSkeleton } from "./components/RouteSkeleton";
 
+const CityScoring = lazyWithPreload(() => import("./pages/CityScoring"));
+const TeacherProspects = lazyWithPreload(() => import("./pages/TeacherProspects"));
+const EmailOutreach = lazyWithPreload(() => import("./pages/EmailOutreachV2"));
+const CandidatePipeline = lazyWithPreload(() => import("./pages/CandidatePipeline"));
+const Onboarding = lazyWithPreload(() => import("./pages/Onboarding"));
+const Spec = lazyWithPreload(() => import("./pages/Spec"));
+const SmartLeadSpec = lazyWithPreload(() => import("./pages/SmartLeadSpec"));
+const EmailOutreachDocs = lazyWithPreload(() => import("./pages/EmailOutreachDocs"));
+const UserGuide = lazyWithPreload(() => import("./pages/UserGuide"));
+const DemographicsMethodology = lazyWithPreload(() => import("./pages/DemographicsMethodology"));
+const Methodology = lazyWithPreload(() => import("./pages/Methodology"));
+const ScoringMethod = lazyWithPreload(() => import("./pages/ScoringMethod"));
+const DbHealth = lazyWithPreload(() => import("./pages/DbHealth"));
+const Observability = lazyWithPreload(() => import("./pages/Observability"));
+const ObservabilityGuide = lazyWithPreload(() => import("./pages/ObservabilityGuide"));
+const ObservabilitySpec = lazyWithPreload(() => import("./pages/ObservabilitySpec"));
+const SystemOverview = lazyWithPreload(() => import("./pages/SystemOverview"));
+const PromptsAndAiWorkflows = lazyWithPreload(() => import("./pages/PromptsAndAiWorkflows"));
+const ApisAndDataSources = lazyWithPreload(() => import("./pages/ApisAndDataSources"));
+const Guardrails = lazyWithPreload(() => import("./pages/Guardrails"));
+const TeamMembers = lazyWithPreload(() => import("./pages/TeamMembers"));
+const Handover = lazyWithPreload(() => import("./pages/Handover"));
+const Unsubscribe = lazyWithPreload(() => import("./pages/Unsubscribe"));
+const NotFound = lazyWithPreload(() => import("./pages/NotFound"));
 
-const TeamMembers = lazy(() => import("./pages/TeamMembers"));
-const Handover = lazy(() => import("./pages/Handover"));
-const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
-const NotFound = lazy(() => import("./pages/NotFound"));
+// Register route -> preload mapping for hover/idle prefetch.
+registerRoutePrefetch("/city-scoring", CityScoring.preload);
+registerRoutePrefetch("/teacher-prospects", TeacherProspects.preload);
+registerRoutePrefetch("/email-outreach", EmailOutreach.preload);
+registerRoutePrefetch("/candidate-pipeline", CandidatePipeline.preload);
+registerRoutePrefetch("/onboarding", Onboarding.preload);
+registerRoutePrefetch("/settings/team", TeamMembers.preload);
+registerRoutePrefetch("/users", TeamMembers.preload);
+registerRoutePrefetch("/handover", Handover.preload);
+registerRoutePrefetch("/users-guide", UserGuide.preload);
+registerRoutePrefetch("/spec", Spec.preload);
+registerRoutePrefetch("/smartlead-spec", SmartLeadSpec.preload);
+registerRoutePrefetch("/email-outreach-docs", EmailOutreachDocs.preload);
+registerRoutePrefetch("/demographics-methodology", DemographicsMethodology.preload);
+registerRoutePrefetch("/methodology", Methodology.preload);
+registerRoutePrefetch("/scoring-method", ScoringMethod.preload);
+registerRoutePrefetch("/observability", Observability.preload);
+registerRoutePrefetch("/observability-guide", ObservabilityGuide.preload);
+registerRoutePrefetch("/observability-spec", ObservabilitySpec.preload);
+registerRoutePrefetch("/architecture", SystemOverview.preload);
+registerRoutePrefetch("/docs/prompts-and-ai-workflows", PromptsAndAiWorkflows.preload);
+registerRoutePrefetch("/docs/apis", ApisAndDataSources.preload);
+registerRoutePrefetch("/docs/guardrails", Guardrails.preload);
+registerRoutePrefetch("/db-health", Observability.preload);
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 30000, refetchOnWindowFocus: false } } });
-
-const RouteFallback = () => <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -50,7 +75,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <NeuronAiProvider>
-          <Suspense fallback={<RouteFallback />}>
+          <Suspense fallback={<RouteSkeleton />}>
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="/reset-password" element={<ResetPassword />} />

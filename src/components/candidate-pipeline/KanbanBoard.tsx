@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { STAGES, Candidate, StageId } from "@/data/pipelineData";
 import { KanbanColumn } from "./KanbanColumn";
+import { getStageAccent } from "./stageColors";
 
 interface Props {
   candidates: Candidate[];

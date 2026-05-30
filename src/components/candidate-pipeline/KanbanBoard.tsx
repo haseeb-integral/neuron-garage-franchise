@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { STAGES, Candidate, StageId } from "@/data/pipelineData";
 import { KanbanColumn } from "./KanbanColumn";
+import { getStageAccent } from "./stageColors";
 
 interface Props {
   candidates: Candidate[];
@@ -50,16 +51,8 @@ export function KanbanBoard({
     });
   };
 
-  const stageColorMap: Record<string, string> = {
-    new_lead: "#6f42c1",
-    initial_qual: "#003c7e",
-    business_overview: "#0dcaf0",
-    fdd_review: "#6610f2",
-    immersion: "#20c997",
-    confirmation: "#198754",
-    signing: "#fd7e14",
-    disqualified: "#adb5bd",
-  };
+
+
 
   return (
     <div>
@@ -73,7 +66,7 @@ export function KanbanBoard({
         </span>
         {STAGES.map((s) => {
           const count = candidates.filter((c) => c.stage === s.id).length;
-          const accent = stageColorMap[s.id] ?? "#003c7e";
+          const accent = getStageAccent(s.id);
           return (
             <button
               key={s.id}

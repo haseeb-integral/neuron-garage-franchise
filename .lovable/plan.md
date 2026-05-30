@@ -1,76 +1,51 @@
-## Part 1 — Fix the "Assigned To" (and other) Select fields
+## Plan — Stage-aware hover on candidate cards
 
-**Before:** In the New Candidate modal the selected value ("Haseeb…") sits visually centered inside the trigger, which looks broken compared to the text inputs above/below it.
+### Scope
+Two surgical changes in the candidate pipeline. No backend, no data, no score logic touched.
 
-**After:** Selected value left-aligned, single-line, truncates with ellipsis if the email is long — matching every other input in the modal.
+### 1. Stage-aware hover (replaces the global blue)
 
-**Why it happens:** The SelectValue inside `SelectTrigger` becomes a flex child next to the chevron. With `justify-between`, when the trigger is wide and the value span shrinks to its content, it can look mis-centered (especially with `[&>span]:line-clamp-1`). The trigger also has no explicit `text-left` / `flex-1` on the value span.
+**Problem:** Every card's hover border + name text snap to `hsl(var(--ring))` (blue), regardless of which column the card lives in. Hovering kills the column identity.
 
-**Fix (file: `src/components/candidate-pipeline/NewCandidateModal.tsx`):**
-- Wrap each `<SelectValue />` with an explicit left-aligned, flex-1, truncating span, or pass `className="[&>span]:flex-1 [&>span]:text-left [&>span]:truncate"` on each `<SelectTrigger>` used in this modal (Assigned To + Initial Stage).
-- No change to the shared `src/components/ui/select.tsx` (keeps other selects in the app untouched).
+**Fix:** Hover border and name color use the card's **stage accent color** — the same palette already used by the column headers.
 
-That's the only thing touching the modal.
+Stage palette (already defined in `KanbanColumn.tsx:33-42`):
+- `new_lead` → `#6f42c1` (purple)
+- `initial_qual` → `#003c7e` (navy)
+- `business_overview` → `#0dcaf0` (cyan)
+- `fdd_review` → `#6610f2` (violet)
+- `immersion` → `#20c997` (teal)
+- `confirmation` → `#198754` (green)
+- `signing` → `#fd7e14` (orange)
+- `disqualified` → `#adb5bd` (gray)
 
----
+**Implementation:**
+- Lift `stageColorMap` into a shared module: `src/components/candidate-pipeline/stageColors.ts` (export `STAGE_ACCENT: Record<StageId, string>` and a `getStageAccent(stageId)` helper). Update `KanbanColumn.tsx` and `KanbanBoard.tsx` to import from it (drop their local copies) so there is one source of truth.
+- In `CandidateCard.tsx`:
+  - Compute `const accent = getStageAccent(candidate.stage)` once at the top of the component.
+  - Remove the hardcoded `hover:border-[hsl(var(--ring))]` from `cardClasses`.
+  - Apply hover border via inline style + a small CSS-in-JS approach: add an `onMouseEnter`/`onMouseLeave` that toggles `borderColor` between `hsl(var(--border))` and `accent`. (Cleaner than dynamic Tailwind arbitrary classes for a runtime color.)
+  - Same toggle on the candidate name color: default `text-foreground`, hover → `accent`.
+  - Keep the existing lift (`-translate-y-px`) and shadow upgrade — those stay.
+- Disqualified cards: gray accent reads as "no change on hover," which is the right signal for that column.
+- Compact variant: skip the name-color swap (no large name shown); still apply the border-color swap so users see which stage they're hovering.
 
-## Part 2 — Honest answer: what's NOT yet changed in the Candidate Drawer
+### 2. Unscored cards — leave blank (no change)
 
-Looking at the screenshot you sent (Allison Wood drawer) vs. what last turn actually shipped:
+Confirmed: `CompositeScoreBadge.tsx` returns `null` when composite ≤ 0. Keeping that behavior. No edit to this file.
 
-What I DID change last turn in the drawer:
-- `OverviewTab.tsx` — added conditional pencil-vs-lock for manually-added emails (`emailSource === "manual"`).
-- That's it. No color, chrome, or typography changes.
+### Files touched
+- **new:** `src/components/candidate-pipeline/stageColors.ts`
+- **edit:** `src/components/candidate-pipeline/CandidateCard.tsx` — stage-aware hover
+- **edit:** `src/components/candidate-pipeline/KanbanColumn.tsx` — import shared map
+- **edit:** `src/components/candidate-pipeline/KanbanBoard.tsx` — import shared map
 
-What I did NOT change (still default theme tokens):
-1. Drawer header strip still uses the page background, not the `#f7faff` City-Search tone I promised.
-2. Tab bar — active "Overview" pill still uses default white-on-shadow, not the blue underline treatment.
-3. Section card borders still default `border` token, not `#e3e8ef`.
-4. Section titles ("Contact Information", "Other Opportunities…", "Mailing Address") still render in `text-primary` (the existing dark navy), which is fine, but **the "Click any value to edit" helper, field labels, and field values still use default muted tones** — never reconciled to the `#526078` / `#07142f` palette I described.
-5. "Export Packet" button still uses the default outline button — no blue accent.
-6. No orange in the drawer today (good — nothing to swap), but no blue accent applied either.
+### Smoke test (959px)
+- Hover Brittany Cruz (Initial Qual): border + name go navy `#003c7e`, not blue `--ring`.
+- Hover Allison Wood (Business Overview): border + name go cyan `#0dcaf0`.
+- Hover Sam Test1 (Immersion): border + name go teal `#20c997`.
+- Hover any Signing-stage card: border + name go orange `#fd7e14`; "Start Onboarding" button stays its own blue (unchanged).
+- Hover Disqualified card: border tints muted gray.
+- Unscored cards (Rebecca Foster, Sarah Mitchell, etc.) remain blank where the Qual pill would be.
 
-So when you said "where has not UI changes in the candidate drawer?" — you are right. Last turn's drawer work was functional (lock/pencil logic) only, not visual.
-
----
-
-## Part 3 — Drawer visual pass (this plan will do it)
-
-Files: `src/components/candidate-pipeline/CandidateDetailPanel.tsx`, `src/components/candidate-pipeline/tabs/OverviewTab.tsx`.
-
-Changes (Tailwind arbitrary values, local only — no token churn):
-
-| Element | Before | After |
-|---|---|---|
-| Drawer header background | inherited page bg | `bg-[#f7faff]` with `border-b border-[#e3e8ef]` |
-| Candidate name | `text-primary` bold | `text-[#07142f]` `font-semibold` |
-| Subtitle (city · email) | muted-foreground | `text-[#526078]` |
-| Owner line | muted-foreground | `text-[#8893a7] text-xs` |
-| Export Packet button | default outline | outline + `text-[#174be8] border-[#174be8] hover:bg-[#174be8]/5` |
-| Close (X) | default | `hover:bg-[#e3e8ef]` |
-| Tab bar | default shadcn tabs | active tab: `text-[#174be8]` with 2px `#174be8` underline; inactive: `text-[#526078]` |
-| Section card border | `border` | `border-[#e3e8ef]` |
-| Section titles | `text-primary` | `text-[#07142f] font-semibold` |
-| Field labels | muted | `text-[#526078] text-xs uppercase tracking-wide` |
-| Field values | default | `text-[#07142f]` |
-| Lock / pencil icons | current | `text-[#8893a7]` |
-| Verified-email lock | already in | unchanged |
-| Empty-state placeholders (Other Email, Mailing Address inputs) | default border | `border-[#e3e8ef]` `focus:ring-[#174be8]` |
-
-No business logic, no schema, no tab content reordering. Pure styling.
-
----
-
-## Out of scope
-- Days-in-stage math (locked Option A last turn).
-- Pipeline scoring, fit thresholds.
-- Other tabs beyond Overview header chrome (Lead Sheet, Qualification, etc.) — they'll inherit the new tab-bar color but their card internals stay as-is unless you call them out.
-- The shared `select.tsx` component — fix is scoped to this modal only.
-
----
-
-## Smoke test (after build)
-1. Open New Candidate → "Assigned To" + "Initial Stage" values are left-aligned, truncate cleanly.
-2. Open a candidate drawer → header is light blue tint, name navy semibold, tab underline blue, section cards have soft blue-gray borders.
-3. Allison Wood still shows 🔒 on Verified Email (auto-imported row).
-4. A manually-added candidate (email_source = 'manual') shows pencil instead of lock.
+Approve and I'll ship.

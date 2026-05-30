@@ -66,7 +66,7 @@ export function KanbanBoard({
         </span>
         {STAGES.map((s) => {
           const count = candidates.filter((c) => c.stage === s.id).length;
-          const accent = stageColorMap[s.id] ?? "#003c7e";
+          const accent = getStageAccent(s.id);
           return (
             <button
               key={s.id}

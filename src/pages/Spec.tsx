@@ -33,7 +33,7 @@ const Spec = () => (
   <DocShell
     title="Full Specification"
     subtitle="The complete product spec for the Neuron Garage Franchise Acquisition System. The same markdown drives this page and the downloadable file — they can never drift."
-    actions={
+    action={
       <div className="flex gap-2">
         <Button
           variant="outline"

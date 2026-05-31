@@ -2,6 +2,26 @@
 
 A plain-English running log of every change Haseeb (with Lovable AI) makes to this app. Newest first. Read top-to-bottom to catch up.
 
+---
+
+## 2026-05-31 — Full Spec page + downloadable .md refreshed to v1.4
+
+**What.** The Full Specification page (`/spec`) and its **Download Markdown** button were both 10 days + ~1,400 commits out of date (stamped v1.3 · May 21). Rewrote `src/data/specMarkdown.ts` to v1.4 covering everything that shipped since: Neuron AI ⌘K assistant, header-bell notifications, Database Health & Observability surface, Candidate Pipeline Documents tab + compliance + score-override + 16-day FDD gate + manual votes + Step 2/4 uploads, transactional email infrastructure, Manus CSI v2 upload, the "one calibrated number everywhere" rule, the `city_market_signals` table severance, City Search drawer rewrite (hero summary, coverage panel, City Notes, Manus sibling-row banner), Ask AI 3-tier TAM rule + sub-metric boosts + session context + "What changed" diff, `/reset-password` route, 19 new edge functions, and the Phase 2 cabinet pointer. Corrected city count to 817 (was 948/960). Added a new §22 Recent Changes section so a v1.3 reader can skim the delta without diffing.
+
+Also rewrote `src/pages/Spec.tsx` to render the markdown directly via `react-markdown` + `remark-gfm` so the page and the download can never drift again — single source of truth in `specMarkdown.ts`.
+
+**Why.** Haseeb asked: "update Full Specification page (including the downloadable md file) based on all the changes made in recent days so that it is fully up to date on every detail of every feature."
+
+**Touches.** `src/data/specMarkdown.ts` (full rewrite), `src/pages/Spec.tsx` (now a thin markdown renderer), this file.
+
+**Risk.** Low. Documentation only — no app behavior, schema, or edge-function changes. Phase 2 cabinet untouched.
+
+**Revert.** Revert the two files above.
+
+---
+
+
+
 Format per entry:
 - **What** — what changed for the user
 - **Why** — what prompted it

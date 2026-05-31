@@ -97,6 +97,134 @@ const handleDownloadGuide = () => {
   URL.revokeObjectURL(url);
 };
 
+// Render the guide markdown into a clean, isolated print window. Printing the
+// live page caused Chrome's Save-as-PDF dialog to hang on "Saving..." because
+// of the app's fixed/sticky chrome, AI launcher, and heavy gradients. A blank
+// popup with simple HTML + Arial prints reliably across browsers.
+const handlePrintGuide = () => {
+  // Minimal markdown -> HTML (headings, lists, bold, italic, code, hr, paragraphs).
+  const esc = (s: string) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const inline = (s: string) =>
+    esc(s)
+      .replace(/`([^`]+)`/g, "<code>$1</code>")
+      .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+      .replace(/(^|[^*])\*([^*]+)\*/g, "$1<em>$2</em>")
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+
+  const lines = USER_GUIDE_MARKDOWN.split("\n");
+  const out: string[] = [];
+  let inList: "ul" | "ol" | null = null;
+  let inCode = false;
+  const closeList = () => {
+    if (inList) {
+      out.push(`</${inList}>`);
+      inList = null;
+    }
+  };
+  for (const raw of lines) {
+    const line = raw.replace(/\s+$/, "");
+    if (line.startsWith("```")) {
+      closeList();
+      if (!inCode) {
+        out.push("<pre><code>");
+        inCode = true;
+      } else {
+        out.push("</code></pre>");
+        inCode = false;
+      }
+      continue;
+    }
+    if (inCode) {
+      out.push(esc(raw));
+      continue;
+    }
+    if (!line.trim()) {
+      closeList();
+      continue;
+    }
+    const h = line.match(/^(#{1,6})\s+(.*)$/);
+    if (h) {
+      closeList();
+      out.push(`<h${h[1].length}>${inline(h[2])}</h${h[1].length}>`);
+      continue;
+    }
+    if (/^(\*\*\*|---|___)$/.test(line.trim())) {
+      closeList();
+      out.push("<hr/>");
+      continue;
+    }
+    const ol = line.match(/^\s*\d+\.\s+(.*)$/);
+    const ul = line.match(/^\s*[-*]\s+(.*)$/);
+    if (ol) {
+      if (inList !== "ol") {
+        closeList();
+        out.push("<ol>");
+        inList = "ol";
+      }
+      out.push(`<li>${inline(ol[1])}</li>`);
+      continue;
+    }
+    if (ul) {
+      if (inList !== "ul") {
+        closeList();
+        out.push("<ul>");
+        inList = "ul";
+      }
+      out.push(`<li>${inline(ul[1])}</li>`);
+      continue;
+    }
+    closeList();
+    out.push(`<p>${inline(line)}</p>`);
+  }
+  closeList();
+  if (inCode) out.push("</code></pre>");
+
+  const html = `<!doctype html><html><head><meta charset="utf-8"/>
+<title>User's Guide — Neuron Garage Franchise</title>
+<style>
+  @page { size: Letter; margin: 0.6in; }
+  html, body { background: #fff; color: #0b1a36; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 11pt; line-height: 1.55; margin: 0; padding: 24px; max-width: 7.2in; }
+  h1 { font-size: 22pt; margin: 0 0 6pt; color: #003c7e; }
+  h2 { font-size: 16pt; margin: 18pt 0 6pt; color: #003c7e; border-bottom: 1px solid #e5e7eb; padding-bottom: 4pt; }
+  h3 { font-size: 13pt; margin: 14pt 0 4pt; color: #0b1a36; }
+  h4 { font-size: 11.5pt; margin: 10pt 0 3pt; color: #0b1a36; }
+  p, li { font-size: 11pt; }
+  ul, ol { padding-left: 22pt; margin: 6pt 0; }
+  li { margin: 2pt 0; }
+  code { font-family: "Courier New", monospace; font-size: 10pt; background: #f3f4f6; padding: 1pt 4pt; border-radius: 3pt; }
+  pre { background: #f3f4f6; padding: 10pt; border-radius: 4pt; overflow: auto; }
+  pre code { background: transparent; padding: 0; }
+  a { color: #0757ff; text-decoration: none; }
+  hr { border: 0; border-top: 1px solid #e5e7eb; margin: 14pt 0; }
+  strong { color: #0b1a36; }
+  .doc-header { border-bottom: 2px solid #003c7e; padding-bottom: 8pt; margin-bottom: 14pt; }
+  .doc-header .sub { color: #475569; font-size: 10pt; margin-top: 2pt; }
+</style></head><body>
+<div class="doc-header">
+  <div style="font-weight:700;color:#003c7e;">Neuron Garage Franchise</div>
+  <div class="sub">User's Guide · v1.4 · Printed ${new Date().toLocaleDateString()}</div>
+</div>
+${out.join("\n")}
+<script>
+  window.addEventListener("load", function () {
+    setTimeout(function () { window.focus(); window.print(); }, 150);
+  });
+  window.addEventListener("afterprint", function () { window.close(); });
+</script>
+</body></html>`;
+
+  const w = window.open("", "_blank", "width=900,height=1100");
+  if (!w) {
+    alert("Please allow pop-ups to print the User's Guide.");
+    return;
+  }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+};
+
 const UserGuide = () => {
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [assistantContext, setAssistantContext] = useState<AssistantContext>("general");

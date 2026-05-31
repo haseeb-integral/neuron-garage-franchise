@@ -252,7 +252,7 @@ const UserGuide = () => {
             </Button>
             <Button
               size="sm"
-              onClick={() => window.print()}
+              onClick={handlePrintGuide}
               className="gap-2 text-white"
               style={{ backgroundColor: NAVY }}
             >

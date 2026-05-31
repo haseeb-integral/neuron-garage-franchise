@@ -4,6 +4,26 @@ A plain-English running log of every change Haseeb (with Lovable AI) makes to th
 
 ---
 
+## 2026-05-31 — User's Guide v1.4 parity refresh + downloadable .md + AI Assistant KB refresh
+
+**What.** Three coordinated updates so the User's Guide page, its downloadable markdown, and the in-app Ask AI Assistant all match the v1.4 product:
+
+1. **New single source of truth: `src/data/userGuideMarkdown.ts`.** A plain-English markdown doc with full parity to the Full Specification — covers all four features (with the current rules: 817 cities, 12 SOW metrics in 3 categories, Tier A/B/C/D, "one calibrated number everywhere", Ask AI 3-tier TAM rule, City Notes, Export Raw Signals, Master Pool vs SmartLead toggle, Lovable AI CSV column mapping, the seven reply buckets, warm-up status, transactional email infra, 7 pipeline stages, Documents tab, manual votes, score override + compliance audit log, 16-day FDD gate, Step 2/4 uploads, Export Packet) PLUS Neuron AI ⌘K, header-bell Notifications, Database Health & Observability, in-app reference docs index, and the full 9-item Phase 2 SOW.
+2. **Refactored `src/pages/UserGuide.tsx`.** Kept the branded hero, principles strip, journey strip, card-anatomy section, and closing CTA. Removed the stale static feature cards + FAQ JSX (was still only 4 reply chips, no Neuron AI, no Notifications, no Observability, no Documents tab, etc.). The bulk of the content now renders from `USER_GUIDE_MARKDOWN` via `react-markdown` + `remark-gfm`, mirroring the Spec page pattern. Added **Download Markdown** + **Print / Save as PDF** buttons in the PageHeader. Page and downloadable file can no longer drift.
+3. **Refreshed `supabase/functions/_shared/aiAssistantKB.ts`.** Full rewrite of the knowledge base consumed by the `users-guide-ai` edge function. Now grounds the assistant on every v1.4 surface (Neuron AI, Notifications, Observability, Documents tab, 16-day gate, score override, manual votes, Export Packet, Master Pool vs SmartLead, 7 reply buckets, warm-up status, transactional email infra, Phase 2 SOW, Manus CSI v2, updated team roles). Voice rules, follow-ups protocol, and brand voice unchanged.
+4. **Refreshed `src/components/AiAssistant.tsx` `SUGGESTIONS`.** Starter chips per context now reflect new surfaces (Tier D, Total Score vs Weighted Composite Index, Market Context Banner, Saved Lists, Master Pool vs SmartLead, 7 reply buckets, 16-day FDD gate, Documents tab, Export Packet, etc.).
+
+**Why.** Haseeb asked: "update User's Guide page (including the downloadable md file) based on all the changes made in recent days so that it is fully up to date on every detail of every feature and users guide must have parity with the more technical specification doc. and after updating user's guide page full, next also fully update the Ask AI Assistant on the User's Guide page to be fully up to date with all recent changes."
+
+**Touches.** `src/data/userGuideMarkdown.ts` (new), `src/pages/UserGuide.tsx` (refactor), `supabase/functions/_shared/aiAssistantKB.ts` (full rewrite), `src/components/AiAssistant.tsx` (SUGGESTIONS only), this file, `.lovable/plan.md`.
+
+**Risk.** Low. Documentation + AI grounding only — no app behavior, schema, RLS, edge-function logic, or Phase 2 SOW changes. No new routes or tables. The `users-guide-ai` edge function code itself is unchanged; only its KB import was updated. Brand visual identity of the User's Guide preserved.
+
+**Revert.** Revert the four files above.
+
+---
+
+
 ## 2026-05-31 — Full Spec page + downloadable .md refreshed to v1.4
 
 **What.** The Full Specification page (`/spec`) and its **Download Markdown** button were both 10 days + ~1,400 commits out of date (stamped v1.3 · May 21). Rewrote `src/data/specMarkdown.ts` to v1.4 covering everything that shipped since: Neuron AI ⌘K assistant, header-bell notifications, Database Health & Observability surface, Candidate Pipeline Documents tab + compliance + score-override + 16-day FDD gate + manual votes + Step 2/4 uploads, transactional email infrastructure, Manus CSI v2 upload, the "one calibrated number everywhere" rule, the `city_market_signals` table severance, City Search drawer rewrite (hero summary, coverage panel, City Notes, Manus sibling-row banner), Ask AI 3-tier TAM rule + sub-metric boosts + session context + "What changed" diff, `/reset-password` route, 19 new edge functions, and the Phase 2 cabinet pointer. Corrected city count to 817 (was 948/960). Added a new §22 Recent Changes section so a v1.3 reader can skim the delta without diffing.

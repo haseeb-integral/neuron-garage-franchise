@@ -1,106 +1,68 @@
 ## Goal
 
-Bring the Full Specification page (`/spec`) and its downloadable `Neuron-Garage-Spec.md` (sourced from `src/data/specMarkdown.ts`) fully up to date so every feature in the app today is reflected accurately. Spec was last stamped **v1.3 · May 21, 2026** — the codebase has moved ~1,400 commits since then.
+Bring the **User's Guide** and the **Ask AI Assistant** fully in sync with the current product (Spec v1.4). Plain-English voice stays, but every feature, surface, and rule that exists in the Spec is reflected — no drift.
 
-## Sources I will reconcile against (in priority order)
+## Current state (what I found)
 
-1. **The actual codebase** — source of truth. I'll skim `src/pages/`, `src/components/`, `src/lib/`, `supabase/functions/`, `src/integrations/supabase/types.ts`, and `featureFlags.ts` so every claim in the spec matches what ships.
-2. `CHANGELOG_HASEEB.md` (through May 25) — feature intent + design decisions.
-3. `.lovable/plan.md`, `.lovable/Notifications — Header Bell Plan.md`, `.lovable/phase-2/*` — locked decisions and Phase 2 scope.
-4. Recent git log (May 21 → May 31) — to catch anything not in the changelog.
+- `src/pages/UserGuide.tsx` is a JSX page. It still lists **only 4 features**, calls SmartLead "4 reply chips" (actually 7), no mention of: Neuron AI ⌘K assistant, Header-bell Notifications, Database Health & Observability, Documents tab, 16-day FDD gate, score override, Manus CSI v2, recomputed "one calibrated number" rule, transactional email infra, Master Pool vs SmartLead toggle nuances, Saved Lists / Bulk Action Bar, Market Context Banner, Phase 2 SOW.
+- There is **no downloadable .md** for the User's Guide today (only the Spec page has one). I will add a Download Markdown button, mirroring the Spec page pattern, sourced from a single `USER_GUIDE_MARKDOWN` constant.
+- `supabase/functions/_shared/aiAssistantKB.ts` is the KB consumed by `users-guide-ai` edge function. It is stale (says "4 reply chips", "Integral Leads", no Neuron AI, no Notifications, no Observability, no Documents tab, no 16-day gate, no Phase 2, no Manus, no transactional email, missing Tier D, wrong stage names).
 
-I will **not** invent details. If a section is uncertain after reading code, I'll mark it `TBD — Brett to confirm` rather than guess.
+## What I will change
 
-## What changes in the spec (section-by-section)
+### 1. New single source of truth: `src/data/userGuideMarkdown.ts`
+A plain-English markdown doc that has **parity with the Spec** but in friendly voice. Sections:
 
-**Header block**
-- Bump to **v1.4 · May 31, 2026**.
-- Add a one-line "What's new since v1.3" pointer to the new §18 Recent Changes.
+1. Welcome + who it's for
+2. The 4 design principles
+3. The journey end-to-end
+4. **Feature 1 — City Search** (817 cities, 12 SOW metrics in 3 categories, Tier A/B/C/D, "one calibrated number everywhere", Show Formula, Compare up to 3, weighting sliders, Ask AI 3-tier TAM rule, City Notes, Export Raw Signals, Find Teachers handoff)
+5. **Feature 2 — Teacher Search** (fit score, Market Context Banner, Next Best Action Strip, Saved Lists, Bulk Action Bar, Outreach Intelligence, Promote)
+6. **Feature 3 — Email Outreach** (Master Teacher DB vs SmartLead toggle, CSV import with AI mapping, dedupe + verification preview, push-to-campaign with live filter preview, 7 reply buckets, warm-up status banner, transactional email infrastructure summary)
+7. **Feature 4 — Candidate Pipeline** (7 stages, six-criteria scorecard, Documents tab, manual votes, score override, compliance audit log, 16-day FDD hard gate, Step 2/4 uploads, Export Packet, days-in-stage, card anatomy)
+8. **Neuron AI (⌘K)** — what it does, when to use it
+9. **Notifications (header bell)** — what triggers alerts
+10. **Database Health & Observability** — Haseeb/Brett only, what it surfaces
+11. **In-app reference docs** — links to Spec, Demographics Methodology, Email Outreach Docs, Observability Guide, SmartLead Spec
+12. **Phase 2 — what's coming** (one-line each: Market Validation 1A, Site Analysis 1B, Candidate portal, Teacher Search 1.5, SmartLead 1.5, Mailboxes, Video Training, Manus CSI app)
+13. Quick answers (FAQ — refreshed)
+14. Where to go when stuck
 
-**§1 Overview**
-- Update city count (817, not 948/960) and reflect that `city_market_signals` was severed May 21 and live evidence is now synthesized from `us_cities_scored` columns.
-- Clarify Phase 2 scope (Market Validation, Site Analysis, Candidate portal, Mailboxes, Video Training, Manus CSI app) and point to the locked phase-2 cabinet.
+### 2. Refactor `src/pages/UserGuide.tsx`
+- Keep the branded hero, principles strip, journey strip, card-anatomy section, and closing CTA (visual identity stays).
+- Replace the long static feature/FAQ JSX blocks with a `<ReactMarkdown>` render of `USER_GUIDE_MARKDOWN` for the sections that need parity with the Spec. This guarantees the page and the .md file can never drift.
+- Add a **Download Markdown** button (and Print/Save-as-PDF) in the PageHeader action slot, using the same handler pattern as `src/pages/Spec.tsx`.
+- Keep `AiAssistant` floating launcher and per-feature "Ask AI about X" buttons.
 
-**§4 Navigation & Layout**
-- Add **Header bell / NotificationsPopover** (header bell plan).
-- Add the **Neuron AI** global assistant button + `⌘K` panel.
+### 3. Refresh `supabase/functions/_shared/aiAssistantKB.ts`
+Rewrite the KB so the assistant can answer accurately on:
+- 817 cities, 12 SOW metrics in 3 categories, Tier A/B/C/D, "one calibrated number everywhere" recompute rule, Show Formula, Ask AI 3-tier TAM rule, City Notes, Export Raw Signals.
+- Teacher Search: Market Context Banner, Next Best Action Strip, Saved Lists, Bulk Action Bar.
+- Email Outreach: Master Teacher DB vs SmartLead toggle, CSV AI mapping, 7 reply buckets (Interested, Meeting, Info, Soft No, Wrong Person, Not Interested, OOO), warm-up status, transactional email infra.
+- Candidate Pipeline: correct 7 stages, Documents tab, manual votes, score override + audit log, 16-day FDD hard gate, Export Packet.
+- Neuron AI ⌘K, Header-bell Notifications, Database Health & Observability.
+- Phase 2 SOW one-liner per item; Manus CSI v2.
+- Updated team roles (Kaylie, Brett, Haseeb, Sam, recruiting staff).
+- Keep the voice rules, follow-ups protocol, and brand voice exactly as today.
 
-**§5 Dashboard**
-- Drop the retired "need enrichment" line.
-- Note any new tiles or summary changes.
+### 4. `AiAssistant.tsx` context prompts
+Update the per-context `SUGGESTIONS.prompts` so the starter chips reflect new surfaces (e.g. Email Outreach chips mention the 7 buckets and Master Pool vs SmartLead; Candidate Pipeline chips mention Documents, 16-day gate, Export Packet; add the same per-context chip set for Neuron AI / Notifications / Observability if we expose them). No new contexts beyond the existing 5 unless needed.
 
-**§6 City Search**
-- Update metric registry description from `src/lib/sowMetricRegistry.ts` (canonicalized 12-metric Key Market Signals whitelist used by `MarketDetailDrawer`).
-- Document the new MarketDetailDrawer hero summary + per-pillar coverage, Manus-upload sibling-row banner, `CityNotesEditor`, Export Raw Signals (CSV).
-- Document Ask AI: 3-tier TAM intent rule, sub-metric boosts, session context, "Searched" header, "What changed" weight diff, "never invent a state" rule, default-open reasoning.
-- Document the **"one calibrated number everywhere"** rule (every surface reads pillar + composite from the same recomputed helper).
-- Document the empty-state for filtered 0-results.
-
-**§7 Teacher Search**
-- Reflect actual scoring/filters that ship today; add anything new in the panel (Market Context Banner, Next Best Action Strip, Saved Lists, Bulk Action Bar) that isn't already described.
-
-**§8 Email Outreach**
-- Mostly already current (v1.2/v1.3 wizard, push, reply triage). Light pass to verify scope-switcher state, `SMARTLEAD_PHASE` flag, and any new analytics or queue states.
-- Add **Transactional email infrastructure** (`send-transactional-email`, `process-email-queue`, `weekly-data-health-digest`, `handle-email-suppression`, `handle-email-unsubscribe`).
-
-**§9 Candidate Pipeline**
-- Add the **Documents tab** (FF_DOCUMENTS), **manual votes** (FF_MANUAL_VOTES), **score override** (FF_SCORE_OVERRIDE), **compliance audit log** (FF_COMPLIANCE), **16-day FDD hard-block** (FF_FDD_GATE), **Step 2/4 uploads** (FF_STEP2_UPLOADS / FF_STEP4_UPLOADS), **Export Packet** button.
-- Document the Feature Flag registry as the on/off switch surface.
-
-**§10 Authentication**
-- Add `/reset-password` flow.
-
-**New §X — Neuron AI (global)**
-- ⌘K assistant: factual answers, navigation + apply state, cheap write actions with Confirm preview, ambiguity prompt, `ai_action_log` write trail.
-- Knowledge brain at `supabase/functions/_shared/appKnowledge.ts`.
-- Co-exists with City Search Ask AI bar for ~2 weeks then collapses.
-
-**New §X — Notifications (header bell)**
-- Per the Notifications header-bell plan.
-
-**New §X — Database Health & Observability**
-- `/db-health` page, accuracy/alerts tabs, friendly errors, query logger, weekly digest.
-
-**New §X — User Guide & in-app docs**
-- `/user-guide`, `/handover`, `/system-overview`, `/apis-and-data-sources`, `/prompts-and-ai-workflows`, `/guardrails`, `/email-outreach-docs`, `/observability-spec`, `/observability-guide`, `/scoring-method`, `/methodology`, `/demographics-methodology`, `/smartlead-spec` — list what's there so the spec is honest about the in-app reference surface.
-
-**§13 Data Model**
-- Cross-check every listed table against `src/integrations/supabase/types.ts`. Add anything missing (e.g. `ai_action_log`, notification tables if present, observability/data-health tables, city notes table, transactional email tables, audit-log tables). Mark `city_market_signals` as severed.
-- Correct city-count numbers.
-
-**§15 Backend & Edge Functions**
-- Add: `ai-city-query` updates, `ask`, `ask-city`, `city-analyst`, `csv-suggest-mapping`, `neuron-ai`, `neuron-ai-confirm`, `observability-ai`, `teacher-search-ai`, `users-guide-ai`, `recompute-city-derived`, `backfill-census-gaps`, `seed-cities-weather`, `weekly-data-health-digest`, `send-transactional-email`, `preview-transactional-email`, `process-email-queue`, `handle-email-suppression`, `handle-email-unsubscribe`, `teacher-prospects-dedupe-count`, `deepgram-tts`, `enrich-school-staff`, `smartlead-push-leads`, `smartlead-proxy`, `smartlead-webhook`.
-
-**§16 Third-Party APIs**
-- Add **Deepgram TTS** and any other secrets newly present in `secrets`/edge-function code.
-
-**§17 Future Work**
-- Replace with current snapshot of open Tier-1/Tier-2 items + the Phase 2 9-item SOW summary (one line each), pointing at `.lovable/phase-2/phase-2-sow.md` as the source of truth.
-
-**New final §18 — Recent Changes (v1.3 → v1.4)**
-- Tight bullet list summarizing the biggest deltas so a reader who knew v1.3 can skim what's new without diffing the whole doc.
-
-## Files I will touch
-
-- `src/data/specMarkdown.ts` — the only edit. The Spec page renders this constant and the **Download Markdown** button writes the same string to disk, so updating this single file refreshes both surfaces.
-- `src/pages/Spec.tsx` — only if the version label is hardcoded outside the markdown (I'll check; expected: no edit).
-- `CHANGELOG_HASEEB.md` — append one entry noting the spec refresh.
+### 5. Maintenance
+- Add a `CHANGELOG_HASEEB.md` entry: "User's Guide v1.4 parity refresh + downloadable .md + AI Assistant KB refresh".
+- Update `.lovable/plan.md` with a one-line note.
 
 ## What I will NOT do
+- No app behavior, schema, edge-function logic, RLS, or Phase 2 SOW changes.
+- No re-design of the User's Guide visual identity (yellow/navy/red branded sections stay).
+- No new routes, no new tables.
+- Documentation + KB only.
 
-- No app behavior changes, no schema changes, no edge-function changes.
-- No Phase 2 SOW edits (locked).
-- No new pages, no UI redesign of `/spec` itself.
-- Won't touch `phase-2-sow.md` / `phase-2-execution-plan.md` / `phase-2-plan-plain-english.md`.
+## Files touched
+- **new** `src/data/userGuideMarkdown.ts`
+- **edit** `src/pages/UserGuide.tsx` (refactor to render markdown + add Download button)
+- **edit** `supabase/functions/_shared/aiAssistantKB.ts` (full rewrite to v1.4)
+- **edit** `src/components/AiAssistant.tsx` (refresh `SUGGESTIONS` prompts)
+- **edit** `CHANGELOG_HASEEB.md`, `.lovable/plan.md`
 
-## Risk
-
-**Low.** Documentation-only. Worst case: a wording inaccuracy that we fix in a follow-up edit. I'll favor "TBD — Brett to confirm" over guessing whenever the code is ambiguous.
-
-## Deliverable
-
-A single updated `src/data/specMarkdown.ts` so that:
-- `/spec` renders the v1.4 spec inline.
-- The **Download Markdown** button downloads `Neuron-Garage-Spec.md` at v1.4.
-
-No separate PDF/DOCX export this turn unless you ask for one.
+Approve and I'll implement.

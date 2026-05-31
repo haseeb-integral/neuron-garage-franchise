@@ -31,6 +31,7 @@ const slugify = (s: string) =>
 
 const Spec = () => (
   <DocShell
+    eyebrow="Reference"
     title="Full Specification"
     subtitle="The complete product spec for the Neuron Garage Franchise Acquisition System. The same markdown drives this page and the downloadable file — they can never drift."
     action={

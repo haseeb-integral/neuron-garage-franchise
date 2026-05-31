@@ -1,84 +1,54 @@
-# Phase 2 SOW + Execution Plan — write, store, and export
+# Plain-English Execution Plan — rewrite
 
-## What gets created
+## What you're getting
 
-### In the repo
-1. **`.lovable/phase-2/phase-2-sow.md`** — overwrite the current stub. Full 8-item SOW. Items 1–2 merged from real source material; items 3–8 are explicit "TBD — Brett to fill" stubs with the section structure pre-built.
-2. **`.lovable/phase-2/phase-2-execution-plan.md`** — new file. Sequenced build plan for Lovable (and Manus where called out).
+One new document, written for a human (you and Brett), not for me. No tickets, no file paths, no ASCII tables. Arial throughout, generous spacing, clear headings, proper page breaks. Delivered as **PDF + DOCX**, both clean.
 
-### As downloadable artifacts (in chat)
-3. `/mnt/documents/Neuron-Garage-Phase-2-SOW.pdf`
-4. `/mnt/documents/Neuron-Garage-Phase-2-SOW.docx`
-5. `/mnt/documents/Neuron-Garage-Phase-2-Execution-Plan.pdf`
-6. `/mnt/documents/Neuron-Garage-Phase-2-Execution-Plan.docx`
+Working title: **`Neuron-Garage-Phase-2-Plan-Plain-English`** (`.pdf` + `.docx`).
+Lives in chat as downloads. Markdown source kept in repo at `.lovable/phase-2/phase-2-plan-plain-english.md` so it's reproducible.
 
-All four are byte-for-byte the same content as the two markdown files in the repo — exported, not re-summarized.
+The technical execution plan (`phase-2-execution-plan.md` + its exports) stays as-is for me to follow. This new doc is the human layer on top.
 
-### Housekeeping
-- `phase-2-status.md` — leave as-is (it already covers all 8 items).
-- `CHANGELOG.md` — one line logging the SOW + execution plan + 4 exports.
-- README map — add `phase-2-execution-plan.md` to the folder tree.
+## Structure of the new doc
 
-## How I build the content (in build mode)
+1. **One-paragraph summary** — what Phase 2 is, why, and the 4+2 week shape.
+2. **The 9 items, grouped into 3 tiers** based on how ready they are to build:
+   - **Tier A — Ready to build** (Items 1 Market Validation, 2 Site Analysis, 3 Notes & Activity tab)
+   - **Tier B — Needs Brett's spec first** (Items 4 Candidate-facing form, 5, 6, 7)
+   - **Tier C — Likely slips past the 6-week window** (Items 8 Video Training, 9 CSI app)
+   Each item gets 3–4 sentences: what it is, what we'll show on screen, what success looks like. No formulas, no file names.
+3. **Who does what** — one short section: Manus = heavy data work, Lovable = display + workflow. Two bullets, not a table.
+4. **The 6-week shape** — Week 1, Weeks 2–4, Weeks 5–6 grace. One short paragraph each.
+5. **Risk register, ranked** — every risk tagged Low / Medium / High with a one-line "what we'll do if it happens." Examples:
+   - High: Items 4–9 specs never arrive → ship Tier A only, call it a win.
+   - High: LeafSpring doesn't score lower than Trinity in Site Analysis → weights get reworked before rollout.
+   - Medium: Scraper (Firecrawl) gets blocked on camp sites → fallback to manual review queue.
+   - Medium: Map/isochrone costs spike → cap usage, add a meter.
+   - Low: Small towns missing census data → flag with a "low confidence" badge.
+6. **What "done" looks like** — 4 bullets, plain English.
+7. **What I need from Brett to start** — 3 bullets (lock the SOW, fill TBDs for items 3–9, confirm map vendor or let me pick).
 
-### Step 1 — Read sources end-to-end, no shortcuts
-- `document--parse_document` on `neuron-garage-module1-enhancements-v2.pdf` — all 12 sections, all formulas verbatim.
-- `code--view` the full `transcript Sam meeting May 29.txt`.
-- `code--view` the full `brett-5-point-sketch.md`.
+## Formatting fixes (the real issue last time)
 
-Three sources, read in full. No re-using my old typed summaries.
+Built with `docx` library directly (not pandoc), so I control fonts and spacing:
+- Arial 11pt body, Arial 16pt H1, Arial 13pt H2, Arial 11pt bold H3.
+- 1-inch margins, US Letter.
+- Real bullet lists (not unicode dots).
+- No wide tables — anything tabular becomes a short bullet list.
+- Page breaks before each tier and before the risk register.
+- PDF generated from the same DOCX via LibreOffice so fonts match exactly.
+- QA gate: render every page to image, look for clipped text, wrong fonts, overflowing content. Fix and re-render until clean.
 
-### Step 2 — Write `phase-2-sow.md`
+## What I will NOT do this turn
 
-Structure per item (all 8):
-- Name + version (1.0 or 1.5)
-- Question it answers
-- Primary output
-- Owner split: Manus vs Lovable
-- Inputs / data sources
-- Composite formula or success criteria
-- Cost envelope
-- Acceptance criteria
-- Out of scope
+- Touch `phase-2-sow.md` or the existing `phase-2-execution-plan.md`.
+- Change app code.
+- Re-export the SOW (it's fine as-is; only the execution plan was the problem).
+- Invent any new scope.
 
-Items 1 (Market Validation 1A) and 2 (Site Analysis 1B) — every sub-score, weight, formula, data source, cadence, and dollar number from the PDF, **including the `+` signs that got dropped before**. Validation plan (internal anchors + Bay Area / Seattle Eastside / North Dallas / NoVA / Boston external proxies) included.
+## Deliverables
 
-Items 3–8 — section skeleton present, with each subsection filled by either:
-- a real bullet from the transcript / 5-point sketch if it exists, or
-- `**TBD — Brett to fill.**` if it doesn't.
-
-No invented detail. No bluffing.
-
-Plus a top-level section pulled from the transcript: operating mode (architecture-first, Manus = data refinement / Lovable = display, 4 weeks + 2 weeks grace, build starts only when Google Doc is locked).
-
-### Step 3 — Write `phase-2-execution-plan.md`
-
-Different doc, different purpose. Structure:
-- **Sequencing** — week-by-week (W1 architecture lock, W2–4 build, W5–6 grace). Which items can run in parallel, which block which.
-- **Per-ticket breakdown** for items 1 + 2 only (the ones with real specs): ticket title, files/components likely touched, data sources, acceptance criteria, owner (Manus / Lovable), rough estimate.
-- **Items 3–8** — listed with status `blocked: awaiting Brett spec`. No fake tickets.
-- **Cross-cutting** — Brett's "one calibrated number everywhere" rule, isochrone library decision (Mapbox vs HERE), human-QA queue UI location, PDF report generator stack.
-- **Risks** — explicit list (e.g. Firecrawl rate limits, Census ACS gaps, isochrone cost at scale).
-
-### Step 4 — Export to PDF + DOCX
-
-For each of the two markdown files:
-- DOCX via `pandoc` (one command, preserves headings, tables, lists).
-- PDF via `pandoc` → LibreOffice (the docx skill's `run_libreoffice.py`), or `pandoc --pdf-engine=...`. I'll pick whichever produces cleaner output on first try and iterate.
-
-**QA gate (mandatory):** convert each PDF to images with `pdftoppm`, view every page, check for clipped tables, broken formulas (especially the `+` signs), overflowing cells, missing pages. Fix and re-export until clean. Same QA for DOCX → render to PDF → image-check.
-
-### Step 5 — Deliver
-
-`<presentation-artifact>` tags for all 4 files so you can download from chat.
-
-## What I will NOT do
-
-- Invent specs for items 3–8. Stubs only.
-- Re-type the PDF into markdown again. PDF is parsed live each time.
-- Update `phase-2-status.md` — already accurate.
-- Touch any app code (`src/`, `supabase/`). This turn is docs only.
-
-## What I need from you
-
-Nothing — once you approve this plan and switch to build mode, I'll execute the whole thing in one go.
+- `Neuron-Garage-Phase-2-Plan-Plain-English.pdf`
+- `Neuron-Garage-Phase-2-Plan-Plain-English.docx`
+- `.lovable/phase-2/phase-2-plan-plain-english.md` (source)
+- One line in `CHANGELOG.md`

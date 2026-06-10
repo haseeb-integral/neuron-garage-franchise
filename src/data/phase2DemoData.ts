@@ -15,6 +15,22 @@
 // ---------------------------------------------------------------------------
 
 export type AbsorptionStatus = "sold_out" | "waitlist" | "low_availability" | "open" | "unknown";
+export type ConfidenceLevel = "high" | "medium" | "low";
+
+export interface ShortlistCity {
+  city: string;
+  state: string;
+  composite: number;
+  active: boolean;
+}
+
+export interface SubScore {
+  value: number;
+  weight: number;
+  signals: { label: string; value: string }[];
+  formula: string;
+  confidence: { level: ConfidenceLevel; note: string };
+}
 
 export interface MarketValidationDemo {
   city: string;
@@ -23,13 +39,14 @@ export interface MarketValidationDemo {
   composite: number;
   tier: "Top Tier" | "Strong" | "Mixed" | "Weak";
   verdict: string;
+  shortlist: ShortlistCity[];
   subScores: {
-    pricingAcceptance: { value: number; weight: number; signals: { label: string; value: string }[]; formula: string };
-    marketAbsorption: { value: number; weight: number; signals: { label: string; value: string }[]; formula: string };
-    scaledOperator: { value: number; weight: number; signals: { label: string; value: string }[]; formula: string };
-    enrichmentDiversity: { value: number; weight: number; signals: { label: string; value: string }[]; formula: string };
-    marketDepth: { value: number; weight: number; signals: { label: string; value: string }[]; formula: string };
-    marketBalance: { value: number; weight: number; signals: { label: string; value: string }[]; formula: string };
+    pricingAcceptance: SubScore;
+    marketAbsorption: SubScore;
+    scaledOperator: SubScore;
+    enrichmentDiversity: SubScore;
+    marketDepth: SubScore;
+    marketBalance: SubScore;
   };
   premiumProviders: {
     name: string;

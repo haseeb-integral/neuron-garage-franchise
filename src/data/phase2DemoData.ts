@@ -65,6 +65,13 @@ export const friscoMarketValidationDemo: MarketValidationDemo = {
   tier: "Strong",
   verdict:
     "Validated premium enrichment market with strong absorption signals. Direct competitor load is moderate; room for one well-sited operator.",
+  shortlist: [
+    { city: "Frisco", state: "TX", composite: 78, active: true },
+    { city: "Plano", state: "TX", composite: 74, active: false },
+    { city: "Naperville", state: "IL", composite: 71, active: false },
+    { city: "Bellevue", state: "WA", composite: 82, active: false },
+    { city: "Newton", state: "MA", composite: 69, active: false },
+  ],
   subScores: {
     pricingAcceptance: {
       value: 82,
@@ -76,6 +83,7 @@ export const friscoMarketValidationDemo: MarketValidationDemo = {
       ],
       formula:
         "0.40 × normalize(median, $300–$700) + 0.40 × normalize(75th pct, $400–$800) + 0.20 × (% at $500+)",
+      confidence: { level: "high", note: "All 18 providers had explicit weekly pricing scraped from operator sites." },
     },
     marketAbsorption: {
       value: 74,
@@ -87,6 +95,7 @@ export const friscoMarketValidationDemo: MarketValidationDemo = {
       ],
       formula:
         "0.60 × normalize(Sellout Rate, 0–80%) + 0.25 × normalize(Time-to-Sellout, inverse) + 0.15 × normalize(YoY Velocity, -20% to +30%)",
+      confidence: { level: "medium", note: "4 of 18 providers parsed below 0.7 confidence — routed to human QA queue per SOW Item 1." },
     },
     scaledOperator: {
       value: 71,
@@ -98,6 +107,7 @@ export const friscoMarketValidationDemo: MarketValidationDemo = {
       ],
       formula:
         "0.65 × normalize(Operator Validation, 0–8) + 0.35 × (100 − normalize(Direct Competitor Load, 0–5 per 10k))",
+      confidence: { level: "high", note: "Operator matches from Apify Maps + manual watchlist." },
     },
     enrichmentDiversity: {
       value: 76,
@@ -108,6 +118,7 @@ export const friscoMarketValidationDemo: MarketValidationDemo = {
       ],
       formula:
         "0.70 × normalize(Category Count, 2–10) + 0.30 × normalize(Diversity Ratio, 0.1–0.6)",
+      confidence: { level: "high", note: "Category tags from Gemini Flash classification." },
     },
     marketDepth: {
       value: 68,
@@ -117,6 +128,7 @@ export const friscoMarketValidationDemo: MarketValidationDemo = {
         { label: "Peer median (DFW suburbs)", value: "14" },
       ],
       formula: "normalize(Premium Provider Count, 4–40)",
+      confidence: { level: "high", note: "Provider count from full universe scrape." },
     },
     marketBalance: {
       value: 88,
@@ -127,6 +139,7 @@ export const friscoMarketValidationDemo: MarketValidationDemo = {
         { label: "Classification", value: "Underserved (≥350)" },
       ],
       formula: "normalize(Coverage Ratio, 50–500); ≥350 Underserved · 200–349 Balanced · 100–199 Competitive · <100 Saturated",
+      confidence: { level: "low", note: "ACS dual-income breakdown imputed at tract level — flagged for review." },
     },
   },
   premiumProviders: [

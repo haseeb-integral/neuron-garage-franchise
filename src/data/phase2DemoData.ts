@@ -15,6 +15,22 @@
 // ---------------------------------------------------------------------------
 
 export type AbsorptionStatus = "sold_out" | "waitlist" | "low_availability" | "open" | "unknown";
+export type ConfidenceLevel = "high" | "medium" | "low";
+
+export interface ShortlistCity {
+  city: string;
+  state: string;
+  composite: number;
+  active: boolean;
+}
+
+export interface SubScore {
+  value: number;
+  weight: number;
+  signals: { label: string; value: string }[];
+  formula: string;
+  confidence: { level: ConfidenceLevel; note: string };
+}
 
 export interface MarketValidationDemo {
   city: string;
@@ -23,13 +39,14 @@ export interface MarketValidationDemo {
   composite: number;
   tier: "Top Tier" | "Strong" | "Mixed" | "Weak";
   verdict: string;
+  shortlist: ShortlistCity[];
   subScores: {
-    pricingAcceptance: { value: number; weight: number; signals: { label: string; value: string }[]; formula: string };
-    marketAbsorption: { value: number; weight: number; signals: { label: string; value: string }[]; formula: string };
-    scaledOperator: { value: number; weight: number; signals: { label: string; value: string }[]; formula: string };
-    enrichmentDiversity: { value: number; weight: number; signals: { label: string; value: string }[]; formula: string };
-    marketDepth: { value: number; weight: number; signals: { label: string; value: string }[]; formula: string };
-    marketBalance: { value: number; weight: number; signals: { label: string; value: string }[]; formula: string };
+    pricingAcceptance: SubScore;
+    marketAbsorption: SubScore;
+    scaledOperator: SubScore;
+    enrichmentDiversity: SubScore;
+    marketDepth: SubScore;
+    marketBalance: SubScore;
   };
   premiumProviders: {
     name: string;
@@ -48,6 +65,13 @@ export const friscoMarketValidationDemo: MarketValidationDemo = {
   tier: "Strong",
   verdict:
     "Validated premium enrichment market with strong absorption signals. Direct competitor load is moderate; room for one well-sited operator.",
+  shortlist: [
+    { city: "Frisco", state: "TX", composite: 78, active: true },
+    { city: "Plano", state: "TX", composite: 74, active: false },
+    { city: "Naperville", state: "IL", composite: 71, active: false },
+    { city: "Bellevue", state: "WA", composite: 82, active: false },
+    { city: "Newton", state: "MA", composite: 69, active: false },
+  ],
   subScores: {
     pricingAcceptance: {
       value: 82,
@@ -59,6 +83,7 @@ export const friscoMarketValidationDemo: MarketValidationDemo = {
       ],
       formula:
         "0.40 × normalize(median, $300–$700) + 0.40 × normalize(75th pct, $400–$800) + 0.20 × (% at $500+)",
+      confidence: { level: "high", note: "All 18 providers had explicit weekly pricing scraped from operator sites." },
     },
     marketAbsorption: {
       value: 74,
@@ -70,6 +95,7 @@ export const friscoMarketValidationDemo: MarketValidationDemo = {
       ],
       formula:
         "0.60 × normalize(Sellout Rate, 0–80%) + 0.25 × normalize(Time-to-Sellout, inverse) + 0.15 × normalize(YoY Velocity, -20% to +30%)",
+      confidence: { level: "medium", note: "4 of 18 providers parsed below 0.7 confidence — routed to human QA queue per SOW Item 1." },
     },
     scaledOperator: {
       value: 71,
@@ -81,6 +107,7 @@ export const friscoMarketValidationDemo: MarketValidationDemo = {
       ],
       formula:
         "0.65 × normalize(Operator Validation, 0–8) + 0.35 × (100 − normalize(Direct Competitor Load, 0–5 per 10k))",
+      confidence: { level: "high", note: "Operator matches from Apify Maps + manual watchlist." },
     },
     enrichmentDiversity: {
       value: 76,
@@ -91,6 +118,7 @@ export const friscoMarketValidationDemo: MarketValidationDemo = {
       ],
       formula:
         "0.70 × normalize(Category Count, 2–10) + 0.30 × normalize(Diversity Ratio, 0.1–0.6)",
+      confidence: { level: "high", note: "Category tags from Gemini Flash classification." },
     },
     marketDepth: {
       value: 68,
@@ -100,6 +128,7 @@ export const friscoMarketValidationDemo: MarketValidationDemo = {
         { label: "Peer median (DFW suburbs)", value: "14" },
       ],
       formula: "normalize(Premium Provider Count, 4–40)",
+      confidence: { level: "high", note: "Provider count from full universe scrape." },
     },
     marketBalance: {
       value: 88,
@@ -110,6 +139,7 @@ export const friscoMarketValidationDemo: MarketValidationDemo = {
         { label: "Classification", value: "Underserved (≥350)" },
       ],
       formula: "normalize(Coverage Ratio, 50–500); ≥350 Underserved · 200–349 Balanced · 100–199 Competitive · <100 Saturated",
+      confidence: { level: "low", note: "ACS dual-income breakdown imputed at tract level — flagged for review." },
     },
   },
   premiumProviders: [
@@ -206,6 +236,7 @@ export interface SiteAnalysisDemoSite {
   address: string;
   schoolType: "Private elementary" | "Public elementary" | "Charter elementary" | "Montessori" | "Other K-8" | "Other";
   enrollment: number;
+  gradeAlignment: string;
   composite: number;
   verdict: string;
   subScores: {
@@ -218,10 +249,18 @@ export interface SiteAnalysisDemoSite {
   isochroneCallouts: {
     medianHHI10min: string;
     pctOver150k10min: string;
+    pctDualIncome10min: string;
     children5to12Within10min: string;
     children5to12Within15min: string;
+    familiesWithKids5to12Within10min: string;
   };
 }
+
+export const SITE_RECOMMEND_THRESHOLDS = {
+  recommend: 75,
+  worthALook: 60,
+} as const;
+
 
 export const austinSiteAnalysisDemo: {
   filled: SiteAnalysisDemoSite[];
@@ -234,6 +273,7 @@ export const austinSiteAnalysisDemo: {
       address: "3901 Bee Caves Rd, Austin, TX 78746",
       schoolType: "Private elementary",
       enrollment: 540,
+      gradeAlignment: "K–8 · matches NG 5–12 ✓",
       composite: 86,
       verdict: "Strong site. Affluent, dense, accessible. Matches profile of current high-performing NG locations.",
       subScores: {
@@ -271,8 +311,10 @@ export const austinSiteAnalysisDemo: {
       isochroneCallouts: {
         medianHHI10min: "$178k",
         pctOver150k10min: "44%",
+        pctDualIncome10min: "67%",
         children5to12Within10min: "9,420",
         children5to12Within15min: "28,140",
+        familiesWithKids5to12Within10min: "5,680",
       },
     },
     {
@@ -281,6 +323,7 @@ export const austinSiteAnalysisDemo: {
       address: "Austin daycare facility, north of customer base",
       schoolType: "Other",
       enrollment: 220,
+      gradeAlignment: "Daycare PK–K · misaligned vs NG 5–12 ✗",
       composite: 41,
       verdict:
         "Calibration anchor — known negative. Commute from established customer base and weak school-type fit drag the score below the recommend threshold.",
@@ -319,8 +362,10 @@ export const austinSiteAnalysisDemo: {
       isochroneCallouts: {
         medianHHI10min: "$94k",
         pctOver150k10min: "16%",
+        pctDualIncome10min: "48%",
         children5to12Within10min: "3,210",
         children5to12Within15min: "11,840",
+        familiesWithKids5to12Within10min: "1,940",
       },
     },
   ],

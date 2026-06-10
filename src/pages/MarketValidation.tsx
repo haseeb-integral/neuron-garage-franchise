@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, FileText, MapPin } from "lucide-react";
+import { ChevronDown, ChevronUp, Download, FileText, MapPin } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
 import { DemoBanner } from "@/components/phase2-demo/DemoBanner";
+import { LowConfidenceBadge } from "@/components/phase2-demo/LowConfidenceBadge";
 import { SampleDataBadge } from "@/components/phase2-demo/SampleDataBadge";
 import {
   friscoMarketValidationDemo,
   type AbsorptionStatus,
+  type ConfidenceLevel,
 } from "@/data/phase2DemoData";
 
 const NAVY = "#07142f";
@@ -36,15 +38,16 @@ interface SubScoreCardProps {
   value: number;
   signals: { label: string; value: string }[];
   formula: string;
+  confidence: { level: ConfidenceLevel; note: string };
 }
 
-function SubScoreCard({ title, subtitle, weight, value, signals, formula }: SubScoreCardProps) {
+function SubScoreCard({ title, subtitle, weight, value, signals, formula, confidence }: SubScoreCardProps) {
   const [open, setOpen] = useState(false);
   return (
     <div className="rounded-lg border bg-white p-4" style={{ borderColor: BORDER }}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-[13px] font-bold" style={{ color: NAVY }}>
               {title}
             </h3>
@@ -54,6 +57,7 @@ function SubScoreCard({ title, subtitle, weight, value, signals, formula }: SubS
             >
               {Math.round(weight * 100)}%
             </span>
+            <LowConfidenceBadge level={confidence.level} note={confidence.note} />
           </div>
           <p className="mt-0.5 text-[11px]" style={{ color: MUTED }}>
             {subtitle}
@@ -91,12 +95,19 @@ function SubScoreCard({ title, subtitle, weight, value, signals, formula }: SubS
         {open ? "Hide formula" : "Show formula"}
       </button>
       {open && (
-        <pre
-          className="mt-2 whitespace-pre-wrap rounded-md p-2 text-[11px] leading-snug"
-          style={{ backgroundColor: SOFT, color: NAVY, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
-        >
-          {formula}
-        </pre>
+        <>
+          <pre
+            className="mt-2 whitespace-pre-wrap rounded-md p-2 text-[11px] leading-snug"
+            style={{ backgroundColor: SOFT, color: NAVY, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
+          >
+            {formula}
+          </pre>
+          {confidence.level !== "high" && (
+            <p className="mt-2 text-[11px]" style={{ color: MUTED }}>
+              <strong style={{ color: NAVY }}>QA note:</strong> {confidence.note}
+            </p>
+          )}
+        </>
       )}
     </div>
   );
@@ -115,6 +126,45 @@ export default function MarketValidation() {
       />
 
       <DemoBanner />
+
+      {/* Shortlist city selector */}
+      <section
+        className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border bg-white p-3"
+        style={{ borderColor: BORDER }}
+      >
+        <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: MUTED }}>
+          Shortlist · {data.shortlist.length} cities
+        </span>
+        {data.shortlist.map((c) => {
+          const isActive = c.active;
+          return (
+            <button
+              key={`${c.city}-${c.state}`}
+              type="button"
+              disabled={!isActive}
+              title={isActive ? `${c.city}, ${c.state} — composite ${c.composite}` : "Demo locked to Frisco — other cities wire up in Week 3"}
+              className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition disabled:cursor-not-allowed"
+              style={{
+                borderColor: isActive ? BLUE : BORDER,
+                backgroundColor: isActive ? BLUE : "#fff",
+                color: isActive ? "#fff" : MUTED,
+                opacity: isActive ? 1 : 0.7,
+              }}
+            >
+              {c.city}, {c.state}
+              <span
+                className="rounded-full px-1 py-px text-[9px] font-bold"
+                style={{
+                  backgroundColor: isActive ? "rgba(255,255,255,0.22)" : SOFT,
+                  color: isActive ? "#fff" : NAVY,
+                }}
+              >
+                {c.composite}
+              </span>
+            </button>
+          );
+        })}
+      </section>
 
       {/* Composite card */}
       <section
@@ -138,19 +188,34 @@ export default function MarketValidation() {
               {data.verdict}
             </p>
           </div>
-          <div className="flex flex-col items-end">
-            <div className="text-[42px] font-black leading-none" style={{ color: NAVY }}>
-              {data.composite}
+          <div className="flex flex-col items-end gap-2">
+            <div className="text-right">
+              <div className="text-[42px] font-black leading-none" style={{ color: NAVY }}>
+                {data.composite}
+              </div>
+              <div className="mt-1 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
+                Premium Enrichment Ecosystem Score
+              </div>
+              <span
+                className="mt-2 inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold"
+                style={{ backgroundColor: "#e3f3e7", color: "#1d6b32" }}
+              >
+                Tier: {data.tier}
+              </span>
             </div>
-            <div className="mt-1 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
-              Premium Enrichment Ecosystem Score
-            </div>
-            <span
-              className="mt-2 rounded-full px-2.5 py-0.5 text-[11px] font-bold"
-              style={{ backgroundColor: "#e3f3e7", color: "#1d6b32" }}
+            <button
+              type="button"
+              disabled
+              title="Coming Week 3 — branded 12-section PDF report per SOW Item 1"
+              className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold"
+              style={{ borderColor: BORDER, color: MUTED, backgroundColor: SOFT }}
             >
-              Tier: {data.tier}
-            </span>
+              <Download size={12} />
+              Export PDF
+              <span className="rounded-full bg-white px-1 py-px text-[9px]" style={{ color: BLUE }}>
+                Week 3
+              </span>
+            </button>
           </div>
         </div>
 
@@ -177,6 +242,7 @@ export default function MarketValidation() {
           value={subs.pricingAcceptance.value}
           signals={subs.pricingAcceptance.signals}
           formula={subs.pricingAcceptance.formula}
+          confidence={subs.pricingAcceptance.confidence}
         />
         <SubScoreCard
           title="Market Absorption"
@@ -185,6 +251,7 @@ export default function MarketValidation() {
           value={subs.marketAbsorption.value}
           signals={subs.marketAbsorption.signals}
           formula={subs.marketAbsorption.formula}
+          confidence={subs.marketAbsorption.confidence}
         />
         <SubScoreCard
           title="Scaled Operator"
@@ -193,6 +260,7 @@ export default function MarketValidation() {
           value={subs.scaledOperator.value}
           signals={subs.scaledOperator.signals}
           formula={subs.scaledOperator.formula}
+          confidence={subs.scaledOperator.confidence}
         />
         <SubScoreCard
           title="Enrichment Diversity"
@@ -201,6 +269,7 @@ export default function MarketValidation() {
           value={subs.enrichmentDiversity.value}
           signals={subs.enrichmentDiversity.signals}
           formula={subs.enrichmentDiversity.formula}
+          confidence={subs.enrichmentDiversity.confidence}
         />
         <SubScoreCard
           title="Market Depth"
@@ -209,6 +278,7 @@ export default function MarketValidation() {
           value={subs.marketDepth.value}
           signals={subs.marketDepth.signals}
           formula={subs.marketDepth.formula}
+          confidence={subs.marketDepth.confidence}
         />
         <SubScoreCard
           title="Market Balance Index"
@@ -217,6 +287,7 @@ export default function MarketValidation() {
           value={subs.marketBalance.value}
           signals={subs.marketBalance.signals}
           formula={subs.marketBalance.formula}
+          confidence={subs.marketBalance.confidence}
         />
       </section>
 

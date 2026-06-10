@@ -1,68 +1,70 @@
-## Goal
+# Phase 2 — Week 2: Demo Mockup Pages for Market Validation & Site Analysis
 
-Bring the **User's Guide** and the **Ask AI Assistant** fully in sync with the current product (Spec v1.4). Plain-English voice stays, but every feature, surface, and rule that exists in the Spec is reflected — no drift.
+## Answers to your questions
 
-## Current state (what I found)
+1. **Sidebar placement.** New items go in the **primary nav** in `AppSidebar.tsx`, between `City Search` and `Teacher Search`, in this order:
+   - Dashboard
+   - City Search
+   - **Market Validation** ← NEW (Phase 2 demo)
+   - **Site Analysis** ← NEW (Phase 2 demo)
+   - Teacher Search
+   - Email Outreach
+   - Candidate Pipeline
+   - Data Observability
+   Both new items get a small `Demo` chip next to the label so it's obvious in the nav that these are not live.
 
-- `src/pages/UserGuide.tsx` is a JSX page. It still lists **only 4 features**, calls SmartLead "4 reply chips" (actually 7), no mention of: Neuron AI ⌘K assistant, Header-bell Notifications, Database Health & Observability, Documents tab, 16-day FDD gate, score override, Manus CSI v2, recomputed "one calibrated number" rule, transactional email infra, Master Pool vs SmartLead toggle nuances, Saved Lists / Bulk Action Bar, Market Context Banner, Phase 2 SOW.
-- There is **no downloadable .md** for the User's Guide today (only the Spec page has one). I will add a Download Markdown button, mirroring the Spec page pattern, sourced from a single `USER_GUIDE_MARKDOWN` constant.
-- `supabase/functions/_shared/aiAssistantKB.ts` is the KB consumed by `users-guide-ai` edge function. It is stale (says "4 reply chips", "Integral Leads", no Neuron AI, no Notifications, no Observability, no Documents tab, no 16-day gate, no Phase 2, no Manus, no transactional email, missing Tier D, wrong stage names).
+2. **Demo data approach.** I'll hardcode realistic-looking sample data anchored to cities/sites already familiar from the SOW so Brett/Sam can read it like the real thing:
+   - **Market Validation** demo city = **Frisco, TX** (Sam's PDF uses Galileo Frisco as an example). Show all 6 sub-scores + composite per the locked formula in `phase-2-sow.md`:
+     Pricing Acceptance, Market Absorption (incl. sellout %, time-to-sellout, YoY velocity), Scaled Operator (validation count + direct competitor load), Enrichment Diversity, Market Depth, Market Balance Index. Plus a mini table of ~6 sample premium providers with weekly status badges (sold_out / waitlist / open) and a "Show Formula" drawer per sub-score (static).
+   - **Site Analysis** demo = **Trinity (Westlake), Austin** vs **LeafSpring, Austin** side-by-side (the SOW's positive vs negative anchor). Show 5 sub-scores per the SOW formula, isochrone map placeholder (static SVG or shaded box labeled "10/15-min drive-time isochrone — demo"), and a compare strip up to 4 slots (2 filled, 2 empty).
+   - Every numeric value gets a `Sample data` micro-label and the page-level banner reads **"Demo Preview — Backend Coming Soon"** in the same amber/orange style used by `PlaceholderPage`'s "Coming Soon" chip.
 
-## What I will change
+3. **Exact sidebar labels.** `Market Validation` and `Site Analysis`. Short, matches the SOW and Brett's sketch ("Market Validation layer", "Site Analysis Engine").
 
-### 1. New single source of truth: `src/data/userGuideMarkdown.ts`
-A plain-English markdown doc that has **parity with the Spec** but in friendly voice. Sections:
+4. **File structure (new files only).**
+   - `src/pages/MarketValidation.tsx`
+   - `src/pages/SiteAnalysis.tsx`
+   - `src/components/phase2-demo/DemoBanner.tsx` (the "Demo Preview — Backend Coming Soon" banner)
+   - `src/components/phase2-demo/SampleDataBadge.tsx` (small chip used inline)
+   - `src/data/phase2DemoData.ts` (all hardcoded mock values — Frisco market, Trinity + LeafSpring sites)
+   Files I'll touch (additive only, no logic changes):
+   - `src/App.tsx` — add 2 lazy imports, 2 `<Route>` entries, 2 `registerRoutePrefetch` lines
+   - `src/components/AppSidebar.tsx` — add 2 entries to `primaryNavItems` array
+   - `src/lib/usePageTitle.ts` — add 2 entries so tab titles are correct
+   No edits to existing pages, hooks, stores, Supabase queries, edge functions, schema, or backend logic.
 
-1. Welcome + who it's for
-2. The 4 design principles
-3. The journey end-to-end
-4. **Feature 1 — City Search** (817 cities, 12 SOW metrics in 3 categories, Tier A/B/C/D, "one calibrated number everywhere", Show Formula, Compare up to 3, weighting sliders, Ask AI 3-tier TAM rule, City Notes, Export Raw Signals, Find Teachers handoff)
-5. **Feature 2 — Teacher Search** (fit score, Market Context Banner, Next Best Action Strip, Saved Lists, Bulk Action Bar, Outreach Intelligence, Promote)
-6. **Feature 3 — Email Outreach** (Master Teacher DB vs SmartLead toggle, CSV import with AI mapping, dedupe + verification preview, push-to-campaign with live filter preview, 7 reply buckets, warm-up status banner, transactional email infrastructure summary)
-7. **Feature 4 — Candidate Pipeline** (7 stages, six-criteria scorecard, Documents tab, manual votes, score override, compliance audit log, 16-day FDD hard gate, Step 2/4 uploads, Export Packet, days-in-stage, card anatomy)
-8. **Neuron AI (⌘K)** — what it does, when to use it
-9. **Notifications (header bell)** — what triggers alerts
-10. **Database Health & Observability** — Haseeb/Brett only, what it surfaces
-11. **In-app reference docs** — links to Spec, Demographics Methodology, Email Outreach Docs, Observability Guide, SmartLead Spec
-12. **Phase 2 — what's coming** (one-line each: Market Validation 1A, Site Analysis 1B, Candidate portal, Teacher Search 1.5, SmartLead 1.5, Mailboxes, Video Training, Manus CSI app)
-13. Quick answers (FAQ — refreshed)
-14. Where to go when stuck
+5. **Safeguards — confirmed.** No Supabase calls, no edits to existing routes/pages/components, no new npm deps, no env/build changes, no schema changes. Every value rendered is a literal from `phase2DemoData.ts`.
 
-### 2. Refactor `src/pages/UserGuide.tsx`
-- Keep the branded hero, principles strip, journey strip, card-anatomy section, and closing CTA (visual identity stays).
-- Replace the long static feature/FAQ JSX blocks with a `<ReactMarkdown>` render of `USER_GUIDE_MARKDOWN` for the sections that need parity with the Spec. This guarantees the page and the .md file can never drift.
-- Add a **Download Markdown** button (and Print/Save-as-PDF) in the PageHeader action slot, using the same handler pattern as `src/pages/Spec.tsx`.
-- Keep `AiAssistant` floating launcher and per-feature "Ask AI about X" buttons.
+6. **How the approved layout becomes the real page later.** No merge or copy step needed. Week 3 plan: the *same* `MarketValidation.tsx` and `SiteAnalysis.tsx` files get wired to Supabase reads (replacing the imports from `phase2DemoData.ts` with hooks like `useMarketValidationCity(cityId)`). The visual components stay; only the data source swaps. The demo banner gets removed when the page is live. This is the same pattern Phase 1 used (Spec page, Observability) — the page file survives, the data source is swapped underneath.
 
-### 3. Refresh `supabase/functions/_shared/aiAssistantKB.ts`
-Rewrite the KB so the assistant can answer accurately on:
-- 817 cities, 12 SOW metrics in 3 categories, Tier A/B/C/D, "one calibrated number everywhere" recompute rule, Show Formula, Ask AI 3-tier TAM rule, City Notes, Export Raw Signals.
-- Teacher Search: Market Context Banner, Next Best Action Strip, Saved Lists, Bulk Action Bar.
-- Email Outreach: Master Teacher DB vs SmartLead toggle, CSV AI mapping, 7 reply buckets (Interested, Meeting, Info, Soft No, Wrong Person, Not Interested, OOO), warm-up status, transactional email infra.
-- Candidate Pipeline: correct 7 stages, Documents tab, manual votes, score override + audit log, 16-day FDD hard gate, Export Packet.
-- Neuron AI ⌘K, Header-bell Notifications, Database Health & Observability.
-- Phase 2 SOW one-liner per item; Manus CSI v2.
-- Updated team roles (Kaylie, Brett, Haseeb, Sam, recruiting staff).
-- Keep the voice rules, follow-ups protocol, and brand voice exactly as today.
+## Implementation steps
 
-### 4. `AiAssistant.tsx` context prompts
-Update the per-context `SUGGESTIONS.prompts` so the starter chips reflect new surfaces (e.g. Email Outreach chips mention the 7 buckets and Master Pool vs SmartLead; Candidate Pipeline chips mention Documents, 16-day gate, Export Packet; add the same per-context chip set for Neuron AI / Notifications / Observability if we expose them). No new contexts beyond the existing 5 unless needed.
+1. Add `phase2DemoData.ts` with two exported constants: `friscoMarketValidationDemo` and `austinSiteAnalysisDemo` (Trinity + LeafSpring + 2 empty slots).
+2. Build `DemoBanner` (full-width amber banner: "Demo Preview — Backend Coming Soon · Sample data only — not connected to Supabase").
+3. Build `MarketValidation.tsx`:
+   - PageHeader title "Market Validation" + Phase-2 demo chip
+   - DemoBanner at top
+   - Composite score card (large number, tier label, formula drawer)
+   - 6 sub-score cards in a responsive grid (same `Card` + `border` styling as City Search)
+   - Premium provider sample table (6 rows, week-status badges)
+   - Footer note linking to `phase-2-sow.md` Item 1 for the locked formula
+4. Build `SiteAnalysis.tsx`:
+   - PageHeader title "Site Analysis" + Phase-2 demo chip
+   - DemoBanner
+   - Up-to-4 compare strip (Trinity + LeafSpring filled; 2 empty "Add candidate site" cards, disabled)
+   - 5 sub-score cards per site
+   - Static isochrone placeholder (gray rounded box with two concentric rings + "10 min / 15 min — demo" caption)
+   - Footer note linking to `phase-2-sow.md` Item 2
+5. Register routes in `App.tsx` at `/market-validation` and `/site-analysis`. Add prefetch + title entries.
+6. Add the 2 sidebar items between City Search and Teacher Search with a small `Demo` chip.
+7. Update `.lovable/phase-2/phase-2-status.md` (Item 1 + Item 2 → "demo-shipped" sub-status) and log the change in `.lovable/phase-2/CHANGELOG.md` per the Phase-2 rule.
 
-### 5. Maintenance
-- Add a `CHANGELOG_HASEEB.md` entry: "User's Guide v1.4 parity refresh + downloadable .md + AI Assistant KB refresh".
-- Update `.lovable/plan.md` with a one-line note.
+## Out of scope this session
 
-## What I will NOT do
-- No app behavior, schema, edge-function logic, RLS, or Phase 2 SOW changes.
-- No re-design of the User's Guide visual identity (yellow/navy/red branded sections stay).
-- No new routes, no new tables.
-- Documentation + KB only.
-
-## Files touched
-- **new** `src/data/userGuideMarkdown.ts`
-- **edit** `src/pages/UserGuide.tsx` (refactor to render markdown + add Download button)
-- **edit** `supabase/functions/_shared/aiAssistantKB.ts` (full rewrite to v1.4)
-- **edit** `src/components/AiAssistant.tsx` (refresh `SUGGESTIONS` prompts)
-- **edit** `CHANGELOG_HASEEB.md`, `.lovable/plan.md`
+- Any Supabase tables, edge functions, or queries.
+- PDF generation (Sections 12 / 10 in the SOW).
+- Confidence-gate QA queue UI.
+- Real isochrone rendering (Mapbox/HERE).
+- Any edits to City Search, Teacher Search, Candidate Pipeline, Email Outreach, Observability, Onboarding.
 
 Approve and I'll implement.

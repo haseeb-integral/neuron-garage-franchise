@@ -343,6 +343,78 @@ export default function SiteAnalysis() {
         note="Calibration anchors shown: Trinity (positive — operating NG site) vs LeafSpring (negative — closed 2023, far from customer base). The locked acceptance gate: LeafSpring must score materially lower than Trinity."
       />
 
+      {/* Analyze a site — static input form (1B-LOV-1) */}
+      <section className="mb-4 rounded-lg border bg-white p-4" style={{ borderColor: BORDER }}>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <h3 className="text-[13px] font-bold" style={{ color: NAVY }}>
+            Analyze a site
+          </h3>
+          <SampleDataBadge label="Inputs not wired" />
+        </div>
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
+          <label className="flex flex-col gap-1 text-[11px]" style={{ color: MUTED }}>
+            School name *
+            <input
+              type="text"
+              disabled
+              placeholder="e.g. Trinity Episcopal School"
+              className="rounded-md border px-2 py-1.5 text-[12px] disabled:bg-[#f7faff]"
+              style={{ borderColor: BORDER, color: NAVY }}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-[11px]" style={{ color: MUTED }}>
+            Address *
+            <input
+              type="text"
+              disabled
+              placeholder="3901 Bee Caves Rd, Austin, TX 78746"
+              className="rounded-md border px-2 py-1.5 text-[12px] disabled:bg-[#f7faff]"
+              style={{ borderColor: BORDER, color: NAVY }}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-[11px]" style={{ color: MUTED }}>
+            School type (optional)
+            <select
+              disabled
+              className="rounded-md border px-2 py-1.5 text-[12px] disabled:bg-[#f7faff]"
+              style={{ borderColor: BORDER, color: NAVY }}
+            >
+              <option>Private elementary</option>
+              <option>Public elementary</option>
+              <option>Charter elementary</option>
+              <option>Montessori</option>
+              <option>Other K-8</option>
+              <option>Other</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-[11px]" style={{ color: MUTED }}>
+            Enrollment (optional)
+            <input
+              type="number"
+              disabled
+              placeholder="540"
+              className="rounded-md border px-2 py-1.5 text-[12px] disabled:bg-[#f7faff]"
+              style={{ borderColor: BORDER, color: NAVY }}
+            />
+          </label>
+        </div>
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <p className="text-[11px]" style={{ color: MUTED }}>
+            Demo — inputs are not wired. Trinity vs LeafSpring shown below as calibration anchors per SOW Item 2.
+          </p>
+          <button
+            type="button"
+            disabled
+            className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px] font-semibold"
+            style={{ backgroundColor: SOFT, color: MUTED, border: `1px solid ${BORDER}` }}
+          >
+            <Search size={12} />
+            Analyze site
+          </button>
+        </div>
+      </section>
+
+
       <section className="mb-5 rounded-lg border bg-white p-5" style={{ borderColor: BORDER }}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 max-w-2xl">

@@ -161,12 +161,13 @@ function SiteCard({ site }: { site: SiteAnalysisDemoSite }) {
   const tier = tierBadge(site.composite);
   const grade = shortGradeAlignment(site.gradeAlignment);
   const s = site.subScores;
+  const access = SITE_ACCESSIBILITY_CALLOUTS[site.id];
   const rowDefs = [
-    { label: "School Profile", value: s.schoolProfile.value, weight: s.schoolProfile.weight, formula: s.schoolProfile.formula },
-    { label: "Neighborhood Affluence", value: s.neighborhoodAffluence.value, weight: s.neighborhoodAffluence.weight, formula: s.neighborhoodAffluence.formula },
-    { label: "Family Density", value: s.familyDensity.value, weight: s.familyDensity.weight, formula: s.familyDensity.formula },
-    { label: "School Ecosystem", value: s.schoolEcosystem.value, weight: s.schoolEcosystem.weight, formula: s.schoolEcosystem.formula },
-    { label: "Accessibility", value: s.accessibility.value, weight: s.accessibility.weight, formula: s.accessibility.formula },
+    { label: "School Profile", value: s.schoolProfile.value, weight: s.schoolProfile.weight, formula: s.schoolProfile.formula, extra: <SchoolProfileFactors /> as React.ReactNode },
+    { label: "Neighborhood Affluence", value: s.neighborhoodAffluence.value, weight: s.neighborhoodAffluence.weight, formula: s.neighborhoodAffluence.formula, extra: undefined as React.ReactNode },
+    { label: "Family Density", value: s.familyDensity.value, weight: s.familyDensity.weight, formula: s.familyDensity.formula, extra: undefined as React.ReactNode },
+    { label: "School Ecosystem", value: s.schoolEcosystem.value, weight: s.schoolEcosystem.weight, formula: s.schoolEcosystem.formula, extra: undefined as React.ReactNode },
+    { label: "Accessibility", value: s.accessibility.value, weight: s.accessibility.weight, formula: s.accessibility.formula, extra: undefined as React.ReactNode },
   ];
   const [openSet, setOpenSet] = useState<Set<string>>(new Set());
   const allOpen = openSet.size === rowDefs.length;

@@ -44,12 +44,14 @@ interface SubScoreCardProps {
   signals: { label: string; value: string }[];
   formula: string;
   confidence: { level: ConfidenceLevel; note: string };
+  topSlot?: React.ReactNode;
+  bottomSlot?: React.ReactNode;
 }
 
 const CHIP =
   "inline-flex items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-semibold";
 
-function SubScoreCard({ title, subtitle, weight, value, signals, formula, confidence }: SubScoreCardProps) {
+function SubScoreCard({ title, subtitle, weight, value, signals, formula, confidence, topSlot, bottomSlot }: SubScoreCardProps) {
   const [open, setOpen] = useState(false);
   return (
     <div className="flex flex-col rounded-lg border bg-white p-4" style={{ borderColor: BORDER, minHeight: 280 }}>
@@ -78,6 +80,29 @@ function SubScoreCard({ title, subtitle, weight, value, signals, formula, confid
         </div>
       </div>
 
+      {/* Weight slider — disabled preview affordance (1A-LOV-2) */}
+      <div className="mt-2.5 rounded-md border border-dashed p-2" style={{ borderColor: BORDER }}>
+        <div className="mb-1 flex items-center justify-between text-[10px]" style={{ color: MUTED }}>
+          <span>Weight</span>
+          <span className="font-semibold tabular-nums" style={{ color: NAVY }}>
+            {Math.round(weight * 100)}%
+          </span>
+        </div>
+        <Slider
+          disabled
+          value={[Math.round(weight * 100)]}
+          min={5}
+          max={40}
+          step={1}
+          aria-label={`${title} weight`}
+        />
+        <p className="mt-1 text-[9px]" style={{ color: MUTED }}>
+          Static for v1 — re-weightable in v1.1 per SOW Item 1.
+        </p>
+      </div>
+
+      {topSlot && <div className="mt-3">{topSlot}</div>}
+
       <ul className="mt-3 space-y-1.5">
         {signals.map((s) => (
           <li key={s.label} className="flex items-baseline justify-between gap-3 text-[12px]">
@@ -89,6 +114,8 @@ function SubScoreCard({ title, subtitle, weight, value, signals, formula, confid
           </li>
         ))}
       </ul>
+
+      {bottomSlot && <div className="mt-3">{bottomSlot}</div>}
 
       <div className="mt-auto pt-3">
         <button

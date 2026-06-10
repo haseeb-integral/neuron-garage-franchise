@@ -235,10 +235,22 @@ function SiteCard({ site }: { site: SiteAnalysisDemoSite }) {
 
       {/* Isochrone band */}
       <div className="mt-3">
+        <div className="mb-1 flex flex-wrap items-center gap-1">
+          <span
+            className={CHIP}
+            style={{ backgroundColor: SOFT, color: BLUE }}
+            title="Per SOW Item 2: drive-time isochrones weighted 10-min 60% / 15-min 40%."
+          >
+            10-min 60% · 15-min 40%
+          </span>
+          <span className={CHIP} style={{ backgroundColor: "#eef2f7", color: MUTED }}>
+            Drive-time
+          </span>
+        </div>
         <IsochronePlaceholder />
       </div>
 
-      {/* Callout grid — fixed 3×2 */}
+      {/* Callout grid — 3×2 (demographics + accessibility) */}
       <div className="mt-2 grid grid-cols-3 gap-1.5 text-[11px]">
         <div className="rounded-md p-1.5" style={{ backgroundColor: SOFT }}>
           <div className="text-[9px] uppercase tracking-wide" style={{ color: MUTED }}>Median HHI · 10m</div>
@@ -249,22 +261,23 @@ function SiteCard({ site }: { site: SiteAnalysisDemoSite }) {
           <div className="truncate font-bold tabular-nums" style={{ color: NAVY }}>{site.isochroneCallouts.pctOver150k10min}</div>
         </div>
         <div className="rounded-md p-1.5" style={{ backgroundColor: SOFT }}>
-          <div className="text-[9px] uppercase tracking-wide" style={{ color: MUTED }}>Dual-Inc · 10m</div>
-          <div className="truncate font-bold tabular-nums" style={{ color: NAVY }}>{site.isochroneCallouts.pctDualIncome10min}</div>
-        </div>
-        <div className="rounded-md p-1.5" style={{ backgroundColor: SOFT }}>
-          <div className="text-[9px] uppercase tracking-wide" style={{ color: MUTED }}>Fams kids 5–12 · 10m</div>
-          <div className="truncate font-bold tabular-nums" style={{ color: NAVY }}>{site.isochroneCallouts.familiesWithKids5to12Within10min}</div>
-        </div>
-        <div className="rounded-md p-1.5" style={{ backgroundColor: SOFT }}>
           <div className="text-[9px] uppercase tracking-wide" style={{ color: MUTED }}>Kids 5–12 · 10m</div>
           <div className="truncate font-bold tabular-nums" style={{ color: NAVY }}>{site.isochroneCallouts.children5to12Within10min}</div>
         </div>
-        <div className="rounded-md p-1.5" style={{ backgroundColor: SOFT }}>
-          <div className="text-[9px] uppercase tracking-wide" style={{ color: MUTED }}>Kids 5–12 · 15m</div>
-          <div className="truncate font-bold tabular-nums" style={{ color: NAVY }}>{site.isochroneCallouts.children5to12Within15min}</div>
+        <div className="rounded-md p-1.5" style={{ backgroundColor: "#eef6ff" }} title="Accessibility — distance to highway entrance.">
+          <div className="text-[9px] uppercase tracking-wide" style={{ color: MUTED }}>Drive to hwy</div>
+          <div className="truncate font-bold" style={{ color: NAVY }}>{access?.driveToHighway ?? "—"}</div>
+        </div>
+        <div className="rounded-md p-1.5" style={{ backgroundColor: "#eef6ff" }} title="Accessibility — est. parking capacity on site.">
+          <div className="text-[9px] uppercase tracking-wide" style={{ color: MUTED }}>Parking</div>
+          <div className="truncate font-bold" style={{ color: NAVY }}>{access?.parkingSpaces ?? "—"}</div>
+        </div>
+        <div className="rounded-md p-1.5" style={{ backgroundColor: "#eef6ff" }} title="Accessibility — total population reachable within 15-min drive.">
+          <div className="text-[9px] uppercase tracking-wide" style={{ color: MUTED }}>Pop · 15m</div>
+          <div className="truncate font-bold tabular-nums" style={{ color: NAVY }}>{access?.popReachable15min ?? "—"}</div>
         </div>
       </div>
+
 
       {/* Sub-score list — scrolls internally so formula drawers don't break grid */}
       <div className="mt-3 flex flex-1 flex-col">

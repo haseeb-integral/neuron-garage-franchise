@@ -236,6 +236,7 @@ export interface SiteAnalysisDemoSite {
   address: string;
   schoolType: "Private elementary" | "Public elementary" | "Charter elementary" | "Montessori" | "Other K-8" | "Other";
   enrollment: number;
+  gradeAlignment: string;
   composite: number;
   verdict: string;
   subScores: {
@@ -248,10 +249,18 @@ export interface SiteAnalysisDemoSite {
   isochroneCallouts: {
     medianHHI10min: string;
     pctOver150k10min: string;
+    pctDualIncome10min: string;
     children5to12Within10min: string;
     children5to12Within15min: string;
+    familiesWithKids5to12Within10min: string;
   };
 }
+
+export const SITE_RECOMMEND_THRESHOLDS = {
+  recommend: 75,
+  worthALook: 60,
+} as const;
+
 
 export const austinSiteAnalysisDemo: {
   filled: SiteAnalysisDemoSite[];
@@ -264,6 +273,7 @@ export const austinSiteAnalysisDemo: {
       address: "3901 Bee Caves Rd, Austin, TX 78746",
       schoolType: "Private elementary",
       enrollment: 540,
+      gradeAlignment: "K–8 · matches NG 5–12 ✓",
       composite: 86,
       verdict: "Strong site. Affluent, dense, accessible. Matches profile of current high-performing NG locations.",
       subScores: {
@@ -301,8 +311,10 @@ export const austinSiteAnalysisDemo: {
       isochroneCallouts: {
         medianHHI10min: "$178k",
         pctOver150k10min: "44%",
+        pctDualIncome10min: "67%",
         children5to12Within10min: "9,420",
         children5to12Within15min: "28,140",
+        familiesWithKids5to12Within10min: "5,680",
       },
     },
     {
@@ -311,6 +323,7 @@ export const austinSiteAnalysisDemo: {
       address: "Austin daycare facility, north of customer base",
       schoolType: "Other",
       enrollment: 220,
+      gradeAlignment: "Daycare PK–K · misaligned vs NG 5–12 ✗",
       composite: 41,
       verdict:
         "Calibration anchor — known negative. Commute from established customer base and weak school-type fit drag the score below the recommend threshold.",
@@ -349,8 +362,10 @@ export const austinSiteAnalysisDemo: {
       isochroneCallouts: {
         medianHHI10min: "$94k",
         pctOver150k10min: "16%",
+        pctDualIncome10min: "48%",
         children5to12Within10min: "3,210",
         children5to12Within15min: "11,840",
+        familiesWithKids5to12Within10min: "1,940",
       },
     },
   ],

@@ -1,65 +1,56 @@
+# Plan: Phase 2 Timeline Stakeholder Doc — June 2026
 
-# Plan — Close 9 SOW gaps on the two demo pages
+Deliver a concise, visual, non-technical 1–2 page Google Doc summarizing Phase 2 progress (June W1–W4) and share via Google Docs link. Also save a DOCX + PDF mirror to `/mnt/documents/` as backups.
 
-All UI-only. No backend, no routing, no schema. Demo data only. Same visual system already in place (CHIP style, fixed-height bands, scrollable formula drawer).
+## Document outline
 
-## Market Validation (`src/pages/MarketValidation.tsx` + `src/data/phase2DemoData.ts`)
+**Title:** Phase 2 Development Timeline — June 2026
+**Subtitle:** Neuron Garage Platform · Stakeholder Update
 
-### 1A-LOV-1 — Human-QA queue link
-- Add a small "QA queue · 4 flagged" chip in the page header, right of the scrape date. Tooltip: "Records with extraction confidence <0.7 route here for 4-button review per SOW Item 1."
-- Non-functional anchor (`<button>`). Add 1 sentence to `LowConfidenceBadge` tooltip pointing to the queue.
+**1. Overview (2 sentences)**
+Phase 2 expands the platform with two new market intelligence features — Market Validation and Site Analysis — backed by upgraded data pipelines. June is a 4-week sprint moving from architecture to live demo pages to backend integration and client-tested refinements.
 
-### 1A-LOV-2 — Re-weightable sliders (visual only)
-- Inside each sub-score card, under the existing weight chip, render a disabled `Slider` (shadcn) preset to the SOW weight with a 5–40% range and a tiny "Static for v1 — re-weightable in v1.1" caption.
-- All 6 sub-score cards get the slider. Sliders are `disabled` so they read as a preview affordance.
+**2. At-a-glance status strip**
+A single visual row: W1 ✅ Done · W2 📋 In Progress · W3 🔧 Planned · W4 🔧 Planned.
 
-### 1A-LOV-3 — Scaled Operator two-number diagnostic
-- Extend `scaledOperator.signals` so the card shows two numbers side-by-side at the top:
-  - "Operator Validation: 5 / 8" (positive signal)
-  - "Direct Competitor Load: 2.1 / 10k kids" (saturation signal)
-- Small caption: "Validation lifts score; load suppresses it (see formula)."
+**3. Four-week timeline (table, one row per week)**
+Columns: Week · Status · Focus · Key Deliverables.
 
-### 1A-LOV-4 — Market Balance band chip
-- On the Market Balance card, replace the plain "Underserved (≥350)" signal row with a colored band chip rendered above signals:
-  - Underserved (green) · Balanced (blue) · Competitive (amber) · Saturated (red)
-- Show the 4-band legend inline beneath the chip in the same CHIP style. Active band uses solid fill, others muted.
+- **Week 1 — ✅ Complete** · Architecture & Planning · Locked Phase 2 scope with Manus + Lovable; finalized build sequence; vendor and scoring-helper decisions made.
+- **Week 2 — 📋 In Progress (current)** · Demo Pages Live · Market Validation and Site Analysis pages shipped as visual mockups, now visible in the left sidebar. Stakeholder feedback collection and backend triage underway.
+- **Week 3 — 🔧 Planned** · Backend Wiring & Calibration · Connect both features to live data; internal testing; calibration checks against known reference markets and sites.
+- **Week 4 — 🔧 Planned** · Feedback & Refinement · Iterate on stakeholder feedback from the demo and Week 3 testing; polish for broader review.
 
-### 1A-LOV-5 — Sellout curve / scrape cadence
-- Add a 5-dot horizontal timeline below the composite header: Jan / Mar / Jun / Sep / Nov dots, current scrape (Mar) highlighted. Label: "Scrape cadence — 5x/yr per SOW."
-- Add a tiny inline "sellout curve" sparkline on the Market Absorption card: 5 ticks across `Wk1–Wk5` showing % sold_out+waitlist from `friscoMarketValidationDemo.premiumProviders` (computed inline, no new data).
+**4. Featured this week — what's new in the platform**
+Two short callouts (with light iconography):
+- **Market Validation** — a per-city scoring view that combines demand, pricing, absorption, operator landscape, and market balance signals into one composite read.
+- **Site Analysis** — a side-by-side comparison view for candidate sites with reach, demographics, school profile, competition, and accessibility factors.
+Note: both pages currently show illustrative sample data; live data lands in Week 3.
 
-## Site Analysis (`src/pages/SiteAnalysis.tsx` + `src/data/phase2DemoData.ts`)
+**5. What's next (Weeks 3–4)**
+Three bullets: live data wiring, calibration against reference markets/sites, then a client-feedback refinement pass before Phase 2 review.
 
-### 1B-LOV-1 — Static input form
-- Add a collapsed `Card` above the compare strip titled "Analyze a site" with 4 inputs (School Name, Address, School Type select, Enrollment number) and a disabled "Analyze" button. Helper text: "Demo — inputs not wired. Trinity vs LeafSpring shown below as calibration anchors."
+**6. Footer**
+Prepared June 10, 2026 · Neuron Garage × Lovable · Questions: Haseeb / Brett.
 
-### 1B-LOV-2 — Isochrone weighting note
-- On each site card, above the isochrone placeholder, add a single-line meta row: "10-min weighted 60% · 15-min weighted 40%" using the CHIP style. Tooltip cites SOW Item 2.
+## Visual design
 
-### 1B-LOV-3 — School Profile factor table in Show Formula
-- Expand the School Profile sub-score's formula drawer to render a small 3-row table after the formula string:
-  - school_type_factor → Private elem 1.0 · Charter 0.85 · Public 0.75 · Montessori 0.9 · Other 0.5
-  - enrollment normalize range: 150–800
-  - grade_alignment_factor → matches NG 5–12: 1.0 · partial: 0.6 · misaligned: 0.2
-- Pull values from a new `SCHOOL_PROFILE_FACTORS` constant in `phase2DemoData.ts`.
+- Brand-aligned palette pulled from the app (deep navy `#07142f`, blue accent `#174be8`, soft bg `#f7faff`, muted text `#526078`, success green, amber for in-progress).
+- Arial throughout (universally renders in Google Docs).
+- Status uses both an emoji and a colored chip so it scans without relying on color alone.
+- Timeline as a clean bordered table, not a wall of text. Light row shading on the current week (W2).
+- Two feature callouts as a 2-column mini-table with bold feature name + 1-sentence description.
+- Tight margins (0.8") so it lands at ~1.5 pages.
 
-### 1B-LOV-4 — Accessibility callouts
-- Swap the third isochrone callout cell on each site card from a demographics repeat to accessibility data: "Drive to highway", "Parking spaces (est.)", "Pop reachable 15-min". Add `accessibilityCallouts` to each demo site (Trinity strong, LeafSpring weak).
+## How it will be produced
 
-## Technical notes
-
-- Reuse the existing `CHIP` constant and fixed-height band layout. No new design tokens.
-- All new chips use existing semantic colors (`bg-muted`, `bg-emerald-100`, `bg-amber-100`, `bg-rose-100`, `bg-sky-100` via Tailwind defaults already in use).
-- Slider import: `@/components/ui/slider` (already in project).
-- Add 2 small constants to `phase2DemoData.ts` (`SCHOOL_PROFILE_FACTORS`, `accessibilityCallouts` per site, `qaQueueCount = 4`, `scrapeCadence` array). No shape-breaking changes to existing exports.
-- Update `.lovable/phase-2/CHANGELOG.md` and `phase-2-status.md` flipping the 9 LOV items from "gap" to "demo-stub present".
+1. Generate `Neuron-Garage-Phase-2-June-Timeline.docx` locally with `docx-js` (matches the prior Phase 2 plain-English doc approach: Arial, proper page breaks, clean table styling). Also render a PDF mirror for preview.
+2. QA: convert to images and visually check each page for overflow, spacing, color contrast, and chip alignment. Fix and re-render if needed.
+3. Create a Google Doc via the Google Docs connector (TipTap → batchUpdate path), titled "Phase 2 Development Timeline — June 2026", with the same content and styling adapted to Docs (headings, table, shading, bold).
+4. Return: the Google Doc shareable URL + `/mnt/documents/` artifacts (DOCX + PDF) as backups.
 
 ## Out of scope
 
-- No real input wiring, no PDF generation, no map tiles, no Supabase, no new routes.
-- No restyle of pages beyond the additions above.
-
-## Verification
-
-- Type-check clean.
-- Visual pass at 1920 / 1366 / 971 widths: cards stay aligned, formula drawers still scroll internally, header row doesn't wrap.
+- No code changes, no route changes, no Supabase changes.
+- No edits to `.lovable/phase-2/` source-of-truth files (this is a stakeholder communication, not a SOW update).
+- No Week 5–6 grace-week detail — kept off the doc to stay 1–2 pages and on the "June W1–W4" ask.

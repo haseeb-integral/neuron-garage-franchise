@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Download, FileText, MapPin, Plus } from "lucide-react";
+import { ChevronDown, ChevronUp, Download, FileText, MapPin, Plus, Search } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
 import { DemoBanner } from "@/components/phase2-demo/DemoBanner";
 import { SampleDataBadge } from "@/components/phase2-demo/SampleDataBadge";
 import {
   austinSiteAnalysisDemo,
+  SCHOOL_PROFILE_FACTORS,
+  SITE_ACCESSIBILITY_CALLOUTS,
   SITE_RECOMMEND_THRESHOLDS,
   type SiteAnalysisDemoSite,
 } from "@/data/phase2DemoData";

@@ -1,7 +1,6 @@
 /**
  * Amber pill rendered on Phase 2 demo pages when a sub-score's extraction
- * confidence falls below Sam's 0.7 threshold. Mirrors the SOW gate that routes
- * low-confidence weeks to the human QA queue.
+ * confidence falls below Sam's 0.7 threshold. Shares geometry with other meta chips.
  */
 export function LowConfidenceBadge({
   level,
@@ -13,11 +12,11 @@ export function LowConfidenceBadge({
   if (level === "high") return null;
   const palette =
     level === "low"
-      ? { bg: "#fce7ec", fg: "#a3142b", label: "Low confidence" }
-      : { bg: "#fff1d6", fg: "#925100", label: "Medium confidence" };
+      ? { bg: "#fce7ec", fg: "#a3142b", label: "Low conf." }
+      : { bg: "#fff1d6", fg: "#925100", label: "Med. conf." };
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-full px-1.5 py-px text-[10px] font-bold uppercase tracking-wide"
+      className="inline-flex items-center gap-0.5 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
       style={{ backgroundColor: palette.bg, color: palette.fg }}
       title={note ?? "Routed to human QA queue (confidence < 0.7)"}
     >

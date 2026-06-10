@@ -1,12 +1,17 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Download, FileText, MapPin } from "lucide-react";
+import { AlertCircle, ChevronDown, ChevronUp, Download, FileText, MapPin } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
 import { DemoBanner } from "@/components/phase2-demo/DemoBanner";
 import { LowConfidenceBadge } from "@/components/phase2-demo/LowConfidenceBadge";
 import { SampleDataBadge } from "@/components/phase2-demo/SampleDataBadge";
+import { Slider } from "@/components/ui/slider";
 import {
   friscoMarketValidationDemo,
+  MARKET_BALANCE_ACTIVE_BAND,
+  MARKET_BALANCE_BANDS,
+  QA_QUEUE_FLAGGED_COUNT,
+  SCRAPE_CADENCE,
   type AbsorptionStatus,
   type ConfidenceLevel,
 } from "@/data/phase2DemoData";

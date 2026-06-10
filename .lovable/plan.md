@@ -1,70 +1,59 @@
-# Phase 2 — Week 2: Demo Mockup Pages for Market Validation & Site Analysis
+# Phase 2 Demo Pages — Pre-Sam Audit & Polish Plan
 
-## Answers to your questions
+Sources re-read: `summary-neuron-garage-module1-enhancements-v2.md` and `summary-transcript Sam meeting May 29.md` (PDF/txt summaries — exact formulas already encoded in `phase2DemoData.ts`).
 
-1. **Sidebar placement.** New items go in the **primary nav** in `AppSidebar.tsx`, between `City Search` and `Teacher Search`, in this order:
-   - Dashboard
-   - City Search
-   - **Market Validation** ← NEW (Phase 2 demo)
-   - **Site Analysis** ← NEW (Phase 2 demo)
-   - Teacher Search
-   - Email Outreach
-   - Candidate Pipeline
-   - Data Observability
-   Both new items get a small `Demo` chip next to the label so it's obvious in the nav that these are not live.
+## Audit Results
 
-2. **Demo data approach.** I'll hardcode realistic-looking sample data anchored to cities/sites already familiar from the SOW so Brett/Sam can read it like the real thing:
-   - **Market Validation** demo city = **Frisco, TX** (Sam's PDF uses Galileo Frisco as an example). Show all 6 sub-scores + composite per the locked formula in `phase-2-sow.md`:
-     Pricing Acceptance, Market Absorption (incl. sellout %, time-to-sellout, YoY velocity), Scaled Operator (validation count + direct competitor load), Enrichment Diversity, Market Depth, Market Balance Index. Plus a mini table of ~6 sample premium providers with weekly status badges (sold_out / waitlist / open) and a "Show Formula" drawer per sub-score (static).
-   - **Site Analysis** demo = **Trinity (Westlake), Austin** vs **LeafSpring, Austin** side-by-side (the SOW's positive vs negative anchor). Show 5 sub-scores per the SOW formula, isochrone map placeholder (static SVG or shaded box labeled "10/15-min drive-time isochrone — demo"), and a compare strip up to 4 slots (2 filled, 2 empty).
-   - Every numeric value gets a `Sample data` micro-label and the page-level banner reads **"Demo Preview — Backend Coming Soon"** in the same amber/orange style used by `PlaceholderPage`'s "Coming Soon" chip.
+### Market Validation page
 
-3. **Exact sidebar labels.** `Market Validation` and `Site Analysis`. Short, matches the SOW and Brett's sketch ("Market Validation layer", "Site Analysis Engine").
+| # | Item | Status | Effort | Ship before Sam? |
+|---|---|---|---|---|
+| 1 | Sub-score formula weights in "Show formula" drawer (e.g., `0.40 × median + 0.40 × 75th pct + 0.20 × % at $500+`) | ✅ Already shipped — `SubScoreCard` renders `formula` string from `phase2DemoData.ts` for all 6 sub-scores | — | n/a |
+| 2 | Low-confidence badge when extraction confidence < 0.7 (Sam's "human QA queue" gate) | ❌ Missing | Quick | **Yes** — core Sam principle |
+| 3 | City selector to switch shortlisted cities | ❌ Missing | Quick (static dropdown, Frisco active, others disabled with "Demo" tooltip) | **Yes** — shows the page is shortlist-aware, not single-city |
+| 4 | PDF export button (non-functional, "Coming Week 3" tooltip) | ❌ Missing | Quick | **Yes** — PDF report is the page's primary output per SOW |
 
-4. **File structure (new files only).**
-   - `src/pages/MarketValidation.tsx`
-   - `src/pages/SiteAnalysis.tsx`
-   - `src/components/phase2-demo/DemoBanner.tsx` (the "Demo Preview — Backend Coming Soon" banner)
-   - `src/components/phase2-demo/SampleDataBadge.tsx` (small chip used inline)
-   - `src/data/phase2DemoData.ts` (all hardcoded mock values — Frisco market, Trinity + LeafSpring sites)
-   Files I'll touch (additive only, no logic changes):
-   - `src/App.tsx` — add 2 lazy imports, 2 `<Route>` entries, 2 `registerRoutePrefetch` lines
-   - `src/components/AppSidebar.tsx` — add 2 entries to `primaryNavItems` array
-   - `src/lib/usePageTitle.ts` — add 2 entries so tab titles are correct
-   No edits to existing pages, hooks, stores, Supabase queries, edge functions, schema, or backend logic.
+### Site Analysis page
 
-5. **Safeguards — confirmed.** No Supabase calls, no edits to existing routes/pages/components, no new npm deps, no env/build changes, no schema changes. Every value rendered is a literal from `phase2DemoData.ts`.
+| # | Item | Status | Effort | Ship before Sam? |
+|---|---|---|---|---|
+| 5 | Sub-score formula weights in drawer | ⚠️ Partial — formulas exist in `phase2DemoData.ts` but `SiteCard` only shows the value bar, no "Show formula" toggle | Quick | **Yes** — parity with 1A |
+| 6 | Grade alignment shown per school | ❌ Missing (data model has `grade_alignment_factor` in formula text only) | Quick | **Yes** — Sam called it out in School Profile |
+| 7 | Dual-income HH % in Neighborhood Affluence breakdown | ❌ Missing from isochrone callouts | Quick | **Yes** — explicit Sam signal |
+| 8 | Families with kids 5–12 count (distinct from raw kid count) | ❌ Missing | Quick | **Yes** |
+| 9 | Recommend threshold visible (≥75 Recommend / 60–74 Worth a look / <60 Do not recommend) | ⚠️ Partial — tier badge shows label but threshold legend is not surfaced | Quick | **Yes** — calibration anchor (Trinity vs LeafSpring) needs the line |
+| 10 | PDF export button (non-functional) | ❌ Missing | Quick | **Yes** |
 
-6. **How the approved layout becomes the real page later.** No merge or copy step needed. Week 3 plan: the *same* `MarketValidation.tsx` and `SiteAnalysis.tsx` files get wired to Supabase reads (replacing the imports from `phase2DemoData.ts` with hooks like `useMarketValidationCity(cityId)`). The visual components stay; only the data source swaps. The demo banner gets removed when the page is live. This is the same pattern Phase 1 used (Spec page, Observability) — the page file survives, the data source is swapped underneath.
+All ten gaps are UI-only. No backend, no schema, no Supabase. All effort = quick. Total estimate: one focused build pass.
 
-## Implementation steps
+## Implementation Plan (UI-only, additive)
 
-1. Add `phase2DemoData.ts` with two exported constants: `friscoMarketValidationDemo` and `austinSiteAnalysisDemo` (Trinity + LeafSpring + 2 empty slots).
-2. Build `DemoBanner` (full-width amber banner: "Demo Preview — Backend Coming Soon · Sample data only — not connected to Supabase").
-3. Build `MarketValidation.tsx`:
-   - PageHeader title "Market Validation" + Phase-2 demo chip
-   - DemoBanner at top
-   - Composite score card (large number, tier label, formula drawer)
-   - 6 sub-score cards in a responsive grid (same `Card` + `border` styling as City Search)
-   - Premium provider sample table (6 rows, week-status badges)
-   - Footer note linking to `phase-2-sow.md` Item 1 for the locked formula
-4. Build `SiteAnalysis.tsx`:
-   - PageHeader title "Site Analysis" + Phase-2 demo chip
-   - DemoBanner
-   - Up-to-4 compare strip (Trinity + LeafSpring filled; 2 empty "Add candidate site" cards, disabled)
-   - 5 sub-score cards per site
-   - Static isochrone placeholder (gray rounded box with two concentric rings + "10 min / 15 min — demo" caption)
-   - Footer note linking to `phase-2-sow.md` Item 2
-5. Register routes in `App.tsx` at `/market-validation` and `/site-analysis`. Add prefetch + title entries.
-6. Add the 2 sidebar items between City Search and Teacher Search with a small `Demo` chip.
-7. Update `.lovable/phase-2/phase-2-status.md` (Item 1 + Item 2 → "demo-shipped" sub-status) and log the change in `.lovable/phase-2/CHANGELOG.md` per the Phase-2 rule.
+### Files to edit
+- `src/data/phase2DemoData.ts` — additive fields only:
+  - `MarketValidationDemo`: add `confidence: { level: "high" | "medium" | "low"; note: string }` per sub-score (mark Market Absorption as `medium` to demo the badge); add `shortlistCities: { city: string; state: string; composite: number; active: boolean }[]` (5 cities, only Frisco active).
+  - `SiteAnalysisDemoSite`: add `gradeAlignment: string` (e.g. "K–5 ✓ matches NG 5–12"), extend `isochroneCallouts` with `pctDualIncome10min` and `familiesWithKids5to12Within10min`.
+- `src/pages/MarketValidation.tsx`:
+  - Add city-selector pill row above composite card (Frisco active; Plano, Naperville, Bellevue, Newton disabled with "Demo — locked to Frisco" tooltip).
+  - Add `LowConfidenceBadge` rendered inside `SubScoreCard` when `confidence.level !== "high"` (amber pill: "Low confidence · routed to human QA").
+  - Add "Export PDF" button (top-right of composite card, disabled, tooltip "Coming Week 3 — branded 12-section report per SOW").
+- `src/pages/SiteAnalysis.tsx`:
+  - Add "Show formula" toggle per sub-score row in `SiteCard` (mirrors 1A pattern).
+  - Add Grade Alignment chip in school header chips row.
+  - Add two new callout tiles in isochrone grid: % Dual-Income · 10 min, Families w/ kids 5–12 · 10 min.
+  - Add threshold legend strip above compare grid: "≥75 Recommend · 60–74 Worth a look · <60 Do not recommend".
+  - Add "Export PDF" button in top toolbar (disabled, same tooltip pattern).
+- `src/components/phase2-demo/` — new tiny shared component `LowConfidenceBadge.tsx` (also reusable on 1B later).
 
-## Out of scope this session
+### Files NOT touched
+- No edits to `App.tsx`, `AppSidebar.tsx`, hooks, stores, Supabase client, edge functions, schema, or any Phase 1 page.
 
-- Any Supabase tables, edge functions, or queries.
-- PDF generation (Sections 12 / 10 in the SOW).
-- Confidence-gate QA queue UI.
-- Real isochrone rendering (Mapbox/HERE).
-- Any edits to City Search, Teacher Search, Candidate Pipeline, Email Outreach, Observability, Onboarding.
+### Verification
+- Type-check passes (no new deps).
+- Visual check on `/market-validation` and `/site-analysis` at current viewport.
+- Every new value still comes from `phase2DemoData.ts` (no inline literals in JSX) — preserves the Week 3 swap pattern.
 
-Approve and I'll implement.
+### Tracking
+- Append one line to `.lovable/phase-2/CHANGELOG.md` ("2026-06-10 — Demo polish for Sam review: confidence badges, city selector, formula drawers on 1B, threshold legend, grade alignment, dual-income + families callouts, disabled PDF export buttons.").
+- Bump status note in `.lovable/phase-2/phase-2-status.md` from `demo-mockup-shipped` → `demo-mockup-shipped · pre-sam-polish`.
+
+Approve and I'll implement in one pass.

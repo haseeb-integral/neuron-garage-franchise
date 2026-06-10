@@ -151,6 +151,94 @@ export default function MarketValidation() {
   const data = friscoMarketValidationDemo;
   const subs = data.subScores;
 
+  // 1A-LOV-5 — Sellout curve from sample weeks (% sold_out + waitlist).
+  const weekLabels = data.premiumProviders[0]?.sampleWeeks.map((w) => w.label) ?? [];
+  const selloutCurve = weekLabels.map((_, idx) => {
+    const total = data.premiumProviders.length;
+    const hot = data.premiumProviders.filter((p) => {
+      const s = p.sampleWeeks[idx]?.status;
+      return s === "sold_out" || s === "waitlist";
+    }).length;
+    return total ? Math.round((hot / total) * 100) : 0;
+  });
+
+  // 1A-LOV-3 — Scaled Operator two-number diagnostic.
+  const scaledDiagnostic = (
+    <div className="grid grid-cols-2 gap-2">
+      <div className="rounded-md border p-2" style={{ borderColor: BORDER, backgroundColor: "#e3f3e7" }}>
+        <div className="text-[9px] uppercase tracking-wide" style={{ color: "#1d6b32" }}>
+          Operator validation
+        </div>
+        <div className="text-[18px] font-black tabular-nums" style={{ color: "#1d6b32" }}>
+          5 <span className="text-[11px] font-semibold" style={{ color: MUTED }}>/ 8</span>
+        </div>
+        <div className="text-[10px]" style={{ color: MUTED }}>National operators present (lifts score)</div>
+      </div>
+      <div className="rounded-md border p-2" style={{ borderColor: BORDER, backgroundColor: "#fce7ec" }}>
+        <div className="text-[9px] uppercase tracking-wide" style={{ color: "#a3142b" }}>
+          Direct competitor load
+        </div>
+        <div className="text-[18px] font-black tabular-nums" style={{ color: "#a3142b" }}>
+          2.1 <span className="text-[11px] font-semibold" style={{ color: MUTED }}>/ 10k kids 5–12</span>
+        </div>
+        <div className="text-[10px]" style={{ color: MUTED }}>Saturation drag (suppresses score)</div>
+      </div>
+    </div>
+  );
+
+  // 1A-LOV-5 — Sellout curve sparkline (Market Absorption).
+  const maxSellout = Math.max(1, ...selloutCurve);
+  const absorptionCurve = (
+    <div className="rounded-md border p-2" style={{ borderColor: BORDER }}>
+      <div className="mb-1 flex items-center justify-between text-[10px]" style={{ color: MUTED }}>
+        <span>Sellout curve · Wk 1–5</span>
+        <span className="font-semibold tabular-nums" style={{ color: NAVY }}>
+          {selloutCurve[selloutCurve.length - 1] ?? 0}% Wk{selloutCurve.length}
+        </span>
+      </div>
+      <div className="flex h-10 items-end gap-1">
+        {selloutCurve.map((v, i) => (
+          <div
+            key={i}
+            className="flex-1 rounded-sm"
+            style={{
+              height: `${(v / maxSellout) * 100}%`,
+              backgroundColor: v >= 60 ? "#a3142b" : v >= 30 ? "#925100" : "#1d6b32",
+              opacity: 0.85,
+            }}
+            title={`${weekLabels[i] ?? `Wk ${i + 1}`}: ${v}% sold_out+waitlist`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+
+  // 1A-LOV-4 — Market Balance band chips.
+  const balanceBands = (
+    <div className="flex flex-wrap gap-1">
+      {MARKET_BALANCE_BANDS.map((b) => {
+        const active = b.key === MARKET_BALANCE_ACTIVE_BAND;
+        return (
+          <span
+            key={b.key}
+            className={CHIP}
+            style={{
+              backgroundColor: active ? b.bg : "#fff",
+              color: active ? b.fg : MUTED,
+              border: `1px solid ${active ? b.bg : BORDER}`,
+              fontWeight: active ? 700 : 500,
+            }}
+            title={`${b.label} · Coverage Ratio ${b.range}`}
+          >
+            {active && "●  "}
+            {b.label} <span className="ml-1 opacity-70">{b.range}</span>
+          </span>
+        );
+      })}
+    </div>
+  );
+
+
   return (
     <>
       <PageHeader

@@ -63,9 +63,10 @@ interface RowProps {
   formula: string;
   open: boolean;
   onToggle: () => void;
+  extra?: React.ReactNode;
 }
 
-function SubScoreRow({ label, value, weight, formula, open, onToggle }: RowProps) {
+function SubScoreRow({ label, value, weight, formula, open, onToggle, extra }: RowProps) {
   return (
     <li>
       <div className="flex items-baseline justify-between gap-2 text-[12px]">
@@ -106,16 +107,55 @@ function SubScoreRow({ label, value, weight, formula, open, onToggle }: RowProps
         />
       </div>
       {open && (
-        <pre
-          className="mt-1.5 whitespace-pre-wrap rounded-md p-2 text-[11px] leading-snug"
-          style={{ backgroundColor: SOFT, color: NAVY, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
-        >
-          {formula}
-        </pre>
+        <>
+          <pre
+            className="mt-1.5 whitespace-pre-wrap rounded-md p-2 text-[11px] leading-snug"
+            style={{ backgroundColor: SOFT, color: NAVY, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
+          >
+            {formula}
+          </pre>
+          {extra && <div className="mt-1.5">{extra}</div>}
+        </>
       )}
     </li>
   );
 }
+
+function SchoolProfileFactors() {
+  return (
+    <div className="rounded-md border p-2 text-[10px]" style={{ borderColor: BORDER, backgroundColor: "#fff" }}>
+      <div className="mb-1 font-semibold uppercase tracking-wide" style={{ color: MUTED }}>
+        School profile factors
+      </div>
+      <div className="mb-1.5">
+        <div className="mb-0.5 font-semibold" style={{ color: NAVY }}>school_type_factor</div>
+        <div className="flex flex-wrap gap-1">
+          {SCHOOL_PROFILE_FACTORS.schoolType.map((r) => (
+            <span key={r.type} className="rounded px-1.5 py-0.5" style={{ backgroundColor: SOFT, color: NAVY }}>
+              {r.type} <span className="font-bold tabular-nums">{r.factor}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+      <div className="mb-1.5">
+        <div className="font-semibold" style={{ color: NAVY }}>
+          enrollment normalize: <span className="tabular-nums">{SCHOOL_PROFILE_FACTORS.enrollmentRange}</span>
+        </div>
+      </div>
+      <div>
+        <div className="mb-0.5 font-semibold" style={{ color: NAVY }}>grade_alignment_factor</div>
+        <div className="flex flex-wrap gap-1">
+          {SCHOOL_PROFILE_FACTORS.gradeAlignment.map((r) => (
+            <span key={r.label} className="rounded px-1.5 py-0.5" style={{ backgroundColor: SOFT, color: NAVY }}>
+              {r.label} <span className="font-bold tabular-nums">{r.factor}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 function SiteCard({ site }: { site: SiteAnalysisDemoSite }) {
   const tier = tierBadge(site.composite);

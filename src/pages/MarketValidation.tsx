@@ -214,13 +214,55 @@ export default function MarketValidation() {
               </h2>
               <SampleDataBadge label="Demo city" />
             </div>
-            <p className="mt-1 text-[12px]" style={{ color: MUTED }}>
-              Scrape date {data.scrapeDate} · Mid-March is the most diagnostic single snapshot in the
-              5-scrape cadence (Year 1 baseline).
-            </p>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px]" style={{ color: MUTED }}>
+              <span>Scrape date {data.scrapeDate}</span>
+              <span>·</span>
+              <button
+                type="button"
+                title={`Records with extraction confidence <0.7 route here for 4-button human review per SOW Item 1. Currently ${QA_QUEUE_FLAGGED_COUNT} flagged.`}
+                className={`${CHIP} cursor-help`}
+                style={{ backgroundColor: "#fff1d6", color: "#925100" }}
+              >
+                <AlertCircle size={10} className="mr-1" />
+                QA queue · {QA_QUEUE_FLAGGED_COUNT} flagged
+              </button>
+            </div>
+            {/* Scrape cadence dots — 1A-LOV-5 */}
+            <div className="mt-2 flex items-center gap-2">
+              <span className="text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
+                Cadence 5x/yr
+              </span>
+              <div className="flex items-center gap-1.5">
+                {SCRAPE_CADENCE.map((dot, i) => (
+                  <div key={dot.month} className="flex items-center gap-1.5">
+                    <div
+                      className="flex flex-col items-center"
+                      title={`${dot.label} ${dot.month}${dot.current ? " · current scrape" : ""}`}
+                    >
+                      <span
+                        className="block rounded-full"
+                        style={{
+                          width: dot.current ? 10 : 6,
+                          height: dot.current ? 10 : 6,
+                          backgroundColor: dot.current ? BLUE : "#cbd5e1",
+                          boxShadow: dot.current ? "0 0 0 3px rgba(23,75,232,0.18)" : "none",
+                        }}
+                      />
+                      <span className="mt-0.5 text-[9px]" style={{ color: dot.current ? NAVY : MUTED }}>
+                        {dot.label}
+                      </span>
+                    </div>
+                    {i < SCRAPE_CADENCE.length - 1 && (
+                      <span className="block h-px w-4" style={{ backgroundColor: BORDER }} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
             <p className="mt-3 text-[13px] leading-relaxed" style={{ color: NAVY }}>
               {data.verdict}
             </p>
+
           </div>
           <div className="flex w-[180px] shrink-0 flex-col items-end gap-2">
             <div className="text-right">

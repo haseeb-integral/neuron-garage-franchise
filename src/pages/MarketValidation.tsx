@@ -41,20 +41,20 @@ interface SubScoreCardProps {
   confidence: { level: ConfidenceLevel; note: string };
 }
 
+const CHIP =
+  "inline-flex items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-semibold";
+
 function SubScoreCard({ title, subtitle, weight, value, signals, formula, confidence }: SubScoreCardProps) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="rounded-lg border bg-white p-4" style={{ borderColor: BORDER }}>
+    <div className="flex flex-col rounded-lg border bg-white p-4" style={{ borderColor: BORDER, minHeight: 280 }}>
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5">
             <h3 className="text-[13px] font-bold" style={{ color: NAVY }}>
               {title}
             </h3>
-            <span
-              className="rounded-full px-1.5 py-px text-[10px] font-semibold"
-              style={{ backgroundColor: SOFT, color: BLUE }}
-            >
+            <span className={CHIP} style={{ backgroundColor: SOFT, color: BLUE }}>
               {Math.round(weight * 100)}%
             </span>
             <LowConfidenceBadge level={confidence.level} note={confidence.note} />
@@ -63,8 +63,8 @@ function SubScoreCard({ title, subtitle, weight, value, signals, formula, confid
             {subtitle}
           </p>
         </div>
-        <div className="text-right">
-          <div className="text-[22px] font-black leading-none" style={{ color: NAVY }}>
+        <div className="shrink-0 text-right">
+          <div className="text-[24px] font-black leading-none tabular-nums" style={{ color: NAVY }}>
             {value}
           </div>
           <div className="mt-0.5 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
@@ -77,7 +77,7 @@ function SubScoreCard({ title, subtitle, weight, value, signals, formula, confid
         {signals.map((s) => (
           <li key={s.label} className="flex items-baseline justify-between gap-3 text-[12px]">
             <span style={{ color: MUTED }}>{s.label}</span>
-            <span className="flex items-center gap-1.5 font-semibold" style={{ color: NAVY }}>
+            <span className="flex items-center gap-1.5 font-semibold tabular-nums" style={{ color: NAVY }}>
               {s.value}
               <SampleDataBadge />
             </span>
@@ -85,30 +85,32 @@ function SubScoreCard({ title, subtitle, weight, value, signals, formula, confid
         ))}
       </ul>
 
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold"
-        style={{ color: BLUE }}
-      >
-        {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-        {open ? "Hide formula" : "Show formula"}
-      </button>
-      {open && (
-        <>
-          <pre
-            className="mt-2 whitespace-pre-wrap rounded-md p-2 text-[11px] leading-snug"
-            style={{ backgroundColor: SOFT, color: NAVY, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
-          >
-            {formula}
-          </pre>
-          {confidence.level !== "high" && (
-            <p className="mt-2 text-[11px]" style={{ color: MUTED }}>
-              <strong style={{ color: NAVY }}>QA note:</strong> {confidence.note}
-            </p>
-          )}
-        </>
-      )}
+      <div className="mt-auto pt-3">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="inline-flex items-center gap-1 text-[11px] font-semibold"
+          style={{ color: BLUE }}
+        >
+          {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+          {open ? "Hide formula" : "Show formula"}
+        </button>
+        {open && (
+          <>
+            <pre
+              className="mt-2 whitespace-pre-wrap rounded-md p-2 text-[11px] leading-snug"
+              style={{ backgroundColor: SOFT, color: NAVY, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
+            >
+              {formula}
+            </pre>
+            {confidence.level !== "high" && (
+              <p className="mt-2 text-[11px]" style={{ color: MUTED }}>
+                <strong style={{ color: NAVY }}>QA note:</strong> {confidence.note}
+              </p>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

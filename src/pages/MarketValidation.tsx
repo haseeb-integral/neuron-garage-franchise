@@ -131,11 +131,11 @@ export default function MarketValidation() {
 
       {/* Shortlist city selector */}
       <section
-        className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border bg-white p-3"
+        className="mb-4 flex flex-wrap items-center gap-1.5 rounded-lg border bg-white p-3"
         style={{ borderColor: BORDER }}
       >
-        <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: MUTED }}>
-          Shortlist · {data.shortlist.length} cities
+        <span className="mr-1 text-[10px] font-semibold uppercase tracking-wide" style={{ color: MUTED }}>
+          Shortlist · {data.shortlist.length}
         </span>
         {data.shortlist.map((c) => {
           const isActive = c.active;
@@ -145,7 +145,7 @@ export default function MarketValidation() {
               type="button"
               disabled={!isActive}
               title={isActive ? `${c.city}, ${c.state} — composite ${c.composite}` : "Demo locked to Frisco — other cities wire up in Week 3"}
-              className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold transition disabled:cursor-not-allowed"
               style={{
                 borderColor: isActive ? BLUE : BORDER,
                 backgroundColor: isActive ? BLUE : "#fff",
@@ -155,7 +155,7 @@ export default function MarketValidation() {
             >
               {c.city}, {c.state}
               <span
-                className="rounded-full px-1 py-px text-[9px] font-bold"
+                className="rounded-full px-1 py-px text-[9px] font-bold tabular-nums"
                 style={{
                   backgroundColor: isActive ? "rgba(255,255,255,0.22)" : SOFT,
                   color: isActive ? "#fff" : NAVY,
@@ -168,14 +168,14 @@ export default function MarketValidation() {
         })}
       </section>
 
-      {/* Composite card */}
+      {/* Composite card — left stack flush-left, fixed-width right sidebar */}
       <section
         className="mb-5 rounded-lg border bg-white p-5"
         style={{ borderColor: BORDER }}
       >
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-start gap-6">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
               <MapPin size={16} style={{ color: BLUE }} />
               <h2 className="text-[18px] font-black" style={{ color: NAVY }}>
                 {data.city}, {data.state}
@@ -186,20 +186,20 @@ export default function MarketValidation() {
               Scrape date {data.scrapeDate} · Mid-March is the most diagnostic single snapshot in the
               5-scrape cadence (Year 1 baseline).
             </p>
-            <p className="mt-3 max-w-2xl text-[13px]" style={{ color: NAVY }}>
+            <p className="mt-3 text-[13px] leading-relaxed" style={{ color: NAVY }}>
               {data.verdict}
             </p>
           </div>
-          <div className="flex flex-col items-end gap-2">
+          <div className="flex w-[180px] shrink-0 flex-col items-end gap-2">
             <div className="text-right">
-              <div className="text-[42px] font-black leading-none" style={{ color: NAVY }}>
+              <div className="text-[42px] font-black leading-none tabular-nums" style={{ color: NAVY }}>
                 {data.composite}
               </div>
               <div className="mt-1 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
-                Premium Enrichment Ecosystem Score
+                PEE Score
               </div>
               <span
-                className="mt-2 inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold"
+                className={`${CHIP} mt-2 font-bold`}
                 style={{ backgroundColor: "#e3f3e7", color: "#1d6b32" }}
               >
                 Tier: {data.tier}
@@ -214,7 +214,7 @@ export default function MarketValidation() {
             >
               <Download size={12} />
               Export PDF
-              <span className="rounded-full bg-white px-1 py-px text-[9px]" style={{ color: BLUE }}>
+              <span className={`${CHIP} bg-white`} style={{ color: BLUE }}>
                 Week 3
               </span>
             </button>

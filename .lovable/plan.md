@@ -1,59 +1,76 @@
-# Phase 2 Demo Pages — Pre-Sam Audit & Polish Plan
 
-Sources re-read: `summary-neuron-garage-module1-enhancements-v2.md` and `summary-transcript Sam meeting May 29.md` (PDF/txt summaries — exact formulas already encoded in `phase2DemoData.ts`).
+# Phase 2 demo — visual polish
 
-## Audit Results
+Targeted UI-only cleanup of `MarketValidation.tsx`, `SiteAnalysis.tsx`, and the two demo chip components. No data, routing, or logic changes.
 
-### Market Validation page
+## 1. Pills (chips) — unify the system
 
-| # | Item | Status | Effort | Ship before Sam? |
-|---|---|---|---|---|
-| 1 | Sub-score formula weights in "Show formula" drawer (e.g., `0.40 × median + 0.40 × 75th pct + 0.20 × % at $500+`) | ✅ Already shipped — `SubScoreCard` renders `formula` string from `phase2DemoData.ts` for all 6 sub-scores | — | n/a |
-| 2 | Low-confidence badge when extraction confidence < 0.7 (Sam's "human QA queue" gate) | ❌ Missing | Quick | **Yes** — core Sam principle |
-| 3 | City selector to switch shortlisted cities | ❌ Missing | Quick (static dropdown, Frisco active, others disabled with "Demo" tooltip) | **Yes** — shows the page is shortlist-aware, not single-city |
-| 4 | PDF export button (non-functional, "Coming Week 3" tooltip) | ❌ Missing | Quick | **Yes** — PDF report is the page's primary output per SOW |
+Today pills are inconsistent: oversized "Do not recommend" wraps to two lines, grade-alignment chip wraps and reads as a paragraph, "SAMPLE" is a different size than "Demo city", weight pill (25%) vs confidence pill have different padding.
 
-### Site Analysis page
+Introduce one consistent pill scale across both pages:
+- **Tier pill** (Recommend / Worth a look / Do not recommend): single-line, `whitespace-nowrap`, 11px, 2px×8px padding, semibold. Sit beside the big score, not under it.
+- **Meta chips** (school type, enrollment, grade alignment, Demo city, Sample, weight %, confidence): all share one base style — 10px, 2px×6px padding, `whitespace-nowrap`, rounded-full, semibold. Color family stays per-purpose but geometry is identical.
+- Grade alignment moves to a short form: `PK–K ✗` / `5–12 ✓` instead of the long sentence-style chip; full text in `title` tooltip.
+- `SampleDataBadge` keeps current orange palette but adopts the shared geometry.
 
-| # | Item | Status | Effort | Ship before Sam? |
-|---|---|---|---|---|
-| 5 | Sub-score formula weights in drawer | ⚠️ Partial — formulas exist in `phase2DemoData.ts` but `SiteCard` only shows the value bar, no "Show formula" toggle | Quick | **Yes** — parity with 1A |
-| 6 | Grade alignment shown per school | ❌ Missing (data model has `grade_alignment_factor` in formula text only) | Quick | **Yes** — Sam called it out in School Profile |
-| 7 | Dual-income HH % in Neighborhood Affluence breakdown | ❌ Missing from isochrone callouts | Quick | **Yes** — explicit Sam signal |
-| 8 | Families with kids 5–12 count (distinct from raw kid count) | ❌ Missing | Quick | **Yes** |
-| 9 | Recommend threshold visible (≥75 Recommend / 60–74 Worth a look / <60 Do not recommend) | ⚠️ Partial — tier badge shows label but threshold legend is not surfaced | Quick | **Yes** — calibration anchor (Trinity vs LeafSpring) needs the line |
-| 10 | PDF export button (non-functional) | ❌ Missing | Quick | **Yes** |
+## 2. Site cards — fixed-height layout grid
 
-All ten gaps are UI-only. No backend, no schema, no Supabase. All effort = quick. Total estimate: one focused build pass.
+Cards currently shrink-wrap each section, so the formula drawer pushes the entire card taller than its siblings and breaks the row.
 
-## Implementation Plan (UI-only, additive)
+Restructure each `SiteCard` as a vertical flex with fixed-height bands:
+```
+header band      (auto, but capped via line-clamp on title/address)
+verdict band     (line-clamp-3, fixed min-height)
+isochrone band   (fixed h-40, already there — keep)
+callout grid     (fixed 3×2 grid, fixed row height)
+sub-score list   (flex-1, formula drawer inside the list only)
+```
+- Title gets `truncate` (single line) instead of allowing two-line wrap — full name in `title=`.
+- Verdict paragraph gets `line-clamp-3` + fixed `min-h` so all cards' verdicts share the same vertical footprint.
+- Address gets `line-clamp-1`.
+- Map placeholder keeps `h-40 w-full`; ensure parent has no extra padding shift so the maps line up across cards.
 
-### Files to edit
-- `src/data/phase2DemoData.ts` — additive fields only:
-  - `MarketValidationDemo`: add `confidence: { level: "high" | "medium" | "low"; note: string }` per sub-score (mark Market Absorption as `medium` to demo the badge); add `shortlistCities: { city: string; state: string; composite: number; active: boolean }[]` (5 cities, only Frisco active).
-  - `SiteAnalysisDemoSite`: add `gradeAlignment: string` (e.g. "K–5 ✓ matches NG 5–12"), extend `isochroneCallouts` with `pctDualIncome10min` and `familiesWithKids5to12Within10min`.
-- `src/pages/MarketValidation.tsx`:
-  - Add city-selector pill row above composite card (Frisco active; Plano, Naperville, Bellevue, Newton disabled with "Demo — locked to Frisco" tooltip).
-  - Add `LowConfidenceBadge` rendered inside `SubScoreCard` when `confidence.level !== "high"` (amber pill: "Low confidence · routed to human QA").
-  - Add "Export PDF" button (top-right of composite card, disabled, tooltip "Coming Week 3 — branded 12-section report per SOW").
-- `src/pages/SiteAnalysis.tsx`:
-  - Add "Show formula" toggle per sub-score row in `SiteCard` (mirrors 1A pattern).
-  - Add Grade Alignment chip in school header chips row.
-  - Add two new callout tiles in isochrone grid: % Dual-Income · 10 min, Families w/ kids 5–12 · 10 min.
-  - Add threshold legend strip above compare grid: "≥75 Recommend · 60–74 Worth a look · <60 Do not recommend".
-  - Add "Export PDF" button in top toolbar (disabled, same tooltip pattern).
-- `src/components/phase2-demo/` — new tiny shared component `LowConfidenceBadge.tsx` (also reusable on 1B later).
+## 3. Formula drawer — don't reflow the whole card
 
-### Files NOT touched
-- No edits to `App.tsx`, `AppSidebar.tsx`, hooks, stores, Supabase client, edge functions, schema, or any Phase 1 page.
+Right now toggling `ƒ` on one row expands the card and breaks the 2-up / 4-up row alignment.
 
-### Verification
-- Type-check passes (no new deps).
-- Visual check on `/market-validation` and `/site-analysis` at current viewport.
-- Every new value still comes from `phase2DemoData.ts` (no inline literals in JSX) — preserves the Week 3 swap pattern.
+Two fixes, pick the cleaner one (will implement option A):
+- **A. Inline-but-contained:** the formula pre-block renders inside the sub-score list, but the sub-score list area is scrollable (`overflow-y-auto`) with a fixed max-height. Card height stays constant; only the inner list scrolls when formulas expand.
+- B. (rejected) popover — heavier, less scannable.
 
-### Tracking
-- Append one line to `.lovable/phase-2/CHANGELOG.md` ("2026-06-10 — Demo polish for Sam review: confidence badges, city selector, formula drawers on 1B, threshold legend, grade alignment, dual-income + families callouts, disabled PDF export buttons.").
-- Bump status note in `.lovable/phase-2/phase-2-status.md` from `demo-mockup-shipped` → `demo-mockup-shipped · pre-sam-polish`.
+Add a small "Show all formulas / Hide all" toggle at the card footer so a reviewer can expand them all without clicking 5 chevrons.
 
-Approve and I'll implement in one pass.
+## 4. Market Validation — header alignment
+
+The verdict paragraph "Validated premium enrichment market…" currently sits under the city row, indented inconsistently with the meta line above it. Fix:
+- Left column becomes a single vertical stack with consistent left-edge: city row → scrape-date line → verdict paragraph, all flush-left, same max-width (`max-w-2xl` already there but the parent flex creates the misalignment — switch the parent to `items-start` and tighten gaps).
+- Right column (score + Export PDF) becomes a fixed-width sidebar so the verdict text never wraps under the score.
+
+## 5. Typography rhythm
+
+- Standardize 3 sizes on both pages: 18px section H2, 13px card H3, 12px body, 11px meta, 10px chips. Replace ad-hoc 14/13/12/11/10 mixes.
+- Numbers (score 28px on cards, 42px on composite) keep `font-black` and `tabular-nums` for column alignment.
+- Monospace formula blocks: bump to 11px on cards (currently 10px) for legibility, keep `leading-snug`.
+
+## 6. Threshold legend + compare strip
+
+- Legend row wraps awkwardly at narrow widths. Make it a `flex-wrap gap-x-4 gap-y-1` block with each item `whitespace-nowrap`.
+- The "Compare strip · 2 of 4" badge and Export PDF button sit on different baselines — wrap them in one right-aligned flex with `items-center`.
+
+## Files touched
+
+- `src/pages/SiteAnalysis.tsx` — card flex restructuring, scrollable sub-score list, pill class unification, legend wrap fix.
+- `src/pages/MarketValidation.tsx` — header alignment, pill geometry, sub-score card formula drawer contained inside card.
+- `src/components/phase2-demo/SampleDataBadge.tsx` — adopt shared chip geometry (10px / 2px×6px).
+- `src/components/phase2-demo/LowConfidenceBadge.tsx` — same geometry pass.
+
+## Out of scope
+
+- No data shape changes in `src/data/phase2DemoData.ts`.
+- No new routes, no sidebar changes, no backend work.
+- No design-token (`index.css`) refactor — these are still demo pages; we keep the local color constants and only normalize geometry/typography.
+
+## Verification
+
+- Type-check passes.
+- Visual check at 1920, 1366, 971 (current preview), 768 widths: site cards stay equal-height in their row when any number of formula drawers are open; map placeholders share a top/bottom edge across the row; Market Validation verdict left-edge aligns with city name and scrape-date line.

@@ -1,45 +1,33 @@
-## Plan: Update Phase 2 Timeline Doc — Option B
+## Update Phase 2 June Timeline doc — v2
 
-Add a brief "Full Phase 2 Scope" section to the existing 1–2 page stakeholder doc so all 8 Phase 2 items are visible, while keeping Market Validation + Site Analysis as the W2 headline.
+Add one-line scope summaries for all 8 workstreams in the Full Phase 2 Scope table, sourced from Brett's 5-point sketch + Sam's May 29 call notes. No dates added.
 
-### What changes in the document
+### Changes to `/tmp/build_timeline.js`
 
-Insert a new compact section between **"Featured this week"** and **"What's next"**:
+- Restructure the scope table from 3 columns to 4 columns:
+  `# / Workstream / Scope (one-line) / June Status`
+- Column widths: 500 / 2700 / 3760 / 2400 DXA (sums to 9360)
+- Status labels shortened: "Spec pending" (items 3–7) and "Under review" (item 8)
+- Items 1 and 2 keep "In Progress — demo live W2" + light blue row tint
 
-**Section title:** Full Phase 2 Scope
+### Scope one-liners (sourced verbatim from frozen sources)
 
-One-line intro: *Phase 2 covers 8 workstreams. June W1–W4 focuses on the first two; the rest enter the build queue as specs land.*
-
-Then a tight 2-column table (Item · Status):
-
-| # | Item | June Status |
+| # | Workstream | Scope |
 |---|---|---|
-| 1 | Market Validation (1A) | ● In Progress — demo live W2 |
-| 2 | Site Analysis (1B) | ● In Progress — demo live W2 |
-| 3 | Candidate Pipeline 1.5 | ○ Queued — spec in progress |
-| 4 | Teacher Search 1.5 | ○ Queued — spec in progress |
-| 5 | SmartLead Integration 1.5 | ○ Queued — spec in progress |
-| 6 | Mailboxes / Sending Health 1.0 | ○ Queued — spec in progress |
-| 7 | Video Training / Onboarding 1.0 | ○ Queued — spec in progress |
-| 8 | Market Saturation / CSI (4th Manus app) | ○ Under review — scope decision pending |
+| 1 | Market Validation (1A) | Per-city composite score (demand, pricing, absorption, operator landscape, balance) + branded PDF |
+| 2 | Site Analysis (1B) | Address-level Site Opportunity Score, side-by-side compare up to 4 sites, 10/15-min isochrones |
+| 3 | Candidate Pipeline 1.5 | Candidate-facing form, candidate login, smarter scoring, cleaner stage gates, structured Notes/Activity |
+| 4 | Teacher Search 1.5 | Tighter sourcing, dedupe, deeper Fit Score inputs, tighter SmartLead loop |
+| 5 | SmartLead 1.5 | Reply categorization, campaign analytics, inbox health, loop back into Teacher Search |
+| 6 | Mailboxes 1.0 | Inbox health, warmup state, deliverability signals |
+| 7 | Video Training 1.0 | Module built on 300-page standards manual + curriculum + live Austin/Telluride camp footage |
+| 8 | Manus CSI App 1.0 | Stand-alone Manus app for competitive saturation, separate from 1A's Market Balance Index |
 
-Filled dot = active build; open dot = queued. Same navy/blue palette as the rest of the doc; W1/W2 items get a light row tint to reinforce the headline.
-
-### Light edits elsewhere
-
-- **Overview paragraph:** add a half-sentence clarifying that Phase 2 has 8 workstreams total, with Market Validation and Site Analysis leading the June sprint.
-- **What's next:** unchanged (still W3 wiring, W4 refinement on items 1+2).
-- **No date commitments** for items 3–8 — only status labels, to avoid setting expectations we can't hold.
-
-### Production
-
-1. Update `/tmp/build_timeline.js` to insert the new section and tweak the overview line.
-2. Re-render DOCX + PDF to `/mnt/documents/Neuron-Garage-Phase-2-June-Timeline.docx` / `.pdf` (overwrite).
-3. Visual QA: render PDF pages to images, confirm doc is still ≤ 2 pages and the scope table fits cleanly.
-4. If the Google Docs connector is linked, push the updated content to the existing Google Doc (or create one) and return the share link. Otherwise return the DOCX/PDF for drag-into-Drive.
+### Output
+- New file: `/mnt/documents/Neuron-Garage-Phase-2-June-Timeline-v2.docx` (original v1 kept)
+- Render PDF + visual QA via `pdftoppm`; fix any clipping before delivering
 
 ### Out of scope
-
-- No code, route, Supabase, or `.lovable/phase-2/` source-of-truth edits.
-- No per-item delivery dates for items 3–8.
-- No Week 5–6 detail.
+- No code, route, Supabase, or `.lovable/phase-2/` edits
+- No dates for items 3–8
+- No changes to Week 1–4 timeline table or featured-this-week section

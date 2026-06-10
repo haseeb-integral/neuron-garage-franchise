@@ -1,0 +1,302 @@
+import { useState } from "react";
+import { ChevronDown, ChevronUp, FileText, MapPin } from "lucide-react";
+
+import { PageHeader } from "@/components/PageHeader";
+import { DemoBanner } from "@/components/phase2-demo/DemoBanner";
+import { SampleDataBadge } from "@/components/phase2-demo/SampleDataBadge";
+import {
+  friscoMarketValidationDemo,
+  type AbsorptionStatus,
+} from "@/data/phase2DemoData";
+
+const NAVY = "#07142f";
+const MUTED = "#526078";
+const BORDER = "#eef2f7";
+const SOFT = "#f7faff";
+const BLUE = "#174be8";
+
+const STATUS_STYLE: Record<AbsorptionStatus, { bg: string; fg: string; label: string }> = {
+  sold_out: { bg: "#fce7ec", fg: "#a3142b", label: "Sold out" },
+  waitlist: { bg: "#fff1d6", fg: "#925100", label: "Waitlist" },
+  low_availability: { bg: "#fff8d9", fg: "#7a5800", label: "Low avail." },
+  open: { bg: "#e3f3e7", fg: "#1d6b32", label: "Open" },
+  unknown: { bg: "#eef2f7", fg: "#526078", label: "Unknown" },
+};
+
+const OVERLAP_STYLE: Record<"direct" | "adjacent" | "distant", { bg: string; fg: string }> = {
+  direct: { bg: "#fce7ec", fg: "#a3142b" },
+  adjacent: { bg: "#fff1d6", fg: "#925100" },
+  distant: { bg: "#eef2f7", fg: "#526078" },
+};
+
+interface SubScoreCardProps {
+  title: string;
+  subtitle: string;
+  weight: number;
+  value: number;
+  signals: { label: string; value: string }[];
+  formula: string;
+}
+
+function SubScoreCard({ title, subtitle, weight, value, signals, formula }: SubScoreCardProps) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-lg border bg-white p-4" style={{ borderColor: BORDER }}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="text-[13px] font-bold" style={{ color: NAVY }}>
+              {title}
+            </h3>
+            <span
+              className="rounded-full px-1.5 py-px text-[10px] font-semibold"
+              style={{ backgroundColor: SOFT, color: BLUE }}
+            >
+              {Math.round(weight * 100)}%
+            </span>
+          </div>
+          <p className="mt-0.5 text-[11px]" style={{ color: MUTED }}>
+            {subtitle}
+          </p>
+        </div>
+        <div className="text-right">
+          <div className="text-[22px] font-black leading-none" style={{ color: NAVY }}>
+            {value}
+          </div>
+          <div className="mt-0.5 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
+            / 100
+          </div>
+        </div>
+      </div>
+
+      <ul className="mt-3 space-y-1.5">
+        {signals.map((s) => (
+          <li key={s.label} className="flex items-baseline justify-between gap-3 text-[12px]">
+            <span style={{ color: MUTED }}>{s.label}</span>
+            <span className="flex items-center gap-1.5 font-semibold" style={{ color: NAVY }}>
+              {s.value}
+              <SampleDataBadge />
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold"
+        style={{ color: BLUE }}
+      >
+        {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+        {open ? "Hide formula" : "Show formula"}
+      </button>
+      {open && (
+        <pre
+          className="mt-2 whitespace-pre-wrap rounded-md p-2 text-[11px] leading-snug"
+          style={{ backgroundColor: SOFT, color: NAVY, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
+        >
+          {formula}
+        </pre>
+      )}
+    </div>
+  );
+}
+
+export default function MarketValidation() {
+  const data = friscoMarketValidationDemo;
+  const subs = data.subScores;
+
+  return (
+    <>
+      <PageHeader
+        title="Market Validation"
+        subtitle="Phase 2 · Feature 1A — Premium Enrichment Ecosystem scoring across the v1 city shortlist."
+        hideJourneyBar
+      />
+
+      <DemoBanner />
+
+      {/* Composite card */}
+      <section
+        className="mb-5 rounded-lg border bg-white p-5"
+        style={{ borderColor: BORDER }}
+      >
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <MapPin size={16} style={{ color: BLUE }} />
+              <h2 className="text-[18px] font-black" style={{ color: NAVY }}>
+                {data.city}, {data.state}
+              </h2>
+              <SampleDataBadge label="Demo city" />
+            </div>
+            <p className="mt-1 text-[12px]" style={{ color: MUTED }}>
+              Scrape date {data.scrapeDate} · Mid-March is the most diagnostic single snapshot in the
+              5-scrape cadence (Year 1 baseline).
+            </p>
+            <p className="mt-3 max-w-2xl text-[13px]" style={{ color: NAVY }}>
+              {data.verdict}
+            </p>
+          </div>
+          <div className="flex flex-col items-end">
+            <div className="text-[42px] font-black leading-none" style={{ color: NAVY }}>
+              {data.composite}
+            </div>
+            <div className="mt-1 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
+              Premium Enrichment Ecosystem Score
+            </div>
+            <span
+              className="mt-2 rounded-full px-2.5 py-0.5 text-[11px] font-bold"
+              style={{ backgroundColor: "#e3f3e7", color: "#1d6b32" }}
+            >
+              Tier: {data.tier}
+            </span>
+          </div>
+        </div>
+
+        <div
+          className="mt-4 rounded-md p-3 text-[11px] leading-snug"
+          style={{ backgroundColor: SOFT, color: NAVY, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
+        >
+          Premium Enrichment Ecosystem Score ={"\n"}
+          {"    "}0.20 × Pricing Acceptance{"\n"}
+          {"  + "}0.25 × Market Absorption{"  "}← dominant demand-side signal{"\n"}
+          {"  + "}0.20 × Scaled Operator{"\n"}
+          {"  + "}0.10 × Enrichment Diversity{"\n"}
+          {"  + "}0.10 × Market Depth{"\n"}
+          {"  + "}0.15 × Market Balance Index
+        </div>
+      </section>
+
+      {/* Sub-score grid */}
+      <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <SubScoreCard
+          title="Pricing Acceptance"
+          subtitle="Are families already paying premium pricing?"
+          weight={subs.pricingAcceptance.weight}
+          value={subs.pricingAcceptance.value}
+          signals={subs.pricingAcceptance.signals}
+          formula={subs.pricingAcceptance.formula}
+        />
+        <SubScoreCard
+          title="Market Absorption"
+          subtitle="Are premium operators actually selling out?"
+          weight={subs.marketAbsorption.weight}
+          value={subs.marketAbsorption.value}
+          signals={subs.marketAbsorption.signals}
+          formula={subs.marketAbsorption.formula}
+        />
+        <SubScoreCard
+          title="Scaled Operator"
+          subtitle="Validated vs saturated by national operators?"
+          weight={subs.scaledOperator.weight}
+          value={subs.scaledOperator.value}
+          signals={subs.scaledOperator.signals}
+          formula={subs.scaledOperator.formula}
+        />
+        <SubScoreCard
+          title="Enrichment Diversity"
+          subtitle="Do families invest across multiple categories?"
+          weight={subs.enrichmentDiversity.weight}
+          value={subs.enrichmentDiversity.value}
+          signals={subs.enrichmentDiversity.signals}
+          formula={subs.enrichmentDiversity.formula}
+        />
+        <SubScoreCard
+          title="Market Depth"
+          subtitle="How large is the premium ecosystem?"
+          weight={subs.marketDepth.weight}
+          value={subs.marketDepth.value}
+          signals={subs.marketDepth.signals}
+          formula={subs.marketDepth.formula}
+        />
+        <SubScoreCard
+          title="Market Balance Index"
+          subtitle="Is there still room in this market?"
+          weight={subs.marketBalance.weight}
+          value={subs.marketBalance.value}
+          signals={subs.marketBalance.signals}
+          formula={subs.marketBalance.formula}
+        />
+      </section>
+
+      {/* Premium provider sample table */}
+      <section className="mb-6 rounded-lg border bg-white" style={{ borderColor: BORDER }}>
+        <div className="flex items-center justify-between gap-2 border-b px-4 py-3" style={{ borderColor: BORDER }}>
+          <div>
+            <h3 className="text-[14px] font-bold" style={{ color: NAVY }}>
+              Premium provider sample
+            </h3>
+            <p className="text-[11px]" style={{ color: MUTED }}>
+              Week-level registration state per provider — the audit trail behind Market Absorption.
+            </p>
+          </div>
+          <SampleDataBadge label="6 of 18 sample rows" />
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-[12px]">
+            <thead>
+              <tr style={{ color: MUTED }}>
+                <th className="px-4 py-2 text-left font-semibold">Provider</th>
+                <th className="px-4 py-2 text-right font-semibold">$ / wk</th>
+                <th className="px-4 py-2 text-center font-semibold">Sites</th>
+                <th className="px-4 py-2 text-center font-semibold">Overlap</th>
+                <th className="px-4 py-2 text-left font-semibold">Sample weeks (mid-March 2026)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.premiumProviders.map((p) => (
+                <tr key={p.name} className="border-t" style={{ borderColor: BORDER }}>
+                  <td className="px-4 py-2.5 font-semibold" style={{ color: NAVY }}>
+                    {p.name}
+                  </td>
+                  <td className="px-4 py-2.5 text-right" style={{ color: NAVY }}>
+                    ${p.weeklyPrice}
+                  </td>
+                  <td className="px-4 py-2.5 text-center" style={{ color: NAVY }}>
+                    {p.siteCount}
+                  </td>
+                  <td className="px-4 py-2.5 text-center">
+                    <span
+                      className="rounded-full px-2 py-0.5 text-[10px] font-bold capitalize"
+                      style={{ backgroundColor: OVERLAP_STYLE[p.overlap].bg, color: OVERLAP_STYLE[p.overlap].fg }}
+                    >
+                      {p.overlap}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <div className="flex flex-wrap gap-1">
+                      {p.sampleWeeks.map((w) => {
+                        const s = STATUS_STYLE[w.status];
+                        return (
+                          <span
+                            key={w.label}
+                            className="rounded-md px-1.5 py-0.5 text-[10px] font-semibold"
+                            style={{ backgroundColor: s.bg, color: s.fg }}
+                            title={w.label}
+                          >
+                            {s.label}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <footer
+        className="flex items-center gap-2 rounded-lg border bg-white p-3 text-[11px]"
+        style={{ borderColor: BORDER, color: MUTED }}
+      >
+        <FileText size={14} />
+        Formulas, sub-score weights, and acceptance criteria are locked in
+        <code className="rounded bg-[#f7faff] px-1 py-px text-[#174be8]">.lovable/phase-2/phase-2-sow.md</code>
+        Item 1 (Feature 1A). This page renders sample data only — Week 3 wires it to the Manus pipeline.
+      </footer>
+    </>
+  );
+}

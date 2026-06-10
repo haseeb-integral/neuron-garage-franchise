@@ -16,6 +16,8 @@ import { registerRoutePrefetch } from "./lib/routePrefetch";
 import { RouteSkeleton } from "./components/RouteSkeleton";
 
 const CityScoring = lazyWithPreload(() => import("./pages/CityScoring"));
+const MarketValidation = lazyWithPreload(() => import("./pages/MarketValidation"));
+const SiteAnalysis = lazyWithPreload(() => import("./pages/SiteAnalysis"));
 const TeacherProspects = lazyWithPreload(() => import("./pages/TeacherProspects"));
 const EmailOutreach = lazyWithPreload(() => import("./pages/EmailOutreachV2"));
 const CandidatePipeline = lazyWithPreload(() => import("./pages/CandidatePipeline"));
@@ -42,6 +44,8 @@ const NotFound = lazyWithPreload(() => import("./pages/NotFound"));
 
 // Register route -> preload mapping for hover/idle prefetch.
 registerRoutePrefetch("/city-scoring", CityScoring.preload);
+registerRoutePrefetch("/market-validation", MarketValidation.preload);
+registerRoutePrefetch("/site-analysis", SiteAnalysis.preload);
 registerRoutePrefetch("/teacher-prospects", TeacherProspects.preload);
 registerRoutePrefetch("/email-outreach", EmailOutreach.preload);
 registerRoutePrefetch("/candidate-pipeline", CandidatePipeline.preload);
@@ -83,6 +87,8 @@ const App = () => (
               <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                 <Route path="/" element={<Index />} />
                 <Route path="/city-scoring" element={<CityScoring />} />
+                <Route path="/market-validation" element={<MarketValidation />} />
+                <Route path="/site-analysis" element={<SiteAnalysis />} />
                 <Route path="/teacher-prospects" element={<TeacherProspects />} />
                 <Route path="/email-outreach" element={<EmailOutreach />} />
                 <Route path="/candidate-pipeline" element={<CandidatePipeline />} />

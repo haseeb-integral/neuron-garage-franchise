@@ -4,6 +4,8 @@ import { useLocation } from "react-router-dom";
 const TITLES: Record<string, string> = {
   "/": "Dashboard",
   "/city-scoring": "City Search",
+  "/market-validation": "Market Validation",
+  "/site-analysis": "Site Analysis",
   "/teacher-prospects": "Teacher Search",
   "/email-outreach": "Email Outreach",
   "/candidate-pipeline": "Candidate Pipeline",

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Home, Map, Users, Kanban, ChevronLeft, ChevronRight, ChevronDown, Mail, FileText, BookOpen, Send, MailOpen, Calculator, Gauge, Activity, FileCode2, KeyRound, Network, Wand2, Plug, ShieldCheck, PieChart, BookMarked } from "lucide-react";
+import { Home, Map, Users, Kanban, ChevronLeft, ChevronRight, ChevronDown, Mail, FileText, BookOpen, Send, MailOpen, Calculator, Gauge, Activity, FileCode2, KeyRound, Network, Wand2, Plug, ShieldCheck, PieChart, BookMarked, BarChart3, Building2 } from "lucide-react";
 
 import { NavLink, useLocation } from "react-router-dom";
 import { prefetchRoute } from "@/lib/routePrefetch";
@@ -9,12 +9,14 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 
 const primaryNavItems = [
-  { title: "Dashboard", url: "/", icon: Home },
-  { title: "City Search", url: "/city-scoring", icon: Map },
-  { title: "Teacher Search", url: "/teacher-prospects", icon: Users },
-  { title: "Email Outreach", url: "/email-outreach", icon: Mail },
-  { title: "Candidate Pipeline", url: "/candidate-pipeline", icon: Kanban },
-  { title: "Data Observability", url: "/observability", icon: Activity },
+  { title: "Dashboard", url: "/", icon: Home, demo: false },
+  { title: "City Search", url: "/city-scoring", icon: Map, demo: false },
+  { title: "Market Validation", url: "/market-validation", icon: BarChart3, demo: true },
+  { title: "Site Analysis", url: "/site-analysis", icon: Building2, demo: true },
+  { title: "Teacher Search", url: "/teacher-prospects", icon: Users, demo: false },
+  { title: "Email Outreach", url: "/email-outreach", icon: Mail, demo: false },
+  { title: "Candidate Pipeline", url: "/candidate-pipeline", icon: Kanban, demo: false },
+  { title: "Data Observability", url: "/observability", icon: Activity, demo: false },
 ];
 
 const utilityNavItems = [
@@ -58,6 +60,7 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
 
   const renderLink = (item: NavItem) => {
     const active = isActive(item.url);
+    const isDemo = "demo" in item && (item as { demo?: boolean }).demo === true;
     const link = (
       <NavLink
         key={item.title}
@@ -69,7 +72,18 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
         className={`group flex min-h-[28px] items-center rounded-lg text-[13px] transition-all ${isCollapsed ? "justify-center px-0" : "gap-3 px-3"} ${active ? "bg-[#1f5bff] font-medium text-white" : "bg-transparent font-medium text-[#14233b] hover:bg-[#f7faff] hover:text-[#0757ff]"}`}
       >
         <item.icon size={17} strokeWidth={2} className="shrink-0" aria-hidden="true" />
-        {!isCollapsed && <span className="whitespace-nowrap">{item.title}</span>}
+        {!isCollapsed && (
+          <span className="flex flex-1 items-center justify-between gap-2 whitespace-nowrap">
+            <span>{item.title}</span>
+            {isDemo && (
+              <span
+                className={`rounded-full px-1.5 py-px text-[9px] font-bold uppercase tracking-wide ${active ? "bg-white/20 text-white" : "bg-[rgba(253,126,20,0.12)] text-[#a35200]"}`}
+              >
+                Demo
+              </span>
+            )}
+          </span>
+        )}
       </NavLink>
     );
 
@@ -77,7 +91,7 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
     return (
       <Tooltip key={item.title} delayDuration={150}>
         <TooltipTrigger asChild>{link}</TooltipTrigger>
-        <TooltipContent side="right" sideOffset={8}>{item.title}</TooltipContent>
+        <TooltipContent side="right" sideOffset={8}>{item.title}{isDemo ? " (demo)" : ""}</TooltipContent>
       </Tooltip>
     );
   };

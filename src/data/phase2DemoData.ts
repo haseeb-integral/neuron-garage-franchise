@@ -1,0 +1,328 @@
+/**
+ * Phase 2 — Week 2 demo data. Static, hardcoded sample values used by the
+ * Market Validation and Site Analysis mockup pages so Brett and Sam can sign
+ * off on layout and UX before any backend wiring.
+ *
+ * DO NOT wire these to Supabase. Week 3 swaps consumers to real hooks.
+ *
+ * Numeric values are illustrative only. Composite + sub-score formulas come
+ * verbatim from `.lovable/phase-2/phase-2-sow.md` Items 1 and 2.
+ */
+
+// ---------------------------------------------------------------------------
+// Item 1 — Market Validation Engine (Feature 1A)
+// Demo city = Frisco, TX (Sam's PDF anchors examples around Galileo Frisco).
+// ---------------------------------------------------------------------------
+
+export type AbsorptionStatus = "sold_out" | "waitlist" | "low_availability" | "open" | "unknown";
+
+export interface MarketValidationDemo {
+  city: string;
+  state: string;
+  scrapeDate: string;
+  composite: number;
+  tier: "Top Tier" | "Strong" | "Mixed" | "Weak";
+  verdict: string;
+  subScores: {
+    pricingAcceptance: { value: number; weight: number; signals: { label: string; value: string }[]; formula: string };
+    marketAbsorption: { value: number; weight: number; signals: { label: string; value: string }[]; formula: string };
+    scaledOperator: { value: number; weight: number; signals: { label: string; value: string }[]; formula: string };
+    enrichmentDiversity: { value: number; weight: number; signals: { label: string; value: string }[]; formula: string };
+    marketDepth: { value: number; weight: number; signals: { label: string; value: string }[]; formula: string };
+    marketBalance: { value: number; weight: number; signals: { label: string; value: string }[]; formula: string };
+  };
+  premiumProviders: {
+    name: string;
+    weeklyPrice: number;
+    siteCount: number;
+    overlap: "direct" | "adjacent" | "distant";
+    sampleWeeks: { label: string; status: AbsorptionStatus }[];
+  }[];
+}
+
+export const friscoMarketValidationDemo: MarketValidationDemo = {
+  city: "Frisco",
+  state: "TX",
+  scrapeDate: "2026-03-15",
+  composite: 78,
+  tier: "Strong",
+  verdict:
+    "Validated premium enrichment market with strong absorption signals. Direct competitor load is moderate; room for one well-sited operator.",
+  subScores: {
+    pricingAcceptance: {
+      value: 82,
+      weight: 0.2,
+      signals: [
+        { label: "Median premium price / week", value: "$549" },
+        { label: "75th-percentile price / week", value: "$649" },
+        { label: "% premium providers at $500+ / week", value: "64%" },
+      ],
+      formula:
+        "0.40 × normalize(median, $300–$700) + 0.40 × normalize(75th pct, $400–$800) + 0.20 × (% at $500+)",
+    },
+    marketAbsorption: {
+      value: 74,
+      weight: 0.25,
+      signals: [
+        { label: "Sellout rate (sold_out + waitlist ÷ total weeks)", value: "58%" },
+        { label: "Avg time-to-sellout", value: "Year 2 signal" },
+        { label: "YoY velocity", value: "Year 2 signal" },
+      ],
+      formula:
+        "0.60 × normalize(Sellout Rate, 0–80%) + 0.25 × normalize(Time-to-Sellout, inverse) + 0.15 × normalize(YoY Velocity, -20% to +30%)",
+    },
+    scaledOperator: {
+      value: 71,
+      weight: 0.2,
+      signals: [
+        { label: "Distinct national operators present", value: "5 of 8 cap" },
+        { label: "Direct competitor load / 10k kids 5–12", value: "2.1" },
+        { label: "Watchlist matches", value: "Galileo, Code Ninjas, Snapology, iD Tech, Mathnasium" },
+      ],
+      formula:
+        "0.65 × normalize(Operator Validation, 0–8) + 0.35 × (100 − normalize(Direct Competitor Load, 0–5 per 10k))",
+    },
+    enrichmentDiversity: {
+      value: 76,
+      weight: 0.1,
+      signals: [
+        { label: "Distinct categories with ≥1 premium provider", value: "7 of 12" },
+        { label: "Diversity ratio (categories ÷ provider count)", value: "0.39" },
+      ],
+      formula:
+        "0.70 × normalize(Category Count, 2–10) + 0.30 × normalize(Diversity Ratio, 0.1–0.6)",
+    },
+    marketDepth: {
+      value: 68,
+      weight: 0.1,
+      signals: [
+        { label: "Premium provider count", value: "18" },
+        { label: "Peer median (DFW suburbs)", value: "14" },
+      ],
+      formula: "normalize(Premium Provider Count, 4–40)",
+    },
+    marketBalance: {
+      value: 88,
+      weight: 0.15,
+      signals: [
+        { label: "Affluent dual-income families (5–12)", value: "6,420" },
+        { label: "Coverage ratio", value: "357" },
+        { label: "Classification", value: "Underserved (≥350)" },
+      ],
+      formula: "normalize(Coverage Ratio, 50–500); ≥350 Underserved · 200–349 Balanced · 100–199 Competitive · <100 Saturated",
+    },
+  },
+  premiumProviders: [
+    {
+      name: "Galileo Frisco",
+      weeklyPrice: 549,
+      siteCount: 2,
+      overlap: "direct",
+      sampleWeeks: [
+        { label: "Wk 1: Jun 9–13", status: "sold_out" },
+        { label: "Wk 2: Jun 16–20", status: "sold_out" },
+        { label: "Wk 3: Jun 23–27", status: "waitlist" },
+        { label: "Wk 4: Jul 7–11", status: "low_availability" },
+        { label: "Wk 5: Jul 14–18", status: "open" },
+      ],
+    },
+    {
+      name: "Snapology of Frisco",
+      weeklyPrice: 475,
+      siteCount: 1,
+      overlap: "direct",
+      sampleWeeks: [
+        { label: "Wk 1", status: "sold_out" },
+        { label: "Wk 2", status: "waitlist" },
+        { label: "Wk 3", status: "open" },
+        { label: "Wk 4", status: "open" },
+        { label: "Wk 5", status: "open" },
+      ],
+    },
+    {
+      name: "Code Ninjas Frisco",
+      weeklyPrice: 425,
+      siteCount: 3,
+      overlap: "adjacent",
+      sampleWeeks: [
+        { label: "Wk 1", status: "low_availability" },
+        { label: "Wk 2", status: "open" },
+        { label: "Wk 3", status: "open" },
+        { label: "Wk 4", status: "open" },
+        { label: "Wk 5", status: "open" },
+      ],
+    },
+    {
+      name: "iD Tech @ UT Dallas",
+      weeklyPrice: 899,
+      siteCount: 1,
+      overlap: "direct",
+      sampleWeeks: [
+        { label: "Wk 1", status: "sold_out" },
+        { label: "Wk 2", status: "sold_out" },
+        { label: "Wk 3", status: "waitlist" },
+        { label: "Wk 4", status: "open" },
+        { label: "Wk 5", status: "open" },
+      ],
+    },
+    {
+      name: "Mad Science of DFW",
+      weeklyPrice: 385,
+      siteCount: 4,
+      overlap: "distant",
+      sampleWeeks: [
+        { label: "Wk 1", status: "open" },
+        { label: "Wk 2", status: "open" },
+        { label: "Wk 3", status: "open" },
+        { label: "Wk 4", status: "open" },
+        { label: "Wk 5", status: "open" },
+      ],
+    },
+    {
+      name: "Maker Kids Frisco",
+      weeklyPrice: 510,
+      siteCount: 1,
+      overlap: "direct",
+      sampleWeeks: [
+        { label: "Wk 1", status: "sold_out" },
+        { label: "Wk 2", status: "waitlist" },
+        { label: "Wk 3", status: "low_availability" },
+        { label: "Wk 4", status: "open" },
+        { label: "Wk 5", status: "unknown" },
+      ],
+    },
+  ],
+};
+
+// ---------------------------------------------------------------------------
+// Item 2 — Site Analysis Engine (Feature 1B)
+// Demo sites = Trinity (Westlake), Austin vs LeafSpring, Austin (positive vs
+// negative anchor per SOW). 4-slot compare strip with two empty slots.
+// ---------------------------------------------------------------------------
+
+export interface SiteAnalysisDemoSite {
+  id: string;
+  schoolName: string;
+  address: string;
+  schoolType: "Private elementary" | "Public elementary" | "Charter elementary" | "Montessori" | "Other K-8" | "Other";
+  enrollment: number;
+  composite: number;
+  verdict: string;
+  subScores: {
+    schoolProfile: { value: number; weight: number; formula: string };
+    neighborhoodAffluence: { value: number; weight: number; formula: string };
+    familyDensity: { value: number; weight: number; formula: string };
+    schoolEcosystem: { value: number; weight: number; formula: string };
+    accessibility: { value: number; weight: number; formula: string };
+  };
+  isochroneCallouts: {
+    medianHHI10min: string;
+    pctOver150k10min: string;
+    children5to12Within10min: string;
+    children5to12Within15min: string;
+  };
+}
+
+export const austinSiteAnalysisDemo: {
+  filled: SiteAnalysisDemoSite[];
+  emptySlots: number;
+} = {
+  filled: [
+    {
+      id: "trinity-westlake",
+      schoolName: "Trinity Episcopal School (Westlake)",
+      address: "3901 Bee Caves Rd, Austin, TX 78746",
+      schoolType: "Private elementary",
+      enrollment: 540,
+      composite: 86,
+      verdict: "Strong site. Affluent, dense, accessible. Matches profile of current high-performing NG locations.",
+      subScores: {
+        schoolProfile: {
+          value: 92,
+          weight: 0.25,
+          formula:
+            "0.50 × school_type_factor + 0.25 × normalize(Enrollment, 150–800) + 0.25 × grade_alignment_factor",
+        },
+        neighborhoodAffluence: {
+          value: 90,
+          weight: 0.25,
+          formula:
+            "0.40 × norm(Median HHI 10min, $80k–$200k) + 0.35 × norm(% HH >$150k, 10–50%) + 0.25 × norm(% Dual-Income, 40–80%)",
+        },
+        familyDensity: {
+          value: 78,
+          weight: 0.2,
+          formula:
+            "0.50 × norm(Children 5–12 / 10min) + 0.30 × norm(Children 5–12 / 15min) + 0.20 × norm(Families w/ kids / 10min)",
+        },
+        schoolEcosystem: {
+          value: 84,
+          weight: 0.15,
+          formula:
+            "0.40 × norm(Elementary count) + 0.30 × norm(Private school count) + 0.30 × norm(Nearby student pop)",
+        },
+        accessibility: {
+          value: 88,
+          weight: 0.15,
+          formula:
+            "0.30 × access(distance to major road) + 0.30 × access(distance to highway) + 0.40 × norm(Pop reachable 15min)",
+        },
+      },
+      isochroneCallouts: {
+        medianHHI10min: "$178k",
+        pctOver150k10min: "44%",
+        children5to12Within10min: "9,420",
+        children5to12Within15min: "28,140",
+      },
+    },
+    {
+      id: "leafspring-austin",
+      schoolName: "LeafSpring (former NG site, closed 2023)",
+      address: "Austin daycare facility, north of customer base",
+      schoolType: "Other",
+      enrollment: 220,
+      composite: 41,
+      verdict:
+        "Calibration anchor — known negative. Commute from established customer base and weak school-type fit drag the score below the recommend threshold.",
+      subScores: {
+        schoolProfile: {
+          value: 38,
+          weight: 0.25,
+          formula:
+            "0.50 × school_type_factor + 0.25 × normalize(Enrollment, 150–800) + 0.25 × grade_alignment_factor",
+        },
+        neighborhoodAffluence: {
+          value: 52,
+          weight: 0.25,
+          formula:
+            "0.40 × norm(Median HHI 10min) + 0.35 × norm(% HH >$150k) + 0.25 × norm(% Dual-Income)",
+        },
+        familyDensity: {
+          value: 46,
+          weight: 0.2,
+          formula:
+            "0.50 × norm(Children 5–12 / 10min) + 0.30 × norm(Children 5–12 / 15min) + 0.20 × norm(Families w/ kids / 10min)",
+        },
+        schoolEcosystem: {
+          value: 35,
+          weight: 0.15,
+          formula:
+            "0.40 × norm(Elementary count) + 0.30 × norm(Private school count) + 0.30 × norm(Nearby student pop)",
+        },
+        accessibility: {
+          value: 32,
+          weight: 0.15,
+          formula:
+            "0.30 × access(distance to major road) + 0.30 × access(distance to highway) + 0.40 × norm(Pop reachable 15min)",
+        },
+      },
+      isochroneCallouts: {
+        medianHHI10min: "$94k",
+        pctOver150k10min: "16%",
+        children5to12Within10min: "3,210",
+        children5to12Within15min: "11,840",
+      },
+    },
+  ],
+  emptySlots: 2,
+};

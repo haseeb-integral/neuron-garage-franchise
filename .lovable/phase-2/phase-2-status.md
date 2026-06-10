@@ -15,8 +15,8 @@
 
 | # | Item | Version | Owner (Manus / Lovable) | Status | Last updated | By |
 |---|------|---------|--------------------------|--------|--------------|-----|
-| 1 | Market Validation Engine (1A) | 1.0 | Manus (collection + scoring) + Lovable (display + PDF report UI) | architecting | 2026-05-30 | Haseeb |
-| 2 | Site Analysis Engine (1B) | 1.0 | Manus (isochrone + ACS) + Lovable (compare UI) | architecting | 2026-05-30 | Haseeb |
+| 1 | Market Validation Engine (1A) | 1.0 | Manus (collection + scoring) + Lovable (display + PDF report UI) | demo-mockup-shipped (Week 2) | 2026-06-10 | Haseeb |
+| 2 | Site Analysis Engine (1B) | 1.0 | Manus (isochrone + ACS) + Lovable (compare UI) | demo-mockup-shipped (Week 2) | 2026-06-10 | Haseeb |
 | 3 | Candidate Pipeline | 1.5 | Lovable | not-started | 2026-05-30 | Haseeb |
 | 4 | Teacher Search | 1.5 | Lovable | not-started | 2026-05-30 | Haseeb |
 | 5 | SmartLead integration | 1.5 | Lovable | not-started | 2026-05-30 | Haseeb |

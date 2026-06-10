@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Home, Map, Users, Kanban, ChevronLeft, ChevronRight, ChevronDown, Mail, FileText, BookOpen, Send, MailOpen, Calculator, Gauge, Activity, FileCode2, KeyRound, Network, Wand2, Plug, ShieldCheck, PieChart, BookMarked } from "lucide-react";
+import { Home, Map, Users, Kanban, ChevronLeft, ChevronRight, ChevronDown, Mail, FileText, BookOpen, Send, MailOpen, Calculator, Gauge, Activity, FileCode2, KeyRound, Network, Wand2, Plug, ShieldCheck, PieChart, BookMarked, BarChart3, Building2 } from "lucide-react";
 
 import { NavLink, useLocation } from "react-router-dom";
 import { prefetchRoute } from "@/lib/routePrefetch";
@@ -9,12 +9,14 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 
 const primaryNavItems = [
-  { title: "Dashboard", url: "/", icon: Home },
-  { title: "City Search", url: "/city-scoring", icon: Map },
-  { title: "Teacher Search", url: "/teacher-prospects", icon: Users },
-  { title: "Email Outreach", url: "/email-outreach", icon: Mail },
-  { title: "Candidate Pipeline", url: "/candidate-pipeline", icon: Kanban },
-  { title: "Data Observability", url: "/observability", icon: Activity },
+  { title: "Dashboard", url: "/", icon: Home, demo: false },
+  { title: "City Search", url: "/city-scoring", icon: Map, demo: false },
+  { title: "Market Validation", url: "/market-validation", icon: BarChart3, demo: true },
+  { title: "Site Analysis", url: "/site-analysis", icon: Building2, demo: true },
+  { title: "Teacher Search", url: "/teacher-prospects", icon: Users, demo: false },
+  { title: "Email Outreach", url: "/email-outreach", icon: Mail, demo: false },
+  { title: "Candidate Pipeline", url: "/candidate-pipeline", icon: Kanban, demo: false },
+  { title: "Data Observability", url: "/observability", icon: Activity, demo: false },
 ];
 
 const utilityNavItems = [

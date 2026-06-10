@@ -416,6 +416,7 @@ export default function MarketValidation() {
           signals={subs.marketAbsorption.signals}
           formula={subs.marketAbsorption.formula}
           confidence={subs.marketAbsorption.confidence}
+          bottomSlot={absorptionCurve}
         />
         <SubScoreCard
           title="Scaled Operator"
@@ -425,6 +426,7 @@ export default function MarketValidation() {
           signals={subs.scaledOperator.signals}
           formula={subs.scaledOperator.formula}
           confidence={subs.scaledOperator.confidence}
+          topSlot={scaledDiagnostic}
         />
         <SubScoreCard
           title="Enrichment Diversity"
@@ -452,7 +454,9 @@ export default function MarketValidation() {
           signals={subs.marketBalance.signals}
           formula={subs.marketBalance.formula}
           confidence={subs.marketBalance.confidence}
+          topSlot={balanceBands}
         />
+
       </section>
 
       {/* Premium provider sample table */}

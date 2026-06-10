@@ -1,76 +1,65 @@
 
-# Phase 2 demo — visual polish
+# Plan — Close 9 SOW gaps on the two demo pages
 
-Targeted UI-only cleanup of `MarketValidation.tsx`, `SiteAnalysis.tsx`, and the two demo chip components. No data, routing, or logic changes.
+All UI-only. No backend, no routing, no schema. Demo data only. Same visual system already in place (CHIP style, fixed-height bands, scrollable formula drawer).
 
-## 1. Pills (chips) — unify the system
+## Market Validation (`src/pages/MarketValidation.tsx` + `src/data/phase2DemoData.ts`)
 
-Today pills are inconsistent: oversized "Do not recommend" wraps to two lines, grade-alignment chip wraps and reads as a paragraph, "SAMPLE" is a different size than "Demo city", weight pill (25%) vs confidence pill have different padding.
+### 1A-LOV-1 — Human-QA queue link
+- Add a small "QA queue · 4 flagged" chip in the page header, right of the scrape date. Tooltip: "Records with extraction confidence <0.7 route here for 4-button review per SOW Item 1."
+- Non-functional anchor (`<button>`). Add 1 sentence to `LowConfidenceBadge` tooltip pointing to the queue.
 
-Introduce one consistent pill scale across both pages:
-- **Tier pill** (Recommend / Worth a look / Do not recommend): single-line, `whitespace-nowrap`, 11px, 2px×8px padding, semibold. Sit beside the big score, not under it.
-- **Meta chips** (school type, enrollment, grade alignment, Demo city, Sample, weight %, confidence): all share one base style — 10px, 2px×6px padding, `whitespace-nowrap`, rounded-full, semibold. Color family stays per-purpose but geometry is identical.
-- Grade alignment moves to a short form: `PK–K ✗` / `5–12 ✓` instead of the long sentence-style chip; full text in `title` tooltip.
-- `SampleDataBadge` keeps current orange palette but adopts the shared geometry.
+### 1A-LOV-2 — Re-weightable sliders (visual only)
+- Inside each sub-score card, under the existing weight chip, render a disabled `Slider` (shadcn) preset to the SOW weight with a 5–40% range and a tiny "Static for v1 — re-weightable in v1.1" caption.
+- All 6 sub-score cards get the slider. Sliders are `disabled` so they read as a preview affordance.
 
-## 2. Site cards — fixed-height layout grid
+### 1A-LOV-3 — Scaled Operator two-number diagnostic
+- Extend `scaledOperator.signals` so the card shows two numbers side-by-side at the top:
+  - "Operator Validation: 5 / 8" (positive signal)
+  - "Direct Competitor Load: 2.1 / 10k kids" (saturation signal)
+- Small caption: "Validation lifts score; load suppresses it (see formula)."
 
-Cards currently shrink-wrap each section, so the formula drawer pushes the entire card taller than its siblings and breaks the row.
+### 1A-LOV-4 — Market Balance band chip
+- On the Market Balance card, replace the plain "Underserved (≥350)" signal row with a colored band chip rendered above signals:
+  - Underserved (green) · Balanced (blue) · Competitive (amber) · Saturated (red)
+- Show the 4-band legend inline beneath the chip in the same CHIP style. Active band uses solid fill, others muted.
 
-Restructure each `SiteCard` as a vertical flex with fixed-height bands:
-```
-header band      (auto, but capped via line-clamp on title/address)
-verdict band     (line-clamp-3, fixed min-height)
-isochrone band   (fixed h-40, already there — keep)
-callout grid     (fixed 3×2 grid, fixed row height)
-sub-score list   (flex-1, formula drawer inside the list only)
-```
-- Title gets `truncate` (single line) instead of allowing two-line wrap — full name in `title=`.
-- Verdict paragraph gets `line-clamp-3` + fixed `min-h` so all cards' verdicts share the same vertical footprint.
-- Address gets `line-clamp-1`.
-- Map placeholder keeps `h-40 w-full`; ensure parent has no extra padding shift so the maps line up across cards.
+### 1A-LOV-5 — Sellout curve / scrape cadence
+- Add a 5-dot horizontal timeline below the composite header: Jan / Mar / Jun / Sep / Nov dots, current scrape (Mar) highlighted. Label: "Scrape cadence — 5x/yr per SOW."
+- Add a tiny inline "sellout curve" sparkline on the Market Absorption card: 5 ticks across `Wk1–Wk5` showing % sold_out+waitlist from `friscoMarketValidationDemo.premiumProviders` (computed inline, no new data).
 
-## 3. Formula drawer — don't reflow the whole card
+## Site Analysis (`src/pages/SiteAnalysis.tsx` + `src/data/phase2DemoData.ts`)
 
-Right now toggling `ƒ` on one row expands the card and breaks the 2-up / 4-up row alignment.
+### 1B-LOV-1 — Static input form
+- Add a collapsed `Card` above the compare strip titled "Analyze a site" with 4 inputs (School Name, Address, School Type select, Enrollment number) and a disabled "Analyze" button. Helper text: "Demo — inputs not wired. Trinity vs LeafSpring shown below as calibration anchors."
 
-Two fixes, pick the cleaner one (will implement option A):
-- **A. Inline-but-contained:** the formula pre-block renders inside the sub-score list, but the sub-score list area is scrollable (`overflow-y-auto`) with a fixed max-height. Card height stays constant; only the inner list scrolls when formulas expand.
-- B. (rejected) popover — heavier, less scannable.
+### 1B-LOV-2 — Isochrone weighting note
+- On each site card, above the isochrone placeholder, add a single-line meta row: "10-min weighted 60% · 15-min weighted 40%" using the CHIP style. Tooltip cites SOW Item 2.
 
-Add a small "Show all formulas / Hide all" toggle at the card footer so a reviewer can expand them all without clicking 5 chevrons.
+### 1B-LOV-3 — School Profile factor table in Show Formula
+- Expand the School Profile sub-score's formula drawer to render a small 3-row table after the formula string:
+  - school_type_factor → Private elem 1.0 · Charter 0.85 · Public 0.75 · Montessori 0.9 · Other 0.5
+  - enrollment normalize range: 150–800
+  - grade_alignment_factor → matches NG 5–12: 1.0 · partial: 0.6 · misaligned: 0.2
+- Pull values from a new `SCHOOL_PROFILE_FACTORS` constant in `phase2DemoData.ts`.
 
-## 4. Market Validation — header alignment
+### 1B-LOV-4 — Accessibility callouts
+- Swap the third isochrone callout cell on each site card from a demographics repeat to accessibility data: "Drive to highway", "Parking spaces (est.)", "Pop reachable 15-min". Add `accessibilityCallouts` to each demo site (Trinity strong, LeafSpring weak).
 
-The verdict paragraph "Validated premium enrichment market…" currently sits under the city row, indented inconsistently with the meta line above it. Fix:
-- Left column becomes a single vertical stack with consistent left-edge: city row → scrape-date line → verdict paragraph, all flush-left, same max-width (`max-w-2xl` already there but the parent flex creates the misalignment — switch the parent to `items-start` and tighten gaps).
-- Right column (score + Export PDF) becomes a fixed-width sidebar so the verdict text never wraps under the score.
+## Technical notes
 
-## 5. Typography rhythm
-
-- Standardize 3 sizes on both pages: 18px section H2, 13px card H3, 12px body, 11px meta, 10px chips. Replace ad-hoc 14/13/12/11/10 mixes.
-- Numbers (score 28px on cards, 42px on composite) keep `font-black` and `tabular-nums` for column alignment.
-- Monospace formula blocks: bump to 11px on cards (currently 10px) for legibility, keep `leading-snug`.
-
-## 6. Threshold legend + compare strip
-
-- Legend row wraps awkwardly at narrow widths. Make it a `flex-wrap gap-x-4 gap-y-1` block with each item `whitespace-nowrap`.
-- The "Compare strip · 2 of 4" badge and Export PDF button sit on different baselines — wrap them in one right-aligned flex with `items-center`.
-
-## Files touched
-
-- `src/pages/SiteAnalysis.tsx` — card flex restructuring, scrollable sub-score list, pill class unification, legend wrap fix.
-- `src/pages/MarketValidation.tsx` — header alignment, pill geometry, sub-score card formula drawer contained inside card.
-- `src/components/phase2-demo/SampleDataBadge.tsx` — adopt shared chip geometry (10px / 2px×6px).
-- `src/components/phase2-demo/LowConfidenceBadge.tsx` — same geometry pass.
+- Reuse the existing `CHIP` constant and fixed-height band layout. No new design tokens.
+- All new chips use existing semantic colors (`bg-muted`, `bg-emerald-100`, `bg-amber-100`, `bg-rose-100`, `bg-sky-100` via Tailwind defaults already in use).
+- Slider import: `@/components/ui/slider` (already in project).
+- Add 2 small constants to `phase2DemoData.ts` (`SCHOOL_PROFILE_FACTORS`, `accessibilityCallouts` per site, `qaQueueCount = 4`, `scrapeCadence` array). No shape-breaking changes to existing exports.
+- Update `.lovable/phase-2/CHANGELOG.md` and `phase-2-status.md` flipping the 9 LOV items from "gap" to "demo-stub present".
 
 ## Out of scope
 
-- No data shape changes in `src/data/phase2DemoData.ts`.
-- No new routes, no sidebar changes, no backend work.
-- No design-token (`index.css`) refactor — these are still demo pages; we keep the local color constants and only normalize geometry/typography.
+- No real input wiring, no PDF generation, no map tiles, no Supabase, no new routes.
+- No restyle of pages beyond the additions above.
 
 ## Verification
 
-- Type-check passes.
-- Visual check at 1920, 1366, 971 (current preview), 768 widths: site cards stay equal-height in their row when any number of formula drawers are open; map placeholders share a top/bottom edge across the row; Market Validation verdict left-edge aligns with city name and scrape-date line.
+- Type-check clean.
+- Visual pass at 1920 / 1366 / 971 widths: cards stay aligned, formula drawers still scroll internally, header row doesn't wrap.

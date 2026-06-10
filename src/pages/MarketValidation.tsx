@@ -1,12 +1,17 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Download, FileText, MapPin } from "lucide-react";
+import { AlertCircle, ChevronDown, ChevronUp, Download, FileText, MapPin } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
 import { DemoBanner } from "@/components/phase2-demo/DemoBanner";
 import { LowConfidenceBadge } from "@/components/phase2-demo/LowConfidenceBadge";
 import { SampleDataBadge } from "@/components/phase2-demo/SampleDataBadge";
+import { Slider } from "@/components/ui/slider";
 import {
   friscoMarketValidationDemo,
+  MARKET_BALANCE_ACTIVE_BAND,
+  MARKET_BALANCE_BANDS,
+  QA_QUEUE_FLAGGED_COUNT,
+  SCRAPE_CADENCE,
   type AbsorptionStatus,
   type ConfidenceLevel,
 } from "@/data/phase2DemoData";
@@ -39,12 +44,14 @@ interface SubScoreCardProps {
   signals: { label: string; value: string }[];
   formula: string;
   confidence: { level: ConfidenceLevel; note: string };
+  topSlot?: React.ReactNode;
+  bottomSlot?: React.ReactNode;
 }
 
 const CHIP =
   "inline-flex items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-semibold";
 
-function SubScoreCard({ title, subtitle, weight, value, signals, formula, confidence }: SubScoreCardProps) {
+function SubScoreCard({ title, subtitle, weight, value, signals, formula, confidence, topSlot, bottomSlot }: SubScoreCardProps) {
   const [open, setOpen] = useState(false);
   return (
     <div className="flex flex-col rounded-lg border bg-white p-4" style={{ borderColor: BORDER, minHeight: 280 }}>
@@ -73,6 +80,29 @@ function SubScoreCard({ title, subtitle, weight, value, signals, formula, confid
         </div>
       </div>
 
+      {/* Weight slider — disabled preview affordance (1A-LOV-2) */}
+      <div className="mt-2.5 rounded-md border border-dashed p-2" style={{ borderColor: BORDER }}>
+        <div className="mb-1 flex items-center justify-between text-[10px]" style={{ color: MUTED }}>
+          <span>Weight</span>
+          <span className="font-semibold tabular-nums" style={{ color: NAVY }}>
+            {Math.round(weight * 100)}%
+          </span>
+        </div>
+        <Slider
+          disabled
+          value={[Math.round(weight * 100)]}
+          min={5}
+          max={40}
+          step={1}
+          aria-label={`${title} weight`}
+        />
+        <p className="mt-1 text-[9px]" style={{ color: MUTED }}>
+          Static for v1 — re-weightable in v1.1 per SOW Item 1.
+        </p>
+      </div>
+
+      {topSlot && <div className="mt-3">{topSlot}</div>}
+
       <ul className="mt-3 space-y-1.5">
         {signals.map((s) => (
           <li key={s.label} className="flex items-baseline justify-between gap-3 text-[12px]">
@@ -84,6 +114,8 @@ function SubScoreCard({ title, subtitle, weight, value, signals, formula, confid
           </li>
         ))}
       </ul>
+
+      {bottomSlot && <div className="mt-3">{bottomSlot}</div>}
 
       <div className="mt-auto pt-3">
         <button
@@ -118,6 +150,94 @@ function SubScoreCard({ title, subtitle, weight, value, signals, formula, confid
 export default function MarketValidation() {
   const data = friscoMarketValidationDemo;
   const subs = data.subScores;
+
+  // 1A-LOV-5 — Sellout curve from sample weeks (% sold_out + waitlist).
+  const weekLabels = data.premiumProviders[0]?.sampleWeeks.map((w) => w.label) ?? [];
+  const selloutCurve = weekLabels.map((_, idx) => {
+    const total = data.premiumProviders.length;
+    const hot = data.premiumProviders.filter((p) => {
+      const s = p.sampleWeeks[idx]?.status;
+      return s === "sold_out" || s === "waitlist";
+    }).length;
+    return total ? Math.round((hot / total) * 100) : 0;
+  });
+
+  // 1A-LOV-3 — Scaled Operator two-number diagnostic.
+  const scaledDiagnostic = (
+    <div className="grid grid-cols-2 gap-2">
+      <div className="rounded-md border p-2" style={{ borderColor: BORDER, backgroundColor: "#e3f3e7" }}>
+        <div className="text-[9px] uppercase tracking-wide" style={{ color: "#1d6b32" }}>
+          Operator validation
+        </div>
+        <div className="text-[18px] font-black tabular-nums" style={{ color: "#1d6b32" }}>
+          5 <span className="text-[11px] font-semibold" style={{ color: MUTED }}>/ 8</span>
+        </div>
+        <div className="text-[10px]" style={{ color: MUTED }}>National operators present (lifts score)</div>
+      </div>
+      <div className="rounded-md border p-2" style={{ borderColor: BORDER, backgroundColor: "#fce7ec" }}>
+        <div className="text-[9px] uppercase tracking-wide" style={{ color: "#a3142b" }}>
+          Direct competitor load
+        </div>
+        <div className="text-[18px] font-black tabular-nums" style={{ color: "#a3142b" }}>
+          2.1 <span className="text-[11px] font-semibold" style={{ color: MUTED }}>/ 10k kids 5–12</span>
+        </div>
+        <div className="text-[10px]" style={{ color: MUTED }}>Saturation drag (suppresses score)</div>
+      </div>
+    </div>
+  );
+
+  // 1A-LOV-5 — Sellout curve sparkline (Market Absorption).
+  const maxSellout = Math.max(1, ...selloutCurve);
+  const absorptionCurve = (
+    <div className="rounded-md border p-2" style={{ borderColor: BORDER }}>
+      <div className="mb-1 flex items-center justify-between text-[10px]" style={{ color: MUTED }}>
+        <span>Sellout curve · Wk 1–5</span>
+        <span className="font-semibold tabular-nums" style={{ color: NAVY }}>
+          {selloutCurve[selloutCurve.length - 1] ?? 0}% Wk{selloutCurve.length}
+        </span>
+      </div>
+      <div className="flex h-10 items-end gap-1">
+        {selloutCurve.map((v, i) => (
+          <div
+            key={i}
+            className="flex-1 rounded-sm"
+            style={{
+              height: `${(v / maxSellout) * 100}%`,
+              backgroundColor: v >= 60 ? "#a3142b" : v >= 30 ? "#925100" : "#1d6b32",
+              opacity: 0.85,
+            }}
+            title={`${weekLabels[i] ?? `Wk ${i + 1}`}: ${v}% sold_out+waitlist`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+
+  // 1A-LOV-4 — Market Balance band chips.
+  const balanceBands = (
+    <div className="flex flex-wrap gap-1">
+      {MARKET_BALANCE_BANDS.map((b) => {
+        const active = b.key === MARKET_BALANCE_ACTIVE_BAND;
+        return (
+          <span
+            key={b.key}
+            className={CHIP}
+            style={{
+              backgroundColor: active ? b.bg : "#fff",
+              color: active ? b.fg : MUTED,
+              border: `1px solid ${active ? b.bg : BORDER}`,
+              fontWeight: active ? 700 : 500,
+            }}
+            title={`${b.label} · Coverage Ratio ${b.range}`}
+          >
+            {active && "●  "}
+            {b.label} <span className="ml-1 opacity-70">{b.range}</span>
+          </span>
+        );
+      })}
+    </div>
+  );
+
 
   return (
     <>
@@ -182,13 +302,55 @@ export default function MarketValidation() {
               </h2>
               <SampleDataBadge label="Demo city" />
             </div>
-            <p className="mt-1 text-[12px]" style={{ color: MUTED }}>
-              Scrape date {data.scrapeDate} · Mid-March is the most diagnostic single snapshot in the
-              5-scrape cadence (Year 1 baseline).
-            </p>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px]" style={{ color: MUTED }}>
+              <span>Scrape date {data.scrapeDate}</span>
+              <span>·</span>
+              <button
+                type="button"
+                title={`Records with extraction confidence <0.7 route here for 4-button human review per SOW Item 1. Currently ${QA_QUEUE_FLAGGED_COUNT} flagged.`}
+                className={`${CHIP} cursor-help`}
+                style={{ backgroundColor: "#fff1d6", color: "#925100" }}
+              >
+                <AlertCircle size={10} className="mr-1" />
+                QA queue · {QA_QUEUE_FLAGGED_COUNT} flagged
+              </button>
+            </div>
+            {/* Scrape cadence dots — 1A-LOV-5 */}
+            <div className="mt-2 flex items-center gap-2">
+              <span className="text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
+                Cadence 5x/yr
+              </span>
+              <div className="flex items-center gap-1.5">
+                {SCRAPE_CADENCE.map((dot, i) => (
+                  <div key={dot.month} className="flex items-center gap-1.5">
+                    <div
+                      className="flex flex-col items-center"
+                      title={`${dot.label} ${dot.month}${dot.current ? " · current scrape" : ""}`}
+                    >
+                      <span
+                        className="block rounded-full"
+                        style={{
+                          width: dot.current ? 10 : 6,
+                          height: dot.current ? 10 : 6,
+                          backgroundColor: dot.current ? BLUE : "#cbd5e1",
+                          boxShadow: dot.current ? "0 0 0 3px rgba(23,75,232,0.18)" : "none",
+                        }}
+                      />
+                      <span className="mt-0.5 text-[9px]" style={{ color: dot.current ? NAVY : MUTED }}>
+                        {dot.label}
+                      </span>
+                    </div>
+                    {i < SCRAPE_CADENCE.length - 1 && (
+                      <span className="block h-px w-4" style={{ backgroundColor: BORDER }} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
             <p className="mt-3 text-[13px] leading-relaxed" style={{ color: NAVY }}>
               {data.verdict}
             </p>
+
           </div>
           <div className="flex w-[180px] shrink-0 flex-col items-end gap-2">
             <div className="text-right">
@@ -254,6 +416,7 @@ export default function MarketValidation() {
           signals={subs.marketAbsorption.signals}
           formula={subs.marketAbsorption.formula}
           confidence={subs.marketAbsorption.confidence}
+          bottomSlot={absorptionCurve}
         />
         <SubScoreCard
           title="Scaled Operator"
@@ -263,6 +426,7 @@ export default function MarketValidation() {
           signals={subs.scaledOperator.signals}
           formula={subs.scaledOperator.formula}
           confidence={subs.scaledOperator.confidence}
+          topSlot={scaledDiagnostic}
         />
         <SubScoreCard
           title="Enrichment Diversity"
@@ -290,7 +454,9 @@ export default function MarketValidation() {
           signals={subs.marketBalance.signals}
           formula={subs.marketBalance.formula}
           confidence={subs.marketBalance.confidence}
+          topSlot={balanceBands}
         />
+
       </section>
 
       {/* Premium provider sample table */}

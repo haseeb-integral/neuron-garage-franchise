@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Download, FileText, MapPin, Plus } from "lucide-react";
+import { ChevronDown, ChevronUp, Download, FileText, MapPin, Plus, Search } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
 import { DemoBanner } from "@/components/phase2-demo/DemoBanner";
 import { SampleDataBadge } from "@/components/phase2-demo/SampleDataBadge";
 import {
   austinSiteAnalysisDemo,
+  SCHOOL_PROFILE_FACTORS,
+  SITE_ACCESSIBILITY_CALLOUTS,
   SITE_RECOMMEND_THRESHOLDS,
   type SiteAnalysisDemoSite,
 } from "@/data/phase2DemoData";
@@ -61,9 +63,10 @@ interface RowProps {
   formula: string;
   open: boolean;
   onToggle: () => void;
+  extra?: React.ReactNode;
 }
 
-function SubScoreRow({ label, value, weight, formula, open, onToggle }: RowProps) {
+function SubScoreRow({ label, value, weight, formula, open, onToggle, extra }: RowProps) {
   return (
     <li>
       <div className="flex items-baseline justify-between gap-2 text-[12px]">
@@ -104,27 +107,67 @@ function SubScoreRow({ label, value, weight, formula, open, onToggle }: RowProps
         />
       </div>
       {open && (
-        <pre
-          className="mt-1.5 whitespace-pre-wrap rounded-md p-2 text-[11px] leading-snug"
-          style={{ backgroundColor: SOFT, color: NAVY, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
-        >
-          {formula}
-        </pre>
+        <>
+          <pre
+            className="mt-1.5 whitespace-pre-wrap rounded-md p-2 text-[11px] leading-snug"
+            style={{ backgroundColor: SOFT, color: NAVY, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
+          >
+            {formula}
+          </pre>
+          {extra && <div className="mt-1.5">{extra}</div>}
+        </>
       )}
     </li>
   );
 }
 
+function SchoolProfileFactors() {
+  return (
+    <div className="rounded-md border p-2 text-[10px]" style={{ borderColor: BORDER, backgroundColor: "#fff" }}>
+      <div className="mb-1 font-semibold uppercase tracking-wide" style={{ color: MUTED }}>
+        School profile factors
+      </div>
+      <div className="mb-1.5">
+        <div className="mb-0.5 font-semibold" style={{ color: NAVY }}>school_type_factor</div>
+        <div className="flex flex-wrap gap-1">
+          {SCHOOL_PROFILE_FACTORS.schoolType.map((r) => (
+            <span key={r.type} className="rounded px-1.5 py-0.5" style={{ backgroundColor: SOFT, color: NAVY }}>
+              {r.type} <span className="font-bold tabular-nums">{r.factor}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+      <div className="mb-1.5">
+        <div className="font-semibold" style={{ color: NAVY }}>
+          enrollment normalize: <span className="tabular-nums">{SCHOOL_PROFILE_FACTORS.enrollmentRange}</span>
+        </div>
+      </div>
+      <div>
+        <div className="mb-0.5 font-semibold" style={{ color: NAVY }}>grade_alignment_factor</div>
+        <div className="flex flex-wrap gap-1">
+          {SCHOOL_PROFILE_FACTORS.gradeAlignment.map((r) => (
+            <span key={r.label} className="rounded px-1.5 py-0.5" style={{ backgroundColor: SOFT, color: NAVY }}>
+              {r.label} <span className="font-bold tabular-nums">{r.factor}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 function SiteCard({ site }: { site: SiteAnalysisDemoSite }) {
   const tier = tierBadge(site.composite);
   const grade = shortGradeAlignment(site.gradeAlignment);
   const s = site.subScores;
+  const access = SITE_ACCESSIBILITY_CALLOUTS[site.id];
   const rowDefs = [
-    { label: "School Profile", value: s.schoolProfile.value, weight: s.schoolProfile.weight, formula: s.schoolProfile.formula },
-    { label: "Neighborhood Affluence", value: s.neighborhoodAffluence.value, weight: s.neighborhoodAffluence.weight, formula: s.neighborhoodAffluence.formula },
-    { label: "Family Density", value: s.familyDensity.value, weight: s.familyDensity.weight, formula: s.familyDensity.formula },
-    { label: "School Ecosystem", value: s.schoolEcosystem.value, weight: s.schoolEcosystem.weight, formula: s.schoolEcosystem.formula },
-    { label: "Accessibility", value: s.accessibility.value, weight: s.accessibility.weight, formula: s.accessibility.formula },
+    { label: "School Profile", value: s.schoolProfile.value, weight: s.schoolProfile.weight, formula: s.schoolProfile.formula, extra: <SchoolProfileFactors /> as React.ReactNode },
+    { label: "Neighborhood Affluence", value: s.neighborhoodAffluence.value, weight: s.neighborhoodAffluence.weight, formula: s.neighborhoodAffluence.formula, extra: undefined as React.ReactNode },
+    { label: "Family Density", value: s.familyDensity.value, weight: s.familyDensity.weight, formula: s.familyDensity.formula, extra: undefined as React.ReactNode },
+    { label: "School Ecosystem", value: s.schoolEcosystem.value, weight: s.schoolEcosystem.weight, formula: s.schoolEcosystem.formula, extra: undefined as React.ReactNode },
+    { label: "Accessibility", value: s.accessibility.value, weight: s.accessibility.weight, formula: s.accessibility.formula, extra: undefined as React.ReactNode },
   ];
   const [openSet, setOpenSet] = useState<Set<string>>(new Set());
   const allOpen = openSet.size === rowDefs.length;
@@ -192,10 +235,22 @@ function SiteCard({ site }: { site: SiteAnalysisDemoSite }) {
 
       {/* Isochrone band */}
       <div className="mt-3">
+        <div className="mb-1 flex flex-wrap items-center gap-1">
+          <span
+            className={CHIP}
+            style={{ backgroundColor: SOFT, color: BLUE }}
+            title="Per SOW Item 2: drive-time isochrones weighted 10-min 60% / 15-min 40%."
+          >
+            10-min 60% · 15-min 40%
+          </span>
+          <span className={CHIP} style={{ backgroundColor: "#eef2f7", color: MUTED }}>
+            Drive-time
+          </span>
+        </div>
         <IsochronePlaceholder />
       </div>
 
-      {/* Callout grid — fixed 3×2 */}
+      {/* Callout grid — 3×2 (demographics + accessibility) */}
       <div className="mt-2 grid grid-cols-3 gap-1.5 text-[11px]">
         <div className="rounded-md p-1.5" style={{ backgroundColor: SOFT }}>
           <div className="text-[9px] uppercase tracking-wide" style={{ color: MUTED }}>Median HHI · 10m</div>
@@ -206,22 +261,23 @@ function SiteCard({ site }: { site: SiteAnalysisDemoSite }) {
           <div className="truncate font-bold tabular-nums" style={{ color: NAVY }}>{site.isochroneCallouts.pctOver150k10min}</div>
         </div>
         <div className="rounded-md p-1.5" style={{ backgroundColor: SOFT }}>
-          <div className="text-[9px] uppercase tracking-wide" style={{ color: MUTED }}>Dual-Inc · 10m</div>
-          <div className="truncate font-bold tabular-nums" style={{ color: NAVY }}>{site.isochroneCallouts.pctDualIncome10min}</div>
-        </div>
-        <div className="rounded-md p-1.5" style={{ backgroundColor: SOFT }}>
-          <div className="text-[9px] uppercase tracking-wide" style={{ color: MUTED }}>Fams kids 5–12 · 10m</div>
-          <div className="truncate font-bold tabular-nums" style={{ color: NAVY }}>{site.isochroneCallouts.familiesWithKids5to12Within10min}</div>
-        </div>
-        <div className="rounded-md p-1.5" style={{ backgroundColor: SOFT }}>
           <div className="text-[9px] uppercase tracking-wide" style={{ color: MUTED }}>Kids 5–12 · 10m</div>
           <div className="truncate font-bold tabular-nums" style={{ color: NAVY }}>{site.isochroneCallouts.children5to12Within10min}</div>
         </div>
-        <div className="rounded-md p-1.5" style={{ backgroundColor: SOFT }}>
-          <div className="text-[9px] uppercase tracking-wide" style={{ color: MUTED }}>Kids 5–12 · 15m</div>
-          <div className="truncate font-bold tabular-nums" style={{ color: NAVY }}>{site.isochroneCallouts.children5to12Within15min}</div>
+        <div className="rounded-md p-1.5" style={{ backgroundColor: "#eef6ff" }} title="Accessibility — distance to highway entrance.">
+          <div className="text-[9px] uppercase tracking-wide" style={{ color: MUTED }}>Drive to hwy</div>
+          <div className="truncate font-bold" style={{ color: NAVY }}>{access?.driveToHighway ?? "—"}</div>
+        </div>
+        <div className="rounded-md p-1.5" style={{ backgroundColor: "#eef6ff" }} title="Accessibility — est. parking capacity on site.">
+          <div className="text-[9px] uppercase tracking-wide" style={{ color: MUTED }}>Parking</div>
+          <div className="truncate font-bold" style={{ color: NAVY }}>{access?.parkingSpaces ?? "—"}</div>
+        </div>
+        <div className="rounded-md p-1.5" style={{ backgroundColor: "#eef6ff" }} title="Accessibility — total population reachable within 15-min drive.">
+          <div className="text-[9px] uppercase tracking-wide" style={{ color: MUTED }}>Pop · 15m</div>
+          <div className="truncate font-bold tabular-nums" style={{ color: NAVY }}>{access?.popReachable15min ?? "—"}</div>
         </div>
       </div>
+
 
       {/* Sub-score list — scrolls internally so formula drawers don't break grid */}
       <div className="mt-3 flex flex-1 flex-col">
@@ -286,6 +342,78 @@ export default function SiteAnalysis() {
       <DemoBanner
         note="Calibration anchors shown: Trinity (positive — operating NG site) vs LeafSpring (negative — closed 2023, far from customer base). The locked acceptance gate: LeafSpring must score materially lower than Trinity."
       />
+
+      {/* Analyze a site — static input form (1B-LOV-1) */}
+      <section className="mb-4 rounded-lg border bg-white p-4" style={{ borderColor: BORDER }}>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <h3 className="text-[13px] font-bold" style={{ color: NAVY }}>
+            Analyze a site
+          </h3>
+          <SampleDataBadge label="Inputs not wired" />
+        </div>
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
+          <label className="flex flex-col gap-1 text-[11px]" style={{ color: MUTED }}>
+            School name *
+            <input
+              type="text"
+              disabled
+              placeholder="e.g. Trinity Episcopal School"
+              className="rounded-md border px-2 py-1.5 text-[12px] disabled:bg-[#f7faff]"
+              style={{ borderColor: BORDER, color: NAVY }}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-[11px]" style={{ color: MUTED }}>
+            Address *
+            <input
+              type="text"
+              disabled
+              placeholder="3901 Bee Caves Rd, Austin, TX 78746"
+              className="rounded-md border px-2 py-1.5 text-[12px] disabled:bg-[#f7faff]"
+              style={{ borderColor: BORDER, color: NAVY }}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-[11px]" style={{ color: MUTED }}>
+            School type (optional)
+            <select
+              disabled
+              className="rounded-md border px-2 py-1.5 text-[12px] disabled:bg-[#f7faff]"
+              style={{ borderColor: BORDER, color: NAVY }}
+            >
+              <option>Private elementary</option>
+              <option>Public elementary</option>
+              <option>Charter elementary</option>
+              <option>Montessori</option>
+              <option>Other K-8</option>
+              <option>Other</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-[11px]" style={{ color: MUTED }}>
+            Enrollment (optional)
+            <input
+              type="number"
+              disabled
+              placeholder="540"
+              className="rounded-md border px-2 py-1.5 text-[12px] disabled:bg-[#f7faff]"
+              style={{ borderColor: BORDER, color: NAVY }}
+            />
+          </label>
+        </div>
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <p className="text-[11px]" style={{ color: MUTED }}>
+            Demo — inputs are not wired. Trinity vs LeafSpring shown below as calibration anchors per SOW Item 2.
+          </p>
+          <button
+            type="button"
+            disabled
+            className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px] font-semibold"
+            style={{ backgroundColor: SOFT, color: MUTED, border: `1px solid ${BORDER}` }}
+          >
+            <Search size={12} />
+            Analyze site
+          </button>
+        </div>
+      </section>
+
 
       <section className="mb-5 rounded-lg border bg-white p-5" style={{ borderColor: BORDER }}>
         <div className="flex flex-wrap items-start justify-between gap-3">

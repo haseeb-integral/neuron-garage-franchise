@@ -261,6 +261,60 @@ export const SITE_RECOMMEND_THRESHOLDS = {
   worthALook: 60,
 } as const;
 
+// 1A demo helpers — non-functional UI affordances added per SOW LOV items.
+export const QA_QUEUE_FLAGGED_COUNT = 4;
+
+export const SCRAPE_CADENCE: { label: string; month: string; current?: boolean }[] = [
+  { label: "Jan", month: "2026-01" },
+  { label: "Mar", month: "2026-03", current: true },
+  { label: "Jun", month: "2026-06" },
+  { label: "Sep", month: "2026-09" },
+  { label: "Nov", month: "2026-11" },
+];
+
+export const MARKET_BALANCE_BANDS = [
+  { key: "underserved", label: "Underserved", range: "≥350", bg: "#e3f3e7", fg: "#1d6b32" },
+  { key: "balanced", label: "Balanced", range: "200–349", bg: "#e0ecff", fg: "#1542a3" },
+  { key: "competitive", label: "Competitive", range: "100–199", bg: "#fff1d6", fg: "#925100" },
+  { key: "saturated", label: "Saturated", range: "<100", bg: "#fce7ec", fg: "#a3142b" },
+] as const;
+export const MARKET_BALANCE_ACTIVE_BAND = "underserved";
+
+// 1B demo helpers
+export const SCHOOL_PROFILE_FACTORS = {
+  schoolType: [
+    { type: "Private elementary", factor: 1.0 },
+    { type: "Montessori", factor: 0.9 },
+    { type: "Charter elementary", factor: 0.85 },
+    { type: "Public elementary", factor: 0.75 },
+    { type: "Other K-8", factor: 0.6 },
+    { type: "Other", factor: 0.5 },
+  ],
+  enrollmentRange: "150–800",
+  gradeAlignment: [
+    { label: "Matches NG 5–12", factor: 1.0 },
+    { label: "Partial overlap", factor: 0.6 },
+    { label: "Misaligned (PK–K only)", factor: 0.2 },
+  ],
+} as const;
+
+export const SITE_ACCESSIBILITY_CALLOUTS: Record<string, {
+  driveToHighway: string;
+  parkingSpaces: string;
+  popReachable15min: string;
+}> = {
+  "trinity-westlake": {
+    driveToHighway: "3 min · Loop 360",
+    parkingSpaces: "~85 (lot)",
+    popReachable15min: "412k",
+  },
+  "leafspring-austin": {
+    driveToHighway: "11 min · I-35",
+    parkingSpaces: "~24 (street)",
+    popReachable15min: "168k",
+  },
+};
+
 
 export const austinSiteAnalysisDemo: {
   filled: SiteAnalysisDemoSite[];

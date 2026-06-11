@@ -1,55 +1,36 @@
-## Append "Questions for Brett" section to Phase 2 June Timeline (v3)
+## Add Week 2–4 progress rows for items 1 & 2 into v5 of the timeline doc
 
-Extend the existing v2 doc with a new section that gives Brett everything he needs to unblock items 3–8, without leaving Lovable.
+You're right — v4 missed adding the weekly progress sub-rows for Market Validation (1A) and Site Analysis (1B). I'll extend the v4 build script to add this, keeping everything else intact, and output a new file so v4 stays untouched.
 
-### What gets added (after the Full Phase 2 Scope table, before the doc ends)
+### What gets added
 
-**Section header:** "Open Questions — Items 3–8 (Spec Pending / Under Review)"
+Inside the **live blocks** for Item 1 (Market Validation) and Item 2 (Site Analysis) — right after the "Live demo details / Stubbed items" content and before the "Decision questions" — insert a small **Weekly Progress** sub-section with 3 rows:
 
-**Lead-in paragraph:**
-- These 6 workstreams cannot move from `not-started` to `architecting` until Brett answers the questions below.
-- Brett can reply two ways: (a) edit this doc and send back, or (b) reply directly inside Lovable chat — both work, Lovable response is faster.
-- Every question lists what we already know (from Brett's 5-point sketch + Sam's May 29 call) so Brett isn't starting from scratch.
+| Week | Status | Milestone | Description |
+|------|--------|-----------|-------------|
+| Week 2 | ● In Progress | Demo Pages Live | Market Validation and Site Analysis shipped as visual mockups, now visible in the left sidebar. Stakeholder feedback collection and backend triage underway. |
+| Week 3 | ● Planned | Backend Wiring & Calibration | Connect both features to live data, run internal testing, and calibrate scores against known reference markets and sites. |
+| Week 4 | ● Planned | Feedback & Refinement | Iterate on stakeholder feedback from the demo and Week 3 testing; polish both features for broader review. |
 
-**Per-item block** (one per item, 3–8). Each block has 4 sub-parts:
+- Same 3-row block appears under both Item 1 and Item 2 (the text references "both features", so it's the shared cross-feature roadmap)
+- Rendered as a proper docx table with the same styling as the existing Full Phase 2 Scope table (DXA widths, light grey borders, light header shading, ShadingType.CLEAR)
+- Status dot color: amber `#D97706` for "In Progress", grey `#6B7280` for "Planned"
 
-1. **What we have so far** — 2–3 lines pulled verbatim from frozen sources (`brett-5-point-sketch.md`, `summary-transcript Sam meeting May 29.md`).
-2. **Why it's blocked** — the single biggest unknown that stops architecting.
-3. **Questions Brett needs to answer** — 3–5 concrete questions, each answerable in 1–2 sentences. No open-ended "what do you want?" — every question offers context or a default we'd pick if Brett stays silent.
-4. **Default if no answer by [date]** — what Lovable will assume so the item doesn't stall forever.
+### What stays exactly the same
 
-### Item-by-item question content
-
-- **Item 3 — Candidate Pipeline 1.5**
-  Questions: candidate-portal scope (login + edit profile + upload docs?), which fields candidate owns vs recruiter owns, stage-gate auto-advance rules, structured Notes/Activity field list, whether Brett's Google Form is the template to clone.
-
-- **Item 4 — Teacher Search 1.5**
-  Questions: which new Fit Score inputs (years teaching? grade band? subject? location radius?), dedupe rule when same teacher appears from Apollo + scrape + referral (keep newest? merge? prefer highest-confidence source?), what "tighter SmartLead loop" means (auto-push on Fit > X? manual gate?).
-
-- **Item 5 — SmartLead 1.5**
-  Questions: reply-categorization taxonomy (proposed buckets: Interested / Not now / Not interested / OOO / Auto-reply / Bounce — keep all?), action per bucket (move to pipeline? pause sequence? human review?), campaign-analytics KPIs Brett actually looks at, whether reply data flows back into Teacher Search Fit Score.
-
-- **Item 6 — Mailboxes 1.0**
-  Questions: what "healthy" means as one number (proposed weights: warmup% 40, bounce rate 30, spam complaint 20, reply rate 10 — adjust?), auto-pause threshold, who gets notified when a mailbox drops below threshold, whether warmup state is read from SmartLead API or manual.
-
-- **Item 7 — Video Training 1.0**
-  Questions: audience (franchisees post-signing? staff at active camps? public marketing?), gating (login-required? per-module unlock?), hosting (inside app / Vimeo / YouTube unlisted?), camp-footage delivery date (Sam said videographer started Mon of May 29 call — is footage in hand yet?), whether the 300-page standards manual + curriculum drives module structure.
-
-- **Item 8 — 4th Manus App / CSI 1.0**
-  Questions: stand-alone Manus app vs folded into 1A Market Balance Index (Sam wanted stand-alone, confirm?), what "competitive saturation" means at city level vs site level, who owns architecture (Manus or Lovable), whether this blocks 1A shipping.
-
-### Closing note to Brett (last paragraph)
-
-- "Reply in Lovable when you're back — even one-liners help. We'll mark each item `architecting` the moment its answers land and start building. Items 1 and 2 keep moving in the meantime."
+- Full Phase 2 Scope table at the top — untouched
+- Items 1 & 2 live blocks (what's live / stubbed / decision questions / default) — untouched
+- Items 3–8 "Questions for Brett" blocks — untouched
+- Closing note to Brett — untouched
 
 ### Output
 
-- New file: `/mnt/documents/Neuron-Garage-Phase-2-June-Timeline-v3.docx` (v2 kept untouched)
-- Render PDF, visual QA via `pdftoppm`, confirm no clipping and all 6 item blocks render
-- No code, route, Supabase, or `.lovable/phase-2/` edits
+- New file: `/mnt/documents/Neuron-Garage-Phase-2-June-Timeline-v5.docx` (v4 kept)
+- PDF: `/mnt/documents/Neuron-Garage-Phase-2-June-Timeline-v5.pdf`
+- Visual QA via `pdftoppm` on the Item 1 and Item 2 pages to confirm the new tables render without clipping
 
 ### Out of scope
 
-- No new questions for items 1, 2 (already shipped as demo mockups)
-- No timeline dates added
-- No changes to existing v2 sections (scope table, Week 1–4 table, featured-this-week)
+- No code, route, Supabase, or `.lovable/phase-2/` edits
+- No new questions or content beyond the 3 rows you supplied
+- No timeline dates added beyond "Week 2 / 3 / 4" labels you provided

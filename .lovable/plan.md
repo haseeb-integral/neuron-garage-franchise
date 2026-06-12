@@ -1,64 +1,98 @@
-# Plan: Add Overlap + Cadence Section to v5 Doc
 
-Extend `/mnt/documents/Neuron-Garage-Manus-App-Decisions-v5.docx` (and its PDF) with a new section that spells out — in plain English — exactly how Market Balance Index (MBI) overlaps with the existing CSI, and how often each score needs to refresh. Goal: Brett can read it once and have zero ambiguity.
+# Plan — Build 1A/1B decision-capture redesign + append "Open Decisions" to v5
 
-## Where it goes
+Three deliverables, in this order. No preview-first round — building straight through per your direction.
 
-Insert a new section **right after Decision 1 (Market Saturation / CSI)** and before Decision 2 (Market Absorption). Titled:
+## 1. Append "Open Decisions" section to v5 doc (and refresh vision doc)
 
-> **Decision 1 — Deeper look: What's inside Market Balance Index, and does it really overlap with CSI?**
+**v5 doc** (`build-v5.js` → `Neuron-Garage-Phase-2-Decisions-v5.docx`): add a new top-level section **"Open Decisions for Brett"** at the end, before any appendix. Eight items, each as: *what the source says · what the demo/v5 currently assumes · Brett's decision: ____*.
 
-This keeps Decision 1's recommendation honest (it's "mostly overlap, not 100%") and gives Brett the receipts.
+1. PEE Score tier band labels — sources: nothing. Demo: "Top Tier / Strong / Mixed / Weak". v5: "Strong / Validated / Watch / Avoid".
+2. PEE Score numeric thresholds per band.
+3. Six sub-score weights in 1A (lock the table).
+4. Premium provider threshold ($400/week).
+5. 1B isochrone weighting (60/40 currently assumed, not in sources).
+6. 1B Trinity-vs-LeafSpring calibration margin (numeric gap).
+7. QA correction queue ownership.
+8. Map vendor (Mapbox vs HERE).
 
-## Content (plain English, no jargon)
+Also include a short paragraph: **"Demo v1.1 — decision-capture redesign"** with the two preview links (`/market-validation`, `/site-analysis`) so Brett can click through while reading.
 
-### 1. What Market Balance Index actually measures
-One short paragraph: MBI is a single signal — **Coverage Ratio = kids ÷ providers** — then banded into 4 tiers (Underserved / Balanced / Competitive / Saturated, thresholds 350 / 200 / 100). It needs exactly two inputs.
+**Vision doc** (`Neuron-Garage-Features-1A-1B-Vision-v1.docx` → v1.1): only two edits needed.
+- Replace any tier-band sentence that asserts "Strong / Validated / Watch / Avoid" with "tier band TBD — see Open Decisions in v5 doc."
+- Add one sentence to each feature's "Use Case" describing the new decision-capture surface (verdict dropdown + notes + export for 1A; verdict toggle + winner radio + decision-pack PDF for 1B).
 
-### 2. What the existing CSI already measures
-One short paragraph: CSI counts STEM brands (2× weight), general enrichment brands (1× weight), plus a local-provider estimate, and outputs a 0–100 saturation score per city.
+No other vision content changes — purpose, function, signals, isochrones, calibration logic all stay.
 
-### 3. Overlap table (the key visual)
+## 2. Backend — two decision tables (Lovable Cloud)
 
-| What MBI needs | Does CSI already have it? | Gap |
-|---|---|---|
-| Kid population (children 5–12) | Yes — Tier 1 ACS data | None |
-| Provider count per city | Yes — CSI counts them today | Premium-only filter missing (CSI counts all brands; MBI wants ≥$400/week providers only) |
-| 4-tier band output (Underserved / Balanced / Competitive / Saturated) | No — CSI outputs 0–100 | Need a re-band step on top of CSI |
+Single migration, both tables with full GRANTs + RLS + updated_at trigger.
 
-**Honest summary line under the table:** ~90% of the plumbing is shared. The two real additions are (a) a premium-price filter on the provider list, and (b) a re-banding step. Neither needs a new Manus app — both can live inside the existing CSI pipeline.
+```sql
+-- market_validation_decisions: one row per (user, city)
+id uuid pk, user_id uuid → auth.users, city_id text, city_label text,
+verdict text check in ('pursue','hold','drop','undecided'),
+notes text, decided_at timestamptz, created_at, updated_at
+unique(user_id, city_id)
 
-### 4. Cadence table
+-- site_analysis_decisions: one row per (user, address)
+id uuid pk, user_id uuid → auth.users, address text, school_name text,
+verdict text check in ('recommend','worth_a_look','dont_recommend','undecided'),
+is_winner boolean default false, notes text, decided_at timestamptz, ...
+unique(user_id, address)
+```
 
-| Score | Refresh cadence | Scope | Why this cadence |
-|---|---|---|---|
-| CSI (existing) | ~1× / year | All 817 cities | Provider counts move slowly |
-| Market Balance Index | Same cycle as CSI (it's derived from CSI) | 25–50 shortlisted cities only | Just a re-band of CSI; no independent pipeline |
-| Market Absorption (Decision 2) | ~5× / year per shortlisted city | 25–50 shortlisted cities only | Sellout / waitlist state changes week to week |
+RLS: own-row SELECT/INSERT/UPDATE/DELETE only. GRANT to authenticated + service_role. No anon.
 
-**Plain-English line under the table:** MBI does not need its own refresh schedule. Whenever CSI refreshes, MBI refreshes for free. That's the whole point of folding it into CSI.
+## 3. Frontend redesign
 
-### 5. Bottom line (one bolded sentence)
-Build CSI once, run it yearly across all 817 cities, then derive MBI from it for the 25–50 shortlist. One pipeline, one cadence, one source of truth.
+### 1A `/market-validation` — shortlist table view
 
-## Styling
+Replace the current single-city deep-dive layout with a **shortlist table** as the primary view. Each row is one of the 25 shortlisted cities. Columns: City · PEE · Absorption · Scaled Op · MBI band · Premium Density · Pricing · Sellout sparkline (mini) · **Verdict dropdown** (Pursue / Hold / Drop / Undecided) · **Notes** (✎ inline editor) · Updated. Sort by any column. Filter by verdict. **Export decisions** button → CSV with scores + verdicts + notes.
 
-Match v5's existing palette and structure:
-- Section heading in `#174BE8` blue, same H2 style already used in the doc.
-- Tables: `#EEF2F7` header row, `#CCCCCC` borders, `ShadingType.CLEAR`, DXA widths summing to content width (9360).
-- Body in default Arial, muted `#526078` for supporting prose.
-- Bottom-line sentence in a `#F7FAFF` callout box (same box style used elsewhere in v5).
+Click a row → it expands inline to show the current rich deep-dive (six sub-score cards, full sellout curve, provider table, QA flags). Collapse to return to table. No separate page.
 
-## Build steps
+Decisions persist to `market_validation_decisions` via `useMarketDecisions` hook (Lovable Cloud, 60s stale, optimistic update).
 
-1. Update `build-v5.js` (the existing generator script) — insert the new section between Decision 1 and Decision 2.
-2. Re-run the script to regenerate `Neuron-Garage-Manus-App-Decisions-v5.docx`.
-3. Convert to PDF via LibreOffice (same path as last build).
-4. Render page images via `pdftoppm` to verify both tables render cleanly and nothing overflows.
+Demo data: extend `phase2DemoData.ts` from 1 city (Frisco) to ~8 sample shortlisted cities so the table is meaningful. Existing Frisco deep-dive data stays exactly as-is for the expanded row.
 
-## Out of scope
+### 1B `/site-analysis` — verdict + winner per card
 
-- No changes to Decision 2 content.
-- No changes to v4 docs.
-- No code, route, Supabase, or `.lovable/phase-2/` edits.
-- No new questions for Brett — this is just making the existing recommendation more explicit.
+Keep the 4-up compare grid. Add to each filled card:
+- **Verdict toggle** (Recommend / Worth a look / Don't recommend) — defaults to threshold mapping, Brett can override.
+- **"Winner" radio** at top — single-select across the 4 cards.
+- **Notes textarea** (collapsible).
+- **Export decision pack** button (top-right of the section) → branded PDF that includes Brett's chosen winner, his notes, the per-site cards, and the calibration band. PDF generated client-side from existing card data (no map vendor wiring yet — uses current placeholder isochrone).
+
+Decisions persist to `site_analysis_decisions` via `useSiteDecisions` hook. Winner radio enforces single selection by clearing `is_winner` on others when one is set.
+
+### Files touched
+- `src/pages/MarketValidation.tsx` — rewrite to table-first, keep deep-dive as expanded-row subcomponent
+- `src/pages/SiteAnalysis.tsx` — add verdict/winner/notes controls + export button
+- `src/components/phase2-demo/ShortlistTable.tsx` (new)
+- `src/components/phase2-demo/MarketDecisionCell.tsx` (new — verdict dropdown + notes popover)
+- `src/components/phase2-demo/SiteDecisionControls.tsx` (new)
+- `src/hooks/useMarketDecisions.ts` (new)
+- `src/hooks/useSiteDecisions.ts` (new)
+- `src/lib/marketDecisionsExport.ts` (new — CSV)
+- `src/lib/siteDecisionsExport.ts` (new — PDF, uses existing PDF stack)
+- `src/data/phase2DemoData.ts` — extend shortlist sample from 1 → 8 cities
+- `scripts/build-v5.js` — add Open Decisions section
+- `scripts/build-vision-v1.js` → `build-vision-v1.1.js` — band-label edit + use-case sentence
+- `.lovable/phase-2/CHANGELOG.md` — log the redesign and doc updates
+
+### Not in scope
+- Real isochrones (still Mapbox/HERE TBD — one of the open decisions).
+- Real provider scraping.
+- Changing any score formulas or weights.
+- Touching City Search, Teacher Search, Candidate Pipeline.
+
+## Sequencing
+1. Migration (table 1 + table 2) — approved separately by you.
+2. After migration runs: hooks + redesign components + page rewrites.
+3. Regenerate v5 doc + v1.1 vision doc + PDFs to `/mnt/documents/`.
+4. CHANGELOG entry.
+
+## One confirmation before I start
+
+The 8 sample shortlisted cities for the new 1A table — should I pull plausible Sunbelt/affluent metros (Frisco, Plano, Cary, Carmel, Bellevue, Newton, Pleasanton, Brookline), or do you want a specific list from Brett's actual shortlist?

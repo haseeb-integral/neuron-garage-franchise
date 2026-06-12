@@ -447,16 +447,26 @@ export default function SiteAnalysis() {
             <SampleDataBadge label="2 of 4 slots" />
             <button
               type="button"
-              disabled
-              title="Coming Week 3 — branded PDF report per SOW Item 2"
-              className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold"
-              style={{ borderColor: BORDER, color: MUTED, backgroundColor: SOFT }}
+              onClick={() => exportSiteDecisionPack(filled, byAddress)}
+              title="Open a branded decision pack with Brett's verdict, winner, and notes — print or save as PDF"
+              className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold"
+              style={{ borderColor: BLUE, color: BLUE, backgroundColor: "#fff" }}
             >
               <Download size={12} />
-              Export PDF
-              <span className={`${CHIP} bg-white`} style={{ color: BLUE }}>Week 3</span>
+              Export decision pack
             </button>
           </div>
+        </div>
+
+        {/* Decision points */}
+        <div className="mt-3 rounded-md p-2 text-[11px]" style={{ backgroundColor: "#f7faff" }}>
+          <strong style={{ color: NAVY }}>Decision points on this page:</strong>
+          <ol className="ml-4 mt-0.5 list-decimal" style={{ color: NAVY }}>
+            <li>Per site: <strong>Recommend / Worth a look / Don't recommend</strong> (override the threshold default if needed).</li>
+            <li>Across the compared set: pick exactly one <strong>Winner</strong> ★ to send to candidate/landlord.</li>
+            <li>Capture <strong>notes</strong> on each card explaining the verdict — they go into the export pack.</li>
+            <li>Confirm the calibration gate holds: LeafSpring scores materially below Trinity.</li>
+          </ol>
         </div>
 
         {/* Threshold legend */}

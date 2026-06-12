@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { ChevronDown, ChevronUp, Download, FileText, MapPin, Plus, Search } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ChevronDown, ChevronUp, CheckCircle2, Download, FileText, MapPin, Plus, Search, Star, XCircle } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
+import { AddCandidateSiteModal } from "@/components/phase2-demo/AddCandidateSiteModal";
 import { DemoBanner } from "@/components/phase2-demo/DemoBanner";
 import { SampleDataBadge } from "@/components/phase2-demo/SampleDataBadge";
 import { SiteDecisionControls } from "@/components/phase2-demo/SiteDecisionControls";
@@ -20,6 +21,13 @@ const MUTED = "#526078";
 const BORDER = "#eef2f7";
 const SOFT = "#f7faff";
 const BLUE = "#174be8";
+
+const VERDICT_STYLE: Record<SiteVerdict, { bg: string; fg: string; label: string }> = {
+  recommend: { bg: "#e3f3e7", fg: "#1d6b32", label: "Recommend" },
+  worth_a_look: { bg: "#fff8d9", fg: "#7a5800", label: "Worth a look" },
+  dont_recommend: { bg: "#fce7ec", fg: "#a3142b", label: "Don't recommend" },
+  undecided: { bg: "#eef2f7", fg: "#526078", label: "Undecided" },
+};
 
 // Shared chip class — every meta pill uses identical geometry.
 const CHIP =

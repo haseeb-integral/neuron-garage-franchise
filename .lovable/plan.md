@@ -1,76 +1,31 @@
-## Goal
+You're right — my last reply was wrong. The v2 file still contains "Brett" everywhere as the end user. Nothing changed yet. Here's the actual plan to fix it.
 
-You're sending Brett **one file**, not three. Two tasks:
+## What I'll change in `Neuron-Garage-Features-1A-1B-Vision-v2.docx`
 
-1. **Rename** the Open Decisions supplement so it's obvious what it is.
-2. **Rewrite** the Vision v1 doc at true Grade-8 (executive non-technical) language, keeping the blue colored headings and good formatting. This replaces the v1 you already sent (you'll unsend that one).
+Replace "Brett" with "Sam" wherever Brett is shown as the end user of the app. Keep Brett's name only where he is the consultant/approver.
 
-After this, v1.1 becomes obsolete — we'll keep it on disk but you ignore it.
+### Replace (Brett → Sam) — end-user references
+- Subtitle: "how Brett will use it" → "how Sam will use it"
+- Section headers (×2 each): "What Brett sees on the screen" → "What Sam sees on the screen"; "How Brett actually uses it" → "How Sam actually uses it"; "Where Brett records his decision" → "Where Sam records his decision"
+- Walk-through prose:
+  - "Brett finishes a City Search run…" → "Sam finishes a City Search run…"
+  - "He hits Export PDF and sends the report to Sam and to a franchise…" → "He hits Export PDF and sends the report to a franchise candidate…" (drop the now-redundant "to Sam")
+  - "Brett types in a school name…" → "Sam types in a school name…"
+  - "A franchise candidate in Austin sends Brett three buildings…" → "…sends Sam three buildings…"
+  - "Brett opens Site Analysis. He pastes…" → "Sam opens Site Analysis. He pastes…"
+  - "Brett clicks the family-density card…" → "Sam clicks…"
+  - "Brett exports the three-site comparison PDF…" → "Sam exports…"
+  - "Brett can add a short note…" / "Brett can mark each city…" / "Brett can compare up to four…" / "Brett can defend any city's score…" → all become "Sam …"
+  - "The export button stays locked until Brett picks a winner." → "…until Sam picks a winner."
 
----
+### Keep as "Brett" — consultant/approver references
+- Audience line: "Audience: Brett, Sam, Haseeb, Lovable" (unchanged)
+- "If Brett, Sam, Haseeb, and Lovable each picture…" (unchanged)
+- "Brett still needs to decide:" (×2) → change to **"Sam still needs to decide:"** since Sam is the client making product calls (Brett advises). Confirm if you'd rather leave these as Brett.
+- "Five small things still need Brett's sign-off" → **"Sam's sign-off"** (same reasoning).
 
-## Task 1 — Rename Open Decisions doc
+### Output
+- Overwrite `Neuron-Garage-Features-1A-1B-Vision-v2.docx` and regenerate the matching PDF.
+- Render each PDF page to an image and visually verify no stray "Brett" remains in end-user contexts before handing back.
 
-Copy existing files to the new name. No content changes.
-
-- `Neuron-Garage-Phase-2-Open-Decisions-v5-supplement.docx` → `Neuron-Garage-Features-1A-1B-Open-Decisions-v1.docx`
-- Same for the `.pdf`
-
-Old files stay on disk (so nothing breaks) but the new name is what you download and send.
-
----
-
-## Task 2 — Rewrite Vision v1 at Grade-8
-
-Create **`Neuron-Garage-Features-1A-1B-Vision-v2.docx`** (and `.pdf`).
-
-### What stays from v1
-- Blue colored headings (same `#174be8` brand blue used in the app)
-- Section structure: Intro → Feature 1A → Feature 1B → How they connect → What's still open
-- Depth (it stays detailed — Brett liked v1's depth)
-- The two "decision-capture surface" callouts that v1.1 added (so we don't lose that improvement)
-
-### What changes — language rewrite rules
-- **Replace every jargon term** with a plain phrase, used consistently:
-  - *isochrone* → "drive-time circle (10 or 15 minutes by car)"
-  - *calibration gate* → "sanity check"
-  - *PEE Score / composite score* → "the one number" or "the city's score"
-  - *sub-score / pillar* → "one of the six things we measure"
-  - *sellout curve* → "how fast camps fill up"
-  - *premium enrichment ecosystem* → "the local market for paid kids' activities"
-  - *Tier 1/2/3 cost envelope* → "small / mid / big city budget"
-  - *Market Balance Index / CSI* → "how crowded the market already is"
-  - *anchor markets / external proxy* → "the markets we already know are good"
-- **Sentence length**: max ~20 words. Break long sentences.
-- **No nested clauses**. One idea per sentence.
-- **Define on first use**, then use the plain phrase forever after.
-- **Open with one paragraph** that a non-technical executive could read in 30 seconds and know what the two features do and why they exist.
-- **End each feature section** with a 3-line "what success looks like" box in plain English.
-- **Keep the TBD markers** v1.1 introduced (tier labels, calibration margin, weights) but phrase them as "Brett still needs to decide X" — and point to the Open Decisions doc.
-
-### Format
-- US Letter, 1" margins, Arial body (Calibri also fine)
-- H1 / H2 in brand blue `#174be8`, bold
-- Body 11pt, line spacing 1.15
-- Page numbers in footer
-- Title page with version + date
-
-### Out of scope
-- No new content or new features. Same scope as v1.
-- No re-numbering, no diagram rewrites.
-- We don't touch v1 or v1.1 — they stay on disk.
-
----
-
-## Deliverables
-
-Three files in `/mnt/documents/`:
-
-1. `Neuron-Garage-Features-1A-1B-Open-Decisions-v1.docx` + `.pdf` (renamed copy)
-2. `Neuron-Garage-Features-1A-1B-Vision-v2.docx` + `.pdf` (Grade-8 rewrite)
-
-After build, I'll convert each page to an image and visually verify nothing is broken, then post `<presentation-artifact>` tags so you can download.
-
-**You send Brett:** the two new files. You unsend the old v1.
-
-No code changes. No app changes. Pure document work.
+One open question before I ship: for the two "still needs to decide" / "sign-off" lines, do you want **Sam** (client decides) or keep **Brett** (consultant signs off)?

@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { DemoBanner } from "@/components/phase2-demo/DemoBanner";
 import { LowConfidenceBadge } from "@/components/phase2-demo/LowConfidenceBadge";
 import { SampleDataBadge } from "@/components/phase2-demo/SampleDataBadge";
+import { ShortlistTable } from "@/components/phase2-demo/ShortlistTable";
 import { Slider } from "@/components/ui/slider";
 import {
   friscoMarketValidationDemo,
@@ -12,6 +13,7 @@ import {
   MARKET_BALANCE_BANDS,
   QA_QUEUE_FLAGGED_COUNT,
   SCRAPE_CADENCE,
+  SHORTLIST_DEMO,
   type AbsorptionStatus,
   type ConfidenceLevel,
 } from "@/data/phase2DemoData";
@@ -150,6 +152,9 @@ function SubScoreCard({ title, subtitle, weight, value, signals, formula, confid
 export default function MarketValidation() {
   const data = friscoMarketValidationDemo;
   const subs = data.subScores;
+  const [activeCityId, setActiveCityId] = useState<string>("frisco-tx");
+  const activeRow = SHORTLIST_DEMO.find((r) => r.id === activeCityId) ?? SHORTLIST_DEMO[0];
+  const isFrisco = activeCityId === "frisco-tx";
 
   // 1A-LOV-5 — Sellout curve from sample weeks (% sold_out + waitlist).
   const weekLabels = data.premiumProviders[0]?.sampleWeeks.map((w) => w.label) ?? [];
@@ -249,44 +254,33 @@ export default function MarketValidation() {
 
       <DemoBanner />
 
-      {/* Shortlist city selector */}
-      <section
-        className="mb-4 flex flex-wrap items-center gap-1.5 rounded-lg border bg-white p-3"
-        style={{ borderColor: BORDER }}
-      >
-        <span className="mr-1 text-[10px] font-semibold uppercase tracking-wide" style={{ color: MUTED }}>
-          Shortlist · {data.shortlist.length}
-        </span>
-        {data.shortlist.map((c) => {
-          const isActive = c.active;
-          return (
-            <button
-              key={`${c.city}-${c.state}`}
-              type="button"
-              disabled={!isActive}
-              title={isActive ? `${c.city}, ${c.state} — composite ${c.composite}` : "Demo locked to Frisco — other cities wire up in Week 3"}
-              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold transition disabled:cursor-not-allowed"
-              style={{
-                borderColor: isActive ? BLUE : BORDER,
-                backgroundColor: isActive ? BLUE : "#fff",
-                color: isActive ? "#fff" : MUTED,
-                opacity: isActive ? 1 : 0.7,
-              }}
-            >
-              {c.city}, {c.state}
-              <span
-                className="rounded-full px-1 py-px text-[9px] font-bold tabular-nums"
-                style={{
-                  backgroundColor: isActive ? "rgba(255,255,255,0.22)" : SOFT,
-                  color: isActive ? "#fff" : NAVY,
-                }}
-              >
-                {c.composite}
-              </span>
-            </button>
-          );
-        })}
+      {/* v1.1 — Decision-capture shortlist table (replaces the chip rail) */}
+      <ShortlistTable
+        rows={SHORTLIST_DEMO}
+        activeCityId={activeCityId}
+        onSelectCity={setActiveCityId}
+      />
+
+      {/* Decision points — what is Brett actually deciding on this page? */}
+      <section className="mb-4 rounded-lg border p-3" style={{ borderColor: BORDER, backgroundColor: SOFT }}>
+        <h3 className="mb-1 text-[11px] font-bold uppercase tracking-wide" style={{ color: NAVY }}>
+          Decision points on this page
+        </h3>
+        <ol className="ml-4 list-decimal space-y-0.5 text-[12px]" style={{ color: NAVY }}>
+          <li>For each city: <strong>Pursue / Hold / Drop</strong> using the table above (Brett's call, persists per user).</li>
+          <li>Across the shortlist: which 5–10 cities graduate to 1B site analysis (use the Pursue filter, then Export CSV).</li>
+          <li>Per city: is the absorption signal believable (check the deep-dive sellout curve below)?</li>
+          <li>Per city: is the market balance band reason enough to override a borderline PEE Score?</li>
+        </ol>
       </section>
+
+      {/* Active city deep-dive panel */}
+      {!isFrisco && (
+        <div className="mb-3 rounded-md border p-2 text-[11px]" style={{ borderColor: BORDER, backgroundColor: "#fff1d6", color: "#925100" }}>
+          Deep-dive below shows <strong>Frisco, TX</strong> (the demo anchor). {activeRow.city}, {activeRow.state} wires up
+          to the Manus pipeline in Week 3; the table above already carries that city's verdict.
+        </div>
+      )}
 
       {/* Composite card — left stack flush-left, fixed-width right sidebar */}
       <section

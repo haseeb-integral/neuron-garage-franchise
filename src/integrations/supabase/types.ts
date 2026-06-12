@@ -1168,6 +1168,42 @@ export type Database = {
         }
         Relationships: []
       }
+      market_validation_decisions: {
+        Row: {
+          city_id: string
+          city_label: string
+          created_at: string
+          decided_at: string | null
+          id: string
+          notes: string
+          updated_at: string
+          user_id: string
+          verdict: string
+        }
+        Insert: {
+          city_id: string
+          city_label: string
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          notes?: string
+          updated_at?: string
+          user_id: string
+          verdict?: string
+        }
+        Update: {
+          city_id?: string
+          city_label?: string
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          notes?: string
+          updated_at?: string
+          user_id?: string
+          verdict?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -1613,6 +1649,45 @@ export type Database = {
           singleton?: boolean | null
           updated_at?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      site_analysis_decisions: {
+        Row: {
+          address: string
+          created_at: string
+          decided_at: string | null
+          id: string
+          is_winner: boolean
+          notes: string
+          school_name: string
+          updated_at: string
+          user_id: string
+          verdict: string
+        }
+        Insert: {
+          address: string
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          is_winner?: boolean
+          notes?: string
+          school_name?: string
+          updated_at?: string
+          user_id: string
+          verdict?: string
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          is_winner?: boolean
+          notes?: string
+          school_name?: string
+          updated_at?: string
+          user_id?: string
+          verdict?: string
         }
         Relationships: []
       }

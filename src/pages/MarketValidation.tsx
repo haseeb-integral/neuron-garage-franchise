@@ -352,7 +352,7 @@ export default function MarketValidation() {
                 {data.composite}
               </div>
               <div className="mt-1 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
-                PEE Score
+                Premium Enrichment Ecosystem Score
               </div>
               <span
                 className={`${CHIP} mt-2 font-bold`}

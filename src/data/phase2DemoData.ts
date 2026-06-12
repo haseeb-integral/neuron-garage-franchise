@@ -24,6 +24,36 @@ export interface ShortlistCity {
   active: boolean;
 }
 
+/**
+ * Row format consumed by the v1.1 decision-capture shortlist table.
+ * Sub-score values are demo numbers only — every city other than Frisco
+ * has placeholder PEE / sub-scores until Week 3 wires Manus output.
+ */
+export interface ShortlistRow {
+  id: string;
+  city: string;
+  state: string;
+  composite: number;
+  tier: string;          // demo label; final band vocabulary is an Open Decision for Brett
+  pricing: number;
+  absorption: number;
+  scaledOperator: number;
+  diversity: number;
+  depth: number;
+  balanceBand: "Underserved" | "Balanced" | "Competitive" | "Saturated";
+}
+
+export const SHORTLIST_DEMO: ShortlistRow[] = [
+  { id: "frisco-tx",     city: "Frisco",     state: "TX", composite: 78, tier: "Strong",  pricing: 82, absorption: 74, scaledOperator: 71, diversity: 76, depth: 68, balanceBand: "Underserved" },
+  { id: "bellevue-wa",   city: "Bellevue",   state: "WA", composite: 82, tier: "Top Tier",pricing: 88, absorption: 81, scaledOperator: 78, diversity: 80, depth: 75, balanceBand: "Balanced" },
+  { id: "plano-tx",      city: "Plano",      state: "TX", composite: 74, tier: "Strong",  pricing: 76, absorption: 70, scaledOperator: 80, diversity: 72, depth: 73, balanceBand: "Competitive" },
+  { id: "carmel-in",     city: "Carmel",     state: "IN", composite: 71, tier: "Strong",  pricing: 70, absorption: 66, scaledOperator: 68, diversity: 70, depth: 74, balanceBand: "Underserved" },
+  { id: "cary-nc",       city: "Cary",       state: "NC", composite: 69, tier: "Mixed",   pricing: 72, absorption: 60, scaledOperator: 70, diversity: 66, depth: 71, balanceBand: "Balanced" },
+  { id: "newton-ma",     city: "Newton",     state: "MA", composite: 69, tier: "Mixed",   pricing: 78, absorption: 58, scaledOperator: 74, diversity: 68, depth: 64, balanceBand: "Competitive" },
+  { id: "pleasanton-ca", city: "Pleasanton", state: "CA", composite: 66, tier: "Mixed",   pricing: 84, absorption: 55, scaledOperator: 72, diversity: 60, depth: 58, balanceBand: "Saturated" },
+  { id: "brookline-ma",  city: "Brookline",  state: "MA", composite: 62, tier: "Weak",    pricing: 80, absorption: 48, scaledOperator: 66, diversity: 58, depth: 52, balanceBand: "Saturated" },
+];
+
 export interface SubScore {
   value: number;
   weight: number;

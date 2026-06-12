@@ -169,7 +169,15 @@ function SchoolProfileFactors() {
 
 
 function SiteCard({ site }: { site: SiteAnalysisDemoSite }) {
-  const tier = tierBadge(site.composite);
+  const { byAddress } = useSiteDecisions();
+  const decision = byAddress.get(site.address);
+  const brettVerdict: SiteVerdict | undefined =
+    decision && decision.verdict !== "undecided" ? decision.verdict : undefined;
+  const scoreTier = tierBadge(site.composite);
+  const pill = brettVerdict ? VERDICT_STYLE[brettVerdict] : scoreTier;
+  const pillSource = brettVerdict ? "Brett's call" : "auto from score";
+  const isWinner = decision?.is_winner ?? false;
+
   const grade = shortGradeAlignment(site.gradeAlignment);
   const s = site.subScores;
   const access = SITE_ACCESSIBILITY_CALLOUTS[site.id];
@@ -193,7 +201,14 @@ function SiteCard({ site }: { site: SiteAnalysisDemoSite }) {
     setOpenSet(allOpen ? new Set() : new Set(rowDefs.map((r) => r.label)));
 
   return (
-    <div className="flex flex-col rounded-lg border bg-white p-4" style={{ borderColor: BORDER, minHeight: 560 }}>
+    <div
+      className="flex flex-col rounded-lg border bg-white p-4"
+      style={{
+        borderColor: isWinner ? "#1d6b32" : BORDER,
+        borderWidth: isWinner ? 2 : 1,
+        minHeight: 560,
+      }}
+    >
       {/* Header band */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
@@ -202,6 +217,15 @@ function SiteCard({ site }: { site: SiteAnalysisDemoSite }) {
             <h3 className="truncate text-[13px] font-bold" style={{ color: NAVY }} title={site.schoolName}>
               {site.schoolName}
             </h3>
+            {isWinner && (
+              <span
+                className={`${CHIP} font-bold`}
+                style={{ backgroundColor: "#1d6b32", color: "#fff" }}
+                title="Marked as the winner across the compared set"
+              >
+                <Star size={9} className="mr-0.5" fill="#fff" /> Winner
+              </span>
+            )}
           </div>
           <p className="mt-0.5 line-clamp-1 text-[11px]" style={{ color: MUTED }} title={site.address}>
             {site.address}
@@ -228,12 +252,17 @@ function SiteCard({ site }: { site: SiteAnalysisDemoSite }) {
           </div>
           <span
             className={`${CHIP} font-bold`}
-            style={{ backgroundColor: tier.bg, color: tier.fg }}
+            style={{ backgroundColor: pill.bg, color: pill.fg }}
+            title={`${pill.label} — ${pillSource}`}
           >
-            {tier.label}
+            {pill.label}
+          </span>
+          <span className="text-[9px] uppercase tracking-wide" style={{ color: MUTED }}>
+            {pillSource}
           </span>
         </div>
       </div>
+
 
       {/* Verdict band */}
       <p

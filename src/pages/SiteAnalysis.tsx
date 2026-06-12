@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { ChevronDown, ChevronUp, Download, FileText, MapPin, Plus, Search } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ChevronDown, ChevronUp, CheckCircle2, Download, FileText, MapPin, Plus, Search, Star, XCircle } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
+import { AddCandidateSiteModal } from "@/components/phase2-demo/AddCandidateSiteModal";
 import { DemoBanner } from "@/components/phase2-demo/DemoBanner";
 import { SampleDataBadge } from "@/components/phase2-demo/SampleDataBadge";
 import { SiteDecisionControls } from "@/components/phase2-demo/SiteDecisionControls";
@@ -20,6 +21,13 @@ const MUTED = "#526078";
 const BORDER = "#eef2f7";
 const SOFT = "#f7faff";
 const BLUE = "#174be8";
+
+const VERDICT_STYLE: Record<SiteVerdict, { bg: string; fg: string; label: string }> = {
+  recommend: { bg: "#e3f3e7", fg: "#1d6b32", label: "Recommend" },
+  worth_a_look: { bg: "#fff8d9", fg: "#7a5800", label: "Worth a look" },
+  dont_recommend: { bg: "#fce7ec", fg: "#a3142b", label: "Don't recommend" },
+  undecided: { bg: "#eef2f7", fg: "#526078", label: "Undecided" },
+};
 
 // Shared chip class — every meta pill uses identical geometry.
 const CHIP =
@@ -161,7 +169,15 @@ function SchoolProfileFactors() {
 
 
 function SiteCard({ site }: { site: SiteAnalysisDemoSite }) {
-  const tier = tierBadge(site.composite);
+  const { byAddress } = useSiteDecisions();
+  const decision = byAddress.get(site.address);
+  const brettVerdict: SiteVerdict | undefined =
+    decision && decision.verdict !== "undecided" ? decision.verdict : undefined;
+  const scoreTier = tierBadge(site.composite);
+  const pill = brettVerdict ? VERDICT_STYLE[brettVerdict] : scoreTier;
+  const pillSource = brettVerdict ? "Brett's call" : "auto from score";
+  const isWinner = decision?.is_winner ?? false;
+
   const grade = shortGradeAlignment(site.gradeAlignment);
   const s = site.subScores;
   const access = SITE_ACCESSIBILITY_CALLOUTS[site.id];
@@ -185,7 +201,14 @@ function SiteCard({ site }: { site: SiteAnalysisDemoSite }) {
     setOpenSet(allOpen ? new Set() : new Set(rowDefs.map((r) => r.label)));
 
   return (
-    <div className="flex flex-col rounded-lg border bg-white p-4" style={{ borderColor: BORDER, minHeight: 560 }}>
+    <div
+      className="flex flex-col rounded-lg border bg-white p-4"
+      style={{
+        borderColor: isWinner ? "#1d6b32" : BORDER,
+        borderWidth: isWinner ? 2 : 1,
+        minHeight: 560,
+      }}
+    >
       {/* Header band */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
@@ -194,6 +217,15 @@ function SiteCard({ site }: { site: SiteAnalysisDemoSite }) {
             <h3 className="truncate text-[13px] font-bold" style={{ color: NAVY }} title={site.schoolName}>
               {site.schoolName}
             </h3>
+            {isWinner && (
+              <span
+                className={`${CHIP} font-bold`}
+                style={{ backgroundColor: "#1d6b32", color: "#fff" }}
+                title="Marked as the winner across the compared set"
+              >
+                <Star size={9} className="mr-0.5" fill="#fff" /> Winner
+              </span>
+            )}
           </div>
           <p className="mt-0.5 line-clamp-1 text-[11px]" style={{ color: MUTED }} title={site.address}>
             {site.address}
@@ -220,12 +252,17 @@ function SiteCard({ site }: { site: SiteAnalysisDemoSite }) {
           </div>
           <span
             className={`${CHIP} font-bold`}
-            style={{ backgroundColor: tier.bg, color: tier.fg }}
+            style={{ backgroundColor: pill.bg, color: pill.fg }}
+            title={`${pill.label} — ${pillSource}`}
           >
-            {tier.label}
+            {pill.label}
+          </span>
+          <span className="text-[9px] uppercase tracking-wide" style={{ color: MUTED }}>
+            {pillSource}
           </span>
         </div>
       </div>
+
 
       {/* Verdict band */}
       <p
@@ -328,25 +365,168 @@ function defaultVerdictFromScore(score: number): SiteVerdict {
   return "dont_recommend";
 }
 
-function EmptySlot() {
+function EmptySlot({ onAdd }: { onAdd: () => void }) {
   return (
-    <div
-      className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 text-center"
-      style={{ borderColor: BORDER, color: MUTED, minHeight: 560 }}
+    <button
+      type="button"
+      onClick={onAdd}
+      className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 text-center transition-colors hover:border-[var(--add-hover)] hover:bg-[#f7faff]"
+      style={
+        {
+          borderColor: BORDER,
+          color: MUTED,
+          minHeight: 560,
+          ["--add-hover" as string]: BLUE,
+        } as React.CSSProperties
+      }
     >
       <div className="flex h-9 w-9 items-center justify-center rounded-full" style={{ backgroundColor: SOFT, color: BLUE }}>
         <Plus size={18} />
       </div>
-      <div className="mt-2 text-[12px] font-semibold">Add candidate site</div>
-      <p className="mt-1 max-w-[180px] text-[11px]">Up to 4 sites compared side-by-side. Disabled in demo.</p>
-      <div className="mt-2"><SampleDataBadge label="Empty slot" /></div>
+      <div className="mt-2 text-[12px] font-semibold" style={{ color: NAVY }}>Add candidate site</div>
+      <p className="mt-1 max-w-[180px] text-[11px]">Sample-scored locally. Up to 4 sites compared side-by-side.</p>
+      <div className="mt-2"><SampleDataBadge label="Demo only" /></div>
+    </button>
+  );
+}
+
+function CalibrationGateBanner({ sites }: { sites: SiteAnalysisDemoSite[] }) {
+  const trinity = sites.find((s) => /trinity/i.test(s.schoolName));
+  const leaf = sites.find((s) => /leafspring/i.test(s.schoolName));
+  if (!trinity || !leaf) return null;
+  const delta = trinity.composite - leaf.composite;
+  const pass = delta >= 20;
+  return (
+    <div
+      className="mb-3 flex items-start gap-2 rounded-md border px-3 py-2 text-[12px]"
+      style={{
+        backgroundColor: pass ? "#e3f3e7" : "#fce7ec",
+        borderColor: pass ? "#1d6b32" : "#a3142b",
+        color: pass ? "#155724" : "#a3142b",
+      }}
+      role="status"
+    >
+      {pass ? <CheckCircle2 size={16} className="mt-0.5 shrink-0" /> : <XCircle size={16} className="mt-0.5 shrink-0" />}
+      <div>
+        <strong>Calibration gate: {pass ? "✓ PASS" : "✗ FAIL"}</strong> — LeafSpring ({leaf.composite}) is{" "}
+        {delta} {delta === 1 ? "point" : "points"} below Trinity ({trinity.composite}).{" "}
+        <span className="opacity-80">
+          SOW Item 2 requires LeafSpring to score materially lower than Trinity (≥20 pt gap). If this
+          fails on real data, the weights are reworked before rollout.
+        </span>
+      </div>
     </div>
   );
 }
 
+function WinnerBanner({
+  winnerSite,
+  winnerDecision,
+}: {
+  winnerSite?: SiteAnalysisDemoSite;
+  winnerDecision?: { verdict: SiteVerdict };
+}) {
+  if (!winnerSite) {
+    return (
+      <div
+        className="mb-3 rounded-md border px-3 py-2 text-[12px]"
+        style={{ backgroundColor: "#fff8d9", borderColor: "#925100", color: "#7a5800" }}
+      >
+        <strong>No winner selected.</strong> Pick exactly one site as the ★ Winner to enable the
+        decision pack export and capture which address Brett is committing to.
+      </div>
+    );
+  }
+  const v = winnerDecision?.verdict ?? "undecided";
+  const verdictLabel = VERDICT_STYLE[v].label;
+  return (
+    <div
+      className="mb-3 flex items-center gap-2 rounded-md border px-3 py-2 text-[12px]"
+      style={{ backgroundColor: "#e3f3e7", borderColor: "#1d6b32", color: "#155724" }}
+    >
+      <Star size={14} fill="#1d6b32" />
+      <div>
+        <strong>★ Winner:</strong> {winnerSite.schoolName} — Site Opportunity{" "}
+        <strong className="tabular-nums">{winnerSite.composite}</strong> · Brett's verdict:{" "}
+        <strong>{verdictLabel}</strong>
+      </div>
+    </div>
+  );
+}
+
+function DecisionSummary({
+  sites,
+  byAddress,
+}: {
+  sites: SiteAnalysisDemoSite[];
+  byAddress: Map<string, { verdict: SiteVerdict; is_winner: boolean; notes: string }>;
+}) {
+  return (
+    <section className="mb-6 rounded-lg border bg-white p-4" style={{ borderColor: BORDER }}>
+      <div className="mb-2 flex items-center justify-between">
+        <h3 className="text-[13px] font-bold" style={{ color: NAVY }}>
+          Decision summary
+        </h3>
+        <span className="text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
+          Goes into the decision pack export
+        </span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-[12px]">
+          <thead>
+            <tr style={{ color: MUTED }}>
+              <th className="py-1 text-left font-semibold">Site</th>
+              <th className="py-1 text-right font-semibold">Score</th>
+              <th className="py-1 text-left font-semibold">Brett's verdict</th>
+              <th className="py-1 text-left font-semibold">Winner</th>
+              <th className="py-1 text-left font-semibold">Note</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sites.map((s) => {
+              const d = byAddress.get(s.address);
+              const v = (d?.verdict ?? "undecided") as SiteVerdict;
+              const vs = VERDICT_STYLE[v];
+              return (
+                <tr key={s.id} style={{ borderTop: `1px solid ${BORDER}`, color: NAVY }}>
+                  <td className="py-1.5 pr-2">{s.schoolName}</td>
+                  <td className="py-1.5 pr-2 text-right tabular-nums font-bold">{s.composite}</td>
+                  <td className="py-1.5 pr-2">
+                    <span
+                      className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+                      style={{ backgroundColor: vs.bg, color: vs.fg }}
+                    >
+                      {vs.label}
+                    </span>
+                  </td>
+                  <td className="py-1.5 pr-2">
+                    {d?.is_winner ? <Star size={12} fill="#1d6b32" color="#1d6b32" /> : <span style={{ color: MUTED }}>—</span>}
+                  </td>
+                  <td className="py-1.5 pr-2" style={{ color: d?.notes ? NAVY : MUTED }}>
+                    {d?.notes || "—"}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 export default function SiteAnalysis() {
-  const { filled, emptySlots } = austinSiteAnalysisDemo;
+  const [filled, setFilled] = useState<SiteAnalysisDemoSite[]>(austinSiteAnalysisDemo.filled);
+  const [modalOpen, setModalOpen] = useState(false);
   const { byAddress } = useSiteDecisions();
+
+  const emptySlots = Math.max(0, 4 - filled.length);
+  const winnerSite = useMemo(
+    () => filled.find((s) => byAddress.get(s.address)?.is_winner),
+    [filled, byAddress],
+  );
+  const winnerDecision = winnerSite ? byAddress.get(winnerSite.address) : undefined;
+  const canExport = !!winnerSite;
 
   return (
     <>
@@ -417,7 +597,7 @@ export default function SiteAnalysis() {
         </div>
         <div className="mt-2 flex items-center justify-between gap-2">
           <p className="text-[11px]" style={{ color: MUTED }}>
-            Demo — inputs are not wired. Trinity vs LeafSpring shown below as calibration anchors per SOW Item 2.
+            Demo — production input not wired. Use the <strong>"+ Add candidate site"</strong> slot below to add a sample-scored site and walk the decision flow.
           </p>
           <button
             type="button"
@@ -444,12 +624,17 @@ export default function SiteAnalysis() {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <SampleDataBadge label="2 of 4 slots" />
+            <SampleDataBadge label={`${filled.length} of 4 slots`} />
             <button
               type="button"
               onClick={() => exportSiteDecisionPack(filled, byAddress)}
-              title="Open a branded decision pack with Brett's verdict, winner, and notes — print or save as PDF"
-              className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold"
+              disabled={!canExport}
+              title={
+                canExport
+                  ? "Open a branded decision pack with Brett's verdict, winner, and notes — print or save as PDF"
+                  : "Mark a winner first to enable the decision pack"
+              }
+              className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
               style={{ borderColor: BLUE, color: BLUE, backgroundColor: "#fff" }}
             >
               <Download size={12} />
@@ -462,10 +647,10 @@ export default function SiteAnalysis() {
         <div className="mt-3 rounded-md p-2 text-[11px]" style={{ backgroundColor: "#f7faff" }}>
           <strong style={{ color: NAVY }}>Decision points on this page:</strong>
           <ol className="ml-4 mt-0.5 list-decimal" style={{ color: NAVY }}>
-            <li>Per site: <strong>Recommend / Worth a look / Don't recommend</strong> (override the threshold default if needed).</li>
-            <li>Across the compared set: pick exactly one <strong>Winner</strong> ★ to send to candidate/landlord.</li>
-            <li>Capture <strong>notes</strong> on each card explaining the verdict — they go into the export pack.</li>
             <li>Confirm the calibration gate holds: LeafSpring scores materially below Trinity.</li>
+            <li>Per site: <strong>Recommend / Worth a look / Don't recommend</strong> (overrides the threshold default and drives the top pill).</li>
+            <li>Across the compared set: pick exactly one <strong>Winner</strong> ★ — that's the site Brett is committing to.</li>
+            <li>Capture <strong>notes</strong> on each card explaining the verdict — they go into the export pack.</li>
           </ol>
         </div>
 
@@ -487,14 +672,25 @@ export default function SiteAnalysis() {
         </div>
       </section>
 
+      <CalibrationGateBanner sites={filled} />
+      <WinnerBanner winnerSite={winnerSite} winnerDecision={winnerDecision} />
+
       <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {filled.map((site) => (
           <SiteCard key={site.id} site={site} />
         ))}
         {Array.from({ length: emptySlots }).map((_, i) => (
-          <EmptySlot key={i} />
+          <EmptySlot key={i} onAdd={() => setModalOpen(true)} />
         ))}
       </section>
+
+      <DecisionSummary sites={filled} byAddress={byAddress} />
+
+      <AddCandidateSiteModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onAdd={(site) => setFilled((prev) => (prev.length >= 4 ? prev : [...prev, site]))}
+      />
 
       <footer
         className="flex items-center gap-2 rounded-lg border bg-white p-3 text-[11px]"
@@ -506,6 +702,7 @@ export default function SiteAnalysis() {
         Item 2 (Feature 1B). This page renders sample data only — Week 3 wires it to Mapbox/HERE isochrones,
         Census ACS, and NCES.
       </footer>
+
     </>
   );
 }

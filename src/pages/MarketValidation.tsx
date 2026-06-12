@@ -346,12 +346,12 @@ export default function MarketValidation() {
             </p>
 
           </div>
-          <div className="flex w-[180px] shrink-0 flex-col items-end gap-2">
+          <div className="flex w-[280px] shrink-0 flex-col items-end gap-2">
             <div className="text-right">
               <div className="text-[42px] font-black leading-none tabular-nums" style={{ color: NAVY }}>
                 {data.composite}
               </div>
-              <div className="mt-1 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
+              <div className="mt-1 whitespace-nowrap text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
                 Premium Enrichment Ecosystem Score
               </div>
               <span

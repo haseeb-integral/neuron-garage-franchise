@@ -64,9 +64,10 @@ export function ShortlistTable({ rows, activeCityId, onSelectCity }: Props) {
     else { setSortKey(k); setSortDir(k === "city" ? "asc" : "desc"); }
   };
 
-  const headerCell = (k: SortKey, label: string, align: "left" | "right" = "right") => (
+  const headerCell = (k: SortKey, label: string, align: "left" | "right" = "right", title?: string) => (
     <th
       onClick={() => toggleSort(k)}
+      title={title}
       className={`cursor-pointer whitespace-nowrap px-2 py-2 text-[10px] font-semibold uppercase tracking-wide ${
         align === "left" ? "text-left" : "text-right"
       }`}

@@ -1,52 +1,76 @@
-# Site Analysis (1B) — decision-capture fixes
+## Goal
 
-## What you're seeing (the bug)
+You're sending Brett **one file**, not three. Two tasks:
 
-The pill under the score (e.g. "Recommend" green) is **derived from the numeric threshold**, not from Brett's click. `SiteAnalysis.tsx` line 221–226 reads `tierBadge(site.composite)` — the score band. The "BRETT'S DECISION" row at the bottom (Recommend / Worth a look / Don't recommend) writes to a different state (`site_analysis_decisions.verdict` via `useSiteDecisions`). So they're disconnected: clicking "Worth a look" updates the bottom row but the top pill keeps showing the score-band label.
+1. **Rename** the Open Decisions supplement so it's obvious what it is.
+2. **Rewrite** the Vision v1 doc at true Grade-8 (executive non-technical) language, keeping the blue colored headings and good formatting. This replaces the v1 you already sent (you'll unsend that one).
 
-## What 1B actually exists for (SOW Item 2 + transcript)
+After this, v1.1 becomes obsolete — we'll keep it on disk but you ignore it.
 
-Two jobs, in order:
+---
 
-1. **Calibration gate** — every run must pass "LeafSpring scores materially lower than Trinity." If it doesn't, the weights are wrong. This is the most important sentence in the SOW for 1B (line 344, 509).
-2. **Pick one site to commit to** — score up to 4 candidate addresses, capture per-site verdict + notes, mark one **Winner**, and export a branded PDF decision pack to send to the landlord/candidate (SOW lines 369–438).
+## Task 1 — Rename Open Decisions doc
 
-The current page shows the scores fine, but it doesn't *land the decision*: the top pill ignores Brett's call, there's no explicit calibration-gate pass/fail, no winner summary banner, and adding a real candidate site in the demo is disabled so Brett can't even simulate the workflow he'd use in production.
+Copy existing files to the new name. No content changes.
 
-## Fix — 5 focused changes
+- `Neuron-Garage-Phase-2-Open-Decisions-v5-supplement.docx` → `Neuron-Garage-Features-1A-1B-Open-Decisions-v1.docx`
+- Same for the `.pdf`
 
-### 1. Top pill = Brett's verdict (with score-band fallback)
-- Pill under the big score reads `decision.verdict` if set, otherwise falls back to the score band.
-- Add a small "auto" / "Brett's call" tag next to the pill so it's obvious which one is showing.
-- Update pill color/label live when Brett clicks a verdict button below — single source of truth.
+Old files stay on disk (so nothing breaks) but the new name is what you download and send.
 
-### 2. Calibration gate banner at top of compare grid
-- New strip above the cards: **"Calibration gate: ✓ PASS — LeafSpring (41) is 45 points below Trinity (86)"** in green, or **✗ FAIL** in red if gap < 20.
-- Computes from the two anchor cards in the compared set. Hidden when neither Trinity nor LeafSpring is present.
-- Mirrors the locked SOW gate so Brett sees the most important test result without scrolling.
+---
 
-### 3. Winner summary banner
-- When Brett marks one card as Winner, show a banner above the grid: **"★ Winner: Trinity Episcopal — Site Opportunity 86 · Brett's verdict: Worth a look"**.
-- Empty-state copy when no winner: "Pick a winner to enable the decision pack."
-- "Export decision pack" button enables only when a winner is selected (currently always enabled).
+## Task 2 — Rewrite Vision v1 at Grade-8
 
-### 4. Enable "Add candidate site" in demo
-- The two empty slot buttons currently say "Disabled in demo." Wire them to a small modal that takes school name + address + optional school type/enrollment and inserts a sample-scored card into the local compare list (still demo data — score is generated client-side from a stub, flagged SAMPLE). Lets Brett actually walk the decision flow end-to-end.
+Create **`Neuron-Garage-Features-1A-1B-Vision-v2.docx`** (and `.pdf`).
 
-### 5. Notes show in summary + export, not just on each card
-- Add a "Decision summary" panel under the grid: per-site row with verdict pill, score, winner star, and the note Brett wrote. Read-only, sourced from the same `useSiteDecisions` state.
-- This is what gets exported in the decision pack PDF (already wired in `decisionsExport.ts` — confirm notes for non-winner sites flow through).
+### What stays from v1
+- Blue colored headings (same `#174be8` brand blue used in the app)
+- Section structure: Intro → Feature 1A → Feature 1B → How they connect → What's still open
+- Depth (it stays detailed — Brett liked v1's depth)
+- The two "decision-capture surface" callouts that v1.1 added (so we don't lose that improvement)
 
-## Out of scope
-- No formula, weight, threshold, or calibration-margin changes — those are Open Decisions in the v5 supplement, Brett's call.
-- No real isochrones / Mapbox / HERE — still placeholder maps until Week 3.
-- No DB schema changes — `site_analysis_decisions` already has everything we need.
+### What changes — language rewrite rules
+- **Replace every jargon term** with a plain phrase, used consistently:
+  - *isochrone* → "drive-time circle (10 or 15 minutes by car)"
+  - *calibration gate* → "sanity check"
+  - *PEE Score / composite score* → "the one number" or "the city's score"
+  - *sub-score / pillar* → "one of the six things we measure"
+  - *sellout curve* → "how fast camps fill up"
+  - *premium enrichment ecosystem* → "the local market for paid kids' activities"
+  - *Tier 1/2/3 cost envelope* → "small / mid / big city budget"
+  - *Market Balance Index / CSI* → "how crowded the market already is"
+  - *anchor markets / external proxy* → "the markets we already know are good"
+- **Sentence length**: max ~20 words. Break long sentences.
+- **No nested clauses**. One idea per sentence.
+- **Define on first use**, then use the plain phrase forever after.
+- **Open with one paragraph** that a non-technical executive could read in 30 seconds and know what the two features do and why they exist.
+- **End each feature section** with a 3-line "what success looks like" box in plain English.
+- **Keep the TBD markers** v1.1 introduced (tier labels, calibration margin, weights) but phrase them as "Brett still needs to decide X" — and point to the Open Decisions doc.
 
-## Files touched
-- `src/pages/SiteAnalysis.tsx` — pill wiring, calibration banner, winner banner, summary panel, enable add-site modal.
-- `src/components/phase2-demo/SiteDecisionControls.tsx` — emit verdict change so parent pill updates (already does via the hook; verify subscription path).
-- `src/components/phase2-demo/AddCandidateSiteModal.tsx` *(new)* — small form + client-side stub score.
-- `src/lib/decisionsExport.ts` — verify notes for non-winner sites are included; add winner-required guard.
-- `.lovable/phase-2/CHANGELOG.md` — one-line entry.
+### Format
+- US Letter, 1" margins, Arial body (Calibri also fine)
+- H1 / H2 in brand blue `#174be8`, bold
+- Body 11pt, line spacing 1.15
+- Page numbers in footer
+- Title page with version + date
 
-After the fixes, the page will answer "what is Brett deciding here?" at a glance: **does the calibration gate hold, which of the up-to-4 sites wins, and what's the verdict + note that goes to the landlord.**
+### Out of scope
+- No new content or new features. Same scope as v1.
+- No re-numbering, no diagram rewrites.
+- We don't touch v1 or v1.1 — they stay on disk.
+
+---
+
+## Deliverables
+
+Three files in `/mnt/documents/`:
+
+1. `Neuron-Garage-Features-1A-1B-Open-Decisions-v1.docx` + `.pdf` (renamed copy)
+2. `Neuron-Garage-Features-1A-1B-Vision-v2.docx` + `.pdf` (Grade-8 rewrite)
+
+After build, I'll convert each page to an image and visually verify nothing is broken, then post `<presentation-artifact>` tags so you can download.
+
+**You send Brett:** the two new files. You unsend the old v1.
+
+No code changes. No app changes. Pure document work.

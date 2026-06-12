@@ -175,7 +175,7 @@ function SiteCard({ site }: { site: SiteAnalysisDemoSite }) {
     decision && decision.verdict !== "undecided" ? decision.verdict : undefined;
   const scoreTier = tierBadge(site.composite);
   const pill = brettVerdict ? VERDICT_STYLE[brettVerdict] : scoreTier;
-  const pillSource = brettVerdict ? "Brett's call" : "auto from score";
+  const pillSource = brettVerdict ? "Brett/Sam's call" : "auto from score";
   const isWinner = decision?.is_winner ?? false;
 
   const grade = shortGradeAlignment(site.gradeAlignment);
@@ -433,7 +433,7 @@ function WinnerBanner({
         style={{ backgroundColor: "#fff8d9", borderColor: "#925100", color: "#7a5800" }}
       >
         <strong>No winner selected.</strong> Pick exactly one site as the ★ Winner to enable the
-        decision pack export and capture which address Brett is committing to.
+        decision pack export and capture which address Brett/Sam is committing to.
       </div>
     );
   }
@@ -447,7 +447,7 @@ function WinnerBanner({
       <Star size={14} fill="#1d6b32" />
       <div>
         <strong>★ Winner:</strong> {winnerSite.schoolName} — Site Opportunity{" "}
-        <strong className="tabular-nums">{winnerSite.composite}</strong> · Brett's verdict:{" "}
+        <strong className="tabular-nums">{winnerSite.composite}</strong> · Brett/Sam's verdict:{" "}
         <strong>{verdictLabel}</strong>
       </div>
     </div>
@@ -477,7 +477,7 @@ function DecisionSummary({
             <tr style={{ color: MUTED }}>
               <th className="py-1 text-left font-semibold">Site</th>
               <th className="py-1 text-right font-semibold">Score</th>
-              <th className="py-1 text-left font-semibold">Brett's verdict</th>
+              <th className="py-1 text-left font-semibold">Brett/Sam's verdict</th>
               <th className="py-1 text-left font-semibold">Winner</th>
               <th className="py-1 text-left font-semibold">Note</th>
             </tr>
@@ -631,7 +631,7 @@ export default function SiteAnalysis() {
               disabled={!canExport}
               title={
                 canExport
-                  ? "Open a branded decision pack with Brett's verdict, winner, and notes — print or save as PDF"
+                  ? "Open a branded decision pack with Brett/Sam's verdict, winner, and notes — print or save as PDF"
                   : "Mark a winner first to enable the decision pack"
               }
               className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
@@ -649,7 +649,7 @@ export default function SiteAnalysis() {
           <ol className="ml-4 mt-0.5 list-decimal" style={{ color: NAVY }}>
             <li>Confirm the calibration gate holds: LeafSpring scores materially below Trinity.</li>
             <li>Per site: <strong>Recommend / Worth a look / Don't recommend</strong> (overrides the threshold default and drives the top pill).</li>
-            <li>Across the compared set: pick exactly one <strong>Winner</strong> ★ — that's the site Brett is committing to.</li>
+            <li>Across the compared set: pick exactly one <strong>Winner</strong> ★ — that's the site Brett/Sam is committing to.</li>
             <li>Capture <strong>notes</strong> on each card explaining the verdict — they go into the export pack.</li>
           </ol>
         </div>

@@ -1,31 +1,35 @@
-You're right — my last reply was wrong. The v2 file still contains "Brett" everywhere as the end user. Nothing changed yet. Here's the actual plan to fix it.
+Replace end-user-facing "Brett" labels with **"Brett/Sam"** on the demo screens. Leave all admin/governance/scoring-lock references as **Brett** (per project memory: Brett is the approver).
 
-## What I'll change in `Neuron-Garage-Features-1A-1B-Vision-v2.docx`
+## End-user UI changes (Brett → Brett/Sam)
 
-Replace "Brett" with "Sam" wherever Brett is shown as the end user of the app. Keep Brett's name only where he is the consultant/approver.
+**`src/pages/SiteAnalysis.tsx`**
+- Line 178: `"Brett's call"` → `"Brett/Sam's call"`
+- Line 436: "which address Brett is committing to" → "which address Brett/Sam is committing to"
+- Line 450: "Brett's verdict:" → "Brett/Sam's verdict:"
+- Line 480: column header "Brett's verdict" → "Brett/Sam's verdict"
+- Line 634: tooltip "Open a branded decision pack with Brett's verdict…" → "…Brett/Sam's verdict…"
+- Line 652: "that's the site Brett is committing to" → "…Brett/Sam is committing to"
 
-### Replace (Brett → Sam) — end-user references
-- Subtitle: "how Brett will use it" → "how Sam will use it"
-- Section headers (×2 each): "What Brett sees on the screen" → "What Sam sees on the screen"; "How Brett actually uses it" → "How Sam actually uses it"; "Where Brett records his decision" → "Where Sam records his decision"
-- Walk-through prose:
-  - "Brett finishes a City Search run…" → "Sam finishes a City Search run…"
-  - "He hits Export PDF and sends the report to Sam and to a franchise…" → "He hits Export PDF and sends the report to a franchise candidate…" (drop the now-redundant "to Sam")
-  - "Brett types in a school name…" → "Sam types in a school name…"
-  - "A franchise candidate in Austin sends Brett three buildings…" → "…sends Sam three buildings…"
-  - "Brett opens Site Analysis. He pastes…" → "Sam opens Site Analysis. He pastes…"
-  - "Brett clicks the family-density card…" → "Sam clicks…"
-  - "Brett exports the three-site comparison PDF…" → "Sam exports…"
-  - "Brett can add a short note…" / "Brett can mark each city…" / "Brett can compare up to four…" / "Brett can defend any city's score…" → all become "Sam …"
-  - "The export button stays locked until Brett picks a winner." → "…until Sam picks a winner."
+**`src/pages/MarketValidation.tsx`**
+- Line 264 comment: leave (internal comment)
+- Line 270: "(Brett's call, persists per user)" → "(Brett/Sam's call, persists per user)"
 
-### Keep as "Brett" — consultant/approver references
-- Audience line: "Audience: Brett, Sam, Haseeb, Lovable" (unchanged)
-- "If Brett, Sam, Haseeb, and Lovable each picture…" (unchanged)
-- "Brett still needs to decide:" (×2) → change to **"Sam still needs to decide:"** since Sam is the client making product calls (Brett advises). Confirm if you'd rather leave these as Brett.
-- "Five small things still need Brett's sign-off" → **"Sam's sign-off"** (same reasoning).
+**`src/lib/decisionsExport.ts`**
+- Line 110 (PDF export): `Brett's verdict:` → `Brett/Sam's verdict:`
+- Line 2 header comment: leave (internal)
 
-### Output
-- Overwrite `Neuron-Garage-Features-1A-1B-Vision-v2.docx` and regenerate the matching PDF.
-- Render each PDF page to an image and visually verify no stray "Brett" remains in end-user contexts before handing back.
+**`src/pages/EmailOutreachV2.tsx`**
+- Line 167 is a comment — leave as-is (internal). No UI text change here.
 
-One open question before I ship: for the two "still needs to decide" / "sign-off" lines, do you want **Sam** (client decides) or keep **Brett** (consultant signs off)?
+## NOT changing (correctly Brett — approver/governance)
+- `Handover.tsx` (vault, API ownership, "Pending Brett")
+- `Observability.tsx`, `UserGuide.tsx`, `SystemOverview.tsx` ("ask Brett or Haseeb" — manager role)
+- `ScoringMethod.tsx` ("Brett or Haseeb sign-off")
+- `userGuideMarkdown.ts`, `specMarkdown.ts` ("Brett's rule")
+- All scoring/lib comments referencing Brett-approved decisions
+- `SubMetricWeightsDrawer.tsx` ("locked by Brett + Haseeb")
+- `MarketDetailDrawer.tsx` ("Brett's 2026-05-21 Manus upload")
+
+## Verify
+- Search demo pages after edit to confirm only the targeted strings changed.
+- Spot-check `/site-analysis` and `/market-validation` in preview that the new "Brett/Sam" labels render without layout breaks (column header width is the only minor risk).

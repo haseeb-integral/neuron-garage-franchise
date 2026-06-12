@@ -270,7 +270,7 @@ export default function MarketValidation() {
           <li>For each city: <strong>Pursue / Hold / Drop</strong> using the table above (Brett/Sam's call, persists per user).</li>
           <li>Across the shortlist: which 5–10 cities graduate to 1B site analysis (use the Pursue filter, then Export CSV).</li>
           <li>Per city: is the absorption signal believable (check the deep-dive sellout curve below)?</li>
-          <li>Per city: is the market balance band reason enough to override a borderline PEE Score?</li>
+          <li>Per city: is the market balance band reason enough to override a borderline Premium Enrichment Score?</li>
         </ol>
       </section>
 

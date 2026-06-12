@@ -4,6 +4,9 @@ import { ChevronDown, ChevronUp, Download, FileText, MapPin, Plus, Search } from
 import { PageHeader } from "@/components/PageHeader";
 import { DemoBanner } from "@/components/phase2-demo/DemoBanner";
 import { SampleDataBadge } from "@/components/phase2-demo/SampleDataBadge";
+import { SiteDecisionControls } from "@/components/phase2-demo/SiteDecisionControls";
+import { useSiteDecisions, type SiteVerdict } from "@/hooks/useSiteDecisions";
+import { exportSiteDecisionPack } from "@/lib/decisionsExport";
 import {
   austinSiteAnalysisDemo,
   SCHOOL_PROFILE_FACTORS,

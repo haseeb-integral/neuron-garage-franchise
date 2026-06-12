@@ -299,7 +299,7 @@ function SiteCard({ site }: { site: SiteAnalysisDemoSite }) {
         </div>
         <ul
           className="space-y-1.5 overflow-y-auto pr-1"
-          style={{ maxHeight: 220 }}
+          style={{ maxHeight: 180 }}
         >
           {rowDefs.map((r) => (
             <SubScoreRow
@@ -311,8 +311,21 @@ function SiteCard({ site }: { site: SiteAnalysisDemoSite }) {
           ))}
         </ul>
       </div>
+
+      {/* v1.1 — Decision capture */}
+      <SiteDecisionControls
+        address={site.address}
+        schoolName={site.schoolName}
+        defaultVerdict={defaultVerdictFromScore(site.composite)}
+      />
     </div>
   );
+}
+
+function defaultVerdictFromScore(score: number): SiteVerdict {
+  if (score >= SITE_RECOMMEND_THRESHOLDS.recommend) return "recommend";
+  if (score >= SITE_RECOMMEND_THRESHOLDS.worthALook) return "worth_a_look";
+  return "dont_recommend";
 }
 
 function EmptySlot() {

@@ -346,6 +346,7 @@ function EmptySlot() {
 
 export default function SiteAnalysis() {
   const { filled, emptySlots } = austinSiteAnalysisDemo;
+  const { byAddress } = useSiteDecisions();
 
   return (
     <>

@@ -248,7 +248,7 @@ export default function MarketValidation() {
     <>
       <PageHeader
         title="Market Validation"
-        subtitle="Phase 2 · Feature 1A — Premium Enrichment Ecosystem scoring across the v1 city shortlist."
+        subtitle="Phase 2 · Feature 1A — Market Validation Score (MVS) across the v1 city shortlist."
         hideJourneyBar
       />
 
@@ -352,7 +352,7 @@ export default function MarketValidation() {
                 {data.composite}
               </div>
               <div className="mt-1 whitespace-nowrap text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
-                Premium Enrichment Ecosystem Score
+                Market Validation Score (MVS)
               </div>
               <span
                 className={`${CHIP} mt-2 font-bold`}
@@ -381,7 +381,7 @@ export default function MarketValidation() {
           className="mt-4 rounded-md p-3 text-[11px] leading-snug"
           style={{ backgroundColor: SOFT, color: NAVY, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
         >
-          Premium Enrichment Ecosystem Score ={"\n"}
+          Market Validation Score (MVS) ={"\n"}
           {"    "}0.20 × Pricing Acceptance{"\n"}
           {"  + "}0.25 × Market Absorption{"  "}← dominant demand-side signal{"\n"}
           {"  + "}0.20 × Scaled Operator{"\n"}

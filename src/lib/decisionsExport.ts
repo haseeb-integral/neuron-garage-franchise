@@ -40,7 +40,7 @@ export function exportMarketDecisionsCsv(
     "city_id",
     "city",
     "state",
-    "pcc_score",
+    "mvs_score",
     "tier_demo",
     "pricing",
     "absorption",

@@ -26,3 +26,10 @@
 - Wired route `/mvs-methodology` in `src/App.tsx` (lazy + prefetch).
 - Added "MVS Methodology" entry to Methodology & Docs nav in `src/components/AppSidebar.tsx` (BarChart3 icon).
 - Score is canonically named MVS (Market Validation Score). Previous names PEE/PCC noted in the doc's history paragraph.
+
+## 2026-06-15 — Demo rename PCC/PEE → MVS
+- `src/pages/MarketValidation.tsx`: subtitle, big-score label under composite, and formula block now read "Market Validation Score (MVS)".
+- `src/components/phase2-demo/ShortlistTable.tsx`: column header "PCC" → "MVS"; tooltip updated.
+- `src/data/phase2DemoData.ts`: comments updated (PCC → MVS).
+- `src/data/glossary.md`: PCC entry renamed to MVS (notes previous PEE/PCC names).
+- `src/lib/decisionsExport.ts`: CSV column `pcc_score` → `mvs_score`.

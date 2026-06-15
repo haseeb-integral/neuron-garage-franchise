@@ -32,13 +32,13 @@ Heavy data-refinement pipeline tooling. Owns the scrape, extraction, refinement,
 ## Features
 
 ### Feature 1A — Market Validation Engine
-City-level composite score (PCC — Per City Composite score) computed from six sub-scores. Output is a ranked shortlist plus a branded 12-section PDF report per city.
+City-level composite score (MVS — Market Validation Score) computed from six sub-scores. Output is a ranked shortlist plus a branded 12-section PDF report per city.
 
 ### Feature 1B — Site Analysis Engine
 Address-level Site Opportunity Score with side-by-side comparison of up to four candidate sites, 10/15-minute drive-time isochrones, and a branded per-site PDF report.
 
-### PCC — Per City Composite score
-The 1A composite. Weighted blend of Pricing Acceptance (0.20), Market Absorption (0.25), Scaled Operator (0.20), Enrichment Diversity (0.10), Market Depth (0.10), Market Balance Index (0.15).
+### MVS — Market Validation Score
+The 1A composite (previously PEE / PCC). Weighted blend of Pricing Acceptance (0.20), Market Absorption (0.25), Scaled Operator (0.20), Enrichment Diversity (0.10), Market Depth (0.10), Market Balance Index (0.15).
 
 ### Site Opportunity Score
 The 1B composite. 0–100 score combining School Profile, Neighborhood Affluence, Family Density, School Ecosystem, and Accessibility.

@@ -1652,6 +1652,129 @@ export type Database = {
         }
         Relationships: []
       }
+      site_analyses: {
+        Row: {
+          accessibility_score: number | null
+          address: string
+          affluence_score: number | null
+          created_at: string
+          ecosystem_score: number | null
+          engine_version: string
+          enrollment: number | null
+          error: string | null
+          family_density_score: number | null
+          grade_band: string | null
+          id: string
+          inputs: Json
+          inputs_hash: string | null
+          latitude: number | null
+          longitude: number | null
+          sas_score: number | null
+          school_name: string | null
+          school_profile_score: number | null
+          school_type: string | null
+          signals: Json
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accessibility_score?: number | null
+          address: string
+          affluence_score?: number | null
+          created_at?: string
+          ecosystem_score?: number | null
+          engine_version?: string
+          enrollment?: number | null
+          error?: string | null
+          family_density_score?: number | null
+          grade_band?: string | null
+          id?: string
+          inputs?: Json
+          inputs_hash?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          sas_score?: number | null
+          school_name?: string | null
+          school_profile_score?: number | null
+          school_type?: string | null
+          signals?: Json
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accessibility_score?: number | null
+          address?: string
+          affluence_score?: number | null
+          created_at?: string
+          ecosystem_score?: number | null
+          engine_version?: string
+          enrollment?: number | null
+          error?: string | null
+          family_density_score?: number | null
+          grade_band?: string | null
+          id?: string
+          inputs?: Json
+          inputs_hash?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          sas_score?: number | null
+          school_name?: string | null
+          school_profile_score?: number | null
+          school_type?: string | null
+          signals?: Json
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      site_analysis_acs_cache: {
+        Row: {
+          children_5_12: number | null
+          created_at: string
+          families_with_kids_5_12: number | null
+          id: string
+          median_hhi: number | null
+          minutes: number
+          pct_dual_income: number | null
+          pct_hh_above_150k: number | null
+          polygon_hash: string
+          raw: Json
+          total_population: number | null
+          updated_at: string
+        }
+        Insert: {
+          children_5_12?: number | null
+          created_at?: string
+          families_with_kids_5_12?: number | null
+          id?: string
+          median_hhi?: number | null
+          minutes: number
+          pct_dual_income?: number | null
+          pct_hh_above_150k?: number | null
+          polygon_hash: string
+          raw?: Json
+          total_population?: number | null
+          updated_at?: string
+        }
+        Update: {
+          children_5_12?: number | null
+          created_at?: string
+          families_with_kids_5_12?: number | null
+          id?: string
+          median_hhi?: number | null
+          minutes?: number
+          pct_dual_income?: number | null
+          pct_hh_above_150k?: number | null
+          polygon_hash?: string
+          raw?: Json
+          total_population?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       site_analysis_decisions: {
         Row: {
           address: string
@@ -1690,6 +1813,92 @@ export type Database = {
           verdict?: string
         }
         Relationships: []
+      }
+      site_analysis_ecosystem_cache: {
+        Row: {
+          cache_key: string
+          created_at: string
+          elementary_count: number | null
+          highway_distance_mi: number | null
+          id: string
+          latitude: number
+          longitude: number
+          nearby_student_pop: number | null
+          pop_reachable_15min: number | null
+          private_count: number | null
+          radius_minutes: number
+          raw: Json
+          road_distance_mi: number | null
+          updated_at: string
+        }
+        Insert: {
+          cache_key: string
+          created_at?: string
+          elementary_count?: number | null
+          highway_distance_mi?: number | null
+          id?: string
+          latitude: number
+          longitude: number
+          nearby_student_pop?: number | null
+          pop_reachable_15min?: number | null
+          private_count?: number | null
+          radius_minutes: number
+          raw?: Json
+          road_distance_mi?: number | null
+          updated_at?: string
+        }
+        Update: {
+          cache_key?: string
+          created_at?: string
+          elementary_count?: number | null
+          highway_distance_mi?: number | null
+          id?: string
+          latitude?: number
+          longitude?: number
+          nearby_student_pop?: number | null
+          pop_reachable_15min?: number | null
+          private_count?: number | null
+          radius_minutes?: number
+          raw?: Json
+          road_distance_mi?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      site_analysis_isochrones: {
+        Row: {
+          analysis_id: string
+          created_at: string
+          geojson: Json
+          id: string
+          minutes: number
+          provider: string
+        }
+        Insert: {
+          analysis_id: string
+          created_at?: string
+          geojson: Json
+          id?: string
+          minutes: number
+          provider?: string
+        }
+        Update: {
+          analysis_id?: string
+          created_at?: string
+          geojson?: Json
+          id?: string
+          minutes?: number
+          provider?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_analysis_isochrones_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "site_analyses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       smartlead_events: {
         Row: {

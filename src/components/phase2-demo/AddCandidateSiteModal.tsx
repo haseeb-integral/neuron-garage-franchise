@@ -164,7 +164,7 @@ export function AddCandidateSiteModal({ open, onClose, onAdd }: Props) {
               type="text"
               value={schoolName}
               onChange={(e) => setSchoolName(e.target.value)}
-              placeholder="e.g. Galileo Frisco Independent"
+              placeholder="e.g. Galileo San Antonio Independent"
               className="rounded-md border px-2 py-1.5 text-[12px]"
               style={{ borderColor: BORDER, color: NAVY }}
             />
@@ -175,7 +175,7 @@ export function AddCandidateSiteModal({ open, onClose, onAdd }: Props) {
               type="text"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              placeholder="123 Main St, Frisco, TX 75034"
+              placeholder="123 Main St, San Antonio, TX 78258"
               className="rounded-md border px-2 py-1.5 text-[12px]"
               style={{ borderColor: BORDER, color: NAVY }}
             />

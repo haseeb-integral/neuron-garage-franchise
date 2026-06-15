@@ -446,7 +446,7 @@ function WinnerBanner({
     >
       <Star size={14} fill="#1d6b32" />
       <div>
-        <strong>★ Winner:</strong> {winnerSite.schoolName} — Site Opportunity{" "}
+        <strong>★ Winner:</strong> {winnerSite.schoolName} — Site Analysis Score (SAO){" "}
         <strong className="tabular-nums">{winnerSite.composite}</strong> · Brett/Sam's verdict:{" "}
         <strong>{verdictLabel}</strong>
       </div>
@@ -619,7 +619,7 @@ export default function SiteAnalysis() {
               Side-by-side compare — Austin metro
             </h2>
             <p className="mt-1 text-[12px]" style={{ color: MUTED }}>
-              Site Opportunity Score = 0.25 × School Profile + 0.25 × Neighborhood Affluence + 0.20 ×
+              Site Analysis Score (SAO) = 0.25 × School Profile + 0.25 × Neighborhood Affluence + 0.20 ×
               Family Density + 0.15 × School Ecosystem + 0.15 × Accessibility.
             </p>
           </div>

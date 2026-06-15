@@ -150,11 +150,11 @@ function SubScoreCard({ title, subtitle, weight, value, signals, formula, confid
 }
 
 export default function MarketValidation() {
-  const data = friscoMarketValidationDemo;
+  const data = sanAntonioMarketValidationDemo;
   const subs = data.subScores;
-  const [activeCityId, setActiveCityId] = useState<string>("frisco-tx");
+  const [activeCityId, setActiveCityId] = useState<string>("san-antonio-tx");
   const activeRow = SHORTLIST_DEMO.find((r) => r.id === activeCityId) ?? SHORTLIST_DEMO[0];
-  const isFrisco = activeCityId === "frisco-tx";
+  const isAnchor = activeCityId === "san-antonio-tx";
 
   // 1A-LOV-5 — Sellout curve from sample weeks (% sold_out + waitlist).
   const weekLabels = data.premiumProviders[0]?.sampleWeeks.map((w) => w.label) ?? [];

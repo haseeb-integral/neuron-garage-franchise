@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, CheckCircle2, Download, FileText, MapPin, Plus, Search, Star, XCircle } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
+import { LiveEngineCard, SAS_ENGINE_LIVE } from "@/components/site-analysis/LiveEngineCard";
 import { AddCandidateSiteModal } from "@/components/phase2-demo/AddCandidateSiteModal";
 import { DemoBanner } from "@/components/phase2-demo/DemoBanner";
 import { SampleDataBadge } from "@/components/phase2-demo/SampleDataBadge";
@@ -539,6 +540,9 @@ export default function SiteAnalysis() {
       <DemoBanner
         note="Calibration anchors shown: Trinity (positive — operating NG site) vs LeafSpring (negative — closed 2023, far from customer base). The locked acceptance gate: LeafSpring must score materially lower than Trinity."
       />
+
+      {SAS_ENGINE_LIVE && <LiveEngineCard />}
+
 
       {/* Analyze a site — static input form (1B-LOV-1) */}
       <section className="mb-4 rounded-lg border bg-white p-4" style={{ borderColor: BORDER }}>

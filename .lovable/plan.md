@@ -16,8 +16,8 @@
 ### What changes
 
 1. **`src/data/phase2DemoData.ts`**
-   - Rewrite `SHORTLIST_DEMO` (8 rows) — city/state, county sub-label, plausible PEE scores in the 65–82 sample range, verdicts, status badges.
-   - Rewrite `friscoMarketValidationDemo` → `sanAntonioMarketValidationDemo` (keep the export name structure; just rename the const and update `city: "San Antonio"`, `state: "TX"`, county "Bexar", and verdict copy). All sub-score values, provider rows, sample weeks, signals stay numerically the same — they're illustrative sample data and only the city label changes. PEE composite stays in the same range (≈78); we'll keep the demo number at 78 unless you say otherwise.
+   - Rewrite `SHORTLIST_DEMO` (8 rows) — city/state, county sub-label, plausible PCC scores in the 65–82 sample range, verdicts, status badges.
+   - Rewrite `friscoMarketValidationDemo` → `sanAntonioMarketValidationDemo` (keep the export name structure; just rename the const and update `city: "San Antonio"`, `state: "TX"`, county "Bexar", and verdict copy). All sub-score values, provider rows, sample weeks, signals stay numerically the same — they're illustrative sample data and only the city label changes. PCC composite stays in the same range (≈78); we'll keep the demo number at 78 unless you say otherwise.
    - `activeCityId` default in `MarketValidation.tsx` flips from `"frisco-tx"` to `"san-antonio-tx"`.
 
 2. **`src/pages/MarketValidation.tsx`**
@@ -33,4 +33,4 @@
 
 ### Open question (will assume default if no response)
 
-- Anchor PEE composite stays at **78 / Strong tier** for San Antonio. Say the word if you want a different demo number.
+- Anchor PCC composite stays at **78 / Strong tier** for San Antonio. Say the word if you want a different demo number.

@@ -257,8 +257,9 @@ function generateMVSMarkdown(): string {
   MVS_NOTES.forEach((note) => lines.push(`- ${note}`));
   lines.push("");
 
-  return lines.join("\\n");
+  return lines.join("\n");
 }
+
 
 
 export default function MVSMethodology() {
@@ -268,6 +269,13 @@ export default function MVSMethodology() {
       eyebrowIcon={BarChart3}
       title={<>How the MVS (Market Validation Score) is Calculated</>}
       subtitle="Methodology & Data Documentation — Feature 1A · Market Validation Engine"
+      action={
+        <DownloadMDButton
+          content={generateMVSMarkdown()}
+          filename="mvs-methodology.md"
+          label="Download MD"
+        />
+      }
     >
       <DocCard>
         <div className="text-[#07142f]">

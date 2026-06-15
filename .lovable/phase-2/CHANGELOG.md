@@ -20,3 +20,9 @@
 - **2026-05-30 — Haseeb + Lovable** — cleaned `sources/`: deleted AI-typed `sam-v2-pdf-original.md` (formula corruption found by Haseeb — missing `+` in Pricing Acceptance) and duplicate `sam-transcript-may-29.txt`. Renamed AI summaries with `summary-<originalname>` convention: `summary-neuron-garage-module1-enhancements-v2.md` and `summary-transcript Sam meeting May 29.md`. Added warning headers pointing back to originals. Updated README folder map and added "never re-type PDFs/transcripts" rule.
 - **2026-05-30 — Haseeb + Lovable** — created `.lovable/phase-2/` cabinet: `README.md`, `sources/` (Brett 5-point sketch, Sam transcript verbatim + summary, Sam v2 PDF verbatim + summary), `phase-2-sow.md` stub, `phase-2-status.md` initial, this `CHANGELOG.md`. Added Core memory rule to force every future chat to read this folder before any Phase 2 work.
 - **2026-06-15 — Brett + Lovable** — added `GLOSSARY.md` (initial ~20 terms across Phase 2 features, scoring, data sources, operating concepts, and franchise terms). Living doc, updated weekly.
+
+## 2026-06-15 — MVS Methodology doc (renamed from PEE/PCC)
+- Added `src/pages/MVSMethodology.tsx` — full methodology document for Feature 1A Market Validation Score, matching format of `Methodology.tsx` (CSI). Six sub-scores with question/formula/detail/data-sources, composite formula, premium-provider tier definition, shared infra/tooling table, important notes.
+- Wired route `/mvs-methodology` in `src/App.tsx` (lazy + prefetch).
+- Added "MVS Methodology" entry to Methodology & Docs nav in `src/components/AppSidebar.tsx` (BarChart3 icon).
+- Score is canonically named MVS (Market Validation Score). Previous names PEE/PCC noted in the doc's history paragraph.

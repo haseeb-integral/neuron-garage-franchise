@@ -180,7 +180,7 @@ export const sanAntonioMarketValidationDemo: MarketValidationDemo = {
   },
   premiumProviders: [
     {
-      name: "Galileo Frisco",
+      name: "Galileo San Antonio",
       weeklyPrice: 549,
       siteCount: 2,
       overlap: "direct",
@@ -193,7 +193,7 @@ export const sanAntonioMarketValidationDemo: MarketValidationDemo = {
       ],
     },
     {
-      name: "Snapology of Frisco",
+      name: "Snapology of San Antonio",
       weeklyPrice: 475,
       siteCount: 1,
       overlap: "direct",
@@ -206,7 +206,7 @@ export const sanAntonioMarketValidationDemo: MarketValidationDemo = {
       ],
     },
     {
-      name: "Code Ninjas Frisco",
+      name: "Code Ninjas Stone Oak",
       weeklyPrice: 425,
       siteCount: 3,
       overlap: "adjacent",
@@ -245,7 +245,7 @@ export const sanAntonioMarketValidationDemo: MarketValidationDemo = {
       ],
     },
     {
-      name: "Maker Kids Frisco",
+      name: "Maker Kids Alamo Heights",
       weeklyPrice: 510,
       siteCount: 1,
       overlap: "direct",

@@ -1,5 +1,6 @@
 import { BarChart3, Info, Database } from "lucide-react";
 import { DocShell, DocCard } from "@/components/DocShell";
+import { DownloadMDButton } from "@/components/DownloadMDButton";
 
 function FormulaBlock({ children }: { children: React.ReactNode }) {
   return (
@@ -154,6 +155,113 @@ Market Balance Index = normalize(Coverage Ratio, range 50–500)
   },
 ];
 
+const MVS_NOTES = [
+  "Every sub-score is normalized 0–100 across the shortlisted cities, not nationally. The MVS is a comparative score for the cities that survived Feature 1, not a universal market grade.",
+  "Screenshot capture is non-negotiable. Every registration-page scrape archives a full-page screenshot with date + URL in Supabase Storage. This is the visual ground truth for any contested classification and the audit defense for any Market Brief claim.",
+  "Year 1 runs a single mid-March scrape per shortlisted city — enough to populate Sellout Rate. The full 5-scrape cadence (Jan / Feb / Mar / Apr / May) comes online in Year 2 for any city under active evaluation, unlocking Time-to-Sellout and YoY Velocity.",
+  "If more than 20% of premium providers in a market have no public registration page (i.e. email/phone signup only), the city's MVS gets a low-confidence badge and the QA queue flags it for review.",
+];
+
+const MVS_SHARED_INFRA = [
+  ["Apify Google Maps actor", "Provider discovery", "Reused from v1.0"],
+  ["Firecrawl", "Page fetch + full-page screenshots (JS render)", "Reused from v1.0"],
+  ["Gemini 2.0 Flash (Lovable AI Gateway)", "Structured JSON extraction", "Reused from v1.0"],
+  ["Supabase Postgres", "Week-level + provider data store", "Reused from v1.0"],
+  ["Supabase Storage", "Raw HTML + screenshot archive (audit trail)", "Reused from v1.0"],
+  ["Census ACS", "Demographics for Market Balance + Operator denominator", "Reused from v1.0"],
+  ["Inngest or Trigger.dev", "Scheduled scrape cadence", "New (~$20–50/mo)"],
+  ["Internal QA review UI", "Low-confidence week correction queue", "New (~3–5 dev-days)"],
+];
+
+const MVS_PREMIUM_TIERS = [
+  ["Premium", "Price ≥ $400/week AND STEM / maker / robotics / coding / science / art / theater / music / academic enrichment AND not childcare-positioned"],
+  ["Mid", "$250–$399/week, enrichment-positioned"],
+  ["Budget", "< $250/week OR community / parks-and-rec / YMCA-positioned"],
+  ["Community", "Faith-based, scholarship-driven, or municipally subsidized"],
+];
+
+function generateMVSMarkdown(): string {
+  const lines: string[] = [];
+  lines.push(`# How the MVS (Market Validation Score) is Calculated`);
+  lines.push("");
+  lines.push(`Methodology & Data Documentation — Feature 1A · Market Validation Engine`);
+  lines.push("");
+
+  lines.push(`## Section 1: What is the MVS?`);
+  lines.push("");
+  lines.push(`The **Market Validation Score (MVS)** is the per-city composite produced by the Feature 1A Market Validation Engine. It answers a single question: *"Is this a validated premium enrichment market with active, paying demand?"*`);
+  lines.push("");
+  lines.push(`- **Higher MVS** = a validated premium market with observed absorption.`);
+  lines.push(`- **Lower MVS** = supply exists on paper but doesn't sell out — or supply isn't there at all.`);
+  lines.push("");
+  lines.push(`MVS is computed on the **curated shortlist of 25–50 cities** promoted out of Feature 1 (City Search v1.0). It is not a national ranking and is not meant to predict the success of any one Neuron Garage location — that depends on franchisee quality, site selection (Feature 1B), and execution.`);
+  lines.push("");
+  lines.push(`Naming history: this score has previously been referred to as PEE (Premium Enrichment Ecosystem Score) and PCC (Per City Composite). The canonical name is now **MVS**.`);
+  lines.push("");
+
+  lines.push(`## Section 2: The Composite Formula`);
+  lines.push("");
+  lines.push("```");
+  lines.push(`MVS = 0.20 × Pricing Acceptance Score`);
+  lines.push(`    + 0.25 × Market Absorption Score      ← dominant, demand-side signal`);
+  lines.push(`    + 0.20 × Scaled Operator Score`);
+  lines.push(`    + 0.10 × Enrichment Diversity Score`);
+  lines.push(`    + 0.10 × Market Depth Score`);
+  lines.push(`    + 0.15 × Market Balance Index`);
+  lines.push("```");
+  lines.push("");
+  lines.push(`Every sub-score is normalized 0–100 across the shortlisted cities, then weight-blended into the composite. Weights are exposed as sliders in the UI with "Show Formula" drawers per the v1.0 doctrine. The presence of **Market Absorption** as the dominant weight is the single most consequential design choice — without it, every other score measures supply only, and markets where supply exists but doesn't sell out look identical to markets where supply sells out by March.`);
+  lines.push("");
+
+  lines.push(`## Section 3: The Six Sub-Scores`);
+  lines.push("");
+  SUB_SCORES.forEach((s) => {
+    lines.push(`### Score ${s.n}: ${s.name} (Weight ${s.weight})`);
+    lines.push("");
+    lines.push(`**Question:** ${s.question}`);
+    lines.push("");
+    lines.push(`**Formula:**`);
+    lines.push("```");
+    lines.push(s.formula);
+    lines.push("```");
+    lines.push("");
+    lines.push(`**Detail:** ${s.detail}`);
+    lines.push("");
+    lines.push(`**Data Sources:**`);
+    s.sources.forEach((src) => lines.push(`- ${src}`));
+    lines.push("");
+  });
+
+  lines.push(`## Section 4: Premium Provider Definition`);
+  lines.push("");
+  lines.push(`Rather than excluding non-premium camps from data collection, the engine collects the **full** camp universe in each shortlisted city and tier-classifies each provider at ingest. Only providers tagged **Premium** flow into the six sub-scores.`);
+  lines.push("");
+  lines.push(`| Tier | Definition |`);
+  lines.push(`| --- | --- |`);
+  MVS_PREMIUM_TIERS.forEach(([tier, def]) => lines.push(`| ${tier} | ${def} |`));
+  lines.push("");
+
+  lines.push(`## Section 5: Shared Data & Tooling Stack`);
+  lines.push("");
+  lines.push(`A single scrape per shortlisted city powers Scores 1, 2, 4, 5 and the provider denominator for Scores 3 and 6. Demographic inputs reuse the Census ACS pipeline already wired in v1.0.`);
+  lines.push("");
+  lines.push(`| Tool | Role | Status |`);
+  lines.push(`| --- | --- | --- |`);
+  MVS_SHARED_INFRA.forEach(([tool, role, status]) => lines.push(`| ${tool} | ${role} | ${status} |`));
+  lines.push("");
+  lines.push(`**Cost envelope:** ~$3–6 per scrape per city. Five scrapes per active city per year ≈ $15–30/city/year. A 25-city shortlist runs ~$400–750/year for the full Market Absorption pipeline, plus 1–2 hours of human QA per scrape cycle across the shortlist.`);
+  lines.push("");
+
+  lines.push(`## Section 6: Important Notes`);
+  lines.push("");
+  MVS_NOTES.forEach((note) => lines.push(`- ${note}`));
+  lines.push("");
+
+  return lines.join("\n");
+}
+
+
+
 export default function MVSMethodology() {
   return (
     <DocShell
@@ -161,6 +269,13 @@ export default function MVSMethodology() {
       eyebrowIcon={BarChart3}
       title={<>How the MVS (Market Validation Score) is Calculated</>}
       subtitle="Methodology & Data Documentation — Feature 1A · Market Validation Engine"
+      action={
+        <DownloadMDButton
+          content={generateMVSMarkdown()}
+          filename="mvs-methodology.md"
+          label="Download MD"
+        />
+      }
     >
       <DocCard>
         <div className="text-[#07142f]">

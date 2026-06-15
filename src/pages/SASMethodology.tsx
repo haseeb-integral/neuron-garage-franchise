@@ -1,6 +1,7 @@
 import { MapPin, Info, Database } from "lucide-react";
 import { DocShell, DocCard } from "@/components/DocShell";
 import { SITE_RECOMMEND_THRESHOLDS, SCHOOL_PROFILE_FACTORS } from "@/data/phase2DemoData";
+import { DownloadMDButton } from "@/components/DownloadMDButton";
 
 function FormulaBlock({ children }: { children: React.ReactNode }) {
   return (

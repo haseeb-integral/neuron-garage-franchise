@@ -43,3 +43,8 @@
 - Trinity/LeafSpring `gradeAlignment` labels now reference the actual factor (e.g. "K–8 · grade_alignment_factor = 80") instead of vague "matches NG / misaligned" wording.
 - Formula strings on all sub-score drawers now include the normalize ranges from the PDF (e.g. "norm(Children 5–12 / 10min, 1k–15k)") so the formula text is self-documenting.
 - No route, schema, or component-structure changes. `SITE_RECOMMEND_THRESHOLDS` (75/60) already correct and unchanged.
+
+## 2026-06-15 — 1B Site Analysis: rename Site Opportunity Score → Site Analysis Score (SAO)
+- `src/pages/SiteAnalysis.tsx`: winner banner and formula block now read "Site Analysis Score (SAO)" instead of "Site Opportunity Score".
+- `src/lib/decisionsExport.ts`: decision-pack score label and winner banner updated to "SAO" / "Site Analysis Score (SAO)".
+- `src/data/glossary.md`: Feature 1B description and score entry renamed to "Site Analysis Score (SAO)" (previously Site Opportunity Score).

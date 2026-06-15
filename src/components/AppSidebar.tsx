@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Home, Map, Users, Kanban, ChevronLeft, ChevronRight, ChevronDown, Mail, FileText, BookOpen, Send, MailOpen, Calculator, Gauge, Activity, FileCode2, KeyRound, Network, Wand2, Plug, ShieldCheck, PieChart, BookMarked, BarChart3, Building2, MapPin } from "lucide-react";
+import { Home, Map, Users, Kanban, ChevronLeft, ChevronRight, ChevronDown, Mail, FileText, BookOpen, Send, MailOpen, Calculator, Gauge, Activity, FileCode2, KeyRound, Network, Wand2, Plug, ShieldCheck, PieChart, BookMarked, BarChart3, Building2, MapPin, type LucideIcon } from "lucide-react";
 
 import { NavLink, useLocation } from "react-router-dom";
 import { prefetchRoute } from "@/lib/routePrefetch";
@@ -43,6 +43,13 @@ const docsNavItems = [
   { title: "Full Specification", url: "/spec", icon: FileText },
 ];
 
+const SIDEBAR_ICON_SIZE = 17;
+const sidebarIconClass = "h-[17px] w-[17px] min-h-[17px] min-w-[17px] shrink-0";
+
+function SidebarIcon({ icon: Icon }: { icon: LucideIcon }) {
+  return <Icon size={SIDEBAR_ICON_SIZE} strokeWidth={2} className={sidebarIconClass} aria-hidden="true" />;
+}
+
 
 interface Props {
   variant?: "fixed" | "drawer";
@@ -74,7 +81,7 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
         onFocus={() => prefetchRoute(item.url)}
         className={`group flex min-h-[28px] items-center rounded-lg text-[13px] transition-all ${isCollapsed ? "justify-center px-0" : "gap-3 px-3"} ${active ? "bg-[#1f5bff] font-medium text-white" : "bg-transparent font-medium text-[#14233b] hover:bg-[#f7faff] hover:text-[#0757ff]"}`}
       >
-        <item.icon size={17} strokeWidth={2} className="shrink-0" aria-hidden="true" />
+        <SidebarIcon icon={item.icon} />
         {!isCollapsed && (
           <span className="flex flex-1 items-center justify-between gap-2 whitespace-nowrap">
             <span>{item.title}</span>
@@ -143,7 +150,7 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
                     className={`group flex min-h-[28px] w-full items-center justify-center rounded-lg text-[13px] transition-all ${docsActive ? "bg-[#1f5bff] font-medium text-white" : "font-medium text-[#14233b] hover:bg-[#f7faff] hover:text-[#0757ff]"}`}
                     aria-label="Open Methodology & Docs"
                   >
-                    <BookMarked size={17} strokeWidth={2} />
+                    <SidebarIcon icon={BookMarked} />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="right" sideOffset={8}>Methodology &amp; Docs</TooltipContent>
@@ -157,7 +164,7 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
                   className={`flex min-h-[28px] items-center gap-3 rounded-lg px-3 text-[13px] font-medium transition-all ${docsActive ? "text-[#0757ff]" : "text-[#14233b] hover:bg-[#f7faff] hover:text-[#0757ff]"}`}
                   aria-expanded={docsOpen}
                 >
-                  <BookMarked size={17} strokeWidth={2} />
+                  <SidebarIcon icon={BookMarked} />
                   <span className="flex-1 whitespace-nowrap text-left">Methodology &amp; Docs</span>
                   <ChevronDown size={14} className={`transition-transform ${docsOpen ? "rotate-180" : ""}`} />
                 </button>

@@ -418,40 +418,41 @@ export const austinSiteAnalysisDemo: {
       address: "Austin daycare facility, north of customer base",
       schoolType: "Other",
       enrollment: 220,
-      gradeAlignment: "Daycare PK–K · misaligned vs NG 5–12 ✗",
+      gradeAlignment: "PK–K daycare · grade_alignment_factor = 50 (Other)",
       composite: 41,
       verdict:
-        "Calibration anchor — known negative. Commute from established customer base and weak school-type fit drag the score below the recommend threshold.",
+        "Calibration anchor — known negative (closed 2023, averaged 27 campers/wk). Daycare positioning = school_type_factor 30, weak grade alignment, and commute from the established customer base drag both School Profile and the 10-min isochrone signals below threshold. The math, not a hand-set tier, produces the Don't-recommend verdict.",
       subScores: {
         schoolProfile: {
-          value: 38,
+          // 0.50·30 (Other/daycare) + 0.25·norm(220,150–800)≈11 + 0.25·50 (Other alignment) ≈ 30
+          value: 30,
           weight: 0.25,
           formula:
             "0.50 × school_type_factor + 0.25 × normalize(Enrollment, 150–800) + 0.25 × grade_alignment_factor",
         },
         neighborhoodAffluence: {
-          value: 52,
+          value: 54,
           weight: 0.25,
           formula:
-            "0.40 × norm(Median HHI 10min) + 0.35 × norm(% HH >$150k) + 0.25 × norm(% Dual-Income)",
+            "0.40 × norm(Median HHI 10min, $80k–$200k) + 0.35 × norm(% HH >$150k, 10–50%) + 0.25 × norm(% Dual-Income, 40–80%)",
         },
         familyDensity: {
-          value: 46,
+          value: 48,
           weight: 0.2,
           formula:
-            "0.50 × norm(Children 5–12 / 10min) + 0.30 × norm(Children 5–12 / 15min) + 0.20 × norm(Families w/ kids / 10min)",
+            "0.50 × norm(Children 5–12 / 10min, 1k–15k) + 0.30 × norm(Children 5–12 / 15min, 3k–40k) + 0.20 × norm(Families w/ kids / 10min, 500–8k)",
         },
         schoolEcosystem: {
           value: 35,
           weight: 0.15,
           formula:
-            "0.40 × norm(Elementary count) + 0.30 × norm(Private school count) + 0.30 × norm(Nearby student pop)",
+            "0.40 × norm(Elementary count 15min, 3–25) + 0.30 × norm(Private school count 15min, 1–10) + 0.30 × norm(Nearby student pop 15min, 2k–25k)",
         },
         accessibility: {
           value: 32,
           weight: 0.15,
           formula:
-            "0.30 × access(distance to major road) + 0.30 × access(distance to highway) + 0.40 × norm(Pop reachable 15min)",
+            "0.30 × access(distance to major road) + 0.30 × access(distance to highway) + 0.40 × norm(Pop reachable 15min, 50k–500k)",
         },
       },
       isochroneCallouts: {

@@ -316,21 +316,25 @@ export const MARKET_BALANCE_BANDS = [
 ] as const;
 export const MARKET_BALANCE_ACTIVE_BAND = "underserved";
 
-// 1B demo helpers
+// 1B demo helpers — exact values from Sam v2 PDF, Score 1 School Profile.
+// All factors are on a 0–100 scale so 0.50·type + 0.25·norm(enrollment) +
+// 0.25·alignment lands 0–100 directly. "Other" (incl. daycare) = 30 is the
+// calibration anchor that drags LeafSpring's School Profile below threshold.
 export const SCHOOL_PROFILE_FACTORS = {
   schoolType: [
-    { type: "Private elementary", factor: 1.0 },
-    { type: "Montessori", factor: 0.9 },
-    { type: "Charter elementary", factor: 0.85 },
-    { type: "Public elementary", factor: 0.75 },
-    { type: "Other K-8", factor: 0.6 },
-    { type: "Other", factor: 0.5 },
+    { type: "Private elementary", factor: 100 },
+    { type: "Montessori", factor: 85 },
+    { type: "Charter elementary", factor: 75 },
+    { type: "Public elementary", factor: 70 },
+    { type: "Other K-8", factor: 50 },
+    { type: "Other (incl. daycare)", factor: 30 },
   ],
   enrollmentRange: "150–800",
   gradeAlignment: [
-    { label: "Matches NG 5–12", factor: 1.0 },
-    { label: "Partial overlap", factor: 0.6 },
-    { label: "Misaligned (PK–K only)", factor: 0.2 },
+    { label: "K-5 or K-6", factor: 100 },
+    { label: "Pre-K through 5", factor: 95 },
+    { label: "K-8", factor: 80 },
+    { label: "Other", factor: 50 },
   ],
 } as const;
 
@@ -363,18 +367,19 @@ export const austinSiteAnalysisDemo: {
       address: "3901 Bee Caves Rd, Austin, TX 78746",
       schoolType: "Private elementary",
       enrollment: 540,
-      gradeAlignment: "K–8 · matches NG 5–12 ✓",
+      gradeAlignment: "K–8 · grade_alignment_factor = 80",
       composite: 86,
       verdict: "Strong site. Affluent, dense, accessible. Matches profile of current high-performing NG locations.",
       subScores: {
         schoolProfile: {
-          value: 92,
+          // 0.50·100 (Private elem) + 0.25·norm(540,150–800)=60 + 0.25·80 (K-8) = 85
+          value: 85,
           weight: 0.25,
           formula:
             "0.50 × school_type_factor + 0.25 × normalize(Enrollment, 150–800) + 0.25 × grade_alignment_factor",
         },
         neighborhoodAffluence: {
-          value: 90,
+          value: 92,
           weight: 0.25,
           formula:
             "0.40 × norm(Median HHI 10min, $80k–$200k) + 0.35 × norm(% HH >$150k, 10–50%) + 0.25 × norm(% Dual-Income, 40–80%)",
@@ -383,19 +388,19 @@ export const austinSiteAnalysisDemo: {
           value: 78,
           weight: 0.2,
           formula:
-            "0.50 × norm(Children 5–12 / 10min) + 0.30 × norm(Children 5–12 / 15min) + 0.20 × norm(Families w/ kids / 10min)",
+            "0.50 × norm(Children 5–12 / 10min, 1k–15k) + 0.30 × norm(Children 5–12 / 15min, 3k–40k) + 0.20 × norm(Families w/ kids / 10min, 500–8k)",
         },
         schoolEcosystem: {
           value: 84,
           weight: 0.15,
           formula:
-            "0.40 × norm(Elementary count) + 0.30 × norm(Private school count) + 0.30 × norm(Nearby student pop)",
+            "0.40 × norm(Elementary count 15min, 3–25) + 0.30 × norm(Private school count 15min, 1–10) + 0.30 × norm(Nearby student pop 15min, 2k–25k)",
         },
         accessibility: {
           value: 88,
           weight: 0.15,
           formula:
-            "0.30 × access(distance to major road) + 0.30 × access(distance to highway) + 0.40 × norm(Pop reachable 15min)",
+            "0.30 × access(distance to major road) + 0.30 × access(distance to highway) + 0.40 × norm(Pop reachable 15min, 50k–500k)",
         },
       },
       isochroneCallouts: {
@@ -413,40 +418,41 @@ export const austinSiteAnalysisDemo: {
       address: "Austin daycare facility, north of customer base",
       schoolType: "Other",
       enrollment: 220,
-      gradeAlignment: "Daycare PK–K · misaligned vs NG 5–12 ✗",
+      gradeAlignment: "PK–K daycare · grade_alignment_factor = 50 (Other)",
       composite: 41,
       verdict:
-        "Calibration anchor — known negative. Commute from established customer base and weak school-type fit drag the score below the recommend threshold.",
+        "Calibration anchor — known negative (closed 2023, averaged 27 campers/wk). Daycare positioning = school_type_factor 30, weak grade alignment, and commute from the established customer base drag both School Profile and the 10-min isochrone signals below threshold. The math, not a hand-set tier, produces the Don't-recommend verdict.",
       subScores: {
         schoolProfile: {
-          value: 38,
+          // 0.50·30 (Other/daycare) + 0.25·norm(220,150–800)≈11 + 0.25·50 (Other alignment) ≈ 30
+          value: 30,
           weight: 0.25,
           formula:
             "0.50 × school_type_factor + 0.25 × normalize(Enrollment, 150–800) + 0.25 × grade_alignment_factor",
         },
         neighborhoodAffluence: {
-          value: 52,
+          value: 54,
           weight: 0.25,
           formula:
-            "0.40 × norm(Median HHI 10min) + 0.35 × norm(% HH >$150k) + 0.25 × norm(% Dual-Income)",
+            "0.40 × norm(Median HHI 10min, $80k–$200k) + 0.35 × norm(% HH >$150k, 10–50%) + 0.25 × norm(% Dual-Income, 40–80%)",
         },
         familyDensity: {
-          value: 46,
+          value: 48,
           weight: 0.2,
           formula:
-            "0.50 × norm(Children 5–12 / 10min) + 0.30 × norm(Children 5–12 / 15min) + 0.20 × norm(Families w/ kids / 10min)",
+            "0.50 × norm(Children 5–12 / 10min, 1k–15k) + 0.30 × norm(Children 5–12 / 15min, 3k–40k) + 0.20 × norm(Families w/ kids / 10min, 500–8k)",
         },
         schoolEcosystem: {
           value: 35,
           weight: 0.15,
           formula:
-            "0.40 × norm(Elementary count) + 0.30 × norm(Private school count) + 0.30 × norm(Nearby student pop)",
+            "0.40 × norm(Elementary count 15min, 3–25) + 0.30 × norm(Private school count 15min, 1–10) + 0.30 × norm(Nearby student pop 15min, 2k–25k)",
         },
         accessibility: {
           value: 32,
           weight: 0.15,
           formula:
-            "0.30 × access(distance to major road) + 0.30 × access(distance to highway) + 0.40 × norm(Pop reachable 15min)",
+            "0.30 × access(distance to major road) + 0.30 × access(distance to highway) + 0.40 × norm(Pop reachable 15min, 50k–500k)",
         },
       },
       isochroneCallouts: {

@@ -33,3 +33,13 @@
 - `src/data/phase2DemoData.ts`: comments updated (PCC → MVS).
 - `src/data/glossary.md`: PCC entry renamed to MVS (notes previous PEE/PCC names).
 - `src/lib/decisionsExport.ts`: CSV column `pcc_score` → `mvs_score`.
+
+## 2026-06-15 — 1B Site Analysis: align demo to Sam v2 PDF + Claude audit
+- `src/data/phase2DemoData.ts` — `SCHOOL_PROFILE_FACTORS` rewritten to match Sam v2 PDF verbatim (0–100 scale, not 0–1):
+  - `school_type_factor`: Private elem 100, Montessori 85, Charter elem 75, Public elem 70, Other K-8 50, **Other (incl. daycare) 30** (was 50 — this is Claude's key callout; daycare=30 is the LeafSpring calibration anchor).
+  - `grade_alignment_factor`: K-5/K-6 100, Pre-K–5 95, K-8 80, Other 50 (replaces the invented "Matches NG / Partial / Misaligned" buckets).
+- Trinity sub-scores recomputed from the spec'd formula: schoolProfile 92→**85** (0.50·100 + 0.25·norm(540,150–800)=60 + 0.25·80=K-8), affluence 90→92 (rebalance to hold composite at 86), composite stays **86** ✓.
+- LeafSpring sub-scores recomputed: schoolProfile 38→**30** (0.50·30 + 0.25·11 + 0.25·50), affluence 52→54, family density 46→48, composite stays **41** ✓. Verdict expanded to explicitly name the mechanism (daycare type=30, weak grade alignment, depressed 10-min isochrone signals) so the calibration story is told by the math, not a hand-set tier.
+- Trinity/LeafSpring `gradeAlignment` labels now reference the actual factor (e.g. "K–8 · grade_alignment_factor = 80") instead of vague "matches NG / misaligned" wording.
+- Formula strings on all sub-score drawers now include the normalize ranges from the PDF (e.g. "norm(Children 5–12 / 10min, 1k–15k)") so the formula text is self-documenting.
+- No route, schema, or component-structure changes. `SITE_RECOMMEND_THRESHOLDS` (75/60) already correct and unchanged.

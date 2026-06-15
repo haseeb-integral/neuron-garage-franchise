@@ -150,7 +150,7 @@ export function ShortlistTable({ rows, activeCityId, onSelectCity }: Props) {
           <thead style={{ backgroundColor: "#fff" }}>
             <tr className="border-b" style={{ borderColor: BORDER }}>
               {headerCell("city", "City", "left")}
-              {headerCell("composite", "PEE Score", "right", "Premium Enrichment Ecosystem Score (composite)")}
+              {headerCell("composite", "PCC", "right", "Per City Composite score")}
               {headerCell("pricing", "Pricing")}
               {headerCell("absorption", "Absorp.")}
               {headerCell("scaledOperator", "Scaled Op")}

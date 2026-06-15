@@ -15,9 +15,9 @@
 
 ## Features
 
-- **Feature 1A — Market Validation Engine** — City-level composite (PEE Score) over 6 sub-scores; output is ranked shortlist + branded 12-section PDF.
+- **Feature 1A — Market Validation Engine** — City-level composite (PCC) over 6 sub-scores; output is ranked shortlist + branded 12-section PDF.
 - **Feature 1B — Site Analysis Engine** — Address-level Site Opportunity Score, up to 4-site compare, 10/15-min isochrones, branded per-site PDF.
-- **PEE Score** — Premium Enrichment Ecosystem Score; 1A composite (temporary name, likely to change).
+- **PCC — Per City Composite score** — The 1A composite.
 - **Site Opportunity Score** — 0–100 composite for Feature 1B.
 - **Market Balance Index** — 1A sub-score (15% weight): Affluent Dual-Income Family Count ÷ Premium Provider Count.
 - **Market Absorption** — 1A sub-score (25%, dominant): sellout rate + time-to-sellout + YoY velocity.

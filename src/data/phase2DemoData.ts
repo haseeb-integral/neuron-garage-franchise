@@ -29,7 +29,7 @@ export interface ShortlistCity {
 /**
  * Row format consumed by the v1.1 decision-capture shortlist table.
  * Sub-score values are demo numbers only — every city other than the
- * anchor (San Antonio) has placeholder PEE / sub-scores until Week 3
+ * anchor (San Antonio) has placeholder PCC / sub-scores until Week 3
  * wires Manus output.
  */
 export interface ShortlistRow {
@@ -46,7 +46,7 @@ export interface ShortlistRow {
   balanceBand: "Underserved" | "Balanced" | "Competitive" | "Saturated";
 }
 
-// Order mirrors Feature 1 Balanced ranking (top 8). PEE composites are demo
+// Order mirrors Feature 1 Balanced ranking (top 8). PCC composites are demo
 // numbers in the 65–82 range; anchor (San Antonio) = 78.
 export const SHORTLIST_DEMO: ShortlistRow[] = [
   { id: "new-york-ny",    city: "New York",     state: "NY", composite: 82, tier: "Top Tier",pricing: 88, absorption: 80, scaledOperator: 78, diversity: 84, depth: 79, balanceBand: "Saturated" },

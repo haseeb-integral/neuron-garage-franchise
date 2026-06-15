@@ -153,7 +153,7 @@ Market Balance Index = normalize(Coverage Ratio, range 50–500)
       "No additional scraping cost",
     ],
   },
-const MVS_NOTES = [
+];
   "Every sub-score is normalized 0–100 across the shortlisted cities, not nationally. The MVS is a comparative score for the cities that survived Feature 1, not a universal market grade.",
   "Screenshot capture is non-negotiable. Every registration-page scrape archives a full-page screenshot with date + URL in Supabase Storage. This is the visual ground truth for any contested classification and the audit defense for any Market Brief claim.",
   "Year 1 runs a single mid-March scrape per shortlisted city — enough to populate Sellout Rate. The full 5-scrape cadence (Jan / Feb / Mar / Apr / May) comes online in Year 2 for any city under active evaluation, unlocking Time-to-Sellout and YoY Velocity.",

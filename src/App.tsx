@@ -39,6 +39,7 @@ const ApisAndDataSources = lazyWithPreload(() => import("./pages/ApisAndDataSour
 const Guardrails = lazyWithPreload(() => import("./pages/Guardrails"));
 const TeamMembers = lazyWithPreload(() => import("./pages/TeamMembers"));
 const Handover = lazyWithPreload(() => import("./pages/Handover"));
+const Glossary = lazyWithPreload(() => import("./pages/Glossary"));
 const Unsubscribe = lazyWithPreload(() => import("./pages/Unsubscribe"));
 const NotFound = lazyWithPreload(() => import("./pages/NotFound"));
 
@@ -68,6 +69,7 @@ registerRoutePrefetch("/docs/prompts-and-ai-workflows", PromptsAndAiWorkflows.pr
 registerRoutePrefetch("/docs/apis", ApisAndDataSources.preload);
 registerRoutePrefetch("/docs/guardrails", Guardrails.preload);
 registerRoutePrefetch("/db-health", Observability.preload);
+registerRoutePrefetch("/glossary", Glossary.preload);
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 30000, refetchOnWindowFocus: false } } });
 
@@ -103,6 +105,7 @@ const App = () => (
                 <Route path="/demographics-methodology" element={<DemographicsMethodology />} />
                 <Route path="/methodology" element={<Methodology />} />
                 <Route path="/scoring-method" element={<ScoringMethod />} />
+                <Route path="/glossary" element={<Glossary />} />
                 <Route path="/observability" element={<Observability />} />
                 <Route path="/observability-guide" element={<ObservabilityGuide />} />
                 <Route path="/observability-spec" element={<ObservabilitySpec />} />

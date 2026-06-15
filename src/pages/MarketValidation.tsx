@@ -275,9 +275,9 @@ export default function MarketValidation() {
       </section>
 
       {/* Active city deep-dive panel */}
-      {!isFrisco && (
+      {!isAnchor && (
         <div className="mb-3 rounded-md border p-2 text-[11px]" style={{ borderColor: BORDER, backgroundColor: "#fff1d6", color: "#925100" }}>
-          Deep-dive below shows <strong>Frisco, TX</strong> (the demo anchor). {activeRow.city}, {activeRow.state} wires up
+          Deep-dive below shows <strong>San Antonio, TX</strong> (the demo anchor). {activeRow.city}, {activeRow.state} wires up
           to the Manus pipeline in Week 3; the table above already carries that city's verdict.
         </div>
       )}

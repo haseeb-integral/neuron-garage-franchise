@@ -8,7 +8,7 @@ import { SampleDataBadge } from "@/components/phase2-demo/SampleDataBadge";
 import { ShortlistTable } from "@/components/phase2-demo/ShortlistTable";
 import { Slider } from "@/components/ui/slider";
 import {
-  friscoMarketValidationDemo,
+  sanAntonioMarketValidationDemo,
   MARKET_BALANCE_ACTIVE_BAND,
   MARKET_BALANCE_BANDS,
   QA_QUEUE_FLAGGED_COUNT,

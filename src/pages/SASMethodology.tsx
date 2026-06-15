@@ -286,6 +286,13 @@ export default function SASMethodology() {
       eyebrowIcon={MapPin}
       title={<>How the SAS (Site Analysis Score) is Calculated</>}
       subtitle="Methodology & Data Documentation — Feature 1B · Site Analysis Engine"
+      action={
+        <DownloadMDButton
+          content={generateSASMarkdown()}
+          filename="sas-methodology.md"
+          label="Download MD"
+        />
+      }
     >
       <DocCard>
         <div className="text-[#07142f]">

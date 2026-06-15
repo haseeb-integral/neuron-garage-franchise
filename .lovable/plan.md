@@ -1,49 +1,36 @@
-## Plan: Add Project Glossary
+## Swap the 1A demo shortlist to Feature 1's Balanced top 8, anchor on San Antonio
 
-Create `.lovable/phase-2/GLOSSARY.md` (lives with other Phase 2 docs, easy to update weekly) with ~18 high-value terms covering Phase 2 features, scoring concepts, data sources, and franchise/acquisition terms.
+### Final 8 cities (from Feature 1 Balanced ranking)
 
-### File location
-`.lovable/phase-2/GLOSSARY.md` — co-located with `phase-2-sow.md` and `phase-2-status.md`.
+| Rank | City | Tier | Feature 1 Composite |
+|---|---|---|---|
+| 1 | New York, NY | A | 93 |
+| 2 | Houston, TX | A | 92 |
+| 3 | Chicago, IL | A | 91 |
+| 4 | Boston, MA | A | 91 |
+| 5 | **San Antonio, TX** *(deep-dive anchor)* | A | 91 |
+| 6 | Philadelphia, PA | A | 91 |
+| 7 | Los Angeles, CA | A | 90 |
+| 8 | Indianapolis, IN | B | 88 |
 
-### Terms to include (alphabetical, one-line definitions)
+### What changes
 
-**Data sources & tooling**
-- **ACS** — American Community Survey, US Census Bureau. 5-year vintage 2023 (data 2019–2023) used for demographics: population, income, dual-income families, education, kids 5–12. Powers Market Balance Index (1A) and Neighborhood Affluence + Family Density (1B).
-- **Apify** — Google Maps actor used by Manus to discover camp/enrichment providers per city.
-- **Firecrawl** — Page fetching + screenshot capture; feeds registration-page extraction.
-- **Gemini 2.0 Flash** — LLM (via Lovable AI Gateway) for structured extraction of camp week-level registration state.
-- **NCES** — National Center for Education Statistics; school enrollment + type data for Feature 1B.
-- **Mapbox / HERE Maps** — Drive-time isochrone APIs for Feature 1B (10/15-min).
-- **Manus** — Heavy data-refinement pipeline tooling. Owns scrapes, extraction, scoring. Up to 4 Manus apps planned.
+1. **`src/data/phase2DemoData.ts`**
+   - Rewrite `SHORTLIST_DEMO` (8 rows) — city/state, county sub-label, plausible PEE scores in the 65–82 sample range, verdicts, status badges.
+   - Rewrite `friscoMarketValidationDemo` → `sanAntonioMarketValidationDemo` (keep the export name structure; just rename the const and update `city: "San Antonio"`, `state: "TX"`, county "Bexar", and verdict copy). All sub-score values, provider rows, sample weeks, signals stay numerically the same — they're illustrative sample data and only the city label changes. PEE composite stays in the same range (≈78); we'll keep the demo number at 78 unless you say otherwise.
+   - `activeCityId` default in `MarketValidation.tsx` flips from `"frisco-tx"` to `"san-antonio-tx"`.
 
-**Features**
-- **Feature 1A — Market Validation Engine** — City-level composite (PEE Score) over 6 sub-scores; output is ranked shortlist + branded 12-section PDF.
-- **Feature 1B — Site Analysis Engine** — Address-level Site Opportunity Score, up to 4-site compare, 10/15-min isochrones, branded per-site PDF.
-- **PEE Score** — Premium Enrichment Ecosystem Score; 1A composite (temporary name, likely to change).
-- **Site Opportunity Score** — 0–100 composite for Feature 1B.
-- **Market Balance Index** — 1A sub-score (15% weight): Affluent Dual-Income Family Count ÷ Premium Provider Count.
-- **Market Absorption** — 1A sub-score (25%, dominant): sellout rate + time-to-sellout + YoY velocity.
+2. **`src/pages/MarketValidation.tsx`**
+   - Update the `isFrisco` guard → `isSanAntonio` (controls the "deep-dive shows the anchor city" callout shown when a non-anchor row is selected).
+   - Update any "Frisco" string in callouts/labels to "San Antonio".
 
-**Operating concepts**
-- **Tier 1 / Tier 2 / Tier 3** — Cost-tiered analysis: Tier 1 = hundreds of cities, pennies/city (federal data); Tier 2 = 25–50 shortlist, dollars/city; Tier 3 = on-demand per site.
-- **One calibrated number everywhere** — Brett's rule: all surfaces read pillar + composite scores from the same recomputed helper, never from stale DB-stored values.
-- **Premium Provider** — Camp tier: price ≥ $400/week, enrichment-positioned (STEM/maker/robotics/coding/science/art/theater/music/academic), not childcare. The 6 sub-scores compute only on this tier.
-- **Confidence gating** — Extractions with confidence < 0.7 route to internal human-QA review queue.
+3. **`.lovable/phase-2/CHANGELOG.md`** — log the swap (date, why: align 1A demo with Feature 1 Balanced top 8; San Antonio anchor because client has Austin franchise).
 
-**Franchise / acquisition terms**
-- **FDD** — Franchise Disclosure Document; source of truth for existing Neuron Garage location performance + validation anchors (Trinity, Wayside, St. Francis, LeafSpring).
-- **LeafSpring** — Only labeled failure case in the validation set; the critical negative anchor for Feature 1B calibration.
-- **Candidate Pipeline (1.5)** — Phase 2 item 3: pipeline upgrade for franchise candidates.
-- **SmartLead** — Email outreach tool for Phase 2 item 6.
-- **Shortlist** — The 25–50 cities promoted from Phase 1 city search into Feature 1A scoring.
+### What does NOT change
 
-### Header
-Short preamble: "Living glossary for Neuron Garage Acquisition Platform. Updated weekly. Add new terms as they appear in chat or SOW."
+- The 6 sub-scores, weights, formula, provider table, sellout curve, badges, cadence chip, PDF stub, Market Balance bands — all stay. Only the *city the page is anchored on* changes.
+- No schema, no backend, no Feature 1 code.
 
-### CHANGELOG entry
-Append one line to `.lovable/phase-2/CHANGELOG.md`: today's date, Brett, "added GLOSSARY.md (initial ~18 terms covering Phase 2 features, scoring, data sources, franchise)."
+### Open question (will assume default if no response)
 
-### Out of scope
-- No code changes.
-- No edits to `phase-2-sow.md` or `phase-2-status.md`.
-- Not adding the glossary to a Core memory rule (you said weekly updates — file-only is enough).
+- Anchor PEE composite stays at **78 / Strong tier** for San Antonio. Say the word if you want a different demo number.

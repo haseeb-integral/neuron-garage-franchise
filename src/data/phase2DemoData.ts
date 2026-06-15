@@ -11,7 +11,9 @@
 
 // ---------------------------------------------------------------------------
 // Item 1 — Market Validation Engine (Feature 1A)
-// Demo city = Frisco, TX (Sam's PDF anchors examples around Galileo Frisco).
+// Shortlist = Feature 1 (City Search) Balanced top 8 (Tier A/B).
+// Deep-dive anchor = San Antonio, TX (client has an Austin franchise and is
+// most familiar with the SA market; Frisco was swapped out 2026-06-15).
 // ---------------------------------------------------------------------------
 
 export type AbsorptionStatus = "sold_out" | "waitlist" | "low_availability" | "open" | "unknown";
@@ -26,8 +28,9 @@ export interface ShortlistCity {
 
 /**
  * Row format consumed by the v1.1 decision-capture shortlist table.
- * Sub-score values are demo numbers only — every city other than Frisco
- * has placeholder PEE / sub-scores until Week 3 wires Manus output.
+ * Sub-score values are demo numbers only — every city other than the
+ * anchor (San Antonio) has placeholder PEE / sub-scores until Week 3
+ * wires Manus output.
  */
 export interface ShortlistRow {
   id: string;
@@ -43,15 +46,17 @@ export interface ShortlistRow {
   balanceBand: "Underserved" | "Balanced" | "Competitive" | "Saturated";
 }
 
+// Order mirrors Feature 1 Balanced ranking (top 8). PEE composites are demo
+// numbers in the 65–82 range; anchor (San Antonio) = 78.
 export const SHORTLIST_DEMO: ShortlistRow[] = [
-  { id: "frisco-tx",     city: "Frisco",     state: "TX", composite: 78, tier: "Strong",  pricing: 82, absorption: 74, scaledOperator: 71, diversity: 76, depth: 68, balanceBand: "Underserved" },
-  { id: "bellevue-wa",   city: "Bellevue",   state: "WA", composite: 82, tier: "Top Tier",pricing: 88, absorption: 81, scaledOperator: 78, diversity: 80, depth: 75, balanceBand: "Balanced" },
-  { id: "plano-tx",      city: "Plano",      state: "TX", composite: 74, tier: "Strong",  pricing: 76, absorption: 70, scaledOperator: 80, diversity: 72, depth: 73, balanceBand: "Competitive" },
-  { id: "carmel-in",     city: "Carmel",     state: "IN", composite: 71, tier: "Strong",  pricing: 70, absorption: 66, scaledOperator: 68, diversity: 70, depth: 74, balanceBand: "Underserved" },
-  { id: "cary-nc",       city: "Cary",       state: "NC", composite: 69, tier: "Mixed",   pricing: 72, absorption: 60, scaledOperator: 70, diversity: 66, depth: 71, balanceBand: "Balanced" },
-  { id: "newton-ma",     city: "Newton",     state: "MA", composite: 69, tier: "Mixed",   pricing: 78, absorption: 58, scaledOperator: 74, diversity: 68, depth: 64, balanceBand: "Competitive" },
-  { id: "pleasanton-ca", city: "Pleasanton", state: "CA", composite: 66, tier: "Mixed",   pricing: 84, absorption: 55, scaledOperator: 72, diversity: 60, depth: 58, balanceBand: "Saturated" },
-  { id: "brookline-ma",  city: "Brookline",  state: "MA", composite: 62, tier: "Weak",    pricing: 80, absorption: 48, scaledOperator: 66, diversity: 58, depth: 52, balanceBand: "Saturated" },
+  { id: "new-york-ny",    city: "New York",     state: "NY", composite: 82, tier: "Top Tier",pricing: 88, absorption: 80, scaledOperator: 78, diversity: 84, depth: 79, balanceBand: "Saturated" },
+  { id: "houston-tx",     city: "Houston",      state: "TX", composite: 76, tier: "Strong",  pricing: 74, absorption: 72, scaledOperator: 80, diversity: 75, depth: 74, balanceBand: "Competitive" },
+  { id: "chicago-il",     city: "Chicago",      state: "IL", composite: 74, tier: "Strong",  pricing: 80, absorption: 68, scaledOperator: 76, diversity: 78, depth: 70, balanceBand: "Competitive" },
+  { id: "boston-ma",      city: "Boston",       state: "MA", composite: 72, tier: "Strong",  pricing: 84, absorption: 66, scaledOperator: 72, diversity: 70, depth: 68, balanceBand: "Competitive" },
+  { id: "san-antonio-tx", city: "San Antonio",  state: "TX", composite: 78, tier: "Strong",  pricing: 82, absorption: 74, scaledOperator: 71, diversity: 76, depth: 68, balanceBand: "Underserved" },
+  { id: "philadelphia-pa",city: "Philadelphia", state: "PA", composite: 69, tier: "Mixed",   pricing: 72, absorption: 64, scaledOperator: 70, diversity: 68, depth: 66, balanceBand: "Balanced" },
+  { id: "los-angeles-ca", city: "Los Angeles",  state: "CA", composite: 67, tier: "Mixed",   pricing: 86, absorption: 58, scaledOperator: 74, diversity: 72, depth: 60, balanceBand: "Saturated" },
+  { id: "indianapolis-in",city: "Indianapolis", state: "IN", composite: 71, tier: "Strong",  pricing: 68, absorption: 70, scaledOperator: 66, diversity: 70, depth: 72, balanceBand: "Underserved" },
 ];
 
 export interface SubScore {
@@ -87,21 +92,22 @@ export interface MarketValidationDemo {
   }[];
 }
 
-export const friscoMarketValidationDemo: MarketValidationDemo = {
-  city: "Frisco",
+export const sanAntonioMarketValidationDemo: MarketValidationDemo = {
+  city: "San Antonio",
   state: "TX",
   scrapeDate: "2026-03-15",
   composite: 78,
   tier: "Strong",
   verdict:
-    "Validated premium enrichment market with strong absorption signals. Direct competitor load is moderate; room for one well-sited operator.",
+    "Validated premium enrichment market with strong absorption signals. Direct competitor load is moderate; room for one well-sited operator in north-side Bexar County.",
   shortlist: [
-    { city: "Frisco", state: "TX", composite: 78, active: true },
-    { city: "Plano", state: "TX", composite: 74, active: false },
-    { city: "Naperville", state: "IL", composite: 71, active: false },
-    { city: "Bellevue", state: "WA", composite: 82, active: false },
-    { city: "Newton", state: "MA", composite: 69, active: false },
+    { city: "San Antonio", state: "TX", composite: 78, active: true },
+    { city: "Houston", state: "TX", composite: 76, active: false },
+    { city: "Chicago", state: "IL", composite: 74, active: false },
+    { city: "New York", state: "NY", composite: 82, active: false },
+    { city: "Boston", state: "MA", composite: 72, active: false },
   ],
+
   subScores: {
     pricingAcceptance: {
       value: 82,
@@ -174,7 +180,7 @@ export const friscoMarketValidationDemo: MarketValidationDemo = {
   },
   premiumProviders: [
     {
-      name: "Galileo Frisco",
+      name: "Galileo San Antonio",
       weeklyPrice: 549,
       siteCount: 2,
       overlap: "direct",
@@ -187,7 +193,7 @@ export const friscoMarketValidationDemo: MarketValidationDemo = {
       ],
     },
     {
-      name: "Snapology of Frisco",
+      name: "Snapology of San Antonio",
       weeklyPrice: 475,
       siteCount: 1,
       overlap: "direct",
@@ -200,7 +206,7 @@ export const friscoMarketValidationDemo: MarketValidationDemo = {
       ],
     },
     {
-      name: "Code Ninjas Frisco",
+      name: "Code Ninjas Stone Oak",
       weeklyPrice: 425,
       siteCount: 3,
       overlap: "adjacent",
@@ -239,7 +245,7 @@ export const friscoMarketValidationDemo: MarketValidationDemo = {
       ],
     },
     {
-      name: "Maker Kids Frisco",
+      name: "Maker Kids Alamo Heights",
       weeklyPrice: 510,
       siteCount: 1,
       overlap: "direct",

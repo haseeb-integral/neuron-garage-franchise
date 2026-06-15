@@ -8,7 +8,7 @@ import { SampleDataBadge } from "@/components/phase2-demo/SampleDataBadge";
 import { ShortlistTable } from "@/components/phase2-demo/ShortlistTable";
 import { Slider } from "@/components/ui/slider";
 import {
-  friscoMarketValidationDemo,
+  sanAntonioMarketValidationDemo,
   MARKET_BALANCE_ACTIVE_BAND,
   MARKET_BALANCE_BANDS,
   QA_QUEUE_FLAGGED_COUNT,
@@ -150,11 +150,11 @@ function SubScoreCard({ title, subtitle, weight, value, signals, formula, confid
 }
 
 export default function MarketValidation() {
-  const data = friscoMarketValidationDemo;
+  const data = sanAntonioMarketValidationDemo;
   const subs = data.subScores;
-  const [activeCityId, setActiveCityId] = useState<string>("frisco-tx");
+  const [activeCityId, setActiveCityId] = useState<string>("san-antonio-tx");
   const activeRow = SHORTLIST_DEMO.find((r) => r.id === activeCityId) ?? SHORTLIST_DEMO[0];
-  const isFrisco = activeCityId === "frisco-tx";
+  const isAnchor = activeCityId === "san-antonio-tx";
 
   // 1A-LOV-5 — Sellout curve from sample weeks (% sold_out + waitlist).
   const weekLabels = data.premiumProviders[0]?.sampleWeeks.map((w) => w.label) ?? [];
@@ -275,9 +275,9 @@ export default function MarketValidation() {
       </section>
 
       {/* Active city deep-dive panel */}
-      {!isFrisco && (
+      {!isAnchor && (
         <div className="mb-3 rounded-md border p-2 text-[11px]" style={{ borderColor: BORDER, backgroundColor: "#fff1d6", color: "#925100" }}>
-          Deep-dive below shows <strong>Frisco, TX</strong> (the demo anchor). {activeRow.city}, {activeRow.state} wires up
+          Deep-dive below shows <strong>San Antonio, TX</strong> (the demo anchor). {activeRow.city}, {activeRow.state} wires up
           to the Manus pipeline in Week 3; the table above already carries that city's verdict.
         </div>
       )}

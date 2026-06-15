@@ -316,21 +316,25 @@ export const MARKET_BALANCE_BANDS = [
 ] as const;
 export const MARKET_BALANCE_ACTIVE_BAND = "underserved";
 
-// 1B demo helpers
+// 1B demo helpers — exact values from Sam v2 PDF, Score 1 School Profile.
+// All factors are on a 0–100 scale so 0.50·type + 0.25·norm(enrollment) +
+// 0.25·alignment lands 0–100 directly. "Other" (incl. daycare) = 30 is the
+// calibration anchor that drags LeafSpring's School Profile below threshold.
 export const SCHOOL_PROFILE_FACTORS = {
   schoolType: [
-    { type: "Private elementary", factor: 1.0 },
-    { type: "Montessori", factor: 0.9 },
-    { type: "Charter elementary", factor: 0.85 },
-    { type: "Public elementary", factor: 0.75 },
-    { type: "Other K-8", factor: 0.6 },
-    { type: "Other", factor: 0.5 },
+    { type: "Private elementary", factor: 100 },
+    { type: "Montessori", factor: 85 },
+    { type: "Charter elementary", factor: 75 },
+    { type: "Public elementary", factor: 70 },
+    { type: "Other K-8", factor: 50 },
+    { type: "Other (incl. daycare)", factor: 30 },
   ],
   enrollmentRange: "150–800",
   gradeAlignment: [
-    { label: "Matches NG 5–12", factor: 1.0 },
-    { label: "Partial overlap", factor: 0.6 },
-    { label: "Misaligned (PK–K only)", factor: 0.2 },
+    { label: "K-5 or K-6", factor: 100 },
+    { label: "Pre-K through 5", factor: 95 },
+    { label: "K-8", factor: 80 },
+    { label: "Other", factor: 50 },
   ],
 } as const;
 

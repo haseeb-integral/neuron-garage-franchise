@@ -367,18 +367,19 @@ export const austinSiteAnalysisDemo: {
       address: "3901 Bee Caves Rd, Austin, TX 78746",
       schoolType: "Private elementary",
       enrollment: 540,
-      gradeAlignment: "K–8 · matches NG 5–12 ✓",
+      gradeAlignment: "K–8 · grade_alignment_factor = 80",
       composite: 86,
       verdict: "Strong site. Affluent, dense, accessible. Matches profile of current high-performing NG locations.",
       subScores: {
         schoolProfile: {
-          value: 92,
+          // 0.50·100 (Private elem) + 0.25·norm(540,150–800)=60 + 0.25·80 (K-8) = 85
+          value: 85,
           weight: 0.25,
           formula:
             "0.50 × school_type_factor + 0.25 × normalize(Enrollment, 150–800) + 0.25 × grade_alignment_factor",
         },
         neighborhoodAffluence: {
-          value: 90,
+          value: 92,
           weight: 0.25,
           formula:
             "0.40 × norm(Median HHI 10min, $80k–$200k) + 0.35 × norm(% HH >$150k, 10–50%) + 0.25 × norm(% Dual-Income, 40–80%)",
@@ -387,19 +388,19 @@ export const austinSiteAnalysisDemo: {
           value: 78,
           weight: 0.2,
           formula:
-            "0.50 × norm(Children 5–12 / 10min) + 0.30 × norm(Children 5–12 / 15min) + 0.20 × norm(Families w/ kids / 10min)",
+            "0.50 × norm(Children 5–12 / 10min, 1k–15k) + 0.30 × norm(Children 5–12 / 15min, 3k–40k) + 0.20 × norm(Families w/ kids / 10min, 500–8k)",
         },
         schoolEcosystem: {
           value: 84,
           weight: 0.15,
           formula:
-            "0.40 × norm(Elementary count) + 0.30 × norm(Private school count) + 0.30 × norm(Nearby student pop)",
+            "0.40 × norm(Elementary count 15min, 3–25) + 0.30 × norm(Private school count 15min, 1–10) + 0.30 × norm(Nearby student pop 15min, 2k–25k)",
         },
         accessibility: {
           value: 88,
           weight: 0.15,
           formula:
-            "0.30 × access(distance to major road) + 0.30 × access(distance to highway) + 0.40 × norm(Pop reachable 15min)",
+            "0.30 × access(distance to major road) + 0.30 × access(distance to highway) + 0.40 × norm(Pop reachable 15min, 50k–500k)",
         },
       },
       isochroneCallouts: {

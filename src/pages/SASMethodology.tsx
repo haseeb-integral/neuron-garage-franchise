@@ -152,6 +152,133 @@ access_factor curves (driving-time based):
   },
 ];
 
+const SAS_NOTES = [
+  "SAS is normalized against the candidate set for a given market, not nationally. It is a comparative score for the host-school candidates inside a validated city, not a universal site grade.",
+  "Weights are exposed as sliders in the Site Analysis UI with \"Show Formula\" drawers per the v1.0 doctrine — every number on screen is traceable to the formula above.",
+  "MVS and SAS are sequential, not redundant. MVS answers \"should we open in this city?\" SAS answers \"given we're opening here, which building?\" A high SAS in a low-MVS city is not a green light, and a low SAS in a high-MVS city is not a reason to doubt the market — only the building.",
+  "If isochrone generation fails for a candidate (rare — typically rural or cross-border addresses), the site is flagged in the QA queue and rendered with a low-confidence badge until a manual radius fallback is applied.",
+];
+
+const SAS_SHARED_INFRA = [
+  ["Census ACS 5-year", "Income, dual-income, age, families w/ children", "Reused from v1.0"],
+  ["Mapbox Isochrone API", "10-min + 15-min drive polygons (primary)", "New (Week 3)"],
+  ["HERE Isochrone API", "Isochrone fallback / cross-check", "New (Week 3)"],
+  ["NCES Common Core of Data", "Public + charter school directory + enrollment", "New (Week 3)"],
+  ["NCES Private School Universe Survey", "Private + Montessori directory", "New (Week 3)"],
+  ["GreatSchools API", "School-type cross-reference", "Optional"],
+  ["OpenStreetMap road tags", "Highway / major-road classification for Accessibility", "Reused"],
+  ["Supabase Postgres + PostGIS", "ACS ↔ isochrone spatial join", "Reused from v1.0"],
+];
+
+const SAS_CALIBRATION = [
+  ["School Profile (25%)", "85", "30"],
+  ["Neighborhood Affluence (25%)", "92", "54"],
+  ["Family Density (20%)", "78", "48"],
+  ["School Ecosystem (15%)", "84", "35"],
+  ["Accessibility (15%)", "88", "32"],
+  ["SAS (composite)", "86 · Recommend", `41 · Skip`],
+];
+
+function generateSASMarkdown(): string {
+  const lines: string[] = [];
+  lines.push(`# How the SAS (Site Analysis Score) is Calculated`);
+  lines.push("");
+  lines.push(`Methodology & Data Documentation — Feature 1B · Site Analysis Engine`);
+  lines.push("");
+
+  lines.push(`## Section 1: What is the SAS?`);
+  lines.push("");
+  lines.push(`The **Site Analysis Score (SAS)** is the per-site composite produced by the Feature 1B Site Analysis Engine. It answers a different question than MVS: *"Given a validated market, is this specific candidate building the right place to actually open a Neuron Garage?"*`);
+  lines.push("");
+  lines.push(`- **Higher SAS** = right host school, right families inside the commute ring, right logistics.`);
+  lines.push(`- **Lower SAS** = a site that looks fine on a map but fails on at least one of the five pillars.`);
+  lines.push("");
+  lines.push(`SAS is computed on **candidate host-school sites inside a validated market** (typically a city promoted by Feature 1A). It is a site-selection tool, not a market grade — MVS already answered the market question.`);
+  lines.push("");
+  lines.push(`Naming history: this score was previously referred to as SOS (Site Opportunity Score). The canonical name is now **SAS**.`);
+  lines.push("");
+
+  lines.push(`## Section 2: The Composite Formula`);
+  lines.push("");
+  lines.push("```");
+  lines.push(`SAS = 0.25 × School Profile Score`);
+  lines.push(`    + 0.25 × Neighborhood Affluence Score`);
+  lines.push(`    + 0.20 × Family Density Score`);
+  lines.push(`    + 0.15 × School Ecosystem Score`);
+  lines.push(`    + 0.15 × Accessibility Score`);
+  lines.push("```");
+  lines.push("");
+  lines.push(`Every sub-score is normalized 0–100. School Profile and Neighborhood Affluence are co-dominant because they answer the two questions that, in combination, determine whether a site can work at all: **is the host school the right kind of partner** and **can the families inside its commute ring afford the product**. Family Density (20%) gates the demand pool. School Ecosystem and Accessibility (15% each) tune the edges.`);
+  lines.push("");
+  lines.push(`| SAS Range | Recommendation |`);
+  lines.push(`| --- | --- |`);
+  lines.push(`| ≥ ${SITE_RECOMMEND_THRESHOLDS.recommend} | Recommend — pursue host-school conversation |`);
+  lines.push(`| ${SITE_RECOMMEND_THRESHOLDS.worthALook}–${SITE_RECOMMEND_THRESHOLDS.recommend - 1} | Worth a Look — inspect sub-scores; one pillar may be fixable |`);
+  lines.push(`| < ${SITE_RECOMMEND_THRESHOLDS.worthALook} | Skip — at least one structural pillar is below threshold |`);
+  lines.push("");
+
+  lines.push(`## Section 3: The Five Sub-Scores`);
+  lines.push("");
+  SUB_SCORES.forEach((s) => {
+    lines.push(`### Score ${s.n}: ${s.name} (Weight ${s.weight})`);
+    lines.push("");
+    lines.push(`**Question:** ${s.question}`);
+    lines.push("");
+    lines.push(`**Formula:**`);
+    lines.push("```");
+    lines.push(s.formula);
+    lines.push("```");
+    lines.push("");
+    lines.push(`**Detail:** ${s.detail}`);
+    lines.push("");
+    lines.push(`**Data Sources:**`);
+    s.sources.forEach((src) => lines.push(`- ${src}`));
+    lines.push("");
+  });
+
+  lines.push(`## Section 4: The 10/15-Minute Isochrone Blend`);
+  lines.push("");
+  lines.push(`Three of the five sub-scores (Affluence, Family Density, Accessibility) read demographic and population inputs not from the school's ZIP code but from **drive-time polygons** around the candidate building. Every such input is computed as:`);
+  lines.push("");
+  lines.push("```");
+  lines.push(`input_value = 0.60 × value_inside_10_minute_ring`);
+  lines.push(`            + 0.40 × value_inside_15_minute_ring`);
+  lines.push("```");
+  lines.push("");
+  lines.push(`The 10-minute ring is the practical drop-off radius for a working parent; the 15-minute ring captures the secondary catchment. ZIP-level inputs would have masked LeafSpring's problem entirely — Austin overall is affluent, but the 10-min ring around the LeafSpring building was not.`);
+  lines.push("");
+
+  lines.push(`## Section 5: Shared Data & Tooling Stack`);
+  lines.push("");
+  lines.push(`SAS reuses the Census ACS pipeline already wired in v1.0 and the same Supabase Postgres + PostGIS spatial-join layer. The new infrastructure is isochrone generation and the NCES school-data pull.`);
+  lines.push("");
+  lines.push(`| Tool | Role | Status |`);
+  lines.push(`| --- | --- | --- |`);
+  SAS_SHARED_INFRA.forEach(([tool, role, status]) => lines.push(`| ${tool} | ${role} | ${status} |`));
+  lines.push("");
+  lines.push(`**Cost envelope:** Isochrones are batched per candidate site (typically 5–20 candidates per validated market). At Mapbox's free-tier pricing one full SAS evaluation is effectively free; HERE fallback adds <$0.01/site. NCES pulls are bulk file downloads, not per-call APIs.`);
+  lines.push("");
+
+  lines.push(`## Section 6: Calibration: Trinity vs. LeafSpring`);
+  lines.push("");
+  lines.push(`SAS is calibrated against two anchors in the demo, both in Austin: **Trinity Episcopal (Westlake)** — a profile of current high-performing Neuron Garage locations — and **LeafSpring**, a former NG site that closed in 2023 after averaging 27 campers/week. The math must independently produce a Recommend on Trinity and a Skip on LeafSpring, with no hand-set tier override.`);
+  lines.push("");
+  lines.push(`| Pillar | Trinity | LeafSpring |`);
+  lines.push(`| --- | --- | --- |`);
+  SAS_CALIBRATION.forEach(([pillar, t, l]) => lines.push(`| ${pillar} | ${t} | ${l} |`));
+  lines.push("");
+  lines.push(`LeafSpring's School Profile of 30 comes directly from \`school_type_factor = ${SCHOOL_PROFILE_FACTORS.schoolType[5].factor}\` (Other / daycare positioning), grade-alignment 50 (Other), and a 220 enrollment that normalizes to ~11. Affluence and Family Density are depressed because the 10-min ring around the building captures the wrong population — the customer base lived further south. Five independent pillars failing in concert is exactly what a calibrated model should look like on a known-bad anchor.`);
+  lines.push("");
+
+  lines.push(`## Section 7: Important Notes`);
+  lines.push("");
+  SAS_NOTES.forEach((note) => lines.push(`- ${note}`));
+  lines.push("");
+
+  return lines.join("\n");
+}
+
+
 export default function SASMethodology() {
   return (
     <DocShell

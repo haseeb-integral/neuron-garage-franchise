@@ -48,3 +48,8 @@
 - `src/pages/SiteAnalysis.tsx`: winner banner and formula block now read "Site Analysis Score (SAO)" instead of "Site Opportunity Score".
 - `src/lib/decisionsExport.ts`: decision-pack score label and winner banner updated to "SAO" / "Site Analysis Score (SAO)".
 - `src/data/glossary.md`: Feature 1B description and score entry renamed to "Site Analysis Score (SAO)" (previously Site Opportunity Score).
+
+## 2026-06-15 — SAS Methodology doc page (Feature 1B)
+- Added `src/pages/SASMethodology.tsx` — client-facing methodology doc for the Site Analysis Score, mirroring `MVSMethodology.tsx` structure (intro, composite formula, 5 sub-score cards w/ formulas + data sources, isochrone blend explainer, shared tooling table, Trinity vs LeafSpring calibration table, notes).
+- All 5 sub-scores (School Profile 25 / Affluence 25 / Family Density 20 / Ecosystem 15 / Accessibility 15) reflect Sam v2 PDF + Claude audit. school_type_factor and grade_alignment_factor tables read from `SCHOOL_PROFILE_FACTORS`; thresholds read from `SITE_RECOMMEND_THRESHOLDS` — single source of truth with the demo.
+- Registered route `/sas-methodology` in `src/App.tsx` (lazy + prefetch) and added "SAS Methodology" entry to AppSidebar docs nav, MapPin icon.

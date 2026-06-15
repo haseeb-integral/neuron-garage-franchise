@@ -104,7 +104,7 @@ export function exportSiteDecisionPack(
           </div>
           <div class="score">
             <div class="score-num">${s.composite}</div>
-            <div class="score-lbl">Site Opportunity</div>
+            <div class="score-lbl">SAO</div>
           </div>
         </div>
         <p class="verdict">Brett/Sam's verdict: <strong>${verdict}</strong></p>
@@ -148,7 +148,7 @@ export function exportSiteDecisionPack(
   <h1>Site Analysis Decision Pack</h1>
   <div class="meta">Neuron Garage · Phase 2 Feature 1B · Generated ${escapeHtml(generatedAt)}</div>
   ${winner
-    ? `<div class="winner-banner"><strong>Chosen site:</strong> ${escapeHtml(winner.schoolName)} — ${escapeHtml(winner.address)} (Site Opportunity Score: ${winner.composite})</div>`
+    ? `<div class="winner-banner"><strong>Chosen site:</strong> ${escapeHtml(winner.schoolName)} — ${escapeHtml(winner.address)} (Site Analysis Score (SAO): ${winner.composite})</div>`
     : `<div class="winner-banner" style="background:#fff1d6;border-left-color:#925100;"><strong>No winner selected.</strong> Compare the candidates below.</div>`}
   <div class="grid">${cardHtml}</div>
   <footer>Phase 2 demo — isochrones and live data not yet wired. Formulas locked in <code>.lovable/phase-2/phase-2-sow.md</code> Item 2.</footer>

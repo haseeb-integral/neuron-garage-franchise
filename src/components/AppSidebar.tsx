@@ -37,6 +37,7 @@ const docsNavItems = [
   { title: "Observability Spec", url: "/observability-spec", icon: FileCode2 },
   { title: "Outreach Guide", url: "/email-outreach-docs", icon: MailOpen },
   { title: "SmartLead API Spec", url: "/smartlead-spec", icon: Send },
+  { title: "Glossary", url: "/glossary", icon: BookMarked },
   { title: "Full Specification", url: "/spec", icon: FileText },
 ];
 

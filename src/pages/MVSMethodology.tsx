@@ -1,5 +1,6 @@
 import { BarChart3, Info, Database } from "lucide-react";
 import { DocShell, DocCard } from "@/components/DocShell";
+import { DownloadMDButton } from "@/components/DownloadMDButton";
 
 function FormulaBlock({ children }: { children: React.ReactNode }) {
   return (

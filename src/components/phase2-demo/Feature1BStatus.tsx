@@ -58,7 +58,7 @@ export function Feature1BStatus() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-[13px] font-bold" style={{ color: "#1a5e34" }}>
-            Feature 1B — Site Analysis · progress for Brett
+            For Dev Purposes Only - Internal Team Status Update for This Feature
           </div>
           <div className="mt-0.5 text-[12px]" style={{ color: "#3a3a3a" }}>
             {done} of {total} items complete. One item is blocked and needs your input — see the red row.

@@ -98,9 +98,13 @@ export interface LiveEngineInput {
 interface LiveEngineCardProps {
   onSaveToSlot?: (input: LiveEngineInput, result: LiveEngineResult) => void;
   canSave?: boolean;
+  /** If set, the Save button labels itself as "Replace <name>". */
+  replaceTargetLabel?: string | null;
+  /** Cancel an in-progress replace selection. */
+  onCancelReplace?: () => void;
 }
 
-export function LiveEngineCard({ onSaveToSlot, canSave = true }: LiveEngineCardProps = {}) {
+export function LiveEngineCard({ onSaveToSlot, canSave = true, replaceTargetLabel, onCancelReplace }: LiveEngineCardProps = {}) {
   const [address, setAddress] = useState("");
   const [schoolName, setSchoolName] = useState("");
   const [schoolType, setSchoolType] = useState<SchoolType>("private_elementary");
@@ -173,19 +177,26 @@ export function LiveEngineCard({ onSaveToSlot, canSave = true }: LiveEngineCardP
       <div className="mb-3 flex items-center justify-between gap-2">
         <div>
           <h3 className="text-[13px] font-bold" style={{ color: "#07142f" }}>
-            Live Site Analysis Engine (v0.3)
+            Run site score
           </h3>
-
           <p className="text-[11px]" style={{ color: "#526078" }}>
             Geocode → 10/15-min isochrones → ACS sampling → school ecosystem → SAS.
           </p>
         </div>
-        <span
-          className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
-          style={{ background: "#dde7ff", color: "#174be8" }}
-        >
-          ENGINE LIVE
-        </span>
+        {replaceTargetLabel ? (
+          <div className="flex items-center gap-1.5">
+            <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: "#fff3cd", color: "#7a5800" }}>
+              Replacing: {replaceTargetLabel}
+            </span>
+            <button type="button" onClick={onCancelReplace} className="rounded border px-1.5 py-0.5 text-[10px]" style={{ borderColor: "#eef2f7", color: "#526078" }}>
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: "#dde7ff", color: "#174be8" }}>
+            Live engine
+          </span>
+        )}
       </div>
       <div className="mb-2 flex flex-wrap items-center gap-1.5">
         <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "#526078" }}>
@@ -322,7 +333,7 @@ export function LiveEngineCard({ onSaveToSlot, canSave = true }: LiveEngineCardP
                     className="rounded px-2 py-1 text-[11px] font-semibold text-white disabled:opacity-50"
                     style={{ background: saved ? "#1d6b32" : "#174be8" }}
                   >
-                    {saved ? "✓ Added as new card" : !canSave ? "Slots full (4/4) — remove a card first" : "Add as new card →"}
+                    {saved ? (replaceTargetLabel ? "✓ Replaced" : "✓ Added as card") : !canSave ? "Slots full (4/4) — remove a card first" : (replaceTargetLabel ? `Replace ${replaceTargetLabel} →` : "Add as new card →")}
                   </button>
                 )}
               </div>

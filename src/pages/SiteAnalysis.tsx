@@ -1,20 +1,18 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  CheckCircle2,
   Download,
-  FileText,
   Loader2,
   MapPin,
   Plus,
   Star,
-  XCircle,
 } from "lucide-react";
+
 
 import { PageHeader } from "@/components/PageHeader";
 import { LiveEngineCard, SAS_ENGINE_LIVE } from "@/components/site-analysis/LiveEngineCard";
 
 import { SiteDecisionControls } from "@/components/phase2-demo/SiteDecisionControls";
-import { CalibrationRunsTable } from "@/components/site-analysis/CalibrationRunsTable";
+
 import { IsochroneMap } from "@/components/site-analysis/IsochroneMap";
 import { supabase } from "@/integrations/supabase/client";
 import { useSiteDecisions, type SiteVerdict } from "@/hooks/useSiteDecisions";
@@ -68,28 +66,8 @@ interface Candidate {
   schoolType: SchoolType;
   gradeBand: GradeBand;
   enrollment: string;
-  calibrationRole?: "trinity" | "leafspring";
 }
 
-const TRINITY_CANDIDATE: Candidate = {
-  id: "trinity-episcopal-westlake",
-  schoolName: "Trinity Episcopal School",
-  address: "4011 Bee Caves Rd, Austin, TX 78746",
-  schoolType: "private_elementary",
-  gradeBand: "k5_k6",
-  enrollment: "580",
-  calibrationRole: "trinity",
-};
-
-const LEAFSPRING_CANDIDATE: Candidate = {
-  id: "leafspring-cedar-park",
-  schoolName: "LeafSpring School at Cedar Park — closed 2023 (negative anchor)",
-  address: "11651 W Parmer Ln, Cedar Park, TX 78613",
-  schoolType: "daycare",
-  gradeBand: "other",
-  enrollment: "150",
-  calibrationRole: "leafspring",
-};
 
 // ---------------------------------------------------------------------------
 // CandidateCard — DISPLAY-ONLY.
@@ -132,10 +110,12 @@ interface CardProps {
   onRemove?: () => void;
 }
 
-function CandidateCard({ slot, onRerun, onRemove }: CardProps) {
+interface CardPropsExt extends CardProps { onReplace?: () => void; }
+
+function CandidateCard({ slot, onRerun, onRemove, onReplace }: CardPropsExt) {
   const { byAddress } = useSiteDecisions();
   const decision = byAddress.get(slot.address);
-  const brettVerdict: SiteVerdict | undefined =
+  const userVerdict: SiteVerdict | undefined =
     decision && decision.verdict !== "undecided" ? decision.verdict : undefined;
   const isWinner = decision?.is_winner ?? false;
   const [showFormulas, setShowFormulas] = useState(false);
@@ -143,8 +123,12 @@ function CandidateCard({ slot, onRerun, onRemove }: CardProps) {
   const recomputed = slot.result ? recomputeSiteScores(slot.result.pillars) : null;
   const composite = recomputed?.composite ?? null;
   const scoreTier = composite != null ? tierBadge(composite) : null;
-  const pill = brettVerdict ? VERDICT_STYLE[brettVerdict] : scoreTier;
-  const pillSource = brettVerdict ? "Brett/Sam's call" : "auto from score";
+  const suggestedTier: SiteVerdict | undefined =
+    composite != null ? defaultVerdictFromScore(composite) : undefined;
+  // Pill shown next to score: ONLY user-selected verdict. If the user hasn't
+  // decided yet, we show a neutral score-tier hint (small, muted) — never
+  // surface "Don't recommend" as if it were a decision the user made.
+  const userPill = userVerdict ? VERDICT_STYLE[userVerdict] : null;
 
   return (
     <div
@@ -177,15 +161,6 @@ function CandidateCard({ slot, onRerun, onRemove }: CardProps) {
                 <Star size={9} className="mr-0.5" fill="#fff" /> Winner
               </span>
             )}
-            {slot.calibrationRole && (
-              <span
-                className="inline-flex items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
-                style={{ backgroundColor: "#dde7ff", color: BLUE }}
-                title="Pre-seeded calibration anchor — inputs are frozen so the calibration delta is reproducible"
-              >
-                {slot.calibrationRole === "trinity" ? "Positive anchor" : "Negative anchor"}
-              </span>
-            )}
           </div>
           {slot.address && (
             <p className="mt-1 text-[11px] break-words" style={{ color: MUTED }}>
@@ -206,18 +181,23 @@ function CandidateCard({ slot, onRerun, onRemove }: CardProps) {
               >
                 {composite}
               </div>
-              {pill && (
+              {userPill ? (
                 <span
                   className="inline-flex items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-bold"
-                  style={{ backgroundColor: pill.bg, color: pill.fg }}
-                  title={`${pill.label} — ${pillSource}`}
+                  style={{ backgroundColor: userPill.bg, color: userPill.fg }}
+                  title="Your decision"
                 >
-                  {pill.label}
+                  {userPill.label}
                 </span>
-              )}
-              <span className="text-[9px] uppercase tracking-wide" style={{ color: MUTED }}>
-                {pillSource}
-              </span>
+              ) : scoreTier ? (
+                <span
+                  className="inline-flex items-center whitespace-nowrap rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
+                  style={{ borderColor: scoreTier.fg, color: scoreTier.fg, backgroundColor: "#fff" }}
+                  title="Score-based tier suggestion. Confirm below to make it your decision."
+                >
+                  Suggested: {scoreTier.label}
+                </span>
+              ) : null}
             </>
           ) : (
             <span className="text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
@@ -227,7 +207,7 @@ function CandidateCard({ slot, onRerun, onRemove }: CardProps) {
         </div>
       </div>
 
-      {/* Re-run / Remove */}
+      {/* Re-run / Replace / Remove */}
       <div className="mt-2 flex items-center justify-end gap-2">
         <button
           type="button"
@@ -240,6 +220,17 @@ function CandidateCard({ slot, onRerun, onRemove }: CardProps) {
           {slot.status === "loading" && <Loader2 size={10} className="animate-spin" />}
           {slot.status === "loading" ? "Running…" : "↻ Re-run"}
         </button>
+        {onReplace && (
+          <button
+            type="button"
+            onClick={onReplace}
+            className="rounded border px-2 py-0.5 text-[10px]"
+            style={{ borderColor: BORDER, color: BLUE }}
+            title="Replace this card with a new computation from the Live Engine above"
+          >
+            ⇄ Replace
+          </button>
+        )}
         {onRemove && (
           <button
             type="button"
@@ -304,20 +295,15 @@ function CandidateCard({ slot, onRerun, onRemove }: CardProps) {
               Composite = sum of weighted contributions = <strong>{recomputed.composite}</strong>
             </p>
           )}
-          {slot.result?.place && (
-            <p className="pt-1 text-[10px]" style={{ color: MUTED }}>
-              Geocoded: {slot.result.place}
-            </p>
-          )}
         </div>
       )}
 
-      {/* Brett's decision controls */}
+      {/* Decision controls — no auto-default; user must select */}
       {recomputed && (
         <SiteDecisionControls
           address={slot.address}
           schoolName={slot.schoolName}
-          defaultVerdict={defaultVerdictFromScore(recomputed.composite)}
+          suggestedTier={suggestedTier}
         />
       )}
     </div>
@@ -497,56 +483,6 @@ function EmptySlot() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Calibration gate (qualitative — per Sam brief v2.2 p.12 / SOW v2.2 p.509)
-// ---------------------------------------------------------------------------
-
-function CalibrationGateBanner({
-  trinityScore,
-  leafScore,
-  trinityLoading,
-  leafLoading,
-}: {
-  trinityScore: number | null;
-  leafScore: number | null;
-  trinityLoading: boolean;
-  leafLoading: boolean;
-}) {
-  if (trinityLoading || leafLoading || trinityScore == null || leafScore == null) {
-    return (
-      <div
-        className="mb-3 flex items-start gap-2 rounded-md border px-3 py-2 text-[12px]"
-        style={{ backgroundColor: "#eef2f7", borderColor: BORDER, color: MUTED }}
-        role="status"
-      >
-        <Loader2 size={16} className="mt-0.5 shrink-0 animate-spin" />
-        <div>
-          <strong>Computing calibration anchors…</strong> Running Trinity Episcopal School (Westlake, Austin) vs LeafSpring Cedar Park (Austin area) through the live engine.
-        </div>
-      </div>
-    );
-  }
-  const delta = trinityScore - leafScore;
-  const trinityHigher = delta > 0;
-  return (
-    <div
-      className="mb-3 flex items-start gap-2 rounded-md border px-3 py-2 text-[12px]"
-      style={{ backgroundColor: SOFT, borderColor: BLUE, color: NAVY }}
-      role="status"
-    >
-      <CheckCircle2 size={16} className="mt-0.5 shrink-0" style={{ color: BLUE }} />
-      <div>
-        <strong>Calibration anchors (qualitative criterion):</strong> Live engine —
-        Trinity <strong>{trinityScore}</strong> vs LeafSpring <strong>{leafScore}</strong>{" "}
-        (gap {delta >= 0 ? "+" : ""}{delta.toFixed(2)} pt, Trinity {trinityHigher ? "higher" : "lower"}).{" "}
-        <span className="opacity-80">
-          Per Sam's brief v2.2 p.12 / SOW v2.2 p.509, the pass test is qualitative: <em>"LeafSpring scores materially lower than Trinity."</em>
-          No numeric threshold is client-specified. Awaiting Brett's call on whether v0.3 is accepted, a second anchor pair is added, or a reweight is authorized.
-        </span>
-      </div>
-    </div>
-  );
-}
 
 
 // ---------------------------------------------------------------------------
@@ -587,7 +523,7 @@ function WinnerBanner({
       <Star size={14} fill="#1d6b32" />
       <div>
         <strong>★ Winner:</strong> {winner.candidate.schoolName} — Site Analysis Score (SAS){" "}
-        <strong className="tabular-nums">{winner.composite}</strong> · Brett/Sam's verdict:{" "}
+        <strong className="tabular-nums">{winner.composite}</strong> · Decision:{" "}
         <strong>{verdictLabel}</strong>
       </div>
     </div>
@@ -617,7 +553,7 @@ function DecisionSummary({
             <tr style={{ color: MUTED }}>
               <th className="py-1 text-left font-semibold">Site</th>
               <th className="py-1 text-right font-semibold">Score</th>
-              <th className="py-1 text-left font-semibold">Brett/Sam's verdict</th>
+              <th className="py-1 text-left font-semibold">Decision</th>
               <th className="py-1 text-left font-semibold">Winner</th>
               <th className="py-1 text-left font-semibold">Note</th>
             </tr>
@@ -677,12 +613,9 @@ export default function SiteAnalysis() {
   // Slots hold the *frozen* inputs + the last engine result. There is no
   // per-card input form anymore: the only way to feed inputs into the engine
   // is via the Live Engine card above and the "Save to slot" button.
-  const [slots, setSlots] = useState<SlotState[]>([
-    { ...TRINITY_CANDIDATE, status: "idle", result: null, error: null },
-    { ...LEAFSPRING_CANDIDATE, status: "idle", result: null, error: null },
-  ]);
+  const [slots, setSlots] = useState<SlotState[]>([]);
+  const [pendingReplaceId, setPendingReplaceId] = useState<string | null>(null);
   const { byAddress } = useSiteDecisions();
-  const ranOnceRef = useRef<Set<string>>(new Set());
 
   const patchSlot = useCallback((id: string, patch: Partial<SlotState>) => {
     setSlots((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
@@ -768,10 +701,9 @@ export default function SiteAnalysis() {
     [slots, patchSlot],
   );
 
-  // Hydrate slots from the user's most-recent ready site_analyses rows on
-  // mount. Anchor addresses (Trinity/LeafSpring) patch the frozen anchor
-  // slots in place so calibration labels stay; other rows append as new
-  // slots. If an anchor has no cached row, fall back to a live run.
+  // Hydrate from the user's most recent ready site_analyses rows (up to 4).
+  // No anchor seeding — comparison cards always belong to the user. Anchors
+  // live in the separate calibration panel below the Live Engine.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -782,21 +714,11 @@ export default function SiteAnalysis() {
         )
         .eq("status", "ready")
         .order("created_at", { ascending: false })
-        .limit(40);
+        .limit(20);
       if (cancelled || error || !data) return;
 
-      const trinityAddr = TRINITY_CANDIDATE.address;
-      const leafAddr = LEAFSPRING_CANDIDATE.address;
-      const anchorPatches: Record<string, SiteScoreResult> = {};
-      const extras: SlotState[] = [];
       const seen = new Set<string>();
-
-      const matchesAnchor = (row: typeof data[number], anchor: Candidate) =>
-        row.address === anchor.address &&
-        (row.school_type ?? "") === anchor.schoolType &&
-        (row.grade_band ?? "") === anchor.gradeBand &&
-        String(row.enrollment ?? "") === String(anchor.enrollment);
-
+      const extras: SlotState[] = [];
       for (const row of data) {
         if (!row.address || seen.has(row.address)) continue;
         if (
@@ -822,24 +744,6 @@ export default function SiteAnalysis() {
               ? { lat: Number(row.latitude), lng: Number(row.longitude) }
               : undefined,
         };
-
-        // Only patch an anchor card from cache when ALL frozen inputs match —
-        // address alone is not enough (same address can be scored as Daycare/150
-        // OR Private/600 and the resulting SAS differs by ~16 pts).
-        if (row.address === trinityAddr && matchesAnchor(row, TRINITY_CANDIDATE) && !anchorPatches[TRINITY_CANDIDATE.id]) {
-          anchorPatches[TRINITY_CANDIDATE.id] = result;
-          seen.add(row.address);
-          continue;
-        }
-        if (row.address === leafAddr && matchesAnchor(row, LEAFSPRING_CANDIDATE) && !anchorPatches[LEAFSPRING_CANDIDATE.id]) {
-          anchorPatches[LEAFSPRING_CANDIDATE.id] = result;
-          seen.add(row.address);
-          continue;
-        }
-        // Skip non-matching anchor-address rows — they belong to an ad-hoc
-        // Live Engine run, not the anchor preset, and would mislabel the card.
-        if (row.address === trinityAddr || row.address === leafAddr) continue;
-
         seen.add(row.address);
         extras.push({
           id: `persisted-${row.id}`,
@@ -852,28 +756,36 @@ export default function SiteAnalysis() {
           result,
           error: null,
         });
-        if (extras.length >= 2) break; // anchors take 2 slots; cap at 4 total
+        if (extras.length >= 4) break;
       }
 
-      setSlots((prev) => {
-        const patched = prev.map((s) =>
-          anchorPatches[s.id]
-            ? { ...s, status: "ready" as const, result: anchorPatches[s.id], error: null }
-            : s,
-        );
-        const existing = new Set(patched.map((s) => s.address));
-        const additions = extras.filter((h) => !existing.has(h.address));
-        return [...patched, ...additions].slice(0, 4);
-      });
-
-      // Fallback: any anchor still without a cached result must run live so
-      // the calibration evidence table never starts empty on a fresh DB.
-      for (const anchor of [TRINITY_CANDIDATE, LEAFSPRING_CANDIDATE]) {
-        if (anchorPatches[anchor.id]) continue;
-        if (ranOnceRef.current.has(anchor.id)) continue;
-        ranOnceRef.current.add(anchor.id);
-        runSlot(anchor.id, { preferCache: true });
+      // Hydrate isochrones for displayed analyses so cached cards show drive-time polygons.
+      const analysisIds = extras
+        .map((e) => e.id.startsWith("persisted-") ? e.id.replace("persisted-", "") : null)
+        .filter((v): v is string => !!v);
+      if (analysisIds.length) {
+        const { data: isos } = await supabase
+          .from("site_analysis_isochrones")
+          .select("analysis_id,minutes,geojson")
+          .in("analysis_id", analysisIds);
+        const byId = new Map<string, { iso10?: GeoJSON.Polygon; iso15?: GeoJSON.Polygon }>();
+        (isos ?? []).forEach((r) => {
+          const e = byId.get(r.analysis_id) ?? {};
+          if (r.minutes === 10) e.iso10 = r.geojson as unknown as GeoJSON.Polygon;
+          if (r.minutes === 15) e.iso15 = r.geojson as unknown as GeoJSON.Polygon;
+          byId.set(r.analysis_id, e);
+        });
+        for (const e of extras) {
+          const aid = e.id.replace("persisted-", "");
+          const iso = byId.get(aid);
+          if (iso && e.result) {
+            e.result = { ...e.result, iso10: iso.iso10, iso15: iso.iso15 };
+          }
+        }
       }
+
+      if (cancelled) return;
+      setSlots(extras);
     })();
     return () => {
       cancelled = true;
@@ -885,33 +797,33 @@ export default function SiteAnalysis() {
     setSlots((prev) => prev.filter((s) => s.id !== id));
   };
 
-  // Save a freshly-computed Live Engine result directly into a new slot. No
-  // second engine call — the card stores the exact result object the engine
-  // returned. This is what enforces "one calibrated number everywhere".
-  const saveResultToNewSlot = (input: {
+  // Save a freshly-computed Live Engine result into a slot. If pendingReplaceId
+  // is set, overwrite that slot in place; otherwise append a new one (max 4).
+  const saveResultToSlot = (input: {
     schoolName: string;
     address: string;
     schoolType: SchoolType;
     gradeBand: GradeBand;
     enrollment: string;
   }, result: SiteScoreResult) => {
-    if (slots.length >= 4) return;
-    const id = `slot-${Date.now()}`;
-    setSlots((prev) => [
-      ...prev,
-      {
-        id,
-        schoolName: input.schoolName,
-        address: input.address,
-        schoolType: input.schoolType,
-        gradeBand: input.gradeBand,
-        enrollment: input.enrollment,
-        status: "ready",
-        result,
-        error: null,
-      },
-    ]);
+    setSlots((prev) => {
+      if (pendingReplaceId) {
+        return prev.map((s) =>
+          s.id === pendingReplaceId
+            ? { ...s, ...input, status: "ready", result, error: null }
+            : s,
+        );
+      }
+      if (prev.length >= 4) return prev;
+      const id = `slot-${Date.now()}`;
+      return [
+        ...prev,
+        { id, ...input, status: "ready", result, error: null },
+      ];
+    });
+    setPendingReplaceId(null);
   };
+
 
   const scored: ScoredCandidate[] = useMemo(
     () =>
@@ -923,8 +835,7 @@ export default function SiteAnalysis() {
     [slots],
   );
 
-  const trinityScored = scored.find((s) => s.candidate.calibrationRole === "trinity");
-  const leafScored = scored.find((s) => s.candidate.calibrationRole === "leafspring");
+
 
   const winner = useMemo(
     () => scored.find((s) => byAddress.get(s.candidate.address)?.is_winner),
@@ -959,16 +870,20 @@ export default function SiteAnalysis() {
         hideJourneyBar
       />
 
-      
-
       {SAS_ENGINE_LIVE && (
         <LiveEngineCard
-          canSave={slots.length < 4}
-          onSaveToSlot={(input, result) => saveResultToNewSlot(input, result as SiteScoreResult)}
+          canSave={slots.length < 4 || !!pendingReplaceId}
+          replaceTargetLabel={
+            pendingReplaceId
+              ? slots.find((s) => s.id === pendingReplaceId)?.schoolName || "selected slot"
+              : null
+          }
+          onCancelReplace={() => setPendingReplaceId(null)}
+          onSaveToSlot={(input, result) => saveResultToSlot(input, result as SiteScoreResult)}
         />
       )}
 
-      {/* Formula + thresholds — single, no "Austin metro" wording */}
+      {/* Formula + thresholds */}
       <section className="mb-4 rounded-lg border bg-white p-4" style={{ borderColor: BORDER }}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
@@ -977,10 +892,8 @@ export default function SiteAnalysis() {
             </h2>
             <p className="mt-1 text-[12px]" style={{ color: MUTED }}>
               SAS = 0.25 × School Profile + 0.25 × Neighborhood Affluence + 0.20 × Family Density +
-              0.15 × School Ecosystem + 0.15 × Accessibility.{" "}
-              <span style={{ color: BLUE }}>Weights client-locked per Sam brief v2.2 p.9; sub-signal weights Sam-pinned p.9–11.</span>
+              0.15 × School Ecosystem + 0.15 × Accessibility.
             </p>
-
           </div>
           <button
             type="button"
@@ -1000,69 +913,32 @@ export default function SiteAnalysis() {
         </div>
 
         <div
-          className="mt-3 rounded-md p-2 text-[11px]"
-          style={{ backgroundColor: "#f7faff" }}
-        >
-          <strong style={{ color: NAVY }}>Decision points on this page:</strong>
-          <ol className="ml-4 mt-0.5 list-decimal" style={{ color: NAVY }}>
-            <li>Confirm the calibration gate holds: LeafSpring scores materially below Trinity.</li>
-            <li>
-              Per site: <strong>Recommend / Worth a look / Don't recommend</strong> (overrides the threshold default and drives the top pill).
-            </li>
-            <li>
-              Across the compared set: pick exactly one <strong>Winner</strong> ★ — the site Brett/Sam is committing to.
-            </li>
-            <li>
-              Capture <strong>notes</strong> on each card explaining the verdict — they go into the export pack.
-            </li>
-          </ol>
-        </div>
-
-        <div
           className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md p-2 text-[11px]"
           style={{ backgroundColor: SOFT }}
         >
           <span className="whitespace-nowrap font-semibold" style={{ color: NAVY }}>
-            Thresholds:
+            Score tiers:
           </span>
           <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-            <span
-              className="inline-block h-2 w-2 rounded-full"
-              style={{ backgroundColor: "#1d6b32" }}
-            />
+            <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: "#1d6b32" }} />
+            <span style={{ color: NAVY }}>≥{SITE_RECOMMEND_THRESHOLDS.recommend} Recommend</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+            <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: "#925100" }} />
             <span style={{ color: NAVY }}>
-              ≥{SITE_RECOMMEND_THRESHOLDS.recommend} Recommend
+              {SITE_RECOMMEND_THRESHOLDS.worthALook}–{SITE_RECOMMEND_THRESHOLDS.recommend - 1} Worth a look
             </span>
           </span>
           <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-            <span
-              className="inline-block h-2 w-2 rounded-full"
-              style={{ backgroundColor: "#925100" }}
-            />
-            <span style={{ color: NAVY }}>
-              {SITE_RECOMMEND_THRESHOLDS.worthALook}–
-              {SITE_RECOMMEND_THRESHOLDS.recommend - 1} Worth a look
-            </span>
+            <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: "#a3142b" }} />
+            <span style={{ color: NAVY }}>&lt;{SITE_RECOMMEND_THRESHOLDS.worthALook} Don't recommend</span>
           </span>
-          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-            <span
-              className="inline-block h-2 w-2 rounded-full"
-              style={{ backgroundColor: "#a3142b" }}
-            />
-            <span style={{ color: NAVY }}>
-              &lt;{SITE_RECOMMEND_THRESHOLDS.worthALook} Don't recommend
-            </span>
+          <span className="text-[10px]" style={{ color: MUTED }}>
+            Tiers are suggestions. Your <strong>Decision</strong> on each card is what ships in the export.
           </span>
         </div>
       </section>
 
-      <CalibrationGateBanner
-        trinityScore={trinityScored?.composite ?? null}
-        leafScore={leafScored?.composite ?? null}
-        trinityLoading={!!trinityScored && trinityScored.result == null}
-        leafLoading={!!leafScored && leafScored.result == null}
-      />
-      <CalibrationRunsTable />
       <WinnerBanner winner={winner} winnerDecision={winnerDecision} />
 
       <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -1071,7 +947,11 @@ export default function SiteAnalysis() {
             key={s.id}
             slot={s}
             onRerun={() => runSlot(s.id)}
-            onRemove={s.calibrationRole ? undefined : () => removeSlot(s.id)}
+            onRemove={() => removeSlot(s.id)}
+            onReplace={() => {
+              setPendingReplaceId(s.id);
+              if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
           />
         ))}
         {Array.from({ length: emptySlots }).map((_, i) => (
@@ -1080,8 +960,7 @@ export default function SiteAnalysis() {
       </section>
 
       <DecisionSummary scored={scored} byAddress={byAddress} />
-
-
     </>
   );
 }
+

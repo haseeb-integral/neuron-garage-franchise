@@ -17,13 +17,15 @@ const OPTS: { v: SiteVerdict; label: string; bg: string; fg: string }[] = [
 interface Props {
   address: string;
   schoolName: string;
-  defaultVerdict: SiteVerdict;
+  /** Optional score-derived suggestion shown as a hint; never auto-selects a verdict. */
+  suggestedTier?: SiteVerdict;
 }
 
-export function SiteDecisionControls({ address, schoolName, defaultVerdict }: Props) {
+export function SiteDecisionControls({ address, schoolName, suggestedTier }: Props) {
   const { byAddress, setVerdict, setWinner, setNotes, isAuthed } = useSiteDecisions();
   const row = byAddress.get(address);
-  const v: SiteVerdict = row?.verdict ?? defaultVerdict;
+  // No auto-default — only show a selected verdict if the user actually chose one.
+  const v: SiteVerdict = row?.verdict ?? "undecided";
   const winner = row?.is_winner ?? false;
 
   const [notesOpen, setNotesOpen] = useState(false);
@@ -34,7 +36,7 @@ export function SiteDecisionControls({ address, schoolName, defaultVerdict }: Pr
     <div className="mt-3 rounded-md border p-2" style={{ borderColor: BORDER, backgroundColor: SOFT }}>
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: MUTED }}>
-          Brett's decision
+          Decision
         </span>
         <button
           type="button"
@@ -53,23 +55,34 @@ export function SiteDecisionControls({ address, schoolName, defaultVerdict }: Pr
         </button>
       </div>
       <div className="flex flex-wrap gap-1">
-        {OPTS.map((o) => (
-          <button
-            key={o.v}
-            type="button"
-            onClick={() => setVerdict(address, schoolName, o.v)}
-            disabled={!isAuthed}
-            className="rounded-md border px-1.5 py-0.5 text-[10px] font-semibold disabled:opacity-50"
-            style={{
-              borderColor: v === o.v ? o.fg : BORDER,
-              backgroundColor: v === o.v ? o.bg : "#fff",
-              color: v === o.v ? o.fg : MUTED,
-            }}
-          >
-            {o.label}
-          </button>
-        ))}
+        {OPTS.map((o) => {
+          const selected = v === o.v;
+          const suggested = !row?.verdict && suggestedTier === o.v;
+          return (
+            <button
+              key={o.v}
+              type="button"
+              onClick={() => setVerdict(address, schoolName, o.v)}
+              disabled={!isAuthed}
+              className="rounded-md border px-1.5 py-0.5 text-[10px] font-semibold disabled:opacity-50"
+              style={{
+                borderColor: selected ? o.fg : suggested ? o.fg : BORDER,
+                borderStyle: suggested && !selected ? "dashed" : "solid",
+                backgroundColor: selected ? o.bg : "#fff",
+                color: selected ? o.fg : suggested ? o.fg : MUTED,
+              }}
+              title={suggested && !selected ? `Suggested by score — click to confirm` : undefined}
+            >
+              {o.label}
+            </button>
+          );
+        })}
       </div>
+      {!row?.verdict && (
+        <p className="mt-1 text-[10px]" style={{ color: MUTED }}>
+          {suggestedTier ? "Score suggests a tier (dashed). Confirm or override above." : "No decision yet."}
+        </p>
+      )}
       <div className="mt-1.5">
         {notesOpen ? (
           <textarea

@@ -117,7 +117,7 @@ export function exportSiteDecisionPack(
             <div class="score-lbl">SAS</div>
           </div>
         </div>
-        <p class="verdict">Brett/Sam's verdict: <strong>${verdict}</strong></p>
+        <p class="verdict">Decision: <strong>${verdict}</strong></p>
         ${d?.notes ? `<div class="notes"><strong>Notes:</strong> ${escapeHtml(d.notes)}</div>` : ""}
         <table class="subs">
           <tr><td>School Profile (25%)</td><td>${p.schoolProfile}</td></tr>

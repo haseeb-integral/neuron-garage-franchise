@@ -399,7 +399,9 @@ function CalibrationGateBanner({ sites }: { sites: SiteAnalysisDemoSite[] }) {
   const trinity = sites.find((s) => /trinity/i.test(s.schoolName));
   const leaf = sites.find((s) => /leafspring/i.test(s.schoolName));
   if (!trinity || !leaf) return null;
-  const delta = trinity.composite - leaf.composite;
+  const trinityScore = siteComposite(trinity);
+  const leafScore = siteComposite(leaf);
+  const delta = trinityScore - leafScore;
   const pass = delta >= 20;
   return (
     <div
@@ -413,8 +415,8 @@ function CalibrationGateBanner({ sites }: { sites: SiteAnalysisDemoSite[] }) {
     >
       {pass ? <CheckCircle2 size={16} className="mt-0.5 shrink-0" /> : <XCircle size={16} className="mt-0.5 shrink-0" />}
       <div>
-        <strong>Calibration gate: {pass ? "✓ PASS" : "✗ FAIL"}</strong> — LeafSpring ({leaf.composite}) is{" "}
-        {delta} {delta === 1 ? "point" : "points"} below Trinity ({trinity.composite}).{" "}
+        <strong>Calibration gate: {pass ? "✓ PASS" : "✗ FAIL"}</strong> — LeafSpring ({leafScore}) is{" "}
+        {delta} {delta === 1 ? "point" : "points"} below Trinity ({trinityScore}).{" "}
         <span className="opacity-80">
           SOW Item 2 requires LeafSpring to score materially lower than Trinity (≥20 pt gap). If this
           fails on real data, the weights are reworked before rollout.

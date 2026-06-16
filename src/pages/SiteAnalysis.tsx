@@ -908,7 +908,7 @@ export default function SiteAnalysis() {
     <>
       <PageHeader
         title="Site Analysis"
-        subtitle="Phase 2 · Feature 1B — Per-site opportunity scoring with side-by-side comparison up to 4 candidates."
+        subtitle="Score up to 4 candidate sites side by side and pick the one to commit to."
         hideJourneyBar
       />
 

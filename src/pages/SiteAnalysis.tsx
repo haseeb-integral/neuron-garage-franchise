@@ -417,12 +417,18 @@ function fmtCount(n?: number) {
 function MetricTiles({ signals }: { signals?: SiteScoreSignals }) {
   const acs10 = signals?.acs10 ?? {};
   const acs15 = signals?.acs15 ?? {};
+  const hwyMi = signals?.accessibility?.highwayDistanceMi;
   return (
     <div className="mt-3 grid grid-cols-3 gap-1.5">
       <Tile label="Median HHI · 10m" value={fmtMoney(acs10.medianHhi)} />
       <Tile label="HH >$150k · 10m" value={fmtPct(acs10.pctAbove150k)} />
       <Tile label="Kids 5-12 · 10m" value={fmtCount(acs10.children5to12)} />
-      <Tile label="Drive to hwy" dash dashTip="Accessibility v0.2 — highway distance not yet wired" />
+      <Tile
+        label="Drive to hwy"
+        value={hwyMi != null ? `${hwyMi.toFixed(1)} mi` : undefined}
+        dash={hwyMi == null}
+        dashTip="No motorway/trunk found within 12 mi — Accessibility scored via fallback"
+      />
       <Tile label="Parking" dash dashTip="Manual field — not yet wired" />
       <Tile label="Pop · 15m" value={fmtCount(acs15.totalPop)} />
     </div>

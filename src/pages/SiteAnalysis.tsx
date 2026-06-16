@@ -1063,7 +1063,7 @@ export default function SiteAnalysis() {
       {/* Formula + thresholds */}
       <section className="mb-4 rounded-lg border bg-white p-4" style={{ borderColor: BORDER }}>
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h2 className="text-[15px] font-black" style={{ color: NAVY }}>
               Site Analysis Score (SAS)
             </h2>
@@ -1071,9 +1071,7 @@ export default function SiteAnalysis() {
               SAS = 0.25 × School Profile + 0.25 × Neighborhood Affluence + 0.20 × Family Density +
               0.15 × School Ecosystem + 0.15 × Accessibility.
             </p>
-          </div>
-          <div className="flex flex-col items-end gap-1">
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="mt-2">
               <button
                 type="button"
                 onClick={handleNormalize}
@@ -1084,23 +1082,24 @@ export default function SiteAnalysis() {
               >
                 {normalizing ? "Normalizing…" : "⇋ Normalize inputs (Daycare · Other · 150)"}
               </button>
-              <button
-                type="button"
-                onClick={handleExport}
-                disabled={!canExport || exporting}
-                title={
-                  canExport
-                    ? "Download a branded multi-section PDF with all 10 SOW v2.2 sections and a 4-site side-by-side"
-                    : "Mark a winner on any card (★ Mark winner) to enable the decision pack"
-                }
-                className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-                style={{ borderColor: BLUE, color: BLUE, backgroundColor: "#fff" }}
-              >
-                {exporting ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-                {exporting ? "Generating PDF…" : "Export decision pack (PDF)"}
-
-              </button>
             </div>
+          </div>
+          <div className="flex flex-col items-end gap-1 ml-auto">
+            <button
+              type="button"
+              onClick={handleExport}
+              disabled={!canExport || exporting}
+              title={
+                canExport
+                  ? "Download a branded multi-section PDF with all 10 SOW v2.2 sections and a 4-site side-by-side"
+                  : "Mark a winner on any card (★ Mark winner) to enable the decision pack"
+              }
+              className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+              style={{ borderColor: BLUE, color: BLUE, backgroundColor: "#fff" }}
+            >
+              {exporting ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+              {exporting ? "Generating PDF…" : "Export decision pack (PDF)"}
+            </button>
             {!canExport && (
               <p className="text-[10px]" style={{ color: MUTED }}>
                 Mark a winner on any card (★) to enable export.

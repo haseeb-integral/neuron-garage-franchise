@@ -193,7 +193,7 @@ const Chrome: React.FC<{ headerText: string }> = ({ headerText }) => (
   <>
     <View style={s.header} fixed>
       <Text>{headerText}</Text>
-      <Text>Neuron Garage · Site Analysis · Phase 2 Feature 1B</Text>
+      <Text>Neuron Garage · Site Analysis</Text>
     </View>
     <View style={s.footer} fixed>
       <Text>Neuron Garage · Site Analysis Report</Text>

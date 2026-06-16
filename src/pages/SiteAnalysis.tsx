@@ -815,6 +815,25 @@ export default function SiteAnalysis() {
       }
 
       if (cancelled) return;
+
+      // Restore the previously-used Wayside Eden Park candidate as the 4th
+      // slot when missing, so the lineup matches the original Trinity /
+      // LeafSpring (negative) / Wayside / St. Francis comparison.
+      const WAYSIDE_ADDR = "6215 Menchaca Rd, Austin, TX 78745";
+      if (!extras.some((e) => e.address === WAYSIDE_ADDR) && extras.length < 4) {
+        extras.push({
+          id: `seed-wayside-${Date.now()}`,
+          schoolName: "Wayside Schools — Eden Park Academy",
+          address: WAYSIDE_ADDR,
+          schoolType: "private_elementary",
+          gradeBand: "k5_k6",
+          enrollment: "400",
+          status: "idle",
+          result: null,
+          error: null,
+        });
+      }
+
       setSlots(extras);
     })();
     return () => {

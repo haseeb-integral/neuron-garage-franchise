@@ -217,7 +217,7 @@ export function LiveEngineCard({ onSaveToSlot, canSave = true }: LiveEngineCardP
             onChange={(e) => setAddress(e.target.value)}
             className="rounded border px-2 py-1 text-[12px]"
             style={{ borderColor: "#eef2f7", color: "#07142f" }}
-            placeholder="4131 Spring Valley Rd, Addison, TX 75001"
+            placeholder="4011 Bee Caves Rd, Austin, TX 78746"
           />
         </label>
         <label className="flex flex-col gap-1 text-[11px]" style={{ color: "#526078" }}>

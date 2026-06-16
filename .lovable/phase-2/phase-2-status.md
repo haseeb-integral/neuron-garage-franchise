@@ -16,7 +16,7 @@
 | # | Item | Version | Owner (Manus / Lovable) | Status | Last updated | By |
 |---|------|---------|--------------------------|--------|--------------|-----|
 | 1 | Market Validation Engine (1A) | 1.0 | Manus (collection + scoring) + Lovable (display + PDF report UI) | demo-mockup-shipped · 9-gap polish (LOV-1..5 stubs present) | 2026-06-10 | Haseeb |
-| 2 | Site Analysis Engine (1B) | 1.0 | Manus (isochrone + ACS) + Lovable (compare UI) | in-progress · one-number plumbing shipped; calibration gate failing (LeafSpring 55.4 > Trinity 51.1) — pending Brett input on missing signal | 2026-06-16 | Haseeb |
+| 2 | Site Analysis Engine (1B) | 1.0 | Manus (isochrone + ACS) + Lovable (compare UI) | in-progress · compare cards now call live engine; calibration gate + decision summary read real scores; calibration still failing (LeafSpring > Trinity on real data) — pending Brett input on missing signal | 2026-06-16 | Haseeb |
 | 3 | Candidate Pipeline | 1.5 | Lovable | not-started | 2026-05-30 | Haseeb |
 | 4 | Teacher Search | 1.5 | Lovable | not-started | 2026-05-30 | Haseeb |
 | 5 | SmartLead integration | 1.5 | Lovable | not-started | 2026-05-30 | Haseeb |

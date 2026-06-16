@@ -266,12 +266,23 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace }: CardPropsExt) {
         </p>
       )}
 
-      {/* One-liner summary — auto-generated from live pillar values */}
+      {/* One-liner summary — fixed height so cards align */}
       {recomputed && (
-        <p className="mt-3 text-[12px]" style={{ color: NAVY }}>
+        <p
+          className="mt-3 text-[12px]"
+          style={{
+            color: NAVY,
+            minHeight: 36,
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          }}
+        >
           {summarizePillars(recomputed.pillars)}
         </p>
       )}
+
 
       {/* Drive-time isochrone map (real Mapbox tiles) */}
       {recomputed && slot.result?.geo && (

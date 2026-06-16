@@ -313,7 +313,7 @@ Deno.serve(async (req) => {
       return await fail(
         `Accessibility lookup failed (${accessibilityFailures.join(", ")}). ` +
           `Live road/highway distances unavailable — refusing to compute a score with synthetic data. ` +
-          `Tried Mapbox Tilequery and Overpass; both failed. Please retry in a minute.`,
+          `All OSM Overpass mirrors are temporarily unreachable; please retry in a minute.`,
       );
     }
 

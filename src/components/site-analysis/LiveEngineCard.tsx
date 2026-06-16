@@ -307,7 +307,7 @@ export function LiveEngineCard({ onSaveToSlot, canSave = true }: LiveEngineCardP
                     className="rounded px-2 py-1 text-[11px] font-semibold text-white disabled:opacity-50"
                     style={{ background: saved ? "#1d6b32" : "#174be8" }}
                   >
-                    {saved ? "✓ Saved to slot" : !canSave ? "Slots full (4/4)" : "Save to slot →"}
+                    {saved ? "✓ Added as new card" : !canSave ? "Slots full (4/4) — remove a card first" : "Add as new card →"}
                   </button>
                 )}
               </div>

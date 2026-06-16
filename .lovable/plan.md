@@ -1,65 +1,55 @@
-## Audit findings
+## Plan
 
-- **Root cause of the LeafSpring mismatch:** the top Live Engine run and the LeafSpring card are using the same address but different school inputs.
-  - Live Engine screenshot: `Private elementary`, enrollment `600`, grade `K-5 / K-6` → **60.57**.
-  - Card anchor: `Daycare`, enrollment `150`, grade `Other` → **44.37**.
-  - The database confirms both values are internally correct for their own inputs. This is an input mismatch, not a formula mismatch.
+### 1. Make comparison fair by separating calibration from candidate comparison
+- Move Trinity and LeafSpring out of the main comparison cards.
+- Show them in a compact “Calibration anchors” section only, so they prove the model separation but do not occupy locked comparison slots.
+- The main comparison area will start with editable/replaceable candidate slots, so the user can compare like-for-like candidates instead of being forced to compare Private elementary vs Daycare anchors.
+- Keep Trinity/LeafSpring available as Live Engine presets if the user wants to run them manually.
 
-- **Secondary bug:** on page load, anchor cards hydrate by `address` only. If the latest cached row for `11651 W Parmer Ln` was a Live Engine run with different inputs, the anchor card could accidentally display a score from the wrong school type/enrollment while the card still says `Daycare / Other`.
+### 2. Add direct replace flow for cards
+- Add a clear “Replace slot” action for each comparison card/empty slot.
+- When the Live Engine computes a result, let the user save it into a selected slot instead of only “add as new card”.
+- Keep the max of 4 compared sites, but remove the feeling that the first two cards are locked forever.
 
-- **Sub-score cross-check:** the 44.37 card value matches the database and formula exactly:
-  - School Profile 27.50
-  - Affluence 47.94
-  - Family Density 62.73
-  - Ecosystem 33.19
-  - Accessibility 53.21
-  - Recomputed SAS = 44.37
+### 3. Redesign the Live Site Analysis Engine UI
+- Rework the engine into a cleaner two-column command panel: inputs on the left, result summary on the right.
+- Move “Compute SAS” into an aligned action row so it no longer looks randomly placed.
+- Show the computed SAS, sub-scores, and “Save/replace slot” controls in a polished result block.
+- Rename the visible engine label from versioned/internal wording to a user-facing title like “Run site score”.
 
-- **Live fetching / compute lag:** yes, some values require external live calls when there is no exact cached result:
-  - Mapbox geocoding
-  - Mapbox 10/15-minute isochrones
-  - Census ACS aggregation on cache miss
-  - Urban Institute school ecosystem on state-cache miss/expiry
-  - OSM/Mapbox road + highway distance
-  - Mapbox parking signal
-  - Map rendering should not recompute scoring, but engine reruns do.
+### 4. Fix decision wording and default state
+- Rename “Brett’s decision” / “Brett/Sam’s verdict” to user-facing wording: “Decision”.
+- Remove “Brett/Sam’s call” and “auto from score”.
+- Do not show “Don’t recommend” as a selected decision unless the user actually selected it.
+- Keep score-derived labels separate as “Score tier” or “Suggested tier”, not as a decision.
+- Decision controls will default to “Not selected” and only change after the user clicks a verdict.
 
-- **Decision wording audit:** I found no direct Brett message saying to switch to **Go / No-Go / Watch**. That phrase appears in our own remaining-work handoff/status text. The implemented table currently stores `recommend / worth_a_look / dont_recommend`, matching the earlier 1B decision surface. So I should not claim Brett specifically recommended Go/No-Go/Watch unless he confirms it.
+### 5. Clean up confusing methodology/page text
+- Remove: “Weights client-locked per Sam brief v2.2 p.9; sub-signal weights Sam-pinned p.9–11.”
+- Simplify the SAS formula panel so it states the formula without internal-client references.
+- Remove or simplify wording that creates doubt, especially around “pending”, “Brett call”, and internal brief citations.
 
-## Fix plan
+### 6. Improve maps so they communicate something useful
+- Keep the static map approach, but make the map label clearer: “Drive-time coverage”.
+- Make 10-minute and 15-minute polygon overlays visually stronger and add a tiny legend.
+- If cached card results lack polygons because they were loaded from `site_analyses` without joining isochrones, either fetch the matching isochrone rows for cached results or show a clear pin-only fallback without saying “map unavailable”.
+- Map should never show “Map preview unavailable” for normal scored cards; it should render polygons when available, otherwise a pin map.
 
-1. **Make LeafSpring presets canonical everywhere**
-   - Update the Live Engine quick-test preset for LeafSpring Cedar Park to use the same canonical inputs as the anchor card:
-     - School type: `Daycare`
-     - Grade band: `Other`
-     - Enrollment: `150` unless you give me a better real enrollment number.
-   - Add enrollment to quick-test presets so clicking a preset fills all scoring inputs, not just name/address/type/grade.
+### 7. Simplify Calibration evidence
+- Replace “Δ vs Trinity” with “Gap from Trinity SAS” or remove the table entirely if it remains confusing.
+- Stop showing “pending” rows from static calibration data when the live page already has current anchor results.
+- Calculate the Trinity vs LeafSpring gap directly from the live anchor values shown on the page.
+- Keep calibration evidence as a small confidence check, not a central workflow.
 
-2. **Prevent wrong cached rows from patching anchor cards**
-   - Change `/site-analysis` hydration so Trinity/LeafSpring anchor cards only accept cached `site_analyses` rows when **address + school_type + enrollment + grade_band** all match the anchor’s frozen inputs.
-   - If the same address was run with different inputs, keep it as a separate candidate card only when there is room, not as the anchor result.
+### 8. Align card layout
+- Make all comparison cards use consistent top sections, score placement, action placement, and map/metric spacing.
+- Prevent score pills, buttons, and text from shifting card headers out of alignment.
+- Keep decision controls in a consistent location and avoid dense nested boxes.
 
-3. **Add an exact-input cache check before recomputing**
-   - Before calling `compute-sas`, look for a recent ready row with the exact same address, school type, enrollment, and grade band.
-   - If found, render that cached result immediately and avoid expensive live recompute.
-   - Keep the existing **Re-run** button as the explicit way to force a fresh backend run.
-
-4. **Tighten the UI wording so Haseeb/Brett can see why numbers differ**
-   - Show a compact input line near each score: `Daycare · Other · enrollment 150`.
-   - In the Live Engine result, show the same input summary so a 60.57 vs 44.37 mismatch is immediately explainable.
-
-5. **Decision wording: keep current storage, optionally relabel display**
-   - Do **not** change the database enum yet.
-   - If you want Brett-facing labels to read Go / Watch / No-Go, map the existing stored values like this:
-     - `recommend` → `Go`
-     - `worth_a_look` → `Watch`
-     - `dont_recommend` → `No-Go`
-   - This is a display-only rename unless Brett explicitly asks to change stored values.
-
-6. **Smoke test after implementation**
-   - Hard refresh `/site-analysis`.
-   - Click LeafSpring Cedar Park quick test → it should fill Daycare / Other / 150 and compute **44.37-ish**, matching the card.
-   - Re-run the LeafSpring card → it should stay aligned with the Live Engine result for the same inputs.
-   - Verify Trinity card and Live Engine preset align the same way.
-   - Confirm decision summary and export use the same recomputed values.
-   - Verify no unexpected engine rerun happens when an exact cached result exists.
+### 9. Smoke test after implementation
+- Verify the first two comparison slots are no longer locked by anchors.
+- Run Trinity and LeafSpring presets and confirm their values remain explainable by their inputs.
+- Add/replace at least two user candidates and confirm side-by-side comparison uses chosen inputs.
+- Confirm decisions default to “Not selected”.
+- Confirm maps render polygons when isochrones exist and pin-only fallback otherwise.
+- Confirm no old labels remain: “Brett/Sam’s call”, “auto from score”, “Brett’s decision”, or the Sam brief weight sentence.

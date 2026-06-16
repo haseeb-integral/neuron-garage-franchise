@@ -1,6 +1,4 @@
-import { useEffect, useRef, useState } from "react";
-import mapboxgl from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
+import { useState } from "react";
 import { useMapboxToken } from "@/hooks/useMapboxToken";
 
 const NAVY = "#07142f";
@@ -10,21 +8,17 @@ const SOFT = "#f7faff";
 const BLUE = "#174be8";
 
 interface IsochroneMapProps {
-  /** Pin centerpoint (lng/lat). */
   center: { lat: number; lng: number };
-  /** 10-min drive polygon (Mapbox GeoJSON Polygon). */
   iso10?: GeoJSON.Polygon | null;
-  /** 15-min drive polygon. */
   iso15?: GeoJSON.Polygon | null;
-  /** Optional place label rendered below the map. */
   place?: string;
   height?: number;
 }
 
 /**
- * Real Mapbox map with 10-min / 15-min drive isochrone overlays. Replaces the
- * schematic SVG ring that shipped in v0.3. The map is keyed to the center so
- * panning to a different candidate re-fits cleanly.
+ * Static Mapbox image preview with 10-min / 15-min drive isochrone overlays.
+ * Uses the Mapbox Static Images API (plain PNG) — no WebGL required, so it
+ * renders reliably in locked-down browsers, mobile, and the Lovable preview.
  */
 export function IsochroneMap({
   center,
@@ -34,99 +28,9 @@ export function IsochroneMap({
   height = 220,
 }: IsochroneMapProps) {
   const token = useMapboxToken();
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null);
-  const [mapError, setMapError] = useState<string | null>(null);
+  const [imgError, setImgError] = useState(false);
 
-  useEffect(() => {
-    if (!token || !containerRef.current) return;
-
-    mapboxgl.accessToken = token;
-
-    let map: mapboxgl.Map | null = null;
-    try {
-      map = new mapboxgl.Map({
-        container: containerRef.current,
-        style: "mapbox://styles/mapbox/light-v11",
-        center: [center.lng, center.lat],
-        zoom: 11.5,
-        attributionControl: false,
-        interactive: true,
-      });
-      mapRef.current = map;
-      map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
-      map.addControl(new mapboxgl.AttributionControl({ compact: true }));
-      // Genuine WebGL context failures (old phones, locked-down browsers) surface here.
-      map.on("error", (e: { error?: Error }) => {
-        const msg = e?.error?.message ?? "";
-        if (/webgl|context/i.test(msg)) {
-          setMapError("Map preview unavailable in this browser (WebGL disabled).");
-        }
-      });
-
-      map.on("load", () => {
-        // 15-min ring (outer, lighter).
-        if (iso15) {
-          map!.addSource("iso15", { type: "geojson", data: iso15 });
-          map!.addLayer({
-            id: "iso15-fill",
-            type: "fill",
-            source: "iso15",
-            paint: { "fill-color": BLUE, "fill-opacity": 0.08 },
-          });
-          map!.addLayer({
-            id: "iso15-line",
-            type: "line",
-            source: "iso15",
-            paint: { "line-color": BLUE, "line-opacity": 0.45, "line-width": 1, "line-dasharray": [2, 2] },
-          });
-        }
-        // 10-min ring (inner, stronger).
-        if (iso10) {
-          map!.addSource("iso10", { type: "geojson", data: iso10 });
-          map!.addLayer({
-            id: "iso10-fill",
-            type: "fill",
-            source: "iso10",
-            paint: { "fill-color": BLUE, "fill-opacity": 0.18 },
-          });
-          map!.addLayer({
-            id: "iso10-line",
-            type: "line",
-            source: "iso10",
-            paint: { "line-color": BLUE, "line-opacity": 0.85, "line-width": 1.4 },
-          });
-        }
-        // Fit to whichever ring we have.
-        const bounds = new mapboxgl.LngLatBounds();
-        const accumulate = (poly?: GeoJSON.Polygon | null) => {
-          if (!poly?.coordinates?.[0]) return;
-          for (const [x, y] of poly.coordinates[0]) bounds.extend([x, y]);
-        };
-        accumulate(iso15);
-        accumulate(iso10);
-        if (!bounds.isEmpty()) map!.fitBounds(bounds, { padding: 18, duration: 0 });
-      });
-
-      // Pin marker.
-      new mapboxgl.Marker({ color: BLUE })
-        .setLngLat([center.lng, center.lat])
-        .addTo(map);
-    } catch (err) {
-      console.error("[IsochroneMap] Mapbox init failed:", err);
-      setMapError("Map preview unavailable (error loading map).");
-      if (map) {
-        try { map.remove(); } catch (_) { /* noop */ }
-      }
-      mapRef.current = null;
-      return;
-    }
-
-    return () => {
-      map?.remove();
-      mapRef.current = null;
-    };
-  }, [token, center.lat, center.lng, iso10, iso15]);
+  const url = token ? buildStaticUrl({ center, iso10, iso15, token }) : null;
 
   return (
     <div className="mt-3">
@@ -135,20 +39,23 @@ export function IsochroneMap({
         <span
           className="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase"
           style={{ backgroundColor: "#dde7ff", color: BLUE }}
-          title="Mapbox driving isochrones, rendered live"
+          title="Mapbox static map with drive-time overlays"
         >
-          Live Map
+          Map
         </span>
       </div>
-      {mapError ? (
-        <FallbackBox height={height} message={mapError} />
-      ) : !token ? (
+      {!token ? (
         <FallbackBox height={height} message="Loading map…" />
+      ) : imgError || !url ? (
+        <FallbackBox height={height} message="Map preview unavailable." />
       ) : (
-        <div
-          ref={containerRef}
-          className="overflow-hidden rounded-md border"
+        <img
+          src={url}
+          alt={place ? `Drive-time map for ${place}` : "Drive-time map"}
+          onError={() => setImgError(true)}
+          className="block w-full overflow-hidden rounded-md border object-cover"
           style={{ borderColor: BORDER, height }}
+          loading="lazy"
         />
       )}
       {place && (
@@ -169,4 +76,78 @@ function FallbackBox({ height, message }: { height: number; message: string }) {
       <span style={{ color: NAVY }}>{message}</span>
     </div>
   );
+}
+
+/** Downsample a ring so the resulting Static API URL stays under the ~8KB limit. */
+function simplifyRing(ring: number[][], maxPoints: number): number[][] {
+  if (ring.length <= maxPoints) return ring;
+  const step = Math.ceil(ring.length / maxPoints);
+  const out: number[][] = [];
+  for (let i = 0; i < ring.length; i += step) out.push(ring[i]);
+  // Ensure closed ring.
+  if (out[0] && out[out.length - 1] && (out[0][0] !== out[out.length - 1][0] || out[0][1] !== out[out.length - 1][1])) {
+    out.push(out[0]);
+  }
+  return out;
+}
+
+function round(n: number, p = 4): number {
+  const f = Math.pow(10, p);
+  return Math.round(n * f) / f;
+}
+
+function buildStaticUrl({
+  center,
+  iso10,
+  iso15,
+  token,
+}: {
+  center: { lat: number; lng: number };
+  iso10?: GeoJSON.Polygon | null;
+  iso15?: GeoJSON.Polygon | null;
+  token: string;
+}): string | null {
+  const overlays: string[] = [];
+
+  const toFeature = (
+    poly: GeoJSON.Polygon,
+    stroke: string,
+    strokeOpacity: number,
+    fill: string,
+    fillOpacity: number,
+    strokeWidth: number,
+  ): string => {
+    const ring = simplifyRing(poly.coordinates?.[0] ?? [], 40).map(([x, y]) => [round(x), round(y)]);
+    const feature = {
+      type: "Feature",
+      properties: {
+        stroke,
+        "stroke-width": strokeWidth,
+        "stroke-opacity": strokeOpacity,
+        fill,
+        "fill-opacity": fillOpacity,
+      },
+      geometry: { type: "Polygon", coordinates: [ring] },
+    };
+    return `geojson(${encodeURIComponent(JSON.stringify(feature))})`;
+  };
+
+  if (iso15?.coordinates?.[0]) {
+    overlays.push(toFeature(iso15, BLUE, 0.5, BLUE, 0.08, 1));
+  }
+  if (iso10?.coordinates?.[0]) {
+    overlays.push(toFeature(iso10, BLUE, 0.9, BLUE, 0.18, 1.4));
+  }
+  // Pin marker last so it sits on top.
+  overlays.push(`pin-s+174be8(${round(center.lng, 5)},${round(center.lat, 5)})`);
+
+  const path = overlays.join(",");
+  const viewport = iso15 || iso10 ? "auto" : `${round(center.lng, 5)},${round(center.lat, 5)},11.5`;
+  const url = `https://api.mapbox.com/styles/v1/mapbox/light-v11/static/${path}/${viewport}/600x300@2x?access_token=${token}&attribution=false&logo=false`;
+
+  // Static Images API rejects URLs > ~8192 chars. If we blew the budget, drop iso15 then iso10.
+  if (url.length <= 8000) return url;
+  if (iso10 && iso15) return buildStaticUrl({ center, iso10, iso15: null, token });
+  if (iso10) return buildStaticUrl({ center, iso10: null, iso15: null, token });
+  return url;
 }

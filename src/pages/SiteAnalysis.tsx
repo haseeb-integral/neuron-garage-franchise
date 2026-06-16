@@ -395,11 +395,14 @@ function fmtCount(n?: number) {
   return `${Math.round(n)}`;
 }
 
+// Parking data sources (Mapbox POI + landuse) are weak — we only assert a
+// positive signal when we actually see lot/garage features nearby. Otherwise
+// the label stays honest: "Not verified — confirm on site".
 const PARKING_LABEL: Record<NonNullable<SiteScoreSignals["parking"]>["bucket"] & string, string> = {
-  none: "Not detected — verify on site",
-  street_only: "Street only",
-  small_lot: "Small lot",
-  large_lot: "Large lot",
+  none: "Not verified — confirm on site",
+  street_only: "Not verified — confirm on site",
+  small_lot: "Nearby lot detected",
+  large_lot: "Multiple lots nearby",
 };
 
 function MetricTiles({ signals }: { signals?: SiteScoreSignals }) {
@@ -408,8 +411,8 @@ function MetricTiles({ signals }: { signals?: SiteScoreSignals }) {
   const hwyMi = signals?.accessibility?.highwayDistanceMi;
   const parking = signals?.parking;
   const parkingValue = parking?.bucket
-    ? `${PARKING_LABEL[parking.bucket]}${parking.poiCount ? ` (${parking.poiCount})` : ""}`
-    : "Not detected — verify on site";
+    ? `${PARKING_LABEL[parking.bucket]}${parking.poiCount && (parking.bucket === "small_lot" || parking.bucket === "large_lot") ? ` (${parking.poiCount})` : ""}`
+    : "Not verified — confirm on site";
   return (
     <div className="mt-3 grid grid-cols-3 gap-1.5">
       <Tile label="Median HHI · 10m" value={fmtMoney(acs10.medianHhi)} />

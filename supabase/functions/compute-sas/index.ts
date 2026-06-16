@@ -28,7 +28,7 @@ import {
   SchoolType,
 } from "../_shared/sas-math.ts";
 
-const ENGINE_VERSION = "sas-v0.1";
+const ENGINE_VERSION = "sas-v0.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

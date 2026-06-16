@@ -75,7 +75,12 @@ async function fetchAllPages(initialUrl: string): Promise<Array<Record<string, u
   // Hard ceiling to avoid runaway. State directories cap around 15-20 pages at per_page=1000.
   while (url && pages < 30) {
     const res = await fetch(url, {
-      headers: { Accept: "application/json", "User-Agent": "lovable-sas/0.1" },
+      headers: {
+        Accept: "application/json, text/plain, */*",
+        "Accept-Language": "en-US,en;q=0.9",
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      },
     });
     if (!res.ok) {
       const txt = await res.text();

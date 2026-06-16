@@ -435,6 +435,9 @@ Deno.serve(async (req) => {
       },
       signals,
       place: geo.placeName,
+      geo: { lat: geo.lat, lng: geo.lng },
+      iso10,
+      iso15,
     });
   } catch (e) {
     console.error("[compute-sas] uncaught", e);

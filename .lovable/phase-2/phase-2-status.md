@@ -16,7 +16,7 @@
 | # | Item | Version | Owner (Manus / Lovable) | Status | Last updated | By |
 |---|------|---------|--------------------------|--------|--------------|-----|
 | 1 | Market Validation Engine (1A) | 1.0 | Manus (collection + scoring) + Lovable (display + PDF report UI) | demo-mockup-shipped · 9-gap polish (LOV-1..5 stubs present) | 2026-06-10 | Haseeb |
-| 2 | Site Analysis Engine (1B) | 1.0 | Manus (isochrone + ACS) + Lovable (compare UI) | in-progress · live engine wired end-to-end with real Overpass + Mapbox + ACS data; Trinity 50.33 vs LeafSpring 38.42 (gap 11.9 pt, needs ≥20); calibration gate still failing — pending Brett's decision on closed-site penalty vs pillar reweight | 2026-06-16 | Haseeb |
+| 2 | Site Analysis Engine (1B) | 1.0 | Manus (isochrone + ACS) + Lovable (compare UI) | in-progress · live engine wired end-to-end with real Overpass + Mapbox + ACS data; v0.3 Trinity 63.32 vs LeafSpring 45.96 (gap +17.36 pt, Trinity ranked higher). Calibration gate per Sam brief v2 p.12 is **qualitative** ("materially lower") — no numeric threshold in client docs; prior "≥20" was a Lovable-invented gate, now retracted. **Lever B (pillar reweight) BLOCKED** — Sam pins weights 0.25/0.25/0.20/0.15/0.15 (brief v2 p.9); rework requires Brett approval. Awaiting Brett confirmation on whether +17.36 satisfies "materially lower" or a second anchor pair should be added. | 2026-06-16 | Haseeb |
 | 3 | Candidate Pipeline | 1.5 | Lovable | not-started | 2026-05-30 | Haseeb |
 | 4 | Teacher Search | 1.5 | Lovable | not-started | 2026-05-30 | Haseeb |
 | 5 | SmartLead integration | 1.5 | Lovable | not-started | 2026-05-30 | Haseeb |

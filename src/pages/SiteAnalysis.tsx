@@ -1023,19 +1023,6 @@ export default function SiteAnalysis() {
 
       <DecisionSummary scored={scored} byAddress={byAddress} />
 
-      <footer
-        className="flex items-center gap-2 rounded-lg border bg-white p-3 text-[11px]"
-        style={{ borderColor: BORDER, color: MUTED }}
-      >
-        <FileText size={14} />
-        Formulas and sub-score weights are client-locked per Sam brief v2.2 p.9; the LeafSpring &lt; Trinity calibration criterion is qualitative per SOW v2.2 p.509 — see
-        <code className="rounded bg-[#f7faff] px-1 py-px text-[#174be8]">
-          .lovable/phase-2/phase-2-sow.md
-        </code>
-        Item 2 (Feature 1B). Cards call the live `compute-sas` engine — Mapbox geocode, ACS
-        sampling, school ecosystem, and the SAS composite.
-
-      </footer>
 
       <hr className="my-8 border-t" style={{ borderColor: BORDER }} />
       <Feature1BStatus />

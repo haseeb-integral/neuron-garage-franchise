@@ -944,16 +944,20 @@ export default function SiteAnalysis() {
         hideJourneyBar
       />
 
-      
-
       {SAS_ENGINE_LIVE && (
         <LiveEngineCard
-          canSave={slots.length < 4}
-          onSaveToSlot={(input, result) => saveResultToNewSlot(input, result as SiteScoreResult)}
+          canSave={slots.length < 4 || !!pendingReplaceId}
+          replaceTargetLabel={
+            pendingReplaceId
+              ? slots.find((s) => s.id === pendingReplaceId)?.schoolName || "selected slot"
+              : null
+          }
+          onCancelReplace={() => setPendingReplaceId(null)}
+          onSaveToSlot={(input, result) => saveResultToSlot(input, result as SiteScoreResult)}
         />
       )}
 
-      {/* Formula + thresholds — single, no "Austin metro" wording */}
+      {/* Formula + thresholds */}
       <section className="mb-4 rounded-lg border bg-white p-4" style={{ borderColor: BORDER }}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
@@ -962,10 +966,8 @@ export default function SiteAnalysis() {
             </h2>
             <p className="mt-1 text-[12px]" style={{ color: MUTED }}>
               SAS = 0.25 × School Profile + 0.25 × Neighborhood Affluence + 0.20 × Family Density +
-              0.15 × School Ecosystem + 0.15 × Accessibility.{" "}
-              <span style={{ color: BLUE }}>Weights client-locked per Sam brief v2.2 p.9; sub-signal weights Sam-pinned p.9–11.</span>
+              0.15 × School Ecosystem + 0.15 × Accessibility.
             </p>
-
           </div>
           <button
             type="button"
@@ -985,69 +987,32 @@ export default function SiteAnalysis() {
         </div>
 
         <div
-          className="mt-3 rounded-md p-2 text-[11px]"
-          style={{ backgroundColor: "#f7faff" }}
-        >
-          <strong style={{ color: NAVY }}>Decision points on this page:</strong>
-          <ol className="ml-4 mt-0.5 list-decimal" style={{ color: NAVY }}>
-            <li>Confirm the calibration gate holds: LeafSpring scores materially below Trinity.</li>
-            <li>
-              Per site: <strong>Recommend / Worth a look / Don't recommend</strong> (overrides the threshold default and drives the top pill).
-            </li>
-            <li>
-              Across the compared set: pick exactly one <strong>Winner</strong> ★ — the site Brett/Sam is committing to.
-            </li>
-            <li>
-              Capture <strong>notes</strong> on each card explaining the verdict — they go into the export pack.
-            </li>
-          </ol>
-        </div>
-
-        <div
           className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md p-2 text-[11px]"
           style={{ backgroundColor: SOFT }}
         >
           <span className="whitespace-nowrap font-semibold" style={{ color: NAVY }}>
-            Thresholds:
+            Score tiers:
           </span>
           <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-            <span
-              className="inline-block h-2 w-2 rounded-full"
-              style={{ backgroundColor: "#1d6b32" }}
-            />
+            <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: "#1d6b32" }} />
+            <span style={{ color: NAVY }}>≥{SITE_RECOMMEND_THRESHOLDS.recommend} Recommend</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+            <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: "#925100" }} />
             <span style={{ color: NAVY }}>
-              ≥{SITE_RECOMMEND_THRESHOLDS.recommend} Recommend
+              {SITE_RECOMMEND_THRESHOLDS.worthALook}–{SITE_RECOMMEND_THRESHOLDS.recommend - 1} Worth a look
             </span>
           </span>
           <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-            <span
-              className="inline-block h-2 w-2 rounded-full"
-              style={{ backgroundColor: "#925100" }}
-            />
-            <span style={{ color: NAVY }}>
-              {SITE_RECOMMEND_THRESHOLDS.worthALook}–
-              {SITE_RECOMMEND_THRESHOLDS.recommend - 1} Worth a look
-            </span>
+            <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: "#a3142b" }} />
+            <span style={{ color: NAVY }}>&lt;{SITE_RECOMMEND_THRESHOLDS.worthALook} Don't recommend</span>
           </span>
-          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-            <span
-              className="inline-block h-2 w-2 rounded-full"
-              style={{ backgroundColor: "#a3142b" }}
-            />
-            <span style={{ color: NAVY }}>
-              &lt;{SITE_RECOMMEND_THRESHOLDS.worthALook} Don't recommend
-            </span>
+          <span className="text-[10px]" style={{ color: MUTED }}>
+            Tiers are suggestions. Your <strong>Decision</strong> on each card is what ships in the export.
           </span>
         </div>
       </section>
 
-      <CalibrationGateBanner
-        trinityScore={trinityScored?.composite ?? null}
-        leafScore={leafScored?.composite ?? null}
-        trinityLoading={!!trinityScored && trinityScored.result == null}
-        leafLoading={!!leafScored && leafScored.result == null}
-      />
-      <CalibrationRunsTable />
       <WinnerBanner winner={winner} winnerDecision={winnerDecision} />
 
       <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -1056,7 +1021,11 @@ export default function SiteAnalysis() {
             key={s.id}
             slot={s}
             onRerun={() => runSlot(s.id)}
-            onRemove={s.calibrationRole ? undefined : () => removeSlot(s.id)}
+            onRemove={() => removeSlot(s.id)}
+            onReplace={() => {
+              setPendingReplaceId(s.id);
+              if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
           />
         ))}
         {Array.from({ length: emptySlots }).map((_, i) => (
@@ -1065,8 +1034,7 @@ export default function SiteAnalysis() {
       </section>
 
       <DecisionSummary scored={scored} byAddress={byAddress} />
-
-
     </>
   );
 }
+

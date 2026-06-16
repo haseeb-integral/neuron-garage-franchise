@@ -75,7 +75,7 @@ const TRINITY_CANDIDATE: Candidate = {
   address: "4131 Spring Valley Rd, Addison, TX 75001",
   schoolType: "private_elementary",
   gradeBand: "k5_k6",
-  enrollment: "",
+  enrollment: "600",
   calibrationRole: "trinity",
 };
 
@@ -85,7 +85,7 @@ const LEAFSPRING_CANDIDATE: Candidate = {
   address: "7000 Preston Rd, Plano, TX 75024",
   schoolType: "daycare",
   gradeBand: "other",
-  enrollment: "",
+  enrollment: "150",
   calibrationRole: "leafspring",
 };
 

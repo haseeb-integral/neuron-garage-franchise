@@ -81,9 +81,16 @@ Deno.serve(async (req) => {
 
     const body = (await req.json()) as RequestBody;
     if (!body?.address) return bad("address required");
-    const schoolType: SchoolType = body.school_type ?? "private_elementary";
-    const enrollment = body.enrollment ?? null;
-    const gradeBand: GradeBand = body.grade_band ?? "k5_k6";
+    // v0.2: school_type, enrollment, grade_band are required inputs. We will
+    // not score with synthetic defaults — the caller must supply them.
+    if (!body.school_type) return bad("school_type required");
+    if (body.enrollment == null || !Number.isFinite(Number(body.enrollment))) {
+      return bad("enrollment required (a real integer — engine refuses to fabricate a default)");
+    }
+    if (!body.grade_band) return bad("grade_band required");
+    const schoolType: SchoolType = body.school_type;
+    const enrollment = Number(body.enrollment);
+    const gradeBand: GradeBand = body.grade_band;
     const engineVersion = body.engine_version_override ?? ENGINE_VERSION;
 
     // Create the pending row up front so the UI can poll.
@@ -137,6 +144,22 @@ Deno.serve(async (req) => {
     ]);
 
     // 3) ACS for each ring (sample-point approximation, cached by polygon hash).
+    //    v0.2: no silent zero-coalescing. If a cached row has NULL columns we
+    //    treat it as a stale/bad cache entry and re-aggregate from Census.
+    const finiteOrNull = (v: unknown): number | null => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+    const cacheRowComplete = (c: Record<string, unknown>): boolean => {
+      return [
+        c.median_hhi,
+        c.pct_hh_above_150k,
+        c.pct_dual_income,
+        c.children_5_12,
+        c.families_with_kids_5_12,
+        c.total_population,
+      ].every((v) => finiteOrNull(v) != null);
+    };
     const acsRing = async (poly: GeoJSON.Polygon, minutes: 10 | 15) => {
       const hash = polygonHash(poly);
       const { data: cached } = await supabase
@@ -144,18 +167,23 @@ Deno.serve(async (req) => {
         .select("*")
         .eq("polygon_hash", hash)
         .maybeSingle();
-      if (cached) {
+      if (cached && cacheRowComplete(cached as Record<string, unknown>)) {
         return {
-          medianHhi: Number(cached.median_hhi) || 0,
-          pctAbove150k: Number(cached.pct_hh_above_150k) || 0,
-          pctDualIncome: Number(cached.pct_dual_income) || 0,
-          children5to12: Number(cached.children_5_12) || 0,
-          familiesWithKids: Number(cached.families_with_kids_5_12) || 0,
-          totalPop: Number(cached.total_population) || 0,
+          medianHhi: Number(cached.median_hhi),
+          pctAbove150k: Number(cached.pct_hh_above_150k),
+          pctDualIncome: Number(cached.pct_dual_income),
+          children5to12: Number(cached.children_5_12),
+          familiesWithKids: Number(cached.families_with_kids_5_12),
+          totalPop: Number(cached.total_population),
           tractsHit: 0,
         };
       }
       const agg = await aggregateAcs(samplePoints(poly, 5));
+      // Guard the freshly aggregated row too — never persist a partial cache.
+      const fields = [agg.medianHhi, agg.pctAbove150k, agg.pctDualIncome, agg.children5to12, agg.familiesWithKids, agg.totalPop];
+      if (!fields.every((n) => Number.isFinite(n))) {
+        throw new Error(`ACS aggregation incomplete for ${minutes}-min ring — refusing to fabricate zeros`);
+      }
       await supabase.from("site_analysis_acs_cache").upsert(
         {
           polygon_hash: hash,
@@ -229,7 +257,8 @@ Deno.serve(async (req) => {
         const type = String(r.school_type ?? "").toLowerCase();
         if (level.includes("elementary") || level.includes("primary")) elementaryCount++;
         if (type.includes("private")) privateCount++;
-        nearbyStudentPop += Number(r.enrollment) || 0;
+        const e = Number(r.enrollment);
+        if (Number.isFinite(e)) nearbyStudentPop += e; // skip if enrollment unknown — never substitute 0
       }
       ecosystemProvider = "public_schools_fallback";
     }
@@ -288,33 +317,39 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 6) Score.
-    const pillars = {
-      schoolProfile: schoolProfileScore({ schoolType, enrollment, gradeBand }),
-      affluence: affluenceScore({
-        medianHhi10: acs10.medianHhi,
-        pctAbove150k10: acs10.pctAbove150k,
-        pctDualIncome10: acs10.pctDualIncome,
-        medianHhi15: acs15.medianHhi,
-        pctAbove150k15: acs15.pctAbove150k,
-        pctDualIncome15: acs15.pctDualIncome,
-      }),
-      familyDensity: familyDensityScore({
-        children5to12_10: acs10.children5to12,
-        children5to12_15: acs15.children5to12,
-        familiesWithKids5to12_10: acs10.familiesWithKids,
-      }),
-      ecosystem: ecosystemScore({
-        elementaryCount,
-        privateCount,
-        nearbyStudentPop,
-      }),
-      accessibility: accessibilityScore({
-        roadDistanceMi,
-        highwayDistanceMi,
-        popReachable15: acs15.totalPop,
-      }),
-    };
+    // 6) Score. Any sas-math throw means a required input was missing — we
+    //    refuse to substitute a synthetic default and mark the row failed.
+    let pillars;
+    try {
+      pillars = {
+        schoolProfile: schoolProfileScore({ schoolType, enrollment, gradeBand }),
+        affluence: affluenceScore({
+          medianHhi10: acs10.medianHhi,
+          pctAbove150k10: acs10.pctAbove150k,
+          pctDualIncome10: acs10.pctDualIncome,
+          medianHhi15: acs15.medianHhi,
+          pctAbove150k15: acs15.pctAbove150k,
+          pctDualIncome15: acs15.pctDualIncome,
+        }),
+        familyDensity: familyDensityScore({
+          children5to12_10: acs10.children5to12,
+          children5to12_15: acs15.children5to12,
+          familiesWithKids5to12_10: acs10.familiesWithKids,
+        }),
+        ecosystem: ecosystemScore({
+          elementaryCount,
+          privateCount,
+          nearbyStudentPop,
+        }),
+        accessibility: accessibilityScore({
+          roadDistanceMi,
+          highwayDistanceMi,
+          popReachable15: acs15.totalPop,
+        }),
+      };
+    } catch (e) {
+      return await fail(`scoring: ${(e as Error).message}`);
+    }
     const sas = compositeSas(pillars);
 
     const signals = {

@@ -46,9 +46,18 @@ export function schoolProfileScore(i: {
   enrollment: number | null;
   gradeBand: GradeBand;
 }): number {
-  const typeFactor = SCHOOL_TYPE_FACTOR[i.schoolType] ?? 30;
-  const enrollFactor = i.enrollment == null ? 60 : normalize(i.enrollment, 150, 800);
-  const gradeFactor = GRADE_ALIGN_FACTOR[i.gradeBand] ?? 50;
+  const typeFactor = SCHOOL_TYPE_FACTOR[i.schoolType];
+  if (typeFactor == null) {
+    throw new Error(`schoolProfileScore: unknown schoolType "${i.schoolType}" — refusing to fabricate a score`);
+  }
+  if (i.enrollment == null || !Number.isFinite(i.enrollment)) {
+    throw new Error("schoolProfileScore: enrollment missing — refusing to fabricate a score");
+  }
+  const gradeFactor = GRADE_ALIGN_FACTOR[i.gradeBand];
+  if (gradeFactor == null) {
+    throw new Error(`schoolProfileScore: unknown gradeBand "${i.gradeBand}" — refusing to fabricate a score`);
+  }
+  const enrollFactor = normalize(i.enrollment, 150, 800);
   return 0.5 * typeFactor + 0.25 * enrollFactor + 0.25 * gradeFactor;
 }
 

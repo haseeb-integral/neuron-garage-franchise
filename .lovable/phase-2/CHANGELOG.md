@@ -92,3 +92,16 @@
 - `supabase/functions/compute-sas/index.ts`: when Overpass or Mapbox Directions can't return a real distance, the analysis row is marked `failed` with an explicit error listing which lookup failed (`overpass_highway_node`, `mapbox_directions_highway`, etc). No score is computed. Partial signals are persisted for debugging.
 - `src/pages/SiteAnalysis.tsx`: Accessibility formula detail no longer prints "(fallback 70)" since the fallback no longer exists.
 - Why: Brett's "one calibrated number everywhere" — users were seeing synthetic 70s for the road/highway factor when Overpass rate-limited, with no visible signal that the number was fake.
+
+## 2026-06-16 — Remove all silent fallbacks from compute-sas (Claude, per Haseeb)
+Engine now fails loudly instead of substituting synthetic numbers for missing data:
+- `_shared/sas-math.ts` schoolProfileScore: throws on null enrollment, unknown schoolType, unknown gradeBand (no more `?? 30 / ?? 50 / null → 60`)
+- `_shared/sas-math.ts` accessibilityScore: already throws on null distances (prior change)
+- `compute-sas/index.ts` ACS cache: bad/incomplete cache rows trigger re-aggregation; aggregation that returns non-finite fields throws (no more `Number(x) || 0`)
+- `compute-sas/index.ts` request validation: school_type, enrollment, grade_band are now required body params (400 if missing)
+- `compute-sas/index.ts` nearby schools: skip rows with missing enrollment instead of `|| 0`
+- `compute-sas/index.ts` scoring wrapped in try → fail(): math throws update the row to status=failed with explicit message
+- `src/lib/sasMath.ts` mirrors engine schoolProfileScore (throws)
+- `src/pages/SiteAnalysis.tsx` calibration anchors seeded with real enrollment (Trinity 600, LeafSpring 150) so they pass the now-required input check
+
+Redeployed compute-sas. Verified live: Trinity address returns status=failed with explicit Accessibility lookup error (Overpass rate-limit), no fabricated 42.

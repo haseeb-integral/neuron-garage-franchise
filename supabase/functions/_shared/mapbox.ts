@@ -96,15 +96,23 @@ export function polygonHash(poly: GeoJSON.Polygon): string {
 }
 
 // ---------------------------------------------------------------------------
-// Accessibility v0.2 — nearest road / highway via OSM Overpass + Mapbox Directions
+// Accessibility v0.2 — nearest road / highway via OSM Overpass (multi-mirror)
+// + Mapbox Directions for the drive distance. No synthetic distances anywhere.
 // ---------------------------------------------------------------------------
 
 type LngLat = { lat: number; lng: number };
 
+// Mirrors in priority order. maps.mail.ru is currently the most reliable for
+// our volume; overpass-api.de + kumi are kept as additional fallbacks. Every
+// mirror is called with form-urlencoded body + a real User-Agent — sending
+// raw text/plain without a UA is what triggered the 406s we saw earlier.
 const OVERPASS_ENDPOINTS = [
+  "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
   "https://overpass-api.de/api/interpreter",
   "https://overpass.kumi.systems/api/interpreter",
 ];
+
+const OVERPASS_UA = "neuron-garage-sas/0.2 (site-analysis engine)";
 
 function bboxAround(lat: number, lng: number, radiusMi: number): [number, number, number, number] {
   const dLat = radiusMi / 69;
@@ -119,19 +127,24 @@ async function overpassNearestNode(
 ): Promise<LngLat | null> {
   const [s, w, n, e] = bboxAround(origin.lat, origin.lng, radiusMi);
   const regex = highwayClasses.join("|");
-  const query = `[out:json][timeout:20];
+  const query = `[out:json][timeout:15];
 way["highway"~"^(${regex})$"](${s},${w},${n},${e});
 node(w);
 out 200;`;
+  const body = `data=${encodeURIComponent(query)}`;
 
   for (const endpoint of OVERPASS_ENDPOINTS) {
     try {
       const controller = new AbortController();
-      const t = setTimeout(() => controller.abort(), 22_000);
+      const t = setTimeout(() => controller.abort(), 18_000);
       const res = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "text/plain" },
-        body: query,
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "User-Agent": OVERPASS_UA,
+          "Accept": "application/json",
+        },
+        body,
         signal: controller.signal,
       });
       clearTimeout(t);
@@ -151,6 +164,11 @@ out 200;`;
           best = { lat: el.lat, lng: el.lon };
         }
       }
+      console.log(
+        `[sas] Overpass ${endpoint} → ${elements.length} nodes, best=${
+          best ? bestD.toFixed(2) + "mi" : "none"
+        } (classes=${highwayClasses.join("|")})`,
+      );
       return best;
     } catch (err) {
       console.warn(`[sas] Overpass ${endpoint} failed:`, (err as Error).message);
@@ -177,14 +195,15 @@ export async function drivingDistanceMiles(from: LngLat, to: LngLat): Promise<nu
     const res = await fetch(url);
     if (!res.ok) {
       console.warn(`[sas] Mapbox Directions ${res.status}`);
-      return haversineMiles(from, to) * 1.3;
+      return null;
     }
     const data = await res.json();
     const meters = data?.routes?.[0]?.distance;
     if (typeof meters === "number" && Number.isFinite(meters)) return meters / 1609.34;
-    return haversineMiles(from, to) * 1.3;
+    return null;
   } catch (err) {
     console.warn("[sas] Mapbox Directions threw:", (err as Error).message);
-    return haversineMiles(from, to) * 1.3;
+    return null;
   }
 }
+

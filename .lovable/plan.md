@@ -1,57 +1,37 @@
-# Remove silent fallbacks in the scoring engine
+## Problem
 
-You asked me to (a) remove the silent fallback to 70 in Accessibility v0.2 and (b) list every other fallback in the engine. Here's both.
+Calibration gate is blocked because both Trinity and LeafSpring fail with `Accessibility lookup failed (overpass_highway_node, overpass_major_road_node)`. The engine correctly refuses to fabricate numbers — the actual problem is the upstream data source. Logs show OSM Overpass returning **429** (kumi mirror, rate-limited) and **406** (overpass-api.de, rejecting query) on every call. Overpass public mirrors are not reliable enough to be the only road-lookup source.
 
-## Part A — Fix: remove the silent fallback to 70
+## Fix
 
-**The problem.** In `sas-math.ts`, when `roadDistanceMi` or `highwayDistanceMi` is `null` (Overpass rate-limited, Mapbox failed, or no highway within 12 mi), `roadFactor`/`highwayFactor` silently return `70`. The pillar score still renders and looks normal — you have no way to know the number is fake.
+Switch the primary "nearest highway / major road node" lookup from Overpass to **Mapbox Tilequery** against the `mapbox.mapbox-streets-v8` tileset. This uses the same `MAPBOX_TOKEN` we already have, is rate-limit-stable for our volume, and returns real OSM-derived road features classified by `class` (`motorway`, `trunk`, `primary`, `secondary`, …). No synthetic numbers anywhere.
 
-**The fix.** Stop returning `70`. Treat a failed lookup as an engine error, not a score.
+Overpass becomes a secondary fallback only — if Mapbox tilequery itself fails (network/auth), we try Overpass, and only if both real sources fail do we throw the existing "Accessibility lookup failed" error.
 
-1. **`supabase/functions/_shared/sas-math.ts`** — change `accessibilityScore` to return `null` when either distance is `null`. Remove the `if (d == null) return 70` branches in `roadFactor`/`highwayFactor`.
-2. **`supabase/functions/compute-sas/index.ts`** — when `pillars.accessibility` comes back `null`:
-   - Do NOT compute a composite SAS (composite also becomes `null`).
-   - Write `status: 'partial'` (new value) on the row, not `'ready'`, with `error: 'accessibility: highway/road lookup failed'`.
-   - Still persist whatever distances we did get and all other pillars, so the row is debuggable.
-   - Add a `signals.accessibility.failure` block listing which lookup failed (`overpass_highway`, `overpass_road`, `mapbox_directions_highway`, `mapbox_directions_road`).
-3. **`src/hooks/useSiteScore.ts`** + **`src/pages/SiteAnalysis.tsx`** — handle `status: 'partial'`:
-   - Show a red banner: "Accessibility pillar unavailable — live road/highway lookup failed. Composite score not computed."
-   - Render the other 4 pillars normally with their real numbers.
-   - "Drive to hwy" tile shows "—" with a tooltip explaining the source failure.
-   - Composite tile shows "—" instead of a number.
-4. **`src/lib/sasMath.ts`** — mirror the `null`-returning change so the frontend recompute helper matches the engine.
+### Changes (edge function only — no UI/business-logic change)
 
-## Part B — Every other fallback / silent default in the engine
+**`supabase/functions/_shared/mapbox.ts`**
+1. Add `mapboxNearestRoad(lat, lng, classes[], radiusMi)`:
+   - `GET https://api.mapbox.com/v4/mapbox.mapbox-streets-v8/tilequery/{lng},{lat}.json?radius={meters}&limit=50&layers=road&geometry=linestring&access_token=…`
+   - Filter returned features where `properties.class` is in the requested set.
+   - For each matching feature, take its geometry coords, compute haversine distance to origin, pick the closest point. Return `{lat, lng}` or `null`.
+2. Rewrite `nearestHighwayNode` and `nearestMajorRoadNode`:
+   - Try `mapboxNearestRoad` first (highway classes: `motorway`, `trunk`, `motorway_link`, `trunk_link`; major-road classes: `primary`, `secondary`).
+   - If it returns `null` due to a transport/HTTP error (distinguish from "no roads found in radius"), fall back to existing `overpassNearestNode`.
+   - If both fail, return `null` → engine throws the existing explicit error (no fake numbers).
+3. Keep `drivingDistanceMiles` strict: remove the `haversine × 1.3` fallback so a Mapbox Directions failure also propagates as `null` and surfaces an explicit error rather than a synthetic distance. (Aligns with the "no silent fallbacks" rule we already applied to the rest of the engine.)
 
-I scanned `compute-sas`, `sas-math.ts`, `sasMath.ts`, `census.ts`, and `urban-institute.ts`. Here is the complete list:
+**`supabase/functions/compute-sas/index.ts`**
+- No logic change. Error message text updates to: `Live road/highway distances unavailable — refusing to compute a score with synthetic data. Retried Mapbox Tilequery and Overpass; both failed.`
 
-### Hard-coded "demo" numbers that mask missing data
-| Location | What it does | Risk |
-|---|---|---|
-| `sas-math.ts` `roadFactor` null → **70** | Used when road distance lookup fails | Fake score — **fixed in Part A** |
-| `sas-math.ts` `highwayFactor` null → **70** | Used when highway distance lookup fails | Fake score — **fixed in Part A** |
-| `sas-math.ts` `schoolProfileScore` enrollment null → **60** | When user doesn't enter enrollment | Synthetic default — see Q1 below |
-| `sas-math.ts` `SCHOOL_TYPE_FACTOR[...] ?? 30` | Unknown school type | Defensive default, unreachable from current UI |
-| `sas-math.ts` `GRADE_ALIGN_FACTOR[...] ?? 50` | Unknown grade band | Same as above |
+### Verification
 
-### Silent zero-coalescing (treats missing data as 0, lowers score without telling you)
-| Location | Behavior |
-|---|---|
-| `compute-sas/index.ts` ACS cache read: `Number(cached.median_hhi) \|\| 0`, same for `pct_hh_above_150k`, `pct_dual_income`, `children_5_12`, `families_with_kids_5_12`, `total_population` | If a cached row has NULLs, all six fields become 0 and Affluence/Family Density collapse toward 0 without an error |
-| `compute-sas/index.ts` nearby schools loop: `Number(r.enrollment) \|\| 0` | School with missing enrollment counts as 0 students nearby |
+1. Deploy `compute-sas`.
+2. `curl_edge_functions` Trinity (Addison, TX) and LeafSpring (Plano, TX). Expect `status=ready` with real `highwayDistanceMi` and `roadDistanceMi`.
+3. Read back `site_analyses` row to confirm `signals.accessibility.highwayDistanceMi` / `roadDistanceMi` are real numbers and `accessibility_score` is computed from them.
+4. From the UI, click **Re-run** on both calibration anchors and confirm both cards show real scores instead of the red error box.
 
-### Documented fallbacks (intentional, not "fake")
-| Location | Fallback |
-|---|---|
-| Ecosystem pillar | Urban Institute → if it fails, drops to the internal `public_schools` table. `signals.ecosystem.source.provider` records which one was used. Not silent. |
-| `nearestHighwayNode` cycles through 3 Overpass mirrors before returning `null` | This is retry, not a fake value |
+### Out of scope
 
-### Not a fallback, just FYI
-- `engine_version_override` — calibration harness tag, not a data fallback.
-
-## Out of scope (call out, don't fix here)
-- Cleaning up the enrollment=60 default and the `?? 0` ACS coalescing — both can also produce misleading scores, but neither is what you asked about. I'd recommend a follow-up to either require enrollment in the UI or render that pillar as partial when it's missing, and to fail the ACS step explicitly when the cache row has NULLs.
-
-## Question before I implement
-
-**Q1.** Do you want me to also fix the `enrollment null → 60` default and the ACS `|| 0` coalescing in this same change (treat them as missing data → partial), or keep this PR focused on just the highway/road silent 70?
+- Cleaning up the parking tile / isochrone overlay (separate todo item already on the Feature 1B banner).
+- Anything in the Tier-1 scoring math itself — the math change you already approved (no synthetic defaults) stays exactly as-is.

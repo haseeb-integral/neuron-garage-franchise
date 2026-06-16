@@ -1,71 +1,50 @@
-# Agreement with Manus + Correction Plan
 
-## 1. Do I agree with Manus? **Yes — fully.**
+# Align Site Analysis page with SOW v2.2 & Sam's brief v2.2
 
-Manus is correct and my earlier "weights are not pinned" statement was wrong. The truth, re-verified:
+Scope: UI/copy only. No engine, weights, scoring, or schema changes.
 
-| Claim | Verdict |
-|---|---|
-| Sam's brief v2 pins the five pillar weights (25/25/20/15/15) | **True** — explicit formula on p.9 |
-| Sam also wrote "weights need rework before broad rollout" if Trinity > LeafSpring fails | **True** — p.12 validation clause |
-| "Rework" decision belongs to Brett/Sam, not Lovable | **True** — client-owned numbers |
-| Lovable cannot reweight unilaterally | **True** |
+## 1. Calibration gate banner (`src/pages/SiteAnalysis.tsx` ~L540–574)
+- Remove the numeric `gap ≥ 20` pass/fail logic and red/green styling.
+- Replace with Sam's qualitative criterion (SOW v2.2 p.509 / brief v2.2 p.12): "LeafSpring scores materially lower than Trinity."
+- Neutral blue/grey card. Show: Trinity 63.32, LeafSpring 45.96, gap +17.36, criterion = qualitative (Sam brief v2.2 p.12).
+- Remove any "rework before rollout" copy (that decision belongs to client).
 
-My corrected position matches Manus: **weights are client-specified; do not touch without Brett's approval.**
+## 2. Dev-only status block
+- Rewrite the red "Calibration gate … FAILING" row to neutral/amber.
+- Explain: the ≥20 threshold was Lovable-invented, not in Sam's brief. Retracted. Awaiting Brett's decision among three options (accept v0.3, add second anchor pair, authorize reweight).
 
-The one nuance I'll add (not a disagreement): Sam's validation says "**materially lower**" — qualitative, no number. The ≥20 threshold was invented by me in `sas-methodology.md`. Current gap is +17.36 (Trinity 63.32 vs LeafSpring 45.96), which arguably *is* "materially lower." So the calibration may already be passing on Sam's actual wording; only my self-imposed gate fails.
+## 3. Anchor cards
+- Keep Trinity Episcopal (positive) + LeafSpring Plano (negative). No changes.
+- **Do NOT add** a "Add second anchor pair (coming soon)" affordance (per user).
 
-## 2. What I will change in code/docs (no weight changes)
+## 4. Quick-test presets (`src/components/site-analysis/LiveEngineCard.tsx` L18–59)
+Replace Lovable-picked presets (Highland Park, Cherry Creek, Mason) with SOW-named anchors only, using verified public addresses:
 
-**A. Remove the ≥20 gate from `sas-methodology.md`**
-- Delete the invented `gap ≥ 20` threshold
-- Replace with Sam's exact wording: *"Trinity must score materially higher than LeafSpring"*
-- Add a note: "Quantitative threshold is not specified by the client; any numeric gate requires Brett's approval."
+| Label | Address | Role |
+|---|---|---|
+| Trinity Episcopal (Westlake) | 1300 S Capital of Texas Hwy, Austin, TX 78746 | positive anchor |
+| LeafSpring Plano (closed) | 5045 Lorimar Dr, Plano, TX 75093 | negative anchor |
+| Wayside Eden Park (Austin) | 6215 Menchaca Rd, Austin, TX 78745 | positive anchor |
+| St. Francis (Austin) | 300 E Huntland Dr, Austin, TX 78752 | positive anchor |
+| Telluride Mountain School | 200 San Miguel River Rd, Telluride, CO 81435 | small-market positive |
 
-**B. Update calibration status in `.lovable/phase-2/phase-2-status.md`**
-- Mark Lever B (reweight) as **blocked — requires Brett approval per Sam brief p.12**
-- Mark calibration gate as **qualitative pass pending Brett confirmation** (Trinity ranks above closure with +17.36 gap)
+## 5. Decision-points / methodology copy
+- Remove sentences implying a numeric threshold. Replace "gate is locked in" → "criterion is qualitative, per SOW v2.2 p.509".
+- Add "client-locked per Sam brief v2.2 p.9" hint near SAO formula.
+- Label sub-signal weights as "Sam-pinned".
+- Update Live Engine header v0.1 → v0.3.
 
-**C. Log in `.lovable/phase-2/CHANGELOG.md`**
-- Entry: corrected self-imposed quantitative gate; restored Sam's qualitative criterion
+## 6. Doc fixes
+- `.lovable/phase-2/sas-methodology.md` §1 and §3: "Trinity Christian Academy" → "Trinity Episcopal" (SOW p.337).
+- Log all edits in `.lovable/phase-2/CHANGELOG.md`.
 
-**No engine code changes.** Pillar weights stay at Sam's 25/25/20/15/15. v0.3 scores unchanged.
+## Files touched
+- `src/pages/SiteAnalysis.tsx`
+- `src/components/site-analysis/LiveEngineCard.tsx`
+- `.lovable/phase-2/sas-methodology.md`
+- `.lovable/phase-2/CHANGELOG.md`
 
-## 3. Draft message to Brett
+## One question for you
+**Banner color when the Trinity↔LeafSpring gap drops below ~10 pts** (currently +17.36, so non-issue today): should it stay neutral, or switch to amber as a soft "criterion may not hold" warning? Default if you don't answer: stay neutral (no numeric thresholds anywhere, consistent with the retraction).
 
-> **Subject: Calibration gate — Lovable error correction + decision needed**
->
-> Brett,
->
-> Quick update on the 1B calibration gate before we go further.
->
-> **What we found**
-> Current v0.3 scores Trinity at 63.32 and LeafSpring (the closure anchor) at 45.96 — a 17.36-point gap with Trinity correctly ranked higher.
->
-> **Lovable's mistake**
-> I had been treating "gap ≥ 20" as the pass threshold. That number is not in Sam's brief or your SOW — I invented it in my internal methodology doc. Sam's actual wording (brief v2, p.12) is qualitative: *"does 1B score the LeafSpring site materially lower than the Trinity site?"* No numeric gate.
->
-> **Where we stand**
-> - Trinity > LeafSpring by 17.36 points — directionally correct, plausibly "materially lower."
-> - Sam's pillar weights (School Profile 25, Affluence 25, Family Density 20, Ecosystem 15, Accessibility 15) are intact and untouched.
-> - I will not reweight. Sam's brief explicitly reserves any "rework before broad rollout" for client approval.
->
-> **Is the issue fixed?**
-> The self-imposed false-fail is fixed (gate removed, Sam's wording restored). What's not fixed is the judgment call: **does a +17.36 gap satisfy "materially lower" for you?**
->
-> **What I suggest**
-> Pick one:
-> 1. **Accept v0.3 as calibrated** — gap is material enough; lock weights, move to next 1B task.
-> 2. **Add a second anchor pair** (e.g. a Galileo or Steve & Kate's flagship as a positive control) — Sam endorses this on p.12; it stress-tests the score without touching weights.
-> 3. **Authorize weight rework** — only you/Sam can; specify which pillar should move and by how much.
->
-> My recommendation: **option 1 or 2.** Option 3 only if you see a defensible reason the current ranking is wrong.
->
-> — Lovable
-
-## 4. Files touched (build-mode list)
-1. `.lovable/phase-2/sas-methodology.md` — remove ≥20 gate, restore Sam's wording
-2. `.lovable/phase-2/phase-2-status.md` — mark Lever B blocked, gate qualitative-pass-pending
-3. `.lovable/phase-2/CHANGELOG.md` — log the correction
-
-No source code, no engine, no UI changes. Approve and I'll execute.
+Nothing else outstanding from our agreement — Brett message is drafted, methodology doc updated, plan + changelog updated, and this page change is the last visible surface.

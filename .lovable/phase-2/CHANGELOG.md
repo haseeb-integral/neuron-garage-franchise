@@ -128,3 +128,10 @@ Engine now fails loudly instead of substituting synthetic numbers for missing da
 - `src/pages/SiteAnalysis.tsx` calibration anchors seeded with real enrollment (Trinity 600, LeafSpring 150) so they pass the now-required input check
 
 Redeployed compute-sas. Verified live: Trinity address returns status=failed with explicit Accessibility lookup error (Overpass rate-limit), no fabricated 42.
+
+## 2026-06-16 — Site Analysis page aligned with SOW v2.2 / Sam brief v2.2 (Haseeb via Lovable)
+
+- `src/pages/SiteAnalysis.tsx` — `CalibrationGateBanner` rewritten: removed `delta >= 20` pass/fail and red/green styling; neutral blue/grey card showing live Trinity vs LeafSpring with the qualitative criterion only (Sam brief v2.2 p.12 / SOW v2.2 p.509). Footer + SAO caption now state "weights client-locked per Sam brief v2.2 p.9; sub-signal weights Sam-pinned p.9–11" and "calibration criterion is qualitative".
+- `src/components/site-analysis/LiveEngineCard.tsx` — Quick-test presets swapped: Highland Park / Cherry Creek / Mason removed (Lovable-picked, not in SOW). Added SOW-named anchors with verified public addresses: Wayside Eden Park (6215 Menchaca Rd, Austin), St. Francis (300 E Huntland Dr, Austin), Telluride Mountain School (200 San Miguel River Rd, Telluride CO). Trinity + LeafSpring presets unchanged to match calibration anchors. Header version v0.1 → v0.3.
+- `src/components/phase2-demo/Feature1BStatus.tsx` — Rewrote the blocked "calibration gate FAILING" row to amber/neutral: explains the ≥20 threshold was Lovable-invented and retracted, states Sam's qualitative criterion is the only client test, lists Brett's three doc-compliant options (accept v0.3 / add second anchor pair / authorize reweight). Anchor cards unchanged (Trinity + LeafSpring per SOW). Per user request, did NOT add an "Add second anchor pair (coming soon)" affordance.
+- `.lovable/phase-2/sas-methodology.md` — §2 and §3 fixed: "Trinity Christian Academy" → "Trinity Episcopal School (Westlake, Austin)" to match SOW p.337.

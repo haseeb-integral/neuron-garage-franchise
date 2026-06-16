@@ -518,7 +518,7 @@ function EmptySlot() {
 }
 
 // ---------------------------------------------------------------------------
-// Calibration gate (real numbers)
+// Calibration gate (qualitative — per Sam brief v2.2 p.12 / SOW v2.2 p.509)
 // ---------------------------------------------------------------------------
 
 function CalibrationGateBanner({
@@ -541,38 +541,33 @@ function CalibrationGateBanner({
       >
         <Loader2 size={16} className="mt-0.5 shrink-0 animate-spin" />
         <div>
-          <strong>Computing calibration gate…</strong> Running Trinity Episcopal School (Westlake, Austin) vs LeafSpring Plano through the live engine.
+          <strong>Computing calibration anchors…</strong> Running Trinity Episcopal School (Westlake, Austin) vs LeafSpring Plano through the live engine.
         </div>
       </div>
     );
   }
   const delta = trinityScore - leafScore;
-  const pass = delta >= 20;
+  const trinityHigher = delta > 0;
   return (
     <div
       className="mb-3 flex items-start gap-2 rounded-md border px-3 py-2 text-[12px]"
-      style={{
-        backgroundColor: pass ? "#e3f3e7" : "#fce7ec",
-        borderColor: pass ? "#1d6b32" : "#a3142b",
-        color: pass ? "#155724" : "#a3142b",
-      }}
+      style={{ backgroundColor: SOFT, borderColor: BLUE, color: NAVY }}
       role="status"
     >
-      {pass ? (
-        <CheckCircle2 size={16} className="mt-0.5 shrink-0" />
-      ) : (
-        <XCircle size={16} className="mt-0.5 shrink-0" />
-      )}
+      <CheckCircle2 size={16} className="mt-0.5 shrink-0" style={{ color: BLUE }} />
       <div>
-        <strong>Calibration gate: {pass ? "✓ PASS" : "✗ FAIL"}</strong> — Live engine: Trinity ({trinityScore}) vs LeafSpring ({leafScore}). Gap{" "}
-        {delta.toFixed(1)} pt {pass ? "≥" : "<"} 20 pt required.{" "}
+        <strong>Calibration anchors (qualitative criterion):</strong> Live engine —
+        Trinity <strong>{trinityScore}</strong> vs LeafSpring <strong>{leafScore}</strong>{" "}
+        (gap {delta >= 0 ? "+" : ""}{delta.toFixed(2)} pt, Trinity {trinityHigher ? "higher" : "lower"}).{" "}
         <span className="opacity-80">
-          SOW Item 2 requires LeafSpring to score materially lower than Trinity. If this fails, the model weights are reworked before rollout.
+          Per Sam's brief v2.2 p.12 / SOW v2.2 p.509, the pass test is qualitative: <em>"LeafSpring scores materially lower than Trinity."</em>
+          No numeric threshold is client-specified. Awaiting Brett's call on whether v0.3 is accepted, a second anchor pair is added, or a reweight is authorized.
         </span>
       </div>
     </div>
   );
 }
+
 
 // ---------------------------------------------------------------------------
 // Winner banner + Decision summary (read live)
@@ -852,8 +847,10 @@ export default function SiteAnalysis() {
             </h2>
             <p className="mt-1 text-[12px]" style={{ color: MUTED }}>
               SAO = 0.25 × School Profile + 0.25 × Neighborhood Affluence + 0.20 × Family Density +
-              0.15 × School Ecosystem + 0.15 × Accessibility.
+              0.15 × School Ecosystem + 0.15 × Accessibility.{" "}
+              <span style={{ color: BLUE }}>Weights client-locked per Sam brief v2.2 p.9; sub-signal weights Sam-pinned p.9–11.</span>
             </p>
+
           </div>
           <button
             type="button"
@@ -958,12 +955,13 @@ export default function SiteAnalysis() {
         style={{ borderColor: BORDER, color: MUTED }}
       >
         <FileText size={14} />
-        Formulas, sub-score weights, and the LeafSpring &lt; Trinity calibration gate are locked in
+        Formulas and sub-score weights are client-locked per Sam brief v2.2 p.9; the LeafSpring &lt; Trinity calibration criterion is qualitative per SOW v2.2 p.509 — see
         <code className="rounded bg-[#f7faff] px-1 py-px text-[#174be8]">
           .lovable/phase-2/phase-2-sow.md
         </code>
-        Item 2 (Feature 1B). Cards now call the live `compute-sas` engine — Mapbox geocode, ACS
+        Item 2 (Feature 1B). Cards call the live `compute-sas` engine — Mapbox geocode, ACS
         sampling, school ecosystem, and the SAS composite.
+
       </footer>
 
       <hr className="my-8 border-t" style={{ borderColor: BORDER }} />

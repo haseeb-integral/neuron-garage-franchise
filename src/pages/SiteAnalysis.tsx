@@ -354,15 +354,22 @@ function summarizePillars(p: {
 // (DriveTimeSchematic was removed in v0.4 — replaced by the real Mapbox
 // IsochroneMap component imported above.)
 
-function Tile({ label, value, dash, dashTip }: { label: string; value?: string; dash?: boolean; dashTip?: string }) {
+function Tile({ label, value, dash, dashTip, badge }: { label: string; value?: string; dash?: boolean; dashTip?: string; badge?: string }) {
   return (
     <div
       className="rounded border px-2 py-1.5"
       style={{ borderColor: BORDER, backgroundColor: dash ? "#f7faff" : "white" }}
       title={dash ? dashTip : undefined}
     >
-      <div className="text-[9px] font-semibold uppercase tracking-wide" style={{ color: MUTED }}>
-        {label}
+      <div className="flex items-center justify-between gap-1">
+        <div className="text-[9px] font-semibold uppercase tracking-wide" style={{ color: MUTED }}>
+          {label}
+        </div>
+        {badge && (
+          <span className="rounded-full px-1 py-px text-[8px] font-bold uppercase" style={{ backgroundColor: "#dde7ff", color: BLUE }}>
+            {badge}
+          </span>
+        )}
       </div>
       <div className="text-[13px] font-bold tabular-nums" style={{ color: dash ? MUTED : NAVY }}>
         {dash ? "—" : value ?? "—"}

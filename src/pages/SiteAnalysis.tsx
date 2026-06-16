@@ -907,8 +907,7 @@ export default function SiteAnalysis() {
     [slots],
   );
 
-  const trinityScored = scored.find((s) => s.candidate.calibrationRole === "trinity");
-  const leafScored = scored.find((s) => s.candidate.calibrationRole === "leafspring");
+
 
   const winner = useMemo(
     () => scored.find((s) => byAddress.get(s.candidate.address)?.is_winner),

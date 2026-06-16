@@ -358,7 +358,7 @@ function SiteCard({ site }: { site: SiteAnalysisDemoSite }) {
       <SiteDecisionControls
         address={site.address}
         schoolName={site.schoolName}
-        defaultVerdict={defaultVerdictFromScore(site.composite)}
+        defaultVerdict={defaultVerdictFromScore(composite)}
       />
     </div>
   );

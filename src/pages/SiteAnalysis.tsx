@@ -81,7 +81,7 @@ const TRINITY_CANDIDATE: Candidate = {
 
 const LEAFSPRING_CANDIDATE: Candidate = {
   id: "leafspring-plano",
-  schoolName: "LeafSpring School at Plano (closed 2023)",
+  schoolName: "LeafSpring Plano — closed 2023 (negative anchor)",
   address: "7000 Preston Rd, Plano, TX 75024",
   schoolType: "daycare",
   gradeBand: "other",

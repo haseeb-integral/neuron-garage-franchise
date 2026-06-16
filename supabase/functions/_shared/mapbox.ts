@@ -207,13 +207,3 @@ export async function drivingDistanceMiles(from: LngLat, to: LngLat): Promise<nu
   }
 }
 
-    const data = await res.json();
-    const meters = data?.routes?.[0]?.distance;
-    if (typeof meters === "number" && Number.isFinite(meters)) return meters / 1609.34;
-    return null;
-  } catch (err) {
-    console.warn("[sas] Mapbox Directions threw:", (err as Error).message);
-    return null;
-  }
-}
-

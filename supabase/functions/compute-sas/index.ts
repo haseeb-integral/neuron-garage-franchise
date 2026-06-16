@@ -203,6 +203,27 @@ Deno.serve(async (req) => {
     };
     const [acs10, acs15] = await Promise.all([acsRing(iso10, 10), acsRing(iso15, 15)]);
 
+    // Bug-2 fix (Manus 1B calibration analysis): `acs15.totalPop` is the sum
+    // of population over the unique Census tracts touched by our sample
+    // points. Even after the dense-sampling fix in mapbox.samplePoints, that
+    // sum systematically under-counts because (a) we dedupe per tract and (b)
+    // not every tract inside the isochrone is hit by a sample point.
+    //
+    // Extrapolate by area: avg tract density × isochrone area. Urban Census
+    // tracts target ~4k residents and average ~2 sq mi; we use the observed
+    // avg-pop-per-tract from the sample and 2.0 sq mi as the urban tract
+    // area assumption. This restores the accessibility pop term to the
+    // 200k–500k magnitude the methodology's 50k–500k normalization expects.
+    const AVG_URBAN_TRACT_SQMI = 2.0;
+    const iso15AreaSqMi = polygonAreaSqMi(iso15);
+    const avgTractPop15 = acs15.tractsHit > 0
+      ? acs15.totalPop / acs15.tractsHit
+      : 0;
+    const popReachable15Extrapolated = avgTractPop15 > 0 && iso15AreaSqMi > 0
+      ? avgTractPop15 * (iso15AreaSqMi / AVG_URBAN_TRACT_SQMI)
+      : acs15.totalPop; // fall back to raw sum if we can't extrapolate
+
+
     // 4) Ecosystem: nearby school counts.
     //    PRIMARY: Urban Institute Education Data Portal (CCD = public,
     //    PSS = private), state-scoped fetch, cached 30 days, haversine-filtered.

@@ -239,7 +239,14 @@ Deno.serve(async (req) => {
     const signals = {
       acs10,
       acs15,
-      ecosystem: { elementaryCount, privateCount, nearbyStudentPop },
+      ecosystem: {
+        elementaryCount,
+        privateCount,
+        nearbyStudentPop,
+        publicTotalInState: publicTotal,
+        privateTotalInState: privateTotal,
+        source: ecosystemSource,
+      },
       version: ENGINE_VERSION,
     };
 

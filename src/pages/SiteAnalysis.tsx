@@ -483,20 +483,11 @@ function PillarBar({
 // Empty add-slot
 // ---------------------------------------------------------------------------
 
-function EmptySlot({ onAdd }: { onAdd: () => void }) {
+function EmptySlot() {
   return (
-    <button
-      type="button"
-      onClick={onAdd}
-      className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 text-center transition-colors hover:border-[var(--add-hover)] hover:bg-[#f7faff]"
-      style={
-        {
-          borderColor: BORDER,
-          color: MUTED,
-          minHeight: 540,
-          ["--add-hover" as string]: BLUE,
-        } as React.CSSProperties
-      }
+    <div
+      className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 text-center"
+      style={{ borderColor: BORDER, color: MUTED, minHeight: 540 }}
     >
       <div
         className="flex h-9 w-9 items-center justify-center rounded-full"
@@ -505,12 +496,13 @@ function EmptySlot({ onAdd }: { onAdd: () => void }) {
         <Plus size={18} />
       </div>
       <div className="mt-2 text-[12px] font-semibold" style={{ color: NAVY }}>
-        Add candidate site
+        Empty slot
       </div>
-      <p className="mt-1 max-w-[180px] text-[11px]">
-        Add a school + address; the live engine scores it. Up to 4 candidates side-by-side.
+      <p className="mt-1 max-w-[200px] text-[11px]">
+        Compute a site in the <strong>Live Site Analysis Engine</strong> above, then click
+        <strong> Save to slot</strong> to fill this card.
       </p>
-    </button>
+    </div>
   );
 }
 

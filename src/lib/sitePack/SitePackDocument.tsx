@@ -35,17 +35,7 @@ import {
   recommendationsBullets,
 } from "./copy";
 
-// ---- Inter font (jsDelivr GitHub mirror — serves rsms/inter TTFs with CORS). ----
-Font.register({
-  family: "Inter",
-  fonts: [
-    { src: "https://cdn.jsdelivr.net/gh/rsms/inter@master/docs/font-files/Inter-Regular.ttf", fontWeight: 400 },
-    { src: "https://cdn.jsdelivr.net/gh/rsms/inter@master/docs/font-files/Inter-Medium.ttf", fontWeight: 500 },
-    { src: "https://cdn.jsdelivr.net/gh/rsms/inter@master/docs/font-files/Inter-SemiBold.ttf", fontWeight: 600 },
-    { src: "https://cdn.jsdelivr.net/gh/rsms/inter@master/docs/font-files/Inter-Bold.ttf", fontWeight: 700 },
-    { src: "https://cdn.jsdelivr.net/gh/rsms/inter@master/docs/font-files/Inter-Italic.ttf", fontWeight: 400, fontStyle: "italic" },
-  ],
-});
+// Use PDF built-in Helvetica so export never depends on remote font fetching.
 // Stop react-pdf from breaking words mid-character.
 Font.registerHyphenationCallback((word) => [word]);
 
@@ -65,7 +55,7 @@ const C = {
 // ---- Styles ----
 const s = StyleSheet.create({
   page: {
-    fontFamily: "Inter",
+    fontFamily: "Helvetica",
     fontSize: 10,
     color: C.navy,
     paddingTop: 56,

@@ -152,14 +152,6 @@ export function LiveEngineCard({ onSaveToSlot, canSave = true }: LiveEngineCardP
     setSaved(true);
   }
 
-  // Live-preview the school-profile pillar from inputs (UI parity with engine).
-  const previewSchoolProfile = round2(
-    schoolProfileScore({
-      schoolType,
-      enrollment: enrollment ? Number(enrollment) : null,
-      gradeBand,
-    }),
-  );
 
   return (
     <section

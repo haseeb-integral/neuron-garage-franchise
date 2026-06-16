@@ -35,7 +35,6 @@ import {
   recommendationsBullets,
 } from "./copy";
 
-// ---- Inter font (jsDelivr GitHub mirror — serves rsms/inter TTFs with CORS). ----
 // Use PDF built-in Helvetica so export never depends on remote font fetching.
 // Stop react-pdf from breaking words mid-character.
 Font.registerHyphenationCallback((word) => [word]);

@@ -1,97 +1,81 @@
-# Restore the rich card UI on /site-analysis (live-data version)
+# Fix /site-analysis: one input surface, read-only cards, one set of numbers
 
-## Why this is needed
+## What you saw and why
 
-When I rebuilt the candidate cards as live-engine inputs last turn, I dropped four pieces that were on the demo card:
+Looking at your screenshot, four symptoms — all from one architectural mistake I made last turn:
 
-1. One-liner summary (e.g. "Strong site. Affluent, dense, accessible…")
-2. Drive-time schematic with "10 · 15 min drive" badge
-3. Six metric tiles (Median HHI, HH >$150k, Kids 5-12, Drive to Hwy, Parking, Pop 15m)
-4. "Show all formulas" toggle on Sub-scores
+| Symptom | Root cause |
+|---|---|
+| Trinity card shows "Edge Function returned a non-2xx status code" | Trinity auto-ran on mount with `4131 Spring Valley Rd, Addison, TX 75001` and the engine errored. Need to read the function logs and fix the underlying call. Either way, the card shouldn't be auto-running its own request. |
+| LeafSpring card shows **43.52** but Live Engine shows **55.8** for the same school | They were different inputs. Card auto-ran with `schoolType=daycare, gradeBand=other` (the historically correct anchor — LeafSpring was a daycare). You typed `Private elementary, K-5/K-6` into the Live Engine. Two inputs → two scores. Engine is consistent; the UI lets you run it twice with different inputs and surfaces both. |
+| Whole page computes "everything" when you only ran LeafSpring | Trinity + LeafSpring cards auto-run on mount, independently of the Live Engine. Three independent engine calls per page load. |
+| Each card duplicates the input form (name, address, school type, grade band, enrollment) | I built cards as independent forms. They should be display-only — the Live Engine is the one and only input surface. |
+| Card titles truncate to "Trinity C…" / "Leaf…" | I used `truncate` instead of wrapping. |
 
-That was a scoping miss. Most of the data behind those tiles is already returned by `compute-sas` — I just wasn't exposing it. This plan puts them back, all reading from the live engine, no demo numbers.
-
-## What the restored card will look like
+## Fix — single input surface, read-only cards
 
 ```text
-┌─ Trinity Christian Academy  [Positive anchor]      51 ┐
-│  3901 Bee Caves Rd, Austin, TX           Worth a look │
-│                                          auto from score│
-│  [School name input] [Address input]                   │
-│  [School type ▾] [Grade band ▾] [Enroll]   [Analyze]   │
-│                                                        │
-│  Affluent, dense neighborhood. Ecosystem average.      │  ← one-liner (auto from live pillars)
-│                                                        │
-│  10-min 60% · 15-min 40%               [Drive-time]    │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │       ◦──────────◦                       MAP     │  │  ← schematic SVG (concentric rings)
-│  │      ◦            ◦                              │  │     using live lat/lng
-│  │       ◦──────────◦                               │  │
-│  │  10 · 15 min drive                               │  │
-│  └──────────────────────────────────────────────────┘  │
-│                                                        │
-│  MEDIAN HHI · 10M   HH >$150K · 10M   KIDS 5-12 · 10M │  ← live from signals.acs10
-│  $178k              44%                9,420           │
-│                                                        │
-│  DRIVE TO HWY       PARKING            POP · 15M       │
-│  —                  —                  412k            │  ← Hwy & Parking show "—" (not yet wired)
-│                                                        │     Pop · 15M live from signals.acs15
-│  SUB-SCORES                       [Show all formulas]  │  ← toggle
-│  School Profile (25%)                          85      │
-│  ████████████████░░░░                                  │
-│    └ when toggle on: 0.25 × 85 = 21.3 pts              │
-│  …                                                     │
-│                                                        │
-│  BRETT'S DECISION                          [★ Winner]  │
-│  [Recommend] [Worth a look] [Don't recommend]          │
-└────────────────────────────────────────────────────────┘
+┌─ Live Site Analysis Engine ──────────────────────────────┐
+│  School name * [_____________] Address * [_____________] │
+│  School type ▾ Enrollment      Grade band ▾   [Compute]  │
+│  Quick test: Trinity · LeafSpring · Highland · Cherry…   │
+│  SAS: 55.8  …pillars…                                    │
+│                                          [Save to slot ▾]│  ← NEW button
+└──────────────────────────────────────────────────────────┘
+
+┌─ Trinity Christian Academy [Positive anchor] ─── 51.1 ┐  ┌─ LeafSpring … (closed 2023) ─── 43.52 ┐  ┌─ + Add slot ─┐  ┌─ + Add slot ─┐
+│  4131 Spring Valley Rd, Addison, TX                   │  │  7000 Preston Rd, Plano, TX           │  │              │  │              │
+│  Private elementary · K-5/K-6 · enrollment —          │  │  Daycare · Other · enrollment 540     │  │              │  │              │
+│                                                       │  │                                       │  │              │  │              │
+│  [summary line]   [drive-time]   [6 tiles]            │  │  [summary] [drive-time] [6 tiles]     │  │              │  │              │
+│  [pillar bars] [Show all formulas] [Brett's decision] │  │  [pillars] [formulas] [decision]      │  │              │  │              │
+│  [↻ Re-run]                                  [✕ Remove]│  │                                      │  │              │  │              │
+└───────────────────────────────────────────────────────┘  └───────────────────────────────────────┘  └──────────────┘  └──────────────┘
 ```
 
-## What each piece reads from
+### Behavior changes
 
-| Piece | Live source | If missing |
-|---|---|---|
-| One-liner summary | Derived from live pillar scores (any pillar ≥80 → "strong", ≤50 → "weak") | "Run Analyze to see summary." |
-| Drive-time schematic | Concentric SVG rings; label uses live `result.place` if present | Hidden until first analyze |
-| Median HHI · 10M | `signals.acs10.medianHhi` | "—" |
-| HH >$150k · 10M | `signals.acs10.pctAbove150k` | "—" |
-| Kids 5-12 · 10M | `signals.acs10.children5to12` | "—" |
-| Drive to Hwy | Not yet returned by engine (`accessibilityScore` uses null stub) | "—" with tooltip "v0.2 — not yet wired" |
-| Parking | No data source yet | "—" with tooltip "manual field — not yet wired" |
-| Pop · 15M | `signals.acs15.totalPop` | "—" |
-| Sub-scores | `recomputeSiteScores(result.pillars)` (unchanged) | hidden |
-| Show all formulas | Per-pillar expander showing `weight × value = contribution` | — |
+1. **Cards are read-only.** Remove the input form inside each card (name, address, school type, grade band, enrollment, Analyze button). Cards display the name (full, no truncate, wraps to 2 lines), address, inputs-used as a small caption row, score badge, summary, drive-time, 6 tiles, pillar bars, formula toggle, Brett's decision, Re-run, Remove.
 
-No fake numbers. The two stubs (Hwy, Parking) explicitly render "—" with a tooltip — Brett can see at a glance which tiles are pending vs live.
+2. **Live Engine is the only input surface.** When you click Compute SAS in the Live Engine and the result lands, a new "Save to slot ▾" button appears next to the SAS number, with options: "New slot", "Replace Trinity anchor" (only enabled if you confirm), "Replace LeafSpring anchor" (same), "Cancel". Picking a slot writes that exact engine result into the card. No re-computation, no second call — the card stores the result object the engine returned.
+
+3. **Trinity + LeafSpring anchors are pre-seeded with canonical, frozen inputs and auto-compute once on first page load.** Inputs locked to:
+   - Trinity: `Private elementary, K-5/K-6, 4131 Spring Valley Rd, Addison, TX 75001`
+   - LeafSpring: `Daycare, Other, 7000 Preston Rd, Plano, TX 75024` (matches the SOW's "negative anchor — closed daycare")
+   The anchors do not pull their inputs from whatever's typed in the Live Engine. That guarantees the calibration delta is reproducible across sessions.
+
+4. **One canonical "number" per surface.** The card stores the engine `result` object verbatim. Pillars, composite, summary line, tiles all read from that object via `recomputeSiteScores`. The Live Engine and the card show the same numbers whenever they're showing the same input.
+
+5. **Trinity 4131 Spring Valley Rd 500 error** — investigate before this ships. Action: pull `compute-sas` logs filtered to that address, identify whether it's Mapbox geocode, ACS sampling, or the Urban Institute call that's failing, and either fix the upstream call or render a clear inline error on the card (e.g. "Mapbox geocode returned no result — try a different address format"). The card UI should never show the raw "non-2xx status code" string to Brett.
+
+6. **Title truncation gone.** Card title wraps to 2 lines, `title` attr keeps full string for hover.
+
+7. **No auto-recompute on input edits.** Removing the input form removes the chain. The only triggers are: anchor first-mount (twice total per session, once each), explicit Re-run on a card, or saving a fresh Live Engine result into a slot.
 
 ## Files touched
 
-1. **`src/hooks/useSiteScore.ts`** — extend the returned `result` to also expose `signals` (already in the edge function response, just not surfaced) and keep `place`. No behavior change.
+1. **`src/pages/SiteAnalysis.tsx`** — rewrite `CandidateCard` as a display-only component that takes a `result` prop (no `useSiteScore` inside). Anchors get a small `useAnchorScore` wrapper that calls `useSiteScore` once with frozen inputs and passes the result down. Title wraps. Add a `candidates: Array<{ slot: 'trinity' | 'leafspring' | 'extra'; input: …; result: SiteScoreResult | null }>` state at the page level.
 
-2. **`src/pages/SiteAnalysis.tsx`** (CandidateCard body) — insert four new blocks between the input form and the Sub-scores section:
-   - `<CandidateSummary pillars={recomputed.pillars} />` — one-liner generator
-   - `<DriveTimeSchematic place={result.place} />` — concentric SVG
-   - `<MetricTiles signals={result.signals} />` — 6-tile grid
-   - "Show all formulas" toggle added to the existing Sub-scores header; expands each `PillarBar` to show `weight × value = contribution`
+2. **`src/components/site-analysis/LiveEngineCard.tsx`** — add a "Save to slot ▾" dropdown that appears once a result is computed. Lifts the last result up via a new `onSaveToSlot(input, result)` callback.
 
-3. No new files; everything lives as local components in `SiteAnalysis.tsx` to keep the diff small.
+3. **Edge function diagnosis only** (`supabase/functions/compute-sas/index.ts`) — read logs filtered to the Trinity address, decide whether the fix is in the geocode/ACS path or just clearer error surfacing in the UI. No engine rewrite — at most a try/catch + structured error message.
 
 ## Out of scope
 
-- Real Mapbox tile rendering with the isochrone polygon overlaid. The schematic SVG matches what the demo showed. Real tiles can be a follow-up once Brett confirms the look.
-- Wiring `Drive to Hwy` and `Parking` — those need new engine signals (highway distance API, manual parking input). Currently shown as "—".
-- Changing pillar formulas, weights, or the calibration logic. This is pure UI restoration.
+- Persistence across reloads (still TODO on the checklist).
+- Recalibrating LeafSpring vs Trinity weights (waiting on Brett).
+- Real Mapbox tiles (schematic stays).
 
-## Status / logging
+## Status logging
 
-- Append a row to `.lovable/phase-2/CHANGELOG.md` for the restore.
-- Update the `Feature1BStatus` checklist on the page: tick "Rich card UI restored (summary, map, tiles, formula toggle)", note Hwy/Parking still pending.
+- Append to `.lovable/phase-2/CHANGELOG.md`.
+- Update `Feature1BStatus`: tick "One input surface — cards are display-only" and "Card titles wrap", keep calibration item red.
 
 ## Test plan
 
-1. Hard-refresh `/site-analysis`. Trinity + LeafSpring auto-run. Each card shows summary line, schematic map, 4 live tiles + 2 "—" tiles, sub-scores.
-2. Click "Show all formulas" → each pillar row expands to show its weighted contribution; they sum to the composite shown in the header.
-3. Add a new candidate, analyze → same layout populates with that site's live numbers.
-4. Hover the "—" tiles → tooltip explains why they're empty.
+1. Hard-refresh `/site-analysis`. Trinity + LeafSpring anchors compute once each (2 calls only, not 3). Both cards show full title.
+2. Type a third school in the Live Engine, click Compute SAS, click "Save to slot ▾ → New slot". Slot 3 fills with the exact same SAS the Live Engine just showed. No second engine call.
+3. Cards have no input fields. Re-run and Remove buttons work. Brett's decision pill works.
+4. If Trinity 500s, the card shows a clear human-readable error, not "non-2xx status code", and Brett can still see LeafSpring's result.
 
 Approve and I'll build it.

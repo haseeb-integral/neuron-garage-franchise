@@ -1,47 +1,48 @@
-## Decisions captured
+## Plain-English summary
 
-- **Task 2 (calibration gate):** Accept v0.3 as calibrated, move on. Trinity 63.32 / LeafSpring 45.95 / gap 17.38 is now the accepted baseline.
-- **Future options parked (no action now):**
-  - (b) Add a second anchor pair to stress-test without touching weights.
-  - (c) Authorize a weight rework — Brett/Sam only, brief v2.2 p.12 reserves this for the client.
+Three separate issues. None of them is "we forgot to use Brett's Mapbox key" — the key is wired correctly server-side (`MAPBOX_TOKEN` secret) and the client fetches a short-lived token via the `get-mapbox-token` edge function. Geocoding, isochrones, and tile queries all work — that's why your scores compute. The map *render* is failing in your browser for a different reason.
 
-These two are noted but not implemented this turn.
+### 1. Why every map says "WebGL disabled"
 
-## Changes this turn
+The code in `src/components/site-analysis/IsochroneMap.tsx` calls `mapboxgl.supported()` and shows the fallback if that returns `false`. In Mapbox GL JS v3 (we're on 3.24.1), that helper is over-aggressive inside sandboxed iframes like the Lovable preview — it can return `false` even when WebGL actually works. That's why all four cards fall back at once on your desktop browser. It's not really a WebGL problem, it's a bad preflight check.
 
-### 1. Remove the dev status banner
+**Fix:** drop the `mapboxgl.supported()` precheck and let the existing `try/catch` around `new mapboxgl.Map(...)` be the only guard. Also hook `map.on("error", …)` so an actual WebGL context-creation failure (which is the genuine "no WebGL" case — old phones, locked-down corporate browsers) still flips to the fallback box with the same message. Net effect: maps render for ~99% of users including the Lovable preview; the small minority truly without WebGL still see the graceful fallback. No new dependency, no different map provider — same Mapbox token.
 
-Edit `src/pages/SiteAnalysis.tsx`:
-- Remove the `<Feature1BStatus />` render (the "For Dev Purposes Only — Internal Team Status Update for This Feature" panel at the bottom of the page).
-- Remove its import.
+Mobile note: modern iOS Safari and Android Chrome support WebGL. The same fix covers them. If you want a true raster fallback later (static image tile served by Mapbox's Static Images API, no WebGL needed), that's a separate enhancement we can layer on.
 
-Leave `src/components/phase2-demo/Feature1BStatus.tsx` on disk in case we want to restore it later — just unmount it from the page.
+### 2. Why parking shows "Street only" or null
 
-### 2. No other code changes
+The parking data source is **Mapbox Tilequery** against the `poi_label` layer within a 200 m radius of the geocoded pin. Logic in `supabase/functions/_shared/mapbox.ts` (lines 294–330):
 
-Calibration logic, anchors, engine, weights, and the rest of the page stay exactly as they are.
+- POIs tagged `parking` found → bucket = `small_lot` (1–2) or `large_lot` (3+).
+- Zero parking POIs but other POIs nearby → bucket = `street_only` (Mapbox often misses informal lots).
+- Zero POIs at all → bucket = `none` (renders as "null" in the UI).
 
-## Status check against your list (verified against current code)
+There is no cleaner public dataset for franchise-grade parking inventory — Mapbox's POI layer is the standard. What's wrong today: the 200 m radius is too tight (a school's parking lot can sit 250–400 m from the pin), so we keep landing in the "street_only" default. **Fixes in this turn:**
 
-| # | Task | Real status |
-|---|------|------|
-| 1 | Engine LIVE on /site-analysis | ✅ Done — `SAS_ENGINE_LIVE` referenced in `SiteAnalysis.tsx` + `LiveEngineCard.tsx`, all cards call `compute-sas`. |
-| 1.5 | Urban Institute ecosystem + 50-state seed | ✅ Done per earlier turns (background seed). |
-| 2 | Calibration gate ≥ 25 pt | ⚠️ Gate **not met** (gap 17.38). You've now decided to **accept v0.3 and move on** — treat as resolved/closed by decision, not by hitting the numeric threshold. |
-| 3 | "One calibrated number everywhere" — `recomputeSiteScores` / `siteComposite` from `sasMath` wired into cards, calibration table, summary, export | ✅ Done for Site Analysis surfaces (cards, CalibrationRunsTable, decision summary, export all read the same helper). Market Validation table rows / RowScorePopover / compare modal are a separate page and are **not** in scope here — still ❌ for those surfaces. |
-| 4 | Persist + always recompute (write to `site_analyses`, never trust stored composite at display) | ✅ Done — `compute-sas` writes rows; hydration reads pillars and recomputes composite via `siteComposite` in `useMemo` (`scored` in `SiteAnalysis.tsx`). |
-| 5 | Decisions UI writing to `site_analysis_decisions` | ✅ Done — `useSiteDecisions` hook + `SiteDecisionControls` on each card; table has rows. |
-| 6 | Polish + QA — loading/error states, Mapbox/Census fallback, side-by-side compare up to 4 | ✅ Largely done — cards have loading/error states, WebGL fallback shipped, anchors hydrate from cache, 4-slot compare works. Bad-address error UX and rate-limit retry surfacing could still be tightened — call ⚠️ partial. |
-| 7 | Accessibility v0.2 (real Mapbox drive distances) | ✅ Done in engine v0.2 (drive-to-highway live via Mapbox Directions). |
-| 8 | ACS polygon intersection v0.2 (full tract intersect) | ❌ Still the 5-point sampler. Future. |
+1. Widen `radiusMeters` from 200 → 400 in `parkingSignal()`.
+2. Also accept POIs whose `class` is `parking_lot` / `parking_garage` (the v8 streets schema uses these alongside `parking`).
+3. Re-bucket thresholds: 0 = `street_only`, 1–3 = `small_lot`, 4+ = `large_lot`. Drop the confusing "none" bucket — render an explicit "Not detected" label in the card instead of blank.
+4. Display label in the metric tile: show "Street only", "Small lot", "Large lot", or "Not detected — verify on site" — never blank.
 
-### Open items left after this turn
+If after this you still find specific addresses where the bucket is obviously wrong, the next-tier upgrade is Overpass / OpenStreetMap `amenity=parking` polygons (free, no key) as a secondary source — flag if you want that added now.
 
-- Task 3: extend "one calibrated number everywhere" to the **Market Validation** surfaces (table rows, RowScorePopover, selected-market panel, compare modal, exports) if/when you want that consistency outside Site Analysis.
-- Task 6: harden bad-address + rate-limit UX.
-- Task 8: ACS full tract intersection.
-- Parked: (b) second anchor pair, (c) weight rework.
+### 3. Drop "Phase 2 · Feature 1B" from the page header
+
+In `src/pages/SiteAnalysis.tsx` line 914, replace the `PageHeader` subtitle:
+
+- Before: `"Phase 2 · Feature 1B — Per-site opportunity scoring with side-by-side comparison up to 4 candidates."`
+- After: `"Score up to 4 candidate sites side by side and pick the one to commit to."`
+
+## Files touched
+
+1. `src/components/site-analysis/IsochroneMap.tsx` — remove `mapboxgl.supported()` precheck, add `map.on("error", …)` handler, keep existing try/catch and fallback box.
+2. `supabase/functions/_shared/mapbox.ts` — widen parking radius to 400 m, accept `parking_lot`/`parking_garage` classes, re-bucket, return a clear `bucket` even when none detected.
+3. `src/pages/SiteAnalysis.tsx` (parking tile) — render "Not detected — verify on site" when the bucket comes back missing, instead of blank.
+4. `src/pages/SiteAnalysis.tsx` (header) — replace the subtitle.
+
+No schema changes, no weight changes, no new dependencies, same Mapbox token.
 
 ## Question
 
-Anything to change in this plan, or shall I just remove the banner and call this turn done?
+OK to proceed exactly as above, or do you also want the OSM `amenity=parking` secondary source added now for tougher addresses?

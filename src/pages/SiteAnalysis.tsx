@@ -396,7 +396,7 @@ function fmtCount(n?: number) {
 }
 
 const PARKING_LABEL: Record<NonNullable<SiteScoreSignals["parking"]>["bucket"] & string, string> = {
-  none: "None nearby",
+  none: "Not detected — verify on site",
   street_only: "Street only",
   small_lot: "Small lot",
   large_lot: "Large lot",
@@ -407,10 +407,9 @@ function MetricTiles({ signals }: { signals?: SiteScoreSignals }) {
   const acs15 = signals?.acs15 ?? {};
   const hwyMi = signals?.accessibility?.highwayDistanceMi;
   const parking = signals?.parking;
-  const parkingValue =
-    parking?.bucket
-      ? `${PARKING_LABEL[parking.bucket]}${parking.poiCount ? ` (${parking.poiCount})` : ""}`
-      : undefined;
+  const parkingValue = parking?.bucket
+    ? `${PARKING_LABEL[parking.bucket]}${parking.poiCount ? ` (${parking.poiCount})` : ""}`
+    : "Not detected — verify on site";
   return (
     <div className="mt-3 grid grid-cols-3 gap-1.5">
       <Tile label="Median HHI · 10m" value={fmtMoney(acs10.medianHhi)} />
@@ -425,8 +424,6 @@ function MetricTiles({ signals }: { signals?: SiteScoreSignals }) {
       <Tile
         label="Parking"
         value={parkingValue}
-        dash={!parkingValue}
-        dashTip="Mapbox tilequery returned no parking POIs within 200m"
         badge="v0.2"
       />
       <Tile label="Pop · 15m" value={fmtCount(acs15.totalPop)} />
@@ -911,7 +908,7 @@ export default function SiteAnalysis() {
     <>
       <PageHeader
         title="Site Analysis"
-        subtitle="Phase 2 · Feature 1B — Per-site opportunity scoring with side-by-side comparison up to 4 candidates."
+        subtitle="Score up to 4 candidate sites side by side and pick the one to commit to."
         hideJourneyBar
       />
 

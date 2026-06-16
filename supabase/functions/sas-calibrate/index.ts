@@ -12,11 +12,11 @@ const corsHeaders = {
 
 const ANCHORS = [
   {
-    label: "Trinity Christian Academy",
-    address: "4131 Spring Valley Rd, Addison, TX 75001",
-    school_name: "Trinity Christian Academy",
+    label: "Trinity Episcopal School (Westlake)",
+    address: "4011 Bee Caves Rd, Austin, TX 78746",
+    school_name: "Trinity Episcopal School",
     school_type: "private_elementary",
-    enrollment: 700,
+    enrollment: 580,
     grade_band: "k5_k6",
     expect: "high" as const,
   },

@@ -17,10 +17,10 @@ interface Preset {
 
 const PRESETS: Preset[] = [
   {
-    label: "Trinity Christian Academy",
-    hint: "TX · positive anchor",
-    schoolName: "Trinity Christian Academy",
-    address: "4131 Spring Valley Rd, Addison, TX 75001",
+    label: "Trinity Episcopal (Westlake)",
+    hint: "TX · positive anchor (SAS doc §6)",
+    schoolName: "Trinity Episcopal School",
+    address: "4011 Bee Caves Rd, Austin, TX 78746",
     schoolType: "private_elementary",
     gradeBand: "k5_k6",
   },
@@ -206,7 +206,7 @@ export function LiveEngineCard({ onSaveToSlot, canSave = true }: LiveEngineCardP
             onChange={(e) => setSchoolName(e.target.value)}
             className="rounded border px-2 py-1 text-[12px]"
             style={{ borderColor: "#eef2f7", color: "#07142f" }}
-            placeholder="Trinity Christian Academy"
+            placeholder="Trinity Episcopal School"
           />
         </label>
         <label className="flex flex-col gap-1 text-[11px] md:col-span-3" style={{ color: "#526078" }}>
@@ -217,7 +217,7 @@ export function LiveEngineCard({ onSaveToSlot, canSave = true }: LiveEngineCardP
             onChange={(e) => setAddress(e.target.value)}
             className="rounded border px-2 py-1 text-[12px]"
             style={{ borderColor: "#eef2f7", color: "#07142f" }}
-            placeholder="4131 Spring Valley Rd, Addison, TX 75001"
+            placeholder="4011 Bee Caves Rd, Austin, TX 78746"
           />
         </label>
         <label className="flex flex-col gap-1 text-[11px]" style={{ color: "#526078" }}>

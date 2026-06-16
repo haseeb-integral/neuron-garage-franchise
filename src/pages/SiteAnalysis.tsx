@@ -70,12 +70,12 @@ interface Candidate {
 }
 
 const TRINITY_CANDIDATE: Candidate = {
-  id: "trinity-christian-academy",
-  schoolName: "Trinity Christian Academy",
-  address: "4131 Spring Valley Rd, Addison, TX 75001",
+  id: "trinity-episcopal-westlake",
+  schoolName: "Trinity Episcopal School",
+  address: "4011 Bee Caves Rd, Austin, TX 78746",
   schoolType: "private_elementary",
   gradeBand: "k5_k6",
-  enrollment: "600",
+  enrollment: "580",
   calibrationRole: "trinity",
 };
 
@@ -541,7 +541,7 @@ function CalibrationGateBanner({
       >
         <Loader2 size={16} className="mt-0.5 shrink-0 animate-spin" />
         <div>
-          <strong>Computing calibration gate…</strong> Running Trinity Christian Academy vs LeafSpring Plano through the live engine.
+          <strong>Computing calibration gate…</strong> Running Trinity Episcopal School (Westlake, Austin) vs LeafSpring Plano through the live engine.
         </div>
       </div>
     );

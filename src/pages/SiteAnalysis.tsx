@@ -66,28 +66,8 @@ interface Candidate {
   schoolType: SchoolType;
   gradeBand: GradeBand;
   enrollment: string;
-  calibrationRole?: "trinity" | "leafspring";
 }
 
-const TRINITY_CANDIDATE: Candidate = {
-  id: "trinity-episcopal-westlake",
-  schoolName: "Trinity Episcopal School",
-  address: "4011 Bee Caves Rd, Austin, TX 78746",
-  schoolType: "private_elementary",
-  gradeBand: "k5_k6",
-  enrollment: "580",
-  calibrationRole: "trinity",
-};
-
-const LEAFSPRING_CANDIDATE: Candidate = {
-  id: "leafspring-cedar-park",
-  schoolName: "LeafSpring School at Cedar Park — closed 2023 (negative anchor)",
-  address: "11651 W Parmer Ln, Cedar Park, TX 78613",
-  schoolType: "daycare",
-  gradeBand: "other",
-  enrollment: "150",
-  calibrationRole: "leafspring",
-};
 
 // ---------------------------------------------------------------------------
 // CandidateCard — DISPLAY-ONLY.

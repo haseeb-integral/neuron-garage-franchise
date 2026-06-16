@@ -1,53 +1,43 @@
-## Fixes for Site Analysis page
+## What's broken
 
-### 1. Live Engine card — formula + button placement (`LiveEngineCard.tsx`)
-- Move the **Compute SAS** button out of the field grid into a dedicated **footer bar** below all inputs, full-width left side showing the SAS formula as an `fx:` chip, right side a **large primary button** (`px-6 py-2.5`, `text-[14px]`, min-width 180px).
-- Footer layout:
-  ```
-  ┌──────────────────────────────────────────────────────────┐
-  │ fx  SAS = 0.25·SchoolProfile + 0.25·Affluence +          │
-  │     0.20·FamilyDensity + 0.15·Ecosystem + 0.15·Access    │
-  │                                          [ Compute SAS ] │
-  └──────────────────────────────────────────────────────────┘
-  ```
-- Grid becomes 5 equal columns for the inputs (no button cell); footer is a separate flex row with `border-t pt-3 mt-3`.
+1. **Two LeafSpring cards.** The 4-card row shows `LeafSpring School at Cedar Park` (44.37) AND `LeafSpring Plano — closed 2023` (45.96). The Plano row is the **retracted** placeholder anchor — per Feature1BStatus, Cedar Park replaced it. It's still showing because a `site_analyses` row for the Plano address survives in the DB and the page hydrates the 4 slots from the user's most-recent ready rows.
 
-### 2. Card header alignment (`SiteAnalysis.tsx` → `CandidateCard`)
-The long school title ("LeafSpring School at Cedar Park — closed 2023 (negative anchor)") wraps vertically because the right column (score + suggested-pill) is too wide and squeezes the title to ~80px. Fix:
-- Constrain right column to `w-[88px]` with score on top, pill below, both `text-right`.
-- Title gets `flex-1 min-w-0`, `line-clamp-2` (max 2 lines, ellipsis) with full text in `title` tooltip.
-- Standardize: address `line-clamp-2`, type/grade/enrollment line `line-clamp-1`.
-- Add a fixed-height **header block** (`min-h-[110px]`) so all 4 cards align regardless of title length.
+2. **`Suggested: Don't recommend` badge overlaps the address text.** My last edit added `<br />` inside an `inline-flex` span, but `<br />` is ignored inside an inline-flex container, so the badge still renders as one long line and visually overflows the 110px score column onto the title/address column to its left.
 
-### 3. Card-row alignment (maps + tiles on same line across cards)
-Add fixed min-heights to each card region so siblings line up:
-- Header: `min-h-[110px]`
-- Action row (Re-run/Replace/Remove): fixed height `h-8`
-- Summary line: `min-h-[36px]` (2 lines reserved)
-- Map: already `h-[180px]` in `IsochroneMap` — verify and lock
-- Metric tiles: `min-h-[120px]`
-- Sub-scores: rest of card
-- Decision controls: pinned to bottom with `mt-auto`
+## Fix plan
 
-The outer card already uses `flex flex-col minHeight: 540` — bump to `560` and ensure children use the fixed heights above.
+### A) Stop LeafSpring Plano from showing — restore Wayside Eden Park instead
 
-### 4. Normalize all 4 cards to Daycare / Other / enrollment 150 and recompute
-Add a one-shot **"Normalize inputs for fair comparison"** button in the SAS formula bar (top of results section). It:
-- Iterates every slot, sets `schoolType="daycare"`, `gradeBand="other"`, `enrollment="150"`.
-- Calls `runSlot(id, { preferCache: true })` for each (uses cache when an exact-input row exists; otherwise hits `compute-sas`).
-- Disables itself while any slot is loading.
+The user's earlier lineup (per `LiveEngineCard.tsx` PRESETS + Feature1BStatus) is:
+Trinity Episcopal · LeafSpring Cedar Park (negative anchor) · Wayside Eden Park · St. Francis.
 
-Then I will **smoke-test in the build** by running the page, hitting Normalize, and confirming the four scores recompute against the same inputs.
+Steps:
+1. **Delete the Plano row** from `public.site_analyses` (single `DELETE WHERE address = '7000 Preston Rd, Plano, TX 75024'`) so hydration stops surfacing it.
+2. **Hide retracted anchors from hydration** as a guard: in `src/pages/SiteAnalysis.tsx`, when fetching the recent rows, filter out any address whose `school_name` matches `/plano|closed 2023/i` AND is not Cedar Park. Single line in the existing `.not(...)` / `.filter(...)` chain.
+3. **Seed Wayside Eden Park** so the 4th slot is populated on next load: insert a `site_analyses` row for `6215 Menchaca Rd, Austin, TX 78745` (Wayside Schools — Eden Park Academy, `private_elementary` / `k5_k6` / 400) by reusing the Live Engine compute path — the simplest way is to add Wayside to the default slot scaffold in `SiteAnalysis.tsx` so the next render kicks off `runSlot(..., { preferCache: true })` for it (it will hit cache if previously run, else compute once).
 
-### 5. Export decision pack — why it's greyed
-`canExport = winner && composite != null`. It greys out because no winner is marked. **Fix the UX confusion**, not the gate:
-- Keep the gate (must pick a winner to export — intentional).
-- Add a clearer disabled tooltip already present + a small inline hint next to the button: *"Mark a winner on any card to enable"*.
-- When `canExport=false`, also show an arrow/callout pointing at the `★ Mark winner` row in the decision controls, so the user knows what to click.
+(No schema or weight changes; pillar/composite math is untouched.)
+
+### B) Fix the badge overlap (real fix this time)
+
+In `src/pages/SiteAnalysis.tsx` `CandidateCard` header (the `Suggested: …` span around line 209-216):
+
+- Switch the badge wrapper from `inline-flex` to a plain `inline-block` element so the `<br />` actually breaks the line, OR drop the `<br />` and rely on natural wrapping with `white-space: normal` + `word-break: break-word` (no `whitespace-nowrap`).
+- Keep `max-width: 100%` of its 110px parent column, `text-align: center`, `leading-tight`, `text-[9px]`.
+- For very long tiers ("Don't recommend"), the badge will then render on 2 short lines fully inside the 110px column with no overflow over the title/address.
+- Same treatment for the user-decision `userPill` so the two badge states stay visually consistent.
+- Sanity-check by viewing the preview at the current 986px viewport — the 4-card row gets ~240px per card, so the right column must stay tight; do not widen it beyond 110px.
+
+### Technical notes (devs only)
+
+- `site_analyses` is the cache + history table; hydration query lives in `SiteAnalysis.tsx` (around the `.from("site_analyses")` call near the `useEffect` that seeds `slots`).
+- The DELETE in step A1 is a one-shot data fix; the filter in A2 is the durable guard.
+- No edge function or `compute-sas` changes are required.
 
 ### Files touched
-- `src/components/site-analysis/LiveEngineCard.tsx` — footer bar with fx formula + bigger button
-- `src/pages/SiteAnalysis.tsx` — CandidateCard header/heights, Normalize button, export hint
+- `src/pages/SiteAnalysis.tsx` (hydration filter, default slot scaffold, badge markup)
+- One Supabase data change: `DELETE FROM public.site_analyses WHERE address = '7000 Preston Rd, Plano, TX 75024'`
 
-### Smoke test (after build)
-- Capture screenshot of `/site-analysis`, confirm: (a) formula visible inside Live Engine, (b) button no longer crammed against grade band, (c) all card titles fit on 1–2 lines, (d) maps & tile rows align across cards, (e) clicking Normalize swaps all 4 to Daycare/Other/150 and recomputes scores, (f) Export tooltip explains the winner requirement.
+### Out of scope
+- Reweighting, threshold changes, or any pillar math changes (per Brett's locked weights).
+- Any change to `LiveEngineCard.tsx` presets — the Plano preset was already removed; this is purely a stale DB row.

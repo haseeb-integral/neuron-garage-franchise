@@ -46,7 +46,7 @@ Also pinned by Sam (brief v2 p.9–11):
 
 | Property | Value |
 |---|---|
-| Anchor pair | Trinity Christian Academy (positive) vs LeafSpring (closed-site negative) |
+| Anchor pair | Trinity Episcopal School (Westlake, Austin — positive) vs LeafSpring Plano (closed-site negative) |
 | Pass criterion | **Trinity ranks materially higher than LeafSpring** (qualitative) |
 | Numeric threshold | **None specified by the client.** Any numeric gate (≥X point gap) is a judgment call reserved for Brett. |
 
@@ -60,9 +60,10 @@ Earlier versions of the Lovable status text and `CalibrationGateBanner` UI enfor
 
 | Site | Composite SAS | Rank |
 |---|---|---|
-| Trinity Christian Academy | **63.32** | 1 ✓ |
-| LeafSpring | 45.96 | 2 |
+| Trinity Episcopal School (Westlake, Austin) | **63.32** | 1 ✓ |
+| LeafSpring Plano | 45.96 | 2 |
 | **Gap** | **+17.36 pt** | Trinity higher |
+
 
 **Per Sam's qualitative criterion:** Trinity ranks materially higher than LeafSpring → **gate plausibly satisfied, pending Brett confirmation.**
 **Per Lovable's retracted ≥20 gate:** would fail by 2.64 pt — **but this gate is not in the client docs and no longer applies.**

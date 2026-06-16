@@ -33,39 +33,41 @@ const PRESETS: Preset[] = [
     gradeBand: "k5_k6",
   },
   {
-    label: "Highland Park",
-    hint: "TX · affluent",
-    schoolName: "Highland Park Presbyterian Day School",
-    address: "4220 Emerson Ave, Dallas, TX 75205",
+    label: "Wayside Eden Park (Austin)",
+    hint: "TX · positive anchor (SOW v2.2)",
+    schoolName: "Wayside Schools — Eden Park Academy",
+    address: "6215 Menchaca Rd, Austin, TX 78745",
     schoolType: "private_elementary",
     gradeBand: "k5_k6",
   },
   {
-    label: "Cherry Creek",
-    hint: "CO · affluent (needs CO seed)",
-    schoolName: "Cherry Creek Academy",
-    address: "4500 E Cherry Creek S Dr, Denver, CO 80246",
+    label: "St. Francis (Austin)",
+    hint: "TX · positive anchor (SOW v2.2)",
+    schoolName: "St. Francis School",
+    address: "300 E Huntland Dr, Austin, TX 78752",
     schoolType: "private_elementary",
     gradeBand: "k5_k6",
   },
   {
-    label: "Mason TX (rural)",
-    hint: "TX · low density control",
-    schoolName: "Mason Test Site",
-    address: "100 Main St, Mason, TX 76856",
+    label: "Telluride Mountain School",
+    hint: "CO · small-market positive (SOW v2.2)",
+    schoolName: "Telluride Mountain School",
+    address: "200 San Miguel River Rd, Telluride, CO 81435",
     schoolType: "private_elementary",
     gradeBand: "k5_k6",
   },
 ];
 
+
 /**
- * Live Site Analysis Engine card (Feature 1B v0.1).
+ * Live Site Analysis Engine card (Feature 1B v0.3).
  *
  * Renders only when `VITE_SAS_ENGINE_LIVE === "true"`. The demo path on
  * `/site-analysis` is completely untouched when the flag is off.
  *
  * Calls the `compute-sas` edge function and polls the `site_analyses` row.
  */
+
 export interface LiveEngineResult {
   sas: number;
   pillars: {
@@ -165,8 +167,9 @@ export function LiveEngineCard({ onSaveToSlot, canSave = true }: LiveEngineCardP
       <div className="mb-3 flex items-center justify-between gap-2">
         <div>
           <h3 className="text-[13px] font-bold" style={{ color: "#07142f" }}>
-            Live Site Analysis Engine (v0.1)
+            Live Site Analysis Engine (v0.3)
           </h3>
+
           <p className="text-[11px]" style={{ color: "#526078" }}>
             Geocode → 10/15-min isochrones → ACS sampling → school ecosystem → SAS.
           </p>

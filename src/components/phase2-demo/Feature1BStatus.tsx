@@ -28,11 +28,12 @@ const ITEMS: Item[] = [
     note: "Real Mapbox Directions driving miles, gated behind Overpass node lookup. Shown on the Live Engine card and persisted on signals.accessibility.",
   },
   {
-    label: "Calibration gate (Trinity vs LeafSpring) — still FAILING (gap widened after Overpass fix but below 20)",
+    label: "Calibration anchors — qualitative criterion (per Sam brief v2.2 p.12 / SOW v2.2 p.509), awaiting Brett's call",
     status: "blocked",
     note:
-      "Plain English for Brett: we picked two real sites as a sanity check. Trinity Christian Academy (a healthy, operating private elementary) should score MUCH higher than LeafSpring Plano (a closed daycare in a weaker spot). Right now the live engine gives Trinity 50.33 and LeafSpring 38.42 — an 11.9-point gap. Our rule says the good site must beat the bad site by at least 20 points, otherwise the scoring isn't separating winners from losers strongly enough to trust on a real deal.\n\nWhat moved since last update: the Overpass fix landed, so the Accessibility pillar now uses real drive-to-highway / drive-to-road distances (Trinity 8.4 mi hwy, LeafSpring 2.9 mi hwy). That widened the gap from 7.6 → 11.9 pts but did not close it. The Overpass fix was a data-correctness fix, not a calibration fix.\n\nWhy it's still failing: the engine has no way today to 'see' that LeafSpring is closed/inactive — it just scores the address's raw demographics and accessibility, which aren't terrible. The two pillars doing most of the lifting (Neighborhood Affluence and Family Density) still look similar between the two addresses, so the scores stay too close.\n\nWhat we need from Brett to unblock (still open): pick one (or a combo) of these levers — (a) add an explicit 'closed / inactive site' penalty that knocks a dead site down hard, (b) increase the weight on School Profile + School Ecosystem so a real operating school like Trinity pulls ahead, or (c) rebalance pillar weights so accessibility/density count for less and school signal counts for more. Once Brett picks the lever, we re-tune the formula and the gap should open past 20 — then this gate goes green and the engine is trustworthy for the full candidate list.",
+      "Plain English for Brett: Lovable previously enforced a 'Trinity must beat LeafSpring by ≥20 pts' gate. That ≥20 number was Lovable-invented — it is NOT in Sam's brief or the SOW. It has been retracted.\n\nWhat Sam's brief v2.2 p.12 actually says (the only client-specified test): 'Does Feature 1B score the LeafSpring site materially lower than the Trinity site?' Qualitative — no number.\n\nCurrent live engine v0.3: Trinity 63.32, LeafSpring 45.96, gap +17.36 pt (Trinity higher). By Sam's qualitative criterion, that looks materially lower; by Lovable's retracted ≥20 rule it would have failed by 2.64 pt — but that rule no longer applies.\n\nThree doc-compliant options open to Brett (Sam's pillar weights 25/25/20/15/15 stay locked in all three):\n  (a) Accept v0.3 as calibrated and move on.\n  (b) Add a second anchor pair (Sam explicitly endorses this on p.12) to stress-test without touching weights.\n  (c) Authorize a weight rework — only Brett/Sam can; brief v2.2 p.12 reserves this decision for the client.\n\nLovable will not reweight or change anchors unilaterally. Waiting on Brett's pick.",
   },
+
 
   { label: "Parking tile (engine v0.2)", status: "todo" },
   { label: "Real Mapbox tiles + isochrone overlay (schematic shown today)", status: "todo" },
@@ -41,9 +42,10 @@ const ITEMS: Item[] = [
 
 function Icon({ status }: { status: Item["status"] }) {
   if (status === "done") return <CheckCircle2 size={14} style={{ color: "#1f9d55", marginTop: 2 }} />;
-  if (status === "blocked") return <AlertTriangle size={14} style={{ color: "#c92a2a", marginTop: 2 }} />;
+  if (status === "blocked") return <AlertTriangle size={14} style={{ color: "#b8860b", marginTop: 2 }} />;
   return <Circle size={14} style={{ color: "#8a8a8a", marginTop: 2 }} />;
 }
+
 
 export function Feature1BStatus() {
   const done = ITEMS.filter((i) => i.status === "done").length;
@@ -62,8 +64,9 @@ export function Feature1BStatus() {
             For Dev Purposes Only - Internal Team Status Update for This Feature
           </div>
           <div className="mt-0.5 text-[12px]" style={{ color: "#3a3a3a" }}>
-            {done} of {total} items complete. One item is blocked and needs your input — see the red row.
+            {done} of {total} items complete. One item awaits Brett's decision on the qualitative calibration criterion — see the highlighted row.
           </div>
+
         </div>
         <span
           className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
@@ -80,18 +83,20 @@ export function Feature1BStatus() {
             <div className="flex-1">
               <span style={{ fontWeight: item.status === "blocked" ? 700 : 500 }}>{item.label}</span>
               {item.note && (
-                <div className="mt-0.5 text-[11px]" style={{ color: "#7a1f1f" }}>
+                <div className="mt-0.5 text-[11px]" style={{ color: item.status === "blocked" ? "#7a5800" : "#5a5a5a", whiteSpace: "pre-wrap" }}>
                   {item.note}
                 </div>
               )}
+
             </div>
           </li>
         ))}
       </ul>
 
       <div className="mt-2 text-[11px]" style={{ color: "#5a5a5a" }}>
-        Worth Brett's look: the calibration gate failure. Everything else is live and testable now.
+        For Brett: the calibration criterion is now Sam's qualitative test, not Lovable's retracted ≥20-pt gate. Pick one of the three options in the highlighted row.
       </div>
+
     </div>
   );
 }

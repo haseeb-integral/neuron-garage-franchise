@@ -96,7 +96,8 @@ export function polygonHash(poly: GeoJSON.Polygon): string {
 }
 
 // ---------------------------------------------------------------------------
-// Accessibility v0.2 — nearest road / highway via OSM Overpass + Mapbox Directions
+// Accessibility v0.2 — nearest road / highway via Mapbox Tilequery (primary)
+// with OSM Overpass as a secondary fallback. No synthetic distances.
 // ---------------------------------------------------------------------------
 
 type LngLat = { lat: number; lng: number };
@@ -112,6 +113,67 @@ function bboxAround(lat: number, lng: number, radiusMi: number): [number, number
   return [lat - dLat, lng - dLng, lat + dLat, lng + dLng];
 }
 
+// ---- Primary source: Mapbox Tilequery on mapbox.mapbox-streets-v8 ---------
+// Returns the nearest point on any road feature whose `class` matches one of
+// the requested classes. Throws on transport/HTTP errors so the caller can
+// decide whether to try the Overpass fallback. Returns null only when the
+// lookup succeeded but no matching road existed inside the radius.
+async function mapboxNearestRoad(
+  origin: LngLat,
+  classes: string[],
+  radiusMi: number,
+): Promise<LngLat | null> {
+  const meters = Math.round(radiusMi * 1609.34);
+  const url =
+    `https://api.mapbox.com/v4/mapbox.mapbox-streets-v8/tilequery/` +
+    `${origin.lng},${origin.lat}.json?radius=${meters}&limit=50` +
+    `&layers=road&geometry=linestring&dedupe=false` +
+    `&access_token=${MAPBOX_TOKEN}`;
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), 15_000);
+  let res: Response;
+  try {
+    res = await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(t);
+  }
+  if (!res.ok) {
+    throw new Error(`Mapbox Tilequery ${res.status}`);
+  }
+  const data = await res.json();
+  const features: Array<{
+    geometry?: { type?: string; coordinates?: number[] | number[][] };
+    properties?: { class?: string };
+  }> = data?.features ?? [];
+
+  let best: LngLat | null = null;
+  let bestD = Infinity;
+  for (const f of features) {
+    const cls = f?.properties?.class;
+    if (!cls || !classes.includes(cls)) continue;
+    const geom = f.geometry;
+    if (!geom) continue;
+    // Tilequery returns Point geometries (snapped to the nearest vertex on
+    // the source linestring) when geometry=linestring is requested.
+    const coords = geom.coordinates;
+    if (!coords) continue;
+    const pts: number[][] =
+      typeof coords[0] === "number" ? [coords as number[]] : (coords as number[][]);
+    for (const c of pts) {
+      const lng = c?.[0];
+      const lat = c?.[1];
+      if (typeof lat !== "number" || typeof lng !== "number") continue;
+      const d = haversineMiles(origin, { lat, lng });
+      if (d < bestD) {
+        bestD = d;
+        best = { lat, lng };
+      }
+    }
+  }
+  return best;
+}
+
+// ---- Secondary fallback: OSM Overpass ------------------------------------
 async function overpassNearestNode(
   origin: LngLat,
   highwayClasses: string[],
@@ -159,16 +221,45 @@ out 200;`;
   return null;
 }
 
+// ---- Public API ----------------------------------------------------------
+// Tries Mapbox Tilequery first; on transport/HTTP failure, falls back to
+// Overpass. Returns null only when both real sources fail OR both succeed
+// but neither finds a matching road in the radius — caller treats null as
+// a hard failure and surfaces an explicit error (no synthetic numbers).
+async function nearestRoadWithFallback(
+  origin: LngLat,
+  mapboxClasses: string[],
+  overpassClasses: string[],
+  radiusMi: number,
+): Promise<LngLat | null> {
+  try {
+    const hit = await mapboxNearestRoad(origin, mapboxClasses, radiusMi);
+    if (hit) return hit;
+    // Mapbox responded cleanly but found nothing — try Overpass before giving up.
+  } catch (err) {
+    console.warn("[sas] Mapbox Tilequery failed:", (err as Error).message);
+  }
+  return overpassNearestNode(origin, overpassClasses, radiusMi);
+}
+
 export function nearestHighwayNode(lat: number, lng: number, radiusMi = 12): Promise<LngLat | null> {
-  return overpassNearestNode(
+  return nearestRoadWithFallback(
     { lat, lng },
+    // Mapbox Streets v8 classes
+    ["motorway", "trunk", "motorway_link", "trunk_link"],
+    // Overpass OSM highway tag values
     ["motorway", "trunk", "motorway_link", "trunk_link"],
     radiusMi,
   );
 }
 
 export function nearestMajorRoadNode(lat: number, lng: number, radiusMi = 3): Promise<LngLat | null> {
-  return overpassNearestNode({ lat, lng }, ["primary", "secondary"], radiusMi);
+  return nearestRoadWithFallback(
+    { lat, lng },
+    ["primary", "secondary"],
+    ["primary", "secondary"],
+    radiusMi,
+  );
 }
 
 export async function drivingDistanceMiles(from: LngLat, to: LngLat): Promise<number | null> {
@@ -177,14 +268,15 @@ export async function drivingDistanceMiles(from: LngLat, to: LngLat): Promise<nu
     const res = await fetch(url);
     if (!res.ok) {
       console.warn(`[sas] Mapbox Directions ${res.status}`);
-      return haversineMiles(from, to) * 1.3;
+      return null;
     }
     const data = await res.json();
     const meters = data?.routes?.[0]?.distance;
     if (typeof meters === "number" && Number.isFinite(meters)) return meters / 1609.34;
-    return haversineMiles(from, to) * 1.3;
+    return null;
   } catch (err) {
     console.warn("[sas] Mapbox Directions threw:", (err as Error).message);
-    return haversineMiles(from, to) * 1.3;
+    return null;
   }
 }
+

@@ -497,7 +497,7 @@ function DecisionSummary({
               return (
                 <tr key={s.id} style={{ borderTop: `1px solid ${BORDER}`, color: NAVY }}>
                   <td className="py-1.5 pr-2">{s.schoolName}</td>
-                  <td className="py-1.5 pr-2 text-right tabular-nums font-bold">{s.composite}</td>
+                  <td className="py-1.5 pr-2 text-right tabular-nums font-bold">{siteComposite(s)}</td>
                   <td className="py-1.5 pr-2">
                     <span
                       className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"

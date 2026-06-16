@@ -1079,17 +1079,18 @@ export default function SiteAnalysis() {
               <button
                 type="button"
                 onClick={handleExport}
-                disabled={!canExport}
+                disabled={!canExport || exporting}
                 title={
                   canExport
-                    ? "Open a branded decision pack with verdicts, winner, and notes — print or save as PDF"
+                    ? "Download a branded multi-section PDF with all 10 SOW v2.2 sections and a 4-site side-by-side"
                     : "Mark a winner on any card (★ Mark winner) to enable the decision pack"
                 }
                 className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                 style={{ borderColor: BLUE, color: BLUE, backgroundColor: "#fff" }}
               >
-                <Download size={12} />
-                Export decision pack
+                {exporting ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                {exporting ? "Generating PDF…" : "Export decision pack (PDF)"}
+
               </button>
             </div>
             {!canExport && (

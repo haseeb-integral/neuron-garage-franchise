@@ -1,77 +1,104 @@
-## Goal — Brett's "one calibrated number everywhere" for Feature 1B
+# Site Analysis 1B — Real engine everywhere
 
-Today, every surface on `/site-analysis` reads a **stored** number off the demo object. The big `composite: 86` on a card and the `value: 85, 92, 78, 84, 88` pillar bars on the same card are independently written constants — nothing guarantees they actually add up. If anyone edits a pillar and forgets to update the composite, the page silently lies.
+Goal: every number on `/site-analysis` comes from the live `compute-sas` engine. No demo numbers, no fake "PASS" banner, no dead inputs.
 
-Brett's rule says: **every surface (card composite, pillar bars, calibration banner, winner banner, decision summary table, export pack) reads from one helper that recomputes the composite from the pillars at render time.**
-
-This turn is **pure plumbing** — no model change, no new data, no calibration tuning.
-
-## In plain English (what the user will see)
-
-- **Before:** Composite "86" was a hand-typed number sitting next to five hand-typed pillar bars. They could drift.
-- **After:** Composite is computed live from the pillar values using the same formula the live engine uses (`0.25 × Profile + 0.25 × Affluence + 0.20 × Density + 0.15 × Ecosystem + 0.15 × Accessibility`). Edit any pillar → composite updates everywhere automatically (cards, banner, winner pill, summary table, exported PDF).
-- The number doesn't *change* on screen today (the demo values already add up to ~86 and ~41 for Trinity / LeafSpring). The win is that **the page can no longer drift** and Brett's rule is satisfied.
-
-## Scope (5 files)
+## What the page will look like after
 
 ```text
-src/lib/sasMath.ts                              # add recomputeSiteScores() helper
-src/data/phase2DemoData.ts                      # no schema change, just a type re-export
-src/pages/SiteAnalysis.tsx                      # all 4 surfaces use the helper
-src/components/site-analysis/LiveEngineCard.tsx # also route through the same helper
-src/lib/decisionsExport.ts                      # export reads recomputed values
+┌───────────────────────────────────────────────────────────────┐
+│ Site Analysis  ·  Phase 2 · Feature 1B                        │
+│ Demo Preview banner (kept)                                    │
+├───────────────────────────────────────────────────────────────┤
+│ Live Site Analysis Engine (v0.1)            ENGINE LIVE       │
+│ Quick test chips · School / Address / Type / Grade            │
+│ [ Compute SAS ]                                               │
+│ SAS: <live number>   + 5 pillar tiles                         │
+├───────────────────────────────────────────────────────────────┤
+│ Formula strip (kept, no "Austin metro" wording):              │
+│ SAO = 0.25·Profile + 0.25·Affluence + 0.20·Density            │
+│     + 0.15·Ecosystem + 0.15·Accessibility                     │
+│ Thresholds: ≥75 Recommend · 60–74 Worth a look · <60 Don't    │
+├───────────────────────────────────────────────────────────────┤
+│ Calibration gate: <PASS/FAIL from REAL Trinity vs LeafSpring> │
+│   Trinity Christian Academy (Addison, TX): <live score>       │
+│   LeafSpring Plano (closed 2023):          <live score>       │
+│   Gap: <delta> pts  (gate requires ≥20)                       │
+├───────────────────────────────────────────────────────────────┤
+│ Compare candidates (up to 4)                                  │
+│ ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌───────────┐       │
+│ │ Card 1    │ │ Card 2    │ │ + Add     │ │ + Add     │       │
+│ │ name+addr │ │ name+addr │ │ candidate │ │ candidate │       │
+│ │ [Analyze] │ │ [Analyze] │ │           │ │           │       │
+│ │ SAS 86    │ │ SAS 41    │ │           │ │           │       │
+│ │ pillars   │ │ pillars   │ │           │ │           │       │
+│ │ Recommend │ │ Don't rec │ │           │ │           │       │
+│ └───────────┘ └───────────┘ └───────────┘ └───────────┘       │
+├───────────────────────────────────────────────────────────────┤
+│ Decision summary table  (reads real card scores)              │
+└───────────────────────────────────────────────────────────────┘
 ```
 
-## Technical details
+Removed entirely:
+- "Analyze a site — Inputs not wired" box
+- "Side-by-side compare — Austin metro" heading + the demo intro paragraph
+- Fake green "Calibration gate: ✅ PASS" banner (replaced by real one)
+- "SAMPLE" / "DEMO ONLY" tags
+- Hardcoded Trinity Westlake + LeafSpring sample card content
 
-1. **Add `recomputeSiteScores(input)` to `src/lib/sasMath.ts`.**
-   - Input: an object with the 5 pillar values (already on the demo + already returned by the live engine).
-   - Output: `{ pillars: {schoolProfile, affluence, familyDensity, ecosystem, accessibility}, composite }`.
-   - Internally calls existing `compositeSas()`. Rounded with existing `round2()`.
+Kept:
+- The SAO formula line + thresholds (now under the engine, no "Austin metro")
+- Decision points checklist
+- 4 card slots + Recommend / Worth-a-look / Don't-recommend buttons + notes + Winner star
+- Decision summary table at bottom
+- Export decision pack button
 
-2. **Refactor `SiteCard`** in `src/pages/SiteAnalysis.tsx`:
-   - Stop reading `site.composite`. Read `recomputeSiteScores(site.subScores).composite`.
-   - Pillar bars read the same `pillars` object so the bars and the composite are guaranteed consistent.
+## What changes in code
 
-3. **Refactor `CalibrationGateBanner`, `WinnerBanner`, `DecisionSummary`:**
-   - All three currently read `s.composite`. Switch them to the recomputed value via a small `siteComposite(site)` accessor.
+### 1. New shared hook `useSiteScore(input)`  (`src/hooks/useSiteScore.ts`)
+- Wraps the same `supabase.functions.invoke("compute-sas", …)` + polling logic currently inside `LiveEngineCard`.
+- Returns `{ status: 'idle' | 'loading' | 'ready' | 'error', result, error, run(input) }`.
+- `result` shape matches `recomputeSiteScores()` input, so `siteComposite(result)` works directly.
+- `LiveEngineCard` refactored to consume this hook (no behavior change for that card).
 
-4. **Refactor `exportSiteDecisionPack`** in `src/lib/decisionsExport.ts`:
-   - Same swap — the printed pack must show the same number as the on-screen card.
+### 2. Replace demo cards with real candidate cards (`src/pages/SiteAnalysis.tsx`)
+- New `CandidateCard` component: name input, address input, school type, grade band, "Analyze" button.
+- On Analyze → calls `useSiteScore`. While loading: spinner. On ready: shows SAS headline + 5 pillar bars (recomputed via existing `recomputeSiteScores`).
+- Local state: `candidates: CandidateCardState[]` (max 4). Two are pre-seeded:
+  - Trinity Christian Academy, 4131 Spring Valley Rd, Addison TX 75001, K-6, private elementary
+  - LeafSpring at Plano (closed 2023), 6304 Communications Pkwy, Plano TX 75024, PK-K, private elementary
+- "+ Add candidate" pushes a new empty card (up to 4). Empty slot beyond that hidden.
+- Decision buttons (Recommend / Worth-a-look / Don't-recommend / Mark winner / note) keep current behavior, now keyed off card id.
+- Auto-run engine for the two pre-seeded cards on first mount so the page loads useful data without a click.
 
-5. **Refactor `LiveEngineCard`:**
-   - It already gets pillar values from `compute-sas`. Route the displayed composite through `recomputeSiteScores()` so the live path and demo path are byte-identical in how they derive the headline number.
+### 3. Real `CalibrationGateBanner`
+- Reads the two pre-seeded candidates' live scores.
+- Trinity score, LeafSpring score, gap; PASS if `trinity − leafspring ≥ 20`, else FAIL.
+- While either is still loading, banner shows "Computing calibration…" not green PASS.
 
-6. **No schema change. No SOW math change. No SOW weight change.**
+### 4. `DecisionSummary` table
+- Rows come from `candidates` state, scores from `siteComposite(card.result)`.
+- Verdict + winner + note columns read from card state.
 
-## Out of scope (explicit, so I don't drift)
+### 5. Cleanup
+- Remove `AnalyzeSiteCard` markup + state (the dead "Inputs not wired" box).
+- Remove `Side-by-side compare — Austin metro` heading and the Austin-metro paragraph; keep formula + thresholds block under engine.
+- Demo Trinity/LeafSpring objects in `src/data/phase2DemoData.ts` shrink to just `{ name, address, schoolType, gradeBand }` seed data — no hardcoded pillar values. Anything no longer referenced gets deleted.
+- Export (`decisionsExport.ts`) reads from the same live `candidates` state.
 
-- Not touching `compute-sas` (engine math stays as-is).
-- Not touching the LeafSpring < Trinity calibration failure — that's a separate Brett conversation.
-- Not changing demo pillar values.
-- Not wiring the "Analyze a site" disabled form (that's a later turn).
-- Not adding new tables, secrets, or migrations.
+### 6. Status / changelog
+- Append entry to `.lovable/phase-2/CHANGELOG.md`.
+- Update `.lovable/phase-2/phase-2-status.md` row 2 to "live cards + real calibration gate shipped; calibration still failing pending model signal (Brett)".
 
-## Human manual test after this turn
+## Out of scope
+- Fixing the underlying calibration failure (Trinity 51.1 vs LeafSpring 55.4) — needs a model-signal change, waiting on Brett.
+- Persisting candidates across reloads (in-memory only this turn).
+- Mapbox map tile rendering inside each card (kept as the existing circle placeholder).
+- Any change to `compute-sas` edge function itself.
 
-Hard-refresh `/site-analysis`, then:
-
-1. **Cards still show the same composite numbers** (Trinity ≈ 86, LeafSpring ≈ 41). ✅ if so.
-2. **Open DevTools → Console.** No new errors.
-3. **Open** `src/data/phase2DemoData.ts`, change Trinity's `schoolProfile.value` from `85` → `30`, save.
-4. **Reload the page.** Trinity's composite **should drop automatically** (the card, the calibration banner, the winner pill in the summary table, and the exported decision pack should all show the new lower number — no other code change needed).
-5. **Revert the edit** so we don't ship a tampered demo.
-6. **Click "Compute SAS"** in the Live Engine on Trinity's preset. Confirm the headline composite still matches the pillar bars.
-
-If all six pass, Brett's "one calibrated number everywhere" rule is satisfied for Feature 1B.
-
-## Status updates I'll log
-
-- Update `.lovable/phase-2/phase-2-status.md` row 2 → "in-progress · one-number plumbing".
-- Append entry to `.lovable/phase-2/CHANGELOG.md` with date/who/what/why.
-
-## What comes after this turn (preview, not part of this plan)
-
-- **Next:** Decision capture refactor — `site_analysis_decisions` writes from both the demo and live engine.
-- **After that:** Bring the LeafSpring < Trinity failure to Brett with concrete options (customer-proximity pillar, competitive-saturation penalty, or reweight).
-- **Then:** Per-site branded PDF (SOW Item 2 acceptance criterion #5).
+## How you'll test
+1. Hard-refresh `/site-analysis`.
+2. Wait ~5–10 s — Trinity card and LeafSpring card auto-fill with **the same numbers as the Live Engine** for those addresses.
+3. Calibration gate banner shows the **real** Trinity vs LeafSpring numbers and PASS/FAIL based on real gap. (Will say FAIL today — that's correct.)
+4. Click "+ Add candidate", type any school + address, hit Analyze — card fills with live engine output.
+5. Click Recommend/Worth-a-look/Don't-recommend on any card; Decision summary table updates with real score + verdict.
+6. Click Export decision pack — exported HTML shows live numbers.

@@ -76,5 +76,5 @@ export function exportMarketDecisionsCsv(
   URL.revokeObjectURL(url);
 }
 
-}
+
 

@@ -257,7 +257,8 @@ Deno.serve(async (req) => {
         const type = String(r.school_type ?? "").toLowerCase();
         if (level.includes("elementary") || level.includes("primary")) elementaryCount++;
         if (type.includes("private")) privateCount++;
-        nearbyStudentPop += Number(r.enrollment) || 0;
+        const e = Number(r.enrollment);
+        if (Number.isFinite(e)) nearbyStudentPop += e; // skip if enrollment unknown — never substitute 0
       }
       ecosystemProvider = "public_schools_fallback";
     }

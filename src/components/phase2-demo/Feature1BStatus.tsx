@@ -18,11 +18,21 @@ const ITEMS: Item[] = [
   { label: "Calibration anchors auto-run once on mount with frozen inputs (reproducible delta)", status: "done" },
   { label: "Compare up to 4 sites side-by-side · Decision summary · Export decision pack — all live", status: "done" },
   {
+    label: "All silent fake-number fallbacks removed — engine refuses to score on missing data",
+    status: "done",
+    note: "Killed: road/highway 70 default, enrollment 60 default, school-type 30 / grade-band 50 defaults, ACS '|| 0' coalescing, nearby-schools enrollment fallback. If any live lookup fails (Overpass, Mapbox, Census, school profile), the analysis is marked failed with an explicit error — no fabricated score is ever shown.",
+  },
+  {
+    label: "Drive-to-highway + drive-to-major-road tiles (engine v0.2)",
+    status: "done",
+    note: "Real Mapbox Directions driving miles, gated behind Overpass node lookup. Shown on the Live Engine card and persisted on signals.accessibility.",
+  },
+  {
     label: "Calibration gate (Trinity vs LeafSpring) — currently FAILING",
     status: "blocked",
     note: "Trinity 51.1 vs LeafSpring 43.52 with the frozen anchor inputs (private elementary vs closed daycare). Gap is 7.6, gate requires ≥20. Needs Brett input on which signal(s) to recalibrate (likely add a 'closed/inactive site' penalty or rebalance density/accessibility weights).",
   },
-  { label: "Drive-to-highway + parking tiles (engine v0.2)", status: "todo" },
+  { label: "Parking tile (engine v0.2)", status: "todo" },
   { label: "Real Mapbox tiles + isochrone overlay (schematic shown today)", status: "todo" },
   { label: "Persist analyzed slots across reloads", status: "todo" },
 ];

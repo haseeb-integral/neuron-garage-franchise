@@ -689,7 +689,7 @@ export default function SiteAnalysis() {
   }, []);
 
   const runSlot = useCallback(
-    async (id: string) => {
+    async (id: string, opts?: { preferCache?: boolean }) => {
       const slot = slots.find((s) => s.id === id);
       if (!slot) return;
       if (!slot.address.trim() || !slot.schoolName.trim()) {
@@ -697,6 +697,54 @@ export default function SiteAnalysis() {
         return;
       }
       patchSlot(id, { status: "loading", error: null });
+
+      // Exact-input cache lookup — avoid an expensive live recompute
+      // (Mapbox geocode + isochrones + Census + Urban Institute + OSM) when
+      // a recent ready row already matches address + type + enrollment + grade.
+      if (opts?.preferCache) {
+        const enrollmentNum = slot.enrollment ? Number(slot.enrollment) : null;
+        const { data: cached } = await supabase
+          .from("site_analyses")
+          .select(
+            "id,school_profile_score,affluence_score,family_density_score,ecosystem_score,accessibility_score,sas_score,signals,latitude,longitude",
+          )
+          .eq("status", "ready")
+          .eq("address", slot.address.trim())
+          .eq("school_type", slot.schoolType)
+          .eq("grade_band", slot.gradeBand)
+          .eq("enrollment", enrollmentNum as number)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (
+          cached &&
+          cached.school_profile_score != null &&
+          cached.affluence_score != null &&
+          cached.family_density_score != null &&
+          cached.ecosystem_score != null &&
+          cached.accessibility_score != null
+        ) {
+          const signals = (cached.signals ?? {}) as SiteScoreSignals;
+          const result: SiteScoreResult = {
+            sas: Number(cached.sas_score ?? 0),
+            pillars: {
+              schoolProfile: Number(cached.school_profile_score),
+              affluence: Number(cached.affluence_score),
+              familyDensity: Number(cached.family_density_score),
+              ecosystem: Number(cached.ecosystem_score),
+              accessibility: Number(cached.accessibility_score),
+            },
+            signals,
+            geo:
+              cached.latitude != null && cached.longitude != null
+                ? { lat: Number(cached.latitude), lng: Number(cached.longitude) }
+                : undefined,
+          };
+          patchSlot(id, { status: "ready", result, error: null });
+          return;
+        }
+      }
+
       try {
         const { data, error } = await supabase.functions.invoke("compute-sas", {
           body: {

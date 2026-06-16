@@ -68,7 +68,33 @@ const PRESETS: Preset[] = [
  *
  * Calls the `compute-sas` edge function and polls the `site_analyses` row.
  */
-export function LiveEngineCard() {
+export interface LiveEngineResult {
+  sas: number;
+  pillars: {
+    schoolProfile: number;
+    affluence: number;
+    familyDensity: number;
+    ecosystem: number;
+    accessibility: number;
+  };
+  place?: string;
+  signals?: unknown;
+}
+
+export interface LiveEngineInput {
+  schoolName: string;
+  address: string;
+  schoolType: SchoolType;
+  gradeBand: GradeBand;
+  enrollment: string;
+}
+
+interface LiveEngineCardProps {
+  onSaveToSlot?: (input: LiveEngineInput, result: LiveEngineResult) => void;
+  canSave?: boolean;
+}
+
+export function LiveEngineCard({ onSaveToSlot, canSave = true }: LiveEngineCardProps = {}) {
   const [address, setAddress] = useState("");
   const [schoolName, setSchoolName] = useState("");
   const [schoolType, setSchoolType] = useState<SchoolType>("private_elementary");
@@ -76,17 +102,8 @@ export function LiveEngineCard() {
   const [gradeBand, setGradeBand] = useState<GradeBand>("k5_k6");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<null | {
-    sas: number;
-    pillars: {
-      schoolProfile: number;
-      affluence: number;
-      familyDensity: number;
-      ecosystem: number;
-      accessibility: number;
-    };
-    place?: string;
-  }>(null);
+  const [result, setResult] = useState<LiveEngineResult | null>(null);
+  const [saved, setSaved] = useState(false);
 
   function loadPreset(p: Preset) {
     setSchoolName(p.schoolName);
@@ -96,11 +113,13 @@ export function LiveEngineCard() {
     setEnrollment("");
     setError(null);
     setResult(null);
+    setSaved(false);
   }
 
   async function run() {
     setError(null);
     setResult(null);
+    setSaved(false);
     if (!address.trim() || !schoolName.trim()) {
       setError("School name and address are required.");
       return;
@@ -124,6 +143,15 @@ export function LiveEngineCard() {
     } finally {
       setBusy(false);
     }
+  }
+
+  function handleSave() {
+    if (!result || !onSaveToSlot) return;
+    onSaveToSlot(
+      { schoolName, address, schoolType, gradeBand, enrollment },
+      result,
+    );
+    setSaved(true);
   }
 
   // Live-preview the school-profile pillar from inputs (UI parity with engine).
@@ -267,15 +295,35 @@ export function LiveEngineCard() {
         const recomputed = recomputeSiteScores(result.pillars);
         return (
           <div className="mt-4 rounded border p-3" style={{ borderColor: "#eef2f7", background: "#f7faff" }}>
-            <div className="mb-2 flex items-baseline justify-between">
+            <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
               <h4 className="text-[12px] font-bold" style={{ color: "#07142f" }}>
                 SAS: <span style={{ fontSize: 22 }}>{recomputed.composite}</span>
               </h4>
-              {result.place && (
-                <span className="text-[10px]" style={{ color: "#526078" }}>
-                  {result.place}
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {result.place && (
+                  <span className="text-[10px]" style={{ color: "#526078" }}>
+                    {result.place}
+                  </span>
+                )}
+                {onSaveToSlot && (
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={saved || !canSave}
+                    title={
+                      !canSave
+                        ? "All 4 slots are full — remove a candidate first"
+                        : saved
+                        ? "Saved to a card below"
+                        : "Save this exact engine result as a candidate card"
+                    }
+                    className="rounded px-2 py-1 text-[11px] font-semibold text-white disabled:opacity-50"
+                    style={{ background: saved ? "#1d6b32" : "#174be8" }}
+                  >
+                    {saved ? "✓ Saved to slot" : !canSave ? "Slots full (4/4)" : "Save to slot →"}
+                  </button>
+                )}
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-2 text-[11px] md:grid-cols-5" style={{ color: "#07142f" }}>
               <Stat label="School profile (25%)" v={recomputed.pillars.schoolProfile} />

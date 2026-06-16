@@ -11,19 +11,20 @@ type Item = { label: string; status: "done" | "todo" | "blocked"; note?: string 
 const ITEMS: Item[] = [
   { label: "Live scoring engine (compute-sas) wired end-to-end", status: "done" },
   { label: "Every score on this page now comes from the live engine (no demo numbers)", status: "done" },
-  { label: "Candidate cards: type a name + address → real pillar scores + composite", status: "done" },
-  { label: "Rich card UI restored: summary line, drive-time map, 6 metric tiles, Show all formulas", status: "done" },
-  { label: "Compare up to 4 sites side-by-side", status: "done" },
-  { label: "Decision summary table reads live scores", status: "done" },
-  { label: "Export decision pack uses live numbers", status: "done" },
+  { label: "One input surface: Live Engine box is the only place to type inputs; cards are read-only", status: "done" },
+  { label: "Save to slot — Live Engine result becomes a card (no second engine call, exact same numbers)", status: "done" },
+  { label: "Card titles wrap fully (no more 'Trinity C…' / 'Leaf…')", status: "done" },
+  { label: "Rich card UI: summary line, drive-time map, 6 metric tiles, Show all formulas toggle", status: "done" },
+  { label: "Calibration anchors auto-run once on mount with frozen inputs (reproducible delta)", status: "done" },
+  { label: "Compare up to 4 sites side-by-side · Decision summary · Export decision pack — all live", status: "done" },
   {
     label: "Calibration gate (Trinity vs LeafSpring) — currently FAILING",
     status: "blocked",
-    note: "Trinity 51.1 vs LeafSpring 55.4. LeafSpring should score materially lower; instead it scores higher. Needs Brett input on which signal(s) to recalibrate (likely density/accessibility weights or the LeafSpring 'closed site' penalty).",
+    note: "Trinity 51.1 vs LeafSpring 43.52 with the frozen anchor inputs (private elementary vs closed daycare). Gap is 7.6, gate requires ≥20. Needs Brett input on which signal(s) to recalibrate (likely add a 'closed/inactive site' penalty or rebalance density/accessibility weights).",
   },
   { label: "Drive-to-highway + parking tiles (engine v0.2)", status: "todo" },
   { label: "Real Mapbox tiles + isochrone overlay (schematic shown today)", status: "todo" },
-  { label: "Persist analyzed candidates across reloads", status: "todo" },
+  { label: "Persist analyzed slots across reloads", status: "todo" },
 ];
 
 function Icon({ status }: { status: Item["status"] }) {

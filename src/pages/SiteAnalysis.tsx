@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CheckCircle2,
   Download,
@@ -14,8 +14,9 @@ import { PageHeader } from "@/components/PageHeader";
 import { LiveEngineCard, SAS_ENGINE_LIVE } from "@/components/site-analysis/LiveEngineCard";
 import { Feature1BStatus } from "@/components/phase2-demo/Feature1BStatus";
 import { SiteDecisionControls } from "@/components/phase2-demo/SiteDecisionControls";
+import { supabase } from "@/integrations/supabase/client";
 import { useSiteDecisions, type SiteVerdict } from "@/hooks/useSiteDecisions";
-import { useSiteScore, type SiteScoreResult, type SiteScoreSignals } from "@/hooks/useSiteScore";
+import { type SiteScoreResult, type SiteScoreSignals } from "@/hooks/useSiteScore";
 import { exportSiteDecisionPack, type ExportCandidate } from "@/lib/decisionsExport";
 import { SITE_RECOMMEND_THRESHOLDS } from "@/data/phase2DemoData";
 import {
@@ -89,62 +90,59 @@ const LEAFSPRING_CANDIDATE: Candidate = {
 };
 
 // ---------------------------------------------------------------------------
-// CandidateCard
+// CandidateCard — DISPLAY-ONLY.
+//
+// All inputs come from the parent (the Live Engine card or a hard-coded
+// anchor preset). The card does not own an engine call. Its props carry the
+// already-computed result. Re-run / Remove are parent callbacks. This is what
+// guarantees "one calibrated number everywhere": every surface shows the
+// engine result object that was last written into the slot — no card-local
+// re-computation, no card-local input form.
 // ---------------------------------------------------------------------------
 
-interface CardProps {
-  candidate: Candidate;
-  onChange: (c: Candidate) => void;
-  onRemove?: () => void;
-  onResult: (result: SiteScoreResult | null) => void;
-  autoRun: boolean;
+const SCHOOL_TYPE_LABEL: Record<SchoolType, string> = {
+  private_elementary: "Private elementary",
+  public_elementary: "Public elementary",
+  charter_elementary: "Charter elementary",
+  montessori: "Montessori",
+  daycare: "Daycare",
+  other_k8: "Other K-8",
+  other: "Other",
+};
+const GRADE_BAND_LABEL: Record<GradeBand, string> = {
+  k5_k6: "K-5 / K-6",
+  prek_5: "Pre-K through 5",
+  k8: "K-8",
+  other: "Other",
+};
+
+type SlotStatus = "idle" | "loading" | "ready" | "error";
+
+interface SlotState extends Candidate {
+  status: SlotStatus;
+  result: SiteScoreResult | null;
+  error: string | null;
 }
 
-function CandidateCard({ candidate, onChange, onRemove, onResult, autoRun }: CardProps) {
-  const { status, result, error, run } = useSiteScore();
+interface CardProps {
+  slot: SlotState;
+  onRerun: () => void;
+  onRemove?: () => void;
+}
+
+function CandidateCard({ slot, onRerun, onRemove }: CardProps) {
   const { byAddress } = useSiteDecisions();
-  const decision = byAddress.get(candidate.address);
+  const decision = byAddress.get(slot.address);
   const brettVerdict: SiteVerdict | undefined =
     decision && decision.verdict !== "undecided" ? decision.verdict : undefined;
   const isWinner = decision?.is_winner ?? false;
   const [showFormulas, setShowFormulas] = useState(false);
 
-  // Auto-run for pre-seeded calibration candidates on first mount.
-  useEffect(() => {
-    if (!autoRun) return;
-    if (status !== "idle") return;
-    if (!candidate.address.trim() || !candidate.schoolName.trim()) return;
-    run({
-      schoolName: candidate.schoolName,
-      address: candidate.address,
-      schoolType: candidate.schoolType,
-      gradeBand: candidate.gradeBand,
-      enrollment: candidate.enrollment ? Number(candidate.enrollment) : null,
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoRun]);
-
-  // Bubble result up so parent (calibration banner, summary, export) sees it.
-  useEffect(() => {
-    onResult(result);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result]);
-
-  const recomputed = result ? recomputeSiteScores(result.pillars) : null;
+  const recomputed = slot.result ? recomputeSiteScores(slot.result.pillars) : null;
   const composite = recomputed?.composite ?? null;
   const scoreTier = composite != null ? tierBadge(composite) : null;
   const pill = brettVerdict ? VERDICT_STYLE[brettVerdict] : scoreTier;
   const pillSource = brettVerdict ? "Brett/Sam's call" : "auto from score";
-
-  const submit = () => {
-    run({
-      schoolName: candidate.schoolName,
-      address: candidate.address,
-      schoolType: candidate.schoolType,
-      gradeBand: candidate.gradeBand,
-      enrollment: candidate.enrollment ? Number(candidate.enrollment) : null,
-    });
-  };
 
   return (
     <div
@@ -158,15 +156,17 @@ function CandidateCard({ candidate, onChange, onRemove, onResult, autoRun }: Car
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            <MapPin size={14} style={{ color: BLUE }} className="shrink-0" />
+          <div className="flex items-start gap-1.5">
+            <MapPin size={14} style={{ color: BLUE, marginTop: 3 }} className="shrink-0" />
             <h3
-              className="truncate text-[13px] font-bold"
+              className="text-[13px] font-bold leading-snug break-words"
               style={{ color: NAVY }}
-              title={candidate.schoolName || "Unnamed candidate"}
+              title={slot.schoolName || "Unnamed candidate"}
             >
-              {candidate.schoolName || "New candidate"}
+              {slot.schoolName || "New candidate"}
             </h3>
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-1">
             {isWinner && (
               <span
                 className="inline-flex items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-bold"
@@ -175,25 +175,25 @@ function CandidateCard({ candidate, onChange, onRemove, onResult, autoRun }: Car
                 <Star size={9} className="mr-0.5" fill="#fff" /> Winner
               </span>
             )}
-            {candidate.calibrationRole && (
+            {slot.calibrationRole && (
               <span
                 className="inline-flex items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
                 style={{ backgroundColor: "#dde7ff", color: BLUE }}
-                title="Pre-seeded calibration anchor"
+                title="Pre-seeded calibration anchor — inputs are frozen so the calibration delta is reproducible"
               >
-                {candidate.calibrationRole === "trinity" ? "Positive anchor" : "Negative anchor"}
+                {slot.calibrationRole === "trinity" ? "Positive anchor" : "Negative anchor"}
               </span>
             )}
           </div>
-          {candidate.address && (
-            <p
-              className="mt-0.5 line-clamp-1 text-[11px]"
-              style={{ color: MUTED }}
-              title={candidate.address}
-            >
-              {candidate.address}
+          {slot.address && (
+            <p className="mt-1 text-[11px] break-words" style={{ color: MUTED }}>
+              {slot.address}
             </p>
           )}
+          <p className="mt-1 text-[10px]" style={{ color: MUTED }}>
+            {SCHOOL_TYPE_LABEL[slot.schoolType]} · {GRADE_BAND_LABEL[slot.gradeBand]}
+            {slot.enrollment ? ` · enrollment ${slot.enrollment}` : ""}
+          </p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           {composite != null ? (
@@ -213,127 +213,46 @@ function CandidateCard({ candidate, onChange, onRemove, onResult, autoRun }: Car
                   {pill.label}
                 </span>
               )}
-              <span
-                className="text-[9px] uppercase tracking-wide"
-                style={{ color: MUTED }}
-              >
+              <span className="text-[9px] uppercase tracking-wide" style={{ color: MUTED }}>
                 {pillSource}
               </span>
             </>
           ) : (
-            <span
-              className="text-[10px] uppercase tracking-wide"
-              style={{ color: MUTED }}
-            >
-              {status === "loading" ? "Computing…" : "No score yet"}
+            <span className="text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
+              {slot.status === "loading" ? "Computing…" : slot.status === "error" ? "Error" : "No score yet"}
             </span>
           )}
         </div>
       </div>
 
-      {/* Input form */}
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <label
-          className="col-span-2 flex flex-col gap-1 text-[10px]"
-          style={{ color: MUTED }}
+      {/* Re-run / Remove */}
+      <div className="mt-2 flex items-center justify-end gap-2">
+        <button
+          type="button"
+          onClick={onRerun}
+          disabled={slot.status === "loading"}
+          className="inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[10px] font-semibold disabled:opacity-50"
+          style={{ borderColor: BORDER, color: BLUE }}
+          title="Re-run the live engine with these exact inputs"
         >
-          School name
-          <input
-            type="text"
-            value={candidate.schoolName}
-            onChange={(e) => onChange({ ...candidate, schoolName: e.target.value })}
-            className="rounded border px-2 py-1 text-[12px]"
-            style={{ borderColor: BORDER, color: NAVY }}
-            placeholder="e.g. Trinity Episcopal School"
-          />
-        </label>
-        <label
-          className="col-span-2 flex flex-col gap-1 text-[10px]"
-          style={{ color: MUTED }}
-        >
-          Address
-          <input
-            type="text"
-            value={candidate.address}
-            onChange={(e) => onChange({ ...candidate, address: e.target.value })}
-            className="rounded border px-2 py-1 text-[12px]"
-            style={{ borderColor: BORDER, color: NAVY }}
-            placeholder="3901 Bee Caves Rd, Austin, TX 78746"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-[10px]" style={{ color: MUTED }}>
-          School type
-          <select
-            value={candidate.schoolType}
-            onChange={(e) =>
-              onChange({ ...candidate, schoolType: e.target.value as SchoolType })
-            }
-            className="rounded border px-2 py-1 text-[12px]"
-            style={{ borderColor: BORDER, color: NAVY }}
-          >
-            <option value="private_elementary">Private elementary</option>
-            <option value="public_elementary">Public elementary</option>
-            <option value="charter_elementary">Charter elementary</option>
-            <option value="montessori">Montessori</option>
-            <option value="daycare">Daycare</option>
-            <option value="other_k8">Other K-8</option>
-            <option value="other">Other</option>
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-[10px]" style={{ color: MUTED }}>
-          Grade band
-          <select
-            value={candidate.gradeBand}
-            onChange={(e) =>
-              onChange({ ...candidate, gradeBand: e.target.value as GradeBand })
-            }
-            className="rounded border px-2 py-1 text-[12px]"
-            style={{ borderColor: BORDER, color: NAVY }}
-          >
-            <option value="k5_k6">K-5 / K-6</option>
-            <option value="prek_5">Pre-K through 5</option>
-            <option value="k8">K-8</option>
-            <option value="other">Other</option>
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-[10px]" style={{ color: MUTED }}>
-          Enrollment (optional)
-          <input
-            type="number"
-            value={candidate.enrollment}
-            onChange={(e) => onChange({ ...candidate, enrollment: e.target.value })}
-            className="rounded border px-2 py-1 text-[12px]"
-            style={{ borderColor: BORDER, color: NAVY }}
-            placeholder="540"
-          />
-        </label>
-        <div className="flex items-end justify-end gap-2">
-          {onRemove && (
-            <button
-              type="button"
-              onClick={onRemove}
-              className="rounded border px-2 py-1 text-[11px]"
-              style={{ borderColor: BORDER, color: MUTED }}
-            >
-              Remove
-            </button>
-          )}
+          {slot.status === "loading" && <Loader2 size={10} className="animate-spin" />}
+          {slot.status === "loading" ? "Running…" : "↻ Re-run"}
+        </button>
+        {onRemove && (
           <button
             type="button"
-            onClick={submit}
-            disabled={status === "loading"}
-            className="inline-flex items-center gap-1 rounded px-3 py-1 text-[11px] font-semibold text-white disabled:opacity-60"
-            style={{ background: BLUE }}
+            onClick={onRemove}
+            className="rounded border px-2 py-0.5 text-[10px]"
+            style={{ borderColor: BORDER, color: MUTED }}
           >
-            {status === "loading" && <Loader2 size={11} className="animate-spin" />}
-            {status === "loading" ? "Analyzing…" : "Analyze"}
+            ✕ Remove
           </button>
-        </div>
+        )}
       </div>
 
-      {error && (
-        <p className="mt-2 text-[11px]" style={{ color: "#a3142b" }}>
-          {error}
+      {slot.error && (
+        <p className="mt-2 rounded border px-2 py-1 text-[11px]" style={{ color: "#a3142b", borderColor: "#f5c6cd", backgroundColor: "#fdf2f4" }}>
+          Engine error: {slot.error}. Click ↻ Re-run to retry.
         </p>
       )}
 
@@ -345,19 +264,16 @@ function CandidateCard({ candidate, onChange, onRemove, onResult, autoRun }: Car
       )}
 
       {/* Drive-time schematic (concentric rings) */}
-      {recomputed && <DriveTimeSchematic place={result?.place} />}
+      {recomputed && <DriveTimeSchematic place={slot.result?.place} />}
 
       {/* Six metric tiles — live from compute-sas signals */}
-      {recomputed && <MetricTiles signals={result?.signals} />}
+      {recomputed && <MetricTiles signals={slot.result?.signals} />}
 
       {/* Pillar bars */}
       {recomputed && (
         <div className="mt-3 space-y-1.5">
           <div className="flex items-center justify-between">
-            <div
-              className="text-[10px] font-semibold uppercase tracking-wide"
-              style={{ color: MUTED }}
-            >
+            <div className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: MUTED }}>
               Sub-scores
             </div>
             <button
@@ -370,12 +286,7 @@ function CandidateCard({ candidate, onChange, onRemove, onResult, autoRun }: Car
             </button>
           </div>
           <PillarBar label="School Profile" weight={0.25} value={recomputed.pillars.schoolProfile} showFormula={showFormulas} />
-          <PillarBar
-            label="Neighborhood Affluence"
-            weight={0.25}
-            value={recomputed.pillars.affluence}
-            showFormula={showFormulas}
-          />
+          <PillarBar label="Neighborhood Affluence" weight={0.25} value={recomputed.pillars.affluence} showFormula={showFormulas} />
           <PillarBar label="Family Density" weight={0.2} value={recomputed.pillars.familyDensity} showFormula={showFormulas} />
           <PillarBar label="School Ecosystem" weight={0.15} value={recomputed.pillars.ecosystem} showFormula={showFormulas} />
           <PillarBar label="Accessibility" weight={0.15} value={recomputed.pillars.accessibility} showFormula={showFormulas} />
@@ -384,19 +295,19 @@ function CandidateCard({ candidate, onChange, onRemove, onResult, autoRun }: Car
               Composite = sum of weighted contributions = <strong>{recomputed.composite}</strong>
             </p>
           )}
-          {result?.place && (
+          {slot.result?.place && (
             <p className="pt-1 text-[10px]" style={{ color: MUTED }}>
-              Geocoded: {result.place}
+              Geocoded: {slot.result.place}
             </p>
           )}
         </div>
       )}
 
-      {/* Brett's decision controls — only meaningful once we have a score */}
+      {/* Brett's decision controls */}
       {recomputed && (
         <SiteDecisionControls
-          address={candidate.address}
-          schoolName={candidate.schoolName}
+          address={slot.address}
+          schoolName={slot.schoolName}
           defaultVerdict={defaultVerdictFromScore(recomputed.composite)}
         />
       )}
@@ -479,10 +390,7 @@ function Tile({ label, value, dash, dashTip }: { label: string; value?: string; 
       <div className="text-[9px] font-semibold uppercase tracking-wide" style={{ color: MUTED }}>
         {label}
       </div>
-      <div
-        className="text-[13px] font-bold tabular-nums"
-        style={{ color: dash ? MUTED : NAVY }}
-      >
+      <div className="text-[13px] font-bold tabular-nums" style={{ color: dash ? MUTED : NAVY }}>
         {dash ? "—" : value ?? "—"}
       </div>
     </div>
@@ -570,24 +478,16 @@ function PillarBar({
 }
 
 
+
 // ---------------------------------------------------------------------------
 // Empty add-slot
 // ---------------------------------------------------------------------------
 
-function EmptySlot({ onAdd }: { onAdd: () => void }) {
+function EmptySlot() {
   return (
-    <button
-      type="button"
-      onClick={onAdd}
-      className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 text-center transition-colors hover:border-[var(--add-hover)] hover:bg-[#f7faff]"
-      style={
-        {
-          borderColor: BORDER,
-          color: MUTED,
-          minHeight: 540,
-          ["--add-hover" as string]: BLUE,
-        } as React.CSSProperties
-      }
+    <div
+      className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 text-center"
+      style={{ borderColor: BORDER, color: MUTED, minHeight: 540 }}
     >
       <div
         className="flex h-9 w-9 items-center justify-center rounded-full"
@@ -596,12 +496,13 @@ function EmptySlot({ onAdd }: { onAdd: () => void }) {
         <Plus size={18} />
       </div>
       <div className="mt-2 text-[12px] font-semibold" style={{ color: NAVY }}>
-        Add candidate site
+        Empty slot
       </div>
-      <p className="mt-1 max-w-[180px] text-[11px]">
-        Add a school + address; the live engine scores it. Up to 4 candidates side-by-side.
+      <p className="mt-1 max-w-[200px] text-[11px]">
+        Compute a site in the <strong>Live Site Analysis Engine</strong> above, then click
+        <strong> Save to slot</strong> to fill this card.
       </p>
-    </button>
+    </div>
   );
 }
 
@@ -787,54 +688,103 @@ function DecisionSummary({
 // ---------------------------------------------------------------------------
 
 export default function SiteAnalysis() {
-  const [candidates, setCandidates] = useState<Candidate[]>([
-    TRINITY_CANDIDATE,
-    LEAFSPRING_CANDIDATE,
+  // Slots hold the *frozen* inputs + the last engine result. There is no
+  // per-card input form anymore: the only way to feed inputs into the engine
+  // is via the Live Engine card above and the "Save to slot" button.
+  const [slots, setSlots] = useState<SlotState[]>([
+    { ...TRINITY_CANDIDATE, status: "idle", result: null, error: null },
+    { ...LEAFSPRING_CANDIDATE, status: "idle", result: null, error: null },
   ]);
-  // Per-candidate live engine result; mirrors the candidates array by id.
-  const [results, setResults] = useState<Record<string, SiteScoreResult | null>>({});
   const { byAddress } = useSiteDecisions();
+  const ranOnceRef = useRef<Set<string>>(new Set());
 
-  const updateCandidate = (id: string, next: Candidate) => {
-    setCandidates((prev) => prev.map((c) => (c.id === id ? next : c)));
-  };
-  const removeCandidate = (id: string) => {
-    setCandidates((prev) => prev.filter((c) => c.id !== id));
-    setResults((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
+  const patchSlot = useCallback((id: string, patch: Partial<SlotState>) => {
+    setSlots((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+  }, []);
+
+  const runSlot = useCallback(
+    async (id: string) => {
+      const slot = slots.find((s) => s.id === id);
+      if (!slot) return;
+      if (!slot.address.trim() || !slot.schoolName.trim()) {
+        patchSlot(id, { status: "error", error: "School name and address are required." });
+        return;
+      }
+      patchSlot(id, { status: "loading", error: null });
+      try {
+        const { data, error } = await supabase.functions.invoke("compute-sas", {
+          body: {
+            address: slot.address.trim(),
+            school_name: slot.schoolName.trim(),
+            school_type: slot.schoolType,
+            enrollment: slot.enrollment ? Number(slot.enrollment) : null,
+            grade_band: slot.gradeBand,
+          },
+        });
+        if (error) throw error;
+        if ((data as { status?: string })?.status === "failed") {
+          throw new Error((data as { error?: string }).error ?? "Engine failed");
+        }
+        patchSlot(id, { status: "ready", result: data as SiteScoreResult, error: null });
+      } catch (e) {
+        const msg = (e as Error).message ?? "Engine call failed";
+        patchSlot(id, { status: "error", error: msg });
+      }
+    },
+    [slots, patchSlot],
+  );
+
+  // Auto-run the calibration anchors exactly once on first mount.
+  useEffect(() => {
+    slots.forEach((s) => {
+      if (!s.calibrationRole) return;
+      if (ranOnceRef.current.has(s.id)) return;
+      ranOnceRef.current.add(s.id);
+      runSlot(s.id);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const removeSlot = (id: string) => {
+    setSlots((prev) => prev.filter((s) => s.id !== id));
   };
-  const addCandidate = () => {
-    if (candidates.length >= 4) return;
-    setCandidates((prev) => [
+
+  // Save a freshly-computed Live Engine result directly into a new slot. No
+  // second engine call — the card stores the exact result object the engine
+  // returned. This is what enforces "one calibrated number everywhere".
+  const saveResultToNewSlot = (input: {
+    schoolName: string;
+    address: string;
+    schoolType: SchoolType;
+    gradeBand: GradeBand;
+    enrollment: string;
+  }, result: SiteScoreResult) => {
+    if (slots.length >= 4) return;
+    const id = `slot-${Date.now()}`;
+    setSlots((prev) => [
       ...prev,
       {
-        id: `candidate-${Date.now()}`,
-        schoolName: "",
-        address: "",
-        schoolType: "private_elementary",
-        gradeBand: "k5_k6",
-        enrollment: "",
+        id,
+        schoolName: input.schoolName,
+        address: input.address,
+        schoolType: input.schoolType,
+        gradeBand: input.gradeBand,
+        enrollment: input.enrollment,
+        status: "ready",
+        result,
+        error: null,
       },
     ]);
-  };
-  const setResultFor = (id: string, result: SiteScoreResult | null) => {
-    setResults((prev) => (prev[id] === result ? prev : { ...prev, [id]: result }));
   };
 
   const scored: ScoredCandidate[] = useMemo(
     () =>
-      candidates.map((c) => {
-        const result = results[c.id] ?? null;
-        return {
-          candidate: c,
-          result,
-          composite: result ? siteComposite(result.pillars) : null,
-        };
-      }),
-    [candidates, results],
+      slots.map((s) => ({
+        candidate: s,
+        result: s.result,
+        composite: s.result ? siteComposite(s.result.pillars) : null,
+      })),
+    [slots],
   );
 
   const trinityScored = scored.find((s) => s.candidate.calibrationRole === "trinity");
@@ -847,7 +797,7 @@ export default function SiteAnalysis() {
   const winnerDecision = winner ? byAddress.get(winner.candidate.address) : undefined;
   const canExport = !!(winner && winner.composite != null);
 
-  const emptySlots = Math.max(0, 4 - candidates.length);
+  const emptySlots = Math.max(0, 4 - slots.length);
 
   const handleExport = () => {
     const exportRows: ExportCandidate[] = scored
@@ -864,6 +814,7 @@ export default function SiteAnalysis() {
     exportSiteDecisionPack(exportRows, byAddress);
   };
 
+
   return (
     <>
       <PageHeader
@@ -874,7 +825,12 @@ export default function SiteAnalysis() {
 
       <Feature1BStatus />
 
-      {SAS_ENGINE_LIVE && <LiveEngineCard />}
+      {SAS_ENGINE_LIVE && (
+        <LiveEngineCard
+          canSave={slots.length < 4}
+          onSaveToSlot={(input, result) => saveResultToNewSlot(input, result as SiteScoreResult)}
+        />
+      )}
 
       {/* Formula + thresholds — single, no "Austin metro" wording */}
       <section className="mb-4 rounded-lg border bg-white p-4" style={{ borderColor: BORDER }}>
@@ -971,18 +927,16 @@ export default function SiteAnalysis() {
       <WinnerBanner winner={winner} winnerDecision={winnerDecision} />
 
       <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {candidates.map((c) => (
+        {slots.map((s) => (
           <CandidateCard
-            key={c.id}
-            candidate={c}
-            autoRun={!!c.calibrationRole}
-            onChange={(next) => updateCandidate(c.id, next)}
-            onRemove={c.calibrationRole ? undefined : () => removeCandidate(c.id)}
-            onResult={(r) => setResultFor(c.id, r)}
+            key={s.id}
+            slot={s}
+            onRerun={() => runSlot(s.id)}
+            onRemove={s.calibrationRole ? undefined : () => removeSlot(s.id)}
           />
         ))}
         {Array.from({ length: emptySlots }).map((_, i) => (
-          <EmptySlot key={`empty-${i}`} onAdd={addCandidate} />
+          <EmptySlot key={`empty-${i}`} />
         ))}
       </section>
 

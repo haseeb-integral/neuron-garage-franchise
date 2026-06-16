@@ -244,6 +244,9 @@ Deno.serve(async (req) => {
     };
 
     // 5) Accessibility v0.2 — measure real drive distance to nearest hwy + major road.
+    //    No silent fallback: if Overpass or Mapbox Directions fails, the whole
+    //    analysis is marked failed with an explicit error. We never substitute
+    //    a synthetic constant for a missing distance.
     const [hwyNode, roadNode] = await Promise.all([
       nearestHighwayNode(geo.lat, geo.lng),
       nearestMajorRoadNode(geo.lat, geo.lng),
@@ -252,6 +255,38 @@ Deno.serve(async (req) => {
       hwyNode ? drivingDistanceMiles({ lat: geo.lat, lng: geo.lng }, hwyNode) : Promise.resolve(null),
       roadNode ? drivingDistanceMiles({ lat: geo.lat, lng: geo.lng }, roadNode) : Promise.resolve(null),
     ]);
+
+    const accessibilityFailures: string[] = [];
+    if (hwyNode == null) accessibilityFailures.push("overpass_highway_node");
+    else if (highwayDistanceMi == null) accessibilityFailures.push("mapbox_directions_highway");
+    if (roadNode == null) accessibilityFailures.push("overpass_major_road_node");
+    else if (roadDistanceMi == null) accessibilityFailures.push("mapbox_directions_road");
+
+    if (accessibilityFailures.length > 0 || highwayDistanceMi == null || roadDistanceMi == null) {
+      // Persist what we know so the failure is debuggable, then fail loudly.
+      await supabase
+        .from("site_analyses")
+        .update({
+          latitude: geo.lat,
+          longitude: geo.lng,
+          signals: {
+            acs10,
+            acs15,
+            accessibility: {
+              highwayDistanceMi: highwayDistanceMi == null ? null : round2(highwayDistanceMi),
+              roadDistanceMi: roadDistanceMi == null ? null : round2(roadDistanceMi),
+              failures: accessibilityFailures,
+            },
+            version: ENGINE_VERSION,
+          },
+        })
+        .eq("id", analysisId);
+      return await fail(
+        `Accessibility lookup failed (${accessibilityFailures.join(", ")}). ` +
+          `Live road/highway distances unavailable — refusing to compute a score with synthetic data. ` +
+          `This usually clears within a minute (Overpass rate limit); please retry.`,
+      );
+    }
 
     // 6) Score.
     const pillars = {
@@ -294,8 +329,8 @@ Deno.serve(async (req) => {
         source: ecosystemSource,
       },
       accessibility: {
-        highwayDistanceMi: highwayDistanceMi == null ? null : round2(highwayDistanceMi),
-        roadDistanceMi: roadDistanceMi == null ? null : round2(roadDistanceMi),
+        highwayDistanceMi: round2(highwayDistanceMi),
+        roadDistanceMi: round2(roadDistanceMi),
       },
       version: ENGINE_VERSION,
     };

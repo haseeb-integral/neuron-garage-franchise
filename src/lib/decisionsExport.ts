@@ -17,12 +17,6 @@ const VERDICT_LABEL: Record<MarketVerdict, string> = {
   undecided: "Undecided",
 };
 
-const SITE_VERDICT_LABEL: Record<SiteVerdict, string> = {
-  recommend: "Recommend",
-  worth_a_look: "Worth a look",
-  dont_recommend: "Don't recommend",
-  undecided: "Undecided",
-};
 
 function csvCell(v: string | number | null | undefined): string {
   if (v === null || v === undefined) return "";

@@ -267,9 +267,6 @@ export function LiveEngineCard({ onSaveToSlot, canSave = true }: LiveEngineCardP
           >
             {busy ? "Computing…" : "Compute SAS"}
           </button>
-          <span className="text-[10px]" style={{ color: "#526078" }}>
-            Profile preview: <strong>{previewSchoolProfile}</strong>
-          </span>
         </div>
       </div>
 

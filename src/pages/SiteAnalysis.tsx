@@ -136,43 +136,59 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace }: CardPropsExt) {
       style={{
         borderColor: isWinner ? "#1d6b32" : BORDER,
         borderWidth: isWinner ? 2 : 1,
-        minHeight: 540,
+        minHeight: 560,
       }}
     >
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3">
+      {/* Header — fixed height so all 4 cards align */}
+      <div className="flex items-start justify-between gap-3" style={{ minHeight: 110 }}>
         <div className="min-w-0 flex-1">
           <div className="flex items-start gap-1.5">
             <MapPin size={14} style={{ color: BLUE, marginTop: 3 }} className="shrink-0" />
             <h3
-              className="text-[13px] font-bold leading-snug break-words"
-              style={{ color: NAVY }}
+              className="text-[13px] font-bold leading-snug min-w-0 flex-1"
+              style={{
+                color: NAVY,
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }}
               title={slot.schoolName || "Unnamed candidate"}
             >
               {slot.schoolName || "New candidate"}
             </h3>
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-1">
-            {isWinner && (
+          {isWinner && (
+            <div className="mt-1">
               <span
                 className="inline-flex items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-bold"
                 style={{ backgroundColor: "#1d6b32", color: "#fff" }}
               >
                 <Star size={9} className="mr-0.5" fill="#fff" /> Winner
               </span>
-            )}
-          </div>
+            </div>
+          )}
           {slot.address && (
-            <p className="mt-1 text-[11px] break-words" style={{ color: MUTED }}>
+            <p
+              className="mt-1 text-[11px]"
+              style={{
+                color: MUTED,
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }}
+              title={slot.address}
+            >
               {slot.address}
             </p>
           )}
-          <p className="mt-1 text-[10px]" style={{ color: MUTED }}>
+          <p className="mt-1 truncate text-[10px]" style={{ color: MUTED }}>
             {SCHOOL_TYPE_LABEL[slot.schoolType]} · {GRADE_BAND_LABEL[slot.gradeBand]}
             {slot.enrollment ? ` · enrollment ${slot.enrollment}` : ""}
           </p>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-1">
+        <div className="flex shrink-0 flex-col items-end gap-1" style={{ width: 92 }}>
           {composite != null ? (
             <>
               <div
@@ -206,6 +222,7 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace }: CardPropsExt) {
           )}
         </div>
       </div>
+
 
       {/* Re-run / Replace / Remove */}
       <div className="mt-2 flex items-center justify-end gap-2">

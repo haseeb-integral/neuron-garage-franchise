@@ -395,24 +395,10 @@ function fmtCount(n?: number) {
   return `${Math.round(n)}`;
 }
 
-// Parking data sources (Mapbox POI + landuse) are weak — we only assert a
-// positive signal when we actually see lot/garage features nearby. Otherwise
-// the label stays honest: "Not verified — confirm on site".
-const PARKING_LABEL: Record<NonNullable<SiteScoreSignals["parking"]>["bucket"] & string, string> = {
-  none: "Not verified — confirm on site",
-  street_only: "Not verified — confirm on site",
-  small_lot: "Nearby lot detected",
-  large_lot: "Multiple lots nearby",
-};
-
 function MetricTiles({ signals }: { signals?: SiteScoreSignals }) {
   const acs10 = signals?.acs10 ?? {};
   const acs15 = signals?.acs15 ?? {};
   const hwyMi = signals?.accessibility?.highwayDistanceMi;
-  const parking = signals?.parking;
-  const parkingValue = parking?.bucket
-    ? `${PARKING_LABEL[parking.bucket]}${parking.poiCount && (parking.bucket === "small_lot" || parking.bucket === "large_lot") ? ` (${parking.poiCount})` : ""}`
-    : "Not verified — confirm on site";
   return (
     <div className="mt-3 grid grid-cols-3 gap-1.5">
       <Tile label="Median HHI · 10m" value={fmtMoney(acs10.medianHhi)} />
@@ -423,11 +409,6 @@ function MetricTiles({ signals }: { signals?: SiteScoreSignals }) {
         value={hwyMi != null ? `${hwyMi.toFixed(1)} mi` : undefined}
         dash={hwyMi == null}
         dashTip="No motorway/trunk found within 12 mi — Accessibility scored via fallback"
-      />
-      <Tile
-        label="Parking"
-        value={parkingValue}
-        badge="v0.2"
       />
       <Tile label="Pop · 15m" value={fmtCount(acs15.totalPop)} />
     </div>

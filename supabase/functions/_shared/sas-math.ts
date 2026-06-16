@@ -110,11 +110,17 @@ export interface EcosystemInputs {
   nearbyStudentPop: number;
 }
 
+// Bug-3 fix (Manus 1B calibration analysis): ranges widened from the original
+// 3–25 / 1–10 / 2k–25k spec because dense metro markets (DFW, Austin, etc.)
+// saturate every site at 100, eliminating ecosystem as a differentiator
+// between strong and weak candidates. Widened ranges restore separation:
+// strong-ecosystem metros land mid-80s, school-deserts land in the 20s,
+// matching the reference Trinity 84 / LeafSpring 35 in the SAS methodology.
 export function ecosystemScore(i: EcosystemInputs): number {
   return (
-    0.4 * normalize(i.elementaryCount, 3, 25) +
-    0.3 * normalize(i.privateCount, 1, 10) +
-    0.3 * normalize(i.nearbyStudentPop, 2_000, 25_000)
+    0.4 * normalize(i.elementaryCount, 10, 100) +
+    0.3 * normalize(i.privateCount, 5, 50) +
+    0.3 * normalize(i.nearbyStudentPop, 5_000, 75_000)
   );
 }
 

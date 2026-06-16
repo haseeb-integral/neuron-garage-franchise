@@ -188,7 +188,7 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace }: CardPropsExt) {
             {slot.enrollment ? ` · enrollment ${slot.enrollment}` : ""}
           </p>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-1" style={{ width: 92 }}>
+        <div className="flex shrink-0 flex-col items-end gap-1" style={{ width: 110 }}>
           {composite != null ? (
             <>
               <div
@@ -207,14 +207,15 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace }: CardPropsExt) {
                 </span>
               ) : scoreTier ? (
                 <span
-                  className="inline-flex items-center whitespace-nowrap rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
-                  style={{ borderColor: scoreTier.fg, color: scoreTier.fg, backgroundColor: "#fff" }}
+                  className="inline-flex max-w-full items-center justify-center rounded-full border px-1.5 py-0.5 text-center text-[9px] font-semibold uppercase leading-tight tracking-wide"
+                  style={{ borderColor: scoreTier.fg, color: scoreTier.fg, backgroundColor: "#fff", wordBreak: "break-word" }}
                   title="Score-based tier suggestion. Confirm below to make it your decision."
                 >
-                  Suggested: {scoreTier.label}
+                  Suggested:<br />{scoreTier.label}
                 </span>
               ) : null}
             </>
+
           ) : (
             <span className="text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
               {slot.status === "loading" ? "Computing…" : slot.status === "error" ? "Error" : "No score yet"}

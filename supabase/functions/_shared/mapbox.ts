@@ -145,6 +145,16 @@ async function mapboxNearestRoad(
     geometry?: { type?: string; coordinates?: number[] | number[][] };
     properties?: { class?: string };
   }> = data?.features ?? [];
+  const classSeen = new Set<string>();
+  for (const f of features) {
+    const c = f?.properties?.class;
+    if (c) classSeen.add(c);
+  }
+  console.log(
+    `[sas] Tilequery returned ${features.length} feats; classes=${
+      Array.from(classSeen).join(",")
+    }; wanted=${classes.join(",")}`,
+  );
 
   let best: LngLat | null = null;
   let bestD = Infinity;

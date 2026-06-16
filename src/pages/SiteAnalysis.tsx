@@ -132,10 +132,12 @@ interface CardProps {
   onRemove?: () => void;
 }
 
-function CandidateCard({ slot, onRerun, onRemove }: CardProps) {
+interface CardPropsExt extends CardProps { onReplace?: () => void; }
+
+function CandidateCard({ slot, onRerun, onRemove, onReplace }: CardPropsExt) {
   const { byAddress } = useSiteDecisions();
   const decision = byAddress.get(slot.address);
-  const brettVerdict: SiteVerdict | undefined =
+  const userVerdict: SiteVerdict | undefined =
     decision && decision.verdict !== "undecided" ? decision.verdict : undefined;
   const isWinner = decision?.is_winner ?? false;
   const [showFormulas, setShowFormulas] = useState(false);
@@ -143,8 +145,12 @@ function CandidateCard({ slot, onRerun, onRemove }: CardProps) {
   const recomputed = slot.result ? recomputeSiteScores(slot.result.pillars) : null;
   const composite = recomputed?.composite ?? null;
   const scoreTier = composite != null ? tierBadge(composite) : null;
-  const pill = brettVerdict ? VERDICT_STYLE[brettVerdict] : scoreTier;
-  const pillSource = brettVerdict ? "Brett/Sam's call" : "auto from score";
+  const suggestedTier: SiteVerdict | undefined =
+    composite != null ? defaultVerdictFromScore(composite) : undefined;
+  // Pill shown next to score: ONLY user-selected verdict. If the user hasn't
+  // decided yet, we show a neutral score-tier hint (small, muted) — never
+  // surface "Don't recommend" as if it were a decision the user made.
+  const userPill = userVerdict ? VERDICT_STYLE[userVerdict] : null;
 
   return (
     <div
@@ -177,15 +183,6 @@ function CandidateCard({ slot, onRerun, onRemove }: CardProps) {
                 <Star size={9} className="mr-0.5" fill="#fff" /> Winner
               </span>
             )}
-            {slot.calibrationRole && (
-              <span
-                className="inline-flex items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
-                style={{ backgroundColor: "#dde7ff", color: BLUE }}
-                title="Pre-seeded calibration anchor — inputs are frozen so the calibration delta is reproducible"
-              >
-                {slot.calibrationRole === "trinity" ? "Positive anchor" : "Negative anchor"}
-              </span>
-            )}
           </div>
           {slot.address && (
             <p className="mt-1 text-[11px] break-words" style={{ color: MUTED }}>
@@ -206,18 +203,23 @@ function CandidateCard({ slot, onRerun, onRemove }: CardProps) {
               >
                 {composite}
               </div>
-              {pill && (
+              {userPill ? (
                 <span
                   className="inline-flex items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-bold"
-                  style={{ backgroundColor: pill.bg, color: pill.fg }}
-                  title={`${pill.label} — ${pillSource}`}
+                  style={{ backgroundColor: userPill.bg, color: userPill.fg }}
+                  title="Your decision"
                 >
-                  {pill.label}
+                  {userPill.label}
                 </span>
-              )}
-              <span className="text-[9px] uppercase tracking-wide" style={{ color: MUTED }}>
-                {pillSource}
-              </span>
+              ) : scoreTier ? (
+                <span
+                  className="inline-flex items-center whitespace-nowrap rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
+                  style={{ borderColor: scoreTier.fg, color: scoreTier.fg, backgroundColor: "#fff" }}
+                  title="Score-based tier suggestion. Confirm below to make it your decision."
+                >
+                  Suggested: {scoreTier.label}
+                </span>
+              ) : null}
             </>
           ) : (
             <span className="text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
@@ -227,7 +229,7 @@ function CandidateCard({ slot, onRerun, onRemove }: CardProps) {
         </div>
       </div>
 
-      {/* Re-run / Remove */}
+      {/* Re-run / Replace / Remove */}
       <div className="mt-2 flex items-center justify-end gap-2">
         <button
           type="button"
@@ -240,6 +242,17 @@ function CandidateCard({ slot, onRerun, onRemove }: CardProps) {
           {slot.status === "loading" && <Loader2 size={10} className="animate-spin" />}
           {slot.status === "loading" ? "Running…" : "↻ Re-run"}
         </button>
+        {onReplace && (
+          <button
+            type="button"
+            onClick={onReplace}
+            className="rounded border px-2 py-0.5 text-[10px]"
+            style={{ borderColor: BORDER, color: BLUE }}
+            title="Replace this card with a new computation from the Live Engine above"
+          >
+            ⇄ Replace
+          </button>
+        )}
         {onRemove && (
           <button
             type="button"
@@ -304,20 +317,15 @@ function CandidateCard({ slot, onRerun, onRemove }: CardProps) {
               Composite = sum of weighted contributions = <strong>{recomputed.composite}</strong>
             </p>
           )}
-          {slot.result?.place && (
-            <p className="pt-1 text-[10px]" style={{ color: MUTED }}>
-              Geocoded: {slot.result.place}
-            </p>
-          )}
         </div>
       )}
 
-      {/* Brett's decision controls */}
+      {/* Decision controls — no auto-default; user must select */}
       {recomputed && (
         <SiteDecisionControls
           address={slot.address}
           schoolName={slot.schoolName}
-          defaultVerdict={defaultVerdictFromScore(recomputed.composite)}
+          suggestedTier={suggestedTier}
         />
       )}
     </div>

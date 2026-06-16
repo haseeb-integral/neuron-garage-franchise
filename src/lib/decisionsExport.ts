@@ -8,9 +8,7 @@
  */
 
 import type { MarketDecisionRow, MarketVerdict } from "@/hooks/useMarketDecisions";
-import type { SiteDecisionRow, SiteVerdict } from "@/hooks/useSiteDecisions";
 import type { ShortlistRow } from "@/data/phase2DemoData";
-import type { SasPillarScores } from "@/lib/sasMath";
 
 const VERDICT_LABEL: Record<MarketVerdict, string> = {
   pursue: "Pursue",

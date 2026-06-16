@@ -107,6 +107,7 @@ function CandidateCard({ candidate, onChange, onRemove, onResult, autoRun }: Car
   const brettVerdict: SiteVerdict | undefined =
     decision && decision.verdict !== "undecided" ? decision.verdict : undefined;
   const isWinner = decision?.is_winner ?? false;
+  const [showFormulas, setShowFormulas] = useState(false);
 
   // Auto-run for pre-seeded calibration candidates on first mount.
   useEffect(() => {

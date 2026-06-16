@@ -35,15 +35,15 @@ import {
   recommendationsBullets,
 } from "./copy";
 
-// ---- Inter font (rsms TTFs from GitHub raw — react-pdf needs TTF, not woff2). ----
+// ---- Inter font (jsDelivr GitHub mirror — serves rsms/inter TTFs with CORS). ----
 Font.register({
   family: "Inter",
   fonts: [
-    { src: "https://github.com/rsms/inter/raw/master/docs/font-files/Inter-Regular.ttf", fontWeight: 400 },
-    { src: "https://github.com/rsms/inter/raw/master/docs/font-files/Inter-Medium.ttf", fontWeight: 500 },
-    { src: "https://github.com/rsms/inter/raw/master/docs/font-files/Inter-SemiBold.ttf", fontWeight: 600 },
-    { src: "https://github.com/rsms/inter/raw/master/docs/font-files/Inter-Bold.ttf", fontWeight: 700 },
-    { src: "https://github.com/rsms/inter/raw/master/docs/font-files/Inter-Italic.ttf", fontWeight: 400, fontStyle: "italic" },
+    { src: "https://cdn.jsdelivr.net/gh/rsms/inter@master/docs/font-files/Inter-Regular.ttf", fontWeight: 400 },
+    { src: "https://cdn.jsdelivr.net/gh/rsms/inter@master/docs/font-files/Inter-Medium.ttf", fontWeight: 500 },
+    { src: "https://cdn.jsdelivr.net/gh/rsms/inter@master/docs/font-files/Inter-SemiBold.ttf", fontWeight: 600 },
+    { src: "https://cdn.jsdelivr.net/gh/rsms/inter@master/docs/font-files/Inter-Bold.ttf", fontWeight: 700 },
+    { src: "https://cdn.jsdelivr.net/gh/rsms/inter@master/docs/font-files/Inter-Italic.ttf", fontWeight: 400, fontStyle: "italic" },
   ],
 });
 // Stop react-pdf from breaking words mid-character.

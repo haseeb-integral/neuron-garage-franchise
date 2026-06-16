@@ -1,75 +1,45 @@
-# Port Site Analysis PDF (Feature 1B) to @react-pdf/renderer
+# Fix "PDF export failed" — font fetch is blocked by CORS
 
-Replace the jsPDF + jspdf-autotable engine for Feature 1B with `@react-pdf/renderer`. Same 10 sections, same 4-up comparison, same map images, same inputs — better typography, real page-break handling, no more glyph garbling, no more overlapping text.
+## Root cause
 
-Market Validation PDF (`marketReportPdf.ts`) is out of scope and stays on jsPDF.
+`SitePackDocument.tsx` registers Inter from GitHub raw URLs:
 
-## Dependencies
+```
+https://github.com/rsms/inter/raw/master/docs/font-files/Inter-Regular.ttf
+```
 
-Add `@react-pdf/renderer` (~400KB gz, MIT, browser-only, no backend).
+GitHub raw redirects (302) to `objects.githubusercontent.com`, which does **not** send `Access-Control-Allow-Origin`. `@react-pdf/renderer` fetches font sources via `fetch()` in the browser; the redirected response is blocked, the font load promise rejects, and `pdf().toBlob()` throws — surfacing in `handleExport` as `toast.error("PDF export failed")`.
 
-## New file: `src/lib/sitePack/SitePackDocument.tsx`
+## Fix
 
-A typed React component tree that renders the report. Exports:
+Swap the font URLs to **jsDelivr's GitHub mirror**, which serves the same TTFs with permissive CORS headers (`access-control-allow-origin: *`):
 
-- `SitePackDocument` — the `<Document>` component, props = same `BuildSitePackArgs` shape used today.
-- `renderSitePackPdfBlob(args): Promise<Blob>` — convenience wrapper around `pdf(<SitePackDocument {...args}/>).toBlob()`.
+```
+https://cdn.jsdelivr.net/gh/rsms/inter@master/docs/font-files/Inter-Regular.ttf
+https://cdn.jsdelivr.net/gh/rsms/inter@master/docs/font-files/Inter-Medium.ttf
+https://cdn.jsdelivr.net/gh/rsms/inter@master/docs/font-files/Inter-SemiBold.ttf
+https://cdn.jsdelivr.net/gh/rsms/inter@master/docs/font-files/Inter-Bold.ttf
+https://cdn.jsdelivr.net/gh/rsms/inter@master/docs/font-files/Inter-Italic.ttf
+```
 
-Inside the file:
+Same file bytes, jsDelivr is a trusted public CDN, no extra dependency, no bundle size change.
 
-- `Font.register` Inter from Google Fonts CDN (Regular 400, Medium 500, SemiBold 600, Bold 700, Italic 400i). One font, used everywhere — kills the "fonts not uniform" complaint.
-- Reuse the existing pure helpers from `sitePackPdf.ts` (`verdictSentence`, `strengthsBullets`, `risksBullets`, `opportunitiesBullets`, `recommendationsBullets`, `fmtMoney`/`fmtPct`/`fmtCount`/`fmtMi`, tier color mapping, `VERDICT_LABEL`). Move them to `src/lib/sitePack/copy.ts` so both this component and any future surface can import them.
-- Component tree:
-    - `<CoverPage candidates today />` — title, subtitle, weighting line, summary `<Table>` of all candidates (Candidate | SAS | Tier | Decision | Winner). Tier cell colored by tier; Winner cell shows `★` (real Unicode — Inter has it).
-    - `<CandidateDetail candidate />` rendered once per candidate, `wrap` enabled so long content reflows cleanly:
-        - Section 1 Executive Summary — score card (SAS number + tier chip + WINNER badge if marked) and verdict sentence in a flex row.
-        - Section 2 School Profile — `<KvTable>` (4 rows).
-        - Section 3 Neighborhood Affluence — `<KvTable>` (4 rows) + `<Image src={mapPngDataUrl}/>` if present, with a caption.
-        - Section 4 Family Density — `<KvTable>` (3 rows).
-        - Section 5 School Ecosystem — `<KvTable>` (3 rows).
-        - Section 6 Accessibility — `<KvTable>` (3 rows).
-        - Section 7 Strengths — `<BulletList>`.
-        - Section 8 Risks — `<BulletList>`.
-        - Section 9 Opportunities — `<BulletList>`.
-        - Section 10 Recommendations — `<BulletList>`.
-        - Each section title uses `wrap={false}` with its first paragraph so headers never orphan.
-    - `<ComparisonPage cols />` — 4-up matrix as a `<Table>` with header row of school names and one row per metric (Address, SAS, Tier, all 5 pillars, Decision, Winner). Tier row cells colored by tier.
-- Shared primitives in same file: `<SectionTitle n label/>`, `<KvTable rows/>`, `<BulletList items/>`, `<Table head body columnStyles/>`, `<Chrome page header/>` (header line + page footer via `<Text render={({pageNumber, totalPages}) => ...}/>`).
-- Styles via `StyleSheet.create` — single semantic palette (navy/blue/muted/soft/line/green/amber/red/white) matching the current PDF's brand colors.
+## Also (small reliability win)
 
-## Edits
+Wrap `handleExport`'s catch with `console.error(err)` already exists — good. Add the error message to the toast so future failures are diagnosable from the UI:
 
-**`src/pages/SiteAnalysis.tsx`** — `handleExport`:
-- Drop the `buildSitePackPdf` import and `pdf.save(...)` call.
-- Import `renderSitePackPdfBlob` from the new file.
-- Keep the parallel `fetchMapPng` step exactly as today.
-- `const blob = await renderSitePackPdfBlob({ candidates, generatedAt: new Date() });`
-- Trigger download with a hidden `<a download={filename} href={URL.createObjectURL(blob)}>` click, revoke the object URL after. (Same UX as `pdf.save`.)
-- "Generating PDF…" toast + `Loader2` spinner stay.
+```ts
+toast.error(`PDF export failed: ${err instanceof Error ? err.message : "unknown"}`);
+```
 
-**Copy fixes carry over from current file** (already shipped, but moved to `copy.ts`):
-- Don't-Recommend tier text is generic and tier-driven, no "negative anchor" / "calibration corpus" wording on Trinity / St. Francis.
-- Winner badge text reads `★ Winner` (Inter renders ★ correctly — no more `&` glitch).
+## Files
 
-## Delete
-
-- `src/lib/sitePackPdf.ts` — replaced by the new file. (`fetchMapPng` moves to `src/lib/sitePack/fetchMapPng.ts`, imported by both the new doc and `SiteAnalysis.tsx`.)
+- `src/lib/sitePack/SitePackDocument.tsx` — 5 URL swaps in `Font.register`.
+- `src/pages/SiteAnalysis.tsx` — one-line toast message tweak in the export catch block.
 
 ## Out of scope
 
-- Market Validation PDF (`marketReportPdf.ts`) — untouched.
-- Pillar math, tier thresholds, signal sources, isochrone fetch logic — untouched.
-- LLM-generated narrative — bullets stay deterministic.
-- New sections beyond the 10 already required.
-
-## QA before declaring done
-
-Generate the PDF with 1, 2, and 4 candidates and verify:
-1. No section title gets orphaned at the bottom of a page.
-2. Winner badge reads `★ Winner` (real star, not `&` or a box).
-3. Trinity / St. Francis Recommendations contain no "negative anchor" or "calibration corpus" language.
-4. 4-up comparison matrix fits one page, no clipped column.
-5. Map image renders inside the affluence section, not stretched.
-6. Inter font is used throughout (no Helvetica fallback flashes).
+- Bundling Inter as a local asset (heavier, not needed once CDN works).
+- Re-architecting the PDF.
 
 Approve to proceed.

@@ -107,28 +107,34 @@ export function ecosystemScore(i: EcosystemInputs): number {
 }
 
 export interface AccessibilityInputs {
-  roadDistanceMi: number | null;
-  highwayDistanceMi: number | null;
+  roadDistanceMi: number; // required — caller must measure real driving miles
+  highwayDistanceMi: number; // required — caller must measure real driving miles
   popReachable15: number;
 }
 
-function roadFactor(d: number | null): number {
-  if (d == null) return 70; // v0.1 fallback when distance not measured
+function roadFactor(d: number): number {
   if (d < 0.5) return 100;
   if (d < 1) return 80;
   if (d < 2) return 60;
   return 30;
 }
 
-function highwayFactor(d: number | null): number {
-  if (d == null) return 70;
+function highwayFactor(d: number): number {
   if (d < 2) return 100;
   if (d < 4) return 80;
   if (d < 7) return 50;
   return 30;
 }
 
+// v0.2: real driving miles required. Engine must fail loudly when the road
+// or highway lookup is unavailable — never substitute a synthetic constant.
 export function accessibilityScore(i: AccessibilityInputs): number {
+  if (i.roadDistanceMi == null || !Number.isFinite(i.roadDistanceMi)) {
+    throw new Error("accessibilityScore: roadDistanceMi missing — refusing to fabricate a score");
+  }
+  if (i.highwayDistanceMi == null || !Number.isFinite(i.highwayDistanceMi)) {
+    throw new Error("accessibilityScore: highwayDistanceMi missing — refusing to fabricate a score");
+  }
   return (
     0.3 * roadFactor(i.roadDistanceMi) +
     0.3 * highwayFactor(i.highwayDistanceMi) +

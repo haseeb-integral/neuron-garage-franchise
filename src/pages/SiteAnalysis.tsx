@@ -739,35 +739,29 @@ export default function SiteAnalysis() {
     [slots, patchSlot],
   );
 
-  // Auto-run the calibration anchors exactly once on first mount.
-  useEffect(() => {
-    slots.forEach((s) => {
-      if (!s.calibrationRole) return;
-      if (ranOnceRef.current.has(s.id)) return;
-      ranOnceRef.current.add(s.id);
-      runSlot(s.id);
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Hydrate non-calibration slots from the user's most-recent ready
-  // site_analyses rows (persistence across reloads — v0.4). Calibration
-  // anchors are NOT rehydrated; they always re-run live for reproducibility.
+  // Hydrate slots from the user's most-recent ready site_analyses rows on
+  // mount. Anchor addresses (Trinity/LeafSpring) patch the frozen anchor
+  // slots in place so calibration labels stay; other rows append as new
+  // slots. If an anchor has no cached row, fall back to a live run.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const { data, error } = await supabase
         .from("site_analyses")
         .select(
-          "id,address,school_name,school_type,enrollment,grade_band,latitude,longitude,school_profile_score,affluence_score,family_density_score,ecosystem_score,accessibility_score,sas_score,signals",
+          "id,address,school_name,school_type,enrollment,grade_band,latitude,longitude,school_profile_score,affluence_score,family_density_score,ecosystem_score,accessibility_score,sas_score,signals,created_at",
         )
         .eq("status", "ready")
         .order("created_at", { ascending: false })
-        .limit(20);
+        .limit(40);
       if (cancelled || error || !data) return;
-      const anchorAddrs = new Set([TRINITY_CANDIDATE.address, LEAFSPRING_CANDIDATE.address]);
-      const seen = new Set<string>(anchorAddrs);
-      const hydrated: SlotState[] = [];
+
+      const trinityAddr = TRINITY_CANDIDATE.address;
+      const leafAddr = LEAFSPRING_CANDIDATE.address;
+      const anchorPatches: Record<string, SiteScoreResult> = {};
+      const extras: SlotState[] = [];
+      const seen = new Set<string>();
+
       for (const row of data) {
         if (!row.address || seen.has(row.address)) continue;
         if (
@@ -778,11 +772,7 @@ export default function SiteAnalysis() {
           row.accessibility_score == null
         ) continue;
         seen.add(row.address);
-        const signals = (row.signals ?? {}) as SiteScoreSignals & {
-          // The cached signals payload may not include iso polygons (those
-          // ship inline on the next live re-run); the map silently falls
-          // back to the spinner until the user clicks ↻ Re-run.
-        };
+        const signals = (row.signals ?? {}) as SiteScoreSignals;
         const result: SiteScoreResult = {
           sas: Number(row.sas_score ?? 0),
           pillars: {
@@ -798,7 +788,16 @@ export default function SiteAnalysis() {
               ? { lat: Number(row.latitude), lng: Number(row.longitude) }
               : undefined,
         };
-        hydrated.push({
+
+        if (row.address === trinityAddr) {
+          anchorPatches[TRINITY_CANDIDATE.id] = result;
+          continue;
+        }
+        if (row.address === leafAddr) {
+          anchorPatches[LEAFSPRING_CANDIDATE.id] = result;
+          continue;
+        }
+        extras.push({
           id: `persisted-${row.id}`,
           schoolName: row.school_name ?? "Saved candidate",
           address: row.address,
@@ -809,18 +808,33 @@ export default function SiteAnalysis() {
           result,
           error: null,
         });
-        if (hydrated.length >= 2) break; // anchors take 2 slots; cap at 4 total
+        if (extras.length >= 2) break; // anchors take 2 slots; cap at 4 total
       }
-      if (hydrated.length === 0) return;
+
       setSlots((prev) => {
-        const existing = new Set(prev.map((s) => s.address));
-        const additions = hydrated.filter((h) => !existing.has(h.address));
-        return [...prev, ...additions].slice(0, 4);
+        const patched = prev.map((s) =>
+          anchorPatches[s.id]
+            ? { ...s, status: "ready" as const, result: anchorPatches[s.id], error: null }
+            : s,
+        );
+        const existing = new Set(patched.map((s) => s.address));
+        const additions = extras.filter((h) => !existing.has(h.address));
+        return [...patched, ...additions].slice(0, 4);
       });
+
+      // Fallback: any anchor still without a cached result must run live so
+      // the calibration evidence table never starts empty on a fresh DB.
+      for (const anchor of [TRINITY_CANDIDATE, LEAFSPRING_CANDIDATE]) {
+        if (anchorPatches[anchor.id]) continue;
+        if (ranOnceRef.current.has(anchor.id)) continue;
+        ranOnceRef.current.add(anchor.id);
+        runSlot(anchor.id);
+      }
     })();
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const removeSlot = (id: string) => {

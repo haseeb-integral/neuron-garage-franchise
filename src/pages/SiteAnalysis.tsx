@@ -253,7 +253,7 @@ function SiteCard({ site }: { site: SiteAnalysisDemoSite }) {
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           <div className="text-[28px] font-black leading-none tabular-nums" style={{ color: NAVY }}>
-            {site.composite}
+            {composite}
           </div>
           <span
             className={`${CHIP} font-bold`}

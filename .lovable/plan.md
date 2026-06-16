@@ -1,48 +1,37 @@
-## Plain-English summary
+I agree with you: the previous change did not solve the real client-facing problem.
 
-Three separate issues. None of them is "we forgot to use Brett's Mapbox key" — the key is wired correctly server-side (`MAPBOX_TOKEN` secret) and the client fetches a short-lived token via the `get-mapbox-token` edge function. Geocoding, isochrones, and tile queries all work — that's why your scores compute. The map *render* is failing in your browser for a different reason.
+Plain English diagnosis:
+- The embedded map is still using Mapbox GL, which requires WebGL. If WebGL fails in the browser/preview/mobile, the map area becomes the “Map preview unavailable” box.
+- The parking tile is not using a reliable parking-lot source. It is currently only asking Mapbox’s POI label layer near the pin. If Mapbox does not label a nearby lot as a parking POI, the app says “Street only” or “Not detected,” even when a lot exists.
+- So yes: the current page is not strong enough for a client demo.
 
-### 1. Why every map says "WebGL disabled"
+Plan to fix:
+1. Replace the card map preview with a non-WebGL static map image.
+   - Use Mapbox Static Images API so the preview renders as a normal image.
+   - This works much better in locked-down browsers and on mobile because it does not need WebGL.
+   - Keep a “Live Map”/interactive path out of the card preview for now; reliability matters more for the client demo.
 
-The code in `src/components/site-analysis/IsochroneMap.tsx` calls `mapboxgl.supported()` and shows the fallback if that returns `false`. In Mapbox GL JS v3 (we're on 3.24.1), that helper is over-aggressive inside sandboxed iframes like the Lovable preview — it can return `false` even when WebGL actually works. That's why all four cards fall back at once on your desktop browser. It's not really a WebGL problem, it's a bad preflight check.
+2. Keep the 10-min / 15-min isochrone data, but render it into the static map URL.
+   - Show the pin plus simplified isochrone overlays where possible.
+   - If overlay encoding is too large for the URL, fall back to static map + pin and do not show the broken WebGL box.
+   - The user should never see “Map preview unavailable” unless the map token itself is missing or the image fails.
 
-**Fix:** drop the `mapboxgl.supported()` precheck and let the existing `try/catch` around `new mapboxgl.Map(...)` be the only guard. Also hook `map.on("error", …)` so an actual WebGL context-creation failure (which is the genuine "no WebGL" case — old phones, locked-down corporate browsers) still flips to the fallback box with the same message. Net effect: maps render for ~99% of users including the Lovable preview; the small minority truly without WebGL still see the graceful fallback. No new dependency, no different map provider — same Mapbox token.
+3. Replace parking wording so it does not overclaim.
+   - Stop showing “Street only” as if we know the parking condition.
+   - Use labels like “Parking not verified” or “Nearby parking signal found” based on available evidence.
+   - This prevents embarrassing false negatives in front of the client.
 
-Mobile note: modern iOS Safari and Android Chrome support WebGL. The same fix covers them. If you want a true raster fallback later (static image tile served by Mapbox's Static Images API, no WebGL needed), that's a separate enhancement we can layer on.
+4. Improve parking source in the backend.
+   - Keep the existing Mapbox Tilequery signal.
+   - Add a stronger secondary lookup using OSM-style parking features if feasible in the current backend path.
+   - Return source/debug fields so we can distinguish “no lot found” from “source could not verify.”
 
-### 2. Why parking shows "Street only" or null
+5. Verify in the preview.
+   - Confirm the cards show map imagery instead of the gray error box.
+   - Confirm parking tiles no longer say misleading “Street only” for null/weak data.
 
-The parking data source is **Mapbox Tilequery** against the `poi_label` layer within a 200 m radius of the geocoded pin. Logic in `supabase/functions/_shared/mapbox.ts` (lines 294–330):
-
-- POIs tagged `parking` found → bucket = `small_lot` (1–2) or `large_lot` (3+).
-- Zero parking POIs but other POIs nearby → bucket = `street_only` (Mapbox often misses informal lots).
-- Zero POIs at all → bucket = `none` (renders as "null" in the UI).
-
-There is no cleaner public dataset for franchise-grade parking inventory — Mapbox's POI layer is the standard. What's wrong today: the 200 m radius is too tight (a school's parking lot can sit 250–400 m from the pin), so we keep landing in the "street_only" default. **Fixes in this turn:**
-
-1. Widen `radiusMeters` from 200 → 400 in `parkingSignal()`.
-2. Also accept POIs whose `class` is `parking_lot` / `parking_garage` (the v8 streets schema uses these alongside `parking`).
-3. Re-bucket thresholds: 0 = `street_only`, 1–3 = `small_lot`, 4+ = `large_lot`. Drop the confusing "none" bucket — render an explicit "Not detected" label in the card instead of blank.
-4. Display label in the metric tile: show "Street only", "Small lot", "Large lot", or "Not detected — verify on site" — never blank.
-
-If after this you still find specific addresses where the bucket is obviously wrong, the next-tier upgrade is Overpass / OpenStreetMap `amenity=parking` polygons (free, no key) as a secondary source — flag if you want that added now.
-
-### 3. Drop "Phase 2 · Feature 1B" from the page header
-
-In `src/pages/SiteAnalysis.tsx` line 914, replace the `PageHeader` subtitle:
-
-- Before: `"Phase 2 · Feature 1B — Per-site opportunity scoring with side-by-side comparison up to 4 candidates."`
-- After: `"Score up to 4 candidate sites side by side and pick the one to commit to."`
-
-## Files touched
-
-1. `src/components/site-analysis/IsochroneMap.tsx` — remove `mapboxgl.supported()` precheck, add `map.on("error", …)` handler, keep existing try/catch and fallback box.
-2. `supabase/functions/_shared/mapbox.ts` — widen parking radius to 400 m, accept `parking_lot`/`parking_garage` classes, re-bucket, return a clear `bucket` even when none detected.
-3. `src/pages/SiteAnalysis.tsx` (parking tile) — render "Not detected — verify on site" when the bucket comes back missing, instead of blank.
-4. `src/pages/SiteAnalysis.tsx` (header) — replace the subtitle.
-
-No schema changes, no weight changes, no new dependencies, same Mapbox token.
-
-## Question
-
-OK to proceed exactly as above, or do you also want the OSM `amenity=parking` secondary source added now for tougher addresses?
+Technical notes:
+- Frontend file likely touched: `src/components/site-analysis/IsochroneMap.tsx`.
+- Parking display likely touched: `src/pages/SiteAnalysis.tsx`.
+- Parking backend likely touched: `supabase/functions/_shared/mapbox.ts` and possibly `supabase/functions/compute-sas/index.ts`.
+- After backend changes, the compute function must be redeployed and existing candidates must be re-run to refresh parking results.

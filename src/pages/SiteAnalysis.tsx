@@ -1005,22 +1005,41 @@ export default function SiteAnalysis() {
               0.15 × School Ecosystem + 0.15 × Accessibility.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleExport}
-            disabled={!canExport}
-            title={
-              canExport
-                ? "Open a branded decision pack with verdicts, winner, and notes — print or save as PDF"
-                : "Mark a winner first to enable the decision pack"
-            }
-            className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-            style={{ borderColor: BLUE, color: BLUE, backgroundColor: "#fff" }}
-          >
-            <Download size={12} />
-            Export decision pack
-          </button>
-        </div>
+          <div className="flex flex-col items-end gap-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handleNormalize}
+                disabled={normalizing || slots.length === 0}
+                title="Re-score all cards with the same inputs (Daycare · Other · enrollment 150) for an apples-to-apples comparison"
+                className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ borderColor: BORDER, color: NAVY, backgroundColor: "#fff" }}
+              >
+                {normalizing ? "Normalizing…" : "⇋ Normalize inputs (Daycare · Other · 150)"}
+              </button>
+              <button
+                type="button"
+                onClick={handleExport}
+                disabled={!canExport}
+                title={
+                  canExport
+                    ? "Open a branded decision pack with verdicts, winner, and notes — print or save as PDF"
+                    : "Mark a winner on any card (★ Mark winner) to enable the decision pack"
+                }
+                className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ borderColor: BLUE, color: BLUE, backgroundColor: "#fff" }}
+              >
+                <Download size={12} />
+                Export decision pack
+              </button>
+            </div>
+            {!canExport && (
+              <p className="text-[10px]" style={{ color: MUTED }}>
+                Mark a winner on any card (★) to enable export.
+              </p>
+            )}
+          </div>
+
 
         <div
           className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md p-2 text-[11px]"

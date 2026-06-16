@@ -774,10 +774,9 @@ export default function SiteAnalysis() {
     [slots, patchSlot],
   );
 
-  // Hydrate slots from the user's most-recent ready site_analyses rows on
-  // mount. Anchor addresses (Trinity/LeafSpring) patch the frozen anchor
-  // slots in place so calibration labels stay; other rows append as new
-  // slots. If an anchor has no cached row, fall back to a live run.
+  // Hydrate from the user's most recent ready site_analyses rows (up to 4).
+  // No anchor seeding — comparison cards always belong to the user. Anchors
+  // live in the separate calibration panel below the Live Engine.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -788,21 +787,11 @@ export default function SiteAnalysis() {
         )
         .eq("status", "ready")
         .order("created_at", { ascending: false })
-        .limit(40);
+        .limit(20);
       if (cancelled || error || !data) return;
 
-      const trinityAddr = TRINITY_CANDIDATE.address;
-      const leafAddr = LEAFSPRING_CANDIDATE.address;
-      const anchorPatches: Record<string, SiteScoreResult> = {};
-      const extras: SlotState[] = [];
       const seen = new Set<string>();
-
-      const matchesAnchor = (row: typeof data[number], anchor: Candidate) =>
-        row.address === anchor.address &&
-        (row.school_type ?? "") === anchor.schoolType &&
-        (row.grade_band ?? "") === anchor.gradeBand &&
-        String(row.enrollment ?? "") === String(anchor.enrollment);
-
+      const extras: SlotState[] = [];
       for (const row of data) {
         if (!row.address || seen.has(row.address)) continue;
         if (
@@ -828,24 +817,6 @@ export default function SiteAnalysis() {
               ? { lat: Number(row.latitude), lng: Number(row.longitude) }
               : undefined,
         };
-
-        // Only patch an anchor card from cache when ALL frozen inputs match —
-        // address alone is not enough (same address can be scored as Daycare/150
-        // OR Private/600 and the resulting SAS differs by ~16 pts).
-        if (row.address === trinityAddr && matchesAnchor(row, TRINITY_CANDIDATE) && !anchorPatches[TRINITY_CANDIDATE.id]) {
-          anchorPatches[TRINITY_CANDIDATE.id] = result;
-          seen.add(row.address);
-          continue;
-        }
-        if (row.address === leafAddr && matchesAnchor(row, LEAFSPRING_CANDIDATE) && !anchorPatches[LEAFSPRING_CANDIDATE.id]) {
-          anchorPatches[LEAFSPRING_CANDIDATE.id] = result;
-          seen.add(row.address);
-          continue;
-        }
-        // Skip non-matching anchor-address rows — they belong to an ad-hoc
-        // Live Engine run, not the anchor preset, and would mislabel the card.
-        if (row.address === trinityAddr || row.address === leafAddr) continue;
-
         seen.add(row.address);
         extras.push({
           id: `persisted-${row.id}`,
@@ -858,28 +829,36 @@ export default function SiteAnalysis() {
           result,
           error: null,
         });
-        if (extras.length >= 2) break; // anchors take 2 slots; cap at 4 total
+        if (extras.length >= 4) break;
       }
 
-      setSlots((prev) => {
-        const patched = prev.map((s) =>
-          anchorPatches[s.id]
-            ? { ...s, status: "ready" as const, result: anchorPatches[s.id], error: null }
-            : s,
-        );
-        const existing = new Set(patched.map((s) => s.address));
-        const additions = extras.filter((h) => !existing.has(h.address));
-        return [...patched, ...additions].slice(0, 4);
-      });
-
-      // Fallback: any anchor still without a cached result must run live so
-      // the calibration evidence table never starts empty on a fresh DB.
-      for (const anchor of [TRINITY_CANDIDATE, LEAFSPRING_CANDIDATE]) {
-        if (anchorPatches[anchor.id]) continue;
-        if (ranOnceRef.current.has(anchor.id)) continue;
-        ranOnceRef.current.add(anchor.id);
-        runSlot(anchor.id, { preferCache: true });
+      // Hydrate isochrones for displayed analyses so cached cards show drive-time polygons.
+      const analysisIds = extras
+        .map((e) => e.id.startsWith("persisted-") ? e.id.replace("persisted-", "") : null)
+        .filter((v): v is string => !!v);
+      if (analysisIds.length) {
+        const { data: isos } = await supabase
+          .from("site_analysis_isochrones")
+          .select("analysis_id,minutes,geojson")
+          .in("analysis_id", analysisIds);
+        const byId = new Map<string, { iso10?: GeoJSON.Polygon; iso15?: GeoJSON.Polygon }>();
+        (isos ?? []).forEach((r) => {
+          const e = byId.get(r.analysis_id) ?? {};
+          if (r.minutes === 10) e.iso10 = r.geojson as unknown as GeoJSON.Polygon;
+          if (r.minutes === 15) e.iso15 = r.geojson as unknown as GeoJSON.Polygon;
+          byId.set(r.analysis_id, e);
+        });
+        for (const e of extras) {
+          const aid = e.id.replace("persisted-", "");
+          const iso = byId.get(aid);
+          if (iso && e.result) {
+            e.result = { ...e.result, iso10: iso.iso10, iso15: iso.iso15 };
+          }
+        }
       }
+
+      if (cancelled) return;
+      setSlots(extras);
     })();
     return () => {
       cancelled = true;
@@ -891,33 +870,33 @@ export default function SiteAnalysis() {
     setSlots((prev) => prev.filter((s) => s.id !== id));
   };
 
-  // Save a freshly-computed Live Engine result directly into a new slot. No
-  // second engine call — the card stores the exact result object the engine
-  // returned. This is what enforces "one calibrated number everywhere".
-  const saveResultToNewSlot = (input: {
+  // Save a freshly-computed Live Engine result into a slot. If pendingReplaceId
+  // is set, overwrite that slot in place; otherwise append a new one (max 4).
+  const saveResultToSlot = (input: {
     schoolName: string;
     address: string;
     schoolType: SchoolType;
     gradeBand: GradeBand;
     enrollment: string;
   }, result: SiteScoreResult) => {
-    if (slots.length >= 4) return;
-    const id = `slot-${Date.now()}`;
-    setSlots((prev) => [
-      ...prev,
-      {
-        id,
-        schoolName: input.schoolName,
-        address: input.address,
-        schoolType: input.schoolType,
-        gradeBand: input.gradeBand,
-        enrollment: input.enrollment,
-        status: "ready",
-        result,
-        error: null,
-      },
-    ]);
+    setSlots((prev) => {
+      if (pendingReplaceId) {
+        return prev.map((s) =>
+          s.id === pendingReplaceId
+            ? { ...s, ...input, status: "ready", result, error: null }
+            : s,
+        );
+      }
+      if (prev.length >= 4) return prev;
+      const id = `slot-${Date.now()}`;
+      return [
+        ...prev,
+        { id, ...input, status: "ready", result, error: null },
+      ];
+    });
+    setPendingReplaceId(null);
   };
+
 
   const scored: ScoredCandidate[] = useMemo(
     () =>

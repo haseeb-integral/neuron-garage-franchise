@@ -17,7 +17,10 @@ import { IsochroneMap } from "@/components/site-analysis/IsochroneMap";
 import { supabase } from "@/integrations/supabase/client";
 import { useSiteDecisions, type SiteVerdict } from "@/hooks/useSiteDecisions";
 import { type SiteScoreResult, type SiteScoreSignals } from "@/hooks/useSiteScore";
-import { exportSiteDecisionPack, type ExportCandidate } from "@/lib/decisionsExport";
+import { buildSitePackPdf, fetchMapPng, type SitePackCandidate } from "@/lib/sitePackPdf";
+import { buildStaticUrl } from "@/components/site-analysis/IsochroneMap";
+import { useMapboxToken } from "@/hooks/useMapboxToken";
+import { toast } from "sonner";
 import { SITE_RECOMMEND_THRESHOLDS } from "@/data/phase2DemoData";
 import {
   recomputeSiteScores,
@@ -895,20 +898,55 @@ export default function SiteAnalysis() {
 
   const emptySlots = Math.max(0, 4 - slots.length);
 
-  const handleExport = () => {
-    const exportRows: ExportCandidate[] = scored
-      .filter((s) => s.result)
-      .map((s) => {
-        const recomputed = recomputeSiteScores(s.result!.pillars);
-        return {
-          schoolName: s.candidate.schoolName,
-          address: s.candidate.address,
-          pillars: recomputed.pillars,
-          composite: recomputed.composite,
-        };
-      });
-    exportSiteDecisionPack(exportRows, byAddress);
+  const mapboxToken = useMapboxToken();
+  const [exporting, setExporting] = useState(false);
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const ready = scored.filter((s) => s.result);
+      const candidates: SitePackCandidate[] = await Promise.all(
+        ready.map(async (s) => {
+          const recomputed = recomputeSiteScores(s.result!.pillars);
+          const composite = recomputed.composite;
+          const tier = tierBadge(composite);
+          const center = s.result?.geo;
+          const mapUrl =
+            mapboxToken && center
+              ? buildStaticUrl({
+                  center,
+                  iso10: (s.result?.iso10 as GeoJSON.Polygon | null) ?? null,
+                  iso15: (s.result?.iso15 as GeoJSON.Polygon | null) ?? null,
+                  token: mapboxToken,
+                })
+              : null;
+          const mapPng = await fetchMapPng(mapUrl);
+          return {
+            schoolName: s.candidate.schoolName,
+            address: s.candidate.address,
+            schoolTypeLabel: SCHOOL_TYPE_LABEL[s.candidate.schoolType],
+            gradeBandLabel: GRADE_BAND_LABEL[s.candidate.gradeBand],
+            enrollment: s.candidate.enrollment,
+            pillars: recomputed.pillars,
+            composite,
+            tierLabel: tier.label,
+            signals: s.result?.signals ?? null,
+            decision: byAddress.get(s.candidate.address),
+            mapPngDataUrl: mapPng,
+          };
+        }),
+      );
+      const pdf = buildSitePackPdf({ candidates });
+      const today = new Date().toISOString().slice(0, 10);
+      pdf.save(`nrg-site-analysis-${today}-${candidates.length}sites.pdf`);
+      toast.success("Site analysis PDF downloaded");
+    } catch (err) {
+      console.error("Site pack PDF export failed", err);
+      toast.error("PDF export failed");
+    } finally {
+      setExporting(false);
+    }
   };
+
 
   // Normalize all 4 cards to the same Daycare/Other/150 inputs and recompute,
   // so cross-card SAS comparison is apples-to-apples. Uses cache when an exact
@@ -1041,17 +1079,18 @@ export default function SiteAnalysis() {
               <button
                 type="button"
                 onClick={handleExport}
-                disabled={!canExport}
+                disabled={!canExport || exporting}
                 title={
                   canExport
-                    ? "Open a branded decision pack with verdicts, winner, and notes — print or save as PDF"
+                    ? "Download a branded multi-section PDF with all 10 SOW v2.2 sections and a 4-site side-by-side"
                     : "Mark a winner on any card (★ Mark winner) to enable the decision pack"
                 }
                 className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                 style={{ borderColor: BLUE, color: BLUE, backgroundColor: "#fff" }}
               >
-                <Download size={12} />
-                Export decision pack
+                {exporting ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                {exporting ? "Generating PDF…" : "Export decision pack (PDF)"}
+
               </button>
             </div>
             {!canExport && (

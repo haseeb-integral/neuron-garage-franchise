@@ -96,7 +96,7 @@ function round(n: number, p = 4): number {
   return Math.round(n * f) / f;
 }
 
-function buildStaticUrl({
+export function buildStaticUrl({
   center,
   iso10,
   iso15,

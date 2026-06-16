@@ -30,6 +30,10 @@ export interface SiteScoreSignals {
     privateCount?: number;
     nearbyStudentPop?: number;
   };
+  accessibility?: {
+    highwayDistanceMi?: number | null;
+    roadDistanceMi?: number | null;
+  };
 }
 
 export interface SiteScoreResult {

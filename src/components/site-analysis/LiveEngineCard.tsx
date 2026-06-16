@@ -13,6 +13,7 @@ interface Preset {
   address: string;
   schoolType: SchoolType;
   gradeBand: GradeBand;
+  enrollment: string;
 }
 
 const PRESETS: Preset[] = [
@@ -23,14 +24,16 @@ const PRESETS: Preset[] = [
     address: "4011 Bee Caves Rd, Austin, TX 78746",
     schoolType: "private_elementary",
     gradeBand: "k5_k6",
+    enrollment: "580",
   },
   {
     label: "LeafSpring Cedar Park (closed)",
-    hint: "TX · negative anchor (Austin metro)",
+    hint: "TX · negative anchor — Daycare/Other, enrollment 150 (matches anchor card)",
     schoolName: "LeafSpring School at Cedar Park",
     address: "11651 W Parmer Ln, Cedar Park, TX 78613",
-    schoolType: "private_elementary",
-    gradeBand: "k5_k6",
+    schoolType: "daycare",
+    gradeBand: "other",
+    enrollment: "150",
   },
   {
     label: "Wayside Eden Park (Austin)",
@@ -39,6 +42,7 @@ const PRESETS: Preset[] = [
     address: "6215 Menchaca Rd, Austin, TX 78745",
     schoolType: "private_elementary",
     gradeBand: "k5_k6",
+    enrollment: "400",
   },
   {
     label: "St. Francis (Austin)",
@@ -47,6 +51,7 @@ const PRESETS: Preset[] = [
     address: "300 E Huntland Dr, Austin, TX 78752",
     schoolType: "private_elementary",
     gradeBand: "k5_k6",
+    enrollment: "600",
   },
   {
     label: "Telluride Mountain School",
@@ -55,6 +60,7 @@ const PRESETS: Preset[] = [
     address: "200 San Miguel River Rd, Telluride, CO 81435",
     schoolType: "private_elementary",
     gradeBand: "k5_k6",
+    enrollment: "200",
   },
 ];
 

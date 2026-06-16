@@ -395,10 +395,22 @@ function fmtCount(n?: number) {
   return `${Math.round(n)}`;
 }
 
+const PARKING_LABEL: Record<NonNullable<SiteScoreSignals["parking"]>["bucket"] & string, string> = {
+  none: "None nearby",
+  street_only: "Street only",
+  small_lot: "Small lot",
+  large_lot: "Large lot",
+};
+
 function MetricTiles({ signals }: { signals?: SiteScoreSignals }) {
   const acs10 = signals?.acs10 ?? {};
   const acs15 = signals?.acs15 ?? {};
   const hwyMi = signals?.accessibility?.highwayDistanceMi;
+  const parking = signals?.parking;
+  const parkingValue =
+    parking?.bucket
+      ? `${PARKING_LABEL[parking.bucket]}${parking.poiCount ? ` (${parking.poiCount})` : ""}`
+      : undefined;
   return (
     <div className="mt-3 grid grid-cols-3 gap-1.5">
       <Tile label="Median HHI · 10m" value={fmtMoney(acs10.medianHhi)} />
@@ -410,7 +422,13 @@ function MetricTiles({ signals }: { signals?: SiteScoreSignals }) {
         dash={hwyMi == null}
         dashTip="No motorway/trunk found within 12 mi — Accessibility scored via fallback"
       />
-      <Tile label="Parking" dash dashTip="Manual field — not yet wired" />
+      <Tile
+        label="Parking"
+        value={parkingValue}
+        dash={!parkingValue}
+        dashTip="Mapbox tilequery returned no parking POIs within 200m"
+        badge="v0.2"
+      />
       <Tile label="Pop · 15m" value={fmtCount(acs15.totalPop)} />
     </div>
   );

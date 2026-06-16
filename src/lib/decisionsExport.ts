@@ -89,6 +89,7 @@ export function exportSiteDecisionPack(
   byAddress: Map<string, SiteDecisionRow>,
 ) {
   const winner = sites.find((s) => byAddress.get(s.address)?.is_winner);
+  const winnerScore = winner ? recomputeSiteScores(winner.subScores).composite : null;
   const generatedAt = new Date().toLocaleString();
 
   const cardHtml = sites
@@ -96,6 +97,7 @@ export function exportSiteDecisionPack(
       const d = byAddress.get(s.address);
       const verdict = SITE_VERDICT_LABEL[d?.verdict ?? "undecided"];
       const isWinner = d?.is_winner;
+      const { pillars, composite } = recomputeSiteScores(s.subScores);
       return `
       <div class="card ${isWinner ? "winner" : ""}">
         <div class="card-h">
@@ -104,7 +106,7 @@ export function exportSiteDecisionPack(
             <p class="muted">${escapeHtml(s.address)}</p>
           </div>
           <div class="score">
-            <div class="score-num">${s.composite}</div>
+            <div class="score-num">${composite}</div>
             <div class="score-lbl">SAO</div>
           </div>
         </div>
@@ -112,11 +114,11 @@ export function exportSiteDecisionPack(
         <p>${escapeHtml(s.verdict)}</p>
         ${d?.notes ? `<div class="notes"><strong>Notes:</strong> ${escapeHtml(d.notes)}</div>` : ""}
         <table class="subs">
-          <tr><td>School Profile (25%)</td><td>${s.subScores.schoolProfile.value}</td></tr>
-          <tr><td>Neighborhood Affluence (25%)</td><td>${s.subScores.neighborhoodAffluence.value}</td></tr>
-          <tr><td>Family Density (20%)</td><td>${s.subScores.familyDensity.value}</td></tr>
-          <tr><td>School Ecosystem (15%)</td><td>${s.subScores.schoolEcosystem.value}</td></tr>
-          <tr><td>Accessibility (15%)</td><td>${s.subScores.accessibility.value}</td></tr>
+          <tr><td>School Profile (25%)</td><td>${pillars.schoolProfile}</td></tr>
+          <tr><td>Neighborhood Affluence (25%)</td><td>${pillars.affluence}</td></tr>
+          <tr><td>Family Density (20%)</td><td>${pillars.familyDensity}</td></tr>
+          <tr><td>School Ecosystem (15%)</td><td>${pillars.ecosystem}</td></tr>
+          <tr><td>Accessibility (15%)</td><td>${pillars.accessibility}</td></tr>
         </table>
       </div>`;
     })

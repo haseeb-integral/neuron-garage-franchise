@@ -1004,6 +1004,7 @@ export default function SiteAnalysis() {
         trinityLoading={!!trinityScored && trinityScored.result == null}
         leafLoading={!!leafScored && leafScored.result == null}
       />
+      <CalibrationRunsTable />
       <WinnerBanner winner={winner} winnerDecision={winnerDecision} />
 
       <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">

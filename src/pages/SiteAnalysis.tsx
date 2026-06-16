@@ -689,7 +689,7 @@ export default function SiteAnalysis() {
   }, []);
 
   const runSlot = useCallback(
-    async (id: string) => {
+    async (id: string, opts?: { preferCache?: boolean }) => {
       const slot = slots.find((s) => s.id === id);
       if (!slot) return;
       if (!slot.address.trim() || !slot.schoolName.trim()) {
@@ -697,6 +697,54 @@ export default function SiteAnalysis() {
         return;
       }
       patchSlot(id, { status: "loading", error: null });
+
+      // Exact-input cache lookup — avoid an expensive live recompute
+      // (Mapbox geocode + isochrones + Census + Urban Institute + OSM) when
+      // a recent ready row already matches address + type + enrollment + grade.
+      if (opts?.preferCache) {
+        const enrollmentNum = slot.enrollment ? Number(slot.enrollment) : null;
+        const { data: cached } = await supabase
+          .from("site_analyses")
+          .select(
+            "id,school_profile_score,affluence_score,family_density_score,ecosystem_score,accessibility_score,sas_score,signals,latitude,longitude",
+          )
+          .eq("status", "ready")
+          .eq("address", slot.address.trim())
+          .eq("school_type", slot.schoolType)
+          .eq("grade_band", slot.gradeBand)
+          .eq("enrollment", enrollmentNum as number)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (
+          cached &&
+          cached.school_profile_score != null &&
+          cached.affluence_score != null &&
+          cached.family_density_score != null &&
+          cached.ecosystem_score != null &&
+          cached.accessibility_score != null
+        ) {
+          const signals = (cached.signals ?? {}) as SiteScoreSignals;
+          const result: SiteScoreResult = {
+            sas: Number(cached.sas_score ?? 0),
+            pillars: {
+              schoolProfile: Number(cached.school_profile_score),
+              affluence: Number(cached.affluence_score),
+              familyDensity: Number(cached.family_density_score),
+              ecosystem: Number(cached.ecosystem_score),
+              accessibility: Number(cached.accessibility_score),
+            },
+            signals,
+            geo:
+              cached.latitude != null && cached.longitude != null
+                ? { lat: Number(cached.latitude), lng: Number(cached.longitude) }
+                : undefined,
+          };
+          patchSlot(id, { status: "ready", result, error: null });
+          return;
+        }
+      }
+
       try {
         const { data, error } = await supabase.functions.invoke("compute-sas", {
           body: {
@@ -743,6 +791,12 @@ export default function SiteAnalysis() {
       const extras: SlotState[] = [];
       const seen = new Set<string>();
 
+      const matchesAnchor = (row: typeof data[number], anchor: Candidate) =>
+        row.address === anchor.address &&
+        (row.school_type ?? "") === anchor.schoolType &&
+        (row.grade_band ?? "") === anchor.gradeBand &&
+        String(row.enrollment ?? "") === String(anchor.enrollment);
+
       for (const row of data) {
         if (!row.address || seen.has(row.address)) continue;
         if (
@@ -752,7 +806,6 @@ export default function SiteAnalysis() {
           row.ecosystem_score == null ||
           row.accessibility_score == null
         ) continue;
-        seen.add(row.address);
         const signals = (row.signals ?? {}) as SiteScoreSignals;
         const result: SiteScoreResult = {
           sas: Number(row.sas_score ?? 0),
@@ -770,14 +823,24 @@ export default function SiteAnalysis() {
               : undefined,
         };
 
-        if (row.address === trinityAddr) {
+        // Only patch an anchor card from cache when ALL frozen inputs match —
+        // address alone is not enough (same address can be scored as Daycare/150
+        // OR Private/600 and the resulting SAS differs by ~16 pts).
+        if (row.address === trinityAddr && matchesAnchor(row, TRINITY_CANDIDATE) && !anchorPatches[TRINITY_CANDIDATE.id]) {
           anchorPatches[TRINITY_CANDIDATE.id] = result;
+          seen.add(row.address);
           continue;
         }
-        if (row.address === leafAddr) {
+        if (row.address === leafAddr && matchesAnchor(row, LEAFSPRING_CANDIDATE) && !anchorPatches[LEAFSPRING_CANDIDATE.id]) {
           anchorPatches[LEAFSPRING_CANDIDATE.id] = result;
+          seen.add(row.address);
           continue;
         }
+        // Skip non-matching anchor-address rows — they belong to an ad-hoc
+        // Live Engine run, not the anchor preset, and would mislabel the card.
+        if (row.address === trinityAddr || row.address === leafAddr) continue;
+
+        seen.add(row.address);
         extras.push({
           id: `persisted-${row.id}`,
           schoolName: row.school_name ?? "Saved candidate",
@@ -809,7 +872,7 @@ export default function SiteAnalysis() {
         if (anchorPatches[anchor.id]) continue;
         if (ranOnceRef.current.has(anchor.id)) continue;
         ranOnceRef.current.add(anchor.id);
-        runSlot(anchor.id);
+        runSlot(anchor.id, { preferCache: true });
       }
     })();
     return () => {

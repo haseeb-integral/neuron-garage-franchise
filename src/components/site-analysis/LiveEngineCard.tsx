@@ -206,7 +206,7 @@ export function LiveEngineCard({ onSaveToSlot, canSave = true }: LiveEngineCardP
             onChange={(e) => setSchoolName(e.target.value)}
             className="rounded border px-2 py-1 text-[12px]"
             style={{ borderColor: "#eef2f7", color: "#07142f" }}
-            placeholder="Trinity Christian Academy"
+            placeholder="Trinity Episcopal School"
           />
         </label>
         <label className="flex flex-col gap-1 text-[11px] md:col-span-3" style={{ color: "#526078" }}>

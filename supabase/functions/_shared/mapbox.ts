@@ -51,25 +51,95 @@ export async function isochrone(
   return f.geometry as GeoJSON.Polygon;
 }
 
-// Sample evenly-spaced perimeter points + centroid for tract lookups.
+// Point-in-polygon test (ray-casting) on the outer ring. Sufficient for
+// Mapbox isochrone polygons, which are simple (non-self-intersecting).
+function pointInRing(x: number, y: number, ring: number[][]): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    const intersect = (yi > y) !== (yj > y) &&
+      x < ((xj - xi) * (y - yi)) / (yj - yi + 1e-12) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+// Bug-1 fix: dense interior + perimeter sampling so demographic aggregation
+// covers the full isochrone rather than centroid + 5 perimeter points (which
+// systematically misses residential interior tracts in irregular metro
+// polygons — see Manus_1B_Calibration_Analysis.md). Yields ~25–35 unique
+// points inside the polygon, which downstream `aggregateAcs` dedupes by
+// Census tract so the Census API call volume stays bounded.
+//
+// `n` is retained for API compatibility but is no longer the perimeter count;
+// it now controls grid density (n=5 → 6x6 = 36 candidate cells before
+// in-polygon filtering, matching the magnitude Manus recommended).
 export function samplePoints(poly: GeoJSON.Polygon, n = 5): Array<{ lat: number; lng: number }> {
   const ring = poly.coordinates?.[0] ?? [];
   if (ring.length === 0) return [];
-  // centroid
-  let cx = 0, cy = 0;
+
+  // Bounding box of the outer ring.
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const [x, y] of ring) {
-    cx += x;
-    cy += y;
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
   }
+
+  // Centroid.
+  let cx = 0, cy = 0;
+  for (const [x, y] of ring) { cx += x; cy += y; }
   cx /= ring.length;
   cy /= ring.length;
+
   const out: Array<{ lat: number; lng: number }> = [{ lat: cy, lng: cx }];
-  const step = Math.max(1, Math.floor(ring.length / n));
-  for (let i = 0; i < ring.length && out.length < n + 1; i += step) {
+
+  // Interior grid. grid = max(6, n+1) → ~36+ candidate cells.
+  const grid = Math.max(6, n + 1);
+  for (let i = 1; i < grid; i++) {
+    for (let j = 1; j < grid; j++) {
+      const x = minX + ((maxX - minX) * i) / grid;
+      const y = minY + ((maxY - minY) * j) / grid;
+      if (pointInRing(x, y, ring)) out.push({ lat: y, lng: x });
+    }
+  }
+
+  // Perimeter samples — preserves edge coverage (some tracts only touch the
+  // ring at the boundary).
+  const perimeterCount = Math.max(5, n);
+  const step = Math.max(1, Math.floor(ring.length / perimeterCount));
+  for (let i = 0; i < ring.length; i += step) {
     const [x, y] = ring[i];
     out.push({ lat: y, lng: x });
   }
+
   return out;
+}
+
+// Approximate polygon area in square miles using equirectangular projection
+// at the polygon's centroid latitude. Accurate to within a few percent for
+// drive-time isochrones (max ~15 mi extent), which is well below the
+// precision needed for the popReachable15 extrapolation in compute-sas.
+export function polygonAreaSqMi(poly: GeoJSON.Polygon): number {
+  const ring = poly.coordinates?.[0] ?? [];
+  if (ring.length < 3) return 0;
+  // Centroid latitude for the cos(lat) correction.
+  let cy = 0;
+  for (const [, y] of ring) cy += y;
+  cy /= ring.length;
+  const cosLat = Math.cos((cy * Math.PI) / 180);
+  // Shoelace in degree-space, then convert degrees² → mi² using
+  // 1° lat ≈ 69 mi and 1° lng ≈ 69 × cos(lat) mi.
+  let area = 0;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    area += xj * yi - xi * yj;
+  }
+  area = Math.abs(area) / 2; // degrees²
+  return area * 69 * 69 * cosLat;
 }
 
 export function haversineMiles(

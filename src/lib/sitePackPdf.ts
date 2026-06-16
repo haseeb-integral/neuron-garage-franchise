@@ -3,12 +3,11 @@
 // numbers: callers MUST pass pillars from `recomputeSiteScores` so the PDF
 // never disagrees with the on-screen cards.
 //
-// Layout (per analyzed candidate, A4 portrait):
-//   Page 1 — Exec Summary · School Profile · Affluence (with map) · Family Density
-//   Page 2 — Ecosystem · Accessibility · Strengths · Risks · Opportunities · Recs
-// Final page — 4-up comparison matrix.
+// All glyphs are ASCII (jsPDF helvetica is WinAnsi — unicode renders as boxes).
+// Layout uses jspdf-autotable for all tabular sections (no overlap, no clipping).
 
 import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import type { SasPillarScores } from "@/lib/sasMath";
 import type { SiteScoreSignals } from "@/hooks/useSiteScore";
 import type { SiteDecisionRow, SiteVerdict } from "@/hooks/useSiteDecisions";
@@ -39,14 +38,16 @@ export interface BuildSitePackArgs {
   generatedAt?: Date;
 }
 
-const NAVY = "#07142f";
-const BLUE = "#174be8";
-const MUTED = "#526078";
-const SOFT = "#f7faff";
-const LINE = "#e5eaf2";
-const GREEN = "#1d6b32";
-const AMBER = "#7a5800";
-const RED = "#a3142b";
+// Colors as RGB tuples (autoTable wants tuples, jsPDF setters want numbers)
+const NAVY: [number, number, number] = [7, 20, 47];
+const BLUE: [number, number, number] = [23, 75, 232];
+const MUTED: [number, number, number] = [82, 96, 120];
+const SOFT: [number, number, number] = [247, 250, 255];
+const LINE: [number, number, number] = [229, 234, 242];
+const GREEN: [number, number, number] = [29, 107, 50];
+const AMBER: [number, number, number] = [122, 88, 0];
+const RED: [number, number, number] = [163, 20, 43];
+const WHITE: [number, number, number] = [255, 255, 255];
 
 const PILLAR_ORDER: { key: keyof SasPillarScores; label: string; weight: string }[] = [
   { key: "schoolProfile", label: "School Profile", weight: "25%" },
@@ -57,42 +58,41 @@ const PILLAR_ORDER: { key: keyof SasPillarScores; label: string; weight: string 
 ];
 
 function fmtMoney(v: number | null | undefined): string {
-  if (v == null || !Number.isFinite(v)) return "—";
+  if (v == null || !Number.isFinite(v)) return "-";
   if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
   if (v >= 1_000) return `$${Math.round(v / 1_000)}k`;
   return `$${Math.round(v)}`;
 }
 function fmtPct(v: number | null | undefined): string {
-  if (v == null || !Number.isFinite(v)) return "—";
-  // ACS values are 0–1; treat >1 as already-percent.
+  if (v == null || !Number.isFinite(v)) return "-";
   const pct = v > 1 ? v : v * 100;
   return `${Math.round(pct)}%`;
 }
 function fmtCount(v: number | null | undefined): string {
-  if (v == null || !Number.isFinite(v)) return "—";
+  if (v == null || !Number.isFinite(v)) return "-";
   if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
   if (v >= 1_000) return `${Math.round(v / 1_000).toLocaleString()}k`;
   return Math.round(v).toLocaleString();
 }
 function fmtMi(v: number | null | undefined): string {
-  if (v == null || !Number.isFinite(v)) return "—";
+  if (v == null || !Number.isFinite(v)) return "-";
   return `${v.toFixed(1)} mi`;
 }
 
-function tierColor(tier: string): string {
+function tierColor(tier: string): [number, number, number] {
   if (tier === "Recommend") return GREEN;
   if (tier === "Worth a look") return AMBER;
   return RED;
 }
 
 function verdictSentence(c: SitePackCandidate): string {
-  const base =
-    c.tierLabel === "Recommend"
-      ? `${c.schoolName} clears the Recommend threshold (SAS ${c.composite}) on Sam's 25/25/20/15/15 weighting — proceed to LOI diligence.`
-      : c.tierLabel === "Worth a look"
-        ? `${c.schoolName} lands in the Worth-a-Look band (SAS ${c.composite}). Validate weakest pillar before committing.`
-        : `${c.schoolName} fails the calibrated Recommend bar (SAS ${c.composite}). Negative anchor profile — do not pursue without a re-anchor.`;
-  return base;
+  if (c.tierLabel === "Recommend") {
+    return `${c.schoolName} clears the Recommend threshold (SAS ${c.composite}) on Sam's 25/25/20/15/15 weighting -- proceed to LOI diligence.`;
+  }
+  if (c.tierLabel === "Worth a look") {
+    return `${c.schoolName} lands in the Worth-a-Look band (SAS ${c.composite}). Validate weakest pillar before committing.`;
+  }
+  return `${c.schoolName} scores SAS ${c.composite}, below the Recommend threshold on Sam's 25/25/20/15/15 weighting. Do not pursue.`;
 }
 
 function strengthsBullets(c: SitePackCandidate): string[] {
@@ -101,7 +101,7 @@ function strengthsBullets(c: SitePackCandidate): string[] {
     const v = c.pillars[p.key];
     if (v >= 70) out.push(`${p.label} is strong (${v}/100, weight ${p.weight}).`);
   }
-  if (!out.length) out.push("No pillar scored above 70 — this site has no standout strength under Sam's weighting.");
+  if (!out.length) out.push("No pillar scored above 70 -- this site has no standout strength under Sam's weighting.");
   return out;
 }
 
@@ -111,7 +111,7 @@ function risksBullets(c: SitePackCandidate): string[] {
     const v = c.pillars[p.key];
     if (v < 50) out.push(`${p.label} is weak (${v}/100, weight ${p.weight}). Drags ${(parseFloat(p.weight) * v / 100).toFixed(1)} pt off composite.`);
   }
-  if (!out.length) out.push("No pillar below 50 — no headline risks under the calibrated bands.");
+  if (!out.length) out.push("No pillar below 50 -- no headline risks under the calibrated bands.");
   return out;
 }
 
@@ -119,30 +119,30 @@ function opportunitiesBullets(c: SitePackCandidate): string[] {
   const out: string[] = [];
   for (const p of PILLAR_ORDER) {
     const v = c.pillars[p.key];
-    if (v >= 50 && v < 70) out.push(`${p.label} is mid-band (${v}/100) — a +10 lift here would move composite by ${(parseFloat(p.weight) * 0.1).toFixed(1)} pt.`);
+    if (v >= 50 && v < 70) out.push(`${p.label} is mid-band (${v}/100) -- a +10 lift here would move composite by ${(parseFloat(p.weight) * 0.1).toFixed(1)} pt.`);
   }
-  if (!out.length) out.push("No mid-band pillars to optimize — site reads either strongly positive or strongly negative.");
+  if (!out.length) out.push("No mid-band pillars to optimize -- site reads either strongly positive or strongly negative.");
   return out;
 }
 
 function recommendationsBullets(c: SitePackCandidate): string[] {
   const out: string[] = [];
   if (c.tierLabel === "Recommend") {
-    out.push("Advance to LOI. Confirm enrollment & lease terms with school admin.");
+    out.push("Advance to LOI. Confirm enrollment and lease terms with school admin.");
     out.push("Lock site in pipeline; begin teacher-search for this geography.");
   } else if (c.tierLabel === "Worth a look") {
     out.push("Run a second-anchor stress test before committing capital.");
     out.push("Investigate weakest pillar in-person before issuing LOI.");
   } else {
-    out.push("Pass on this site. Document negative anchors for calibration corpus.");
-    out.push("Re-direct search to addresses scoring ≥ 60 in the same MSA.");
+    out.push("Do not pursue. Composite is below the Recommend bar on Sam's weighting.");
+    out.push("Re-direct search to addresses scoring >= 60 in the same MSA.");
   }
   const d = c.decision;
   if (d?.verdict && d.verdict !== "undecided") {
     out.push(`User decision recorded: ${VERDICT_LABEL[d.verdict]}.`);
   }
   if (d?.notes) out.push(`Decision notes: ${d.notes}`);
-  if (d?.is_winner) out.push("★ Marked as winner — this site ships in the recommendation pack.");
+  if (d?.is_winner) out.push("* Marked as winner -- this site ships in the recommendation pack.");
   return out;
 }
 
@@ -158,19 +158,11 @@ export function buildSitePackPdf(args: BuildSitePackArgs): jsPDF {
   const today = generatedAt.toISOString().slice(0, 10);
   let pageNum = 0;
   let y = marginTop;
+  let currentHeader = `Neuron Garage -- Site Analysis Report | Generated ${today}`;
 
-  const setText = (hex: string) => {
-    const n = parseInt(hex.replace("#", ""), 16);
-    pdf.setTextColor((n >> 16) & 255, (n >> 8) & 255, n & 255);
-  };
-  const setFill = (hex: string) => {
-    const n = parseInt(hex.replace("#", ""), 16);
-    pdf.setFillColor((n >> 16) & 255, (n >> 8) & 255, n & 255);
-  };
-  const setDraw = (hex: string) => {
-    const n = parseInt(hex.replace("#", ""), 16);
-    pdf.setDrawColor((n >> 16) & 255, (n >> 8) & 255, n & 255);
-  };
+  const setText = (rgb: [number, number, number]) => pdf.setTextColor(rgb[0], rgb[1], rgb[2]);
+  const setFill = (rgb: [number, number, number]) => pdf.setFillColor(rgb[0], rgb[1], rgb[2]);
+  const setDraw = (rgb: [number, number, number]) => pdf.setDrawColor(rgb[0], rgb[1], rgb[2]);
 
   const drawChrome = (headerText: string) => {
     pageNum++;
@@ -183,7 +175,7 @@ export function buildSitePackPdf(args: BuildSitePackArgs): jsPDF {
     pdf.line(marginX, 36, pageW - marginX, 36);
     pdf.text(`Page ${pageNum}`, pageW - marginX, pageH - 24, { align: "right" });
     setText(MUTED);
-    pdf.text("Neuron Garage · Site Analysis · Phase 2 Feature 1B", marginX, pageH - 24);
+    pdf.text("Neuron Garage | Site Analysis | Phase 2 Feature 1B", marginX, pageH - 24);
   };
 
   const newPage = (headerText: string) => {
@@ -197,17 +189,17 @@ export function buildSitePackPdf(args: BuildSitePackArgs): jsPDF {
   };
 
   const sectionTitle = (n: string, label: string) => {
-    ensureSpace(28, currentHeader);
+    ensureSpace(32, currentHeader);
     setFill(SOFT);
-    pdf.rect(marginX, y - 2, contentW, 20, "F");
+    pdf.rect(marginX, y - 2, contentW, 22, "F");
     setText(NAVY);
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(11);
-    pdf.text(`${n}. ${label}`, marginX + 8, y + 12);
-    y += 26;
+    pdf.text(`${n}. ${label}`, marginX + 8, y + 13);
+    y += 28;
   };
 
-  const body = (text: string, opts: { bold?: boolean; size?: number; color?: string } = {}) => {
+  const body = (text: string, opts: { bold?: boolean; size?: number; color?: [number, number, number] } = {}) => {
     pdf.setFont("helvetica", opts.bold ? "bold" : "normal");
     pdf.setFontSize(opts.size ?? 10);
     setText(opts.color ?? NAVY);
@@ -219,34 +211,45 @@ export function buildSitePackPdf(args: BuildSitePackArgs): jsPDF {
     }
   };
 
-  const kv = (label: string, value: string) => {
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(10);
-    ensureSpace(14, currentHeader);
-    setText(MUTED);
-    pdf.text(label, marginX, y);
-    setText(NAVY);
-    pdf.setFont("helvetica", "bold");
-    pdf.text(value, marginX + 200, y);
-    y += 14;
-  };
-
   const bullets = (items: string[]) => {
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(10);
     setText(NAVY);
     for (const item of items) {
-      const lines = pdf.splitTextToSize(`• ${item}`, contentW - 10);
+      const lines = pdf.splitTextToSize(`- ${item}`, contentW - 10);
       for (let i = 0; i < lines.length; i++) {
         ensureSpace(13, currentHeader);
         pdf.text(lines[i], marginX + (i === 0 ? 0 : 10), y);
         y += 13;
       }
-      y += 2;
+      y += 3;
     }
   };
 
-  let currentHeader = `Neuron Garage — Site Analysis Report · Generated ${today}`;
+  const kvTable = (rows: [string, string][]) => {
+    autoTable(pdf, {
+      startY: y,
+      margin: { left: marginX, right: marginX },
+      tableWidth: contentW,
+      body: rows,
+      theme: "grid",
+      styles: {
+        font: "helvetica",
+        fontSize: 9,
+        cellPadding: 5,
+        textColor: NAVY,
+        lineColor: LINE,
+        lineWidth: 0.5,
+      },
+      columnStyles: {
+        0: { cellWidth: 220, textColor: MUTED },
+        1: { fontStyle: "bold" },
+      },
+      alternateRowStyles: { fillColor: SOFT },
+    });
+    // @ts-expect-error - autoTable attaches lastAutoTable to the doc
+    y = pdf.lastAutoTable.finalY + 10;
+  };
 
   // ---------- Cover page ----------
   drawChrome(currentHeader);
@@ -258,142 +261,161 @@ export function buildSitePackPdf(args: BuildSitePackArgs): jsPDF {
   setText(MUTED);
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(11);
-  pdf.text(`Generated ${today} · ${candidates.length} candidate site${candidates.length === 1 ? "" : "s"} analyzed`, marginX, y);
-  y += 20;
-  pdf.text("SAS weighting: 25% School Profile · 25% Affluence · 20% Family Density · 15% Ecosystem · 15% Accessibility", marginX, y);
-  y += 28;
+  pdf.text(`Generated ${today} | ${candidates.length} candidate site${candidates.length === 1 ? "" : "s"} analyzed`, marginX, y);
+  y += 18;
+  pdf.text("SAS weighting: 25% School Profile | 25% Affluence | 20% Family Density | 15% Ecosystem | 15% Accessibility", marginX, y);
+  y += 24;
+
   // Cover summary table
-  setFill(SOFT);
-  pdf.rect(marginX, y, contentW, 24, "F");
-  setText(NAVY);
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(10);
-  pdf.text("Candidate", marginX + 8, y + 16);
-  pdf.text("SAS", marginX + 280, y + 16);
-  pdf.text("Tier", marginX + 330, y + 16);
-  pdf.text("Decision", marginX + 430, y + 16);
-  y += 28;
-  pdf.setFont("helvetica", "normal");
-  for (const c of candidates) {
-    ensureSpace(20, currentHeader);
-    setText(NAVY);
-    const nameLines = pdf.splitTextToSize(c.schoolName + (c.decision?.is_winner ? "  ★" : ""), 260);
-    pdf.text(nameLines[0], marginX + 8, y + 12);
-    pdf.text(String(c.composite), marginX + 280, y + 12);
-    setText(tierColor(c.tierLabel));
-    pdf.text(c.tierLabel, marginX + 330, y + 12);
-    setText(NAVY);
-    pdf.text(VERDICT_LABEL[c.decision?.verdict ?? "undecided"], marginX + 430, y + 12);
-    setDraw(LINE);
-    pdf.line(marginX, y + 20, pageW - marginX, y + 20);
-    y += 22;
-  }
+  autoTable(pdf, {
+    startY: y,
+    margin: { left: marginX, right: marginX },
+    tableWidth: contentW,
+    head: [["Candidate", "SAS", "Tier", "Decision", "Winner"]],
+    body: candidates.map((c) => [
+      c.schoolName,
+      String(c.composite),
+      c.tierLabel,
+      VERDICT_LABEL[c.decision?.verdict ?? "undecided"],
+      c.decision?.is_winner ? "*" : "",
+    ]),
+    theme: "striped",
+    headStyles: { fillColor: NAVY, textColor: WHITE, fontStyle: "bold", fontSize: 10 },
+    styles: { font: "helvetica", fontSize: 10, cellPadding: 6, textColor: NAVY, lineColor: LINE },
+    alternateRowStyles: { fillColor: SOFT },
+    columnStyles: {
+      1: { halign: "center", cellWidth: 50, fontStyle: "bold" },
+      2: { cellWidth: 90, fontStyle: "bold" },
+      3: { cellWidth: 90 },
+      4: { halign: "center", cellWidth: 50, fontStyle: "bold" },
+    },
+    didParseCell: (data) => {
+      if (data.section === "body" && data.column.index === 2) {
+        data.cell.styles.textColor = tierColor(String(data.cell.raw));
+      }
+      if (data.section === "body" && data.column.index === 4 && data.cell.raw === "*") {
+        data.cell.styles.textColor = GREEN;
+      }
+    },
+  });
+  // @ts-expect-error - autoTable attaches lastAutoTable to the doc
+  y = pdf.lastAutoTable.finalY + 16;
 
   // ---------- Per-candidate detail pages ----------
   for (const c of candidates) {
-    currentHeader = `${c.schoolName} — ${today}`;
+    currentHeader = `${c.schoolName} -- ${today}`;
     newPage(currentHeader);
 
     // 1. Executive Summary
     sectionTitle("1", "Executive Summary");
     body(c.schoolName, { bold: true, size: 13 });
     body(c.address, { color: MUTED });
-    y += 4;
-    // SAS score box
+    y += 6;
+
+    // SAS score box + tier chip + verdict sentence (hand-drawn)
+    const boxTop = y;
     setFill(SOFT);
-    pdf.rect(marginX, y, 110, 60, "F");
+    pdf.rect(marginX, boxTop, 110, 70, "F");
     setText(NAVY);
     pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(28);
-    pdf.text(String(c.composite), marginX + 55, y + 36, { align: "center" });
-    pdf.setFontSize(8);
+    pdf.setFontSize(30);
+    pdf.text(String(c.composite), marginX + 55, boxTop + 40, { align: "center" });
+    pdf.setFontSize(7);
     setText(MUTED);
-    pdf.text("SAS (Site Analysis Score)", marginX + 55, y + 52, { align: "center" });
-    // Tier + verdict
+    pdf.text("SAS (Site Analysis Score)", marginX + 55, boxTop + 58, { align: "center" });
+
+    // Tier + winner badge to the right of score box
     pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(12);
+    pdf.setFontSize(13);
     setText(tierColor(c.tierLabel));
-    pdf.text(`Tier: ${c.tierLabel}`, marginX + 124, y + 18);
+    pdf.text(`Tier: ${c.tierLabel}`, marginX + 124, boxTop + 18);
+
     if (c.decision?.is_winner) {
       setFill(GREEN);
-      pdf.rect(marginX + 124, y + 26, 60, 14, "F");
-      setText("#ffffff");
-      pdf.setFontSize(9);
-      pdf.text("★ Winner", marginX + 154, y + 36, { align: "center" });
+      pdf.rect(marginX + 124, boxTop + 26, 80, 16, "F");
+      setText(WHITE);
+      pdf.setFontSize(10);
+      pdf.text("* WINNER", marginX + 164, boxTop + 37, { align: "center" });
     }
+
     setText(NAVY);
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(9);
+    const verdictTop = boxTop + (c.decision?.is_winner ? 52 : 36);
     const verdictLines = pdf.splitTextToSize(verdictSentence(c), contentW - 130);
-    let vy = y + (c.decision?.is_winner ? 50 : 36);
+    let vy = verdictTop;
     for (const line of verdictLines) {
       pdf.text(line, marginX + 124, vy);
       vy += 11;
     }
-    y += 70;
+    y = boxTop + 80;
 
     // 2. School Profile
-    sectionTitle("2", `School Profile  ·  sub-score ${c.pillars.schoolProfile}/100`);
-    kv("School name", c.schoolName);
-    kv("Type", c.schoolTypeLabel);
-    kv("Grade band", c.gradeBandLabel);
-    kv("Enrollment", c.enrollment || "—");
-    y += 6;
+    sectionTitle("2", `School Profile  |  sub-score ${c.pillars.schoolProfile}/100`);
+    kvTable([
+      ["School name", c.schoolName],
+      ["Type", c.schoolTypeLabel],
+      ["Grade band", c.gradeBandLabel],
+      ["Enrollment", c.enrollment || "-"],
+    ]);
 
     // 3. Neighborhood Affluence
-    sectionTitle("3", `Neighborhood Affluence  ·  sub-score ${c.pillars.affluence}/100`);
+    sectionTitle("3", `Neighborhood Affluence  |  sub-score ${c.pillars.affluence}/100`);
     const acs10 = c.signals?.acs10;
     const acs15 = c.signals?.acs15;
-    kv("Median HHI · 10-min drive", fmtMoney(acs10?.medianHhi));
-    kv("Median HHI · 15-min drive", fmtMoney(acs15?.medianHhi));
-    kv("Households > $150K · 10-min", fmtPct(acs10?.pctAbove150k));
-    kv("Households > $150K · 15-min", fmtPct(acs15?.pctAbove150k));
-    y += 6;
+    kvTable([
+      ["Median HHI - 10-min drive", fmtMoney(acs10?.medianHhi)],
+      ["Median HHI - 15-min drive", fmtMoney(acs15?.medianHhi)],
+      ["Households > $150K - 10-min", fmtPct(acs10?.pctAbove150k)],
+      ["Households > $150K - 15-min", fmtPct(acs15?.pctAbove150k)],
+    ]);
+
     // Map
     if (c.mapPngDataUrl) {
-      ensureSpace(160, currentHeader);
+      ensureSpace(170, currentHeader);
       try {
         pdf.addImage(c.mapPngDataUrl, "PNG", marginX, y, contentW, 150);
-      } catch {
+        y += 154;
         setText(MUTED);
-        pdf.setFontSize(9);
-        pdf.text("[Isochrone map failed to render]", marginX, y + 12);
+        pdf.setFont("helvetica", "italic");
+        pdf.setFontSize(8);
+        pdf.text("10-minute (inner) and 15-minute (outer) drive-time isochrones around the candidate address.", marginX, y);
+        y += 14;
+      } catch {
+        body("[Isochrone map failed to render]", { color: MUTED, size: 9 });
       }
-      y += 156;
-      setText(MUTED);
-      pdf.setFont("helvetica", "italic");
-      pdf.setFontSize(8);
-      pdf.text("10-minute (inner) and 15-minute (outer) drive-time isochrones around the candidate address.", marginX, y);
-      y += 14;
     } else {
-      body("[Isochrone map unavailable — re-run engine to generate drive-time rings.]", { color: MUTED, size: 9 });
+      body("[Isochrone map unavailable -- re-run engine to generate drive-time rings.]", { color: MUTED, size: 9 });
     }
 
     // 4. Family Density
-    sectionTitle("4", `Family Density  ·  sub-score ${c.pillars.familyDensity}/100`);
-    kv("Children 5–12 · 10-min drive", fmtCount(acs10?.children5to12));
-    kv("Children 5–12 · 15-min drive", fmtCount(acs15?.children5to12));
-    kv("Total population · 15-min", fmtCount(acs15?.totalPop));
-    y += 6;
+    sectionTitle("4", `Family Density  |  sub-score ${c.pillars.familyDensity}/100`);
+    kvTable([
+      ["Children 5-12 - 10-min drive", fmtCount(acs10?.children5to12)],
+      ["Children 5-12 - 15-min drive", fmtCount(acs15?.children5to12)],
+      ["Total population - 15-min", fmtCount(acs15?.totalPop)],
+    ]);
 
     // ---- Page 2 ----
     newPage(currentHeader);
 
     // 5. School Ecosystem
-    sectionTitle("5", `School Ecosystem  ·  sub-score ${c.pillars.ecosystem}/100`);
+    sectionTitle("5", `School Ecosystem  |  sub-score ${c.pillars.ecosystem}/100`);
     const eco = c.signals?.ecosystem;
-    kv("Elementary schools nearby", fmtCount(eco?.elementaryCount));
-    kv("Private schools nearby", fmtCount(eco?.privateCount));
-    kv("Total nearby student population", fmtCount(eco?.nearbyStudentPop));
-    y += 6;
+    kvTable([
+      ["Elementary schools nearby", fmtCount(eco?.elementaryCount)],
+      ["Private schools nearby", fmtCount(eco?.privateCount)],
+      ["Total nearby student population", fmtCount(eco?.nearbyStudentPop)],
+    ]);
 
     // 6. Accessibility
-    sectionTitle("6", `Accessibility  ·  sub-score ${c.pillars.accessibility}/100`);
+    sectionTitle("6", `Accessibility  |  sub-score ${c.pillars.accessibility}/100`);
     const acc = c.signals?.accessibility;
-    kv("Distance to major road", fmtMi(acc?.roadDistanceMi));
-    kv("Distance to highway", fmtMi(acc?.highwayDistanceMi));
-    kv("Population reachable · 15-min", fmtCount(acs15?.totalPop));
-    y += 6;
+    kvTable([
+      ["Distance to major road", fmtMi(acc?.roadDistanceMi)],
+      ["Distance to highway", fmtMi(acc?.highwayDistanceMi)],
+      ["Population reachable - 15-min", fmtCount(acs15?.totalPop)],
+    ]);
 
     // 7. Strengths
     sectionTitle("7", "Strengths");
@@ -416,7 +438,7 @@ export function buildSitePackPdf(args: BuildSitePackArgs): jsPDF {
   }
 
   // ---------- Final page: 4-up comparison matrix ----------
-  currentHeader = `Side-by-side comparison — ${today}`;
+  currentHeader = `Side-by-side comparison -- ${today}`;
   newPage(currentHeader);
   setText(BLUE);
   pdf.setFont("helvetica", "bold");
@@ -426,62 +448,73 @@ export function buildSitePackPdf(args: BuildSitePackArgs): jsPDF {
   setText(MUTED);
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(9);
-  pdf.text(`Up to 4 candidates · all numbers recomputed from the same calibrated helper.`, marginX, y);
-  y += 18;
+  pdf.text("Up to 4 candidates | all numbers recomputed from the same calibrated helper.", marginX, y);
+  y += 16;
 
   const cols = candidates.slice(0, 4);
-  const colW = (contentW - 110) / Math.max(cols.length, 1);
-  const labelX = marginX;
-  const colX = (i: number) => marginX + 110 + i * colW;
-  const rowH = 18;
+  const headRow: string[] = ["Metric", ...cols.map((c) => c.schoolName + (c.decision?.is_winner ? "  *" : ""))];
 
-  // Header row
-  setFill(SOFT);
-  pdf.rect(marginX, y, contentW, rowH, "F");
-  setText(NAVY);
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(9);
-  pdf.text("Metric", labelX + 6, y + 12);
-  cols.forEach((c, i) => {
-    const name = c.schoolName + (c.decision?.is_winner ? "  ★" : "");
-    const lines = pdf.splitTextToSize(name, colW - 8);
-    pdf.text(lines[0] ?? "", colX(i) + 6, y + 12);
+  const matrixRows: (string | number)[][] = [
+    ["Address", ...cols.map((c) => c.address.split(",")[0] ?? c.address)],
+    ["SAS Composite", ...cols.map((c) => c.composite)],
+    ["Tier", ...cols.map((c) => c.tierLabel)],
+    ["School Profile (25%)", ...cols.map((c) => c.pillars.schoolProfile)],
+    ["Affluence (25%)", ...cols.map((c) => c.pillars.affluence)],
+    ["Family Density (20%)", ...cols.map((c) => c.pillars.familyDensity)],
+    ["Ecosystem (15%)", ...cols.map((c) => c.pillars.ecosystem)],
+    ["Accessibility (15%)", ...cols.map((c) => c.pillars.accessibility)],
+    ["Decision", ...cols.map((c) => VERDICT_LABEL[c.decision?.verdict ?? "undecided"])],
+    ["Winner", ...cols.map((c) => (c.decision?.is_winner ? "*" : "-"))],
+  ];
+
+  autoTable(pdf, {
+    startY: y,
+    margin: { left: marginX, right: marginX },
+    tableWidth: contentW,
+    head: [headRow],
+    body: matrixRows,
+    theme: "grid",
+    headStyles: {
+      fillColor: NAVY,
+      textColor: WHITE,
+      fontStyle: "bold",
+      fontSize: 9,
+      halign: "center",
+    },
+    styles: {
+      font: "helvetica",
+      fontSize: 9,
+      cellPadding: 5,
+      textColor: NAVY,
+      lineColor: LINE,
+      lineWidth: 0.5,
+      overflow: "linebreak",
+    },
+    columnStyles: {
+      0: { fontStyle: "bold", textColor: MUTED, cellWidth: 110 },
+    },
+    alternateRowStyles: { fillColor: SOFT },
+    didParseCell: (data) => {
+      // Color the Tier row by tier
+      if (data.section === "body" && data.row.index === 2 && data.column.index > 0) {
+        data.cell.styles.textColor = tierColor(String(data.cell.raw));
+        data.cell.styles.fontStyle = "bold";
+      }
+      // Winner row
+      if (data.section === "body" && data.row.index === 9 && data.column.index > 0 && data.cell.raw === "*") {
+        data.cell.styles.textColor = GREEN;
+        data.cell.styles.fontStyle = "bold";
+      }
+    },
   });
-  y += rowH;
+  // @ts-expect-error - autoTable attaches lastAutoTable to the doc
+  y = pdf.lastAutoTable.finalY + 14;
 
-  const row = (label: string, values: (string | number)[], colorPerCol?: (string | null)[]) => {
-    setDraw(LINE);
-    pdf.line(marginX, y + rowH, pageW - marginX, y + rowH);
-    setText(MUTED);
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(9);
-    pdf.text(label, labelX + 6, y + 12);
-    values.forEach((v, i) => {
-      const c = colorPerCol?.[i];
-      setText(c ?? NAVY);
-      pdf.setFont("helvetica", c ? "bold" : "normal");
-      pdf.text(String(v), colX(i) + 6, y + 12);
-    });
-    y += rowH;
-  };
-
-  row("Address", cols.map((c) => c.address.split(",")[0] ?? c.address));
-  row("SAS Composite", cols.map((c) => c.composite));
-  row("Tier", cols.map((c) => c.tierLabel), cols.map((c) => tierColor(c.tierLabel)));
-  row("School Profile (25%)", cols.map((c) => c.pillars.schoolProfile));
-  row("Affluence (25%)", cols.map((c) => c.pillars.affluence));
-  row("Family Density (20%)", cols.map((c) => c.pillars.familyDensity));
-  row("Ecosystem (15%)", cols.map((c) => c.pillars.ecosystem));
-  row("Accessibility (15%)", cols.map((c) => c.pillars.accessibility));
-  row("Decision", cols.map((c) => VERDICT_LABEL[c.decision?.verdict ?? "undecided"]));
-  row("Winner", cols.map((c) => (c.decision?.is_winner ? "★" : "—")));
-
-  y += 12;
   setText(MUTED);
   pdf.setFont("helvetica", "italic");
   pdf.setFontSize(8);
   pdf.text(
-    "All pillar and composite scores in this report are read from `recomputeSiteScores` — the same helper used by the on-screen cards. No stored DB values are displayed.",
+    "All pillar and composite scores in this report are read from recomputeSiteScores -- the same helper used by the on-screen cards. No stored DB values are displayed.",
     marginX,
     y,
     { maxWidth: contentW },

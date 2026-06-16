@@ -122,6 +122,10 @@ export function LiveEngineCard({ onSaveToSlot, canSave = true }: LiveEngineCardP
       setError("School name and address are required.");
       return;
     }
+    if (!enrollment.trim() || !Number.isFinite(Number(enrollment)) || Number(enrollment) <= 0) {
+      setError("Enrollment is required — the engine refuses to fabricate a default. Enter the real student count.");
+      return;
+    }
     setBusy(true);
     try {
       const { data, error } = await supabase.functions.invoke("compute-sas", {
@@ -234,14 +238,16 @@ export function LiveEngineCard({ onSaveToSlot, canSave = true }: LiveEngineCardP
           </select>
         </label>
         <label className="flex flex-col gap-1 text-[11px]" style={{ color: "#526078" }}>
-          Enrollment
+          Enrollment *
           <input
             type="number"
+            min={1}
+            required
             value={enrollment}
             onChange={(e) => setEnrollment(e.target.value)}
             className="rounded border px-2 py-1 text-[12px]"
             style={{ borderColor: "#eef2f7", color: "#07142f" }}
-            placeholder="optional"
+            placeholder="e.g. 600"
           />
         </label>
         <label className="flex flex-col gap-1 text-[11px]" style={{ color: "#526078" }}>

@@ -1064,14 +1064,7 @@ export default function SiteAnalysis() {
       <section className="mb-4 rounded-lg border bg-white p-4" style={{ borderColor: BORDER }}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <h2 className="text-[15px] font-black" style={{ color: NAVY }}>
-              Site Analysis Score (SAS)
-            </h2>
-            <p className="mt-1 text-[12px]" style={{ color: MUTED }}>
-              SAS = 0.25 × School Profile + 0.25 × Neighborhood Affluence + 0.20 × Family Density +
-              0.15 × School Ecosystem + 0.15 × Accessibility.
-            </p>
-            <div className="mt-2">
+            <div>
               <button
                 type="button"
                 onClick={handleNormalize}

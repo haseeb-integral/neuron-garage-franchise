@@ -17,7 +17,8 @@ import { IsochroneMap } from "@/components/site-analysis/IsochroneMap";
 import { supabase } from "@/integrations/supabase/client";
 import { useSiteDecisions, type SiteVerdict } from "@/hooks/useSiteDecisions";
 import { type SiteScoreResult, type SiteScoreSignals } from "@/hooks/useSiteScore";
-import { buildSitePackPdf, fetchMapPng, type SitePackCandidate } from "@/lib/sitePackPdf";
+import { renderSitePackPdfBlob, type SitePackCandidate } from "@/lib/sitePack/SitePackDocument";
+import { fetchMapPng } from "@/lib/sitePack/fetchMapPng";
 import { buildStaticUrl } from "@/components/site-analysis/IsochroneMap";
 import { useMapboxToken } from "@/hooks/useMapboxToken";
 import { toast } from "sonner";
@@ -935,9 +936,16 @@ export default function SiteAnalysis() {
           };
         }),
       );
-      const pdf = buildSitePackPdf({ candidates });
+      const blob = await renderSitePackPdfBlob({ candidates, generatedAt: new Date() });
       const today = new Date().toISOString().slice(0, 10);
-      pdf.save(`nrg-site-analysis-${today}-${candidates.length}sites.pdf`);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `nrg-site-analysis-${today}-${candidates.length}sites.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
       toast.success("Site analysis PDF downloaded");
     } catch (err) {
       console.error("Site pack PDF export failed", err);

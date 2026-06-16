@@ -116,7 +116,7 @@ export function LiveEngineCard({ onSaveToSlot, canSave = true }: LiveEngineCardP
     setAddress(p.address);
     setSchoolType(p.schoolType);
     setGradeBand(p.gradeBand);
-    setEnrollment("");
+    setEnrollment(p.enrollment);
     setError(null);
     setResult(null);
     setSaved(false);

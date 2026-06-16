@@ -77,3 +77,5 @@
   - `DecisionSummary` table now reads live composites + verdicts/winners/notes per candidate address.
 - `src/lib/decisionsExport.ts` — `exportSiteDecisionPack` signature changed to accept `ExportCandidate[]` (live `{schoolName, address, pillars, composite}`) instead of `SiteAnalysisDemoSite[]`. Export now reflects live engine numbers.
 - Out of scope this turn: fixing the model-side calibration failure (Trinity ~51 vs LeafSpring ~55 on real data) — still awaiting Brett's signal call (e.g. distance to NG customer base, competitive saturation penalty).
+
+- 2026-06-16 — agent — restored rich CandidateCard UI on /site-analysis (one-liner summary, drive-time schematic, 6 metric tiles wired to compute-sas signals.acs10/acs15, "Show all formulas" toggle on sub-scores). Hwy/Parking tiles show "—" with tooltip — engine v0.2 work. why: previous Option B refactor dropped the rich UI; Haseeb flagged it.

@@ -889,6 +889,33 @@ export default function SiteAnalysis() {
     exportSiteDecisionPack(exportRows, byAddress);
   };
 
+  // Normalize all 4 cards to the same Daycare/Other/150 inputs and recompute,
+  // so cross-card SAS comparison is apples-to-apples. Uses cache when an exact
+  // ready row already exists for those inputs (avoids the expensive live path).
+  const [normalizing, setNormalizing] = useState(false);
+  const handleNormalize = async () => {
+    if (!slots.length) return;
+    setNormalizing(true);
+    // Patch inputs first
+    setSlots((prev) =>
+      prev.map((s) => ({
+        ...s,
+        schoolType: "daycare",
+        gradeBand: "other",
+        enrollment: "150",
+        status: "loading",
+        error: null,
+      })),
+    );
+    // Re-run each slot (sequential to avoid hammering edge function)
+    const ids = slots.map((s) => s.id);
+    for (const id of ids) {
+      await runSlot(id, { preferCache: true });
+    }
+    setNormalizing(false);
+  };
+
+
 
   return (
     <>

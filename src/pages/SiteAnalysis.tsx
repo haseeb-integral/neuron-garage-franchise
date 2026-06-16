@@ -825,7 +825,12 @@ export default function SiteAnalysis() {
 
       <Feature1BStatus />
 
-      {SAS_ENGINE_LIVE && <LiveEngineCard />}
+      {SAS_ENGINE_LIVE && (
+        <LiveEngineCard
+          canSave={slots.length < 4}
+          onSaveToSlot={(input, result) => saveResultToNewSlot(input, result as SiteScoreResult)}
+        />
+      )}
 
       {/* Formula + thresholds — single, no "Austin metro" wording */}
       <section className="mb-4 rounded-lg border bg-white p-4" style={{ borderColor: BORDER }}>

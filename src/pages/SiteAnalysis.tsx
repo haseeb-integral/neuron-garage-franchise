@@ -872,7 +872,7 @@ export default function SiteAnalysis() {
         if (anchorPatches[anchor.id]) continue;
         if (ranOnceRef.current.has(anchor.id)) continue;
         ranOnceRef.current.add(anchor.id);
-        runSlot(anchor.id);
+        runSlot(anchor.id, { preferCache: true });
       }
     })();
     return () => {

@@ -10,6 +10,7 @@ import type { MarketDecisionRow, MarketVerdict } from "@/hooks/useMarketDecision
 import type { SiteDecisionRow, SiteVerdict } from "@/hooks/useSiteDecisions";
 import type { ShortlistRow } from "@/data/phase2DemoData";
 import type { SiteAnalysisDemoSite } from "@/data/phase2DemoData";
+import { recomputeSiteScores } from "@/lib/sasMath";
 
 const VERDICT_LABEL: Record<MarketVerdict, string> = {
   pursue: "Pursue",

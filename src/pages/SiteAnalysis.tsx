@@ -15,7 +15,7 @@ import { LiveEngineCard, SAS_ENGINE_LIVE } from "@/components/site-analysis/Live
 import { Feature1BStatus } from "@/components/phase2-demo/Feature1BStatus";
 import { SiteDecisionControls } from "@/components/phase2-demo/SiteDecisionControls";
 import { useSiteDecisions, type SiteVerdict } from "@/hooks/useSiteDecisions";
-import { useSiteScore, type SiteScoreResult } from "@/hooks/useSiteScore";
+import { useSiteScore, type SiteScoreResult, type SiteScoreSignals } from "@/hooks/useSiteScore";
 import { exportSiteDecisionPack, type ExportCandidate } from "@/lib/decisionsExport";
 import { SITE_RECOMMEND_THRESHOLDS } from "@/data/phase2DemoData";
 import {
@@ -107,6 +107,7 @@ function CandidateCard({ candidate, onChange, onRemove, onResult, autoRun }: Car
   const brettVerdict: SiteVerdict | undefined =
     decision && decision.verdict !== "undecided" ? decision.verdict : undefined;
   const isWinner = decision?.is_winner ?? false;
+  const [showFormulas, setShowFormulas] = useState(false);
 
   // Auto-run for pre-seeded calibration candidates on first mount.
   useEffect(() => {
@@ -336,24 +337,53 @@ function CandidateCard({ candidate, onChange, onRemove, onResult, autoRun }: Car
         </p>
       )}
 
+      {/* One-liner summary — auto-generated from live pillar values */}
+      {recomputed && (
+        <p className="mt-3 text-[12px]" style={{ color: NAVY }}>
+          {summarizePillars(recomputed.pillars)}
+        </p>
+      )}
+
+      {/* Drive-time schematic (concentric rings) */}
+      {recomputed && <DriveTimeSchematic place={result?.place} />}
+
+      {/* Six metric tiles — live from compute-sas signals */}
+      {recomputed && <MetricTiles signals={result?.signals} />}
+
       {/* Pillar bars */}
       {recomputed && (
         <div className="mt-3 space-y-1.5">
-          <div
-            className="text-[10px] font-semibold uppercase tracking-wide"
-            style={{ color: MUTED }}
-          >
-            Sub-scores
+          <div className="flex items-center justify-between">
+            <div
+              className="text-[10px] font-semibold uppercase tracking-wide"
+              style={{ color: MUTED }}
+            >
+              Sub-scores
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowFormulas((v) => !v)}
+              className="text-[11px] font-semibold"
+              style={{ color: BLUE }}
+            >
+              {showFormulas ? "Hide formulas" : "Show all formulas"}
+            </button>
           </div>
-          <PillarBar label="School Profile" weight={0.25} value={recomputed.pillars.schoolProfile} />
+          <PillarBar label="School Profile" weight={0.25} value={recomputed.pillars.schoolProfile} showFormula={showFormulas} />
           <PillarBar
             label="Neighborhood Affluence"
             weight={0.25}
             value={recomputed.pillars.affluence}
+            showFormula={showFormulas}
           />
-          <PillarBar label="Family Density" weight={0.2} value={recomputed.pillars.familyDensity} />
-          <PillarBar label="School Ecosystem" weight={0.15} value={recomputed.pillars.ecosystem} />
-          <PillarBar label="Accessibility" weight={0.15} value={recomputed.pillars.accessibility} />
+          <PillarBar label="Family Density" weight={0.2} value={recomputed.pillars.familyDensity} showFormula={showFormulas} />
+          <PillarBar label="School Ecosystem" weight={0.15} value={recomputed.pillars.ecosystem} showFormula={showFormulas} />
+          <PillarBar label="Accessibility" weight={0.15} value={recomputed.pillars.accessibility} showFormula={showFormulas} />
+          {showFormulas && (
+            <p className="pt-1 text-[10px]" style={{ color: MUTED }}>
+              Composite = sum of weighted contributions = <strong>{recomputed.composite}</strong>
+            </p>
+          )}
           {result?.place && (
             <p className="pt-1 text-[10px]" style={{ color: MUTED }}>
               Geocoded: {result.place}
@@ -374,7 +404,135 @@ function CandidateCard({ candidate, onChange, onRemove, onResult, autoRun }: Car
   );
 }
 
-function PillarBar({ label, weight, value }: { label: string; weight: number; value: number }) {
+// ---------------------------------------------------------------------------
+// Helpers: summary line, schematic map, metric tiles
+// ---------------------------------------------------------------------------
+
+function summarizePillars(p: {
+  schoolProfile: number;
+  affluence: number;
+  familyDensity: number;
+  ecosystem: number;
+  accessibility: number;
+}): string {
+  const LABEL: Record<keyof typeof p, string> = {
+    schoolProfile: "school profile",
+    affluence: "affluence",
+    familyDensity: "family density",
+    ecosystem: "ecosystem",
+    accessibility: "accessibility",
+  };
+  const strengths = (Object.keys(p) as (keyof typeof p)[]).filter((k) => p[k] >= 80).map((k) => LABEL[k]);
+  const weaknesses = (Object.keys(p) as (keyof typeof p)[]).filter((k) => p[k] < 50).map((k) => LABEL[k]);
+  const parts: string[] = [];
+  if (strengths.length) parts.push(`Strong on ${strengths.join(", ")}.`);
+  if (weaknesses.length) parts.push(`Weak on ${weaknesses.join(", ")}.`);
+  if (!parts.length) parts.push("Average across all pillars.");
+  return parts.join(" ");
+}
+
+function DriveTimeSchematic({ place }: { place?: string }) {
+  return (
+    <div className="mt-3">
+      <div className="mb-1 flex items-center justify-between text-[11px]" style={{ color: BLUE }}>
+        <span className="font-semibold">10-min · 15-min drive rings</span>
+        <span
+          className="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase"
+          style={{ backgroundColor: "#ffe9c2", color: "#7a5800" }}
+          title="Schematic — real Mapbox tiles land in a follow-up"
+        >
+          Map
+        </span>
+      </div>
+      <div
+        className="relative overflow-hidden rounded-md border"
+        style={{ borderColor: BORDER, backgroundColor: SOFT, height: 110 }}
+      >
+        <svg viewBox="0 0 200 110" className="h-full w-full">
+          <circle cx="100" cy="55" r="48" fill="none" stroke={BLUE} strokeOpacity="0.35" strokeWidth="1" strokeDasharray="3 3" />
+          <circle cx="100" cy="55" r="30" fill="none" stroke={BLUE} strokeOpacity="0.7" strokeWidth="1.2" />
+          <circle cx="100" cy="55" r="4" fill={BLUE} />
+        </svg>
+        <div
+          className="absolute bottom-1 left-2 rounded bg-white/85 px-1.5 py-0.5 text-[9px] font-semibold"
+          style={{ color: NAVY }}
+        >
+          10 · 15 min drive
+        </div>
+      </div>
+      {place && (
+        <p className="mt-1 text-[10px]" style={{ color: MUTED }}>
+          Centered on {place}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function Tile({ label, value, dash, dashTip }: { label: string; value?: string; dash?: boolean; dashTip?: string }) {
+  return (
+    <div
+      className="rounded border px-2 py-1.5"
+      style={{ borderColor: BORDER, backgroundColor: dash ? "#f7faff" : "white" }}
+      title={dash ? dashTip : undefined}
+    >
+      <div className="text-[9px] font-semibold uppercase tracking-wide" style={{ color: MUTED }}>
+        {label}
+      </div>
+      <div
+        className="text-[13px] font-bold tabular-nums"
+        style={{ color: dash ? MUTED : NAVY }}
+      >
+        {dash ? "—" : value ?? "—"}
+      </div>
+    </div>
+  );
+}
+
+function fmtMoney(n?: number) {
+  if (n == null || !Number.isFinite(n)) return undefined;
+  if (n >= 1000) return `$${Math.round(n / 1000)}k`;
+  return `$${Math.round(n)}`;
+}
+function fmtPct(n?: number) {
+  if (n == null || !Number.isFinite(n)) return undefined;
+  const v = n <= 1 ? n * 100 : n;
+  return `${Math.round(v)}%`;
+}
+function fmtCount(n?: number) {
+  if (n == null || !Number.isFinite(n)) return undefined;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k`;
+  return `${Math.round(n)}`;
+}
+
+function MetricTiles({ signals }: { signals?: SiteScoreSignals }) {
+  const acs10 = signals?.acs10 ?? {};
+  const acs15 = signals?.acs15 ?? {};
+  return (
+    <div className="mt-3 grid grid-cols-3 gap-1.5">
+      <Tile label="Median HHI · 10m" value={fmtMoney(acs10.medianHhi)} />
+      <Tile label="HH >$150k · 10m" value={fmtPct(acs10.pctAbove150k)} />
+      <Tile label="Kids 5-12 · 10m" value={fmtCount(acs10.children5to12)} />
+      <Tile label="Drive to hwy" dash dashTip="Accessibility v0.2 — highway distance not yet wired" />
+      <Tile label="Parking" dash dashTip="Manual field — not yet wired" />
+      <Tile label="Pop · 15m" value={fmtCount(acs15.totalPop)} />
+    </div>
+  );
+}
+
+function PillarBar({
+  label,
+  weight,
+  value,
+  showFormula,
+}: {
+  label: string;
+  weight: number;
+  value: number;
+  showFormula?: boolean;
+}) {
+  const contribution = +(weight * value).toFixed(1);
   return (
     <div>
       <div className="flex items-baseline justify-between text-[11px]">
@@ -402,9 +560,15 @@ function PillarBar({ label, weight, value }: { label: string; weight: number; va
           }}
         />
       </div>
+      {showFormula && (
+        <div className="mt-0.5 text-[10px]" style={{ color: MUTED }}>
+          {weight.toFixed(2)} × {value} = <strong style={{ color: NAVY }}>{contribution}</strong> pts
+        </div>
+      )}
     </div>
   );
 }
+
 
 // ---------------------------------------------------------------------------
 // Empty add-slot

@@ -12,6 +12,7 @@ const ITEMS: Item[] = [
   { label: "Live scoring engine (compute-sas) wired end-to-end", status: "done" },
   { label: "Every score on this page now comes from the live engine (no demo numbers)", status: "done" },
   { label: "Candidate cards: type a name + address → real pillar scores + composite", status: "done" },
+  { label: "Rich card UI restored: summary line, drive-time map, 6 metric tiles, Show all formulas", status: "done" },
   { label: "Compare up to 4 sites side-by-side", status: "done" },
   { label: "Decision summary table reads live scores", status: "done" },
   { label: "Export decision pack uses live numbers", status: "done" },
@@ -20,8 +21,9 @@ const ITEMS: Item[] = [
     status: "blocked",
     note: "Trinity 51.1 vs LeafSpring 55.4. LeafSpring should score materially lower; instead it scores higher. Needs Brett input on which signal(s) to recalibrate (likely density/accessibility weights or the LeafSpring 'closed site' penalty).",
   },
+  { label: "Drive-to-highway + parking tiles (engine v0.2)", status: "todo" },
+  { label: "Real Mapbox tiles + isochrone overlay (schematic shown today)", status: "todo" },
   { label: "Persist analyzed candidates across reloads", status: "todo" },
-  { label: "Map tiles / address geocoding polish", status: "todo" },
 ];
 
 function Icon({ status }: { status: Item["status"] }) {

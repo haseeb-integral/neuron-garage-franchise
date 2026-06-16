@@ -10,6 +10,28 @@ export interface SiteScoreInput {
   enrollment?: number | null;
 }
 
+export interface SiteScoreSignals {
+  acs10?: {
+    medianHhi?: number;
+    pctAbove150k?: number;
+    pctDualIncome?: number;
+    children5to12?: number;
+    familiesWithKids?: number;
+    totalPop?: number;
+  };
+  acs15?: {
+    medianHhi?: number;
+    pctAbove150k?: number;
+    children5to12?: number;
+    totalPop?: number;
+  };
+  ecosystem?: {
+    elementaryCount?: number;
+    privateCount?: number;
+    nearbyStudentPop?: number;
+  };
+}
+
 export interface SiteScoreResult {
   sas: number;
   pillars: {
@@ -20,7 +42,9 @@ export interface SiteScoreResult {
     accessibility: number;
   };
   place?: string;
+  signals?: SiteScoreSignals;
 }
+
 
 export type SiteScoreStatus = "idle" | "loading" | "ready" | "error";
 

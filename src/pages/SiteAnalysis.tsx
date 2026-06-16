@@ -750,6 +750,79 @@ export default function SiteAnalysis() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Hydrate non-calibration slots from the user's most-recent ready
+  // site_analyses rows (persistence across reloads — v0.4). Calibration
+  // anchors are NOT rehydrated; they always re-run live for reproducibility.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("site_analyses")
+        .select(
+          "id,address,school_name,school_type,enrollment,grade_band,latitude,longitude,school_profile_score,affluence_score,family_density_score,ecosystem_score,accessibility_score,sas_score,signals",
+        )
+        .eq("status", "ready")
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (cancelled || error || !data) return;
+      const anchorAddrs = new Set([TRINITY_CANDIDATE.address, LEAFSPRING_CANDIDATE.address]);
+      const seen = new Set<string>(anchorAddrs);
+      const hydrated: SlotState[] = [];
+      for (const row of data) {
+        if (!row.address || seen.has(row.address)) continue;
+        if (
+          row.school_profile_score == null ||
+          row.affluence_score == null ||
+          row.family_density_score == null ||
+          row.ecosystem_score == null ||
+          row.accessibility_score == null
+        ) continue;
+        seen.add(row.address);
+        const signals = (row.signals ?? {}) as SiteScoreSignals & {
+          // The cached signals payload may not include iso polygons (those
+          // ship inline on the next live re-run); the map silently falls
+          // back to the spinner until the user clicks ↻ Re-run.
+        };
+        const result: SiteScoreResult = {
+          sas: Number(row.sas_score ?? 0),
+          pillars: {
+            schoolProfile: Number(row.school_profile_score),
+            affluence: Number(row.affluence_score),
+            familyDensity: Number(row.family_density_score),
+            ecosystem: Number(row.ecosystem_score),
+            accessibility: Number(row.accessibility_score),
+          },
+          signals,
+          geo:
+            row.latitude != null && row.longitude != null
+              ? { lat: Number(row.latitude), lng: Number(row.longitude) }
+              : undefined,
+        };
+        hydrated.push({
+          id: `persisted-${row.id}`,
+          schoolName: row.school_name ?? "Saved candidate",
+          address: row.address,
+          schoolType: (row.school_type as SchoolType) ?? "private_elementary",
+          gradeBand: (row.grade_band as GradeBand) ?? "k5_k6",
+          enrollment: row.enrollment != null ? String(row.enrollment) : "",
+          status: "ready",
+          result,
+          error: null,
+        });
+        if (hydrated.length >= 2) break; // anchors take 2 slots; cap at 4 total
+      }
+      if (hydrated.length === 0) return;
+      setSlots((prev) => {
+        const existing = new Set(prev.map((s) => s.address));
+        const additions = hydrated.filter((h) => !existing.has(h.address));
+        return [...prev, ...additions].slice(0, 4);
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const removeSlot = (id: string) => {
     setSlots((prev) => prev.filter((s) => s.id !== id));
   };

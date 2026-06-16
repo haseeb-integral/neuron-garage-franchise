@@ -351,43 +351,8 @@ function summarizePillars(p: {
   return parts.join(" ");
 }
 
-function DriveTimeSchematic({ place }: { place?: string }) {
-  return (
-    <div className="mt-3">
-      <div className="mb-1 flex items-center justify-between text-[11px]" style={{ color: BLUE }}>
-        <span className="font-semibold">10-min · 15-min drive rings</span>
-        <span
-          className="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase"
-          style={{ backgroundColor: "#ffe9c2", color: "#7a5800" }}
-          title="Schematic — real Mapbox tiles land in a follow-up"
-        >
-          Map
-        </span>
-      </div>
-      <div
-        className="relative overflow-hidden rounded-md border"
-        style={{ borderColor: BORDER, backgroundColor: SOFT, height: 110 }}
-      >
-        <svg viewBox="0 0 200 110" className="h-full w-full">
-          <circle cx="100" cy="55" r="48" fill="none" stroke={BLUE} strokeOpacity="0.35" strokeWidth="1" strokeDasharray="3 3" />
-          <circle cx="100" cy="55" r="30" fill="none" stroke={BLUE} strokeOpacity="0.7" strokeWidth="1.2" />
-          <circle cx="100" cy="55" r="4" fill={BLUE} />
-        </svg>
-        <div
-          className="absolute bottom-1 left-2 rounded bg-white/85 px-1.5 py-0.5 text-[9px] font-semibold"
-          style={{ color: NAVY }}
-        >
-          10 · 15 min drive
-        </div>
-      </div>
-      {place && (
-        <p className="mt-1 text-[10px]" style={{ color: MUTED }}>
-          Centered on {place}
-        </p>
-      )}
-    </div>
-  );
-}
+// (DriveTimeSchematic was removed in v0.4 — replaced by the real Mapbox
+// IsochroneMap component imported above.)
 
 function Tile({ label, value, dash, dashTip }: { label: string; value?: string; dash?: boolean; dashTip?: string }) {
   return (

@@ -12,7 +12,7 @@ import {
 
 import { PageHeader } from "@/components/PageHeader";
 import { LiveEngineCard, SAS_ENGINE_LIVE } from "@/components/site-analysis/LiveEngineCard";
-import { DemoBanner } from "@/components/phase2-demo/DemoBanner";
+import { Feature1BStatus } from "@/components/phase2-demo/Feature1BStatus";
 import { SiteDecisionControls } from "@/components/phase2-demo/SiteDecisionControls";
 import { useSiteDecisions, type SiteVerdict } from "@/hooks/useSiteDecisions";
 import { useSiteScore, type SiteScoreResult } from "@/hooks/useSiteScore";
@@ -708,7 +708,7 @@ export default function SiteAnalysis() {
         hideJourneyBar
       />
 
-      <DemoBanner note="Calibration anchors: Trinity Christian Academy (positive — operating NG-style site) vs LeafSpring Plano (negative — closed 2023). LeafSpring must score materially lower than Trinity through the live engine." />
+      <Feature1BStatus />
 
       {SAS_ENGINE_LIVE && <LiveEngineCard />}
 

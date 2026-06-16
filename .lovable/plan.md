@@ -1,49 +1,56 @@
+## What I found
 
-# Verdict: Manus is right. Perplexity is directionally right but speculative.
+**1. The "non-2xx" error is a form-validation 400, not a crash.**
+Edge logs show `POST /compute-sas → 400` four times in a row when you clicked Compute SAS. The engine requires `enrollment` (we hardened it in v0.2 to refuse fabricated defaults), but the form labels the field "optional" and you submitted Trinity with enrollment blank. So the function correctly rejects it — but the UX lies about it being optional.
 
-I cross-checked both analyses against the three source-of-truth docs (SAS methodology MD, SOW v2.2, Sam PDF) **and** against the live code in `supabase/functions/`. Here is what holds up.
+**2. The cards DID rerun on v0.3, but the gap got WORSE (11.9 → 8.2).**
+DB confirms both anchors were rescored under `engine_version = sas-v0.3`:
 
-## Where they agree (and the docs back them)
+| Pillar          | Trinity v0.2 → v0.3 | LeafSpring v0.2 → v0.3 |
+|-----------------|---------------------|------------------------|
+| School Profile  | 92.31 → 92.31       | 27.50 → 27.50          |
+| Affluence       | 23.70 → 22.26       | 34.65 → **45.51**      |
+| Family Density  | 6.88 → **35.75**    | 14.67 → **48.83**      |
+| Ecosystem       | 100   → 81.86       | 100   → 72.91          |
+| Accessibility   | 33.00 → 40.44       | 33.00 → 46.73          |
+| **SAS**         | 50.33 → **54.14**   | 38.42 → **45.96**      |
 
-Both Perplexity and Manus converge on the same top-line answer:
+Manus's three fixes worked technically — Family Density unsaturated, Ecosystem unsaturated, extrapolation lifted both anchors out of the floor. But **LeafSpring jumped MORE than Trinity in every demographic pillar**, so the gap shrank.
 
-- **The gap is not a weighting problem.** It is a data/normalization problem. The SAS methodology's own reference table (Section 6) says the engine should produce **Trinity 86 / LeafSpring 41 → 45-point gap**. We're getting 50.33 / 38.42. The recipe isn't broken; the ingredients are spoiled.
-- **Lever A (closed-site penalty) — reject.** Both call it a bolt-on that hides the real bug and breaks turnkey-daycare takeover evaluation. The SOW treats site status as metadata, not a score input.
-- **Lever C — reject.** Cutting Family Density contradicts the SAS doc's "population of buyers" logic.
-- **Lever B — only mild, and only after fixing the data.** Both land on roughly: School Profile 25→30%, School Ecosystem 15→20%, Affluence 25→20%, Family Density 20→15%, Accessibility 15% unchanged. The Sam PDF's school-referral-pipeline language supports this.
-- **20-point gate is correct.** SAS doc's own reference gap is 45; 20 is conservative.
-- **No 6th "site activity" pillar.** `school_type_factor = 30` for daycare already does that work in School Profile.
+**Why:** the engine is now reading reality correctly, and reality says **LeafSpring's address (7000 Preston Rd, West Plano) is in a more affluent, more family-dense neighborhood than Trinity's (4131 Spring Valley Rd, Addison).** Median HHI on the cards confirms it: LeafSpring **$138k / 42% >$150k**, Trinity **$91k / 22% >$150k**. The pillar scores aren't wrong; the anchor pair is wrong.
 
-## Where they differ — and why Manus wins
+This is the **"are we even comparing the right two sites"** point from the Perplexity analysis (Phase 3). SAS methodology Section 6 reference table uses **Trinity Episcopal School of Austin (Westlake)** as the positive anchor — a genuinely affluent area — vs LeafSpring Plano. We swapped in Trinity Christian Academy Addison somewhere along the way, and it's not the right positive anchor: it's a strong school in a middling neighborhood, sitting next to a closed daycare in a strong neighborhood. The demographics cancel.
 
-**Manus names three specific code bugs with file paths and line numbers.** I verified every one of them exists in the live codebase:
+**3. Side issue:** `signals.popReachable15Extrapolated`, `iso15AreaSqMi`, etc. are NULL in the DB rows even though the function computes them. They aren't being written into `signals` — only the pillar scores landed. Worth fixing so we can debug from data, not screenshots.
 
-| Manus claim | Verified in code |
-|---|---|
-| `samplePoints` in `_shared/mapbox.ts` only samples 6 points (centroid + 5 perimeter) | ✅ `mapbox.ts:55` — `samplePoints(poly, n = 5)` |
-| `popReachable15` is sum of unique tracts hit by those 6 points → ~10–15k people → normalizes to 0 against the 50k–500k range | ✅ `census.ts:151` returns `tractsHit: tracts.length`; `sas-math.ts:153` uses `normalize(popReachable15, 50_000, 500_000)`; `compute-sas/index.ts:347` passes `acs15.totalPop` straight in |
-| Ecosystem ranges (elementary 3–25, private 1–10) saturate in any metro → both anchors get 100 → pillar contributes zero separation | ✅ ranges live in `sas-math.ts`, matches the live Trinity 100 / LeafSpring 100 we see |
+## Plan
 
-Perplexity guessed at the cause categories (geocoding the wrong building, 60/40 blend inverted, PostGIS misjoin). Those are plausible *classes* of bug, but none of them are what the code is actually doing. Perplexity hadn't seen the source.
+### A. Fix the 400 (form UX, ~5 min)
+- `src/components/site-analysis/LiveEngineCard.tsx`: enrollment input — drop the "optional" placeholder, mark it required, block submit when empty with a clear inline error ("Enrollment required — engine refuses to fabricate"). No engine change.
 
-**One Perplexity insight is still worth keeping:** the SAS methodology doc Section 6 says both anchors are in Austin (Trinity Episcopal Westlake + LeafSpring), but our live calibration is running Trinity Christian Academy in Addison, TX. That's a separate "are we even comparing the right two sites" question — worth flagging but not the cause of the 11.9-point gap.
+### B. Persist the diagnostic signals (~5 min)
+- `supabase/functions/compute-sas/index.ts`: include `popReachable15Raw`, `popReachable15Extrapolated`, `iso15AreaSqMi`, `iso10AreaSqMi`, `avgTractPop15`, `tractsHit15` in the `signals` JSONB written to `site_analyses`. Re-deploy.
 
-## Recommended fix sequence (when we switch to build mode)
+### C. Swap the positive anchor to a real affluent site (the actual fix for the gap)
+Two options — I recommend C1:
 
-**Phase 1 — Fix the three data bugs (Manus's prescription, verbatim):**
+- **C1 (SAS-doc canonical):** Use **Trinity Episcopal School, 4011 Bee Caves Rd, Austin, TX 78746** (Westlake) as the positive anchor, matching SAS methodology Section 6. LeafSpring Plano stays as negative. This is the pair the SAS doc itself calibrates against (reference gap 86 vs 41 = 45 pts).
+- **C2 (DFW pair):** Keep DFW but pick a positive anchor in a genuinely affluent DFW pocket — e.g. **Greenhill School, 4141 Spring Valley Rd, Addison** (no — same block) or **St. Mark's School of Texas, 10600 Preston Rd, Dallas** (Preston Hollow). Faster to A/B against the current LeafSpring address, but departs from the SAS doc.
 
-1. `_shared/mapbox.ts` — replace `samplePoints` with a dense grid (25–30 points) across the isochrone polygon, or use a PostGIS bounding-box intersection in the spatial join. Expected lift: Trinity Affluence 23.70 → ~92.
-2. `_shared/census.ts` + `compute-sas/index.ts` — compute `popReachable15` as area-weighted tract density × isochrone area, not sum of unique tracts hit by 6 points. Expected lift: Trinity Accessibility 33 → ~88.
-3. `_shared/sas-math.ts` — widen ecosystem ranges for metros (elementary 10–100, private 5–50) so DFW-density sites don't saturate at 100. Expected: separation appears on this pillar.
+After swap, re-run calibration. Expected outcome with C1: Trinity Episcopal pillars rise sharply (Westlake median HHI ~$200k, dense family pop), gap should open past 20.
 
-**Phase 2 — Re-run calibration. Three outcomes possible:**
+### D. If C still doesn't open the gap past 20
+That's the signal that Manus's three code fixes were necessary but not sufficient, and Lever B (mild reweight: School Profile 25→30, Ecosystem 15→20, Affluence 25→20, Family Density 20→15) is the next move — exactly the fallback both Perplexity and Manus converged on.
 
-- Gap ≥ 20 → ship. No weight changes.
-- Gap 15–20 → apply mild Lever B (Profile 30 / Ecosystem 20 / Affluence 20 / Density 15 / Access 15).
-- Gap < 15 after data fix → escalate. Means the bug list is incomplete.
+### Out of scope (don't touch)
+- Closed-site penalty (Lever A) — both analyses rejected it.
+- Family Density weight cut to zero (Lever C) — both rejected it.
+- Pillar weights — only revisit if C fails.
 
-**Phase 3 — Independent of the gate, address Perplexity's "right anchors" point:** confirm whether the live calibration set should be (Trinity Episcopal Westlake, Austin) per the SAS doc, or (Trinity Christian Academy Addison) as currently wired. This is a separate decision and shouldn't block the bug fixes.
+## Decision needed from you
+**Which positive anchor for C?**
+1. **C1**: Trinity Episcopal, Westlake Austin (SAS doc canonical — recommended)
+2. **C2**: St. Mark's School, Preston Hollow Dallas (DFW pair)
+3. **Keep Trinity Christian Academy Addison** and skip to Lever B reweight instead
 
-## What I need from you before building
-
-Just one yes/no: **proceed with Phase 1 (the three code bugs) as the next build?** Phases 2 and 3 follow automatically from the calibration result.
+Pick one and I'll execute A + B + C (or A + B + D) in one pass.

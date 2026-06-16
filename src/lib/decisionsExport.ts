@@ -3,14 +3,14 @@
  *
  * 1A: CSV (scores + verdicts + notes).
  * 1B: branded print-to-PDF window (uses the browser's native print dialog —
- *      no map vendor or PDF engine wired up yet).
+ *      no PDF engine wired up yet). Reads live candidate pillars + composite
+ *      computed by the engine, not stored demo values.
  */
 
 import type { MarketDecisionRow, MarketVerdict } from "@/hooks/useMarketDecisions";
 import type { SiteDecisionRow, SiteVerdict } from "@/hooks/useSiteDecisions";
 import type { ShortlistRow } from "@/data/phase2DemoData";
-import type { SiteAnalysisDemoSite } from "@/data/phase2DemoData";
-import { recomputeSiteScores } from "@/lib/sasMath";
+import type { SasPillarScores } from "@/lib/sasMath";
 
 const VERDICT_LABEL: Record<MarketVerdict, string> = {
   pursue: "Pursue",
@@ -84,41 +84,47 @@ export function exportMarketDecisionsCsv(
   URL.revokeObjectURL(url);
 }
 
+export interface ExportCandidate {
+  schoolName: string;
+  address: string;
+  pillars: SasPillarScores;
+  composite: number;
+}
+
 export function exportSiteDecisionPack(
-  sites: SiteAnalysisDemoSite[],
+  candidates: ExportCandidate[],
   byAddress: Map<string, SiteDecisionRow>,
 ) {
-  const winner = sites.find((s) => byAddress.get(s.address)?.is_winner);
-  const winnerScore = winner ? recomputeSiteScores(winner.subScores).composite : null;
+  const winner = candidates.find((c) => byAddress.get(c.address)?.is_winner);
+  const winnerScore = winner ? winner.composite : null;
   const generatedAt = new Date().toLocaleString();
 
-  const cardHtml = sites
-    .map((s) => {
-      const d = byAddress.get(s.address);
+  const cardHtml = candidates
+    .map((c) => {
+      const d = byAddress.get(c.address);
       const verdict = SITE_VERDICT_LABEL[d?.verdict ?? "undecided"];
       const isWinner = d?.is_winner;
-      const { pillars, composite } = recomputeSiteScores(s.subScores);
+      const p = c.pillars;
       return `
       <div class="card ${isWinner ? "winner" : ""}">
         <div class="card-h">
           <div>
-            <h3>${escapeHtml(s.schoolName)}${isWinner ? ' <span class="winner-tag">★ Winner</span>' : ""}</h3>
-            <p class="muted">${escapeHtml(s.address)}</p>
+            <h3>${escapeHtml(c.schoolName)}${isWinner ? ' <span class="winner-tag">★ Winner</span>' : ""}</h3>
+            <p class="muted">${escapeHtml(c.address)}</p>
           </div>
           <div class="score">
-            <div class="score-num">${composite}</div>
+            <div class="score-num">${c.composite}</div>
             <div class="score-lbl">SAO</div>
           </div>
         </div>
         <p class="verdict">Brett/Sam's verdict: <strong>${verdict}</strong></p>
-        <p>${escapeHtml(s.verdict)}</p>
         ${d?.notes ? `<div class="notes"><strong>Notes:</strong> ${escapeHtml(d.notes)}</div>` : ""}
         <table class="subs">
-          <tr><td>School Profile (25%)</td><td>${pillars.schoolProfile}</td></tr>
-          <tr><td>Neighborhood Affluence (25%)</td><td>${pillars.affluence}</td></tr>
-          <tr><td>Family Density (20%)</td><td>${pillars.familyDensity}</td></tr>
-          <tr><td>School Ecosystem (15%)</td><td>${pillars.ecosystem}</td></tr>
-          <tr><td>Accessibility (15%)</td><td>${pillars.accessibility}</td></tr>
+          <tr><td>School Profile (25%)</td><td>${p.schoolProfile}</td></tr>
+          <tr><td>Neighborhood Affluence (25%)</td><td>${p.affluence}</td></tr>
+          <tr><td>Family Density (20%)</td><td>${p.familyDensity}</td></tr>
+          <tr><td>School Ecosystem (15%)</td><td>${p.ecosystem}</td></tr>
+          <tr><td>Accessibility (15%)</td><td>${p.accessibility}</td></tr>
         </table>
       </div>`;
     })
@@ -154,7 +160,7 @@ export function exportSiteDecisionPack(
     ? `<div class="winner-banner"><strong>Chosen site:</strong> ${escapeHtml(winner.schoolName)} — ${escapeHtml(winner.address)} (Site Analysis Score (SAO): ${winnerScore})</div>`
     : `<div class="winner-banner" style="background:#fff1d6;border-left-color:#925100;"><strong>No winner selected.</strong> Compare the candidates below.</div>`}
   <div class="grid">${cardHtml}</div>
-  <footer>Phase 2 demo — isochrones and live data not yet wired. Formulas locked in <code>.lovable/phase-2/phase-2-sow.md</code> Item 2.</footer>
+  <footer>Phase 2 — live engine scores. Formulas locked in <code>.lovable/phase-2/phase-2-sow.md</code> Item 2.</footer>
 </body></html>`;
 
   const win = window.open("", "_blank");

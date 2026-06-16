@@ -68,7 +68,33 @@ const PRESETS: Preset[] = [
  *
  * Calls the `compute-sas` edge function and polls the `site_analyses` row.
  */
-export function LiveEngineCard() {
+export interface LiveEngineResult {
+  sas: number;
+  pillars: {
+    schoolProfile: number;
+    affluence: number;
+    familyDensity: number;
+    ecosystem: number;
+    accessibility: number;
+  };
+  place?: string;
+  signals?: unknown;
+}
+
+export interface LiveEngineInput {
+  schoolName: string;
+  address: string;
+  schoolType: SchoolType;
+  gradeBand: GradeBand;
+  enrollment: string;
+}
+
+interface LiveEngineCardProps {
+  onSaveToSlot?: (input: LiveEngineInput, result: LiveEngineResult) => void;
+  canSave?: boolean;
+}
+
+export function LiveEngineCard({ onSaveToSlot, canSave = true }: LiveEngineCardProps = {}) {
   const [address, setAddress] = useState("");
   const [schoolName, setSchoolName] = useState("");
   const [schoolType, setSchoolType] = useState<SchoolType>("private_elementary");
@@ -76,17 +102,8 @@ export function LiveEngineCard() {
   const [gradeBand, setGradeBand] = useState<GradeBand>("k5_k6");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<null | {
-    sas: number;
-    pillars: {
-      schoolProfile: number;
-      affluence: number;
-      familyDensity: number;
-      ecosystem: number;
-      accessibility: number;
-    };
-    place?: string;
-  }>(null);
+  const [result, setResult] = useState<LiveEngineResult | null>(null);
+  const [saved, setSaved] = useState(false);
 
   function loadPreset(p: Preset) {
     setSchoolName(p.schoolName);
@@ -96,6 +113,7 @@ export function LiveEngineCard() {
     setEnrollment("");
     setError(null);
     setResult(null);
+    setSaved(false);
   }
 
   async function run() {

@@ -434,11 +434,13 @@ function PillarBar({
   weight,
   value,
   showFormula,
+  detail,
 }: {
   label: string;
   weight: number;
   value: number;
   showFormula?: boolean;
+  detail?: string;
 }) {
   const contribution = +(weight * value).toFixed(1);
   return (
@@ -469,8 +471,11 @@ function PillarBar({
         />
       </div>
       {showFormula && (
-        <div className="mt-0.5 text-[10px]" style={{ color: MUTED }}>
-          {weight.toFixed(2)} × {value} = <strong style={{ color: NAVY }}>{contribution}</strong> pts
+        <div className="mt-0.5 space-y-0.5 text-[10px]" style={{ color: MUTED }}>
+          {detail && <div>{detail}</div>}
+          <div>
+            {weight.toFixed(2)} × {value} = <strong style={{ color: NAVY }}>{contribution}</strong> pts
+          </div>
         </div>
       )}
     </div>

@@ -10,6 +10,7 @@ export interface GeocodeResult {
   lat: number;
   lng: number;
   placeName: string;
+  stateCode: string | null; // 2-letter, e.g. "TX"
 }
 
 export async function geocode(address: string): Promise<GeocodeResult> {
@@ -20,7 +21,20 @@ export async function geocode(address: string): Promise<GeocodeResult> {
   const f = data?.features?.[0];
   if (!f) throw new Error(`Mapbox geocode: no result for "${address}"`);
   const [lng, lat] = f.center;
-  return { lat, lng, placeName: f.place_name };
+  // Pull state from context (e.g. short_code "US-TX") or top-level if region.
+  let stateCode: string | null = null;
+  const ctx: Array<{ id?: string; short_code?: string }> = f.context ?? [];
+  for (const c of ctx) {
+    if (c.id?.startsWith("region") && typeof c.short_code === "string") {
+      const m = c.short_code.match(/US-([A-Z]{2})/);
+      if (m) { stateCode = m[1]; break; }
+    }
+  }
+  if (!stateCode && f.id?.startsWith("region") && typeof f.properties?.short_code === "string") {
+    const m = f.properties.short_code.match(/US-([A-Z]{2})/);
+    if (m) stateCode = m[1];
+  }
+  return { lat, lng, placeName: f.place_name, stateCode };
 }
 
 export async function isochrone(

@@ -136,43 +136,59 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace }: CardPropsExt) {
       style={{
         borderColor: isWinner ? "#1d6b32" : BORDER,
         borderWidth: isWinner ? 2 : 1,
-        minHeight: 540,
+        minHeight: 560,
       }}
     >
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3">
+      {/* Header — fixed height so all 4 cards align */}
+      <div className="flex items-start justify-between gap-3" style={{ minHeight: 110 }}>
         <div className="min-w-0 flex-1">
           <div className="flex items-start gap-1.5">
             <MapPin size={14} style={{ color: BLUE, marginTop: 3 }} className="shrink-0" />
             <h3
-              className="text-[13px] font-bold leading-snug break-words"
-              style={{ color: NAVY }}
+              className="text-[13px] font-bold leading-snug min-w-0 flex-1"
+              style={{
+                color: NAVY,
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }}
               title={slot.schoolName || "Unnamed candidate"}
             >
               {slot.schoolName || "New candidate"}
             </h3>
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-1">
-            {isWinner && (
+          {isWinner && (
+            <div className="mt-1">
               <span
                 className="inline-flex items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-bold"
                 style={{ backgroundColor: "#1d6b32", color: "#fff" }}
               >
                 <Star size={9} className="mr-0.5" fill="#fff" /> Winner
               </span>
-            )}
-          </div>
+            </div>
+          )}
           {slot.address && (
-            <p className="mt-1 text-[11px] break-words" style={{ color: MUTED }}>
+            <p
+              className="mt-1 text-[11px]"
+              style={{
+                color: MUTED,
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }}
+              title={slot.address}
+            >
               {slot.address}
             </p>
           )}
-          <p className="mt-1 text-[10px]" style={{ color: MUTED }}>
+          <p className="mt-1 truncate text-[10px]" style={{ color: MUTED }}>
             {SCHOOL_TYPE_LABEL[slot.schoolType]} · {GRADE_BAND_LABEL[slot.gradeBand]}
             {slot.enrollment ? ` · enrollment ${slot.enrollment}` : ""}
           </p>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-1">
+        <div className="flex shrink-0 flex-col items-end gap-1" style={{ width: 92 }}>
           {composite != null ? (
             <>
               <div
@@ -206,6 +222,7 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace }: CardPropsExt) {
           )}
         </div>
       </div>
+
 
       {/* Re-run / Replace / Remove */}
       <div className="mt-2 flex items-center justify-end gap-2">
@@ -249,12 +266,23 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace }: CardPropsExt) {
         </p>
       )}
 
-      {/* One-liner summary — auto-generated from live pillar values */}
+      {/* One-liner summary — fixed height so cards align */}
       {recomputed && (
-        <p className="mt-3 text-[12px]" style={{ color: NAVY }}>
+        <p
+          className="mt-3 text-[12px]"
+          style={{
+            color: NAVY,
+            minHeight: 36,
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          }}
+        >
           {summarizePillars(recomputed.pillars)}
         </p>
       )}
+
 
       {/* Drive-time isochrone map (real Mapbox tiles) */}
       {recomputed && slot.result?.geo && (
@@ -861,6 +889,88 @@ export default function SiteAnalysis() {
     exportSiteDecisionPack(exportRows, byAddress);
   };
 
+  // Normalize all 4 cards to the same Daycare/Other/150 inputs and recompute,
+  // so cross-card SAS comparison is apples-to-apples. Uses cache when an exact
+  // ready row already exists for those inputs (avoids the expensive live path).
+  const [normalizing, setNormalizing] = useState(false);
+  const handleNormalize = async () => {
+    if (!slots.length) return;
+    setNormalizing(true);
+    const targets = slots.map((s) => ({
+      id: s.id,
+      schoolName: s.schoolName,
+      address: s.address,
+      schoolType: "daycare" as SchoolType,
+      gradeBand: "other" as GradeBand,
+      enrollment: "150",
+    }));
+    // Patch inputs immediately so UI reflects the comparison set
+    setSlots((prev) =>
+      prev.map((s) => {
+        const t = targets.find((x) => x.id === s.id)!;
+        return { ...s, ...t, status: "loading", error: null };
+      }),
+    );
+    for (const t of targets) {
+      // Cache lookup first
+      const { data: cached } = await supabase
+        .from("site_analyses")
+        .select(
+          "id,school_profile_score,affluence_score,family_density_score,ecosystem_score,accessibility_score,sas_score,signals,latitude,longitude",
+        )
+        .eq("status", "ready")
+        .eq("address", t.address.trim())
+        .eq("school_type", t.schoolType)
+        .eq("grade_band", t.gradeBand)
+        .eq("enrollment", 150)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      let result: SiteScoreResult | null = null;
+      if (cached && cached.school_profile_score != null) {
+        result = {
+          sas: Number(cached.sas_score ?? 0),
+          pillars: {
+            schoolProfile: Number(cached.school_profile_score),
+            affluence: Number(cached.affluence_score),
+            familyDensity: Number(cached.family_density_score),
+            ecosystem: Number(cached.ecosystem_score),
+            accessibility: Number(cached.accessibility_score),
+          },
+          signals: (cached.signals ?? {}) as SiteScoreSignals,
+          geo:
+            cached.latitude != null && cached.longitude != null
+              ? { lat: Number(cached.latitude), lng: Number(cached.longitude) }
+              : undefined,
+        };
+      } else {
+        try {
+          const { data, error } = await supabase.functions.invoke("compute-sas", {
+            body: {
+              address: t.address.trim(),
+              school_name: t.schoolName.trim(),
+              school_type: t.schoolType,
+              enrollment: 150,
+              grade_band: t.gradeBand,
+            },
+          });
+          if (error) throw error;
+          if ((data as { status?: string })?.status === "failed") {
+            throw new Error((data as { error?: string }).error ?? "Engine failed");
+          }
+          result = data as SiteScoreResult;
+        } catch (e) {
+          patchSlot(t.id, { status: "error", error: (e as Error).message });
+          continue;
+        }
+      }
+      patchSlot(t.id, { status: "ready", result, error: null });
+    }
+    setNormalizing(false);
+  };
+
+
+
 
   return (
     <>
@@ -895,22 +1005,44 @@ export default function SiteAnalysis() {
               0.15 × School Ecosystem + 0.15 × Accessibility.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleExport}
-            disabled={!canExport}
-            title={
-              canExport
-                ? "Open a branded decision pack with verdicts, winner, and notes — print or save as PDF"
-                : "Mark a winner first to enable the decision pack"
-            }
-            className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-            style={{ borderColor: BLUE, color: BLUE, backgroundColor: "#fff" }}
-          >
-            <Download size={12} />
-            Export decision pack
-          </button>
+          <div className="flex flex-col items-end gap-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handleNormalize}
+                disabled={normalizing || slots.length === 0}
+                title="Re-score all cards with the same inputs (Daycare · Other · enrollment 150) for an apples-to-apples comparison"
+                className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ borderColor: BORDER, color: NAVY, backgroundColor: "#fff" }}
+              >
+                {normalizing ? "Normalizing…" : "⇋ Normalize inputs (Daycare · Other · 150)"}
+              </button>
+              <button
+                type="button"
+                onClick={handleExport}
+                disabled={!canExport}
+                title={
+                  canExport
+                    ? "Open a branded decision pack with verdicts, winner, and notes — print or save as PDF"
+                    : "Mark a winner on any card (★ Mark winner) to enable the decision pack"
+                }
+                className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ borderColor: BLUE, color: BLUE, backgroundColor: "#fff" }}
+              >
+                <Download size={12} />
+                Export decision pack
+              </button>
+            </div>
+            {!canExport && (
+              <p className="text-[10px]" style={{ color: MUTED }}>
+                Mark a winner on any card (★) to enable export.
+              </p>
+            )}
+          </div>
         </div>
+
+
+
 
         <div
           className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md p-2 text-[11px]"

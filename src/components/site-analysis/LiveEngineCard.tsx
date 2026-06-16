@@ -270,7 +270,7 @@ export function LiveEngineCard({ onSaveToSlot, canSave = true, replaceTargetLabe
             placeholder="e.g. 600"
           />
         </label>
-        <label className="flex flex-col gap-1 text-[11px]" style={{ color: "#526078" }}>
+        <label className="flex flex-col gap-1 text-[11px] md:col-span-3" style={{ color: "#526078" }}>
           Grade band
           <select
             value={gradeBand}
@@ -284,16 +284,33 @@ export function LiveEngineCard({ onSaveToSlot, canSave = true, replaceTargetLabe
             <option value="other">Other</option>
           </select>
         </label>
-        <div className="flex items-end gap-2">
-          <button
-            onClick={run}
-            disabled={busy}
-            className="rounded px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-60"
-            style={{ background: "#174be8" }}
+      </div>
+
+      {/* Formula + big action button footer */}
+      <div
+        className="mt-3 flex flex-col gap-3 border-t pt-3 md:flex-row md:items-center md:justify-between"
+        style={{ borderColor: "#eef2f7" }}
+      >
+        <div className="flex items-start gap-2 min-w-0">
+          <span
+            className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold italic"
+            style={{ background: "#eef2f7", color: "#174be8", fontFamily: "Georgia, serif" }}
+            title="Formula"
           >
-            {busy ? "Computing…" : "Compute SAS"}
-          </button>
+            fx
+          </span>
+          <code className="text-[11px] leading-snug" style={{ color: "#07142f" }}>
+            SAS = 0.25·SchoolProfile + 0.25·Affluence + 0.20·FamilyDensity + 0.15·Ecosystem + 0.15·Accessibility
+          </code>
         </div>
+        <button
+          onClick={run}
+          disabled={busy}
+          className="shrink-0 rounded-md px-6 py-2.5 text-[14px] font-bold text-white shadow-sm transition hover:opacity-95 disabled:opacity-60"
+          style={{ background: "#174be8", minWidth: 180 }}
+        >
+          {busy ? "Computing…" : "Compute SAS →"}
+        </button>
       </div>
 
       {error && (

@@ -30,7 +30,7 @@ import {
   SchoolType,
 } from "../_shared/sas-math.ts";
 
-const ENGINE_VERSION = "sas-v0.3";
+const ENGINE_VERSION = "sas-v0.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

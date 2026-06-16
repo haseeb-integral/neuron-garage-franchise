@@ -345,7 +345,7 @@ Deno.serve(async (req) => {
         accessibility: accessibilityScore({
           roadDistanceMi,
           highwayDistanceMi,
-          popReachable15: acs15.totalPop,
+          popReachable15: popReachable15Extrapolated,
         }),
       };
     } catch (e) {

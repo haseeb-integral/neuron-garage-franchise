@@ -625,7 +625,7 @@ function DecisionSummary({
             <tr style={{ color: MUTED }}>
               <th className="py-1 text-left font-semibold">Site</th>
               <th className="py-1 text-right font-semibold">Score</th>
-              <th className="py-1 text-left font-semibold">Brett/Sam's verdict</th>
+              <th className="py-1 text-left font-semibold">Decision</th>
               <th className="py-1 text-left font-semibold">Winner</th>
               <th className="py-1 text-left font-semibold">Note</th>
             </tr>

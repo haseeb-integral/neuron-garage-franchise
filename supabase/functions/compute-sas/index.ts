@@ -169,6 +169,9 @@ Deno.serve(async (req) => {
         .eq("polygon_hash", hash)
         .maybeSingle();
       if (cached && cacheRowComplete(cached as Record<string, unknown>)) {
+        const cachedRaw = (cached as Record<string, unknown>).raw as
+          | { tractsHit?: number }
+          | null;
         return {
           medianHhi: Number(cached.median_hhi),
           pctAbove150k: Number(cached.pct_hh_above_150k),
@@ -176,7 +179,7 @@ Deno.serve(async (req) => {
           children5to12: Number(cached.children_5_12),
           familiesWithKids: Number(cached.families_with_kids_5_12),
           totalPop: Number(cached.total_population),
-          tractsHit: 0,
+          tractsHit: Number(cachedRaw?.tractsHit ?? 0),
         };
       }
       const agg = await aggregateAcs(samplePoints(poly, 5));

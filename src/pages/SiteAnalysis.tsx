@@ -541,7 +541,7 @@ function CalibrationGateBanner({
       >
         <Loader2 size={16} className="mt-0.5 shrink-0 animate-spin" />
         <div>
-          <strong>Computing calibration gate…</strong> Running Trinity Christian Academy vs LeafSpring Plano through the live engine.
+          <strong>Computing calibration gate…</strong> Running Trinity Episcopal School (Westlake, Austin) vs LeafSpring Plano through the live engine.
         </div>
       </div>
     );

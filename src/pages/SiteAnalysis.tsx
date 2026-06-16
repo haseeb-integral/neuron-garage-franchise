@@ -685,10 +685,8 @@ export default function SiteAnalysis() {
   // Slots hold the *frozen* inputs + the last engine result. There is no
   // per-card input form anymore: the only way to feed inputs into the engine
   // is via the Live Engine card above and the "Save to slot" button.
-  const [slots, setSlots] = useState<SlotState[]>([
-    { ...TRINITY_CANDIDATE, status: "idle", result: null, error: null },
-    { ...LEAFSPRING_CANDIDATE, status: "idle", result: null, error: null },
-  ]);
+  const [slots, setSlots] = useState<SlotState[]>([]);
+  const [pendingReplaceId, setPendingReplaceId] = useState<string | null>(null);
   const { byAddress } = useSiteDecisions();
   const ranOnceRef = useRef<Set<string>>(new Set());
 

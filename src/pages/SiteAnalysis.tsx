@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CheckCircle2,
   Download,
@@ -14,8 +14,9 @@ import { PageHeader } from "@/components/PageHeader";
 import { LiveEngineCard, SAS_ENGINE_LIVE } from "@/components/site-analysis/LiveEngineCard";
 import { Feature1BStatus } from "@/components/phase2-demo/Feature1BStatus";
 import { SiteDecisionControls } from "@/components/phase2-demo/SiteDecisionControls";
+import { supabase } from "@/integrations/supabase/client";
 import { useSiteDecisions, type SiteVerdict } from "@/hooks/useSiteDecisions";
-import { useSiteScore, type SiteScoreResult, type SiteScoreSignals } from "@/hooks/useSiteScore";
+import { type SiteScoreResult, type SiteScoreSignals } from "@/hooks/useSiteScore";
 import { exportSiteDecisionPack, type ExportCandidate } from "@/lib/decisionsExport";
 import { SITE_RECOMMEND_THRESHOLDS } from "@/data/phase2DemoData";
 import {

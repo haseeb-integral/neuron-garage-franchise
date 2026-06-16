@@ -16,6 +16,7 @@ import {
   SITE_RECOMMEND_THRESHOLDS,
   type SiteAnalysisDemoSite,
 } from "@/data/phase2DemoData";
+import { siteComposite } from "@/lib/sasMath";
 
 const NAVY = "#07142f";
 const MUTED = "#526078";

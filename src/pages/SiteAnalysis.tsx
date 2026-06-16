@@ -595,7 +595,7 @@ function WinnerBanner({
       <Star size={14} fill="#1d6b32" />
       <div>
         <strong>★ Winner:</strong> {winner.candidate.schoolName} — Site Analysis Score (SAS){" "}
-        <strong className="tabular-nums">{winner.composite}</strong> · Brett/Sam's verdict:{" "}
+        <strong className="tabular-nums">{winner.composite}</strong> · Decision:{" "}
         <strong>{verdictLabel}</strong>
       </div>
     </div>

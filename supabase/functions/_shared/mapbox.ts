@@ -294,7 +294,7 @@ export interface ParkingSignal {
 export async function parkingSignal(
   lat: number,
   lng: number,
-  radiusMeters = 200,
+  radiusMeters = 400,
 ): Promise<ParkingSignal> {
   const fallback = (error: string | null): ParkingSignal => ({
     poiCount: 0,
@@ -310,19 +310,24 @@ export async function parkingSignal(
     const res = await fetch(url);
     if (!res.ok) return fallback(`tilequery ${res.status}`);
     const data = await res.json();
-    const features: Array<{ properties?: { maki?: string; class?: string } }> =
+    const features: Array<{ properties?: { maki?: string; class?: string; type?: string } }> =
       data?.features ?? [];
-    const parking = features.filter(
-      (f) =>
-        (f.properties?.maki ?? "").toLowerCase() === "parking" ||
-        (f.properties?.class ?? "").toLowerCase() === "parking",
-    );
+    const parking = features.filter((f) => {
+      const maki = (f.properties?.maki ?? "").toLowerCase();
+      const cls = (f.properties?.class ?? "").toLowerCase();
+      const type = (f.properties?.type ?? "").toLowerCase();
+      return (
+        maki === "parking" ||
+        cls === "parking" ||
+        cls === "parking_lot" ||
+        cls === "parking_garage" ||
+        type.includes("parking")
+      );
+    });
     const n = parking.length;
-    let bucket: ParkingSignal["bucket"] = "none";
-    if (n === 0) bucket = "street_only"; // Mapbox POIs miss street-only setups
-    else if (n <= 2) bucket = "small_lot";
-    else bucket = "large_lot";
-    if (n === 0 && features.length === 0) bucket = "none";
+    let bucket: ParkingSignal["bucket"] = "street_only";
+    if (n >= 4) bucket = "large_lot";
+    else if (n >= 1) bucket = "small_lot";
     return { poiCount: n, bucket, radiusMeters, error: null };
   } catch (err) {
     return fallback((err as Error).message);

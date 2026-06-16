@@ -503,56 +503,6 @@ function EmptySlot() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Calibration gate (qualitative — per Sam brief v2.2 p.12 / SOW v2.2 p.509)
-// ---------------------------------------------------------------------------
-
-function CalibrationGateBanner({
-  trinityScore,
-  leafScore,
-  trinityLoading,
-  leafLoading,
-}: {
-  trinityScore: number | null;
-  leafScore: number | null;
-  trinityLoading: boolean;
-  leafLoading: boolean;
-}) {
-  if (trinityLoading || leafLoading || trinityScore == null || leafScore == null) {
-    return (
-      <div
-        className="mb-3 flex items-start gap-2 rounded-md border px-3 py-2 text-[12px]"
-        style={{ backgroundColor: "#eef2f7", borderColor: BORDER, color: MUTED }}
-        role="status"
-      >
-        <Loader2 size={16} className="mt-0.5 shrink-0 animate-spin" />
-        <div>
-          <strong>Computing calibration anchors…</strong> Running Trinity Episcopal School (Westlake, Austin) vs LeafSpring Cedar Park (Austin area) through the live engine.
-        </div>
-      </div>
-    );
-  }
-  const delta = trinityScore - leafScore;
-  const trinityHigher = delta > 0;
-  return (
-    <div
-      className="mb-3 flex items-start gap-2 rounded-md border px-3 py-2 text-[12px]"
-      style={{ backgroundColor: SOFT, borderColor: BLUE, color: NAVY }}
-      role="status"
-    >
-      <CheckCircle2 size={16} className="mt-0.5 shrink-0" style={{ color: BLUE }} />
-      <div>
-        <strong>Calibration anchors (qualitative criterion):</strong> Live engine —
-        Trinity <strong>{trinityScore}</strong> vs LeafSpring <strong>{leafScore}</strong>{" "}
-        (gap {delta >= 0 ? "+" : ""}{delta.toFixed(2)} pt, Trinity {trinityHigher ? "higher" : "lower"}).{" "}
-        <span className="opacity-80">
-          Per Sam's brief v2.2 p.12 / SOW v2.2 p.509, the pass test is qualitative: <em>"LeafSpring scores materially lower than Trinity."</em>
-          No numeric threshold is client-specified. Awaiting Brett's call on whether v0.3 is accepted, a second anchor pair is added, or a reweight is authorized.
-        </span>
-      </div>
-    </div>
-  );
-}
 
 
 // ---------------------------------------------------------------------------

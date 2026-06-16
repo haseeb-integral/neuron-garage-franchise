@@ -73,3 +73,64 @@ export function compositeSas(p: SasPillarScores): number {
 export function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
+
+/**
+ * Single source of truth for any UI surface that displays SAS pillar or
+ * composite scores (cards, banners, summary table, exported decision pack,
+ * live engine card). Brett's rule: "one calibrated number everywhere".
+ *
+ * Accepts pillars in any shape the codebase uses (live engine result OR
+ * the demo `SiteAnalysisDemoSite.subScores` shape with `{value, weight,
+ * formula}`). Returns the normalized pillar set AND the recomputed
+ * composite. Display code must read both from this helper — never from a
+ * stored `composite` field on the input object.
+ */
+type PillarLike = number | { value: number };
+type SiteScoresInput = {
+  schoolProfile?: PillarLike;
+  affluence?: PillarLike;
+  neighborhoodAffluence?: PillarLike;
+  familyDensity?: PillarLike;
+  ecosystem?: PillarLike;
+  schoolEcosystem?: PillarLike;
+  accessibility?: PillarLike;
+};
+
+function pillarValue(p: PillarLike | undefined): number {
+  if (p == null) return 0;
+  if (typeof p === "number") return p;
+  return typeof p.value === "number" ? p.value : 0;
+}
+
+export interface RecomputedSiteScores {
+  pillars: SasPillarScores;
+  composite: number;
+}
+
+export function recomputeSiteScores(input: SiteScoresInput): RecomputedSiteScores {
+  const raw: SasPillarScores = {
+    schoolProfile: pillarValue(input.schoolProfile),
+    affluence: pillarValue(input.affluence ?? input.neighborhoodAffluence),
+    familyDensity: pillarValue(input.familyDensity),
+    ecosystem: pillarValue(input.ecosystem ?? input.schoolEcosystem),
+    accessibility: pillarValue(input.accessibility),
+  };
+  return {
+    pillars: {
+      schoolProfile: round2(raw.schoolProfile),
+      affluence: round2(raw.affluence),
+      familyDensity: round2(raw.familyDensity),
+      ecosystem: round2(raw.ecosystem),
+      accessibility: round2(raw.accessibility),
+    },
+    composite: round2(compositeSas(raw)),
+  };
+}
+
+/** Convenience for callers that just need the composite from a site-shaped object. */
+export function siteComposite(
+  site: { subScores?: SiteScoresInput } | SiteScoresInput,
+): number {
+  const input = "subScores" in site && site.subScores ? site.subScores : (site as SiteScoresInput);
+  return recomputeSiteScores(input).composite;
+}

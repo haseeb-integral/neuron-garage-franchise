@@ -743,6 +743,12 @@ export default function SiteAnalysis() {
       const extras: SlotState[] = [];
       const seen = new Set<string>();
 
+      const matchesAnchor = (row: typeof data[number], anchor: Candidate) =>
+        row.address === anchor.address &&
+        (row.school_type ?? "") === anchor.schoolType &&
+        (row.grade_band ?? "") === anchor.gradeBand &&
+        String(row.enrollment ?? "") === String(anchor.enrollment);
+
       for (const row of data) {
         if (!row.address || seen.has(row.address)) continue;
         if (
@@ -752,7 +758,6 @@ export default function SiteAnalysis() {
           row.ecosystem_score == null ||
           row.accessibility_score == null
         ) continue;
-        seen.add(row.address);
         const signals = (row.signals ?? {}) as SiteScoreSignals;
         const result: SiteScoreResult = {
           sas: Number(row.sas_score ?? 0),
@@ -770,14 +775,24 @@ export default function SiteAnalysis() {
               : undefined,
         };
 
-        if (row.address === trinityAddr) {
+        // Only patch an anchor card from cache when ALL frozen inputs match —
+        // address alone is not enough (same address can be scored as Daycare/150
+        // OR Private/600 and the resulting SAS differs by ~16 pts).
+        if (row.address === trinityAddr && matchesAnchor(row, TRINITY_CANDIDATE) && !anchorPatches[TRINITY_CANDIDATE.id]) {
           anchorPatches[TRINITY_CANDIDATE.id] = result;
+          seen.add(row.address);
           continue;
         }
-        if (row.address === leafAddr) {
+        if (row.address === leafAddr && matchesAnchor(row, LEAFSPRING_CANDIDATE) && !anchorPatches[LEAFSPRING_CANDIDATE.id]) {
           anchorPatches[LEAFSPRING_CANDIDATE.id] = result;
+          seen.add(row.address);
           continue;
         }
+        // Skip non-matching anchor-address rows — they belong to an ad-hoc
+        // Live Engine run, not the anchor preset, and would mislabel the card.
+        if (row.address === trinityAddr || row.address === leafAddr) continue;
+
+        seen.add(row.address);
         extras.push({
           id: `persisted-${row.id}`,
           schoolName: row.school_name ?? "Saved candidate",

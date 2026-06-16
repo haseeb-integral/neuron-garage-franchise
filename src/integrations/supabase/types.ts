@@ -2213,6 +2213,51 @@ export type Database = {
         }
         Relationships: []
       }
+      urban_institute_seed_runs: {
+        Row: {
+          batch_id: string
+          ccd_count: number | null
+          created_at: string
+          error: string | null
+          finished_at: string | null
+          id: string
+          pss_count: number | null
+          started_at: string | null
+          state_abbr: string
+          state_fips: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          batch_id: string
+          ccd_count?: number | null
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          pss_count?: number | null
+          started_at?: string | null
+          state_abbr: string
+          state_fips: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          batch_id?: string
+          ccd_count?: number | null
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          pss_count?: number | null
+          started_at?: string | null
+          state_abbr?: string
+          state_fips?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       urban_institute_state_cache: {
         Row: {
           created_at: string

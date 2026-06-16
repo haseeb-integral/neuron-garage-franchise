@@ -7,6 +7,58 @@ import {
   round2,
 } from "@/lib/sasMath";
 
+interface Preset {
+  label: string;
+  hint: string;
+  schoolName: string;
+  address: string;
+  schoolType: SchoolType;
+  gradeBand: GradeBand;
+}
+
+const PRESETS: Preset[] = [
+  {
+    label: "Trinity Christian Academy",
+    hint: "TX · positive anchor",
+    schoolName: "Trinity Christian Academy",
+    address: "4131 Spring Valley Rd, Addison, TX 75001",
+    schoolType: "private_elementary",
+    gradeBand: "k5_k6",
+  },
+  {
+    label: "LeafSpring Plano (closed)",
+    hint: "TX · negative anchor",
+    schoolName: "LeafSpring School at Plano",
+    address: "7000 Preston Rd, Plano, TX 75024",
+    schoolType: "private_elementary",
+    gradeBand: "k5_k6",
+  },
+  {
+    label: "Highland Park",
+    hint: "TX · affluent",
+    schoolName: "Highland Park Presbyterian Day School",
+    address: "4220 Emerson Ave, Dallas, TX 75205",
+    schoolType: "private_elementary",
+    gradeBand: "k5_k6",
+  },
+  {
+    label: "Cherry Creek",
+    hint: "CO · affluent (needs CO seed)",
+    schoolName: "Cherry Creek Academy",
+    address: "4500 E Cherry Creek S Dr, Denver, CO 80246",
+    schoolType: "private_elementary",
+    gradeBand: "k5_k6",
+  },
+  {
+    label: "Mason TX (rural)",
+    hint: "TX · low density control",
+    schoolName: "Mason Test Site",
+    address: "100 Main St, Mason, TX 76856",
+    schoolType: "private_elementary",
+    gradeBand: "k5_k6",
+  },
+];
+
 /**
  * Live Site Analysis Engine card (Feature 1B v0.1).
  *
@@ -34,6 +86,16 @@ export function LiveEngineCard() {
     };
     place?: string;
   }>(null);
+
+  function loadPreset(p: Preset) {
+    setSchoolName(p.schoolName);
+    setAddress(p.address);
+    setSchoolType(p.schoolType);
+    setGradeBand(p.gradeBand);
+    setEnrollment("");
+    setError(null);
+    setResult(null);
+  }
 
   async function run() {
     setError(null);
@@ -93,8 +155,26 @@ export function LiveEngineCard() {
           ENGINE LIVE
         </span>
       </div>
+      <div className="mb-2 flex flex-wrap items-center gap-1.5">
+        <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "#526078" }}>
+          Quick test:
+        </span>
+        {PRESETS.map((p) => (
+          <button
+            key={p.label}
+            type="button"
+            onClick={() => loadPreset(p)}
+            title={p.hint}
+            className="rounded-full border px-2 py-0.5 text-[11px] transition hover:bg-[#dde7ff]"
+            style={{ borderColor: "#dde7ff", color: "#174be8", background: "#f4f7ff" }}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
 
       <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
+
         <label className="flex flex-col gap-1 text-[11px] md:col-span-2" style={{ color: "#526078" }}>
           School name *
           <input

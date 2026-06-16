@@ -31,7 +31,7 @@ const ITEMS: Item[] = [
     label: "Calibration anchors — qualitative criterion (per Sam brief v2.2 p.12 / SOW v2.2 p.509), awaiting Brett's call",
     status: "blocked",
     note:
-      "Plain English for Brett: Lovable previously enforced a 'Trinity must beat LeafSpring by ≥20 pts' gate. That ≥20 number was Lovable-invented — it is NOT in Sam's brief or the SOW. It has been retracted.\n\nWhat Sam's brief v2.2 p.12 actually says (the only client-specified test): 'Does Feature 1B score the LeafSpring site materially lower than the Trinity site?' Qualitative — no number.\n\nCurrent live engine v0.3: Trinity 63.32, LeafSpring 45.96, gap +17.36 pt (Trinity higher). By Sam's qualitative criterion, that looks materially lower; by Lovable's retracted ≥20 rule it would have failed by 2.64 pt — but that rule no longer applies.\n\nThree doc-compliant options open to Brett (Sam's pillar weights 25/25/20/15/15 stay locked in all three):\n  (a) Accept v0.3 as calibrated and move on.\n  (b) Add a second anchor pair (Sam explicitly endorses this on p.12) to stress-test without touching weights.\n  (c) Authorize a weight rework — only Brett/Sam can; brief v2.2 p.12 reserves this decision for the client.\n\nLovable will not reweight or change anchors unilaterally. Waiting on Brett's pick.",
+      "Plain English for Brett: Lovable previously enforced a 'Trinity must beat LeafSpring by ≥20 pts' gate. That ≥20 number was Lovable-invented — it is NOT in Sam's brief or the SOW. It has been retracted.\n\nWhat Sam's brief v2.2 p.12 actually says (the only client-specified test): 'Does Feature 1B score the LeafSpring site materially lower than the Trinity site?' Qualitative — no number.\n\nPrior v0.3 numbers (Trinity 63.32, LeafSpring 45.96, gap +17.36 pt) were run against a Plano placeholder. Anchor has now been updated to LeafSpring School at Cedar Park (11651 W Parmer Ln) — the actual NG camp host site per NG's own past-locations list — and the live gap will refresh on next run.\n\nThree doc-compliant options open to Brett (Sam's pillar weights 25/25/20/15/15 stay locked in all three):\n  (a) Accept refreshed Cedar Park gap as calibrated and move on.\n  (b) Add a second anchor pair (Sam explicitly endorses this on p.12) to stress-test without touching weights.\n  (c) Authorize a weight rework — only Brett/Sam can; brief v2.2 p.12 reserves this decision for the client.\n\nLovable will not reweight or change anchors unilaterally. Waiting on Brett's pick.",
   },
 
 
@@ -53,7 +53,7 @@ const ITEMS: Item[] = [
   {
     label: "Calibration evidence table — named anchors with composites + Δ vs Trinity",
     status: "done",
-    note: "New CalibrationRunsTable rendered just above the candidate cards. Shows all five Sam-named anchors (Trinity Episcopal, LeafSpring Plano, Wayside Eden Park, St. Francis, Telluride Mountain School) with their composite, Δ vs Trinity, and the qualitative pass criterion from Sam brief v2.2 p.12. Three anchors are still 'pending' — paste their live-engine results into src/data/calibration-runs.ts after running them.",
+    note: "New CalibrationRunsTable rendered just above the candidate cards. Shows all five Sam-named anchors (Trinity Episcopal, LeafSpring Cedar Park, Wayside Eden Park, St. Francis, Telluride Mountain School) with their composite, Δ vs Trinity, and the qualitative pass criterion from Sam brief v2.2 p.12. Anchors without a live run are marked 'pending' — paste their live-engine results into src/data/calibration-runs.ts after running them.",
   },
 ];
 

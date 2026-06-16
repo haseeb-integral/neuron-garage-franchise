@@ -82,9 +82,9 @@ const TRINITY_CANDIDATE: Candidate = {
 };
 
 const LEAFSPRING_CANDIDATE: Candidate = {
-  id: "leafspring-plano",
-  schoolName: "LeafSpring Plano — closed 2023 (negative anchor)",
-  address: "7000 Preston Rd, Plano, TX 75024",
+  id: "leafspring-cedar-park",
+  schoolName: "LeafSpring School at Cedar Park — closed 2023 (negative anchor)",
+  address: "11651 W Parmer Ln, Cedar Park, TX 78613",
   schoolType: "daycare",
   gradeBand: "other",
   enrollment: "150",
@@ -540,7 +540,7 @@ function CalibrationGateBanner({
       >
         <Loader2 size={16} className="mt-0.5 shrink-0 animate-spin" />
         <div>
-          <strong>Computing calibration anchors…</strong> Running Trinity Episcopal School (Westlake, Austin) vs LeafSpring Plano through the live engine.
+          <strong>Computing calibration anchors…</strong> Running Trinity Episcopal School (Westlake, Austin) vs LeafSpring Cedar Park (Austin area) through the live engine.
         </div>
       </div>
     );

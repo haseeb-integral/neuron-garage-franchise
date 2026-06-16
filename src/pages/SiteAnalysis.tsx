@@ -949,7 +949,7 @@ export default function SiteAnalysis() {
       toast.success("Site analysis PDF downloaded");
     } catch (err) {
       console.error("Site pack PDF export failed", err);
-      toast.error("PDF export failed");
+      toast.error(`PDF export failed: ${err instanceof Error ? err.message : "unknown"}`);
     } finally {
       setExporting(false);
     }

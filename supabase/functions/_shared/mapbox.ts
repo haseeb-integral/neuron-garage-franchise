@@ -277,3 +277,55 @@ export async function drivingDistanceMiles(from: LngLat, to: LngLat): Promise<nu
   }
 }
 
+// ---------------------------------------------------------------------------
+// Parking signal v0.2 — Mapbox Tilequery against `mapbox.mapbox-streets-v8`
+// `poi_label` layer within a small radius of the geocoded pin. Counts POIs
+// whose maki icon is "parking". Informational only — does not feed the
+// composite (client-locked weights per Sam brief v2.2 p.9).
+// ---------------------------------------------------------------------------
+
+export interface ParkingSignal {
+  poiCount: number;
+  bucket: "none" | "street_only" | "small_lot" | "large_lot";
+  radiusMeters: number;
+  error: string | null;
+}
+
+export async function parkingSignal(
+  lat: number,
+  lng: number,
+  radiusMeters = 200,
+): Promise<ParkingSignal> {
+  const fallback = (error: string | null): ParkingSignal => ({
+    poiCount: 0,
+    bucket: "none",
+    radiusMeters,
+    error,
+  });
+  try {
+    const url =
+      `https://api.mapbox.com/v4/mapbox.mapbox-streets-v8/tilequery/` +
+      `${lng},${lat}.json?radius=${radiusMeters}&limit=50` +
+      `&layers=poi_label&access_token=${MAPBOX_TOKEN}`;
+    const res = await fetch(url);
+    if (!res.ok) return fallback(`tilequery ${res.status}`);
+    const data = await res.json();
+    const features: Array<{ properties?: { maki?: string; class?: string } }> =
+      data?.features ?? [];
+    const parking = features.filter(
+      (f) =>
+        (f.properties?.maki ?? "").toLowerCase() === "parking" ||
+        (f.properties?.class ?? "").toLowerCase() === "parking",
+    );
+    const n = parking.length;
+    let bucket: ParkingSignal["bucket"] = "none";
+    if (n === 0) bucket = "street_only"; // Mapbox POIs miss street-only setups
+    else if (n <= 2) bucket = "small_lot";
+    else bucket = "large_lot";
+    if (n === 0 && features.length === 0) bucket = "none";
+    return { poiCount: n, bucket, radiusMeters, error: null };
+  } catch (err) {
+    return fallback((err as Error).message);
+  }
+}
+

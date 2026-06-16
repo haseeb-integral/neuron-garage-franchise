@@ -35,9 +35,26 @@ const ITEMS: Item[] = [
   },
 
 
-  { label: "Parking tile (engine v0.2)", status: "todo" },
-  { label: "Real Mapbox tiles + isochrone overlay (schematic shown today)", status: "todo" },
-  { label: "Persist analyzed slots across reloads", status: "todo" },
+  {
+    label: "Parking tile (engine v0.2)",
+    status: "done",
+    note: "Mapbox Tilequery against the streets-v8 poi_label layer within 200m of the geocoded pin. Counts parking POIs and buckets into none / street-only / small lot / large lot. Informational only — does NOT enter the composite (client-locked weights per Sam brief v2.2 p.9).",
+  },
+  {
+    label: "Real Mapbox tiles + isochrone overlay (replaces schematic)",
+    status: "done",
+    note: "New IsochroneMap component renders mapbox-gl light-v11 with the 10-min (inner) and 15-min (outer) drive polygons returned live from compute-sas. Token comes from the get-mapbox-token edge function (server-issued, gated to authenticated users).",
+  },
+  {
+    label: "Persist analyzed slots across reloads",
+    status: "done",
+    note: "On mount the page hydrates non-calibration slots from the user's most-recent ready rows in site_analyses. Calibration anchors (Trinity / LeafSpring) still re-run live each time so the calibration delta is always fresh.",
+  },
+  {
+    label: "Calibration evidence table — named anchors with composites + Δ vs Trinity",
+    status: "done",
+    note: "New CalibrationRunsTable rendered just above the candidate cards. Shows all five Sam-named anchors (Trinity Episcopal, LeafSpring Plano, Wayside Eden Park, St. Francis, Telluride Mountain School) with their composite, Δ vs Trinity, and the qualitative pass criterion from Sam brief v2.2 p.12. Three anchors are still 'pending' — paste their live-engine results into src/data/calibration-runs.ts after running them.",
+  },
 ];
 
 function Icon({ status }: { status: Item["status"] }) {

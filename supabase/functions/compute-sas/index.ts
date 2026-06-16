@@ -14,6 +14,7 @@ import {
   nearestHighwayNode,
   nearestMajorRoadNode,
   drivingDistanceMiles,
+  parkingSignal,
 } from "../_shared/mapbox.ts";
 import { aggregateAcs } from "../_shared/census.ts";
 import { fetchUrbanSchools, STATE_ABBR_TO_FIPS } from "../_shared/urban-institute.ts";
@@ -29,7 +30,7 @@ import {
   SchoolType,
 } from "../_shared/sas-math.ts";
 
-const ENGINE_VERSION = "sas-v0.3";
+const ENGINE_VERSION = "sas-v0.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -377,6 +378,10 @@ Deno.serve(async (req) => {
     }
     const sas = compositeSas(pillars);
 
+    // Parking (v0.2 informational) — runs in parallel with scoring above is
+    // harder to read; sequential here is fine since tilequery is one fast call.
+    const parking = await parkingSignal(geo.lat, geo.lng);
+
     const signals = {
       acs10,
       acs15,
@@ -395,6 +400,7 @@ Deno.serve(async (req) => {
         popReachable15Extrapolated: Math.round(popReachable15Extrapolated),
         iso15AreaSqMi: round2(iso15AreaSqMi),
       },
+      parking,
       version: ENGINE_VERSION,
     };
 
@@ -429,6 +435,9 @@ Deno.serve(async (req) => {
       },
       signals,
       place: geo.placeName,
+      geo: { lat: geo.lat, lng: geo.lng },
+      iso10,
+      iso15,
     });
   } catch (e) {
     console.error("[compute-sas] uncaught", e);

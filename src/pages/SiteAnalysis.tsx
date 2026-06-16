@@ -14,6 +14,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { LiveEngineCard, SAS_ENGINE_LIVE } from "@/components/site-analysis/LiveEngineCard";
 import { Feature1BStatus } from "@/components/phase2-demo/Feature1BStatus";
 import { SiteDecisionControls } from "@/components/phase2-demo/SiteDecisionControls";
+import { CalibrationRunsTable } from "@/components/site-analysis/CalibrationRunsTable";
+import { IsochroneMap } from "@/components/site-analysis/IsochroneMap";
 import { supabase } from "@/integrations/supabase/client";
 import { useSiteDecisions, type SiteVerdict } from "@/hooks/useSiteDecisions";
 import { type SiteScoreResult, type SiteScoreSignals } from "@/hooks/useSiteScore";
@@ -263,8 +265,15 @@ function CandidateCard({ slot, onRerun, onRemove }: CardProps) {
         </p>
       )}
 
-      {/* Drive-time schematic (concentric rings) */}
-      {recomputed && <DriveTimeSchematic place={slot.result?.place} />}
+      {/* Drive-time isochrone map (real Mapbox tiles) */}
+      {recomputed && slot.result?.geo && (
+        <IsochroneMap
+          center={slot.result.geo}
+          iso10={slot.result.iso10 ?? null}
+          iso15={slot.result.iso15 ?? null}
+          place={slot.result.place}
+        />
+      )}
 
       {/* Six metric tiles — live from compute-sas signals */}
       {recomputed && <MetricTiles signals={slot.result?.signals} />}
@@ -342,53 +351,25 @@ function summarizePillars(p: {
   return parts.join(" ");
 }
 
-function DriveTimeSchematic({ place }: { place?: string }) {
-  return (
-    <div className="mt-3">
-      <div className="mb-1 flex items-center justify-between text-[11px]" style={{ color: BLUE }}>
-        <span className="font-semibold">10-min · 15-min drive rings</span>
-        <span
-          className="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase"
-          style={{ backgroundColor: "#ffe9c2", color: "#7a5800" }}
-          title="Schematic — real Mapbox tiles land in a follow-up"
-        >
-          Map
-        </span>
-      </div>
-      <div
-        className="relative overflow-hidden rounded-md border"
-        style={{ borderColor: BORDER, backgroundColor: SOFT, height: 110 }}
-      >
-        <svg viewBox="0 0 200 110" className="h-full w-full">
-          <circle cx="100" cy="55" r="48" fill="none" stroke={BLUE} strokeOpacity="0.35" strokeWidth="1" strokeDasharray="3 3" />
-          <circle cx="100" cy="55" r="30" fill="none" stroke={BLUE} strokeOpacity="0.7" strokeWidth="1.2" />
-          <circle cx="100" cy="55" r="4" fill={BLUE} />
-        </svg>
-        <div
-          className="absolute bottom-1 left-2 rounded bg-white/85 px-1.5 py-0.5 text-[9px] font-semibold"
-          style={{ color: NAVY }}
-        >
-          10 · 15 min drive
-        </div>
-      </div>
-      {place && (
-        <p className="mt-1 text-[10px]" style={{ color: MUTED }}>
-          Centered on {place}
-        </p>
-      )}
-    </div>
-  );
-}
+// (DriveTimeSchematic was removed in v0.4 — replaced by the real Mapbox
+// IsochroneMap component imported above.)
 
-function Tile({ label, value, dash, dashTip }: { label: string; value?: string; dash?: boolean; dashTip?: string }) {
+function Tile({ label, value, dash, dashTip, badge }: { label: string; value?: string; dash?: boolean; dashTip?: string; badge?: string }) {
   return (
     <div
       className="rounded border px-2 py-1.5"
       style={{ borderColor: BORDER, backgroundColor: dash ? "#f7faff" : "white" }}
       title={dash ? dashTip : undefined}
     >
-      <div className="text-[9px] font-semibold uppercase tracking-wide" style={{ color: MUTED }}>
-        {label}
+      <div className="flex items-center justify-between gap-1">
+        <div className="text-[9px] font-semibold uppercase tracking-wide" style={{ color: MUTED }}>
+          {label}
+        </div>
+        {badge && (
+          <span className="rounded-full px-1 py-px text-[8px] font-bold uppercase" style={{ backgroundColor: "#dde7ff", color: BLUE }}>
+            {badge}
+          </span>
+        )}
       </div>
       <div className="text-[13px] font-bold tabular-nums" style={{ color: dash ? MUTED : NAVY }}>
         {dash ? "—" : value ?? "—"}
@@ -414,10 +395,22 @@ function fmtCount(n?: number) {
   return `${Math.round(n)}`;
 }
 
+const PARKING_LABEL: Record<NonNullable<SiteScoreSignals["parking"]>["bucket"] & string, string> = {
+  none: "None nearby",
+  street_only: "Street only",
+  small_lot: "Small lot",
+  large_lot: "Large lot",
+};
+
 function MetricTiles({ signals }: { signals?: SiteScoreSignals }) {
   const acs10 = signals?.acs10 ?? {};
   const acs15 = signals?.acs15 ?? {};
   const hwyMi = signals?.accessibility?.highwayDistanceMi;
+  const parking = signals?.parking;
+  const parkingValue =
+    parking?.bucket
+      ? `${PARKING_LABEL[parking.bucket]}${parking.poiCount ? ` (${parking.poiCount})` : ""}`
+      : undefined;
   return (
     <div className="mt-3 grid grid-cols-3 gap-1.5">
       <Tile label="Median HHI · 10m" value={fmtMoney(acs10.medianHhi)} />
@@ -429,7 +422,13 @@ function MetricTiles({ signals }: { signals?: SiteScoreSignals }) {
         dash={hwyMi == null}
         dashTip="No motorway/trunk found within 12 mi — Accessibility scored via fallback"
       />
-      <Tile label="Parking" dash dashTip="Manual field — not yet wired" />
+      <Tile
+        label="Parking"
+        value={parkingValue}
+        dash={!parkingValue}
+        dashTip="Mapbox tilequery returned no parking POIs within 200m"
+        badge="v0.2"
+      />
       <Tile label="Pop · 15m" value={fmtCount(acs15.totalPop)} />
     </div>
   );
@@ -751,6 +750,79 @@ export default function SiteAnalysis() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Hydrate non-calibration slots from the user's most-recent ready
+  // site_analyses rows (persistence across reloads — v0.4). Calibration
+  // anchors are NOT rehydrated; they always re-run live for reproducibility.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("site_analyses")
+        .select(
+          "id,address,school_name,school_type,enrollment,grade_band,latitude,longitude,school_profile_score,affluence_score,family_density_score,ecosystem_score,accessibility_score,sas_score,signals",
+        )
+        .eq("status", "ready")
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (cancelled || error || !data) return;
+      const anchorAddrs = new Set([TRINITY_CANDIDATE.address, LEAFSPRING_CANDIDATE.address]);
+      const seen = new Set<string>(anchorAddrs);
+      const hydrated: SlotState[] = [];
+      for (const row of data) {
+        if (!row.address || seen.has(row.address)) continue;
+        if (
+          row.school_profile_score == null ||
+          row.affluence_score == null ||
+          row.family_density_score == null ||
+          row.ecosystem_score == null ||
+          row.accessibility_score == null
+        ) continue;
+        seen.add(row.address);
+        const signals = (row.signals ?? {}) as SiteScoreSignals & {
+          // The cached signals payload may not include iso polygons (those
+          // ship inline on the next live re-run); the map silently falls
+          // back to the spinner until the user clicks ↻ Re-run.
+        };
+        const result: SiteScoreResult = {
+          sas: Number(row.sas_score ?? 0),
+          pillars: {
+            schoolProfile: Number(row.school_profile_score),
+            affluence: Number(row.affluence_score),
+            familyDensity: Number(row.family_density_score),
+            ecosystem: Number(row.ecosystem_score),
+            accessibility: Number(row.accessibility_score),
+          },
+          signals,
+          geo:
+            row.latitude != null && row.longitude != null
+              ? { lat: Number(row.latitude), lng: Number(row.longitude) }
+              : undefined,
+        };
+        hydrated.push({
+          id: `persisted-${row.id}`,
+          schoolName: row.school_name ?? "Saved candidate",
+          address: row.address,
+          schoolType: (row.school_type as SchoolType) ?? "private_elementary",
+          gradeBand: (row.grade_band as GradeBand) ?? "k5_k6",
+          enrollment: row.enrollment != null ? String(row.enrollment) : "",
+          status: "ready",
+          result,
+          error: null,
+        });
+        if (hydrated.length >= 2) break; // anchors take 2 slots; cap at 4 total
+      }
+      if (hydrated.length === 0) return;
+      setSlots((prev) => {
+        const existing = new Set(prev.map((s) => s.address));
+        const additions = hydrated.filter((h) => !existing.has(h.address));
+        return [...prev, ...additions].slice(0, 4);
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const removeSlot = (id: string) => {
     setSlots((prev) => prev.filter((s) => s.id !== id));
   };
@@ -932,6 +1004,7 @@ export default function SiteAnalysis() {
         trinityLoading={!!trinityScored && trinityScored.result == null}
         leafLoading={!!leafScored && leafScored.result == null}
       />
+      <CalibrationRunsTable />
       <WinnerBanner winner={winner} winnerDecision={winnerDecision} />
 
       <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">

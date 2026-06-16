@@ -1,56 +1,75 @@
-# Fix Site Analysis PDF — copy bugs + proper formatting
+# Port Site Analysis PDF (Feature 1B) to @react-pdf/renderer
 
-Three concrete issues in `src/lib/sitePackPdf.ts`:
+Replace the jsPDF + jspdf-autotable engine for Feature 1B with `@react-pdf/renderer`. Same 10 sections, same 4-up comparison, same map images, same inputs — better typography, real page-break handling, no more glyph garbling, no more overlapping text.
 
-1. **Wrong "negative anchors" language on Trinity / St. Francis.** `recommendationsBullets()` and `verdictSentence()` use calibration-corpus phrasing ("Negative anchor profile", "Document negative anchors for calibration corpus") for every `Don't recommend` tier candidate. That language is reserved for LeafSpring (the actual negative calibration anchor).
-2. **Winner badge renders as `&` / garbled glyph.** jsPDF's built-in Helvetica does not include `★` (U+2605). Same problem for `·`, `—`, `'` and `'` scattered through the file — they render as boxes or wrong chars.
-3. **Layout is messy** — overlapping text in the exec-summary block, kv rows clipping when labels are long, comparison matrix columns overflowing on 3–4 candidates, no real table grid.
+Market Validation PDF (`marketReportPdf.ts`) is out of scope and stays on jsPDF.
 
-## Fixes
+## Dependencies
 
-### A. Copy — tier-driven, not calibration-driven
-In `recommendationsBullets()` (else branch) replace:
-- `"Pass on this site. Document negative anchors for calibration corpus."` → `"Do not pursue. Composite is below the Recommend bar on Sam's weighting."`
-- `"Re-direct search to addresses scoring >= 60 in the same MSA."` (keep, but use ASCII `>=`)
+Add `@react-pdf/renderer` (~400KB gz, MIT, browser-only, no backend).
 
-In `verdictSentence()` (else branch) replace:
-- `"... Negative anchor profile - do not pursue without a re-anchor."` → `"... Below the Recommend threshold on Sam's 25/25/20/15/15 weighting; do not pursue."`
+## New file: `src/lib/sitePack/SitePackDocument.tsx`
 
-No "negative anchor" / "calibration corpus" wording anywhere a tier could land — that copy is gone from the file entirely. LeafSpring naturally lands in `Don't recommend` and gets the same generic tier-driven text as Trinity/St. Francis; no candidate gets calibration-jargon.
+A typed React component tree that renders the report. Exports:
 
-### B. Glyphs — ASCII-safe everywhere
-jsPDF Helvetica is WinAnsi; non-Latin glyphs print as `&`/boxes. Sweep the file and replace:
-- `★` → `*` (e.g. `"* Winner"`, `"  *"` next to winner names, `"*"` in comparison matrix)
-- `·` (middle dot) → ` - ` or `|` in headers/section titles
-- `—` (em dash) → `--`
-- `'` `'` (curly quotes) → `'`
-- `≥` → `>=`
+- `SitePackDocument` — the `<Document>` component, props = same `BuildSitePackArgs` shape used today.
+- `renderSitePackPdfBlob(args): Promise<Blob>` — convenience wrapper around `pdf(<SitePackDocument {...args}/>).toBlob()`.
 
-Affected strings: cover header, `sectionTitle` separators, `verdictSentence`, `recommendationsBullets`, winner badge in exec summary (`"* Winner"`), cover-table winner mark, comparison-matrix winner row, footer chrome.
+Inside the file:
 
-### C. Reformat with `jspdf-autotable` (free, MIT, official jsPDF companion)
-Install `jspdf-autotable` and use it for the two places where manual `pdf.text` math overlaps today:
+- `Font.register` Inter from Google Fonts CDN (Regular 400, Medium 500, SemiBold 600, Bold 700, Italic 400i). One font, used everywhere — kills the "fonts not uniform" complaint.
+- Reuse the existing pure helpers from `sitePackPdf.ts` (`verdictSentence`, `strengthsBullets`, `risksBullets`, `opportunitiesBullets`, `recommendationsBullets`, `fmtMoney`/`fmtPct`/`fmtCount`/`fmtMi`, tier color mapping, `VERDICT_LABEL`). Move them to `src/lib/sitePack/copy.ts` so both this component and any future surface can import them.
+- Component tree:
+    - `<CoverPage candidates today />` — title, subtitle, weighting line, summary `<Table>` of all candidates (Candidate | SAS | Tier | Decision | Winner). Tier cell colored by tier; Winner cell shows `★` (real Unicode — Inter has it).
+    - `<CandidateDetail candidate />` rendered once per candidate, `wrap` enabled so long content reflows cleanly:
+        - Section 1 Executive Summary — score card (SAS number + tier chip + WINNER badge if marked) and verdict sentence in a flex row.
+        - Section 2 School Profile — `<KvTable>` (4 rows).
+        - Section 3 Neighborhood Affluence — `<KvTable>` (4 rows) + `<Image src={mapPngDataUrl}/>` if present, with a caption.
+        - Section 4 Family Density — `<KvTable>` (3 rows).
+        - Section 5 School Ecosystem — `<KvTable>` (3 rows).
+        - Section 6 Accessibility — `<KvTable>` (3 rows).
+        - Section 7 Strengths — `<BulletList>`.
+        - Section 8 Risks — `<BulletList>`.
+        - Section 9 Opportunities — `<BulletList>`.
+        - Section 10 Recommendations — `<BulletList>`.
+        - Each section title uses `wrap={false}` with its first paragraph so headers never orphan.
+    - `<ComparisonPage cols />` — 4-up matrix as a `<Table>` with header row of school names and one row per metric (Address, SAS, Tier, all 5 pillars, Decision, Winner). Tier row cells colored by tier.
+- Shared primitives in same file: `<SectionTitle n label/>`, `<KvTable rows/>`, `<BulletList items/>`, `<Table head body columnStyles/>`, `<Chrome page header/>` (header line + page footer via `<Text render={({pageNumber, totalPages}) => ...}/>`).
+- Styles via `StyleSheet.create` — single semantic palette (navy/blue/muted/soft/line/green/amber/red/white) matching the current PDF's brand colors.
 
-1. **Cover summary table** (currently hand-drawn columns at fixed x offsets that clip long school names) — replace with `autoTable({ head: [["Candidate","SAS","Tier","Decision"]], body: rows, ... })`. Auto column widths, no clipping.
-2. **Per-candidate kv blocks** (School Profile, Affluence, Family Density, Ecosystem, Accessibility) — replace each `kv()` group with a small `autoTable` of `[label, value]` rows. Fixes long-value overflow and gives consistent striped rows.
-3. **Final 4-up comparison matrix** — replace the hand-rolled `row()` grid with one `autoTable` whose columns = `["Metric", ...candidate names]`. autoTable handles 1–4 columns, wraps long names, draws proper borders, never overlaps.
+## Edits
 
-Exec-summary header block (SAS score box + tier chip + verdict sentence) stays hand-drawn, but the verdict sentence will be clamped to `contentW - 130` (already is) and `ensureSpace` will be tightened so the next section never overlaps.
+**`src/pages/SiteAnalysis.tsx`** — `handleExport`:
+- Drop the `buildSitePackPdf` import and `pdf.save(...)` call.
+- Import `renderSitePackPdfBlob` from the new file.
+- Keep the parallel `fetchMapPng` step exactly as today.
+- `const blob = await renderSitePackPdfBlob({ candidates, generatedAt: new Date() });`
+- Trigger download with a hidden `<a download={filename} href={URL.createObjectURL(blob)}>` click, revoke the object URL after. (Same UX as `pdf.save`.)
+- "Generating PDF…" toast + `Loader2` spinner stay.
 
-### D. Keep behavior unchanged
-- No change to inputs/exports; `buildSitePackPdf(args)` signature identical.
-- No change to pillar math, tier mapping, or what's marked as Winner.
-- No change to `SiteAnalysis.tsx` wiring or map-fetch path.
+**Copy fixes carry over from current file** (already shipped, but moved to `copy.ts`):
+- Don't-Recommend tier text is generic and tier-driven, no "negative anchor" / "calibration corpus" wording on Trinity / St. Francis.
+- Winner badge text reads `★ Winner` (Inter renders ★ correctly — no more `&` glitch).
 
-## Files
+## Delete
 
-- `src/lib/sitePackPdf.ts` — edits in `recommendationsBullets`, `verdictSentence`, glyph sweep, swap three sections to `autoTable`.
-- `package.json` — add `jspdf-autotable`.
+- `src/lib/sitePackPdf.ts` — replaced by the new file. (`fetchMapPng` moves to `src/lib/sitePack/fetchMapPng.ts`, imported by both the new doc and `SiteAnalysis.tsx`.)
 
 ## Out of scope
 
-- html2canvas/DOM-snapshot path (heavier, fonts inconsistent, breaks if cards aren't mounted) — not needed once glyphs are ASCII and autoTable handles layout.
-- Re-weighting, threshold changes, new sections.
-- Isochrone map fixes (separate track).
+- Market Validation PDF (`marketReportPdf.ts`) — untouched.
+- Pillar math, tier thresholds, signal sources, isochrone fetch logic — untouched.
+- LLM-generated narrative — bullets stay deterministic.
+- New sections beyond the 10 already required.
+
+## QA before declaring done
+
+Generate the PDF with 1, 2, and 4 candidates and verify:
+1. No section title gets orphaned at the bottom of a page.
+2. Winner badge reads `★ Winner` (real star, not `&` or a box).
+3. Trinity / St. Francis Recommendations contain no "negative anchor" or "calibration corpus" language.
+4. 4-up comparison matrix fits one page, no clipped column.
+5. Map image renders inside the affluence section, not stretched.
+6. Inter font is used throughout (no Helvetica fallback flashes).
 
 Approve to proceed.

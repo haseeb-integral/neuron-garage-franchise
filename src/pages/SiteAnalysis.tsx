@@ -175,7 +175,10 @@ function SiteCard({ site }: { site: SiteAnalysisDemoSite }) {
   const decision = byAddress.get(site.address);
   const brettVerdict: SiteVerdict | undefined =
     decision && decision.verdict !== "undecided" ? decision.verdict : undefined;
-  const scoreTier = tierBadge(site.composite);
+  // One-number rule: composite is ALWAYS recomputed from the live pillars,
+  // never read from the stored `site.composite` field.
+  const composite = siteComposite(site);
+  const scoreTier = tierBadge(composite);
   const pill = brettVerdict ? VERDICT_STYLE[brettVerdict] : scoreTier;
   const pillSource = brettVerdict ? "Brett/Sam's call" : "auto from score";
   const isWinner = decision?.is_winner ?? false;

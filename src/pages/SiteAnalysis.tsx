@@ -15,7 +15,7 @@ import { LiveEngineCard, SAS_ENGINE_LIVE } from "@/components/site-analysis/Live
 import { Feature1BStatus } from "@/components/phase2-demo/Feature1BStatus";
 import { SiteDecisionControls } from "@/components/phase2-demo/SiteDecisionControls";
 import { useSiteDecisions, type SiteVerdict } from "@/hooks/useSiteDecisions";
-import { useSiteScore, type SiteScoreResult } from "@/hooks/useSiteScore";
+import { useSiteScore, type SiteScoreResult, type SiteScoreSignals } from "@/hooks/useSiteScore";
 import { exportSiteDecisionPack, type ExportCandidate } from "@/lib/decisionsExport";
 import { SITE_RECOMMEND_THRESHOLDS } from "@/data/phase2DemoData";
 import {

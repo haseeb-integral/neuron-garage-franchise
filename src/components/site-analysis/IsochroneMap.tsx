@@ -138,7 +138,9 @@ export function IsochroneMap({
           Live Map
         </span>
       </div>
-      {!token ? (
+      {mapError ? (
+        <FallbackBox height={height} message={mapError} />
+      ) : !token ? (
         <FallbackBox height={height} message="Loading map…" />
       ) : (
         <div

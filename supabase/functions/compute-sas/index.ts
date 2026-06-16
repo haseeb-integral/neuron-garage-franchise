@@ -171,31 +171,40 @@ Deno.serve(async (req) => {
     };
     const [acs10, acs15] = await Promise.all([acsRing(iso10, 10), acsRing(iso15, 15)]);
 
-    // 4) Ecosystem: nearby school counts via public_schools haversine.
-    //    Approximate the 15-min ring as ~10mi radius for the prefilter.
+    // 4) Ecosystem: nearby school counts via Urban Institute Education Data
+    //    Portal (CCD = public, PSS = private). State-scoped fetch, cached for
+    //    30 days, then haversine-filtered to RADIUS_MI.
     const RADIUS_MI = 10;
-    const RADIUS_DEG = RADIUS_MI / 69;
-    const { data: nearby } = await supabase
-      .from("public_schools")
-      .select(
-        "school_name, school_level, school_type, enrollment, latitude, longitude",
-      )
-      .gte("latitude", geo.lat - RADIUS_DEG)
-      .lte("latitude", geo.lat + RADIUS_DEG)
-      .gte("longitude", geo.lng - RADIUS_DEG)
-      .lte("longitude", geo.lng + RADIUS_DEG)
-      .limit(2000);
+    const stateFips = geo.stateCode ? STATE_ABBR_TO_FIPS[geo.stateCode] : null;
     let elementaryCount = 0, privateCount = 0, nearbyStudentPop = 0;
-    for (const r of nearby ?? []) {
-      const lat = Number(r.latitude), lng = Number(r.longitude);
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
-      const d = haversineMiles({ lat: geo.lat, lng: geo.lng }, { lat, lng });
-      if (d > RADIUS_MI) continue;
-      const level = String(r.school_level ?? "").toLowerCase();
-      const type = String(r.school_type ?? "").toLowerCase();
-      if (level.includes("elementary") || level.includes("primary")) elementaryCount++;
-      if (type.includes("private")) privateCount++;
-      nearbyStudentPop += Number(r.enrollment) || 0;
+    let publicTotal = 0, privateTotal = 0;
+    const ecosystemSource = {
+      provider: "urban_institute",
+      state_fips: stateFips,
+      state_code: geo.stateCode,
+      ccd_year: 2022,
+      pss_year: 2021,
+    };
+    if (!stateFips) {
+      console.warn("[compute-sas] no state FIPS resolved from geocode; ecosystem will be empty");
+    } else {
+      try {
+        const [publicSchools, privateSchools] = await Promise.all([
+          fetchUrbanSchools(supabase, { source: "ccd", stateFips }),
+          fetchUrbanSchools(supabase, { source: "pss", stateFips }),
+        ]);
+        publicTotal = publicSchools.length;
+        privateTotal = privateSchools.length;
+        for (const s of [...publicSchools, ...privateSchools]) {
+          const d = haversineMiles({ lat: geo.lat, lng: geo.lng }, { lat: s.lat, lng: s.lng });
+          if (d > RADIUS_MI) continue;
+          if (s.level === "elementary") elementaryCount++;
+          if (s.kind === "private") privateCount++;
+          if (s.enrollment != null) nearbyStudentPop += s.enrollment;
+        }
+      } catch (e) {
+        console.error("[compute-sas] Urban Institute fetch failed:", (e as Error).message);
+      }
     }
 
     // 5) Score.

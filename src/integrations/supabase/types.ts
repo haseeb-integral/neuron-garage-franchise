@@ -2213,6 +2213,45 @@ export type Database = {
         }
         Relationships: []
       }
+      urban_institute_state_cache: {
+        Row: {
+          created_at: string
+          expires_at: string
+          fetched_at: string
+          id: string
+          school_count: number
+          schools: Json
+          source: string
+          state_fips: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          fetched_at?: string
+          id?: string
+          school_count?: number
+          schools?: Json
+          source: string
+          state_fips: string
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          fetched_at?: string
+          id?: string
+          school_count?: number
+          schools?: Json
+          source?: string
+          state_fips?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
       us_cities_geo: {
         Row: {
           city: string

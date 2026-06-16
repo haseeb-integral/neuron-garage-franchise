@@ -34,6 +34,17 @@ export interface SiteScoreSignals {
     highwayDistanceMi?: number | null;
     roadDistanceMi?: number | null;
   };
+  /**
+   * Parking signal (engine v0.2). Counts on-street + lot POIs within ~200m
+   * of the geocoded pin via Mapbox Tilequery. Informational only — not
+   * weighted into the composite (client-locked weights per Sam brief v2.2).
+   */
+  parking?: {
+    poiCount?: number;
+    bucket?: "none" | "street_only" | "small_lot" | "large_lot";
+    radiusMeters?: number;
+    error?: string | null;
+  };
 }
 
 export interface SiteScoreResult {
@@ -47,6 +58,12 @@ export interface SiteScoreResult {
   };
   place?: string;
   signals?: SiteScoreSignals;
+  /** Geocoded pin centerpoint (added by compute-sas v0.4 for the real map). */
+  geo?: { lat: number; lng: number };
+  /** 10-min isochrone polygon (Mapbox driving). */
+  iso10?: GeoJSON.Polygon;
+  /** 15-min isochrone polygon (Mapbox driving). */
+  iso15?: GeoJSON.Polygon;
 }
 
 

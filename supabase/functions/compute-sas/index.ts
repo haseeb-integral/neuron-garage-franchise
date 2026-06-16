@@ -10,6 +10,7 @@ import {
   samplePoints,
   haversineMiles,
   polygonHash,
+  polygonAreaSqMi,
   nearestHighwayNode,
   nearestMajorRoadNode,
   drivingDistanceMiles,
@@ -28,7 +29,7 @@ import {
   SchoolType,
 } from "../_shared/sas-math.ts";
 
-const ENGINE_VERSION = "sas-v0.2";
+const ENGINE_VERSION = "sas-v0.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -168,6 +169,9 @@ Deno.serve(async (req) => {
         .eq("polygon_hash", hash)
         .maybeSingle();
       if (cached && cacheRowComplete(cached as Record<string, unknown>)) {
+        const cachedRaw = (cached as Record<string, unknown>).raw as
+          | { tractsHit?: number }
+          | null;
         return {
           medianHhi: Number(cached.median_hhi),
           pctAbove150k: Number(cached.pct_hh_above_150k),
@@ -175,7 +179,7 @@ Deno.serve(async (req) => {
           children5to12: Number(cached.children_5_12),
           familiesWithKids: Number(cached.families_with_kids_5_12),
           totalPop: Number(cached.total_population),
-          tractsHit: 0,
+          tractsHit: Number(cachedRaw?.tractsHit ?? 0),
         };
       }
       const agg = await aggregateAcs(samplePoints(poly, 5));
@@ -201,6 +205,27 @@ Deno.serve(async (req) => {
       return agg;
     };
     const [acs10, acs15] = await Promise.all([acsRing(iso10, 10), acsRing(iso15, 15)]);
+
+    // Bug-2 fix (Manus 1B calibration analysis): `acs15.totalPop` is the sum
+    // of population over the unique Census tracts touched by our sample
+    // points. Even after the dense-sampling fix in mapbox.samplePoints, that
+    // sum systematically under-counts because (a) we dedupe per tract and (b)
+    // not every tract inside the isochrone is hit by a sample point.
+    //
+    // Extrapolate by area: avg tract density × isochrone area. Urban Census
+    // tracts target ~4k residents and average ~2 sq mi; we use the observed
+    // avg-pop-per-tract from the sample and 2.0 sq mi as the urban tract
+    // area assumption. This restores the accessibility pop term to the
+    // 200k–500k magnitude the methodology's 50k–500k normalization expects.
+    const AVG_URBAN_TRACT_SQMI = 2.0;
+    const iso15AreaSqMi = polygonAreaSqMi(iso15);
+    const avgTractPop15 = acs15.tractsHit > 0
+      ? acs15.totalPop / acs15.tractsHit
+      : 0;
+    const popReachable15Extrapolated = avgTractPop15 > 0 && iso15AreaSqMi > 0
+      ? avgTractPop15 * (iso15AreaSqMi / AVG_URBAN_TRACT_SQMI)
+      : acs15.totalPop; // fall back to raw sum if we can't extrapolate
+
 
     // 4) Ecosystem: nearby school counts.
     //    PRIMARY: Urban Institute Education Data Portal (CCD = public,
@@ -344,7 +369,7 @@ Deno.serve(async (req) => {
         accessibility: accessibilityScore({
           roadDistanceMi,
           highwayDistanceMi,
-          popReachable15: acs15.totalPop,
+          popReachable15: popReachable15Extrapolated,
         }),
       };
     } catch (e) {
@@ -366,6 +391,9 @@ Deno.serve(async (req) => {
       accessibility: {
         highwayDistanceMi: round2(highwayDistanceMi),
         roadDistanceMi: round2(roadDistanceMi),
+        popReachable15Raw: acs15.totalPop,
+        popReachable15Extrapolated: Math.round(popReachable15Extrapolated),
+        iso15AreaSqMi: round2(iso15AreaSqMi),
       },
       version: ENGINE_VERSION,
     };

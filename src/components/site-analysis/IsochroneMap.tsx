@@ -41,11 +41,6 @@ export function IsochroneMap({
   useEffect(() => {
     if (!token || !containerRef.current) return;
 
-    if (!mapboxgl.supported()) {
-      setMapError("Map preview unavailable in this browser (WebGL disabled).");
-      return;
-    }
-
     mapboxgl.accessToken = token;
 
     let map: mapboxgl.Map | null = null;
@@ -61,6 +56,13 @@ export function IsochroneMap({
       mapRef.current = map;
       map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
       map.addControl(new mapboxgl.AttributionControl({ compact: true }));
+      // Genuine WebGL context failures (old phones, locked-down browsers) surface here.
+      map.on("error", (e: { error?: Error }) => {
+        const msg = e?.error?.message ?? "";
+        if (/webgl|context/i.test(msg)) {
+          setMapError("Map preview unavailable in this browser (WebGL disabled).");
+        }
+      });
 
       map.on("load", () => {
         // 15-min ring (outer, lighter).

@@ -586,7 +586,7 @@ function WinnerBanner({
     >
       <Star size={14} fill="#1d6b32" />
       <div>
-        <strong>★ Winner:</strong> {winner.candidate.schoolName} — Site Analysis Score (SAO){" "}
+        <strong>★ Winner:</strong> {winner.candidate.schoolName} — Site Analysis Score (SAS){" "}
         <strong className="tabular-nums">{winner.composite}</strong> · Brett/Sam's verdict:{" "}
         <strong>{verdictLabel}</strong>
       </div>
@@ -910,10 +910,10 @@ export default function SiteAnalysis() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-[15px] font-black" style={{ color: NAVY }}>
-              Site Analysis Score (SAO)
+              Site Analysis Score (SAS)
             </h2>
             <p className="mt-1 text-[12px]" style={{ color: MUTED }}>
-              SAO = 0.25 × School Profile + 0.25 × Neighborhood Affluence + 0.20 × Family Density +
+              SAS = 0.25 × School Profile + 0.25 × Neighborhood Affluence + 0.20 × Family Density +
               0.15 × School Ecosystem + 0.15 × Accessibility.{" "}
               <span style={{ color: BLUE }}>Weights client-locked per Sam brief v2.2 p.9; sub-signal weights Sam-pinned p.9–11.</span>
             </p>

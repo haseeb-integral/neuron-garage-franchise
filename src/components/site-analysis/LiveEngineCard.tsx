@@ -17,10 +17,10 @@ interface Preset {
 
 const PRESETS: Preset[] = [
   {
-    label: "Trinity Christian Academy",
-    hint: "TX · positive anchor",
-    schoolName: "Trinity Christian Academy",
-    address: "4131 Spring Valley Rd, Addison, TX 75001",
+    label: "Trinity Episcopal (Westlake)",
+    hint: "TX · positive anchor (SAS doc §6)",
+    schoolName: "Trinity Episcopal School",
+    address: "4011 Bee Caves Rd, Austin, TX 78746",
     schoolType: "private_elementary",
     gradeBand: "k5_k6",
   },

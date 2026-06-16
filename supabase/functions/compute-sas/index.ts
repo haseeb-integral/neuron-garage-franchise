@@ -10,6 +10,7 @@ import {
   samplePoints,
   haversineMiles,
   polygonHash,
+  polygonAreaSqMi,
   nearestHighwayNode,
   nearestMajorRoadNode,
   drivingDistanceMiles,

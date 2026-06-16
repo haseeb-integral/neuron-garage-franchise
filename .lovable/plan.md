@@ -1,69 +1,77 @@
-# Turn 4 — Flip the engine on & smoke-test
+## Goal — Brett's "one calibrated number everywhere" for Feature 1B
 
-## Context
+Today, every surface on `/site-analysis` reads a **stored** number off the demo object. The big `composite: 86` on a card and the `value: 85, 92, 78, 84, 88` pillar bars on the same card are independently written constants — nothing guarantees they actually add up. If anyone edits a pillar and forgets to update the composite, the page silently lies.
 
-Pre-checks are clean:
-- The console error is from `lovable.js` (Lovable's preview shell postMessage bridge), not our app — ignore.
-- The greyed inputs on `/site-analysis` are the original **demo** UI, not a bug. `LiveEngineCard` is gated behind `VITE_SAS_ENGINE_LIVE === "true"` and is not rendering yet.
-- `compute-sas` and `sas-calibrate` edge functions are deployed.
-- `CENSUS_API_KEY` and `MAPBOX_TOKEN` secrets confirmed present.
+Brett's rule says: **every surface (card composite, pillar bars, calibration banner, winner banner, decision summary table, export pack) reads from one helper that recomputes the composite from the pillars at render time.**
 
-## Goal of this turn
+This turn is **pure plumbing** — no model change, no new data, no calibration tuning.
 
-Turn the live engine **on** for the preview, render the `LiveEngineCard` above the demo block on `/site-analysis`, run one real end-to-end compute against a known address, and confirm pillar + composite scores come back from the backend.
+## In plain English (what the user will see)
 
-## Changes
+- **Before:** Composite "86" was a hand-typed number sitting next to five hand-typed pillar bars. They could drift.
+- **After:** Composite is computed live from the pillar values using the same formula the live engine uses (`0.25 × Profile + 0.25 × Affluence + 0.20 × Density + 0.15 × Ecosystem + 0.15 × Accessibility`). Edit any pillar → composite updates everywhere automatically (cards, banner, winner pill, summary table, exported PDF).
+- The number doesn't *change* on screen today (the demo values already add up to ~86 and ~41 for Trinity / LeafSpring). The win is that **the page can no longer drift** and Brett's rule is satisfied.
 
-1. **Add `VITE_SAS_ENGINE_LIVE=true` to `.env`** so Vite exposes the flag to the client.
-   - Single line addition; no other env vars touched.
-   - Triggers an auto dev-server restart.
+## Scope (5 files)
 
-2. **No other code changes.** Everything else is already wired:
-   - `SiteAnalysis.tsx` imports `LiveEngineCard` + `SAS_ENGINE_LIVE` and renders the card conditionally.
-   - Demo path stays intact when the flag is on (card renders *above* it, doesn't replace it).
+```text
+src/lib/sasMath.ts                              # add recomputeSiteScores() helper
+src/data/phase2DemoData.ts                      # no schema change, just a type re-export
+src/pages/SiteAnalysis.tsx                      # all 4 surfaces use the helper
+src/components/site-analysis/LiveEngineCard.tsx # also route through the same helper
+src/lib/decisionsExport.ts                      # export reads recomputed values
+```
 
-## How I'll verify (automated, before handing back)
+## Technical details
 
-- Re-read `.env` to confirm the line is present.
-- Hit `compute-sas` with a sample payload via `supabase--curl_edge_functions` using the address **4131 Spring Valley Rd, Addison, TX 75001** and confirm a 200 response with `sas` + 5 pillar scores.
-- Pull `edge_function_logs` for `compute-sas` to confirm Mapbox + Census calls succeeded (no 401/403 from missing tokens).
-- Spot-check `site_analysis_isochrones` and `site_analysis_acs_cache` rows were written.
+1. **Add `recomputeSiteScores(input)` to `src/lib/sasMath.ts`.**
+   - Input: an object with the 5 pillar values (already on the demo + already returned by the live engine).
+   - Output: `{ pillars: {schoolProfile, affluence, familyDensity, ecosystem, accessibility}, composite }`.
+   - Internally calls existing `compositeSas()`. Rounded with existing `round2()`.
 
-## Human manual test for Haseeb
+2. **Refactor `SiteCard`** in `src/pages/SiteAnalysis.tsx`:
+   - Stop reading `site.composite`. Read `recomputeSiteScores(site.subScores).composite`.
+   - Pillar bars read the same `pillars` object so the bars and the composite are guaranteed consistent.
 
-After my automated checks come back green:
+3. **Refactor `CalibrationGateBanner`, `WinnerBanner`, `DecisionSummary`:**
+   - All three currently read `s.composite`. Switch them to the recomputed value via a small `siteComposite(site)` accessor.
 
-1. Hard-refresh `/site-analysis` (Cmd-Shift-R).
-2. You should now see a new card at the top titled **"Live Site Analysis Engine (v0.1)"** with a blue `ENGINE LIVE` badge. Inputs should be **editable**, not greyed.
-3. Fill in:
-   - School name: `Trinity Christian Academy`
-   - Address: `4131 Spring Valley Rd, Addison, TX 75001`
-   - Leave other fields default.
-4. Click **Compute SAS**. Button shows "Computing…" for ~5–15s on first run.
-5. Expected result: a SAS composite (0–100) and 5 pillar tiles (School profile, Affluence, Family density, Ecosystem, Accessibility), plus a place label like "Addison, TX".
-6. Click **Compute SAS** again with the same address — should return in <2s (cache hit on isochrones + ACS).
-7. Try a second address (e.g. `1234 Mockingbird Ln, Dallas, TX 75201`) — should also succeed with different scores.
+4. **Refactor `exportSiteDecisionPack`** in `src/lib/decisionsExport.ts`:
+   - Same swap — the printed pack must show the same number as the on-screen card.
 
-## Troubleshoot matrix (what to tell me if it fails)
+5. **Refactor `LiveEngineCard`:**
+   - It already gets pillar values from `compute-sas`. Route the displayed composite through `recomputeSiteScores()` so the live path and demo path are byte-identical in how they derive the headline number.
 
-| Symptom | Likely cause | What I'll do |
-|---|---|---|
-| Card still doesn't appear | Vite didn't pick up `.env` | Restart dev server |
-| "Geocoding failed" / 4xx from Mapbox | Bad/expired `MAPBOX_TOKEN` | Re-issue token, re-add secret |
-| "Census fetch failed" / empty ACS | Bad `CENSUS_API_KEY` or rate-limit | Verify key, add retry |
-| 5xx with no body | Edge function exception | Pull `compute-sas` logs, patch |
-| Scores all 0 or all 100 | Pillar math edge case | Inspect `sas-math.ts` against payload |
+6. **No schema change. No SOW math change. No SOW weight change.**
 
-## What stays untouched
+## Out of scope (explicit, so I don't drift)
 
-- Demo UI (the greyed mock you see today) — still there for comparison.
-- Any existing `site_analyses` rows or scoring config.
-- All other Phase 2 areas (Market Validation, Candidate Pipeline, etc.).
+- Not touching `compute-sas` (engine math stays as-is).
+- Not touching the LeafSpring < Trinity calibration failure — that's a separate Brett conversation.
+- Not changing demo pillar values.
+- Not wiring the "Analyze a site" disabled form (that's a later turn).
+- Not adding new tables, secrets, or migrations.
 
-## After this turn
+## Human manual test after this turn
 
-If smoke test passes, next turns are (in order):
-1. **Calibration run** — invoke `sas-calibrate` on 5–10 known schools, tune pillar weights.
-2. **Persist + history** — wire the "Save analysis" button on the live card to write to `site_analyses`.
-3. **Map overlay** — render the 10/15-min isochrones on the existing map.
-4. **Polish + remove demo block** — once Brett signs off on parity, retire the greyed demo UI.
+Hard-refresh `/site-analysis`, then:
+
+1. **Cards still show the same composite numbers** (Trinity ≈ 86, LeafSpring ≈ 41). ✅ if so.
+2. **Open DevTools → Console.** No new errors.
+3. **Open** `src/data/phase2DemoData.ts`, change Trinity's `schoolProfile.value` from `85` → `30`, save.
+4. **Reload the page.** Trinity's composite **should drop automatically** (the card, the calibration banner, the winner pill in the summary table, and the exported decision pack should all show the new lower number — no other code change needed).
+5. **Revert the edit** so we don't ship a tampered demo.
+6. **Click "Compute SAS"** in the Live Engine on Trinity's preset. Confirm the headline composite still matches the pillar bars.
+
+If all six pass, Brett's "one calibrated number everywhere" rule is satisfied for Feature 1B.
+
+## Status updates I'll log
+
+- Update `.lovable/phase-2/phase-2-status.md` row 2 → "in-progress · one-number plumbing".
+- Append entry to `.lovable/phase-2/CHANGELOG.md` with date/who/what/why.
+
+## What comes after this turn (preview, not part of this plan)
+
+- **Next:** Decision capture refactor — `site_analysis_decisions` writes from both the demo and live engine.
+- **After that:** Bring the LeafSpring < Trinity failure to Brett with concrete options (customer-proximity pillar, competitive-saturation penalty, or reweight).
+- **Then:** Per-site branded PDF (SOW Item 2 acceptance criterion #5).

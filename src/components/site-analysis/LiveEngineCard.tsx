@@ -98,9 +98,13 @@ export interface LiveEngineInput {
 interface LiveEngineCardProps {
   onSaveToSlot?: (input: LiveEngineInput, result: LiveEngineResult) => void;
   canSave?: boolean;
+  /** If set, the Save button labels itself as "Replace <name>". */
+  replaceTargetLabel?: string | null;
+  /** Cancel an in-progress replace selection. */
+  onCancelReplace?: () => void;
 }
 
-export function LiveEngineCard({ onSaveToSlot, canSave = true }: LiveEngineCardProps = {}) {
+export function LiveEngineCard({ onSaveToSlot, canSave = true, replaceTargetLabel, onCancelReplace }: LiveEngineCardProps = {}) {
   const [address, setAddress] = useState("");
   const [schoolName, setSchoolName] = useState("");
   const [schoolType, setSchoolType] = useState<SchoolType>("private_elementary");

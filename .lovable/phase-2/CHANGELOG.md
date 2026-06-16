@@ -63,3 +63,17 @@
 - Added `src/pages/SASMethodology.tsx` — client-facing methodology doc for the Site Analysis Score, mirroring `MVSMethodology.tsx` structure (intro, composite formula, 5 sub-score cards w/ formulas + data sources, isochrone blend explainer, shared tooling table, Trinity vs LeafSpring calibration table, notes).
 - All 5 sub-scores (School Profile 25 / Affluence 25 / Family Density 20 / Ecosystem 15 / Accessibility 15) reflect Sam v2 PDF + Claude audit. school_type_factor and grade_alignment_factor tables read from `SCHOOL_PROFILE_FACTORS`; thresholds read from `SITE_RECOMMEND_THRESHOLDS` — single source of truth with the demo.
 - Registered route `/sas-methodology` in `src/App.tsx` (lazy + prefetch) and added "SAS Methodology" entry to AppSidebar docs nav, MapPin icon.
+
+## 2026-06-16 — 1B Site Analysis: real engine everywhere (compare cards wired live)
+- `src/hooks/useSiteScore.ts` (new) — shared hook wrapping `compute-sas` edge function. Single entry point any UI surface can use to get live pillar scores; replaces the demo-card path.
+- `src/pages/SiteAnalysis.tsx` rewritten:
+  - Removed dead "Analyze a site — Inputs not wired" disabled form.
+  - Removed "Side-by-side compare — Austin metro" heading and demo intro paragraph; kept the SAO formula line + thresholds + decision-points checklist under a generic "Site Analysis Score (SAO)" header.
+  - Removed "SAMPLE" / "DEMO ONLY" tags and the hardcoded `austinSiteAnalysisDemo` consumption.
+  - New `CandidateCard` component: editable school name / address / school type / grade band / enrollment + Analyze button. Calls live engine via `useSiteScore`. Pillar bars + composite read through `recomputeSiteScores`/`siteComposite` (one-number rule).
+  - Two pre-seeded calibration anchors auto-run on first mount: Trinity Christian Academy (Addison, TX, K-5/K-6 private elementary, positive anchor) and LeafSpring School at Plano (closed 2023, daycare, Other grade band, negative anchor). Cannot be removed.
+  - `+ Add candidate` slots create fresh blank cards (up to 4 total). Brett's verdict + winner + notes controls keyed by address; only rendered once a candidate has a real score.
+  - `CalibrationGateBanner` now reads live Trinity + LeafSpring composites from engine results. Shows "Computing calibration gate…" while loading; PASS/FAIL strictly based on real gap ≥ 20 pt. No fake green banner.
+  - `DecisionSummary` table now reads live composites + verdicts/winners/notes per candidate address.
+- `src/lib/decisionsExport.ts` — `exportSiteDecisionPack` signature changed to accept `ExportCandidate[]` (live `{schoolName, address, pillars, composite}`) instead of `SiteAnalysisDemoSite[]`. Export now reflects live engine numbers.
+- Out of scope this turn: fixing the model-side calibration failure (Trinity ~51 vs LeafSpring ~55 on real data) — still awaiting Brett's signal call (e.g. distance to NG customer base, competitive saturation penalty).

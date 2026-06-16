@@ -1,22 +1,29 @@
-import { useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, CheckCircle2, Download, FileText, MapPin, Plus, Search, Star, XCircle } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  CheckCircle2,
+  Download,
+  FileText,
+  Loader2,
+  MapPin,
+  Plus,
+  Star,
+  XCircle,
+} from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
 import { LiveEngineCard, SAS_ENGINE_LIVE } from "@/components/site-analysis/LiveEngineCard";
-import { AddCandidateSiteModal } from "@/components/phase2-demo/AddCandidateSiteModal";
 import { DemoBanner } from "@/components/phase2-demo/DemoBanner";
-import { SampleDataBadge } from "@/components/phase2-demo/SampleDataBadge";
 import { SiteDecisionControls } from "@/components/phase2-demo/SiteDecisionControls";
 import { useSiteDecisions, type SiteVerdict } from "@/hooks/useSiteDecisions";
-import { exportSiteDecisionPack } from "@/lib/decisionsExport";
+import { useSiteScore, type SiteScoreResult } from "@/hooks/useSiteScore";
+import { exportSiteDecisionPack, type ExportCandidate } from "@/lib/decisionsExport";
+import { SITE_RECOMMEND_THRESHOLDS } from "@/data/phase2DemoData";
 import {
-  austinSiteAnalysisDemo,
-  SCHOOL_PROFILE_FACTORS,
-  SITE_ACCESSIBILITY_CALLOUTS,
-  SITE_RECOMMEND_THRESHOLDS,
-  type SiteAnalysisDemoSite,
-} from "@/data/phase2DemoData";
-import { siteComposite } from "@/lib/sasMath";
+  recomputeSiteScores,
+  siteComposite,
+  type SchoolType,
+  type GradeBand,
+} from "@/lib/sasMath";
 
 const NAVY = "#07142f";
 const MUTED = "#526078";
@@ -31,85 +38,361 @@ const VERDICT_STYLE: Record<SiteVerdict, { bg: string; fg: string; label: string
   undecided: { bg: "#eef2f7", fg: "#526078", label: "Undecided" },
 };
 
-// Shared chip class — every meta pill uses identical geometry.
-const CHIP =
-  "inline-flex items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-semibold";
-
 function tierBadge(score: number) {
-  if (score >= SITE_RECOMMEND_THRESHOLDS.recommend) return { bg: "#e3f3e7", fg: "#1d6b32", label: "Recommend" };
-  if (score >= SITE_RECOMMEND_THRESHOLDS.worthALook) return { bg: "#fff8d9", fg: "#7a5800", label: "Worth a look" };
+  if (score >= SITE_RECOMMEND_THRESHOLDS.recommend)
+    return { bg: "#e3f3e7", fg: "#1d6b32", label: "Recommend" };
+  if (score >= SITE_RECOMMEND_THRESHOLDS.worthALook)
+    return { bg: "#fff8d9", fg: "#7a5800", label: "Worth a look" };
   return { bg: "#fce7ec", fg: "#a3142b", label: "Don't recommend" };
 }
 
-function shortGradeAlignment(full: string) {
-  // Input like "Matches NG 5–12 ✓" or "Daycare PK–K · misaligned vs NG 5–12 ✗"
-  const ok = full.includes("✓");
-  const match = full.match(/(PK–K|K–\d+|\d+–\d+|PK–\d+)/);
-  const range = match?.[1] ?? (ok ? "5–12" : "PK–K");
-  return { short: `${range} ${ok ? "✓" : "✗"}`, ok };
+function defaultVerdictFromScore(score: number): SiteVerdict {
+  if (score >= SITE_RECOMMEND_THRESHOLDS.recommend) return "recommend";
+  if (score >= SITE_RECOMMEND_THRESHOLDS.worthALook) return "worth_a_look";
+  return "dont_recommend";
 }
 
-function IsochronePlaceholder() {
+// ---------------------------------------------------------------------------
+// Candidate model — replaces the old hardcoded demo cards. Each candidate is
+// a small form that runs the live `compute-sas` engine and renders the
+// returned pillars + composite via the single recompute helper.
+// ---------------------------------------------------------------------------
+
+interface Candidate {
+  id: string;
+  schoolName: string;
+  address: string;
+  schoolType: SchoolType;
+  gradeBand: GradeBand;
+  enrollment: string;
+  calibrationRole?: "trinity" | "leafspring";
+}
+
+const TRINITY_CANDIDATE: Candidate = {
+  id: "trinity-christian-academy",
+  schoolName: "Trinity Christian Academy",
+  address: "4131 Spring Valley Rd, Addison, TX 75001",
+  schoolType: "private_elementary",
+  gradeBand: "k5_k6",
+  enrollment: "",
+  calibrationRole: "trinity",
+};
+
+const LEAFSPRING_CANDIDATE: Candidate = {
+  id: "leafspring-plano",
+  schoolName: "LeafSpring School at Plano (closed 2023)",
+  address: "7000 Preston Rd, Plano, TX 75024",
+  schoolType: "daycare",
+  gradeBand: "other",
+  enrollment: "",
+  calibrationRole: "leafspring",
+};
+
+// ---------------------------------------------------------------------------
+// CandidateCard
+// ---------------------------------------------------------------------------
+
+interface CardProps {
+  candidate: Candidate;
+  onChange: (c: Candidate) => void;
+  onRemove?: () => void;
+  onResult: (result: SiteScoreResult | null) => void;
+  autoRun: boolean;
+}
+
+function CandidateCard({ candidate, onChange, onRemove, onResult, autoRun }: CardProps) {
+  const { status, result, error, run } = useSiteScore();
+  const { byAddress } = useSiteDecisions();
+  const decision = byAddress.get(candidate.address);
+  const brettVerdict: SiteVerdict | undefined =
+    decision && decision.verdict !== "undecided" ? decision.verdict : undefined;
+  const isWinner = decision?.is_winner ?? false;
+
+  // Auto-run for pre-seeded calibration candidates on first mount.
+  useEffect(() => {
+    if (!autoRun) return;
+    if (status !== "idle") return;
+    if (!candidate.address.trim() || !candidate.schoolName.trim()) return;
+    run({
+      schoolName: candidate.schoolName,
+      address: candidate.address,
+      schoolType: candidate.schoolType,
+      gradeBand: candidate.gradeBand,
+      enrollment: candidate.enrollment ? Number(candidate.enrollment) : null,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRun]);
+
+  // Bubble result up so parent (calibration banner, summary, export) sees it.
+  useEffect(() => {
+    onResult(result);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result]);
+
+  const recomputed = result ? recomputeSiteScores(result.pillars) : null;
+  const composite = recomputed?.composite ?? null;
+  const scoreTier = composite != null ? tierBadge(composite) : null;
+  const pill = brettVerdict ? VERDICT_STYLE[brettVerdict] : scoreTier;
+  const pillSource = brettVerdict ? "Brett/Sam's call" : "auto from score";
+
+  const submit = () => {
+    run({
+      schoolName: candidate.schoolName,
+      address: candidate.address,
+      schoolType: candidate.schoolType,
+      gradeBand: candidate.gradeBand,
+      enrollment: candidate.enrollment ? Number(candidate.enrollment) : null,
+    });
+  };
+
   return (
     <div
-      className="relative flex h-36 w-full items-center justify-center overflow-hidden rounded-md"
-      style={{ background: `radial-gradient(circle at center, ${SOFT} 0%, #eef2f7 100%)` }}
-      aria-label="Drive-time isochrone demo placeholder"
+      className="flex flex-col rounded-lg border bg-white p-4"
+      style={{
+        borderColor: isWinner ? "#1d6b32" : BORDER,
+        borderWidth: isWinner ? 2 : 1,
+        minHeight: 540,
+      }}
     >
-      <div className="absolute rounded-full" style={{ width: 130, height: 130, border: `1.5px dashed ${BLUE}`, opacity: 0.45 }} />
-      <div className="absolute rounded-full" style={{ width: 80, height: 80, border: `2px solid ${BLUE}`, opacity: 0.7 }} />
-      <div className="absolute rounded-full" style={{ width: 12, height: 12, backgroundColor: BLUE, boxShadow: "0 0 0 4px rgba(23,75,232,0.15)" }} />
-      <span className={`absolute bottom-2 left-2 ${CHIP} bg-white/90`} style={{ color: NAVY }}>
-        10 · 15 min drive
-      </span>
-      <span className="absolute right-2 top-2">
-        <SampleDataBadge label="Map" />
-      </span>
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <MapPin size={14} style={{ color: BLUE }} className="shrink-0" />
+            <h3
+              className="truncate text-[13px] font-bold"
+              style={{ color: NAVY }}
+              title={candidate.schoolName || "Unnamed candidate"}
+            >
+              {candidate.schoolName || "New candidate"}
+            </h3>
+            {isWinner && (
+              <span
+                className="inline-flex items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-bold"
+                style={{ backgroundColor: "#1d6b32", color: "#fff" }}
+              >
+                <Star size={9} className="mr-0.5" fill="#fff" /> Winner
+              </span>
+            )}
+            {candidate.calibrationRole && (
+              <span
+                className="inline-flex items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+                style={{ backgroundColor: "#dde7ff", color: BLUE }}
+                title="Pre-seeded calibration anchor"
+              >
+                {candidate.calibrationRole === "trinity" ? "Positive anchor" : "Negative anchor"}
+              </span>
+            )}
+          </div>
+          {candidate.address && (
+            <p
+              className="mt-0.5 line-clamp-1 text-[11px]"
+              style={{ color: MUTED }}
+              title={candidate.address}
+            >
+              {candidate.address}
+            </p>
+          )}
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          {composite != null ? (
+            <>
+              <div
+                className="text-[28px] font-black leading-none tabular-nums"
+                style={{ color: NAVY }}
+              >
+                {composite}
+              </div>
+              {pill && (
+                <span
+                  className="inline-flex items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-bold"
+                  style={{ backgroundColor: pill.bg, color: pill.fg }}
+                  title={`${pill.label} — ${pillSource}`}
+                >
+                  {pill.label}
+                </span>
+              )}
+              <span
+                className="text-[9px] uppercase tracking-wide"
+                style={{ color: MUTED }}
+              >
+                {pillSource}
+              </span>
+            </>
+          ) : (
+            <span
+              className="text-[10px] uppercase tracking-wide"
+              style={{ color: MUTED }}
+            >
+              {status === "loading" ? "Computing…" : "No score yet"}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Input form */}
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <label
+          className="col-span-2 flex flex-col gap-1 text-[10px]"
+          style={{ color: MUTED }}
+        >
+          School name
+          <input
+            type="text"
+            value={candidate.schoolName}
+            onChange={(e) => onChange({ ...candidate, schoolName: e.target.value })}
+            className="rounded border px-2 py-1 text-[12px]"
+            style={{ borderColor: BORDER, color: NAVY }}
+            placeholder="e.g. Trinity Episcopal School"
+          />
+        </label>
+        <label
+          className="col-span-2 flex flex-col gap-1 text-[10px]"
+          style={{ color: MUTED }}
+        >
+          Address
+          <input
+            type="text"
+            value={candidate.address}
+            onChange={(e) => onChange({ ...candidate, address: e.target.value })}
+            className="rounded border px-2 py-1 text-[12px]"
+            style={{ borderColor: BORDER, color: NAVY }}
+            placeholder="3901 Bee Caves Rd, Austin, TX 78746"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-[10px]" style={{ color: MUTED }}>
+          School type
+          <select
+            value={candidate.schoolType}
+            onChange={(e) =>
+              onChange({ ...candidate, schoolType: e.target.value as SchoolType })
+            }
+            className="rounded border px-2 py-1 text-[12px]"
+            style={{ borderColor: BORDER, color: NAVY }}
+          >
+            <option value="private_elementary">Private elementary</option>
+            <option value="public_elementary">Public elementary</option>
+            <option value="charter_elementary">Charter elementary</option>
+            <option value="montessori">Montessori</option>
+            <option value="daycare">Daycare</option>
+            <option value="other_k8">Other K-8</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-[10px]" style={{ color: MUTED }}>
+          Grade band
+          <select
+            value={candidate.gradeBand}
+            onChange={(e) =>
+              onChange({ ...candidate, gradeBand: e.target.value as GradeBand })
+            }
+            className="rounded border px-2 py-1 text-[12px]"
+            style={{ borderColor: BORDER, color: NAVY }}
+          >
+            <option value="k5_k6">K-5 / K-6</option>
+            <option value="prek_5">Pre-K through 5</option>
+            <option value="k8">K-8</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-[10px]" style={{ color: MUTED }}>
+          Enrollment (optional)
+          <input
+            type="number"
+            value={candidate.enrollment}
+            onChange={(e) => onChange({ ...candidate, enrollment: e.target.value })}
+            className="rounded border px-2 py-1 text-[12px]"
+            style={{ borderColor: BORDER, color: NAVY }}
+            placeholder="540"
+          />
+        </label>
+        <div className="flex items-end justify-end gap-2">
+          {onRemove && (
+            <button
+              type="button"
+              onClick={onRemove}
+              className="rounded border px-2 py-1 text-[11px]"
+              style={{ borderColor: BORDER, color: MUTED }}
+            >
+              Remove
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={submit}
+            disabled={status === "loading"}
+            className="inline-flex items-center gap-1 rounded px-3 py-1 text-[11px] font-semibold text-white disabled:opacity-60"
+            style={{ background: BLUE }}
+          >
+            {status === "loading" && <Loader2 size={11} className="animate-spin" />}
+            {status === "loading" ? "Analyzing…" : "Analyze"}
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <p className="mt-2 text-[11px]" style={{ color: "#a3142b" }}>
+          {error}
+        </p>
+      )}
+
+      {/* Pillar bars */}
+      {recomputed && (
+        <div className="mt-3 space-y-1.5">
+          <div
+            className="text-[10px] font-semibold uppercase tracking-wide"
+            style={{ color: MUTED }}
+          >
+            Sub-scores
+          </div>
+          <PillarBar label="School Profile" weight={0.25} value={recomputed.pillars.schoolProfile} />
+          <PillarBar
+            label="Neighborhood Affluence"
+            weight={0.25}
+            value={recomputed.pillars.affluence}
+          />
+          <PillarBar label="Family Density" weight={0.2} value={recomputed.pillars.familyDensity} />
+          <PillarBar label="School Ecosystem" weight={0.15} value={recomputed.pillars.ecosystem} />
+          <PillarBar label="Accessibility" weight={0.15} value={recomputed.pillars.accessibility} />
+          {result?.place && (
+            <p className="pt-1 text-[10px]" style={{ color: MUTED }}>
+              Geocoded: {result.place}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Brett's decision controls — only meaningful once we have a score */}
+      {recomputed && (
+        <SiteDecisionControls
+          address={candidate.address}
+          schoolName={candidate.schoolName}
+          defaultVerdict={defaultVerdictFromScore(recomputed.composite)}
+        />
+      )}
     </div>
   );
 }
 
-interface RowProps {
-  label: string;
-  value: number;
-  weight: number;
-  formula: string;
-  open: boolean;
-  onToggle: () => void;
-  extra?: React.ReactNode;
-}
-
-function SubScoreRow({ label, value, weight, formula, open, onToggle, extra }: RowProps) {
+function PillarBar({ label, weight, value }: { label: string; weight: number; value: number }) {
   return (
-    <li>
-      <div className="flex items-baseline justify-between gap-2 text-[12px]">
-        <span className="truncate" style={{ color: MUTED }}>
-          {label}
-          <span className="ml-1 text-[10px]" style={{ color: MUTED }}>
-            ({Math.round(weight * 100)}%)
-          </span>
+    <div>
+      <div className="flex items-baseline justify-between text-[11px]">
+        <span style={{ color: MUTED }}>
+          {label} <span className="text-[9px]">({Math.round(weight * 100)}%)</span>
         </span>
-        <span className="flex shrink-0 items-center gap-2">
-          <button
-            type="button"
-            onClick={onToggle}
-            className="inline-flex items-center gap-0.5 text-[10px] font-semibold"
-            style={{ color: BLUE }}
-            title={open ? "Hide formula" : "Show formula"}
-          >
-            {open ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
-            ƒ
-          </button>
-          <span className="font-bold tabular-nums" style={{ color: NAVY }}>
-            {value}
-          </span>
+        <span className="font-bold tabular-nums" style={{ color: NAVY }}>
+          {value}
         </span>
       </div>
-      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full" style={{ backgroundColor: "#eef2f7" }}>
+      <div
+        className="mt-0.5 h-1.5 w-full overflow-hidden rounded-full"
+        style={{ backgroundColor: "#eef2f7" }}
+      >
         <div
           className="h-full"
           style={{
-            width: `${value}%`,
+            width: `${Math.max(0, Math.min(100, value))}%`,
             backgroundColor:
               value >= SITE_RECOMMEND_THRESHOLDS.recommend
                 ? "#1d6b32"
@@ -119,256 +402,13 @@ function SubScoreRow({ label, value, weight, formula, open, onToggle, extra }: R
           }}
         />
       </div>
-      {open && (
-        <>
-          <pre
-            className="mt-1.5 whitespace-pre-wrap rounded-md p-2 text-[11px] leading-snug"
-            style={{ backgroundColor: SOFT, color: NAVY, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
-          >
-            {formula}
-          </pre>
-          {extra && <div className="mt-1.5">{extra}</div>}
-        </>
-      )}
-    </li>
-  );
-}
-
-function SchoolProfileFactors() {
-  return (
-    <div className="rounded-md border p-2 text-[10px]" style={{ borderColor: BORDER, backgroundColor: "#fff" }}>
-      <div className="mb-1 font-semibold uppercase tracking-wide" style={{ color: MUTED }}>
-        School profile factors
-      </div>
-      <div className="mb-1.5">
-        <div className="mb-0.5 font-semibold" style={{ color: NAVY }}>school_type_factor</div>
-        <div className="flex flex-wrap gap-1">
-          {SCHOOL_PROFILE_FACTORS.schoolType.map((r) => (
-            <span key={r.type} className="rounded px-1.5 py-0.5" style={{ backgroundColor: SOFT, color: NAVY }}>
-              {r.type} <span className="font-bold tabular-nums">{r.factor}</span>
-            </span>
-          ))}
-        </div>
-      </div>
-      <div className="mb-1.5">
-        <div className="font-semibold" style={{ color: NAVY }}>
-          enrollment normalize: <span className="tabular-nums">{SCHOOL_PROFILE_FACTORS.enrollmentRange}</span>
-        </div>
-      </div>
-      <div>
-        <div className="mb-0.5 font-semibold" style={{ color: NAVY }}>grade_alignment_factor</div>
-        <div className="flex flex-wrap gap-1">
-          {SCHOOL_PROFILE_FACTORS.gradeAlignment.map((r) => (
-            <span key={r.label} className="rounded px-1.5 py-0.5" style={{ backgroundColor: SOFT, color: NAVY }}>
-              {r.label} <span className="font-bold tabular-nums">{r.factor}</span>
-            </span>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
 
-
-function SiteCard({ site }: { site: SiteAnalysisDemoSite }) {
-  const { byAddress } = useSiteDecisions();
-  const decision = byAddress.get(site.address);
-  const brettVerdict: SiteVerdict | undefined =
-    decision && decision.verdict !== "undecided" ? decision.verdict : undefined;
-  // One-number rule: composite is ALWAYS recomputed from the live pillars,
-  // never read from the stored `site.composite` field.
-  const composite = siteComposite(site);
-  const scoreTier = tierBadge(composite);
-  const pill = brettVerdict ? VERDICT_STYLE[brettVerdict] : scoreTier;
-  const pillSource = brettVerdict ? "Brett/Sam's call" : "auto from score";
-  const isWinner = decision?.is_winner ?? false;
-
-  const grade = shortGradeAlignment(site.gradeAlignment);
-  const s = site.subScores;
-  const access = SITE_ACCESSIBILITY_CALLOUTS[site.id];
-  const rowDefs = [
-    { label: "School Profile", value: s.schoolProfile.value, weight: s.schoolProfile.weight, formula: s.schoolProfile.formula, extra: <SchoolProfileFactors /> as React.ReactNode },
-    { label: "Neighborhood Affluence", value: s.neighborhoodAffluence.value, weight: s.neighborhoodAffluence.weight, formula: s.neighborhoodAffluence.formula, extra: undefined as React.ReactNode },
-    { label: "Family Density", value: s.familyDensity.value, weight: s.familyDensity.weight, formula: s.familyDensity.formula, extra: undefined as React.ReactNode },
-    { label: "School Ecosystem", value: s.schoolEcosystem.value, weight: s.schoolEcosystem.weight, formula: s.schoolEcosystem.formula, extra: undefined as React.ReactNode },
-    { label: "Accessibility", value: s.accessibility.value, weight: s.accessibility.weight, formula: s.accessibility.formula, extra: undefined as React.ReactNode },
-  ];
-  const [openSet, setOpenSet] = useState<Set<string>>(new Set());
-  const allOpen = openSet.size === rowDefs.length;
-  const toggle = (label: string) =>
-    setOpenSet((prev) => {
-      const next = new Set(prev);
-      if (next.has(label)) next.delete(label);
-      else next.add(label);
-      return next;
-    });
-  const toggleAll = () =>
-    setOpenSet(allOpen ? new Set() : new Set(rowDefs.map((r) => r.label)));
-
-  return (
-    <div
-      className="flex flex-col rounded-lg border bg-white p-4"
-      style={{
-        borderColor: isWinner ? "#1d6b32" : BORDER,
-        borderWidth: isWinner ? 2 : 1,
-        minHeight: 560,
-      }}
-    >
-      {/* Header band */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            <MapPin size={14} style={{ color: BLUE }} className="shrink-0" />
-            <h3 className="truncate text-[13px] font-bold" style={{ color: NAVY }} title={site.schoolName}>
-              {site.schoolName}
-            </h3>
-            {isWinner && (
-              <span
-                className={`${CHIP} font-bold`}
-                style={{ backgroundColor: "#1d6b32", color: "#fff" }}
-                title="Marked as the winner across the compared set"
-              >
-                <Star size={9} className="mr-0.5" fill="#fff" /> Winner
-              </span>
-            )}
-          </div>
-          <p className="mt-0.5 line-clamp-1 text-[11px]" style={{ color: MUTED }} title={site.address}>
-            {site.address}
-          </p>
-          <div className="mt-1.5 flex flex-wrap items-center gap-1">
-            <span className={CHIP} style={{ backgroundColor: "#eef2f7", color: MUTED }}>{site.schoolType}</span>
-            <span className={CHIP} style={{ backgroundColor: "#eef2f7", color: MUTED }}>Enr. {site.enrollment}</span>
-            <span
-              className={CHIP}
-              style={{
-                backgroundColor: grade.ok ? "#e3f3e7" : "#fce7ec",
-                color: grade.ok ? "#1d6b32" : "#a3142b",
-              }}
-              title={site.gradeAlignment}
-            >
-              {grade.short}
-            </span>
-            <SampleDataBadge />
-          </div>
-        </div>
-        <div className="flex shrink-0 flex-col items-end gap-1">
-          <div className="text-[28px] font-black leading-none tabular-nums" style={{ color: NAVY }}>
-            {composite}
-          </div>
-          <span
-            className={`${CHIP} font-bold`}
-            style={{ backgroundColor: pill.bg, color: pill.fg }}
-            title={`${pill.label} — ${pillSource}`}
-          >
-            {pill.label}
-          </span>
-          <span className="text-[9px] uppercase tracking-wide" style={{ color: MUTED }}>
-            {pillSource}
-          </span>
-        </div>
-      </div>
-
-
-      {/* Verdict band */}
-      <p
-        className="mt-2 line-clamp-3 text-[12px] leading-snug"
-        style={{ color: NAVY, minHeight: 52 }}
-        title={site.verdict}
-      >
-        {site.verdict}
-      </p>
-
-      {/* Isochrone band */}
-      <div className="mt-3">
-        <div className="mb-1 flex flex-wrap items-center gap-1">
-          <span
-            className={CHIP}
-            style={{ backgroundColor: SOFT, color: BLUE }}
-            title="Per SOW Item 2: drive-time isochrones weighted 10-min 60% / 15-min 40%."
-          >
-            10-min 60% · 15-min 40%
-          </span>
-          <span className={CHIP} style={{ backgroundColor: "#eef2f7", color: MUTED }}>
-            Drive-time
-          </span>
-        </div>
-        <IsochronePlaceholder />
-      </div>
-
-      {/* Callout grid — 3×2 (demographics + accessibility) */}
-      <div className="mt-2 grid grid-cols-3 gap-1.5 text-[11px]">
-        <div className="rounded-md p-1.5" style={{ backgroundColor: SOFT }}>
-          <div className="text-[9px] uppercase tracking-wide" style={{ color: MUTED }}>Median HHI · 10m</div>
-          <div className="truncate font-bold tabular-nums" style={{ color: NAVY }}>{site.isochroneCallouts.medianHHI10min}</div>
-        </div>
-        <div className="rounded-md p-1.5" style={{ backgroundColor: SOFT }}>
-          <div className="text-[9px] uppercase tracking-wide" style={{ color: MUTED }}>HH &gt;$150k · 10m</div>
-          <div className="truncate font-bold tabular-nums" style={{ color: NAVY }}>{site.isochroneCallouts.pctOver150k10min}</div>
-        </div>
-        <div className="rounded-md p-1.5" style={{ backgroundColor: SOFT }}>
-          <div className="text-[9px] uppercase tracking-wide" style={{ color: MUTED }}>Kids 5–12 · 10m</div>
-          <div className="truncate font-bold tabular-nums" style={{ color: NAVY }}>{site.isochroneCallouts.children5to12Within10min}</div>
-        </div>
-        <div className="rounded-md p-1.5" style={{ backgroundColor: "#eef6ff" }} title="Accessibility — distance to highway entrance.">
-          <div className="text-[9px] uppercase tracking-wide" style={{ color: MUTED }}>Drive to hwy</div>
-          <div className="truncate font-bold" style={{ color: NAVY }}>{access?.driveToHighway ?? "—"}</div>
-        </div>
-        <div className="rounded-md p-1.5" style={{ backgroundColor: "#eef6ff" }} title="Accessibility — est. parking capacity on site.">
-          <div className="text-[9px] uppercase tracking-wide" style={{ color: MUTED }}>Parking</div>
-          <div className="truncate font-bold" style={{ color: NAVY }}>{access?.parkingSpaces ?? "—"}</div>
-        </div>
-        <div className="rounded-md p-1.5" style={{ backgroundColor: "#eef6ff" }} title="Accessibility — total population reachable within 15-min drive.">
-          <div className="text-[9px] uppercase tracking-wide" style={{ color: MUTED }}>Pop · 15m</div>
-          <div className="truncate font-bold tabular-nums" style={{ color: NAVY }}>{access?.popReachable15min ?? "—"}</div>
-        </div>
-      </div>
-
-
-      {/* Sub-score list — scrolls internally so formula drawers don't break grid */}
-      <div className="mt-3 flex flex-1 flex-col">
-        <div className="mb-1 flex items-center justify-between">
-          <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: MUTED }}>
-            Sub-scores
-          </span>
-          <button
-            type="button"
-            onClick={toggleAll}
-            className="text-[10px] font-semibold"
-            style={{ color: BLUE }}
-          >
-            {allOpen ? "Hide all formulas" : "Show all formulas"}
-          </button>
-        </div>
-        <ul
-          className="space-y-1.5 overflow-y-auto pr-1"
-          style={{ maxHeight: 180 }}
-        >
-          {rowDefs.map((r) => (
-            <SubScoreRow
-              key={r.label}
-              {...r}
-              open={openSet.has(r.label)}
-              onToggle={() => toggle(r.label)}
-            />
-          ))}
-        </ul>
-      </div>
-
-      {/* v1.1 — Decision capture */}
-      <SiteDecisionControls
-        address={site.address}
-        schoolName={site.schoolName}
-        defaultVerdict={defaultVerdictFromScore(composite)}
-      />
-    </div>
-  );
-}
-
-function defaultVerdictFromScore(score: number): SiteVerdict {
-  if (score >= SITE_RECOMMEND_THRESHOLDS.recommend) return "recommend";
-  if (score >= SITE_RECOMMEND_THRESHOLDS.worthALook) return "worth_a_look";
-  return "dont_recommend";
-}
+// ---------------------------------------------------------------------------
+// Empty add-slot
+// ---------------------------------------------------------------------------
 
 function EmptySlot({ onAdd }: { onAdd: () => void }) {
   return (
@@ -380,27 +420,56 @@ function EmptySlot({ onAdd }: { onAdd: () => void }) {
         {
           borderColor: BORDER,
           color: MUTED,
-          minHeight: 560,
+          minHeight: 540,
           ["--add-hover" as string]: BLUE,
         } as React.CSSProperties
       }
     >
-      <div className="flex h-9 w-9 items-center justify-center rounded-full" style={{ backgroundColor: SOFT, color: BLUE }}>
+      <div
+        className="flex h-9 w-9 items-center justify-center rounded-full"
+        style={{ backgroundColor: SOFT, color: BLUE }}
+      >
         <Plus size={18} />
       </div>
-      <div className="mt-2 text-[12px] font-semibold" style={{ color: NAVY }}>Add candidate site</div>
-      <p className="mt-1 max-w-[180px] text-[11px]">Sample-scored locally. Up to 4 sites compared side-by-side.</p>
-      <div className="mt-2"><SampleDataBadge label="Demo only" /></div>
+      <div className="mt-2 text-[12px] font-semibold" style={{ color: NAVY }}>
+        Add candidate site
+      </div>
+      <p className="mt-1 max-w-[180px] text-[11px]">
+        Add a school + address; the live engine scores it. Up to 4 candidates side-by-side.
+      </p>
     </button>
   );
 }
 
-function CalibrationGateBanner({ sites }: { sites: SiteAnalysisDemoSite[] }) {
-  const trinity = sites.find((s) => /trinity/i.test(s.schoolName));
-  const leaf = sites.find((s) => /leafspring/i.test(s.schoolName));
-  if (!trinity || !leaf) return null;
-  const trinityScore = siteComposite(trinity);
-  const leafScore = siteComposite(leaf);
+// ---------------------------------------------------------------------------
+// Calibration gate (real numbers)
+// ---------------------------------------------------------------------------
+
+function CalibrationGateBanner({
+  trinityScore,
+  leafScore,
+  trinityLoading,
+  leafLoading,
+}: {
+  trinityScore: number | null;
+  leafScore: number | null;
+  trinityLoading: boolean;
+  leafLoading: boolean;
+}) {
+  if (trinityLoading || leafLoading || trinityScore == null || leafScore == null) {
+    return (
+      <div
+        className="mb-3 flex items-start gap-2 rounded-md border px-3 py-2 text-[12px]"
+        style={{ backgroundColor: "#eef2f7", borderColor: BORDER, color: MUTED }}
+        role="status"
+      >
+        <Loader2 size={16} className="mt-0.5 shrink-0 animate-spin" />
+        <div>
+          <strong>Computing calibration gate…</strong> Running Trinity Christian Academy vs LeafSpring Plano through the live engine.
+        </div>
+      </div>
+    );
+  }
   const delta = trinityScore - leafScore;
   const pass = delta >= 20;
   return (
@@ -413,34 +482,47 @@ function CalibrationGateBanner({ sites }: { sites: SiteAnalysisDemoSite[] }) {
       }}
       role="status"
     >
-      {pass ? <CheckCircle2 size={16} className="mt-0.5 shrink-0" /> : <XCircle size={16} className="mt-0.5 shrink-0" />}
+      {pass ? (
+        <CheckCircle2 size={16} className="mt-0.5 shrink-0" />
+      ) : (
+        <XCircle size={16} className="mt-0.5 shrink-0" />
+      )}
       <div>
-        <strong>Calibration gate: {pass ? "✓ PASS" : "✗ FAIL"}</strong> — LeafSpring ({leafScore}) is{" "}
-        {delta} {delta === 1 ? "point" : "points"} below Trinity ({trinityScore}).{" "}
+        <strong>Calibration gate: {pass ? "✓ PASS" : "✗ FAIL"}</strong> — Live engine: Trinity ({trinityScore}) vs LeafSpring ({leafScore}). Gap{" "}
+        {delta.toFixed(1)} pt {pass ? "≥" : "<"} 20 pt required.{" "}
         <span className="opacity-80">
-          SOW Item 2 requires LeafSpring to score materially lower than Trinity (≥20 pt gap). If this
-          fails on real data, the weights are reworked before rollout.
+          SOW Item 2 requires LeafSpring to score materially lower than Trinity. If this fails, the model weights are reworked before rollout.
         </span>
       </div>
     </div>
   );
 }
 
+// ---------------------------------------------------------------------------
+// Winner banner + Decision summary (read live)
+// ---------------------------------------------------------------------------
+
+interface ScoredCandidate {
+  candidate: Candidate;
+  result: SiteScoreResult | null;
+  composite: number | null;
+}
+
 function WinnerBanner({
-  winnerSite,
+  winner,
   winnerDecision,
 }: {
-  winnerSite?: SiteAnalysisDemoSite;
+  winner?: ScoredCandidate;
   winnerDecision?: { verdict: SiteVerdict };
 }) {
-  if (!winnerSite) {
+  if (!winner || winner.composite == null) {
     return (
       <div
         className="mb-3 rounded-md border px-3 py-2 text-[12px]"
         style={{ backgroundColor: "#fff8d9", borderColor: "#925100", color: "#7a5800" }}
       >
-        <strong>No winner selected.</strong> Pick exactly one site as the ★ Winner to enable the
-        decision pack export and capture which address Brett/Sam is committing to.
+        <strong>No winner selected.</strong> Mark one analyzed candidate as ★ Winner to enable the
+        decision pack export.
       </div>
     );
   }
@@ -453,8 +535,8 @@ function WinnerBanner({
     >
       <Star size={14} fill="#1d6b32" />
       <div>
-        <strong>★ Winner:</strong> {winnerSite.schoolName} — Site Analysis Score (SAO){" "}
-        <strong className="tabular-nums">{siteComposite(winnerSite)}</strong> · Brett/Sam's verdict:{" "}
+        <strong>★ Winner:</strong> {winner.candidate.schoolName} — Site Analysis Score (SAO){" "}
+        <strong className="tabular-nums">{winner.composite}</strong> · Brett/Sam's verdict:{" "}
         <strong>{verdictLabel}</strong>
       </div>
     </div>
@@ -462,10 +544,10 @@ function WinnerBanner({
 }
 
 function DecisionSummary({
-  sites,
+  scored,
   byAddress,
 }: {
-  sites: SiteAnalysisDemoSite[];
+  scored: ScoredCandidate[];
   byAddress: Map<string, { verdict: SiteVerdict; is_winner: boolean; notes: string }>;
 }) {
   return (
@@ -490,14 +572,21 @@ function DecisionSummary({
             </tr>
           </thead>
           <tbody>
-            {sites.map((s) => {
-              const d = byAddress.get(s.address);
+            {scored.map((s) => {
+              const d = byAddress.get(s.candidate.address);
               const v = (d?.verdict ?? "undecided") as SiteVerdict;
               const vs = VERDICT_STYLE[v];
               return (
-                <tr key={s.id} style={{ borderTop: `1px solid ${BORDER}`, color: NAVY }}>
-                  <td className="py-1.5 pr-2">{s.schoolName}</td>
-                  <td className="py-1.5 pr-2 text-right tabular-nums font-bold">{siteComposite(s)}</td>
+                <tr
+                  key={s.candidate.id}
+                  style={{ borderTop: `1px solid ${BORDER}`, color: NAVY }}
+                >
+                  <td className="py-1.5 pr-2">
+                    {s.candidate.schoolName || <em style={{ color: MUTED }}>Unnamed</em>}
+                  </td>
+                  <td className="py-1.5 pr-2 text-right tabular-nums font-bold">
+                    {s.composite != null ? s.composite : <span style={{ color: MUTED }}>—</span>}
+                  </td>
                   <td className="py-1.5 pr-2">
                     <span
                       className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
@@ -507,9 +596,16 @@ function DecisionSummary({
                     </span>
                   </td>
                   <td className="py-1.5 pr-2">
-                    {d?.is_winner ? <Star size={12} fill="#1d6b32" color="#1d6b32" /> : <span style={{ color: MUTED }}>—</span>}
+                    {d?.is_winner ? (
+                      <Star size={12} fill="#1d6b32" color="#1d6b32" />
+                    ) : (
+                      <span style={{ color: MUTED }}>—</span>
+                    )}
                   </td>
-                  <td className="py-1.5 pr-2" style={{ color: d?.notes ? NAVY : MUTED }}>
+                  <td
+                    className="py-1.5 pr-2"
+                    style={{ color: d?.notes ? NAVY : MUTED }}
+                  >
                     {d?.notes || "—"}
                   </td>
                 </tr>
@@ -522,18 +618,87 @@ function DecisionSummary({
   );
 }
 
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
+
 export default function SiteAnalysis() {
-  const [filled, setFilled] = useState<SiteAnalysisDemoSite[]>(austinSiteAnalysisDemo.filled);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [candidates, setCandidates] = useState<Candidate[]>([
+    TRINITY_CANDIDATE,
+    LEAFSPRING_CANDIDATE,
+  ]);
+  // Per-candidate live engine result; mirrors the candidates array by id.
+  const [results, setResults] = useState<Record<string, SiteScoreResult | null>>({});
   const { byAddress } = useSiteDecisions();
 
-  const emptySlots = Math.max(0, 4 - filled.length);
-  const winnerSite = useMemo(
-    () => filled.find((s) => byAddress.get(s.address)?.is_winner),
-    [filled, byAddress],
+  const updateCandidate = (id: string, next: Candidate) => {
+    setCandidates((prev) => prev.map((c) => (c.id === id ? next : c)));
+  };
+  const removeCandidate = (id: string) => {
+    setCandidates((prev) => prev.filter((c) => c.id !== id));
+    setResults((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  };
+  const addCandidate = () => {
+    if (candidates.length >= 4) return;
+    setCandidates((prev) => [
+      ...prev,
+      {
+        id: `candidate-${Date.now()}`,
+        schoolName: "",
+        address: "",
+        schoolType: "private_elementary",
+        gradeBand: "k5_k6",
+        enrollment: "",
+      },
+    ]);
+  };
+  const setResultFor = (id: string, result: SiteScoreResult | null) => {
+    setResults((prev) => (prev[id] === result ? prev : { ...prev, [id]: result }));
+  };
+
+  const scored: ScoredCandidate[] = useMemo(
+    () =>
+      candidates.map((c) => {
+        const result = results[c.id] ?? null;
+        return {
+          candidate: c,
+          result,
+          composite: result ? siteComposite(result.pillars) : null,
+        };
+      }),
+    [candidates, results],
   );
-  const winnerDecision = winnerSite ? byAddress.get(winnerSite.address) : undefined;
-  const canExport = !!winnerSite;
+
+  const trinityScored = scored.find((s) => s.candidate.calibrationRole === "trinity");
+  const leafScored = scored.find((s) => s.candidate.calibrationRole === "leafspring");
+
+  const winner = useMemo(
+    () => scored.find((s) => byAddress.get(s.candidate.address)?.is_winner),
+    [scored, byAddress],
+  );
+  const winnerDecision = winner ? byAddress.get(winner.candidate.address) : undefined;
+  const canExport = !!(winner && winner.composite != null);
+
+  const emptySlots = Math.max(0, 4 - candidates.length);
+
+  const handleExport = () => {
+    const exportRows: ExportCandidate[] = scored
+      .filter((s) => s.result)
+      .map((s) => {
+        const recomputed = recomputeSiteScores(s.result!.pillars);
+        return {
+          schoolName: s.candidate.schoolName,
+          address: s.candidate.address,
+          pillars: recomputed.pillars,
+          composite: recomputed.composite,
+        };
+      });
+    exportSiteDecisionPack(exportRows, byAddress);
+  };
 
   return (
     <>
@@ -543,164 +708,121 @@ export default function SiteAnalysis() {
         hideJourneyBar
       />
 
-      <DemoBanner
-        note="Calibration anchors shown: Trinity (positive — operating NG site) vs LeafSpring (negative — closed 2023, far from customer base). The locked acceptance gate: LeafSpring must score materially lower than Trinity."
-      />
+      <DemoBanner note="Calibration anchors: Trinity Christian Academy (positive — operating NG-style site) vs LeafSpring Plano (negative — closed 2023). LeafSpring must score materially lower than Trinity through the live engine." />
 
       {SAS_ENGINE_LIVE && <LiveEngineCard />}
 
-
-      {/* Analyze a site — static input form (1B-LOV-1) */}
+      {/* Formula + thresholds — single, no "Austin metro" wording */}
       <section className="mb-4 rounded-lg border bg-white p-4" style={{ borderColor: BORDER }}>
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <h3 className="text-[13px] font-bold" style={{ color: NAVY }}>
-            Analyze a site
-          </h3>
-          <SampleDataBadge label="Inputs not wired" />
-        </div>
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
-          <label className="flex flex-col gap-1 text-[11px]" style={{ color: MUTED }}>
-            School name *
-            <input
-              type="text"
-              disabled
-              placeholder="e.g. Trinity Episcopal School"
-              className="rounded-md border px-2 py-1.5 text-[12px] disabled:bg-[#f7faff]"
-              style={{ borderColor: BORDER, color: NAVY }}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-[11px]" style={{ color: MUTED }}>
-            Address *
-            <input
-              type="text"
-              disabled
-              placeholder="3901 Bee Caves Rd, Austin, TX 78746"
-              className="rounded-md border px-2 py-1.5 text-[12px] disabled:bg-[#f7faff]"
-              style={{ borderColor: BORDER, color: NAVY }}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-[11px]" style={{ color: MUTED }}>
-            School type (optional)
-            <select
-              disabled
-              className="rounded-md border px-2 py-1.5 text-[12px] disabled:bg-[#f7faff]"
-              style={{ borderColor: BORDER, color: NAVY }}
-            >
-              <option>Private elementary</option>
-              <option>Public elementary</option>
-              <option>Charter elementary</option>
-              <option>Montessori</option>
-              <option>Other K-8</option>
-              <option>Other</option>
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-[11px]" style={{ color: MUTED }}>
-            Enrollment (optional)
-            <input
-              type="number"
-              disabled
-              placeholder="540"
-              className="rounded-md border px-2 py-1.5 text-[12px] disabled:bg-[#f7faff]"
-              style={{ borderColor: BORDER, color: NAVY }}
-            />
-          </label>
-        </div>
-        <div className="mt-2 flex items-center justify-between gap-2">
-          <p className="text-[11px]" style={{ color: MUTED }}>
-            Demo — production input not wired. Use the <strong>"+ Add candidate site"</strong> slot below to add a sample-scored site and walk the decision flow.
-          </p>
-          <button
-            type="button"
-            disabled
-            className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px] font-semibold"
-            style={{ backgroundColor: SOFT, color: MUTED, border: `1px solid ${BORDER}` }}
-          >
-            <Search size={12} />
-            Analyze site
-          </button>
-        </div>
-      </section>
-
-
-      <section className="mb-5 rounded-lg border bg-white p-5" style={{ borderColor: BORDER }}>
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 max-w-2xl">
-            <h2 className="text-[18px] font-black" style={{ color: NAVY }}>
-              Side-by-side compare — Austin metro
+          <div className="min-w-0">
+            <h2 className="text-[15px] font-black" style={{ color: NAVY }}>
+              Site Analysis Score (SAO)
             </h2>
             <p className="mt-1 text-[12px]" style={{ color: MUTED }}>
-              Site Analysis Score (SAO) = 0.25 × School Profile + 0.25 × Neighborhood Affluence + 0.20 ×
-              Family Density + 0.15 × School Ecosystem + 0.15 × Accessibility.
+              SAO = 0.25 × School Profile + 0.25 × Neighborhood Affluence + 0.20 × Family Density +
+              0.15 × School Ecosystem + 0.15 × Accessibility.
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <SampleDataBadge label={`${filled.length} of 4 slots`} />
-            <button
-              type="button"
-              onClick={() => exportSiteDecisionPack(filled, byAddress)}
-              disabled={!canExport}
-              title={
-                canExport
-                  ? "Open a branded decision pack with Brett/Sam's verdict, winner, and notes — print or save as PDF"
-                  : "Mark a winner first to enable the decision pack"
-              }
-              className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-              style={{ borderColor: BLUE, color: BLUE, backgroundColor: "#fff" }}
-            >
-              <Download size={12} />
-              Export decision pack
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={!canExport}
+            title={
+              canExport
+                ? "Open a branded decision pack with verdicts, winner, and notes — print or save as PDF"
+                : "Mark a winner first to enable the decision pack"
+            }
+            className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+            style={{ borderColor: BLUE, color: BLUE, backgroundColor: "#fff" }}
+          >
+            <Download size={12} />
+            Export decision pack
+          </button>
         </div>
 
-        {/* Decision points */}
-        <div className="mt-3 rounded-md p-2 text-[11px]" style={{ backgroundColor: "#f7faff" }}>
+        <div
+          className="mt-3 rounded-md p-2 text-[11px]"
+          style={{ backgroundColor: "#f7faff" }}
+        >
           <strong style={{ color: NAVY }}>Decision points on this page:</strong>
           <ol className="ml-4 mt-0.5 list-decimal" style={{ color: NAVY }}>
             <li>Confirm the calibration gate holds: LeafSpring scores materially below Trinity.</li>
-            <li>Per site: <strong>Recommend / Worth a look / Don't recommend</strong> (overrides the threshold default and drives the top pill).</li>
-            <li>Across the compared set: pick exactly one <strong>Winner</strong> ★ — that's the site Brett/Sam is committing to.</li>
-            <li>Capture <strong>notes</strong> on each card explaining the verdict — they go into the export pack.</li>
+            <li>
+              Per site: <strong>Recommend / Worth a look / Don't recommend</strong> (overrides the threshold default and drives the top pill).
+            </li>
+            <li>
+              Across the compared set: pick exactly one <strong>Winner</strong> ★ — the site Brett/Sam is committing to.
+            </li>
+            <li>
+              Capture <strong>notes</strong> on each card explaining the verdict — they go into the export pack.
+            </li>
           </ol>
         </div>
 
-        {/* Threshold legend */}
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md p-2 text-[11px]" style={{ backgroundColor: SOFT }}>
-          <span className="whitespace-nowrap font-semibold" style={{ color: NAVY }}>Thresholds:</span>
-          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-            <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: "#1d6b32" }} />
-            <span style={{ color: NAVY }}>≥{SITE_RECOMMEND_THRESHOLDS.recommend} Recommend</span>
+        <div
+          className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md p-2 text-[11px]"
+          style={{ backgroundColor: SOFT }}
+        >
+          <span className="whitespace-nowrap font-semibold" style={{ color: NAVY }}>
+            Thresholds:
           </span>
           <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-            <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: "#925100" }} />
-            <span style={{ color: NAVY }}>{SITE_RECOMMEND_THRESHOLDS.worthALook}–{SITE_RECOMMEND_THRESHOLDS.recommend - 1} Worth a look</span>
+            <span
+              className="inline-block h-2 w-2 rounded-full"
+              style={{ backgroundColor: "#1d6b32" }}
+            />
+            <span style={{ color: NAVY }}>
+              ≥{SITE_RECOMMEND_THRESHOLDS.recommend} Recommend
+            </span>
           </span>
           <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-            <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: "#a3142b" }} />
-            <span style={{ color: NAVY }}>&lt;{SITE_RECOMMEND_THRESHOLDS.worthALook} Don't recommend</span>
+            <span
+              className="inline-block h-2 w-2 rounded-full"
+              style={{ backgroundColor: "#925100" }}
+            />
+            <span style={{ color: NAVY }}>
+              {SITE_RECOMMEND_THRESHOLDS.worthALook}–
+              {SITE_RECOMMEND_THRESHOLDS.recommend - 1} Worth a look
+            </span>
+          </span>
+          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+            <span
+              className="inline-block h-2 w-2 rounded-full"
+              style={{ backgroundColor: "#a3142b" }}
+            />
+            <span style={{ color: NAVY }}>
+              &lt;{SITE_RECOMMEND_THRESHOLDS.worthALook} Don't recommend
+            </span>
           </span>
         </div>
       </section>
 
-      <CalibrationGateBanner sites={filled} />
-      <WinnerBanner winnerSite={winnerSite} winnerDecision={winnerDecision} />
+      <CalibrationGateBanner
+        trinityScore={trinityScored?.composite ?? null}
+        leafScore={leafScored?.composite ?? null}
+        trinityLoading={!!trinityScored && trinityScored.result == null}
+        leafLoading={!!leafScored && leafScored.result == null}
+      />
+      <WinnerBanner winner={winner} winnerDecision={winnerDecision} />
 
       <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {filled.map((site) => (
-          <SiteCard key={site.id} site={site} />
+        {candidates.map((c) => (
+          <CandidateCard
+            key={c.id}
+            candidate={c}
+            autoRun={!!c.calibrationRole}
+            onChange={(next) => updateCandidate(c.id, next)}
+            onRemove={c.calibrationRole ? undefined : () => removeCandidate(c.id)}
+            onResult={(r) => setResultFor(c.id, r)}
+          />
         ))}
         {Array.from({ length: emptySlots }).map((_, i) => (
-          <EmptySlot key={i} onAdd={() => setModalOpen(true)} />
+          <EmptySlot key={`empty-${i}`} onAdd={addCandidate} />
         ))}
       </section>
 
-      <DecisionSummary sites={filled} byAddress={byAddress} />
-
-      <AddCandidateSiteModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onAdd={(site) => setFilled((prev) => (prev.length >= 4 ? prev : [...prev, site]))}
-      />
+      <DecisionSummary scored={scored} byAddress={byAddress} />
 
       <footer
         className="flex items-center gap-2 rounded-lg border bg-white p-3 text-[11px]"
@@ -708,11 +830,12 @@ export default function SiteAnalysis() {
       >
         <FileText size={14} />
         Formulas, sub-score weights, and the LeafSpring &lt; Trinity calibration gate are locked in
-        <code className="rounded bg-[#f7faff] px-1 py-px text-[#174be8]">.lovable/phase-2/phase-2-sow.md</code>
-        Item 2 (Feature 1B). This page renders sample data only — Week 3 wires it to Mapbox/HERE isochrones,
-        Census ACS, and NCES.
+        <code className="rounded bg-[#f7faff] px-1 py-px text-[#174be8]">
+          .lovable/phase-2/phase-2-sow.md
+        </code>
+        Item 2 (Feature 1B). Cards now call the live `compute-sas` engine — Mapbox geocode, ACS
+        sampling, school ecosystem, and the SAS composite.
       </footer>
-
     </>
   );
 }

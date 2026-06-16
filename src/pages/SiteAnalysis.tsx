@@ -199,21 +199,22 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace }: CardPropsExt) {
               </div>
               {userPill ? (
                 <span
-                  className="inline-flex items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-bold"
-                  style={{ backgroundColor: userPill.bg, color: userPill.fg }}
+                  className="inline-block max-w-full rounded-full px-1.5 py-0.5 text-center text-[10px] font-bold leading-tight"
+                  style={{ backgroundColor: userPill.bg, color: userPill.fg, wordBreak: "break-word" }}
                   title="Your decision"
                 >
                   {userPill.label}
                 </span>
               ) : scoreTier ? (
                 <span
-                  className="inline-flex max-w-full items-center justify-center rounded-full border px-1.5 py-0.5 text-center text-[9px] font-semibold uppercase leading-tight tracking-wide"
-                  style={{ borderColor: scoreTier.fg, color: scoreTier.fg, backgroundColor: "#fff", wordBreak: "break-word" }}
+                  className="inline-block max-w-full rounded-full border px-1.5 py-0.5 text-center text-[9px] font-semibold uppercase leading-tight tracking-wide"
+                  style={{ borderColor: scoreTier.fg, color: scoreTier.fg, backgroundColor: "#fff", wordBreak: "break-word", whiteSpace: "normal" }}
                   title="Score-based tier suggestion. Confirm below to make it your decision."
                 >
-                  Suggested:<br />{scoreTier.label}
+                  Suggested: {scoreTier.label}
                 </span>
               ) : null}
+
             </>
 
           ) : (

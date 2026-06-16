@@ -1,37 +1,39 @@
-I agree with you: the previous change did not solve the real client-facing problem.
+Swap the LeafSpring negative anchor from the Plano placeholder to the actual Cedar Park site Neuron Garage ran (and that closed in 2023).
 
-Plain English diagnosis:
-- The embedded map is still using Mapbox GL, which requires WebGL. If WebGL fails in the browser/preview/mobile, the map area becomes the “Map preview unavailable” box.
-- The parking tile is not using a reliable parking-lot source. It is currently only asking Mapbox’s POI label layer near the pin. If Mapbox does not label a nearby lot as a parking POI, the app says “Street only” or “Not detected,” even when a lot exists.
-- So yes: the current page is not strong enough for a client demo.
+New anchor:
+- Name: LeafSpring School at Cedar Park
+- Address: 11651 W. Parmer Lane, Cedar Park, TX 78613
+- Type: Daycare / Other (unchanged from the existing anchor classification)
 
-Plan to fix:
-1. Replace the card map preview with a non-WebGL static map image.
-   - Use Mapbox Static Images API so the preview renders as a normal image.
-   - This works much better in locked-down browsers and on mobile because it does not need WebGL.
-   - Keep a “Live Map”/interactive path out of the card preview for now; reliability matters more for the client demo.
+Files to update (text-only swap, no schema, no weights, no formula):
 
-2. Keep the 10-min / 15-min isochrone data, but render it into the static map URL.
-   - Show the pin plus simplified isochrone overlays where possible.
-   - If overlay encoding is too large for the URL, fall back to static map + pin and do not show the broken WebGL box.
-   - The user should never see “Map preview unavailable” unless the map token itself is missing or the image fails.
+1. `src/pages/SiteAnalysis.tsx`
+   - Line ~86–87: update anchor record `schoolName` and `address`.
+   - Line ~543: change "vs LeafSpring Plano" → "vs LeafSpring Cedar Park (Austin area)".
 
-3. Replace parking wording so it does not overclaim.
-   - Stop showing “Street only” as if we know the parking condition.
-   - Use labels like “Parking not verified” or “Nearby parking signal found” based on available evidence.
-   - This prevents embarrassing false negatives in front of the client.
+2. `src/components/site-analysis/LiveEngineCard.tsx`
+   - Lines ~28–31: update the "LeafSpring Plano (closed)" preset entry to "LeafSpring Cedar Park (closed)", schoolName "LeafSpring School at Cedar Park", address "11651 W. Parmer Lane, Cedar Park, TX 78613".
 
-4. Improve parking source in the backend.
-   - Keep the existing Mapbox Tilequery signal.
-   - Add a stronger secondary lookup using OSM-style parking features if feasible in the current backend path.
-   - Return source/debug fields so we can distinguish “no lot found” from “source could not verify.”
+3. `src/data/calibration-runs.ts`
+   - Lines ~47–48: update `schoolName` to "LeafSpring School at Cedar Park (closed 2023)" and `address` to the new one.
+   - The stored composite/pillar numbers in this file were computed against Plano — they will be stale until re-run. Mark this row's status back to `pending` (or clear stored scores) so the page shows it as needing a fresh live-engine run instead of displaying stale Plano numbers as if they were Cedar Park's.
 
-5. Verify in the preview.
-   - Confirm the cards show map imagery instead of the gray error box.
-   - Confirm parking tiles no longer say misleading “Street only” for null/weak data.
+4. `src/components/phase2-demo/Feature1BStatus.tsx`
+   - Line ~56: in the calibration-runs-table description, rename "LeafSpring Plano" → "LeafSpring Cedar Park".
+   - Line ~34: leave the Trinity 63.32 / LeafSpring 45.96 / +17.36 pt historical note as-is (it is a record of the v0.3 Plano calibration), but append one sentence: "Anchor updated to LeafSpring Cedar Park (11651 W. Parmer Lane) — live gap will refresh on next run."
 
-Technical notes:
-- Frontend file likely touched: `src/components/site-analysis/IsochroneMap.tsx`.
-- Parking display likely touched: `src/pages/SiteAnalysis.tsx`.
-- Parking backend likely touched: `supabase/functions/_shared/mapbox.ts` and possibly `supabase/functions/compute-sas/index.ts`.
-- After backend changes, the compute function must be redeployed and existing candidates must be re-run to refresh parking results.
+5. Methodology copy in `src/pages/SASMethodology.tsx` only needs a small change: anywhere it implies LeafSpring was in a different Austin location should now read consistently as "LeafSpring Cedar Park" / "Cedar Park (Austin metro)". No formulas change.
+
+Not changing:
+- Pillar weights, school_type factor, grade-alignment, enrollment normalization — none of these depend on the address.
+- Trinity anchor.
+- Any backend / edge function / schema.
+- The qualitative pass criterion ("LeafSpring scores materially lower than Trinity").
+
+Verification after edits:
+- Page loads, the LeafSpring card now shows "LeafSpring School at Cedar Park · 11651 W. Parmer Lane, Cedar Park, TX 78613".
+- Calibration row for LeafSpring shows as pending (or fresh re-run) rather than stale Plano numbers.
+- Live engine re-runs Trinity and the new Cedar Park address, and the calibration delta refreshes from real geocoded ACS / drive-time data for Cedar Park.
+
+Technical note:
+- Cedar Park is in Williamson County (Austin MSA). ACS, isochrones, ecosystem, and parking signals will all recompute against the new lat/lng — no code path needs to be told the metro changed.

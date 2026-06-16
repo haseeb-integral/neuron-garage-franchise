@@ -317,33 +317,39 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 6) Score.
-    const pillars = {
-      schoolProfile: schoolProfileScore({ schoolType, enrollment, gradeBand }),
-      affluence: affluenceScore({
-        medianHhi10: acs10.medianHhi,
-        pctAbove150k10: acs10.pctAbove150k,
-        pctDualIncome10: acs10.pctDualIncome,
-        medianHhi15: acs15.medianHhi,
-        pctAbove150k15: acs15.pctAbove150k,
-        pctDualIncome15: acs15.pctDualIncome,
-      }),
-      familyDensity: familyDensityScore({
-        children5to12_10: acs10.children5to12,
-        children5to12_15: acs15.children5to12,
-        familiesWithKids5to12_10: acs10.familiesWithKids,
-      }),
-      ecosystem: ecosystemScore({
-        elementaryCount,
-        privateCount,
-        nearbyStudentPop,
-      }),
-      accessibility: accessibilityScore({
-        roadDistanceMi,
-        highwayDistanceMi,
-        popReachable15: acs15.totalPop,
-      }),
-    };
+    // 6) Score. Any sas-math throw means a required input was missing — we
+    //    refuse to substitute a synthetic default and mark the row failed.
+    let pillars;
+    try {
+      pillars = {
+        schoolProfile: schoolProfileScore({ schoolType, enrollment, gradeBand }),
+        affluence: affluenceScore({
+          medianHhi10: acs10.medianHhi,
+          pctAbove150k10: acs10.pctAbove150k,
+          pctDualIncome10: acs10.pctDualIncome,
+          medianHhi15: acs15.medianHhi,
+          pctAbove150k15: acs15.pctAbove150k,
+          pctDualIncome15: acs15.pctDualIncome,
+        }),
+        familyDensity: familyDensityScore({
+          children5to12_10: acs10.children5to12,
+          children5to12_15: acs15.children5to12,
+          familiesWithKids5to12_10: acs10.familiesWithKids,
+        }),
+        ecosystem: ecosystemScore({
+          elementaryCount,
+          privateCount,
+          nearbyStudentPop,
+        }),
+        accessibility: accessibilityScore({
+          roadDistanceMi,
+          highwayDistanceMi,
+          popReachable15: acs15.totalPop,
+        }),
+      };
+    } catch (e) {
+      return await fail(`scoring: ${(e as Error).message}`);
+    }
     const sas = compositeSas(pillars);
 
     const signals = {

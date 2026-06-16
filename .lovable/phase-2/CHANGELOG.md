@@ -86,3 +86,9 @@
 - 2026-06-16 — agent — restored rich CandidateCard UI on /site-analysis (one-liner summary, drive-time schematic, 6 metric tiles wired to compute-sas signals.acs10/acs15, "Show all formulas" toggle on sub-scores). Hwy/Parking tiles show "—" with tooltip — engine v0.2 work. why: previous Option B refactor dropped the rich UI; Haseeb flagged it.
 
 - 2026-06-16 — agent — refactored /site-analysis to single-input architecture. Candidate cards are now read-only display panels (no per-card form, no per-card engine call). The Live Engine card is the only input surface; new "Save to slot" button writes its exact result into a card. Calibration anchors (Trinity, LeafSpring) auto-run once on mount with frozen inputs. Card titles wrap (no truncation). Removed input-form ergonomic mismatch that produced different numbers per surface. why: Haseeb flagged duplicate inputs, mismatched scores, cascading recomputes, and title truncation.
+
+## 2026-06-16 — Accessibility v0.2: remove silent fallback to 70
+- `supabase/functions/_shared/sas-math.ts`: `accessibilityScore` now requires real `roadDistanceMi` + `highwayDistanceMi` and THROWS if either is null. Removed the v0.1 `return 70` defaults in `roadFactor`/`highwayFactor`.
+- `supabase/functions/compute-sas/index.ts`: when Overpass or Mapbox Directions can't return a real distance, the analysis row is marked `failed` with an explicit error listing which lookup failed (`overpass_highway_node`, `mapbox_directions_highway`, etc). No score is computed. Partial signals are persisted for debugging.
+- `src/pages/SiteAnalysis.tsx`: Accessibility formula detail no longer prints "(fallback 70)" since the fallback no longer exists.
+- Why: Brett's "one calibrated number everywhere" — users were seeing synthetic 70s for the road/highway factor when Overpass rate-limited, with no visible signal that the number was fake.

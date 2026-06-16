@@ -303,10 +303,11 @@ export async function parkingSignal(
     error,
   });
   try {
+    // Query POI labels + landuse polygons (parking lots are tagged as landuse).
     const url =
       `https://api.mapbox.com/v4/mapbox.mapbox-streets-v8/tilequery/` +
       `${lng},${lat}.json?radius=${radiusMeters}&limit=50` +
-      `&layers=poi_label&access_token=${MAPBOX_TOKEN}`;
+      `&layers=poi_label,landuse&access_token=${MAPBOX_TOKEN}`;
     const res = await fetch(url);
     if (!res.ok) return fallback(`tilequery ${res.status}`);
     const data = await res.json();
@@ -325,8 +326,10 @@ export async function parkingSignal(
       );
     });
     const n = parking.length;
-    let bucket: ParkingSignal["bucket"] = "street_only";
-    if (n >= 4) bucket = "large_lot";
+    // Honest bucketing: 0 features = "none" (we can't tell — UI shows "Not
+    // verified — confirm on site"). Only assert a lot when we actually see one.
+    let bucket: ParkingSignal["bucket"] = "none";
+    if (n >= 3) bucket = "large_lot";
     else if (n >= 1) bucket = "small_lot";
     return { poiCount: n, bucket, radiusMeters, error: null };
   } catch (err) {

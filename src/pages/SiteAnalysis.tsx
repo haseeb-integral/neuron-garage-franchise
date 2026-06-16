@@ -289,7 +289,7 @@ function CandidateCard({ slot, onRerun, onRemove }: CardProps) {
           <PillarBar label="Neighborhood Affluence" weight={0.25} value={recomputed.pillars.affluence} showFormula={showFormulas} detail={`0.6 × medianHHI_norm(${fmtMoney(slot.result?.signals?.acs10?.medianHhi) ?? "—"}) + 0.4 × pctAbove150k_norm(${fmtPct(slot.result?.signals?.acs10?.pctAbove150k) ?? "—"}) = ${recomputed.pillars.affluence}`} />
           <PillarBar label="Family Density" weight={0.2} value={recomputed.pillars.familyDensity} showFormula={showFormulas} detail={`children5-12 / totalPop × scale → ${fmtCount(slot.result?.signals?.acs15?.children5to12)} / ${fmtCount(slot.result?.signals?.acs15?.totalPop)} = ${recomputed.pillars.familyDensity}`} />
           <PillarBar label="School Ecosystem" weight={0.15} value={recomputed.pillars.ecosystem} showFormula={showFormulas} detail={`elementaryCount(${slot.result?.signals?.ecosystem?.elementaryCount ?? "—"}) + privateCount(${slot.result?.signals?.ecosystem?.privateCount ?? "—"}) weighted by nearbyStudentPop = ${recomputed.pillars.ecosystem}`} />
-          <PillarBar label="Accessibility" weight={0.15} value={recomputed.pillars.accessibility} showFormula={showFormulas} detail={`driveToHwy + parking — placeholder (engine v0.2) = ${recomputed.pillars.accessibility}`} />
+          <PillarBar label="Accessibility" weight={0.15} value={recomputed.pillars.accessibility} showFormula={showFormulas} detail={(() => { const hwy = slot.result?.signals?.accessibility?.highwayDistanceMi; const road = slot.result?.signals?.accessibility?.roadDistanceMi; const pop = slot.result?.signals?.acs15?.totalPop; const hwyStr = hwy == null ? "—(fallback 70)" : `${hwy.toFixed(1)}mi`; const roadStr = road == null ? "—(fallback 70)" : `${road.toFixed(1)}mi`; return `0.3 × roadFactor(${roadStr}) + 0.3 × hwyFactor(${hwyStr}) + 0.4 × popReachable_norm(${fmtCount(pop) ?? "—"}) = ${recomputed.pillars.accessibility}`; })()} />
           {showFormulas && (
             <p className="pt-1 text-[10px]" style={{ color: MUTED }}>
               Composite = sum of weighted contributions = <strong>{recomputed.composite}</strong>
@@ -417,12 +417,18 @@ function fmtCount(n?: number) {
 function MetricTiles({ signals }: { signals?: SiteScoreSignals }) {
   const acs10 = signals?.acs10 ?? {};
   const acs15 = signals?.acs15 ?? {};
+  const hwyMi = signals?.accessibility?.highwayDistanceMi;
   return (
     <div className="mt-3 grid grid-cols-3 gap-1.5">
       <Tile label="Median HHI · 10m" value={fmtMoney(acs10.medianHhi)} />
       <Tile label="HH >$150k · 10m" value={fmtPct(acs10.pctAbove150k)} />
       <Tile label="Kids 5-12 · 10m" value={fmtCount(acs10.children5to12)} />
-      <Tile label="Drive to hwy" dash dashTip="Accessibility v0.2 — highway distance not yet wired" />
+      <Tile
+        label="Drive to hwy"
+        value={hwyMi != null ? `${hwyMi.toFixed(1)} mi` : undefined}
+        dash={hwyMi == null}
+        dashTip="No motorway/trunk found within 12 mi — Accessibility scored via fallback"
+      />
       <Tile label="Parking" dash dashTip="Manual field — not yet wired" />
       <Tile label="Pop · 15m" value={fmtCount(acs15.totalPop)} />
     </div>

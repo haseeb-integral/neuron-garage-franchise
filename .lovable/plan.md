@@ -1,49 +1,64 @@
-## Four small fixes to Site Analysis
+# Accessibility Pillar v0.2 — Real Drive-to-Highway
 
-### 1. Restore deeper sub-score formulas (transparency)
-Today the formula toggle only shows `weight × pillar = contribution` (e.g. `0.25 × 42.5 = 10.6 pts`). Brett wants the *upstream* line too — how the pillar value itself was derived from the raw inputs.
+Replace the v0.1 placeholder (both `roadDistanceMi` and `highwayDistanceMi` hardcoded to `null` → `roadFactor`/`highwayFactor` both return 70) with real measured driving distances. No schema changes, no new tables, no new secrets — `MAPBOX_TOKEN` already exists.
 
-Plan: when "Show all formulas" is on, render a second small line under each `PillarBar` with the human-readable formula behind that pillar's value:
+## Approach
 
-- **School Profile** — `f(schoolType=daycare, gradeBand=K-5/K-6, enrollment=—) = 42.5`
-- **Neighborhood Affluence** — `0.6 × medianHHI_norm($126k) + 0.4 × pctAbove150k_norm(40%) = 34.65`
-- **Family Density** — `children5to12 / totalPop × scale  →  3.2k / 21k = 14.67`
-- **School Ecosystem** — `elementaryCount + privateCount weighted by nearbyStudentPop = 100`
-- **Accessibility** — `driveToHwy + parking placeholders (engine v0.2) = 42`
+For each site, after geocoding:
 
-Implementation: pass the input bundle (`schoolType`, `gradeBand`, `enrollment`, `signals.acs10/acs15`) into `PillarBar` and render a one-line formula string per pillar, only when `showFormula` is true. No engine changes — these strings just describe what `compute-sas` already does. Where the engine returns placeholder pillar values (drive-to-hwy, parking), the formula line says `placeholder (engine v0.2)`.
+1. **Find nearest highway access point.** Query OpenStreetMap Overpass API for `highway=motorway|trunk|motorway_link|trunk_link` nodes within ~12 mi of the site. Take the geographically closest node (haversine).
+2. **Find nearest major surface road.** Same Overpass query, this time `highway=primary|secondary`, within ~3 mi. Take closest node.
+3. **Convert each to driving miles** via Mapbox Directions API (`driving` profile, point-to-point). Fall back to haversine × 1.3 if Directions fails or returns nothing.
+4. **Pass into `accessibilityScore`** — the existing `roadFactor` / `highwayFactor` curves already accept these miles, so the math is unchanged.
 
-### 2. Remove "Profile preview: 90" from the Live Engine box
-It's a leftover client-side estimate of the school-profile pillar before the engine runs. Now that the engine is the source of truth and we show all 5 pillar tiles after Compute SAS, the preview is noise. Delete the `Profile preview: <strong>{previewSchoolProfile}</strong>` span (and its unused calc) from `LiveEngineCard.tsx`.
+If Overpass is unreachable or returns zero results within the search radius, leave the value `null` and let the existing factor fallback (70) handle it — this preserves engine stability.
 
-### 3. "Save to slot" should always append a new card
-Today Save-to-slot is one button that writes into the next empty slot. That's fine for *new* schools but confusing when Brett re-runs the same school with a different `schoolType` to compare — it never overwrites today, but the button label "Save to slot →" reads like it might. Plan:
+## Files to change
 
-- Rename the button to **"Add as new card →"** to make intent obvious.
-- Keep behavior: always append into the next empty slot (1 → 2 → 3 → 4). Never overwrite an existing slot.
-- When 4 slots are filled, the button shows "Slots full (4/4) — remove a card first" (already the case).
-- Same school name + different school type = two side-by-side cards Brett can compare. That's the intended flow.
+**`supabase/functions/_shared/mapbox.ts`** — add three helpers:
 
-(No "Replace slot N" dropdown — Brett asked for the simpler append behavior.)
+- `nearestHighwayNode(lat, lng, radiusMi = 12): Promise<{lat,lng} | null>` — Overpass query (`motorway|trunk|motorway_link|trunk_link`), returns closest node or null.
+- `nearestMajorRoadNode(lat, lng, radiusMi = 3): Promise<{lat,lng} | null>` — same shape, `primary|secondary`.
+- `drivingDistanceMiles(from, to): Promise<number | null>` — Mapbox Directions `/driving/{lng,lat};{lng,lat}?overview=false`, returns `routes[0].distance` (meters) ÷ 1609.34, or `null` on failure.
 
-### 4. "LeafSpring School at Plano (closed 2023)" vs "LeafSpring School at Plano"
-They are the same physical site (7000 Preston Rd, Plano). The two anchors exist on purpose:
-- **"(closed 2023)"** — the *negative* calibration anchor, frozen inputs `schoolType=daycare, gradeBand=other`. Represents the closed-school signal we want the model to penalize.
-- **"LeafSpring School at Plano"** — a *live test* card Brett created from the Live Engine, currently with `schoolType=daycare, gradeBand=K-5/K-6`.
+All three log and swallow errors (return null) so a flaky vendor doesn't take down a site analysis.
 
-They produce different SAS (43.52 vs 46.65) because the inputs differ. That's correct, but the duplicate name is confusing. Plan:
+**`supabase/functions/compute-sas/index.ts`** — after geocode, run highway + road lookups in parallel (`Promise.all`), then pass into `accessibilityScore`:
 
-- Rename the negative anchor display to **"LeafSpring Plano — closed 2023 (negative anchor)"** so the role is unambiguous.
-- Keep the "Negative anchor" badge.
-- Live cards Brett creates from the Live Engine keep whatever name he typed.
+```ts
+const [hwyNode, roadNode] = await Promise.all([
+  nearestHighwayNode(geo.lat, geo.lng),
+  nearestMajorRoadNode(geo.lat, geo.lng),
+]);
+const [highwayDistanceMi, roadDistanceMi] = await Promise.all([
+  hwyNode ? drivingDistanceMiles(geo, hwyNode) : Promise.resolve(null),
+  roadNode ? drivingDistanceMiles(geo, roadNode) : Promise.resolve(null),
+]);
+```
 
-No data/logic change — just the anchor label string.
+Pass both into `accessibilityScore({...})`. Bump `ENGINE_VERSION` from `sas-v0.1` to `sas-v0.2`. Add `highwayDistanceMi` and `roadDistanceMi` into the `signals` payload so the frontend can render them.
 
-### Files touched
-- `src/pages/SiteAnalysis.tsx` — PillarBar gets a `formulaDetail` string prop; CandidateCard passes input + signals into each PillarBar; negative anchor `schoolName` updated.
-- `src/components/site-analysis/LiveEngineCard.tsx` — remove "Profile preview" span and its calc; rename Save button to "Add as new card →".
+**`src/pages/SiteAnalysis.tsx`** — two small reads:
 
-### Out of scope
-- Recalibrating LeafSpring vs Trinity weights (separate Tier-1 task; the gate is still failing — that needs the weight rework, not a UI change).
-- Real Mapbox tiles, drive-to-hwy / parking engine work.
-- Persisting slots across reloads.
+- Replace the "Drive to hwy" tile placeholder (line 425) with the real value from `signals.highwayDistanceMi` when present, formatted as `X.X mi`. Keep dash + tooltip when null.
+- Update the Accessibility `PillarBar` `detail` string (line 292) to read the actual numbers: `0.3 × roadFactor(${roadMi}mi) + 0.3 × hwyFactor(${hwyMi}mi) + 0.4 × popReachable_norm(${pop}) = ${value}` (and explain "engine fallback (70)" if a distance is null).
+
+## Out of scope
+
+- ACS polygon intersection v0.2 — separate task, separate plan.
+- Caching Overpass responses to a table — Overpass is free + we already cache the whole analysis row, so no per-coord cache yet.
+- Parking lot detection — not part of v0.2; the parking sub-signal stays out of the formula (it was never wired in v0.1 either).
+- Frontend calibration delta confirmation — calibration check remains parked pending Brett.
+
+## Verification
+
+After deploy:
+1. Run engine on Trinity Christian Academy and LeafSpring Plano via the Live Engine box.
+2. Inspect `signals.highwayDistanceMi` / `roadDistanceMi` in the returned JSON.
+3. Confirm Accessibility scores differ from the old constant ~70 baseline.
+4. Log entry in `.lovable/phase-2/CHANGELOG.md`.
+
+## Risk
+
+- **Overpass rate-limiting.** Public endpoint can throttle. Mitigation: bounded query (1 bbox call per site, 25 s timeout), null-safe fallback so the pillar still scores via the existing 70 default.
+- **Mapbox Directions cost.** 2 routing calls per analysis. Acceptable at current usage (analyses are explicit user actions, not bulk).

@@ -10,6 +10,9 @@ import {
   samplePoints,
   haversineMiles,
   polygonHash,
+  nearestHighwayNode,
+  nearestMajorRoadNode,
+  drivingDistanceMiles,
 } from "../_shared/mapbox.ts";
 import { aggregateAcs } from "../_shared/census.ts";
 import { fetchUrbanSchools, STATE_ABBR_TO_FIPS } from "../_shared/urban-institute.ts";
@@ -25,7 +28,7 @@ import {
   SchoolType,
 } from "../_shared/sas-math.ts";
 
-const ENGINE_VERSION = "sas-v0.1";
+const ENGINE_VERSION = "sas-v0.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -240,7 +243,17 @@ Deno.serve(async (req) => {
       error: ecosystemError,
     };
 
-    // 5) Score.
+    // 5) Accessibility v0.2 — measure real drive distance to nearest hwy + major road.
+    const [hwyNode, roadNode] = await Promise.all([
+      nearestHighwayNode(geo.lat, geo.lng),
+      nearestMajorRoadNode(geo.lat, geo.lng),
+    ]);
+    const [highwayDistanceMi, roadDistanceMi] = await Promise.all([
+      hwyNode ? drivingDistanceMiles({ lat: geo.lat, lng: geo.lng }, hwyNode) : Promise.resolve(null),
+      roadNode ? drivingDistanceMiles({ lat: geo.lat, lng: geo.lng }, roadNode) : Promise.resolve(null),
+    ]);
+
+    // 6) Score.
     const pillars = {
       schoolProfile: schoolProfileScore({ schoolType, enrollment, gradeBand }),
       affluence: affluenceScore({
@@ -262,8 +275,8 @@ Deno.serve(async (req) => {
         nearbyStudentPop,
       }),
       accessibility: accessibilityScore({
-        roadDistanceMi: null, // v0.1 stub — fed in v0.2
-        highwayDistanceMi: null,
+        roadDistanceMi,
+        highwayDistanceMi,
         popReachable15: acs15.totalPop,
       }),
     };
@@ -279,6 +292,10 @@ Deno.serve(async (req) => {
         publicTotalInState: publicTotal,
         privateTotalInState: privateTotal,
         source: ecosystemSource,
+      },
+      accessibility: {
+        highwayDistanceMi: highwayDistanceMi == null ? null : round2(highwayDistanceMi),
+        roadDistanceMi: roadDistanceMi == null ? null : round2(roadDistanceMi),
       },
       version: ENGINE_VERSION,
     };

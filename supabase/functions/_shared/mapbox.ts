@@ -94,3 +94,97 @@ export function polygonHash(poly: GeoJSON.Polygon): string {
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
   return `p${h}`;
 }
+
+// ---------------------------------------------------------------------------
+// Accessibility v0.2 — nearest road / highway via OSM Overpass + Mapbox Directions
+// ---------------------------------------------------------------------------
+
+type LngLat = { lat: number; lng: number };
+
+const OVERPASS_ENDPOINTS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+];
+
+function bboxAround(lat: number, lng: number, radiusMi: number): [number, number, number, number] {
+  const dLat = radiusMi / 69;
+  const dLng = radiusMi / (Math.cos((lat * Math.PI) / 180) * 69);
+  return [lat - dLat, lng - dLng, lat + dLat, lng + dLng];
+}
+
+async function overpassNearestNode(
+  origin: LngLat,
+  highwayClasses: string[],
+  radiusMi: number,
+): Promise<LngLat | null> {
+  const [s, w, n, e] = bboxAround(origin.lat, origin.lng, radiusMi);
+  const regex = highwayClasses.join("|");
+  const query = `[out:json][timeout:20];
+way["highway"~"^(${regex})$"](${s},${w},${n},${e});
+node(w);
+out 200;`;
+
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    try {
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), 22_000);
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: query,
+        signal: controller.signal,
+      });
+      clearTimeout(t);
+      if (!res.ok) {
+        console.warn(`[sas] Overpass ${endpoint} ${res.status}`);
+        continue;
+      }
+      const data = await res.json();
+      const elements: Array<{ type: string; lat?: number; lon?: number }> = data?.elements ?? [];
+      let best: LngLat | null = null;
+      let bestD = Infinity;
+      for (const el of elements) {
+        if (el.type !== "node" || typeof el.lat !== "number" || typeof el.lon !== "number") continue;
+        const d = haversineMiles(origin, { lat: el.lat, lng: el.lon });
+        if (d < bestD) {
+          bestD = d;
+          best = { lat: el.lat, lng: el.lon };
+        }
+      }
+      return best;
+    } catch (err) {
+      console.warn(`[sas] Overpass ${endpoint} failed:`, (err as Error).message);
+    }
+  }
+  return null;
+}
+
+export function nearestHighwayNode(lat: number, lng: number, radiusMi = 12): Promise<LngLat | null> {
+  return overpassNearestNode(
+    { lat, lng },
+    ["motorway", "trunk", "motorway_link", "trunk_link"],
+    radiusMi,
+  );
+}
+
+export function nearestMajorRoadNode(lat: number, lng: number, radiusMi = 3): Promise<LngLat | null> {
+  return overpassNearestNode({ lat, lng }, ["primary", "secondary"], radiusMi);
+}
+
+export async function drivingDistanceMiles(from: LngLat, to: LngLat): Promise<number | null> {
+  try {
+    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=false&access_token=${MAPBOX_TOKEN}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.warn(`[sas] Mapbox Directions ${res.status}`);
+      return haversineMiles(from, to) * 1.3;
+    }
+    const data = await res.json();
+    const meters = data?.routes?.[0]?.distance;
+    if (typeof meters === "number" && Number.isFinite(meters)) return meters / 1609.34;
+    return haversineMiles(from, to) * 1.3;
+  } catch (err) {
+    console.warn("[sas] Mapbox Directions threw:", (err as Error).message);
+    return haversineMiles(from, to) * 1.3;
+  }
+}

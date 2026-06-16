@@ -695,54 +695,103 @@ function DecisionSummary({
 // ---------------------------------------------------------------------------
 
 export default function SiteAnalysis() {
-  const [candidates, setCandidates] = useState<Candidate[]>([
-    TRINITY_CANDIDATE,
-    LEAFSPRING_CANDIDATE,
+  // Slots hold the *frozen* inputs + the last engine result. There is no
+  // per-card input form anymore: the only way to feed inputs into the engine
+  // is via the Live Engine card above and the "Save to slot" button.
+  const [slots, setSlots] = useState<SlotState[]>([
+    { ...TRINITY_CANDIDATE, status: "idle", result: null, error: null },
+    { ...LEAFSPRING_CANDIDATE, status: "idle", result: null, error: null },
   ]);
-  // Per-candidate live engine result; mirrors the candidates array by id.
-  const [results, setResults] = useState<Record<string, SiteScoreResult | null>>({});
   const { byAddress } = useSiteDecisions();
+  const ranOnceRef = useRef<Set<string>>(new Set());
 
-  const updateCandidate = (id: string, next: Candidate) => {
-    setCandidates((prev) => prev.map((c) => (c.id === id ? next : c)));
-  };
-  const removeCandidate = (id: string) => {
-    setCandidates((prev) => prev.filter((c) => c.id !== id));
-    setResults((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
+  const patchSlot = useCallback((id: string, patch: Partial<SlotState>) => {
+    setSlots((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+  }, []);
+
+  const runSlot = useCallback(
+    async (id: string) => {
+      const slot = slots.find((s) => s.id === id);
+      if (!slot) return;
+      if (!slot.address.trim() || !slot.schoolName.trim()) {
+        patchSlot(id, { status: "error", error: "School name and address are required." });
+        return;
+      }
+      patchSlot(id, { status: "loading", error: null });
+      try {
+        const { data, error } = await supabase.functions.invoke("compute-sas", {
+          body: {
+            address: slot.address.trim(),
+            school_name: slot.schoolName.trim(),
+            school_type: slot.schoolType,
+            enrollment: slot.enrollment ? Number(slot.enrollment) : null,
+            grade_band: slot.gradeBand,
+          },
+        });
+        if (error) throw error;
+        if ((data as { status?: string })?.status === "failed") {
+          throw new Error((data as { error?: string }).error ?? "Engine failed");
+        }
+        patchSlot(id, { status: "ready", result: data as SiteScoreResult, error: null });
+      } catch (e) {
+        const msg = (e as Error).message ?? "Engine call failed";
+        patchSlot(id, { status: "error", error: msg });
+      }
+    },
+    [slots, patchSlot],
+  );
+
+  // Auto-run the calibration anchors exactly once on first mount.
+  useEffect(() => {
+    slots.forEach((s) => {
+      if (!s.calibrationRole) return;
+      if (ranOnceRef.current.has(s.id)) return;
+      ranOnceRef.current.add(s.id);
+      runSlot(s.id);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const removeSlot = (id: string) => {
+    setSlots((prev) => prev.filter((s) => s.id !== id));
   };
-  const addCandidate = () => {
-    if (candidates.length >= 4) return;
-    setCandidates((prev) => [
+
+  // Save a freshly-computed Live Engine result directly into a new slot. No
+  // second engine call — the card stores the exact result object the engine
+  // returned. This is what enforces "one calibrated number everywhere".
+  const saveResultToNewSlot = (input: {
+    schoolName: string;
+    address: string;
+    schoolType: SchoolType;
+    gradeBand: GradeBand;
+    enrollment: string;
+  }, result: SiteScoreResult) => {
+    if (slots.length >= 4) return;
+    const id = `slot-${Date.now()}`;
+    setSlots((prev) => [
       ...prev,
       {
-        id: `candidate-${Date.now()}`,
-        schoolName: "",
-        address: "",
-        schoolType: "private_elementary",
-        gradeBand: "k5_k6",
-        enrollment: "",
+        id,
+        schoolName: input.schoolName,
+        address: input.address,
+        schoolType: input.schoolType,
+        gradeBand: input.gradeBand,
+        enrollment: input.enrollment,
+        status: "ready",
+        result,
+        error: null,
       },
     ]);
-  };
-  const setResultFor = (id: string, result: SiteScoreResult | null) => {
-    setResults((prev) => (prev[id] === result ? prev : { ...prev, [id]: result }));
   };
 
   const scored: ScoredCandidate[] = useMemo(
     () =>
-      candidates.map((c) => {
-        const result = results[c.id] ?? null;
-        return {
-          candidate: c,
-          result,
-          composite: result ? siteComposite(result.pillars) : null,
-        };
-      }),
-    [candidates, results],
+      slots.map((s) => ({
+        candidate: s,
+        result: s.result,
+        composite: s.result ? siteComposite(s.result.pillars) : null,
+      })),
+    [slots],
   );
 
   const trinityScored = scored.find((s) => s.candidate.calibrationRole === "trinity");
@@ -755,7 +804,7 @@ export default function SiteAnalysis() {
   const winnerDecision = winner ? byAddress.get(winner.candidate.address) : undefined;
   const canExport = !!(winner && winner.composite != null);
 
-  const emptySlots = Math.max(0, 4 - candidates.length);
+  const emptySlots = Math.max(0, 4 - slots.length);
 
   const handleExport = () => {
     const exportRows: ExportCandidate[] = scored
@@ -771,6 +820,7 @@ export default function SiteAnalysis() {
       });
     exportSiteDecisionPack(exportRows, byAddress);
   };
+
 
   return (
     <>

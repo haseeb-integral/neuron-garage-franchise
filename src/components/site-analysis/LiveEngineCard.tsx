@@ -155,8 +155,26 @@ export function LiveEngineCard() {
           ENGINE LIVE
         </span>
       </div>
+      <div className="mb-2 flex flex-wrap items-center gap-1.5">
+        <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "#526078" }}>
+          Quick test:
+        </span>
+        {PRESETS.map((p) => (
+          <button
+            key={p.label}
+            type="button"
+            onClick={() => loadPreset(p)}
+            title={p.hint}
+            className="rounded-full border px-2 py-0.5 text-[11px] transition hover:bg-[#dde7ff]"
+            style={{ borderColor: "#dde7ff", color: "#174be8", background: "#f4f7ff" }}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
 
       <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
+
         <label className="flex flex-col gap-1 text-[11px] md:col-span-2" style={{ color: "#526078" }}>
           School name *
           <input

@@ -378,6 +378,10 @@ Deno.serve(async (req) => {
     }
     const sas = compositeSas(pillars);
 
+    // Parking (v0.2 informational) — runs in parallel with scoring above is
+    // harder to read; sequential here is fine since tilequery is one fast call.
+    const parking = await parkingSignal(geo.lat, geo.lng);
+
     const signals = {
       acs10,
       acs15,
@@ -396,6 +400,7 @@ Deno.serve(async (req) => {
         popReachable15Extrapolated: Math.round(popReachable15Extrapolated),
         iso15AreaSqMi: round2(iso15AreaSqMi),
       },
+      parking,
       version: ENGINE_VERSION,
     };
 

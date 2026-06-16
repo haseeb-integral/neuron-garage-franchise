@@ -265,8 +265,15 @@ function CandidateCard({ slot, onRerun, onRemove }: CardProps) {
         </p>
       )}
 
-      {/* Drive-time schematic (concentric rings) */}
-      {recomputed && <DriveTimeSchematic place={slot.result?.place} />}
+      {/* Drive-time isochrone map (real Mapbox tiles) */}
+      {recomputed && slot.result?.geo && (
+        <IsochroneMap
+          center={slot.result.geo}
+          iso10={slot.result.iso10 ?? null}
+          iso15={slot.result.iso15 ?? null}
+          place={slot.result.place}
+        />
+      )}
 
       {/* Six metric tiles — live from compute-sas signals */}
       {recomputed && <MetricTiles signals={slot.result?.signals} />}

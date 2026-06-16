@@ -965,6 +965,9 @@ export default function SiteAnalysis() {
         Item 2 (Feature 1B). Cards now call the live `compute-sas` engine — Mapbox geocode, ACS
         sampling, school ecosystem, and the SAS composite.
       </footer>
+
+      <hr className="my-8 border-t" style={{ borderColor: BORDER }} />
+      <Feature1BStatus />
     </>
   );
 }

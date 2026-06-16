@@ -1,12 +1,8 @@
-# Remove SAS title + formula text from the Site Analysis box
+I’ll fix the Site Analysis PDF export failure and verify it in the running app.
 
-Delete the `<h2>Site Analysis Score (SAS)</h2>` and the `SAS = 0.25 × …` paragraph from `src/pages/SiteAnalysis.tsx` (currently lines 1067–1073).
-
-Keep:
-- The Normalize inputs button (stays on the left).
-- The Export decision pack (PDF) button (stays on the right).
-- The Score tiers row beneath.
-
-The `flex justify-between` layout still works: left column becomes just the Normalize button, right column keeps the Export button. No other files touched. PDF generation unaffected.
-
-Approve to proceed.
+Plan:
+1. Reproduce the failure with a browser smoke test on the Site Analysis page and capture the exact console/toast error.
+2. Update the PDF exporter to remove the most likely fragile browser dependency: remote font fetching in `@react-pdf/renderer`; use built-in PDF-safe fonts so export does not depend on CDN/CORS/font parsing.
+3. Keep the current PDF content/layout and the existing export button placement unchanged.
+4. Smoke-test again by clicking Export decision pack (PDF), confirm the download starts, and confirm no PDF export error appears.
+5. If the smoke test still fails after removing remote fonts, switch the export path to the already-installed `jspdf`/`html2canvas` fallback approach for a browser-stable PDF download.

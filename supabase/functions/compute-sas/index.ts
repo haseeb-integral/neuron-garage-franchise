@@ -12,6 +12,7 @@ import {
   polygonHash,
 } from "../_shared/mapbox.ts";
 import { aggregateAcs } from "../_shared/census.ts";
+import { fetchUrbanSchools, STATE_ABBR_TO_FIPS } from "../_shared/urban-institute.ts";
 import {
   accessibilityScore,
   affluenceScore,

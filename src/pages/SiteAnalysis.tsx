@@ -89,62 +89,59 @@ const LEAFSPRING_CANDIDATE: Candidate = {
 };
 
 // ---------------------------------------------------------------------------
-// CandidateCard
+// CandidateCard — DISPLAY-ONLY.
+//
+// All inputs come from the parent (the Live Engine card or a hard-coded
+// anchor preset). The card does not own an engine call. Its props carry the
+// already-computed result. Re-run / Remove are parent callbacks. This is what
+// guarantees "one calibrated number everywhere": every surface shows the
+// engine result object that was last written into the slot — no card-local
+// re-computation, no card-local input form.
 // ---------------------------------------------------------------------------
 
-interface CardProps {
-  candidate: Candidate;
-  onChange: (c: Candidate) => void;
-  onRemove?: () => void;
-  onResult: (result: SiteScoreResult | null) => void;
-  autoRun: boolean;
+const SCHOOL_TYPE_LABEL: Record<SchoolType, string> = {
+  private_elementary: "Private elementary",
+  public_elementary: "Public elementary",
+  charter_elementary: "Charter elementary",
+  montessori: "Montessori",
+  daycare: "Daycare",
+  other_k8: "Other K-8",
+  other: "Other",
+};
+const GRADE_BAND_LABEL: Record<GradeBand, string> = {
+  k5_k6: "K-5 / K-6",
+  prek_5: "Pre-K through 5",
+  k8: "K-8",
+  other: "Other",
+};
+
+type SlotStatus = "idle" | "loading" | "ready" | "error";
+
+interface SlotState extends Candidate {
+  status: SlotStatus;
+  result: SiteScoreResult | null;
+  error: string | null;
 }
 
-function CandidateCard({ candidate, onChange, onRemove, onResult, autoRun }: CardProps) {
-  const { status, result, error, run } = useSiteScore();
+interface CardProps {
+  slot: SlotState;
+  onRerun: () => void;
+  onRemove?: () => void;
+}
+
+function CandidateCard({ slot, onRerun, onRemove }: CardProps) {
   const { byAddress } = useSiteDecisions();
-  const decision = byAddress.get(candidate.address);
+  const decision = byAddress.get(slot.address);
   const brettVerdict: SiteVerdict | undefined =
     decision && decision.verdict !== "undecided" ? decision.verdict : undefined;
   const isWinner = decision?.is_winner ?? false;
   const [showFormulas, setShowFormulas] = useState(false);
 
-  // Auto-run for pre-seeded calibration candidates on first mount.
-  useEffect(() => {
-    if (!autoRun) return;
-    if (status !== "idle") return;
-    if (!candidate.address.trim() || !candidate.schoolName.trim()) return;
-    run({
-      schoolName: candidate.schoolName,
-      address: candidate.address,
-      schoolType: candidate.schoolType,
-      gradeBand: candidate.gradeBand,
-      enrollment: candidate.enrollment ? Number(candidate.enrollment) : null,
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoRun]);
-
-  // Bubble result up so parent (calibration banner, summary, export) sees it.
-  useEffect(() => {
-    onResult(result);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result]);
-
-  const recomputed = result ? recomputeSiteScores(result.pillars) : null;
+  const recomputed = slot.result ? recomputeSiteScores(slot.result.pillars) : null;
   const composite = recomputed?.composite ?? null;
   const scoreTier = composite != null ? tierBadge(composite) : null;
   const pill = brettVerdict ? VERDICT_STYLE[brettVerdict] : scoreTier;
   const pillSource = brettVerdict ? "Brett/Sam's call" : "auto from score";
-
-  const submit = () => {
-    run({
-      schoolName: candidate.schoolName,
-      address: candidate.address,
-      schoolType: candidate.schoolType,
-      gradeBand: candidate.gradeBand,
-      enrollment: candidate.enrollment ? Number(candidate.enrollment) : null,
-    });
-  };
 
   return (
     <div
@@ -158,15 +155,17 @@ function CandidateCard({ candidate, onChange, onRemove, onResult, autoRun }: Car
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            <MapPin size={14} style={{ color: BLUE }} className="shrink-0" />
+          <div className="flex items-start gap-1.5">
+            <MapPin size={14} style={{ color: BLUE, marginTop: 3 }} className="shrink-0" />
             <h3
-              className="truncate text-[13px] font-bold"
+              className="text-[13px] font-bold leading-snug break-words"
               style={{ color: NAVY }}
-              title={candidate.schoolName || "Unnamed candidate"}
+              title={slot.schoolName || "Unnamed candidate"}
             >
-              {candidate.schoolName || "New candidate"}
+              {slot.schoolName || "New candidate"}
             </h3>
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-1">
             {isWinner && (
               <span
                 className="inline-flex items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-bold"
@@ -175,25 +174,25 @@ function CandidateCard({ candidate, onChange, onRemove, onResult, autoRun }: Car
                 <Star size={9} className="mr-0.5" fill="#fff" /> Winner
               </span>
             )}
-            {candidate.calibrationRole && (
+            {slot.calibrationRole && (
               <span
                 className="inline-flex items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
                 style={{ backgroundColor: "#dde7ff", color: BLUE }}
-                title="Pre-seeded calibration anchor"
+                title="Pre-seeded calibration anchor — inputs are frozen so the calibration delta is reproducible"
               >
-                {candidate.calibrationRole === "trinity" ? "Positive anchor" : "Negative anchor"}
+                {slot.calibrationRole === "trinity" ? "Positive anchor" : "Negative anchor"}
               </span>
             )}
           </div>
-          {candidate.address && (
-            <p
-              className="mt-0.5 line-clamp-1 text-[11px]"
-              style={{ color: MUTED }}
-              title={candidate.address}
-            >
-              {candidate.address}
+          {slot.address && (
+            <p className="mt-1 text-[11px] break-words" style={{ color: MUTED }}>
+              {slot.address}
             </p>
           )}
+          <p className="mt-1 text-[10px]" style={{ color: MUTED }}>
+            {SCHOOL_TYPE_LABEL[slot.schoolType]} · {GRADE_BAND_LABEL[slot.gradeBand]}
+            {slot.enrollment ? ` · enrollment ${slot.enrollment}` : ""}
+          </p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           {composite != null ? (
@@ -213,127 +212,46 @@ function CandidateCard({ candidate, onChange, onRemove, onResult, autoRun }: Car
                   {pill.label}
                 </span>
               )}
-              <span
-                className="text-[9px] uppercase tracking-wide"
-                style={{ color: MUTED }}
-              >
+              <span className="text-[9px] uppercase tracking-wide" style={{ color: MUTED }}>
                 {pillSource}
               </span>
             </>
           ) : (
-            <span
-              className="text-[10px] uppercase tracking-wide"
-              style={{ color: MUTED }}
-            >
-              {status === "loading" ? "Computing…" : "No score yet"}
+            <span className="text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
+              {slot.status === "loading" ? "Computing…" : slot.status === "error" ? "Error" : "No score yet"}
             </span>
           )}
         </div>
       </div>
 
-      {/* Input form */}
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <label
-          className="col-span-2 flex flex-col gap-1 text-[10px]"
-          style={{ color: MUTED }}
+      {/* Re-run / Remove */}
+      <div className="mt-2 flex items-center justify-end gap-2">
+        <button
+          type="button"
+          onClick={onRerun}
+          disabled={slot.status === "loading"}
+          className="inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[10px] font-semibold disabled:opacity-50"
+          style={{ borderColor: BORDER, color: BLUE }}
+          title="Re-run the live engine with these exact inputs"
         >
-          School name
-          <input
-            type="text"
-            value={candidate.schoolName}
-            onChange={(e) => onChange({ ...candidate, schoolName: e.target.value })}
-            className="rounded border px-2 py-1 text-[12px]"
-            style={{ borderColor: BORDER, color: NAVY }}
-            placeholder="e.g. Trinity Episcopal School"
-          />
-        </label>
-        <label
-          className="col-span-2 flex flex-col gap-1 text-[10px]"
-          style={{ color: MUTED }}
-        >
-          Address
-          <input
-            type="text"
-            value={candidate.address}
-            onChange={(e) => onChange({ ...candidate, address: e.target.value })}
-            className="rounded border px-2 py-1 text-[12px]"
-            style={{ borderColor: BORDER, color: NAVY }}
-            placeholder="3901 Bee Caves Rd, Austin, TX 78746"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-[10px]" style={{ color: MUTED }}>
-          School type
-          <select
-            value={candidate.schoolType}
-            onChange={(e) =>
-              onChange({ ...candidate, schoolType: e.target.value as SchoolType })
-            }
-            className="rounded border px-2 py-1 text-[12px]"
-            style={{ borderColor: BORDER, color: NAVY }}
-          >
-            <option value="private_elementary">Private elementary</option>
-            <option value="public_elementary">Public elementary</option>
-            <option value="charter_elementary">Charter elementary</option>
-            <option value="montessori">Montessori</option>
-            <option value="daycare">Daycare</option>
-            <option value="other_k8">Other K-8</option>
-            <option value="other">Other</option>
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-[10px]" style={{ color: MUTED }}>
-          Grade band
-          <select
-            value={candidate.gradeBand}
-            onChange={(e) =>
-              onChange({ ...candidate, gradeBand: e.target.value as GradeBand })
-            }
-            className="rounded border px-2 py-1 text-[12px]"
-            style={{ borderColor: BORDER, color: NAVY }}
-          >
-            <option value="k5_k6">K-5 / K-6</option>
-            <option value="prek_5">Pre-K through 5</option>
-            <option value="k8">K-8</option>
-            <option value="other">Other</option>
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-[10px]" style={{ color: MUTED }}>
-          Enrollment (optional)
-          <input
-            type="number"
-            value={candidate.enrollment}
-            onChange={(e) => onChange({ ...candidate, enrollment: e.target.value })}
-            className="rounded border px-2 py-1 text-[12px]"
-            style={{ borderColor: BORDER, color: NAVY }}
-            placeholder="540"
-          />
-        </label>
-        <div className="flex items-end justify-end gap-2">
-          {onRemove && (
-            <button
-              type="button"
-              onClick={onRemove}
-              className="rounded border px-2 py-1 text-[11px]"
-              style={{ borderColor: BORDER, color: MUTED }}
-            >
-              Remove
-            </button>
-          )}
+          {slot.status === "loading" && <Loader2 size={10} className="animate-spin" />}
+          {slot.status === "loading" ? "Running…" : "↻ Re-run"}
+        </button>
+        {onRemove && (
           <button
             type="button"
-            onClick={submit}
-            disabled={status === "loading"}
-            className="inline-flex items-center gap-1 rounded px-3 py-1 text-[11px] font-semibold text-white disabled:opacity-60"
-            style={{ background: BLUE }}
+            onClick={onRemove}
+            className="rounded border px-2 py-0.5 text-[10px]"
+            style={{ borderColor: BORDER, color: MUTED }}
           >
-            {status === "loading" && <Loader2 size={11} className="animate-spin" />}
-            {status === "loading" ? "Analyzing…" : "Analyze"}
+            ✕ Remove
           </button>
-        </div>
+        )}
       </div>
 
-      {error && (
-        <p className="mt-2 text-[11px]" style={{ color: "#a3142b" }}>
-          {error}
+      {slot.error && (
+        <p className="mt-2 rounded border px-2 py-1 text-[11px]" style={{ color: "#a3142b", borderColor: "#f5c6cd", backgroundColor: "#fdf2f4" }}>
+          Engine error: {slot.error}. Click ↻ Re-run to retry.
         </p>
       )}
 
@@ -345,19 +263,16 @@ function CandidateCard({ candidate, onChange, onRemove, onResult, autoRun }: Car
       )}
 
       {/* Drive-time schematic (concentric rings) */}
-      {recomputed && <DriveTimeSchematic place={result?.place} />}
+      {recomputed && <DriveTimeSchematic place={slot.result?.place} />}
 
       {/* Six metric tiles — live from compute-sas signals */}
-      {recomputed && <MetricTiles signals={result?.signals} />}
+      {recomputed && <MetricTiles signals={slot.result?.signals} />}
 
       {/* Pillar bars */}
       {recomputed && (
         <div className="mt-3 space-y-1.5">
           <div className="flex items-center justify-between">
-            <div
-              className="text-[10px] font-semibold uppercase tracking-wide"
-              style={{ color: MUTED }}
-            >
+            <div className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: MUTED }}>
               Sub-scores
             </div>
             <button
@@ -370,12 +285,7 @@ function CandidateCard({ candidate, onChange, onRemove, onResult, autoRun }: Car
             </button>
           </div>
           <PillarBar label="School Profile" weight={0.25} value={recomputed.pillars.schoolProfile} showFormula={showFormulas} />
-          <PillarBar
-            label="Neighborhood Affluence"
-            weight={0.25}
-            value={recomputed.pillars.affluence}
-            showFormula={showFormulas}
-          />
+          <PillarBar label="Neighborhood Affluence" weight={0.25} value={recomputed.pillars.affluence} showFormula={showFormulas} />
           <PillarBar label="Family Density" weight={0.2} value={recomputed.pillars.familyDensity} showFormula={showFormulas} />
           <PillarBar label="School Ecosystem" weight={0.15} value={recomputed.pillars.ecosystem} showFormula={showFormulas} />
           <PillarBar label="Accessibility" weight={0.15} value={recomputed.pillars.accessibility} showFormula={showFormulas} />
@@ -384,25 +294,188 @@ function CandidateCard({ candidate, onChange, onRemove, onResult, autoRun }: Car
               Composite = sum of weighted contributions = <strong>{recomputed.composite}</strong>
             </p>
           )}
-          {result?.place && (
+          {slot.result?.place && (
             <p className="pt-1 text-[10px]" style={{ color: MUTED }}>
-              Geocoded: {result.place}
+              Geocoded: {slot.result.place}
             </p>
           )}
         </div>
       )}
 
-      {/* Brett's decision controls — only meaningful once we have a score */}
+      {/* Brett's decision controls */}
       {recomputed && (
         <SiteDecisionControls
-          address={candidate.address}
-          schoolName={candidate.schoolName}
+          address={slot.address}
+          schoolName={slot.schoolName}
           defaultVerdict={defaultVerdictFromScore(recomputed.composite)}
         />
       )}
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Helpers: summary line, schematic map, metric tiles
+// ---------------------------------------------------------------------------
+
+function summarizePillars(p: {
+  schoolProfile: number;
+  affluence: number;
+  familyDensity: number;
+  ecosystem: number;
+  accessibility: number;
+}): string {
+  const LABEL: Record<keyof typeof p, string> = {
+    schoolProfile: "school profile",
+    affluence: "affluence",
+    familyDensity: "family density",
+    ecosystem: "ecosystem",
+    accessibility: "accessibility",
+  };
+  const strengths = (Object.keys(p) as (keyof typeof p)[]).filter((k) => p[k] >= 80).map((k) => LABEL[k]);
+  const weaknesses = (Object.keys(p) as (keyof typeof p)[]).filter((k) => p[k] < 50).map((k) => LABEL[k]);
+  const parts: string[] = [];
+  if (strengths.length) parts.push(`Strong on ${strengths.join(", ")}.`);
+  if (weaknesses.length) parts.push(`Weak on ${weaknesses.join(", ")}.`);
+  if (!parts.length) parts.push("Average across all pillars.");
+  return parts.join(" ");
+}
+
+function DriveTimeSchematic({ place }: { place?: string }) {
+  return (
+    <div className="mt-3">
+      <div className="mb-1 flex items-center justify-between text-[11px]" style={{ color: BLUE }}>
+        <span className="font-semibold">10-min · 15-min drive rings</span>
+        <span
+          className="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase"
+          style={{ backgroundColor: "#ffe9c2", color: "#7a5800" }}
+          title="Schematic — real Mapbox tiles land in a follow-up"
+        >
+          Map
+        </span>
+      </div>
+      <div
+        className="relative overflow-hidden rounded-md border"
+        style={{ borderColor: BORDER, backgroundColor: SOFT, height: 110 }}
+      >
+        <svg viewBox="0 0 200 110" className="h-full w-full">
+          <circle cx="100" cy="55" r="48" fill="none" stroke={BLUE} strokeOpacity="0.35" strokeWidth="1" strokeDasharray="3 3" />
+          <circle cx="100" cy="55" r="30" fill="none" stroke={BLUE} strokeOpacity="0.7" strokeWidth="1.2" />
+          <circle cx="100" cy="55" r="4" fill={BLUE} />
+        </svg>
+        <div
+          className="absolute bottom-1 left-2 rounded bg-white/85 px-1.5 py-0.5 text-[9px] font-semibold"
+          style={{ color: NAVY }}
+        >
+          10 · 15 min drive
+        </div>
+      </div>
+      {place && (
+        <p className="mt-1 text-[10px]" style={{ color: MUTED }}>
+          Centered on {place}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function Tile({ label, value, dash, dashTip }: { label: string; value?: string; dash?: boolean; dashTip?: string }) {
+  return (
+    <div
+      className="rounded border px-2 py-1.5"
+      style={{ borderColor: BORDER, backgroundColor: dash ? "#f7faff" : "white" }}
+      title={dash ? dashTip : undefined}
+    >
+      <div className="text-[9px] font-semibold uppercase tracking-wide" style={{ color: MUTED }}>
+        {label}
+      </div>
+      <div className="text-[13px] font-bold tabular-nums" style={{ color: dash ? MUTED : NAVY }}>
+        {dash ? "—" : value ?? "—"}
+      </div>
+    </div>
+  );
+}
+
+function fmtMoney(n?: number) {
+  if (n == null || !Number.isFinite(n)) return undefined;
+  if (n >= 1000) return `$${Math.round(n / 1000)}k`;
+  return `$${Math.round(n)}`;
+}
+function fmtPct(n?: number) {
+  if (n == null || !Number.isFinite(n)) return undefined;
+  const v = n <= 1 ? n * 100 : n;
+  return `${Math.round(v)}%`;
+}
+function fmtCount(n?: number) {
+  if (n == null || !Number.isFinite(n)) return undefined;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k`;
+  return `${Math.round(n)}`;
+}
+
+function MetricTiles({ signals }: { signals?: SiteScoreSignals }) {
+  const acs10 = signals?.acs10 ?? {};
+  const acs15 = signals?.acs15 ?? {};
+  return (
+    <div className="mt-3 grid grid-cols-3 gap-1.5">
+      <Tile label="Median HHI · 10m" value={fmtMoney(acs10.medianHhi)} />
+      <Tile label="HH >$150k · 10m" value={fmtPct(acs10.pctAbove150k)} />
+      <Tile label="Kids 5-12 · 10m" value={fmtCount(acs10.children5to12)} />
+      <Tile label="Drive to hwy" dash dashTip="Accessibility v0.2 — highway distance not yet wired" />
+      <Tile label="Parking" dash dashTip="Manual field — not yet wired" />
+      <Tile label="Pop · 15m" value={fmtCount(acs15.totalPop)} />
+    </div>
+  );
+}
+
+function PillarBar({
+  label,
+  weight,
+  value,
+  showFormula,
+}: {
+  label: string;
+  weight: number;
+  value: number;
+  showFormula?: boolean;
+}) {
+  const contribution = +(weight * value).toFixed(1);
+  return (
+    <div>
+      <div className="flex items-baseline justify-between text-[11px]">
+        <span style={{ color: MUTED }}>
+          {label} <span className="text-[9px]">({Math.round(weight * 100)}%)</span>
+        </span>
+        <span className="font-bold tabular-nums" style={{ color: NAVY }}>
+          {value}
+        </span>
+      </div>
+      <div
+        className="mt-0.5 h-1.5 w-full overflow-hidden rounded-full"
+        style={{ backgroundColor: "#eef2f7" }}
+      >
+        <div
+          className="h-full"
+          style={{
+            width: `${Math.max(0, Math.min(100, value))}%`,
+            backgroundColor:
+              value >= SITE_RECOMMEND_THRESHOLDS.recommend
+                ? "#1d6b32"
+                : value >= SITE_RECOMMEND_THRESHOLDS.worthALook
+                ? "#925100"
+                : "#a3142b",
+          }}
+        />
+      </div>
+      {showFormula && (
+        <div className="mt-0.5 text-[10px]" style={{ color: MUTED }}>
+          {weight.toFixed(2)} × {value} = <strong style={{ color: NAVY }}>{contribution}</strong> pts
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 // ---------------------------------------------------------------------------
 // Helpers: summary line, schematic map, metric tiles

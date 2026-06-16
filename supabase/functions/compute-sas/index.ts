@@ -391,6 +391,9 @@ Deno.serve(async (req) => {
       accessibility: {
         highwayDistanceMi: round2(highwayDistanceMi),
         roadDistanceMi: round2(roadDistanceMi),
+        popReachable15Raw: acs15.totalPop,
+        popReachable15Extrapolated: Math.round(popReachable15Extrapolated),
+        iso15AreaSqMi: round2(iso15AreaSqMi),
       },
       version: ENGINE_VERSION,
     };

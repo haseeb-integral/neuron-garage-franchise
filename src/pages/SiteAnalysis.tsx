@@ -929,18 +929,16 @@ export default function SiteAnalysis() {
       <WinnerBanner winner={winner} winnerDecision={winnerDecision} />
 
       <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {candidates.map((c) => (
+        {slots.map((s) => (
           <CandidateCard
-            key={c.id}
-            candidate={c}
-            autoRun={!!c.calibrationRole}
-            onChange={(next) => updateCandidate(c.id, next)}
-            onRemove={c.calibrationRole ? undefined : () => removeCandidate(c.id)}
-            onResult={(r) => setResultFor(c.id, r)}
+            key={s.id}
+            slot={s}
+            onRerun={() => runSlot(s.id)}
+            onRemove={s.calibrationRole ? undefined : () => removeSlot(s.id)}
           />
         ))}
         {Array.from({ length: emptySlots }).map((_, i) => (
-          <EmptySlot key={`empty-${i}`} onAdd={addCandidate} />
+          <EmptySlot key={`empty-${i}`} />
         ))}
       </section>
 

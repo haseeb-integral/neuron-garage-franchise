@@ -10,6 +10,7 @@ import type { MarketDecisionRow, MarketVerdict } from "@/hooks/useMarketDecision
 import type { SiteDecisionRow, SiteVerdict } from "@/hooks/useSiteDecisions";
 import type { ShortlistRow } from "@/data/phase2DemoData";
 import type { SiteAnalysisDemoSite } from "@/data/phase2DemoData";
+import { recomputeSiteScores } from "@/lib/sasMath";
 
 const VERDICT_LABEL: Record<MarketVerdict, string> = {
   pursue: "Pursue",
@@ -88,6 +89,7 @@ export function exportSiteDecisionPack(
   byAddress: Map<string, SiteDecisionRow>,
 ) {
   const winner = sites.find((s) => byAddress.get(s.address)?.is_winner);
+  const winnerScore = winner ? recomputeSiteScores(winner.subScores).composite : null;
   const generatedAt = new Date().toLocaleString();
 
   const cardHtml = sites
@@ -95,6 +97,7 @@ export function exportSiteDecisionPack(
       const d = byAddress.get(s.address);
       const verdict = SITE_VERDICT_LABEL[d?.verdict ?? "undecided"];
       const isWinner = d?.is_winner;
+      const { pillars, composite } = recomputeSiteScores(s.subScores);
       return `
       <div class="card ${isWinner ? "winner" : ""}">
         <div class="card-h">
@@ -103,7 +106,7 @@ export function exportSiteDecisionPack(
             <p class="muted">${escapeHtml(s.address)}</p>
           </div>
           <div class="score">
-            <div class="score-num">${s.composite}</div>
+            <div class="score-num">${composite}</div>
             <div class="score-lbl">SAO</div>
           </div>
         </div>
@@ -111,11 +114,11 @@ export function exportSiteDecisionPack(
         <p>${escapeHtml(s.verdict)}</p>
         ${d?.notes ? `<div class="notes"><strong>Notes:</strong> ${escapeHtml(d.notes)}</div>` : ""}
         <table class="subs">
-          <tr><td>School Profile (25%)</td><td>${s.subScores.schoolProfile.value}</td></tr>
-          <tr><td>Neighborhood Affluence (25%)</td><td>${s.subScores.neighborhoodAffluence.value}</td></tr>
-          <tr><td>Family Density (20%)</td><td>${s.subScores.familyDensity.value}</td></tr>
-          <tr><td>School Ecosystem (15%)</td><td>${s.subScores.schoolEcosystem.value}</td></tr>
-          <tr><td>Accessibility (15%)</td><td>${s.subScores.accessibility.value}</td></tr>
+          <tr><td>School Profile (25%)</td><td>${pillars.schoolProfile}</td></tr>
+          <tr><td>Neighborhood Affluence (25%)</td><td>${pillars.affluence}</td></tr>
+          <tr><td>Family Density (20%)</td><td>${pillars.familyDensity}</td></tr>
+          <tr><td>School Ecosystem (15%)</td><td>${pillars.ecosystem}</td></tr>
+          <tr><td>Accessibility (15%)</td><td>${pillars.accessibility}</td></tr>
         </table>
       </div>`;
     })
@@ -148,7 +151,7 @@ export function exportSiteDecisionPack(
   <h1>Site Analysis Decision Pack</h1>
   <div class="meta">Neuron Garage · Phase 2 Feature 1B · Generated ${escapeHtml(generatedAt)}</div>
   ${winner
-    ? `<div class="winner-banner"><strong>Chosen site:</strong> ${escapeHtml(winner.schoolName)} — ${escapeHtml(winner.address)} (Site Analysis Score (SAO): ${winner.composite})</div>`
+    ? `<div class="winner-banner"><strong>Chosen site:</strong> ${escapeHtml(winner.schoolName)} — ${escapeHtml(winner.address)} (Site Analysis Score (SAO): ${winnerScore})</div>`
     : `<div class="winner-banner" style="background:#fff1d6;border-left-color:#925100;"><strong>No winner selected.</strong> Compare the candidates below.</div>`}
   <div class="grid">${cardHtml}</div>
   <footer>Phase 2 demo — isochrones and live data not yet wired. Formulas locked in <code>.lovable/phase-2/phase-2-sow.md</code> Item 2.</footer>

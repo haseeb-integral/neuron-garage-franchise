@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
+  recomputeSiteScores,
   schoolProfileScore,
   type GradeBand,
   type SchoolType,
@@ -260,27 +261,32 @@ export function LiveEngineCard() {
         </p>
       )}
 
-      {result && (
-        <div className="mt-4 rounded border p-3" style={{ borderColor: "#eef2f7", background: "#f7faff" }}>
-          <div className="mb-2 flex items-baseline justify-between">
-            <h4 className="text-[12px] font-bold" style={{ color: "#07142f" }}>
-              SAS: <span style={{ fontSize: 22 }}>{result.sas}</span>
-            </h4>
-            {result.place && (
-              <span className="text-[10px]" style={{ color: "#526078" }}>
-                {result.place}
-              </span>
-            )}
+      {result && (() => {
+        // One-number rule: recompute composite from the engine's pillars so
+        // the headline number and the pillar tiles can never drift apart.
+        const recomputed = recomputeSiteScores(result.pillars);
+        return (
+          <div className="mt-4 rounded border p-3" style={{ borderColor: "#eef2f7", background: "#f7faff" }}>
+            <div className="mb-2 flex items-baseline justify-between">
+              <h4 className="text-[12px] font-bold" style={{ color: "#07142f" }}>
+                SAS: <span style={{ fontSize: 22 }}>{recomputed.composite}</span>
+              </h4>
+              {result.place && (
+                <span className="text-[10px]" style={{ color: "#526078" }}>
+                  {result.place}
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-[11px] md:grid-cols-5" style={{ color: "#07142f" }}>
+              <Stat label="School profile (25%)" v={recomputed.pillars.schoolProfile} />
+              <Stat label="Affluence (25%)" v={recomputed.pillars.affluence} />
+              <Stat label="Family density (20%)" v={recomputed.pillars.familyDensity} />
+              <Stat label="Ecosystem (15%)" v={recomputed.pillars.ecosystem} />
+              <Stat label="Accessibility (15%)" v={recomputed.pillars.accessibility} />
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-2 text-[11px] md:grid-cols-5" style={{ color: "#07142f" }}>
-            <Stat label="School profile (25%)" v={result.pillars.schoolProfile} />
-            <Stat label="Affluence (25%)" v={result.pillars.affluence} />
-            <Stat label="Family density (20%)" v={result.pillars.familyDensity} />
-            <Stat label="Ecosystem (15%)" v={result.pillars.ecosystem} />
-            <Stat label="Accessibility (15%)" v={result.pillars.accessibility} />
-          </div>
-        </div>
-      )}
+        );
+      })()}
     </section>
   );
 }

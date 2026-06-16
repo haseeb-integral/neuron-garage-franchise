@@ -16,6 +16,7 @@ import {
   SITE_RECOMMEND_THRESHOLDS,
   type SiteAnalysisDemoSite,
 } from "@/data/phase2DemoData";
+import { siteComposite } from "@/lib/sasMath";
 
 const NAVY = "#07142f";
 const MUTED = "#526078";
@@ -174,7 +175,10 @@ function SiteCard({ site }: { site: SiteAnalysisDemoSite }) {
   const decision = byAddress.get(site.address);
   const brettVerdict: SiteVerdict | undefined =
     decision && decision.verdict !== "undecided" ? decision.verdict : undefined;
-  const scoreTier = tierBadge(site.composite);
+  // One-number rule: composite is ALWAYS recomputed from the live pillars,
+  // never read from the stored `site.composite` field.
+  const composite = siteComposite(site);
+  const scoreTier = tierBadge(composite);
   const pill = brettVerdict ? VERDICT_STYLE[brettVerdict] : scoreTier;
   const pillSource = brettVerdict ? "Brett/Sam's call" : "auto from score";
   const isWinner = decision?.is_winner ?? false;
@@ -249,7 +253,7 @@ function SiteCard({ site }: { site: SiteAnalysisDemoSite }) {
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           <div className="text-[28px] font-black leading-none tabular-nums" style={{ color: NAVY }}>
-            {site.composite}
+            {composite}
           </div>
           <span
             className={`${CHIP} font-bold`}
@@ -354,7 +358,7 @@ function SiteCard({ site }: { site: SiteAnalysisDemoSite }) {
       <SiteDecisionControls
         address={site.address}
         schoolName={site.schoolName}
-        defaultVerdict={defaultVerdictFromScore(site.composite)}
+        defaultVerdict={defaultVerdictFromScore(composite)}
       />
     </div>
   );
@@ -395,7 +399,9 @@ function CalibrationGateBanner({ sites }: { sites: SiteAnalysisDemoSite[] }) {
   const trinity = sites.find((s) => /trinity/i.test(s.schoolName));
   const leaf = sites.find((s) => /leafspring/i.test(s.schoolName));
   if (!trinity || !leaf) return null;
-  const delta = trinity.composite - leaf.composite;
+  const trinityScore = siteComposite(trinity);
+  const leafScore = siteComposite(leaf);
+  const delta = trinityScore - leafScore;
   const pass = delta >= 20;
   return (
     <div
@@ -409,8 +415,8 @@ function CalibrationGateBanner({ sites }: { sites: SiteAnalysisDemoSite[] }) {
     >
       {pass ? <CheckCircle2 size={16} className="mt-0.5 shrink-0" /> : <XCircle size={16} className="mt-0.5 shrink-0" />}
       <div>
-        <strong>Calibration gate: {pass ? "✓ PASS" : "✗ FAIL"}</strong> — LeafSpring ({leaf.composite}) is{" "}
-        {delta} {delta === 1 ? "point" : "points"} below Trinity ({trinity.composite}).{" "}
+        <strong>Calibration gate: {pass ? "✓ PASS" : "✗ FAIL"}</strong> — LeafSpring ({leafScore}) is{" "}
+        {delta} {delta === 1 ? "point" : "points"} below Trinity ({trinityScore}).{" "}
         <span className="opacity-80">
           SOW Item 2 requires LeafSpring to score materially lower than Trinity (≥20 pt gap). If this
           fails on real data, the weights are reworked before rollout.
@@ -448,7 +454,7 @@ function WinnerBanner({
       <Star size={14} fill="#1d6b32" />
       <div>
         <strong>★ Winner:</strong> {winnerSite.schoolName} — Site Analysis Score (SAO){" "}
-        <strong className="tabular-nums">{winnerSite.composite}</strong> · Brett/Sam's verdict:{" "}
+        <strong className="tabular-nums">{siteComposite(winnerSite)}</strong> · Brett/Sam's verdict:{" "}
         <strong>{verdictLabel}</strong>
       </div>
     </div>
@@ -491,7 +497,7 @@ function DecisionSummary({
               return (
                 <tr key={s.id} style={{ borderTop: `1px solid ${BORDER}`, color: NAVY }}>
                   <td className="py-1.5 pr-2">{s.schoolName}</td>
-                  <td className="py-1.5 pr-2 text-right tabular-nums font-bold">{s.composite}</td>
+                  <td className="py-1.5 pr-2 text-right tabular-nums font-bold">{siteComposite(s)}</td>
                   <td className="py-1.5 pr-2">
                     <span
                       className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"

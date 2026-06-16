@@ -81,7 +81,7 @@ const TRINITY_CANDIDATE: Candidate = {
 
 const LEAFSPRING_CANDIDATE: Candidate = {
   id: "leafspring-plano",
-  schoolName: "LeafSpring School at Plano (closed 2023)",
+  schoolName: "LeafSpring Plano — closed 2023 (negative anchor)",
   address: "7000 Preston Rd, Plano, TX 75024",
   schoolType: "daycare",
   gradeBand: "other",
@@ -285,11 +285,11 @@ function CandidateCard({ slot, onRerun, onRemove }: CardProps) {
               {showFormulas ? "Hide formulas" : "Show all formulas"}
             </button>
           </div>
-          <PillarBar label="School Profile" weight={0.25} value={recomputed.pillars.schoolProfile} showFormula={showFormulas} />
-          <PillarBar label="Neighborhood Affluence" weight={0.25} value={recomputed.pillars.affluence} showFormula={showFormulas} />
-          <PillarBar label="Family Density" weight={0.2} value={recomputed.pillars.familyDensity} showFormula={showFormulas} />
-          <PillarBar label="School Ecosystem" weight={0.15} value={recomputed.pillars.ecosystem} showFormula={showFormulas} />
-          <PillarBar label="Accessibility" weight={0.15} value={recomputed.pillars.accessibility} showFormula={showFormulas} />
+          <PillarBar label="School Profile" weight={0.25} value={recomputed.pillars.schoolProfile} showFormula={showFormulas} detail={`f(type=${SCHOOL_TYPE_LABEL[slot.schoolType]}, grade=${GRADE_BAND_LABEL[slot.gradeBand]}, enroll=${slot.enrollment || "—"}) = ${recomputed.pillars.schoolProfile}`} />
+          <PillarBar label="Neighborhood Affluence" weight={0.25} value={recomputed.pillars.affluence} showFormula={showFormulas} detail={`0.6 × medianHHI_norm(${fmtMoney(slot.result?.signals?.acs10?.medianHhi) ?? "—"}) + 0.4 × pctAbove150k_norm(${fmtPct(slot.result?.signals?.acs10?.pctAbove150k) ?? "—"}) = ${recomputed.pillars.affluence}`} />
+          <PillarBar label="Family Density" weight={0.2} value={recomputed.pillars.familyDensity} showFormula={showFormulas} detail={`children5-12 / totalPop × scale → ${fmtCount(slot.result?.signals?.acs15?.children5to12)} / ${fmtCount(slot.result?.signals?.acs15?.totalPop)} = ${recomputed.pillars.familyDensity}`} />
+          <PillarBar label="School Ecosystem" weight={0.15} value={recomputed.pillars.ecosystem} showFormula={showFormulas} detail={`elementaryCount(${slot.result?.signals?.ecosystem?.elementaryCount ?? "—"}) + privateCount(${slot.result?.signals?.ecosystem?.privateCount ?? "—"}) weighted by nearbyStudentPop = ${recomputed.pillars.ecosystem}`} />
+          <PillarBar label="Accessibility" weight={0.15} value={recomputed.pillars.accessibility} showFormula={showFormulas} detail={`driveToHwy + parking — placeholder (engine v0.2) = ${recomputed.pillars.accessibility}`} />
           {showFormulas && (
             <p className="pt-1 text-[10px]" style={{ color: MUTED }}>
               Composite = sum of weighted contributions = <strong>{recomputed.composite}</strong>
@@ -434,11 +434,13 @@ function PillarBar({
   weight,
   value,
   showFormula,
+  detail,
 }: {
   label: string;
   weight: number;
   value: number;
   showFormula?: boolean;
+  detail?: string;
 }) {
   const contribution = +(weight * value).toFixed(1);
   return (
@@ -469,8 +471,11 @@ function PillarBar({
         />
       </div>
       {showFormula && (
-        <div className="mt-0.5 text-[10px]" style={{ color: MUTED }}>
-          {weight.toFixed(2)} × {value} = <strong style={{ color: NAVY }}>{contribution}</strong> pts
+        <div className="mt-0.5 space-y-0.5 text-[10px]" style={{ color: MUTED }}>
+          {detail && <div>{detail}</div>}
+          <div>
+            {weight.toFixed(2)} × {value} = <strong style={{ color: NAVY }}>{contribution}</strong> pts
+          </div>
         </div>
       )}
     </div>

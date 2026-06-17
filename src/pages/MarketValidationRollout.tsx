@@ -489,6 +489,7 @@ export default function MarketValidationRollout() {
                 latestRun={latestRuns[c.city] ?? null}
                 flag={flags[c.city] ?? null}
                 anyRunning={anyRunning}
+                invokingCity={invokingCity}
                 onRun={() => handleRun(c.city)}
                 onFlip={() => handleFlip(c.city, c.state, "live")}
                 onUnwind={() => handleFlip(c.city, c.state, "sample")}

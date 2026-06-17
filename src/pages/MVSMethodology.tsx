@@ -161,7 +161,7 @@ const MVS_NOTES = [
   "Year 1 runs a single mid-March scrape per shortlisted city — enough to populate Sellout Rate. The full 5-scrape cadence (Jan / Feb / Mar / Apr / May) comes online in Year 2 for any city under active evaluation, unlocking Time-to-Sellout and YoY Velocity.",
   "If more than 20% of premium providers in a market have no public registration page (i.e. email/phone signup only), the city's MVS gets a low-confidence badge and the QA queue flags it for review. A provider counts as \"no public registration page\" when its URL is missing, the page fetch returns a non-2xx status, or the rendered page returns less than 200 characters of meaningful content.",
   "QA queue threshold is confidence < 0.7. Below that, a week row is still recorded against the provider but is also flagged for human review with the reason and confidence preserved — we never silently drop a row.",
-  "Pipeline runs are gated by a kill switch (MVS_PIPELINE_ENABLED) and a manager-only role check enforced in the function itself. Each Austin run is sequential and capped at 25 providers to keep Firecrawl cost predictable and within the per-run budget.",
+  "Pipeline runs are manager-gated — every edge function enforces a manager/admin role check in code before spending a single Firecrawl call. Each Austin run is sequential and capped at 25 providers to keep Firecrawl cost predictable and within the per-run budget.",
 ];
 
 

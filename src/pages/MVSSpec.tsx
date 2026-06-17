@@ -204,7 +204,7 @@ Client never holds Firecrawl or Lovable AI Gateway keys.
 
 ### Phase 3 implementation notes (locked in as we built)
 
-* **Kill switch is enforced in code.** Every Stage-3 function checks \`MVS_PIPELINE_ENABLED\`. If it is not exactly \`"true"\`, the function returns 503 immediately — no Firecrawl call, no spend.
+* **Authorization is enforced in code.** See next bullet — every Stage-3 function requires a manager/admin role before doing any work.
 * **Authorization is enforced in code.** Both Stage-3 functions require \`manager\` or \`admin\` via \`user_roles\` + \`has_role()\`. The \`verify_jwt\` flag is not relied on.
 * **Turn 3.2 is an inline orchestrator, not N nested HTTP calls.** \`mvs-extract-weeks-austin-all\` runs the same per-provider scrape+extract logic inline, sequentially, in one function. Chosen over re-invoking \`mvs-extract-weeks\` N times because nested edge-function hops are slower and make the Firecrawl cost ceiling harder to enforce. Same DB end state, same screenshots, same QA queue behavior.
 * **Hard per-run cap of 25 providers** on the orchestrator (\`MAX_PROVIDERS = 25\`). Keeps a single Austin run under the plan's 30-Firecrawl-call ceiling (1 discovery + up to 25 provider scrapes + headroom). Tunable if Austin Premium grows past 25.
@@ -348,7 +348,7 @@ export default function MVSSpec() {
             <div className="space-y-2 text-[14px] text-[#1a2540] leading-relaxed">
               <p><strong>One calibrated number everywhere.</strong> Single helper <code className="bg-[#f4f8ff] px-1 rounded text-[12px]">src/lib/mvs/computeMvs.ts</code>. No DB-stored composites.</p>
               <p><strong>Demo path stays alive.</strong> Per-city <code className="bg-[#f4f8ff] px-1 rounded text-[12px]">mvs_data_source</code> flag gates live vs sample. Cutover is per-city, reversible in one SQL statement.</p>
-              <p><strong>Kill switch.</strong> <code className="bg-[#f4f8ff] px-1 rounded text-[12px]">MVS_PIPELINE_ENABLED</code> env secret (default false) gates every edge function.</p>
+              <p><strong>Manager-gated runs.</strong> Every pipeline edge function checks <code className="bg-[#f4f8ff] px-1 rounded text-[12px]">user_roles</code> for manager/admin before spending a single Firecrawl call.</p>
               <p><strong>Atomic &amp; reversible turns.</strong> Each turn ships one concern with an explicit unwind. No invented turns, no scope creep.</p>
               <p><strong>Surface area:</strong> <code className="bg-[#f4f8ff] px-1 rounded text-[12px]">mvs_*</code> tables, <code className="bg-[#f4f8ff] px-1 rounded text-[12px]">mvs-*</code> functions, <code className="bg-[#f4f8ff] px-1 rounded text-[12px]">src/lib/mvs/*</code>, <code className="bg-[#f4f8ff] px-1 rounded text-[12px]">src/pages/MarketValidation*</code>, <code className="bg-[#f4f8ff] px-1 rounded text-[12px]">src/components/phase2-demo/*</code>. No edits elsewhere.</p>
             </div>

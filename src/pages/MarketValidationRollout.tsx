@@ -1,5 +1,5 @@
 // Tier A rollout console — manager-only page that runs the live MVS pipeline
-// across the 8 priority cities. One row per city, sequential runs, live
+// across the Tier A priority cities. One row per city, sequential runs, live
 // composite recomputed via useLiveMvs.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -27,6 +27,7 @@ const TIER_A: { city: string; state: string }[] = [
   { city: "San Antonio, TX", state: "TX" },
   { city: "Philadelphia, PA", state: "PA" },
   { city: "Los Angeles, CA", state: "CA" },
+  { city: "Indianapolis, IN", state: "IN" },
 ];
 
 type RunStatus = "queued" | "running" | "done" | "failed";

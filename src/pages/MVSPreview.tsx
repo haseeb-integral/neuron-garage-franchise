@@ -3,6 +3,7 @@ import { AlertTriangle, ArrowLeft, BarChart3, Loader2 } from "lucide-react";
 import { useIsManager } from "@/hooks/dbHealth/useIsManager";
 import { DEFAULT_WEIGHTS } from "@/lib/mvs/computeMvs";
 import { useLiveMvs } from "@/lib/mvs/useLiveMvs";
+import { RunPipelineButton } from "@/components/phase2-demo/RunPipelineButton";
 
 const SCORE_LABELS: Record<string, string> = {
   pricingAcceptance: "Pricing Acceptance",

@@ -19,13 +19,28 @@ const corsHeaders = {
 
 const AUSTIN = "Austin, TX";
 
+// Phase 7 / Turn 7.1 — Tier A allow-list. Anything outside this list keeps the
+// Sample Data badge. Predictable cost: 8 cities × 30 Firecrawl-call cap = 240
+// calls worst case.
+const TIER_A_CITIES = new Set<string>([
+  "Austin, TX",
+  "New York, NY",
+  "Houston, TX",
+  "Chicago, IL",
+  "Boston, MA",
+  "San Antonio, TX",
+  "Philadelphia, PA",
+  "Los Angeles, CA",
+]);
+
 type StepName = "discover" | "classify" | "extract";
 
 const STEP_FUNCTIONS: Record<StepName, string> = {
   discover: "mvs-discover-providers",
   classify: "mvs-classify-tier",
-  extract: "mvs-extract-weeks-austin-all",
+  extract: "mvs-extract-weeks-all",
 };
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {

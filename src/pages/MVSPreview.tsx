@@ -51,7 +51,7 @@ export default function MVSPreview() {
         const { data: provRows, error: provErr } = await supabase
           .from("mvs_providers")
           .select("id, name, tier, price_min, price_max, category_classified")
-          .ilike("city", "austin");
+          .eq("city", "Austin, TX");
         if (provErr) throw provErr;
 
         // Weeks
@@ -118,7 +118,7 @@ export default function MVSPreview() {
         const { data: ovRows } = await supabase
           .from("mvs_city_overlap_overrides")
           .select("operator_name, overlap_override")
-          .ilike("city", "austin");
+          .eq("city", "Austin, TX");
 
         if (!cancelled) {
           setProviders(

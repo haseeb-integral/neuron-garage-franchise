@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { DemoBanner } from "@/components/phase2-demo/DemoBanner";
 import { LiveCityDeepDive } from "@/components/phase2-demo/LiveCityDeepDive";
 import { LowConfidenceBadge } from "@/components/phase2-demo/LowConfidenceBadge";
+import { RunPipelineButton } from "@/components/phase2-demo/RunPipelineButton";
 import { SampleDataBadge } from "@/components/phase2-demo/SampleDataBadge";
 import { ShortlistTable, type LiveOverlay } from "@/components/phase2-demo/ShortlistTable";
 import { Slider } from "@/components/ui/slider";
@@ -295,14 +296,17 @@ export default function MarketValidation() {
             Austin is not part of the demo shortlist below. Use the separate read-only preview for the live Austin pipeline output.
           </p>
         </div>
-        <Link
-          to="/mvs-preview"
-          className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-[12px] font-semibold"
-          style={{ borderColor: BLUE, color: BLUE, backgroundColor: SOFT }}
-        >
-          <BarChart3 size={14} />
-          Open Austin MVS preview
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <RunPipelineButton city="Austin, TX" onComplete={austinLive.refresh} />
+          <Link
+            to="/mvs-preview"
+            className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-[12px] font-semibold"
+            style={{ borderColor: BLUE, color: BLUE, backgroundColor: SOFT }}
+          >
+            <BarChart3 size={14} />
+            Open Austin MVS preview
+          </Link>
+        </div>
       </section>
 
       {/* v1.1 — Decision-capture shortlist table (replaces the chip rail) */}

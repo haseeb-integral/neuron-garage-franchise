@@ -1240,6 +1240,251 @@ export type Database = {
         }
         Relationships: []
       }
+      mvs_city_overlap_overrides: {
+        Row: {
+          city: string
+          created_at: string
+          id: string
+          operator_name: string
+          overlap_override: Database["public"]["Enums"]["mvs_overlap"]
+          updated_at: string
+        }
+        Insert: {
+          city: string
+          created_at?: string
+          id?: string
+          operator_name: string
+          overlap_override: Database["public"]["Enums"]["mvs_overlap"]
+          updated_at?: string
+        }
+        Update: {
+          city?: string
+          created_at?: string
+          id?: string
+          operator_name?: string
+          overlap_override?: Database["public"]["Enums"]["mvs_overlap"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      mvs_operator_watchlist: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          overlap: Database["public"]["Enums"]["mvs_overlap"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          overlap?: Database["public"]["Enums"]["mvs_overlap"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          overlap?: Database["public"]["Enums"]["mvs_overlap"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      mvs_pipeline_runs: {
+        Row: {
+          city: string
+          created_at: string
+          error: string | null
+          finished_at: string | null
+          firecrawl_calls: number
+          id: string
+          started_at: string | null
+          status: Database["public"]["Enums"]["mvs_run_status"]
+          updated_at: string
+        }
+        Insert: {
+          city: string
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          firecrawl_calls?: number
+          id?: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["mvs_run_status"]
+          updated_at?: string
+        }
+        Update: {
+          city?: string
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          firecrawl_calls?: number
+          id?: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["mvs_run_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      mvs_providers: {
+        Row: {
+          category_classified: string | null
+          category_raw: string | null
+          city: string
+          confidence: number | null
+          created_at: string
+          id: string
+          name: string
+          platform: string
+          price_max: number | null
+          price_min: number | null
+          screenshot_url: string | null
+          source_run_id: string | null
+          tier: Database["public"]["Enums"]["mvs_tier"] | null
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          category_classified?: string | null
+          category_raw?: string | null
+          city: string
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          name: string
+          platform: string
+          price_max?: number | null
+          price_min?: number | null
+          screenshot_url?: string | null
+          source_run_id?: string | null
+          tier?: Database["public"]["Enums"]["mvs_tier"] | null
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          category_classified?: string | null
+          category_raw?: string | null
+          city?: string
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          name?: string
+          platform?: string
+          price_max?: number | null
+          price_min?: number | null
+          screenshot_url?: string | null
+          source_run_id?: string | null
+          tier?: Database["public"]["Enums"]["mvs_tier"] | null
+          updated_at?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mvs_providers_source_run_id_fkey"
+            columns: ["source_run_id"]
+            isOneToOne: false
+            referencedRelation: "mvs_pipeline_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mvs_qa_queue: {
+        Row: {
+          confidence: number | null
+          created_at: string
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["mvs_qa_entity"]
+          id: string
+          reason: string
+          resolved_at: string | null
+          resolved_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["mvs_qa_entity"]
+          id?: string
+          reason: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string
+          entity_id?: string
+          entity_type?: Database["public"]["Enums"]["mvs_qa_entity"]
+          id?: string
+          reason?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      mvs_weeks: {
+        Row: {
+          confidence: number | null
+          created_at: string
+          id: string
+          provider_id: string
+          screenshot_url: string | null
+          source_run_id: string | null
+          status: Database["public"]["Enums"]["mvs_week_status"]
+          status_evidence: string | null
+          updated_at: string
+          week_end: string
+          week_start: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          provider_id: string
+          screenshot_url?: string | null
+          source_run_id?: string | null
+          status?: Database["public"]["Enums"]["mvs_week_status"]
+          status_evidence?: string | null
+          updated_at?: string
+          week_end: string
+          week_start: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          provider_id?: string
+          screenshot_url?: string | null
+          source_run_id?: string | null
+          status?: Database["public"]["Enums"]["mvs_week_status"]
+          status_evidence?: string | null
+          updated_at?: string
+          week_end?: string
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mvs_weeks_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "mvs_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mvs_weeks_source_run_id_fkey"
+            columns: ["source_run_id"]
+            isOneToOne: false
+            referencedRelation: "mvs_pipeline_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -2737,6 +2982,11 @@ export type Database = {
         | "signing"
         | "disqualified"
       candidate_vote_value: "approve" | "needs_info" | "reject"
+      mvs_overlap: "direct" | "adjacent" | "distant"
+      mvs_qa_entity: "provider" | "week"
+      mvs_run_status: "queued" | "running" | "done" | "failed"
+      mvs_tier: "premium" | "mid" | "budget" | "community"
+      mvs_week_status: "open" | "limited" | "waitlist" | "sold_out" | "unknown"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2876,6 +3126,11 @@ export const Constants = {
         "disqualified",
       ],
       candidate_vote_value: ["approve", "needs_info", "reject"],
+      mvs_overlap: ["direct", "adjacent", "distant"],
+      mvs_qa_entity: ["provider", "week"],
+      mvs_run_status: ["queued", "running", "done", "failed"],
+      mvs_tier: ["premium", "mid", "budget", "community"],
+      mvs_week_status: ["open", "limited", "waitlist", "sold_out", "unknown"],
     },
   },
 } as const

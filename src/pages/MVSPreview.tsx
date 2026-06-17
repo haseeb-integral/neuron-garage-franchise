@@ -129,7 +129,6 @@ export default function MVSPreview() {
               price_min: p.price_min,
               price_max: p.price_max,
               category_classified: p.category_classified,
-              site_count: p.site_count ?? 1,
             })),
           );
           setWeeks(

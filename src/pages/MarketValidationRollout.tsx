@@ -447,7 +447,6 @@ export default function MarketValidationRollout() {
           <thead className="bg-[#f7faff] text-left text-[11px] uppercase tracking-wide text-[#526078]">
             <tr>
               <th className="px-3 py-2 font-semibold">City</th>
-              <th className="px-3 py-2 font-semibold">Data source</th>
               <th className="px-3 py-2 font-semibold">Last run</th>
               <th className="px-3 py-2 font-semibold">Status</th>
               <th className="px-3 py-2 text-right font-semibold">Composite</th>
@@ -464,9 +463,7 @@ export default function MarketValidationRollout() {
                 flag={flags[c.city] ?? null}
                 anyRunning={anyRunning}
                 invokingCity={invokingCity}
-                onRun={() => handleRun(c.city)}
-                onFlip={() => handleFlip(c.city, c.state, "live")}
-                onUnwind={() => handleFlip(c.city, c.state, "sample")}
+                onRun={() => handleRun(c.city, c.state)}
                 onComposite={reportComposite}
               />
             ))}

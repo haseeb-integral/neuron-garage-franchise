@@ -220,9 +220,11 @@ Rules:
 
     let inserted = 0;
     if (rows.length > 0) {
+      // Upsert against the (city, lower(name), platform) uniq index so re-runs
+      // don't blow up on duplicates; latest run wins on conflict.
       const { data: insData, error: insErr } = await admin
         .from("mvs_providers")
-        .insert(rows)
+        .upsert(rows, { onConflict: "city,name,platform", ignoreDuplicates: false })
         .select("id");
       if (insErr) throw new Error(`insert providers: ${insErr.message}`);
       inserted = insData?.length ?? 0;
@@ -230,7 +232,11 @@ Rules:
 
     await admin
       .from("mvs_pipeline_runs")
-      .update({ status: "done", firecrawl_calls: firecrawlCalls })
+      .update({
+        status: "done",
+        firecrawl_calls: firecrawlCalls,
+        finished_at: new Date().toISOString(),
+      })
       .eq("id", run.id);
 
     return new Response(
@@ -248,7 +254,12 @@ Rules:
     const msg = err instanceof Error ? err.message : String(err);
     await admin
       .from("mvs_pipeline_runs")
-      .update({ status: "failed", error: msg, firecrawl_calls: firecrawlCalls })
+      .update({
+        status: "failed",
+        error: msg,
+        firecrawl_calls: firecrawlCalls,
+        finished_at: new Date().toISOString(),
+      })
       .eq("id", run.id);
     return new Response(
       JSON.stringify({ run_id: run.id, error: msg, debug }),

@@ -308,8 +308,12 @@ export default function MarketValidationRollout() {
     setInvokingCity(city);
     try {
       const { data, error } = await supabase.functions.invoke("mvs-run-pipeline", { body: { city } });
-      if (error) {
-        toast.error(`Failed to start pipeline for ${city}: ${error.message}`);
+      const errMsg = error?.message ?? "";
+      const is409 = /409/.test(errMsg) || data?.error === "a run is already in flight";
+      if (is409) {
+        toast.info(`${city} is already running — refreshing status.`);
+      } else if (error) {
+        toast.error(`Failed to start pipeline for ${city}: ${errMsg}`);
       } else if (data?.ok === false || data?.error) {
         toast.error(`Pipeline error: ${data.error ?? "unknown"}`);
       } else if (data?.ok && data.summary) {
@@ -320,6 +324,7 @@ export default function MarketValidationRollout() {
         );
       }
       await fetchAll();
+
     } catch (e) {
       toast.error(`Failed to start pipeline: ${(e as Error).message}`);
     } finally {

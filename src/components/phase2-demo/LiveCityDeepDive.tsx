@@ -220,13 +220,28 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
               persisted).
             </p>
           </div>
-          <div className="flex w-[240px] shrink-0 flex-col items-end gap-1">
+          <div className="flex w-[240px] shrink-0 flex-col items-end gap-2">
             <div className="text-[42px] font-black leading-none tabular-nums" style={{ color: NAVY }}>
               {result?.mvs != null ? result.mvs.toFixed(1) : "—"}
             </div>
             <div className="text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
               Market Validation Score
             </div>
+            <button
+              type="button"
+              onClick={handleDownloadBrief}
+              disabled={downloading || !result || !acs}
+              className="mt-2 inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold transition-colors hover:bg-[#f7faff] disabled:cursor-not-allowed disabled:opacity-50"
+              style={{ borderColor: BORDER, color: BLUE }}
+              title="Download internal MVS brief (PDF)"
+            >
+              {downloading ? (
+                <Loader2 size={12} className="animate-spin" />
+              ) : (
+                <FileDown size={12} />
+              )}
+              {downloading ? "Generating…" : "Download MVS Brief (PDF)"}
+            </button>
           </div>
         </div>
       </section>

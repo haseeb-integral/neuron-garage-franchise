@@ -133,7 +133,7 @@ export function ShortlistTable({ rows, activeCityId, onSelectCity, liveOverlays 
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <SampleDataBadge label="Demo cities" />
+
           <button
             type="button"
             onClick={() => exportMarketDecisionsCsv(rows, byCity)}

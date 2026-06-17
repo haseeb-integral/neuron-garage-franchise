@@ -8,7 +8,7 @@
 // queued/running. Disabled + spinner during in-flight runs. Toast on
 // terminal state. Calls onComplete() so the parent can refetch live data.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, Play, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,6 +39,7 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
   const [latest, setLatest] = useState<RunRow | null>(null);
   const [invoking, setInvoking] = useState(false);
   const [lastTerminalId, setLastTerminalId] = useState<string | null>(null);
+  const initialSeededRef = useRef(false);
 
   const fetchLatest = useCallback(async () => {
     const { data } = await supabase
@@ -48,7 +49,14 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    setLatest((data as RunRow | null) ?? null);
+    const row = (data as RunRow | null) ?? null;
+    setLatest(row);
+    // On first fetch after mount, seed lastTerminalId if the row is already
+    // terminal so the toast effect skips firing on page load.
+    if (!initialSeededRef.current && row && (row.status === "done" || row.status === "failed")) {
+      setLastTerminalId(row.id);
+      initialSeededRef.current = true;
+    }
   }, [city]);
 
   useEffect(() => {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Loader2, PlayCircle, RefreshCw } from "lucide-react";
+import { Check, Loader2, PlayCircle, RefreshCw } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,8 @@ import type { Database } from "@/integrations/supabase/types";
 
 type Run = Database["public"]["Tables"]["mvs_pipeline_runs"]["Row"];
 type Provider = Database["public"]["Tables"]["mvs_providers"]["Row"];
+type QaItem = Database["public"]["Tables"]["mvs_qa_queue"]["Row"];
+
 
 const STATUS_VARIANT: Record<Run["status"], "default" | "secondary" | "destructive" | "outline"> = {
   queued: "outline",

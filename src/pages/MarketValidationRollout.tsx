@@ -319,10 +319,10 @@ export default function MarketValidationRollout() {
             Market Validation
           </Link>
           <h1 className="mt-1 text-[22px] font-bold tracking-tight text-[#07142f]">
-            Tier A Rollout Console
+            City Scoring Console
           </h1>
           <p className="mt-0.5 text-[12px] text-[#526078]">
-            Score the 8 priority cities for market validation. Run each city once; the composite refreshes automatically.
+            Run the live data pipeline that produces each city's Market Validation composite score.
           </p>
         </div>
         <button
@@ -336,13 +336,23 @@ export default function MarketValidationRollout() {
 
       {/* How this page works */}
       <div className="mb-5 rounded-lg border border-[#dbe6ff] bg-[#f5f8ff] p-4 text-[12px] text-[#07142f]">
-        <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-[#174be8]">How this works</div>
+        <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-[#174be8]">
+          Why this page exists
+        </div>
+        <p className="mb-2">
+          The Market Validation page shows finished scores so you can review and decide. <strong>This page is
+          where those scores get produced.</strong> It's separated because pipeline runs cost money per call
+          and take 1–2 minutes — keeping the trigger here prevents accidental re-runs while browsing the
+          shortlist.
+        </p>
         <ol className="ml-4 list-decimal space-y-1">
-          <li><strong>Click Run</strong> on each city. The pipeline pulls live camp provider data, prices, and weekly absorption from the web (≈1–2 min per city). Runs are sequential to keep costs predictable.</li>
-          <li><strong>Composite score appears</strong> in the table — a 0–100 Market Validation Score blending pricing acceptance, absorption, scaled-operator presence, enrichment diversity, and market depth.</li>
-          <li><strong>Go back to Market Validation</strong> to see the full city deep-dive, sub-scores, and per-city Pursue / Hold / Drop decisions.</li>
+          <li><strong>Click Run</strong> on each city. The pipeline pulls live camp providers, prices, and weekly absorption data. Runs are sequential to keep cost and load predictable.</li>
+          <li><strong>The composite score appears</strong> in the table — a 0–100 blend of pricing acceptance, absorption, scaled-operator presence, enrichment diversity, and market depth.</li>
+          <li><strong>Return to Market Validation</strong> (link top-left) to see the full deep-dive, sub-scores, and capture Pursue / Hold / Drop decisions.</li>
         </ol>
       </div>
+
+
 
       {/* Progress strip */}
       <div

@@ -82,7 +82,7 @@ export default function MVSPreview() {
         // Fallback: us_cities_scored has children_5_12 at least
         const { data: cityRow } = await supabase
           .from("us_cities_scored")
-          .select("children_5_12")
+          .select("children_5_12, dual_working_families_pct")
           .ilike("city_name", "austin")
           .eq("state_abbr", "TX")
           .maybeSingle();
@@ -102,6 +102,10 @@ export default function MVSPreview() {
           if (fams > 0 && dualPct > 0 && above150 > 0) {
             affluentCount = Math.round(fams * dualPct * above150);
           }
+        }
+
+        if (affluentCount == null && children5to12 != null && cityRow?.dual_working_families_pct != null) {
+          affluentCount = Math.round(children5to12 * (cityRow.dual_working_families_pct / 100));
         }
 
         if (children5to12 != null && Number.isFinite(children5to12)) {

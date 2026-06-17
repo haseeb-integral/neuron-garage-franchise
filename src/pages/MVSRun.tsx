@@ -39,8 +39,12 @@ export default function MVSRun() {
   const [runs, setRuns] = useState<Run[]>([]);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [providers, setProviders] = useState<Provider[]>([]);
+  const [qaItems, setQaItems] = useState<QaItem[]>([]);
+  const [showResolved, setShowResolved] = useState(false);
   const [loadingRuns, setLoadingRuns] = useState(false);
   const [loadingProviders, setLoadingProviders] = useState(false);
+  const [loadingQa, setLoadingQa] = useState(false);
+
 
   const loadRuns = useCallback(async () => {
     setLoadingRuns(true);

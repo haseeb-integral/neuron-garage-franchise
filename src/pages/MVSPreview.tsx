@@ -50,7 +50,7 @@ export default function MVSPreview() {
         // Providers
         const { data: provRows, error: provErr } = await supabase
           .from("mvs_providers")
-          .select("id, name, tier, price_min, price_max, category_classified, site_count")
+          .select("id, name, tier, price_min, price_max, category_classified")
           .ilike("city", "austin");
         if (provErr) throw provErr;
 

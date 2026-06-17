@@ -340,27 +340,48 @@ export default function MarketValidation() {
       />
 
       <section className="mb-5 rounded-lg border p-4" style={{ borderColor: "#dbe6ff", backgroundColor: "#f5f8ff" }}>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="mb-1 text-[11px] font-bold uppercase tracking-wide" style={{ color: BLUE }}>
-              How to use this page
+        <div className="mb-2 text-[11px] font-bold uppercase tracking-wide" style={{ color: BLUE }}>
+          What this feature does
+        </div>
+        <p className="text-[12px] leading-relaxed" style={{ color: NAVY }}>
+          Market Validation scores each candidate expansion city on a 0–100 composite using live data
+          (camp providers, pricing, weekly absorption, operator presence, enrichment depth). It surfaces
+          the strongest markets so you can decide which cities advance to site-level analysis.
+        </p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-md border bg-white p-3" style={{ borderColor: BORDER }}>
+            <div className="text-[11px] font-bold uppercase tracking-wide" style={{ color: NAVY }}>
+              1 · Review &amp; decide (this page)
             </div>
-            <ol className="ml-4 list-decimal space-y-1 text-[12px]" style={{ color: NAVY }}>
-              <li><strong>Pick a city</strong> from the shortlist table — its live deep-dive (sub-scores, providers, sellout curve) loads below.</li>
-              <li><strong>Mark Pursue / Hold / Drop</strong> per city to capture the expansion decision. Your choices persist across sessions.</li>
-              <li><strong>Export Shortlist CSV</strong> or a per-city PDF brief once you've made the call.</li>
-              <li>Need to (re)score a city? <Link to="/market-validation/rollout" className="font-semibold underline" style={{ color: BLUE }}>Open the Rollout Console</Link> to run the live pipeline.</li>
-            </ol>
+            <ul className="ml-4 mt-1 list-disc space-y-0.5 text-[12px]" style={{ color: NAVY }}>
+              <li>Pick a city in the shortlist below to see its deep-dive.</li>
+              <li>Mark each city <strong>Pursue / Hold / Drop</strong>.</li>
+              <li>Export the shortlist as CSV or download a per-city PDF brief.</li>
+            </ul>
           </div>
-          <Link
-            to="/market-validation/rollout"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px] font-semibold text-white"
-            style={{ backgroundColor: BLUE }}
-          >
-            Rollout Console →
-          </Link>
+          <div className="rounded-md border bg-white p-3" style={{ borderColor: BORDER }}>
+            <div className="flex items-start justify-between gap-2">
+              <div className="text-[11px] font-bold uppercase tracking-wide" style={{ color: NAVY }}>
+                2 · (Re)score cities
+              </div>
+              <Link
+                to="/market-validation/rollout"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold text-white"
+                style={{ backgroundColor: BLUE }}
+              >
+                Open scoring console →
+              </Link>
+            </div>
+            <p className="mt-1 text-[12px]" style={{ color: NAVY }}>
+              The composite scores below come from a live data pipeline. To add a new city or refresh
+              an existing one's score, open the scoring console and click <strong>Run</strong> on that
+              city (≈1–2 min per city). Results flow back into the table here automatically.
+            </p>
+          </div>
         </div>
       </section>
+
+
 
 
 

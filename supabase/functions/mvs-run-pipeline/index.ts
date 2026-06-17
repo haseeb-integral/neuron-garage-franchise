@@ -100,7 +100,16 @@ Deno.serve(async (req) => {
   }
 
 
-  // Reject if a run is already in flight for this city.
+  // Auto-clear stale runs (older than 10 minutes) so a crashed run doesn't lock the city forever.
+  const staleCutoff = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  await admin
+    .from("mvs_pipeline_runs")
+    .update({ status: "failed", error: "auto-cleared stale in-flight run", finished_at: new Date().toISOString() })
+    .eq("city", city)
+    .in("status", ["queued", "running"])
+    .lt("started_at", staleCutoff);
+
+  // Reject if a fresh run is still in flight for this city.
   const { data: inflight } = await admin
     .from("mvs_pipeline_runs")
     .select("id, status")
@@ -113,6 +122,7 @@ Deno.serve(async (req) => {
       { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
+
 
   // Create parent orchestrator run row.
   const { data: run, error: runErr } = await admin

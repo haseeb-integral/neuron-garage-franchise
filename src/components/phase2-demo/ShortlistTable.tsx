@@ -203,6 +203,12 @@ export function ShortlistTable({ rows, activeCityId, onSelectCity, liveOverlays 
               const isActive = r.id === activeCityId;
               const v = d?.verdict ?? "undecided";
               const opt = VERDICT_OPTIONS.find((o) => o.v === v)!;
+              const overlay = liveOverlays?.get(r.id);
+              const isLive = !!overlay;
+              const fmt = (n: number | null | undefined) =>
+                n == null ? "—" : Number.isInteger(n) ? `${n}` : n.toFixed(1);
+              const cell = (live: number | null | undefined, demo: number) =>
+                isLive ? fmt(live) : `${demo}`;
               return (
                 <tr
                   key={r.id}
@@ -214,25 +220,44 @@ export function ShortlistTable({ rows, activeCityId, onSelectCity, liveOverlays 
                   onClick={() => onSelectCity(r.id)}
                 >
                   <td className="px-2 py-2 font-semibold" style={{ color: NAVY }}>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       {isActive && <span className="block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: BLUE }} />}
                       <span>{r.city}, {r.state}</span>
+                      {isLive && (
+                        <span
+                          className="inline-flex items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
+                          style={{ backgroundColor: "#e3f3e7", color: "#1d6b32" }}
+                          title="Live pipeline data via computeMvs helper"
+                        >
+                          Live
+                        </span>
+                      )}
+                      {isLive && overlay?.lowConfidence && (
+                        <span
+                          className="inline-flex items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
+                          style={{ backgroundColor: "#fce7ec", color: "#a3142b" }}
+                          title="Low-confidence flag set on mvs_city_flags"
+                        >
+                          ⚑ Low conf.
+                        </span>
+                      )}
                     </div>
                   </td>
-                  <td className="px-2 py-2 text-right font-black tabular-nums" style={{ color: NAVY }}>{r.composite}</td>
-                  <td className="px-2 py-2 text-right tabular-nums" style={{ color: NAVY }}>{r.pricing}</td>
-                  <td className="px-2 py-2 text-right tabular-nums" style={{ color: NAVY }}>{r.absorption}</td>
-                  <td className="px-2 py-2 text-right tabular-nums" style={{ color: NAVY }}>{r.scaledOperator}</td>
-                  <td className="px-2 py-2 text-right tabular-nums" style={{ color: NAVY }}>{r.diversity}</td>
-                  <td className="px-2 py-2 text-right tabular-nums" style={{ color: NAVY }}>{r.depth}</td>
+                  <td className="px-2 py-2 text-right font-black tabular-nums" style={{ color: NAVY }}>{cell(overlay?.composite, r.composite)}</td>
+                  <td className="px-2 py-2 text-right tabular-nums" style={{ color: NAVY }}>{cell(overlay?.pricing, r.pricing)}</td>
+                  <td className="px-2 py-2 text-right tabular-nums" style={{ color: NAVY }}>{cell(overlay?.absorption, r.absorption)}</td>
+                  <td className="px-2 py-2 text-right tabular-nums" style={{ color: NAVY }}>{cell(overlay?.scaledOperator, r.scaledOperator)}</td>
+                  <td className="px-2 py-2 text-right tabular-nums" style={{ color: NAVY }}>{cell(overlay?.diversity, r.diversity)}</td>
+                  <td className="px-2 py-2 text-right tabular-nums" style={{ color: NAVY }}>{cell(overlay?.depth, r.depth)}</td>
                   <td className="px-2 py-2">
                     <span
                       className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
                       style={{ backgroundColor: SOFT, color: NAVY, border: `1px solid ${BORDER}` }}
                     >
-                      {r.balanceBand}
+                      {isLive && overlay?.balance != null ? `Balance ${overlay.balance.toFixed(0)}` : r.balanceBand}
                     </span>
                   </td>
+
                   <td className="px-2 py-2" onClick={(e) => e.stopPropagation()}>
                     <select
                       value={v}

@@ -48,6 +48,8 @@ export function useLiveMvs(
   const [flag, setFlag] = useState<LiveMvsCityFlag | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshTick, setRefreshTick] = useState(0);
+
 
   // weightsKey = stable signature for memo
   const weightsKey = JSON.stringify(options?.weights ?? {});

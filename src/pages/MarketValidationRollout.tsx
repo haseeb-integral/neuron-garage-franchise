@@ -156,6 +156,15 @@ export default function MarketValidationRollout() {
 
   const [invokingCity, setInvokingCity] = useState<string | null>(null);
 
+  const { rows: additions, addCity } = useShortlistAdditions();
+  const SHORTLISTED_CITIES = useMemo<{ city: string; state: string }[]>(
+    () => [
+      ...BASE_SHORTLIST,
+      ...additions.map((a) => ({ city: `${a.city}, ${a.state}`, state: a.state })),
+    ],
+    [additions],
+  );
+
   // Role gate.
   useEffect(() => {
     if (!user) {

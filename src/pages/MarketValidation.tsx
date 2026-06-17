@@ -160,6 +160,34 @@ export default function MarketValidation() {
   const activeRow = SHORTLIST_DEMO.find((r) => r.id === activeCityId) ?? SHORTLIST_DEMO[0];
   const isAnchor = activeCityId === "san-antonio-tx";
 
+  // Phase 5 Turn 5.1 — live overlay for Austin only. When more cities flip
+  // to mvs_data_source='live', extend this by adding more useLiveMvs hooks
+  // (or refactor into a multi-city loader). Static demo path is untouched
+  // for every city not in this overlay map.
+  const austinLive = useLiveMvs("Austin, TX");
+  const isAustinLive = austinLive.flag?.mvs_data_source === "live";
+  const liveOverlays = useMemo<Map<string, LiveOverlay>>(() => {
+    const m = new Map<string, LiveOverlay>();
+    if (isAustinLive && austinLive.result) {
+      const r = austinLive.result;
+      m.set("austin-tx", {
+        composite: r.mvs,
+        pricing: r.scores.pricingAcceptance,
+        absorption: r.scores.marketAbsorption,
+        scaledOperator: r.scores.scaledOperator,
+        diversity: r.scores.enrichmentDiversity,
+        depth: r.scores.marketDepth,
+        balance: r.scores.marketBalance,
+        lowConfidence: austinLive.flag?.low_confidence_badge ?? false,
+      });
+    }
+    return m;
+  }, [isAustinLive, austinLive.result, austinLive.flag]);
+
+  const isActiveLive = liveOverlays.has(activeCityId);
+
+
+
   // 1A-LOV-5 — Sellout curve from sample weeks (% sold_out + waitlist).
   const weekLabels = data.premiumProviders[0]?.sampleWeeks.map((w) => w.label) ?? [];
   const selloutCurve = weekLabels.map((_, idx) => {

@@ -415,7 +415,7 @@ export default function MarketValidationRollout() {
             <div>
               <div className="font-semibold">
                 {calibration.topQuartile
-                  ? "Calibration OK — Boston in top quartile. Safe to demo."
+                  ? "Calibration OK — Boston in top quartile. Safe to share with the client."
                   : `Calibration FAILED — Boston ranked ${calibration.bostonRank}/8. Halt Tier A flip; review weights before the client meeting.`}
               </div>
               <div className="mt-1 text-[11px] opacity-80">

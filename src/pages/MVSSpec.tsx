@@ -4,86 +4,225 @@ import { DownloadMDButton } from "@/components/DownloadMDButton";
 
 // Mirror of docs/feature-1a-mvs-v1-spec.md kept here so the page is self-contained
 // and downloadable from the app. If the .md file changes, update this constant too.
-const SPEC_MD = `# Feature 1A — Market Validation Engine v1.0 Spec
+const SPEC_MD = `# Feature 1A Market Validation Spec doc by Lovable
 
-> **Source of truth.** Locked v1.0 scope, naming, and design decisions for the Market Validation Engine. The Feature 1A Lovable Build Plan executes against this spec turn-by-turn. The MVS Methodology page holds the math.
+# **Feature 1A — Market Validation Engine**
+
+## **v1.0 Spec (Lovable internal)**
+
+**Status:** Spec only. Build plan to follow. **Source of truth:** This chat + MVS Methodology doc. **Naming:** MVS (Market Validation Score). Do not surface PEES anywhere in the app or PDF.
 
 ---
 
-## 1. Scope (what v1.0 IS)
+## **1. What this feature does**
 
-- One score per shortlisted city: the MVS (Market Validation Score). Replaces earlier names PEE and PCC.
-- 6 sub-scores, weight-blended into a single composite. Each normalized 0–100 across the shortlist (comparative, not national).
-- Composite formula (locked):
+Takes a city from the shortlist and produces a **single composite score (MVS, 0–100)** that answers: *"Is this a validated premium enrichment market with active, paying demand?"*
 
-  MVS = 0.20 × Pricing Acceptance
-      + 0.25 × Market Absorption        ← dominant, demand-side
-      + 0.20 × Scaled Operator
-      + 0.10 × Enrichment Diversity
-      + 0.10 × Market Depth
-      + 0.15 × Market Balance           ← inside the composite
+Output surfaces:
 
-- Sawyer-only data source for v1.0. No ActivityHero, no Apify Google Maps. Adding additional platforms is a v1.1 decision.
-- Single mid-March scrape per city in Year 1 — populates Sellout Rate only. Time-to-Sellout and YoY Velocity return null with a year_2_signal flag.
-- Manual trigger. A manager-only "Run Pipeline" button per city. No scheduler in v1.0.
-- 7 Tier A cities + Austin calibration. Live rollout target: NYC, Houston, Chicago, Boston, San Antonio, Philadelphia, LA. Austin is the calibration city built first end-to-end.
-- Tier B cities (14) stay on sample data behind the mvs_data_source per-city flag until v1.1.
+* MVS number on the city row in the shortlist table.
+* 6 sub-score breakdown in the city detail panel.
+* Premium provider table (real names, prices, weekly sellout status).
+* Branded PDF Market Brief.
+* Every score traces to a source URL and a stored screenshot.
 
-## 2. Scope (what v1.0 is NOT)
+Not in scope: predicting any individual Neuron Garage location's success. Site-level work lives in Feature 1B.
 
-Explicitly excluded — do not build, do not propose:
+---
 
-- ActivityHero, CampMinder, CampBrain, or any non-Sawyer platform.
-- Apify Google Maps actor (deferred to v1.1).
-- Inngest / Trigger.dev scheduling. Manual trigger only.
-- Time-to-Sellout and YoY Velocity as scored inputs (Year 2).
-- Scaled Operator "Years in City" sub-component.
-- Moving Market Balance outside the composite.
-- Tier B pipeline runs.
-- Across-shortlist normalization changes.
+## **2. v1.0 scope guardrails (the "easy route")**
 
-## 3. Naming
+| Decision | v1.0 | Deferred to |
+| :---- | :---- | :---- |
+| Discovery source | **Sawyer only** | ActivityHero v1.1, Apify v1.1 (next week) |
+| Scheduling | **Manual trigger** ("Run Pipeline" button per city) | Inngest/Trigger.dev post-client-meeting |
+| Cities in scope | **7 Tier A cities + Austin** (calibration) | 14 Tier B cities stay on Sample Data badge |
+| Scrape cadence | **1 scrape per city per run** | 5-scrape Jan/Feb/Mar/Apr/May in v2 |
+| Market Absorption formula | **Sellout Rate only** (carries full weight) | Time-to-Sellout + YoY Velocity in v2 |
+| Normalization | **Fixed reference ranges** (see §5) | Across-shortlist normalization once ≥20 cities have live data |
+| QA queue | **In-app review UI**, confidence < 0.7 routes there | — |
 
-- Canonical composite name: MVS (Market Validation Score).
-- Deprecated names PEE and PCC must not appear in new code, tables, UI, or docs.
-- Database namespace: mvs_* tables, mvs-* edge functions, MVS_* env flags.
+**Tier A cities (v1.0 launch set):** New York NY, Houston TX, Chicago IL, Boston MA, San Antonio TX, Philadelphia PA, Los Angeles CA. **Calibration test city (run first):** Austin TX.
 
-## 4. Premium Provider Definition
+---
 
-| Tier      | Definition |
-| --------- | ---------- |
-| Premium   | Price ≥ $400/week AND STEM/maker/robotics/coding/science/art/theater/music/academic enrichment AND not childcare-positioned |
-| Mid       | $250–$399/week, enrichment-positioned |
-| Budget    | < $250/week OR community/parks-and-rec/YMCA-positioned |
-| Community | Faith-based, scholarship-driven, or municipally subsidized |
+## **3. MVS composite — unchanged from methodology**
 
-Only Premium-tier providers flow into the six sub-scores.
+MVS = 0.20 × Pricing Acceptance
+    + 0.25 × Market Absorption          ← dominant demand signal
+    + 0.20 × Scaled Operator
+    + 0.10 × Enrichment Diversity
+    + 0.10 × Market Depth
+    + 0.15 × Market Balance Index
 
-## 5. Audit & confidence
+Rounded to one decimal place. All sub-scores 0–100. Weights exposed as sliders with Show Formula drawers per v1.0 doctrine.
 
-- Screenshot capture is non-negotiable. Bucket: mvs-screenshots.
-- Confidence < 0.7 on week extraction → mvs_qa_queue.
-- City low-confidence badge if >20% of Premium providers have no public registration page.
+**SOW divergence flag (for client meeting, not for v1.0 build):** SOW v2.2 says Market Balance sits *next to* the composite, not inside it. v1.0 follows the methodology (inside, 15%) because the demo UI already renders it that way and "easy route" means no UI rework. We surface this as an open question for Sam.
 
-## 6. Operating doctrine
+---
 
-- One calibrated number everywhere — single helper src/lib/mvs/computeMvs.ts.
-- Demo path stays alive — mvs_data_source per-city flag gates live vs sample.
-- Kill switch — MVS_PIPELINE_ENABLED env (default false).
-- Atomic & reversible turns.
-- No edits outside the MVS surface area.
+## **4. Pipeline — 5 stages**
 
-## 7. Calibration gate (Phase 7)
+One manual run per city. Stages 1–4 write to Supabase, Stage 5 reads from Supabase and computes scores via the **shared MVS helper** (Brett's "one calibrated number everywhere" rule — table, panel, compare modal, PDF all read from this helper, never from stored scores).
 
-Boston MA must land in the top quartile of the 8-city live set. If not, halt rollout.
+Stage 1 → Sawyer search scrape         → discovery + pricing + listing URLs
+Stage 2 → Premium tier classification  → filter to Premium (≥$400/wk, eligible category)
+Stage 3 → Registration page extraction → week-level status + screenshots
+Stage 4 → Census ACS pull              → Market Balance + Operator denominators
+Stage 5 → Score calculation            → 6 sub-scores → MVS composite
 
-## 8. Five open questions — all answered yes in chat
+### **Stage 1 — Sawyer discovery (Firecrawl)**
 
-1. Sawyer-only for v1.0, defer ActivityHero / Apify to v1.1? → Yes.
-2. Keep the canonical name MVS (drop PEE and PCC)? → Yes.
-3. Six sub-scores per methodology, Market Balance inside composite at 15%? → Yes.
-4. Manual trigger only in v1.0 (no scheduler)? → Yes.
-5. Roll out to 7 Tier A cities after Austin calibration, Tier B remains on sample until v1.1? → Yes.
+* **Tool:** Firecrawl, JS-render wait on, full-page screenshot on, rotating proxies on.
+* **URL pattern:** https://www.sawyertools.com/camps?location={city} (confirm exact pattern on Austin run).
+* **Extract per provider:** name, weekly price, category (raw), individual Sawyer listing URL, site count in metro, platform = "sawyer".
+* **Persist:** providers table + screenshot in Supabase Storage keyed by scrape date + URL.
+
+### **Stage 2 — Premium tier classification (Gemini 2.0 Flash via Lovable AI Gateway)**
+
+* Input: every row from Stage 1.
+* Tag each provider: **Premium / Mid / Budget / Community** (4-tier per methodology).
+* Only Premium flows into score calc. Other tiers persist for pricing-ladder context.
+* Eligible categories for Premium: STEM, Robotics, Coding, Science, Maker, Art, Theater, Music, Academic Enrichment, Debate, Chess, Entrepreneurship.
+
+### **Stage 3 — Registration page extraction (Firecrawl + Gemini)**
+
+* For each Premium provider's Sawyer listing URL, fetch the page (JS-render wait), screenshot it, then Gemini extracts a strict JSON of week records.
+* **Week status enum (5 values only):** sold_out | waitlist | low_availability | open | unknown.
+* **JSON schema per week:** week_label, theme, price, age_range, status, status_evidence, confidence (0–1).
+* **Confidence gate:** ≥0.7 → write to weeks table; <0.7 → write to weeks AND insert into qa_queue.
+* **Low-confidence city badge:** if >20% of Premium providers have no public registration page, city gets a "Low Confidence" badge on the row.
+
+### **Stage 4 — Census ACS pull (reused pipeline from v1.0)**
+
+* Pulls: dual-income households with HH income ≥$150k and children ages 5–12 → "Affluent Dual-Income Family Count" (denominator for Score 6).
+* Children ages 5–12 → denominator for Direct Competitor Load in Score 3.
+
+### **Stage 5 — Score calculation**
+
+See §5. All math lives in **one helper** (e.g. src/lib/mvs/computeMvs.ts). Every UI surface reads from it. No stored composite scores on the row — always recomputed.
+
+---
+
+## **5. Sub-score formulas + v1.0 reference ranges**
+
+Normalization in v1.0 is **min-max against fixed reference ranges** (capped 0–100), not across the live 7-city set. Ranges below come from the methodology doc.
+
+### **Score 1 — Pricing Acceptance (20%)**
+
+0.40 × normalize(median weekly price,       range $300–$700)
+0.40 × normalize(75th-percentile price,     range $400–$800)
+0.20 × (% Premium providers at ≥ $500/week,  0–100)
+
+### **Score 2 — Market Absorption (25%) — v1.0 = Sellout Rate only**
+
+Sellout Rate            = (sold_out weeks + waitlist weeks) ÷ total weeks scraped
+Market Absorption Score = normalize(Sellout Rate, range 0%–80%)
+
+Time-to-Sellout and YoY Velocity display in the drawer as "Year 2 signal — not yet computed."
+
+### **Score 3 — Scaled Operator (20%)**
+
+Operator Validation    = count of distinct watchlist operators present (cap 0–8)
+Direct Competitor Load = Σ site counts for operators tagged 'direct'
+                         per 10,000 kids ages 5–12
+
+Scaled Operator Score =
+  0.65 × normalize(Operator Validation, 0–8)
++ 0.35 × (100 − normalize(Direct Competitor Load, 0–5 per 10k))
+
+Operator watchlist (seed, editable in UI): Galileo, Steve & Kate's, Camp Invention, Snapology, Code Ninjas, iD Tech, Mad Science, Engineering For Kids, Bricks 4 Kidz, Kids Inventor Lab, Maker Kids, theCoderSchool, Wiz Kidz, Sylvan summer, Mathnasium summer. Each tagged default direct/adjacent/distant, editable per city.
+
+**SOW divergence flag:** SOW v2.2 adds a "Years in City" signal we don't have a source for in v1.0. Deferred to v1.1 with the Apify add.
+
+### **Score 4 — Enrichment Diversity (10%)**
+
+Category Count  = distinct eligible categories with ≥1 premium provider
+Diversity Ratio = Category Count ÷ Premium Provider Count
+
+Score = 0.70 × normalize(Category Count, 2–10)
+      + 0.30 × normalize(Diversity Ratio, 0.1–0.6)
+
+### **Score 5 — Market Depth (10%)**
+
+Market Depth Score = normalize(Premium Provider Count, 4–40)
+
+### **Score 6 — Market Balance Index (15%)**
+
+Coverage Ratio = Affluent Dual-Income Family Count ÷ Premium Provider Count
+Score          = normalize(Coverage Ratio, 50–500)
+
+Tier labels:
+  ≥ 350  Underserved
+  200–349 Balanced
+  100–199 Competitive
+  < 100   Saturated
+
+---
+
+## **6. Data model (Supabase)**
+
+| Table | Key fields |
+| :---- | :---- |
+| mvs_providers | provider_id, provider_name, city, state, weekly_price, category_raw, category_classified, tier, listing_url, site_count, platform, scraped_at, screenshot_url |
+| mvs_weeks | week_id, provider_id, city, state, scrape_date, week_label, theme, price, age_range, status, status_evidence, confidence, screenshot_url, flagged_for_qa |
+| mvs_qa_queue | week_id, provider_id, screenshot_url, gemini_classification, confidence, corrected_status, reviewed_by, reviewed_at |
+| mvs_operator_watchlist | operator_name, default_overlap, notes |
+| mvs_city_overlap_overrides | city, state, operator_name, overlap (per-city tag overrides) |
+| mvs_pipeline_runs | run_id, city, state, triggered_by, started_at, completed_at, status, error, provider_count, week_count, qa_flagged_count |
+
+Tables are namespaced mvs_* so they don't collide with v1.0 City Search tables. Standard RLS + GRANTs per project conventions. Screenshots in Supabase Storage bucket mvs-screenshots.
+
+**No mvs_city_scores table.** Composite + sub-scores are always recomputed from mvs_providers + mvs_weeks + ACS via the shared helper. This is Brett's "one calibrated number everywhere" rule applied to 1A.
+
+---
+
+## **7. UI behavior (what changes on existing demo surfaces)**
+
+* **City row:** MVS number from the shared helper. Badge: Live (Tier A) or Sample Data (Tier B) or Low Confidence (>20% missing reg pages).
+* **City detail panel:** 6 sub-score cards, each with Show Formula drawer. Drawer shows the formula, the inputs, the normalize range used, and the resulting normalized 0–100 value.
+* **Premium provider table:** real rows from mvs_providers filtered to tier = Premium for the city, with weekly price and a status pill rolled up from mvs_weeks.
+* **"Run Pipeline" button:** manual trigger per city (admin only). Disabled while a run is in flight. Surfaces mvs_pipeline_runs status.
+* **QA Queue page:** lists weeks with flagged_for_qa = true, side-by-side screenshot + Gemini classification + correction form.
+* **Weight sliders:** persist per user, reset-to-defaults button. Sliders recompute the composite via the same helper, no separate code path.
+* **PDF Market Brief:** 12 sections per SOW Addendum A — Exec Summary, MVS Composite, Market Balance Index, Pricing Analysis, Enrichment Diversity, Scaled Operator, Market Depth, Market Strengths, Market Risks, SWOT, Recommendation, Sources & Screenshots appendix. Generates in <30s.
+
+---
+
+## **8. Edge functions (server-side)**
+
+| Function | Purpose | Secrets |
+| :---- | :---- | :---- |
+| mvs-run-pipeline | Orchestrates Stages 1–4 for a single city | FIRECRAWL_API_KEY, LOVABLE_API_KEY |
+| mvs-extract-providers | Stage 1 + Stage 2 | FIRECRAWL_API_KEY, LOVABLE_API_KEY |
+| mvs-extract-weeks | Stage 3 (Firecrawl + Gemini) | FIRECRAWL_API_KEY, LOVABLE_API_KEY |
+| mvs-acs-pull | Stage 4 (reuse v1.0 ACS pipeline) | existing |
+| mvs-generate-brief | Server-side PDF generation | none beyond Supabase |
+
+Client never holds Firecrawl or Lovable AI Gateway keys.
+
+---
+
+## **9. Calibration gates (must pass before client meeting)**
+
+1. **Austin run produces clean output at every stage** (smoke test before opening Tier A).
+2. **Boston MA lands in the top quartile** of the live Tier A set (proxy for SOW's full top-quartile list, which we can't fully test until v1.1 expands coverage).
+3. **Every Tier A city row** shows: live MVS, all 6 sub-scores with non-null inputs, real provider names, at least one stored screenshot per provider.
+4. **PDF Market Brief** generates in <30s and every numeric claim links to a source URL or screenshot.
+5. **Slider change** updates the composite on all 5 surfaces (row, panel, compare modal, weight drawer, PDF) using the same helper. Brett's rule.
+
+---
+
+## **10. Out of scope for v1.0 (write down so we don't drift)**
+
+* ActivityHero, CampBrain, CampMinder discovery.
+* Apify Google Maps discovery.
+* Inngest/Trigger.dev scheduling.
+* Time-to-Sellout and YoY Velocity (need multi-scrape history).
+* Scaled Operator "Years in City" signal.
+* Moving Market Balance outside the composite (open question for Sam).
+* Tier B city pipeline runs (stay on Sample Data badge).
+* Across-shortlist normalization (need ≥20 live cities first).
 `;
 
 const LOCKED_IN = [

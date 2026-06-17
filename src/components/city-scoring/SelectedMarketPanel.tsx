@@ -1,5 +1,10 @@
 import { memo } from "react";
-import { ArrowRight, Bookmark, BookmarkCheck, Eye, FileText, GitCompare } from "lucide-react";
+import { ArrowRight, Bookmark, BookmarkCheck, Eye, FileText, GitCompare, Sparkles, Loader2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useState } from "react";
+import { toast } from "sonner";
+import { useShortlistAdditions } from "@/lib/mvs/useShortlistAdditions";
+import { toStateAbbr } from "@/lib/usStates";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { VISIBLE_CATEGORIES, type Category } from "@/lib/cityScoringPageHelpers";

@@ -335,7 +335,15 @@ export default function MarketValidation() {
               <BarChart3 size={14} />
               Open Austin MVS preview
             </Link>
+            <Link
+              to="/market-validation/rollout"
+              className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px] font-semibold text-white"
+              style={{ backgroundColor: BLUE }}
+            >
+              Tier A Rollout →
+            </Link>
           </div>
+
         </div>
         <div className="border-t pt-2" style={{ borderColor: BORDER }}>
           <PipelineStatusStrip city="Austin, TX" />

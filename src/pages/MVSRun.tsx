@@ -153,10 +153,12 @@ export default function MVSRun() {
       if (error) throw new Error(error.message);
       const runId = (data as { run_id?: string })?.run_id;
       const inserted = (data as { providers_inserted?: number })?.providers_inserted ?? 0;
+      const qaQueued = (data as { qa_queued?: number })?.qa_queued ?? 0;
       toast({
         title: "Discovery complete",
-        description: `${inserted} providers inserted for ${trimmed}.`,
+        description: `${inserted} providers inserted · ${qaQueued} flagged for QA (${trimmed}).`,
       });
+
       await loadRuns();
       if (runId) setSelectedRunId(runId);
     } catch (err) {

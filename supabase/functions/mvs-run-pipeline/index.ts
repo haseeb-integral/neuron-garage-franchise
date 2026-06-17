@@ -39,7 +39,7 @@ type StepName = "discover" | "classify" | "extract";
 const STEP_FUNCTIONS: Record<StepName, string> = {
   discover: "mvs-discover-providers",
   classify: "mvs-classify-tier",
-  extract: "mvs-extract-weeks-all",
+  extract: "mvs-extract-weeks",
 };
 
 

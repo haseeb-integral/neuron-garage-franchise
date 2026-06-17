@@ -65,6 +65,8 @@ export default function MVSPreview() {
         </div>
       </div>
 
+      <RunPipelineButton city="Austin, TX" onComplete={refresh} />
+
       {loading && (
         <div className="flex h-48 items-center justify-center rounded-lg border border-[#eef2f7] bg-white">
           <Loader2 className="h-6 w-6 animate-spin text-[#174be8]" />

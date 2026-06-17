@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
 
   const { data: run, error: runErr } = await admin
     .from("mvs_pipeline_runs")
-    .insert({ city, status: "running", firecrawl_calls: 0 })
+    .insert({ city, status: "running", firecrawl_calls: 0, started_at: new Date().toISOString() })
     .select()
     .single();
   if (runErr || !run) {

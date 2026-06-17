@@ -1,8 +1,8 @@
 // Phase 5 / Turn 5.2 — Admin-only Run Pipeline button + status surface.
 //
-// Visible only when:
-//   - Current city's mvs_data_source = 'live' (rendered inside LiveCityDeepDive)
-//   - Current user has manager or admin role
+// Visible wherever rendered. The backend function still enforces manager/admin
+// before spending Firecrawl calls, so the UI should not disappear because of a
+// stale client-side role check.
 //
 // Polls latest mvs_pipeline_runs row for the city every 3s while
 // queued/running. Disabled + spinner during in-flight runs. Toast on
@@ -12,7 +12,6 @@ import { useCallback, useEffect, useState } from "react";
 import { Loader2, Play, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useIsManager } from "@/hooks/dbHealth/useIsManager";
 
 type RunStatus = "queued" | "running" | "done" | "failed";
 
@@ -32,7 +31,6 @@ interface Props {
 }
 
 export function RunPipelineButton({ city, onComplete }: Props) {
-  const { isManager, loading: roleLoading } = useIsManager();
   const [latest, setLatest] = useState<RunRow | null>(null);
   const [invoking, setInvoking] = useState(false);
   const [lastTerminalId, setLastTerminalId] = useState<string | null>(null);
@@ -93,8 +91,6 @@ export function RunPipelineButton({ city, onComplete }: Props) {
       setInvoking(false);
     }
   };
-
-  if (roleLoading || !isManager) return null;
 
   const busy = invoking || inFlight;
   const StatusIcon = latest?.status === "done"

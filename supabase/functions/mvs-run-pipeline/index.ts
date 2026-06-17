@@ -150,7 +150,8 @@ Deno.serve(async (req) => {
     let json: any = null;
     try { json = JSON.parse(text); } catch { /* keep raw text */ }
     if (!res.ok) {
-      throw new Error(`${step} failed: ${res.status} ${json?.error ?? text.slice(0, 300)}`);
+      const detail = json?.error ?? json?.message ?? text?.slice(0, 500) ?? `HTTP ${res.status}`;
+      throw new Error(`step '${step}' failed (HTTP ${res.status}): ${detail}`);
     }
     const calls = Number(json?.firecrawl_calls ?? 0);
     totalCalls += calls;

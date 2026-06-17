@@ -12,8 +12,9 @@ export function LowConfidenceBadge({
   if (level === "high") return null;
   const palette =
     level === "low"
-      ? { bg: "#fce7ec", fg: "#a3142b", label: "Low conf." }
+      ? { bg: "#fef3c7", fg: "#92400e", label: "Low conf." }
       : { bg: "#fff1d6", fg: "#925100", label: "Med. conf." };
+
   return (
     <span
       className="inline-flex items-center gap-0.5 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"

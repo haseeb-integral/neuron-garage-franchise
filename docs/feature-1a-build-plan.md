@@ -65,7 +65,17 @@
 \- \*\*Human-test gate (end of Phase 3):\*\* Brett/Haseeb spot-checks 3 provider pages against extracted week rows. Screenshots present. QA queue has expected low-confidence weeks.  
 \- \*\*Unwind:\*\* \`DELETE FROM mvs\_weeks WHERE city='Austin'\` and reset flag.
 
+\#\#\# Phase 3 — implementation log (decisions made while building)
+
+\- \*\*Turn 3.2 ships as a separate orchestrator function\*\* \`mvs-extract-weeks-austin-all\` instead of literally re-invoking \`mvs-extract-weeks\` N times. Same per-provider logic runs inline, sequentially, in one function. Rationale: nested edge-function HTTP hops are slower and make the Firecrawl cost ceiling harder to enforce. Turn 3.1's single-provider function stays untouched so its unwind path is preserved.  
+\- \*\*Hard per-run cap of 25 providers\*\* in the orchestrator (\`MAX\_PROVIDERS = 25\`) — keeps a single Austin run under the 30-Firecrawl-call ceiling from the plan's operating rules.  
+\- \*\*Sequential, not parallel\*\* — keeps Firecrawl spend predictable, avoids hammering Sawyer.  
+\- \*\*"No public registration page" is defined as:\*\* missing \`url\` OR Firecrawl non-2xx OR markdown shorter than 200 chars. >20% of providers → \`mvs\_city\_flags.low\_confidence\_badge = true\` for Austin, and \`last\_run\_id\` stamped on the same row.  
+\- \*\*Kill switch \+ manager-role\*\* are both enforced in code on both Stage-3 functions; \`verify\_jwt\` is not relied on.
+
 \---
+
+
 
 # \#\# Phase 4 — Score helper \+ admin preview (2 turns)
 

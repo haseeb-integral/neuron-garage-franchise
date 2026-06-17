@@ -310,6 +310,7 @@ export default function MarketValidation() {
         rows={SHORTLIST_DEMO}
         activeCityId={activeCityId}
         onSelectCity={setActiveCityId}
+        liveOverlays={liveOverlays}
       />
 
       {/* Decision points — what is Brett actually deciding on this page? */}
@@ -325,13 +326,25 @@ export default function MarketValidation() {
         </ol>
       </section>
 
-      {/* Active city deep-dive panel */}
-      {!isAnchor && (
+      {/* Live deep-dive (Phase 5 Turn 5.1) — replaces the static demo deep-dive
+          when the active city's mvs_data_source flag is 'live'. */}
+      {isActiveLive && (
+        <LiveCityDeepDive
+          cityKey={`${activeRow.city}, ${activeRow.state}`}
+          cityDisplay={activeRow.city}
+          stateDisplay={activeRow.state}
+        />
+      )}
+
+      {/* Active city deep-dive panel (demo path — unchanged) */}
+      {!isActiveLive && !isAnchor && (
         <div className="mb-3 rounded-md border p-2 text-[11px]" style={{ borderColor: BORDER, backgroundColor: "#fff1d6", color: "#925100" }}>
           Deep-dive below shows <strong>San Antonio, TX</strong> (the demo anchor). {activeRow.city}, {activeRow.state} wires up
           to the Manus pipeline in Week 3; the table above already carries that city's verdict.
         </div>
       )}
+
+
 
       {/* Composite card — left stack flush-left, fixed-width right sidebar */}
       <section

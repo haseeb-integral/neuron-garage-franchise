@@ -371,6 +371,91 @@ export default function MVSRun() {
           </TableBody>
         </Table>
       </div>
+
+      <div className="rounded-lg border border-border bg-card">
+        <div className="flex items-center justify-between border-b border-border p-4">
+          <div>
+            <h2 className="text-sm font-semibold">
+              QA queue {selectedRun ? `· ${selectedRun.city}` : ""}
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Auto-flagged on insert: confidence &lt; 0.7 or missing price.{" "}
+              {qaItems.length} {showResolved ? "total" : "open"} item{qaItems.length === 1 ? "" : "s"}.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowResolved((v) => !v)}
+            >
+              {showResolved ? "Hide resolved" : "Show resolved"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => selectedRunId && loadQa(selectedRunId, showResolved)}
+              disabled={loadingQa}
+            >
+              <RefreshCw className={`mr-1 h-3 w-3 ${loadingQa ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Reason</TableHead>
+              <TableHead>Confidence</TableHead>
+              <TableHead>Flagged</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loadingQa && (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
+                  Loading…
+                </TableCell>
+              </TableRow>
+            )}
+            {!loadingQa && qaItems.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
+                  {selectedRun ? "Nothing in QA for this run." : "Select a run to inspect QA items."}
+                </TableCell>
+              </TableRow>
+            )}
+            {qaItems.map((q) => (
+              <TableRow key={q.id}>
+                <TableCell className="text-xs">{q.reason}</TableCell>
+                <TableCell className="text-xs">
+                  {q.confidence != null ? Number(q.confidence).toFixed(2) : "—"}
+                </TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {new Date(q.created_at).toLocaleString()}
+                </TableCell>
+                <TableCell>
+                  {q.resolved_at ? (
+                    <Badge variant="outline">resolved</Badge>
+                  ) : (
+                    <Badge variant="secondary">open</Badge>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {!q.resolved_at && (
+                    <Button size="sm" variant="outline" onClick={() => resolveQa(q.id)}>
+                      <Check className="mr-1 h-3 w-3" /> Resolve
+                    </Button>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     </div>
+
   );
 }

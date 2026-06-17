@@ -370,6 +370,10 @@ export default function MarketValidationRollout() {
     );
   }
 
+  const doneCount = TIER_A.filter((c) => latestRuns[c.city]?.status === "done").length;
+  const totalCount = TIER_A.length;
+  const allDone = doneCount === totalCount;
+
   return (
     <div className="mx-auto max-w-[1200px] p-6">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -385,7 +389,7 @@ export default function MarketValidationRollout() {
             Tier A Rollout Console
           </h1>
           <p className="mt-0.5 text-[12px] text-[#526078]">
-            Run the pipeline for each city — results go live automatically. Brett's rule: every composite below is recomputed live.
+            Score the 8 priority cities for market validation. Run each city once; the composite refreshes automatically.
           </p>
         </div>
         <button
@@ -397,43 +401,34 @@ export default function MarketValidationRollout() {
         </button>
       </div>
 
-      {/* Calibration banner */}
-      {calibration.ready ? (
-        <div
-          className={`mb-5 rounded-lg border p-3 text-[12px] ${
-            calibration.topQuartile
-              ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-              : "border-red-200 bg-red-50 text-red-900"
-          }`}
-        >
-          <div className="flex items-start gap-2">
-            {calibration.topQuartile ? (
-              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-            ) : (
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            )}
-            <div>
-              <div className="font-semibold">
-                {calibration.topQuartile
-                  ? "Calibration OK — Boston in top quartile. Safe to share with the client."
-                  : `Calibration FAILED — Boston ranked ${calibration.bostonRank}/8. Halt Tier A flip; review weights before the client meeting.`}
-              </div>
-              <div className="mt-1 text-[11px] opacity-80">
-                Ranked composites:{" "}
-                {calibration.ranked.map((r, i) => (
-                  <span key={r.city} className="mr-2">
-                    {i + 1}. {r.city.split(",")[0]} {r.score.toFixed(1)}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="mb-5 rounded-lg border border-dashed border-[#cfd8e6] bg-white p-3 text-[11px] text-[#526078]">
-          Calibration gate inactive — every Tier A city needs a <span className="font-mono">done</span> run + non-null composite to evaluate Boston's rank.
-        </div>
-      )}
+      {/* How this page works */}
+      <div className="mb-5 rounded-lg border border-[#dbe6ff] bg-[#f5f8ff] p-4 text-[12px] text-[#07142f]">
+        <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-[#174be8]">How this works</div>
+        <ol className="ml-4 list-decimal space-y-1">
+          <li><strong>Click Run</strong> on each city. The pipeline pulls live camp provider data, prices, and weekly absorption from the web (≈1–2 min per city). Runs are sequential to keep costs predictable.</li>
+          <li><strong>Composite score appears</strong> in the table — a 0–100 Market Validation Score blending pricing acceptance, absorption, scaled-operator presence, enrichment diversity, and market depth.</li>
+          <li><strong>Go back to Market Validation</strong> to see the full city deep-dive, sub-scores, and per-city Pursue / Hold / Drop decisions.</li>
+        </ol>
+      </div>
+
+      {/* Progress strip */}
+      <div
+        className={`mb-5 flex items-center gap-2 rounded-lg border p-3 text-[12px] ${
+          allDone
+            ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+            : "border-[#cfd8e6] bg-white text-[#526078]"
+        }`}
+      >
+        {allDone ? (
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
+        ) : (
+          <Loader2 className={`h-4 w-4 shrink-0 ${anyRunning ? "animate-spin" : ""}`} />
+        )}
+        <span>
+          <strong>{doneCount}</strong> of <strong>{totalCount}</strong> cities scored
+          {allDone ? " — all Tier A cities have live composites." : " — run the remaining cities to complete the shortlist."}
+        </span>
+      </div>
 
       {/* Table */}
       <div className="overflow-hidden rounded-lg border border-[#e5eaf2] bg-white shadow-sm">
@@ -465,71 +460,9 @@ export default function MarketValidationRollout() {
         </table>
       </div>
       <div className="mt-2 text-[11px] text-[#8a96aa]">
-        Runs are sequential — one city at a time keeps Firecrawl cost predictable and isolates failures. Tier B (14 cities) stays on Sample Data until v1.1.
-      </div>
-
-      {/* Human-test signoff */}
-      <div className="mt-8">
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-[15px] font-bold text-[#07142f]">Human-test gate signoff</h2>
-          {readyForClientMeeting ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 border border-emerald-200">
-              <CheckCircle2 className="h-3 w-3" /> Ready for client meeting ({signedCities.length} Tier A signed off)
-            </span>
-          ) : (
-            <span className="text-[11px] text-[#526078]">
-              Sign off ≥ 2 non-Austin Tier A cities to unlock the client-meeting pill.
-            </span>
-          )}
-        </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {TIER_A.map((c) => {
-            const checks = signoff[c.city] ?? EMPTY_CHECKS;
-            const fully = isFullySignedOff(checks);
-            return (
-              <div
-                key={c.city}
-                className={`rounded-lg border bg-white p-3 ${
-                  fully ? "border-emerald-300" : "border-[#e5eaf2]"
-                }`}
-              >
-                <div className="mb-2 flex items-center justify-between">
-                  <div className="text-[13px] font-semibold text-[#07142f]">{c.city}</div>
-                  {fully && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}
-                </div>
-                {[
-                  { key: "rowMatchesPanel", label: "Table row composite matches detail panel" },
-                  { key: "formulaDrawer", label: "Show Formula drawer opens, numbers match" },
-                  { key: "sliderUpdates", label: "Composite updates when weight slider moves" },
-                  { key: "pdfExport", label: "PDF exports cleanly, numbers match on-screen" },
-                ].map((row) => (
-                  <label key={row.key} className="flex items-start gap-2 py-0.5 text-[11.5px] text-[#07142f]">
-                    <input
-                      type="checkbox"
-                      checked={!!checks[row.key as keyof SignoffChecks]}
-                      onChange={(e) =>
-                        updateSignoff(c.city, { [row.key]: e.target.checked } as Partial<SignoffChecks>)
-                      }
-                      className="mt-0.5 h-3.5 w-3.5"
-                    />
-                    <span>{row.label}</span>
-                  </label>
-                ))}
-                <input
-                  type="text"
-                  value={checks.signedBy}
-                  onChange={(e) => updateSignoff(c.city, { signedBy: e.target.value })}
-                  placeholder="Signed by (Brett / Haseeb)"
-                  className="mt-2 w-full rounded border border-[#cfd8e6] px-2 py-1 text-[11.5px] focus:border-[#174be8] focus:outline-none"
-                />
-              </div>
-            );
-          })}
-        </div>
-        <div className="mt-2 text-[11px] text-[#8a96aa]">
-          Signoff persists in your browser only (operator workflow, not shared state).
-        </div>
+        Runs are sequential — one city at a time keeps data-provider costs predictable and isolates failures.
       </div>
     </div>
   );
 }
+

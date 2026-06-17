@@ -234,7 +234,8 @@ Deno.serve(async (req) => {
         error: msg,
         steps: stepResults,
       }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+
     );
   }
 });

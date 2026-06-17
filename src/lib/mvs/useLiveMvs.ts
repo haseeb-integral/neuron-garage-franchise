@@ -23,7 +23,9 @@ export type LiveMvsBundle = {
   flag: LiveMvsCityFlag | null;
   loading: boolean;
   error: string | null;
+  refresh: () => void;
 };
+
 
 /**
  * Loads live pipeline data for a city (providers + weeks + ACS + watchlist
@@ -46,6 +48,8 @@ export function useLiveMvs(
   const [flag, setFlag] = useState<LiveMvsCityFlag | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshTick, setRefreshTick] = useState(0);
+
 
   // weightsKey = stable signature for memo
   const weightsKey = JSON.stringify(options?.weights ?? {});
@@ -190,7 +194,7 @@ export function useLiveMvs(
     return () => {
       cancelled = true;
     };
-  }, [cityKey]);
+  }, [cityKey, refreshTick]);
 
   const result = useMemo(() => {
     if (!acs) return null;
@@ -202,5 +206,15 @@ export function useLiveMvs(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [providers, weeks, acs, watchlist, overrides, weightsKey]);
 
-  return { result, providers, weeks, acs, flag, loading, error };
+  return {
+    result,
+    providers,
+    weeks,
+    acs,
+    flag,
+    loading,
+    error,
+    refresh: () => setRefreshTick((t) => t + 1),
+  };
 }
+

@@ -3,6 +3,8 @@ import { Loader2, MapPin } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { DEFAULT_WEIGHTS } from "@/lib/mvs/computeMvs";
 import { useLiveMvs } from "@/lib/mvs/useLiveMvs";
+import { RunPipelineButton } from "@/components/phase2-demo/RunPipelineButton";
+
 
 const NAVY = "#07142f";
 const MUTED = "#526078";
@@ -77,9 +79,10 @@ interface Props {
  */
 export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) {
   const [weights, setWeights] = useState<Record<string, number>>({ ...DEFAULT_WEIGHTS });
-  const { result, providers, weeks, flag, loading, error } = useLiveMvs(cityKey, {
+  const { result, providers, weeks, flag, loading, error, refresh } = useLiveMvs(cityKey, {
     weights,
   });
+
 
   const provCount = providers.length;
   const weekCount = weeks.length;
@@ -114,7 +117,9 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
 
   return (
     <>
+      <RunPipelineButton city={cityKey} onComplete={refresh} />
       {/* Composite hero card */}
+
       <section
         className="mb-5 rounded-lg border bg-white p-5"
         style={{ borderColor: BORDER }}

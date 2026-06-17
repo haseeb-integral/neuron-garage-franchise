@@ -56,6 +56,24 @@ export function ShortlistTable({ rows, activeCityId, onSelectCity, liveOverlays 
   const [editingNotes, setEditingNotes] = useState<string | null>(null);
   const [draftNotes, setDraftNotes] = useState("");
 
+  // Helper — pick the live overlay value or fall back to the static demo value.
+  const valFor = (r: ShortlistRow, k: SortKey): number | string => {
+    if (k === "city") return r.city;
+    if (k === "verdict") return byCity.get(r.id)?.verdict ?? "undecided";
+    const overlay = liveOverlays?.get(r.id);
+    if (overlay) {
+      const live =
+        k === "composite" ? overlay.composite :
+        k === "pricing" ? overlay.pricing :
+        k === "absorption" ? overlay.absorption :
+        k === "scaledOperator" ? overlay.scaledOperator :
+        k === "diversity" ? overlay.diversity :
+        k === "depth" ? overlay.depth : null;
+      if (live != null) return live;
+    }
+    return r[k] as number;
+  };
+
   const sorted = useMemo(() => {
     const filtered = rows.filter((r) => {
       if (verdictFilter === "all") return true;
@@ -63,22 +81,15 @@ export function ShortlistTable({ rows, activeCityId, onSelectCity, liveOverlays 
       return v === verdictFilter;
     });
     return [...filtered].sort((a, b) => {
-      let av: number | string;
-      let bv: number | string;
-      if (sortKey === "city") {
-        av = a.city; bv = b.city;
-      } else if (sortKey === "verdict") {
-        av = byCity.get(a.id)?.verdict ?? "undecided";
-        bv = byCity.get(b.id)?.verdict ?? "undecided";
-      } else {
-        av = a[sortKey] as number;
-        bv = b[sortKey] as number;
-      }
+      const av = valFor(a, sortKey);
+      const bv = valFor(b, sortKey);
       if (av < bv) return sortDir === "asc" ? -1 : 1;
       if (av > bv) return sortDir === "asc" ? 1 : -1;
       return 0;
     });
-  }, [rows, sortKey, sortDir, verdictFilter, byCity]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, sortKey, sortDir, verdictFilter, byCity, liveOverlays]);
+
 
   const toggleSort = (k: SortKey) => {
     if (k === sortKey) setSortDir((d) => (d === "asc" ? "desc" : "asc"));

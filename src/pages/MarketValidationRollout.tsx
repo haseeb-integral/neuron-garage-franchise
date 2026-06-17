@@ -315,17 +315,8 @@ export default function MarketValidationRollout() {
     }
   }, [anyRunning, invokingCity, fetchAll]);
 
-  const handleFlip = useCallback(async (city: string, state: string, source: "live" | "sample") => {
-    const { error } = await supabase
-      .from("mvs_city_flags")
-      .upsert({ city, state, mvs_data_source: source }, { onConflict: "city,state" });
-    if (error) {
-      toast.error(`Flag update failed: ${error.message}`);
-      return;
-    }
-    toast.success(`${city} → ${source}`);
-    await fetchAll();
-  }, [fetchAll]);
+
+
 
   const reportComposite = useCallback((city: string, mvs: number | null) => {
     setComposites((prev) => (prev[city] === mvs ? prev : { ...prev, [city]: mvs }));

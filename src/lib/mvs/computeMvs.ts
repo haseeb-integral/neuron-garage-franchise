@@ -3,14 +3,14 @@
 
 export const MVS_NORMALIZATION_VERSION = "1.0-fixed";
 
-export const DEFAULT_WEIGHTS = {
+export const DEFAULT_WEIGHTS: Record<string, number> = {
   pricingAcceptance: 0.20,
   marketAbsorption: 0.25,
   scaledOperator: 0.20,
   enrichmentDiversity: 0.10,
   marketDepth: 0.10,
   marketBalance: 0.15,
-} as const;
+};
 
 export const ELIGIBLE_CATEGORIES = new Set([
   "stem",

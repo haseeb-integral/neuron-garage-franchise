@@ -87,17 +87,31 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Body: { city } — must be a Tier A city.
+  // Body: { city } — must be in Tier A or in mvs_shortlist_cities.
   const body = await req.json().catch(() => ({}));
   const city: string = (body?.city ?? AUSTIN).trim();
   if (!TIER_A_CITIES.has(city)) {
-    return new Response(
-      JSON.stringify({
-        error: `city '${city}' is not in the Tier A allow-list`,
-        allowed: Array.from(TIER_A_CITIES),
-      }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    // Allow any city the user has added to the shortlist table.
+    const [cityName, stateAbbr] = city.split(",").map((s) => s.trim());
+    const { data: addedRow } = await admin
+      .from("mvs_shortlist_cities")
+      .select("id")
+      .ilike("city", cityName ?? "")
+      .ilike("state", stateAbbr ?? "")
+      .maybeSingle();
+    if (!addedRow) {
+      const { data: allAdded } = await admin
+        .from("mvs_shortlist_cities")
+        .select("city, state");
+      const addedList = (allAdded ?? []).map((r: any) => `${r.city}, ${r.state}`);
+      return new Response(
+        JSON.stringify({
+          error: `city '${city}' is not in the shortlist`,
+          allowed: [...Array.from(TIER_A_CITIES), ...addedList],
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
   }
 
 

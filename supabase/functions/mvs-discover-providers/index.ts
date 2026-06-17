@@ -220,11 +220,19 @@ Rules:
 
     let inserted = 0;
     if (rows.length > 0) {
-      // Upsert against the (city, lower(name), platform) uniq index so re-runs
-      // don't blow up on duplicates; latest run wins on conflict.
+      const { data: existingRows, error: existingErr } = await admin
+        .from("mvs_providers")
+        .select("name")
+        .eq("city", city)
+        .eq("platform", "sawyer");
+      if (existingErr) throw new Error(`fetch existing providers: ${existingErr.message}`);
+
+      const existingNames = new Set((existingRows ?? []).map((r) => normalizeName(r.name)));
+      const newRows = rows.filter((r) => !existingNames.has(normalizeName(r.name)));
+
       const { data: insData, error: insErr } = await admin
         .from("mvs_providers")
-        .upsert(rows, { onConflict: "city,name,platform", ignoreDuplicates: false })
+        .insert(newRows)
         .select("id");
       if (insErr) throw new Error(`insert providers: ${insErr.message}`);
       inserted = insData?.length ?? 0;

@@ -156,7 +156,7 @@ export default function MarketValidationRollout() {
   const [latestRuns, setLatestRuns] = useState<Record<string, RunRow | null>>({});
   const [flags, setFlags] = useState<Record<string, FlagRow>>({});
   const [composites, setComposites] = useState<Record<string, number | null>>({});
-  const [signoff, setSignoff] = useState<Record<string, SignoffChecks>>(() => loadSignoff());
+
   const [invokingCity, setInvokingCity] = useState<string | null>(null);
 
   // Role gate.

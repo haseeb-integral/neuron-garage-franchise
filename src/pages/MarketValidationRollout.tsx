@@ -1,12 +1,6 @@
-// Phase 7 / Turn 7.1 — Tier A rollout operator console.
-//
-// Manager-only single page that drives the 8-city Tier A live rollout:
-//   - One row per Tier A city, sequential Run Pipeline, per-city Flip to live
-//     / Unwind, live composite recomputed via useLiveMvs (Brett's rule).
-//   - Calibration banner: once every city has a `done` run, ranks composites
-//     and flags if Boston is outside the top quartile.
-//   - Human-test signoff checklist persisted to localStorage per browser
-//     (operator workflow, not shared state).
+// Tier A rollout console — manager-only page that runs the live MVS pipeline
+// across the 8 priority cities. One row per city, sequential runs, live
+// composite recomputed via useLiveMvs.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
@@ -53,41 +47,7 @@ interface FlagRow {
   low_confidence_badge: boolean;
 }
 
-type SignoffChecks = {
-  rowMatchesPanel: boolean;
-  formulaDrawer: boolean;
-  sliderUpdates: boolean;
-  pdfExport: boolean;
-  signedBy: string;
-};
 
-const EMPTY_CHECKS: SignoffChecks = {
-  rowMatchesPanel: false,
-  formulaDrawer: false,
-  sliderUpdates: false,
-  pdfExport: false,
-  signedBy: "",
-};
-
-const SIGNOFF_KEY = "mvs_rollout_signoff_v1";
-
-function loadSignoff(): Record<string, SignoffChecks> {
-  try {
-    const raw = localStorage.getItem(SIGNOFF_KEY);
-    if (!raw) return {};
-    return JSON.parse(raw) as Record<string, SignoffChecks>;
-  } catch {
-    return {};
-  }
-}
-function saveSignoff(all: Record<string, SignoffChecks>) {
-  localStorage.setItem(SIGNOFF_KEY, JSON.stringify(all));
-}
-
-function isFullySignedOff(c: SignoffChecks | undefined): boolean {
-  if (!c) return false;
-  return c.rowMatchesPanel && c.formulaDrawer && c.sliderUpdates && c.pdfExport && c.signedBy.trim().length > 0;
-}
 
 // ---------------------------------------------------------------------------
 // Per-row hook — composite via shared computeMvs helper (Brett's rule).

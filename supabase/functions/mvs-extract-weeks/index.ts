@@ -8,7 +8,7 @@
 //       status_evidence (short string describing the visual cue), confidence 0..1
 //   - Confidence ≥ 0.7 → mvs_weeks
 //   - Confidence  < 0.7 → mvs_weeks  +  mvs_qa_queue (entity_type='week')
-//   - Manager-only. Kill switch MVS_PIPELINE_ENABLED must be 'true'.
+//   - Manager-only.
 //   - No UI surface this turn. Invoked via `supabase functions invoke`.
 //
 // Turn 3.2 (next) will loop this across all Austin Premium providers and
@@ -80,14 +80,6 @@ Deno.serve(async (req) => {
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
   const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-  const pipelineEnabled = (Deno.env.get("MVS_PIPELINE_ENABLED") ?? "false").toLowerCase() === "true";
-
-  if (!pipelineEnabled) {
-    return new Response(
-      JSON.stringify({ error: "MVS_PIPELINE_ENABLED is false; kill switch engaged" }),
-      { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
-  }
   if (!firecrawlKey || !lovableKey) {
     return new Response(
       JSON.stringify({ error: "missing FIRECRAWL_API_KEY or LOVABLE_API_KEY" }),

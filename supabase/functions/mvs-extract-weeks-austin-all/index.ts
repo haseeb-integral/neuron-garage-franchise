@@ -9,7 +9,7 @@
 //     missing OR returns empty markdown / non-2xx. If > 20%, set
 //     mvs_city_flags.low_confidence_badge = true for Austin.
 //   - Low-confidence week rows (confidence < 0.7) also land in mvs_qa_queue.
-//   - Manager-only. Kill switch MVS_PIPELINE_ENABLED must be 'true'.
+//   - Manager-only.
 //   - Hard cost cap: MAX_PROVIDERS providers scraped per run (default 25, keeps
 //     the run under the 30-Firecrawl-call ceiling from the plan).
 //   - No UI surface this turn.
@@ -239,14 +239,6 @@ Deno.serve(async (req) => {
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
   const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-  const pipelineEnabled = (Deno.env.get("MVS_PIPELINE_ENABLED") ?? "false").toLowerCase() === "true";
-
-  if (!pipelineEnabled) {
-    return new Response(
-      JSON.stringify({ error: "MVS_PIPELINE_ENABLED is false; kill switch engaged" }),
-      { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
-  }
   if (!firecrawlKey || !lovableKey) {
     return new Response(
       JSON.stringify({ error: "missing FIRECRAWL_API_KEY or LOVABLE_API_KEY" }),

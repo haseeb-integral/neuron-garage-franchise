@@ -224,7 +224,7 @@ export default function MarketValidationRollout() {
       };
     }
     setFlags(next);
-  }, []);
+  }, [SHORTLISTED_CITIES]);
 
   useEffect(() => {
     fetchAll();

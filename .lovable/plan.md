@@ -1,49 +1,37 @@
-# Turn 5.2 — Run Pipeline button + status surface
+# Fix: duplicate weeks + opaque pipeline toast
 
-We are aligned. Phases 0–4 complete, Turn 5.1 signed off. Next per the build plan: **Turn 5.2 only** (Phase 6 PDF and Phase 7 rollout come later).
+Two small, scoped fixes so the human smoke test gives real signal.
 
-## Scope (exactly what the plan says)
+## 1. Stop duplicate week rows
 
-- Admin-only "Run Pipeline" button on the Austin city detail panel (manager role via `has_role`).
-- New orchestrator edge function `mvs-run-pipeline` that runs discover → classify → extract sequentially.
-- Writes one row to `mvs_pipeline_runs` with status: `queued → running → done | failed`, plus timing + error message.
-- Button disabled while a run is in flight for that city (polled from `mvs_pipeline_runs`).
-- Toast on completion (success / failure).
-- Hard cost ceiling: max **30** Firecrawl calls per run (configurable via env, default 30).
-- Gated by `MVS_PIPELINE_ENABLED` kill switch (already in place).
+**Problem:** `mvs_weeks` has no unique constraint on `(provider_id, week_start)`. The `mvs-extract-weeks-austin-all` function inserts plain rows, so each Run Pipeline click adds 5 more copies (5 → 10 → 15 → 20 …).
 
-## Build steps
+**Migration:**
+- Dedupe existing Austin rows: keep the newest row per `(provider_id, week_start)`, delete the rest.
+- Add `UNIQUE (provider_id, week_start)` on `mvs_weeks`.
 
-1. **Edge function `mvs-run-pipeline`** (`supabase/functions/mvs-run-pipeline/index.ts`)
-   - Validates JWT, checks `has_role(user, 'admin' | 'manager')`, checks `MVS_PIPELINE_ENABLED`.
-   - Validates body: `{ city: string }`.
-   - Inserts `mvs_pipeline_runs` row (status=`queued`), flips to `running`.
-   - Calls existing functions in sequence: `mvs-discover-providers` → `mvs-classify-tier` → `mvs-extract-weeks-austin-all` (or generic city variant for Austin only this turn).
-   - Tracks Firecrawl call count; aborts with `failed` + reason if cap exceeded.
-   - On completion, updates row to `done` with `finished_at`, counts (providers, weeks, qa queued).
-   - On any throw, sets `failed` + error message.
+**Edge function edit (`mvs-extract-weeks-austin-all/index.ts`):**
+- Change the week insert to `.upsert(..., { onConflict: "provider_id,week_start" })` so re-runs update the existing row instead of appending.
 
-2. **Frontend: Run Pipeline button** in `src/components/phase2-demo/LiveCityDeepDive.tsx` (Austin live panel only)
-   - Visible only when `mvs_data_source='live'` AND user has admin/manager role (use existing role hook or query `user_roles`).
-   - Polls latest `mvs_pipeline_runs` row for the city every 3s while `queued`/`running`.
-   - Disabled + spinner during in-flight run; toast on terminal state; refetches live data on `done`.
+## 2. Informative Run Pipeline toast
 
-3. **No schema changes** — `mvs_pipeline_runs` table already exists (Phase 1). Confirm columns match needs; if a column is missing (e.g. `firecrawl_calls`), add via single small migration.
+**Problem:** Toast only says "Pipeline complete · 1 Firecrawl calls" — user can't tell what actually happened.
 
-## Out of scope (later turns)
+**Edge function edit (`mvs-run-pipeline/index.ts`):**
+- After each step, read the child function's JSON response and collect counts.
+- Return a `summary` block: `{ providers_discovered, providers_classified, weeks_upserted, screenshots_stored, firecrawl_calls }`.
 
-- Phase 6 (PDF Market Brief)
-- Phase 7 (Tier A rollout to 7 cities + calibration)
-- Any UI changes to non-Austin cities
+**Client edit (`RunPipelineButton.tsx`):**
+- Show the summary in the success toast, e.g.:
+  `Pipeline complete · 1 provider · 5 weeks upserted · 1 screenshot · 1 Firecrawl call`
 
-## Unwind
+## What stays out of scope
+- No new providers, no new cities, no scoring changes.
+- No UI redesign of the MVS preview cards.
+- Composite score will still be 42.0 until Sawyer's data actually changes — that is correct behavior.
 
-Delete the button, delete `mvs-run-pipeline` function, `DELETE FROM mvs_pipeline_runs`. Underlying data tables and Turn 5.1 wiring stay intact.
-
-## Human-test gate (end of Phase 5)
-
-Brett or Haseeb clicks Run Pipeline on Austin → pipeline completes → fresh numbers appear on the live panel → every score traces to a stored screenshot.
-
-## One question before I build
-
-The plan says cost ceiling default = **30 Firecrawl calls/run**. Lock at 30, or pick another number?
+## How you verify after I ship
+1. Note current week count in the LIVE MVS caption (should still say "5 weeks" once dedupe migration runs).
+2. Click **Run Pipeline**. Toast should show the breakdown above.
+3. Refresh — caption stays "5 weeks" (no more drift to 10/15/20).
+4. Open `https://www.hisawyer.com/marketplace/activity-set/1733799` in any browser (no login). Confirm camp weeks ~$850 starting June 15 — matches our `medianPrice=850, pctAtLeast500=100`.

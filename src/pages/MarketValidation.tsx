@@ -6,7 +6,7 @@ import { renderMvsBriefPdfBlob } from "@/lib/mvsBrief/MvsBriefDocument";
 import { buildSampleBriefArgs } from "@/lib/mvsBrief/sampleBriefAdapter";
 
 import { PageHeader } from "@/components/PageHeader";
-import { DemoBanner } from "@/components/phase2-demo/DemoBanner";
+
 import { LiveCityDeepDive } from "@/components/phase2-demo/LiveCityDeepDive";
 import { LowConfidenceBadge } from "@/components/phase2-demo/LowConfidenceBadge";
 import { PipelineStatusStrip, RunPipelineButton } from "@/components/phase2-demo/RunPipelineButton";

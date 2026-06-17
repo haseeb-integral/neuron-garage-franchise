@@ -31,7 +31,7 @@ const DemographicsMethodology = lazyWithPreload(() => import("./pages/Demographi
 const Methodology = lazyWithPreload(() => import("./pages/Methodology"));
 const MVSMethodology = lazyWithPreload(() => import("./pages/MVSMethodology"));
 const MVSSpec = lazyWithPreload(() => import("./pages/MVSSpec"));
-const MVSPreview = lazyWithPreload(() => import("./pages/MVSPreview"));
+
 
 const SASMethodology = lazyWithPreload(() => import("./pages/SASMethodology"));
 const ScoringMethod = lazyWithPreload(() => import("./pages/ScoringMethod"));
@@ -117,7 +117,7 @@ const App = () => (
                 <Route path="/methodology" element={<Methodology />} />
                 <Route path="/mvs-methodology" element={<MVSMethodology />} />
                 <Route path="/mvs-spec" element={<MVSSpec />} />
-                <Route path="/mvs-preview" element={<MVSPreview />} />
+                
                 
                 <Route path="/sas-methodology" element={<SASMethodology />} />
                 <Route path="/scoring-method" element={<ScoringMethod />} />

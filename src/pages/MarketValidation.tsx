@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertCircle, BarChart3, ChevronDown, ChevronUp, Download, FileText, Loader2, MapPin } from "lucide-react";
+import { AlertCircle, ChevronDown, ChevronUp, Download, FileText, Loader2, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { renderMvsBriefPdfBlob } from "@/lib/mvsBrief/MvsBriefDocument";
 import { buildSampleBriefArgs } from "@/lib/mvsBrief/sampleBriefAdapter";
@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/PageHeader";
 
 import { LiveCityDeepDive } from "@/components/phase2-demo/LiveCityDeepDive";
 import { LowConfidenceBadge } from "@/components/phase2-demo/LowConfidenceBadge";
-import { PipelineStatusStrip, RunPipelineButton } from "@/components/phase2-demo/RunPipelineButton";
+
 import { SampleDataBadge } from "@/components/phase2-demo/SampleDataBadge";
 import { ShortlistTable, type LiveOverlay } from "@/components/phase2-demo/ShortlistTable";
 import { Slider } from "@/components/ui/slider";
@@ -341,40 +341,16 @@ export default function MarketValidation() {
 
 
 
-      <section className="mb-5 flex flex-col gap-3 rounded-lg border bg-white px-4 py-3" style={{ borderColor: BORDER }}>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <h2 className="text-[13px] font-bold" style={{ color: NAVY }}>
-              Austin calibration preview
-            </h2>
-            <p className="mt-0.5 text-[12px]" style={{ color: MUTED }}>
-              Austin is not part of the shortlist below. Use the separate read-only preview for the live Austin pipeline output.
-            </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <RunPipelineButton city="Austin, TX" variant="compact" onComplete={austinLive.refresh} />
-            <Link
-              to="/mvs-preview"
-              className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-[12px] font-semibold"
-              style={{ borderColor: BLUE, color: BLUE, backgroundColor: SOFT }}
-            >
-              <BarChart3 size={14} />
-              Open Austin MVS preview
-            </Link>
-            <Link
-              to="/market-validation/rollout"
-              className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px] font-semibold text-white"
-              style={{ backgroundColor: BLUE }}
-            >
-              Tier A Rollout →
-            </Link>
-          </div>
-
-        </div>
-        <div className="border-t pt-2" style={{ borderColor: BORDER }}>
-          <PipelineStatusStrip city="Austin, TX" />
-        </div>
+      <section className="mb-5 flex flex-wrap items-center justify-end gap-2">
+        <Link
+          to="/market-validation/rollout"
+          className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px] font-semibold text-white"
+          style={{ backgroundColor: BLUE }}
+        >
+          Tier A Rollout →
+        </Link>
       </section>
+
 
       {/* v1.1 — Decision-capture shortlist table (replaces the chip rail) */}
       <ShortlistTable

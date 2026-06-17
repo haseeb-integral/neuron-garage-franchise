@@ -258,6 +258,8 @@ export default function MarketValidationRollout() {
     const latest: Record<string, RunRow | null> = {};
     for (const c of cities) latest[c] = null;
     for (const r of runRows ?? []) {
+      // Skip phantom/stub rows that never actually started — they distort "Last run".
+      if (!(r as any).started_at) continue;
       if (!latest[(r as any).city]) {
         latest[(r as any).city] = {
           id: (r as any).id,
@@ -270,6 +272,7 @@ export default function MarketValidationRollout() {
         };
       }
     }
+
     setLatestRuns(latest);
 
     const { data: flagRows } = await supabase

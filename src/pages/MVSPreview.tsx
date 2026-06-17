@@ -51,7 +51,7 @@ export default function MVSPreview() {
         const { data: provRows, error: provErr } = await supabase
           .from("mvs_providers")
           .select("id, name, tier, price_min, price_max, category_classified")
-          .ilike("city", "austin");
+          .eq("city", "Austin, TX");
         if (provErr) throw provErr;
 
         // Weeks
@@ -82,7 +82,7 @@ export default function MVSPreview() {
         // Fallback: us_cities_scored has children_5_12 at least
         const { data: cityRow } = await supabase
           .from("us_cities_scored")
-          .select("children_5_12")
+          .select("children_5_12, dual_working_families_pct")
           .ilike("city_name", "austin")
           .eq("state_abbr", "TX")
           .maybeSingle();
@@ -104,6 +104,10 @@ export default function MVSPreview() {
           }
         }
 
+        if (affluentCount == null && children5to12 != null && cityRow?.dual_working_families_pct != null) {
+          affluentCount = Math.round(children5to12 * (cityRow.dual_working_families_pct / 100));
+        }
+
         if (children5to12 != null && Number.isFinite(children5to12)) {
           acsInput = {
             children_5_12_count: children5to12,
@@ -118,7 +122,7 @@ export default function MVSPreview() {
         const { data: ovRows } = await supabase
           .from("mvs_city_overlap_overrides")
           .select("operator_name, overlap_override")
-          .ilike("city", "austin");
+          .eq("city", "Austin, TX");
 
         if (!cancelled) {
           setProviders(

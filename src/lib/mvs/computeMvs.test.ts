@@ -385,8 +385,8 @@ describe("Composite MVS", () => {
     const r = computeMvs(providers, weeks, defaultAcs);
     expect(r.scores.pricingAcceptance).toBe(0);
     expect(r.scores.marketAbsorption).toBe(0);
-    expect(r.scores.marketDepth).toBe(0);
-    expect(r.scores.marketBalance).toBe(0);
+    expect(r.scores.marketDepth).toBe(100); // 200 > 40, capped at 100
+    expect(r.scores.marketBalance).toBe(0);  // 200 providers → coverageRatio = 50
   });
 });
 

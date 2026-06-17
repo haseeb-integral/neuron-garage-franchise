@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { AlertTriangle, ArrowLeft, BarChart3, Loader2 } from "lucide-react";
 import { useIsManager } from "@/hooks/dbHealth/useIsManager";
 import { DEFAULT_WEIGHTS } from "@/lib/mvs/computeMvs";
@@ -65,7 +65,16 @@ export default function MVSPreview() {
         </div>
       </div>
 
-      <RunPipelineButton city="Austin, TX" onComplete={refresh} />
+      <div className="flex flex-wrap items-center gap-2">
+        <RunPipelineButton city="Austin, TX" onComplete={refresh} />
+        <Link
+          to="/market-validation/rollout"
+          className="inline-flex items-center gap-1.5 rounded-md bg-[#174be8] px-3 py-2 text-[13px] font-semibold text-white hover:bg-[#1340c4]"
+        >
+          Tier A Rollout Console →
+        </Link>
+      </div>
+
 
       {loading && (
         <div className="flex h-48 items-center justify-center rounded-lg border border-[#eef2f7] bg-white">

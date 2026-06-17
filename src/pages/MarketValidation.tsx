@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { AlertCircle, ChevronDown, ChevronUp, Download, FileText, MapPin } from "lucide-react";
+import { Link } from "react-router-dom";
+import { AlertCircle, BarChart3, ChevronDown, ChevronUp, Download, FileText, MapPin } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
 import { DemoBanner } from "@/components/phase2-demo/DemoBanner";
@@ -253,6 +254,25 @@ export default function MarketValidation() {
       />
 
       <DemoBanner />
+
+      <section className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-white px-4 py-3" style={{ borderColor: BORDER }}>
+        <div className="min-w-0">
+          <h2 className="text-[13px] font-bold" style={{ color: NAVY }}>
+            Austin calibration preview
+          </h2>
+          <p className="mt-0.5 text-[12px]" style={{ color: MUTED }}>
+            Austin is not part of the demo shortlist below. Use the separate read-only preview for the live Austin pipeline output.
+          </p>
+        </div>
+        <Link
+          to="/mvs-preview"
+          className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-[12px] font-semibold"
+          style={{ borderColor: BLUE, color: BLUE, backgroundColor: SOFT }}
+        >
+          <BarChart3 size={14} />
+          Open Austin MVS preview
+        </Link>
+      </section>
 
       {/* v1.1 — Decision-capture shortlist table (replaces the chip rail) */}
       <ShortlistTable

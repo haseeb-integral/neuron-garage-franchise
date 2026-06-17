@@ -237,11 +237,22 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
               className="mt-2 text-[12px] leading-relaxed"
               style={{ color: MUTED }}
             >
-              Live pipeline read — computed from {provCount} provider{provCount === 1 ? "" : "s"}{" "}
-              and {weekCount} week row{weekCount === 1 ? "" : "s"} via the shared{" "}
-              <code className="rounded bg-[#f7faff] px-1 py-px text-[#174be8]">computeMvs</code>{" "}
-              helper. Drag a weight slider below to sanity-check sensitivity (preview-only, not
-              persisted).
+              {provCount === 0 && weekCount === 0 ? (
+                <>
+                  No pipeline data yet for {cityDisplay}. Open the{" "}
+                  <a href="/market-validation/rollout" className="font-semibold text-[#174be8] underline">
+                    City Scoring Console
+                  </a>{" "}
+                  and click <strong>Run</strong> for {cityDisplay} to generate a Market Validation Score
+                  (1–2 min). Once the run finishes, the score and sub-metrics will appear here automatically.
+                </>
+              ) : (
+                <>
+                  Computed from {provCount} provider{provCount === 1 ? "" : "s"} and {weekCount} week row
+                  {weekCount === 1 ? "" : "s"}. Drag a weight slider below to sanity-check sensitivity
+                  (preview-only, not persisted).
+                </>
+              )}
             </p>
           </div>
           <div className="flex w-[240px] shrink-0 flex-col items-end gap-2">
@@ -249,7 +260,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
               {result?.mvs != null ? result.mvs.toFixed(1) : "—"}
             </div>
             <div className="text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
-              Market Validation Score
+              {result?.mvs != null ? "Market Validation Score" : "Not scored yet"}
             </div>
             <button
               type="button"

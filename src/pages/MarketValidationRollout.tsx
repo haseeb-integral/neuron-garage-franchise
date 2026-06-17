@@ -27,6 +27,7 @@ const TIER_A: { city: string; state: string }[] = [
   { city: "San Antonio, TX", state: "TX" },
   { city: "Philadelphia, PA", state: "PA" },
   { city: "Los Angeles, CA", state: "CA" },
+  { city: "Indianapolis, IN", state: "IN" },
 ];
 
 type RunStatus = "queued" | "running" | "done" | "failed";

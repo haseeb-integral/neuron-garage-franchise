@@ -37,11 +37,18 @@ interface Props {
   rows: ShortlistRow[];
   activeCityId: string;
   onSelectCity: (cityId: string) => void;
+  /**
+   * Map of cityId -> live overlay. When a row has an entry, its composite +
+   * sub-score cells are read from this overlay instead of the static demo
+   * fields, and a "Live" pill replaces the demo styling.
+   */
+  liveOverlays?: Map<string, LiveOverlay>;
 }
 
 type SortKey = "city" | "composite" | "pricing" | "absorption" | "scaledOperator" | "diversity" | "depth" | "verdict";
 
-export function ShortlistTable({ rows, activeCityId, onSelectCity }: Props) {
+export function ShortlistTable({ rows, activeCityId, onSelectCity, liveOverlays }: Props) {
+
   const { byCity, setVerdict, setNotes, isAuthed } = useMarketDecisions();
   const [sortKey, setSortKey] = useState<SortKey>("composite");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");

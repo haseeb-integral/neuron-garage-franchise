@@ -386,7 +386,7 @@ export default function MarketValidationRollout() {
             Tier A Rollout Console
           </h1>
           <p className="mt-0.5 text-[12px] text-[#526078]">
-            Run pipeline → verify → flip to live, one city at a time. Brett's rule: every composite below is recomputed live.
+            Run the pipeline for each city — results go live automatically. Brett's rule: every composite below is recomputed live.
           </p>
         </div>
         <button

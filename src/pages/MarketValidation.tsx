@@ -396,13 +396,13 @@ export default function MarketValidation() {
       {/* Decision points */}
       <section className="mb-4 rounded-lg border p-3" style={{ borderColor: BORDER, backgroundColor: SOFT }}>
         <h3 className="mb-1 text-[11px] font-bold uppercase tracking-wide" style={{ color: NAVY }}>
-          Questions this page answers
+          What to do on this page
         </h3>
         <ol className="ml-4 list-decimal space-y-0.5 text-[12px]" style={{ color: NAVY }}>
-          <li>Which cities should we <strong>Pursue, Hold, or Drop</strong> for the next expansion wave?</li>
-          <li>Which 5–10 cities graduate to site-level analysis (use the Pursue filter, then Export CSV)?</li>
-          <li>Per city: is the absorption signal believable? (check the deep-dive sellout curve below)</li>
-          <li>Per city: does the market balance justify overriding a borderline composite score?</li>
+          <li>Review each city and mark it <strong>Pursue, Hold, or Drop</strong>.</li>
+          <li>Filter to <strong>Pursue</strong> cities and <strong>Export CSV</strong> — those are your finalists for the next phase.</li>
+          <li>Check the sellout curve in the deep-dive to confirm demand is real and sustained, not a blip.</li>
+          <li>Use the market balance band as a tie-breaker: a city with too many competitors may be riskier than its score suggests.</li>
         </ol>
       </section>
 

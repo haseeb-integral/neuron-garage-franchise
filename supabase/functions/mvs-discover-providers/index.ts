@@ -31,6 +31,7 @@ const TIER_A_BOXES: Record<string, Box> = {
   "San Antonio, TX":  { top: 29.85, left: -98.95, bottom: 29.10, right: -98.10 },
   "Philadelphia, PA": { top: 40.30, left: -75.50, bottom: 39.75, right: -74.80 },
   "Los Angeles, CA":  { top: 34.50, left: -118.95, bottom: 33.65, right: -117.85 },
+  "Indianapolis, IN": { top: 40.15, left: -86.55, bottom: 39.45, right: -85.75 },
 };
 
 function buildSawyerUrl(city: string, box: Box): string {

@@ -215,7 +215,11 @@ export default function MarketValidation() {
       { rowId: "los-angeles-ca",  bundle: losAngelesLive },
     ];
     for (const { rowId, bundle } of entries) {
-      if (bundle.flag?.mvs_data_source === "live" && bundle.result) {
+      // Show live overlay for any city that has been *run* (has a result),
+      // not only cities flipped to live. Keeps "click city → see that city's
+      // detail" consistent; flip-to-live still controls what the rest of the
+      // app reads, but the deep-dive on this page follows the active row.
+      if (bundle.result) {
         const r = bundle.result;
         m.set(rowId, {
           composite: r.mvs,

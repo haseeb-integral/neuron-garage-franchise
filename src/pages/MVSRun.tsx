@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Loader2, PlayCircle, RefreshCw } from "lucide-react";
+import { Check, Loader2, PlayCircle, RefreshCw } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,8 @@ import type { Database } from "@/integrations/supabase/types";
 
 type Run = Database["public"]["Tables"]["mvs_pipeline_runs"]["Row"];
 type Provider = Database["public"]["Tables"]["mvs_providers"]["Row"];
+type QaItem = Database["public"]["Tables"]["mvs_qa_queue"]["Row"];
+
 
 const STATUS_VARIANT: Record<Run["status"], "default" | "secondary" | "destructive" | "outline"> = {
   queued: "outline",
@@ -37,8 +39,12 @@ export default function MVSRun() {
   const [runs, setRuns] = useState<Run[]>([]);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [providers, setProviders] = useState<Provider[]>([]);
+  const [qaItems, setQaItems] = useState<QaItem[]>([]);
+  const [showResolved, setShowResolved] = useState(false);
   const [loadingRuns, setLoadingRuns] = useState(false);
   const [loadingProviders, setLoadingProviders] = useState(false);
+  const [loadingQa, setLoadingQa] = useState(false);
+
 
   const loadRuns = useCallback(async () => {
     setLoadingRuns(true);
@@ -72,13 +78,66 @@ export default function MVSRun() {
     setProviders(data ?? []);
   }, []);
 
+  const loadQa = useCallback(async (runId: string, includeResolved: boolean) => {
+    setLoadingQa(true);
+    // Fetch provider IDs for this run, then their QA items.
+    const { data: provs, error: pErr } = await supabase
+      .from("mvs_providers")
+      .select("id")
+      .eq("source_run_id", runId)
+      .limit(500);
+    if (pErr) {
+      setLoadingQa(false);
+      toast({ title: "Failed to load QA scope", description: pErr.message, variant: "destructive" });
+      return;
+    }
+    const ids = (provs ?? []).map((p) => p.id);
+    if (ids.length === 0) {
+      setQaItems([]);
+      setLoadingQa(false);
+      return;
+    }
+    let q = supabase
+      .from("mvs_qa_queue")
+      .select("*")
+      .eq("entity_type", "provider")
+      .in("entity_id", ids)
+      .order("created_at", { ascending: false })
+      .limit(300);
+    if (!includeResolved) q = q.is("resolved_at", null);
+    const { data, error } = await q;
+    setLoadingQa(false);
+    if (error) {
+      toast({ title: "Failed to load QA queue", description: error.message, variant: "destructive" });
+      return;
+    }
+    setQaItems(data ?? []);
+  }, []);
+
   useEffect(() => {
     if (isManager) loadRuns();
   }, [isManager, loadRuns]);
 
   useEffect(() => {
-    if (selectedRunId) loadProviders(selectedRunId);
-  }, [selectedRunId, loadProviders]);
+    if (selectedRunId) {
+      loadProviders(selectedRunId);
+      loadQa(selectedRunId, showResolved);
+    }
+  }, [selectedRunId, loadProviders, loadQa, showResolved]);
+
+  const resolveQa = async (id: string) => {
+    const { data: u } = await supabase.auth.getUser();
+    const { error } = await supabase
+      .from("mvs_qa_queue")
+      .update({ resolved_at: new Date().toISOString(), resolved_by: u.user?.id ?? null })
+      .eq("id", id);
+    if (error) {
+      toast({ title: "Resolve failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    if (selectedRunId) loadQa(selectedRunId, showResolved);
+  };
+
 
   const handleRun = async () => {
     const trimmed = city.trim();
@@ -94,10 +153,12 @@ export default function MVSRun() {
       if (error) throw new Error(error.message);
       const runId = (data as { run_id?: string })?.run_id;
       const inserted = (data as { providers_inserted?: number })?.providers_inserted ?? 0;
+      const qaQueued = (data as { qa_queued?: number })?.qa_queued ?? 0;
       toast({
         title: "Discovery complete",
-        description: `${inserted} providers inserted for ${trimmed}.`,
+        description: `${inserted} providers inserted · ${qaQueued} flagged for QA (${trimmed}).`,
       });
+
       await loadRuns();
       if (runId) setSelectedRunId(runId);
     } catch (err) {
@@ -310,6 +371,91 @@ export default function MVSRun() {
           </TableBody>
         </Table>
       </div>
+
+      <div className="rounded-lg border border-border bg-card">
+        <div className="flex items-center justify-between border-b border-border p-4">
+          <div>
+            <h2 className="text-sm font-semibold">
+              QA queue {selectedRun ? `· ${selectedRun.city}` : ""}
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Auto-flagged on insert: confidence &lt; 0.7 or missing price.{" "}
+              {qaItems.length} {showResolved ? "total" : "open"} item{qaItems.length === 1 ? "" : "s"}.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowResolved((v) => !v)}
+            >
+              {showResolved ? "Hide resolved" : "Show resolved"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => selectedRunId && loadQa(selectedRunId, showResolved)}
+              disabled={loadingQa}
+            >
+              <RefreshCw className={`mr-1 h-3 w-3 ${loadingQa ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Reason</TableHead>
+              <TableHead>Confidence</TableHead>
+              <TableHead>Flagged</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loadingQa && (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
+                  Loading…
+                </TableCell>
+              </TableRow>
+            )}
+            {!loadingQa && qaItems.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
+                  {selectedRun ? "Nothing in QA for this run." : "Select a run to inspect QA items."}
+                </TableCell>
+              </TableRow>
+            )}
+            {qaItems.map((q) => (
+              <TableRow key={q.id}>
+                <TableCell className="text-xs">{q.reason}</TableCell>
+                <TableCell className="text-xs">
+                  {q.confidence != null ? Number(q.confidence).toFixed(2) : "—"}
+                </TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {new Date(q.created_at).toLocaleString()}
+                </TableCell>
+                <TableCell>
+                  {q.resolved_at ? (
+                    <Badge variant="outline">resolved</Badge>
+                  ) : (
+                    <Badge variant="secondary">open</Badge>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {!q.resolved_at && (
+                    <Button size="sm" variant="outline" onClick={() => resolveQa(q.id)}>
+                      <Check className="mr-1 h-3 w-3" /> Resolve
+                    </Button>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     </div>
+
   );
 }

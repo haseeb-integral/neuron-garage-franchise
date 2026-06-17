@@ -253,12 +253,42 @@ Rules:
     }
 
     let inserted = 0;
+    let qaQueued = 0;
     if (allRows.length > 0) {
-      const { error: insErr, count } = await admin
+      const { data: insData, error: insErr } = await admin
         .from("mvs_providers")
-        .insert(allRows, { count: "exact" });
+        .insert(allRows)
+        .select("id, name, confidence, price_min");
       if (insErr) throw new Error(`insert providers: ${insErr.message}`);
-      inserted = count ?? allRows.length;
+      inserted = insData?.length ?? 0;
+
+      // Turn 2.3: auto-populate QA queue for low-confidence or missing-price rows.
+      const qaRows = (insData ?? [])
+        .map((p) => {
+          const reasons: string[] = [];
+          const conf = typeof p.confidence === "number" ? p.confidence : Number(p.confidence ?? 0);
+          if (conf < 0.7) reasons.push(`low confidence (${conf.toFixed(2)})`);
+          if (p.price_min == null) reasons.push("missing price");
+          if (reasons.length === 0) return null;
+          return {
+            entity_type: "provider" as const,
+            entity_id: p.id,
+            reason: `${p.name}: ${reasons.join("; ")}`,
+            confidence: conf,
+          };
+        })
+        .filter((x): x is NonNullable<typeof x> => x !== null);
+
+      if (qaRows.length > 0) {
+        const { error: qaErr, count: qaCount } = await admin
+          .from("mvs_qa_queue")
+          .insert(qaRows, { count: "exact" });
+        if (qaErr) {
+          console.error("qa queue insert failed:", qaErr.message);
+        } else {
+          qaQueued = qaCount ?? qaRows.length;
+        }
+      }
     }
 
     await admin
@@ -266,16 +296,19 @@ Rules:
       .update({ status: "done", firecrawl_calls: firecrawlCalls })
       .eq("id", run.id);
 
+
     return new Response(
       JSON.stringify({
         run_id: run.id,
         city,
         firecrawl_calls: firecrawlCalls,
         providers_inserted: inserted,
+        qa_queued: qaQueued,
         debug,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
+
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     await admin

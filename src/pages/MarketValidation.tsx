@@ -413,7 +413,7 @@ export default function MarketValidation() {
         <FileText size={14} />
         Formulas, sub-score weights, and acceptance criteria are locked in
         <code className="rounded bg-[#f7faff] px-1 py-px text-[#174be8]">.lovable/phase-2/phase-2-sow.md</code>
-        Item 1 (Feature 1A). This page renders sample data only — Week 3 wires it to the Manus pipeline.
+        Item 1 (Feature 1A). Pipeline-backed read for each Tier A city.
       </footer>
     </>
   );

@@ -346,11 +346,16 @@ export default function MarketValidation() {
 
 
 
+      {/* Demo deep-dive (composite + sub-score grid + premium provider sample
+          table). Hidden when the active city renders the live deep-dive. */}
+      {!isActiveLive && (
+      <>
       {/* Composite card — left stack flush-left, fixed-width right sidebar */}
       <section
         className="mb-5 rounded-lg border bg-white p-5"
         style={{ borderColor: BORDER }}
       >
+
         <div className="flex flex-wrap items-start gap-6">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
@@ -584,6 +589,10 @@ export default function MarketValidation() {
           </table>
         </div>
       </section>
+      </>
+      )}
+
+
 
       <footer
         className="flex items-center gap-2 rounded-lg border bg-white p-3 text-[11px]"

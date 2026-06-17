@@ -118,8 +118,13 @@ Deno.serve(async (req) => {
     .limit(1);
   if (inflight && inflight.length > 0) {
     return new Response(
-      JSON.stringify({ error: "a run is already in flight", run_id: inflight[0].id }),
-      { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      JSON.stringify({
+        ok: true,
+        already_running: true,
+        run_id: inflight[0].id,
+        message: "a run is already in flight",
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 

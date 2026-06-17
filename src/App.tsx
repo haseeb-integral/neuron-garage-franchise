@@ -64,6 +64,7 @@ registerRoutePrefetch("/email-outreach-docs", EmailOutreachDocs.preload);
 registerRoutePrefetch("/demographics-methodology", DemographicsMethodology.preload);
 registerRoutePrefetch("/methodology", Methodology.preload);
 registerRoutePrefetch("/mvs-methodology", MVSMethodology.preload);
+registerRoutePrefetch("/mvs-run", MVSRun.preload);
 registerRoutePrefetch("/sas-methodology", SASMethodology.preload);
 registerRoutePrefetch("/scoring-method", ScoringMethod.preload);
 registerRoutePrefetch("/observability", Observability.preload);

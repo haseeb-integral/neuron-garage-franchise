@@ -3,6 +3,8 @@ import { Loader2, MapPin } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { DEFAULT_WEIGHTS } from "@/lib/mvs/computeMvs";
 import { useLiveMvs } from "@/lib/mvs/useLiveMvs";
+import { RunPipelineButton } from "@/components/phase2-demo/RunPipelineButton";
+
 
 const NAVY = "#07142f";
 const MUTED = "#526078";

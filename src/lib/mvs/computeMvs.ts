@@ -276,9 +276,11 @@ function score3ScaledOperator(
       const match = watchlist.find((w) =>
         p.name.toLowerCase().includes(w.name.toLowerCase()),
       );
-      if (match && !seenOperators.has(match.name.toLowerCase())) {
-        seenOperators.add(match.name.toLowerCase());
-        operatorValidation = Math.min(8, operatorValidation + 1);
+      if (match) {
+        if (!seenOperators.has(match.name.toLowerCase())) {
+          seenOperators.add(match.name.toLowerCase());
+          operatorValidation = Math.min(8, operatorValidation + 1);
+        }
         if (overlap === "direct") {
           directSiteCount += p.site_count ?? 1;
         }

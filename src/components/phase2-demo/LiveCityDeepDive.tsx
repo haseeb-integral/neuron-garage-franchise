@@ -6,7 +6,7 @@ import { Slider } from "@/components/ui/slider";
 import { DEFAULT_WEIGHTS } from "@/lib/mvs/computeMvs";
 import { useLiveMvs } from "@/lib/mvs/useLiveMvs";
 import { RunPipelineButton } from "@/components/phase2-demo/RunPipelineButton";
-import { renderMvsBriefPdfBlob } from "@/lib/mvsBrief/MvsBriefDocument";
+import { renderMvsBriefPdfBlob, type MvsBriefWeekDetail } from "@/lib/mvsBrief/MvsBriefDocument";
 
 
 const NAVY = "#07142f";
@@ -112,6 +112,29 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
         .limit(1)
         .maybeSingle();
 
+      // Fetch the appendix: per-week rows (with dates + screenshots) joined to
+      // provider names. Only premium providers are surfaced in the PDF, but we
+      // fetch all and filter client-side to match the on-screen helper.
+      const providerIds = providers.map((p) => p.id);
+      const providerNameById = new Map(providers.map((p) => [p.id, p.name]));
+      let weeksDetailed: MvsBriefWeekDetail[] = [];
+      if (providerIds.length > 0) {
+        const { data: wkRows } = await supabase
+          .from("mvs_weeks")
+          .select("provider_id, week_start, week_end, status, confidence, screenshot_url")
+          .in("provider_id", providerIds)
+          .order("week_start", { ascending: true });
+        weeksDetailed = (wkRows ?? []).map((w: any) => ({
+          provider_id: w.provider_id as string,
+          provider_name: providerNameById.get(w.provider_id) ?? "—",
+          week_start: String(w.week_start),
+          week_end: w.week_end ? String(w.week_end) : null,
+          status: String(w.status),
+          confidence: w.confidence == null ? null : Number(w.confidence),
+          screenshot_url: (w.screenshot_url as string) ?? null,
+        }));
+      }
+
       const blob = await renderMvsBriefPdfBlob({
         cityKey,
         cityDisplay,
@@ -119,6 +142,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
         result,
         providers,
         weeks,
+        weeksDetailed,
         acs,
         weights,
         lowConfidence,

@@ -152,6 +152,16 @@ export interface MvsBriefPipelineRun {
   error: string | null;
 }
 
+export interface MvsBriefWeekDetail {
+  provider_id: string;
+  provider_name: string;
+  week_start: string;        // ISO date "YYYY-MM-DD"
+  week_end: string | null;
+  status: string;
+  confidence: number | null;
+  screenshot_url: string | null;
+}
+
 export interface MvsBriefArgs {
   cityKey: string;            // "Austin, TX"
   cityDisplay: string;        // "Austin"
@@ -159,6 +169,7 @@ export interface MvsBriefArgs {
   result: MvsResult;
   providers: MvsProviderInput[];
   weeks: MvsWeekInput[];
+  weeksDetailed?: MvsBriefWeekDetail[];
   acs: MvsAcsInput | null;
   weights: Record<string, number>;
   lowConfidence: boolean;
@@ -585,6 +596,119 @@ const RosterAndLineage: React.FC<{ args: MvsBriefArgs; headerText: string }> = (
 };
 
 // ---------------------------------------------------------------------------
+// Appendix — per-week table for premium providers
+// ---------------------------------------------------------------------------
+
+const STATUS_COLOR: Record<string, string> = {
+  sold_out: C.green,
+  waitlist: C.green,
+  low_availability: C.blue,
+  limited: C.blue,
+  open: C.muted,
+  unknown: C.muted,
+};
+
+const AppendixPage: React.FC<{ args: MvsBriefArgs; headerText: string }> = ({
+  args,
+  headerText,
+}) => {
+  const { providers, weeksDetailed = [] } = args;
+  const premiumIds = new Set(providers.filter((p) => p.tier === "premium").map((p) => p.id));
+  const rows = [...weeksDetailed]
+    .filter((w) => premiumIds.has(w.provider_id))
+    .sort(
+      (a, b) =>
+        a.provider_name.localeCompare(b.provider_name) ||
+        a.week_start.localeCompare(b.week_start),
+    );
+
+  const screenshots = rows.filter((r) => !!r.screenshot_url).slice(0, 12);
+
+  return (
+    <Page size="LETTER" style={s.page}>
+      <Chrome headerText={headerText} />
+      <SectionTitle
+        n={13}
+        label="Appendix — Per-Week Premium Bookings"
+        sub={`${rows.length} provider × week row${rows.length === 1 ? "" : "s"} from mvs_weeks (premium tier only)`}
+      />
+
+      <View style={s.tHead} fixed>
+        <Text style={[s.tHeadCell, { width: "34%" }]}>Provider</Text>
+        <Text style={[s.tHeadCell, { width: "16%" }]}>Week start</Text>
+        <Text style={[s.tHeadCell, { width: "16%" }]}>Week end</Text>
+        <Text style={[s.tHeadCell, { width: "20%" }]}>Status</Text>
+        <Text style={[s.tHeadCell, { width: "14%", textAlign: "right" }]}>Confidence</Text>
+      </View>
+      {rows.length === 0 ? (
+        <View style={s.tRow}>
+          <Text style={[s.tCell, { width: "100%", color: C.muted, textAlign: "center" }]}>
+            No per-week rows recorded for premium providers.
+          </Text>
+        </View>
+      ) : (
+        rows.map((r, i) => (
+          <View key={`${r.provider_id}-${r.week_start}`} style={[s.tRow, i % 2 === 1 ? s.tRowAlt : {}]} wrap={false}>
+            <Text style={[s.tCell, { width: "34%", fontWeight: 700 }]}>{r.provider_name}</Text>
+            <Text style={[s.tCell, s.tCellNum, { width: "16%", textAlign: "left" }]}>
+              {r.week_start}
+            </Text>
+            <Text style={[s.tCell, s.tCellNum, { width: "16%", textAlign: "left" }]}>
+              {r.week_end ?? "—"}
+            </Text>
+            <Text
+              style={[
+                s.tCell,
+                { width: "20%", color: STATUS_COLOR[r.status] ?? C.navy, fontWeight: 600 },
+              ]}
+            >
+              {r.status}
+            </Text>
+            <Text style={[s.tCell, s.tCellNum, { width: "14%" }]}>
+              {r.confidence != null ? r.confidence.toFixed(2) : "—"}
+            </Text>
+          </View>
+        ))
+      )}
+
+      {/* Screenshot evidence (URL list, internal-only). React-PDF Image of
+          remote URLs is unreliable (CORS, oversized payloads). For an internal
+          brief, listing the URL is more useful — Brett can click through. */}
+      {screenshots.length > 0 && (
+        <>
+          <SectionTitle
+            n={14}
+            label="Evidence Links"
+            sub={`Up to 12 screenshot URLs captured by the scraper (mvs_weeks.screenshot_url)`}
+          />
+          <View>
+            {screenshots.map((r, i) => (
+              <View key={`shot-${i}`} style={s.bullet} wrap={false}>
+                <Text style={s.bulletDot}>•</Text>
+                <Text style={[s.bulletText, { fontSize: 8.5 }]}>
+                  <Text style={{ fontWeight: 700 }}>{r.provider_name}</Text>
+                  {" — "}
+                  <Text style={{ fontFamily: "Courier" }}>{r.week_start}</Text>
+                  {" · "}
+                  <Text style={{ color: C.blue, fontFamily: "Courier" }}>{r.screenshot_url}</Text>
+                </Text>
+              </View>
+            ))}
+          </View>
+        </>
+      )}
+
+      <Text style={s.footnote}>
+        Appendix data fetched at PDF-generation time directly from{" "}
+        <Text style={{ fontFamily: "Courier" }}>mvs_weeks</Text>. The
+        {" "}<Text style={{ fontFamily: "Courier" }}>marketAbsorption</Text> pillar score on
+        page 1 is derived from these exact rows: sold_out + waitlist ÷ total.
+      </Text>
+    </Page>
+  );
+};
+
+// ---------------------------------------------------------------------------
 // Document
 // ---------------------------------------------------------------------------
 
@@ -600,9 +724,11 @@ export const MvsBriefDocument: React.FC<MvsBriefArgs> = (args) => {
       <CoverAndExec args={args} today={today} headerText={headerText} />
       <PillarPages args={args} headerText={headerText} />
       <RosterAndLineage args={args} headerText={headerText} />
+      <AppendixPage args={args} headerText={headerText} />
     </Document>
   );
 };
+
 
 export async function renderMvsBriefPdfBlob(args: MvsBriefArgs): Promise<Blob> {
   return await pdf(<MvsBriefDocument {...args} />).toBlob();

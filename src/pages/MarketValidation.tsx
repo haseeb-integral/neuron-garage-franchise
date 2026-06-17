@@ -335,21 +335,33 @@ export default function MarketValidation() {
     <>
       <PageHeader
         title="Market Validation"
-        subtitle="Phase 2 · Feature 1A — Market Validation Score (MVS) across the v1 city shortlist."
+        subtitle="Score and rank candidate cities for Neuron Garage expansion using live market data."
         hideJourneyBar
       />
 
-
-
-      <section className="mb-5 flex flex-wrap items-center justify-end gap-2">
-        <Link
-          to="/market-validation/rollout"
-          className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px] font-semibold text-white"
-          style={{ backgroundColor: BLUE }}
-        >
-          Tier A Rollout →
-        </Link>
+      <section className="mb-5 rounded-lg border p-4" style={{ borderColor: "#dbe6ff", backgroundColor: "#f5f8ff" }}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="mb-1 text-[11px] font-bold uppercase tracking-wide" style={{ color: BLUE }}>
+              How to use this page
+            </div>
+            <ol className="ml-4 list-decimal space-y-1 text-[12px]" style={{ color: NAVY }}>
+              <li><strong>Pick a city</strong> from the shortlist table — its live deep-dive (sub-scores, providers, sellout curve) loads below.</li>
+              <li><strong>Mark Pursue / Hold / Drop</strong> per city to capture the expansion decision. Your choices persist across sessions.</li>
+              <li><strong>Export Shortlist CSV</strong> or a per-city PDF brief once you've made the call.</li>
+              <li>Need to (re)score a city? <Link to="/market-validation/rollout" className="font-semibold underline" style={{ color: BLUE }}>Open the Rollout Console</Link> to run the live pipeline.</li>
+            </ol>
+          </div>
+          <Link
+            to="/market-validation/rollout"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px] font-semibold text-white"
+            style={{ backgroundColor: BLUE }}
+          >
+            Rollout Console →
+          </Link>
+        </div>
       </section>
+
 
 
       {/* v1.1 — Decision-capture shortlist table (replaces the chip rail) */}
@@ -360,37 +372,34 @@ export default function MarketValidation() {
         liveOverlays={liveOverlays}
       />
 
-      {/* Decision points — what is Brett actually deciding on this page? */}
+      {/* Decision points */}
       <section className="mb-4 rounded-lg border p-3" style={{ borderColor: BORDER, backgroundColor: SOFT }}>
         <h3 className="mb-1 text-[11px] font-bold uppercase tracking-wide" style={{ color: NAVY }}>
-          Decision points on this page
+          Questions this page answers
         </h3>
         <ol className="ml-4 list-decimal space-y-0.5 text-[12px]" style={{ color: NAVY }}>
-          <li>For each city: <strong>Pursue / Hold / Drop</strong> using the table above (Brett/Sam's call, persists per user).</li>
-          <li>Across the shortlist: which 5–10 cities graduate to 1B site analysis (use the Pursue filter, then Export CSV).</li>
-          <li>Per city: is the absorption signal believable (check the deep-dive sellout curve below)?</li>
-          <li>Per city: is the market balance band reason enough to override a borderline Premium Enrichment Score?</li>
+          <li>Which cities should we <strong>Pursue, Hold, or Drop</strong> for the next expansion wave?</li>
+          <li>Which 5–10 cities graduate to site-level analysis (use the Pursue filter, then Export CSV)?</li>
+          <li>Per city: is the absorption signal believable? (check the deep-dive sellout curve below)</li>
+          <li>Per city: does the market balance justify overriding a borderline composite score?</li>
         </ol>
       </section>
 
-      {/* Live deep-dive for the active city. Always renders — no demo fallback. */}
+      {/* Live deep-dive for the active city */}
       <LiveCityDeepDive
         cityKey={`${activeRow.city}, ${activeRow.state}`}
         cityDisplay={activeRow.city}
         stateDisplay={activeRow.state}
       />
 
-
-
       <footer
-        className="flex items-center gap-2 rounded-lg border bg-white p-3 text-[11px]"
+        className="mt-4 flex items-center gap-2 rounded-lg border bg-white p-3 text-[11px]"
         style={{ borderColor: BORDER, color: MUTED }}
       >
         <FileText size={14} />
-        Formulas, sub-score weights, and acceptance criteria are locked in
-        <code className="rounded bg-[#f7faff] px-1 py-px text-[#174be8]">.lovable/phase-2/phase-2-sow.md</code>
-        Item 1 (Feature 1A). Pipeline-backed read for each Tier A city.
+        Composite scores are recomputed live from the underlying provider, pricing, and absorption data each time the page loads.
       </footer>
+
     </>
   );
 }

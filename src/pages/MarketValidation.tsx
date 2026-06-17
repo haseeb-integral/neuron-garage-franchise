@@ -201,6 +201,7 @@ export default function MarketValidation() {
   const sanAntonioLive   = useLiveMvs("San Antonio, TX");
   const philadelphiaLive = useLiveMvs("Philadelphia, PA");
   const losAngelesLive   = useLiveMvs("Los Angeles, CA");
+  const indianapolisLive = useLiveMvs("Indianapolis, IN");
 
   const liveOverlays = useMemo<Map<string, LiveOverlay>>(() => {
     const m = new Map<string, LiveOverlay>();
@@ -213,6 +214,7 @@ export default function MarketValidation() {
       { rowId: "san-antonio-tx",  bundle: sanAntonioLive },
       { rowId: "philadelphia-pa", bundle: philadelphiaLive },
       { rowId: "los-angeles-ca",  bundle: losAngelesLive },
+      { rowId: "indianapolis-in", bundle: indianapolisLive },
     ];
     for (const { rowId, bundle } of entries) {
       // Show live overlay for any city that has been *run* (has a result),
@@ -237,6 +239,7 @@ export default function MarketValidation() {
   }, [
     austinLive, newYorkLive, houstonLive, chicagoLive,
     bostonLive, sanAntonioLive, philadelphiaLive, losAngelesLive,
+    indianapolisLive,
   ]);
 
   const isActiveLive = liveOverlays.has(activeCityId);

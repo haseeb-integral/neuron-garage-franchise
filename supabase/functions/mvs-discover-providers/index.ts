@@ -82,13 +82,12 @@ Deno.serve(async (req) => {
     });
   }
   const admin = createClient(supabaseUrl, serviceKey);
-  const { data: roleRow } = await admin
+  const { data: roleRows } = await admin
     .from("user_roles")
     .select("role")
     .eq("user_id", userData.user.id)
-    .in("role", ["manager", "admin"])
-    .maybeSingle();
-  if (!roleRow) {
+    .in("role", ["manager", "admin"]);
+  if (!roleRows || roleRows.length === 0) {
     return new Response(JSON.stringify({ error: "forbidden: manager required" }), {
       status: 403,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

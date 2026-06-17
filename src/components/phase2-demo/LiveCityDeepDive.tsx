@@ -6,7 +6,7 @@ import { Slider } from "@/components/ui/slider";
 import { DEFAULT_WEIGHTS } from "@/lib/mvs/computeMvs";
 import { useLiveMvs } from "@/lib/mvs/useLiveMvs";
 import { RunPipelineButton } from "@/components/phase2-demo/RunPipelineButton";
-import { renderMvsBriefPdfBlob } from "@/lib/mvsBrief/MvsBriefDocument";
+import { renderMvsBriefPdfBlob, type MvsBriefWeekDetail } from "@/lib/mvsBrief/MvsBriefDocument";
 
 
 const NAVY = "#07142f";

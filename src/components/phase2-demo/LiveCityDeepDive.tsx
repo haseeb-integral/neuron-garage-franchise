@@ -255,8 +255,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
               type="button"
               onClick={handleDownloadBrief}
               disabled={downloading || !result || !acs}
-              className="mt-2 inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold transition-colors hover:bg-[#f7faff] disabled:cursor-not-allowed disabled:opacity-50"
-              style={{ borderColor: BORDER, color: BLUE }}
+              className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-[#174be8] px-3 py-1.5 text-[12px] font-bold text-white hover:bg-[#1240c9] disabled:opacity-60"
               title="Download internal MVS brief (PDF)"
             >
               {downloading ? (
@@ -264,7 +263,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
               ) : (
                 <FileDown size={12} />
               )}
-              {downloading ? "Generating…" : "Download MVS Brief (PDF)"}
+              {downloading ? "Generating…" : "Export PDF"}
             </button>
           </div>
         </div>

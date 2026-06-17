@@ -6,6 +6,19 @@ import { useMarketDecisions, type MarketVerdict } from "@/hooks/useMarketDecisio
 import { exportMarketDecisionsCsv } from "@/lib/decisionsExport";
 import { SampleDataBadge } from "@/components/phase2-demo/SampleDataBadge";
 
+export type LiveOverlay = {
+  composite: number | null;
+  pricing: number | null;
+  absorption: number | null;
+  scaledOperator: number | null;
+  diversity: number | null;
+  depth: number | null;
+  balance: number | null;
+  lowConfidence: boolean;
+};
+
+
+
 const NAVY = "#07142f";
 const MUTED = "#526078";
 const BORDER = "#eef2f7";
@@ -23,17 +36,42 @@ interface Props {
   rows: ShortlistRow[];
   activeCityId: string;
   onSelectCity: (cityId: string) => void;
+  /**
+   * Map of cityId -> live overlay. When a row has an entry, its composite +
+   * sub-score cells are read from this overlay instead of the static demo
+   * fields, and a "Live" pill replaces the demo styling.
+   */
+  liveOverlays?: Map<string, LiveOverlay>;
 }
 
 type SortKey = "city" | "composite" | "pricing" | "absorption" | "scaledOperator" | "diversity" | "depth" | "verdict";
 
-export function ShortlistTable({ rows, activeCityId, onSelectCity }: Props) {
+export function ShortlistTable({ rows, activeCityId, onSelectCity, liveOverlays }: Props) {
+
   const { byCity, setVerdict, setNotes, isAuthed } = useMarketDecisions();
   const [sortKey, setSortKey] = useState<SortKey>("composite");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [verdictFilter, setVerdictFilter] = useState<MarketVerdict | "all">("all");
   const [editingNotes, setEditingNotes] = useState<string | null>(null);
   const [draftNotes, setDraftNotes] = useState("");
+
+  // Helper — pick the live overlay value or fall back to the static demo value.
+  const valFor = (r: ShortlistRow, k: SortKey): number | string => {
+    if (k === "city") return r.city;
+    if (k === "verdict") return byCity.get(r.id)?.verdict ?? "undecided";
+    const overlay = liveOverlays?.get(r.id);
+    if (overlay) {
+      const live =
+        k === "composite" ? overlay.composite :
+        k === "pricing" ? overlay.pricing :
+        k === "absorption" ? overlay.absorption :
+        k === "scaledOperator" ? overlay.scaledOperator :
+        k === "diversity" ? overlay.diversity :
+        k === "depth" ? overlay.depth : null;
+      if (live != null) return live;
+    }
+    return r[k] as number;
+  };
 
   const sorted = useMemo(() => {
     const filtered = rows.filter((r) => {
@@ -42,22 +80,15 @@ export function ShortlistTable({ rows, activeCityId, onSelectCity }: Props) {
       return v === verdictFilter;
     });
     return [...filtered].sort((a, b) => {
-      let av: number | string;
-      let bv: number | string;
-      if (sortKey === "city") {
-        av = a.city; bv = b.city;
-      } else if (sortKey === "verdict") {
-        av = byCity.get(a.id)?.verdict ?? "undecided";
-        bv = byCity.get(b.id)?.verdict ?? "undecided";
-      } else {
-        av = a[sortKey] as number;
-        bv = b[sortKey] as number;
-      }
+      const av = valFor(a, sortKey);
+      const bv = valFor(b, sortKey);
       if (av < bv) return sortDir === "asc" ? -1 : 1;
       if (av > bv) return sortDir === "asc" ? 1 : -1;
       return 0;
     });
-  }, [rows, sortKey, sortDir, verdictFilter, byCity]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, sortKey, sortDir, verdictFilter, byCity, liveOverlays]);
+
 
   const toggleSort = (k: SortKey) => {
     if (k === sortKey) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -171,6 +202,12 @@ export function ShortlistTable({ rows, activeCityId, onSelectCity }: Props) {
               const isActive = r.id === activeCityId;
               const v = d?.verdict ?? "undecided";
               const opt = VERDICT_OPTIONS.find((o) => o.v === v)!;
+              const overlay = liveOverlays?.get(r.id);
+              const isLive = !!overlay;
+              const fmt = (n: number | null | undefined) =>
+                n == null ? "—" : Number.isInteger(n) ? `${n}` : n.toFixed(1);
+              const cell = (live: number | null | undefined, demo: number) =>
+                isLive ? fmt(live) : `${demo}`;
               return (
                 <tr
                   key={r.id}
@@ -182,25 +219,44 @@ export function ShortlistTable({ rows, activeCityId, onSelectCity }: Props) {
                   onClick={() => onSelectCity(r.id)}
                 >
                   <td className="px-2 py-2 font-semibold" style={{ color: NAVY }}>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       {isActive && <span className="block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: BLUE }} />}
                       <span>{r.city}, {r.state}</span>
+                      {isLive && (
+                        <span
+                          className="inline-flex items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
+                          style={{ backgroundColor: "#e3f3e7", color: "#1d6b32" }}
+                          title="Live pipeline data via computeMvs helper"
+                        >
+                          Live
+                        </span>
+                      )}
+                      {isLive && overlay?.lowConfidence && (
+                        <span
+                          className="inline-flex items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
+                          style={{ backgroundColor: "#fce7ec", color: "#a3142b" }}
+                          title="Low-confidence flag set on mvs_city_flags"
+                        >
+                          ⚑ Low conf.
+                        </span>
+                      )}
                     </div>
                   </td>
-                  <td className="px-2 py-2 text-right font-black tabular-nums" style={{ color: NAVY }}>{r.composite}</td>
-                  <td className="px-2 py-2 text-right tabular-nums" style={{ color: NAVY }}>{r.pricing}</td>
-                  <td className="px-2 py-2 text-right tabular-nums" style={{ color: NAVY }}>{r.absorption}</td>
-                  <td className="px-2 py-2 text-right tabular-nums" style={{ color: NAVY }}>{r.scaledOperator}</td>
-                  <td className="px-2 py-2 text-right tabular-nums" style={{ color: NAVY }}>{r.diversity}</td>
-                  <td className="px-2 py-2 text-right tabular-nums" style={{ color: NAVY }}>{r.depth}</td>
+                  <td className="px-2 py-2 text-right font-black tabular-nums" style={{ color: NAVY }}>{cell(overlay?.composite, r.composite)}</td>
+                  <td className="px-2 py-2 text-right tabular-nums" style={{ color: NAVY }}>{cell(overlay?.pricing, r.pricing)}</td>
+                  <td className="px-2 py-2 text-right tabular-nums" style={{ color: NAVY }}>{cell(overlay?.absorption, r.absorption)}</td>
+                  <td className="px-2 py-2 text-right tabular-nums" style={{ color: NAVY }}>{cell(overlay?.scaledOperator, r.scaledOperator)}</td>
+                  <td className="px-2 py-2 text-right tabular-nums" style={{ color: NAVY }}>{cell(overlay?.diversity, r.diversity)}</td>
+                  <td className="px-2 py-2 text-right tabular-nums" style={{ color: NAVY }}>{cell(overlay?.depth, r.depth)}</td>
                   <td className="px-2 py-2">
                     <span
                       className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
                       style={{ backgroundColor: SOFT, color: NAVY, border: `1px solid ${BORDER}` }}
                     >
-                      {r.balanceBand}
+                      {isLive && overlay?.balance != null ? `Balance ${overlay.balance.toFixed(0)}` : r.balanceBand}
                     </span>
                   </td>
+
                   <td className="px-2 py-2" onClick={(e) => e.stopPropagation()}>
                     <select
                       value={v}

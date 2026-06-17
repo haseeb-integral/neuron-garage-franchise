@@ -1,13 +1,15 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { AlertCircle, BarChart3, ChevronDown, ChevronUp, Download, FileText, MapPin } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
 import { DemoBanner } from "@/components/phase2-demo/DemoBanner";
+import { LiveCityDeepDive } from "@/components/phase2-demo/LiveCityDeepDive";
 import { LowConfidenceBadge } from "@/components/phase2-demo/LowConfidenceBadge";
 import { SampleDataBadge } from "@/components/phase2-demo/SampleDataBadge";
-import { ShortlistTable } from "@/components/phase2-demo/ShortlistTable";
+import { ShortlistTable, type LiveOverlay } from "@/components/phase2-demo/ShortlistTable";
 import { Slider } from "@/components/ui/slider";
+import { useLiveMvs } from "@/lib/mvs/useLiveMvs";
 import {
   sanAntonioMarketValidationDemo,
   MARKET_BALANCE_ACTIVE_BAND,
@@ -24,6 +26,7 @@ const MUTED = "#526078";
 const BORDER = "#eef2f7";
 const SOFT = "#f7faff";
 const BLUE = "#174be8";
+
 
 const STATUS_STYLE: Record<AbsorptionStatus, { bg: string; fg: string; label: string }> = {
   sold_out: { bg: "#fce7ec", fg: "#a3142b", label: "Sold out" },
@@ -157,6 +160,34 @@ export default function MarketValidation() {
   const activeRow = SHORTLIST_DEMO.find((r) => r.id === activeCityId) ?? SHORTLIST_DEMO[0];
   const isAnchor = activeCityId === "san-antonio-tx";
 
+  // Phase 5 Turn 5.1 — live overlay for Austin only. When more cities flip
+  // to mvs_data_source='live', extend this by adding more useLiveMvs hooks
+  // (or refactor into a multi-city loader). Static demo path is untouched
+  // for every city not in this overlay map.
+  const austinLive = useLiveMvs("Austin, TX");
+  const isAustinLive = austinLive.flag?.mvs_data_source === "live";
+  const liveOverlays = useMemo<Map<string, LiveOverlay>>(() => {
+    const m = new Map<string, LiveOverlay>();
+    if (isAustinLive && austinLive.result) {
+      const r = austinLive.result;
+      m.set("austin-tx", {
+        composite: r.mvs,
+        pricing: r.scores.pricingAcceptance,
+        absorption: r.scores.marketAbsorption,
+        scaledOperator: r.scores.scaledOperator,
+        diversity: r.scores.enrichmentDiversity,
+        depth: r.scores.marketDepth,
+        balance: r.scores.marketBalance,
+        lowConfidence: austinLive.flag?.low_confidence_badge ?? false,
+      });
+    }
+    return m;
+  }, [isAustinLive, austinLive.result, austinLive.flag]);
+
+  const isActiveLive = liveOverlays.has(activeCityId);
+
+
+
   // 1A-LOV-5 — Sellout curve from sample weeks (% sold_out + waitlist).
   const weekLabels = data.premiumProviders[0]?.sampleWeeks.map((w) => w.label) ?? [];
   const selloutCurve = weekLabels.map((_, idx) => {
@@ -279,6 +310,7 @@ export default function MarketValidation() {
         rows={SHORTLIST_DEMO}
         activeCityId={activeCityId}
         onSelectCity={setActiveCityId}
+        liveOverlays={liveOverlays}
       />
 
       {/* Decision points — what is Brett actually deciding on this page? */}
@@ -294,19 +326,36 @@ export default function MarketValidation() {
         </ol>
       </section>
 
-      {/* Active city deep-dive panel */}
-      {!isAnchor && (
+      {/* Live deep-dive (Phase 5 Turn 5.1) — replaces the static demo deep-dive
+          when the active city's mvs_data_source flag is 'live'. */}
+      {isActiveLive && (
+        <LiveCityDeepDive
+          cityKey={`${activeRow.city}, ${activeRow.state}`}
+          cityDisplay={activeRow.city}
+          stateDisplay={activeRow.state}
+        />
+      )}
+
+      {/* Active city deep-dive panel (demo path — unchanged) */}
+      {!isActiveLive && !isAnchor && (
         <div className="mb-3 rounded-md border p-2 text-[11px]" style={{ borderColor: BORDER, backgroundColor: "#fff1d6", color: "#925100" }}>
           Deep-dive below shows <strong>San Antonio, TX</strong> (the demo anchor). {activeRow.city}, {activeRow.state} wires up
           to the Manus pipeline in Week 3; the table above already carries that city's verdict.
         </div>
       )}
 
+
+
+      {/* Demo deep-dive (composite + sub-score grid + premium provider sample
+          table). Hidden when the active city renders the live deep-dive. */}
+      {!isActiveLive && (
+      <>
       {/* Composite card — left stack flush-left, fixed-width right sidebar */}
       <section
         className="mb-5 rounded-lg border bg-white p-5"
         style={{ borderColor: BORDER }}
       >
+
         <div className="flex flex-wrap items-start gap-6">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
@@ -540,6 +589,10 @@ export default function MarketValidation() {
           </table>
         </div>
       </section>
+      </>
+      )}
+
+
 
       <footer
         className="flex items-center gap-2 rounded-lg border bg-white p-3 text-[11px]"

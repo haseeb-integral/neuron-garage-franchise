@@ -117,9 +117,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
       // fetch all and filter client-side to match the on-screen helper.
       const providerIds = providers.map((p) => p.id);
       const providerNameById = new Map(providers.map((p) => [p.id, p.name]));
-      let weeksDetailed: Awaited<ReturnType<typeof renderMvsBriefPdfBlob>> extends never
-        ? never
-        : NonNullable<Parameters<typeof renderMvsBriefPdfBlob>[0]["weeksDetailed"]> = [];
+      let weeksDetailed: MvsBriefWeekDetail[] = [];
       if (providerIds.length > 0) {
         const { data: wkRows } = await supabase
           .from("mvs_weeks")

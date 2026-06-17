@@ -19,13 +19,28 @@ const corsHeaders = {
 
 const AUSTIN = "Austin, TX";
 
+// Phase 7 / Turn 7.1 — Tier A allow-list. Anything outside this list keeps the
+// Sample Data badge. Predictable cost: 8 cities × 30 Firecrawl-call cap = 240
+// calls worst case.
+const TIER_A_CITIES = new Set<string>([
+  "Austin, TX",
+  "New York, NY",
+  "Houston, TX",
+  "Chicago, IL",
+  "Boston, MA",
+  "San Antonio, TX",
+  "Philadelphia, PA",
+  "Los Angeles, CA",
+]);
+
 type StepName = "discover" | "classify" | "extract";
 
 const STEP_FUNCTIONS: Record<StepName, string> = {
   discover: "mvs-discover-providers",
   classify: "mvs-classify-tier",
-  extract: "mvs-extract-weeks-austin-all",
+  extract: "mvs-extract-weeks-all",
 };
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -71,15 +86,19 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Body: { city } — Austin-only for this turn.
+  // Body: { city } — must be a Tier A city.
   const body = await req.json().catch(() => ({}));
   const city: string = (body?.city ?? AUSTIN).trim();
-  if (city !== AUSTIN) {
+  if (!TIER_A_CITIES.has(city)) {
     return new Response(
-      JSON.stringify({ error: `Turn 5.2 supports Austin only (got ${city})` }),
+      JSON.stringify({
+        error: `city '${city}' is not in the Tier A allow-list`,
+        allowed: Array.from(TIER_A_CITIES),
+      }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
+
 
   // Reject if a run is already in flight for this city.
   const { data: inflight } = await admin

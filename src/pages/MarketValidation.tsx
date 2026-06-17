@@ -1,6 +1,9 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertCircle, BarChart3, ChevronDown, ChevronUp, Download, FileText, MapPin } from "lucide-react";
+import { AlertCircle, BarChart3, ChevronDown, ChevronUp, Download, FileText, Loader2, MapPin } from "lucide-react";
+import { toast } from "sonner";
+import { renderMvsBriefPdfBlob } from "@/lib/mvsBrief/MvsBriefDocument";
+import { buildSampleBriefArgs } from "@/lib/mvsBrief/sampleBriefAdapter";
 
 import { PageHeader } from "@/components/PageHeader";
 import { DemoBanner } from "@/components/phase2-demo/DemoBanner";
@@ -441,16 +444,13 @@ export default function MarketValidation() {
             </div>
             <button
               type="button"
-              disabled
-              title="Coming Week 3 — branded 12-section PDF report per SOW Item 1"
-              className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold"
-              style={{ borderColor: BORDER, color: MUTED, backgroundColor: SOFT }}
+              onClick={handleExportSamplePdf}
+              disabled={exporting}
+              title="Download the branded 12-section MVS brief (PDF)"
+              className="inline-flex items-center gap-1.5 rounded-md bg-[#174be8] px-3 py-1.5 text-[12px] font-bold text-white hover:bg-[#1240c9] disabled:opacity-60"
             >
-              <Download size={12} />
-              Export PDF
-              <span className={`${CHIP} bg-white`} style={{ color: BLUE }}>
-                Week 3
-              </span>
+              {exporting ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+              {exporting ? "Generating…" : "Export PDF"}
             </button>
           </div>
         </div>

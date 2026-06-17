@@ -359,5 +359,54 @@ function SelectedMarketPanelImpl({
   );
 }
 
+function ValidateMarketButton({ city, state }: { city: string; state: string }) {
+  const { rows, addCity } = useShortlistAdditions();
+  const [busy, setBusy] = useState(false);
+  const abbr = toStateAbbr(state);
+  const alreadyAdded = rows.some(
+    (r) => r.city.toLowerCase() === city.toLowerCase() && r.state.toUpperCase() === abbr,
+  );
+
+  const handle = async () => {
+    if (alreadyAdded) {
+      toast.info(`${city}, ${abbr} is already on the Market Validation shortlist.`);
+      return;
+    }
+    setBusy(true);
+    try {
+      await addCity(city, abbr);
+      toast.success(
+        `${city}, ${abbr} added to Market Validation. Open the Scoring Console to run it.`,
+        {
+          action: { label: "Open", onClick: () => { window.location.href = "/market-validation/rollout"; } },
+        },
+      );
+    } catch (err) {
+      toast.error(`Could not add to shortlist: ${(err as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Button
+      onClick={handle}
+      disabled={busy}
+      variant="outline"
+      className="h-9 w-full border-[#bcd1a8] bg-[#f1f8e9] text-[#2f6f1f] hover:bg-[#e6f3d8] gap-1.5 px-3 font-semibold text-[12px] justify-center"
+    >
+      {busy ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+      {alreadyAdded ? (
+        <Link to="/market-validation" className="truncate underline-offset-2 hover:underline">
+          On shortlist — Open Market Validation
+        </Link>
+      ) : (
+        <span className="truncate">Validate Market</span>
+      )}
+    </Button>
+  );
+}
+
 export const SelectedMarketPanel = memo(SelectedMarketPanelImpl);
+
 

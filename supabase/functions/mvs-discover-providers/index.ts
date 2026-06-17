@@ -55,7 +55,6 @@ function citySlug(city: string): string {
 }
 
 const SCREENSHOT_BUCKET = "mvs-screenshots";
-const SCREENSHOT_BUCKET = "mvs-screenshots";
 
 type ProviderExtract = {
   name: string;

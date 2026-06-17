@@ -11,8 +11,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 const primaryNavItems = [
   { title: "Dashboard", url: "/", icon: Home, demo: false },
   { title: "City Search", url: "/city-scoring", icon: Map, demo: false },
-  { title: "Market Validation", url: "/market-validation", icon: BarChart3, demo: true },
-  { title: "Site Analysis", url: "/site-analysis", icon: Building2, demo: true },
+  { title: "Market Validation", url: "/market-validation", icon: BarChart3, demo: false },
+  { title: "Site Analysis", url: "/site-analysis", icon: Building2, demo: false },
   { title: "Teacher Search", url: "/teacher-prospects", icon: Users, demo: false },
   { title: "Email Outreach", url: "/email-outreach", icon: Mail, demo: false },
   { title: "Candidate Pipeline", url: "/candidate-pipeline", icon: Kanban, demo: false },

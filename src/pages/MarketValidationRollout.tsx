@@ -100,6 +100,7 @@ function CityRow({
   latestRun,
   flag,
   anyRunning,
+  invokingCity,
   onRun,
   onFlip,
   onUnwind,
@@ -110,6 +111,7 @@ function CityRow({
   latestRun: RunRow | null;
   flag: FlagRow | null;
   anyRunning: boolean;
+  invokingCity: string | null;
   onRun: () => void;
   onFlip: () => void;
   onUnwind: () => void;
@@ -125,7 +127,8 @@ function CityRow({
 
   const status = latestRun?.status ?? null;
   const inFlight = status === "queued" || status === "running";
-  const canRun = !anyRunning;
+  const isInvoking = invokingCity === city;
+  const canRun = !anyRunning && !invokingCity;
   const canFlip = status === "done" && flag?.mvs_data_source !== "live";
   const canUnwind = flag?.mvs_data_source === "live";
 
@@ -180,11 +183,11 @@ function CityRow({
           <button
             type="button"
             onClick={onRun}
-            disabled={!canRun || inFlight}
-            title={anyRunning && !inFlight ? "Another city is running" : "Run pipeline"}
+            disabled={!canRun || inFlight || isInvoking}
+            title={(anyRunning || invokingCity) && !inFlight && !isInvoking ? "Another city is running" : "Run pipeline"}
             className="inline-flex items-center gap-1 rounded-md bg-[#174be8] px-2 py-1 text-[11px] font-semibold text-white shadow-sm transition hover:bg-[#0f37b5] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {inFlight ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+            {inFlight || isInvoking ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
             Run
           </button>
           <button
@@ -301,7 +304,7 @@ export default function MarketValidationRollout() {
   }, [anyRunning, invokingCity, fetchAll]);
 
   const handleRun = useCallback(async (city: string) => {
-    if (anyRunning) {
+    if (anyRunning || invokingCity) {
       toast.error("Wait for the in-flight run to finish — runs are sequential by design.");
       return;
     }
@@ -311,6 +314,8 @@ export default function MarketValidationRollout() {
       const errMsg = error?.message ?? "";
       const is409 = /409/.test(errMsg) || data?.error === "a run is already in flight";
       if (is409) {
+        toast.info(`${city} is already running — refreshing status.`);
+      } else if (data?.already_running) {
         toast.info(`${city} is already running — refreshing status.`);
       } else if (error) {
         toast.error(`Failed to start pipeline for ${city}: ${errMsg}`);
@@ -330,7 +335,7 @@ export default function MarketValidationRollout() {
     } finally {
       setInvokingCity(null);
     }
-  }, [anyRunning, fetchAll]);
+  }, [anyRunning, invokingCity, fetchAll]);
 
   const handleFlip = useCallback(async (city: string, state: string, source: "live" | "sample") => {
     const { error } = await supabase
@@ -484,6 +489,7 @@ export default function MarketValidationRollout() {
                 latestRun={latestRuns[c.city] ?? null}
                 flag={flags[c.city] ?? null}
                 anyRunning={anyRunning}
+                invokingCity={invokingCity}
                 onRun={() => handleRun(c.city)}
                 onFlip={() => handleFlip(c.city, c.state, "live")}
                 onUnwind={() => handleFlip(c.city, c.state, "sample")}

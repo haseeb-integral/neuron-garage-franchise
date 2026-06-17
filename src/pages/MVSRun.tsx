@@ -78,13 +78,66 @@ export default function MVSRun() {
     setProviders(data ?? []);
   }, []);
 
+  const loadQa = useCallback(async (runId: string, includeResolved: boolean) => {
+    setLoadingQa(true);
+    // Fetch provider IDs for this run, then their QA items.
+    const { data: provs, error: pErr } = await supabase
+      .from("mvs_providers")
+      .select("id")
+      .eq("source_run_id", runId)
+      .limit(500);
+    if (pErr) {
+      setLoadingQa(false);
+      toast({ title: "Failed to load QA scope", description: pErr.message, variant: "destructive" });
+      return;
+    }
+    const ids = (provs ?? []).map((p) => p.id);
+    if (ids.length === 0) {
+      setQaItems([]);
+      setLoadingQa(false);
+      return;
+    }
+    let q = supabase
+      .from("mvs_qa_queue")
+      .select("*")
+      .eq("entity_type", "provider")
+      .in("entity_id", ids)
+      .order("created_at", { ascending: false })
+      .limit(300);
+    if (!includeResolved) q = q.is("resolved_at", null);
+    const { data, error } = await q;
+    setLoadingQa(false);
+    if (error) {
+      toast({ title: "Failed to load QA queue", description: error.message, variant: "destructive" });
+      return;
+    }
+    setQaItems(data ?? []);
+  }, []);
+
   useEffect(() => {
     if (isManager) loadRuns();
   }, [isManager, loadRuns]);
 
   useEffect(() => {
-    if (selectedRunId) loadProviders(selectedRunId);
-  }, [selectedRunId, loadProviders]);
+    if (selectedRunId) {
+      loadProviders(selectedRunId);
+      loadQa(selectedRunId, showResolved);
+    }
+  }, [selectedRunId, loadProviders, loadQa, showResolved]);
+
+  const resolveQa = async (id: string) => {
+    const { data: u } = await supabase.auth.getUser();
+    const { error } = await supabase
+      .from("mvs_qa_queue")
+      .update({ resolved_at: new Date().toISOString(), resolved_by: u.user?.id ?? null })
+      .eq("id", id);
+    if (error) {
+      toast({ title: "Resolve failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    if (selectedRunId) loadQa(selectedRunId, showResolved);
+  };
+
 
   const handleRun = async () => {
     const trimmed = city.trim();

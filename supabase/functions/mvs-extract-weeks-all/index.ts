@@ -339,9 +339,39 @@ Deno.serve(async (req) => {
   }
 
   if (providerList.length === 0) {
+    const { error: flagErr } = await admin
+      .from("mvs_city_flags")
+      .upsert(
+        {
+          city,
+          state,
+          low_confidence_badge: true,
+        },
+        { onConflict: "city,state" },
+      );
+    if (flagErr) {
+      return new Response(
+        JSON.stringify({ error: "city flag upsert failed", detail: flagErr.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     return new Response(
-      JSON.stringify({ error: `no Sawyer providers found for ${city} (run discover/classify first)` }),
-      { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      JSON.stringify({
+        run_id: null,
+        city,
+        providers_processed: 0,
+        no_reg_page_count: 0,
+        no_reg_page_pct: 0,
+        low_confidence_badge: true,
+        premium_fallback: false,
+        weeks_inserted_total: 0,
+        qa_flagged_total: 0,
+        firecrawl_calls: 0,
+        outcomes: [],
+        message: `No Sawyer providers found for ${city}; pipeline completed with no extractable providers.`,
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 

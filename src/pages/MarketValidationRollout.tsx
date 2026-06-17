@@ -18,8 +18,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useLiveMvs } from "@/lib/mvs/useLiveMvs";
 import { useAuth } from "@/contexts/AuthContext";
 import { SHORTLIST_DEMO } from "@/data/phase2DemoData";
+import { useShortlistAdditions } from "@/lib/mvs/useShortlistAdditions";
+import { AddCityDialog } from "@/components/phase2-demo/AddCityDialog";
 
-const SHORTLISTED_CITIES: { city: string; state: string }[] = SHORTLIST_DEMO.map((row) => ({
+const BASE_SHORTLIST: { city: string; state: string }[] = SHORTLIST_DEMO.map((row) => ({
   city: `${row.city}, ${row.state}`,
   state: row.state,
 }));
@@ -154,6 +156,15 @@ export default function MarketValidationRollout() {
 
   const [invokingCity, setInvokingCity] = useState<string | null>(null);
 
+  const { rows: additions, addCity } = useShortlistAdditions();
+  const SHORTLISTED_CITIES = useMemo<{ city: string; state: string }[]>(
+    () => [
+      ...BASE_SHORTLIST,
+      ...additions.map((a) => ({ city: `${a.city}, ${a.state}`, state: a.state })),
+    ],
+    [additions],
+  );
+
   // Role gate.
   useEffect(() => {
     if (!user) {
@@ -213,7 +224,7 @@ export default function MarketValidationRollout() {
       };
     }
     setFlags(next);
-  }, []);
+  }, [SHORTLISTED_CITIES]);
 
   useEffect(() => {
     fetchAll();
@@ -320,13 +331,16 @@ export default function MarketValidationRollout() {
             Run the live data pipeline that produces each city's Market Validation composite score.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={fetchAll}
-          className="inline-flex items-center gap-1.5 rounded-md border border-[#cfd8e6] bg-white px-2.5 py-1.5 text-[11px] font-medium text-[#526078] hover:bg-[#f7faff]"
-        >
-          <RotateCcw className="h-3 w-3" /> Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <AddCityDialog onAdd={addCity} />
+          <button
+            type="button"
+            onClick={fetchAll}
+            className="inline-flex items-center gap-1.5 rounded-md border border-[#cfd8e6] bg-white px-2.5 py-1.5 text-[11px] font-medium text-[#526078] hover:bg-[#f7faff]"
+          >
+            <RotateCcw className="h-3 w-3" /> Refresh
+          </button>
+        </div>
       </div>
 
       {/* How this page works */}

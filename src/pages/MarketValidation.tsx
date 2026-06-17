@@ -23,7 +23,10 @@ import {
   SHORTLIST_DEMO,
   type AbsorptionStatus,
   type ConfidenceLevel,
+  type ShortlistRow,
 } from "@/data/phase2DemoData";
+import { useShortlistAdditions } from "@/lib/mvs/useShortlistAdditions";
+import { AddCityDialog } from "@/components/phase2-demo/AddCityDialog";
 
 const NAVY = "#07142f";
 const MUTED = "#526078";
@@ -160,8 +163,29 @@ function SubScoreCard({ title, subtitle, weight, value, signals, formula, confid
 export default function MarketValidation() {
   const data = sanAntonioMarketValidationDemo;
   const subs = data.subScores;
+  const { rows: additions, addCity } = useShortlistAdditions();
+
+  // Merge built-in shortlist + manager-added cities. Added cities start at 0
+  // and get filled in once their pipeline run finishes on the Scoring Console.
+  const allShortlistRows = useMemo<ShortlistRow[]>(() => {
+    const extras: ShortlistRow[] = additions.map((a) => ({
+      id: `${a.city.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${a.state.toLowerCase()}`,
+      city: a.city,
+      state: a.state,
+      composite: 0,
+      tier: "Not yet scored",
+      pricing: 0,
+      absorption: 0,
+      scaledOperator: 0,
+      diversity: 0,
+      depth: 0,
+      balanceBand: "Balanced",
+    }));
+    return [...SHORTLIST_DEMO, ...extras];
+  }, [additions]);
+
   const [activeCityId, setActiveCityId] = useState<string>("san-antonio-tx");
-  const activeRow = SHORTLIST_DEMO.find((r) => r.id === activeCityId) ?? SHORTLIST_DEMO[0];
+  const activeRow = allShortlistRows.find((r) => r.id === activeCityId) ?? allShortlistRows[0];
   const isAnchor = activeCityId === "san-antonio-tx";
   const [exporting, setExporting] = useState(false);
 
@@ -389,8 +413,17 @@ export default function MarketValidation() {
 
 
       {/* v1.1 — Decision-capture shortlist table (replaces the chip rail) */}
+      <div className="mb-2 flex items-center justify-between">
+        <div className="text-[12px] text-[#526078]">
+          <strong className="text-[#07142f]">{allShortlistRows.length}</strong> cities in shortlist
+          {additions.length > 0 && (
+            <span className="ml-1 text-[#8a96aa]">({additions.length} added by you)</span>
+          )}
+        </div>
+        <AddCityDialog onAdd={addCity} />
+      </div>
       <ShortlistTable
-        rows={SHORTLIST_DEMO}
+        rows={allShortlistRows}
         activeCityId={activeCityId}
         onSelectCity={setActiveCityId}
         liveOverlays={liveOverlays}

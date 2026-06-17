@@ -1,13 +1,15 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { AlertCircle, BarChart3, ChevronDown, ChevronUp, Download, FileText, MapPin } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
 import { DemoBanner } from "@/components/phase2-demo/DemoBanner";
+import { LiveCityDeepDive } from "@/components/phase2-demo/LiveCityDeepDive";
 import { LowConfidenceBadge } from "@/components/phase2-demo/LowConfidenceBadge";
 import { SampleDataBadge } from "@/components/phase2-demo/SampleDataBadge";
-import { ShortlistTable } from "@/components/phase2-demo/ShortlistTable";
+import { ShortlistTable, type LiveOverlay } from "@/components/phase2-demo/ShortlistTable";
 import { Slider } from "@/components/ui/slider";
+import { useLiveMvs } from "@/lib/mvs/useLiveMvs";
 import {
   sanAntonioMarketValidationDemo,
   MARKET_BALANCE_ACTIVE_BAND,
@@ -24,6 +26,7 @@ const MUTED = "#526078";
 const BORDER = "#eef2f7";
 const SOFT = "#f7faff";
 const BLUE = "#174be8";
+
 
 const STATUS_STYLE: Record<AbsorptionStatus, { bg: string; fg: string; label: string }> = {
   sold_out: { bg: "#fce7ec", fg: "#a3142b", label: "Sold out" },

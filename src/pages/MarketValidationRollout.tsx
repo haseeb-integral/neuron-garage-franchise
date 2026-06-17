@@ -281,35 +281,8 @@ export default function MarketValidationRollout() {
     setComposites((prev) => (prev[city] === mvs ? prev : { ...prev, [city]: mvs }));
   }, []);
 
-  // Calibration gate — only meaningful once every city has a done run + composite.
-  const calibration = useMemo(() => {
-    const allDone = TIER_A.every((c) => latestRuns[c.city]?.status === "done");
-    const allHaveComposite = TIER_A.every((c) => composites[c.city] != null);
-    if (!allDone || !allHaveComposite) {
-      return { ready: false as const };
-    }
-    const ranked = TIER_A
-      .map((c) => ({ city: c.city, score: composites[c.city] as number }))
-      .sort((a, b) => b.score - a.score);
-    const bostonRank = ranked.findIndex((r) => r.city === "Boston, MA") + 1;
-    const topQuartile = bostonRank > 0 && bostonRank <= 2; // top 2 of 8
-    return { ready: true as const, ranked, bostonRank, topQuartile };
-  }, [latestRuns, composites]);
 
-  // Signoff helpers.
-  const updateSignoff = useCallback((city: string, patch: Partial<SignoffChecks>) => {
-    setSignoff((prev) => {
-      const next = { ...prev, [city]: { ...(prev[city] ?? EMPTY_CHECKS), ...patch } };
-      saveSignoff(next);
-      return next;
-    });
-  }, []);
 
-  const signedCities = useMemo(
-    () => TIER_A.filter((c) => c.city !== "Austin, TX" && isFullySignedOff(signoff[c.city])).map((c) => c.city),
-    [signoff],
-  );
-  const readyForClientMeeting = signedCities.length >= 2;
 
   if (isManager === null) {
     return (

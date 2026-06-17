@@ -1,9 +1,12 @@
 import { useMemo, useState } from "react";
-import { Loader2, MapPin } from "lucide-react";
+import { Loader2, MapPin, FileDown } from "lucide-react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { Slider } from "@/components/ui/slider";
 import { DEFAULT_WEIGHTS } from "@/lib/mvs/computeMvs";
 import { useLiveMvs } from "@/lib/mvs/useLiveMvs";
 import { RunPipelineButton } from "@/components/phase2-demo/RunPipelineButton";
+import { renderMvsBriefPdfBlob } from "@/lib/mvsBrief/MvsBriefDocument";
 
 
 const NAVY = "#07142f";
@@ -79,9 +82,10 @@ interface Props {
  */
 export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) {
   const [weights, setWeights] = useState<Record<string, number>>({ ...DEFAULT_WEIGHTS });
-  const { result, providers, weeks, flag, loading, error, refresh } = useLiveMvs(cityKey, {
+  const { result, providers, weeks, acs, flag, loading, error, refresh } = useLiveMvs(cityKey, {
     weights,
   });
+  const [downloading, setDownloading] = useState(false);
 
 
   const provCount = providers.length;
@@ -92,6 +96,64 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
     () => providers.filter((p) => p.tier === "premium"),
     [providers],
   );
+
+  const handleDownloadBrief = async () => {
+    if (!result || !acs) {
+      toast.error("MVS data not ready yet.");
+      return;
+    }
+    setDownloading(true);
+    try {
+      const { data: runRow } = await supabase
+        .from("mvs_pipeline_runs")
+        .select("id, status, started_at, finished_at, firecrawl_calls, error")
+        .eq("city", cityKey)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const blob = await renderMvsBriefPdfBlob({
+        cityKey,
+        cityDisplay,
+        stateDisplay,
+        result,
+        providers,
+        weeks,
+        acs,
+        weights,
+        lowConfidence,
+        latestRun: runRow
+          ? {
+              id: runRow.id as string,
+              status: String(runRow.status),
+              started_at: (runRow.started_at as string) ?? null,
+              finished_at: (runRow.finished_at as string) ?? null,
+              firecrawl_calls: Number(runRow.firecrawl_calls ?? 0),
+              error: (runRow.error as string) ?? null,
+            }
+          : null,
+        generatedAt: new Date(),
+      });
+      const today = new Date().toISOString().slice(0, 10);
+      const slug = cityDisplay.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `mvs-brief-${slug}-${today}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast.success("MVS brief PDF downloaded");
+    } catch (err) {
+      console.error("MVS brief PDF failed", err);
+      toast.error(
+        `PDF export failed: ${err instanceof Error ? err.message : "unknown"}`,
+      );
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -158,13 +220,28 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
               persisted).
             </p>
           </div>
-          <div className="flex w-[240px] shrink-0 flex-col items-end gap-1">
+          <div className="flex w-[240px] shrink-0 flex-col items-end gap-2">
             <div className="text-[42px] font-black leading-none tabular-nums" style={{ color: NAVY }}>
               {result?.mvs != null ? result.mvs.toFixed(1) : "—"}
             </div>
             <div className="text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
               Market Validation Score
             </div>
+            <button
+              type="button"
+              onClick={handleDownloadBrief}
+              disabled={downloading || !result || !acs}
+              className="mt-2 inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold transition-colors hover:bg-[#f7faff] disabled:cursor-not-allowed disabled:opacity-50"
+              style={{ borderColor: BORDER, color: BLUE }}
+              title="Download internal MVS brief (PDF)"
+            >
+              {downloading ? (
+                <Loader2 size={12} className="animate-spin" />
+              ) : (
+                <FileDown size={12} />
+              )}
+              {downloading ? "Generating…" : "Download MVS Brief (PDF)"}
+            </button>
           </div>
         </div>
       </section>

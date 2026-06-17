@@ -67,10 +67,33 @@ Date rules:
 
 const VALID_STATUS: WeekStatus[] = ["open", "limited", "waitlist", "sold_out", "unknown"];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const MONTHS: Record<string, string> = {
+  Jan: "01", Feb: "02", Mar: "03", Apr: "04", May: "05", Jun: "06",
+  Jul: "07", Aug: "08", Sep: "09", Oct: "10", Nov: "11", Dec: "12",
+};
 
 function normUrl(u: string | null | undefined): string | null {
   if (!u) return null;
   try { return new URL(u).toString(); } catch { return null; }
+}
+
+function fallbackWeeksFromMarkdown(markdown: string): WeekExtract[] {
+  const match = markdown.match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2}),\s+(20\d{2})\s*-\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2}),\s+(20\d{2})\b/);
+  if (!match) return [];
+  const start = `${match[3]}-${MONTHS[match[1]]}-${match[2].padStart(2, "0")}`;
+  const end = `${match[6]}-${MONTHS[match[4]]}-${match[5].padStart(2, "0")}`;
+  const lc = markdown.toLowerCase();
+  const status: WeekStatus = lc.includes("sold out") ? "sold_out"
+    : lc.includes("waitlist") ? "waitlist"
+    : lc.includes("booking fast") || lc.includes("classes remaining") || lc.includes("spots left") ? "limited"
+    : "open";
+  return [{
+    week_start: start,
+    week_end: end,
+    status,
+    status_evidence: status === "limited" ? "Sawyer page shows booking fast/classes remaining" : "Sawyer page shows visible dates and registration page",
+    confidence: 0.7,
+  }];
 }
 
 type ProviderRow = { id: string; name: string; url: string | null };
@@ -183,7 +206,11 @@ async function processProvider(
       return { outcome: out, firecrawlCalls };
     }
 
-    const cleaned = (parsed.weeks ?? []).flatMap((w) => {
+    const extractedWeeks = (parsed.weeks && parsed.weeks.length > 0)
+      ? parsed.weeks
+      : fallbackWeeksFromMarkdown(markdown);
+
+    const cleaned = extractedWeeks.flatMap((w) => {
       if (!w || !DATE_RE.test(w.week_start ?? "") || !DATE_RE.test(w.week_end ?? "")) return [];
       const status: WeekStatus = VALID_STATUS.includes(w.status) ? w.status : "unknown";
       const conf = Math.max(0, Math.min(1, Number(w.confidence ?? 0.5)));

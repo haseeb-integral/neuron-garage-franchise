@@ -300,27 +300,51 @@ Deno.serve(async (req) => {
     );
   }
 
-  const { data: providers, error: provErr } = await admin
+  // Prefer premium-tier Sawyer providers; if none exist for this city,
+  // fall back to any tier and flag the run as low-confidence.
+  let providerQuery = admin
     .from("mvs_providers")
-    .select("id, name, url")
+    .select("id, name, url, tier")
     .eq("city", city)
     .eq("platform", "sawyer")
-    .eq("tier", "premium")
     .order("created_at", { ascending: true })
     .limit(MAX_PROVIDERS);
-  if (provErr) {
+
+  const { data: premiumProviders, error: premiumErr } = await providerQuery.eq("tier", "premium");
+  if (premiumErr) {
     return new Response(
-      JSON.stringify({ error: "provider lookup failed", detail: provErr.message }),
+      JSON.stringify({ error: "provider lookup failed", detail: premiumErr.message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
-  const providerList = (providers ?? []) as ProviderRow[];
+
+  let providerList = (premiumProviders ?? []) as ProviderRow[];
+  let premiumFallback = false;
+  if (providerList.length === 0) {
+    const { data: anyTier, error: anyErr } = await admin
+      .from("mvs_providers")
+      .select("id, name, url, tier")
+      .eq("city", city)
+      .eq("platform", "sawyer")
+      .order("created_at", { ascending: true })
+      .limit(MAX_PROVIDERS);
+    if (anyErr) {
+      return new Response(
+        JSON.stringify({ error: "provider lookup failed", detail: anyErr.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    providerList = (anyTier ?? []) as ProviderRow[];
+    premiumFallback = providerList.length > 0;
+  }
+
   if (providerList.length === 0) {
     return new Response(
-      JSON.stringify({ error: `no Premium Sawyer providers found for ${city} (run discover/classify first)` }),
+      JSON.stringify({ error: `no Sawyer providers found for ${city} (run discover/classify first)` }),
       { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
+
 
   const { data: run, error: runErr } = await admin
     .from("mvs_pipeline_runs")

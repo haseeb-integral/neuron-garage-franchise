@@ -10,7 +10,7 @@
 - **Demo path stays alive.** `phase2DemoData.ts` is not deleted or rewritten until Phase 5. A feature flag (`mvs_data_source` per city: `sample | live`) gates which path renders.
 - **One calibrated number everywhere.** All MVS / sub-score math lives in **one helper** (`src/lib/mvs/computeMvs.ts`). Table row, detail panel, compare modal, PDF — all read from it.
 - **Each phase ends with a human-test checkpoint.** Brett or Haseeb signs off before the next phase opens.
-- **Kill switch.** A single env flag `MVS_PIPELINE_ENABLED` (default off) gates every edge function. Flip off → all runs reject immediately, UI falls back to sample data.
+- **No pipeline in v1.0.** Apify / edge-function pipeline lands in v1.1. v1.0 = schema + helper + UI cutover from sample → live for cities we hand-seed. No kill switch needed because nothing is running on a schedule.
 
 ---
 

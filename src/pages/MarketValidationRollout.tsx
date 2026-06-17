@@ -1,5 +1,5 @@
-// Tier A rollout console — manager-only page that runs the live MVS pipeline
-// across the Tier A priority cities. One row per city, sequential runs, live
+// City scoring console — manager-only page that runs the live MVS pipeline
+// across the same shortlisted cities shown on Market Validation. One row per city, sequential runs, live
 // composite recomputed via useLiveMvs.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -292,7 +292,7 @@ export default function MarketValidationRollout() {
         <ShieldCheck className="mx-auto mb-3 h-8 w-8 text-[#8a96aa]" />
         <h1 className="text-lg font-semibold text-[#07142f]">Manager access required</h1>
         <p className="mt-1 text-sm text-[#526078]">
-          The Tier A rollout console is restricted to manager/admin users.
+          The City Scoring Console is restricted to manager/admin users.
         </p>
       </div>
     );

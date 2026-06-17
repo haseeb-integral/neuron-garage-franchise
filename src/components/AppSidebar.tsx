@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Home, Map, Users, Kanban, ChevronLeft, ChevronRight, ChevronDown, Mail, FileText, BookOpen, Send, MailOpen, Calculator, Gauge, Activity, FileCode2, KeyRound, Network, Wand2, Plug, ShieldCheck, PieChart, BookMarked, BarChart3, Building2, MapPin, type LucideIcon } from "lucide-react";
+import { Home, Map, Users, Kanban, ChevronLeft, ChevronRight, ChevronDown, Mail, FileText, BookOpen, Send, MailOpen, Calculator, Gauge, Activity, FileCode2, KeyRound, Network, Wand2, Plug, ShieldCheck, PieChart, BookMarked, BarChart3, Building2, MapPin, PlayCircle, type LucideIcon } from "lucide-react";
 
 import { NavLink, useLocation } from "react-router-dom";
 import { prefetchRoute } from "@/lib/routePrefetch";
@@ -33,6 +33,7 @@ const docsNavItems = [
   { title: "Scoring Method", url: "/scoring-method", icon: Gauge },
   { title: "CSI Methodology", url: "/methodology", icon: Calculator },
   { title: "MVS Methodology", url: "/mvs-methodology", icon: BarChart3 },
+  { title: "MVS Run (ops)", url: "/mvs-run", icon: PlayCircle },
   { title: "SAS Methodology", url: "/sas-methodology", icon: MapPin },
   { title: "Demographics Method", url: "/demographics-methodology", icon: PieChart },
   { title: "Observability Guide", url: "/observability-guide", icon: Activity },

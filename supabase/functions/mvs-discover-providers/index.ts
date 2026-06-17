@@ -34,18 +34,30 @@ const TIER_A_BOXES: Record<string, Box> = {
   "Indianapolis, IN": { top: 40.15, left: -86.55, bottom: 39.45, right: -85.75 },
 };
 
-function buildSawyerUrl(city: string, box: Box): string {
-  const search = {
-    booking_type: "camp",
-    categories: [33, 31, 19, 30],
-    location_within: box,
-    month_year_in: [
-      { month: 6, year: 2026 },
-      { month: 7, year: 2026 },
-    ],
-  };
+type SawyerSearch = {
+  booking_type: "camp" | "class";
+  categories?: number[];
+  month_year_in: { month: number; year: number }[];
+};
+
+// Multiple search variants per city. Each one is a separate Firecrawl scrape.
+// Union + dedupe by provider name afterwards. Keeps total Firecrawl spend
+// bounded (3 calls per discover run) while catching providers that only show
+// up under different booking types / months / category filters.
+function buildSearchVariants(): SawyerSearch[] {
+  return [
+    // Original: summer camps, kid categories
+    { booking_type: "camp", categories: [33, 31, 19, 30], month_year_in: [{ month: 6, year: 2026 }, { month: 7, year: 2026 }] },
+    // Camps, no category filter (catches providers Sawyer mis-categorizes)
+    { booking_type: "camp", month_year_in: [{ month: 6, year: 2026 }, { month: 7, year: 2026 }, { month: 8, year: 2026 }] },
+    // Year-round classes
+    { booking_type: "class", month_year_in: [{ month: 6, year: 2026 }, { month: 9, year: 2026 }] },
+  ];
+}
+
+function buildSawyerUrl(city: string, box: Box, search: SawyerSearch): string {
   const params = new URLSearchParams({
-    search: JSON.stringify(search),
+    search: JSON.stringify({ ...search, location_within: box }),
     from_city_name: `"${city}"`,
   });
   return `https://www.hisawyer.com/marketplace?${params.toString()}`;

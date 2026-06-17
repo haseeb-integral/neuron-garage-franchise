@@ -303,6 +303,7 @@ function SelectedMarketPanelImpl({
 
         {/* Action buttons */}
         <div className="mt-4 w-full flex flex-col gap-2">
+          <ValidateMarketButton city={selected.city} state={selected.state} />
           <Button onClick={onFindTeachers} className="h-9 w-full bg-[#174be8] hover:bg-[#1240c9] text-white gap-1.5 px-3 font-medium text-[12px] justify-center">
             <span className="truncate">Find Teachers</span> <ArrowRight size={12} className="flex-shrink-0" />
           </Button>

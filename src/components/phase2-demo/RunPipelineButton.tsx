@@ -60,6 +60,8 @@ export function RunPipelineButton({ city, onComplete }: Props) {
   }, [inFlight, fetchLatest]);
 
   // Fire toast + refresh once when a run transitions to terminal.
+  // The toast text comes from the invoke response when present (richer summary);
+  // polling fallback keeps the simpler call-count line.
   useEffect(() => {
     if (!latest) return;
     if (latest.status !== "done" && latest.status !== "failed") return;
@@ -83,6 +85,15 @@ export function RunPipelineButton({ city, onComplete }: Props) {
         toast.error(`Failed to start pipeline: ${error.message}`);
       } else if (data?.ok === false) {
         toast.error(`Pipeline error: ${data.error ?? "unknown"}`);
+      } else if (data?.ok && data.summary) {
+        const s = data.summary;
+        toast.success(
+          `Pipeline complete · ${s.providers_processed} providers · ${s.weeks_upserted} weeks upserted · ${s.screenshots_stored} screenshots · ${s.firecrawl_calls} Firecrawl call${s.firecrawl_calls === 1 ? "" : "s"}`,
+          { duration: 8000 },
+        );
+        // Pre-mark this run id so the polling effect doesn't fire a second toast.
+        if (data.run_id) setLastTerminalId(data.run_id);
+        onComplete?.();
       }
       await fetchLatest();
     } catch (e) {

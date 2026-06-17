@@ -195,11 +195,24 @@ Tables are namespaced mvs_* so they don't collide with v1.0 City Search tables. 
 | :---- | :---- | :---- |
 | mvs-run-pipeline | Orchestrates Stages 1–4 for a single city | FIRECRAWL_API_KEY, LOVABLE_API_KEY |
 | mvs-extract-providers | Stage 1 + Stage 2 | FIRECRAWL_API_KEY, LOVABLE_API_KEY |
-| mvs-extract-weeks | Stage 3 (Firecrawl + Gemini) | FIRECRAWL_API_KEY, LOVABLE_API_KEY |
+| mvs-extract-weeks | Stage 3, single provider end-to-end (Turn 3.1) | FIRECRAWL_API_KEY, LOVABLE_API_KEY |
+| mvs-extract-weeks-austin-all | Stage 3 orchestrator, loops all Austin Premium providers (Turn 3.2) | FIRECRAWL_API_KEY, LOVABLE_API_KEY |
 | mvs-acs-pull | Stage 4 (reuse v1.0 ACS pipeline) | existing |
 | mvs-generate-brief | Server-side PDF generation | none beyond Supabase |
 
 Client never holds Firecrawl or Lovable AI Gateway keys.
+
+### Phase 3 implementation notes (locked in as we built)
+
+* **Kill switch is enforced in code.** Every Stage-3 function checks \`MVS_PIPELINE_ENABLED\`. If it is not exactly \`"true"\`, the function returns 503 immediately — no Firecrawl call, no spend.
+* **Authorization is enforced in code.** Both Stage-3 functions require \`manager\` or \`admin\` via \`user_roles\` + \`has_role()\`. The \`verify_jwt\` flag is not relied on.
+* **Turn 3.2 is an inline orchestrator, not N nested HTTP calls.** \`mvs-extract-weeks-austin-all\` runs the same per-provider scrape+extract logic inline, sequentially, in one function. Chosen over re-invoking \`mvs-extract-weeks\` N times because nested edge-function hops are slower and make the Firecrawl cost ceiling harder to enforce. Same DB end state, same screenshots, same QA queue behavior.
+* **Hard per-run cap of 25 providers** on the orchestrator (\`MAX_PROVIDERS = 25\`). Keeps a single Austin run under the plan's 30-Firecrawl-call ceiling (1 discovery + up to 25 provider scrapes + headroom). Tunable if Austin Premium grows past 25.
+* **Sequential, not parallel.** Providers are scraped one at a time to keep Firecrawl spend predictable and avoid hammering Sawyer.
+* **"No public registration page" definition** (used for the city low-confidence badge): a provider counts as \`no_reg_page\` if (a) its \`url\` is null/missing, OR (b) Firecrawl returns non-2xx, OR (c) Firecrawl returns markdown shorter than 200 chars. If >20% of Austin Premium providers hit this, \`mvs_city_flags.low_confidence_badge\` is set to true for Austin and \`last_run_id\` is stamped.
+* **QA queue threshold** is \`confidence < 0.7\`. Rows land in \`mvs_weeks\` regardless; low-confidence ones also get an \`mvs_qa_queue\` row (\`entity_type='week'\`) with the reason string.
+* **Screenshots** stored in private bucket \`mvs-screenshots\` at \`<run_id>/weeks-<provider_id>.png\`. Every \`mvs_weeks\` row stores the path in \`screenshot_url\`.
+* **Run traceability.** Each invocation opens an \`mvs_pipeline_runs\` row (\`status='running'\`), updates \`firecrawl_calls\`, closes with \`done\` or \`failed\` + \`error\`. Every \`mvs_weeks\` row carries \`source_run_id\`.
 
 ---
 

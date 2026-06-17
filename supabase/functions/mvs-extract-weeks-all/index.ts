@@ -373,7 +373,8 @@ Deno.serve(async (req) => {
 
     const noRegCount = outcomes.filter((o) => o.no_reg_page).length;
     const noRegPct = outcomes.length > 0 ? noRegCount / outcomes.length : 0;
-    const lowConfidence = noRegPct > LOW_CONFIDENCE_BADGE_PCT;
+    const lowConfidence = premiumFallback || noRegPct > LOW_CONFIDENCE_BADGE_PCT;
+
 
     const { error: flagErr } = await admin
       .from("mvs_city_flags")

@@ -405,7 +405,9 @@ Deno.serve(async (req) => {
         no_reg_page_count: noRegCount,
         no_reg_page_pct: Number(noRegPct.toFixed(3)),
         low_confidence_badge: lowConfidence,
+        premium_fallback: premiumFallback,
         weeks_inserted_total: totalWeeks,
+
         qa_flagged_total: totalQa,
         firecrawl_calls: firecrawlCalls,
         outcomes,

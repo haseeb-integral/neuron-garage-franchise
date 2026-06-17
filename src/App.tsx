@@ -29,7 +29,7 @@ const UserGuide = lazyWithPreload(() => import("./pages/UserGuide"));
 const DemographicsMethodology = lazyWithPreload(() => import("./pages/DemographicsMethodology"));
 const Methodology = lazyWithPreload(() => import("./pages/Methodology"));
 const MVSMethodology = lazyWithPreload(() => import("./pages/MVSMethodology"));
-const MVSRun = lazyWithPreload(() => import("./pages/MVSRun"));
+
 const SASMethodology = lazyWithPreload(() => import("./pages/SASMethodology"));
 const ScoringMethod = lazyWithPreload(() => import("./pages/ScoringMethod"));
 const DbHealth = lazyWithPreload(() => import("./pages/DbHealth"));
@@ -64,7 +64,7 @@ registerRoutePrefetch("/email-outreach-docs", EmailOutreachDocs.preload);
 registerRoutePrefetch("/demographics-methodology", DemographicsMethodology.preload);
 registerRoutePrefetch("/methodology", Methodology.preload);
 registerRoutePrefetch("/mvs-methodology", MVSMethodology.preload);
-registerRoutePrefetch("/mvs-run", MVSRun.preload);
+
 registerRoutePrefetch("/sas-methodology", SASMethodology.preload);
 registerRoutePrefetch("/scoring-method", ScoringMethod.preload);
 registerRoutePrefetch("/observability", Observability.preload);
@@ -111,7 +111,7 @@ const App = () => (
                 <Route path="/demographics-methodology" element={<DemographicsMethodology />} />
                 <Route path="/methodology" element={<Methodology />} />
                 <Route path="/mvs-methodology" element={<MVSMethodology />} />
-                <Route path="/mvs-run" element={<MVSRun />} />
+                
                 <Route path="/sas-methodology" element={<SASMethodology />} />
                 <Route path="/scoring-method" element={<ScoringMethod />} />
                 <Route path="/glossary" element={<Glossary />} />

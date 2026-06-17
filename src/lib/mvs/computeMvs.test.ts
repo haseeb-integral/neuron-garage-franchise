@@ -1,0 +1,434 @@
+import { describe, it, expect } from "vitest";
+import {
+  computeMvs,
+  DEFAULT_WEIGHTS,
+  ELIGIBLE_CATEGORIES,
+  type MvsProviderInput,
+  type MvsWeekInput,
+  type MvsAcsInput,
+  type MvsOperatorWatchlistEntry,
+  type MvsCityOverlapOverride,
+} from "./computeMvs";
+
+// ---------------------------------------------------------------------------
+// Fixtures
+// ---------------------------------------------------------------------------
+
+function makeProvider(overrides: Partial<MvsProviderInput> = {}): MvsProviderInput {
+  return {
+    id: `p-${Math.random().toString(36).slice(2, 8)}`,
+    name: "Test Provider",
+    tier: "premium",
+    price_max: 500,
+    category_classified: "STEM",
+    site_count: 1,
+    ...overrides,
+  };
+}
+
+function makeWeek(overrides: Partial<MvsWeekInput> = {}): MvsWeekInput {
+  return {
+    provider_id: "p-1",
+    status: "open",
+    ...overrides,
+  };
+}
+
+const defaultAcs: MvsAcsInput = {
+  affluent_dual_income_family_count: 10_000,
+  children_5_12_count: 50_000,
+};
+
+const defaultWatchlist: MvsOperatorWatchlistEntry[] = [
+  { name: "Galileo", default_overlap: "direct" },
+  { name: "iD Tech", default_overlap: "direct" },
+  { name: "Steve & Kate's", default_overlap: "adjacent" },
+];
+
+// ---------------------------------------------------------------------------
+// Score 1 — Pricing Acceptance
+// ---------------------------------------------------------------------------
+
+describe("Score 1: Pricing Acceptance", () => {
+  it("scores null when no premium providers", () => {
+    const r = computeMvs(
+      [makeProvider({ tier: "mid" })],
+      [],
+      defaultAcs,
+    );
+    expect(r.scores.pricingAcceptance).toBeNull();
+  });
+
+  it("normalizes median and p75 correctly for known inputs", () => {
+    // 4 premium providers at $400, $500, $600, $700
+    // median = 550 → normalize(550, 300, 700) = (250/400)*100 = 62.5
+    // p75 = 625 → normalize(625, 400, 800) = (225/400)*100 = 56.25
+    // % >= 500 = 3/4 = 75 → normalize(75, 0, 100) = 75
+    // score = 0.40*62.5 + 0.40*56.25 + 0.20*75 = 25 + 22.5 + 15 = 62.5
+    const providers = [
+      makeProvider({ price_max: 400 }),
+      makeProvider({ price_max: 500 }),
+      makeProvider({ price_max: 600 }),
+      makeProvider({ price_max: 700 }),
+    ];
+    const r = computeMvs(providers, [], defaultAcs);
+    expect(r.scores.pricingAcceptance).toBeCloseTo(62.5, 1);
+    expect(r.inputs.pricingAcceptance.medianPrice).toBeCloseTo(550, 1);
+    expect(r.inputs.pricingAcceptance.p75Price).toBeCloseTo(625, 1);
+    expect(r.inputs.pricingAcceptance.pctAtLeast500).toBeCloseTo(75, 1);
+  });
+
+  it("caps at 0 when all prices are below range", () => {
+    const providers = [
+      makeProvider({ price_max: 100 }),
+      makeProvider({ price_max: 200 }),
+    ];
+    const r = computeMvs(providers, [], defaultAcs);
+    expect(r.scores.pricingAcceptance).toBe(0);
+  });
+
+  it("caps at 100 when all prices are above range", () => {
+    const providers = [
+      makeProvider({ price_max: 900 }),
+      makeProvider({ price_max: 1000 }),
+    ];
+    const r = computeMvs(providers, [], defaultAcs);
+    expect(r.scores.pricingAcceptance).toBe(100);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Score 2 — Market Absorption
+// ---------------------------------------------------------------------------
+
+describe("Score 2: Market Absorption", () => {
+  it("scores null when no weeks for premium providers", () => {
+    const r = computeMvs([makeProvider()], [], defaultAcs);
+    expect(r.scores.marketAbsorption).toBeNull();
+  });
+
+  it("returns year_2_signal flag in v1.0", () => {
+    const r = computeMvs(
+      [makeProvider()],
+      [makeWeek({ status: "sold_out" })],
+      defaultAcs,
+    );
+    expect(r.inputs.marketAbsorption.year2Signal).toBe(true);
+    expect(r.inputs.marketAbsorption.timeToSellout).toBeNull();
+    expect(r.inputs.marketAbsorption.yoyVelocity).toBeNull();
+  });
+
+  it("computes sellout rate = (sold_out + waitlist) / total", () => {
+    const pid = "p-abc";
+    const providers = [makeProvider({ id: pid })];
+    const weeks = [
+      makeWeek({ provider_id: pid, status: "sold_out" }),
+      makeWeek({ provider_id: pid, status: "waitlist" }),
+      makeWeek({ provider_id: pid, status: "open" }),
+      makeWeek({ provider_id: pid, status: "unknown" }),
+    ];
+    // sellout rate = 2/4 = 50%
+    // normalize(50, 0, 80) = (50/80)*100 = 62.5
+    const r = computeMvs(providers, weeks, defaultAcs);
+    expect(r.scores.marketAbsorption).toBeCloseTo(62.5, 1);
+    expect(r.inputs.marketAbsorption.selloutRate).toBeCloseTo(50, 1);
+  });
+
+  it("counts low_availability / limited as NOT sold out", () => {
+    const pid = "p-def";
+    const providers = [makeProvider({ id: pid })];
+    const weeks = [
+      makeWeek({ provider_id: pid, status: "limited" }),
+      makeWeek({ provider_id: pid, status: "low_availability" }),
+      makeWeek({ provider_id: pid, status: "open" }),
+    ];
+    const r = computeMvs(providers, weeks, defaultAcs);
+    expect(r.inputs.marketAbsorption.selloutRate).toBeCloseTo(0, 1);
+    expect(r.scores.marketAbsorption).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Score 3 — Scaled Operator
+// ---------------------------------------------------------------------------
+
+describe("Score 3: Scaled Operator", () => {
+  it("scores null when no premium providers", () => {
+    const r = computeMvs(
+      [makeProvider({ tier: "mid" })],
+      [],
+      defaultAcs,
+      { watchlist: defaultWatchlist },
+    );
+    expect(r.scores.scaledOperator).toBeNull();
+  });
+
+  it("counts watchlist matches and direct competitor load", () => {
+    // 2 Galileo providers (direct), 1 Steve & Kate's (adjacent)
+    // operatorValidation = 2 (Galileo, Steve & Kate's) capped at 8
+    // directSiteCount = 2 + 3 = 5
+    // children_5_12 = 50,000 → per10k = 5
+    // directCompetitorLoad = 5 / 5 = 1.0 per 10k
+    // nValidation = normalize(2, 0, 8) = 25
+    // nLoad = normalize(1, 0, 5) = 20
+    // score = 0.65*25 + 0.35*(100-20) = 16.25 + 28 = 44.25
+    const providers = [
+      makeProvider({ name: "Galileo Austin", site_count: 2 }),
+      makeProvider({ name: "Galileo Round Rock", site_count: 3 }),
+      makeProvider({ name: "Steve & Kate's Austin", site_count: 1 }),
+    ];
+    const r = computeMvs(providers, [], defaultAcs, { watchlist: defaultWatchlist });
+    expect(r.scores.scaledOperator).toBeCloseTo(44.25, 1);
+    expect(r.inputs.scaledOperator.operatorValidation).toBe(2);
+    expect(r.inputs.scaledOperator.directCompetitorLoad).toBeCloseTo(1.0, 1);
+  });
+
+  it("applies city overlap overrides", () => {
+    // Galileo normally direct, override to adjacent
+    const providers = [makeProvider({ name: "Galileo Austin", site_count: 4 })];
+    const overrides: MvsCityOverlapOverride[] = [
+      { operator_name: "Galileo", overlap: "adjacent" },
+    ];
+    const r = computeMvs(providers, [], defaultAcs, {
+      watchlist: defaultWatchlist,
+      overlapOverrides: overrides,
+    });
+    // operatorValidation = 1, directSiteCount = 0
+    // nValidation = normalize(1, 0, 8) = 12.5
+    // nLoad = normalize(0, 0, 5) = 0
+    // score = 0.65*12.5 + 0.35*100 = 8.125 + 35 = 43.125
+    expect(r.scores.scaledOperator).toBeCloseTo(43.125, 1);
+    expect(r.inputs.scaledOperator.directCompetitorLoad).toBe(0);
+  });
+
+  it("defaults missing site_count to 1 for direct competitors", () => {
+    const providers = [makeProvider({ name: "Galileo Austin", site_count: undefined })];
+    const r = computeMvs(providers, [], defaultAcs, { watchlist: defaultWatchlist });
+    expect(r.inputs.scaledOperator.directCompetitorLoad).toBeCloseTo(0.2, 1); // 1 / 5
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Score 4 — Enrichment Diversity
+// ---------------------------------------------------------------------------
+
+describe("Score 4: Enrichment Diversity", () => {
+  it("scores null when no premium providers", () => {
+    const r = computeMvs([makeProvider({ tier: "budget" })], [], defaultAcs);
+    expect(r.scores.enrichmentDiversity).toBeNull();
+  });
+
+  it("rewards breadth and penalizes deep-but-narrow", () => {
+    // 5 providers, 3 distinct categories
+    // categoryCount = 3 → normalize(3, 2, 10) = (1/8)*100 = 12.5
+    // diversityRatio = 3/5 = 0.6 → normalize(0.6, 0.1, 0.6) = 100
+    // score = 0.70*12.5 + 0.30*100 = 8.75 + 30 = 38.75
+    const providers = [
+      makeProvider({ category_classified: "STEM" }),
+      makeProvider({ category_classified: "Art" }),
+      makeProvider({ category_classified: "Music" }),
+      makeProvider({ category_classified: "STEM" }),
+      makeProvider({ category_classified: "Art" }),
+    ];
+    const r = computeMvs(providers, [], defaultAcs);
+    expect(r.scores.enrichmentDiversity).toBeCloseTo(38.75, 1);
+    expect(r.inputs.enrichmentDiversity.categoryCount).toBe(3);
+    expect(r.inputs.enrichmentDiversity.diversityRatio).toBeCloseTo(0.6, 2);
+  });
+
+  it("normalizes fuzzy category matching", () => {
+    const providers = [
+      makeProvider({ category_classified: "Robotics & Engineering" }),
+      makeProvider({ category_classified: "Visual Art" }),
+    ];
+    const r = computeMvs(providers, [], defaultAcs);
+    expect(r.inputs.enrichmentDiversity.categoryCount).toBe(2); // robotics, art
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Score 5 — Market Depth
+// ---------------------------------------------------------------------------
+
+describe("Score 5: Market Depth", () => {
+  it("scores null when no premium providers", () => {
+    const r = computeMvs([makeProvider({ tier: "community" })], [], defaultAcs);
+    expect(r.scores.marketDepth).toBeNull();
+  });
+
+  it("normalizes provider count 4–40", () => {
+    // 10 providers → normalize(10, 4, 40) = (6/36)*100 = 16.667
+    const providers = Array.from({ length: 10 }, () => makeProvider());
+    const r = computeMvs(providers, [], defaultAcs);
+    expect(r.scores.marketDepth).toBeCloseTo(16.67, 1);
+    expect(r.inputs.marketDepth.premiumProviderCount).toBe(10);
+  });
+
+  it("caps at 0 for count below range", () => {
+    const providers = Array.from({ length: 2 }, () => makeProvider());
+    const r = computeMvs(providers, [], defaultAcs);
+    expect(r.scores.marketDepth).toBe(0);
+  });
+
+  it("caps at 100 for count above range", () => {
+    const providers = Array.from({ length: 50 }, () => makeProvider());
+    const r = computeMvs(providers, [], defaultAcs);
+    expect(r.scores.marketDepth).toBe(100);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Score 6 — Market Balance
+// ---------------------------------------------------------------------------
+
+describe("Score 6: Market Balance", () => {
+  it("scores null when no premium providers", () => {
+    const r = computeMvs([makeProvider({ tier: "budget" })], [], defaultAcs);
+    expect(r.scores.marketBalance).toBeNull();
+  });
+
+  it("computes coverage ratio and normalizes 50–500", () => {
+    // 10 premium providers, 10_000 affluent families
+    // coverageRatio = 10000 / 10 = 1000
+    // normalize(1000, 50, 500) = 100 (capped)
+    const providers = Array.from({ length: 10 }, () => makeProvider());
+    const r = computeMvs(providers, [], defaultAcs);
+    expect(r.scores.marketBalance).toBe(100);
+    expect(r.inputs.marketBalance.coverageRatio).toBe(1000);
+  });
+
+  it("is 0 when coverage ratio is at floor", () => {
+    // 200 premium providers, 10_000 affluent families
+    // coverageRatio = 10000 / 200 = 50
+    // normalize(50, 50, 500) = 0
+    const providers = Array.from({ length: 200 }, () => makeProvider());
+    const r = computeMvs(providers, [], defaultAcs);
+    expect(r.scores.marketBalance).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Composite MVS
+// ---------------------------------------------------------------------------
+
+describe("Composite MVS", () => {
+  it("is null when any sub-score is null", () => {
+    // No weeks → marketAbsorption null → MVS null
+    const r = computeMvs([makeProvider()], [], defaultAcs, {
+      watchlist: defaultWatchlist,
+    });
+    expect(r.mvs).toBeNull();
+  });
+
+  it("weights sum to 1.0 (default)", () => {
+    const w = DEFAULT_WEIGHTS;
+    const sum =
+      w.pricingAcceptance +
+      w.marketAbsorption +
+      w.scaledOperator +
+      w.enrichmentDiversity +
+      w.marketDepth +
+      w.marketBalance;
+    expect(sum).toBeCloseTo(1.0, 5);
+  });
+
+  it("computes a full composite with all scores present", () => {
+    const pid = "p-full";
+    const providers = [
+      makeProvider({ id: pid, price_max: 500, category_classified: "STEM" }),
+      makeProvider({ id: "p-2", price_max: 550, category_classified: "Art" }),
+      makeProvider({ id: "p-3", price_max: 600, category_classified: "Coding" }),
+      makeProvider({ id: "p-4", price_max: 650, category_classified: "Music" }),
+      makeProvider({ id: "p-5", price_max: 700, category_classified: "Robotics" }),
+    ];
+    const weeks = [
+      makeWeek({ provider_id: pid, status: "sold_out" }),
+      makeWeek({ provider_id: "p-2", status: "waitlist" }),
+      makeWeek({ provider_id: "p-3", status: "open" }),
+      makeWeek({ provider_id: "p-4", status: "open" }),
+      makeWeek({ provider_id: "p-5", status: "sold_out" }),
+    ];
+    const r = computeMvs(providers, weeks, defaultAcs, {
+      watchlist: defaultWatchlist,
+    });
+    expect(r.mvs).not.toBeNull();
+    expect(typeof r.mvs).toBe("number");
+    expect(r.mvs).toBeGreaterThanOrEqual(0);
+    expect(r.mvs).toBeLessThanOrEqual(100);
+    expect(r.normalizationVersion).toBe("1.0-fixed");
+  });
+
+  it("respects custom weights", () => {
+    const pid = "p-w";
+    const providers = [makeProvider({ id: pid })];
+    const weeks = [makeWeek({ provider_id: pid, status: "sold_out" })];
+    const r = computeMvs(providers, weeks, defaultAcs, {
+      weights: {
+        pricingAcceptance: 0,
+        marketAbsorption: 0,
+        scaledOperator: 0,
+        enrichmentDiversity: 0,
+        marketDepth: 0,
+        marketBalance: 1.0,
+      },
+    });
+    expect(r.mvs).toBe(r.scores.marketBalance);
+  });
+
+  it("caps composite at 0/100 even with extreme inputs", () => {
+    const providers = Array.from({ length: 200 }, () =>
+      makeProvider({ price_max: 50 }),
+    );
+    const weeks = providers.flatMap((p) => [
+      makeWeek({ provider_id: p.id, status: "open" }),
+    ]);
+    const r = computeMvs(providers, weeks, defaultAcs);
+    expect(r.scores.pricingAcceptance).toBe(0);
+    expect(r.scores.marketAbsorption).toBe(0);
+    expect(r.scores.marketDepth).toBe(100); // 200 > 40, capped at 100
+    expect(r.scores.marketBalance).toBe(0);  // 200 providers → coverageRatio = 50
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Edge cases
+// ---------------------------------------------------------------------------
+
+describe("Edge cases", () => {
+  it("handles empty providers array", () => {
+    const r = computeMvs([], [], defaultAcs);
+    expect(r.mvs).toBeNull();
+    expect(r.scores.pricingAcceptance).toBeNull();
+    expect(r.scores.marketAbsorption).toBeNull();
+  });
+
+  it("handles non-premium weeks gracefully (ignores them)", () => {
+    const premium = makeProvider({ id: "prem", tier: "premium" });
+    const mid = makeProvider({ id: "mid", tier: "mid" });
+    const weeks = [
+      makeWeek({ provider_id: "prem", status: "sold_out" }),
+      makeWeek({ provider_id: "mid", status: "sold_out" }),
+    ];
+    const r = computeMvs([premium, mid], weeks, defaultAcs);
+    // Only 1 premium week, sold out → selloutRate = 100%
+    expect(r.inputs.marketAbsorption.selloutRate).toBeCloseTo(100, 1);
+  });
+
+  it("falls back to price_min when price_max is null", () => {
+    const providers = [
+      makeProvider({ price_max: null, price_min: 500 }),
+    ];
+    const r = computeMvs(providers, [], defaultAcs);
+    expect(r.inputs.pricingAcceptance.medianPrice).toBe(500);
+  });
+
+  it("does not double-count the same operator name", () => {
+    // Two providers matching "Galileo" — should count as 1 distinct operator
+    const providers = [
+      makeProvider({ name: "Galileo Austin" }),
+      makeProvider({ name: "Galileo Round Rock" }),
+    ];
+    const r = computeMvs(providers, [], defaultAcs, { watchlist: defaultWatchlist });
+    expect(r.inputs.scaledOperator.operatorValidation).toBe(1);
+  });
+});

@@ -29,6 +29,7 @@ const UserGuide = lazyWithPreload(() => import("./pages/UserGuide"));
 const DemographicsMethodology = lazyWithPreload(() => import("./pages/DemographicsMethodology"));
 const Methodology = lazyWithPreload(() => import("./pages/Methodology"));
 const MVSMethodology = lazyWithPreload(() => import("./pages/MVSMethodology"));
+const MVSRun = lazyWithPreload(() => import("./pages/MVSRun"));
 const SASMethodology = lazyWithPreload(() => import("./pages/SASMethodology"));
 const ScoringMethod = lazyWithPreload(() => import("./pages/ScoringMethod"));
 const DbHealth = lazyWithPreload(() => import("./pages/DbHealth"));

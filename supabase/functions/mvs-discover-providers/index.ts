@@ -115,11 +115,31 @@ Deno.serve(async (req) => {
   // Parse body: { city }. Default to Austin for back-compat with manual invocations.
   const body = await req.json().catch(() => ({}));
   const city: string = (body?.city ?? "Austin, TX").trim();
-  const box = TIER_A_BOXES[city];
+  let box: Box | undefined = TIER_A_BOXES[city];
+  if (!box) {
+    // Fall back to us_cities_geo: build a ±0.45° box (≈30 mi each side)
+    // around the city centroid. Lets any user-added shortlist city run.
+    const [cityName, stateAbbr] = city.split(",").map((s) => s.trim());
+    if (cityName && stateAbbr) {
+      const { data: geo } = await admin
+        .from("us_cities_geo")
+        .select("lat, lng")
+        .ilike("city_ascii", cityName)
+        .ilike("state_id", stateAbbr)
+        .order("population", { ascending: false, nullsFirst: false })
+        .limit(1)
+        .maybeSingle();
+      if (geo && geo.lat != null && geo.lng != null) {
+        const lat = Number(geo.lat);
+        const lng = Number(geo.lng);
+        box = { top: lat + 0.45, bottom: lat - 0.45, left: lng - 0.45, right: lng + 0.45 };
+      }
+    }
+  }
   if (!box) {
     return new Response(
       JSON.stringify({
-        error: `city '${city}' is not in the Tier A allow-list`,
+        error: `city '${city}' has no bounding box (not in Tier A and no match in us_cities_geo)`,
         allowed: Object.keys(TIER_A_BOXES),
       }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },

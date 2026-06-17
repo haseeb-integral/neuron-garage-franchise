@@ -111,6 +111,7 @@ const App = () => (
                 <Route path="/demographics-methodology" element={<DemographicsMethodology />} />
                 <Route path="/methodology" element={<Methodology />} />
                 <Route path="/mvs-methodology" element={<MVSMethodology />} />
+                <Route path="/mvs-run" element={<MVSRun />} />
                 <Route path="/sas-methodology" element={<SASMethodology />} />
                 <Route path="/scoring-method" element={<ScoringMethod />} />
                 <Route path="/glossary" element={<Glossary />} />

@@ -143,9 +143,23 @@ Deno.serve(async (req) => {
   };
 
   try {
-    await invokeStep("discover", { city });
-    await invokeStep("classify", { city });
-    await invokeStep("extract", { city });
+    const discoverRes = await invokeStep("discover", { city });
+    const classifyRes = await invokeStep("classify", { city });
+    const extractRes = await invokeStep("extract", { city });
+
+    const screenshotsStored =
+      (Array.isArray(extractRes?.outcomes)
+        ? extractRes.outcomes.filter((o: any) => o?.no_reg_page === false && o?.weeks_inserted > 0).length
+        : 0) + (discoverRes?.screenshot_path ? 1 : 0);
+
+    const summary = {
+      providers_discovered: Number(discoverRes?.providers_inserted ?? 0),
+      providers_classified: Number(classifyRes?.classified ?? 0),
+      providers_processed: Number(extractRes?.providers_processed ?? 0),
+      weeks_upserted: Number(extractRes?.weeks_inserted_total ?? 0),
+      screenshots_stored: screenshotsStored,
+      firecrawl_calls: totalCalls,
+    };
 
     await admin
       .from("mvs_pipeline_runs")
@@ -161,6 +175,7 @@ Deno.serve(async (req) => {
         ok: true,
         run_id: run.id,
         firecrawl_calls: totalCalls,
+        summary,
         steps: stepResults,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },

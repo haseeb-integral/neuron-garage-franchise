@@ -1,13 +1,10 @@
-// Phase 2 / Turn 2.1 — mvs-discover-providers (Austin only, Sawyer only)
+// Phase 2 / Turn 2.1 — mvs-discover-providers (Sawyer marketplace)
+// Phase 7 / Turn 7.1 — generalized for Tier A cities.
 //
-// Per the approved Feature 1A Build Plan, Turn 2.1:
 //   - Firecrawl scrape of a Sawyer city listing with JS wait + screenshot
 //   - Gemini Flash extracts provider rows into strict JSON
 //   - Writes to mvs_providers with platform='sawyer', screenshot URL stored
-//   - Hardcoded to Austin. No UI. Invoked via `supabase functions invoke`.
-//
-// QA queue auto-flagging is NOT in this turn (belongs to Phase 3).
-// Tier classification is NOT in this turn (Turn 2.2 = mvs-classify-tier).
+//   - Accepts { city } in body. Restricted to TIER_A_BOXES.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -20,7 +17,44 @@ const corsHeaders = {
 
 const FIRECRAWL_V2 = "https://api.firecrawl.dev/v2";
 const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const SAWYER_AUSTIN_URL = "https://www.hisawyer.com/marketplace?search=%7B%22booking_type%22%3A%22camp%22%2C%22categories%22%3A%5B33%2C31%2C19%2C30%5D%2C%22location_within%22%3A%7B%22top%22%3A31.10894716338658%2C%22left%22%3A-98.52583667890624%2C%22bottom%22%3A29.42001128474371%2C%22right%22%3A-96.96028492109374%7D%2C%22month_year_in%22%3A%5B%7B%22month%22%3A6%2C%22year%22%3A2026%7D%2C%7B%22month%22%3A7%2C%22year%22%3A2026%7D%5D%7D&from_city_name=%22Austin%2C+TX%22";
+
+// Per-metro bounding boxes for Sawyer's `location_within` filter. Generous
+// enough to catch providers in surrounding suburbs; retunable per-city in a
+// follow-up turn if a metro comes back with few providers.
+type Box = { top: number; left: number; bottom: number; right: number };
+const TIER_A_BOXES: Record<string, Box> = {
+  "Austin, TX":       { top: 31.10894716338658, left: -98.52583667890624, bottom: 29.42001128474371, right: -96.96028492109374 },
+  "New York, NY":     { top: 41.20, left: -74.50, bottom: 40.40, right: -73.40 },
+  "Houston, TX":      { top: 30.30, left: -95.95, bottom: 29.35, right: -94.85 },
+  "Chicago, IL":      { top: 42.20, left: -88.30, bottom: 41.55, right: -87.30 },
+  "Boston, MA":       { top: 42.65, left: -71.45, bottom: 42.10, right: -70.80 },
+  "San Antonio, TX":  { top: 29.85, left: -98.95, bottom: 29.10, right: -98.10 },
+  "Philadelphia, PA": { top: 40.30, left: -75.50, bottom: 39.75, right: -74.80 },
+  "Los Angeles, CA":  { top: 34.50, left: -118.95, bottom: 33.65, right: -117.85 },
+};
+
+function buildSawyerUrl(city: string, box: Box): string {
+  const search = {
+    booking_type: "camp",
+    categories: [33, 31, 19, 30],
+    location_within: box,
+    month_year_in: [
+      { month: 6, year: 2026 },
+      { month: 7, year: 2026 },
+    ],
+  };
+  const params = new URLSearchParams({
+    search: JSON.stringify(search),
+    from_city_name: `"${city}"`,
+  });
+  return `https://www.hisawyer.com/marketplace?${params.toString()}`;
+}
+
+function citySlug(city: string): string {
+  return city.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+const SCREENSHOT_BUCKET = "mvs-screenshots";
 const SCREENSHOT_BUCKET = "mvs-screenshots";
 
 type ProviderExtract = {
@@ -78,8 +112,20 @@ Deno.serve(async (req) => {
     });
   }
 
-  // City is hardcoded to Austin per Turn 2.1.
-  const city = "Austin, TX";
+  // Parse body: { city }. Default to Austin for back-compat with manual invocations.
+  const body = await req.json().catch(() => ({}));
+  const city: string = (body?.city ?? "Austin, TX").trim();
+  const box = TIER_A_BOXES[city];
+  if (!box) {
+    return new Response(
+      JSON.stringify({
+        error: `city '${city}' is not in the Tier A allow-list`,
+        allowed: Object.keys(TIER_A_BOXES),
+      }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+  const sawyerUrl = buildSawyerUrl(city, box);
 
   const { data: run, error: runErr } = await admin
     .from("mvs_pipeline_runs")
@@ -105,7 +151,7 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        url: SAWYER_AUSTIN_URL,
+        url: sawyerUrl,
         formats: ["markdown", "screenshot"],
         onlyMainContent: true,
         waitFor: 3000,
@@ -121,7 +167,7 @@ Deno.serve(async (req) => {
     const markdown: string = scrapeJson?.data?.markdown ?? "";
     const screenshotUrlRemote: string | undefined =
       scrapeJson?.data?.screenshot ?? scrapeJson?.data?.screenshotUrl;
-    debug.scrape_url = SAWYER_AUSTIN_URL;
+    debug.scrape_url = sawyerUrl;
     debug.markdown_chars = markdown.length;
     debug.screenshot_received = Boolean(screenshotUrlRemote);
 
@@ -144,7 +190,7 @@ Deno.serve(async (req) => {
           else debug.screenshot_fetch_status = imgRes.status;
         }
         if (bytes) {
-          const path = `${run.id}/sawyer-austin.png`;
+          const path = `${run.id}/sawyer-${citySlug(city)}.png`;
           const { error: upErr } = await admin.storage
             .from(SCREENSHOT_BUCKET)
             .upload(path, bytes, { contentType: "image/png", upsert: true });
@@ -157,16 +203,16 @@ Deno.serve(async (req) => {
     }
 
     // 3) Gemini Flash extracts provider rows into strict JSON.
-    const sys = `You extract kids' activity providers from a Sawyer marketplace listing page.
+    const sys = `You extract kids' activity providers from a Sawyer marketplace listing page for ${city}.
 Return strict JSON:
 { "providers": [ { "name": string, "url": string|null, "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number } ] }
 
 Rules:
-- A "provider" is a real business/brand offering kids' classes, camps, or activities (e.g. "Austin Gymnastics Club", "ArtBarnATX").
+- A "provider" is a real business/brand offering kids' classes, camps, or activities (e.g. a gymnastics club, an art studio, a music school).
 - DO NOT include: search categories, location names, navigation links, ads, the marketplace platform itself ("Sawyer"), generic terms ("Kids Classes", "Music"), or individual class titles unless the provider name is clearly identifiable.
-- Prefer in-person providers serving Austin. Skip online-only providers.
+- Prefer in-person providers serving ${city}. Skip online-only providers.
 - Prices in USD per class or per session. Use null if unknown — DO NOT guess.
-- Confidence 0..1 reflects how sure you are this is a real, distinct provider operating in Austin.
+- Confidence 0..1 reflects how sure you are this is a real, distinct provider operating in ${city}.
 - Dedupe by provider name.
 - Hard cap: 60 providers.`;
 
@@ -179,7 +225,7 @@ Rules:
           { role: "system", content: sys },
           {
             role: "user",
-            content: `City: ${city}\nSource URL: ${SAWYER_AUSTIN_URL}\n\nSCRAPED PAGE MARKDOWN:\n${markdown.slice(0, 24000)}`,
+            content: `City: ${city}\nSource URL: ${sawyerUrl}\n\nSCRAPED PAGE MARKDOWN:\n${markdown.slice(0, 24000)}`,
           },
         ],
         response_format: { type: "json_object" },

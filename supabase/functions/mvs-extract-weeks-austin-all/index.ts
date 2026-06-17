@@ -227,12 +227,14 @@ async function processProvider(
     });
 
     if (cleaned.length > 0) {
+      // Upsert on (provider_id, week_start) so re-runs refresh existing rows
+      // instead of appending duplicates.
       const { data: insData, error: insErr } = await admin
         .from("mvs_weeks")
-        .insert(cleaned)
+        .upsert(cleaned, { onConflict: "provider_id,week_start" })
         .select("id, confidence");
       if (insErr) {
-        out.error = `insert weeks: ${insErr.message}`;
+        out.error = `upsert weeks: ${insErr.message}`;
         return { outcome: out, firecrawlCalls };
       }
       out.weeks_inserted = insData?.length ?? 0;

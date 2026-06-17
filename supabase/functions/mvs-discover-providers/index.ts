@@ -1,8 +1,9 @@
-// Phase 2 / Turn 2.1
+// Phase 2 / Turn 2.1b
 // mvs-discover-providers
-// Austin-only Sawyer scrape via Firecrawl + Gemini classification.
-// Writes to mvs_providers, screenshots to mvs-screenshots bucket,
-// tracked under mvs_pipeline_runs.
+// Sustainable: no per-city URL hardcoding. Uses Firecrawl SEARCH with a
+// city-scoped query against hisawyer.com to discover the right pages
+// dynamically, scrapes the top N in one call, then extracts + dedupes
+// providers via Gemini. Adding more platforms = appending more queries.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -16,19 +17,31 @@ const corsHeaders = {
 const FIRECRAWL_V2 = "https://api.firecrawl.dev/v2";
 const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
-// Hard-coded for Turn 2.1. Tier B / additional cities come later.
-const SAWYER_CITY_URLS: Record<string, string> = {
-  "Austin, TX":
-    "https://www.hisawyer.com/search?location=Austin%2C+TX&distance=15",
-};
+// Platforms we discover against. Add more entries here to expand coverage
+// (e.g. activityhero.com, classpass.com) — no per-city work required.
+const PLATFORMS: Array<{
+  platform: string;
+  domain: string;
+  // Query template — {city} replaced at runtime.
+  queryTemplate: string;
+}> = [
+  {
+    platform: "sawyer",
+    domain: "hisawyer.com",
+    queryTemplate: `site:hisawyer.com "{city}" kids classes`,
+  },
+];
+
+const SEARCH_RESULT_LIMIT = 8; // top N pages per platform
+const MAX_MARKDOWN_PER_PAGE = 12000;
 
 type ProviderExtract = {
   name: string;
-  url?: string;
+  url?: string | null;
   price_min?: number | null;
   price_max?: number | null;
   category_raw?: string | null;
-  confidence: number; // 0..1
+  confidence: number;
 };
 
 function classifyTier(
@@ -52,6 +65,10 @@ function classifyTier(
   return "budget";
 }
 
+function normalizeName(n: string): string {
+  return n.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -69,7 +86,7 @@ Deno.serve(async (req) => {
     );
   }
 
-  // Auth: require manager.
+  // Auth: manager or admin required.
   const authHeader = req.headers.get("Authorization") ?? "";
   const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
     global: { headers: { Authorization: authHeader } },
@@ -95,16 +112,14 @@ Deno.serve(async (req) => {
   }
 
   const body = await req.json().catch(() => ({}));
-  const city: string = body?.city ?? "Austin, TX";
-  const sourceUrl = SAWYER_CITY_URLS[city];
-  if (!sourceUrl) {
-    return new Response(
-      JSON.stringify({ error: `no Sawyer URL configured for city: ${city}` }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+  const city: string = (body?.city ?? "Austin, TX").trim();
+  if (!city) {
+    return new Response(JSON.stringify({ error: "city required" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
-  // Create run row.
   const { data: run, error: runErr } = await admin
     .from("mvs_pipeline_runs")
     .insert({ city, status: "running", firecrawl_calls: 0 })
@@ -117,120 +132,147 @@ Deno.serve(async (req) => {
     );
   }
 
+  let firecrawlCalls = 0;
+  const debug: Record<string, unknown> = { platforms: {} };
+
   try {
-    // 1) Firecrawl scrape (markdown + screenshot)
-    const fcRes = await fetch(`${FIRECRAWL_V2}/scrape`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${firecrawlKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        url: sourceUrl,
-        formats: ["markdown", "screenshot"],
-        onlyMainContent: true,
-        waitFor: 2500,
-      }),
-    });
-    const fcJson = await fcRes.json();
-    if (!fcRes.ok) {
-      throw new Error(`firecrawl ${fcRes.status}: ${JSON.stringify(fcJson).slice(0, 500)}`);
-    }
-    const doc = fcJson.data ?? fcJson;
-    const markdown: string = doc.markdown ?? "";
-    const screenshotB64OrUrl: string | undefined = doc.screenshot;
+    const allRows: Array<Record<string, unknown>> = [];
+    const seen = new Set<string>(); // dedupe by (platform + normalized name)
 
-    // Upload screenshot if base64; if it's a URL, store as-is.
-    let screenshotUrl: string | null = null;
-    if (screenshotB64OrUrl) {
-      if (screenshotB64OrUrl.startsWith("http")) {
-        screenshotUrl = screenshotB64OrUrl;
-      } else {
-        const b64 = screenshotB64OrUrl.replace(/^data:image\/\w+;base64,/, "");
-        const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-        const path = `${run.id}/sawyer-landing.png`;
-        const { error: upErr } = await admin.storage
-          .from("mvs-screenshots")
-          .upload(path, bytes, { contentType: "image/png", upsert: true });
-        if (!upErr) screenshotUrl = path;
+    for (const plat of PLATFORMS) {
+      const query = plat.queryTemplate.replace("{city}", city);
+      // 1) Firecrawl SEARCH with scraped markdown for each result.
+      const sRes = await fetch(`${FIRECRAWL_V2}/search`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${firecrawlKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query,
+          limit: SEARCH_RESULT_LIMIT,
+          scrapeOptions: { formats: ["markdown"], onlyMainContent: true },
+        }),
+      });
+      firecrawlCalls += 1;
+      const sJson = await sRes.json();
+      if (!sRes.ok) {
+        throw new Error(
+          `firecrawl search ${sRes.status}: ${JSON.stringify(sJson).slice(0, 400)}`,
+        );
       }
-    }
 
-    // 2) Gemini extraction via Lovable AI Gateway (JSON output)
-    const sys = `You extract kids' activity providers from a marketplace listing page.
-Return strict JSON: { "providers": [ { "name": string, "url": string|null, "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number } ] }.
-Prices in USD per class or per session. Use null if unknown. Confidence 0..1.
-Only include real providers (not categories, ads, navigation). Limit to 40 max.`;
+      // Firecrawl v2 search response: { data: { web: [ { url, title, markdown, ... } ] } }
+      // Some responses use { data: [...] } directly. Handle both.
+      const webResults: Array<{ url?: string; title?: string; markdown?: string; description?: string }> =
+        sJson?.data?.web ?? sJson?.data ?? [];
 
-    const aiRes = await fetch(AI_GATEWAY, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Lovable-API-Key": lovableKey,
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: sys },
-          {
-            role: "user",
-            content: `City: ${city}\nSource: ${sourceUrl}\n\nPAGE MARKDOWN:\n${markdown.slice(0, 60000)}`,
-          },
-        ],
-        response_format: { type: "json_object" },
-      }),
-    });
-    const aiJson = await aiRes.json();
-    if (!aiRes.ok) {
-      throw new Error(`ai gateway ${aiRes.status}: ${JSON.stringify(aiJson).slice(0, 500)}`);
-    }
-    const raw = aiJson.choices?.[0]?.message?.content ?? "{}";
-    let parsed: { providers?: ProviderExtract[] } = {};
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      throw new Error(`failed to parse AI JSON: ${raw.slice(0, 300)}`);
-    }
-    const providers = (parsed.providers ?? []).filter((p) => p?.name);
+      const platformDebug = {
+        query,
+        results_found: webResults.length,
+        urls: webResults.map((r) => r.url).filter(Boolean).slice(0, 20),
+      };
+      (debug.platforms as Record<string, unknown>)[plat.platform] = platformDebug;
 
-    // 3) Insert into mvs_providers
-    const rows = providers.map((p) => ({
-      city,
-      name: p.name.trim().slice(0, 300),
-      platform: "sawyer",
-      url: p.url ?? null,
-      price_min: p.price_min ?? null,
-      price_max: p.price_max ?? null,
-      category_raw: p.category_raw ?? null,
-      tier: classifyTier(p),
-      screenshot_url: screenshotUrl,
-      confidence: Math.max(0, Math.min(1, p.confidence ?? 0.5)),
-      source_run_id: run.id,
-    }));
+      if (webResults.length === 0) continue;
+
+      // 2) Stitch the markdown from each result into one extraction prompt.
+      const stitched = webResults
+        .map((r, i) => {
+          const md = (r.markdown ?? r.description ?? "").slice(0, MAX_MARKDOWN_PER_PAGE);
+          return `\n\n=== RESULT ${i + 1} ===\nURL: ${r.url ?? ""}\nTITLE: ${r.title ?? ""}\n${md}`;
+        })
+        .join("");
+
+      const sys = `You extract kids' activity providers from scraped marketplace pages.
+Return strict JSON:
+{ "providers": [ { "name": string, "url": string|null, "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number } ] }
+
+Rules:
+- A "provider" is a real business/brand offering kids' classes, camps, or activities (e.g. "Bilinguitos Spanish Immersion", "Austin Gymnastics Club").
+- DO NOT include: search categories, location names, navigation links, ads, marketplace platform names (Sawyer, ActivityHero), generic terms ("Kids Classes", "Music"), or individual class titles unless the provider name is clearly identifiable.
+- Prefer in-person providers in the requested city. Include online providers only if no in-person ones are present.
+- Prices in USD per class or per session. Use null if unknown — DO NOT guess.
+- Confidence 0..1 reflects how sure you are this is a real, distinct provider operating in or serving the city.
+- Dedupe by provider name across all results.
+- Hard cap: 60 providers.`;
+
+      const aiRes = await fetch(AI_GATEWAY, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Lovable-API-Key": lovableKey,
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3-flash-preview",
+          messages: [
+            { role: "system", content: sys },
+            {
+              role: "user",
+              content: `City: ${city}\nPlatform: ${plat.platform} (${plat.domain})\n\nSCRAPED PAGES:\n${stitched}`,
+            },
+          ],
+          response_format: { type: "json_object" },
+        }),
+      });
+      const aiJson = await aiRes.json();
+      if (!aiRes.ok) {
+        throw new Error(
+          `ai gateway ${aiRes.status}: ${JSON.stringify(aiJson).slice(0, 400)}`,
+        );
+      }
+      const raw = aiJson.choices?.[0]?.message?.content ?? "{}";
+      let parsed: { providers?: ProviderExtract[] } = {};
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        throw new Error(`failed to parse AI JSON for ${plat.platform}: ${raw.slice(0, 300)}`);
+      }
+      const providers = (parsed.providers ?? []).filter((p) => p?.name);
+
+      for (const p of providers) {
+        const key = `${plat.platform}:${normalizeName(p.name)}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        allRows.push({
+          city,
+          name: p.name.trim().slice(0, 300),
+          platform: plat.platform,
+          url: p.url ?? null,
+          price_min: p.price_min ?? null,
+          price_max: p.price_max ?? null,
+          category_raw: p.category_raw ?? null,
+          tier: classifyTier(p),
+          screenshot_url: null,
+          confidence: Math.max(0, Math.min(1, p.confidence ?? 0.5)),
+          source_run_id: run.id,
+        });
+      }
+
+      (platformDebug as Record<string, unknown>).providers_extracted = providers.length;
+    }
 
     let inserted = 0;
-    if (rows.length > 0) {
+    if (allRows.length > 0) {
       const { error: insErr, count } = await admin
         .from("mvs_providers")
-        .insert(rows, { count: "exact" });
+        .insert(allRows, { count: "exact" });
       if (insErr) throw new Error(`insert providers: ${insErr.message}`);
-      inserted = count ?? rows.length;
+      inserted = count ?? allRows.length;
     }
 
-    // 4) Mark run done
     await admin
       .from("mvs_pipeline_runs")
-      .update({ status: "done", firecrawl_calls: 1 })
+      .update({ status: "done", firecrawl_calls: firecrawlCalls })
       .eq("id", run.id);
 
     return new Response(
       JSON.stringify({
         run_id: run.id,
         city,
-        source_url: sourceUrl,
-        providers_extracted: providers.length,
+        firecrawl_calls: firecrawlCalls,
         providers_inserted: inserted,
-        screenshot_path: screenshotUrl,
+        debug,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
@@ -238,10 +280,10 @@ Only include real providers (not categories, ads, navigation). Limit to 40 max.`
     const msg = err instanceof Error ? err.message : String(err);
     await admin
       .from("mvs_pipeline_runs")
-      .update({ status: "failed", error: msg })
+      .update({ status: "failed", error: msg, firecrawl_calls: firecrawlCalls })
       .eq("id", run.id);
     return new Response(
-      JSON.stringify({ run_id: run.id, error: msg }),
+      JSON.stringify({ run_id: run.id, error: msg, debug }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }

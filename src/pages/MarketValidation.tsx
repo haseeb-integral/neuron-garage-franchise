@@ -189,29 +189,51 @@ export default function MarketValidation() {
     }
   };
 
-  // Phase 5 Turn 5.1 — live overlay for Austin only. When more cities flip
-  // to mvs_data_source='live', extend this by adding more useLiveMvs hooks
-  // (or refactor into a multi-city loader). Static demo path is untouched
-  // for every city not in this overlay map.
-  const austinLive = useLiveMvs("Austin, TX");
-  const isAustinLive = austinLive.flag?.mvs_data_source === "live";
+  // Phase 7 — live overlay for every Tier A city flagged mvs_data_source='live'.
+  // Hooks are called at fixed positions (one per Tier A city), so React's
+  // rules-of-hooks invariant is preserved. Sample rows are untouched for
+  // cities whose flag is still 'sample'.
+  const austinLive       = useLiveMvs("Austin, TX");
+  const newYorkLive      = useLiveMvs("New York, NY");
+  const houstonLive      = useLiveMvs("Houston, TX");
+  const chicagoLive      = useLiveMvs("Chicago, IL");
+  const bostonLive       = useLiveMvs("Boston, MA");
+  const sanAntonioLive   = useLiveMvs("San Antonio, TX");
+  const philadelphiaLive = useLiveMvs("Philadelphia, PA");
+  const losAngelesLive   = useLiveMvs("Los Angeles, CA");
+
   const liveOverlays = useMemo<Map<string, LiveOverlay>>(() => {
     const m = new Map<string, LiveOverlay>();
-    if (isAustinLive && austinLive.result) {
-      const r = austinLive.result;
-      m.set("austin-tx", {
-        composite: r.mvs,
-        pricing: r.scores.pricingAcceptance,
-        absorption: r.scores.marketAbsorption,
-        scaledOperator: r.scores.scaledOperator,
-        diversity: r.scores.enrichmentDiversity,
-        depth: r.scores.marketDepth,
-        balance: r.scores.marketBalance,
-        lowConfidence: austinLive.flag?.low_confidence_badge ?? false,
-      });
+    const entries: { rowId: string; bundle: ReturnType<typeof useLiveMvs> }[] = [
+      { rowId: "austin-tx",       bundle: austinLive },
+      { rowId: "new-york-ny",     bundle: newYorkLive },
+      { rowId: "houston-tx",      bundle: houstonLive },
+      { rowId: "chicago-il",      bundle: chicagoLive },
+      { rowId: "boston-ma",       bundle: bostonLive },
+      { rowId: "san-antonio-tx",  bundle: sanAntonioLive },
+      { rowId: "philadelphia-pa", bundle: philadelphiaLive },
+      { rowId: "los-angeles-ca",  bundle: losAngelesLive },
+    ];
+    for (const { rowId, bundle } of entries) {
+      if (bundle.flag?.mvs_data_source === "live" && bundle.result) {
+        const r = bundle.result;
+        m.set(rowId, {
+          composite: r.mvs,
+          pricing: r.scores.pricingAcceptance,
+          absorption: r.scores.marketAbsorption,
+          scaledOperator: r.scores.scaledOperator,
+          diversity: r.scores.enrichmentDiversity,
+          depth: r.scores.marketDepth,
+          balance: r.scores.marketBalance,
+          lowConfidence: bundle.flag?.low_confidence_badge ?? false,
+        });
+      }
     }
     return m;
-  }, [isAustinLive, austinLive.result, austinLive.flag]);
+  }, [
+    austinLive, newYorkLive, houstonLive, chicagoLive,
+    bostonLive, sanAntonioLive, philadelphiaLive, losAngelesLive,
+  ]);
 
   const isActiveLive = liveOverlays.has(activeCityId);
 

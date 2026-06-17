@@ -1,25 +1,21 @@
-## Fix plan
+## Root cause
 
-1. **Immediate root-cause fix**
-   - `mvs-discover-providers` is currently failing at boot because `SCREENSHOT_BUCKET` is declared twice.
-   - Remove the duplicate declaration so the function can start again.
+The Flip to live button on `/market-validation/rollout` does work at the data layer — Houston and New York are already saved as `mvs_data_source = 'live'` in `mvs_city_flags`. The problem is the main `/market-validation` shortlist page is hardcoded to overlay only Austin's live data. So when you flip NY or Houston to live, the rollout table updates but the main shortlist still shows the sample numbers for those cities, which looks like "flip not working" and "scores not showing".
 
-2. **Prevent duplicate-constant boot failures**
-   - Add a lightweight edge-function syntax check / lint-style verification for the touched function before finishing.
-   - Specifically confirm there are no duplicate top-level declarations for `SCREENSHOT_BUCKET` or other constants in `mvs-discover-providers`.
+## Fix
 
-3. **Make pipeline failures diagnosable in the UI/backend records**
-   - Keep the orchestrator behavior, but ensure the failure written to `mvs_pipeline_runs.error` includes the actual step and returned detail, not only “non-2xx”.
-   - This way future failures show whether it was discover boot, empty Sawyer scrape, classify, or extract.
+1. In `src/pages/MarketValidation.tsx`, replace the single Austin `useLiveMvs` call with one `useLiveMvs` call per Tier A city (Austin, NY, Houston, Chicago, Boston, San Antonio, Philadelphia, LA). Hooks at fixed positions, no conditional calls.
+2. Build the `liveOverlays` map dynamically: for each Tier A city whose flag is `live` and whose `result` has loaded, push an overlay onto the row using the shortlist row id mapping (e.g. `New York, NY` to `new-york-ny`).
+3. When a city is live, its shortlist row composite, pillar scores, and low confidence badge come from `computeMvs`, exactly the same helper the Austin row, rollout page and PDF already use. Brett's "one calibrated number everywhere" rule preserved.
+4. No backend, schema, or rollout page changes. Sample rows for non-flipped cities stay exactly as they are.
 
-4. **Verify end-to-end after the code fix**
-   - Re-check edge function logs for `mvs-discover-providers` to confirm the boot error is gone.
-   - Run/test at least one Tier A city path through the backend function call if available, and confirm it no longer fails immediately at startup.
+## Verification
 
-## Technical scope
+- Reload `/market-validation`. NY and Houston rows should now show real composite + pillar scores from `computeMvs`, not the sample 82 / 76.
+- Flip Houston back to sample on the rollout page; the shortlist row reverts to sample 76 within the next refresh.
+- Austin row keeps working unchanged.
+- No console errors, no extra requests for cities that are still on sample (the hooks still fire but compute is cheap and reads are city-scoped).
 
-Files expected to change:
-- `supabase/functions/mvs-discover-providers/index.ts`
-- Possibly `supabase/functions/mvs-run-pipeline/index.ts` only if the current returned error is too generic after inspection.
+## Files
 
-No UI redesign, no Sawyer box retuning, no new database tables, no migration.
+- `src/pages/MarketValidation.tsx` only.

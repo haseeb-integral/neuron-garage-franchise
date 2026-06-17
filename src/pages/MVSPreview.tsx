@@ -3,6 +3,7 @@ import { AlertTriangle, ArrowLeft, BarChart3, Loader2 } from "lucide-react";
 import { useIsManager } from "@/hooks/dbHealth/useIsManager";
 import { DEFAULT_WEIGHTS } from "@/lib/mvs/computeMvs";
 import { useLiveMvs } from "@/lib/mvs/useLiveMvs";
+import { RunPipelineButton } from "@/components/phase2-demo/RunPipelineButton";
 
 const SCORE_LABELS: Record<string, string> = {
   pricingAcceptance: "Pricing Acceptance",
@@ -21,7 +22,7 @@ function fmt(n: number | null): string {
 export default function MVSPreview() {
   const { isManager, loading: roleLoading } = useIsManager();
   const navigate = useNavigate();
-  const { result, providers, weeks, loading, error } = useLiveMvs("Austin, TX");
+  const { result, providers, weeks, loading, error, refresh } = useLiveMvs("Austin, TX");
 
   if (roleLoading) {
     return (
@@ -63,6 +64,8 @@ export default function MVSPreview() {
           </p>
         </div>
       </div>
+
+      <RunPipelineButton city="Austin, TX" onComplete={refresh} />
 
       {loading && (
         <div className="flex h-48 items-center justify-center rounded-lg border border-[#eef2f7] bg-white">

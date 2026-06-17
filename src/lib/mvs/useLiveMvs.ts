@@ -194,7 +194,7 @@ export function useLiveMvs(
     return () => {
       cancelled = true;
     };
-  }, [cityKey]);
+  }, [cityKey, refreshTick]);
 
   const result = useMemo(() => {
     if (!acs) return null;
@@ -206,5 +206,15 @@ export function useLiveMvs(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [providers, weeks, acs, watchlist, overrides, weightsKey]);
 
-  return { result, providers, weeks, acs, flag, loading, error };
+  return {
+    result,
+    providers,
+    weeks,
+    acs,
+    flag,
+    loading,
+    error,
+    refresh: () => setRefreshTick((t) => t + 1),
+  };
 }
+

@@ -152,6 +152,16 @@ export interface MvsBriefPipelineRun {
   error: string | null;
 }
 
+export interface MvsBriefWeekDetail {
+  provider_id: string;
+  provider_name: string;
+  week_start: string;        // ISO date "YYYY-MM-DD"
+  week_end: string | null;
+  status: string;
+  confidence: number | null;
+  screenshot_url: string | null;
+}
+
 export interface MvsBriefArgs {
   cityKey: string;            // "Austin, TX"
   cityDisplay: string;        // "Austin"
@@ -159,6 +169,7 @@ export interface MvsBriefArgs {
   result: MvsResult;
   providers: MvsProviderInput[];
   weeks: MvsWeekInput[];
+  weeksDetailed?: MvsBriefWeekDetail[];
   acs: MvsAcsInput | null;
   weights: Record<string, number>;
   lowConfidence: boolean;

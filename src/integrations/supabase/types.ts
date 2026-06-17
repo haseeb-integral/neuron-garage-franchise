@@ -1204,6 +1204,42 @@ export type Database = {
         }
         Relationships: []
       }
+      mvs_city_flags: {
+        Row: {
+          city: string
+          created_at: string
+          id: string
+          last_run_id: string | null
+          low_confidence_badge: boolean
+          mvs_data_source: string
+          notes: string | null
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          city: string
+          created_at?: string
+          id?: string
+          last_run_id?: string | null
+          low_confidence_badge?: boolean
+          mvs_data_source?: string
+          notes?: string | null
+          state: string
+          updated_at?: string
+        }
+        Update: {
+          city?: string
+          created_at?: string
+          id?: string
+          last_run_id?: string | null
+          low_confidence_badge?: boolean
+          mvs_data_source?: string
+          notes?: string | null
+          state?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string

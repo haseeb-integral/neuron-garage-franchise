@@ -1,67 +1,43 @@
-# Phase 6.1 — MVS Brief PDF (Austin)
+## What
 
-Answer to your library question: **yes** — the Site Analysis branded PDF (`src/lib/sitePack/SitePackDocument.tsx`) uses `@react-pdf/renderer` v4.5.1, already in `package.json`. We'll use the same library for the MVS brief — same patterns, same fonts, no new dependency, no edge function or headless Chrome needed.
+In `src/pages/MarketValidation.tsx` the **sample-data** "Export PDF" button (the one in your screenshot, sitting next to the "78 — Tier: Strong" hero) is currently grayed out, disabled, and carries a "Week 3" badge. Make it:
 
-## Decisions locked in
+1. Remove the "Week 3" badge text + chip entirely.
+2. Restyle to match City Search's primary blue CTA: solid `bg-[#174be8]` background, white text, `hover:bg-[#1240c9]`, no border.
+3. Wire it to actually generate the same branded MVS brief PDF we built in Phase 6.1/6.2 — but using the demo data (`sanAntonioMarketValidationDemo` + the active shortlist row) instead of live pipeline data. Per your answer: works for all cities, sample or live.
 
-- **Library:** `@react-pdf/renderer` (client-side render, downloaded as Blob).
-- **Audience:** Internal — Brett & Haseeb. Dense, numbers-forward, minimal narrative.
-- **Branding:** `src/assets/neuron-garage-logo.png` on cover + page header.
-- **Scope:** Austin only (the one `mvs_data_source='live'` city). Tier B cities still 404 — button disabled until their flag flips.
-- **Page size:** US Letter portrait (matches internal docs convention).
-- **Source-of-truth rule:** every number reads from `useLiveMvs(cityName)` → `computeMvs(...)` — same helper the table row, deep-dive panel, and Show Formula drawer use. Zero new fetches, zero DB-stored composites.
+The **live** city download button inside `LiveCityDeepDive.tsx` (a separate button that only shows for Austin) also gets the same blue-solid restyle so the two paths look identical to Brett.
 
-## Turn 6.1 — Generate + download
+## How (technical)
 
-**Files (new):**
-- `src/lib/mvsBrief/MvsBriefDocument.tsx` — React-PDF document component. Internal-style: tight margins (0.5in), 9–10pt body, mono for numbers, gray rule lines, no decorative gradients. Header strip on every page: NG logo left, "MVS Brief — {city} — {ISO date}" right.
-- `src/lib/mvsBrief/sections.tsx` — one component per SOW section, each accepts the live MVS payload + computed scores.
-- `src/lib/mvsBrief/downloadMvsBrief.tsx` — wraps `@react-pdf/renderer` `pdf().toBlob()` + `saveAs`-style anchor click. Returns Promise so the button can show spinner.
+**New file** `src/lib/mvsBrief/sampleBriefAdapter.ts`
+- One exported function `buildSampleBriefArgs(row: ShortlistRow, demo: MarketValidationDemo)` that returns a `MvsBriefArgs` object by:
+  - Synthesizing a minimal `MvsResult` from `demo.subScores` (the six pillar values 0–100) and `demo.composite`, using `DEFAULT_WEIGHTS` and `MVS_NORMALIZATION_VERSION`.
+  - Synthesizing minimal `MvsProviderInput[]` from `demo.providerSample` (premium tier, with price_min/max and category).
+  - Synthesizing minimal `MvsWeekInput[]` from `demo.providerSample[].weeks` (status + confidence).
+  - Synthesizing a minimal `MvsAcsInput` from `demo.affluence` / `demo.density` (median HHI, household count, etc.).
+  - `latestRun: null`, `weeksDetailed: []` (Phase 6.2 appendix stays empty for sample — already handled gracefully).
+  - `lowConfidence` from the row's badge.
 
-**Files (edited):**
-- `src/components/phase2-demo/LiveCityDeepDive.tsx` — add "Download MVS Brief (PDF)" button in the title row, right of "Show Formula". Only shown when `mvs_data_source='live'`. Disabled while generating; toast on success/error.
+**Edited** `src/pages/MarketValidation.tsx`
+- Import `renderMvsBriefPdfBlob`, `buildSampleBriefArgs`, `useState` for `downloading`.
+- Replace the disabled button (lines 442–454) with an active `<button>`:
+  ```tsx
+  className="inline-flex items-center gap-1.5 rounded-md bg-[#174be8] px-3 py-1.5 text-[12px] font-bold text-white hover:bg-[#1240c9] disabled:opacity-60"
+  ```
+  Icon stays (`Download` lucide). Label is just `Export PDF` — no "Week 3" chip. While generating, swap label to `Generating…` + spinner.
+- `onClick` handler: build args via `buildSampleBriefArgs(activeRow, sanAntonioMarketValidationDemo)`, call `renderMvsBriefPdfBlob`, trigger download with filename `mvs-brief-<slug>-<date>.pdf`, toast on success/error.
 
-**12 SOW sections (order, mirroring on-screen MVS):**
-1. Cover — city, composite score, tier, run date, data freshness (week_start range).
-2. Executive Summary — composite, 5 pillar scores, top 2 strengths / top 2 risks (rule-based from pillar deltas).
-3. Demand pillar — providers count, avg weekly bookings, growth %, contributing weeks. Source: `mvs_weeks` rollup.
-4. Affluence pillar — median HH income, % HH >$150k, source citation.
-5. Density pillar — population per sq mi, child population %, source citation.
-6. Competition pillar — competitor count within radius, saturation index, source citation.
-7. Schools pillar — qualifying schools count, avg rating, source citation.
-8. Pillar weights — current slider values + composite formula.
-9. Data lineage — each `mvs_pipeline_runs` step that fed this brief (timestamp, row counts, source URLs from Firecrawl).
-10. Confidence notes — any `LowConfidenceBadge` triggers, missing-data flags.
-11. Methodology footnote — link to `/mvs-methodology`, weights version, helper version.
-12. Appendix — raw per-week table (provider × week × bookings) for the live window.
+**Edited** `src/components/phase2-demo/LiveCityDeepDive.tsx` (lines 254–268)
+- Same blue-solid restyle on the live download button so both surfaces match: `bg-[#174be8] text-white hover:bg-[#1240c9]`. Keeps existing handler logic.
 
-Every numeric cell carries a superscript footnote pointing to its source in section 9 (data lineage).
+## Out of scope
 
-**Performance target:** Austin in <30s. React-PDF on client averages 2–5s for ~12 pages of text+tables; logo PNG is the only image — well within budget.
-
-**Out of scope this turn:**
-- Screenshot capture of the on-screen detail panel (Sam's brief mentions it as optional appendix; defer to 6.2 if Brett wants it).
-- Tier B cities (Phase 7).
-- Email delivery / storage upload (download-only for now).
-
-## Technical notes
-
-- `@react-pdf/renderer` ships standard fonts (Helvetica/Times/Courier) without registration. For dense internal docs we'll use Helvetica body + Courier for numeric columns. No web-font registration → no flicker, no missing-glyph boxes.
-- Logo: import `neuron-garage-logo.png` directly and pass to `<Image src={logo} />`. React-PDF accepts the imported asset URL.
-- Tables: reuse the `<View>` flex-row pattern already established in `SitePackDocument.tsx`. No new abstractions.
-- Save-as: `pdf(<MvsBriefDocument …/>).toBlob()` → object URL → anchor click → revoke. Same pattern as `SitePackDocument`.
+- No changes to PDF content/layout — same 12-section internal brief.
+- No changes to the comparator below the hero or to the shortlist table.
+- No new Phase number; this is a polish/fix on Phase 6.1.
 
 ## Verification
 
-- Click "Download MVS Brief" on Austin deep dive → PDF downloads.
-- Open PDF: cover composite matches the on-screen composite to 2 decimals.
-- Drag a weight slider on the page, re-download → composite changes accordingly (proves recompute path, not stale DB).
-- Build passes; no new deps.
-
-## Open questions (non-blocking — defaults stated)
-
-- **Sliders in PDF?** Defaulting to "show current weight values as numeric column in section 8." If you want a tiny bar-chart per pillar, say so and I'll add it.
-- **Footnote style?** Defaulting to superscript-number + "Sources" list on the last content page. Alt: inline parenthetical citations. Confirm or leave default.
-- **Filename?** Defaulting to `mvs-brief-austin-2026-06-17.pdf`. Confirm.
-
-If those defaults are fine, approve and I'll build turn 6.1 in one shot.
+- Playwright: open `/market-validation`, click Export PDF on the default San Antonio row, confirm a PDF blob downloads and visually contains the demo composite (78) and Tier: Strong.
+- Click into Austin row, confirm the live deep-dive's blue download button still produces the live PDF with composite 42.0.

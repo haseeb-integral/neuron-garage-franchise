@@ -1,45 +1,67 @@
-## Restructure Austin Calibration Preview Header (Pattern A)
+# Phase 6.1 — MVS Brief PDF (Austin)
 
-### Problem
-The `RunPipelineButton` renders a full dashed-border status bar (`mb-5`, border, padding, last-run info). When placed inside the section's right-aligned flex container, it sits next to the "Open Austin MVS preview" link as two mismatched blocks. The button and the link are not visually paired, and the status bar steals horizontal space.
+Answer to your library question: **yes** — the Site Analysis branded PDF (`src/lib/sitePack/SitePackDocument.tsx`) uses `@react-pdf/renderer` v4.5.1, already in `package.json`. We'll use the same library for the MVS brief — same patterns, same fonts, no new dependency, no edge function or headless Chrome needed.
 
-### Solution — Two-row header layout
+## Decisions locked in
 
-**Row 1 — Title + action buttons (same line)**
-- Left: "Austin calibration preview" title (13px bold) + subtitle (12px muted)
-- Right: a tight `gap-2` button group
-  - **Primary**: "Run Pipeline" compact trigger button (same blue style, loading spinner)
-  - **Secondary**: "Open Austin MVS preview" outline button (same blue border/text style)
+- **Library:** `@react-pdf/renderer` (client-side render, downloaded as Blob).
+- **Audience:** Internal — Brett & Haseeb. Dense, numbers-forward, minimal narrative.
+- **Branding:** `src/assets/neuron-garage-logo.png` on cover + page header.
+- **Scope:** Austin only (the one `mvs_data_source='live'` city). Tier B cities still 404 — button disabled until their flag flips.
+- **Page size:** US Letter portrait (matches internal docs convention).
+- **Source-of-truth rule:** every number reads from `useLiveMvs(cityName)` → `computeMvs(...)` — same helper the table row, deep-dive panel, and Show Formula drawer use. Zero new fetches, zero DB-stored composites.
 
-**Row 2 — Admin status strip (below, only when relevant)**
-- Shows: "Admin only · discover → classify → extract · cap 30 Firecrawl calls"
-- Plus last-run status, call count, timestamp
-- Styled as a plain muted text strip, no dashed border, no `mb-5`
+## Turn 6.1 — Generate + download
 
-### File changes
+**Files (new):**
+- `src/lib/mvsBrief/MvsBriefDocument.tsx` — React-PDF document component. Internal-style: tight margins (0.5in), 9–10pt body, mono for numbers, gray rule lines, no decorative gradients. Header strip on every page: NG logo left, "MVS Brief — {city} — {ISO date}" right.
+- `src/lib/mvsBrief/sections.tsx` — one component per SOW section, each accepts the live MVS payload + computed scores.
+- `src/lib/mvsBrief/downloadMvsBrief.tsx` — wraps `@react-pdf/renderer` `pdf().toBlob()` + `saveAs`-style anchor click. Returns Promise so the button can show spinner.
 
-1. **`src/components/phase2-demo/RunPipelineButton.tsx`**
-   - Add a `variant?: "full" | "compact"` prop (default `"full"` preserves current behavior everywhere else)
-   - In `"compact"` mode: render **only** the `<button>` (with busy state + spinner), no surrounding card, no status text, no last-run info
-   - In `"full"` mode: keep current dashed-border bar exactly as-is (used on `/mvs-preview`)
-   - The status-polling and toast logic stays identical for both variants
+**Files (edited):**
+- `src/components/phase2-demo/LiveCityDeepDive.tsx` — add "Download MVS Brief (PDF)" button in the title row, right of "Show Formula". Only shown when `mvs_data_source='live'`. Disabled while generating; toast on success/error.
 
-2. **`src/pages/MarketValidation.tsx`** — Austin section (lines ~290-310)
-   - Replace the single `justify-between` row with a **vertical stack** (`flex flex-col gap-3`)
-   - **Row 1**: `flex flex-wrap items-start justify-between gap-3`
-     - Left: title + subtitle (unchanged text)
-     - Right: `<div className="flex items-center gap-2">`
-       - `<RunPipelineButton city="Austin, TX" variant="compact" onComplete={austinLive.refresh} />`
-       - `<Link to="/mvs-preview">Open Austin MVS preview</Link>`
-   - **Row 2** (conditional, only when pipeline status exists): render a thin admin status strip. This can be a small sub-component or inline markup showing the last-run info that was previously inside `RunPipelineButton`
+**12 SOW sections (order, mirroring on-screen MVS):**
+1. Cover — city, composite score, tier, run date, data freshness (week_start range).
+2. Executive Summary — composite, 5 pillar scores, top 2 strengths / top 2 risks (rule-based from pillar deltas).
+3. Demand pillar — providers count, avg weekly bookings, growth %, contributing weeks. Source: `mvs_weeks` rollup.
+4. Affluence pillar — median HH income, % HH >$150k, source citation.
+5. Density pillar — population per sq mi, child population %, source citation.
+6. Competition pillar — competitor count within radius, saturation index, source citation.
+7. Schools pillar — qualifying schools count, avg rating, source citation.
+8. Pillar weights — current slider values + composite formula.
+9. Data lineage — each `mvs_pipeline_runs` step that fed this brief (timestamp, row counts, source URLs from Firecrawl).
+10. Confidence notes — any `LowConfidenceBadge` triggers, missing-data flags.
+11. Methodology footnote — link to `/mvs-methodology`, weights version, helper version.
+12. Appendix — raw per-week table (provider × week × bookings) for the live window.
 
-### Spacing spec
-- Section outer: `mb-5 rounded-lg border bg-white px-4 py-3` (unchanged)
-- Inner rows: `gap-3` between row 1 and row 2
-- Button group: `gap-2`
-- Row 1 vertical alignment: `items-start` (prevents buttons from stretching to subtitle height)
-- No dashed border on row 2; if a subtle separator is needed between rows, use a 1px line in `#eef2f7`
+Every numeric cell carries a superscript footnote pointing to its source in section 9 (data lineage).
 
-### Scope
-- Only the Austin calibration preview section on `/market-validation`.
-- The `/mvs-preview` page keeps the full `RunPipelineButton` variant unchanged.
+**Performance target:** Austin in <30s. React-PDF on client averages 2–5s for ~12 pages of text+tables; logo PNG is the only image — well within budget.
+
+**Out of scope this turn:**
+- Screenshot capture of the on-screen detail panel (Sam's brief mentions it as optional appendix; defer to 6.2 if Brett wants it).
+- Tier B cities (Phase 7).
+- Email delivery / storage upload (download-only for now).
+
+## Technical notes
+
+- `@react-pdf/renderer` ships standard fonts (Helvetica/Times/Courier) without registration. For dense internal docs we'll use Helvetica body + Courier for numeric columns. No web-font registration → no flicker, no missing-glyph boxes.
+- Logo: import `neuron-garage-logo.png` directly and pass to `<Image src={logo} />`. React-PDF accepts the imported asset URL.
+- Tables: reuse the `<View>` flex-row pattern already established in `SitePackDocument.tsx`. No new abstractions.
+- Save-as: `pdf(<MvsBriefDocument …/>).toBlob()` → object URL → anchor click → revoke. Same pattern as `SitePackDocument`.
+
+## Verification
+
+- Click "Download MVS Brief" on Austin deep dive → PDF downloads.
+- Open PDF: cover composite matches the on-screen composite to 2 decimals.
+- Drag a weight slider on the page, re-download → composite changes accordingly (proves recompute path, not stale DB).
+- Build passes; no new deps.
+
+## Open questions (non-blocking — defaults stated)
+
+- **Sliders in PDF?** Defaulting to "show current weight values as numeric column in section 8." If you want a tiny bar-chart per pillar, say so and I'll add it.
+- **Footnote style?** Defaulting to superscript-number + "Sources" list on the last content page. Alt: inline parenthetical citations. Confirm or leave default.
+- **Filename?** Defaulting to `mvs-brief-austin-2026-06-17.pdf`. Confirm.
+
+If those defaults are fine, approve and I'll build turn 6.1 in one shot.

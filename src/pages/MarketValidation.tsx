@@ -335,21 +335,33 @@ export default function MarketValidation() {
     <>
       <PageHeader
         title="Market Validation"
-        subtitle="Phase 2 · Feature 1A — Market Validation Score (MVS) across the v1 city shortlist."
+        subtitle="Score and rank candidate cities for Neuron Garage expansion using live market data."
         hideJourneyBar
       />
 
-
-
-      <section className="mb-5 flex flex-wrap items-center justify-end gap-2">
-        <Link
-          to="/market-validation/rollout"
-          className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px] font-semibold text-white"
-          style={{ backgroundColor: BLUE }}
-        >
-          Tier A Rollout →
-        </Link>
+      <section className="mb-5 rounded-lg border p-4" style={{ borderColor: "#dbe6ff", backgroundColor: "#f5f8ff" }}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="mb-1 text-[11px] font-bold uppercase tracking-wide" style={{ color: BLUE }}>
+              How to use this page
+            </div>
+            <ol className="ml-4 list-decimal space-y-1 text-[12px]" style={{ color: NAVY }}>
+              <li><strong>Pick a city</strong> from the shortlist table — its live deep-dive (sub-scores, providers, sellout curve) loads below.</li>
+              <li><strong>Mark Pursue / Hold / Drop</strong> per city to capture the expansion decision. Your choices persist across sessions.</li>
+              <li><strong>Export Shortlist CSV</strong> or a per-city PDF brief once you've made the call.</li>
+              <li>Need to (re)score a city? <Link to="/market-validation/rollout" className="font-semibold underline" style={{ color: BLUE }}>Open the Rollout Console</Link> to run the live pipeline.</li>
+            </ol>
+          </div>
+          <Link
+            to="/market-validation/rollout"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px] font-semibold text-white"
+            style={{ backgroundColor: BLUE }}
+          >
+            Rollout Console →
+          </Link>
+        </div>
       </section>
+
 
 
       {/* v1.1 — Decision-capture shortlist table (replaces the chip rail) */}

@@ -31,6 +31,7 @@ const TIER_A_CITIES = new Set<string>([
   "San Antonio, TX",
   "Philadelphia, PA",
   "Los Angeles, CA",
+  "Indianapolis, IN",
 ]);
 
 type StepName = "discover" | "classify" | "extract";

@@ -230,12 +230,14 @@ Rules:
       const existingNames = new Set((existingRows ?? []).map((r) => normalizeName(r.name)));
       const newRows = rows.filter((r) => !existingNames.has(normalizeName(r.name)));
 
-      const { data: insData, error: insErr } = await admin
-        .from("mvs_providers")
-        .insert(newRows)
-        .select("id");
-      if (insErr) throw new Error(`insert providers: ${insErr.message}`);
-      inserted = insData?.length ?? 0;
+      if (newRows.length > 0) {
+        const { data: insData, error: insErr } = await admin
+          .from("mvs_providers")
+          .insert(newRows)
+          .select("id");
+        if (insErr) throw new Error(`insert providers: ${insErr.message}`);
+        inserted = insData?.length ?? 0;
+      }
     }
 
     await admin

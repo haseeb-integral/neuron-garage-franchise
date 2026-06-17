@@ -8,7 +8,7 @@
 // queued/running. Disabled + spinner during in-flight runs. Toast on
 // terminal state. Calls onComplete() so the parent can refetch live data.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, Play, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";

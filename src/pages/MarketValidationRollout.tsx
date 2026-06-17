@@ -96,14 +96,12 @@ function isFullySignedOff(c: SignoffChecks | undefined): boolean {
 
 function CityRow({
   city,
-  state,
+  state: _state,
   latestRun,
   flag,
   anyRunning,
   invokingCity,
   onRun,
-  onFlip,
-  onUnwind,
   onComposite,
 }: {
   city: string;
@@ -113,14 +111,11 @@ function CityRow({
   anyRunning: boolean;
   invokingCity: string | null;
   onRun: () => void;
-  onFlip: () => void;
-  onUnwind: () => void;
   onComposite: (city: string, mvs: number | null) => void;
 }) {
   const live = useLiveMvs(city);
   const composite = live.result?.mvs ?? null;
 
-  // Report composite up to parent for calibration ranking.
   useEffect(() => {
     onComposite(city, composite);
   }, [city, composite, onComposite]);
@@ -129,8 +124,6 @@ function CityRow({
   const inFlight = status === "queued" || status === "running";
   const isInvoking = invokingCity === city;
   const canRun = !anyRunning && !invokingCity;
-  const canFlip = status === "done" && flag?.mvs_data_source !== "live";
-  const canUnwind = flag?.mvs_data_source === "live";
 
   const statusPill = (() => {
     if (!status) return <span className="text-[11px] text-[#8a96aa]">never run</span>;
@@ -150,34 +143,21 @@ function CityRow({
     );
   })();
 
-  const sourcePill = (() => {
-    const isLive = flag?.mvs_data_source === "live";
-    return (
-      <div className="flex flex-wrap items-center gap-1">
-        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
-          isLive
-            ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-            : "border-[#cfd8e6] bg-[#f7faff] text-[#526078]"
-        }`}>
-          {isLive ? "live" : "sample"}
-        </span>
-        {flag?.low_confidence_badge && (
-          <span
-            title="Low confidence: pipeline fell back to non-Premium providers or many providers had no registration page"
-            className="inline-flex items-center rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800"
-          >
-            low confidence
-          </span>
-        )}
-      </div>
-    );
-  })();
-
-
   return (
     <tr className="border-b border-[#e5eaf2] last:border-b-0">
-      <td className="px-3 py-2.5 text-[13px] font-semibold text-[#07142f]">{city}</td>
-      <td className="px-3 py-2.5">{sourcePill}</td>
+      <td className="px-3 py-2.5 text-[13px] font-semibold text-[#07142f]">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span>{city}</span>
+          {flag?.low_confidence_badge && (
+            <span
+              title="Low confidence: pipeline fell back to non-Premium providers or many providers had no registration page"
+              className="inline-flex items-center rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800"
+            >
+              low confidence
+            </span>
+          )}
+        </div>
+      </td>
       <td className="px-3 py-2.5 text-[11px] text-[#526078]">
         {latestRun?.finished_at
           ? new Date(latestRun.finished_at).toLocaleString()
@@ -200,26 +180,6 @@ function CityRow({
           >
             {inFlight || isInvoking ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
             Run
-          </button>
-          <button
-            type="button"
-            onClick={onFlip}
-            disabled={!canFlip}
-            title={!canFlip ? (status === "done" ? "Already live" : "Run pipeline to 'done' first") : "Flip data source to live"}
-            className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <ShieldCheck className="h-3 w-3" />
-            Flip to live
-          </button>
-          <button
-            type="button"
-            onClick={onUnwind}
-            disabled={!canUnwind}
-            title={canUnwind ? "Revert to sample badge" : "Already on sample"}
-            className="inline-flex items-center gap-1 rounded-md border border-[#cfd8e6] bg-white px-2 py-1 text-[11px] font-semibold text-[#526078] transition hover:bg-[#f7faff] disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <Undo2 className="h-3 w-3" />
-            Unwind
           </button>
         </div>
       </td>

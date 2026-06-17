@@ -86,15 +86,19 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Body: { city } — Austin-only for this turn.
+  // Body: { city } — must be a Tier A city.
   const body = await req.json().catch(() => ({}));
   const city: string = (body?.city ?? AUSTIN).trim();
-  if (city !== AUSTIN) {
+  if (!TIER_A_CITIES.has(city)) {
     return new Response(
-      JSON.stringify({ error: `Turn 5.2 supports Austin only (got ${city})` }),
+      JSON.stringify({
+        error: `city '${city}' is not in the Tier A allow-list`,
+        allowed: Array.from(TIER_A_CITIES),
+      }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
+
 
   // Reject if a run is already in flight for this city.
   const { data: inflight } = await admin

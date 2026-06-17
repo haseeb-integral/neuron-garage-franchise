@@ -266,15 +266,22 @@ function score3ScaledOperator(
     };
   }
 
+  const seenOperators = new Set<string>();
   let operatorValidation = 0;
   let directSiteCount = 0;
 
   for (const p of premium) {
     const overlap = resolveOverlap(p.name, watchlist, overrides);
     if (overlap) {
-      operatorValidation = Math.min(8, operatorValidation + 1);
-      if (overlap === "direct") {
-        directSiteCount += p.site_count ?? 1;
+      const match = watchlist.find((w) =>
+        p.name.toLowerCase().includes(w.name.toLowerCase()),
+      );
+      if (match && !seenOperators.has(match.name.toLowerCase())) {
+        seenOperators.add(match.name.toLowerCase());
+        operatorValidation = Math.min(8, operatorValidation + 1);
+        if (overlap === "direct") {
+          directSiteCount += p.site_count ?? 1;
+        }
       }
     }
   }

@@ -456,14 +456,14 @@ const PillarPages: React.FC<{ args: MvsBriefArgs; headerText: string }> = ({ arg
             return [k, val];
           });
         return (
-          <View key={p.key} wrap={false}>
+          <View key={p.key} style={s.pillarBlock} wrap={false}>
             <SectionTitle n={3 + idx} label={p.title} sub={p.subtitle} />
             <View style={s.pillarHeader}>
-              <View style={{ flexDirection: "row", alignItems: "baseline" }}>
+              <View style={s.pillarScoreRow}>
                 <Text style={s.pillarScore}>{fmt(score)}</Text>
-                <Text style={s.pillarScoreLabel}> / 100</Text>
+                <Text style={s.pillarScoreLabel}>/ 100</Text>
               </View>
-              <Text style={[s.headerText, { color: C.muted }]}>
+              <Text style={s.pillarWeight}>
                 Weight {(args.weights[p.key] * 100).toFixed(0)}% · contributes{" "}
                 {score != null
                   ? (score * args.weights[p.key]).toFixed(1)
@@ -474,12 +474,13 @@ const PillarPages: React.FC<{ args: MvsBriefArgs; headerText: string }> = ({ arg
             {rows.length > 0 ? (
               <Kv rows={rows} />
             ) : (
-              <Text style={[s.bulletText, { color: C.muted }]}>No input data available.</Text>
+              <Text style={s.pillarEmpty}>No input data available for this pillar.</Text>
             )}
             <Text style={s.pillarFormula}>formula: {p.formula}</Text>
           </View>
         );
       })}
+
     </Page>
   );
 };

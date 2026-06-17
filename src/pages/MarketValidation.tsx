@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { DemoBanner } from "@/components/phase2-demo/DemoBanner";
 import { LiveCityDeepDive } from "@/components/phase2-demo/LiveCityDeepDive";
 import { LowConfidenceBadge } from "@/components/phase2-demo/LowConfidenceBadge";
-import { RunPipelineButton } from "@/components/phase2-demo/RunPipelineButton";
+import { PipelineStatusStrip, RunPipelineButton } from "@/components/phase2-demo/RunPipelineButton";
 import { SampleDataBadge } from "@/components/phase2-demo/SampleDataBadge";
 import { ShortlistTable, type LiveOverlay } from "@/components/phase2-demo/ShortlistTable";
 import { Slider } from "@/components/ui/slider";

@@ -1,9 +1,12 @@
 import { useMemo, useState } from "react";
-import { Loader2, MapPin } from "lucide-react";
+import { Loader2, MapPin, FileDown } from "lucide-react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { Slider } from "@/components/ui/slider";
 import { DEFAULT_WEIGHTS } from "@/lib/mvs/computeMvs";
 import { useLiveMvs } from "@/lib/mvs/useLiveMvs";
 import { RunPipelineButton } from "@/components/phase2-demo/RunPipelineButton";
+import { renderMvsBriefPdfBlob } from "@/lib/mvsBrief/MvsBriefDocument";
 
 
 const NAVY = "#07142f";

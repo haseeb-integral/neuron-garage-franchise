@@ -1,49 +1,49 @@
-## Phase 5, Turn 5.1 — Wire shortlist to live data when `mvs_data_source='live'`
+# Turn 5.2 — Run Pipeline button + status surface
 
-Phases 0–4 done. Phase 5 not started. This is Turn 5.1 of 5.
+We are aligned. Phases 0–4 complete, Turn 5.1 signed off. Next per the build plan: **Turn 5.2 only** (Phase 6 PDF and Phase 7 rollout come later).
 
-### What changes
+## Scope (exactly what the plan says)
 
-1. **Add Austin as a 9th row in `SHORTLIST_DEMO`** (`src/data/phase2DemoData.ts`). City = "Austin", state = "TX". Sub-score / composite fields = placeholders (will be ignored on the live path; only used as fallback if the flag flips back to sample).
+- Admin-only "Run Pipeline" button on the Austin city detail panel (manager role via `has_role`).
+- New orchestrator edge function `mvs-run-pipeline` that runs discover → classify → extract sequentially.
+- Writes one row to `mvs_pipeline_runs` with status: `queued → running → done | failed`, plus timing + error message.
+- Button disabled while a run is in flight for that city (polled from `mvs_pipeline_runs`).
+- Toast on completion (success / failure).
+- Hard cost ceiling: max **30** Firecrawl calls per run (configurable via env, default 30).
+- Gated by `MVS_PIPELINE_ENABLED` kill switch (already in place).
 
-2. **Flip Austin's data-source flag.** Single SQL: `UPDATE mvs_city_flags SET mvs_data_source='live' WHERE city='Austin'`. (Insert the row if it doesn't exist yet.)
+## Build steps
 
-3. **`ShortlistTable.tsx` (and the city detail panel + sub-score cards + Show Formula drawers + premium-provider table on `MarketValidation.tsx`)** — read `mvs_city_flags.mvs_data_source` for the active city.
-   - If `'live'` → fetch `mvs_providers` + `mvs_weeks` + ACS (same query path as `MVSPreview.tsx`), run `computeMvs` (shared helper), render row cells and detail panel from the result. Show "Live" badge (+ "Low Confidence" if `mvs_city_flags.low_confidence_badge=true`).
-   - If `'sample'` (default, all other 8 cities) → existing demo path completely untouched. "Sample Data" badge unchanged.
+1. **Edge function `mvs-run-pipeline`** (`supabase/functions/mvs-run-pipeline/index.ts`)
+   - Validates JWT, checks `has_role(user, 'admin' | 'manager')`, checks `MVS_PIPELINE_ENABLED`.
+   - Validates body: `{ city: string }`.
+   - Inserts `mvs_pipeline_runs` row (status=`queued`), flips to `running`.
+   - Calls existing functions in sequence: `mvs-discover-providers` → `mvs-classify-tier` → `mvs-extract-weeks-austin-all` (or generic city variant for Austin only this turn).
+   - Tracks Firecrawl call count; aborts with `failed` + reason if cap exceeded.
+   - On completion, updates row to `done` with `finished_at`, counts (providers, weeks, qa queued).
+   - On any throw, sets `failed` + error message.
 
-4. **Single recompute helper.** Extract the data-loading + `computeMvs` call currently inside `MVSPreview.tsx` into `src/lib/mvs/useLiveMvs.ts` so the preview page and the shortlist table both go through the same hook. Brett's "one calibrated number everywhere" rule.
+2. **Frontend: Run Pipeline button** in `src/components/phase2-demo/LiveCityDeepDive.tsx` (Austin live panel only)
+   - Visible only when `mvs_data_source='live'` AND user has admin/manager role (use existing role hook or query `user_roles`).
+   - Polls latest `mvs_pipeline_runs` row for the city every 3s while `queued`/`running`.
+   - Disabled + spinner during in-flight run; toast on terminal state; refetches live data on `done`.
 
-5. **Slider drag re-compute** — when a sub-score weight slider is dragged on Austin's detail panel, recompute the live composite via the same helper (in-memory weight override; no DB write).
+3. **No schema changes** — `mvs_pipeline_runs` table already exists (Phase 1). Confirm columns match needs; if a column is missing (e.g. `firecrawl_calls`), add via single small migration.
 
-### What does NOT change
+## Out of scope (later turns)
 
-- The 8 demo cities and the entire sample-data path.
-- The Austin `/mvs-preview` route (stays as-is, now sharing the hook).
-- `mvs_providers`, `mvs_weeks`, `computeMvs.ts`, the 31 unit tests, any edge function.
-- Sub-score weights (still static for v1 per SOW Item 1; slider is preview-only).
+- Phase 6 (PDF Market Brief)
+- Phase 7 (Tier A rollout to 7 cities + calibration)
+- Any UI changes to non-Austin cities
 
-### Files touched
+## Unwind
 
-- `src/data/phase2DemoData.ts` — append Austin row to `SHORTLIST_DEMO`.
-- `src/lib/mvs/useLiveMvs.ts` — **new**. Hook returning `{ mvs, scores, inputs, providers, weeks, loading, error, dataSource, lowConfidence }` for a given city.
-- `src/pages/MVSPreview.tsx` — refactor to use `useLiveMvs("Austin, TX")`. No visible change.
-- `src/components/phase2-demo/ShortlistTable.tsx` — read `mvs_city_flags` for visible cities, swap row cells to live values when `dataSource='live'`.
-- `src/pages/MarketValidation.tsx` — when active city has `dataSource='live'`, render the detail panel / sub-score cards / premium-provider table from the live hook; otherwise render the existing `sanAntonioMarketValidationDemo` path. Replace "Sample Data" badge with "Live" + optional "Low Confidence" pill.
-- One `supabase--insert` SQL: upsert Austin row in `mvs_city_flags` with `mvs_data_source='live'`.
+Delete the button, delete `mvs-run-pipeline` function, `DELETE FROM mvs_pipeline_runs`. Underlying data tables and Turn 5.1 wiring stay intact.
 
-### Gate (per Build Plan)
+## Human-test gate (end of Phase 5)
 
-- Austin row in the shortlist shows live MVS (~42.0 with current thin data — known).
-- Other 7 cities still show their demo composites unchanged.
-- Slider drag on Austin recomputes its composite via the shared helper; values stay identical between shortlist row, detail panel hero, and `/mvs-preview`.
+Brett or Haseeb clicks Run Pipeline on Austin → pipeline completes → fresh numbers appear on the live panel → every score traces to a stored screenshot.
 
-### Unwind
+## One question before I build
 
-Single SQL: `UPDATE mvs_city_flags SET mvs_data_source='sample' WHERE city='Austin'`. All UI falls back to demo path with no code change.
-
-### Out of scope (later turns)
-
-- Turn 5.2: admin "Run Pipeline" button + `mvs_pipeline_runs` status surface.
-- Phase 6: PDF Market Brief edge function + download button.
-- Phase 7: run pipeline for 7 Tier A cities + calibration check.
+The plan says cost ceiling default = **30 Firecrawl calls/run**. Lock at 30, or pick another number?

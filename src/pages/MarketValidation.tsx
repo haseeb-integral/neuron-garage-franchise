@@ -348,7 +348,7 @@ export default function MarketValidation() {
               Austin calibration preview
             </h2>
             <p className="mt-0.5 text-[12px]" style={{ color: MUTED }}>
-              Austin is not part of the demo shortlist below. Use the separate read-only preview for the live Austin pipeline output.
+              Austin is not part of the shortlist below. Use the separate read-only preview for the live Austin pipeline output.
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">

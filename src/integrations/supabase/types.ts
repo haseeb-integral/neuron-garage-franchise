@@ -1428,6 +1428,30 @@ export type Database = {
         }
         Relationships: []
       }
+      mvs_shortlist_cities: {
+        Row: {
+          added_at: string
+          added_by: string | null
+          city: string
+          id: string
+          state: string
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string | null
+          city: string
+          id?: string
+          state: string
+        }
+        Update: {
+          added_at?: string
+          added_by?: string | null
+          city?: string
+          id?: string
+          state?: string
+        }
+        Relationships: []
+      }
       mvs_weeks: {
         Row: {
           confidence: number | null

@@ -153,15 +153,26 @@ function CityRow({
   const sourcePill = (() => {
     const isLive = flag?.mvs_data_source === "live";
     return (
-      <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
-        isLive
-          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-          : "border-[#cfd8e6] bg-[#f7faff] text-[#526078]"
-      }`}>
-        {isLive ? "live" : "sample"}
-      </span>
+      <div className="flex flex-wrap items-center gap-1">
+        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+          isLive
+            ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+            : "border-[#cfd8e6] bg-[#f7faff] text-[#526078]"
+        }`}>
+          {isLive ? "live" : "sample"}
+        </span>
+        {flag?.low_confidence_badge && (
+          <span
+            title="Low confidence: pipeline fell back to non-Premium providers or many providers had no registration page"
+            className="inline-flex items-center rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800"
+          >
+            low confidence
+          </span>
+        )}
+      </div>
     );
   })();
+
 
   return (
     <tr className="border-b border-[#e5eaf2] last:border-b-0">

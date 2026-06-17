@@ -23,7 +23,9 @@ export type LiveMvsBundle = {
   flag: LiveMvsCityFlag | null;
   loading: boolean;
   error: string | null;
+  refresh: () => void;
 };
+
 
 /**
  * Loads live pipeline data for a city (providers + weeks + ACS + watchlist

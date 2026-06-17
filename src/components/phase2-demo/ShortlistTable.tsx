@@ -1,10 +1,24 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Download, Pencil, ChevronUp, ChevronDown } from "lucide-react";
 
 import type { ShortlistRow } from "@/data/phase2DemoData";
 import { useMarketDecisions, type MarketVerdict } from "@/hooks/useMarketDecisions";
 import { exportMarketDecisionsCsv } from "@/lib/decisionsExport";
 import { SampleDataBadge } from "@/components/phase2-demo/SampleDataBadge";
+import { supabase } from "@/integrations/supabase/client";
+import { computeMvs, type MvsProviderInput, type MvsWeekInput, type MvsAcsInput } from "@/lib/mvs/computeMvs";
+
+export type LiveOverlay = {
+  composite: number | null;
+  pricing: number | null;
+  absorption: number | null;
+  scaledOperator: number | null;
+  diversity: number | null;
+  depth: number | null;
+  balance: number | null;
+  lowConfidence: boolean;
+};
+
 
 const NAVY = "#07142f";
 const MUTED = "#526078";

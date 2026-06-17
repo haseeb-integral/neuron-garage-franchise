@@ -20,7 +20,7 @@ const corsHeaders = {
 
 const FIRECRAWL_V2 = "https://api.firecrawl.dev/v2";
 const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const SAWYER_AUSTIN_URL = "https://www.hisawyer.com/camps/austin-tx";
+const SAWYER_AUSTIN_URL = "https://www.hisawyer.com/marketplace?search=%7B%22booking_type%22%3A%22camp%22%2C%22categories%22%3A%5B33%2C31%2C19%2C30%5D%2C%22location_within%22%3A%7B%22top%22%3A31.10894716338658%2C%22left%22%3A-98.52583667890624%2C%22bottom%22%3A29.42001128474371%2C%22right%22%3A-96.96028492109374%7D%2C%22month_year_in%22%3A%5B%7B%22month%22%3A6%2C%22year%22%3A2026%7D%2C%7B%22month%22%3A7%2C%22year%22%3A2026%7D%5D%7D&from_city_name=%22Austin%2C+TX%22";
 const SCREENSHOT_BUCKET = "mvs-screenshots";
 
 type ProviderExtract = {

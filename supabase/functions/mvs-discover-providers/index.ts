@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
 
   const { data: run, error: runErr } = await admin
     .from("mvs_pipeline_runs")
-    .insert({ city, status: "running", firecrawl_calls: 0 })
+    .insert({ city, status: "running", firecrawl_calls: 0, started_at: new Date().toISOString() })
     .select()
     .single();
   if (runErr || !run) {
@@ -127,13 +127,23 @@ Deno.serve(async (req) => {
 
     if (!markdown) throw new Error("firecrawl returned empty markdown");
 
-    // 2) Store screenshot in mvs-screenshots bucket.
+    // 2) Store screenshot in mvs-screenshots bucket. Firecrawl v2 may return
+    //    either a remote URL or a base64 data URL — handle both.
     let screenshotPath: string | null = null;
     if (screenshotUrlRemote) {
       try {
-        const imgRes = await fetch(screenshotUrlRemote);
-        if (imgRes.ok) {
-          const bytes = new Uint8Array(await imgRes.arrayBuffer());
+        let bytes: Uint8Array | null = null;
+        if (screenshotUrlRemote.startsWith("data:")) {
+          const b64 = screenshotUrlRemote.split(",", 2)[1] ?? "";
+          const bin = atob(b64);
+          bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        } else {
+          const imgRes = await fetch(screenshotUrlRemote);
+          if (imgRes.ok) bytes = new Uint8Array(await imgRes.arrayBuffer());
+          else debug.screenshot_fetch_status = imgRes.status;
+        }
+        if (bytes) {
           const path = `${run.id}/sawyer-austin.png`;
           const { error: upErr } = await admin.storage
             .from(SCREENSHOT_BUCKET)
@@ -210,9 +220,11 @@ Rules:
 
     let inserted = 0;
     if (rows.length > 0) {
+      // Upsert against the (city, lower(name), platform) uniq index so re-runs
+      // don't blow up on duplicates; latest run wins on conflict.
       const { data: insData, error: insErr } = await admin
         .from("mvs_providers")
-        .insert(rows)
+        .upsert(rows, { onConflict: "city,name,platform", ignoreDuplicates: false })
         .select("id");
       if (insErr) throw new Error(`insert providers: ${insErr.message}`);
       inserted = insData?.length ?? 0;
@@ -220,7 +232,11 @@ Rules:
 
     await admin
       .from("mvs_pipeline_runs")
-      .update({ status: "done", firecrawl_calls: firecrawlCalls })
+      .update({
+        status: "done",
+        firecrawl_calls: firecrawlCalls,
+        finished_at: new Date().toISOString(),
+      })
       .eq("id", run.id);
 
     return new Response(
@@ -238,7 +254,12 @@ Rules:
     const msg = err instanceof Error ? err.message : String(err);
     await admin
       .from("mvs_pipeline_runs")
-      .update({ status: "failed", error: msg, firecrawl_calls: firecrawlCalls })
+      .update({
+        status: "failed",
+        error: msg,
+        firecrawl_calls: firecrawlCalls,
+        finished_at: new Date().toISOString(),
+      })
       .eq("id", run.id);
     return new Response(
       JSON.stringify({ run_id: run.id, error: msg, debug }),

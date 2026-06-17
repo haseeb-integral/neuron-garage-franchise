@@ -176,14 +176,37 @@ Deno.serve(async (req) => {
     // Write back per-row.
     for (const r of results) {
       if (!r?.id || !r.tier) continue;
-      const tier: Tier = (["premium", "mid", "budget", "community"].includes(r.tier)
+      let tier: Tier = (["premium", "mid", "budget", "community"].includes(r.tier)
         ? r.tier
         : "mid") as Tier;
+
+      const src = batch.find((b) => b.id === r.id);
+
+      // Deterministic overrides (never let the model misclassify on clear signals):
+      // - Community keyword in name -> community (preserves not-childcare/community rule).
+      // - Price >= $400 (per week or per camp) -> premium (unless community).
+      // - Price > 0 and < $200 with both bounds set -> budget (unless community).
+      const nameLc = (src?.name ?? "").toLowerCase();
+      const isCommunityBrand = /\b(ymca|jcc|parks?\s*(and|&)?\s*rec|public library|municipal|city of |church|kindercare)\b/.test(nameLc);
+      const pMax = Number(src?.price_max ?? 0);
+      const pMin = Number(src?.price_min ?? 0);
+      if (isCommunityBrand) {
+        tier = "community";
+      } else if (pMax >= 400 || pMin >= 400) {
+        tier = "premium";
+      }
+
+      // category_classified must never be null — fall back to category_raw, then 'unknown'.
+      const category =
+        (r.category_classified && r.category_classified.trim()) ||
+        (src?.category_raw && src.category_raw.trim()) ||
+        "unknown";
+
       const { error: upErr } = await admin
         .from("mvs_providers")
         .update({
           tier,
-          category_classified: r.category_classified?.slice(0, 100) ?? null,
+          category_classified: category.slice(0, 100),
         })
         .eq("id", r.id);
       if (upErr) {
@@ -191,9 +214,8 @@ Deno.serve(async (req) => {
         continue;
       }
       classifiedCount += 1;
-      const src = batch.find((b) => b.id === r.id);
       if (src && sample.length < 10) {
-        sample.push({ name: src.name, tier, category_classified: r.category_classified });
+        sample.push({ name: src.name, tier, category_classified: category });
       }
     }
   }

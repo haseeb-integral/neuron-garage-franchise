@@ -1,37 +1,45 @@
-# Fix: duplicate weeks + opaque pipeline toast
+## Restructure Austin Calibration Preview Header (Pattern A)
 
-Two small, scoped fixes so the human smoke test gives real signal.
+### Problem
+The `RunPipelineButton` renders a full dashed-border status bar (`mb-5`, border, padding, last-run info). When placed inside the section's right-aligned flex container, it sits next to the "Open Austin MVS preview" link as two mismatched blocks. The button and the link are not visually paired, and the status bar steals horizontal space.
 
-## 1. Stop duplicate week rows
+### Solution — Two-row header layout
 
-**Problem:** `mvs_weeks` has no unique constraint on `(provider_id, week_start)`. The `mvs-extract-weeks-austin-all` function inserts plain rows, so each Run Pipeline click adds 5 more copies (5 → 10 → 15 → 20 …).
+**Row 1 — Title + action buttons (same line)**
+- Left: "Austin calibration preview" title (13px bold) + subtitle (12px muted)
+- Right: a tight `gap-2` button group
+  - **Primary**: "Run Pipeline" compact trigger button (same blue style, loading spinner)
+  - **Secondary**: "Open Austin MVS preview" outline button (same blue border/text style)
 
-**Migration:**
-- Dedupe existing Austin rows: keep the newest row per `(provider_id, week_start)`, delete the rest.
-- Add `UNIQUE (provider_id, week_start)` on `mvs_weeks`.
+**Row 2 — Admin status strip (below, only when relevant)**
+- Shows: "Admin only · discover → classify → extract · cap 30 Firecrawl calls"
+- Plus last-run status, call count, timestamp
+- Styled as a plain muted text strip, no dashed border, no `mb-5`
 
-**Edge function edit (`mvs-extract-weeks-austin-all/index.ts`):**
-- Change the week insert to `.upsert(..., { onConflict: "provider_id,week_start" })` so re-runs update the existing row instead of appending.
+### File changes
 
-## 2. Informative Run Pipeline toast
+1. **`src/components/phase2-demo/RunPipelineButton.tsx`**
+   - Add a `variant?: "full" | "compact"` prop (default `"full"` preserves current behavior everywhere else)
+   - In `"compact"` mode: render **only** the `<button>` (with busy state + spinner), no surrounding card, no status text, no last-run info
+   - In `"full"` mode: keep current dashed-border bar exactly as-is (used on `/mvs-preview`)
+   - The status-polling and toast logic stays identical for both variants
 
-**Problem:** Toast only says "Pipeline complete · 1 Firecrawl calls" — user can't tell what actually happened.
+2. **`src/pages/MarketValidation.tsx`** — Austin section (lines ~290-310)
+   - Replace the single `justify-between` row with a **vertical stack** (`flex flex-col gap-3`)
+   - **Row 1**: `flex flex-wrap items-start justify-between gap-3`
+     - Left: title + subtitle (unchanged text)
+     - Right: `<div className="flex items-center gap-2">`
+       - `<RunPipelineButton city="Austin, TX" variant="compact" onComplete={austinLive.refresh} />`
+       - `<Link to="/mvs-preview">Open Austin MVS preview</Link>`
+   - **Row 2** (conditional, only when pipeline status exists): render a thin admin status strip. This can be a small sub-component or inline markup showing the last-run info that was previously inside `RunPipelineButton`
 
-**Edge function edit (`mvs-run-pipeline/index.ts`):**
-- After each step, read the child function's JSON response and collect counts.
-- Return a `summary` block: `{ providers_discovered, providers_classified, weeks_upserted, screenshots_stored, firecrawl_calls }`.
+### Spacing spec
+- Section outer: `mb-5 rounded-lg border bg-white px-4 py-3` (unchanged)
+- Inner rows: `gap-3` between row 1 and row 2
+- Button group: `gap-2`
+- Row 1 vertical alignment: `items-start` (prevents buttons from stretching to subtitle height)
+- No dashed border on row 2; if a subtle separator is needed between rows, use a 1px line in `#eef2f7`
 
-**Client edit (`RunPipelineButton.tsx`):**
-- Show the summary in the success toast, e.g.:
-  `Pipeline complete · 1 provider · 5 weeks upserted · 1 screenshot · 1 Firecrawl call`
-
-## What stays out of scope
-- No new providers, no new cities, no scoring changes.
-- No UI redesign of the MVS preview cards.
-- Composite score will still be 42.0 until Sawyer's data actually changes — that is correct behavior.
-
-## How you verify after I ship
-1. Note current week count in the LIVE MVS caption (should still say "5 weeks" once dedupe migration runs).
-2. Click **Run Pipeline**. Toast should show the breakdown above.
-3. Refresh — caption stays "5 weeks" (no more drift to 10/15/20).
-4. Open `https://www.hisawyer.com/marketplace/activity-set/1733799` in any browser (no login). Confirm camp weeks ~$850 starting June 15 — matches our `medianPrice=850, pctAtLeast500=100`.
+### Scope
+- Only the Austin calibration preview section on `/market-validation`.
+- The `/mvs-preview` page keeps the full `RunPipelineButton` variant unchanged.

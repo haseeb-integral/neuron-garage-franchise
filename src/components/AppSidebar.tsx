@@ -33,7 +33,7 @@ const docsNavItems = [
   { title: "Scoring Method", url: "/scoring-method", icon: Gauge },
   { title: "CSI Methodology", url: "/methodology", icon: Calculator },
   { title: "MVS Methodology", url: "/mvs-methodology", icon: BarChart3 },
-  { title: "MVS Run (ops)", url: "/mvs-run", icon: PlayCircle },
+  
   { title: "SAS Methodology", url: "/sas-methodology", icon: MapPin },
   { title: "Demographics Method", url: "/demographics-methodology", icon: PieChart },
   { title: "Observability Guide", url: "/observability-guide", icon: Activity },

@@ -117,7 +117,9 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
 
   return (
     <>
+      <RunPipelineButton city={cityKey} onComplete={refresh} />
       {/* Composite hero card */}
+
       <section
         className="mb-5 rounded-lg border bg-white p-5"
         style={{ borderColor: BORDER }}

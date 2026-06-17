@@ -17,18 +17,12 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useLiveMvs } from "@/lib/mvs/useLiveMvs";
 import { useAuth } from "@/contexts/AuthContext";
+import { SHORTLIST_DEMO } from "@/data/phase2DemoData";
 
-const TIER_A: { city: string; state: string }[] = [
-  { city: "Austin, TX", state: "TX" },
-  { city: "New York, NY", state: "NY" },
-  { city: "Houston, TX", state: "TX" },
-  { city: "Chicago, IL", state: "IL" },
-  { city: "Boston, MA", state: "MA" },
-  { city: "San Antonio, TX", state: "TX" },
-  { city: "Philadelphia, PA", state: "PA" },
-  { city: "Los Angeles, CA", state: "CA" },
-  { city: "Indianapolis, IN", state: "IN" },
-];
+const SHORTLISTED_CITIES: { city: string; state: string }[] = SHORTLIST_DEMO.map((row) => ({
+  city: `${row.city}, ${row.state}`,
+  state: row.state,
+}));
 
 type RunStatus = "queued" | "running" | "done" | "failed";
 
@@ -177,7 +171,7 @@ export default function MarketValidationRollout() {
   }, [user]);
 
   const fetchAll = useCallback(async () => {
-    const cities = TIER_A.map((c) => c.city);
+    const cities = SHORTLISTED_CITIES.map((c) => c.city);
 
     // Latest run per city: pull last ~50 runs across these cities, then group.
     const { data: runRows } = await supabase
@@ -304,8 +298,8 @@ export default function MarketValidationRollout() {
     );
   }
 
-  const doneCount = TIER_A.filter((c) => latestRuns[c.city]?.status === "done").length;
-  const totalCount = TIER_A.length;
+  const doneCount = SHORTLISTED_CITIES.filter((c) => latestRuns[c.city]?.status === "done").length;
+  const totalCount = SHORTLISTED_CITIES.length;
   const allDone = doneCount === totalCount;
 
   return (
@@ -370,7 +364,7 @@ export default function MarketValidationRollout() {
         )}
         <span>
           <strong>{doneCount}</strong> of <strong>{totalCount}</strong> cities scored
-          {allDone ? " — all Tier A cities have live composites." : " — run the remaining cities to complete the shortlist."}
+          {allDone ? " — every shortlisted city has a live composite." : " — run the remaining cities to complete the shortlist."}
         </span>
       </div>
 
@@ -387,7 +381,7 @@ export default function MarketValidationRollout() {
             </tr>
           </thead>
           <tbody>
-            {TIER_A.map((c) => (
+            {SHORTLISTED_CITIES.map((c) => (
               <CityRow
                 key={c.city}
                 city={c.city}

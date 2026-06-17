@@ -157,7 +157,7 @@ Deno.serve(async (req) => {
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
-  const sawyerUrl = buildSawyerUrl(city, box);
+  const searchVariants = buildSearchVariants();
 
   const { data: run, error: runErr } = await admin
     .from("mvs_pipeline_runs")
@@ -175,66 +175,12 @@ Deno.serve(async (req) => {
   const debug: Record<string, unknown> = {};
 
   try {
-    // 1) Firecrawl scrape with JS wait + screenshot.
-    const scrapeRes = await fetch(`${FIRECRAWL_V2}/scrape`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${firecrawlKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        url: sawyerUrl,
-        formats: ["markdown", "screenshot"],
-        onlyMainContent: true,
-        waitFor: 3000,
-      }),
-    });
-    firecrawlCalls += 1;
-    const scrapeJson = await scrapeRes.json();
-    if (!scrapeRes.ok) {
-      throw new Error(
-        `firecrawl scrape ${scrapeRes.status}: ${JSON.stringify(scrapeJson).slice(0, 400)}`,
-      );
-    }
-    const markdown: string = scrapeJson?.data?.markdown ?? "";
-    const screenshotUrlRemote: string | undefined =
-      scrapeJson?.data?.screenshot ?? scrapeJson?.data?.screenshotUrl;
-    debug.scrape_url = sawyerUrl;
-    debug.markdown_chars = markdown.length;
-    debug.screenshot_received = Boolean(screenshotUrlRemote);
-
-    if (!markdown) throw new Error("firecrawl returned empty markdown");
-
-    // 2) Store screenshot in mvs-screenshots bucket. Firecrawl v2 may return
-    //    either a remote URL or a base64 data URL — handle both.
+    // Loop the search variants. Each variant = 1 Firecrawl scrape + 1 Gemini
+    // extract. Providers are unioned across variants and deduped by name.
+    const collectedProviders: ProviderExtract[] = [];
     let screenshotPath: string | null = null;
-    if (screenshotUrlRemote) {
-      try {
-        let bytes: Uint8Array | null = null;
-        if (screenshotUrlRemote.startsWith("data:")) {
-          const b64 = screenshotUrlRemote.split(",", 2)[1] ?? "";
-          const bin = atob(b64);
-          bytes = new Uint8Array(bin.length);
-          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-        } else {
-          const imgRes = await fetch(screenshotUrlRemote);
-          if (imgRes.ok) bytes = new Uint8Array(await imgRes.arrayBuffer());
-          else debug.screenshot_fetch_status = imgRes.status;
-        }
-        if (bytes) {
-          const path = `${run.id}/sawyer-${citySlug(city)}.png`;
-          const { error: upErr } = await admin.storage
-            .from(SCREENSHOT_BUCKET)
-            .upload(path, bytes, { contentType: "image/png", upsert: true });
-          if (!upErr) screenshotPath = path;
-          else debug.screenshot_upload_error = upErr.message;
-        }
-      } catch (e) {
-        debug.screenshot_fetch_error = e instanceof Error ? e.message : String(e);
-      }
-    }
+    const variantDebug: unknown[] = [];
 
-    // 3) Gemini Flash extracts provider rows into strict JSON.
     const sys = `You extract kids' activity providers from a Sawyer marketplace listing page for ${city}.
 Return strict JSON:
 { "providers": [ { "name": string, "url": string|null, "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number } ] }
@@ -248,33 +194,105 @@ Rules:
 - Dedupe by provider name.
 - Hard cap: 60 providers.`;
 
-    const aiRes = await fetch(AI_GATEWAY, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Lovable-API-Key": lovableKey },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: sys },
-          {
-            role: "user",
-            content: `City: ${city}\nSource URL: ${sawyerUrl}\n\nSCRAPED PAGE MARKDOWN:\n${markdown.slice(0, 24000)}`,
+    for (let i = 0; i < searchVariants.length; i++) {
+      const sawyerUrl = buildSawyerUrl(city, box, searchVariants[i]);
+      const vDebug: Record<string, unknown> = { variant: i, url: sawyerUrl };
+      try {
+        const scrapeRes = await fetch(`${FIRECRAWL_V2}/scrape`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${firecrawlKey}`,
+            "Content-Type": "application/json",
           },
-        ],
-        response_format: { type: "json_object" },
-      }),
-    });
-    const aiJson = await aiRes.json();
-    if (!aiRes.ok) {
-      throw new Error(`ai gateway ${aiRes.status}: ${JSON.stringify(aiJson).slice(0, 400)}`);
+          body: JSON.stringify({
+            url: sawyerUrl,
+            formats: i === 0 ? ["markdown", "screenshot"] : ["markdown"],
+            onlyMainContent: true,
+            waitFor: 3000,
+          }),
+        });
+        firecrawlCalls += 1;
+        const scrapeJson = await scrapeRes.json().catch(() => ({}));
+        if (!scrapeRes.ok) {
+          vDebug.error = `firecrawl ${scrapeRes.status}`;
+          variantDebug.push(vDebug);
+          continue;
+        }
+        const markdown: string = scrapeJson?.data?.markdown ?? "";
+        vDebug.markdown_chars = markdown.length;
+        if (!markdown) {
+          vDebug.error = "empty markdown";
+          variantDebug.push(vDebug);
+          continue;
+        }
+
+        // Store screenshot from variant 0 only (representative for the city).
+        if (i === 0 && !screenshotPath) {
+          const screenshotUrlRemote: string | undefined =
+            scrapeJson?.data?.screenshot ?? scrapeJson?.data?.screenshotUrl;
+          if (screenshotUrlRemote) {
+            try {
+              let bytes: Uint8Array | null = null;
+              if (screenshotUrlRemote.startsWith("data:")) {
+                const b64 = screenshotUrlRemote.split(",", 2)[1] ?? "";
+                const bin = atob(b64);
+                bytes = new Uint8Array(bin.length);
+                for (let j = 0; j < bin.length; j++) bytes[j] = bin.charCodeAt(j);
+              } else {
+                const imgRes = await fetch(screenshotUrlRemote);
+                if (imgRes.ok) bytes = new Uint8Array(await imgRes.arrayBuffer());
+              }
+              if (bytes) {
+                const path = `${run.id}/sawyer-${citySlug(city)}.png`;
+                const { error: upErr } = await admin.storage
+                  .from(SCREENSHOT_BUCKET)
+                  .upload(path, bytes, { contentType: "image/png", upsert: true });
+                if (!upErr) screenshotPath = path;
+              }
+            } catch { /* non-fatal */ }
+          }
+        }
+
+        const aiRes = await fetch(AI_GATEWAY, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Lovable-API-Key": lovableKey },
+          body: JSON.stringify({
+            model: "google/gemini-3-flash-preview",
+            messages: [
+              { role: "system", content: sys },
+              {
+                role: "user",
+                content: `City: ${city}\nSource URL: ${sawyerUrl}\n\nSCRAPED PAGE MARKDOWN:\n${markdown.slice(0, 24000)}`,
+              },
+            ],
+            response_format: { type: "json_object" },
+          }),
+        });
+        const aiJson = await aiRes.json().catch(() => ({}));
+        if (!aiRes.ok) {
+          vDebug.error = `ai ${aiRes.status}`;
+          variantDebug.push(vDebug);
+          continue;
+        }
+        const raw = aiJson.choices?.[0]?.message?.content ?? "{}";
+        let parsed: { providers?: ProviderExtract[] } = {};
+        try { parsed = JSON.parse(raw); } catch {
+          vDebug.error = "ai parse";
+          variantDebug.push(vDebug);
+          continue;
+        }
+        const got = (parsed.providers ?? []).filter((p) => p?.name);
+        vDebug.providers_extracted = got.length;
+        collectedProviders.push(...got);
+        variantDebug.push(vDebug);
+      } catch (e) {
+        vDebug.error = e instanceof Error ? e.message : String(e);
+        variantDebug.push(vDebug);
+      }
     }
-    const raw = aiJson.choices?.[0]?.message?.content ?? "{}";
-    let parsed: { providers?: ProviderExtract[] } = {};
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      throw new Error(`failed to parse AI JSON: ${raw.slice(0, 300)}`);
-    }
-    const providers = (parsed.providers ?? []).filter((p) => p?.name);
+    debug.variants = variantDebug;
+
+    const providers = collectedProviders;
 
     // 4) Dedupe + insert into mvs_providers (platform='sawyer').
     const seen = new Set<string>();

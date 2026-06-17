@@ -35,7 +35,7 @@ interface Props {
   variant?: "full" | "compact";
 }
 
-export function RunPipelineButton({ city, onComplete }: Props) {
+export function RunPipelineButton({ city, onComplete, variant = "full" }: Props) {
   const [latest, setLatest] = useState<RunRow | null>(null);
   const [invoking, setInvoking] = useState(false);
   const [lastTerminalId, setLastTerminalId] = useState<string | null>(null);

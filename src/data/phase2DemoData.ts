@@ -57,7 +57,12 @@ export const SHORTLIST_DEMO: ShortlistRow[] = [
   { id: "philadelphia-pa",city: "Philadelphia", state: "PA", composite: 69, tier: "Mixed",   pricing: 72, absorption: 64, scaledOperator: 70, diversity: 68, depth: 66, balanceBand: "Balanced" },
   { id: "los-angeles-ca", city: "Los Angeles",  state: "CA", composite: 67, tier: "Mixed",   pricing: 86, absorption: 58, scaledOperator: 74, diversity: 72, depth: 60, balanceBand: "Saturated" },
   { id: "indianapolis-in",city: "Indianapolis", state: "IN", composite: 71, tier: "Strong",  pricing: 68, absorption: 70, scaledOperator: 66, diversity: 70, depth: 72, balanceBand: "Underserved" },
+  // Austin — first city wired to the live pipeline (Phase 5 Turn 5.1).
+  // Sample fields below are fallback only; when mvs_city_flags.mvs_data_source='live'
+  // the row is overlaid with computeMvs output from mvs_providers/mvs_weeks.
+  { id: "austin-tx",      city: "Austin",       state: "TX", composite: 0,  tier: "Live",    pricing: 0,  absorption: 0,  scaledOperator: 0,  diversity: 0,  depth: 0,  balanceBand: "Balanced" },
 ];
+
 
 export interface SubScore {
   value: number;

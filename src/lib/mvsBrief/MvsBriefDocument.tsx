@@ -473,10 +473,13 @@ const RosterAndLineage: React.FC<{ args: MvsBriefArgs; headerText: string }> = (
       {/* 9. Pillar weights */}
       <SectionTitle n={9} label="Pillar Weights" sub="Current blend used for the composite above" />
       <Kv
-        rows={PILLARS.map((p) => [
-          p.title,
-          `${(weights[p.key] * 100).toFixed(0)}%`,
-        ]).concat([["Sum", `${Math.round(Object.values(weights).reduce((a, b) => a + b, 0) * 100)}%`]])}
+        rows={[
+          ...PILLARS.map((p): [string, string] => [
+            p.title,
+            `${(weights[p.key] * 100).toFixed(0)}%`,
+          ]),
+          ["Sum", `${Math.round(Object.values(weights).reduce((a, b) => a + b, 0) * 100)}%`],
+        ]}
       />
 
       {/* 10. Premium provider roster */}

@@ -413,8 +413,17 @@ export default function MarketValidation() {
 
 
       {/* v1.1 — Decision-capture shortlist table (replaces the chip rail) */}
+      <div className="mb-2 flex items-center justify-between">
+        <div className="text-[12px] text-[#526078]">
+          <strong className="text-[#07142f]">{allShortlistRows.length}</strong> cities in shortlist
+          {additions.length > 0 && (
+            <span className="ml-1 text-[#8a96aa]">({additions.length} added by you)</span>
+          )}
+        </div>
+        <AddCityDialog onAdd={addCity} />
+      </div>
       <ShortlistTable
-        rows={SHORTLIST_DEMO}
+        rows={allShortlistRows}
         activeCityId={activeCityId}
         onSelectCity={setActiveCityId}
         liveOverlays={liveOverlays}

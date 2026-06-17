@@ -127,13 +127,23 @@ Deno.serve(async (req) => {
 
     if (!markdown) throw new Error("firecrawl returned empty markdown");
 
-    // 2) Store screenshot in mvs-screenshots bucket.
+    // 2) Store screenshot in mvs-screenshots bucket. Firecrawl v2 may return
+    //    either a remote URL or a base64 data URL — handle both.
     let screenshotPath: string | null = null;
     if (screenshotUrlRemote) {
       try {
-        const imgRes = await fetch(screenshotUrlRemote);
-        if (imgRes.ok) {
-          const bytes = new Uint8Array(await imgRes.arrayBuffer());
+        let bytes: Uint8Array | null = null;
+        if (screenshotUrlRemote.startsWith("data:")) {
+          const b64 = screenshotUrlRemote.split(",", 2)[1] ?? "";
+          const bin = atob(b64);
+          bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        } else {
+          const imgRes = await fetch(screenshotUrlRemote);
+          if (imgRes.ok) bytes = new Uint8Array(await imgRes.arrayBuffer());
+          else debug.screenshot_fetch_status = imgRes.status;
+        }
+        if (bytes) {
           const path = `${run.id}/sawyer-austin.png`;
           const { error: upErr } = await admin.storage
             .from(SCREENSHOT_BUCKET)

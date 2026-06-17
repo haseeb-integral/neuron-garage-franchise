@@ -331,13 +331,16 @@ export default function MarketValidationRollout() {
             Run the live data pipeline that produces each city's Market Validation composite score.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={fetchAll}
-          className="inline-flex items-center gap-1.5 rounded-md border border-[#cfd8e6] bg-white px-2.5 py-1.5 text-[11px] font-medium text-[#526078] hover:bg-[#f7faff]"
-        >
-          <RotateCcw className="h-3 w-3" /> Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <AddCityDialog onAdd={addCity} />
+          <button
+            type="button"
+            onClick={fetchAll}
+            className="inline-flex items-center gap-1.5 rounded-md border border-[#cfd8e6] bg-white px-2.5 py-1.5 text-[11px] font-medium text-[#526078] hover:bg-[#f7faff]"
+          >
+            <RotateCcw className="h-3 w-3" /> Refresh
+          </button>
+        </div>
       </div>
 
       {/* How this page works */}

@@ -277,7 +277,7 @@ export default function MarketValidationRollout() {
     return () => clearInterval(t);
   }, [anyRunning, invokingCity, fetchAll]);
 
-  const handleRun = useCallback(async (city: string) => {
+  const handleRun = useCallback(async (city: string, state: string) => {
     if (anyRunning || invokingCity) {
       toast.error("Wait for the in-flight run to finish — runs are sequential by design.");
       return;
@@ -297,6 +297,10 @@ export default function MarketValidationRollout() {
         toast.error(`Pipeline error: ${data.error ?? "unknown"}`);
       } else if (data?.ok && data.summary) {
         const s = data.summary;
+        // Auto-promote to live as soon as the run completes successfully.
+        await supabase
+          .from("mvs_city_flags")
+          .upsert({ city, state, mvs_data_source: "live" }, { onConflict: "city,state" });
         toast.success(
           `${city} · ${s.providers_processed} providers · ${s.weeks_upserted} weeks · ${s.firecrawl_calls} Firecrawl calls`,
           { duration: 8000 },

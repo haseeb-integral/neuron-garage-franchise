@@ -163,6 +163,31 @@ export default function MarketValidation() {
   const [activeCityId, setActiveCityId] = useState<string>("san-antonio-tx");
   const activeRow = SHORTLIST_DEMO.find((r) => r.id === activeCityId) ?? SHORTLIST_DEMO[0];
   const isAnchor = activeCityId === "san-antonio-tx";
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportSamplePdf = async () => {
+    setExporting(true);
+    try {
+      const args = buildSampleBriefArgs(activeRow);
+      const blob = await renderMvsBriefPdfBlob(args);
+      const today = new Date().toISOString().slice(0, 10);
+      const slug = activeRow.city.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `mvs-brief-${slug}-${today}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast.success("MVS brief PDF downloaded");
+    } catch (err) {
+      console.error("MVS brief PDF failed", err);
+      toast.error(`PDF export failed: ${err instanceof Error ? err.message : "unknown"}`);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   // Phase 5 Turn 5.1 — live overlay for Austin only. When more cities flip
   // to mvs_data_source='live', extend this by adding more useLiveMvs hooks

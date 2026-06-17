@@ -22,7 +22,7 @@ function fmt(n: number | null): string {
 export default function MVSPreview() {
   const { isManager, loading: roleLoading } = useIsManager();
   const navigate = useNavigate();
-  const { result, providers, weeks, loading, error } = useLiveMvs("Austin, TX");
+  const { result, providers, weeks, loading, error, refresh } = useLiveMvs("Austin, TX");
 
   if (roleLoading) {
     return (

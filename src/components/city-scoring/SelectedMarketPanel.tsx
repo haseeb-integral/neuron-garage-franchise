@@ -1,5 +1,10 @@
 import { memo } from "react";
-import { ArrowRight, Bookmark, BookmarkCheck, Eye, FileText, GitCompare } from "lucide-react";
+import { ArrowRight, Bookmark, BookmarkCheck, Eye, FileText, GitCompare, Sparkles, Loader2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useState } from "react";
+import { toast } from "sonner";
+import { useShortlistAdditions } from "@/lib/mvs/useShortlistAdditions";
+import { toStateAbbr } from "@/lib/usStates";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { VISIBLE_CATEGORIES, type Category } from "@/lib/cityScoringPageHelpers";
@@ -298,6 +303,7 @@ function SelectedMarketPanelImpl({
 
         {/* Action buttons */}
         <div className="mt-4 w-full flex flex-col gap-2">
+          <ValidateMarketButton city={selected.city} state={selected.state} />
           <Button onClick={onFindTeachers} className="h-9 w-full bg-[#174be8] hover:bg-[#1240c9] text-white gap-1.5 px-3 font-medium text-[12px] justify-center">
             <span className="truncate">Find Teachers</span> <ArrowRight size={12} className="flex-shrink-0" />
           </Button>
@@ -353,5 +359,54 @@ function SelectedMarketPanelImpl({
   );
 }
 
+function ValidateMarketButton({ city, state }: { city: string; state: string }) {
+  const { rows, addCity } = useShortlistAdditions();
+  const [busy, setBusy] = useState(false);
+  const abbr = toStateAbbr(state);
+  const alreadyAdded = rows.some(
+    (r) => r.city.toLowerCase() === city.toLowerCase() && r.state.toUpperCase() === abbr,
+  );
+
+  const handle = async () => {
+    if (alreadyAdded) {
+      toast.info(`${city}, ${abbr} is already on the Market Validation shortlist.`);
+      return;
+    }
+    setBusy(true);
+    try {
+      await addCity(city, abbr);
+      toast.success(
+        `${city}, ${abbr} added to Market Validation. Open the Scoring Console to run it.`,
+        {
+          action: { label: "Open", onClick: () => { window.location.href = "/market-validation/rollout"; } },
+        },
+      );
+    } catch (err) {
+      toast.error(`Could not add to shortlist: ${(err as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Button
+      onClick={handle}
+      disabled={busy}
+      variant="outline"
+      className="h-9 w-full border-[#bcd1a8] bg-[#f1f8e9] text-[#2f6f1f] hover:bg-[#e6f3d8] gap-1.5 px-3 font-semibold text-[12px] justify-center"
+    >
+      {busy ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+      {alreadyAdded ? (
+        <Link to="/market-validation" className="truncate underline-offset-2 hover:underline">
+          On shortlist — Open Market Validation
+        </Link>
+      ) : (
+        <span className="truncate">Validate Market</span>
+      )}
+    </Button>
+  );
+}
+
 export const SelectedMarketPanel = memo(SelectedMarketPanelImpl);
+
 

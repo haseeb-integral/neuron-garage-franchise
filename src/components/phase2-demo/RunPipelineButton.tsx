@@ -28,6 +28,11 @@ interface RunRow {
 interface Props {
   city: string; // e.g. "Austin, TX"
   onComplete?: () => void;
+  /**
+   * "full"    — dashed-border card with button + meta + last-run status (default).
+   * "compact" — just the button; caller renders status separately.
+   */
+  variant?: "full" | "compact";
 }
 
 export function RunPipelineButton({ city, onComplete }: Props) {

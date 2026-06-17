@@ -372,37 +372,34 @@ export default function MarketValidation() {
         liveOverlays={liveOverlays}
       />
 
-      {/* Decision points — what is Brett actually deciding on this page? */}
+      {/* Decision points */}
       <section className="mb-4 rounded-lg border p-3" style={{ borderColor: BORDER, backgroundColor: SOFT }}>
         <h3 className="mb-1 text-[11px] font-bold uppercase tracking-wide" style={{ color: NAVY }}>
-          Decision points on this page
+          Questions this page answers
         </h3>
         <ol className="ml-4 list-decimal space-y-0.5 text-[12px]" style={{ color: NAVY }}>
-          <li>For each city: <strong>Pursue / Hold / Drop</strong> using the table above (Brett/Sam's call, persists per user).</li>
-          <li>Across the shortlist: which 5–10 cities graduate to 1B site analysis (use the Pursue filter, then Export CSV).</li>
-          <li>Per city: is the absorption signal believable (check the deep-dive sellout curve below)?</li>
-          <li>Per city: is the market balance band reason enough to override a borderline Premium Enrichment Score?</li>
+          <li>Which cities should we <strong>Pursue, Hold, or Drop</strong> for the next expansion wave?</li>
+          <li>Which 5–10 cities graduate to site-level analysis (use the Pursue filter, then Export CSV)?</li>
+          <li>Per city: is the absorption signal believable? (check the deep-dive sellout curve below)</li>
+          <li>Per city: does the market balance justify overriding a borderline composite score?</li>
         </ol>
       </section>
 
-      {/* Live deep-dive for the active city. Always renders — no demo fallback. */}
+      {/* Live deep-dive for the active city */}
       <LiveCityDeepDive
         cityKey={`${activeRow.city}, ${activeRow.state}`}
         cityDisplay={activeRow.city}
         stateDisplay={activeRow.state}
       />
 
-
-
       <footer
-        className="flex items-center gap-2 rounded-lg border bg-white p-3 text-[11px]"
+        className="mt-4 flex items-center gap-2 rounded-lg border bg-white p-3 text-[11px]"
         style={{ borderColor: BORDER, color: MUTED }}
       >
         <FileText size={14} />
-        Formulas, sub-score weights, and acceptance criteria are locked in
-        <code className="rounded bg-[#f7faff] px-1 py-px text-[#174be8]">.lovable/phase-2/phase-2-sow.md</code>
-        Item 1 (Feature 1A). Pipeline-backed read for each Tier A city.
+        Composite scores are recomputed live from the underlying provider, pricing, and absorption data each time the page loads.
       </footer>
+
     </>
   );
 }

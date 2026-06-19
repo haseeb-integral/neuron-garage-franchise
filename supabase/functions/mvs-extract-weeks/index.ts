@@ -135,78 +135,133 @@ async function processProvider(
 
   let firecrawlCalls = 0;
 
-  // Step 1: discover the best camp/registration page on the provider site
-  // using Firecrawl /map. Prefer pages whose URL contains camp/registration
-  // keywords. Fall back to the root URL.
-  let url = rootUrl;
+  // Step 1: build a prioritized candidate list of pages where weekly availability
+  // might live: (a) the provider's existing Sawyer/registration URL if any,
+  // (b) high-scoring links from a Firecrawl /map of the provider site,
+  // (c) Firecrawl /search results on the same domain (or hisawyer.com).
+  // Root URL is only a last resort.
+  const candidatePages: string[] = [];
+  const seenCandidate = new Set<string>();
+  const pushCand = (u: string | null | undefined) => {
+    const n = normUrl(u ?? null);
+    if (!n) return;
+    if (n.startsWith("https://www.google.com/search")) return;
+    if (seenCandidate.has(n)) return;
+    seenCandidate.add(n);
+    candidatePages.push(n);
+  };
+  if (provider.url) pushCand(provider.url);
+
   try {
     const mapRes = await fetch(`${FIRECRAWL_V2}/map`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${firecrawlKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ url: rootUrl, search: "summer camp", limit: 50 }),
+      headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ url: rootUrl, limit: 100 }),
     });
     firecrawlCalls += 1;
     const mapJson = await mapRes.json().catch(() => ({}));
     const links: string[] = Array.isArray(mapJson?.links)
       ? mapJson.links
       : Array.isArray(mapJson?.data?.links) ? mapJson.data.links : [];
-    if (links.length > 0) {
-      const KW = [
-        { re: /summer[-_/]?camp/i, w: 10 },
-        { re: /\/camps?(\/|$)/i, w: 8 },
-        { re: /register|registration|enroll|book/i, w: 5 },
-        { re: /sawyer/i, w: 4 },
-        { re: /weekly|by-the-week|schedule/i, w: 3 },
-        { re: /kids|ages|youth|tween/i, w: 2 },
-      ];
-      const NEG = /blog|news|press|about|contact|gift|policy|privacy|terms|login|account/i;
-      const scored = links
-        .map((l) => {
-          let s = 0;
-          for (const k of KW) if (k.re.test(l)) s += k.w;
-          if (NEG.test(l)) s -= 6;
-          return { l, s };
-        })
-        .filter((x) => x.s > 0)
-        .sort((a, b) => b.s - a.s);
-      if (scored[0]) url = scored[0].l;
-    }
-  } catch { /* non-fatal — keep root URL */ }
-  out.url = url;
+    const KW = [
+      { re: /summer[-_/]?camp/i, w: 10 },
+      { re: /\/camps?(\/|$)/i, w: 8 },
+      { re: /schedule|calendar|sessions|weeks?-of/i, w: 6 },
+      { re: /register|registration|enroll|signup|sign-up|book/i, w: 5 },
+      { re: /sawyer|hisawyer/i, w: 4 },
+      { re: /classes|programs|workshops/i, w: 3 },
+    ];
+    const NEG = /\b(blog|news|press|about|contact|gift|policy|privacy|terms|login|account|careers|jobs|faq|staff|team|gallery|donate)\b/i;
+    const scored = links
+      .map((l) => {
+        let s = 0;
+        for (const k of KW) if (k.re.test(l)) s += k.w;
+        if (NEG.test(l)) s -= 8;
+        return { l, s };
+      })
+      .filter((x) => x.s > 0)
+      .sort((a, b) => b.s - a.s)
+      .slice(0, 4);
+    for (const s of scored) pushCand(s.l);
+  } catch { /* non-fatal */ }
 
   try {
-    const scrapeRes = await fetch(`${FIRECRAWL_V2}/scrape`, {
+    const searchRes = await fetch(`${FIRECRAWL_V2}/search`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${firecrawlKey}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        url,
-        formats: ["markdown", "screenshot"],
-        onlyMainContent: true,
-        waitFor: 3500,
+        query: `${provider.name} ${cityLabel} summer camp registration schedule`,
+        limit: 5,
       }),
     });
     firecrawlCalls += 1;
-    const scrapeJson = await scrapeRes.json().catch(() => ({}));
-    if (!scrapeRes.ok) {
-      out.no_reg_page = true;
-      out.error = `firecrawl ${scrapeRes.status}`;
-      return { outcome: out, firecrawlCalls };
+    const sj = await searchRes.json().catch(() => ({}));
+    const web = sj?.data?.web ?? sj?.data ?? [];
+    if (Array.isArray(web)) {
+      const rootHost = new URL(rootUrl).hostname.replace(/^www\./, "");
+      for (const r of web) {
+        const u = r?.url;
+        if (!u || typeof u !== "string") continue;
+        try {
+          const h = new URL(u).hostname.replace(/^www\./, "");
+          if (h === rootHost || h.endsWith("." + rootHost) || h.endsWith("hisawyer.com")) {
+            pushCand(u);
+          }
+        } catch { /* skip */ }
+      }
     }
-    const markdown: string = scrapeJson?.data?.markdown ?? "";
-    const screenshotRemote: string | undefined =
-      scrapeJson?.data?.screenshot ?? scrapeJson?.data?.screenshotUrl;
-    if (!markdown || markdown.length < 200) {
-      out.no_reg_page = true;
-      out.error = "empty markdown";
-      return { outcome: out, firecrawlCalls };
-    }
+  } catch { /* non-fatal */ }
 
+  if (candidatePages.length === 0) pushCand(rootUrl);
+
+  // Step 2: scrape up to 3 candidates and pick the one with the strongest
+  // week-date + status evidence. This avoids storing the homepage when an
+  // actual schedule page exists.
+  type Scraped = { url: string; markdown: string; screenshot?: string; score: number };
+  const scraped: Scraped[] = [];
+  const WEEK_DATE_RE = /(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}/gi;
+  const STATUS_HINT_RE = /(sold\s*out|wait\s*list|spots?\s*left|register|enroll|book\s*now|add\s*to\s*cart|\$\d)/gi;
+
+  for (const cand of candidatePages.slice(0, 3)) {
+    try {
+      const sRes = await fetch(`${FIRECRAWL_V2}/scrape`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: cand,
+          formats: ["markdown", "screenshot"],
+          onlyMainContent: true,
+          waitFor: 3500,
+        }),
+      });
+      firecrawlCalls += 1;
+      const sj = await sRes.json().catch(() => ({}));
+      if (!sRes.ok) continue;
+      const md: string = sj?.data?.markdown ?? "";
+      const ss: string | undefined = sj?.data?.screenshot ?? sj?.data?.screenshotUrl;
+      if (!md || md.length < 200) continue;
+      const dateHits = (md.match(WEEK_DATE_RE) ?? []).length;
+      const statusHits = (md.match(STATUS_HINT_RE) ?? []).length;
+      const score = dateHits * 3 + statusHits;
+      scraped.push({ url: cand, markdown: md, screenshot: ss, score });
+      if (dateHits >= 6 && statusHits >= 3) break;
+    } catch { /* skip */ }
+  }
+
+  if (scraped.length === 0) {
+    out.no_reg_page = true;
+    out.error = "no scrapeable candidate page";
+    return { outcome: out, firecrawlCalls };
+  }
+
+  scraped.sort((a, b) => b.score - a.score);
+  const best = scraped[0];
+  const url = best.url;
+  const markdown = best.markdown;
+  const screenshotRemote = best.screenshot;
+  out.url = url;
+
+  try {
     let screenshotPath: string | null = null;
     if (screenshotRemote) {
       try {
@@ -280,6 +335,18 @@ async function processProvider(
         return { outcome: out, firecrawlCalls };
       }
       out.weeks_inserted = insData?.length ?? 0;
+
+      // Clear stale unresolved week QA rows for this provider's weeks so
+      // re-runs don't pile up duplicates. Resolved history is preserved.
+      const allWeekIds = (insData ?? []).map((w) => w.id);
+      if (allWeekIds.length > 0) {
+        await admin
+          .from("mvs_qa_queue")
+          .delete()
+          .eq("entity_type", "week")
+          .is("resolved_at", null)
+          .in("entity_id", allWeekIds);
+      }
 
       const qaRows = (insData ?? [])
         .filter((w) => (w.confidence ?? 0) < QA_CONFIDENCE_THRESHOLD)

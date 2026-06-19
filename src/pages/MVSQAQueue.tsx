@@ -71,6 +71,22 @@ export default function MVSQAQueue() {
   const [pending, setPending] = useState<Record<string, WeekStatus>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [screenshots, setScreenshots] = useState<Record<string, string | null>>({});
+  const [allCities, setAllCities] = useState<string[]>([]);
+
+  // Load the full city list from mvs_providers so the dropdown matches the
+  // MVS table — not just cities that happen to have QA rows right now.
+  useEffect(() => {
+    if (!isManager) return;
+    (async () => {
+      const { data } = await supabase
+        .from("mvs_providers")
+        .select("city")
+        .not("city", "is", null);
+      const set = new Set<string>();
+      for (const r of data ?? []) if (r.city) set.add(r.city);
+      setAllCities(Array.from(set).sort((a, b) => a.localeCompare(b)));
+    })();
+  }, [isManager]);
 
   const load = useCallback(async () => {
     let q = supabase
@@ -274,26 +290,30 @@ export default function MVSQAQueue() {
         <div>
           <h1 className="text-2xl font-semibold">MVS QA Queue</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Showing {openCount} open item{openCount === 1 ? "" : "s"} across{" "}
-            {cityFilter === "__all__" ? cityCounts.length : 1} cit
-            {(cityFilter === "__all__" ? cityCounts.length : 1) === 1 ? "y" : "ies"} ·{" "}
-            {totalProviders} provider{totalProviders === 1 ? "" : "s"}.
+            {openCount} open QA item{openCount === 1 ? "" : "s"} ·{" "}
+            {totalProviders} provider{totalProviders === 1 ? "" : "s"}
+            {cityFilter !== "__all__" ? ` · ${cityFilter}` : ` · ${cityCounts.length} cit${cityCounts.length === 1 ? "y" : "ies"} with issues`}
           </p>
         </div>
         <div className="flex items-center gap-3 text-sm">
           <label className="flex items-center gap-2">
             City:
             <Select value={cityFilter} onValueChange={(v) => setCityFilter(v)}>
-              <SelectTrigger className="w-56">
+              <SelectTrigger className="w-64">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__all__">All cities ({rows?.length ?? 0})</SelectItem>
-                {cityCounts.map(([c, n]) => (
-                  <SelectItem key={c} value={c}>
-                    {c} ({n})
-                  </SelectItem>
-                ))}
+                <SelectItem value="__all__">
+                  All MVS cities · {rows?.length ?? 0} QA item{(rows?.length ?? 0) === 1 ? "" : "s"}
+                </SelectItem>
+                {allCities.map((c) => {
+                  const n = cityCounts.find(([cc]) => cc === c)?.[1] ?? 0;
+                  return (
+                    <SelectItem key={c} value={c}>
+                      {c} · {n} QA
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </label>
@@ -430,15 +450,15 @@ export default function MVSQAQueue() {
                                 >
                                   {w.source_url}
                                 </a>
-                                {!/\/(camp|class|enroll|register|book|summer)/i.test(
+                                {!/\/(camp|class|enroll|register|book|summer|schedule|session)/i.test(
                                   w.source_url,
                                 ) && (
                                   <span
                                     className="ml-2 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
                                     style={{ backgroundColor: "#fef3c7", color: "#92400e" }}
-                                    title="This looks like a homepage, not a camp/registration page"
+                                    title="This URL looks like the provider homepage, not a camp/registration/schedule page. Re-run extraction to try to find the exact page."
                                   >
-                                    homepage?
+                                    weak evidence URL
                                   </span>
                                 )}
                               </div>

@@ -22,6 +22,7 @@ const TIER_A_CITIES = new Set<string>([
   "Philadelphia, PA",
   "Los Angeles, CA",
   "Indianapolis, IN",
+  "Denver, CO",
 ]);
 
 const STALE_MS = 3 * 60 * 1000;

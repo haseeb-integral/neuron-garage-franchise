@@ -404,6 +404,12 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
         })}
       </section>
 
+      {/* National operators matched — Scaled Operator evidence */}
+      <NationalOperatorsPanel providers={premiumProviders} watchlist={watchlist} />
+
+      {/* Week-by-week activity — Market Absorption evidence */}
+      <WeekActivityTable providers={premiumProviders} weeks={weeks} />
+
       {/* Premium provider table — live */}
       <section className="mb-6 rounded-lg border bg-white" style={{ borderColor: BORDER }}>
         <div
@@ -417,7 +423,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
             <p className="text-[11px]" style={{ color: MUTED }}>
               {premiumProviders.length} premium provider
               {premiumProviders.length === 1 ? "" : "s"} from{" "}
-              <code className="rounded bg-[#f7faff] px-1 py-px text-[#174be8]">mvs_providers</code>.
+              <code className="rounded bg-[#f7faff] px-1 py-px text-[#174be8]">mvs_providers</code>. Source chips show which feed(s) each camp was discovered through; the link icon opens the original listing.
             </p>
           </div>
           <span
@@ -432,6 +438,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
             <thead>
               <tr style={{ color: MUTED }}>
                 <th className="px-4 py-2 text-left font-semibold">Provider</th>
+                <th className="px-4 py-2 text-left font-semibold">Source(s)</th>
                 <th className="px-4 py-2 text-right font-semibold">$ min/wk</th>
                 <th className="px-4 py-2 text-right font-semibold">$ max/wk</th>
                 <th className="px-4 py-2 text-left font-semibold">Category</th>
@@ -441,6 +448,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
             <tbody>
               {premiumProviders.map((p) => {
                 const pweeks = weeks.filter((w) => w.provider_id === p.id);
+                const listingHref = p.source_listing_url ?? p.website_url ?? p.url ?? null;
                 return (
                   <tr
                     key={p.id}
@@ -448,7 +456,13 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                     style={{ borderColor: BORDER }}
                   >
                     <td className="px-4 py-2.5 font-semibold" style={{ color: NAVY }}>
-                      {p.name}
+                      <span className="inline-flex items-center">
+                        {p.name}
+                        <OpenSourceLink href={listingHref} />
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <ProviderSourceChips sources={p.sources} />
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: NAVY }}>
                       {p.price_min ? `$${p.price_min}` : "—"}
@@ -467,7 +481,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
               })}
               {premiumProviders.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-[12px]" style={{ color: MUTED }}>
+                  <td colSpan={6} className="px-4 py-6 text-center text-[12px]" style={{ color: MUTED }}>
                     No premium providers classified yet. Run the pipeline (coming in Turn 5.2) to populate.
                   </td>
                 </tr>

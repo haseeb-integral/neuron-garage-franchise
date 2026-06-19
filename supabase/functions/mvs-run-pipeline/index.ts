@@ -34,11 +34,12 @@ const TIER_A_CITIES = new Set<string>([
   "Indianapolis, IN",
 ]);
 
-type StepName = "discover" | "classify" | "extract";
+type StepName = "discover" | "classify" | "acs" | "extract";
 
 const STEP_FUNCTIONS: Record<StepName, string> = {
   discover: "mvs-discover-providers",
   classify: "mvs-classify-tier",
+  acs: "mvs-acs-pull",
   extract: "mvs-extract-weeks",
 };
 
@@ -201,6 +202,13 @@ Deno.serve(async (req) => {
       // Always reclassify on a pipeline run — Turn 2.2 logic depends on
       // re-tagging existing rows after classifier changes ship.
       await invokeStep("classify", { city, reclassify: true });
+      // Stage 4: ensure ACS denominators are populated before scoring.
+      // Non-fatal: if ACS lookup fails the pipeline still completes.
+      try {
+        await invokeStep("acs", { city });
+      } catch (acsErr) {
+        console.warn("[mvs-run-pipeline] acs step failed (non-fatal):", acsErr);
+      }
       await invokeStep("extract", { city });
 
       await admin

@@ -632,6 +632,7 @@ Deno.serve(async (req) => {
     sourceResults.push(await runActivityHero({ city, state: stateAbbr, firecrawlKey, lovableKey }));
     sourceResults.push(await runGoogleMaps({ city, state: stateAbbr }));
     sourceResults.push(await runYelp({ city, state: stateAbbr, firecrawlKey, lovableKey }));
+    sourceResults.push(await runGoogleSearch({ city, state: stateAbbr, firecrawlKey, lovableKey }));
 
     for (const r of sourceResults) {
       totalFirecrawl += r.firecrawlCalls;

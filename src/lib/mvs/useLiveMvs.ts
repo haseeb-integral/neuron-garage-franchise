@@ -49,6 +49,8 @@ export function useLiveMvs(
     { operator_name: string; overlap: "direct" | "adjacent" | "distant" }[]
   >([]);
   const [flag, setFlag] = useState<LiveMvsCityFlag | null>(null);
+  const [lastRefreshed, setLastRefreshed] = useState<string | null>(null);
+  const [qaOpenCount, setQaOpenCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);

@@ -21,10 +21,18 @@ export const ELIGIBLE_CATEGORIES = new Set([
   "art",
   "theater",
   "music",
+  "dance",
+  "language",
+  "sports",
+  "swim",
+  "gymnastics",
+  "cooking",
+  "outdoor",
   "academic enrichment",
   "debate",
   "chess",
   "entrepreneurship",
+  "multi-activity",
 ]);
 
 // ---------------------------------------------------------------------------

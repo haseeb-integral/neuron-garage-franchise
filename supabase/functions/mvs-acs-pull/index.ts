@@ -130,15 +130,26 @@ Deno.serve(async (req) => {
   const [cityName, stateAbbr] = cityKey.split(",").map((s) => s.trim());
 
   // Look up existing scored row
+  // Read existing scored row. Note: us_cities_scored has children_5_12 and
+  // dual_working_families_pct but no affluence-percentage column today —
+  // affluence is sourced from site_analysis_acs_cache when available.
   const { data: scored } = await admin
     .from("us_cities_scored")
-    .select("id, city_name, state_abbr, population, children_5_12, dual_working_families_pct, pct_hh_above_150k")
+    .select("id, city_name, state_abbr, population, children_5_12, dual_working_families_pct")
     .ilike("city_name", cityName)
     .eq("state_abbr", stateAbbr)
     .maybeSingle();
 
   if (!scored) {
     return new Response(
+      JSON.stringify({ skipped: true, reason: `no us_cities_scored row for ${cityKey}` }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
+  const needsKids = scored.children_5_12 == null;
+  const needsDual = scored.dual_working_families_pct == null;
+  if (!needsKids && !needsDual) {
       JSON.stringify({ skipped: true, reason: `no us_cities_scored row for ${cityKey}` }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );

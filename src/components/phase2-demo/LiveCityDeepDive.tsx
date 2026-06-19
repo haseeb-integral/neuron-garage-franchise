@@ -4,6 +4,14 @@ import { Slider } from "@/components/ui/slider";
 import { DEFAULT_WEIGHTS } from "@/lib/mvs/computeMvs";
 import { useLiveMvs } from "@/lib/mvs/useLiveMvs";
 import { RunPipelineButton } from "@/components/phase2-demo/RunPipelineButton";
+import {
+  DataSourcesPanel,
+  ConfidenceStamp,
+  ProviderSourceChips,
+  OpenSourceLink,
+  WeekActivityTable,
+  NationalOperatorsPanel,
+} from "@/components/phase2-demo/LiveCitySourcePanels";
 
 
 

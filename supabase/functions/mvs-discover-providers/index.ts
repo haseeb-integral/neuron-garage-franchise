@@ -217,7 +217,7 @@ Rules:
   };
 }
 
-// ----------------- Source: ActivityHero -----------------
+// ----------------- Source: ActivityHero (3-variant) -----------------
 async function runActivityHero(args: {
   city: string;
   state: string;
@@ -225,39 +225,62 @@ async function runActivityHero(args: {
   lovableKey: string;
 }): Promise<SourceResult> {
   const { city, state, firecrawlKey, lovableKey } = args;
-  const slug = `${citySlug(city)}-${state.toLowerCase()}`;
-  const url = `https://www.activityhero.com/s/${slug}/camps`;
-  const debug: Record<string, unknown> = { url };
+  const slug = citySlug(city);
+  const st = state.toLowerCase();
+  const variants = [
+    `https://www.activityhero.com/camps/${slug}-${st}`,
+    `https://www.activityhero.com/classes/${slug}-${st}`,
+    `https://www.activityhero.com/search?q=kids&location=${encodeURIComponent(city + " " + state)}`,
+  ];
+  const debug: Record<string, unknown> = {};
+  const variantDebug: unknown[] = [];
+  const collected: ProviderExtract[] = [];
   let firecrawlCalls = 0;
-  try {
-    const res = await fetchWithTimeout(`${FIRECRAWL_V2}/scrape`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ url, formats: ["markdown"], onlyMainContent: true, waitFor: 3000 }),
-    }, FIRECRAWL_TIMEOUT_MS);
-    firecrawlCalls += 1;
-    const j = await res.json().catch(() => ({}));
-    if (!res.ok) { debug.error = `firecrawl ${res.status}`; return { platform: "activityhero", providers: [], firecrawlCalls, debug }; }
-    const md: string = j?.data?.markdown ?? "";
-    debug.markdown_chars = md.length;
-    if (!md) { debug.error = "empty markdown"; return { platform: "activityhero", providers: [], firecrawlCalls, debug }; }
 
-    const sys = `You extract kids' activity providers from an ActivityHero marketplace page for ${city}, ${state}.
+  for (let i = 0; i < variants.length; i++) {
+    const url = variants[i];
+    const v: Record<string, unknown> = { variant: i, url };
+    try {
+      const res = await fetchWithTimeout(`${FIRECRAWL_V2}/scrape`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ url, formats: ["markdown", "links"], onlyMainContent: true, waitFor: 5000 }),
+      }, FIRECRAWL_TIMEOUT_MS);
+      firecrawlCalls += 1;
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) { v.error = `firecrawl ${res.status}`; variantDebug.push(v); continue; }
+      const md: string = j?.data?.markdown ?? "";
+      const links: string[] = Array.isArray(j?.data?.links) ? j.data.links : [];
+      v.markdown_chars = md.length;
+      v.links_count = links.length;
+      if (!md && links.length === 0) { v.error = "empty page"; variantDebug.push(v); continue; }
+
+      const linksBlob = links.slice(0, 200).join("\n");
+      const sys = `You extract kids' activity providers from an ActivityHero marketplace page for ${city}, ${state}.
 Return strict JSON: { "providers": [ { "name": string, "url": string|null, "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number } ] }
 Rules:
-- A "provider" is a real business offering kids' classes/camps (e.g. a gymnastics studio).
-- EXCLUDE: the marketplace itself ("ActivityHero"), category navigation, generic labels, individual class titles.
+- A "provider" is a real business offering kids' classes/camps (e.g. a gymnastics studio, music school, art camp).
+- EXCLUDE: the marketplace itself ("ActivityHero"), category navigation, generic labels, individual class titles, blog posts.
 - "url" MUST be the provider's OWN website (their own domain). DO NOT use marketplace activity-detail links such as "activityhero.com/a/..." or "/activity/...". If you cannot see the provider's own website on the page, return null for url.
 - Prefer in-person providers in ${city}. Skip online-only.
 - Prices USD per session. Null if unknown.
 - Hard cap: 60.`;
-    const providers = await extractWithGemini({ lovableKey, sys, city, sourceUrl: url, markdown: md });
-    debug.providers_extracted = providers.length;
-    return { platform: "activityhero", providers, firecrawlCalls, debug };
-  } catch (e) {
-    debug.error = e instanceof Error ? e.message : String(e);
-    return { platform: "activityhero", providers: [], firecrawlCalls, debug };
+      const providers = await extractWithGemini({
+        lovableKey, sys, city, sourceUrl: url,
+        markdown: md + (linksBlob ? `\n\nDISCOVERED LINKS:\n${linksBlob}` : ""),
+      });
+      v.providers_extracted = providers.length;
+      collected.push(...providers);
+      variantDebug.push(v);
+    } catch (e) {
+      v.error = e instanceof Error ? e.message : String(e);
+      variantDebug.push(v);
+    }
   }
+
+  debug.variants = variantDebug;
+  debug.total_extracted = collected.length;
+  return { platform: "activityhero", providers: collected, firecrawlCalls, debug };
 }
 
 // ----------------- Source: Google Maps via Apify -----------------

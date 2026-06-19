@@ -136,7 +136,7 @@ export function ShortlistTable({ rows, activeCityId, onSelectCity, liveOverlays 
 
           <button
             type="button"
-            onClick={() => exportMarketDecisionsCsv(rows, byCity)}
+            onClick={() => exportMarketDecisionsCsv(rows, byCity, liveOverlays)}
             className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold"
             style={{ borderColor: BLUE, color: BLUE, backgroundColor: "#fff" }}
           >

@@ -464,6 +464,35 @@ Deno.serve(async (req) => {
       firecrawlCalls += used;
     }
 
+    // Surface providers that produced 0 weeks in the QA queue so reviewers
+    // can follow up (entity_type='provider'). Clear any prior unresolved
+    // provider-level rows for these providers first so re-runs stay clean.
+    const zeroWeekProviderIds = outcomes
+      .filter((o) => (o.weeks_inserted ?? 0) === 0)
+      .map((o) => o.provider_id);
+    if (zeroWeekProviderIds.length > 0) {
+      await admin
+        .from("mvs_qa_queue")
+        .delete()
+        .eq("entity_type", "provider")
+        .is("resolved_at", null)
+        .in("entity_id", zeroWeekProviderIds);
+      const providerQaRows = outcomes
+        .filter((o) => (o.weeks_inserted ?? 0) === 0)
+        .map((o) => ({
+          entity_type: "provider" as const,
+          entity_id: o.provider_id,
+          reason: o.no_reg_page
+            ? (o.error ? `no usable page: ${o.error}` : "no registration page found")
+            : (o.error ?? "extraction returned 0 weeks"),
+          confidence: null,
+        }));
+      if (providerQaRows.length > 0) {
+        await admin.from("mvs_qa_queue").insert(providerQaRows);
+      }
+    }
+
+
     const noRegCount = outcomes.filter((o) => o.no_reg_page).length;
     const noRegPct = outcomes.length > 0 ? noRegCount / outcomes.length : 0;
     const lowConfidence = premiumFallback || noRegPct > LOW_CONFIDENCE_BADGE_PCT;

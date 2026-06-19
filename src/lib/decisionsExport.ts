@@ -29,6 +29,7 @@ function csvCell(v: string | number | null | undefined): string {
 export function exportMarketDecisionsCsv(
   shortlist: ShortlistRow[],
   byCity: Map<string, MarketDecisionRow>,
+  liveOverlays?: Map<string, LiveOverlay>,
 ) {
   const headers = [
     "city_id",
@@ -42,24 +43,34 @@ export function exportMarketDecisionsCsv(
     "diversity",
     "depth",
     "balance_band",
+    "data_source",
     "verdict",
     "notes",
     "decided_at",
   ];
+  const fmt = (n: number | null | undefined) =>
+    n == null ? "" : Number.isInteger(n) ? `${n}` : (n as number).toFixed(1);
   const rows = shortlist.map((c) => {
     const d = byCity.get(c.id);
+    const ov = liveOverlays?.get(c.id);
+    const pick = (live: number | null | undefined, demo: number) =>
+      ov && live != null ? fmt(live) : `${demo}`;
+    const dataSource = ov ? "live" : "sample";
+    const balance =
+      ov && ov.balance != null ? `Balance ${ov.balance.toFixed(0)}` : c.balanceBand;
     return [
       c.id,
       c.city,
       c.state,
-      c.composite,
+      pick(ov?.composite, c.composite),
       c.tier,
-      c.pricing,
-      c.absorption,
-      c.scaledOperator,
-      c.diversity,
-      c.depth,
-      c.balanceBand,
+      pick(ov?.pricing, c.pricing),
+      pick(ov?.absorption, c.absorption),
+      pick(ov?.scaledOperator, c.scaledOperator),
+      pick(ov?.diversity, c.diversity),
+      pick(ov?.depth, c.depth),
+      balance,
+      dataSource,
       VERDICT_LABEL[d?.verdict ?? "undecided"],
       d?.notes ?? "",
       d?.decided_at ?? "",

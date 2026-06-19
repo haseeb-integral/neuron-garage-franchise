@@ -85,7 +85,13 @@ function fallbackWeeksFromMarkdown(markdown: string): WeekExtract[] {
   }];
 }
 
-type ProviderRow = { id: string; name: string; url: string | null };
+type ProviderRow = {
+  id: string;
+  name: string;
+  url: string | null;
+  website_url: string | null;
+  source_listing_url: string | null;
+};
 
 type ProviderOutcome = {
   provider_id: string;

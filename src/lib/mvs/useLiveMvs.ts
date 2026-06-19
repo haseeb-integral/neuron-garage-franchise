@@ -203,6 +203,27 @@ export function useLiveMvs(
             overlap: o.overlap_override as "direct" | "adjacent" | "distant",
           })),
         );
+
+        // Data freshness — most recent updated_at across provider rows for this city.
+        const maxUpdated = (provRows ?? []).reduce<string | null>((acc, p: any) => {
+          const u = p.updated_at as string | null | undefined;
+          if (!u) return acc;
+          if (!acc || u > acc) return u;
+          return acc;
+        }, null);
+        setLastRefreshed(maxUpdated);
+
+        // QA queue depth — count unresolved items for this city's providers.
+        if (providerIds.length > 0) {
+          const { count } = await supabase
+            .from("mvs_qa_queue")
+            .select("id", { count: "exact", head: true })
+            .is("resolved_at", null)
+            .in("entity_id", providerIds);
+          setQaOpenCount(count ?? 0);
+        } else {
+          setQaOpenCount(0);
+        }
       } catch (e: any) {
         if (!cancelled) setError(e.message ?? "Failed to load live MVS data");
       } finally {
@@ -231,6 +252,9 @@ export function useLiveMvs(
     weeks,
     acs,
     flag,
+    watchlist,
+    lastRefreshed,
+    qaOpenCount,
     loading,
     error,
     refresh: () => setRefreshTick((t) => t + 1),

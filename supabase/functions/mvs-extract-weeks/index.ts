@@ -317,7 +317,7 @@ Deno.serve(async (req) => {
   // fall back to any tier and flag the run as low-confidence.
   let providerQuery = admin
     .from("mvs_providers")
-    .select("id, name, url, tier")
+    .select("id, name, url, website_url, source_listing_url, tier")
     .eq("city", city)
     .eq("platform", "sawyer")
     .order("created_at", { ascending: true })
@@ -336,7 +336,7 @@ Deno.serve(async (req) => {
   if (providerList.length === 0) {
     const { data: anyTier, error: anyErr } = await admin
       .from("mvs_providers")
-      .select("id, name, url, tier")
+      .select("id, name, url, website_url, source_listing_url, tier")
       .eq("city", city)
       .eq("platform", "sawyer")
       .order("created_at", { ascending: true })

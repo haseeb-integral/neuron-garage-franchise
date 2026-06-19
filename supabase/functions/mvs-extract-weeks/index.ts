@@ -402,7 +402,7 @@ Deno.serve(async (req) => {
   try {
     for (const p of providerList) {
       const { outcome, firecrawlCalls: used } = await processProvider(
-        admin, p, run.id, firecrawlKey, lovableKey, todayISO, city,
+        admin, p, runId, firecrawlKey, lovableKey, todayISO, city,
       );
       outcomes.push(outcome);
       firecrawlCalls += used;
@@ -420,23 +420,26 @@ Deno.serve(async (req) => {
           city,
           state,
           low_confidence_badge: lowConfidence,
-          last_run_id: run.id,
+          last_run_id: runId,
         },
         { onConflict: "city,state" },
       );
     if (flagErr) throw new Error(`city flag upsert: ${flagErr.message}`);
 
-    await admin
-      .from("mvs_pipeline_runs")
-      .update({ status: "done", firecrawl_calls: firecrawlCalls })
-      .eq("id", run.id);
+    // Orchestrator owns the run row's lifecycle when parentRunId is set.
+    if (!parentRunId) {
+      await admin
+        .from("mvs_pipeline_runs")
+        .update({ status: "done", firecrawl_calls: firecrawlCalls, finished_at: new Date().toISOString() })
+        .eq("id", runId);
+    }
 
     const totalWeeks = outcomes.reduce((s, o) => s + o.weeks_inserted, 0);
     const totalQa = outcomes.reduce((s, o) => s + o.qa_flagged, 0);
 
     return new Response(
       JSON.stringify({
-        run_id: run.id,
+        run_id: runId,
         city,
         providers_processed: outcomes.length,
         no_reg_page_count: noRegCount,
@@ -444,7 +447,6 @@ Deno.serve(async (req) => {
         low_confidence_badge: lowConfidence,
         premium_fallback: premiumFallback,
         weeks_inserted_total: totalWeeks,
-
         qa_flagged_total: totalQa,
         firecrawl_calls: firecrawlCalls,
         outcomes,
@@ -453,12 +455,14 @@ Deno.serve(async (req) => {
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    await admin
-      .from("mvs_pipeline_runs")
-      .update({ status: "failed", error: msg, firecrawl_calls: firecrawlCalls })
-      .eq("id", run.id);
+    if (!parentRunId) {
+      await admin
+        .from("mvs_pipeline_runs")
+        .update({ status: "failed", error: msg, firecrawl_calls: firecrawlCalls, finished_at: new Date().toISOString() })
+        .eq("id", runId);
+    }
     return new Response(
-      JSON.stringify({ run_id: run.id, error: msg, outcomes }),
+      JSON.stringify({ run_id: runId, error: msg, outcomes }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }

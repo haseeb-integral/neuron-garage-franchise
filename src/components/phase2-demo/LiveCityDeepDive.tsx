@@ -136,9 +136,8 @@ interface Props {
  */
 export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) {
   const [weights, setWeights] = useState<Record<string, number>>({ ...DEFAULT_WEIGHTS });
-  const { result, providers, weeks, acs, flag, loading, error, refresh } = useLiveMvs(cityKey, {
-    weights,
-  });
+  const { result, providers, weeks, acs, flag, watchlist, lastRefreshed, qaOpenCount, loading, error, refresh } =
+    useLiveMvs(cityKey, { weights });
 
 
   const provCount = providers.length;
@@ -149,6 +148,27 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
     () => providers.filter((p) => p.tier === "premium"),
     [providers],
   );
+
+  // Per-sub-score confidence: how many premium rows feed each score, with
+  // a global haircut for open QA items and low overall coverage.
+  function confidenceFor(key: string): { level: "high" | "medium" | "low"; detail: string } {
+    const n = premiumProviders.length;
+    if (key === "marketAbsorption") {
+      const tracked = new Set(weeks.map((w) => w.provider_id)).size;
+      if (tracked === 0) return { level: "low", detail: "No week-level data scraped yet." };
+      if (tracked < 3) return { level: "low", detail: `Only ${tracked} provider(s) have week data.` };
+      if (qaOpenCount > 5) return { level: "medium", detail: `${qaOpenCount} items in QA queue may shift this number.` };
+      return { level: "high", detail: `${tracked} providers with week-level activity.` };
+    }
+    if (key === "scaledOperator") {
+      if (watchlist.length === 0) return { level: "low", detail: "Watchlist is empty." };
+      return { level: "high", detail: `Matched against ${watchlist.length} national brands.` };
+    }
+    if (n === 0) return { level: "low", detail: "No premium providers discovered." };
+    if (n < 5) return { level: "low", detail: `${n} provider(s) — too few for a stable median.` };
+    if (n < 10 || qaOpenCount > 5) return { level: "medium", detail: `${n} providers · ${qaOpenCount} in QA queue.` };
+    return { level: "high", detail: `${n} premium providers feed this score.` };
+  }
 
 
   if (loading) {

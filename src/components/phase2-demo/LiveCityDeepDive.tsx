@@ -4,6 +4,14 @@ import { Slider } from "@/components/ui/slider";
 import { DEFAULT_WEIGHTS } from "@/lib/mvs/computeMvs";
 import { useLiveMvs } from "@/lib/mvs/useLiveMvs";
 import { RunPipelineButton } from "@/components/phase2-demo/RunPipelineButton";
+import {
+  DataSourcesPanel,
+  ConfidenceStamp,
+  ProviderSourceChips,
+  OpenSourceLink,
+  WeekActivityTable,
+  NationalOperatorsPanel,
+} from "@/components/phase2-demo/LiveCitySourcePanels";
 
 
 
@@ -128,9 +136,8 @@ interface Props {
  */
 export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) {
   const [weights, setWeights] = useState<Record<string, number>>({ ...DEFAULT_WEIGHTS });
-  const { result, providers, weeks, acs, flag, loading, error, refresh } = useLiveMvs(cityKey, {
-    weights,
-  });
+  const { result, providers, weeks, acs, flag, watchlist, lastRefreshed, qaOpenCount, loading, error, refresh } =
+    useLiveMvs(cityKey, { weights });
 
 
   const provCount = providers.length;
@@ -141,6 +148,27 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
     () => providers.filter((p) => p.tier === "premium"),
     [providers],
   );
+
+  // Per-sub-score confidence: how many premium rows feed each score, with
+  // a global haircut for open QA items and low overall coverage.
+  function confidenceFor(key: string): { level: "high" | "medium" | "low"; detail: string } {
+    const n = premiumProviders.length;
+    if (key === "marketAbsorption") {
+      const tracked = new Set(weeks.map((w) => w.provider_id)).size;
+      if (tracked === 0) return { level: "low", detail: "No week-level data scraped yet." };
+      if (tracked < 3) return { level: "low", detail: `Only ${tracked} provider(s) have week data.` };
+      if (qaOpenCount > 5) return { level: "medium", detail: `${qaOpenCount} items in QA queue may shift this number.` };
+      return { level: "high", detail: `${tracked} providers with week-level activity.` };
+    }
+    if (key === "scaledOperator") {
+      if (watchlist.length === 0) return { level: "low", detail: "Watchlist is empty." };
+      return { level: "high", detail: `Matched against ${watchlist.length} national brands.` };
+    }
+    if (n === 0) return { level: "low", detail: "No premium providers discovered." };
+    if (n < 5) return { level: "low", detail: `${n} provider(s) — too few for a stable median.` };
+    if (n < 10 || qaOpenCount > 5) return { level: "medium", detail: `${n} providers · ${qaOpenCount} in QA queue.` };
+    return { level: "high", detail: `${n} premium providers feed this score.` };
+  }
 
 
   if (loading) {
@@ -240,12 +268,23 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
         </div>
       </section>
 
+      {/* Data sources strip — provenance + freshness at a glance */}
+      <DataSourcesPanel
+        providers={providers}
+        weeks={weeks}
+        watchlistCount={watchlist.length}
+        acsAvailable={!!acs}
+        lastRefreshed={lastRefreshed}
+        qaOpenCount={qaOpenCount}
+      />
+
       {/* Sub-score grid with live sliders */}
       <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {SUB_SCORE_META.map((meta) => {
           const score = result?.scores[meta.key] ?? null;
           const input = result?.inputs[meta.key] as any;
           const weight = weights[meta.key];
+          const confidence = confidenceFor(meta.key);
           return (
             <div
               key={meta.key}
@@ -264,6 +303,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                     >
                       {Math.round(weight * 100)}%
                     </span>
+                    <ConfidenceStamp level={confidence.level} detail={confidence.detail} />
                   </div>
                   <p className="mt-0.5 text-[11px]" style={{ color: MUTED }}>
                     {meta.subtitle}
@@ -364,6 +404,12 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
         })}
       </section>
 
+      {/* National operators matched — Scaled Operator evidence */}
+      <NationalOperatorsPanel providers={premiumProviders} watchlist={watchlist} />
+
+      {/* Week-by-week activity — Market Absorption evidence */}
+      <WeekActivityTable providers={premiumProviders} weeks={weeks} />
+
       {/* Premium provider table — live */}
       <section className="mb-6 rounded-lg border bg-white" style={{ borderColor: BORDER }}>
         <div
@@ -377,7 +423,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
             <p className="text-[11px]" style={{ color: MUTED }}>
               {premiumProviders.length} premium provider
               {premiumProviders.length === 1 ? "" : "s"} from{" "}
-              <code className="rounded bg-[#f7faff] px-1 py-px text-[#174be8]">mvs_providers</code>.
+              <code className="rounded bg-[#f7faff] px-1 py-px text-[#174be8]">mvs_providers</code>. Source chips show which feed(s) each camp was discovered through; the link icon opens the original listing.
             </p>
           </div>
           <span
@@ -392,6 +438,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
             <thead>
               <tr style={{ color: MUTED }}>
                 <th className="px-4 py-2 text-left font-semibold">Provider</th>
+                <th className="px-4 py-2 text-left font-semibold">Source(s)</th>
                 <th className="px-4 py-2 text-right font-semibold">$ min/wk</th>
                 <th className="px-4 py-2 text-right font-semibold">$ max/wk</th>
                 <th className="px-4 py-2 text-left font-semibold">Category</th>
@@ -401,6 +448,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
             <tbody>
               {premiumProviders.map((p) => {
                 const pweeks = weeks.filter((w) => w.provider_id === p.id);
+                const listingHref = p.source_listing_url ?? p.website_url ?? p.url ?? null;
                 return (
                   <tr
                     key={p.id}
@@ -408,7 +456,13 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                     style={{ borderColor: BORDER }}
                   >
                     <td className="px-4 py-2.5 font-semibold" style={{ color: NAVY }}>
-                      {p.name}
+                      <span className="inline-flex items-center">
+                        {p.name}
+                        <OpenSourceLink href={listingHref} />
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <ProviderSourceChips sources={p.sources} />
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: NAVY }}>
                       {p.price_min ? `$${p.price_min}` : "—"}
@@ -427,7 +481,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
               })}
               {premiumProviders.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-[12px]" style={{ color: MUTED }}>
+                  <td colSpan={6} className="px-4 py-6 text-center text-[12px]" style={{ color: MUTED }}>
                     No premium providers classified yet. Run the pipeline (coming in Turn 5.2) to populate.
                   </td>
                 </tr>

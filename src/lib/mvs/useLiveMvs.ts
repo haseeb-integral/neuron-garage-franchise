@@ -21,6 +21,9 @@ export type LiveMvsBundle = {
   weeks: MvsWeekInput[];
   acs: MvsAcsInput | null;
   flag: LiveMvsCityFlag | null;
+  watchlist: { name: string; default_overlap: "direct" | "adjacent" | "distant" }[];
+  lastRefreshed: string | null;
+  qaOpenCount: number;
   loading: boolean;
   error: string | null;
   refresh: () => void;
@@ -46,6 +49,8 @@ export function useLiveMvs(
     { operator_name: string; overlap: "direct" | "adjacent" | "distant" }[]
   >([]);
   const [flag, setFlag] = useState<LiveMvsCityFlag | null>(null);
+  const [lastRefreshed, setLastRefreshed] = useState<string | null>(null);
+  const [qaOpenCount, setQaOpenCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
@@ -69,7 +74,7 @@ export function useLiveMvs(
 
         const { data: provRows, error: provErr } = await supabase
           .from("mvs_providers")
-          .select("id, name, tier, price_min, price_max, category_classified, url, website_url, source_listing_url, sources")
+          .select("id, name, tier, price_min, price_max, category_classified, url, website_url, source_listing_url, sources, updated_at")
           .eq("city", cityKey);
         if (provErr) throw provErr;
 
@@ -198,6 +203,27 @@ export function useLiveMvs(
             overlap: o.overlap_override as "direct" | "adjacent" | "distant",
           })),
         );
+
+        // Data freshness — most recent updated_at across provider rows for this city.
+        const maxUpdated = (provRows ?? []).reduce<string | null>((acc, p: any) => {
+          const u = p.updated_at as string | null | undefined;
+          if (!u) return acc;
+          if (!acc || u > acc) return u;
+          return acc;
+        }, null);
+        setLastRefreshed(maxUpdated);
+
+        // QA queue depth — count unresolved items for this city's providers.
+        if (providerIds.length > 0) {
+          const { count } = await supabase
+            .from("mvs_qa_queue")
+            .select("id", { count: "exact", head: true })
+            .is("resolved_at", null)
+            .in("entity_id", providerIds);
+          setQaOpenCount(count ?? 0);
+        } else {
+          setQaOpenCount(0);
+        }
       } catch (e: any) {
         if (!cancelled) setError(e.message ?? "Failed to load live MVS data");
       } finally {
@@ -226,6 +252,9 @@ export function useLiveMvs(
     weeks,
     acs,
     flag,
+    watchlist,
+    lastRefreshed,
+    qaOpenCount,
     loading,
     error,
     refresh: () => setRefreshTick((t) => t + 1),

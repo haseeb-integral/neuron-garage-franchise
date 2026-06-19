@@ -218,7 +218,7 @@ async function runActivityHero(args: {
       method: "POST",
       headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({ url, formats: ["markdown"], onlyMainContent: true, waitFor: 3000 }),
-    });
+    }, FIRECRAWL_TIMEOUT_MS);
     firecrawlCalls += 1;
     const j = await res.json().catch(() => ({}));
     if (!res.ok) { debug.error = `firecrawl ${res.status}`; return { platform: "activityhero", providers: [], firecrawlCalls, debug }; }

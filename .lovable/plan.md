@@ -1,81 +1,35 @@
-I agree this is not good enough. The QA page should not make you manually rediscover obvious camp pages, and it should not show homepage evidence unless the extractor truly failed to find a better page.
+## Status check against the 7-item v1.0 list
 
-## Honest purpose of the QA page
-The QA page is a human-review safety net, not the primary product result page. It should show only cases where automation is uncertain:
-- Provider produced zero usable weeks.
-- Week status/date confidence is below threshold.
-- Evidence page looks wrong or weak.
+| # | Item | Status | Notes |
+|---|---|---|---|
+| 1 | **PDF Market Brief (Phase 6)** | ❌ Not started | No PDF generator, no download button anywhere. |
+| 2 | **QA Queue review page** | ✅ Done (with active polish) | `/mvs-qa-queue` exists, shows screenshot, AI guess, status dropdown, save, mark-resolved, city filter, provider grouping, provider-issue rows. Today's work improved evidence URL discovery, dedup, dropdown wording. |
+| 3 | **Wire up Census ACS (Stage 4)** | ❌ Not started | No `mvs-acs-pull` step. Orchestrator `mvs-run-pipeline` does not call ACS. Scores 3 and 6 still use incomplete inputs. |
+| 4 | **Run pipeline for 7 Tier A cities + Boston gate** | 🟡 Partial | Pipeline is runnable per city; Austin live, Philadelphia just exercised. NYC, Houston, Chicago, Boston, San Antonio, LA not yet flipped to Live. Boston calibration gate not implemented. |
+| 5 | **Consolidate duplicate week extractors** | ✅ Done | Only `mvs-extract-weeks` exists; `-all` and `-austin-all` are gone. |
+| 6 | **`/mvs-preview` admin sanity-check page** | ❌ Not started | No preview page exists. |
+| 7 | **"One calibrated number everywhere" end-to-end** | 🟡 Partial | Verified on row / detail / compare. Cannot complete until PDF (#1) exists. |
 
-Its job is to let a reviewer quickly see: city, provider, exact evidence URL, screenshot, why it was flagged, and fix/resolve it. It is not supposed to hide bad extraction behind a vague homepage link.
+## Safest, lowest-risk, one-turn next item
 
-## What is wrong now
-1. **`homepage?` tag**
-   - This tag means the stored `source_url` does not look like a camp/class/register/enroll page.
-   - In your screenshot, it is correct to warn because `https://phillyartcenter.com/` is only the homepage, while the exact page is `https://phillyartcenter.com/camps/summer-camps/`.
-   - The tag itself is not the bug; the extractor choosing the homepage is the bug.
+**Item 5 is already done, so the safest remaining one-turn task is Item 3 — add the ACS pull step (`mvs-acs-pull`) and call it from `mvs-run-pipeline`.**
 
-2. **Exact URL discovery is too weak**
-   - Current code uses Firecrawl map with `search: "summer camp"`, then hardcoded URL keyword scoring.
-   - That can miss obvious pages, and it falls back to the homepage.
-   - It also currently prefers the provider website homepage over the existing Sawyer URL even when Sawyer has better registration data.
+Why this is the safest single turn:
+- It is additive only: a new edge function plus one extra call in the orchestrator.
+- No UI changes, no schema migration if we reuse the existing v1.0 ACS pipeline table for population denominators.
+- Failure mode is contained: if ACS fails, scores 3 and 6 stay on current inputs (same as today). No regression risk for already-working surfaces.
+- It unblocks accurate Scores 3 and 6 before any Tier A city is flipped to Live, which is required for #4 to be trustworthy.
 
-3. **City dropdown count is not hardcoded, but it is misleading**
-   - `18` is coming from the current open QA rows, not from all MVS providers/cities.
-   - The label says “All cities (18)” but that means “18 QA items”, not “18 cities”. That is confusing and should be changed.
-   - The city list is built only from rows currently in `mvs_qa_queue`, so cities with no QA rows will not appear. If you expect it to mirror the MVS table, that requires querying the provider/city source too.
+Item 6 (`/mvs-preview`) is also low risk and one turn, but it is optional per the spec and does not unblock anything else.
 
-4. **Duplicate and stale QA rows likely remain**
-   - The data shows repeated Philly Art Center week rows for the same week/source.
-   - Re-runs insert new QA rows without cleaning existing unresolved week-level QA rows, so the count inflates.
+## Proposed next single turn (only if you approve)
 
-## Implementation plan
+Implement Item 3:
+1. Add `supabase/functions/mvs-acs-pull/index.ts` that, given `{ city, state }`, fetches "kids ages 5–12" and "affluent dual-income families" counts from the existing ACS source used by v1.0, and writes them to the city's MVS row (or a small `mvs_city_demographics` cache if v1.0 store is not reusable — decide after a 1-file read).
+2. Call `mvs-acs-pull` from `mvs-run-pipeline` after provider discovery and before scoring, non-fatal on failure.
+3. Read those fields in the Score 3 and Score 6 helpers (single calibrated helper — Brett's rule).
+4. Verify: re-run pipeline for Philadelphia, confirm Scores 3 and 6 populate and the same numbers appear in row, detail panel, and compare modal.
 
-### 1. Fix QA page wording and counts
-- Rename the filter from `All cities (18)` to `All open QA items (18)` or show separate counts:
-  - `18 open QA items`
-  - `1 city`
-  - `4 providers`
-- Add a small city context line when filtered: `Philadelphia, PA · 18 open QA items · 4 providers`.
-- Keep the back button at the top and bottom.
-- Replace `homepage?` with clearer copy: `Weak evidence URL` and tooltip/title: `This evidence URL is the provider homepage, not a camp or registration page.`
+No PDF work, no Tier A rollout, no UI restructuring in this turn.
 
-### 2. Make the city dropdown come from actual MVS data
-- Query distinct cities from `mvs_providers` (or the same city source used by the MVS table), not only `mvs_qa_queue`.
-- Show every MVS city in the dropdown.
-- For each city, show QA open item count separately, e.g. `Philadelphia, PA · 18 QA`.
-- If a city has zero QA issues, it can still appear as `Austin, TX · 0 QA`.
-
-### 3. Clean stale duplicate QA rows on re-run
-- Before inserting new week-level QA rows for a provider, delete unresolved week QA rows for that provider’s existing week ids.
-- Keep resolved rows as history.
-- This prevents Philly Art Center’s duplicate 2026-06-29 / 2026-07-06 rows from inflating counts.
-
-### 4. Replace brittle exact-page discovery
-- Add a dedicated discovery step before scraping:
-  1. Use Firecrawl map without relying on a single hardcoded query, collect links from the provider domain.
-  2. Use Firecrawl search with provider name + city + camp/classes terms to discover pages Google/search can see.
-  3. Include existing provider `url` (Sawyer schedule URL) as a candidate, not just fallback.
-  4. Scrape several candidate pages lightly, not just one.
-  5. Ask the AI to rank candidate pages by evidence quality: exact camp/weekly registration page > general camp page > homepage.
-- Keep keywords only as weak hints, not the deciding system.
-- For Philly Art Center, this should select `https://phillyartcenter.com/camps/summer-camps/` over `https://phillyartcenter.com/`.
-
-### 5. Store better evidence
-- Store the selected exact page in `mvs_weeks.source_url`.
-- Use the screenshot from that exact selected page.
-- If the screenshot is a full-page/homepage-like shot, mark it as weak evidence rather than pretending it is acceptable.
-
-### 6. Verify with Philadelphia
-- Re-run extraction for `Philadelphia, PA` after deployment.
-- Confirm:
-  - Philly Art Center evidence URL is `/camps/summer-camps/` if the page remains discoverable.
-  - QA rows are not duplicated for the same provider/week.
-  - Dropdown counts match real open QA rows and city/provider totals.
-  - Provider rows with zero weeks still appear as provider issues.
-
-## Technical notes
-- Files to change:
-  - `src/pages/MVSQAQueue.tsx`
-  - `supabase/functions/mvs-extract-weeks/index.ts`
-- May also adjust `supabase/functions/mvs-enrich-websites/index.ts` if it is still stripping exact discovered paths down to homepage when we actually need exact camp URLs.
-- No new database table is required unless we decide to persist a separate `best_evidence_url` on providers later.
+Do you want me to proceed with Item 3 next, or pick a different item?

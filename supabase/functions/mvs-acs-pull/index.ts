@@ -147,13 +147,6 @@ Deno.serve(async (req) => {
     );
   }
 
-  const needsKids = scored.children_5_12 == null;
-  const needsDual = scored.dual_working_families_pct == null;
-  if (!needsKids && !needsDual) {
-      JSON.stringify({ skipped: true, reason: `no us_cities_scored row for ${cityKey}` }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
-  }
 
   const needsKids = scored.children_5_12 == null;
   const needsDual = scored.dual_working_families_pct == null;

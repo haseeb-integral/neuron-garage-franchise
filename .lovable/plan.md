@@ -1,35 +1,19 @@
-## Status check on #5
+## Where `/mvs-qa-queue` lives today
+The route is wired in `App.tsx` but has **no link** in the UI — the only way to reach it is to type the URL. That's why you can't see it from inside the app.
 
-Only `mvs-extract-weeks` exists in `supabase/functions/`. The `-all` and `-austin-all` variants are already gone. A single reference remains in a code comment inside `mvs-extract-weeks/index.ts` — I'll strip the comment so future readers don't get confused. **No deletion or redeploy needed.** Effectively complete.
+## Where to add the entry point (most logical)
+On **Market Validation** (`/market-validation`), inside the existing intro panel "What this feature does" → card **"2 · (Re)score cities"**, right next to the **Open scoring console →** button.
 
-## #2 — QA Queue page
+Reasoning: that card is already the operational/manager card (the QA queue is operational follow-up to the scoring pipeline). It's manager-only, matching the QA page's role gate. The shortlist table area below stays clean for decision-makers.
 
-Page lives at `/mvs-qa-queue`, manager/admin only.
+## Plan (1 small edit)
+1. In `src/pages/MarketValidation.tsx`, in the "2 · (Re)score cities" card header, add a second link **"Review QA queue →"** beside "Open scoring console →" pointing to `/mvs-qa-queue`.
+2. Show a small red count badge using the already-imported `QA_QUEUE_FLAGGED_COUNT` (e.g. `Review QA queue (8) →`). If the live count from `mvs_qa_queue` is preferred over the constant, we can fetch it; for now the constant matches what the page shows.
+3. Add one short helper line under the buttons: *"QA queue = manager review of low-confidence week extractions."*
 
-**Data**
-- 8 open items in `mvs_qa_queue`, all `entity_type='week'` (low-confidence week extractions). Each row points to a `mvs_weeks.id` via `entity_id`.
-- Join path: `mvs_qa_queue` → `mvs_weeks` (status, week_start, screenshot_url, source_url, confidence) → `mvs_providers` (name, city).
-
-**UI (single page, no new components library)**
-- Header: "QA Queue — N open" + Resolved filter toggle.
-- Each item rendered as a card:
-  - Left: provider name, city, week date, "AI guessed: <status>", confidence %, reason, link to source page (text only — keep hyperlink pause from earlier in mind; here it's necessary for QA work so we render it).
-  - Right: screenshot (if `screenshot_url` present, signed-URL fetch from storage bucket).
-  - Bottom row: status dropdown (`sold_out` / `waitlist` / `open` / `unknown`), Save button, "Mark resolved without change" link.
-- Save → updates `mvs_weeks.status` (+ `status_evidence='qa_override'`, `confidence=1`) AND sets `mvs_qa_queue.resolved_at = now(), resolved_by = auth.uid()` in a single RPC.
-
-**Auth gate**
-- Reuse existing `useUserRoles` / `has_role` pattern. If user lacks manager/admin, render "Forbidden".
-
-**Backend**
-- New RPC `public.mvs_qa_resolve(_queue_id uuid, _new_status mvs_week_status)` SECURITY DEFINER, checks `has_role(auth.uid(),'manager') OR has_role(auth.uid(),'admin')`, performs both updates atomically. Grant EXECUTE to authenticated.
-- No new table, no new column.
-
-**Files**
-- new `src/pages/MVSQAQueue.tsx`
-- edit `src/App.tsx` — register route + prefetch
-- new migration: RPC + grant
-- edit `supabase/functions/mvs-extract-weeks/index.ts` — remove obsolete comment referencing the deleted extractor variants
+No new routes, no schema changes, no other pages touched. Sidebar stays as-is (we discussed adding it there earlier — skipping unless you want it too).
 
 ## Out of scope
-PDF, ACS pull, /mvs-preview, Boston gate UI, extractor broadening — separate plans.
+- Adding a sidebar nav item (say the word and I'll add it under MVS Methodology).
+- Live count from DB instead of the constant.
+- Any change to the QA page itself.

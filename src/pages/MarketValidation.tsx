@@ -405,20 +405,42 @@ export default function MarketValidation() {
               <div className="text-[11px] font-bold uppercase tracking-wide" style={{ color: NAVY }}>
                 2 · (Re)score cities
               </div>
-              <Link
-                to="/market-validation/rollout"
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold text-white"
-                style={{ backgroundColor: BLUE }}
-              >
-                Open scoring console →
-              </Link>
+              <div className="flex shrink-0 items-center gap-1.5">
+                <Link
+                  to="/market-validation/rollout"
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold text-white"
+                  style={{ backgroundColor: BLUE }}
+                >
+                  Open scoring console →
+                </Link>
+                <Link
+                  to="/mvs-qa-queue"
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-semibold"
+                  style={{ borderColor: BLUE, color: BLUE, backgroundColor: "#fff" }}
+                >
+                  Review QA queue
+                  {QA_QUEUE_FLAGGED_COUNT > 0 && (
+                    <span
+                      className="inline-flex min-w-[16px] items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
+                      style={{ backgroundColor: "#a3142b" }}
+                    >
+                      {QA_QUEUE_FLAGGED_COUNT}
+                    </span>
+                  )}
+                  <span aria-hidden>→</span>
+                </Link>
+              </div>
             </div>
             <p className="mt-1 text-[12px]" style={{ color: NAVY }}>
               The composite scores below come from a live data pipeline. To add a new city or refresh
               an existing one's score, open the scoring console and click <strong>Run</strong> on that
               city (≈1–2 min per city). Results flow back into the table here automatically.
             </p>
+            <p className="mt-1 text-[11px]" style={{ color: MUTED }}>
+              QA queue = manager review of low-confidence week extractions flagged by the pipeline.
+            </p>
           </div>
+
         </div>
       </section>
 

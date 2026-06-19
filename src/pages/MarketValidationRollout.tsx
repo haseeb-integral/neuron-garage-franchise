@@ -193,17 +193,25 @@ export default function MarketValidationRollout() {
       .limit(200);
     const latest: Record<string, RunRow | null> = {};
     for (const c of cities) latest[c] = null;
+    const STALE_MS = 3 * 60 * 1000;
+    const now = Date.now();
     for (const r of runRows ?? []) {
       // Skip phantom/stub rows that never actually started — they distort "Last run".
       if (!(r as any).started_at) continue;
       if (!latest[(r as any).city]) {
+        let status = (r as any).status as RunStatus;
+        // Display-side stale clear: a running row older than 3 min is presumed dead.
+        if ((status === "running" || status === "queued") &&
+            now - new Date((r as any).started_at).getTime() > STALE_MS) {
+          status = "failed";
+        }
         latest[(r as any).city] = {
           id: (r as any).id,
-          status: (r as any).status as RunStatus,
+          status,
           started_at: (r as any).started_at,
           finished_at: (r as any).finished_at,
           firecrawl_calls: (r as any).firecrawl_calls ?? 0,
-          error: (r as any).error,
+          error: (r as any).error ?? (status === "failed" && !(r as any).error ? "Run appears stuck (>3 min). Try again." : null),
           created_at: (r as any).created_at,
         };
       }
@@ -250,35 +258,54 @@ export default function MarketValidationRollout() {
     setInvokingCity(city);
     try {
       const { data, error } = await supabase.functions.invoke("mvs-run-pipeline", { body: { city } });
-      const errMsg = error?.message ?? "";
-      const is409 = /409/.test(errMsg) || data?.error === "a run is already in flight";
-      if (is409) {
-        toast.info(`${city} is already running — refreshing status.`);
+
+      // supabase-js sets `error` on any non-2xx. The real reason is inside
+      // error.context (a Response), which we read explicitly so the user
+      // doesn't just see "non-2xx status code".
+      if (error) {
+        let detail = error.message ?? "";
+        try {
+          const ctx = (error as { context?: Response }).context;
+          if (ctx && typeof ctx.json === "function") {
+            const body = await ctx.json();
+            detail = body?.error ?? body?.message ?? detail;
+          }
+        } catch { /* keep error.message */ }
+        toast.error(`Couldn't start pipeline for ${city}: ${detail}`);
       } else if (data?.already_running) {
-        toast.info(`${city} is already running — refreshing status.`);
-      } else if (error) {
-        toast.error(`Failed to start pipeline for ${city}: ${errMsg}`);
-      } else if (data?.ok === false || data?.error) {
-        toast.error(`Pipeline error: ${data.error ?? "unknown"}`);
-      } else if (data?.ok && data.summary) {
-        const s = data.summary;
-        // Auto-promote to live as soon as the run completes successfully.
-        await supabase
-          .from("mvs_city_flags")
-          .upsert({ city, state, mvs_data_source: "live" }, { onConflict: "city,state" });
-        toast.success(
-          `${city} · ${s.providers_processed} providers · ${s.weeks_upserted} weeks · ${s.firecrawl_calls} Firecrawl calls`,
-          { duration: 8000 },
-        );
+        toast.info(data?.message ?? `${city} is already running — refreshing status.`);
+      } else if (data?.ok && data?.run_id) {
+        // 202 — pipeline started in the background. The poll loop will
+        // pick up status changes; promote to live when it finishes.
+        toast.success(`Pipeline started for ${city} — running in background (~1–2 min).`);
+      } else if (data?.error) {
+        toast.error(`Pipeline error: ${data.error}`);
       }
       await fetchAll();
-
     } catch (e) {
       toast.error(`Failed to start pipeline: ${(e as Error).message}`);
     } finally {
       setInvokingCity(null);
     }
   }, [anyRunning, invokingCity, fetchAll]);
+
+  // When a previously-running row finishes, auto-promote the city to live
+  // so the Market Validation page picks up the new composite.
+  useEffect(() => {
+    (async () => {
+      for (const [city, run] of Object.entries(latestRuns)) {
+        if (run?.status !== "done") continue;
+        const flag = flags[city];
+        if (flag?.mvs_data_source === "live") continue;
+        const state = SHORTLISTED_CITIES.find((c) => c.city === city)?.state;
+        if (!state) continue;
+        await supabase
+          .from("mvs_city_flags")
+          .upsert({ city, state, mvs_data_source: "live" }, { onConflict: "city,state" });
+      }
+    })();
+  }, [latestRuns, flags, SHORTLISTED_CITIES]);
+
 
 
 

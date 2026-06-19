@@ -20,6 +20,21 @@ const FIRECRAWL_V2 = "https://api.firecrawl.dev/v2";
 const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const SCREENSHOT_BUCKET = "mvs-screenshots";
 
+// Per-source hard timeouts so one stalled provider can't blow the whole run.
+const FIRECRAWL_TIMEOUT_MS = 25_000;
+const APIFY_TIMEOUT_MS = 60_000;
+const GEMINI_TIMEOUT_MS = 20_000;
+
+async function fetchWithTimeout(url: string, opts: RequestInit, ms: number): Promise<Response> {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { ...opts, signal: ctrl.signal });
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 // Source priority for dedupe: when the same provider appears in multiple
 // sources, the row is tagged with the highest-priority platform.
 type Platform = "sawyer" | "activityhero" | "google_maps" | "yelp";
@@ -123,7 +138,7 @@ Rules:
     const url = buildSawyerUrl(city, box, variants[i]);
     const v: Record<string, unknown> = { variant: i, url };
     try {
-      const res = await fetch(`${FIRECRAWL_V2}/scrape`, {
+      const res = await fetchWithTimeout(`${FIRECRAWL_V2}/scrape`, {
         method: "POST",
         headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -132,7 +147,7 @@ Rules:
           onlyMainContent: true,
           waitFor: 3000,
         }),
-      });
+      }, FIRECRAWL_TIMEOUT_MS);
       firecrawlCalls += 1;
       const j = await res.json().catch(() => ({}));
       if (!res.ok) { v.error = `firecrawl ${res.status}`; variantDebug.push(v); continue; }
@@ -199,11 +214,11 @@ async function runActivityHero(args: {
   const debug: Record<string, unknown> = { url };
   let firecrawlCalls = 0;
   try {
-    const res = await fetch(`${FIRECRAWL_V2}/scrape`, {
+    const res = await fetchWithTimeout(`${FIRECRAWL_V2}/scrape`, {
       method: "POST",
       headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({ url, formats: ["markdown"], onlyMainContent: true, waitFor: 3000 }),
-    });
+    }, FIRECRAWL_TIMEOUT_MS);
     firecrawlCalls += 1;
     const j = await res.json().catch(() => ({}));
     if (!res.ok) { debug.error = `firecrawl ${res.status}`; return { platform: "activityhero", providers: [], firecrawlCalls, debug }; }
@@ -254,11 +269,11 @@ async function runGoogleMaps(args: {
       countryCode: "us",
       skipClosedPlaces: true,
     };
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    });
+    }, APIFY_TIMEOUT_MS);
     if (!res.ok) {
       debug.error = `apify ${res.status}`;
       debug.body = (await res.text()).slice(0, 300);
@@ -307,11 +322,11 @@ async function runYelp(args: {
   const debug: Record<string, unknown> = { url };
   let firecrawlCalls = 0;
   try {
-    const res = await fetch(`${FIRECRAWL_V2}/scrape`, {
+    const res = await fetchWithTimeout(`${FIRECRAWL_V2}/scrape`, {
       method: "POST",
       headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({ url, formats: ["markdown"], onlyMainContent: true, waitFor: 3000 }),
-    });
+    }, FIRECRAWL_TIMEOUT_MS);
     firecrawlCalls += 1;
     const j = await res.json().catch(() => ({}));
     if (!res.ok) { debug.error = `firecrawl ${res.status}`; return { platform: "yelp", providers: [], firecrawlCalls, debug }; }
@@ -345,7 +360,7 @@ async function extractWithGemini(args: {
   markdown: string;
 }): Promise<ProviderExtract[]> {
   const { lovableKey, sys, city, sourceUrl, markdown } = args;
-  const res = await fetch(AI_GATEWAY, {
+  const res = await fetchWithTimeout(AI_GATEWAY, {
     method: "POST",
     headers: { "Content-Type": "application/json", "Lovable-API-Key": lovableKey },
     body: JSON.stringify({
@@ -356,7 +371,7 @@ async function extractWithGemini(args: {
       ],
       response_format: { type: "json_object" },
     }),
-  });
+  }, GEMINI_TIMEOUT_MS);
   if (!res.ok) return [];
   const j = await res.json().catch(() => ({}));
   const raw = j?.choices?.[0]?.message?.content ?? "{}";
@@ -433,15 +448,24 @@ Deno.serve(async (req) => {
     );
   }
 
-  const { data: run, error: runErr } = await admin
-    .from("mvs_pipeline_runs")
-    .insert({ city, status: "running", firecrawl_calls: 0, started_at: new Date().toISOString() })
-    .select().single();
-  if (runErr || !run) {
-    return new Response(
-      JSON.stringify({ error: "failed to create run", detail: runErr?.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+  // If the orchestrator is calling us it passes parent_run_id so we don't
+  // create a second mvs_pipeline_runs row. Standalone callers still get a row.
+  const parentRunId: string | null = body?.parent_run_id ?? null;
+  let runId: string;
+  if (parentRunId) {
+    runId = parentRunId;
+  } else {
+    const { data: run, error: runErr } = await admin
+      .from("mvs_pipeline_runs")
+      .insert({ city, status: "running", firecrawl_calls: 0, started_at: new Date().toISOString() })
+      .select().single();
+    if (runErr || !run) {
+      return new Response(
+        JSON.stringify({ error: "failed to create run", detail: runErr?.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    runId = run.id;
   }
 
   const debug: Record<string, unknown> = {};
@@ -449,10 +473,8 @@ Deno.serve(async (req) => {
   let screenshotPath: string | null = null;
 
   try {
-    // Run sources sequentially. Failures are per-source — do not abort the run.
     const sourceResults: SourceResult[] = [];
-
-    sourceResults.push(await runSawyer({ city, box, firecrawlKey, lovableKey, admin, runId: run.id }));
+    sourceResults.push(await runSawyer({ city, box, firecrawlKey, lovableKey, admin, runId }));
     sourceResults.push(await runActivityHero({ city, state: stateAbbr, firecrawlKey, lovableKey }));
     sourceResults.push(await runGoogleMaps({ city, state: stateAbbr }));
     sourceResults.push(await runYelp({ city, state: stateAbbr, firecrawlKey, lovableKey }));
@@ -463,8 +485,6 @@ Deno.serve(async (req) => {
       debug[r.platform] = r.debug;
     }
 
-    // Union + dedupe across sources by normalized name. Track sources_seen.
-    // Pick the highest-priority platform as the row's `platform`.
     type Merged = ProviderExtract & { platform: Platform; sources_seen: Platform[] };
     const byKey = new Map<string, Merged>();
     for (const r of sourceResults) {
@@ -476,11 +496,9 @@ Deno.serve(async (req) => {
           byKey.set(key, { ...p, platform: r.platform, sources_seen: [r.platform] });
         } else {
           if (!existing.sources_seen.includes(r.platform)) existing.sources_seen.push(r.platform);
-          // Upgrade row platform if this source is higher priority.
           if (PLATFORM_PRIORITY[r.platform] < PLATFORM_PRIORITY[existing.platform]) {
             existing.platform = r.platform;
           }
-          // Fill missing fields opportunistically.
           existing.url = existing.url ?? p.url ?? null;
           existing.price_min = existing.price_min ?? p.price_min ?? null;
           existing.price_max = existing.price_max ?? p.price_max ?? null;
@@ -502,13 +520,11 @@ Deno.serve(async (req) => {
       category_raw: m.category_raw ?? null,
       screenshot_url: screenshotPath,
       confidence: Math.max(0, Math.min(1, m.confidence ?? 0.5)),
-      source_run_id: run.id,
+      source_run_id: runId,
     }));
 
     let inserted = 0;
     if (rows.length > 0) {
-      // Dedupe against ALL existing providers for this city (any platform),
-      // since cross-source dedupe makes the platform tag fluid.
       const { data: existingRows, error: existingErr } = await admin
         .from("mvs_providers")
         .select("name")
@@ -524,15 +540,19 @@ Deno.serve(async (req) => {
       }
     }
 
-    await admin.from("mvs_pipeline_runs").update({
-      status: "done",
-      firecrawl_calls: totalFirecrawl,
-      finished_at: new Date().toISOString(),
-    }).eq("id", run.id);
+    // Only the standalone-caller branch owns the run row's lifecycle. When
+    // the orchestrator owns the row, it finalizes status itself.
+    if (!parentRunId) {
+      await admin.from("mvs_pipeline_runs").update({
+        status: "done",
+        firecrawl_calls: totalFirecrawl,
+        finished_at: new Date().toISOString(),
+      }).eq("id", runId);
+    }
 
     return new Response(
       JSON.stringify({
-        run_id: run.id,
+        run_id: runId,
         city,
         firecrawl_calls: totalFirecrawl,
         providers_inserted: inserted,
@@ -544,12 +564,14 @@ Deno.serve(async (req) => {
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    await admin.from("mvs_pipeline_runs").update({
-      status: "failed", error: msg, firecrawl_calls: totalFirecrawl,
-      finished_at: new Date().toISOString(),
-    }).eq("id", run.id);
+    if (!parentRunId) {
+      await admin.from("mvs_pipeline_runs").update({
+        status: "failed", error: msg, firecrawl_calls: totalFirecrawl,
+        finished_at: new Date().toISOString(),
+      }).eq("id", runId);
+    }
     return new Response(
-      JSON.stringify({ run_id: run.id, error: msg, debug }),
+      JSON.stringify({ run_id: runId, error: msg, debug }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }

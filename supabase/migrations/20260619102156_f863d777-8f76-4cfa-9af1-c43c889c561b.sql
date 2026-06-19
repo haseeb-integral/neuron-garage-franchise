@@ -1,0 +1,1 @@
+ALTER TABLE public.mvs_providers ADD COLUMN IF NOT EXISTS sources jsonb NOT NULL DEFAULT '[]'::jsonb;

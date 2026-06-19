@@ -1,126 +1,64 @@
 
-# Feature 1A v1.0 — Finish Plan
+# Add 3 more provider platforms to `mvs-discover-providers`
 
-7 atomic turns to close the gap between what's built and what the spec + build plan promise. Each turn is reversible and ends with a checkpoint you can eyeball before we move on. Same operating rules as the original build plan: `mvs_*` namespace only, no edits to other features, demo path stays alive, one `computeMvs` helper everywhere.
+Today the discover function only scrapes Sawyer (3 search variants). For thinly-covered cities (Austin returned 1 provider after Phase 7 rollout) Sawyer alone misses most of the real market. This plan adds **3 additional sources**, unions all results, dedupes by normalized name, and writes them to `mvs_providers` with a per-source `platform` tag.
 
----
+After this turn we go back to Brett's order: #5 cleanup → #3 ACS → #2 QA Queue → #1 PDF → #4 Tier A rollout → #6+#7 verification.
 
-## Turn 1 — Consolidate the 3 week-extractor functions
+## The 3 new sources
 
-**Problem:** We currently have `mvs-extract-weeks`, `mvs-extract-weeks-all`, and `mvs-extract-weeks-austin-all`. The spec calls for one. This is what caused the "wrong edge function" error you hit.
+| # | Source | Why | How we fetch |
+|---|---|---|---|
+| 1 | **ActivityHero** (`activityhero.com/s/<city>-<state>/camps`) | Largest US camps marketplace after Sawyer; strong in mid-size metros. | Firecrawl scrape (markdown + screenshot), Gemini extract. |
+| 2 | **Google Maps** ("kids summer camp near <city>") | Catches independent providers that aren't on any marketplace. | Apify Google Maps actor (we already have `APIFY_API_TOKEN` + `APIFY_GOOGLE_MAPS_ACTOR_ID`). No Firecrawl needed. |
+| 3 | **Yelp** (`yelp.com/search?find_desc=Kids+Activities&find_loc=<city>`) | Strong long-tail coverage; useful tiebreaker for dedupe. | Firecrawl scrape, Gemini extract. |
 
-**Do:**
-- Make `mvs-extract-weeks` accept `{ city, state }` and loop all Premium providers for that city internally (merge the `-all` logic in).
-- Update `mvs-run-pipeline` to call only `mvs-extract-weeks`.
-- Delete `mvs-extract-weeks-all` and `mvs-extract-weeks-austin-all` from disk and from Supabase.
+If you'd rather swap one out (e.g. KidPass, Mommy Poppins, Eventbrite kids-camps), say so and I'll substitute before building.
 
-**Checkpoint:** Run pipeline on Austin from the UI — completes end-to-end, no 404s, week rows land in `mvs_weeks`.
+## What changes
 
-**Unwind:** Revert the file; redeploy the two deleted functions from git history.
+### Edge function: `supabase/functions/mvs-discover-providers/index.ts`
 
----
+1. Refactor the current Sawyer-only loop into a `sources` array:
+   ```ts
+   const sources = [
+     { platform: 'sawyer',       run: () => scrapeSawyer(city, box) },
+     { platform: 'activityhero', run: () => scrapeActivityHero(city, state) },
+     { platform: 'google_maps',  run: () => fetchGoogleMaps(city, state) },
+     { platform: 'yelp',         run: () => scrapeYelp(city, state) },
+   ];
+   ```
+2. Run all 4 sources sequentially (parallel risks Firecrawl rate limits). Each `run()` returns `ProviderExtract[]` plus an optional screenshot URL.
+3. Union → dedupe by `normalizeName(name)`. When the same provider appears in N sources, keep the first hit and stash `sources_seen: ['sawyer','google_maps']` in a new `mvs_providers.sources` jsonb column (cross-source presence is a strong quality signal we'll use later for tier classification 2.2).
+4. Each row inserted with the platform of the source that found it first; if seen in >1 source, prefer `sawyer > activityhero > google_maps > yelp` (most structured first).
+5. Screenshot column keeps Sawyer's screenshot for backward compat; other sources don't store screenshots in v1.
+6. Per-source failures are swallowed and logged — one source going down must not fail the whole run.
 
-## Turn 2 — Add Census ACS pull to the pipeline
+### Helpers added to the same file
+- `scrapeActivityHero(city, state)` — builds URL like `https://www.activityhero.com/s/austin-tx/camps`, Firecrawl `formats: ['markdown']`, sends markdown to Gemini with the existing extraction prompt (tweaked to mention "ActivityHero").
+- `fetchGoogleMaps(city, state)` — POSTs to Apify run-sync endpoint with `searchStringsArray: ['kids summer camp <city> <state>', 'kids classes <city> <state>']`, max 30 results each. Maps actor output → `ProviderExtract` (name from `title`, url from `website`, no price).
+- `scrapeYelp(city, state)` — Firecrawl scrape of Yelp search URL, Gemini extract.
 
-**Problem:** Scores 3 (Scaled Operator) and 6 (Market Balance) need population denominators — "kids ages 5–12" and "affluent dual-income families ≥$150k." Today the orchestrator doesn't pull these, so both scores run on incomplete inputs.
+### DB migration
+Add nullable `sources jsonb default '[]'::jsonb` column to `mvs_providers`. Backfill is unnecessary (Phase 2 data is dev-only).
 
-**Do:**
-- New edge function `mvs-acs-pull`: takes `{ city, state }`, calls the existing v1.0 ACS pipeline, writes results to a new tiny table `mvs_city_acs` (kids_5_12, affluent_dual_income_hh, pulled_at).
-- `mvs-run-pipeline` calls it as Stage 4, between extract-weeks and completion.
-- `computeMvs.ts` and `useLiveMvs.ts` read from `mvs_city_acs` and pass into scores 3 and 6.
+### Frontend
+No UI changes this turn. The City Scoring Console pillar counts already read from `mvs_providers` and will naturally fatten.
 
-**Checkpoint:** Re-run Austin; sub-score 3 and 6 inputs are non-null in the detail panel drawer.
+## Out of scope (explicit)
+- No tier-classifier changes (that's Brett's separate follow-on).
+- No new extract-weeks behavior — `mvs-extract-weeks` still only knows Sawyer week URLs; non-Sawyer providers are counted toward provider-count pillars but contribute 0 weeks until 2.2/3.x extends extraction.
+- No QA queue changes.
+- No score recalibration this turn.
 
-**Unwind:** Drop `mvs_city_acs`, delete the function, revert helper changes.
-
----
-
-## Turn 3 — QA Queue review page
-
-**Problem:** Low-confidence weeks are already written to `mvs_qa_queue`, but there's no UI to review them.
-
-**Do:**
-- New route `/mvs-qa-queue`, manager-only via `has_role`.
-- Table list of flagged rows; click opens side-by-side view: screenshot (from `mvs-screenshots` bucket) on the left, Gemini's guessed status + evidence on the right, dropdown to correct (5-value enum), Save writes `corrected_status` + `reviewed_by` + `reviewed_at` back and updates `mvs_weeks.status`.
-- Sidebar nav entry under Market Validation, manager-only.
-
-**Checkpoint:** A flagged Austin week is correctable; the row's status flips on Save and the MVS recomputes.
-
-**Unwind:** Delete the page, the nav entry, and one rollback SQL to clear `corrected_status` values.
-
----
-
-## Turn 4 — `mvs-generate-brief` edge function (PDF, server-side)
-
-**Problem:** Spec promises a 12-section PDF Market Brief. Doesn't exist.
-
-**Do:**
-- New edge function `mvs-generate-brief`: input `{ city, state }`, pulls live `mvs_providers` + `mvs_weeks` + `mvs_city_acs`, runs the **same `computeMvs` helper** (ported to Deno or duplicated as a `_shared` file so server + client share one source of truth), renders HTML, converts to PDF, returns blob.
-- 12 sections per spec §7: Exec Summary, MVS, Market Balance, Pricing, Diversity, Operator, Depth, Strengths, Risks, SWOT, Recommendation, Sources & Screenshots appendix (with signed URLs to bucket screenshots).
-- Hard timeout: must complete in <30s.
-
-**Checkpoint:** Call function via curl for Austin; PDF lands, every numeric claim has a source link or screenshot in the appendix.
-
-**Unwind:** Delete the function; no UI depends on it yet.
-
----
-
-## Turn 5 — "Download Market Brief" button + `/mvs-preview` sanity page
-
-**Problem:** No way to trigger the PDF from the UI; no admin sanity-check surface (Phase 4.2 was skipped).
-
-**Do:**
-- Add **Download Market Brief (PDF)** button to the city detail panel on Market Validation, visible only when `mvs_data_source='live'`. Streams the PDF from Turn 4.
-- New admin-only route `/mvs-preview`: read-only page that lists every city with live data and shows its live MVS + 6 sub-scores side-by-side with the demo number (where one exists). For spot-checking before flipping cities to Live.
-
-**Checkpoint:** Manager clicks Download on Austin → PDF downloads. `/mvs-preview` shows Austin's live numbers next to demo.
-
-**Unwind:** Remove the button + the route file.
-
----
-
-## Turn 6 — Tier A rollout (run the 7 cities)
-
-**Problem:** Only Austin is live. Spec requires NYC, Houston, Chicago, Boston, San Antonio, Philadelphia, LA all flipped to Live.
-
-**Do:**
-- Run `mvs-run-pipeline` sequentially (not parallel — keeps cost predictable) for the 7 cities from the City Scoring Console.
-- After each `done`, flip `mvs_city_flags.mvs_data_source` to `live` for that city.
-- Tier B cities stay on Sample Data badge — untouched.
-
-**Checkpoint:** All 7 Tier A rows on Market Validation show Live badge with real MVS, real provider names, real screenshots.
-
-**Unwind:** Per city: `UPDATE mvs_city_flags SET mvs_data_source='sample' WHERE city=<x>`.
-
----
-
-## Turn 7 — Calibration check + "one number everywhere" verification
-
-**Problem:** Spec defines 5 calibration gates that must pass before client meeting. We need to actually run them.
-
-**Do:**
-- **Gate 1:** Austin run — all 5 stages clean. (Confirmed in Turn 2.)
-- **Gate 2:** Boston lands in top quartile of the 8-city live set (Austin + 7 Tier A). If not → halt, raise weights review with you and Brett, do not present to client.
-- **Gate 3:** Every Tier A row has live MVS + 6 non-null sub-scores + real provider names + ≥1 stored screenshot per provider.
-- **Gate 4:** PDF generates in <30s for all 8 cities (timed).
-- **Gate 5 (Brett's rule):** Drag a weight slider — confirm the MVS updates on the table row, detail panel, compare modal, **and the PDF** (regenerated). All from the same helper.
-- Write results into a short Markdown report inside the chat for sign-off.
-
-**Checkpoint:** Brett or you signs off on all 5 gates. Feature 1A v1.0 = done.
-
-**Unwind:** N/A — this turn is read-only verification.
-
----
+## Verification before declaring done
+1. Re-run `mvs-run-pipeline` on Austin via the UI button.
+2. Confirm `mvs_providers` row count for Austin jumps from 1 to >10 and includes at least 1 row with `platform='google_maps'` and 1 with `platform='activityhero'`.
+3. Confirm `mvs_pipeline_runs` ends in `succeeded` and per-source failures (if any) appear in the run's `error` JSON, not as a hard failure.
+4. Open the Austin detail panel and confirm pillar provider counts updated.
 
 ## Technical notes
-
-- **Shared compute helper for PDF:** to avoid duplicating `computeMvs` math in Deno, either (a) move it into `supabase/functions/_shared/computeMvs.ts` and re-export from `src/lib/mvs/computeMvs.ts`, or (b) have the client call a `/mvs-compute` edge function and pipe results to the PDF. Option (a) is preferred — single file, two import paths.
-- **PDF rendering inside Deno:** use Puppeteer-via-Browserless OR React-PDF / `@react-pdf/renderer` running in Deno. Decision deferred to Turn 4 based on which works cleaner under the Supabase Edge runtime.
-- **`mvs_city_acs` table (Turn 2):** city, state, kids_5_12 int, affluent_dual_income_hh int, pulled_at timestamptz. RLS: read for authenticated, write for service_role. Standard GRANTs.
-- **No new shared-feature edits** — all changes stay inside `src/components/phase2-demo/`, `src/pages/MarketValidation*`, `src/pages/MVS*`, `src/lib/mvs/`, `supabase/functions/mvs-*`.
-
----
-
-## Order of execution & approval
-
-Turns are atomic and ordered for safety: cleanup first (Turn 1) so the pipeline stops misfiring, then data completeness (Turn 2), then human review tooling (Turn 3), then client deliverable (Turns 4–5), then rollout (Turn 6), then sign-off (Turn 7). I'll pause after each turn for your eyeball check before opening the next.
+- Apify run-sync endpoint: `https://api.apify.com/v2/acts/<ACTOR_ID>/run-sync-get-dataset-items?token=$APIFY_API_TOKEN`. Timeout 60s, memory 1024.
+- Yelp aggressively rate-limits; Firecrawl's residential pool usually gets through, but we accept that Yelp may return 0 some runs.
+- Gemini prompt stays the same shape; only the "platform name to exclude from provider list" string changes per source.
+- Total external call budget per discover run: 3 Sawyer + 1 ActivityHero + 1 Yelp Firecrawl scrapes = **5 Firecrawl scrapes** (up from 3) + **2 Apify Google Maps runs** + **5 Gemini extractions**.

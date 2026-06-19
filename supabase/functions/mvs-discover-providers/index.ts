@@ -138,7 +138,7 @@ Rules:
     const url = buildSawyerUrl(city, box, variants[i]);
     const v: Record<string, unknown> = { variant: i, url };
     try {
-      const res = await fetch(`${FIRECRAWL_V2}/scrape`, {
+      const res = await fetchWithTimeout(`${FIRECRAWL_V2}/scrape`, {
         method: "POST",
         headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -214,7 +214,7 @@ async function runActivityHero(args: {
   const debug: Record<string, unknown> = { url };
   let firecrawlCalls = 0;
   try {
-    const res = await fetch(`${FIRECRAWL_V2}/scrape`, {
+    const res = await fetchWithTimeout(`${FIRECRAWL_V2}/scrape`, {
       method: "POST",
       headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({ url, formats: ["markdown"], onlyMainContent: true, waitFor: 3000 }),
@@ -322,7 +322,7 @@ async function runYelp(args: {
   const debug: Record<string, unknown> = { url };
   let firecrawlCalls = 0;
   try {
-    const res = await fetch(`${FIRECRAWL_V2}/scrape`, {
+    const res = await fetchWithTimeout(`${FIRECRAWL_V2}/scrape`, {
       method: "POST",
       headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({ url, formats: ["markdown"], onlyMainContent: true, waitFor: 3000 }),

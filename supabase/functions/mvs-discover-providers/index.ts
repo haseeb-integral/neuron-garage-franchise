@@ -360,7 +360,7 @@ async function extractWithGemini(args: {
   markdown: string;
 }): Promise<ProviderExtract[]> {
   const { lovableKey, sys, city, sourceUrl, markdown } = args;
-  const res = await fetch(AI_GATEWAY, {
+  const res = await fetchWithTimeout(AI_GATEWAY, {
     method: "POST",
     headers: { "Content-Type": "application/json", "Lovable-API-Key": lovableKey },
     body: JSON.stringify({

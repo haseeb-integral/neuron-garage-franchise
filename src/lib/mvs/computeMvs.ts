@@ -58,6 +58,7 @@ export type MvsProviderInput = {
   price_max?: number | null;
   category_classified?: string | null;
   site_count?: number | null;
+  url?: string | null;
 };
 
 export type MvsWeekInput = {

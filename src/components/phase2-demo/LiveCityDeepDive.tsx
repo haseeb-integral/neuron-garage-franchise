@@ -426,7 +426,19 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                     style={{ borderColor: BORDER }}
                   >
                     <td className="px-4 py-2.5 font-semibold" style={{ color: NAVY }}>
-                      {p.name}
+                      {p.url ? (
+                        <a
+                          href={p.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:underline"
+                          style={{ color: BLUE }}
+                        >
+                          {p.name}
+                        </a>
+                      ) : (
+                        p.name
+                      )}
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: NAVY }}>
                       {p.price_min ? `$${p.price_min}` : "—"}

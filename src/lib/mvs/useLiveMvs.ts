@@ -21,6 +21,9 @@ export type LiveMvsBundle = {
   weeks: MvsWeekInput[];
   acs: MvsAcsInput | null;
   flag: LiveMvsCityFlag | null;
+  watchlist: { name: string; default_overlap: "direct" | "adjacent" | "distant" }[];
+  lastRefreshed: string | null;
+  qaOpenCount: number;
   loading: boolean;
   error: string | null;
   refresh: () => void;

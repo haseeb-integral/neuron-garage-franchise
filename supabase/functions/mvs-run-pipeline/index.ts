@@ -34,11 +34,12 @@ const TIER_A_CITIES = new Set<string>([
   "Indianapolis, IN",
 ]);
 
-type StepName = "discover" | "classify" | "extract";
+type StepName = "discover" | "classify" | "acs" | "extract";
 
 const STEP_FUNCTIONS: Record<StepName, string> = {
   discover: "mvs-discover-providers",
   classify: "mvs-classify-tier",
+  acs: "mvs-acs-pull",
   extract: "mvs-extract-weeks",
 };
 

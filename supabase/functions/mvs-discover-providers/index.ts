@@ -89,6 +89,20 @@ function normalizeName(n: string): string {
   return n.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
+// Marketplace activity-detail links (e.g. hisawyer.com/marketplace/activity-set/123,
+// activityhero.com/a/...) often render as blank SPA shells when the activity
+// is expired or unlisted. Rewrite them to a Google search for the provider so
+// the user always lands on the real provider site in one click.
+function safeProviderUrl(url: string | null | undefined, name: string, city: string): string | null {
+  if (!url) return null;
+  const bad =
+    /hisawyer\.com\/marketplace\/(activity-set|class|camp)\//i.test(url) ||
+    /activityhero\.com\/(a|activity|activities)\//i.test(url);
+  if (!bad) return url;
+  const q = encodeURIComponent(`${name} ${city}`);
+  return `https://www.google.com/search?q=${q}`;
+}
+
 type ProviderExtract = {
   name: string;
   url?: string | null;

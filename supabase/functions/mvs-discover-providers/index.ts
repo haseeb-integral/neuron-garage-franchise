@@ -371,7 +371,7 @@ async function extractWithGemini(args: {
       ],
       response_format: { type: "json_object" },
     }),
-  });
+  }, GEMINI_TIMEOUT_MS);
   if (!res.ok) return [];
   const j = await res.json().catch(() => ({}));
   const raw = j?.choices?.[0]?.message?.content ?? "{}";

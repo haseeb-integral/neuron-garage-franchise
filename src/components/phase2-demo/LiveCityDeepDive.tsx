@@ -21,6 +21,7 @@ const SUB_SCORE_META: {
   title: string;
   subtitle: string;
   formula: string;
+  sources: { label: string; detail: string }[];
 }[] = [
   {
     key: "pricingAcceptance",
@@ -28,6 +29,13 @@ const SUB_SCORE_META: {
     subtitle: "Are families already paying premium pricing?",
     formula:
       "Uses each provider's lowest listed price as a single-week proxy. Score = 0.40 × normalize(median weekly, $300–$700) + 0.40 × normalize(75th pct weekly, $400–$800) + 0.20 × (% at $500+ per week).",
+    sources: [
+      { label: "Sawyer", detail: "Per-camp price ranges scraped from Sawyer listings (price_min / price_max)." },
+      { label: "Google Maps", detail: "Cross-checked pricing where the Google Maps listing exposes a price range." },
+      { label: "Google Search", detail: "Organic results for premium camps not indexed by Sawyer/Maps." },
+      { label: "ActivityHero", detail: "Per-session pricing from ActivityHero listings, when available." },
+      { label: "mvs_providers table", detail: "Every camp shown in the Premium providers table below feeds this score." },
+    ],
   },
   {
     key: "marketAbsorption",
@@ -35,6 +43,11 @@ const SUB_SCORE_META: {
     subtitle: "Are premium operators actually selling out?",
     formula:
       "v1.0: normalize(Sellout Rate, 0–80%). Time-to-sellout & YoY velocity are Year 2 signals.",
+    sources: [
+      { label: "Sawyer week status", detail: "Each premium camp's week-by-week availability scraped from Sawyer (open / waitlist / sold_out)." },
+      { label: "mvs_weeks table", detail: "The week-row counter in the header (e.g. '68 week rows') is the input universe for this score." },
+      { label: "QA queue", detail: "Borderline week statuses are routed to the review queue before they affect this number." },
+    ],
   },
   {
     key: "scaledOperator",
@@ -42,6 +55,11 @@ const SUB_SCORE_META: {
     subtitle: "Validated vs saturated by national operators?",
     formula:
       "0.65 × normalize(Operator Validation, 0–8) + 0.35 × (100 − normalize(Direct Competitor Load, 0–5 per 10k))",
+    sources: [
+      { label: "Operator watchlist", detail: "Curated list of national brands (Galileo, iD Tech, Steve & Kate's, etc.) maintained in mvs_operator_watchlist." },
+      { label: "Provider name match", detail: "Watchlist names matched against the premium providers found in this city." },
+      { label: "US Census ACS (5-yr)", detail: "Children 5–12 population used to normalize competitor load per 10k kids." },
+    ],
   },
   {
     key: "enrichmentDiversity",
@@ -49,12 +67,20 @@ const SUB_SCORE_META: {
     subtitle: "Do families invest across multiple categories?",
     formula:
       "0.70 × normalize(Category Count, 2–10) + 0.30 × normalize(Diversity Ratio, 0.1–0.6)",
+    sources: [
+      { label: "Category classifier", detail: "Each provider classified into STEM / Arts / Sports / Academic / Specialty by AI extractor over scraped descriptions." },
+      { label: "mvs_providers table", detail: "Same premium provider rows as Pricing — category_classified column." },
+    ],
   },
   {
     key: "marketDepth",
     title: "Market Depth",
     subtitle: "How large is the premium ecosystem?",
     formula: "normalize(Premium Provider Count, 4–40)",
+    sources: [
+      { label: "5-source discovery", detail: "Deduplicated count from Sawyer + ActivityHero + Google Maps + Google Search + local directories." },
+      { label: "Tier classifier", detail: "Only providers classified 'premium' by the tier rules are counted here." },
+    ],
   },
   {
     key: "marketBalance",
@@ -62,6 +88,10 @@ const SUB_SCORE_META: {
     subtitle: "Is there still room in this market?",
     formula:
       "normalize(Coverage Ratio, 50–500); ≥350 Underserved · 200–349 Balanced · 100–199 Competitive · <100 Saturated",
+    sources: [
+      { label: "US Census ACS (5-yr)", detail: "Affluent dual-income family count + children 5–12 from American Community Survey." },
+      { label: "mvs_providers table", detail: "Premium provider count (denominator) from the same live providers table." },
+    ],
   },
 ];
 

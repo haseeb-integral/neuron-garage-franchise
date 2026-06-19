@@ -1,76 +1,67 @@
 
-## Diagnosis
+## Two tracks this turn
 
-### 1. Duplicate NYC rows
+### Track 1 — Tier A rollout (the 7 remaining cities)
 
-DB truth (`mvs_shortlist_cities`):
-- Only **2 manager additions** exist: `Denver, CO` and `New York, NY`
-- Built-in demo (`SHORTLIST_DEMO`) already includes `New York, NY` → so the merge produces **2 NYC rows** that share the id `new-york-ny`
+DB truth as of now:
 
-But the screenshot shows **6 NYC rows** (1 demo + 5 LIVE) and the header still says "11 cities". That mismatch tells me:
-- `allShortlistRows` length is being computed correctly (11)
-- But the render pass is duplicating NYC rows because **multiple rows share the same React `key` (`r.id`)** — `[...SHORTLIST_DEMO, ...extras]` does no dedupe, and any stale/repeated extras with the same slugged id collide with the demo row
+| City | Providers | Weeks | Status |
+|---|---|---|---|
+| Austin, TX | 118 | 34 | calibrated |
+| Boston, MA | 86 | 43 | calibrated |
+| New York, NY | 13 | 103 | **stub** |
+| Los Angeles, CA | 5 | 12 | **stub** |
+| Houston, TX | 3 | 2 | **stub** |
+| Chicago, IL | 2 | 3 | **stub** |
+| San Antonio, TX | 1 | 5 | **stub** |
+| Philadelphia, PA | 1 | 9 | **stub** |
+| Indianapolis, IN | 0 | 0 | **never run** |
 
-Either way the root cause is the merge in `src/pages/MarketValidation.tsx` (lines 170–185): it concatenates demo + DB additions without dedupe, and the id is derived purely from city+state so the demo's `new-york-ny` and an addition's `new-york-ny` collide.
+Goal: real pipeline runs for the seven stub cities, so each Tier A city has a trustworthy composite (just like Austin and Boston).
 
-A second, lower-likelihood factor: the DB has no unique constraint on `(city, state)` in `mvs_shortlist_cities`, so a manager could insert "New York / NY" several times. Today the table only has 1 NYC addition, but we should harden it so this can't happen again.
+No new code needed for the runs themselves — `/mvs-rollout` already has the Run buttons wired to `mvs-run-pipeline` and the flag-flip logic. The pipeline is sequential by design (~1–2 min/city → ~10–15 min total).
 
-### 2. Selected row doesn't persist
+I will trigger them server-side directly (sequential `supabase.functions.invoke("mvs-run-pipeline", { body: { city } })` with poll-until-done between each) so you don't have to babysit the UI. After all seven complete:
 
-`src/pages/MarketValidation.tsx` line 187:
-```ts
-const [activeCityId, setActiveCityId] = useState<string>("san-antonio-tx");
-```
+- Spot-check the table at `/market-validation` — every Tier A city shows a LIVE pill, a composite that isn't 82/0, and a real Pricing/Absorption/Diversity/Depth split.
+- Confirm `mvs_city_flags.mvs_data_source = 'live'` for all 9 Tier A cities.
+- Check that no row is stuck in `running`/`queued` after 8 minutes.
 
-It always resets to San Antonio on mount. There's no read from localStorage, no URL param, nothing tying it to the user's last pick.
+If any city's run fails, I'll capture the edge-function log error and report it; I will not silently retry-loop.
 
----
+### Track 2 — "One calibrated number everywhere" audit + fix
 
-## Plan
+The plan claimed this was "wired through row / detail / compare", but a targeted grep found one real leak:
 
-Two small, frontend-only fixes plus one tiny DB guard.
+**`src/lib/decisionsExport.ts` (`exportMarketDecisionsCsv`)** writes `c.composite` / `c.pricing` / … straight from the static `ShortlistRow` (the demo fallback). For any city flipped to live, the CSV exports the **stale demo number, not the live overlay**. Example: NYC ships as `82` in the CSV even though the table shows `45.7`. That violates Brett's rule.
 
-### A. Stop the duplicate rows (`src/pages/MarketValidation.tsx`)
+Fix:
+1. Extend `exportMarketDecisionsCsv` to take the same `Map<string, LiveOverlay>` already computed in `MarketValidation.tsx`.
+2. Per row, prefer the overlay value when present; fall back to the demo `c.*` only when no overlay exists.
+3. Add a `data_source` column (`live` | `sample`) so the CSV makes the provenance explicit.
+4. Update the one caller in `ShortlistTable.tsx` (`onClick={() => exportMarketDecisionsCsv(rows, byCity)}`) to forward `liveOverlays` — the prop already exists on the component.
 
-In the `allShortlistRows` `useMemo` (around lines 170–185):
-1. Build `extras` as today.
-2. Concat `[...SHORTLIST_DEMO, ...extras]`.
-3. **Dedupe by id** — keep the first occurrence (so demo wins over any addition that slugs to the same id like NYC). Use a `Set<string>` of seen ids.
+Other surfaces I already confirmed read from `computeMvs` / `useLiveMvs` / overlays (no action needed):
+- `ShortlistTable` row cells — uses `valFor()` with overlay fallback ✓
+- `LiveCityDeepDive` detail panel — calls `useLiveMvs` directly ✓
+- `MarketValidationRollout` composite column — calls `useLiveMvs` per row via `<CityRow>` ✓
+- Compare modal — reads from the same `computeMvs` helper ✓
 
-This makes the merge defensive even if `mvs_shortlist_cities` ever contains a duplicate row.
-
-### B. Persist the selected row (`src/pages/MarketValidation.tsx`)
-
-1. Replace the hardcoded initial state:
-   ```ts
-   const [activeCityId, setActiveCityId] = useState<string>(
-     () => localStorage.getItem("mvs-active-city") ?? "san-antonio-tx"
-   );
-   ```
-2. Write to localStorage whenever it changes:
-   ```ts
-   useEffect(() => { localStorage.setItem("mvs-active-city", activeCityId); }, [activeCityId]);
-   ```
-3. If the saved id no longer exists in `allShortlistRows` (city was removed), fall back to the existing `?? allShortlistRows[0]` guard already on line 188. No extra code needed.
-
-Effect: open the page → it lands on the row you last clicked. Across tabs, across refreshes.
-
-### C. DB hardening — unique constraint on `mvs_shortlist_cities`
-
-Add a case-insensitive unique index on `(city, state)` so two managers can never insert "New York / NY" twice (today nothing stops them):
-
-```sql
-CREATE UNIQUE INDEX IF NOT EXISTS mvs_shortlist_cities_city_state_ci_uniq
-  ON public.mvs_shortlist_cities (lower(city), lower(state));
-```
-
-No data migration needed — current table only has 2 distinct rows. `useShortlistAdditions.addCity` will get a clean DB error on conflict, which the existing `throw new Error(error.message)` already surfaces.
-
-### Out of scope (deliberately not touching this turn)
-- The "live overlay shows 45.7 / 100 / 0 …" numbers on NYC — those come from `useLiveMvs("New York, NY")` reading sparse data (only 13 providers exist). That's a Phase 4 (full Tier-A rollout) job, not a duplication bug.
-- PDF / QA Queue / ACS / Firecrawl extractor expansion — still pending from the 7-point plan.
+Two surfaces are deferred to other turns and not in this fix:
+- **PDF Market Brief** — doesn't exist yet (point #1 of the 7-point plan)
+- **RowScorePopover** — currently uses overlay correctly; will re-verify visually after Tier A runs
 
 ### Verify after build
-1. Reload `/market-validation` → exactly **2 NYC rows max** (likely just 1 since the addition slugs to the same id as the demo and gets deduped). Header "11 cities" matches visible row count.
-2. Click `Boston, MA`. Hard-refresh. Boston row is still highlighted/selected on load.
-3. (Optional) Try to add "New York / NY" again from the Rollout page → should fail with a unique-constraint error in the toast.
+
+1. With Tier A all-green, open `/market-validation`, click **Export decisions (CSV)**. Open the file:
+   - NYC row: `mvs_score` should be the live ~45.7 (or whatever NYC settles at after the real run), `data_source=live`.
+   - San Antonio row: anchor demo numbers, `data_source=sample`.
+2. Visual cross-check: every value in the CSV row matches the value visible in the corresponding shortlist row cell. No mismatches.
+3. `/mvs-rollout`: progress strip reads `9 of 11 cities scored` (or 11/11 if your two manager-added cities also get runs — not in scope this turn).
+
+### Out of scope (still on the 7-point list, next turns)
+- PDF Market Brief (#1)
+- QA Queue review page (#2)
+- Census ACS wiring (#3)
+- `/mvs-preview` admin page (#6)
+- Firecrawl extractor expansion to non-Sawyer sources

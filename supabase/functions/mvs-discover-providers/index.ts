@@ -20,6 +20,21 @@ const FIRECRAWL_V2 = "https://api.firecrawl.dev/v2";
 const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const SCREENSHOT_BUCKET = "mvs-screenshots";
 
+// Per-source hard timeouts so one stalled provider can't blow the whole run.
+const FIRECRAWL_TIMEOUT_MS = 25_000;
+const APIFY_TIMEOUT_MS = 60_000;
+const GEMINI_TIMEOUT_MS = 20_000;
+
+async function fetchWithTimeout(url: string, opts: RequestInit, ms: number): Promise<Response> {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { ...opts, signal: ctrl.signal });
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 // Source priority for dedupe: when the same provider appears in multiple
 // sources, the row is tagged with the highest-priority platform.
 type Platform = "sawyer" | "activityhero" | "google_maps" | "yelp";

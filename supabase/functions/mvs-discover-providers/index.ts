@@ -269,11 +269,11 @@ async function runGoogleMaps(args: {
       countryCode: "us",
       skipClosedPlaces: true,
     };
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    });
+    }, APIFY_TIMEOUT_MS);
     if (!res.ok) {
       debug.error = `apify ${res.status}`;
       debug.body = (await res.text()).slice(0, 300);

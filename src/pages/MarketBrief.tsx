@@ -605,6 +605,7 @@ export default function MarketBrief() {
               </thead>
               <tbody>
                 {[...providers]
+                  .filter((p) => p.tier !== "premium")
                   .sort((a, b) => {
                     const order: Record<string, number> = { premium: 0, mid: 1, budget: 2, community: 3 };
                     const ta = order[a.tier ?? "community"] ?? 9;

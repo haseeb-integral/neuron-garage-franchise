@@ -260,7 +260,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                     if (v == null || k === "year2Signal") return null;
                     return (
                       <li key={k} className="flex items-center justify-between text-[11px]">
-                        <span style={{ color: MUTED }}>{k}</span>
+                        <span style={{ color: MUTED }}>{INPUT_LABELS[k] ?? k}</span>
                         <span className="font-medium tabular-nums" style={{ color: NAVY }}>
                           {typeof v === "number" ? (Number.isInteger(v) ? v : v.toFixed(2)) : String(v)}
                         </span>

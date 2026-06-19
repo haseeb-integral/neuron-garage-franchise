@@ -9,6 +9,7 @@
 
 import type { MarketDecisionRow, MarketVerdict } from "@/hooks/useMarketDecisions";
 import type { ShortlistRow } from "@/data/phase2DemoData";
+import type { LiveOverlay } from "@/components/phase2-demo/ShortlistTable";
 
 const VERDICT_LABEL: Record<MarketVerdict, string> = {
   pursue: "Pursue",

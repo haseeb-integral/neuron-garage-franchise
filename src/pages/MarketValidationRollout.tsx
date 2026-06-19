@@ -193,17 +193,25 @@ export default function MarketValidationRollout() {
       .limit(200);
     const latest: Record<string, RunRow | null> = {};
     for (const c of cities) latest[c] = null;
+    const STALE_MS = 3 * 60 * 1000;
+    const now = Date.now();
     for (const r of runRows ?? []) {
       // Skip phantom/stub rows that never actually started — they distort "Last run".
       if (!(r as any).started_at) continue;
       if (!latest[(r as any).city]) {
+        let status = (r as any).status as RunStatus;
+        // Display-side stale clear: a running row older than 3 min is presumed dead.
+        if ((status === "running" || status === "queued") &&
+            now - new Date((r as any).started_at).getTime() > STALE_MS) {
+          status = "failed";
+        }
         latest[(r as any).city] = {
           id: (r as any).id,
-          status: (r as any).status as RunStatus,
+          status,
           started_at: (r as any).started_at,
           finished_at: (r as any).finished_at,
           firecrawl_calls: (r as any).firecrawl_calls ?? 0,
-          error: (r as any).error,
+          error: (r as any).error ?? (status === "failed" && !(r as any).error ? "Run appears stuck (>3 min). Try again." : null),
           created_at: (r as any).created_at,
         };
       }

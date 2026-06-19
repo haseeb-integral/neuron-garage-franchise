@@ -407,6 +407,7 @@ export default function MarketValidation() {
                 2 · (Re)score cities
               </div>
               <div className="flex shrink-0 items-center gap-1.5">
+                <RefreshAllButton />
                 <Link
                   to="/market-validation/rollout"
                   className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold text-white"

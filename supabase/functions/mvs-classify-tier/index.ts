@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
   // Fetch providers to classify.
   let query = admin
     .from("mvs_providers")
-    .select("id, city, name, platform, url, price_min, price_max, category_raw, tier")
+    .select("id, city, name, platform, url, price_min, price_max, category_raw, tier, sources")
     .eq("city", city);
   if (!reclassify) query = query.is("tier", null);
   const { data: providers, error: fetchErr } = await query;

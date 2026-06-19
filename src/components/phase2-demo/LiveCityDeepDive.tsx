@@ -109,6 +109,8 @@ const INPUT_LABELS: Record<string, string> = {
   operatorValidation: "National operators (validating)",
   directCompetitorLoad: "Direct competitors / 10k kids",
   coverageRatio: "Coverage ratio (kids / seat)",
+  children5to12: "Children 5–12 (US Census ACS)",
+  affluentDualIncomeFamilyCount: "Affluent dual-income families (ACS)",
 };
 
 interface Props {

@@ -1,0 +1,114 @@
+/* Market Brief — branded print stylesheet.
+ *
+ * Scoped via the .mb-doc root class. Loaded only on /market-brief so it
+ * never affects the rest of the app. Designed for browser "Save as PDF"
+ * (Cmd-P → Save as PDF). Uses standard W3C @page CSS — no JS polyfill.
+ */
+
+/* ---------- Screen view (web page) ---------- */
+
+.mb-doc {
+  --mb-navy: #07142f;
+  --mb-blue: #174be8;
+  --mb-blue-soft: #eaf0ff;
+  --mb-muted: #526078;
+  --mb-line: #e5eaf2;
+  --mb-soft: #f7faff;
+  --mb-cream: #faf7f2;
+  --mb-green: #1d6b32;
+  --mb-red: #a3142b;
+  --mb-gold: #c9a14a;
+
+  font-family: "Inter", system-ui, sans-serif;
+  color: var(--mb-navy);
+  background: #f3f4f8;
+  line-height: 1.55;
+}
+
+.mb-doc .mb-serif { font-family: "Fraunces", "Iowan Old Style", Georgia, serif; font-feature-settings: "ss01", "ss02"; letter-spacing: -0.01em; }
+.mb-doc .mb-mono  { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+.mb-doc .mb-page {
+  width: 8.5in;
+  min-height: 11in;
+  margin: 0 auto 24px;
+  padding: 0.6in;
+  background: white;
+  box-shadow: 0 1px 3px rgba(7,20,47,0.06), 0 8px 24px rgba(7,20,47,0.08);
+  position: relative;
+}
+
+.mb-doc .mb-page--cover {
+  padding: 0;
+  background: radial-gradient(120% 80% at 100% 0%, #1240c9 0%, #07142f 55%, #050e22 100%);
+  color: white;
+  overflow: hidden;
+}
+
+/* ---------- Print view ---------- */
+
+@page {
+  size: Letter;
+  margin: 0.55in 0.55in 0.75in 0.55in;
+}
+
+@page :first {
+  margin: 0;
+}
+
+@media print {
+  html, body { background: white !important; }
+
+  /* hide the rest of the app chrome */
+  body > *:not(#root) { display: none !important; }
+
+  .mb-no-print { display: none !important; }
+
+  .mb-doc { background: white !important; }
+
+  .mb-doc .mb-page {
+    width: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+    page-break-after: always;
+    break-after: page;
+  }
+  .mb-doc .mb-page:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+
+  .mb-doc .mb-page--cover {
+    /* full-bleed cover */
+    height: 11in;
+    padding: 0;
+  }
+
+  /* page-break helpers */
+  .mb-doc .mb-break-before { page-break-before: always; break-before: page; }
+  .mb-doc .mb-avoid-break  { page-break-inside: avoid; break-inside: avoid; }
+
+  /* running footer with page numbers — supported by Chrome + Safari */
+  @page {
+    @bottom-left  { content: "Neuron Garage  ·  Market Validation Brief"; font-family: Inter, sans-serif; font-size: 8pt; color: #526078; }
+    @bottom-right { content: "Page " counter(page) " of " counter(pages);  font-family: Inter, sans-serif; font-size: 8pt; color: #526078; }
+  }
+  @page :first {
+    @bottom-left  { content: none; }
+    @bottom-right { content: none; }
+  }
+
+  /* keep table rows together where possible */
+  .mb-doc table { page-break-inside: auto; }
+  .mb-doc tr    { page-break-inside: avoid; page-break-after: auto; }
+  .mb-doc thead { display: table-header-group; }
+  .mb-doc tfoot { display: table-footer-group; }
+
+  /* preserve color/background on print (Chromium) */
+  .mb-doc, .mb-doc * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

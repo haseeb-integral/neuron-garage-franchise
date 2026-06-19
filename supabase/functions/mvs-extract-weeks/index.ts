@@ -336,6 +336,18 @@ async function processProvider(
       }
       out.weeks_inserted = insData?.length ?? 0;
 
+      // Clear stale unresolved week QA rows for this provider's weeks so
+      // re-runs don't pile up duplicates. Resolved history is preserved.
+      const allWeekIds = (insData ?? []).map((w) => w.id);
+      if (allWeekIds.length > 0) {
+        await admin
+          .from("mvs_qa_queue")
+          .delete()
+          .eq("entity_type", "week")
+          .is("resolved_at", null)
+          .in("entity_id", allWeekIds);
+      }
+
       const qaRows = (insData ?? [])
         .filter((w) => (w.confidence ?? 0) < QA_CONFIDENCE_THRESHOLD)
         .map((w) => ({

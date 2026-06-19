@@ -180,27 +180,66 @@ Deno.serve(async (req) => {
         ? r.tier
         : "mid") as Tier;
 
-      const src = batch.find((b) => b.id === r.id);
+      const src = batch.find((b) => b.id === r.id) as
+        | (ProviderRow & { tier: Tier | null; sources?: unknown })
+        | undefined;
 
-      // Deterministic overrides (never let the model misclassify on clear signals):
-      // - Community keyword in name -> community (preserves not-childcare/community rule).
-      // - Price >= $400 (per week or per camp) -> premium (unless community).
-      // - Price > 0 and < $200 with both bounds set -> budget (unless community).
+      // ---- Turn 2.2: deterministic overlay (post-Gemini, wins on conflict) ----
       const nameLc = (src?.name ?? "").toLowerCase();
-      const isCommunityBrand = /\b(ymca|jcc|parks?\s*(and|&)?\s*rec|public library|municipal|city of |church|kindercare)\b/.test(nameLc);
       const pMax = Number(src?.price_max ?? 0);
       const pMin = Number(src?.price_min ?? 0);
-      if (isCommunityBrand) {
+      const hasPrice = pMax > 0 || pMin > 0;
+      const sourcesArr = Array.isArray(src?.sources) ? (src!.sources as unknown[]) : [];
+      const sourceCount = sourcesArr.length;
+
+      // 1. Community brands (extended)
+      const isCommunityBrand =
+        /\b(ymca|jcc|parks?\s*(and|&)?\s*rec(reation)?|public library|municipal|city of |church|kindercare|boys\s*(and|&)?\s*girls\s*club|scout|4-h|parks\s+dept)\b/.test(
+          nameLc,
+        );
+
+      // 2. Childcare / preschool exclusion (no week price means it's likely care not enrichment)
+      const isChildcareLike =
+        !hasPrice &&
+        /\b(daycare|preschool|childcare|after.?school\s+care|learning\s+center|montessori\s+school)\b/.test(
+          nameLc,
+        );
+
+      // 4. National premium brand list
+      const isNationalPremium =
+        /\b(galileo|id\s*tech|steve\s*&?\s*kate|snapology|lavner|mad\s+science|code\s+ninjas|british\s+soccer|challenger\s+sports|school\s+of\s+rock)\b/.test(
+          nameLc,
+        );
+
+      if (isCommunityBrand || isChildcareLike) {
         tier = "community";
-      } else if (pMax >= 400 || pMin >= 400) {
+      } else if (isNationalPremium) {
         tier = "premium";
+      } else if (hasPrice) {
+        // 3. Price-based
+        if (pMax >= 400 || pMin >= 400) {
+          tier = "premium";
+        } else if (pMax > 0 && pMax < 200 && (pMin === 0 || pMin < 200)) {
+          tier = "budget";
+        } else {
+          tier = "mid";
+        }
+      } else {
+        // 5. Cross-source presence boost (no price): 3+ sources = real/established operator
+        if (sourceCount >= 3) {
+          tier = "premium";
+        } else if (sourceCount >= 2) {
+          // 6. Unknown-price guard: cap at mid without strong evidence
+          tier = "mid";
+        } else {
+          // single-source, no price, no brand match — keep Gemini's call but cap at mid
+          tier = tier === "premium" ? "mid" : tier;
+        }
       }
 
-      // category_classified must never be null — fall back to category_raw, then 'unknown'.
-      const category =
-        (r.category_classified && r.category_classified.trim()) ||
-        (src?.category_raw && src.category_raw.trim()) ||
-        "unknown";
+      // ---- Category normalizer ----
+      const rawCat = (r.category_classified || src?.category_raw || "").toLowerCase();
+      const category = normalizeCategory(rawCat, nameLc, tier);
 
       const { error: upErr } = await admin
         .from("mvs_providers")

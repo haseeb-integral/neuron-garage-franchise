@@ -419,6 +419,13 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
             <tbody>
               {premiumProviders.map((p) => {
                 const pweeks = weeks.filter((w) => w.provider_id === p.id);
+                const nameHref =
+                  (p as any).website_url ||
+                  (p as any).source_listing_url ||
+                  p.url ||
+                  null;
+                const weekSourceHref =
+                  pweeks.find((w) => (w as any).source_url)?.["source_url" as keyof typeof pweeks[number]] ?? null;
                 return (
                   <tr
                     key={p.id}
@@ -426,9 +433,9 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                     style={{ borderColor: BORDER }}
                   >
                     <td className="px-4 py-2.5 font-semibold" style={{ color: NAVY }}>
-                      {p.url ? (
+                      {nameHref ? (
                         <a
-                          href={p.url}
+                          href={nameHref}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="hover:underline"
@@ -450,7 +457,22 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                       {p.category_classified ?? "—"}
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: NAVY }}>
-                      {pweeks.length}
+                      <span>{pweeks.length}</span>
+                      {weekSourceHref ? (
+                        <>
+                          {" "}
+                          <a
+                            href={weekSourceHref as string}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[11px] hover:underline"
+                            style={{ color: BLUE }}
+                            title="Open the page where these weeks were extracted"
+                          >
+                            source ↗
+                          </a>
+                        </>
+                      ) : null}
                     </td>
                   </tr>
                 );

@@ -163,6 +163,8 @@ export function useLiveMvs(
             price_max: p.price_max,
             category_classified: p.category_classified,
             url: (p as any).url ?? null,
+            website_url: (p as any).website_url ?? null,
+            source_listing_url: (p as any).source_listing_url ?? null,
           })),
         );
         setWeeks(
@@ -170,6 +172,7 @@ export function useLiveMvs(
             provider_id: w.provider_id,
             status: w.status as MvsWeekInput["status"],
             confidence: w.confidence,
+            source_url: w.source_url ?? null,
           })),
         );
         setAcs(acsInput);

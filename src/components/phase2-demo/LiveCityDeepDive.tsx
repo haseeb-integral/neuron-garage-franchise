@@ -65,6 +65,22 @@ const SUB_SCORE_META: {
   },
 ];
 
+// Friendly labels for the sub-score input rows so non-technical readers
+// can interpret the numbers (e.g. "Median weekly price (est.)" instead of
+// the raw camelCase key "medianPrice").
+const INPUT_LABELS: Record<string, string> = {
+  medianPrice: "Median weekly price (est.)",
+  p75Price: "75th-pct weekly price (est.)",
+  pctAtLeast500: "% of providers ≥ $500/wk",
+  selloutRate: "Sellout rate",
+  premiumProviderCount: "Premium providers",
+  categoryCount: "Categories represented",
+  diversityRatio: "Diversity ratio",
+  operatorValidation: "National operators (validating)",
+  directCompetitorLoad: "Direct competitors / 10k kids",
+  coverageRatio: "Coverage ratio (kids / seat)",
+};
+
 interface Props {
   cityKey: string;            // e.g. "Austin, TX"
   cityDisplay: string;        // e.g. "Austin"

@@ -530,7 +530,7 @@ Deno.serve(async (req) => {
       name: m.name.trim().slice(0, 300),
       platform: m.platform,
       sources: m.sources_seen,
-      url: m.url ?? null,
+      url: safeProviderUrl(m.url ?? null, m.name, city),
       price_min: m.price_min ?? null,
       price_max: m.price_max ?? null,
       category_raw: m.category_raw ?? null,

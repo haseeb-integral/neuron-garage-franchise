@@ -1,35 +1,35 @@
-## Status check against the 7-item v1.0 list
+## Decisions
+- Drop Item 6 (`/mvs-preview`) — pages are live, demo column not needed.
+- Pillar/composite scores recompute on read, so no "score refresh" job needed.
+- The improved extractor only helps cities whose pipeline is re-run, so trigger a fresh `mvs-run-pipeline` per city.
 
-| # | Item | Status | Notes |
-|---|---|---|---|
-| 1 | **PDF Market Brief (Phase 6)** | ❌ Not started | No PDF generator, no download button anywhere. |
-| 2 | **QA Queue review page** | ✅ Done (with active polish) | `/mvs-qa-queue` exists, shows screenshot, AI guess, status dropdown, save, mark-resolved, city filter, provider grouping, provider-issue rows. Today's work improved evidence URL discovery, dedup, dropdown wording. |
-| 3 | **Wire up Census ACS (Stage 4)** | ❌ Not started | No `mvs-acs-pull` step. Orchestrator `mvs-run-pipeline` does not call ACS. Scores 3 and 6 still use incomplete inputs. |
-| 4 | **Run pipeline for 7 Tier A cities + Boston gate** | 🟡 Partial | Pipeline is runnable per city; Austin live, Philadelphia just exercised. NYC, Houston, Chicago, Boston, San Antonio, LA not yet flipped to Live. Boston calibration gate not implemented. |
-| 5 | **Consolidate duplicate week extractors** | ✅ Done | Only `mvs-extract-weeks` exists; `-all` and `-austin-all` are gone. |
-| 6 | **`/mvs-preview` admin sanity-check page** | ❌ Not started | No preview page exists. |
-| 7 | **"One calibrated number everywhere" end-to-end** | 🟡 Partial | Verified on row / detail / compare. Cannot complete until PDF (#1) exists. |
+## What to build (one turn)
 
-## Safest, lowest-risk, one-turn next item
+**New edge function `mvs-refresh-all`** (manager-only):
+1. Query distinct cities that already have rows in `mvs_providers` (i.e. cities previously run), intersected with the Tier A allow-list so we never accidentally crawl a non-shortlist city.
+2. For each city, in sequence:
+   - Skip if a pipeline run for that city is still in flight (`mvs_pipeline_runs` queued/running, <3 min old).
+   - Otherwise POST to `mvs-run-pipeline` with `{ city }`.
+   - Wait ~2 seconds between cities to avoid Firecrawl burst.
+3. Return a summary `{ triggered: [...], skipped: [...] }`.
 
-**Item 5 is already done, so the safest remaining one-turn task is Item 3 — add the ACS pull step (`mvs-acs-pull`) and call it from `mvs-run-pipeline`.**
+Background execution model already used by `mvs-run-pipeline` is reused — each per-city call returns immediately and the work continues in the background, so this function finishes in a few seconds.
 
-Why this is the safest single turn:
-- It is additive only: a new edge function plus one extra call in the orchestrator.
-- No UI changes, no schema migration if we reuse the existing v1.0 ACS pipeline table for population denominators.
-- Failure mode is contained: if ACS fails, scores 3 and 6 stay on current inputs (same as today). No regression risk for already-working surfaces.
-- It unblocks accurate Scores 3 and 6 before any Tier A city is flipped to Live, which is required for #4 to be trustworthy.
+**Trigger UI**: add a single button "Re-run pipeline for all live cities" on `/market-validation` (manager-only), next to the existing scoring console link. Clicking it calls the new function, shows a toast with the triggered/skipped counts, and tells the user to watch the existing pipeline-runs table for progress. No new status UI — re-uses the polling that already exists.
 
-Item 6 (`/mvs-preview`) is also low risk and one turn, but it is optional per the spec and does not unblock anything else.
+## Files changed
+- `supabase/functions/mvs-refresh-all/index.ts` — new
+- `src/pages/MarketValidation.tsx` — add the button + handler
 
-## Proposed next single turn (only if you approve)
+## Out of scope (intentionally)
+- Cron / scheduled refresh.
+- New scoring logic.
+- Any change to `mvs-run-pipeline` itself.
+- `/mvs-preview` page.
 
-Implement Item 3:
-1. Add `supabase/functions/mvs-acs-pull/index.ts` that, given `{ city, state }`, fetches "kids ages 5–12" and "affluent dual-income families" counts from the existing ACS source used by v1.0, and writes them to the city's MVS row (or a small `mvs_city_demographics` cache if v1.0 store is not reusable — decide after a 1-file read).
-2. Call `mvs-acs-pull` from `mvs-run-pipeline` after provider discovery and before scoring, non-fatal on failure.
-3. Read those fields in the Score 3 and Score 6 helpers (single calibrated helper — Brett's rule).
-4. Verify: re-run pipeline for Philadelphia, confirm Scores 3 and 6 populate and the same numbers appear in row, detail panel, and compare modal.
+## Verification
+1. Click the new button, confirm response lists Tier A cities that have providers.
+2. Watch `mvs_pipeline_runs` table — one row per city flips `queued → running → done`.
+3. Spot-check Philly Art Center: its weeks now show a real registration URL in `source_url`, not the homepage.
 
-No PDF work, no Tier A rollout, no UI restructuring in this turn.
-
-Do you want me to proceed with Item 3 next, or pick a different item?
+OK to build?

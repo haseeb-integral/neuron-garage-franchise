@@ -147,7 +147,7 @@ Rules:
           onlyMainContent: true,
           waitFor: 3000,
         }),
-      });
+      }, FIRECRAWL_TIMEOUT_MS);
       firecrawlCalls += 1;
       const j = await res.json().catch(() => ({}));
       if (!res.ok) { v.error = `firecrawl ${res.status}`; variantDebug.push(v); continue; }

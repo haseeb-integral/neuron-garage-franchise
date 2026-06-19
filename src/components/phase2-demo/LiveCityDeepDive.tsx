@@ -337,6 +337,28 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                   {meta.formula}
                 </pre>
               </details>
+
+              <details className="pt-2 text-[11px]">
+                <summary
+                  className="cursor-pointer font-semibold"
+                  style={{ color: BLUE }}
+                >
+                  Show sources ({meta.sources.length})
+                </summary>
+                <ul className="mt-2 space-y-1.5 rounded-md p-2" style={{ backgroundColor: SOFT }}>
+                  {meta.sources.map((src) => (
+                    <li key={src.label} className="leading-snug">
+                      <span
+                        className="mr-1.5 inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+                        style={{ backgroundColor: "#fff", color: BLUE, border: `1px solid ${BORDER}` }}
+                      >
+                        {src.label}
+                      </span>
+                      <span style={{ color: NAVY }}>{src.detail}</span>
+                    </li>
+                  ))}
+                </ul>
+              </details>
             </div>
           );
         })}

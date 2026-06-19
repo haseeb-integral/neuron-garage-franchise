@@ -552,19 +552,20 @@ Deno.serve(async (req) => {
       debug[r.platform] = r.debug;
     }
 
-    type Merged = ProviderExtract & { platform: Platform; sources_seen: Platform[] };
+    type Merged = ProviderExtract & { platform: Platform; sources_seen: Platform[]; canonical: string };
     const byKey = new Map<string, Merged>();
     for (const r of sourceResults) {
       for (const p of r.providers) {
-        const key = normalizeName(p.name);
-        if (!key) continue;
-        const existing = byKey.get(key);
+        const canon = canonicalName(p.name);
+        if (!canon) continue;
+        const existing = byKey.get(canon);
         if (!existing) {
-          byKey.set(key, { ...p, platform: r.platform, sources_seen: [r.platform] });
+          byKey.set(canon, { ...p, platform: r.platform, sources_seen: [r.platform], canonical: canon });
         } else {
           if (!existing.sources_seen.includes(r.platform)) existing.sources_seen.push(r.platform);
           if (PLATFORM_PRIORITY[r.platform] < PLATFORM_PRIORITY[existing.platform]) {
             existing.platform = r.platform;
+            existing.name = p.name; // prefer name from higher-priority source
           }
           existing.url = existing.url ?? p.url ?? null;
           existing.price_min = existing.price_min ?? p.price_min ?? null;
@@ -574,24 +575,52 @@ Deno.serve(async (req) => {
         }
       }
     }
-    debug.merged_total = byKey.size;
+
+    // Second-pass fuzzy merge: collapse entries whose canonicals are bigram-similar
+    // (Jaccard >= 0.75) or one is a >=6-char prefix of the other.
+    const mergedList: Merged[] = [...byKey.values()];
+    const mergedBigrams = mergedList.map((m) => bigrams(m.canonical));
+    const removed = new Set<number>();
+    for (let i = 0; i < mergedList.length; i++) {
+      if (removed.has(i)) continue;
+      for (let j = i + 1; j < mergedList.length; j++) {
+        if (removed.has(j)) continue;
+        const a = mergedList[i], b = mergedList[j];
+        const sim = jaccard(mergedBigrams[i], mergedBigrams[j]);
+        const prefix = a.canonical.length >= 6 && b.canonical.length >= 6 &&
+          (a.canonical.startsWith(b.canonical) || b.canonical.startsWith(a.canonical));
+        if (sim >= 0.75 || prefix) {
+          for (const s of b.sources_seen) if (!a.sources_seen.includes(s)) a.sources_seen.push(s);
+          if (PLATFORM_PRIORITY[b.platform] < PLATFORM_PRIORITY[a.platform]) {
+            a.platform = b.platform; a.name = b.name;
+          }
+          a.url = a.url ?? b.url ?? null;
+          a.price_min = a.price_min ?? b.price_min ?? null;
+          a.price_max = a.price_max ?? b.price_max ?? null;
+          a.category_raw = a.category_raw ?? b.category_raw ?? null;
+          a.confidence = Math.max(a.confidence ?? 0, b.confidence ?? 0);
+          removed.add(j);
+        }
+      }
+    }
+    const finalMerged = mergedList.filter((_, idx) => !removed.has(idx));
+    debug.merged_total = finalMerged.length;
+    debug.fuzzy_collapsed = removed.size;
 
     const isMarketplaceHost = (u: string) =>
       /(hisawyer\.com|activityhero\.com|yelp\.com)/i.test(u);
 
-    const rows = [...byKey.values()].map((m) => {
+    const rows = finalMerged.map((m) => {
       const rawUrl = m.url ?? null;
       const marketplace = rawUrl ? isMarketplaceHost(rawUrl) : false;
-      // Provider's own homepage: anything that isn't a known marketplace host.
       const website_url = rawUrl && !marketplace ? rawUrl : null;
-      // The discovery/listing page (Yelp page, Google Maps URL, etc.).
       const source_listing_url = rawUrl && marketplace ? rawUrl : null;
       return {
         city,
         name: m.name.trim().slice(0, 300),
+        canonical: m.canonical,
         platform: m.platform,
-        sources: m.sources_seen,
-        // Keep deprecated `url` populated so legacy readers still work; prefer website.
+        sources_seen: m.sources_seen,
         url: website_url ?? source_listing_url,
         website_url,
         source_listing_url,
@@ -605,20 +634,85 @@ Deno.serve(async (req) => {
     });
 
     let inserted = 0;
+    let updated = 0;
     if (rows.length > 0) {
+      // Fetch existing rows for this city to fuzzy-match against.
       const { data: existingRows, error: existingErr } = await admin
         .from("mvs_providers")
-        .select("name")
+        .select("id, name, sources, confidence, website_url, source_listing_url, price_min, price_max, category_raw, platform")
         .eq("city", city);
       if (existingErr) throw new Error(`fetch existing providers: ${existingErr.message}`);
-      const existingNames = new Set((existingRows ?? []).map((r) => normalizeName(r.name)));
-      const newRows = rows.filter((r) => !existingNames.has(normalizeName(r.name)));
-      if (newRows.length > 0) {
+      const existing = (existingRows ?? []).map((r) => ({
+        ...r,
+        canonical: canonicalName(r.name as string),
+        bg: bigrams(canonicalName(r.name as string)),
+      }));
+
+      const toInsert: Record<string, unknown>[] = [];
+      const toUpdate: { id: string; patch: Record<string, unknown> }[] = [];
+
+      for (const row of rows) {
+        const rowBg = bigrams(row.canonical);
+        let match: typeof existing[number] | null = null;
+        for (const e of existing) {
+          if (!e.canonical) continue;
+          if (e.canonical === row.canonical) { match = e; break; }
+          const sim = jaccard(rowBg, e.bg);
+          const prefix = row.canonical.length >= 6 && e.canonical.length >= 6 &&
+            (row.canonical.startsWith(e.canonical) || e.canonical.startsWith(row.canonical));
+          if (sim >= 0.75 || prefix) { match = e; break; }
+        }
+
+        if (match) {
+          const existingSrcs: string[] = Array.isArray(match.sources) ? match.sources as string[] : [];
+          const union = Array.from(new Set([...existingSrcs, ...row.sources_seen]));
+          toUpdate.push({
+            id: match.id as string,
+            patch: {
+              sources: union,
+              platform: PLATFORM_PRIORITY[row.platform] < PLATFORM_PRIORITY[(match.platform as Platform) ?? "yelp"]
+                ? row.platform : match.platform,
+              website_url: match.website_url ?? row.website_url,
+              source_listing_url: match.source_listing_url ?? row.source_listing_url,
+              price_min: match.price_min ?? row.price_min,
+              price_max: match.price_max ?? row.price_max,
+              category_raw: match.category_raw ?? row.category_raw,
+              confidence: Math.max(Number(match.confidence ?? 0), Number(row.confidence ?? 0)),
+              source_run_id: runId,
+              updated_at: new Date().toISOString(),
+            },
+          });
+        } else {
+          toInsert.push({
+            city: row.city,
+            name: row.name,
+            platform: row.platform,
+            sources: row.sources_seen,
+            url: row.url,
+            website_url: row.website_url,
+            source_listing_url: row.source_listing_url,
+            price_min: row.price_min,
+            price_max: row.price_max,
+            category_raw: row.category_raw,
+            screenshot_url: row.screenshot_url,
+            confidence: row.confidence,
+            source_run_id: row.source_run_id,
+          });
+        }
+      }
+
+      if (toInsert.length > 0) {
         const { data: insData, error: insErr } = await admin
-          .from("mvs_providers").insert(newRows).select("id");
+          .from("mvs_providers").insert(toInsert).select("id");
         if (insErr) throw new Error(`insert providers: ${insErr.message}`);
         inserted = insData?.length ?? 0;
       }
+      for (const u of toUpdate) {
+        const { error: upErr } = await admin
+          .from("mvs_providers").update(u.patch).eq("id", u.id);
+        if (!upErr) updated += 1;
+      }
+      debug.updated = updated;
     }
 
     // Only the standalone-caller branch owns the run row's lifecycle. When

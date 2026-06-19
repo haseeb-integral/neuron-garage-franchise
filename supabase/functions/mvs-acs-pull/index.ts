@@ -214,9 +214,6 @@ Deno.serve(async (req) => {
   if (needsDual) {
     patch.dual_working_families_pct = Number(acs.pctDualIncome.toFixed(1));
   }
-  if (needsAffluent) {
-    patch.pct_hh_above_150k = Number(acs.pctAbove150k.toFixed(1));
-  }
 
   if (Object.keys(patch).length === 0) {
     return new Response(

@@ -31,6 +31,7 @@ const DemographicsMethodology = lazyWithPreload(() => import("./pages/Demographi
 const Methodology = lazyWithPreload(() => import("./pages/Methodology"));
 const MVSMethodology = lazyWithPreload(() => import("./pages/MVSMethodology"));
 const MVSSpec = lazyWithPreload(() => import("./pages/MVSSpec"));
+const MVSQAQueue = lazyWithPreload(() => import("./pages/MVSQAQueue"));
 
 
 const SASMethodology = lazyWithPreload(() => import("./pages/SASMethodology"));

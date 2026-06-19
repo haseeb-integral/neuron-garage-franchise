@@ -450,15 +450,15 @@ export default function MVSQAQueue() {
                                 >
                                   {w.source_url}
                                 </a>
-                                {!/\/(camp|class|enroll|register|book|summer)/i.test(
+                                {!/\/(camp|class|enroll|register|book|summer|schedule|session)/i.test(
                                   w.source_url,
                                 ) && (
                                   <span
                                     className="ml-2 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
                                     style={{ backgroundColor: "#fef3c7", color: "#92400e" }}
-                                    title="This looks like a homepage, not a camp/registration page"
+                                    title="This URL looks like the provider homepage, not a camp/registration/schedule page. Re-run extraction to try to find the exact page."
                                   >
-                                    homepage?
+                                    weak evidence URL
                                   </span>
                                 )}
                               </div>

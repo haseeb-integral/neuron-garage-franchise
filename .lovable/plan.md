@@ -1,59 +1,76 @@
 
-## Answering your two questions
+## Diagnosis
 
-### 1. Why does Boston show "failed"?
+### 1. Duplicate NYC rows
 
-**It's a UI false alarm — the run actually succeeded.**
+DB truth (`mvs_shortlist_cities`):
+- Only **2 manager additions** exist: `Denver, CO` and `New York, NY`
+- Built-in demo (`SHORTLIST_DEMO`) already includes `New York, NY` → so the merge produces **2 NYC rows** that share the id `new-york-ny`
 
-DB truth for the latest Boston run (`9838fa1c…`):
-- `started_at`  = 11:12:42 UTC  (= 4:12:42 PM your time, matches your screenshot)
-- `finished_at` = 11:17:33 UTC  → ran for **~4 min 51 sec**
-- `status` = **done**
-- `error` = null
+But the screenshot shows **6 NYC rows** (1 demo + 5 LIVE) and the header still says "11 cities". That mismatch tells me:
+- `allShortlistRows` length is being computed correctly (11)
+- But the render pass is duplicating NYC rows because **multiple rows share the same React `key` (`r.id`)** — `[...SHORTLIST_DEMO, ...extras]` does no dedupe, and any stale/repeated extras with the same slugged id collide with the demo row
 
-The rollout table in `src/pages/MarketValidationRollout.tsx` (line 196–207) has this rule:
+Either way the root cause is the merge in `src/pages/MarketValidation.tsx` (lines 170–185): it concatenates demo + DB additions without dedupe, and the id is derived purely from city+state so the demo's `new-york-ny` and an addition's `new-york-ny` collide.
 
-> "If a row is still `running` after 3 minutes, display it as **failed** with the message *Run appears stuck (>3 min). Try again.*"
+A second, lower-likelihood factor: the DB has no unique constraint on `(city, state)` in `mvs_shortlist_cities`, so a manager could insert "New York / NY" several times. Today the table only has 1 NYC addition, but we should harden it so this can't happen again.
 
-Boston legitimately took ~5 min (Boston has more providers + more sources than Austin), so the UI tripped the 3-min stale-guard **before** the pipeline finished. The badge is wrong, the pipeline is fine.
+### 2. Selected row doesn't persist
 
-### 2. Did scores actually update for Boston? — Yes.
+`src/pages/MarketValidation.tsx` line 187:
+```ts
+const [activeCityId, setActiveCityId] = useState<string>("san-antonio-tx");
+```
 
-- `mvs_city_flags.updated_at` = 11:17:33 (matches finish time, `mvs_data_source = live`)
-- **MVS score = 47.0** (vs Austin 43.8)
-- Provider mix after the new classifier:
-  - Premium: **9** (stem 3, art 2, music/dance/sports/outdoor 1 each) — clean, no YMCA/parks
-  - Mid: 32, Budget: 7, Community: 38 (YMCAs + 8 childcare-excluded correctly bucketed)
-  - **Enrichment Diversity categories present:** stem, art, music, dance, sports, gymnastics, theater, outdoor, multi-activity → ≥7 → fix from Austin holds
-- Boston Premium count is lower than Austin (9 vs 17) — consistent with Boston having fewer Sawyer-listed premium camps and more community/YMCA presence. Sanity-OK.
-
-So Boston **passes the 2.2 verification** the same way Austin did. Just refresh the page and the badge will turn green.
+It always resets to San Antonio on mount. There's no read from localStorage, no URL param, nothing tying it to the user's last pick.
 
 ---
 
-## Plan: remove the false-failure UX trap
+## Plan
 
-One file, frontend only, no business-logic changes.
+Two small, frontend-only fixes plus one tiny DB guard.
 
-### File: `src/pages/MarketValidationRollout.tsx`
+### A. Stop the duplicate rows (`src/pages/MarketValidation.tsx`)
 
-**Change 1 — raise the stale threshold from 3 min to 8 min.**
-Real runs take 4–6 min on larger cities (Boston proved it). 8 min gives a safety margin without hiding genuinely dead runs.
-```ts
-const STALE_MS = 8 * 60 * 1000;  // was 3 min
+In the `allShortlistRows` `useMemo` (around lines 170–185):
+1. Build `extras` as today.
+2. Concat `[...SHORTLIST_DEMO, ...extras]`.
+3. **Dedupe by id** — keep the first occurrence (so demo wins over any addition that slugs to the same id like NYC). Use a `Set<string>` of seen ids.
+
+This makes the merge defensive even if `mvs_shortlist_cities` ever contains a duplicate row.
+
+### B. Persist the selected row (`src/pages/MarketValidation.tsx`)
+
+1. Replace the hardcoded initial state:
+   ```ts
+   const [activeCityId, setActiveCityId] = useState<string>(
+     () => localStorage.getItem("mvs-active-city") ?? "san-antonio-tx"
+   );
+   ```
+2. Write to localStorage whenever it changes:
+   ```ts
+   useEffect(() => { localStorage.setItem("mvs-active-city", activeCityId); }, [activeCityId]);
+   ```
+3. If the saved id no longer exists in `allShortlistRows` (city was removed), fall back to the existing `?? allShortlistRows[0]` guard already on line 188. No extra code needed.
+
+Effect: open the page → it lands on the row you last clicked. Across tabs, across refreshes.
+
+### C. DB hardening — unique constraint on `mvs_shortlist_cities`
+
+Add a case-insensitive unique index on `(city, state)` so two managers can never insert "New York / NY" twice (today nothing stops them):
+
+```sql
+CREATE UNIQUE INDEX IF NOT EXISTS mvs_shortlist_cities_city_state_ci_uniq
+  ON public.mvs_shortlist_cities (lower(city), lower(state));
 ```
 
-**Change 2 — auto-refresh every 30 s while any row is `running`.**
-Today the table only re-fetches on manual reload, so even after a run finishes you keep seeing the stale "failed" badge until you reload. Add a lightweight interval that polls `fetchAll()` every 30 s while at least one city is in `running` state, and stops when none are.
+No data migration needed — current table only has 2 distinct rows. `useShortlistAdditions.addCity` will get a clean DB error on conflict, which the existing `throw new Error(error.message)` already surfaces.
 
-**Change 3 — tweak the stale message.**
-Change `"Run appears stuck (>3 min). Try again."` → `"Run appears stuck (>8 min). Try again."` so the tooltip matches the new threshold.
-
-### Out of scope (intentionally not touching)
-- Score recompute logic, classifier, pillar formulas — Boston already verified clean.
-- The Market Absorption "sold out" extractor gap (still flagged for a later turn).
-- The 0-weeks-for-non-Sawyer providers issue (later turn — needs extractor work for Google Maps / Yelp / ActivityHero pages).
+### Out of scope (deliberately not touching this turn)
+- The "live overlay shows 45.7 / 100 / 0 …" numbers on NYC — those come from `useLiveMvs("New York, NY")` reading sparse data (only 13 providers exist). That's a Phase 4 (full Tier-A rollout) job, not a duplication bug.
+- PDF / QA Queue / ACS / Firecrawl extractor expansion — still pending from the 7-point plan.
 
 ### Verify after build
-1. Re-open `/market-validation/rollout` — Boston row should show **done · 47.0** (green).
-2. Click Run on a third city (suggest **Brooklyn, NY** or **Denver, CO** — both Tier-A, different profiles); confirm it does not flip to "failed" before finishing, and the row updates automatically without manual reload.
+1. Reload `/market-validation` → exactly **2 NYC rows max** (likely just 1 since the addition slugs to the same id as the demo and gets deduped). Header "11 cities" matches visible row count.
+2. Click `Boston, MA`. Hard-refresh. Boston row is still highlighted/selected on load.
+3. (Optional) Try to add "New York / NY" again from the Rollout page → should fail with a unique-constraint error in the toast.

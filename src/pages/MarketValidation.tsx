@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { AlertCircle, ChevronDown, ChevronUp, Download, FileText, Loader2, MapPin } from "lucide-react";
 import { toast } from "sonner";
@@ -181,10 +181,24 @@ export default function MarketValidation() {
       depth: 0,
       balanceBand: "Balanced",
     }));
-    return [...SHORTLIST_DEMO, ...extras];
+    // Dedupe by id — demo rows win over additions that slug to the same id
+    // (e.g. an addition for "New York / NY" collides with the demo NYC row).
+    const seen = new Set<string>();
+    const out: ShortlistRow[] = [];
+    for (const r of [...SHORTLIST_DEMO, ...extras]) {
+      if (seen.has(r.id)) continue;
+      seen.add(r.id);
+      out.push(r);
+    }
+    return out;
   }, [additions]);
 
-  const [activeCityId, setActiveCityId] = useState<string>("san-antonio-tx");
+  const [activeCityId, setActiveCityId] = useState<string>(
+    () => (typeof window !== "undefined" && localStorage.getItem("mvs-active-city")) || "san-antonio-tx"
+  );
+  useEffect(() => {
+    try { localStorage.setItem("mvs-active-city", activeCityId); } catch { /* ignore */ }
+  }, [activeCityId]);
   const activeRow = allShortlistRows.find((r) => r.id === activeCityId) ?? allShortlistRows[0];
   const isAnchor = activeCityId === "san-antonio-tx";
   const [exporting, setExporting] = useState(false);

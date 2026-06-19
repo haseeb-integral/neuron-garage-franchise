@@ -89,6 +89,20 @@ function normalizeName(n: string): string {
   return n.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
+// Marketplace activity-detail links (e.g. hisawyer.com/marketplace/activity-set/123,
+// activityhero.com/a/...) often render as blank SPA shells when the activity
+// is expired or unlisted. Rewrite them to a Google search for the provider so
+// the user always lands on the real provider site in one click.
+function safeProviderUrl(url: string | null | undefined, name: string, city: string): string | null {
+  if (!url) return null;
+  const bad =
+    /hisawyer\.com\/marketplace\/(activity-set|class|camp)\//i.test(url) ||
+    /activityhero\.com\/(a|activity|activities)\//i.test(url);
+  if (!bad) return url;
+  const q = encodeURIComponent(`${name} ${city}`);
+  return `https://www.google.com/search?q=${q}`;
+}
+
 type ProviderExtract = {
   name: string;
   url?: string | null;
@@ -129,6 +143,7 @@ Return strict JSON:
 Rules:
 - A "provider" is a real business/brand offering kids' classes, camps, or activities.
 - DO NOT include: search categories, location names, navigation links, ads, the marketplace platform itself ("Sawyer"), generic terms ("Kids Classes", "Music"), or individual class titles.
+- "url" MUST be the provider's OWN website (their own domain). DO NOT use marketplace activity-detail links such as "hisawyer.com/marketplace/activity-set/...", "/class/", or "/camp/". If you cannot see the provider's own website on the page, return null for url.
 - Prefer in-person providers serving ${city}. Skip online-only providers.
 - Prices in USD per class or per session. Use null if unknown.
 - Confidence 0..1.
@@ -231,6 +246,7 @@ Return strict JSON: { "providers": [ { "name": string, "url": string|null, "pric
 Rules:
 - A "provider" is a real business offering kids' classes/camps (e.g. a gymnastics studio).
 - EXCLUDE: the marketplace itself ("ActivityHero"), category navigation, generic labels, individual class titles.
+- "url" MUST be the provider's OWN website (their own domain). DO NOT use marketplace activity-detail links such as "activityhero.com/a/..." or "/activity/...". If you cannot see the provider's own website on the page, return null for url.
 - Prefer in-person providers in ${city}. Skip online-only.
 - Prices USD per session. Null if unknown.
 - Hard cap: 60.`;
@@ -514,7 +530,7 @@ Deno.serve(async (req) => {
       name: m.name.trim().slice(0, 300),
       platform: m.platform,
       sources: m.sources_seen,
-      url: m.url ?? null,
+      url: safeProviderUrl(m.url ?? null, m.name, city),
       price_min: m.price_min ?? null,
       price_max: m.price_max ?? null,
       category_raw: m.category_raw ?? null,

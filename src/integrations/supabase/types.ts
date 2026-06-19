@@ -2976,6 +2976,13 @@ export type Database = {
         }
         Returns: number
       }
+      mvs_qa_resolve: {
+        Args: {
+          _new_status: Database["public"]["Enums"]["mvs_week_status"]
+          _queue_id: string
+        }
+        Returns: undefined
+      }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {

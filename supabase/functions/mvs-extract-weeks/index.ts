@@ -1,9 +1,10 @@
-// Phase 7 / Turn 7.1 — mvs-extract-weeks-all
+// mvs-extract-weeks
 //
-// City-parametrized successor to mvs-extract-weeks-austin-all. Same scrape +
-// extract pipeline, but pulls premium Sawyer providers for whatever city the
-// caller passes. Body: { city, state? }. Defaults to Austin, TX for back-compat
-// so the old orchestrator path keeps working until rollout is fully wired.
+// City-parametrized week extractor. Scrapes premium-tier provider pages for
+// the given city, asks the LLM to identify per-week availability, and writes
+// rows to mvs_weeks. Body: { city, state? }. Defaults to Austin, TX.
+// This is the single extractor function — earlier `-all` / `-austin-all`
+// variants have been removed.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 

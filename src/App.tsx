@@ -31,6 +31,7 @@ const DemographicsMethodology = lazyWithPreload(() => import("./pages/Demographi
 const Methodology = lazyWithPreload(() => import("./pages/Methodology"));
 const MVSMethodology = lazyWithPreload(() => import("./pages/MVSMethodology"));
 const MVSSpec = lazyWithPreload(() => import("./pages/MVSSpec"));
+const MVSQAQueue = lazyWithPreload(() => import("./pages/MVSQAQueue"));
 
 
 const SASMethodology = lazyWithPreload(() => import("./pages/SASMethodology"));
@@ -68,6 +69,7 @@ registerRoutePrefetch("/demographics-methodology", DemographicsMethodology.prelo
 registerRoutePrefetch("/methodology", Methodology.preload);
 registerRoutePrefetch("/mvs-methodology", MVSMethodology.preload);
 registerRoutePrefetch("/mvs-spec", MVSSpec.preload);
+registerRoutePrefetch("/mvs-qa-queue", MVSQAQueue.preload);
 
 registerRoutePrefetch("/sas-methodology", SASMethodology.preload);
 registerRoutePrefetch("/scoring-method", ScoringMethod.preload);
@@ -117,6 +119,7 @@ const App = () => (
                 <Route path="/methodology" element={<Methodology />} />
                 <Route path="/mvs-methodology" element={<MVSMethodology />} />
                 <Route path="/mvs-spec" element={<MVSSpec />} />
+                <Route path="/mvs-qa-queue" element={<MVSQAQueue />} />
                 
                 
                 <Route path="/sas-methodology" element={<SASMethodology />} />

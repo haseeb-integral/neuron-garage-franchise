@@ -9,6 +9,7 @@ export const FEATURE_FLAGS = {
 
   FF_SCORE_OVERRIDE: true,   // T3-04 manual score override (Phase D)
   FF_MANUAL_VOTES: true,     // T2-03 record committee votes for members without accounts
+  FF_CANDIDATE_PROCESS_V1: true, // 7-step franchisee interview process tab
 } as const;
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;

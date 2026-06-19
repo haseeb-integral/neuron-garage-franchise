@@ -5,6 +5,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { OverviewTab } from "./tabs/OverviewTab";
 import { LeadSheetTab } from "./tabs/LeadSheetTab";
 import { QualificationTab } from "./tabs/QualificationTab";
+import { ProcessTab } from "./tabs/ProcessTab";
 import { NotesActivityTab } from "./tabs/NotesActivityTab";
 import { StageHistoryTab } from "./tabs/StageHistoryTab";
 import { HomeworkTab } from "./tabs/HomeworkTab";
@@ -105,6 +106,9 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
               <TabsTrigger value="overview" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Overview</TabsTrigger>
               <TabsTrigger value="lead-sheet" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Lead Sheet</TabsTrigger>
               <TabsTrigger value="qualification" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Qualification</TabsTrigger>
+              {isEnabled("FF_CANDIDATE_PROCESS_V1") && (
+                <TabsTrigger value="process" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Process</TabsTrigger>
+              )}
               <TabsTrigger value="notes" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Notes &amp; Activity</TabsTrigger>
               <TabsTrigger value="stage-history" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Stage History</TabsTrigger>
               <TabsTrigger value="homework" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Homework</TabsTrigger>
@@ -124,6 +128,11 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
           <TabsContent value="qualification">
             <QualificationTab candidate={candidate} onScoreChange={handleScoreChange} onScoresReplace={handleScoresReplace} />
           </TabsContent>
+          {isEnabled("FF_CANDIDATE_PROCESS_V1") && (
+            <TabsContent value="process">
+              <ProcessTab candidate={candidate} />
+            </TabsContent>
+          )}
           <TabsContent value="notes">
             <NotesActivityTab candidate={candidate} onAddNote={handleAddNote} />
           </TabsContent>

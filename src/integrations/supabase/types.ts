@@ -1344,6 +1344,7 @@ export type Database = {
           price_min: number | null
           screenshot_url: string | null
           source_run_id: string | null
+          sources: Json
           tier: Database["public"]["Enums"]["mvs_tier"] | null
           updated_at: string
           url: string | null
@@ -1361,6 +1362,7 @@ export type Database = {
           price_min?: number | null
           screenshot_url?: string | null
           source_run_id?: string | null
+          sources?: Json
           tier?: Database["public"]["Enums"]["mvs_tier"] | null
           updated_at?: string
           url?: string | null
@@ -1378,6 +1380,7 @@ export type Database = {
           price_min?: number | null
           screenshot_url?: string | null
           source_run_id?: string | null
+          sources?: Json
           tier?: Database["public"]["Enums"]["mvs_tier"] | null
           updated_at?: string
           url?: string | null

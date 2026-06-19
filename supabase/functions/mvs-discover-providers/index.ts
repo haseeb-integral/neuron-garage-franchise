@@ -627,12 +627,14 @@ Deno.serve(async (req) => {
   let screenshotPath: string | null = null;
 
   try {
-    const sourceResults: SourceResult[] = [];
-    sourceResults.push(await runSawyer({ city, box, firecrawlKey, lovableKey, admin, runId }));
-    sourceResults.push(await runActivityHero({ city, state: stateAbbr, firecrawlKey, lovableKey }));
-    sourceResults.push(await runGoogleMaps({ city, state: stateAbbr }));
-    sourceResults.push(await runYelp({ city, state: stateAbbr, firecrawlKey, lovableKey }));
-    sourceResults.push(await runGoogleSearch({ city, state: stateAbbr, firecrawlKey, lovableKey }));
+    // Run all 5 sources in parallel — sequential calls exceeded the 150s edge function idle timeout.
+    const sourceResults: SourceResult[] = await Promise.all([
+      runSawyer({ city, box, firecrawlKey, lovableKey, admin, runId }),
+      runActivityHero({ city, state: stateAbbr, firecrawlKey, lovableKey }),
+      runGoogleMaps({ city, state: stateAbbr }),
+      runYelp({ city, state: stateAbbr, firecrawlKey, lovableKey }),
+      runGoogleSearch({ city, state: stateAbbr, firecrawlKey, lovableKey }),
+    ]);
 
     for (const r of sourceResults) {
       totalFirecrawl += r.firecrawlCalls;

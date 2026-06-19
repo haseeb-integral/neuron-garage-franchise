@@ -35,6 +35,46 @@ const BORDER = "#eef2f7";
 const SOFT = "#f7faff";
 const BLUE = "#174be8";
 
+function RefreshAllButton() {
+  const [busy, setBusy] = useState(false);
+  const handleClick = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("mvs-refresh-all", { body: {} });
+      if (error) {
+        toast.error("Failed to start refresh", { description: error.message });
+        return;
+      }
+      const triggered = (data?.triggered ?? []).length;
+      const skipped = (data?.skipped ?? []).length;
+      toast.success(`Pipeline kicked off for ${triggered} city${triggered === 1 ? "" : "ies"}`, {
+        description: skipped > 0
+          ? `${skipped} skipped (already running). Watch the scoring console for progress.`
+          : "Watch the scoring console for per-city progress (~1–2 min each).",
+      });
+    } catch (e) {
+      toast.error("Refresh failed", { description: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={busy}
+      title="Re-run the extractor pipeline for every Tier A city that already has live data."
+      className="inline-flex shrink-0 items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-semibold disabled:opacity-60"
+      style={{ borderColor: BLUE, color: BLUE, backgroundColor: "#fff" }}
+    >
+      {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+      Re-run pipeline (all live cities)
+    </button>
+  );
+}
+
+
 
 const STATUS_STYLE: Record<AbsorptionStatus, { bg: string; fg: string; label: string }> = {
   sold_out: { bg: "#fce7ec", fg: "#a3142b", label: "Sold out" },

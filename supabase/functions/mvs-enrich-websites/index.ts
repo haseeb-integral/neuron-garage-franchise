@@ -7,7 +7,12 @@
 // Auth: caller must be authenticated and have manager or admin role.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
-import { corsHeaders } from "../_shared/cors.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
 
 const FIRECRAWL_V2 = "https://api.firecrawl.dev/v2";
 const FIRECRAWL_TIMEOUT_MS = 25_000;

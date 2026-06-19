@@ -292,6 +292,7 @@ Deno.serve(async (req) => {
 
   const body = await req.json().catch(() => ({}));
   const cityKey: string = (body?.city ?? "Austin, TX").trim();
+  const parentRunId: string | null = body?.parent_run_id ?? null;
   const { city, state } = parseCityKey(cityKey, body?.state);
   if (!state) {
     return new Response(

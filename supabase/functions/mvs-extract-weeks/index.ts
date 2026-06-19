@@ -377,16 +377,22 @@ Deno.serve(async (req) => {
   }
 
 
-  const { data: run, error: runErr } = await admin
-    .from("mvs_pipeline_runs")
-    .insert({ city, status: "running", firecrawl_calls: 0 })
-    .select()
-    .single();
-  if (runErr || !run) {
-    return new Response(
-      JSON.stringify({ error: "failed to create run", detail: runErr?.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+  let runId: string;
+  if (parentRunId) {
+    runId = parentRunId;
+  } else {
+    const { data: run, error: runErr } = await admin
+      .from("mvs_pipeline_runs")
+      .insert({ city, status: "running", firecrawl_calls: 0, started_at: new Date().toISOString() })
+      .select()
+      .single();
+    if (runErr || !run) {
+      return new Response(
+        JSON.stringify({ error: "failed to create run", detail: runErr?.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    runId = run.id;
   }
 
   const todayISO = new Date().toISOString().slice(0, 10);

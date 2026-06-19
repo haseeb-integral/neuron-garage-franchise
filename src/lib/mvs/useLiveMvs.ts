@@ -74,7 +74,7 @@ export function useLiveMvs(
 
         const { data: provRows, error: provErr } = await supabase
           .from("mvs_providers")
-          .select("id, name, tier, price_min, price_max, category_classified, url, website_url, source_listing_url, sources")
+          .select("id, name, tier, price_min, price_max, category_classified, url, website_url, source_listing_url, sources, updated_at")
           .eq("city", cityKey);
         if (provErr) throw provErr;
 

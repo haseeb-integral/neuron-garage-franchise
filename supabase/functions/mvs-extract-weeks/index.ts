@@ -220,6 +220,7 @@ async function processProvider(
         status,
         status_evidence: (w.status_evidence ?? "").toString().slice(0, 500) || null,
         screenshot_url: screenshotPath,
+        source_url: url,
         confidence: conf,
         source_run_id: runId,
       }];

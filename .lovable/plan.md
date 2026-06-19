@@ -1,68 +1,77 @@
-# Fix 3 Discovery Issues
+# Add Google Search as 5th Discovery Source
 
-Root causes confirmed from code + DB inspection of `supabase/functions/mvs-discover-providers/index.ts` and `mvs_providers`.
+## Why this matters
 
-## Issue 1 — ActivityHero returns ~1 provider per city
+Google Maps (already wired) and Yelp index **businesses with profiles**. Google **Search** indexes the **open web** — listicles, local-news roundups, niche kids-activity directories, parent blogs. These surface a different population of providers:
 
-**Root cause:** Single URL `https://www.activityhero.com/s/{slug}-{state}/camps` is the wrong path pattern. Real ActivityHero city pages use `/camps/{city}-{state}` and `/classes/{city}-{state}`. The current URL renders a near-empty SPA shell, so Gemini gets no real provider list.
+- Listicles like "15 Best Summer Camps in Boston for 2026" name 10–20 operators each, often indie premium studios.
+- Niche directories (Mommy Poppins, Red Tricycle, Tinybeans, CampNavigator, ActivityTree) curate by city.
+- Local news ("Boston Globe summer camp guide") covers established operators with long track records — exactly the Premium tier we under-weight today.
 
-**Fix:**
-- Replace single-URL scrape with **3-variant scrape** (mirrors Sawyer pattern):
-  1. `https://www.activityhero.com/camps/{city-slug}-{state}`
-  2. `https://www.activityhero.com/classes/{city-slug}-{state}`
-  3. `https://www.activityhero.com/search?q=kids&location={city}+{state}` (fallback)
-- Bump `waitFor` from 3000 → 5000 ms (ActivityHero is heavy JS).
-- Add a Firecrawl `formats: ["markdown", "links"]` so we can also pull anchor hrefs for provider discovery when markdown is sparse.
-- Each variant logged separately in `debug.activityhero.variants[]`.
+**Expected yield per city (after dedupe against the 4 existing sources):**
+- Net new providers: **~20–40 per Tier-A city** (estimate based on overlap patterns: listicles typically name 12–18 operators each, ~40% overlap with Maps/Yelp).
+- Multi-source overlap will jump materially — providers named in a listicle AND on Maps AND Sawyer = high-confidence Premium signal, which is what the tier classifier needs.
 
-## Issue 2 — Denver only has 3 providers, all `sources: []`
+## Best mechanism — Firecrawl Search
 
-**Two root causes:**
+`FIRECRAWL_API_KEY` is already connected and the function already uses Firecrawl. Firecrawl's `/v2/search` endpoint does the Google query AND scrapes the top results in a single call — no separate SerpAPI/Serper key, no CAPTCHA handling.
 
-a. **Stale rows skipping re-insert.** Lines 562–565 do `existingNames = SELECT name WHERE city=X` then `rows.filter(r => !existingNames.has(...))`. Result: on re-runs, providers that already exist are silently dropped — including their newly-discovered `sources` array. Denver's 3 Sawyer rows pre-date the multi-source change; the re-run never updated them.
+Reference: `https://api.firecrawl.dev/v2/search` with `query`, `limit`, and `scrapeOptions: { formats: ['markdown'] }`.
 
-b. **Denver not in `TIER_A_BOXES`.** Falls through to `us_cities_geo` fallback box. That works for Sawyer, but means none of the orchestrator's Tier-A "Re-run All" loops include Denver. Need to confirm whether Denver should be in shortlist; if yes, add a box; if no, drop the orphan rows.
+## Query strategy (per city)
 
-**Fix:**
-- Replace the "filter out existing names" pattern with **UPSERT on (city, lower(name), platform)** using the existing unique index — so `sources`, `website_url`, `confidence`, `price_min/max` get merged into existing rows on every run.
-  - Merge strategy on conflict: `sources = mvs_providers.sources || EXCLUDED.sources` (jsonb union, deduped), keep highest `confidence`, fill nulls from new row.
-  - Because Postgres jsonb union isn't a single operator, do it via `ON CONFLICT DO UPDATE SET sources = (SELECT jsonb_agg(DISTINCT v) FROM jsonb_array_elements(mvs_providers.sources || EXCLUDED.sources) v)`.
-- Add `Denver, CO` to `TIER_A_BOXES` (box `{top: 40.10, left: -105.30, bottom: 39.50, right: -104.60}`) so it gets the same treatment as other Tier-A cities.
-- Trigger a one-off `mvs-discover-providers` run for Denver after deploy.
+Run **5 targeted queries** per city. Each captures a different listicle archetype:
 
-## Issue 3 — Cross-source overlap is near-zero (max 4 per city)
+1. `best summer camps for kids in {city} {state} 2026`
+2. `best kids activities classes {city} {state}`
+3. `{city} after school programs enrichment kids`
+4. `kids music art gymnastics studios {city} {state}`
+5. `things to do with kids in {city} {state} indoor`
 
-**Root cause:** `normalizeName(n)` = lowercase + strip punctuation only. So "ABC Music Studio" vs "ABC Music" vs "ABC Music Studios LLC" all hash differently → never merge across sources → tier classifier loses the "3+ sources = real operator" signal it expects.
+Per query: `limit: 6`, `scrapeOptions: { formats: ['markdown'] }`. Excludes social-media noise via `excludeDomains: ['facebook.com', 'instagram.com', 'tiktok.com', 'pinterest.com', 'reddit.com']`. Strip our own marketplaces to avoid double-counting: also exclude `hisawyer.com`, `activityhero.com`, `yelp.com`, `google.com/maps`.
 
-**Fix:** Add a second-pass fuzzy merge after the exact-key merge:
-- Strip common suffixes (`llc`, `inc`, `studio(s)`, `academy`, `school`, `co`, `the`, `kids`, `for kids`) and trailing single-letter tokens.
-- Collapse multiple spaces; compute a **bigram Jaccard** similarity.
-- Merge entries with Jaccard ≥ 0.75 OR where one normalized name is a strict prefix of the other (≥ 6 chars). When merging, union `sources_seen` and keep highest-priority platform.
-- Same normalization is reused for the upsert key (so existing-row matching also benefits) — store the canonical form in a new derived column or compute on the fly via the unique index expression.
+That's 5 queries × 6 results = up to 30 scraped pages per city. Gemini extracts providers from each.
 
-**No DB migration needed for #3** — all logic stays in the edge function; the existing unique index `(city, lower(name), platform)` remains, we just match harder before inserting.
+## Cost & latency
 
-## Files Touched
+- Firecrawl calls per city: 5 (search) + ~25 (scrapes wrapped inside) = ~30 credits.
+- Add 60s to per-city pipeline runtime. Wrap in `FIRECRAWL_TIMEOUT_MS` per query so a single slow page can't stall the run.
+- Hard cap: 40 providers extracted per query (Gemini system prompt enforces).
 
-- `supabase/functions/mvs-discover-providers/index.ts`
-  - Rewrite `runActivityHero` to 3-variant pattern
-  - Add `Denver, CO` to `TIER_A_BOXES`
-  - Replace existing-name filter with proper upsert + jsonb sources union
-  - Add `fuzzyMergeProviders()` second-pass dedupe
-- One-off invocation of `mvs-discover-providers` for Denver after deploy (single curl).
+## Implementation
+
+Single file: `supabase/functions/mvs-discover-providers/index.ts`.
+
+1. Add new `Platform` type member `"google_search"` with `PLATFORM_PRIORITY` = `1.5` (between ActivityHero and Maps — listicle mentions are stronger than marketplace fillers, weaker than Maps' verified geo data).
+2. Add `runGoogleSearch({ city, state, firecrawlKey, lovableKey })`:
+   - 5 query variants above
+   - For each: POST `/v2/search` with `scrapeOptions.formats=['markdown']`, `limit: 6`, exclude social/marketplace domains
+   - Concatenate result markdowns, send to Gemini with prompt: *"Extract real local kids-activity provider businesses mentioned in these listicle/blog pages for {city}. EXCLUDE: the publication itself, generic categories, national chains' national websites, individual class titles. Prefer providers mentioned in ≥2 of the supplied pages."*
+   - Tag each provider's `category_raw` with the listicle source domain for debugging
+3. Call it from the source-results loop alongside the other 4.
+4. The fuzzy upsert logic we just shipped will merge new search-found providers into existing rows (boosting `sources` jsonb) and insert genuinely new ones.
+
+No DB migration needed — `sources` jsonb just accepts the new string `"google_search"`.
 
 ## Verification
 
-After deploy + re-run:
+After deploy + "Re-run All":
+
 ```sql
-SELECT city, COUNT(*), COUNT(*) FILTER (WHERE jsonb_array_length(sources) >= 2) AS multi
-FROM mvs_providers GROUP BY city ORDER BY 2 DESC;
+SELECT city,
+  COUNT(*) AS total,
+  COUNT(*) FILTER (WHERE sources ? 'google_search') AS gsearch,
+  COUNT(*) FILTER (WHERE jsonb_array_length(sources) >= 3) AS three_plus_sources
+FROM mvs_providers GROUP BY city ORDER BY total DESC;
 ```
-- ActivityHero count per city should jump from ~1 → 10–30.
-- Denver total should jump from 3 → 80+.
-- `multi` (cross-source overlap) should rise from 0–4 → 15–40 per city.
+
+Success criteria:
+- `gsearch` ≥ 20 per Tier-A city
+- `three_plus_sources` (high-confidence Premium signal) jumps from current ~0–4 to ≥ 15 per city
+- Manual spot-check on Boston: at least 5 well-known indie studios that don't appear in Maps results today.
 
 ## Out of scope
 
-- No changes to `mvs-classify-tier` — once `sources` is populated correctly, the existing tier logic will improve automatically.
+- Per-listicle ranking weights (could come later — for now, presence in a listicle is binary in `sources`).
+- No separate SerpAPI/Serper integration. Firecrawl Search covers it.
 - No UI changes.

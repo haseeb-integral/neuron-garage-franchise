@@ -37,12 +37,13 @@ async function fetchWithTimeout(url: string, opts: RequestInit, ms: number): Pro
 
 // Source priority for dedupe: when the same provider appears in multiple
 // sources, the row is tagged with the highest-priority platform.
-type Platform = "sawyer" | "activityhero" | "google_maps" | "yelp";
+type Platform = "sawyer" | "activityhero" | "google_search" | "google_maps" | "yelp";
 const PLATFORM_PRIORITY: Record<Platform, number> = {
   sawyer: 0,
   activityhero: 1,
-  google_maps: 2,
-  yelp: 3,
+  google_search: 2,
+  google_maps: 3,
+  yelp: 4,
 };
 
 // Per-metro bounding boxes for Sawyer's `location_within` filter.
@@ -373,6 +374,92 @@ async function runGoogleMaps(args: {
   }
 }
 
+// ----------------- Source: Google Search (via Firecrawl /v2/search) -----------------
+// Surfaces providers named in listicles, local-news roundups, and niche
+// kids-activity directories that Maps/Yelp miss. Each query returns top
+// results pre-scraped to markdown; Gemini extracts provider names.
+async function runGoogleSearch(args: {
+  city: string;
+  state: string;
+  firecrawlKey: string;
+  lovableKey: string;
+}): Promise<SourceResult> {
+  const { city, state, firecrawlKey, lovableKey } = args;
+  const queries = [
+    `best summer camps for kids in ${city} ${state} 2026`,
+    `best kids activities classes ${city} ${state}`,
+    `${city} ${state} after school programs enrichment kids`,
+    `kids music art gymnastics studios ${city} ${state}`,
+    `things to do with kids in ${city} ${state} indoor`,
+  ];
+  // Strip social/marketplace noise so listicle pages dominate results.
+  const excludeDomains = [
+    "facebook.com", "instagram.com", "tiktok.com", "pinterest.com", "reddit.com", "x.com", "twitter.com",
+    "hisawyer.com", "activityhero.com", "yelp.com", "google.com",
+  ];
+  const debug: Record<string, unknown> = {};
+  const queryDebug: unknown[] = [];
+  const collected: ProviderExtract[] = [];
+  let firecrawlCalls = 0;
+
+  for (let i = 0; i < queries.length; i++) {
+    const q = queries[i];
+    const qd: Record<string, unknown> = { query: q };
+    try {
+      const res = await fetchWithTimeout(`${FIRECRAWL_V2}/search`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: q,
+          limit: 6,
+          excludeDomains,
+          scrapeOptions: { formats: ["markdown"], onlyMainContent: true },
+        }),
+      }, FIRECRAWL_TIMEOUT_MS);
+      firecrawlCalls += 1;
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) { qd.error = `firecrawl ${res.status}`; queryDebug.push(qd); continue; }
+
+      // v2 search returns { data: { web: [{ url, title, description, markdown? }] } } or { data: [...] }.
+      const items: Array<Record<string, unknown>> =
+        (Array.isArray(j?.data?.web) ? j.data.web : Array.isArray(j?.data) ? j.data : []) as Array<Record<string, unknown>>;
+      qd.results_count = items.length;
+      if (items.length === 0) { queryDebug.push(qd); continue; }
+
+      // Build one big context blob: each result becomes a section with URL + markdown.
+      const blob = items.map((it, idx) => {
+        const url = String(it.url ?? it.link ?? "");
+        const title = String(it.title ?? "");
+        const md = String(it.markdown ?? it.content ?? it.description ?? "");
+        return `=== RESULT ${idx + 1} ===\nURL: ${url}\nTITLE: ${title}\n\n${md.slice(0, 6000)}`;
+      }).join("\n\n");
+
+      const sys = `You extract real local kids-activity provider businesses mentioned in listicle, blog, and local-news pages for ${city}, ${state}.
+Return strict JSON: { "providers": [ { "name": string, "url": string|null, "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number } ] }
+Rules:
+- A "provider" is a real local business offering kids' classes, camps, gymnastics, art, music, sports, STEM, dance, etc. that physically operates in ${city}.
+- EXCLUDE: the publication itself (e.g. "Mommy Poppins", "Red Tricycle", "Boston Globe"), generic categories ("Summer Camps"), national chains' national websites (use the local branch name if mentioned), individual class titles, navigation links, restaurants, museums, parks, public libraries, public schools.
+- "url" = the provider's OWN website if visible in the page text, else null. Never use the listicle's own URL.
+- category_raw = the activity type (e.g. "gymnastics", "music school", "art camp", "stem").
+- Prefer providers mentioned in MULTIPLE supplied pages — those are highest confidence.
+- Hard cap: 40 providers.`;
+      const providers = await extractWithGemini({
+        lovableKey, sys, city, sourceUrl: `google_search:${q}`, markdown: blob,
+      });
+      qd.providers_extracted = providers.length;
+      collected.push(...providers);
+      queryDebug.push(qd);
+    } catch (e) {
+      qd.error = e instanceof Error ? e.message : String(e);
+      queryDebug.push(qd);
+    }
+  }
+
+  debug.queries = queryDebug;
+  debug.total_extracted = collected.length;
+  return { platform: "google_search", providers: collected, firecrawlCalls, debug };
+}
+
 // ----------------- Source: Yelp -----------------
 async function runYelp(args: {
   city: string;
@@ -545,6 +632,7 @@ Deno.serve(async (req) => {
     sourceResults.push(await runActivityHero({ city, state: stateAbbr, firecrawlKey, lovableKey }));
     sourceResults.push(await runGoogleMaps({ city, state: stateAbbr }));
     sourceResults.push(await runYelp({ city, state: stateAbbr, firecrawlKey, lovableKey }));
+    sourceResults.push(await runGoogleSearch({ city, state: stateAbbr, firecrawlKey, lovableKey }));
 
     for (const r of sourceResults) {
       totalFirecrawl += r.firecrawlCalls;

@@ -1,64 +1,62 @@
+## Part 1 — Is Turn 2.2 (tier classifier) done?
 
-# Add 3 more provider platforms to `mvs-discover-providers`
+**Status: still a real gap.** What we did was different:
 
-Today the discover function only scrapes Sawyer (3 search variants). For thinly-covered cities (Austin returned 1 provider after Phase 7 rollout) Sawyer alone misses most of the real market. This plan adds **3 additional sources**, unions all results, dedupes by normalized name, and writes them to `mvs_providers` with a per-source `platform` tag.
+- **Turn 2.1 (discover)** was expanded to 4 sources (Sawyer + ActivityHero + Google Maps via Apify + Yelp). That widened the *input* — more providers per city, with a `sources` jsonb column tracking cross-source presence.
+- **Turn 2.2 (`mvs-classify-tier`)** is the function that *labels* each discovered provider as Premium / Mid / Budget / Community. The function file exists and the orchestrator calls it, but its classification logic was never reviewed against Sam's brief, and it doesn't yet use the new `sources` signal (cross-source presence is a strong "real / scaled" indicator for Premium vs Community).
 
-After this turn we go back to Brett's order: #5 cleanup → #3 ACS → #2 QA Queue → #1 PDF → #4 Tier A rollout → #6+#7 verification.
+**Significance:** the composite score weights Premium providers more heavily. If tier classification is weak, the composite is noisy even though we now have more raw providers. Widening discovery without sharpening classification can actually *hurt* signal quality.
 
-## The 3 new sources
+So 2.2 stays on the open list; the 4-source expansion does not close it.
 
-| # | Source | Why | How we fetch |
-|---|---|---|---|
-| 1 | **ActivityHero** (`activityhero.com/s/<city>-<state>/camps`) | Largest US camps marketplace after Sawyer; strong in mid-size metros. | Firecrawl scrape (markdown + screenshot), Gemini extract. |
-| 2 | **Google Maps** ("kids summer camp near <city>") | Catches independent providers that aren't on any marketplace. | Apify Google Maps actor (we already have `APIFY_API_TOKEN` + `APIFY_GOOGLE_MAPS_ACTOR_ID`). No Firecrawl needed. |
-| 3 | **Yelp** (`yelp.com/search?find_desc=Kids+Activities&find_loc=<city>`) | Strong long-tail coverage; useful tiebreaker for dedupe. | Firecrawl scrape, Gemini extract. |
+## Part 2 — Why "Run" failed for Austin and how to remove the foot-guns
 
-If you'd rather swap one out (e.g. KidPass, Mommy Poppins, Eventbrite kids-camps), say so and I'll substitute before building.
+### What I found in the data and code
 
-## What changes
+- Last Austin run that completed (`7f226a3f`) took **94 seconds** end-to-end.
+- The failing click left a `mvs_pipeline_runs` row in `status='running'` with `started_at = NULL`. That null is the smoking gun — see audit item 3 below.
+- Toast text "Edge Function returned a non-2xx status code" comes from `supabase.functions.invoke`, which means the orchestrator HTTP response was 4xx/5xx (not a step failure — step failures return 200 with `ok: false`).
 
-### Edge function: `supabase/functions/mvs-discover-providers/index.ts`
+### Root causes (audit)
 
-1. Refactor the current Sawyer-only loop into a `sources` array:
-   ```ts
-   const sources = [
-     { platform: 'sawyer',       run: () => scrapeSawyer(city, box) },
-     { platform: 'activityhero', run: () => scrapeActivityHero(city, state) },
-     { platform: 'google_maps',  run: () => fetchGoogleMaps(city, state) },
-     { platform: 'yelp',         run: () => scrapeYelp(city, state) },
-   ];
-   ```
-2. Run all 4 sources sequentially (parallel risks Firecrawl rate limits). Each `run()` returns `ProviderExtract[]` plus an optional screenshot URL.
-3. Union → dedupe by `normalizeName(name)`. When the same provider appears in N sources, keep the first hit and stash `sources_seen: ['sawyer','google_maps']` in a new `mvs_providers.sources` jsonb column (cross-source presence is a strong quality signal we'll use later for tier classification 2.2).
-4. Each row inserted with the platform of the source that found it first; if seen in >1 source, prefer `sawyer > activityhero > google_maps > yelp` (most structured first).
-5. Screenshot column keeps Sawyer's screenshot for backward compat; other sources don't store screenshots in v1.
-6. Per-source failures are swallowed and logged — one source going down must not fail the whole run.
+1. **Wall-clock timeout on the orchestrator (most likely cause).** `mvs-run-pipeline` runs `discover → classify → extract` sequentially with `await fetch(...)`. Discover alone already takes ~94s (4 sources, Firecrawl + Apify, Gemini extractions). Add classify + extract and we are well past Supabase Edge wall-clock limits. When the runtime kills the function, the client sees a non-2xx with no JSON body. The run row is left as `running` forever (the 10-min stale-clear only helps on the *next* call).
+2. **Two functions write to `mvs_pipeline_runs`.** Orchestrator inserts a parent row; `mvs-discover-providers` *also* inserts its own row when invoked directly. This double-counting (a) confuses the rollout UI (extra "running" rows), (b) makes the stale-clear logic unreliable, and (c) is why we see rows with `started_at = NULL` (inserted by other internal callers that don't set it).
+3. **No timeout / retry around per-source `fetch` calls.** Apify `run-sync-get-dataset-items` can hang up to 90 s by itself; Firecrawl scrape with `waitFor: 3000` can hang on slow pages. Any one of them stalling pushes the orchestrator past its limit.
+4. **Toast says "Failed to start pipeline"** even when the real failure was mid-pipeline timeout. That's misleading — the run *did* start, it died partway.
+5. **`MVS_PIPELINE_ENABLED` kill switch** is a silent 503. If anyone ever set it `false`, the rollout page would show this same toast with no hint why.
+6. **`supabase.functions.invoke` doesn't surface the response body on non-2xx**, so the user never sees the actual error string.
 
-### Helpers added to the same file
-- `scrapeActivityHero(city, state)` — builds URL like `https://www.activityhero.com/s/austin-tx/camps`, Firecrawl `formats: ['markdown']`, sends markdown to Gemini with the existing extraction prompt (tweaked to mention "ActivityHero").
-- `fetchGoogleMaps(city, state)` — POSTs to Apify run-sync endpoint with `searchStringsArray: ['kids summer camp <city> <state>', 'kids classes <city> <state>']`, max 30 results each. Maps actor output → `ProviderExtract` (name from `title`, url from `website`, no price).
-- `scrapeYelp(city, state)` — Firecrawl scrape of Yelp search URL, Gemini extract.
+### Fix plan (this turn)
 
-### DB migration
-Add nullable `sources jsonb default '[]'::jsonb` column to `mvs_providers`. Backfill is unnecessary (Phase 2 data is dev-only).
+**A. Make the orchestrator return immediately and run the pipeline in the background.**
+- `mvs-run-pipeline` inserts the parent run row, returns `202 { ok: true, run_id, status: 'queued' }` within ~1 second.
+- The actual `discover → classify → extract` sequence runs inside `EdgeRuntime.waitUntil(...)` so wall-clock timeout no longer affects the HTTP response.
+- The background task updates `mvs_pipeline_runs.status` to `done` or `failed` exactly as today. The rollout UI already polls every 5 s, so behavior from the user's perspective is: click Run → "queued" pill instantly → "running" → "done" with composite ~90 s later. No more non-2xx toast.
 
-### Frontend
-No UI changes this turn. The City Scoring Console pillar counts already read from `mvs_providers` and will naturally fatten.
+**B. Stop `mvs-discover-providers` from inserting its own `mvs_pipeline_runs` row.**
+- When invoked by the orchestrator (which is the only sanctioned caller now), accept an optional `parent_run_id` and write firecrawl-call deltas / debug into the parent row instead of creating a new row.
+- Remove the standalone insert so the rollout table only ever sees one row per click.
 
-## Out of scope (explicit)
-- No tier-classifier changes (that's Brett's separate follow-on).
-- No new extract-weeks behavior — `mvs-extract-weeks` still only knows Sawyer week URLs; non-Sawyer providers are counted toward provider-count pillars but contribute 0 weeks until 2.2/3.x extends extraction.
-- No QA queue changes.
-- No score recalibration this turn.
+**C. Add per-source timeouts.**
+- Wrap each `fetch` (Firecrawl, Apify, AI gateway) in `AbortController` with a hard cap (Firecrawl 25 s, Apify 60 s, Gemini 20 s). On abort, that source returns empty + a debug error, the rest still run.
 
-## Verification before declaring done
-1. Re-run `mvs-run-pipeline` on Austin via the UI button.
-2. Confirm `mvs_providers` row count for Austin jumps from 1 to >10 and includes at least 1 row with `platform='google_maps'` and 1 with `platform='activityhero'`.
-3. Confirm `mvs_pipeline_runs` ends in `succeeded` and per-source failures (if any) appear in the run's `error` JSON, not as a hard failure.
-4. Open the Austin detail panel and confirm pillar provider counts updated.
+**D. Surface real error text in the rollout UI.**
+- In `MarketValidationRollout.handleRun`, if `error` from `invoke` is present, try `await error.context?.json()` (or fall back to `error.message`) and toast that. So next time something does go wrong, the user sees the actual reason instead of "non-2xx".
 
-## Technical notes
-- Apify run-sync endpoint: `https://api.apify.com/v2/acts/<ACTOR_ID>/run-sync-get-dataset-items?token=$APIFY_API_TOKEN`. Timeout 60s, memory 1024.
-- Yelp aggressively rate-limits; Firecrawl's residential pool usually gets through, but we accept that Yelp may return 0 some runs.
-- Gemini prompt stays the same shape; only the "platform name to exclude from provider list" string changes per source.
-- Total external call budget per discover run: 3 Sawyer + 1 ActivityHero + 1 Yelp Firecrawl scrapes = **5 Firecrawl scrapes** (up from 3) + **2 Apify Google Maps runs** + **5 Gemini extractions**.
+**E. Auto-clear stale runs more aggressively.**
+- Drop the stale cutoff from 10 minutes to **3 minutes** in both `mvs-run-pipeline` and the rollout page's `fetchAll` (treat any `running` row older than 3 min as `failed` for display). Pipeline never legitimately takes more than ~2 min.
+
+**F. Make `MVS_PIPELINE_ENABLED` failures explicit.**
+- Return `{ error: "pipeline disabled by admin kill switch (MVS_PIPELINE_ENABLED=false)" }` and have the UI render that text directly.
+
+### Out of scope this turn
+
+- Actually fixing Turn 2.2 (tier classifier quality). That stays on the open list as the next turn after this fix lands.
+- Any UI rework beyond the toast-text change and the 3-minute stale display.
+
+### Verification
+
+1. Click Run on Austin from `/market-validation/rollout`. Expect: instant "queued" → "running" pill, no error toast.
+2. Watch `mvs_pipeline_runs` — exactly one row per click, transitions to `done` within ~2 min with `firecrawl_calls > 0`.
+3. Force a failure (temporarily unset `APIFY_API_TOKEN` env in a test branch — *not in this turn*) and confirm the toast shows the real reason, not "non-2xx".
+4. Confirm Composite column in the table updates after the run completes.

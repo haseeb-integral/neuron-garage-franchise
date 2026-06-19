@@ -71,6 +71,22 @@ export default function MVSQAQueue() {
   const [pending, setPending] = useState<Record<string, WeekStatus>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [screenshots, setScreenshots] = useState<Record<string, string | null>>({});
+  const [allCities, setAllCities] = useState<string[]>([]);
+
+  // Load the full city list from mvs_providers so the dropdown matches the
+  // MVS table — not just cities that happen to have QA rows right now.
+  useEffect(() => {
+    if (!isManager) return;
+    (async () => {
+      const { data } = await supabase
+        .from("mvs_providers")
+        .select("city")
+        .not("city", "is", null);
+      const set = new Set<string>();
+      for (const r of data ?? []) if (r.city) set.add(r.city);
+      setAllCities(Array.from(set).sort((a, b) => a.localeCompare(b)));
+    })();
+  }, [isManager]);
 
   const load = useCallback(async () => {
     let q = supabase

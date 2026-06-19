@@ -563,16 +563,34 @@ export default function MarketBrief() {
             </table>
           )}
 
-          {/* All discovered providers — full mvs_providers set for this city.
-              Shows tier + per-row source chips so we can eyeball gsearch / gmaps
-              / ah / yelp / sawyer yield without changing any scoring. */}
+          {/* Plain-English legend: what feeds the score vs what's context only. */}
+          <div style={{
+            margin: "16px 0 12px",
+            padding: "12px 14px",
+            background: "#f8fafc",
+            border: "1px solid var(--mb-line)",
+            borderLeft: "4px solid var(--mb-navy)",
+            borderRadius: 4,
+            fontSize: 12,
+            lineHeight: 1.55,
+          }}>
+            <div style={{ fontWeight: 700, marginBottom: 6, color: "var(--mb-navy)" }}>How the score works</div>
+            <ul style={{ margin: 0, paddingLeft: 18, color: "var(--mb-ink)" }}>
+              <li>The MVS score for this city is built <strong>only from Premium providers</strong> (the table above).</li>
+              <li>We find providers from 5 sources: <strong>gsearch</strong> (Google web search), <strong>gmaps</strong> (Google Maps), <strong>ah</strong> (ActivityHero), <strong>yelp</strong>, <strong>sawyer</strong>.</li>
+              <li>Every provider we find is sorted into a tier: <strong>premium</strong> ($400+/wk or known national brand), <strong>mid</strong>, <strong>budget</strong>, or <strong>community</strong>.</li>
+              <li>The table below shows mid / budget / community providers. They confirm the market is real, but they do <strong>not</strong> change the score.</li>
+            </ul>
+          </div>
+
+          {/* Non-premium providers — informational only, never feeds the score. */}
           <SectionHead
             n={4.5 as any}
-            label="All Discovered Providers"
-            sub={`${providers.length} total rows from mvs_providers (every tier, every source).`}
+            label="Non-Premium Providers (context only — not scored)"
+            sub={`${providers.filter((p) => p.tier !== "premium").length} mid / budget / community rows for this city.`}
           />
-          {providers.length === 0 ? (
-            <p style={{ fontSize: 12, color: "var(--mb-muted)", fontStyle: "italic" }}>No providers in the live set.</p>
+          {providers.filter((p) => p.tier !== "premium").length === 0 ? (
+            <p style={{ fontSize: 12, color: "var(--mb-muted)", fontStyle: "italic" }}>No non-premium providers in the live set.</p>
           ) : (
             <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
               <thead>

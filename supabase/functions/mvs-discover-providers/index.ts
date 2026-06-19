@@ -90,6 +90,33 @@ function normalizeName(n: string): string {
   return n.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
+// Canonical name for cross-source matching. Drops common business suffixes
+// and filler words so "ABC Music Studio LLC" and "ABC Music" collide.
+const NAME_STOPWORDS = new Set([
+  "the","a","an","and","of","for","at","in","on",
+  "llc","inc","co","corp","ltd","plc","pllc",
+  "studio","studios","academy","academies","school","schools",
+  "kids","kid","children","childrens","child",
+  "center","centre","centers",
+]);
+function canonicalName(n: string): string {
+  const base = normalizeName(n);
+  const toks = base.split(" ").filter((t) => t && !NAME_STOPWORDS.has(t) && t.length > 1);
+  return toks.join(" ");
+}
+function bigrams(s: string): Set<string> {
+  const out = new Set<string>();
+  const t = s.replace(/\s+/g, "");
+  for (let i = 0; i < t.length - 1; i++) out.add(t.slice(i, i + 2));
+  return out;
+}
+function jaccard(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 || b.size === 0) return 0;
+  let inter = 0;
+  for (const x of a) if (b.has(x)) inter++;
+  return inter / (a.size + b.size - inter);
+}
+
 // Marketplace activity-detail links (e.g. hisawyer.com/marketplace/activity-set/123,
 // activityhero.com/a/...) often render as blank SPA shells when the activity
 // is expired or unlisted. Rewrite them to a Google search for the provider so

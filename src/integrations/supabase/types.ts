@@ -344,6 +344,62 @@ export type Database = {
         }
         Relationships: []
       }
+      candidate_process_steps: {
+        Row: {
+          candidate_id: string
+          completed: boolean
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          data: Json
+          homework: Json
+          id: string
+          notes: string | null
+          post_call_actions: Json
+          step_number: number
+          trial_close: Json
+          updated_at: string
+        }
+        Insert: {
+          candidate_id: string
+          completed?: boolean
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          data?: Json
+          homework?: Json
+          id?: string
+          notes?: string | null
+          post_call_actions?: Json
+          step_number: number
+          trial_close?: Json
+          updated_at?: string
+        }
+        Update: {
+          candidate_id?: string
+          completed?: boolean
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          data?: Json
+          homework?: Json
+          id?: string
+          notes?: string | null
+          post_call_actions?: Json
+          step_number?: number
+          trial_close?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_process_steps_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidate_profiles: {
         Row: {
           additional_notes: string | null

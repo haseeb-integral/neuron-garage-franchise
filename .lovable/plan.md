@@ -1,19 +1,26 @@
-## Where `/mvs-qa-queue` lives today
-The route is wired in `App.tsx` but has **no link** in the UI — the only way to reach it is to type the URL. That's why you can't see it from inside the app.
+I agree with the criticism. Two separate problems need fixing:
 
-## Where to add the entry point (most logical)
-On **Market Validation** (`/market-validation`), inside the existing intro panel "What this feature does" → card **"2 · (Re)score cities"**, right next to the **Open scoring console →** button.
+1. **QA page usability**
+   - Move the existing “Back to Market Validation” link from the bottom to the top/header area so it is visible immediately.
+   - Keep the bottom back link too if useful, but the top return path is the important fix.
 
-Reasoning: that card is already the operational/manager card (the QA queue is operational follow-up to the scoring pipeline). It's manager-only, matching the QA page's role gate. The shortlist table area below stays clean for decision-makers.
+2. **Bad source/evidence URLs**
+   - The extractor currently scrapes only the provider root URL first, so Philly Art Center rows all point to `https://phillyartcenter.com/` and the screenshot is just the homepage.
+   - Fix `mvs-extract-weeks` so before extracting weeks it discovers/selects the best camp/registration page URL from the provider website, prioritizing URLs/titles/text containing terms like `summer camp`, `camps`, `registration`, `sawyer`, `enroll`, `weekly`, `kids`, `ages`.
+   - For Philly Art Center, this should prefer a page like `/camps/summer-camps/` over the homepage when that page contains the camp schedule, ages, by-the-week dates, registration language, and pricing/policy sections.
+   - Store that exact selected page as `mvs_weeks.source_url` and capture the screenshot from that exact page, not the homepage.
 
-## Plan (1 small edit)
-1. In `src/pages/MarketValidation.tsx`, in the "2 · (Re)score cities" card header, add a second link **"Review QA queue →"** beside "Open scoring console →" pointing to `/mvs-qa-queue`.
-2. Show a small red count badge using the already-imported `QA_QUEUE_FLAGGED_COUNT` (e.g. `Review QA queue (8) →`). If the live count from `mvs_qa_queue` is preferred over the constant, we can fetch it; for now the constant matches what the page shows.
-3. Add one short helper line under the buttons: *"QA queue = manager review of low-confidence week extractions."*
+3. **QA page evidence display**
+   - Show the exact source URL more clearly as “Evidence page” instead of generic “Source”.
+   - Keep screenshot preview tied to the exact evidence page.
+   - Add a small “Open evidence page” action beside the screenshot/source so reviewers can verify quickly.
 
-No new routes, no schema changes, no other pages touched. Sidebar stays as-is (we discussed adding it there earlier — skipping unless you want it too).
+4. **Important limitation**
+   - Existing bad rows already saved with homepage URLs will not magically change from a UI-only fix.
+   - After updating the extractor, Philly/Philadelphia extraction must be rerun so the queue rows get refreshed with the correct source URL and screenshot.
 
-## Out of scope
-- Adding a sidebar nav item (say the word and I'll add it under MVS Methodology).
-- Live count from DB instead of the constant.
-- Any change to the QA page itself.
+5. **Verification after build**
+   - Open `/market-validation`, click “Review QA queue”.
+   - Confirm the QA page has an obvious top “Back to Market Validation” control.
+   - Confirm Philly Art Center QA rows point to the camp page, not the homepage, after rerunning extraction.
+   - Confirm screenshots show the camp information section/page, not only the homepage hero.

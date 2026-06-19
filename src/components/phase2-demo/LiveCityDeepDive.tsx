@@ -262,20 +262,16 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
             <div className="text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
               {result?.mvs != null ? "Market Validation Score" : "Not scored yet"}
             </div>
-            <button
-              type="button"
-              onClick={handleDownloadBrief}
-              disabled={downloading || !result || !acs}
-              className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-[#174be8] px-3 py-1.5 text-[12px] font-bold text-white hover:bg-[#1240c9] disabled:opacity-60"
-              title="Download internal MVS brief (PDF)"
+            <a
+              href={`/market-brief?city=${encodeURIComponent(cityDisplay)}&state=${encodeURIComponent(stateDisplay)}&w=pa:${weights.pricingAcceptance},ma:${weights.marketAbsorption},so:${weights.scaledOperator},ed:${weights.enrichmentDiversity},md:${weights.marketDepth},mb:${weights.marketBalance}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-[#174be8] px-3 py-1.5 text-[12px] font-bold text-white hover:bg-[#1240c9]"
+              title="Open the branded Market Brief in a new tab. Use Cmd-P / Save as PDF for a print-quality copy."
             >
-              {downloading ? (
-                <Loader2 size={12} className="animate-spin" />
-              ) : (
-                <FileDown size={12} />
-              )}
-              {downloading ? "Generating…" : "Export PDF"}
-            </button>
+              <FileDown size={12} />
+              Open Market Brief
+            </a>
           </div>
         </div>
       </section>

@@ -27,7 +27,7 @@ const SUB_SCORE_META: {
     title: "Pricing Acceptance",
     subtitle: "Are families already paying premium pricing?",
     formula:
-      "0.40 × normalize(median, $300–$700) + 0.40 × normalize(75th pct, $400–$800) + 0.20 × (% at $500+)",
+      "Uses each provider's lowest listed price as a single-week proxy. Score = 0.40 × normalize(median weekly, $300–$700) + 0.40 × normalize(75th pct weekly, $400–$800) + 0.20 × (% at $500+ per week).",
   },
   {
     key: "marketAbsorption",

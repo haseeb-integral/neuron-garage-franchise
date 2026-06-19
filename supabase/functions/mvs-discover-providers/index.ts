@@ -57,6 +57,7 @@ const TIER_A_BOXES: Record<string, Box> = {
   "Philadelphia, PA": { top: 40.30, left: -75.50, bottom: 39.75, right: -74.80 },
   "Los Angeles, CA":  { top: 34.50, left: -118.95, bottom: 33.65, right: -117.85 },
   "Indianapolis, IN": { top: 40.15, left: -86.55, bottom: 39.45, right: -85.75 },
+  "Denver, CO":       { top: 40.10, left: -105.30, bottom: 39.50, right: -104.60 },
 };
 
 type SawyerSearch = {
@@ -87,6 +88,33 @@ function citySlug(city: string): string {
 
 function normalizeName(n: string): string {
   return n.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+// Canonical name for cross-source matching. Drops common business suffixes
+// and filler words so "ABC Music Studio LLC" and "ABC Music" collide.
+const NAME_STOPWORDS = new Set([
+  "the","a","an","and","of","for","at","in","on",
+  "llc","inc","co","corp","ltd","plc","pllc",
+  "studio","studios","academy","academies","school","schools",
+  "kids","kid","children","childrens","child",
+  "center","centre","centers",
+]);
+function canonicalName(n: string): string {
+  const base = normalizeName(n);
+  const toks = base.split(" ").filter((t) => t && !NAME_STOPWORDS.has(t) && t.length > 1);
+  return toks.join(" ");
+}
+function bigrams(s: string): Set<string> {
+  const out = new Set<string>();
+  const t = s.replace(/\s+/g, "");
+  for (let i = 0; i < t.length - 1; i++) out.add(t.slice(i, i + 2));
+  return out;
+}
+function jaccard(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 || b.size === 0) return 0;
+  let inter = 0;
+  for (const x of a) if (b.has(x)) inter++;
+  return inter / (a.size + b.size - inter);
 }
 
 // Marketplace activity-detail links (e.g. hisawyer.com/marketplace/activity-set/123,
@@ -216,7 +244,7 @@ Rules:
   };
 }
 
-// ----------------- Source: ActivityHero -----------------
+// ----------------- Source: ActivityHero (3-variant) -----------------
 async function runActivityHero(args: {
   city: string;
   state: string;
@@ -224,39 +252,62 @@ async function runActivityHero(args: {
   lovableKey: string;
 }): Promise<SourceResult> {
   const { city, state, firecrawlKey, lovableKey } = args;
-  const slug = `${citySlug(city)}-${state.toLowerCase()}`;
-  const url = `https://www.activityhero.com/s/${slug}/camps`;
-  const debug: Record<string, unknown> = { url };
+  const slug = citySlug(city);
+  const st = state.toLowerCase();
+  const variants = [
+    `https://www.activityhero.com/camps/${slug}-${st}`,
+    `https://www.activityhero.com/classes/${slug}-${st}`,
+    `https://www.activityhero.com/search?q=kids&location=${encodeURIComponent(city + " " + state)}`,
+  ];
+  const debug: Record<string, unknown> = {};
+  const variantDebug: unknown[] = [];
+  const collected: ProviderExtract[] = [];
   let firecrawlCalls = 0;
-  try {
-    const res = await fetchWithTimeout(`${FIRECRAWL_V2}/scrape`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ url, formats: ["markdown"], onlyMainContent: true, waitFor: 3000 }),
-    }, FIRECRAWL_TIMEOUT_MS);
-    firecrawlCalls += 1;
-    const j = await res.json().catch(() => ({}));
-    if (!res.ok) { debug.error = `firecrawl ${res.status}`; return { platform: "activityhero", providers: [], firecrawlCalls, debug }; }
-    const md: string = j?.data?.markdown ?? "";
-    debug.markdown_chars = md.length;
-    if (!md) { debug.error = "empty markdown"; return { platform: "activityhero", providers: [], firecrawlCalls, debug }; }
 
-    const sys = `You extract kids' activity providers from an ActivityHero marketplace page for ${city}, ${state}.
+  for (let i = 0; i < variants.length; i++) {
+    const url = variants[i];
+    const v: Record<string, unknown> = { variant: i, url };
+    try {
+      const res = await fetchWithTimeout(`${FIRECRAWL_V2}/scrape`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ url, formats: ["markdown", "links"], onlyMainContent: true, waitFor: 5000 }),
+      }, FIRECRAWL_TIMEOUT_MS);
+      firecrawlCalls += 1;
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) { v.error = `firecrawl ${res.status}`; variantDebug.push(v); continue; }
+      const md: string = j?.data?.markdown ?? "";
+      const links: string[] = Array.isArray(j?.data?.links) ? j.data.links : [];
+      v.markdown_chars = md.length;
+      v.links_count = links.length;
+      if (!md && links.length === 0) { v.error = "empty page"; variantDebug.push(v); continue; }
+
+      const linksBlob = links.slice(0, 200).join("\n");
+      const sys = `You extract kids' activity providers from an ActivityHero marketplace page for ${city}, ${state}.
 Return strict JSON: { "providers": [ { "name": string, "url": string|null, "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number } ] }
 Rules:
-- A "provider" is a real business offering kids' classes/camps (e.g. a gymnastics studio).
-- EXCLUDE: the marketplace itself ("ActivityHero"), category navigation, generic labels, individual class titles.
+- A "provider" is a real business offering kids' classes/camps (e.g. a gymnastics studio, music school, art camp).
+- EXCLUDE: the marketplace itself ("ActivityHero"), category navigation, generic labels, individual class titles, blog posts.
 - "url" MUST be the provider's OWN website (their own domain). DO NOT use marketplace activity-detail links such as "activityhero.com/a/..." or "/activity/...". If you cannot see the provider's own website on the page, return null for url.
 - Prefer in-person providers in ${city}. Skip online-only.
 - Prices USD per session. Null if unknown.
 - Hard cap: 60.`;
-    const providers = await extractWithGemini({ lovableKey, sys, city, sourceUrl: url, markdown: md });
-    debug.providers_extracted = providers.length;
-    return { platform: "activityhero", providers, firecrawlCalls, debug };
-  } catch (e) {
-    debug.error = e instanceof Error ? e.message : String(e);
-    return { platform: "activityhero", providers: [], firecrawlCalls, debug };
+      const providers = await extractWithGemini({
+        lovableKey, sys, city, sourceUrl: url,
+        markdown: md + (linksBlob ? `\n\nDISCOVERED LINKS:\n${linksBlob}` : ""),
+      });
+      v.providers_extracted = providers.length;
+      collected.push(...providers);
+      variantDebug.push(v);
+    } catch (e) {
+      v.error = e instanceof Error ? e.message : String(e);
+      variantDebug.push(v);
+    }
   }
+
+  debug.variants = variantDebug;
+  debug.total_extracted = collected.length;
+  return { platform: "activityhero", providers: collected, firecrawlCalls, debug };
 }
 
 // ----------------- Source: Google Maps via Apify -----------------
@@ -501,19 +552,20 @@ Deno.serve(async (req) => {
       debug[r.platform] = r.debug;
     }
 
-    type Merged = ProviderExtract & { platform: Platform; sources_seen: Platform[] };
+    type Merged = ProviderExtract & { platform: Platform; sources_seen: Platform[]; canonical: string };
     const byKey = new Map<string, Merged>();
     for (const r of sourceResults) {
       for (const p of r.providers) {
-        const key = normalizeName(p.name);
-        if (!key) continue;
-        const existing = byKey.get(key);
+        const canon = canonicalName(p.name);
+        if (!canon) continue;
+        const existing = byKey.get(canon);
         if (!existing) {
-          byKey.set(key, { ...p, platform: r.platform, sources_seen: [r.platform] });
+          byKey.set(canon, { ...p, platform: r.platform, sources_seen: [r.platform], canonical: canon });
         } else {
           if (!existing.sources_seen.includes(r.platform)) existing.sources_seen.push(r.platform);
           if (PLATFORM_PRIORITY[r.platform] < PLATFORM_PRIORITY[existing.platform]) {
             existing.platform = r.platform;
+            existing.name = p.name; // prefer name from higher-priority source
           }
           existing.url = existing.url ?? p.url ?? null;
           existing.price_min = existing.price_min ?? p.price_min ?? null;
@@ -523,24 +575,52 @@ Deno.serve(async (req) => {
         }
       }
     }
-    debug.merged_total = byKey.size;
+
+    // Second-pass fuzzy merge: collapse entries whose canonicals are bigram-similar
+    // (Jaccard >= 0.75) or one is a >=6-char prefix of the other.
+    const mergedList: Merged[] = [...byKey.values()];
+    const mergedBigrams = mergedList.map((m) => bigrams(m.canonical));
+    const removed = new Set<number>();
+    for (let i = 0; i < mergedList.length; i++) {
+      if (removed.has(i)) continue;
+      for (let j = i + 1; j < mergedList.length; j++) {
+        if (removed.has(j)) continue;
+        const a = mergedList[i], b = mergedList[j];
+        const sim = jaccard(mergedBigrams[i], mergedBigrams[j]);
+        const prefix = a.canonical.length >= 6 && b.canonical.length >= 6 &&
+          (a.canonical.startsWith(b.canonical) || b.canonical.startsWith(a.canonical));
+        if (sim >= 0.75 || prefix) {
+          for (const s of b.sources_seen) if (!a.sources_seen.includes(s)) a.sources_seen.push(s);
+          if (PLATFORM_PRIORITY[b.platform] < PLATFORM_PRIORITY[a.platform]) {
+            a.platform = b.platform; a.name = b.name;
+          }
+          a.url = a.url ?? b.url ?? null;
+          a.price_min = a.price_min ?? b.price_min ?? null;
+          a.price_max = a.price_max ?? b.price_max ?? null;
+          a.category_raw = a.category_raw ?? b.category_raw ?? null;
+          a.confidence = Math.max(a.confidence ?? 0, b.confidence ?? 0);
+          removed.add(j);
+        }
+      }
+    }
+    const finalMerged = mergedList.filter((_, idx) => !removed.has(idx));
+    debug.merged_total = finalMerged.length;
+    debug.fuzzy_collapsed = removed.size;
 
     const isMarketplaceHost = (u: string) =>
       /(hisawyer\.com|activityhero\.com|yelp\.com)/i.test(u);
 
-    const rows = [...byKey.values()].map((m) => {
+    const rows = finalMerged.map((m) => {
       const rawUrl = m.url ?? null;
       const marketplace = rawUrl ? isMarketplaceHost(rawUrl) : false;
-      // Provider's own homepage: anything that isn't a known marketplace host.
       const website_url = rawUrl && !marketplace ? rawUrl : null;
-      // The discovery/listing page (Yelp page, Google Maps URL, etc.).
       const source_listing_url = rawUrl && marketplace ? rawUrl : null;
       return {
         city,
         name: m.name.trim().slice(0, 300),
+        canonical: m.canonical,
         platform: m.platform,
-        sources: m.sources_seen,
-        // Keep deprecated `url` populated so legacy readers still work; prefer website.
+        sources_seen: m.sources_seen,
         url: website_url ?? source_listing_url,
         website_url,
         source_listing_url,
@@ -554,20 +634,85 @@ Deno.serve(async (req) => {
     });
 
     let inserted = 0;
+    let updated = 0;
     if (rows.length > 0) {
+      // Fetch existing rows for this city to fuzzy-match against.
       const { data: existingRows, error: existingErr } = await admin
         .from("mvs_providers")
-        .select("name")
+        .select("id, name, sources, confidence, website_url, source_listing_url, price_min, price_max, category_raw, platform")
         .eq("city", city);
       if (existingErr) throw new Error(`fetch existing providers: ${existingErr.message}`);
-      const existingNames = new Set((existingRows ?? []).map((r) => normalizeName(r.name)));
-      const newRows = rows.filter((r) => !existingNames.has(normalizeName(r.name)));
-      if (newRows.length > 0) {
+      const existing = (existingRows ?? []).map((r) => ({
+        ...r,
+        canonical: canonicalName(r.name as string),
+        bg: bigrams(canonicalName(r.name as string)),
+      }));
+
+      const toInsert: Record<string, unknown>[] = [];
+      const toUpdate: { id: string; patch: Record<string, unknown> }[] = [];
+
+      for (const row of rows) {
+        const rowBg = bigrams(row.canonical);
+        let match: typeof existing[number] | null = null;
+        for (const e of existing) {
+          if (!e.canonical) continue;
+          if (e.canonical === row.canonical) { match = e; break; }
+          const sim = jaccard(rowBg, e.bg);
+          const prefix = row.canonical.length >= 6 && e.canonical.length >= 6 &&
+            (row.canonical.startsWith(e.canonical) || e.canonical.startsWith(row.canonical));
+          if (sim >= 0.75 || prefix) { match = e; break; }
+        }
+
+        if (match) {
+          const existingSrcs: string[] = Array.isArray(match.sources) ? match.sources as string[] : [];
+          const union = Array.from(new Set([...existingSrcs, ...row.sources_seen]));
+          toUpdate.push({
+            id: match.id as string,
+            patch: {
+              sources: union,
+              platform: PLATFORM_PRIORITY[row.platform] < PLATFORM_PRIORITY[(match.platform as Platform) ?? "yelp"]
+                ? row.platform : match.platform,
+              website_url: match.website_url ?? row.website_url,
+              source_listing_url: match.source_listing_url ?? row.source_listing_url,
+              price_min: match.price_min ?? row.price_min,
+              price_max: match.price_max ?? row.price_max,
+              category_raw: match.category_raw ?? row.category_raw,
+              confidence: Math.max(Number(match.confidence ?? 0), Number(row.confidence ?? 0)),
+              source_run_id: runId,
+              updated_at: new Date().toISOString(),
+            },
+          });
+        } else {
+          toInsert.push({
+            city: row.city,
+            name: row.name,
+            platform: row.platform,
+            sources: row.sources_seen,
+            url: row.url,
+            website_url: row.website_url,
+            source_listing_url: row.source_listing_url,
+            price_min: row.price_min,
+            price_max: row.price_max,
+            category_raw: row.category_raw,
+            screenshot_url: row.screenshot_url,
+            confidence: row.confidence,
+            source_run_id: row.source_run_id,
+          });
+        }
+      }
+
+      if (toInsert.length > 0) {
         const { data: insData, error: insErr } = await admin
-          .from("mvs_providers").insert(newRows).select("id");
+          .from("mvs_providers").insert(toInsert).select("id");
         if (insErr) throw new Error(`insert providers: ${insErr.message}`);
         inserted = insData?.length ?? 0;
       }
+      for (const u of toUpdate) {
+        const { error: upErr } = await admin
+          .from("mvs_providers").update(u.patch).eq("id", u.id);
+        if (!upErr) updated += 1;
+      }
+      debug.updated = updated;
     }
 
     // Only the standalone-caller branch owns the run row's lifecycle. When
@@ -586,6 +731,7 @@ Deno.serve(async (req) => {
         city,
         firecrawl_calls: totalFirecrawl,
         providers_inserted: inserted,
+        providers_updated: updated,
         providers_merged: rows.length,
         screenshot_path: screenshotPath,
         debug,

@@ -1,74 +1,68 @@
-# MVS Market Brief → Beautiful Web Page + Print-to-PDF
+# Fix 3 Discovery Issues
 
-## Why we're changing approach
+Root causes confirmed from code + DB inspection of `supabase/functions/mvs-discover-providers/index.ts` and `mvs_providers`.
 
-Today the brief is generated with `@react-pdf/renderer` (`src/lib/mvsBrief/MvsBriefDocument.tsx`, 756 lines). That library renders PDF-only — there is no web view, layout primitives are limited (no CSS grid, no web fonts unless registered, no SVG charts unless hand-built), which is exactly why the output looks utilitarian.
+## Issue 1 — ActivityHero returns ~1 provider per city
 
-Sam & Brett want the opposite shape: **a real branded web page** at a URL, that anyone can open, scroll, share — and when you hit Cmd-P / "Save as PDF" it prints to a pixel-perfect branded PDF. One source, two surfaces.
+**Root cause:** Single URL `https://www.activityhero.com/s/{slug}-{state}/camps` is the wrong path pattern. Real ActivityHero city pages use `/camps/{city}-{state}` and `/classes/{city}-{state}`. The current URL renders a near-empty SPA shell, so Gemini gets no real provider list.
 
-## What the research says (Reddit / SO / web consensus)
+**Fix:**
+- Replace single-URL scrape with **3-variant scrape** (mirrors Sawyer pattern):
+  1. `https://www.activityhero.com/camps/{city-slug}-{state}`
+  2. `https://www.activityhero.com/classes/{city-slug}-{state}`
+  3. `https://www.activityhero.com/search?q=kids&location={city}+{state}` (fallback)
+- Bump `waitFor` from 3000 → 5000 ms (ActivityHero is heavy JS).
+- Add a Firecrawl `formats: ["markdown", "links"]` so we can also pull anchor hrefs for provider discovery when markdown is sparse.
+- Each variant logged separately in `debug.activityhero.variants[]`.
 
-Three viable paths, ranked:
+## Issue 2 — Denver only has 3 providers, all `sources: []`
 
-1. **HTML + print CSS + Paged.js polyfill** — current best-in-class for "web page that prints beautifully." Paged.js (https://pagedjs.org) is the open-source polyfill for the W3C `@page` / Paged Media spec. Used by O'Reilly, MIT Press, Hugo Print. Gives you: real page numbers, running headers/footers, page breaks before/after sections, footnotes, TOC with auto page refs, bleed, crop marks. Works with any HTML/Tailwind. User prints via browser → gorgeous PDF. No server.
-2. **react-to-print + handcrafted print CSS** — simpler, no Paged.js. Good if we don't need running headers/footers or a TOC with page numbers. Lighter dep.
-3. **Puppeteer/Playwright server-side PDF** — best fidelity but needs an edge function with Chromium (heavy, slow cold starts on Supabase). Overkill unless we need automated email delivery.
+**Two root causes:**
 
-Reddit r/webdev + multiple SO threads (`html-to-pdf-converter`, `paged.js page numbers`, `react print css`) consistently land on Paged.js when the requirement is "designer-quality printed output from HTML." `html2pdf.js` and `jsPDF` are explicitly **not** recommended — they rasterize or have poor typography.
+a. **Stale rows skipping re-insert.** Lines 562–565 do `existingNames = SELECT name WHERE city=X` then `rows.filter(r => !existingNames.has(...))`. Result: on re-runs, providers that already exist are silently dropped — including their newly-discovered `sources` array. Denver's 3 Sawyer rows pre-date the multi-source change; the re-run never updated them.
 
-**Recommendation: Path 1 (Paged.js).** It's the only option that gives us a real web page AND a print-quality branded PDF from the same source, with zero server cost.
+b. **Denver not in `TIER_A_BOXES`.** Falls through to `us_cities_geo` fallback box. That works for Sawyer, but means none of the orchestrator's Tier-A "Re-run All" loops include Denver. Need to confirm whether Denver should be in shortlist; if yes, add a box; if no, drop the orphan rows.
 
-## Scope of this build
+**Fix:**
+- Replace the "filter out existing names" pattern with **UPSERT on (city, lower(name), platform)** using the existing unique index — so `sources`, `website_url`, `confidence`, `price_min/max` get merged into existing rows on every run.
+  - Merge strategy on conflict: `sources = mvs_providers.sources || EXCLUDED.sources` (jsonb union, deduped), keep highest `confidence`, fill nulls from new row.
+  - Because Postgres jsonb union isn't a single operator, do it via `ON CONFLICT DO UPDATE SET sources = (SELECT jsonb_agg(DISTINCT v) FROM jsonb_array_elements(mvs_providers.sources || EXCLUDED.sources) v)`.
+- Add `Denver, CO` to `TIER_A_BOXES` (box `{top: 40.10, left: -105.30, bottom: 39.50, right: -104.60}`) so it gets the same treatment as other Tier-A cities.
+- Trigger a one-off `mvs-discover-providers` run for Denver after deploy.
 
-### New route + page
-- `src/pages/MarketBrief.tsx` at route `/market-brief/:citySlug`
-- Reads the same live data the current PDF reads (`useLiveMvs` + `computeMvs` bundle) — single source of truth, no recomputation
-- Renders all 12 sections as a real responsive web page using existing Tailwind tokens + Neuron Garage brand (navy `#07142f`, blue `#174be8`, logo)
-- "Print / Save as PDF" button at top-right triggers `window.print()`
+## Issue 3 — Cross-source overlap is near-zero (max 4 per city)
 
-### Branded print stylesheet
-- New `src/styles/market-brief-print.css` loaded only on this route
-- `@page { size: Letter; margin: 0.6in; @top-left { content: element(brandHeader) }; @bottom-right { content: "Page " counter(page) " of " counter(pages) } }`
-- Page-break rules so sections don't split awkwardly
-- Web fonts embedded for print (Inter + a display serif for headlines — current PDF only has Helvetica)
-- Cover page with full-bleed brand color, logo, city name, composite score hero, generated-on date
-- Running header on every page after cover: small logo + city + section name
-- Footer: page X of Y + Neuron Garage URL
+**Root cause:** `normalizeName(n)` = lowercase + strip punctuation only. So "ABC Music Studio" vs "ABC Music" vs "ABC Music Studios LLC" all hash differently → never merge across sources → tier classifier loses the "3+ sources = real operator" signal it expects.
 
-### Paged.js wiring
-- `bun add pagedjs`
-- Loaded lazily only when user clicks "Save as PDF" (so normal web view isn't paginated)
-- Polyfill rewrites the live DOM into paginated pages, then we call `window.print()`
-- Falls back gracefully (raw browser print) if Paged.js fails
+**Fix:** Add a second-pass fuzzy merge after the exact-key merge:
+- Strip common suffixes (`llc`, `inc`, `studio(s)`, `academy`, `school`, `co`, `the`, `kids`, `for kids`) and trailing single-letter tokens.
+- Collapse multiple spaces; compute a **bigram Jaccard** similarity.
+- Merge entries with Jaccard ≥ 0.75 OR where one normalized name is a strict prefix of the other (≥ 6 chars). When merging, union `sources_seen` and keep highest-priority platform.
+- Same normalization is reused for the upsert key (so existing-row matching also benefits) — store the canonical form in a new derived column or compute on the fly via the unique index expression.
 
-### Charts / visuals (the "gorgeous" part)
-- Pillar score bars: SVG, gradient fills, brand colors
-- Composite score: large radial/donut SVG on cover
-- Week QA table: clean rules, alternating row tint, status pills
-- Provider list: card grid with score chips
-- Use Recharts (already in deps) for the trend / comparison visuals — Recharts SVG prints crisply
+**No DB migration needed for #3** — all logic stays in the edge function; the existing unique index `(city, lower(name), platform)` remains, we just match harder before inserting.
 
-### Replace, don't dual-maintain
-- Delete `src/lib/mvsBrief/MvsBriefDocument.tsx` and `sampleBriefAdapter.ts`
-- Remove `renderMvsBriefPdfBlob` calls in `LiveCityDeepDive.tsx` and `MarketValidation.tsx`
-- Replace both "Export PDF" buttons with "Open Market Brief" that opens `/market-brief/<slug>` in a new tab
-- Keep weights/slider state: pass via query string (`?w=infra:0.3,demand:0.2,...`) so the brief reflects the current slider position
-- Can remove `@react-pdf/renderer` dep if no other surface uses it (verify SitePackDocument first — it does, so keep the dep for now)
+## Files Touched
 
-## Build phases (estimate: 3 focused turns)
+- `supabase/functions/mvs-discover-providers/index.ts`
+  - Rewrite `runActivityHero` to 3-variant pattern
+  - Add `Denver, CO` to `TIER_A_BOXES`
+  - Replace existing-name filter with proper upsert + jsonb sources union
+  - Add `fuzzyMergeProviders()` second-pass dedupe
+- One-off invocation of `mvs-discover-providers` for Denver after deploy (single curl).
 
-**Turn A — Scaffold the web page**
-- New route, new page component, brand cover, all 12 sections rendered with live data, fully responsive web styling. No print CSS yet. Wire up the two buttons to open the new route.
+## Verification
 
-**Turn B — Print CSS + Paged.js**
-- Add `pagedjs` dep, print stylesheet, page breaks, running header/footer, page numbers, cover page bleed, font embedding. "Save as PDF" button triggers paginated print.
+After deploy + re-run:
+```sql
+SELECT city, COUNT(*), COUNT(*) FILTER (WHERE jsonb_array_length(sources) >= 2) AS multi
+FROM mvs_providers GROUP BY city ORDER BY 2 DESC;
+```
+- ActivityHero count per city should jump from ~1 → 10–30.
+- Denver total should jump from 3 → 80+.
+- `multi` (cross-source overlap) should rise from 0–4 → 15–40 per city.
 
-**Turn C — Polish + visuals + cleanup**
-- SVG charts (radial composite, pillar bars), Recharts visuals where applicable, status pills, typography pass. Delete old `MvsBriefDocument.tsx` + adapter. Manual QA pass (web view + printed PDF side-by-side on Boston).
+## Out of scope
 
-## What I'd like you to confirm before I build
-
-1. **Brand direction for the cover** — go with the existing navy/blue Neuron Garage palette and add a display serif (e.g. Fraunces or Instrument Serif) for headlines? Or stay sans-only?
-2. **Page size** — US Letter (default) or A4?
-3. **Replace vs keep old PDF** — OK to delete the `@react-pdf/renderer` brief entirely once the new one works? (Sitepack still uses the lib, so the dep stays.)
-4. **Route auth** — `/market-brief/:slug` behind the same auth as the rest of the app? (Yes by default.)
+- No changes to `mvs-classify-tier` — once `sources` is populated correctly, the existing tier logic will improve automatically.
+- No UI changes.

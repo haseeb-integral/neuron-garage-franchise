@@ -402,9 +402,21 @@ async function runGoogleSearch(args: {
   const collected: ProviderExtract[] = [];
   let firecrawlCalls = 0;
 
-  for (let i = 0; i < queries.length; i++) {
-    const q = queries[i];
+  const sys = `You extract real local kids-activity provider businesses mentioned in listicle, blog, and local-news pages for ${city}, ${state}.
+Return strict JSON: { "providers": [ { "name": string, "url": string|null, "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number } ] }
+Rules:
+- A "provider" is a real local business offering kids' classes, camps, gymnastics, art, music, sports, STEM, dance, etc. that physically operates in ${city}.
+- EXCLUDE: the publication itself (e.g. "Mommy Poppins", "Red Tricycle", "Boston Globe"), generic categories ("Summer Camps"), national chains' national websites (use the local branch name if mentioned), individual class titles, navigation links, restaurants, museums, parks, public libraries, public schools.
+- "url" = the provider's OWN website if visible in the page text, else null. Never use the listicle's own URL.
+- category_raw = the activity type (e.g. "gymnastics", "music school", "art camp", "stem").
+- Prefer providers mentioned in MULTIPLE supplied pages — those are highest confidence.
+- Hard cap: 40 providers.`;
+
+  // Run all 5 listicle queries in parallel — sequential was ~60s, parallel ~15s.
+  const perQuery = await Promise.all(queries.map(async (q) => {
     const qd: Record<string, unknown> = { query: q };
+    const out: { providers: ProviderExtract[]; calls: number; debug: Record<string, unknown> } =
+      { providers: [], calls: 0, debug: qd };
     try {
       const res = await fetchWithTimeout(`${FIRECRAWL_V2}/search`, {
         method: "POST",
@@ -416,17 +428,15 @@ async function runGoogleSearch(args: {
           scrapeOptions: { formats: ["markdown"], onlyMainContent: true },
         }),
       }, FIRECRAWL_TIMEOUT_MS);
-      firecrawlCalls += 1;
+      out.calls = 1;
       const j = await res.json().catch(() => ({}));
-      if (!res.ok) { qd.error = `firecrawl ${res.status}`; queryDebug.push(qd); continue; }
+      if (!res.ok) { qd.error = `firecrawl ${res.status}`; return out; }
 
-      // v2 search returns { data: { web: [{ url, title, description, markdown? }] } } or { data: [...] }.
       const items: Array<Record<string, unknown>> =
         (Array.isArray(j?.data?.web) ? j.data.web : Array.isArray(j?.data) ? j.data : []) as Array<Record<string, unknown>>;
       qd.results_count = items.length;
-      if (items.length === 0) { queryDebug.push(qd); continue; }
+      if (items.length === 0) return out;
 
-      // Build one big context blob: each result becomes a section with URL + markdown.
       const blob = items.map((it, idx) => {
         const url = String(it.url ?? it.link ?? "");
         const title = String(it.title ?? "");
@@ -434,25 +444,21 @@ async function runGoogleSearch(args: {
         return `=== RESULT ${idx + 1} ===\nURL: ${url}\nTITLE: ${title}\n\n${md.slice(0, 6000)}`;
       }).join("\n\n");
 
-      const sys = `You extract real local kids-activity provider businesses mentioned in listicle, blog, and local-news pages for ${city}, ${state}.
-Return strict JSON: { "providers": [ { "name": string, "url": string|null, "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number } ] }
-Rules:
-- A "provider" is a real local business offering kids' classes, camps, gymnastics, art, music, sports, STEM, dance, etc. that physically operates in ${city}.
-- EXCLUDE: the publication itself (e.g. "Mommy Poppins", "Red Tricycle", "Boston Globe"), generic categories ("Summer Camps"), national chains' national websites (use the local branch name if mentioned), individual class titles, navigation links, restaurants, museums, parks, public libraries, public schools.
-- "url" = the provider's OWN website if visible in the page text, else null. Never use the listicle's own URL.
-- category_raw = the activity type (e.g. "gymnastics", "music school", "art camp", "stem").
-- Prefer providers mentioned in MULTIPLE supplied pages — those are highest confidence.
-- Hard cap: 40 providers.`;
       const providers = await extractWithGemini({
         lovableKey, sys, city, sourceUrl: `google_search:${q}`, markdown: blob,
       });
       qd.providers_extracted = providers.length;
-      collected.push(...providers);
-      queryDebug.push(qd);
+      out.providers = providers;
     } catch (e) {
       qd.error = e instanceof Error ? e.message : String(e);
-      queryDebug.push(qd);
     }
+    return out;
+  }));
+
+  for (const r of perQuery) {
+    firecrawlCalls += r.calls;
+    collected.push(...r.providers);
+    queryDebug.push(r.debug);
   }
 
   debug.queries = queryDebug;
@@ -627,12 +633,14 @@ Deno.serve(async (req) => {
   let screenshotPath: string | null = null;
 
   try {
-    const sourceResults: SourceResult[] = [];
-    sourceResults.push(await runSawyer({ city, box, firecrawlKey, lovableKey, admin, runId }));
-    sourceResults.push(await runActivityHero({ city, state: stateAbbr, firecrawlKey, lovableKey }));
-    sourceResults.push(await runGoogleMaps({ city, state: stateAbbr }));
-    sourceResults.push(await runYelp({ city, state: stateAbbr, firecrawlKey, lovableKey }));
-    sourceResults.push(await runGoogleSearch({ city, state: stateAbbr, firecrawlKey, lovableKey }));
+    // Run all 5 sources in parallel — sequential calls exceeded the 150s edge function idle timeout.
+    const sourceResults: SourceResult[] = await Promise.all([
+      runSawyer({ city, box, firecrawlKey, lovableKey, admin, runId }),
+      runActivityHero({ city, state: stateAbbr, firecrawlKey, lovableKey }),
+      runGoogleMaps({ city, state: stateAbbr }),
+      runYelp({ city, state: stateAbbr, firecrawlKey, lovableKey }),
+      runGoogleSearch({ city, state: stateAbbr, firecrawlKey, lovableKey }),
+    ]);
 
     for (const r of sourceResults) {
       totalFirecrawl += r.firecrawlCalls;

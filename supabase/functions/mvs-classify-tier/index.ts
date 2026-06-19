@@ -61,6 +61,38 @@ category_classified should be a short snake_case label like "gymnastics", "stem"
 
 reasoning: one short sentence citing the price or category cue you used.`;
 
+// Fixed enum used by Enrichment Diversity pillar. Keep in sync with
+// ELIGIBLE_CATEGORIES in src/lib/mvs/computeMvs.ts.
+const CATEGORY_PATTERNS: Array<[RegExp, string]> = [
+  [/\b(stem|science|robotics|coding|engineering|tech)\b/, "stem"],
+  [/\b(art|painting|drawing|ceramic|pottery|sculpt|maker)\b/, "art"],
+  [/\b(music|guitar|piano|orchestra|band|rock)\b/, "music"],
+  [/\b(dance|ballet|hip\s*hop|tap)\b/, "dance"],
+  [/\b(language|spanish|french|mandarin|chinese|german|bilingual)\b/, "language"],
+  [/\b(swim|aqua)\b/, "swim"],
+  [/\b(gymnast|tumbl|cheer)\b/, "gymnastics"],
+  [/\b(soccer|basketball|baseball|tennis|volleyball|football|martial|karate|jiu.?jitsu|sport)\b/, "sports"],
+  [/\b(theater|theatre|drama|acting|film|video)\b/, "theater"],
+  [/\b(chess|debate|academic|tutor|math|reading)\b/, "academic enrichment"],
+  [/\b(cook|culinary|chef|baking)\b/, "cooking"],
+  [/\b(outdoor|nature|wilderness|hiking|farm)\b/, "outdoor"],
+];
+
+function normalizeCategory(rawCat: string, nameLc: string, tier: Tier): string {
+  if (tier === "community" && /child.?care|daycare|preschool/.test(rawCat + " " + nameLc)) {
+    return "childcare-excluded";
+  }
+  const haystack = `${rawCat} ${nameLc}`;
+  for (const [re, label] of CATEGORY_PATTERNS) {
+    if (re.test(haystack)) return label;
+  }
+  // Fallback: if classifier said something explicit and short, keep it normalized
+  if (rawCat && rawCat !== "camp" && rawCat !== "multi-activity" && rawCat.length < 30) {
+    return rawCat.replace(/[^a-z0-9 ]+/g, "").trim() || "multi-activity";
+  }
+  return "multi-activity";
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });

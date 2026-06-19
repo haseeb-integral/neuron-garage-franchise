@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertCircle, ChevronDown, ChevronUp, Download, FileText, Loader2, MapPin } from "lucide-react";
+import { AlertCircle, ChevronDown, ChevronUp, Download, FileText, Loader2, MapPin, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { renderMvsBriefPdfBlob } from "@/lib/mvsBrief/MvsBriefDocument";
 import { buildSampleBriefArgs } from "@/lib/mvsBrief/sampleBriefAdapter";
+import { supabase } from "@/integrations/supabase/client";
 
 import { PageHeader } from "@/components/PageHeader";
 

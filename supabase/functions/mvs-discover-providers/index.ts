@@ -57,6 +57,7 @@ const TIER_A_BOXES: Record<string, Box> = {
   "Philadelphia, PA": { top: 40.30, left: -75.50, bottom: 39.75, right: -74.80 },
   "Los Angeles, CA":  { top: 34.50, left: -118.95, bottom: 33.65, right: -117.85 },
   "Indianapolis, IN": { top: 40.15, left: -86.55, bottom: 39.45, right: -85.75 },
+  "Denver, CO":       { top: 40.10, left: -105.30, bottom: 39.50, right: -104.60 },
 };
 
 type SawyerSearch = {

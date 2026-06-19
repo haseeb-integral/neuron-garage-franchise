@@ -1,12 +1,10 @@
 import { useMemo, useState } from "react";
 import { Loader2, MapPin, FileDown } from "lucide-react";
-import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import { Slider } from "@/components/ui/slider";
 import { DEFAULT_WEIGHTS } from "@/lib/mvs/computeMvs";
 import { useLiveMvs } from "@/lib/mvs/useLiveMvs";
 import { RunPipelineButton } from "@/components/phase2-demo/RunPipelineButton";
-import { renderMvsBriefPdfBlob, type MvsBriefWeekDetail } from "@/lib/mvsBrief/MvsBriefDocument";
+
 
 
 const NAVY = "#07142f";
@@ -85,7 +83,6 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
   const { result, providers, weeks, acs, flag, loading, error, refresh } = useLiveMvs(cityKey, {
     weights,
   });
-  const [downloading, setDownloading] = useState(false);
 
 
   const provCount = providers.length;
@@ -97,87 +94,6 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
     [providers],
   );
 
-  const handleDownloadBrief = async () => {
-    if (!result || !acs) {
-      toast.error("MVS data not ready yet.");
-      return;
-    }
-    setDownloading(true);
-    try {
-      const { data: runRow } = await supabase
-        .from("mvs_pipeline_runs")
-        .select("id, status, started_at, finished_at, firecrawl_calls, error")
-        .eq("city", cityKey)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      // Fetch the appendix: per-week rows (with dates + screenshots) joined to
-      // provider names. Only premium providers are surfaced in the PDF, but we
-      // fetch all and filter client-side to match the on-screen helper.
-      const providerIds = providers.map((p) => p.id);
-      const providerNameById = new Map(providers.map((p) => [p.id, p.name]));
-      let weeksDetailed: MvsBriefWeekDetail[] = [];
-      if (providerIds.length > 0) {
-        const { data: wkRows } = await supabase
-          .from("mvs_weeks")
-          .select("provider_id, week_start, week_end, status, confidence, screenshot_url")
-          .in("provider_id", providerIds)
-          .order("week_start", { ascending: true });
-        weeksDetailed = (wkRows ?? []).map((w: any) => ({
-          provider_id: w.provider_id as string,
-          provider_name: providerNameById.get(w.provider_id) ?? "—",
-          week_start: String(w.week_start),
-          week_end: w.week_end ? String(w.week_end) : null,
-          status: String(w.status),
-          confidence: w.confidence == null ? null : Number(w.confidence),
-          screenshot_url: (w.screenshot_url as string) ?? null,
-        }));
-      }
-
-      const blob = await renderMvsBriefPdfBlob({
-        cityKey,
-        cityDisplay,
-        stateDisplay,
-        result,
-        providers,
-        weeks,
-        weeksDetailed,
-        acs,
-        weights,
-        lowConfidence,
-        latestRun: runRow
-          ? {
-              id: runRow.id as string,
-              status: String(runRow.status),
-              started_at: (runRow.started_at as string) ?? null,
-              finished_at: (runRow.finished_at as string) ?? null,
-              firecrawl_calls: Number(runRow.firecrawl_calls ?? 0),
-              error: (runRow.error as string) ?? null,
-            }
-          : null,
-        generatedAt: new Date(),
-      });
-      const today = new Date().toISOString().slice(0, 10);
-      const slug = cityDisplay.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `mvs-brief-${slug}-${today}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      toast.success("MVS brief PDF downloaded");
-    } catch (err) {
-      console.error("MVS brief PDF failed", err);
-      toast.error(
-        `PDF export failed: ${err instanceof Error ? err.message : "unknown"}`,
-      );
-    } finally {
-      setDownloading(false);
-    }
-  };
 
   if (loading) {
     return (

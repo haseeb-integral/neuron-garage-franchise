@@ -358,5 +358,3 @@ export default function MVSQAQueue() {
     </div>
   );
 }
-
-MVSQAQueue.preload = () => import("./MVSQAQueue");

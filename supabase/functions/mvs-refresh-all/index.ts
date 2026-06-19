@@ -22,6 +22,7 @@ const TIER_A_CITIES = new Set<string>([
   "Philadelphia, PA",
   "Los Angeles, CA",
   "Indianapolis, IN",
+  "Denver, CO",
 ]);
 
 const STALE_MS = 3 * 60 * 1000;
@@ -61,7 +62,9 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Distinct cities that already have providers (i.e. live data).
+  // Run union of: cities that already have providers AND user's shortlist.
+  // Without the shortlist branch, brand-new cities (e.g. Denver with 0 providers)
+  // would never get seeded.
   const { data: provRows, error: provErr } = await admin
     .from("mvs_providers")
     .select("city");
@@ -71,8 +74,17 @@ Deno.serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
+  const { data: shortlistRows } = await admin
+    .from("mvs_shortlist_cities")
+    .select("city, state");
+  const shortlistKeys = (shortlistRows ?? [])
+    .map((r) => (r.city && r.state ? `${r.city}, ${r.state}` : null))
+    .filter((s): s is string => !!s);
 
-  const allCities = Array.from(new Set((provRows ?? []).map((r) => r.city).filter(Boolean)));
+  const allCities = Array.from(new Set([
+    ...((provRows ?? []).map((r) => r.city).filter(Boolean) as string[]),
+    ...shortlistKeys,
+  ]));
   const cities = allCities.filter((c) => TIER_A_CITIES.has(c)).sort();
 
   // Detect in-flight runs so we don't kick a duplicate.

@@ -61,6 +61,7 @@ export type MvsProviderInput = {
   url?: string | null;
   website_url?: string | null;
   source_listing_url?: string | null;
+  sources?: string[] | null;
 };
 
 export type MvsWeekInput = {

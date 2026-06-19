@@ -414,12 +414,20 @@ describe("Edge cases", () => {
     expect(r.inputs.marketAbsorption.selloutRate).toBeCloseTo(100, 1);
   });
 
-  it("falls back to price_min when price_max is null", () => {
+  it("falls back to price_max when price_min is null", () => {
     const providers = [
-      makeProvider({ price_max: null, price_min: 500 }),
+      makeProvider({ price_max: 500, price_min: null }),
     ];
     const r = computeMvs(providers, [], defaultAcs);
     expect(r.inputs.pricingAcceptance.medianPrice).toBe(500);
+  });
+
+  it("prefers price_min over price_max as the weekly proxy", () => {
+    const providers = [
+      makeProvider({ price_min: 600, price_max: 3000 }),
+    ];
+    const r = computeMvs(providers, [], defaultAcs);
+    expect(r.inputs.pricingAcceptance.medianPrice).toBe(600);
   });
 
   it("does not double-count the same operator name", () => {

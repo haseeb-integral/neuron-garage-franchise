@@ -1,56 +1,40 @@
-## What I'll deliver
+## What's wrong
 
-A single, beautifully formatted **Google Doc** — written in plain English (no engineering jargon) — that you can forward to the client as-is. Target length: ~1.5 pages, scannable in under 2 minutes.
+`score1PricingAcceptance` in `src/lib/mvs/computeMvs.ts` takes `price_max` from each premium provider, medians them, and normalizes against $300–$700 (a weekly band).
 
-## Document structure
+But `price_max` in `mvs_providers` is the **top of the listed price range** scraped from Sawyer / Google. For most camp operators that's a multi-week or full-summer bundle ($1,400 – $13,595), not a single week. Result: the displayed `medianPrice` (1862.50) is meaningless as "weekly price," and the Pricing Acceptance score (93.3) is inflated because every provider blows past the $700 ceiling.
 
-**Title block**
-- Title: "Market Validation — What's New (Last 36 Hours)"
-- Subtitle: "Executive Brief for Sam — June 18–19, 2026"
-- Light divider rule
+## Fix
 
-**1. The headline (2 sentences)**
-What changed in human terms: "We now look in 5 places instead of 1 for camps in every city, the same camp no longer shows up twice, and every city gets a printable one-page Market Brief."
+Change the input from "max listed price" to "estimated per-week price" before percentiles + normalization.
 
-**2. What got better — by outcome, not by code**
-Five short cards, each with a one-line "before → after":
-- **Wider camp discovery** — Before: only Sawyer. After: Sawyer + ActivityHero + Yelp + Google Maps + a live Google search when you click "Run."
-- **Cleaner provider lists** — Same camp found in 3 places now collapses into one row (not three).
-- **Working links everywhere** — Every camp name is clickable and goes to the real website, not a broken search result.
-- **Per-city Market Brief + PDF** — Every city has its own printable brief at `/market-brief`, with live scores (never stale).
-- **A QA inbox for Haseeb** — Borderline camps land in a review queue before they affect the score, so the MVS number you see is the number you can trust.
+### Approach (pick one in implementation — I'll default to A unless you say otherwise)
 
-**3. Two things worth understanding (plain English)**
-- *"Only premium camps feed the score."* Mid, budget, and community camps are shown for context but don't move MVS. The Market Brief page now says this in a legend so the client never has to ask.
-- *"One number, everywhere."* The score on the table, the popover, the city panel, the compare modal, and the PDF all read from the same live calculation. No more "why is this number different over here?"
+**A. Use `price_min` as the weekly proxy.** Sawyer's `price_min` is typically the single-week / single-session price; `price_max` is the bundle. One-line change in `score1PricingAcceptance`: prefer `price_min`, fall back to `price_max` only when min is missing. Fastest, no schema change. Median for NYC drops to roughly the $300–$800 band where the formula was designed to operate.
 
-**4. By the numbers**
-- 146 commits
-- 5 discovery sources (up from 1)
-- 1 new page (`/market-brief`)
-- 1 new QA queue (`/mvs-qa-queue`)
-- ~17 files touched across frontend, scoring, and backend
+**B. Compute a per-week price.** Add `weeks_offered` (or parse session length from the source listing) and divide. More accurate but requires extractor work and a column on `mvs_providers`. Slower.
 
-**5. What's next (1–2 lines)**
-Phase 2 readiness: Candidate Pipeline, Teacher Search, SmartLead, Mailboxes.
+**C. Cap outliers.** Discard any price above e.g. $2,000 before medianing. Quick safety net, but doesn't fix the semantic mismatch.
 
-## Visual styling
-- Heading font: Google Docs default "Source Serif Pro" for headings, "Inter" body — clean, editorial, not the generic SaaS look
-- Accent color: deep teal (`#0F766E`) for headings and divider rules
-- Section numbers in a colored pill-style heading
-- Light grey callout box for the "Two things worth understanding" section
-- Generous line spacing (1.15), 11pt body, 18pt H1, 13pt H2
-- Subtle horizontal rules between sections (not heavy lines)
-- Bulleted lists, never walls of text
+## Changes (Option A)
 
-## How I'll build it
-1. Link the **Google Docs** connector (one-click prompt — required because no Google Docs connection exists in this workspace yet).
-2. Use the connector gateway to `POST /documents` (create) then `POST /documents/{id}:batchUpdate` with the full structured request payload — text, headings, styles, colored runs, divider rules, and the callout box — in **one batchUpdate call** so it lands in a single shot.
-3. Return the Google Doc URL in chat so you can open and share it immediately.
+1. `src/lib/mvs/computeMvs.ts` — in `score1PricingAcceptance`, swap the mapper:
+   ```ts
+   .map((p) => (p.price_min != null ? p.price_min : p.price_max))
+   ```
+   and update the surrounding comment to "weekly price proxy."
+2. `src/lib/mvs/computeMvs.test.ts` — flip the "falls back to price_min" test to its opposite ("falls back to price_max when price_min is null") and update the multi-provider fixtures that currently set only `price_max`.
+3. Label tweak in the city blow-up card (`LiveCityDeepDive.tsx`) and the brief (`MarketBrief.tsx`, `MvsBriefDocument.tsx`): rename the row `medianPrice` → `Median weekly price (est.)` so the number is self-describing.
+4. Same rename in the formula tooltip on `MVSMethodology.tsx` / `MVSSpec.tsx` where the input is referenced.
 
-## Fallback
-If you'd rather not link Google Docs right now, I'll instead generate a **gorgeous PDF** (same design, same content) saved to your documents and previewable in chat — no connector needed. Just say "PDF instead."
+No DB migration, no recomputation job — scores recompute on read via the shared helper.
 
----
+## Verification
 
-**Ready to proceed?** Approving this plan will (a) prompt you to link Google Docs, then (b) generate and deliver the document.
+- Run `bunx vitest run src/lib/mvs/computeMvs.test.ts`.
+- Open `/market-validation` → New York → Pricing Acceptance card. Expect `medianPrice` to land in the $400–$900 range and Pricing Acceptance score to drop from 93.3 to a realistic mid-band number.
+- Spot-check 2–3 other cities in the rollout table to confirm scores moved in a sensible direction.
+
+## Open question for you
+
+Confirm Option A is fine, or tell me to go with B (true per-week, slower) or C (cap outliers). Default is A.

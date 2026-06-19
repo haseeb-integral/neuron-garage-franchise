@@ -27,7 +27,7 @@ const SUB_SCORE_META: {
     title: "Pricing Acceptance",
     subtitle: "Are families already paying premium pricing?",
     formula:
-      "0.40 × normalize(median, $300–$700) + 0.40 × normalize(75th pct, $400–$800) + 0.20 × (% at $500+)",
+      "Uses each provider's lowest listed price as a single-week proxy. Score = 0.40 × normalize(median weekly, $300–$700) + 0.40 × normalize(75th pct weekly, $400–$800) + 0.20 × (% at $500+ per week).",
   },
   {
     key: "marketAbsorption",
@@ -64,6 +64,22 @@ const SUB_SCORE_META: {
       "normalize(Coverage Ratio, 50–500); ≥350 Underserved · 200–349 Balanced · 100–199 Competitive · <100 Saturated",
   },
 ];
+
+// Friendly labels for the sub-score input rows so non-technical readers
+// can interpret the numbers (e.g. "Median weekly price (est.)" instead of
+// the raw camelCase key "medianPrice").
+const INPUT_LABELS: Record<string, string> = {
+  medianPrice: "Median weekly price (est.)",
+  p75Price: "75th-pct weekly price (est.)",
+  pctAtLeast500: "% of providers ≥ $500/wk",
+  selloutRate: "Sellout rate",
+  premiumProviderCount: "Premium providers",
+  categoryCount: "Categories represented",
+  diversityRatio: "Diversity ratio",
+  operatorValidation: "National operators (validating)",
+  directCompetitorLoad: "Direct competitors / 10k kids",
+  coverageRatio: "Coverage ratio (kids / seat)",
+};
 
 interface Props {
   cityKey: string;            // e.g. "Austin, TX"
@@ -260,7 +276,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                     if (v == null || k === "year2Signal") return null;
                     return (
                       <li key={k} className="flex items-center justify-between text-[11px]">
-                        <span style={{ color: MUTED }}>{k}</span>
+                        <span style={{ color: MUTED }}>{INPUT_LABELS[k] ?? k}</span>
                         <span className="font-medium tabular-nums" style={{ color: NAVY }}>
                           {typeof v === "number" ? (Number.isInteger(v) ? v : v.toFixed(2)) : String(v)}
                         </span>

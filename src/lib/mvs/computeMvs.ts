@@ -195,8 +195,14 @@ function score1PricingAcceptance(
   providers: MvsProviderInput[],
 ): { score: number | null; inputs: MvsScoreInputs["pricingAcceptance"] } {
   const premium = providers.filter((p) => p.tier === "premium");
+  // Use price_min as the per-week proxy. Sawyer/Google list price_max as the
+  // top of the provider's price range — that's almost always a multi-week or
+  // full-season bundle (e.g. $13,595 for a country day camp full summer),
+  // which would blow past the $300–$700 weekly normalization band and
+  // produce a meaningless median. price_min reliably tracks single-week /
+  // single-session pricing; we fall back to price_max only when min is null.
   const prices = premium
-    .map((p) => (p.price_max != null ? p.price_max : p.price_min))
+    .map((p) => (p.price_min != null ? p.price_min : p.price_max))
     .filter((v): v is number => v != null && Number.isFinite(v));
 
   if (prices.length === 0) {

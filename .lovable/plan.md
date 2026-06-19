@@ -1,77 +1,59 @@
-## Turn 2.2 — Tier Classifier (Full scope) + Enrichment Diversity bug fix
 
-### Goal
-Make Premium/Mid/Budget/Community tagging trustworthy by combining price + cross-source presence + brand signals, and fix the visible Enrichment Diversity = 1.1 bug on Austin (table clearly shows 5+ categories but pillar says 2).
+## Answering your two questions
 
----
+### 1. Why does Boston show "failed"?
 
-### Part A — Rework `mvs-classify-tier`
+**It's a UI false alarm — the run actually succeeded.**
 
-Current logic uses Gemini + a deterministic overlay that only looks at `price_max >= 400`. Problems: ignores the new `sources` JSONB (cross-source presence is a strong "real/scaled" signal), brand list is short, no handling for providers with no price (defaults to "mid" which inflates Mid count and dilutes Premium).
+DB truth for the latest Boston run (`9838fa1c…`):
+- `started_at`  = 11:12:42 UTC  (= 4:12:42 PM your time, matches your screenshot)
+- `finished_at` = 11:17:33 UTC  → ran for **~4 min 51 sec**
+- `status` = **done**
+- `error` = null
 
-**New deterministic overlay (runs after Gemini, wins on conflict):**
+The rollout table in `src/pages/MarketValidationRollout.tsx` (line 196–207) has this rule:
 
-1. **Community keywords** (extended): `ymca, jcc, parks?\s*(and|&)?\s*rec, public library, municipal, city of, church, kindercare, boys & girls club, scout, 4-h, parks dept` → `community`.
-2. **Childcare/preschool exclusion**: name matches `daycare, preschool, montessori (\bschool\b only — not "montessori camp"), childcare, after.?school care, learning center` AND no week price → `community` + `category_classified='childcare-excluded'`.
-3. **Price-based** (when at least one price bound is set):
-   - `price_max >= 400` OR `price_min >= 400` → `premium`
-   - `price_max < 200` AND `price_min < 200` AND `price_max > 0` → `budget`
-   - else → `mid`
-4. **National Premium brand list** (case-insensitive contains): `galileo, id tech, steve & kate, snapology, lavner, mad science, code ninjas, kumon enrichment, british soccer, challenger sports, school of rock` → `premium`.
-5. **Cross-source presence boost** (NEW, uses `sources` jsonb): if `sources.length >= 3` (found by 3+ of Sawyer/ActivityHero/Google/Yelp) AND not community AND no price set → promote from default `mid` to `premium` (real, established operator).
-6. **Unknown-price guard**: if no price AND only 1 source AND not in brand list → tier stays as Gemini said but capped at `mid` (never premium without price evidence or cross-source proof).
+> "If a row is still `running` after 3 minutes, display it as **failed** with the message *Run appears stuck (>3 min). Try again.*"
 
-**Category classification fix** — Gemini's `category_classified` is too freeform (it sometimes returns "camp" for everything). Add a normalizer that maps Gemini output + `category_raw` + name hints into a fixed enum: `art, music, dance, stem, language, sports, swim, gymnastics, camp, multi-activity, childcare-excluded, other`. This directly feeds the Enrichment Diversity pillar.
+Boston legitimately took ~5 min (Boston has more providers + more sources than Austin), so the UI tripped the 3-min stale-guard **before** the pipeline finished. The badge is wrong, the pipeline is fine.
 
----
+### 2. Did scores actually update for Boston? — Yes.
 
-### Part B — Fix Enrichment Diversity pillar
+- `mvs_city_flags.updated_at` = 11:17:33 (matches finish time, `mvs_data_source = live`)
+- **MVS score = 47.0** (vs Austin 43.8)
+- Provider mix after the new classifier:
+  - Premium: **9** (stem 3, art 2, music/dance/sports/outdoor 1 each) — clean, no YMCA/parks
+  - Mid: 32, Budget: 7, Community: 38 (YMCAs + 8 childcare-excluded correctly bucketed)
+  - **Enrichment Diversity categories present:** stem, art, music, dance, sports, gymnastics, theater, outdoor, multi-activity → ≥7 → fix from Austin holds
+- Boston Premium count is lower than Austin (9 vs 17) — consistent with Boston having fewer Sawyer-listed premium camps and more community/YMCA presence. Sanity-OK.
 
-Confirmed bug: Austin shows `categoryCount: 2` but the Premium table lists `camp, art, language, stem, sports` (5 categories). Root cause is almost certainly that the composite computes diversity from `tier='premium'` rows only, and `category_classified` is being set to `"camp"` for most rows regardless of the underlying activity.
-
-Fix in `mvs-compute-composite` (or wherever the pillar is computed — will locate during build):
-- `categoryCount` = distinct `category_classified` across **all non-community providers with a week price** (not just Premium), excluding the catch-all bucket `"camp"` when a more specific category exists for the same provider.
-- Re-derive `diversityRatio` accordingly.
-
-The bigger fix is upstream in Part A's normalizer — once categories are right at the row level, the pillar math is correct.
+So Boston **passes the 2.2 verification** the same way Austin did. Just refresh the page and the badge will turn green.
 
 ---
 
-### Part C — Re-run + verify on Austin
+## Plan: remove the false-failure UX trap
 
-1. Trigger reclassify on Austin: `supabase.functions.invoke('mvs-classify-tier', { body: { city: 'Austin, TX', reclassify: true } })`.
-2. Recompute composite for Austin.
-3. **Verification checks** (built into a `/mvs-preview` check or run via SQL — pick whichever is faster):
-   - Premium count should drop or stay ~similar (not balloon). Today: 17. Expected: 12–18.
-   - Enrichment Diversity should show ≥4 categories (matches what the table visually shows).
-   - Spot-check: search for any "YMCA Austin" or parks-rec rows — must be `community`, not Premium.
-   - Spot-check: Galileo / iD Tech / Steve & Kate's rows — must be `premium`.
+One file, frontend only, no business-logic changes.
 
----
+### File: `src/pages/MarketValidationRollout.tsx`
 
-### Part D — Test second city: Boston, MA
+**Change 1 — raise the stale threshold from 3 min to 8 min.**
+Real runs take 4–6 min on larger cities (Boston proved it). 8 min gives a safety margin without hiding genuinely dead runs.
+```ts
+const STALE_MS = 8 * 60 * 1000;  // was 3 min
+```
 
-After Austin verifies clean:
-1. Add Boston to the rollout if not already there; flip to Live; click **Run Pipeline** from `/market-validation/rollout`.
-2. Wait ~2–3 min (background pipeline).
-3. Open Boston's detail panel and apply the same 4 verification checks as Austin.
-4. Expected differences from Austin: higher median price (Boston market), more language/STEM providers, lower headroom (Market Balance < 100).
+**Change 2 — auto-refresh every 30 s while any row is `running`.**
+Today the table only re-fetches on manual reload, so even after a run finishes you keep seeing the stale "failed" badge until you reload. Add a lightweight interval that polls `fetchAll()` every 30 s while at least one city is in `running` state, and stops when none are.
 
-**Why Boston:** Brett's plan explicitly names Boston as the Tier-A gate city — it must pass before opening Tier-A rollout. Different demographics and provider mix from Austin so it stress-tests generalization.
+**Change 3 — tweak the stale message.**
+Change `"Run appears stuck (>3 min). Try again."` → `"Run appears stuck (>8 min). Try again."` so the tooltip matches the new threshold.
 
----
+### Out of scope (intentionally not touching)
+- Score recompute logic, classifier, pillar formulas — Boston already verified clean.
+- The Market Absorption "sold out" extractor gap (still flagged for a later turn).
+- The 0-weeks-for-non-Sawyer providers issue (later turn — needs extractor work for Google Maps / Yelp / ActivityHero pages).
 
-### Files to touch
-- `supabase/functions/mvs-classify-tier/index.ts` — new deterministic overlay + category normalizer
-- `supabase/functions/mvs-compute-composite/index.ts` (or equivalent) — diversity pillar fix
-- No DB schema changes
-- No new UI
-
-### Out of scope
-- The Sellout Rate looking low (14.7) — separate extract issue, not classifier
-- Turn 5 cleanup
-- PDF export
-- `/mvs-preview` page (Turn 4.2)
-
-### Turn count
-1 build turn for Parts A+B+C, then 1 verify turn for Part D (Boston run + sanity check).
+### Verify after build
+1. Re-open `/market-validation/rollout` — Boston row should show **done · 47.0** (green).
+2. Click Run on a third city (suggest **Brooklyn, NY** or **Denver, CO** — both Tier-A, different profiles); confirm it does not flip to "failed" before finishing, and the row updates automatically without manual reload.

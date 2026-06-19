@@ -1,27 +1,56 @@
-# Non-Premium Providers section + score-source legend
+## What I'll deliver
 
-Reframe the existing "All Discovered Providers" block on the per-city **Market Brief** page (`/market-brief?city=...&state=...`) so it sits right under "Premium Provider Roster" and only shows the non-premium rows, plus a clear legend explaining what feeds the MVS score and what doesn't.
+A single, beautifully formatted **Google Doc** — written in plain English (no engineering jargon) — that you can forward to the client as-is. Target length: ~1.5 pages, scannable in under 2 minutes.
 
-(The `/market-validation` list page is unchanged — this only touches the per-city brief, which is also what gets printed to PDF via Cmd/Ctrl+P.)
+## Document structure
 
-## What changes in `src/pages/MarketBrief.tsx`
+**Title block**
+- Title: "Market Validation — What's New (Last 36 Hours)"
+- Subtitle: "Executive Brief for Sam — June 18–19, 2026"
+- Light divider rule
 
-1. **Rename section 4.5** from "All Discovered Providers" → **"Non-Premium Providers (context only — not scored)"**, placed immediately below the existing Premium Provider Roster table (same spot it's in now).
-2. **Filter out premium rows** — show only `tier ∈ {mid, budget, community}`. Sort by tier then name. Keep the existing columns: Provider, Tier badge, $ min/wk, $ max/wk, Category, Sources chips.
-3. **Add a legend box** between the Premium table and the Non-Premium table, written at ~grade-6 reading level:
+**1. The headline (2 sentences)**
+What changed in human terms: "We now look in 5 places instead of 1 for camps in every city, the same camp no longer shows up twice, and every city gets a printable one-page Market Brief."
 
-   > **How the score works**
-   > - The MVS score for this city is built **only from Premium providers** (the table above).
-   > - We find providers from 5 sources: **gsearch** (Google web search), **gmaps** (Google Maps), **ah** (ActivityHero), **yelp**, **sawyer**.
-   > - Every provider we find is sorted into a tier: **premium** ($400+/wk or known national brand), **mid**, **budget**, or **community**.
-   > - The table below shows mid / budget / community providers. They confirm the market is real, but they do **not** change the score.
+**2. What got better — by outcome, not by code**
+Five short cards, each with a one-line "before → after":
+- **Wider camp discovery** — Before: only Sawyer. After: Sawyer + ActivityHero + Yelp + Google Maps + a live Google search when you click "Run."
+- **Cleaner provider lists** — Same camp found in 3 places now collapses into one row (not three).
+- **Working links everywhere** — Every camp name is clickable and goes to the real website, not a broken search result.
+- **Per-city Market Brief + PDF** — Every city has its own printable brief at `/market-brief`, with live scores (never stale).
+- **A QA inbox for Haseeb** — Borderline camps land in a review queue before they affect the score, so the MVS number you see is the number you can trust.
 
-## Files touched
+**3. Two things worth understanding (plain English)**
+- *"Only premium camps feed the score."* Mid, budget, and community camps are shown for context but don't move MVS. The Market Brief page now says this in a legend so the client never has to ask.
+- *"One number, everywhere."* The score on the table, the popover, the city panel, the compare modal, and the PDF all read from the same live calculation. No more "why is this number different over here?"
 
-- `src/pages/MarketBrief.tsx` — rename section, add legend block, filter table to exclude `tier === 'premium'`.
+**4. By the numbers**
+- 146 commits
+- 5 discovery sources (up from 1)
+- 1 new page (`/market-brief`)
+- 1 new QA queue (`/mvs-qa-queue`)
+- ~17 files touched across frontend, scoring, and backend
 
-## Out of scope
+**5. What's next (1–2 lines)**
+Phase 2 readiness: Candidate Pipeline, Teacher Search, SmartLead, Mailboxes.
 
-- No edge function changes, no classifier changes, no scoring math changes.
-- No changes to `/market-validation` list page.
-- No changes to print CSS — the new legend + table inherit existing print styles and will appear in the PDF export.
+## Visual styling
+- Heading font: Google Docs default "Source Serif Pro" for headings, "Inter" body — clean, editorial, not the generic SaaS look
+- Accent color: deep teal (`#0F766E`) for headings and divider rules
+- Section numbers in a colored pill-style heading
+- Light grey callout box for the "Two things worth understanding" section
+- Generous line spacing (1.15), 11pt body, 18pt H1, 13pt H2
+- Subtle horizontal rules between sections (not heavy lines)
+- Bulleted lists, never walls of text
+
+## How I'll build it
+1. Link the **Google Docs** connector (one-click prompt — required because no Google Docs connection exists in this workspace yet).
+2. Use the connector gateway to `POST /documents` (create) then `POST /documents/{id}:batchUpdate` with the full structured request payload — text, headings, styles, colored runs, divider rules, and the callout box — in **one batchUpdate call** so it lands in a single shot.
+3. Return the Google Doc URL in chat so you can open and share it immediately.
+
+## Fallback
+If you'd rather not link Google Docs right now, I'll instead generate a **gorgeous PDF** (same design, same content) saved to your documents and previewable in chat — no connector needed. Just say "PDF instead."
+
+---
+
+**Ready to proceed?** Approving this plan will (a) prompt you to link Google Docs, then (b) generate and deliver the document.

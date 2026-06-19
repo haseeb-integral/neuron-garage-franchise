@@ -2,8 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { AlertCircle, ChevronDown, ChevronUp, Download, FileText, Loader2, MapPin, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { renderMvsBriefPdfBlob } from "@/lib/mvsBrief/MvsBriefDocument";
-import { buildSampleBriefArgs } from "@/lib/mvsBrief/sampleBriefAdapter";
 import { supabase } from "@/integrations/supabase/client";
 
 import { PageHeader } from "@/components/PageHeader";
@@ -242,31 +240,7 @@ export default function MarketValidation() {
   }, [activeCityId]);
   const activeRow = allShortlistRows.find((r) => r.id === activeCityId) ?? allShortlistRows[0];
   const isAnchor = activeCityId === "san-antonio-tx";
-  const [exporting, setExporting] = useState(false);
 
-  const handleExportSamplePdf = async () => {
-    setExporting(true);
-    try {
-      const args = buildSampleBriefArgs(activeRow);
-      const blob = await renderMvsBriefPdfBlob(args);
-      const today = new Date().toISOString().slice(0, 10);
-      const slug = activeRow.city.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `mvs-brief-${slug}-${today}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      toast.success("MVS brief PDF downloaded");
-    } catch (err) {
-      console.error("MVS brief PDF failed", err);
-      toast.error(`PDF export failed: ${err instanceof Error ? err.message : "unknown"}`);
-    } finally {
-      setExporting(false);
-    }
-  };
 
   // Phase 7 — live overlay for every Tier A city flagged mvs_data_source='live'.
   // Hooks are called at fixed positions (one per Tier A city), so React's

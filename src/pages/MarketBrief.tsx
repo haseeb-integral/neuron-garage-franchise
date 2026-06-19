@@ -563,6 +563,94 @@ export default function MarketBrief() {
             </table>
           )}
 
+          {/* All discovered providers — full mvs_providers set for this city.
+              Shows tier + per-row source chips so we can eyeball gsearch / gmaps
+              / ah / yelp / sawyer yield without changing any scoring. */}
+          <SectionHead
+            n={4.5 as any}
+            label="All Discovered Providers"
+            sub={`${providers.length} total rows from mvs_providers (every tier, every source).`}
+          />
+          {providers.length === 0 ? (
+            <p style={{ fontSize: 12, color: "var(--mb-muted)", fontStyle: "italic" }}>No providers in the live set.</p>
+          ) : (
+            <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ background: "var(--mb-navy)", color: "white" }}>
+                  <th style={{ textAlign: "left", padding: "8px 10px", fontSize: 11 }}>Provider</th>
+                  <th style={{ textAlign: "left", padding: "8px 10px", fontSize: 11 }}>Tier</th>
+                  <th style={{ textAlign: "right", padding: "8px 10px", fontSize: 11 }}>$ min/wk</th>
+                  <th style={{ textAlign: "right", padding: "8px 10px", fontSize: 11 }}>$ max/wk</th>
+                  <th style={{ textAlign: "left", padding: "8px 10px", fontSize: 11 }}>Category</th>
+                  <th style={{ textAlign: "left", padding: "8px 10px", fontSize: 11 }}>Sources</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...providers]
+                  .sort((a, b) => {
+                    const order: Record<string, number> = { premium: 0, mid: 1, budget: 2, community: 3 };
+                    const ta = order[a.tier ?? "community"] ?? 9;
+                    const tb = order[b.tier ?? "community"] ?? 9;
+                    if (ta !== tb) return ta - tb;
+                    return a.name.localeCompare(b.name);
+                  })
+                  .map((p, i) => {
+                    const tierColors: Record<string, { bg: string; fg: string }> = {
+                      premium: { bg: "#0a3a7a", fg: "white" },
+                      mid: { bg: "#3b6fb8", fg: "white" },
+                      budget: { bg: "#cbd5e1", fg: "#0a1f3d" },
+                      community: { bg: "#e5e7eb", fg: "#475569" },
+                    };
+                    const tc = tierColors[p.tier ?? "community"] ?? tierColors.community;
+                    const sourceLabels: Record<string, string> = {
+                      google_search: "gsearch",
+                      google_maps: "gmaps",
+                      activity_hero: "ah",
+                      yelp: "yelp",
+                      sawyer: "sawyer",
+                    };
+                    const srcs = (p.sources ?? []) as string[];
+                    return (
+                      <tr key={p.id} style={{ background: i % 2 === 1 ? "var(--mb-soft)" : "white", borderBottom: "1px solid var(--mb-line)" }}>
+                        <td style={{ padding: "8px 10px", fontWeight: 600 }}>{p.name}</td>
+                        <td style={{ padding: "8px 10px" }}>
+                          <span style={{ background: tc.bg, color: tc.fg, padding: "2px 8px", borderRadius: 4, fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>
+                            {p.tier ?? "—"}
+                          </span>
+                        </td>
+                        <td className="mb-mono" style={{ padding: "8px 10px", textAlign: "right" }}>{fmtMoney(p.price_min)}</td>
+                        <td className="mb-mono" style={{ padding: "8px 10px", textAlign: "right" }}>{fmtMoney(p.price_max)}</td>
+                        <td style={{ padding: "8px 10px", color: "var(--mb-muted)" }}>{p.category_classified ?? "—"}</td>
+                        <td style={{ padding: "8px 10px" }}>
+                          {srcs.length === 0 ? (
+                            <span style={{ color: "var(--mb-muted)", fontStyle: "italic", fontSize: 10 }}>—</span>
+                          ) : (
+                            <span style={{ display: "inline-flex", gap: 4, flexWrap: "wrap" }}>
+                              {srcs.map((s) => (
+                                <span
+                                  key={s}
+                                  style={{
+                                    background: s === "google_search" ? "#dcfce7" : "#eef2ff",
+                                    color: s === "google_search" ? "#14532d" : "#3730a3",
+                                    padding: "1px 6px",
+                                    borderRadius: 3,
+                                    fontSize: 10,
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  {sourceLabels[s] ?? s}
+                                </span>
+                              ))}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          )}
+
           <SectionHead n={5} label="Pillar Weights" sub="Current blend used to produce the composite." />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
             {PILLARS.map((p) => (

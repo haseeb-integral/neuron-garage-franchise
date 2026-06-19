@@ -290,26 +290,30 @@ export default function MVSQAQueue() {
         <div>
           <h1 className="text-2xl font-semibold">MVS QA Queue</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Showing {openCount} open item{openCount === 1 ? "" : "s"} across{" "}
-            {cityFilter === "__all__" ? cityCounts.length : 1} cit
-            {(cityFilter === "__all__" ? cityCounts.length : 1) === 1 ? "y" : "ies"} ·{" "}
-            {totalProviders} provider{totalProviders === 1 ? "" : "s"}.
+            {openCount} open QA item{openCount === 1 ? "" : "s"} ·{" "}
+            {totalProviders} provider{totalProviders === 1 ? "" : "s"}
+            {cityFilter !== "__all__" ? ` · ${cityFilter}` : ` · ${cityCounts.length} cit${cityCounts.length === 1 ? "y" : "ies"} with issues`}
           </p>
         </div>
         <div className="flex items-center gap-3 text-sm">
           <label className="flex items-center gap-2">
             City:
             <Select value={cityFilter} onValueChange={(v) => setCityFilter(v)}>
-              <SelectTrigger className="w-56">
+              <SelectTrigger className="w-64">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__all__">All cities ({rows?.length ?? 0})</SelectItem>
-                {cityCounts.map(([c, n]) => (
-                  <SelectItem key={c} value={c}>
-                    {c} ({n})
-                  </SelectItem>
-                ))}
+                <SelectItem value="__all__">
+                  All MVS cities · {rows?.length ?? 0} QA item{(rows?.length ?? 0) === 1 ? "" : "s"}
+                </SelectItem>
+                {allCities.map((c) => {
+                  const n = cityCounts.find(([cc]) => cc === c)?.[1] ?? 0;
+                  return (
+                    <SelectItem key={c} value={c}>
+                      {c} · {n} QA
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </label>

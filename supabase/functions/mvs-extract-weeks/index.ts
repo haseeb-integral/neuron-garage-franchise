@@ -112,7 +112,12 @@ async function processProvider(
   todayISO: string,
   cityLabel: string,
 ): Promise<{ outcome: ProviderOutcome; firecrawlCalls: number }> {
-  const url = normUrl(provider.url);
+  // Prefer the provider's own website; fall back to the discovery/listing
+  // URL, then to the legacy url column. Skip Google-search fallback URLs.
+  const candidates = [provider.website_url, provider.source_listing_url, provider.url]
+    .map((u) => normUrl(u))
+    .filter((u): u is string => !!u && !u.startsWith("https://www.google.com/search"));
+  const url = candidates[0] ?? null;
   const out: ProviderOutcome = {
     provider_id: provider.id,
     provider_name: provider.name,

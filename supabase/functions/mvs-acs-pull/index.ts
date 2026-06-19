@@ -157,8 +157,7 @@ Deno.serve(async (req) => {
 
   const needsKids = scored.children_5_12 == null;
   const needsDual = scored.dual_working_families_pct == null;
-  const needsAffluent = (scored as any).pct_hh_above_150k == null;
-  if (!needsKids && !needsDual && !needsAffluent) {
+  if (!needsKids && !needsDual) {
     return new Response(
       JSON.stringify({ skipped: true, reason: "already populated", city: cityKey }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },

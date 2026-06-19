@@ -268,12 +268,23 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
         </div>
       </section>
 
+      {/* Data sources strip — provenance + freshness at a glance */}
+      <DataSourcesPanel
+        providers={providers}
+        weeks={weeks}
+        watchlistCount={watchlist.length}
+        acsAvailable={!!acs}
+        lastRefreshed={lastRefreshed}
+        qaOpenCount={qaOpenCount}
+      />
+
       {/* Sub-score grid with live sliders */}
       <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {SUB_SCORE_META.map((meta) => {
           const score = result?.scores[meta.key] ?? null;
           const input = result?.inputs[meta.key] as any;
           const weight = weights[meta.key];
+          const confidence = confidenceFor(meta.key);
           return (
             <div
               key={meta.key}
@@ -292,6 +303,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                     >
                       {Math.round(weight * 100)}%
                     </span>
+                    <ConfidenceStamp level={confidence.level} detail={confidence.detail} />
                   </div>
                   <p className="mt-0.5 text-[11px]" style={{ color: MUTED }}>
                     {meta.subtitle}

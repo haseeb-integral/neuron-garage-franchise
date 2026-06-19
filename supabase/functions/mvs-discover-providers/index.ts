@@ -246,6 +246,7 @@ Return strict JSON: { "providers": [ { "name": string, "url": string|null, "pric
 Rules:
 - A "provider" is a real business offering kids' classes/camps (e.g. a gymnastics studio).
 - EXCLUDE: the marketplace itself ("ActivityHero"), category navigation, generic labels, individual class titles.
+- "url" MUST be the provider's OWN website (their own domain). DO NOT use marketplace activity-detail links such as "activityhero.com/a/..." or "/activity/...". If you cannot see the provider's own website on the page, return null for url.
 - Prefer in-person providers in ${city}. Skip online-only.
 - Prices USD per session. Null if unknown.
 - Hard cap: 60.`;

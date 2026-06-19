@@ -731,6 +731,7 @@ Deno.serve(async (req) => {
         city,
         firecrawl_calls: totalFirecrawl,
         providers_inserted: inserted,
+        providers_updated: updated,
         providers_merged: rows.length,
         screenshot_path: screenshotPath,
         debug,

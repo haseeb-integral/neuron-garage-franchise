@@ -119,6 +119,7 @@ const App = () => (
                 <Route path="/methodology" element={<Methodology />} />
                 <Route path="/mvs-methodology" element={<MVSMethodology />} />
                 <Route path="/mvs-spec" element={<MVSSpec />} />
+                <Route path="/mvs-qa-queue" element={<MVSQAQueue />} />
                 
                 
                 <Route path="/sas-methodology" element={<SASMethodology />} />

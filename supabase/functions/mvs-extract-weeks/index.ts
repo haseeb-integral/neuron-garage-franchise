@@ -118,22 +118,65 @@ async function processProvider(
   const candidates = [provider.website_url, provider.source_listing_url, provider.url]
     .map((u) => normUrl(u))
     .filter((u): u is string => !!u && !u.startsWith("https://www.google.com/search"));
-  const url = candidates[0] ?? null;
+  const rootUrl = candidates[0] ?? null;
   const out: ProviderOutcome = {
     provider_id: provider.id,
     provider_name: provider.name,
-    url,
+    url: rootUrl,
     no_reg_page: false,
     weeks_inserted: 0,
     qa_flagged: 0,
   };
 
-  if (!url) {
+  if (!rootUrl) {
     out.no_reg_page = true;
     return { outcome: out, firecrawlCalls: 0 };
   }
 
   let firecrawlCalls = 0;
+
+  // Step 1: discover the best camp/registration page on the provider site
+  // using Firecrawl /map. Prefer pages whose URL contains camp/registration
+  // keywords. Fall back to the root URL.
+  let url = rootUrl;
+  try {
+    const mapRes = await fetch(`${FIRECRAWL_V2}/map`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${firecrawlKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ url: rootUrl, search: "summer camp", limit: 50 }),
+    });
+    firecrawlCalls += 1;
+    const mapJson = await mapRes.json().catch(() => ({}));
+    const links: string[] = Array.isArray(mapJson?.links)
+      ? mapJson.links
+      : Array.isArray(mapJson?.data?.links) ? mapJson.data.links : [];
+    if (links.length > 0) {
+      const KW = [
+        { re: /summer[-_/]?camp/i, w: 10 },
+        { re: /\/camps?(\/|$)/i, w: 8 },
+        { re: /register|registration|enroll|book/i, w: 5 },
+        { re: /sawyer/i, w: 4 },
+        { re: /weekly|by-the-week|schedule/i, w: 3 },
+        { re: /kids|ages|youth|tween/i, w: 2 },
+      ];
+      const NEG = /blog|news|press|about|contact|gift|policy|privacy|terms|login|account/i;
+      const scored = links
+        .map((l) => {
+          let s = 0;
+          for (const k of KW) if (k.re.test(l)) s += k.w;
+          if (NEG.test(l)) s -= 6;
+          return { l, s };
+        })
+        .filter((x) => x.s > 0)
+        .sort((a, b) => b.s - a.s);
+      if (scored[0]) url = scored[0].l;
+    }
+  } catch { /* non-fatal — keep root URL */ }
+  out.url = url;
+
   try {
     const scrapeRes = await fetch(`${FIRECRAWL_V2}/scrape`, {
       method: "POST",

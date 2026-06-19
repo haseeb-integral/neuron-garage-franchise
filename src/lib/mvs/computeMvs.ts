@@ -32,7 +32,6 @@ export const ELIGIBLE_CATEGORIES = new Set([
   "debate",
   "chess",
   "entrepreneurship",
-  "multi-activity",
 ]);
 
 // ---------------------------------------------------------------------------

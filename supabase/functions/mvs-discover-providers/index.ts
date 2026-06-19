@@ -37,12 +37,13 @@ async function fetchWithTimeout(url: string, opts: RequestInit, ms: number): Pro
 
 // Source priority for dedupe: when the same provider appears in multiple
 // sources, the row is tagged with the highest-priority platform.
-type Platform = "sawyer" | "activityhero" | "google_maps" | "yelp";
+type Platform = "sawyer" | "activityhero" | "google_search" | "google_maps" | "yelp";
 const PLATFORM_PRIORITY: Record<Platform, number> = {
   sawyer: 0,
   activityhero: 1,
-  google_maps: 2,
-  yelp: 3,
+  google_search: 2,
+  google_maps: 3,
+  yelp: 4,
 };
 
 // Per-metro bounding boxes for Sawyer's `location_within` filter.

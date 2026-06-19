@@ -198,7 +198,9 @@ Deno.serve(async (req) => {
 
     try {
       await invokeStep("discover", { city });
-      await invokeStep("classify", { city });
+      // Always reclassify on a pipeline run — Turn 2.2 logic depends on
+      // re-tagging existing rows after classifier changes ship.
+      await invokeStep("classify", { city, reclassify: true });
       await invokeStep("extract", { city });
 
       await admin

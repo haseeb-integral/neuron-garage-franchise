@@ -59,12 +59,15 @@ export type MvsProviderInput = {
   category_classified?: string | null;
   site_count?: number | null;
   url?: string | null;
+  website_url?: string | null;
+  source_listing_url?: string | null;
 };
 
 export type MvsWeekInput = {
   provider_id: string;
   status: MvsWeekStatus;
   confidence?: number | null;
+  source_url?: string | null;
 };
 
 export type MvsAcsInput = {

@@ -321,6 +321,31 @@ export default function MarketValidation() {
     indianapolisLive,
   ]);
 
+  // Boston calibration gate — warn if Boston's composite isn't in the top
+  // quartile of the live Tier A set. Quietly skips when <6 cities have run.
+  const bostonCalibration = useMemo(() => {
+    const composites: { id: string; composite: number }[] = [];
+    for (const [id, ov] of liveOverlays.entries()) {
+      if (typeof ov.composite === "number" && Number.isFinite(ov.composite)) {
+        composites.push({ id, composite: ov.composite });
+      }
+    }
+    const boston = composites.find((c) => c.id === "boston-ma");
+    if (!boston || composites.length < 6) return null;
+    const sorted = [...composites].sort((a, b) => b.composite - a.composite);
+    const rank = sorted.findIndex((c) => c.id === "boston-ma") + 1;
+    const cutoffIdx = Math.max(0, Math.ceil(sorted.length / 4) - 1);
+    const cutoff = sorted[cutoffIdx].composite;
+    const pass = boston.composite >= cutoff;
+    return {
+      pass,
+      rank,
+      total: sorted.length,
+      bostonScore: boston.composite,
+      cutoff,
+    };
+  }, [liveOverlays]);
+
   const isActiveLive = liveOverlays.has(activeCityId);
 
 

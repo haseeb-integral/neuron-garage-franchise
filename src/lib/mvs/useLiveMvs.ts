@@ -69,7 +69,7 @@ export function useLiveMvs(
 
         const { data: provRows, error: provErr } = await supabase
           .from("mvs_providers")
-          .select("id, name, tier, price_min, price_max, category_classified")
+          .select("id, name, tier, price_min, price_max, category_classified, url")
           .eq("city", cityKey);
         if (provErr) throw provErr;
 
@@ -162,6 +162,7 @@ export function useLiveMvs(
             price_min: p.price_min,
             price_max: p.price_max,
             category_classified: p.category_classified,
+            url: (p as any).url ?? null,
           })),
         );
         setWeeks(

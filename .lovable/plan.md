@@ -1,63 +1,80 @@
-## Problem (audited)
+## Goal
 
-In `mvs_providers`, the `url` column is what the Premium Providers table links to. Counts by platform:
+Every number a user sees for a provider (`$min/wk`, `$max/wk`, `Category`, `Weeks`) must trace back to an exact source URL the user can open and visually confirm. The provider name must link to the provider's real website, not a Google search and not a blank marketplace SPA. Then run the Tier A rollout.
 
-| platform | total | bad detail-page URLs | working |
-|---|---:|---:|---:|
-| sawyer | 142 | **126** (`hisawyer.com/marketplace/activity-set/{id}`) | 16 |
-| activityhero | 7 | **7** (activity-detail pages) | 0 |
-| google_maps | 557 | 0 | 557 |
-| yelp | 91 | 0 | 91 |
+## Part 1 — Fix the data model so links are traceable
 
-Why they look blank: those Sawyer/ActivityHero URLs are activity-detail SPA pages. Most return HTTP 200 but render an empty shell when the activity is expired/unlisted, so the user sees a white page. They are not the provider's actual website.
+### 1.1 Schema (one migration)
 
-Root cause: in `supabase/functions/mvs-discover-providers/index.ts`, the Gemini extraction prompt lets the model copy whatever link sits next to a provider name on the Sawyer/ActivityHero listing — which is the activity-detail link, not the provider's homepage.
+Add to `mvs_providers`:
+- `website_url text` — the provider's own homepage (e.g. `https://macbythesea.com`). This is what the UI links from the provider name.
+- `source_listing_url text` — the marketplace/discovery page where we first found them (Sawyer activity-set, ActivityHero detail, Yelp page, Google Maps place URL). Kept for traceability.
 
-Google Maps and Yelp URLs are fine and stay as-is.
+Add to `mvs_weeks`:
+- `source_url text` — the exact page the week-extractor scraped to produce that week's status/price/evidence. One per week row.
 
-## Fix (3 small changes, scope limited to provider source links)
+Keep the existing `mvs_providers.url` column for backwards compat; mark it as deprecated in a comment and plan to drop later.
 
-### 1. Helper: rewrite known bad URLs to a guaranteed-working source link
+### 1.2 Repair the damage from the earlier backfill
 
-New tiny helper used by both backfill and the edge function:
+The Sawyer/ActivityHero `activity-set` URLs were overwritten with Google search URLs. We can't recover the originals. Two-step repair:
 
-```ts
-// returns a usable "view source" URL for the provider, or null
-function safeProviderUrl(url: string | null, name: string, city: string): string | null {
-  if (!url) return null;
-  const bad =
-    /hisawyer\.com\/marketplace\/activity-set\//i.test(url) ||
-    /activityhero\.com\/(a|activity)\//i.test(url);
-  if (!bad) return url;
-  const q = encodeURIComponent(`${name} ${city}`);
-  return `https://www.google.com/search?q=${q}`;
-}
-```
+- **Backfill `source_listing_url` from what's salvageable.** For rows where current `url` is a Google search URL (the 133 we rewrote), set `source_listing_url = null` (lost) and rely on re-discovery in the next pipeline run to re-populate it. For Google Maps and Yelp rows, copy current `url` into `source_listing_url`.
+- **Null out the bad `mvs_providers.url`** for the 133 Google-search rows so the week-extractor stops scraping a search results page next run. Those providers will be re-scraped from their `website_url` (see 1.3) instead.
 
-Rationale: a Google search for "{provider} {city}" reliably lands the user on the real provider site in one click. Better than a blank SPA page, better than no link.
+### 1.3 Enrich `website_url` for every provider
 
-### 2. Backfill existing 133 bad rows (one migration / data update)
+One-time enrichment edge function `mvs-enrich-websites` (idempotent; safe to re-run):
 
-Update `mvs_providers` rows where `url` matches the bad patterns: set `url` to `https://www.google.com/search?q={name}+{city}`. No schema change. Done as a one-off SQL UPDATE via the insert tool.
+For each provider missing `website_url`:
+1. **First try the cheap path** — if `source_listing_url` is a Google Maps Places URL, Google Maps already returns `website` in its payload; re-fetch via Places API (New) `places:searchText` with `"{name} {city}"`, pick the first result whose `displayName` fuzzy-matches the provider name, store `websiteUri` as `website_url`.
+2. **Fallback** — Firecrawl `search` with `"{name} {city} kids classes"`, limit 5, scrape none. Pick the first result URL whose hostname is NOT `hisawyer.com`, `activityhero.com`, `yelp.com`, `google.com`, `facebook.com`, `instagram.com`, `mapquest.com`, `yellowpages.com`. Store as `website_url`.
+3. If both fail, leave `website_url` null.
 
-### 3. Stop producing bad URLs going forward
+Budget: ~800 providers × (1 Places call or 1 Firecrawl search) ≈ Places-heavy, low cost.
 
-In `supabase/functions/mvs-discover-providers/index.ts`:
+### 1.4 Wire `source_url` into the week extractor
 
-- Tighten both Gemini prompts (Sawyer + ActivityHero) with one extra rule: *"`url` MUST be the provider's own website (their domain). DO NOT use marketplace activity-detail links such as `hisawyer.com/marketplace/activity-set/...` or `activityhero.com/a/...`. If you cannot see the provider's own site, return `null`."*
-- After extraction, run every provider through `safeProviderUrl(...)` before insert, as a belt-and-braces guard.
+In `mvs-extract-weeks/index.ts`:
+- Prefer scraping `provider.website_url` over `provider.url`; fall back to `source_listing_url`.
+- Record the URL actually scraped into every inserted `mvs_weeks.source_url`.
+- Re-run extract-weeks for all Tier A cities so existing weeks get a `source_url`.
 
-### 4. UI nicety (LiveCityDeepDive Premium Providers table)
+### 1.5 UI changes (LiveCityDeepDive + ShortlistTable provider rows)
 
-Already: when `url` is present → link, else plain text. After the backfill, every row will have a working link, so behavior is unchanged. No UI code changes required.
+- Provider name: `<a href={website_url ?? source_listing_url ?? googleSearchFallback}>`.
+- Add a small "source ↗" link under each `$min/$max/Category/Weeks` cell that opens the latest `mvs_weeks.source_url` for that provider. If none, hide it.
+- No other UI changes.
+
+## Part 2 — Tier A rollout (after Part 1 ships clean data)
+
+Execute in order, one city per step, with a verification pause:
+
+1. **NYC** — run `mvs-run-pipeline` → verify scores → flip Live badge.
+2. **Houston** — same.
+3. **Chicago** — same.
+4. **San Antonio** — same.
+5. **Philadelphia** — same.
+6. **LA** — same.
+7. **Boston** — re-run with clean Part-1 data → **calibration gate check**: Boston must land in the top quartile of the 8-city set (Austin + 7 Tier A). If it doesn't, stop, surface the result to you, and do not flip Boston to Live without your sign-off on weight changes.
+
+I will NOT batch this — one city per turn so you can spot-check each before the next runs. Pipeline runs cost Firecrawl + Gemini credits, so I'll show the firecrawl_calls count after each.
+
+## Out of scope (this plan)
+
+- PDF Market Brief (Phase 6, item #1 on the master list) — separate plan.
+- QA Queue page (item #2), ACS pull (item #3), consolidation of `mvs-extract-weeks*` (item #5), `/mvs-preview` (item #6) — separate plans.
 
 ## Files touched
 
-- `supabase/functions/mvs-discover-providers/index.ts` — add `safeProviderUrl`, apply to extracted providers, tighten two prompts.
-- One-off data UPDATE on `mvs_providers` (no schema migration).
+- New migration: `mvs_providers.website_url`, `mvs_providers.source_listing_url`, `mvs_weeks.source_url`.
+- New edge function: `supabase/functions/mvs-enrich-websites/index.ts`.
+- Edit: `supabase/functions/mvs-extract-weeks/index.ts` (scrape preference + record source_url).
+- Edit: `supabase/functions/mvs-discover-providers/index.ts` (write both `source_listing_url` and `website_url` from Google Maps payload going forward).
+- Edit: `src/components/phase2-demo/LiveCityDeepDive.tsx` (link target + per-week "source ↗").
+- Edit: `src/lib/mvs/useLiveMvs.ts` and `src/lib/mvs/computeMvs.ts` (select new columns, expose to UI).
 
-## Out of scope
+## Questions before I build
 
-- No changes to scoring, table columns, MVS pipeline structure, or other UI.
-- Google Maps / Yelp links untouched.
-- Not running a Firecrawl-search enrichment pass to find each provider's exact homepage (heavier + costs credits); the Google-search fallback solves the user-visible problem now. We can add real-homepage enrichment later if you want.
+1. **Confirm Google Maps connector is usable** for `places:searchText` enrichment — it's listed in your connectors but I want to confirm you're OK with us calling it ~800 times for the one-time backfill. (Cheaper than Firecrawl search.)
+2. **Tier A rollout cadence** — one city per turn with you spot-checking, or run all 6 + Boston gate in one go and report results?

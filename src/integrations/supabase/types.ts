@@ -1343,11 +1343,13 @@ export type Database = {
           price_max: number | null
           price_min: number | null
           screenshot_url: string | null
+          source_listing_url: string | null
           source_run_id: string | null
           sources: Json
           tier: Database["public"]["Enums"]["mvs_tier"] | null
           updated_at: string
           url: string | null
+          website_url: string | null
         }
         Insert: {
           category_classified?: string | null
@@ -1361,11 +1363,13 @@ export type Database = {
           price_max?: number | null
           price_min?: number | null
           screenshot_url?: string | null
+          source_listing_url?: string | null
           source_run_id?: string | null
           sources?: Json
           tier?: Database["public"]["Enums"]["mvs_tier"] | null
           updated_at?: string
           url?: string | null
+          website_url?: string | null
         }
         Update: {
           category_classified?: string | null
@@ -1379,11 +1383,13 @@ export type Database = {
           price_max?: number | null
           price_min?: number | null
           screenshot_url?: string | null
+          source_listing_url?: string | null
           source_run_id?: string | null
           sources?: Json
           tier?: Database["public"]["Enums"]["mvs_tier"] | null
           updated_at?: string
           url?: string | null
+          website_url?: string | null
         }
         Relationships: [
           {
@@ -1463,6 +1469,7 @@ export type Database = {
           provider_id: string
           screenshot_url: string | null
           source_run_id: string | null
+          source_url: string | null
           status: Database["public"]["Enums"]["mvs_week_status"]
           status_evidence: string | null
           updated_at: string
@@ -1476,6 +1483,7 @@ export type Database = {
           provider_id: string
           screenshot_url?: string | null
           source_run_id?: string | null
+          source_url?: string | null
           status?: Database["public"]["Enums"]["mvs_week_status"]
           status_evidence?: string | null
           updated_at?: string
@@ -1489,6 +1497,7 @@ export type Database = {
           provider_id?: string
           screenshot_url?: string | null
           source_run_id?: string | null
+          source_url?: string | null
           status?: Database["public"]["Enums"]["mvs_week_status"]
           status_evidence?: string | null
           updated_at?: string

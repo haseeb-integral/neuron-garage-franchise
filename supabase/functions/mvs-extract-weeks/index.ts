@@ -85,7 +85,13 @@ function fallbackWeeksFromMarkdown(markdown: string): WeekExtract[] {
   }];
 }
 
-type ProviderRow = { id: string; name: string; url: string | null };
+type ProviderRow = {
+  id: string;
+  name: string;
+  url: string | null;
+  website_url: string | null;
+  source_listing_url: string | null;
+};
 
 type ProviderOutcome = {
   provider_id: string;
@@ -106,7 +112,12 @@ async function processProvider(
   todayISO: string,
   cityLabel: string,
 ): Promise<{ outcome: ProviderOutcome; firecrawlCalls: number }> {
-  const url = normUrl(provider.url);
+  // Prefer the provider's own website; fall back to the discovery/listing
+  // URL, then to the legacy url column. Skip Google-search fallback URLs.
+  const candidates = [provider.website_url, provider.source_listing_url, provider.url]
+    .map((u) => normUrl(u))
+    .filter((u): u is string => !!u && !u.startsWith("https://www.google.com/search"));
+  const url = candidates[0] ?? null;
   const out: ProviderOutcome = {
     provider_id: provider.id,
     provider_name: provider.name,
@@ -209,6 +220,7 @@ async function processProvider(
         status,
         status_evidence: (w.status_evidence ?? "").toString().slice(0, 500) || null,
         screenshot_url: screenshotPath,
+        source_url: url,
         confidence: conf,
         source_run_id: runId,
       }];
@@ -305,7 +317,7 @@ Deno.serve(async (req) => {
   // fall back to any tier and flag the run as low-confidence.
   let providerQuery = admin
     .from("mvs_providers")
-    .select("id, name, url, tier")
+    .select("id, name, url, website_url, source_listing_url, tier")
     .eq("city", city)
     .eq("platform", "sawyer")
     .order("created_at", { ascending: true })
@@ -324,7 +336,7 @@ Deno.serve(async (req) => {
   if (providerList.length === 0) {
     const { data: anyTier, error: anyErr } = await admin
       .from("mvs_providers")
-      .select("id, name, url, tier")
+      .select("id, name, url, website_url, source_listing_url, tier")
       .eq("city", city)
       .eq("platform", "sawyer")
       .order("created_at", { ascending: true })

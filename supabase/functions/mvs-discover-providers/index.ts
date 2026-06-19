@@ -525,19 +525,33 @@ Deno.serve(async (req) => {
     }
     debug.merged_total = byKey.size;
 
-    const rows = [...byKey.values()].map((m) => ({
-      city,
-      name: m.name.trim().slice(0, 300),
-      platform: m.platform,
-      sources: m.sources_seen,
-      url: safeProviderUrl(m.url ?? null, m.name, city),
-      price_min: m.price_min ?? null,
-      price_max: m.price_max ?? null,
-      category_raw: m.category_raw ?? null,
-      screenshot_url: screenshotPath,
-      confidence: Math.max(0, Math.min(1, m.confidence ?? 0.5)),
-      source_run_id: runId,
-    }));
+    const isMarketplaceHost = (u: string) =>
+      /(hisawyer\.com|activityhero\.com|yelp\.com)/i.test(u);
+
+    const rows = [...byKey.values()].map((m) => {
+      const rawUrl = m.url ?? null;
+      const marketplace = rawUrl ? isMarketplaceHost(rawUrl) : false;
+      // Provider's own homepage: anything that isn't a known marketplace host.
+      const website_url = rawUrl && !marketplace ? rawUrl : null;
+      // The discovery/listing page (Yelp page, Google Maps URL, etc.).
+      const source_listing_url = rawUrl && marketplace ? rawUrl : null;
+      return {
+        city,
+        name: m.name.trim().slice(0, 300),
+        platform: m.platform,
+        sources: m.sources_seen,
+        // Keep deprecated `url` populated so legacy readers still work; prefer website.
+        url: website_url ?? source_listing_url,
+        website_url,
+        source_listing_url,
+        price_min: m.price_min ?? null,
+        price_max: m.price_max ?? null,
+        category_raw: m.category_raw ?? null,
+        screenshot_url: screenshotPath,
+        confidence: Math.max(0, Math.min(1, m.confidence ?? 0.5)),
+        source_run_id: runId,
+      };
+    });
 
     let inserted = 0;
     if (rows.length > 0) {

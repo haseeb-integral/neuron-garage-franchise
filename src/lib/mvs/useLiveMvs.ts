@@ -155,17 +155,27 @@ export function useLiveMvs(
             : null,
         );
         setProviders(
-          (provRows ?? []).map((p) => ({
-            id: p.id,
-            name: p.name,
-            tier: p.tier as MvsProviderInput["tier"],
-            price_min: p.price_min,
-            price_max: p.price_max,
-            category_classified: p.category_classified,
-            url: (p as any).url ?? null,
-            website_url: (p as any).website_url ?? null,
-            source_listing_url: (p as any).source_listing_url ?? null,
-          })),
+          (provRows ?? []).map((p) => {
+            const rawSources = (p as any).sources;
+            let sources: string[] | null = null;
+            if (Array.isArray(rawSources)) {
+              sources = rawSources.map((s) => String(s)).filter(Boolean);
+            } else if (rawSources && typeof rawSources === "object") {
+              sources = Object.keys(rawSources);
+            }
+            return {
+              id: p.id,
+              name: p.name,
+              tier: p.tier as MvsProviderInput["tier"],
+              price_min: p.price_min,
+              price_max: p.price_max,
+              category_classified: p.category_classified,
+              url: (p as any).url ?? null,
+              website_url: (p as any).website_url ?? null,
+              source_listing_url: (p as any).source_listing_url ?? null,
+              sources,
+            };
+          }),
         );
         setWeeks(
           weekRows.map((w) => ({

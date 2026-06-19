@@ -206,6 +206,14 @@ export default function MVSQAQueue() {
 
   return (
     <div className="mx-auto max-w-5xl p-6">
+      <div className="mb-3">
+        <Link
+          to="/market-validation"
+          className="inline-flex items-center gap-1 text-sm text-primary underline hover:no-underline"
+        >
+          ← Back to Market Validation
+        </Link>
+      </div>
       <header className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">MVS QA Queue</h1>
@@ -272,7 +280,7 @@ export default function MVSQAQueue() {
                     )}
                     {w?.source_url && (
                       <div className="break-all">
-                        <span className="text-muted-foreground">Source: </span>
+                        <span className="text-muted-foreground">Evidence page: </span>
                         <a
                           href={w.source_url}
                           target="_blank"
@@ -281,6 +289,15 @@ export default function MVSQAQueue() {
                         >
                           {w.source_url}
                         </a>
+                        {!/\/(camp|class|enroll|register|book|summer)/i.test(w.source_url) && (
+                          <span
+                            className="ml-2 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                            style={{ backgroundColor: "#fef3c7", color: "#92400e" }}
+                            title="This looks like a homepage, not a camp/registration page"
+                          >
+                            homepage?
+                          </span>
+                        )}
                       </div>
                     )}
                     {isResolved && (

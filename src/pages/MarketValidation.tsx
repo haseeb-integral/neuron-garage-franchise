@@ -486,9 +486,12 @@ export default function MarketValidation() {
         </div>
       </section>
 
-
-
-
+      <ScoresCacheIndicator
+        bundles={[
+          austinLive, newYorkLive, houstonLive, chicagoLive, bostonLive,
+          sanAntonioLive, philadelphiaLive, losAngelesLive, indianapolisLive,
+        ]}
+      />
 
       {/* v1.1 — Decision-capture shortlist table (replaces the chip rail) */}
       {bostonCalibration && !bostonCalibration.pass && (

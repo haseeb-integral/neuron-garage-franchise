@@ -302,6 +302,16 @@ export const SITE_RECOMMEND_THRESHOLDS = {
   worthALook: 60,
 } as const;
 
+// Confidence-band thresholds used by the Site Analysis UI (June 19 framing
+// shift: scoring + confidence, not a final decision engine). Old constant
+// above is kept untouched so the Methodology page and any docs continue to
+// render their existing tables until those surfaces are revisited.
+export const SITE_CONFIDENCE_THRESHOLDS = {
+  strong: 75,
+  high: 60,
+  medium: 45,
+} as const;
+
 // 1A demo helpers — non-functional UI affordances added per SOW LOV items.
 export const QA_QUEUE_FLAGGED_COUNT = 4;
 

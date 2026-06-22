@@ -245,6 +245,7 @@ export default function MVSQAQueue() {
       const { [row.id]: _, ...rest } = p;
       return rest;
     });
+    invalidateAllMvs(queryClient);
     load();
   };
 

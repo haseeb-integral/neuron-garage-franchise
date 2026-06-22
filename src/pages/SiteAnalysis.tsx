@@ -125,7 +125,6 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace }: CardPropsExt) {
   const decision = byAddress.get(slot.address);
   const userVerdict: SiteVerdict | undefined =
     decision && decision.verdict !== "undecided" ? decision.verdict : undefined;
-  const isWinner = decision?.is_winner ?? false;
   const [showFormulas, setShowFormulas] = useState(false);
 
   const recomputed = slot.result ? recomputeSiteScores(slot.result.pillars) : null;
@@ -133,20 +132,21 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace }: CardPropsExt) {
   const scoreTier = composite != null ? tierBadge(composite) : null;
   const suggestedTier: SiteVerdict | undefined =
     composite != null ? defaultVerdictFromScore(composite) : undefined;
-  // Pill shown next to score: ONLY user-selected verdict. If the user hasn't
+  // Pill shown next to score: ONLY user-selected confidence. If the user hasn't
   // decided yet, we show a neutral score-tier hint (small, muted) — never
-  // surface "Don't recommend" as if it were a decision the user made.
+  // surface "Low" as if it were a decision the user made.
   const userPill = userVerdict ? VERDICT_STYLE[userVerdict] : null;
 
   return (
     <div
       className="flex flex-col rounded-lg border bg-white p-4"
       style={{
-        borderColor: isWinner ? "#1d6b32" : BORDER,
-        borderWidth: isWinner ? 2 : 1,
+        borderColor: BORDER,
+        borderWidth: 1,
         minHeight: 560,
       }}
     >
+
       {/* Header — fixed height so all 4 cards align */}
       <div className="flex items-start justify-between gap-3" style={{ minHeight: 110 }}>
         <div className="min-w-0 flex-1">

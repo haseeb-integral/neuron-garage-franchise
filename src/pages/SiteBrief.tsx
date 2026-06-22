@@ -317,12 +317,21 @@ export default function SiteBrief() {
       return;
     }
     try {
-      const raw = sessionStorage.getItem(key);
+      // Try localStorage first (cross-tab handoff), fall back to sessionStorage
+      // for older links opened in the same tab.
+      const raw = localStorage.getItem(key) ?? sessionStorage.getItem(key);
       if (!raw) {
         setMissing(true);
         return;
       }
       setPayload(JSON.parse(raw) as BriefPayload);
+      // Clean up so the key doesn't linger in storage.
+      try {
+        localStorage.removeItem(key);
+        sessionStorage.removeItem(key);
+      } catch {
+        /* ignore */
+      }
     } catch (err) {
       console.error("Failed to read SAS brief payload", err);
       setMissing(true);

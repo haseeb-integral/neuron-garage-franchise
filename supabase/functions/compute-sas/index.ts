@@ -389,8 +389,6 @@ Deno.serve(async (req) => {
     // harder to read; sequential here is fine since tilequery is one fast call.
     const parking = await parkingSignal(geo.lat, geo.lng);
 
-    const parking = await parkingSignal(geo.lat, geo.lng);
-
     // ---------------------------------------------------------------------
     // Provenance — every pillar carries plain-English source meta so the UI
     // can render "Fresh / From cache / Backup source" chips and verify-with-

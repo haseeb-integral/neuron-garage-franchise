@@ -894,14 +894,22 @@ export default function SiteAnalysis() {
       const blob = await renderSitePackPdfBlob({ candidates, generatedAt: new Date() });
       const today = new Date().toISOString().slice(0, 10);
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `nrg-site-analysis-${today}-${candidates.length}sites.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      toast.success("Site analysis PDF downloaded");
+      const win = window.open(url, "_blank", "noopener,noreferrer");
+      if (win) {
+        toast.success("SAS PDF opened in a new tab");
+        // Keep the blob URL alive long enough for the new tab to load it.
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      } else {
+        // Popup blocked — fall back to direct download.
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `nrg-site-analysis-${today}-${candidates.length}sites.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        toast.success("SAS PDF downloaded (popup was blocked)");
+      }
     } catch (err) {
       console.error("Site pack PDF export failed", err);
       toast.error(`PDF export failed: ${err instanceof Error ? err.message : "unknown"}`);

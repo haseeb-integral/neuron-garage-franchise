@@ -516,7 +516,7 @@ function EmptySlot() {
 
 
 // ---------------------------------------------------------------------------
-// Winner banner + Decision summary (read live)
+// Confidence summary (read live)
 // ---------------------------------------------------------------------------
 
 interface ScoredCandidate {
@@ -525,56 +525,21 @@ interface ScoredCandidate {
   composite: number | null;
 }
 
-function WinnerBanner({
-  winner,
-  winnerDecision,
-}: {
-  winner?: ScoredCandidate;
-  winnerDecision?: { verdict: SiteVerdict };
-}) {
-  if (!winner || winner.composite == null) {
-    return (
-      <div
-        className="mb-3 rounded-md border px-3 py-2 text-[12px]"
-        style={{ backgroundColor: "#fff8d9", borderColor: "#925100", color: "#7a5800" }}
-      >
-        <strong>No winner selected.</strong> Mark one analyzed candidate as ★ Winner to enable the
-        decision pack export.
-      </div>
-    );
-  }
-  const v = winnerDecision?.verdict ?? "undecided";
-  const verdictLabel = VERDICT_STYLE[v].label;
-  return (
-    <div
-      className="mb-3 flex items-center gap-2 rounded-md border px-3 py-2 text-[12px]"
-      style={{ backgroundColor: "#e3f3e7", borderColor: "#1d6b32", color: "#155724" }}
-    >
-      <Star size={14} fill="#1d6b32" />
-      <div>
-        <strong>★ Winner:</strong> {winner.candidate.schoolName} — Site Analysis Score (SAS){" "}
-        <strong className="tabular-nums">{winner.composite}</strong> · Decision:{" "}
-        <strong>{verdictLabel}</strong>
-      </div>
-    </div>
-  );
-}
-
 function DecisionSummary({
   scored,
   byAddress,
 }: {
   scored: ScoredCandidate[];
-  byAddress: Map<string, { verdict: SiteVerdict; is_winner: boolean; notes: string }>;
+  byAddress: Map<string, { verdict: SiteVerdict; notes: string }>;
 }) {
   return (
     <section className="mb-6 rounded-lg border bg-white p-4" style={{ borderColor: BORDER }}>
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-[13px] font-bold" style={{ color: NAVY }}>
-          Decision summary
+          Confidence summary
         </h3>
         <span className="text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
-          Goes into the decision pack export
+          Goes into the site report export
         </span>
       </div>
       <div className="overflow-x-auto">
@@ -583,8 +548,7 @@ function DecisionSummary({
             <tr style={{ color: MUTED }}>
               <th className="py-1 text-left font-semibold">Site</th>
               <th className="py-1 text-right font-semibold">Score</th>
-              <th className="py-1 text-left font-semibold">Decision</th>
-              <th className="py-1 text-left font-semibold">Winner</th>
+              <th className="py-1 text-left font-semibold">Confidence</th>
               <th className="py-1 text-left font-semibold">Note</th>
             </tr>
           </thead>
@@ -612,13 +576,6 @@ function DecisionSummary({
                       {vs.label}
                     </span>
                   </td>
-                  <td className="py-1.5 pr-2">
-                    {d?.is_winner ? (
-                      <Star size={12} fill="#1d6b32" color="#1d6b32" />
-                    ) : (
-                      <span style={{ color: MUTED }}>—</span>
-                    )}
-                  </td>
                   <td
                     className="py-1.5 pr-2"
                     style={{ color: d?.notes ? NAVY : MUTED }}
@@ -634,6 +591,7 @@ function DecisionSummary({
     </section>
   );
 }
+
 
 // ---------------------------------------------------------------------------
 // Page

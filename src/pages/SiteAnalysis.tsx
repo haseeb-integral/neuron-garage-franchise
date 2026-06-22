@@ -244,75 +244,70 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace, bookmark }: CardPro
       </div>
 
 
-      {/* Action buttons — two intentional rows:
-          Row 1: positive/neutral actions (Save, Re-run, Replace)
-          Row 2: destructive action (Remove), separated by a small gap */}
-      <div className="mt-2 flex flex-col gap-1">
-        <div className="flex flex-nowrap items-center justify-end gap-1.5">
-          {bookmark && slot.result && (
-            <button
-              type="button"
-              onClick={bookmark.onToggle}
-              disabled={bookmark.busy}
-              className="inline-flex items-center gap-1 whitespace-nowrap rounded border px-2 py-1 text-[11px] font-semibold leading-none disabled:opacity-50"
-              style={{
-                borderColor: bookmark.saved ? BLUE : BORDER,
-                color: bookmark.saved ? BLUE : MUTED,
-                backgroundColor: bookmark.saved ? "#eef2ff" : "#fff",
-              }}
-              title={
-                bookmark.saved
-                  ? `Saved${bookmark.savedByLabel ? ` by ${bookmark.savedByLabel}` : ""} · click to remove`
-                  : "Save to Saved Sites"
-              }
-            >
-              {bookmark.busy ? (
-                <Loader2 size={11} className="animate-spin" />
-              ) : bookmark.saved ? (
-                <BookmarkCheck size={11} />
-              ) : (
-                <Bookmark size={11} />
-              )}
-              {bookmark.saved ? "Saved" : "Save"}
-            </button>
-          )}
+      {/* Action buttons — single row, right aligned */}
+      <div className="mt-2 flex flex-nowrap items-center justify-end gap-1.5">
+        {bookmark && slot.result && (
           <button
             type="button"
-            onClick={onRerun}
-            disabled={slot.status === "loading"}
+            onClick={bookmark.onToggle}
+            disabled={bookmark.busy}
             className="inline-flex items-center gap-1 whitespace-nowrap rounded border px-2 py-1 text-[11px] font-semibold leading-none disabled:opacity-50"
-            style={{ borderColor: BORDER, color: BLUE }}
-            title="Re-run the live engine with these exact inputs"
+            style={{
+              borderColor: bookmark.saved ? BLUE : BORDER,
+              color: bookmark.saved ? BLUE : MUTED,
+              backgroundColor: bookmark.saved ? "#eef2ff" : "#fff",
+            }}
+            title={
+              bookmark.saved
+                ? `Saved${bookmark.savedByLabel ? ` by ${bookmark.savedByLabel}` : ""} · click to remove`
+                : "Save to Saved Sites"
+            }
           >
-            {slot.status === "loading" && <Loader2 size={11} className="animate-spin" />}
-            {slot.status === "loading" ? "Running…" : "↻ Re-run"}
+            {bookmark.busy ? (
+              <Loader2 size={11} className="animate-spin" />
+            ) : bookmark.saved ? (
+              <BookmarkCheck size={11} />
+            ) : (
+              <Bookmark size={11} />
+            )}
+            {bookmark.saved ? "Saved" : "Save"}
           </button>
-          {onReplace && (
-            <button
-              type="button"
-              onClick={onReplace}
-              className="inline-flex items-center whitespace-nowrap rounded border px-2 py-1 text-[11px] font-semibold leading-none"
-              style={{ borderColor: BORDER, color: BLUE }}
-              title="Replace this card with a new computation from the Live Engine above"
-            >
-              ⇄ Replace
-            </button>
-          )}
-        </div>
+        )}
+        <button
+          type="button"
+          onClick={onRerun}
+          disabled={slot.status === "loading"}
+          className="inline-flex items-center gap-1 whitespace-nowrap rounded border px-2 py-1 text-[11px] font-semibold leading-none disabled:opacity-50"
+          style={{ borderColor: BORDER, color: BLUE }}
+          title="Re-run the live engine with these exact inputs"
+        >
+          {slot.status === "loading" && <Loader2 size={11} className="animate-spin" />}
+          {slot.status === "loading" ? "Running…" : "↻ Re-run"}
+        </button>
+        {onReplace && (
+          <button
+            type="button"
+            onClick={onReplace}
+            className="inline-flex items-center whitespace-nowrap rounded border px-2 py-1 text-[11px] font-semibold leading-none"
+            style={{ borderColor: BORDER, color: BLUE }}
+            title="Replace this card with a new computation from the Live Engine above"
+          >
+            ⇄ Replace
+          </button>
+        )}
         {onRemove && (
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={onRemove}
-              className="inline-flex items-center whitespace-nowrap rounded border px-2 py-1 text-[11px] font-semibold leading-none"
-              style={{ borderColor: BORDER, color: MUTED }}
-              title="Remove this candidate from the comparison"
-            >
-              ✕ Remove
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onRemove}
+            className="inline-flex items-center whitespace-nowrap rounded border px-2 py-1 text-[11px] font-semibold leading-none"
+            style={{ borderColor: BORDER, color: MUTED }}
+            title="Remove this candidate from the comparison"
+          >
+            ✕ Remove
+          </button>
         )}
       </div>
+
 
 
       {slot.error && (

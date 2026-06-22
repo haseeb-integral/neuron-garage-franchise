@@ -1269,18 +1269,34 @@ export default function SiteAnalysis() {
 
 
       <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {slots.map((s) => (
-          <CandidateCard
-            key={s.id}
-            slot={s}
-            onRerun={() => runSlot(s.id)}
-            onRemove={() => removeSlot(s.id)}
-            onReplace={() => {
-              setPendingReplaceId(s.id);
-              if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
-            }}
-          />
-        ))}
+        {slots.map((s) => {
+          const lat = s.result?.geo?.lat ?? null;
+          const lng = s.result?.geo?.lng ?? null;
+          const existing = s.result ? savedSites.findSaved(lat, lng, s.schoolType) : null;
+          const bookmark = {
+            saved: !!existing,
+            isMine: existing?.user_id === savedSites.currentUserId,
+            savedByLabel:
+              existing && existing.user_id !== savedSites.currentUserId
+                ? existing.saver_name ?? existing.saver_email ?? "teammate"
+                : null,
+            busy: bookmarkBusy === s.id,
+            onToggle: () => handleToggleBookmark(s),
+          };
+          return (
+            <CandidateCard
+              key={s.id}
+              slot={s}
+              onRerun={() => runSlot(s.id)}
+              onRemove={() => removeSlot(s.id)}
+              onReplace={() => {
+                setPendingReplaceId(s.id);
+                if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              bookmark={bookmark}
+            />
+          );
+        })}
         {Array.from({ length: emptySlots }).map((_, i) => (
           <EmptySlot key={`empty-${i}`} />
         ))}

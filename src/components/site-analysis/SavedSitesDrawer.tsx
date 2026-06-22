@@ -54,12 +54,19 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onLoad: (inputs: SavedSiteInputs) => void;
+  savedSites: ReturnType<typeof useSavedSites>;
 }
 
-export function SavedSitesDrawer({ open, onOpenChange, onLoad }: Props) {
-  const { rows, loading, removeSite, currentUserId } = useSavedSites();
+export function SavedSitesDrawer({ open, onOpenChange, onLoad, savedSites }: Props) {
+  const { rows, loading, removeSite, currentUserId, refresh } = savedSites;
   const [filter, setFilter] = useState<"all" | "mine" | "team">("all");
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  // Refresh when drawer opens to ensure fresh data
+  useMemo(() => {
+    if (open) refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const visible = useMemo(() => {
     if (filter === "mine") return rows.filter((r) => r.user_id === currentUserId);

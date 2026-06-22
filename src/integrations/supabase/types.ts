@@ -404,39 +404,63 @@ export type Database = {
         Row: {
           additional_notes: string | null
           background: string | null
+          can_invest_min: boolean | null
           candidate_id: string
+          city: string | null
           created_at: string
+          discovery_source: string | null
           liquid_capital: number | null
           location_preferences: string | null
+          married: boolean | null
           motivation: string | null
           net_worth: number | null
+          other_opportunities: string | null
           partner_involved: boolean
+          role: string | null
+          role_other: string | null
+          sweat_equity_ok: boolean | null
           timeline: string | null
           updated_at: string
         }
         Insert: {
           additional_notes?: string | null
           background?: string | null
+          can_invest_min?: boolean | null
           candidate_id: string
+          city?: string | null
           created_at?: string
+          discovery_source?: string | null
           liquid_capital?: number | null
           location_preferences?: string | null
+          married?: boolean | null
           motivation?: string | null
           net_worth?: number | null
+          other_opportunities?: string | null
           partner_involved?: boolean
+          role?: string | null
+          role_other?: string | null
+          sweat_equity_ok?: boolean | null
           timeline?: string | null
           updated_at?: string
         }
         Update: {
           additional_notes?: string | null
           background?: string | null
+          can_invest_min?: boolean | null
           candidate_id?: string
+          city?: string | null
           created_at?: string
+          discovery_source?: string | null
           liquid_capital?: number | null
           location_preferences?: string | null
+          married?: boolean | null
           motivation?: string | null
           net_worth?: number | null
+          other_opportunities?: string | null
           partner_involved?: boolean
+          role?: string | null
+          role_other?: string | null
+          sweat_equity_ok?: boolean | null
           timeline?: string | null
           updated_at?: string
         }

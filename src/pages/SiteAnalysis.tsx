@@ -435,22 +435,10 @@ function Tile({ label, value, dash, dashTip, badge }: { label: string; value?: s
   );
 }
 
-function fmtMoney(n?: number) {
-  if (n == null || !Number.isFinite(n)) return undefined;
-  if (n >= 1000) return `$${Math.round(n / 1000)}k`;
-  return `$${Math.round(n)}`;
-}
-function fmtPct(n?: number) {
-  if (n == null || !Number.isFinite(n)) return undefined;
-  const v = n <= 1 ? n * 100 : n;
-  return `${Math.round(v)}%`;
-}
-function fmtCount(n?: number) {
-  if (n == null || !Number.isFinite(n)) return undefined;
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k`;
-  return `${Math.round(n)}`;
-}
+// Formatters now imported from @/lib/sas/formatters (top of file) so the
+// page and the PDF brief render every value identically.
+
+
 
 function MetricTiles({ signals }: { signals?: SiteScoreSignals }) {
   const acs10 = signals?.acs10 ?? {};

@@ -140,7 +140,7 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace }: CardPropsExt) {
   // Pill shown next to score: ONLY user-selected confidence. If the user hasn't
   // decided yet, we show a neutral score-tier hint (small, muted) — never
   // surface "Low" as if it were a decision the user made.
-  const userPill = userVerdict ? VERDICT_STYLE[userVerdict] : null;
+  const userPill = userVerdict ? safeVerdictStyle(userVerdict) : null;
 
   return (
     <div
@@ -561,7 +561,7 @@ function DecisionSummary({
             {scored.map((s) => {
               const d = byAddress.get(s.candidate.address);
               const v = (d?.verdict ?? "undecided") as SiteVerdict;
-              const vs = VERDICT_STYLE[v];
+              const vs = safeVerdictStyle(v);
               return (
                 <tr
                   key={s.candidate.id}

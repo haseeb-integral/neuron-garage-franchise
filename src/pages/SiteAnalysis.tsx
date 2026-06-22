@@ -651,6 +651,9 @@ export default function SiteAnalysis() {
   const [slots, setSlots] = useState<SlotState[]>([]);
   const [pendingReplaceId, setPendingReplaceId] = useState<string | null>(null);
   const { byAddress } = useSiteDecisions();
+  const savedSites = useSavedSites();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [bookmarkBusy, setBookmarkBusy] = useState<string | null>(null);
 
   const patchSlot = useCallback((id: string, patch: Partial<SlotState>) => {
     setSlots((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));

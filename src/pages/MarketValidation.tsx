@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { AlertCircle, ChevronDown, ChevronUp, Download, FileText, Loader2, MapPin, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 import { PageHeader } from "@/components/PageHeader";
@@ -12,7 +13,7 @@ import { LowConfidenceBadge } from "@/components/phase2-demo/LowConfidenceBadge"
 import { SampleDataBadge } from "@/components/phase2-demo/SampleDataBadge";
 import { ShortlistTable, type LiveOverlay } from "@/components/phase2-demo/ShortlistTable";
 import { Slider } from "@/components/ui/slider";
-import { useLiveMvs } from "@/lib/mvs/useLiveMvs";
+import { useLiveMvs, invalidateAllMvs, MVS_QUERY_KEY } from "@/lib/mvs/useLiveMvs";
 import {
   sanAntonioMarketValidationDemo,
   MARKET_BALANCE_ACTIVE_BAND,

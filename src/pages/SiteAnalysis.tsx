@@ -16,7 +16,7 @@ import { IsochroneMap } from "@/components/site-analysis/IsochroneMap";
 import { supabase } from "@/integrations/supabase/client";
 import { useSiteDecisions, type SiteVerdict } from "@/hooks/useSiteDecisions";
 import { type SiteScoreResult, type SiteScoreSignals } from "@/hooks/useSiteScore";
-import { renderSitePackPdfBlob, type SitePackCandidate } from "@/lib/sitePack/SitePackDocument";
+import type { SitePackCandidate } from "@/lib/sitePack/SitePackDocument";
 import { fetchMapPng } from "@/lib/sitePack/fetchMapPng";
 import { buildStaticUrl } from "@/components/site-analysis/IsochroneMap";
 import { useMapboxToken } from "@/hooks/useMapboxToken";

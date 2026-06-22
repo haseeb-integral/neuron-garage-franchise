@@ -16,7 +16,7 @@ import {
   drivingDistanceMiles,
   parkingSignal,
 } from "../_shared/mapbox.ts";
-import { aggregateAcs } from "../_shared/census.ts";
+import { aggregateAcs, censusApiUrl, dataCensusUrl } from "../_shared/census.ts";
 import { fetchUrbanSchools, STATE_ABBR_TO_FIPS } from "../_shared/urban-institute.ts";
 import {
   accessibilityScore,
@@ -169,10 +169,15 @@ Deno.serve(async (req) => {
         .select("*")
         .eq("polygon_hash", hash)
         .maybeSingle();
-      if (cached && cacheRowComplete(cached as Record<string, unknown>)) {
+      const cacheStillValid =
+        cached &&
+        cacheRowComplete(cached as Record<string, unknown>) &&
+        (!cached.expires_at || new Date(cached.expires_at as string) > new Date());
+      if (cacheStillValid) {
         const cachedRaw = (cached as Record<string, unknown>).raw as
-          | { tractsHit?: number }
+          | { tractsHit?: number; tracts?: Array<{ state: string; county: string; tract: string }> }
           | null;
+        const createdAt = (cached as Record<string, unknown>).created_at as string | undefined;
         return {
           medianHhi: Number(cached.median_hhi),
           pctAbove150k: Number(cached.pct_hh_above_150k),
@@ -181,10 +186,12 @@ Deno.serve(async (req) => {
           familiesWithKids: Number(cached.families_with_kids_5_12),
           totalPop: Number(cached.total_population),
           tractsHit: Number(cachedRaw?.tractsHit ?? 0),
+          tracts: cachedRaw?.tracts ?? [],
+          fromCache: true as const,
+          cacheCreatedAt: createdAt ?? null,
         };
       }
       const agg = await aggregateAcs(samplePoints(poly, 5));
-      // Guard the freshly aggregated row too — never persist a partial cache.
       const fields = [agg.medianHhi, agg.pctAbove150k, agg.pctDualIncome, agg.children5to12, agg.familiesWithKids, agg.totalPop];
       if (!fields.every((n) => Number.isFinite(n))) {
         throw new Error(`ACS aggregation incomplete for ${minutes}-min ring — refusing to fabricate zeros`);
@@ -199,12 +206,13 @@ Deno.serve(async (req) => {
           children_5_12: agg.children5to12,
           families_with_kids_5_12: agg.familiesWithKids,
           total_population: agg.totalPop,
-          raw: { tractsHit: agg.tractsHit },
+          raw: { tractsHit: agg.tractsHit, tracts: agg.tracts },
         },
         { onConflict: "polygon_hash" },
       );
-      return agg;
+      return { ...agg, fromCache: false as const, cacheCreatedAt: null };
     };
+    const [acs10, acs15] = await Promise.all([acsRing(iso10, 10), acsRing(iso15, 15)]);
     const [acs10, acs15] = await Promise.all([acsRing(iso10, 10), acsRing(iso15, 15)]);
 
     // Bug-2 fix (Manus 1B calibration analysis): `acs15.totalPop` is the sum
@@ -382,6 +390,223 @@ Deno.serve(async (req) => {
     // harder to read; sequential here is fine since tilequery is one fast call.
     const parking = await parkingSignal(geo.lat, geo.lng);
 
+    const parking = await parkingSignal(geo.lat, geo.lng);
+
+    // ---------------------------------------------------------------------
+    // Provenance — every pillar carries plain-English source meta so the UI
+    // can render "Fresh / From cache / Backup source" chips and verify-with-
+    // link buttons. We build URLs the user can paste in a browser to confirm.
+    // ---------------------------------------------------------------------
+    const nowIso = new Date().toISOString();
+    const ageDays = (iso?: string | null): number | null => {
+      if (!iso) return null;
+      const t = new Date(iso).getTime();
+      if (!Number.isFinite(t)) return null;
+      return Math.max(0, Math.round((Date.now() - t) / (24 * 3600 * 1000)));
+    };
+    // Group tracts by state+county so we can build one Census API URL per group.
+    const groupTracts = (
+      tracts: Array<{ state: string; county: string; tract: string }>,
+    ) => {
+      const groups = new Map<string, { state: string; county: string; tracts: string[] }>();
+      for (const t of tracts) {
+        const key = `${t.state}-${t.county}`;
+        const g = groups.get(key) ?? { state: t.state, county: t.county, tracts: [] };
+        g.tracts.push(t.tract);
+        groups.set(key, g);
+      }
+      return [...groups.values()];
+    };
+    const tractGroups = groupTracts([
+      ...(acs10.tracts ?? []),
+      ...(acs15.tracts ?? []),
+    ]);
+    const censusLinks = tractGroups.flatMap((g) => [
+      {
+        label: `Census API · state ${g.state} county ${g.county} (${g.tracts.length} tracts)`,
+        url: censusApiUrl(g.state, g.county, g.tracts, [
+          "B19013_001E",
+          "B01003_001E",
+          "B11003_002E",
+        ]),
+      },
+      ...(g.tracts.slice(0, 1).map((tr) => ({
+        label: `data.census.gov · tract ${tr} profile`,
+        url: dataCensusUrl(g.state, g.county, tr),
+      }))),
+    ]);
+    const censusAge10 = acs10.fromCache ? ageDays(acs10.cacheCreatedAt) : 0;
+    const censusAge15 = acs15.fromCache ? ageDays(acs15.cacheCreatedAt) : 0;
+    const censusStatus: "fresh" | "cached" =
+      acs10.fromCache && acs15.fromCache ? "cached" : "fresh";
+
+    const ecosystemStatus =
+      ecosystemProvider === "urban_institute"
+        ? "fresh"
+        : ecosystemProvider === "public_schools_fallback"
+        ? "backup_source"
+        : "missing";
+    const ecosystemLinks =
+      ecosystemProvider === "urban_institute" && stateFips
+        ? [
+            {
+              label: `Urban Institute CCD ${2022} (public, state ${stateFips})`,
+              url: `https://educationdata.urban.org/api/v1/schools/ccd/directory/2022/?fips=${stateFips}&per_page=1000`,
+            },
+            {
+              label: `Urban Institute PSS ${2021} (private, state ${stateFips})`,
+              url: `https://educationdata.urban.org/api/v1/schools/pss/directory/2021/?fips=${stateFips}&per_page=1000`,
+            },
+            {
+              label: "Education Data Portal · documentation",
+              url: "https://educationdata.urban.org/documentation/schools.html",
+            },
+          ]
+        : [
+            {
+              label: "Internal public_schools table (Education Data Portal fallback)",
+              url: "https://educationdata.urban.org/documentation/schools.html",
+            },
+          ];
+
+    const gmapsDir = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) =>
+      `https://www.google.com/maps/dir/${a.lat},${a.lng}/${b.lat},${b.lng}`;
+
+    const accessibilityLinks = [
+      ...(hwyNode
+        ? [
+            {
+              label: "Verify drive to highway · Google Maps",
+              url: gmapsDir({ lat: geo.lat, lng: geo.lng }, hwyNode),
+            },
+          ]
+        : []),
+      ...(roadNode
+        ? [
+            {
+              label: "Verify drive to major road · Google Maps",
+              url: gmapsDir({ lat: geo.lat, lng: geo.lng }, roadNode),
+            },
+          ]
+        : []),
+      {
+        label: "OpenStreetMap viewer at this point",
+        url: `https://www.openstreetmap.org/?mlat=${geo.lat}&mlon=${geo.lng}#map=14/${geo.lat}/${geo.lng}`,
+      },
+    ];
+
+    const provenance = {
+      schoolProfile: {
+        label: "User input (school name, type, grade band, enrollment)",
+        status: "user_input" as const,
+        fetchedAt: nowIso,
+        note: `You entered: type=${schoolType}, grade=${gradeBand}, enrollment=${enrollment}.`,
+        verifyLinks: [],
+      },
+      affluence: {
+        label: "US Census ACS 5-Year Survey",
+        status: censusStatus,
+        provider: "us_census_acs",
+        year: 2022,
+        fetchedAt: acs10.fromCache ? acs10.cacheCreatedAt : nowIso,
+        cacheAgeDays: censusAge10,
+        note:
+          "Median household income (B19013_001E) and households >$150k (B19001_016E + B19001_017E) " +
+          "averaged across census tracts inside the 10- and 15-min drive isochrones.",
+        verifyLinks: censusLinks,
+      },
+      familyDensity: {
+        label: "US Census ACS 5-Year Survey",
+        status: censusStatus,
+        provider: "us_census_acs",
+        year: 2022,
+        fetchedAt: acs15.fromCache ? acs15.cacheCreatedAt : nowIso,
+        cacheAgeDays: censusAge15,
+        heuristic: true,
+        note:
+          "Kids 5–12 estimated by blending Census age bands B09001_005E/006E/007E/008E " +
+          "(1/3 of 3–5 + full 6–11 + 1/3 of 12–14). 'Families with kids' = B11003_002E × 0.5 " +
+          "— a rough proxy, not a direct measurement.",
+        verifyLinks: censusLinks,
+      },
+      ecosystem: {
+        label:
+          ecosystemProvider === "urban_institute"
+            ? "Urban Institute Education Data Portal (CCD + PSS)"
+            : ecosystemProvider === "public_schools_fallback"
+            ? "Internal public_schools table (Urban Institute unavailable)"
+            : "No source",
+        status: ecosystemStatus as "fresh" | "backup_source" | "missing",
+        provider: ecosystemProvider,
+        year: ecosystemProvider === "urban_institute" ? "CCD 2022 + PSS 2021" : null,
+        fetchedAt: nowIso,
+        error: ecosystemError,
+        note:
+          ecosystemProvider === "urban_institute"
+            ? `Public schools = CCD 2022 directory, private schools = PSS 2021 directory, filtered to within ${RADIUS_MI} mi of the pin.`
+            : "Urban Institute API was unreachable on this run — fell back to our internal public_schools snapshot.",
+        verifyLinks: ecosystemLinks,
+      },
+      accessibility: {
+        label: "OpenStreetMap (Overpass) + Mapbox Directions",
+        status: "fresh" as const,
+        provider: "osm_mapbox",
+        fetchedAt: nowIso,
+        note:
+          "Nearest motorway / trunk and major road found via Overpass query; drive distance " +
+          "measured by Mapbox Directions API.",
+        verifyLinks: accessibilityLinks,
+      },
+      accessibilityHwy: {
+        label: "OpenStreetMap (Overpass) + Mapbox Directions · highway leg",
+        status: "fresh" as const,
+        provider: "osm_mapbox",
+        fetchedAt: nowIso,
+        note: hwyNode
+          ? `Nearest motorway/trunk node at (${hwyNode.lat.toFixed(4)}, ${hwyNode.lng.toFixed(4)}).`
+          : null,
+        verifyLinks: hwyNode
+          ? [
+              {
+                label: "Verify on Google Maps",
+                url: gmapsDir({ lat: geo.lat, lng: geo.lng }, hwyNode),
+              },
+            ]
+          : [],
+      },
+      accessibilityRoad: {
+        label: "OpenStreetMap (Overpass) + Mapbox Directions · major road leg",
+        status: "fresh" as const,
+        provider: "osm_mapbox",
+        fetchedAt: nowIso,
+        note: roadNode
+          ? `Nearest major road node at (${roadNode.lat.toFixed(4)}, ${roadNode.lng.toFixed(4)}).`
+          : null,
+        verifyLinks: roadNode
+          ? [
+              {
+                label: "Verify on Google Maps",
+                url: gmapsDir({ lat: geo.lat, lng: geo.lng }, roadNode),
+              },
+            ]
+          : [],
+      },
+      popReachable: {
+        label: "US Census ACS 5-Year Survey · extrapolated by area",
+        status: "heuristic" as const,
+        provider: "us_census_acs",
+        year: 2022,
+        fetchedAt: nowIso,
+        heuristic: true,
+        note:
+          `Raw tract-sum ${Math.round(acs15.totalPop).toLocaleString()} people scaled to ` +
+          `${Math.round(popReachable15Extrapolated).toLocaleString()} using avg tract density ` +
+          `(${(acs15.tractsHit > 0 ? acs15.totalPop / acs15.tractsHit : 0).toFixed(0)} pop/tract) ` +
+          `× isochrone area (${round2(iso15AreaSqMi)} sq mi ÷ ${AVG_URBAN_TRACT_SQMI} sq mi/tract).`,
+        verifyLinks: censusLinks,
+      },
+    };
+
     const signals = {
       acs10,
       acs15,
@@ -401,6 +626,7 @@ Deno.serve(async (req) => {
         iso15AreaSqMi: round2(iso15AreaSqMi),
       },
       parking,
+      provenance,
       version: ENGINE_VERSION,
     };
 

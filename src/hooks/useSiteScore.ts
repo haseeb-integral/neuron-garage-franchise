@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { SchoolType, GradeBand } from "@/lib/sasMath";
+import type { SasProvenance } from "@/lib/sas/sources";
 
 export interface SiteScoreInput {
   schoolName: string;
@@ -45,6 +46,12 @@ export interface SiteScoreSignals {
     radiusMeters?: number;
     error?: string | null;
   };
+  /**
+   * Per-pillar source provenance. Emitted by compute-sas so the UI can show
+   * a "Fresh / From cache / Backup source" chip plus verify-with-link
+   * buttons against the upstream source for every number on the SAS card.
+   */
+  provenance?: SasProvenance;
 }
 
 export interface SiteScoreResult {

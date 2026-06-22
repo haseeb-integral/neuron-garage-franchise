@@ -115,9 +115,12 @@ export async function aggregateAcs(
   familiesWithKids: number; // SCALED by tract count
   totalPop: number; // sum across unique tracts
   tractsHit: number;
+  /** Resolved tract identifiers — used by the UI to build verify-at-source links. */
+  tracts: Array<{ state: string; county: string; tract: string }>;
 }> {
   const seen = new Set<string>();
   const tracts: TractAcs[] = [];
+  const tractIds: Array<{ state: string; county: string; tract: string }> = [];
   for (const s of samples) {
     const t = await pointToTract(s.lat, s.lng);
     if (!t) continue;
@@ -125,7 +128,10 @@ export async function aggregateAcs(
     if (seen.has(key)) continue;
     seen.add(key);
     const a = await tractAcs(t.state, t.county, t.tract);
-    if (a) tracts.push(a);
+    if (a) {
+      tracts.push(a);
+      tractIds.push(t);
+    }
   }
   if (tracts.length === 0) {
     return {
@@ -136,6 +142,7 @@ export async function aggregateAcs(
       familiesWithKids: 0,
       totalPop: 0,
       tractsHit: 0,
+      tracts: [],
     };
   }
   const avg = (sel: (a: TractAcs) => number) =>
@@ -149,5 +156,31 @@ export async function aggregateAcs(
     familiesWithKids: sum((a) => a.familiesWithKids),
     totalPop: sum((a) => a.totalPop),
     tractsHit: tracts.length,
+    tracts: tractIds,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Verify-link helpers — build click-through URLs a human can paste in a
+// browser to confirm the same number lives in the upstream Census source.
+// ---------------------------------------------------------------------------
+
+/** Build a Census ACS API URL for one (state, county) group of tracts. */
+export function censusApiUrl(
+  state: string,
+  county: string,
+  tracts: string[],
+  varList = ["B19013_001E", "B01003_001E"],
+): string {
+  const get = varList.join(",");
+  const tractStr = tracts.join(",");
+  return `https://api.census.gov/data/${ACS_YEAR}/acs/acs5?get=${get}&for=tract:${tractStr}&in=state:${state}+county:${county}`;
+}
+
+/** Human-readable data.census.gov URL for one tract. */
+export function dataCensusUrl(state: string, county: string, tract: string): string {
+  // GEO_ID for a tract is 1400000US<state><county><tract>
+  const geoId = `1400000US${state}${county}${tract}`;
+  return `https://data.census.gov/profile?g=${geoId}`;
+}
+

@@ -2107,6 +2107,7 @@ export type Database = {
         Row: {
           children_5_12: number | null
           created_at: string
+          expires_at: string
           families_with_kids_5_12: number | null
           id: string
           median_hhi: number | null
@@ -2121,6 +2122,7 @@ export type Database = {
         Insert: {
           children_5_12?: number | null
           created_at?: string
+          expires_at?: string
           families_with_kids_5_12?: number | null
           id?: string
           median_hhi?: number | null
@@ -2135,6 +2137,7 @@ export type Database = {
         Update: {
           children_5_12?: number | null
           created_at?: string
+          expires_at?: string
           families_with_kids_5_12?: number | null
           id?: string
           median_hhi?: number | null

@@ -17,6 +17,8 @@ import {
 } from "@react-pdf/renderer";
 import type { SasPillarScores } from "@/lib/sasMath";
 import type { SiteScoreSignals } from "@/hooks/useSiteScore";
+import type { SasProvenance, SourceMeta } from "@/lib/sas/sources";
+import { STATUS_LABEL } from "@/lib/sas/sources";
 import type { SiteDecisionRow } from "@/hooks/useSiteDecisions";
 import {
   VERDICT_LABEL,
@@ -638,7 +640,73 @@ const CandidateDetail: React.FC<{ c: SitePackCandidate; today: string }> = ({ c,
         })}
         dotColor={C.blue}
       />
+
+      {/* 11. Sources & Methodology — every number's verify-with-link trail */}
+      <SourcesSection prov={c.signals?.provenance} />
     </Page>
+  );
+};
+
+// ---- Sources & Methodology block ----
+const SOURCE_ROWS: { key: keyof SasProvenance; label: string }[] = [
+  { key: "schoolProfile", label: "School Profile (your input)" },
+  { key: "affluence", label: "Affluence — Median HHI, % > $150k" },
+  { key: "familyDensity", label: "Family Density — kids 5–12, families" },
+  { key: "ecosystem", label: "Ecosystem — nearby schools" },
+  { key: "accessibility", label: "Accessibility — drive to road / highway" },
+  { key: "popReachable", label: "Population reachable (15-min)" },
+];
+
+const SourcesSection: React.FC<{ prov?: SasProvenance | null }> = ({ prov }) => {
+  if (!prov) return null;
+  return (
+    <>
+      <SectionTitle n="11" label="Sources & Methodology" />
+      <Text style={{ fontSize: 9, color: C.muted, marginBottom: 6 }}>
+        Every number above traces back to one of the sources below. Status words:
+        Fresh (just fetched), From cache (recently saved), Backup source (primary
+        provider unavailable), Heuristic (estimate, not a direct measurement),
+        You typed it (manual input).
+      </Text>
+      {SOURCE_ROWS.map(({ key, label }) => {
+        const src = prov[key] as SourceMeta | undefined;
+        if (!src) return null;
+        return (
+          <View key={key} wrap={false} style={{ marginBottom: 8 }}>
+            <Text style={{ fontSize: 10, fontWeight: 700, color: C.navy }}>
+              {label}
+            </Text>
+            <Text style={{ fontSize: 9, color: C.navy, marginTop: 1 }}>
+              {src.label} · {STATUS_LABEL[src.status]}
+              {src.year != null ? ` · ${String(src.year)}` : ""}
+              {src.heuristic ? " · Heuristic" : ""}
+            </Text>
+            {src.note ? (
+              <Text style={{ fontSize: 8.5, color: C.muted, marginTop: 2, lineHeight: 1.4 }}>
+                {src.note}
+              </Text>
+            ) : null}
+            {src.error ? (
+              <Text style={{ fontSize: 8.5, color: C.red, marginTop: 2 }}>
+                Upstream error: {src.error}
+              </Text>
+            ) : null}
+            {src.verifyLinks && src.verifyLinks.length > 0 ? (
+              <View style={{ marginTop: 3 }}>
+                {src.verifyLinks.map((l, i) => (
+                  <Text
+                    key={i}
+                    style={{ fontSize: 8, color: C.blue, marginTop: 1 }}
+                  >
+                    {`• ${l.label}: ${l.url}`}
+                  </Text>
+                ))}
+              </View>
+            ) : null}
+          </View>
+        );
+      })}
+    </>
   );
 };
 

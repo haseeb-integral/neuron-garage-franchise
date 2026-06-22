@@ -273,6 +273,7 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace, bookmark }: CardPro
             {bookmark.saved ? "Saved" : "Save"}
           </button>
         )}
+        <button
           type="button"
           onClick={onRerun}
           disabled={slot.status === "loading"}

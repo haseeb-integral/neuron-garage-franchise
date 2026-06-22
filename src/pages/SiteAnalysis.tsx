@@ -1221,6 +1221,7 @@ export default function SiteAnalysis() {
               {exporting ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
               {exporting ? "Generating PDF…" : "Export Site Report (PDF)"}
             </button>
+            </div>
             {!canExport && (
               <p className="text-[10px]" style={{ color: MUTED }}>
                 Score at least one candidate to enable export.

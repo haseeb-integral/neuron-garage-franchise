@@ -247,6 +247,14 @@ export function ProcessTab({ candidate }: Props) {
       if (error) {
         console.error("Failed to save process step", error);
         toast.error("Couldn't save step", { description: error.message });
+      } else {
+        const { logActivity } = await import("@/lib/candidateActivity");
+        logActivity(
+          dbId,
+          "process_step_updated",
+          `Step ${stepNum} — updated`,
+          { step_number: stepNum },
+        );
       }
     }, 450);
   };

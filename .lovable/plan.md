@@ -1,74 +1,73 @@
 
-## Does this break Brett's rule?
+## Decision (taken for you)
 
-**No.** Brett's rule is: every screen shows the same number, built from the same math (`computeMvs`), from the same raw data. The rule is about **consistency**, not about **recomputing every time**.
-
-The new behavior still uses one shared `computeMvs` helper. Every screen still reads from the same cache. So Nashville's Demand = 72 everywhere, always. We just stop throwing the answer away the moment you leave the page.
-
-If raw data changes (pipeline runs, override saved, watchlist toggled), the cache is told to refresh — so no stale numbers either.
+Doing the full clean-up — page and PDF will show the same number the same way, every count gets its unit, and the page gets the two rows that today only the PDF has. This matches Brett's "one calibrated number everywhere" rule.
 
 ---
 
-## What the user will see
+## What you'll see after the fix
 
-**Before:** Open Market Validation → blank → wait 2–4 seconds → table re-ranks 9 times → score cards finish loading.
-
-**After:** Open Market Validation → scores show instantly (from last visit) → if anything changed in the background, table updates smoothly once, no flicker.
-
-Scoring Console is unchanged. It still runs the pipeline (the thing that fetches fresh raw data). When the pipeline finishes, the cache is invalidated, and Market Validation picks up the new numbers next time it's opened (or right away if it's open).
+| Where | Before | After |
+|---|---|---|
+| Kids count on page | `5.3k` | `5.3k children` |
+| Kids count in PDF | `5k` | `5.3k children` (same as page) |
+| Population on page | `15.2k` | `15.2k people` |
+| Population in PDF | `15k` | `15.2k people` |
+| Schools / students in PDF | `8` / `3` / `2.3k` | `8 schools` / `3 schools` / `2.3k students` |
+| Big median income | `$1200k` | `$1.2M` |
+| Missing data on page | `undefined` | `—` |
+| Highway distance tooltip | `1.2mi` | `1.2 mi` |
+| Distance to nearest road | not on page | shown on page |
+| Median income at 15-min drive | not on page | shown on page |
 
 ---
 
 ## Plan
 
-### Step 1 — Wrap `useLiveMvs` in React Query
-- Convert the 7 parallel fetches inside `useLiveMvs` into a single `useQuery` keyed by `['mvs', cityId]`.
-- `staleTime: 10 minutes` — within 10 min, return cached scores instantly, no refetch.
-- `gcTime: 30 minutes` — keep in memory across page navigations.
-- `refetchOnWindowFocus: false` — no surprise refetches when user tabs back.
-- Inside the query function: run the same 7 fetches + same `computeMvs` call. **Math is untouched.**
+### Step 1 — One shared formatter file
+Create `src/lib/sas/formatters.ts` with the single source of truth:
+- `fmtMoney(n)` — `$1.2M` / `$120k` / `$1,250` / `—` for null
+- `fmtCount(n, unit?)` — `5.3k children` / `850 people` / `—` for null
+- `fmtPct(n)` — `12%` / `—`
+- `fmtMi(n)` — `1.2 mi` / `—`
+- `fmtScore(n)` — `73/100`
 
-### Step 2 — Invalidate cache when raw data changes
-Add `queryClient.invalidateQueries({ queryKey: ['mvs'] })` in these existing spots:
-- After a pipeline run completes (Scoring Console "Run pipeline" success handler).
-- After an override is saved (operator watchlist, manual pillar override).
-- After QA queue resolution.
+All branches handled (including ≥ $1M). Always returns a string, never `undefined`.
 
-That way, scores stay fresh without polling.
+### Step 2 — Switch page to the shared formatter
+In `src/pages/SiteAnalysis.tsx`:
+- Delete the local `fmtMoney`, `fmtCount`, `fmtPct` helpers at lines 437–452.
+- Import from `@/lib/sas/formatters`.
+- Pass the right unit word to `fmtCount`: `"children"` for kids tiles, `"people"` for population tile.
+- Fix the accessibility tooltip at line 362 to use `fmtMi` (gets the space for free).
 
-### Step 3 — Single shared loading state for score cards
-Right now the big score cards show "loading" while the active city's 7 fetches run. After caching, on return visits this state will be `false` immediately because data is already cached. No code change needed — it becomes instant for free.
+### Step 3 — Switch PDF to the shared formatter
+In `src/lib/sitePack/copy.ts`:
+- Delete the local helpers at lines 23–43.
+- Re-export from `@/lib/sas/formatters` so all existing callers keep working.
+- In `src/lib/sitePack/SitePackDocument.tsx`, pass unit words to `fmtCount` on lines 591, 592, 593, 602, 603, 604, 615.
 
-### Step 4 — Keep the "one calibrated number" guarantee visible
-- Add a small "Scores as of HH:MM" timestamp under the table header, pulled from the query's `dataUpdatedAt`.
-- Add a "Refresh scores" button that calls `invalidateQueries(['mvs'])` — for the rare case the user wants to force a recheck.
+### Step 4 — Add the two missing rows to the page
+In `src/pages/SiteAnalysis.tsx`, `MetricTiles`:
+- Add a tile "Drive to road" using `eco.roadDistanceMi`.
+- Add a tile "Median HHI · 15m" using `acs15.medianHhi`.
 
-### Step 5 — Verify nothing else recomputes separately
-Audit these surfaces to confirm they all read from the same cache (not their own fetch):
-- Table rows
-- `RowScorePopover`
-- Selected-market right panel
-- Compare modal
-- CSV export
-
-If any of them call `computeMvs` independently, switch them to read from the `['mvs', cityId]` cache.
+### Step 5 — Visual check
+Open the page in Playwright, screenshot the tiles area, then generate the PDF brief and screenshot a candidate page. Confirm:
+- Same number → same text in both places
+- No `undefined` anywhere
+- Units shown next to counts
+- New tiles render without breaking the grid
 
 ---
 
-## Technical details
+## Files changed
+- **New:** `src/lib/sas/formatters.ts`
+- **Edited:** `src/pages/SiteAnalysis.tsx` (remove local helpers, add 2 tiles, pass units)
+- **Edited:** `src/lib/sitePack/copy.ts` (re-export from shared)
+- **Edited:** `src/lib/sitePack/SitePackDocument.tsx` (pass units)
 
-**Files to change:**
-- `src/hooks/useLiveMvs.ts` — wrap in `useQuery`.
-- `src/pages/MarketValidation.tsx` — add timestamp + refresh button.
-- Scoring Console run handler — add `invalidateQueries`.
-- Override save handlers (watchlist, manual override, QA queue) — add `invalidateQueries`.
-- Any surface from Step 5 audit that currently re-fetches.
-
-**Files NOT touched:**
-- `computeMvs` and `recomputedPillars.ts` — the math itself.
-- Database schema — no new tables, no stored scores.
-- Pipeline code — unchanged.
-
-**Why React Query, not localStorage:** React Query already exists in the app (dashboard, candidate count, notifications use it). It handles cache invalidation, background refetch, and multi-tab sync correctly. localStorage would need all of that built by hand.
-
-**Stale time choice (10 min):** Raw data only changes when the pipeline runs (usually weekly) or when an operator saves an override (handled by explicit invalidate). 10 min is safe — long enough to feel instant, short enough that any missed invalidation self-heals quickly.
+## Not changed
+- Pillar score math
+- PDF layout / styling
+- Database, edge functions

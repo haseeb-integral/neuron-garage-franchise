@@ -226,19 +226,26 @@ export function SavedSitesDrawer({ open, onOpenChange, onLoad, savedSites }: Pro
                   </div>
                 )}
 
-                <div className="mt-2 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5 text-[10px]" style={{ color: MUTED }}>
-                    <span
-                      className="flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold text-white"
-                      style={{ backgroundColor: isMine ? BLUE : "#94a3b8" }}
-                      title={row.saver_name ?? row.saver_email ?? "Team member"}
-                    >
-                      {initials(row.saver_name, row.saver_email)}
-                    </span>
-                    <span>
-                      Saved by {isMine ? "you" : row.saver_name ?? row.saver_email ?? "teammate"} ·{" "}
-                      {timeAgo(row.created_at)}
-                    </span>
+                <div className="mt-2.5 flex items-start gap-2">
+                  <span
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                    style={{ backgroundColor: isMine ? BLUE : "#64748b" }}
+                    title={displayName(row.saver_name, row.saver_email)}
+                  >
+                    {initials(row.saver_name, row.saver_email)}
+                  </span>
+                  <div className="min-w-0 flex-1 leading-tight">
+                    <div className="text-[11px] font-semibold" style={{ color: isMine ? NAVY : BLUE }}>
+                      Saved by {isMine ? "you" : displayName(row.saver_name, row.saver_email)}
+                    </div>
+                    <div className="text-[10px]" style={{ color: MUTED }} title={new Date(row.created_at).toISOString()}>
+                      {exactTime(row.created_at)} <span className="opacity-70">({timeAgo(row.created_at)})</span>
+                    </div>
+                    {row.updated_at && new Date(row.updated_at).getTime() - new Date(row.created_at).getTime() > 60000 && (
+                      <div className="text-[10px]" style={{ color: MUTED }} title={new Date(row.updated_at).toISOString()}>
+                        Last re-scored {timeAgo(row.updated_at)}
+                      </div>
+                    )}
                   </div>
                 </div>
 

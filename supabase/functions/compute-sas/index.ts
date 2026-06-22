@@ -169,10 +169,15 @@ Deno.serve(async (req) => {
         .select("*")
         .eq("polygon_hash", hash)
         .maybeSingle();
-      if (cached && cacheRowComplete(cached as Record<string, unknown>)) {
+      const cacheStillValid =
+        cached &&
+        cacheRowComplete(cached as Record<string, unknown>) &&
+        (!cached.expires_at || new Date(cached.expires_at as string) > new Date());
+      if (cacheStillValid) {
         const cachedRaw = (cached as Record<string, unknown>).raw as
-          | { tractsHit?: number }
+          | { tractsHit?: number; tracts?: Array<{ state: string; county: string; tract: string }> }
           | null;
+        const createdAt = (cached as Record<string, unknown>).created_at as string | undefined;
         return {
           medianHhi: Number(cached.median_hhi),
           pctAbove150k: Number(cached.pct_hh_above_150k),
@@ -181,10 +186,12 @@ Deno.serve(async (req) => {
           familiesWithKids: Number(cached.families_with_kids_5_12),
           totalPop: Number(cached.total_population),
           tractsHit: Number(cachedRaw?.tractsHit ?? 0),
+          tracts: cachedRaw?.tracts ?? [],
+          fromCache: true as const,
+          cacheCreatedAt: createdAt ?? null,
         };
       }
       const agg = await aggregateAcs(samplePoints(poly, 5));
-      // Guard the freshly aggregated row too — never persist a partial cache.
       const fields = [agg.medianHhi, agg.pctAbove150k, agg.pctDualIncome, agg.children5to12, agg.familiesWithKids, agg.totalPop];
       if (!fields.every((n) => Number.isFinite(n))) {
         throw new Error(`ACS aggregation incomplete for ${minutes}-min ring — refusing to fabricate zeros`);
@@ -199,12 +206,13 @@ Deno.serve(async (req) => {
           children_5_12: agg.children5to12,
           families_with_kids_5_12: agg.familiesWithKids,
           total_population: agg.totalPop,
-          raw: { tractsHit: agg.tractsHit },
+          raw: { tractsHit: agg.tractsHit, tracts: agg.tracts },
         },
         { onConflict: "polygon_hash" },
       );
-      return agg;
+      return { ...agg, fromCache: false as const, cacheCreatedAt: null };
     };
+    const [acs10, acs15] = await Promise.all([acsRing(iso10, 10), acsRing(iso15, 15)]);
     const [acs10, acs15] = await Promise.all([acsRing(iso10, 10), acsRing(iso15, 15)]);
 
     // Bug-2 fix (Manus 1B calibration analysis): `acs15.totalPop` is the sum

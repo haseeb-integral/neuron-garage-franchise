@@ -262,7 +262,7 @@ function generateSASMarkdown(): string {
 
   lines.push(`## Section 6: Calibration: Trinity vs. LeafSpring`);
   lines.push("");
-  lines.push(`SAS is calibrated against two anchors in the demo, both in Austin: **Trinity Episcopal (Westlake)** — a profile of current high-performing Neuron Garage locations — and **LeafSpring**, a former NG site that closed in 2023 after averaging 27 campers/week. The math must independently produce a Recommend on Trinity and a Skip on LeafSpring, with no hand-set tier override.`);
+  lines.push(`SAS is calibrated against two anchors in the demo, both in Austin: **Trinity Episcopal (Westlake)** — a profile of current high-performing Neuron Garage locations — and **LeafSpring**, a former NG site that closed in 2023 after averaging 27 campers/week. The math must independently produce a Strong confidence band on Trinity and a Low confidence band on LeafSpring, with no hand-set tier override.`);
   lines.push("");
   lines.push(`| Pillar | Trinity | LeafSpring |`);
   lines.push(`| --- | --- | --- |`);
@@ -345,23 +345,29 @@ export default function SASMethodology() {
                 <thead className="bg-[#fafbfd] text-[#526078]">
                   <tr>
                     <th className="text-left px-4 py-2 font-semibold">SAS Range</th>
-                    <th className="text-left px-4 py-2 font-semibold">Recommendation</th>
+                    <th className="text-left px-4 py-2 font-semibold">Confidence Band</th>
                   </tr>
                 </thead>
                 <tbody className="text-[#1a2540]">
                   <tr className="border-t border-[#eef2f7]">
-                    <td className="px-4 py-2 font-semibold text-[#1d6b32]">≥ {SITE_RECOMMEND_THRESHOLDS.recommend}</td>
-                    <td className="px-4 py-2">Recommend — pursue host-school conversation</td>
+                    <td className="px-4 py-2 font-semibold text-[#1d6b32]">≥ {SITE_CONFIDENCE_THRESHOLDS.strong}</td>
+                    <td className="px-4 py-2">Strong confidence — well above the calibration floor</td>
+                  </tr>
+                  <tr className="border-t border-[#eef2f7]">
+                    <td className="px-4 py-2 font-semibold text-[#155e9b]">
+                      {SITE_CONFIDENCE_THRESHOLDS.high}–{SITE_CONFIDENCE_THRESHOLDS.strong - 1}
+                    </td>
+                    <td className="px-4 py-2">High confidence — promising; verify open items before advancing</td>
                   </tr>
                   <tr className="border-t border-[#eef2f7]">
                     <td className="px-4 py-2 font-semibold text-[#925100]">
-                      {SITE_RECOMMEND_THRESHOLDS.worthALook}–{SITE_RECOMMEND_THRESHOLDS.recommend - 1}
+                      {SITE_CONFIDENCE_THRESHOLDS.medium}–{SITE_CONFIDENCE_THRESHOLDS.high - 1}
                     </td>
-                    <td className="px-4 py-2">Worth a Look — inspect sub-scores; one pillar may be fixable</td>
+                    <td className="px-4 py-2">Medium confidence — mixed signals; review pillar detail</td>
                   </tr>
                   <tr className="border-t border-[#eef2f7]">
-                    <td className="px-4 py-2 font-semibold text-[#a3142b]">&lt; {SITE_RECOMMEND_THRESHOLDS.worthALook}</td>
-                    <td className="px-4 py-2">Skip — at least one structural pillar is below threshold</td>
+                    <td className="px-4 py-2 font-semibold text-[#a3142b]">&lt; {SITE_CONFIDENCE_THRESHOLDS.medium}</td>
+                    <td className="px-4 py-2">Low confidence — significant gaps versus the comparison set</td>
                   </tr>
                 </tbody>
               </table>
@@ -478,8 +484,8 @@ export default function SASMethodology() {
               SAS is calibrated against two anchors in the demo, both in Austin: <strong>Trinity
               Episcopal (Westlake)</strong> — a profile of current high-performing Neuron Garage
               locations — and <strong>LeafSpring</strong>, a former NG site that closed in 2023
-              after averaging 27 campers/week. The math must independently produce a Recommend on
-              Trinity and a Skip on LeafSpring, with no hand-set tier override.
+              after averaging 27 campers/week. The math must independently produce a Strong confidence
+              band on Trinity and a Low confidence band on LeafSpring, with no hand-set tier override.
             </p>
             <div className="rounded-md border border-[#eef2f7] bg-white overflow-hidden">
               <table className="w-full text-[13px]">
@@ -497,7 +503,7 @@ export default function SASMethodology() {
                     ["Family Density (20%)", "78", "48"],
                     ["School Ecosystem (15%)", "84", "35"],
                     ["Accessibility (15%)", "88", "32"],
-                    ["SAS (composite)", "86 · Recommend", "41 · Skip"],
+                    ["SAS (composite)", "86 · Strong", "41 · Low"],
                   ].map(([pillar, t, l], i, arr) => (
                     <tr key={pillar} className={`border-t border-[#eef2f7] ${i === arr.length - 1 ? "bg-[#f8fafe] font-semibold" : ""}`}>
                       <td className="px-4 py-2">{pillar}</td>

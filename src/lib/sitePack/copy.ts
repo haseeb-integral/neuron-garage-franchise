@@ -105,13 +105,13 @@ export function opportunitiesBullets(pillars: SasPillarScores): string[] {
   return out;
 }
 
-export interface RecommendationsArgs {
+export interface SummaryArgs {
   tierLabel: string;
   verdict?: SiteVerdict;
   notes?: string | null;
 }
 
-export function recommendationsBullets(c: RecommendationsArgs): string[] {
+export function summaryBullets(c: SummaryArgs): string[] {
   const out: string[] = [];
   if (c.tierLabel === "Strong") {
     out.push("Scores in the Strong confidence band. Worth advancing to deeper diligence.");

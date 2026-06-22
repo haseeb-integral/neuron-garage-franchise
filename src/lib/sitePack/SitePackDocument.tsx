@@ -32,7 +32,7 @@ import {
   strengthsBullets,
   risksBullets,
   opportunitiesBullets,
-  recommendationsBullets,
+  summaryBullets,
 } from "./copy";
 
 // Use PDF built-in Helvetica so export never depends on remote font fetching.
@@ -370,7 +370,7 @@ const CandidateDetail: React.FC<{ c: SitePackCandidate; today: string }> = ({ c,
       {/* 10. Summary & Next Steps */}
       <SectionTitle n="10" label="Summary & Next Steps" />
       <BulletList
-        items={recommendationsBullets({
+        items={summaryBullets({
           tierLabel: c.tierLabel,
           verdict: c.decision?.verdict,
           notes: c.decision?.notes,

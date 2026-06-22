@@ -1151,6 +1151,7 @@ export default function SiteAnalysis() {
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
         onLoad={handleLoadSavedSite}
+        savedSites={savedSites}
       />
       <PageHeader
         title="Site Analysis"

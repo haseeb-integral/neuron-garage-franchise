@@ -5,6 +5,19 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export type SiteVerdict = "strong" | "high" | "medium" | "low" | "undecided";
 
+const VALID_VERDICTS: SiteVerdict[] = ["strong", "high", "medium", "low", "undecided"];
+
+function normalizeVerdict(v: string): SiteVerdict {
+  if (VALID_VERDICTS.includes(v as SiteVerdict)) return v as SiteVerdict;
+  // Map old values from before the confidence-band rename
+  if (v === "recommend") return "strong";
+  if (v === "worth_a_look") return "medium";
+  if (v === "dont_recommend" || v === "drop") return "low";
+  if (v === "pursue") return "strong";
+  if (v === "hold") return "medium";
+  return "undecided";
+}
+
 export interface SiteDecisionRow {
   id: string;
   user_id: string;

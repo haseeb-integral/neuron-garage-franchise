@@ -23,6 +23,7 @@ import { type SiteScoreResult, type SiteScoreSignals } from "@/hooks/useSiteScor
 import type { SitePackCandidate } from "@/lib/sitePack/SitePackDocument";
 import { fetchMapPng } from "@/lib/sitePack/fetchMapPng";
 import { buildStaticUrl } from "@/components/site-analysis/IsochroneMap";
+import { fmtMoney, fmtPct, fmtCount, fmtMi } from "@/lib/sas/formatters";
 import { useMapboxToken } from "@/hooks/useMapboxToken";
 import { toast } from "sonner";
 import { SITE_CONFIDENCE_THRESHOLDS } from "@/data/phase2DemoData";

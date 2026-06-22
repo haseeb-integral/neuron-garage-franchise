@@ -1,54 +1,23 @@
-# Plan — Split Notes & Activity into two panels
+## Goal
+Add a new "Candidate Pipeline Methodology" page so the status summary lives in the app, like the other methodology docs (CSI, MVS, SAS, Demographics).
 
-## What changes
+## What I will do
 
-The Notes & Activity tab gets a dedicated **Notes** panel between "Add a note" and the "Activity Timeline". Notes still get written to the same `candidate_activities` table (no DB change), but the UI now shows them in their own pinned section so staff can read candidate notes without scanning past system events.
+1. **Create page** `src/pages/CandidatePipelineMethodology.tsx`
+   - Same layout style as the other methodology pages.
+   - Heading: **Candidate Pipeline — Status: Done**
+   - Plain-English bullet list of every change made since the G-Form audit (Lead Sheet fields, registration warning, real activity log, change-level diffs for Lead Sheet and Process, Notes & Activity split panel, bigger Add Note box with Ctrl+Enter, filter chips, dual timestamps, Homework tab removed, smoke tests passed).
+   - Short intro line explaining what the page is.
 
-```text
-┌─ Process Roadmap — <stage> ─────────────┐   (unchanged)
-└─────────────────────────────────────────┘
+2. **Register route** in `src/App.tsx`
+   - Lazy import + `registerRoutePrefetch` + `<Route path="/candidate-pipeline-methodology" />`.
 
-┌─ Add a note ────────────────────────────┐   (unchanged)
-│ [textarea]            [Add Note]        │
-└─────────────────────────────────────────┘
+3. **Add sidebar link** in `src/components/AppSidebar.tsx`
+   - Inside the existing "Methodology & Docs" collapsible group.
+   - Title: "Candidate Pipeline", icon: `Users` (or similar from lucide-react).
+   - URL: `/candidate-pipeline-methodology`.
 
-┌─ Notes (3) ─────────────────────────────┐   NEW dedicated panel
-│ 💬 haseeb · 2m ago · Jun 22, 10:04 PM    │
-│ "Spoke with candidate, very interested" │
-│ ─────────────────────────────────────── │
-│ 💬 haseeb · 1h ago · Jun 22, 9:01 PM     │
-│ "Wants to start in Austin"              │
-│                                         │
-│ [Show all 12]  ← only if >5             │
-└─────────────────────────────────────────┘
-
-┌─ Activity Timeline (everything else) ───┐
-│ ✏️ Lead sheet updated — 2 fields…       │
-│ ✓  Step 1 — Trial Close: …              │
-│ → Moved New Lead → Initial Qual         │
-│ ✓  haseeb voted Approve                 │
-└─────────────────────────────────────────┘
-```
-
-## Rules
-
-- **Notes panel** shows ONLY rows where `type = "note"`, newest first, collapsed to 5 by default with "Show all N" to expand.
-- **Activity Timeline** now shows everything EXCEPT notes (lead sheet, process, stage, votes).
-- The filter chips become simpler: **All · Changes · Stage · Votes** (no "Notes" chip — Notes has its own panel above).
-- Same dual timestamp on every row (`2m ago · Jun 22, 10:04 PM`).
-- Notes still render in the yellow tinted card style with the quote glyph so they feel like quotes, not log lines.
-
-## Files touched
-
-- `src/components/candidate-pipeline/tabs/NotesActivityTab.tsx` — split `rows` into `notes` and `events`, render two panels, drop the "Notes" chip from the filter strip.
-
-One file, no DB change, no migration. ~30 lines of JSX shuffle.
-
-## How you'll test
-
-1. Open any candidate → Notes & Activity.
-2. **Notes panel** at top shows every note you've added, newest first, in yellow cards. If more than 5, click "Show all" to expand.
-3. **Activity Timeline** below shows ONLY system events (Lead Sheet, Process, Stage, Votes). No notes.
-4. Add a new note → appears at the top of the Notes panel immediately, not in the Activity Timeline.
-
-Reply **approved** to build.
+## Out of scope
+- No changes to Candidate Pipeline code itself.
+- No edits to other methodology pages.
+- No new MD files on disk (the content lives in the React page, matching how the other methodology docs work).

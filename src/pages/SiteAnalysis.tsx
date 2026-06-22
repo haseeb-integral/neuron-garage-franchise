@@ -343,6 +343,10 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace, bookmark }: CardPro
         />
       )}
 
+      {/* Source-trust UI: chip strip + degraded banner */}
+      {recomputed && <DataSourcesStrip provenance={slot.result?.signals?.provenance} />}
+      {recomputed && <DegradedBanner provenance={slot.result?.signals?.provenance} />}
+
       {/* Six metric tiles — live from compute-sas signals */}
       {recomputed && <MetricTiles signals={slot.result?.signals} />}
 

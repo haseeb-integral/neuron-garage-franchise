@@ -166,16 +166,6 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace }: CardPropsExt) {
               {slot.schoolName || "New candidate"}
             </h3>
           </div>
-          {isWinner && (
-            <div className="mt-1">
-              <span
-                className="inline-flex items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-bold"
-                style={{ backgroundColor: "#1d6b32", color: "#fff" }}
-              >
-                <Star size={9} className="mr-0.5" fill="#fff" /> Winner
-              </span>
-            </div>
-          )}
           {slot.address && (
             <p
               className="mt-1 text-[11px]"

@@ -226,7 +226,11 @@ export function ProcessTab({ candidate }: Props) {
     };
   }, [dbId]);
 
-  const persist = (stepNum: number, row: StepRow) => {
+  const persist = (
+    stepNum: number,
+    row: StepRow,
+    change?: { description: string; metadata: Record<string, any> },
+  ) => {
     if (!dbId) return;
     if (saveTimers.current[stepNum]) window.clearTimeout(saveTimers.current[stepNum]);
     saveTimers.current[stepNum] = window.setTimeout(async () => {
@@ -249,34 +253,76 @@ export function ProcessTab({ candidate }: Props) {
         toast.error("Couldn't save step", { description: error.message });
       } else {
         const { logActivity } = await import("@/lib/candidateActivity");
+        const stepDef = STEPS.find((s) => s.num === stepNum);
+        const stepTitle = stepDef ? stepDef.title : `Step ${stepNum}`;
+        const description =
+          change?.description ?? `Step ${stepNum} (${stepTitle}) — updated`;
         logActivity(
           dbId,
           "process_step_updated",
-          `Step ${stepNum} — updated`,
-          { step_number: stepNum },
+          description,
+          { step_number: stepNum, step_title: stepTitle, ...(change?.metadata ?? {}) },
         );
       }
     }, 450);
   };
 
-  const updateStep = (stepNum: number, patch: Partial<StepRow>) => {
+  const updateStep = (
+    stepNum: number,
+    patch: Partial<StepRow>,
+    change?: { description: string; metadata: Record<string, any> },
+  ) => {
     setRows((prev) => {
       const cur = prev[stepNum] ?? emptyRow(dbId ?? "", stepNum);
       const next = { ...cur, ...patch };
-      persist(stepNum, next);
+      persist(stepNum, next, change);
       return { ...prev, [stepNum]: next };
     });
   };
 
+  const groupLabel = (group: "trial_close" | "post_call_actions" | "homework") =>
+    group === "trial_close" ? "Trial Close" : group === "post_call_actions" ? "Post-Call Action" : "Homework";
+
+  const itemLabel = (
+    stepNum: number,
+    group: "trial_close" | "post_call_actions" | "homework",
+    key: string,
+  ): string => {
+    const s = STEPS.find((x) => x.num === stepNum);
+    if (!s) return key;
+    const list =
+      group === "trial_close" ? TRIAL_CLOSE_ITEMS : group === "post_call_actions" ? s.postCall : s.homework;
+    return list.find((i) => i.key === key)?.label ?? key;
+  };
+
   const toggleChecklist = (stepNum: number, group: "trial_close" | "post_call_actions" | "homework", key: string, value: boolean) => {
     const cur = rows[stepNum] ?? emptyRow(dbId ?? "", stepNum);
-    updateStep(stepNum, { [group]: { ...cur[group], [key]: value } } as Partial<StepRow>);
+    const stepDef = STEPS.find((s) => s.num === stepNum);
+    const stepTitle = stepDef?.title ?? `Step ${stepNum}`;
+    const label = itemLabel(stepNum, group, key);
+    const description = `Step ${stepNum} (${stepTitle}) — ${groupLabel(group)}: ${label} ${value ? "✓ checked" : "✗ unchecked"}`;
+    updateStep(
+      stepNum,
+      { [group]: { ...cur[group], [key]: value } } as Partial<StepRow>,
+      { description, metadata: { group, item_key: key, item_label: label, value } },
+    );
   };
 
   const updateField = (stepNum: number, key: string, value: any) => {
     const cur = rows[stepNum] ?? emptyRow(dbId ?? "", stepNum);
-    updateStep(stepNum, { data: { ...cur.data, [key]: value } });
+    const stepDef = STEPS.find((s) => s.num === stepNum);
+    const stepTitle = stepDef?.title ?? `Step ${stepNum}`;
+    const fieldLabel = stepDef?.fields?.find((f) => f.key === key)?.label ?? key;
+    const display = typeof value === "string" && value.length > 40 ? value.slice(0, 39) + "…" : String(value ?? "");
+    const description = `Step ${stepNum} (${stepTitle}) — ${fieldLabel}: ${display || "(cleared)"}`;
+    updateStep(
+      stepNum,
+      { data: { ...cur.data, [key]: value } },
+      { description, metadata: { field_key: key, field_label: fieldLabel, value } },
+    );
   };
+
+
 
   const earliestSignDate = useMemo(() => {
     const sent = rows[4]?.data?.fdd_sent_date as string | undefined;

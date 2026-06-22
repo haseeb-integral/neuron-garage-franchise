@@ -110,6 +110,7 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
         );
         // Pre-mark this run id so the polling effect doesn't fire a second toast.
         if (data.run_id) setLastTerminalId(data.run_id);
+        invalidateAllMvs(queryClient);
         onComplete?.();
       }
       await fetchLatest();

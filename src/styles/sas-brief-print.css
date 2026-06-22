@@ -1,0 +1,151 @@
+/* SAS Brief — branded print stylesheet (mirrors market-brief-print.css).
+ *
+ * Scoped via .sb-doc. Loaded only on /sas-brief. Same dark-navy gradient cover,
+ * Fraunces serif, Inter body — branded identical to the Market Validation
+ * Brief, only the footer text changes ("SAS Report" instead of "Market
+ * Validation Brief").
+ */
+
+.sb-doc {
+  --sb-navy: #07142f;
+  --sb-blue: #174be8;
+  --sb-blue-soft: #eaf0ff;
+  --sb-muted: #526078;
+  --sb-line: #e5eaf2;
+  --sb-soft: #f7faff;
+  --sb-cream: #faf7f2;
+  --sb-green: #1d6b32;
+  --sb-amber: #7a5800;
+  --sb-red: #a3142b;
+  --sb-gold: #c9a14a;
+
+  font-family: "Inter", system-ui, sans-serif;
+  color: var(--sb-navy);
+  background: #f3f4f8;
+  line-height: 1.55;
+}
+
+.sb-doc .sb-serif {
+  font-family: "Fraunces", "Iowan Old Style", Georgia, serif;
+  font-feature-settings: "ss01", "ss02";
+  letter-spacing: -0.01em;
+}
+.sb-doc .sb-mono {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.sb-doc .sb-page {
+  width: 8.5in;
+  min-height: 11in;
+  margin: 0 auto 24px;
+  padding: 0.6in;
+  background: white;
+  box-shadow: 0 1px 3px rgba(7, 20, 47, 0.06), 0 8px 24px rgba(7, 20, 47, 0.08);
+  position: relative;
+}
+
+.sb-doc .sb-page--cover {
+  padding: 0;
+  background: radial-gradient(120% 80% at 100% 0%, #1240c9 0%, #07142f 55%, #050e22 100%);
+  color: white;
+  overflow: hidden;
+}
+
+@page {
+  size: Letter;
+  margin: 0.55in 0.55in 0.75in 0.55in;
+}
+
+@page :first {
+  margin: 0;
+}
+
+@media print {
+  html,
+  body {
+    background: white !important;
+  }
+
+  body > *:not(#root) {
+    display: none !important;
+  }
+
+  .sb-no-print {
+    display: none !important;
+  }
+
+  .sb-doc {
+    background: white !important;
+  }
+
+  .sb-doc .sb-page {
+    width: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+    page-break-after: always;
+    break-after: page;
+  }
+  .sb-doc .sb-page:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+
+  .sb-doc .sb-page--cover {
+    height: 11in;
+    padding: 0;
+  }
+
+  .sb-doc .sb-break-before {
+    page-break-before: always;
+    break-before: page;
+  }
+  .sb-doc .sb-avoid-break {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  @page {
+    @bottom-left {
+      content: "Neuron Garage  ·  Site Analysis Report";
+      font-family: Inter, sans-serif;
+      font-size: 8pt;
+      color: #526078;
+    }
+    @bottom-right {
+      content: "Page " counter(page) " of " counter(pages);
+      font-family: Inter, sans-serif;
+      font-size: 8pt;
+      color: #526078;
+    }
+  }
+  @page :first {
+    @bottom-left {
+      content: none;
+    }
+    @bottom-right {
+      content: none;
+    }
+  }
+
+  .sb-doc table {
+    page-break-inside: auto;
+  }
+  .sb-doc tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+  .sb-doc thead {
+    display: table-header-group;
+  }
+  .sb-doc tfoot {
+    display: table-footer-group;
+  }
+
+  .sb-doc,
+  .sb-doc * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

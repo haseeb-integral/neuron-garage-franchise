@@ -1,82 +1,81 @@
-# Polished SAS PDF + open-in-new-tab
+# SAS PDF — match the MVS brief behavior
 
-Two pieces. Same data the SAS page already shows — just a prettier, fully branded layout with a proper SAS cover, and the button opens a new tab instead of force-downloading.
+You're right: today the SAS button uses `react-pdf` to build a binary PDF and pop it in a new tab, which still triggers a download. The MVS brief works very differently and looks much better — it's a real **HTML page** (`/market-brief?...`) with a dark navy gradient cover, big serif city name, donut, and print CSS. The user opens it in a new tab and uses Cmd/Ctrl + P → Save as PDF when they want a file. Nothing downloads automatically.
 
-## What data goes in (same as the SAS page)
+We'll do the same for SAS.
 
-The PDF already pulls from the same recompute helper as the SAS page (`recomputeSiteScores`). No new data sources, no stored DB values. Per candidate it includes:
+## What changes
 
-- School name, address, type, grade band, enrollment.
-- SAS composite + confidence band (Strong / High / Medium / Low).
-- 5 pillar sub-scores: School Profile (25%), Affluence (25%), Family Density (20%), Ecosystem (15%), Accessibility (15%).
-- Signals: median HHI 10/15 min, %>$150K, children 5–12, total pop, nearby elementary/private schools, nearby student pop, road/highway distance.
-- Drive-time isochrone map (10-min + 15-min rings) when available.
-- Strengths / Risks / Opportunities / Summary & Next Steps bullets.
-- User's saved verdict + notes from the Watch / Decisions table.
+### 1. New route: `/sas-brief`
+- New page: `src/pages/SiteBrief.tsx`.
+- Lazy-loaded in `src/App.tsx` (mirrors `MarketBrief`).
+- Reuses the existing print CSS: `src/styles/market-brief-print.css` (already global, defines `.mb-doc`, `.mb-page--cover`, navy gradient, etc.). Same fonts, same colors, same cover treatment as MVS.
 
-Cover page lists every candidate. Final page is the side-by-side comparison (up to 4). All numbers come from the same calibrated helper as the on-screen cards — "one calibrated number everywhere".
+### 2. SAS Brief layout (same brand as MVS)
 
-## 1. Open PDF in a new browser tab
+**Cover page** (dark navy gradient, exact same look as the screenshot you sent):
+- Top bar: white logo + "NEURON GARAGE" left, "CONFIDENTIAL · INTERNAL" right.
+- Eyebrow: "SITE ANALYSIS REPORT" (replaces "MARKET VALIDATION BRIEF").
+- Big serif title: top-ranked candidate's school name (Fraunces, 84pt) — same typography as the MVS "Boston" wordmark.
+- Italic sub-line: candidate address (replaces the MVS "MA" state line).
+- Body paragraph: "A live, recomputed look at premium daycare/school site fit at {school} — school profile, neighborhood affluence, family density, ecosystem, and accessibility. Every number on every page is pulled from the same scoring helper that drives the on-screen SAS cards."
+- 4 stat columns: Generated · Candidates · Top SAS · Confidence (band of top candidate, colored).
+- Big donut on the right showing the top candidate's SAS composite (same `CompositeDonut` SVG component, ported into this file or shared).
+- Bottom strip: "SAS · v2.2 · 25/25/20/15/15 weighting" left, page label right.
 
-File: `src/pages/SiteAnalysis.tsx` (around lines 894–904).
+**Per-candidate sections** (one section per candidate, page-break between them via `.mb-page`):
+- Section header: candidate name (serif), address (muted).
+- Exec card: SAS composite (big), confidence chip in band color, verdict sentence.
+- 5 pillar bars (same `PillarBar` style as MVS — colored gradient by score band): School Profile / Affluence / Family Density / Ecosystem / Accessibility, each showing weight and "contributes X pts".
+- KV blocks for signals (HHI 10/15-min, % > $150K, children 5–12, pop, ecosystem counts, road/highway distance) — same compact KV style.
+- Embedded isochrone map (when the slot has the static-map URL — same data we already pass into the react-pdf version). Falls back to a muted "map unavailable" line.
+- Strengths / Risks / Opportunities / Summary bullets — green / red / amber / blue tints.
 
-- Build the blob from `renderSitePackPdfBlob(...)` as today.
-- `URL.createObjectURL(blob)` → `window.open(url, "_blank", "noopener,noreferrer")`.
-- If popup is blocked (returns `null`), fall back to current download flow.
-- Revoke object URL after ~60s so the new tab has time to load.
-- Toast: "SAS PDF opened in a new tab".
+**Comparison page** (last section): same side-by-side table we already have, but in the brief's lighter style (soft headers, colored confidence cells).
 
-The browser's built-in PDF viewer gives Download, Print, and zoom for free.
+**Footer chrome** on every page: "Neuron Garage · SAS Report · {date}" left, page number right (same `.mb-no-print` floating toolbar with "Print / Save as PDF" button).
 
-## 2. Gorgeous, branded PDF with a proper SAS cover
+### 3. Button on Site Analysis page
 
-File: `src/lib/sitePack/SitePackDocument.tsx`. Visual-only changes, no scoring or copy logic touched.
+File: `src/pages/SiteAnalysis.tsx` (around lines 860–910 — current `handleExportPdf`).
 
-### Brand kit (already in app)
-- Logo: `src/assets/neuron-garage-logo.png`.
-- Palette: navy `#07142f`, brand blue `#174be8`, soft `#f7faff`, line `#e5eaf2`, tier colors green/amber/red.
-- Font: Helvetica (built-in, never fails to render). Display weight 700, body 400.
+- Stop calling `renderSitePackPdfBlob`.
+- Build the same `SitePackCandidate[]` payload (school name, address, type, grade band, enrollment, pillars, composite, tierLabel, signals, decision, mapPngDataUrl) — using the same `recomputeSiteScores` helper.
+- Stash it on `sessionStorage` under a short random key (`nrg-sas-brief-{uuid}`).
+- `window.open(`/sas-brief?key=${key}`, "_blank", "noopener,noreferrer")`.
+- No download, no fallback download — exactly like MVS.
+- Toast: "SAS brief opened in a new tab — use Cmd/Ctrl + P to save as PDF".
+- Button label stays "Export PDF" (or rename to "Open SAS Brief" — your call; default keeps "Export PDF" so the UI doesn't shift).
 
-### SAS Cover Page (full redesign — this is the new "SAS PDF cover")
-- Top brand strip: navy band, Neuron Garage logo left, "Neuron Garage" wordmark right in white, generated-date pill.
-- **Big "SAS" badge** top-left under the strip — the three letters in brand blue with a small caption underneath: "Site Analysis Score".
-- Hero title: "Site Analysis Report" in display weight, with a thin brand-blue rule under it.
-- Sub-line: "Prepared {today} · {N} candidate sites analyzed".
-- **SAS scale legend** (small horizontal bar under sub-line): shows the 4 confidence bands with thresholds — Strong ≥75 (green) · High 60–74 (blue) · Medium 45–59 (amber) · Low <45 (red). Matches the SAS Methodology page.
-- Headline card (centered, soft-blue background, rounded): top candidate's name, big SAS number, confidence band chip in band color, one-line verdict sentence.
-- Candidates table: lighter header (soft-blue bg, navy text), zebra rows, right-aligned numbers, colored confidence chips.
-- Footer strip on cover: italic "SAS weighting: 25 / 25 / 20 / 15 / 15 across School Profile · Affluence · Family Density · Ecosystem · Accessibility · v2.2".
+Why sessionStorage and not URL params: the SAS payload includes pillar scores, full ACS/ecosystem/accessibility signal blobs, the user's verdict, and a base64 isochrone PNG per candidate — too large for a URL. sessionStorage is per-tab and goes away when the user closes the tab.
 
-### Per-candidate pages (polish, not redesign)
-- Add a small logo + candidate name bar at the top of the first candidate page (instead of plain text title).
-- Section bands get a left accent rule in brand blue and slightly bolder labels.
-- Executive summary card: bigger SAS number, colored confidence chip, clearer verdict block.
-- KV tables: labels in muted, values in navy 600, zebra rows, tighter rule lines.
-- Pillar mini-bars: under each pillar's section title, a thin horizontal bar (0–100) in brand blue with the value tick — matches the on-screen pillar bars.
-- Isochrone map: rounded corners, caption in italic muted, bordered frame.
-- Strengths / Risks / Opportunities: colored bullet dots (green / red / amber).
+### 4. Brief reads back the payload
 
-### Comparison page (polish)
-- Same data, lighter header, zebra rows, colored confidence cells.
-- Keeps the existing footnote: "All pillar and composite scores read from `recomputeSiteScores`."
+`SiteBrief.tsx`:
+- `useSearchParams()` → `key`.
+- Read `sessionStorage.getItem(key)`, JSON.parse, render.
+- If missing/invalid: show a friendly empty state with a "Back to Site Analysis" link (mirrors MVS empty state).
+- Sets `document.title` to "SAS Brief — {top candidate name}".
 
-### Page chrome (every page)
-- Fixed top header: tiny logo left, candidate or report name center, "SAS Report" tag right. Thin rule under it.
-- Fixed footer: "Neuron Garage · SAS Report · {today}" left, "Page X of Y" right.
+### 5. Cleanup of the old react-pdf path
 
-No new dependencies. `@react-pdf/renderer` already supports `<Image>` from imported PNGs.
+`src/lib/sitePack/SitePackDocument.tsx` and `renderSitePackPdfBlob` become unused. We will:
+- Leave the file in place (deleting touches imports across copy.ts and tests). Just stop calling it.
+- Remove the `renderSitePackPdfBlob` import from `SiteAnalysis.tsx`.
 
-## Out of scope (next turn)
+If you want the file deleted later, that's a one-line follow-up.
 
-- Watch List save button — runs right after this lands.
-- MVS PDF cover — same treatment could apply later, not asked for now.
+## Out of scope
+
+- Watch List save button — next turn after this lands.
+- Methodology / Docs sidebar text.
 
 ## Verification
 
-- TypeScript build passes.
-- Click "Export PDF" on Site Analysis → new tab opens with the report.
-- Cover shows logo, brand strip, big "SAS" badge, scale legend, headline card, polished table.
-- Per-candidate pages: logo header, pillar mini-bars, colored bullets, framed map.
-- Comparison page reads cleanly with colored confidence cells.
-- Popup blocker case: falls back to download with toast.
-- All numbers match what the SAS page shows on screen (same `recomputeSiteScores`).
+- Click "Export PDF" on Site Analysis → a new tab opens at `/sas-brief?key=...`.
+- Cover matches the MVS screenshot's brand (dark navy gradient, Fraunces serif, donut, stat columns, "CONFIDENTIAL · INTERNAL" tag).
+- No automatic download. Browser only saves a file when the user hits Cmd/Ctrl + P → Save as PDF.
+- All numbers match the SAS page (`recomputeSiteScores`).
+- Per-candidate sections show pillar bars, KV blocks, isochrone map, colored bullets.
+- Final page is the side-by-side comparison.
+- Closing the tab clears the sessionStorage key (best-effort `beforeunload`).

@@ -85,11 +85,12 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
     setLastTerminalId(latest.id);
     if (latest.status === "done") {
       toast.success(`Pipeline complete · ${latest.firecrawl_calls} Firecrawl calls`);
+      invalidateAllMvs(queryClient);
       onComplete?.();
     } else {
       toast.error(`Pipeline failed: ${latest.error ?? "unknown error"}`);
     }
-  }, [latest, lastTerminalId, onComplete]);
+  }, [latest, lastTerminalId, onComplete, queryClient]);
 
   const handleRun = async () => {
     setInvoking(true);

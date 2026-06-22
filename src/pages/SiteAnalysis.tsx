@@ -23,6 +23,7 @@ import { type SiteScoreResult, type SiteScoreSignals } from "@/hooks/useSiteScor
 import type { SitePackCandidate } from "@/lib/sitePack/SitePackDocument";
 import { fetchMapPng } from "@/lib/sitePack/fetchMapPng";
 import { buildStaticUrl } from "@/components/site-analysis/IsochroneMap";
+import { fmtMoney, fmtPct, fmtCount, fmtMi } from "@/lib/sas/formatters";
 import { useMapboxToken } from "@/hooks/useMapboxToken";
 import { toast } from "sonner";
 import { SITE_CONFIDENCE_THRESHOLDS } from "@/data/phase2DemoData";
@@ -356,10 +357,10 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace, bookmark }: CardPro
             </button>
           </div>
           <PillarBar label="School Profile" weight={0.25} value={recomputed.pillars.schoolProfile} showFormula={showFormulas} detail={`f(type=${SCHOOL_TYPE_LABEL[slot.schoolType]}, grade=${GRADE_BAND_LABEL[slot.gradeBand]}, enroll=${slot.enrollment || "—"}) = ${recomputed.pillars.schoolProfile}`} />
-          <PillarBar label="Neighborhood Affluence" weight={0.25} value={recomputed.pillars.affluence} showFormula={showFormulas} detail={`0.6 × medianHHI_norm(${fmtMoney(slot.result?.signals?.acs10?.medianHhi) ?? "—"}) + 0.4 × pctAbove150k_norm(${fmtPct(slot.result?.signals?.acs10?.pctAbove150k) ?? "—"}) = ${recomputed.pillars.affluence}`} />
+          <PillarBar label="Neighborhood Affluence" weight={0.25} value={recomputed.pillars.affluence} showFormula={showFormulas} detail={`0.6 × medianHHI_norm(${fmtMoney(slot.result?.signals?.acs10?.medianHhi)}) + 0.4 × pctAbove150k_norm(${fmtPct(slot.result?.signals?.acs10?.pctAbove150k)}) = ${recomputed.pillars.affluence}`} />
           <PillarBar label="Family Density" weight={0.2} value={recomputed.pillars.familyDensity} showFormula={showFormulas} detail={`children5-12 / totalPop × scale → ${fmtCount(slot.result?.signals?.acs15?.children5to12)} / ${fmtCount(slot.result?.signals?.acs15?.totalPop)} = ${recomputed.pillars.familyDensity}`} />
           <PillarBar label="School Ecosystem" weight={0.15} value={recomputed.pillars.ecosystem} showFormula={showFormulas} detail={`elementaryCount(${slot.result?.signals?.ecosystem?.elementaryCount ?? "—"}) + privateCount(${slot.result?.signals?.ecosystem?.privateCount ?? "—"}) weighted by nearbyStudentPop = ${recomputed.pillars.ecosystem}`} />
-          <PillarBar label="Accessibility" weight={0.15} value={recomputed.pillars.accessibility} showFormula={showFormulas} detail={(() => { const hwy = slot.result?.signals?.accessibility?.highwayDistanceMi; const road = slot.result?.signals?.accessibility?.roadDistanceMi; const pop = slot.result?.signals?.acs15?.totalPop; const hwyStr = hwy == null ? "—" : `${hwy.toFixed(1)}mi`; const roadStr = road == null ? "—" : `${road.toFixed(1)}mi`; return `0.3 × roadFactor(${roadStr}) + 0.3 × hwyFactor(${hwyStr}) + 0.4 × popReachable_norm(${fmtCount(pop) ?? "—"}) = ${recomputed.pillars.accessibility}`; })()} />
+          <PillarBar label="Accessibility" weight={0.15} value={recomputed.pillars.accessibility} showFormula={showFormulas} detail={`0.3 × roadFactor(${fmtMi(slot.result?.signals?.accessibility?.roadDistanceMi)}) + 0.3 × hwyFactor(${fmtMi(slot.result?.signals?.accessibility?.highwayDistanceMi)}) + 0.4 × popReachable_norm(${fmtCount(slot.result?.signals?.acs15?.totalPop)}) = ${recomputed.pillars.accessibility}`} />
           {showFormulas && (
             <p className="pt-1 text-[10px]" style={{ color: MUTED }}>
               Composite = sum of weighted contributions = <strong>{recomputed.composite}</strong>
@@ -434,42 +435,34 @@ function Tile({ label, value, dash, dashTip, badge }: { label: string; value?: s
   );
 }
 
-function fmtMoney(n?: number) {
-  if (n == null || !Number.isFinite(n)) return undefined;
-  if (n >= 1000) return `$${Math.round(n / 1000)}k`;
-  return `$${Math.round(n)}`;
-}
-function fmtPct(n?: number) {
-  if (n == null || !Number.isFinite(n)) return undefined;
-  const v = n <= 1 ? n * 100 : n;
-  return `${Math.round(v)}%`;
-}
-function fmtCount(n?: number) {
-  if (n == null || !Number.isFinite(n)) return undefined;
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k`;
-  return `${Math.round(n)}`;
-}
+// Formatters now imported from @/lib/sas/formatters (top of file) so the
+// page and the PDF brief render every value identically.
+
+
 
 function MetricTiles({ signals }: { signals?: SiteScoreSignals }) {
   const acs10 = signals?.acs10 ?? {};
   const acs15 = signals?.acs15 ?? {};
   const hwyMi = signals?.accessibility?.highwayDistanceMi;
+  const roadMi = signals?.accessibility?.roadDistanceMi;
   return (
     <div className="mt-3 grid grid-cols-3 gap-1.5">
       <Tile label="Median HHI · 10m" value={fmtMoney(acs10.medianHhi)} />
+      <Tile label="Median HHI · 15m" value={fmtMoney(acs15.medianHhi)} />
       <Tile label="HH >$150k · 10m" value={fmtPct(acs10.pctAbove150k)} />
-      <Tile label="Kids 5-12 · 10m" value={fmtCount(acs10.children5to12)} />
+      <Tile label="Kids 5-12 · 10m" value={fmtCount(acs10.children5to12, "children")} />
+      <Tile label="Pop · 15m" value={fmtCount(acs15.totalPop, "people")} />
       <Tile
         label="Drive to hwy"
-        value={hwyMi != null ? `${hwyMi.toFixed(1)} mi` : undefined}
+        value={fmtMi(hwyMi)}
         dash={hwyMi == null}
         dashTip="No motorway/trunk found within 12 mi — Accessibility scored via fallback"
       />
-      <Tile label="Pop · 15m" value={fmtCount(acs15.totalPop)} />
+      <Tile label="Drive to road" value={fmtMi(roadMi)} dash={roadMi == null} />
     </div>
   );
 }
+
 
 function PillarBar({
   label,

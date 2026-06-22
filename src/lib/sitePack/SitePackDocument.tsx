@@ -588,9 +588,9 @@ const CandidateDetail: React.FC<{ c: SitePackCandidate; today: string }> = ({ c,
       <PillarBar value={c.pillars.familyDensity} />
       <KvTable
         rows={[
-          ["Children 5–12 · 10-min drive", fmtCount(acs10?.children5to12)],
-          ["Children 5–12 · 15-min drive", fmtCount(acs15?.children5to12)],
-          ["Total population · 15-min", fmtCount(acs15?.totalPop)],
+          ["Children 5–12 · 10-min drive", fmtCount(acs10?.children5to12, "children")],
+          ["Children 5–12 · 15-min drive", fmtCount(acs15?.children5to12, "children")],
+          ["Total population · 15-min", fmtCount(acs15?.totalPop, "people")],
         ]}
       />
 
@@ -599,9 +599,9 @@ const CandidateDetail: React.FC<{ c: SitePackCandidate; today: string }> = ({ c,
       <PillarBar value={c.pillars.ecosystem} />
       <KvTable
         rows={[
-          ["Elementary schools nearby", fmtCount(eco?.elementaryCount)],
-          ["Private schools nearby", fmtCount(eco?.privateCount)],
-          ["Total nearby student population", fmtCount(eco?.nearbyStudentPop)],
+          ["Elementary schools nearby", fmtCount(eco?.elementaryCount, "schools")],
+          ["Private schools nearby", fmtCount(eco?.privateCount, "schools")],
+          ["Total nearby student population", fmtCount(eco?.nearbyStudentPop, "students")],
         ]}
       />
 
@@ -612,7 +612,7 @@ const CandidateDetail: React.FC<{ c: SitePackCandidate; today: string }> = ({ c,
         rows={[
           ["Distance to major road", fmtMi(acc?.roadDistanceMi)],
           ["Distance to highway", fmtMi(acc?.highwayDistanceMi)],
-          ["Population reachable · 15-min", fmtCount(acs15?.totalPop)],
+          ["Population reachable · 15-min", fmtCount(acs15?.totalPop, "people")],
         ]}
       />
 

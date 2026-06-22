@@ -1,4 +1,4 @@
-import { Candidate, QualificationScores, TrialClose, ActivityEntry } from "@/data/pipelineData";
+import { Candidate, QualificationScores, ActivityEntry } from "@/data/pipelineData";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
@@ -8,7 +8,6 @@ import { QualificationTab } from "./tabs/QualificationTab";
 import { ProcessTab } from "./tabs/ProcessTab";
 import { NotesActivityTab } from "./tabs/NotesActivityTab";
 import { StageHistoryTab } from "./tabs/StageHistoryTab";
-import { HomeworkTab } from "./tabs/HomeworkTab";
 import { CommitteeVotesTab } from "./tabs/CommitteeVotesTab";
 import { DocumentsTab } from "./tabs/DocumentsTab";
 import { CandidateAvatar } from "@/components/ui/CandidateAvatar";
@@ -50,9 +49,6 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
     onUpdate({ ...candidate, activity: [next, ...candidate.activity] });
   };
 
-  const handleTrialClose = (key: keyof TrialClose, value: boolean) => {
-    onUpdate({ ...candidate, trialClose: { ...candidate.trialClose, [key]: value } });
-  };
 
 
 
@@ -111,7 +107,7 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
               )}
               <TabsTrigger value="notes" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Notes &amp; Activity</TabsTrigger>
               <TabsTrigger value="stage-history" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Stage History</TabsTrigger>
-              <TabsTrigger value="homework" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Homework</TabsTrigger>
+              
               <TabsTrigger value="committee" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Committee Votes</TabsTrigger>
               {isEnabled("FF_DOCUMENTS") && (
                 <TabsTrigger value="documents" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Documents</TabsTrigger>
@@ -138,9 +134,6 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
           </TabsContent>
           <TabsContent value="stage-history">
             <StageHistoryTab candidate={candidate} />
-          </TabsContent>
-          <TabsContent value="homework">
-            <HomeworkTab candidate={candidate} onTrialCloseChange={handleTrialClose} />
           </TabsContent>
           <TabsContent value="committee">
             <CommitteeVotesTab candidate={candidate} />

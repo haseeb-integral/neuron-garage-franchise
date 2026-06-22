@@ -1,5 +1,7 @@
 import { Candidate } from "@/data/pipelineData";
 import { CandidateFileDropzone } from "../CandidateFileDropzone";
+import { StageDocumentsSection } from "../StageDocumentsSection";
+import { ComplianceSection } from "../ComplianceSection";
 
 interface Props {
   candidate: Candidate;
@@ -18,8 +20,11 @@ export function DocumentsTab({ candidate }: Props) {
 
   return (
     <div className="mt-4 space-y-4">
+      <StageDocumentsSection candidateDbId={dbId} stage={candidate.stage} />
+      <ComplianceSection candidateDbId={dbId} stage={candidate.stage} />
+
       <div>
-        <h3 className="text-sm font-semibold mb-1">Documents</h3>
+        <h3 className="text-sm font-semibold mb-1">All Documents</h3>
         <p className="text-xs text-muted-foreground">
           Drag &amp; drop any candidate files here (signed NDAs, financials, supporting docs).
           Files are private to staff and can be removed at any time.

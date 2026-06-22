@@ -42,6 +42,7 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
   const [invoking, setInvoking] = useState(false);
   const [lastTerminalId, setLastTerminalId] = useState<string | null>(null);
   const initialSeededRef = useRef(false);
+  const queryClient = useQueryClient();
 
   const fetchLatest = useCallback(async () => {
     const { data } = await supabase

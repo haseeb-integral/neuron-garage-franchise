@@ -564,6 +564,73 @@ export default function SASMethodology() {
             </div>
           </section>
 
+          {/* Section 8 — Site Analysis UI workflow */}
+          <section className="mb-2">
+            <SectionTitle n={8}>Site Analysis UI — Saved Sites, Re-run & Actions</SectionTitle>
+            <p className="text-[13px] leading-relaxed text-[#1a2540] mb-3">
+              The Site Analysis page wraps the SAS engine in a workflow UI so an analyst can
+              collect candidate buildings, re-score them as inputs change, and share the list with
+              the team — without ever drifting from the calibrated math described in Sections 2–6.
+            </p>
+
+            <div className="space-y-4">
+              <div className="rounded-md border border-[#eef2f7] bg-white px-4 py-3.5">
+                <h3 className="text-[14px] font-bold text-[#07142f] mb-1.5">Saved Sites Drawer</h3>
+                <p className="text-[13px] leading-relaxed text-[#1a2540]">
+                  A tabbed drawer with <strong>My Sites</strong> and <strong>Team Sites</strong>.
+                  Saved candidate host-school sites persist across sessions. Each card shows the
+                  site name, address, SAS composite score, and the five pillar scores.
+                </p>
+              </div>
+
+              <div className="rounded-md border border-[#eef2f7] bg-white px-4 py-3.5">
+                <h3 className="text-[14px] font-bold text-[#07142f] mb-1.5">Site Metadata</h3>
+                <p className="text-[13px] leading-relaxed text-[#1a2540]">
+                  Every saved site records <strong>who saved it</strong> (full name, or email if
+                  the name is missing), the <strong>exact save timestamp</strong> (with a relative
+                  "time ago" hint), and the <strong>last re-scored timestamp</strong> — shown only
+                  when a re-run happened after the initial save.
+                </p>
+              </div>
+
+              <div className="rounded-md border border-[#eef2f7] bg-white px-4 py-3.5">
+                <h3 className="text-[14px] font-bold text-[#07142f] mb-1.5">Action Buttons</h3>
+                <p className="text-[13px] leading-relaxed text-[#1a2540] mb-2">
+                  Four actions on every saved site card, aligned in a single horizontal row:
+                </p>
+                <ul className="list-disc pl-5 space-y-1 text-[13px] leading-relaxed text-[#1a2540]">
+                  <li><strong>Save</strong> — toggle bookmark status.</li>
+                  <li><strong>Re-run</strong> — re-execute the live SAS engine with the latest inputs and refresh the displayed scores in place.</li>
+                  <li><strong>Replace</strong> — swap the candidate site for a new one while keeping the same slot.</li>
+                  <li><strong>Remove</strong> — delete the saved site from the drawer.</li>
+                </ul>
+              </div>
+
+              <div className="rounded-md border border-[#eef2f7] bg-white px-4 py-3.5">
+                <h3 className="text-[14px] font-bold text-[#07142f] mb-1.5">Live Engine Re-run</h3>
+                <p className="text-[13px] leading-relaxed text-[#1a2540]">
+                  Clicking Re-run re-fetches the <code className="rounded bg-[#f4f8ff] px-1 py-0.5 text-[12px]">compute-sas</code>{" "}
+                  edge function and recomputes all five pillars + composite through the same{" "}
+                  <code className="rounded bg-[#f4f8ff] px-1 py-0.5 text-[12px]">recomputeSiteScores</code>{" "}
+                  helper used on first evaluation. This is what guarantees{" "}
+                  <strong>"one calibrated number everywhere"</strong>: the saved card, the live
+                  engine card, and every export all read from the same recomputed object — never
+                  from a stale stored value.
+                </p>
+              </div>
+
+              <div className="rounded-md border border-[#eef2f7] bg-white px-4 py-3.5">
+                <h3 className="text-[14px] font-bold text-[#07142f] mb-1.5">Alignment & UX</h3>
+                <p className="text-[13px] leading-relaxed text-[#1a2540]">
+                  All four action buttons sit in a single <code className="rounded bg-[#f4f8ff] px-1 py-0.5 text-[12px]">flex-nowrap</code>{" "}
+                  row with consistent height, padding, and font size. Remove is visually quieter
+                  (muted text) but stays on the same line as the other three — no button drops
+                  to a second row at normal card widths.
+                </p>
+              </div>
+            </div>
+          </section>
+
         </div>
       </DocCard>
     </DocShell>

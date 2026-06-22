@@ -24,6 +24,12 @@ import type { SitePackCandidate } from "@/lib/sitePack/SitePackDocument";
 import { fetchMapPng } from "@/lib/sitePack/fetchMapPng";
 import { buildStaticUrl } from "@/components/site-analysis/IsochroneMap";
 import { fmtMoney, fmtPct, fmtCount, fmtMi } from "@/lib/sas/formatters";
+import type { SourceMeta } from "@/lib/sas/sources";
+import {
+  InfoSource,
+  DataSourcesStrip,
+  DegradedBanner,
+} from "@/components/site-analysis/SourcePopover";
 import { useMapboxToken } from "@/hooks/useMapboxToken";
 import { toast } from "sonner";
 import { SITE_CONFIDENCE_THRESHOLDS } from "@/data/phase2DemoData";
@@ -411,7 +417,21 @@ function summarizePillars(p: {
 // (DriveTimeSchematic was removed in v0.4 — replaced by the real Mapbox
 // IsochroneMap component imported above.)
 
-function Tile({ label, value, dash, dashTip, badge }: { label: string; value?: string; dash?: boolean; dashTip?: string; badge?: string }) {
+function Tile({
+  label,
+  value,
+  dash,
+  dashTip,
+  badge,
+  source,
+}: {
+  label: string;
+  value?: string;
+  dash?: boolean;
+  dashTip?: string;
+  badge?: string;
+  source?: SourceMeta | null;
+}) {
   return (
     <div
       className="rounded border px-2 py-1.5"
@@ -422,11 +442,14 @@ function Tile({ label, value, dash, dashTip, badge }: { label: string; value?: s
         <div className="text-[9px] font-semibold uppercase tracking-wide" style={{ color: MUTED }}>
           {label}
         </div>
-        {badge && (
-          <span className="rounded-full px-1 py-px text-[8px] font-bold uppercase" style={{ backgroundColor: "#dde7ff", color: BLUE }}>
-            {badge}
-          </span>
-        )}
+        <div className="flex items-center gap-1">
+          {badge && (
+            <span className="rounded-full px-1 py-px text-[8px] font-bold uppercase" style={{ backgroundColor: "#dde7ff", color: BLUE }}>
+              {badge}
+            </span>
+          )}
+          {source && <InfoSource source={source} />}
+        </div>
       </div>
       <div className="text-[13px] font-bold tabular-nums" style={{ color: dash ? MUTED : NAVY }}>
         {dash ? "—" : value ?? "—"}
@@ -445,20 +468,27 @@ function MetricTiles({ signals }: { signals?: SiteScoreSignals }) {
   const acs15 = signals?.acs15 ?? {};
   const hwyMi = signals?.accessibility?.highwayDistanceMi;
   const roadMi = signals?.accessibility?.roadDistanceMi;
+  const prov = signals?.provenance;
   return (
     <div className="mt-3 grid grid-cols-3 gap-1.5">
-      <Tile label="Median HHI · 10m" value={fmtMoney(acs10.medianHhi)} />
-      <Tile label="Median HHI · 15m" value={fmtMoney(acs15.medianHhi)} />
-      <Tile label="HH >$150k · 10m" value={fmtPct(acs10.pctAbove150k)} />
-      <Tile label="Kids 5-12 · 10m" value={fmtCount(acs10.children5to12, "children")} />
-      <Tile label="Pop · 15m" value={fmtCount(acs15.totalPop, "people")} />
+      <Tile label="Median HHI · 10m" value={fmtMoney(acs10.medianHhi)} source={prov?.affluence} />
+      <Tile label="Median HHI · 15m" value={fmtMoney(acs15.medianHhi)} source={prov?.affluence} />
+      <Tile label="HH >$150k · 10m" value={fmtPct(acs10.pctAbove150k)} source={prov?.affluence} />
+      <Tile label="Kids 5-12 · 10m" value={fmtCount(acs10.children5to12, "children")} source={prov?.familyDensity} />
+      <Tile label="Pop · 15m" value={fmtCount(acs15.totalPop, "people")} source={prov?.popReachable} />
       <Tile
         label="Drive to hwy"
         value={fmtMi(hwyMi)}
         dash={hwyMi == null}
         dashTip="No motorway/trunk found within 12 mi — Accessibility scored via fallback"
+        source={prov?.accessibilityHwy ?? prov?.accessibility}
       />
-      <Tile label="Drive to road" value={fmtMi(roadMi)} dash={roadMi == null} />
+      <Tile
+        label="Drive to road"
+        value={fmtMi(roadMi)}
+        dash={roadMi == null}
+        source={prov?.accessibilityRoad ?? prov?.accessibility}
+      />
     </div>
   );
 }

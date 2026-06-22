@@ -11,7 +11,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, Play, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { invalidateAllMvs } from "@/lib/mvs/useLiveMvs";
 
 type RunStatus = "queued" | "running" | "done" | "failed";
 

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2, MapPin, Trash2, Upload, Bookmark } from "lucide-react";
 import {
   Sheet,

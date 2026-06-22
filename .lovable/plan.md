@@ -1,40 +1,81 @@
-## What's wrong
 
-`score1PricingAcceptance` in `src/lib/mvs/computeMvs.ts` takes `price_max` from each premium provider, medians them, and normalizes against $300–$700 (a weekly band).
+# Site Analysis (1B) — Wording & Framing Cleanup
 
-But `price_max` in `mvs_providers` is the **top of the listed price range** scraped from Sawyer / Google. For most camp operators that's a multi-week or full-summer bundle ($1,400 – $13,595), not a single week. Result: the displayed `medianPrice` (1862.50) is meaningless as "weekly price," and the Pricing Acceptance score (93.3) is inflated because every provider blows past the $700 ceiling.
+Sam's rule from June 19: Site Analysis is **analysis + scoring**, not a final decision engine. This plan removes the "decision engine" feel and softens the language. Scoring math, weights, and PDF export all stay. No DB schema changes. No new features. Sidebar Methodology / Docs are **not** updated in this turn.
 
-## Fix
+## What changes
 
-Change the input from "max listed price" to "estimated per-week price" before percentiles + normalization.
+### 1. New verdict scale (low / medium / high / strong)
+Replace the current 3-tier verdict with a 4-tier confidence scale:
 
-### Approach (pick one in implementation — I'll default to A unless you say otherwise)
+| Old label        | New label        | Color stays |
+| ---------------- | ---------------- | ----------- |
+| Recommend        | **Strong**       | Green       |
+| Worth a look     | **High**         | Amber-green |
+| (new mid band)   | **Medium**       | Amber       |
+| Don't recommend  | **Low**          | Red-muted   |
 
-**A. Use `price_min` as the weekly proxy.** Sawyer's `price_min` is typically the single-week / single-session price; `price_max` is the bundle. One-line change in `score1PricingAcceptance`: prefer `price_min`, fall back to `price_max` only when min is missing. Fastest, no schema change. Median for NYC drops to roughly the $300–$800 band where the formula was designed to operate.
+- Add one extra band so we are not pushing a binary "yes / no" feel.
+- Threshold tuning is left to Sam + Kaylie (scoring weights work). For now we split the current "Don't recommend" band into Low + Medium at the midpoint between `worthALook` and 0.
+- Constant rename: `SITE_RECOMMEND_THRESHOLDS` → `SITE_CONFIDENCE_THRESHOLDS` with keys `strong`, `high`, `medium`.
 
-**B. Compute a per-week price.** Add `weeks_offered` (or parse session length from the source listing) and divide. More accurate but requires extractor work and a column on `mvs_providers`. Slower.
+### 2. Drop "Winner" everywhere in the UI
+- Remove the **★ Mark winner** button in `SiteAnalysisCard` and `SiteDecisionControls`.
+- Remove the **Winner banner** at the top of the page.
+- Remove the **Winner** column from the compare table.
+- `useSiteDecisions` keeps the `is_winner` field in the type for now (DB column stays untouched, pre-release so safe to leave) but no UI writes to it. We can drop the column in a later cleanup turn if Brett asks.
 
-**C. Cap outliers.** Discard any price above e.g. $2,000 before medianing. Quick safety net, but doesn't fix the semantic mismatch.
+### 3. Rename "Export decision pack" → "Export Site Report (PDF)"
+- Button label, tooltip, and disabled-state copy all change.
+- Enablement rule changes: PDF is enabled whenever **at least one candidate has a composite score**, not when a winner is marked.
+- PDF content (`SitePackDocument.tsx`, `copy.ts`) updates:
+  - Remove ★ WINNER badge, Winner column, Winner row in compare table.
+  - Section 10 renamed from **Recommendations** → **Summary & Next Steps**.
+  - Replace "proceed to LOI diligence" / "Do not pursue" lines with neutral confidence phrasing, e.g.:
+    - Strong → "Scores in the Strong confidence band. Worth advancing to deeper diligence."
+    - High → "Scores in the High band. Promising; verify open items before advancing."
+    - Medium → "Scores in the Medium band. Mixed signals; review pillar detail."
+    - Low → "Scores in the Low band. Significant gaps versus the comparison set."
+  - Final wording is the user's call before merge.
 
-## Changes (Option A)
+### 4. Page legend + tooltips
+- Footer legend on `SiteAnalysis.tsx` updates to the four new bands.
+- Card score tooltip and pill labels follow the new scale.
+- Any "recommend / do not recommend" prose in card help text is rewritten to confidence wording.
 
-1. `src/lib/mvs/computeMvs.ts` — in `score1PricingAcceptance`, swap the mapper:
-   ```ts
-   .map((p) => (p.price_min != null ? p.price_min : p.price_max))
-   ```
-   and update the surrounding comment to "weekly price proxy."
-2. `src/lib/mvs/computeMvs.test.ts` — flip the "falls back to price_min" test to its opposite ("falls back to price_max when price_min is null") and update the multi-provider fixtures that currently set only `price_max`.
-3. Label tweak in the city blow-up card (`LiveCityDeepDive.tsx`) and the brief (`MarketBrief.tsx`, `MvsBriefDocument.tsx`): rename the row `medianPrice` → `Median weekly price (est.)` so the number is self-describing.
-4. Same rename in the formula tooltip on `MVSMethodology.tsx` / `MVSSpec.tsx` where the input is referenced.
+## What does NOT change
 
-No DB migration, no recomputation job — scores recompute on read via the shared helper.
+- Pillar math, composite math, weights (Sam + Kaylie own that).
+- Pillar names, pillar scores, pillar charts.
+- DB tables / columns / RLS.
+- Sidebar **Methodology** and **Docs** pages — explicitly deferred per Haseeb.
+- Watch List feature — deferred to a separate turn.
+- Candidate Pipeline, Market Validation, Manus rename — separate turns.
+
+## Files touched
+
+```text
+src/pages/SiteAnalysis.tsx              labels, legend, banner removal, button rename
+src/components/phase2-demo/SiteDecisionControls.tsx   drop winner button, relabel verdicts
+src/data/phase2DemoData.ts              rename thresholds constant + add medium band
+src/hooks/useSiteDecisions.ts           verdict union → "strong" | "high" | "medium" | "low" | "undecided"
+src/lib/sitePack/copy.ts                tier labels + sentences rewritten
+src/lib/sitePack/SitePackDocument.tsx   remove winner badge/column/row, rename section 10
+```
 
 ## Verification
 
-- Run `bunx vitest run src/lib/mvs/computeMvs.test.ts`.
-- Open `/market-validation` → New York → Pricing Acceptance card. Expect `medianPrice` to land in the $400–$900 range and Pricing Acceptance score to drop from 93.3 to a realistic mid-band number.
-- Spot-check 2–3 other cities in the rollout table to confirm scores moved in a sensible direction.
+1. Build passes.
+2. Open `/site-analysis` in the live preview:
+   - No "Winner" button, banner, or column.
+   - Pills show Strong / High / Medium / Low.
+   - Footer legend matches.
+3. Click **Export Site Report (PDF)** with one scored candidate → PDF opens, no Winner badge, neutral summary wording.
+4. Confirm console has no errors.
 
-## Open question for you
+## Out of scope (next turns, in this order)
 
-Confirm Option A is fine, or tell me to go with B (true per-week, slower) or C (cap outliers). Default is A.
+1. **Watch List** add-to-list behavior on Site Analysis cards.
+2. **Manus CSI → MVS** rename across UI.
+3. Candidate Pipeline live verification + fixes.
+4. Sidebar Methodology / Docs updates once features are stable.

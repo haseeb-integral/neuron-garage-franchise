@@ -63,7 +63,7 @@ export function SavedSitesDrawer({ open, onOpenChange, onLoad, savedSites }: Pro
   const [busyId, setBusyId] = useState<string | null>(null);
 
   // Refresh when drawer opens to ensure fresh data
-  useMemo(() => {
+  useEffect(() => {
     if (open) refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);

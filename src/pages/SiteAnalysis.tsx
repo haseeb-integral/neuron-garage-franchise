@@ -891,14 +891,15 @@ export default function SiteAnalysis() {
           };
         }),
       );
-      // Hand off the payload via sessionStorage — too large for URL params,
-      // and we don't want to write a binary file. The new tab reads it back
-      // and renders the branded HTML brief; user prints to PDF when ready.
+      // Hand off the payload via localStorage — too large for URL params, and
+      // sessionStorage is per-tab so a new tab can't read it. localStorage is
+      // shared across tabs of the same origin; the brief tab deletes the key
+      // right after reading it so nothing lingers.
       const briefKey = `nrg-sas-brief-${Date.now().toString(36)}-${Math.random()
         .toString(36)
         .slice(2, 8)}`;
       try {
-        sessionStorage.setItem(
+        localStorage.setItem(
           briefKey,
           JSON.stringify({ candidates, generatedAt: new Date().toISOString() }),
         );

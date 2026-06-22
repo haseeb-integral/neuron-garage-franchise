@@ -1,6 +1,6 @@
 import { MapPin, Info, Database } from "lucide-react";
 import { DocShell, DocCard } from "@/components/DocShell";
-import { SITE_RECOMMEND_THRESHOLDS, SCHOOL_PROFILE_FACTORS } from "@/data/phase2DemoData";
+import { SITE_CONFIDENCE_THRESHOLDS, SCHOOL_PROFILE_FACTORS } from "@/data/phase2DemoData";
 import { DownloadMDButton } from "@/components/DownloadMDButton";
 
 function FormulaBlock({ children }: { children: React.ReactNode }) {
@@ -176,7 +176,7 @@ const SAS_CALIBRATION = [
   ["Family Density (20%)", "78", "48"],
   ["School Ecosystem (15%)", "84", "35"],
   ["Accessibility (15%)", "88", "32"],
-  ["SAS (composite)", "86 · Recommend", `41 · Skip`],
+  ["SAS (composite)", "86 · Strong", `41 · Low`],
 ];
 
 function generateSASMarkdown(): string {
@@ -210,11 +210,12 @@ function generateSASMarkdown(): string {
   lines.push("");
   lines.push(`Every sub-score is normalized 0–100. School Profile and Neighborhood Affluence are co-dominant because they answer the two questions that, in combination, determine whether a site can work at all: **is the host school the right kind of partner** and **can the families inside its commute ring afford the product**. Family Density (20%) gates the demand pool. School Ecosystem and Accessibility (15% each) tune the edges.`);
   lines.push("");
-  lines.push(`| SAS Range | Recommendation |`);
+  lines.push(`| SAS Range | Confidence Band |`);
   lines.push(`| --- | --- |`);
-  lines.push(`| ≥ ${SITE_RECOMMEND_THRESHOLDS.recommend} | Recommend — pursue host-school conversation |`);
-  lines.push(`| ${SITE_RECOMMEND_THRESHOLDS.worthALook}–${SITE_RECOMMEND_THRESHOLDS.recommend - 1} | Worth a Look — inspect sub-scores; one pillar may be fixable |`);
-  lines.push(`| < ${SITE_RECOMMEND_THRESHOLDS.worthALook} | Skip — at least one structural pillar is below threshold |`);
+  lines.push(`| ≥ ${SITE_CONFIDENCE_THRESHOLDS.strong} | Strong confidence — well above the calibration floor |`);
+  lines.push(`| ${SITE_CONFIDENCE_THRESHOLDS.high}–${SITE_CONFIDENCE_THRESHOLDS.strong - 1} | High confidence — promising; verify open items before advancing |`);
+  lines.push(`| ${SITE_CONFIDENCE_THRESHOLDS.medium}–${SITE_CONFIDENCE_THRESHOLDS.high - 1} | Medium confidence — mixed signals; review pillar detail |`);
+  lines.push(`| < ${SITE_CONFIDENCE_THRESHOLDS.medium} | Low confidence — significant gaps versus the comparison set |`);
   lines.push("");
 
   lines.push(`## Section 3: The Five Sub-Scores`);

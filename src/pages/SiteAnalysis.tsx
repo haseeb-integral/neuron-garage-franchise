@@ -245,13 +245,13 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace, bookmark }: CardPro
 
 
       {/* Re-run / Bookmark / Replace / Remove */}
-      <div className="mt-2 flex items-center justify-end gap-2">
+      <div className="mt-2 flex flex-wrap items-center justify-end gap-1.5">
         {bookmark && slot.result && (
           <button
             type="button"
             onClick={bookmark.onToggle}
             disabled={bookmark.busy}
-            className="inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[10px] font-semibold disabled:opacity-50"
+            className="inline-flex items-center gap-1 whitespace-nowrap rounded border px-2 py-1 text-[11px] font-semibold leading-none disabled:opacity-50"
             style={{
               borderColor: bookmark.saved ? BLUE : BORDER,
               color: bookmark.saved ? BLUE : MUTED,
@@ -264,11 +264,11 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace, bookmark }: CardPro
             }
           >
             {bookmark.busy ? (
-              <Loader2 size={10} className="animate-spin" />
+              <Loader2 size={11} className="animate-spin" />
             ) : bookmark.saved ? (
-              <BookmarkCheck size={10} />
+              <BookmarkCheck size={11} />
             ) : (
-              <Bookmark size={10} />
+              <Bookmark size={11} />
             )}
             {bookmark.saved ? "Saved" : "Save"}
           </button>
@@ -277,18 +277,18 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace, bookmark }: CardPro
           type="button"
           onClick={onRerun}
           disabled={slot.status === "loading"}
-          className="inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[10px] font-semibold disabled:opacity-50"
+          className="inline-flex items-center gap-1 whitespace-nowrap rounded border px-2 py-1 text-[11px] font-semibold leading-none disabled:opacity-50"
           style={{ borderColor: BORDER, color: BLUE }}
           title="Re-run the live engine with these exact inputs"
         >
-          {slot.status === "loading" && <Loader2 size={10} className="animate-spin" />}
+          {slot.status === "loading" && <Loader2 size={11} className="animate-spin" />}
           {slot.status === "loading" ? "Running…" : "↻ Re-run"}
         </button>
         {onReplace && (
           <button
             type="button"
             onClick={onReplace}
-            className="rounded border px-2 py-0.5 text-[10px]"
+            className="inline-flex items-center whitespace-nowrap rounded border px-2 py-1 text-[11px] font-semibold leading-none"
             style={{ borderColor: BORDER, color: BLUE }}
             title="Replace this card with a new computation from the Live Engine above"
           >
@@ -299,13 +299,14 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace, bookmark }: CardPro
           <button
             type="button"
             onClick={onRemove}
-            className="rounded border px-2 py-0.5 text-[10px]"
+            className="inline-flex items-center whitespace-nowrap rounded border px-2 py-1 text-[11px] font-semibold leading-none"
             style={{ borderColor: BORDER, color: MUTED }}
           >
             ✕ Remove
           </button>
         )}
       </div>
+
 
       {slot.error && (
         <p className="mt-2 rounded border px-2 py-1 text-[11px]" style={{ color: "#a3142b", borderColor: "#f5c6cd", backgroundColor: "#fdf2f4" }}>

@@ -44,7 +44,12 @@ export function useSiteDecisions() {
         .select("*")
         .order("updated_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as SiteDecisionRow[];
+      const rows = (data ?? []) as SiteDecisionRow[];
+      // Normalize old verdict values that may still exist in the DB
+      rows.forEach((r) => {
+        r.verdict = normalizeVerdict(r.verdict);
+      });
+      return rows;
     },
   });
 

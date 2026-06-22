@@ -4,7 +4,6 @@ import {
   Loader2,
   MapPin,
   Plus,
-  Star,
 } from "lucide-react";
 
 
@@ -22,7 +21,7 @@ import { fetchMapPng } from "@/lib/sitePack/fetchMapPng";
 import { buildStaticUrl } from "@/components/site-analysis/IsochroneMap";
 import { useMapboxToken } from "@/hooks/useMapboxToken";
 import { toast } from "sonner";
-import { SITE_RECOMMEND_THRESHOLDS } from "@/data/phase2DemoData";
+import { SITE_CONFIDENCE_THRESHOLDS } from "@/data/phase2DemoData";
 import {
   recomputeSiteScores,
   siteComposite,
@@ -37,25 +36,30 @@ const SOFT = "#f7faff";
 const BLUE = "#174be8";
 
 const VERDICT_STYLE: Record<SiteVerdict, { bg: string; fg: string; label: string }> = {
-  recommend: { bg: "#e3f3e7", fg: "#1d6b32", label: "Recommend" },
-  worth_a_look: { bg: "#fff8d9", fg: "#7a5800", label: "Worth a look" },
-  dont_recommend: { bg: "#fce7ec", fg: "#a3142b", label: "Don't recommend" },
+  strong: { bg: "#e3f3e7", fg: "#1d6b32", label: "Strong" },
+  high: { bg: "#eaf5ec", fg: "#2f7a3f", label: "High" },
+  medium: { bg: "#fff8d9", fg: "#7a5800", label: "Medium" },
+  low: { bg: "#fce7ec", fg: "#a3142b", label: "Low" },
   undecided: { bg: "#eef2f7", fg: "#526078", label: "Undecided" },
 };
 
 function tierBadge(score: number) {
-  if (score >= SITE_RECOMMEND_THRESHOLDS.recommend)
-    return { bg: "#e3f3e7", fg: "#1d6b32", label: "Recommend" };
-  if (score >= SITE_RECOMMEND_THRESHOLDS.worthALook)
-    return { bg: "#fff8d9", fg: "#7a5800", label: "Worth a look" };
-  return { bg: "#fce7ec", fg: "#a3142b", label: "Don't recommend" };
+  if (score >= SITE_CONFIDENCE_THRESHOLDS.strong)
+    return { bg: "#e3f3e7", fg: "#1d6b32", label: "Strong" };
+  if (score >= SITE_CONFIDENCE_THRESHOLDS.high)
+    return { bg: "#eaf5ec", fg: "#2f7a3f", label: "High" };
+  if (score >= SITE_CONFIDENCE_THRESHOLDS.medium)
+    return { bg: "#fff8d9", fg: "#7a5800", label: "Medium" };
+  return { bg: "#fce7ec", fg: "#a3142b", label: "Low" };
 }
 
 function defaultVerdictFromScore(score: number): SiteVerdict {
-  if (score >= SITE_RECOMMEND_THRESHOLDS.recommend) return "recommend";
-  if (score >= SITE_RECOMMEND_THRESHOLDS.worthALook) return "worth_a_look";
-  return "dont_recommend";
+  if (score >= SITE_CONFIDENCE_THRESHOLDS.strong) return "strong";
+  if (score >= SITE_CONFIDENCE_THRESHOLDS.high) return "high";
+  if (score >= SITE_CONFIDENCE_THRESHOLDS.medium) return "medium";
+  return "low";
 }
+
 
 // ---------------------------------------------------------------------------
 // Candidate model — replaces the old hardcoded demo cards. Each candidate is

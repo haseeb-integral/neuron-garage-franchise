@@ -472,7 +472,14 @@ export function ProcessTab({ candidate }: Props) {
                   <Label className="text-xs" style={{ color: "#07142f" }}>Recruiter notes</Label>
                   <Textarea
                     value={row.notes ?? ""}
-                    onChange={(e) => updateStep(step.num, { notes: e.target.value })}
+                    onChange={(e) => updateStep(
+                      step.num,
+                      { notes: e.target.value },
+                      {
+                        description: `Step ${step.num} (${step.title}) — recruiter notes edited`,
+                        metadata: { field: "notes", length: e.target.value.length },
+                      },
+                    )}
                     className="mt-1 text-sm"
                     rows={2}
                     placeholder="Add any context, objections uncovered, follow-ups…"
@@ -483,13 +490,21 @@ export function ProcessTab({ candidate }: Props) {
                   <Checkbox
                     id={`step-${step.num}-done`}
                     checked={row.completed}
-                    onCheckedChange={(v) => updateStep(step.num, { completed: !!v })}
+                    onCheckedChange={(v) => updateStep(
+                      step.num,
+                      { completed: !!v },
+                      {
+                        description: `Step ${step.num} (${step.title}) — ${v ? "marked complete ✓" : "marked incomplete"}`,
+                        metadata: { field: "completed", value: !!v },
+                      },
+                    )}
                   />
                   <Label htmlFor={`step-${step.num}-done`} className="text-xs cursor-pointer" style={{ color: "#07142f" }}>
                     Mark Step {step.num} complete
                   </Label>
                   {row.completed && <Badge variant="secondary" className="text-[10px]">Done</Badge>}
                 </div>
+
               </AccordionContent>
             </AccordionItem>
           );

@@ -50,6 +50,27 @@ function timeAgo(iso: string) {
   return new Date(iso).toLocaleDateString();
 }
 
+const EXACT_FMT = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+function exactTime(iso: string) {
+  try {
+    return EXACT_FMT.format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
+function displayName(name?: string | null, email?: string | null) {
+  if (name && name.trim()) return name.trim();
+  if (email) return email.split("@")[0];
+  return "Unknown user";
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;

@@ -891,24 +891,27 @@ export default function SiteAnalysis() {
           };
         }),
       );
-      const blob = await renderSitePackPdfBlob({ candidates, generatedAt: new Date() });
-      const today = new Date().toISOString().slice(0, 10);
-      const url = URL.createObjectURL(blob);
-      const win = window.open(url, "_blank", "noopener,noreferrer");
+      // Hand off the payload via sessionStorage — too large for URL params,
+      // and we don't want to write a binary file. The new tab reads it back
+      // and renders the branded HTML brief; user prints to PDF when ready.
+      const briefKey = `nrg-sas-brief-${Date.now().toString(36)}-${Math.random()
+        .toString(36)
+        .slice(2, 8)}`;
+      try {
+        sessionStorage.setItem(
+          briefKey,
+          JSON.stringify({ candidates, generatedAt: new Date().toISOString() }),
+        );
+      } catch (storageErr) {
+        console.error("Failed to stash SAS brief payload", storageErr);
+        toast.error("Couldn't open SAS brief — browser storage is full.");
+        return;
+      }
+      const win = window.open(`/sas-brief?key=${briefKey}`, "_blank", "noopener,noreferrer");
       if (win) {
-        toast.success("SAS PDF opened in a new tab");
-        // Keep the blob URL alive long enough for the new tab to load it.
-        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        toast.success("SAS brief opened in a new tab — Cmd/Ctrl + P to save as PDF");
       } else {
-        // Popup blocked — fall back to direct download.
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `nrg-site-analysis-${today}-${candidates.length}sites.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-        toast.success("SAS PDF downloaded (popup was blocked)");
+        toast.error("Popup blocked. Allow popups and try again to open the SAS brief.");
       }
     } catch (err) {
       console.error("Site pack PDF export failed", err);

@@ -33,6 +33,7 @@ const MVSMethodology = lazyWithPreload(() => import("./pages/MVSMethodology"));
 const MVSSpec = lazyWithPreload(() => import("./pages/MVSSpec"));
 const MVSQAQueue = lazyWithPreload(() => import("./pages/MVSQAQueue"));
 const MarketBrief = lazyWithPreload(() => import("./pages/MarketBrief"));
+const SiteBrief = lazyWithPreload(() => import("./pages/SiteBrief"));
 
 
 const SASMethodology = lazyWithPreload(() => import("./pages/SASMethodology"));
@@ -122,6 +123,7 @@ const App = () => (
                 <Route path="/mvs-spec" element={<MVSSpec />} />
                 <Route path="/mvs-qa-queue" element={<MVSQAQueue />} />
                 <Route path="/market-brief" element={<MarketBrief />} />
+                <Route path="/sas-brief" element={<SiteBrief />} />
                 
                 
                 <Route path="/sas-methodology" element={<SASMethodology />} />

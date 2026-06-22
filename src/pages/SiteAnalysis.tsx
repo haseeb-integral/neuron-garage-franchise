@@ -844,12 +844,8 @@ export default function SiteAnalysis() {
 
 
 
-  const winner = useMemo(
-    () => scored.find((s) => byAddress.get(s.candidate.address)?.is_winner),
-    [scored, byAddress],
-  );
-  const winnerDecision = winner ? byAddress.get(winner.candidate.address) : undefined;
-  const canExport = !!(winner && winner.composite != null);
+  const canExport = scored.some((s) => s.composite != null);
+
 
   const emptySlots = Math.max(0, 4 - slots.length);
 

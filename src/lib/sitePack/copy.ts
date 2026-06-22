@@ -20,27 +20,10 @@ export const PILLAR_ORDER: { key: keyof SasPillarScores; label: string; weight: 
   { key: "accessibility", label: "Accessibility", weight: "15%" },
 ];
 
-export function fmtMoney(v: number | null | undefined): string {
-  if (v == null || !Number.isFinite(v)) return "—";
-  if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
-  if (v >= 1_000) return `$${Math.round(v / 1_000)}k`;
-  return `$${Math.round(v)}`;
-}
-export function fmtPct(v: number | null | undefined): string {
-  if (v == null || !Number.isFinite(v)) return "—";
-  const pct = v > 1 ? v : v * 100;
-  return `${Math.round(pct)}%`;
-}
-export function fmtCount(v: number | null | undefined): string {
-  if (v == null || !Number.isFinite(v)) return "—";
-  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
-  if (v >= 1_000) return `${Math.round(v / 1_000).toLocaleString()}k`;
-  return Math.round(v).toLocaleString();
-}
-export function fmtMi(v: number | null | undefined): string {
-  if (v == null || !Number.isFinite(v)) return "—";
-  return `${v.toFixed(1)} mi`;
-}
+// Formatters live in the shared SAS module — re-exported here so existing
+// importers (SitePackDocument, SiteBrief) keep working unchanged.
+export { fmtMoney, fmtPct, fmtCount, fmtMi, fmtScore } from "@/lib/sas/formatters";
+
 
 export const TIER_COLOR = {
   strong: "#1d6b32",

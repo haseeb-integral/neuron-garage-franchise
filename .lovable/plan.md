@@ -1,81 +1,105 @@
-# SAS PDF — match the MVS brief behavior
 
-You're right: today the SAS button uses `react-pdf` to build a binary PDF and pop it in a new tab, which still triggers a download. The MVS brief works very differently and looks much better — it's a real **HTML page** (`/market-brief?...`) with a dark navy gradient cover, big serif city name, donut, and print CSS. The user opens it in a new tab and uses Cmd/Ctrl + P → Save as PDF when they want a file. Nothing downloads automatically.
+# Saved Sites — SAS Watch List Plan
 
-We'll do the same for SAS.
+## Name
+**Saved Sites** (clear, matches what it does). The bookmark icon stays standard.
 
-## What changes
+## My opinion on freeze vs live (you asked)
+**Live re-run, with a small "score at save" badge if it changed.**
 
-### 1. New route: `/sas-brief`
-- New page: `src/pages/SiteBrief.tsx`.
-- Lazy-loaded in `src/App.tsx` (mirrors `MarketBrief`).
-- Reuses the existing print CSS: `src/styles/market-brief-print.css` (already global, defines `.mb-doc`, `.mb-page--cover`, navy gradient, etc.). Same fonts, same colors, same cover treatment as MVS.
+Why:
+- A saved list with old numbers is not helpful — you said this yourself.
+- Inputs (address, grade band, enrollment) are saved, so the engine can always re-score from the same inputs. Numbers stay fresh.
+- We also store the score at save time as a snapshot. If today's score is different, we show a tiny pill like `Was 72 → Now 78 ▲` so you see the drift.
+- Best of both: fresh truth + memory of what it looked like when you saved.
 
-### 2. SAS Brief layout (same brand as MVS)
+## What it saves (per site)
+- Site name, address, lat/lng
+- Type, grade band, enrollment
+- Score snapshot: 5 pillar scores, composite, confidence band, verdict — at save time
+- Saved by: user id + name (from profile)
+- Saved at: timestamp
+- Shared with team: always true (Phase 1)
 
-**Cover page** (dark navy gradient, exact same look as the screenshot you sent):
-- Top bar: white logo + "NEURON GARAGE" left, "CONFIDENTIAL · INTERNAL" right.
-- Eyebrow: "SITE ANALYSIS REPORT" (replaces "MARKET VALIDATION BRIEF").
-- Big serif title: top-ranked candidate's school name (Fraunces, 84pt) — same typography as the MVS "Boston" wordmark.
-- Italic sub-line: candidate address (replaces the MVS "MA" state line).
-- Body paragraph: "A live, recomputed look at premium daycare/school site fit at {school} — school profile, neighborhood affluence, family density, ecosystem, and accessibility. Every number on every page is pulled from the same scoring helper that drives the on-screen SAS cards."
-- 4 stat columns: Generated · Candidates · Top SAS · Confidence (band of top candidate, colored).
-- Big donut on the right showing the top candidate's SAS composite (same `CompositeDonut` SVG component, ported into this file or shared).
-- Bottom strip: "SAS · v2.2 · 25/25/20/15/15 weighting" left, page label right.
+## How it serves users
+- Build a short list of finalist sites while working across days/weeks
+- See teammates' picks without asking ("Brett saved this one yesterday")
+- Re-open any saved site → loads inputs back into a card → re-runs live engine → see if score moved
+- Foundation for later: notes, tags, compare, export
 
-**Per-candidate sections** (one section per candidate, page-break between them via `.mb-page`):
-- Section header: candidate name (serif), address (muted).
-- Exec card: SAS composite (big), confidence chip in band color, verdict sentence.
-- 5 pillar bars (same `PillarBar` style as MVS — colored gradient by score band): School Profile / Affluence / Family Density / Ecosystem / Accessibility, each showing weight and "contributes X pts".
-- KV blocks for signals (HHI 10/15-min, % > $150K, children 5–12, pop, ecosystem counts, road/highway distance) — same compact KV style.
-- Embedded isochrone map (when the slot has the static-map URL — same data we already pass into the react-pdf version). Falls back to a muted "map unavailable" line.
-- Strengths / Risks / Opportunities / Summary bullets — green / red / amber / blue tints.
+## UI (Option A)
 
-**Comparison page** (last section): same side-by-side table we already have, but in the brief's lighter style (soft headers, colored confidence cells).
+**1. Bookmark icon on each candidate card header**
+- Empty bookmark = not saved
+- Filled bookmark = saved (one click to remove)
+- Tooltip: "Save to Saved Sites" / "Remove from Saved Sites"
+- If saved by someone else: filled bookmark + small avatar/initial of who saved it first
 
-**Footer chrome** on every page: "Neuron Garage · SAS Report · {date}" left, page number right (same `.mb-no-print` floating toolbar with "Print / Save as PDF" button).
+**2. Top bar pill: `🔖 Saved Sites · N`**
+- Sits in the SAS page header next to "Export PDF"
+- Click → opens right-side **Drawer**
 
-### 3. Button on Site Analysis page
+**3. Drawer contents**
+- Header: "Saved Sites" + count
+- Filter chips: `All` · `Mine` · `Team`
+- List of cards, newest first:
+  - Site name + address
+  - Score badge (today's live re-score) + band color
+  - If today's score differs from snapshot: small pill `Was 72 → Now 78 ▲`
+  - "Saved by Brett · 2 days ago" with avatar
+  - Buttons: **Load into card** · **Remove** (only the user who saved it, or admin, can remove)
+- Empty state: "No saved sites yet. Click the bookmark on any site to save it."
 
-File: `src/pages/SiteAnalysis.tsx` (around lines 860–910 — current `handleExportPdf`).
+**4. "Saved by" attribution everywhere**
+- In drawer list
+- As a small avatar overlay on the bookmark icon on the candidate card
+- Hover/tooltip: "Saved by Brett on Jun 20"
 
-- Stop calling `renderSitePackPdfBlob`.
-- Build the same `SitePackCandidate[]` payload (school name, address, type, grade band, enrollment, pillars, composite, tierLabel, signals, decision, mapPngDataUrl) — using the same `recomputeSiteScores` helper.
-- Stash it on `sessionStorage` under a short random key (`nrg-sas-brief-{uuid}`).
-- `window.open(`/sas-brief?key=${key}`, "_blank", "noopener,noreferrer")`.
-- No download, no fallback download — exactly like MVS.
-- Toast: "SAS brief opened in a new tab — use Cmd/Ctrl + P to save as PDF".
-- Button label stays "Export PDF" (or rename to "Open SAS Brief" — your call; default keeps "Export PDF" so the UI doesn't shift).
+## Technical details
 
-Why sessionStorage and not URL params: the SAS payload includes pillar scores, full ACS/ecosystem/accessibility signal blobs, the user's verdict, and a base64 isochrone PNG per candidate — too large for a URL. sessionStorage is per-tab and goes away when the user closes the tab.
+### Database
+New table `site_saved_sites`:
+- `id` uuid pk
+- `user_id` uuid (saver) — fk to auth.users
+- `site_name` text
+- `address` text
+- `lat` numeric, `lng` numeric
+- `site_type` text, `grade_band` text, `enrollment` int
+- `inputs_json` jsonb (full input payload for re-run)
+- `snapshot_json` jsonb (pillar scores, composite, band, verdict at save)
+- `created_at`, `updated_at` timestamptz
+- Unique `(lat, lng, site_type)` rounded — prevents dupes across team
 
-### 4. Brief reads back the payload
+RLS:
+- SELECT: any authenticated user (team-shared)
+- INSERT: authenticated, must set `user_id = auth.uid()`
+- DELETE/UPDATE: only `user_id = auth.uid()` OR admin role
 
-`SiteBrief.tsx`:
-- `useSearchParams()` → `key`.
-- Read `sessionStorage.getItem(key)`, JSON.parse, render.
-- If missing/invalid: show a friendly empty state with a "Back to Site Analysis" link (mirrors MVS empty state).
-- Sets `document.title` to "SAS Brief — {top candidate name}".
+GRANTs: `authenticated` SELECT/INSERT/UPDATE/DELETE, `service_role` ALL.
 
-### 5. Cleanup of the old react-pdf path
+### Frontend
+- New hook `useSavedSites()` — list, add, remove, isSaved(lat,lng)
+- New component `SavedSitesDrawer.tsx` — uses shadcn `Sheet`
+- New component `SavedSitesPill.tsx` — header pill with count
+- Update `SiteAnalysis.tsx`:
+  - Add bookmark icon to each candidate card header
+  - Add pill to header
+  - "Load into card" handler restores inputs into a free card slot and re-runs engine
+- Live re-score: when drawer opens, run `recomputeSiteScores` on each saved site's inputs; compare to snapshot to show drift pill
 
-`src/lib/sitePack/SitePackDocument.tsx` and `renderSitePackPdfBlob` become unused. We will:
-- Leave the file in place (deleting touches imports across copy.ts and tests). Just stop calling it.
-- Remove the `renderSitePackPdfBlob` import from `SiteAnalysis.tsx`.
+### Out of scope (later)
+- Notes per saved site
+- Tags / folders
+- Full Saved Sites page (drawer is enough for now)
+- Real-time updates when teammate saves (just refetch on drawer open)
 
-If you want the file deleted later, that's a one-line follow-up.
+## Phases (build order)
+1. Migration: `site_saved_sites` table + RLS + GRANTs
+2. Hook `useSavedSites`
+3. Bookmark icon on candidate card + save/remove wiring
+4. Header pill + drawer shell
+5. Drawer list with live re-score + drift pill + "saved by" attribution
+6. "Load into card" handler
+7. Verify with Playwright: save → see in drawer → load back → remove
 
-## Out of scope
-
-- Watch List save button — next turn after this lands.
-- Methodology / Docs sidebar text.
-
-## Verification
-
-- Click "Export PDF" on Site Analysis → a new tab opens at `/sas-brief?key=...`.
-- Cover matches the MVS screenshot's brand (dark navy gradient, Fraunces serif, donut, stat columns, "CONFIDENTIAL · INTERNAL" tag).
-- No automatic download. Browser only saves a file when the user hits Cmd/Ctrl + P → Save as PDF.
-- All numbers match the SAS page (`recomputeSiteScores`).
-- Per-candidate sections show pillar bars, KV blocks, isochrone map, colored bullets.
-- Final page is the side-by-side comparison.
-- Closing the tab clears the sessionStorage key (best-effort `beforeunload`).
+Ask me anything before I build.

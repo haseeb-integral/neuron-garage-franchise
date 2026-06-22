@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Bookmark,
+  BookmarkCheck,
   Download,
   Loader2,
   MapPin,
   Plus,
 } from "lucide-react";
+import { useSavedSites, type SavedSiteInputs } from "@/hooks/useSavedSites";
+import { SavedSitesDrawer } from "@/components/site-analysis/SavedSitesDrawer";
 
 
 import { PageHeader } from "@/components/PageHeader";
@@ -123,9 +127,20 @@ interface CardProps {
   onRemove?: () => void;
 }
 
-interface CardPropsExt extends CardProps { onReplace?: () => void; }
+interface BookmarkInfo {
+  saved: boolean;
+  isMine: boolean;
+  savedByLabel: string | null;
+  busy: boolean;
+  onToggle: () => void;
+}
 
-function CandidateCard({ slot, onRerun, onRemove, onReplace }: CardPropsExt) {
+interface CardPropsExt extends CardProps {
+  onReplace?: () => void;
+  bookmark?: BookmarkInfo;
+}
+
+function CandidateCard({ slot, onRerun, onRemove, onReplace, bookmark }: CardPropsExt) {
   const { byAddress } = useSiteDecisions();
   const decision = byAddress.get(slot.address);
   const userVerdict: SiteVerdict | undefined =
@@ -229,8 +244,35 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace }: CardPropsExt) {
       </div>
 
 
-      {/* Re-run / Replace / Remove */}
+      {/* Re-run / Bookmark / Replace / Remove */}
       <div className="mt-2 flex items-center justify-end gap-2">
+        {bookmark && slot.result && (
+          <button
+            type="button"
+            onClick={bookmark.onToggle}
+            disabled={bookmark.busy}
+            className="inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[10px] font-semibold disabled:opacity-50"
+            style={{
+              borderColor: bookmark.saved ? BLUE : BORDER,
+              color: bookmark.saved ? BLUE : MUTED,
+              backgroundColor: bookmark.saved ? "#eef2ff" : "#fff",
+            }}
+            title={
+              bookmark.saved
+                ? `Saved${bookmark.savedByLabel ? ` by ${bookmark.savedByLabel}` : ""} · click to remove`
+                : "Save to Saved Sites"
+            }
+          >
+            {bookmark.busy ? (
+              <Loader2 size={10} className="animate-spin" />
+            ) : bookmark.saved ? (
+              <BookmarkCheck size={10} />
+            ) : (
+              <Bookmark size={10} />
+            )}
+            {bookmark.saved ? "Saved" : "Save"}
+          </button>
+        )}
         <button
           type="button"
           onClick={onRerun}
@@ -609,6 +651,9 @@ export default function SiteAnalysis() {
   const [slots, setSlots] = useState<SlotState[]>([]);
   const [pendingReplaceId, setPendingReplaceId] = useState<string | null>(null);
   const { byAddress } = useSiteDecisions();
+  const savedSites = useSavedSites();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [bookmarkBusy, setBookmarkBusy] = useState<string | null>(null);
 
   const patchSlot = useCallback((id: string, patch: Partial<SlotState>) => {
     setSlots((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
@@ -1005,9 +1050,108 @@ export default function SiteAnalysis() {
 
 
 
+  // Load a previously-saved site back into a card slot, then re-run the engine.
+  const handleLoadSavedSite = useCallback(
+    async (inputs: SavedSiteInputs) => {
+      const newId = `loaded-${Date.now()}`;
+      setSlots((prev) => {
+        // Replace a pending slot if user clicked Replace, else append (cap 4).
+        if (pendingReplaceId) {
+          return prev.map((s) =>
+            s.id === pendingReplaceId
+              ? {
+                  ...s,
+                  schoolName: inputs.schoolName,
+                  address: inputs.address,
+                  schoolType: inputs.schoolType,
+                  gradeBand: inputs.gradeBand,
+                  enrollment: inputs.enrollment,
+                  status: "loading",
+                  result: null,
+                  error: null,
+                }
+              : s,
+          );
+        }
+        if (prev.length >= 4) {
+          toast.error("All 4 slots are full. Remove one first.");
+          return prev;
+        }
+        return [
+          ...prev,
+          {
+            id: newId,
+            schoolName: inputs.schoolName,
+            address: inputs.address,
+            schoolType: inputs.schoolType,
+            gradeBand: inputs.gradeBand,
+            enrollment: inputs.enrollment,
+            status: "loading",
+            result: null,
+            error: null,
+          },
+        ];
+      });
+      setPendingReplaceId(null);
+      // The runSlot effect needs the slot to exist; defer by a tick.
+      setTimeout(() => {
+        runSlot(pendingReplaceId ?? newId, { preferCache: true });
+      }, 0);
+    },
+    [pendingReplaceId, runSlot],
+  );
+
+  const handleToggleBookmark = useCallback(
+    async (slot: SlotState) => {
+      if (!slot.result) return;
+      const lat = slot.result.geo?.lat ?? null;
+      const lng = slot.result.geo?.lng ?? null;
+      const existing = savedSites.findSaved(lat, lng, slot.schoolType);
+      setBookmarkBusy(slot.id);
+      try {
+        if (existing) {
+          if (existing.user_id !== savedSites.currentUserId) {
+            toast.error(`Saved by ${existing.saver_name ?? "teammate"} — only they can remove it.`);
+            return;
+          }
+          await savedSites.removeSite(existing.id);
+          toast.success("Removed from Saved Sites");
+        } else {
+          const recomputed = recomputeSiteScores(slot.result.pillars);
+          await savedSites.addSite(
+            {
+              schoolName: slot.schoolName,
+              address: slot.address,
+              schoolType: slot.schoolType,
+              gradeBand: slot.gradeBand,
+              enrollment: slot.enrollment,
+              lat,
+              lng,
+            },
+            {
+              pillars: recomputed.pillars,
+              composite: recomputed.composite,
+            },
+          );
+          toast.success("Saved to Saved Sites");
+        }
+      } catch (e) {
+        toast.error(`Couldn't update: ${(e as Error).message}`);
+      } finally {
+        setBookmarkBusy(null);
+      }
+    },
+    [savedSites],
+  );
+
 
   return (
     <>
+      <SavedSitesDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        onLoad={handleLoadSavedSite}
+      />
       <PageHeader
         title="Site Analysis"
         subtitle="Score up to 4 candidate sites side by side and pick the one to commit to."
@@ -1045,7 +1189,24 @@ export default function SiteAnalysis() {
             </div>
           </div>
           <div className="flex flex-col items-end gap-1 ml-auto">
-            <button
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setDrawerOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold"
+                style={{ borderColor: BORDER, color: NAVY, backgroundColor: "#fff" }}
+                title="Open Saved Sites drawer"
+              >
+                <Bookmark size={12} style={{ color: BLUE }} />
+                Saved Sites
+                <span
+                  className="rounded-full px-1.5 py-0.5 text-[10px] font-bold"
+                  style={{ backgroundColor: "#eef2ff", color: BLUE }}
+                >
+                  {savedSites.rows.length}
+                </span>
+              </button>
+              <button
               type="button"
               onClick={handleExport}
               disabled={!canExport || exporting}
@@ -1060,6 +1221,7 @@ export default function SiteAnalysis() {
               {exporting ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
               {exporting ? "Generating PDF…" : "Export Site Report (PDF)"}
             </button>
+            </div>
             {!canExport && (
               <p className="text-[10px]" style={{ color: MUTED }}>
                 Score at least one candidate to enable export.
@@ -1107,18 +1269,34 @@ export default function SiteAnalysis() {
 
 
       <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {slots.map((s) => (
-          <CandidateCard
-            key={s.id}
-            slot={s}
-            onRerun={() => runSlot(s.id)}
-            onRemove={() => removeSlot(s.id)}
-            onReplace={() => {
-              setPendingReplaceId(s.id);
-              if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
-            }}
-          />
-        ))}
+        {slots.map((s) => {
+          const lat = s.result?.geo?.lat ?? null;
+          const lng = s.result?.geo?.lng ?? null;
+          const existing = s.result ? savedSites.findSaved(lat, lng, s.schoolType) : null;
+          const bookmark = {
+            saved: !!existing,
+            isMine: existing?.user_id === savedSites.currentUserId,
+            savedByLabel:
+              existing && existing.user_id !== savedSites.currentUserId
+                ? existing.saver_name ?? existing.saver_email ?? "teammate"
+                : null,
+            busy: bookmarkBusy === s.id,
+            onToggle: () => handleToggleBookmark(s),
+          };
+          return (
+            <CandidateCard
+              key={s.id}
+              slot={s}
+              onRerun={() => runSlot(s.id)}
+              onRemove={() => removeSlot(s.id)}
+              onReplace={() => {
+                setPendingReplaceId(s.id);
+                if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              bookmark={bookmark}
+            />
+          );
+        })}
         {Array.from({ length: emptySlots }).map((_, i) => (
           <EmptySlot key={`empty-${i}`} />
         ))}

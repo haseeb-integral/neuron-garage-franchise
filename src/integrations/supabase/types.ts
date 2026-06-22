@@ -192,6 +192,44 @@ export type Database = {
         }
         Relationships: []
       }
+      candidate_activities: {
+        Row: {
+          actor_email: string | null
+          candidate_id: string
+          content: string
+          created_at: string
+          id: string
+          metadata: Json
+          type: string
+        }
+        Insert: {
+          actor_email?: string | null
+          candidate_id: string
+          content: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          type: string
+        }
+        Update: {
+          actor_email?: string | null
+          candidate_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_activities_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidate_checklist_items: {
         Row: {
           candidate_id: string

@@ -485,6 +485,14 @@ const CandidatePipeline = () => {
     if (histErr) {
       // Non-fatal: stage already updated. Warn but keep state.
       toast.warning(`Stage saved, but history not logged: ${histErr.message}`);
+    } else {
+      const { logActivity } = await import("@/lib/candidateActivity");
+      logActivity(
+        dbId,
+        "stage_changed",
+        `Moved from ${fromLabel} → ${toLabel}`,
+        { from_stage: uiStageToDb(fromStage), to_stage: uiStageToDb(toStage) },
+      );
     }
 
     // Carry forward ALL homework into the new stage.
@@ -582,6 +590,15 @@ const CandidatePipeline = () => {
             changed_by: changedBy,
             notes: "undo",
           });
+          {
+            const { logActivity } = await import("@/lib/candidateActivity");
+            logActivity(
+              dbId,
+              "stage_changed",
+              `Reverted from ${toLabel} → ${fromLabel}`,
+              { from_stage: uiStageToDb(toStage), to_stage: uiStageToDb(fromStage), undo: true },
+            );
+          }
           computeMetrics();
           qc.invalidateQueries({ queryKey: ["candidates"] });
           toast.info(`Reverted ${candidate.name} to ${fromLabel}`);
@@ -636,6 +653,14 @@ const CandidatePipeline = () => {
     });
     if (histErr) {
       toast.warning(`Disqualified, but history not logged: ${histErr.message}`);
+    } else {
+      const { logActivity } = await import("@/lib/candidateActivity");
+      logActivity(
+        dbId,
+        "stage_changed",
+        `Disqualified — ${reason}`,
+        { from_stage: uiStageToDb(fromStage), to_stage: "disqualified", reason },
+      );
     }
 
     computeMetrics();

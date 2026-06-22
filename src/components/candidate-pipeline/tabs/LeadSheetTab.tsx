@@ -152,6 +152,10 @@ export function LeadSheetTab({ candidate }: Props) {
       toast.error("Failed to save lead sheet: " + profileError.message);
     } else {
       toast.success("Lead sheet saved");
+      if (dbId) {
+        const { logActivity } = await import("@/lib/candidateActivity");
+        logActivity(dbId, "lead_sheet_saved", "Lead sheet updated");
+      }
     }
   };
 

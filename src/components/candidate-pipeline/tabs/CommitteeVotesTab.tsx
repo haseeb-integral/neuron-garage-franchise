@@ -140,6 +140,15 @@ export function CommitteeVotesTab({ candidate }: Props) {
       toast.error("Couldn't save vote", { description: error.message });
       return;
     }
+    {
+      const { logActivity } = await import("@/lib/candidateActivity");
+      logActivity(
+        dbId,
+        "vote_cast",
+        `${voter} voted ${VOTE_LABEL[voteValue]}`,
+        { voter, decision: voteValue, proxy: isProxy },
+      );
+    }
     setVoteValue("");
     setComment("");
     setIsProxy(false);
@@ -184,6 +193,15 @@ export function CommitteeVotesTab({ candidate }: Props) {
     if (error) {
       toast.error("Couldn't save vote", { description: error.message });
       return;
+    }
+    {
+      const { logActivity } = await import("@/lib/candidateActivity");
+      logActivity(
+        dbId,
+        "vote_cast",
+        `${manualNameTrimmed} voted ${VOTE_LABEL[manualVote]}`,
+        { voter: voterKey, voter_name: manualNameTrimmed, decision: manualVote, manual: true },
+      );
     }
     toast.success(`Vote recorded for ${manualNameTrimmed}`);
     setManualName("");

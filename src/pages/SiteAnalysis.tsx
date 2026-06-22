@@ -1050,9 +1050,108 @@ export default function SiteAnalysis() {
 
 
 
+  // Load a previously-saved site back into a card slot, then re-run the engine.
+  const handleLoadSavedSite = useCallback(
+    async (inputs: SavedSiteInputs) => {
+      const newId = `loaded-${Date.now()}`;
+      setSlots((prev) => {
+        // Replace a pending slot if user clicked Replace, else append (cap 4).
+        if (pendingReplaceId) {
+          return prev.map((s) =>
+            s.id === pendingReplaceId
+              ? {
+                  ...s,
+                  schoolName: inputs.schoolName,
+                  address: inputs.address,
+                  schoolType: inputs.schoolType,
+                  gradeBand: inputs.gradeBand,
+                  enrollment: inputs.enrollment,
+                  status: "loading",
+                  result: null,
+                  error: null,
+                }
+              : s,
+          );
+        }
+        if (prev.length >= 4) {
+          toast.error("All 4 slots are full. Remove one first.");
+          return prev;
+        }
+        return [
+          ...prev,
+          {
+            id: newId,
+            schoolName: inputs.schoolName,
+            address: inputs.address,
+            schoolType: inputs.schoolType,
+            gradeBand: inputs.gradeBand,
+            enrollment: inputs.enrollment,
+            status: "loading",
+            result: null,
+            error: null,
+          },
+        ];
+      });
+      setPendingReplaceId(null);
+      // The runSlot effect needs the slot to exist; defer by a tick.
+      setTimeout(() => {
+        runSlot(pendingReplaceId ?? newId, { preferCache: true });
+      }, 0);
+    },
+    [pendingReplaceId, runSlot],
+  );
+
+  const handleToggleBookmark = useCallback(
+    async (slot: SlotState) => {
+      if (!slot.result) return;
+      const lat = slot.result.geo?.lat ?? null;
+      const lng = slot.result.geo?.lng ?? null;
+      const existing = savedSites.findSaved(lat, lng, slot.schoolType);
+      setBookmarkBusy(slot.id);
+      try {
+        if (existing) {
+          if (existing.user_id !== savedSites.currentUserId) {
+            toast.error(`Saved by ${existing.saver_name ?? "teammate"} — only they can remove it.`);
+            return;
+          }
+          await savedSites.removeSite(existing.id);
+          toast.success("Removed from Saved Sites");
+        } else {
+          const recomputed = recomputeSiteScores(slot.result.pillars);
+          await savedSites.addSite(
+            {
+              schoolName: slot.schoolName,
+              address: slot.address,
+              schoolType: slot.schoolType,
+              gradeBand: slot.gradeBand,
+              enrollment: slot.enrollment,
+              lat,
+              lng,
+            },
+            {
+              pillars: recomputed.pillars,
+              composite: recomputed.composite,
+            },
+          );
+          toast.success("Saved to Saved Sites");
+        }
+      } catch (e) {
+        toast.error(`Couldn't update: ${(e as Error).message}`);
+      } finally {
+        setBookmarkBusy(null);
+      }
+    },
+    [savedSites],
+  );
+
 
   return (
     <>
+      <SavedSitesDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        onLoad={handleLoadSavedSite}
+      />
       <PageHeader
         title="Site Analysis"
         subtitle="Score up to 4 candidate sites side by side and pick the one to commit to."

@@ -1,107 +1,101 @@
-## Phase 5 — Real Activity Log
+# Plan — Smarter Activity Log + Better Notes UI (Phase 5b)
 
-Build a real database-backed activity log so the Notes & Activity tab stops showing fake mock data and starts showing what actually happened to each candidate.
+## Your questions answered first
 
-### What it does in plain words
+**Q1. The old Homework tab's "Add a checklist item" box — what did it do?**
+It let staff type a brand-new checklist line and add it to that stage's Trial Close Checklist for this candidate (custom step, not from the seed list).
 
-Every time something important happens to a candidate, we write one row to a new table:
+**Q2. Should we re-add it in the Process tab?**
+**No.** The Process tab already has this. Each step's three sub-lists (Trial Close, Post-Call Actions, Homework) and the Notes & Activity tab's "Process Roadmap" section already let you add/remove custom items via `ChecklistSection`. The old Homework tab's box is fully replaced. Leave it.
 
-- Someone **saves the Lead Sheet** → row "Lead sheet updated"
-- Someone **toggles a checkbox** in the Process tab → row "Step 2 — checked 'Sent FDD'"
-- A candidate **moves to a new stage** (kanban drag or button) → row "Moved from Step 2 → Step 3"
-- A committee member **votes** → row "Kaylie voted Approve"
-- Someone **adds a note** in the Notes & Activity tab → row with the note text
+**Q3. Your note "didn't show up."**
+Actually it did — the DB has your two notes saved as `note` rows with the literal text you typed: `"notes"` and `"Add notes"`. They look like system labels because they're one word. The save worked; the UI just doesn't make notes stand out from system events. We'll fix that.
 
-Then the **Notes & Activity tab** reads those rows from the DB (newest first) and shows them in the timeline — instead of the in-memory mock list it shows today.
+**Q4. Smoke test status (verified against DB):**
+- Steps 1, 2, 3, 4, 5 ✅ all writing rows correctly with your email and timestamp
+- Step 6 (refresh) ✅ rows persist
+- Step 7 (per-candidate filter) ✅ — query already filters by `candidate_id`
+- Only real issues: **what** changed isn't shown clearly, **notes look like noise**, and the UI is plain
 
-### 1 new DB table
+---
 
-`public.candidate_activities`
+## What we'll change
 
-Columns:
-- `id` uuid
-- `candidate_id` uuid → references `candidates(id)` on delete cascade
-- `type` text — one of: `note`, `lead_sheet_saved`, `process_step_updated`, `stage_changed`, `vote_cast`
-- `content` text — short human sentence ("Lead sheet updated", "Kaylie voted Approve", etc.)
-- `metadata` jsonb — small structured payload (e.g. `{ from_stage, to_stage }` or `{ step_number, item_key }`)
-- `actor_email` text — `auth.users.email` at write time, nullable
-- `created_at` timestamptz default now()
+### 1. Richer activity content (write side)
 
-Index on `(candidate_id, created_at desc)`.
+| Where | Today writes | Will write |
+|---|---|---|
+| LeadSheetTab | `"Lead sheet updated"` | `"Lead sheet updated — 3 fields changed: motivation, timeline, liquid capital"` + metadata `{changed_fields: [...]}` |
+| ProcessTab | `"Step 1 — updated"` | `"Step 1 (Initial Call) — Trial Close: Asked to move forward ✓"` (names the actual sub-item that toggled) + metadata `{step, group, key, value}` |
+| CommitteeVotes | already good | unchanged |
+| Stage change | already good | unchanged |
+| Note | text as-is | unchanged |
 
-RLS: enabled. Policies:
-- SELECT: any authenticated user can read all activities (staff CRM)
-- INSERT: any authenticated user can insert; row's `actor_email` must be set to the caller's email (or null if no session)
-- UPDATE / DELETE: nobody (immutable log)
+LeadSheet diff: keep a snapshot of `form` at load time, compare on save, list changed labels.
+Process: pass the toggled label into `persist()` so the log message names the exact checkbox.
 
-GRANTs: `SELECT, INSERT ON public.candidate_activities TO authenticated; GRANT ALL TO service_role`.
+### 2. Notes & Activity tab — new UI
 
-### One helper file
+```text
+┌───────────────────────────────────────────────────────────┐
+│ Add Note                                                   │
+│ ┌───────────────────────────────────────────────────────┐ │
+│ │ [textarea, larger, autosizing]                        │ │
+│ └───────────────────────────────────────────────────────┘ │
+│ Cmd+Enter to post · 0 / 2000        [Add Note]            │
+└───────────────────────────────────────────────────────────┘
 
-`src/lib/candidateActivity.ts` exports:
+Filter:  [ All ]  [ Notes ]  [ Changes ]  [ Stage ]  [ Votes ]
 
-```ts
-logActivity(candidateId: string, type: ActivityType, content: string, metadata?: object): Promise<void>
+Activity Timeline
+┌───────────────────────────────────────────────────────────┐
+│ 💬  haseeb  ·  just now  ·  Jun 22, 5:51 PM               │
+│ ┌─ NOTE ────────────────────────────────────────────────┐ │
+│ │ "Spoke with candidate, very interested in Austin."    │ │
+│ └───────────────────────────────────────────────────────┘ │
+├───────────────────────────────────────────────────────────┤
+│ ✏️  haseeb  ·  1m ago  ·  Jun 22, 5:50 PM                  │
+│ Lead sheet updated                                         │
+│   • motivation: "..." → "..."                              │
+│   • timeline: "6 months" → "3 months"                      │
+├───────────────────────────────────────────────────────────┤
+│ ✓  haseeb  ·  2m ago  · Jun 22, 5:49 PM                    │
+│ Step 1 (Initial Call) — Trial Close                        │
+│   Asked to move forward  ✓ checked                         │
+└───────────────────────────────────────────────────────────┘
 ```
 
-It fetches the current user's email and inserts the row. On error it `console.warn`s — never throws, never blocks the parent save.
+UI rules:
+- **Notes** render inside a tinted card with a quote glyph and a "NOTE" tag so they pop visually
+- **System events** render as a row with an icon, one-line summary, and (if metadata has details) an indented list underneath
+- Each row shows **relative time** ("2m ago") **and** absolute time ("Jun 22, 5:51 PM") side-by-side
+- Filter chips at the top (All / Notes / Changes / Stage / Votes) reduce noise
+- Add Note: larger autosizing textarea, char counter, Cmd/Ctrl+Enter shortcut, posts and clears in place
 
-### Wire it into these write sites (4 files)
+(UI inspiration: GitHub issue timeline, Linear activity feed, Notion comments — all use card-style notes + condensed system rows with filters.)
 
-1. **`LeadSheetTab.tsx`** — after successful `candidate_profiles` upsert: `logActivity(dbId, "lead_sheet_saved", "Lead sheet updated")`
-2. **`ProcessTab.tsx`** — inside `persist()` after successful upsert: `logActivity(dbId, "process_step_updated", "Step N — updated", { step_number })` (debounced with the save — one row per save burst, not per keystroke)
-3. **`CandidatePipeline.tsx`** — after each successful `candidate_stage_history` insert (4 spots: kanban move, undo move, disqualify, advance): `logActivity(dbId, "stage_changed", "Moved from {from} → {to}", { from_stage, to_stage })`
-4. **`CommitteeVotesTab.tsx`** — after each successful `candidate_votes` upsert (3 spots): `logActivity(dbId, "vote_cast", "{member} voted {decision}", { voter, decision })`
+### 3. No DB schema change
+`candidate_activities` already has `content`, `metadata jsonb`, `actor_email`, `created_at`. We use what's there.
 
-### Rewire Notes & Activity tab
+---
 
-`NotesActivityTab.tsx` changes:
-- Stop reading `candidate.activity` (mock).
-- On mount + on candidate change, fetch `candidate_activities` for this candidate ordered by `created_at desc`.
-- "Add Note" button calls `logActivity(dbId, "note", text)` then re-fetches (or optimistically prepends).
-- Show actor email + relative time on each row.
-- Icon mapping: `note` → message, `stage_changed` → arrow, `vote_cast` → check, `lead_sheet_saved`/`process_step_updated` → pencil.
+## Files touched
 
-`CandidateDetailPanel.tsx` `handleAddNote` callback becomes a no-op shim that just calls `logActivity` (the in-memory append goes away).
+1. `src/lib/candidateActivity.ts` — no change (already accepts metadata)
+2. `src/components/candidate-pipeline/tabs/LeadSheetTab.tsx` — capture initial snapshot, diff on save, send rich content + `changed_fields` metadata
+3. `src/components/candidate-pipeline/tabs/ProcessTab.tsx` — pass toggled label + value into `persist()`, write richer content + metadata
+4. `src/components/candidate-pipeline/tabs/NotesActivityTab.tsx` — full UI rewrite of the timeline + Add Note section: filter chips, note cards, dual timestamps, metadata rendering, Cmd+Enter, char counter
 
-### What does NOT change
+Total: 1 turn. No new tables, no new files, no design-system token violations (uses existing semantic colors).
 
-- No change to scoring, Qualification, Kanban, Stage History, Documents, Lead Sheet fields, Process tab fields.
-- Old `candidate.activity` mock data on the `Candidate` type stays (other code may still read the array, defaulting to `[]`). Removing it from the type is a future cleanup.
-- No retroactive backfill — older candidates start with an empty activity log, which fills as people use the app.
+---
 
-### Files touched
+## How you'll test
 
-- **NEW** migration — create table + RLS + GRANTs + index
-- **NEW** `src/lib/candidateActivity.ts` — helper
-- **EDIT** `src/components/candidate-pipeline/tabs/LeadSheetTab.tsx` — 1 call after save
-- **EDIT** `src/components/candidate-pipeline/tabs/ProcessTab.tsx` — 1 call inside `persist`
-- **EDIT** `src/pages/CandidatePipeline.tsx` — 4 calls after stage writes
-- **EDIT** `src/components/candidate-pipeline/tabs/CommitteeVotesTab.tsx` — 3 calls after vote writes
-- **EDIT** `src/components/candidate-pipeline/tabs/NotesActivityTab.tsx` — fetch from DB, write notes through helper
-- **EDIT** `src/components/candidate-pipeline/CandidateDetailPanel.tsx` — simplify `handleAddNote` (still passes a callback, but content goes to DB)
+1. Open Lead Sheet → change 2 fields → Save → Notes & Activity now shows "Lead sheet updated — 2 fields changed" with the field names listed underneath.
+2. Open Process → tick "Asked to move forward" under Trial Close in Step 2 → wait 1s → reopen Notes & Activity → row says "Step 2 — Trial Close: Asked to move forward ✓".
+3. Type "Real test note here" in Add Note → press Cmd+Enter → note appears as a tinted card with a "NOTE" tag, easy to tell apart from system rows.
+4. Click "Notes" filter chip → only your notes show. Click "Changes" → only Lead Sheet/Process rows show.
+5. Hover any row → both "2m ago" and "Jun 22, 5:51 PM" are visible.
 
-### Turns
-
-**2 turns.**
-- **Turn 1:** Migration (you approve the SQL popup). I tell you when it's run.
-- **Turn 2:** All code edits (helper + 6 file edits) + tests.
-
-### Tests (Lovable, automatic)
-
-1. **Unit test for `logActivity`** — mock supabase client, confirm it inserts the right `{type, content, metadata, actor_email}` payload and swallows errors.
-2. **LeadSheetTab test** — extend existing test: after Save, `candidate_activities.insert` was called with `type='lead_sheet_saved'`.
-3. **NotesActivityTab test** — renders rows fetched from the (mocked) DB; clicking "Add Note" inserts a row of `type='note'`.
-
-### Human test (Brett + Haseeb, after Turn 2)
-
-1. Open candidate → **Lead Sheet** → change Role → Save → green toast.
-2. Open **Notes & Activity** → first row says "Lead sheet updated", with your email and "just now". ✅
-3. Open **Process** → tick "Sent FDD" → wait 1 second → refresh Notes & Activity → new row "Step 4 — updated". ✅
-4. Drag candidate to a new stage on the kanban → open Notes & Activity → new row "Moved from Business Overview → Background Check" (or similar). ✅
-5. Open **Committee Votes** → vote Approve as Kaylie → Notes & Activity → new row "Kaylie voted Approve". ✅
-6. In Notes & Activity, type a note and click **Add Note** → row appears at top.
-7. Refresh the whole page → all 5 rows still there (not mock).
-8. Open a different candidate → only their activity rows show, not the first candidate's.
-
-If all 8 pass, the activity log is fully live and the mock timeline is gone.
+Reply **approved** to build, or tell me what to adjust.

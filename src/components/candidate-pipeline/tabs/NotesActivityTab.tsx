@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { Candidate, STAGE_PROCESS_ROADMAP, STAGES } from "@/data/pipelineData";
 import { supabase } from "@/integrations/supabase/client";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,6 +9,8 @@ import {
   ListChecks,
   CheckCircle2,
   Pencil,
+  Quote,
+  FileEdit,
 } from "lucide-react";
 import { ChecklistSection } from "../ChecklistSection";
 import { logActivity, ActivityType } from "@/lib/candidateActivity";
@@ -27,14 +29,28 @@ interface ActivityRow {
   created_at: string;
 }
 
+type FilterKey = "all" | "note" | "changes" | "stage" | "vote";
+
+const MAX_NOTE = 2000;
+
 const iconFor = (type: ActivityType) => {
   if (type === "stage_changed") return ArrowRight;
   if (type === "vote_cast") return CheckCircle2;
-  if (type === "lead_sheet_saved" || type === "process_step_updated") return Pencil;
+  if (type === "lead_sheet_saved") return FileEdit;
+  if (type === "process_step_updated") return Pencil;
   return MessageSquare;
 };
 
-const formatTime = (iso: string) => {
+const accentFor = (type: ActivityType): { bg: string; fg: string } => {
+  if (type === "note") return { bg: "#fef3c7", fg: "#92400e" };
+  if (type === "stage_changed") return { bg: "#dbeafe", fg: "#1e40af" };
+  if (type === "vote_cast") return { bg: "#dcfce7", fg: "#166534" };
+  if (type === "lead_sheet_saved") return { bg: "#e0e7ff", fg: "#3730a3" };
+  if (type === "process_step_updated") return { bg: "#fce7f3", fg: "#9d174d" };
+  return { bg: "#e7f1ff", fg: "#003c7e" };
+};
+
+const formatRelative = (iso: string) => {
   const d = new Date(iso);
   const diffMs = Date.now() - d.getTime();
   const mins = Math.floor(diffMs / 60000);
@@ -47,11 +63,38 @@ const formatTime = (iso: string) => {
   return d.toLocaleDateString();
 };
 
+const formatAbsolute = (iso: string) => {
+  const d = new Date(iso);
+  return d.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+};
+
+const shortEmail = (e: string | null) => {
+  if (!e) return "system";
+  const at = e.indexOf("@");
+  return at > 0 ? e.slice(0, at) : e;
+};
+
+const matchesFilter = (row: ActivityRow, f: FilterKey) => {
+  if (f === "all") return true;
+  if (f === "note") return row.type === "note";
+  if (f === "changes") return row.type === "lead_sheet_saved" || row.type === "process_step_updated";
+  if (f === "stage") return row.type === "stage_changed";
+  if (f === "vote") return row.type === "vote_cast";
+  return true;
+};
+
 export function NotesActivityTab({ candidate }: Props) {
   const [text, setText] = useState("");
   const [rows, setRows] = useState<ActivityRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [posting, setPosting] = useState(false);
+  const [filter, setFilter] = useState<FilterKey>("all");
+  const taRef = useRef<HTMLTextAreaElement | null>(null);
   const dbId = (candidate as any).dbId as string | undefined;
   const roadmap = STAGE_PROCESS_ROADMAP[candidate.stage] ?? [];
   const stageLabel = STAGES.find((s) => s.id === candidate.stage)?.label ?? candidate.stage;
@@ -91,6 +134,27 @@ export function NotesActivityTab({ candidate }: Props) {
     load();
   };
 
+  const counts = useMemo(() => {
+    const c = { all: rows.length, note: 0, changes: 0, stage: 0, vote: 0 };
+    for (const r of rows) {
+      if (r.type === "note") c.note++;
+      else if (r.type === "lead_sheet_saved" || r.type === "process_step_updated") c.changes++;
+      else if (r.type === "stage_changed") c.stage++;
+      else if (r.type === "vote_cast") c.vote++;
+    }
+    return c;
+  }, [rows]);
+
+  const visible = useMemo(() => rows.filter((r) => matchesFilter(r, filter)), [rows, filter]);
+
+  const filterChips: { key: FilterKey; label: string; n: number }[] = [
+    { key: "all", label: "All", n: counts.all },
+    { key: "note", label: "Notes", n: counts.note },
+    { key: "changes", label: "Changes", n: counts.changes },
+    { key: "stage", label: "Stage", n: counts.stage },
+    { key: "vote", label: "Votes", n: counts.vote },
+  ];
+
   return (
     <div className="space-y-4 pt-4">
       {dbId && (
@@ -115,25 +179,45 @@ export function NotesActivityTab({ candidate }: Props) {
         </div>
       )}
 
-      <div className="bg-white rounded-lg p-3" style={{ border: "1px solid #e3e8ef" }}>
-        <h4 className="font-semibold mb-2 text-sm" style={{ color: "#003c7e" }}>Add Note</h4>
+      {/* Add Note — improved */}
+      <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #e3e8ef" }}>
+        <div className="flex items-center gap-2 mb-2">
+          <MessageSquare size={16} style={{ color: "#003c7e" }} />
+          <h4 className="font-semibold text-sm" style={{ color: "#003c7e" }}>Add a note</h4>
+        </div>
         <Textarea
+          ref={taRef}
           value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Write a note about this candidate..."
-          rows={3}
-          className="mb-2"
+          onChange={(e) => setText(e.target.value.slice(0, MAX_NOTE))}
+          onKeyDown={(e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+              e.preventDefault();
+              submit();
+            }
+          }}
+          placeholder="Write what happened, what was said, or what to do next…"
+          rows={4}
+          className="resize-y text-sm"
           disabled={!dbId || posting}
         />
-        <Button
-          onClick={submit}
-          disabled={!dbId || posting || !text.trim()}
-          className="text-white"
-          style={{ backgroundColor: "#174be8" }}
-          size="sm"
-        >
-          {posting ? "Saving…" : "Add Note"}
-        </Button>
+        <div className="flex items-center justify-between mt-2">
+          <span className="text-[11px]" style={{ color: "#8893a7" }}>
+            Press <kbd className="px-1 py-0.5 rounded text-[10px]" style={{ backgroundColor: "#f1f5f9", border: "1px solid #e3e8ef" }}>⌘/Ctrl + Enter</kbd> to post
+            <span className="mx-2">·</span>
+            <span style={{ color: text.length > MAX_NOTE * 0.9 ? "#b91c1c" : "#8893a7" }}>
+              {text.length} / {MAX_NOTE}
+            </span>
+          </span>
+          <Button
+            onClick={submit}
+            disabled={!dbId || posting || !text.trim()}
+            className="text-white"
+            style={{ backgroundColor: "#174be8" }}
+            size="sm"
+          >
+            {posting ? "Saving…" : "Add Note"}
+          </Button>
+        </div>
         {!dbId && (
           <p className="text-[11px] mt-2" style={{ color: "#6c757d" }}>
             Notes can only be added for saved candidates.
@@ -141,34 +225,108 @@ export function NotesActivityTab({ candidate }: Props) {
         )}
       </div>
 
-      <div className="bg-white rounded-lg p-3" style={{ border: "1px solid #e3e8ef" }}>
-        <h4 className="font-semibold mb-3 text-sm" style={{ color: "#003c7e" }}>Activity Timeline</h4>
+      {/* Activity Timeline */}
+      <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #e3e8ef" }}>
+        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+          <h4 className="font-semibold text-sm" style={{ color: "#003c7e" }}>Activity Timeline</h4>
+          <div className="flex flex-wrap gap-1">
+            {filterChips.map((c) => {
+              const active = filter === c.key;
+              return (
+                <button
+                  key={c.key}
+                  onClick={() => setFilter(c.key)}
+                  className="text-[11px] px-2 py-1 rounded-full transition-colors"
+                  style={{
+                    backgroundColor: active ? "#174be8" : "#f1f5f9",
+                    color: active ? "#ffffff" : "#475569",
+                    border: `1px solid ${active ? "#174be8" : "#e3e8ef"}`,
+                  }}
+                >
+                  {c.label} <span style={{ opacity: 0.7 }}>{c.n}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {loading ? (
           <p className="text-xs" style={{ color: "#6c757d" }}>Loading…</p>
-        ) : rows.length === 0 ? (
-          <p className="text-xs" style={{ color: "#6c757d" }}>No activity yet.</p>
+        ) : visible.length === 0 ? (
+          <p className="text-xs" style={{ color: "#6c757d" }}>
+            {rows.length === 0 ? "No activity yet." : "No activity matches this filter."}
+          </p>
         ) : (
-          <div className="space-y-3">
-            {rows.map((a) => {
+          <div className="space-y-2">
+            {visible.map((a) => {
               const Icon = iconFor(a.type);
+              const accent = accentFor(a.type);
+              const isNote = a.type === "note";
+              const meta = a.metadata ?? {};
+              const changes: Array<{ label: string; from: string; to: string }> = Array.isArray(meta.changes) ? meta.changes : [];
+
               return (
-                <div key={a.id} className="flex gap-3 pb-3" style={{ borderBottom: "1px solid #f1f3f5" }}>
+                <div
+                  key={a.id}
+                  className="flex gap-3 p-2 rounded-md"
+                  style={{ backgroundColor: isNote ? "#fffbeb" : "transparent", border: isNote ? "1px solid #fde68a" : "1px solid transparent" }}
+                >
                   <div
                     className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: "#e7f1ff" }}
+                    style={{ backgroundColor: accent.bg }}
                   >
-                    <Icon size={14} style={{ color: "#003c7e" }} />
+                    <Icon size={14} style={{ color: accent.fg }} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-semibold truncate">
-                        {a.actor_email ?? "system"}
-                      </span>
-                      <span className="text-xs whitespace-nowrap" style={{ color: "#6c757d" }}>
-                        {formatTime(a.created_at)}
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-xs font-semibold truncate" title={a.actor_email ?? "system"}>
+                          {shortEmail(a.actor_email)}
+                        </span>
+                        {isNote && (
+                          <span
+                            className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded font-semibold"
+                            style={{ backgroundColor: accent.bg, color: accent.fg }}
+                          >
+                            Note
+                          </span>
+                        )}
+                      </div>
+                      <span
+                        className="text-[11px] whitespace-nowrap"
+                        style={{ color: "#8893a7" }}
+                        title={new Date(a.created_at).toLocaleString()}
+                      >
+                        {formatRelative(a.created_at)} · {formatAbsolute(a.created_at)}
                       </span>
                     </div>
-                    <p className="text-sm mt-1 break-words">{a.content}</p>
+
+                    {isNote ? (
+                      <div className="mt-1.5 flex gap-2">
+                        <Quote size={14} className="flex-shrink-0 mt-0.5" style={{ color: "#d97706" }} />
+                        <p className="text-sm break-words whitespace-pre-wrap" style={{ color: "#1f2937" }}>
+                          {a.content}
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-sm mt-0.5 break-words" style={{ color: "#1f2937" }}>{a.content}</p>
+                        {changes.length > 0 && (
+                          <ul className="mt-1.5 ml-1 space-y-0.5">
+                            {changes.map((c, i) => (
+                              <li key={i} className="text-[12px]" style={{ color: "#475569" }}>
+                                <span className="font-medium">{c.label}:</span>{" "}
+                                <span className="line-through" style={{ color: "#94a3b8" }}>
+                                  {c.from || "(empty)"}
+                                </span>{" "}
+                                <ArrowRight size={10} className="inline" />{" "}
+                                <span style={{ color: "#0f172a" }}>{c.to || "(empty)"}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </>
+                    )}
                   </div>
                 </div>
               );

@@ -65,11 +65,52 @@ const toYesNo = (v: boolean | null | undefined): YesNo =>
 const fromYesNo = (v: YesNo): boolean | null =>
   v === "yes" ? true : v === "no" ? false : null;
 
+const FIELD_LABELS: Record<keyof ProfileForm, string> = {
+  background: "Background",
+  motivation: "Motivation",
+  liquid_capital: "Liquid capital",
+  net_worth: "Net worth",
+  timeline: "Timeline",
+  partner_involved: "Partner involved",
+  location_preferences: "Location preferences",
+  additional_notes: "Additional notes",
+  role: "Role",
+  role_other: "Role (other)",
+  married: "Married",
+  city: "City",
+  discovery_source: "Discovery source",
+  can_invest_min: "Can invest minimum",
+  sweat_equity_ok: "Sweat equity OK",
+  other_opportunities: "Other opportunities",
+};
+
+const truncate = (s: string, n = 40) =>
+  s.length > n ? s.slice(0, n - 1) + "…" : s;
+
+const diffForm = (a: ProfileForm, b: ProfileForm) => {
+  const changes: { key: keyof ProfileForm; label: string; from: string; to: string }[] = [];
+  (Object.keys(FIELD_LABELS) as (keyof ProfileForm)[]).forEach((k) => {
+    const av = a[k];
+    const bv = b[k];
+    if (av !== bv) {
+      changes.push({
+        key: k,
+        label: FIELD_LABELS[k],
+        from: truncate(String(av ?? "")),
+        to: truncate(String(bv ?? "")),
+      });
+    }
+  });
+  return changes;
+};
+
 export function LeadSheetTab({ candidate }: Props) {
   const dbId = (candidate as any).dbId as string | undefined;
   const [form, setForm] = useState<ProfileForm>(empty);
+  const [snapshot, setSnapshot] = useState<ProfileForm>(empty);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
 
   useEffect(() => {
     let cancelled = false;
@@ -86,7 +127,7 @@ export function LeadSheetTab({ candidate }: Props) {
       if (cancelled) return;
       if (profileData) {
         const p = profileData as any;
-        setForm({
+        const loaded: ProfileForm = {
           background: p.background ?? "",
           motivation: p.motivation ?? "",
           liquid_capital: p.liquid_capital != null ? String(p.liquid_capital) : "",
@@ -103,13 +144,15 @@ export function LeadSheetTab({ candidate }: Props) {
           can_invest_min: toYesNo(p.can_invest_min),
           sweat_equity_ok: toYesNo(p.sweat_equity_ok),
           other_opportunities: p.other_opportunities ?? "",
-        });
+        };
+        setForm(loaded);
+        setSnapshot(loaded);
       } else {
-        setForm({
-          ...empty,
-          partner_involved: !!candidateData?.partner_involved,
-        });
+        const loaded = { ...empty, partner_involved: !!candidateData?.partner_involved };
+        setForm(loaded);
+        setSnapshot(loaded);
       }
+
       setLoading(false);
     })();
     return () => { cancelled = true; };
@@ -153,11 +196,24 @@ export function LeadSheetTab({ candidate }: Props) {
     } else {
       toast.success("Lead sheet saved");
       if (dbId) {
+        const changes = diffForm(snapshot, form);
         const { logActivity } = await import("@/lib/candidateActivity");
-        logActivity(dbId, "lead_sheet_saved", "Lead sheet updated");
+        if (changes.length > 0) {
+          const labels = changes.map((c) => c.label).join(", ");
+          logActivity(
+            dbId,
+            "lead_sheet_saved",
+            `Lead sheet updated — ${changes.length} field${changes.length === 1 ? "" : "s"} changed: ${labels}`,
+            { changes },
+          );
+        } else {
+          logActivity(dbId, "lead_sheet_saved", "Lead sheet saved (no field changes)", { changes: [] });
+        }
+        setSnapshot(form);
       }
     }
   };
+
 
   if (loading) {
     return <div className="py-6 text-sm text-muted-foreground">Loading…</div>;

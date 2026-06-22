@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Bookmark,
+  BookmarkCheck,
   Download,
   Loader2,
   MapPin,
   Plus,
 } from "lucide-react";
+import { useSavedSites, type SavedSiteInputs } from "@/hooks/useSavedSites";
+import { SavedSitesDrawer } from "@/components/site-analysis/SavedSitesDrawer";
 
 
 import { PageHeader } from "@/components/PageHeader";

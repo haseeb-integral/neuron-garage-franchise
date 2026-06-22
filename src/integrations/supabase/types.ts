@@ -2273,6 +2273,54 @@ export type Database = {
           },
         ]
       }
+      site_saved_sites: {
+        Row: {
+          address: string | null
+          created_at: string
+          enrollment: number | null
+          grade_band: string | null
+          id: string
+          inputs_json: Json
+          lat: number | null
+          lng: number | null
+          site_name: string
+          site_type: string | null
+          snapshot_json: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          enrollment?: number | null
+          grade_band?: string | null
+          id?: string
+          inputs_json?: Json
+          lat?: number | null
+          lng?: number | null
+          site_name: string
+          site_type?: string | null
+          snapshot_json?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          enrollment?: number | null
+          grade_band?: string | null
+          id?: string
+          inputs_json?: Json
+          lat?: number | null
+          lng?: number | null
+          site_name?: string
+          site_type?: string | null
+          snapshot_json?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       smartlead_events: {
         Row: {
           campaign_id: string | null

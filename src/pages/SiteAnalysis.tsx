@@ -244,9 +244,35 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace, bookmark }: CardPro
       </div>
 
 
-      {/* Re-run / Replace / Remove */}
+      {/* Re-run / Bookmark / Replace / Remove */}
       <div className="mt-2 flex items-center justify-end gap-2">
-        <button
+        {bookmark && slot.result && (
+          <button
+            type="button"
+            onClick={bookmark.onToggle}
+            disabled={bookmark.busy}
+            className="inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[10px] font-semibold disabled:opacity-50"
+            style={{
+              borderColor: bookmark.saved ? BLUE : BORDER,
+              color: bookmark.saved ? BLUE : MUTED,
+              backgroundColor: bookmark.saved ? "#eef2ff" : "#fff",
+            }}
+            title={
+              bookmark.saved
+                ? `Saved${bookmark.savedByLabel ? ` by ${bookmark.savedByLabel}` : ""} · click to remove`
+                : "Save to Saved Sites"
+            }
+          >
+            {bookmark.busy ? (
+              <Loader2 size={10} className="animate-spin" />
+            ) : bookmark.saved ? (
+              <BookmarkCheck size={10} />
+            ) : (
+              <Bookmark size={10} />
+            )}
+            {bookmark.saved ? "Saved" : "Save"}
+          </button>
+        )}
           type="button"
           onClick={onRerun}
           disabled={slot.status === "loading"}

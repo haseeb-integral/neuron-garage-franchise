@@ -43,6 +43,11 @@ const VERDICT_STYLE: Record<SiteVerdict, { bg: string; fg: string; label: string
   undecided: { bg: "#eef2f7", fg: "#526078", label: "Undecided" },
 };
 
+function safeVerdictStyle(v: string) {
+  const style = VERDICT_STYLE[v as SiteVerdict];
+  return style ?? VERDICT_STYLE.undecided;
+}
+
 function tierBadge(score: number) {
   if (score >= SITE_CONFIDENCE_THRESHOLDS.strong)
     return { bg: "#e3f3e7", fg: "#1d6b32", label: "Strong" };

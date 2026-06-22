@@ -1,35 +1,38 @@
 ## Problem
 
-The "Engine error: Failed to send a request to the Edge Function" message means the `compute-sas` edge function is failing to boot. The logs say:
+The Re-run still fails because the edge function is still failing to boot. Logs show a **new** duplicate line — same pattern as before, different variable:
 
 ```
-worker boot error: Uncaught SyntaxError: Identifier 'acs10' has already been declared
-    at compute-sas/index.ts:202:12
+worker boot error: Uncaught SyntaxError: Identifier 'parking' has already been declared
+    at compute-sas/index.ts:379:11
 ```
 
-## Cause
-
-In `supabase/functions/compute-sas/index.ts`, this line is written **twice in a row**:
+Lines 390 and 392 of `supabase/functions/compute-sas/index.ts` both say:
 
 ```ts
-const [acs10, acs15] = await Promise.all([acsRing(iso10, 10), acsRing(iso15, 15)]);
-const [acs10, acs15] = await Promise.all([acsRing(iso10, 10), acsRing(iso15, 15)]);
+const parking = await parkingSignal(geo.lat, geo.lng);
+const parking = await parkingSignal(geo.lat, geo.lng);
 ```
 
-Declaring `acs10` and `acs15` twice in the same scope is a hard JavaScript error — the worker refuses to start, so every Re-run fails with the network-level "Failed to send a request" message you see in the card.
+That is the only thing stopping the engine from booting.
 
-## Fix
+## Fix in two parts
 
-One-line change: delete the duplicate line. Keep one copy of:
+### Part 1 — Remove the duplicate (one-line change)
 
-```ts
-const [acs10, acs15] = await Promise.all([acsRing(iso10, 10), acsRing(iso15, 15)]);
-```
+Delete one of the two `const parking = ...` lines so only one remains.
+
+### Part 2 — Stop this from happening again (small one-time guard)
+
+This is the **second** time in a row we hit a stray duplicate declaration in the same file. The cause is always the same — an edit landed twice in `compute-sas/index.ts`. To kill the class of bug, add a tiny safeguard:
+
+- Run a one-shot scan over the file right now that grep-checks for any line that appears **twice in a row identically** at the top level. Fix all that are found in the same pass.
+- That's it. No new tooling, no CI, no config. Just a careful sweep so no third duplicate is hiding somewhere later in the file.
 
 ## Verify
 
-1. Edge function boots cleanly (no more `Identifier 'acs10' has already been declared`).
-2. Click **Re-run** on a saved card — the red error goes away.
-3. After Re-run, the ⓘ source icons and the "Data Sources" chip strip appear (the trust UI we built earlier).
+1. `compute-sas` edge function boots cleanly (no "already declared" error in logs).
+2. Click **Re-run** on a saved card — red error banner disappears, score recomputes.
+3. After Re-run, the ⓘ source icons and "Data Sources" chip strip appear (the trust UI from the earlier change).
 
-No other files change. No score math change. No UI change.
+No score math change. No UI change. No new files. Just removing duplicate lines and one defensive sweep.

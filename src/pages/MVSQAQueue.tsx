@@ -6,8 +6,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useIsManager } from "@/hooks/dbHealth/useIsManager";
 import { supabase } from "@/integrations/supabase/client";
+import { invalidateAllMvs } from "@/lib/mvs/useLiveMvs";
 import { Button } from "@/components/ui/button";
 import {
   Select,

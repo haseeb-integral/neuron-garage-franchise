@@ -134,26 +134,35 @@ export function NotesActivityTab({ candidate }: Props) {
     load();
   };
 
+  const notes = useMemo(() => rows.filter((r) => r.type === "note"), [rows]);
+  const events = useMemo(() => rows.filter((r) => r.type !== "note"), [rows]);
+
   const counts = useMemo(() => {
-    const c = { all: rows.length, note: 0, changes: 0, stage: 0, vote: 0 };
-    for (const r of rows) {
-      if (r.type === "note") c.note++;
-      else if (r.type === "lead_sheet_saved" || r.type === "process_step_updated") c.changes++;
+    const c = { all: events.length, changes: 0, stage: 0, vote: 0 };
+    for (const r of events) {
+      if (r.type === "lead_sheet_saved" || r.type === "process_step_updated") c.changes++;
       else if (r.type === "stage_changed") c.stage++;
       else if (r.type === "vote_cast") c.vote++;
     }
     return c;
-  }, [rows]);
+  }, [events]);
 
-  const visible = useMemo(() => rows.filter((r) => matchesFilter(r, filter)), [rows, filter]);
+  const visibleEvents = useMemo(
+    () => events.filter((r) => matchesFilter(r, filter)),
+    [events, filter],
+  );
 
   const filterChips: { key: FilterKey; label: string; n: number }[] = [
     { key: "all", label: "All", n: counts.all },
-    { key: "note", label: "Notes", n: counts.note },
     { key: "changes", label: "Changes", n: counts.changes },
     { key: "stage", label: "Stage", n: counts.stage },
     { key: "vote", label: "Votes", n: counts.vote },
   ];
+
+  const NOTES_PREVIEW = 5;
+  const [showAllNotes, setShowAllNotes] = useState(false);
+  const visibleNotes = showAllNotes ? notes : notes.slice(0, NOTES_PREVIEW);
+
 
   return (
     <div className="space-y-4 pt-4">

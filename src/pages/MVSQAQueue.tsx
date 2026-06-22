@@ -67,6 +67,7 @@ async function signedUrlFor(path: string | null): Promise<string | null> {
 
 export default function MVSQAQueue() {
   const { loading: roleLoading, isManager } = useIsManager();
+  const queryClient = useQueryClient();
   const [rows, setRows] = useState<QueueRow[] | null>(null);
   const [showResolved, setShowResolved] = useState(false);
   const [cityFilter, setCityFilter] = useState<string>("__all__");

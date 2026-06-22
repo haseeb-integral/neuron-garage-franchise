@@ -1,73 +1,99 @@
 
-## Decision (taken for you)
+## Goal
+Make every number on the SAS page traceable. A user should be able to tap a number and either see where it came from, or open a real link that proves it. This builds trust.
 
-Doing the full clean-up — page and PDF will show the same number the same way, every count gets its unit, and the page gets the two rows that today only the PDF has. This matches Brett's "one calibrated number everywhere" rule.
+Status words used everywhere: **Fresh / From cache / Backup source / Missing / You typed it / Heuristic**.
 
 ---
 
-## What you'll see after the fix
+## What the page looks like — before vs after
 
-| Where | Before | After |
+### A) Top of each site card
+**Before:** nothing.
+**After:** a small row of chips.
+```
+DATA SOURCES   [● Census 2022 · Fresh]  [● Schools · From cache · 4d old]  [● Roads · Fresh]  [● You typed it]
+```
+Click any chip → side panel opens with full source detail and verify links.
+
+### B) Every tile gets an ⓘ
+**Before:**
+```
+MEDIAN HHI · 10M
+$142k
+```
+**After:**
+```
+MEDIAN HHI · 10M                 ⓘ
+$142k
+```
+Hover ⓘ → popup:
+```
+$142,500 — Median household income, 10-min drive
+Source: US Census ACS 5-Year Survey (2022)
+Variable: B19013_001E
+Tracts used: 47037015800, 47037015900, 47037016000
+Fetched: 2 days ago (from cache)
+
+[ 🔗 Open Census API ]  [ 🔗 View on data.census.gov ]  [ 📋 Copy link ]
+```
+
+### C) Warning banner when a backup source was used
+**Before:** silent fallback.
+**After:** yellow strip.
+```
+⚠ Backup source used: Urban Institute was unreachable on 2026-06-22.
+  School counts came from our local schools table.
+```
+
+### D) PDF brief — new last page "Sources & methodology"
+One row per number with the real URL printed in full so a person reading the printed PDF can type the link in and check.
+
+---
+
+## Verify-with-link table — what each source links to
+
+| Source | Link works? | What "Open source" opens |
 |---|---|---|
-| Kids count on page | `5.3k` | `5.3k children` |
-| Kids count in PDF | `5k` | `5.3k children` (same as page) |
-| Population on page | `15.2k` | `15.2k people` |
-| Population in PDF | `15k` | `15.2k people` |
-| Schools / students in PDF | `8` / `3` / `2.3k` | `8 schools` / `3 schools` / `2.3k students` |
-| Big median income | `$1200k` | `$1.2M` |
-| Missing data on page | `undefined` | `—` |
-| Highway distance tooltip | `1.2mi` | `1.2 mi` |
-| Distance to nearest road | not on page | shown on page |
-| Median income at 15-min drive | not on page | shown on page |
+| **US Census ACS** (income, kids, pop) | ✅ Exact | Live Census API URL with the exact variable + tract IDs. Also a `data.census.gov` page link. |
+| **Urban Institute schools** | ✅ Page level | Each school's profile page on `educationdata.urban.org`. |
+| **OpenStreetMap roads** | ✅ Exact | Overpass Turbo URL pre-loaded with the same query. User clicks Run, sees the same roads on a map. |
+| **Mapbox Directions** (drive time) | ⚠️ Workaround | Mapbox key is private, so we link to a **Google Maps directions URL** between the same two points — different provider, lets a human sanity-check. |
+| **User input** | n/a | Popup says "You entered this on [date]". No link needed. |
+| **Heuristic estimates** (families × 0.5, partial age bands, 2 sq-mi population spread) | n/a | No link. Popup says clearly: "This is an estimate, not a measurement" and shows the formula. |
 
 ---
 
-## Plan
-
-### Step 1 — One shared formatter file
-Create `src/lib/sas/formatters.ts` with the single source of truth:
-- `fmtMoney(n)` — `$1.2M` / `$120k` / `$1,250` / `—` for null
-- `fmtCount(n, unit?)` — `5.3k children` / `850 people` / `—` for null
-- `fmtPct(n)` — `12%` / `—`
-- `fmtMi(n)` — `1.2 mi` / `—`
-- `fmtScore(n)` — `73/100`
-
-All branches handled (including ≥ $1M). Always returns a string, never `undefined`.
-
-### Step 2 — Switch page to the shared formatter
-In `src/pages/SiteAnalysis.tsx`:
-- Delete the local `fmtMoney`, `fmtCount`, `fmtPct` helpers at lines 437–452.
-- Import from `@/lib/sas/formatters`.
-- Pass the right unit word to `fmtCount`: `"children"` for kids tiles, `"people"` for population tile.
-- Fix the accessibility tooltip at line 362 to use `fmtMi` (gets the space for free).
-
-### Step 3 — Switch PDF to the shared formatter
-In `src/lib/sitePack/copy.ts`:
-- Delete the local helpers at lines 23–43.
-- Re-export from `@/lib/sas/formatters` so all existing callers keep working.
-- In `src/lib/sitePack/SitePackDocument.tsx`, pass unit words to `fmtCount` on lines 591, 592, 593, 602, 603, 604, 615.
-
-### Step 4 — Add the two missing rows to the page
-In `src/pages/SiteAnalysis.tsx`, `MetricTiles`:
-- Add a tile "Drive to road" using `eco.roadDistanceMi`.
-- Add a tile "Median HHI · 15m" using `acs15.medianHhi`.
-
-### Step 5 — Visual check
-Open the page in Playwright, screenshot the tiles area, then generate the PDF brief and screenshot a candidate page. Confirm:
-- Same number → same text in both places
-- No `undefined` anywhere
-- Units shown next to counts
-- New tiles render without breaking the grid
+## What we cannot link to (call-outs)
+- **Mapbox drive times** — provider key is private. We use the Google Maps fallback link instead.
+- **Our internal database cache row** — internal, not shareable. Popup always links to the **real upstream source**, never our cache.
 
 ---
 
-## Files changed
-- **New:** `src/lib/sas/formatters.ts`
-- **Edited:** `src/pages/SiteAnalysis.tsx` (remove local helpers, add 2 tiles, pass units)
-- **Edited:** `src/lib/sitePack/copy.ts` (re-export from shared)
-- **Edited:** `src/lib/sitePack/SitePackDocument.tsx` (pass units)
+## What is NOT changing
+- The score math, pillar weights, or any score number.
+- Existing tile / PDF layout outside the new chip strip and new sources page.
 
-## Not changed
-- Pillar score math
-- PDF layout / styling
-- Database, edge functions
+---
+
+## Behind the scenes (no UI on its own — supports the UI above)
+- Engine tags every number with `{name, year, status, fetchedAt, sourceUrl?, verifyUrl?, note?}`.
+- New helper file that builds the verify URLs (Census API URL, data.census.gov URL, Overpass Turbo URL, Urban Institute school page URL, Google Maps directions URL).
+- Census cache gets a 1-year expiry so "fetched X days ago" is honest.
+- Heuristic numbers carry a `heuristic` flag so the popup tells the truth.
+
+---
+
+## Order of work
+1. Engine: tag every number with source + verify URL (1 edge function file + 2 helpers).
+2. Build small UI pieces: `SourceChip`, `SourcePopover` (with Open source + Copy link buttons), `DataSourcesStrip`, `DegradedBanner`.
+3. Wire ⓘ into every tile + the chip strip on the site card.
+4. Add "Sources & methodology" page to the PDF, with full URLs printed.
+5. Verify with screenshots: open a real site, force a backup-source case, click an Open-source button, generate the PDF, confirm same numbers + links across all three surfaces.
+
+---
+
+## Files (technical detail — skip if not needed)
+**New:** `src/lib/sas/sources.ts` (URL builders), `src/lib/sas/sourcesCopy.ts` (popup text), `src/components/site-analysis/SourceChip.tsx`, `SourcePopover.tsx`, `DataSourcesStrip.tsx`, `DegradedBanner.tsx`, one migration for `expires_at`.
+**Edited:** `src/hooks/useSiteScore.ts` (extend `SiteScoreSignals` with `provenance`), `src/pages/SiteAnalysis.tsx`, `src/components/site-analysis/LiveEngineCard.tsx`, `src/lib/sitePack/SitePackDocument.tsx`, `supabase/functions/compute-sas/index.ts`, `supabase/functions/_shared/census.ts`, `supabase/functions/_shared/urban-institute.ts`.
+**Not touched:** score math, pillar weights, tile/PDF layout outside additions.

@@ -213,7 +213,6 @@ Deno.serve(async (req) => {
       return { ...agg, fromCache: false as const, cacheCreatedAt: null };
     };
     const [acs10, acs15] = await Promise.all([acsRing(iso10, 10), acsRing(iso15, 15)]);
-    const [acs10, acs15] = await Promise.all([acsRing(iso10, 10), acsRing(iso15, 15)]);
 
     // Bug-2 fix (Manus 1B calibration analysis): `acs15.totalPop` is the sum
     // of population over the unique Census tracts touched by our sample

@@ -462,9 +462,11 @@ function PillarBar({
           style={{
             width: `${Math.max(0, Math.min(100, value))}%`,
             backgroundColor:
-              value >= SITE_RECOMMEND_THRESHOLDS.recommend
+              value >= SITE_CONFIDENCE_THRESHOLDS.strong
                 ? "#1d6b32"
-                : value >= SITE_RECOMMEND_THRESHOLDS.worthALook
+                : value >= SITE_CONFIDENCE_THRESHOLDS.high
+                ? "#2f7a3f"
+                : value >= SITE_CONFIDENCE_THRESHOLDS.medium
                 ? "#925100"
                 : "#a3142b",
           }}

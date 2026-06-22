@@ -134,26 +134,35 @@ export function NotesActivityTab({ candidate }: Props) {
     load();
   };
 
+  const notes = useMemo(() => rows.filter((r) => r.type === "note"), [rows]);
+  const events = useMemo(() => rows.filter((r) => r.type !== "note"), [rows]);
+
   const counts = useMemo(() => {
-    const c = { all: rows.length, note: 0, changes: 0, stage: 0, vote: 0 };
-    for (const r of rows) {
-      if (r.type === "note") c.note++;
-      else if (r.type === "lead_sheet_saved" || r.type === "process_step_updated") c.changes++;
+    const c = { all: events.length, changes: 0, stage: 0, vote: 0 };
+    for (const r of events) {
+      if (r.type === "lead_sheet_saved" || r.type === "process_step_updated") c.changes++;
       else if (r.type === "stage_changed") c.stage++;
       else if (r.type === "vote_cast") c.vote++;
     }
     return c;
-  }, [rows]);
+  }, [events]);
 
-  const visible = useMemo(() => rows.filter((r) => matchesFilter(r, filter)), [rows, filter]);
+  const visibleEvents = useMemo(
+    () => events.filter((r) => matchesFilter(r, filter)),
+    [events, filter],
+  );
 
   const filterChips: { key: FilterKey; label: string; n: number }[] = [
     { key: "all", label: "All", n: counts.all },
-    { key: "note", label: "Notes", n: counts.note },
     { key: "changes", label: "Changes", n: counts.changes },
     { key: "stage", label: "Stage", n: counts.stage },
     { key: "vote", label: "Votes", n: counts.vote },
   ];
+
+  const NOTES_PREVIEW = 5;
+  const [showAllNotes, setShowAllNotes] = useState(false);
+  const visibleNotes = showAllNotes ? notes : notes.slice(0, NOTES_PREVIEW);
+
 
   return (
     <div className="space-y-4 pt-4">
@@ -225,7 +234,74 @@ export function NotesActivityTab({ candidate }: Props) {
         )}
       </div>
 
-      {/* Activity Timeline */}
+      {/* Notes panel — dedicated, pinned above the activity timeline */}
+      <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #e3e8ef" }}>
+        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <MessageSquare size={16} style={{ color: "#92400e" }} />
+            <h4 className="font-semibold text-sm" style={{ color: "#003c7e" }}>
+              Notes <span style={{ color: "#8893a7", fontWeight: 400 }}>({notes.length})</span>
+            </h4>
+          </div>
+        </div>
+        {loading ? (
+          <p className="text-xs" style={{ color: "#6c757d" }}>Loading…</p>
+        ) : notes.length === 0 ? (
+          <p className="text-xs" style={{ color: "#6c757d" }}>
+            No notes yet. Use the box above to add the first one.
+          </p>
+        ) : (
+          <>
+            <div className="space-y-2">
+              {visibleNotes.map((a) => (
+                <div
+                  key={a.id}
+                  className="flex gap-3 p-3 rounded-md"
+                  style={{ backgroundColor: "#fffbeb", border: "1px solid #fde68a" }}
+                >
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                    style={{ backgroundColor: "#fef3c7" }}
+                  >
+                    <MessageSquare size={14} style={{ color: "#92400e" }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span className="text-xs font-semibold truncate" title={a.actor_email ?? "system"}>
+                        {shortEmail(a.actor_email)}
+                      </span>
+                      <span
+                        className="text-[11px] whitespace-nowrap"
+                        style={{ color: "#8893a7" }}
+                        title={new Date(a.created_at).toLocaleString()}
+                      >
+                        {formatRelative(a.created_at)} · {formatAbsolute(a.created_at)}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 flex gap-2">
+                      <Quote size={14} className="flex-shrink-0 mt-0.5" style={{ color: "#d97706" }} />
+                      <p className="text-sm break-words whitespace-pre-wrap" style={{ color: "#1f2937" }}>
+                        {a.content}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {notes.length > NOTES_PREVIEW && (
+              <button
+                onClick={() => setShowAllNotes((v) => !v)}
+                className="mt-3 text-xs font-medium"
+                style={{ color: "#174be8" }}
+              >
+                {showAllNotes ? "Show fewer" : `Show all ${notes.length} notes`}
+              </button>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Activity Timeline — system events only */}
       <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #e3e8ef" }}>
         <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
           <h4 className="font-semibold text-sm" style={{ color: "#003c7e" }}>Activity Timeline</h4>
@@ -252,25 +328,21 @@ export function NotesActivityTab({ candidate }: Props) {
 
         {loading ? (
           <p className="text-xs" style={{ color: "#6c757d" }}>Loading…</p>
-        ) : visible.length === 0 ? (
+        ) : visibleEvents.length === 0 ? (
           <p className="text-xs" style={{ color: "#6c757d" }}>
-            {rows.length === 0 ? "No activity yet." : "No activity matches this filter."}
+            {events.length === 0 ? "No activity yet." : "No activity matches this filter."}
           </p>
         ) : (
           <div className="space-y-2">
-            {visible.map((a) => {
+            {visibleEvents.map((a) => {
               const Icon = iconFor(a.type);
               const accent = accentFor(a.type);
-              const isNote = a.type === "note";
               const meta = a.metadata ?? {};
-              const changes: Array<{ label: string; from: string; to: string }> = Array.isArray(meta.changes) ? meta.changes : [];
+              const changes: Array<{ label: string; from: string; to: string }> =
+                Array.isArray(meta.changes) ? meta.changes : [];
 
               return (
-                <div
-                  key={a.id}
-                  className="flex gap-3 p-2 rounded-md"
-                  style={{ backgroundColor: isNote ? "#fffbeb" : "transparent", border: isNote ? "1px solid #fde68a" : "1px solid transparent" }}
-                >
+                <div key={a.id} className="flex gap-3 p-2 rounded-md">
                   <div
                     className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
                     style={{ backgroundColor: accent.bg }}
@@ -279,19 +351,9 @@ export function NotesActivityTab({ candidate }: Props) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-xs font-semibold truncate" title={a.actor_email ?? "system"}>
-                          {shortEmail(a.actor_email)}
-                        </span>
-                        {isNote && (
-                          <span
-                            className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded font-semibold"
-                            style={{ backgroundColor: accent.bg, color: accent.fg }}
-                          >
-                            Note
-                          </span>
-                        )}
-                      </div>
+                      <span className="text-xs font-semibold truncate" title={a.actor_email ?? "system"}>
+                        {shortEmail(a.actor_email)}
+                      </span>
                       <span
                         className="text-[11px] whitespace-nowrap"
                         style={{ color: "#8893a7" }}
@@ -300,32 +362,22 @@ export function NotesActivityTab({ candidate }: Props) {
                         {formatRelative(a.created_at)} · {formatAbsolute(a.created_at)}
                       </span>
                     </div>
-
-                    {isNote ? (
-                      <div className="mt-1.5 flex gap-2">
-                        <Quote size={14} className="flex-shrink-0 mt-0.5" style={{ color: "#d97706" }} />
-                        <p className="text-sm break-words whitespace-pre-wrap" style={{ color: "#1f2937" }}>
-                          {a.content}
-                        </p>
-                      </div>
-                    ) : (
-                      <>
-                        <p className="text-sm mt-0.5 break-words" style={{ color: "#1f2937" }}>{a.content}</p>
-                        {changes.length > 0 && (
-                          <ul className="mt-1.5 ml-1 space-y-0.5">
-                            {changes.map((c, i) => (
-                              <li key={i} className="text-[12px]" style={{ color: "#475569" }}>
-                                <span className="font-medium">{c.label}:</span>{" "}
-                                <span className="line-through" style={{ color: "#94a3b8" }}>
-                                  {c.from || "(empty)"}
-                                </span>{" "}
-                                <ArrowRight size={10} className="inline" />{" "}
-                                <span style={{ color: "#0f172a" }}>{c.to || "(empty)"}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </>
+                    <p className="text-sm mt-0.5 break-words" style={{ color: "#1f2937" }}>
+                      {a.content}
+                    </p>
+                    {changes.length > 0 && (
+                      <ul className="mt-1.5 ml-1 space-y-0.5">
+                        {changes.map((c, i) => (
+                          <li key={i} className="text-[12px]" style={{ color: "#475569" }}>
+                            <span className="font-medium">{c.label}:</span>{" "}
+                            <span className="line-through" style={{ color: "#94a3b8" }}>
+                              {c.from || "(empty)"}
+                            </span>{" "}
+                            <ArrowRight size={10} className="inline" />{" "}
+                            <span style={{ color: "#0f172a" }}>{c.to || "(empty)"}</span>
+                          </li>
+                        ))}
+                      </ul>
                     )}
                   </div>
                 </div>
@@ -337,3 +389,4 @@ export function NotesActivityTab({ candidate }: Props) {
     </div>
   );
 }
+

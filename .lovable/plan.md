@@ -1,101 +1,54 @@
-# Plan — Smarter Activity Log + Better Notes UI (Phase 5b)
+# Plan — Split Notes & Activity into two panels
 
-## Your questions answered first
+## What changes
 
-**Q1. The old Homework tab's "Add a checklist item" box — what did it do?**
-It let staff type a brand-new checklist line and add it to that stage's Trial Close Checklist for this candidate (custom step, not from the seed list).
-
-**Q2. Should we re-add it in the Process tab?**
-**No.** The Process tab already has this. Each step's three sub-lists (Trial Close, Post-Call Actions, Homework) and the Notes & Activity tab's "Process Roadmap" section already let you add/remove custom items via `ChecklistSection`. The old Homework tab's box is fully replaced. Leave it.
-
-**Q3. Your note "didn't show up."**
-Actually it did — the DB has your two notes saved as `note` rows with the literal text you typed: `"notes"` and `"Add notes"`. They look like system labels because they're one word. The save worked; the UI just doesn't make notes stand out from system events. We'll fix that.
-
-**Q4. Smoke test status (verified against DB):**
-- Steps 1, 2, 3, 4, 5 ✅ all writing rows correctly with your email and timestamp
-- Step 6 (refresh) ✅ rows persist
-- Step 7 (per-candidate filter) ✅ — query already filters by `candidate_id`
-- Only real issues: **what** changed isn't shown clearly, **notes look like noise**, and the UI is plain
-
----
-
-## What we'll change
-
-### 1. Richer activity content (write side)
-
-| Where | Today writes | Will write |
-|---|---|---|
-| LeadSheetTab | `"Lead sheet updated"` | `"Lead sheet updated — 3 fields changed: motivation, timeline, liquid capital"` + metadata `{changed_fields: [...]}` |
-| ProcessTab | `"Step 1 — updated"` | `"Step 1 (Initial Call) — Trial Close: Asked to move forward ✓"` (names the actual sub-item that toggled) + metadata `{step, group, key, value}` |
-| CommitteeVotes | already good | unchanged |
-| Stage change | already good | unchanged |
-| Note | text as-is | unchanged |
-
-LeadSheet diff: keep a snapshot of `form` at load time, compare on save, list changed labels.
-Process: pass the toggled label into `persist()` so the log message names the exact checkbox.
-
-### 2. Notes & Activity tab — new UI
+The Notes & Activity tab gets a dedicated **Notes** panel between "Add a note" and the "Activity Timeline". Notes still get written to the same `candidate_activities` table (no DB change), but the UI now shows them in their own pinned section so staff can read candidate notes without scanning past system events.
 
 ```text
-┌───────────────────────────────────────────────────────────┐
-│ Add Note                                                   │
-│ ┌───────────────────────────────────────────────────────┐ │
-│ │ [textarea, larger, autosizing]                        │ │
-│ └───────────────────────────────────────────────────────┘ │
-│ Cmd+Enter to post · 0 / 2000        [Add Note]            │
-└───────────────────────────────────────────────────────────┘
+┌─ Process Roadmap — <stage> ─────────────┐   (unchanged)
+└─────────────────────────────────────────┘
 
-Filter:  [ All ]  [ Notes ]  [ Changes ]  [ Stage ]  [ Votes ]
+┌─ Add a note ────────────────────────────┐   (unchanged)
+│ [textarea]            [Add Note]        │
+└─────────────────────────────────────────┘
 
-Activity Timeline
-┌───────────────────────────────────────────────────────────┐
-│ 💬  haseeb  ·  just now  ·  Jun 22, 5:51 PM               │
-│ ┌─ NOTE ────────────────────────────────────────────────┐ │
-│ │ "Spoke with candidate, very interested in Austin."    │ │
-│ └───────────────────────────────────────────────────────┘ │
-├───────────────────────────────────────────────────────────┤
-│ ✏️  haseeb  ·  1m ago  ·  Jun 22, 5:50 PM                  │
-│ Lead sheet updated                                         │
-│   • motivation: "..." → "..."                              │
-│   • timeline: "6 months" → "3 months"                      │
-├───────────────────────────────────────────────────────────┤
-│ ✓  haseeb  ·  2m ago  · Jun 22, 5:49 PM                    │
-│ Step 1 (Initial Call) — Trial Close                        │
-│   Asked to move forward  ✓ checked                         │
-└───────────────────────────────────────────────────────────┘
+┌─ Notes (3) ─────────────────────────────┐   NEW dedicated panel
+│ 💬 haseeb · 2m ago · Jun 22, 10:04 PM    │
+│ "Spoke with candidate, very interested" │
+│ ─────────────────────────────────────── │
+│ 💬 haseeb · 1h ago · Jun 22, 9:01 PM     │
+│ "Wants to start in Austin"              │
+│                                         │
+│ [Show all 12]  ← only if >5             │
+└─────────────────────────────────────────┘
+
+┌─ Activity Timeline (everything else) ───┐
+│ ✏️ Lead sheet updated — 2 fields…       │
+│ ✓  Step 1 — Trial Close: …              │
+│ → Moved New Lead → Initial Qual         │
+│ ✓  haseeb voted Approve                 │
+└─────────────────────────────────────────┘
 ```
 
-UI rules:
-- **Notes** render inside a tinted card with a quote glyph and a "NOTE" tag so they pop visually
-- **System events** render as a row with an icon, one-line summary, and (if metadata has details) an indented list underneath
-- Each row shows **relative time** ("2m ago") **and** absolute time ("Jun 22, 5:51 PM") side-by-side
-- Filter chips at the top (All / Notes / Changes / Stage / Votes) reduce noise
-- Add Note: larger autosizing textarea, char counter, Cmd/Ctrl+Enter shortcut, posts and clears in place
+## Rules
 
-(UI inspiration: GitHub issue timeline, Linear activity feed, Notion comments — all use card-style notes + condensed system rows with filters.)
-
-### 3. No DB schema change
-`candidate_activities` already has `content`, `metadata jsonb`, `actor_email`, `created_at`. We use what's there.
-
----
+- **Notes panel** shows ONLY rows where `type = "note"`, newest first, collapsed to 5 by default with "Show all N" to expand.
+- **Activity Timeline** now shows everything EXCEPT notes (lead sheet, process, stage, votes).
+- The filter chips become simpler: **All · Changes · Stage · Votes** (no "Notes" chip — Notes has its own panel above).
+- Same dual timestamp on every row (`2m ago · Jun 22, 10:04 PM`).
+- Notes still render in the yellow tinted card style with the quote glyph so they feel like quotes, not log lines.
 
 ## Files touched
 
-1. `src/lib/candidateActivity.ts` — no change (already accepts metadata)
-2. `src/components/candidate-pipeline/tabs/LeadSheetTab.tsx` — capture initial snapshot, diff on save, send rich content + `changed_fields` metadata
-3. `src/components/candidate-pipeline/tabs/ProcessTab.tsx` — pass toggled label + value into `persist()`, write richer content + metadata
-4. `src/components/candidate-pipeline/tabs/NotesActivityTab.tsx` — full UI rewrite of the timeline + Add Note section: filter chips, note cards, dual timestamps, metadata rendering, Cmd+Enter, char counter
+- `src/components/candidate-pipeline/tabs/NotesActivityTab.tsx` — split `rows` into `notes` and `events`, render two panels, drop the "Notes" chip from the filter strip.
 
-Total: 1 turn. No new tables, no new files, no design-system token violations (uses existing semantic colors).
-
----
+One file, no DB change, no migration. ~30 lines of JSX shuffle.
 
 ## How you'll test
 
-1. Open Lead Sheet → change 2 fields → Save → Notes & Activity now shows "Lead sheet updated — 2 fields changed" with the field names listed underneath.
-2. Open Process → tick "Asked to move forward" under Trial Close in Step 2 → wait 1s → reopen Notes & Activity → row says "Step 2 — Trial Close: Asked to move forward ✓".
-3. Type "Real test note here" in Add Note → press Cmd+Enter → note appears as a tinted card with a "NOTE" tag, easy to tell apart from system rows.
-4. Click "Notes" filter chip → only your notes show. Click "Changes" → only Lead Sheet/Process rows show.
-5. Hover any row → both "2m ago" and "Jun 22, 5:51 PM" are visible.
+1. Open any candidate → Notes & Activity.
+2. **Notes panel** at top shows every note you've added, newest first, in yellow cards. If more than 5, click "Show all" to expand.
+3. **Activity Timeline** below shows ONLY system events (Lead Sheet, Process, Stage, Votes). No notes.
+4. Add a new note → appears at the top of the Notes panel immediately, not in the Activity Timeline.
 
-Reply **approved** to build, or tell me what to adjust.
+Reply **approved** to build.

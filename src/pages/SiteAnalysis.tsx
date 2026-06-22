@@ -1034,18 +1034,18 @@ export default function SiteAnalysis() {
               disabled={!canExport || exporting}
               title={
                 canExport
-                  ? "Download a branded multi-section PDF with all 10 SOW v2.2 sections and a 4-site side-by-side"
-                  : "Mark a winner on any card (★ Mark winner) to enable the decision pack"
+                  ? "Download a branded multi-section PDF with all 10 SOW v2.2 sections and a side-by-side comparison"
+                  : "Score at least one candidate to enable the site report export"
               }
               className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
               style={{ borderColor: BLUE, color: BLUE, backgroundColor: "#fff" }}
             >
               {exporting ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-              {exporting ? "Generating PDF…" : "Export decision pack (PDF)"}
+              {exporting ? "Generating PDF…" : "Export Site Report (PDF)"}
             </button>
             {!canExport && (
               <p className="text-[10px]" style={{ color: MUTED }}>
-                Mark a winner on any card (★) to enable export.
+                Score at least one candidate to enable export.
               </p>
             )}
           </div>
@@ -1059,29 +1059,35 @@ export default function SiteAnalysis() {
           style={{ backgroundColor: SOFT }}
         >
           <span className="whitespace-nowrap font-semibold" style={{ color: NAVY }}>
-            Score tiers:
+            Confidence bands:
           </span>
           <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
             <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: "#1d6b32" }} />
-            <span style={{ color: NAVY }}>≥{SITE_RECOMMEND_THRESHOLDS.recommend} Recommend</span>
+            <span style={{ color: NAVY }}>≥{SITE_CONFIDENCE_THRESHOLDS.strong} Strong</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+            <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: "#2f7a3f" }} />
+            <span style={{ color: NAVY }}>
+              {SITE_CONFIDENCE_THRESHOLDS.high}–{SITE_CONFIDENCE_THRESHOLDS.strong - 1} High
+            </span>
           </span>
           <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
             <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: "#925100" }} />
             <span style={{ color: NAVY }}>
-              {SITE_RECOMMEND_THRESHOLDS.worthALook}–{SITE_RECOMMEND_THRESHOLDS.recommend - 1} Worth a look
+              {SITE_CONFIDENCE_THRESHOLDS.medium}–{SITE_CONFIDENCE_THRESHOLDS.high - 1} Medium
             </span>
           </span>
           <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
             <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: "#a3142b" }} />
-            <span style={{ color: NAVY }}>&lt;{SITE_RECOMMEND_THRESHOLDS.worthALook} Don't recommend</span>
+            <span style={{ color: NAVY }}>&lt;{SITE_CONFIDENCE_THRESHOLDS.medium} Low</span>
           </span>
           <span className="text-[10px]" style={{ color: MUTED }}>
-            Tiers are suggestions. Your <strong>Decision</strong> on each card is what ships in the export.
+            Bands are score-based suggestions. Your <strong>Confidence</strong> selection on each card is what ships in the export. Final decisions stay with the user.
           </span>
         </div>
       </section>
 
-      <WinnerBanner winner={winner} winnerDecision={winnerDecision} />
+
 
       <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {slots.map((s) => (

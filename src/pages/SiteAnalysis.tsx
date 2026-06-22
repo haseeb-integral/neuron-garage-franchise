@@ -223,14 +223,6 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace, bookmark }: CardPro
                 >
                   {userPill.label}
                 </span>
-              ) : scoreTier ? (
-                <span
-                  className="inline-block max-w-full rounded-full border px-1.5 py-0.5 text-center text-[9px] font-semibold uppercase leading-tight tracking-wide"
-                  style={{ borderColor: scoreTier.fg, color: scoreTier.fg, backgroundColor: "#fff", wordBreak: "break-word", whiteSpace: "normal" }}
-                  title="Score-based tier suggestion. Confirm below to make it your decision."
-                >
-                  Suggested: {scoreTier.label}
-                </span>
               ) : null}
 
             </>

@@ -127,9 +127,20 @@ interface CardProps {
   onRemove?: () => void;
 }
 
-interface CardPropsExt extends CardProps { onReplace?: () => void; }
+interface BookmarkInfo {
+  saved: boolean;
+  isMine: boolean;
+  savedByLabel: string | null;
+  busy: boolean;
+  onToggle: () => void;
+}
 
-function CandidateCard({ slot, onRerun, onRemove, onReplace }: CardPropsExt) {
+interface CardPropsExt extends CardProps {
+  onReplace?: () => void;
+  bookmark?: BookmarkInfo;
+}
+
+function CandidateCard({ slot, onRerun, onRemove, onReplace, bookmark }: CardPropsExt) {
   const { byAddress } = useSiteDecisions();
   const decision = byAddress.get(slot.address);
   const userVerdict: SiteVerdict | undefined =

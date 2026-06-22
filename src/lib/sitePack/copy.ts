@@ -5,9 +5,10 @@ import type { SasPillarScores } from "@/lib/sasMath";
 import type { SiteVerdict } from "@/hooks/useSiteDecisions";
 
 export const VERDICT_LABEL: Record<SiteVerdict, string> = {
-  recommend: "Recommend",
-  worth_a_look: "Worth a look",
-  dont_recommend: "Don't recommend",
+  strong: "Strong",
+  high: "High",
+  medium: "Medium",
+  low: "Low",
   undecided: "Undecided",
 };
 
@@ -42,15 +43,17 @@ export function fmtMi(v: number | null | undefined): string {
 }
 
 export const TIER_COLOR = {
-  recommend: "#1d6b32",
-  worth: "#7a5800",
-  dont: "#a3142b",
+  strong: "#1d6b32",
+  high: "#2f7a3f",
+  medium: "#7a5800",
+  low: "#a3142b",
 } as const;
 
 export function tierColor(tier: string): string {
-  if (tier === "Recommend") return TIER_COLOR.recommend;
-  if (tier === "Worth a look") return TIER_COLOR.worth;
-  return TIER_COLOR.dont;
+  if (tier === "Strong") return TIER_COLOR.strong;
+  if (tier === "High") return TIER_COLOR.high;
+  if (tier === "Medium") return TIER_COLOR.medium;
+  return TIER_COLOR.low;
 }
 
 export interface VerdictArgs {
@@ -60,13 +63,16 @@ export interface VerdictArgs {
 }
 
 export function verdictSentence(c: VerdictArgs): string {
-  if (c.tierLabel === "Recommend") {
-    return `${c.schoolName} clears the Recommend threshold (SAS ${c.composite}) on Sam's 25/25/20/15/15 weighting — proceed to LOI diligence.`;
+  if (c.tierLabel === "Strong") {
+    return `${c.schoolName} scores SAS ${c.composite} on Sam's 25/25/20/15/15 weighting — Strong confidence band. Worth advancing to deeper diligence.`;
   }
-  if (c.tierLabel === "Worth a look") {
-    return `${c.schoolName} lands in the Worth-a-Look band (SAS ${c.composite}). Validate weakest pillar before committing.`;
+  if (c.tierLabel === "High") {
+    return `${c.schoolName} scores SAS ${c.composite} on Sam's 25/25/20/15/15 weighting — High confidence band. Promising; verify open items before advancing.`;
   }
-  return `${c.schoolName} scores SAS ${c.composite}, below the Recommend threshold on Sam's 25/25/20/15/15 weighting. Do not pursue.`;
+  if (c.tierLabel === "Medium") {
+    return `${c.schoolName} scores SAS ${c.composite} on Sam's 25/25/20/15/15 weighting — Medium confidence band. Mixed signals; review pillar detail before deciding.`;
+  }
+  return `${c.schoolName} scores SAS ${c.composite} on Sam's 25/25/20/15/15 weighting — Low confidence band. Significant gaps versus the comparison set.`;
 }
 
 export function strengthsBullets(pillars: SasPillarScores): string[] {
@@ -103,25 +109,26 @@ export interface RecommendationsArgs {
   tierLabel: string;
   verdict?: SiteVerdict;
   notes?: string | null;
-  isWinner?: boolean | null;
 }
 
 export function recommendationsBullets(c: RecommendationsArgs): string[] {
   const out: string[] = [];
-  if (c.tierLabel === "Recommend") {
-    out.push("Advance to LOI. Confirm enrollment and lease terms with school admin.");
-    out.push("Lock site in pipeline; begin teacher-search for this geography.");
-  } else if (c.tierLabel === "Worth a look") {
-    out.push("Run a second-anchor stress test before committing capital.");
-    out.push("Investigate weakest pillar in-person before issuing LOI.");
+  if (c.tierLabel === "Strong") {
+    out.push("Scores in the Strong confidence band. Worth advancing to deeper diligence.");
+    out.push("Confirm enrollment, lease terms, and competing-provider activity before committing.");
+  } else if (c.tierLabel === "High") {
+    out.push("Scores in the High confidence band. Promising; verify open items before advancing.");
+    out.push("Stress-test the weakest pillar in person before issuing an LOI.");
+  } else if (c.tierLabel === "Medium") {
+    out.push("Scores in the Medium confidence band. Mixed signals; review pillar detail.");
+    out.push("Compare against a known-good anchor in the same MSA before deciding.");
   } else {
-    out.push("Do not pursue. Composite is below the Recommend bar on Sam's weighting.");
-    out.push("Re-direct search to addresses scoring ≥ 60 in the same MSA.");
+    out.push("Scores in the Low confidence band. Significant gaps versus the comparison set.");
+    out.push("Consider re-directing search to addresses scoring higher in the same MSA.");
   }
   if (c.verdict && c.verdict !== "undecided") {
-    out.push(`User decision recorded: ${VERDICT_LABEL[c.verdict]}.`);
+    out.push(`User confidence recorded: ${VERDICT_LABEL[c.verdict]}.`);
   }
-  if (c.notes) out.push(`Decision notes: ${c.notes}`);
-  if (c.isWinner) out.push("★ Marked as winner — this site ships in the recommendation pack.");
+  if (c.notes) out.push(`Notes: ${c.notes}`);
   return out;
 }

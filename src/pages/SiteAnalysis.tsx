@@ -4,7 +4,6 @@ import {
   Loader2,
   MapPin,
   Plus,
-  Star,
 } from "lucide-react";
 
 
@@ -22,7 +21,7 @@ import { fetchMapPng } from "@/lib/sitePack/fetchMapPng";
 import { buildStaticUrl } from "@/components/site-analysis/IsochroneMap";
 import { useMapboxToken } from "@/hooks/useMapboxToken";
 import { toast } from "sonner";
-import { SITE_RECOMMEND_THRESHOLDS } from "@/data/phase2DemoData";
+import { SITE_CONFIDENCE_THRESHOLDS } from "@/data/phase2DemoData";
 import {
   recomputeSiteScores,
   siteComposite,
@@ -37,25 +36,30 @@ const SOFT = "#f7faff";
 const BLUE = "#174be8";
 
 const VERDICT_STYLE: Record<SiteVerdict, { bg: string; fg: string; label: string }> = {
-  recommend: { bg: "#e3f3e7", fg: "#1d6b32", label: "Recommend" },
-  worth_a_look: { bg: "#fff8d9", fg: "#7a5800", label: "Worth a look" },
-  dont_recommend: { bg: "#fce7ec", fg: "#a3142b", label: "Don't recommend" },
+  strong: { bg: "#e3f3e7", fg: "#1d6b32", label: "Strong" },
+  high: { bg: "#eaf5ec", fg: "#2f7a3f", label: "High" },
+  medium: { bg: "#fff8d9", fg: "#7a5800", label: "Medium" },
+  low: { bg: "#fce7ec", fg: "#a3142b", label: "Low" },
   undecided: { bg: "#eef2f7", fg: "#526078", label: "Undecided" },
 };
 
 function tierBadge(score: number) {
-  if (score >= SITE_RECOMMEND_THRESHOLDS.recommend)
-    return { bg: "#e3f3e7", fg: "#1d6b32", label: "Recommend" };
-  if (score >= SITE_RECOMMEND_THRESHOLDS.worthALook)
-    return { bg: "#fff8d9", fg: "#7a5800", label: "Worth a look" };
-  return { bg: "#fce7ec", fg: "#a3142b", label: "Don't recommend" };
+  if (score >= SITE_CONFIDENCE_THRESHOLDS.strong)
+    return { bg: "#e3f3e7", fg: "#1d6b32", label: "Strong" };
+  if (score >= SITE_CONFIDENCE_THRESHOLDS.high)
+    return { bg: "#eaf5ec", fg: "#2f7a3f", label: "High" };
+  if (score >= SITE_CONFIDENCE_THRESHOLDS.medium)
+    return { bg: "#fff8d9", fg: "#7a5800", label: "Medium" };
+  return { bg: "#fce7ec", fg: "#a3142b", label: "Low" };
 }
 
 function defaultVerdictFromScore(score: number): SiteVerdict {
-  if (score >= SITE_RECOMMEND_THRESHOLDS.recommend) return "recommend";
-  if (score >= SITE_RECOMMEND_THRESHOLDS.worthALook) return "worth_a_look";
-  return "dont_recommend";
+  if (score >= SITE_CONFIDENCE_THRESHOLDS.strong) return "strong";
+  if (score >= SITE_CONFIDENCE_THRESHOLDS.high) return "high";
+  if (score >= SITE_CONFIDENCE_THRESHOLDS.medium) return "medium";
+  return "low";
 }
+
 
 // ---------------------------------------------------------------------------
 // Candidate model — replaces the old hardcoded demo cards. Each candidate is
@@ -121,7 +125,6 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace }: CardPropsExt) {
   const decision = byAddress.get(slot.address);
   const userVerdict: SiteVerdict | undefined =
     decision && decision.verdict !== "undecided" ? decision.verdict : undefined;
-  const isWinner = decision?.is_winner ?? false;
   const [showFormulas, setShowFormulas] = useState(false);
 
   const recomputed = slot.result ? recomputeSiteScores(slot.result.pillars) : null;
@@ -129,20 +132,21 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace }: CardPropsExt) {
   const scoreTier = composite != null ? tierBadge(composite) : null;
   const suggestedTier: SiteVerdict | undefined =
     composite != null ? defaultVerdictFromScore(composite) : undefined;
-  // Pill shown next to score: ONLY user-selected verdict. If the user hasn't
+  // Pill shown next to score: ONLY user-selected confidence. If the user hasn't
   // decided yet, we show a neutral score-tier hint (small, muted) — never
-  // surface "Don't recommend" as if it were a decision the user made.
+  // surface "Low" as if it were a decision the user made.
   const userPill = userVerdict ? VERDICT_STYLE[userVerdict] : null;
 
   return (
     <div
       className="flex flex-col rounded-lg border bg-white p-4"
       style={{
-        borderColor: isWinner ? "#1d6b32" : BORDER,
-        borderWidth: isWinner ? 2 : 1,
+        borderColor: BORDER,
+        borderWidth: 1,
         minHeight: 560,
       }}
     >
+
       {/* Header — fixed height so all 4 cards align */}
       <div className="flex items-start justify-between gap-3" style={{ minHeight: 110 }}>
         <div className="min-w-0 flex-1">
@@ -162,16 +166,6 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace }: CardPropsExt) {
               {slot.schoolName || "New candidate"}
             </h3>
           </div>
-          {isWinner && (
-            <div className="mt-1">
-              <span
-                className="inline-flex items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-bold"
-                style={{ backgroundColor: "#1d6b32", color: "#fff" }}
-              >
-                <Star size={9} className="mr-0.5" fill="#fff" /> Winner
-              </span>
-            </div>
-          )}
           {slot.address && (
             <p
               className="mt-1 text-[11px]"
@@ -468,9 +462,11 @@ function PillarBar({
           style={{
             width: `${Math.max(0, Math.min(100, value))}%`,
             backgroundColor:
-              value >= SITE_RECOMMEND_THRESHOLDS.recommend
+              value >= SITE_CONFIDENCE_THRESHOLDS.strong
                 ? "#1d6b32"
-                : value >= SITE_RECOMMEND_THRESHOLDS.worthALook
+                : value >= SITE_CONFIDENCE_THRESHOLDS.high
+                ? "#2f7a3f"
+                : value >= SITE_CONFIDENCE_THRESHOLDS.medium
                 ? "#925100"
                 : "#a3142b",
           }}
@@ -520,7 +516,7 @@ function EmptySlot() {
 
 
 // ---------------------------------------------------------------------------
-// Winner banner + Decision summary (read live)
+// Confidence summary (read live)
 // ---------------------------------------------------------------------------
 
 interface ScoredCandidate {
@@ -529,56 +525,21 @@ interface ScoredCandidate {
   composite: number | null;
 }
 
-function WinnerBanner({
-  winner,
-  winnerDecision,
-}: {
-  winner?: ScoredCandidate;
-  winnerDecision?: { verdict: SiteVerdict };
-}) {
-  if (!winner || winner.composite == null) {
-    return (
-      <div
-        className="mb-3 rounded-md border px-3 py-2 text-[12px]"
-        style={{ backgroundColor: "#fff8d9", borderColor: "#925100", color: "#7a5800" }}
-      >
-        <strong>No winner selected.</strong> Mark one analyzed candidate as ★ Winner to enable the
-        decision pack export.
-      </div>
-    );
-  }
-  const v = winnerDecision?.verdict ?? "undecided";
-  const verdictLabel = VERDICT_STYLE[v].label;
-  return (
-    <div
-      className="mb-3 flex items-center gap-2 rounded-md border px-3 py-2 text-[12px]"
-      style={{ backgroundColor: "#e3f3e7", borderColor: "#1d6b32", color: "#155724" }}
-    >
-      <Star size={14} fill="#1d6b32" />
-      <div>
-        <strong>★ Winner:</strong> {winner.candidate.schoolName} — Site Analysis Score (SAS){" "}
-        <strong className="tabular-nums">{winner.composite}</strong> · Decision:{" "}
-        <strong>{verdictLabel}</strong>
-      </div>
-    </div>
-  );
-}
-
 function DecisionSummary({
   scored,
   byAddress,
 }: {
   scored: ScoredCandidate[];
-  byAddress: Map<string, { verdict: SiteVerdict; is_winner: boolean; notes: string }>;
+  byAddress: Map<string, { verdict: SiteVerdict; notes: string }>;
 }) {
   return (
     <section className="mb-6 rounded-lg border bg-white p-4" style={{ borderColor: BORDER }}>
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-[13px] font-bold" style={{ color: NAVY }}>
-          Decision summary
+          Confidence summary
         </h3>
         <span className="text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
-          Goes into the decision pack export
+          Goes into the site report export
         </span>
       </div>
       <div className="overflow-x-auto">
@@ -587,8 +548,7 @@ function DecisionSummary({
             <tr style={{ color: MUTED }}>
               <th className="py-1 text-left font-semibold">Site</th>
               <th className="py-1 text-right font-semibold">Score</th>
-              <th className="py-1 text-left font-semibold">Decision</th>
-              <th className="py-1 text-left font-semibold">Winner</th>
+              <th className="py-1 text-left font-semibold">Confidence</th>
               <th className="py-1 text-left font-semibold">Note</th>
             </tr>
           </thead>
@@ -616,13 +576,6 @@ function DecisionSummary({
                       {vs.label}
                     </span>
                   </td>
-                  <td className="py-1.5 pr-2">
-                    {d?.is_winner ? (
-                      <Star size={12} fill="#1d6b32" color="#1d6b32" />
-                    ) : (
-                      <span style={{ color: MUTED }}>—</span>
-                    )}
-                  </td>
                   <td
                     className="py-1.5 pr-2"
                     style={{ color: d?.notes ? NAVY : MUTED }}
@@ -638,6 +591,7 @@ function DecisionSummary({
     </section>
   );
 }
+
 
 // ---------------------------------------------------------------------------
 // Page
@@ -890,12 +844,8 @@ export default function SiteAnalysis() {
 
 
 
-  const winner = useMemo(
-    () => scored.find((s) => byAddress.get(s.candidate.address)?.is_winner),
-    [scored, byAddress],
-  );
-  const winnerDecision = winner ? byAddress.get(winner.candidate.address) : undefined;
-  const canExport = !!(winner && winner.composite != null);
+  const canExport = scored.some((s) => s.composite != null);
+
 
   const emptySlots = Math.max(0, 4 - slots.length);
 
@@ -1084,18 +1034,18 @@ export default function SiteAnalysis() {
               disabled={!canExport || exporting}
               title={
                 canExport
-                  ? "Download a branded multi-section PDF with all 10 SOW v2.2 sections and a 4-site side-by-side"
-                  : "Mark a winner on any card (★ Mark winner) to enable the decision pack"
+                  ? "Download a branded multi-section PDF with all 10 SOW v2.2 sections and a side-by-side comparison"
+                  : "Score at least one candidate to enable the site report export"
               }
               className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
               style={{ borderColor: BLUE, color: BLUE, backgroundColor: "#fff" }}
             >
               {exporting ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-              {exporting ? "Generating PDF…" : "Export decision pack (PDF)"}
+              {exporting ? "Generating PDF…" : "Export Site Report (PDF)"}
             </button>
             {!canExport && (
               <p className="text-[10px]" style={{ color: MUTED }}>
-                Mark a winner on any card (★) to enable export.
+                Score at least one candidate to enable export.
               </p>
             )}
           </div>
@@ -1109,29 +1059,35 @@ export default function SiteAnalysis() {
           style={{ backgroundColor: SOFT }}
         >
           <span className="whitespace-nowrap font-semibold" style={{ color: NAVY }}>
-            Score tiers:
+            Confidence bands:
           </span>
           <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
             <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: "#1d6b32" }} />
-            <span style={{ color: NAVY }}>≥{SITE_RECOMMEND_THRESHOLDS.recommend} Recommend</span>
+            <span style={{ color: NAVY }}>≥{SITE_CONFIDENCE_THRESHOLDS.strong} Strong</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+            <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: "#2f7a3f" }} />
+            <span style={{ color: NAVY }}>
+              {SITE_CONFIDENCE_THRESHOLDS.high}–{SITE_CONFIDENCE_THRESHOLDS.strong - 1} High
+            </span>
           </span>
           <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
             <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: "#925100" }} />
             <span style={{ color: NAVY }}>
-              {SITE_RECOMMEND_THRESHOLDS.worthALook}–{SITE_RECOMMEND_THRESHOLDS.recommend - 1} Worth a look
+              {SITE_CONFIDENCE_THRESHOLDS.medium}–{SITE_CONFIDENCE_THRESHOLDS.high - 1} Medium
             </span>
           </span>
           <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
             <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: "#a3142b" }} />
-            <span style={{ color: NAVY }}>&lt;{SITE_RECOMMEND_THRESHOLDS.worthALook} Don't recommend</span>
+            <span style={{ color: NAVY }}>&lt;{SITE_CONFIDENCE_THRESHOLDS.medium} Low</span>
           </span>
           <span className="text-[10px]" style={{ color: MUTED }}>
-            Tiers are suggestions. Your <strong>Decision</strong> on each card is what ships in the export.
+            Bands are score-based suggestions. Your <strong>Confidence</strong> selection on each card is what ships in the export. Final decisions stay with the user.
           </span>
         </div>
       </section>
 
-      <WinnerBanner winner={winner} winnerDecision={winnerDecision} />
+
 
       <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {slots.map((s) => (

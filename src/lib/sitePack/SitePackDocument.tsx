@@ -4,7 +4,7 @@
 // Layout per candidate (A4 portrait, with auto page-break):
 //   1. Executive Summary, 2. School Profile, 3. Affluence (+ isochrone map),
 //   4. Family Density, 5. Ecosystem, 6. Accessibility, 7. Strengths, 8. Risks,
-//   9. Opportunities, 10. Recommendations.
+//   9. Opportunities, 10. Summary & Next Steps.
 // Final page: side-by-side comparison of up to 4 candidates.
 
 import React from "react";
@@ -124,17 +124,6 @@ const s = StyleSheet.create({
   scoreLbl: { fontSize: 7, color: C.muted, marginTop: 6, textAlign: "center" },
   execRight: { flex: 1, justifyContent: "flex-start" },
   tierLine: { fontSize: 13, fontWeight: 700, marginBottom: 4 },
-  winnerBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: C.green,
-    color: C.white,
-    fontSize: 9,
-    fontWeight: 700,
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: 3,
-    marginBottom: 6,
-  },
   verdict: { fontSize: 10, lineHeight: 1.4 },
   // Tables (cover + comparison)
   tHead: {
@@ -226,7 +215,7 @@ const CoverPage: React.FC<{ candidates: SitePackCandidate[]; today: string; head
   today,
   headerText,
 }) => {
-  const colWidths = ["44%", "11%", "20%", "17%", "8%"];
+  const colWidths = ["48%", "12%", "20%", "20%"];
   return (
     <Page size="A4" style={s.page}>
       <Chrome headerText={headerText} />
@@ -240,7 +229,7 @@ const CoverPage: React.FC<{ candidates: SitePackCandidate[]; today: string; head
 
       <View style={{ marginTop: 18 }}>
         <View style={s.tHead}>
-          {["Candidate", "SAS", "Tier", "Decision", "Winner"].map((h, i) => (
+          {["Candidate", "SAS", "Confidence band", "User confidence"].map((h, i) => (
             <Text key={h} style={[s.tHeadCell, { width: colWidths[i], textAlign: i >= 1 ? "center" : "left" }]}>
               {h}
             </Text>
@@ -266,14 +255,6 @@ const CoverPage: React.FC<{ candidates: SitePackCandidate[]; today: string; head
             </Text>
             <Text style={[s.tCell, { width: colWidths[3], textAlign: "center" }]}>
               {VERDICT_LABEL[c.decision?.verdict ?? "undecided"]}
-            </Text>
-            <Text
-              style={[
-                s.tCell,
-                { width: colWidths[4], textAlign: "center", color: C.green, fontWeight: 700 },
-              ]}
-            >
-              {c.decision?.is_winner ? "★" : ""}
             </Text>
           </View>
         ))}
@@ -303,8 +284,7 @@ const CandidateDetail: React.FC<{ c: SitePackCandidate; today: string }> = ({ c,
           <Text style={s.scoreLbl}>SAS (Site Analysis Score)</Text>
         </View>
         <View style={s.execRight}>
-          <Text style={[s.tierLine, { color: tierColor(c.tierLabel) }]}>{`Tier: ${c.tierLabel}`}</Text>
-          {c.decision?.is_winner && <Text style={s.winnerBadge}>★ WINNER</Text>}
+          <Text style={[s.tierLine, { color: tierColor(c.tierLabel) }]}>{`Confidence: ${c.tierLabel}`}</Text>
           <Text style={s.verdict}>
             {verdictSentence({ schoolName: c.schoolName, composite: c.composite, tierLabel: c.tierLabel })}
           </Text>
@@ -387,14 +367,13 @@ const CandidateDetail: React.FC<{ c: SitePackCandidate; today: string }> = ({ c,
       <SectionTitle n="9" label="Opportunities" />
       <BulletList items={opportunitiesBullets(c.pillars)} />
 
-      {/* 10. Recommendations */}
-      <SectionTitle n="10" label="Recommendations" />
+      {/* 10. Summary & Next Steps */}
+      <SectionTitle n="10" label="Summary & Next Steps" />
       <BulletList
         items={recommendationsBullets({
           tierLabel: c.tierLabel,
           verdict: c.decision?.verdict,
           notes: c.decision?.notes,
-          isWinner: c.decision?.is_winner,
         })}
       />
     </Page>
@@ -410,7 +389,7 @@ const ComparisonPage: React.FC<{ candidates: SitePackCandidate[]; today: string 
     { label: "Address", values: cols.map((c) => c.address.split(",")[0] ?? c.address) },
     { label: "SAS Composite", values: cols.map((c) => String(c.composite)), boldPerCol: cols.map(() => true) },
     {
-      label: "Tier",
+      label: "Confidence band",
       values: cols.map((c) => c.tierLabel),
       colorPerCol: cols.map((c) => tierColor(c.tierLabel)),
       boldPerCol: cols.map(() => true),
@@ -420,13 +399,7 @@ const ComparisonPage: React.FC<{ candidates: SitePackCandidate[]; today: string 
     { label: "Family Density (20%)", values: cols.map((c) => String(c.pillars.familyDensity)) },
     { label: "Ecosystem (15%)", values: cols.map((c) => String(c.pillars.ecosystem)) },
     { label: "Accessibility (15%)", values: cols.map((c) => String(c.pillars.accessibility)) },
-    { label: "Decision", values: cols.map((c) => VERDICT_LABEL[c.decision?.verdict ?? "undecided"]) },
-    {
-      label: "Winner",
-      values: cols.map((c) => (c.decision?.is_winner ? "★" : "—")),
-      colorPerCol: cols.map((c) => (c.decision?.is_winner ? C.green : null)),
-      boldPerCol: cols.map((c) => !!c.decision?.is_winner),
-    },
+    { label: "User confidence", values: cols.map((c) => VERDICT_LABEL[c.decision?.verdict ?? "undecided"]) },
   ];
   return (
     <Page size="A4" style={s.page}>
@@ -444,7 +417,6 @@ const ComparisonPage: React.FC<{ candidates: SitePackCandidate[]; today: string 
           {cols.map((c, i) => (
             <Text key={i} style={[s.tHeadCell, { width: colW, textAlign: "center" }]}>
               {c.schoolName}
-              {c.decision?.is_winner ? " ★" : ""}
             </Text>
           ))}
         </View>

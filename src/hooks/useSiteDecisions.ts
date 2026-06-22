@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-export type SiteVerdict = "recommend" | "worth_a_look" | "dont_recommend" | "undecided";
+export type SiteVerdict = "strong" | "high" | "medium" | "low" | "undecided";
 
 export interface SiteDecisionRow {
   id: string;

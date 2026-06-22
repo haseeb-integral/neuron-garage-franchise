@@ -261,6 +261,7 @@ export default function MVSQAQueue() {
       return;
     }
     toast.success("Marked resolved");
+    invalidateAllMvs(queryClient);
     load();
   };
 

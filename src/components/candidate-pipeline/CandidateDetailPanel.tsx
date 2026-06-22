@@ -1,4 +1,4 @@
-import { Candidate, QualificationScores, ActivityEntry } from "@/data/pipelineData";
+import { Candidate, QualificationScores } from "@/data/pipelineData";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
@@ -38,16 +38,7 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
     onUpdate({ ...candidate, qualificationScores: scores });
   };
 
-  const handleAddNote = (content: string) => {
-    const next: ActivityEntry = {
-      id: Math.max(0, ...candidate.activity.map((a) => a.id)) + 1,
-      type: "note",
-      author: "You",
-      timestamp: new Date().toISOString().slice(0, 16).replace("T", " "),
-      content,
-    };
-    onUpdate({ ...candidate, activity: [next, ...candidate.activity] });
-  };
+  // Note: NotesActivityTab now reads/writes candidate_activities directly.
 
 
 
@@ -130,7 +121,7 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
             </TabsContent>
           )}
           <TabsContent value="notes">
-            <NotesActivityTab candidate={candidate} onAddNote={handleAddNote} />
+            <NotesActivityTab candidate={candidate} />
           </TabsContent>
           <TabsContent value="stage-history">
             <StageHistoryTab candidate={candidate} />

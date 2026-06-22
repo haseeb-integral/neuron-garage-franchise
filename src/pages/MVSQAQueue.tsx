@@ -6,8 +6,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useIsManager } from "@/hooks/dbHealth/useIsManager";
 import { supabase } from "@/integrations/supabase/client";
+import { invalidateAllMvs } from "@/lib/mvs/useLiveMvs";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -65,6 +67,7 @@ async function signedUrlFor(path: string | null): Promise<string | null> {
 
 export default function MVSQAQueue() {
   const { loading: roleLoading, isManager } = useIsManager();
+  const queryClient = useQueryClient();
   const [rows, setRows] = useState<QueueRow[] | null>(null);
   const [showResolved, setShowResolved] = useState(false);
   const [cityFilter, setCityFilter] = useState<string>("__all__");
@@ -242,6 +245,7 @@ export default function MVSQAQueue() {
       const { [row.id]: _, ...rest } = p;
       return rest;
     });
+    invalidateAllMvs(queryClient);
     load();
   };
 
@@ -257,6 +261,7 @@ export default function MVSQAQueue() {
       return;
     }
     toast.success("Marked resolved");
+    invalidateAllMvs(queryClient);
     load();
   };
 

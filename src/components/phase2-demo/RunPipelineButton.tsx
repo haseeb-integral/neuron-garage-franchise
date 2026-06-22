@@ -11,7 +11,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, Play, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { invalidateAllMvs } from "@/lib/mvs/useLiveMvs";
 
 type RunStatus = "queued" | "running" | "done" | "failed";
 
@@ -40,6 +42,7 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
   const [invoking, setInvoking] = useState(false);
   const [lastTerminalId, setLastTerminalId] = useState<string | null>(null);
   const initialSeededRef = useRef(false);
+  const queryClient = useQueryClient();
 
   const fetchLatest = useCallback(async () => {
     const { data } = await supabase
@@ -82,11 +85,12 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
     setLastTerminalId(latest.id);
     if (latest.status === "done") {
       toast.success(`Pipeline complete · ${latest.firecrawl_calls} Firecrawl calls`);
+      invalidateAllMvs(queryClient);
       onComplete?.();
     } else {
       toast.error(`Pipeline failed: ${latest.error ?? "unknown error"}`);
     }
-  }, [latest, lastTerminalId, onComplete]);
+  }, [latest, lastTerminalId, onComplete, queryClient]);
 
   const handleRun = async () => {
     setInvoking(true);
@@ -106,6 +110,7 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
         );
         // Pre-mark this run id so the polling effect doesn't fire a second toast.
         if (data.run_id) setLastTerminalId(data.run_id);
+        invalidateAllMvs(queryClient);
         onComplete?.();
       }
       await fetchLatest();

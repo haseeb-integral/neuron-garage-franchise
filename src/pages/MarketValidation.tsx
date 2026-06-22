@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { AlertCircle, ChevronDown, ChevronUp, Download, FileText, Loader2, MapPin, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 import { PageHeader } from "@/components/PageHeader";
@@ -12,7 +13,7 @@ import { LowConfidenceBadge } from "@/components/phase2-demo/LowConfidenceBadge"
 import { SampleDataBadge } from "@/components/phase2-demo/SampleDataBadge";
 import { ShortlistTable, type LiveOverlay } from "@/components/phase2-demo/ShortlistTable";
 import { Slider } from "@/components/ui/slider";
-import { useLiveMvs } from "@/lib/mvs/useLiveMvs";
+import { useLiveMvs, invalidateAllMvs, MVS_QUERY_KEY } from "@/lib/mvs/useLiveMvs";
 import {
   sanAntonioMarketValidationDemo,
   MARKET_BALANCE_ACTIVE_BAND,
@@ -69,6 +70,78 @@ function RefreshAllButton() {
       {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
       Re-run pipeline (all live cities)
     </button>
+  );
+}
+
+/**
+ * Small status strip — shows the wall-clock time when this page's MVS scores
+ * were last computed from the database, plus a "Refresh scores" button that
+ * re-reads from the database without re-running the pipeline. Cache lives
+ * inside React Query (see useLiveMvs), so on return visits scores show
+ * instantly from the last visit rather than re-fetching all 63 rows.
+ */
+function ScoresCacheIndicator({
+  bundles,
+}: {
+  bundles: { cachedAt: number | null; loading: boolean }[];
+}) {
+  const queryClient = useQueryClient();
+  const [, setTick] = useState(0);
+  // Re-render every 30s so the "as of" timestamp stays fresh.
+  useEffect(() => {
+    const t = setInterval(() => setTick((n) => n + 1), 30_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const newestCachedAt = bundles.reduce<number | null>((acc, b) => {
+    if (!b.cachedAt) return acc;
+    if (acc == null || b.cachedAt > acc) return b.cachedAt;
+    return acc;
+  }, null);
+  const anyLoading = bundles.some((b) => b.loading);
+
+  const isFetching = queryClient.isFetching({ queryKey: [MVS_QUERY_KEY] }) > 0;
+
+  const label = (() => {
+    if (anyLoading && !newestCachedAt) return "Computing scores…";
+    if (!newestCachedAt) return "No cached scores yet";
+    const ageMs = Date.now() - newestCachedAt;
+    if (ageMs < 60_000) return "Scores as of just now";
+    const mins = Math.round(ageMs / 60_000);
+    if (mins < 60) return `Scores as of ${mins} min ago`;
+    const hrs = Math.round(mins / 60);
+    return `Scores as of ${hrs}h ago`;
+  })();
+
+  return (
+    <div
+      className="mb-3 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-[11px]"
+      style={{ borderColor: BORDER, backgroundColor: SOFT, color: MUTED }}
+    >
+      <span>
+        {label}
+        {newestCachedAt && (
+          <span className="ml-1 text-[10px]">
+            ({new Date(newestCachedAt).toLocaleTimeString()})
+          </span>
+        )}
+      </span>
+      <span className="text-[10px]">
+        · Same math, just remembered between visits. Auto-refreshes after pipeline runs, overrides,
+        and QA resolutions.
+      </span>
+      <button
+        type="button"
+        onClick={() => invalidateAllMvs(queryClient)}
+        disabled={isFetching}
+        className="ml-auto inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] font-semibold disabled:opacity-60"
+        style={{ borderColor: BLUE, color: BLUE, backgroundColor: "#fff" }}
+        title="Re-read scores from the database. Does not re-run the pipeline."
+      >
+        {isFetching ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+        Refresh scores
+      </button>
+    </div>
   );
 }
 
@@ -485,9 +558,12 @@ export default function MarketValidation() {
         </div>
       </section>
 
-
-
-
+      <ScoresCacheIndicator
+        bundles={[
+          austinLive, newYorkLive, houstonLive, chicagoLive, bostonLive,
+          sanAntonioLive, philadelphiaLive, losAngelesLive, indianapolisLive,
+        ]}
+      />
 
       {/* v1.1 — Decision-capture shortlist table (replaces the chip rail) */}
       {bostonCalibration && !bostonCalibration.pass && (

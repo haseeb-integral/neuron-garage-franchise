@@ -1,38 +1,64 @@
-## Problem
+## Plan — Sync Candidate Pipeline with the Google Form
 
-The Re-run still fails because the edge function is still failing to boot. Logs show a **new** duplicate line — same pattern as before, different variable:
+After reading all 7 sections of the form text you pasted and comparing to the live code, **the gap is much smaller than feared**. The Process tab already covers Steps 2–7 (trial close, post-call, homework, credit/background, FDD date, reference checks, signing). The only real gap is **6 missing Step-1 fields in the Lead Sheet tab**.
 
-```
-worker boot error: Uncaught SyntaxError: Identifier 'parking' has already been declared
-    at compute-sas/index.ts:379:11
-```
+## What changes (plain English)
 
-Lines 390 and 392 of `supabase/functions/compute-sas/index.ts` both say:
+The Lead Sheet tab grows from 8 fields to 14, matching the Google Form's Step 1 exactly. Every other tab is untouched. No scoring math, no other features, no other apps touched.
 
-```ts
-const parking = await parkingSignal(geo.lat, geo.lng);
-const parking = await parkingSignal(geo.lat, geo.lng);
-```
+Field-by-field, here is what gets added to Lead Sheet (already there is in brackets):
 
-That is the only thing stopping the engine from booting.
+| # | Field | Type | Already there? |
+|---|---|---|---|
+| 1 | First Name | text | ✅ (on `candidates` table) |
+| 2 | Last Name | text | ✅ (on `candidates`) |
+| 3 | Email | text | ✅ (on `candidates`) |
+| 4 | Phone | text | ✅ (on `candidates`) |
+| 5 | **Role** | radio: Operator / Investor / Other (+ other text) | ❌ new |
+| 6 | **Married?** | radio: Yes / No | ❌ new |
+| 7 | Will you have a partner? | switch | ✅ |
+| 8 | **City located in** | text | ❌ new (today `location_preferences` mixes city + market) |
+| 9 | Desired market | text | ✅ as `location_preferences` (will relabel) |
+| 10 | Timeline | text | ✅ |
+| 11 | **Discovery source** | textarea | ❌ new |
+| 12 | **Investment ability** ($1K + $15K + 1 summer sweat equity) | switch + note | ❌ new |
+| 13 | Motivation / why interested | textarea | ✅ |
+| 14 | **Other summer income opportunities** | textarea | ❌ new |
+| — | Liquid capital, Net worth, Additional notes | financial fields | ✅ (keep, used later in process) |
 
-## Fix in two parts
+Bonus tiny fix: if City is in a registration state, show a small red banner under the City field using the existing `stateRequiresRegistration(state)` helper. **Read-only check, no logic change.**
 
-### Part 1 — Remove the duplicate (one-line change)
+## Phases and turns
 
-Delete one of the two `const parking = ...` lines so only one remains.
+| Phase | What | Turns |
+|---|---|---|
+| **Phase 1 — DB migration** | Add 6 nullable columns to `candidate_profiles`: `role`, `role_other`, `married`, `city`, `discovery_source`, `can_invest_min`, `other_opportunities`. Plus 1 boolean `sweat_equity_ok`. All nullable, no defaults that break old rows. | **1 turn** (you approve the migration) |
+| **Phase 2 — Lead Sheet UI** | Edit only `LeadSheetTab.tsx`: add the 6 new field controls, relabel `location_preferences` → "Desired market", add registration-state banner under City. | **1 turn** |
+| **Phase 3 — Manual smoke test (you)** | You open a candidate, fill the new fields, save, refresh, confirm fields persisted. Confirm Process tab, Documents tab, Qualification stars, Kanban all still work. | **0 turns (no code)** |
+| **Phase 4 — Cleanup (optional, only if you ask)** | Verify activity log writes when Lead Sheet saves; resolve HomeworkTab vs ProcessTab.homework overlap. | **1–2 turns, only if requested** |
 
-### Part 2 — Stop this from happening again (small one-time guard)
+**Total: 2 turns guaranteed. You can stop after Phase 3.**
 
-This is the **second** time in a row we hit a stray duplicate declaration in the same file. The cause is always the same — an edit landed twice in `compute-sas/index.ts`. To kill the class of bug, add a tiny safeguard:
+## Safety rules (commitments)
 
-- Run a one-shot scan over the file right now that grep-checks for any line that appears **twice in a row identically** at the top level. Fix all that are found in the same pass.
-- That's it. No new tooling, no CI, no config. Just a careful sweep so no third duplicate is hiding somewhere later in the file.
+1. **Only 2 files opened**: the migration SQL + `LeadSheetTab.tsx`. Nothing else.
+2. **Additive migration only** — 7 new nullable columns, no renames, no deletes, no type changes.
+3. **No scoring/composite/ranking changes** — `candidateScoring.ts`, `recomputedPillars.ts`, `compute-sas` untouched.
+4. **No other features touched** — Market Validation, Site Analysis, Teacher Prospects, Email Outreach, Smartlead, Onboarding, City Scoring all untouched.
+5. **No edits to auto-gen files** — `src/integrations/supabase/client.ts`, `types.ts`, `.env` left alone.
+6. **No data migration on existing rows** — old candidate_profiles rows still load fine because new columns are nullable.
+7. **`location_preferences` is kept as the storage column for "Desired market"** — only the UI label changes, so no data move and no risk to existing data.
 
-## Verify
+## What I'm explicitly NOT doing
 
-1. `compute-sas` edge function boots cleanly (no "already declared" error in logs).
-2. Click **Re-run** on a saved card — red error banner disappears, score recomputes.
-3. After Re-run, the ⓘ source icons and "Data Sources" chip strip appear (the trust UI from the earlier change).
+- ❌ Not touching the Process tab (Steps 2–7 already match the form).
+- ❌ Not touching the Qualification tab (5 pillars stay as-is).
+- ❌ Not adding Step-1 fields to ProcessTab.data — keeping the rule "Step 1 = Lead Sheet, Steps 2–7 = Process tab".
+- ❌ Not renaming or removing any existing column.
+- ❌ Not changing how `candidates.first_name/last_name/email/phone` are stored.
 
-No score math change. No UI change. No new files. Just removing duplicate lines and one defensive sweep.
+## After you approve
+
+I'll call the migration tool first (you'll get a separate approval popup for the SQL). Once the migration runs, I'll edit `LeadSheetTab.tsx`. Then you smoke-test.
+
+If you want to wait for the PDF you said you'd send next, just reply "wait for PDF" and I'll hold. Otherwise reply **"approved"** and I'll start with the migration.

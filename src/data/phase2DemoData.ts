@@ -297,15 +297,9 @@ export interface SiteAnalysisDemoSite {
   };
 }
 
-export const SITE_RECOMMEND_THRESHOLDS = {
-  recommend: 75,
-  worthALook: 60,
-} as const;
-
-// Confidence-band thresholds used by the Site Analysis UI (June 19 framing
-// shift: scoring + confidence, not a final decision engine). Old constant
-// above is kept untouched so the Methodology page and any docs continue to
-// render their existing tables until those surfaces are revisited.
+// Confidence-band thresholds used across Site Analysis (June 19 framing
+// shift: scoring + confidence, not a final decision engine). Single source
+// of truth for the SAS Methodology page, the PDF, and the Site Analysis UI.
 export const SITE_CONFIDENCE_THRESHOLDS = {
   strong: 75,
   high: 60,

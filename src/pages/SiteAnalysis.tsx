@@ -1189,7 +1189,24 @@ export default function SiteAnalysis() {
             </div>
           </div>
           <div className="flex flex-col items-end gap-1 ml-auto">
-            <button
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setDrawerOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold"
+                style={{ borderColor: BORDER, color: NAVY, backgroundColor: "#fff" }}
+                title="Open Saved Sites drawer"
+              >
+                <Bookmark size={12} style={{ color: BLUE }} />
+                Saved Sites
+                <span
+                  className="rounded-full px-1.5 py-0.5 text-[10px] font-bold"
+                  style={{ backgroundColor: "#eef2ff", color: BLUE }}
+                >
+                  {savedSites.rows.length}
+                </span>
+              </button>
+              <button
               type="button"
               onClick={handleExport}
               disabled={!canExport || exporting}

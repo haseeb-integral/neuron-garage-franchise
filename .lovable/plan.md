@@ -1,81 +1,55 @@
+## Goal
 
-# Site Analysis (1B) — Wording & Framing Cleanup
+Finish the wording sweep so Site Analysis never says "Recommend / Worth a Look / Skip / Don't-recommend" anywhere — UI, demo data, or PDF code. Use the 4-tier **confidence** language: **Strong, High, Medium, Low** (with **Undecided** as a neutral default).
 
-Sam's rule from June 19: Site Analysis is **analysis + scoring**, not a final decision engine. This plan removes the "decision engine" feel and softens the language. Scoring math, weights, and PDF export all stay. No DB schema changes. No new features. Sidebar Methodology / Docs are **not** updated in this turn.
+## Confidence bands (SAS composite 0–100)
+
+```
+Strong   ≥ 75
+High     60 – 74
+Medium   45 – 59
+Low      < 45
+```
+
+These match the values already in `SITE_CONFIDENCE_THRESHOLDS` in `src/data/phase2DemoData.ts` (added earlier). The old constant `SITE_RECOMMEND_THRESHOLDS` (recommend 75 / worthALook 60) only had two cut-offs, so the new scale adds one more band (Medium at 45) and renames the old "Skip" to "Low".
 
 ## What changes
 
-### 1. New verdict scale (low / medium / high / strong)
-Replace the current 3-tier verdict with a 4-tier confidence scale:
+### 1) `src/data/phase2DemoData.ts`
+- Delete the old `SITE_RECOMMEND_THRESHOLDS` block. Keep `SITE_CONFIDENCE_THRESHOLDS` as the single source.
+- In the LeafSpring demo entry, change the line `"...produces the Don't-recommend verdict."` to `"...produces the Low confidence band."`.
 
-| Old label        | New label        | Color stays |
-| ---------------- | ---------------- | ----------- |
-| Recommend        | **Strong**       | Green       |
-| Worth a look     | **High**         | Amber-green |
-| (new mid band)   | **Medium**       | Amber       |
-| Don't recommend  | **Low**          | Red-muted   |
+### 2) `src/pages/SASMethodology.tsx`
+- Swap the import from `SITE_RECOMMEND_THRESHOLDS` to `SITE_CONFIDENCE_THRESHOLDS`.
+- Replace the **markdown** table (Section 2 export) with a 4-row table:
+  - `≥ 75` → **Strong confidence** — well above the calibration floor
+  - `60 – 74` → **High confidence** — promising; verify open items
+  - `45 – 59` → **Medium confidence** — mixed signals; review pillars
+  - `< 45` → **Low confidence** — significant gaps vs. the comparison set
+- Replace the rendered HTML table the same way (header column "Recommendation" → **"Confidence Band"**).
+- In Section 6 calibration prose, change "produce a Recommend on Trinity and a Skip on LeafSpring" → "produce a **Strong confidence** band on Trinity and a **Low confidence** band on LeafSpring".
+- In `SAS_CALIBRATION` and the inline calibration table, change `"86 · Recommend"` → `"86 · Strong"` and `"41 · Skip"` → `"41 · Low"`.
 
-- Add one extra band so we are not pushing a binary "yes / no" feel.
-- Threshold tuning is left to Sam + Kaylie (scoring weights work). For now we split the current "Don't recommend" band into Low + Medium at the midpoint between `worthALook` and 0.
-- Constant rename: `SITE_RECOMMEND_THRESHOLDS` → `SITE_CONFIDENCE_THRESHOLDS` with keys `strong`, `high`, `medium`.
+### 3) `src/lib/sitePack/copy.ts`
+- The body of `recommendationsBullets` already uses Strong/High/Medium/Low correctly. Only rename for consistency:
+  - `recommendationsBullets` → `summaryBullets`
+  - `RecommendationsArgs` → `SummaryArgs`
+- Section 10 in the PDF is already titled **"Summary & Next Steps"**, so no PDF heading change is needed.
 
-### 2. Drop "Winner" everywhere in the UI
-- Remove the **★ Mark winner** button in `SiteAnalysisCard` and `SiteDecisionControls`.
-- Remove the **Winner banner** at the top of the page.
-- Remove the **Winner** column from the compare table.
-- `useSiteDecisions` keeps the `is_winner` field in the type for now (DB column stays untouched, pre-release so safe to leave) but no UI writes to it. We can drop the column in a later cleanup turn if Brett asks.
+### 4) `src/lib/sitePack/SitePackDocument.tsx`
+- Update the import + call site: `recommendationsBullets` → `summaryBullets`.
 
-### 3. Rename "Export decision pack" → "Export Site Report (PDF)"
-- Button label, tooltip, and disabled-state copy all change.
-- Enablement rule changes: PDF is enabled whenever **at least one candidate has a composite score**, not when a winner is marked.
-- PDF content (`SitePackDocument.tsx`, `copy.ts`) updates:
-  - Remove ★ WINNER badge, Winner column, Winner row in compare table.
-  - Section 10 renamed from **Recommendations** → **Summary & Next Steps**.
-  - Replace "proceed to LOI diligence" / "Do not pursue" lines with neutral confidence phrasing, e.g.:
-    - Strong → "Scores in the Strong confidence band. Worth advancing to deeper diligence."
-    - High → "Scores in the High band. Promising; verify open items before advancing."
-    - Medium → "Scores in the Medium band. Mixed signals; review pillar detail."
-    - Low → "Scores in the Low band. Significant gaps versus the comparison set."
-  - Final wording is the user's call before merge.
+## What is NOT changed
 
-### 4. Page legend + tooltips
-- Footer legend on `SiteAnalysis.tsx` updates to the four new bands.
-- Card score tooltip and pill labels follow the new scale.
-- Any "recommend / do not recommend" prose in card help text is rewritten to confidence wording.
-
-## What does NOT change
-
-- Pillar math, composite math, weights (Sam + Kaylie own that).
-- Pillar names, pillar scores, pillar charts.
-- DB tables / columns / RLS.
-- Sidebar **Methodology** and **Docs** pages — explicitly deferred per Haseeb.
-- Watch List feature — deferred to a separate turn.
-- Candidate Pipeline, Market Validation, Manus rename — separate turns.
-
-## Files touched
-
-```text
-src/pages/SiteAnalysis.tsx              labels, legend, banner removal, button rename
-src/components/phase2-demo/SiteDecisionControls.tsx   drop winner button, relabel verdicts
-src/data/phase2DemoData.ts              rename thresholds constant + add medium band
-src/hooks/useSiteDecisions.ts           verdict union → "strong" | "high" | "medium" | "low" | "undecided"
-src/lib/sitePack/copy.ts                tier labels + sentences rewritten
-src/lib/sitePack/SitePackDocument.tsx   remove winner badge/column/row, rename section 10
-```
+- The `SiteVerdict` type, hook normalization, DB constraint, and Site Analysis page UI — all already on the new 4-tier scale.
+- City Scoring, MVS, candidate pipeline, and email outreach — those use "recommend" in unrelated contexts.
 
 ## Verification
 
-1. Build passes.
-2. Open `/site-analysis` in the live preview:
-   - No "Winner" button, banner, or column.
-   - Pills show Strong / High / Medium / Low.
-   - Footer legend matches.
-3. Click **Export Site Report (PDF)** with one scored candidate → PDF opens, no Winner badge, neutral summary wording.
-4. Confirm console has no errors.
+- TypeScript build passes (no remaining references to `SITE_RECOMMEND_THRESHOLDS` or `recommendationsBullets`).
+- `rg -n "Recommend|Worth a Look|Skip" src/pages/SASMethodology.tsx src/data/phase2DemoData.ts src/lib/sitePack/` returns no Site-Analysis hits.
+- Spot-check `/sas-methodology` and the Site Pack PDF in the preview after build.
 
-## Out of scope (next turns, in this order)
+## Plain-English progress note for Brett (post-build)
 
-1. **Watch List** add-to-list behavior on Site Analysis cards.
-2. **Manus CSI → MVS** rename across UI.
-3. Candidate Pipeline live verification + fixes.
-4. Sidebar Methodology / Docs updates once features are stable.
+> Site Analysis wording cleanup — finished. The SAS Methodology page now shows the 4-tier confidence scale (Strong / High / Medium / Low) instead of "Recommend / Worth a Look / Skip". The PDF report's Section 10 is "Summary & Next Steps" with confidence-band wording. The old "Recommend" threshold constant was removed; the app now reads from a single confidence-threshold source. Demo calibration text updated to match.

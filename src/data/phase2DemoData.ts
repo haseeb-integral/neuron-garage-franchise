@@ -297,15 +297,9 @@ export interface SiteAnalysisDemoSite {
   };
 }
 
-export const SITE_RECOMMEND_THRESHOLDS = {
-  recommend: 75,
-  worthALook: 60,
-} as const;
-
-// Confidence-band thresholds used by the Site Analysis UI (June 19 framing
-// shift: scoring + confidence, not a final decision engine). Old constant
-// above is kept untouched so the Methodology page and any docs continue to
-// render their existing tables until those surfaces are revisited.
+// Confidence-band thresholds used across Site Analysis (June 19 framing
+// shift: scoring + confidence, not a final decision engine). Single source
+// of truth for the SAS Methodology page, the PDF, and the Site Analysis UI.
 export const SITE_CONFIDENCE_THRESHOLDS = {
   strong: 75,
   high: 60,
@@ -436,7 +430,7 @@ export const austinSiteAnalysisDemo: {
       gradeAlignment: "PK–K daycare · grade_alignment_factor = 50 (Other)",
       composite: 41,
       verdict:
-        "Calibration anchor — known negative (closed 2023, averaged 27 campers/wk). Daycare positioning = school_type_factor 30, weak grade alignment, and commute from the established customer base drag both School Profile and the 10-min isochrone signals below threshold. The math, not a hand-set tier, produces the Don't-recommend verdict.",
+        "Calibration anchor — known negative (closed 2023, averaged 27 campers/wk). Daycare positioning = school_type_factor 30, weak grade alignment, and commute from the established customer base drag both School Profile and the 10-min isochrone signals below threshold. The math, not a hand-set tier, produces the Low confidence band.",
       subScores: {
         schoolProfile: {
           // 0.50·30 (Other/daycare) + 0.25·norm(220,150–800)≈11 + 0.25·50 (Other alignment) ≈ 30

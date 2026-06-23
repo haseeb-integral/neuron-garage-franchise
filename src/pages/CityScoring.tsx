@@ -1236,10 +1236,10 @@ const CityScoring = () => {
     "csi_demand_adjusted_market",
   ];
 
-  const KEY_SIGNAL_META: Record<string, { label: string; source: string }> = (() => {
-    const out: Record<string, { label: string; source: string }> = {};
+  const KEY_SIGNAL_META: Record<string, { label: string; source: string; sourceUrl?: string }> = (() => {
+    const out: Record<string, { label: string; source: string; sourceUrl?: string }> = {};
     for (const m of SOW_METRIC_REGISTRY) {
-      out[m.key] = { label: m.label, source: m.source };
+      out[m.key] = { label: m.label, source: m.source, sourceUrl: m.sourceUrl };
     }
     return out;
   })();

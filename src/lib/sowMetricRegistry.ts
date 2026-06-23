@@ -20,6 +20,10 @@ export type SowMetricEntry = {
   status: MetricStatus;
   /** Human-readable data source shown in the UI under each metric row. */
   source: string;
+  /** Optional public URL for the source. When present, the UI may render the
+   *  `source` label as a clickable link. Generic table/page links only — never
+   *  city-specific deep links — so the URL is always safe regardless of city. */
+  sourceUrl?: string;
 };
 
 export const CATEGORY_KEY_MAP: Record<RegistryCategory, CategoryKey> = {
@@ -41,19 +45,23 @@ export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
   { key: "children_5_12_count", category: "demand", label: "Children Ages 5–12",
     description: "Raw count of kids in the camp's target age range. Bigger pool = more potential customers.",
     enabled: true,  weight_within_category: 0.30, status: "live",
-    source: "U.S. Census Bureau API — ACS 5-yr (vars B01001_004/005/028/029)" },
+    source: "U.S. Census Bureau API — ACS 5-yr (vars B01001_004/005/028/029)",
+    sourceUrl: "https://data.census.gov/table/ACSDT5Y2022.B01001" },
   { key: "median_household_income", category: "demand", label: "Median Household Income",
     description: "Typical family earnings. Above ~$90k starts to support discretionary camp spend.",
     enabled: true,  weight_within_category: 0.25, status: "live",
-    source: "U.S. Census Bureau API — ACS 5-yr (B19013_001)" },
+    source: "U.S. Census Bureau API — ACS 5-yr (B19013_001)",
+    sourceUrl: "https://data.census.gov/table/ACSDT5Y2022.B19013" },
   { key: "dual_income_household_pct", category: "demand", label: "% Dual-Income Households",
     description: "Two working parents need summer childcare more urgently than single-earner households.",
     enabled: true,  weight_within_category: 0.20, status: "live",
-    source: "U.S. Census Bureau API — ACS 5-yr (B23007_003/004)" },
+    source: "U.S. Census Bureau API — ACS 5-yr (B23007_003/004)",
+    sourceUrl: "https://data.census.gov/table/ACSDT5Y2022.B23007" },
   { key: "education_bachelors_plus_pct", category: "demand", label: "Parent Education / Bachelor's+",
     description: "Share of adults with a college degree. Educated parents over-index on enrichment spending.",
     enabled: true,  weight_within_category: 0.25, status: "live",
-    source: "U.S. Census Bureau API — ACS 5-yr (B15003_022–025)" },
+    source: "U.S. Census Bureau API — ACS 5-yr (B15003_022–025)",
+    sourceUrl: "https://data.census.gov/table/ACSDT5Y2022.B15003" },
 
   // Pricing Power, Ease of Operations, and Parent Mindset metrics were
   // retired in the May 21, 2026 6→3 category reshape (final purge).
@@ -86,23 +94,28 @@ export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
   { key: "public_elementary_school_count", category: "franchisee_supply", label: "Public Elementary Schools",
     description: "Count of K-5 public schools in the city. Direct proxy for the size of the local elementary-teacher recruiting pool.",
     enabled: true,  weight_within_category: 0.20, status: "live",
-    source: "NCES Common Core of Data — elementary-serving public schools rolled up to city" },
+    source: "NCES Common Core of Data — elementary-serving public schools rolled up to city",
+    sourceUrl: "https://nces.ed.gov/ccd/schoolsearch/" },
   { key: "public_elementary_teacher_count", category: "franchisee_supply", label: "Public Elementary Teachers (NCES FTE)",
     description: "Sum of full-time-equivalent teachers across all elementary-serving public schools in the city. Real NCES values — not estimated.",
     enabled: true,  weight_within_category: 0.25, status: "live",
-    source: "NCES CCD teachers_fte field, aggregated from public_schools table" },
+    source: "NCES CCD teachers_fte field, aggregated from public_schools table",
+    sourceUrl: "https://nces.ed.gov/ccd/schoolsearch/" },
   { key: "private_charter_school_count", category: "franchisee_supply", label: "Private + Charter Elementary Schools",
     description: "Sum of private + charter elementary schools. These teachers are often more entrepreneurial and open to franchise ownership. Row is hidden when both counts are null.",
     enabled: true,  weight_within_category: 0.15, status: "live",
-    source: "Manus AI batch — NCES Private School Universe + NCES CCD charter flag" },
+    source: "Manus AI batch — NCES Private School Universe + NCES CCD charter flag",
+    sourceUrl: "https://nces.ed.gov/surveys/pss/privateschoolsearch/" },
   { key: "public_elementary_enrollment", category: "franchisee_supply", label: "Public Elementary Enrollment",
     description: "Total K-5 students enrolled in public schools city-wide. Cross-checks teacher count and indicates market scale.",
     enabled: true,  weight_within_category: 0.15, status: "live",
-    source: "NCES Common Core of Data — enrollment field, aggregated to city" },
+    source: "NCES Common Core of Data — enrollment field, aggregated to city",
+    sourceUrl: "https://nces.ed.gov/ccd/schoolsearch/" },
   { key: "col_salary_index", category: "franchisee_supply", label: "Teacher Salary × Cost of Living Index",
     description: "Average elementary teacher salary normalized by local cost-of-living index (salary × 100 / COL). Lower value = stronger pull toward summer income and franchise ownership.",
     enabled: true,  weight_within_category: 0.25, status: "live",
-    source: "BLS OEWS May 2025 SOC 25-2021 (Manus batch, 817 cities) × BEA Regional Price Parity" },
+    source: "BLS OEWS May 2025 SOC 25-2021 (Manus batch, 817 cities) × BEA Regional Price Parity",
+    sourceUrl: "https://www.bls.gov/oes/current/oes252021.htm" },
 
 ];
 

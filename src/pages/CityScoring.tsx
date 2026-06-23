@@ -1801,7 +1801,20 @@ const CityScoring = () => {
                   <div key={r.key} className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 py-1.5">
                     <div className="min-w-0">
                       <p className="text-[11.5px] font-medium text-[#07142f] leading-tight truncate" title={r.label}>{r.label}</p>
-                      <p className="text-[10px] text-[#8794ab] leading-tight truncate" title={r.source}>{r.source}</p>
+                      {r.sourceUrl ? (
+                        <a
+                          href={r.sourceUrl}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-[10px] text-[#8794ab] hover:text-[#174be8] hover:underline leading-tight truncate block"
+                          title={`Open source: ${r.source}`}
+                        >
+                          {r.source} ↗
+                        </a>
+                      ) : (
+                        <p className="text-[10px] text-[#8794ab] leading-tight truncate" title={r.source}>{r.source}</p>
+                      )}
                     </div>
                     <span className="text-right text-[11.5px] font-bold text-[#07142f] tabular-nums whitespace-nowrap">{r.value}</span>
                   </div>

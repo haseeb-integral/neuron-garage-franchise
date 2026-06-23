@@ -1328,6 +1328,7 @@ const CityScoring = () => {
       key,
       label: meta?.label ?? key,
       source: meta?.source ?? "",
+      sourceUrl: meta?.sourceUrl,
       value,
       rawValue: isEmpty ? null : String(rawVal),
       benchmark,

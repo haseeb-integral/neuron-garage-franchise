@@ -190,53 +190,82 @@ export function DataSourcesPanel({
       </div>
 
       <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4">
-        {discoverySources.map((s) => (
-          <div
-            key={s.key}
-            className="flex items-center justify-between rounded-md border px-3 py-2"
-            style={{ borderColor: BORDER, backgroundColor: SOFT }}
-          >
-            <span className="text-[11px] font-semibold" style={{ color: NAVY }}>
-              {s.label}
-            </span>
-            <span className="text-[13px] font-black tabular-nums" style={{ color: BLUE }}>
-              {s.count}
-            </span>
-          </div>
-        ))}
-        <div
-          className="flex items-center justify-between rounded-md border px-3 py-2"
-          style={{ borderColor: BORDER, backgroundColor: SOFT }}
-        >
-          <span className="text-[11px] font-semibold" style={{ color: NAVY }}>
-            Sawyer week availability
-          </span>
-          <span className="text-[13px] font-black tabular-nums" style={{ color: BLUE }}>
-            {weekSourceCount}/{weeks.length}
-          </span>
-        </div>
-        <div
-          className="flex items-center justify-between rounded-md border px-3 py-2"
-          style={{ borderColor: BORDER, backgroundColor: SOFT }}
-        >
-          <span className="text-[11px] font-semibold" style={{ color: NAVY }}>
-            US Census ACS (5-yr)
-          </span>
-          <span className="text-[13px] font-black" style={{ color: acsAvailable ? BLUE : MUTED }}>
-            {acsAvailable ? "loaded" : "—"}
-          </span>
-        </div>
-        <div
-          className="flex items-center justify-between rounded-md border px-3 py-2"
-          style={{ borderColor: BORDER, backgroundColor: SOFT }}
-        >
-          <span className="text-[11px] font-semibold" style={{ color: NAVY }}>
-            Operator watchlist
-          </span>
-          <span className="text-[13px] font-black tabular-nums" style={{ color: BLUE }}>
-            {watchlistCount}
-          </span>
-        </div>
+        {discoverySources.map((s) => {
+          const matching = providers.filter((p) => (p.sources ?? []).includes(s.key));
+          return (
+            <SourceCard
+              key={s.key}
+              label={s.label}
+              value={s.count}
+              popoverTitle={`${s.label} — ${s.count} provider${s.count === 1 ? "" : "s"}`}
+              popoverBody={
+                <>
+                  <p className="mb-2 text-[11px]" style={{ color: MUTED }}>
+                    These camps were discovered through {s.label}. Click the link icon to open the provider page.
+                  </p>
+                  <ProviderList items={matching} />
+                </>
+              }
+            />
+          );
+        })}
+
+        {(() => {
+          const withWeekSource = providers.filter((p) =>
+            weeks.some((w) => w.provider_id === p.id && w.source_url),
+          );
+          return (
+            <SourceCard
+              label="Sawyer week availability"
+              value={`${weekSourceCount}/${weeks.length}`}
+              popoverTitle="Sawyer week availability"
+              popoverBody={
+                <>
+                  <p className="mb-2 text-[11px]" style={{ color: MUTED }}>
+                    {weekSourceCount} of {weeks.length} tracked weeks have a Sawyer page we could read. These providers have at least one week with a source URL.
+                  </p>
+                  <ProviderList items={withWeekSource} />
+                </>
+              }
+            />
+          );
+        })()}
+
+        <SourceCard
+          label="US Census ACS (5-yr)"
+          value={acsAvailable ? "loaded" : "—"}
+          valueColor={acsAvailable ? BLUE : MUTED}
+          popoverTitle="US Census ACS (5-year)"
+          popoverBody={
+            <>
+              <p className="mb-2">
+                Status: <span className="font-semibold">{acsAvailable ? "Loaded" : "Not available"}</span>
+              </p>
+              <p className="mb-2 text-[11px]" style={{ color: MUTED }}>
+                American Community Survey 5-year estimates power demographic sub-scores (household income, age distribution, population density).
+              </p>
+              <a
+                href="https://data.census.gov/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-[#174be8] hover:underline"
+              >
+                <ExternalLink size={11} /> Open data.census.gov
+              </a>
+            </>
+          }
+        />
+
+        <SourceCard
+          label="Operator watchlist"
+          value={watchlistCount}
+          popoverTitle={`Operator watchlist — ${watchlistCount} brand${watchlistCount === 1 ? "" : "s"}`}
+          popoverBody={
+            <p className="text-[11px]" style={{ color: MUTED }}>
+              {watchlistCount} national brands tracked in <code className="rounded bg-[#f7faff] px-1 py-px text-[#174be8]">mvs_operator_watchlist</code>. See the "National operators in this market" panel below for which brands matched providers in this city.
+            </p>
+          }
+        />
       </div>
 
       <p className="mt-3 text-[11px]" style={{ color: MUTED }}>

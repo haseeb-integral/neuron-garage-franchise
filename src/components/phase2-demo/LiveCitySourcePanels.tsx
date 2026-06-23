@@ -1,7 +1,8 @@
 // Supporting source/trust panels rendered inside the city blow-up
 // (LiveCityDeepDive). These exist so the main file stays readable while we
 // add per-source provenance, week activity, and operator-match views.
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Info } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { MvsProviderInput, MvsWeekInput } from "@/lib/mvs/computeMvs";
 
 const NAVY = "#07142f";
@@ -11,6 +12,88 @@ const SOFT = "#f7faff";
 const BLUE = "#174be8";
 const CHIP =
   "inline-flex items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-semibold";
+
+// ---------------------------------------------------------------------------
+// Per-card info popover
+// ---------------------------------------------------------------------------
+
+function providerLink(p: MvsProviderInput): string | null {
+  return p.source_listing_url ?? p.website_url ?? p.url ?? null;
+}
+
+function SourceCard({
+  label,
+  value,
+  valueColor,
+  popoverTitle,
+  popoverBody,
+}: {
+  label: string;
+  value: React.ReactNode;
+  valueColor?: string;
+  popoverTitle: string;
+  popoverBody: React.ReactNode;
+}) {
+  return (
+    <div
+      className="flex items-center justify-between rounded-md border px-3 py-2"
+      style={{ borderColor: BORDER, backgroundColor: SOFT }}
+    >
+      <span className="flex items-center gap-1 text-[11px] font-semibold" style={{ color: NAVY }}>
+        {label}
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="inline-flex items-center justify-center rounded-full p-0.5 text-[#526078] hover:bg-white hover:text-[#174be8]"
+              aria-label={`More info about ${label}`}
+            >
+              <Info size={12} />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-80 text-[12px]">
+            <div className="mb-2 text-[13px] font-bold" style={{ color: NAVY }}>
+              {popoverTitle}
+            </div>
+            <div style={{ color: NAVY }}>{popoverBody}</div>
+          </PopoverContent>
+        </Popover>
+      </span>
+      <span className="text-[13px] font-black tabular-nums" style={{ color: valueColor ?? BLUE }}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function ProviderList({ items }: { items: MvsProviderInput[] }) {
+  if (items.length === 0) {
+    return <p className="text-[11px]" style={{ color: MUTED }}>No providers tagged.</p>;
+  }
+  return (
+    <ul className="max-h-56 space-y-1 overflow-y-auto">
+      {items.map((p) => {
+        const href = providerLink(p);
+        return (
+          <li key={p.id} className="flex items-start justify-between gap-2">
+            <span className="truncate">{p.name}</span>
+            {href && (
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 inline-flex items-center text-[#174be8] hover:underline"
+                aria-label={`Open ${p.name}`}
+              >
+                <ExternalLink size={11} />
+              </a>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 
 // Short, human-friendly labels for `mvs_providers.sources[]` codes.
 export const SOURCE_LABELS: Record<string, string> = {

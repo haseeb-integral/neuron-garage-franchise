@@ -1,23 +1,7 @@
-## Goal
-Add a new "Candidate Pipeline Methodology" page so the status summary lives in the app, like the other methodology docs (CSI, MVS, SAS, Demographics).
+Here is the one-paragraph executive summary in simple English for your Google Doc:
 
-## What I will do
+---
 
-1. **Create page** `src/pages/CandidatePipelineMethodology.tsx`
-   - Same layout style as the other methodology pages.
-   - Heading: **Candidate Pipeline — Status: Done**
-   - Plain-English bullet list of every change made since the G-Form audit (Lead Sheet fields, registration warning, real activity log, change-level diffs for Lead Sheet and Process, Notes & Activity split panel, bigger Add Note box with Ctrl+Enter, filter chips, dual timestamps, Homework tab removed, smoke tests passed).
-   - Short intro line explaining what the page is.
+**Site Analysis (1B) — Status: Done**
 
-2. **Register route** in `src/App.tsx`
-   - Lazy import + `registerRoutePrefetch` + `<Route path="/candidate-pipeline-methodology" />`.
-
-3. **Add sidebar link** in `src/components/AppSidebar.tsx`
-   - Inside the existing "Methodology & Docs" collapsible group.
-   - Title: "Candidate Pipeline", icon: `Users` (or similar from lucide-react).
-   - URL: `/candidate-pipeline-methodology`.
-
-## Out of scope
-- No changes to Candidate Pipeline code itself.
-- No edits to other methodology pages.
-- No new MD files on disk (the content lives in the React page, matching how the other methodology docs work).
+We cleaned up the Site Analysis page so it never tells the user "recommend" or "do not recommend" — the tool now just shows facts and lets the human decide. The old 3-tier confidence scale was replaced with a clearer 4-tier scale (Strong, High, Medium, Low), and the "Mark winner" button and winner banner were removed. The PDF export was renamed to "Export Site Report (PDF)" and now works as soon as any site has a score, with Section 10 reworded to a neutral "Summary & Next Steps." A new Saved Sites Drawer was built with My Sites and Team Sites tabs, showing who saved each site, when it was saved, when it was last re-scored, and four clean action buttons (Save, Re-run, Replace, Remove) — and the live re-run uses the same scoring helper as the rest of the app so one calibrated number shows everywhere. We also added a full trust layer: every number on the page now carries a source tag (Fresh, From cache, Backup source, Missing, You entered, or Estimate), every metric tile has a small ⓘ icon that opens a popup showing where the number came from with Open source and Copy link buttons, a Data Sources strip shows live freshness for Census, Schools, Roads, and Drive time, and a yellow Degraded banner warns the user whenever any number used a backup source. Verify links are real and open the live source for US Census ACS, Urban Institute schools, and OpenStreetMap roads. Finally, the PDF design was polished and the sidebar SAS Methodology page was updated with a new Section 8 covering the Saved Sites Drawer and trust rules.

@@ -20,6 +20,10 @@ export type SowMetricEntry = {
   status: MetricStatus;
   /** Human-readable data source shown in the UI under each metric row. */
   source: string;
+  /** Optional public URL for the source. When present, the UI may render the
+   *  `source` label as a clickable link. Generic table/page links only — never
+   *  city-specific deep links — so the URL is always safe regardless of city. */
+  sourceUrl?: string;
 };
 
 export const CATEGORY_KEY_MAP: Record<RegistryCategory, CategoryKey> = {

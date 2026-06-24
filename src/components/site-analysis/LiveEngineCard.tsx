@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Info } from "lucide-react";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import {
   recomputeSiteScores,
@@ -64,6 +66,23 @@ const PRESETS: Preset[] = [
   },
 ];
 
+
+function getEnrollmentTooltipLine(schoolType: SchoolType): string {
+  switch (schoolType) {
+    case "private_elementary":
+      return "Typical real-world average for private elementary: ~110 students.";
+    case "public_elementary":
+      return "Typical real-world average for public elementary: ~432 students.";
+    case "montessori":
+      return "Typical real-world average for Montessori: ~40 students.";
+    case "charter_elementary":
+      return "Charter elementary enrollment is not separately published and varies widely by network.";
+    case "daycare":
+      return "Daycare center size varies widely by state and license.";
+    default:
+      return "Average varies by school type. Enter the real number if known.";
+  }
+}
 
 /**
  * Live Site Analysis Engine card (Feature 1B v0.3).
@@ -266,7 +285,25 @@ export function LiveEngineCard({ onSaveToSlot, canSave = true, replaceTargetLabe
           </select>
         </label>
         <label className="flex flex-col gap-1 text-[11px]" style={{ color: "#526078" }}>
-          Enrollment
+          <span className="flex items-center gap-1">
+            Enrollment (optional)
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="cursor-help" style={{ color: "#8a94a6" }}>
+                  <Info size={12} />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs text-[11px]" style={{ color: "#07142f" }}>
+                <div className="font-semibold">Why 475?</div>
+                <div className="mt-1">
+                  The enrollment score uses a 150–800 range. 475 is the midpoint, so leaving the field blank gives a neutral score instead of accidentally helping or hurting the result.
+                </div>
+                <div className="mt-1" style={{ color: "#526078" }}>
+                  {getEnrollmentTooltipLine(schoolType)}
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </span>
           <input
             type="number"
             min={1}
@@ -274,10 +311,10 @@ export function LiveEngineCard({ onSaveToSlot, canSave = true, replaceTargetLabe
             onChange={(e) => setEnrollment(e.target.value)}
             className="rounded border px-2 py-1 text-[12px]"
             style={{ borderColor: "#eef2f7", color: "#07142f" }}
-            placeholder="Default 475 — leave blank for neutral score"
+            placeholder="Leave blank to use 475"
           />
           <span className="text-[10px] leading-tight" style={{ color: "#8a94a6" }}>
-            Optional. Real averages: ~110 private elementary, ~250 secondary. Blank = neutral midpoint of the 150–800 scoring range.
+            Use actual enrollment if known. If left blank, we use 475 as a neutral scoring estimate.
           </span>
         </label>
         <label className="flex flex-col gap-1 text-[11px] md:col-span-3" style={{ color: "#526078" }}>

@@ -395,6 +395,27 @@ export default function MVSQAQueue() {
             />
             Show resolved
           </label>
+          {cityFilter !== "__all__" && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={rerunningCity}
+              onClick={async () => {
+                const openProviderIds = (filteredRows ?? [])
+                  .filter((r) => r.resolved_at == null && r.entity_type === "provider")
+                  .map((r) => r.entity_id);
+                if (openProviderIds.length === 0) {
+                  toast.info("No open provider issues to re-run in this city.");
+                  return;
+                }
+                setRerunningCity(true);
+                await rerunForProviders(cityFilter, openProviderIds, cityFilter);
+                setRerunningCity(false);
+              }}
+            >
+              {rerunningCity ? "Re-running…" : "Re-run all open providers in this city"}
+            </Button>
+          )}
         </div>
       </header>
 

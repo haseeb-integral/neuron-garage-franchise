@@ -5,6 +5,7 @@ import type { ShortlistRow } from "@/data/phase2DemoData";
 import { useMarketDecisions, type MarketVerdict } from "@/hooks/useMarketDecisions";
 import { exportMarketDecisionsCsv } from "@/lib/decisionsExport";
 import { SampleDataBadge } from "@/components/phase2-demo/SampleDataBadge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export type LiveOverlay = {
   composite: number | null;
@@ -232,13 +233,19 @@ export function ShortlistTable({ rows, activeCityId, onSelectCity, liveOverlays 
                         </span>
                       )}
                       {isLive && overlay?.lowConfidence && (
-                        <span
-                          className="inline-flex items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
-                          style={{ backgroundColor: "#fce7ec", color: "#a3142b" }}
-                          title="Limited Source Coverage: more than 20% of premium providers had missing or broken registration pages. Treat the MVS score with caution."
-                        >
-                          ⚑ Limited Source Coverage
-                        </span>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span
+                              className="inline-flex items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide cursor-help"
+                              style={{ backgroundColor: "#fce7ec", color: "#a3142b" }}
+                            >
+                              ⚑ Limited Source Coverage
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs text-[12px] leading-relaxed">
+                            More than 20% of premium providers in this city had missing or broken registration pages we could not read. The Market Validation Score still computed, but treat it with caution until those sources are fixed in the QA Queue.
+                          </TooltipContent>
+                        </Tooltip>
                       )}
                     </div>
                   </td>

@@ -3,6 +3,7 @@
 // add per-source provenance, week activity, and operator-match views.
 import { ExternalLink, Info } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { MvsProviderInput, MvsWeekInput } from "@/lib/mvs/computeMvs";
 
 const NAVY = "#07142f";
@@ -287,18 +288,41 @@ export function ConfidenceStamp({
   detail: string;
 }) {
   const palette = {
-    high: { bg: "#e3f3e7", fg: "#1d6b32", label: "High confidence" },
-    medium: { bg: "#fff5e0", fg: "#8a5a00", label: "Medium confidence" },
-    low: { bg: "#fce7ec", fg: "#a3142b", label: "Limited source coverage" },
+    high: {
+      bg: "#e3f3e7",
+      fg: "#1d6b32",
+      label: "Strong data coverage",
+      meaning: "Enough premium providers fed this sub-score for a stable result.",
+    },
+    medium: {
+      bg: "#fff5e0",
+      fg: "#8a5a00",
+      label: "Partial data coverage",
+      meaning: "Fewer premium providers fed this sub-score, or some items are still in the QA queue. The number may shift after review.",
+    },
+    low: {
+      bg: "#fce7ec",
+      fg: "#a3142b",
+      label: "Limited data coverage",
+      meaning: "Too few premium providers fed this sub-score for a stable result. Treat the number with caution.",
+    },
   }[level];
   return (
-    <span
-      className={CHIP}
-      style={{ backgroundColor: palette.bg, color: palette.fg }}
-      title={detail}
-    >
-      {palette.label}
-    </span>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className={`${CHIP} cursor-help`}
+          style={{ backgroundColor: palette.bg, color: palette.fg }}
+        >
+          {palette.label}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs text-[12px] leading-relaxed">
+        <div className="font-semibold mb-1">{palette.label}</div>
+        <div className="mb-1">{palette.meaning}</div>
+        <div className="opacity-80">{detail}</div>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 

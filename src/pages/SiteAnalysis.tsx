@@ -375,7 +375,7 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace, bookmark, savedMatc
               {slot.address}
             </p>
           )}
-          <p className="mt-1 truncate text-[10px]" style={{ color: MUTED }}>
+          <p className="mt-1 text-[10px]" style={{ color: MUTED, wordBreak: "break-word" }}>
             {SCHOOL_TYPE_LABEL[slot.schoolType]} · {GRADE_BAND_LABEL[slot.gradeBand]}
             {slot.enrollment ? ` · enroll ${slot.enrollment}` : ""}
             {slot.analysisCreatedAt ? ` · run ${formatRunTime(slot.analysisCreatedAt)}` : ""}

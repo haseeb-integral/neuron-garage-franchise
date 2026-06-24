@@ -146,13 +146,6 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
   // a global haircut for open QA items and low overall coverage.
   function confidenceFor(key: string): { level: "high" | "medium" | "low"; detail: string } {
     const n = premiumProviders.length;
-    if (key === "marketAbsorption") {
-      const tracked = new Set(weeks.map((w) => w.provider_id)).size;
-      if (tracked === 0) return { level: "low", detail: "No week-level data scraped yet." };
-      if (tracked < 3) return { level: "low", detail: `Only ${tracked} provider(s) have week data.` };
-      if (qaOpenCount > 5) return { level: "medium", detail: `${qaOpenCount} items in QA queue may shift this number.` };
-      return { level: "high", detail: `${tracked} providers with week-level activity.` };
-    }
     if (key === "scaledOperator") {
       if (watchlist.length === 0) return { level: "low", detail: "Watchlist is empty." };
       return { level: "high", detail: `Matched against ${watchlist.length} national brands.` };

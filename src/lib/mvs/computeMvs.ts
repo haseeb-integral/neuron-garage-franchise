@@ -3,13 +3,22 @@
 
 export const MVS_NORMALIZATION_VERSION = "1.0-fixed";
 
+// Market Absorption (formerly 0.25) was removed June 24, 2026. Remaining
+// weights re-normalized proportionally so the 5 cards still sum to 1.0:
+//   PA  0.20 / 0.75 = 0.2667
+//   SO  0.20 / 0.75 = 0.2667
+//   ED  0.10 / 0.75 = 0.1333
+//   MD  0.10 / 0.75 = 0.1333
+//   MB  0.15 / 0.75 = 0.2000
+// `marketAbsorption: 0` is kept as a legacy key so callers that still pass it
+// in `options.weights` don't crash; it is ignored in the composite below.
 export const DEFAULT_WEIGHTS: Record<string, number> = {
-  pricingAcceptance: 0.20,
-  marketAbsorption: 0.25,
-  scaledOperator: 0.20,
-  enrichmentDiversity: 0.10,
-  marketDepth: 0.10,
-  marketBalance: 0.15,
+  pricingAcceptance: 0.2667,
+  marketAbsorption: 0,
+  scaledOperator: 0.2667,
+  enrichmentDiversity: 0.1333,
+  marketDepth: 0.1333,
+  marketBalance: 0.2000,
 };
 
 export const ELIGIBLE_CATEGORIES = new Set([
@@ -465,27 +474,28 @@ export function computeMvs(
     marketBalance: s6.inputs,
   };
 
-  const allScores = [
+  // Market Absorption (allScores index 1) is intentionally excluded from the
+  // composite as of June 24, 2026 — the card was removed and its 25% weight
+  // was proportionally redistributed across the 5 remaining pillars.
+  const compositeScores = [
     scores.pricingAcceptance,
-    scores.marketAbsorption,
     scores.scaledOperator,
     scores.enrichmentDiversity,
     scores.marketDepth,
     scores.marketBalance,
   ];
 
-  // If any score is null, the composite is null (incomplete data)
-  if (allScores.some((s) => s == null)) {
+  // If any contributing score is null, the composite is null (incomplete data)
+  if (compositeScores.some((s) => s == null)) {
     return { mvs: null, scores, inputs, normalizationVersion: MVS_NORMALIZATION_VERSION };
   }
 
   const mvs =
-    weights.pricingAcceptance * allScores[0]! +
-    weights.marketAbsorption * allScores[1]! +
-    weights.scaledOperator * allScores[2]! +
-    weights.enrichmentDiversity * allScores[3]! +
-    weights.marketDepth * allScores[4]! +
-    weights.marketBalance * allScores[5]!;
+    weights.pricingAcceptance * compositeScores[0]! +
+    weights.scaledOperator * compositeScores[1]! +
+    weights.enrichmentDiversity * compositeScores[2]! +
+    weights.marketDepth * compositeScores[3]! +
+    weights.marketBalance * compositeScores[4]!;
 
   return {
     mvs: Math.max(0, Math.min(100, Number(mvs.toFixed(1)))),

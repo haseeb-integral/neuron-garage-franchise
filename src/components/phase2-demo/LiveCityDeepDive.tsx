@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Loader2, MapPin, FileDown } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
-import { DEFAULT_WEIGHTS } from "@/lib/mvs/computeMvs";
+import { DEFAULT_WEIGHTS, computeMvs } from "@/lib/mvs/computeMvs";
 import { useLiveMvs } from "@/lib/mvs/useLiveMvs";
 import { RunPipelineButton } from "@/components/phase2-demo/RunPipelineButton";
 import {

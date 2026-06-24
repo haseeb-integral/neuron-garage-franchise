@@ -3155,6 +3155,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      mvs_qa_unresolve: { Args: { _queue_id: string }; Returns: undefined }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {

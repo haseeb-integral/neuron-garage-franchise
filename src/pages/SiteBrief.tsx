@@ -654,13 +654,17 @@ export default function SiteBrief() {
                       padding: "9px 10px",
                       textAlign: "right",
                       fontWeight: 700,
-                      color: "var(--sb-navy)",
+                      color: c.composite != null ? "var(--sb-navy)" : "var(--sb-muted)",
                     }}
                   >
-                    {c.composite}
+                    {c.composite ?? "—"}
                   </td>
                   <td style={{ padding: "9px 10px", textAlign: "center" }}>
-                    <Chip label={c.tierLabel} color={tierColor(c.tierLabel)} />
+                    {c.composite != null ? (
+                      <Chip label={c.tierLabel} color={tierColor(c.tierLabel)} />
+                    ) : (
+                      <Chip label="Not yet scored" color="#94a3b8" />
+                    )}
                   </td>
                   <td style={{ padding: "9px 10px", textAlign: "center", color: "var(--sb-muted)" }}>
                     {VERDICT_LABEL[c.decision?.verdict ?? "undecided"]}

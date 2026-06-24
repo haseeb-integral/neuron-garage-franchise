@@ -13,7 +13,7 @@ US Census Bureau survey, 5-year vintage 2023 (data 2019–2023). Source for demo
 Google Maps actor used by Manus to discover camp / enrichment providers in each shortlisted city.
 
 ### Firecrawl
-Page fetching and screenshot capture. Feeds registration-page extraction for Market Absorption scoring.
+Page fetching and screenshot capture. Feeds provider discovery and pricing extraction across the camp shortlist.
 
 ### Gemini 2.0 Flash
 LLM accessed via the Lovable AI Gateway. Used for structured extraction of camp week-level registration state (sold out, waitlist, open, etc.).
@@ -38,16 +38,13 @@ City-level composite score (MVS — Market Validation Score) computed from six s
 Address-level Site Analysis Score (SAS) with side-by-side comparison of up to four candidate sites, 10/15-minute drive-time isochrones, and a branded per-site PDF report.
 
 ### MVS — Market Validation Score
-The 1A composite (previously PEE / PCC). Weighted blend of Pricing Acceptance (0.20), Market Absorption (0.25), Scaled Operator (0.20), Enrichment Diversity (0.10), Market Depth (0.10), Market Balance Index (0.15).
+The 1A composite (previously PEE / PCC). Weighted blend of Pricing Acceptance (26.67%), Scaled Operator (26.67%), Enrichment Diversity (13.33%), Market Depth (13.33%), Market Balance Index (20.00%). Market Absorption was removed from the composite in v1.1 (weight 0) because sellout-rate scraping was unreliable.
 
 ### Site Analysis Score (SAS)
 The 1B composite. 0–100 score combining School Profile, Neighborhood Affluence, Family Density, School Ecosystem, and Accessibility.
 
 ### Market Balance Index
-1A sub-score (15% weight). Affluent Dual-Income Family Count ÷ Premium Provider Count. Bridges supply and demand without modeling provider capacity.
-
-### Market Absorption
-1A sub-score, dominant at 25% weight. Captures whether premium operators are actually selling out: Sellout Rate, Time-to-Sellout, and Year-over-Year Velocity.
+1A sub-score (20% weight in v1.1). Affluent Dual-Income Family Count ÷ Premium Provider Count. Bridges supply and demand without modeling provider capacity.
 
 ---
 

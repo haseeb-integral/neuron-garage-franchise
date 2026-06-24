@@ -765,7 +765,7 @@ export default function SiteAnalysis() {
       // Exact-input cache lookup — avoid an expensive live recompute
       // (Mapbox geocode + isochrones + Census + Urban Institute + OSM) when
       // a recent ready row already matches address + type + enrollment + grade.
-  if (opts?.preferCache) {
+      if (opts?.preferCache) {
         const enrollmentNum = slot.enrollment ? Number(slot.enrollment) : null;
         const { data: cached } = await supabase
           .from("site_analyses")
@@ -805,9 +805,13 @@ export default function SiteAnalysis() {
                 : undefined,
           };
           patchSlot(id, { status: "ready", result, error: null });
+          // If the user is restoring a previously-hidden card, drop it from
+          // the hidden list so refresh keeps it visible.
+          unhideAnalysisId(cached.id);
           return;
         }
       }
+
 
       try {
         const { data, error } = await supabase.functions.invoke("compute-sas", {

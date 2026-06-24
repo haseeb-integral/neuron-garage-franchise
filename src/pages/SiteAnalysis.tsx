@@ -1602,6 +1602,14 @@ export default function SiteAnalysis() {
           const lat = s.result?.geo?.lat ?? null;
           const lng = s.result?.geo?.lng ?? null;
           const existing = s.result ? savedSites.findSaved(lat, lng, s.schoolType) : null;
+          // Match any saved row by address (regardless of inputs) so the card can
+          // explain why its score differs from the saved snapshot.
+          const savedMatch =
+            s.address
+              ? savedSites.rows.find(
+                  (r) => r.address && r.address.trim() === s.address.trim(),
+                ) ?? null
+              : null;
           const bookmark = {
             saved: !!existing,
             isMine: existing?.user_id === savedSites.currentUserId,
@@ -1623,6 +1631,7 @@ export default function SiteAnalysis() {
                 if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
               }}
               bookmark={bookmark}
+              savedMatch={savedMatch}
             />
           );
         })}

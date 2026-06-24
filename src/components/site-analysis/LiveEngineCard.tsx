@@ -232,6 +232,7 @@ export function LiveEngineCard({ onSaveToSlot, canSave = true, replaceTargetLabe
         <label className="flex flex-col gap-1 text-[11px] md:col-span-3" style={{ color: "#526078" }}>
           Address *
           <input
+            id="sas-address-input"
             type="text"
             value={address}
             onChange={(e) => setAddress(e.target.value)}

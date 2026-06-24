@@ -203,7 +203,7 @@ export function SavedSitesDrawer({ open, onOpenChange, onLoad, savedSites }: Pro
                       {row.enrollment != null ? ` · enroll ${row.enrollment}` : ""}
                     </p>
                   </div>
-                  {liveComposite != null && band && (
+                  {liveComposite != null && (
                     <div className="flex shrink-0 flex-col items-end">
                       <div
                         className="text-[22px] font-black leading-none tabular-nums"
@@ -211,14 +211,17 @@ export function SavedSitesDrawer({ open, onOpenChange, onLoad, savedSites }: Pro
                       >
                         {liveComposite}
                       </div>
-                      <span
-                        className="mt-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase"
-                        style={{ backgroundColor: band.bg, color: band.fg }}
-                      >
-                        {band.label}
-                      </span>
+                      {band && (
+                        <span
+                          className="mt-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase"
+                          style={{ backgroundColor: band.bg, color: band.fg }}
+                        >
+                          {band.label}
+                        </span>
+                      )}
                     </div>
                   )}
+
                 </div>
 
                 {drift !== 0 && (

@@ -8,7 +8,7 @@
  */
 
 import type { MarketDecisionRow, MarketVerdict } from "@/hooks/useMarketDecisions";
-import type { ShortlistRow } from "@/data/phase2DemoData";
+import type { ShortlistRow } from "@/lib/mvs/shortlistSeed";
 import type { LiveOverlay } from "@/components/phase2-demo/ShortlistTable";
 
 const VERDICT_LABEL: Record<MarketVerdict, string> = {
@@ -36,13 +36,12 @@ export function exportMarketDecisionsCsv(
     "city",
     "state",
     "mvs_score",
-    "tier_demo",
     "pricing",
     // "absorption" removed in v1.1 — Market Absorption no longer in composite.
     "scaled_op",
     "diversity",
     "depth",
-    "balance_band",
+    "balance",
     "data_source",
     "verdict",
     "notes",
@@ -50,25 +49,24 @@ export function exportMarketDecisionsCsv(
   ];
   const fmt = (n: number | null | undefined) =>
     n == null ? "" : Number.isInteger(n) ? `${n}` : (n as number).toFixed(1);
+  // No-fake-numbers rule: when a city has no live overlay, every numeric
+  // score cell is blank. The CSV row still appears so the verdict + notes
+  // are exported, but the score columns honestly reflect "not yet scored".
   const rows = shortlist.map((c) => {
     const d = byCity.get(c.id);
     const ov = liveOverlays?.get(c.id);
-    const pick = (live: number | null | undefined, demo: number) =>
-      ov && live != null ? fmt(live) : `${demo}`;
-    const dataSource = ov ? "live" : "sample";
-    const balance =
-      ov && ov.balance != null ? `Balance ${ov.balance.toFixed(0)}` : c.balanceBand;
+    const dataSource = ov ? "live" : "not_scored";
+    const balance = ov && ov.balance != null ? `Balance ${ov.balance.toFixed(0)}` : "";
     return [
       c.id,
       c.city,
       c.state,
-      pick(ov?.composite, c.composite),
-      c.tier,
-      pick(ov?.pricing, c.pricing),
+      fmt(ov?.composite),
+      fmt(ov?.pricing),
       // absorption column removed in v1.1.
-      pick(ov?.scaledOperator, c.scaledOperator),
-      pick(ov?.diversity, c.diversity),
-      pick(ov?.depth, c.depth),
+      fmt(ov?.scaledOperator),
+      fmt(ov?.diversity),
+      fmt(ov?.depth),
       balance,
       dataSource,
       VERDICT_LABEL[d?.verdict ?? "undecided"],

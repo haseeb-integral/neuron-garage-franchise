@@ -32,7 +32,7 @@ import {
 } from "@/components/site-analysis/SourcePopover";
 import { useMapboxToken } from "@/hooks/useMapboxToken";
 import { toast } from "sonner";
-import { SITE_CONFIDENCE_THRESHOLDS } from "@/data/phase2DemoData";
+import { SITE_CONFIDENCE_THRESHOLDS } from "@/lib/sas/config";
 import {
   recomputeSiteScores,
   siteComposite,

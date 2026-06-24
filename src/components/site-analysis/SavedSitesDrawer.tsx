@@ -14,7 +14,7 @@ import {
   type SavedSiteInputs,
 } from "@/hooks/useSavedSites";
 import { recomputeSiteScores } from "@/lib/sasMath";
-import { SITE_CONFIDENCE_THRESHOLDS } from "@/data/phase2DemoData";
+import { SITE_CONFIDENCE_THRESHOLDS } from "@/lib/sas/config";
 
 const NAVY = "#07142f";
 const MUTED = "#526078";

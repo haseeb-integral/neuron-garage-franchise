@@ -14,16 +14,7 @@ import { SampleDataBadge } from "@/components/phase2-demo/SampleDataBadge";
 import { ShortlistTable, type LiveOverlay } from "@/components/phase2-demo/ShortlistTable";
 import { Slider } from "@/components/ui/slider";
 import { useLiveMvs, invalidateAllMvs, MVS_QUERY_KEY } from "@/lib/mvs/useLiveMvs";
-import {
-  sanAntonioMarketValidationDemo,
-  MARKET_BALANCE_ACTIVE_BAND,
-  MARKET_BALANCE_BANDS,
-  QA_QUEUE_FLAGGED_COUNT,
-  SCRAPE_CADENCE,
-  SHORTLIST_DEMO,
-  type ConfidenceLevel,
-  type ShortlistRow,
-} from "@/data/phase2DemoData";
+import { SHORTLIST_SEED, type ShortlistRow } from "@/lib/mvs/shortlistSeed";
 import { useShortlistAdditions } from "@/lib/mvs/useShortlistAdditions";
 import { AddCityDialog } from "@/components/phase2-demo/AddCityDialog";
 
@@ -146,150 +137,27 @@ function ScoresCacheIndicator({
 
 
 
-// STATUS_STYLE removed in v1.1 (Market Absorption deprecated).
-
-const OVERLAP_STYLE: Record<"direct" | "adjacent" | "distant", { bg: string; fg: string }> = {
-  direct: { bg: "#fce7ec", fg: "#a3142b" },
-  adjacent: { bg: "#fff1d6", fg: "#925100" },
-  distant: { bg: "#eef2f7", fg: "#526078" },
-};
-
-interface SubScoreCardProps {
-  title: string;
-  subtitle: string;
-  weight: number;
-  value: number;
-  signals: { label: string; value: string }[];
-  formula: string;
-  confidence: { level: ConfidenceLevel; note: string };
-  topSlot?: React.ReactNode;
-  bottomSlot?: React.ReactNode;
-}
-
-const CHIP =
-  "inline-flex items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-semibold";
-
-function SubScoreCard({ title, subtitle, weight, value, signals, formula, confidence, topSlot, bottomSlot }: SubScoreCardProps) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="flex flex-col rounded-lg border bg-white p-4" style={{ borderColor: BORDER, minHeight: 280 }}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <h3 className="text-[13px] font-bold" style={{ color: NAVY }}>
-              {title}
-            </h3>
-            <span className={CHIP} style={{ backgroundColor: SOFT, color: BLUE }}>
-              {Math.round(weight * 100)}%
-            </span>
-            <LowConfidenceBadge level={confidence.level} note={confidence.note} />
-          </div>
-          <p className="mt-0.5 text-[11px]" style={{ color: MUTED }}>
-            {subtitle}
-          </p>
-        </div>
-        <div className="shrink-0 text-right">
-          <div className="text-[24px] font-black leading-none tabular-nums" style={{ color: NAVY }}>
-            {value}
-          </div>
-          <div className="mt-0.5 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
-            / 100
-          </div>
-        </div>
-      </div>
-
-      {/* Weight slider — disabled preview affordance (1A-LOV-2) */}
-      <div className="mt-2.5 rounded-md border border-dashed p-2" style={{ borderColor: BORDER }}>
-        <div className="mb-1 flex items-center justify-between text-[10px]" style={{ color: MUTED }}>
-          <span>Weight</span>
-          <span className="font-semibold tabular-nums" style={{ color: NAVY }}>
-            {Math.round(weight * 100)}%
-          </span>
-        </div>
-        <Slider
-          disabled
-          value={[Math.round(weight * 100)]}
-          min={5}
-          max={40}
-          step={1}
-          aria-label={`${title} weight`}
-        />
-        <p className="mt-1 text-[9px]" style={{ color: MUTED }}>
-          Static for v1 — re-weightable in v1.1 per SOW Item 1.
-        </p>
-      </div>
-
-      {topSlot && <div className="mt-3">{topSlot}</div>}
-
-      <ul className="mt-3 space-y-1.5">
-        {signals.map((s) => (
-          <li key={s.label} className="flex items-baseline justify-between gap-3 text-[12px]">
-            <span style={{ color: MUTED }}>{s.label}</span>
-            <span className="flex items-center gap-1.5 font-semibold tabular-nums" style={{ color: NAVY }}>
-              {s.value}
-              <SampleDataBadge />
-            </span>
-          </li>
-        ))}
-      </ul>
-
-      {bottomSlot && <div className="mt-3">{bottomSlot}</div>}
-
-      <div className="mt-auto pt-3">
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          className="inline-flex items-center gap-1 text-[11px] font-semibold"
-          style={{ color: BLUE }}
-        >
-          {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-          {open ? "Hide formula" : "Show formula"}
-        </button>
-        {open && (
-          <>
-            <pre
-              className="mt-2 whitespace-pre-wrap rounded-md p-2 text-[11px] leading-snug"
-              style={{ backgroundColor: SOFT, color: NAVY, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
-            >
-              {formula}
-            </pre>
-            {confidence.level !== "high" && (
-              <p className="mt-2 text-[11px]" style={{ color: MUTED }}>
-                <strong style={{ color: NAVY }}>Source coverage note:</strong> {confidence.note}
-              </p>
-            )}
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
+// Dead helpers (STATUS_STYLE, OVERLAP_STYLE, SubScoreCard, etc.) were
+// removed in the no-fake-numbers cleanup — the live deep-dive is rendered
+// entirely by <LiveCityDeepDive> below.
 
 export default function MarketValidation() {
-  const data = sanAntonioMarketValidationDemo;
-  const subs = data.subScores;
   const { rows: additions, addCity } = useShortlistAdditions();
 
-  // Merge built-in shortlist + manager-added cities. Added cities start at 0
-  // and get filled in once their pipeline run finishes on the Scoring Console.
+  // Merge built-in shortlist seed + manager-added cities. Every row carries
+  // only id/city/state. Scores come from `liveOverlays`; cities without a
+  // live result render as "Not yet scored" — no fake fallback numbers.
   const allShortlistRows = useMemo<ShortlistRow[]>(() => {
     const extras: ShortlistRow[] = additions.map((a) => ({
       id: `${a.city.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${a.state.toLowerCase()}`,
       city: a.city,
       state: a.state,
-      composite: 0,
-      tier: "Not yet scored",
-      pricing: 0,
-      scaledOperator: 0,
-      diversity: 0,
-      depth: 0,
-      balanceBand: "Balanced",
     }));
-    // Dedupe by id — demo rows win over additions that slug to the same id
-    // (e.g. an addition for "New York / NY" collides with the demo NYC row).
+    // Dedupe by id — seed cities take precedence over user additions that
+    // would slug to the same id (e.g. an addition for "New York, NY").
     const seen = new Set<string>();
     const out: ShortlistRow[] = [];
-    for (const r of [...SHORTLIST_DEMO, ...extras]) {
+    for (const r of [...SHORTLIST_SEED, ...extras]) {
       if (seen.has(r.id)) continue;
       seen.add(r.id);
       out.push(r);
@@ -304,7 +172,6 @@ export default function MarketValidation() {
     try { localStorage.setItem("mvs-active-city", activeCityId); } catch { /* ignore */ }
   }, [activeCityId]);
   const activeRow = allShortlistRows.find((r) => r.id === activeCityId) ?? allShortlistRows[0];
-  const isAnchor = activeCityId === "san-antonio-tx";
 
 
   // Phase 7 — live overlay for every Tier A city flagged mvs_data_source='live'.
@@ -359,61 +226,10 @@ export default function MarketValidation() {
     indianapolisLive,
   ]);
 
-
-  const isActiveLive = liveOverlays.has(activeCityId);
-
-
-
-  // Sellout curve + absorption sparkline removed in v1.1 (Market Absorption deprecated).
-
-  // 1A-LOV-3 — Scaled Operator two-number diagnostic.
-  const scaledDiagnostic = (
-    <div className="grid grid-cols-2 gap-2">
-      <div className="rounded-md border p-2" style={{ borderColor: BORDER, backgroundColor: "#e3f3e7" }}>
-        <div className="text-[9px] uppercase tracking-wide" style={{ color: "#1d6b32" }}>
-          Operator validation
-        </div>
-        <div className="text-[18px] font-black tabular-nums" style={{ color: "#1d6b32" }}>
-          5 <span className="text-[11px] font-semibold" style={{ color: MUTED }}>/ 8</span>
-        </div>
-        <div className="text-[10px]" style={{ color: MUTED }}>National operators present (lifts score)</div>
-      </div>
-      <div className="rounded-md border p-2" style={{ borderColor: BORDER, backgroundColor: "#fce7ec" }}>
-        <div className="text-[9px] uppercase tracking-wide" style={{ color: "#a3142b" }}>
-          Direct competitor load
-        </div>
-        <div className="text-[18px] font-black tabular-nums" style={{ color: "#a3142b" }}>
-          2.1 <span className="text-[11px] font-semibold" style={{ color: MUTED }}>/ 10k kids 5–12</span>
-        </div>
-        <div className="text-[10px]" style={{ color: MUTED }}>Saturation drag (suppresses score)</div>
-      </div>
-    </div>
-  );
-
-  // 1A-LOV-4 — Market Balance band chips.
-  const balanceBands = (
-    <div className="flex flex-wrap gap-1">
-      {MARKET_BALANCE_BANDS.map((b) => {
-        const active = b.key === MARKET_BALANCE_ACTIVE_BAND;
-        return (
-          <span
-            key={b.key}
-            className={CHIP}
-            style={{
-              backgroundColor: active ? b.bg : "#fff",
-              color: active ? b.fg : MUTED,
-              border: `1px solid ${active ? b.bg : BORDER}`,
-              fontWeight: active ? 700 : 500,
-            }}
-            title={`${b.label} · Coverage Ratio ${b.range}`}
-          >
-            {active && "●  "}
-            {b.label} <span className="ml-1 opacity-70">{b.range}</span>
-          </span>
-        );
-      })}
-    </div>
-  );
+  // Removed dead helpers in the no-fake-numbers cleanup: `isActiveLive`,
+  // hardcoded `scaledDiagnostic` ("5 / 8", "2.1") and `balanceBands` chips
+  // were defined but never rendered. The live deep-dive below derives every
+  // number from the pipeline result.
 
 
   return (
@@ -464,14 +280,6 @@ export default function MarketValidation() {
                   style={{ borderColor: BLUE, color: BLUE, backgroundColor: "#fff" }}
                 >
                   Review QA queue
-                  {QA_QUEUE_FLAGGED_COUNT > 0 && (
-                    <span
-                      className="inline-flex min-w-[16px] items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
-                      style={{ backgroundColor: "#a3142b" }}
-                    >
-                      {QA_QUEUE_FLAGGED_COUNT}
-                    </span>
-                  )}
                   <span aria-hidden>→</span>
                 </Link>
               </div>

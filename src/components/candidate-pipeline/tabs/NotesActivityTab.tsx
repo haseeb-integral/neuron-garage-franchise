@@ -11,7 +11,7 @@ import {
   Quote,
   FileEdit,
 } from "lucide-react";
-import { ChecklistSection } from "../ChecklistSection";
+
 import { logActivity, ActivityType } from "@/lib/candidateActivity";
 import { toast } from "sonner";
 

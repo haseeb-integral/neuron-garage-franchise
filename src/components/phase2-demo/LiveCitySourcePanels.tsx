@@ -163,7 +163,6 @@ export function DataSourcesPanel({
     .filter((s) => s.count > 0);
 
   const fresh = formatRelative(lastRefreshed);
-  const weekSourceCount = weeks.filter((w) => w.source_url).length;
 
   return (
     <section

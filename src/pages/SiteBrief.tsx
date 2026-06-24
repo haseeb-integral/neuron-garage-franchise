@@ -1071,18 +1071,18 @@ export default function SiteBrief() {
                   },
                   {
                     label: "SAS Composite",
-                    values: candidates.slice(0, 4).map((c) => String(c.composite)),
+                    values: candidates.slice(0, 4).map((c) => (c.composite != null ? String(c.composite) : "—")),
                     bold: true,
                   },
                   {
                     label: "Confidence band",
-                    values: candidates.slice(0, 4).map((c) => c.tierLabel),
-                    colors: candidates.slice(0, 4).map((c) => tierColor(c.tierLabel)),
+                    values: candidates.slice(0, 4).map((c) => (c.composite != null ? c.tierLabel : "Not yet scored")),
+                    colors: candidates.slice(0, 4).map((c) => (c.composite != null ? tierColor(c.tierLabel) : "#94a3b8")),
                     bold: true,
                   },
                   ...PILLAR_ORDER.map((p) => ({
                     label: `${p.label} (${p.weight})`,
-                    values: candidates.slice(0, 4).map((c) => String(c.pillars[p.key])),
+                    values: candidates.slice(0, 4).map((c) => (c.pillars ? String(c.pillars[p.key]) : "—")),
                   })),
                   {
                     label: "User confidence",

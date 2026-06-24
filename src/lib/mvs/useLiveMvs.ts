@@ -272,6 +272,8 @@ export function useLiveMvs(
     watchlist: raw.watchlist,
     lastRefreshed: raw.lastRefreshed,
     qaOpenCount: raw.qaOpenCount,
+    qaReasons: raw.qaReasons,
+
     // Only show loading on a true cold load (no cached data yet). When data is
     // present we treat background refetches as silent — no flicker.
     loading: query.isLoading && !query.data,

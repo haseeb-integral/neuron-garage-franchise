@@ -870,6 +870,7 @@ export default function SiteAnalysis() {
       const extras: SlotState[] = [];
       for (const row of data) {
         if (hiddenSet.has(row.id)) continue;
+        if (row.address && hiddenSet.has(`addr:${row.address}`)) continue;
         if (!row.address || seen.has(row.address)) continue;
         if (
           row.school_profile_score == null ||

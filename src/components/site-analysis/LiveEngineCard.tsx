@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Info } from "lucide-react";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import {
   recomputeSiteScores,

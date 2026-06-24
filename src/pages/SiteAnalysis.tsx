@@ -829,7 +829,10 @@ export default function SiteAnalysis() {
         if ((data as { status?: string })?.status === "failed") {
           throw new Error((data as { error?: string }).error ?? "Engine failed");
         }
-        patchSlot(id, { status: "ready", result: data as SiteScoreResult, error: null });
+        const analysisId = (data as { analysis_id?: string }).analysis_id;
+        patchSlot(id, { status: "ready", result: data as SiteScoreResult, error: null, analysisId });
+        // Re-running an address that was previously hidden brings it back.
+        if (analysisId) unhideAnalysisId(analysisId);
       } catch (e) {
         const msg = (e as Error).message ?? "Engine call failed";
         patchSlot(id, { status: "error", error: msg });

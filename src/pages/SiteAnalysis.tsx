@@ -928,8 +928,9 @@ export default function SiteAnalysis() {
     try {
       // Include EVERY visible card — scored AND un-scored. The brief renders
       // un-scored ones with "—" and a "Not yet scored" pill (Option B).
+      const source = singleId ? scored.filter((s) => s.candidate.id === singleId) : scored;
       const candidates: SitePackCandidate[] = await Promise.all(
-        scored.map(async (s) => {
+        source.map(async (s) => {
           if (!s.result) {
             // Un-scored card: pass null pillars/composite, no signals, no map.
             return {

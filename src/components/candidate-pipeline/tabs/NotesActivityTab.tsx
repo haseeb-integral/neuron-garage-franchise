@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
-import { Candidate, STAGE_PROCESS_ROADMAP, STAGES } from "@/data/pipelineData";
+import { Candidate } from "@/data/pipelineData";
 import { supabase } from "@/integrations/supabase/client";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";

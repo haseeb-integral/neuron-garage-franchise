@@ -1,45 +1,99 @@
-## Problem
+## What I found
 
-In the Saved Sites drawer, every saved row shows a colored confidence chip — **HIGH / MEDIUM / LOW** — calculated from the score.
+The two cards come back because the page still auto-loads old `site_analyses` rows on refresh.
 
-On the actual site card (left side), there is **no** such chip when the user has not picked a User Confidence. The card only shows a confidence pill if the user manually chose one. The code even has a comment saying we must **never** show "Low" as if the user decided it.
+The last fix tried to hide each removed card by its row id and address.
+But there is still a weak spot:
 
-So today the drawer and the card disagree:
+- The page keeps a local list called `hiddenIds`.
+- When you remove a card, it writes the new hidden list to the profile.
+- On refresh, the page reads the profile and then loads old ready analysis rows.
+- If the hidden list is stale, incomplete, or an address is saved in a slightly different text form, old rows can still pass through and show again.
 
-- Top saved row → score 60.57 → drawer paints a green **HIGH** chip
-- Same card on the left → no chip at all (user has not picked one)
+So the safer fix is not to keep patching the hide list only.
+The safer fix is to stop auto-filling visible cards from old analysis history.
 
-That is the bug the user is pointing at.
+## Goal
 
-## Fix (one small phase)
+After refresh, the 4 card slots must show only what the user clearly put there.
+If the user removed all cards, refresh must show 4 empty slots.
+The same old two cards must not come back by themselves.
 
-Change **only** `src/components/site-analysis/SavedSitesDrawer.tsx` so the confidence chip on each saved row matches the rule used on the card:
+## What will change
 
-1. Read the user-picked verdict from the saved snapshot (`snap.verdict`, the field already stored when the site was saved).
-2. If the user picked one (`high` / `medium` / `low` / `strong`), show that verdict as the chip, using the same colors and labels the card uses.
-3. If the user did **not** pick one, show **no chip** (just the score number), exactly like the card does.
-4. Keep the live score number and the "Was X → Now Y" drift pill untouched.
-5. Remove the score-based `bandFor()` chip path (or keep the helper unused — we will delete the call site).
+### Page affected
+- `Site Analysis` page only.
 
-No other files, no score math changes, no database changes, no card changes, no export changes.
+### Code affected
+- `src/pages/SiteAnalysis.tsx`
 
-## What may be affected
+### Data affected
+- It will still read Saved Sites.
+- It will still save and remove Saved Sites.
+- It will not delete any database rows.
+- It will not change score math.
+- It will not change exports.
+- It will not change Saved Sites drawer.
 
-- Saved Sites drawer visual only (chip column on each row).
-- All other surfaces (cards, popover, compare modal, exports) stay exactly as they are.
+## Safe fix plan
 
-## Risks
+### Phase 1: Stop old analysis rows from auto-loading into cards
+Turn off the refresh auto-hydrate from `site_analyses`.
 
-- Very low. Pure presentation change in one file.
-- If a very old saved row has no `verdict` field, it will simply show no chip — which is the correct behavior per the existing rule.
+Instead:
+- On page open, start with empty card slots.
+- User can add a card from the top Run Site Score form.
+- User can load a card from Saved Sites.
+- User can re-run a card.
+- User can remove a card and it stays gone.
 
-## Test plan after build
+This removes the root cause: old analysis history cannot refill the cards anymore.
 
-1. Open Saved Sites drawer → the top "LeafSpring … 60.57" row should now show **no** chip (because the card on the left has no chip).
-2. On a card, pick a User Confidence (e.g. High) → Save → the new saved row shows a green **High** chip.
-3. Change the verdict on the card to Low → Save again → the saved row chip updates to red **Low** on next save.
-4. Rows that already had a verdict when saved keep showing that verdict.
+Estimated Lovable turns: 1
 
-Estimated turns: **1**.
+### Phase 2: Keep the hide safety net, but make it stricter
+Keep the existing hidden-card logic as extra safety.
+Make address hiding use a normalized address key.
+That means small spacing or casing changes will not let the same address sneak back.
 
-Waiting for your approval before I touch any code.
+Estimated Lovable turns: same turn as Phase 1 if small.
+
+### Phase 3: Smoke test myself
+I will test this exact flow:
+
+1. Open Site Analysis.
+2. Remove visible cards until all 4 slots are empty.
+3. Refresh the page.
+4. Confirm the same two cards do not come back.
+5. Load one card from Saved Sites.
+6. Refresh.
+7. Confirm only that loaded/saved action works as expected, and old removed cards do not auto-fill.
+8. Check console errors.
+
+Estimated Lovable turns: same turn after code change.
+
+## What should not be touched
+
+- No database migration.
+- No score formulas.
+- No pillar math.
+- No exports.
+- No Saved Sites count.
+- No Candidate Pipeline.
+- No Market Validation.
+- No style redesign.
+
+## Risk
+
+The only behavior change is this:
+
+Before: refresh auto-filled cards from old analysis history.
+After: refresh will not auto-fill old analysis history.
+
+This is the right behavior for your issue, because old history is exactly why the cards keep coming back.
+
+If you want a card back, use Saved Sites or run it again.
+
+## Approval needed
+
+Approve this and I will implement Phase 1 + Phase 2, then smoke test it myself.

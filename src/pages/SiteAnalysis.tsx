@@ -226,8 +226,12 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace, bookmark, savedMatc
           )}
           <p className="mt-1 truncate text-[10px]" style={{ color: MUTED }}>
             {SCHOOL_TYPE_LABEL[slot.schoolType]} · {GRADE_BAND_LABEL[slot.gradeBand]}
-            {slot.enrollment ? ` · enrollment ${slot.enrollment}` : ""}
+            {slot.enrollment ? ` · enroll ${slot.enrollment}` : ""}
+            {slot.analysisCreatedAt ? ` · run ${formatRunTime(slot.analysisCreatedAt)}` : ""}
           </p>
+          {savedMatch && slot.result ? (
+            <WhyDifferentChip slot={slot} composite={composite} savedMatch={savedMatch} />
+          ) : null}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1" style={{ width: 110 }}>
           {composite != null ? (

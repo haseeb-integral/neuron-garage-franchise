@@ -94,14 +94,24 @@ type ProviderRow = {
   source_listing_url: string | null;
 };
 
+type TriedEntry = {
+  url: string;
+  step: "map" | "search" | "scrape" | "ai";
+  ok: boolean;
+  http_status?: number;
+  note?: string;
+};
+
 type ProviderOutcome = {
   provider_id: string;
   provider_name: string;
   url: string | null;
+  root_url: string | null;
   no_reg_page: boolean;
   weeks_inserted: number;
   qa_flagged: number;
   error?: string;
+  tried: TriedEntry[];
 };
 
 async function processProvider(

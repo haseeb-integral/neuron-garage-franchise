@@ -693,14 +693,17 @@ export default function SiteBrief() {
                 className="sb-serif"
                 style={{ fontSize: 64, fontWeight: 700, lineHeight: 1, color: "var(--sb-navy)" }}
               >
-                {topOrFallback.composite}
+                {topOrFallback.composite ?? "—"}
               </div>
               <div style={{ fontSize: 10, color: "var(--sb-muted)", letterSpacing: 1, marginTop: 4 }}>
                 SAS · /100
               </div>
             </div>
             <div>
-              <Chip label={`User Confidence: ${topOrFallback.tierLabel}`} color={topVerdictColor} />
+              <Chip
+                label={topOrFallback.composite != null ? `User Confidence: ${topOrFallback.tierLabel}` : "Not yet scored"}
+                color={topOrFallback.composite != null ? topVerdictColor : "#94a3b8"}
+              />
               <p
                 style={{
                   margin: "10px 0 0",
@@ -709,11 +712,13 @@ export default function SiteBrief() {
                   color: "var(--sb-navy)",
                 }}
               >
-                {verdictSentence({
-                  schoolName: topOrFallback.schoolName,
-                  composite: topOrFallback.composite,
-                  tierLabel: topOrFallback.tierLabel,
-                })}
+                {topOrFallback.composite != null
+                  ? verdictSentence({
+                      schoolName: topOrFallback.schoolName,
+                      composite: topOrFallback.composite,
+                      tierLabel: topOrFallback.tierLabel,
+                    })
+                  : `${topOrFallback.schoolName} has not been scored yet. Run analysis to populate scores.`}
               </p>
             </div>
           </aside>

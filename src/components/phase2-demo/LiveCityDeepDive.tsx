@@ -399,8 +399,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
       {/* National operators matched — Scaled Operator evidence */}
       <NationalOperatorsPanel providers={premiumProviders} watchlist={watchlist} />
 
-      {/* Week-by-week activity — Market Absorption evidence */}
-      <WeekActivityTable providers={premiumProviders} weeks={weeks} />
+      {/* Week-by-week activity panel removed June 24, 2026 with Market Absorption. */}
 
       {/* Premium provider table — live */}
       <section className="mb-6 rounded-lg border bg-white" style={{ borderColor: BORDER }}>

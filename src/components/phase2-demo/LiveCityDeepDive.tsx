@@ -267,7 +267,7 @@ interface Props {
  */
 export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) {
   const [weights, setWeights] = useState<Record<string, number>>({ ...DEFAULT_WEIGHTS });
-  const { result, providers, weeks, acs, flag, watchlist, lastRefreshed, qaOpenCount, qaReasons, loading, error, refresh } =
+  const { result, providers, weeks, acs, flag, watchlist, overrides, lastRefreshed, qaOpenCount, qaReasons, loading, error, refresh } =
     useLiveMvs(cityKey, { weights });
 
 

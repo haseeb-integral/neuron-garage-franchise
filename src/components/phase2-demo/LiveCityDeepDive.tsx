@@ -9,7 +9,6 @@ import {
   ConfidenceStamp,
   ProviderSourceChips,
   OpenSourceLink,
-  WeekActivityTable,
   NationalOperatorsPanel,
 } from "@/components/phase2-demo/LiveCitySourcePanels";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -46,18 +45,10 @@ const SUB_SCORE_META: {
       { label: "mvs_providers table", detail: "Every camp shown in the Premium providers table below feeds this score." },
     ],
   },
-  {
-    key: "marketAbsorption",
-    title: "Market Absorption",
-    subtitle: "Are premium operators actually selling out?",
-    formula:
-      "v1.0: normalize(Sellout Rate, 0–80%). Time-to-sellout & YoY velocity are Year 2 signals.",
-    sources: [
-      { label: "Sawyer week status", detail: "Each premium camp's week-by-week availability scraped from Sawyer (open / waitlist / sold_out)." },
-      { label: "mvs_weeks table", detail: "The week-row counter in the header (e.g. '68 week rows') is the input universe for this score." },
-      { label: "QA queue", detail: "Borderline week statuses are routed to the review queue before they affect this number." },
-    ],
-  },
+  // Market Absorption (formerly key: "marketAbsorption", 25% weight) was
+  // removed June 24, 2026. Its weight was proportionally redistributed across
+  // the 5 remaining pillars; the card, week-activity panel, and confidence
+  // branch were all removed with it.
   {
     key: "scaledOperator",
     title: "Scaled Operator",
@@ -154,13 +145,6 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
   // a global haircut for open QA items and low overall coverage.
   function confidenceFor(key: string): { level: "high" | "medium" | "low"; detail: string } {
     const n = premiumProviders.length;
-    if (key === "marketAbsorption") {
-      const tracked = new Set(weeks.map((w) => w.provider_id)).size;
-      if (tracked === 0) return { level: "low", detail: "No week-level data scraped yet." };
-      if (tracked < 3) return { level: "low", detail: `Only ${tracked} provider(s) have week data.` };
-      if (qaOpenCount > 5) return { level: "medium", detail: `${qaOpenCount} items in QA queue may shift this number.` };
-      return { level: "high", detail: `${tracked} providers with week-level activity.` };
-    }
     if (key === "scaledOperator") {
       if (watchlist.length === 0) return { level: "low", detail: "Watchlist is empty." };
       return { level: "high", detail: `Matched against ${watchlist.length} national brands.` };
@@ -262,7 +246,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
               {result?.mvs != null ? "Market Validation Score" : "Not scored yet"}
             </div>
             <a
-              href={`/market-brief?city=${encodeURIComponent(cityDisplay)}&state=${encodeURIComponent(stateDisplay)}&w=pa:${weights.pricingAcceptance},ma:${weights.marketAbsorption},so:${weights.scaledOperator},ed:${weights.enrichmentDiversity},md:${weights.marketDepth},mb:${weights.marketBalance}`}
+              href={`/market-brief?city=${encodeURIComponent(cityDisplay)}&state=${encodeURIComponent(stateDisplay)}&w=pa:${weights.pricingAcceptance},so:${weights.scaledOperator},ed:${weights.enrichmentDiversity},md:${weights.marketDepth},mb:${weights.marketBalance}`}
               target="_blank"
               rel="noopener noreferrer"
               className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-[#174be8] px-3 py-1.5 text-[12px] font-bold text-white hover:bg-[#1240c9]"
@@ -414,8 +398,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
       {/* National operators matched — Scaled Operator evidence */}
       <NationalOperatorsPanel providers={premiumProviders} watchlist={watchlist} />
 
-      {/* Week-by-week activity — Market Absorption evidence */}
-      <WeekActivityTable providers={premiumProviders} weeks={weeks} />
+      {/* Week-by-week activity panel removed June 24, 2026 with Market Absorption. */}
 
       {/* Premium provider table — live */}
       <section className="mb-6 rounded-lg border bg-white" style={{ borderColor: BORDER }}>

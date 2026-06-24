@@ -471,6 +471,33 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
             <div className="text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
               {result?.mvs != null ? "Market Validation Score" : "Not scored yet"}
             </div>
+            {weightsDirty && result?.mvs != null && defaultMvs != null && (
+              <div
+                className="mt-1 flex items-center gap-2 rounded-md border px-2 py-1 text-[10px]"
+                style={{ borderColor: BORDER, backgroundColor: SOFT, color: NAVY }}
+                title="Default weights are the baseline used everywhere else in the app. Your slider changes are preview-only."
+              >
+                <span>
+                  Default <span className="font-bold tabular-nums">{defaultMvs.toFixed(1)}</span>{" "}
+                  → preview <span className="font-bold tabular-nums">{result.mvs.toFixed(1)}</span>{" "}
+                  <span
+                    className="font-semibold tabular-nums"
+                    style={{ color: result.mvs > defaultMvs ? "#1d6b32" : result.mvs < defaultMvs ? "#a3142b" : MUTED }}
+                  >
+                    ({result.mvs > defaultMvs ? "+" : ""}{(result.mvs - defaultMvs).toFixed(1)})
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setWeights({ ...DEFAULT_WEIGHTS })}
+                  className="rounded border px-1.5 py-0.5 text-[10px] font-semibold hover:bg-white"
+                  style={{ borderColor: BORDER, color: BLUE }}
+                >
+                  Reset
+                </button>
+              </div>
+            )}
+
             <a
               href={`/market-brief?city=${encodeURIComponent(cityDisplay)}&state=${encodeURIComponent(stateDisplay)}&w=pa:${weights.pricingAcceptance},so:${weights.scaledOperator},ed:${weights.enrichmentDiversity},md:${weights.marketDepth},mb:${weights.marketBalance}`}
               target="_blank"

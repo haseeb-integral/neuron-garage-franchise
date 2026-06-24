@@ -1402,11 +1402,14 @@ export default function SiteAnalysis() {
       // map render instead of showing empty boxes.
       let hydratedSignals: SiteScoreSignals | undefined =
         (snap as { signals?: SiteScoreSignals }).signals ?? undefined;
-      if (!hydratedSignals && row.lat != null && row.lng != null && row.site_type) {
+      let hydratedIso10: GeoJSON.Polygon | undefined;
+      let hydratedIso15: GeoJSON.Polygon | undefined;
+      let cachedAnalysisId: string | null = null;
+      if (row.lat != null && row.lng != null && row.site_type) {
         try {
           const { data: cached } = await supabase
             .from("site_analyses")
-            .select("signals,latitude,longitude,school_type,created_at")
+            .select("id,signals,latitude,longitude,school_type,created_at")
             .eq("status", "ready")
             .eq("school_type", row.site_type)
             .eq("latitude", Number(row.lat))
@@ -1414,11 +1417,28 @@ export default function SiteAnalysis() {
             .order("created_at", { ascending: false })
             .limit(1)
             .maybeSingle();
-          if (cached?.signals) {
+          if (cached?.id) cachedAnalysisId = cached.id as string;
+          if (!hydratedSignals && cached?.signals) {
             hydratedSignals = cached.signals as SiteScoreSignals;
           }
         } catch {
           // Non-fatal — card still shows pillars/composite.
+        }
+      }
+      if (cachedAnalysisId) {
+        try {
+          const { data: isoRows } = await supabase
+            .from("site_analysis_isochrones")
+            .select("minutes,geojson")
+            .eq("analysis_id", cachedAnalysisId)
+            .in("minutes", [10, 15]);
+          for (const r of isoRows ?? []) {
+            const poly = r.geojson as unknown as GeoJSON.Polygon;
+            if (r.minutes === 10) hydratedIso10 = poly;
+            else if (r.minutes === 15) hydratedIso15 = poly;
+          }
+        } catch {
+          // Non-fatal — map will fall back to pin-only.
         }
       }
 
@@ -1427,6 +1447,8 @@ export default function SiteAnalysis() {
             sas: Number(snap.composite ?? 0),
             pillars: snap.pillars,
             signals: hydratedSignals,
+            iso10: hydratedIso10,
+            iso15: hydratedIso15,
             geo:
               row.lat != null && row.lng != null
                 ? { lat: Number(row.lat), lng: Number(row.lng) }

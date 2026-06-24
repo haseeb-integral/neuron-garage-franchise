@@ -265,6 +265,20 @@ export default function MVSQAQueue() {
     load();
   };
 
+  const handleUnresolve = useCallback(
+    async (rowId: string) => {
+      const { error } = await supabase.rpc("mvs_qa_unresolve" as never, { _queue_id: rowId } as never);
+      if (error) {
+        toast.error(`Undo failed: ${error.message}`);
+        return;
+      }
+      toast.success("Re-opened");
+      invalidateAllMvs(queryClient);
+      load();
+    },
+    [load, queryClient],
+  );
+
   const handleResolveOnly = async (row: QueueRow) => {
     setSavingId(row.id);
     const { data, error } = await supabase.rpc("mvs_qa_resolve", {
@@ -284,10 +298,37 @@ export default function MVSQAQueue() {
     setRows((prev) =>
       prev ? prev.map((r) => (r.id === row.id ? { ...r, resolved_at: new Date().toISOString() } : r)) : prev,
     );
-    toast.success("✓ Marked resolved");
+    toast.success("✓ Marked resolved", {
+      duration: 8000,
+      action: {
+        label: "Undo",
+        onClick: () => handleUnresolve(row.id),
+      },
+    });
     invalidateAllMvs(queryClient);
     load();
   };
+
+  const [rerunningProviderId, setRerunningProviderId] = useState<string | null>(null);
+  const [rerunningCity, setRerunningCity] = useState(false);
+
+  const rerunForProviders = useCallback(
+    async (city: string, providerIds: string[], label: string) => {
+      const { data, error } = await supabase.functions.invoke("mvs-extract-weeks", {
+        body: { city, provider_ids: providerIds },
+      });
+      if (error) {
+        toast.error(`Re-run failed: ${error.message}`, { duration: 8000 });
+        return false;
+      }
+      const processed = (data as { providers_processed?: number } | null)?.providers_processed ?? 0;
+      toast.success(`Re-extracted ${processed} provider${processed === 1 ? "" : "s"} for ${label}`);
+      invalidateAllMvs(queryClient);
+      await load();
+      return true;
+    },
+    [load, queryClient],
+  );
 
   if (roleLoading) {
     return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
@@ -354,6 +395,27 @@ export default function MVSQAQueue() {
             />
             Show resolved
           </label>
+          {cityFilter !== "__all__" && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={rerunningCity}
+              onClick={async () => {
+                const openProviderIds = (filteredRows ?? [])
+                  .filter((r) => r.resolved_at == null && r.entity_type === "provider")
+                  .map((r) => r.entity_id);
+                if (openProviderIds.length === 0) {
+                  toast.info("No open provider issues to re-run in this city.");
+                  return;
+                }
+                setRerunningCity(true);
+                await rerunForProviders(cityFilter, openProviderIds, cityFilter);
+                setRerunningCity(false);
+              }}
+            >
+              {rerunningCity ? "Re-running…" : "Re-run all open providers in this city"}
+            </Button>
+          )}
         </div>
       </header>
 
@@ -520,11 +582,18 @@ export default function MVSQAQueue() {
                   })()}
 
                   {g.providerRow.resolved_at ? (
-                    <div className="mt-2 text-xs font-medium text-green-700">
-                      ✓ Resolved
+                    <div className="mt-2 flex items-center gap-3">
+                      <span className="text-xs font-medium text-green-700">✓ Resolved</span>
+                      <button
+                        type="button"
+                        onClick={() => handleUnresolve(g.providerRow!.id)}
+                        className="text-xs text-muted-foreground underline hover:text-foreground"
+                      >
+                        Unresolve (re-open)
+                      </button>
                     </div>
                   ) : (
-                    <div className="mt-2 flex items-center gap-3">
+                    <div className="mt-2 flex flex-wrap items-center gap-3">
                       <Button
                         size="sm"
                         onClick={() => handleResolveOnly(g.providerRow!)}
@@ -532,8 +601,20 @@ export default function MVSQAQueue() {
                       >
                         {savingId === g.providerRow.id ? "Saving…" : "Mark resolved"}
                       </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={rerunningProviderId === g.providerId}
+                        onClick={async () => {
+                          setRerunningProviderId(g.providerId);
+                          await rerunForProviders(g.city, [g.providerId], g.providerName);
+                          setRerunningProviderId(null);
+                        }}
+                      >
+                        {rerunningProviderId === g.providerId ? "Re-running… (10–30s)" : "Re-run extraction"}
+                      </Button>
                       <span className="text-xs text-muted-foreground">
-                        Resolve after re-running extraction or fixing the provider's website URL.
+                        Re-run to record which pages the bot tried, or resolve once the URL is fixed.
                       </span>
                     </div>
                   )}
@@ -609,8 +690,15 @@ export default function MVSQAQueue() {
                               </div>
                             )}
                             {isResolved && (
-                              <div className="text-xs text-muted-foreground">
-                                Resolved {new Date(row.resolved_at!).toLocaleString()}
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span>Resolved {new Date(row.resolved_at!).toLocaleString()}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleUnresolve(row.id)}
+                                  className="underline hover:text-foreground"
+                                >
+                                  Unresolve
+                                </button>
                               </div>
                             )}
                           </div>

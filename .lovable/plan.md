@@ -1,93 +1,46 @@
-## Goal
+## Why the row disappeared (quick explanation)
 
-Two clear fixes on the MVS QA Queue page:
+The page only shows **open** QA items by default. When you click Mark resolved, the row is still in the database — it just has a `resolved_at` timestamp set, which hides it from the open list. If you tick the **"Show resolved"** checkbox at the top right, it comes back (greyed out). Nothing is deleted. That's the design today, but we'll add a real Undo path so accidents are easy to fix.
 
-1. Show **exactly which URLs the bot tried** for each flagged provider and **what went wrong**, so a human can quickly see what to QA.
-2. Make **Mark resolved** actually work end‑to‑end (find why clicking it does nothing for you and fix it).
+## Why diagnostics are still empty on the existing rows
 
-No scoring/database math changes. Pipeline behavior stays the same — we just capture and show more of what already happens.
-
----
-
-## What is happening today (so you have full clarity)
-
-When we run the pipeline for a city, for every camp provider the bot does this inside `mvs-extract-weeks`:
-
-1. Picks a **starting website** = `website_url` → else `source_listing_url` → else `url`.
-2. Asks Firecrawl `/map` for up to 100 links on that site and scores them for words like "summer-camp / register / schedule".
-3. Asks Firecrawl `/search` for `"<provider> <city> summer camp registration schedule"` and keeps results on the same domain or on `hisawyer.com`.
-4. Scrapes the top 3 candidate pages and picks the one with the most week dates + status words.
-5. If none of that works, the provider is added to the QA queue with `entity_type = 'provider'` and a tiny `reason` text like `no registration page found` or `extraction returned 0 weeks`.
-
-The problem: **none of the URLs the bot tried, and no per‑URL error, are saved.** The QA row only has the short `reason` string. That is why on the QA page you cannot see which page it actually checked.
-
-For "Mark resolved": the button calls a database function `mvs_qa_resolve` which sets `resolved_at = now()`. The DB function looks correct and your role is manager. Checked the table: 0 of the current 16 New York rows are resolved, so either the call is silently failing or the UI isn't refreshing. Needs a live test with the network tab to confirm before we change anything.
+The diagnostics column is filled in only when the pipeline writes a NEW QA row. The 13 rows you see were inserted **before** the diagnostics feature shipped, so their `diagnostics` field is empty. The only way to fill them is to re-run the extraction for that provider — which the user has no way to trigger from the QA page right now.
 
 ---
 
-## Plan (phases, one Lovable turn each)
+## Plan (2 small phases)
 
-### Phase 1 — Capture diagnostics in the pipeline (1 turn)
+### Phase A — Undo / Unresolve a row (1 turn)
 
-- Migration: add column `mvs_qa_queue.diagnostics jsonb` (nullable). No data loss, no policy change.
-- In `supabase/functions/mvs-extract-weeks/index.ts`:
-  - On `ProviderOutcome`, add `root_url`, `tried_pages: { url, step, ok, http_status?, note? }[]`, `firecrawl_calls`.
-  - Record one entry every time we call `/map`, `/search`, or `/scrape` for that provider, with the URL and a short note (e.g. `map ok 87 links`, `scrape http 403`, `scrape too short md`, `search returned 0 same-domain results`).
-  - When inserting provider QA rows, also write `diagnostics = { root_url, tried_pages, error }`.
-- Re-running the pipeline for a city will refill diagnostics for newly flagged rows. Old rows stay as they are (we'll show a friendly fallback for them).
+1. **Sonner toast with Undo** after Mark resolved: success toast stays for 8 seconds with an "Undo" button. Clicking Undo calls the unresolve RPC (below) and the row pops back into the open list.
+2. **Persistent Unresolve button** in the "Show resolved" view: when a row has `resolved_at`, show a small "Unresolve" button next to the "✓ Resolved" badge so the reviewer can flip it back any time, not just within 8 seconds.
+3. **New DB function** `public.mvs_qa_unresolve(_queue_id uuid)`:
+   - Same manager/admin role check as `mvs_qa_resolve`.
+   - Sets `resolved_at = NULL`, `resolved_by = NULL`, `updated_at = now()`.
+   - Does NOT touch the underlying `mvs_weeks` row (week status stays as the reviewer last left it — safest default).
+4. Optimistic UI: row updates instantly, then refetches.
 
-### Phase 2 — Show the diagnostics on the QA page (1 turn)
+### Phase B — Per‑provider re‑extract from the QA page (1 turn)
 
-In `src/pages/MVSQAQueue.tsx`, under "Why flagged" for each provider card add a clean panel:
-
-```text
-Bot started at:    <root url>  ↗ open
-Pages the bot tried:
-  • https://… /summer-camps          scrape → 403 forbidden
-  • https://… /register              scrape → ok, but page was too short
-  • https://… /classes               scrape → ok, no week dates found
-Search results checked:
-  • hisawyer.com/<provider>/…        scrape → ok, no week dates found
-Final result: no registration page found
-```
-
-- Each URL is a clickable link that opens in a new tab so the reviewer can verify in one click.
-- For old rows without `diagnostics`, show: *"Diagnostics weren't captured for this row. Re-run the pipeline for this city to record what the bot tried."*
-- Keep the existing "open provider website ↗" and "search the web ↗" links in the header.
-
-### Phase 3 — Fix "Mark resolved" (1 turn)
-
-- Open the page, click Mark resolved, watch the network call to `rpc/mvs_qa_resolve` and the console. Three likely causes:
-  - **a)** RPC returns an error and `toast.error` is firing but you don't notice → make the error visible, log it.
-  - **b)** RPC succeeds but `load()` isn't re-running → force `await load()` and clear the row from local state immediately for instant feedback.
-  - **c)** Auth header missing on the RPC call → re-check session.
-- Fix the actual cause found above. Add a small visual change: when a row is resolved, fade it out and show "✓ Resolved by you just now" for 2 seconds before it disappears, so you have proof the click worked.
-- Also add a clearer error toast that shows the full DB error message when it fails.
-
-### Phase 4 — Smoke test together (0 code, just verify)
-
-- On `/market-validation` → open `/mvs-qa-queue` → New York.
-- Confirm each card now shows the tried URLs + per‑URL note.
-- Click Mark resolved on one provider — row should fade and disappear; toggling "Show resolved" should bring it back marked resolved.
-- Re-run the pipeline for one small city and confirm new rows have full `diagnostics`.
+1. Extend `mvs-extract-weeks` edge function: optional `provider_ids: string[]` in the request body. When present, filter `providerList` to those IDs only. No other behavior change. New runs automatically write the new diagnostics format.
+2. Add a **"Re‑run extraction"** button on each provider QA card (next to "Mark resolved").
+   - Calls `supabase.functions.invoke('mvs-extract-weeks', { body: { city, provider_ids: [providerId] } })`.
+   - Shows a spinner while running (can take 10–30s because of Firecrawl calls).
+   - On finish: `load()` so the same card now shows the populated diagnostics block (URLs the bot tried, HTTP status, notes).
+3. Add a city‑level helper button at the top of the QA page: **"Re‑run extraction for all open providers in this city"**, same idea but passes every open provider's ID. This is how you would back‑fill all 13 New York rows at once.
 
 ---
 
 ## What may be affected
-
-- `mvs-extract-weeks` edge function (more fields written, same flow).
-- `mvs_qa_queue` table (one new nullable jsonb column + GRANTs unchanged).
-- `MVSQAQueue.tsx` page UI.
-- Nothing else: no change to scoring, weights, shortlist, Market Validation table, briefs, exports, or any other page.
+- `mvs_qa_queue` DB function set (one new function, no schema change, no GRANT change).
+- `mvs-extract-weeks` edge function (additive — old callers without `provider_ids` keep working).
+- `src/pages/MVSQAQueue.tsx` UI (buttons + Undo toast).
 
 ## Risks / what not to touch
-
-- Do **not** change `mvs_qa_resolve` signature or how week-level rows are saved.
-- Do **not** change Firecrawl call counts or thresholds.
-- Old QA rows stay valid; they simply have no diagnostics until next pipeline run.
+- No change to scoring, week extraction logic, Firecrawl prompts, or any other page.
+- `mvs_qa_resolve` stays exactly as it is.
 
 ## Effort
+~2 small Lovable turns.
 
-~3 small Lovable turns + 1 verify turn.
-
-**Please approve and I'll start with Phase 1.**
+**Please approve and I'll start with Phase A.**

@@ -1263,8 +1263,8 @@ export default function SiteAnalysis() {
               disabled={!canExport || exporting}
               title={
                 canExport
-                  ? "Download a branded multi-section PDF with all 10 SOW v2.2 sections and a side-by-side comparison"
-                  : "Score at least one candidate to enable the site report export"
+                  ? "Export every visible card. Un-scored cards appear as '—' with a 'Not yet scored' pill."
+                  : "Add at least one candidate to enable export"
               }
               className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
               style={{ borderColor: BLUE, color: BLUE, backgroundColor: "#fff" }}
@@ -1275,7 +1275,7 @@ export default function SiteAnalysis() {
             </div>
             {!canExport && (
               <p className="text-[10px]" style={{ color: MUTED }}>
-                Score at least one candidate to enable export.
+                Add at least one candidate to enable export.
               </p>
             )}
           </div>

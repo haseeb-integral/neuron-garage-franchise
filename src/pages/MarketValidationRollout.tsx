@@ -37,7 +37,9 @@ interface RunRow {
   firecrawl_calls: number;
   error: string | null;
   created_at: string;
+  source_counts: Record<string, unknown> | null;
 }
+
 
 interface FlagRow {
   city: string;

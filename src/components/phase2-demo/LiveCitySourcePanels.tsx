@@ -302,7 +302,7 @@ export function ConfidenceStamp({
       bg: "#fff5e0",
       fg: "#8a5a00",
       label: "Partial data coverage",
-      meaning: "Fewer premium providers fed this sub-score, or some items are still in the QA queue. The number may shift after review.",
+      meaning: "Fewer premium providers fed this sub-score. The number may shift as more sources are added.",
     },
     low: {
       bg: "#fce7ec",

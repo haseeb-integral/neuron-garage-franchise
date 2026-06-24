@@ -14,16 +14,7 @@ import { SampleDataBadge } from "@/components/phase2-demo/SampleDataBadge";
 import { ShortlistTable, type LiveOverlay } from "@/components/phase2-demo/ShortlistTable";
 import { Slider } from "@/components/ui/slider";
 import { useLiveMvs, invalidateAllMvs, MVS_QUERY_KEY } from "@/lib/mvs/useLiveMvs";
-import {
-  sanAntonioMarketValidationDemo,
-  MARKET_BALANCE_ACTIVE_BAND,
-  MARKET_BALANCE_BANDS,
-  QA_QUEUE_FLAGGED_COUNT,
-  SCRAPE_CADENCE,
-  SHORTLIST_DEMO,
-  type ConfidenceLevel,
-  type ShortlistRow,
-} from "@/data/phase2DemoData";
+import { SHORTLIST_SEED, type ShortlistRow } from "@/lib/mvs/shortlistSeed";
 import { useShortlistAdditions } from "@/lib/mvs/useShortlistAdditions";
 import { AddCityDialog } from "@/components/phase2-demo/AddCityDialog";
 

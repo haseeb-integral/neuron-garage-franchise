@@ -209,7 +209,12 @@ Deno.serve(async (req) => {
       } catch (acsErr) {
         console.warn("[mvs-run-pipeline] acs step failed (non-fatal):", acsErr);
       }
-      await invokeStep("extract", { city });
+      // Stage 3 (mvs-extract-weeks) is RETIRED — Market Absorption was removed
+      // from the composite (June 24, 2026). The weeks/registration-page scrape
+      // produced ~80 QA-queue items per cycle and Firecrawl spend for a score
+      // no longer shown to users. The function code is intentionally left in
+      // place in case Absorption is ever revived. See plan: retire-weeks.
+      stepResults["extract"] = { skipped: true, reason: "Market Absorption retired" };
 
       await admin
         .from("mvs_pipeline_runs")

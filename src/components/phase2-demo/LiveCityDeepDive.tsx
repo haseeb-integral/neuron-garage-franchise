@@ -274,7 +274,18 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
 
   const provCount = providers.length;
   const weekCount = weeks.length;
-  const lowConfidence = flag?.low_confidence_badge ?? false;
+  // Filter out QA reasons from the retired Market Absorption pillar so they
+  // don't inflate the "items in QA queue" pill or trigger the Limited Source
+  // Coverage badge. Registration-page scraping fed only that pillar.
+  const isRetiredQaReason = (r: string) =>
+    r === "no registration page found" || r.startsWith("no usable page");
+  const activeQaReasons = qaReasons.filter((r) => !isRetiredQaReason(r.reason));
+  const activeQaCount = activeQaReasons.reduce((sum, r) => sum + r.count, 0);
+  // The DB-stored `low_confidence_badge` is computed from no_reg_page_pct,
+  // which is now a stale signal. Only treat the city as low-confidence if
+  // there's at least one non-retired QA reason.
+  const lowConfidence = (flag?.low_confidence_badge ?? false) && activeQaCount > 0;
+
 
   const premiumProviders = useMemo(
     () => providers.filter((p) => p.tier === "premium"),
@@ -525,7 +536,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
         watchlistCount={watchlist.length}
         acsAvailable={!!acs}
         lastRefreshed={lastRefreshed}
-        qaOpenCount={qaOpenCount}
+        qaOpenCount={activeQaCount}
       />
 
       {/* Sub-score grid with live sliders */}
@@ -774,15 +785,10 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
         const items: string[] = [];
         const nNoPrice = nTotal - nWithPrice;
         const nNoCategory = nTotal - nWithCategory;
-        // Filter out QA reasons that belong to the retired Market Absorption
-        // pillar. The `mvs-extract-weeks` scraper writes "no registration page
-        // found" and "no usable page: …" — both feed only `mvs_weeks`, which
-        // is no longer used in the composite. Showing them here misleads the
-        // reader into thinking they hurt the current score.
-        const isRetiredReason = (r: string) =>
-          r === "no registration page found" || r.startsWith("no usable page");
-        const activeQaReasons = qaReasons.filter((r) => !isRetiredReason(r.reason));
-        const activeQaCount = activeQaReasons.reduce((sum, r) => sum + r.count, 0);
+        // activeQaReasons / activeQaCount are computed at the top of the
+        // component so the Known Limitations bullet, the QA pill in the Data
+        // Sources strip, and the Limited Source Coverage badge all agree.
+
         if (activeQaCount > 0) {
           const reasonText =
             activeQaReasons.length > 0

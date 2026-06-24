@@ -1,74 +1,54 @@
-## Combined plan — Phase A (toast bug) + Phase B (classify timeout)
 
----
+# Boston MVS Page Fix — All 3 Phases Together
 
-### Phase A — Stop the false red toast on every city click (frontend only)
+Goal: after a fresh pipeline run, every word and number on the MVS deep-dive must match the live database. No more "Jun 19" stamps, no more "591 providers", no more "extract" mention.
 
-**What is wrong (simple):** When you click a city row, the small "Run Pipeline" card under the table loads that city's last saved run. If that run is `failed` (most are), it pops a red toast — even though no new run happened. The guard that should silence this only works for the **first** city you ever look at, not for later city changes.
+## Phase 1 — Auto-refresh score after pipeline run
+**File:** `supabase/functions/mvs-run-pipeline/index.ts`
 
-**Fix:** In `src/components/phase2-demo/RunPipelineButton.tsx`, when the `city` prop changes, reset three things so the guard works again per city:
-- `latest` → `null`
-- `lastTerminalId` → `null`
-- `initialSeededRef.current` → `false`
+After the existing `discover → classify → ACS` steps finish for a city, add one more call to the score-recompute path that the "Refresh scores" button already uses. Same city, same response shape. If recompute fails, the run still returns success and we log a warning — the user can hit "Refresh scores" manually as a fallback.
 
-Then `fetchLatest` runs for the new city, sees the row is already terminal, and seeds the guard so **no toast fires**.
+Result: score, sub-scores, and all "scraped on" dates update on their own when the run finishes.
 
-**Files touched:** 1 file (`RunPipelineButton.tsx`). No backend, no DB, no schema.
+## Phase 2 — Fix wrong copy under the score
+**File:** `src/components/phase2-demo/LiveCityDeepDive.tsx` (the file that renders "Computed from 591 providers and 87 week rows")
 
-**Risk:** very low.
+Change the line to read the live counts from the same data the page already loads via `useLiveMvs`:
+- "Computed from **{providerCount}** providers" — use the real provider count for the city.
+- Drop "and X week rows" entirely (Market Absorption is retired, weeks don't feed the score anymore).
 
-**Turns:** 1.
+Also fix the Pricing sub-score helper text "Based on 10 of 15 providers with a readable price" so the denominator reads the live `mvs_providers` total for the city, not a cached sample.
 
----
+## Phase 3 — Remove retired references from the page
+**Files:** `src/components/phase2-demo/LiveCityDeepDive.tsx`, `src/components/phase2-demo/RunPipelineButton.tsx`, `src/components/phase2-demo/LiveCitySourcePanels.tsx`
 
-### Phase B — Fix the real 504 timeout in the "classify" step (backend)
+- **Help text under Run Pipeline:** change `discover → classify → extract → cap 50 Firecrawl calls` → `discover → classify → ACS → cap 50 Firecrawl calls`.
+- **Data sources card:** remove the `Sawyer week availability 51/87 loaded` chip — weeks step retired.
+- **"Scraped Jun 19" stamps:** remove the date pill on sub-score cards that no longer use weeks data (keep it on cards still backed by live scrapes, like Premium Providers).
 
-**What is wrong (simple):** The orchestrator (`mvs-run-pipeline`) calls the `mvs-classify-tier` function over HTTP and waits for it to finish. Classify loads every provider for the city (e.g. San Antonio has 205 providers), splits them into batches of 20, and calls the Gemini AI **one batch at a time, sequentially**. Each batch takes ~10–15 seconds, so 10+ batches add up to over 150 seconds. The server cuts the connection with **HTTP 504 — idle timeout (150s) reached**, and the whole pipeline run is marked `failed`.
+## What is NOT changing
+- No DB schema changes.
+- No score-math changes (weights, formulas, thresholds untouched).
+- No RLS, grants, edge function auth changes.
+- The `mvs-extract-weeks` function stays on disk (already unused) — we just remove UI mentions.
 
-**Root cause in one line:** sequential AI calls inside one HTTP request that has a 150-second wall-clock limit.
+## Risk
+- Low. Phase 1 adds one extra HTTP call inside an already-running function; wrapped in try/catch.
+- Phase 2 & 3 are text + count swaps in one React file each.
 
-**Fix (smallest safe change that actually works):** Run the batches **in parallel** inside `mvs-classify-tier`. Each batch is an independent AI call — there is no order dependency, and they all write to different provider rows. With a small concurrency cap (e.g. 5 batches at a time) we get a ~5× speed-up without overloading the AI gateway. 205 providers / 20 per batch = ~11 batches; at 5 in parallel, total wall time drops to roughly **~30–35 seconds**, well under the 150s limit.
+## How to smoke-test after all 3 phases
+1. Click any other city row → no red toast (already fixed last turn).
+2. Open Boston → press **Run Pipeline**.
+3. Wait ~2 min for green success toast.
+4. Check the score card under Boston:
+   - "Last refreshed" should read **just now / today**.
+   - "Computed from **215** providers" (not 591, no "week rows").
+   - Pricing card: "Based on 40 of 215 providers with a readable price" (not 10 of 15).
+   - All sub-score "scraped on" dates should be today.
+5. Help text under Run Pipeline should say `discover → classify → ACS`, no `extract`.
+6. Data Sources card should not show "Sawyer week availability".
 
-**Steps in `supabase/functions/mvs-classify-tier/index.ts`:**
-1. Extract the existing per-batch logic (AI call + per-row write-back) into a helper `async function processBatch(batch)`.
-2. Replace the `for` loop with a small concurrency runner: keep at most `MAX_CONCURRENCY = 5` batches in flight using `Promise.all` over chunks of 5.
-3. Aggregate `classifiedCount`, `errors`, and `sample` from all batches (use atomic appends — they don't conflict).
-4. Keep the same response shape so the orchestrator and any caller still work.
-5. No DB change. No new table. No schema migration.
+## Order of work
+I'll do Phase 1 (backend edge function), then Phase 2 (page copy + counts), then Phase 3 (remove retired text), in that order, in **3 separate turns** so each is easy to review and rollback.
 
-**Safety guards added:**
-- Hard cap concurrency at 5 — prevents Gemini rate-limit storms.
-- Per-batch try/catch already exists; one failing batch does not kill the others.
-- If even the parallel run somehow approaches the timeout, the orchestrator's existing "stale run >3 min" auto-clear still protects the UI.
-
-**Files touched:** 1 file (`supabase/functions/mvs-classify-tier/index.ts`). Auto-deploys.
-
-**What is NOT changed:**
-- No change to `mvs-run-pipeline` flow.
-- No change to the classify prompt, tier rules, or deterministic overlay.
-- No change to any DB table, RLS, or score.
-- No change to the retired weeks/extract step.
-
-**Risk:** low–medium. The only realistic risk is hitting an AI rate limit during a very large city; the concurrency cap of 5 is the safety belt. If it ever does cap out, the existing error-collection path already records it and the pipeline still finishes the batches that succeeded.
-
-**Turns:** 1.
-
----
-
-### Order of work
-
-1. **Turn 1 — Phase A.** Touch `RunPipelineButton.tsx`. Reload preview. Click each city row → no red toast. The small "Last run: failed" text still shows correctly.
-2. **Turn 2 — Phase B.** Touch `mvs-classify-tier/index.ts`. Wait for deploy. Press **Run Pipeline** on San Antonio (the city in the screenshot). The pipeline should complete in roughly 30–60 seconds and finish with status `done`, not `failed`. The success toast should appear once. No more 504.
-
----
-
-### What you should test after both phases
-
-- Click 5+ different city rows — **no red toast** appears anywhere.
-- Small status card under "Run Pipeline" still shows the correct last-run summary for each city.
-- Press **Run Pipeline** on **San Antonio** (largest list). It should finish in under 90 seconds with a green success toast. The "Last run" line flips to **done**.
-- Scores in the shortlist table refresh and stay the same numbers as before (we only fixed the run plumbing, not the scoring math).
-
----
-
-Approve and I will start with Phase A first, then move to Phase B in the next turn.
+Approve and I'll start with Phase 1.

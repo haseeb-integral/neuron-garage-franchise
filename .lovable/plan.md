@@ -1,58 +1,70 @@
-## Demo Data Cleanup — Remove Market Absorption Leftovers
+## No-Fake-Numbers Refactor — MV + SAS
 
-### What we are changing and why
-Market Absorption was removed from the live scoring model. But the demo (fake) data still has absorption fields, an absorption sub-score card, a sellout curve chart, and week-by-week provider statuses. This cleanup strips those leftovers so the demo matches the live 5-pillar model.
+### Goal
+Two things in one pass:
+1. **No fake/demo numbers ever leak into scoring or displayed scores** on MV or SAS pages. Empty state = "—" with a "Not yet scored" pill.
+2. Split `src/data/phase2DemoData.ts` so real config and shared types are not mixed with demo fallbacks.
 
-### What will NOT change (safety promises)
-- Market Validation page still loads.
-- Live cities still show live data (or last fetched data) — they never used demo absorption data.
-- No city is removed from MV or SAS. The list of cities stays the same.
-- The 5-card pillar model stays the only model shown.
-- Build stays clean (no TypeScript errors, no broken imports).
+### Safety promises (will not change)
+- MV page still loads, lists all 9 cities, live data still shows.
+- SAS page still loads. Saved live sites still show.
+- Build stays clean, all 121 tests still pass.
+- Live scoring engine (`computeMvs`, `useLiveMvs`, `useSiteScore`, `cityScoringLiveData`) is not touched.
 
-### Pages and files that may be touched
-- `src/data/phase2DemoData.ts` — remove `absorption` field from shortlist rows, remove `sampleWeeks` from provider roster, remove Market Absorption sub-score card from the San Antonio deep-dive.
-- `src/components/phase2-demo/ShortlistTable.tsx` — remove absorption column if any references remain.
-- `src/components/phase2-demo/` deep-dive components — remove the sellout curve chart and the Market Absorption sub-score card.
-- `src/lib/mvsBrief/sampleBriefAdapter.ts` — stop passing absorption fields into the PDF brief.
-- Any TypeScript types tied to the demo shape — trim the `absorption` and `sampleWeeks` properties so the build stays green.
+### Audit findings (so far — will reconfirm when background audit returns)
 
-### Phases (one Lovable turn each)
+| Symbol | Real category | Leaks fake numbers into scoring? |
+|---|---|---|
+| `SITE_CONFIDENCE_THRESHOLDS` | Real SAS config | No |
+| `SCHOOL_PROFILE_FACTORS` | Real SAS doc data | No (rendered on methodology page only) |
+| `MARKET_BALANCE_BANDS`, `MARKET_BALANCE_ACTIVE_BAND` | Cosmetic chip labels | No, but `ACTIVE_BAND` is hardcoded "underserved" — only used on Methodology page, not MV scoring |
+| `SCRAPE_CADENCE`, `QA_QUEUE_FLAGGED_COUNT` | UI labels | No |
+| `ShortlistRow`, `SiteAnalysisDemoSite` | TypeScript types | No |
+| **`SHORTLIST_DEMO`** | Seed list of 9 cities + **fake pricing / scaledOperator / diversity / depth / composite numbers** | **YES** — when no live overlay exists, the ShortlistTable shows these numbers as if real |
+| **`sanAntonioMarketValidationDemo`** | Sub-scores, signals, providers | Currently unused on MV page (LiveCityDeepDive replaced it). Still fed into `sampleBriefAdapter` for PDF export. |
+| **`austinSiteAnalysisDemo`** (Trinity + LeafSpring) | Two demo sites with hardcoded composites | **YES** — rendered on SAS page as if real sites |
+| `SITE_ACCESSIBILITY_CALLOUTS` | Hardcoded "3 min · Loop 360" etc. for Trinity / LeafSpring | Tied to the two demo sites — goes when they go |
+| `sampleBriefAdapter.deriveBalance()` | Back-solves marketBalance from demo composite | **YES** for sample rows — only runs when row has no live data |
 
-**Phase 1 — Trim the demo data file (1 turn)**
-- Remove `absorption` number from every shortlist row.
-- Remove `sampleWeeks` arrays from every demo provider.
-- Remove the Market Absorption sub-score entry from the San Antonio deep-dive.
-- Update the demo-data TypeScript types to match.
+### Your answers locked in
+- **Empty score cells → "—" with a "Not yet scored" pill.**
+- **Trinity / LeafSpring removed entirely** from SAS — only live sites show.
 
-**Phase 2 — Remove absorption UI in demo components (1 turn)**
-- Remove the Market Absorption sub-score card from the deep-dive panel.
-- Remove the sellout curve chart and its container.
-- Remove any week-by-week status table tied to `sampleWeeks`.
-- Remove related help text and tooltips.
+---
 
-**Phase 3 — Clean the sample brief adapter (1 turn)**
-- Stop reading `sampleWeeks` and `absorption` in `sampleBriefAdapter.ts`.
-- Confirm the PDF brief still generates with the 5 pillars only.
+### Phases (4 small turns)
 
-**Phase 4 — Verify (1 turn)**
-- Run typecheck and build.
-- Load Market Validation page in preview.
-- Confirm shortlist table renders, deep-dive opens, live cities still show data, no console errors.
-- Confirm 5 pillar cards (Pricing Acceptance, Scaled Operator, Enrichment Diversity, Market Depth, Market Balance Index) are the only ones shown.
+**Phase 1 — Stop fake-number leak on MV table (1 turn)**
+- `ShortlistTable.tsx`: when no live overlay exists for a row, render each score cell as "—" instead of `r.pricing`, `r.scaledOperator`, etc. Add a small "Not yet scored" pill next to the city name when overlay is missing.
+- `SHORTLIST_DEMO`: strip the fake number fields. Keep only `id`, `city`, `state`, and a flag/label. The 9 cities still appear in the table (so the list is preserved) but their score columns show "—" until the pipeline runs.
+- `decisionsExport.ts`: when no overlay, write empty string in CSV instead of the demo number.
+
+**Phase 2 — Remove Trinity / LeafSpring from SAS (1 turn)**
+- Delete `austinSiteAnalysisDemo` and `SITE_ACCESSIBILITY_CALLOUTS`.
+- `SiteAnalysis.tsx`: remove all references; show an empty-state card ("No sites saved yet — add a candidate site to begin") when the live saved-sites list is empty.
+- `SavedSitesDrawer.tsx`: confirm it only reads live `useSavedSites`, not demo.
+
+**Phase 3 — Clean the sample PDF brief path (1 turn)**
+- `sampleBriefAdapter.ts`: stop deriving fake `marketBalance` from a demo composite. If a row has no live data, the brief export button is disabled (or routes to a "needs live data" message). PDF brief becomes live-only.
+- Remove `sanAntonioMarketValidationDemo` usage. Remove the file's `subScores` and `premiumProviders` blocks entirely.
+
+**Phase 4 — Split the file (1 turn, zero behavior change)**
+- New `src/lib/sas/config.ts` ← `SITE_CONFIDENCE_THRESHOLDS`, `SCHOOL_PROFILE_FACTORS` (real SAS config).
+- New `src/lib/mvs/shortlistSeed.ts` ← the slim seed list (id/city/state only) + `ShortlistRow` type + `MARKET_BALANCE_BANDS`, `SCRAPE_CADENCE`, `QA_QUEUE_FLAGGED_COUNT`.
+- Delete `src/data/phase2DemoData.ts`.
+- Update all 9 import sites to the new paths.
+- Run typecheck + vitest.
 
 ### Risks and what NOT to touch
-- Do NOT touch `src/lib/mvs/computeMvs.ts` (live scoring) — it already excludes Market Absorption.
-- Do NOT touch live data hooks (`useLiveMvs.ts`, `useLiveMarketDetail.ts`).
-- Do NOT remove or rename any city in the demo list — only remove absorption-related fields on each city.
-- Do NOT touch the Supabase schema or edge functions.
-- Risk: a component may still read `row.absorption` after we delete it. Mitigation: typecheck catches this; Phase 4 verifies in preview.
+- Do NOT change `computeMvs.ts`, `useLiveMvs.ts`, `useSiteScore.ts`, `cityScoringLiveData.ts`, or any edge function — live scoring is correct, this is only about removing fake fallbacks.
+- Do NOT touch the Methodology pages' rendered sample tables (those are clearly labeled as documentation examples, not scores).
+- Risk: a test might assert on `row.pricing = 88` for NYC. Mitigation: typecheck + vitest run after each phase; fix tests to match the new shape.
 
-### What you should test after Phase 4
-- Open `/market-validation` — page loads, all cities still listed.
-- Click into San Antonio deep-dive — only 5 pillar cards, no absorption card, no sellout chart.
-- Click a live city — live data still shows.
-- Open `/site-analysis` — cities still listed.
-- Export PDF brief for San Antonio — opens and shows 5 pillars.
+### Verification after Phase 4
+- `/market-validation` → all 9 cities visible. Cities without live data show "—" + "Not yet scored". Live cities (e.g. Austin) show live numbers.
+- `/site-analysis` → no Trinity / LeafSpring. Empty state if no live sites; saved live sites render normally.
+- Search the codebase: `rg "phase2DemoData"` returns no hits.
+- `tsgo --noEmit` clean, `vitest run` all green.
+- CSV export and PDF brief still work for live cities.
 
 Waiting for your approval before I start Phase 1.

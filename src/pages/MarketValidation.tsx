@@ -287,12 +287,7 @@ export default function MarketValidation() {
         </div>
       </section>
 
-      <ScoresCacheIndicator
-        bundles={[
-          austinLive, newYorkLive, houstonLive, chicagoLive, bostonLive,
-          sanAntonioLive, philadelphiaLive, losAngelesLive, indianapolisLive,
-        ]}
-      />
+      <ScoresCacheIndicator bundles={bundleStatsList} />
 
       {/* v1.1 — Decision-capture shortlist table (replaces the chip rail) */}
       <div className="mb-2 flex items-center justify-between">
@@ -304,12 +299,26 @@ export default function MarketValidation() {
         </div>
         <AddCityDialog onAdd={addCity} />
       </div>
+
+      {/* Invisible probes — one per shortlist row. Each calls useLiveMvs for
+          its city and pushes the overlay + cache stats up to the parent. */}
+      {allShortlistRows.map((r) => (
+        <LiveOverlayProbe
+          key={r.id}
+          rowId={r.id}
+          cityKey={`${r.city}, ${r.state}`}
+          onOverlay={handleOverlay}
+          onBundle={handleBundle}
+        />
+      ))}
+
       <ShortlistTable
         rows={allShortlistRows}
         activeCityId={activeCityId}
         onSelectCity={setActiveCityId}
-        liveOverlays={liveOverlays}
+        liveOverlays={overlays}
       />
+
 
       {/* Decision points */}
       <section className="mb-4 rounded-lg border p-3" style={{ borderColor: BORDER, backgroundColor: SOFT }}>

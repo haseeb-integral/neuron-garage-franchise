@@ -126,7 +126,7 @@ export default function Auth() {
 
           <div className="relative z-10">
             <div className="mb-6 flex items-center gap-3">
-              <img src={logo} alt="Neuron Garage Franchise" className="h-10 w-10 object-contain" />
+              <img src={logo} alt="Neuron Garage Franchise Development" className="h-10 w-10 object-contain" />
               <div>
                 <div className="text-xl font-black uppercase leading-5 tracking-[0.08em] text-[#081633]">Neuron</div>
                 <div className="text-xl font-black uppercase leading-5 tracking-[0.08em] text-[#081633]">Garage</div>
@@ -229,8 +229,8 @@ export default function Auth() {
                 </CardTitle>
                 <CardDescription className="pt-1 text-sm text-[#4d5d76]">
                   {isLogin
-                    ? "Sign in to your Neuron Garage Franchise account"
-                    : "Create your Neuron Garage Franchise account to get started."}
+                    ? "Sign in to your Neuron Garage Franchise Development account"
+                    : "Create your Neuron Garage Franchise Development account to get started."}
                 </CardDescription>
               </CardHeader>
               <CardContent className="px-6 pb-5 pt-3 sm:px-7">
@@ -352,7 +352,7 @@ export default function Auth() {
             <Card className="mt-3 rounded-2xl border-[#eef2f7] bg-white/95 shadow-xl shadow-blue-950/5">
               <CardContent className="px-7 py-4 text-center sm:px-9">
                 <h2 className="text-base font-bold text-[#07142f]">
-                  {isLogin ? "New to Neuron Garage Franchise?" : "Already have an account?"}
+                  {isLogin ? "New to Neuron Garage Franchise Development?" : "Already have an account?"}
                 </h2>
                 <p className="mt-1 text-sm text-[#4d5d76]">
                   {isLogin ? "Create an account to get started." : "Sign in to continue managing your franchise pipeline."}
@@ -375,7 +375,7 @@ export default function Auth() {
               <span>Your data is protected with enterprise-grade security.</span>
             </div>
             <div className="flex items-center gap-3 whitespace-nowrap">
-              <span>© 2026 Neuron Garage Franchise. All rights reserved.</span>
+              <span>© 2026 Neuron Garage Franchise Development. All rights reserved.</span>
               <span className="text-[#c3ccd9]">•</span>
               <a href="#" className="hover:text-[#174be8]">Privacy Policy</a>
               <span className="text-[#c3ccd9]">•</span>

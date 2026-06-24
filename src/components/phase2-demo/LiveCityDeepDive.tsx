@@ -173,6 +173,32 @@ const INPUT_LABELS: Record<string, string> = {
   affluentDualIncomeFamilyCount: "Affluent dual-income families (ACS)",
 };
 
+// Per-input freshness/source pill shown on the right of each input row so
+// readers can tell which numbers are live-scraped vs. from static reference
+// data (ACS) vs. from the curated operator watchlist. Uses only signals
+// already in scope — no extra fetch.
+function freshnessForInput(key: string, lastRefreshed: string | null): string {
+  if (
+    key === "coverageRatio" ||
+    key === "children5to12" ||
+    key === "affluentDualIncomeFamilyCount"
+  ) {
+    return "US Census ACS";
+  }
+  if (key === "operatorValidation") return "Watchlist";
+  if (key === "directCompetitorLoad") return "Watchlist + ACS";
+  if (lastRefreshed) {
+    try {
+      const d = new Date(lastRefreshed);
+      return `Scraped ${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
+    } catch {
+      return "Scraped";
+    }
+  }
+  return "Scraped";
+}
+
+
 interface Props {
   cityKey: string;            // e.g. "Austin, TX"
   cityDisplay: string;        // e.g. "Austin"
@@ -397,6 +423,13 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                       {band.label}
                     </span>
                   )}
+                  <p className="mt-1.5 text-[11px] leading-snug" style={{ color: MUTED }}>
+                    <span className="font-semibold" style={{ color: NAVY }}>
+                      {confidence.level === "high" ? "High confidence" : confidence.level === "medium" ? "Medium confidence" : "Low confidence"}
+                    </span>{" "}
+                    — {confidence.detail}
+                  </p>
+
                 </div>
                 <div className="shrink-0 text-right">
                   <div
@@ -436,16 +469,26 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                   {Object.entries(input).map(([k, v]) => {
                     if (v == null || k === "year2Signal") return null;
                     return (
-                      <li key={k} className="flex items-center justify-between text-[11px]">
+                      <li key={k} className="flex items-center justify-between gap-2 text-[11px]">
                         <span style={{ color: MUTED }}>{INPUT_LABELS[k] ?? k}</span>
-                        <span className="font-medium tabular-nums" style={{ color: NAVY }}>
-                          {typeof v === "number" ? (Number.isInteger(v) ? v : v.toFixed(2)) : String(v)}
+                        <span className="flex items-center gap-1.5">
+                          <span className="font-medium tabular-nums" style={{ color: NAVY }}>
+                            {typeof v === "number" ? (Number.isInteger(v) ? v : v.toFixed(2)) : String(v)}
+                          </span>
+                          <span
+                            className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold"
+                            style={{ backgroundColor: SOFT, color: MUTED, border: `1px solid ${BORDER}` }}
+                            title="Where this number came from"
+                          >
+                            {freshnessForInput(k, lastRefreshed)}
+                          </span>
                         </span>
                       </li>
                     );
                   })}
                 </ul>
               )}
+
 
               {meta.key === "enrichmentDiversity" && (
                 <div className="mt-3 border-t border-dashed pt-2" style={{ borderColor: BORDER }}>

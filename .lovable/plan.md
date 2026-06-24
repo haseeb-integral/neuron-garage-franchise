@@ -1,3 +1,18 @@
+## Executive summary (simple words)
+
+We stopped using Firecrawl to find registration pages on provider websites.
+
+Why? Because the "Market Absorption" score is retired. It was a pillar that checked how easy it is to sign up for care in each city. We turned it off on June 24, 2026. But the robot (Firecrawl) kept running anyway — searching every provider's website for a registration page, burning credits, and filling up a QA queue with 80 "not found" errors. Almost all of that work was wasted noise for a score no one sees anymore.
+
+So we:
+- Turned off the robot that searches for registration pages.
+- Hid the QA queue page from the menu.
+- Cleared all 80 old queue items.
+
+We kept the code and the database table safe in case we ever bring Market Absorption back. Nothing else in the app changed. All five live scores still work the same.
+
+---
+
 ## What we are changing and why
 
 The Market Absorption pillar is retired (weight 0, excluded from composite since June 24). I traced the code: the `mvs_weeks` table is **only** read by `score2MarketAbsorption` in `computeMvs.ts`. No other pillar uses it.

@@ -104,14 +104,17 @@ function CityRow({
       <td className="px-3 py-2.5 text-[13px] font-semibold text-[#07142f]">
         <div className="flex flex-wrap items-center gap-1.5">
           <span>{city}</span>
-          {flag?.low_confidence_badge && (
+          {/* `low_confidence_badge` was driven by no_reg_page_pct, a now-retired
+              signal (Market Absorption was removed). Suppressed to avoid a
+              false warning. */}
+          {false && flag?.low_confidence_badge && (
             <span
-              title="Low confidence: pipeline fell back to non-Premium providers or many providers had no registration page"
               className="inline-flex items-center rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800"
             >
               low confidence
             </span>
           )}
+
         </div>
       </td>
       <td className="px-3 py-2.5 text-[11px] text-[#526078]">

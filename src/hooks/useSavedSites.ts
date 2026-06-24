@@ -30,6 +30,7 @@ export interface SavedSiteRow {
     composite?: number;
     band?: string;
     verdict?: string;
+    signals?: SiteScoreResult["signals"];
   };
   created_at: string;
   updated_at: string;

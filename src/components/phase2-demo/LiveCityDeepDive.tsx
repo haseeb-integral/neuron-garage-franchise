@@ -363,6 +363,14 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                   <p className="mt-0.5 text-[11px]" style={{ color: MUTED }}>
                     {meta.subtitle}
                   </p>
+                  {band && (
+                    <span
+                      className={`${CHIP} mt-1.5`}
+                      style={{ backgroundColor: BAND_COLORS[band.tone].bg, color: BAND_COLORS[band.tone].fg }}
+                    >
+                      {band.label}
+                    </span>
+                  )}
                 </div>
                 <div className="shrink-0 text-right">
                   <div

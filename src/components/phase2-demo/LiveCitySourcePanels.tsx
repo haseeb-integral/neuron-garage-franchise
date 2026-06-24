@@ -182,11 +182,15 @@ export function DataSourcesPanel({
           {qaOpenCount > 0 && (
             <>
               {" · "}
-              <span style={{ color: "#a3142b" }}>
+              <span
+                style={{ color: "#a3142b", cursor: "help" }}
+                title="QA queue tracks per-provider data-quality issues (mostly broken or missing registration pages). A provider in QA may still have a valid price and category from another source, so it can still contribute to the score."
+              >
                 {qaOpenCount} item{qaOpenCount === 1 ? "" : "s"} in QA queue
               </span>
             </>
           )}
+
         </span>
       </div>
 

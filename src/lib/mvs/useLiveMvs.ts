@@ -25,6 +25,7 @@ export type LiveMvsBundle = {
   watchlist: { name: string; default_overlap: "direct" | "adjacent" | "distant" }[];
   lastRefreshed: string | null;
   qaOpenCount: number;
+  qaReasons: { reason: string; count: number }[];
   loading: boolean;
   error: string | null;
   refresh: () => void;
@@ -41,6 +42,7 @@ type RawBundle = {
   overrides: { operator_name: string; overlap: "direct" | "adjacent" | "distant" }[];
   lastRefreshed: string | null;
   qaOpenCount: number;
+  qaReasons: { reason: string; count: number }[];
 };
 
 const EMPTY_BUNDLE: RawBundle = {
@@ -52,7 +54,9 @@ const EMPTY_BUNDLE: RawBundle = {
   overrides: [],
   lastRefreshed: null,
   qaOpenCount: 0,
+  qaReasons: [],
 };
+
 
 export const MVS_QUERY_KEY = "mvs-live" as const;
 
@@ -177,13 +181,23 @@ async function fetchLiveMvs(cityKey: string): Promise<RawBundle> {
   }, null);
 
   let qaOpenCount = 0;
+  let qaReasons: { reason: string; count: number }[] = [];
   if (providerIds.length > 0) {
-    const { count } = await supabase
+    const { data: qaRows } = await supabase
       .from("mvs_qa_queue")
-      .select("id", { count: "exact", head: true })
+      .select("reason")
       .is("resolved_at", null)
       .in("entity_id", providerIds);
-    qaOpenCount = count ?? 0;
+    const rows = qaRows ?? [];
+    qaOpenCount = rows.length;
+    const counts = new Map<string, number>();
+    for (const r of rows) {
+      const reason = (r.reason ?? "unspecified").toString();
+      counts.set(reason, (counts.get(reason) ?? 0) + 1);
+    }
+    qaReasons = Array.from(counts.entries())
+      .map(([reason, count]) => ({ reason, count }))
+      .sort((a, b) => b.count - a.count);
   }
 
   return {
@@ -207,8 +221,10 @@ async function fetchLiveMvs(cityKey: string): Promise<RawBundle> {
     })),
     lastRefreshed: maxUpdated,
     qaOpenCount,
+    qaReasons,
   };
 }
+
 
 /**
  * Loads live pipeline data for a city (providers + weeks + ACS + watchlist
@@ -256,6 +272,8 @@ export function useLiveMvs(
     watchlist: raw.watchlist,
     lastRefreshed: raw.lastRefreshed,
     qaOpenCount: raw.qaOpenCount,
+    qaReasons: raw.qaReasons,
+
     // Only show loading on a true cold load (no cached data yet). When data is
     // present we treat background refetches as silent — no flicker.
     loading: query.isLoading && !query.data,

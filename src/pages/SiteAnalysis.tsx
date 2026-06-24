@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useSavedSites, type SavedSiteInputs } from "@/hooks/useSavedSites";
 import { SavedSitesDrawer } from "@/components/site-analysis/SavedSitesDrawer";
+import { useAuth } from "@/contexts/AuthContext";
 
 
 import { PageHeader } from "@/components/PageHeader";
@@ -683,8 +684,69 @@ export default function SiteAnalysis() {
   const [pendingReplaceId, setPendingReplaceId] = useState<string | null>(null);
   const { byAddress } = useSiteDecisions();
   const savedSites = useSavedSites();
+  const { user } = useAuth();
+  const [hiddenIds, setHiddenIds] = useState<string[]>([]);
+  const [hiddenLoaded, setHiddenLoaded] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [bookmarkBusy, setBookmarkBusy] = useState<string | null>(null);
+
+  // Load the user's hidden-card list from profiles. Removed SAS cards stay
+  // hidden across refreshes and devices until the user re-loads them from the
+  // Saved Sites drawer (no API spend to bring them back).
+  useEffect(() => {
+    if (!user) {
+      setHiddenIds([]);
+      setHiddenLoaded(true);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("sas_hidden_ids")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (cancelled) return;
+      setHiddenIds(((data?.sas_hidden_ids as string[] | null) ?? []));
+      setHiddenLoaded(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  const persistHidden = useCallback(
+    async (next: string[]) => {
+      if (!user) return;
+      await supabase.from("profiles").update({ sas_hidden_ids: next }).eq("id", user.id);
+    },
+    [user],
+  );
+
+  const hideAnalysisId = useCallback(
+    (analysisId: string) => {
+      setHiddenIds((prev) => {
+        if (prev.includes(analysisId)) return prev;
+        const next = [...prev, analysisId];
+        void persistHidden(next);
+        return next;
+      });
+    },
+    [persistHidden],
+  );
+
+  const unhideAnalysisId = useCallback(
+    (analysisId: string) => {
+      setHiddenIds((prev) => {
+        if (!prev.includes(analysisId)) return prev;
+        const next = prev.filter((id) => id !== analysisId);
+        void persistHidden(next);
+        return next;
+      });
+    },
+    [persistHidden],
+  );
+
 
   const patchSlot = useCallback((id: string, patch: Partial<SlotState>) => {
     setSlots((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
@@ -743,9 +805,13 @@ export default function SiteAnalysis() {
                 : undefined,
           };
           patchSlot(id, { status: "ready", result, error: null });
+          // If the user is restoring a previously-hidden card, drop it from
+          // the hidden list so refresh keeps it visible.
+          unhideAnalysisId(cached.id);
           return;
         }
       }
+
 
       try {
         const { data, error } = await supabase.functions.invoke("compute-sas", {
@@ -767,13 +833,14 @@ export default function SiteAnalysis() {
         patchSlot(id, { status: "error", error: msg });
       }
     },
-    [slots, patchSlot],
+    [slots, patchSlot, unhideAnalysisId],
   );
 
   // Hydrate from the user's most recent ready site_analyses rows (up to 4).
   // No anchor seeding — comparison cards always belong to the user. Anchors
   // live in the separate calibration panel below the Live Engine.
   useEffect(() => {
+    if (!hiddenLoaded) return;
     let cancelled = false;
     (async () => {
       const { data, error } = await supabase
@@ -786,9 +853,11 @@ export default function SiteAnalysis() {
         .limit(20);
       if (cancelled || error || !data) return;
 
+      const hiddenSet = new Set(hiddenIds);
       const seen = new Set<string>();
       const extras: SlotState[] = [];
       for (const row of data) {
+        if (hiddenSet.has(row.id)) continue;
         if (!row.address || seen.has(row.address)) continue;
         if (
           row.school_profile_score == null ||
@@ -879,10 +948,16 @@ export default function SiteAnalysis() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [hiddenLoaded]);
 
   const removeSlot = (id: string) => {
     setSlots((prev) => prev.filter((s) => s.id !== id));
+    // Persisted rows are kept in the DB but added to the user's hidden list,
+    // so refresh keeps them gone. Restore via the Saved Sites drawer (no API
+    // spend — the score is read straight from the cached row).
+    if (id.startsWith("persisted-")) {
+      hideAnalysisId(id.replace("persisted-", ""));
+    }
   };
 
   // Save a freshly-computed Live Engine result into a slot. If pendingReplaceId

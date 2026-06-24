@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS sas_hidden_ids uuid[] NOT NULL DEFAULT '{}';

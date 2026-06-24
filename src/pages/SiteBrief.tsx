@@ -570,10 +570,9 @@ export default function SiteBrief() {
                   margin: 0,
                 }}
               >
-                A live, recomputed look at premium daycare and school site fit at {topOrFallback.schoolName} —
-                school profile, neighborhood affluence, family density, ecosystem, and accessibility.
-                Every number on every page is pulled from the same scoring helper that drives the
-                on-screen SAS cards.
+                {candidates.length > 1
+                  ? `A live, recomputed look at premium daycare and school site fit across ${candidates.length} candidate sites — school profile, neighborhood affluence, family density, ecosystem, and accessibility. Every number on every page is pulled from the same scoring helper that drives the on-screen SAS cards.`
+                  : `A live, recomputed look at premium daycare and school site fit at ${topOrFallback.schoolName} — school profile, neighborhood affluence, family density, ecosystem, and accessibility. Every number on every page is pulled from the same scoring helper that drives the on-screen SAS cards.`}
               </p>
               <div
                 style={{

@@ -1438,6 +1438,7 @@ export default function SiteAnalysis() {
             {
               pillars: recomputed.pillars,
               composite: recomputed.composite,
+              signals: slot.result.signals ?? undefined,
             },
           );
           toast.success("Saved to Saved Sites");

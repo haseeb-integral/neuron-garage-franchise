@@ -163,7 +163,7 @@ interface CardPropsExt extends CardProps {
   savedMatch?: SavedSiteRow | null;
 }
 
-function CandidateCard({ slot, onRerun, onRemove, onReplace, bookmark }: CardPropsExt) {
+function CandidateCard({ slot, onRerun, onRemove, onReplace, bookmark, savedMatch }: CardPropsExt) {
   const { byAddress } = useSiteDecisions();
   const decision = byAddress.get(slot.address);
   const userVerdict: SiteVerdict | undefined =

@@ -1711,7 +1711,20 @@ export default function SiteAnalysis() {
           );
         })}
         {Array.from({ length: emptySlots }).map((_, i) => (
-          <EmptySlot key={`empty-${i}`} />
+          <EmptySlot
+            key={`empty-${i}`}
+            onLoadFromSaved={() => setDrawerOpen(true)}
+            onComputeNew={() => {
+              if (typeof window === "undefined") return;
+              const el = document.getElementById("sas-live-engine");
+              if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+              else window.scrollTo({ top: 0, behavior: "smooth" });
+              setTimeout(() => {
+                const input = document.getElementById("sas-address-input") as HTMLInputElement | null;
+                input?.focus();
+              }, 400);
+            }}
+          />
         ))}
       </section>
 

@@ -13,7 +13,7 @@ import {
   type SavedSiteRow,
 } from "@/hooks/useSavedSites";
 import { recomputeSiteScores } from "@/lib/sasMath";
-import { SITE_CONFIDENCE_THRESHOLDS } from "@/lib/sas/config";
+
 
 const NAVY = "#07142f";
 const MUTED = "#526078";

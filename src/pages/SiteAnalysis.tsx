@@ -163,6 +163,157 @@ interface CardPropsExt extends CardProps {
   savedMatch?: SavedSiteRow | null;
 }
 
+const RUN_FMT = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+function formatRunTime(iso: string) {
+  try {
+    return RUN_FMT.format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
+function WhyDifferentChip({
+  slot,
+  composite,
+  savedMatch,
+}: {
+  slot: SlotState;
+  composite: number | null;
+  savedMatch: SavedSiteRow;
+}) {
+  const snap = savedMatch.snapshot_json ?? {};
+  const savedComposite =
+    snap.pillars ? recomputeSiteScores(snap.pillars).composite : snap.composite ?? null;
+  const savedType = (savedMatch.site_type ?? "") as SchoolType;
+  const savedGrade = (savedMatch.grade_band ?? "") as GradeBand;
+  const savedEnroll = savedMatch.enrollment != null ? String(savedMatch.enrollment) : "";
+
+  const diffs: { label: string; card: string; saved: string }[] = [];
+  if (savedType && savedType !== slot.schoolType) {
+    diffs.push({
+      label: "School type",
+      card: SCHOOL_TYPE_LABEL[slot.schoolType] ?? String(slot.schoolType),
+      saved: SCHOOL_TYPE_LABEL[savedType] ?? String(savedType),
+    });
+  }
+  if (savedGrade && savedGrade !== slot.gradeBand) {
+    diffs.push({
+      label: "Grade band",
+      card: GRADE_BAND_LABEL[slot.gradeBand] ?? String(slot.gradeBand),
+      saved: GRADE_BAND_LABEL[savedGrade] ?? String(savedGrade),
+    });
+  }
+  if (savedEnroll !== slot.enrollment) {
+    diffs.push({
+      label: "Enrollment",
+      card: slot.enrollment || "—",
+      saved: savedEnroll || "—",
+    });
+  }
+  if (composite != null && savedComposite != null && composite !== savedComposite) {
+    diffs.push({
+      label: "Composite",
+      card: String(composite),
+      saved: String(savedComposite),
+    });
+  }
+  if (slot.analysisCreatedAt) {
+    diffs.push({
+      label: "Run date",
+      card: formatRunTime(slot.analysisCreatedAt),
+      saved: formatRunTime(savedMatch.created_at),
+    });
+  }
+
+  if (diffs.length === 0) return null;
+
+  const cardPillars = slot.result?.pillars;
+  const savedPillars = snap.pillars;
+  const pillarRows: { label: string; card: string; saved: string }[] = [];
+  if (cardPillars && savedPillars) {
+    const keys: [keyof typeof cardPillars, string][] = [
+      ["schoolProfile", "School profile"],
+      ["affluence", "Affluence"],
+      ["familyDensity", "Family density"],
+      ["ecosystem", "Ecosystem"],
+      ["accessibility", "Accessibility"],
+    ];
+    for (const [k, label] of keys) {
+      const a = Number(cardPillars[k]);
+      const b = Number(savedPillars[k]);
+      if (!Number.isFinite(a) || !Number.isFinite(b)) continue;
+      if (Math.abs(a - b) >= 0.01) {
+        pillarRows.push({ label, card: a.toFixed(2), saved: b.toFixed(2) });
+      }
+    }
+  }
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="mt-1 inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold"
+          style={{ borderColor: "#f0c869", backgroundColor: "#fff8d9", color: "#7a5800" }}
+          title="The saved snapshot for this address used different inputs"
+        >
+          Why different from saved?
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-80 p-3 text-[11px]">
+        <div className="font-bold" style={{ color: "#07142f" }}>
+          Card vs saved snapshot
+        </div>
+        <div className="mt-0.5" style={{ color: "#526078" }}>
+          Same address, different run. Inputs and formula version change the score.
+        </div>
+        <table className="mt-2 w-full">
+          <thead>
+            <tr style={{ color: "#526078" }}>
+              <th className="py-1 text-left font-semibold">Field</th>
+              <th className="py-1 text-right font-semibold">Card</th>
+              <th className="py-1 text-right font-semibold">Saved</th>
+            </tr>
+          </thead>
+          <tbody>
+            {diffs.map((d) => (
+              <tr key={d.label} className="border-t" style={{ borderColor: "#eef2f7" }}>
+                <td className="py-1" style={{ color: "#07142f" }}>{d.label}</td>
+                <td className="py-1 text-right tabular-nums" style={{ color: "#07142f" }}>{d.card}</td>
+                <td className="py-1 text-right tabular-nums" style={{ color: "#526078" }}>{d.saved}</td>
+              </tr>
+            ))}
+            {pillarRows.length > 0 && (
+              <>
+                <tr>
+                  <td colSpan={3} className="pt-2 text-[10px] font-semibold uppercase tracking-wide" style={{ color: "#526078" }}>
+                    Pillar differences
+                  </td>
+                </tr>
+                {pillarRows.map((d) => (
+                  <tr key={d.label} className="border-t" style={{ borderColor: "#eef2f7" }}>
+                    <td className="py-1" style={{ color: "#07142f" }}>{d.label}</td>
+                    <td className="py-1 text-right tabular-nums" style={{ color: "#07142f" }}>{d.card}</td>
+                    <td className="py-1 text-right tabular-nums" style={{ color: "#526078" }}>{d.saved}</td>
+                  </tr>
+                ))}
+              </>
+            )}
+          </tbody>
+        </table>
+        <p className="mt-2 text-[10px]" style={{ color: "#526078" }}>
+          To see the saved score on the card, click <strong>Load into card</strong> in Saved Sites.
+        </p>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function CandidateCard({ slot, onRerun, onRemove, onReplace, bookmark, savedMatch }: CardPropsExt) {
   const { byAddress } = useSiteDecisions();
   const decision = byAddress.get(slot.address);

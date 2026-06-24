@@ -384,8 +384,8 @@ export default function MarketValidationRollout() {
           shortlist.
         </p>
         <ol className="ml-4 list-decimal space-y-1">
-          <li><strong>Click Run</strong> on each city. The pipeline pulls live camp providers, prices, and weekly absorption data. Runs are sequential to keep cost and load predictable.</li>
-          <li><strong>The composite score appears</strong> in the table — a 0–100 blend of pricing acceptance, absorption, scaled-operator presence, enrichment diversity, and market depth.</li>
+          <li><strong>Click Run</strong> on each city. The pipeline pulls live camp providers and pricing data. Runs are sequential to keep cost and load predictable.</li>
+          <li><strong>The composite score appears</strong> in the table — a 0–100 blend of pricing acceptance, scaled-operator presence, enrichment diversity, market depth, and market balance.</li>
           <li><strong>Return to Market Validation</strong> (link top-left) to see the full deep-dive, sub-scores, and capture Pursue / Hold / Drop decisions.</li>
         </ol>
       </div>

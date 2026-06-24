@@ -197,17 +197,31 @@ Deno.serve(async (req) => {
       return json;
     };
 
+    // Build a per-step summary so the UI can show "X/5 sources" instead of
+    // just pass/fail. discover -> per-platform counts; classify -> batches done.
+    const sourceCounts: Record<string, unknown> = {};
+
     try {
-      await invokeStep("discover", { city });
+      const discoverJson = await invokeStep("discover", { city });
+      if (discoverJson?.source_counts) sourceCounts.discover = discoverJson.source_counts;
       // Always reclassify on a pipeline run — Turn 2.2 logic depends on
       // re-tagging existing rows after classifier changes ship.
-      await invokeStep("classify", { city, reclassify: true });
+      const classifyJson = await invokeStep("classify", { city, reclassify: true });
+      if (classifyJson && (classifyJson.batches_total != null || classifyJson.batches_attempted != null)) {
+        sourceCounts.classify = {
+          batches_total: classifyJson.batches_total ?? null,
+          batches_attempted: classifyJson.batches_attempted ?? null,
+          aborted_at_batch: classifyJson.aborted_at_batch ?? null,
+        };
+      }
       // Stage 4: ensure ACS denominators are populated before scoring.
       // Non-fatal: if ACS lookup fails the pipeline still completes.
       try {
         await invokeStep("acs", { city });
+        sourceCounts.acs = { ok: true };
       } catch (acsErr) {
         console.warn("[mvs-run-pipeline] acs step failed (non-fatal):", acsErr);
+        sourceCounts.acs = { ok: false };
       }
       // Stage 3 (mvs-extract-weeks) is RETIRED — Market Absorption was removed
       // from the composite (June 24, 2026). The weeks/registration-page scrape
@@ -221,6 +235,7 @@ Deno.serve(async (req) => {
         .update({
           status: "done",
           firecrawl_calls: totalCalls,
+          source_counts: sourceCounts,
           finished_at: new Date().toISOString(),
         })
         .eq("id", run.id);
@@ -232,10 +247,12 @@ Deno.serve(async (req) => {
           status: "failed",
           error: msg.slice(0, 1000),
           firecrawl_calls: totalCalls,
+          source_counts: sourceCounts,
           finished_at: new Date().toISOString(),
         })
         .eq("id", run.id);
     }
+
   })();
 
   if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) {

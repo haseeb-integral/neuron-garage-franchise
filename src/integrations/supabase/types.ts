@@ -1420,6 +1420,7 @@ export type Database = {
           finished_at: string | null
           firecrawl_calls: number
           id: string
+          source_counts: Json | null
           started_at: string | null
           status: Database["public"]["Enums"]["mvs_run_status"]
           updated_at: string
@@ -1431,6 +1432,7 @@ export type Database = {
           finished_at?: string | null
           firecrawl_calls?: number
           id?: string
+          source_counts?: Json | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["mvs_run_status"]
           updated_at?: string
@@ -1442,6 +1444,7 @@ export type Database = {
           finished_at?: string | null
           firecrawl_calls?: number
           id?: string
+          source_counts?: Json | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["mvs_run_status"]
           updated_at?: string

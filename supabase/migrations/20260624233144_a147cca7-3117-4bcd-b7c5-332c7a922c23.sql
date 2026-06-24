@@ -1,0 +1,1 @@
+ALTER TABLE public.mvs_pipeline_runs ADD COLUMN IF NOT EXISTS source_counts jsonb;

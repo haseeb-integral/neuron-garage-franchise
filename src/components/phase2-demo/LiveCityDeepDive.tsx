@@ -201,6 +201,32 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
     [providers],
   );
 
+  // Category breakdown of premium providers — rendered as small chips inside
+  // the Enrichment Diversity card so readers can see which categories the
+  // diversity score is built from. Uses the same `category_classified` field
+  // already loaded by useLiveMvs (no new fetch).
+  const categoryCounts = useMemo(() => {
+    const order = ["STEM", "Arts", "Sports", "Academic", "Specialty"];
+    const counts: Record<string, number> = {};
+    for (const p of premiumProviders) {
+      const raw = (p as any).category_classified;
+      if (!raw) continue;
+      const norm = String(raw).trim();
+      if (!norm) continue;
+      const key =
+        order.find((o) => o.toLowerCase() === norm.toLowerCase()) ?? norm;
+      counts[key] = (counts[key] ?? 0) + 1;
+    }
+    const known = order
+      .filter((k) => counts[k])
+      .map((k) => ({ label: k, count: counts[k] }));
+    const extras = Object.keys(counts)
+      .filter((k) => !order.includes(k))
+      .sort()
+      .map((k) => ({ label: k, count: counts[k] }));
+    return [...known, ...extras];
+  }, [premiumProviders]);
+
   // Per-sub-score confidence: how many premium rows feed each score, with
   // a global haircut for open QA items and low overall coverage.
   function confidenceFor(key: string): { level: "high" | "medium" | "low"; detail: string } {

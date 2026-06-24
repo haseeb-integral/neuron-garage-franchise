@@ -603,8 +603,69 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
         })}
       </section>
 
+      {/* Known limitations — honest list of caveats built from the same
+          signals already on the page (no extra fetch). Helps a new reader
+          trust the numbers by naming what we do NOT know. */}
+      {(() => {
+        const items: string[] = [];
+        const nNoPrice = nTotal - nWithPrice;
+        const nNoCategory = nTotal - nWithCategory;
+        if (qaOpenCount > 0) {
+          items.push(
+            `${qaOpenCount} provider page${qaOpenCount === 1 ? " is" : "s are"} in the QA queue (unreadable or flagged) — they are excluded from scoring until fixed.`,
+          );
+        }
+        if (nNoPrice > 0 && nTotal > 0) {
+          items.push(
+            `${nNoPrice} of ${nTotal} premium provider${nTotal === 1 ? "" : "s"} had no readable weekly price; excluded from Pricing Acceptance.`,
+          );
+        }
+        if (nNoCategory > 0 && nTotal > 0) {
+          items.push(
+            `${nNoCategory} of ${nTotal} premium provider${nTotal === 1 ? "" : "s"} were not classified into a category; excluded from Enrichment Diversity.`,
+          );
+        }
+        if (watchlist.length === 0) {
+          items.push("National operator watchlist is empty — Scaled Operator score may be unreliable.");
+        }
+        items.push("US Census ACS family/income data is from the 2023 5-year release; demographics may have shifted since.");
+        items.push("Pricing uses each provider's lowest listed price as a single-week proxy (not a per-week average).");
+        items.push("Market Absorption (week-by-week sellout) is intentionally excluded in v1.0-fixed; weights were redistributed across the 5 remaining pillars.");
+
+        return (
+          <section
+            className="mb-6 rounded-lg border bg-white"
+            style={{ borderColor: BORDER }}
+          >
+            <details>
+              <summary
+                className="cursor-pointer px-4 py-3 text-[13px] font-bold"
+                style={{ color: NAVY }}
+              >
+                Known limitations ({items.length})
+                <span className="ml-2 text-[11px] font-normal" style={{ color: MUTED }}>
+                  What this score cannot tell you yet
+                </span>
+              </summary>
+              <ul
+                className="space-y-1.5 border-t px-4 py-3 text-[12px] leading-relaxed"
+                style={{ borderColor: BORDER, color: NAVY }}
+              >
+                {items.map((it, i) => (
+                  <li key={i} className="flex gap-2">
+                    <span style={{ color: MUTED }}>•</span>
+                    <span>{it}</span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          </section>
+        );
+      })()}
+
       {/* National operators matched — Scaled Operator evidence */}
       <NationalOperatorsPanel providers={premiumProviders} watchlist={watchlist} />
+
 
       {/* Week-by-week activity panel removed June 24, 2026 with Market Absorption. */}
 

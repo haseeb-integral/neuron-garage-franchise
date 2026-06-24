@@ -295,19 +295,19 @@ export function ConfidenceStamp({
     high: {
       bg: "#e3f3e7",
       fg: "#1d6b32",
-      label: "Strong data coverage",
+      label: "Data: strong",
       meaning: "Enough premium providers fed this sub-score for a stable result.",
     },
     medium: {
       bg: "#fff5e0",
       fg: "#8a5a00",
-      label: "Partial data coverage",
+      label: "Data: partial",
       meaning: "Fewer premium providers fed this sub-score. The number may shift as more sources are added.",
     },
     low: {
       bg: "#fce7ec",
       fg: "#a3142b",
-      label: "Limited data coverage",
+      label: "Data: limited",
       meaning: "Too few premium providers fed this sub-score for a stable result. Treat the number with caution.",
     },
   }[level];

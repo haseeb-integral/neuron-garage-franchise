@@ -109,17 +109,17 @@ const PILLAR_BAND_SUFFIX: Record<string, string> = {
 };
 
 const DIVERSITY_BAND_LABELS = [
-  "Narrow enrichment mix",
-  "Mixed enrichment mix",
-  "Broad enrichment mix",
-  "Very broad enrichment mix",
+  "narrow enrichment mix",
+  "mixed enrichment mix",
+  "broad enrichment mix",
+  "very broad enrichment mix",
 ];
 
 const DEPTH_BAND_LABELS = [
-  "Thin provider market",
-  "Moderate provider market",
-  "Deep provider market",
-  "Very deep provider market",
+  "thin provider market",
+  "moderate provider market",
+  "deep provider market",
+  "very deep provider market",
 ];
 
 type BandTone = "weak" | "mid" | "strong" | "top";
@@ -142,19 +142,81 @@ function bandFor(
 ): { label: string; tone: BandTone } | null {
   if (key === "marketBalance") {
     if (coverageRatio == null) return null;
-    if (coverageRatio >= 350) return { label: "Underserved", tone: "top" };
-    if (coverageRatio >= 200) return { label: "Balanced", tone: "strong" };
-    if (coverageRatio >= 100) return { label: "Competitive", tone: "mid" };
-    return { label: "Saturated", tone: "weak" };
+    if (coverageRatio >= 350) return { label: "Market: underserved", tone: "top" };
+    if (coverageRatio >= 200) return { label: "Market: balanced", tone: "strong" };
+    if (coverageRatio >= 100) return { label: "Market: competitive", tone: "mid" };
+    return { label: "Market: saturated", tone: "weak" };
   }
   if (score == null) return null;
   const idx = Math.max(0, bandIndexFromScore(score));
   const tone = BAND_TONES[idx] ?? "mid";
-  if (key === "enrichmentDiversity") return { label: DIVERSITY_BAND_LABELS[idx], tone };
-  if (key === "marketDepth") return { label: DEPTH_BAND_LABELS[idx], tone };
+  if (key === "enrichmentDiversity") return { label: `Market: ${DIVERSITY_BAND_LABELS[idx]}`, tone };
+  if (key === "marketDepth") return { label: `Market: ${DEPTH_BAND_LABELS[idx]}`, tone };
   const suffix = PILLAR_BAND_SUFFIX[key];
   if (!suffix) return null;
-  return { label: `${GENERIC_BAND_LABELS[idx]} ${suffix}`, tone };
+  return { label: `Market: ${GENERIC_BAND_LABELS[idx].toLowerCase()} ${suffix}`, tone };
+}
+
+// One-line plain-English "why" sentence shown right under the market band
+// pill. Reads from the same `input` object already on the card — no extra
+// fetch, no math change. Returns null when a needed input is missing so
+// the card never shows a broken sentence.
+function bandLabelWord(score: number): string {
+  const idx = Math.max(0, bandIndexFromScore(score));
+  return ["weak", "mixed", "strong", "very strong"][idx] ?? "mixed";
+}
+function bandThresholdWord(score: number): string {
+  if (score <= 39) return "≤ 39 = weak";
+  if (score <= 59) return "40–59 = mixed";
+  if (score <= 79) return "60–79 = strong";
+  return "80+ = very strong";
+}
+function fmt(n: number | null | undefined, digits = 1): string | null {
+  if (n == null || !Number.isFinite(n)) return null;
+  return n.toFixed(digits);
+}
+function bandWhyFor(
+  key: string,
+  score: number | null,
+  input: any,
+): string | null {
+  if (score == null) return null;
+  if (key === "marketBalance") {
+    const cr = input?.coverageRatio;
+    if (cr == null) return null;
+    const crStr = Math.round(cr).toString();
+    if (cr >= 350) return `Why: coverage ratio ${crStr} kids per seat (≥ 350 = underserved).`;
+    if (cr >= 200) return `Why: coverage ratio ${crStr} kids per seat (200–349 = balanced).`;
+    if (cr >= 100) return `Why: coverage ratio ${crStr} kids per seat (100–199 = competitive).`;
+    return `Why: coverage ratio ${crStr} kids per seat (< 100 = saturated).`;
+  }
+  const word = bandLabelWord(score);
+  const thr = bandThresholdWord(score);
+  const s = score.toFixed(1);
+  if (key === "pricingAcceptance") {
+    const med = fmt(input?.medianPrice, 0);
+    const pct = fmt(input?.pctAtLeast500, 0);
+    if (med == null || pct == null) return null;
+    return `Why: median weekly price $${med} and ${pct}% of providers at $500+/wk give a ${word} score of ${s} (${thr}).`;
+  }
+  if (key === "scaledOperator") {
+    const op = input?.operatorValidation;
+    const dc = input?.directCompetitorLoad;
+    if (op == null || dc == null) return null;
+    return `Why: ${op} national operator${op === 1 ? "" : "s"} validating and ${fmt(dc, 1)} direct competitors per 10k kids give a ${word} score of ${s} (${thr}).`;
+  }
+  if (key === "enrichmentDiversity") {
+    const cc = input?.categoryCount;
+    const dr = input?.diversityRatio;
+    if (cc == null || dr == null) return null;
+    return `Why: ${cc} categor${cc === 1 ? "y" : "ies"} represented with diversity ratio ${fmt(dr, 2)} gives a ${word} score of ${s} (${thr}).`;
+  }
+  if (key === "marketDepth") {
+    const pc = input?.premiumProviderCount;
+    if (pc == null) return null;
+    return `Why: ${pc} premium provider${pc === 1 ? "" : "s"} found gives a ${word} score of ${s} (${thr}).`;
+  }
+  return null;
 }
 
 // Friendly labels for the sub-score input rows so non-technical readers
@@ -568,24 +630,32 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                     >
                       {Math.round(weight * 100)}%
                     </span>
-                    <ConfidenceStamp level={confidence.level} detail={confidence.detail} />
+                    {band && (
+                      <span
+                        className={CHIP}
+                        style={{ backgroundColor: BAND_COLORS[band.tone].bg, color: BAND_COLORS[band.tone].fg }}
+                      >
+                        {band.label}
+                      </span>
+                    )}
                   </div>
                   <p className="mt-0.5 text-[11px]" style={{ color: MUTED }}>
                     {meta.subtitle}
                   </p>
-                  {band && (
-                    <span
-                      className={`${CHIP} mt-1.5`}
-                      style={{ backgroundColor: BAND_COLORS[band.tone].bg, color: BAND_COLORS[band.tone].fg }}
-                    >
-                      {band.label}
-                    </span>
-                  )}
+                  {(() => {
+                    const why = bandWhyFor(meta.key, score, input);
+                    return why ? (
+                      <p className="mt-1 text-[11px] leading-snug" style={{ color: MUTED }}>
+                        {why}
+                      </p>
+                    ) : null;
+                  })()}
                   <p className="mt-1.5 text-[11px] leading-snug" style={{ color: MUTED }}>
                     <span className="font-semibold" style={{ color: NAVY }}>
                       {confidence.level === "high" ? "High confidence" : confidence.level === "medium" ? "Medium confidence" : "Low confidence"}
                     </span>{" "}
-                    — {confidence.detail}
+                    — {confidence.detail}{" "}
+                    <ConfidenceStamp level={confidence.level} detail={confidence.detail} />
                   </p>
 
                 </div>

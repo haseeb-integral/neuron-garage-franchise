@@ -139,7 +139,56 @@ function ScoresCacheIndicator({
 
 // Dead helpers (STATUS_STYLE, OVERLAP_STYLE, SubScoreCard, etc.) were
 // removed in the no-fake-numbers cleanup — the live deep-dive is rendered
-// entirely by <LiveCityDeepDive> below.
+// Invisible per-row probe: calls useLiveMvs for one city and reports the
+// overlay + cache stats up to the parent. Mounting one of these per shortlist
+// row gives us stable hook order (one hook per component instance) while
+// keeping the city list fully dynamic — manager-added cities work too.
+function LiveOverlayProbe({
+  rowId,
+  cityKey,
+  onOverlay,
+  onBundle,
+}: {
+  rowId: string;
+  cityKey: string;
+  onOverlay: (rowId: string, overlay: LiveOverlay | null) => void;
+  onBundle: (rowId: string, stats: { cachedAt: number | null; loading: boolean }) => void;
+}) {
+  const bundle = useLiveMvs(cityKey);
+  const r = bundle.result;
+  const composite = r?.mvs ?? null;
+  const pricing = r?.scores.pricingAcceptance ?? null;
+  const scaledOperator = r?.scores.scaledOperator ?? null;
+  const diversity = r?.scores.enrichmentDiversity ?? null;
+  const depth = r?.scores.marketDepth ?? null;
+  const balance = r?.scores.marketBalance ?? null;
+
+  useEffect(() => {
+    if (r) {
+      onOverlay(rowId, {
+        composite,
+        pricing,
+        scaledOperator,
+        diversity,
+        depth,
+        balance,
+        // low_confidence_badge was tied to a retired signal (no_reg_page_pct);
+        // force false to stop the false warning.
+        lowConfidence: false,
+      });
+    } else {
+      onOverlay(rowId, null);
+    }
+  }, [rowId, r, composite, pricing, scaledOperator, diversity, depth, balance, onOverlay]);
+
+  useEffect(() => {
+    onBundle(rowId, { cachedAt: bundle.cachedAt, loading: bundle.loading });
+  }, [rowId, bundle.cachedAt, bundle.loading, onBundle]);
+
+  return null;
+}
+
+
 
 export default function MarketValidation() {
   const { rows: additions, addCity } = useShortlistAdditions();

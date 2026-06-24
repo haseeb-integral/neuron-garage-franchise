@@ -272,6 +272,8 @@ export function useLiveMvs(
     acs: raw.acs,
     flag: raw.flag,
     watchlist: raw.watchlist,
+    overrides: raw.overrides,
+
     lastRefreshed: raw.lastRefreshed,
     qaOpenCount: raw.qaOpenCount,
     qaReasons: raw.qaReasons,

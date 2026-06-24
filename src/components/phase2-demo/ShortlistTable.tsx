@@ -183,7 +183,6 @@ export function ShortlistTable({ rows, activeCityId, onSelectCity, liveOverlays 
               {headerCell("city", "City", "left")}
               {headerCell("composite", "MVS", "right", "Market Validation Score (composite)")}
               {headerCell("pricing", "Pricing")}
-              {headerCell("absorption", "Absorp.")}
               {headerCell("scaledOperator", "Scaled Op")}
               {headerCell("diversity", "Diversity")}
               {headerCell("depth", "Depth")}

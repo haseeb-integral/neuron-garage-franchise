@@ -159,6 +159,7 @@ interface BookmarkInfo {
 interface CardPropsExt extends CardProps {
   onReplace?: () => void;
   bookmark?: BookmarkInfo;
+  savedMatch?: SavedSiteRow | null;
 }
 
 function CandidateCard({ slot, onRerun, onRemove, onReplace, bookmark }: CardPropsExt) {

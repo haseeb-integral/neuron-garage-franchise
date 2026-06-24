@@ -1,63 +1,74 @@
-## Executive summary (simple words)
-
-We stopped using Firecrawl to find registration pages on provider websites.
-
-Why? Because the "Market Absorption" score is retired. It was a pillar that checked how easy it is to sign up for care in each city. We turned it off on June 24, 2026. But the robot (Firecrawl) kept running anyway — searching every provider's website for a registration page, burning credits, and filling up a QA queue with 80 "not found" errors. Almost all of that work was wasted noise for a score no one sees anymore.
-
-So we:
-- Turned off the robot that searches for registration pages.
-- Hid the QA queue page from the menu.
-- Cleared all 80 old queue items.
-
-We kept the code and the database table safe in case we ever bring Market Absorption back. Nothing else in the app changed. All five live scores still work the same.
+## Combined plan — Phase A (toast bug) + Phase B (classify timeout)
 
 ---
 
-## What we are changing and why
+### Phase A — Stop the false red toast on every city click (frontend only)
 
-The Market Absorption pillar is retired (weight 0, excluded from composite since June 24). I traced the code: the `mvs_weeks` table is **only** read by `score2MarketAbsorption` in `computeMvs.ts`. No other pillar uses it.
+**What is wrong (simple):** When you click a city row, the small "Run Pipeline" card under the table loads that city's last saved run. If that run is `failed` (most are), it pops a red toast — even though no new run happened. The guard that should silence this only works for the **first** city you ever look at, not for later city changes.
 
-But `mvs-extract-weeks` still runs on every pipeline run, still calls Firecrawl (search + scrape per provider) to find registration pages, and still writes failures into `mvs_qa_queue`. Today that produced **78 of 80 open QA items** about "no registration page found" — pure noise for a retired score.
+**Fix:** In `src/components/phase2-demo/RunPipelineButton.tsx`, when the `city` prop changes, reset three things so the guard works again per city:
+- `latest` → `null`
+- `lastTerminalId` → `null`
+- `initialSeededRef.current` → `false`
 
-We will stop the weeks pipeline, hide the QA queue page, and clear out the existing 80 rows.
+Then `fetchLatest` runs for the new city, sees the row is already terminal, and seeds the guard so **no toast fires**.
 
-## Scope and what could be affected
+**Files touched:** 1 file (`RunPipelineButton.tsx`). No backend, no DB, no schema.
 
-| Area | Change |
-|---|---|
-| `supabase/functions/mvs-run-pipeline/index.ts` | Skip the Stage 3 `mvs-extract-weeks` call. Mark step as "skipped (retired)" in the run log. |
-| `supabase/functions/mvs-refresh-all/index.ts` | Same — skip the extract-weeks step. |
-| `src/pages/MVSQAQueue.tsx` | Replace the page body with a short "Retired — Market Absorption is no longer in the composite" notice. Keep the route so old links don't 404. Remove "Re-run extraction" button. |
-| `src/components/AppSidebar.tsx` (and any nav link to `/mvs-qa-queue`) | Hide the menu link. |
-| DB | Mark all 80 open `mvs_qa_queue` rows resolved with reason `retired:absorption`. |
-| `mvs-extract-weeks` edge function | Leave the code in place but unused, in case Absorption is ever revived. Do **not** delete. |
-| `computeMvs.ts` / `score2MarketAbsorption` | No change — it already returns null and is excluded from composite. |
-| `MVSSpec.tsx` / methodology docs | No change this phase. |
+**Risk:** very low.
 
-Not touched: scoring math, the five live pillars, the MVS table, any user-facing scores.
+**Turns:** 1.
 
-## Phase 1 — single phase, ~3 turns
+---
 
-**Turn 1** — Stop the pipeline calls
-- Edit `mvs-run-pipeline/index.ts` to skip the `extract` step (still log it as `skipped`).
-- Edit `mvs-refresh-all/index.ts` the same way.
-- Deploy both functions.
+### Phase B — Fix the real 504 timeout in the "classify" step (backend)
 
-**Turn 2** — Hide the QA page
-- Replace `MVSQAQueue.tsx` body with a one-paragraph "Retired" notice + back link.
-- Remove the sidebar/nav entry pointing to `/mvs-qa-queue`.
+**What is wrong (simple):** The orchestrator (`mvs-run-pipeline`) calls the `mvs-classify-tier` function over HTTP and waits for it to finish. Classify loads every provider for the city (e.g. San Antonio has 205 providers), splits them into batches of 20, and calls the Gemini AI **one batch at a time, sequentially**. Each batch takes ~10–15 seconds, so 10+ batches add up to over 150 seconds. The server cuts the connection with **HTTP 504 — idle timeout (150s) reached**, and the whole pipeline run is marked `failed`.
 
-**Turn 3** — Clear the queue
-- Run a single UPDATE to mark all open rows resolved with reason `retired:absorption` and `resolved_by = null`.
-- Verify count goes to 0.
+**Root cause in one line:** sequential AI calls inside one HTTP request that has a 150-second wall-clock limit.
 
-## Risks and what needs testing
+**Fix (smallest safe change that actually works):** Run the batches **in parallel** inside `mvs-classify-tier`. Each batch is an independent AI call — there is no order dependency, and they all write to different provider rows. With a small concurrency cap (e.g. 5 batches at a time) we get a ~5× speed-up without overloading the AI gateway. 205 providers / 20 per batch = ~11 batches; at 5 in parallel, total wall time drops to roughly **~30–35 seconds**, well under the 150s limit.
 
-- **Risk:** something else writes to `mvs_qa_queue`. I checked — only `mvs-extract-weeks` inserts. Safe.
-- **Risk:** a future "revive Absorption" task. Mitigated by keeping the edge function code and the DB table intact.
-- **Test after each turn:**
-  - Turn 1: trigger a pipeline run on one city → confirm no Firecrawl spend on weeks, run record shows step skipped.
-  - Turn 2: navigate to `/mvs-qa-queue` → see retired notice, no fetch errors.
-  - Turn 3: open page → 0 items; old resolved rows still queryable with `Show resolved` if we keep that toggle (optional — I will keep it off for simplicity).
+**Steps in `supabase/functions/mvs-classify-tier/index.ts`:**
+1. Extract the existing per-batch logic (AI call + per-row write-back) into a helper `async function processBatch(batch)`.
+2. Replace the `for` loop with a small concurrency runner: keep at most `MAX_CONCURRENCY = 5` batches in flight using `Promise.all` over chunks of 5.
+3. Aggregate `classifiedCount`, `errors`, and `sample` from all batches (use atomic appends — they don't conflict).
+4. Keep the same response shape so the orchestrator and any caller still work.
+5. No DB change. No new table. No schema migration.
 
-I will stop and wait for your approval before any of these turns.
+**Safety guards added:**
+- Hard cap concurrency at 5 — prevents Gemini rate-limit storms.
+- Per-batch try/catch already exists; one failing batch does not kill the others.
+- If even the parallel run somehow approaches the timeout, the orchestrator's existing "stale run >3 min" auto-clear still protects the UI.
+
+**Files touched:** 1 file (`supabase/functions/mvs-classify-tier/index.ts`). Auto-deploys.
+
+**What is NOT changed:**
+- No change to `mvs-run-pipeline` flow.
+- No change to the classify prompt, tier rules, or deterministic overlay.
+- No change to any DB table, RLS, or score.
+- No change to the retired weeks/extract step.
+
+**Risk:** low–medium. The only realistic risk is hitting an AI rate limit during a very large city; the concurrency cap of 5 is the safety belt. If it ever does cap out, the existing error-collection path already records it and the pipeline still finishes the batches that succeeded.
+
+**Turns:** 1.
+
+---
+
+### Order of work
+
+1. **Turn 1 — Phase A.** Touch `RunPipelineButton.tsx`. Reload preview. Click each city row → no red toast. The small "Last run: failed" text still shows correctly.
+2. **Turn 2 — Phase B.** Touch `mvs-classify-tier/index.ts`. Wait for deploy. Press **Run Pipeline** on San Antonio (the city in the screenshot). The pipeline should complete in roughly 30–60 seconds and finish with status `done`, not `failed`. The success toast should appear once. No more 504.
+
+---
+
+### What you should test after both phases
+
+- Click 5+ different city rows — **no red toast** appears anywhere.
+- Small status card under "Run Pipeline" still shows the correct last-run summary for each city.
+- Press **Run Pipeline** on **San Antonio** (largest list). It should finish in under 90 seconds with a green success toast. The "Last run" line flips to **done**.
+- Scores in the shortlist table refresh and stay the same numbers as before (we only fixed the run plumbing, not the scoring math).
+
+---
+
+Approve and I will start with Phase A first, then move to Phase B in the next turn.

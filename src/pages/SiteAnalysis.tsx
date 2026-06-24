@@ -997,7 +997,7 @@ export default function SiteAnalysis() {
           throw new Error((data as { error?: string }).error ?? "Engine failed");
         }
         const analysisId = (data as { analysis_id?: string }).analysis_id;
-        patchSlot(id, { status: "ready", result: data as SiteScoreResult, error: null, analysisId });
+        patchSlot(id, { status: "ready", result: data as SiteScoreResult, error: null, analysisId, analysisCreatedAt: new Date().toISOString() });
         // Re-running an address that was previously hidden brings it back.
         if (analysisId) unhideAnalysisId(analysisId);
         unhideAddress(slot.address.trim());

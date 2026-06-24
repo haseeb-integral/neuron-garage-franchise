@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useLiveMvs } from "@/lib/mvs/useLiveMvs";
 import { useAuth } from "@/contexts/AuthContext";
 import { SHORTLIST_SEED } from "@/lib/mvs/shortlistSeed";
@@ -91,13 +92,35 @@ function CityRow({
     };
     const s = map[status];
     const Icon = s.icon;
-    return (
-      <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${s.cls}`}>
+    const pill = (
+      <span
+        className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${s.cls} ${status === "failed" ? "cursor-help" : ""}`}
+      >
         {Icon && <Icon className={`h-3 w-3 ${status === "running" || status === "queued" ? "animate-spin" : ""}`} />}
         {s.text}
       </span>
     );
+    // For failed runs, surface the real reason from the DB on hover so the user
+    // doesn't have to dig through logs to find out why it died.
+    if (status === "failed" && latestRun?.error) {
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>{pill}</TooltipTrigger>
+          <TooltipContent className="max-w-sm text-[12px] leading-relaxed">
+            <div className="font-semibold mb-1">Why this run failed</div>
+            <div className="text-[11px]">{latestRun.error}</div>
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
+    return pill;
   })();
+
+  // Stale-data warning: when the most recent run failed but we still have an
+  // older composite on screen, tell the user clearly that the number is not
+  // fresh. Brett's rule: never mix fresh + stale silently.
+  const showStaleWarning = status === "failed" && composite != null;
+  const failedDate = latestRun?.finished_at ?? latestRun?.started_at ?? null;
 
   return (
     <tr className="border-b border-[#e5eaf2] last:border-b-0">
@@ -127,7 +150,20 @@ function CityRow({
       <td className="px-3 py-2.5">{statusPill}</td>
       <td className="px-3 py-2.5 text-right font-mono text-[13px] text-[#07142f]">
         {composite != null ? composite.toFixed(1) : <span className="text-[#8a96aa]">—</span>}
+        {showStaleWarning && (
+          <div
+            className="mt-1 inline-flex max-w-[220px] items-start gap-1 rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-left text-[10px] font-medium text-amber-900"
+            title="The most recent pipeline run for this city failed, so the score above is from an earlier successful run."
+          >
+            <AlertTriangle className="mt-0.5 h-2.5 w-2.5 shrink-0" />
+            <span>
+              Score may be stale — last run failed
+              {failedDate ? ` on ${new Date(failedDate).toLocaleDateString()}` : ""}. Click Run to refresh.
+            </span>
+          </div>
+        )}
       </td>
+
       <td className="px-3 py-2.5">
         <div className="flex flex-wrap items-center justify-end gap-1.5">
           <button

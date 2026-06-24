@@ -605,7 +605,7 @@ function DecisionSummary({
     <section className="mb-6 rounded-lg border bg-white p-4" style={{ borderColor: BORDER }}>
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-[13px] font-bold" style={{ color: NAVY }}>
-          Confidence summary
+          User Confidence summary
         </h3>
         <span className="text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
           Goes into the site report export
@@ -617,7 +617,7 @@ function DecisionSummary({
             <tr style={{ color: MUTED }}>
               <th className="py-1 text-left font-semibold">Site</th>
               <th className="py-1 text-right font-semibold">Score</th>
-              <th className="py-1 text-left font-semibold">Confidence</th>
+              <th className="py-1 text-left font-semibold">User Confidence</th>
               <th className="py-1 text-left font-semibold">Note</th>
             </tr>
           </thead>
@@ -1261,7 +1261,7 @@ export default function SiteAnalysis() {
           style={{ backgroundColor: SOFT }}
         >
           <span className="whitespace-nowrap font-semibold" style={{ color: NAVY }}>
-            Confidence bands:
+            User Confidence bands:
           </span>
           <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
             <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: "#1d6b32" }} />
@@ -1284,7 +1284,7 @@ export default function SiteAnalysis() {
             <span style={{ color: NAVY }}>&lt;{SITE_CONFIDENCE_THRESHOLDS.medium} Low</span>
           </span>
           <span className="text-[10px]" style={{ color: MUTED }}>
-            Bands are score-based suggestions. Your <strong>Confidence</strong> selection on each card is what ships in the export. Final decisions stay with the user.
+            Bands are score-based suggestions. Your <strong>User Confidence</strong> selection on each card is what ships in the export. Final decisions stay with the user.
           </span>
         </div>
       </section>

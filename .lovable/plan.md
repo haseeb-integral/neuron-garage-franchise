@@ -1,67 +1,77 @@
+## What you saw
 
-## What is broken
+You removed one card. You refreshed the page. The removed card came back. So your "remove" did not stick.
 
-When you click a saved row in **Saved Sites**, the card shows the address but spins on **Running…** forever. In your screenshot it has been 10+ minutes with no result.
+## Why this happens (root cause)
 
-Two real bugs, found in `src/pages/SiteAnalysis.tsx`:
+When you click **Remove**:
+1. The card disappears from your screen right away.
+2. The page adds the card's id to a "hidden list".
+3. The page waits **250 milliseconds** before saving that hidden list to your profile in the database. (This wait is there to batch many quick clicks into one save.)
 
-1. **`handleLoadSavedSite` auto-triggers a re-run.** After adding the new slot it calls `runSlot(newId, { preferCache: true })`. So even though the saved row already has a full score snapshot, we throw it away and recompute.
-2. **The re-run never starts.** `runSlot` reads `slots.find(...)` from a stale closure (the slot was just added in the same tick). The find returns `undefined`, the function returns early, and the slot is stuck on `status: "loading"` forever. That is the perpetual "Running…" you see.
+If you refresh the page **before those 250ms pass**, the save is cancelled. The browser throws away the pending save. Your profile in the database never learns that the card was removed.
 
-So the card is doing the wrong thing (re-running) AND failing silently while it does it.
+On refresh:
+- The page reads your profile → hidden list is empty (or stale).
+- The page reads your 20 most recent ready analyses from the database.
+- The "removed" card is still in that list → it shows up again.
 
-## What other apps do (standard pattern)
+This also happens if the save request is still in flight when the browser navigates away — the browser can cancel it.
 
-Looked up the common pattern for "saved item → open in workspace" flows (Notion saved views, Figma saved frames, analytics dashboards, Stripe saved reports):
+## Where I saw it in the code
 
-- Clicking a saved item **opens the snapshot instantly**. No recompute.
-- The card/panel shows a clear **"Saved snapshot · <date>"** label so you know it is not live.
-- A separate **Refresh** button re-runs the live engine when the user asks.
-- The saved entry **stays in the saved list** — opening it is a read, not a move.
+File: `src/pages/SiteAnalysis.tsx`
 
-This matches the guidance in our own stack-overflow context: "soft-hide or display saved" — show saved data immediately, never auto re-run.
+- Lines 894–913: a `useEffect` with `setTimeout(..., 250)` is the only writer to `profiles.sas_hidden_ids`. The cleanup `clearTimeout(t)` runs on unmount and on every `hiddenIds` change. So a fast refresh kills the pending write.
+- Lines 1175–1185: `removeSlot` only updates local state. It does not save to the database itself.
 
-## What we will change
+## The fix (Phase 1 — small, safe)
 
-Answering your two sub-questions:
+Make the "remove" action save **immediately** to the database, not after a 250ms wait. Keep the debounced effect as a safety net for other paths (rare).
 
-- **Should it re-run on load?** No. It should show the saved snapshot instantly.
-- **What happens to the saved-list entry?** It stays in the list, untouched. Loading is a read.
+Change in `src/pages/SiteAnalysis.tsx` only:
 
-### Plan
+1. In `removeSlot`, after computing the new hidden id:
+   - Update local state (as today).
+   - Build the new full hidden list `nextHiddenIds`.
+   - Call `supabase.from('profiles').update({ sas_hidden_ids: nextHiddenIds }).eq('id', user.id)` directly. Await it (fire-and-forget with `void` is OK, but issue the request **synchronously** so the browser starts the network call before the user can refresh).
+   - Update `lastPersistedRef.current` so the debounced effect does not write the same payload again.
+2. Keep the existing debounced effect for safety (covers `unhide…` calls from re-runs, etc.).
 
-**Phase 1 — Fix load-saved behaviour (1 turn)**
-- In `handleLoadSavedSite`, accept the full `SavedSiteRow` (not just `inputs`).
-- Build a `SiteScoreResult` directly from `snapshot_json` (pillars + composite + geo are already stored there).
-- Set the new slot to `status: "ready"` with that result and a new flag `fromSnapshot: true` plus `snapshotCreatedAt`.
-- Remove the `setTimeout(() => runSlot(...))` call. No auto re-run.
-- Saved Sites list is not modified.
+This is the minimum change to fix the bug you saw.
 
-**Phase 2 — Make "saved vs live" visible + add Refresh (1 turn)**
-- On a card where `fromSnapshot === true`, show a small label: `Saved snapshot · Jun 23`.
-- Replace the spinner "Running…" pill with a **Refresh score** button on snapshot cards. Clicking it calls the existing `runSlot(id)` (no `preferCache`) to do a fresh live compute. Once it returns, `fromSnapshot` flips off and the label disappears.
-- The existing "Why different from saved?" chip already covers the compare case for live cards, so no change there.
+## Phase 2 — extra safety (optional, only if you say yes)
 
-**Phase 3 — Safety fixes so this class of bug can't recur (1 turn)**
-- Fix the stale-closure bug in `runSlot`: use a `slotsRef` (or pass the slot object in) so `runSlot` never silently returns because the slot "doesn't exist yet".
-- Add a hard timeout (e.g. 90s) around the `compute-sas` invoke. If it exceeds, set `status: "error"` with a clear message instead of hanging on "Running…".
-- Log a console warning if `runSlot` is ever called with an unknown id (so we see it instead of it dying silently).
+Add a `beforeunload` flush: if there is still an unsaved hidden list when the user closes or refreshes the tab, send a final save using `navigator.sendBeacon` so the browser does not cancel it.
 
-### Files touched
-- `src/pages/SiteAnalysis.tsx` — `handleLoadSavedSite`, `runSlot`, `CandidateCard` (snapshot label + Refresh button), `SlotState` (add `fromSnapshot`, `snapshotCreatedAt`).
-- `src/components/site-analysis/SavedSitesDrawer.tsx` — pass the full saved row to the load handler (small prop change).
+I will only do Phase 2 if you ask.
 
-### Not touched
-- `useSavedSites` hook, DB schema, `compute-sas` function, scoring math, export pipeline, hidden-cards logic.
+## What will NOT change
 
-### Risks
-- Snapshot JSON shape: need to confirm `pillars`, `composite`, and optionally `geo` are present on existing saved rows. If `geo` is missing on old rows, the map widget on the card may be empty until user hits Refresh — acceptable, and we will show a small "Map unavailable in snapshot — click Refresh" note in that case.
-- Refresh button must be disabled while a run is in progress to prevent double-clicks.
+- Score math, pillars, exports — untouched.
+- Saved Sites drawer — untouched.
+- The card UI, the "Saved snapshot" pill, the watchdog — untouched.
+- No database schema change. No new table. No new column.
+- No edge function change.
 
-### What you should test after each phase
-- **Phase 1:** Click a saved row → card opens instantly with the saved score, no spinner.
-- **Phase 2:** "Saved snapshot · <date>" label visible. Click Refresh → spinner → live result, label disappears.
-- **Phase 3:** Disconnect network, click Refresh → after ~90s you see a clear error, not endless spinner.
+## Risks
 
-### Turn estimate
-3 small turns total.
+- Very small. The new write uses the same column (`sas_hidden_ids`) and the same row (your profile).
+- If the database write fails (rare), the card is still hidden in this tab. On the next refresh it could come back — same as today. No worse.
+
+## Test plan (after Phase 1)
+
+I will smoke test:
+1. Load Site Analysis with 2 ready cards.
+2. Click **Remove** on one card.
+3. Immediately hit refresh (within 1 second).
+4. Confirm only 1 card shows.
+5. Open another browser / incognito → confirm only 1 card shows there too.
+6. Re-run a removed address → confirm the card comes back (un-hide path still works).
+
+## Turns needed
+
+- Phase 1: **1 turn**.
+- Phase 2 (only if approved): 1 more turn.
+
+Please approve Phase 1 and I will implement.

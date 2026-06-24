@@ -1175,18 +1175,21 @@ export default function SiteAnalysis() {
   const removeSlot = (id: string) => {
     const target = slots.find((s) => s.id === id);
     setSlots((prev) => prev.filter((s) => s.id !== id));
-    // Soft-hide across refresh + devices. Prefer the analysis id when we have it;
-    // fall back to address so seed/loaded cards without an id still stay hidden.
+    // Soft-hide across refresh + devices. Hide BOTH the exact analysis row and
+    // the address. There can be many ready site_analyses rows for the same
+    // address. If we only hide the newest row, refresh can bring back an older
+    // row and make the removed card appear again.
     const aid =
       target?.analysisId ??
       (id.startsWith("persisted-") ? id.replace("persisted-", "") : null);
-    const key = aid ? aid : target?.address ? `addr:${target.address}` : null;
-    if (!key) return;
+    const addressKey = target?.address ? `addr:${target.address}` : null;
+    const keysToHide = [aid, addressKey].filter((v): v is string => Boolean(v));
+    if (keysToHide.length === 0) return;
     if (aid) hideAnalysisId(aid);
-    else if (target?.address) hideAddress(target.address);
+    if (target?.address) hideAddress(target.address);
     // Persist immediately so a fast refresh cannot cancel the debounced write.
     if (user) {
-      const nextHidden = hiddenIds.includes(key) ? hiddenIds : [...hiddenIds, key];
+      const nextHidden = Array.from(new Set([...hiddenIds, ...keysToHide]));
       const sig = JSON.stringify([...nextHidden].sort());
       lastPersistedRef.current = sig;
       void supabase

@@ -262,7 +262,7 @@ function SubScoreCard({ title, subtitle, weight, value, signals, formula, confid
             </pre>
             {confidence.level !== "high" && (
               <p className="mt-2 text-[11px]" style={{ color: MUTED }}>
-                <strong style={{ color: NAVY }}>QA note:</strong> {confidence.note}
+                <strong style={{ color: NAVY }}>Source coverage note:</strong> {confidence.note}
               </p>
             )}
           </>
@@ -527,7 +527,9 @@ export default function MarketValidation() {
               city (≈1–2 min per city). Results flow back into the table here automatically.
             </p>
             <p className="mt-1 text-[11px]" style={{ color: MUTED }}>
-              QA queue = manager review of low-confidence week extractions flagged by the pipeline.
+              QA queue = manager review of week extractions where the AI was unsure (AI certainty &lt; 70%).
+              The "Limited Source Coverage" badge on a city means more than 20% of premium providers had
+              missing or broken registration pages — treat that city's MVS score with extra caution.
             </p>
           </div>
 

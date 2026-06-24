@@ -12,14 +12,14 @@ export function LowConfidenceBadge({
   if (level === "high") return null;
   const palette =
     level === "low"
-      ? { bg: "#fef3c7", fg: "#92400e", label: "Low conf." }
-      : { bg: "#fff1d6", fg: "#925100", label: "Med. conf." };
+      ? { bg: "#fef3c7", fg: "#92400e", label: "Limited Source Coverage" }
+      : { bg: "#fff1d6", fg: "#925100", label: "Limited Source Coverage" };
 
   return (
     <span
       className="inline-flex items-center gap-0.5 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
       style={{ backgroundColor: palette.bg, color: palette.fg }}
-      title={note ?? "Routed to human QA queue (confidence < 0.7)"}
+      title={note ?? "More than 20% of premium providers in this city had missing or broken registration pages. Treat the MVS score with caution."}
     >
       ⚑ {palette.label}
     </span>

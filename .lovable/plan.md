@@ -1,93 +1,48 @@
-## The problem
+## What we are changing and why
 
-On a pillar card (e.g. Pricing Acceptance), two pills sit side by side:
+The Market Absorption pillar is retired (weight 0, excluded from composite since June 24). I traced the code: the `mvs_weeks` table is **only** read by `score2MarketAbsorption` in `computeMvs.ts`. No other pillar uses it.
 
-- Green: **"Strong data coverage"** → about data quality
-- Red: **"Weak premium pricing"** → about the market result (score = 21.6 / 100)
+But `mvs-extract-weeks` still runs on every pipeline run, still calls Firecrawl (search + scrape per provider) to find registration pages, and still writes failures into `mvs_qa_queue`. Today that produced **78 of 80 open QA items** about "no registration page found" — pure noise for a retired score.
 
-Both are correct, but they look like they disagree. The user wants the card to make it obvious that one is about **data** and one is about the **market**, and to also explain *why* the "Weak" label appears.
+We will stop the weeks pipeline, hide the QA queue page, and clear out the existing 80 rows.
 
-## What we will change (UI only, no math)
+## Scope and what could be affected
 
-### 1. Rename the green/amber/red data pill (in `LiveCitySourcePanels.tsx`, `ConfidenceStamp`)
-
-| Today | New |
+| Area | Change |
 |---|---|
-| "Strong data coverage" | **"Data: strong"** |
-| "Partial data coverage" | **"Data: partial"** |
-| "Limited data coverage" | **"Data: limited"** |
+| `supabase/functions/mvs-run-pipeline/index.ts` | Skip the Stage 3 `mvs-extract-weeks` call. Mark step as "skipped (retired)" in the run log. |
+| `supabase/functions/mvs-refresh-all/index.ts` | Same — skip the extract-weeks step. |
+| `src/pages/MVSQAQueue.tsx` | Replace the page body with a short "Retired — Market Absorption is no longer in the composite" notice. Keep the route so old links don't 404. Remove "Re-run extraction" button. |
+| `src/components/AppSidebar.tsx` (and any nav link to `/mvs-qa-queue`) | Hide the menu link. |
+| DB | Mark all 80 open `mvs_qa_queue` rows resolved with reason `retired:absorption`. |
+| `mvs-extract-weeks` edge function | Leave the code in place but unused, in case Absorption is ever revived. Do **not** delete. |
+| `computeMvs.ts` / `score2MarketAbsorption` | No change — it already returns null and is excluded from composite. |
+| `MVSSpec.tsx` / methodology docs | No change this phase. |
 
-The tooltip wording stays as-is.
+Not touched: scoring math, the five live pillars, the MVS table, any user-facing scores.
 
-### 2. Rename the market band pill so it's clearly about the market (in `LiveCityDeepDive.tsx`, `PILLAR_BAND_SUFFIX`)
+## Phase 1 — single phase, ~3 turns
 
-| Today | New |
-|---|---|
-| "Weak premium pricing" | **"Market: weak premium pricing"** |
-| "Mixed premium pricing" | **"Market: mixed premium pricing"** |
-| "Strong premium pricing" | **"Market: strong premium pricing"** |
-| "Very strong premium pricing" | **"Market: very strong premium pricing"** |
-| "Weak operator validation" | **"Market: weak operator validation"** |
-| …same for mid/strong/top | …same prefix |
+**Turn 1** — Stop the pipeline calls
+- Edit `mvs-run-pipeline/index.ts` to skip the `extract` step (still log it as `skipped`).
+- Edit `mvs-refresh-all/index.ts` the same way.
+- Deploy both functions.
 
-For Market Balance, Enrichment Diversity, and Market Depth, add the same `Market: ` prefix to their band labels so all market pills read the same way.
+**Turn 2** — Hide the QA page
+- Replace `MVSQAQueue.tsx` body with a one-paragraph "Retired" notice + back link.
+- Remove the sidebar/nav entry pointing to `/mvs-qa-queue`.
 
-### 3. Move the data pill away from the market pill
+**Turn 3** — Clear the queue
+- Run a single UPDATE to mark all open rows resolved with reason `retired:absorption` and `resolved_by = null`.
+- Verify count goes to 0.
 
-In the pillar card header (`LiveCityDeepDive.tsx`, around line 561–589), pull `<ConfidenceStamp />` out of the top row and place it on the **"High confidence — Based on 14 of 19 providers…"** line instead, so:
+## Risks and what needs testing
 
-- Top row = title + weight % + **market pill** (Weak / Mixed / Strong)
-- Confidence line = "High confidence — Based on 14 of 19 providers…" + **data pill** (Data: strong)
+- **Risk:** something else writes to `mvs_qa_queue`. I checked — only `mvs-extract-weeks` inserts. Safe.
+- **Risk:** a future "revive Absorption" task. Mitigated by keeping the edge function code and the DB table intact.
+- **Test after each turn:**
+  - Turn 1: trigger a pipeline run on one city → confirm no Firecrawl spend on weeks, run record shows step skipped.
+  - Turn 2: navigate to `/mvs-qa-queue` → see retired notice, no fetch errors.
+  - Turn 3: open page → 0 items; old resolved rows still queryable with `Show resolved` if we keep that toggle (optional — I will keep it off for simplicity).
 
-This visually groups each pill with the thing it actually describes.
-
-### 4. Add a one-line "why" under the market pill
-
-Right under the market band pill, add a short plain-English sentence that explains the band, e.g. for Pricing Acceptance:
-
-> *Why: median weekly price is $437.50 and only 14% of providers are at $500+/wk, so the score is 21.6 / 100 (≤ 39 = weak).*
-
-The sentence is built from the same `input` object already on the card (`medianPrice`, `pctAtLeast500`, score, band threshold). One helper `bandWhyFor(meta.key, score, input)` returns the sentence. Different sentence per pillar:
-
-- **Pricing Acceptance** → median price, % ≥ $500/wk, score, threshold
-- **Scaled Operator Validation** → national operators count, score, threshold
-- **Enrichment Diversity** → categories represented, diversity ratio, score, threshold
-- **Market Depth** → premium provider count, score, threshold
-- **Direct Competition** → competitors per 10k kids, score, threshold
-- **Market Balance** → coverage ratio, band cutoff (350 / 200 / 100)
-
-If a needed input is null, we skip the sentence (no broken text).
-
-## Files touched
-
-- `src/components/phase2-demo/LiveCitySourcePanels.tsx` — rename pill labels in `ConfidenceStamp`.
-- `src/components/phase2-demo/LiveCityDeepDive.tsx` — rename band labels, move `<ConfidenceStamp />` to the confidence line, add `bandWhyFor` helper and render its sentence under the market pill.
-
-No changes to scoring math, no changes to data, no DB / edge function changes. Sliders, weights, formulas, exports, compare modal, score popovers — all untouched.
-
-## Risks
-
-- Wider pill labels ("Market: weak premium pricing") may wrap on narrow screens. The pill is already inside a `flex-wrap` row, so it will wrap cleanly.
-- The "why" sentence adds ~1 line of height per pillar card. Card `minHeight` is already 260; should still fit.
-- Nothing else in the app reads these pill label strings (verified — they are inline JSX, no exports).
-
-## Phases
-
-**Phase 1 (1 turn):**
-- Rename data pill labels (`ConfidenceStamp`).
-- Rename market band labels (`PILLAR_BAND_SUFFIX` + Market Balance / Diversity / Depth labels) with `Market: ` prefix.
-- Move `<ConfidenceStamp />` from the top row down to the confidence line.
-
-**Phase 2 (1 turn):**
-- Add `bandWhyFor(key, score, input, coverageRatio)` helper.
-- Render the one-line "why" sentence right under the market pill.
-
-## What to test after
-
-Open any city → Pricing Acceptance card. You should see:
-
-- Top row: title • weight % • **Market: weak premium pricing**
-- Next line: small "Why: median $437.50, 14% at $500+/wk, score 21.6 ≤ 39 = weak"
-- Confidence line: "High confidence — Based on 14 of 19 providers…" • **Data: strong**
-
-Repeat across other pillar cards to confirm each has its own "why" sentence and no card is broken when an input is missing.
+I will stop and wait for your approval before any of these turns.

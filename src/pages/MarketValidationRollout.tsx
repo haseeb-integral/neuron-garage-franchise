@@ -228,7 +228,7 @@ export default function MarketValidationRollout() {
     // Latest run per city: pull last ~50 runs across these cities, then group.
     const { data: runRows } = await supabase
       .from("mvs_pipeline_runs")
-      .select("id, city, status, started_at, finished_at, firecrawl_calls, error, created_at")
+      .select("id, city, status, started_at, finished_at, firecrawl_calls, error, created_at, source_counts")
       .in("city", cities)
       .order("created_at", { ascending: false })
       .limit(200);
@@ -256,9 +256,11 @@ export default function MarketValidationRollout() {
           firecrawl_calls: (r as any).firecrawl_calls ?? 0,
           error: (r as any).error ?? (status === "failed" && !(r as any).error ? "Run appears stuck (>8 min). Try again." : null),
           created_at: (r as any).created_at,
+          source_counts: ((r as any).source_counts ?? null) as Record<string, unknown> | null,
         };
       }
     }
+
 
     setLatestRuns(latest);
 

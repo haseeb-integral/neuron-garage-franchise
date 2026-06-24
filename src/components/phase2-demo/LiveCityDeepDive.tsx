@@ -423,6 +423,13 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                       {band.label}
                     </span>
                   )}
+                  <p className="mt-1.5 text-[11px] leading-snug" style={{ color: MUTED }}>
+                    <span className="font-semibold" style={{ color: NAVY }}>
+                      {confidence.level === "high" ? "High confidence" : confidence.level === "medium" ? "Medium confidence" : "Low confidence"}
+                    </span>{" "}
+                    — {confidence.detail}
+                  </p>
+
                 </div>
                 <div className="shrink-0 text-right">
                   <div

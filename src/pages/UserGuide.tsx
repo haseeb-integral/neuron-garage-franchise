@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 
 /**
- * User's Guide — beginner-friendly walkthrough of Neuron Garage Franchise.
+ * User's Guide — beginner-friendly walkthrough of Neuron Garage Franchise Development.
  *
  * The branded sections at the top (hero, principles, journey, card anatomy,
  * closing CTA) live as JSX for visual identity. The bulk of the content —
@@ -181,7 +181,7 @@ const handlePrintGuide = () => {
   if (inCode) out.push("</code></pre>");
 
   const html = `<!doctype html><html><head><meta charset="utf-8"/>
-<title>User's Guide — Neuron Garage Franchise</title>
+<title>User's Guide — Neuron Garage Franchise Development</title>
 <style>
   @page { size: Letter; margin: 0.6in; }
   html, body { background: #fff; color: #0b1a36; }
@@ -203,7 +203,7 @@ const handlePrintGuide = () => {
   .doc-header .sub { color: #475569; font-size: 10pt; margin-top: 2pt; }
 </style></head><body>
 <div class="doc-header">
-  <div style="font-weight:700;color:#003c7e;">Neuron Garage Franchise</div>
+  <div style="font-weight:700;color:#003c7e;">Neuron Garage Franchise Development</div>
   <div class="sub">User's Guide · v1.4 · Printed ${new Date().toLocaleDateString()}</div>
 </div>
 ${out.join("\n")}
@@ -238,7 +238,7 @@ const UserGuide = () => {
     <div className="max-w-[1100px]">
       <PageHeader
         title="User's Guide"
-        subtitle="A friendly walkthrough of Neuron Garage Franchise for the team — no jargon, no surprises. In lock-step with the Full Specification."
+        subtitle="A friendly walkthrough of Neuron Garage Franchise Development for the team — no jargon, no surprises. In lock-step with the Full Specification."
         action={
           <div className="flex gap-2">
             <Button
@@ -300,7 +300,7 @@ const UserGuide = () => {
             className="mt-5 text-[16px] md:text-[17px] leading-relaxed max-w-[620px]"
             style={{ color: "#3a4a66" }}
           >
-            Neuron Garage Franchise is your end-to-end recruiting console.
+            Neuron Garage Franchise Development is your end-to-end recruiting console.
             Four core screens — City Search, Teacher Search, Email Outreach,
             Candidate Pipeline — plus a global Neuron AI assistant (⌘K),
             header-bell notifications, and a data-health surface for the

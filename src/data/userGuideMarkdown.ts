@@ -6,7 +6,7 @@
 // Voice: plain English, friendly, for non-technical staff (Kaylie, Sam,
 // recruiting team). For the full technical spec, see /spec.
 
-export const USER_GUIDE_MARKDOWN = `# Neuron Garage Franchise — User's Guide
+export const USER_GUIDE_MARKDOWN = `# Neuron Garage Franchise Development — User's Guide
 
 > A friendly walkthrough of the Neuron Garage Franchise Acquisition System.
 > **Guide version 1.4 · Updated May 31, 2026**

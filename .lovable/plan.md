@@ -1,38 +1,42 @@
-# Make Enrollment optional with a neutral, honest default
+# Phase 10.1 + 10.3 — Interpretation chips + friendlier collapsible labels
 
-## Why
-Sam's PDF (page 9) lists Enrollment as **Optional**, but the current code throws if it is blank. We will match the spec and stop blocking the user.
+UI/copy only. One file touched: `src/components/phase2-demo/LiveCityDeepDive.tsx`.
 
-## The default number: 475
-- Sam's formula: `0.25 × normalize(Enrollment, range 150–800)`.
-- Below 150 = clamps to 0 (silent penalty). Above 800 = clamps to 100 (silent gift).
-- **475 is the exact midpoint of 150–800.** When blank, the enrollment slice scores 50/100 — perfectly neutral.
-- Enrollment only moves the final SAS by at most **6.25%** (25% of one 25% pillar), so a neutral default is safe.
-- NCES real-world averages (110 private elementary, 250 secondary) are shown as **hint text only**, not as the silent default, because they sit at or below the formula floor and would unfairly drop the score.
+## What I will change
 
-## What changes
-**File:** `src/components/site-analysis/LiveEngineCard.tsx` only.
+1. Add a short caption above the 5-card grid:
+   "Each card shows the score, what it means, the inputs used, and where the data came from. Dragging a weight only previews sensitivity; it does not save."
 
-1. Remove the red `*` from the Enrollment label.
-2. Remove the "Enrollment required" client-side block.
-3. New placeholder: `Default 475 — leave blank for neutral score`.
-4. Small grey helper line under the field: `Optional. Real averages: ~110 private elementary, ~250 secondary. Blank = neutral midpoint of the 150–800 scoring range.`
-5. In `handleRun`, if Enrollment is empty/whitespace, fill it with **475** before sending to compute and before `onSaveToSlot`, and update the input so the user sees what was used.
+2. Add a small plain-English interpretation chip on each card, under the subtitle, with pillar-specific wording:
+   - Pricing Acceptance — Weak / Mixed / Strong / Very strong premium pricing
+   - Scaled Operator — Weak / Mixed / Strong / Very strong operator validation
+   - Enrichment Diversity — Narrow / Mixed / Broad / Very broad enrichment mix
+   - Market Depth — Thin / Moderate / Deep / Very deep provider market
+   - Market Balance Index — Underserved / Balanced / Competitive / Saturated (own bands, driven by the existing `coverageRatio` input thresholds already in the formula: ≥350 / 200–349 / 100–199 / <100)
 
-## What is NOT touched
-- `src/lib/sasMath.ts` and `supabase/functions/_shared/sas-math.ts` keep their "no fabrication" guard. The UI fills in 475 before calling them, so the guard never trips for blank input but still protects against real bugs.
-- Scoring math, weights, pillar logic, ranges — unchanged.
-- DB schema, snapshot shape, isochrones, Saved Sites, popovers, exports, Normalize button — unchanged.
-- School name and address stay required.
+   Score-driven bands for the first four use the 0–100 score already on the card:
+   0–39 = tier 1, 40–59 = tier 2, 60–79 = tier 3, 80–100 = tier 4.
 
-## Risk
-Very low. We always send a concrete number to the engine, and we show it to the user.
+   Chip colors follow the existing palette (red/amber/green/blue tints already used elsewhere on the page). If a score is missing, the chip is not rendered.
 
-## Smoke test
-1. Leave Enrollment blank, click Compute → field auto-fills `475`, School Profile pillar scores cleanly, composite renders.
-2. Type `600`, Compute → field stays `600`, score reflects 600.
-3. Type `90`, Compute → field stays `90`, enrollment slice clamps to 0 (expected, that's the formula).
-4. Save to slot, reload page → saved card shows the number that was used (475 or user value).
+3. Rename the two collapsible summaries:
+   - "Show formula" → "How this score is calculated"
+   - "Show sources (N)" → "Where the data comes from (N)"
 
-## Estimate
-1 Lovable turn.
+## What I will NOT touch
+
+- `DEFAULT_WEIGHTS`, `computeMvs`, `useLiveMvs`, sliders, weights, scores.
+- Firecrawl, Supabase, edge functions, pipeline, data fetching.
+- DataSourcesPanel, NationalOperatorsPanel, Premium providers table.
+- Market Absorption and weekly absorption stay removed.
+
+## After this phase
+
+I will stop. Please test on a live city (e.g. Austin):
+- Caption appears above the 5 cards.
+- Each card has a small colored chip under the subtitle with pillar-specific words.
+- Market Balance chip shows Underserved/Balanced/Competitive/Saturated based on coverage ratio.
+- Collapsibles read "How this score is calculated" and "Where the data comes from (N)".
+- Scores, weights, sliders, tables below are unchanged.
+
+Then I will start Phase 10.2 (Enrichment Diversity category chips).

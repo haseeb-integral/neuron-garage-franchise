@@ -95,6 +95,66 @@ const SUB_SCORE_META: {
   },
 ];
 
+// Plain-English interpretation chips per pillar. Pillar-specific wording so
+// non-technical readers can read the card without opening the formula.
+// Market Balance uses its own bands driven by the coverageRatio input.
+const GENERIC_BAND_LABELS = ["Weak", "Mixed", "Strong", "Very strong"] as const;
+const GENERIC_BAND_MAX = [39, 59, 79, 100];
+
+const PILLAR_BAND_SUFFIX: Record<string, string> = {
+  pricingAcceptance: "premium pricing",
+  scaledOperator: "operator validation",
+};
+
+const DIVERSITY_BAND_LABELS = [
+  "Narrow enrichment mix",
+  "Mixed enrichment mix",
+  "Broad enrichment mix",
+  "Very broad enrichment mix",
+];
+
+const DEPTH_BAND_LABELS = [
+  "Thin provider market",
+  "Moderate provider market",
+  "Deep provider market",
+  "Very deep provider market",
+];
+
+type BandTone = "weak" | "mid" | "strong" | "top";
+const BAND_TONES: BandTone[] = ["weak", "mid", "strong", "top"];
+const BAND_COLORS: Record<BandTone, { bg: string; fg: string }> = {
+  weak: { bg: "#fce7ec", fg: "#a3142b" },
+  mid: { bg: "#fff3d6", fg: "#8a5a00" },
+  strong: { bg: "#e3f3e7", fg: "#1d6b32" },
+  top: { bg: "#dceaff", fg: "#174be8" },
+};
+
+function bandIndexFromScore(score: number): number {
+  return GENERIC_BAND_MAX.findIndex((m) => score <= m);
+}
+
+function bandFor(
+  key: string,
+  score: number | null,
+  coverageRatio: number | null | undefined,
+): { label: string; tone: BandTone } | null {
+  if (key === "marketBalance") {
+    if (coverageRatio == null) return null;
+    if (coverageRatio >= 350) return { label: "Underserved", tone: "top" };
+    if (coverageRatio >= 200) return { label: "Balanced", tone: "strong" };
+    if (coverageRatio >= 100) return { label: "Competitive", tone: "mid" };
+    return { label: "Saturated", tone: "weak" };
+  }
+  if (score == null) return null;
+  const idx = Math.max(0, bandIndexFromScore(score));
+  const tone = BAND_TONES[idx] ?? "mid";
+  if (key === "enrichmentDiversity") return { label: DIVERSITY_BAND_LABELS[idx], tone };
+  if (key === "marketDepth") return { label: DEPTH_BAND_LABELS[idx], tone };
+  const suffix = PILLAR_BAND_SUFFIX[key];
+  if (!suffix) return null;
+  return { label: `${GENERIC_BAND_LABELS[idx]} ${suffix}`, tone };
+}
+
 // Friendly labels for the sub-score input rows so non-technical readers
 // can interpret the numbers (e.g. "Median weekly price (est.)" instead of
 // the raw camelCase key "medianPrice").

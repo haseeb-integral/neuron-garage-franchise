@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { AlertCircle, ChevronDown, ChevronUp, Download, FileText, Loader2, MapPin, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
@@ -139,7 +139,56 @@ function ScoresCacheIndicator({
 
 // Dead helpers (STATUS_STYLE, OVERLAP_STYLE, SubScoreCard, etc.) were
 // removed in the no-fake-numbers cleanup — the live deep-dive is rendered
-// entirely by <LiveCityDeepDive> below.
+// Invisible per-row probe: calls useLiveMvs for one city and reports the
+// overlay + cache stats up to the parent. Mounting one of these per shortlist
+// row gives us stable hook order (one hook per component instance) while
+// keeping the city list fully dynamic — manager-added cities work too.
+function LiveOverlayProbe({
+  rowId,
+  cityKey,
+  onOverlay,
+  onBundle,
+}: {
+  rowId: string;
+  cityKey: string;
+  onOverlay: (rowId: string, overlay: LiveOverlay | null) => void;
+  onBundle: (rowId: string, stats: { cachedAt: number | null; loading: boolean }) => void;
+}) {
+  const bundle = useLiveMvs(cityKey);
+  const r = bundle.result;
+  const composite = r?.mvs ?? null;
+  const pricing = r?.scores.pricingAcceptance ?? null;
+  const scaledOperator = r?.scores.scaledOperator ?? null;
+  const diversity = r?.scores.enrichmentDiversity ?? null;
+  const depth = r?.scores.marketDepth ?? null;
+  const balance = r?.scores.marketBalance ?? null;
+
+  useEffect(() => {
+    if (r) {
+      onOverlay(rowId, {
+        composite,
+        pricing,
+        scaledOperator,
+        diversity,
+        depth,
+        balance,
+        // low_confidence_badge was tied to a retired signal (no_reg_page_pct);
+        // force false to stop the false warning.
+        lowConfidence: false,
+      });
+    } else {
+      onOverlay(rowId, null);
+    }
+  }, [rowId, r, composite, pricing, scaledOperator, diversity, depth, balance, onOverlay]);
+
+  useEffect(() => {
+    onBundle(rowId, { cachedAt: bundle.cachedAt, loading: bundle.loading });
+  }, [rowId, bundle.cachedAt, bundle.loading, onBundle]);
+
+  return null;
+}
+
+
 
 export default function MarketValidation() {
   const { rows: additions, addCity } = useShortlistAdditions();
@@ -174,62 +223,56 @@ export default function MarketValidation() {
   const activeRow = allShortlistRows.find((r) => r.id === activeCityId) ?? allShortlistRows[0];
 
 
-  // Phase 7 — live overlay for every Tier A city flagged mvs_data_source='live'.
-  // Hooks are called at fixed positions (one per Tier A city), so React's
-  // rules-of-hooks invariant is preserved. Sample rows are untouched for
-  // cities whose flag is still 'sample'.
-  const austinLive       = useLiveMvs("Austin, TX");
-  const newYorkLive      = useLiveMvs("New York, NY");
-  const houstonLive      = useLiveMvs("Houston, TX");
-  const chicagoLive      = useLiveMvs("Chicago, IL");
-  const bostonLive       = useLiveMvs("Boston, MA");
-  const sanAntonioLive   = useLiveMvs("San Antonio, TX");
-  const philadelphiaLive = useLiveMvs("Philadelphia, PA");
-  const losAngelesLive   = useLiveMvs("Los Angeles, CA");
-  const indianapolisLive = useLiveMvs("Indianapolis, IN");
+  // Phase 8 fix — drive live overlays from the actual shortlist rows (not a
+  // hardcoded list). Each shortlist row mounts one <LiveOverlayProbe> which
+  // calls useLiveMvs for its city and reports the overlay + cache stats up.
+  // This lets manager-added cities (San Diego, Denver, …) show their live
+  // scores in the table instead of staying "Not yet scored" forever.
+  const [overlays, setOverlays] = useState<Map<string, LiveOverlay>>(new Map());
+  const [bundleStats, setBundleStats] = useState<
+    Map<string, { cachedAt: number | null; loading: boolean }>
+  >(new Map());
 
-  const liveOverlays = useMemo<Map<string, LiveOverlay>>(() => {
-    const m = new Map<string, LiveOverlay>();
-    const entries: { rowId: string; bundle: ReturnType<typeof useLiveMvs> }[] = [
-      { rowId: "austin-tx",       bundle: austinLive },
-      { rowId: "new-york-ny",     bundle: newYorkLive },
-      { rowId: "houston-tx",      bundle: houstonLive },
-      { rowId: "chicago-il",      bundle: chicagoLive },
-      { rowId: "boston-ma",       bundle: bostonLive },
-      { rowId: "san-antonio-tx",  bundle: sanAntonioLive },
-      { rowId: "philadelphia-pa", bundle: philadelphiaLive },
-      { rowId: "los-angeles-ca",  bundle: losAngelesLive },
-      { rowId: "indianapolis-in", bundle: indianapolisLive },
-    ];
-    for (const { rowId, bundle } of entries) {
-      // Show live overlay for any city that has been *run* (has a result),
-      // not only cities flipped to live. Keeps "click city → see that city's
-      // detail" consistent; flip-to-live still controls what the rest of the
-      // app reads, but the deep-dive on this page follows the active row.
-        if (bundle.result) {
-        const r = bundle.result;
-        m.set(rowId, {
-          composite: r.mvs,
-          pricing: r.scores.pricingAcceptance,
-          scaledOperator: r.scores.scaledOperator,
-          diversity: r.scores.enrichmentDiversity,
-          depth: r.scores.marketDepth,
-          balance: r.scores.marketBalance,
-          // `low_confidence_badge` is computed from no_reg_page_pct (a
-          // retired signal — Market Absorption was removed). Force false so
-          // the Limited Source Coverage badge no longer fires for that
-          // reason alone.
-          lowConfidence: false,
-
-        });
+  const handleOverlay = useCallback((rowId: string, overlay: LiveOverlay | null) => {
+    setOverlays((prev) => {
+      const existing = prev.get(rowId);
+      if (!overlay && !existing) return prev;
+      if (
+        overlay &&
+        existing &&
+        existing.composite === overlay.composite &&
+        existing.pricing === overlay.pricing &&
+        existing.scaledOperator === overlay.scaledOperator &&
+        existing.diversity === overlay.diversity &&
+        existing.depth === overlay.depth &&
+        existing.balance === overlay.balance &&
+        existing.lowConfidence === overlay.lowConfidence
+      ) {
+        return prev;
       }
-    }
-    return m;
-  }, [
-    austinLive, newYorkLive, houstonLive, chicagoLive,
-    bostonLive, sanAntonioLive, philadelphiaLive, losAngelesLive,
-    indianapolisLive,
-  ]);
+      const next = new Map(prev);
+      if (overlay) next.set(rowId, overlay);
+      else next.delete(rowId);
+      return next;
+    });
+  }, []);
+
+  const handleBundle = useCallback(
+    (rowId: string, stats: { cachedAt: number | null; loading: boolean }) => {
+      setBundleStats((prev) => {
+        const existing = prev.get(rowId);
+        if (existing && existing.cachedAt === stats.cachedAt && existing.loading === stats.loading) {
+          return prev;
+        }
+        const next = new Map(prev);
+        next.set(rowId, stats);
+        return next;
+      });
+    },
+    []
+  );
+
+  const bundleStatsList = useMemo(() => Array.from(bundleStats.values()), [bundleStats]);
 
   // Removed dead helpers in the no-fake-numbers cleanup: `isActiveLive`,
   // hardcoded `scaledDiagnostic` ("5 / 8", "2.1") and `balanceBands` chips
@@ -293,12 +336,7 @@ export default function MarketValidation() {
         </div>
       </section>
 
-      <ScoresCacheIndicator
-        bundles={[
-          austinLive, newYorkLive, houstonLive, chicagoLive, bostonLive,
-          sanAntonioLive, philadelphiaLive, losAngelesLive, indianapolisLive,
-        ]}
-      />
+      <ScoresCacheIndicator bundles={bundleStatsList} />
 
       {/* v1.1 — Decision-capture shortlist table (replaces the chip rail) */}
       <div className="mb-2 flex items-center justify-between">
@@ -310,12 +348,26 @@ export default function MarketValidation() {
         </div>
         <AddCityDialog onAdd={addCity} />
       </div>
+
+      {/* Invisible probes — one per shortlist row. Each calls useLiveMvs for
+          its city and pushes the overlay + cache stats up to the parent. */}
+      {allShortlistRows.map((r) => (
+        <LiveOverlayProbe
+          key={r.id}
+          rowId={r.id}
+          cityKey={`${r.city}, ${r.state}`}
+          onOverlay={handleOverlay}
+          onBundle={handleBundle}
+        />
+      ))}
+
       <ShortlistTable
         rows={allShortlistRows}
         activeCityId={activeCityId}
         onSelectCity={setActiveCityId}
-        liveOverlays={liveOverlays}
+        liveOverlays={overlays}
       />
+
 
       {/* Decision points */}
       <section className="mb-4 rounded-lg border p-3" style={{ borderColor: BORDER, backgroundColor: SOFT }}>

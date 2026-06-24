@@ -932,13 +932,16 @@ export default function SiteAnalysis() {
 
   const runSlot = useCallback(
     async (id: string, opts?: { preferCache?: boolean }) => {
-      const slot = slots.find((s) => s.id === id);
-      if (!slot) return;
+      const slot = slotsRef.current.find((s) => s.id === id);
+      if (!slot) {
+        console.warn("[SiteAnalysis] runSlot called with unknown slot id:", id);
+        return;
+      }
       if (!slot.address.trim() || !slot.schoolName.trim()) {
         patchSlot(id, { status: "error", error: "School name and address are required." });
         return;
       }
-      patchSlot(id, { status: "loading", error: null });
+      patchSlot(id, { status: "loading", error: null, fromSnapshot: false });
 
       // Exact-input cache lookup — avoid an expensive live recompute
       // (Mapbox geocode + isochrones + Census + Urban Institute + OSM) when
@@ -982,7 +985,7 @@ export default function SiteAnalysis() {
                 ? { lat: Number(cached.latitude), lng: Number(cached.longitude) }
                 : undefined,
           };
-          patchSlot(id, { status: "ready", result, error: null, analysisId: cached.id, analysisCreatedAt: (cached as { created_at?: string }).created_at });
+          patchSlot(id, { status: "ready", result, error: null, analysisId: cached.id, analysisCreatedAt: (cached as { created_at?: string }).created_at, fromSnapshot: false });
           // If the user is restoring a previously-hidden card, drop it from
           // the hidden list so refresh keeps it visible.
           unhideAnalysisId(cached.id);
@@ -993,7 +996,10 @@ export default function SiteAnalysis() {
 
 
       try {
-        const { data, error } = await supabase.functions.invoke("compute-sas", {
+        // Hard timeout so a hung edge function can't leave the card spinning
+        // forever. compute-sas typically finishes well under 60s.
+        const TIMEOUT_MS = 90_000;
+        const invokePromise = supabase.functions.invoke("compute-sas", {
           body: {
             address: slot.address.trim(),
             school_name: slot.schoolName.trim(),
@@ -1002,12 +1008,16 @@ export default function SiteAnalysis() {
             grade_band: slot.gradeBand,
           },
         });
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error(`Engine timed out after ${TIMEOUT_MS / 1000}s — try Re-run.`)), TIMEOUT_MS),
+        );
+        const { data, error } = await Promise.race([invokePromise, timeoutPromise]) as Awaited<typeof invokePromise>;
         if (error) throw error;
         if ((data as { status?: string })?.status === "failed") {
           throw new Error((data as { error?: string }).error ?? "Engine failed");
         }
         const analysisId = (data as { analysis_id?: string }).analysis_id;
-        patchSlot(id, { status: "ready", result: data as SiteScoreResult, error: null, analysisId, analysisCreatedAt: new Date().toISOString() });
+        patchSlot(id, { status: "ready", result: data as SiteScoreResult, error: null, analysisId, analysisCreatedAt: new Date().toISOString(), fromSnapshot: false });
         // Re-running an address that was previously hidden brings it back.
         if (analysisId) unhideAnalysisId(analysisId);
         unhideAddress(slot.address.trim());
@@ -1016,7 +1026,7 @@ export default function SiteAnalysis() {
         patchSlot(id, { status: "error", error: msg });
       }
     },
-    [slots, patchSlot, unhideAnalysisId],
+    [patchSlot, unhideAnalysisId, unhideAddress],
   );
 
   // Hydrate from the user's most recent ready site_analyses rows (up to 4).

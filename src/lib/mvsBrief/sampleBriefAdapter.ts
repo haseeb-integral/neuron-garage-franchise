@@ -64,10 +64,10 @@ function buildResultFromRow(row: ShortlistRow): MvsResult {
 }
 
 function deriveBalance(row: ShortlistRow): number {
+  // Market Absorption removed from composite in v1.1 (weight 0).
   const w = DEFAULT_WEIGHTS;
   const known =
     w.pricingAcceptance * row.pricing +
-    w.marketAbsorption * row.absorption +
     w.scaledOperator * row.scaledOperator +
     w.enrichmentDiversity * row.diversity +
     w.marketDepth * row.depth;

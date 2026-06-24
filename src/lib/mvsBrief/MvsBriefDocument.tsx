@@ -238,12 +238,6 @@ const PILLARS: {
       "0.40 * norm(median, 300-700) + 0.40 * norm(p75, 400-800) + 0.20 * norm(% >= $500, 0-100)",
   },
   {
-    key: "marketAbsorption",
-    title: "Market Absorption",
-    subtitle: "Are premium operators actually selling out?",
-    formula: "norm(SelloutRate, 0-80). Time-to-sellout & YoY are Year-2 signals.",
-  },
-  {
     key: "scaledOperator",
     title: "Scaled Operator",
     subtitle: "Validated vs saturated by national operators?",
@@ -721,9 +715,8 @@ const AppendixPage: React.FC<{ args: MvsBriefArgs; headerText: string }> = ({
 
       <Text style={s.footnote}>
         Appendix data fetched at PDF-generation time directly from{" "}
-        <Text style={{ fontFamily: "Courier" }}>mvs_weeks</Text>. The
-        {" "}<Text style={{ fontFamily: "Courier" }}>marketAbsorption</Text> pillar score on
-        page 1 is derived from these exact rows: sold_out + waitlist ÷ total.
+        <Text style={{ fontFamily: "Courier" }}>mvs_weeks</Text>. Shown for transparency only —
+        Market Absorption was removed from the composite in v1.1.
       </Text>
     </Page>
   );

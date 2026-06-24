@@ -768,10 +768,15 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
         const nNoPrice = nTotal - nWithPrice;
         const nNoCategory = nTotal - nWithCategory;
         if (qaOpenCount > 0) {
+          const reasonText =
+            qaReasons.length > 0
+              ? ` Reason breakdown: ${qaReasons.map((r) => `"${r.reason}" (${r.count})`).join(", ")}.`
+              : "";
           items.push(
-            `${qaOpenCount} provider page${qaOpenCount === 1 ? " is" : "s are"} in the QA queue (unreadable or flagged) — they are excluded from scoring until fixed.`,
+            `${qaOpenCount} of ${nTotal} premium provider page${qaOpenCount === 1 ? " is" : "s are"} flagged in the QA queue.${reasonText} A flagged provider may still contribute to scoring if price or category was scraped from another source.`,
           );
         }
+
         if (nNoPrice > 0 && nTotal > 0) {
           items.push(
             `${nNoPrice} of ${nTotal} premium provider${nTotal === 1 ? "" : "s"} had no readable weekly price; excluded from Pricing Acceptance.`,

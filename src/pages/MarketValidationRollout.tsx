@@ -124,11 +124,65 @@ function CityRow({
   const showStaleWarning = status === "failed" && composite != null;
   const failedDate = latestRun?.finished_at ?? latestRun?.started_at ?? null;
 
+  // Discover sources we always try. If the latest run finished without filling
+  // source_counts (older runs from before this column existed), the chip is hidden.
+  const DISCOVER_SOURCES = ["sawyer", "activityhero", "googlemaps", "yelp", "googlesearch"] as const;
+  const sourceCounts = latestRun?.source_counts ?? null;
+  const discoverCounts = sourceCounts && typeof sourceCounts === "object" && (sourceCounts as any).discover
+    ? ((sourceCounts as any).discover as Record<string, number>)
+    : null;
+  const sourcesHit = discoverCounts
+    ? DISCOVER_SOURCES.filter((s) => Number(discoverCounts[s] ?? 0) > 0).length
+    : null;
+
   return (
     <tr className="border-b border-[#e5eaf2] last:border-b-0">
       <td className="px-3 py-2.5 text-[13px] font-semibold text-[#07142f]">
         <div className="flex flex-wrap items-center gap-1.5">
           <span>{city}</span>
+          {sourcesHit != null && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  className={`inline-flex cursor-help items-center rounded-full border px-1.5 py-0.5 text-[10px] font-semibold ${
+                    sourcesHit === DISCOVER_SOURCES.length
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                      : sourcesHit >= 3
+                      ? "border-amber-200 bg-amber-50 text-amber-800"
+                      : "border-red-200 bg-red-50 text-red-800"
+                  }`}
+                >
+                  {sourcesHit}/{DISCOVER_SOURCES.length} sources
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs text-[12px] leading-relaxed">
+                <div className="font-semibold mb-1">Discover source results</div>
+                <ul className="space-y-0.5 text-[11px]">
+                  {DISCOVER_SOURCES.map((s) => {
+                    const n = Number(discoverCounts?.[s] ?? 0);
+                    return (
+                      <li key={s} className="flex items-center justify-between gap-3">
+                        <span className="capitalize">{s}</span>
+                        <span className={n > 0 ? "text-emerald-700" : "text-red-700"}>
+                          {n > 0 ? `${n} providers` : "empty"}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+                {(sourceCounts as any)?.classify && (
+                  <div className="mt-2 border-t pt-1.5 text-[11px]">
+                    <span className="font-semibold">Classify:</span>{" "}
+                    {(sourceCounts as any).classify.batches_attempted ?? "?"} of{" "}
+                    {(sourceCounts as any).classify.batches_total ?? "?"} batches done
+                    {(sourceCounts as any).classify.aborted_at_batch != null && (
+                      <span className="text-red-700"> (aborted)</span>
+                    )}
+                  </div>
+                )}
+              </TooltipContent>
+            </Tooltip>
+          )}
           {/* `low_confidence_badge` was driven by no_reg_page_pct, a now-retired
               signal (Market Absorption was removed). Suppressed to avoid a
               false warning. */}
@@ -142,6 +196,7 @@ function CityRow({
 
         </div>
       </td>
+
       <td className="px-3 py-2.5 text-[11px] text-[#526078]">
         {latestRun?.finished_at
           ? new Date(latestRun.finished_at).toLocaleString()

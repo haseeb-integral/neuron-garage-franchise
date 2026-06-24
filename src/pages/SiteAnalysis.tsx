@@ -935,6 +935,41 @@ export default function SiteAnalysis() {
     setSlots((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
   }, []);
 
+  // Stuck-card watchdog. If a slot stays in "loading" for more than 120s
+  // (e.g. page refreshed mid-run, or compute-sas hung silently), flip it
+  // to "error" with a clear message so the user isn't stranded on a
+  // spinner forever. The 90s timeout inside runSlot covers live runs;
+  // this covers everything else (normalize, stale state, etc).
+  const loadingStartedAtRef = useRef<Record<string, number>>({});
+  useEffect(() => {
+    const now = Date.now();
+    const tracked = loadingStartedAtRef.current;
+    const liveIds = new Set<string>();
+    for (const s of slots) {
+      if (s.status === "loading") {
+        liveIds.add(s.id);
+        if (tracked[s.id] == null) tracked[s.id] = now;
+      }
+    }
+    for (const id of Object.keys(tracked)) {
+      if (!liveIds.has(id)) delete tracked[id];
+    }
+    if (liveIds.size === 0) return;
+    const timer = setInterval(() => {
+      const t = Date.now();
+      for (const id of Object.keys(loadingStartedAtRef.current)) {
+        if (t - loadingStartedAtRef.current[id] > 120_000) {
+          delete loadingStartedAtRef.current[id];
+          patchSlot(id, {
+            status: "error",
+            error: "This run got stuck. Click Re-run, or load again from Saved Sites.",
+          });
+        }
+      }
+    }, 10_000);
+    return () => clearInterval(timer);
+  }, [slots, patchSlot]);
+
   const runSlot = useCallback(
     async (id: string, opts?: { preferCache?: boolean }) => {
       const slot = slotsRef.current.find((s) => s.id === id);

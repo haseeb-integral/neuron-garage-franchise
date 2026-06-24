@@ -817,6 +817,7 @@ export default function SiteAnalysis() {
           // If the user is restoring a previously-hidden card, drop it from
           // the hidden list so refresh keeps it visible.
           unhideAnalysisId(cached.id);
+          unhideAddress(slot.address.trim());
           return;
         }
       }

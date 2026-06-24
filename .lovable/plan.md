@@ -1,21 +1,56 @@
-## What is wrong
-The screenshots show the rename from Task 15 is incomplete. The small blue stacked word under "NEURON GARAGE" still says "Franchise" instead of "Franchise Development". It appears in two places:
+# Task 12 — Rename Site Analysis "Confidence" to "User Confidence"
 
-1. **Sidebar logo** — `src/components/AppSidebar.tsx` line 122
-2. **Sign-in page logo** — `src/pages/Auth.tsx` line 133
+## What we are changing and why
 
-My first pass changed titles, headings, and footers, but missed the logo wordmark because "Franchise" sits alone in a short `<div>` that did not match the longer search string.
+On the Site Analysis page, the label "Confidence" is confusing because it sounds like a system score. Brett wants it renamed to "User Confidence" so it is clear this is the human decision, not an algorithmic rating.
 
-## What we will change (Option A — approved)
-Only the logo wordmark. Nothing else.
+## Which pages and components are affected
 
-- `src/components/AppSidebar.tsx` line 122: change the single blue "Franchise" line to two stacked blue lines: "Franchise" / "Development". This matches the existing "Neuron" / "Garage" pattern above it and avoids overflow from the longer word.
-- `src/pages/Auth.tsx` line 133: same two-line stacked treatment.
+- **Site Analysis page** (`src/pages/SiteAnalysis.tsx`)
+  - "Confidence summary" heading
+  - "Confidence" column header in the summary table
+  - "Confidence bands:" label above the band legend
+  - "Your **Confidence** selection..." helper text
 
-"Neuron Garage Franchise Acquisition System" stays untouched everywhere (Team Members, Spec, User Guide, AI KB). No scoring, pipeline, database, colors, or layout code is touched.
+- **Site decision controls** (`src/components/phase2-demo/SiteDecisionControls.tsx`)
+  - "Confidence" label above the Strong / High / Medium / Low buttons on each candidate card
+  - Helper text "No confidence set yet" and "Score suggests a confidence band"
 
-## How to verify
-1. Open the preview. Sidebar logo should read NEURON / GARAGE / FRANCHISE / DEVELOPMENT.
-2. Sign out. Auth page left-side logo should show the same.
-3. Collapse/expand sidebar — icon-only state unaffected.
-4. Confirm no TypeScript errors.
+- **Site Brief page** (`src/pages/SiteBrief.tsx`)
+  - "Confidence" stat label on the top summary
+  - "Confidence band" column header in the comparison table
+  - "Confidence: X" chips on candidate cards
+
+- **Site Pack PDF** (`src/lib/sitePack/SitePackDocument.tsx`)
+  - "Confidence: X" chip on candidate cards
+  - "Confidence band" in the comparison table header
+
+## What we will NOT touch
+
+- "Confidence" in Market Validation (that is data-extraction confidence, not user confidence)
+- `SITE_CONFIDENCE_THRESHOLDS` constant name (code-only, not user-facing)
+- Any database columns or API names
+- Scoring logic or weights
+
+## How this fits into the current app
+
+These are text-only label changes. No data keys, no stored values, no API contracts change. The user still clicks the same buttons; only the label above them and in exports changes.
+
+## Phases
+
+**Phase 1 — UI labels (1 turn)**
+- Edit `SiteDecisionControls.tsx`: change "Confidence" header to "User Confidence"
+- Edit `SiteAnalysis.tsx`: change "Confidence summary" → "User Confidence summary", table header "Confidence" → "User Confidence", "Confidence bands" → "User Confidence bands", and helper text
+- Edit `SiteBrief.tsx`: change "Confidence" stat and chip labels to "User Confidence"
+- Edit `SitePackDocument.tsx`: change "Confidence" chip labels to "User Confidence"
+
+## Tests / checks after
+
+- Open Site Analysis, add a candidate, verify the card shows "User Confidence" above the buttons
+- Scroll to the summary table, verify the column says "User Confidence"
+- Check the Site Brief page, verify chips and stats say "User Confidence"
+- Confirm no TypeScript build errors
+
+## Risks
+
+Very low. Text-only. Reversible in one edit. The only risk is missing a spot — I will search the full codebase for remaining "Confidence" references in Site Analysis files before declaring done.

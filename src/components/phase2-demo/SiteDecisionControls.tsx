@@ -36,7 +36,7 @@ export function SiteDecisionControls({ address, schoolName, suggestedTier }: Pro
     <div className="mt-3 rounded-md border p-2" style={{ borderColor: BORDER, backgroundColor: SOFT }}>
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: MUTED }}>
-          Confidence
+          User Confidence
         </span>
       </div>
       <div className="flex flex-wrap gap-1">
@@ -65,7 +65,7 @@ export function SiteDecisionControls({ address, schoolName, suggestedTier }: Pro
       </div>
       {!row?.verdict && (
         <p className="mt-1 text-[10px]" style={{ color: MUTED }}>
-          {suggestedTier ? "Score suggests a confidence band (dashed). Confirm or override above." : "No confidence set yet."}
+          {suggestedTier ? "Score suggests a user confidence band (dashed). Confirm or override above." : "No user confidence set yet."}
         </p>
       )}
       <div className="mt-1.5">

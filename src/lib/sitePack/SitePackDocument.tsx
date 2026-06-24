@@ -443,7 +443,7 @@ const CoverPage: React.FC<{ candidates: SitePackCandidate[]; today: string }> = 
       {/* Candidates table */}
       <View style={{ marginTop: 16 }}>
         <View style={s.tHead}>
-          {["Candidate", "SAS", "Confidence band", "User confidence"].map((h, i) => (
+          {["Candidate", "SAS", "Confidence band", "User Confidence"].map((h, i) => (
             <Text
               key={h}
               style={[
@@ -535,7 +535,7 @@ const CandidateDetail: React.FC<{ c: SitePackCandidate; today: string }> = ({ c,
           <Text style={s.execScoreLbl}>SAS COMPOSITE</Text>
         </View>
         <View style={s.execRight}>
-          <Chip label={`Confidence: ${c.tierLabel}`} color={tierColor(c.tierLabel)} />
+          <Chip label={`User Confidence: ${c.tierLabel}`} color={tierColor(c.tierLabel)} />
           <Text style={s.verdict}>
             {verdictSentence({
               schoolName: c.schoolName,

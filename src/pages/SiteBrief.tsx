@@ -561,7 +561,7 @@ export default function SiteBrief() {
                 <Stat label="Generated" value={today} />
                 <Stat label="Candidates" value={String(candidates.length)} />
                 <Stat label="Top SAS" value={String(top.composite)} />
-                <Stat label="Confidence" value={top.tierLabel.toUpperCase()} />
+                <Stat label="User Confidence" value={top.tierLabel.toUpperCase()} />
               </div>
             </div>
             <CompositeDonut value={top.composite} label="SAS COMPOSITE" size={240} />
@@ -675,7 +675,7 @@ export default function SiteBrief() {
               </div>
             </div>
             <div>
-              <Chip label={`Confidence: ${top.tierLabel}`} color={topVerdictColor} />
+              <Chip label={`User Confidence: ${top.tierLabel}`} color={topVerdictColor} />
               <p
                 style={{
                   margin: "10px 0 0",
@@ -747,7 +747,7 @@ export default function SiteBrief() {
                   </div>
                 </div>
                 <div>
-                  <Chip label={`Confidence: ${c.tierLabel}`} color={color} />
+                  <Chip label={`User Confidence: ${c.tierLabel}`} color={color} />
                   <p
                     style={{
                       margin: "10px 0 0",

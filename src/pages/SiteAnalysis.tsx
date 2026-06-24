@@ -887,6 +887,7 @@ export default function SiteAnalysis() {
         seen.add(row.address);
         extras.push({
           id: `persisted-${row.id}`,
+          analysisId: row.id,
           schoolName: row.school_name ?? "Saved candidate",
           address: row.address,
           schoolType: (row.school_type as SchoolType) ?? "private_elementary",

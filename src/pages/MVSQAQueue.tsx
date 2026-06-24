@@ -347,18 +347,32 @@ export default function MVSQAQueue() {
               <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2 border-b pb-2">
                 <div>
                   <div className="text-lg font-semibold">{g.providerName}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {g.city}
-                    {g.website && (
+                  <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-2">
+                    <span>{g.city}</span>
+                    {g.website ? (
                       <>
-                        {" · "}
+                        <span>·</span>
                         <a
                           href={g.website}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="underline"
+                          className="underline text-primary"
                         >
-                          provider website
+                          open provider website ↗
+                        </a>
+                      </>
+                    ) : (
+                      <>
+                        <span>·</span>
+                        <a
+                          href={`https://www.google.com/search?q=${encodeURIComponent(
+                            `${g.providerName} ${g.city} summer camp registration`,
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline text-primary"
+                        >
+                          search the web for this provider ↗
                         </a>
                       </>
                     )}
@@ -366,20 +380,34 @@ export default function MVSQAQueue() {
                 </div>
                 <div className="flex items-center gap-2 text-xs">
                   {g.providerRow && (
-                    <span
-                      className="rounded px-2 py-0.5 font-semibold"
-                      style={{ backgroundColor: "#fde68a", color: "#92400e" }}
-                    >
-                      provider issue
-                    </span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span
+                          className="rounded px-2 py-0.5 font-semibold cursor-help"
+                          style={{ backgroundColor: "#fde68a", color: "#92400e" }}
+                        >
+                          provider issue
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs text-[12px] leading-relaxed">
+                        The bot could not find a working registration page on this provider's website. Open the link on the left, check if a camp registration page exists, then click "Mark resolved" once you have fixed the URL or confirmed there is none.
+                      </TooltipContent>
+                    </Tooltip>
                   )}
                   {g.weekRows.length > 0 && (
-                    <span
-                      className="rounded px-2 py-0.5 font-semibold"
-                      style={{ backgroundColor: "#fee2e2", color: "#a3142b" }}
-                    >
-                      {g.weekRows.length} week{g.weekRows.length === 1 ? "" : "s"} flagged
-                    </span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span
+                          className="rounded px-2 py-0.5 font-semibold cursor-help"
+                          style={{ backgroundColor: "#fee2e2", color: "#a3142b" }}
+                        >
+                          {g.weekRows.length} week{g.weekRows.length === 1 ? "" : "s"} flagged
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs text-[12px] leading-relaxed">
+                        The AI was less than 70% sure about the status it picked for these weeks (open / waitlist / sold out). A human needs to look at the evidence page or screenshot and confirm or correct it.
+                      </TooltipContent>
+                    </Tooltip>
                   )}
                 </div>
               </div>

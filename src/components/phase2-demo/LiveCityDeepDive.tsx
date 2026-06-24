@@ -330,12 +330,16 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
       />
 
       {/* Sub-score grid with live sliders */}
+      <p className="mb-2 text-[12px] leading-relaxed" style={{ color: MUTED }}>
+        Each card shows the score, what it means, the inputs used, and where the data came from. Dragging a weight only previews sensitivity; it does not save.
+      </p>
       <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {SUB_SCORE_META.map((meta) => {
           const score = result?.scores[meta.key] ?? null;
           const input = result?.inputs[meta.key] as any;
           const weight = weights[meta.key];
           const confidence = confidenceFor(meta.key);
+          const band = bandFor(meta.key, score, input?.coverageRatio);
           return (
             <div
               key={meta.key}

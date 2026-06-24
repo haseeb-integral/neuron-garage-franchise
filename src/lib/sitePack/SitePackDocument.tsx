@@ -715,7 +715,7 @@ const SourcesSection: React.FC<{ prov?: SasProvenance | null }> = ({ prov }) => 
 };
 
 // ---- 4-up comparison ----
-const ComparisonPage: React.FC<{ candidates: SitePackCandidate[]; today: string }> = ({
+const ComparisonPage: React.FC<{ candidates: ScoredCandidate[]; today: string }> = ({
   candidates,
   today,
 }) => {

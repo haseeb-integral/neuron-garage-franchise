@@ -3,13 +3,22 @@
 
 export const MVS_NORMALIZATION_VERSION = "1.0-fixed";
 
+// Market Absorption (formerly 0.25) was removed June 24, 2026. Remaining
+// weights re-normalized proportionally so the 5 cards still sum to 1.0:
+//   PA  0.20 / 0.75 = 0.2667
+//   SO  0.20 / 0.75 = 0.2667
+//   ED  0.10 / 0.75 = 0.1333
+//   MD  0.10 / 0.75 = 0.1333
+//   MB  0.15 / 0.75 = 0.2000
+// `marketAbsorption: 0` is kept as a legacy key so callers that still pass it
+// in `options.weights` don't crash; it is ignored in the composite below.
 export const DEFAULT_WEIGHTS: Record<string, number> = {
-  pricingAcceptance: 0.20,
-  marketAbsorption: 0.25,
-  scaledOperator: 0.20,
-  enrichmentDiversity: 0.10,
-  marketDepth: 0.10,
-  marketBalance: 0.15,
+  pricingAcceptance: 0.2667,
+  marketAbsorption: 0,
+  scaledOperator: 0.2667,
+  enrichmentDiversity: 0.1333,
+  marketDepth: 0.1333,
+  marketBalance: 0.2000,
 };
 
 export const ELIGIBLE_CATEGORIES = new Set([

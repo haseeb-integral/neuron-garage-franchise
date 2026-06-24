@@ -581,7 +581,7 @@ export default function SiteBrief() {
               >
                 <Stat label="Generated" value={today} />
                 <Stat label="Candidates" value={String(candidates.length)} />
-                <Stat label="Top SAS" value={String(topOrFallback.composite)} />
+                <Stat label="Top SAS" value={topOrFallback.composite != null ? String(topOrFallback.composite) : "—"} />
                 <Stat label="User Confidence" value={topOrFallback.tierLabel.toUpperCase()} />
               </div>
             </div>

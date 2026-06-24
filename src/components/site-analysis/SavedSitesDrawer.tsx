@@ -20,12 +20,18 @@ const MUTED = "#526078";
 const BORDER = "#eef2f7";
 const BLUE = "#174be8";
 
-function bandFor(score: number) {
-  if (score >= SITE_CONFIDENCE_THRESHOLDS.strong) return { label: "Strong", bg: "#e3f3e7", fg: "#1d6b32" };
-  if (score >= SITE_CONFIDENCE_THRESHOLDS.high) return { label: "High", bg: "#eaf5ec", fg: "#2f7a3f" };
-  if (score >= SITE_CONFIDENCE_THRESHOLDS.medium) return { label: "Medium", bg: "#fff8d9", fg: "#7a5800" };
-  return { label: "Low", bg: "#fce7ec", fg: "#a3142b" };
+const VERDICT_STYLE: Record<string, { bg: string; fg: string; label: string }> = {
+  strong: { bg: "#e3f3e7", fg: "#1d6b32", label: "Strong" },
+  high: { bg: "#eaf5ec", fg: "#2f7a3f", label: "High" },
+  medium: { bg: "#fff8d9", fg: "#7a5800", label: "Medium" },
+  low: { bg: "#fce7ec", fg: "#a3142b", label: "Low" },
+};
+
+function verdictChip(v?: string | null) {
+  if (!v) return null;
+  return VERDICT_STYLE[v] ?? null;
 }
+
 
 function initials(name?: string | null, email?: string | null) {
   const src = (name && name.trim()) || (email && email.split("@")[0]) || "?";

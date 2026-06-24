@@ -447,6 +447,33 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                 </ul>
               )}
 
+              {meta.key === "enrichmentDiversity" && (
+                <div className="mt-3 border-t border-dashed pt-2" style={{ borderColor: BORDER }}>
+                  <div className="mb-1 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
+                    Categories found
+                  </div>
+                  {categoryCounts.length === 0 ? (
+                    <p className="text-[11px]" style={{ color: MUTED }}>
+                      No categories classified yet.
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap gap-1">
+                      {categoryCounts.map((c) => (
+                        <span
+                          key={c.label}
+                          className={CHIP}
+                          style={{ backgroundColor: SOFT, color: NAVY, border: `1px solid ${BORDER}` }}
+                        >
+                          {c.label} {c.count}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+
+
               <details className="mt-auto pt-3 text-[11px]">
                 <summary
                   className="cursor-pointer font-semibold"

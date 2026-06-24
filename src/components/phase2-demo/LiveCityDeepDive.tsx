@@ -866,6 +866,13 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
               {premiumProviders.map((p) => {
                 const pweeks = weeks.filter((w) => w.provider_id === p.id);
                 const listingHref = p.source_listing_url ?? p.website_url ?? p.url ?? null;
+                const hasPrice = (p.price_min ?? null) != null;
+                const hasCategory = !!(p as any).category_classified;
+                const isClean = hasPrice && hasCategory;
+                const dotColor = isClean ? "#1d6b32" : "#c97a00";
+                const dotTitle = isClean
+                  ? "Complete — has price and category"
+                  : `Incomplete — missing ${!hasPrice ? "price" : ""}${!hasPrice && !hasCategory ? " and " : ""}${!hasCategory ? "category" : ""}`;
                 return (
                   <tr
                     key={p.id}
@@ -873,7 +880,13 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                     style={{ borderColor: BORDER }}
                   >
                     <td className="px-4 py-2.5 font-semibold" style={{ color: NAVY }}>
-                      <span className="inline-flex items-center">
+                      <span className="inline-flex items-center gap-2">
+                        <span
+                          aria-label={dotTitle}
+                          title={dotTitle}
+                          className="inline-block h-2 w-2 shrink-0 rounded-full"
+                          style={{ backgroundColor: dotColor }}
+                        />
                         {p.name}
                         <OpenSourceLink href={listingHref} />
                       </span>
@@ -906,6 +919,24 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
             </tbody>
           </table>
         </div>
+        {premiumProviders.length > 0 && (
+          <div
+            className="flex flex-wrap items-center gap-3 border-t px-4 py-2 text-[11px]"
+            style={{ borderColor: BORDER, color: MUTED }}
+          >
+            <span className="font-semibold" style={{ color: NAVY }}>Row trust:</span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: "#1d6b32" }} />
+              Complete (price + category)
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: "#c97a00" }} />
+              Incomplete (missing price or category)
+            </span>
+            <span className="italic">QA-queue items are excluded from this table — see Known limitations.</span>
+          </div>
+        )}
+
       </section>
     </>
   );

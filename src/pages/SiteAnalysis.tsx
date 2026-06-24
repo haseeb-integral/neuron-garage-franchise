@@ -684,8 +684,69 @@ export default function SiteAnalysis() {
   const [pendingReplaceId, setPendingReplaceId] = useState<string | null>(null);
   const { byAddress } = useSiteDecisions();
   const savedSites = useSavedSites();
+  const { user } = useAuth();
+  const [hiddenIds, setHiddenIds] = useState<string[]>([]);
+  const [hiddenLoaded, setHiddenLoaded] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [bookmarkBusy, setBookmarkBusy] = useState<string | null>(null);
+
+  // Load the user's hidden-card list from profiles. Removed SAS cards stay
+  // hidden across refreshes and devices until the user re-loads them from the
+  // Saved Sites drawer (no API spend to bring them back).
+  useEffect(() => {
+    if (!user) {
+      setHiddenIds([]);
+      setHiddenLoaded(true);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("sas_hidden_ids")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (cancelled) return;
+      setHiddenIds(((data?.sas_hidden_ids as string[] | null) ?? []));
+      setHiddenLoaded(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  const persistHidden = useCallback(
+    async (next: string[]) => {
+      if (!user) return;
+      await supabase.from("profiles").update({ sas_hidden_ids: next }).eq("id", user.id);
+    },
+    [user],
+  );
+
+  const hideAnalysisId = useCallback(
+    (analysisId: string) => {
+      setHiddenIds((prev) => {
+        if (prev.includes(analysisId)) return prev;
+        const next = [...prev, analysisId];
+        void persistHidden(next);
+        return next;
+      });
+    },
+    [persistHidden],
+  );
+
+  const unhideAnalysisId = useCallback(
+    (analysisId: string) => {
+      setHiddenIds((prev) => {
+        if (!prev.includes(analysisId)) return prev;
+        const next = prev.filter((id) => id !== analysisId);
+        void persistHidden(next);
+        return next;
+      });
+    },
+    [persistHidden],
+  );
+
 
   const patchSlot = useCallback((id: string, patch: Partial<SlotState>) => {
     setSlots((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));

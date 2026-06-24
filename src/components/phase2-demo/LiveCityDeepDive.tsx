@@ -319,6 +319,27 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
     [premiumProviders],
   );
 
+  // "What-if" delta: recompute MVS with DEFAULT_WEIGHTS so we can show the
+  // user how far their slider preview moved the score from baseline. Uses
+  // the same providers/weeks/acs already in scope — no extra fetch.
+  const defaultMvs = useMemo(() => {
+    if (!acs) return null;
+    try {
+      return computeMvs(providers, weeks, acs, { weights: DEFAULT_WEIGHTS }).mvs;
+    } catch {
+      return null;
+    }
+  }, [providers, weeks, acs]);
+
+  const weightsDirty = useMemo(
+    () =>
+      (Object.keys(DEFAULT_WEIGHTS) as (keyof typeof DEFAULT_WEIGHTS)[]).some(
+        (k) => Math.abs((weights[k] ?? 0) - DEFAULT_WEIGHTS[k]) > 0.001,
+      ),
+    [weights],
+  );
+
+
   function confidenceFor(key: string): { level: "high" | "medium" | "low"; detail: string } {
     const qaSuffix = qaOpenCount > 0 ? ` · ${qaOpenCount} in QA queue.` : ".";
 

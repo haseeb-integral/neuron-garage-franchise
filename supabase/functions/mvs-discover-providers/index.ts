@@ -835,10 +835,12 @@ Deno.serve(async (req) => {
         providers_updated: updated,
         providers_merged: rows.length,
         screenshot_path: screenshotPath,
+        source_counts: sourceCounts,
         debug,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
+
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (!parentRunId) {

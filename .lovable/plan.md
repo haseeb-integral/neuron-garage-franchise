@@ -1,22 +1,58 @@
+# Market Validation — Badge Tooltips + Clearer Wording
 
-# Market Validation Confidence — Rewording (approved, badge name = "Limited Source Coverage")
+## What we are changing and why
 
-## What I will change (text only, no logic)
+The Market Validation page shows badges in 3 places. Each has a problem:
 
-| File | Current | New |
-|---|---|---|
-| `src/components/phase2-demo/LowConfidenceBadge.tsx` | Badge label: "Low conf." / "Med. conf."  •  Tooltip: "Routed to human QA queue (confidence < 0.7)" | Badge label: **"Limited Source Coverage"** (both levels)  •  Tooltip: "More than 20% of premium providers in this city had missing or broken registration pages. Treat the MVS score with caution." |
-| `src/pages/MarketValidation.tsx` (line ~265) | "**QA note:** …" | "**Source coverage note:** …" |
-| `src/pages/MarketValidation.tsx` (line ~530) | "QA queue = manager review of low-confidence week extractions flagged by the pipeline." | "QA queue = manager review of week extractions where the AI was unsure (AI certainty < 70%). The 'Limited Source Coverage' badge on a city means more than 20% of premium providers had missing or broken registration pages — treat that city's MVS score with extra caution." |
-| `src/pages/MVSQAQueue.tsx` (line ~437) | "(75% confidence)" | "(AI certainty: 75%)" |
+1. **Sub-score cards (pillar badges)** — say "High confidence" / "Medium confidence" / "Limited source coverage". The words "High/Medium confidence" are unclear — they sound like the AI is sure, but they actually mean "how many premium camps fed this number". We will rename them so the meaning is obvious.
+2. **City pill** (Shortlist table + Live City Deep-Dive header) — says "⚑ Limited Source Coverage". The tooltip uses the plain HTML `title=""` attribute, which often does not appear (slow, no styling, sometimes blocked by hover layers).
+3. **QA Queue** — shows "(AI certainty: 75%)" as plain text with no tooltip explaining what the number means.
 
-No backend, no scoring math, no DB, no Firecrawl logic touched.
+Fix: use the real shadcn `<Tooltip>` component (same one used elsewhere in the app) so hover always works, looks consistent, and explains the reason behind each badge.
 
-## Then I will give you the 2 Google Doc paragraphs
+## New wording (sub-score stamp)
 
-- **Para 1 — Before:** plain English description of where "confidence" appeared and how each one was calculated (per-week AI 0–1, city low-confidence badge from broken pages, sub-score high/med/low).
-- **Para 2 — After:** what the new labels say and why ("Limited Source Coverage", "AI certainty", "Source coverage note") and confirmation that no scoring logic changed.
+Old → New (label only, colors stay the same):
 
----
+- "High confidence" → **"Strong data coverage"**
+- "Medium confidence" → **"Partial data coverage"**
+- "Limited source coverage" → **"Limited data coverage"** (kept similar, lowercase changed for consistency)
 
-**Please switch to build mode so I can apply the 4 edits.** Plan mode is read-only; the edits above will run as soon as you switch.
+Reason: the stamp is driven by how many premium providers feed the sub-score (see `confidenceFor()` in `LiveCityDeepDive.tsx`). "Data coverage" matches what the code actually measures. The word "confidence" stays only on the QA Queue, where it really is the AI model's own certainty.
+
+## Tooltip content (what each badge will explain on hover)
+
+- **City pill "⚑ Limited Source Coverage"** — "More than 20% of premium providers in this city had missing or broken registration pages we could not read. The Market Validation Score still computed, but treat it with caution until those sources are fixed in the QA Queue."
+- **Sub-score "Strong data coverage"** — "X premium providers fed this sub-score. Enough data points for a stable result."
+- **Sub-score "Partial data coverage"** — "Only X premium providers fed this sub-score (or Y items are in the QA queue). Number may shift after QA review."
+- **Sub-score "Limited data coverage"** — the existing per-key reason (no data scraped, too few providers, watchlist empty, etc.) plus a one-line meaning.
+- **QA Queue "(AI certainty: 75%)"** — "This is the AI model's own self-rated certainty for the week status it guessed. Anything under 70% lands in this queue for a human to confirm."
+
+## Files affected
+
+- `src/components/phase2-demo/LiveCitySourcePanels.tsx` — `ConfidenceStamp`: rename labels, swap `title` for `<Tooltip>`.
+- `src/components/phase2-demo/LowConfidenceBadge.tsx` — swap `title` for `<Tooltip>`.
+- `src/components/phase2-demo/ShortlistTable.tsx` — city row pill: wrap in `<Tooltip>`.
+- `src/components/phase2-demo/LiveCityDeepDive.tsx` — header pill: wrap in `<Tooltip>`; pass richer `detail` strings into `ConfidenceStamp` if needed.
+- `src/pages/MVSQAQueue.tsx` — wrap "(AI certainty: X%)" in `<Tooltip>`.
+
+No scoring math, no DB writes, no Firecrawl logic touched. Presentation-only.
+
+## Risk
+
+Very low. Pure label + tooltip changes. `TooltipProvider` already wraps the app (used by sidebar and other components), so no provider plumbing needed.
+
+## Phases & turns
+
+- **Phase 1 (1 turn)** — Update `ConfidenceStamp` labels and tooltips, update `LowConfidenceBadge`, update the two city pill sites, update QA Queue line. Run `tsc --noEmit`.
+
+That's the whole task in one safe phase.
+
+## What to test after
+
+- Hover each badge on `/market-validation` city table → tooltip appears.
+- Open any city deep-dive → hover the header pill and each sub-score stamp → tooltips appear with clear text.
+- Open `/mvs-qa-queue` → hover "AI certainty: X%" → tooltip explains the 70% threshold.
+- Confirm wording reads: "Strong data coverage", "Partial data coverage", "Limited data coverage" on sub-score cards.
+
+Waiting for your approval before I start Phase 1.

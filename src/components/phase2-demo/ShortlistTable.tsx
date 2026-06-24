@@ -235,9 +235,9 @@ export function ShortlistTable({ rows, activeCityId, onSelectCity, liveOverlays 
                         <span
                           className="inline-flex items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
                           style={{ backgroundColor: "#fce7ec", color: "#a3142b" }}
-                          title="Low-confidence flag set on mvs_city_flags"
+                          title="Limited Source Coverage: more than 20% of premium providers had missing or broken registration pages. Treat the MVS score with caution."
                         >
-                          ⚑ Low conf.
+                          ⚑ Limited Source Coverage
                         </span>
                       )}
                     </div>

@@ -1,50 +1,48 @@
-# Phase 11.5 — small polish (last trust phase)
+# Phase 11.6 — fix the misleading QA suffix on every card
 
-Skipping 11.4 (peer benchmark). Two tiny UI changes only.
+## What is wrong now
+
+Every card's confidence line ends with `· 12 in QA queue.` That suffix is **not about the pillar's own inputs**. It is a city-wide count of broken registration pages. Stuffing it onto each pillar's sentence makes readers think e.g. "14 had a price but 12 are still broken" — which is not what the numbers mean.
+
+In Austin's data, all 12 QA items have reason "no registration page found". Most of those 12 providers still have a price scraped from another source, so they are counted inside "14 with price". The two numbers overlap.
 
 ## What changes
 
-### 1. "What-if" weight delta when you drag a slider
-Right now when you drag a weight slider on a card, the score recalculates but you don't see the *effect* clearly.
+### 1. Remove the QA suffix from the per-pillar confidence sentence
+Each card's sentence will only describe **that pillar's own data**.
 
-**Add:** a small line under the big MVS number that appears only when a slider is moved away from default, like:
-> *MVS would move from 64.2 → 67.8 with these weights*
+Examples (Austin):
+- Pricing Acceptance → "Based on 14 of 19 providers with a readable price."
+- Enrichment Diversity → "Based on 7 categories across 19 classified providers."
+- Market Depth → "Based on 19 premium providers discovered."
+- Market Balance → "Based on coverage ratio 3907 across 19 providers."
+- Scaled Operator → "Matched against 15 national brands." (no change)
 
-This uses two values that are already computed in memory. No backend, no extra fetch.
+No QA count inside these sentences.
 
-### 2. Per-row trust dot in the Premium Providers table
-Right now every row in the table looks the same. New user cannot tell which rows are clean vs. flagged.
+### 2. Move the QA count to one honest city-wide line
+Show it **once** in the Known Limitations panel (already exists) with the real reason text from the queue, e.g.:
+- "12 of 19 premium provider pages are flagged in the QA queue. Reason breakdown: 'no registration page found' (12). They still contribute to scoring if other data (price, category) was scraped from another source."
 
-**Add:** a small colored dot at the start of each provider row:
-- 🟢 **Green** — has a readable price AND a category
-- 🟡 **Yellow** — missing one (no price, or no category)
-- 🔴 **Red** — provider is in the QA queue (needs human fix)
+The Data Sources strip at the top can keep the small "QA open: 12" pill as a quick at-a-glance signal (no wording change).
 
-A small legend under the table explains the dots.
+### 3. Tooltip on the QA pill that explains what QA tracks
+Hovering the "QA open: N" pill in the Data Sources strip will show:
+*"QA queue tracks per-provider data-quality issues (mostly broken registration pages). A provider in QA may still have a valid price and category from other sources."*
 
 ## What I will NOT touch
 
-- Scoring math, weights defaults, `computeMvs`, `useLiveMvs`.
+- Scoring math, weights, `computeMvs`, `useLiveMvs`.
 - Firecrawl, Supabase, edge functions, pipeline.
-- Market Absorption / weekly absorption (stay removed).
-- The premium providers table structure (only adds one column for the dot).
+- The QA queue itself or how items get flagged/resolved.
+- The 5-card layout, sliders, popovers, freshness pills, dots.
 
-## Effort and risk
+## Risk
 
-- 1 turn.
-- UI only. Risk: very low.
+Very low. Pure text/copy change in `LiveCityDeepDive.tsx` (and one tooltip in `LiveCitySourcePanels.tsx` if needed).
 
-## After this phase
+## Effort
 
-Phase 11 is complete. The 5 cards will have:
-- Plain-English meaning chip ✅ (11.1)
-- Pillar-specific confidence sentence ✅ (11.1 fix)
-- Per-input freshness pill ✅ (11.1)
-- Known limitations panel ✅ (11.2)
-- Click-a-number proof popovers ✅ (11.3)
-- Live what-if delta on slider drag ✅ (11.5)
-- Per-row trust dots in providers table ✅ (11.5)
+1 turn.
 
-Peer benchmark (11.4) stays parked for a separate dedicated phase.
-
-Approve to build now?
+Approve to build?

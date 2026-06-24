@@ -733,6 +733,64 @@ export default function SiteBrief() {
           const eco = c.signals?.ecosystem;
           const acc = c.signals?.accessibility;
           const color = tierColor(c.tierLabel);
+
+          // Un-scored card — render a minimal "Not yet scored" page (Option B).
+          if (c.composite == null || c.pillars == null) {
+            return (
+              <section key={c.address + idx} className="sb-page sb-break-before">
+                <BrandHeader today={today} title={c.schoolName} />
+                <SectionHead
+                  n={`C${idx + 1}`}
+                  label={c.schoolName}
+                  sub={`${c.address} · ${c.schoolTypeLabel} · ${c.gradeBandLabel}`}
+                />
+                <div
+                  className="sb-avoid-break"
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "180px 1fr",
+                    gap: 20,
+                    padding: 16,
+                    borderRadius: 10,
+                    background: "var(--sb-soft)",
+                    border: "1px solid var(--sb-line)",
+                    borderLeft: "3px solid #94a3b8",
+                  }}
+                >
+                  <div style={{ textAlign: "center", alignSelf: "center" }}>
+                    <div
+                      className="sb-serif"
+                      style={{ fontSize: 52, fontWeight: 700, lineHeight: 1, color: "var(--sb-muted)" }}
+                    >
+                      —
+                    </div>
+                    <div
+                      style={{ fontSize: 10, color: "var(--sb-muted)", letterSpacing: 1, marginTop: 4 }}
+                    >
+                      SAS COMPOSITE
+                    </div>
+                  </div>
+                  <div>
+                    <Chip label="Not yet scored" color="#94a3b8" />
+                    <p
+                      style={{
+                        margin: "10px 0 0",
+                        fontSize: 12.5,
+                        lineHeight: 1.55,
+                        color: "var(--sb-navy)",
+                      }}
+                    >
+                      This site has not been scored yet. Run analysis on the Site Analysis page to
+                      populate pillar scores, neighborhood signals, and the drive-time map for this
+                      candidate. It is included in the brief so the comparison set matches the cards
+                      you saw on screen.
+                    </p>
+                  </div>
+                </div>
+              </section>
+            );
+          }
+
           return (
             <section key={c.address + idx} className="sb-page sb-break-before">
               <BrandHeader today={today} title={c.schoolName} />
@@ -742,6 +800,7 @@ export default function SiteBrief() {
                 label={c.schoolName}
                 sub={`${c.address} · ${c.schoolTypeLabel} · ${c.gradeBandLabel}`}
               />
+
 
               {/* Exec card */}
               <div

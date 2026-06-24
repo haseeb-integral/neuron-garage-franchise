@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useLiveMvs } from "@/lib/mvs/useLiveMvs";
 import { useAuth } from "@/contexts/AuthContext";
 import { SHORTLIST_SEED } from "@/lib/mvs/shortlistSeed";

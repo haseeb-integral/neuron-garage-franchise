@@ -43,6 +43,20 @@ type WeekInfo = {
   provider?: ProviderInfo | null;
 };
 
+type TriedEntry = {
+  url: string;
+  step: "map" | "search" | "scrape" | "ai";
+  ok: boolean;
+  http_status?: number;
+  note?: string;
+};
+
+type Diagnostics = {
+  root_url?: string | null;
+  tried?: TriedEntry[];
+  error?: string | null;
+} | null;
+
 type QueueRow = {
   id: string;
   entity_id: string;
@@ -51,6 +65,7 @@ type QueueRow = {
   confidence: number | null;
   resolved_at: string | null;
   created_at: string;
+  diagnostics?: Diagnostics;
   week?: WeekInfo | null;
   provider?: ProviderInfo | null; // populated for entity_type === 'provider'
 };

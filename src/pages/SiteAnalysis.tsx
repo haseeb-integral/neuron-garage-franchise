@@ -136,6 +136,8 @@ interface SlotState extends Candidate {
   status: SlotStatus;
   result: SiteScoreResult | null;
   error: string | null;
+  /** site_analyses.id this slot represents, when known. Used for soft-hide. */
+  analysisId?: string;
 }
 
 interface CardProps {

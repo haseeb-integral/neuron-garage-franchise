@@ -739,24 +739,61 @@ function PillarBar({
 // Empty add-slot
 // ---------------------------------------------------------------------------
 
-function EmptySlot() {
+function EmptySlot({
+  onLoadFromSaved,
+  onComputeNew,
+}: {
+  onLoadFromSaved: () => void;
+  onComputeNew: () => void;
+}) {
+  const [open, setOpen] = useState(false);
   return (
     <div
       className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 text-center"
       style={{ borderColor: BORDER, color: MUTED, minHeight: 540 }}
     >
-      <div
-        className="flex h-9 w-9 items-center justify-center rounded-full"
-        style={{ backgroundColor: SOFT, color: BLUE }}
-      >
-        <Plus size={18} />
-      </div>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            aria-label="Add a site to this slot"
+            className="flex h-9 w-9 items-center justify-center rounded-full transition hover:brightness-95"
+            style={{ backgroundColor: SOFT, color: BLUE }}
+          >
+            <Plus size={18} />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="center" className="w-56 p-1">
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              onLoadFromSaved();
+            }}
+            className="block w-full rounded px-3 py-2 text-left text-[12px] font-medium hover:bg-slate-100"
+            style={{ color: NAVY }}
+          >
+            Load from saved sites
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              onComputeNew();
+            }}
+            className="block w-full rounded px-3 py-2 text-left text-[12px] font-medium hover:bg-slate-100"
+            style={{ color: NAVY }}
+          >
+            Compute a new site
+          </button>
+        </PopoverContent>
+      </Popover>
       <div className="mt-2 text-[12px] font-semibold" style={{ color: NAVY }}>
         Empty slot
       </div>
       <p className="mt-1 max-w-[200px] text-[11px]">
-        Compute a site in the <strong>Live Site Analysis Engine</strong> above, then click
-        <strong> Save to slot</strong> to fill this card.
+        Click <strong>+</strong> to load a saved site or compute a new one in the
+        <strong> Live Site Analysis Engine</strong> above.
       </p>
     </div>
   );

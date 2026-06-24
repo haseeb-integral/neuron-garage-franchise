@@ -1568,20 +1568,20 @@ export default function SiteAnalysis() {
               <button
                 type="button"
                 onClick={() => setDrawerOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold"
-                style={{ borderColor: BORDER, color: NAVY, backgroundColor: "#fff" }}
+                className="inline-flex items-center gap-2 rounded-lg border-[1.5px] px-3.5 py-2 text-[13px] font-bold transition hover:bg-[#eef4ff]"
+                style={{ borderColor: BLUE, color: BLUE, backgroundColor: "#fff" }}
                 title="Open Saved Sites drawer"
               >
-                <Bookmark size={12} style={{ color: BLUE }} />
+                <Bookmark size={15} style={{ color: BLUE }} />
                 Saved Sites
                 <span
-                  className="rounded-full px-1.5 py-0.5 text-[10px] font-bold"
-                  style={{ backgroundColor: "#eef2ff", color: BLUE }}
+                  className="rounded-full px-2 py-0.5 text-[11px] font-bold"
+                  style={{ backgroundColor: BLUE, color: "#fff" }}
                 >
                   {savedSites.rows.length}
                 </span>
               </button>
-              <div className="inline-flex items-stretch rounded-md border overflow-hidden" style={{ borderColor: BLUE }}>
+              <div className="inline-flex items-stretch rounded-lg border-[1.5px] overflow-hidden" style={{ borderColor: BLUE }}>
                 <button
                   type="button"
                   onClick={() => handleExport()}
@@ -1591,10 +1591,10 @@ export default function SiteAnalysis() {
                       ? "Export every visible card. Un-scored cards appear as '—' with a 'Not yet scored' pill."
                       : "Add at least one candidate to enable export"
                   }
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex items-center gap-2 px-3.5 py-2 text-[13px] font-bold transition hover:bg-[#eef4ff] disabled:cursor-not-allowed disabled:opacity-50"
                   style={{ color: BLUE, backgroundColor: "#fff" }}
                 >
-                  {exporting ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                  {exporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
                   {exporting ? "Generating PDF…" : "Export Site Report (PDF)"}
                 </button>
                 <DropdownMenu>
@@ -1603,10 +1603,10 @@ export default function SiteAnalysis() {
                       type="button"
                       disabled={!canExport || exporting}
                       title="Export one specific site"
-                      className="inline-flex items-center px-1.5 py-1.5 border-l disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex items-center px-2 py-2 border-l-[1.5px] transition hover:bg-[#eef4ff] disabled:cursor-not-allowed disabled:opacity-50"
                       style={{ borderColor: BLUE, color: BLUE, backgroundColor: "#fff" }}
                     >
-                      <ChevronDown size={14} />
+                      <ChevronDown size={16} />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-64">

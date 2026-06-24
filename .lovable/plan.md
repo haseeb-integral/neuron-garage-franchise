@@ -1,47 +1,41 @@
-# Make the "+" button on empty slot cards actually work
+# Make Saved Sites and Export Site Report (PDF) buttons more prominent
 
-## What is broken now
-The big **+** in each empty slot card is just a picture. It has no click. So users click it and nothing happens.
+## What we are changing
+The two buttons on the SAS page top-right (`Saved Sites` and `Export Site Report (PDF)`) look small and faded right now. The screenshot you sent shows the look you want: bigger pill buttons, blue outline, blue bold text, blue icons, and the count badge in a solid blue pill.
 
-## What it should do (industry pattern from Zillow / Crexi / Placer compare tools)
-Click **+** → small popover opens with two choices:
-1. **Load from saved sites** — opens the existing Saved Sites drawer. User picks a snapshot → it fills this exact slot.
-2. **Compute a new site** — page smooth-scrolls up to the **Live Site Analysis Engine** and focuses the address input. After the user computes and hits **Save to slot**, it fills the next empty slot (current behavior).
+We will restyle ONLY those two buttons to match.
 
-Both flows already exist in the code. We are just wiring the + to them.
+## Pages / components affected
+- `src/pages/SiteAnalysis.tsx` only, lines ~1568–1627. No new files, no logic change, no other button touched.
 
-## Pages / components / state affected
-- `src/pages/SiteAnalysis.tsx` only.
-  - `EmptySlot` component (lines ~742–763) — add props for the two actions, add a popover, wire the +.
-  - The render call at line ~1675 — pass the two handlers and the slot index.
-  - Add a `ref` on the Live Engine card wrapper so we can scroll to it.
-  - Add an `id` or `ref` on the address input so we can focus it.
-  - Re-use existing `setDrawerOpen(true)` / `SavedSitesDrawer` (already at line 1485). No new state needed for the drawer itself.
+## Visual changes (both buttons)
+- Border: solid 1.5px blue (`BLUE`) instead of light grey `BORDER`.
+- Text: blue (`BLUE`), bold, size bumped from `text-[11px]` to `text-[13px]`.
+- Icon: blue, size bumped from 12px to 14–16px.
+- Padding: bumped from `px-2.5 py-1.5` to `px-3.5 py-2` for a bigger pill.
+- Rounded corners: bumped from `rounded-md` to `rounded-lg`.
+- Background: stays white.
+- Hover: light blue tint (`#eef4ff`).
 
-No other page, no API, no DB, no edge function, no scoring math, no saved-sites hook, no session-storage logic is touched.
+## Saved Sites count badge
+- Today it sits in a soft blue pill with blue text.
+- Change to solid blue background (`BLUE`) with white text, like the `5` in your screenshot.
+
+## Export split-button (the chevron part)
+- Keep it joined to the main Export button (same group).
+- Match the new bigger size and blue outline so the whole pill reads as one prominent control.
+
+## What NOT to touch
+- The Normalize inputs button next to them.
+- Any logic: click handlers, drawer open, export flow, dropdown menu items.
+- The empty-slot + popover we just shipped.
+- Spacing of the surrounding card.
 
 ## Phases
+- **Phase 1 (1 turn):** Restyle the two buttons + the count badge + the chevron split.
+- **Phase 2 (no code):** You eyeball it in preview and confirm.
 
-### Phase 1 — Wire the + button (1 turn)
-- Add `onLoadFromSaved` and `onComputeNew` props to `EmptySlot`.
-- Wrap the round + button in a shadcn `Popover` with two menu items.
-- In `SiteAnalysis.tsx`, create a `liveEngineRef` and an `addressInputRef`.
-- `onComputeNew` = scroll `liveEngineRef` into view (smooth, block: "start") + focus `addressInputRef`.
-- `onLoadFromSaved` = `setDrawerOpen(true)` (the existing Saved Sites drawer).
-- Pass both handlers into every `<EmptySlot />` at line 1675.
+## Risks
+- Very low. Pure style change, no state or logic touched. Existing click flows keep working.
 
-### Phase 2 — Smoke test (no code)
-- Empty slot → click + → popover shows two items.
-- Click **Load from saved** → drawer opens → pick a row → slot fills.
-- Click **Compute a new site** → page scrolls up → address field is focused → compute → Save to slot fills the next empty slot.
-- Existing flows (refresh persistence, remove card, tab-switch persistence) still work.
-
-## Risks / what NOT to touch
-- Do **not** change scoring, pillar recompute, signals hydration, saved-sites hook, session-storage logic, or the Saved Sites drawer itself.
-- Do **not** add a new modal — re-use the existing drawer.
-- Do **not** change the empty-slot copy text below the +, only make the + clickable and add the popover.
-
-## Estimate
-1 Lovable turn for Phase 1. Phase 2 is manual smoke test.
-
-Approve and I will build Phase 1.
+Approve and I will ship Phase 1.

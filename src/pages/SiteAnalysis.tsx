@@ -1369,27 +1369,45 @@ export default function SiteAnalysis() {
 
 
 
-  // Load a previously-saved site back into a card slot, then re-run the engine.
+  // Load a previously-saved site back into a card slot. Shows the saved
+  // snapshot instantly (no auto re-run) — user can click "Re-run" to refresh.
   const handleLoadSavedSite = useCallback(
-    async (inputs: SavedSiteInputs) => {
-      const newId = `loaded-${Date.now()}`;
+    async (row: SavedSiteRow) => {
+      const inputs = row.inputs_json;
+      const snap = row.snapshot_json ?? {};
+      // Build a SiteScoreResult from the saved snapshot so the card renders
+      // immediately. The map/isochrones won't be present (they aren't stored
+      // in the snapshot) — user can click Re-run to fetch fresh.
+      const snapshotResult: SiteScoreResult | null = snap.pillars
+        ? {
+            sas: Number(snap.composite ?? 0),
+            pillars: snap.pillars,
+            geo:
+              row.lat != null && row.lng != null
+                ? { lat: Number(row.lat), lng: Number(row.lng) }
+                : undefined,
+          }
+        : null;
+
+      const baseSlot = {
+        schoolName: inputs.schoolName,
+        address: inputs.address,
+        schoolType: inputs.schoolType,
+        gradeBand: inputs.gradeBand,
+        enrollment: inputs.enrollment,
+        status: (snapshotResult ? "ready" : "idle") as SlotStatus,
+        result: snapshotResult,
+        error: null,
+        fromSnapshot: snapshotResult != null,
+        snapshotCreatedAt: row.created_at,
+        analysisCreatedAt: undefined,
+        analysisId: undefined,
+      };
+
       setSlots((prev) => {
-        // Replace a pending slot if user clicked Replace, else append (cap 4).
         if (pendingReplaceId) {
           return prev.map((s) =>
-            s.id === pendingReplaceId
-              ? {
-                  ...s,
-                  schoolName: inputs.schoolName,
-                  address: inputs.address,
-                  schoolType: inputs.schoolType,
-                  gradeBand: inputs.gradeBand,
-                  enrollment: inputs.enrollment,
-                  status: "loading",
-                  result: null,
-                  error: null,
-                }
-              : s,
+            s.id === pendingReplaceId ? { ...s, ...baseSlot } : s,
           );
         }
         if (prev.length >= 4) {
@@ -1398,26 +1416,15 @@ export default function SiteAnalysis() {
         }
         return [
           ...prev,
-          {
-            id: newId,
-            schoolName: inputs.schoolName,
-            address: inputs.address,
-            schoolType: inputs.schoolType,
-            gradeBand: inputs.gradeBand,
-            enrollment: inputs.enrollment,
-            status: "loading",
-            result: null,
-            error: null,
-          },
+          { id: `loaded-${Date.now()}`, ...baseSlot },
         ];
       });
       setPendingReplaceId(null);
-      // The runSlot effect needs the slot to exist; defer by a tick.
-      setTimeout(() => {
-        runSlot(pendingReplaceId ?? newId, { preferCache: true });
-      }, 0);
+      if (!snapshotResult) {
+        toast.error("Saved snapshot is empty — click Re-run to compute a fresh score.");
+      }
     },
-    [pendingReplaceId, runSlot],
+    [pendingReplaceId],
   );
 
   const handleToggleBookmark = useCallback(

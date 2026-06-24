@@ -185,6 +185,10 @@ Deno.serve(async (req) => {
     }));
 
     let results: ClassifyResult[] = [];
+    // Per-AI-call hard timeout. If the gateway hangs we'd rather abort this
+    // batch and report it cleanly than burn the whole 150s edge budget on one call.
+    const ac = new AbortController();
+    const callTimer = setTimeout(() => ac.abort(), 60_000);
     try {
       const aiRes = await fetch(AI_GATEWAY, {
         method: "POST",
@@ -200,6 +204,7 @@ Deno.serve(async (req) => {
           ],
           response_format: { type: "json_object" },
         }),
+        signal: ac.signal,
       });
       const aiJson = await aiRes.json();
       if (!aiRes.ok) throw new Error(`ai gateway ${aiRes.status}`);
@@ -207,9 +212,15 @@ Deno.serve(async (req) => {
       const parsed = JSON.parse(raw) as { classifications?: ClassifyResult[] };
       results = parsed.classifications ?? [];
     } catch (e) {
-      errors.push(`batch ${batchIdx}: ${e instanceof Error ? e.message : String(e)}`);
+      const msg = e instanceof Error
+        ? (e.name === "AbortError" ? "ai call timed out after 60s" : e.message)
+        : String(e);
+      errors.push(`batch ${batchIdx}: ${msg}`);
       return;
+    } finally {
+      clearTimeout(callTimer);
     }
+
 
     for (const r of results) {
       if (!r?.id || !r.tier) continue;
@@ -289,8 +300,25 @@ Deno.serve(async (req) => {
   // the 150s edge-function idle timeout. 11 batches * ~15s sequential = ~165s
   // (504). With concurrency 5 it drops to ~3 waves * ~15s = ~45s.
   const MAX_CONCURRENCY = 5;
+  // Global soft deadline. If we ever approach 130s we stop launching new waves
+  // and return a clear partial-success message instead of waiting for the
+  // platform to kill us with HTTP 504.
+  const SOFT_DEADLINE_MS = 130_000;
+  const startedAt = Date.now();
+  let batchesAttempted = 0;
+  let abortedAtBatch: number | null = null;
   for (let i = 0; i < batches.length; i += MAX_CONCURRENCY) {
+    if (Date.now() - startedAt > SOFT_DEADLINE_MS) {
+      abortedAtBatch = i;
+      errors.push(
+        `aborted at batch ${i}/${batches.length} after ${Math.round(
+          (Date.now() - startedAt) / 1000,
+        )}s to avoid 150s platform timeout`,
+      );
+      break;
+    }
     const wave = batches.slice(i, i + MAX_CONCURRENCY);
+    batchesAttempted += wave.length;
     await Promise.all(wave.map((b, j) => processBatch(b, i + j)));
   }
 
@@ -299,9 +327,14 @@ Deno.serve(async (req) => {
       city,
       total_candidates: rows.length,
       classified: classifiedCount,
+      batches_total: batches.length,
+      batches_attempted: batchesAttempted,
+      aborted_at_batch: abortedAtBatch,
+      duration_ms: Date.now() - startedAt,
       errors: errors.slice(0, 10),
       sample,
     }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } },
   );
 });
+

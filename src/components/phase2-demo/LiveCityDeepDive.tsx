@@ -426,7 +426,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                   className="cursor-pointer font-semibold"
                   style={{ color: BLUE }}
                 >
-                  Show formula
+                  How this score is calculated
                 </summary>
                 <pre
                   className="mt-2 whitespace-pre-wrap rounded-md p-2 text-[11px] leading-snug"

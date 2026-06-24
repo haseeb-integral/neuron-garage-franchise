@@ -846,6 +846,12 @@ export default function SiteAnalysis() {
   // per-card input form anymore: the only way to feed inputs into the engine
   // is via the Live Engine card above and the "Save to slot" button.
   const [slots, setSlots] = useState<SlotState[]>([]);
+  // Mirror of `slots` for use inside callbacks that need the latest value
+  // without re-creating themselves on every slot change (fixes stale-closure
+  // bugs where runSlot would silently return because the just-added slot
+  // wasn't yet visible in its captured `slots`).
+  const slotsRef = useRef<SlotState[]>([]);
+  useEffect(() => { slotsRef.current = slots; }, [slots]);
   const [pendingReplaceId, setPendingReplaceId] = useState<string | null>(null);
   const { byAddress } = useSiteDecisions();
   const savedSites = useSavedSites();

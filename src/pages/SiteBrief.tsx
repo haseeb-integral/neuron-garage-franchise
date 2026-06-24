@@ -378,7 +378,7 @@ export default function SiteBrief() {
       </div>
     );
   }
-  if (!payload || !top) {
+  if (!payload) {
     return (
       <div style={{ minHeight: "60vh", display: "grid", placeItems: "center", color: "#07142f" }}>
         Loading SAS brief…
@@ -392,7 +392,11 @@ export default function SiteBrief() {
     day: "numeric",
   });
   const candidates = payload.candidates;
-  const topVerdictColor = tierColor(top.tierLabel);
+  // `top` is the highest scored candidate; falls back to the first card if
+  // nothing is scored yet so the cover still renders (Option B — un-scored
+  // cards still appear in the brief, just with "—" in the score cells).
+  const topOrFallback = top ?? candidates[0];
+  const topVerdictColor = tierColor(topOrFallback.tierLabel);
 
   return (
     <div className="sb-doc">

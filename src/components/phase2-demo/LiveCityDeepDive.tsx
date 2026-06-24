@@ -446,7 +446,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                   className="cursor-pointer font-semibold"
                   style={{ color: BLUE }}
                 >
-                  Show sources ({meta.sources.length})
+                  Where the data comes from ({meta.sources.length})
                 </summary>
                 <ul className="mt-2 space-y-1.5 rounded-md p-2" style={{ backgroundColor: SOFT }}>
                   {meta.sources.map((src) => (

@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 
 type WeekStatus = "open" | "limited" | "waitlist" | "sold_out" | "unknown";
@@ -432,10 +433,17 @@ export default function MVSQAQueue() {
                               <span className="text-muted-foreground">AI guessed: </span>
                               <span className="font-medium">{w?.status ?? "—"}</span>
                               {w?.confidence != null && (
-                                <span className="text-muted-foreground">
-                                  {" "}
-                                  (AI certainty: {Math.round((w.confidence ?? 0) * 100)}%)
-                                </span>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="text-muted-foreground cursor-help">
+                                      {" "}
+                                      (AI certainty: {Math.round((w.confidence ?? 0) * 100)}%)
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-xs text-[12px] leading-relaxed">
+                                    This is the AI model's own self-rated certainty for the week status it guessed. Anything under 70% lands in this queue for a human to confirm.
+                                  </TooltipContent>
+                                </Tooltip>
                               )}
                             </div>
                             {row.reason && (

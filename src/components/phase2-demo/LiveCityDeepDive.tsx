@@ -12,6 +12,7 @@ import {
   WeekActivityTable,
   NationalOperatorsPanel,
 } from "@/components/phase2-demo/LiveCitySourcePanels";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 
 
@@ -216,13 +217,19 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                 Live · v1.0-fixed
               </span>
               {lowConfidence && (
-                <span
-                  className={CHIP}
-                  style={{ backgroundColor: "#fce7ec", color: "#a3142b" }}
-                  title="Limited Source Coverage: more than 20% of premium providers had missing or broken registration pages. Treat the MVS score with caution."
-                >
-                  ⚑ Limited Source Coverage
-                </span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span
+                      className={`${CHIP} cursor-help`}
+                      style={{ backgroundColor: "#fce7ec", color: "#a3142b" }}
+                    >
+                      ⚑ Limited Source Coverage
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs text-[12px] leading-relaxed">
+                    More than 20% of premium providers in this city had missing or broken registration pages we could not read. The Market Validation Score still computed, but treat it with caution until those sources are fixed in the QA Queue.
+                  </TooltipContent>
+                </Tooltip>
               )}
             </div>
             <p

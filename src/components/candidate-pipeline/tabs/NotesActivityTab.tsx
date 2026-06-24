@@ -1,18 +1,17 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
-import { Candidate, STAGE_PROCESS_ROADMAP, STAGES } from "@/data/pipelineData";
+import { Candidate } from "@/data/pipelineData";
 import { supabase } from "@/integrations/supabase/client";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import {
   MessageSquare,
   ArrowRight,
-  ListChecks,
   CheckCircle2,
   Pencil,
   Quote,
   FileEdit,
 } from "lucide-react";
-import { ChecklistSection } from "../ChecklistSection";
+
 import { logActivity, ActivityType } from "@/lib/candidateActivity";
 import { toast } from "sonner";
 
@@ -96,8 +95,6 @@ export function NotesActivityTab({ candidate }: Props) {
   const [filter, setFilter] = useState<FilterKey>("all");
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const dbId = (candidate as any).dbId as string | undefined;
-  const roadmap = STAGE_PROCESS_ROADMAP[candidate.stage] ?? [];
-  const stageLabel = STAGES.find((s) => s.id === candidate.stage)?.label ?? candidate.stage;
 
   const load = useCallback(async () => {
     if (!dbId) {
@@ -166,27 +163,6 @@ export function NotesActivityTab({ candidate }: Props) {
 
   return (
     <div className="space-y-4 pt-4">
-      {dbId && (
-        <div className="bg-white rounded-lg p-3" style={{ border: "1px solid #e3e8ef" }}>
-          <div className="flex items-center gap-2 mb-1">
-            <ListChecks size={16} style={{ color: "#003c7e" }} />
-            <h4 className="font-semibold text-sm" style={{ color: "#003c7e" }}>
-              Process Roadmap — {stageLabel}
-            </h4>
-          </div>
-          <p className="text-xs mb-3" style={{ color: "#6c757d" }}>
-            Per-candidate steps for this stage. Any staff member can check, add, or remove items.
-          </p>
-          <ChecklistSection
-            candidateDbId={dbId}
-            stage={candidate.stage}
-            kind="process"
-            seedLabels={roadmap}
-            addPlaceholder="Add a roadmap step…"
-            emptyText="No roadmap steps yet."
-          />
-        </div>
-      )}
 
       {/* Add Note — improved */}
       <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #e3e8ef" }}>

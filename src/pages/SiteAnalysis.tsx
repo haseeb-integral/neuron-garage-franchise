@@ -17,7 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useSavedSites, type SavedSiteInputs, type SavedSiteRow } from "@/hooks/useSavedSites";
+import { useSavedSites, type SavedSiteRow } from "@/hooks/useSavedSites";
 import { SavedSitesDrawer } from "@/components/site-analysis/SavedSitesDrawer";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -141,6 +141,10 @@ interface SlotState extends Candidate {
   analysisId?: string;
   /** Run timestamp of the underlying site_analyses row (ISO). */
   analysisCreatedAt?: string;
+  /** True when this slot's result was rehydrated from a Saved Sites snapshot (no live recompute). */
+  fromSnapshot?: boolean;
+  /** Saved snapshot timestamp (ISO) shown next to the "Saved snapshot" label. */
+  snapshotCreatedAt?: string;
 }
 
 interface CardProps {
@@ -380,7 +384,12 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace, bookmark, savedMatc
             {slot.enrollment ? ` · enroll ${slot.enrollment}` : ""}
             {slot.analysisCreatedAt ? ` · run ${formatRunTime(slot.analysisCreatedAt)}` : ""}
           </p>
-          {savedMatch && slot.result ? (
+          {slot.fromSnapshot && slot.snapshotCreatedAt ? (
+            <p className="mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: "#fef3c7", color: "#92400e" }} title="This score was loaded from Saved Sites. Click Re-run for a fresh live computation.">
+              Saved snapshot · {formatRunTime(slot.snapshotCreatedAt)}
+            </p>
+          ) : null}
+          {savedMatch && slot.result && !slot.fromSnapshot ? (
             <WhyDifferentChip slot={slot} composite={composite} savedMatch={savedMatch} />
           ) : null}
         </div>
@@ -842,6 +851,12 @@ export default function SiteAnalysis() {
   // per-card input form anymore: the only way to feed inputs into the engine
   // is via the Live Engine card above and the "Save to slot" button.
   const [slots, setSlots] = useState<SlotState[]>([]);
+  // Mirror of `slots` for use inside callbacks that need the latest value
+  // without re-creating themselves on every slot change (fixes stale-closure
+  // bugs where runSlot would silently return because the just-added slot
+  // wasn't yet visible in its captured `slots`).
+  const slotsRef = useRef<SlotState[]>([]);
+  useEffect(() => { slotsRef.current = slots; }, [slots]);
   const [pendingReplaceId, setPendingReplaceId] = useState<string | null>(null);
   const { byAddress } = useSiteDecisions();
   const savedSites = useSavedSites();
@@ -922,13 +937,16 @@ export default function SiteAnalysis() {
 
   const runSlot = useCallback(
     async (id: string, opts?: { preferCache?: boolean }) => {
-      const slot = slots.find((s) => s.id === id);
-      if (!slot) return;
+      const slot = slotsRef.current.find((s) => s.id === id);
+      if (!slot) {
+        console.warn("[SiteAnalysis] runSlot called with unknown slot id:", id);
+        return;
+      }
       if (!slot.address.trim() || !slot.schoolName.trim()) {
         patchSlot(id, { status: "error", error: "School name and address are required." });
         return;
       }
-      patchSlot(id, { status: "loading", error: null });
+      patchSlot(id, { status: "loading", error: null, fromSnapshot: false });
 
       // Exact-input cache lookup — avoid an expensive live recompute
       // (Mapbox geocode + isochrones + Census + Urban Institute + OSM) when
@@ -972,7 +990,7 @@ export default function SiteAnalysis() {
                 ? { lat: Number(cached.latitude), lng: Number(cached.longitude) }
                 : undefined,
           };
-          patchSlot(id, { status: "ready", result, error: null, analysisId: cached.id, analysisCreatedAt: (cached as { created_at?: string }).created_at });
+          patchSlot(id, { status: "ready", result, error: null, analysisId: cached.id, analysisCreatedAt: (cached as { created_at?: string }).created_at, fromSnapshot: false });
           // If the user is restoring a previously-hidden card, drop it from
           // the hidden list so refresh keeps it visible.
           unhideAnalysisId(cached.id);
@@ -983,7 +1001,10 @@ export default function SiteAnalysis() {
 
 
       try {
-        const { data, error } = await supabase.functions.invoke("compute-sas", {
+        // Hard timeout so a hung edge function can't leave the card spinning
+        // forever. compute-sas typically finishes well under 60s.
+        const TIMEOUT_MS = 90_000;
+        const invokePromise = supabase.functions.invoke("compute-sas", {
           body: {
             address: slot.address.trim(),
             school_name: slot.schoolName.trim(),
@@ -992,12 +1013,16 @@ export default function SiteAnalysis() {
             grade_band: slot.gradeBand,
           },
         });
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error(`Engine timed out after ${TIMEOUT_MS / 1000}s — try Re-run.`)), TIMEOUT_MS),
+        );
+        const { data, error } = await Promise.race([invokePromise, timeoutPromise]) as Awaited<typeof invokePromise>;
         if (error) throw error;
         if ((data as { status?: string })?.status === "failed") {
           throw new Error((data as { error?: string }).error ?? "Engine failed");
         }
         const analysisId = (data as { analysis_id?: string }).analysis_id;
-        patchSlot(id, { status: "ready", result: data as SiteScoreResult, error: null, analysisId, analysisCreatedAt: new Date().toISOString() });
+        patchSlot(id, { status: "ready", result: data as SiteScoreResult, error: null, analysisId, analysisCreatedAt: new Date().toISOString(), fromSnapshot: false });
         // Re-running an address that was previously hidden brings it back.
         if (analysisId) unhideAnalysisId(analysisId);
         unhideAddress(slot.address.trim());
@@ -1006,7 +1031,7 @@ export default function SiteAnalysis() {
         patchSlot(id, { status: "error", error: msg });
       }
     },
-    [slots, patchSlot, unhideAnalysisId],
+    [patchSlot, unhideAnalysisId, unhideAddress],
   );
 
   // Hydrate from the user's most recent ready site_analyses rows (up to 4).
@@ -1349,27 +1374,45 @@ export default function SiteAnalysis() {
 
 
 
-  // Load a previously-saved site back into a card slot, then re-run the engine.
+  // Load a previously-saved site back into a card slot. Shows the saved
+  // snapshot instantly (no auto re-run) — user can click "Re-run" to refresh.
   const handleLoadSavedSite = useCallback(
-    async (inputs: SavedSiteInputs) => {
-      const newId = `loaded-${Date.now()}`;
+    async (row: SavedSiteRow) => {
+      const inputs = row.inputs_json;
+      const snap = row.snapshot_json ?? {};
+      // Build a SiteScoreResult from the saved snapshot so the card renders
+      // immediately. The map/isochrones won't be present (they aren't stored
+      // in the snapshot) — user can click Re-run to fetch fresh.
+      const snapshotResult: SiteScoreResult | null = snap.pillars
+        ? {
+            sas: Number(snap.composite ?? 0),
+            pillars: snap.pillars,
+            geo:
+              row.lat != null && row.lng != null
+                ? { lat: Number(row.lat), lng: Number(row.lng) }
+                : undefined,
+          }
+        : null;
+
+      const baseSlot = {
+        schoolName: inputs.schoolName,
+        address: inputs.address,
+        schoolType: inputs.schoolType,
+        gradeBand: inputs.gradeBand,
+        enrollment: inputs.enrollment,
+        status: (snapshotResult ? "ready" : "idle") as SlotStatus,
+        result: snapshotResult,
+        error: null,
+        fromSnapshot: snapshotResult != null,
+        snapshotCreatedAt: row.created_at,
+        analysisCreatedAt: undefined,
+        analysisId: undefined,
+      };
+
       setSlots((prev) => {
-        // Replace a pending slot if user clicked Replace, else append (cap 4).
         if (pendingReplaceId) {
           return prev.map((s) =>
-            s.id === pendingReplaceId
-              ? {
-                  ...s,
-                  schoolName: inputs.schoolName,
-                  address: inputs.address,
-                  schoolType: inputs.schoolType,
-                  gradeBand: inputs.gradeBand,
-                  enrollment: inputs.enrollment,
-                  status: "loading",
-                  result: null,
-                  error: null,
-                }
-              : s,
+            s.id === pendingReplaceId ? { ...s, ...baseSlot } : s,
           );
         }
         if (prev.length >= 4) {
@@ -1378,26 +1421,15 @@ export default function SiteAnalysis() {
         }
         return [
           ...prev,
-          {
-            id: newId,
-            schoolName: inputs.schoolName,
-            address: inputs.address,
-            schoolType: inputs.schoolType,
-            gradeBand: inputs.gradeBand,
-            enrollment: inputs.enrollment,
-            status: "loading",
-            result: null,
-            error: null,
-          },
+          { id: `loaded-${Date.now()}`, ...baseSlot },
         ];
       });
       setPendingReplaceId(null);
-      // The runSlot effect needs the slot to exist; defer by a tick.
-      setTimeout(() => {
-        runSlot(pendingReplaceId ?? newId, { preferCache: true });
-      }, 0);
+      if (!snapshotResult) {
+        toast.error("Saved snapshot is empty — click Re-run to compute a fresh score.");
+      }
     },
-    [pendingReplaceId, runSlot],
+    [pendingReplaceId],
   );
 
   const handleToggleBookmark = useCallback(

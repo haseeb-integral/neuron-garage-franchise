@@ -11,7 +11,6 @@ import { toast } from "sonner";
 import {
   useSavedSites,
   type SavedSiteRow,
-  type SavedSiteInputs,
 } from "@/hooks/useSavedSites";
 import { recomputeSiteScores } from "@/lib/sasMath";
 import { SITE_CONFIDENCE_THRESHOLDS } from "@/lib/sas/config";
@@ -74,7 +73,7 @@ function displayName(name?: string | null, email?: string | null) {
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onLoad: (inputs: SavedSiteInputs) => void;
+  onLoad: (row: SavedSiteRow) => void;
   savedSites: ReturnType<typeof useSavedSites>;
 }
 
@@ -258,7 +257,7 @@ export function SavedSitesDrawer({ open, onOpenChange, onLoad, savedSites }: Pro
                   <button
                     type="button"
                     onClick={() => {
-                      onLoad(row.inputs_json);
+                      onLoad(row);
                       onOpenChange(false);
                       toast.success(`Loaded "${row.site_name}" into a card`);
                     }}

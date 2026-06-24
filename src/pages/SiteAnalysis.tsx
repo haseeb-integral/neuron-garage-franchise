@@ -717,37 +717,44 @@ export default function SiteAnalysis() {
     };
   }, [user]);
 
-  const persistHidden = useCallback(
-    async (next: string[]) => {
-      if (!user) return;
-      await supabase.from("profiles").update({ sas_hidden_ids: next }).eq("id", user.id);
-    },
-    [user],
-  );
+  // Single debounced persist for the whole hidden list. Avoids the race where
+  // 4 rapid ✕ clicks fire 4 parallel writes and an older payload wins.
+  const lastPersistedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!hiddenLoaded || !user) return;
+    const next = JSON.stringify([...hiddenIds].sort());
+    if (lastPersistedRef.current === null) {
+      lastPersistedRef.current = next;
+      return;
+    }
+    if (lastPersistedRef.current === next) return;
+    const t = setTimeout(() => {
+      lastPersistedRef.current = next;
+      void supabase
+        .from("profiles")
+        .update({ sas_hidden_ids: hiddenIds })
+        .eq("id", user.id);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [hiddenIds, hiddenLoaded, user]);
 
-  const hideAnalysisId = useCallback(
-    (analysisId: string) => {
-      setHiddenIds((prev) => {
-        if (prev.includes(analysisId)) return prev;
-        const next = [...prev, analysisId];
-        void persistHidden(next);
-        return next;
-      });
-    },
-    [persistHidden],
-  );
+  const hideAnalysisId = useCallback((analysisId: string) => {
+    setHiddenIds((prev) => (prev.includes(analysisId) ? prev : [...prev, analysisId]));
+  }, []);
 
-  const unhideAnalysisId = useCallback(
-    (analysisId: string) => {
-      setHiddenIds((prev) => {
-        if (!prev.includes(analysisId)) return prev;
-        const next = prev.filter((id) => id !== analysisId);
-        void persistHidden(next);
-        return next;
-      });
-    },
-    [persistHidden],
-  );
+  const hideAddress = useCallback((address: string) => {
+    const key = `addr:${address}`;
+    setHiddenIds((prev) => (prev.includes(key) ? prev : [...prev, key]));
+  }, []);
+
+  const unhideAnalysisId = useCallback((analysisId: string) => {
+    setHiddenIds((prev) => prev.filter((id) => id !== analysisId));
+  }, []);
+
+  const unhideAddress = useCallback((address: string) => {
+    const key = `addr:${address}`;
+    setHiddenIds((prev) => prev.filter((id) => id !== key));
+  }, []);
 
 
   const patchSlot = useCallback((id: string, patch: Partial<SlotState>) => {

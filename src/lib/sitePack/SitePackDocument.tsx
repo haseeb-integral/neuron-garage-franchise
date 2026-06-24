@@ -815,13 +815,20 @@ export const SitePackDocument: React.FC<BuildSitePackArgs> = ({
   generatedAt = new Date(),
 }) => {
   const today = generatedAt.toISOString().slice(0, 10);
+  // The @react-pdf renderer below assumes every candidate is fully scored.
+  // The HTML brief (SiteBrief.tsx) handles un-scored cards directly; this
+  // legacy PDF path simply skips them so the types stay clean.
+  const scored = candidates.filter(
+    (c): c is SitePackCandidate & { composite: number; pillars: SasPillarScores } =>
+      c.composite != null && c.pillars != null,
+  );
   return (
     <Document title="Neuron Garage — SAS Report" author="Neuron Garage">
-      <CoverPage candidates={candidates} today={today} />
-      {candidates.map((c, i) => (
+      <CoverPage candidates={scored} today={today} />
+      {scored.map((c, i) => (
         <CandidateDetail key={c.address + i} c={c} today={today} />
       ))}
-      <ComparisonPage candidates={candidates} today={today} />
+      <ComparisonPage candidates={scored} today={today} />
     </Document>
   );
 };

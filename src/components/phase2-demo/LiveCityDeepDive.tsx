@@ -342,43 +342,41 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
 
 
   function confidenceFor(key: string): { level: "high" | "medium" | "low"; detail: string } {
-    const qaSuffix = qaOpenCount > 0 ? ` · ${qaOpenCount} in QA queue.` : ".";
-
     if (key === "scaledOperator") {
       if (watchlist.length === 0) return { level: "low", detail: "Watchlist is empty." };
-      return { level: "high", detail: `Matched against ${watchlist.length} national brands${qaSuffix}` };
+      return { level: "high", detail: `Matched against ${watchlist.length} national brands.` };
     }
 
     if (key === "pricingAcceptance") {
       if (nWithPrice === 0) return { level: "low", detail: `0 of ${nTotal} providers had a readable price.` };
-      if (nWithPrice < 5) return { level: "low", detail: `Based on ${nWithPrice} of ${nTotal} providers with a readable price — too few for a stable median${qaSuffix}` };
-      const level = nWithPrice < 10 || qaOpenCount > 5 ? "medium" : "high";
-      return { level, detail: `Based on ${nWithPrice} of ${nTotal} providers with a readable price${qaSuffix}` };
+      if (nWithPrice < 5) return { level: "low", detail: `Based on ${nWithPrice} of ${nTotal} providers with a readable price — too few for a stable median.` };
+      const level = nWithPrice < 10 ? "medium" : "high";
+      return { level, detail: `Based on ${nWithPrice} of ${nTotal} providers with a readable price.` };
     }
 
     if (key === "enrichmentDiversity") {
       const k = categoryCounts.length;
       if (nWithCategory === 0) return { level: "low", detail: `0 of ${nTotal} providers classified into a category.` };
       const level = k < 3 || nWithCategory < 5 ? "low" : k < 5 || nWithCategory < 10 ? "medium" : "high";
-      return { level, detail: `Based on ${k} categor${k === 1 ? "y" : "ies"} across ${nWithCategory} classified providers${qaSuffix}` };
+      return { level, detail: `Based on ${k} categor${k === 1 ? "y" : "ies"} across ${nWithCategory} classified providers.` };
     }
 
     if (key === "marketDepth") {
       if (nTotal === 0) return { level: "low", detail: "No premium providers discovered." };
-      const level = nTotal < 5 ? "low" : nTotal < 10 || qaOpenCount > 5 ? "medium" : "high";
-      return { level, detail: `Based on ${nTotal} premium provider${nTotal === 1 ? "" : "s"} discovered${qaSuffix}` };
+      const level = nTotal < 5 ? "low" : nTotal < 10 ? "medium" : "high";
+      return { level, detail: `Based on ${nTotal} premium provider${nTotal === 1 ? "" : "s"} discovered.` };
     }
 
     if (key === "marketBalance") {
       const cov = (result?.inputs.marketBalance as any)?.coverageRatio as number | null | undefined;
       if (cov == null) return { level: "low", detail: "No coverage ratio yet — needs ACS + premium provider count." };
-      const level = nTotal < 5 ? "low" : nTotal < 10 || qaOpenCount > 5 ? "medium" : "high";
-      return { level, detail: `Based on coverage ratio ${cov.toFixed(0)} (ACS kids ÷ premium seats) across ${nTotal} provider${nTotal === 1 ? "" : "s"}${qaSuffix}` };
+      const level = nTotal < 5 ? "low" : nTotal < 10 ? "medium" : "high";
+      return { level, detail: `Based on coverage ratio ${cov.toFixed(0)} (ACS kids ÷ premium seats) across ${nTotal} provider${nTotal === 1 ? "" : "s"}.` };
     }
 
-    // Fallback (should not hit)
-    return { level: "medium", detail: `${nTotal} providers${qaSuffix}` };
+    return { level: "medium", detail: `${nTotal} providers.` };
   }
+
 
 
 

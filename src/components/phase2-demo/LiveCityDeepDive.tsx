@@ -173,6 +173,32 @@ const INPUT_LABELS: Record<string, string> = {
   affluentDualIncomeFamilyCount: "Affluent dual-income families (ACS)",
 };
 
+// Per-input freshness/source pill shown on the right of each input row so
+// readers can tell which numbers are live-scraped vs. from static reference
+// data (ACS) vs. from the curated operator watchlist. Uses only signals
+// already in scope — no extra fetch.
+function freshnessForInput(key: string, lastRefreshed: string | null): string {
+  if (
+    key === "coverageRatio" ||
+    key === "children5to12" ||
+    key === "affluentDualIncomeFamilyCount"
+  ) {
+    return "US Census ACS";
+  }
+  if (key === "operatorValidation") return "Watchlist";
+  if (key === "directCompetitorLoad") return "Watchlist + ACS";
+  if (lastRefreshed) {
+    try {
+      const d = new Date(lastRefreshed);
+      return `Scraped ${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
+    } catch {
+      return "Scraped";
+    }
+  }
+  return "Scraped";
+}
+
+
 interface Props {
   cityKey: string;            // e.g. "Austin, TX"
   cityDisplay: string;        // e.g. "Austin"

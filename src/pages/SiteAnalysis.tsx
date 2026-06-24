@@ -1532,16 +1532,18 @@ export default function SiteAnalysis() {
       />
 
       {SAS_ENGINE_LIVE && (
-        <LiveEngineCard
-          canSave={slots.length < 4 || !!pendingReplaceId}
-          replaceTargetLabel={
-            pendingReplaceId
-              ? slots.find((s) => s.id === pendingReplaceId)?.schoolName || "selected slot"
-              : null
-          }
-          onCancelReplace={() => setPendingReplaceId(null)}
-          onSaveToSlot={(input, result) => saveResultToSlot(input, result as SiteScoreResult)}
-        />
+        <div id="sas-live-engine">
+          <LiveEngineCard
+            canSave={slots.length < 4 || !!pendingReplaceId}
+            replaceTargetLabel={
+              pendingReplaceId
+                ? slots.find((s) => s.id === pendingReplaceId)?.schoolName || "selected slot"
+                : null
+            }
+            onCancelReplace={() => setPendingReplaceId(null)}
+            onSaveToSlot={(input, result) => saveResultToSlot(input, result as SiteScoreResult)}
+          />
+        </div>
       )}
 
       {/* Formula + thresholds */}

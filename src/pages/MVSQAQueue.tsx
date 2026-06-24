@@ -267,16 +267,24 @@ export default function MVSQAQueue() {
 
   const handleResolveOnly = async (row: QueueRow) => {
     setSavingId(row.id);
-    const { error } = await supabase.rpc("mvs_qa_resolve", {
+    const { data, error } = await supabase.rpc("mvs_qa_resolve", {
       _queue_id: row.id,
       _new_status: (row.week?.status ?? "unknown") as WeekStatus,
     });
     setSavingId(null);
     if (error) {
-      toast.error(`Resolve failed: ${error.message}`);
+      console.error("[MVS QA] resolve failed", { row, error, data });
+      toast.error(`Resolve failed: ${error.message || error.code || "unknown error"}`, {
+        description: error.details || error.hint || undefined,
+        duration: 8000,
+      });
       return;
     }
-    toast.success("Marked resolved");
+    // Optimistically remove the row so the reviewer sees it disappear right away.
+    setRows((prev) =>
+      prev ? prev.map((r) => (r.id === row.id ? { ...r, resolved_at: new Date().toISOString() } : r)) : prev,
+    );
+    toast.success("✓ Marked resolved");
     invalidateAllMvs(queryClient);
     load();
   };

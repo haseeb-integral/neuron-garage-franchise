@@ -767,15 +767,25 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
         const items: string[] = [];
         const nNoPrice = nTotal - nWithPrice;
         const nNoCategory = nTotal - nWithCategory;
-        if (qaOpenCount > 0) {
+        // Filter out QA reasons that belong to the retired Market Absorption
+        // pillar. The `mvs-extract-weeks` scraper writes "no registration page
+        // found" and "no usable page: …" — both feed only `mvs_weeks`, which
+        // is no longer used in the composite. Showing them here misleads the
+        // reader into thinking they hurt the current score.
+        const isRetiredReason = (r: string) =>
+          r === "no registration page found" || r.startsWith("no usable page");
+        const activeQaReasons = qaReasons.filter((r) => !isRetiredReason(r.reason));
+        const activeQaCount = activeQaReasons.reduce((sum, r) => sum + r.count, 0);
+        if (activeQaCount > 0) {
           const reasonText =
-            qaReasons.length > 0
-              ? ` Reason breakdown: ${qaReasons.map((r) => `"${r.reason}" (${r.count})`).join(", ")}.`
+            activeQaReasons.length > 0
+              ? ` Reason breakdown: ${activeQaReasons.map((r) => `"${r.reason}" (${r.count})`).join(", ")}.`
               : "";
           items.push(
-            `${qaOpenCount} of ${nTotal} premium provider page${qaOpenCount === 1 ? " is" : "s are"} flagged in the QA queue.${reasonText} A flagged provider may still contribute to scoring if price or category was scraped from another source.`,
+            `${activeQaCount} of ${nTotal} premium provider page${activeQaCount === 1 ? " is" : "s are"} flagged in the QA queue.${reasonText} A flagged provider may still contribute to scoring if price or category was scraped from another source.`,
           );
         }
+
 
         if (nNoPrice > 0 && nTotal > 0) {
           items.push(

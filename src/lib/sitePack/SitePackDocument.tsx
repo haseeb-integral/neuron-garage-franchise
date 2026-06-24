@@ -369,7 +369,9 @@ const Chip: React.FC<{ label: string; color: string }> = ({ label, color }) => {
 };
 
 // ---- SAS Cover ----
-const CoverPage: React.FC<{ candidates: SitePackCandidate[]; today: string }> = ({
+type ScoredCandidate = SitePackCandidate & { composite: number; pillars: SasPillarScores };
+
+const CoverPage: React.FC<{ candidates: ScoredCandidate[]; today: string }> = ({
   candidates,
   today,
 }) => {

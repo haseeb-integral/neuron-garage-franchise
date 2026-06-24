@@ -530,7 +530,7 @@ export default function SiteBrief() {
                 letterSpacing: "-0.025em",
               }}
             >
-              {top.schoolName}
+              {topOrFallback.schoolName}
             </h1>
             <div
               className="sb-serif"
@@ -542,7 +542,7 @@ export default function SiteBrief() {
                 marginTop: 4,
               }}
             >
-              {top.address}
+              {topOrFallback.address}
             </div>
           </div>
 
@@ -566,7 +566,7 @@ export default function SiteBrief() {
                   margin: 0,
                 }}
               >
-                A live, recomputed look at premium daycare and school site fit at {top.schoolName} —
+                A live, recomputed look at premium daycare and school site fit at {topOrFallback.schoolName} —
                 school profile, neighborhood affluence, family density, ecosystem, and accessibility.
                 Every number on every page is pulled from the same scoring helper that drives the
                 on-screen SAS cards.
@@ -581,11 +581,11 @@ export default function SiteBrief() {
               >
                 <Stat label="Generated" value={today} />
                 <Stat label="Candidates" value={String(candidates.length)} />
-                <Stat label="Top SAS" value={String(top.composite)} />
-                <Stat label="User Confidence" value={top.tierLabel.toUpperCase()} />
+                <Stat label="Top SAS" value={String(topOrFallback.composite)} />
+                <Stat label="User Confidence" value={topOrFallback.tierLabel.toUpperCase()} />
               </div>
             </div>
-            <CompositeDonut value={top.composite} label="SAS COMPOSITE" size={240} />
+            <CompositeDonut value={topOrFallback.composite} label="SAS COMPOSITE" size={240} />
           </div>
 
           <div
@@ -671,7 +671,7 @@ export default function SiteBrief() {
           </table>
 
           {/* Top candidate headline card */}
-          <SectionHead n={2} label="Top-ranked candidate" sub={top.schoolName} />
+          <SectionHead n={2} label="Top-ranked candidate" sub={topOrFallback.schoolName} />
           <aside
             style={{
               display: "grid",
@@ -689,14 +689,14 @@ export default function SiteBrief() {
                 className="sb-serif"
                 style={{ fontSize: 64, fontWeight: 700, lineHeight: 1, color: "var(--sb-navy)" }}
               >
-                {top.composite}
+                {topOrFallback.composite}
               </div>
               <div style={{ fontSize: 10, color: "var(--sb-muted)", letterSpacing: 1, marginTop: 4 }}>
                 SAS · /100
               </div>
             </div>
             <div>
-              <Chip label={`User Confidence: ${top.tierLabel}`} color={topVerdictColor} />
+              <Chip label={`User Confidence: ${topOrFallback.tierLabel}`} color={topVerdictColor} />
               <p
                 style={{
                   margin: "10px 0 0",
@@ -706,9 +706,9 @@ export default function SiteBrief() {
                 }}
               >
                 {verdictSentence({
-                  schoolName: top.schoolName,
-                  composite: top.composite,
-                  tierLabel: top.tierLabel,
+                  schoolName: topOrFallback.schoolName,
+                  composite: topOrFallback.composite,
+                  tierLabel: topOrFallback.tierLabel,
                 })}
               </p>
             </div>

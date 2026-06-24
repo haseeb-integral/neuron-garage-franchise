@@ -265,6 +265,20 @@ export default function MVSQAQueue() {
     load();
   };
 
+  const handleUnresolve = useCallback(
+    async (rowId: string) => {
+      const { error } = await supabase.rpc("mvs_qa_unresolve" as never, { _queue_id: rowId } as never);
+      if (error) {
+        toast.error(`Undo failed: ${error.message}`);
+        return;
+      }
+      toast.success("Re-opened");
+      invalidateAllMvs(queryClient);
+      load();
+    },
+    [load, queryClient],
+  );
+
   const handleResolveOnly = async (row: QueueRow) => {
     setSavingId(row.id);
     const { data, error } = await supabase.rpc("mvs_qa_resolve", {
@@ -284,10 +298,37 @@ export default function MVSQAQueue() {
     setRows((prev) =>
       prev ? prev.map((r) => (r.id === row.id ? { ...r, resolved_at: new Date().toISOString() } : r)) : prev,
     );
-    toast.success("✓ Marked resolved");
+    toast.success("✓ Marked resolved", {
+      duration: 8000,
+      action: {
+        label: "Undo",
+        onClick: () => handleUnresolve(row.id),
+      },
+    });
     invalidateAllMvs(queryClient);
     load();
   };
+
+  const [rerunningProviderId, setRerunningProviderId] = useState<string | null>(null);
+  const [rerunningCity, setRerunningCity] = useState(false);
+
+  const rerunForProviders = useCallback(
+    async (city: string, providerIds: string[], label: string) => {
+      const { data, error } = await supabase.functions.invoke("mvs-extract-weeks", {
+        body: { city, provider_ids: providerIds },
+      });
+      if (error) {
+        toast.error(`Re-run failed: ${error.message}`, { duration: 8000 });
+        return false;
+      }
+      const processed = (data as { providers_processed?: number } | null)?.providers_processed ?? 0;
+      toast.success(`Re-extracted ${processed} provider${processed === 1 ? "" : "s"} for ${label}`);
+      invalidateAllMvs(queryClient);
+      await load();
+      return true;
+    },
+    [load, queryClient],
+  );
 
   if (roleLoading) {
     return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;

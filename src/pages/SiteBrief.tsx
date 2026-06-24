@@ -317,15 +317,30 @@ export default function SiteBrief() {
       return;
     }
     try {
-      // Try localStorage first (cross-tab handoff), fall back to sessionStorage
-      // for older links opened in the same tab.
+      // Primary handoff: read from window.opener (Site Analysis page stashes
+      // the payload there so we don't hit the 5 MB localStorage cap that was
+      // silently dropping candidates when map PNGs were large).
+      const opener = window.opener as
+        | { __nrgSasBrief?: Map<string, BriefPayload> }
+        | null
+        | undefined;
+      const fromOpener = opener?.__nrgSasBrief?.get(key);
+      if (fromOpener) {
+        setPayload(fromOpener);
+        try {
+          opener!.__nrgSasBrief!.delete(key);
+        } catch {
+          /* ignore */
+        }
+        return;
+      }
+      // Fallback for tab reloads (opener cleared) or older links.
       const raw = localStorage.getItem(key) ?? sessionStorage.getItem(key);
       if (!raw) {
         setMissing(true);
         return;
       }
       setPayload(JSON.parse(raw) as BriefPayload);
-      // Clean up so the key doesn't linger in storage.
       try {
         localStorage.removeItem(key);
         sessionStorage.removeItem(key);
@@ -340,7 +355,9 @@ export default function SiteBrief() {
 
   const top = useMemo(() => {
     if (!payload?.candidates?.length) return null;
-    return [...payload.candidates].sort((a, b) => b.composite - a.composite)[0];
+    const scored = payload.candidates.filter((c) => c.composite != null);
+    if (!scored.length) return null;
+    return [...scored].sort((a, b) => (b.composite ?? 0) - (a.composite ?? 0))[0];
   }, [payload]);
 
   useEffect(() => {

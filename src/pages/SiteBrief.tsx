@@ -361,8 +361,12 @@ export default function SiteBrief() {
   }, [payload]);
 
   useEffect(() => {
-    if (top) document.title = `SAS Brief — ${top.schoolName}`;
-  }, [top]);
+    if (!payload) return;
+    const n = payload.candidates.length;
+    if (n > 1) document.title = `SAS Brief — ${n} sites`;
+    else if (top) document.title = `SAS Brief — ${top.schoolName}`;
+    else if (payload.candidates[0]) document.title = `SAS Brief — ${payload.candidates[0].schoolName}`;
+  }, [top, payload]);
 
   if (missing) {
     return (
@@ -523,14 +527,16 @@ export default function SiteBrief() {
               className="sb-serif"
               style={{
                 color: "white",
-                fontSize: 68,
+                fontSize: candidates.length > 1 ? 60 : 68,
                 fontWeight: 600,
                 lineHeight: 0.98,
                 margin: "8px 0 0",
                 letterSpacing: "-0.025em",
               }}
             >
-              {topOrFallback.schoolName}
+              {candidates.length > 1
+                ? `${candidates.length} Candidate Sites`
+                : topOrFallback.schoolName}
             </h1>
             <div
               className="sb-serif"
@@ -542,7 +548,9 @@ export default function SiteBrief() {
                 marginTop: 4,
               }}
             >
-              {topOrFallback.address}
+              {candidates.length > 1
+                ? `Top: ${topOrFallback.schoolName} · ${topOrFallback.address}`
+                : topOrFallback.address}
             </div>
           </div>
 
@@ -566,10 +574,9 @@ export default function SiteBrief() {
                   margin: 0,
                 }}
               >
-                A live, recomputed look at premium daycare and school site fit at {topOrFallback.schoolName} —
-                school profile, neighborhood affluence, family density, ecosystem, and accessibility.
-                Every number on every page is pulled from the same scoring helper that drives the
-                on-screen SAS cards.
+                {candidates.length > 1
+                  ? `A live, recomputed look at premium daycare and school site fit across ${candidates.length} candidate sites — school profile, neighborhood affluence, family density, ecosystem, and accessibility. Every number on every page is pulled from the same scoring helper that drives the on-screen SAS cards.`
+                  : `A live, recomputed look at premium daycare and school site fit at ${topOrFallback.schoolName} — school profile, neighborhood affluence, family density, ecosystem, and accessibility. Every number on every page is pulled from the same scoring helper that drives the on-screen SAS cards.`}
               </p>
               <div
                 style={{

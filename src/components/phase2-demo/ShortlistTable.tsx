@@ -65,7 +65,6 @@ export function ShortlistTable({ rows, activeCityId, onSelectCity, liveOverlays 
       const live =
         k === "composite" ? overlay.composite :
         k === "pricing" ? overlay.pricing :
-        k === "absorption" ? overlay.absorption :
         k === "scaledOperator" ? overlay.scaledOperator :
         k === "diversity" ? overlay.diversity :
         k === "depth" ? overlay.depth : null;

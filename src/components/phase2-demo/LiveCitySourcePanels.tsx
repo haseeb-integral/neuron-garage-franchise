@@ -184,7 +184,7 @@ export function DataSourcesPanel({
               {" · "}
               <span
                 style={{ color: "#a3142b", cursor: "help" }}
-                title="QA queue tracks per-provider data-quality issues (mostly broken or missing registration pages). A provider in QA may still have a valid price and category from another source, so it can still contribute to the score."
+                title="QA queue tracks per-provider data-quality issues. Note: 'no registration page found' items are no longer counted against the score because the Market Absorption pillar was retired — registration-page scraping fed only that pillar."
               >
                 {qaOpenCount} item{qaOpenCount === 1 ? "" : "s"} in QA queue
               </span>

@@ -11,7 +11,6 @@ import { toast } from "sonner";
 import {
   useSavedSites,
   type SavedSiteRow,
-  type SavedSiteInputs,
 } from "@/hooks/useSavedSites";
 import { recomputeSiteScores } from "@/lib/sasMath";
 import { SITE_CONFIDENCE_THRESHOLDS } from "@/lib/sas/config";

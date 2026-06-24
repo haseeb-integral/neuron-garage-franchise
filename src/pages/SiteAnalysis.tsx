@@ -938,23 +938,9 @@ export default function SiteAnalysis() {
 
       if (cancelled) return;
 
-      // Restore the previously-used Wayside Eden Park candidate as the 4th
-      // slot when missing, so the lineup matches the original Trinity /
-      // LeafSpring (negative) / Wayside / St. Francis comparison.
-      const WAYSIDE_ADDR = "6215 Menchaca Rd, Austin, TX 78745";
-      if (!extras.some((e) => e.address === WAYSIDE_ADDR) && extras.length < 4) {
-        extras.push({
-          id: `seed-wayside-${Date.now()}`,
-          schoolName: "Wayside Schools — Eden Park Academy",
-          address: WAYSIDE_ADDR,
-          schoolType: "private_elementary",
-          gradeBand: "k5_k6",
-          enrollment: "400",
-          status: "idle",
-          result: null,
-          error: null,
-        });
-      }
+      // No auto-seed. If the user wants Wayside (or anything) back, the Saved
+      // Sites drawer has it one click away. Hydration shows only real, non-hidden
+      // rows — so removed cards stay removed across refresh.
 
       setSlots(extras);
     })();
@@ -967,14 +953,13 @@ export default function SiteAnalysis() {
   const removeSlot = (id: string) => {
     const target = slots.find((s) => s.id === id);
     setSlots((prev) => prev.filter((s) => s.id !== id));
-    // Hide the underlying site_analyses row across refresh + devices. Works for
-    // every slot type (hydrated, loaded from drawer, freshly computed) as long
-    // as the slot knows its analysis id. Restore via the Saved Sites drawer —
-    // no API spend, the score is read straight from the cached row.
+    // Soft-hide across refresh + devices. Prefer the analysis id when we have it;
+    // fall back to address so seed/loaded cards without an id still stay hidden.
     const aid =
       target?.analysisId ??
       (id.startsWith("persisted-") ? id.replace("persisted-", "") : null);
     if (aid) hideAnalysisId(aid);
+    else if (target?.address) hideAddress(target.address);
   };
 
   // Save a freshly-computed Live Engine result into a slot. If pendingReplaceId

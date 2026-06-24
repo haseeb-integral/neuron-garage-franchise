@@ -280,14 +280,6 @@ export default function MarketValidation() {
                   style={{ borderColor: BLUE, color: BLUE, backgroundColor: "#fff" }}
                 >
                   Review QA queue
-                  {QA_QUEUE_FLAGGED_COUNT > 0 && (
-                    <span
-                      className="inline-flex min-w-[16px] items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
-                      style={{ backgroundColor: "#a3142b" }}
-                    >
-                      {QA_QUEUE_FLAGGED_COUNT}
-                    </span>
-                  )}
                   <span aria-hidden>→</span>
                 </Link>
               </div>

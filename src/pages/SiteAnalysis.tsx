@@ -2,11 +2,20 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Bookmark,
   BookmarkCheck,
+  ChevronDown,
   Download,
   Loader2,
   MapPin,
   Plus,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useSavedSites, type SavedSiteInputs } from "@/hooks/useSavedSites";
 import { SavedSitesDrawer } from "@/components/site-analysis/SavedSitesDrawer";
 

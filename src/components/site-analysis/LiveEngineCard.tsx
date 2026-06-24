@@ -134,9 +134,12 @@ export function LiveEngineCard({ onSaveToSlot, canSave = true, replaceTargetLabe
       setError("School name and address are required.");
       return;
     }
-    if (!enrollment.trim() || !Number.isFinite(Number(enrollment)) || Number(enrollment) <= 0) {
-      setError("Enrollment is required — the engine refuses to fabricate a default. Enter the real student count.");
-      return;
+    // Enrollment is optional per spec. If blank or invalid, fill with neutral
+    // midpoint of the 150–800 scoring range so the user is not penalized.
+    let effectiveEnrollment = enrollment.trim();
+    if (!effectiveEnrollment || !Number.isFinite(Number(effectiveEnrollment)) || Number(effectiveEnrollment) <= 0) {
+      effectiveEnrollment = "475";
+      setEnrollment("475");
     }
     setBusy(true);
     try {
@@ -145,7 +148,7 @@ export function LiveEngineCard({ onSaveToSlot, canSave = true, replaceTargetLabe
           address: address.trim(),
           school_name: schoolName.trim(),
           school_type: schoolType,
-          enrollment: enrollment ? Number(enrollment) : null,
+          enrollment: Number(effectiveEnrollment),
           grade_band: gradeBand,
         },
       });
@@ -161,8 +164,12 @@ export function LiveEngineCard({ onSaveToSlot, canSave = true, replaceTargetLabe
 
   function handleSave() {
     if (!result || !onSaveToSlot) return;
+    const effectiveEnrollment =
+      enrollment.trim() && Number.isFinite(Number(enrollment)) && Number(enrollment) > 0
+        ? enrollment
+        : "475";
     onSaveToSlot(
-      { schoolName, address, schoolType, gradeBand, enrollment },
+      { schoolName, address, schoolType, gradeBand, enrollment: effectiveEnrollment },
       result,
     );
     setSaved(true);
@@ -259,17 +266,19 @@ export function LiveEngineCard({ onSaveToSlot, canSave = true, replaceTargetLabe
           </select>
         </label>
         <label className="flex flex-col gap-1 text-[11px]" style={{ color: "#526078" }}>
-          Enrollment *
+          Enrollment
           <input
             type="number"
             min={1}
-            required
             value={enrollment}
             onChange={(e) => setEnrollment(e.target.value)}
             className="rounded border px-2 py-1 text-[12px]"
             style={{ borderColor: "#eef2f7", color: "#07142f" }}
-            placeholder="e.g. 600"
+            placeholder="Default 475 — leave blank for neutral score"
           />
+          <span className="text-[10px] leading-tight" style={{ color: "#8a94a6" }}>
+            Optional. Real averages: ~110 private elementary, ~250 secondary. Blank = neutral midpoint of the 150–800 scoring range.
+          </span>
         </label>
         <label className="flex flex-col gap-1 text-[11px] md:col-span-3" style={{ color: "#526078" }}>
           Grade band

@@ -317,15 +317,30 @@ export default function SiteBrief() {
       return;
     }
     try {
-      // Try localStorage first (cross-tab handoff), fall back to sessionStorage
-      // for older links opened in the same tab.
+      // Primary handoff: read from window.opener (Site Analysis page stashes
+      // the payload there so we don't hit the 5 MB localStorage cap that was
+      // silently dropping candidates when map PNGs were large).
+      const opener = window.opener as
+        | { __nrgSasBrief?: Map<string, BriefPayload> }
+        | null
+        | undefined;
+      const fromOpener = opener?.__nrgSasBrief?.get(key);
+      if (fromOpener) {
+        setPayload(fromOpener);
+        try {
+          opener!.__nrgSasBrief!.delete(key);
+        } catch {
+          /* ignore */
+        }
+        return;
+      }
+      // Fallback for tab reloads (opener cleared) or older links.
       const raw = localStorage.getItem(key) ?? sessionStorage.getItem(key);
       if (!raw) {
         setMissing(true);
         return;
       }
       setPayload(JSON.parse(raw) as BriefPayload);
-      // Clean up so the key doesn't linger in storage.
       try {
         localStorage.removeItem(key);
         sessionStorage.removeItem(key);
@@ -340,7 +355,9 @@ export default function SiteBrief() {
 
   const top = useMemo(() => {
     if (!payload?.candidates?.length) return null;
-    return [...payload.candidates].sort((a, b) => b.composite - a.composite)[0];
+    const scored = payload.candidates.filter((c) => c.composite != null);
+    if (!scored.length) return null;
+    return [...scored].sort((a, b) => (b.composite ?? 0) - (a.composite ?? 0))[0];
   }, [payload]);
 
   useEffect(() => {
@@ -361,7 +378,7 @@ export default function SiteBrief() {
       </div>
     );
   }
-  if (!payload || !top) {
+  if (!payload) {
     return (
       <div style={{ minHeight: "60vh", display: "grid", placeItems: "center", color: "#07142f" }}>
         Loading SAS brief…
@@ -375,7 +392,11 @@ export default function SiteBrief() {
     day: "numeric",
   });
   const candidates = payload.candidates;
-  const topVerdictColor = tierColor(top.tierLabel);
+  // `top` is the highest scored candidate; falls back to the first card if
+  // nothing is scored yet so the cover still renders (Option B — un-scored
+  // cards still appear in the brief, just with "—" in the score cells).
+  const topOrFallback = top ?? candidates[0];
+  const topVerdictColor = tierColor(topOrFallback.tierLabel);
 
   return (
     <div className="sb-doc">
@@ -509,7 +530,7 @@ export default function SiteBrief() {
                 letterSpacing: "-0.025em",
               }}
             >
-              {top.schoolName}
+              {topOrFallback.schoolName}
             </h1>
             <div
               className="sb-serif"
@@ -521,7 +542,7 @@ export default function SiteBrief() {
                 marginTop: 4,
               }}
             >
-              {top.address}
+              {topOrFallback.address}
             </div>
           </div>
 
@@ -545,7 +566,7 @@ export default function SiteBrief() {
                   margin: 0,
                 }}
               >
-                A live, recomputed look at premium daycare and school site fit at {top.schoolName} —
+                A live, recomputed look at premium daycare and school site fit at {topOrFallback.schoolName} —
                 school profile, neighborhood affluence, family density, ecosystem, and accessibility.
                 Every number on every page is pulled from the same scoring helper that drives the
                 on-screen SAS cards.
@@ -560,11 +581,11 @@ export default function SiteBrief() {
               >
                 <Stat label="Generated" value={today} />
                 <Stat label="Candidates" value={String(candidates.length)} />
-                <Stat label="Top SAS" value={String(top.composite)} />
-                <Stat label="User Confidence" value={top.tierLabel.toUpperCase()} />
+                <Stat label="Top SAS" value={topOrFallback.composite != null ? String(topOrFallback.composite) : "—"} />
+                <Stat label="User Confidence" value={topOrFallback.tierLabel.toUpperCase()} />
               </div>
             </div>
-            <CompositeDonut value={top.composite} label="SAS COMPOSITE" size={240} />
+            <CompositeDonut value={topOrFallback.composite} label="SAS COMPOSITE" size={240} />
           </div>
 
           <div
@@ -633,13 +654,17 @@ export default function SiteBrief() {
                       padding: "9px 10px",
                       textAlign: "right",
                       fontWeight: 700,
-                      color: "var(--sb-navy)",
+                      color: c.composite != null ? "var(--sb-navy)" : "var(--sb-muted)",
                     }}
                   >
-                    {c.composite}
+                    {c.composite ?? "—"}
                   </td>
                   <td style={{ padding: "9px 10px", textAlign: "center" }}>
-                    <Chip label={c.tierLabel} color={tierColor(c.tierLabel)} />
+                    {c.composite != null ? (
+                      <Chip label={c.tierLabel} color={tierColor(c.tierLabel)} />
+                    ) : (
+                      <Chip label="Not yet scored" color="#94a3b8" />
+                    )}
                   </td>
                   <td style={{ padding: "9px 10px", textAlign: "center", color: "var(--sb-muted)" }}>
                     {VERDICT_LABEL[c.decision?.verdict ?? "undecided"]}
@@ -650,7 +675,7 @@ export default function SiteBrief() {
           </table>
 
           {/* Top candidate headline card */}
-          <SectionHead n={2} label="Top-ranked candidate" sub={top.schoolName} />
+          <SectionHead n={2} label="Top-ranked candidate" sub={topOrFallback.schoolName} />
           <aside
             style={{
               display: "grid",
@@ -668,14 +693,17 @@ export default function SiteBrief() {
                 className="sb-serif"
                 style={{ fontSize: 64, fontWeight: 700, lineHeight: 1, color: "var(--sb-navy)" }}
               >
-                {top.composite}
+                {topOrFallback.composite ?? "—"}
               </div>
               <div style={{ fontSize: 10, color: "var(--sb-muted)", letterSpacing: 1, marginTop: 4 }}>
                 SAS · /100
               </div>
             </div>
             <div>
-              <Chip label={`User Confidence: ${top.tierLabel}`} color={topVerdictColor} />
+              <Chip
+                label={topOrFallback.composite != null ? `User Confidence: ${topOrFallback.tierLabel}` : "Not yet scored"}
+                color={topOrFallback.composite != null ? topVerdictColor : "#94a3b8"}
+              />
               <p
                 style={{
                   margin: "10px 0 0",
@@ -684,11 +712,13 @@ export default function SiteBrief() {
                   color: "var(--sb-navy)",
                 }}
               >
-                {verdictSentence({
-                  schoolName: top.schoolName,
-                  composite: top.composite,
-                  tierLabel: top.tierLabel,
-                })}
+                {topOrFallback.composite != null
+                  ? verdictSentence({
+                      schoolName: topOrFallback.schoolName,
+                      composite: topOrFallback.composite,
+                      tierLabel: topOrFallback.tierLabel,
+                    })
+                  : `${topOrFallback.schoolName} has not been scored yet. Run analysis to populate scores.`}
               </p>
             </div>
           </aside>
@@ -703,6 +733,64 @@ export default function SiteBrief() {
           const eco = c.signals?.ecosystem;
           const acc = c.signals?.accessibility;
           const color = tierColor(c.tierLabel);
+
+          // Un-scored card — render a minimal "Not yet scored" page (Option B).
+          if (c.composite == null || c.pillars == null) {
+            return (
+              <section key={c.address + idx} className="sb-page sb-break-before">
+                <BrandHeader today={today} title={c.schoolName} />
+                <SectionHead
+                  n={`C${idx + 1}`}
+                  label={c.schoolName}
+                  sub={`${c.address} · ${c.schoolTypeLabel} · ${c.gradeBandLabel}`}
+                />
+                <div
+                  className="sb-avoid-break"
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "180px 1fr",
+                    gap: 20,
+                    padding: 16,
+                    borderRadius: 10,
+                    background: "var(--sb-soft)",
+                    border: "1px solid var(--sb-line)",
+                    borderLeft: "3px solid #94a3b8",
+                  }}
+                >
+                  <div style={{ textAlign: "center", alignSelf: "center" }}>
+                    <div
+                      className="sb-serif"
+                      style={{ fontSize: 52, fontWeight: 700, lineHeight: 1, color: "var(--sb-muted)" }}
+                    >
+                      —
+                    </div>
+                    <div
+                      style={{ fontSize: 10, color: "var(--sb-muted)", letterSpacing: 1, marginTop: 4 }}
+                    >
+                      SAS COMPOSITE
+                    </div>
+                  </div>
+                  <div>
+                    <Chip label="Not yet scored" color="#94a3b8" />
+                    <p
+                      style={{
+                        margin: "10px 0 0",
+                        fontSize: 12.5,
+                        lineHeight: 1.55,
+                        color: "var(--sb-navy)",
+                      }}
+                    >
+                      This site has not been scored yet. Run analysis on the Site Analysis page to
+                      populate pillar scores, neighborhood signals, and the drive-time map for this
+                      candidate. It is included in the brief so the comparison set matches the cards
+                      you saw on screen.
+                    </p>
+                  </div>
+                </div>
+              </section>
+            );
+          }
+
           return (
             <section key={c.address + idx} className="sb-page sb-break-before">
               <BrandHeader today={today} title={c.schoolName} />
@@ -712,6 +800,7 @@ export default function SiteBrief() {
                 label={c.schoolName}
                 sub={`${c.address} · ${c.schoolTypeLabel} · ${c.gradeBandLabel}`}
               />
+
 
               {/* Exec card */}
               <div
@@ -982,18 +1071,18 @@ export default function SiteBrief() {
                   },
                   {
                     label: "SAS Composite",
-                    values: candidates.slice(0, 4).map((c) => String(c.composite)),
+                    values: candidates.slice(0, 4).map((c) => (c.composite != null ? String(c.composite) : "—")),
                     bold: true,
                   },
                   {
                     label: "Confidence band",
-                    values: candidates.slice(0, 4).map((c) => c.tierLabel),
-                    colors: candidates.slice(0, 4).map((c) => tierColor(c.tierLabel)),
+                    values: candidates.slice(0, 4).map((c) => (c.composite != null ? c.tierLabel : "Not yet scored")),
+                    colors: candidates.slice(0, 4).map((c) => (c.composite != null ? tierColor(c.tierLabel) : "#94a3b8")),
                     bold: true,
                   },
                   ...PILLAR_ORDER.map((p) => ({
                     label: `${p.label} (${p.weight})`,
-                    values: candidates.slice(0, 4).map((c) => String(c.pillars[p.key])),
+                    values: candidates.slice(0, 4).map((c) => (c.pillars ? String(c.pillars[p.key]) : "—")),
                   })),
                   {
                     label: "User confidence",

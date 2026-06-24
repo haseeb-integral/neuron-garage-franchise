@@ -275,8 +275,10 @@ export interface SitePackCandidate {
   schoolTypeLabel: string;
   gradeBandLabel: string;
   enrollment: string;
-  pillars: SasPillarScores;
-  composite: number;
+  /** null = card was on screen but never scored — render as "—" / "Not yet scored" */
+  pillars: SasPillarScores | null;
+  /** null = card was on screen but never scored */
+  composite: number | null;
   tierLabel: string;
   signals: SiteScoreSignals | null;
   decision: SiteDecisionRow | undefined;
@@ -367,7 +369,9 @@ const Chip: React.FC<{ label: string; color: string }> = ({ label, color }) => {
 };
 
 // ---- SAS Cover ----
-const CoverPage: React.FC<{ candidates: SitePackCandidate[]; today: string }> = ({
+type ScoredCandidate = SitePackCandidate & { composite: number; pillars: SasPillarScores };
+
+const CoverPage: React.FC<{ candidates: ScoredCandidate[]; today: string }> = ({
   candidates,
   today,
 }) => {
@@ -509,7 +513,7 @@ const CoverPage: React.FC<{ candidates: SitePackCandidate[]; today: string }> = 
 };
 
 // ---- Per-candidate detail ----
-const CandidateDetail: React.FC<{ c: SitePackCandidate; today: string }> = ({ c, today }) => {
+const CandidateDetail: React.FC<{ c: ScoredCandidate; today: string }> = ({ c, today }) => {
   const acs10 = c.signals?.acs10;
   const acs15 = c.signals?.acs15;
   const eco = c.signals?.ecosystem;
@@ -711,7 +715,7 @@ const SourcesSection: React.FC<{ prov?: SasProvenance | null }> = ({ prov }) => 
 };
 
 // ---- 4-up comparison ----
-const ComparisonPage: React.FC<{ candidates: SitePackCandidate[]; today: string }> = ({
+const ComparisonPage: React.FC<{ candidates: ScoredCandidate[]; today: string }> = ({
   candidates,
   today,
 }) => {
@@ -813,13 +817,20 @@ export const SitePackDocument: React.FC<BuildSitePackArgs> = ({
   generatedAt = new Date(),
 }) => {
   const today = generatedAt.toISOString().slice(0, 10);
+  // The @react-pdf renderer below assumes every candidate is fully scored.
+  // The HTML brief (SiteBrief.tsx) handles un-scored cards directly; this
+  // legacy PDF path simply skips them so the types stay clean.
+  const scored = candidates.filter(
+    (c): c is SitePackCandidate & { composite: number; pillars: SasPillarScores } =>
+      c.composite != null && c.pillars != null,
+  );
   return (
     <Document title="Neuron Garage — SAS Report" author="Neuron Garage">
-      <CoverPage candidates={candidates} today={today} />
-      {candidates.map((c, i) => (
+      <CoverPage candidates={scored} today={today} />
+      {scored.map((c, i) => (
         <CandidateDetail key={c.address + i} c={c} today={today} />
       ))}
-      <ComparisonPage candidates={candidates} today={today} />
+      <ComparisonPage candidates={scored} today={today} />
     </Document>
   );
 };

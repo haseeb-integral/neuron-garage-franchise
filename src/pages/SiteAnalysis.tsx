@@ -765,7 +765,7 @@ export default function SiteAnalysis() {
       // Exact-input cache lookup — avoid an expensive live recompute
       // (Mapbox geocode + isochrones + Census + Urban Institute + OSM) when
       // a recent ready row already matches address + type + enrollment + grade.
-      if (opts?.preferCache) {
+  if (opts?.preferCache) {
         const enrollmentNum = slot.enrollment ? Number(slot.enrollment) : null;
         const { data: cached } = await supabase
           .from("site_analyses")

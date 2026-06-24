@@ -201,6 +201,32 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
     [providers],
   );
 
+  // Category breakdown of premium providers — rendered as small chips inside
+  // the Enrichment Diversity card so readers can see which categories the
+  // diversity score is built from. Uses the same `category_classified` field
+  // already loaded by useLiveMvs (no new fetch).
+  const categoryCounts = useMemo(() => {
+    const order = ["STEM", "Arts", "Sports", "Academic", "Specialty"];
+    const counts: Record<string, number> = {};
+    for (const p of premiumProviders) {
+      const raw = (p as any).category_classified;
+      if (!raw) continue;
+      const norm = String(raw).trim();
+      if (!norm) continue;
+      const key =
+        order.find((o) => o.toLowerCase() === norm.toLowerCase()) ?? norm;
+      counts[key] = (counts[key] ?? 0) + 1;
+    }
+    const known = order
+      .filter((k) => counts[k])
+      .map((k) => ({ label: k, count: counts[k] }));
+    const extras = Object.keys(counts)
+      .filter((k) => !order.includes(k))
+      .sort()
+      .map((k) => ({ label: k, count: counts[k] }));
+    return [...known, ...extras];
+  }, [premiumProviders]);
+
   // Per-sub-score confidence: how many premium rows feed each score, with
   // a global haircut for open QA items and low overall coverage.
   function confidenceFor(key: string): { level: "high" | "medium" | "low"; detail: string } {
@@ -420,6 +446,33 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                   })}
                 </ul>
               )}
+
+              {meta.key === "enrichmentDiversity" && (
+                <div className="mt-3 border-t border-dashed pt-2" style={{ borderColor: BORDER }}>
+                  <div className="mb-1 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
+                    Categories found
+                  </div>
+                  {categoryCounts.length === 0 ? (
+                    <p className="text-[11px]" style={{ color: MUTED }}>
+                      No categories classified yet.
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap gap-1">
+                      {categoryCounts.map((c) => (
+                        <span
+                          key={c.label}
+                          className={CHIP}
+                          style={{ backgroundColor: SOFT, color: NAVY, border: `1px solid ${BORDER}` }}
+                        >
+                          {c.label} {c.count}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+
 
               <details className="mt-auto pt-3 text-[11px]">
                 <summary

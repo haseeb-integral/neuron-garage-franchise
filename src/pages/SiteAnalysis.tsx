@@ -1180,8 +1180,20 @@ export default function SiteAnalysis() {
     const aid =
       target?.analysisId ??
       (id.startsWith("persisted-") ? id.replace("persisted-", "") : null);
+    const key = aid ? aid : target?.address ? `addr:${target.address}` : null;
+    if (!key) return;
     if (aid) hideAnalysisId(aid);
     else if (target?.address) hideAddress(target.address);
+    // Persist immediately so a fast refresh cannot cancel the debounced write.
+    if (user) {
+      const nextHidden = hiddenIds.includes(key) ? hiddenIds : [...hiddenIds, key];
+      const sig = JSON.stringify([...nextHidden].sort());
+      lastPersistedRef.current = sig;
+      void supabase
+        .from("profiles")
+        .update({ sas_hidden_ids: nextHidden })
+        .eq("id", user.id);
+    }
   };
 
   // Save a freshly-computed Live Engine result into a slot. If pendingReplaceId

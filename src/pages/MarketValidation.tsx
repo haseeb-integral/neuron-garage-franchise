@@ -279,24 +279,13 @@ export default function MarketValidation() {
                 >
                   Open scoring console →
                 </Link>
-                <Link
-                  to="/mvs-qa-queue"
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-semibold"
-                  style={{ borderColor: BLUE, color: BLUE, backgroundColor: "#fff" }}
-                >
-                  Review QA queue
-                  <span aria-hidden>→</span>
-                </Link>
+                {/* QA queue link removed — Market Absorption pillar retired, weeks pipeline no longer runs. */}
               </div>
             </div>
             <p className="mt-1 text-[12px]" style={{ color: NAVY }}>
               The composite scores below come from a live data pipeline. To add a new city or refresh
               an existing one's score, open the scoring console and click <strong>Run</strong> on that
               city (≈1–2 min per city). Results flow back into the table here automatically.
-            </p>
-            <p className="mt-1 text-[11px]" style={{ color: MUTED }}>
-              QA queue = manager review of per-provider data-quality flags from the live pipeline.
-              Only flags that affect today's scoring pillars are surfaced on each city's deep dive.
             </p>
 
           </div>

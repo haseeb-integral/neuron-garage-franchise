@@ -131,6 +131,7 @@ export default function Auth() {
                 <div className="text-xl font-black uppercase leading-5 tracking-[0.08em] text-[#081633]">Neuron</div>
                 <div className="text-xl font-black uppercase leading-5 tracking-[0.08em] text-[#081633]">Garage</div>
                 <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.35em] text-[#2458ff]">Franchise</div>
+                <div className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.35em] text-[#2458ff]">Development</div>
               </div>
             </div>
 

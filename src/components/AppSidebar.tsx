@@ -120,6 +120,7 @@ export function AppSidebar({ variant = "fixed", onNavigate }: Props) {
                 <div className="text-[15px] font-black uppercase leading-[0.95] tracking-[0.08em] text-[#07142f]">Neuron</div>
                 <div className="text-[15px] font-black uppercase leading-[0.95] tracking-[0.08em] text-[#07142f]">Garage</div>
                 <div className="mt-1.5 text-[9.5px] font-bold uppercase leading-none tracking-[0.30em] text-[#0757ff]">Franchise</div>
+                <div className="mt-1 text-[9.5px] font-bold uppercase leading-none tracking-[0.30em] text-[#0757ff]">Development</div>
               </div>
             )}
           </div>

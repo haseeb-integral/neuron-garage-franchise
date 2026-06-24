@@ -25,6 +25,7 @@ export type LiveMvsBundle = {
   watchlist: { name: string; default_overlap: "direct" | "adjacent" | "distant" }[];
   lastRefreshed: string | null;
   qaOpenCount: number;
+  qaReasons: { reason: string; count: number }[];
   loading: boolean;
   error: string | null;
   refresh: () => void;
@@ -41,6 +42,7 @@ type RawBundle = {
   overrides: { operator_name: string; overlap: "direct" | "adjacent" | "distant" }[];
   lastRefreshed: string | null;
   qaOpenCount: number;
+  qaReasons: { reason: string; count: number }[];
 };
 
 const EMPTY_BUNDLE: RawBundle = {
@@ -52,7 +54,9 @@ const EMPTY_BUNDLE: RawBundle = {
   overrides: [],
   lastRefreshed: null,
   qaOpenCount: 0,
+  qaReasons: [],
 };
+
 
 export const MVS_QUERY_KEY = "mvs-live" as const;
 

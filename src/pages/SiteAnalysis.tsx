@@ -1359,10 +1359,37 @@ export default function SiteAnalysis() {
       // Build a SiteScoreResult from the saved snapshot so the card renders
       // immediately. The map/isochrones won't be present (they aren't stored
       // in the snapshot) — user can click Re-run to fetch fresh.
+      // Prefer signals stored inline with the snapshot. For older saves that
+      // don't include signals, fall back to the most recent cached row in
+      // site_analyses for the same lat/lng/site_type so the metric tiles and
+      // map render instead of showing empty boxes.
+      let hydratedSignals: SiteScoreSignals | undefined =
+        (snap as { signals?: SiteScoreSignals }).signals ?? undefined;
+      if (!hydratedSignals && row.lat != null && row.lng != null && row.site_type) {
+        try {
+          const { data: cached } = await supabase
+            .from("site_analyses")
+            .select("signals,latitude,longitude,school_type,created_at")
+            .eq("status", "ready")
+            .eq("school_type", row.site_type)
+            .eq("latitude", Number(row.lat))
+            .eq("longitude", Number(row.lng))
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (cached?.signals) {
+            hydratedSignals = cached.signals as SiteScoreSignals;
+          }
+        } catch {
+          // Non-fatal — card still shows pillars/composite.
+        }
+      }
+
       const snapshotResult: SiteScoreResult | null = snap.pillars
         ? {
             sas: Number(snap.composite ?? 0),
             pillars: snap.pillars,
+            signals: hydratedSignals,
             geo:
               row.lat != null && row.lng != null
                 ? { lat: Number(row.lat), lng: Number(row.lng) }
@@ -1438,6 +1465,7 @@ export default function SiteAnalysis() {
             {
               pillars: recomputed.pillars,
               composite: recomputed.composite,
+              signals: slot.result.signals ?? undefined,
             },
           );
           toast.success("Saved to Saved Sites");

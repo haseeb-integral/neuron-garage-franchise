@@ -475,7 +475,7 @@ export default function MarketValidation() {
         </div>
         <p className="text-[12px] leading-relaxed" style={{ color: NAVY }}>
           Market Validation scores each candidate expansion city on a 0–100 composite using live data
-          (camp providers, pricing, weekly absorption, operator presence, enrichment depth). It surfaces
+          (camp providers, pricing, operator presence, enrichment depth). It surfaces
           the strongest markets so you can decide which cities advance to site-level analysis.
         </p>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -585,7 +585,7 @@ export default function MarketValidation() {
         style={{ borderColor: BORDER, color: MUTED }}
       >
         <FileText size={14} />
-        Composite scores are recomputed live from the underlying provider, pricing, and absorption data each time the page loads.
+        Composite scores are recomputed live from the underlying provider and pricing data each time the page loads.
       </footer>
 
     </>

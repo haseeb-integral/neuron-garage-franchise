@@ -948,10 +948,16 @@ export default function SiteAnalysis() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [hiddenLoaded]);
 
   const removeSlot = (id: string) => {
     setSlots((prev) => prev.filter((s) => s.id !== id));
+    // Persisted rows are kept in the DB but added to the user's hidden list,
+    // so refresh keeps them gone. Restore via the Saved Sites drawer (no API
+    // spend — the score is read straight from the cached row).
+    if (id.startsWith("persisted-")) {
+      hideAnalysisId(id.replace("persisted-", ""));
+    }
   };
 
   // Save a freshly-computed Live Engine result into a slot. If pendingReplaceId

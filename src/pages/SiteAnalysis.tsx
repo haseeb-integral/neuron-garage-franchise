@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Bookmark,
   BookmarkCheck,
@@ -717,37 +717,44 @@ export default function SiteAnalysis() {
     };
   }, [user]);
 
-  const persistHidden = useCallback(
-    async (next: string[]) => {
-      if (!user) return;
-      await supabase.from("profiles").update({ sas_hidden_ids: next }).eq("id", user.id);
-    },
-    [user],
-  );
+  // Single debounced persist for the whole hidden list. Avoids the race where
+  // 4 rapid ✕ clicks fire 4 parallel writes and an older payload wins.
+  const lastPersistedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!hiddenLoaded || !user) return;
+    const next = JSON.stringify([...hiddenIds].sort());
+    if (lastPersistedRef.current === null) {
+      lastPersistedRef.current = next;
+      return;
+    }
+    if (lastPersistedRef.current === next) return;
+    const t = setTimeout(() => {
+      lastPersistedRef.current = next;
+      void supabase
+        .from("profiles")
+        .update({ sas_hidden_ids: hiddenIds })
+        .eq("id", user.id);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [hiddenIds, hiddenLoaded, user]);
 
-  const hideAnalysisId = useCallback(
-    (analysisId: string) => {
-      setHiddenIds((prev) => {
-        if (prev.includes(analysisId)) return prev;
-        const next = [...prev, analysisId];
-        void persistHidden(next);
-        return next;
-      });
-    },
-    [persistHidden],
-  );
+  const hideAnalysisId = useCallback((analysisId: string) => {
+    setHiddenIds((prev) => (prev.includes(analysisId) ? prev : [...prev, analysisId]));
+  }, []);
 
-  const unhideAnalysisId = useCallback(
-    (analysisId: string) => {
-      setHiddenIds((prev) => {
-        if (!prev.includes(analysisId)) return prev;
-        const next = prev.filter((id) => id !== analysisId);
-        void persistHidden(next);
-        return next;
-      });
-    },
-    [persistHidden],
-  );
+  const hideAddress = useCallback((address: string) => {
+    const key = `addr:${address}`;
+    setHiddenIds((prev) => (prev.includes(key) ? prev : [...prev, key]));
+  }, []);
+
+  const unhideAnalysisId = useCallback((analysisId: string) => {
+    setHiddenIds((prev) => prev.filter((id) => id !== analysisId));
+  }, []);
+
+  const unhideAddress = useCallback((address: string) => {
+    const key = `addr:${address}`;
+    setHiddenIds((prev) => prev.filter((id) => id !== key));
+  }, []);
 
 
   const patchSlot = useCallback((id: string, patch: Partial<SlotState>) => {
@@ -810,6 +817,7 @@ export default function SiteAnalysis() {
           // If the user is restoring a previously-hidden card, drop it from
           // the hidden list so refresh keeps it visible.
           unhideAnalysisId(cached.id);
+          unhideAddress(slot.address.trim());
           return;
         }
       }
@@ -833,6 +841,7 @@ export default function SiteAnalysis() {
         patchSlot(id, { status: "ready", result: data as SiteScoreResult, error: null, analysisId });
         // Re-running an address that was previously hidden brings it back.
         if (analysisId) unhideAnalysisId(analysisId);
+        unhideAddress(slot.address.trim());
       } catch (e) {
         const msg = (e as Error).message ?? "Engine call failed";
         patchSlot(id, { status: "error", error: msg });
@@ -863,6 +872,7 @@ export default function SiteAnalysis() {
       const extras: SlotState[] = [];
       for (const row of data) {
         if (hiddenSet.has(row.id)) continue;
+        if (row.address && hiddenSet.has(`addr:${row.address}`)) continue;
         if (!row.address || seen.has(row.address)) continue;
         if (
           row.school_profile_score == null ||
@@ -930,23 +940,9 @@ export default function SiteAnalysis() {
 
       if (cancelled) return;
 
-      // Restore the previously-used Wayside Eden Park candidate as the 4th
-      // slot when missing, so the lineup matches the original Trinity /
-      // LeafSpring (negative) / Wayside / St. Francis comparison.
-      const WAYSIDE_ADDR = "6215 Menchaca Rd, Austin, TX 78745";
-      if (!extras.some((e) => e.address === WAYSIDE_ADDR) && extras.length < 4) {
-        extras.push({
-          id: `seed-wayside-${Date.now()}`,
-          schoolName: "Wayside Schools — Eden Park Academy",
-          address: WAYSIDE_ADDR,
-          schoolType: "private_elementary",
-          gradeBand: "k5_k6",
-          enrollment: "400",
-          status: "idle",
-          result: null,
-          error: null,
-        });
-      }
+      // No auto-seed. If the user wants Wayside (or anything) back, the Saved
+      // Sites drawer has it one click away. Hydration shows only real, non-hidden
+      // rows — so removed cards stay removed across refresh.
 
       setSlots(extras);
     })();
@@ -959,14 +955,13 @@ export default function SiteAnalysis() {
   const removeSlot = (id: string) => {
     const target = slots.find((s) => s.id === id);
     setSlots((prev) => prev.filter((s) => s.id !== id));
-    // Hide the underlying site_analyses row across refresh + devices. Works for
-    // every slot type (hydrated, loaded from drawer, freshly computed) as long
-    // as the slot knows its analysis id. Restore via the Saved Sites drawer —
-    // no API spend, the score is read straight from the cached row.
+    // Soft-hide across refresh + devices. Prefer the analysis id when we have it;
+    // fall back to address so seed/loaded cards without an id still stay hidden.
     const aid =
       target?.analysisId ??
       (id.startsWith("persisted-") ? id.replace("persisted-", "") : null);
     if (aid) hideAnalysisId(aid);
+    else if (target?.address) hideAddress(target.address);
   };
 
   // Save a freshly-computed Live Engine result into a slot. If pendingReplaceId

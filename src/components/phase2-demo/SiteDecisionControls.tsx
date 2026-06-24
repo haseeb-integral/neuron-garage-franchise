@@ -40,14 +40,30 @@ export function SiteDecisionControls({ address, schoolName, suggestedTier }: Pro
         </span>
       </div>
       <div className="flex flex-wrap gap-1">
+        <button
+          type="button"
+          onClick={() => setVerdict(address, schoolName, "undecided")}
+          disabled={!isAuthed}
+          className="rounded-md border px-1.5 py-0.5 text-[10px] font-semibold disabled:opacity-50"
+          style={{
+            borderColor: v === "undecided" ? NAVY : BORDER,
+            backgroundColor: v === "undecided" ? "#eef2f7" : "#fff",
+            color: v === "undecided" ? NAVY : MUTED,
+          }}
+          title="Clear — decide later"
+        >
+          Not rated yet
+        </button>
         {OPTS.map((o) => {
           const selected = v === o.v;
-          const suggested = !row?.verdict && suggestedTier === o.v;
+          const suggested = v === "undecided" && suggestedTier === o.v;
           return (
             <button
               key={o.v}
               type="button"
-              onClick={() => setVerdict(address, schoolName, o.v)}
+              onClick={() =>
+                setVerdict(address, schoolName, selected ? "undecided" : o.v)
+              }
               disabled={!isAuthed}
               className="rounded-md border px-1.5 py-0.5 text-[10px] font-semibold disabled:opacity-50"
               style={{
@@ -56,16 +72,24 @@ export function SiteDecisionControls({ address, schoolName, suggestedTier }: Pro
                 backgroundColor: selected ? o.bg : "#fff",
                 color: selected ? o.fg : suggested ? o.fg : MUTED,
               }}
-              title={suggested && !selected ? `Suggested by score — click to confirm` : undefined}
+              title={
+                selected
+                  ? "Click again to clear back to Not rated yet"
+                  : suggested
+                    ? "Suggested by score — click to confirm"
+                    : undefined
+              }
             >
               {o.label}
             </button>
           );
         })}
       </div>
-      {!row?.verdict && (
+      {v === "undecided" && (
         <p className="mt-1 text-[10px]" style={{ color: MUTED }}>
-          {suggestedTier ? "Score suggests a user confidence band (dashed). Confirm or override above." : "No user confidence set yet."}
+          {suggestedTier
+            ? "Score suggests a band (dashed). Confirm or pick another — or leave as Not rated yet."
+            : "Not rated yet. Pick a band when you are ready."}
         </p>
       )}
       <div className="mt-1.5">

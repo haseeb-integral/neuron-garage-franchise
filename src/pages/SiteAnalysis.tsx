@@ -938,7 +938,7 @@ export default function SiteAnalysis() {
         const { data: cached } = await supabase
           .from("site_analyses")
           .select(
-            "id,school_profile_score,affluence_score,family_density_score,ecosystem_score,accessibility_score,sas_score,signals,latitude,longitude",
+            "id,school_profile_score,affluence_score,family_density_score,ecosystem_score,accessibility_score,sas_score,signals,latitude,longitude,created_at",
           )
           .eq("status", "ready")
           .eq("address", slot.address.trim())

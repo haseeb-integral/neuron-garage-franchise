@@ -95,8 +95,6 @@ export function NotesActivityTab({ candidate }: Props) {
   const [filter, setFilter] = useState<FilterKey>("all");
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const dbId = (candidate as any).dbId as string | undefined;
-  const roadmap = STAGE_PROCESS_ROADMAP[candidate.stage] ?? [];
-  const stageLabel = STAGES.find((s) => s.id === candidate.stage)?.label ?? candidate.stage;
 
   const load = useCallback(async () => {
     if (!dbId) {

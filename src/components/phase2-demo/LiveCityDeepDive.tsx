@@ -267,10 +267,33 @@ function freshnessForInput(key: string, lastRefreshed: string | null): string {
 // the rows shown match the math exactly. Returns null when there is no
 // useful breakdown for the key.
 type ProofRow = { label: string; value?: string | number | null };
+
+// Resolve a provider name against the watchlist + city overrides, returning
+// the effective overlap ("direct" | "adjacent") or null. Mirrors the same
+// logic in computeMvs.ts so popover rows match the score math exactly.
+function resolveOverlapLocal(
+  providerName: string,
+  watchlist: any[],
+  overrides: any[],
+): { brand: string; overlap: string } | null {
+  const lower = providerName.toLowerCase();
+  const match = watchlist.find((w) => lower.includes(String(w.name).toLowerCase()));
+  if (!match) return null;
+  const override = overrides.find(
+    (o) => String(o.operator_name).toLowerCase() === String(match.name).toLowerCase(),
+  );
+  const overlap = override ? override.overlap : match.default_overlap;
+  return { brand: match.name, overlap };
+}
+
 function proofForInput(
   key: string,
   premiumProviders: any[],
   categoryCounts: { label: string; count: number }[],
+  watchlist: any[],
+  overrides: any[],
+  acs: { affluent_dual_income_family_count: number; children_5_12_count: number } | null,
+  cityDisplay: string,
 ): { title: string; subtitle: string; rows: ProofRow[] } | null {
   if (
     key === "medianPrice" ||
@@ -306,6 +329,106 @@ function proofForInput(
       title: `Categories represented (${rows.length})`,
       subtitle: "Premium providers grouped by classified category",
       rows,
+    };
+  }
+  if (key === "operatorValidation") {
+    // Unique national brands matched in this city (any overlap counts).
+    const seen = new Map<string, string>();
+    for (const p of premiumProviders) {
+      const m = resolveOverlapLocal(p.name, watchlist, overrides);
+      if (m && !seen.has(m.brand.toLowerCase())) {
+        seen.set(m.brand.toLowerCase(), m.overlap);
+      }
+    }
+    const rows = Array.from(seen.entries())
+      .map(([brand, overlap]) => ({
+        label: brand,
+        value: overlap === "direct" ? "direct overlap" : "adjacent overlap",
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+    return {
+      title: `Validating national operators (${rows.length})`,
+      subtitle: "Watchlist brands found among premium providers in this city",
+      rows: rows.length > 0
+        ? rows
+        : [{ label: "No watchlist brands matched in this city", value: "" }],
+    };
+  }
+  if (key === "directCompetitorLoad") {
+    // Direct-overlap site count ÷ (children_5_12 / 10000).
+    const directRows: ProofRow[] = [];
+    let directSiteCount = 0;
+    for (const p of premiumProviders) {
+      const m = resolveOverlapLocal(p.name, watchlist, overrides);
+      if (m && m.overlap === "direct") {
+        const sites = p.site_count ?? 1;
+        directSiteCount += sites;
+        directRows.push({ label: `${p.name} (${m.brand})`, value: `${sites} site${sites === 1 ? "" : "s"}` });
+      }
+    }
+    directRows.sort((a, b) => a.label.localeCompare(b.label));
+    const kids = acs?.children_5_12_count ?? 0;
+    const per10k = kids / 10000;
+    const ratio = per10k > 0 ? directSiteCount / per10k : 0;
+    const formulaRows: ProofRow[] = [
+      { label: "Direct competitor sites", value: directSiteCount },
+      { label: "Children 5–12", value: kids.toLocaleString() },
+      { label: "÷ 10,000 kids", value: per10k.toFixed(2) },
+      { label: "Direct competitors / 10k kids", value: ratio.toFixed(2) },
+    ];
+    return {
+      title: "Direct competitors per 10k kids",
+      subtitle: "Direct-overlap sites ÷ (children 5–12 ÷ 10,000)",
+      rows: [
+        ...formulaRows,
+        { label: "—", value: "" },
+        ...(directRows.length > 0
+          ? directRows
+          : [{ label: "No direct-overlap brands matched", value: "" }]),
+      ],
+    };
+  }
+  if (key === "children5to12") {
+    const kids = acs?.children_5_12_count ?? null;
+    return {
+      title: `Children 5–12 in ${cityDisplay}`,
+      subtitle: "US Census ACS 5-year estimate",
+      rows: [
+        { label: "Children aged 5–12", value: kids != null ? kids.toLocaleString() : "—" },
+        { label: "Source", value: "data.census.gov (ACS 5-year)" },
+      ],
+    };
+  }
+  if (key === "coverageRatio") {
+    const affluent = acs?.affluent_dual_income_family_count ?? 0;
+    const premCount = premiumProviders.length;
+    const ratio = premCount > 0 ? affluent / premCount : 0;
+    let band = "Saturated";
+    if (ratio >= 350) band = "Underserved";
+    else if (ratio >= 200) band = "Balanced";
+    else if (ratio >= 100) band = "Competitive";
+    return {
+      title: "Coverage ratio (kids per seat)",
+      subtitle: "Affluent dual-income families ÷ premium providers",
+      rows: [
+        { label: "Affluent dual-income families", value: affluent.toLocaleString() },
+        { label: "Premium providers", value: premCount },
+        { label: "Coverage ratio", value: ratio.toFixed(2) },
+        { label: "Market band", value: band },
+      ],
+    };
+  }
+  if (key === "affluentDualIncomeFamilyCount") {
+    const affluent = acs?.affluent_dual_income_family_count ?? null;
+    const kids = acs?.children_5_12_count ?? null;
+    return {
+      title: `Affluent dual-income families in ${cityDisplay}`,
+      subtitle: "Pre-computed in mvs-acs ingest from US Census ACS",
+      rows: [
+        { label: "Affluent dual-income families", value: affluent != null ? affluent.toLocaleString() : "—" },
+        { label: "Children 5–12 (reference)", value: kids != null ? kids.toLocaleString() : "—" },
+        { label: "Source", value: "data.census.gov (ACS 5-year)" },
+      ],
     };
   }
   return null;

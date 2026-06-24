@@ -300,8 +300,25 @@ Deno.serve(async (req) => {
   // the 150s edge-function idle timeout. 11 batches * ~15s sequential = ~165s
   // (504). With concurrency 5 it drops to ~3 waves * ~15s = ~45s.
   const MAX_CONCURRENCY = 5;
+  // Global soft deadline. If we ever approach 130s we stop launching new waves
+  // and return a clear partial-success message instead of waiting for the
+  // platform to kill us with HTTP 504.
+  const SOFT_DEADLINE_MS = 130_000;
+  const startedAt = Date.now();
+  let batchesAttempted = 0;
+  let abortedAtBatch: number | null = null;
   for (let i = 0; i < batches.length; i += MAX_CONCURRENCY) {
+    if (Date.now() - startedAt > SOFT_DEADLINE_MS) {
+      abortedAtBatch = i;
+      errors.push(
+        `aborted at batch ${i}/${batches.length} after ${Math.round(
+          (Date.now() - startedAt) / 1000,
+        )}s to avoid 150s platform timeout`,
+      );
+      break;
+    }
     const wave = batches.slice(i, i + MAX_CONCURRENCY);
+    batchesAttempted += wave.length;
     await Promise.all(wave.map((b, j) => processBatch(b, i + j)));
   }
 
@@ -310,9 +327,14 @@ Deno.serve(async (req) => {
       city,
       total_candidates: rows.length,
       classified: classifiedCount,
+      batches_total: batches.length,
+      batches_attempted: batchesAttempted,
+      aborted_at_batch: abortedAtBatch,
+      duration_ms: Date.now() - startedAt,
       errors: errors.slice(0, 10),
       sample,
     }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } },
   );
 });
+

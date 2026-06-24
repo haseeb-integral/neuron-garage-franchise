@@ -806,7 +806,7 @@ export default function SiteAnalysis() {
                 ? { lat: Number(cached.latitude), lng: Number(cached.longitude) }
                 : undefined,
           };
-          patchSlot(id, { status: "ready", result, error: null });
+          patchSlot(id, { status: "ready", result, error: null, analysisId: cached.id });
           // If the user is restoring a previously-hidden card, drop it from
           // the hidden list so refresh keeps it visible.
           unhideAnalysisId(cached.id);

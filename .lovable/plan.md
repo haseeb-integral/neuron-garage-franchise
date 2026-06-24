@@ -1,67 +1,47 @@
-## Why the 7 boxes are empty
+# Make the "+" button on empty slot cards actually work
 
-When you save a site, we store only the final scores in `snapshot_json`:
-- pillars (5 sub-scores)
-- composite (the big number)
-- band, verdict
+## What is broken now
+The big **+** in each empty slot card is just a picture. It has no click. So users click it and nothing happens.
 
-We do NOT save the raw signal numbers (Median HHI, kids 5–12, pop, drive distances, etc.) or the map data.
+## What it should do (industry pattern from Zillow / Crexi / Placer compare tools)
+Click **+** → small popover opens with two choices:
+1. **Load from saved sites** — opens the existing Saved Sites drawer. User picks a snapshot → it fills this exact slot.
+2. **Compute a new site** — page smooth-scrolls up to the **Live Site Analysis Engine** and focuses the address input. After the user computes and hits **Save to slot**, it fills the next empty slot (current behavior).
 
-So when you load a saved snapshot back into a slot:
-- The composite (60.57) and sub-scores show — they came from `snapshot_json.pillars`.
-- The 7 metric tiles are empty because `slot.result.signals` is `undefined`.
-- The map is also empty for the same reason.
+Both flows already exist in the code. We are just wiring the + to them.
 
-This is in `src/pages/SiteAnalysis.tsx` → `handleLoadSavedSite` (line ~1355). It builds `snapshotResult` with only `sas`, `pillars`, `geo` — no `signals`.
+## Pages / components / state affected
+- `src/pages/SiteAnalysis.tsx` only.
+  - `EmptySlot` component (lines ~742–763) — add props for the two actions, add a popover, wire the +.
+  - The render call at line ~1675 — pass the two handlers and the slot index.
+  - Add a `ref` on the Live Engine card wrapper so we can scroll to it.
+  - Add an `id` or `ref` on the address input so we can focus it.
+  - Re-use existing `setDrawerOpen(true)` / `SavedSitesDrawer` (already at line 1485). No new state needed for the drawer itself.
 
-## Fix plan (one small phase, one turn)
+No other page, no API, no DB, no edge function, no scoring math, no saved-sites hook, no session-storage logic is touched.
 
-Two changes, both in the loader path. No DB migration, no scoring change.
+## Phases
 
-### Change A — On load, fetch cached signals from `site_analyses`
+### Phase 1 — Wire the + button (1 turn)
+- Add `onLoadFromSaved` and `onComputeNew` props to `EmptySlot`.
+- Wrap the round + button in a shadcn `Popover` with two menu items.
+- In `SiteAnalysis.tsx`, create a `liveEngineRef` and an `addressInputRef`.
+- `onComputeNew` = scroll `liveEngineRef` into view (smooth, block: "start") + focus `addressInputRef`.
+- `onLoadFromSaved` = `setDrawerOpen(true)` (the existing Saved Sites drawer).
+- Pass both handlers into every `<EmptySlot />` at line 1675.
 
-The site was already scored once, so a row exists in `site_analyses` for the same lat/lng/site_type with the full `signals` JSON (we already use this pattern elsewhere in the file — see lines 1014 and 1298). 
+### Phase 2 — Smoke test (no code)
+- Empty slot → click + → popover shows two items.
+- Click **Load from saved** → drawer opens → pick a row → slot fills.
+- Click **Compute a new site** → page scrolls up → address field is focused → compute → Save to slot fills the next empty slot.
+- Existing flows (refresh persistence, remove card, tab-switch persistence) still work.
 
-In `handleLoadSavedSite`:
-1. After building `snapshotResult`, query `site_analyses` for the latest row matching `row.lat`, `row.lng`, `row.site_type`, ordered by `created_at desc`, limit 1.
-2. If found, attach `cached.signals` to `snapshotResult.signals` so:
-   - The 7 metric tiles fill in (`MetricTiles signals={...}`).
-   - The map renders (uses `signals.provenance` and `geo`).
-   - Formula tooltips show real numbers instead of `—`.
-3. If no cached row exists (very old save), leave signals undefined and keep the current behaviour — user can click Re-run.
+## Risks / what NOT to touch
+- Do **not** change scoring, pillar recompute, signals hydration, saved-sites hook, session-storage logic, or the Saved Sites drawer itself.
+- Do **not** add a new modal — re-use the existing drawer.
+- Do **not** change the empty-slot copy text below the +, only make the + clickable and add the popover.
 
-This is read-only and matches what `useEffect` at line 1014 already does on first mount.
+## Estimate
+1 Lovable turn for Phase 1. Phase 2 is manual smoke test.
 
-### Change B — Going forward, also store signals in the snapshot itself
-
-So future saves work even if the `site_analyses` row is deleted:
-
-1. In `src/hooks/useSavedSites.ts` line 28, extend the `snapshot_json` type to include `signals?: SiteScoreSignals`.
-2. Wherever `addSite(...)` is called (the bookmark/save button) — pass `signals: slot.result?.signals` into the snapshot object.
-3. In `handleLoadSavedSite`, prefer `snap.signals` first, fall back to the `site_analyses` lookup from Change A.
-
-`snapshot_json` is a JSONB column, so no schema change needed.
-
-## What is NOT touched
-
-- Scoring math, pillar recompute, composite calculation — unchanged.
-- Saved Sites list UI (the drawer list itself) — unchanged.
-- `site_analyses` table, exports, compare modal — unchanged.
-- Session storage / tab-switch behaviour from the last fix — unchanged.
-
-## Risk
-
-Very low. Worst case the `site_analyses` lookup returns nothing and the card looks exactly like it does today (still no boxes). New saves will always work because we store signals inline.
-
-## Smoke test after build
-
-1. Open a saved snapshot card → 7 boxes should fill with numbers, map should render.
-2. Big composite number should still match what it showed before (60.57).
-3. Save a brand-new site → reload page → open it again → boxes filled.
-4. Remove a card → switch tabs → it stays removed (no regression on last fix).
-
-## Estimated turns
-
-1 turn to implement both changes, 1 turn buffer if a typecheck issue appears.
-
-Approve and I will build it.
+Approve and I will build Phase 1.

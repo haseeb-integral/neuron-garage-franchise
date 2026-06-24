@@ -295,10 +295,10 @@ export default function MarketValidation() {
               city (≈1–2 min per city). Results flow back into the table here automatically.
             </p>
             <p className="mt-1 text-[11px]" style={{ color: MUTED }}>
-              QA queue = manager review of week extractions where the AI was unsure (AI certainty &lt; 70%).
-              The "Limited Source Coverage" badge on a city means more than 20% of premium providers had
-              missing or broken registration pages — treat that city's MVS score with extra caution.
+              QA queue = manager review of per-provider data-quality flags from the live pipeline.
+              Only flags that affect today's scoring pillars are surfaced on each city's deep dive.
             </p>
+
           </div>
 
         </div>

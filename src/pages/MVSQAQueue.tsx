@@ -690,8 +690,15 @@ export default function MVSQAQueue() {
                               </div>
                             )}
                             {isResolved && (
-                              <div className="text-xs text-muted-foreground">
-                                Resolved {new Date(row.resolved_at!).toLocaleString()}
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span>Resolved {new Date(row.resolved_at!).toLocaleString()}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleUnresolve(row.id)}
+                                  className="underline hover:text-foreground"
+                                >
+                                  Unresolve
+                                </button>
                               </div>
                             )}
                           </div>

@@ -513,6 +513,11 @@ Deno.serve(async (req) => {
     premiumFallback = providerList.length > 0;
   }
 
+  // Optional per-row re-run: limit to the provider IDs the caller asked for.
+  if (providerIdsFilter) {
+    providerList = providerList.filter((p) => providerIdsFilter.includes(p.id));
+  }
+
   if (providerList.length === 0) {
     const { error: flagErr } = await admin
       .from("mvs_city_flags")

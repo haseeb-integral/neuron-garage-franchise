@@ -16,7 +16,7 @@
 // most familiar with the SA market; Frisco was swapped out 2026-06-15).
 // ---------------------------------------------------------------------------
 
-export type AbsorptionStatus = "sold_out" | "waitlist" | "low_availability" | "open" | "unknown";
+// AbsorptionStatus removed in v1.1 — Market Absorption pillar deprecated.
 export type ConfidenceLevel = "high" | "medium" | "low";
 
 export interface ShortlistCity {
@@ -39,7 +39,6 @@ export interface ShortlistRow {
   composite: number;
   tier: string;          // demo label; final band vocabulary is an Open Decision for Brett
   pricing: number;
-  absorption: number;
   scaledOperator: number;
   diversity: number;
   depth: number;
@@ -48,19 +47,20 @@ export interface ShortlistRow {
 
 // Order mirrors Feature 1 Balanced ranking (top 8). MVS composites are demo
 // numbers in the 65–82 range; anchor (San Antonio) = 78.
+// `absorption` field removed in v1.1 — Market Absorption pillar deprecated.
 export const SHORTLIST_DEMO: ShortlistRow[] = [
-  { id: "new-york-ny",    city: "New York",     state: "NY", composite: 82, tier: "Top Tier",pricing: 88, absorption: 80, scaledOperator: 78, diversity: 84, depth: 79, balanceBand: "Saturated" },
-  { id: "houston-tx",     city: "Houston",      state: "TX", composite: 76, tier: "Strong",  pricing: 74, absorption: 72, scaledOperator: 80, diversity: 75, depth: 74, balanceBand: "Competitive" },
-  { id: "chicago-il",     city: "Chicago",      state: "IL", composite: 74, tier: "Strong",  pricing: 80, absorption: 68, scaledOperator: 76, diversity: 78, depth: 70, balanceBand: "Competitive" },
-  { id: "boston-ma",      city: "Boston",       state: "MA", composite: 72, tier: "Strong",  pricing: 84, absorption: 66, scaledOperator: 72, diversity: 70, depth: 68, balanceBand: "Competitive" },
-  { id: "san-antonio-tx", city: "San Antonio",  state: "TX", composite: 78, tier: "Strong",  pricing: 82, absorption: 74, scaledOperator: 71, diversity: 76, depth: 68, balanceBand: "Underserved" },
-  { id: "philadelphia-pa",city: "Philadelphia", state: "PA", composite: 69, tier: "Mixed",   pricing: 72, absorption: 64, scaledOperator: 70, diversity: 68, depth: 66, balanceBand: "Balanced" },
-  { id: "los-angeles-ca", city: "Los Angeles",  state: "CA", composite: 67, tier: "Mixed",   pricing: 86, absorption: 58, scaledOperator: 74, diversity: 72, depth: 60, balanceBand: "Saturated" },
-  { id: "indianapolis-in",city: "Indianapolis", state: "IN", composite: 71, tier: "Strong",  pricing: 68, absorption: 70, scaledOperator: 66, diversity: 70, depth: 72, balanceBand: "Underserved" },
+  { id: "new-york-ny",    city: "New York",     state: "NY", composite: 82, tier: "Top Tier",pricing: 88, scaledOperator: 78, diversity: 84, depth: 79, balanceBand: "Saturated" },
+  { id: "houston-tx",     city: "Houston",      state: "TX", composite: 76, tier: "Strong",  pricing: 74, scaledOperator: 80, diversity: 75, depth: 74, balanceBand: "Competitive" },
+  { id: "chicago-il",     city: "Chicago",      state: "IL", composite: 74, tier: "Strong",  pricing: 80, scaledOperator: 76, diversity: 78, depth: 70, balanceBand: "Competitive" },
+  { id: "boston-ma",      city: "Boston",       state: "MA", composite: 72, tier: "Strong",  pricing: 84, scaledOperator: 72, diversity: 70, depth: 68, balanceBand: "Competitive" },
+  { id: "san-antonio-tx", city: "San Antonio",  state: "TX", composite: 78, tier: "Strong",  pricing: 82, scaledOperator: 71, diversity: 76, depth: 68, balanceBand: "Underserved" },
+  { id: "philadelphia-pa",city: "Philadelphia", state: "PA", composite: 69, tier: "Mixed",   pricing: 72, scaledOperator: 70, diversity: 68, depth: 66, balanceBand: "Balanced" },
+  { id: "los-angeles-ca", city: "Los Angeles",  state: "CA", composite: 67, tier: "Mixed",   pricing: 86, scaledOperator: 74, diversity: 72, depth: 60, balanceBand: "Saturated" },
+  { id: "indianapolis-in",city: "Indianapolis", state: "IN", composite: 71, tier: "Strong",  pricing: 68, scaledOperator: 66, diversity: 70, depth: 72, balanceBand: "Underserved" },
   // Austin — first city wired to the live pipeline (Phase 5 Turn 5.1).
   // Sample fields below are fallback only; when mvs_city_flags.mvs_data_source='live'
   // the row is overlaid with computeMvs output from mvs_providers/mvs_weeks.
-  { id: "austin-tx",      city: "Austin",       state: "TX", composite: 0,  tier: "Live",    pricing: 0,  absorption: 0,  scaledOperator: 0,  diversity: 0,  depth: 0,  balanceBand: "Balanced" },
+  { id: "austin-tx",      city: "Austin",       state: "TX", composite: 0,  tier: "Live",    pricing: 0,  scaledOperator: 0,  diversity: 0,  depth: 0,  balanceBand: "Balanced" },
 ];
 
 
@@ -82,7 +82,6 @@ export interface MarketValidationDemo {
   shortlist: ShortlistCity[];
   subScores: {
     pricingAcceptance: SubScore;
-    marketAbsorption: SubScore;
     scaledOperator: SubScore;
     enrichmentDiversity: SubScore;
     marketDepth: SubScore;
@@ -93,7 +92,6 @@ export interface MarketValidationDemo {
     weeklyPrice: number;
     siteCount: number;
     overlap: "direct" | "adjacent" | "distant";
-    sampleWeeks: { label: string; status: AbsorptionStatus }[];
   }[];
 }
 
@@ -126,18 +124,7 @@ export const sanAntonioMarketValidationDemo: MarketValidationDemo = {
         "0.40 × normalize(median, $300–$700) + 0.40 × normalize(75th pct, $400–$800) + 0.20 × (% at $500+)",
       confidence: { level: "high", note: "All 18 providers had explicit weekly pricing scraped from operator sites." },
     },
-    marketAbsorption: {
-      value: 74,
-      weight: 0.25,
-      signals: [
-        { label: "Sellout rate (sold_out + waitlist ÷ total weeks)", value: "58%" },
-        { label: "Avg time-to-sellout", value: "Year 2 signal" },
-        { label: "YoY velocity", value: "Year 2 signal" },
-      ],
-      formula:
-        "0.60 × normalize(Sellout Rate, 0–80%) + 0.25 × normalize(Time-to-Sellout, inverse) + 0.15 × normalize(YoY Velocity, -20% to +30%)",
-      confidence: { level: "medium", note: "4 of 18 providers parsed below 0.7 confidence — routed to human QA queue per SOW Item 1." },
-    },
+    // marketAbsorption sub-score removed in v1.1.
     scaledOperator: {
       value: 71,
       weight: 0.2,
@@ -183,85 +170,14 @@ export const sanAntonioMarketValidationDemo: MarketValidationDemo = {
       confidence: { level: "low", note: "ACS dual-income breakdown imputed at tract level — flagged for review." },
     },
   },
+  // Week-by-week `sampleWeeks` data removed in v1.1 along with Market Absorption.
   premiumProviders: [
-    {
-      name: "Galileo San Antonio",
-      weeklyPrice: 549,
-      siteCount: 2,
-      overlap: "direct",
-      sampleWeeks: [
-        { label: "Wk 1: Jun 9–13", status: "sold_out" },
-        { label: "Wk 2: Jun 16–20", status: "sold_out" },
-        { label: "Wk 3: Jun 23–27", status: "waitlist" },
-        { label: "Wk 4: Jul 7–11", status: "low_availability" },
-        { label: "Wk 5: Jul 14–18", status: "open" },
-      ],
-    },
-    {
-      name: "Snapology of San Antonio",
-      weeklyPrice: 475,
-      siteCount: 1,
-      overlap: "direct",
-      sampleWeeks: [
-        { label: "Wk 1", status: "sold_out" },
-        { label: "Wk 2", status: "waitlist" },
-        { label: "Wk 3", status: "open" },
-        { label: "Wk 4", status: "open" },
-        { label: "Wk 5", status: "open" },
-      ],
-    },
-    {
-      name: "Code Ninjas Stone Oak",
-      weeklyPrice: 425,
-      siteCount: 3,
-      overlap: "adjacent",
-      sampleWeeks: [
-        { label: "Wk 1", status: "low_availability" },
-        { label: "Wk 2", status: "open" },
-        { label: "Wk 3", status: "open" },
-        { label: "Wk 4", status: "open" },
-        { label: "Wk 5", status: "open" },
-      ],
-    },
-    {
-      name: "iD Tech @ UT Dallas",
-      weeklyPrice: 899,
-      siteCount: 1,
-      overlap: "direct",
-      sampleWeeks: [
-        { label: "Wk 1", status: "sold_out" },
-        { label: "Wk 2", status: "sold_out" },
-        { label: "Wk 3", status: "waitlist" },
-        { label: "Wk 4", status: "open" },
-        { label: "Wk 5", status: "open" },
-      ],
-    },
-    {
-      name: "Mad Science of DFW",
-      weeklyPrice: 385,
-      siteCount: 4,
-      overlap: "distant",
-      sampleWeeks: [
-        { label: "Wk 1", status: "open" },
-        { label: "Wk 2", status: "open" },
-        { label: "Wk 3", status: "open" },
-        { label: "Wk 4", status: "open" },
-        { label: "Wk 5", status: "open" },
-      ],
-    },
-    {
-      name: "Maker Kids Alamo Heights",
-      weeklyPrice: 510,
-      siteCount: 1,
-      overlap: "direct",
-      sampleWeeks: [
-        { label: "Wk 1", status: "sold_out" },
-        { label: "Wk 2", status: "waitlist" },
-        { label: "Wk 3", status: "low_availability" },
-        { label: "Wk 4", status: "open" },
-        { label: "Wk 5", status: "unknown" },
-      ],
-    },
+    { name: "Galileo San Antonio",      weeklyPrice: 549, siteCount: 2, overlap: "direct" },
+    { name: "Snapology of San Antonio", weeklyPrice: 475, siteCount: 1, overlap: "direct" },
+    { name: "Code Ninjas Stone Oak",    weeklyPrice: 425, siteCount: 3, overlap: "adjacent" },
+    { name: "iD Tech @ UT Dallas",      weeklyPrice: 899, siteCount: 1, overlap: "direct" },
+    { name: "Mad Science of DFW",       weeklyPrice: 385, siteCount: 4, overlap: "distant" },
+    { name: "Maker Kids Alamo Heights", weeklyPrice: 510, siteCount: 1, overlap: "direct" },
   ],
 };
 

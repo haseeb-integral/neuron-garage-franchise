@@ -14,7 +14,6 @@ import {
   type MvsResult,
   type MvsScoreInputs,
   type MvsWeekInput,
-  type MvsWeekStatus,
 } from "@/lib/mvs/computeMvs";
 import {
   sanAntonioMarketValidationDemo,
@@ -50,12 +49,13 @@ function buildResultFromRow(row: ShortlistRow): MvsResult {
     mvs: row.composite,
     scores: {
       pricingAcceptance: row.pricing,
-      marketAbsorption: row.absorption,
+      // Market Absorption removed in v1.1 — pillar no longer in composite.
+      marketAbsorption: null,
       scaledOperator: row.scaledOperator,
       enrichmentDiversity: row.diversity,
       marketDepth: row.depth,
       // ShortlistRow has no explicit balance score — back-solve from composite
-      // so the six weighted pillars sum to the displayed MVS.
+      // so the five weighted pillars sum to the displayed MVS.
       marketBalance: deriveBalance(row),
     },
     inputs: EMPTY_INPUTS,
@@ -76,16 +76,11 @@ function deriveBalance(row: ShortlistRow): number {
   return Math.max(0, Math.min(100, Number(balance.toFixed(1))));
 }
 
-function statusForLabel(s: string): MvsWeekStatus {
-  if (s === "sold_out" || s === "waitlist" || s === "low_availability" || s === "open" || s === "unknown") {
-    return s;
-  }
-  return "unknown";
-}
-
 function providersAndWeeksFromDemo(
   demo: MarketValidationDemo,
 ): { providers: MvsProviderInput[]; weeks: MvsWeekInput[] } {
+  // Week-by-week `sampleWeeks` data was removed in v1.1 along with Market
+  // Absorption — providers still surface for roster, weeks degrade to empty.
   const providers: MvsProviderInput[] = demo.premiumProviders.map((p, i) => ({
     id: `sample-${i}`,
     name: p.name,
@@ -95,14 +90,7 @@ function providersAndWeeksFromDemo(
     category_classified: null,
     site_count: p.siteCount,
   }));
-  const weeks: MvsWeekInput[] = demo.premiumProviders.flatMap((p, i) =>
-    p.sampleWeeks.map((w) => ({
-      provider_id: `sample-${i}`,
-      status: statusForLabel(w.status),
-      confidence: 0.9,
-    })),
-  );
-  return { providers, weeks };
+  return { providers, weeks: [] };
 }
 
 const SAMPLE_ACS: MvsAcsInput = {

@@ -954,13 +954,16 @@ export default function SiteAnalysis() {
   }, [hiddenLoaded]);
 
   const removeSlot = (id: string) => {
+    const target = slots.find((s) => s.id === id);
     setSlots((prev) => prev.filter((s) => s.id !== id));
-    // Persisted rows are kept in the DB but added to the user's hidden list,
-    // so refresh keeps them gone. Restore via the Saved Sites drawer (no API
-    // spend — the score is read straight from the cached row).
-    if (id.startsWith("persisted-")) {
-      hideAnalysisId(id.replace("persisted-", ""));
-    }
+    // Hide the underlying site_analyses row across refresh + devices. Works for
+    // every slot type (hydrated, loaded from drawer, freshly computed) as long
+    // as the slot knows its analysis id. Restore via the Saved Sites drawer —
+    // no API spend, the score is read straight from the cached row.
+    const aid =
+      target?.analysisId ??
+      (id.startsWith("persisted-") ? id.replace("persisted-", "") : null);
+    if (aid) hideAnalysisId(aid);
   };
 
   // Save a freshly-computed Live Engine result into a slot. If pendingReplaceId

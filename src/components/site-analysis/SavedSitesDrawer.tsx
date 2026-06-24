@@ -258,7 +258,7 @@ export function SavedSitesDrawer({ open, onOpenChange, onLoad, savedSites }: Pro
                   <button
                     type="button"
                     onClick={() => {
-                      onLoad(row.inputs_json);
+                      onLoad(row);
                       onOpenChange(false);
                       toast.success(`Loaded "${row.site_name}" into a card`);
                     }}

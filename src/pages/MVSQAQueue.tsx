@@ -582,11 +582,18 @@ export default function MVSQAQueue() {
                   })()}
 
                   {g.providerRow.resolved_at ? (
-                    <div className="mt-2 text-xs font-medium text-green-700">
-                      ✓ Resolved
+                    <div className="mt-2 flex items-center gap-3">
+                      <span className="text-xs font-medium text-green-700">✓ Resolved</span>
+                      <button
+                        type="button"
+                        onClick={() => handleUnresolve(g.providerRow!.id)}
+                        className="text-xs text-muted-foreground underline hover:text-foreground"
+                      >
+                        Unresolve (re-open)
+                      </button>
                     </div>
                   ) : (
-                    <div className="mt-2 flex items-center gap-3">
+                    <div className="mt-2 flex flex-wrap items-center gap-3">
                       <Button
                         size="sm"
                         onClick={() => handleResolveOnly(g.providerRow!)}
@@ -594,8 +601,20 @@ export default function MVSQAQueue() {
                       >
                         {savingId === g.providerRow.id ? "Saving…" : "Mark resolved"}
                       </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={rerunningProviderId === g.providerId}
+                        onClick={async () => {
+                          setRerunningProviderId(g.providerId);
+                          await rerunForProviders(g.city, [g.providerId], g.providerName);
+                          setRerunningProviderId(null);
+                        }}
+                      >
+                        {rerunningProviderId === g.providerId ? "Re-running… (10–30s)" : "Re-run extraction"}
+                      </Button>
                       <span className="text-xs text-muted-foreground">
-                        Resolve after re-running extraction or fixing the provider's website URL.
+                        Re-run to record which pages the bot tried, or resolve once the URL is fixed.
                       </span>
                     </div>
                   )}

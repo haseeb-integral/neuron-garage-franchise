@@ -62,7 +62,13 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
     }
   }, [city]);
 
+  // Reset per-city state when the selected city changes so the terminal-toast
+  // guard re-seeds for the new city's last run (otherwise switching cities
+  // fires a stale red toast on every click).
   useEffect(() => {
+    setLatest(null);
+    setLastTerminalId(null);
+    initialSeededRef.current = false;
     fetchLatest();
   }, [fetchLatest]);
 

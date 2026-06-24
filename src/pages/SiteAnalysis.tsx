@@ -1069,108 +1069,14 @@ export default function SiteAnalysis() {
     [patchSlot, unhideAnalysisId, unhideAddress],
   );
 
-  // Hydrate from the user's most recent ready site_analyses rows (up to 4).
-  // No anchor seeding — comparison cards always belong to the user. Anchors
-  // live in the separate calibration panel below the Live Engine.
-  useEffect(() => {
-    if (!hiddenLoaded) return;
-    let cancelled = false;
-    (async () => {
-      const { data, error } = await supabase
-        .from("site_analyses")
-        .select(
-          "id,address,school_name,school_type,enrollment,grade_band,latitude,longitude,school_profile_score,affluence_score,family_density_score,ecosystem_score,accessibility_score,sas_score,signals,created_at",
-        )
-        .eq("status", "ready")
-        .order("created_at", { ascending: false })
-        .limit(20);
-      if (cancelled || error || !data) return;
+  // No auto-hydrate from site_analyses on refresh. Old analysis history was
+  // refilling the cards (e.g. Trinity + LeafSpring kept coming back after the
+  // user removed them). Cards now only appear when the user explicitly:
+  //  - runs a new score in the Live Engine card and clicks "Add as card", or
+  //  - loads a site from the Saved Sites drawer, or
+  //  - clicks Re-run on an existing card.
+  // Refresh = 4 empty slots unless the user already added something this session.
 
-      const hiddenSet = new Set(hiddenIds);
-      const seen = new Set<string>();
-      const extras: SlotState[] = [];
-      for (const row of data) {
-        if (hiddenSet.has(row.id)) continue;
-        if (row.address && hiddenSet.has(`addr:${row.address}`)) continue;
-        if (!row.address || seen.has(row.address)) continue;
-        if (
-          row.school_profile_score == null ||
-          row.affluence_score == null ||
-          row.family_density_score == null ||
-          row.ecosystem_score == null ||
-          row.accessibility_score == null
-        ) continue;
-        const signals = (row.signals ?? {}) as SiteScoreSignals;
-        const result: SiteScoreResult = {
-          sas: Number(row.sas_score ?? 0),
-          pillars: {
-            schoolProfile: Number(row.school_profile_score),
-            affluence: Number(row.affluence_score),
-            familyDensity: Number(row.family_density_score),
-            ecosystem: Number(row.ecosystem_score),
-            accessibility: Number(row.accessibility_score),
-          },
-          signals,
-          geo:
-            row.latitude != null && row.longitude != null
-              ? { lat: Number(row.latitude), lng: Number(row.longitude) }
-              : undefined,
-        };
-        seen.add(row.address);
-        extras.push({
-          id: `persisted-${row.id}`,
-          analysisId: row.id,
-          analysisCreatedAt: row.created_at,
-          schoolName: row.school_name ?? "Saved candidate",
-          address: row.address,
-          schoolType: (row.school_type as SchoolType) ?? "private_elementary",
-          gradeBand: (row.grade_band as GradeBand) ?? "k5_k6",
-          enrollment: row.enrollment != null ? String(row.enrollment) : "",
-          status: "ready",
-          result,
-          error: null,
-        });
-        if (extras.length >= 4) break;
-      }
-
-      // Hydrate isochrones for displayed analyses so cached cards show drive-time polygons.
-      const analysisIds = extras
-        .map((e) => e.id.startsWith("persisted-") ? e.id.replace("persisted-", "") : null)
-        .filter((v): v is string => !!v);
-      if (analysisIds.length) {
-        const { data: isos } = await supabase
-          .from("site_analysis_isochrones")
-          .select("analysis_id,minutes,geojson")
-          .in("analysis_id", analysisIds);
-        const byId = new Map<string, { iso10?: GeoJSON.Polygon; iso15?: GeoJSON.Polygon }>();
-        (isos ?? []).forEach((r) => {
-          const e = byId.get(r.analysis_id) ?? {};
-          if (r.minutes === 10) e.iso10 = r.geojson as unknown as GeoJSON.Polygon;
-          if (r.minutes === 15) e.iso15 = r.geojson as unknown as GeoJSON.Polygon;
-          byId.set(r.analysis_id, e);
-        });
-        for (const e of extras) {
-          const aid = e.id.replace("persisted-", "");
-          const iso = byId.get(aid);
-          if (iso && e.result) {
-            e.result = { ...e.result, iso10: iso.iso10, iso15: iso.iso15 };
-          }
-        }
-      }
-
-      if (cancelled) return;
-
-      // No auto-seed. If the user wants Wayside (or anything) back, the Saved
-      // Sites drawer has it one click away. Hydration shows only real, non-hidden
-      // rows — so removed cards stay removed across refresh.
-
-      setSlots(extras);
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hiddenLoaded]);
 
   const removeSlot = (id: string) => {
     const target = slots.find((s) => s.id === id);

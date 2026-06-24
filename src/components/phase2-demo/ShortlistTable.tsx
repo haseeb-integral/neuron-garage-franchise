@@ -249,7 +249,7 @@ export function ShortlistTable({ rows, activeCityId, onSelectCity, liveOverlays 
                   </td>
                   <td className="px-2 py-2 text-right font-black tabular-nums" style={{ color: NAVY }}>{cell(overlay?.composite, r.composite)}</td>
                   <td className="px-2 py-2 text-right tabular-nums" style={{ color: NAVY }}>{cell(overlay?.pricing, r.pricing)}</td>
-                  <td className="px-2 py-2 text-right tabular-nums" style={{ color: NAVY }}>{cell(overlay?.absorption, r.absorption)}</td>
+                  
                   <td className="px-2 py-2 text-right tabular-nums" style={{ color: NAVY }}>{cell(overlay?.scaledOperator, r.scaledOperator)}</td>
                   <td className="px-2 py-2 text-right tabular-nums" style={{ color: NAVY }}>{cell(overlay?.diversity, r.diversity)}</td>
                   <td className="px-2 py-2 text-right tabular-nums" style={{ color: NAVY }}>{cell(overlay?.depth, r.depth)}</td>

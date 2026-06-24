@@ -474,27 +474,28 @@ export function computeMvs(
     marketBalance: s6.inputs,
   };
 
-  const allScores = [
+  // Market Absorption (allScores index 1) is intentionally excluded from the
+  // composite as of June 24, 2026 — the card was removed and its 25% weight
+  // was proportionally redistributed across the 5 remaining pillars.
+  const compositeScores = [
     scores.pricingAcceptance,
-    scores.marketAbsorption,
     scores.scaledOperator,
     scores.enrichmentDiversity,
     scores.marketDepth,
     scores.marketBalance,
   ];
 
-  // If any score is null, the composite is null (incomplete data)
-  if (allScores.some((s) => s == null)) {
+  // If any contributing score is null, the composite is null (incomplete data)
+  if (compositeScores.some((s) => s == null)) {
     return { mvs: null, scores, inputs, normalizationVersion: MVS_NORMALIZATION_VERSION };
   }
 
   const mvs =
-    weights.pricingAcceptance * allScores[0]! +
-    weights.marketAbsorption * allScores[1]! +
-    weights.scaledOperator * allScores[2]! +
-    weights.enrichmentDiversity * allScores[3]! +
-    weights.marketDepth * allScores[4]! +
-    weights.marketBalance * allScores[5]!;
+    weights.pricingAcceptance * compositeScores[0]! +
+    weights.scaledOperator * compositeScores[1]! +
+    weights.enrichmentDiversity * compositeScores[2]! +
+    weights.marketDepth * compositeScores[3]! +
+    weights.marketBalance * compositeScores[4]!;
 
   return {
     mvs: Math.max(0, Math.min(100, Number(mvs.toFixed(1)))),

@@ -368,30 +368,6 @@ export default function MarketValidation() {
     indianapolisLive,
   ]);
 
-  // Boston calibration gate — warn if Boston's composite isn't in the top
-  // quartile of the live Tier A set. Quietly skips when <6 cities have run.
-  const bostonCalibration = useMemo(() => {
-    const composites: { id: string; composite: number }[] = [];
-    for (const [id, ov] of liveOverlays.entries()) {
-      if (typeof ov.composite === "number" && Number.isFinite(ov.composite)) {
-        composites.push({ id, composite: ov.composite });
-      }
-    }
-    const boston = composites.find((c) => c.id === "boston-ma");
-    if (!boston || composites.length < 6) return null;
-    const sorted = [...composites].sort((a, b) => b.composite - a.composite);
-    const rank = sorted.findIndex((c) => c.id === "boston-ma") + 1;
-    const cutoffIdx = Math.max(0, Math.ceil(sorted.length / 4) - 1);
-    const cutoff = sorted[cutoffIdx].composite;
-    const pass = boston.composite >= cutoff;
-    return {
-      pass,
-      rank,
-      total: sorted.length,
-      bostonScore: boston.composite,
-      cutoff,
-    };
-  }, [liveOverlays]);
 
   const isActiveLive = liveOverlays.has(activeCityId);
 
@@ -566,29 +542,11 @@ export default function MarketValidation() {
       />
 
       {/* v1.1 — Decision-capture shortlist table (replaces the chip rail) */}
-      {bostonCalibration && !bostonCalibration.pass && (
-        <div
-          className="mb-3 rounded-md border px-3 py-2 text-[12px]"
-          style={{ borderColor: "#f3c2cb", backgroundColor: "#fdecef", color: "#7a1226" }}
-          role="alert"
-        >
-          <strong>⚠ Boston calibration check failed.</strong>{" "}
-          Boston composite <strong>{bostonCalibration.bostonScore.toFixed(0)}</strong> ranks{" "}
-          <strong>{bostonCalibration.rank} of {bostonCalibration.total}</strong> Tier A cities
-          (top-quartile cutoff: <strong>{bostonCalibration.cutoff.toFixed(0)}</strong>). Review
-          pillar weights before showing this set to a client.
-        </div>
-      )}
       <div className="mb-2 flex items-center justify-between">
         <div className="text-[12px] text-[#526078]">
           <strong className="text-[#07142f]">{allShortlistRows.length}</strong> cities in shortlist
           {additions.length > 0 && (
             <span className="ml-1 text-[#8a96aa]">({additions.length} added by you)</span>
-          )}
-          {bostonCalibration?.pass && (
-            <span className="ml-2 text-[#1d6b32]">
-              · Boston calibration OK (rank {bostonCalibration.rank}/{bostonCalibration.total})
-            </span>
           )}
         </div>
         <AddCityDialog onAdd={addCity} />

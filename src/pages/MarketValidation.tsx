@@ -174,62 +174,56 @@ export default function MarketValidation() {
   const activeRow = allShortlistRows.find((r) => r.id === activeCityId) ?? allShortlistRows[0];
 
 
-  // Phase 7 — live overlay for every Tier A city flagged mvs_data_source='live'.
-  // Hooks are called at fixed positions (one per Tier A city), so React's
-  // rules-of-hooks invariant is preserved. Sample rows are untouched for
-  // cities whose flag is still 'sample'.
-  const austinLive       = useLiveMvs("Austin, TX");
-  const newYorkLive      = useLiveMvs("New York, NY");
-  const houstonLive      = useLiveMvs("Houston, TX");
-  const chicagoLive      = useLiveMvs("Chicago, IL");
-  const bostonLive       = useLiveMvs("Boston, MA");
-  const sanAntonioLive   = useLiveMvs("San Antonio, TX");
-  const philadelphiaLive = useLiveMvs("Philadelphia, PA");
-  const losAngelesLive   = useLiveMvs("Los Angeles, CA");
-  const indianapolisLive = useLiveMvs("Indianapolis, IN");
+  // Phase 8 fix — drive live overlays from the actual shortlist rows (not a
+  // hardcoded list). Each shortlist row mounts one <LiveOverlayProbe> which
+  // calls useLiveMvs for its city and reports the overlay + cache stats up.
+  // This lets manager-added cities (San Diego, Denver, …) show their live
+  // scores in the table instead of staying "Not yet scored" forever.
+  const [overlays, setOverlays] = useState<Map<string, LiveOverlay>>(new Map());
+  const [bundleStats, setBundleStats] = useState<
+    Map<string, { cachedAt: number | null; loading: boolean }>
+  >(new Map());
 
-  const liveOverlays = useMemo<Map<string, LiveOverlay>>(() => {
-    const m = new Map<string, LiveOverlay>();
-    const entries: { rowId: string; bundle: ReturnType<typeof useLiveMvs> }[] = [
-      { rowId: "austin-tx",       bundle: austinLive },
-      { rowId: "new-york-ny",     bundle: newYorkLive },
-      { rowId: "houston-tx",      bundle: houstonLive },
-      { rowId: "chicago-il",      bundle: chicagoLive },
-      { rowId: "boston-ma",       bundle: bostonLive },
-      { rowId: "san-antonio-tx",  bundle: sanAntonioLive },
-      { rowId: "philadelphia-pa", bundle: philadelphiaLive },
-      { rowId: "los-angeles-ca",  bundle: losAngelesLive },
-      { rowId: "indianapolis-in", bundle: indianapolisLive },
-    ];
-    for (const { rowId, bundle } of entries) {
-      // Show live overlay for any city that has been *run* (has a result),
-      // not only cities flipped to live. Keeps "click city → see that city's
-      // detail" consistent; flip-to-live still controls what the rest of the
-      // app reads, but the deep-dive on this page follows the active row.
-        if (bundle.result) {
-        const r = bundle.result;
-        m.set(rowId, {
-          composite: r.mvs,
-          pricing: r.scores.pricingAcceptance,
-          scaledOperator: r.scores.scaledOperator,
-          diversity: r.scores.enrichmentDiversity,
-          depth: r.scores.marketDepth,
-          balance: r.scores.marketBalance,
-          // `low_confidence_badge` is computed from no_reg_page_pct (a
-          // retired signal — Market Absorption was removed). Force false so
-          // the Limited Source Coverage badge no longer fires for that
-          // reason alone.
-          lowConfidence: false,
-
-        });
+  const handleOverlay = useCallback((rowId: string, overlay: LiveOverlay | null) => {
+    setOverlays((prev) => {
+      const existing = prev.get(rowId);
+      if (!overlay && !existing) return prev;
+      if (
+        overlay &&
+        existing &&
+        existing.composite === overlay.composite &&
+        existing.pricing === overlay.pricing &&
+        existing.scaledOperator === overlay.scaledOperator &&
+        existing.diversity === overlay.diversity &&
+        existing.depth === overlay.depth &&
+        existing.balance === overlay.balance &&
+        existing.lowConfidence === overlay.lowConfidence
+      ) {
+        return prev;
       }
-    }
-    return m;
-  }, [
-    austinLive, newYorkLive, houstonLive, chicagoLive,
-    bostonLive, sanAntonioLive, philadelphiaLive, losAngelesLive,
-    indianapolisLive,
-  ]);
+      const next = new Map(prev);
+      if (overlay) next.set(rowId, overlay);
+      else next.delete(rowId);
+      return next;
+    });
+  }, []);
+
+  const handleBundle = useCallback(
+    (rowId: string, stats: { cachedAt: number | null; loading: boolean }) => {
+      setBundleStats((prev) => {
+        const existing = prev.get(rowId);
+        if (existing && existing.cachedAt === stats.cachedAt && existing.loading === stats.loading) {
+          return prev;
+        }
+        const next = new Map(prev);
+        next.set(rowId, stats);
+        return next;
+      });
+    },
+    []
+  );
+
+  const bundleStatsList = useMemo(() => Array.from(bundleStats.values()), [bundleStats]);
 
   // Removed dead helpers in the no-fake-numbers cleanup: `isActiveLive`,
   // hardcoded `scaledDiagnostic` ("5 / 8", "2.1") and `balanceBands` chips

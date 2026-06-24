@@ -361,8 +361,12 @@ export default function SiteBrief() {
   }, [payload]);
 
   useEffect(() => {
-    if (top) document.title = `SAS Brief — ${top.schoolName}`;
-  }, [top]);
+    if (!payload) return;
+    const n = payload.candidates.length;
+    if (n > 1) document.title = `SAS Brief — ${n} sites`;
+    else if (top) document.title = `SAS Brief — ${top.schoolName}`;
+    else if (payload.candidates[0]) document.title = `SAS Brief — ${payload.candidates[0].schoolName}`;
+  }, [top, payload]);
 
   if (missing) {
     return (

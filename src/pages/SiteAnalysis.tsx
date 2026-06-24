@@ -1267,21 +1267,50 @@ export default function SiteAnalysis() {
                   {savedSites.rows.length}
                 </span>
               </button>
-              <button
-              type="button"
-              onClick={handleExport}
-              disabled={!canExport || exporting}
-              title={
-                canExport
-                  ? "Export every visible card. Un-scored cards appear as '—' with a 'Not yet scored' pill."
-                  : "Add at least one candidate to enable export"
-              }
-              className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-              style={{ borderColor: BLUE, color: BLUE, backgroundColor: "#fff" }}
-            >
-              {exporting ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-              {exporting ? "Generating PDF…" : "Export Site Report (PDF)"}
-            </button>
+              <div className="inline-flex items-stretch rounded-md border overflow-hidden" style={{ borderColor: BLUE }}>
+                <button
+                  type="button"
+                  onClick={() => handleExport()}
+                  disabled={!canExport || exporting}
+                  title={
+                    canExport
+                      ? "Export every visible card. Un-scored cards appear as '—' with a 'Not yet scored' pill."
+                      : "Add at least one candidate to enable export"
+                  }
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                  style={{ color: BLUE, backgroundColor: "#fff" }}
+                >
+                  {exporting ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                  {exporting ? "Generating PDF…" : "Export Site Report (PDF)"}
+                </button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      disabled={!canExport || exporting}
+                      title="Export one specific site"
+                      className="inline-flex items-center px-1.5 py-1.5 border-l disabled:cursor-not-allowed disabled:opacity-50"
+                      style={{ borderColor: BLUE, color: BLUE, backgroundColor: "#fff" }}
+                    >
+                      <ChevronDown size={14} />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-64">
+                    <DropdownMenuLabel className="text-[11px]">Download one site</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {slots.map((s) => (
+                      <DropdownMenuItem
+                        key={s.id}
+                        onClick={() => handleExport(s.id)}
+                        className="text-[12px] gap-2"
+                      >
+                        <Download size={12} style={{ color: BLUE }} />
+                        <span className="flex-1 truncate">{s.schoolName}</span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
             {!canExport && (
               <p className="text-[10px]" style={{ color: MUTED }}>

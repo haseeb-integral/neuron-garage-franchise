@@ -171,7 +171,7 @@ export function SavedSitesDrawer({ open, onOpenChange, onLoad, savedSites }: Pro
             const liveComposite =
               snap.pillars ? recomputeSiteScores(snap.pillars).composite : snap.composite ?? null;
             const savedComposite = snap.composite ?? null;
-            const band = liveComposite != null ? bandFor(liveComposite) : null;
+            const band = verdictChip((snap as { verdict?: string | null }).verdict);
             const drift =
               liveComposite != null && savedComposite != null && liveComposite !== savedComposite
                 ? liveComposite - savedComposite

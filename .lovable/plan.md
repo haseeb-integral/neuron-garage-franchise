@@ -1,41 +1,36 @@
-# Make Saved Sites and Export Site Report (PDF) buttons more prominent
+# Fix: saved snapshot map shows only a pin, no 10/15-min drive rings
 
-## What we are changing
-The two buttons on the SAS page top-right (`Saved Sites` and `Export Site Report (PDF)`) look small and faded right now. The screenshot you sent shows the look you want: bigger pill buttons, blue outline, blue bold text, blue icons, and the count badge in a solid blue pill.
+## Why this happens
+- Saved snapshots store: pillars, composite, band, verdict, and (after the last fix) the 7 raw signal numbers.
+- They do NOT store the 10-min / 15-min drive polygons (isochrones). Those polygons are big GeoJSON, so they live in a separate table `site_analysis_isochrones` keyed by `analysis_id`.
+- On load, we hydrate signals from the latest `site_analyses` row, but we never look up the matching rows in `site_analysis_isochrones`. So `iso10` and `iso15` stay `undefined`, and the static Mapbox image renders as a bare pin.
 
-We will restyle ONLY those two buttons to match.
+## Fix in one phase
+**Change A — On load, also hydrate isochrones from the cache.**
+In `src/pages/SiteAnalysis.tsx` `handleLoadSavedSite` (~line 1392):
+1. When we query `site_analyses` for cached signals, also select its `id` (call it `cachedAnalysisId`).
+2. If `cachedAnalysisId` exists, query `site_analysis_isochrones` for `analysis_id = cachedAnalysisId, minutes in (10,15)`.
+3. Pick the row where `minutes = 10` → `iso10`, `minutes = 15` → `iso15` (read from the `geojson` column).
+4. Attach `iso10` and `iso15` to `snapshotResult` alongside the existing `geo` and `signals`.
+
+That's it. The existing `IsochroneMap` component already knows how to render the rings if `iso10` / `iso15` are present.
+
+## What is NOT touched
+- Scoring math, pillar recompute, composite, signals hydration logic, snapshot save path, session storage, the empty-slot + popover, the prominent buttons.
+- `snapshot_json` shape stays the same (we are NOT going to bloat it with polygons).
+- No new tables, no migrations.
+
+## Risk
+- Very low. Read-only extra query. If it fails or no isochrones exist for that old analysis, the map gracefully falls back to today's pin-only view (current behavior).
 
 ## Pages / components affected
-- `src/pages/SiteAnalysis.tsx` only, lines ~1568–1627. No new files, no logic change, no other button touched.
+- `src/pages/SiteAnalysis.tsx` only (one function: `handleLoadSavedSite`).
 
-## Visual changes (both buttons)
-- Border: solid 1.5px blue (`BLUE`) instead of light grey `BORDER`.
-- Text: blue (`BLUE`), bold, size bumped from `text-[11px]` to `text-[13px]`.
-- Icon: blue, size bumped from 12px to 14–16px.
-- Padding: bumped from `px-2.5 py-1.5` to `px-3.5 py-2` for a bigger pill.
-- Rounded corners: bumped from `rounded-md` to `rounded-lg`.
-- Background: stays white.
-- Hover: light blue tint (`#eef4ff`).
+## Edge cases
+- Very old saved sites whose `site_analyses` row was deleted → no iso, pin-only (unchanged today).
+- User clicks **Re-run** → fresh isochrones come from the live compute (unchanged today).
 
-## Saved Sites count badge
-- Today it sits in a soft blue pill with blue text.
-- Change to solid blue background (`BLUE`) with white text, like the `5` in your screenshot.
+## Estimate
+1 Lovable turn. Smoke test: open the LeafSpring Cedar Park saved card → the map should now show two blue rings around the pin instead of just the pin.
 
-## Export split-button (the chevron part)
-- Keep it joined to the main Export button (same group).
-- Match the new bigger size and blue outline so the whole pill reads as one prominent control.
-
-## What NOT to touch
-- The Normalize inputs button next to them.
-- Any logic: click handlers, drawer open, export flow, dropdown menu items.
-- The empty-slot + popover we just shipped.
-- Spacing of the surrounding card.
-
-## Phases
-- **Phase 1 (1 turn):** Restyle the two buttons + the count badge + the chevron split.
-- **Phase 2 (no code):** You eyeball it in preview and confirm.
-
-## Risks
-- Very low. Pure style change, no state or logic touched. Existing click flows keep working.
-
-Approve and I will ship Phase 1.
+Approve and I'll ship it.

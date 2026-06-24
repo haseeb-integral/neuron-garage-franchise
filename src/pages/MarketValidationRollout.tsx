@@ -17,11 +17,11 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useLiveMvs } from "@/lib/mvs/useLiveMvs";
 import { useAuth } from "@/contexts/AuthContext";
-import { SHORTLIST_DEMO } from "@/data/phase2DemoData";
+import { SHORTLIST_SEED } from "@/lib/mvs/shortlistSeed";
 import { useShortlistAdditions } from "@/lib/mvs/useShortlistAdditions";
 import { AddCityDialog } from "@/components/phase2-demo/AddCityDialog";
 
-const BASE_SHORTLIST: { city: string; state: string }[] = SHORTLIST_DEMO.map((row) => ({
+const BASE_SHORTLIST: { city: string; state: string }[] = SHORTLIST_SEED.map((row) => ({
   city: `${row.city}, ${row.state}`,
   state: row.state,
 }));

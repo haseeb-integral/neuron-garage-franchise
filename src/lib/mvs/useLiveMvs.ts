@@ -23,6 +23,8 @@ export type LiveMvsBundle = {
   acs: MvsAcsInput | null;
   flag: LiveMvsCityFlag | null;
   watchlist: { name: string; default_overlap: "direct" | "adjacent" | "distant" }[];
+  overrides: { operator_name: string; overlap: "direct" | "adjacent" | "distant" }[];
+
   lastRefreshed: string | null;
   qaOpenCount: number;
   qaReasons: { reason: string; count: number }[];
@@ -270,6 +272,8 @@ export function useLiveMvs(
     acs: raw.acs,
     flag: raw.flag,
     watchlist: raw.watchlist,
+    overrides: raw.overrides,
+
     lastRefreshed: raw.lastRefreshed,
     qaOpenCount: raw.qaOpenCount,
     qaReasons: raw.qaReasons,

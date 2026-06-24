@@ -267,7 +267,7 @@ interface Props {
  */
 export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) {
   const [weights, setWeights] = useState<Record<string, number>>({ ...DEFAULT_WEIGHTS });
-  const { result, providers, weeks, acs, flag, watchlist, lastRefreshed, qaOpenCount, qaReasons, loading, error, refresh } =
+  const { result, providers, weeks, acs, flag, watchlist, overrides, lastRefreshed, qaOpenCount, qaReasons, loading, error, refresh } =
     useLiveMvs(cityKey, { weights });
 
 
@@ -326,11 +326,18 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
   const defaultMvs = useMemo(() => {
     if (!acs) return null;
     try {
-      return computeMvs(providers, weeks, acs, { weights: DEFAULT_WEIGHTS }).mvs;
+      // Pass watchlist + overrides so this baseline matches what the shortlist
+      // table and useLiveMvs report (Brett's "one calibrated number" rule).
+      return computeMvs(providers, weeks, acs, {
+        weights: DEFAULT_WEIGHTS,
+        watchlist,
+        overlapOverrides: overrides,
+      }).mvs;
     } catch {
       return null;
     }
-  }, [providers, weeks, acs]);
+  }, [providers, weeks, acs, watchlist, overrides]);
+
 
   const weightsDirty = useMemo(
     () =>

@@ -275,8 +275,10 @@ export interface SitePackCandidate {
   schoolTypeLabel: string;
   gradeBandLabel: string;
   enrollment: string;
-  pillars: SasPillarScores;
-  composite: number;
+  /** null = card was on screen but never scored — render as "—" / "Not yet scored" */
+  pillars: SasPillarScores | null;
+  /** null = card was on screen but never scored */
+  composite: number | null;
   tierLabel: string;
   signals: SiteScoreSignals | null;
   decision: SiteDecisionRow | undefined;

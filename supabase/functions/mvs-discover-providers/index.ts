@@ -642,11 +642,16 @@ Deno.serve(async (req) => {
       runGoogleSearch({ city, state: stateAbbr, firecrawlKey, lovableKey }),
     ]);
 
+    // Per-source provider counts — surfaced to the orchestrator so the UI can
+    // show "X/5 sources" instead of just pass/fail.
+    const sourceCounts: Record<string, number> = {};
     for (const r of sourceResults) {
       totalFirecrawl += r.firecrawlCalls;
       if (r.screenshotPath && !screenshotPath) screenshotPath = r.screenshotPath;
       debug[r.platform] = r.debug;
+      sourceCounts[r.platform] = r.providers.length;
     }
+
 
     type Merged = ProviderExtract & { platform: Platform; sources_seen: Platform[]; canonical: string };
     const byKey = new Map<string, Merged>();

@@ -38,7 +38,7 @@ Not in scope: predicting any individual Neuron Garage location's success. Site-l
 | Scheduling | **Manual trigger** ("Run Pipeline" button per city) | Inngest/Trigger.dev post-client-meeting |
 | Cities in scope | **7 Tier A cities + Austin** (calibration) | 14 Tier B cities stay on Sample Data badge |
 | Scrape cadence | **1 scrape per city per run** | 5-scrape Jan/Feb/Mar/Apr/May in v2 |
-| Market Absorption formula | **Sellout Rate only** (carries full weight) | Time-to-Sellout + YoY Velocity in v2 |
+| Market Absorption formula | **Removed from composite in v1.1** (weight 0). Was Sellout Rate only in v1.0. | — |
 | Normalization | **Fixed reference ranges** (see §5) | Across-shortlist normalization once ≥20 cities have live data |
 | QA queue | **In-app review UI**, confidence < 0.7 routes there | — |
 
@@ -46,18 +46,17 @@ Not in scope: predicting any individual Neuron Garage location's success. Site-l
 
 ---
 
-## **3. MVS composite — unchanged from methodology**
+## **3. MVS composite — v1.1 (Market Absorption removed)**
 
-MVS = 0.20 × Pricing Acceptance
-    + 0.25 × Market Absorption          ← dominant demand signal
-    + 0.20 × Scaled Operator
-    + 0.10 × Enrichment Diversity
-    + 0.10 × Market Depth
-    + 0.15 × Market Balance Index
+MVS = 0.2667 × Pricing Acceptance
+    + 0.2667 × Scaled Operator
+    + 0.1333 × Enrichment Diversity
+    + 0.1333 × Market Depth
+    + 0.2000 × Market Balance Index
 
-Rounded to one decimal place. All sub-scores 0–100. Weights exposed as sliders with Show Formula drawers per v1.0 doctrine.
+Rounded to one decimal place. All sub-scores 0–100. Weights exposed as sliders with Show Formula drawers per v1.0 doctrine. **Market Absorption was removed in v1.1** (weight 0) because sellout-rate scraping was unreliable; the remaining five pillars were proportionally re-normalized so the weights still sum to 1.0.
 
-**SOW divergence flag (for client meeting, not for v1.0 build):** SOW v2.2 says Market Balance sits *next to* the composite, not inside it. v1.0 follows the methodology (inside, 15%) because the demo UI already renders it that way and "easy route" means no UI rework. We surface this as an open question for Sam.
+**SOW divergence flag (for client meeting, not for v1.0 build):** SOW v2.2 says Market Balance sits *next to* the composite, not inside it. v1.0/v1.1 follow the methodology (inside, now 20%) because the demo UI already renders it that way and "easy route" means no UI rework. We surface this as an open question for Sam.
 
 ---
 
@@ -114,12 +113,14 @@ Normalization in v1.0 is **min-max against fixed reference ranges** (capped 0–
 0.40 × normalize(75th-percentile price,     range $400–$800)
 0.20 × (% Premium providers at ≥ $500/week,  0–100)
 
-### **Score 2 — Market Absorption (25%) — v1.0 = Sellout Rate only**
+### **Score 2 — Market Absorption — REMOVED in v1.1 (weight 0)**
+
+> **Deprecated.** Removed from the composite in v1.1 because sellout-rate scraping was unreliable. The remaining five pillars were proportionally re-normalized. Formula preserved below for historical/audit reference only.
 
 Sellout Rate            = (sold_out weeks + waitlist weeks) ÷ total weeks scraped
 Market Absorption Score = normalize(Sellout Rate, range 0%–80%)
 
-Time-to-Sellout and YoY Velocity display in the drawer as "Year 2 signal — not yet computed."
+Time-to-Sellout and YoY Velocity were intended as Year-2 signals; no longer planned.
 
 ### **Score 3 — Scaled Operator (20%)**
 
@@ -274,12 +275,13 @@ export default function MVSSpec() {
           <section>
             <h2 className="text-base font-bold text-[#07142f] mb-3">Composite formula (locked)</h2>
             <pre className="rounded-md border border-[#cfdcff] bg-[#f4f8ff] px-4 py-3 text-[13px] font-mono text-[#07142f] leading-relaxed whitespace-pre-wrap">
-{`MVS = 0.20 × Pricing Acceptance
-    + 0.25 × Market Absorption        ← dominant, demand-side
-    + 0.20 × Scaled Operator
-    + 0.10 × Enrichment Diversity
-    + 0.10 × Market Depth
-    + 0.15 × Market Balance           ← inside the composite`}
+{`MVS = 0.2667 × Pricing Acceptance
+    + 0.2667 × Scaled Operator
+    + 0.1333 × Enrichment Diversity
+    + 0.1333 × Market Depth
+    + 0.2000 × Market Balance           ← inside the composite
+
+(Market Absorption removed in v1.1, weight 0.)`}
             </pre>
           </section>
 

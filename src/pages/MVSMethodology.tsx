@@ -54,8 +54,8 @@ const SUB_SCORES: SubScore[] = [
   },
   {
     n: 2,
-    name: "Market Absorption",
-    weight: "25%",
+    name: "Market Absorption (Removed v1.1)",
+    weight: "0%",
     question: "Are existing premium operators actually selling out?",
     formula: `Market Absorption Score =
   0.60 × normalize(Sellout Rate,        range 0%–80%)
@@ -64,7 +64,7 @@ const SUB_SCORES: SubScore[] = [
 
 Sellout Rate = (sold_out weeks + waitlist weeks) ÷ total weeks scraped`,
     detail:
-      "The dominant demand-side signal. Year 1, only Sellout Rate is fully populated; the other two come online with multi-scrape cadence in Year 2. Score degrades gracefully — if only Sellout Rate is available, it carries the full weight.",
+      "DEPRECATED in v1.1. Removed from the composite (weight set to 0) because sellout-rate scraping was unreliable. The remaining five pillars were proportionally re-normalized. Kept here for historical/audit reference.",
     sources: [
       "Provider registration pages scraped week-by-week (sold_out / waitlist / low_availability / open / unknown)",
       "Apify Google Maps actor (discovery)",
@@ -194,7 +194,7 @@ function generateMVSMarkdown(): string {
   lines.push("");
   lines.push(`The **Market Validation Score (MVS)** is the per-city composite produced by the Feature 1A Market Validation Engine. It answers a single question: *"Is this a validated premium enrichment market with active, paying demand?"*`);
   lines.push("");
-  lines.push(`- **Higher MVS** = a validated premium market with observed absorption.`);
+  lines.push(`- **Higher MVS** = a validated premium enrichment market with strong pricing, scaled-operator presence, and diversity.`);
   lines.push(`- **Lower MVS** = supply exists on paper but doesn't sell out — or supply isn't there at all.`);
   lines.push("");
   lines.push(`MVS is computed on the **curated shortlist of 25–50 cities** promoted out of Feature 1 (City Search v1.0). It is not a national ranking and is not meant to predict the success of any one Neuron Garage location — that depends on franchisee quality, site selection (Feature 1B), and execution.`);
@@ -205,15 +205,14 @@ function generateMVSMarkdown(): string {
   lines.push(`## Section 2: The Composite Formula`);
   lines.push("");
   lines.push("```");
-  lines.push(`MVS = 0.20 × Pricing Acceptance Score`);
-  lines.push(`    + 0.25 × Market Absorption Score      ← dominant, demand-side signal`);
-  lines.push(`    + 0.20 × Scaled Operator Score`);
-  lines.push(`    + 0.10 × Enrichment Diversity Score`);
-  lines.push(`    + 0.10 × Market Depth Score`);
-  lines.push(`    + 0.15 × Market Balance Index`);
+  lines.push(`MVS = 0.2667 × Pricing Acceptance Score`);
+  lines.push(`    + 0.2667 × Scaled Operator Score`);
+  lines.push(`    + 0.1333 × Enrichment Diversity Score`);
+  lines.push(`    + 0.1333 × Market Depth Score`);
+  lines.push(`    + 0.2000 × Market Balance Index`);
   lines.push("```");
   lines.push("");
-  lines.push(`Every sub-score is normalized 0–100 across the shortlisted cities, then weight-blended into the composite. Weights are exposed as sliders in the UI with "Show Formula" drawers per the v1.0 doctrine. The presence of **Market Absorption** as the dominant weight is the single most consequential design choice — without it, every other score measures supply only, and markets where supply exists but doesn't sell out look identical to markets where supply sells out by March.`);
+  lines.push(`Every sub-score is normalized 0–100 across the shortlisted cities, then weight-blended into the composite. Weights are exposed as sliders in the UI with "Show Formula" drawers per the v1.0 doctrine. **Market Absorption was removed from the composite in v1.1** (weight set to 0) because sellout-rate scraping was unreliable; the remaining five pillars were proportionally re-normalized so the weights still sum to 1.0.`);
   lines.push("");
 
   lines.push(`## Section 3: The Six Sub-Scores`);
@@ -252,7 +251,7 @@ function generateMVSMarkdown(): string {
   lines.push(`| --- | --- | --- |`);
   MVS_SHARED_INFRA.forEach(([tool, role, status]) => lines.push(`| ${tool} | ${role} | ${status} |`));
   lines.push("");
-  lines.push(`**Cost envelope:** ~$3–6 per scrape per city. Five scrapes per active city per year ≈ $15–30/city/year. A 25-city shortlist runs ~$400–750/year for the full Market Absorption pipeline, plus 1–2 hours of human QA per scrape cycle across the shortlist.`);
+  lines.push(`**Cost envelope:** ~$3–6 per scrape per city. Five scrapes per active city per year ≈ $15–30/city/year. A 25-city shortlist runs ~$400–750/year for the full camp-scraping pipeline, plus 1–2 hours of human QA per scrape cycle across the shortlist.`);
   lines.push("");
 
   lines.push(`## Section 6: Important Notes`);
@@ -293,7 +292,7 @@ export default function MVSMethodology() {
                 <em>"Is this a validated premium enrichment market with active, paying demand?"</em>
               </p>
               <ul className="list-disc pl-5 space-y-1">
-                <li><strong>Higher MVS</strong> = a validated premium market with observed absorption.</li>
+                <li><strong>Higher MVS</strong> = a validated premium enrichment market with strong pricing, scaled-operator presence, and diversity.</li>
                 <li><strong>Lower MVS</strong> = supply exists on paper but doesn't sell out — or supply isn't there at all.</li>
               </ul>
               <p>
@@ -312,19 +311,17 @@ export default function MVSMethodology() {
           {/* Section 2 — Composite */}
           <section className="mb-10">
             <SectionTitle n={2}>The Composite Formula</SectionTitle>
-            <FormulaBlock>{`MVS = 0.20 × Pricing Acceptance Score
-    + 0.25 × Market Absorption Score      ← dominant, demand-side signal
-    + 0.20 × Scaled Operator Score
-    + 0.10 × Enrichment Diversity Score
-    + 0.10 × Market Depth Score
-    + 0.15 × Market Balance Index`}</FormulaBlock>
+            <FormulaBlock>{`MVS = 0.2667 × Pricing Acceptance Score
+    + 0.2667 × Scaled Operator Score
+    + 0.1333 × Enrichment Diversity Score
+    + 0.1333 × Market Depth Score
+    + 0.2000 × Market Balance Index`}</FormulaBlock>
             <p className="mt-3 text-[13px] leading-relaxed text-[#1a2540]">
               Every sub-score is normalized 0–100 across the shortlisted cities, then weight-blended into
               the composite. Weights are exposed as sliders in the UI with "Show Formula" drawers per the
-              v1.0 doctrine. The presence of <strong>Market Absorption</strong> as the dominant weight is
-              the single most consequential design choice — without it, every other score measures supply
-              only, and markets where supply exists but doesn't sell out look identical to markets where
-              supply sells out by March.
+              v1.0 doctrine. <strong>Market Absorption was removed from the composite in v1.1</strong>{" "}
+              (weight set to 0) because sellout-rate scraping was unreliable; the remaining five pillars
+              were proportionally re-normalized so the weights still sum to 1.0.
             </p>
           </section>
 
@@ -443,8 +440,8 @@ export default function MVSMethodology() {
             </div>
             <p className="mt-3 text-[12.5px] text-[#526078] leading-relaxed">
               <strong>Cost envelope:</strong> ~$3–6 per scrape per city. Five scrapes per active city per
-              year ≈ $15–30/city/year. A 25-city shortlist runs ~$400–750/year for the full Market
-              Absorption pipeline, plus 1–2 hours of human QA per scrape cycle across the shortlist.
+              year ≈ $15–30/city/year. A 25-city shortlist runs ~$400–750/year for the full camp-scraping
+              pipeline, plus 1–2 hours of human QA per scrape cycle across the shortlist.
             </p>
           </section>
 

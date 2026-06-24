@@ -785,15 +785,10 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
         const items: string[] = [];
         const nNoPrice = nTotal - nWithPrice;
         const nNoCategory = nTotal - nWithCategory;
-        // Filter out QA reasons that belong to the retired Market Absorption
-        // pillar. The `mvs-extract-weeks` scraper writes "no registration page
-        // found" and "no usable page: …" — both feed only `mvs_weeks`, which
-        // is no longer used in the composite. Showing them here misleads the
-        // reader into thinking they hurt the current score.
-        const isRetiredReason = (r: string) =>
-          r === "no registration page found" || r.startsWith("no usable page");
-        const activeQaReasons = qaReasons.filter((r) => !isRetiredReason(r.reason));
-        const activeQaCount = activeQaReasons.reduce((sum, r) => sum + r.count, 0);
+        // activeQaReasons / activeQaCount are computed at the top of the
+        // component so the Known Limitations bullet, the QA pill in the Data
+        // Sources strip, and the Limited Source Coverage badge all agree.
+
         if (activeQaCount > 0) {
           const reasonText =
             activeQaReasons.length > 0

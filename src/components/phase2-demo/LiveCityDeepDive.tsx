@@ -820,7 +820,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                     if (v == null || k === "year2Signal") return null;
                     const display =
                       typeof v === "number" ? (Number.isInteger(v) ? v : v.toFixed(2)) : String(v);
-                    const proof = proofForInput(k, premiumProviders, categoryCounts);
+                    const proof = proofForInput(k, premiumProviders, categoryCounts, watchlist, overrides, acs, cityDisplay);
                     return (
                       <li key={k} className="flex items-center justify-between gap-2 text-[11px]">
                         <span style={{ color: MUTED }}>{INPUT_LABELS[k] ?? k}</span>

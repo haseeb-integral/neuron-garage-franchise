@@ -384,7 +384,12 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace, bookmark, savedMatc
             {slot.enrollment ? ` · enroll ${slot.enrollment}` : ""}
             {slot.analysisCreatedAt ? ` · run ${formatRunTime(slot.analysisCreatedAt)}` : ""}
           </p>
-          {savedMatch && slot.result ? (
+          {slot.fromSnapshot && slot.snapshotCreatedAt ? (
+            <p className="mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: "#fef3c7", color: "#92400e" }} title="This score was loaded from Saved Sites. Click Re-run for a fresh live computation.">
+              Saved snapshot · {formatRunTime(slot.snapshotCreatedAt)}
+            </p>
+          ) : null}
+          {savedMatch && slot.result && !slot.fromSnapshot ? (
             <WhyDifferentChip slot={slot} composite={composite} savedMatch={savedMatch} />
           ) : null}
         </div>

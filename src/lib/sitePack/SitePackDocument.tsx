@@ -513,7 +513,7 @@ const CoverPage: React.FC<{ candidates: ScoredCandidate[]; today: string }> = ({
 };
 
 // ---- Per-candidate detail ----
-const CandidateDetail: React.FC<{ c: SitePackCandidate; today: string }> = ({ c, today }) => {
+const CandidateDetail: React.FC<{ c: ScoredCandidate; today: string }> = ({ c, today }) => {
   const acs10 = c.signals?.acs10;
   const acs15 = c.signals?.acs15;
   const eco = c.signals?.ecosystem;

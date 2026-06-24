@@ -163,7 +163,6 @@ export function DataSourcesPanel({
     .filter((s) => s.count > 0);
 
   const fresh = formatRelative(lastRefreshed);
-  const weekSourceCount = weeks.filter((w) => w.source_url).length;
 
   return (
     <section
@@ -215,26 +214,10 @@ export function DataSourcesPanel({
           );
         })}
 
-        {(() => {
-          const withWeekSource = providers.filter((p) =>
-            weeks.some((w) => w.provider_id === p.id && w.source_url),
-          );
-          return (
-            <SourceCard
-              label="Sawyer week availability"
-              value={`${weekSourceCount}/${weeks.length}`}
-              popoverTitle="Sawyer week availability"
-              popoverBody={
-                <>
-                  <p className="mb-2 text-[11px]" style={{ color: MUTED }}>
-                    {weekSourceCount} of {weeks.length} tracked weeks have a Sawyer page we could read. These providers have at least one week with a source URL.
-                  </p>
-                  <ProviderList items={withWeekSource} />
-                </>
-              }
-            />
-          );
-        })()}
+        {/* "Sawyer week availability" card removed June 24, 2026 — the
+            weeks/registration-page scrape (mvs-extract-weeks) was retired
+            along with the Market Absorption pillar, so this chip was
+            showing a stale 6-day-old number that no longer feeds any score. */}
 
         <SourceCard
           label="US Census ACS (5-yr)"

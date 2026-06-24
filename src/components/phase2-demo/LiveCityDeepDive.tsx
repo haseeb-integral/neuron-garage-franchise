@@ -428,10 +428,10 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
     }
 
     if (key === "pricingAcceptance") {
-      if (nWithPrice === 0) return { level: "low", detail: `0 of ${nTotal} providers had a readable price.` };
-      if (nWithPrice < 5) return { level: "low", detail: `Based on ${nWithPrice} of ${nTotal} providers with a readable price — too few for a stable median.` };
+      if (nWithPrice === 0) return { level: "low", detail: `0 of ${nTotal} premium providers had a readable price.` };
+      if (nWithPrice < 5) return { level: "low", detail: `Based on ${nWithPrice} of ${nTotal} premium providers with a readable price — too few for a stable median.` };
       const level = nWithPrice < 10 ? "medium" : "high";
-      return { level, detail: `Based on ${nWithPrice} of ${nTotal} providers with a readable price.` };
+      return { level, detail: `Based on ${nWithPrice} of ${nTotal} premium providers with a readable price.` };
     }
 
     if (key === "enrichmentDiversity") {
@@ -536,8 +536,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                 </>
               ) : (
                 <>
-                  Computed from {provCount} provider{provCount === 1 ? "" : "s"} and {weekCount} week row
-                  {weekCount === 1 ? "" : "s"}. Drag a weight slider below to sanity-check sensitivity
+                  Computed from {provCount} provider{provCount === 1 ? "" : "s"} for {cityDisplay}. Drag a weight slider below to sanity-check sensitivity
                   (preview-only, not persisted).
                 </>
               )}

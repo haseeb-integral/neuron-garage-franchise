@@ -434,7 +434,7 @@ export default function MVSQAQueue() {
                               {w?.confidence != null && (
                                 <span className="text-muted-foreground">
                                   {" "}
-                                  ({Math.round((w.confidence ?? 0) * 100)}% confidence)
+                                  (AI certainty: {Math.round((w.confidence ?? 0) * 100)}%)
                                 </span>
                               )}
                             </div>

@@ -1,56 +1,22 @@
-# Task 12 — Rename Site Analysis "Confidence" to "User Confidence"
 
-## What we are changing and why
+# Market Validation Confidence — Rewording (approved, badge name = "Limited Source Coverage")
 
-On the Site Analysis page, the label "Confidence" is confusing because it sounds like a system score. Brett wants it renamed to "User Confidence" so it is clear this is the human decision, not an algorithmic rating.
+## What I will change (text only, no logic)
 
-## Which pages and components are affected
+| File | Current | New |
+|---|---|---|
+| `src/components/phase2-demo/LowConfidenceBadge.tsx` | Badge label: "Low conf." / "Med. conf."  •  Tooltip: "Routed to human QA queue (confidence < 0.7)" | Badge label: **"Limited Source Coverage"** (both levels)  •  Tooltip: "More than 20% of premium providers in this city had missing or broken registration pages. Treat the MVS score with caution." |
+| `src/pages/MarketValidation.tsx` (line ~265) | "**QA note:** …" | "**Source coverage note:** …" |
+| `src/pages/MarketValidation.tsx` (line ~530) | "QA queue = manager review of low-confidence week extractions flagged by the pipeline." | "QA queue = manager review of week extractions where the AI was unsure (AI certainty < 70%). The 'Limited Source Coverage' badge on a city means more than 20% of premium providers had missing or broken registration pages — treat that city's MVS score with extra caution." |
+| `src/pages/MVSQAQueue.tsx` (line ~437) | "(75% confidence)" | "(AI certainty: 75%)" |
 
-- **Site Analysis page** (`src/pages/SiteAnalysis.tsx`)
-  - "Confidence summary" heading
-  - "Confidence" column header in the summary table
-  - "Confidence bands:" label above the band legend
-  - "Your **Confidence** selection..." helper text
+No backend, no scoring math, no DB, no Firecrawl logic touched.
 
-- **Site decision controls** (`src/components/phase2-demo/SiteDecisionControls.tsx`)
-  - "Confidence" label above the Strong / High / Medium / Low buttons on each candidate card
-  - Helper text "No confidence set yet" and "Score suggests a confidence band"
+## Then I will give you the 2 Google Doc paragraphs
 
-- **Site Brief page** (`src/pages/SiteBrief.tsx`)
-  - "Confidence" stat label on the top summary
-  - "Confidence band" column header in the comparison table
-  - "Confidence: X" chips on candidate cards
+- **Para 1 — Before:** plain English description of where "confidence" appeared and how each one was calculated (per-week AI 0–1, city low-confidence badge from broken pages, sub-score high/med/low).
+- **Para 2 — After:** what the new labels say and why ("Limited Source Coverage", "AI certainty", "Source coverage note") and confirmation that no scoring logic changed.
 
-- **Site Pack PDF** (`src/lib/sitePack/SitePackDocument.tsx`)
-  - "Confidence: X" chip on candidate cards
-  - "Confidence band" in the comparison table header
+---
 
-## What we will NOT touch
-
-- "Confidence" in Market Validation (that is data-extraction confidence, not user confidence)
-- `SITE_CONFIDENCE_THRESHOLDS` constant name (code-only, not user-facing)
-- Any database columns or API names
-- Scoring logic or weights
-
-## How this fits into the current app
-
-These are text-only label changes. No data keys, no stored values, no API contracts change. The user still clicks the same buttons; only the label above them and in exports changes.
-
-## Phases
-
-**Phase 1 — UI labels (1 turn)**
-- Edit `SiteDecisionControls.tsx`: change "Confidence" header to "User Confidence"
-- Edit `SiteAnalysis.tsx`: change "Confidence summary" → "User Confidence summary", table header "Confidence" → "User Confidence", "Confidence bands" → "User Confidence bands", and helper text
-- Edit `SiteBrief.tsx`: change "Confidence" stat and chip labels to "User Confidence"
-- Edit `SitePackDocument.tsx`: change "Confidence" chip labels to "User Confidence"
-
-## Tests / checks after
-
-- Open Site Analysis, add a candidate, verify the card shows "User Confidence" above the buttons
-- Scroll to the summary table, verify the column says "User Confidence"
-- Check the Site Brief page, verify chips and stats say "User Confidence"
-- Confirm no TypeScript build errors
-
-## Risks
-
-Very low. Text-only. Reversible in one edit. The only risk is missing a spot — I will search the full codebase for remaining "Confidence" references in Site Analysis files before declaring done.
+**Please switch to build mode so I can apply the 4 edits.** Plan mode is read-only; the edits above will run as soon as you switch.

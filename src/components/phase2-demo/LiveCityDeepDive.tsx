@@ -46,18 +46,10 @@ const SUB_SCORE_META: {
       { label: "mvs_providers table", detail: "Every camp shown in the Premium providers table below feeds this score." },
     ],
   },
-  {
-    key: "marketAbsorption",
-    title: "Market Absorption",
-    subtitle: "Are premium operators actually selling out?",
-    formula:
-      "v1.0: normalize(Sellout Rate, 0–80%). Time-to-sellout & YoY velocity are Year 2 signals.",
-    sources: [
-      { label: "Sawyer week status", detail: "Each premium camp's week-by-week availability scraped from Sawyer (open / waitlist / sold_out)." },
-      { label: "mvs_weeks table", detail: "The week-row counter in the header (e.g. '68 week rows') is the input universe for this score." },
-      { label: "QA queue", detail: "Borderline week statuses are routed to the review queue before they affect this number." },
-    ],
-  },
+  // Market Absorption (formerly key: "marketAbsorption", 25% weight) was
+  // removed June 24, 2026. Its weight was proportionally redistributed across
+  // the 5 remaining pillars; the card, week-activity panel, and confidence
+  // branch were all removed with it.
   {
     key: "scaledOperator",
     title: "Scaled Operator",

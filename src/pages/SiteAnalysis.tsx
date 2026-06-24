@@ -840,6 +840,7 @@ export default function SiteAnalysis() {
   // No anchor seeding — comparison cards always belong to the user. Anchors
   // live in the separate calibration panel below the Live Engine.
   useEffect(() => {
+    if (!hiddenLoaded) return;
     let cancelled = false;
     (async () => {
       const { data, error } = await supabase
@@ -852,9 +853,11 @@ export default function SiteAnalysis() {
         .limit(20);
       if (cancelled || error || !data) return;
 
+      const hiddenSet = new Set(hiddenIds);
       const seen = new Set<string>();
       const extras: SlotState[] = [];
       for (const row of data) {
+        if (hiddenSet.has(row.id)) continue;
         if (!row.address || seen.has(row.address)) continue;
         if (
           row.school_profile_score == null ||

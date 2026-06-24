@@ -141,6 +141,10 @@ interface SlotState extends Candidate {
   analysisId?: string;
   /** Run timestamp of the underlying site_analyses row (ISO). */
   analysisCreatedAt?: string;
+  /** True when this slot's result was rehydrated from a Saved Sites snapshot (no live recompute). */
+  fromSnapshot?: boolean;
+  /** Saved snapshot timestamp (ISO) shown next to the "Saved snapshot" label. */
+  snapshotCreatedAt?: string;
 }
 
 interface CardProps {

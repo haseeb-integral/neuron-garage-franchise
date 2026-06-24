@@ -166,9 +166,15 @@ Deno.serve(async (req) => {
   const errors: string[] = [];
   const sample: Array<{ name: string; tier: Tier; category_classified: string }> = [];
 
-  // Process in batches of N.
+  // Build list of batches up front.
+  const batches: Array<typeof rows> = [];
   for (let i = 0; i < rows.length; i += batchSize) {
-    const batch = rows.slice(i, i + batchSize);
+    batches.push(rows.slice(i, i + batchSize));
+  }
+
+  // Process a single batch: AI call + per-row write-back.
+  // Returns counts/sample so the parent loop can aggregate atomically.
+  async function processBatch(batch: typeof rows, batchIdx: number) {
     const userPayload = batch.map((r) => ({
       id: r.id,
       name: r.name,
@@ -201,11 +207,10 @@ Deno.serve(async (req) => {
       const parsed = JSON.parse(raw) as { classifications?: ClassifyResult[] };
       results = parsed.classifications ?? [];
     } catch (e) {
-      errors.push(`batch ${i / batchSize}: ${e instanceof Error ? e.message : String(e)}`);
-      continue;
+      errors.push(`batch ${batchIdx}: ${e instanceof Error ? e.message : String(e)}`);
+      return;
     }
 
-    // Write back per-row.
     for (const r of results) {
       if (!r?.id || !r.tier) continue;
       let tier: Tier = (["premium", "mid", "budget", "community"].includes(r.tier)
@@ -216,7 +221,6 @@ Deno.serve(async (req) => {
         | (ProviderRow & { tier: Tier | null; sources?: unknown })
         | undefined;
 
-      // ---- Turn 2.2: deterministic overlay (post-Gemini, wins on conflict) ----
       const nameLc = (src?.name ?? "").toLowerCase();
       const pMax = Number(src?.price_max ?? 0);
       const pMin = Number(src?.price_min ?? 0);
@@ -224,20 +228,15 @@ Deno.serve(async (req) => {
       const sourcesArr = Array.isArray(src?.sources) ? (src!.sources as unknown[]) : [];
       const sourceCount = sourcesArr.length;
 
-      // 1. Community brands (extended)
       const isCommunityBrand =
         /\b(ymca|jcc|parks?\s*(and|&)?\s*rec(reation)?|public library|municipal|city of |church|kindercare|boys\s*(and|&)?\s*girls\s*club|scout|4-h|parks\s+dept)\b/.test(
           nameLc,
         );
-
-      // 2. Childcare / preschool exclusion (no week price means it's likely care not enrichment)
       const isChildcareLike =
         !hasPrice &&
         /\b(daycare|preschool|childcare|after.?school\s+care|learning\s+center|montessori\s+school)\b/.test(
           nameLc,
         );
-
-      // 4. National premium brand list
       const isNationalPremium =
         /\b(galileo|id\s*tech|steve\s*&?\s*kate|snapology|lavner|mad\s+science|code\s+ninjas|british\s+soccer|challenger\s+sports|school\s+of\s+rock)\b/.test(
           nameLc,
@@ -248,7 +247,6 @@ Deno.serve(async (req) => {
       } else if (isNationalPremium) {
         tier = "premium";
       } else if (hasPrice) {
-        // 3. Price-based
         if (pMax >= 400 || pMin >= 400) {
           tier = "premium";
         } else if (pMax > 0 && pMax < 200 && (pMin === 0 || pMin < 200)) {
@@ -257,19 +255,15 @@ Deno.serve(async (req) => {
           tier = "mid";
         }
       } else {
-        // 5. Cross-source presence boost (no price): 3+ sources = real/established operator
         if (sourceCount >= 3) {
           tier = "premium";
         } else if (sourceCount >= 2) {
-          // 6. Unknown-price guard: cap at mid without strong evidence
           tier = "mid";
         } else {
-          // single-source, no price, no brand match — keep Gemini's call but cap at mid
           tier = tier === "premium" ? "mid" : tier;
         }
       }
 
-      // ---- Category normalizer ----
       const rawCat = (r.category_classified || src?.category_raw || "").toLowerCase();
       const category = normalizeCategory(rawCat, nameLc, tier);
 
@@ -289,6 +283,15 @@ Deno.serve(async (req) => {
         sample.push({ name: src.name, tier, category_classified: category });
       }
     }
+  }
+
+  // Run batches with bounded concurrency so total wall time stays well under
+  // the 150s edge-function idle timeout. 11 batches * ~15s sequential = ~165s
+  // (504). With concurrency 5 it drops to ~3 waves * ~15s = ~45s.
+  const MAX_CONCURRENCY = 5;
+  for (let i = 0; i < batches.length; i += MAX_CONCURRENCY) {
+    const wave = batches.slice(i, i + MAX_CONCURRENCY);
+    await Promise.all(wave.map((b, j) => processBatch(b, i + j)));
   }
 
   return new Response(

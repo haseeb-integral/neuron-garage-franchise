@@ -138,6 +138,8 @@ interface SlotState extends Candidate {
   error: string | null;
   /** site_analyses.id this slot represents, when known. Used for soft-hide. */
   analysisId?: string;
+  /** Run timestamp of the underlying site_analyses row (ISO). */
+  analysisCreatedAt?: string;
 }
 
 interface CardProps {

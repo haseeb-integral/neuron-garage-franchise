@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useSavedSites, type SavedSiteInputs } from "@/hooks/useSavedSites";
 import { SavedSitesDrawer } from "@/components/site-analysis/SavedSitesDrawer";
+import { useAuth } from "@/contexts/AuthContext";
 
 
 import { PageHeader } from "@/components/PageHeader";

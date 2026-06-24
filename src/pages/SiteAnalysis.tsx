@@ -850,7 +850,27 @@ export default function SiteAnalysis() {
   // Slots hold the *frozen* inputs + the last engine result. There is no
   // per-card input form anymore: the only way to feed inputs into the engine
   // is via the Live Engine card above and the "Save to slot" button.
-  const [slots, setSlots] = useState<SlotState[]>([]);
+  const [slots, setSlots] = useState<SlotState[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = window.sessionStorage.getItem("sas_slots_v1");
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? (parsed as SlotState[]) : [];
+    } catch {
+      return [];
+    }
+  });
+  // Persist current slots to sessionStorage so tab navigation (e.g. MVS → SAS)
+  // does not wipe the user's loaded cards. Cleared on tab close.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.sessionStorage.setItem("sas_slots_v1", JSON.stringify(slots));
+    } catch {
+      // Quota or serialization error — ignore; slots stay in memory.
+    }
+  }, [slots]);
   // Mirror of `slots` for use inside callbacks that need the latest value
   // without re-creating themselves on every slot change (fixes stale-closure
   // bugs where runSlot would silently return because the just-added slot

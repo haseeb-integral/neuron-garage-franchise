@@ -916,7 +916,7 @@ export default function SiteAnalysis() {
 
 
 
-  const canExport = scored.some((s) => s.composite != null);
+  const canExport = slots.length > 0;
 
 
   const emptySlots = Math.max(0, 4 - slots.length);
@@ -926,19 +926,36 @@ export default function SiteAnalysis() {
   const handleExport = async () => {
     setExporting(true);
     try {
-      const ready = scored.filter((s) => s.result);
+      // Include EVERY visible card — scored AND un-scored. The brief renders
+      // un-scored ones with "—" and a "Not yet scored" pill (Option B).
       const candidates: SitePackCandidate[] = await Promise.all(
-        ready.map(async (s) => {
-          const recomputed = recomputeSiteScores(s.result!.pillars);
+        scored.map(async (s) => {
+          if (!s.result) {
+            // Un-scored card: pass null pillars/composite, no signals, no map.
+            return {
+              schoolName: s.candidate.schoolName,
+              address: s.candidate.address,
+              schoolTypeLabel: SCHOOL_TYPE_LABEL[s.candidate.schoolType],
+              gradeBandLabel: GRADE_BAND_LABEL[s.candidate.gradeBand],
+              enrollment: s.candidate.enrollment,
+              pillars: null,
+              composite: null,
+              tierLabel: "Not yet scored",
+              signals: null,
+              decision: byAddress.get(s.candidate.address),
+              mapPngDataUrl: null,
+            };
+          }
+          const recomputed = recomputeSiteScores(s.result.pillars);
           const composite = recomputed.composite;
           const tier = tierBadge(composite);
-          const center = s.result?.geo;
+          const center = s.result.geo;
           const mapUrl =
             mapboxToken && center
               ? buildStaticUrl({
                   center,
-                  iso10: (s.result?.iso10 as GeoJSON.Polygon | null) ?? null,
-                  iso15: (s.result?.iso15 as GeoJSON.Polygon | null) ?? null,
+                  iso10: (s.result.iso10 as GeoJSON.Polygon | null) ?? null,
+                  iso15: (s.result.iso15 as GeoJSON.Polygon | null) ?? null,
                   token: mapboxToken,
                 })
               : null;
@@ -952,32 +969,43 @@ export default function SiteAnalysis() {
             pillars: recomputed.pillars,
             composite,
             tierLabel: tier.label,
-            signals: s.result?.signals ?? null,
+            signals: s.result.signals ?? null,
             decision: byAddress.get(s.candidate.address),
             mapPngDataUrl: mapPng,
           };
         }),
       );
-      // Hand off the payload via localStorage — too large for URL params, and
-      // sessionStorage is per-tab so a new tab can't read it. localStorage is
-      // shared across tabs of the same origin; the brief tab deletes the key
-      // right after reading it so nothing lingers.
+
       const briefKey = `nrg-sas-brief-${Date.now().toString(36)}-${Math.random()
         .toString(36)
         .slice(2, 8)}`;
+      const payload = { candidates, generatedAt: new Date().toISOString() };
+
+      // Primary handoff: stash on `window` so the brief tab can read it via
+      // `window.opener`. This avoids the 5 MB localStorage cap that was
+      // silently dropping cards when the combined map PNGs got too big.
+      const W = window as unknown as {
+        __nrgSasBrief?: Map<string, typeof payload>;
+      };
+      if (!W.__nrgSasBrief) W.__nrgSasBrief = new Map();
+      W.__nrgSasBrief.set(briefKey, payload);
+
+      // Best-effort fallback for tab reloads (which clear `window.opener`).
+      // If the payload is too big for localStorage we swallow the error —
+      // the opener handoff above is the source of truth.
       try {
-        localStorage.setItem(
-          briefKey,
-          JSON.stringify({ candidates, generatedAt: new Date().toISOString() }),
-        );
+        localStorage.setItem(briefKey, JSON.stringify(payload));
       } catch (storageErr) {
-        console.error("Failed to stash SAS brief payload", storageErr);
-        toast.error("Couldn't open SAS brief — browser storage is full.");
-        return;
+        console.warn("SAS brief localStorage fallback skipped (too large)", storageErr);
       }
-      const win = window.open(`/sas-brief?key=${briefKey}`, "_blank", "noopener,noreferrer");
+
+      // IMPORTANT: do NOT pass "noopener" — the brief tab needs window.opener
+      // to read the payload Map.
+      const win = window.open(`/sas-brief?key=${briefKey}`, "_blank");
       if (win) {
-        toast.success("SAS brief opened in a new tab — Cmd/Ctrl + P to save as PDF");
+        toast.success(
+          `SAS brief opened in a new tab — ${candidates.length} site${candidates.length === 1 ? "" : "s"} included. Cmd/Ctrl + P to save as PDF`,
+        );
       } else {
         toast.error("Popup blocked. Allow popups and try again to open the SAS brief.");
       }

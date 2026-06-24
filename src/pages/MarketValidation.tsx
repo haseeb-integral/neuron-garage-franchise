@@ -152,19 +152,12 @@ export default function MarketValidation() {
       id: `${a.city.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${a.state.toLowerCase()}`,
       city: a.city,
       state: a.state,
-      composite: 0,
-      tier: "Not yet scored",
-      pricing: 0,
-      scaledOperator: 0,
-      diversity: 0,
-      depth: 0,
-      balanceBand: "Balanced",
     }));
-    // Dedupe by id — demo rows win over additions that slug to the same id
-    // (e.g. an addition for "New York / NY" collides with the demo NYC row).
+    // Dedupe by id — seed cities take precedence over user additions that
+    // would slug to the same id (e.g. an addition for "New York, NY").
     const seen = new Set<string>();
     const out: ShortlistRow[] = [];
-    for (const r of [...SHORTLIST_DEMO, ...extras]) {
+    for (const r of [...SHORTLIST_SEED, ...extras]) {
       if (seen.has(r.id)) continue;
       seen.add(r.id);
       out.push(r);
@@ -179,7 +172,6 @@ export default function MarketValidation() {
     try { localStorage.setItem("mvs-active-city", activeCityId); } catch { /* ignore */ }
   }, [activeCityId]);
   const activeRow = allShortlistRows.find((r) => r.id === activeCityId) ?? allShortlistRows[0];
-  const isAnchor = activeCityId === "san-antonio-tx";
 
 
   // Phase 7 — live overlay for every Tier A city flagged mvs_data_source='live'.
@@ -234,61 +226,10 @@ export default function MarketValidation() {
     indianapolisLive,
   ]);
 
-
-  const isActiveLive = liveOverlays.has(activeCityId);
-
-
-
-  // Sellout curve + absorption sparkline removed in v1.1 (Market Absorption deprecated).
-
-  // 1A-LOV-3 — Scaled Operator two-number diagnostic.
-  const scaledDiagnostic = (
-    <div className="grid grid-cols-2 gap-2">
-      <div className="rounded-md border p-2" style={{ borderColor: BORDER, backgroundColor: "#e3f3e7" }}>
-        <div className="text-[9px] uppercase tracking-wide" style={{ color: "#1d6b32" }}>
-          Operator validation
-        </div>
-        <div className="text-[18px] font-black tabular-nums" style={{ color: "#1d6b32" }}>
-          5 <span className="text-[11px] font-semibold" style={{ color: MUTED }}>/ 8</span>
-        </div>
-        <div className="text-[10px]" style={{ color: MUTED }}>National operators present (lifts score)</div>
-      </div>
-      <div className="rounded-md border p-2" style={{ borderColor: BORDER, backgroundColor: "#fce7ec" }}>
-        <div className="text-[9px] uppercase tracking-wide" style={{ color: "#a3142b" }}>
-          Direct competitor load
-        </div>
-        <div className="text-[18px] font-black tabular-nums" style={{ color: "#a3142b" }}>
-          2.1 <span className="text-[11px] font-semibold" style={{ color: MUTED }}>/ 10k kids 5–12</span>
-        </div>
-        <div className="text-[10px]" style={{ color: MUTED }}>Saturation drag (suppresses score)</div>
-      </div>
-    </div>
-  );
-
-  // 1A-LOV-4 — Market Balance band chips.
-  const balanceBands = (
-    <div className="flex flex-wrap gap-1">
-      {MARKET_BALANCE_BANDS.map((b) => {
-        const active = b.key === MARKET_BALANCE_ACTIVE_BAND;
-        return (
-          <span
-            key={b.key}
-            className={CHIP}
-            style={{
-              backgroundColor: active ? b.bg : "#fff",
-              color: active ? b.fg : MUTED,
-              border: `1px solid ${active ? b.bg : BORDER}`,
-              fontWeight: active ? 700 : 500,
-            }}
-            title={`${b.label} · Coverage Ratio ${b.range}`}
-          >
-            {active && "●  "}
-            {b.label} <span className="ml-1 opacity-70">{b.range}</span>
-          </span>
-        );
-      })}
-    </div>
-  );
+  // Removed dead helpers in the no-fake-numbers cleanup: `isActiveLive`,
+  // hardcoded `scaledDiagnostic` ("5 / 8", "2.1") and `balanceBands` chips
+  // were defined but never rendered. The live deep-dive below derives every
+  // number from the pipeline result.
 
 
   return (

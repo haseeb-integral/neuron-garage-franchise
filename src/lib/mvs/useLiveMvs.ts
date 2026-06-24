@@ -181,13 +181,23 @@ async function fetchLiveMvs(cityKey: string): Promise<RawBundle> {
   }, null);
 
   let qaOpenCount = 0;
+  let qaReasons: { reason: string; count: number }[] = [];
   if (providerIds.length > 0) {
-    const { count } = await supabase
+    const { data: qaRows } = await supabase
       .from("mvs_qa_queue")
-      .select("id", { count: "exact", head: true })
+      .select("reason")
       .is("resolved_at", null)
       .in("entity_id", providerIds);
-    qaOpenCount = count ?? 0;
+    const rows = qaRows ?? [];
+    qaOpenCount = rows.length;
+    const counts = new Map<string, number>();
+    for (const r of rows) {
+      const reason = (r.reason ?? "unspecified").toString();
+      counts.set(reason, (counts.get(reason) ?? 0) + 1);
+    }
+    qaReasons = Array.from(counts.entries())
+      .map(([reason, count]) => ({ reason, count }))
+      .sort((a, b) => b.count - a.count);
   }
 
   return {
@@ -211,8 +221,10 @@ async function fetchLiveMvs(cityKey: string): Promise<RawBundle> {
     })),
     lastRefreshed: maxUpdated,
     qaOpenCount,
+    qaReasons,
   };
 }
+
 
 /**
  * Loads live pipeline data for a city (providers + weeks + ACS + watchlist

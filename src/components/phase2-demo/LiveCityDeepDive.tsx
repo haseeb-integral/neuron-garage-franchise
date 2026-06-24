@@ -536,7 +536,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
         watchlistCount={watchlist.length}
         acsAvailable={!!acs}
         lastRefreshed={lastRefreshed}
-        qaOpenCount={qaOpenCount}
+        qaOpenCount={activeQaCount}
       />
 
       {/* Sub-score grid with live sliders */}

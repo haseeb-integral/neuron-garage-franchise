@@ -14,7 +14,6 @@ import {
   type MvsResult,
   type MvsScoreInputs,
   type MvsWeekInput,
-  type MvsWeekStatus,
 } from "@/lib/mvs/computeMvs";
 import {
   sanAntonioMarketValidationDemo,

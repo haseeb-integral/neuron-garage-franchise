@@ -16,7 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useSavedSites, type SavedSiteInputs } from "@/hooks/useSavedSites";
+import { useSavedSites, type SavedSiteInputs, type SavedSiteRow } from "@/hooks/useSavedSites";
 import { SavedSitesDrawer } from "@/components/site-analysis/SavedSitesDrawer";
 import { useAuth } from "@/contexts/AuthContext";
 

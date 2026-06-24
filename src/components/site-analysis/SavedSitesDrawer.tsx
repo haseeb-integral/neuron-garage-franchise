@@ -13,19 +13,25 @@ import {
   type SavedSiteRow,
 } from "@/hooks/useSavedSites";
 import { recomputeSiteScores } from "@/lib/sasMath";
-import { SITE_CONFIDENCE_THRESHOLDS } from "@/lib/sas/config";
+
 
 const NAVY = "#07142f";
 const MUTED = "#526078";
 const BORDER = "#eef2f7";
 const BLUE = "#174be8";
 
-function bandFor(score: number) {
-  if (score >= SITE_CONFIDENCE_THRESHOLDS.strong) return { label: "Strong", bg: "#e3f3e7", fg: "#1d6b32" };
-  if (score >= SITE_CONFIDENCE_THRESHOLDS.high) return { label: "High", bg: "#eaf5ec", fg: "#2f7a3f" };
-  if (score >= SITE_CONFIDENCE_THRESHOLDS.medium) return { label: "Medium", bg: "#fff8d9", fg: "#7a5800" };
-  return { label: "Low", bg: "#fce7ec", fg: "#a3142b" };
+const VERDICT_STYLE: Record<string, { bg: string; fg: string; label: string }> = {
+  strong: { bg: "#e3f3e7", fg: "#1d6b32", label: "Strong" },
+  high: { bg: "#eaf5ec", fg: "#2f7a3f", label: "High" },
+  medium: { bg: "#fff8d9", fg: "#7a5800", label: "Medium" },
+  low: { bg: "#fce7ec", fg: "#a3142b", label: "Low" },
+};
+
+function verdictChip(v?: string | null) {
+  if (!v) return null;
+  return VERDICT_STYLE[v] ?? null;
 }
+
 
 function initials(name?: string | null, email?: string | null) {
   const src = (name && name.trim()) || (email && email.split("@")[0]) || "?";
@@ -165,7 +171,7 @@ export function SavedSitesDrawer({ open, onOpenChange, onLoad, savedSites }: Pro
             const liveComposite =
               snap.pillars ? recomputeSiteScores(snap.pillars).composite : snap.composite ?? null;
             const savedComposite = snap.composite ?? null;
-            const band = liveComposite != null ? bandFor(liveComposite) : null;
+            const band = verdictChip((snap as { verdict?: string | null }).verdict);
             const drift =
               liveComposite != null && savedComposite != null && liveComposite !== savedComposite
                 ? liveComposite - savedComposite
@@ -197,7 +203,7 @@ export function SavedSitesDrawer({ open, onOpenChange, onLoad, savedSites }: Pro
                       {row.enrollment != null ? ` · enroll ${row.enrollment}` : ""}
                     </p>
                   </div>
-                  {liveComposite != null && band && (
+                  {liveComposite != null && (
                     <div className="flex shrink-0 flex-col items-end">
                       <div
                         className="text-[22px] font-black leading-none tabular-nums"
@@ -205,14 +211,17 @@ export function SavedSitesDrawer({ open, onOpenChange, onLoad, savedSites }: Pro
                       >
                         {liveComposite}
                       </div>
-                      <span
-                        className="mt-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase"
-                        style={{ backgroundColor: band.bg, color: band.fg }}
-                      >
-                        {band.label}
-                      </span>
+                      {band && (
+                        <span
+                          className="mt-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase"
+                          style={{ backgroundColor: band.bg, color: band.fg }}
+                        >
+                          {band.label}
+                        </span>
+                      )}
                     </div>
                   )}
+
                 </div>
 
                 {drift !== 0 && (

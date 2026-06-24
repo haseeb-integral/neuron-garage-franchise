@@ -8,6 +8,7 @@ import {
   MapPin,
   Plus,
 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,7 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useSavedSites, type SavedSiteInputs } from "@/hooks/useSavedSites";
+import { useSavedSites, type SavedSiteInputs, type SavedSiteRow } from "@/hooks/useSavedSites";
 import { SavedSitesDrawer } from "@/components/site-analysis/SavedSitesDrawer";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -138,6 +139,8 @@ interface SlotState extends Candidate {
   error: string | null;
   /** site_analyses.id this slot represents, when known. Used for soft-hide. */
   analysisId?: string;
+  /** Run timestamp of the underlying site_analyses row (ISO). */
+  analysisCreatedAt?: string;
 }
 
 interface CardProps {
@@ -157,9 +160,161 @@ interface BookmarkInfo {
 interface CardPropsExt extends CardProps {
   onReplace?: () => void;
   bookmark?: BookmarkInfo;
+  savedMatch?: SavedSiteRow | null;
 }
 
-function CandidateCard({ slot, onRerun, onRemove, onReplace, bookmark }: CardPropsExt) {
+const RUN_FMT = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+function formatRunTime(iso: string) {
+  try {
+    return RUN_FMT.format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
+function WhyDifferentChip({
+  slot,
+  composite,
+  savedMatch,
+}: {
+  slot: SlotState;
+  composite: number | null;
+  savedMatch: SavedSiteRow;
+}) {
+  const snap = savedMatch.snapshot_json ?? {};
+  const savedComposite =
+    snap.pillars ? recomputeSiteScores(snap.pillars).composite : snap.composite ?? null;
+  const savedType = (savedMatch.site_type ?? "") as SchoolType;
+  const savedGrade = (savedMatch.grade_band ?? "") as GradeBand;
+  const savedEnroll = savedMatch.enrollment != null ? String(savedMatch.enrollment) : "";
+
+  const diffs: { label: string; card: string; saved: string }[] = [];
+  if (savedType && savedType !== slot.schoolType) {
+    diffs.push({
+      label: "School type",
+      card: SCHOOL_TYPE_LABEL[slot.schoolType] ?? String(slot.schoolType),
+      saved: SCHOOL_TYPE_LABEL[savedType] ?? String(savedType),
+    });
+  }
+  if (savedGrade && savedGrade !== slot.gradeBand) {
+    diffs.push({
+      label: "Grade band",
+      card: GRADE_BAND_LABEL[slot.gradeBand] ?? String(slot.gradeBand),
+      saved: GRADE_BAND_LABEL[savedGrade] ?? String(savedGrade),
+    });
+  }
+  if (savedEnroll !== slot.enrollment) {
+    diffs.push({
+      label: "Enrollment",
+      card: slot.enrollment || "—",
+      saved: savedEnroll || "—",
+    });
+  }
+  if (composite != null && savedComposite != null && composite !== savedComposite) {
+    diffs.push({
+      label: "Composite",
+      card: String(composite),
+      saved: String(savedComposite),
+    });
+  }
+  if (slot.analysisCreatedAt) {
+    diffs.push({
+      label: "Run date",
+      card: formatRunTime(slot.analysisCreatedAt),
+      saved: formatRunTime(savedMatch.created_at),
+    });
+  }
+
+  if (diffs.length === 0) return null;
+
+  const cardPillars = slot.result?.pillars;
+  const savedPillars = snap.pillars;
+  const pillarRows: { label: string; card: string; saved: string }[] = [];
+  if (cardPillars && savedPillars) {
+    const keys: [keyof typeof cardPillars, string][] = [
+      ["schoolProfile", "School profile"],
+      ["affluence", "Affluence"],
+      ["familyDensity", "Family density"],
+      ["ecosystem", "Ecosystem"],
+      ["accessibility", "Accessibility"],
+    ];
+    for (const [k, label] of keys) {
+      const a = Number(cardPillars[k]);
+      const b = Number(savedPillars[k]);
+      if (!Number.isFinite(a) || !Number.isFinite(b)) continue;
+      if (Math.abs(a - b) >= 0.01) {
+        pillarRows.push({ label, card: a.toFixed(2), saved: b.toFixed(2) });
+      }
+    }
+  }
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="mt-1 inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold"
+          style={{ borderColor: "#f0c869", backgroundColor: "#fff8d9", color: "#7a5800" }}
+          title="The saved snapshot for this address used different inputs"
+        >
+          Why different from saved?
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-80 p-3 text-[11px]">
+        <div className="font-bold" style={{ color: "#07142f" }}>
+          Card vs saved snapshot
+        </div>
+        <div className="mt-0.5" style={{ color: "#526078" }}>
+          Same address, different run. Inputs and formula version change the score.
+        </div>
+        <table className="mt-2 w-full">
+          <thead>
+            <tr style={{ color: "#526078" }}>
+              <th className="py-1 text-left font-semibold">Field</th>
+              <th className="py-1 text-right font-semibold">Card</th>
+              <th className="py-1 text-right font-semibold">Saved</th>
+            </tr>
+          </thead>
+          <tbody>
+            {diffs.map((d) => (
+              <tr key={d.label} className="border-t" style={{ borderColor: "#eef2f7" }}>
+                <td className="py-1" style={{ color: "#07142f" }}>{d.label}</td>
+                <td className="py-1 text-right tabular-nums" style={{ color: "#07142f" }}>{d.card}</td>
+                <td className="py-1 text-right tabular-nums" style={{ color: "#526078" }}>{d.saved}</td>
+              </tr>
+            ))}
+            {pillarRows.length > 0 && (
+              <>
+                <tr>
+                  <td colSpan={3} className="pt-2 text-[10px] font-semibold uppercase tracking-wide" style={{ color: "#526078" }}>
+                    Pillar differences
+                  </td>
+                </tr>
+                {pillarRows.map((d) => (
+                  <tr key={d.label} className="border-t" style={{ borderColor: "#eef2f7" }}>
+                    <td className="py-1" style={{ color: "#07142f" }}>{d.label}</td>
+                    <td className="py-1 text-right tabular-nums" style={{ color: "#07142f" }}>{d.card}</td>
+                    <td className="py-1 text-right tabular-nums" style={{ color: "#526078" }}>{d.saved}</td>
+                  </tr>
+                ))}
+              </>
+            )}
+          </tbody>
+        </table>
+        <p className="mt-2 text-[10px]" style={{ color: "#526078" }}>
+          To see the saved score on the card, click <strong>Load into card</strong> in Saved Sites.
+        </p>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function CandidateCard({ slot, onRerun, onRemove, onReplace, bookmark, savedMatch }: CardPropsExt) {
   const { byAddress } = useSiteDecisions();
   const decision = byAddress.get(slot.address);
   const userVerdict: SiteVerdict | undefined =
@@ -222,8 +377,12 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace, bookmark }: CardPro
           )}
           <p className="mt-1 truncate text-[10px]" style={{ color: MUTED }}>
             {SCHOOL_TYPE_LABEL[slot.schoolType]} · {GRADE_BAND_LABEL[slot.gradeBand]}
-            {slot.enrollment ? ` · enrollment ${slot.enrollment}` : ""}
+            {slot.enrollment ? ` · enroll ${slot.enrollment}` : ""}
+            {slot.analysisCreatedAt ? ` · run ${formatRunTime(slot.analysisCreatedAt)}` : ""}
           </p>
+          {savedMatch && slot.result ? (
+            <WhyDifferentChip slot={slot} composite={composite} savedMatch={savedMatch} />
+          ) : null}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1" style={{ width: 110 }}>
           {composite != null ? (
@@ -779,7 +938,7 @@ export default function SiteAnalysis() {
         const { data: cached } = await supabase
           .from("site_analyses")
           .select(
-            "id,school_profile_score,affluence_score,family_density_score,ecosystem_score,accessibility_score,sas_score,signals,latitude,longitude",
+            "id,school_profile_score,affluence_score,family_density_score,ecosystem_score,accessibility_score,sas_score,signals,latitude,longitude,created_at",
           )
           .eq("status", "ready")
           .eq("address", slot.address.trim())
@@ -813,7 +972,7 @@ export default function SiteAnalysis() {
                 ? { lat: Number(cached.latitude), lng: Number(cached.longitude) }
                 : undefined,
           };
-          patchSlot(id, { status: "ready", result, error: null, analysisId: cached.id });
+          patchSlot(id, { status: "ready", result, error: null, analysisId: cached.id, analysisCreatedAt: (cached as { created_at?: string }).created_at });
           // If the user is restoring a previously-hidden card, drop it from
           // the hidden list so refresh keeps it visible.
           unhideAnalysisId(cached.id);
@@ -838,7 +997,7 @@ export default function SiteAnalysis() {
           throw new Error((data as { error?: string }).error ?? "Engine failed");
         }
         const analysisId = (data as { analysis_id?: string }).analysis_id;
-        patchSlot(id, { status: "ready", result: data as SiteScoreResult, error: null, analysisId });
+        patchSlot(id, { status: "ready", result: data as SiteScoreResult, error: null, analysisId, analysisCreatedAt: new Date().toISOString() });
         // Re-running an address that was previously hidden brings it back.
         if (analysisId) unhideAnalysisId(analysisId);
         unhideAddress(slot.address.trim());
@@ -901,6 +1060,7 @@ export default function SiteAnalysis() {
         extras.push({
           id: `persisted-${row.id}`,
           analysisId: row.id,
+          analysisCreatedAt: row.created_at,
           schoolName: row.school_name ?? "Saved candidate",
           address: row.address,
           schoolType: (row.school_type as SchoolType) ?? "private_elementary",
@@ -1442,6 +1602,14 @@ export default function SiteAnalysis() {
           const lat = s.result?.geo?.lat ?? null;
           const lng = s.result?.geo?.lng ?? null;
           const existing = s.result ? savedSites.findSaved(lat, lng, s.schoolType) : null;
+          // Match any saved row by address (regardless of inputs) so the card can
+          // explain why its score differs from the saved snapshot.
+          const savedMatch =
+            s.address
+              ? savedSites.rows.find(
+                  (r) => r.address && r.address.trim() === s.address.trim(),
+                ) ?? null
+              : null;
           const bookmark = {
             saved: !!existing,
             isMine: existing?.user_id === savedSites.currentUserId,
@@ -1463,6 +1631,7 @@ export default function SiteAnalysis() {
                 if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
               }}
               bookmark={bookmark}
+              savedMatch={savedMatch}
             />
           );
         })}

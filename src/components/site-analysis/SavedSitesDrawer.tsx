@@ -192,6 +192,11 @@ export function SavedSitesDrawer({ open, onOpenChange, onLoad, savedSites }: Pro
                         {row.address}
                       </p>
                     )}
+                    <p className="mt-0.5 text-[10px]" style={{ color: MUTED }}>
+                      Inputs: {row.site_type ?? "—"}
+                      {row.grade_band ? ` · ${row.grade_band}` : ""}
+                      {row.enrollment != null ? ` · enroll ${row.enrollment}` : ""}
+                    </p>
                   </div>
                   {liveComposite != null && band && (
                     <div className="flex shrink-0 flex-col items-end">

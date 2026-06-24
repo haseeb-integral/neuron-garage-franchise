@@ -833,7 +833,7 @@ export default function SiteAnalysis() {
         patchSlot(id, { status: "error", error: msg });
       }
     },
-    [slots, patchSlot],
+    [slots, patchSlot, unhideAnalysisId],
   );
 
   // Hydrate from the user's most recent ready site_analyses rows (up to 4).

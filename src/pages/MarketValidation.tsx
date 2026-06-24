@@ -21,7 +21,6 @@ import {
   QA_QUEUE_FLAGGED_COUNT,
   SCRAPE_CADENCE,
   SHORTLIST_DEMO,
-  type AbsorptionStatus,
   type ConfidenceLevel,
   type ShortlistRow,
 } from "@/data/phase2DemoData";
@@ -147,13 +146,7 @@ function ScoresCacheIndicator({
 
 
 
-const STATUS_STYLE: Record<AbsorptionStatus, { bg: string; fg: string; label: string }> = {
-  sold_out: { bg: "#fce7ec", fg: "#a3142b", label: "Sold out" },
-  waitlist: { bg: "#fff1d6", fg: "#925100", label: "Waitlist" },
-  low_availability: { bg: "#fff8d9", fg: "#7a5800", label: "Low avail." },
-  open: { bg: "#e3f3e7", fg: "#1d6b32", label: "Open" },
-  unknown: { bg: "#eef2f7", fg: "#526078", label: "Unknown" },
-};
+// STATUS_STYLE removed in v1.1 (Market Absorption deprecated).
 
 const OVERLAP_STYLE: Record<"direct" | "adjacent" | "distant", { bg: string; fg: string }> = {
   direct: { bg: "#fce7ec", fg: "#a3142b" },
@@ -287,7 +280,6 @@ export default function MarketValidation() {
       composite: 0,
       tier: "Not yet scored",
       pricing: 0,
-      absorption: 0,
       scaledOperator: 0,
       diversity: 0,
       depth: 0,
@@ -347,12 +339,11 @@ export default function MarketValidation() {
       // not only cities flipped to live. Keeps "click city → see that city's
       // detail" consistent; flip-to-live still controls what the rest of the
       // app reads, but the deep-dive on this page follows the active row.
-      if (bundle.result) {
+        if (bundle.result) {
         const r = bundle.result;
         m.set(rowId, {
           composite: r.mvs,
           pricing: r.scores.pricingAcceptance,
-          absorption: r.scores.marketAbsorption,
           scaledOperator: r.scores.scaledOperator,
           diversity: r.scores.enrichmentDiversity,
           depth: r.scores.marketDepth,
@@ -373,16 +364,7 @@ export default function MarketValidation() {
 
 
 
-  // 1A-LOV-5 — Sellout curve from sample weeks (% sold_out + waitlist).
-  const weekLabels = data.premiumProviders[0]?.sampleWeeks.map((w) => w.label) ?? [];
-  const selloutCurve = weekLabels.map((_, idx) => {
-    const total = data.premiumProviders.length;
-    const hot = data.premiumProviders.filter((p) => {
-      const s = p.sampleWeeks[idx]?.status;
-      return s === "sold_out" || s === "waitlist";
-    }).length;
-    return total ? Math.round((hot / total) * 100) : 0;
-  });
+  // Sellout curve + absorption sparkline removed in v1.1 (Market Absorption deprecated).
 
   // 1A-LOV-3 — Scaled Operator two-number diagnostic.
   const scaledDiagnostic = (
@@ -404,33 +386,6 @@ export default function MarketValidation() {
           2.1 <span className="text-[11px] font-semibold" style={{ color: MUTED }}>/ 10k kids 5–12</span>
         </div>
         <div className="text-[10px]" style={{ color: MUTED }}>Saturation drag (suppresses score)</div>
-      </div>
-    </div>
-  );
-
-  // 1A-LOV-5 — Sellout curve sparkline (Market Absorption).
-  const maxSellout = Math.max(1, ...selloutCurve);
-  const absorptionCurve = (
-    <div className="rounded-md border p-2" style={{ borderColor: BORDER }}>
-      <div className="mb-1 flex items-center justify-between text-[10px]" style={{ color: MUTED }}>
-        <span>Sellout curve · Wk 1–5</span>
-        <span className="font-semibold tabular-nums" style={{ color: NAVY }}>
-          {selloutCurve[selloutCurve.length - 1] ?? 0}% Wk{selloutCurve.length}
-        </span>
-      </div>
-      <div className="flex h-10 items-end gap-1">
-        {selloutCurve.map((v, i) => (
-          <div
-            key={i}
-            className="flex-1 rounded-sm"
-            style={{
-              height: `${(v / maxSellout) * 100}%`,
-              backgroundColor: v >= 60 ? "#a3142b" : v >= 30 ? "#925100" : "#1d6b32",
-              opacity: 0.85,
-            }}
-            title={`${weekLabels[i] ?? `Wk ${i + 1}`}: ${v}% sold_out+waitlist`}
-          />
-        ))}
       </div>
     </div>
   );
@@ -568,7 +523,6 @@ export default function MarketValidation() {
         <ol className="ml-4 list-decimal space-y-0.5 text-[12px]" style={{ color: NAVY }}>
           <li>Review each city and mark it <strong>Pursue, Hold, or Drop</strong>.</li>
           <li>Filter to <strong>Pursue</strong> cities and <strong>Export CSV</strong> — those are your finalists for the next phase.</li>
-          <li>Check the sellout curve in the deep-dive to confirm demand is real and sustained, not a blip.</li>
           <li>Use the market balance band as a tie-breaker: a city with too many competitors may be riskier than its score suggests.</li>
         </ol>
       </section>

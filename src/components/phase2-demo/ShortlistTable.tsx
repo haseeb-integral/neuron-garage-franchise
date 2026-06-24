@@ -10,7 +10,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 export type LiveOverlay = {
   composite: number | null;
   pricing: number | null;
-  absorption: number | null;
   scaledOperator: number | null;
   diversity: number | null;
   depth: number | null;

@@ -185,6 +185,10 @@ Deno.serve(async (req) => {
     }));
 
     let results: ClassifyResult[] = [];
+    // Per-AI-call hard timeout. If the gateway hangs we'd rather abort this
+    // batch and report it cleanly than burn the whole 150s edge budget on one call.
+    const ac = new AbortController();
+    const callTimer = setTimeout(() => ac.abort(), 60_000);
     try {
       const aiRes = await fetch(AI_GATEWAY, {
         method: "POST",
@@ -200,6 +204,7 @@ Deno.serve(async (req) => {
           ],
           response_format: { type: "json_object" },
         }),
+        signal: ac.signal,
       });
       const aiJson = await aiRes.json();
       if (!aiRes.ok) throw new Error(`ai gateway ${aiRes.status}`);
@@ -207,9 +212,15 @@ Deno.serve(async (req) => {
       const parsed = JSON.parse(raw) as { classifications?: ClassifyResult[] };
       results = parsed.classifications ?? [];
     } catch (e) {
-      errors.push(`batch ${batchIdx}: ${e instanceof Error ? e.message : String(e)}`);
+      const msg = e instanceof Error
+        ? (e.name === "AbortError" ? "ai call timed out after 60s" : e.message)
+        : String(e);
+      errors.push(`batch ${batchIdx}: ${msg}`);
       return;
+    } finally {
+      clearTimeout(callTimer);
     }
+
 
     for (const r of results) {
       if (!r?.id || !r.tier) continue;

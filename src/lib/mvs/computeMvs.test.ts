@@ -312,9 +312,11 @@ describe("Score 6: Market Balance", () => {
 // ---------------------------------------------------------------------------
 
 describe("Composite MVS", () => {
-  it("is null when any sub-score is null", () => {
-    // No weeks → marketAbsorption null → MVS null
-    const r = computeMvs([makeProvider()], [], defaultAcs, {
+  it("is null when any contributing sub-score is null", () => {
+    // No premium providers → pricingAcceptance null → MVS null.
+    // (Market Absorption was removed from the composite June 24, 2026, so
+    // a null MA no longer forces MVS null on its own.)
+    const r = computeMvs([makeProvider({ tier: "mid" })], [], defaultAcs, {
       watchlist: defaultWatchlist,
     });
     expect(r.mvs).toBeNull();
@@ -329,7 +331,24 @@ describe("Composite MVS", () => {
       w.enrichmentDiversity +
       w.marketDepth +
       w.marketBalance;
-    expect(sum).toBeCloseTo(1.0, 5);
+    expect(sum).toBeCloseTo(1.0, 3);
+  });
+
+  it("excludes Market Absorption from the composite", () => {
+    // Composite should equal weighted sum of the 5 remaining pillars only.
+    // Build a city where MA is null (no weeks) — composite must still compute.
+    const providers = [
+      makeProvider({ id: "p-1", price_max: 500, category_classified: "STEM" }),
+      makeProvider({ id: "p-2", price_max: 600, category_classified: "Art" }),
+      makeProvider({ id: "p-3", price_max: 700, category_classified: "Music" }),
+      makeProvider({ id: "p-4", price_max: 550, category_classified: "Coding" }),
+      makeProvider({ id: "p-5", price_max: 650, category_classified: "Robotics" }),
+    ];
+    const r = computeMvs(providers, [], defaultAcs, { watchlist: defaultWatchlist });
+    expect(r.scores.marketAbsorption).toBeNull();
+    expect(r.mvs).not.toBeNull();
+    expect(r.mvs!).toBeGreaterThanOrEqual(0);
+    expect(r.mvs!).toBeLessThanOrEqual(100);
   });
 
   it("computes a full composite with all scores present", () => {

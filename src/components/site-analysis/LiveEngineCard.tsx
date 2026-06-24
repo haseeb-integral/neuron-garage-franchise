@@ -67,6 +67,23 @@ const PRESETS: Preset[] = [
 ];
 
 
+function getEnrollmentTooltipLine(schoolType: SchoolType): string {
+  switch (schoolType) {
+    case "private_elementary":
+      return "Typical real-world average for private elementary: ~110 students.";
+    case "public_elementary":
+      return "Typical real-world average for public elementary: ~432 students.";
+    case "montessori":
+      return "Typical real-world average for Montessori: ~40 students.";
+    case "charter_elementary":
+      return "Charter elementary enrollment is not separately published and varies widely by network.";
+    case "daycare":
+      return "Daycare center size varies widely by state and license.";
+    default:
+      return "Average varies by school type. Enter the real number if known.";
+  }
+}
+
 /**
  * Live Site Analysis Engine card (Feature 1B v0.3).
  *

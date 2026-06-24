@@ -110,7 +110,7 @@ export default function MVSQAQueue() {
   const load = useCallback(async () => {
     let q = supabase
       .from("mvs_qa_queue")
-      .select("id, entity_id, entity_type, reason, confidence, resolved_at, created_at")
+      .select("id, entity_id, entity_type, reason, confidence, resolved_at, created_at, diagnostics")
       .order("created_at", { ascending: false })
       .limit(500);
     if (!showResolved) q = q.is("resolved_at", null);

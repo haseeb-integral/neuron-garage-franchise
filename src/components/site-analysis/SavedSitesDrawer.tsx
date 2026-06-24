@@ -74,7 +74,7 @@ function displayName(name?: string | null, email?: string | null) {
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onLoad: (inputs: SavedSiteInputs) => void;
+  onLoad: (row: SavedSiteRow) => void;
   savedSites: ReturnType<typeof useSavedSites>;
 }
 

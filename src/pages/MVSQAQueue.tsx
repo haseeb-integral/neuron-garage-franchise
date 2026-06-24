@@ -43,6 +43,20 @@ type WeekInfo = {
   provider?: ProviderInfo | null;
 };
 
+type TriedEntry = {
+  url: string;
+  step: "map" | "search" | "scrape" | "ai";
+  ok: boolean;
+  http_status?: number;
+  note?: string;
+};
+
+type Diagnostics = {
+  root_url?: string | null;
+  tried?: TriedEntry[];
+  error?: string | null;
+} | null;
+
 type QueueRow = {
   id: string;
   entity_id: string;
@@ -51,6 +65,7 @@ type QueueRow = {
   confidence: number | null;
   resolved_at: string | null;
   created_at: string;
+  diagnostics?: Diagnostics;
   week?: WeekInfo | null;
   provider?: ProviderInfo | null; // populated for entity_type === 'provider'
 };
@@ -95,7 +110,7 @@ export default function MVSQAQueue() {
   const load = useCallback(async () => {
     let q = supabase
       .from("mvs_qa_queue")
-      .select("id, entity_id, entity_type, reason, confidence, resolved_at, created_at")
+      .select("id, entity_id, entity_type, reason, confidence, resolved_at, created_at, diagnostics")
       .order("created_at", { ascending: false })
       .limit(500);
     if (!showResolved) q = q.is("resolved_at", null);
@@ -252,16 +267,24 @@ export default function MVSQAQueue() {
 
   const handleResolveOnly = async (row: QueueRow) => {
     setSavingId(row.id);
-    const { error } = await supabase.rpc("mvs_qa_resolve", {
+    const { data, error } = await supabase.rpc("mvs_qa_resolve", {
       _queue_id: row.id,
       _new_status: (row.week?.status ?? "unknown") as WeekStatus,
     });
     setSavingId(null);
     if (error) {
-      toast.error(`Resolve failed: ${error.message}`);
+      console.error("[MVS QA] resolve failed", { row, error, data });
+      toast.error(`Resolve failed: ${error.message || error.code || "unknown error"}`, {
+        description: error.details || error.hint || undefined,
+        duration: 8000,
+      });
       return;
     }
-    toast.success("Marked resolved");
+    // Optimistically remove the row so the reviewer sees it disappear right away.
+    setRows((prev) =>
+      prev ? prev.map((r) => (r.id === row.id ? { ...r, resolved_at: new Date().toISOString() } : r)) : prev,
+    );
+    toast.success("✓ Marked resolved");
     invalidateAllMvs(queryClient);
     load();
   };
@@ -414,12 +437,93 @@ export default function MVSQAQueue() {
 
               {/* Provider-level issue (no weeks extracted) */}
               {g.providerRow && (
-                <div className="mb-3 rounded border bg-amber-50/40 p-3 text-sm">
+                <div
+                  className="mb-3 rounded border bg-amber-50/40 p-3 text-sm"
+                  style={{ opacity: g.providerRow.resolved_at ? 0.55 : 1 }}
+                >
                   <div className="text-foreground">
                     <span className="font-medium">Why flagged: </span>
                     {g.providerRow.reason ?? "extraction returned 0 weeks"}
                   </div>
-                  {!g.providerRow.resolved_at && (
+
+                  {/* Diagnostics: which URLs the bot actually tried */}
+                  {(() => {
+                    const diag = g.providerRow!.diagnostics as Diagnostics;
+                    if (!diag || (!diag.root_url && (!diag.tried || diag.tried.length === 0))) {
+                      return (
+                        <div className="mt-2 text-xs italic text-muted-foreground">
+                          Diagnostics weren't captured for this row. Re-run the pipeline for this city to record what the bot tried.
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="mt-3 rounded border bg-white/70 p-2 text-xs">
+                        {diag.root_url && (
+                          <div className="mb-2">
+                            <span className="font-semibold">Bot started at: </span>
+                            <a
+                              href={diag.root_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary underline break-all"
+                            >
+                              {diag.root_url} ↗
+                            </a>
+                          </div>
+                        )}
+                        {diag.tried && diag.tried.length > 0 ? (
+                          <div>
+                            <div className="mb-1 font-semibold">Pages the bot tried ({diag.tried.length}):</div>
+                            <ul className="space-y-1">
+                              {diag.tried.map((t, i) => {
+                                const isUrl = t.url && /^https?:\/\//i.test(t.url);
+                                return (
+                                  <li key={i} className="leading-snug">
+                                    <span
+                                      className="mr-1 inline-block rounded px-1 text-[10px] font-semibold uppercase"
+                                      style={{
+                                        backgroundColor: t.ok ? "#dcfce7" : "#fee2e2",
+                                        color: t.ok ? "#166534" : "#991b1b",
+                                      }}
+                                    >
+                                      {t.step}
+                                    </span>
+                                    {isUrl ? (
+                                      <a
+                                        href={t.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-primary underline break-all"
+                                      >
+                                        {t.url}
+                                      </a>
+                                    ) : (
+                                      <span className="break-all">{t.url}</span>
+                                    )}
+                                    {t.note && (
+                                      <span className="text-muted-foreground"> — {t.note}</span>
+                                    )}
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          </div>
+                        ) : null}
+                        {diag.error && (
+                          <div className="mt-2">
+                            <span className="font-semibold">Final result: </span>
+                            <span className="text-red-700">{diag.error}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {g.providerRow.resolved_at ? (
+                    <div className="mt-2 text-xs font-medium text-green-700">
+                      ✓ Resolved
+                    </div>
+                  ) : (
                     <div className="mt-2 flex items-center gap-3">
                       <Button
                         size="sm"

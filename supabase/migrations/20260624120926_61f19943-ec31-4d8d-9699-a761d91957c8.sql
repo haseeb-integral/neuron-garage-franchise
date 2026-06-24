@@ -1,0 +1,1 @@
+ALTER TABLE public.mvs_qa_queue ADD COLUMN IF NOT EXISTS diagnostics jsonb;

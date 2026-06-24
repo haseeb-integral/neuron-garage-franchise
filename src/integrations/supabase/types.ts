@@ -1523,6 +1523,7 @@ export type Database = {
         Row: {
           confidence: number | null
           created_at: string
+          diagnostics: Json | null
           entity_id: string
           entity_type: Database["public"]["Enums"]["mvs_qa_entity"]
           id: string
@@ -1534,6 +1535,7 @@ export type Database = {
         Insert: {
           confidence?: number | null
           created_at?: string
+          diagnostics?: Json | null
           entity_id: string
           entity_type: Database["public"]["Enums"]["mvs_qa_entity"]
           id?: string
@@ -1545,6 +1547,7 @@ export type Database = {
         Update: {
           confidence?: number | null
           created_at?: string
+          diagnostics?: Json | null
           entity_id?: string
           entity_type?: Database["public"]["Enums"]["mvs_qa_entity"]
           id?: string

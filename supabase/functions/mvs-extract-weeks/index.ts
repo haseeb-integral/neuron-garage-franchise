@@ -94,14 +94,24 @@ type ProviderRow = {
   source_listing_url: string | null;
 };
 
+type TriedEntry = {
+  url: string;
+  step: "map" | "search" | "scrape" | "ai";
+  ok: boolean;
+  http_status?: number;
+  note?: string;
+};
+
 type ProviderOutcome = {
   provider_id: string;
   provider_name: string;
   url: string | null;
+  root_url: string | null;
   no_reg_page: boolean;
   weeks_inserted: number;
   qa_flagged: number;
   error?: string;
+  tried: TriedEntry[];
 };
 
 async function processProvider(
@@ -123,13 +133,16 @@ async function processProvider(
     provider_id: provider.id,
     provider_name: provider.name,
     url: rootUrl,
+    root_url: rootUrl,
     no_reg_page: false,
     weeks_inserted: 0,
     qa_flagged: 0,
+    tried: [],
   };
 
   if (!rootUrl) {
     out.no_reg_page = true;
+    out.error = "no website URL on provider record";
     return { outcome: out, firecrawlCalls: 0 };
   }
 
@@ -163,6 +176,13 @@ async function processProvider(
     const links: string[] = Array.isArray(mapJson?.links)
       ? mapJson.links
       : Array.isArray(mapJson?.data?.links) ? mapJson.data.links : [];
+    out.tried.push({
+      url: rootUrl,
+      step: "map",
+      ok: mapRes.ok,
+      http_status: mapRes.status,
+      note: mapRes.ok ? `found ${links.length} links` : `map failed`,
+    });
     const KW = [
       { re: /summer[-_/]?camp/i, w: 10 },
       { re: /\/camps?(\/|$)/i, w: 8 },
@@ -183,20 +203,21 @@ async function processProvider(
       .sort((a, b) => b.s - a.s)
       .slice(0, 4);
     for (const s of scored) pushCand(s.l);
-  } catch { /* non-fatal */ }
+  } catch (e) {
+    out.tried.push({ url: rootUrl, step: "map", ok: false, note: `map error: ${(e as Error).message}` });
+  }
 
   try {
+    const searchQuery = `${provider.name} ${cityLabel} summer camp registration schedule`;
     const searchRes = await fetch(`${FIRECRAWL_V2}/search`, {
       method: "POST",
       headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        query: `${provider.name} ${cityLabel} summer camp registration schedule`,
-        limit: 5,
-      }),
+      body: JSON.stringify({ query: searchQuery, limit: 5 }),
     });
     firecrawlCalls += 1;
     const sj = await searchRes.json().catch(() => ({}));
     const web = sj?.data?.web ?? sj?.data ?? [];
+    let sameDomainHits = 0;
     if (Array.isArray(web)) {
       const rootHost = new URL(rootUrl).hostname.replace(/^www\./, "");
       for (const r of web) {
@@ -206,11 +227,23 @@ async function processProvider(
           const h = new URL(u).hostname.replace(/^www\./, "");
           if (h === rootHost || h.endsWith("." + rootHost) || h.endsWith("hisawyer.com")) {
             pushCand(u);
+            sameDomainHits += 1;
           }
         } catch { /* skip */ }
       }
     }
-  } catch { /* non-fatal */ }
+    out.tried.push({
+      url: `web search: ${searchQuery}`,
+      step: "search",
+      ok: searchRes.ok,
+      http_status: searchRes.status,
+      note: searchRes.ok
+        ? `${sameDomainHits} of ${Array.isArray(web) ? web.length : 0} results matched provider domain or hisawyer.com`
+        : "search failed",
+    });
+  } catch (e) {
+    out.tried.push({ url: "web search", step: "search", ok: false, note: `search error: ${(e as Error).message}` });
+  }
 
   if (candidatePages.length === 0) pushCand(rootUrl);
 
@@ -236,16 +269,31 @@ async function processProvider(
       });
       firecrawlCalls += 1;
       const sj = await sRes.json().catch(() => ({}));
-      if (!sRes.ok) continue;
+      if (!sRes.ok) {
+        out.tried.push({ url: cand, step: "scrape", ok: false, http_status: sRes.status, note: `scrape blocked (HTTP ${sRes.status})` });
+        continue;
+      }
       const md: string = sj?.data?.markdown ?? "";
       const ss: string | undefined = sj?.data?.screenshot ?? sj?.data?.screenshotUrl;
-      if (!md || md.length < 200) continue;
+      if (!md || md.length < 200) {
+        out.tried.push({ url: cand, step: "scrape", ok: true, http_status: sRes.status, note: `page was too short (${md.length} chars)` });
+        continue;
+      }
       const dateHits = (md.match(WEEK_DATE_RE) ?? []).length;
       const statusHits = (md.match(STATUS_HINT_RE) ?? []).length;
       const score = dateHits * 3 + statusHits;
+      out.tried.push({
+        url: cand,
+        step: "scrape",
+        ok: true,
+        http_status: sRes.status,
+        note: `scraped ok · ${dateHits} week-date hits · ${statusHits} status hits`,
+      });
       scraped.push({ url: cand, markdown: md, screenshot: ss, score });
       if (dateHits >= 6 && statusHits >= 3) break;
-    } catch { /* skip */ }
+    } catch (e) {
+      out.tried.push({ url: cand, step: "scrape", ok: false, note: `scrape error: ${(e as Error).message}` });
+    }
   }
 
   if (scraped.length === 0) {
@@ -553,6 +601,11 @@ Deno.serve(async (req) => {
             ? (o.error ? `no usable page: ${o.error}` : "no registration page found")
             : (o.error ?? "extraction returned 0 weeks"),
           confidence: null,
+          diagnostics: {
+            root_url: o.root_url ?? o.url ?? null,
+            tried: o.tried ?? [],
+            error: o.error ?? null,
+          },
         }));
       if (providerQaRows.length > 0) {
         await admin.from("mvs_qa_queue").insert(providerQaRows);

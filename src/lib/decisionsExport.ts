@@ -38,7 +38,7 @@ export function exportMarketDecisionsCsv(
     "mvs_score",
     "tier_demo",
     "pricing",
-    "absorption",
+    // "absorption" removed in v1.1 — Market Absorption no longer in composite.
     "scaled_op",
     "diversity",
     "depth",
@@ -65,7 +65,7 @@ export function exportMarketDecisionsCsv(
       pick(ov?.composite, c.composite),
       c.tier,
       pick(ov?.pricing, c.pricing),
-      pick(ov?.absorption, c.absorption),
+      // absorption column removed in v1.1.
       pick(ov?.scaledOperator, c.scaledOperator),
       pick(ov?.diversity, c.diversity),
       pick(ov?.depth, c.depth),

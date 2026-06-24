@@ -923,7 +923,7 @@ export default function SiteAnalysis() {
 
   const mapboxToken = useMapboxToken();
   const [exporting, setExporting] = useState(false);
-  const handleExport = async () => {
+  const handleExport = async (singleId?: string) => {
     setExporting(true);
     try {
       // Include EVERY visible card — scored AND un-scored. The brief renders

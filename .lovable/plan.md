@@ -1,58 +1,93 @@
-# Market Validation — Badge Tooltips + Clearer Wording
+## Goal
 
-## What we are changing and why
+Two clear fixes on the MVS QA Queue page:
 
-The Market Validation page shows badges in 3 places. Each has a problem:
+1. Show **exactly which URLs the bot tried** for each flagged provider and **what went wrong**, so a human can quickly see what to QA.
+2. Make **Mark resolved** actually work end‑to‑end (find why clicking it does nothing for you and fix it).
 
-1. **Sub-score cards (pillar badges)** — say "High confidence" / "Medium confidence" / "Limited source coverage". The words "High/Medium confidence" are unclear — they sound like the AI is sure, but they actually mean "how many premium camps fed this number". We will rename them so the meaning is obvious.
-2. **City pill** (Shortlist table + Live City Deep-Dive header) — says "⚑ Limited Source Coverage". The tooltip uses the plain HTML `title=""` attribute, which often does not appear (slow, no styling, sometimes blocked by hover layers).
-3. **QA Queue** — shows "(AI certainty: 75%)" as plain text with no tooltip explaining what the number means.
+No scoring/database math changes. Pipeline behavior stays the same — we just capture and show more of what already happens.
 
-Fix: use the real shadcn `<Tooltip>` component (same one used elsewhere in the app) so hover always works, looks consistent, and explains the reason behind each badge.
+---
 
-## New wording (sub-score stamp)
+## What is happening today (so you have full clarity)
 
-Old → New (label only, colors stay the same):
+When we run the pipeline for a city, for every camp provider the bot does this inside `mvs-extract-weeks`:
 
-- "High confidence" → **"Strong data coverage"**
-- "Medium confidence" → **"Partial data coverage"**
-- "Limited source coverage" → **"Limited data coverage"** (kept similar, lowercase changed for consistency)
+1. Picks a **starting website** = `website_url` → else `source_listing_url` → else `url`.
+2. Asks Firecrawl `/map` for up to 100 links on that site and scores them for words like "summer-camp / register / schedule".
+3. Asks Firecrawl `/search` for `"<provider> <city> summer camp registration schedule"` and keeps results on the same domain or on `hisawyer.com`.
+4. Scrapes the top 3 candidate pages and picks the one with the most week dates + status words.
+5. If none of that works, the provider is added to the QA queue with `entity_type = 'provider'` and a tiny `reason` text like `no registration page found` or `extraction returned 0 weeks`.
 
-Reason: the stamp is driven by how many premium providers feed the sub-score (see `confidenceFor()` in `LiveCityDeepDive.tsx`). "Data coverage" matches what the code actually measures. The word "confidence" stays only on the QA Queue, where it really is the AI model's own certainty.
+The problem: **none of the URLs the bot tried, and no per‑URL error, are saved.** The QA row only has the short `reason` string. That is why on the QA page you cannot see which page it actually checked.
 
-## Tooltip content (what each badge will explain on hover)
+For "Mark resolved": the button calls a database function `mvs_qa_resolve` which sets `resolved_at = now()`. The DB function looks correct and your role is manager. Checked the table: 0 of the current 16 New York rows are resolved, so either the call is silently failing or the UI isn't refreshing. Needs a live test with the network tab to confirm before we change anything.
 
-- **City pill "⚑ Limited Source Coverage"** — "More than 20% of premium providers in this city had missing or broken registration pages we could not read. The Market Validation Score still computed, but treat it with caution until those sources are fixed in the QA Queue."
-- **Sub-score "Strong data coverage"** — "X premium providers fed this sub-score. Enough data points for a stable result."
-- **Sub-score "Partial data coverage"** — "Only X premium providers fed this sub-score (or Y items are in the QA queue). Number may shift after QA review."
-- **Sub-score "Limited data coverage"** — the existing per-key reason (no data scraped, too few providers, watchlist empty, etc.) plus a one-line meaning.
-- **QA Queue "(AI certainty: 75%)"** — "This is the AI model's own self-rated certainty for the week status it guessed. Anything under 70% lands in this queue for a human to confirm."
+---
 
-## Files affected
+## Plan (phases, one Lovable turn each)
 
-- `src/components/phase2-demo/LiveCitySourcePanels.tsx` — `ConfidenceStamp`: rename labels, swap `title` for `<Tooltip>`.
-- `src/components/phase2-demo/LowConfidenceBadge.tsx` — swap `title` for `<Tooltip>`.
-- `src/components/phase2-demo/ShortlistTable.tsx` — city row pill: wrap in `<Tooltip>`.
-- `src/components/phase2-demo/LiveCityDeepDive.tsx` — header pill: wrap in `<Tooltip>`; pass richer `detail` strings into `ConfidenceStamp` if needed.
-- `src/pages/MVSQAQueue.tsx` — wrap "(AI certainty: X%)" in `<Tooltip>`.
+### Phase 1 — Capture diagnostics in the pipeline (1 turn)
 
-No scoring math, no DB writes, no Firecrawl logic touched. Presentation-only.
+- Migration: add column `mvs_qa_queue.diagnostics jsonb` (nullable). No data loss, no policy change.
+- In `supabase/functions/mvs-extract-weeks/index.ts`:
+  - On `ProviderOutcome`, add `root_url`, `tried_pages: { url, step, ok, http_status?, note? }[]`, `firecrawl_calls`.
+  - Record one entry every time we call `/map`, `/search`, or `/scrape` for that provider, with the URL and a short note (e.g. `map ok 87 links`, `scrape http 403`, `scrape too short md`, `search returned 0 same-domain results`).
+  - When inserting provider QA rows, also write `diagnostics = { root_url, tried_pages, error }`.
+- Re-running the pipeline for a city will refill diagnostics for newly flagged rows. Old rows stay as they are (we'll show a friendly fallback for them).
 
-## Risk
+### Phase 2 — Show the diagnostics on the QA page (1 turn)
 
-Very low. Pure label + tooltip changes. `TooltipProvider` already wraps the app (used by sidebar and other components), so no provider plumbing needed.
+In `src/pages/MVSQAQueue.tsx`, under "Why flagged" for each provider card add a clean panel:
 
-## Phases & turns
+```text
+Bot started at:    <root url>  ↗ open
+Pages the bot tried:
+  • https://… /summer-camps          scrape → 403 forbidden
+  • https://… /register              scrape → ok, but page was too short
+  • https://… /classes               scrape → ok, no week dates found
+Search results checked:
+  • hisawyer.com/<provider>/…        scrape → ok, no week dates found
+Final result: no registration page found
+```
 
-- **Phase 1 (1 turn)** — Update `ConfidenceStamp` labels and tooltips, update `LowConfidenceBadge`, update the two city pill sites, update QA Queue line. Run `tsc --noEmit`.
+- Each URL is a clickable link that opens in a new tab so the reviewer can verify in one click.
+- For old rows without `diagnostics`, show: *"Diagnostics weren't captured for this row. Re-run the pipeline for this city to record what the bot tried."*
+- Keep the existing "open provider website ↗" and "search the web ↗" links in the header.
 
-That's the whole task in one safe phase.
+### Phase 3 — Fix "Mark resolved" (1 turn)
 
-## What to test after
+- Open the page, click Mark resolved, watch the network call to `rpc/mvs_qa_resolve` and the console. Three likely causes:
+  - **a)** RPC returns an error and `toast.error` is firing but you don't notice → make the error visible, log it.
+  - **b)** RPC succeeds but `load()` isn't re-running → force `await load()` and clear the row from local state immediately for instant feedback.
+  - **c)** Auth header missing on the RPC call → re-check session.
+- Fix the actual cause found above. Add a small visual change: when a row is resolved, fade it out and show "✓ Resolved by you just now" for 2 seconds before it disappears, so you have proof the click worked.
+- Also add a clearer error toast that shows the full DB error message when it fails.
 
-- Hover each badge on `/market-validation` city table → tooltip appears.
-- Open any city deep-dive → hover the header pill and each sub-score stamp → tooltips appear with clear text.
-- Open `/mvs-qa-queue` → hover "AI certainty: X%" → tooltip explains the 70% threshold.
-- Confirm wording reads: "Strong data coverage", "Partial data coverage", "Limited data coverage" on sub-score cards.
+### Phase 4 — Smoke test together (0 code, just verify)
 
-Waiting for your approval before I start Phase 1.
+- On `/market-validation` → open `/mvs-qa-queue` → New York.
+- Confirm each card now shows the tried URLs + per‑URL note.
+- Click Mark resolved on one provider — row should fade and disappear; toggling "Show resolved" should bring it back marked resolved.
+- Re-run the pipeline for one small city and confirm new rows have full `diagnostics`.
+
+---
+
+## What may be affected
+
+- `mvs-extract-weeks` edge function (more fields written, same flow).
+- `mvs_qa_queue` table (one new nullable jsonb column + GRANTs unchanged).
+- `MVSQAQueue.tsx` page UI.
+- Nothing else: no change to scoring, weights, shortlist, Market Validation table, briefs, exports, or any other page.
+
+## Risks / what not to touch
+
+- Do **not** change `mvs_qa_resolve` signature or how week-level rows are saved.
+- Do **not** change Firecrawl call counts or thresholds.
+- Old QA rows stay valid; they simply have no diagnostics until next pipeline run.
+
+## Effort
+
+~3 small Lovable turns + 1 verify turn.
+
+**Please approve and I'll start with Phase 1.**

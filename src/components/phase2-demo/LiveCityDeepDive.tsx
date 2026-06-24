@@ -630,24 +630,32 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                     >
                       {Math.round(weight * 100)}%
                     </span>
-                    <ConfidenceStamp level={confidence.level} detail={confidence.detail} />
+                    {band && (
+                      <span
+                        className={CHIP}
+                        style={{ backgroundColor: BAND_COLORS[band.tone].bg, color: BAND_COLORS[band.tone].fg }}
+                      >
+                        {band.label}
+                      </span>
+                    )}
                   </div>
                   <p className="mt-0.5 text-[11px]" style={{ color: MUTED }}>
                     {meta.subtitle}
                   </p>
-                  {band && (
-                    <span
-                      className={`${CHIP} mt-1.5`}
-                      style={{ backgroundColor: BAND_COLORS[band.tone].bg, color: BAND_COLORS[band.tone].fg }}
-                    >
-                      {band.label}
-                    </span>
-                  )}
+                  {(() => {
+                    const why = bandWhyFor(meta.key, score, input);
+                    return why ? (
+                      <p className="mt-1 text-[11px] leading-snug" style={{ color: MUTED }}>
+                        {why}
+                      </p>
+                    ) : null;
+                  })()}
                   <p className="mt-1.5 text-[11px] leading-snug" style={{ color: MUTED }}>
                     <span className="font-semibold" style={{ color: NAVY }}>
                       {confidence.level === "high" ? "High confidence" : confidence.level === "medium" ? "Medium confidence" : "Low confidence"}
                     </span>{" "}
-                    — {confidence.detail}
+                    — {confidence.detail}{" "}
+                    <ConfidenceStamp level={confidence.level} detail={confidence.detail} />
                   </p>
 
                 </div>

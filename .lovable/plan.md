@@ -1,54 +1,48 @@
 
-# Boston MVS Page Fix — All 3 Phases Together
+# Add "Why this number?" Popovers for Watchlist + ACS Rows
 
-Goal: after a fresh pipeline run, every word and number on the MVS deep-dive must match the live database. No more "Jun 19" stamps, no more "591 providers", no more "extract" mention.
+## What you saw
+On the Pricing card you can click **40** (% of providers ≥ $500/wk) and a popover lists the 10 providers behind it. Good.
 
-## Phase 1 — Auto-refresh score after pipeline run
-**File:** `supabase/functions/mvs-run-pipeline/index.ts`
+But on these rows there is no popover at all:
+- **National operators (validating)** · 2 · Watchlist
+- **Direct competitors / 10k kids** · 0.23 · Watchlist + ACS
+- **Children 5–12 (US Census ACS)** · 43366 · US Census ACS
+- **Coverage ratio (kids / seat)** · 2720.47 · US Census ACS
+- **Affluent dual-income families (ACS)** · 40807 · US Census ACS
 
-After the existing `discover → classify → ACS` steps finish for a city, add one more call to the score-recompute path that the "Refresh scores" button already uses. Same city, same response shape. If recompute fails, the run still returns success and we log a warning — the user can hit "Refresh scores" manually as a fallback.
+That is because `proofForInput()` in `LiveCityDeepDive.tsx` only knows how to build a list for price / premium count / categories. The 5 inputs above return `null` so the number stays plain text, not clickable.
 
-Result: score, sub-scores, and all "scraped on" dates update on their own when the run finishes.
+## Fix plan (1 small UI phase)
 
-## Phase 2 — Fix wrong copy under the score
-**File:** `src/components/phase2-demo/LiveCityDeepDive.tsx` (the file that renders "Computed from 591 providers and 87 week rows")
+Extend `proofForInput()` to return a row list for each of those 5 keys. All data is already loaded by `useLiveMvs` — no new fetch, no math change.
 
-Change the line to read the live counts from the same data the page already loads via `useLiveMvs`:
-- "Computed from **{providerCount}** providers" — use the real provider count for the city.
-- Drop "and X week rows" entirely (Market Absorption is retired, weeks don't feed the score anymore).
-
-Also fix the Pricing sub-score helper text "Based on 10 of 15 providers with a readable price" so the denominator reads the live `mvs_providers` total for the city, not a cached sample.
-
-## Phase 3 — Remove retired references from the page
-**Files:** `src/components/phase2-demo/LiveCityDeepDive.tsx`, `src/components/phase2-demo/RunPipelineButton.tsx`, `src/components/phase2-demo/LiveCitySourcePanels.tsx`
-
-- **Help text under Run Pipeline:** change `discover → classify → extract → cap 50 Firecrawl calls` → `discover → classify → ACS → cap 50 Firecrawl calls`.
-- **Data sources card:** remove the `Sawyer week availability 51/87 loaded` chip — weeks step retired.
-- **"Scraped Jun 19" stamps:** remove the date pill on sub-score cards that no longer use weeks data (keep it on cards still backed by live scrapes, like Premium Providers).
+| Row | What the popover will show |
+| --- | --- |
+| **National operators (validating)** | Title: "Validating national operators (N)". List every watchlist brand whose name matches a premium provider in this city. Each row: brand name + overlap tag (direct/adjacent). Source: `mvs_operator_watchlist` + provider match. |
+| **Direct competitors / 10k kids** | Title: "Direct competitors per 10k kids = X". Two-line explanation: `direct_match_count ÷ (children_5_12 ÷ 10000)`. List the direct-overlap brands matched in this city. |
+| **Children 5–12 (US Census ACS)** | Title: "Children 5–12 in {city}". One row showing the ACS number and the source URL (data.census.gov). |
+| **Coverage ratio (kids / seat)** | Title: "Coverage ratio = X kids per seat". Shows the formula `affluent_dual_income_families ÷ premium_provider_count` with the live inputs side by side and which band it lands in (Saturated/Competitive/Balanced/Underserved). |
+| **Affluent dual-income families (ACS)** | Title: "Affluent dual-income families in {city}". Shows the formula `families_with_kids_5_12 × pct_dual_income × pct_above_150k` with each input value from `site_analysis_acs_cache`. |
 
 ## What is NOT changing
-- No DB schema changes.
-- No score-math changes (weights, formulas, thresholds untouched).
-- No RLS, grants, edge function auth changes.
-- The `mvs-extract-weeks` function stays on disk (already unused) — we just remove UI mentions.
+- No score math change.
+- No new database fetch — all values are already on the page via `useLiveMvs`.
+- The 3 existing popovers (price / premium count / categories) stay exactly as they are.
+- All other cards untouched.
+
+## Files touched
+- `src/components/phase2-demo/LiveCityDeepDive.tsx` — extend `proofForInput()` to handle 5 more keys. Pass `watchlist`, `overrides`, and `acs` into it so it can build the rows.
 
 ## Risk
-- Low. Phase 1 adds one extra HTTP call inside an already-running function; wrapped in try/catch.
-- Phase 2 & 3 are text + count swaps in one React file each.
+Very low. Pure presentation. If a needed input is `null`, the function returns `null` and the row stays non-clickable (same as today) — no broken popover.
 
-## How to smoke-test after all 3 phases
-1. Click any other city row → no red toast (already fixed last turn).
-2. Open Boston → press **Run Pipeline**.
-3. Wait ~2 min for green success toast.
-4. Check the score card under Boston:
-   - "Last refreshed" should read **just now / today**.
-   - "Computed from **215** providers" (not 591, no "week rows").
-   - Pricing card: "Based on 40 of 215 providers with a readable price" (not 10 of 15).
-   - All sub-score "scraped on" dates should be today.
-5. Help text under Run Pipeline should say `discover → classify → ACS`, no `extract`.
-6. Data Sources card should not show "Sawyer week availability".
+## Smoke test
+1. Open Boston deep-dive.
+2. Click **2** on "National operators (validating)" → popover lists Steve & Kate's Camp (direct), Code Ninjas (adjacent).
+3. Click **0.23** on "Direct competitors / 10k kids" → popover shows the formula and the matched direct brands.
+4. Click **43366** on "Children 5–12 (US Census ACS)" → popover shows ACS source + value.
+5. Click **2720.47** on "Coverage ratio" → popover shows the kids ÷ seats math and the band.
+6. Click **40807** on "Affluent dual-income families" → popover shows the multiplication of the 3 ACS inputs.
 
-## Order of work
-I'll do Phase 1 (backend edge function), then Phase 2 (page copy + counts), then Phase 3 (remove retired text), in that order, in **3 separate turns** so each is easy to review and rollback.
-
-Approve and I'll start with Phase 1.
+Approve and I will implement in one turn.

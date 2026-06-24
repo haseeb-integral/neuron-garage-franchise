@@ -601,6 +601,11 @@ Deno.serve(async (req) => {
             ? (o.error ? `no usable page: ${o.error}` : "no registration page found")
             : (o.error ?? "extraction returned 0 weeks"),
           confidence: null,
+          diagnostics: {
+            root_url: o.root_url ?? o.url ?? null,
+            tried: o.tried ?? [],
+            error: o.error ?? null,
+          },
         }));
       if (providerQaRows.length > 0) {
         await admin.from("mvs_qa_queue").insert(providerQaRows);

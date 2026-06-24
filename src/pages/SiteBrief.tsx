@@ -523,14 +523,16 @@ export default function SiteBrief() {
               className="sb-serif"
               style={{
                 color: "white",
-                fontSize: 68,
+                fontSize: candidates.length > 1 ? 60 : 68,
                 fontWeight: 600,
                 lineHeight: 0.98,
                 margin: "8px 0 0",
                 letterSpacing: "-0.025em",
               }}
             >
-              {topOrFallback.schoolName}
+              {candidates.length > 1
+                ? `${candidates.length} Candidate Sites`
+                : topOrFallback.schoolName}
             </h1>
             <div
               className="sb-serif"
@@ -542,7 +544,9 @@ export default function SiteBrief() {
                 marginTop: 4,
               }}
             >
-              {topOrFallback.address}
+              {candidates.length > 1
+                ? `Top: ${topOrFallback.schoolName} · ${topOrFallback.address}`
+                : topOrFallback.address}
             </div>
           </div>
 

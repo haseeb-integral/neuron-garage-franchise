@@ -219,9 +219,9 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                 <span
                   className={CHIP}
                   style={{ backgroundColor: "#fce7ec", color: "#a3142b" }}
-                  title="Low-confidence flag set on mvs_city_flags"
+                  title="Limited Source Coverage: more than 20% of premium providers had missing or broken registration pages. Treat the MVS score with caution."
                 >
-                  ⚑ Low Confidence
+                  ⚑ Limited Source Coverage
                 </span>
               )}
             </div>

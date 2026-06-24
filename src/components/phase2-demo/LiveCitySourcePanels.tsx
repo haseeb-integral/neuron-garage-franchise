@@ -289,7 +289,7 @@ export function ConfidenceStamp({
   const palette = {
     high: { bg: "#e3f3e7", fg: "#1d6b32", label: "High confidence" },
     medium: { bg: "#fff5e0", fg: "#8a5a00", label: "Medium confidence" },
-    low: { bg: "#fce7ec", fg: "#a3142b", label: "Low confidence" },
+    low: { bg: "#fce7ec", fg: "#a3142b", label: "Limited source coverage" },
   }[level];
   return (
     <span

@@ -45,7 +45,7 @@ interface Props {
   liveOverlays?: Map<string, LiveOverlay>;
 }
 
-type SortKey = "city" | "composite" | "pricing" | "absorption" | "scaledOperator" | "diversity" | "depth" | "verdict";
+type SortKey = "city" | "composite" | "pricing" | "scaledOperator" | "diversity" | "depth" | "verdict";
 
 export function ShortlistTable({ rows, activeCityId, onSelectCity, liveOverlays }: Props) {
 

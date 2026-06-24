@@ -510,13 +510,69 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                 <ul className="mt-3 space-y-1 border-t border-dashed pt-2" style={{ borderColor: BORDER }}>
                   {Object.entries(input).map(([k, v]) => {
                     if (v == null || k === "year2Signal") return null;
+                    const display =
+                      typeof v === "number" ? (Number.isInteger(v) ? v : v.toFixed(2)) : String(v);
+                    const proof = proofForInput(k, premiumProviders, categoryCounts);
                     return (
                       <li key={k} className="flex items-center justify-between gap-2 text-[11px]">
                         <span style={{ color: MUTED }}>{INPUT_LABELS[k] ?? k}</span>
                         <span className="flex items-center gap-1.5">
-                          <span className="font-medium tabular-nums" style={{ color: NAVY }}>
-                            {typeof v === "number" ? (Number.isInteger(v) ? v : v.toFixed(2)) : String(v)}
-                          </span>
+                          {proof ? (
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="font-medium tabular-nums underline decoration-dotted underline-offset-2 hover:text-[#174be8]"
+                                  style={{ color: NAVY }}
+                                  title="Click to see the rows behind this number"
+                                >
+                                  {display}
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent
+                                align="end"
+                                className="w-[320px] p-0"
+                                style={{ borderColor: BORDER }}
+                              >
+                                <div className="border-b px-3 py-2 text-[12px] font-bold" style={{ borderColor: BORDER, color: NAVY }}>
+                                  {proof.title}
+                                  <div className="mt-0.5 text-[10px] font-normal" style={{ color: MUTED }}>
+                                    {proof.subtitle}
+                                  </div>
+                                </div>
+                                <div className="max-h-[260px] overflow-y-auto">
+                                  {proof.rows.length === 0 ? (
+                                    <div className="px-3 py-3 text-[11px]" style={{ color: MUTED }}>
+                                      No rows to show.
+                                    </div>
+                                  ) : (
+                                    <ul className="divide-y" style={{ borderColor: BORDER }}>
+                                      {proof.rows.map((r, i) => (
+                                        <li
+                                          key={i}
+                                          className="flex items-center justify-between gap-2 px-3 py-1.5 text-[11px]"
+                                          style={{ borderColor: BORDER }}
+                                        >
+                                          <span className="min-w-0 truncate" style={{ color: NAVY }}>
+                                            {r.label}
+                                          </span>
+                                          {r.value != null && (
+                                            <span className="shrink-0 tabular-nums font-semibold" style={{ color: NAVY }}>
+                                              {r.value}
+                                            </span>
+                                          )}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
+                                </div>
+                              </PopoverContent>
+                            </Popover>
+                          ) : (
+                            <span className="font-medium tabular-nums" style={{ color: NAVY }}>
+                              {display}
+                            </span>
+                          )}
                           <span
                             className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold"
                             style={{ backgroundColor: SOFT, color: MUTED, border: `1px solid ${BORDER}` }}
@@ -530,6 +586,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                   })}
                 </ul>
               )}
+
 
 
               {meta.key === "enrichmentDiversity" && (

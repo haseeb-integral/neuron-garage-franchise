@@ -215,7 +215,12 @@ export default function MarketValidation() {
           diversity: r.scores.enrichmentDiversity,
           depth: r.scores.marketDepth,
           balance: r.scores.marketBalance,
-          lowConfidence: bundle.flag?.low_confidence_badge ?? false,
+          // `low_confidence_badge` is computed from no_reg_page_pct (a
+          // retired signal — Market Absorption was removed). Force false so
+          // the Limited Source Coverage badge no longer fires for that
+          // reason alone.
+          lowConfidence: false,
+
         });
       }
     }

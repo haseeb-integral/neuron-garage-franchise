@@ -46,8 +46,6 @@ const PILLARS: {
 }[] = [
   { key: "pricingAcceptance", title: "Pricing Acceptance", subtitle: "Are families already paying premium pricing?",
     formula: "0.40 × norm(median, $300–$700) + 0.40 × norm(p75, $400–$800) + 0.20 × norm(% ≥ $500, 0–100)" },
-  { key: "marketAbsorption", title: "Market Absorption", subtitle: "Are premium operators actually selling out?",
-    formula: "v1.0: norm(SelloutRate, 0–80). Time-to-sellout & YoY are Year-2 signals." },
   { key: "scaledOperator", title: "Scaled Operator", subtitle: "Validated vs saturated by national operators?",
     formula: "0.65 × norm(Validation, 0–8) + 0.35 × (100 − norm(DirectLoad per 10k, 0–5))" },
   { key: "enrichmentDiversity", title: "Enrichment Diversity", subtitle: "Do families invest across multiple categories?",
@@ -61,8 +59,10 @@ const PILLARS: {
 // Weight slider state in the URL: ?w=pa:0.2,ma:0.25,...
 function parseWeights(s: string | null): Record<string, number> {
   if (!s) return { ...DEFAULT_WEIGHTS };
+  // Note: `ma:` (Market Absorption) is intentionally absent — pillar removed in v1.1.
+  // Unknown tokens in old saved URLs are silently ignored below.
   const keyMap: Record<string, keyof typeof DEFAULT_WEIGHTS> = {
-    pa: "pricingAcceptance", ma: "marketAbsorption", so: "scaledOperator",
+    pa: "pricingAcceptance", so: "scaledOperator",
     ed: "enrichmentDiversity", md: "marketDepth", mb: "marketBalance",
   };
   const out: Record<string, number> = { ...DEFAULT_WEIGHTS };
@@ -761,9 +761,8 @@ export default function MarketBrief() {
             </table>
           )}
           <p style={{ marginTop: 18, fontSize: 10, color: "var(--mb-muted)", lineHeight: 1.6 }}>
-            Appendix data pulled at render time directly from <span className="mb-mono">mvs_weeks</span>. The
-            {" "}<span className="mb-mono">marketAbsorption</span> pillar score on §2 is derived from these
-            same rows: (sold_out + waitlist) ÷ total.
+            Appendix data pulled at render time directly from <span className="mb-mono">mvs_weeks</span>.
+            Shown for transparency only — Market Absorption was removed from the composite in v1.1.
           </p>
         </section>
       </div>

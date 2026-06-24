@@ -91,7 +91,11 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
     setLastTerminalId(latest.id);
     if (latest.status === "done") {
       toast.success(`Pipeline complete · ${latest.firecrawl_calls} Firecrawl calls`);
+      // Invalidate + force an immediate refetch so the "Scores as of" timestamp
+      // and all sub-score "scraped on" dates update right now instead of on
+      // next page-visit. Without the refetch, cachedAt stays old.
       invalidateAllMvs(queryClient);
+      queryClient.refetchQueries({ queryKey: ["mvs-live"] });
       onComplete?.();
     } else {
       toast.error(`Pipeline failed: ${latest.error ?? "unknown error"}`);
@@ -117,6 +121,7 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
         // Pre-mark this run id so the polling effect doesn't fire a second toast.
         if (data.run_id) setLastTerminalId(data.run_id);
         invalidateAllMvs(queryClient);
+        queryClient.refetchQueries({ queryKey: ["mvs-live"] });
         onComplete?.();
       }
       await fetchLatest();
@@ -154,7 +159,7 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
     <div className="mb-5 flex flex-wrap items-center gap-3 rounded-lg border border-dashed bg-white p-3" style={{ borderColor: "#cfd8e6" }}>
       {triggerButton}
       <div className="text-[11px] text-[#526078]">
-        Admin only · discover → classify → extract · cap 30 Firecrawl calls
+        Admin only · discover → classify → ACS · cap 30 Firecrawl calls
       </div>
       {latest && (
         <div className="ml-auto flex items-center gap-2 text-[11px] text-[#526078]">
@@ -209,7 +214,7 @@ export function PipelineStatusStrip({ city }: { city: string }) {
 
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#526078]">
-      <span>Admin only · discover → classify → extract · cap 30 Firecrawl calls</span>
+      <span>Admin only · discover → classify → ACS · cap 30 Firecrawl calls</span>
       {latest && (
         <span className="flex items-center gap-1.5">
           {StatusIcon && (

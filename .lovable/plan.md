@@ -1,70 +1,57 @@
-## No-Fake-Numbers Refactor — MV + SAS
 
-### Goal
-Two things in one pass:
-1. **No fake/demo numbers ever leak into scoring or displayed scores** on MV or SAS pages. Empty state = "—" with a "Not yet scored" pill.
-2. Split `src/data/phase2DemoData.ts` so real config and shared types are not mixed with demo fallbacks.
+# Plan — Fix SAS export + add per-card PDF download
 
-### Safety promises (will not change)
-- MV page still loads, lists all 9 cities, live data still shows.
-- SAS page still loads. Saved live sites still show.
-- Build stays clean, all 121 tests still pass.
-- Live scoring engine (`computeMvs`, `useLiveMvs`, `useSiteScore`, `cityScoringLiveData`) is not touched.
+## Part 1 — Why the PDF still shows only one site (diagnose + fix)
 
-### Audit findings (so far — will reconfirm when background audit returns)
+The code in `handleExport` already loops over **every** slot (scored or not) and the brief page already loops over `candidates`. So on paper it should work. Since you still see only one site in the PDF, the bug is somewhere else. I will not guess again — I will reproduce it first, then fix the real cause.
 
-| Symbol | Real category | Leaks fake numbers into scoring? |
-|---|---|---|
-| `SITE_CONFIDENCE_THRESHOLDS` | Real SAS config | No |
-| `SCHOOL_PROFILE_FACTORS` | Real SAS doc data | No (rendered on methodology page only) |
-| `MARKET_BALANCE_BANDS`, `MARKET_BALANCE_ACTIVE_BAND` | Cosmetic chip labels | No, but `ACTIVE_BAND` is hardcoded "underserved" — only used on Methodology page, not MV scoring |
-| `SCRAPE_CADENCE`, `QA_QUEUE_FLAGGED_COUNT` | UI labels | No |
-| `ShortlistRow`, `SiteAnalysisDemoSite` | TypeScript types | No |
-| **`SHORTLIST_DEMO`** | Seed list of 9 cities + **fake pricing / scaledOperator / diversity / depth / composite numbers** | **YES** — when no live overlay exists, the ShortlistTable shows these numbers as if real |
-| **`sanAntonioMarketValidationDemo`** | Sub-scores, signals, providers | Currently unused on MV page (LiveCityDeepDive replaced it). Still fed into `sampleBriefAdapter` for PDF export. |
-| **`austinSiteAnalysisDemo`** (Trinity + LeafSpring) | Two demo sites with hardcoded composites | **YES** — rendered on SAS page as if real sites |
-| `SITE_ACCESSIBILITY_CALLOUTS` | Hardcoded "3 min · Loop 360" etc. for Trinity / LeafSpring | Tied to the two demo sites — goes when they go |
-| `sampleBriefAdapter.deriveBalance()` | Back-solves marketBalance from demo composite | **YES** for sample rows — only runs when row has no live data |
+**Phase 1A — Reproduce with Playwright (1 turn, no code change)**
+- Open `/site-analysis` in a headless browser.
+- Confirm how many cards are on screen.
+- Click **Export Site Report (PDF)**.
+- Capture the new tab URL, read `window.opener.__nrgSasBrief` payload, count `candidates.length`.
+- Read console + network for errors.
+- Screenshot the brief page itself and count the per-site sections.
 
-### Your answers locked in
-- **Empty score cells → "—" with a "Not yet scored" pill.**
-- **Trinity / LeafSpring removed entirely** from SAS — only live sites show.
+This tells us exactly where cards are getting lost: at export time (slots empty), at handoff time (payload truncated), or at render time (brief page filtering).
 
----
+**Phase 1B — Fix the real cause (1 turn)**
+Based on Phase 1A findings, fix the single real bug. Most likely candidates:
+- The brief page may be filtering by `composite != null` in a section I missed.
+- `top` / `topOrFallback` may be the only one rendered in the cover, and the per-site loop may be gated.
+- `scored` array in `SiteAnalysis.tsx` may be filtered upstream by another memo.
+- Map PNG fetch may throw for one card and the whole `Promise.all` rejects, falling back to a stale payload.
 
-### Phases (4 small turns)
+I will not touch scoring math, saved-sites loader, MV page, or DB.
 
-**Phase 1 — Stop fake-number leak on MV table (1 turn)**
-- `ShortlistTable.tsx`: when no live overlay exists for a row, render each score cell as "—" instead of `r.pricing`, `r.scaledOperator`, etc. Add a small "Not yet scored" pill next to the city name when overlay is missing.
-- `SHORTLIST_DEMO`: strip the fake number fields. Keep only `id`, `city`, `state`, and a flag/label. The 9 cities still appear in the table (so the list is preserved) but their score columns show "—" until the pipeline runs.
-- `decisionsExport.ts`: when no overlay, write empty string in CSV instead of the demo number.
+## Part 2 — Per-card PDF download
 
-**Phase 2 — Remove Trinity / LeafSpring from SAS (1 turn)**
-- Delete `austinSiteAnalysisDemo` and `SITE_ACCESSIBILITY_CALLOUTS`.
-- `SiteAnalysis.tsx`: remove all references; show an empty-state card ("No sites saved yet — add a candidate site to begin") when the live saved-sites list is empty.
-- `SavedSitesDrawer.tsx`: confirm it only reads live `useSavedSites`, not demo.
+**Best practice (from common SaaS report UIs — Notion, Linear, Stripe Dashboard):**
+A **split button**: main button "Export All (PDF)" + a chevron that opens a dropdown listing each card by name with a download icon. This is the cleanest pattern — one button slot, no clutter, scales from 1 to 4 cards.
 
-**Phase 3 — Clean the sample PDF brief path (1 turn)**
-- `sampleBriefAdapter.ts`: stop deriving fake `marketBalance` from a demo composite. If a row has no live data, the brief export button is disabled (or routes to a "needs live data" message). PDF brief becomes live-only.
-- Remove `sanAntonioMarketValidationDemo` usage. Remove the file's `subScores` and `premiumProviders` blocks entirely.
+Alternative considered: a small "⬇ PDF" icon on every card header. Rejected because it duplicates UI and clutters the card. Split button is the standard.
 
-**Phase 4 — Split the file (1 turn, zero behavior change)**
-- New `src/lib/sas/config.ts` ← `SITE_CONFIDENCE_THRESHOLDS`, `SCHOOL_PROFILE_FACTORS` (real SAS config).
-- New `src/lib/mvs/shortlistSeed.ts` ← the slim seed list (id/city/state only) + `ShortlistRow` type + `MARKET_BALANCE_BANDS`, `SCRAPE_CADENCE`, `QA_QUEUE_FLAGGED_COUNT`.
-- Delete `src/data/phase2DemoData.ts`.
-- Update all 9 import sites to the new paths.
-- Run typecheck + vitest.
+**Implementation:**
+- Replace the single Export button in `src/pages/SiteAnalysis.tsx` with a shadcn split button: left half = "Export All (PDF)" (existing behavior), right half = chevron opening a `DropdownMenu`.
+- Dropdown items: one row per slot showing the school name + a download icon. Clicking calls the same `handleExport` but with a `singleId` filter, so only that one card goes into the payload.
+- Reuse the same brief page — it already handles a single-candidate payload (the cover, per-site sections, and the comparison table all degrade gracefully to 1 site).
+- The brief tab title already uses the top card's name, so a single-card export will be titled correctly.
 
-### Risks and what NOT to touch
-- Do NOT change `computeMvs.ts`, `useLiveMvs.ts`, `useSiteScore.ts`, `cityScoringLiveData.ts`, or any edge function — live scoring is correct, this is only about removing fake fallbacks.
-- Do NOT touch the Methodology pages' rendered sample tables (those are clearly labeled as documentation examples, not scores).
-- Risk: a test might assert on `row.pricing = 88` for NYC. Mitigation: typecheck + vitest run after each phase; fix tests to match the new shape.
+**Files touched:**
+- `src/pages/SiteAnalysis.tsx` — split button UI, `handleExport(singleId?: string)` signature.
+- No changes to `SiteBrief.tsx`, `SitePackDocument.tsx`, scoring, or DB.
 
-### Verification after Phase 4
-- `/market-validation` → all 9 cities visible. Cities without live data show "—" + "Not yet scored". Live cities (e.g. Austin) show live numbers.
-- `/site-analysis` → no Trinity / LeafSpring. Empty state if no live sites; saved live sites render normally.
-- Search the codebase: `rg "phase2DemoData"` returns no hits.
-- `tsgo --noEmit` clean, `vitest run` all green.
-- CSV export and PDF brief still work for live cities.
+## Out of scope
+Scoring math, MV page, saved-sites drawer, edge functions, schema.
 
-Waiting for your approval before I start Phase 1.
+## Risk
+Low. Part 1 is a targeted bug hunt with no scope creep. Part 2 is pure UI on one file.
+
+## Turns estimate
+- Phase 1A diagnose: 1 turn
+- Phase 1B fix: 1 turn
+- Part 2 per-card dropdown: 1 turn
+Total: **3 turns**.
+
+## Approval
+Please approve and I will start with Phase 1A (Playwright reproduction, no code change).

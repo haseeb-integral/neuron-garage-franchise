@@ -136,6 +136,8 @@ interface SlotState extends Candidate {
   status: SlotStatus;
   result: SiteScoreResult | null;
   error: string | null;
+  /** site_analyses.id this slot represents, when known. Used for soft-hide. */
+  analysisId?: string;
 }
 
 interface CardProps {
@@ -804,7 +806,7 @@ export default function SiteAnalysis() {
                 ? { lat: Number(cached.latitude), lng: Number(cached.longitude) }
                 : undefined,
           };
-          patchSlot(id, { status: "ready", result, error: null });
+          patchSlot(id, { status: "ready", result, error: null, analysisId: cached.id });
           // If the user is restoring a previously-hidden card, drop it from
           // the hidden list so refresh keeps it visible.
           unhideAnalysisId(cached.id);
@@ -827,7 +829,10 @@ export default function SiteAnalysis() {
         if ((data as { status?: string })?.status === "failed") {
           throw new Error((data as { error?: string }).error ?? "Engine failed");
         }
-        patchSlot(id, { status: "ready", result: data as SiteScoreResult, error: null });
+        const analysisId = (data as { analysis_id?: string }).analysis_id;
+        patchSlot(id, { status: "ready", result: data as SiteScoreResult, error: null, analysisId });
+        // Re-running an address that was previously hidden brings it back.
+        if (analysisId) unhideAnalysisId(analysisId);
       } catch (e) {
         const msg = (e as Error).message ?? "Engine call failed";
         patchSlot(id, { status: "error", error: msg });
@@ -885,6 +890,7 @@ export default function SiteAnalysis() {
         seen.add(row.address);
         extras.push({
           id: `persisted-${row.id}`,
+          analysisId: row.id,
           schoolName: row.school_name ?? "Saved candidate",
           address: row.address,
           schoolType: (row.school_type as SchoolType) ?? "private_elementary",
@@ -951,13 +957,16 @@ export default function SiteAnalysis() {
   }, [hiddenLoaded]);
 
   const removeSlot = (id: string) => {
+    const target = slots.find((s) => s.id === id);
     setSlots((prev) => prev.filter((s) => s.id !== id));
-    // Persisted rows are kept in the DB but added to the user's hidden list,
-    // so refresh keeps them gone. Restore via the Saved Sites drawer (no API
-    // spend — the score is read straight from the cached row).
-    if (id.startsWith("persisted-")) {
-      hideAnalysisId(id.replace("persisted-", ""));
-    }
+    // Hide the underlying site_analyses row across refresh + devices. Works for
+    // every slot type (hydrated, loaded from drawer, freshly computed) as long
+    // as the slot knows its analysis id. Restore via the Saved Sites drawer —
+    // no API spend, the score is read straight from the cached row.
+    const aid =
+      target?.analysisId ??
+      (id.startsWith("persisted-") ? id.replace("persisted-", "") : null);
+    if (aid) hideAnalysisId(aid);
   };
 
   // Save a freshly-computed Live Engine result into a slot. If pendingReplaceId

@@ -200,6 +200,57 @@ function freshnessForInput(key: string, lastRefreshed: string | null): string {
   return "Scraped";
 }
 
+// Build the click-through "proof" rows for an input number. Mirrors the
+// same filter computeMvs uses (premium tier + has the required field) so
+// the rows shown match the math exactly. Returns null when there is no
+// useful breakdown for the key.
+type ProofRow = { label: string; value?: string | number | null };
+function proofForInput(
+  key: string,
+  premiumProviders: any[],
+  categoryCounts: { label: string; count: number }[],
+): { title: string; subtitle: string; rows: ProofRow[] } | null {
+  if (
+    key === "medianPrice" ||
+    key === "p75Price" ||
+    key === "pctAtLeast500"
+  ) {
+    const withPrice = premiumProviders
+      .filter((p) => (p.price_min ?? null) != null)
+      .map((p) => ({
+        label: p.name,
+        value: `$${p.price_min}${p.price_max && p.price_max !== p.price_min ? `–$${p.price_max}` : ""}/wk`,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+    return {
+      title: `Providers behind this number (${withPrice.length})`,
+      subtitle: "Premium providers with a readable weekly price",
+      rows: withPrice,
+    };
+  }
+  if (key === "premiumProviderCount") {
+    const rows = premiumProviders
+      .map((p) => ({ label: p.name, value: p.category_classified ?? "—" }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+    return {
+      title: `Premium providers (${rows.length})`,
+      subtitle: "All providers classified as premium tier",
+      rows,
+    };
+  }
+  if (key === "categoryCount" || key === "diversityRatio") {
+    const rows = categoryCounts.map((c) => ({ label: c.label, value: c.count }));
+    return {
+      title: `Categories represented (${rows.length})`,
+      subtitle: "Premium providers grouped by classified category",
+      rows,
+    };
+  }
+  return null;
+}
+
+
+
 
 interface Props {
   cityKey: string;            // e.g. "Austin, TX"

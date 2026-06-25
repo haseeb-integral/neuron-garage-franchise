@@ -21,6 +21,23 @@ import { useAuth } from "@/contexts/AuthContext";
 import { SHORTLIST_SEED } from "@/lib/mvs/shortlistSeed";
 import { useShortlistAdditions } from "@/lib/mvs/useShortlistAdditions";
 import { AddCityDialog } from "@/components/phase2-demo/AddCityDialog";
+import {
+  decideFreshness,
+  formatShortDate,
+  ageDays,
+} from "@/lib/mvs/preCrawlFreshness";
+import { invalidateAllMvs } from "@/lib/mvs/useLiveMvs";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const BASE_SHORTLIST: { city: string; state: string }[] = SHORTLIST_SEED.map((row) => ({
   city: `${row.city}, ${row.state}`,

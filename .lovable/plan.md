@@ -1,99 +1,43 @@
-You are right. Denver did run again. The old fix was not safe enough.
+## Goal
+Make the "skipped fresh crawl" reason visible after the toast disappears, so the user can see why a city was not re-crawled.
 
-## What I found
+## What we'll add (UI only, MVS rollout table)
 
-The Run button was still able to start a fresh crawl even when Denver had a successful run today.
+**1. Inline row badge — "Skipped (saved data, N days old)"**
+- When the backend returns `skipped: true`, store that state per city in the table.
+- Show a small amber/blue badge next to the city's status cell:
+  - Text: `Skipped — used saved data from Jun 25 (0 days old)`
+  - Tooltip on hover: `Fresh crawl was skipped because saved data is ≤ 30 days old. Click "Force fresh" to override.`
+- Badge stays visible until the user runs the city again or refreshes.
 
-The real issue is this:
+**2. Longer-lived toast**
+- Bump toast duration from default (~4s) to ~10s.
+- Add a "Force fresh" action button inside the toast so the user can act directly.
 
-- The saved-data check was only a front-end check.
-- The backend pipeline still accepts a normal Run request and starts a crawl.
-- If the front-end check is missed, delayed, old code is still loaded, or the lookup fails, the crawl can still start.
-- That means the app was not protected end to end.
+**3. Last-skip note in the helper line below the table** (optional, small)
+- A one-line note: `Last action: Denver skipped at 4:52 PM — saved data 0 days old.`
+- Updates each time a skip happens. Cleared on page reload.
 
-So yes: the plan was not fully protected. It needed a backend safety check too.
+## What we will NOT touch
+- Backend `mvs-run-pipeline` logic
+- Freshness thresholds (still 30 / 60 days)
+- Scoring math, saved data, exports
+- Deep-dive `RunPipelineButton` (can mirror the same pattern in a later phase if you want)
 
-## Fix plan
+## Files to edit
+- `src/pages/MarketValidationRollout.tsx` — add per-row skip state, badge render, longer toast with action, optional helper line.
 
-### Phase 1 — Add a hard backend guard
+## Phases & turns
+- **Phase 1 (1 turn):** Inline badge + longer toast with "Force fresh" action.
+- **Phase 2 (optional, 1 turn):** Helper line under table + mirror to deep-dive `RunPipelineButton`.
 
-**Change:** Update the `mvs-run-pipeline` backend function.
+## Risks
+- Very low. UI-only change in one file for Phase 1.
+- No effect on crawls, scores, or data.
 
-Before it creates a new run or calls Firecrawl, it will check `mvs_pipeline_runs`.
+## Test after Phase 1
+- Click **Run** on Denver → toast stays ~10s with "Force fresh" button → amber badge appears on Denver row and remains visible.
+- Click **Force fresh** on Denver → badge clears, crawl starts normally.
+- Refresh page → badge clears (expected, since it's session-only).
 
-Rules:
-
-- If the city has good saved data from 0–30 days ago, do not crawl.
-- Return a clear response: `Using saved data. Fresh crawl skipped.`
-- Do not create a new `running` row.
-- Do not call Firecrawl.
-- If the user clicks `Force fresh`, allow the crawl.
-
-**Affected:**
-
-- Backend function: `mvs-run-pipeline`
-- Table read only: `mvs_pipeline_runs`
-- No scoring math change
-- No saved data structure change
-- No database schema change
-
-**Why this fixes the real problem:**
-
-Even if the UI fails, the backend will block the extra crawl.
-
-### Phase 2 — Make all Run buttons send the right intent
-
-**Change:** Update normal Run and Force fresh.
-
-- Normal `Run` sends `forceFresh: false` or no force flag.
-- `Force fresh` sends `forceFresh: true`.
-
-**Affected pages/components:**
-
-- City Scoring Console page
-- Market Validation deep-dive Run button
-- Any refresh-all helper that calls the same pipeline
-
-**Why:**
-
-This makes the meaning clear:
-
-- `Run` = use saved data when recent.
-- `Force fresh` = crawl again on purpose.
-
-### Phase 3 — Make the UI fail safe
-
-**Change:** If the page cannot check saved data for any reason, it must not start a crawl by default.
-
-It should show a message like:
-
-`Could not confirm saved data age. Use Force fresh if you still want to crawl.`
-
-**Why:**
-
-A lookup problem should not spend Firecrawl credits.
-
-### Phase 4 — Smoke test end to end
-
-I will test Denver specifically.
-
-Expected result after fix:
-
-1. Click normal `Run` for Denver.
-2. No new `running` row appears.
-3. No Firecrawl call starts.
-4. User sees a saved-data message.
-5. Click `Force fresh`.
-6. A new run starts only then.
-
-I will also check the database rows before and after to prove the normal Run did not create a new crawl.
-
-## Risk
-
-The only risk is blocking a real needed crawl by mistake.
-
-That is why the `Force fresh` button stays available.
-
-## Turns needed
-
-This should take 1 build turn.
+Approve Phase 1 and I'll implement.

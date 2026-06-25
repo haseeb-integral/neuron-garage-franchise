@@ -14,6 +14,20 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { invalidateAllMvs } from "@/lib/mvs/useLiveMvs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+// Pre-crawl freshness thresholds (days). See plan: avoid unnecessary re-crawl.
+const FRESH_SKIP_DAYS = 30;   // ≤ 30 → auto-skip
+const FRESH_PROMPT_DAYS = 60; // 31–60 → prompt; > 60 → run fresh
 
 type RunStatus = "queued" | "running" | "done" | "failed" | "done_stale" | "failed_no_data";
 
@@ -136,7 +150,27 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
     }
   }, [latest, lastTerminalId, onComplete, queryClient]);
 
-  const handleRun = async () => {
+  const [promptOpen, setPromptOpen] = useState(false);
+  const [promptAge, setPromptAge] = useState<number | null>(null);
+  const [promptDate, setPromptDate] = useState<string | null>(null);
+
+  // Find newest successful run (done or done_stale) for freshness check.
+  const findLastGoodRun = useCallback(async () => {
+    const { data } = await supabase
+      .from("mvs_pipeline_runs")
+      .select("finished_at, created_at, status")
+      .eq("city", city)
+      .in("status", ["done", "done_stale"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!data) return null;
+    const ref = (data as { finished_at: string | null; created_at: string }).finished_at
+      ?? (data as { created_at: string }).created_at;
+    return ref;
+  }, [city]);
+
+  const startCrawl = useCallback(async () => {
     setInvoking(true);
     try {
       const { data, error } = await supabase.functions.invoke("mvs-run-pipeline", {
@@ -163,7 +197,52 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
     } finally {
       setInvoking(false);
     }
-  };
+  }, [city, fetchLatest, onComplete, queryClient]);
+
+  const useSavedDataOnly = useCallback(
+    (dateIso: string | null) => {
+      const d = formatShortDate(dateIso);
+      const age = ageDays(dateIso);
+      toast.success(
+        `Using saved data${d ? ` from ${d}` : ""}${age != null ? ` (${age} day${age === 1 ? "" : "s"} old)` : ""} — skipped fresh crawl to save credits.`,
+        { duration: 7000 },
+      );
+      invalidateAllMvs(queryClient);
+      queryClient.refetchQueries({ queryKey: ["mvs-live"] });
+      onComplete?.();
+    },
+    [onComplete, queryClient],
+  );
+
+  // Click handler: apply the freshness pre-check, then either skip / prompt / run.
+  const handleRun = useCallback(
+    async (opts?: { force?: boolean }) => {
+      if (opts?.force) {
+        await startCrawl();
+        return;
+      }
+      const lastGoodIso = await findLastGoodRun();
+      const age = ageDays(lastGoodIso);
+      if (age == null) {
+        // No prior successful run → behave as today (run fresh).
+        await startCrawl();
+        return;
+      }
+      if (age <= FRESH_SKIP_DAYS) {
+        useSavedDataOnly(lastGoodIso);
+        return;
+      }
+      if (age <= FRESH_PROMPT_DAYS) {
+        setPromptAge(age);
+        setPromptDate(lastGoodIso);
+        setPromptOpen(true);
+        return;
+      }
+      // > 60 days → run fresh automatically.
+      await startCrawl();
+    },
+    [findLastGoodRun, startCrawl, useSavedDataOnly],
+  );
 
   const busy = invoking || inFlight;
   const status = latest?.status;
@@ -186,7 +265,7 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
   const triggerButton = (
     <button
       type="button"
-      onClick={handleRun}
+      onClick={() => { void handleRun(); }}
       disabled={busy}
       className="inline-flex items-center gap-2 rounded-md bg-[#174be8] px-3 py-1.5 text-[12px] font-semibold text-white shadow-sm transition hover:bg-[#0f37b5] disabled:cursor-not-allowed disabled:opacity-60"
     >
@@ -195,8 +274,58 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
     </button>
   );
 
+  const forceFreshLink = (
+    <button
+      type="button"
+      onClick={() => { void handleRun({ force: true }); }}
+      disabled={busy}
+      className="text-[11px] font-medium text-[#174be8] underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+      title="Bypass the saved-data check and crawl the city again now."
+    >
+      Force fresh crawl
+    </button>
+  );
+
+  const promptDialog = (
+    <AlertDialog open={promptOpen} onOpenChange={setPromptOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>This city has recent saved data</AlertDialogTitle>
+          <AlertDialogDescription>
+            {city} was last crawled on {formatShortDate(promptDate)}
+            {promptAge != null ? ` (${promptAge} days ago)` : ""}.
+            Use the saved data, or run a fresh crawl now? A fresh crawl will use Firecrawl credits.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel
+            onClick={() => {
+              setPromptOpen(false);
+              useSavedDataOnly(promptDate);
+            }}
+          >
+            Use saved data
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              setPromptOpen(false);
+              void startCrawl();
+            }}
+          >
+            Run fresh crawl
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
   if (variant === "compact") {
-    return triggerButton;
+    return (
+      <>
+        {triggerButton}
+        {promptDialog}
+      </>
+    );
   }
 
   const staleAge = ageDays(latest?.fallback_data_date ?? null);
@@ -205,8 +334,9 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
     <div className="mb-5 rounded-lg border border-dashed bg-white p-3" style={{ borderColor: "#cfd8e6" }}>
       <div className="flex flex-wrap items-center gap-3">
         {triggerButton}
+        {forceFreshLink}
         <div className="text-[11px] text-[#526078]">
-          Admin only · discover → classify → ACS · cap 30 Firecrawl calls
+          Admin only · discover → classify → ACS · cap 30 Firecrawl calls · skips re-crawl if saved data ≤ 30 days
         </div>
         {latest && statusMeta && (
           <div className="ml-auto flex items-center gap-2 text-[11px] text-[#526078]">
@@ -246,6 +376,7 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
           </div>
         </div>
       )}
+      {promptDialog}
     </div>
   );
 }

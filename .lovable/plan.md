@@ -1,47 +1,53 @@
-## Goal
-Avoid unnecessary re-crawls of cities that already have recent successful data. Save Firecrawl credits and time, while letting the user override when they want fresh data.
+# Fix: Use correct date when judging "how old is saved data?"
 
-## Rules (approved)
-- **0–30 days old** → skip crawl, use saved data automatically.
-- **31–60 days old** → show a prompt: *"This city was last crawled on [date]. Use saved data or run fresh?"*
-- **> 60 days old** → run fresh crawl automatically.
-- **Force fresh** → user can always override with a "Run fresh anyway" button.
-- **No saved data** → run fresh crawl (today's behavior).
+## Why
 
-## What will NOT change
-- Scoring math.
-- Database schema or saved data structure.
-- Firecrawl fallback logic (the "crawl failed → use saved data" path stays as-is — that's a separate layer).
-- Edge function pipeline steps.
+Right now `findLastGoodRun` in `RunPipelineButton.tsx` looks at the most recent successful run and uses `finished_at` to compute age.
 
-## Where the change lives
-- `src/components/phase2-demo/RunPipelineButton.tsx` — the "Run Pipeline" button. This is the only entry point for starting a crawl from the UI.
-- Read freshness from `mvs_pipeline_runs` (latest `done` row for the city) — already queried in this component.
+That is wrong for `done_stale` runs. A `done_stale` run means:
+- The new crawl failed today.
+- The app fell back to older saved data.
+- `finished_at` = today, but the actual data could be 45 days old.
 
-No edge function changes. No DB changes. UI-only pre-check.
+If we use `finished_at`, we will wrongly treat a stale fallback as "fresh" and skip a real crawl when one is needed.
+
+## The rule (agreed)
+
+Pick the freshness date like this:
+
+- Run status = `done` → use `finished_at`
+- Run status = `done_stale` → use `fallback_data_date`
+
+Then apply the same age tiers we already locked:
+
+- 0–30 days → skip crawl, use saved data automatically
+- 31–60 days → prompt: "Use saved data or run fresh?"
+- > 60 days → run fresh crawl automatically
+- User can always click "Force fresh crawl"
+
+## Scope of change
+
+One file: `src/components/phase2-demo/RunPipelineButton.tsx`
+
+- Update `findLastGoodRun` to also include `done_stale` rows and return both `status` and `fallback_data_date` along with `finished_at`.
+- Add a small helper `effectiveDataDate(run)`:
+  - if `run.status === 'done_stale'` → return `run.fallback_data_date`
+  - else → return `run.finished_at`
+- Use that helper everywhere age is computed (auto-skip toast, 31–60 day prompt text, > 60 day branch).
+- Toast and dialog wording should show the real saved-data date, not the run finish date.
+
+## Not touched
+
+- Scoring math
+- Firecrawl fallback logic (Phase 1 + 2 already shipped)
+- Database schema
+- Saved Sites, exports, other pages
 
 ## Phases
 
-### Phase 1 — Pre-crawl freshness check (1 turn)
-When the user clicks "Run Pipeline":
-1. Look up the most recent `done` (or `done_stale`) run for that city.
-2. Compute age in days from `finished_at`.
-3. Branch:
-   - **0–30 days**: Show a green info toast *"Using saved data from {date} ({N} days old) — skipped fresh crawl to save credits."* Do NOT call the edge function. Refresh the city view from existing DB data.
-   - **31–60 days**: Open a small confirm dialog (shadcn `AlertDialog`): *"This city was last crawled on {date} ({N} days ago). Use saved data or run a fresh crawl?"* Two buttons: **Use saved data** / **Run fresh crawl**.
-   - **> 60 days** or no prior run: Run fresh crawl immediately (today's behavior).
-4. Add a small secondary link/button next to "Run Pipeline" labeled **"Force fresh crawl"** that always bypasses the check.
+- **Phase 1 (1 turn)**: Update query + helper + all age callsites + dialog/toast copy. Smoke check by reading code paths.
+- **Phase 2 (manual)**: You test on a city that has a recent `done_stale` row to confirm the prompt shows the real data date.
 
-### Phase 2 — Smoke test (1 turn, code audit + optional manual click)
-- Verify the 3 branches by reading `mvs_pipeline_runs` ages for a few cities.
-- Confirm scoring math, fallback, and other pages untouched.
+## Risk
 
-## Risks / what to watch
-- The check relies on `mvs_pipeline_runs.finished_at` being accurate. Already used elsewhere in this file, so safe.
-- If a city's saved data is technically present but partial (e.g. only 3 providers), the 0–30 day path will still skip — that's intended; user can hit "Force fresh crawl".
-- No risk to fallback logic — that runs inside the edge function on a failed crawl, totally separate code path.
-
-## Estimate
-2 turns total. Phase 1 = build. Phase 2 = audit + your manual click test.
-
-Approve and I'll start Phase 1.
+Very low. UI-only change in one component. Worst case: prompt shows wrong date — easy to revert.

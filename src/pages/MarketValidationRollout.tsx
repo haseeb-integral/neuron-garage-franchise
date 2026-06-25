@@ -498,9 +498,16 @@ export default function MarketValidationRollout() {
     }
     if (decision.kind === "skip") {
       const d = formatShortDate(decision.dateIso);
+      recordSkip(city, decision.dateIso, decision.age);
       toast.success(
-        `Using saved data${d ? ` from ${d}` : ""} (${decision.age} day${decision.age === 1 ? "" : "s"} old) — skipped fresh crawl to save credits.`,
-        { duration: 7000 },
+        `${city}: using saved data${d ? ` from ${d}` : ""} (${decision.age} day${decision.age === 1 ? "" : "s"} old) — skipped fresh crawl to save credits.`,
+        {
+          duration: 12000,
+          action: {
+            label: "Force fresh",
+            onClick: () => { void startCrawl(city, { force: true }); },
+          },
+        },
       );
       invalidateAllMvs(queryClient);
       queryClient.refetchQueries({ queryKey: ["mvs-live"] });

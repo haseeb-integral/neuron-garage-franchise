@@ -204,14 +204,23 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
   const handleRun = useCallback(
     async (opts?: { force?: boolean }) => {
       if (opts?.force) {
-        await startCrawl();
+        await startCrawl({ force: true });
         return;
       }
-      const lastGoodIso = await findLastGoodRun();
+      let lastGoodIso: string | null = null;
+      try {
+        lastGoodIso = await findLastGoodRun();
+      } catch {
+        toast.error(
+          `Couldn't confirm saved-data age for ${city}. Click "Force fresh crawl" if you still want to crawl.`,
+          { duration: 8000 },
+        );
+        return;
+      }
       const age = ageDays(lastGoodIso);
       if (age == null) {
-        // No prior successful run → behave as today (run fresh).
-        await startCrawl();
+        // No prior successful run → run fresh (backend guard will allow it).
+        await startCrawl({ force: true });
         return;
       }
       if (age <= FRESH_SKIP_DAYS) {
@@ -225,9 +234,9 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
         return;
       }
       // > 60 days → run fresh automatically.
-      await startCrawl();
+      await startCrawl({ force: true });
     },
-    [findLastGoodRun, startCrawl, useSavedDataOnly],
+    [city, findLastGoodRun, startCrawl, useSavedDataOnly],
   );
 
   const busy = invoking || inFlight;

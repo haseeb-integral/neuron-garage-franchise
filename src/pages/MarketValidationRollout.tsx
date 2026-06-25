@@ -70,6 +70,12 @@ interface FlagRow {
 // Per-row hook — composite via shared computeMvs helper (Brett's rule).
 // ---------------------------------------------------------------------------
 
+interface SkipInfo {
+  dateIso: string | null;
+  age: number | null;
+  at: number; // epoch ms when the skip happened
+}
+
 function CityRow({
   city,
   state: _state,
@@ -77,6 +83,7 @@ function CityRow({
   flag,
   anyRunning,
   invokingCity,
+  skipInfo,
   onRun,
   onForceFresh,
   onComposite,
@@ -87,6 +94,7 @@ function CityRow({
   flag: FlagRow | null;
   anyRunning: boolean;
   invokingCity: string | null;
+  skipInfo: SkipInfo | null;
   onRun: () => void;
   onForceFresh: () => void;
   onComposite: (city: string, mvs: number | null) => void;

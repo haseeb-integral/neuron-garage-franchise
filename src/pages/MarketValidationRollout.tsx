@@ -310,7 +310,20 @@ export default function MarketValidationRollout() {
   const [promptState, setPromptState] = useState<string | null>(null);
   const [promptDateIso, setPromptDateIso] = useState<string | null>(null);
   const [promptAge, setPromptAge] = useState<number | null>(null);
+  const [skipInfos, setSkipInfos] = useState<Record<string, SkipInfo>>({});
   const queryClient = useQueryClient();
+
+  const recordSkip = useCallback((city: string, dateIso: string | null, age: number | null) => {
+    setSkipInfos((prev) => ({ ...prev, [city]: { dateIso, age, at: Date.now() } }));
+  }, []);
+  const clearSkip = useCallback((city: string) => {
+    setSkipInfos((prev) => {
+      if (!prev[city]) return prev;
+      const next = { ...prev };
+      delete next[city];
+      return next;
+    });
+  }, []);
 
 
   const { rows: additions, addCity } = useShortlistAdditions();

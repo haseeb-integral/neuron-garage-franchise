@@ -704,9 +704,16 @@ export default function MarketValidationRollout() {
                 setPromptOpen(false);
                 const d = formatShortDate(promptDateIso);
                 const age = ageDays(promptDateIso);
+                if (promptCity) recordSkip(promptCity, promptDateIso, age);
                 toast.success(
-                  `Using saved data${d ? ` from ${d}` : ""}${age != null ? ` (${age} day${age === 1 ? "" : "s"} old)` : ""} — skipped fresh crawl.`,
-                  { duration: 7000 },
+                  `${promptCity ?? "City"}: using saved data${d ? ` from ${d}` : ""}${age != null ? ` (${age} day${age === 1 ? "" : "s"} old)` : ""} — skipped fresh crawl.`,
+                  {
+                    duration: 12000,
+                    action: promptCity ? {
+                      label: "Force fresh",
+                      onClick: () => { void startCrawl(promptCity, { force: true }); },
+                    } : undefined,
+                  },
                 );
                 invalidateAllMvs(queryClient);
                 queryClient.refetchQueries({ queryKey: ["mvs-live"] });

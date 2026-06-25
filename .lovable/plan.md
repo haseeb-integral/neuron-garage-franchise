@@ -1,23 +1,21 @@
-## What we are changing
-Shrink the big amber "Score may be stale" warning box into a small chip with a tooltip, matching your reference screenshot.
+# Raise Firecrawl cap to 50
 
-## Which page and part
-Only the `CityRow` component in `src/pages/MarketValidationRollout.tsx` — the composite score cell.
+## Change
+In `supabase/functions/mvs-run-pipeline/index.ts`:
+- `MVS_PIPELINE_FIRECRAWL_CAP`: 30 → 50
+- Add per-step sub-caps: discover ≤ 25, classify ≤ 15, extract ≤ 15
+- If any step exceeds its sub-cap, fail the run with a clear message like `discover used 26 — over per-step limit (25)`
 
-## Exact change
-1. Replace the multi-line amber block with a small inline chip that shows just "⚠ Stale score".
-2. On hover, a tooltip shows the full message: "Last crawl failed on [date]. Click Run to refresh."
-3. The chip sits right next to the composite number on the same line, so the row height stays even with normal rows.
+## Not touched
+Scoring math, fallback logic, UI, frontend, database, other edge functions.
 
-## Why
-Your current version uses a compact chip. My version uses a wide box that adds extra row height and looks crowded.
-
-## What is NOT touched
-- No other columns, buttons, or text.
-- No scoring math, backend, or other pages.
-
-## Files changed
-- `src/pages/MarketValidationRollout.tsx` (only the composite `<td>` block, ~15 lines)
+## Phases
+**Phase 1 (1 turn):** Edit constants + add per-step check. Deploy `mvs-run-pipeline`.
 
 ## Test after
-Hover over "⚠ Stale score" on any failed row — tooltip should appear. Row heights should look even across done and failed rows.
+- Denver (~12 calls): succeeds as today.
+- San Diego (previously 38): now succeeds.
+- Confirm no UI change.
+
+## Risk
+Very low — constants + one small check. Revert in 1 turn if needed.

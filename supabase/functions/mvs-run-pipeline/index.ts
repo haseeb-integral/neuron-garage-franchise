@@ -67,7 +67,8 @@ Deno.serve(async (req) => {
     );
   }
 
-  const cap = Number(Deno.env.get("MVS_PIPELINE_FIRECRAWL_CAP") ?? "30");
+  const cap = Number(Deno.env.get("MVS_PIPELINE_FIRECRAWL_CAP") ?? "50");
+  const STEP_CAPS: Record<string, number> = { discover: 25, classify: 15, extract: 15 };
 
   // Auth: manager or admin required.
   const authHeader = req.headers.get("Authorization") ?? "";
@@ -233,6 +234,10 @@ Deno.serve(async (req) => {
       const calls = Number(json?.firecrawl_calls ?? 0);
       totalCalls += calls;
       stepResults[step] = json ?? text;
+      const stepCap = STEP_CAPS[step];
+      if (stepCap != null && calls > stepCap) {
+        throw new Error(`step '${step}' used ${calls} Firecrawl calls — over per-step limit (${stepCap})`);
+      }
       if (totalCalls > cap) {
         throw new Error(`Firecrawl cap exceeded after ${step}: ${totalCalls} > ${cap}`);
       }

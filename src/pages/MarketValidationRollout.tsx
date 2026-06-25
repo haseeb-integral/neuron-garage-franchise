@@ -283,7 +283,7 @@ function CityRow({
             onClick={onForceFresh}
             disabled={!canRun || inFlight || isInvoking}
             title="Bypass the saved-data check and crawl this city again now."
-            className="text-[10px] font-medium text-[#174be8] underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-1 rounded-md border border-[#174be8] bg-white px-2 py-1 text-[11px] font-semibold text-[#174be8] transition hover:bg-[#eef3ff] disabled:cursor-not-allowed disabled:opacity-50"
           >
             Force fresh
           </button>

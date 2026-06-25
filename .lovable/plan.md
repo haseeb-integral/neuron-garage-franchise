@@ -1,43 +1,29 @@
-## Goal
-Make the "skipped fresh crawl" reason visible after the toast disappears, so the user can see why a city was not re-crawled.
+## Two small fixes
 
-## What we'll add (UI only, MVS rollout table)
+### 1. Make "Force fresh" a clearer outline button
+- Today it's a small blue text link beside the Run button.
+- Change it to a small outlined button (border + light hover bg, same row height) so Sam/Brett can spot and click it easily.
+- Same behavior — just visual styling change in `CityRow` inside `src/pages/MarketValidationRollout.tsx`.
 
-**1. Inline row badge — "Skipped (saved data, N days old)"**
-- When the backend returns `skipped: true`, store that state per city in the table.
-- Show a small amber/blue badge next to the city's status cell:
-  - Text: `Skipped — used saved data from Jun 25 (0 days old)`
-  - Tooltip on hover: `Fresh crawl was skipped because saved data is ≤ 30 days old. Click "Force fresh" to override.`
-- Badge stays visible until the user runs the city again or refreshes.
+### 2. Fix duplicate "New York, NY" row
+**Why it happens:** the page merges two sources:
+- `SHORTLIST_SEED` (hard-coded 9 cities — already includes New York, NY)
+- `useShortlistAdditions()` (rows the user added via "Add city" → stored in `mvs_shortlist_cities`)
 
-**2. Longer-lived toast**
-- Bump toast duration from default (~4s) to ~10s.
-- Add a "Force fresh" action button inside the toast so the user can act directly.
+Someone added "New York, NY" through Add city, so it now appears in both lists. The merge in `MarketValidationRollout.tsx` does no dedupe, so it shows twice.
 
-**3. Last-skip note in the helper line below the table** (optional, small)
-- A one-line note: `Last action: Denver skipped at 4:52 PM — saved data 0 days old.`
-- Updates each time a skip happens. Cleared on page reload.
+**Fix:** dedupe the merged list by a normalized key (`lower(city) + ", " + upper(state)`). Seed wins; additions that match a seed entry (or another addition) are dropped from the table. No DB change — the stray `mvs_shortlist_cities` row stays harmless and can be cleaned later if you want.
 
-## What we will NOT touch
-- Backend `mvs-run-pipeline` logic
-- Freshness thresholds (still 30 / 60 days)
-- Scoring math, saved data, exports
-- Deep-dive `RunPipelineButton` (can mirror the same pattern in a later phase if you want)
+**Optional follow-up (ask before doing):** also prevent the Add City dialog from accepting a city that already exists in the shortlist, so this can't happen again.
 
-## Files to edit
-- `src/pages/MarketValidationRollout.tsx` — add per-row skip state, badge render, longer toast with action, optional helper line.
+## Files touched
+- `src/pages/MarketValidationRollout.tsx` only.
 
-## Phases & turns
-- **Phase 1 (1 turn):** Inline badge + longer toast with "Force fresh" action.
-- **Phase 2 (optional, 1 turn):** Helper line under table + mirror to deep-dive `RunPipelineButton`.
+## Risk
+- Very low. Pure UI + a `useMemo` dedupe. No scoring/data/backend changes.
 
-## Risks
-- Very low. UI-only change in one file for Phase 1.
-- No effect on crawls, scores, or data.
+## Test
+- Force fresh appears as a small outlined button on every row.
+- Only one "New York, NY" row shows; total goes from 12 → 11.
 
-## Test after Phase 1
-- Click **Run** on Denver → toast stays ~10s with "Force fresh" button → amber badge appears on Denver row and remains visible.
-- Click **Force fresh** on Denver → badge clears, crawl starts normally.
-- Refresh page → badge clears (expected, since it's session-only).
-
-Approve Phase 1 and I'll implement.
+Approve and I'll ship both in one turn.

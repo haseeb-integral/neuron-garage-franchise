@@ -449,12 +449,22 @@ export default function MarketValidationRollout() {
       } else if (data?.skipped) {
         // Backend guard blocked the crawl because saved data is fresh.
         const d = formatShortDate(data?.saved_data_date);
+        const age = typeof data?.age_days === "number" ? data.age_days : null;
+        recordSkip(city, data?.saved_data_date ?? null, age);
         toast.success(
-          `Using saved data${d ? ` from ${d}` : ""} (${data?.age_days ?? "?"} days old) — fresh crawl skipped to save credits.`,
-          { duration: 7000 },
+          `${city}: using saved data${d ? ` from ${d}` : ""}${age != null ? ` (${age} day${age === 1 ? "" : "s"} old)` : ""} — fresh crawl skipped to save credits.`,
+          {
+            duration: 12000,
+            action: {
+              label: "Force fresh",
+              onClick: () => { void startCrawl(city, { force: true }); },
+            },
+          },
         );
         invalidateAllMvs(queryClient);
         queryClient.refetchQueries({ queryKey: ["mvs-live"] });
+      } else if (data?.ok && data?.run_id) {
+        clearSkip(city);
       } else if (data?.already_running) {
         toast.info(data?.message ?? `${city} is already running — refreshing status.`);
       } else if (data?.ok && data?.run_id) {

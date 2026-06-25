@@ -14,6 +14,20 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { invalidateAllMvs } from "@/lib/mvs/useLiveMvs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+// Pre-crawl freshness thresholds (days). See plan: avoid unnecessary re-crawl.
+const FRESH_SKIP_DAYS = 30;   // ≤ 30 → auto-skip
+const FRESH_PROMPT_DAYS = 60; // 31–60 → prompt; > 60 → run fresh
 
 type RunStatus = "queued" | "running" | "done" | "failed" | "done_stale" | "failed_no_data";
 

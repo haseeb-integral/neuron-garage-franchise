@@ -564,9 +564,9 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
 
     if (key === "pricingAcceptance") {
       if (nWithPrice === 0) return { level: "low", detail: `0 of ${nTotal} premium providers had a readable price.` };
-      if (nWithPrice < 5) return { level: "low", detail: `Based on ${nWithPrice} of ${nTotal} premium providers with a readable price — too few for a stable median.` };
+      if (nWithPrice < 5) return { level: "low", detail: `${nWithPrice} of ${nTotal} providers had readable prices — too few for a stable median.` };
       const level = nWithPrice < 10 ? "medium" : "high";
-      return { level, detail: `Based on ${nWithPrice} of ${nTotal} premium providers with a readable price.` };
+      return { level, detail: `${nWithPrice} of ${nTotal} providers had readable prices.` };
     }
 
     if (key === "enrichmentDiversity") {

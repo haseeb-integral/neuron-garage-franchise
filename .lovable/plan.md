@@ -1,35 +1,67 @@
-## What we are changing and why
+## Goal
+Apply the approved Pricing Acceptance 3-section layout (Result → Evidence → Trust → Weight preview → Formula/Sources) to the other 4 Market Validation cards: **Scaled Operator**, **Enrichment Diversity**, **Program Depth**, and **Demand Balance**.
 
-Three small UI refinements on the Pricing Acceptance card only, to improve readability before we copy the layout to the other 4 cards.
+## Scope
+File: `src/components/phase2-demo/LiveCityDeepDive.tsx` only.
 
-### 1. Move Weight preview slider below Trust
-The card currently shows the weight slider near the top, before Result/Evidence/Trust. We will move it so the reading order becomes:
-- Result
-- Evidence  
-- Trust
-- Weight preview
-- Formula / Sources
+No changes to: scoring math, weights, slider logic, popovers, freshness pills, backend, edge functions, Firecrawl, Supabase, saved data, or the other pages.
 
-Only the Pricing Acceptance card changes. The other 4 cards keep their current layout.
+## What changes per card
 
-### 2. Remove "Market:" from the meaning chip
-The colored band chip currently says "Market: weak premium pricing". We will remove the "Market:" prefix so it reads "Weak premium pricing". This also cleans up the chips on the other 4 cards because they share the same helper.
+For each of the 4 cards, the body becomes:
 
-### 3. Cleaner Trust section
-Current Trust section crams confidence + detail + Data chip into one paragraph. We will split it into two clean lines:
-- Line 1: "Medium confidence" (or High / Low)
-- Line 2: "8 of 12 providers had readable prices." (the detail sentence)
-- Keep the existing "Data: partial" chip beside the detail.
+1. **Result** — one plain-English sentence based on the score band (Weak / Mixed / Strong), pillar-specific.
+2. **Evidence** — the existing input rows (with their proof popovers and freshness pills), grouped under an "Evidence" label.
+3. **Trust** — two lines:
+   - Line 1: confidence level (e.g., "Medium confidence")
+   - Line 2: pillar-specific detail (e.g., "3 of 19 providers are national operators.") + the `Data: …` chip
+4. **Weight (preview)** slider — moved below Trust.
+5. Formula + Sources collapsibles — unchanged, stay at the bottom.
 
-Only the Pricing Acceptance card gets this cleaner layout.
+Remove the old "Why" line and the global confidence paragraph for these 4 cards (same as Pricing).
 
-## Which files are affected
-- `src/components/phase2-demo/LiveCityDeepDive.tsx` — card JSX reordering, band label helper edit, and Trust section reformatting.
+## Plain-English result sentences (draft)
 
-## What is NOT touched
-- Scoring math, weights, slider logic, popovers, backend, Firecrawl, Supabase, edge functions, pipeline logic, or saved data.
-- The other 4 Market Validation cards.
-- Global confidence logic for non-Pricing cards.
+**Scaled Operator Presence**
+- Weak: "Almost no national or multi-site operators are active in this city yet."
+- Mixed: "A few national or multi-site operators are present, but the market is not crowded."
+- Strong: "Several national or multi-site operators are already competing here."
 
-## Risk and testing
-Very low risk — only UI copy and ordering changes. After implementation we will smoke test the Pricing Acceptance card to confirm the new reading order and cleaner Trust line.
+**Enrichment Diversity**
+- Weak: "Families here have very few enrichment options outside daycare."
+- Mixed: "There is a moderate mix of enrichment categories for families."
+- Strong: "Families here have a wide range of enrichment options to choose from."
+
+**Program Depth**
+- Weak: "Most providers here run short or shallow programs."
+- Mixed: "Programs here are a mix of short and full-depth offerings."
+- Strong: "Most providers here run deep, full-week programs."
+
+**Demand Balance**
+- Weak: "Demand and supply look poorly matched in this city."
+- Mixed: "Demand and supply are roughly balanced, with some gaps."
+- Strong: "Demand and supply look well matched for new premium supply."
+
+(I will confirm exact wording against existing band helpers; you can tweak any line after you see it live.)
+
+## Trust detail lines per card (using existing data)
+- **Scaled Operator**: "{nNational} of {nTotal} providers are national or multi-site operators."
+- **Enrichment Diversity**: "{nCategories} enrichment categories detected across {nTotal} providers."
+- **Program Depth**: "{nDeep} of {nTotal} providers offer full-depth programs."
+- **Demand Balance**: "Based on ACS children 5–12 and coverage ratio for this metro."
+
+Confidence level continues to come from the existing pillar-specific `confidenceFor` helper.
+
+## Phases & turns
+
+- **Phase 1 (1 turn)**: Add 4 result-sentence helpers + 4 trust-detail helpers next to the existing `pricingResultSentence`.
+- **Phase 2 (1 turn)**: Refactor the card render block so the 3-section layout applies to all 5 pillar keys (not just `pricingAcceptance`). Move Weight slider below Trust for all 5. Keep collapsibles at the bottom.
+- **Phase 3 (smoke test, same turn as Phase 2)**: Playwright check on Austin + Boston to confirm all 5 cards render the new layout, popovers still work, sliders still adjust, and no other page is affected.
+
+Total: ~2 turns.
+
+## Risks
+Low. Pure UI restructuring inside one file. Main risk is missing a pillar-specific input variable name — mitigated by reading the current input rows for each card before editing.
+
+## What stays untouched
+Scoring math, weight slider math, popover data, freshness logic, ConfidenceStamp, Known limitations panel, Formula/Sources collapsibles, all other pages, all backend.

@@ -70,6 +70,12 @@ interface FlagRow {
 // Per-row hook — composite via shared computeMvs helper (Brett's rule).
 // ---------------------------------------------------------------------------
 
+interface SkipInfo {
+  dateIso: string | null;
+  age: number | null;
+  at: number; // epoch ms when the skip happened
+}
+
 function CityRow({
   city,
   state: _state,
@@ -77,6 +83,7 @@ function CityRow({
   flag,
   anyRunning,
   invokingCity,
+  skipInfo,
   onRun,
   onForceFresh,
   onComposite,
@@ -87,6 +94,7 @@ function CityRow({
   flag: FlagRow | null;
   anyRunning: boolean;
   invokingCity: string | null;
+  skipInfo: SkipInfo | null;
   onRun: () => void;
   onForceFresh: () => void;
   onComposite: (city: string, mvs: number | null) => void;
@@ -213,6 +221,24 @@ function CityRow({
             </span>
           )}
 
+          {skipInfo && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex cursor-help items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-800">
+                  <CheckCircle2 className="h-2.5 w-2.5" />
+                  Skipped — saved data{skipInfo.age != null ? ` (${skipInfo.age}d old)` : ""}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs text-[12px] leading-relaxed">
+                <div className="font-semibold mb-1">Fresh crawl skipped</div>
+                <div className="text-[11px]">
+                  Saved data{skipInfo.dateIso ? ` from ${formatShortDate(skipInfo.dateIso)}` : ""} is
+                  {skipInfo.age != null ? ` ${skipInfo.age} day${skipInfo.age === 1 ? "" : "s"} old` : " recent"} (≤ 30 days),
+                  so the pipeline reused it to save Firecrawl credits. Click <em>Force fresh</em> to override.
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
       </td>
 
@@ -284,7 +310,20 @@ export default function MarketValidationRollout() {
   const [promptState, setPromptState] = useState<string | null>(null);
   const [promptDateIso, setPromptDateIso] = useState<string | null>(null);
   const [promptAge, setPromptAge] = useState<number | null>(null);
+  const [skipInfos, setSkipInfos] = useState<Record<string, SkipInfo>>({});
   const queryClient = useQueryClient();
+
+  const recordSkip = useCallback((city: string, dateIso: string | null, age: number | null) => {
+    setSkipInfos((prev) => ({ ...prev, [city]: { dateIso, age, at: Date.now() } }));
+  }, []);
+  const clearSkip = useCallback((city: string) => {
+    setSkipInfos((prev) => {
+      if (!prev[city]) return prev;
+      const next = { ...prev };
+      delete next[city];
+      return next;
+    });
+  }, []);
 
 
   const { rows: additions, addCity } = useShortlistAdditions();
@@ -410,15 +449,24 @@ export default function MarketValidationRollout() {
       } else if (data?.skipped) {
         // Backend guard blocked the crawl because saved data is fresh.
         const d = formatShortDate(data?.saved_data_date);
+        const age = typeof data?.age_days === "number" ? data.age_days : null;
+        recordSkip(city, data?.saved_data_date ?? null, age);
         toast.success(
-          `Using saved data${d ? ` from ${d}` : ""} (${data?.age_days ?? "?"} days old) — fresh crawl skipped to save credits.`,
-          { duration: 7000 },
+          `${city}: using saved data${d ? ` from ${d}` : ""}${age != null ? ` (${age} day${age === 1 ? "" : "s"} old)` : ""} — fresh crawl skipped to save credits.`,
+          {
+            duration: 12000,
+            action: {
+              label: "Force fresh",
+              onClick: () => { void startCrawl(city, { force: true }); },
+            },
+          },
         );
         invalidateAllMvs(queryClient);
         queryClient.refetchQueries({ queryKey: ["mvs-live"] });
       } else if (data?.already_running) {
         toast.info(data?.message ?? `${city} is already running — refreshing status.`);
       } else if (data?.ok && data?.run_id) {
+        clearSkip(city);
         toast.success(`Pipeline started for ${city} — running in background (~1–2 min).`);
       } else if (data?.error) {
         toast.error(`Pipeline error: ${data.error}`);
@@ -450,9 +498,16 @@ export default function MarketValidationRollout() {
     }
     if (decision.kind === "skip") {
       const d = formatShortDate(decision.dateIso);
+      recordSkip(city, decision.dateIso, decision.age);
       toast.success(
-        `Using saved data${d ? ` from ${d}` : ""} (${decision.age} day${decision.age === 1 ? "" : "s"} old) — skipped fresh crawl to save credits.`,
-        { duration: 7000 },
+        `${city}: using saved data${d ? ` from ${d}` : ""} (${decision.age} day${decision.age === 1 ? "" : "s"} old) — skipped fresh crawl to save credits.`,
+        {
+          duration: 12000,
+          action: {
+            label: "Force fresh",
+            onClick: () => { void startCrawl(city, { force: true }); },
+          },
+        },
       );
       invalidateAllMvs(queryClient);
       queryClient.refetchQueries({ queryKey: ["mvs-live"] });
@@ -619,6 +674,7 @@ export default function MarketValidationRollout() {
                 flag={flags[c.city] ?? null}
                 anyRunning={anyRunning}
                 invokingCity={invokingCity}
+                skipInfo={skipInfos[c.city] ?? null}
                 onRun={() => handleRun(c.city, c.state)}
                 onForceFresh={() => handleForceFresh(c.city)}
                 onComposite={reportComposite}
@@ -648,9 +704,16 @@ export default function MarketValidationRollout() {
                 setPromptOpen(false);
                 const d = formatShortDate(promptDateIso);
                 const age = ageDays(promptDateIso);
+                if (promptCity) recordSkip(promptCity, promptDateIso, age);
                 toast.success(
-                  `Using saved data${d ? ` from ${d}` : ""}${age != null ? ` (${age} day${age === 1 ? "" : "s"} old)` : ""} — skipped fresh crawl.`,
-                  { duration: 7000 },
+                  `${promptCity ?? "City"}: using saved data${d ? ` from ${d}` : ""}${age != null ? ` (${age} day${age === 1 ? "" : "s"} old)` : ""} — skipped fresh crawl.`,
+                  {
+                    duration: 12000,
+                    action: promptCity ? {
+                      label: "Force fresh",
+                      onClick: () => { void startCrawl(promptCity, { force: true }); },
+                    } : undefined,
+                  },
                 );
                 invalidateAllMvs(queryClient);
                 queryClient.refetchQueries({ queryKey: ["mvs-live"] });

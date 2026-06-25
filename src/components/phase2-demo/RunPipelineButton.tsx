@@ -304,7 +304,7 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
           <AlertDialogAction
             onClick={() => {
               setPromptOpen(false);
-              void startCrawl();
+              void startCrawl({ force: true });
             }}
           >
             Run fresh crawl

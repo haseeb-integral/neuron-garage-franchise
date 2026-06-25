@@ -219,6 +219,17 @@ function bandWhyFor(
   return null;
 }
 
+// Plain-English one-line "Result" sentence for the Pricing Acceptance card
+// only. Reads the existing band tone — no math change. Returns null for
+// other pillars so their layout is untouched.
+function pricingResultSentence(tone: BandTone | null | undefined): string | null {
+  if (!tone) return null;
+  if (tone === "weak") return "Most providers in this city are not charging premium prices yet.";
+  if (tone === "mid") return "Some providers charge premium prices, but it is not the norm yet.";
+  if (tone === "strong") return "Premium pricing is already common among providers here.";
+  return "Premium pricing is the norm across providers here.";
+}
+
 // Friendly labels for the sub-score input rows so non-technical readers
 // can interpret the numbers (e.g. "Median weekly price (est.)" instead of
 // the raw camelCase key "medianPrice").
@@ -764,7 +775,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                   <p className="mt-0.5 text-[11px]" style={{ color: MUTED }}>
                     {meta.subtitle}
                   </p>
-                  {(() => {
+                  {meta.key !== "pricingAcceptance" && (() => {
                     const why = bandWhyFor(meta.key, score, input);
                     return why ? (
                       <p className="mt-1 text-[11px] leading-snug" style={{ color: MUTED }}>
@@ -772,13 +783,15 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                       </p>
                     ) : null;
                   })()}
-                  <p className="mt-1.5 text-[11px] leading-snug" style={{ color: MUTED }}>
-                    <span className="font-semibold" style={{ color: NAVY }}>
-                      {confidence.level === "high" ? "High confidence" : confidence.level === "medium" ? "Medium confidence" : "Low confidence"}
-                    </span>{" "}
-                    — {confidence.detail}{" "}
-                    <ConfidenceStamp level={confidence.level} detail={confidence.detail} />
-                  </p>
+                  {meta.key !== "pricingAcceptance" && (
+                    <p className="mt-1.5 text-[11px] leading-snug" style={{ color: MUTED }}>
+                      <span className="font-semibold" style={{ color: NAVY }}>
+                        {confidence.level === "high" ? "High confidence" : confidence.level === "medium" ? "Medium confidence" : "Low confidence"}
+                      </span>{" "}
+                      — {confidence.detail}{" "}
+                      <ConfidenceStamp level={confidence.level} detail={confidence.detail} />
+                    </p>
+                  )}
 
                 </div>
                 <div className="shrink-0 text-right">
@@ -814,8 +827,37 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                 />
               </div>
 
+              {meta.key === "pricingAcceptance" && (() => {
+                const sentence = pricingResultSentence(band?.tone);
+                return sentence ? (
+                  <div className="mt-3 border-t border-dashed pt-2" style={{ borderColor: BORDER }}>
+                    <div className="mb-1 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
+                      Result
+                    </div>
+                    <p className="text-[12px] leading-snug" style={{ color: NAVY }}>
+                      {sentence}
+                    </p>
+                  </div>
+                ) : null;
+              })()}
+
+              {meta.key === "pricingAcceptance" && input && (
+                <div className="mt-3 border-t border-dashed pt-2" style={{ borderColor: BORDER }}>
+                  <div className="mb-1 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
+                    Evidence
+                  </div>
+                </div>
+              )}
+
               {input && (
-                <ul className="mt-3 space-y-1 border-t border-dashed pt-2" style={{ borderColor: BORDER }}>
+                <ul
+                  className={
+                    meta.key === "pricingAcceptance"
+                      ? "space-y-1"
+                      : "mt-3 space-y-1 border-t border-dashed pt-2"
+                  }
+                  style={meta.key === "pricingAcceptance" ? undefined : { borderColor: BORDER }}
+                >
                   {Object.entries(input).map(([k, v]) => {
                     if (v == null || k === "year2Signal") return null;
                     const display =
@@ -894,6 +936,23 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                   })}
                 </ul>
               )}
+
+              {meta.key === "pricingAcceptance" && (
+                <div className="mt-3 border-t border-dashed pt-2" style={{ borderColor: BORDER }}>
+                  <div className="mb-1 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
+                    Trust
+                  </div>
+                  <p className="text-[11px] leading-snug" style={{ color: MUTED }}>
+                    <span className="font-semibold" style={{ color: NAVY }}>
+                      {confidence.level === "high" ? "High confidence" : confidence.level === "medium" ? "Medium confidence" : "Low confidence"}
+                    </span>
+                    . {confidence.detail}{" "}
+                    <ConfidenceStamp level={confidence.level} detail={confidence.detail} />
+                  </p>
+                </div>
+              )}
+
+
 
 
 

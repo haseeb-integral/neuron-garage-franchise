@@ -775,7 +775,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                   <p className="mt-0.5 text-[11px]" style={{ color: MUTED }}>
                     {meta.subtitle}
                   </p>
-                  {(() => {
+                  {meta.key !== "pricingAcceptance" && (() => {
                     const why = bandWhyFor(meta.key, score, input);
                     return why ? (
                       <p className="mt-1 text-[11px] leading-snug" style={{ color: MUTED }}>
@@ -783,13 +783,15 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                       </p>
                     ) : null;
                   })()}
-                  <p className="mt-1.5 text-[11px] leading-snug" style={{ color: MUTED }}>
-                    <span className="font-semibold" style={{ color: NAVY }}>
-                      {confidence.level === "high" ? "High confidence" : confidence.level === "medium" ? "Medium confidence" : "Low confidence"}
-                    </span>{" "}
-                    — {confidence.detail}{" "}
-                    <ConfidenceStamp level={confidence.level} detail={confidence.detail} />
-                  </p>
+                  {meta.key !== "pricingAcceptance" && (
+                    <p className="mt-1.5 text-[11px] leading-snug" style={{ color: MUTED }}>
+                      <span className="font-semibold" style={{ color: NAVY }}>
+                        {confidence.level === "high" ? "High confidence" : confidence.level === "medium" ? "Medium confidence" : "Low confidence"}
+                      </span>{" "}
+                      — {confidence.detail}{" "}
+                      <ConfidenceStamp level={confidence.level} detail={confidence.detail} />
+                    </p>
+                  )}
 
                 </div>
                 <div className="shrink-0 text-right">

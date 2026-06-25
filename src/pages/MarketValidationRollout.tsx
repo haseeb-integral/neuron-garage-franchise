@@ -221,6 +221,24 @@ function CityRow({
             </span>
           )}
 
+          {skipInfo && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex cursor-help items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-800">
+                  <CheckCircle2 className="h-2.5 w-2.5" />
+                  Skipped — saved data{skipInfo.age != null ? ` (${skipInfo.age}d old)` : ""}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs text-[12px] leading-relaxed">
+                <div className="font-semibold mb-1">Fresh crawl skipped</div>
+                <div className="text-[11px]">
+                  Saved data{skipInfo.dateIso ? ` from ${formatShortDate(skipInfo.dateIso)}` : ""} is
+                  {skipInfo.age != null ? ` ${skipInfo.age} day${skipInfo.age === 1 ? "" : "s"} old` : " recent"} (≤ 30 days),
+                  so the pipeline reused it to save Firecrawl credits. Click <em>Force fresh</em> to override.
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
       </td>
 

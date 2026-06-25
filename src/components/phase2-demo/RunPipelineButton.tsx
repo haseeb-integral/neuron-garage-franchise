@@ -68,16 +68,14 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
   const fetchLatest = useCallback(async () => {
     const { data } = await supabase
       .from("mvs_pipeline_runs")
-      .select("id, status, started_at, finished_at, firecrawl_calls, error, created_at")
+      .select(SELECT_COLS)
       .eq("city", city)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
     const row = (data as RunRow | null) ?? null;
     setLatest(row);
-    // On first fetch after mount, seed lastTerminalId if the row is already
-    // terminal so the toast effect skips firing on page load.
-    if (!initialSeededRef.current && row && (row.status === "done" || row.status === "failed")) {
+    if (!initialSeededRef.current && row && row.status !== "queued" && row.status !== "running") {
       setLastTerminalId(row.id);
       initialSeededRef.current = true;
     }

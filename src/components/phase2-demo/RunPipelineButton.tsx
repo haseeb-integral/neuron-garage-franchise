@@ -25,9 +25,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-// Pre-crawl freshness thresholds (days). See plan: avoid unnecessary re-crawl.
-const FRESH_SKIP_DAYS = 30;   // ≤ 30 → auto-skip
-const FRESH_PROMPT_DAYS = 60; // 31–60 → prompt; > 60 → run fresh
+// Pre-crawl freshness shared helper (see src/lib/mvs/preCrawlFreshness.ts).
+import {
+  FRESH_SKIP_DAYS,
+  FRESH_PROMPT_DAYS,
+  ageDays,
+  formatShortDate,
+  findLastGoodRun as findLastGoodRunShared,
+} from "@/lib/mvs/preCrawlFreshness";
 
 type RunStatus = "queued" | "running" | "done" | "failed" | "done_stale" | "failed_no_data";
 
@@ -45,22 +50,6 @@ interface RunRow {
 
 const SELECT_COLS =
   "id, status, started_at, finished_at, firecrawl_calls, error, created_at, fallback_reason, fallback_data_date";
-
-function formatShortDate(iso: string | null): string {
-  if (!iso) return "";
-  try {
-    return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-  } catch {
-    return "";
-  }
-}
-
-function ageDays(iso: string | null): number | null {
-  if (!iso) return null;
-  const ms = Date.now() - new Date(iso).getTime();
-  if (!Number.isFinite(ms)) return null;
-  return Math.max(0, Math.round(ms / (1000 * 60 * 60 * 24)));
-}
 
 interface Props {
   city: string; // e.g. "Austin, TX"
@@ -154,32 +143,8 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
   const [promptAge, setPromptAge] = useState<number | null>(null);
   const [promptDate, setPromptDate] = useState<string | null>(null);
 
-  // Find newest successful run (done or done_stale) for freshness check.
-  // For `done_stale` runs, freshness must be judged from `fallback_data_date`
-  // (the real saved-data date), NOT `finished_at` (which is just when the
-  // fallback fired today).
-  const findLastGoodRun = useCallback(async () => {
-    const { data } = await supabase
-      .from("mvs_pipeline_runs")
-      .select("finished_at, created_at, status, fallback_data_date")
-      .eq("city", city)
-      .in("status", ["done", "done_stale"])
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (!data) return null;
-    const row = data as {
-      finished_at: string | null;
-      created_at: string;
-      status: RunStatus;
-      fallback_data_date: string | null;
-    };
-    if (row.status === "done_stale") {
-      // Use real saved-data date; ignore finished_at.
-      return row.fallback_data_date ?? null;
-    }
-    return row.finished_at ?? row.created_at;
-  }, [city]);
+  // Find newest successful run via shared helper.
+  const findLastGoodRun = useCallback(() => findLastGoodRunShared(city), [city]);
 
 
   const startCrawl = useCallback(async () => {

@@ -21,6 +21,23 @@ import { useAuth } from "@/contexts/AuthContext";
 import { SHORTLIST_SEED } from "@/lib/mvs/shortlistSeed";
 import { useShortlistAdditions } from "@/lib/mvs/useShortlistAdditions";
 import { AddCityDialog } from "@/components/phase2-demo/AddCityDialog";
+import {
+  decideFreshness,
+  formatShortDate,
+  ageDays,
+} from "@/lib/mvs/preCrawlFreshness";
+import { invalidateAllMvs } from "@/lib/mvs/useLiveMvs";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const BASE_SHORTLIST: { city: string; state: string }[] = SHORTLIST_SEED.map((row) => ({
   city: `${row.city}, ${row.state}`,
@@ -61,6 +78,7 @@ function CityRow({
   anyRunning,
   invokingCity,
   onRun,
+  onForceFresh,
   onComposite,
 }: {
   city: string;
@@ -70,6 +88,7 @@ function CityRow({
   anyRunning: boolean;
   invokingCity: string | null;
   onRun: () => void;
+  onForceFresh: () => void;
   onComposite: (city: string, mvs: number | null) => void;
 }) {
   const live = useLiveMvs(city);
@@ -227,11 +246,20 @@ function CityRow({
             type="button"
             onClick={onRun}
             disabled={!canRun || inFlight || isInvoking}
-            title={(anyRunning || invokingCity) && !inFlight && !isInvoking ? "Another city is running" : "Run pipeline"}
+            title={(anyRunning || invokingCity) && !inFlight && !isInvoking ? "Another city is running" : "Run pipeline (uses saved data if ≤ 30 days old)"}
             className="inline-flex items-center gap-1 rounded-md bg-[#174be8] px-2 py-1 text-[11px] font-semibold text-white shadow-sm transition hover:bg-[#0f37b5] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {inFlight || isInvoking ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
             Run
+          </button>
+          <button
+            type="button"
+            onClick={onForceFresh}
+            disabled={!canRun || inFlight || isInvoking}
+            title="Bypass the saved-data check and crawl this city again now."
+            className="text-[10px] font-medium text-[#174be8] underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Force fresh
           </button>
         </div>
       </td>
@@ -251,6 +279,13 @@ export default function MarketValidationRollout() {
   const [composites, setComposites] = useState<Record<string, number | null>>({});
 
   const [invokingCity, setInvokingCity] = useState<string | null>(null);
+  const [promptOpen, setPromptOpen] = useState(false);
+  const [promptCity, setPromptCity] = useState<string | null>(null);
+  const [promptState, setPromptState] = useState<string | null>(null);
+  const [promptDateIso, setPromptDateIso] = useState<string | null>(null);
+  const [promptAge, setPromptAge] = useState<number | null>(null);
+  const queryClient = useQueryClient();
+
 
   const { rows: additions, addCity } = useShortlistAdditions();
   const SHORTLISTED_CITIES = useMemo<{ city: string; state: string }[]>(
@@ -350,7 +385,8 @@ export default function MarketValidationRollout() {
     return () => clearInterval(t);
   }, [anyRunning, invokingCity, fetchAll]);
 
-  const handleRun = useCallback(async (city: string, state: string) => {
+  // Actually invoke the edge function. No freshness check here.
+  const startCrawl = useCallback(async (city: string) => {
     if (anyRunning || invokingCity) {
       toast.error("Wait for the in-flight run to finish — runs are sequential by design.");
       return;
@@ -358,10 +394,6 @@ export default function MarketValidationRollout() {
     setInvokingCity(city);
     try {
       const { data, error } = await supabase.functions.invoke("mvs-run-pipeline", { body: { city } });
-
-      // supabase-js sets `error` on any non-2xx. The real reason is inside
-      // error.context (a Response), which we read explicitly so the user
-      // doesn't just see "non-2xx status code".
       if (error) {
         let detail = error.message ?? "";
         try {
@@ -375,8 +407,6 @@ export default function MarketValidationRollout() {
       } else if (data?.already_running) {
         toast.info(data?.message ?? `${city} is already running — refreshing status.`);
       } else if (data?.ok && data?.run_id) {
-        // 202 — pipeline started in the background. The poll loop will
-        // pick up status changes; promote to live when it finishes.
         toast.success(`Pipeline started for ${city} — running in background (~1–2 min).`);
       } else if (data?.error) {
         toast.error(`Pipeline error: ${data.error}`);
@@ -388,6 +418,41 @@ export default function MarketValidationRollout() {
       setInvokingCity(null);
     }
   }, [anyRunning, invokingCity, fetchAll]);
+
+  // Normal Run click: freshness pre-check → skip / prompt / run.
+  const handleRun = useCallback(async (city: string, state: string) => {
+    if (anyRunning || invokingCity) {
+      toast.error("Wait for the in-flight run to finish — runs are sequential by design.");
+      return;
+    }
+    const decision = await decideFreshness(city);
+    if (decision.kind === "skip") {
+      const d = formatShortDate(decision.dateIso);
+      toast.success(
+        `Using saved data${d ? ` from ${d}` : ""} (${decision.age} day${decision.age === 1 ? "" : "s"} old) — skipped fresh crawl to save credits.`,
+        { duration: 7000 },
+      );
+      invalidateAllMvs(queryClient);
+      queryClient.refetchQueries({ queryKey: ["mvs-live"] });
+      await fetchAll();
+      return;
+    }
+    if (decision.kind === "prompt") {
+      setPromptCity(city);
+      setPromptState(state);
+      setPromptDateIso(decision.dateIso);
+      setPromptAge(decision.age);
+      setPromptOpen(true);
+      return;
+    }
+    await startCrawl(city);
+  }, [anyRunning, invokingCity, fetchAll, queryClient, startCrawl]);
+
+  // Force fresh: skip pre-check entirely.
+  const handleForceFresh = useCallback(
+    (city: string) => startCrawl(city),
+    [startCrawl],
+  );
 
   // When a previously-running row finishes, auto-promote the city to live
   // so the Market Validation page picks up the new composite.
@@ -532,6 +597,7 @@ export default function MarketValidationRollout() {
                 anyRunning={anyRunning}
                 invokingCity={invokingCity}
                 onRun={() => handleRun(c.city, c.state)}
+                onForceFresh={() => handleForceFresh(c.city)}
                 onComposite={reportComposite}
               />
             ))}
@@ -540,7 +606,47 @@ export default function MarketValidationRollout() {
       </div>
       <div className="mt-2 text-[11px] text-[#8a96aa]">
         Runs are sequential — one city at a time keeps data-provider costs predictable and isolates failures.
+        Cities with saved data ≤ 30 days old are skipped automatically; use <em>Force fresh</em> to override.
       </div>
+
+      <AlertDialog open={promptOpen} onOpenChange={setPromptOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>This city has recent saved data</AlertDialogTitle>
+            <AlertDialogDescription>
+              {promptCity} was last crawled on {formatShortDate(promptDateIso)}
+              {promptAge != null ? ` (${promptAge} days ago)` : ""}.
+              Use the saved data, or run a fresh crawl now? A fresh crawl will use Firecrawl credits.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setPromptOpen(false);
+                const d = formatShortDate(promptDateIso);
+                const age = ageDays(promptDateIso);
+                toast.success(
+                  `Using saved data${d ? ` from ${d}` : ""}${age != null ? ` (${age} day${age === 1 ? "" : "s"} old)` : ""} — skipped fresh crawl.`,
+                  { duration: 7000 },
+                );
+                invalidateAllMvs(queryClient);
+                queryClient.refetchQueries({ queryKey: ["mvs-live"] });
+                void fetchAll();
+              }}
+            >
+              Use saved data
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setPromptOpen(false);
+                if (promptCity) void startCrawl(promptCity);
+              }}
+            >
+              Run fresh crawl
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

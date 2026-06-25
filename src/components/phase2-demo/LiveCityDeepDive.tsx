@@ -220,15 +220,44 @@ function bandWhyFor(
   return null;
 }
 
-// Plain-English one-line "Result" sentence for the Pricing Acceptance card
-// only. Reads the existing band tone — no math change. Returns null for
-// other pillars so their layout is untouched.
-function pricingResultSentence(tone: BandTone | null | undefined): string | null {
+// Plain-English one-line "Result" sentence per pillar, driven by the
+// existing band tone. No math change — pure copy.
+function resultSentenceFor(
+  key: string,
+  tone: BandTone | null | undefined,
+): string | null {
   if (!tone) return null;
-  if (tone === "weak") return "Most providers in this city are not charging premium prices yet.";
-  if (tone === "mid") return "Some providers charge premium prices, but it is not the norm yet.";
-  if (tone === "strong") return "Premium pricing is already common among providers here.";
-  return "Premium pricing is the norm across providers here.";
+  if (key === "pricingAcceptance") {
+    if (tone === "weak") return "Most providers in this city are not charging premium prices yet.";
+    if (tone === "mid") return "Some providers charge premium prices, but it is not the norm yet.";
+    if (tone === "strong") return "Premium pricing is already common among providers here.";
+    return "Premium pricing is the norm across providers here.";
+  }
+  if (key === "scaledOperator") {
+    if (tone === "weak") return "Almost no national or multi-site operators are active in this city yet.";
+    if (tone === "mid") return "A few national or multi-site operators are present, but the market is not crowded.";
+    if (tone === "strong") return "Several national or multi-site operators are already competing here.";
+    return "National and multi-site operators are heavily competing in this city.";
+  }
+  if (key === "enrichmentDiversity") {
+    if (tone === "weak") return "Families here have very few enrichment options outside daycare.";
+    if (tone === "mid") return "There is a moderate mix of enrichment categories for families.";
+    if (tone === "strong") return "Families here have a wide range of enrichment options to choose from.";
+    return "Families here enjoy an unusually broad mix of enrichment options.";
+  }
+  if (key === "marketDepth") {
+    if (tone === "weak") return "Very few premium providers exist in this city today.";
+    if (tone === "mid") return "A moderate number of premium providers operate in this city.";
+    if (tone === "strong") return "A healthy number of premium providers already operate here.";
+    return "This city has a deep, mature premium provider market.";
+  }
+  if (key === "marketBalance") {
+    if (tone === "weak") return "Supply looks saturated — limited room for new premium seats.";
+    if (tone === "mid") return "The market is competitive but not yet saturated.";
+    if (tone === "strong") return "Demand and supply look well matched, with room for new premium seats.";
+    return "Demand clearly outpaces supply — this market looks underserved.";
+  }
+  return null;
 }
 
 // Friendly labels for the sub-score input rows so non-technical readers

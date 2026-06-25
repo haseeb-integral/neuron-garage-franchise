@@ -87,6 +87,7 @@ function CityRow({
   anyRunning: boolean;
   invokingCity: string | null;
   onRun: () => void;
+  onForceFresh: () => void;
   onComposite: (city: string, mvs: number | null) => void;
 }) {
   const live = useLiveMvs(city);

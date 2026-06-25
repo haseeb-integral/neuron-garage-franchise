@@ -8,14 +8,14 @@
 // queued/running. Disabled + spinner during in-flight runs. Toast on
 // terminal state. Calls onComplete() so the parent can refetch live data.
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, Play, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Loader2, Play, AlertTriangle, CheckCircle2, Info } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { invalidateAllMvs } from "@/lib/mvs/useLiveMvs";
 
-type RunStatus = "queued" | "running" | "done" | "failed";
+type RunStatus = "queued" | "running" | "done" | "failed" | "done_stale" | "failed_no_data";
 
 interface RunRow {
   id: string;
@@ -25,6 +25,27 @@ interface RunRow {
   firecrawl_calls: number;
   error: string | null;
   created_at: string;
+  fallback_reason: string | null;
+  fallback_data_date: string | null;
+}
+
+const SELECT_COLS =
+  "id, status, started_at, finished_at, firecrawl_calls, error, created_at, fallback_reason, fallback_data_date";
+
+function formatShortDate(iso: string | null): string {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  } catch {
+    return "";
+  }
+}
+
+function ageDays(iso: string | null): number | null {
+  if (!iso) return null;
+  const ms = Date.now() - new Date(iso).getTime();
+  if (!Number.isFinite(ms)) return null;
+  return Math.max(0, Math.round(ms / (1000 * 60 * 60 * 24)));
 }
 
 interface Props {

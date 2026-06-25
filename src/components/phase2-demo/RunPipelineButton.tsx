@@ -25,9 +25,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-// Pre-crawl freshness thresholds (days). See plan: avoid unnecessary re-crawl.
-const FRESH_SKIP_DAYS = 30;   // ≤ 30 → auto-skip
-const FRESH_PROMPT_DAYS = 60; // 31–60 → prompt; > 60 → run fresh
+// Pre-crawl freshness shared helper (see src/lib/mvs/preCrawlFreshness.ts).
+import {
+  FRESH_SKIP_DAYS,
+  FRESH_PROMPT_DAYS,
+  ageDays,
+  formatShortDate,
+  findLastGoodRun as findLastGoodRunShared,
+} from "@/lib/mvs/preCrawlFreshness";
 
 type RunStatus = "queued" | "running" | "done" | "failed" | "done_stale" | "failed_no_data";
 
@@ -45,22 +50,6 @@ interface RunRow {
 
 const SELECT_COLS =
   "id, status, started_at, finished_at, firecrawl_calls, error, created_at, fallback_reason, fallback_data_date";
-
-function formatShortDate(iso: string | null): string {
-  if (!iso) return "";
-  try {
-    return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-  } catch {
-    return "";
-  }
-}
-
-function ageDays(iso: string | null): number | null {
-  if (!iso) return null;
-  const ms = Date.now() - new Date(iso).getTime();
-  if (!Number.isFinite(ms)) return null;
-  return Math.max(0, Math.round(ms / (1000 * 60 * 60 * 24)));
-}
 
 interface Props {
   city: string; // e.g. "Austin, TX"

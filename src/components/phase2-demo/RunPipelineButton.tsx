@@ -8,14 +8,14 @@
 // queued/running. Disabled + spinner during in-flight runs. Toast on
 // terminal state. Calls onComplete() so the parent can refetch live data.
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, Play, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Loader2, Play, AlertTriangle, CheckCircle2, Info } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { invalidateAllMvs } from "@/lib/mvs/useLiveMvs";
 
-type RunStatus = "queued" | "running" | "done" | "failed";
+type RunStatus = "queued" | "running" | "done" | "failed" | "done_stale" | "failed_no_data";
 
 interface RunRow {
   id: string;
@@ -25,6 +25,27 @@ interface RunRow {
   firecrawl_calls: number;
   error: string | null;
   created_at: string;
+  fallback_reason: string | null;
+  fallback_data_date: string | null;
+}
+
+const SELECT_COLS =
+  "id, status, started_at, finished_at, firecrawl_calls, error, created_at, fallback_reason, fallback_data_date";
+
+function formatShortDate(iso: string | null): string {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  } catch {
+    return "";
+  }
+}
+
+function ageDays(iso: string | null): number | null {
+  if (!iso) return null;
+  const ms = Date.now() - new Date(iso).getTime();
+  if (!Number.isFinite(ms)) return null;
+  return Math.max(0, Math.round(ms / (1000 * 60 * 60 * 24)));
 }
 
 interface Props {
@@ -47,16 +68,14 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
   const fetchLatest = useCallback(async () => {
     const { data } = await supabase
       .from("mvs_pipeline_runs")
-      .select("id, status, started_at, finished_at, firecrawl_calls, error, created_at")
+      .select(SELECT_COLS)
       .eq("city", city)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
     const row = (data as RunRow | null) ?? null;
     setLatest(row);
-    // On first fetch after mount, seed lastTerminalId if the row is already
-    // terminal so the toast effect skips firing on page load.
-    if (!initialSeededRef.current && row && (row.status === "done" || row.status === "failed")) {
+    if (!initialSeededRef.current && row && row.status !== "queued" && row.status !== "running") {
       setLastTerminalId(row.id);
       initialSeededRef.current = true;
     }
@@ -81,22 +100,37 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
     return () => clearInterval(t);
   }, [inFlight, fetchLatest]);
 
-  // Fire toast + refresh once when a run transitions to terminal.
-  // The toast text comes from the invoke response when present (richer summary);
-  // polling fallback keeps the simpler call-count line.
+  // Fire toast + refresh once when a run reaches a terminal state.
   useEffect(() => {
     if (!latest) return;
-    if (latest.status !== "done" && latest.status !== "failed") return;
+    const terminal =
+      latest.status === "done" ||
+      latest.status === "failed" ||
+      latest.status === "done_stale" ||
+      latest.status === "failed_no_data";
+    if (!terminal) return;
     if (lastTerminalId === latest.id) return;
     setLastTerminalId(latest.id);
     if (latest.status === "done") {
       toast.success(`Pipeline complete · ${latest.firecrawl_calls} Firecrawl calls`);
-      // Invalidate + force an immediate refetch so the "Scores as of" timestamp
-      // and all sub-score "scraped on" dates update right now instead of on
-      // next page-visit. Without the refetch, cachedAt stays old.
       invalidateAllMvs(queryClient);
       queryClient.refetchQueries({ queryKey: ["mvs-live"] });
       onComplete?.();
+    } else if (latest.status === "done_stale") {
+      const d = formatShortDate(latest.fallback_data_date);
+      toast(`Crawl failed — using saved data${d ? ` from ${d}` : ""}.`, {
+        description: latest.fallback_reason ?? undefined,
+        duration: 8000,
+      });
+      // Still refresh so any other UI re-reads the saved-data timestamp.
+      invalidateAllMvs(queryClient);
+      queryClient.refetchQueries({ queryKey: ["mvs-live"] });
+      onComplete?.();
+    } else if (latest.status === "failed_no_data") {
+      toast.error("Crawl failed — no recent saved data to fall back on.", {
+        description: latest.fallback_reason ?? latest.error ?? undefined,
+        duration: 10000,
+      });
     } else {
       toast.error(`Pipeline failed: ${latest.error ?? "unknown error"}`);
     }
@@ -118,7 +152,6 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
           `Pipeline complete · ${s.providers_processed} providers · ${s.weeks_upserted} weeks upserted · ${s.screenshots_stored} screenshots · ${s.firecrawl_calls} Firecrawl call${s.firecrawl_calls === 1 ? "" : "s"}`,
           { duration: 8000 },
         );
-        // Pre-mark this run id so the polling effect doesn't fire a second toast.
         if (data.run_id) setLastTerminalId(data.run_id);
         invalidateAllMvs(queryClient);
         queryClient.refetchQueries({ queryKey: ["mvs-live"] });
@@ -133,11 +166,22 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
   };
 
   const busy = invoking || inFlight;
-  const StatusIcon = latest?.status === "done"
-    ? CheckCircle2
-    : latest?.status === "failed"
-      ? AlertTriangle
-      : null;
+  const status = latest?.status;
+  const statusMeta = useMemo(() => {
+    switch (status) {
+      case "done":
+        return { icon: CheckCircle2, color: "text-emerald-600", label: "done" };
+      case "done_stale":
+        return { icon: Info, color: "text-amber-600", label: "done (saved data)" };
+      case "failed":
+        return { icon: AlertTriangle, color: "text-red-600", label: "failed" };
+      case "failed_no_data":
+        return { icon: AlertTriangle, color: "text-red-600", label: "failed (no recent data)" };
+      default:
+        return null;
+    }
+  }, [status]);
+  const StatusIcon = statusMeta?.icon ?? null;
 
   const triggerButton = (
     <button
@@ -155,27 +199,51 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
     return triggerButton;
   }
 
+  const staleAge = ageDays(latest?.fallback_data_date ?? null);
+
   return (
-    <div className="mb-5 flex flex-wrap items-center gap-3 rounded-lg border border-dashed bg-white p-3" style={{ borderColor: "#cfd8e6" }}>
-      {triggerButton}
-      <div className="text-[11px] text-[#526078]">
-        Admin only · discover → classify → ACS · cap 30 Firecrawl calls
+    <div className="mb-5 rounded-lg border border-dashed bg-white p-3" style={{ borderColor: "#cfd8e6" }}>
+      <div className="flex flex-wrap items-center gap-3">
+        {triggerButton}
+        <div className="text-[11px] text-[#526078]">
+          Admin only · discover → classify → ACS · cap 30 Firecrawl calls
+        </div>
+        {latest && statusMeta && (
+          <div className="ml-auto flex items-center gap-2 text-[11px] text-[#526078]">
+            {StatusIcon && <StatusIcon className={`h-3.5 w-3.5 ${statusMeta.color}`} />}
+            <span>
+              Last run:&nbsp;
+              <span className="font-semibold text-[#07142f]">{statusMeta.label}</span>
+              {" · "}
+              {latest.firecrawl_calls} calls
+              {" · "}
+              {new Date(latest.created_at).toLocaleString()}
+            </span>
+          </div>
+        )}
       </div>
-      {latest && (
-        <div className="ml-auto flex items-center gap-2 text-[11px] text-[#526078]">
-          {StatusIcon && (
-            <StatusIcon
-              className={`h-3.5 w-3.5 ${latest.status === "done" ? "text-emerald-600" : "text-red-600"}`}
-            />
-          )}
-          <span>
-            Last run:&nbsp;
-            <span className="font-semibold text-[#07142f]">{latest.status}</span>
-            {" · "}
-            {latest.firecrawl_calls} calls
-            {" · "}
-            {new Date(latest.created_at).toLocaleString()}
-          </span>
+      {latest?.status === "done_stale" && (
+        <div className="mt-2 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-900">
+          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <div>
+            <span className="font-semibold">Using saved data{latest.fallback_data_date ? ` from ${formatShortDate(latest.fallback_data_date)}` : ""}</span>
+            {staleAge != null && <> ({staleAge} day{staleAge === 1 ? "" : "s"} old)</>}
+            {" — new crawl failed."}
+            {latest.fallback_reason && (
+              <div className="mt-0.5 text-amber-800/80">{latest.fallback_reason}</div>
+            )}
+          </div>
+        </div>
+      )}
+      {latest?.status === "failed_no_data" && (
+        <div className="mt-2 flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-2.5 py-1.5 text-[11px] text-red-900">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <div>
+            <span className="font-semibold">Needs review</span> — crawl failed and no recent saved data (≤ 60 days) exists. Try running the pipeline again.
+            {latest.fallback_reason && (
+              <div className="mt-0.5 text-red-800/80">{latest.fallback_reason}</div>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -192,7 +260,7 @@ export function PipelineStatusStrip({ city }: { city: string }) {
   const fetchLatest = useCallback(async () => {
     const { data } = await supabase
       .from("mvs_pipeline_runs")
-      .select("id, status, started_at, finished_at, firecrawl_calls, error, created_at")
+      .select(SELECT_COLS)
       .eq("city", city)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -206,29 +274,38 @@ export function PipelineStatusStrip({ city }: { city: string }) {
     return () => clearInterval(t);
   }, [fetchLatest]);
 
-  const StatusIcon = latest?.status === "done"
-    ? CheckCircle2
-    : latest?.status === "failed"
-      ? AlertTriangle
-      : null;
+  const meta = (() => {
+    switch (latest?.status) {
+      case "done":
+        return { icon: CheckCircle2, color: "text-emerald-600", label: "done" };
+      case "done_stale":
+        return { icon: Info, color: "text-amber-600", label: "done (saved data)" };
+      case "failed":
+        return { icon: AlertTriangle, color: "text-red-600", label: "failed" };
+      case "failed_no_data":
+        return { icon: AlertTriangle, color: "text-red-600", label: "failed (no recent data)" };
+      default:
+        return null;
+    }
+  })();
+  const StatusIcon = meta?.icon ?? null;
 
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#526078]">
       <span>Admin only · discover → classify → ACS · cap 30 Firecrawl calls</span>
-      {latest && (
+      {latest && meta && (
         <span className="flex items-center gap-1.5">
-          {StatusIcon && (
-            <StatusIcon
-              className={`h-3.5 w-3.5 ${latest.status === "done" ? "text-emerald-600" : "text-red-600"}`}
-            />
-          )}
+          {StatusIcon && <StatusIcon className={`h-3.5 w-3.5 ${meta.color}`} />}
           <span>
             Last run:&nbsp;
-            <span className="font-semibold text-[#07142f]">{latest.status}</span>
+            <span className="font-semibold text-[#07142f]">{meta.label}</span>
             {" · "}
             {latest.firecrawl_calls} calls
             {" · "}
             {new Date(latest.created_at).toLocaleString()}
+            {latest.status === "done_stale" && latest.fallback_data_date && (
+              <> · saved data from {formatShortDate(latest.fallback_data_date)}</>
+            )}
           </span>
         </span>
       )}

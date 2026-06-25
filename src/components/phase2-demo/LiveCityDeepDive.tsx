@@ -805,24 +805,6 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                   <p className="mt-0.5 text-[11px]" style={{ color: MUTED }}>
                     {meta.subtitle}
                   </p>
-                  {meta.key !== "pricingAcceptance" && (() => {
-                    const why = bandWhyFor(meta.key, score, input);
-                    return why ? (
-                      <p className="mt-1 text-[11px] leading-snug" style={{ color: MUTED }}>
-                        {why}
-                      </p>
-                    ) : null;
-                  })()}
-                  {meta.key !== "pricingAcceptance" && (
-                    <p className="mt-1.5 text-[11px] leading-snug" style={{ color: MUTED }}>
-                      <span className="font-semibold" style={{ color: NAVY }}>
-                        {confidence.level === "high" ? "High confidence" : confidence.level === "medium" ? "Medium confidence" : "Low confidence"}
-                      </span>{" "}
-                      — {confidence.detail}{" "}
-                      <ConfidenceStamp level={confidence.level} detail={confidence.detail} />
-                    </p>
-                  )}
-
                 </div>
                 <div className="shrink-0 text-right">
                   <div
@@ -837,30 +819,9 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                 </div>
               </div>
 
-              {meta.key !== "pricingAcceptance" && (
-                <div className="mt-2.5 rounded-md border border-dashed p-2" style={{ borderColor: BORDER }}>
-                  <div className="mb-1 flex items-center justify-between text-[10px]" style={{ color: MUTED }}>
-                    <span>Weight (preview)</span>
-                    <span className="font-semibold tabular-nums" style={{ color: NAVY }}>
-                      {Math.round(weight * 100)}%
-                    </span>
-                  </div>
-                  <Slider
-                    value={[Math.round(weight * 100)]}
-                    min={5}
-                    max={40}
-                    step={1}
-                    aria-label={`${meta.title} weight`}
-                    onValueChange={(vals) => {
-                      const pct = vals[0] / 100;
-                      setWeights((w) => ({ ...w, [meta.key]: pct }));
-                    }}
-                  />
-                </div>
-              )}
-
-              {meta.key === "pricingAcceptance" && (() => {
-                const sentence = pricingResultSentence(band?.tone);
+              {/* Result */}
+              {(() => {
+                const sentence = resultSentenceFor(meta.key, band?.tone);
                 return sentence ? (
                   <div className="mt-3 border-t border-dashed pt-2" style={{ borderColor: BORDER }}>
                     <div className="mb-1 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
@@ -873,167 +834,153 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                 ) : null;
               })()}
 
-              {meta.key === "pricingAcceptance" && input && (
+              {/* Evidence */}
+              {input && (
                 <div className="mt-3 border-t border-dashed pt-2" style={{ borderColor: BORDER }}>
                   <div className="mb-1 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
                     Evidence
                   </div>
-                </div>
-              )}
-
-              {input && (
-                <ul
-                  className={
-                    meta.key === "pricingAcceptance"
-                      ? "space-y-1"
-                      : "mt-3 space-y-1 border-t border-dashed pt-2"
-                  }
-                  style={meta.key === "pricingAcceptance" ? undefined : { borderColor: BORDER }}
-                >
-                  {Object.entries(input).map(([k, v]) => {
-                    if (v == null || k === "year2Signal") return null;
-                    const display =
-                      typeof v === "number" ? (Number.isInteger(v) ? v : v.toFixed(2)) : String(v);
-                    const proof = proofForInput(k, premiumProviders, categoryCounts, watchlist, overrides, acs, cityDisplay);
-                    return (
-                      <li key={k} className="flex items-center justify-between gap-2 text-[11px]">
-                        <span style={{ color: MUTED }}>{INPUT_LABELS[k] ?? k}</span>
-                        <span className="flex items-center gap-1.5">
-                          {proof ? (
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <button
-                                  type="button"
-                                  className="font-medium tabular-nums underline decoration-dotted underline-offset-2 hover:text-[#174be8]"
-                                  style={{ color: NAVY }}
-                                  title="Click to see the rows behind this number"
+                  <ul className="space-y-1">
+                    {Object.entries(input).map(([k, v]) => {
+                      if (v == null || k === "year2Signal") return null;
+                      const display =
+                        typeof v === "number" ? (Number.isInteger(v) ? v : v.toFixed(2)) : String(v);
+                      const proof = proofForInput(k, premiumProviders, categoryCounts, watchlist, overrides, acs, cityDisplay);
+                      return (
+                        <li key={k} className="flex items-center justify-between gap-2 text-[11px]">
+                          <span style={{ color: MUTED }}>{INPUT_LABELS[k] ?? k}</span>
+                          <span className="flex items-center gap-1.5">
+                            {proof ? (
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <button
+                                    type="button"
+                                    className="font-medium tabular-nums underline decoration-dotted underline-offset-2 hover:text-[#174be8]"
+                                    style={{ color: NAVY }}
+                                    title="Click to see the rows behind this number"
+                                  >
+                                    {display}
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                  align="end"
+                                  className="w-[320px] p-0"
+                                  style={{ borderColor: BORDER }}
                                 >
-                                  {display}
-                                </button>
-                              </PopoverTrigger>
-                              <PopoverContent
-                                align="end"
-                                className="w-[320px] p-0"
-                                style={{ borderColor: BORDER }}
-                              >
-                                <div className="border-b px-3 py-2 text-[12px] font-bold" style={{ borderColor: BORDER, color: NAVY }}>
-                                  {proof.title}
-                                  <div className="mt-0.5 text-[10px] font-normal" style={{ color: MUTED }}>
-                                    {proof.subtitle}
-                                  </div>
-                                </div>
-                                <div className="max-h-[260px] overflow-y-auto">
-                                  {proof.rows.length === 0 ? (
-                                    <div className="px-3 py-3 text-[11px]" style={{ color: MUTED }}>
-                                      No rows to show.
+                                  <div className="border-b px-3 py-2 text-[12px] font-bold" style={{ borderColor: BORDER, color: NAVY }}>
+                                    {proof.title}
+                                    <div className="mt-0.5 text-[10px] font-normal" style={{ color: MUTED }}>
+                                      {proof.subtitle}
                                     </div>
-                                  ) : (
-                                    <ul className="divide-y" style={{ borderColor: BORDER }}>
-                                      {proof.rows.map((r, i) => (
-                                        <li
-                                          key={i}
-                                          className="flex items-center justify-between gap-2 px-3 py-1.5 text-[11px]"
-                                          style={{ borderColor: BORDER }}
-                                        >
-                                          <span className="min-w-0 truncate" style={{ color: NAVY }}>
-                                            {r.label}
-                                          </span>
-                                          {r.value != null && (
-                                            <span className="shrink-0 tabular-nums font-semibold" style={{ color: NAVY }}>
-                                              {r.value}
+                                  </div>
+                                  <div className="max-h-[260px] overflow-y-auto">
+                                    {proof.rows.length === 0 ? (
+                                      <div className="px-3 py-3 text-[11px]" style={{ color: MUTED }}>
+                                        No rows to show.
+                                      </div>
+                                    ) : (
+                                      <ul className="divide-y" style={{ borderColor: BORDER }}>
+                                        {proof.rows.map((r, i) => (
+                                          <li
+                                            key={i}
+                                            className="flex items-center justify-between gap-2 px-3 py-1.5 text-[11px]"
+                                            style={{ borderColor: BORDER }}
+                                          >
+                                            <span className="min-w-0 truncate" style={{ color: NAVY }}>
+                                              {r.label}
                                             </span>
-                                          )}
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  )}
-                                </div>
-                              </PopoverContent>
-                            </Popover>
-                          ) : (
-                            <span className="font-medium tabular-nums" style={{ color: NAVY }}>
-                              {display}
+                                            {r.value != null && (
+                                              <span className="shrink-0 tabular-nums font-semibold" style={{ color: NAVY }}>
+                                                {r.value}
+                                              </span>
+                                            )}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    )}
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                            ) : (
+                              <span className="font-medium tabular-nums" style={{ color: NAVY }}>
+                                {display}
+                              </span>
+                            )}
+                            <span
+                              className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold"
+                              style={{ backgroundColor: SOFT, color: MUTED, border: `1px solid ${BORDER}` }}
+                              title="Where this number came from"
+                            >
+                              {freshnessForInput(k, lastRefreshed)}
                             </span>
-                          )}
-                          <span
-                            className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold"
-                            style={{ backgroundColor: SOFT, color: MUTED, border: `1px solid ${BORDER}` }}
-                            title="Where this number came from"
-                          >
-                            {freshnessForInput(k, lastRefreshed)}
                           </span>
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
+                        </li>
+                      );
+                    })}
+                  </ul>
 
-              {meta.key === "pricingAcceptance" && (
-                <div className="mt-3 border-t border-dashed pt-2" style={{ borderColor: BORDER }}>
-                  <div className="mb-1 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
-                    Trust
-                  </div>
-                  <p className="text-[12px] font-semibold leading-snug" style={{ color: NAVY }}>
-                    {confidence.level === "high" ? "High confidence" : confidence.level === "medium" ? "Medium confidence" : "Low confidence"}
-                  </p>
-                  <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] leading-snug" style={{ color: MUTED }}>
-                    <span>{confidence.detail}</span>
-                    <ConfidenceStamp level={confidence.level} detail={confidence.detail} />
-                  </p>
-                </div>
-              )}
-
-              {meta.key === "pricingAcceptance" && (
-                <div className="mt-3 rounded-md border border-dashed p-2" style={{ borderColor: BORDER }}>
-                  <div className="mb-1 flex items-center justify-between text-[10px]" style={{ color: MUTED }}>
-                    <span>Weight (preview)</span>
-                    <span className="font-semibold tabular-nums" style={{ color: NAVY }}>
-                      {Math.round(weight * 100)}%
-                    </span>
-                  </div>
-                  <Slider
-                    value={[Math.round(weight * 100)]}
-                    min={5}
-                    max={40}
-                    step={1}
-                    aria-label={`${meta.title} weight`}
-                    onValueChange={(vals) => {
-                      const pct = vals[0] / 100;
-                      setWeights((w) => ({ ...w, [meta.key]: pct }));
-                    }}
-                  />
-                </div>
-              )}
-
-
-
-
-
-              {meta.key === "enrichmentDiversity" && (
-                <div className="mt-3 border-t border-dashed pt-2" style={{ borderColor: BORDER }}>
-                  <div className="mb-1 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
-                    Categories found
-                  </div>
-                  {categoryCounts.length === 0 ? (
-                    <p className="text-[11px]" style={{ color: MUTED }}>
-                      No categories classified yet.
-                    </p>
-                  ) : (
-                    <div className="flex flex-wrap gap-1">
-                      {categoryCounts.map((c) => (
-                        <span
-                          key={c.label}
-                          className={CHIP}
-                          style={{ backgroundColor: SOFT, color: NAVY, border: `1px solid ${BORDER}` }}
-                        >
-                          {c.label} {c.count}
-                        </span>
-                      ))}
+                  {meta.key === "enrichmentDiversity" && (
+                    <div className="mt-2 border-t border-dashed pt-2" style={{ borderColor: BORDER }}>
+                      <div className="mb-1 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
+                        Categories found
+                      </div>
+                      {categoryCounts.length === 0 ? (
+                        <p className="text-[11px]" style={{ color: MUTED }}>
+                          No categories classified yet.
+                        </p>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {categoryCounts.map((c) => (
+                            <span
+                              key={c.label}
+                              className={CHIP}
+                              style={{ backgroundColor: SOFT, color: NAVY, border: `1px solid ${BORDER}` }}
+                            >
+                              {c.label} {c.count}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               )}
+
+              {/* Trust */}
+              <div className="mt-3 border-t border-dashed pt-2" style={{ borderColor: BORDER }}>
+                <div className="mb-1 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
+                  Trust
+                </div>
+                <p className="text-[12px] font-semibold leading-snug" style={{ color: NAVY }}>
+                  {confidence.level === "high" ? "High confidence" : confidence.level === "medium" ? "Medium confidence" : "Low confidence"}
+                </p>
+                <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] leading-snug" style={{ color: MUTED }}>
+                  <span>{confidence.detail}</span>
+                  <ConfidenceStamp level={confidence.level} detail={confidence.detail} />
+                </p>
+              </div>
+
+              {/* Weight (preview) */}
+              <div className="mt-3 rounded-md border border-dashed p-2" style={{ borderColor: BORDER }}>
+                <div className="mb-1 flex items-center justify-between text-[10px]" style={{ color: MUTED }}>
+                  <span>Weight (preview)</span>
+                  <span className="font-semibold tabular-nums" style={{ color: NAVY }}>
+                    {Math.round(weight * 100)}%
+                  </span>
+                </div>
+                <Slider
+                  value={[Math.round(weight * 100)]}
+                  min={5}
+                  max={40}
+                  step={1}
+                  aria-label={`${meta.title} weight`}
+                  onValueChange={(vals) => {
+                    const pct = vals[0] / 100;
+                    setWeights((w) => ({ ...w, [meta.key]: pct }));
+                  }}
+                />
+              </div>
+
 
 
 

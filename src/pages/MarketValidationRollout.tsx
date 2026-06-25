@@ -606,7 +606,47 @@ export default function MarketValidationRollout() {
       </div>
       <div className="mt-2 text-[11px] text-[#8a96aa]">
         Runs are sequential — one city at a time keeps data-provider costs predictable and isolates failures.
+        Cities with saved data ≤ 30 days old are skipped automatically; use <em>Force fresh</em> to override.
       </div>
+
+      <AlertDialog open={promptOpen} onOpenChange={setPromptOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>This city has recent saved data</AlertDialogTitle>
+            <AlertDialogDescription>
+              {promptCity} was last crawled on {formatShortDate(promptDateIso)}
+              {promptAge != null ? ` (${promptAge} days ago)` : ""}.
+              Use the saved data, or run a fresh crawl now? A fresh crawl will use Firecrawl credits.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setPromptOpen(false);
+                const d = formatShortDate(promptDateIso);
+                const age = ageDays(promptDateIso);
+                toast.success(
+                  `Using saved data${d ? ` from ${d}` : ""}${age != null ? ` (${age} day${age === 1 ? "" : "s"} old)` : ""} — skipped fresh crawl.`,
+                  { duration: 7000 },
+                );
+                invalidateAllMvs(queryClient);
+                queryClient.refetchQueries({ queryKey: ["mvs-live"] });
+                void fetchAll();
+              }}
+            >
+              Use saved data
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setPromptOpen(false);
+                if (promptCity) void startCrawl(promptCity);
+              }}
+            >
+              Run fresh crawl
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

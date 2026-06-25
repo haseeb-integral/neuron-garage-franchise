@@ -251,20 +251,24 @@ function CityRow({
       </td>
       <td className="px-3 py-2.5">{statusPill}</td>
       <td className="px-3 py-2.5 text-right font-mono text-[13px] text-[#07142f]">
-        {composite != null ? composite.toFixed(1) : <span className="text-[#8a96aa]">—</span>}
-        {showStaleWarning && (
-          <div
-            className="mt-1 inline-flex max-w-[220px] items-start gap-1 rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-left text-[10px] font-medium text-amber-900"
-            title="The most recent pipeline run for this city failed, so the score above is from an earlier successful run."
-          >
-            <AlertTriangle className="mt-0.5 h-2.5 w-2.5 shrink-0" />
-            <span>
-              Score may be stale — last run failed
-              {failedDate ? ` on ${new Date(failedDate).toLocaleDateString()}` : ""}. Click Run to refresh.
-            </span>
-          </div>
-        )}
+        <div className="flex items-center justify-end gap-1.5">
+          {composite != null ? composite.toFixed(1) : <span className="text-[#8a96aa]">—</span>}
+          {showStaleWarning && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex cursor-help items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 font-sans text-[10px] font-semibold text-amber-900">
+                  <AlertTriangle className="h-2.5 w-2.5" />
+                  Stale score
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs text-[12px] leading-relaxed">
+                Last crawl failed{failedDate ? ` on ${new Date(failedDate).toLocaleDateString()}` : ""}. Click Run to refresh.
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
       </td>
+
 
       <td className="px-3 py-2.5">
         <div className="flex flex-wrap items-center justify-end gap-1.5">

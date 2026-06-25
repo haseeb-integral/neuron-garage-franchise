@@ -1,29 +1,23 @@
-## Two small fixes
+## What we are changing
+Shrink the big amber "Score may be stale" warning box into a small chip with a tooltip, matching your reference screenshot.
 
-### 1. Make "Force fresh" a clearer outline button
-- Today it's a small blue text link beside the Run button.
-- Change it to a small outlined button (border + light hover bg, same row height) so Sam/Brett can spot and click it easily.
-- Same behavior — just visual styling change in `CityRow` inside `src/pages/MarketValidationRollout.tsx`.
+## Which page and part
+Only the `CityRow` component in `src/pages/MarketValidationRollout.tsx` — the composite score cell.
 
-### 2. Fix duplicate "New York, NY" row
-**Why it happens:** the page merges two sources:
-- `SHORTLIST_SEED` (hard-coded 9 cities — already includes New York, NY)
-- `useShortlistAdditions()` (rows the user added via "Add city" → stored in `mvs_shortlist_cities`)
+## Exact change
+1. Replace the multi-line amber block with a small inline chip that shows just "⚠ Stale score".
+2. On hover, a tooltip shows the full message: "Last crawl failed on [date]. Click Run to refresh."
+3. The chip sits right next to the composite number on the same line, so the row height stays even with normal rows.
 
-Someone added "New York, NY" through Add city, so it now appears in both lists. The merge in `MarketValidationRollout.tsx` does no dedupe, so it shows twice.
+## Why
+Your current version uses a compact chip. My version uses a wide box that adds extra row height and looks crowded.
 
-**Fix:** dedupe the merged list by a normalized key (`lower(city) + ", " + upper(state)`). Seed wins; additions that match a seed entry (or another addition) are dropped from the table. No DB change — the stray `mvs_shortlist_cities` row stays harmless and can be cleaned later if you want.
+## What is NOT touched
+- No other columns, buttons, or text.
+- No scoring math, backend, or other pages.
 
-**Optional follow-up (ask before doing):** also prevent the Add City dialog from accepting a city that already exists in the shortlist, so this can't happen again.
+## Files changed
+- `src/pages/MarketValidationRollout.tsx` (only the composite `<td>` block, ~15 lines)
 
-## Files touched
-- `src/pages/MarketValidationRollout.tsx` only.
-
-## Risk
-- Very low. Pure UI + a `useMemo` dedupe. No scoring/data/backend changes.
-
-## Test
-- Force fresh appears as a small outlined button on every row.
-- Only one "New York, NY" row shows; total goes from 12 → 11.
-
-Approve and I'll ship both in one turn.
+## Test after
+Hover over "⚠ Stale score" on any failed row — tooltip should appear. Row heights should look even across done and failed rows.

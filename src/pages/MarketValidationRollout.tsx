@@ -597,6 +597,7 @@ export default function MarketValidationRollout() {
                 anyRunning={anyRunning}
                 invokingCity={invokingCity}
                 onRun={() => handleRun(c.city, c.state)}
+                onForceFresh={() => handleForceFresh(c.city)}
                 onComposite={reportComposite}
               />
             ))}

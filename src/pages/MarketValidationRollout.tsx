@@ -246,11 +246,20 @@ function CityRow({
             type="button"
             onClick={onRun}
             disabled={!canRun || inFlight || isInvoking}
-            title={(anyRunning || invokingCity) && !inFlight && !isInvoking ? "Another city is running" : "Run pipeline"}
+            title={(anyRunning || invokingCity) && !inFlight && !isInvoking ? "Another city is running" : "Run pipeline (uses saved data if ≤ 30 days old)"}
             className="inline-flex items-center gap-1 rounded-md bg-[#174be8] px-2 py-1 text-[11px] font-semibold text-white shadow-sm transition hover:bg-[#0f37b5] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {inFlight || isInvoking ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
             Run
+          </button>
+          <button
+            type="button"
+            onClick={onForceFresh}
+            disabled={!canRun || inFlight || isInvoking}
+            title="Bypass the saved-data check and crawl this city again now."
+            className="text-[10px] font-medium text-[#174be8] underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Force fresh
           </button>
         </div>
       </td>

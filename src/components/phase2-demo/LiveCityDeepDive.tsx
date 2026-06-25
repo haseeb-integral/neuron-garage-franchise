@@ -219,6 +219,17 @@ function bandWhyFor(
   return null;
 }
 
+// Plain-English one-line "Result" sentence for the Pricing Acceptance card
+// only. Reads the existing band tone — no math change. Returns null for
+// other pillars so their layout is untouched.
+function pricingResultSentence(tone: BandTone | null | undefined): string | null {
+  if (!tone) return null;
+  if (tone === "weak") return "Most providers in this city are not charging premium prices yet.";
+  if (tone === "mid") return "Some providers charge premium prices, but it is not the norm yet.";
+  if (tone === "strong") return "Premium pricing is already common among providers here.";
+  return "Premium pricing is the norm across providers here.";
+}
+
 // Friendly labels for the sub-score input rows so non-technical readers
 // can interpret the numbers (e.g. "Median weekly price (est.)" instead of
 // the raw camelCase key "medianPrice").

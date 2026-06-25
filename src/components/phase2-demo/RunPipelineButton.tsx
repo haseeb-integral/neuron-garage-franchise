@@ -147,14 +147,23 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
   const findLastGoodRun = useCallback(() => findLastGoodRunShared(city), [city]);
 
 
-  const startCrawl = useCallback(async () => {
+  const startCrawl = useCallback(async (opts?: { force?: boolean }) => {
     setInvoking(true);
     try {
       const { data, error } = await supabase.functions.invoke("mvs-run-pipeline", {
-        body: { city },
+        body: { city, forceFresh: !!opts?.force },
       });
       if (error) {
         toast.error(`Failed to start pipeline: ${error.message}`);
+      } else if (data?.skipped) {
+        const d = formatShortDate(data?.saved_data_date);
+        toast.success(
+          `Using saved data${d ? ` from ${d}` : ""} (${data?.age_days ?? "?"} days old) — fresh crawl skipped to save credits.`,
+          { duration: 7000 },
+        );
+        invalidateAllMvs(queryClient);
+        queryClient.refetchQueries({ queryKey: ["mvs-live"] });
+        onComplete?.();
       } else if (data?.ok === false) {
         toast.error(`Pipeline error: ${data.error ?? "unknown"}`);
       } else if (data?.ok && data.summary) {
@@ -195,14 +204,23 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
   const handleRun = useCallback(
     async (opts?: { force?: boolean }) => {
       if (opts?.force) {
-        await startCrawl();
+        await startCrawl({ force: true });
         return;
       }
-      const lastGoodIso = await findLastGoodRun();
+      let lastGoodIso: string | null = null;
+      try {
+        lastGoodIso = await findLastGoodRun();
+      } catch {
+        toast.error(
+          `Couldn't confirm saved-data age for ${city}. Click "Force fresh crawl" if you still want to crawl.`,
+          { duration: 8000 },
+        );
+        return;
+      }
       const age = ageDays(lastGoodIso);
       if (age == null) {
-        // No prior successful run → behave as today (run fresh).
-        await startCrawl();
+        // No prior successful run → run fresh (backend guard will allow it).
+        await startCrawl({ force: true });
         return;
       }
       if (age <= FRESH_SKIP_DAYS) {
@@ -216,9 +234,9 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
         return;
       }
       // > 60 days → run fresh automatically.
-      await startCrawl();
+      await startCrawl({ force: true });
     },
-    [findLastGoodRun, startCrawl, useSavedDataOnly],
+    [city, findLastGoodRun, startCrawl, useSavedDataOnly],
   );
 
   const busy = invoking || inFlight;
@@ -286,7 +304,7 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
           <AlertDialogAction
             onClick={() => {
               setPromptOpen(false);
-              void startCrawl();
+              void startCrawl({ force: true });
             }}
           >
             Run fresh crawl

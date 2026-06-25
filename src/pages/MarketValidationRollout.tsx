@@ -385,15 +385,18 @@ export default function MarketValidationRollout() {
     return () => clearInterval(t);
   }, [anyRunning, invokingCity, fetchAll]);
 
-  // Actually invoke the edge function. No freshness check here.
-  const startCrawl = useCallback(async (city: string) => {
+  // Actually invoke the edge function. `force=true` bypasses the backend
+  // freshness guard so the crawl always runs.
+  const startCrawl = useCallback(async (city: string, opts?: { force?: boolean }) => {
     if (anyRunning || invokingCity) {
       toast.error("Wait for the in-flight run to finish — runs are sequential by design.");
       return;
     }
     setInvokingCity(city);
     try {
-      const { data, error } = await supabase.functions.invoke("mvs-run-pipeline", { body: { city } });
+      const { data, error } = await supabase.functions.invoke("mvs-run-pipeline", {
+        body: { city, forceFresh: !!opts?.force },
+      });
       if (error) {
         let detail = error.message ?? "";
         try {
@@ -404,6 +407,15 @@ export default function MarketValidationRollout() {
           }
         } catch { /* keep error.message */ }
         toast.error(`Couldn't start pipeline for ${city}: ${detail}`);
+      } else if (data?.skipped) {
+        // Backend guard blocked the crawl because saved data is fresh.
+        const d = formatShortDate(data?.saved_data_date);
+        toast.success(
+          `Using saved data${d ? ` from ${d}` : ""} (${data?.age_days ?? "?"} days old) — fresh crawl skipped to save credits.`,
+          { duration: 7000 },
+        );
+        invalidateAllMvs(queryClient);
+        queryClient.refetchQueries({ queryKey: ["mvs-live"] });
       } else if (data?.already_running) {
         toast.info(data?.message ?? `${city} is already running — refreshing status.`);
       } else if (data?.ok && data?.run_id) {
@@ -417,7 +429,7 @@ export default function MarketValidationRollout() {
     } finally {
       setInvokingCity(null);
     }
-  }, [anyRunning, invokingCity, fetchAll]);
+  }, [anyRunning, invokingCity, fetchAll, queryClient]);
 
   // Normal Run click: freshness pre-check → skip / prompt / run.
   const handleRun = useCallback(async (city: string, state: string) => {
@@ -425,7 +437,17 @@ export default function MarketValidationRollout() {
       toast.error("Wait for the in-flight run to finish — runs are sequential by design.");
       return;
     }
-    const decision = await decideFreshness(city);
+    let decision: Awaited<ReturnType<typeof decideFreshness>>;
+    try {
+      decision = await decideFreshness(city);
+    } catch {
+      // Fail safe: do NOT auto-crawl when the lookup fails.
+      toast.error(
+        `Couldn't confirm saved-data age for ${city}. Click "Force fresh" if you still want to crawl.`,
+        { duration: 8000 },
+      );
+      return;
+    }
     if (decision.kind === "skip") {
       const d = formatShortDate(decision.dateIso);
       toast.success(
@@ -445,12 +467,13 @@ export default function MarketValidationRollout() {
       setPromptOpen(true);
       return;
     }
-    await startCrawl(city);
+    // > 60 days or no prior good run → run fresh (backend guard will also let it through).
+    await startCrawl(city, { force: true });
   }, [anyRunning, invokingCity, fetchAll, queryClient, startCrawl]);
 
-  // Force fresh: skip pre-check entirely.
+  // Force fresh: skip pre-check entirely AND tell the backend to bypass its guard.
   const handleForceFresh = useCallback(
-    (city: string) => startCrawl(city),
+    (city: string) => startCrawl(city, { force: true }),
     [startCrawl],
   );
 
@@ -639,7 +662,7 @@ export default function MarketValidationRollout() {
             <AlertDialogAction
               onClick={() => {
                 setPromptOpen(false);
-                if (promptCity) void startCrawl(promptCity);
+                if (promptCity) void startCrawl(promptCity, { force: true });
               }}
             >
               Run fresh crawl

@@ -96,6 +96,7 @@ Deno.serve(async (req) => {
 
   const body = await req.json().catch(() => ({}));
   const city: string = (body?.city ?? AUSTIN).trim();
+  const forceFresh: boolean = body?.forceFresh === true || body?.force === true;
   if (!TIER_A_CITIES.has(city)) {
     const [cityName, stateAbbr] = city.split(",").map((s) => s.trim());
     const { data: addedRow } = await admin
@@ -111,6 +112,47 @@ Deno.serve(async (req) => {
         }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
+    }
+  }
+
+  // ----- Backend freshness guard ---------------------------------------
+  // Hard rule: do not start a new crawl if the city already has good saved
+  // data ≤ 30 days old, unless the caller explicitly passed forceFresh=true.
+  // This protects Firecrawl credits even when the UI check is bypassed.
+  if (!forceFresh) {
+    const FRESH_SKIP_DAYS = 30;
+    const { data: lastGood } = await admin
+      .from("mvs_pipeline_runs")
+      .select("id, status, finished_at, created_at, fallback_data_date")
+      .eq("city", city)
+      .in("status", ["done", "done_stale"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (lastGood) {
+      const effectiveIso =
+        lastGood.status === "done_stale"
+          ? lastGood.fallback_data_date
+          : (lastGood.finished_at ?? lastGood.created_at);
+      if (effectiveIso) {
+        const ageDays = Math.round(
+          (Date.now() - new Date(effectiveIso).getTime()) / 86_400_000,
+        );
+        if (ageDays >= 0 && ageDays <= FRESH_SKIP_DAYS) {
+          return new Response(
+            JSON.stringify({
+              ok: true,
+              skipped: true,
+              reason: "fresh_saved_data",
+              age_days: ageDays,
+              saved_data_date: effectiveIso,
+              last_run_id: lastGood.id,
+              message: `Using saved data (${ageDays} day${ageDays === 1 ? "" : "s"} old). Fresh crawl skipped. Pass forceFresh:true to override.`,
+            }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+      }
     }
   }
 

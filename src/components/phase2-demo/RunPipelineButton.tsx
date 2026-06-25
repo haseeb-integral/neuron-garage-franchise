@@ -265,7 +265,7 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
   const triggerButton = (
     <button
       type="button"
-      onClick={handleRun}
+      onClick={() => { void handleRun(); }}
       disabled={busy}
       className="inline-flex items-center gap-2 rounded-md bg-[#174be8] px-3 py-1.5 text-[12px] font-semibold text-white shadow-sm transition hover:bg-[#0f37b5] disabled:cursor-not-allowed disabled:opacity-60"
     >
@@ -274,8 +274,58 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
     </button>
   );
 
+  const forceFreshLink = (
+    <button
+      type="button"
+      onClick={() => { void handleRun({ force: true }); }}
+      disabled={busy}
+      className="text-[11px] font-medium text-[#174be8] underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+      title="Bypass the saved-data check and crawl the city again now."
+    >
+      Force fresh crawl
+    </button>
+  );
+
+  const promptDialog = (
+    <AlertDialog open={promptOpen} onOpenChange={setPromptOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>This city has recent saved data</AlertDialogTitle>
+          <AlertDialogDescription>
+            {city} was last crawled on {formatShortDate(promptDate)}
+            {promptAge != null ? ` (${promptAge} days ago)` : ""}.
+            Use the saved data, or run a fresh crawl now? A fresh crawl will use Firecrawl credits.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel
+            onClick={() => {
+              setPromptOpen(false);
+              useSavedDataOnly(promptDate);
+            }}
+          >
+            Use saved data
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              setPromptOpen(false);
+              void startCrawl();
+            }}
+          >
+            Run fresh crawl
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
   if (variant === "compact") {
-    return triggerButton;
+    return (
+      <>
+        {triggerButton}
+        {promptDialog}
+      </>
+    );
   }
 
   const staleAge = ageDays(latest?.fallback_data_date ?? null);
@@ -284,8 +334,9 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
     <div className="mb-5 rounded-lg border border-dashed bg-white p-3" style={{ borderColor: "#cfd8e6" }}>
       <div className="flex flex-wrap items-center gap-3">
         {triggerButton}
+        {forceFreshLink}
         <div className="text-[11px] text-[#526078]">
-          Admin only · discover → classify → ACS · cap 30 Firecrawl calls
+          Admin only · discover → classify → ACS · cap 30 Firecrawl calls · skips re-crawl if saved data ≤ 30 days
         </div>
         {latest && statusMeta && (
           <div className="ml-auto flex items-center gap-2 text-[11px] text-[#526078]">
@@ -325,6 +376,7 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
           </div>
         </div>
       )}
+      {promptDialog}
     </div>
   );
 }

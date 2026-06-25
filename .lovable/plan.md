@@ -1,68 +1,57 @@
-## What is happening
+# Firecrawl Fallback — Use Recent Saved Data When Crawl Fails
 
-You are dragging the **Weight (preview)** slider on the Pricing card and expecting the big number **16.9 / 100** to change. It does not. That is actually working as designed — but the design is confusing, so it feels like a bug. Here is why, and what I want to fix.
+## Goal (plain English)
 
-### Why the card score does not move
+If Firecrawl fails today, the MVS page must not break. Show the last good score from the database and tell the user the data is from an older date. Only show "failed" when there is no recent saved data at all.
 
-- The big number on each card is the **sub-score** (0–100) for that pillar. It only depends on the city's raw data (prices, providers, ACS, etc.). It does **not** depend on weight.
-- The slider only changes the **weight** that pillar carries inside the final MVS (the composite score at the top of the page).
-- So when you drag the slider:
-  - Card number (16.9) → stays the same ✅ (by design)
-  - Top-of-page MVS preview ("Default 48.6 → preview 51.9") → moves ✅
-  - But nothing on the card itself visibly reacts → feels broken ❌
+## Freshness rules (approved)
 
-This is the same on all 5 cards.
+- **0–30 days old** → "Fresh fallback" — green dot, normal trust, small note "Using saved data from {date}".
+- **31–60 days old** → "Stale fallback" — amber dot, banner "Using saved data from {date} — new crawl failed".
+- **> 60 days old** → Hard fail / "Needs review" — red, no score shown, ask user to retry.
 
-### The real issue
+## Pages / files that may be touched
 
-The slider's effect is **invisible on the card you are touching**. The user has to scroll up to the banner to see the change. That breaks trust.
-
-## Fix plan (UI only, no scoring math change)
-
-### Phase 1 — Make the slider's effect visible on the card (1 turn)
-
-On every card, directly under the Weight slider, add a small live line:
-
-```
-Contributes 5.4 of 100 to MVS  ·  drag to preview
-```
-
-- "Contributes" number = `subScore × weight` (e.g. 16.9 × 0.32 = 5.4).
-- Updates instantly as the slider moves.
-- Also show a tiny delta when the weight is not the default, e.g. `(+1.2 vs default)` in green/red.
-
-This gives instant visual feedback on the same card the user is dragging.
-
-### Phase 2 — Clarify the big number is not weight-driven (same turn)
-
-- Add a tiny label under the big "16.9 / 100" → `Sub-score (weight-independent)`.
-- Update the caption above the grid from "Dragging a weight only previews sensitivity" to plain English:
-  > "The big number is the pillar score and does not change with the slider. The slider only changes how much this pillar counts toward the final MVS at the top of the page."
-
-### Phase 3 — Smoke test (same turn)
-
-I will drive the running app with Playwright:
-1. Open Market Validation, click into a city.
-2. For each of the 5 cards, drag the slider up and down.
-3. Confirm:
-   - Big sub-score number stays the same (correct).
-   - "Contributes X of 100" line under the slider updates live.
-   - Top banner "Default → preview" updates live.
-   - Weight chip in the header (32% etc.) updates live.
-4. Screenshot before/after for the Pricing card as proof.
+- `supabase/functions/mvs-run-pipeline/index.ts` — wrap Firecrawl calls, downgrade fatal errors to soft failures, decide `done` vs `done_stale` vs `failed`.
+- `supabase/functions/mvs-classify-tier/index.ts` — same soft-fail pattern if it calls Firecrawl.
+- `mvs_pipeline_runs` table — write new `status` values (`done_stale`, `failed_no_data`) and a `fallback_reason` text. No schema change if `status` is already free-text; otherwise add one column.
+- `useLiveMvs.ts` (hook) — read fallback status + saved-data age, expose to UI.
+- `LiveCityDeepDive.tsx` — show amber/green dot, "Using saved data from {date}" line in the Trust section.
+- `MarketValidation.tsx` / table — show small amber dot on rows using stale fallback.
+- `RunPipelineButton.tsx` — toast message: "Crawl failed, using saved data from {date}" instead of red error.
 
 ## What will NOT change
 
-- No change to scoring math, weights logic, or `computeMvs`.
-- No change to DB, edge functions, Saved Sites, exports, or other pages.
-- Default weights and the "Reset" button keep working as today.
+- Scoring math, weights, default 475, registration scraper retirement, Saved Sites, exports, Site Analysis page.
+- No new providers will be invented from stale data — we only re-use what was already saved.
+
+## Phases
+
+**Phase 1 — Backend soft-fail (1 turn)**
+- In `mvs-run-pipeline`, wrap each Firecrawl call in try/catch.
+- On failure, check `mvs_providers.updated_at` for the city.
+- Pick status: `done` (fresh run), `done_stale` (used 0–60 day saved data), or `failed_no_data` (>60 days or empty).
+- Write `fallback_reason` and `fallback_data_date` into `mvs_pipeline_runs`.
+- Never overwrite saved provider rows with empty results.
+
+**Phase 2 — UI status indicators (1 turn)**
+- Hook reads run status + fallback date.
+- Card Trust section: amber line "Using saved data from {Jun 20} — new crawl failed".
+- Table row: small amber dot tooltip "Stale fallback — 42 days old".
+- Run button toast: friendly message instead of red error.
+
+**Phase 3 — Smoke test (1 turn)**
+- Force a Firecrawl failure (bad URL or env flag) for one city.
+- Confirm score stays visible, amber banner shows, no data loss.
+- Confirm a >60 day case shows hard-fail correctly.
 
 ## Risks
 
-- Very low. This is text + one derived number per card. No new state, no new fetches.
+- If `mvs_pipeline_runs.status` is a strict enum, Phase 1 needs a tiny migration to add `done_stale` and `failed_no_data`.
+- Need to make sure soft-fail does not hide real bugs — every fallback writes a clear `fallback_reason` so we can audit.
 
-## Estimated turns
+## Turns estimate
 
-- Phase 1 + 2 + 3 → **1 turn total**.
+3 turns total (one per phase). Stop after each phase for your review.
 
-Approve and I will ship in the next turn.
+Approve and I'll start Phase 1.

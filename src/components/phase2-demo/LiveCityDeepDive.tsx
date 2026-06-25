@@ -827,8 +827,37 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                 />
               </div>
 
+              {meta.key === "pricingAcceptance" && (() => {
+                const sentence = pricingResultSentence(band?.tone);
+                return sentence ? (
+                  <div className="mt-3 border-t border-dashed pt-2" style={{ borderColor: BORDER }}>
+                    <div className="mb-1 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
+                      Result
+                    </div>
+                    <p className="text-[12px] leading-snug" style={{ color: NAVY }}>
+                      {sentence}
+                    </p>
+                  </div>
+                ) : null;
+              })()}
+
+              {meta.key === "pricingAcceptance" && input && (
+                <div className="mt-3 border-t border-dashed pt-2" style={{ borderColor: BORDER }}>
+                  <div className="mb-1 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
+                    Evidence
+                  </div>
+                </div>
+              )}
+
               {input && (
-                <ul className="mt-3 space-y-1 border-t border-dashed pt-2" style={{ borderColor: BORDER }}>
+                <ul
+                  className={
+                    meta.key === "pricingAcceptance"
+                      ? "space-y-1"
+                      : "mt-3 space-y-1 border-t border-dashed pt-2"
+                  }
+                  style={meta.key === "pricingAcceptance" ? undefined : { borderColor: BORDER }}
+                >
                   {Object.entries(input).map(([k, v]) => {
                     if (v == null || k === "year2Signal") return null;
                     const display =

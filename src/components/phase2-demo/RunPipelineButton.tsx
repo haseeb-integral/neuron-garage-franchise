@@ -150,7 +150,27 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
     }
   }, [latest, lastTerminalId, onComplete, queryClient]);
 
-  const handleRun = async () => {
+  const [promptOpen, setPromptOpen] = useState(false);
+  const [promptAge, setPromptAge] = useState<number | null>(null);
+  const [promptDate, setPromptDate] = useState<string | null>(null);
+
+  // Find newest successful run (done or done_stale) for freshness check.
+  const findLastGoodRun = useCallback(async () => {
+    const { data } = await supabase
+      .from("mvs_pipeline_runs")
+      .select("finished_at, created_at, status")
+      .eq("city", city)
+      .in("status", ["done", "done_stale"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!data) return null;
+    const ref = (data as { finished_at: string | null; created_at: string }).finished_at
+      ?? (data as { created_at: string }).created_at;
+    return ref;
+  }, [city]);
+
+  const startCrawl = useCallback(async () => {
     setInvoking(true);
     try {
       const { data, error } = await supabase.functions.invoke("mvs-run-pipeline", {
@@ -177,7 +197,52 @@ export function RunPipelineButton({ city, onComplete, variant = "full" }: Props)
     } finally {
       setInvoking(false);
     }
-  };
+  }, [city, fetchLatest, onComplete, queryClient]);
+
+  const useSavedDataOnly = useCallback(
+    (dateIso: string | null) => {
+      const d = formatShortDate(dateIso);
+      const age = ageDays(dateIso);
+      toast.success(
+        `Using saved data${d ? ` from ${d}` : ""}${age != null ? ` (${age} day${age === 1 ? "" : "s"} old)` : ""} — skipped fresh crawl to save credits.`,
+        { duration: 7000 },
+      );
+      invalidateAllMvs(queryClient);
+      queryClient.refetchQueries({ queryKey: ["mvs-live"] });
+      onComplete?.();
+    },
+    [onComplete, queryClient],
+  );
+
+  // Click handler: apply the freshness pre-check, then either skip / prompt / run.
+  const handleRun = useCallback(
+    async (opts?: { force?: boolean }) => {
+      if (opts?.force) {
+        await startCrawl();
+        return;
+      }
+      const lastGoodIso = await findLastGoodRun();
+      const age = ageDays(lastGoodIso);
+      if (age == null) {
+        // No prior successful run → behave as today (run fresh).
+        await startCrawl();
+        return;
+      }
+      if (age <= FRESH_SKIP_DAYS) {
+        useSavedDataOnly(lastGoodIso);
+        return;
+      }
+      if (age <= FRESH_PROMPT_DAYS) {
+        setPromptAge(age);
+        setPromptDate(lastGoodIso);
+        setPromptOpen(true);
+        return;
+      }
+      // > 60 days → run fresh automatically.
+      await startCrawl();
+    },
+    [findLastGoodRun, startCrawl, useSavedDataOnly],
+  );
 
   const busy = invoking || inFlight;
   const status = latest?.status;

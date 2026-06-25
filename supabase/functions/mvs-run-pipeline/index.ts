@@ -241,14 +241,54 @@ Deno.serve(async (req) => {
         .eq("id", run.id);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
+
+      // Graceful fallback: if the run failed but we have recent saved provider
+      // data for this city, downgrade to `done_stale` (0–60 days) so the UI
+      // can keep showing the last good score with an amber "saved data from
+      // {date}" banner. Only mark `failed_no_data` when there is nothing
+      // recent enough to fall back to.
+      let fallbackStatus: "failed" | "done_stale" | "failed_no_data" = "failed";
+      let fallbackDate: string | null = null;
+      let fallbackReason: string | null = null;
+      try {
+        const { data: latestProv } = await admin
+          .from("mvs_providers")
+          .select("updated_at")
+          .eq("city", city)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (latestProv?.updated_at) {
+          const ageDays =
+            (Date.now() - new Date(latestProv.updated_at).getTime()) /
+            (1000 * 60 * 60 * 24);
+          if (ageDays <= 60) {
+            fallbackStatus = "done_stale";
+            fallbackDate = latestProv.updated_at as string;
+            fallbackReason = `Crawl failed — using saved data ${Math.round(ageDays)} day(s) old. ${msg}`.slice(0, 1000);
+          } else {
+            fallbackStatus = "failed_no_data";
+            fallbackReason = `Crawl failed and saved data is ${Math.round(ageDays)} day(s) old (>60). ${msg}`.slice(0, 1000);
+          }
+        } else {
+          fallbackStatus = "failed_no_data";
+          fallbackReason = `Crawl failed and no saved providers exist for this city. ${msg}`.slice(0, 1000);
+        }
+      } catch (lookupErr) {
+        console.warn("[mvs-run-pipeline] fallback lookup failed:", lookupErr);
+        fallbackStatus = "failed";
+      }
+
       await admin
         .from("mvs_pipeline_runs")
         .update({
-          status: "failed",
+          status: fallbackStatus,
           error: msg.slice(0, 1000),
           firecrawl_calls: totalCalls,
           source_counts: sourceCounts,
           finished_at: new Date().toISOString(),
+          fallback_reason: fallbackReason,
+          fallback_data_date: fallbackDate,
         })
         .eq("id", run.id);
     }

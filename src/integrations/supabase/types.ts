@@ -1417,6 +1417,8 @@ export type Database = {
           city: string
           created_at: string
           error: string | null
+          fallback_data_date: string | null
+          fallback_reason: string | null
           finished_at: string | null
           firecrawl_calls: number
           id: string
@@ -1429,6 +1431,8 @@ export type Database = {
           city: string
           created_at?: string
           error?: string | null
+          fallback_data_date?: string | null
+          fallback_reason?: string | null
           finished_at?: string | null
           firecrawl_calls?: number
           id?: string
@@ -1441,6 +1445,8 @@ export type Database = {
           city?: string
           created_at?: string
           error?: string | null
+          fallback_data_date?: string | null
+          fallback_reason?: string | null
           finished_at?: string | null
           firecrawl_calls?: number
           id?: string
@@ -3206,7 +3212,13 @@ export type Database = {
       candidate_vote_value: "approve" | "needs_info" | "reject"
       mvs_overlap: "direct" | "adjacent" | "distant"
       mvs_qa_entity: "provider" | "week"
-      mvs_run_status: "queued" | "running" | "done" | "failed"
+      mvs_run_status:
+        | "queued"
+        | "running"
+        | "done"
+        | "failed"
+        | "done_stale"
+        | "failed_no_data"
       mvs_tier: "premium" | "mid" | "budget" | "community"
       mvs_week_status: "open" | "limited" | "waitlist" | "sold_out" | "unknown"
     }
@@ -3350,7 +3362,14 @@ export const Constants = {
       candidate_vote_value: ["approve", "needs_info", "reject"],
       mvs_overlap: ["direct", "adjacent", "distant"],
       mvs_qa_entity: ["provider", "week"],
-      mvs_run_status: ["queued", "running", "done", "failed"],
+      mvs_run_status: [
+        "queued",
+        "running",
+        "done",
+        "failed",
+        "done_stale",
+        "failed_no_data",
+      ],
       mvs_tier: ["premium", "mid", "budget", "community"],
       mvs_week_status: ["open", "limited", "waitlist", "sold_out", "unknown"],
     },

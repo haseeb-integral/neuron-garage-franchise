@@ -234,6 +234,10 @@ Deno.serve(async (req) => {
       const calls = Number(json?.firecrawl_calls ?? 0);
       totalCalls += calls;
       stepResults[step] = json ?? text;
+      const stepCap = STEP_CAPS[step];
+      if (stepCap != null && calls > stepCap) {
+        throw new Error(`step '${step}' used ${calls} Firecrawl calls — over per-step limit (${stepCap})`);
+      }
       if (totalCalls > cap) {
         throw new Error(`Firecrawl cap exceeded after ${step}: ${totalCalls} > ${cap}`);
       }

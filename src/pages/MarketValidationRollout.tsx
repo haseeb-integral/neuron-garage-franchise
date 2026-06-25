@@ -385,7 +385,8 @@ export default function MarketValidationRollout() {
     return () => clearInterval(t);
   }, [anyRunning, invokingCity, fetchAll]);
 
-  const handleRun = useCallback(async (city: string, state: string) => {
+  // Actually invoke the edge function. No freshness check here.
+  const startCrawl = useCallback(async (city: string) => {
     if (anyRunning || invokingCity) {
       toast.error("Wait for the in-flight run to finish — runs are sequential by design.");
       return;
@@ -393,10 +394,6 @@ export default function MarketValidationRollout() {
     setInvokingCity(city);
     try {
       const { data, error } = await supabase.functions.invoke("mvs-run-pipeline", { body: { city } });
-
-      // supabase-js sets `error` on any non-2xx. The real reason is inside
-      // error.context (a Response), which we read explicitly so the user
-      // doesn't just see "non-2xx status code".
       if (error) {
         let detail = error.message ?? "";
         try {
@@ -410,8 +407,6 @@ export default function MarketValidationRollout() {
       } else if (data?.already_running) {
         toast.info(data?.message ?? `${city} is already running — refreshing status.`);
       } else if (data?.ok && data?.run_id) {
-        // 202 — pipeline started in the background. The poll loop will
-        // pick up status changes; promote to live when it finishes.
         toast.success(`Pipeline started for ${city} — running in background (~1–2 min).`);
       } else if (data?.error) {
         toast.error(`Pipeline error: ${data.error}`);
@@ -423,6 +418,41 @@ export default function MarketValidationRollout() {
       setInvokingCity(null);
     }
   }, [anyRunning, invokingCity, fetchAll]);
+
+  // Normal Run click: freshness pre-check → skip / prompt / run.
+  const handleRun = useCallback(async (city: string, state: string) => {
+    if (anyRunning || invokingCity) {
+      toast.error("Wait for the in-flight run to finish — runs are sequential by design.");
+      return;
+    }
+    const decision = await decideFreshness(city);
+    if (decision.kind === "skip") {
+      const d = formatShortDate(decision.dateIso);
+      toast.success(
+        `Using saved data${d ? ` from ${d}` : ""} (${decision.age} day${decision.age === 1 ? "" : "s"} old) — skipped fresh crawl to save credits.`,
+        { duration: 7000 },
+      );
+      invalidateAllMvs(queryClient);
+      queryClient.refetchQueries({ queryKey: ["mvs-live"] });
+      await fetchAll();
+      return;
+    }
+    if (decision.kind === "prompt") {
+      setPromptCity(city);
+      setPromptState(state);
+      setPromptDateIso(decision.dateIso);
+      setPromptAge(decision.age);
+      setPromptOpen(true);
+      return;
+    }
+    await startCrawl(city);
+  }, [anyRunning, invokingCity, fetchAll, queryClient, startCrawl]);
+
+  // Force fresh: skip pre-check entirely.
+  const handleForceFresh = useCallback(
+    (city: string) => startCrawl(city),
+    [startCrawl],
+  );
 
   // When a previously-running row finishes, auto-promote the city to live
   // so the Market Validation page picks up the new composite.

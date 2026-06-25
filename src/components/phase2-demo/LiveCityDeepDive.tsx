@@ -808,25 +808,27 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                 </div>
               </div>
 
-              <div className="mt-2.5 rounded-md border border-dashed p-2" style={{ borderColor: BORDER }}>
-                <div className="mb-1 flex items-center justify-between text-[10px]" style={{ color: MUTED }}>
-                  <span>Weight (preview)</span>
-                  <span className="font-semibold tabular-nums" style={{ color: NAVY }}>
-                    {Math.round(weight * 100)}%
-                  </span>
+              {meta.key !== "pricingAcceptance" && (
+                <div className="mt-2.5 rounded-md border border-dashed p-2" style={{ borderColor: BORDER }}>
+                  <div className="mb-1 flex items-center justify-between text-[10px]" style={{ color: MUTED }}>
+                    <span>Weight (preview)</span>
+                    <span className="font-semibold tabular-nums" style={{ color: NAVY }}>
+                      {Math.round(weight * 100)}%
+                    </span>
+                  </div>
+                  <Slider
+                    value={[Math.round(weight * 100)]}
+                    min={5}
+                    max={40}
+                    step={1}
+                    aria-label={`${meta.title} weight`}
+                    onValueChange={(vals) => {
+                      const pct = vals[0] / 100;
+                      setWeights((w) => ({ ...w, [meta.key]: pct }));
+                    }}
+                  />
                 </div>
-                <Slider
-                  value={[Math.round(weight * 100)]}
-                  min={5}
-                  max={40}
-                  step={1}
-                  aria-label={`${meta.title} weight`}
-                  onValueChange={(vals) => {
-                    const pct = vals[0] / 100;
-                    setWeights((w) => ({ ...w, [meta.key]: pct }));
-                  }}
-                />
-              </div>
+              )}
 
               {meta.key === "pricingAcceptance" && (() => {
                 const sentence = pricingResultSentence(band?.tone);
@@ -943,13 +945,35 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                   <div className="mb-1 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
                     Trust
                   </div>
-                  <p className="text-[11px] leading-snug" style={{ color: MUTED }}>
-                    <span className="font-semibold" style={{ color: NAVY }}>
-                      {confidence.level === "high" ? "High confidence" : confidence.level === "medium" ? "Medium confidence" : "Low confidence"}
-                    </span>
-                    . {confidence.detail}{" "}
+                  <p className="text-[12px] font-semibold leading-snug" style={{ color: NAVY }}>
+                    {confidence.level === "high" ? "High confidence" : confidence.level === "medium" ? "Medium confidence" : "Low confidence"}
+                  </p>
+                  <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] leading-snug" style={{ color: MUTED }}>
+                    <span>{confidence.detail}</span>
                     <ConfidenceStamp level={confidence.level} detail={confidence.detail} />
                   </p>
+                </div>
+              )}
+
+              {meta.key === "pricingAcceptance" && (
+                <div className="mt-3 rounded-md border border-dashed p-2" style={{ borderColor: BORDER }}>
+                  <div className="mb-1 flex items-center justify-between text-[10px]" style={{ color: MUTED }}>
+                    <span>Weight (preview)</span>
+                    <span className="font-semibold tabular-nums" style={{ color: NAVY }}>
+                      {Math.round(weight * 100)}%
+                    </span>
+                  </div>
+                  <Slider
+                    value={[Math.round(weight * 100)]}
+                    min={5}
+                    max={40}
+                    step={1}
+                    aria-label={`${meta.title} weight`}
+                    onValueChange={(vals) => {
+                      const pct = vals[0] / 100;
+                      setWeights((w) => ({ ...w, [meta.key]: pct }));
+                    }}
+                  />
                 </div>
               )}
 

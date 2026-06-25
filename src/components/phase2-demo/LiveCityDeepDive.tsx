@@ -982,7 +982,9 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                     setWeights((w) => ({ ...w, [meta.key]: pct }));
                   }}
                 />
-                {score != null && (() => {
+              </div>
+              {score != null && (() => {
+
                   const contrib = score * weight;
                   const defaultContrib = score * DEFAULT_WEIGHTS[meta.key];
                   const delta = contrib - defaultContrib;

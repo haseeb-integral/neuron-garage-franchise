@@ -662,7 +662,7 @@ export default function MarketValidationRollout() {
             <AlertDialogAction
               onClick={() => {
                 setPromptOpen(false);
-                if (promptCity) void startCrawl(promptCity);
+                if (promptCity) void startCrawl(promptCity, { force: true });
               }}
             >
               Run fresh crawl

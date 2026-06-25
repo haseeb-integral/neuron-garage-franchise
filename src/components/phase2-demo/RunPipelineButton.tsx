@@ -260,7 +260,7 @@ export function PipelineStatusStrip({ city }: { city: string }) {
   const fetchLatest = useCallback(async () => {
     const { data } = await supabase
       .from("mvs_pipeline_runs")
-      .select("id, status, started_at, finished_at, firecrawl_calls, error, created_at")
+      .select(SELECT_COLS)
       .eq("city", city)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -274,29 +274,38 @@ export function PipelineStatusStrip({ city }: { city: string }) {
     return () => clearInterval(t);
   }, [fetchLatest]);
 
-  const StatusIcon = latest?.status === "done"
-    ? CheckCircle2
-    : latest?.status === "failed"
-      ? AlertTriangle
-      : null;
+  const meta = (() => {
+    switch (latest?.status) {
+      case "done":
+        return { icon: CheckCircle2, color: "text-emerald-600", label: "done" };
+      case "done_stale":
+        return { icon: Info, color: "text-amber-600", label: "done (saved data)" };
+      case "failed":
+        return { icon: AlertTriangle, color: "text-red-600", label: "failed" };
+      case "failed_no_data":
+        return { icon: AlertTriangle, color: "text-red-600", label: "failed (no recent data)" };
+      default:
+        return null;
+    }
+  })();
+  const StatusIcon = meta?.icon ?? null;
 
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#526078]">
       <span>Admin only · discover → classify → ACS · cap 30 Firecrawl calls</span>
-      {latest && (
+      {latest && meta && (
         <span className="flex items-center gap-1.5">
-          {StatusIcon && (
-            <StatusIcon
-              className={`h-3.5 w-3.5 ${latest.status === "done" ? "text-emerald-600" : "text-red-600"}`}
-            />
-          )}
+          {StatusIcon && <StatusIcon className={`h-3.5 w-3.5 ${meta.color}`} />}
           <span>
             Last run:&nbsp;
-            <span className="font-semibold text-[#07142f]">{latest.status}</span>
+            <span className="font-semibold text-[#07142f]">{meta.label}</span>
             {" · "}
             {latest.firecrawl_calls} calls
             {" · "}
             {new Date(latest.created_at).toLocaleString()}
+            {latest.status === "done_stale" && latest.fallback_data_date && (
+              <> · saved data from {formatShortDate(latest.fallback_data_date)}</>
+            )}
           </span>
         </span>
       )}

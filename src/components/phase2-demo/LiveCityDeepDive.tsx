@@ -766,7 +766,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
 
       {/* Sub-score grid with live sliders */}
       <p className="mb-2 text-[12px] leading-relaxed" style={{ color: MUTED }}>
-        Each card shows the score, what it means, the inputs used, and where the data came from. Dragging a weight only previews sensitivity; it does not save.
+        Each card shows the score, what it means, the inputs used, and where the data came from. The big number is the pillar score and does not change with the slider. The slider only changes how much this pillar counts toward the final MVS at the top of the page.
       </p>
       <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {SUB_SCORE_META.map((meta) => {

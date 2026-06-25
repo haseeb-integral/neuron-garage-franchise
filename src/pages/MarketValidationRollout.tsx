@@ -78,6 +78,7 @@ function CityRow({
   anyRunning,
   invokingCity,
   onRun,
+  onForceFresh,
   onComposite,
 }: {
   city: string;

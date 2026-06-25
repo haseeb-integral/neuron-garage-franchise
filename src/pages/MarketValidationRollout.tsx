@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   ChevronLeft,
+  Info,
   Loader2,
   Play,
   RotateCcw,
@@ -251,20 +252,18 @@ function CityRow({
       </td>
       <td className="px-3 py-2.5">{statusPill}</td>
       <td className="px-3 py-2.5 text-right font-mono text-[13px] text-[#07142f]">
-        <div className="flex items-center justify-end gap-1.5">
-          {composite != null ? composite.toFixed(1) : <span className="text-[#8a96aa]">—</span>}
+        <div className="flex flex-col items-end gap-1">
+          <div>
+            {composite != null ? composite.toFixed(1) : <span className="text-[#8a96aa]">—</span>}
+          </div>
           {showStaleWarning && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="inline-flex cursor-help items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 font-sans text-[10px] font-semibold text-amber-900">
-                  <AlertTriangle className="h-2.5 w-2.5" />
-                  Stale score
-                </span>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-xs text-[12px] leading-relaxed">
-                Last crawl failed{failedDate ? ` on ${new Date(failedDate).toLocaleDateString()}` : ""}. Click Run to refresh.
-              </TooltipContent>
-            </Tooltip>
+            <div className="inline-flex items-start gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-left font-sans text-[10px] leading-snug text-amber-800">
+              <Info className="mt-0.5 h-3 w-3 shrink-0 text-amber-600" />
+              <span>
+                Score may be stale — last run failed
+                {failedDate ? ` on ${new Date(failedDate).toLocaleDateString()}` : ""}. Click Run to refresh.
+              </span>
+            </div>
           )}
         </div>
       </td>

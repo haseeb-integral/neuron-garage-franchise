@@ -279,6 +279,13 @@ export default function MarketValidationRollout() {
   const [composites, setComposites] = useState<Record<string, number | null>>({});
 
   const [invokingCity, setInvokingCity] = useState<string | null>(null);
+  const [promptOpen, setPromptOpen] = useState(false);
+  const [promptCity, setPromptCity] = useState<string | null>(null);
+  const [promptState, setPromptState] = useState<string | null>(null);
+  const [promptDateIso, setPromptDateIso] = useState<string | null>(null);
+  const [promptAge, setPromptAge] = useState<number | null>(null);
+  const queryClient = useQueryClient();
+
 
   const { rows: additions, addCity } = useShortlistAdditions();
   const SHORTLISTED_CITIES = useMemo<{ city: string; state: string }[]>(

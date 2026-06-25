@@ -328,10 +328,21 @@ export default function MarketValidationRollout() {
 
   const { rows: additions, addCity } = useShortlistAdditions();
   const SHORTLISTED_CITIES = useMemo<{ city: string; state: string }[]>(
-    () => [
-      ...BASE_SHORTLIST,
-      ...additions.map((a) => ({ city: `${a.city}, ${a.state}`, state: a.state })),
-    ],
+    () => {
+      const merged = [
+        ...BASE_SHORTLIST,
+        ...additions.map((a) => ({ city: `${a.city}, ${a.state}`, state: a.state })),
+      ];
+      const seen = new Set<string>();
+      const out: { city: string; state: string }[] = [];
+      for (const row of merged) {
+        const key = row.city.trim().toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(row);
+      }
+      return out;
+    },
     [additions],
   );
 

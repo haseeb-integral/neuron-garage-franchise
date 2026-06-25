@@ -142,19 +142,20 @@ function bandFor(
 ): { label: string; tone: BandTone } | null {
   if (key === "marketBalance") {
     if (coverageRatio == null) return null;
-    if (coverageRatio >= 350) return { label: "Market: underserved", tone: "top" };
-    if (coverageRatio >= 200) return { label: "Market: balanced", tone: "strong" };
-    if (coverageRatio >= 100) return { label: "Market: competitive", tone: "mid" };
-    return { label: "Market: saturated", tone: "weak" };
+    if (coverageRatio >= 350) return { label: "Underserved", tone: "top" };
+    if (coverageRatio >= 200) return { label: "Balanced", tone: "strong" };
+    if (coverageRatio >= 100) return { label: "Competitive", tone: "mid" };
+    return { label: "Saturated", tone: "weak" };
   }
   if (score == null) return null;
   const idx = Math.max(0, bandIndexFromScore(score));
   const tone = BAND_TONES[idx] ?? "mid";
-  if (key === "enrichmentDiversity") return { label: `Market: ${DIVERSITY_BAND_LABELS[idx]}`, tone };
-  if (key === "marketDepth") return { label: `Market: ${DEPTH_BAND_LABELS[idx]}`, tone };
+  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+  if (key === "enrichmentDiversity") return { label: cap(DIVERSITY_BAND_LABELS[idx]), tone };
+  if (key === "marketDepth") return { label: cap(DEPTH_BAND_LABELS[idx]), tone };
   const suffix = PILLAR_BAND_SUFFIX[key];
   if (!suffix) return null;
-  return { label: `Market: ${GENERIC_BAND_LABELS[idx].toLowerCase()} ${suffix}`, tone };
+  return { label: `${GENERIC_BAND_LABELS[idx]} ${suffix}`, tone };
 }
 
 // One-line plain-English "why" sentence shown right under the market band

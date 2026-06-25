@@ -937,6 +937,23 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                 </ul>
               )}
 
+              {meta.key === "pricingAcceptance" && (
+                <div className="mt-3 border-t border-dashed pt-2" style={{ borderColor: BORDER }}>
+                  <div className="mb-1 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
+                    Trust
+                  </div>
+                  <p className="text-[11px] leading-snug" style={{ color: MUTED }}>
+                    <span className="font-semibold" style={{ color: NAVY }}>
+                      {confidence.level === "high" ? "High confidence" : confidence.level === "medium" ? "Medium confidence" : "Low confidence"}
+                    </span>
+                    . {confidence.detail}{" "}
+                    <ConfidenceStamp level={confidence.level} detail={confidence.detail} />
+                  </p>
+                </div>
+              )}
+
+
+
 
 
               {meta.key === "enrichmentDiversity" && (

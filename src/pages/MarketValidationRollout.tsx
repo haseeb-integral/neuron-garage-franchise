@@ -674,6 +674,7 @@ export default function MarketValidationRollout() {
                 flag={flags[c.city] ?? null}
                 anyRunning={anyRunning}
                 invokingCity={invokingCity}
+                skipInfo={skipInfos[c.city] ?? null}
                 onRun={() => handleRun(c.city, c.state)}
                 onForceFresh={() => handleForceFresh(c.city)}
                 onComposite={reportComposite}

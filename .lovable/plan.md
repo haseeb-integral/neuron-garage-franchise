@@ -1,56 +1,99 @@
-## Problem
+You are right. Denver did run again. The old fix was not safe enough.
 
-The freshness pre-check (skip re-crawl if saved data ≤ 30 days) is only wired into the `RunPipelineButton` on the city deep-dive panel.
+## What I found
 
-The **Run buttons in the City Scoring Console table** (`MarketValidationRollout.tsx`, the page in your screenshot) bypass that check completely — they call the pipeline edge function directly. So clicking Run on Denver started a fresh crawl even though Denver's last good run was 2 hours old.
+The Run button was still able to start a fresh crawl even when Denver had a successful run today.
 
-This is the same page where you saw "Denver, CO — running" after my earlier message said the crawl would be skipped. My earlier answer was wrong for this page.
+The real issue is this:
 
-## Goal
+- The saved-data check was only a front-end check.
+- The backend pipeline still accepts a normal Run request and starts a crawl.
+- If the front-end check is missed, delayed, old code is still loaded, or the lookup fails, the crawl can still start.
+- That means the app was not protected end to end.
 
-Apply the same 3-tier freshness rule to the per-row Run button in the City Scoring Console table, so behavior is consistent everywhere:
+So yes: the plan was not fully protected. It needed a backend safety check too.
 
-- 0–30 days old → skip crawl, toast "Using saved data from {date}", keep score visible.
-- 31–60 days old → show "Use saved data / Run fresh crawl" prompt.
-- 60+ days old → run fresh crawl automatically.
-- Always allow a manual "Force fresh crawl" override.
-- Judge age from `fallback_data_date` for `done_stale` runs, `finished_at` for `done` runs.
+## Fix plan
 
-## Plan (one phase, one file)
+### Phase 1 — Add a hard backend guard
 
-**File:** `src/pages/MarketValidationRollout.tsx`
+**Change:** Update the `mvs-run-pipeline` backend function.
 
-1. Extract the small shared helper logic (already in `RunPipelineButton.tsx`) into a new helper file `src/lib/mvs/preCrawlFreshness.ts`:
-   - `findLastGoodRun(city)` — query latest `done`/`done_stale` row, return effective data date.
-   - `ageDays(iso)` — number of whole days since `iso`.
-   - Constants `FRESH_SKIP_DAYS = 30`, `FRESH_PROMPT_DAYS = 60`.
-   Refactor `RunPipelineButton.tsx` to import from this helper (no behavior change there).
+Before it creates a new run or calls Firecrawl, it will check `mvs_pipeline_runs`.
 
-2. In `MarketValidationRollout.tsx`:
-   - Update the row's `handleRun(city, state)` to first call `findLastGoodRun`, then branch the same way:
-     - ≤30 days → skip crawl, toast "Using saved data from {date} — skipped fresh crawl", call the existing refresh path so the table re-reads the composite, do NOT invoke the edge function.
-     - 31–60 days → open a confirm dialog (`AlertDialog`) asking "Use saved data / Run fresh crawl".
-     - >60 days → invoke pipeline as today.
-   - Add a small **"Force fresh"** link next to each row's Run button (icon-only on small screens, text on wider) so the user can always override.
-   - Lift one shared `AlertDialog` to the page level so we don't render one per row.
+Rules:
 
-3. Smoke check:
-   - Click Run on a city with `done` today → should toast "Using saved data" and NOT flip to "running".
-   - Click "Force fresh" on the same row → should crawl normally.
-   - Click Run on a city with `done_stale` from today (where `fallback_data_date` is older) → should judge age from `fallback_data_date`, not today.
+- If the city has good saved data from 0–30 days ago, do not crawl.
+- Return a clear response: `Using saved data. Fresh crawl skipped.`
+- Do not create a new `running` row.
+- Do not call Firecrawl.
+- If the user clicks `Force fresh`, allow the crawl.
 
-## What I will NOT touch
+**Affected:**
 
-- Scoring math, computeMvs, Firecrawl fallback logic (already shipped).
-- `mvs-run-pipeline` edge function — the check stays purely client-side.
-- Database schema.
-- The deep-dive panel's existing Run button (only refactor to use the shared helper; same behavior).
-- Other pages (Site Analysis, Saved Sites, etc.).
+- Backend function: `mvs-run-pipeline`
+- Table read only: `mvs_pipeline_runs`
+- No scoring math change
+- No saved data structure change
+- No database schema change
+
+**Why this fixes the real problem:**
+
+Even if the UI fails, the backend will block the extra crawl.
+
+### Phase 2 — Make all Run buttons send the right intent
+
+**Change:** Update normal Run and Force fresh.
+
+- Normal `Run` sends `forceFresh: false` or no force flag.
+- `Force fresh` sends `forceFresh: true`.
+
+**Affected pages/components:**
+
+- City Scoring Console page
+- Market Validation deep-dive Run button
+- Any refresh-all helper that calls the same pipeline
+
+**Why:**
+
+This makes the meaning clear:
+
+- `Run` = use saved data when recent.
+- `Force fresh` = crawl again on purpose.
+
+### Phase 3 — Make the UI fail safe
+
+**Change:** If the page cannot check saved data for any reason, it must not start a crawl by default.
+
+It should show a message like:
+
+`Could not confirm saved data age. Use Force fresh if you still want to crawl.`
+
+**Why:**
+
+A lookup problem should not spend Firecrawl credits.
+
+### Phase 4 — Smoke test end to end
+
+I will test Denver specifically.
+
+Expected result after fix:
+
+1. Click normal `Run` for Denver.
+2. No new `running` row appears.
+3. No Firecrawl call starts.
+4. User sees a saved-data message.
+5. Click `Force fresh`.
+6. A new run starts only then.
+
+I will also check the database rows before and after to prove the normal Run did not create a new crawl.
 
 ## Risk
 
-Very low — adds a pre-check before an existing call. If the helper fails, we fall through to running the pipeline as today, so worst case is "behaves like before the fix". Easy to revert.
+The only risk is blocking a real needed crawl by mistake.
 
-## Estimated turns
+That is why the `Force fresh` button stays available.
 
-1 turn to ship Phase 1 + small smoke test.
+## Turns needed
+
+This should take 1 build turn.

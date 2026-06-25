@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   ChevronLeft,
+  Info,
   Loader2,
   Play,
   RotateCcw,

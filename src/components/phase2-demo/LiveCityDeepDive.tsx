@@ -766,7 +766,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
 
       {/* Sub-score grid with live sliders */}
       <p className="mb-2 text-[12px] leading-relaxed" style={{ color: MUTED }}>
-        Each card shows the score, what it means, the inputs used, and where the data came from. Dragging a weight only previews sensitivity; it does not save.
+        Each card shows the score, what it means, the inputs used, and where the data came from. The big number is the pillar score and does not change with the slider. The slider only changes how much this pillar counts toward the final MVS at the top of the page.
       </p>
       <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {SUB_SCORE_META.map((meta) => {
@@ -815,6 +815,9 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                   </div>
                   <div className="mt-0.5 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
                     / 100
+                  </div>
+                  <div className="mt-0.5 text-[9px] italic" style={{ color: MUTED }}>
+                    sub-score
                   </div>
                 </div>
               </div>
@@ -980,6 +983,31 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                   }}
                 />
               </div>
+              {score != null && (() => {
+
+                  const contrib = score * weight;
+                  const defaultContrib = score * DEFAULT_WEIGHTS[meta.key];
+                  const delta = contrib - defaultContrib;
+                  const showDelta = Math.abs(delta) >= 0.05;
+                  return (
+                    <div className="mt-1.5 flex items-center justify-between text-[10px]" style={{ color: MUTED }}>
+                      <span>
+                        Contributes <span className="font-semibold tabular-nums" style={{ color: NAVY }}>{contrib.toFixed(1)}</span> of 100 to MVS
+                      </span>
+                      {showDelta ? (
+                        <span
+                          className="font-semibold tabular-nums"
+                          style={{ color: delta > 0 ? "#1d6b32" : "#a3142b" }}
+                        >
+                          {delta > 0 ? "+" : ""}{delta.toFixed(1)} vs default
+                        </span>
+                      ) : (
+                        <span className="italic">drag to preview</span>
+                      )}
+                    </div>
+                  );
+                })()}
+
 
 
 

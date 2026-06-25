@@ -1,67 +1,68 @@
-## Goal
-Apply the approved Pricing Acceptance 3-section layout (Result → Evidence → Trust → Weight preview → Formula/Sources) to the other 4 Market Validation cards: **Scaled Operator**, **Enrichment Diversity**, **Program Depth**, and **Demand Balance**.
+## What is happening
 
-## Scope
-File: `src/components/phase2-demo/LiveCityDeepDive.tsx` only.
+You are dragging the **Weight (preview)** slider on the Pricing card and expecting the big number **16.9 / 100** to change. It does not. That is actually working as designed — but the design is confusing, so it feels like a bug. Here is why, and what I want to fix.
 
-No changes to: scoring math, weights, slider logic, popovers, freshness pills, backend, edge functions, Firecrawl, Supabase, saved data, or the other pages.
+### Why the card score does not move
 
-## What changes per card
+- The big number on each card is the **sub-score** (0–100) for that pillar. It only depends on the city's raw data (prices, providers, ACS, etc.). It does **not** depend on weight.
+- The slider only changes the **weight** that pillar carries inside the final MVS (the composite score at the top of the page).
+- So when you drag the slider:
+  - Card number (16.9) → stays the same ✅ (by design)
+  - Top-of-page MVS preview ("Default 48.6 → preview 51.9") → moves ✅
+  - But nothing on the card itself visibly reacts → feels broken ❌
 
-For each of the 4 cards, the body becomes:
+This is the same on all 5 cards.
 
-1. **Result** — one plain-English sentence based on the score band (Weak / Mixed / Strong), pillar-specific.
-2. **Evidence** — the existing input rows (with their proof popovers and freshness pills), grouped under an "Evidence" label.
-3. **Trust** — two lines:
-   - Line 1: confidence level (e.g., "Medium confidence")
-   - Line 2: pillar-specific detail (e.g., "3 of 19 providers are national operators.") + the `Data: …` chip
-4. **Weight (preview)** slider — moved below Trust.
-5. Formula + Sources collapsibles — unchanged, stay at the bottom.
+### The real issue
 
-Remove the old "Why" line and the global confidence paragraph for these 4 cards (same as Pricing).
+The slider's effect is **invisible on the card you are touching**. The user has to scroll up to the banner to see the change. That breaks trust.
 
-## Plain-English result sentences (draft)
+## Fix plan (UI only, no scoring math change)
 
-**Scaled Operator Presence**
-- Weak: "Almost no national or multi-site operators are active in this city yet."
-- Mixed: "A few national or multi-site operators are present, but the market is not crowded."
-- Strong: "Several national or multi-site operators are already competing here."
+### Phase 1 — Make the slider's effect visible on the card (1 turn)
 
-**Enrichment Diversity**
-- Weak: "Families here have very few enrichment options outside daycare."
-- Mixed: "There is a moderate mix of enrichment categories for families."
-- Strong: "Families here have a wide range of enrichment options to choose from."
+On every card, directly under the Weight slider, add a small live line:
 
-**Program Depth**
-- Weak: "Most providers here run short or shallow programs."
-- Mixed: "Programs here are a mix of short and full-depth offerings."
-- Strong: "Most providers here run deep, full-week programs."
+```
+Contributes 5.4 of 100 to MVS  ·  drag to preview
+```
 
-**Demand Balance**
-- Weak: "Demand and supply look poorly matched in this city."
-- Mixed: "Demand and supply are roughly balanced, with some gaps."
-- Strong: "Demand and supply look well matched for new premium supply."
+- "Contributes" number = `subScore × weight` (e.g. 16.9 × 0.32 = 5.4).
+- Updates instantly as the slider moves.
+- Also show a tiny delta when the weight is not the default, e.g. `(+1.2 vs default)` in green/red.
 
-(I will confirm exact wording against existing band helpers; you can tweak any line after you see it live.)
+This gives instant visual feedback on the same card the user is dragging.
 
-## Trust detail lines per card (using existing data)
-- **Scaled Operator**: "{nNational} of {nTotal} providers are national or multi-site operators."
-- **Enrichment Diversity**: "{nCategories} enrichment categories detected across {nTotal} providers."
-- **Program Depth**: "{nDeep} of {nTotal} providers offer full-depth programs."
-- **Demand Balance**: "Based on ACS children 5–12 and coverage ratio for this metro."
+### Phase 2 — Clarify the big number is not weight-driven (same turn)
 
-Confidence level continues to come from the existing pillar-specific `confidenceFor` helper.
+- Add a tiny label under the big "16.9 / 100" → `Sub-score (weight-independent)`.
+- Update the caption above the grid from "Dragging a weight only previews sensitivity" to plain English:
+  > "The big number is the pillar score and does not change with the slider. The slider only changes how much this pillar counts toward the final MVS at the top of the page."
 
-## Phases & turns
+### Phase 3 — Smoke test (same turn)
 
-- **Phase 1 (1 turn)**: Add 4 result-sentence helpers + 4 trust-detail helpers next to the existing `pricingResultSentence`.
-- **Phase 2 (1 turn)**: Refactor the card render block so the 3-section layout applies to all 5 pillar keys (not just `pricingAcceptance`). Move Weight slider below Trust for all 5. Keep collapsibles at the bottom.
-- **Phase 3 (smoke test, same turn as Phase 2)**: Playwright check on Austin + Boston to confirm all 5 cards render the new layout, popovers still work, sliders still adjust, and no other page is affected.
+I will drive the running app with Playwright:
+1. Open Market Validation, click into a city.
+2. For each of the 5 cards, drag the slider up and down.
+3. Confirm:
+   - Big sub-score number stays the same (correct).
+   - "Contributes X of 100" line under the slider updates live.
+   - Top banner "Default → preview" updates live.
+   - Weight chip in the header (32% etc.) updates live.
+4. Screenshot before/after for the Pricing card as proof.
 
-Total: ~2 turns.
+## What will NOT change
+
+- No change to scoring math, weights logic, or `computeMvs`.
+- No change to DB, edge functions, Saved Sites, exports, or other pages.
+- Default weights and the "Reset" button keep working as today.
 
 ## Risks
-Low. Pure UI restructuring inside one file. Main risk is missing a pillar-specific input variable name — mitigated by reading the current input rows for each card before editing.
 
-## What stays untouched
-Scoring math, weight slider math, popover data, freshness logic, ConfidenceStamp, Known limitations panel, Formula/Sources collapsibles, all other pages, all backend.
+- Very low. This is text + one derived number per card. No new state, no new fetches.
+
+## Estimated turns
+
+- Phase 1 + 2 + 3 → **1 turn total**.
+
+Approve and I will ship in the next turn.

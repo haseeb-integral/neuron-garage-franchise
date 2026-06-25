@@ -816,6 +816,9 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                   <div className="mt-0.5 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
                     / 100
                   </div>
+                  <div className="mt-0.5 text-[9px] italic" style={{ color: MUTED }}>
+                    sub-score
+                  </div>
                 </div>
               </div>
 

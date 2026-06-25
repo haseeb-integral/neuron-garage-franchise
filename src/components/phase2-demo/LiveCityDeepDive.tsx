@@ -982,7 +982,30 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                     setWeights((w) => ({ ...w, [meta.key]: pct }));
                   }}
                 />
-              </div>
+                {score != null && (() => {
+                  const contrib = score * weight;
+                  const defaultContrib = score * DEFAULT_WEIGHTS[meta.key];
+                  const delta = contrib - defaultContrib;
+                  const showDelta = Math.abs(delta) >= 0.05;
+                  return (
+                    <div className="mt-1.5 flex items-center justify-between text-[10px]" style={{ color: MUTED }}>
+                      <span>
+                        Contributes <span className="font-semibold tabular-nums" style={{ color: NAVY }}>{contrib.toFixed(1)}</span> of 100 to MVS
+                      </span>
+                      {showDelta ? (
+                        <span
+                          className="font-semibold tabular-nums"
+                          style={{ color: delta > 0 ? "#1d6b32" : "#a3142b" }}
+                        >
+                          {delta > 0 ? "+" : ""}{delta.toFixed(1)} vs default
+                        </span>
+                      ) : (
+                        <span className="italic">drag to preview</span>
+                      )}
+                    </div>
+                  );
+                })()}
+
 
 
 

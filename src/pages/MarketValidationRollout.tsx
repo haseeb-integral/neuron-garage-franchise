@@ -463,11 +463,10 @@ export default function MarketValidationRollout() {
         );
         invalidateAllMvs(queryClient);
         queryClient.refetchQueries({ queryKey: ["mvs-live"] });
-      } else if (data?.ok && data?.run_id) {
-        clearSkip(city);
       } else if (data?.already_running) {
         toast.info(data?.message ?? `${city} is already running — refreshing status.`);
       } else if (data?.ok && data?.run_id) {
+        clearSkip(city);
         toast.success(`Pipeline started for ${city} — running in background (~1–2 min).`);
       } else if (data?.error) {
         toast.error(`Pipeline error: ${data.error}`);

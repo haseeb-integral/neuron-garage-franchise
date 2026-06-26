@@ -158,7 +158,7 @@ export function ExportAllValidatedButton() {
                 c.status,
                 c.started_at ?? "",
                 c.finished_at ?? "",
-                c.firecrawl_calls_used ?? "",
+                c.firecrawl_calls ?? "",
                 c.fallback_data_date ?? "",
               ]);
 
@@ -198,7 +198,7 @@ export function ExportAllValidatedButton() {
                 "", "",
                 "",
                 c.status, c.started_at ?? "", c.finished_at ?? "",
-                c.firecrawl_calls_used ?? "",
+                c.firecrawl_calls ?? "",
                 c.fallback_data_date ?? "",
               ]);
             }
@@ -220,7 +220,7 @@ export function ExportAllValidatedButton() {
         "sources_found",
         "qa_open_count", "qa_reasons",
         "providers_last_updated",
-        "run_status", "run_started_at", "run_finished_at", "firecrawl_calls_used", "fallback_data_date",
+        "run_status", "run_started_at", "run_finished_at", "firecrawl_calls", "fallback_data_date",
       ];
       const providerHeader = [
         "city", "state",

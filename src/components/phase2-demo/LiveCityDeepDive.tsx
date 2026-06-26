@@ -684,6 +684,16 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                   </TooltipContent>
                 </Tooltip>
               )}
+              <a
+                href={`/market-validation/competitors?city=${encodeURIComponent(cityDisplay)}&state=${encodeURIComponent(stateDisplay)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-1 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-semibold"
+                style={{ borderColor: BLUE, color: BLUE, backgroundColor: "#fff" }}
+                title={`Open every provider found for ${cityDisplay} in a new tab.`}
+              >
+                See all competitors for this city →
+              </a>
             </div>
             <p
               className="mt-2 text-[12px] leading-relaxed"

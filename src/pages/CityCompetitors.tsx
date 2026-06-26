@@ -290,6 +290,9 @@ export default function CityCompetitors() {
                       <span style={{ color: MUTED }}>—</span>
                     )}
                   </td>
+                  <td className="border-b px-3 py-2 align-top" style={{ borderColor: BORDER }}>
+                    <ProviderScreenshotButton providerId={r.id} providerName={r.name} variant="link" />
+                  </td>
                   <td className="border-b px-3 py-2 text-right align-top" style={{ borderColor: BORDER, color: MUTED }}>
                     {new Date(r.created_at).toLocaleDateString()}
                   </td>

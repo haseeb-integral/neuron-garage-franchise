@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Download, ExternalLink, Loader2, MapPin, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
+import { ProviderScreenshotButton } from "@/components/phase2-demo/ProviderScreenshotButton";
 
 const NAVY = "#07142f";
 const MUTED = "#526078";
@@ -249,6 +250,7 @@ export default function CityCompetitors() {
                 <th className="border-b px-3 py-2 text-right font-semibold" style={{ borderColor: BORDER }}>Price/wk</th>
                 <th className="border-b px-3 py-2 text-left font-semibold" style={{ borderColor: BORDER }}>Website</th>
                 <th className="border-b px-3 py-2 text-left font-semibold" style={{ borderColor: BORDER }}>Source listing</th>
+                <th className="border-b px-3 py-2 text-left font-semibold" style={{ borderColor: BORDER }}>Proof</th>
                 <th className="border-b px-3 py-2 text-right font-semibold" style={{ borderColor: BORDER }}>Discovered</th>
               </tr>
             </thead>
@@ -287,6 +289,9 @@ export default function CityCompetitors() {
                     ) : (
                       <span style={{ color: MUTED }}>—</span>
                     )}
+                  </td>
+                  <td className="border-b px-3 py-2 align-top" style={{ borderColor: BORDER }}>
+                    <ProviderScreenshotButton providerId={r.id} providerName={r.name} variant="link" />
                   </td>
                   <td className="border-b px-3 py-2 text-right align-top" style={{ borderColor: BORDER, color: MUTED }}>
                     {new Date(r.created_at).toLocaleDateString()}

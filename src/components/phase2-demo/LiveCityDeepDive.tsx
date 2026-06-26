@@ -13,6 +13,7 @@ import {
 } from "@/components/phase2-demo/LiveCitySourcePanels";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ProviderScreenshotButton } from "@/components/phase2-demo/ProviderScreenshotButton";
 
 
 
@@ -307,7 +308,7 @@ function freshnessForInput(key: string, lastRefreshed: string | null): string {
 // same filter computeMvs uses (premium tier + has the required field) so
 // the rows shown match the math exactly. Returns null when there is no
 // useful breakdown for the key.
-type ProofRow = { label: string; value?: string | number | null };
+type ProofRow = { label: string; value?: string | number | null; providerId?: string | null };
 
 // Resolve a provider name against the watchlist + city overrides, returning
 // the effective overlap ("direct" | "adjacent") or null. Mirrors the same
@@ -346,6 +347,7 @@ function proofForInput(
       .map((p) => ({
         label: p.name,
         value: `$${p.price_min}${p.price_max && p.price_max !== p.price_min ? `–$${p.price_max}` : ""}/wk`,
+        providerId: p.id ?? null,
       }))
       .sort((a, b) => a.label.localeCompare(b.label));
     return {
@@ -356,7 +358,7 @@ function proofForInput(
   }
   if (key === "premiumProviderCount") {
     const rows = premiumProviders
-      .map((p) => ({ label: p.name, value: p.category_classified ?? "—" }))
+      .map((p) => ({ label: p.name, value: p.category_classified ?? "—", providerId: p.id ?? null }))
       .sort((a, b) => a.label.localeCompare(b.label));
     return {
       title: `Premium providers (${rows.length})`,
@@ -404,7 +406,7 @@ function proofForInput(
       if (m && m.overlap === "direct") {
         const sites = p.site_count ?? 1;
         directSiteCount += sites;
-        directRows.push({ label: `${p.name} (${m.brand})`, value: `${sites} site${sites === 1 ? "" : "s"}` });
+        directRows.push({ label: `${p.name} (${m.brand})`, value: `${sites} site${sites === 1 ? "" : "s"}`, providerId: p.id ?? null });
       }
     }
     directRows.sort((a, b) => a.label.localeCompare(b.label));
@@ -899,9 +901,15 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                                             className="flex items-center justify-between gap-2 px-3 py-1.5 text-[11px]"
                                             style={{ borderColor: BORDER }}
                                           >
-                                            <span className="min-w-0 truncate" style={{ color: NAVY }}>
+                                            <span className="min-w-0 flex-1 truncate" style={{ color: NAVY }}>
                                               {r.label}
                                             </span>
+                                            {r.providerId && (
+                                              <ProviderScreenshotButton
+                                                providerId={r.providerId}
+                                                providerName={r.label}
+                                              />
+                                            )}
                                             {r.value != null && (
                                               <span className="shrink-0 tabular-nums font-semibold" style={{ color: NAVY }}>
                                                 {r.value}

@@ -68,9 +68,9 @@ Sellout Rate = (sold_out weeks + waitlist weeks) ÷ total weeks scraped`,
     sources: [
       "Provider registration pages scraped week-by-week (sold_out / waitlist / low_availability / open / unknown)",
       "Apify Google Maps actor (discovery)",
-      "Firecrawl (page fetch, JS render wait for Sawyer/CampMinder, full-page screenshot)",
+      "Firecrawl (page fetch, JS render wait for Sawyer/CampMinder, listing-page screenshot)",
       "Gemini 2.0 Flash via Lovable AI Gateway (structured extraction with status_evidence + confidence)",
-      "Supabase Storage (raw HTML + screenshot archive — audit trail)",
+      "Supabase Storage (private archive of listing-page screenshots only — not raw HTML, not per-provider websites)",
       "Supabase Postgres (week-level data store)",
       "Inngest or Trigger.dev (scheduled 5-scrape cadence: mid-Jan / Feb / Mar / Apr / May)",
       "Internal QA review queue for any week with confidence < 0.7",
@@ -158,7 +158,7 @@ Market Balance Index = normalize(Coverage Ratio, range 50–500)
 const MVS_NOTES = [
   "Every sub-score is normalized 0–100 across the shortlisted cities, not nationally. The MVS is a comparative score for the cities that survived Feature 1, not a universal market grade.",
   "Market Absorption (Score 2) is permanently retired. The weekly sellout/registration-page scrape (mvs-extract-weeks) and its 5-scrape cadence (Jan / Feb / Mar / Apr / May via Inngest / Trigger.dev) have been turned off. Sellout Rate, Time-to-Sellout, and YoY Velocity are no longer computed. The remaining five pillars were re-normalized so weights still sum to 1.0.",
-  "Screenshots are still captured for the provider-discovery and pricing pages we do scrape, archived in Supabase Storage with date + URL — the audit defense for any Market Brief claim. The retired registration-page screenshot flow no longer runs.",
+  "Listing-page screenshots are saved for the discovery sources we crawl (Sawyer, Yelp, Google, etc.), stored privately in Supabase Storage with date and source URL. One screenshot is shared by every provider discovered on that listing page — we do NOT save a screenshot of each provider's own website, and we do NOT save the raw HTML.",
   "Per-pillar confidence. Each card on the city deep-dive shows its own Trust block with a Low / Medium / High level and a plain-English reason that uses only that pillar's inputs (e.g. Pricing: \"8 of 12 providers had readable prices\"; Diversity: \"4 of 19 providers had a category tag\"). The old global low-confidence badge (triggered by >20% of providers missing a registration page) is retired.",
   "Card layout is Result → Evidence → Trust → Weight preview → Formula / Sources. Every Evidence row is click-through: open the popover to see the actual providers, categories, or ACS rows behind the number, each with a freshness pill and source label.",
   "Freshness rules avoid wasted crawls. If saved data is 0–30 days old the Run button uses saved data automatically (zero Firecrawl spend). 31–60 days asks \"use saved or run fresh?\". Over 60 days runs a fresh crawl. \"Force fresh\" always overrides. The backend enforces the same rule so the check can't be bypassed.",
@@ -170,10 +170,10 @@ const MVS_NOTES = [
 
 const MVS_SHARED_INFRA = [
   ["Apify Google Maps actor", "Provider discovery", "Reused from v1.0"],
-  ["Firecrawl", "Page fetch + full-page screenshots (JS render)", "Reused from v1.0 — cap 50 per run, sub-caps 25/15/15"],
+  ["Firecrawl", "Page fetch + listing-page screenshots (JS render)", "Reused from v1.0 — cap 50 per run, sub-caps 25/15/15"],
   ["Gemini 2.0 Flash (Lovable AI Gateway)", "Structured JSON extraction + tier classification", "Reused from v1.0"],
   ["Supabase Postgres", "Provider data store + run history", "Reused from v1.0"],
-  ["Supabase Storage", "Raw HTML + screenshot archive (audit trail)", "Reused from v1.0"],
+  ["Supabase Storage", "Listing-page screenshot archive (private, audit trail). No raw HTML, no per-provider website screenshots.", "Reused from v1.0"],
   ["Census ACS", "Demographics for Market Balance + Operator denominator", "Reused from v1.0"],
   ["Inngest or Trigger.dev (scrape cadence)", "5-scrape weekly cadence for Market Absorption", "Retired with Market Absorption (v1.1)"],
   ["Internal QA review UI", "Live extraction-confidence review queue", "Live (retired QA reasons filtered out)"],
@@ -424,10 +424,10 @@ export default function MVSMethodology() {
                 <tbody className="text-[#1a2540]">
                   {[
                     ["Apify Google Maps actor", "Provider discovery", "Reused from v1.0"],
-                    ["Firecrawl", "Page fetch + full-page screenshots (JS render)", "Reused from v1.0"],
+                    ["Firecrawl", "Page fetch + listing-page screenshots (JS render)", "Reused from v1.0"],
                     ["Gemini 2.0 Flash (Lovable AI Gateway)", "Structured JSON extraction", "Reused from v1.0"],
                     ["Supabase Postgres", "Week-level + provider data store", "Reused from v1.0"],
-                    ["Supabase Storage", "Raw HTML + screenshot archive (audit trail)", "Reused from v1.0"],
+                    ["Supabase Storage", "Listing-page screenshot archive (private). No raw HTML, no per-provider websites.", "Reused from v1.0"],
                     ["Census ACS", "Demographics for Market Balance + Operator denominator", "Reused from v1.0"],
                     ["Inngest or Trigger.dev", "Scheduled scrape cadence", "New (~$20–50/mo)"],
                     ["Internal QA review UI", "Low-confidence week correction queue", "New (~3–5 dev-days)"],

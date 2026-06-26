@@ -250,6 +250,7 @@ export default function CityCompetitors() {
                 <th className="border-b px-3 py-2 text-right font-semibold" style={{ borderColor: BORDER }}>Price/wk</th>
                 <th className="border-b px-3 py-2 text-left font-semibold" style={{ borderColor: BORDER }}>Website</th>
                 <th className="border-b px-3 py-2 text-left font-semibold" style={{ borderColor: BORDER }}>Source listing</th>
+                <th className="border-b px-3 py-2 text-left font-semibold" style={{ borderColor: BORDER }}>Proof</th>
                 <th className="border-b px-3 py-2 text-right font-semibold" style={{ borderColor: BORDER }}>Discovered</th>
               </tr>
             </thead>

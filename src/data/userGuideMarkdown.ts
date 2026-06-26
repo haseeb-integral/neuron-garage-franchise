@@ -96,6 +96,71 @@ Found a winner? Hit **"Find Teachers in this City"** to jump straight to Teacher
 
 ---
 
+## Feature 1A — Market Validation
+
+> **"Is this city a real premium enrichment market — not just good demographics on paper?"**
+
+City Search ranks cities by demographics. Market Validation goes one level deeper: it looks at what families in that city are *actually paying for* right now (camps, classes, enrichment programs) and scores the city from **0–100**. Higher = stronger premium market.
+
+### The 5 pillars (what we score)
+
+| Pillar | Weight | Plain English |
+|---|---|---|
+| **Pricing Acceptance** | 27% | Are families here already paying $300–$700+ per week for camps? |
+| **Scaled Operator** | 27% | Do trusted national brands (KidStrong, Code Ninjas, iD Tech…) already operate here? |
+| **Market Balance** | 20% | Is the market underserved or already saturated? Sweet spot ≈ 350 kids ages 5–12 per premium provider. |
+| **Enrichment Diversity** | 13% | How many *types* of enrichment exist (STEM, art, music, theater…)? |
+| **Market Depth** | 13% | How many premium providers are in the city? (4 = thin, 40 = deep) |
+
+These 5 numbers add up to one composite called the **MVS** (Market Validation Score).
+
+> Market Absorption (sellout-rate) was retired in v1.1 — the data was too unreliable. The 5 remaining pillars were re-balanced to still sum to 100%.
+
+### How to use the page
+
+- **Shortlist table** — every city you scored shows its MVS, the 5 pillar scores, and a sources chip (e.g. "5/5 sources" means Sawyer, ActivityHero, Google Maps, Yelp, and Google Search all returned data).
+- **Mark each city** Pursue / Hold / Drop. The decision saves automatically.
+- **Run button** — refreshes the score. Smart cost rules:
+  - If data is **0–30 days old** → uses saved data, no crawl (zero cost).
+  - **31–60 days** → asks you "use saved or run fresh?".
+  - **Over 60 days** → runs a fresh crawl.
+  - **Force fresh** always overrides if you need brand-new data.
+- **Click any city** to open the deep dive.
+
+### Reading a deep-dive card
+
+Each pillar card has 3 clear sections:
+
+1. **Result** — one sentence in plain English (e.g. *"Premium pricing is the norm across providers here."*).
+2. **Evidence** — the actual numbers (median price, provider counts, coverage ratio). Click any row to see the *exact providers, categories, or census rows* behind the number, each with a freshness pill and source.
+3. **Trust** — how confident we are *for that pillar* (e.g. *"Medium confidence — 8 of 12 providers had readable prices"*).
+
+Below that: a **weight slider** (preview only — shows how much the city's MVS would shift if you re-weighted this pillar), then collapsible *Formula* and *Sources* drawers.
+
+### Status badges you'll see
+
+- **Green "5/5 sources"** chip — all 5 data sources returned providers.
+- **Amber "Score may be stale"** note under the composite score — the last crawl failed but saved data ≤ 60 days old is being used as a safe fallback. Hit Run again to retry.
+- **Red "failed" pill** — saved data is > 60 days old and the latest crawl failed. Hover for the exact error.
+- **Blue "Skipped — saved data"** badge — Run was clicked but data is < 30 days old, so no credits were spent. Use *Force fresh* if you really want a new crawl.
+
+### Market Brief PDF
+
+From the deep dive, click **Export Market Brief** for a one-page PDF you can share with Brett, Kaylie, or a prospective franchisee. It includes the composite score, the 5 pillars, top providers, and the data sources used.
+
+### What changed recently
+
+- The 5-card layout (Result / Evidence / Trust) replaced the old formula-only cards.
+- Per-pillar confidence replaced the old global "low confidence" badge.
+- Freshness rules + soft-fail fallback keep Firecrawl spend predictable while keeping a score on the page even if a crawl fails.
+- Firecrawl cap raised from 30 → 50 per run, with per-step sub-caps (discover ≤ 25, classify ≤ 15, extract ≤ 15) so no step can run away.
+
+### Need the math?
+
+Open **MVS Methodology** in the sidebar for the full formula, normalization ranges, premium-tier definition, and shared data stack.
+
+---
+
 ## Feature 2 — Teacher Search
 
 > **"Who in that city should we talk to?"**

@@ -170,10 +170,10 @@ const MVS_NOTES = [
 
 const MVS_SHARED_INFRA = [
   ["Apify Google Maps actor", "Provider discovery", "Reused from v1.0"],
-  ["Firecrawl", "Page fetch + full-page screenshots (JS render)", "Reused from v1.0 — cap 50 per run, sub-caps 25/15/15"],
+  ["Firecrawl", "Page fetch + listing-page screenshots (JS render)", "Reused from v1.0 — cap 50 per run, sub-caps 25/15/15"],
   ["Gemini 2.0 Flash (Lovable AI Gateway)", "Structured JSON extraction + tier classification", "Reused from v1.0"],
   ["Supabase Postgres", "Provider data store + run history", "Reused from v1.0"],
-  ["Supabase Storage", "Raw HTML + screenshot archive (audit trail)", "Reused from v1.0"],
+  ["Supabase Storage", "Listing-page screenshot archive (private, audit trail). No raw HTML, no per-provider website screenshots.", "Reused from v1.0"],
   ["Census ACS", "Demographics for Market Balance + Operator denominator", "Reused from v1.0"],
   ["Inngest or Trigger.dev (scrape cadence)", "5-scrape weekly cadence for Market Absorption", "Retired with Market Absorption (v1.1)"],
   ["Internal QA review UI", "Live extraction-confidence review queue", "Live (retired QA reasons filtered out)"],

@@ -17,6 +17,7 @@ import { useLiveMvs, invalidateAllMvs, MVS_QUERY_KEY } from "@/lib/mvs/useLiveMv
 import { SHORTLIST_SEED, type ShortlistRow } from "@/lib/mvs/shortlistSeed";
 import { useShortlistAdditions } from "@/lib/mvs/useShortlistAdditions";
 import { AddCityDialog } from "@/components/phase2-demo/AddCityDialog";
+import { ExportAllValidatedButton } from "@/components/phase2-demo/ExportAllValidatedButton";
 
 const NAVY = "#07142f";
 const MUTED = "#526078";
@@ -346,7 +347,10 @@ export default function MarketValidation() {
             <span className="ml-1 text-[#8a96aa]">({additions.length} added by you)</span>
           )}
         </div>
-        <AddCityDialog onAdd={addCity} />
+        <div className="flex items-center gap-2">
+          <ExportAllValidatedButton />
+          <AddCityDialog onAdd={addCity} />
+        </div>
       </div>
 
       {/* Invisible probes — one per shortlist row. Each calls useLiveMvs for

@@ -67,7 +67,7 @@ export function invalidateAllMvs(queryClient: ReturnType<typeof useQueryClient>)
   queryClient.invalidateQueries({ queryKey: [MVS_QUERY_KEY] });
 }
 
-async function fetchLiveMvs(cityKey: string): Promise<RawBundle> {
+export async function fetchLiveMvs(cityKey: string): Promise<RawBundle> {
   const { data: flagRow } = await supabase
     .from("mvs_city_flags")
     .select("city, mvs_data_source, low_confidence_badge")

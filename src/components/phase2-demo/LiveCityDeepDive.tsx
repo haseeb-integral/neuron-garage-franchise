@@ -307,7 +307,7 @@ function freshnessForInput(key: string, lastRefreshed: string | null): string {
 // same filter computeMvs uses (premium tier + has the required field) so
 // the rows shown match the math exactly. Returns null when there is no
 // useful breakdown for the key.
-type ProofRow = { label: string; value?: string | number | null };
+type ProofRow = { label: string; value?: string | number | null; providerId?: string | null };
 
 // Resolve a provider name against the watchlist + city overrides, returning
 // the effective overlap ("direct" | "adjacent") or null. Mirrors the same

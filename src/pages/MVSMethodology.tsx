@@ -424,10 +424,10 @@ export default function MVSMethodology() {
                 <tbody className="text-[#1a2540]">
                   {[
                     ["Apify Google Maps actor", "Provider discovery", "Reused from v1.0"],
-                    ["Firecrawl", "Page fetch + full-page screenshots (JS render)", "Reused from v1.0"],
+                    ["Firecrawl", "Page fetch + listing-page screenshots (JS render)", "Reused from v1.0"],
                     ["Gemini 2.0 Flash (Lovable AI Gateway)", "Structured JSON extraction", "Reused from v1.0"],
                     ["Supabase Postgres", "Week-level + provider data store", "Reused from v1.0"],
-                    ["Supabase Storage", "Raw HTML + screenshot archive (audit trail)", "Reused from v1.0"],
+                    ["Supabase Storage", "Listing-page screenshot archive (private). No raw HTML, no per-provider websites.", "Reused from v1.0"],
                     ["Census ACS", "Demographics for Market Balance + Operator denominator", "Reused from v1.0"],
                     ["Inngest or Trigger.dev", "Scheduled scrape cadence", "New (~$20–50/mo)"],
                     ["Internal QA review UI", "Low-confidence week correction queue", "New (~3–5 dev-days)"],

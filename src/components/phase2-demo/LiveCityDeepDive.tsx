@@ -13,6 +13,7 @@ import {
 } from "@/components/phase2-demo/LiveCitySourcePanels";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ProviderScreenshotButton } from "@/components/phase2-demo/ProviderScreenshotButton";
 
 
 

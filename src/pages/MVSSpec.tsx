@@ -26,7 +26,7 @@ Output surfaces:
 * 5 sub-score breakdown in the city detail panel (Result / Evidence / Trust layout, with proof popovers).
 * Premium provider table (real names, weekly prices, source chips).
 * Branded PDF Market Brief.
-* Every score traces to a source URL and (where available) a stored screenshot.
+* Every score traces to a source URL and (where available) a stored listing-page screenshot. Screenshots are of the discovery listing page (Sawyer, Yelp, Google, etc.), shared by all providers found on that page. We do not save per-provider website screenshots or raw HTML.
 
 Not in scope: predicting any individual Neuron Garage location's success. Site-level work lives in Feature 1B.
 

@@ -8,9 +8,11 @@ const SPEC_MD = `# Feature 1A Market Validation Spec doc by Lovable
 
 # **Feature 1A — Market Validation Engine**
 
-## **v1.0 Spec (Lovable internal)**
+## **v1.1 Spec (Lovable internal — updated 2026-06-26)**
 
-**Status:** Spec only. Build plan to follow. **Source of truth:** This chat + MVS Methodology doc. **Naming:** MVS (Market Validation Score). Do not surface PEES anywhere in the app or PDF.
+**Status:** Shipped, evolving. **Source of truth:** This chat + MVS Methodology doc. **Naming:** MVS (Market Validation Score). Do not surface PEES anywhere in the app or PDF.
+
+> **What changed since the original v1.0 spec:** discovery expanded from Sawyer-only to 5 sources; Market Absorption pillar retired; registration-page scraping (Stage 3) retired; per-pillar confidence replaced the global low-confidence badge; Firecrawl cap raised to 50 with per-step sub-caps; freshness rules (0–30 skip / 31–60 prompt / >60 fresh) and soft-fail fallback (\`done_stale\`) added; cards redesigned to Result → Evidence → Trust.
 
 ---
 
@@ -21,109 +23,115 @@ Takes a city from the shortlist and produces a **single composite score (MVS, 0�
 Output surfaces:
 
 * MVS number on the city row in the shortlist table.
-* 6 sub-score breakdown in the city detail panel.
-* Premium provider table (real names, prices, weekly sellout status).
+* 5 sub-score breakdown in the city detail panel (Result / Evidence / Trust layout, with proof popovers).
+* Premium provider table (real names, weekly prices, source chips).
 * Branded PDF Market Brief.
-* Every score traces to a source URL and a stored screenshot.
+* Every score traces to a source URL and (where available) a stored screenshot.
 
 Not in scope: predicting any individual Neuron Garage location's success. Site-level work lives in Feature 1B.
 
 ---
 
-## **2. v1.0 scope guardrails (the "easy route")**
+## **2. v1.1 scope (current)**
 
-| Decision | v1.0 | Deferred to |
+| Decision | Current behavior | Deferred |
 | :---- | :---- | :---- |
-| Discovery source | **Sawyer only** | ActivityHero v1.1, Apify v1.1 (next week) |
+| Discovery sources | **Sawyer + ActivityHero + Google Maps + Yelp + Google Search** (5 sources) | More platforms case-by-case |
 | Scheduling | **Manual trigger** ("Run Pipeline" button per city) | Inngest/Trigger.dev post-client-meeting |
-| Cities in scope | **7 Tier A cities + Austin** (calibration) | 14 Tier B cities stay on Sample Data badge |
-| Scrape cadence | **1 scrape per city per run** | 5-scrape Jan/Feb/Mar/Apr/May in v2 |
-| Market Absorption formula | **Removed from composite in v1.1** (weight 0). Was Sellout Rate only in v1.0. | — |
+| Cities in scope | **Any city** can be added; freshness rules apply uniformly | — |
+| Scrape cadence | **1 run per click**, gated by freshness rules below | Multi-scrape history once cadence is automated |
+| Freshness rules | **0–30 days: auto-skip (use saved). 31–60: prompt user. >60: fresh crawl. "Force fresh" always overrides.** Backend hard-guard enforces this even if UI is bypassed. | — |
+| Soft-fail fallback | If a fresh crawl fails but saved data ≤60 days exists → status \`done_stale\`, score stays visible, amber banner shown | — |
+| Market Absorption | **Removed from composite (weight 0)** | Not planned |
+| Registration-page scraping (old Stage 3) | **Retired.** \`mvs-extract-weeks\` is a no-op shell. No week rows are written. | Not planned |
 | Normalization | **Fixed reference ranges** (see §5) | Across-shortlist normalization once ≥20 cities have live data |
-| QA queue | **In-app review UI**, confidence < 0.7 routes there | — |
-
-**Tier A cities (v1.0 launch set):** New York NY, Houston TX, Chicago IL, Boston MA, San Antonio TX, Philadelphia PA, Los Angeles CA. **Calibration test city (run first):** Austin TX.
+| QA queue | **Retired** for the absorption flow. Page shows a retired notice. Per-pillar confidence chips replace the old global QA gate. | — |
+| Firecrawl cost cap | **50 calls per run total**, sub-caps: discover ≤25, classify ≤15, extract ≤15 | — |
 
 ---
 
-## **3. MVS composite — v1.1 (Market Absorption removed)**
+## **3. MVS composite — v1.1**
 
+\`\`\`
 MVS = 0.2667 × Pricing Acceptance
     + 0.2667 × Scaled Operator
     + 0.1333 × Enrichment Diversity
     + 0.1333 × Market Depth
     + 0.2000 × Market Balance Index
+\`\`\`
 
-Rounded to one decimal place. All sub-scores 0–100. Weights exposed as sliders with Show Formula drawers per v1.0 doctrine. **Market Absorption was removed in v1.1** (weight 0) because sellout-rate scraping was unreliable; the remaining five pillars were proportionally re-normalized so the weights still sum to 1.0.
+Rounded to one decimal place. All sub-scores 0–100. Weights exposed as preview sliders per card. Market Absorption removed (weight 0); the remaining five pillars were proportionally re-normalized so the weights still sum to 1.0.
 
-**SOW divergence flag (for client meeting, not for v1.0 build):** SOW v2.2 says Market Balance sits *next to* the composite, not inside it. v1.0/v1.1 follow the methodology (inside, now 20%) because the demo UI already renders it that way and "easy route" means no UI rework. We surface this as an open question for Sam.
+**SOW divergence flag (open question for Sam):** SOW v2.2 says Market Balance sits *next to* the composite, not inside it. We keep it inside at 20% because the demo UI renders it that way.
 
 ---
 
-## **4. Pipeline — 5 stages**
+## **4. Pipeline — 4 active stages**
 
-One manual run per city. Stages 1–4 write to Supabase, Stage 5 reads from Supabase and computes scores via the **shared MVS helper** (Brett's "one calibrated number everywhere" rule — table, panel, compare modal, PDF all read from this helper, never from stored scores).
+One manual run per city (subject to freshness rules). Stages write to Supabase; the score is recomputed from those rows via the **shared MVS helper** (\`src/lib/mvs/computeMvs.ts\`) — table row, panel, compare modal, PDF all read from this helper, never from stored composites.
 
-Stage 1 → Sawyer search scrape         → discovery + pricing + listing URLs
+\`\`\`
+Stage 1 → Multi-source discovery       → providers from Sawyer, ActivityHero, Google Maps, Yelp, Google Search
 Stage 2 → Premium tier classification  → filter to Premium (≥$400/wk, eligible category)
-Stage 3 → Registration page extraction → week-level status + screenshots
-Stage 4 → Census ACS pull              → Market Balance + Operator denominators
-Stage 5 → Score calculation            → 6 sub-scores → MVS composite
+Stage 3 → Census ACS pull              → Market Balance + Operator denominators
+Stage 4 → Score calculation            → 5 sub-scores → MVS composite
+\`\`\`
 
-### **Stage 1 — Sawyer discovery (Firecrawl)**
+### Stage 1 — Discovery (Firecrawl + APIs)
 
-* **Tool:** Firecrawl, JS-render wait on, full-page screenshot on, rotating proxies on.
-* **URL pattern:** https://www.sawyertools.com/camps?location={city} (confirm exact pattern on Austin run).
-* **Extract per provider:** name, weekly price, category (raw), individual Sawyer listing URL, site count in metro, platform = "sawyer".
-* **Persist:** providers table + screenshot in Supabase Storage keyed by scrape date + URL.
+* **Tool:** Firecrawl (JS-render on, screenshots on, rotating proxies on) for Sawyer/ActivityHero/Google Search; direct APIs for Google Maps + Yelp where available.
+* **Extract per provider:** name, weekly price (if visible), category (raw), listing URL, site count in metro, platform.
+* **Persist:** \`mvs_providers\` + screenshot in Supabase Storage where Firecrawl returns one.
+* **Sub-cap:** ≤25 Firecrawl calls in this stage.
 
-### **Stage 2 — Premium tier classification (Gemini 2.0 Flash via Lovable AI Gateway)**
+### Stage 2 — Premium tier classification (Gemini 2.0 Flash via Lovable AI Gateway)
 
 * Input: every row from Stage 1.
-* Tag each provider: **Premium / Mid / Budget / Community** (4-tier per methodology).
+* Tag each provider: **Premium / Mid / Budget / Community**.
 * Only Premium flows into score calc. Other tiers persist for pricing-ladder context.
-* Eligible categories for Premium: STEM, Robotics, Coding, Science, Maker, Art, Theater, Music, Academic Enrichment, Debate, Chess, Entrepreneurship.
+* **Runs in parallel waves of 5** to avoid timeouts (was sequential in v1.0).
+* **19 eligible categories for Premium:** STEM, Robotics, Coding, Science, Maker, Art, Theater, Music, Academic Enrichment, Debate, Chess, Entrepreneurship, Dance, Language, Sports, Swim, Gymnastics, Cooking, Outdoor.
+* **Sub-cap:** ≤15 Firecrawl calls in this stage.
 
-### **Stage 3 — Registration page extraction (Firecrawl + Gemini)**
+### Stage 3 — Census ACS pull
 
-* For each Premium provider's Sawyer listing URL, fetch the page (JS-render wait), screenshot it, then Gemini extracts a strict JSON of week records.
-* **Week status enum (5 values only):** sold_out | waitlist | low_availability | open | unknown.
-* **JSON schema per week:** week_label, theme, price, age_range, status, status_evidence, confidence (0–1).
-* **Confidence gate:** ≥0.7 → write to weeks table; <0.7 → write to weeks AND insert into qa_queue.
-* **Low-confidence city badge:** if >20% of Premium providers have no public registration page, city gets a "Low Confidence" badge on the row.
-
-### **Stage 4 — Census ACS pull (reused pipeline from v1.0)**
-
-* Pulls: dual-income households with HH income ≥$150k and children ages 5–12 → "Affluent Dual-Income Family Count" (denominator for Score 6).
+* Pulls dual-income households with HH income ≥$150k and children ages 5–12 → "Affluent Dual-Income Family Count" (Score 6 denominator).
 * Children ages 5–12 → denominator for Direct Competitor Load in Score 3.
 
-### **Stage 5 — Score calculation**
+### Stage 4 — Score calculation
 
-See §5. All math lives in **one helper** (e.g. src/lib/mvs/computeMvs.ts). Every UI surface reads from it. No stored composite scores on the row — always recomputed.
+See §5. All math lives in one helper. No stored composite scores — always recomputed.
+
+### Retired stage (kept for audit only)
+
+* **Old Stage 3 — Registration-page extraction (\`mvs-extract-weeks\`):** retired. No week rows written. No registration-page screenshots produced. Function still exists as a no-op shell for backward-compat URLs.
 
 ---
 
-## **5. Sub-score formulas + v1.0 reference ranges**
+## **5. Sub-score formulas + v1.1 reference ranges**
 
-Normalization in v1.0 is **min-max against fixed reference ranges** (capped 0–100), not across the live 7-city set. Ranges below come from the methodology doc.
+Normalization is **min-max against fixed reference ranges** (capped 0–100). Ranges below come from the methodology doc.
 
-### **Score 1 — Pricing Acceptance (20%)**
+### Score 1 — Pricing Acceptance (26.67%)
 
+\`\`\`
 0.40 × normalize(median weekly price,       range $300–$700)
 0.40 × normalize(75th-percentile price,     range $400–$800)
 0.20 × (% Premium providers at ≥ $500/week,  0–100)
+\`\`\`
 
-### **Score 2 — Market Absorption — REMOVED in v1.1 (weight 0)**
+### Score 2 — Market Absorption — RETIRED (weight 0)
 
-> **Deprecated.** Removed from the composite in v1.1 because sellout-rate scraping was unreliable. The remaining five pillars were proportionally re-normalized. Formula preserved below for historical/audit reference only.
+> **Deprecated in v1.1.** Removed because sellout-rate scraping was unreliable. Formula preserved below for audit only.
 
+\`\`\`
 Sellout Rate            = (sold_out weeks + waitlist weeks) ÷ total weeks scraped
 Market Absorption Score = normalize(Sellout Rate, range 0%–80%)
+\`\`\`
 
-Time-to-Sellout and YoY Velocity were intended as Year-2 signals; no longer planned.
+### Score 3 — Scaled Operator (26.67%)
 
-### **Score 3 — Scaled Operator (20%)**
-
+\`\`\`
 Operator Validation    = count of distinct watchlist operators present (cap 0–8)
 Direct Competitor Load = Σ site counts for operators tagged 'direct'
                          per 10,000 kids ages 5–12
@@ -131,149 +139,152 @@ Direct Competitor Load = Σ site counts for operators tagged 'direct'
 Scaled Operator Score =
   0.65 × normalize(Operator Validation, 0–8)
 + 0.35 × (100 − normalize(Direct Competitor Load, 0–5 per 10k))
+\`\`\`
 
-Operator watchlist (seed, editable in UI): Galileo, Steve & Kate's, Camp Invention, Snapology, Code Ninjas, iD Tech, Mad Science, Engineering For Kids, Bricks 4 Kidz, Kids Inventor Lab, Maker Kids, theCoderSchool, Wiz Kidz, Sylvan summer, Mathnasium summer. Each tagged default direct/adjacent/distant, editable per city.
+Operator watchlist (seed, editable in UI): Galileo, Steve & Kate's, Camp Invention, Snapology, Code Ninjas, iD Tech, Mad Science, Engineering For Kids, Bricks 4 Kidz, Kids Inventor Lab, Maker Kids, theCoderSchool, Wiz Kidz, Sylvan summer, Mathnasium summer.
 
-**SOW divergence flag:** SOW v2.2 adds a "Years in City" signal we don't have a source for in v1.0. Deferred to v1.1 with the Apify add.
+### Score 4 — Enrichment Diversity (13.33%)
 
-### **Score 4 — Enrichment Diversity (10%)**
-
-Category Count  = distinct eligible categories with ≥1 premium provider
+\`\`\`
+Category Count  = distinct eligible categories with ≥1 premium provider (of 19)
 Diversity Ratio = Category Count ÷ Premium Provider Count
 
 Score = 0.70 × normalize(Category Count, 2–10)
       + 0.30 × normalize(Diversity Ratio, 0.1–0.6)
+\`\`\`
 
-### **Score 5 — Market Depth (10%)**
+### Score 5 — Market Depth (13.33%)
 
+\`\`\`
 Market Depth Score = normalize(Premium Provider Count, 4–40)
+\`\`\`
 
-### **Score 6 — Market Balance Index (15%)**
+### Score 6 — Market Balance Index (20%)
 
+\`\`\`
 Coverage Ratio = Affluent Dual-Income Family Count ÷ Premium Provider Count
 Score          = normalize(Coverage Ratio, 50–500)
+\`\`\`
 
-Tier labels:
-  ≥ 350  Underserved
-  200–349 Balanced
-  100–199 Competitive
-  < 100   Saturated
+Tier labels: ≥350 Underserved · 200–349 Balanced · 100–199 Competitive · <100 Saturated.
 
 ---
 
 ## **6. Data model (Supabase)**
 
-| Table | Key fields |
-| :---- | :---- |
-| mvs_providers | provider_id, provider_name, city, state, weekly_price, category_raw, category_classified, tier, listing_url, site_count, platform, scraped_at, screenshot_url |
-| mvs_weeks | week_id, provider_id, city, state, scrape_date, week_label, theme, price, age_range, status, status_evidence, confidence, screenshot_url, flagged_for_qa |
-| mvs_qa_queue | week_id, provider_id, screenshot_url, gemini_classification, confidence, corrected_status, reviewed_by, reviewed_at |
-| mvs_operator_watchlist | operator_name, default_overlap, notes |
-| mvs_city_overlap_overrides | city, state, operator_name, overlap (per-city tag overrides) |
-| mvs_pipeline_runs | run_id, city, state, triggered_by, started_at, completed_at, status, error, provider_count, week_count, qa_flagged_count |
+| Table | Status | Key fields |
+| :---- | :---- | :---- |
+| mvs_providers | Active | provider_id, provider_name, city, state, weekly_price, category_raw, category_classified, tier, listing_url, site_count, platform, scraped_at, screenshot_url |
+| mvs_weeks | Retired | (no new writes; legacy rows retained) |
+| mvs_qa_queue | Retired | (page shows retired notice; \`activeQaCount\` filters retired reasons out) |
+| mvs_operator_watchlist | Active | operator_name, default_overlap, notes |
+| mvs_city_overlap_overrides | Active | city, state, operator_name, overlap |
+| mvs_pipeline_runs | Active | run_id, city, state, triggered_by, started_at, finished_at, status, error, provider_count, firecrawl_calls, **fallback_data_date** |
 
-Tables are namespaced mvs_* so they don't collide with v1.0 City Search tables. Standard RLS + GRANTs per project conventions. Screenshots in Supabase Storage bucket mvs-screenshots.
+Status values on \`mvs_pipeline_runs\`: \`running\`, \`done\`, \`done_stale\` (soft-fail fallback in use), \`failed_no_data\` (no usable saved data within 60d).
 
-**No mvs_city_scores table.** Composite + sub-scores are always recomputed from mvs_providers + mvs_weeks + ACS via the shared helper. This is Brett's "one calibrated number everywhere" rule applied to 1A.
+**No mvs_city_scores table.** Composite + sub-scores are always recomputed from \`mvs_providers\` + ACS via the shared helper. Brett's "one calibrated number everywhere" rule.
 
 ---
 
-## **7. UI behavior (what changes on existing demo surfaces)**
+## **7. UI behavior (current)**
 
-* **City row:** MVS number from the shared helper. Badge: Live (Tier A) or Sample Data (Tier B) or Low Confidence (>20% missing reg pages).
-* **City detail panel:** 6 sub-score cards, each with Show Formula drawer. Drawer shows the formula, the inputs, the normalize range used, and the resulting normalized 0–100 value.
-* **Premium provider table:** real rows from mvs_providers filtered to tier = Premium for the city, with weekly price and a status pill rolled up from mvs_weeks.
-* **"Run Pipeline" button:** manual trigger per city (admin only). Disabled while a run is in flight. Surfaces mvs_pipeline_runs status.
-* **QA Queue page:** lists weeks with flagged_for_qa = true, side-by-side screenshot + Gemini classification + correction form.
-* **Weight sliders:** persist per user, reset-to-defaults button. Sliders recompute the composite via the same helper, no separate code path.
-* **PDF Market Brief:** 12 sections per SOW Addendum A — Exec Summary, MVS Composite, Market Balance Index, Pricing Analysis, Enrichment Diversity, Scaled Operator, Market Depth, Market Strengths, Market Risks, SWOT, Recommendation, Sources & Screenshots appendix. Generates in <30s.
+* **City row:** MVS number from the shared helper. Status chips: Live, Stale-score amber note (under composite), or red "Failed" pill. "Run" and outlined "Force fresh" buttons per row.
+* **Deep-dive cards (5 pillars):** New layout — **Result → Evidence → Trust → Weight preview → Formula/Sources**.
+  * Result: plain-English meaning (e.g. "Weak premium pricing") + data-coverage chip.
+  * Evidence: key numeric rows, each clickable to open a proof popover with provider-level source data.
+  * Trust: per-pillar confidence (e.g. "Medium confidence — 8 of 12 providers had readable prices") with its own reason per card.
+  * Weight preview slider: shows "Contributes X.X of 100 to MVS" with live delta, MVS preview only.
+  * Collapsibles renamed: "How this score is calculated", "Where the data comes from (N)".
+* **Freshness controls:** 0–30 days → auto-skip with toast and persistent amber row badge; 31–60 days → \`AlertDialog\` prompt "use saved or run fresh"; >60 → fresh crawl. Backend hard-guard enforces same rules. \`done_stale\` runs use \`fallback_data_date\` (not \`finished_at\`) so age math reflects the real data.
+* **Known limitations panel** on the page (collapsible) explains what data we don't have.
+* **PDF Market Brief:** unchanged in structure — 1-page Exec Summary in v1.0, fuller 12-section brief deferred.
 
 ---
 
 ## **8. Edge functions (server-side)**
 
-| Function | Purpose | Secrets |
-| :---- | :---- | :---- |
-| mvs-run-pipeline | Orchestrates Stages 1–4 for a single city | FIRECRAWL_API_KEY, LOVABLE_API_KEY |
-| mvs-extract-providers | Stage 1 + Stage 2 | FIRECRAWL_API_KEY, LOVABLE_API_KEY |
-| mvs-extract-weeks | Stage 3, city-parametrized: loops Premium Sawyer providers for given city, scrapes + extracts weeks, writes mvs_weeks + mvs_qa_queue, sets low-confidence badge | FIRECRAWL_API_KEY, LOVABLE_API_KEY |
-| mvs-acs-pull | Stage 4 (reuse v1.0 ACS pipeline) | existing |
-| mvs-generate-brief | Server-side PDF generation | none beyond Supabase |
+| Function | Status | Purpose | Secrets |
+| :---- | :---- | :---- | :---- |
+| mvs-run-pipeline | Active | Orchestrates Stages 1–3, enforces freshness pre-check + soft-fail fallback, applies 50-call cap + sub-caps, refuses crawl <30d old unless \`forceFresh: true\` | FIRECRAWL_API_KEY, LOVABLE_API_KEY |
+| mvs-discover-providers | Active | Stage 1 multi-source discovery | FIRECRAWL_API_KEY |
+| mvs-classify-tier | Active | Stage 2 — parallel waves of 5 | LOVABLE_API_KEY |
+| mvs-enrich-websites | Active | Optional enrichment | FIRECRAWL_API_KEY |
+| mvs-extract-weeks | **Retired (no-op)** | Was Stage 3 reg-page extraction | — |
+| mvs-acs-pull | Active | Stage 3 ACS pull | existing |
+| mvs-refresh-all | Active | Batch wrapper | inherits |
 
-Client never holds Firecrawl or Lovable AI Gateway keys.
+Client never holds Firecrawl or Lovable AI Gateway keys. Every function checks \`manager\` or \`admin\` via \`user_roles\` + \`has_role()\` before spending a Firecrawl call.
 
-### Phase 3 implementation notes (locked in as we built)
+### Phase 3 implementation notes (current)
 
-* **Authorization is enforced in code.** See next bullet — every Stage-3 function requires a manager/admin role before doing any work.
-* **Authorization is enforced in code.** Both Stage-3 functions require \`manager\` or \`admin\` via \`user_roles\` + \`has_role()\`. The \`verify_jwt\` flag is not relied on.
-* **Stage 3 is an inline orchestrator, not N nested HTTP calls.** \`mvs-extract-weeks\` runs the per-provider scrape+extract logic inline, sequentially, in one function (city is a parameter). Chosen over re-invoking a single-provider function N times because nested edge-function hops are slower and make the Firecrawl cost ceiling harder to enforce. Same DB end state, same screenshots, same QA queue behavior.
-* **Hard per-run cap of 25 providers** on the orchestrator (\`MAX_PROVIDERS = 25\`). Keeps a single Austin run under the plan's 30-Firecrawl-call ceiling (1 discovery + up to 25 provider scrapes + headroom). Tunable if Austin Premium grows past 25.
-* **Sequential, not parallel.** Providers are scraped one at a time to keep Firecrawl spend predictable and avoid hammering Sawyer.
-* **"No public registration page" definition** (used for the city low-confidence badge): a provider counts as \`no_reg_page\` if (a) its \`url\` is null/missing, OR (b) Firecrawl returns non-2xx, OR (c) Firecrawl returns markdown shorter than 200 chars. If >20% of Austin Premium providers hit this, \`mvs_city_flags.low_confidence_badge\` is set to true for Austin and \`last_run_id\` is stamped.
-* **QA queue threshold** is \`confidence < 0.7\`. Rows land in \`mvs_weeks\` regardless; low-confidence ones also get an \`mvs_qa_queue\` row (\`entity_type='week'\`) with the reason string.
-* **Screenshots** stored in private bucket \`mvs-screenshots\` at \`<run_id>/weeks-<provider_id>.png\`. Every \`mvs_weeks\` row stores the path in \`screenshot_url\`.
-* **Run traceability.** Each invocation opens an \`mvs_pipeline_runs\` row (\`status='running'\`), updates \`firecrawl_calls\`, closes with \`done\` or \`failed\` + \`error\`. Every \`mvs_weeks\` row carries \`source_run_id\`.
-
----
-
-## **9. Calibration gates (must pass before client meeting)**
-
-1. **Austin run produces clean output at every stage** (smoke test before opening Tier A).
-2. **Boston MA lands in the top quartile** of the live Tier A set (proxy for SOW's full top-quartile list, which we can't fully test until v1.1 expands coverage).
-3. **Every Tier A city row** shows: live MVS, all 6 sub-scores with non-null inputs, real provider names, at least one stored screenshot per provider.
-4. **PDF Market Brief** generates in <30s and every numeric claim links to a source URL or screenshot.
-5. **Slider change** updates the composite on all 5 surfaces (row, panel, compare modal, weight drawer, PDF) using the same helper. Brett's rule.
+* **Authorization is enforced in code**, not just \`verify_jwt\`.
+* **Hard per-run cap of 50 Firecrawl calls** on the orchestrator, with sub-caps (discover 25, classify 15, extract 15). Sub-caps fail fast with a clear error rather than letting one step burn the whole budget.
+* **Classification is parallel** in waves of 5 (was sequential).
+* **Freshness pre-check is shared** via \`src/lib/mvs/preCrawlFreshness.ts\` and called from both the shortlist table and the deep-dive Run button. Backend re-checks the same rules so a UI bypass cannot cause a crawl.
+* **Soft-fail fallback:** if a fresh crawl fails and saved data ≤60d exists, the run finishes as \`done_stale\` with \`fallback_data_date\` set; the UI shows an amber banner and the score stays visible.
+* **Run traceability:** every invocation opens an \`mvs_pipeline_runs\` row, updates \`firecrawl_calls\`, closes with \`done\` / \`done_stale\` / \`failed_no_data\` + \`error\`.
 
 ---
 
-## **10. Out of scope for v1.0 (write down so we don't drift)**
+## **9. Calibration gates**
 
-* ActivityHero, CampBrain, CampMinder discovery.
-* Apify Google Maps discovery.
+1. **Sample city run produces clean output at every active stage** (smoke test).
+2. **Boston MA lands in the top quartile** of the live set.
+3. **Every live city row** shows: MVS, all 5 active sub-scores with non-null inputs, real provider names from ≥1 source.
+4. **PDF Market Brief** generates in <30s; every numeric claim links to a source URL or screenshot where available.
+5. **Slider change** updates the composite on all surfaces (row, panel, compare modal, PDF) using the same helper.
+6. **Freshness rules behave end-to-end:** 0–30 skip toast + badge, 31–60 prompt, >60 fresh, force-fresh override — verified in both UI and backend hard-guard.
+
+---
+
+## **10. Out of scope for v1.1 (do not drift)**
+
+* Apify Google Maps actor as a separate discovery source.
 * Inngest/Trigger.dev scheduling.
 * Time-to-Sellout and YoY Velocity (need multi-scrape history).
 * Scaled Operator "Years in City" signal.
 * Moving Market Balance outside the composite (open question for Sam).
-* Tier B city pipeline runs (stay on Sample Data badge).
 * Across-shortlist normalization (need ≥20 live cities first).
+* Reviving Market Absorption / registration-page scraping.
 `;
 
 const LOCKED_IN = [
   "MVS (Market Validation Score) — single per-city composite",
-  "6 sub-scores, normalized 0–100 across the shortlist",
-  "Market Balance INSIDE the composite at 15%",
-  "Sawyer-only data source (no ActivityHero, no Apify until v1.1)",
-  "Manual trigger only — manager-only Run Pipeline button",
-  "7 Tier A cities (NYC, Houston, Chicago, Boston, San Antonio, Philadelphia, LA) + Austin calibration",
-  "Tier B cities stay on sample data until v1.1",
-  "Year 1: single mid-March scrape. Sellout Rate only.",
+  "5 active sub-scores, normalized 0–100 against fixed reference ranges (Market Absorption retired)",
+  "Market Balance INSIDE the composite at 20%",
+  "5 discovery sources: Sawyer, ActivityHero, Google Maps, Yelp, Google Search",
+  "Manual trigger only — manager-only Run Pipeline button, with freshness pre-check",
+  "Freshness rules: 0–30 skip, 31–60 prompt, >60 fresh, Force fresh override — enforced in both UI and backend",
+  "Soft-fail fallback: failed fresh crawl with ≤60d saved data → status done_stale, score stays visible",
+  "Firecrawl cap: 50 calls/run total + sub-caps (discover 25, classify 15, extract 15)",
+  "Cards: Result → Evidence → Trust → Weight preview, with proof popovers and per-pillar confidence",
 ];
 
 const EXCLUDED = [
-  "ActivityHero, CampMinder, CampBrain, any non-Sawyer platform",
-  "Apify Google Maps actor",
+  "Apify Google Maps actor (separate add)",
   "Inngest / Trigger.dev scheduling",
   "Time-to-Sellout and YoY Velocity as scored inputs",
   "Scaled Operator \"Years in City\" sub-component",
   "Moving Market Balance outside the composite",
-  "Tier B pipeline runs",
   "Across-shortlist normalization changes",
+  "Reviving Market Absorption / registration-page scraping",
 ];
 
 export default function MVSSpec() {
   return (
     <DocShell
-      eyebrow="Feature 1A · v1.0 Spec"
+      eyebrow="Feature 1A · v1.1 Spec"
       eyebrowIcon={ShieldCheck}
-      title="Market Validation Engine — v1.0 Spec"
-      subtitle="Locked scope, naming, and design decisions. The Build Plan executes against this spec turn-by-turn. Re-read before starting any new turn."
+      title="Market Validation Engine — v1.1 Spec"
+      subtitle="Current scope, naming, and design decisions as shipped. Re-read before starting any new turn."
       action={<DownloadMDButton content={SPEC_MD} filename="feature-1a-mvs-v1-spec.md" />}
     >
       <DocCard>
         <div className="space-y-10">
 
           <section>
-            <h2 className="text-base font-bold text-[#07142f] mb-3">Composite formula (locked)</h2>
+            <h2 className="text-base font-bold text-[#07142f] mb-3">Composite formula (current)</h2>
             <pre className="rounded-md border border-[#cfdcff] bg-[#f4f8ff] px-4 py-3 text-[13px] font-mono text-[#07142f] leading-relaxed whitespace-pre-wrap">
 {`MVS = 0.2667 × Pricing Acceptance
     + 0.2667 × Scaled Operator
@@ -281,12 +292,12 @@ export default function MVSSpec() {
     + 0.1333 × Market Depth
     + 0.2000 × Market Balance           ← inside the composite
 
-(Market Absorption removed in v1.1, weight 0.)`}
+(Market Absorption retired, weight 0.)`}
             </pre>
           </section>
 
           <section>
-            <h2 className="text-base font-bold text-[#07142f] mb-3">What v1.0 IS</h2>
+            <h2 className="text-base font-bold text-[#07142f] mb-3">What v1.1 IS</h2>
             <ul className="space-y-2">
               {LOCKED_IN.map((item) => (
                 <li key={item} className="flex gap-2 text-[14px] text-[#1a2540] leading-relaxed">
@@ -298,7 +309,7 @@ export default function MVSSpec() {
           </section>
 
           <section>
-            <h2 className="text-base font-bold text-[#07142f] mb-3">What v1.0 is NOT (do not build)</h2>
+            <h2 className="text-base font-bold text-[#07142f] mb-3">What v1.1 is NOT (do not build)</h2>
             <ul className="space-y-2">
               {EXCLUDED.map((item) => (
                 <li key={item} className="flex gap-2 text-[14px] text-[#1a2540] leading-relaxed">
@@ -322,7 +333,7 @@ export default function MVSSpec() {
                 <tbody className="bg-white">
                   <tr className="border-t border-[#eef2f7]">
                     <td className="px-4 py-3 font-bold text-[#07142f]">Premium</td>
-                    <td className="px-4 py-3 text-[#1a2540]">Price ≥ $400/week AND STEM/maker/robotics/coding/science/art/theater/music/academic enrichment AND not childcare-positioned</td>
+                    <td className="px-4 py-3 text-[#1a2540]">Price ≥ $400/week AND one of 19 eligible enrichment categories AND not childcare-positioned</td>
                   </tr>
                   <tr className="border-t border-[#eef2f7]">
                     <td className="px-4 py-3 font-bold text-[#07142f]">Mid</td>
@@ -340,7 +351,7 @@ export default function MVSSpec() {
               </table>
             </div>
             <p className="mt-3 text-[13px] text-[#1a2540] leading-relaxed">
-              Only <strong>Premium</strong>-tier providers flow into the six sub-scores. Mid / Budget / Community are retained for audit.
+              Only <strong>Premium</strong>-tier providers flow into the five active sub-scores. Mid / Budget / Community are retained for audit.
             </p>
           </section>
 
@@ -348,31 +359,18 @@ export default function MVSSpec() {
             <h2 className="text-base font-bold text-[#07142f] mb-3">Operating doctrine</h2>
             <div className="space-y-2 text-[14px] text-[#1a2540] leading-relaxed">
               <p><strong>One calibrated number everywhere.</strong> Single helper <code className="bg-[#f4f8ff] px-1 rounded text-[12px]">src/lib/mvs/computeMvs.ts</code>. No DB-stored composites.</p>
-              <p><strong>Demo path stays alive.</strong> Per-city <code className="bg-[#f4f8ff] px-1 rounded text-[12px]">mvs_data_source</code> flag gates live vs sample. Cutover is per-city, reversible in one SQL statement.</p>
+              <p><strong>Freshness is shared.</strong> Single helper <code className="bg-[#f4f8ff] px-1 rounded text-[12px]">src/lib/mvs/preCrawlFreshness.ts</code> used by every Run button; backend re-checks the same rules.</p>
               <p><strong>Manager-gated runs.</strong> Every pipeline edge function checks <code className="bg-[#f4f8ff] px-1 rounded text-[12px]">user_roles</code> for manager/admin before spending a single Firecrawl call.</p>
+              <p><strong>Cost ceilings are hard.</strong> 50 calls/run total with per-step sub-caps that fail fast.</p>
               <p><strong>Atomic &amp; reversible turns.</strong> Each turn ships one concern with an explicit unwind. No invented turns, no scope creep.</p>
               <p><strong>Surface area:</strong> <code className="bg-[#f4f8ff] px-1 rounded text-[12px]">mvs_*</code> tables, <code className="bg-[#f4f8ff] px-1 rounded text-[12px]">mvs-*</code> functions, <code className="bg-[#f4f8ff] px-1 rounded text-[12px]">src/lib/mvs/*</code>, <code className="bg-[#f4f8ff] px-1 rounded text-[12px]">src/pages/MarketValidation*</code>, <code className="bg-[#f4f8ff] px-1 rounded text-[12px]">src/components/phase2-demo/*</code>. No edits elsewhere.</p>
             </div>
           </section>
 
           <section>
-            <h2 className="text-base font-bold text-[#07142f] mb-3">Five open questions — all answered yes</h2>
-            <ol className="space-y-2 text-[14px] text-[#1a2540] leading-relaxed list-decimal pl-5">
-              <li>Sawyer-only for v1.0, defer ActivityHero / Apify to v1.1? <strong>Yes.</strong></li>
-              <li>Keep canonical name MVS (drop PEE and PCC)? <strong>Yes.</strong></li>
-              <li>Six sub-scores per methodology, Market Balance inside composite at 15%? <strong>Yes.</strong></li>
-              <li>Manual trigger only in v1.0 (no scheduler)? <strong>Yes.</strong></li>
-              <li>Roll out to 7 Tier A cities after Austin calibration, Tier B stays on sample until v1.1? <strong>Yes.</strong></li>
-            </ol>
-            <p className="mt-3 text-[12px] text-[#5a6a85] italic">
-              Reconstructed from the locked decisions. If the exact original wording matters, paste it in chat and I'll replace this section verbatim.
-            </p>
-          </section>
-
-          <section>
             <h2 className="text-base font-bold text-[#07142f] mb-3">Related</h2>
             <ul className="space-y-2 text-[14px] text-[#174be8]">
-              <li className="flex items-center gap-2"><FileText size={14} /><a href="/mvs-methodology" className="hover:underline">MVS Methodology — the 6 sub-score math</a></li>
+              <li className="flex items-center gap-2"><FileText size={14} /><a href="/mvs-methodology" className="hover:underline">MVS Methodology — the sub-score math</a></li>
               <li className="flex items-center gap-2"><FileText size={14} /><span className="text-[#1a2540]">Build Plan: <code className="bg-[#f4f8ff] px-1 rounded text-[12px]">docs/feature-1a-build-plan.md</code> (in repo)</span></li>
             </ul>
           </section>

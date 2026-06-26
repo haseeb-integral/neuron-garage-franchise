@@ -346,6 +346,7 @@ function proofForInput(
       .map((p) => ({
         label: p.name,
         value: `$${p.price_min}${p.price_max && p.price_max !== p.price_min ? `–$${p.price_max}` : ""}/wk`,
+        providerId: p.id ?? null,
       }))
       .sort((a, b) => a.label.localeCompare(b.label));
     return {
@@ -356,7 +357,7 @@ function proofForInput(
   }
   if (key === "premiumProviderCount") {
     const rows = premiumProviders
-      .map((p) => ({ label: p.name, value: p.category_classified ?? "—" }))
+      .map((p) => ({ label: p.name, value: p.category_classified ?? "—", providerId: p.id ?? null }))
       .sort((a, b) => a.label.localeCompare(b.label));
     return {
       title: `Premium providers (${rows.length})`,

@@ -18,6 +18,7 @@ import { RouteSkeleton } from "./components/RouteSkeleton";
 const CityScoring = lazyWithPreload(() => import("./pages/CityScoring"));
 const MarketValidation = lazyWithPreload(() => import("./pages/MarketValidation"));
 const MarketValidationRollout = lazyWithPreload(() => import("./pages/MarketValidationRollout"));
+const CityCompetitors = lazyWithPreload(() => import("./pages/CityCompetitors"));
 const SiteAnalysis = lazyWithPreload(() => import("./pages/SiteAnalysis"));
 const TeacherProspects = lazyWithPreload(() => import("./pages/TeacherProspects"));
 const EmailOutreach = lazyWithPreload(() => import("./pages/EmailOutreachV2"));

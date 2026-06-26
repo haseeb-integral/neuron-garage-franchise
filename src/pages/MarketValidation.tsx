@@ -347,7 +347,10 @@ export default function MarketValidation() {
             <span className="ml-1 text-[#8a96aa]">({additions.length} added by you)</span>
           )}
         </div>
-        <AddCityDialog onAdd={addCity} />
+        <div className="flex items-center gap-2">
+          <ExportAllValidatedButton />
+          <AddCityDialog onAdd={addCity} />
+        </div>
       </div>
 
       {/* Invisible probes — one per shortlist row. Each calls useLiveMvs for

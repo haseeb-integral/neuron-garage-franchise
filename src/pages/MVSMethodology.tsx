@@ -35,7 +35,7 @@ const SUB_SCORES: SubScore[] = [
   {
     n: 1,
     name: "Pricing Acceptance",
-    weight: "20%",
+    weight: "26.67%",
     question: "Are families already paying Neuron Garage–level prices?",
     formula: `Pricing Acceptance Score =
   0.40 × normalize(median weekly price,    range $300–$700)
@@ -79,7 +79,7 @@ Sellout Rate = (sold_out weeks + waitlist weeks) ÷ total weeks scraped`,
   {
     n: 3,
     name: "Scaled Operator",
-    weight: "20%",
+    weight: "26.67%",
     question: "Have sophisticated enrichment operators already validated this market — without saturating it?",
     formula: `Operator Validation     = count of distinct national operators present (capped 0–8)
 Direct Competitor Load  = Σ site counts for operators tagged 'direct'
@@ -100,7 +100,7 @@ Scaled Operator Score =
   {
     n: 4,
     name: "Enrichment Diversity",
-    weight: "10%",
+    weight: "13.33%",
     question: "Do families in this market invest across a variety of enrichment categories?",
     formula: `Category Count   = number of distinct enrichment categories with ≥1 premium provider
 Diversity Ratio  = Category Count ÷ Premium Provider Count
@@ -109,7 +109,7 @@ Enrichment Diversity Score =
   0.70 × normalize(Category Count,   range 2–10)
 + 0.30 × normalize(Diversity Ratio,  range 0.1–0.6)`,
     detail:
-      "Category Count rewards breadth. Diversity Ratio penalizes deep-but-narrow markets (e.g. 10 robotics camps and nothing else). Eligible categories: STEM, Robotics, Coding, Science, Maker, Art, Theater, Music, Academic Enrichment, Debate, Chess, Entrepreneurship.",
+      "Category Count rewards breadth. Diversity Ratio penalizes deep-but-narrow markets (e.g. 10 robotics camps and nothing else). Eligible categories (19 in the live classifier): STEM, Robotics, Coding, Science, Maker, Art, Theater, Music, Academic Enrichment, Debate, Chess, Entrepreneurship, Dance, Language, Sports, Swim, Gymnastics, Cooking, Outdoor.",
     sources: [
       "Same premium-provider universe from Apify + Firecrawl",
       "Category classification by Gemini 2.0 Flash against the eligible category list",
@@ -119,7 +119,7 @@ Enrichment Diversity Score =
   {
     n: 5,
     name: "Market Depth",
-    weight: "10%",
+    weight: "13.33%",
     question: "How large is the premium enrichment ecosystem?",
     formula: `Premium Provider Count = count of distinct premium enrichment providers in market
 
@@ -134,7 +134,7 @@ Market Depth Score = normalize(Premium Provider Count, range 4–40)`,
   {
     n: 6,
     name: "Market Balance",
-    weight: "15%",
+    weight: "20%",
     question: "Is there still room in this market?",
     formula: `Coverage Ratio = Affluent Dual-Income Family Count ÷ Premium Provider Count
                  (families = dual-income, HH income ≥ $150k, kids ages 5–12)
@@ -157,23 +157,26 @@ Market Balance Index = normalize(Coverage Ratio, range 50–500)
 
 const MVS_NOTES = [
   "Every sub-score is normalized 0–100 across the shortlisted cities, not nationally. The MVS is a comparative score for the cities that survived Feature 1, not a universal market grade.",
-  "Screenshot capture is non-negotiable. Every registration-page scrape archives a full-page screenshot with date + URL in Supabase Storage. This is the visual ground truth for any contested classification and the audit defense for any Market Brief claim.",
-  "Year 1 runs a single mid-March scrape per shortlisted city — enough to populate Sellout Rate. The full 5-scrape cadence (Jan / Feb / Mar / Apr / May) comes online in Year 2 for any city under active evaluation, unlocking Time-to-Sellout and YoY Velocity.",
-  "If more than 20% of premium providers in a market have no public registration page (i.e. email/phone signup only), the city's MVS gets a low-confidence badge and the QA queue flags it for review. A provider counts as \"no public registration page\" when its URL is missing, the page fetch returns a non-2xx status, or the rendered page returns less than 200 characters of meaningful content.",
-  "QA queue threshold is confidence < 0.7. Below that, a week row is still recorded against the provider but is also flagged for human review with the reason and confidence preserved — we never silently drop a row.",
-  "Pipeline runs are manager-gated — every edge function enforces a manager/admin role check in code before spending a single Firecrawl call. Each Austin run is sequential and capped at 25 providers to keep Firecrawl cost predictable and within the per-run budget.",
+  "Market Absorption (Score 2) is permanently retired. The weekly sellout/registration-page scrape (mvs-extract-weeks) and its 5-scrape cadence (Jan / Feb / Mar / Apr / May via Inngest / Trigger.dev) have been turned off. Sellout Rate, Time-to-Sellout, and YoY Velocity are no longer computed. The remaining five pillars were re-normalized so weights still sum to 1.0.",
+  "Screenshots are still captured for the provider-discovery and pricing pages we do scrape, archived in Supabase Storage with date + URL — the audit defense for any Market Brief claim. The retired registration-page screenshot flow no longer runs.",
+  "Per-pillar confidence. Each card on the city deep-dive shows its own Trust block with a Low / Medium / High level and a plain-English reason that uses only that pillar's inputs (e.g. Pricing: \"8 of 12 providers had readable prices\"; Diversity: \"4 of 19 providers had a category tag\"). The old global low-confidence badge (triggered by >20% of providers missing a registration page) is retired.",
+  "Card layout is Result → Evidence → Trust → Weight preview → Formula / Sources. Every Evidence row is click-through: open the popover to see the actual providers, categories, or ACS rows behind the number, each with a freshness pill and source label.",
+  "Freshness rules avoid wasted crawls. If saved data is 0–30 days old the Run button uses saved data automatically (zero Firecrawl spend). 31–60 days asks \"use saved or run fresh?\". Over 60 days runs a fresh crawl. \"Force fresh\" always overrides. The backend enforces the same rule so the check can't be bypassed.",
+  "Soft-fail fallback keeps a score visible when a fresh crawl fails. If saved provider data ≤ 60 days exists, the run status becomes done_stale, the saved score stays on the page, and an amber banner shows the fallback date. If saved data is > 60 days the status becomes failed_no_data with a red pill and the real error in the tooltip. Freshness age is computed from fallback_data_date for done_stale runs (not finished_at), so a stale fallback never looks \"new\".",
+  "Pipeline runs are manager-gated — every edge function enforces a manager/admin role check before spending a Firecrawl call. The total Firecrawl cap per run is 50, with per-step sub-caps (discover ≤ 25, classify ≤ 15, extract ≤ 15) so no single step can run away. Classification runs in parallel waves of 5 to prevent timeouts.",
+  "QA queue is for live extraction flags only (e.g. low-confidence pricing parses). The retired \"no registration page found\" reason is filtered out of the queue and the QA count pill so it can't inflate confidence numbers.",
 ];
 
 
 const MVS_SHARED_INFRA = [
   ["Apify Google Maps actor", "Provider discovery", "Reused from v1.0"],
-  ["Firecrawl", "Page fetch + full-page screenshots (JS render)", "Reused from v1.0"],
-  ["Gemini 2.0 Flash (Lovable AI Gateway)", "Structured JSON extraction", "Reused from v1.0"],
-  ["Supabase Postgres", "Week-level + provider data store", "Reused from v1.0"],
+  ["Firecrawl", "Page fetch + full-page screenshots (JS render)", "Reused from v1.0 — cap 50 per run, sub-caps 25/15/15"],
+  ["Gemini 2.0 Flash (Lovable AI Gateway)", "Structured JSON extraction + tier classification", "Reused from v1.0"],
+  ["Supabase Postgres", "Provider data store + run history", "Reused from v1.0"],
   ["Supabase Storage", "Raw HTML + screenshot archive (audit trail)", "Reused from v1.0"],
   ["Census ACS", "Demographics for Market Balance + Operator denominator", "Reused from v1.0"],
-  ["Inngest or Trigger.dev", "Scheduled scrape cadence", "New (~$20–50/mo)"],
-  ["Internal QA review UI", "Low-confidence week correction queue", "New (~3–5 dev-days)"],
+  ["Inngest or Trigger.dev (scrape cadence)", "5-scrape weekly cadence for Market Absorption", "Retired with Market Absorption (v1.1)"],
+  ["Internal QA review UI", "Live extraction-confidence review queue", "Live (retired QA reasons filtered out)"],
 ];
 
 const MVS_PREMIUM_TIERS = [
@@ -449,39 +452,15 @@ export default function MVSMethodology() {
           <section className="mb-2">
             <SectionTitle n={6}>Important Notes</SectionTitle>
             <div className="space-y-3">
-              <div className="flex gap-3 rounded-md border border-[#cfdcff] bg-[#f4f8ff] px-4 py-3">
-                <Info size={16} className="text-[#174be8] flex-shrink-0 mt-0.5" />
-                <p className="text-[13px] leading-relaxed text-[#1a2540]">
-                  Every sub-score is normalized 0–100 <strong>across the shortlisted cities</strong>, not
-                  nationally. The MVS is a comparative score for the cities that survived Feature 1, not a
-                  universal market grade.
-                </p>
-              </div>
-              <div className="flex gap-3 rounded-md border border-[#cfdcff] bg-[#f4f8ff] px-4 py-3">
-                <Info size={16} className="text-[#174be8] flex-shrink-0 mt-0.5" />
-                <p className="text-[13px] leading-relaxed text-[#1a2540]">
-                  <strong>Screenshot capture is non-negotiable.</strong> Every registration-page scrape
-                  archives a full-page screenshot with date + URL in Supabase Storage. This is the visual
-                  ground truth for any contested classification and the audit defense for any Market Brief
-                  claim.
-                </p>
-              </div>
-              <div className="flex gap-3 rounded-md border border-[#cfdcff] bg-[#f4f8ff] px-4 py-3">
-                <Info size={16} className="text-[#174be8] flex-shrink-0 mt-0.5" />
-                <p className="text-[13px] leading-relaxed text-[#1a2540]">
-                  Year 1 runs a single mid-March scrape per shortlisted city — enough to populate Sellout
-                  Rate. The full 5-scrape cadence (Jan / Feb / Mar / Apr / May) comes online in Year 2 for
-                  any city under active evaluation, unlocking Time-to-Sellout and YoY Velocity.
-                </p>
-              </div>
-              <div className="flex gap-3 rounded-md border border-[#cfdcff] bg-[#f4f8ff] px-4 py-3">
-                <Info size={16} className="text-[#174be8] flex-shrink-0 mt-0.5" />
-                <p className="text-[13px] leading-relaxed text-[#1a2540]">
-                  If more than 20% of premium providers in a market have no public registration page (i.e.
-                  email/phone signup only), the city's MVS gets a <strong>low-confidence badge</strong> and
-                  the QA queue flags it for review.
-                </p>
-              </div>
+              {MVS_NOTES.map((note, i) => (
+                <div
+                  key={i}
+                  className="flex gap-3 rounded-md border border-[#cfdcff] bg-[#f4f8ff] px-4 py-3"
+                >
+                  <Info size={16} className="text-[#174be8] flex-shrink-0 mt-0.5" />
+                  <p className="text-[13px] leading-relaxed text-[#1a2540]">{note}</p>
+                </div>
+              ))}
             </div>
           </section>
 

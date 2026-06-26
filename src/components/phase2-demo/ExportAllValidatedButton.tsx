@@ -46,7 +46,7 @@ export function ExportAllValidatedButton() {
       // 1. All cities that have ever completed a pipeline run.
       const { data: runs, error } = await supabase
         .from("mvs_pipeline_runs")
-        .select("city, status, finished_at, fallback_data_date, started_at, firecrawl_calls_used")
+        .select("city, status, finished_at, fallback_data_date, started_at, firecrawl_calls")
         .in("status", ["done", "done_stale"])
         .order("finished_at", { ascending: false });
       if (error) throw error;
@@ -166,7 +166,7 @@ export function ExportAllValidatedButton() {
               for (const p of bundle.providers) {
                 const provWeeks = bundle.weeks.filter((w) => w.provider_id === p.id);
                 const readable = provWeeks.find(
-                  (w) => w.status === "sellable" || w.status === "soldout",
+                  (w) => w.status !== "unknown",
                 );
                 providerRows.push([
                   cityName ?? c.city,

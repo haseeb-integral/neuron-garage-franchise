@@ -405,7 +405,7 @@ function proofForInput(
       if (m && m.overlap === "direct") {
         const sites = p.site_count ?? 1;
         directSiteCount += sites;
-        directRows.push({ label: `${p.name} (${m.brand})`, value: `${sites} site${sites === 1 ? "" : "s"}` });
+        directRows.push({ label: `${p.name} (${m.brand})`, value: `${sites} site${sites === 1 ? "" : "s"}`, providerId: p.id ?? null });
       }
     }
     directRows.sort((a, b) => a.label.localeCompare(b.label));

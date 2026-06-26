@@ -901,9 +901,15 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                                             className="flex items-center justify-between gap-2 px-3 py-1.5 text-[11px]"
                                             style={{ borderColor: BORDER }}
                                           >
-                                            <span className="min-w-0 truncate" style={{ color: NAVY }}>
+                                            <span className="min-w-0 flex-1 truncate" style={{ color: NAVY }}>
                                               {r.label}
                                             </span>
+                                            {r.providerId && (
+                                              <ProviderScreenshotButton
+                                                providerId={r.providerId}
+                                                providerName={r.label}
+                                              />
+                                            )}
                                             {r.value != null && (
                                               <span className="shrink-0 tabular-nums font-semibold" style={{ color: NAVY }}>
                                                 {r.value}

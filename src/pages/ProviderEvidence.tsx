@@ -48,6 +48,7 @@ export default function ProviderEvidence() {
   const { rows, queries, runCreatedAt, loading, error } = useProviderEvidence(cityKey);
 
   const [q, setQ] = useState("");
+  const [selected, setSelected] = useState<EvidenceRow | null>(null);
   const [queryFilter, setQueryFilter] = useState<string>("all");
   const [keptFilter, setKeptFilter] = useState<string>("all");
 
@@ -295,7 +296,11 @@ export default function ProviderEvidence() {
                 const sourceUrl =
                   r.matched_provider_entry?.url || r.source_listing_url || r.url || null;
                 return (
-                  <tr key={r.id} className="hover:bg-[#f7faff] align-top">
+                  <tr
+                    key={r.id}
+                    className="cursor-pointer align-top hover:bg-[#f7faff]"
+                    onClick={() => setSelected(r)}
+                  >
                     <td
                       className="border-b px-3 py-2 font-semibold"
                       style={{ borderColor: BORDER, color: NAVY }}

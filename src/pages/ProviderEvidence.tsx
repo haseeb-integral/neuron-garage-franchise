@@ -1,25 +1,124 @@
-import { useSearchParams, Link } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { ArrowLeft, Download, ExternalLink, Loader2, MapPin, Search } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
-import { Loader2 } from "lucide-react";
+import { useProviderEvidence, type EvidenceRow } from "@/lib/mvs/useProviderEvidence";
 
 const NAVY = "#07142f";
 const MUTED = "#526078";
 const BORDER = "#eef2f7";
 const SOFT = "#f7faff";
 const BLUE = "#174be8";
+const AMBER = "#b45309";
+const GREEN = "#0f7b3f";
 
-/**
- * Phase E1 — Provider Evidence Review (read-only shell).
- *
- * Empty page shell only. Real grid + drawer ship in Phase E2 / E3.
- * Reads ?city= and ?state= query params, matching the same routing
- * pattern as /market-validation/competitors.
- */
+function fmtPrice(min: number | null | undefined, max: number | null | undefined) {
+  if (min == null && max == null) return "—";
+  if (min != null && max != null && min !== max) return `$${min}–$${max}`;
+  return `$${min ?? max}`;
+}
+
+function csvEscape(v: unknown) {
+  if (v == null) return "";
+  const s = String(v).replace(/"/g, '""');
+  return /[",\n]/.test(s) ? `"${s}"` : s;
+}
+
+function priceKept(r: EvidenceRow): { label: string; tone: "kept" | "dropped" | "none" } {
+  const hasPrice = r.price_min != null || r.price_max != null;
+  if (hasPrice) return { label: "Kept", tone: "kept" };
+  if (r.guard_drop && r.guard_drop.length > 0) return { label: "Dropped by guard", tone: "dropped" };
+  return { label: "No price found", tone: "none" };
+}
+
 export default function ProviderEvidence() {
   const [params] = useSearchParams();
   const city = params.get("city") ?? "";
   const state = params.get("state") ?? "";
   const cityKey = state ? `${city}, ${state}` : city;
+
+  const { rows, queries, runCreatedAt, loading, error } = useProviderEvidence(cityKey);
+
+  const [q, setQ] = useState("");
+  const [queryFilter, setQueryFilter] = useState<string>("all");
+  const [keptFilter, setKeptFilter] = useState<string>("all");
+
+  const filtered = useMemo(() => {
+    const ql = q.trim().toLowerCase();
+    return rows.filter((r) => {
+      if (queryFilter !== "all") {
+        if (queryFilter === "__none__") {
+          if (r.matched_query) return false;
+        } else if (r.matched_query?.query !== queryFilter) {
+          return false;
+        }
+      }
+      const k = priceKept(r).tone;
+      if (keptFilter !== "all" && k !== keptFilter) return false;
+      if (!ql) return true;
+      const cat = r.category_classified || r.category_raw || "";
+      return (
+        (r.name ?? "").toLowerCase().includes(ql) ||
+        cat.toLowerCase().includes(ql) ||
+        (r.source_listing_url ?? "").toLowerCase().includes(ql) ||
+        (r.website_url ?? "").toLowerCase().includes(ql) ||
+        (r.matched_query?.query ?? "").toLowerCase().includes(ql)
+      );
+    });
+  }, [rows, q, queryFilter, keptFilter]);
+
+  const exportCsv = () => {
+    const headers = [
+      "name",
+      "city",
+      "tier",
+      "category",
+      "price_min",
+      "price_max",
+      "kept_or_dropped",
+      "source_query",
+      "source_type",
+      "source_url",
+      "website_url",
+      "extraction_phase",
+      "discovered_at",
+    ];
+    const lines = [headers.join(",")];
+    for (const r of filtered) {
+      const kept = priceKept(r);
+      const sourceUrl =
+        r.matched_provider_entry?.url || r.source_listing_url || r.url || "";
+      lines.push(
+        [
+          csvEscape(r.name),
+          csvEscape(r.city),
+          csvEscape(r.tier),
+          csvEscape(r.category_classified || r.category_raw),
+          csvEscape(r.price_min),
+          csvEscape(r.price_max),
+          csvEscape(kept.label),
+          csvEscape(r.matched_query?.query ?? ""),
+          csvEscape(r.matched_query?.source_type ?? ""),
+          csvEscape(sourceUrl),
+          csvEscape(r.website_url),
+          csvEscape("Phase 2"),
+          csvEscape(r.created_at),
+        ].join(",")
+      );
+    }
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `evidence-${cityKey.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const uniqueQueries = useMemo(
+    () => Array.from(new Set(queries.map((q) => q.query))).sort(),
+    [queries]
+  );
 
   return (
     <>
@@ -27,45 +126,298 @@ export default function ProviderEvidence() {
         title="Provider Evidence Review"
         subtitle={
           cityKey
-            ? `Read-only audit of providers and source queries for ${cityKey}.`
-            : "Read-only audit of providers and source queries."
+            ? `Read-only audit of providers and the source queries that surfaced them for ${cityKey}.`
+            : "Read-only audit of providers and the source queries that surfaced them."
         }
         hideJourneyBar
       />
 
-      <div className="mb-3 text-[12px]" style={{ color: MUTED }}>
-        <Link to="/market-validation" className="font-semibold underline" style={{ color: BLUE }}>
-          ← Back to Market Validation
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <Link
+          to="/market-validation"
+          className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold"
+          style={{ borderColor: BORDER, color: BLUE, backgroundColor: "#fff" }}
+        >
+          <ArrowLeft className="h-3 w-3" /> Back to Market Validation
         </Link>
+        <div className="inline-flex items-center gap-1 text-[12px]" style={{ color: NAVY }}>
+          <MapPin className="h-3.5 w-3.5" style={{ color: BLUE }} />
+          <strong>{city || "—"}</strong>
+          {state && <span style={{ color: MUTED }}>, {state}</span>}
+        </div>
+        <div className="ml-auto text-[11px]" style={{ color: MUTED }}>
+          {loading
+            ? "Loading…"
+            : `${filtered.length} of ${rows.length} provider${rows.length === 1 ? "" : "s"}`}
+          {runCreatedAt && (
+            <span className="ml-2">
+              · Debug from run {new Date(runCreatedAt).toLocaleString()}
+            </span>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={exportCsv}
+          disabled={loading || filtered.length === 0}
+          className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-semibold text-white disabled:opacity-50"
+          style={{ backgroundColor: BLUE }}
+        >
+          <Download className="h-3 w-3" /> Export CSV
+        </button>
       </div>
 
-      <section
-        className="rounded-lg border p-4"
-        style={{ borderColor: BORDER, backgroundColor: SOFT }}
-      >
-        <div className="mb-1 text-[11px] font-bold uppercase tracking-wide" style={{ color: BLUE }}>
-          What this page will show
+      {queries.length === 0 && !loading && rows.length > 0 && (
+        <div
+          className="mb-3 rounded-md border p-3 text-[12px]"
+          style={{ borderColor: "#fde6c0", backgroundColor: "#fff7e8", color: AMBER }}
+        >
+          No per-query debug data found for this city. The Source query column will show "—". Re-run
+          the pipeline with the latest discover function to capture debug data.
         </div>
-        <p className="text-[12px] leading-relaxed" style={{ color: NAVY }}>
-          A spreadsheet-style grid of every provider found for{" "}
-          <strong>{cityKey || "this city"}</strong>, with the exact Google query that surfaced it,
-          the source URL, the price kept or dropped by the regex guard, and the evidence snippet.
-          You will be able to click any row to open a side panel with the full source detail and
-          screenshot link.
-        </p>
-        <p className="mt-2 text-[12px]" style={{ color: MUTED }}>
-          This is Phase E1 — the empty shell. The data grid (Phase E2) and the row detail drawer
-          (Phase E3) will be added in the next turns.
-        </p>
-      </section>
+      )}
 
       <div
-        className="mt-4 flex items-center gap-2 rounded-lg border bg-white p-6 text-[12px]"
-        style={{ borderColor: BORDER, color: MUTED }}
+        className="mb-3 flex flex-wrap items-center gap-2 rounded-md border p-2"
+        style={{ borderColor: BORDER, backgroundColor: SOFT }}
       >
-        <Loader2 className="h-4 w-4 animate-spin" />
-        Loading evidence for {cityKey || "—"}… (grid coming in Phase E2)
+        <div className="relative">
+          <Search
+            className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2"
+            style={{ color: MUTED }}
+          />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search name, category, URL, query…"
+            className="w-[280px] rounded-md border bg-white py-1 pl-7 pr-2 text-[12px]"
+            style={{ borderColor: BORDER, color: NAVY }}
+          />
+        </div>
+        <select
+          value={queryFilter}
+          onChange={(e) => setQueryFilter(e.target.value)}
+          className="rounded-md border bg-white px-2 py-1 text-[12px]"
+          style={{ borderColor: BORDER, color: NAVY }}
+          title="Filter by the Google query that surfaced the provider"
+        >
+          <option value="all">All source queries</option>
+          <option value="__none__">No matched query</option>
+          {uniqueQueries.map((qq) => (
+            <option key={qq} value={qq}>
+              {qq.length > 60 ? qq.slice(0, 60) + "…" : qq}
+            </option>
+          ))}
+        </select>
+        <select
+          value={keptFilter}
+          onChange={(e) => setKeptFilter(e.target.value)}
+          className="rounded-md border bg-white px-2 py-1 text-[12px]"
+          style={{ borderColor: BORDER, color: NAVY }}
+        >
+          <option value="all">All prices</option>
+          <option value="kept">Price kept</option>
+          <option value="dropped">Dropped by guard</option>
+          <option value="none">No price found</option>
+        </select>
       </div>
+
+      {error && (
+        <div
+          className="mb-3 rounded-md border p-3 text-[12px]"
+          style={{ borderColor: "#f5c2cd", backgroundColor: "#fce7ec", color: "#a3142b" }}
+        >
+          Failed to load evidence: {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div
+          className="flex items-center gap-2 rounded-md border bg-white p-6 text-[12px]"
+          style={{ borderColor: BORDER, color: MUTED }}
+        >
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading evidence for {cityKey}…
+        </div>
+      ) : filtered.length === 0 ? (
+        <div
+          className="rounded-md border bg-white p-6 text-[12px]"
+          style={{ borderColor: BORDER, color: MUTED }}
+        >
+          No providers found for {cityKey}. Try running the pipeline from the scoring console.
+        </div>
+      ) : (
+        <div className="overflow-auto rounded-md border bg-white" style={{ borderColor: BORDER }}>
+          <table className="w-full border-collapse text-[12px]">
+            <thead style={{ backgroundColor: SOFT, color: NAVY }}>
+              <tr>
+                <th className="border-b px-3 py-2 text-left font-semibold" style={{ borderColor: BORDER }}>
+                  Provider
+                </th>
+                <th className="border-b px-3 py-2 text-left font-semibold" style={{ borderColor: BORDER }}>
+                  Category
+                </th>
+                <th className="border-b px-3 py-2 text-left font-semibold" style={{ borderColor: BORDER }}>
+                  Source query
+                </th>
+                <th className="border-b px-3 py-2 text-left font-semibold" style={{ borderColor: BORDER }}>
+                  Source type
+                </th>
+                <th className="border-b px-3 py-2 text-left font-semibold" style={{ borderColor: BORDER }}>
+                  Source URL
+                </th>
+                <th className="border-b px-3 py-2 text-right font-semibold" style={{ borderColor: BORDER }}>
+                  Price/wk
+                </th>
+                <th className="border-b px-3 py-2 text-left font-semibold" style={{ borderColor: BORDER }}>
+                  Kept / dropped
+                </th>
+                <th className="border-b px-3 py-2 text-left font-semibold" style={{ borderColor: BORDER }}>
+                  Phase
+                </th>
+                <th className="border-b px-3 py-2 text-left font-semibold" style={{ borderColor: BORDER }}>
+                  Verification
+                </th>
+                <th className="border-b px-3 py-2 text-right font-semibold" style={{ borderColor: BORDER }}>
+                  Last seen
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((r) => {
+                const kept = priceKept(r);
+                const sourceUrl =
+                  r.matched_provider_entry?.url || r.source_listing_url || r.url || null;
+                return (
+                  <tr key={r.id} className="hover:bg-[#f7faff] align-top">
+                    <td
+                      className="border-b px-3 py-2 font-semibold"
+                      style={{ borderColor: BORDER, color: NAVY }}
+                    >
+                      {r.name || "—"}
+                      {r.tier && (
+                        <div className="text-[10px] font-normal" style={{ color: MUTED }}>
+                          {r.tier}
+                        </div>
+                      )}
+                    </td>
+                    <td className="border-b px-3 py-2" style={{ borderColor: BORDER, color: NAVY }}>
+                      {r.category_classified || r.category_raw || "—"}
+                    </td>
+                    <td
+                      className="border-b px-3 py-2"
+                      style={{ borderColor: BORDER, color: NAVY, maxWidth: 260 }}
+                    >
+                      {r.matched_query?.query ? (
+                        <span title={r.matched_query.query}>
+                          {r.matched_query.query.length > 70
+                            ? r.matched_query.query.slice(0, 70) + "…"
+                            : r.matched_query.query}
+                        </span>
+                      ) : (
+                        <span style={{ color: MUTED }}>—</span>
+                      )}
+                    </td>
+                    <td className="border-b px-3 py-2" style={{ borderColor: BORDER, color: MUTED }}>
+                      {r.matched_query?.source_type || "—"}
+                    </td>
+                    <td className="border-b px-3 py-2" style={{ borderColor: BORDER }}>
+                      {sourceUrl ? (
+                        <a
+                          href={sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1"
+                          style={{ color: BLUE }}
+                          title={sourceUrl}
+                        >
+                          Open <ExternalLink className="h-3 w-3" />
+                        </a>
+                      ) : (
+                        <span style={{ color: MUTED }}>—</span>
+                      )}
+                    </td>
+                    <td
+                      className="border-b px-3 py-2 text-right tabular-nums"
+                      style={{ borderColor: BORDER, color: NAVY }}
+                    >
+                      {fmtPrice(r.price_min, r.price_max)}
+                    </td>
+                    <td className="border-b px-3 py-2" style={{ borderColor: BORDER }}>
+                      <span
+                        className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                        style={{
+                          backgroundColor:
+                            kept.tone === "kept"
+                              ? "#e7f7ee"
+                              : kept.tone === "dropped"
+                              ? "#fff1d6"
+                              : "#eef2f7",
+                          color:
+                            kept.tone === "kept"
+                              ? GREEN
+                              : kept.tone === "dropped"
+                              ? AMBER
+                              : MUTED,
+                        }}
+                        title={
+                          kept.tone === "dropped" && r.guard_drop.length > 0
+                            ? `Guard dropped: ${r.guard_drop
+                                .map((d) => `${d.field}=${d.value}`)
+                                .join(", ")}`
+                            : undefined
+                        }
+                      >
+                        {kept.label}
+                      </span>
+                    </td>
+                    <td className="border-b px-3 py-2" style={{ borderColor: BORDER, color: MUTED }}>
+                      {r.matched_query ? "Phase 2" : "—"}
+                    </td>
+                    <td className="border-b px-3 py-2" style={{ borderColor: BORDER }}>
+                      <div className="flex items-center gap-1">
+                        <span
+                          className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                          style={{ backgroundColor: "#eef2f7", color: MUTED }}
+                        >
+                          Needs review
+                        </span>
+                        <button
+                          type="button"
+                          disabled
+                          className="rounded border px-1.5 py-0.5 text-[10px] font-semibold opacity-50"
+                          style={{ borderColor: BORDER, color: MUTED }}
+                          title="Coming in next phase"
+                        >
+                          Verify
+                        </button>
+                        <button
+                          type="button"
+                          disabled
+                          className="rounded border px-1.5 py-0.5 text-[10px] font-semibold opacity-50"
+                          style={{ borderColor: BORDER, color: MUTED }}
+                          title="Coming in next phase"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </td>
+                    <td
+                      className="border-b px-3 py-2 text-right"
+                      style={{ borderColor: BORDER, color: MUTED }}
+                    >
+                      {new Date(r.updated_at || r.created_at).toLocaleDateString()}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <p className="mt-3 text-[11px]" style={{ color: MUTED }}>
+        Read-only. Verify / Reject / Edit buttons will be wired up in Phase E3 along with a
+        side panel showing the full evidence snippet and screenshot for each row.
+      </p>
     </>
   );
 }

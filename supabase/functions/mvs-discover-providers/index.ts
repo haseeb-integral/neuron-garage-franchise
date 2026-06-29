@@ -550,7 +550,28 @@ async function extractWithGemini(args: {
   const raw = j?.choices?.[0]?.message?.content ?? "{}";
   try {
     const parsed = JSON.parse(raw) as { providers?: ProviderExtract[] };
-    return (parsed.providers ?? []).filter((p) => p?.name);
+    const providers = (parsed.providers ?? []).filter((p) => p?.name);
+    // Phase 2 guard: drop any price that does NOT appear as a literal dollar
+    // amount in the source markdown. Prevents Gemini from hallucinating or
+    // converting "$$" tier symbols into numeric prices.
+    const dollarMatches = new Set<number>();
+    for (const m of markdown.matchAll(/\$\s?(\d{1,3}(?:[,]?\d{3})*|\d+)/g)) {
+      const n = Number(m[1].replace(/,/g, ""));
+      if (Number.isFinite(n) && n >= 10 && n <= 100000) dollarMatches.add(n);
+    }
+    const priceIsInSource = (val: number): boolean => {
+      if (dollarMatches.has(val)) return true;
+      // Allow off-by-rounding tolerance of ±2 to handle minor LLM rounding.
+      for (const d of dollarMatches) {
+        if (Math.abs(d - val) <= 2) return true;
+      }
+      return false;
+    };
+    for (const p of providers) {
+      if (typeof p.price_min === "number" && !priceIsInSource(p.price_min)) p.price_min = null;
+      if (typeof p.price_max === "number" && !priceIsInSource(p.price_max)) p.price_max = null;
+    }
+    return providers;
   } catch {
     return [];
   }

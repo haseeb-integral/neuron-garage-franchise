@@ -210,6 +210,13 @@ function CityRow({
                     )}
                   </div>
                 )}
+                {(sourceCounts as any)?.catchup && (
+                  <div className="mt-2 border-t pt-1.5 text-[11px] text-blue-700">
+                    <span className="font-semibold text-blue-900">Missing price catch-up:</span>{" "}
+                    {(sourceCounts as any).catchup.batches_completed ?? 0} of{" "}
+                    {(sourceCounts as any).catchup.batches_total ?? "?"} batches completed
+                  </div>
+                )}
               </TooltipContent>
             </Tooltip>
           )}

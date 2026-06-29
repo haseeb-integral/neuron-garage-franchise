@@ -911,7 +911,7 @@ async function runTavilyPilotForBoston(args: {
     .eq("city", city)
     .is("price_min", null)
     .is("price_max", null)
-    .eq("tier", "Premium")
+    .eq("tier", "premium")
     .order("name", { ascending: true })
     .limit(TAVILY_PILOT_LIMIT);
   if (prErr) {
@@ -928,7 +928,7 @@ async function runTavilyPilotForBoston(args: {
       .eq("city", city)
       .is("price_min", null)
       .is("price_max", null)
-      .neq("tier", "Premium")
+      .neq("tier", "premium")
       .order("name", { ascending: true })
       .limit(fillCount);
     if (Array.isArray(fillRows)) candidates = candidates.concat(fillRows as TavilyPilotProvider[]);

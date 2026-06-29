@@ -893,7 +893,10 @@ Deno.serve(async (req) => {
         providers_updated: updated,
         providers_merged: rows.length,
         screenshot_path: screenshotPath,
-        source_counts: sourceCounts,
+        source_counts: {
+          ...sourceCounts,
+          google_search_queries: (debug.google_search as Record<string, unknown> | undefined)?.queries ?? [],
+        },
         debug,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },

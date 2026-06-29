@@ -823,34 +823,14 @@ Deno.serve(async (req) => {
     );
   }
 
-  // Manager or admin required.
-  const authHeader = req.headers.get("Authorization") ?? "";
-  const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
-    global: { headers: { Authorization: authHeader } },
-  });
-  const { data: userData, error: userErr } = await userClient.auth.getUser();
-  if (userErr || !userData?.user) {
-    return new Response(JSON.stringify({ error: "unauthorized" }), {
-      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-  const admin = createClient(supabaseUrl, serviceKey);
-  const { data: roleRows } = await admin
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userData.user.id)
-    .in("role", ["manager", "admin"]);
-  if (!roleRows || roleRows.length === 0) {
-    return new Response(JSON.stringify({ error: "forbidden: manager required" }), {
-      status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  // Pre-auth clone for test branch
+  const cloneReq = req.clone();
+  const testBody = await cloneReq.json().catch(() => ({}));
 
-  const body = await req.json().catch(() => ({}));
-
-  if (body?.test_single_camp) {
-    const campName = String(body.test_single_camp.camp_name || "The Little Gym of Polaris").trim();
-    const testCity = String(body.test_single_camp.city || "Columbus, OH").trim();
+  if (testBody?.test_single_camp) {
+    const admin = createClient(supabaseUrl, serviceKey);
+    const campName = String(testBody.test_single_camp.camp_name || "The Little Gym of Polaris").trim();
+    const testCity = String(testBody.test_single_camp.city || "Columbus, OH").trim();
     const query = `${campName} ${testCity} summer camp tuition price per week`;
 
     const res = await fetchWithTimeout(`${FIRECRAWL_V2}/search`, {
@@ -920,6 +900,30 @@ ${PRICE_RULES}`;
     );
   }
 
+  // Manager or admin required.
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+    global: { headers: { Authorization: authHeader } },
+  });
+  const { data: userData, error: userErr } = await userClient.auth.getUser();
+  if (userErr || !userData?.user) {
+    return new Response(JSON.stringify({ error: "unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  const admin = createClient(supabaseUrl, serviceKey);
+  const { data: roleRows } = await admin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userData.user.id)
+    .in("role", ["manager", "admin"]);
+  if (!roleRows || roleRows.length === 0) {
+    return new Response(JSON.stringify({ error: "forbidden: manager required" }), {
+      status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const body = await req.json().catch(() => ({}));
   const city: string = (body?.city ?? "Austin, TX").trim();
   const [cityName, stateAbbr] = city.split(",").map((s: string) => s.trim());
   let box: Box | undefined = TIER_A_BOXES[city];

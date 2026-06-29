@@ -1080,6 +1080,12 @@ async function runTavilyPilotForBoston(args: {
                 const patch: Record<string, unknown> = {
                   price_min: entry.price_min,
                   price_max: entry.price_max,
+                  platform: "tavily_lead_v1",
+                  sources: {
+                    extraction_method: "tavily_lead_v1",
+                    query: entry.query,
+                    snippet: entry.snippet_around_price,
+                  },
                   source_run_id: runId,
                   updated_at: new Date().toISOString(),
                 };

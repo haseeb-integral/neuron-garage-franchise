@@ -384,16 +384,32 @@ export default function ProviderEvidence() {
                       </span>
                     </td>
                     <td className="border-b px-3 py-2" style={{ borderColor: BORDER, color: MUTED }}>
-                      {r.matched_query ? "Phase 2" : "—"}
+                      {r.platform === "tavily_lead_v1" || r.tavily_pilot_entry?.extraction_method === "tavily_lead_v1"
+                        ? "Phase 4 (Tavily)"
+                        : r.platform === "tavily_fallback_firecrawl" || r.tavily_pilot_entry
+                        ? "Phase 4 (Fallback)"
+                        : r.matched_query
+                        ? "Phase 2"
+                        : "—"}
                     </td>
                     <td className="border-b px-3 py-2" style={{ borderColor: BORDER }}>
                       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                        <span
-                          className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
-                          style={{ backgroundColor: "#eef2f7", color: MUTED }}
-                        >
-                          Needs review
-                        </span>
+                        {r.platform === "tavily_lead_v1" || r.tavily_pilot_entry?.extraction_method === "tavily_lead_v1" ? (
+                          <span
+                            className="inline-block rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wide"
+                            style={{ backgroundColor: "#dcfce7", color: "#166534" }}
+                            title="Verified literal match against page content"
+                          >
+                            tavily_lead_v1
+                          </span>
+                        ) : (
+                          <span
+                            className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                            style={{ backgroundColor: "#eef2f7", color: MUTED }}
+                          >
+                            Needs review
+                          </span>
+                        )}
                         <button
                           type="button"
                           disabled

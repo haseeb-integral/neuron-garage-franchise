@@ -141,6 +141,16 @@ type ProviderExtract = {
   confidence: number;
 };
 
+// Shared pricing extraction rules — appended to every source's system prompt.
+// Phase 2: enforce literal-source-only pricing (no inference, no Yelp "$$").
+const PRICE_RULES = `PRICING RULES (STRICT — must follow):
+- price_min / price_max are in USD per WEEK for camps, or per CLASS / SESSION for ongoing programs. Choose the weekly figure when both are shown.
+- ONLY return a price if the exact dollar amount is literally written in the source markdown (e.g. "$425/wk", "$300 per week", "tuition $1,250", "from $89", "$300–$650").
+- DO NOT infer, estimate, average, guess, or convert price-tier symbols ("$", "$$", "$$$") into dollar amounts. Those are not prices.
+- If the page shows a single weekly number, set both price_min and price_max to that number.
+- If the page shows a range like "$300–$650" or "$300 to $650", set price_min=300 and price_max=650.
+- If no dollar amount is visible in the markdown for that provider, set price_min=null and price_max=null. Never invent a value.`;
+
 type SourceResult = {
   platform: Platform;
   providers: ProviderExtract[];

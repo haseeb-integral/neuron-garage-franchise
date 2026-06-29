@@ -1022,7 +1022,7 @@ Deno.serve(async (req) => {
       const rawUrl = m.url ?? null;
       const marketplace = rawUrl ? isMarketplaceHost(rawUrl) : false;
       const website_url = rawUrl && !marketplace ? rawUrl : null;
-      const source_listing_url = rawUrl && marketplace ? rawUrl : null;
+      const source_listing_url = m.listing_url ?? (rawUrl && marketplace ? rawUrl : null);
       return {
         city,
         name: m.name.trim().slice(0, 300),

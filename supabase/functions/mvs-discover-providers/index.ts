@@ -616,6 +616,193 @@ async function extractWithGemini(args: {
   }
 }
 
+// ----------------- Phase 3.3: Targeted price scrape -----------------
+// After /v2/search runs, take URLs we already discovered, keep the ones that
+// look price-relevant, and re-scrape with onlyMainContent:false + screenshot
+// so price tables in sidebars/accordions show up. Strict literal-price guard.
+// Capped at 5 extra Firecrawl calls per city.
+const TARGETED_PRICE_KEYWORDS =
+  /(camp|summer|tuition|fees?|rates?|pricing|registration|register|program|enroll|cost)/i;
+const TARGETED_BLOCKED_HOSTS =
+  /(facebook|instagram|tiktok|pinterest|reddit|twitter|x\.com|yelp\.com|hisawyer\.com|activityhero\.com|google\.)/i;
+
+type TargetedScrapeResult = {
+  providers: ProviderExtract[];
+  firecrawlCalls: number;
+  debug: Record<string, unknown>;
+};
+
+async function runTargetedPriceScrapes(args: {
+  city: string;
+  firecrawlKey: string;
+  lovableKey: string;
+  admin: ReturnType<typeof createClient>;
+  runId: string;
+  candidateUrls: string[];
+  needNames: Set<string>;
+}): Promise<TargetedScrapeResult> {
+  const { city, firecrawlKey, lovableKey, admin, runId, candidateUrls, needNames } = args;
+  const debug: Record<string, unknown> = { cap: 5 };
+  const scrapes: Array<Record<string, unknown>> = [];
+  const providersOut: ProviderExtract[] = [];
+  let firecrawlCalls = 0;
+
+  // Score, filter, dedupe. Price-keyword paths first, then non-homepage URLs.
+  const seen = new Set<string>();
+  const scored: Array<{ url: string; score: number }> = [];
+  for (const raw of candidateUrls) {
+    if (!raw) continue;
+    let u: URL;
+    try { u = new URL(raw); } catch { continue; }
+    if (TARGETED_BLOCKED_HOSTS.test(u.hostname)) continue;
+    const path = u.pathname || "/";
+    const key = (u.origin + path).toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const pathHit = TARGETED_PRICE_KEYWORDS.test(path);
+    const isHome = path === "/" || path === "";
+    if (!pathHit && isHome) continue; // skip plain homepages with no signal
+    const score = (pathHit ? 10 : 0) + (isHome ? 0 : 2);
+    scored.push({ url: raw, score });
+  }
+  scored.sort((a, b) => b.score - a.score);
+  const selected = scored.slice(0, 5).map((s) => s.url);
+  debug.candidates_seen = candidateUrls.length;
+  debug.candidates_after_filter = scored.length;
+  debug.urls_selected = selected;
+  debug.need_provider_names = Array.from(needNames);
+
+  if (selected.length === 0) {
+    debug.skipped_reason = "no candidate URLs after filter";
+    return { providers: providersOut, firecrawlCalls, debug };
+  }
+
+  const sys = `You extract per-week or per-session pricing for kids' camp/class providers from a single source page in ${city}.
+Return strict JSON: { "providers": [ { "name": string, "url": string|null, "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number } ] }
+${PRICE_RULES}
+- Only extract providers whose own listed price appears literally as a dollar amount on THIS page.
+- If the page is a forum, social post, news article without prices, or unrelated, return providers: [].
+- Hard cap: 20 providers.`;
+
+  for (let idx = 0; idx < selected.length; idx++) {
+    const url = selected[idx];
+    const a: Record<string, unknown> = {
+      extraction_method: "targeted_scrape",
+      scraped_source_url: url,
+    };
+    try {
+      const res = await fetchWithTimeout(`${FIRECRAWL_V2}/scrape`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url,
+          formats: ["markdown", "screenshot"],
+          onlyMainContent: false,
+          waitFor: 2000,
+        }),
+      }, FIRECRAWL_TIMEOUT_MS);
+      firecrawlCalls += 1;
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        a.error = `firecrawl ${res.status}`;
+        scrapes.push(a);
+        continue;
+      }
+      const md: string = j?.data?.markdown ?? "";
+      a.markdown_chars = md.length;
+      if (!md) { a.error = "empty markdown"; scrapes.push(a); continue; }
+
+      // Save screenshot
+      let shotPath: string | null = null;
+      const shot: string | undefined = j?.data?.screenshot ?? j?.data?.screenshotUrl;
+      if (shot) {
+        try {
+          let bytes: Uint8Array | null = null;
+          if (shot.startsWith("data:")) {
+            const b64 = shot.split(",", 2)[1] ?? "";
+            const bin = atob(b64);
+            bytes = new Uint8Array(bin.length);
+            for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+          } else {
+            const r = await fetch(shot);
+            if (r.ok) bytes = new Uint8Array(await r.arrayBuffer());
+          }
+          if (bytes) {
+            const path = `${runId}/targeted-${citySlug(city)}-${idx}.png`;
+            const { error: upErr } = await admin.storage
+              .from(SCREENSHOT_BUCKET)
+              .upload(path, bytes, { contentType: "image/png", upsert: true });
+            if (!upErr) shotPath = path;
+          }
+        } catch { /* non-fatal */ }
+      }
+      a.screenshot_url = shotPath;
+
+      const gemDebug: Record<string, unknown> = {};
+      const found = await extractWithGemini(
+        { lovableKey, sys, city, sourceUrl: url, markdown: md },
+        gemDebug,
+      );
+
+      const kept: Array<Record<string, unknown>> = [];
+      const needsReview: Array<Record<string, unknown>> = [];
+      for (const p of found) {
+        const canon = canonicalName(p.name);
+        const val = (p.price_min ?? p.price_max);
+        if (val == null) continue; // guard already dropped non-literal prices
+        const rx = new RegExp(`\\$\\s?${val}\\b`);
+        const m = md.match(rx);
+        let snippet = "";
+        if (m && m.index != null) {
+          const s = Math.max(0, m.index - 150);
+          snippet = md.slice(s, Math.min(md.length, m.index + 200)).replace(/\s+/g, " ").trim();
+        }
+        const contextOk =
+          /camp|tuition|week|session|class|program|fee|registration|enroll/i.test(snippet);
+        const matchesNeed = canon ? needNames.has(canon) : false;
+        const entry = {
+          name: p.name,
+          canonical: canon,
+          price_min: p.price_min ?? null,
+          price_max: p.price_max ?? null,
+          snippet,
+          matched_existing_provider: matchesNeed,
+        };
+        if (contextOk) {
+          kept.push({ ...entry, guard: "kept" });
+          providersOut.push({
+            name: p.name,
+            url: p.url ?? url,
+            price_min: p.price_min ?? null,
+            price_max: p.price_max ?? null,
+            category_raw: p.category_raw ?? null,
+            confidence: Math.max(0.5, p.confidence ?? 0.6),
+          });
+        } else {
+          needsReview.push({
+            ...entry,
+            guard: "needs_review",
+            drop_reason: "snippet did not mention camp/tuition/week/session context",
+          });
+        }
+      }
+      a.providers_found = found.length;
+      a.prices_kept = kept;
+      a.prices_needs_review = needsReview;
+      a.prices_dropped_by_guard = gemDebug.dropped_prices ?? [];
+      scrapes.push(a);
+    } catch (e) {
+      a.error = e instanceof Error ? e.message : String(e);
+      scrapes.push(a);
+    }
+  }
+
+  debug.scrapes = scrapes;
+  debug.firecrawl_calls = firecrawlCalls;
+  debug.providers_added = providersOut.length;
+  return { providers: providersOut, firecrawlCalls, debug };
+}
+
 // =====================================================================
 
 Deno.serve(async (req) => {

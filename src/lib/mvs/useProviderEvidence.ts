@@ -52,6 +52,7 @@ export type EvidenceRow = EvidenceProvider & {
   matched_provider_entry:
     | { name: string; url?: string | null; price_min?: number | null; price_max?: number | null }
     | null;
+  guard_drop: DroppedPrice[];
 };
 
 export type EvidenceData = {

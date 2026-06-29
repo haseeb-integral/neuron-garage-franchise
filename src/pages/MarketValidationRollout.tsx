@@ -595,7 +595,10 @@ export default function MarketValidationRollout() {
     );
   }
 
-  const doneCount = SHORTLISTED_CITIES.filter((c) => latestRuns[c.city]?.status === "done").length;
+  const doneCount = SHORTLISTED_CITIES.filter((c) => {
+    const st = latestRuns[c.city]?.status;
+    return st === "done" || st === "done_stale";
+  }).length;
   const totalCount = SHORTLISTED_CITIES.length;
   const allDone = doneCount === totalCount;
 

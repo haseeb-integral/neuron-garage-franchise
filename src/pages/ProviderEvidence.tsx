@@ -384,32 +384,16 @@ export default function ProviderEvidence() {
                       </span>
                     </td>
                     <td className="border-b px-3 py-2" style={{ borderColor: BORDER, color: MUTED }}>
-                      {r.platform === "tavily_lead_v1" || r.tavily_pilot_entry?.extraction_method === "tavily_lead_v1"
-                        ? "Phase 4 (Tavily)"
-                        : r.platform === "tavily_fallback_firecrawl" || r.tavily_pilot_entry
-                        ? "Phase 4 (Fallback)"
-                        : r.matched_query
-                        ? "Phase 2"
-                        : "—"}
+                      {r.matched_query ? "Phase 2" : "—"}
                     </td>
                     <td className="border-b px-3 py-2" style={{ borderColor: BORDER }}>
                       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                        {r.platform === "tavily_lead_v1" || r.tavily_pilot_entry?.extraction_method === "tavily_lead_v1" ? (
-                          <span
-                            className="inline-block rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wide"
-                            style={{ backgroundColor: "#dcfce7", color: "#166534" }}
-                            title="Verified literal match against page content"
-                          >
-                            tavily_lead_v1
-                          </span>
-                        ) : (
-                          <span
-                            className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
-                            style={{ backgroundColor: "#eef2f7", color: MUTED }}
-                          >
-                            Needs review
-                          </span>
-                        )}
+                        <span
+                          className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                          style={{ backgroundColor: "#eef2f7", color: MUTED }}
+                        >
+                          Needs review
+                        </span>
                         <button
                           type="button"
                           disabled
@@ -604,37 +588,6 @@ function EvidenceDrawer({ row, onClose }: { row: EvidenceRow | null; onClose: ()
               })()}
             </Section>
 
-            {row.tavily_pilot_entry && (
-              <Section title="Phase 4 Verification Details">
-                <div
-                  className="rounded-md border p-2 text-[12px]"
-                  style={{
-                    borderColor:
-                      row.tavily_pilot_entry.extraction_method === "tavily_lead_v1" ? "#cfead8" : BORDER,
-                    backgroundColor:
-                      row.tavily_pilot_entry.extraction_method === "tavily_lead_v1" ? "#e7f7ee" : SOFT,
-                    color: NAVY,
-                  }}
-                >
-                  <div className="mb-1 font-semibold">
-                    Extraction Method:{" "}
-                    <span className="font-mono">
-                      {row.tavily_pilot_entry.extraction_method || "fallback"}
-                    </span>
-                  </div>
-                  {row.tavily_pilot_entry.tavily_answer && (
-                    <div className="mb-2 text-[11px] italic" style={{ color: MUTED }}>
-                      Tavily AI Summary: “{row.tavily_pilot_entry.tavily_answer}”
-                    </div>
-                  )}
-                  {row.tavily_pilot_entry.snippet_around_price && (
-                    <div className="mt-1 border-t pt-1 font-mono text-[11px]">
-                      Verified Page Text: “{row.tavily_pilot_entry.snippet_around_price}”
-                    </div>
-                  )}
-                </div>
-              </Section>
-            )}
 
             <Section title="Evidence (saved sources)">
               {sourceUrl && (

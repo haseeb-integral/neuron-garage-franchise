@@ -148,6 +148,7 @@ const PRICE_RULES = `PRICING RULES (STRICT — must follow):
 - price_min / price_max are in USD per WEEK for camps, or per CLASS / SESSION for ongoing programs. Choose the weekly figure when both are shown.
 - ONLY return a price if the exact dollar amount is literally written in the source markdown (e.g. "$425/wk", "$300 per week", "tuition $1,250", "from $89", "$300–$650").
 - DO NOT infer, estimate, average, guess, or convert price-tier symbols ("$", "$$", "$$$") into dollar amounts. Those are not prices.
+- Priority 4: If multiple weekly tuition amounts, session fees, or tiered options appear, ALWAYS select the HIGHEST recurring weekly tuition amount.
 - If the page shows a single weekly number, set both price_min and price_max to that number.
 - If the page shows a range like "$300–$650" or "$300 to $650", set price_min=300 and price_max=650.
 - If no dollar amount is visible in the markdown for that provider, set price_min=null and price_max=null. Never invent a value.`;
@@ -1137,20 +1138,22 @@ Deno.serve(async (req) => {
     if (catchupBatch && Array.isArray(catchupBatch) && catchupBatch.length > 0) {
       // Background worker mode: process only the specific 5 camp IDs passed in catchupBatch
       const catchupResults: Record<string, unknown>[] = [];
-      const catchupSys = `You extract per-week or per-session tuition pricing for a kids' camp/class provider from Google search results.
+      const catchupSys = `You extract per-week or per-session tuition pricing for a kids' camp/class provider from official website markdown and Google search results.
 Return strict JSON: { "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number }
 ${PRICE_RULES}
-- Look for pricing on their official website snippet, ActivityHero, Facebook, or city camp guides.
+- Look for pricing on official website subpages, Sawyer, Enrollsy, ActivityHero, Facebook, or city camp guides.
+- Priority 4: When multiple dollar amounts or tier options appear, always select the HIGHEST recurring weekly tuition.
 - Only extract if the dollar amount explicitly appears in the markdown. Otherwise return nulls.`;
 
       const cleanCity = city.replace(/,\s*[A-Za-z]{2}\s*$/i, "").trim();
       const stateAbbr = city.split(",")[1]?.trim() || "";
-      const { data: batchRows } = await admin.from("mvs_providers").select("id, name").in("id", catchupBatch);
+      const { data: batchRows } = await admin.from("mvs_providers").select("id, name, website_url, url, source_listing_url").in("id", catchupBatch);
 
       if (batchRows && batchRows.length > 0) {
         await Promise.all(batchRows.map(async (p) => {
-          const query = `${p.name} ${cleanCity} ${stateAbbr} summer camp tuition price per week`;
-          const qDebug: Record<string, unknown> = { provider_id: p.id, provider_name: p.name, query };
+          const generalQuery = `${p.name} ${cleanCity} ${stateAbbr} summer camp tuition price per week`;
+          const bookingQuery = `site:hisawyer.com "${p.name}" OR site:app.enrollsy.com "${p.name}"`;
+          const qDebug: Record<string, unknown> = { provider_id: p.id, provider_name: p.name, queries: [bookingQuery, generalQuery] };
           try {
             // Atomic DB Lock guard to prevent duplicate background workers checking the same camp
             const { data: lockRow } = await admin.from("mvs_providers")
@@ -1163,21 +1166,84 @@ ${PRICE_RULES}
               return;
             }
 
-            const res = await fetchWithTimeout(`${FIRECRAWL_V2}/search`, {
-              method: "POST",
-              headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
-              body: JSON.stringify({
-                query,
-                limit: 4,
-                scrapeOptions: { formats: ["markdown"], onlyMainContent: false },
-              }),
-            }, FIRECRAWL_TIMEOUT_MS);
-            totalFirecrawl += 1;
-            const j = await res.json().catch(() => ({}));
-            if (!res.ok) { qDebug.error = `firecrawl ${res.status}`; catchupResults.push(qDebug); return; }
+            // Priority 2: Map-then-Scrape logic on official domain
+            const siteUrl = (p.website_url || p.url) as string | null;
+            const mapUrlsToScrape: string[] = [];
+            if (siteUrl) {
+              try {
+                const parsedUrl = new URL(siteUrl);
+                const mapRes = await fetchWithTimeout(`${FIRECRAWL_V2}/map`, {
+                  method: "POST",
+                  headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    url: parsedUrl.origin,
+                    search: "tuition rates pricing cost register faq camp",
+                    limit: 10,
+                  }),
+                }, 15_000).catch(() => null);
+                if (mapRes && mapRes.ok) {
+                  totalFirecrawl += 1;
+                  const mapJson = await mapRes.json().catch(() => ({}));
+                  const links: string[] = Array.isArray(mapJson?.data) ? mapJson.data : Array.isArray(mapJson?.data?.links) ? mapJson.data.links : [];
+                  const kw = /(rate|tuition|price|pricing|cost|register|registration|faq|camp|summer)/i;
+                  for (const l of links) {
+                    if (typeof l === "string" && kw.test(l)) mapUrlsToScrape.push(l);
+                  }
+                }
+              } catch {
+                // Ignore map URL parse errors
+              }
+            }
+            qDebug.map_urls_found = mapUrlsToScrape.slice(0, 2);
 
-            const items = (Array.isArray(j?.data?.web) ? j.data.web : Array.isArray(j?.data) ? j.data : []) as Array<Record<string, unknown>>;
-            const blob = items.map((it, idx) => `=== RESULT ${idx + 1} ===\nURL: ${it.url ?? ""}\nTITLE: ${it.title ?? ""}\n\n${String(it.markdown ?? it.content ?? "").slice(0, 6000)}`).join("\n\n");
+            // Scrape top 1-2 mapped URLs + execute Priority 3 Booking Search & General Search concurrently
+            const selectedMapUrls = mapUrlsToScrape.slice(0, 2);
+            const [mapScrapes, bookingSearchRes, generalSearchRes] = await Promise.all([
+              Promise.all(selectedMapUrls.map(async (sUrl) => {
+                const sRes = await fetchWithTimeout(`${FIRECRAWL_V2}/scrape`, {
+                  method: "POST",
+                  headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+                  body: JSON.stringify({ url: sUrl, formats: ["markdown"], onlyMainContent: false }),
+                }, 15_000).catch(() => null);
+                if (sRes && sRes.ok) {
+                  totalFirecrawl += 1;
+                  const sJson = await sRes.json().catch(() => ({}));
+                  if (sJson?.data?.markdown) return `=== OFFICIAL PRICING PAGE (${sUrl}) ===\n${sJson.data.markdown}`;
+                }
+                return null;
+              })),
+              fetchWithTimeout(`${FIRECRAWL_V2}/search`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ query: bookingQuery, limit: 2, scrapeOptions: { formats: ["markdown"], onlyMainContent: false } }),
+              }, FIRECRAWL_TIMEOUT_MS).catch(() => null),
+              fetchWithTimeout(`${FIRECRAWL_V2}/search`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ query: generalQuery, limit: 3, scrapeOptions: { formats: ["markdown"], onlyMainContent: false } }),
+              }, FIRECRAWL_TIMEOUT_MS).catch(() => null),
+            ]);
+
+            if (bookingSearchRes && bookingSearchRes.ok) totalFirecrawl += 1;
+            if (generalSearchRes && generalSearchRes.ok) totalFirecrawl += 1;
+
+            const parseSearch = async (res: Response | null) => {
+              if (!res || !res.ok) return [];
+              const j = await res.json().catch(() => ({}));
+              return (Array.isArray(j?.data?.web) ? j.data.web : Array.isArray(j?.data) ? j.data : []) as Array<Record<string, unknown>>;
+            };
+
+            const [bookingItems, generalItems] = await Promise.all([
+              parseSearch(bookingSearchRes),
+              parseSearch(generalSearchRes),
+            ]);
+
+            const searchItems = [...bookingItems, ...generalItems];
+            const searchBlob = searchItems.map((it, idx) => `=== SEARCH RESULT ${idx + 1} ===\nURL: ${it.url ?? ""}\nTITLE: ${it.title ?? ""}\n\n${String(it.markdown ?? it.content ?? "").slice(0, 6000)}`).join("\n\n");
+            const blob = [...mapScrapes.filter(Boolean), searchBlob].filter(Boolean).join("\n\n");
+
+            // Identify best direct link for evidence verification drawer
+            const discoveredUrl = selectedMapUrls[0] || (bookingItems[0]?.url as string) || (generalItems[0]?.url as string) || null;
 
             const gemRes = await fetchWithTimeout(AI_GATEWAY, {
               method: "POST",
@@ -1186,7 +1252,7 @@ ${PRICE_RULES}
                 model: "google/gemini-3-flash-preview",
                 messages: [
                   { role: "system", content: catchupSys },
-                  { role: "user", content: `Provider Name: ${p.name}\nCity: ${city}\n\nSEARCH RESULTS MARKDOWN:\n${blob.slice(0, 24000)}` },
+                  { role: "user", content: `Provider Name: ${p.name}\nCity: ${city}\n\nSEARCH & SCRAPE RESULTS MARKDOWN:\n${blob.slice(0, 28000)}` },
                 ],
                 response_format: { type: "json_object" },
               }),
@@ -1208,21 +1274,40 @@ ${PRICE_RULES}
               }
               const priceOk = (val?: number | null) => typeof val === "number" && (dollarMatches.has(val) || Array.from(dollarMatches).some(d => Math.abs(d - val) <= 2));
 
-              finalMin = priceOk(parsed.price_min) ? parsed.price_min! : null;
-              finalMax = priceOk(parsed.price_max) ? parsed.price_max! : null;
+              const candidatePrices: number[] = [];
+              if (priceOk(parsed.price_min)) candidatePrices.push(parsed.price_min!);
+              if (priceOk(parsed.price_max)) candidatePrices.push(parsed.price_max!);
+
+              // Priority 4 Highest-Tier Regex Boost: inspect markdown for recurring weekly tuition
+              for (const m of blob.matchAll(/\$\s?(\d{1,3}(?:[,]?\d{3})*|\d+)\s*(?:\/|\bper\b|\ba\b)\s*(?:wk|week|session|camp)/gi)) {
+                const num = Number(m[1].replace(/,/g, ""));
+                if (Number.isFinite(num) && num >= 40 && num <= 5000) candidatePrices.push(num);
+              }
+
+              if (candidatePrices.length > 0) {
+                // Priority 4: Pick HIGHEST recurring weekly tuition
+                finalMax = Math.max(...candidatePrices);
+                finalMin = Math.min(...candidatePrices);
+                if (finalMin < 100 && finalMax >= 150) finalMin = finalMax;
+              }
+
               finalCat = parsed.category_raw ?? null;
               finalConf = Math.max(0.7, parsed.confidence ?? 0.8);
             }
 
-            qDebug.extracted = { price_min: finalMin, price_max: finalMax };
+            qDebug.extracted = { price_min: finalMin, price_max: finalMax, discovered_url: discoveredUrl };
             if (finalMin != null || finalMax != null) {
-              await admin.from("mvs_providers").update({
+              const patch: Record<string, unknown> = {
                 price_min: finalMin ?? finalMax,
                 price_max: finalMax ?? finalMin,
                 category_raw: finalCat,
                 confidence: finalConf,
                 updated_at: new Date().toISOString(),
-              }).eq("id", p.id);
+              };
+              if (!p.source_listing_url && discoveredUrl) {
+                patch.source_listing_url = discoveredUrl;
+              }
+              await admin.from("mvs_providers").update(patch).eq("id", p.id);
               qDebug.updated = true;
             } else {
               // No price found, revert lock so future runs can check again

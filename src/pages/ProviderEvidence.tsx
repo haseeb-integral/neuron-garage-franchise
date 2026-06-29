@@ -338,6 +338,7 @@ export default function ProviderEvidence() {
                           href={sourceUrl}
                           target="_blank"
                           rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
                           className="inline-flex items-center gap-1"
                           style={{ color: BLUE }}
                           title={sourceUrl}
@@ -386,7 +387,7 @@ export default function ProviderEvidence() {
                       {r.matched_query ? "Phase 2" : "—"}
                     </td>
                     <td className="border-b px-3 py-2" style={{ borderColor: BORDER }}>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                         <span
                           className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
                           style={{ backgroundColor: "#eef2f7", color: MUTED }}

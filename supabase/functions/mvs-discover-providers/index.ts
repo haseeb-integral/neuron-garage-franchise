@@ -1577,7 +1577,7 @@ Deno.serve(async (req) => {
     // are included in the missing-price candidate pool. Never throws.
     let tavilyPilotDebug: Record<string, unknown> = { ran: false };
     let tavilyPilotResponse: Record<string, unknown> | null = null;
-    const tavilyPilotRequested = body?.tavilyPilot === true;
+    const tavilyPilotRequested = body?.tavilyPilot === true || city === TAVILY_PILOT_CITY;
     if (tavilyPilotRequested) {
       const tavilyKey = Deno.env.get("TAVILY_API_KEY");
       if (city !== TAVILY_PILOT_CITY) {
@@ -1590,7 +1590,7 @@ Deno.serve(async (req) => {
             city, admin, tavilyKey, firecrawlKey, lovableKey, runId,
           });
           totalFirecrawl += pilot.firecrawlCalls;
-          tavilyPilotDebug = { ran: true, ...pilot.debug };
+          tavilyPilotDebug = { ran: true, entries: pilot.entries, ...pilot.debug };
           tavilyPilotResponse = {
             entries: pilot.entries,
             tavily_calls: pilot.tavilyCalls,

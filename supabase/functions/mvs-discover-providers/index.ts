@@ -851,6 +851,7 @@ Deno.serve(async (req) => {
   }
   const body = await req.json().catch(() => ({}));
   const city: string = (body?.city ?? "Austin, TX").trim();
+  const catchupBatch: string[] | null = body?.catchupBatch ?? null;
   const [cityName, stateAbbr] = city.split(",").map((s: string) => s.trim());
   let box: Box | undefined = TIER_A_BOXES[city];
   if (!box && cityName && stateAbbr) {

@@ -249,7 +249,9 @@ Deno.serve(async (req) => {
     const sourceCounts: Record<string, unknown> = {};
 
     try {
-      const discoverJson = await invokeStep("discover", { city });
+      const discoverPayload: Record<string, unknown> = { city };
+      if (body?.tavilyPilot === true) discoverPayload.tavilyPilot = true;
+      const discoverJson = await invokeStep("discover", discoverPayload);
       if (discoverJson?.source_counts) sourceCounts.discover = discoverJson.source_counts;
       // Always reclassify on a pipeline run — Turn 2.2 logic depends on
       // re-tagging existing rows after classifier changes ship.

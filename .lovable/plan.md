@@ -1,28 +1,22 @@
-### Plan for Tavily Verified Answer Layer (Boston Pilot)
+### Plan: Tavily Verified Answer Layer (Boston Pilot)
 
-We are implementing your exact approved condition: we will extract candidate prices from Tavily's AI summary (`answer`), cross-verify that the exact dollar amount exists literally inside the real page text (`raw_content` / `content`) returned by Tavily, save to DB if verified (skipping Firecrawl), and fall back to Firecrawl only if unverified or blank.
+We will upgrade `mvs-discover-providers` to use Tavily as a fast pricing scout for Boston, enforcing a strict **Literal-Match Safety Guard**. Prices are only saved if the exact dollar number from Tavily's summary appears literally inside the real webpage body text (`raw_content`).
 
 #### 1. What we are changing & why
-- **Update `runTavilyPilotForBoston` in `supabase/functions/mvs-discover-providers/index.ts`**:
-  1. Add `include_raw_content: true` to Tavily API requests so Tavily returns the real body text of the web pages it found.
-  2. Read Tavily's `answer` summary and use regex to find candidate dollar amounts (e.g. `$250`).
-  3. Verify that exact dollar amount exists inside the `raw_content` or `content` field of the matching search results.
-  4. **If verified**: Keep the price, skip Firecrawl (`firecrawl_scraped = false`), set `extraction_method = "tavily_lead_v1"`, and save directly to the database.
-  5. **If NOT verified** (or answer has no literal camp price): Fall back to the existing Firecrawl scrape flow.
+- **Update `supabase/functions/mvs-discover-providers/index.ts`**:
+  1. Pass `include_raw_content: true` in Tavily API calls.
+  2. Extract candidate dollar amounts from Tavily's AI summary (`answer`).
+  3. Search the real webpage body text (`raw_content` / `content`) to verify that the exact dollar amount appears literally.
+  4. **If verified literally**: Save the price, mark `firecrawl_scraped = false`, and tag `extraction_method = "tavily_lead_v1"`.
+  5. **If NOT verified literally** (or blank): Discard the AI guess and fall back to our normal Firecrawl website scrape.
 
 #### 2. Affected parts
-- ONLY `supabase/functions/mvs-discover-providers/index.ts`. No UI, tables, scoring math, or other pages are affected.
+- **Server code only:** `supabase/functions/mvs-discover-providers/index.ts`.
+- No UI layouts, Provider Evidence tables, scoring math, or other cities are touched.
 
-#### 3. Compatibility
-- Fits smoothly into the existing Phase 4 Boston pilot flow without changing any database schema or general discovery logic for other cities.
+#### 3. Traceability & Testing
+- When you run Boston again, verified camps will display `tavily_lead_v1` in the Phase/Verification metadata on your Provider Evidence Review screen.
 
 #### 4. Phases & Turn Estimates
-- **Phase 1 (This turn)**: Implement the verification logic in `mvs-discover-providers/index.ts` and deploy the edge function. (1 turn)
-- **Phase 2 (Next turn / Testing)**: Run a live test for **Boston, MA** (with forceFresh) to verify verified prices land cleanly in your DB.
-
-#### 5. Risks & Exclusions
-- Zero risk to other cities. Firecrawl is preserved as a fallback so we don't lose coverage when Tavily's summary is blank.
-
----
-
-Click **Implement plan** to approve and start coding!
+- **Phase 1 (1 Turn):** Update `mvs-discover-providers/index.ts` with the verification logic and deploy.
+- **Phase 2 (1 Turn):** Trigger a Force Fresh run on Boston, MA and inspect the Provider Evidence Review table.

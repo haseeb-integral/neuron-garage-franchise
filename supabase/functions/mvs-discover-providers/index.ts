@@ -1080,6 +1080,12 @@ async function runTavilyPilotForBoston(args: {
                 const patch: Record<string, unknown> = {
                   price_min: entry.price_min,
                   price_max: entry.price_max,
+                  platform: "tavily_lead_v1",
+                  sources: {
+                    extraction_method: "tavily_lead_v1",
+                    query: entry.query,
+                    snippet: entry.snippet_around_price,
+                  },
                   source_run_id: runId,
                   updated_at: new Date().toISOString(),
                 };
@@ -1211,6 +1217,12 @@ ${PRICE_RULES}
       const patch: Record<string, unknown> = {
         price_min: entry.price_min,
         price_max: entry.price_max,
+        platform: "tavily_fallback_firecrawl",
+        sources: {
+          extraction_method: "tavily_fallback_firecrawl",
+          query: entry.query,
+          snippet: entry.snippet_around_price,
+        },
         source_run_id: runId,
         updated_at: new Date().toISOString(),
       };
@@ -1565,7 +1577,7 @@ Deno.serve(async (req) => {
     // are included in the missing-price candidate pool. Never throws.
     let tavilyPilotDebug: Record<string, unknown> = { ran: false };
     let tavilyPilotResponse: Record<string, unknown> | null = null;
-    const tavilyPilotRequested = body?.tavilyPilot === true;
+    const tavilyPilotRequested = body?.tavilyPilot === true || city === TAVILY_PILOT_CITY;
     if (tavilyPilotRequested) {
       const tavilyKey = Deno.env.get("TAVILY_API_KEY");
       if (city !== TAVILY_PILOT_CITY) {
@@ -1578,7 +1590,7 @@ Deno.serve(async (req) => {
             city, admin, tavilyKey, firecrawlKey, lovableKey, runId,
           });
           totalFirecrawl += pilot.firecrawlCalls;
-          tavilyPilotDebug = { ran: true, ...pilot.debug };
+          tavilyPilotDebug = { ran: true, entries: pilot.entries, ...pilot.debug };
           tavilyPilotResponse = {
             entries: pilot.entries,
             tavily_calls: pilot.tavilyCalls,

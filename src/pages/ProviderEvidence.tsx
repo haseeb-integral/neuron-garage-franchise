@@ -544,17 +544,32 @@ function EvidenceDrawer({ row, onClose }: { row: EvidenceRow | null; onClose: ()
                 How We Discovered This Camp
               </div>
               <p className="text-xs leading-relaxed text-[#526078]">
-                {q ? (
-                  <>
-                    We found this camp through a Google search for{" "}
-                    <span className="font-semibold text-[#07142f]">“{q.query}”</span>.{" "}
-                    {hasPrice
-                      ? "The search results clearly showed their summer camp rates."
-                      : "We found the camp name, but their weekly tuition fee wasn't listed directly on that search page."}
-                  </>
-                ) : (
-                  "This camp was discovered during our standard city market scan before detailed search tracking was recorded."
-                )}
+                {(() => {
+                  const plat = (row.platform || "").trim().toLowerCase();
+                  const isSawyer = plat === "sawyer" || (sourceUrl || "").includes("hisawyer.com");
+                  const isActivityHero = plat === "activityhero" || (sourceUrl || "").includes("activityhero.com");
+                  const isMapsOrYelp = plat === "google_maps" || plat === "yelp" || plat === "maps";
+
+                  if (isSawyer) {
+                    return hasPrice
+                      ? `We discovered this camp listed on the Sawyer booking marketplace for ${row.city}. We checked their official Sawyer listing from start to finish and verified their exact weekly tuition rate.`
+                      : `We found the camp name via Sawyer for ${row.city}, but after checking their listing from start to finish, their exact weekly tuition fee wasn't listed publicly.`;
+                  }
+                  if (isActivityHero || isMapsOrYelp) {
+                    const nicePlat = isActivityHero ? "ActivityHero" : plat === "yelp" ? "Yelp" : "Google Maps";
+                    return hasPrice
+                      ? `We discovered this camp listed on ${nicePlat} during our scan of ${row.city}. We checked their listing from start to finish and verified their exact weekly tuition rate.`
+                      : `We found the camp name via ${nicePlat}, but after checking their web pages from start to finish, their exact weekly tuition fee wasn't listed publicly.`;
+                  }
+                  if (q && q.query) {
+                    return hasPrice
+                      ? `We discovered this camp by running a targeted Google search for “${q.query}”. We scanned the web page from start to finish and verified their exact weekly tuition rate.`
+                      : `We ran a targeted Google search for “${q.query}”, but after scanning the web pages from start to finish, their exact weekly tuition fee wasn't listed publicly.`;
+                  }
+                  return hasPrice
+                    ? `We discovered this camp during our scan of ${row.city}. We checked their official web pages from start to finish and verified their exact weekly tuition rate.`
+                    : `This camp was found during our market scan of ${row.city}, but after checking their web pages from start to finish, their exact weekly tuition fee wasn't listed publicly.`;
+                })()}
               </p>
               <div className="flex items-center gap-4 text-[11px] text-[#8794ab] pt-1">
                 <span>First found: {new Date(row.created_at).toLocaleDateString()}</span>

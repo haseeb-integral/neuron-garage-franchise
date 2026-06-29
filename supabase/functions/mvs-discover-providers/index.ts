@@ -135,6 +135,7 @@ function safeProviderUrl(url: string | null | undefined, name: string, city: str
 type ProviderExtract = {
   name: string;
   url?: string | null;
+  listing_url?: string | null;
   price_min?: number | null;
   price_max?: number | null;
   category_raw?: string | null;
@@ -177,12 +178,13 @@ async function runSawyer(args: {
 
   const sys = `You extract kids' activity providers from a Sawyer marketplace listing page for ${city}.
 Return strict JSON:
-{ "providers": [ { "name": string, "url": string|null, "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number } ] }
+{ "providers": [ { "name": string, "url": string|null, "listing_url": string|null, "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number } ] }
 
 Rules:
 - A "provider" is a real business/brand offering kids' classes, camps, or activities.
 - DO NOT include: search categories, location names, navigation links, ads, the marketplace platform itself ("Sawyer"), generic terms ("Kids Classes", "Music"), or individual class titles.
-- "url" MUST be the provider's OWN website (their own domain). DO NOT use marketplace activity-detail links such as "hisawyer.com/marketplace/activity-set/...", "/class/", or "/camp/". If you cannot see the provider's own website on the page, return null for url.
+- "url" MUST be the provider's OWN website (their own domain). If you cannot see the provider's own website on the page, return null for url.
+- "listing_url" MUST be the marketplace listing or activity-detail link on Sawyer (e.g. "https://www.hisawyer.com/marketplace/activity-set/..." or "/class/" or "/camp/"). If not visible, return null.
 - Prefer in-person providers serving ${city}. Skip online-only providers.
 - Confidence 0..1.
 - Dedupe by provider name. Hard cap: 60 providers.
@@ -295,11 +297,12 @@ async function runActivityHero(args: {
 
       const linksBlob = links.slice(0, 200).join("\n");
       const sys = `You extract kids' activity providers from an ActivityHero marketplace page for ${city}, ${state}.
-Return strict JSON: { "providers": [ { "name": string, "url": string|null, "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number } ] }
+Return strict JSON: { "providers": [ { "name": string, "url": string|null, "listing_url": string|null, "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number } ] }
 Rules:
 - A "provider" is a real business offering kids' classes/camps (e.g. a gymnastics studio, music school, art camp).
 - EXCLUDE: the marketplace itself ("ActivityHero"), category navigation, generic labels, individual class titles, blog posts.
-- "url" MUST be the provider's OWN website (their own domain). DO NOT use marketplace activity-detail links such as "activityhero.com/a/..." or "/activity/...". If you cannot see the provider's own website on the page, return null for url.
+- "url" MUST be the provider's OWN website (their own domain). If you cannot see the provider's own website on the page, return null for url.
+- "listing_url" MUST be the marketplace listing link on ActivityHero (e.g. "https://www.activityhero.com/a/..." or "/activity/..."). If not visible, return null.
 - Prefer in-person providers in ${city}. Skip online-only.
 - Hard cap: 60.
 ${PRICE_RULES}`;
@@ -971,6 +974,7 @@ Deno.serve(async (req) => {
             existing.name = p.name; // prefer name from higher-priority source
           }
           existing.url = existing.url ?? p.url ?? null;
+          existing.listing_url = existing.listing_url ?? p.listing_url ?? null;
           existing.price_min = existing.price_min ?? p.price_min ?? null;
           existing.price_max = existing.price_max ?? p.price_max ?? null;
           existing.category_raw = existing.category_raw ?? p.category_raw ?? null;
@@ -998,6 +1002,7 @@ Deno.serve(async (req) => {
             a.platform = b.platform; a.name = b.name;
           }
           a.url = a.url ?? b.url ?? null;
+          a.listing_url = a.listing_url ?? b.listing_url ?? null;
           a.price_min = a.price_min ?? b.price_min ?? null;
           a.price_max = a.price_max ?? b.price_max ?? null;
           a.category_raw = a.category_raw ?? b.category_raw ?? null;
@@ -1017,7 +1022,7 @@ Deno.serve(async (req) => {
       const rawUrl = m.url ?? null;
       const marketplace = rawUrl ? isMarketplaceHost(rawUrl) : false;
       const website_url = rawUrl && !marketplace ? rawUrl : null;
-      const source_listing_url = rawUrl && marketplace ? rawUrl : null;
+      const source_listing_url = m.listing_url ?? (rawUrl && marketplace ? rawUrl : null);
       return {
         city,
         name: m.name.trim().slice(0, 300),

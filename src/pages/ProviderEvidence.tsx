@@ -551,15 +551,15 @@ function EvidenceDrawer({ row, onClose }: { row: EvidenceRow | null; onClose: ()
                   const isMapsOrYelp = plat === "google_maps" || plat === "yelp" || plat === "maps";
 
                   if (isSawyer) {
-                    return hasPrice
-                      ? `We discovered this camp listed on the Sawyer booking marketplace for ${row.city}. We checked their official Sawyer listing from start to finish and verified their exact weekly tuition rate.`
-                      : `We found the camp name via Sawyer for ${row.city}, but after checking their listing from start to finish, their exact weekly tuition fee wasn't listed publicly.`;
+                    const linkText = sourceUrl ? ` Open listing at ${sourceUrl}.` : "";
+                    const priceText = hasPrice ? ` Price verified: ${fmtPrice(row.price_min, row.price_max)}/week.` : "";
+                    return `Sawyer marketplace scan for ${row.city}.${linkText}${priceText}`;
                   }
                   if (isActivityHero || isMapsOrYelp) {
                     const nicePlat = isActivityHero ? "ActivityHero" : plat === "yelp" ? "Yelp" : "Google Maps";
-                    return hasPrice
-                      ? `We discovered this camp listed on ${nicePlat} during our scan of ${row.city}. We checked their listing from start to finish and verified their exact weekly tuition rate.`
-                      : `We found the camp name via ${nicePlat}, but after checking their web pages from start to finish, their exact weekly tuition fee wasn't listed publicly.`;
+                    const linkText = sourceUrl ? ` Open link at ${sourceUrl}.` : "";
+                    const priceText = hasPrice ? ` Price verified: ${fmtPrice(row.price_min, row.price_max)}/week.` : "";
+                    return `${nicePlat} scan for ${row.city}.${linkText}${priceText}`;
                   }
                   if (q && q.query) {
                     const linkUrl = row.website_url || sourceUrl;

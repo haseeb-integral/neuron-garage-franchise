@@ -1,22 +1,21 @@
-### Plan: Tavily Verified Answer Layer (Boston Pilot)
+### Wording & Verification Plan: Boston Pilot Review
 
-We will upgrade `mvs-discover-providers` to use Tavily as a fast pricing scout for Boston, enforcing a strict **Literal-Match Safety Guard**. Prices are only saved if the exact dollar number from Tavily's summary appears literally inside the real webpage body text (`raw_content`).
+1. **What we are doing and why:**
+   Turn 2.1 (Tavily + literal match guard) is fully deployed and tested on Boston, MA. We will now do a visual inspection of the **Provider Evidence Review** screen in the preview to confirm the new badges and verified page snippets look clear to users.
 
-#### 1. What we are changing & why
-- **Update `supabase/functions/mvs-discover-providers/index.ts`**:
-  1. Pass `include_raw_content: true` in Tavily API calls.
-  2. Extract candidate dollar amounts from Tavily's AI summary (`answer`).
-  3. Search the real webpage body text (`raw_content` / `content`) to verify that the exact dollar amount appears literally.
-  4. **If verified literally**: Save the price, mark `firecrawl_scraped = false`, and tag `extraction_method = "tavily_lead_v1"`.
-  5. **If NOT verified literally** (or blank): Discard the AI guess and fall back to our normal Firecrawl website scrape.
+2. **Affected pages and tables:**
+   - Page: `ProviderEvidence.tsx` (Provider Evidence Review)
+   - Database table: `mvs_providers` (read-only check of Boston rows)
 
-#### 2. Affected parts
-- **Server code only:** `supabase/functions/mvs-discover-providers/index.ts`.
-- No UI layouts, Provider Evidence tables, scoring math, or other cities are touched.
+3. **Fit into current app:**
+   This is a read-only visual check. It will not touch or break any scoring math or existing city scores.
 
-#### 3. Traceability & Testing
-- When you run Boston again, verified camps will display `tavily_lead_v1` in the Phase/Verification metadata on your Provider Evidence Review screen.
+4. **Phases:**
+   - **Phase 1 (Visual Check):** Open the Provider Evidence page for Boston, click a row with a Tavily badge, and verify the drawer displays the exact verified page text.
+   - **Phase 2 (Next Step Decision):** Confirm whether to keep Tavily locked to Boston only, expand it to Austin/Columbus, or move to the next roadmap item (Task 8 / Card Details).
 
-#### 4. Phases & Turn Estimates
-- **Phase 1 (1 Turn):** Update `mvs-discover-providers/index.ts` with the verification logic and deploy.
-- **Phase 2 (1 Turn):** Trigger a Force Fresh run on Boston, MA and inspect the Provider Evidence Review table.
+5. **Estimated turns:**
+   1 prompt.
+
+6. **Risks and Testing:**
+   Zero risk (no code or database edits).

@@ -1131,7 +1131,7 @@ Deno.serve(async (req) => {
           .eq("city", city)
           .is("price_min", null)
           .is("price_max", null)
-          .limit(5);
+          .limit(15);
 
         if (missingRows && missingRows.length > 0) {
           const catchupResults: Record<string, unknown>[] = [];

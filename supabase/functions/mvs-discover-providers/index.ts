@@ -1217,6 +1217,12 @@ ${PRICE_RULES}
       const patch: Record<string, unknown> = {
         price_min: entry.price_min,
         price_max: entry.price_max,
+        platform: "tavily_fallback_firecrawl",
+        sources: {
+          extraction_method: "tavily_fallback_firecrawl",
+          query: entry.query,
+          snippet: entry.snippet_around_price,
+        },
         source_run_id: runId,
         updated_at: new Date().toISOString(),
       };

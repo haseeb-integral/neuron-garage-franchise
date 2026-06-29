@@ -3,6 +3,14 @@ import { Link, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Download, ExternalLink, Loader2, MapPin, Search } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useProviderEvidence, type EvidenceRow } from "@/lib/mvs/useProviderEvidence";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { ProviderScreenshotButton } from "@/components/phase2-demo/ProviderScreenshotButton";
 
 const NAVY = "#07142f";
 const MUTED = "#526078";

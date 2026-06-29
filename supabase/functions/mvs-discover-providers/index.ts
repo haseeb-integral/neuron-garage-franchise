@@ -1127,6 +1127,7 @@ Deno.serve(async (req) => {
       }
       debug.updated = updated;
     }
+    } // end of main discovery branch
 
     // Missing Price Catch-up: automatically search Google directly for camps in this city still missing prices.
     // Priority 1 Timeout Fix: Decoupled into async 5-camp micro-batches self-invoked in background.

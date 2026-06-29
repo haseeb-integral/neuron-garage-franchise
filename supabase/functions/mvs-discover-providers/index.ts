@@ -1510,6 +1510,43 @@ Deno.serve(async (req) => {
       debug.updated = updated;
     }
 
+    // ---- Phase 4.1: Tavily pilot (gated, Boston only) ----
+    // Runs AFTER providers are saved so newly-discovered Boston providers
+    // are included in the missing-price candidate pool. Never throws.
+    let tavilyPilotDebug: Record<string, unknown> = { ran: false };
+    let tavilyPilotResponse: Record<string, unknown> | null = null;
+    const tavilyPilotRequested = body?.tavilyPilot === true;
+    if (tavilyPilotRequested) {
+      const tavilyKey = Deno.env.get("TAVILY_API_KEY");
+      if (city !== TAVILY_PILOT_CITY) {
+        tavilyPilotDebug = { ran: false, skipped_reason: `pilot is Boston-only (got ${city})` };
+      } else if (!tavilyKey) {
+        tavilyPilotDebug = { ran: false, skipped_reason: "TAVILY_API_KEY not configured" };
+      } else {
+        try {
+          const pilot = await runTavilyPilotForBoston({
+            city, admin, tavilyKey, firecrawlKey, lovableKey, runId,
+          });
+          totalFirecrawl += pilot.firecrawlCalls;
+          tavilyPilotDebug = { ran: true, ...pilot.debug };
+          tavilyPilotResponse = {
+            entries: pilot.entries,
+            tavily_calls: pilot.tavilyCalls,
+            tavily_credits: pilot.debug.tavily_credits_total ?? 0,
+            firecrawl_calls: pilot.firecrawlCalls,
+            providers_updated: pilot.updated,
+            kept: pilot.debug.entries_kept ?? 0,
+            dropped: pilot.debug.entries_dropped ?? 0,
+            no_price: pilot.debug.entries_no_price ?? 0,
+            skipped: pilot.debug.entries_skipped ?? 0,
+          };
+        } catch (e) {
+          tavilyPilotDebug = { ran: true, error: e instanceof Error ? e.message : String(e) };
+        }
+      }
+    }
+    debug.tavily_pilot = tavilyPilotDebug;
+
     // Only the standalone-caller branch owns the run row's lifecycle. When
     // the orchestrator owns the row, it finalizes status itself.
     if (!parentRunId) {
@@ -1533,7 +1570,9 @@ Deno.serve(async (req) => {
           ...sourceCounts,
           google_search_queries: (debug.google_search as Record<string, unknown> | undefined)?.queries ?? [],
           targeted_scrape: debug.targeted_scrape ?? null,
+          tavily_pilot: tavilyPilotDebug,
         },
+        tavily_pilot: tavilyPilotResponse,
         debug,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },

@@ -297,11 +297,12 @@ async function runActivityHero(args: {
 
       const linksBlob = links.slice(0, 200).join("\n");
       const sys = `You extract kids' activity providers from an ActivityHero marketplace page for ${city}, ${state}.
-Return strict JSON: { "providers": [ { "name": string, "url": string|null, "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number } ] }
+Return strict JSON: { "providers": [ { "name": string, "url": string|null, "listing_url": string|null, "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number } ] }
 Rules:
 - A "provider" is a real business offering kids' classes/camps (e.g. a gymnastics studio, music school, art camp).
 - EXCLUDE: the marketplace itself ("ActivityHero"), category navigation, generic labels, individual class titles, blog posts.
-- "url" MUST be the provider's OWN website (their own domain). DO NOT use marketplace activity-detail links such as "activityhero.com/a/..." or "/activity/...". If you cannot see the provider's own website on the page, return null for url.
+- "url" MUST be the provider's OWN website (their own domain). If you cannot see the provider's own website on the page, return null for url.
+- "listing_url" MUST be the marketplace listing link on ActivityHero (e.g. "https://www.activityhero.com/a/..." or "/activity/..."). If not visible, return null.
 - Prefer in-person providers in ${city}. Skip online-only.
 - Hard cap: 60.
 ${PRICE_RULES}`;

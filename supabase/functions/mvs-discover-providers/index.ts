@@ -429,10 +429,12 @@ ${PRICE_RULES}`;
 
   // Run all 5 listicle queries in parallel — sequential was ~60s, parallel ~15s.
   const perQuery = await Promise.all(queries.map(async (q) => {
-    // Pricing-specific query gets richer payload: more results, full content, larger blob.
+    // Pricing-specific query gets richer payload: more results, larger blob.
+    // B-revert: onlyMainContent stays true on pricing query — Phase 3.1 showed
+    // that turning it off flooded Gemini with chrome and dropped prices kept.
     const isPricingQuery = q.includes("prices per week tuition");
     const searchLimit = isPricingQuery ? 10 : 6;
-    const onlyMain = isPricingQuery ? false : true;
+    const onlyMain = true;
     const perResultChars = isPricingQuery ? 12000 : 6000;
     const qd: Record<string, unknown> = {
       query: q,

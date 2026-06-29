@@ -465,6 +465,7 @@ ${PRICE_RULES}`;
         (Array.isArray(j?.data?.web) ? j.data.web : Array.isArray(j?.data) ? j.data : []) as Array<Record<string, unknown>>;
       qd.raw_results_returned = items.length;
       qd.top_urls = items.slice(0, 5).map((it) => String(it.url ?? it.link ?? ""));
+      qd.all_urls = items.map((it) => String(it.url ?? it.link ?? "")).filter(Boolean);
       if (items.length === 0) return out;
 
       const blob = items.map((it, idx) => {

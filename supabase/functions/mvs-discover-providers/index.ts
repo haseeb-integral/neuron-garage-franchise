@@ -1027,7 +1027,7 @@ Deno.serve(async (req) => {
     const isMarketplaceHost = (u: string) =>
       /(hisawyer\.com|activityhero\.com|yelp\.com)/i.test(u);
 
-    const rows = finalMerged.map((m) => {
+    rows = finalMerged.map((m) => {
       const rawUrl = m.url ?? null;
       const marketplace = rawUrl ? isMarketplaceHost(rawUrl) : false;
       const website_url = rawUrl && !marketplace ? rawUrl : null;
@@ -1050,8 +1050,6 @@ Deno.serve(async (req) => {
       };
     });
 
-    let inserted = 0;
-    let updated = 0;
     if (rows.length > 0) {
       // Fetch existing rows for this city to fuzzy-match against.
       const { data: existingRows, error: existingErr } = await admin

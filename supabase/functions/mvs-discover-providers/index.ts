@@ -839,19 +839,18 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         query,
         limit: 10,
-        scrapeOptions: { formats: ["markdown"], onlyMainContent: false },
       }),
-    }, 45_000);
+    }, 20_000);
 
     const j = await res.json().catch(() => ({}));
     const items = (Array.isArray(j?.data) ? j.data : Array.isArray(j?.data?.web) ? j.data.web : []) as Array<Record<string, unknown>>;
 
-    const topItems = items.slice(0, 8);
+    const topItems = items.slice(0, 10);
     const blob = topItems.map((it, idx) => {
       const u = String(it.url ?? it.link ?? "");
       const t = String(it.title ?? "");
-      const md = String(it.markdown ?? it.content ?? it.description ?? "");
-      return `=== RESULT ${idx + 1} ===\nURL: ${u}\nTITLE: ${t}\n\n${md.slice(0, 8000)}`;
+      const md = String(it.description ?? it.snippet ?? it.markdown ?? it.content ?? "");
+      return `=== RESULT ${idx + 1} ===\nURL: ${u}\nTITLE: ${t}\nSNIPPET: ${md}`;
     }).join("\n\n");
 
     const sys = `You extract the summer camp tuition price per week for the business "${campName}" in ${testCity}.

@@ -45,7 +45,7 @@ const BASE_SHORTLIST: { city: string; state: string }[] = SHORTLIST_SEED.map((ro
   state: row.state,
 }));
 
-type RunStatus = "queued" | "running" | "done" | "failed";
+type RunStatus = "queued" | "running" | "done" | "failed" | "done_stale" | "failed_no_data";
 
 interface RunRow {
   id: string;
@@ -118,7 +118,9 @@ function CityRow({
       queued: { text: "queued", cls: "bg-amber-50 text-amber-800 border-amber-200", icon: Loader2 },
       running: { text: "running", cls: "bg-blue-50 text-blue-800 border-blue-200", icon: Loader2 },
       done: { text: "done", cls: "bg-emerald-50 text-emerald-800 border-emerald-200", icon: CheckCircle2 },
+      done_stale: { text: "done (stale)", cls: "bg-amber-50 text-amber-800 border-amber-200", icon: CheckCircle2 },
       failed: { text: "failed", cls: "bg-red-50 text-red-800 border-red-200", icon: AlertTriangle },
+      failed_no_data: { text: "failed (no data)", cls: "bg-red-50 text-red-800 border-red-200", icon: AlertTriangle },
     };
     const s = map[status];
     const Icon = s.icon;
@@ -593,7 +595,10 @@ export default function MarketValidationRollout() {
     );
   }
 
-  const doneCount = SHORTLISTED_CITIES.filter((c) => latestRuns[c.city]?.status === "done").length;
+  const doneCount = SHORTLISTED_CITIES.filter((c) => {
+    const st = latestRuns[c.city]?.status;
+    return st === "done" || st === "done_stale";
+  }).length;
   const totalCount = SHORTLISTED_CITIES.length;
   const allDone = doneCount === totalCount;
 

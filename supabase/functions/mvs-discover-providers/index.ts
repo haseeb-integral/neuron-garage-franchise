@@ -1324,22 +1324,27 @@ ${PRICE_RULES}
       }).eq("id", runId);
     }
 
+    const respPayload: Record<string, unknown> = {
+      run_id: runId,
+      city,
+      firecrawl_calls: totalFirecrawl,
+      debug,
+    };
+
+    if (!catchupBatch) {
+      respPayload.providers_inserted = inserted;
+      respPayload.providers_updated = updated;
+      respPayload.providers_merged = rows.length;
+      respPayload.screenshot_path = screenshotPath;
+      respPayload.source_counts = {
+        ...sourceCounts,
+        google_search_queries: (debug.google_search as Record<string, unknown> | undefined)?.queries ?? [],
+        targeted_scrape: debug.targeted_scrape ?? null,
+      };
+    }
+
     return new Response(
-      JSON.stringify({
-        run_id: runId,
-        city,
-        firecrawl_calls: totalFirecrawl,
-        providers_inserted: inserted,
-        providers_updated: updated,
-        providers_merged: rows.length,
-        screenshot_path: screenshotPath,
-        source_counts: {
-          ...sourceCounts,
-          google_search_queries: (debug.google_search as Record<string, unknown> | undefined)?.queries ?? [],
-          targeted_scrape: debug.targeted_scrape ?? null,
-        },
-        debug,
-      }),
+      JSON.stringify(respPayload),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
 

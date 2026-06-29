@@ -429,10 +429,18 @@ ${PRICE_RULES}`;
 
   // Run all 5 listicle queries in parallel — sequential was ~60s, parallel ~15s.
   const perQuery = await Promise.all(queries.map(async (q) => {
+    // Pricing-specific query gets richer payload: more results, full content, larger blob.
+    const isPricingQuery = q.includes("prices per week tuition");
+    const searchLimit = isPricingQuery ? 10 : 6;
+    const onlyMain = isPricingQuery ? false : true;
+    const perResultChars = isPricingQuery ? 12000 : 6000;
     const qd: Record<string, unknown> = {
       query: q,
       source_type: "google_search",
       firecrawl_endpoint: `${FIRECRAWL_V2}/search`,
+      search_limit: searchLimit,
+      only_main_content: onlyMain,
+      per_result_chars: perResultChars,
     };
     const out: { providers: ProviderExtract[]; calls: number; debug: Record<string, unknown> } =
       { providers: [], calls: 0, debug: qd };
@@ -442,9 +450,9 @@ ${PRICE_RULES}`;
         headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           query: q,
-          limit: 6,
+          limit: searchLimit,
           excludeDomains,
-          scrapeOptions: { formats: ["markdown"], onlyMainContent: true },
+          scrapeOptions: { formats: ["markdown"], onlyMainContent: onlyMain },
         }),
       }, FIRECRAWL_TIMEOUT_MS);
       out.calls = 1;
@@ -461,8 +469,9 @@ ${PRICE_RULES}`;
         const url = String(it.url ?? it.link ?? "");
         const title = String(it.title ?? "");
         const md = String(it.markdown ?? it.content ?? it.description ?? "");
-        return `=== RESULT ${idx + 1} ===\nURL: ${url}\nTITLE: ${title}\n\n${md.slice(0, 6000)}`;
+        return `=== RESULT ${idx + 1} ===\nURL: ${url}\nTITLE: ${title}\n\n${md.slice(0, perResultChars)}`;
       }).join("\n\n");
+
 
       const gemDebug: Record<string, unknown> = {};
       const providers = await extractWithGemini({

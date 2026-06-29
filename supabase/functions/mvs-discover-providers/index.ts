@@ -291,8 +291,8 @@ Rules:
 - EXCLUDE: the marketplace itself ("ActivityHero"), category navigation, generic labels, individual class titles, blog posts.
 - "url" MUST be the provider's OWN website (their own domain). DO NOT use marketplace activity-detail links such as "activityhero.com/a/..." or "/activity/...". If you cannot see the provider's own website on the page, return null for url.
 - Prefer in-person providers in ${city}. Skip online-only.
-- Prices USD per session. Null if unknown.
-- Hard cap: 60.`;
+- Hard cap: 60.
+${PRICE_RULES}`;
       const providers = await extractWithGemini({
         lovableKey, sys, city, sourceUrl: url,
         markdown: md + (linksBlob ? `\n\nDISCOVERED LINKS:\n${linksBlob}` : ""),

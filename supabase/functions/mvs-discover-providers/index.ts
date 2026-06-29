@@ -426,7 +426,11 @@ ${PRICE_RULES}`;
 
   // Run all 5 listicle queries in parallel — sequential was ~60s, parallel ~15s.
   const perQuery = await Promise.all(queries.map(async (q) => {
-    const qd: Record<string, unknown> = { query: q };
+    const qd: Record<string, unknown> = {
+      query: q,
+      source_type: "google_search",
+      firecrawl_endpoint: `${FIRECRAWL_V2}/search`,
+    };
     const out: { providers: ProviderExtract[]; calls: number; debug: Record<string, unknown> } =
       { providers: [], calls: 0, debug: qd };
     try {
@@ -446,7 +450,8 @@ ${PRICE_RULES}`;
 
       const items: Array<Record<string, unknown>> =
         (Array.isArray(j?.data?.web) ? j.data.web : Array.isArray(j?.data) ? j.data : []) as Array<Record<string, unknown>>;
-      qd.results_count = items.length;
+      qd.raw_results_returned = items.length;
+      qd.top_urls = items.slice(0, 5).map((it) => String(it.url ?? it.link ?? ""));
       if (items.length === 0) return out;
 
       const blob = items.map((it, idx) => {
@@ -456,10 +461,21 @@ ${PRICE_RULES}`;
         return `=== RESULT ${idx + 1} ===\nURL: ${url}\nTITLE: ${title}\n\n${md.slice(0, 6000)}`;
       }).join("\n\n");
 
+      const gemDebug: Record<string, unknown> = {};
       const providers = await extractWithGemini({
         lovableKey, sys, city, sourceUrl: `google_search:${q}`, markdown: blob,
-      });
+      }, gemDebug);
       qd.providers_extracted = providers.length;
+      qd.provider_names = providers.map((p) => p.name);
+      qd.providers = providers.map((p) => ({
+        name: p.name,
+        url: p.url ?? null,
+        price_min: p.price_min ?? null,
+        price_max: p.price_max ?? null,
+      }));
+      qd.prices_kept = providers.filter((p) => p.price_min != null || p.price_max != null).length;
+      qd.prices_dropped_by_guard = gemDebug.dropped_prices ?? [];
+      qd.raw_dollar_amounts_in_source = gemDebug.dollar_matches_count ?? 0;
       out.providers = providers;
     } catch (e) {
       qd.error = e instanceof Error ? e.message : String(e);
@@ -531,7 +547,7 @@ async function extractWithGemini(args: {
   city: string;
   sourceUrl: string;
   markdown: string;
-}): Promise<ProviderExtract[]> {
+}, debugOut?: Record<string, unknown>): Promise<ProviderExtract[]> {
   const { lovableKey, sys, city, sourceUrl, markdown } = args;
   const res = await fetchWithTimeout(AI_GATEWAY, {
     method: "POST",
@@ -551,9 +567,6 @@ async function extractWithGemini(args: {
   try {
     const parsed = JSON.parse(raw) as { providers?: ProviderExtract[] };
     const providers = (parsed.providers ?? []).filter((p) => p?.name);
-    // Phase 2 guard: drop any price that does NOT appear as a literal dollar
-    // amount in the source markdown. Prevents Gemini from hallucinating or
-    // converting "$$" tier symbols into numeric prices.
     const dollarMatches = new Set<number>();
     for (const m of markdown.matchAll(/\$\s?(\d{1,3}(?:[,]?\d{3})*|\d+)/g)) {
       const n = Number(m[1].replace(/,/g, ""));
@@ -561,15 +574,26 @@ async function extractWithGemini(args: {
     }
     const priceIsInSource = (val: number): boolean => {
       if (dollarMatches.has(val)) return true;
-      // Allow off-by-rounding tolerance of ±2 to handle minor LLM rounding.
       for (const d of dollarMatches) {
         if (Math.abs(d - val) <= 2) return true;
       }
       return false;
     };
+    const dropped: Array<Record<string, unknown>> = [];
     for (const p of providers) {
-      if (typeof p.price_min === "number" && !priceIsInSource(p.price_min)) p.price_min = null;
-      if (typeof p.price_max === "number" && !priceIsInSource(p.price_max)) p.price_max = null;
+      if (typeof p.price_min === "number" && !priceIsInSource(p.price_min)) {
+        dropped.push({ name: p.name, field: "price_min", value: p.price_min });
+        p.price_min = null;
+      }
+      if (typeof p.price_max === "number" && !priceIsInSource(p.price_max)) {
+        dropped.push({ name: p.name, field: "price_max", value: p.price_max });
+        p.price_max = null;
+      }
+    }
+    if (debugOut) {
+      debugOut.raw_provider_count = providers.length;
+      debugOut.dollar_matches_count = dollarMatches.size;
+      debugOut.dropped_prices = dropped;
     }
     return providers;
   } catch {
@@ -869,7 +893,10 @@ Deno.serve(async (req) => {
         providers_updated: updated,
         providers_merged: rows.length,
         screenshot_path: screenshotPath,
-        source_counts: sourceCounts,
+        source_counts: {
+          ...sourceCounts,
+          google_search_queries: (debug.google_search as Record<string, unknown> | undefined)?.queries ?? [],
+        },
         debug,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },

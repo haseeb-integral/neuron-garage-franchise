@@ -68,7 +68,8 @@ Deno.serve(async (req) => {
   }
 
   const cap = Number(Deno.env.get("MVS_PIPELINE_FIRECRAWL_CAP") ?? "50");
-  const STEP_CAPS: Record<string, number> = { discover: 25, classify: 15, extract: 15 };
+  // v1.2: bumped discover cap to 35 for Tavily pilot
+  const STEP_CAPS: Record<string, number> = { discover: 35, classify: 15, extract: 15 };
 
   // Auth: manager or admin required.
   const authHeader = req.headers.get("Authorization") ?? "";

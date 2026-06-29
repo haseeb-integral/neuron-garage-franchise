@@ -1137,6 +1137,7 @@ Deno.serve(async (req) => {
         source_counts: {
           ...sourceCounts,
           google_search_queries: (debug.google_search as Record<string, unknown> | undefined)?.queries ?? [],
+          targeted_scrape: debug.targeted_scrape ?? null,
         },
         debug,
       }),

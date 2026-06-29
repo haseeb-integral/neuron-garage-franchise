@@ -971,13 +971,14 @@ async function runTavilyPilotForBoston(args: {
     };
 
     // ---- 1. Tavily search ----
-    let tavilyResults: Array<{ url: string; title: string; content?: string }> = [];
+    let tavilyResults: Array<{ url: string; title: string; content?: string; raw_content?: string }> = [];
     try {
       const body: Record<string, unknown> = {
         api_key: tavilyKey,
         query,
         search_depth: "advanced",
         include_answer: "advanced",
+        include_raw_content: true,
         max_results: 5,
         exclude_domains: TAVILY_EXCLUDE_DOMAINS,
       };

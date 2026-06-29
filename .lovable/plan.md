@@ -1,104 +1,163 @@
+## Audit: Why human Google looks richer than our Firecrawl result
 
-# Provider Evidence Review — Plan (read-only, no code yet)
+### What our code actually does today
+File: `supabase/functions/mvs-discover-providers/index.ts`, function `runGoogleSearch`.
 
-## 1) Best UI placement
+For each of 6 queries we call **Firecrawl `/v2/search`** with:
+- `limit: 6` results
+- `scrapeOptions: { formats: ["markdown"], onlyMainContent: true }`
+- `excludeDomains` includes `reddit.com`
 
-- Add a button **"Review Provider Evidence"** in `LiveCityDeepDive.tsx`, right next to the existing "Premium providers — live" / Competitors header (same row as the camera/screenshot button).
-- Clicking it routes to a **new full page**: `/market-validation/evidence/:cityKey` (not a drawer). The reason: you asked for a spreadsheet-style grid — drawers are too narrow. We reuse the same routing pattern as `/market-validation/competitors/:cityKey` (`CityCompetitors.tsx`).
-- Inside that page, a **right-side drawer** opens for a single row's full detail (using the existing `Drawer` component from `src/components/ui/drawer.tsx`).
-- Read-only in this phase. No write actions wired up. Verify / Reject / Edit buttons are rendered **disabled** with a "Coming in next phase" tooltip so the layout is final.
+For each returned result we keep `markdown` (truncated to 6000 chars per result), glue all 6 together, and send to Gemini with the price-literal guard.
 
-## 2) Existing tables / fields we can reuse
-
-Already in the database — no new columns needed for v1:
-
-- **`mvs_providers`** — `name`, `city`, `url`, `source_listing_url`, `website_url`, `price_min`, `price_max`, `category_raw`, `tier`, `screenshot_url`, `confidence`, `source_run_id`, `sources` (jsonb), `created_at`.
-- **`mvs_pipeline_runs.source_counts.discover.google_search_queries[]`** — the per-query debug array we just started persisting. Each entry has: query string, raw result count, top URLs, providers found, prices kept, prices dropped by the regex guard, and dropped-reason text.
-
-Mapping to the columns you asked for:
-
-| Column you asked for | Source |
-|---|---|
-| Provider name | `mvs_providers.name` |
-| City | `mvs_providers.city` |
-| Source query | `google_search_queries[].query` (joined by provider name match) |
-| Source type | derive from query bucket: `google_search`, `sawyer`, `firecrawl_listing` (already in `sources` jsonb) |
-| Source URL | `source_listing_url` or first entry in `sources` |
-| price_min / price_max | `mvs_providers.price_min/max` |
-| Kept or dropped by guard | from `google_search_queries[].prices_dropped[]` (matched by name) |
-| Evidence snippet | `google_search_queries[].providers[].snippet` if present, else top URL title |
-| Extraction phase | derive: Phase 2 if from listing query, Phase 3/4 = "—" until those ship |
-| Verification status | **new** — see §3 |
-| Human notes | **new** — see §3 |
-| Last checked date | `mvs_providers.updated_at` for now |
-
-## 3) New fields needed later (NOT in this phase — flagged only)
-
-For when the Verify / Reject / Edit buttons get wired up:
-
-- New table `mvs_provider_verifications` (one row per provider review action):
-  - `provider_id` (fk), `reviewer_id`, `status` enum (`missing | found_by_ai | needs_review | verified | rejected | manually_corrected`), `notes` text, `corrected_price_min`, `corrected_price_max`, `checked_at`.
-- A view that joins `mvs_providers` ⟕ latest `mvs_provider_verifications` so the grid stays one query.
-
-This phase only **renders columns** for these; values come back empty / "Needs Review" by default.
-
-## 4) Lowest-risk implementation plan (phases, ~turns)
-
-**Phase E1 — Route + empty page shell (1 turn)**
-- New file `src/pages/ProviderEvidence.tsx`.
-- Route in `App.tsx`.
-- Button in `LiveCityDeepDive.tsx` header.
-- Page just shows city name and a "Loading…" state.
-
-**Phase E2 — Read-only data grid (1–2 turns)**
-- New hook `src/lib/mvs/useProviderEvidence.ts`: fetches `mvs_providers` for the city + latest `mvs_pipeline_runs.source_counts` for that city, joins in-memory by provider name.
-- Render with the existing `Table` component (`src/components/ui/table.tsx`). Sortable headers, text search, CSV export (reuse pattern from `CityCompetitors.tsx`).
-- Disabled action buttons + "Coming soon" tooltip.
-
-**Phase E3 — Right-side detail drawer (1 turn)**
-- Click a row → `Drawer` from `src/components/ui/drawer.tsx` (or `Sheet` for right side — confirm in build).
-- Shows: query used, top URL, raw snippet from debug, guard result (kept / dropped + reason), screenshot link if present, all `sources[]` entries.
-
-Total: ~3–4 Lovable turns. Each phase ships independently.
-
-## 5) How this supports Phase 2 / 3 / 4
-
-- **Phase 2 (current):** lets a human eyeball which queries actually surface real providers with real prices, and confirms the regex guard isn't over-dropping. Direct feedback into prompt tuning.
-- **Phase 3 (Google/Gemini fallback):** the "Extraction phase" column will start showing Phase 3 rows. Reviewers can compare Phase 2 vs Phase 3 yield side by side.
-- **Phase 4 (per-provider website scrape):** same grid grows a "website price" sub-row. The verification table from §3 becomes the ground-truth set we score Phase 4 accuracy against.
-
-## 6) What can break
-
-- Nothing in pricing math, scoring, freshness, City Search, Saved Sites, Candidate Pipeline, PDFs — this is a new isolated page.
-- Risk areas: large cities with 200+ providers → render perf. Mitigation: virtualize the table or paginate at 100 rows.
-- Risk: `google_search_queries` only exists for runs done **after** the Option-1 debug change. Older runs show "—" in the Source query column. Acceptable.
-
-## 7) How to test
-
-- Open `/market-validation/evidence/columbus-oh` after Phase E2 ships. Confirm:
-  - All 62 Columbus providers appear.
-  - The 8 prices kept by the new "prices per week tuition" query are tagged to that query.
-  - The 12 prices dropped by the guard appear with `kept = No` and a drop reason.
-  - CSV export downloads and opens in Excel.
-- Spot-check 1 provider where we know the source URL (use the row drawer).
-- Visit a city with **no** recent debug-enabled run (e.g. Boston) → grid renders, Source query column shows "—". No crash.
-
-## 8) Rollback
-
-- Single new route + single new page + one new button. Rollback = remove the route, the button, and delete `ProviderEvidence.tsx` + `useProviderEvidence.ts`. No DB migrations in this phase, so nothing to undo on the backend.
+The city is fed into the query as `${city} ${state}` where `city` is the raw row value — when the row already contains `"Columbus, OH"` and `state` is `"OH"`, we get **"Columbus, OH OH"**. That's the bug source.
 
 ---
 
-## Separate flag — "Columbus, OH OH" duplicate-state bug
+### Answers to your questions
 
-- **Location:** `supabase/functions/mvs-discover-providers/index.ts`, in the Google query builder. The city key arriving as `"Columbus, OH"` gets the state appended again → `"Columbus, OH OH ..."`.
-- **Safest one-line fix (not applied yet):** before appending state, strip an existing trailing `, <STATE>` from the city string. Something like:
-  ```ts
-  const cityOnly = city.replace(/,\s*[A-Z]{2}\s*$/i, "").trim();
-  const q = `${cityOnly}, ${state} kids summer camp prices per week tuition`;
-  ```
-- Risk: zero — purely cosmetic in the query string. But it changes search results slightly, so it should ship as its own tiny PR after this evidence screen lands, with one re-run of Columbus to confirm provider count doesn't regress.
+**1. Is `/v2/search` returning full markdown or just snippets?**
+Full markdown. We pass `scrapeOptions.formats: ["markdown"]`, so Firecrawl scrapes each top-N result page. We are NOT limited to Google's 2-line snippet.
+
+**2. Then why are prices still missing?**
+Five concrete reasons, in order of impact:
+
+a. **`limit: 6` per query.** Google's organic list of price-rich pages (CAP4Kids, Columbus.gov rec centers, YMCA, Metro Parks, CSG, Country Club) is longer than 6. Many price pages never enter our markdown blob.
+b. **`onlyMainContent: true` strips price tables.** Camp price grids often live in sidebars, accordions, or "rates" widgets that boilerplate strippers cut.
+c. **6000-char truncation per result.** Long rec-center pages with the price table near the bottom get cut before the dollar amounts.
+d. **Price guard is per-page literal match.** A provider listed on page A with the price on page B gets the price dropped because the literal `$NNN` is not in A's markdown. This is correct behavior but it nukes real prices.
+e. **AI Overview is invisible to `/v2/search`.** Firecrawl's search reads organic results, not the AI Overview box. The block of 8+ providers you saw at the top is not in our pipeline at all.
+
+**3. Does Firecrawl return Google AI Overview?**
+No. `/v2/search` returns organic results only. AI Overview is rendered by Google's own model and is not exposed in Firecrawl's search response.
+
+**4. Can we capture AI Overview reliably?**
+Not through Firecrawl. Two indirect options:
+- Scrape `google.com/search?q=...` as a page (fragile — Google blocks, layout changes, ToS-grey, and the box doesn't always render headlessly).
+- Use **Gemini with Google Search grounding** through Lovable AI Gateway — gives you a similar synthesized answer **plus** a `groundingMetadata` list of source URLs. This is the reliable path.
+
+We should **not** treat AI Overview text as canonical proof. We can use grounded answers as **leads**, then verify each price by scraping the cited source URL.
+
+**5. Could Gemini-with-grounding replace some Firecrawl calls?**
+Yes, partially. One grounded Gemini call can return "here are 8 providers with weekly prices and the URL each came from" — cheaper than 6 Firecrawl searches. But it still needs Firecrawl follow-up to actually save evidence (markdown + screenshot) for the cited URLs.
+
+**6. Should we `/v2/scrape` top URLs after `/v2/search`?**
+Mostly **no**, because `scrapeOptions` already scrapes them. Two narrow exceptions where a second `/v2/scrape` is worth it:
+- The page has price info but we have it under `onlyMainContent: true` — re-scrape with `onlyMainContent: false`.
+- The page is paginated / has a "rates" subpage linked from the main page — scrape that one extra URL.
+
+**7. Reddit/forum results — include?**
+Keep `reddit.com` excluded from primary discovery (low trust, parent quotes are stale, names misspelled). But allow it as **lead-only**: if grounded Gemini cites a Reddit thread, we record it as "Needs Review" evidence and never auto-populate price from it.
+
+**8. Why did query #4 ("kids music art gymnastics studios…") find many providers but 0 prices?**
+That query targets studio listicles, which name businesses but rarely publish weekly rates. The query is doing its job (provider discovery), not pricing. This is expected, not a bug — they are two different sub-goals.
+
+**9. The "Columbus, OH OH" duplicate-state bug**
+Real. The city field already includes ", OH" in some rows. The query builder appends `state` again. Safe one-line fix:
+
+```ts
+const cleanCity = city.replace(/,\s*[A-Z]{2}\s*$/i, "").trim();
+```
+
+Then use `cleanCity` in the 6 query strings. **Yes, fix this before any further test runs** — the duplicate token measurably degrades Google relevance ranking.
 
 ---
 
-**Awaiting your approval before I start Phase E1.** No code, no DB changes, no Phase 3 or Phase 4 work in the meantime.
+### Root cause (one sentence)
+
+We get full markdown from `/v2/search`, but we throttle it to 6 results × 6000 chars × `onlyMainContent`, and we ignore Google's AI Overview entirely — so a human browsing Google sees ~20 price points while we only see whichever 6–8 happen to survive those filters.
+
+---
+
+### Recommended approach (Phase 3 design proposal — not code)
+
+A 3-step "richer extraction" path that keeps cost predictable:
+
+**Step 1 — Loosen the search call (cheap, no extra calls)**
+- Raise `/v2/search` `limit` from 6 → **10** for the pricing-specific query only (the other 5 stay at 6).
+- For the pricing-specific query only, set `onlyMainContent: false` and bump per-result truncation from 6000 → **12000** chars.
+- Apply the duplicate-state regex fix.
+- Net Firecrawl cost: **+0 calls** (same number of search requests, just richer payload). Token cost on Gemini side: ~2× the pricing-query blob, ~$0.02/run.
+
+**Step 2 — Add ONE Gemini-with-Google-Search-grounding call per run**
+Single call: *"Weekly prices for kids summer camps in {city, state}. List provider, weekly price range, and the source URL."*
+- Returns a structured list + cited URLs.
+- We treat the list as **leads only** — provider names get merged, prices stay null until verified.
+- ~$0.005 per city, 0 Firecrawl calls.
+
+**Step 3 — Targeted `/v2/scrape` on cited URLs that we don't already have**
+- Take the deduped URL list from grounding + the top 3 `/v2/search` URLs that had a provider but no price.
+- Cap at **5 extra scrapes per run** (`onlyMainContent: false`, screenshot on).
+- Run the price-literal guard against each scraped page's own markdown.
+- Net Firecrawl cost: **+5 calls** worst case. Fits inside the existing 50-call `MVS_PIPELINE_FIRECRAWL_CAP` (Columbus used 13).
+
+Estimated new pricing coverage: **35–50%** vs today's ~22%.
+
+---
+
+### Cost impact
+
+| Item | Today | Proposed | Delta |
+|---|---|---|---|
+| Firecrawl `/v2/search` calls | 6 | 6 | 0 |
+| Firecrawl `/v2/scrape` calls (new, capped) | 0 | up to 5 | +5 |
+| Gemini extraction calls | 6 | 6 | 0 |
+| Gemini grounded call | 0 | 1 | +1 |
+| Total Firecrawl per city | ~13 | ~18 | +5 |
+| Approx $ per city | ~$0.04 | ~$0.06 | +$0.02 |
+
+Still well under the 50-call cap.
+
+---
+
+### Risks
+
+- **AI Overview format changes** — mitigated because we use Gemini grounding, not Google scraping.
+- **Grounded answers can hallucinate prices** — mitigated by the literal-match guard already in place; any price not found in the cited URL's markdown gets dropped to `null`.
+- **More raw markdown per query** raises Gemini token use slightly — bounded by the per-query 12000-char truncation.
+- **Reddit creeping in via grounding citations** — mitigated by tagging those leads `verification_status='needs_review'` and never auto-saving the price.
+
+---
+
+### Data to save for human verification
+
+For every kept price, store (already partly stored — add the bold items):
+- Provider name + URL
+- The **exact source URL** the price came from
+- The **markdown snippet** (±200 chars around the dollar amount) — **NEW**
+- The **query or grounded prompt** that surfaced it
+- `extraction_method`: `search_scrape` | `targeted_scrape` | `grounded_lead` — **NEW**
+- Guard result (kept / dropped + reason) — already stored
+- Screenshot of the source listing page — already stored for discovery pages; **add for targeted scrapes**
+
+---
+
+### Impact on the Provider Evidence Review screen
+
+Small additions to the drawer, no schema break:
+- New row "Extraction method" (search_scrape / targeted_scrape / grounded_lead).
+- "Source snippet" block showing the ±200-char window around the dollar amount.
+- "Grounded leads" section listing any URLs Gemini cited that we did **not** end up scraping.
+- Filter chip: "Method" so a human can audit just the grounded leads first.
+
+Phase E4 (verification buttons) is unchanged and still parked.
+
+---
+
+### Duplicate-state bug
+
+**Fix it before any more test runs.** It is a one-line regex change, isolated to `runGoogleSearch`. Every measurement we take with the bug present is contaminated — Google's ranker punishes `"Columbus, OH OH"` and we cannot judge whether Step 1/2/3 work until that noise is gone.
+
+---
+
+### What I want you to approve next
+
+Pick any combination:
+
+- **A.** Apply only the one-line duplicate-state fix now, no other changes.
+- **B.** Phase 3.1 — Step 1 (loosen search call + state-fix). Smoke test Columbus + Boston + Austin.
+- **C.** Phase 3.2 — Step 2 (add grounded Gemini call). Smoke test same 3 cities, compare.
+- **D.** Phase 3.3 — Step 3 (targeted scrape on cited URLs). Final smoke test.
+- **E.** All of B+C+D in one shot.
+
+My recommendation: **A first** (one tiny safe change), then **B**, measure, then decide on C and D from real data. Do not start Phase 4 (per-provider deep scrape) until 3.1–3.3 results are in.

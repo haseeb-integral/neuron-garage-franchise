@@ -395,14 +395,17 @@ async function runGoogleSearch(args: {
   lovableKey: string;
 }): Promise<SourceResult> {
   const { city, state, firecrawlKey, lovableKey } = args;
+  // Guard against rows where city already contains ", OH" — avoids "Columbus, OH OH".
+  const cleanCity = city.replace(/,\s*[A-Za-z]{2}\s*$/i, "").trim();
   const queries = [
-    `best summer camps for kids in ${city} ${state} 2026`,
-    `best kids activities classes ${city} ${state}`,
-    `${city} ${state} after school programs enrichment kids`,
-    `kids music art gymnastics studios ${city} ${state}`,
-    `things to do with kids in ${city} ${state} indoor`,
-    `${city} ${state} kids summer camp prices per week tuition`,
+    `best summer camps for kids in ${cleanCity} ${state} 2026`,
+    `best kids activities classes ${cleanCity} ${state}`,
+    `${cleanCity} ${state} after school programs enrichment kids`,
+    `kids music art gymnastics studios ${cleanCity} ${state}`,
+    `things to do with kids in ${cleanCity} ${state} indoor`,
+    `${cleanCity} ${state} kids summer camp prices per week tuition`,
   ];
+
   // Strip social/marketplace noise so listicle pages dominate results.
   const excludeDomains = [
     "facebook.com", "instagram.com", "tiktok.com", "pinterest.com", "reddit.com", "x.com", "twitter.com",

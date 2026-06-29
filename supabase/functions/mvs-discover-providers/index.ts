@@ -959,7 +959,6 @@ Deno.serve(async (req) => {
 
     // Per-source provider counts — surfaced to the orchestrator so the UI can
     // show "X/5 sources" instead of just pass/fail.
-    const sourceCounts: Record<string, number> = {};
     for (const r of sourceResults) {
       totalFirecrawl += r.firecrawlCalls;
       if (r.screenshotPath && !screenshotPath) screenshotPath = r.screenshotPath;

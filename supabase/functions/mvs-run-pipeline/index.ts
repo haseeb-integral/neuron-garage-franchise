@@ -289,6 +289,20 @@ Deno.serve(async (req) => {
           finished_at: new Date().toISOString(),
         })
         .eq("id", run.id);
+
+      // Phase 2: Send in-app header bell notification to the user who triggered the run
+      try {
+        await admin.from("notifications").insert({
+          user_id: userData.user.id,
+          kind: "city_scoring_finished",
+          title: `Market Validation finished for ${city}`,
+          message: `Processed providers and refreshed live scores. Used ${totalCalls} search calls.`,
+          link: `/city-competitors?city=${encodeURIComponent(city)}`,
+          created_at: new Date().toISOString(),
+        });
+      } catch (notifErr) {
+        console.warn("[mvs-run-pipeline] failed to insert completion notification:", notifErr);
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
 

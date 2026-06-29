@@ -846,7 +846,7 @@ Deno.serve(async (req) => {
       status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-
+  const body = await req.json().catch(() => ({}));
   const city: string = (body?.city ?? "Austin, TX").trim();
   const [cityName, stateAbbr] = city.split(",").map((s: string) => s.trim());
   let box: Box | undefined = TIER_A_BOXES[city];
@@ -1117,6 +1117,102 @@ Deno.serve(async (req) => {
       }
       debug.updated = updated;
     }
+
+    // Missing Price Catch-up: automatically search Google directly for camps in this city still missing prices.
+    // Runs in small batches of 5 to stay within timeout and cost limits.
+    let catchupDebug: Record<string, unknown> = { skipped: true };
+    if (firecrawlKey && lovableKey) {
+      try {
+        const cleanCity = city.replace(/,\s*[A-Za-z]{2}\s*$/i, "").trim();
+        const stateAbbr = city.split(",")[1]?.trim() || "";
+        const { data: missingRows } = await admin
+          .from("mvs_providers")
+          .select("id, name")
+          .eq("city", city)
+          .is("price_min", null)
+          .is("price_max", null)
+          .limit(5);
+
+        if (missingRows && missingRows.length > 0) {
+          const catchupResults: Record<string, unknown>[] = [];
+          const catchupSys = `You extract per-week or per-session tuition pricing for a kids' camp/class provider from Google search results.
+Return strict JSON: { "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number }
+${PRICE_RULES}
+- Look for pricing on their official website snippet, ActivityHero, Facebook, or city camp guides.
+- Only extract if the dollar amount explicitly appears in the markdown. Otherwise return nulls.`;
+
+          await Promise.all(missingRows.map(async (p) => {
+            const query = `${p.name} ${cleanCity} ${stateAbbr} summer camp tuition price per week`;
+            const qDebug: Record<string, unknown> = { provider_id: p.id, provider_name: p.name, query };
+            try {
+              const res = await fetchWithTimeout(`${FIRECRAWL_V2}/search`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  query,
+                  limit: 4,
+                  scrapeOptions: { formats: ["markdown"], onlyMainContent: false },
+                }),
+              }, FIRECRAWL_TIMEOUT_MS);
+              totalFirecrawl += 1;
+              const j = await res.json().catch(() => ({}));
+              if (!res.ok) { qDebug.error = `firecrawl ${res.status}`; catchupResults.push(qDebug); return; }
+
+              const items = (Array.isArray(j?.data?.web) ? j.data.web : Array.isArray(j?.data) ? j.data : []) as Array<Record<string, unknown>>;
+              const blob = items.map((it, idx) => `=== RESULT ${idx + 1} ===\nURL: ${it.url ?? ""}\nTITLE: ${it.title ?? ""}\n\n${String(it.markdown ?? it.content ?? "").slice(0, 6000)}`).join("\n\n");
+
+              const gemRes = await fetchWithTimeout(AI_GATEWAY, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Lovable-API-Key": lovableKey },
+                body: JSON.stringify({
+                  model: "google/gemini-3-flash-preview",
+                  messages: [
+                    { role: "system", content: catchupSys },
+                    { role: "user", content: `Provider Name: ${p.name}\nCity: ${city}\n\nSEARCH RESULTS MARKDOWN:\n${blob.slice(0, 24000)}` },
+                  ],
+                  response_format: { type: "json_object" },
+                }),
+              }, GEMINI_TIMEOUT_MS);
+
+              if (gemRes.ok) {
+                const gemJson = await gemRes.json().catch(() => ({}));
+                const parsed = JSON.parse(gemJson?.choices?.[0]?.message?.content ?? "{}") as { price_min?: number | null; price_max?: number | null; category_raw?: string | null; confidence?: number };
+                
+                const dollarMatches = new Set<number>();
+                for (const m of blob.matchAll(/\$\s?(\d{1,3}(?:[,]?\d{3})*|\d+)/g)) {
+                  const num = Number(m[1].replace(/,/g, ""));
+                  if (Number.isFinite(num) && num >= 10 && num <= 100000) dollarMatches.add(num);
+                }
+                const priceOk = (val?: number | null) => typeof val === "number" && (dollarMatches.has(val) || Array.from(dollarMatches).some(d => Math.abs(d - val) <= 2));
+
+                const pMin = priceOk(parsed.price_min) ? parsed.price_min : null;
+                const pMax = priceOk(parsed.price_max) ? parsed.price_max : null;
+
+                qDebug.extracted = { price_min: pMin, price_max: pMax };
+                if (pMin != null || pMax != null) {
+                  await admin.from("mvs_providers").update({
+                    price_min: pMin ?? pMax,
+                    price_max: pMax ?? pMin,
+                    category_raw: parsed.category_raw ?? null,
+                    confidence: Math.max(0.7, parsed.confidence ?? 0.8),
+                    updated_at: new Date().toISOString(),
+                  }).eq("id", p.id);
+                  qDebug.updated = true;
+                }
+              }
+            } catch (e) {
+              qDebug.error = e instanceof Error ? e.message : String(e);
+            }
+            catchupResults.push(qDebug);
+          }));
+          catchupDebug = { ran: true, count: missingRows.length, results: catchupResults };
+        }
+      } catch (e) {
+        catchupDebug = { error: e instanceof Error ? e.message : String(e) };
+      }
+    }
+    debug.missing_price_catchup = catchupDebug;
+
 
 
     // Only the standalone-caller branch owns the run row's lifecycle. When

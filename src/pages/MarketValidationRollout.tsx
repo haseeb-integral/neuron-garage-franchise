@@ -45,7 +45,7 @@ const BASE_SHORTLIST: { city: string; state: string }[] = SHORTLIST_SEED.map((ro
   state: row.state,
 }));
 
-type RunStatus = "queued" | "running" | "done" | "failed";
+type RunStatus = "queued" | "running" | "done" | "failed" | "done_stale" | "failed_no_data";
 
 interface RunRow {
   id: string;

@@ -124,12 +124,24 @@ function CityRow({
     };
     const s = map[status];
     const Icon = s.icon;
+    const catchupMeta = (latestRun?.source_counts as any)?.catchup;
+    const isCatchingUp = status === "done" && catchupMeta && (catchupMeta.batches_completed ?? 0) < (catchupMeta.batches_total ?? 0);
+
     const pill = (
       <span
-        className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${s.cls} ${status === "failed" ? "cursor-help" : ""}`}
+        className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${isCatchingUp ? "bg-blue-50 text-blue-800 border-blue-200" : s.cls} ${status === "failed" ? "cursor-help" : ""}`}
       >
-        {Icon && <Icon className={`h-3 w-3 ${status === "running" || status === "queued" ? "animate-spin" : ""}`} />}
-        {s.text}
+        {isCatchingUp ? (
+          <>
+            <Loader2 className="h-3 w-3 animate-spin text-blue-600" />
+            <span>filling prices: {catchupMeta.batches_completed}/{catchupMeta.batches_total}</span>
+          </>
+        ) : (
+          <>
+            {Icon && <Icon className={`h-3 w-3 ${status === "running" || status === "queued" ? "animate-spin" : ""}`} />}
+            {s.text}
+          </>
+        )}
       </span>
     );
     // For failed runs, surface the real reason from the DB on hover so the user

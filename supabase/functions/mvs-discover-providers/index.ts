@@ -684,12 +684,14 @@ ${PRICE_RULES}
 - If the page is a forum, social post, news article without prices, or unrelated, return providers: [].
 - Hard cap: 20 providers.`;
 
-  for (let idx = 0; idx < selected.length; idx++) {
-    const url = selected[idx];
+  // Parallelize the 5 scrapes — sequential pushed Austin over the 150s edge timeout.
+  const perScrape = await Promise.all(selected.map(async (url, idx) => {
     const a: Record<string, unknown> = {
       extraction_method: "targeted_scrape",
       scraped_source_url: url,
     };
+    const out: { providers: ProviderExtract[]; calls: number; audit: Record<string, unknown> } =
+      { providers: [], calls: 0, audit: a };
     try {
       const res = await fetchWithTimeout(`${FIRECRAWL_V2}/scrape`, {
         method: "POST",
@@ -701,16 +703,12 @@ ${PRICE_RULES}
           waitFor: 2000,
         }),
       }, FIRECRAWL_TIMEOUT_MS);
-      firecrawlCalls += 1;
+      out.calls = 1;
       const j = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        a.error = `firecrawl ${res.status}`;
-        scrapes.push(a);
-        continue;
-      }
+      if (!res.ok) { a.error = `firecrawl ${res.status}`; return out; }
       const md: string = j?.data?.markdown ?? "";
       a.markdown_chars = md.length;
-      if (!md) { a.error = "empty markdown"; scrapes.push(a); continue; }
+      if (!md) { a.error = "empty markdown"; return out; }
 
       // Save screenshot
       let shotPath: string | null = null;
@@ -749,7 +747,7 @@ ${PRICE_RULES}
       for (const p of found) {
         const canon = canonicalName(p.name);
         const val = (p.price_min ?? p.price_max);
-        if (val == null) continue; // guard already dropped non-literal prices
+        if (val == null) continue;
         const rx = new RegExp(`\\$\\s?${val}\\b`);
         const m = md.match(rx);
         let snippet = "";
@@ -770,7 +768,7 @@ ${PRICE_RULES}
         };
         if (contextOk) {
           kept.push({ ...entry, guard: "kept" });
-          providersOut.push({
+          out.providers.push({
             name: p.name,
             url: p.url ?? url,
             price_min: p.price_min ?? null,
@@ -790,11 +788,16 @@ ${PRICE_RULES}
       a.prices_kept = kept;
       a.prices_needs_review = needsReview;
       a.prices_dropped_by_guard = gemDebug.dropped_prices ?? [];
-      scrapes.push(a);
     } catch (e) {
       a.error = e instanceof Error ? e.message : String(e);
-      scrapes.push(a);
     }
+    return out;
+  }));
+
+  for (const r of perScrape) {
+    firecrawlCalls += r.calls;
+    providersOut.push(...r.providers);
+    scrapes.push(r.audit);
   }
 
   debug.scrapes = scrapes;

@@ -900,7 +900,11 @@ Deno.serve(async (req) => {
   let screenshotPath: string | null = null;
 
   try {
-    // Run all 5 sources in parallel — sequential calls exceeded the 150s edge function idle timeout.
+    // If catchupBatch is passed, skip main discovery and jump straight to missing price catchup
+    if (catchupBatch && Array.isArray(catchupBatch) && catchupBatch.length > 0) {
+      // jump straight to catchup block
+    } else {
+      // Run all 5 sources in parallel — sequential calls exceeded the 150s edge function idle timeout.
     const sourceResults: SourceResult[] = await Promise.all([
       runSawyer({ city, box, firecrawlKey, lovableKey, admin, runId }),
       runActivityHero({ city, state: stateAbbr, firecrawlKey, lovableKey }),

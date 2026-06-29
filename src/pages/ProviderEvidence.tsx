@@ -3,6 +3,14 @@ import { Link, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Download, ExternalLink, Loader2, MapPin, Search } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useProviderEvidence, type EvidenceRow } from "@/lib/mvs/useProviderEvidence";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { ProviderScreenshotButton } from "@/components/phase2-demo/ProviderScreenshotButton";
 
 const NAVY = "#07142f";
 const MUTED = "#526078";
@@ -40,6 +48,7 @@ export default function ProviderEvidence() {
   const { rows, queries, runCreatedAt, loading, error } = useProviderEvidence(cityKey);
 
   const [q, setQ] = useState("");
+  const [selected, setSelected] = useState<EvidenceRow | null>(null);
   const [queryFilter, setQueryFilter] = useState<string>("all");
   const [keptFilter, setKeptFilter] = useState<string>("all");
 
@@ -287,7 +296,11 @@ export default function ProviderEvidence() {
                 const sourceUrl =
                   r.matched_provider_entry?.url || r.source_listing_url || r.url || null;
                 return (
-                  <tr key={r.id} className="hover:bg-[#f7faff] align-top">
+                  <tr
+                    key={r.id}
+                    className="cursor-pointer align-top hover:bg-[#f7faff]"
+                    onClick={() => setSelected(r)}
+                  >
                     <td
                       className="border-b px-3 py-2 font-semibold"
                       style={{ borderColor: BORDER, color: NAVY }}
@@ -325,6 +338,7 @@ export default function ProviderEvidence() {
                           href={sourceUrl}
                           target="_blank"
                           rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
                           className="inline-flex items-center gap-1"
                           style={{ color: BLUE }}
                           title={sourceUrl}
@@ -373,7 +387,7 @@ export default function ProviderEvidence() {
                       {r.matched_query ? "Phase 2" : "—"}
                     </td>
                     <td className="border-b px-3 py-2" style={{ borderColor: BORDER }}>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                         <span
                           className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
                           style={{ backgroundColor: "#eef2f7", color: MUTED }}
@@ -415,9 +429,273 @@ export default function ProviderEvidence() {
       )}
 
       <p className="mt-3 text-[11px]" style={{ color: MUTED }}>
-        Read-only. Verify / Reject / Edit buttons will be wired up in Phase E3 along with a
-        side panel showing the full evidence snippet and screenshot for each row.
+        Click any row to open the full evidence panel. Verify / Reject / Edit actions are still
+        read-only and will be wired up in a later phase.
       </p>
+
+      <EvidenceDrawer row={selected} onClose={() => setSelected(null)} />
     </>
+  );
+}
+
+function EvidenceDrawer({ row, onClose }: { row: EvidenceRow | null; onClose: () => void }) {
+  const open = !!row;
+  const q = row?.matched_query ?? null;
+  const entry = row?.matched_provider_entry ?? null;
+  const sourceUrl = entry?.url || row?.source_listing_url || row?.url || null;
+  const sourcesArr = Array.isArray(row?.sources) ? (row?.sources as unknown[]) : [];
+
+  return (
+    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-xl">
+        {row && (
+          <>
+            <SheetHeader>
+              <SheetTitle style={{ color: NAVY }}>{row.name || "Unnamed provider"}</SheetTitle>
+              <SheetDescription>
+                {row.tier ? `${row.tier} · ` : ""}
+                {row.category_classified || row.category_raw || "Uncategorized"} · {row.city}
+              </SheetDescription>
+            </SheetHeader>
+
+            <Section title="Provider basics">
+              <KV label="Price/wk" value={fmtPrice(row.price_min, row.price_max)} />
+              <KV label="Confidence" value={row.confidence != null ? row.confidence.toFixed(2) : "—"} />
+              <KV
+                label="Website"
+                value={
+                  row.website_url ? (
+                    <a
+                      href={row.website_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 font-semibold"
+                      style={{ color: BLUE }}
+                    >
+                      {row.website_url} <ExternalLink className="h-3 w-3" />
+                    </a>
+                  ) : (
+                    "—"
+                  )
+                }
+              />
+              <KV
+                label="Discovered"
+                value={new Date(row.created_at).toLocaleString()}
+              />
+              <KV
+                label="Last seen"
+                value={new Date(row.updated_at || row.created_at).toLocaleString()}
+              />
+            </Section>
+
+            <Section title="Source query">
+              {q ? (
+                <>
+                  <div
+                    className="mb-2 rounded-md border p-2 text-[12px]"
+                    style={{ borderColor: BORDER, backgroundColor: SOFT, color: NAVY }}
+                  >
+                    “{q.query}”
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <KV label="Source type" value={q.source_type || "—"} />
+                    <KV label="Raw results" value={q.raw_results_returned ?? "—"} />
+                    <KV label="Providers extracted" value={q.providers_extracted ?? "—"} />
+                    <KV label="Prices kept" value={q.prices_kept ?? "—"} />
+                    <KV
+                      label="$ amounts seen in source"
+                      value={q.raw_dollar_amounts_in_source ?? "—"}
+                    />
+                    <KV
+                      label="Prices dropped by guard"
+                      value={(q.prices_dropped_by_guard ?? []).length}
+                    />
+                  </div>
+                  {q.top_urls && q.top_urls.length > 0 && (
+                    <div className="mt-3">
+                      <div
+                        className="mb-1 text-[10px] font-bold uppercase tracking-wide"
+                        style={{ color: MUTED }}
+                      >
+                        Top URLs from this query
+                      </div>
+                      <ul className="space-y-0.5 text-[12px]">
+                        {q.top_urls.slice(0, 5).map((u) => (
+                          <li key={u} className="truncate">
+                            <a
+                              href={u}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1"
+                              style={{ color: BLUE }}
+                              title={u}
+                            >
+                              {u} <ExternalLink className="h-3 w-3 shrink-0" />
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-[12px]" style={{ color: MUTED }}>
+                  No per-query debug data for this provider. It was discovered before the debug
+                  capture was enabled, or surfaced by a source we don't yet log per-query.
+                </div>
+              )}
+            </Section>
+
+            <Section title="Guard result">
+              {(() => {
+                const hasPrice = row.price_min != null || row.price_max != null;
+                if (hasPrice) {
+                  return (
+                    <div
+                      className="rounded-md border p-2 text-[12px]"
+                      style={{ borderColor: "#cfead8", backgroundColor: "#e7f7ee", color: GREEN }}
+                    >
+                      Price kept: <strong>{fmtPrice(row.price_min, row.price_max)}</strong>. The
+                      value appears literally in the source markdown (±$2 tolerance).
+                    </div>
+                  );
+                }
+                if (row.guard_drop.length > 0) {
+                  return (
+                    <div
+                      className="rounded-md border p-2 text-[12px]"
+                      style={{ borderColor: "#f4d8a8", backgroundColor: "#fff7e8", color: AMBER }}
+                    >
+                      Guard dropped Gemini's price guess because the literal number could not be
+                      found in the source markdown:
+                      <ul className="mt-1 list-disc pl-4">
+                        {row.guard_drop.map((d, i) => (
+                          <li key={i}>
+                            <code>{d.field}</code> = {d.value ?? "null"}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="text-[12px]" style={{ color: MUTED }}>
+                    No price was extracted for this provider. Pricing may be on the provider's own
+                    website rather than the listing page (Phase 4 target).
+                  </div>
+                );
+              })()}
+            </Section>
+
+            <Section title="Evidence (saved sources)">
+              {sourceUrl && (
+                <div className="mb-2 text-[12px]">
+                  <a
+                    href={sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 font-semibold"
+                    style={{ color: BLUE }}
+                  >
+                    Open source listing <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              )}
+              <div className="mb-2">
+                <ProviderScreenshotButton
+                  providerId={row.id}
+                  providerName={row.name}
+                  variant="link"
+                />
+              </div>
+              {sourcesArr.length > 0 && (
+                <details>
+                  <summary
+                    className="cursor-pointer text-[11px] font-semibold"
+                    style={{ color: BLUE }}
+                  >
+                    Raw sources ({sourcesArr.length})
+                  </summary>
+                  <pre
+                    className="mt-1 max-h-64 overflow-auto rounded-md border p-2 text-[10px]"
+                    style={{ borderColor: BORDER, backgroundColor: SOFT, color: NAVY }}
+                  >
+                    {JSON.stringify(sourcesArr, null, 2)}
+                  </pre>
+                </details>
+              )}
+            </Section>
+
+            <Section title="Verification">
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className="inline-block rounded px-2 py-0.5 text-[11px] font-semibold"
+                  style={{ backgroundColor: "#eef2f7", color: MUTED }}
+                >
+                  Needs review
+                </span>
+                <button
+                  type="button"
+                  disabled
+                  className="rounded border px-2 py-1 text-[11px] font-semibold opacity-50"
+                  style={{ borderColor: BORDER, color: MUTED }}
+                  title="Coming in next phase"
+                >
+                  Verify
+                </button>
+                <button
+                  type="button"
+                  disabled
+                  className="rounded border px-2 py-1 text-[11px] font-semibold opacity-50"
+                  style={{ borderColor: BORDER, color: MUTED }}
+                  title="Coming in next phase"
+                >
+                  Reject
+                </button>
+                <button
+                  type="button"
+                  disabled
+                  className="rounded border px-2 py-1 text-[11px] font-semibold opacity-50"
+                  style={{ borderColor: BORDER, color: MUTED }}
+                  title="Coming in next phase"
+                >
+                  Edit price
+                </button>
+              </div>
+              <p className="mt-2 text-[11px]" style={{ color: MUTED }}>
+                Actions are read-only in this phase. The verification table will land in a follow-up
+                phase.
+              </p>
+            </Section>
+          </>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="mt-4">
+      <h3
+        className="mb-2 text-[10px] font-bold uppercase tracking-wide"
+        style={{ color: BLUE }}
+      >
+        {title}
+      </h3>
+      {children}
+    </section>
+  );
+}
+
+function KV({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="text-[12px]">
+      <div className="text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
+        {label}
+      </div>
+      <div style={{ color: NAVY }}>{value}</div>
+    </div>
   );
 }

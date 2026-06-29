@@ -604,6 +604,38 @@ function EvidenceDrawer({ row, onClose }: { row: EvidenceRow | null; onClose: ()
               })()}
             </Section>
 
+            {row.tavily_pilot_entry && (
+              <Section title="Phase 4 Verification Details">
+                <div
+                  className="rounded-md border p-2 text-[12px]"
+                  style={{
+                    borderColor:
+                      row.tavily_pilot_entry.extraction_method === "tavily_lead_v1" ? "#cfead8" : BORDER,
+                    backgroundColor:
+                      row.tavily_pilot_entry.extraction_method === "tavily_lead_v1" ? "#e7f7ee" : SOFT,
+                    color: NAVY,
+                  }}
+                >
+                  <div className="mb-1 font-semibold">
+                    Extraction Method:{" "}
+                    <span className="font-mono">
+                      {row.tavily_pilot_entry.extraction_method || "fallback"}
+                    </span>
+                  </div>
+                  {row.tavily_pilot_entry.tavily_answer && (
+                    <div className="mb-2 text-[11px] italic" style={{ color: MUTED }}>
+                      Tavily AI Summary: “{row.tavily_pilot_entry.tavily_answer}”
+                    </div>
+                  )}
+                  {row.tavily_pilot_entry.snippet_around_price && (
+                    <div className="mt-1 border-t pt-1 font-mono text-[11px]">
+                      Verified Page Text: “{row.tavily_pilot_entry.snippet_around_price}”
+                    </div>
+                  )}
+                </div>
+              </Section>
+            )}
+
             <Section title="Evidence (saved sources)">
               {sourceUrl && (
                 <div className="mb-2 text-[12px]">

@@ -426,7 +426,11 @@ ${PRICE_RULES}`;
 
   // Run all 5 listicle queries in parallel — sequential was ~60s, parallel ~15s.
   const perQuery = await Promise.all(queries.map(async (q) => {
-    const qd: Record<string, unknown> = { query: q };
+    const qd: Record<string, unknown> = {
+      query: q,
+      source_type: "google_search",
+      firecrawl_endpoint: `${FIRECRAWL_V2}/search`,
+    };
     const out: { providers: ProviderExtract[]; calls: number; debug: Record<string, unknown> } =
       { providers: [], calls: 0, debug: qd };
     try {
@@ -446,7 +450,8 @@ ${PRICE_RULES}`;
 
       const items: Array<Record<string, unknown>> =
         (Array.isArray(j?.data?.web) ? j.data.web : Array.isArray(j?.data) ? j.data : []) as Array<Record<string, unknown>>;
-      qd.results_count = items.length;
+      qd.raw_results_returned = items.length;
+      qd.top_urls = items.slice(0, 5).map((it) => String(it.url ?? it.link ?? ""));
       if (items.length === 0) return out;
 
       const blob = items.map((it, idx) => {
@@ -456,10 +461,21 @@ ${PRICE_RULES}`;
         return `=== RESULT ${idx + 1} ===\nURL: ${url}\nTITLE: ${title}\n\n${md.slice(0, 6000)}`;
       }).join("\n\n");
 
+      const gemDebug: Record<string, unknown> = {};
       const providers = await extractWithGemini({
         lovableKey, sys, city, sourceUrl: `google_search:${q}`, markdown: blob,
-      });
+      }, gemDebug);
       qd.providers_extracted = providers.length;
+      qd.provider_names = providers.map((p) => p.name);
+      qd.providers = providers.map((p) => ({
+        name: p.name,
+        url: p.url ?? null,
+        price_min: p.price_min ?? null,
+        price_max: p.price_max ?? null,
+      }));
+      qd.prices_kept = providers.filter((p) => p.price_min != null || p.price_max != null).length;
+      qd.prices_dropped_by_guard = gemDebug.dropped_prices ?? [];
+      qd.raw_dollar_amounts_in_source = gemDebug.dollar_matches_count ?? 0;
       out.providers = providers;
     } catch (e) {
       qd.error = e instanceof Error ? e.message : String(e);

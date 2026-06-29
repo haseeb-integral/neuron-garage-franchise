@@ -120,18 +120,24 @@ export function useProviderEvidence(cityKey: string): EvidenceData {
         let runId: string | null = null;
         let runCreatedAt: string | null = null;
         let queries: QueryDebug[] = [];
+        let tpEntries: any[] = [];
+
         for (const run of (runs ?? []) as Array<{
           id: string;
           created_at: string;
           source_counts: any;
         }>) {
+          const tp = run?.source_counts?.discover?.tavily_pilot?.entries;
+          if (Array.isArray(tp) && tp.length > 0 && tpEntries.length === 0) {
+            tpEntries = tp;
+          }
           const q = run?.source_counts?.discover?.google_search_queries;
-          if (Array.isArray(q) && q.length > 0) {
+          if (Array.isArray(q) && q.length > 0 && queries.length === 0) {
             runId = run.id;
             runCreatedAt = run.created_at;
             queries = q as QueryDebug[];
-            break;
           }
+          if (queries.length > 0 && tpEntries.length > 0) break;
         }
 
         // Index providers from queries by normalized name. First match wins (Phase 2
@@ -155,14 +161,22 @@ export function useProviderEvidence(cityKey: string): EvidenceData {
           }
         }
 
+        const tpIndex = new Map<string, any>();
+        for (const t of tpEntries) {
+          if (t.provider_id) tpIndex.set(t.provider_id, t);
+          else if (t.provider_name) tpIndex.set(norm(t.provider_name), t);
+        }
+
         const rows: EvidenceRow[] = ((providers ?? []) as EvidenceProvider[]).map((p) => {
           const key = norm(p.name);
           const match = key ? nameIndex.get(key) ?? null : null;
+          const tpMatch = tpIndex.get(p.id) || (key ? tpIndex.get(key) : null) || null;
           return {
             ...p,
             matched_query: match?.q ?? null,
             matched_provider_entry: match?.entry ?? null,
             guard_drop: key ? dropIndex.get(key) ?? [] : [],
+            tavily_pilot_entry: tpMatch,
           };
         });
 

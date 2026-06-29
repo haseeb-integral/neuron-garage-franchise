@@ -289,6 +289,20 @@ Deno.serve(async (req) => {
           finished_at: new Date().toISOString(),
         })
         .eq("id", run.id);
+
+      // Phase 2: Send in-app header bell notification to the user who triggered the run
+      try {
+        await admin.from("notifications").insert({
+          user_id: userData.user.id,
+          kind: "city_scoring_finished",
+          title: `Market Validation finished for ${city}`,
+          message: `Processed providers and refreshed live scores. Used ${totalCalls} search calls.`,
+          link: `/city-competitors?city=${encodeURIComponent(city)}`,
+          created_at: new Date().toISOString(),
+        });
+      } catch (notifErr) {
+        console.warn("[mvs-run-pipeline] failed to insert completion notification:", notifErr);
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
 
@@ -341,6 +355,20 @@ Deno.serve(async (req) => {
           fallback_data_date: fallbackDate,
         })
         .eq("id", run.id);
+
+      // Phase 2: Send failure notification
+      try {
+        await admin.from("notifications").insert({
+          user_id: userData.user.id,
+          kind: "system",
+          title: `Market Validation failed for ${city}`,
+          message: fallbackStatus === "done_stale" ? `Crawl encountered an error; falling back to saved data. ${msg}`.slice(0, 250) : `Pipeline failed: ${msg}`.slice(0, 250),
+          link: `/city-competitors?city=${encodeURIComponent(city)}`,
+          created_at: new Date().toISOString(),
+        });
+      } catch (notifErr) {
+        console.warn("[mvs-run-pipeline] failed to insert failure notification:", notifErr);
+      }
     }
 
   })();

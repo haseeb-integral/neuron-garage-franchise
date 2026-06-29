@@ -154,13 +154,13 @@ export function NotificationsPopover({ children }: Props) {
           style={{ borderTop: "1px solid #eef2f7", backgroundColor: "#fafbfd" }}
         >
           <span className="text-[10px]" style={{ color: "#94a3b8" }}>
-            In-app only • polled every 60s
+            Real-time live delivery
           </span>
           <span
             className="rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide"
             style={{ backgroundColor: "#eef2f7", color: "#526078" }}
           >
-            v1.0
+            v1.1
           </span>
         </div>
       </PopoverContent>

@@ -42,8 +42,10 @@ export function useNotifications() {
   });
 
   // Phase 2: Supabase Realtime subscription for live delivery
+  // Phase 2: Supabase Realtime subscription for live delivery
   useEffect(() => {
     if (!userId) return;
+    let isMounted = true;
     const channel = supabase
       .channel(`notifications:user_${userId}`)
       .on(
@@ -55,12 +57,16 @@ export function useNotifications() {
           filter: `user_id=eq.${userId}`,
         },
         () => {
-          qc.invalidateQueries({ queryKey: ["notifications", userId] });
+          if (isMounted) {
+            qc.invalidateQueries({ queryKey: ["notifications", userId] });
+          }
         }
-      )
-      .subscribe();
+      );
+
+    channel.subscribe();
 
     return () => {
+      isMounted = false;
       supabase.removeChannel(channel);
     };
   }, [userId, qc]);

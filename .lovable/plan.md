@@ -1,78 +1,75 @@
 
-## Goal
+# Phase 2 only — Tighten pricing extraction in the existing discovery step
 
-When the user clicks a camp/provider name in the **Where the data comes from** (Sources) section of a Market Validation card — or in the new **City Competitors** page — show the saved screenshot of the listing page it was discovered on, with the source URL and discovery date. Also correct the Methodology and Spec docs so they no longer overstate what we save.
+Approved scope locked. Nothing else will change.
 
-## What is true today (so we plan against reality, not the doc)
+## What this phase is
 
-- `mvs_providers.screenshot_url` is set on ~97% of rows (2,642 / 2,723).
-- It is the **listing-page** screenshot (e.g. Sawyer Boston search results), shared across every provider discovered on that page. 2,642 rows → only 93 distinct screenshot files.
-- Files live in the **private** `mvs-screenshots` Supabase Storage bucket.
-- We do NOT save raw HTML, markdown, or per-provider website screenshots.
+Improve **only** the Gemini extraction prompt (and add one extra Google search query) inside the discovery edge function so we pull `price_min` / `price_max` out of listing pages we already fetch. Same step, same caps, same code path.
 
-## Phases
+## The one file that will change
 
-### Phase 1 — Backend: signed-URL helper (1 turn)
+- `supabase/functions/mvs-discover-providers/index.ts`
 
-- Add a small helper `getProviderScreenshotUrl(providerId)` in `src/lib/mvs/` that:
-  - Looks up `screenshot_url` on `mvs_providers`.
-  - Calls `supabase.storage.from('mvs-screenshots').createSignedUrl(path, 300)` (5-min link).
-  - Returns `{ signedUrl, capturedAt, sourceUrl, sourceName }`.
-- No new tables, no edge function (RLS on `mvs_providers` already gates read; bucket stays private; signed URL is the access path).
-- Smoke test: call from console for a known provider, confirm image loads.
+No other file, no schema, no other function, no UI.
 
-### Phase 2 — UI: "View source proof" on provider rows (1–2 turns)
+## Exact changes inside that one file
 
-Two surfaces, same component:
+1. **Tighten the Gemini "extract" prompt** (used by Sawyer, ActivityHero, Google Search, and Yelp variants). Add these rules to the system prompt:
+   - "Only return a `price_min` or `price_max` if the **exact dollar amount appears in the source markdown**. Do not infer, estimate, average, or guess."
+   - "Recognize these patterns as price: `$NNN/wk`, `$NNN per week`, `$NNN weekly`, `$NNN/week`, `tuition $NNN`, `from $NNN`, `starting at $NNN`, `$NNN–$NNN`."
+   - "If only a single weekly number is shown, set both `price_min` and `price_max` to that number."
+   - "If only a range is shown like `$300–$650`, set `price_min=300` and `price_max=650`."
+   - "If no dollar amount is visible, return `price_min: null` and `price_max: null`. Do not invent values."
 
-1. **`LiveCityDeepDive.tsx`** — in each pillar's **Where the data comes from (N)** collapsible, add a small "📷 View source" link next to each provider name.
-2. **`CityCompetitors.tsx`** — add a "View source" icon button in a new column (or in the existing source-listing cell).
+2. **Add a guard in code** (post-Gemini, before DB write): regex-check the source markdown for `\$\d{2,4}` near the provider name. If Gemini returned a price that **does not** appear anywhere in the markdown for that listing, drop the price (set to null). This enforces "only extract what is actually written".
 
-Clicking opens a small `Dialog` (using existing `@/components/ui/dialog`) showing:
-- The screenshot (signed URL, lazy-loaded).
-- Caption: "Captured from {platform} on {capturedAt}".
-- A link "Open original listing ↗" to `listing_url` / `source_listing_url`.
-- A short honest note: *"This is the listing page where we found this provider. It is not a screenshot of the provider's own website."*
-- Empty-state if `screenshot_url` is null: "No screenshot saved for this provider."
+3. **Add one extra Google Search variant** to the existing Google source block:
+   - `"<city> kids summer camp prices per week"` (the current variants already hit "kids classes / camps / activities" without the word "price"). One extra query, same cap.
 
-### Phase 3 — Doc correction (1 turn, copy only)
+No new step, no new function, no DB columns, no new caps.
 
-Fix the overstatement in:
-- `src/pages/MVSMethodology.tsx`
-- `src/pages/MVSSpec.tsx` + `docs/feature-1a-mvs-v1-spec.md`
-- `src/data/userGuideMarkdown.ts` (Market Validation section)
+## What will NOT change
 
-Replace any line that implies "every provider gets a screenshot and a saved copy of the web page" with the accurate version:
+Scoring math, freshness rules, City Search, Saved Sites, Candidate Pipeline, PDF logic, schema, per-provider site scrape, Google/Gemini fallback step, classify step, extract step, pipeline orchestrator, UI.
 
-> "For most providers we save a screenshot of the **listing page** they were discovered on (Sawyer, Yelp, Google, etc.), stored privately for audit. We do not save the provider's own website or the raw HTML of the listing page."
+## How I'll test (Columbus, Boston, Austin)
 
-## What is NOT in this plan (call out, don't silently expand)
+1. Read **before** numbers straight from DB:
+   `SELECT city, COUNT(*) AS providers, COUNT(price_min) AS with_price, ROUND(100.0*COUNT(price_min)/COUNT(*),1) AS pct_priced FROM mvs_providers WHERE city IN ('Columbus, OH','Boston, MA','Austin, TX') GROUP BY city;`
+   (Current snapshot: Columbus 18.9%, Boston 18.6%, Austin 26.7%.)
+2. Run discover for each of the 3 cities with `forceFresh:true`.
+3. Read **after** numbers with the same SQL.
+4. Spot-check 5 random new priced rows per city — open the listing URL, confirm the dollar amount is really visible on the page.
+5. Count Firecrawl calls used (from the run logs / `mvs_pipeline_runs` row).
 
-- Starting to capture per-provider website screenshots. (Possible later; would re-spend Firecrawl calls per provider and balloon storage. Needs its own approval.)
-- Saving raw HTML/markdown of listing pages.
-- Backfilling the 81 provider rows missing a screenshot.
-- Any change to scoring math, freshness rules, or the pipeline.
+## Report I will give you after Phase 2
 
-## Risk / what not to touch
+- File changed: `supabase/functions/mvs-discover-providers/index.ts` (only).
+- Exact prompt diff and the extra Google query string.
+- Before vs after `% priced` table for Columbus, Boston, Austin.
+- Firecrawl calls used per city (Apify is not used in MVS, so that count is 0).
+- Any hallucinated prices caught by the regex guard (count).
+- Any other risk or odd behavior noticed.
+- Verdict: did Phase 2 alone get us to ≥30% priced? If yes, stop. If no, Phase 3 is still needed — I will wait for your approval.
 
-- Bucket stays **private**. Only short-lived signed URLs are exposed to the browser.
-- No schema change, no migration.
-- No edge function changes.
-- `mvs_providers` RLS unchanged — only authenticated staff can read, so only staff can mint signed URLs.
+## Risk
+
+- **Very low.** Same step, same cap (`discover ≤ 25` Firecrawl calls per run), same code path.
+- Worst case: the regex guard is too strict and drops a few legitimate prices → easy revert (1 turn, remove the guard).
+- One extra Google query adds at most 1 Firecrawl `/v2/search` call per run, well inside the cap.
+
+## Cost
+
+- ~0 extra cost. Same cap, one extra search call per run (≈ $0.01).
 
 ## Turn estimate
 
-- Phase 1: 1 turn
-- Phase 2: 1–2 turns
-- Phase 3: 1 turn
-- **Total: 3–4 turns**
+- 1 turn to make the prompt + guard + query change.
+- 1 turn to run the 3 test cities and report numbers.
 
-## Testing checklist after build
+## Hard stop after Phase 2
 
-1. Open a validated city (e.g. Boston) → expand "Where the data comes from" on Pricing card → click 📷 on a provider → screenshot dialog opens with image, capture date, source link.
-2. Open City Competitors page → click "View source" on a row → same dialog works.
-3. Provider with no `screenshot_url` → dialog shows the empty-state message, no broken image.
-4. Signed URL expires after 5 min (refresh dialog → still works because it re-signs on open).
-5. Methodology, Spec, and User Guide pages no longer claim per-provider website screenshots.
+I will not start Phase 3 (Google/Gemini fallback) or Phase 4 (per-provider site scrape) until you explicitly approve them.
 
-Approve and I will start with Phase 1.
+Approve this and I'll switch to build mode for the single-file change.

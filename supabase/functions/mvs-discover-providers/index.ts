@@ -141,6 +141,16 @@ type ProviderExtract = {
   confidence: number;
 };
 
+// Shared pricing extraction rules — appended to every source's system prompt.
+// Phase 2: enforce literal-source-only pricing (no inference, no Yelp "$$").
+const PRICE_RULES = `PRICING RULES (STRICT — must follow):
+- price_min / price_max are in USD per WEEK for camps, or per CLASS / SESSION for ongoing programs. Choose the weekly figure when both are shown.
+- ONLY return a price if the exact dollar amount is literally written in the source markdown (e.g. "$425/wk", "$300 per week", "tuition $1,250", "from $89", "$300–$650").
+- DO NOT infer, estimate, average, guess, or convert price-tier symbols ("$", "$$", "$$$") into dollar amounts. Those are not prices.
+- If the page shows a single weekly number, set both price_min and price_max to that number.
+- If the page shows a range like "$300–$650" or "$300 to $650", set price_min=300 and price_max=650.
+- If no dollar amount is visible in the markdown for that provider, set price_min=null and price_max=null. Never invent a value.`;
+
 type SourceResult = {
   platform: Platform;
   providers: ProviderExtract[];
@@ -174,9 +184,9 @@ Rules:
 - DO NOT include: search categories, location names, navigation links, ads, the marketplace platform itself ("Sawyer"), generic terms ("Kids Classes", "Music"), or individual class titles.
 - "url" MUST be the provider's OWN website (their own domain). DO NOT use marketplace activity-detail links such as "hisawyer.com/marketplace/activity-set/...", "/class/", or "/camp/". If you cannot see the provider's own website on the page, return null for url.
 - Prefer in-person providers serving ${city}. Skip online-only providers.
-- Prices in USD per class or per session. Use null if unknown.
 - Confidence 0..1.
-- Dedupe by provider name. Hard cap: 60 providers.`;
+- Dedupe by provider name. Hard cap: 60 providers.
+${PRICE_RULES}`;
 
   for (let i = 0; i < variants.length; i++) {
     const url = buildSawyerUrl(city, box, variants[i]);
@@ -291,8 +301,8 @@ Rules:
 - EXCLUDE: the marketplace itself ("ActivityHero"), category navigation, generic labels, individual class titles, blog posts.
 - "url" MUST be the provider's OWN website (their own domain). DO NOT use marketplace activity-detail links such as "activityhero.com/a/..." or "/activity/...". If you cannot see the provider's own website on the page, return null for url.
 - Prefer in-person providers in ${city}. Skip online-only.
-- Prices USD per session. Null if unknown.
-- Hard cap: 60.`;
+- Hard cap: 60.
+${PRICE_RULES}`;
       const providers = await extractWithGemini({
         lovableKey, sys, city, sourceUrl: url,
         markdown: md + (linksBlob ? `\n\nDISCOVERED LINKS:\n${linksBlob}` : ""),
@@ -391,6 +401,7 @@ async function runGoogleSearch(args: {
     `${city} ${state} after school programs enrichment kids`,
     `kids music art gymnastics studios ${city} ${state}`,
     `things to do with kids in ${city} ${state} indoor`,
+    `${city} ${state} kids summer camp prices per week tuition`,
   ];
   // Strip social/marketplace noise so listicle pages dominate results.
   const excludeDomains = [
@@ -410,7 +421,8 @@ Rules:
 - "url" = the provider's OWN website if visible in the page text, else null. Never use the listicle's own URL.
 - category_raw = the activity type (e.g. "gymnastics", "music school", "art camp", "stem").
 - Prefer providers mentioned in MULTIPLE supplied pages — those are highest confidence.
-- Hard cap: 40 providers.`;
+- Hard cap: 40 providers.
+${PRICE_RULES}`;
 
   // Run all 5 listicle queries in parallel — sequential was ~60s, parallel ~15s.
   const perQuery = await Promise.all(queries.map(async (q) => {
@@ -499,9 +511,10 @@ Return strict JSON: { "providers": [ { "name": string, "url": string|null, "pric
 Rules:
 - A "provider" is a real business offering kids' classes, camps, gymnastics, art, music, sports, etc.
 - EXCLUDE: Yelp itself, sponsored ads labeled "Ad", category nav, generic listings, restaurants, irrelevant businesses.
-- Prices USD if shown ($ = ~15, $$ = ~30, $$$ = ~60). Null if no signal.
 - category_raw = the Yelp business category.
-- Hard cap: 30.`;
+- Hard cap: 30.
+${PRICE_RULES}
+- IMPORTANT: Yelp's "$", "$$", "$$$" symbols are NOT dollar amounts. Return price_min=null and price_max=null unless an actual numeric dollar amount appears in the markdown for that provider.`;
     const providers = await extractWithGemini({ lovableKey, sys, city, sourceUrl: url, markdown: md });
     debug.providers_extracted = providers.length;
     return { platform: "yelp", providers, firecrawlCalls, debug };
@@ -537,7 +550,28 @@ async function extractWithGemini(args: {
   const raw = j?.choices?.[0]?.message?.content ?? "{}";
   try {
     const parsed = JSON.parse(raw) as { providers?: ProviderExtract[] };
-    return (parsed.providers ?? []).filter((p) => p?.name);
+    const providers = (parsed.providers ?? []).filter((p) => p?.name);
+    // Phase 2 guard: drop any price that does NOT appear as a literal dollar
+    // amount in the source markdown. Prevents Gemini from hallucinating or
+    // converting "$$" tier symbols into numeric prices.
+    const dollarMatches = new Set<number>();
+    for (const m of markdown.matchAll(/\$\s?(\d{1,3}(?:[,]?\d{3})*|\d+)/g)) {
+      const n = Number(m[1].replace(/,/g, ""));
+      if (Number.isFinite(n) && n >= 10 && n <= 100000) dollarMatches.add(n);
+    }
+    const priceIsInSource = (val: number): boolean => {
+      if (dollarMatches.has(val)) return true;
+      // Allow off-by-rounding tolerance of ±2 to handle minor LLM rounding.
+      for (const d of dollarMatches) {
+        if (Math.abs(d - val) <= 2) return true;
+      }
+      return false;
+    };
+    for (const p of providers) {
+      if (typeof p.price_min === "number" && !priceIsInSource(p.price_min)) p.price_min = null;
+      if (typeof p.price_max === "number" && !priceIsInSource(p.price_max)) p.price_max = null;
+    }
+    return providers;
   } catch {
     return [];
   }

@@ -519,7 +519,7 @@ function EvidenceDrawer({ row, onClose }: { row: EvidenceRow | null; onClose: ()
                     className="flex items-center justify-center gap-2 rounded-lg border bg-white p-3 text-xs font-bold shadow-sm transition-all hover:bg-[#f7faff] hover:border-[#174be8]"
                     style={{ borderColor: BORDER, color: BLUE }}
                   >
-                    <span>View Search Snippet Source</span>
+                    <span>{sourceUrl.includes("hisawyer.com") || sourceUrl.includes("enrollsy.com") ? "View Direct Booking & Pricing Link" : "View Exact Pricing Source Link"}</span>
                     <ExternalLink className="h-3.5 w-3.5" />
                   </a>
                 ) : (
@@ -547,24 +547,34 @@ function EvidenceDrawer({ row, onClose }: { row: EvidenceRow | null; onClose: ()
                 {(() => {
                   const plat = (row.platform || "").trim().toLowerCase();
                   const isSawyer = plat === "sawyer" || (sourceUrl || "").includes("hisawyer.com");
+                  const isEnrollsy = plat === "enrollsy" || (sourceUrl || "").includes("enrollsy.com");
                   const isActivityHero = plat === "activityhero" || (sourceUrl || "").includes("activityhero.com");
                   const isMapsOrYelp = plat === "google_maps" || plat === "yelp" || plat === "maps";
 
                   if (isSawyer) {
-                    const linkText = sourceUrl ? ` Open listing at ${sourceUrl}.` : "";
-                    const priceText = hasPrice ? ` Price verified: ${fmtPrice(row.price_min, row.price_max)}/week.` : "";
+                    const linkText = sourceUrl ? ` Direct Sawyer booking link: ${sourceUrl}.` : "";
+                    const priceText = hasPrice ? ` Verified tuition: ${fmtPrice(row.price_min, row.price_max)}/week.` : "";
                     return `Sawyer marketplace scan for ${row.city}.${linkText}${priceText}`;
+                  }
+                  if (isEnrollsy) {
+                    const linkText = sourceUrl ? ` Direct Enrollsy feed link: ${sourceUrl}.` : "";
+                    const priceText = hasPrice ? ` Verified tuition: ${fmtPrice(row.price_min, row.price_max)}/week.` : "";
+                    return `Enrollsy registration feed scan for ${row.city}.${linkText}${priceText}`;
                   }
                   if (isActivityHero || isMapsOrYelp) {
                     const nicePlat = isActivityHero ? "ActivityHero" : plat === "yelp" ? "Yelp" : "Google Maps";
                     const linkText = sourceUrl ? ` Open link at ${sourceUrl}.` : "";
-                    const priceText = hasPrice ? ` Price verified: ${fmtPrice(row.price_min, row.price_max)}/week.` : "";
+                    const priceText = hasPrice ? ` Verified tuition: ${fmtPrice(row.price_min, row.price_max)}/week.` : "";
                     return `${nicePlat} scan for ${row.city}.${linkText}${priceText}`;
+                  }
+                  if (sourceUrl && sourceUrl !== row.website_url) {
+                    const priceText = hasPrice ? ` Verified tuition: ${fmtPrice(row.price_min, row.price_max)}/week.` : "";
+                    return `Official website map & subpage pricing scan: discovered exact rate sheet at ${sourceUrl}.${priceText}`;
                   }
                   if (q && q.query) {
                     const linkUrl = row.website_url || sourceUrl;
                     const linkText = linkUrl ? ` Open link at ${linkUrl}.` : "";
-                    const priceText = hasPrice ? ` Price verified: ${fmtPrice(row.price_min, row.price_max)}/week.` : "";
+                    const priceText = hasPrice ? ` Verified tuition: ${fmtPrice(row.price_min, row.price_max)}/week.` : "";
                     return `Google search: “${q.query}”.${linkText}${priceText}`;
                   }
                   return hasPrice

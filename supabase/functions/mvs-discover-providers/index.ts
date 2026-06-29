@@ -174,9 +174,9 @@ Rules:
 - DO NOT include: search categories, location names, navigation links, ads, the marketplace platform itself ("Sawyer"), generic terms ("Kids Classes", "Music"), or individual class titles.
 - "url" MUST be the provider's OWN website (their own domain). DO NOT use marketplace activity-detail links such as "hisawyer.com/marketplace/activity-set/...", "/class/", or "/camp/". If you cannot see the provider's own website on the page, return null for url.
 - Prefer in-person providers serving ${city}. Skip online-only providers.
-- Prices in USD per class or per session. Use null if unknown.
 - Confidence 0..1.
-- Dedupe by provider name. Hard cap: 60 providers.`;
+- Dedupe by provider name. Hard cap: 60 providers.
+${PRICE_RULES}`;
 
   for (let i = 0; i < variants.length; i++) {
     const url = buildSawyerUrl(city, box, variants[i]);

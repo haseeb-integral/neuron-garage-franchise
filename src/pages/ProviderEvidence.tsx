@@ -562,9 +562,10 @@ function EvidenceDrawer({ row, onClose }: { row: EvidenceRow | null; onClose: ()
                       : `We found the camp name via ${nicePlat}, but after checking their web pages from start to finish, their exact weekly tuition fee wasn't listed publicly.`;
                   }
                   if (q && q.query) {
-                    return hasPrice
-                      ? `We discovered this camp by running a targeted Google search for “${q.query}”. We scanned the web page from start to finish and verified their exact weekly tuition rate.`
-                      : `We ran a targeted Google search for “${q.query}”, but after scanning the web pages from start to finish, their exact weekly tuition fee wasn't listed publicly.`;
+                    const linkUrl = row.website_url || sourceUrl;
+                    const linkText = linkUrl ? ` Open link at ${linkUrl}.` : "";
+                    const priceText = hasPrice ? ` Price verified: ${fmtPrice(row.price_min, row.price_max)}/week.` : "";
+                    return `Google search: “${q.query}”.${linkText}${priceText}`;
                   }
                   return hasPrice
                     ? `We discovered this camp during our scan of ${row.city}. We checked their official web pages from start to finish and verified their exact weekly tuition rate.`

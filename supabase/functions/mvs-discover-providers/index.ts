@@ -823,15 +823,14 @@ Deno.serve(async (req) => {
     );
   }
 
-  // Pre-auth clone for test branch
-  const cloneReq = req.clone();
-  const testBody = await cloneReq.json().catch(() => ({}));
+  const body = await req.json().catch(() => ({}));
 
-  if (testBody?.test_single_camp) {
+  if (body?.test_single_camp) {
     const admin = createClient(supabaseUrl, serviceKey);
-    const campName = String(testBody.test_single_camp.camp_name || "The Little Gym of Polaris").trim();
-    const testCity = String(testBody.test_single_camp.city || "Columbus, OH").trim();
+    const campName = String(body.test_single_camp.camp_name || "The Little Gym of Polaris").trim();
+    const testCity = String(body.test_single_camp.city || "Columbus, OH").trim();
     const query = `${campName} ${testCity} summer camp tuition price per week`;
+    console.log("TEST SINGLE CAMP START:", query);
 
     const res = await fetchWithTimeout(`${FIRECRAWL_V2}/search`, {
       method: "POST",
@@ -922,7 +921,6 @@ ${PRICE_RULES}`;
     });
   }
 
-  const body = await req.json().catch(() => ({}));
   const city: string = (body?.city ?? "Austin, TX").trim();
   const [cityName, stateAbbr] = city.split(",").map((s: string) => s.trim());
   let box: Box | undefined = TIER_A_BOXES[city];

@@ -501,9 +501,10 @@ Return strict JSON: { "providers": [ { "name": string, "url": string|null, "pric
 Rules:
 - A "provider" is a real business offering kids' classes, camps, gymnastics, art, music, sports, etc.
 - EXCLUDE: Yelp itself, sponsored ads labeled "Ad", category nav, generic listings, restaurants, irrelevant businesses.
-- Prices USD if shown ($ = ~15, $$ = ~30, $$$ = ~60). Null if no signal.
 - category_raw = the Yelp business category.
-- Hard cap: 30.`;
+- Hard cap: 30.
+${PRICE_RULES}
+- IMPORTANT: Yelp's "$", "$$", "$$$" symbols are NOT dollar amounts. Return price_min=null and price_max=null unless an actual numeric dollar amount appears in the markdown for that provider.`;
     const providers = await extractWithGemini({ lovableKey, sys, city, sourceUrl: url, markdown: md });
     debug.providers_extracted = providers.length;
     return { platform: "yelp", providers, firecrawlCalls, debug };

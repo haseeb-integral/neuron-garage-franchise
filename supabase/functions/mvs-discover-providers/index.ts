@@ -135,6 +135,7 @@ function safeProviderUrl(url: string | null | undefined, name: string, city: str
 type ProviderExtract = {
   name: string;
   url?: string | null;
+  listing_url?: string | null;
   price_min?: number | null;
   price_max?: number | null;
   category_raw?: string | null;
@@ -177,12 +178,13 @@ async function runSawyer(args: {
 
   const sys = `You extract kids' activity providers from a Sawyer marketplace listing page for ${city}.
 Return strict JSON:
-{ "providers": [ { "name": string, "url": string|null, "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number } ] }
+{ "providers": [ { "name": string, "url": string|null, "listing_url": string|null, "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number } ] }
 
 Rules:
 - A "provider" is a real business/brand offering kids' classes, camps, or activities.
 - DO NOT include: search categories, location names, navigation links, ads, the marketplace platform itself ("Sawyer"), generic terms ("Kids Classes", "Music"), or individual class titles.
-- "url" MUST be the provider's OWN website (their own domain). DO NOT use marketplace activity-detail links such as "hisawyer.com/marketplace/activity-set/...", "/class/", or "/camp/". If you cannot see the provider's own website on the page, return null for url.
+- "url" MUST be the provider's OWN website (their own domain). If you cannot see the provider's own website on the page, return null for url.
+- "listing_url" MUST be the marketplace listing or activity-detail link on Sawyer (e.g. "https://www.hisawyer.com/marketplace/activity-set/..." or "/class/" or "/camp/"). If not visible, return null.
 - Prefer in-person providers serving ${city}. Skip online-only providers.
 - Confidence 0..1.
 - Dedupe by provider name. Hard cap: 60 providers.

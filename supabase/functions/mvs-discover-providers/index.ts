@@ -823,6 +823,7 @@ Deno.serve(async (req) => {
     );
   }
 
+
   // Manager or admin required.
   const authHeader = req.headers.get("Authorization") ?? "";
   const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
@@ -846,7 +847,6 @@ Deno.serve(async (req) => {
     });
   }
 
-  const body = await req.json().catch(() => ({}));
   const city: string = (body?.city ?? "Austin, TX").trim();
   const [cityName, stateAbbr] = city.split(",").map((s: string) => s.trim());
   let box: Box | undefined = TIER_A_BOXES[city];

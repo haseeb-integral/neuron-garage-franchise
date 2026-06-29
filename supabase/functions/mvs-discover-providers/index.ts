@@ -847,6 +847,79 @@ Deno.serve(async (req) => {
   }
 
   const body = await req.json().catch(() => ({}));
+
+  if (body?.test_single_camp) {
+    const campName = String(body.test_single_camp.camp_name || "The Little Gym of Polaris").trim();
+    const testCity = String(body.test_single_camp.city || "Columbus, OH").trim();
+    const query = `${campName} ${testCity} summer camp tuition price per week`;
+
+    const res = await fetchWithTimeout(`${FIRECRAWL_V2}/search`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query,
+        limit: 10,
+        scrapeOptions: { formats: ["markdown"], onlyMainContent: false },
+      }),
+    }, 45_000);
+
+    const j = await res.json().catch(() => ({}));
+    const items = (Array.isArray(j?.data) ? j.data : Array.isArray(j?.data?.web) ? j.data.web : []) as Array<Record<string, unknown>>;
+
+    const topItems = items.slice(0, 8);
+    const blob = topItems.map((it, idx) => {
+      const u = String(it.url ?? it.link ?? "");
+      const t = String(it.title ?? "");
+      const md = String(it.markdown ?? it.content ?? it.description ?? "");
+      return `=== RESULT ${idx + 1} ===\nURL: ${u}\nTITLE: ${t}\n\n${md.slice(0, 8000)}`;
+    }).join("\n\n");
+
+    const sys = `You extract the summer camp tuition price per week for the business "${campName}" in ${testCity}.
+Return strict JSON: { "providers": [ { "name": string, "url": string|null, "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number } ] }
+Rules:
+- Business name must match "${campName}".
+- Look specifically for weekly camp tuition, rates, or multi-day camp passes (e.g. 10 day pass for $400 = $200/wk).
+- If weekly tuition is found (e.g. $149/wk, $200/wk, $125/wk), return price_min and price_max.
+${PRICE_RULES}`;
+
+    const gemDebug: Record<string, unknown> = {};
+    const found = await extractWithGemini({
+      lovableKey: lovableKey!, sys, city: testCity, sourceUrl: query, markdown: blob,
+    }, gemDebug);
+
+    let dbUpdated = false;
+    if (found.length > 0 && (found[0].price_min != null || found[0].price_max != null)) {
+      const { error: upErr } = await admin.from("mvs_providers").update({
+        price_min: found[0].price_min,
+        price_max: found[0].price_max,
+        website_url: found[0].url ?? null,
+        confidence: Math.max(0.85, found[0].confidence ?? 0.85),
+        updated_at: new Date().toISOString(),
+      }).eq("city", testCity).ilike("name", `%${campName}%`);
+      if (!upErr) dbUpdated = true;
+    }
+
+    return new Response(
+      JSON.stringify({
+        test_report: {
+          camp_name: campName,
+          city: testCity,
+          search_query: query,
+          results_count: items.length,
+          top_snippets: topItems.map((it) => ({
+            url: String(it.url ?? it.link ?? ""),
+            title: String(it.title ?? ""),
+            snippet: String(it.description ?? it.markdown ?? "").slice(0, 300),
+          })),
+          extracted_provider: found[0] ?? null,
+          literal_guard_debug: gemDebug,
+          db_updated: dbUpdated,
+        },
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
   const city: string = (body?.city ?? "Austin, TX").trim();
   const [cityName, stateAbbr] = city.split(",").map((s: string) => s.trim());
   let box: Box | undefined = TIER_A_BOXES[city];

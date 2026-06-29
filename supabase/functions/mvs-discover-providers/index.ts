@@ -1213,14 +1213,19 @@ ${PRICE_RULES}
             }
 
             qDebug.extracted = { price_min: finalMin, price_max: finalMax };
-            await admin.from("mvs_providers").update({
-              price_min: finalMin ?? finalMax,
-              price_max: finalMax ?? finalMin,
-              category_raw: finalCat,
-              confidence: finalConf,
-              updated_at: new Date().toISOString(),
-            }).eq("id", p.id);
-            qDebug.updated = true;
+            if (finalMin != null || finalMax != null) {
+              await admin.from("mvs_providers").update({
+                price_min: finalMin ?? finalMax,
+                price_max: finalMax ?? finalMin,
+                category_raw: finalCat,
+                confidence: finalConf,
+                updated_at: new Date().toISOString(),
+              }).eq("id", p.id);
+              qDebug.updated = true;
+            } else {
+              // No price found, revert lock so future runs can check again
+              await admin.from("mvs_providers").update({ price_min: null, updated_at: new Date().toISOString() }).eq("id", p.id).eq("price_min", -1);
+            }
           } catch (e) {
             qDebug.error = e instanceof Error ? e.message : String(e);
             // On failure, revert lock so future runs can retry

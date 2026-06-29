@@ -606,7 +606,7 @@ function EvidenceDrawer({ row, onClose }: { row: EvidenceRow | null; onClose: ()
                 <ProviderScreenshotButton
                   providerId={row.id}
                   providerName={row.name}
-                  variant="default"
+                  variant="link"
                 />
               </div>
               {sourcesArr.length > 0 && (

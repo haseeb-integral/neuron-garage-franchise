@@ -1,163 +1,127 @@
-## Audit: Why human Google looks richer than our Firecrawl result
 
-### What our code actually does today
-File: `supabase/functions/mvs-discover-providers/index.ts`, function `runGoogleSearch`.
+# Phase 4 — Tavily Lead Search + Firecrawl Verification
 
-For each of 6 queries we call **Firecrawl `/v2/search`** with:
-- `limit: 6` results
-- `scrapeOptions: { formats: ["markdown"], onlyMainContent: true }`
-- `excludeDomains` includes `reddit.com`
+## Why Tavily (vs Brave / SearchAPI / Firecrawl-only)
 
-For each returned result we keep `markdown` (truncated to 6000 chars per result), glue all 6 together, and send to Gemini with the price-literal guard.
+- Returns an AI-summarized answer **plus** ranked source URLs in one call (Brave and Firecrawl `/v2/search` do not).
+- Lets us push provider-owned domains and exclude Yelp/Facebook/Reddit at the search layer (`include_domains` / `exclude_domains`), which is exactly what Boston-style aggregator-heavy cities need.
+- Free tier on your Researcher plan = 1,000 credits/month. Pilot costs ~10–20 credits.
+- One API key, one REST endpoint, no SDK. Smallest possible change to our stack.
 
-The city is fed into the query as `${city} ${state}` where `city` is the raw row value — when the row already contains `"Columbus, OH"` and `state` is `"OH"`, we get **"Columbus, OH OH"**. That's the bug source.
+Firecrawl still verifies. Tavily is the lead source, never the proof.
 
----
+## Scope (locked)
 
-### Answers to your questions
+- **Pilot only.** Boston, MA. Top 10 missing-price providers, ordered by tier (Premium first).
+- **Files touched:** exactly one — `supabase/functions/mvs-discover-providers/index.ts`. Plus one secret (`TAVILY_API_KEY`). No UI. No DB migration. No new edge function. No changes to other cities.
+- **Will not touch:** scoring math, freshness rules, default 475 logic, Saved Sites, exports, Provider Evidence screen, QA queue, weights, MVS composite, any UI page.
 
-**1. Is `/v2/search` returning full markdown or just snippets?**
-Full markdown. We pass `scrapeOptions.formats: ["markdown"]`, so Firecrawl scrapes each top-N result page. We are NOT limited to Google's 2-line snippet.
+## Flow per provider (10 providers in the pilot)
 
-**2. Then why are prices still missing?**
-Five concrete reasons, in order of impact:
+```text
+For each missing-price provider in Boston (top 10 by tier):
 
-a. **`limit: 6` per query.** Google's organic list of price-rich pages (CAP4Kids, Columbus.gov rec centers, YMCA, Metro Parks, CSG, Country Club) is longer than 6. Many price pages never enter our markdown blob.
-b. **`onlyMainContent: true` strips price tables.** Camp price grids often live in sidebars, accordions, or "rates" widgets that boilerplate strippers cut.
-c. **6000-char truncation per result.** Long rec-center pages with the price table near the bottom get cut before the dollar amounts.
-d. **Price guard is per-page literal match.** A provider listed on page A with the price on page B gets the price dropped because the literal `$NNN` is not in A's markdown. This is correct behavior but it nukes real prices.
-e. **AI Overview is invisible to `/v2/search`.** Firecrawl's search reads organic results, not the AI Overview box. The block of 8+ providers you saw at the top is not in our pipeline at all.
+  1. Tavily /search
+     query:   "<provider name> Boston camp tuition price per week"
+     params:  search_depth=advanced
+              include_answer=advanced
+              include_domains=[provider_domain]  (if we know it)
+              exclude_domains=[yelp.com, facebook.com, reddit.com,
+                               instagram.com, tiktok.com, care.com, ...]
+              max_results=5
+     credits: ~2
 
-**3. Does Firecrawl return Google AI Overview?**
-No. `/v2/search` returns organic results only. AI Overview is rendered by Google's own model and is not exposed in Firecrawl's search response.
+  2. Pick best 1 URL:
+       prefer provider_domain match
+       else first result that is not an aggregator
+       skip if no usable URL
 
-**4. Can we capture AI Overview reliably?**
-Not through Firecrawl. Two indirect options:
-- Scrape `google.com/search?q=...` as a page (fragile — Google blocks, layout changes, ToS-grey, and the box doesn't always render headlessly).
-- Use **Gemini with Google Search grounding** through Lovable AI Gateway — gives you a similar synthesized answer **plus** a `groundingMetadata` list of source URLs. This is the reliable path.
+  3. Firecrawl /v2/scrape
+       onlyMainContent: false
+       formats: ["markdown", "screenshot"]
+       credits: 1
 
-We should **not** treat AI Overview text as canonical proof. We can use grounded answers as **leads**, then verify each price by scraping the cited source URL.
+  4. Gemini extract (existing PRICE_RULES, no inference)
 
-**5. Could Gemini-with-grounding replace some Firecrawl calls?**
-Yes, partially. One grounded Gemini call can return "here are 8 providers with weekly prices and the URL each came from" — cheaper than 6 Firecrawl searches. But it still needs Firecrawl follow-up to actually save evidence (markdown + screenshot) for the cited URLs.
+  5. Literal-match guard (existing Phase 2 guard):
+       exact dollar amount must appear in scraped page text
+       within ±150 chars of: camp | tuition | week | session | fee | registration
+     If guard fails -> drop with reason, never save.
 
-**6. Should we `/v2/scrape` top URLs after `/v2/search`?**
-Mostly **no**, because `scrapeOptions` already scrapes them. Two narrow exceptions where a second `/v2/scrape` is worth it:
-- The page has price info but we have it under `onlyMainContent: true` — re-scrape with `onlyMainContent: false`.
-- The page is paginated / has a "rates" subpage linked from the main page — scrape that one extra URL.
-
-**7. Reddit/forum results — include?**
-Keep `reddit.com` excluded from primary discovery (low trust, parent quotes are stale, names misspelled). But allow it as **lead-only**: if grounded Gemini cites a Reddit thread, we record it as "Needs Review" evidence and never auto-populate price from it.
-
-**8. Why did query #4 ("kids music art gymnastics studios…") find many providers but 0 prices?**
-That query targets studio listicles, which name businesses but rarely publish weekly rates. The query is doing its job (provider discovery), not pricing. This is expected, not a bug — they are two different sub-goals.
-
-**9. The "Columbus, OH OH" duplicate-state bug**
-Real. The city field already includes ", OH" in some rows. The query builder appends `state` again. Safe one-line fix:
-
-```ts
-const cleanCity = city.replace(/,\s*[A-Z]{2}\s*$/i, "").trim();
+  6. Save price + source URL + screenshot + snippet
+     + extraction_method = "tavily_lead_v1"
+     + audit row in mvs_pipeline_runs.source_counts.discover.tavily_leads[]
 ```
 
-Then use `cleanCity` in the 6 query strings. **Yes, fix this before any further test runs** — the duplicate token measurably degrades Google relevance ranking.
+## Budget per pilot run
 
----
+| Item | Per provider | 10 providers |
+|---|---|---|
+| Tavily advanced search | 2 credits | 20 credits |
+| Firecrawl scrape | 1 call (~$0.0017) | ~$0.017 |
+| Wall clock | ~6–8 s | ~70 s (parallelized) |
 
-### Root cause (one sentence)
+Stays well under the 50-call Firecrawl pipeline cap and well under the 1,000-credit Tavily monthly free tier.
 
-We get full markdown from `/v2/search`, but we throttle it to 6 results × 6000 chars × `onlyMainContent`, and we ignore Google's AI Overview entirely — so a human browsing Google sees ~20 price points while we only see whichever 6–8 happen to survive those filters.
+## Audit logging (debug data we'll persist)
 
----
+Stored at `mvs_pipeline_runs.source_counts.discover.tavily_leads[]`, one entry per provider:
 
-### Recommended approach (Phase 3 design proposal — not code)
+```text
+{
+  provider_name,
+  query,
+  tavily_answer,                 // AI summary text
+  tavily_top_urls: [...],
+  picked_url,
+  picked_reason,                 // "provider_domain" | "first_non_aggregator" | "none"
+  firecrawl_scraped: bool,
+  price_min, price_max,          // null if dropped
+  guard_result: "kept" | "dropped",
+  guard_drop_reason,             // null if kept
+  snippet_around_price,          // ±150 char window
+  tavily_credits_used,
+  firecrawl_calls_used
+}
+```
 
-A 3-step "richer extraction" path that keeps cost predictable:
+This lets Provider Evidence Review show exactly what Tavily said and what Firecrawl actually saw — same audit pattern as Phase 2.
 
-**Step 1 — Loosen the search call (cheap, no extra calls)**
-- Raise `/v2/search` `limit` from 6 → **10** for the pricing-specific query only (the other 5 stay at 6).
-- For the pricing-specific query only, set `onlyMainContent: false` and bump per-result truncation from 6000 → **12000** chars.
-- Apply the duplicate-state regex fix.
-- Net Firecrawl cost: **+0 calls** (same number of search requests, just richer payload). Token cost on Gemini side: ~2× the pricing-query blob, ~$0.02/run.
+## Success criteria (decide future of Phase 4 after pilot)
 
-**Step 2 — Add ONE Gemini-with-Google-Search-grounding call per run**
-Single call: *"Weekly prices for kids summer camps in {city, state}. List provider, weekly price range, and the source URL."*
-- Returns a structured list + cited URLs.
-- We treat the list as **leads only** — provider names get merged, prices stay null until verified.
-- ~$0.005 per city, 0 Firecrawl calls.
+- **Ship Tavily fully** if ≥ 3 of 10 providers get a new verified price (≥ 30% lift on missing-price providers).
+- **Drop Tavily** if 0–2 of 10 verify. Means Boston pricing is genuinely not on the open web; pivot to manual QA instead.
+- Report after pilot:
+  - Before/after coverage for those 10 providers
+  - Tavily credits used
+  - Firecrawl calls used
+  - Guard drops (with reasons)
+  - Top "AI summary said X but page did not prove it" cases (the most important trust signal)
 
-**Step 3 — Targeted `/v2/scrape` on cited URLs that we don't already have**
-- Take the deduped URL list from grounding + the top 3 `/v2/search` URLs that had a provider but no price.
-- Cap at **5 extra scrapes per run** (`onlyMainContent: false`, screenshot on).
-- Run the price-literal guard against each scraped page's own markdown.
-- Net Firecrawl cost: **+5 calls** worst case. Fits inside the existing 50-call `MVS_PIPELINE_FIRECRAWL_CAP` (Columbus used 13).
+## Phases & turns
 
-Estimated new pricing coverage: **35–50%** vs today's ~22%.
+| Phase | What | Turns |
+|---|---|---|
+| **4.0** | Save `TAVILY_API_KEY` secret. **You then rotate the pasted key in Tavily dashboard** and re-save the new value via the secure form. | 0 (I trigger the secret form) |
+| **4.1** | Add `runTavilyLeadSearch()` helper inside `mvs-discover-providers/index.ts`. Wire it in behind a `tavilyPilot: true` flag so it only fires for Boston + top 10 missing-price. Add audit logging. Deploy. | 1 |
+| **4.2** | Run `forceFresh:true` Boston pilot. Report numbers in the success-criteria format above. **Stop and wait for your decision.** | 1 |
+| **4.3** *(only if you approve after 4.2)* | Remove pilot flag, broaden to any city where coverage < 25% after Phase 3.3 targeted scrape. Cap Tavily at 25 leads/city. | 1 |
 
----
+Total to get a decision: **2 turns** (4.1 + 4.2).
 
-### Cost impact
+## Risks & mitigations
 
-| Item | Today | Proposed | Delta |
-|---|---|---|---|
-| Firecrawl `/v2/search` calls | 6 | 6 | 0 |
-| Firecrawl `/v2/scrape` calls (new, capped) | 0 | up to 5 | +5 |
-| Gemini extraction calls | 6 | 6 | 0 |
-| Gemini grounded call | 0 | 1 | +1 |
-| Total Firecrawl per city | ~13 | ~18 | +5 |
-| Approx $ per city | ~$0.04 | ~$0.06 | +$0.02 |
+- **Tavily AI summary hallucinates a price.** Mitigation: guard never trusts the summary; only the scraped page text counts. Logged for review.
+- **Provider domain unknown.** Mitigation: fall back to first non-aggregator URL; if none, skip provider and log reason. No bad data saved.
+- **Aggregator slips through.** Mitigation: hard exclude list, expandable via audit findings.
+- **Tavily down or rate-limited.** Mitigation: pilot fails gracefully; existing Phase 3.3 results remain untouched. No regression possible.
+- **Key already pasted in chat.** Mitigation: rotate immediately after Phase 4.0 — I will remind you in-chat.
 
-Still well under the 50-call cap.
+## What I need from you to start
 
----
+Approve the plan. On approval I will:
+1. Open the secure-secret form for `TAVILY_API_KEY` (you paste the **rotated** key, not the one from chat).
+2. Build Phase 4.1 in the next turn.
+3. Run the Boston pilot in the turn after, then stop and report.
 
-### Risks
-
-- **AI Overview format changes** — mitigated because we use Gemini grounding, not Google scraping.
-- **Grounded answers can hallucinate prices** — mitigated by the literal-match guard already in place; any price not found in the cited URL's markdown gets dropped to `null`.
-- **More raw markdown per query** raises Gemini token use slightly — bounded by the per-query 12000-char truncation.
-- **Reddit creeping in via grounding citations** — mitigated by tagging those leads `verification_status='needs_review'` and never auto-saving the price.
-
----
-
-### Data to save for human verification
-
-For every kept price, store (already partly stored — add the bold items):
-- Provider name + URL
-- The **exact source URL** the price came from
-- The **markdown snippet** (±200 chars around the dollar amount) — **NEW**
-- The **query or grounded prompt** that surfaced it
-- `extraction_method`: `search_scrape` | `targeted_scrape` | `grounded_lead` — **NEW**
-- Guard result (kept / dropped + reason) — already stored
-- Screenshot of the source listing page — already stored for discovery pages; **add for targeted scrapes**
-
----
-
-### Impact on the Provider Evidence Review screen
-
-Small additions to the drawer, no schema break:
-- New row "Extraction method" (search_scrape / targeted_scrape / grounded_lead).
-- "Source snippet" block showing the ±200-char window around the dollar amount.
-- "Grounded leads" section listing any URLs Gemini cited that we did **not** end up scraping.
-- Filter chip: "Method" so a human can audit just the grounded leads first.
-
-Phase E4 (verification buttons) is unchanged and still parked.
-
----
-
-### Duplicate-state bug
-
-**Fix it before any more test runs.** It is a one-line regex change, isolated to `runGoogleSearch`. Every measurement we take with the bug present is contaminated — Google's ranker punishes `"Columbus, OH OH"` and we cannot judge whether Step 1/2/3 work until that noise is gone.
-
----
-
-### What I want you to approve next
-
-Pick any combination:
-
-- **A.** Apply only the one-line duplicate-state fix now, no other changes.
-- **B.** Phase 3.1 — Step 1 (loosen search call + state-fix). Smoke test Columbus + Boston + Austin.
-- **C.** Phase 3.2 — Step 2 (add grounded Gemini call). Smoke test same 3 cities, compare.
-- **D.** Phase 3.3 — Step 3 (targeted scrape on cited URLs). Final smoke test.
-- **E.** All of B+C+D in one shot.
-
-My recommendation: **A first** (one tiny safe change), then **B**, measure, then decide on C and D from real data. Do not start Phase 4 (per-provider deep scrape) until 3.1–3.3 results are in.
+No other files, no other cities, no scope creep.

@@ -971,13 +971,14 @@ async function runTavilyPilotForBoston(args: {
     };
 
     // ---- 1. Tavily search ----
-    let tavilyResults: Array<{ url: string; title: string; content?: string }> = [];
+    let tavilyResults: Array<{ url: string; title: string; content?: string; raw_content?: string }> = [];
     try {
       const body: Record<string, unknown> = {
         api_key: tavilyKey,
         query,
         search_depth: "advanced",
         include_answer: "advanced",
+        include_raw_content: true,
         max_results: 5,
         exclude_domains: TAVILY_EXCLUDE_DOMAINS,
       };
@@ -1048,6 +1049,55 @@ async function runTavilyPilotForBoston(args: {
       entry.guard_result = "skipped";
       entry.guard_drop_reason = "no usable URL from Tavily";
       return entry;
+    }
+
+    // ---- 2.5 Strict Tavily Verified Answer Check ----
+    if (entry.tavily_answer) {
+      const candidateMatches = [...entry.tavily_answer.matchAll(/\$\s?([0-9]{2,4})\b/g)];
+      for (const cm of candidateMatches) {
+        const valStr = cm[1];
+        const valNum = Number(valStr);
+        if (isNaN(valNum) || valNum < 30 || valNum > 3000) continue;
+
+        const literalRx = new RegExp(`\\$\\s?${valStr}\\b`);
+        for (const r of tavilyResults) {
+          const pageBody = r.raw_content || r.content || "";
+          if (!pageBody) continue;
+          const bodyMatch = pageBody.match(literalRx);
+          if (bodyMatch && bodyMatch.index != null) {
+            const s = Math.max(0, bodyMatch.index - 150);
+            const snip = pageBody.slice(s, Math.min(pageBody.length, bodyMatch.index + 200)).replace(/\s+/g, " ").trim();
+            if (/camp|tuition|week|session|class|program|fee|registration|enroll/i.test(snip)) {
+              entry.price_min = valNum;
+              entry.price_max = valNum;
+              entry.guard_result = "kept";
+              entry.snippet_around_price = snip;
+              entry.extraction_method = "tavily_lead_v1";
+              entry.firecrawl_scraped = false;
+
+              // Save directly to DB
+              try {
+                const patch: Record<string, unknown> = {
+                  price_min: entry.price_min,
+                  price_max: entry.price_max,
+                  source_run_id: runId,
+                  updated_at: new Date().toISOString(),
+                };
+                if (!p.website_url && entry.picked_reason === "provider_domain") {
+                  patch.website_url = entry.picked_url;
+                }
+                if (!p.url) patch.url = entry.picked_url;
+                const { error: upErr } = await admin.from("mvs_providers").update(patch).eq("id", p.id);
+                if (!upErr) entry.saved_to_provider = true;
+                else entry.error = `db update: ${upErr.message}`;
+              } catch (e) {
+                entry.error = `db exception: ${e instanceof Error ? e.message : String(e)}`;
+              }
+              return entry;
+            }
+          }
+        }
+      }
     }
 
     // ---- 3. Firecrawl /v2/scrape (full page, screenshot) ----

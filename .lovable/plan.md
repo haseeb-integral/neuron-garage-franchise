@@ -1,66 +1,28 @@
-# Why the Boston run felt so long — plain English
+### Plan for Tavily Verified Answer Layer (Boston Pilot)
 
-## What actually happened (real timing from the database)
+We are implementing your exact approved condition: we will extract candidate prices from Tavily's AI summary (`answer`), cross-verify that the exact dollar amount exists literally inside the real page text (`raw_content` / `content`) returned by Tavily, save to DB if verified (skipping Firecrawl), and fall back to Firecrawl only if unverified or blank.
 
-I checked the run record. Here are the real numbers for the last Boston pilot (run ID `76b57788`):
+#### 1. What we are changing & why
+- **Update `runTavilyPilotForBoston` in `supabase/functions/mvs-discover-providers/index.ts`**:
+  1. Add `include_raw_content: true` to Tavily API requests so Tavily returns the real body text of the web pages it found.
+  2. Read Tavily's `answer` summary and use regex to find candidate dollar amounts (e.g. `$250`).
+  3. Verify that exact dollar amount exists inside the `raw_content` or `content` field of the matching search results.
+  4. **If verified**: Keep the price, skip Firecrawl (`firecrawl_scraped = false`), set `extraction_method = "tavily_lead_v1"`, and save directly to the database.
+  5. **If NOT verified** (or answer has no literal camp price): Fall back to the existing Firecrawl scrape flow.
 
-| Step | Time |
-|---|---|
-| Full pipeline (discover + classify + Tavily + ACS) | **2 minutes 39 seconds** |
-| Just the Tavily part (10 providers) | **34 seconds** |
-| Tavily credits used | 20 |
-| Firecrawl calls in Tavily step | 1 |
+#### 2. Affected parts
+- ONLY `supabase/functions/mvs-discover-providers/index.ts`. No UI, tables, scoring math, or other pages are affected.
 
-So Tavily was **fast — 34 seconds for 10 providers**. That matches what you saw in the Tavily playground. Tavily is not the problem.
+#### 3. Compatibility
+- Fits smoothly into the existing Phase 4 Boston pilot flow without changing any database schema or general discovery logic for other cities.
 
-## Then why did it feel like 20 minutes?
+#### 4. Phases & Turn Estimates
+- **Phase 1 (This turn)**: Implement the verification logic in `mvs-discover-providers/index.ts` and deploy the edge function. (1 turn)
+- **Phase 2 (Next turn / Testing)**: Run a live test for **Boston, MA** (with forceFresh) to verify verified prices land cleanly in your DB.
 
-The 20 minutes was **my fault, not Tavily's, and not the pipeline's**.
+#### 5. Risks & Exclusions
+- Zero risk to other cities. Firecrawl is preserved as a fallback so we don't lose coverage when Tavily's summary is blank.
 
-Here is the simple reason:
+---
 
-- The pipeline runs in the background. It returns a "run id" right away and keeps working.
-- To know when it finished, I have to **poll** — meaning I ask the database "is it done yet?" every few seconds.
-- I set the poll to "check every 30 seconds, up to 30 times" = **up to 15 minutes of waiting**, even if the real job finished in 2 minutes.
-- Worse, the way my poll loop was written, it kept waiting through its full schedule instead of stopping the moment the job finished. So you saw a long silent wait.
-
-In short: **the work was done in ~2.5 minutes. My checking-on-it script was slow and dumb.**
-
-## What I want to fix before we run again
-
-This is a **plan-only message**. No code changes yet. Approve and I will do this in one small phase.
-
-### Phase F1 — Fix the polling script (no pipeline changes)
-
-1. Poll every **5 seconds** instead of 30.
-2. **Stop the moment** status becomes `done`, `done_stale`, `failed`, or `failed_no_data`. Do not keep waiting.
-3. Cap total wait at **5 minutes** (a real run is ~2–3 min). If it goes past 5 min, stop and show what the database has so far, so you are never left waiting blindly.
-4. Print a short progress line every check (e.g. "still running… 45s elapsed") so you can see life signs.
-
-### What will NOT change
-
-- No edits to `mvs-discover-providers` (Tavily code stays as-is).
-- No edits to `mvs-run-pipeline`.
-- No database changes.
-- No new secrets.
-- Pilot still gated to Boston only.
-
-### Risk
-
-Almost none. This is only the way I watch the run, not the run itself.
-
-## After F1 is approved
-
-Re-run the Boston pilot. You should see the result in about **3 minutes max**, with progress messages, not a 20-minute silence.
-
-If you also want, I can add one more small thing later:
-
-- **Phase F2 (optional)**: have the pipeline write a `tavily_pilot.progress` field every few seconds (`"searching 3 of 10"`, `"scraping 2 of 10"`) so the UI and my poll loop can show live progress instead of just "running". Say the word if you want this; otherwise skip.
-
-## Bottom line
-
-- Tavily was fast (34s for 10 providers). ✅
-- The full backend job was ~2.5 min. ✅
-- The 20 min wait was my polling script being too patient. ❌ — I will fix that in Phase F1.
-
-Approve **F1** and I will fix it, then we re-run Boston cleanly.
+Click **Implement plan** to approve and start coding!

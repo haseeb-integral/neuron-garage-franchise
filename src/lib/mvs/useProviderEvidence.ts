@@ -53,6 +53,20 @@ export type EvidenceRow = EvidenceProvider & {
     | { name: string; url?: string | null; price_min?: number | null; price_max?: number | null }
     | null;
   guard_drop: DroppedPrice[];
+  tavily_pilot_entry?: {
+    provider_id: string;
+    provider_name: string;
+    query: string;
+    picked_url?: string;
+    price_min?: number | null;
+    price_max?: number | null;
+    guard_result?: string;
+    guard_drop_reason?: string;
+    extraction_method?: string;
+    firecrawl_scraped?: boolean;
+    snippet_around_price?: string | null;
+    tavily_answer?: string;
+  } | null;
 };
 
 export type EvidenceData = {

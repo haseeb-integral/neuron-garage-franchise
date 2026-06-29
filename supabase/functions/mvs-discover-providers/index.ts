@@ -974,6 +974,7 @@ Deno.serve(async (req) => {
             existing.name = p.name; // prefer name from higher-priority source
           }
           existing.url = existing.url ?? p.url ?? null;
+          existing.listing_url = existing.listing_url ?? p.listing_url ?? null;
           existing.price_min = existing.price_min ?? p.price_min ?? null;
           existing.price_max = existing.price_max ?? p.price_max ?? null;
           existing.category_raw = existing.category_raw ?? p.category_raw ?? null;
@@ -1001,6 +1002,7 @@ Deno.serve(async (req) => {
             a.platform = b.platform; a.name = b.name;
           }
           a.url = a.url ?? b.url ?? null;
+          a.listing_url = a.listing_url ?? b.listing_url ?? null;
           a.price_min = a.price_min ?? b.price_min ?? null;
           a.price_max = a.price_max ?? b.price_max ?? null;
           a.category_raw = a.category_raw ?? b.category_raw ?? null;

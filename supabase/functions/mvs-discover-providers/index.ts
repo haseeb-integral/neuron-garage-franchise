@@ -391,6 +391,7 @@ async function runGoogleSearch(args: {
     `${city} ${state} after school programs enrichment kids`,
     `kids music art gymnastics studios ${city} ${state}`,
     `things to do with kids in ${city} ${state} indoor`,
+    `${city} ${state} kids summer camp prices per week tuition`,
   ];
   // Strip social/marketplace noise so listicle pages dominate results.
   const excludeDomains = [
@@ -410,7 +411,8 @@ Rules:
 - "url" = the provider's OWN website if visible in the page text, else null. Never use the listicle's own URL.
 - category_raw = the activity type (e.g. "gymnastics", "music school", "art camp", "stem").
 - Prefer providers mentioned in MULTIPLE supplied pages — those are highest confidence.
-- Hard cap: 40 providers.`;
+- Hard cap: 40 providers.
+${PRICE_RULES}`;
 
   // Run all 5 listicle queries in parallel — sequential was ~60s, parallel ~15s.
   const perQuery = await Promise.all(queries.map(async (q) => {

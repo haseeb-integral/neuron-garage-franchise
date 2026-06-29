@@ -1,75 +1,60 @@
+# Phase 2 — Test Runs and Report
 
-# Phase 2 only — Tighten pricing extraction in the existing discovery step
+No code changes. Only test runs + DB reads + report.
 
-Approved scope locked. Nothing else will change.
+## Confirm scope of files touched in Phase 2
 
-## What this phase is
-
-Improve **only** the Gemini extraction prompt (and add one extra Google search query) inside the discovery edge function so we pull `price_min` / `price_max` out of listing pages we already fetch. Same step, same caps, same code path.
-
-## The one file that will change
-
+Only one file was changed:
 - `supabase/functions/mvs-discover-providers/index.ts`
 
-No other file, no schema, no other function, no UI.
+No other file, no schema, no other function, no UI. I will re-grep the project to confirm before running tests.
 
-## Exact changes inside that one file
+## Steps
 
-1. **Tighten the Gemini "extract" prompt** (used by Sawyer, ActivityHero, Google Search, and Yelp variants). Add these rules to the system prompt:
-   - "Only return a `price_min` or `price_max` if the **exact dollar amount appears in the source markdown**. Do not infer, estimate, average, or guess."
-   - "Recognize these patterns as price: `$NNN/wk`, `$NNN per week`, `$NNN weekly`, `$NNN/week`, `tuition $NNN`, `from $NNN`, `starting at $NNN`, `$NNN–$NNN`."
-   - "If only a single weekly number is shown, set both `price_min` and `price_max` to that number."
-   - "If only a range is shown like `$300–$650`, set `price_min=300` and `price_max=650`."
-   - "If no dollar amount is visible, return `price_min: null` and `price_max: null`. Do not invent values."
+1. **Re-confirm file scope** — quick check that no other files were edited in Phase 2.
 
-2. **Add a guard in code** (post-Gemini, before DB write): regex-check the source markdown for `\$\d{2,4}` near the provider name. If Gemini returned a price that **does not** appear anywhere in the markdown for that listing, drop the price (set to null). This enforces "only extract what is actually written".
+2. **Capture BEFORE numbers** for Columbus, OH / Boston, MA / Austin, TX:
+   ```sql
+   SELECT city, COUNT(*) AS providers, COUNT(price_min) AS with_price,
+          ROUND(100.0*COUNT(price_min)/NULLIF(COUNT(*),0),1) AS pct_priced
+   FROM mvs_providers
+   WHERE city IN ('Columbus, OH','Boston, MA','Austin, TX')
+   GROUP BY city;
+   ```
 
-3. **Add one extra Google Search variant** to the existing Google source block:
-   - `"<city> kids summer camp prices per week"` (the current variants already hit "kids classes / camps / activities" without the word "price"). One extra query, same cap.
+3. **Run the pipeline** for each city with `forceFresh: true` via `supabase--curl_edge_functions` → `/mvs-run-pipeline`. One at a time, wait for `mvs_pipeline_runs.status` to become `done` (or `failed`) before starting the next. Each run typically takes ~1–3 minutes.
 
-No new step, no new function, no DB columns, no new caps.
+4. **Capture AFTER numbers** with the same SQL.
 
-## What will NOT change
+5. **Pull per-run stats** from `mvs_pipeline_runs` (firecrawl_calls, source_counts, status, error).
 
-Scoring math, freshness rules, City Search, Saved Sites, Candidate Pipeline, PDF logic, schema, per-provider site scrape, Google/Gemini fallback step, classify step, extract step, pipeline orchestrator, UI.
+6. **Count guard drops** — Phase 2 added a regex guard that nullifies any Gemini-returned price not literally found in the source markdown. I'll check edge function logs for the guard's debug line and count drops per city.
 
-## How I'll test (Columbus, Boston, Austin)
+7. **Spot check** 3–5 newly priced providers per city: open their listing URL, confirm the dollar amount really appears.
 
-1. Read **before** numbers straight from DB:
-   `SELECT city, COUNT(*) AS providers, COUNT(price_min) AS with_price, ROUND(100.0*COUNT(price_min)/COUNT(*),1) AS pct_priced FROM mvs_providers WHERE city IN ('Columbus, OH','Boston, MA','Austin, TX') GROUP BY city;`
-   (Current snapshot: Columbus 18.9%, Boston 18.6%, Austin 26.7%.)
-2. Run discover for each of the 3 cities with `forceFresh:true`.
-3. Read **after** numbers with the same SQL.
-4. Spot-check 5 random new priced rows per city — open the listing URL, confirm the dollar amount is really visible on the page.
-5. Count Firecrawl calls used (from the run logs / `mvs_pipeline_runs` row).
+## Report I will return
 
-## Report I will give you after Phase 2
+For each of the 3 cities:
+- Providers total, with_price, % priced — BEFORE
+- Providers total, with_price, % priced — AFTER
+- Firecrawl calls used (and per-step breakdown if available)
+- Prices dropped by the regex guard (count)
+- Any errors or odd behavior
 
-- File changed: `supabase/functions/mvs-discover-providers/index.ts` (only).
-- Exact prompt diff and the extra Google query string.
-- Before vs after `% priced` table for Columbus, Boston, Austin.
-- Firecrawl calls used per city (Apify is not used in MVS, so that count is 0).
-- Any hallucinated prices caught by the regex guard (count).
-- Any other risk or odd behavior noticed.
-- Verdict: did Phase 2 alone get us to ≥30% priced? If yes, stop. If no, Phase 3 is still needed — I will wait for your approval.
+Plus:
+- Verdict: did Phase 2 alone reach ≥30% priced?
+- Is Phase 3 (Google/Gemini fallback) still needed?
+- Confirmation that only `mvs-discover-providers/index.ts` was modified.
 
-## Risk
+## Risks
 
-- **Very low.** Same step, same cap (`discover ≤ 25` Firecrawl calls per run), same code path.
-- Worst case: the regex guard is too strict and drops a few legitimate prices → easy revert (1 turn, remove the guard).
-- One extra Google query adds at most 1 Firecrawl `/v2/search` call per run, well inside the cap.
+- Each forceFresh run spends Firecrawl credits (cap = 50/run, typical ~15–30).
+- One city may fail or hit the cap — I will still report partial numbers and continue with the others.
 
-## Cost
+## Turns
 
-- ~0 extra cost. Same cap, one extra search call per run (≈ $0.01).
+- 1 turn to run the 3 pipelines + collect results + write the report.
 
-## Turn estimate
+## Hard stop
 
-- 1 turn to make the prompt + guard + query change.
-- 1 turn to run the 3 test cities and report numbers.
-
-## Hard stop after Phase 2
-
-I will not start Phase 3 (Google/Gemini fallback) or Phase 4 (per-provider site scrape) until you explicitly approve them.
-
-Approve this and I'll switch to build mode for the single-file change.
+I will not start Phase 3 or Phase 4 after this. Waiting for your explicit approval.

@@ -443,233 +443,131 @@ function EvidenceDrawer({ row, onClose }: { row: EvidenceRow | null; onClose: ()
   const q = row?.matched_query ?? null;
   const entry = row?.matched_provider_entry ?? null;
   const sourceUrl = entry?.url || row?.source_listing_url || row?.url || null;
-  const sourcesArr = Array.isArray(row?.sources) ? (row?.sources as unknown[]) : [];
+  const hasPrice = row?.price_min != null || row?.price_max != null;
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-xl">
         {row && (
-          <>
+          <div className="space-y-6">
             <SheetHeader>
-              <SheetTitle style={{ color: NAVY }}>{row.name || "Unnamed provider"}</SheetTitle>
-              <SheetDescription>
+              <SheetTitle className="text-xl font-bold" style={{ color: NAVY }}>
+                {row.name || "Unnamed Camp"}
+              </SheetTitle>
+              <SheetDescription className="text-xs font-medium uppercase tracking-wide">
                 {row.tier ? `${row.tier} · ` : ""}
-                {row.category_classified || row.category_raw || "Uncategorized"} · {row.city}
+                {row.category_classified || row.category_raw || "Camp"} · {row.city}
               </SheetDescription>
             </SheetHeader>
 
-            <Section title="Provider basics">
-              <KV label="Price/wk" value={fmtPrice(row.price_min, row.price_max)} />
-              <KV label="Confidence" value={row.confidence != null ? row.confidence.toFixed(2) : "—"} />
-              <KV
-                label="Website"
-                value={
-                  row.website_url ? (
-                    <a
-                      href={row.website_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 font-semibold"
-                      style={{ color: BLUE }}
-                    >
-                      {row.website_url} <ExternalLink className="h-3 w-3" />
-                    </a>
-                  ) : (
-                    "—"
-                  )
-                }
-              />
-              <KV
-                label="Discovered"
-                value={new Date(row.created_at).toLocaleString()}
-              />
-              <KV
-                label="Last seen"
-                value={new Date(row.updated_at || row.created_at).toLocaleString()}
-              />
-            </Section>
+            {/* Section 1: Tuition Truth */}
+            <div className="rounded-xl border p-4 bg-[#f8fafe]" style={{ borderColor: BORDER }}>
+              <div className="text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: MUTED }}>
+                Weekly Tuition Truth
+              </div>
+              <div className="text-2xl font-black mb-2" style={{ color: NAVY }}>
+                {fmtPrice(row.price_min, row.price_max)}
+                {hasPrice && <span className="text-xs font-normal ml-2 text-[#526078]">/ week</span>}
+              </div>
 
-            <Section title="Source query">
-              {q ? (
-                <>
-                  <div
-                    className="mb-2 rounded-md border p-2 text-[12px]"
-                    style={{ borderColor: BORDER, backgroundColor: SOFT, color: NAVY }}
-                  >
-                    “{q.query}”
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <KV label="Source type" value={q.source_type || "—"} />
-                    <KV label="Raw results" value={q.raw_results_returned ?? "—"} />
-                    <KV label="Providers extracted" value={q.providers_extracted ?? "—"} />
-                    <KV label="Prices kept" value={q.prices_kept ?? "—"} />
-                    <KV
-                      label="$ amounts seen in source"
-                      value={q.raw_dollar_amounts_in_source ?? "—"}
-                    />
-                    <KV
-                      label="Prices dropped by guard"
-                      value={(q.prices_dropped_by_guard ?? []).length}
-                    />
-                  </div>
-                  {q.top_urls && q.top_urls.length > 0 && (
-                    <div className="mt-3">
-                      <div
-                        className="mb-1 text-[10px] font-bold uppercase tracking-wide"
-                        style={{ color: MUTED }}
-                      >
-                        Top URLs from this query
-                      </div>
-                      <ul className="space-y-0.5 text-[12px]">
-                        {q.top_urls.slice(0, 5).map((u) => (
-                          <li key={u} className="truncate">
-                            <a
-                              href={u}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1"
-                              style={{ color: BLUE }}
-                              title={u}
-                            >
-                              {u} <ExternalLink className="h-3 w-3 shrink-0" />
-                            </a>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </>
+              {hasPrice ? (
+                <div className="text-xs text-[#0f7b3f] bg-[#e7f7ee] border border-[#cfead8] rounded-lg p-2.5 flex items-start gap-2">
+                  <span className="font-bold shrink-0">✓ Verified:</span>
+                  <span>This exact weekly tuition number was found literally in the camp's official listing or website text.</span>
+                </div>
+              ) : row.guard_drop.length > 0 ? (
+                <div className="text-xs text-[#b45309] bg-[#fff7e8] border border-[#f4d8a8] rounded-lg p-2.5 flex items-start gap-2">
+                  <span className="font-bold shrink-0">⚠ Blocked:</span>
+                  <span>Our AI guessed a price, but our safety rule blocked it because the exact tuition dollar amount wasn't clearly written in the camp's public text.</span>
+                </div>
               ) : (
-                <div className="text-[12px]" style={{ color: MUTED }}>
-                  No per-query debug data for this provider. It was discovered before the debug
-                  capture was enabled, or surfaced by a source we don't yet log per-query.
+                <div className="text-xs text-[#526078] bg-white border border-[#eef2f7] rounded-lg p-2.5">
+                  No weekly tuition price found yet. Our targeted search will keep checking their official website and registration forms.
                 </div>
               )}
-            </Section>
+            </div>
 
-            <Section title="Guard result">
-              {(() => {
-                const hasPrice = row.price_min != null || row.price_max != null;
-                if (hasPrice) {
-                  return (
-                    <div
-                      className="rounded-md border p-2 text-[12px]"
-                      style={{ borderColor: "#cfead8", backgroundColor: "#e7f7ee", color: GREEN }}
-                    >
-                      Price kept: <strong>{fmtPrice(row.price_min, row.price_max)}</strong>. The
-                      value appears literally in the source markdown (±$2 tolerance).
-                    </div>
-                  );
-                }
-                if (row.guard_drop.length > 0) {
-                  return (
-                    <div
-                      className="rounded-md border p-2 text-[12px]"
-                      style={{ borderColor: "#f4d8a8", backgroundColor: "#fff7e8", color: AMBER }}
-                    >
-                      Guard dropped Gemini's price guess because the literal number could not be
-                      found in the source markdown:
-                      <ul className="mt-1 list-disc pl-4">
-                        {row.guard_drop.map((d, i) => (
-                          <li key={i}>
-                            <code>{d.field}</code> = {d.value ?? "null"}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  );
-                }
-                return (
-                  <div className="text-[12px]" style={{ color: MUTED }}>
-                    No price was extracted for this provider. Pricing may be on the provider's own
-                    website rather than the listing page (Phase 4 target).
+            {/* Section 2: Proof & Website */}
+            <div className="space-y-3">
+              <div className="text-[11px] font-bold uppercase tracking-wider" style={{ color: BLUE }}>
+                Proof & Official Website
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {row.website_url ? (
+                  <a
+                    href={row.website_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 rounded-lg border bg-white p-3 text-xs font-bold shadow-sm transition-all hover:bg-[#f7faff] hover:border-[#174be8]"
+                    style={{ borderColor: BORDER, color: BLUE }}
+                  >
+                    <span>Visit Camp Website</span>
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                ) : (
+                  <div className="flex items-center justify-center rounded-lg border border-dashed p-3 text-xs text-[#94a3b8] bg-[#f8fafe]">
+                    No official website saved
                   </div>
-                );
-              })()}
-            </Section>
+                )}
 
-
-            <Section title="Evidence (saved sources)">
-              {sourceUrl && (
-                <div className="mb-2 text-[12px]">
+                {sourceUrl ? (
                   <a
                     href={sourceUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 font-semibold"
-                    style={{ color: BLUE }}
+                    className="flex items-center justify-center gap-2 rounded-lg border bg-white p-3 text-xs font-bold shadow-sm transition-all hover:bg-[#f7faff] hover:border-[#174be8]"
+                    style={{ borderColor: BORDER, color: BLUE }}
                   >
-                    Open source listing <ExternalLink className="h-3 w-3" />
+                    <span>View Search Snippet Source</span>
+                    <ExternalLink className="h-3.5 w-3.5" />
                   </a>
-                </div>
-              )}
-              <div className="mb-2">
+                ) : (
+                  <div className="flex items-center justify-center rounded-lg border border-dashed p-3 text-xs text-[#94a3b8] bg-[#f8fafe]">
+                    No search link saved
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-1">
                 <ProviderScreenshotButton
                   providerId={row.id}
                   providerName={row.name}
                   variant="link"
                 />
               </div>
-              {sourcesArr.length > 0 && (
-                <details>
-                  <summary
-                    className="cursor-pointer text-[11px] font-semibold"
-                    style={{ color: BLUE }}
-                  >
-                    Raw sources ({sourcesArr.length})
-                  </summary>
-                  <pre
-                    className="mt-1 max-h-64 overflow-auto rounded-md border p-2 text-[10px]"
-                    style={{ borderColor: BORDER, backgroundColor: SOFT, color: NAVY }}
-                  >
-                    {JSON.stringify(sourcesArr, null, 2)}
-                  </pre>
-                </details>
-              )}
-            </Section>
+            </div>
 
-            <Section title="Verification">
-              <div className="flex flex-wrap items-center gap-2">
-                <span
-                  className="inline-block rounded px-2 py-0.5 text-[11px] font-semibold"
-                  style={{ backgroundColor: "#eef2f7", color: MUTED }}
-                >
-                  Needs review
-                </span>
-                <button
-                  type="button"
-                  disabled
-                  className="rounded border px-2 py-1 text-[11px] font-semibold opacity-50"
-                  style={{ borderColor: BORDER, color: MUTED }}
-                  title="Coming in next phase"
-                >
-                  Verify
-                </button>
-                <button
-                  type="button"
-                  disabled
-                  className="rounded border px-2 py-1 text-[11px] font-semibold opacity-50"
-                  style={{ borderColor: BORDER, color: MUTED }}
-                  title="Coming in next phase"
-                >
-                  Reject
-                </button>
-                <button
-                  type="button"
-                  disabled
-                  className="rounded border px-2 py-1 text-[11px] font-semibold opacity-50"
-                  style={{ borderColor: BORDER, color: MUTED }}
-                  title="Coming in next phase"
-                >
-                  Edit price
-                </button>
+            {/* Section 3: How we searched */}
+            <div className="space-y-2 pt-2 border-t" style={{ borderColor: BORDER }}>
+              <div className="text-[11px] font-bold uppercase tracking-wider" style={{ color: MUTED }}>
+                How We Discovered This Camp
               </div>
-              <p className="mt-2 text-[11px]" style={{ color: MUTED }}>
-                Actions are read-only in this phase. The verification table will land in a follow-up
-                phase.
+              <p className="text-xs leading-relaxed text-[#526078]">
+                {q ? (
+                  <>
+                    We found this camp through a Google search for{" "}
+                    <span className="font-semibold text-[#07142f]">“{q.query}”</span>.{" "}
+                    {hasPrice
+                      ? "The search results clearly showed their summer camp rates."
+                      : "We found the camp name, but their weekly tuition fee wasn't listed directly on that search page."}
+                  </>
+                ) : (
+                  "This camp was discovered during our standard city market scan before detailed search tracking was recorded."
+                )}
               </p>
-            </Section>
-          </>
+              <div className="flex items-center gap-4 text-[11px] text-[#8794ab] pt-1">
+                <span>First found: {new Date(row.created_at).toLocaleDateString()}</span>
+                <span>•</span>
+                <span>Last checked: {new Date(row.updated_at || row.created_at).toLocaleDateString()}</span>
+              </div>
+            </div>
+
+            {/* Read-only notice */}
+            <div className="rounded-lg bg-[#f1f5f9] p-3 text-[11px] text-[#64748b] text-center">
+              Manual verify / reject override buttons are read-only and will land in a follow-up phase.
+            </div>
+          </div>
         )}
       </SheetContent>
     </Sheet>

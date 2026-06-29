@@ -851,6 +851,7 @@ Deno.serve(async (req) => {
   }
   const body = await req.json().catch(() => ({}));
   const city: string = (body?.city ?? "Austin, TX").trim();
+  const catchupBatch: string[] | null = body?.catchupBatch ?? null;
   const [cityName, stateAbbr] = city.split(",").map((s: string) => s.trim());
   let box: Box | undefined = TIER_A_BOXES[city];
   if (!box && cityName && stateAbbr) {
@@ -899,8 +900,17 @@ Deno.serve(async (req) => {
   let screenshotPath: string | null = null;
 
   try {
-    // Run all 5 sources in parallel — sequential calls exceeded the 150s edge function idle timeout.
-    const sourceResults: SourceResult[] = await Promise.all([
+    let sourceCounts: Record<string, number> = {};
+    let inserted = 0;
+    let updated = 0;
+    let rows: any[] = [];
+
+    // If catchupBatch is passed, skip main discovery and jump straight to missing price catchup
+    if (catchupBatch && Array.isArray(catchupBatch) && catchupBatch.length > 0) {
+      // jump straight to catchup block
+    } else {
+      // Run all 5 sources in parallel — sequential calls exceeded the 150s edge function idle timeout.
+      const sourceResults: SourceResult[] = await Promise.all([
       runSawyer({ city, box, firecrawlKey, lovableKey, admin, runId }),
       runActivityHero({ city, state: stateAbbr, firecrawlKey, lovableKey }),
       runGoogleMaps({ city, state: stateAbbr }),
@@ -949,7 +959,6 @@ Deno.serve(async (req) => {
 
     // Per-source provider counts — surfaced to the orchestrator so the UI can
     // show "X/5 sources" instead of just pass/fail.
-    const sourceCounts: Record<string, number> = {};
     for (const r of sourceResults) {
       totalFirecrawl += r.firecrawlCalls;
       if (r.screenshotPath && !screenshotPath) screenshotPath = r.screenshotPath;
@@ -1018,7 +1027,7 @@ Deno.serve(async (req) => {
     const isMarketplaceHost = (u: string) =>
       /(hisawyer\.com|activityhero\.com|yelp\.com)/i.test(u);
 
-    const rows = finalMerged.map((m) => {
+    rows = finalMerged.map((m) => {
       const rawUrl = m.url ?? null;
       const marketplace = rawUrl ? isMarketplaceHost(rawUrl) : false;
       const website_url = rawUrl && !marketplace ? rawUrl : null;
@@ -1041,8 +1050,6 @@ Deno.serve(async (req) => {
       };
     });
 
-    let inserted = 0;
-    let updated = 0;
     if (rows.length > 0) {
       // Fetch existing rows for this city to fuzzy-match against.
       const { data: existingRows, error: existingErr } = await admin
@@ -1122,98 +1129,184 @@ Deno.serve(async (req) => {
       }
       debug.updated = updated;
     }
+    } // end of main discovery branch
 
     // Missing Price Catch-up: automatically search Google directly for camps in this city still missing prices.
-    // Runs in small batches of 5 to stay within timeout and cost limits.
+    // Priority 1 Timeout Fix: Decoupled into async 5-camp micro-batches self-invoked in background.
     let catchupDebug: Record<string, unknown> = { skipped: true };
-    if (firecrawlKey && lovableKey) {
+    if (catchupBatch && Array.isArray(catchupBatch) && catchupBatch.length > 0) {
+      // Background worker mode: process only the specific 5 camp IDs passed in catchupBatch
+      const catchupResults: Record<string, unknown>[] = [];
+      const catchupSys = `You extract per-week or per-session tuition pricing for a kids' camp/class provider from Google search results.
+Return strict JSON: { "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number }
+${PRICE_RULES}
+- Look for pricing on their official website snippet, ActivityHero, Facebook, or city camp guides.
+- Only extract if the dollar amount explicitly appears in the markdown. Otherwise return nulls.`;
+
+      const cleanCity = city.replace(/,\s*[A-Za-z]{2}\s*$/i, "").trim();
+      const stateAbbr = city.split(",")[1]?.trim() || "";
+      const { data: batchRows } = await admin.from("mvs_providers").select("id, name").in("id", catchupBatch);
+
+      if (batchRows && batchRows.length > 0) {
+        await Promise.all(batchRows.map(async (p) => {
+          const query = `${p.name} ${cleanCity} ${stateAbbr} summer camp tuition price per week`;
+          const qDebug: Record<string, unknown> = { provider_id: p.id, provider_name: p.name, query };
+          try {
+            // Atomic DB Lock guard to prevent duplicate background workers checking the same camp
+            const { data: lockRow } = await admin.from("mvs_providers")
+              .update({ price_min: -1, updated_at: new Date().toISOString() })
+              .eq("id", p.id).is("price_min", null).select("id").maybeSingle();
+            
+            if (!lockRow) {
+              qDebug.skipped_locked = true;
+              catchupResults.push(qDebug);
+              return;
+            }
+
+            const res = await fetchWithTimeout(`${FIRECRAWL_V2}/search`, {
+              method: "POST",
+              headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+              body: JSON.stringify({
+                query,
+                limit: 4,
+                scrapeOptions: { formats: ["markdown"], onlyMainContent: false },
+              }),
+            }, FIRECRAWL_TIMEOUT_MS);
+            totalFirecrawl += 1;
+            const j = await res.json().catch(() => ({}));
+            if (!res.ok) { qDebug.error = `firecrawl ${res.status}`; catchupResults.push(qDebug); return; }
+
+            const items = (Array.isArray(j?.data?.web) ? j.data.web : Array.isArray(j?.data) ? j.data : []) as Array<Record<string, unknown>>;
+            const blob = items.map((it, idx) => `=== RESULT ${idx + 1} ===\nURL: ${it.url ?? ""}\nTITLE: ${it.title ?? ""}\n\n${String(it.markdown ?? it.content ?? "").slice(0, 6000)}`).join("\n\n");
+
+            const gemRes = await fetchWithTimeout(AI_GATEWAY, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "Lovable-API-Key": lovableKey },
+              body: JSON.stringify({
+                model: "google/gemini-3-flash-preview",
+                messages: [
+                  { role: "system", content: catchupSys },
+                  { role: "user", content: `Provider Name: ${p.name}\nCity: ${city}\n\nSEARCH RESULTS MARKDOWN:\n${blob.slice(0, 24000)}` },
+                ],
+                response_format: { type: "json_object" },
+              }),
+            }, GEMINI_TIMEOUT_MS);
+
+            let finalMin: number | null = null;
+            let finalMax: number | null = null;
+            let finalCat: string | null = null;
+            let finalConf = 0.8;
+
+            if (gemRes.ok) {
+              const gemJson = await gemRes.json().catch(() => ({}));
+              const parsed = JSON.parse(gemJson?.choices?.[0]?.message?.content ?? "{}") as { price_min?: number | null; price_max?: number | null; category_raw?: string | null; confidence?: number };
+              
+              const dollarMatches = new Set<number>();
+              for (const m of blob.matchAll(/\$\s?(\d{1,3}(?:[,]?\d{3})*|\d+)/g)) {
+                const num = Number(m[1].replace(/,/g, ""));
+                if (Number.isFinite(num) && num >= 10 && num <= 100000) dollarMatches.add(num);
+              }
+              const priceOk = (val?: number | null) => typeof val === "number" && (dollarMatches.has(val) || Array.from(dollarMatches).some(d => Math.abs(d - val) <= 2));
+
+              finalMin = priceOk(parsed.price_min) ? parsed.price_min! : null;
+              finalMax = priceOk(parsed.price_max) ? parsed.price_max! : null;
+              finalCat = parsed.category_raw ?? null;
+              finalConf = Math.max(0.7, parsed.confidence ?? 0.8);
+            }
+
+            qDebug.extracted = { price_min: finalMin, price_max: finalMax };
+            if (finalMin != null || finalMax != null) {
+              await admin.from("mvs_providers").update({
+                price_min: finalMin ?? finalMax,
+                price_max: finalMax ?? finalMin,
+                category_raw: finalCat,
+                confidence: finalConf,
+                updated_at: new Date().toISOString(),
+              }).eq("id", p.id);
+              qDebug.updated = true;
+            } else {
+              // No price found, revert lock so future runs can check again
+              await admin.from("mvs_providers").update({ price_min: null, updated_at: new Date().toISOString() }).eq("id", p.id).eq("price_min", -1);
+            }
+          } catch (e) {
+            qDebug.error = e instanceof Error ? e.message : String(e);
+            // On failure, revert lock so future runs can retry
+            await admin.from("mvs_providers").update({ price_min: null, updated_at: new Date().toISOString() }).eq("id", p.id).eq("price_min", -1);
+          }
+          catchupResults.push(qDebug);
+        }));
+      }
+      catchupDebug = { ran: true, workerBatch: catchupBatch, count: batchRows?.length ?? 0, results: catchupResults };
+
+      // Update parent run tracking counters if parentRunId is present
+      if (parentRunId) {
+        try {
+          const { data: runRow } = await admin.from("mvs_pipeline_runs").select("source_counts, firecrawl_calls").eq("id", parentRunId).maybeSingle();
+          if (runRow) {
+            const sc = (runRow.source_counts ?? {}) as Record<string, any>;
+            const catchupMeta = (sc.catchup ?? { batches_total: 0, batches_completed: 0 }) as Record<string, any>;
+            const completed = (catchupMeta.batches_completed ?? 0) + 1;
+            sc.catchup = { ...catchupMeta, batches_completed: completed };
+            await admin.from("mvs_pipeline_runs").update({
+              source_counts: sc,
+              firecrawl_calls: (runRow.firecrawl_calls ?? 0) + totalFirecrawl,
+            }).eq("id", parentRunId);
+          }
+        } catch (trkErr) {
+          console.warn("[mvs-discover-providers] worker progress track failed:", trkErr);
+        }
+      }
+    } else if (firecrawlKey && lovableKey && !catchupBatch) {
+      // Main parent scan mode: find unpriced camps and spawn background micro-batches
       try {
-        const cleanCity = city.replace(/,\s*[A-Za-z]{2}\s*$/i, "").trim();
-        const stateAbbr = city.split(",")[1]?.trim() || "";
         const { data: missingRows } = await admin
           .from("mvs_providers")
-          .select("id, name")
+          .select("id")
           .eq("city", city)
           .is("price_min", null)
           .is("price_max", null)
           .limit(45);
 
         if (missingRows && missingRows.length > 0) {
-          const catchupResults: Record<string, unknown>[] = [];
-          const catchupSys = `You extract per-week or per-session tuition pricing for a kids' camp/class provider from Google search results.
-Return strict JSON: { "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number }
-${PRICE_RULES}
-- Look for pricing on their official website snippet, ActivityHero, Facebook, or city camp guides.
-- Only extract if the dollar amount explicitly appears in the markdown. Otherwise return nulls.`;
-
-          for (let batchStart = 0; batchStart < missingRows.length; batchStart += 15) {
-            const batch = missingRows.slice(batchStart, batchStart + 15);
-            await Promise.all(batch.map(async (p) => {
-              const query = `${p.name} ${cleanCity} ${stateAbbr} summer camp tuition price per week`;
-              const qDebug: Record<string, unknown> = { provider_id: p.id, provider_name: p.name, query };
-              try {
-                const res = await fetchWithTimeout(`${FIRECRAWL_V2}/search`, {
-                  method: "POST",
-                  headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    query,
-                    limit: 4,
-                    scrapeOptions: { formats: ["markdown"], onlyMainContent: false },
-                  }),
-                }, FIRECRAWL_TIMEOUT_MS);
-                totalFirecrawl += 1;
-                const j = await res.json().catch(() => ({}));
-                if (!res.ok) { qDebug.error = `firecrawl ${res.status}`; catchupResults.push(qDebug); return; }
-
-                const items = (Array.isArray(j?.data?.web) ? j.data.web : Array.isArray(j?.data) ? j.data : []) as Array<Record<string, unknown>>;
-                const blob = items.map((it, idx) => `=== RESULT ${idx + 1} ===\nURL: ${it.url ?? ""}\nTITLE: ${it.title ?? ""}\n\n${String(it.markdown ?? it.content ?? "").slice(0, 6000)}`).join("\n\n");
-
-                const gemRes = await fetchWithTimeout(AI_GATEWAY, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json", "Lovable-API-Key": lovableKey },
-                  body: JSON.stringify({
-                    model: "google/gemini-3-flash-preview",
-                    messages: [
-                      { role: "system", content: catchupSys },
-                      { role: "user", content: `Provider Name: ${p.name}\nCity: ${city}\n\nSEARCH RESULTS MARKDOWN:\n${blob.slice(0, 24000)}` },
-                    ],
-                    response_format: { type: "json_object" },
-                  }),
-                }, GEMINI_TIMEOUT_MS);
-
-                if (gemRes.ok) {
-                  const gemJson = await gemRes.json().catch(() => ({}));
-                  const parsed = JSON.parse(gemJson?.choices?.[0]?.message?.content ?? "{}") as { price_min?: number | null; price_max?: number | null; category_raw?: string | null; confidence?: number };
-                  
-                  const dollarMatches = new Set<number>();
-                  for (const m of blob.matchAll(/\$\s?(\d{1,3}(?:[,]?\d{3})*|\d+)/g)) {
-                    const num = Number(m[1].replace(/,/g, ""));
-                    if (Number.isFinite(num) && num >= 10 && num <= 100000) dollarMatches.add(num);
-                  }
-                  const priceOk = (val?: number | null) => typeof val === "number" && (dollarMatches.has(val) || Array.from(dollarMatches).some(d => Math.abs(d - val) <= 2));
-
-                  const pMin = priceOk(parsed.price_min) ? parsed.price_min : null;
-                  const pMax = priceOk(parsed.price_max) ? parsed.price_max : null;
-
-                  qDebug.extracted = { price_min: pMin, price_max: pMax };
-                  if (pMin != null || pMax != null) {
-                    await admin.from("mvs_providers").update({
-                      price_min: pMin ?? pMax,
-                      price_max: pMax ?? pMin,
-                      category_raw: parsed.category_raw ?? null,
-                      confidence: Math.max(0.7, parsed.confidence ?? 0.8),
-                      updated_at: new Date().toISOString(),
-                    }).eq("id", p.id);
-                    qDebug.updated = true;
-                  }
-                }
-              } catch (e) {
-                qDebug.error = e instanceof Error ? e.message : String(e);
-              }
-              catchupResults.push(qDebug);
-            }));
+          const allMissingIds = missingRows.map(r => r.id as string);
+          const slices: string[][] = [];
+          for (let i = 0; i < allMissingIds.length; i += 5) {
+            slices.push(allMissingIds.slice(i, i + 5));
           }
-          catchupDebug = { ran: true, count: missingRows.length, results: catchupResults };
+
+          if (parentRunId) {
+            try {
+              const { data: runRow } = await admin.from("mvs_pipeline_runs").select("source_counts").eq("id", parentRunId).maybeSingle();
+              if (runRow) {
+                const sc = (runRow.source_counts ?? {}) as Record<string, any>;
+                sc.catchup = { batches_total: slices.length, batches_completed: 0 };
+                await admin.from("mvs_pipeline_runs").update({ source_counts: sc }).eq("id", parentRunId);
+              }
+            } catch (initErr) {
+              console.warn("[mvs-discover-providers] parent tracking init failed:", initErr);
+            }
+          }
+
+          const functionUrl = `${Deno.env.get("SUPABASE_URL")!}/functions/v1/mvs-discover-providers`;
+          const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+          
+          EdgeRuntime.waitUntil((async () => {
+            for (const slice of slices) {
+              try {
+                await fetch(functionUrl, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
+                  body: JSON.stringify({ city, catchupBatch: slice, parent_run_id: parentRunId }),
+                });
+              } catch (bgErr) {
+                console.warn("[mvs-discover-providers] bg micro-batch spawn failed:", bgErr);
+              }
+            }
+          })());
+
+          catchupDebug = { spawned_background: true, batches: slices.length, total_camps: allMissingIds.length };
+        } else {
+          catchupDebug = { skipped: true, reason: "no missing prices found" };
         }
       } catch (e) {
         catchupDebug = { error: e instanceof Error ? e.message : String(e) };
@@ -1233,22 +1326,27 @@ ${PRICE_RULES}
       }).eq("id", runId);
     }
 
+    const respPayload: Record<string, unknown> = {
+      run_id: runId,
+      city,
+      firecrawl_calls: totalFirecrawl,
+      debug,
+    };
+
+    if (!catchupBatch) {
+      respPayload.providers_inserted = inserted;
+      respPayload.providers_updated = updated;
+      respPayload.providers_merged = rows.length;
+      respPayload.screenshot_path = screenshotPath;
+      respPayload.source_counts = {
+        ...sourceCounts,
+        google_search_queries: (debug.google_search as Record<string, unknown> | undefined)?.queries ?? [],
+        targeted_scrape: debug.targeted_scrape ?? null,
+      };
+    }
+
     return new Response(
-      JSON.stringify({
-        run_id: runId,
-        city,
-        firecrawl_calls: totalFirecrawl,
-        providers_inserted: inserted,
-        providers_updated: updated,
-        providers_merged: rows.length,
-        screenshot_path: screenshotPath,
-        source_counts: {
-          ...sourceCounts,
-          google_search_queries: (debug.google_search as Record<string, unknown> | undefined)?.queries ?? [],
-          targeted_scrape: debug.targeted_scrape ?? null,
-        },
-        debug,
-      }),
+      JSON.stringify(respPayload),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
 

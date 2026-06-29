@@ -902,6 +902,45 @@ Deno.serve(async (req) => {
       runGoogleSearch({ city, state: stateAbbr, firecrawlKey, lovableKey }),
     ]);
 
+    // Phase 3.3: targeted price scrape — re-scrape up to 5 already-discovered
+    // URLs that look price-relevant, with onlyMainContent:false + screenshot.
+    // Pulls candidate URLs from the google_search debug (top URLs + provider
+    // URLs). Mutates the google_search SourceResult in place so the existing
+    // merge picks up the new prices.
+    let targetedDebug: Record<string, unknown> = { skipped_reason: "not_run" };
+    try {
+      const gsResult = sourceResults[4]; // runGoogleSearch
+      const gsDebug = gsResult.debug as {
+        queries?: Array<{
+          all_urls?: string[];
+          top_urls?: string[];
+          providers?: Array<{ url?: string | null; price_min?: number | null; price_max?: number | null }>;
+        }>;
+      };
+      const candidateUrls: string[] = [];
+      for (const q of gsDebug.queries ?? []) {
+        for (const u of q.all_urls ?? q.top_urls ?? []) if (u) candidateUrls.push(u);
+        for (const p of q.providers ?? []) if (p?.url) candidateUrls.push(String(p.url));
+      }
+      const needNames = new Set<string>();
+      for (const p of gsResult.providers) {
+        if (p.price_min == null && p.price_max == null) {
+          const c = canonicalName(p.name);
+          if (c) needNames.add(c);
+        }
+      }
+      const targeted = await runTargetedPriceScrapes({
+        city, firecrawlKey, lovableKey, admin, runId,
+        candidateUrls, needNames,
+      });
+      gsResult.providers.push(...targeted.providers);
+      gsResult.firecrawlCalls += targeted.firecrawlCalls;
+      targetedDebug = targeted.debug;
+    } catch (e) {
+      targetedDebug = { error: e instanceof Error ? e.message : String(e) };
+    }
+    debug.targeted_scrape = targetedDebug;
+
     // Per-source provider counts — surfaced to the orchestrator so the UI can
     // show "X/5 sources" instead of just pass/fail.
     const sourceCounts: Record<string, number> = {};

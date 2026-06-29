@@ -251,7 +251,7 @@ Deno.serve(async (req) => {
 
     try {
       const discoverPayload: Record<string, unknown> = { city };
-      if (body?.tavilyPilot === true) discoverPayload.tavilyPilot = true;
+      if (body?.tavilyPilot === true || city === "Boston, MA") discoverPayload.tavilyPilot = true;
       const discoverJson = await invokeStep("discover", discoverPayload);
       if (discoverJson?.source_counts) sourceCounts.discover = discoverJson.source_counts;
       // Always reclassify on a pipeline run — Turn 2.2 logic depends on

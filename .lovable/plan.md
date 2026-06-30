@@ -1,13 +1,17 @@
-# Implement Summary Progress Bar & Stop Button
+### 1. Recorded Starting Scoreboard (Boston, MA Baseline)
+Before the new run completes, Boston's database numbers are locked at:
+* **Total Discovered Camps:** 286
+* **Camps with Known Tuition:** 53 (18.5% filled)
+* **Premium Camps (> $300/wk):** 19
+* **Budget Camps (≤ $300/wk):** 27
+* **Missing Prices to Search:** 233
 
-### 1. What we are changing
-* **Add Live Summary Progress Strip:** Upgrade the top strip on `MarketValidationRollout.tsx` to include an actual animated green progress bar visual (`doneCount / totalCount`), making it obvious at a glance how close the shortlist is to 100% complete.
-* **Add Cancel / Stop button:** Allow cancelling an accidental `Run` or `Force fresh` by swapping the disabled spinning button on active rows for a red **Stop** button. Clicking it instantly updates the database status to `failed` (`Cancelled by user`), halting follow-up background batches and immediately unlocking the table.
+### 2. Live Run Status
+* **Run ID:** `08783595-5940-4228-b324-aaaf412323d8`
+* **Status:** In progress (executing Phase 1 Discovery -> Phase 2 Tier Classification -> Phase 3 Automated Missing Prices Catch-Up).
 
-### 2. Files affected
-* `src/pages/MarketValidationRollout.tsx`:
-  * Import `Square` from `lucide-react`.
-  * Add `onStop` callback to `CityRow` props.
-  * Render a red **Stop** button when `inFlight || isInvoking` is true for that city.
-  * Add `handleStop(city)` function in the main component that calls `supabase.from("mvs_pipeline_runs").update({ status: "failed", error: "Cancelled by user" }).eq("id", latestRun.id)` and immediately refetches.
-  * Upgrade the top strip markup to include a smooth Tailwind `w-[...]` progress bar fill.
+### 3. Verification & Audit Steps (Next Phase)
+1. **Poll Backend:** Check database status until the Boston pipeline completes.
+2. **Calculate Gains:** Compare final priced provider count against the baseline of 53.
+3. **Score Comparison:** Check how the newly added budget/mid-market prices impact Boston's live composite score and pricing acceptance rating.
+4. **Deliver Report:** Present the exact before-and-after results in simple English.

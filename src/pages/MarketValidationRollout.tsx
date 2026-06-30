@@ -798,7 +798,7 @@ export default function MarketValidationRollout() {
       </div>
       <div className="mt-2 text-[11px] text-[#8a96aa]">
         Runs are sequential — one city at a time keeps data-provider costs predictable and isolates failures.
-        Cities with saved data ≤ 30 days old are skipped automatically; use <em>Force fresh</em> to override.
+        Cities with saved data ≤ 90 days old are skipped automatically; use <em>Force fresh</em> to override.
       </div>
 
       <AlertDialog open={promptOpen} onOpenChange={setPromptOpen}>

@@ -178,14 +178,23 @@ export default function ProviderEvidence() {
           <strong>{city || "—"}</strong>
           {state && <span style={{ color: MUTED }}>, {state}</span>}
         </div>
-        <div className="ml-auto text-[11px]" style={{ color: MUTED }}>
+        <div className="ml-auto flex items-center gap-2 text-[11px]" style={{ color: MUTED }}>
           {loading
             ? "Loading…"
-            : `${filtered.length} of ${rows.length} provider${rows.length === 1 ? "" : "s"}`}
-          {runCreatedAt && (
-            <span className="ml-2">
-              · Debug from run {new Date(runCreatedAt).toLocaleString()}
+            : `${filtered.length} of ${
+                showExcluded ? rows.length : activeCount
+              } ${showExcluded ? "rows" : "active camps"}`}
+          {!loading && excludedTotal > 0 && (
+            <span
+              className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+              style={{ backgroundColor: "#eef2f7", color: MUTED }}
+              title={excludedBreakdown.map(([l, n]) => `${l}: ${n}`).join(" · ")}
+            >
+              +{excludedTotal} excluded
             </span>
+          )}
+          {runCreatedAt && (
+            <span>· Debug from run {new Date(runCreatedAt).toLocaleString()}</span>
           )}
         </div>
         <button

@@ -587,32 +587,15 @@ async function extractWithGemini(args: {
     const parsed = JSON.parse(raw) as { providers?: ProviderExtract[] };
     const providers = (parsed.providers ?? []).filter((p) => p?.name);
     const dollarMatches = new Set<number>();
-    for (const m of markdown.matchAll(/\$\s?(\d{1,3}(?:[,]?\d{3})*|\d+)/g)) {
-      const n = Number(m[1].replace(/,/g, ""));
-      if (Number.isFinite(n) && n >= 10 && n <= 100000) dollarMatches.add(n);
-    }
-    const priceIsInSource = (val: number): boolean => {
-      if (dollarMatches.has(val)) return true;
-      for (const d of dollarMatches) {
-        if (Math.abs(d - val) <= 2) return true;
-      }
-      return false;
-    };
-    const dropped: Array<Record<string, unknown>> = [];
+    const isValidCandidate = (val?: number | null): boolean =>
+      typeof val === "number" && Number.isFinite(val) && val >= 15 && val <= 5000;
+
     for (const p of providers) {
-      if (typeof p.price_min === "number" && !priceIsInSource(p.price_min)) {
-        dropped.push({ name: p.name, field: "price_min", value: p.price_min });
-        p.price_min = null;
-      }
-      if (typeof p.price_max === "number" && !priceIsInSource(p.price_max)) {
-        dropped.push({ name: p.name, field: "price_max", value: p.price_max });
-        p.price_max = null;
-      }
+      if (!isValidCandidate(p.price_min)) p.price_min = null;
+      if (!isValidCandidate(p.price_max)) p.price_max = null;
     }
     if (debugOut) {
       debugOut.raw_provider_count = providers.length;
-      debugOut.dollar_matches_count = dollarMatches.size;
-      debugOut.dropped_prices = dropped;
     }
     return providers;
   } catch {

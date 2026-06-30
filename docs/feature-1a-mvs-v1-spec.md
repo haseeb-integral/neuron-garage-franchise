@@ -34,8 +34,8 @@ Not in scope: predicting any individual Neuron Garage location's success. Site-l
 | Scheduling | **Manual trigger** ("Run Pipeline" button per city) | Inngest/Trigger.dev post-client-meeting |
 | Cities in scope | **Any city** can be added; freshness rules apply uniformly | — |
 | Scrape cadence | **1 run per click**, gated by freshness rules below | Multi-scrape history once cadence is automated |
-| Freshness rules | **0–30 days: auto-skip (use saved). 31–60: prompt user. >60: fresh crawl. "Force fresh" always overrides.** Backend hard-guard enforces this even if UI is bypassed. | — |
-| Soft-fail fallback | If a fresh crawl fails but saved data ≤60 days exists → status `done_stale`, score stays visible, amber banner shown | — |
+| Freshness rules | **0–90 days: auto-skip (use saved). 91–120: prompt user. >120: fresh crawl. "Force fresh" always overrides.** Backend hard-guard enforces this even if UI is bypassed. | — |
+| Soft-fail fallback | If a fresh crawl fails but saved data ≤120 days exists → status `done_stale`, score stays visible, amber banner shown | — |
 | Market Absorption | **Removed from composite (weight 0)** | Not planned |
 | Registration-page scraping (old Stage 3) | **Retired.** `mvs-extract-weeks` is a no-op shell. No week rows are written. | Not planned |
 | Normalization | **Fixed reference ranges** (see §5) | Across-shortlist normalization once ≥20 cities have live data |

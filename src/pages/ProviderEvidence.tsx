@@ -52,30 +52,51 @@ export default function ProviderEvidence() {
   const [selected, setSelected] = useState<EvidenceRow | null>(null);
   const [queryFilter, setQueryFilter] = useState<string>("all");
   const [keptFilter, setKeptFilter] = useState<string>("all");
+  const [showExcluded, setShowExcluded] = useState(false);
+
+  // Strict Camp View — tag each row with its exclusion reason (or null).
+  const rowsWithExclusion = useMemo(
+    () => rows.map((r) => ({ row: r, exclusion: classifyExclusion(r) })),
+    [rows],
+  );
+  const activeCount = useMemo(
+    () => rowsWithExclusion.filter((x) => x.exclusion === null).length,
+    [rowsWithExclusion],
+  );
+  const excludedBreakdown = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const x of rowsWithExclusion) {
+      if (x.exclusion) m.set(x.exclusion.label, (m.get(x.exclusion.label) ?? 0) + 1);
+    }
+    return Array.from(m.entries()).sort((a, b) => b[1] - a[1]);
+  }, [rowsWithExclusion]);
+  const excludedTotal = rows.length - activeCount;
 
   const filtered = useMemo(() => {
     const ql = q.trim().toLowerCase();
-    return rows.filter((r) => {
-      if (queryFilter !== "all") {
-        if (queryFilter === "__none__") {
-          if (r.matched_query) return false;
-        } else if (r.matched_query?.query !== queryFilter) {
-          return false;
+    return rowsWithExclusion
+      .filter((x) => (showExcluded ? true : x.exclusion === null))
+      .filter(({ row: r }) => {
+        if (queryFilter !== "all") {
+          if (queryFilter === "__none__") {
+            if (r.matched_query) return false;
+          } else if (r.matched_query?.query !== queryFilter) {
+            return false;
+          }
         }
-      }
-      const k = priceKept(r).tone;
-      if (keptFilter !== "all" && k !== keptFilter) return false;
-      if (!ql) return true;
-      const cat = r.category_classified || r.category_raw || "";
-      return (
-        (r.name ?? "").toLowerCase().includes(ql) ||
-        cat.toLowerCase().includes(ql) ||
-        (r.source_listing_url ?? "").toLowerCase().includes(ql) ||
-        (r.website_url ?? "").toLowerCase().includes(ql) ||
-        (r.matched_query?.query ?? "").toLowerCase().includes(ql)
-      );
-    });
-  }, [rows, q, queryFilter, keptFilter]);
+        const k = priceKept(r).tone;
+        if (keptFilter !== "all" && k !== keptFilter) return false;
+        if (!ql) return true;
+        const cat = r.category_classified || r.category_raw || "";
+        return (
+          (r.name ?? "").toLowerCase().includes(ql) ||
+          cat.toLowerCase().includes(ql) ||
+          (r.source_listing_url ?? "").toLowerCase().includes(ql) ||
+          (r.website_url ?? "").toLowerCase().includes(ql) ||
+          (r.matched_query?.query ?? "").toLowerCase().includes(ql)
+        );
+      });
+  }, [rowsWithExclusion, q, queryFilter, keptFilter, showExcluded]);
 
   const exportCsv = () => {
     const headers = [

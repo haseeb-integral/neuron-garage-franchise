@@ -782,6 +782,20 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
               >
                 Live · v1.0-fixed
               </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    className={`${CHIP} cursor-help`}
+                    style={{ backgroundColor: "#eef2f7", color: "#07142f" }}
+                  >
+                    {provCount} active camp{provCount === 1 ? "" : "s"}
+                    {excludedCount > 0 ? ` · ${excludedCount} excluded` : ""}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs text-[12px] leading-relaxed">
+                  <strong>Strict Camp View.</strong> Headline counters and the Missing-Prices catch-up scanner only include real summer camps. Daycares, public parks, free retail workshops, and charity drop-in clubs are kept in the database for audit but moved to the <em>Excluded Locations</em> drawer below the providers table.
+                </TooltipContent>
+              </Tooltip>
               {lowConfidence && (
                 <Tooltip>
                   <TooltipTrigger asChild>

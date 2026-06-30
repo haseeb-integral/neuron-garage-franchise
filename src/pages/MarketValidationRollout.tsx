@@ -108,7 +108,9 @@ function CityRow({
   }, [city, composite, onComposite]);
 
   const status = latestRun?.status ?? null;
-  const inFlight = status === "queued" || status === "running";
+  const catchupMetaCheck = (latestRun?.source_counts as any)?.catchup;
+  const isCatchingUpCheck = status === "done" && catchupMetaCheck && (catchupMetaCheck.batches_completed ?? 0) < (catchupMetaCheck.batches_total ?? 0);
+  const inFlight = status === "queued" || status === "running" || isCatchingUpCheck;
   const isInvoking = invokingCity === city;
   const canRun = !anyRunning && !invokingCity;
 

@@ -113,9 +113,10 @@ export default function ProviderEvidence() {
       "website_url",
       "extraction_phase",
       "discovered_at",
+      "exclusion_reason",
     ];
     const lines = [headers.join(",")];
-    for (const r of filtered) {
+    for (const { row: r, exclusion } of filtered) {
       const kept = priceKept(r);
       const sourceUrl =
         r.matched_provider_entry?.url || r.source_listing_url || r.url || "";
@@ -134,6 +135,7 @@ export default function ProviderEvidence() {
           csvEscape(r.website_url),
           csvEscape("Phase 2"),
           csvEscape(r.created_at),
+          csvEscape(exclusion?.reason ?? ""),
         ].join(",")
       );
     }

@@ -496,6 +496,33 @@ interface Props {
  * preview-only (v1.0): they change the in-memory weight blend without
  * persisting, so users can sanity-check sensitivity.
  */
+/**
+ * Strict Camp View — classifies a provider row as a non-camp so headline
+ * counts and the catch-up scanner only operate on real summer camps. The
+ * raw row is never deleted; it just moves to the "Excluded Locations"
+ * drawer below the providers table.
+ *
+ * Returns null when the row IS a real summer camp.
+ */
+function classifyExclusion(p: any): { reason: string; label: string } | null {
+  const cat = String(p?.category_classified ?? "").toLowerCase().replace(/[^a-z]/g, "");
+  if (cat === "childcareexcluded") {
+    return { reason: "Baby Daycare / Year-round Childcare", label: "Daycare" };
+  }
+  const name = String(p?.name ?? "").toLowerCase();
+  const isCampish = /(camp|academy|school|studio|gym|dance|art|stem|music|tutor|after[- ]?school)/i.test(p?.name ?? "");
+  if (/\b(park|garden|zoo|harbor|harbour|beach|reservation|sanctuary|public\s+library)\b/.test(name) && !isCampish) {
+    return { reason: "Public Park / Public Space", label: "Public Space" };
+  }
+  if (/\b(home\s*depot|lowe'?s|michael'?s|apple\s+store|barnes\s*&?\s*noble)\b/.test(name)) {
+    return { reason: "Free Retail Workshop", label: "Retail Workshop" };
+  }
+  if (/\bboys\s*&?\s*girls\s+club\b/.test(name)) {
+    return { reason: "Free / Charity Drop-in Club", label: "Charity Club" };
+  }
+  return null;
+}
+
 export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) {
   const [weights, setWeights] = useState<Record<string, number>>({ ...DEFAULT_WEIGHTS });
   const { result, providers, weeks, acs, flag, watchlist, overrides, lastRefreshed, qaOpenCount, qaReasons, loading, error, refresh } =
@@ -503,11 +530,28 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
 
   const [catchingUp, setCatchingUp] = useState(false);
   const [catchupProgress, setCatchupProgress] = useState({ current: 0, total: 0 });
+  const [showExcluded, setShowExcluded] = useState(false);
+
+  // Strict Camp View — split providers into real camps vs non-camps. Raw
+  // rows are preserved in the DB; this only affects headline counters and
+  // the catch-up scanner. The Excluded drawer below the table keeps full
+  // visibility for audit.
+  const activeCamps = useMemo(
+    () => providers.filter((p) => classifyExclusion(p) === null),
+    [providers],
+  );
+  const excludedProviders = useMemo(
+    () =>
+      providers
+        .map((p) => ({ p, ex: classifyExclusion(p) }))
+        .filter((x) => x.ex !== null) as Array<{ p: any; ex: { reason: string; label: string } }>,
+    [providers],
+  );
 
   async function runClientCatchup() {
-    const unpriced = providers.filter((p) => (p.price_min ?? null) == null && (p.price_max ?? null) == null);
+    const unpriced = activeCamps.filter((p) => (p.price_min ?? null) == null && (p.price_max ?? null) == null);
     if (unpriced.length === 0) {
-      toast.info(`All ${providers.length} providers already have pricing checked.`);
+      toast.info(`All ${activeCamps.length} summer camps already have pricing checked.`);
       return;
     }
     setCatchingUp(true);
@@ -532,7 +576,8 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
     refresh();
   }
 
-  const provCount = providers.length;
+  const provCount = activeCamps.length;
+  const excludedCount = excludedProviders.length;
   const weekCount = weeks.length;
   // Filter out QA reasons from the retired Market Absorption pillar so they
   // don't inflate the "items in QA queue" pill or trigger the Limited Source

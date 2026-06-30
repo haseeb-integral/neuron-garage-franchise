@@ -121,9 +121,10 @@ These 5 numbers add up to one composite called the **MVS** (Market Validation Sc
 - **Shortlist table** — every city you scored shows its MVS, the 5 pillar scores, and a sources chip (e.g. "5/5 sources" means Sawyer, ActivityHero, Google Maps, Yelp, and Google Search all returned data).
 - **Mark each city** Pursue / Hold / Drop. The decision saves automatically.
 - **Run button** — refreshes the score. Smart cost rules:
-  - If data is **0–30 days old** → uses saved data, no crawl (zero cost).
-  - **31–60 days** → asks you "use saved or run fresh?".
-  - **Over 60 days** → runs a fresh crawl.
+  - If data is **0–90 days old** → uses saved data, no crawl (zero cost).
+  - **91–120 days** → asks you "use saved or run fresh?".
+  - **Over 120 days** → runs a fresh crawl.
+
   - **Force fresh** always overrides if you need brand-new data.
 - **Click any city** to open the deep dive.
 

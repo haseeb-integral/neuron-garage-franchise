@@ -14,6 +14,9 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ProviderScreenshotButton } from "@/components/phase2-demo/ProviderScreenshotButton";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Progress } from "@/components/ui/progress";
 
 
 

@@ -220,11 +220,12 @@ Deno.serve(async (req) => {
 
     const invokeStep = async (step: StepName, payload: Record<string, unknown>) => {
       const url = `${supabaseUrl}/functions/v1/${STEP_FUNCTIONS[step]}`;
+      const stepAuth = isServiceRole ? `Bearer ${serviceKey}` : authHeader;
       const res = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: authHeader,
+          Authorization: stepAuth,
           apikey: anonKey,
         },
         body: JSON.stringify({ ...payload, parent_run_id: run.id }),

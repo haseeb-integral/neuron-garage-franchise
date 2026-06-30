@@ -123,10 +123,10 @@ Deno.serve(async (req) => {
 
   // ----- Backend freshness guard ---------------------------------------
   // Hard rule: do not start a new crawl if the city already has good saved
-  // data ≤ 30 days old, unless the caller explicitly passed forceFresh=true.
+  // data ≤ 90 days old, unless the caller explicitly passed forceFresh=true.
   // This protects Firecrawl credits even when the UI check is bypassed.
   if (!forceFresh) {
-    const FRESH_SKIP_DAYS = 30;
+    const FRESH_SKIP_DAYS = 90;
     const { data: lastGood } = await admin
       .from("mvs_pipeline_runs")
       .select("id, status, finished_at, created_at, fallback_data_date")

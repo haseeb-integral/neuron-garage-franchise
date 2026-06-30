@@ -118,8 +118,19 @@ export default function ProviderEvidence() {
     const lines = [headers.join(",")];
     for (const { row: r, exclusion } of filtered) {
       const kept = priceKept(r);
+      // Prefer the matched Google query when present. Otherwise fall back to
+      // the provider's discovery platform (e.g. "sawyer") and its listing /
+      // website URL so older Sawyer-imported rows still show provenance in
+      // the export instead of empty cells.
+      const sourceQuery = r.matched_query?.query ?? "";
+      const sourceType =
+        r.matched_query?.source_type ?? (r as any).platform ?? "";
       const sourceUrl =
-        r.matched_provider_entry?.url || r.source_listing_url || r.url || "";
+        r.matched_provider_entry?.url ||
+        r.source_listing_url ||
+        r.url ||
+        r.website_url ||
+        "";
       lines.push(
         [
           csvEscape(r.name),
@@ -129,8 +140,8 @@ export default function ProviderEvidence() {
           csvEscape(r.price_min),
           csvEscape(r.price_max),
           csvEscape(kept.label),
-          csvEscape(r.matched_query?.query ?? ""),
-          csvEscape(r.matched_query?.source_type ?? ""),
+          csvEscape(sourceQuery),
+          csvEscape(sourceType),
           csvEscape(sourceUrl),
           csvEscape(r.website_url),
           csvEscape("Phase 2"),

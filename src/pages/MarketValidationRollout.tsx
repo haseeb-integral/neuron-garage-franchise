@@ -296,25 +296,39 @@ function CityRow({
 
       <td className="px-3 py-2.5">
         <div className="flex flex-wrap items-center justify-end gap-1.5">
-          <button
-            type="button"
-            onClick={onRun}
-            disabled={!canRun || inFlight || isInvoking}
-            title={(anyRunning || invokingCity) && !inFlight && !isInvoking ? "Another city is running" : "Run pipeline (uses saved data if ≤ 30 days old)"}
-            className="inline-flex items-center gap-1 rounded-md bg-[#174be8] px-2 py-1 text-[11px] font-semibold text-white shadow-sm transition hover:bg-[#0f37b5] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {inFlight || isInvoking ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
-            Run
-          </button>
-          <button
-            type="button"
-            onClick={onForceFresh}
-            disabled={!canRun || inFlight || isInvoking}
-            title="Bypass the saved-data check and crawl this city again now."
-            className="inline-flex items-center gap-1 rounded-md border border-[#174be8] bg-white px-2 py-1 text-[11px] font-semibold text-[#174be8] transition hover:bg-[#eef3ff] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Force fresh
-          </button>
+          {inFlight || isInvoking ? (
+            <button
+              type="button"
+              onClick={onStop}
+              title="Stop this running pipeline immediately"
+              className="inline-flex items-center gap-1 rounded-md bg-red-600 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm transition hover:bg-red-700 animate-pulse"
+            >
+              <Square className="h-3 w-3 fill-current" />
+              Stop
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={onRun}
+                disabled={!canRun}
+                title={anyRunning ? "Another city is running" : "Run pipeline (uses saved data if ≤ 30 days old)"}
+                className="inline-flex items-center gap-1 rounded-md bg-[#174be8] px-2 py-1 text-[11px] font-semibold text-white shadow-sm transition hover:bg-[#0f37b5] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Play className="h-3 w-3" />
+                Run
+              </button>
+              <button
+                type="button"
+                onClick={onForceFresh}
+                disabled={!canRun}
+                title="Bypass the saved-data check and crawl this city again now."
+                className="inline-flex items-center gap-1 rounded-md border border-[#174be8] bg-white px-2 py-1 text-[11px] font-semibold text-[#174be8] transition hover:bg-[#eef3ff] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Force fresh
+              </button>
+            </>
+          )}
         </div>
       </td>
     </tr>

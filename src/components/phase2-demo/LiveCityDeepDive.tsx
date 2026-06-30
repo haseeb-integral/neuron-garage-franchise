@@ -727,8 +727,8 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
   }
 
   const nMissingPriceTotal = useMemo(
-    () => providers.filter((p) => (p.price_min ?? null) == null && (p.price_max ?? null) == null).length,
-    [providers],
+    () => activeCamps.filter((p) => (p.price_min ?? null) == null && (p.price_max ?? null) == null).length,
+    [activeCamps],
   );
 
   return (

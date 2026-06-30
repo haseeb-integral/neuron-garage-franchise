@@ -496,6 +496,33 @@ interface Props {
  * preview-only (v1.0): they change the in-memory weight blend without
  * persisting, so users can sanity-check sensitivity.
  */
+/**
+ * Strict Camp View — classifies a provider row as a non-camp so headline
+ * counts and the catch-up scanner only operate on real summer camps. The
+ * raw row is never deleted; it just moves to the "Excluded Locations"
+ * drawer below the providers table.
+ *
+ * Returns null when the row IS a real summer camp.
+ */
+function classifyExclusion(p: any): { reason: string; label: string } | null {
+  const cat = String(p?.category_classified ?? "").toLowerCase().replace(/[^a-z]/g, "");
+  if (cat === "childcareexcluded") {
+    return { reason: "Baby Daycare / Year-round Childcare", label: "Daycare" };
+  }
+  const name = String(p?.name ?? "").toLowerCase();
+  const isCampish = /(camp|academy|school|studio|gym|dance|art|stem|music|tutor|after[- ]?school)/i.test(p?.name ?? "");
+  if (/\b(park|garden|zoo|harbor|harbour|beach|reservation|sanctuary|public\s+library)\b/.test(name) && !isCampish) {
+    return { reason: "Public Park / Public Space", label: "Public Space" };
+  }
+  if (/\b(home\s*depot|lowe'?s|michael'?s|apple\s+store|barnes\s*&?\s*noble)\b/.test(name)) {
+    return { reason: "Free Retail Workshop", label: "Retail Workshop" };
+  }
+  if (/\bboys\s*&?\s*girls\s+club\b/.test(name)) {
+    return { reason: "Free / Charity Drop-in Club", label: "Charity Club" };
+  }
+  return null;
+}
+
 export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) {
   const [weights, setWeights] = useState<Record<string, number>>({ ...DEFAULT_WEIGHTS });
   const { result, providers, weeks, acs, flag, watchlist, overrides, lastRefreshed, qaOpenCount, qaReasons, loading, error, refresh } =
@@ -503,11 +530,28 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
 
   const [catchingUp, setCatchingUp] = useState(false);
   const [catchupProgress, setCatchupProgress] = useState({ current: 0, total: 0 });
+  const [showExcluded, setShowExcluded] = useState(false);
+
+  // Strict Camp View — split providers into real camps vs non-camps. Raw
+  // rows are preserved in the DB; this only affects headline counters and
+  // the catch-up scanner. The Excluded drawer below the table keeps full
+  // visibility for audit.
+  const activeCamps = useMemo(
+    () => providers.filter((p) => classifyExclusion(p) === null),
+    [providers],
+  );
+  const excludedProviders = useMemo(
+    () =>
+      providers
+        .map((p) => ({ p, ex: classifyExclusion(p) }))
+        .filter((x) => x.ex !== null) as Array<{ p: any; ex: { reason: string; label: string } }>,
+    [providers],
+  );
 
   async function runClientCatchup() {
-    const unpriced = providers.filter((p) => (p.price_min ?? null) == null && (p.price_max ?? null) == null);
+    const unpriced = activeCamps.filter((p) => (p.price_min ?? null) == null && (p.price_max ?? null) == null);
     if (unpriced.length === 0) {
-      toast.info(`All ${providers.length} providers already have pricing checked.`);
+      toast.info(`All ${activeCamps.length} summer camps already have pricing checked.`);
       return;
     }
     setCatchingUp(true);
@@ -532,7 +576,8 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
     refresh();
   }
 
-  const provCount = providers.length;
+  const provCount = activeCamps.length;
+  const excludedCount = excludedProviders.length;
   const weekCount = weeks.length;
   // Filter out QA reasons from the retired Market Absorption pillar so they
   // don't inflate the "items in QA queue" pill or trigger the Limited Source
@@ -682,8 +727,8 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
   }
 
   const nMissingPriceTotal = useMemo(
-    () => providers.filter((p) => (p.price_min ?? null) == null && (p.price_max ?? null) == null).length,
-    [providers],
+    () => activeCamps.filter((p) => (p.price_min ?? null) == null && (p.price_max ?? null) == null).length,
+    [activeCamps],
   );
 
   return (
@@ -737,6 +782,20 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
               >
                 Live · v1.0-fixed
               </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    className={`${CHIP} cursor-help`}
+                    style={{ backgroundColor: "#eef2f7", color: "#07142f" }}
+                  >
+                    {provCount} active camp{provCount === 1 ? "" : "s"}
+                    {excludedCount > 0 ? ` · ${excludedCount} excluded` : ""}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs text-[12px] leading-relaxed">
+                  <strong>Strict Camp View.</strong> Headline counters and the Missing-Prices catch-up scanner only include real summer camps. Daycares, public parks, free retail workshops, and charity drop-in clubs are kept in the database for audit but moved to the <em>Excluded Locations</em> drawer below the providers table.
+                </TooltipContent>
+              </Tooltip>
               {lowConfidence && (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -1338,6 +1397,86 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
           </div>
         )}
 
+      </section>
+
+      {/* Excluded Locations — Strict Camp View drawer.
+          Preserves audit visibility for daycares, public parks, free retail
+          workshops, and charity drop-in clubs without inflating the headline
+          camp counters or the catch-up scanner queue. */}
+      <section className="mb-6 rounded-lg border bg-white" style={{ borderColor: BORDER }}>
+        <button
+          type="button"
+          onClick={() => setShowExcluded((s) => !s)}
+          className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
+        >
+          <div>
+            <h3 className="text-[14px] font-bold" style={{ color: NAVY }}>
+              Excluded Locations ({excludedCount})
+            </h3>
+            <p className="text-[11px]" style={{ color: MUTED }}>
+              Not counted as summer camps in headline numbers. Includes daycares, public parks, free retail workshops, and charity drop-in clubs. Raw rows are kept in <code className="rounded bg-[#f7faff] px-1 py-px text-[#174be8]">mvs_providers</code> for audit.
+            </p>
+          </div>
+          <span
+            className={CHIP}
+            style={{ backgroundColor: "#eef2f7", color: "#526078" }}
+          >
+            {showExcluded ? "Hide" : "Show"}
+          </span>
+        </button>
+        {showExcluded && (
+          <div className="overflow-x-auto border-t" style={{ borderColor: BORDER }}>
+            {excludedCount === 0 ? (
+              <p className="px-4 py-6 text-center text-[12px]" style={{ color: MUTED }}>
+                No excluded locations for this city.
+              </p>
+            ) : (
+              <table className="w-full text-[12px]">
+                <thead>
+                  <tr style={{ color: MUTED }}>
+                    <th className="px-4 py-2 text-left font-semibold">Location</th>
+                    <th className="px-4 py-2 text-left font-semibold">Why excluded</th>
+                    <th className="px-4 py-2 text-left font-semibold">Source</th>
+                    <th className="px-4 py-2 text-left font-semibold">Category</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {excludedProviders.map(({ p, ex }) => {
+                    const href = p.source_listing_url ?? p.website_url ?? p.url ?? null;
+                    return (
+                      <tr key={p.id} className="border-t" style={{ borderColor: BORDER }}>
+                        <td className="px-4 py-2.5 font-semibold" style={{ color: NAVY }}>
+                          <span className="inline-flex items-center gap-2">
+                            {p.name}
+                            <OpenSourceLink href={href} />
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <span
+                            className={CHIP}
+                            style={{ backgroundColor: "#eef2f7", color: "#526078" }}
+                            title={ex.reason}
+                          >
+                            {ex.label}
+                          </span>
+                          <span className="ml-2 text-[11px]" style={{ color: MUTED }}>
+                            {ex.reason}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5" style={{ color: MUTED }}>
+                          {p.platform ?? "—"}
+                        </td>
+                        <td className="px-4 py-2.5" style={{ color: MUTED }}>
+                          {p.category_classified ?? "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
       </section>
     </>
   );

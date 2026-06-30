@@ -313,7 +313,7 @@ function CityRow({
                 type="button"
                 onClick={onRun}
                 disabled={!canRun || anyRunning || invokingCity != null}
-                title={anyRunning ? "Another city is running" : "Run pipeline (uses saved data if ≤ 30 days old)"}
+                title={anyRunning ? "Another city is running" : "Run pipeline (uses saved data if ≤ 90 days old)"}
                 className="inline-flex items-center gap-1 rounded-md bg-[#174be8] px-2 py-1 text-[11px] font-semibold text-white shadow-sm transition hover:bg-[#0f37b5] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Play className="h-3 w-3" />

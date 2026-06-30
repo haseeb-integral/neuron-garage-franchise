@@ -315,7 +315,7 @@ export default function ProviderEvidence() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((r) => {
+              {filtered.map(({ row: r, exclusion }) => {
                 const kept = priceKept(r);
                 const sourceUrl =
                   r.matched_provider_entry?.url || r.source_listing_url || r.url || null;
@@ -324,6 +324,7 @@ export default function ProviderEvidence() {
                     key={r.id}
                     className="cursor-pointer align-top hover:bg-[#f7faff]"
                     onClick={() => setSelected(r)}
+                    style={exclusion ? { backgroundColor: "#fafafa" } : undefined}
                   >
                     <td
                       className="border-b px-3 py-2 font-semibold"
@@ -412,12 +413,22 @@ export default function ProviderEvidence() {
                     </td>
                     <td className="border-b px-3 py-2" style={{ borderColor: BORDER }}>
                       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                        <span
-                          className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
-                          style={{ backgroundColor: "#eef2f7", color: MUTED }}
-                        >
-                          Needs review
-                        </span>
+                        {exclusion ? (
+                          <span
+                            className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                            style={{ backgroundColor: "#eef2f7", color: MUTED }}
+                            title={exclusion.reason}
+                          >
+                            Excluded — {exclusion.label}
+                          </span>
+                        ) : (
+                          <span
+                            className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                            style={{ backgroundColor: "#eef2f7", color: MUTED }}
+                          >
+                            Needs review
+                          </span>
+                        )}
                         <button
                           type="button"
                           disabled

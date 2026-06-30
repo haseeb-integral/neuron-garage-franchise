@@ -228,7 +228,7 @@ Client never holds Firecrawl or Lovable AI Gateway keys. Every function checks `
 3. **Every live city row** shows: MVS, all 5 active sub-scores with non-null inputs, real provider names from ≥1 source.
 4. **PDF Market Brief** generates in <30s; every numeric claim links to a source URL or screenshot where available.
 5. **Slider change** updates the composite on all surfaces (row, panel, compare modal, PDF) using the same helper.
-6. **Freshness rules behave end-to-end:** 0–30 skip toast + badge, 31–60 prompt, >60 fresh, force-fresh override — verified in both UI and backend hard-guard.
+6. **Freshness rules behave end-to-end:** 0–90 skip toast + badge, 91–120 prompt, >120 fresh, force-fresh override — verified in both UI and backend hard-guard.
 
 ---
 

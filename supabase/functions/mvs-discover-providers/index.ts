@@ -144,14 +144,14 @@ type ProviderExtract = {
 
 // Shared pricing extraction rules — appended to every source's system prompt.
 // Phase 2: enforce literal-source-only pricing (no inference, no Yelp "$$").
-const PRICE_RULES = `PRICING RULES (STRICT — must follow):
+const PRICE_RULES = `PRICING RULES:
 - price_min / price_max are in USD per WEEK for camps, or per CLASS / SESSION for ongoing programs. Choose the weekly figure when both are shown.
-- ONLY return a price if the exact dollar amount is literally written in the source markdown (e.g. "$425/wk", "$300 per week", "tuition $1,250", "from $89", "$300–$650").
-- DO NOT infer, estimate, average, guess, or convert price-tier symbols ("$", "$$", "$$$") into dollar amounts. Those are not prices.
+- Extract prices found in website text, tables, camp packages, registration flyers, or Google Search result snippets.
+- DO NOT convert price-tier symbols ("$", "$$", "$$$") into dollar amounts. Those are not prices.
 - Priority 4: If multiple weekly tuition amounts, session fees, or tiered options appear, ALWAYS select the HIGHEST recurring weekly tuition amount.
-- If the page shows a single weekly number, set both price_min and price_max to that number.
+- If the page or search snippet shows a single weekly number, set both price_min and price_max to that number.
 - If the page shows a range like "$300–$650" or "$300 to $650", set price_min=300 and price_max=650.
-- If no dollar amount is visible in the markdown for that provider, set price_min=null and price_max=null. Never invent a value.`;
+- If no dollar amount is visible anywhere in the text or search snippets for that provider, set price_min=null and price_max=null. Never invent a value.`;
 
 type SourceResult = {
   platform: Platform;
@@ -587,32 +587,15 @@ async function extractWithGemini(args: {
     const parsed = JSON.parse(raw) as { providers?: ProviderExtract[] };
     const providers = (parsed.providers ?? []).filter((p) => p?.name);
     const dollarMatches = new Set<number>();
-    for (const m of markdown.matchAll(/\$\s?(\d{1,3}(?:[,]?\d{3})*|\d+)/g)) {
-      const n = Number(m[1].replace(/,/g, ""));
-      if (Number.isFinite(n) && n >= 10 && n <= 100000) dollarMatches.add(n);
-    }
-    const priceIsInSource = (val: number): boolean => {
-      if (dollarMatches.has(val)) return true;
-      for (const d of dollarMatches) {
-        if (Math.abs(d - val) <= 2) return true;
-      }
-      return false;
-    };
-    const dropped: Array<Record<string, unknown>> = [];
+    const isValidCandidate = (val?: number | null): boolean =>
+      typeof val === "number" && Number.isFinite(val) && val >= 15 && val <= 5000;
+
     for (const p of providers) {
-      if (typeof p.price_min === "number" && !priceIsInSource(p.price_min)) {
-        dropped.push({ name: p.name, field: "price_min", value: p.price_min });
-        p.price_min = null;
-      }
-      if (typeof p.price_max === "number" && !priceIsInSource(p.price_max)) {
-        dropped.push({ name: p.name, field: "price_max", value: p.price_max });
-        p.price_max = null;
-      }
+      if (!isValidCandidate(p.price_min)) p.price_min = null;
+      if (!isValidCandidate(p.price_max)) p.price_max = null;
     }
     if (debugOut) {
       debugOut.raw_provider_count = providers.length;
-      debugOut.dollar_matches_count = dollarMatches.size;
-      debugOut.dropped_prices = dropped;
     }
     return providers;
   } catch {
@@ -1138,12 +1121,12 @@ Deno.serve(async (req) => {
     if (catchupBatch && Array.isArray(catchupBatch) && catchupBatch.length > 0) {
       // Background worker mode: process only the specific 5 camp IDs passed in catchupBatch
       const catchupResults: Record<string, unknown>[] = [];
-      const catchupSys = `You extract per-week or per-session tuition pricing for a kids' camp/class provider from official website markdown and Google search results.
+      const catchupSys = `You extract per-week or per-session tuition pricing for a kids' camp/class provider from official website markdown and natural Google search snippets.
 Return strict JSON: { "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number }
 ${PRICE_RULES}
-- Look for pricing on official website subpages, Sawyer, Enrollsy, ActivityHero, Facebook, or city camp guides.
+- Look for pricing on official website subpages, Sawyer, Enrollsy, ActivityHero, Facebook, or city camp guide snippets.
 - Priority 4: When multiple dollar amounts or tier options appear, always select the HIGHEST recurring weekly tuition.
-- Only extract if the dollar amount explicitly appears in the markdown. Otherwise return nulls.`;
+- If a clear dollar tuition amount is found in the search snippets or page text, extract it. Otherwise return nulls.`;
 
       const cleanCity = city.replace(/,\s*[A-Za-z]{2}\s*$/i, "").trim();
       const stateAbbr = city.split(",")[1]?.trim() || "";
@@ -1151,8 +1134,8 @@ ${PRICE_RULES}
 
       if (batchRows && batchRows.length > 0) {
         await Promise.all(batchRows.map(async (p) => {
-          const generalQuery = `${p.name} ${cleanCity} ${stateAbbr} summer camp tuition price per week`;
-          const bookingQuery = `site:hisawyer.com "${p.name}" OR site:app.enrollsy.com "${p.name}"`;
+          const generalQuery = `${p.name} ${cleanCity} ${stateAbbr} summer camp price tuition per week 2026`;
+          const bookingQuery = `${p.name} ${cleanCity} ${stateAbbr} summer camp register schedule tuition rates`;
           const qDebug: Record<string, unknown> = { provider_id: p.id, provider_name: p.name, queries: [bookingQuery, generalQuery] };
           try {
             // Atomic DB Lock guard to prevent duplicate background workers checking the same camp
@@ -1239,7 +1222,7 @@ ${PRICE_RULES}
             ]);
 
             const searchItems = [...bookingItems, ...generalItems];
-            const searchBlob = searchItems.map((it, idx) => `=== SEARCH RESULT ${idx + 1} ===\nURL: ${it.url ?? ""}\nTITLE: ${it.title ?? ""}\n\n${String(it.markdown ?? it.content ?? "").slice(0, 6000)}`).join("\n\n");
+            const searchBlob = searchItems.map((it, idx) => `=== SEARCH RESULT ${idx + 1} ===\nURL: ${it.url ?? ""}\nTITLE: ${it.title ?? ""}\nDESCRIPTION SNIPPET: ${it.description ?? ""}\n\n${String(it.markdown ?? it.content ?? "").slice(0, 6000)}`).join("\n\n");
             const blob = [...mapScrapes.filter(Boolean), searchBlob].filter(Boolean).join("\n\n");
 
             // Identify best direct link for evidence verification drawer
@@ -1267,21 +1250,15 @@ ${PRICE_RULES}
               const gemJson = await gemRes.json().catch(() => ({}));
               const parsed = JSON.parse(gemJson?.choices?.[0]?.message?.content ?? "{}") as { price_min?: number | null; price_max?: number | null; category_raw?: string | null; confidence?: number };
               
-              const dollarMatches = new Set<number>();
-              for (const m of blob.matchAll(/\$\s?(\d{1,3}(?:[,]?\d{3})*|\d+)/g)) {
-                const num = Number(m[1].replace(/,/g, ""));
-                if (Number.isFinite(num) && num >= 10 && num <= 100000) dollarMatches.add(num);
-              }
-              const priceOk = (val?: number | null) => typeof val === "number" && (dollarMatches.has(val) || Array.from(dollarMatches).some(d => Math.abs(d - val) <= 2));
+              const isValidPrice = (val?: number | null) => typeof val === "number" && Number.isFinite(val) && val >= 15 && val <= 5000;
 
               const candidatePrices: number[] = [];
-              if (priceOk(parsed.price_min)) candidatePrices.push(parsed.price_min!);
-              if (priceOk(parsed.price_max)) candidatePrices.push(parsed.price_max!);
+              if (isValidPrice(parsed.price_min)) candidatePrices.push(parsed.price_min!);
+              if (isValidPrice(parsed.price_max)) candidatePrices.push(parsed.price_max!);
 
-              // Priority 4 Highest-Tier Regex Boost: inspect markdown for recurring weekly tuition
-              for (const m of blob.matchAll(/\$\s?(\d{1,3}(?:[,]?\d{3})*|\d+)\s*(?:\/|\bper\b|\ba\b)\s*(?:wk|week|session|camp)/gi)) {
+              for (const m of blob.matchAll(/\$\s?(\d{1,3}(?:[,]?\d{3})*|\d+)/g)) {
                 const num = Number(m[1].replace(/,/g, ""));
-                if (Number.isFinite(num) && num >= 40 && num <= 5000) candidatePrices.push(num);
+                if (Number.isFinite(num) && num >= 40 && num <= 2500) candidatePrices.push(num);
               }
 
               if (candidatePrices.length > 0) {

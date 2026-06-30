@@ -144,14 +144,14 @@ type ProviderExtract = {
 
 // Shared pricing extraction rules — appended to every source's system prompt.
 // Phase 2: enforce literal-source-only pricing (no inference, no Yelp "$$").
-const PRICE_RULES = `PRICING RULES (STRICT — must follow):
+const PRICE_RULES = `PRICING RULES:
 - price_min / price_max are in USD per WEEK for camps, or per CLASS / SESSION for ongoing programs. Choose the weekly figure when both are shown.
-- ONLY return a price if the exact dollar amount is literally written in the source markdown (e.g. "$425/wk", "$300 per week", "tuition $1,250", "from $89", "$300–$650").
-- DO NOT infer, estimate, average, guess, or convert price-tier symbols ("$", "$$", "$$$") into dollar amounts. Those are not prices.
+- Extract prices found in website text, tables, camp packages, registration flyers, or Google Search result snippets.
+- DO NOT convert price-tier symbols ("$", "$$", "$$$") into dollar amounts. Those are not prices.
 - Priority 4: If multiple weekly tuition amounts, session fees, or tiered options appear, ALWAYS select the HIGHEST recurring weekly tuition amount.
-- If the page shows a single weekly number, set both price_min and price_max to that number.
+- If the page or search snippet shows a single weekly number, set both price_min and price_max to that number.
 - If the page shows a range like "$300–$650" or "$300 to $650", set price_min=300 and price_max=650.
-- If no dollar amount is visible in the markdown for that provider, set price_min=null and price_max=null. Never invent a value.`;
+- If no dollar amount is visible anywhere in the text or search snippets for that provider, set price_min=null and price_max=null. Never invent a value.`;
 
 type SourceResult = {
   platform: Platform;
@@ -1138,12 +1138,12 @@ Deno.serve(async (req) => {
     if (catchupBatch && Array.isArray(catchupBatch) && catchupBatch.length > 0) {
       // Background worker mode: process only the specific 5 camp IDs passed in catchupBatch
       const catchupResults: Record<string, unknown>[] = [];
-      const catchupSys = `You extract per-week or per-session tuition pricing for a kids' camp/class provider from official website markdown and Google search results.
+      const catchupSys = `You extract per-week or per-session tuition pricing for a kids' camp/class provider from official website markdown and natural Google search snippets.
 Return strict JSON: { "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number }
 ${PRICE_RULES}
-- Look for pricing on official website subpages, Sawyer, Enrollsy, ActivityHero, Facebook, or city camp guides.
+- Look for pricing on official website subpages, Sawyer, Enrollsy, ActivityHero, Facebook, or city camp guide snippets.
 - Priority 4: When multiple dollar amounts or tier options appear, always select the HIGHEST recurring weekly tuition.
-- Only extract if the dollar amount explicitly appears in the markdown. Otherwise return nulls.`;
+- If a clear dollar tuition amount is found in the search snippets or page text, extract it. Otherwise return nulls.`;
 
       const cleanCity = city.replace(/,\s*[A-Za-z]{2}\s*$/i, "").trim();
       const stateAbbr = city.split(",")[1]?.trim() || "";
@@ -1151,8 +1151,8 @@ ${PRICE_RULES}
 
       if (batchRows && batchRows.length > 0) {
         await Promise.all(batchRows.map(async (p) => {
-          const generalQuery = `${p.name} ${cleanCity} ${stateAbbr} summer camp tuition price per week`;
-          const bookingQuery = `site:hisawyer.com "${p.name}" OR site:app.enrollsy.com "${p.name}"`;
+          const generalQuery = `${p.name} ${cleanCity} ${stateAbbr} summer camp price tuition per week 2026`;
+          const bookingQuery = `${p.name} ${cleanCity} ${stateAbbr} summer camp register schedule tuition rates`;
           const qDebug: Record<string, unknown> = { provider_id: p.id, provider_name: p.name, queries: [bookingQuery, generalQuery] };
           try {
             // Atomic DB Lock guard to prevent duplicate background workers checking the same camp

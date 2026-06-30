@@ -501,7 +501,36 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
   const { result, providers, weeks, acs, flag, watchlist, overrides, lastRefreshed, qaOpenCount, qaReasons, loading, error, refresh } =
     useLiveMvs(cityKey, { weights });
 
+  const [catchingUp, setCatchingUp] = useState(false);
+  const [catchupProgress, setCatchupProgress] = useState({ current: 0, total: 0 });
 
+  async function runClientCatchup() {
+    const unpriced = providers.filter((p) => (p.price_min ?? null) == null && (p.price_max ?? null) == null);
+    if (unpriced.length === 0) {
+      toast.info(`All ${providers.length} providers already have pricing checked.`);
+      return;
+    }
+    setCatchingUp(true);
+    setCatchupProgress({ current: 0, total: unpriced.length });
+    const batchSize = 5;
+    let checked = 0;
+    for (let i = 0; i < unpriced.length; i += batchSize) {
+      const batchIds = unpriced.slice(i, i + batchSize).map((p) => p.id);
+      try {
+        await supabase.functions.invoke("mvs-discover-providers", {
+          body: { city: cityKey, catchupBatch: batchIds },
+        });
+      } catch (err) {
+        console.warn("[Catchup] batch failed:", err);
+      }
+      checked += batchIds.length;
+      setCatchupProgress({ current: Math.min(checked, unpriced.length), total: unpriced.length });
+      refresh();
+    }
+    setCatchingUp(false);
+    toast.success(`Catch-up finished for ${unpriced.length} camps!`);
+    refresh();
+  }
 
   const provCount = providers.length;
   const weekCount = weeks.length;

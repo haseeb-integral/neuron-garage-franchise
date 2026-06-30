@@ -13,6 +13,7 @@ import {
   Play,
   RotateCcw,
   ShieldCheck,
+  Square,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -87,6 +88,7 @@ function CityRow({
   skipInfo,
   onRun,
   onForceFresh,
+  onStop,
   onComposite,
 }: {
   city: string;
@@ -98,6 +100,7 @@ function CityRow({
   skipInfo: SkipInfo | null;
   onRun: () => void;
   onForceFresh: () => void;
+  onStop: () => void;
   onComposite: (city: string, mvs: number | null) => void;
 }) {
   const live = useLiveMvs(city);
@@ -294,25 +297,39 @@ function CityRow({
 
       <td className="px-3 py-2.5">
         <div className="flex flex-wrap items-center justify-end gap-1.5">
-          <button
-            type="button"
-            onClick={onRun}
-            disabled={!canRun || inFlight || isInvoking}
-            title={(anyRunning || invokingCity) && !inFlight && !isInvoking ? "Another city is running" : "Run pipeline (uses saved data if ≤ 30 days old)"}
-            className="inline-flex items-center gap-1 rounded-md bg-[#174be8] px-2 py-1 text-[11px] font-semibold text-white shadow-sm transition hover:bg-[#0f37b5] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {inFlight || isInvoking ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
-            Run
-          </button>
-          <button
-            type="button"
-            onClick={onForceFresh}
-            disabled={!canRun || inFlight || isInvoking}
-            title="Bypass the saved-data check and crawl this city again now."
-            className="inline-flex items-center gap-1 rounded-md border border-[#174be8] bg-white px-2 py-1 text-[11px] font-semibold text-[#174be8] transition hover:bg-[#eef3ff] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Force fresh
-          </button>
+          {inFlight || isInvoking ? (
+            <button
+              type="button"
+              onClick={onStop}
+              title="Stop this running pipeline immediately"
+              className="inline-flex items-center gap-1 rounded-md bg-red-600 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm transition hover:bg-red-700 animate-pulse"
+            >
+              <Square className="h-3 w-3 fill-current" />
+              Stop
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={onRun}
+                disabled={!canRun || anyRunning || invokingCity != null}
+                title={anyRunning ? "Another city is running" : "Run pipeline (uses saved data if ≤ 30 days old)"}
+                className="inline-flex items-center gap-1 rounded-md bg-[#174be8] px-2 py-1 text-[11px] font-semibold text-white shadow-sm transition hover:bg-[#0f37b5] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Play className="h-3 w-3" />
+                Run
+              </button>
+              <button
+                type="button"
+                onClick={onForceFresh}
+                disabled={!canRun || anyRunning || invokingCity != null}
+                title="Bypass the saved-data check and crawl this city again now."
+                className="inline-flex items-center gap-1 rounded-md border border-[#174be8] bg-white px-2 py-1 text-[11px] font-semibold text-[#174be8] transition hover:bg-[#eef3ff] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Force fresh
+              </button>
+            </>
+          )}
         </div>
       </td>
     </tr>
@@ -590,6 +607,21 @@ export default function MarketValidationRollout() {
     [startCrawl],
   );
 
+  const handleStop = useCallback(
+    async (city: string) => {
+      const run = latestRuns[city];
+      if (!run) return;
+      toast.info(`Cancelling pipeline run for ${city}...`);
+      await supabase
+        .from("mvs_pipeline_runs")
+        .update({ status: "failed", error: "Cancelled by user" })
+        .eq("id", run.id);
+      setInvokingCity(null);
+      await fetchAll();
+    },
+    [latestRuns, fetchAll],
+  );
+
   // When a previously-running row finishes, auto-promote the city to live
   // so the Market Validation page picks up the new composite.
   useEffect(() => {
@@ -695,22 +727,41 @@ export default function MarketValidationRollout() {
 
 
       {/* Progress strip */}
-      <div
-        className={`mb-5 flex items-center gap-2 rounded-lg border p-3 text-[12px] ${
-          allDone
-            ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-            : "border-[#cfd8e6] bg-white text-[#526078]"
-        }`}
-      >
-        {allDone ? (
-          <CheckCircle2 className="h-4 w-4 shrink-0" />
-        ) : (
-          <Loader2 className={`h-4 w-4 shrink-0 ${anyRunning ? "animate-spin" : ""}`} />
-        )}
-        <span>
-          <strong>{doneCount}</strong> of <strong>{totalCount}</strong> cities scored
-          {allDone ? " — every shortlisted city has a live composite." : " — run the remaining cities to complete the shortlist."}
-        </span>
+      <div className="mb-5 rounded-lg border border-[#e5eaf2] bg-white p-4 shadow-sm">
+        <div className="flex items-center justify-between text-[13px] mb-2">
+          <div className="flex items-center gap-2">
+            {allDone ? (
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+            ) : (
+              <Loader2 className={`h-4 w-4 shrink-0 text-[#174be8] ${anyRunning ? "animate-spin" : ""}`} />
+            )}
+            <span className="font-semibold text-[#07142f]">
+              Shortlist Scoring Progress: <strong>{doneCount}</strong> of <strong>{totalCount}</strong> cities completed
+            </span>
+          </div>
+          <span className="font-mono text-xs font-semibold text-[#526078]">
+            {Math.round((doneCount / (totalCount || 1)) * 100)}%
+          </span>
+        </div>
+        <div className="h-2 w-full overflow-hidden rounded-full bg-[#f0f4fa]">
+          <div
+            className={`h-full transition-all duration-500 rounded-full ${
+              allDone ? "bg-emerald-500" : anyRunning ? "bg-[#174be8] animate-pulse" : "bg-[#174be8]"
+            }`}
+            style={{ width: `${Math.round((doneCount / (totalCount || 1)) * 100)}%` }}
+          />
+        </div>
+        <div className="mt-2 text-[11px] text-[#8a96aa] flex items-center justify-between">
+          <span>
+            {allDone ? "Every shortlisted city has a live composite score." : "Run the remaining cities below to complete the shortlist."}
+          </span>
+          {anyRunning && (
+            <span className="inline-flex items-center gap-1 font-medium text-[#174be8]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#174be8] animate-ping" />
+              Pipeline active...
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Table */}
@@ -738,6 +789,7 @@ export default function MarketValidationRollout() {
                 skipInfo={skipInfos[c.city] ?? null}
                 onRun={() => handleRun(c.city, c.state)}
                 onForceFresh={() => handleForceFresh(c.city)}
+                onStop={() => handleStop(c.city)}
                 onComposite={reportComposite}
               />
             ))}

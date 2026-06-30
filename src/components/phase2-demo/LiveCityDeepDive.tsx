@@ -704,6 +704,11 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
 
 
 
+  const nMissingPriceTotal = useMemo(
+    () => activeCamps.filter((p) => (p.price_min ?? null) == null && (p.price_max ?? null) == null).length,
+    [activeCamps],
+  );
+
   if (loading) {
     return (
       <section
@@ -726,10 +731,6 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
     );
   }
 
-  const nMissingPriceTotal = useMemo(
-    () => activeCamps.filter((p) => (p.price_min ?? null) == null && (p.price_max ?? null) == null).length,
-    [activeCamps],
-  );
 
   return (
     <>

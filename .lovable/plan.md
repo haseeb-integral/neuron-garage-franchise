@@ -1,31 +1,42 @@
-# Phase 1 — Widen freshness window (30/60 → 90/120)
+## Are the risks covered?
 
-## What changes
+**Yes — both risks from the earlier plan are handled:**
 
-Saved-data refresh thresholds move from:
-- **Old:** 0–30 skip · 31–60 prompt · >60 fresh · fallback ≤60
-- **New:** 0–90 skip · 91–120 prompt · >120 fresh · fallback ≤120
+1. **"Cities may show data up to 90 days old without warning"**
+   - Mitigated by: **Force Fresh** button (unchanged, always overrides) + the existing amber "stale" badge still shows the exact age on each row, so the user can see "this is 78 days old" and choose to re-crawl.
 
-"Force fresh" still overrides everything. No DB schema change. No data migration.
+2. **"UI and backend constants must move together"**
+   - Already handled in the prior phase: `src/lib/mvs/preCrawlFreshness.ts` (frontend) AND `supabase/functions/mvs-run-pipeline/index.ts` (backend hard-guard at line 129) were bumped to 90 in the same turn. The fallback window at line 347 was also widened to 120. So UI and backend agree.
 
-## Files touched
+## Did we miss anything? → Yes, 2 small spec-doc lines
 
-1. **`src/lib/mvs/preCrawlFreshness.ts`** — `FRESH_SKIP_DAYS = 90`, `FRESH_PROMPT_DAYS = 120`. Update header comment.
-2. **`supabase/functions/mvs-run-pipeline/index.ts`** — backend hard-guard `FRESH_SKIP_DAYS = 90` (line 129); soft-fail fallback window `ageDays <= 60` → `<= 120` (line 347) and error message `>60` → `>120` (line 353); comment on line 126 + 328.
-3. **`src/pages/MarketValidationRollout.tsx`** — button tooltip "≤ 30 days" → "≤ 90 days" (line 316); footer note "≤ 30 days old" → "≤ 90 days old" (line 801).
-4. **`src/data/userGuideMarkdown.ts`** — 4 user-facing lines (124–126, 143–145) updated to 90/120.
-5. **`src/pages/MVSMethodology.tsx`** — lines 164–165 freshness + soft-fail paragraphs.
-6. **`docs/feature-1a-mvs-v1-spec.md`** — lines 9, 37, 38, 193, 231 (spec wording).
+I re-scanned every file that mentions day-based freshness. Code and user-facing copy are all updated. **But the technical spec doc `docs/feature-1a-mvs-v1-spec.md` still has two stale "60" numbers that contradict the rest of the spec** (which already says 90/120 at lines 9, 38, 193):
 
-UI dialog already says "X days ago" dynamically — no copy change needed there.
+- **Line 178** — says `failed_no_data` means "no usable saved data within **60d**". Should be **120d** to match the backend.
+- **Line 219** — says soft-fail fallback uses "saved data **≤60d**". Should be **≤120d** to match the backend.
 
-## Risk
+These don't affect runtime behavior (code is correct), but they make the spec internally inconsistent and will confuse anyone reading it.
 
-- Cities may show data up to 90 days old without warning. Mitigation: Force fresh button unchanged.
-- UI and backend constants must move together (both bumped this phase) so they don't disagree.
+**Other places I checked and confirmed clean:**
 
-## Verify
+- `src/lib/mvs/preCrawlFreshness.ts` → 90/120 ✓
+- `supabase/functions/mvs-run-pipeline/index.ts` (hard-guard + fallback) → 90/120 ✓
+- `supabase/functions/mvs-refresh-all/index.ts` → no own freshness guard, delegates to `mvs-run-pipeline` ✓
+- `src/data/userGuideMarkdown.ts` (lines 124, 144, 145, 146) → 90/120 ✓
+- `src/pages/MVSMethodology.tsx` → updated ✓
+- `MarketValidationRollout.tsx` tooltips/footers → updated ✓
+- `src/integrations/supabase/types.ts` → only the `done_stale` enum value, no day numbers (correct, auto-generated)
+- The 3-minute `STALE_MS` in `mvs-run-pipeline` and `mvs-refresh-all` → this is a different thing (run-lock timeout for crashed pipelines), NOT data freshness. Leave it alone.
 
-- Type-check passes.
-- Open `/market-validation`: Run tooltip shows "≤ 90 days"; footer note shows "≤ 90 days".
-- A city with ~45-day-old data should now skip silently (was: prompt).
+## Proposed cleanup phase (very small — 1 turn)
+
+**File:** `docs/feature-1a-mvs-v1-spec.md`
+
+- Line 178: `60d` → `120d`
+- Line 219: `≤60d` → `≤120d`
+
+**Risk:** none — doc-only edit, no code or runtime touched.
+
+**Effort:** 1 Lovable turn, ~2 line edits.
+
+Approve and I'll make these two doc fixes so the spec matches the code.

@@ -1,40 +1,31 @@
-## What's happening
+# Phase 1 — Widen freshness window (30/60 → 90/120)
 
-You are on the **Provider Evidence Review** page (`/market-validation/.../evidence`). It still shows `295 of 295 providers` for Boston.
+## What changes
 
-The Strict Camp View filter we built last turn only lives inside the **City Deep Dive** card (`LiveCityDeepDive.tsx`). The Evidence Review page (`ProviderEvidence.tsx`) was never told about excluded providers, so it still lists every row including parks, daycares, Home Depot workshops, etc.
+Saved-data refresh thresholds move from:
+- **Old:** 0–30 skip · 31–60 prompt · >60 fresh · fallback ≤60
+- **New:** 0–90 skip · 91–120 prompt · >120 fresh · fallback ≤120
 
-That is why the count did not move.
-
-## Plan (1 phase, 1 turn)
-
-**Phase A — Apply Strict Camp View to Evidence Review**
-
-1. Import the same `classifyExclusion` helper used by City Deep Dive so both pages agree on what counts as a camp.
-2. In `ProviderEvidence.tsx`:
-   - Split fetched providers into `activeCamps` and `excludedProviders`.
-   - Change the header counter from `295 of 295 providers` to `173 of 173 active camps` and add a small grey chip next to it: `+122 excluded (daycare, park, retail, charity)` with a tooltip breakdown.
-   - Default the table to show only active camps.
-   - Add a toggle above the table: **"Show excluded locations"** (off by default). When on, excluded rows appear at the bottom with a grey "Excluded — {reason}" pill in the Verification column.
-   - CSV export respects the current toggle (active only by default; full set when toggle is on) and includes an `exclusion_reason` column.
-3. No backend, no schema, no scoring changes. Pure presentation filter on this one page.
+"Force fresh" still overrides everything. No DB schema change. No data migration.
 
 ## Files touched
-- `src/pages/ProviderEvidence.tsx` (counter, toggle, filter, CSV)
-- Reuse existing `classifyExclusion` helper from `LiveCityDeepDive.tsx` — if it is not exported yet, move it to `src/lib/mvs/classifyExclusion.ts` and import from both places.
 
-## What will NOT change
-- City Deep Dive card behaviour (already done last turn)
-- Pipeline, discovery, catch-up loop, scores, DB rows
-- Any other page
+1. **`src/lib/mvs/preCrawlFreshness.ts`** — `FRESH_SKIP_DAYS = 90`, `FRESH_PROMPT_DAYS = 120`. Update header comment.
+2. **`supabase/functions/mvs-run-pipeline/index.ts`** — backend hard-guard `FRESH_SKIP_DAYS = 90` (line 129); soft-fail fallback window `ageDays <= 60` → `<= 120` (line 347) and error message `>60` → `>120` (line 353); comment on line 126 + 328.
+3. **`src/pages/MarketValidationRollout.tsx`** — button tooltip "≤ 30 days" → "≤ 90 days" (line 316); footer note "≤ 30 days old" → "≤ 90 days old" (line 801).
+4. **`src/data/userGuideMarkdown.ts`** — 4 user-facing lines (124–126, 143–145) updated to 90/120.
+5. **`src/pages/MVSMethodology.tsx`** — lines 164–165 freshness + soft-fail paragraphs.
+6. **`docs/feature-1a-mvs-v1-spec.md`** — lines 9, 37, 38, 193, 231 (spec wording).
 
-## Risks
-- Very low. Read-only UI filter. If `classifyExclusion` mislabels one provider, toggle ON shows it and you can audit.
+UI dialog already says "X days ago" dynamically — no copy change needed there.
 
-## What you test after I build
-1. Open Boston Evidence Review → header should read ~173 active camps, with `+122 excluded` chip.
-2. Toggle "Show excluded locations" → full 295 rows return, excluded ones marked.
-3. Export CSV with toggle off → only active camps. Toggle on → all rows + reason column.
-4. Open Columbus Evidence Review → counts also drop (sanity check the helper works city-agnostic).
+## Risk
 
-Approve and I will implement Phase A in one turn.
+- Cities may show data up to 90 days old without warning. Mitigation: Force fresh button unchanged.
+- UI and backend constants must move together (both bumped this phase) so they don't disagree.
+
+## Verify
+
+- Type-check passes.
+- Open `/market-validation`: Run tooltip shows "≤ 90 days"; footer note shows "≤ 90 days".
+- A city with ~45-day-old data should now skip silently (was: prompt).

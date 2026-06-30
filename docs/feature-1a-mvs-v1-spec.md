@@ -6,7 +6,7 @@
 
 **Status:** Shipped, evolving. **Source of truth:** This chat + MVS Methodology doc. **Naming:** MVS (Market Validation Score). Do not surface PEES anywhere in the app or PDF.
 
-> **What changed since the original v1.0 spec:** discovery expanded from Sawyer-only to 5 sources; Market Absorption pillar retired; registration-page scraping (Stage 3) retired; per-pillar confidence replaced the global low-confidence badge; Firecrawl cap raised to 50 with per-step sub-caps; freshness rules (0–30 skip / 31–60 prompt / >60 fresh) and soft-fail fallback (`done_stale`) added; cards redesigned to Result → Evidence → Trust.
+> **What changed since the original v1.0 spec:** discovery expanded from Sawyer-only to 5 sources; Market Absorption pillar retired; registration-page scraping (Stage 3) retired; per-pillar confidence replaced the global low-confidence badge; Firecrawl cap raised to 50 with per-step sub-caps; freshness rules (0–90 skip / 91–120 prompt / >120 fresh) and soft-fail fallback (`done_stale`) added; cards redesigned to Result → Evidence → Trust.
 
 ---
 
@@ -34,8 +34,8 @@ Not in scope: predicting any individual Neuron Garage location's success. Site-l
 | Scheduling | **Manual trigger** ("Run Pipeline" button per city) | Inngest/Trigger.dev post-client-meeting |
 | Cities in scope | **Any city** can be added; freshness rules apply uniformly | — |
 | Scrape cadence | **1 run per click**, gated by freshness rules below | Multi-scrape history once cadence is automated |
-| Freshness rules | **0–30 days: auto-skip (use saved). 31–60: prompt user. >60: fresh crawl. "Force fresh" always overrides.** Backend hard-guard enforces this even if UI is bypassed. | — |
-| Soft-fail fallback | If a fresh crawl fails but saved data ≤60 days exists → status `done_stale`, score stays visible, amber banner shown | — |
+| Freshness rules | **0–90 days: auto-skip (use saved). 91–120: prompt user. >120: fresh crawl. "Force fresh" always overrides.** Backend hard-guard enforces this even if UI is bypassed. | — |
+| Soft-fail fallback | If a fresh crawl fails but saved data ≤120 days exists → status `done_stale`, score stays visible, amber banner shown | — |
 | Market Absorption | **Removed from composite (weight 0)** | Not planned |
 | Registration-page scraping (old Stage 3) | **Retired.** `mvs-extract-weeks` is a no-op shell. No week rows are written. | Not planned |
 | Normalization | **Fixed reference ranges** (see §5) | Across-shortlist normalization once ≥20 cities have live data |
@@ -190,7 +190,7 @@ Status values on `mvs_pipeline_runs`: `running`, `done`, `done_stale` (soft-fail
   * Trust: per-pillar confidence (e.g. "Medium confidence — 8 of 12 providers had readable prices") with its own reason per card.
   * Weight preview slider: shows "Contributes X.X of 100 to MVS" with live delta, MVS preview only.
   * Collapsibles renamed: "How this score is calculated", "Where the data comes from (N)".
-* **Freshness controls:** 0–30 days → auto-skip with toast and persistent amber row badge; 31–60 days → `AlertDialog` prompt "use saved or run fresh"; >60 → fresh crawl. Backend hard-guard enforces same rules. `done_stale` runs use `fallback_data_date` (not `finished_at`) so age math reflects the real data.
+* **Freshness controls:** 0–90 days → auto-skip with toast and persistent amber row badge; 91–120 days → `AlertDialog` prompt "use saved or run fresh"; >120 → fresh crawl. Backend hard-guard enforces same rules. `done_stale` runs use `fallback_data_date` (not `finished_at`) so age math reflects the real data.
 * **Known limitations panel** on the page (collapsible) explains what data we don't have.
 * **PDF Market Brief:** unchanged in structure — 1-page Exec Summary in v1.0, fuller 12-section brief deferred.
 
@@ -228,7 +228,7 @@ Client never holds Firecrawl or Lovable AI Gateway keys. Every function checks `
 3. **Every live city row** shows: MVS, all 5 active sub-scores with non-null inputs, real provider names from ≥1 source.
 4. **PDF Market Brief** generates in <30s; every numeric claim links to a source URL or screenshot where available.
 5. **Slider change** updates the composite on all surfaces (row, panel, compare modal, PDF) using the same helper.
-6. **Freshness rules behave end-to-end:** 0–30 skip toast + badge, 31–60 prompt, >60 fresh, force-fresh override — verified in both UI and backend hard-guard.
+6. **Freshness rules behave end-to-end:** 0–90 skip toast + badge, 91–120 prompt, >120 fresh, force-fresh override — verified in both UI and backend hard-guard.
 
 ---
 

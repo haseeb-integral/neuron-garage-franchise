@@ -123,10 +123,10 @@ Deno.serve(async (req) => {
 
   // ----- Backend freshness guard ---------------------------------------
   // Hard rule: do not start a new crawl if the city already has good saved
-  // data ≤ 30 days old, unless the caller explicitly passed forceFresh=true.
+  // data ≤ 90 days old, unless the caller explicitly passed forceFresh=true.
   // This protects Firecrawl credits even when the UI check is bypassed.
   if (!forceFresh) {
-    const FRESH_SKIP_DAYS = 30;
+    const FRESH_SKIP_DAYS = 90;
     const { data: lastGood } = await admin
       .from("mvs_pipeline_runs")
       .select("id, status, finished_at, created_at, fallback_data_date")
@@ -325,7 +325,7 @@ Deno.serve(async (req) => {
       const msg = e instanceof Error ? e.message : String(e);
 
       // Graceful fallback: if the run failed but we have recent saved provider
-      // data for this city, downgrade to `done_stale` (0–60 days) so the UI
+      // data for this city, downgrade to `done_stale` (0–120 days) so the UI
       // can keep showing the last good score with an amber "saved data from
       // {date}" banner. Only mark `failed_no_data` when there is nothing
       // recent enough to fall back to.
@@ -344,13 +344,13 @@ Deno.serve(async (req) => {
           const ageDays =
             (Date.now() - new Date(latestProv.updated_at).getTime()) /
             (1000 * 60 * 60 * 24);
-          if (ageDays <= 60) {
+          if (ageDays <= 120) {
             fallbackStatus = "done_stale";
             fallbackDate = latestProv.updated_at as string;
             fallbackReason = `Crawl failed — using saved data ${Math.round(ageDays)} day(s) old. ${msg}`.slice(0, 1000);
           } else {
             fallbackStatus = "failed_no_data";
-            fallbackReason = `Crawl failed and saved data is ${Math.round(ageDays)} day(s) old (>60). ${msg}`.slice(0, 1000);
+            fallbackReason = `Crawl failed and saved data is ${Math.round(ageDays)} day(s) old (>120). ${msg}`.slice(0, 1000);
           }
         } else {
           fallbackStatus = "failed_no_data";

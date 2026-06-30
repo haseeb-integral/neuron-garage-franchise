@@ -1256,10 +1256,9 @@ ${PRICE_RULES}
               if (isValidPrice(parsed.price_min)) candidatePrices.push(parsed.price_min!);
               if (isValidPrice(parsed.price_max)) candidatePrices.push(parsed.price_max!);
 
-              // Priority 4 Highest-Tier Regex Boost: inspect markdown for recurring weekly tuition
-              for (const m of blob.matchAll(/\$\s?(\d{1,3}(?:[,]?\d{3})*|\d+)\s*(?:\/|\bper\b|\ba\b)\s*(?:wk|week|session|camp)/gi)) {
+              for (const m of blob.matchAll(/\$\s?(\d{1,3}(?:[,]?\d{3})*|\d+)/g)) {
                 const num = Number(m[1].replace(/,/g, ""));
-                if (Number.isFinite(num) && num >= 40 && num <= 5000) candidatePrices.push(num);
+                if (Number.isFinite(num) && num >= 40 && num <= 2500) candidatePrices.push(num);
               }
 
               if (candidatePrices.length > 0) {

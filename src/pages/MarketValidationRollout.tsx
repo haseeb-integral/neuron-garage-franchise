@@ -727,22 +727,41 @@ export default function MarketValidationRollout() {
 
 
       {/* Progress strip */}
-      <div
-        className={`mb-5 flex items-center gap-2 rounded-lg border p-3 text-[12px] ${
-          allDone
-            ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-            : "border-[#cfd8e6] bg-white text-[#526078]"
-        }`}
-      >
-        {allDone ? (
-          <CheckCircle2 className="h-4 w-4 shrink-0" />
-        ) : (
-          <Loader2 className={`h-4 w-4 shrink-0 ${anyRunning ? "animate-spin" : ""}`} />
-        )}
-        <span>
-          <strong>{doneCount}</strong> of <strong>{totalCount}</strong> cities scored
-          {allDone ? " — every shortlisted city has a live composite." : " — run the remaining cities to complete the shortlist."}
-        </span>
+      <div className="mb-5 rounded-lg border border-[#e5eaf2] bg-white p-4 shadow-sm">
+        <div className="flex items-center justify-between text-[13px] mb-2">
+          <div className="flex items-center gap-2">
+            {allDone ? (
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+            ) : (
+              <Loader2 className={`h-4 w-4 shrink-0 text-[#174be8] ${anyRunning ? "animate-spin" : ""}`} />
+            )}
+            <span className="font-semibold text-[#07142f]">
+              Shortlist Scoring Progress: <strong>{doneCount}</strong> of <strong>{totalCount}</strong> cities completed
+            </span>
+          </div>
+          <span className="font-mono text-xs font-semibold text-[#526078]">
+            {Math.round((doneCount / (totalCount || 1)) * 100)}%
+          </span>
+        </div>
+        <div className="h-2 w-full overflow-hidden rounded-full bg-[#f0f4fa]">
+          <div
+            className={`h-full transition-all duration-500 rounded-full ${
+              allDone ? "bg-emerald-500" : anyRunning ? "bg-[#174be8] animate-pulse" : "bg-[#174be8]"
+            }`}
+            style={{ width: `${Math.round((doneCount / (totalCount || 1)) * 100)}%` }}
+          />
+        </div>
+        <div className="mt-2 text-[11px] text-[#8a96aa] flex items-center justify-between">
+          <span>
+            {allDone ? "Every shortlisted city has a live composite score." : "Run the remaining cities below to complete the shortlist."}
+          </span>
+          {anyRunning && (
+            <span className="inline-flex items-center gap-1 font-medium text-[#174be8]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#174be8] animate-ping" />
+              Pipeline active...
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Table */}

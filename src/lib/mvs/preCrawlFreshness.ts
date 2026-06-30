@@ -1,9 +1,9 @@
 // Shared freshness pre-check for MVS pipeline Run buttons.
 //
 // Rule: avoid re-crawling cities that already have recent saved data.
-//   ≤ 30 days old   → skip crawl, use saved data.
-//   31–60 days old  → prompt the user.
-//   > 60 days old   → run fresh crawl.
+//   ≤ 90 days old    → skip crawl, use saved data.
+//   91–120 days old  → prompt the user.
+//   > 120 days old   → run fresh crawl.
 //
 // Freshness date must come from the REAL saved-data date:
 //   - `done`       → finished_at (or created_at fallback)
@@ -12,8 +12,8 @@
 
 import { supabase } from "@/integrations/supabase/client";
 
-export const FRESH_SKIP_DAYS = 30;
-export const FRESH_PROMPT_DAYS = 60;
+export const FRESH_SKIP_DAYS = 90;
+export const FRESH_PROMPT_DAYS = 120;
 
 export function ageDays(iso: string | null | undefined): number | null {
   if (!iso) return null;

@@ -312,7 +312,7 @@ function CityRow({
               <button
                 type="button"
                 onClick={onRun}
-                disabled={!canRun}
+                disabled={!canRun || anyRunning || invokingCity != null}
                 title={anyRunning ? "Another city is running" : "Run pipeline (uses saved data if ≤ 30 days old)"}
                 className="inline-flex items-center gap-1 rounded-md bg-[#174be8] px-2 py-1 text-[11px] font-semibold text-white shadow-sm transition hover:bg-[#0f37b5] disabled:cursor-not-allowed disabled:opacity-50"
               >
@@ -322,7 +322,7 @@ function CityRow({
               <button
                 type="button"
                 onClick={onForceFresh}
-                disabled={!canRun}
+                disabled={!canRun || anyRunning || invokingCity != null}
                 title="Bypass the saved-data check and crawl this city again now."
                 className="inline-flex items-center gap-1 rounded-md border border-[#174be8] bg-white px-2 py-1 text-[11px] font-semibold text-[#174be8] transition hover:bg-[#eef3ff] disabled:cursor-not-allowed disabled:opacity-50"
               >

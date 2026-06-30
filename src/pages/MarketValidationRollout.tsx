@@ -88,6 +88,7 @@ function CityRow({
   skipInfo,
   onRun,
   onForceFresh,
+  onStop,
   onComposite,
 }: {
   city: string;

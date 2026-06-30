@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Download, ExternalLink, Loader2, MapPin, Search } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useProviderEvidence, type EvidenceRow } from "@/lib/mvs/useProviderEvidence";
+import { classifyExclusion } from "@/lib/mvs/classifyExclusion";
 import {
   Sheet,
   SheetContent,

@@ -1406,6 +1406,7 @@ ${PRICE_RULES}
       respPayload.screenshot_path = screenshotPath;
       respPayload.source_counts = {
         ...sourceCounts,
+        catchup: catchupDebug,
         google_search_queries: (debug.google_search as Record<string, unknown> | undefined)?.queries ?? [],
         targeted_scrape: debug.targeted_scrape ?? null,
       };

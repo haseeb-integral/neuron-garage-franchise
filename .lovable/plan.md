@@ -1,49 +1,59 @@
-# Build Plan: Priority 1 — Asynchronous Background Jobs for Missing Price Scrapes
+### 1. Answers to your questions
 
-You and your advisor are asking the **exact right questions**. Vague background magic is how data gets corrupted. Because this is an internal tool with 3 staff users, we want **100% predictable, bulletproof database bookkeeping**.
+**Why did we stubbornly use `site:hisawyer.com` or complex queries before?**
+Originally, the idea was "precision over noise." If we searched standard Google, we were worried the AI would get confused by ads, blog articles mentioning national averages, or random reviews. So the old code tried to force Google to only look inside specific booking platforms (like Sawyer) or exact website URLs. But as you proved, real people search naturally (`whetstone columbus camp price 2026`), and Google's search engine is smart enough to pull the exact answer to the top snippet. Our over-engineered filters actually blinded us to the best answers.
 
-Here are the plain-English engineering answers to your 4 questions:
-
----
-
-### How it works: Idempotency, Tracking, Retries & Double-Writes
-
-#### 1. How are background jobs tracked?
-* Every time you click "Run Pipeline" on Columbus, our orchestrator creates **one master record** in the `mvs_pipeline_runs` table (`status: "running"`).
-* When the discovery function finds 45 missing camps, it will stamp a new field `catchup_batches_total: 9` (nine 5-camp batches) onto that parent run record.
-* As each background micro-batch finishes its 5 camps, it updates the parent record: `catchup_batches_completed = catchup_batches_completed + 1`.
-* The rollout screen polls this exact record. You will literally watch a live progress bar: *"Filling missing prices: 4/9 batches completed"*.
-
-#### 2. How do we prevent double-writing the same price?
-* **Database Lock (Idempotency):** Right before a background worker searches Google for a camp (e.g., *School of Rock*), it executes a conditional SQL update: `UPDATE mvs_providers SET price_min = -1 WHERE id = :camp_id AND price_min IS NULL`.
-* If two background jobs accidentally try to check *School of Rock* at the exact same millisecond, only the first worker wins the SQL lock (`price_min IS NULL`). The second worker sees `price_min = -1` (already claimed) and instantly skips it. 
-* When the winning worker extracts the real weekly price (e.g. `$450`), it overwrites `-1` with `450`. If Google finds nothing, it overwrites `-1` with `null` and records `last_crawled_at: now()`.
-
-#### 3. How do retries work?
-* **Zero silent retries.** In cloud systems, automatic background retries are the #1 cause of runaway API bills and duplicate data.
-* If a 5-camp micro-batch fails (e.g. Google temporarily blocks the IP), that batch catches the error, logs it into `mvs_pipeline_runs.error_log`, and marks itself completed. 
-* The camp's price simply stays `null`. On your next normal pipeline run (or clicking "Re-run"), the scanner sees `price_min IS NULL`, grabs it again, and tries a fresh search.
-
-#### 4. How does failure recovery work?
-* If the cloud server loses power mid-run, the parent run record stays stuck at `running`.
-* Our existing orchestrator already has an **auto-cleanup safety guard**: any run stuck at `running` for >3 minutes is automatically marked `failed`, unlocking the city so staff can safely click "Run Pipeline" again.
+**If we use simple natural Google queries, do we still need Tavily?**
+**No, we do not need Tavily.** Firecrawl’s Search endpoint (`/search`) already lets us search Google. If we give Firecrawl plain natural queries like `"[Provider Name]" Columbus camp weekly price tuition` and remove the dumb AI guardrails that drop valid prices, Firecrawl + Google Search snippets will find the prices just fine. Skipping Tavily keeps our app simpler, saves money, and avoids needing a brand new API key.
 
 ---
 
-### Summary of Small Safe Phases
+### 2. What we are changing and why (Updated Plan)
 
-* **Phase 1 (Worker Logic & Lock Guard):** 
-  * Update `mvs-discover-providers` to accept `catchupCampIds: string[]` and `parentRunId`.
-  * Add the atomic SQL lock (`price_min IS NULL`) so duplicate writes are mathematically impossible.
-  * *Estimate:* **1 Lovable turn.**
-
-* **Phase 2 (Orchestrator Tracking & UI Progress):**
-  * Update `mvs-run-pipeline` to dispatch these 5-camp batches in background promises and track `batches_completed` vs `batches_total`.
-  * *Estimate:* **1 Lovable turn.**
-
-* **Total Timeline:** **2 Lovable turns** (~10 minutes). No existing UI, scoring formulas, or CSV exports will be touched.
+We are simplifying the entire Catch-up Crawler to act like a real human searching Google:
+1. **Plain Natural Search Queries:** Instead of restricting searches to exact domains or `site:` filters, the background catch-up worker will search Google naturally: `"[Provider Name]" [City] summer camp tuition price per week`.
+2. **Remove Dumb Guardrails:** We will delete the hyper-strict instruction (`"Only return if exact dollar amount explicitly appears in markdown"`) and relax the regex checker so that package prices (e.g., $165 on KidsLinked) and snippet answers (e.g., $120 on Whetstone) are accepted.
+3. **Deconstruct Subpaths:** For camps with direct websites (like `schoolofrock.com`), we will allow the crawler to check obvious pricing subpages like `/camps` or `/music-camps`.
 
 ---
 
-### Approval
-Now that tracking, idempotency, retries, and recovery are explicitly locked down, please click **Implement plan** below to approve and start Phase 1!
+### 3. Affected Pages, Components, APIs, & Tables
+
+- **Edge Function:** `supabase/functions/mvs-discover-providers/index.ts` (updates to `catchupBatch`, query generation, and price selection guards).
+- **Database Table:** `public.mvs_providers` (saving newly discovered `price_min`, `price_max`, `confidence`, and `source_listing_url`).
+- **UI:** None touched (the existing Evidence Drawer `ProviderEvidence.tsx` will automatically show the new data).
+
+---
+
+### 4. How the change fits without breaking existing features
+
+All normal discovery pipelines (Maps, Yelp, ActivityHero) stay exactly as they are. This change only upgrades the **Missing Price Catch-up** job (`catchupBatch`) that runs in the background for unpriced camps.
+
+---
+
+### 5. Small Safe Phases
+
+#### Phase 1: Natural Queries & Looser Guardrails in Catch-up Engine
+- In `index.ts` (`catchupBatch`), change the fallback Google Search query to a simple natural sentence: `"${p.name} ${city} summer camp price tuition per week"`.
+- Remove the `"Only extract if explicitly appears..."` prompt constraint and widen `priceOk` regex so prices found in Google Search snippets or directory images/banners aren't discarded.
+- Deploy the updated `mvs-discover-providers` edge function.
+
+---
+
+### 6. Estimated Turns
+
+- **Phase 1:** 1 turn
+
+---
+
+### 7. Risks, What NOT to touch, & Testing
+
+- **What not to touch:** Do not edit scoring weights, `marketView.ts`, or database schemas.
+- **Risks:** Natural queries might occasionally bring in a price from a different location if two camps share a name. We protect against this by keeping city names inside the search query and requiring a minimum AI confidence score (>= 0.7).
+- **Testing:** Trigger Catch-up for Columbus, OH. Check `Allegro Studios`, `School of Rock Gahanna`, and `Whetstone Community Center` in the database to verify they successfully capture real prices ($165, real tuition, $120/$144).
+
+---
+
+### 8. Waiting for Approval
+
+Please review this simplified plan. Once you click "Implement plan", I will update the Edge Function.

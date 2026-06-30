@@ -73,27 +73,31 @@ Deno.serve(async (req) => {
 
   // Auth: manager or admin required.
   const authHeader = req.headers.get("Authorization") ?? "";
-  const userClient = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: authHeader } },
-  });
-  const { data: userData, error: userErr } = await userClient.auth.getUser();
-  if (userErr || !userData?.user) {
-    return new Response(JSON.stringify({ error: "unauthorized" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
   const admin = createClient(supabaseUrl, serviceKey);
-  const { data: roleRows } = await admin
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userData.user.id)
-    .in("role", ["manager", "admin"]);
-  if (!roleRows || roleRows.length === 0) {
-    return new Response(JSON.stringify({ error: "forbidden: manager required" }), {
-      status: 403,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+  const isServiceRole = authHeader.includes(serviceKey);
+
+  if (!isServiceRole) {
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
     });
+    const { data: userData, error: userErr } = await userClient.auth.getUser();
+    if (userErr || !userData?.user) {
+      return new Response(JSON.stringify({ error: "unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: roleRows } = await admin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userData.user.id)
+      .in("role", ["manager", "admin"]);
+    if (!roleRows || roleRows.length === 0) {
+      return new Response(JSON.stringify({ error: "forbidden: manager required" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
   }
 
   const body = await req.json().catch(() => ({}));
@@ -216,11 +220,12 @@ Deno.serve(async (req) => {
 
     const invokeStep = async (step: StepName, payload: Record<string, unknown>) => {
       const url = `${supabaseUrl}/functions/v1/${STEP_FUNCTIONS[step]}`;
+      const stepAuth = isServiceRole ? `Bearer ${serviceKey}` : authHeader;
       const res = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: authHeader,
+          Authorization: stepAuth,
           apikey: anonKey,
         },
         body: JSON.stringify({ ...payload, parent_run_id: run.id }),

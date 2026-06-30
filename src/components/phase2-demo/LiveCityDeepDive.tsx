@@ -1398,6 +1398,86 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
         )}
 
       </section>
+
+      {/* Excluded Locations — Strict Camp View drawer.
+          Preserves audit visibility for daycares, public parks, free retail
+          workshops, and charity drop-in clubs without inflating the headline
+          camp counters or the catch-up scanner queue. */}
+      <section className="mb-6 rounded-lg border bg-white" style={{ borderColor: BORDER }}>
+        <button
+          type="button"
+          onClick={() => setShowExcluded((s) => !s)}
+          className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
+        >
+          <div>
+            <h3 className="text-[14px] font-bold" style={{ color: NAVY }}>
+              Excluded Locations ({excludedCount})
+            </h3>
+            <p className="text-[11px]" style={{ color: MUTED }}>
+              Not counted as summer camps in headline numbers. Includes daycares, public parks, free retail workshops, and charity drop-in clubs. Raw rows are kept in <code className="rounded bg-[#f7faff] px-1 py-px text-[#174be8]">mvs_providers</code> for audit.
+            </p>
+          </div>
+          <span
+            className={CHIP}
+            style={{ backgroundColor: "#eef2f7", color: "#526078" }}
+          >
+            {showExcluded ? "Hide" : "Show"}
+          </span>
+        </button>
+        {showExcluded && (
+          <div className="overflow-x-auto border-t" style={{ borderColor: BORDER }}>
+            {excludedCount === 0 ? (
+              <p className="px-4 py-6 text-center text-[12px]" style={{ color: MUTED }}>
+                No excluded locations for this city.
+              </p>
+            ) : (
+              <table className="w-full text-[12px]">
+                <thead>
+                  <tr style={{ color: MUTED }}>
+                    <th className="px-4 py-2 text-left font-semibold">Location</th>
+                    <th className="px-4 py-2 text-left font-semibold">Why excluded</th>
+                    <th className="px-4 py-2 text-left font-semibold">Source</th>
+                    <th className="px-4 py-2 text-left font-semibold">Category</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {excludedProviders.map(({ p, ex }) => {
+                    const href = p.source_listing_url ?? p.website_url ?? p.url ?? null;
+                    return (
+                      <tr key={p.id} className="border-t" style={{ borderColor: BORDER }}>
+                        <td className="px-4 py-2.5 font-semibold" style={{ color: NAVY }}>
+                          <span className="inline-flex items-center gap-2">
+                            {p.name}
+                            <OpenSourceLink href={href} />
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <span
+                            className={CHIP}
+                            style={{ backgroundColor: "#eef2f7", color: "#526078" }}
+                            title={ex.reason}
+                          >
+                            {ex.label}
+                          </span>
+                          <span className="ml-2 text-[11px]" style={{ color: MUTED }}>
+                            {ex.reason}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5" style={{ color: MUTED }}>
+                          {p.platform ?? "—"}
+                        </td>
+                        <td className="px-4 py-2.5" style={{ color: MUTED }}>
+                          {p.category_classified ?? "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+      </section>
     </>
   );
 }

@@ -285,6 +285,19 @@ Deno.serve(async (req) => {
       // place in case Absorption is ever revived. See plan: retire-weeks.
       stepResults["extract"] = { skipped: true, reason: "Market Absorption retired" };
 
+      // Stage 5: Missing Prices Catch-Up. Chained automatically so "Force Fresh"
+      // or standard pipeline runs complete the full end-to-end pricing sweep.
+      try {
+        const catchupJson = await invokeStep("discover", { city, missingPricesCatchup: true });
+        if (catchupJson?.source_counts?.catchup) {
+          sourceCounts.catchup = catchupJson.source_counts.catchup;
+        } else {
+          sourceCounts.catchup = { ran: true };
+        }
+      } catch (catchErr) {
+        console.warn("[mvs-run-pipeline] missing prices catchup failed (non-fatal):", catchErr);
+      }
+
       await admin
         .from("mvs_pipeline_runs")
         .update({

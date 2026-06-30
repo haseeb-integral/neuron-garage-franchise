@@ -1,42 +1,30 @@
-## Are the risks covered?
+# Update MVS Methodology — Add Old vs New Crawler Section
 
-**Yes — both risks from the earlier plan are handled:**
+## What changes
+Add one new section to `src/pages/MVSMethodology.tsx` (the page already linked in the left sidebar under Methodology → MVS Methodology). No new routes, no sidebar edits.
 
-1. **"Cities may show data up to 90 days old without warning"**
-   - Mitigated by: **Force Fresh** button (unchanged, always overrides) + the existing amber "stale" badge still shows the exact age on each row, so the user can see "this is 78 days old" and choose to re-crawl.
+## Where it goes
+Insert as **Section 5: "Crawler Evolution — Old (3 steps) vs New (8 steps)"**, right before the current "Shared Data & Tooling Stack" section. Renumber the two sections after it (Shared Stack → 6, Important Notes → 7).
 
-2. **"UI and backend constants must move together"**
-   - Already handled in the prior phase: `src/lib/mvs/preCrawlFreshness.ts` (frontend) AND `supabase/functions/mvs-run-pipeline/index.ts` (backend hard-guard at line 129) were bumped to 90 in the same turn. The fallback window at line 347 was also widened to 120. So UI and backend agree.
+## What the new section contains
+Three blocks, in plain grade-6 English:
 
-## Did we miss anything? → Yes, 2 small spec-doc lines
+1. **Short intro paragraph** — "Before June 26, 2026 the crawler used a strict 3-step flow. It missed prices whenever the camp's own website hid the number behind a login wall. The new 8-step flow adds a Google catch-up search and reads marketplace listings (Sawyer, ActivityHero, Yelp). Coverage on Columbus jumped from 53 to 207 priced camps (23% → 91%)."
 
-I re-scanned every file that mentions day-based freshness. Code and user-facing copy are all updated. **But the technical spec doc `docs/feature-1a-mvs-v1-spec.md` still has two stale "60" numbers that contradict the rest of the spec** (which already says 90/120 at lines 9, 38, 193):
+2. **Side-by-side table** — two columns: "Old crawler (3 steps)" and "New crawler (8 steps)" listing each step in one short sentence. Old: (1) Google Maps lookup, (2) Scrape camp's own site, (3) Strict rule — $ must be in markdown or give up. New: (1) Google Maps, (2) Scrape camp's site, (3) NEW catch-up Google search in plain English, (4) NEW read marketplace listings, (5) NEW relaxed source rule (any trusted source counts), (6) NEW $50–$5,000 sanity guard, (7) Save with clickable proof link, (8) Classify tier (Premium/Mid/Budget/Community).
 
-- **Line 178** — says `failed_no_data` means "no usable saved data within **60d**". Should be **120d** to match the backend.
-- **Line 219** — says soft-fail fallback uses "saved data **≤60d**". Should be **≤120d** to match the backend.
+3. **Worked example callout** — "Steve & Kate's Camp, Austin TX" walk-through: old crawler returned null (login wall); new crawler found $2,190/week on an ActivityHero listing, passed the $50–$5k guard, saved with the clickable ActivityHero URL, and classified as Premium (Austin median ≈ $400/week).
 
-These don't affect runtime behavior (code is correct), but they make the spec internally inconsistent and will confuse anyone reading it.
+## Files touched
+- `src/pages/MVSMethodology.tsx` — insert the new section, bump section numbers on the two that follow.
 
-**Other places I checked and confirmed clean:**
+That's it. One file, presentation-only.
 
-- `src/lib/mvs/preCrawlFreshness.ts` → 90/120 ✓
-- `supabase/functions/mvs-run-pipeline/index.ts` (hard-guard + fallback) → 90/120 ✓
-- `supabase/functions/mvs-refresh-all/index.ts` → no own freshness guard, delegates to `mvs-run-pipeline` ✓
-- `src/data/userGuideMarkdown.ts` (lines 124, 144, 145, 146) → 90/120 ✓
-- `src/pages/MVSMethodology.tsx` → updated ✓
-- `MarketValidationRollout.tsx` tooltips/footers → updated ✓
-- `src/integrations/supabase/types.ts` → only the `done_stale` enum value, no day numbers (correct, auto-generated)
-- The 3-minute `STALE_MS` in `mvs-run-pipeline` and `mvs-refresh-all` → this is a different thing (run-lock timeout for crashed pipelines), NOT data freshness. Leave it alone.
+## Risks
+None — pure copy/markup addition on a docs page. No data, no edge functions, no scoring logic touched.
 
-## Proposed cleanup phase (very small — 1 turn)
+## Turns
+1 turn.
 
-**File:** `docs/feature-1a-mvs-v1-spec.md`
-
-- Line 178: `60d` → `120d`
-- Line 219: `≤60d` → `≤120d`
-
-**Risk:** none — doc-only edit, no code or runtime touched.
-
-**Effort:** 1 Lovable turn, ~2 line edits.
-
-Approve and I'll make these two doc fixes so the spec matches the code.
+## Test after build
+Open `/mvs-methodology` and confirm the new "Section 5 — Crawler Evolution" appears between Tier Definitions and Shared Data & Tooling Stack, with the table and Steve & Kate's example rendering correctly.

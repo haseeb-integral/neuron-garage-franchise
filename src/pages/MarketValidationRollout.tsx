@@ -447,17 +447,30 @@ export default function MarketValidationRollout() {
     fetchAll();
   }, [fetchAll]);
 
+  const anyRunningOrCatchingUp = useMemo(
+    () => Object.values(latestRuns).some((r) => {
+      if (!r) return false;
+      if (r.status === "queued" || r.status === "running") return true;
+      if (r.status === "done") {
+        const catchup = (r.source_counts as any)?.catchup;
+        if (catchup && (catchup.batches_completed ?? 0) < (catchup.batches_total ?? 0)) return true;
+      }
+      return false;
+    }),
+    [latestRuns],
+  );
+
   const anyRunning = useMemo(
     () => Object.values(latestRuns).some((r) => r?.status === "queued" || r?.status === "running"),
     [latestRuns],
   );
 
-  // Poll while any city is in-flight or while we just kicked one off.
+  // Poll while any city is in-flight, catching up background jobs, or while we just kicked one off.
   useEffect(() => {
-    if (!anyRunning && !invokingCity) return;
-    const t = setInterval(fetchAll, 5000);
+    if (!anyRunningOrCatchingUp && !invokingCity) return;
+    const t = setInterval(fetchAll, 4000);
     return () => clearInterval(t);
-  }, [anyRunning, invokingCity, fetchAll]);
+  }, [anyRunningOrCatchingUp, invokingCity, fetchAll]);
 
   // Actually invoke the edge function. `force=true` bypasses the backend
   // freshness guard so the crawl always runs.

@@ -1342,7 +1342,7 @@ ${PRICE_RULES}
         }
       }
     } else if (firecrawlKey && lovableKey && !catchupBatch) {
-      // Main parent scan mode: find unpriced camps and spawn background micro-batches
+      // Main parent scan mode: find ALL unpriced camps and spawn background micro-batches
       try {
         const { data: missingRows } = await admin
           .from("mvs_providers")
@@ -1350,7 +1350,7 @@ ${PRICE_RULES}
           .eq("city", city)
           .is("price_min", null)
           .is("price_max", null)
-          .limit(45);
+          .limit(500);
 
         if (missingRows && missingRows.length > 0) {
           const allMissingIds = missingRows.map(r => r.id as string);

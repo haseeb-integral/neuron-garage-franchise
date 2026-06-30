@@ -1267,16 +1267,11 @@ ${PRICE_RULES}
               const gemJson = await gemRes.json().catch(() => ({}));
               const parsed = JSON.parse(gemJson?.choices?.[0]?.message?.content ?? "{}") as { price_min?: number | null; price_max?: number | null; category_raw?: string | null; confidence?: number };
               
-              const dollarMatches = new Set<number>();
-              for (const m of blob.matchAll(/\$\s?(\d{1,3}(?:[,]?\d{3})*|\d+)/g)) {
-                const num = Number(m[1].replace(/,/g, ""));
-                if (Number.isFinite(num) && num >= 10 && num <= 100000) dollarMatches.add(num);
-              }
-              const priceOk = (val?: number | null) => typeof val === "number" && (dollarMatches.has(val) || Array.from(dollarMatches).some(d => Math.abs(d - val) <= 2));
+              const isValidPrice = (val?: number | null) => typeof val === "number" && Number.isFinite(val) && val >= 15 && val <= 5000;
 
               const candidatePrices: number[] = [];
-              if (priceOk(parsed.price_min)) candidatePrices.push(parsed.price_min!);
-              if (priceOk(parsed.price_max)) candidatePrices.push(parsed.price_max!);
+              if (isValidPrice(parsed.price_min)) candidatePrices.push(parsed.price_min!);
+              if (isValidPrice(parsed.price_max)) candidatePrices.push(parsed.price_max!);
 
               // Priority 4 Highest-Tier Regex Boost: inspect markdown for recurring weekly tuition
               for (const m of blob.matchAll(/\$\s?(\d{1,3}(?:[,]?\d{3})*|\d+)\s*(?:\/|\bper\b|\ba\b)\s*(?:wk|week|session|camp)/gi)) {

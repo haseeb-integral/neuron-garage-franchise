@@ -14,6 +14,9 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ProviderScreenshotButton } from "@/components/phase2-demo/ProviderScreenshotButton";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Progress } from "@/components/ui/progress";
 
 
 
@@ -498,7 +501,36 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
   const { result, providers, weeks, acs, flag, watchlist, overrides, lastRefreshed, qaOpenCount, qaReasons, loading, error, refresh } =
     useLiveMvs(cityKey, { weights });
 
+  const [catchingUp, setCatchingUp] = useState(false);
+  const [catchupProgress, setCatchupProgress] = useState({ current: 0, total: 0 });
 
+  async function runClientCatchup() {
+    const unpriced = providers.filter((p) => (p.price_min ?? null) == null && (p.price_max ?? null) == null);
+    if (unpriced.length === 0) {
+      toast.info(`All ${providers.length} providers already have pricing checked.`);
+      return;
+    }
+    setCatchingUp(true);
+    setCatchupProgress({ current: 0, total: unpriced.length });
+    const batchSize = 5;
+    let checked = 0;
+    for (let i = 0; i < unpriced.length; i += batchSize) {
+      const batchIds = unpriced.slice(i, i + batchSize).map((p) => p.id);
+      try {
+        await supabase.functions.invoke("mvs-discover-providers", {
+          body: { city: cityKey, catchupBatch: batchIds },
+        });
+      } catch (err) {
+        console.warn("[Catchup] batch failed:", err);
+      }
+      checked += batchIds.length;
+      setCatchupProgress({ current: Math.min(checked, unpriced.length), total: unpriced.length });
+      refresh();
+    }
+    setCatchingUp(false);
+    toast.success(`Catch-up finished for ${unpriced.length} camps!`);
+    refresh();
+  }
 
   const provCount = providers.length;
   const weekCount = weeks.length;
@@ -649,8 +681,42 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
     );
   }
 
+  const nMissingPriceTotal = useMemo(
+    () => providers.filter((p) => (p.price_min ?? null) == null && (p.price_max ?? null) == null).length,
+    [providers],
+  );
+
   return (
     <>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#dbe4f2] bg-[#f0f5ff] p-3 shadow-sm">
+        <div className="flex items-center gap-2">
+          <span className="inline-flex h-2 w-2 rounded-full bg-[#174be8]"></span>
+          <span className="text-xs font-bold text-[#07142f]">Missing Prices Catch-Up Queue</span>
+          <span className="rounded-full bg-[#dceaff] px-2 py-0.5 text-[10px] font-bold text-[#174be8]">
+            {nMissingPriceTotal} unpriced
+          </span>
+        </div>
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          {catchingUp && (
+            <div className="flex flex-1 sm:w-48 flex-col gap-1">
+              <div className="flex justify-between text-[10px] font-semibold text-[#526078]">
+                <span>Scanning Google…</span>
+                <span>{catchupProgress.current} / {catchupProgress.total}</span>
+              </div>
+              <Progress value={catchupProgress.total > 0 ? (catchupProgress.current / catchupProgress.total) * 100 : 0} className="h-2" />
+            </div>
+          )}
+          <button
+            onClick={runClientCatchup}
+            disabled={catchingUp || nMissingPriceTotal === 0}
+            className="inline-flex items-center gap-1.5 rounded-md bg-[#174be8] px-3 py-1.5 text-xs font-bold text-white shadow hover:bg-[#123bb8] disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
+          >
+            {catchingUp && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {catchingUp ? "Running Catch-Up…" : `Run Missing Prices Catch-Up (${nMissingPriceTotal})`}
+          </button>
+        </div>
+      </div>
+
       <RunPipelineButton city={cityKey} onComplete={refresh} />
       {/* Composite hero card */}
 

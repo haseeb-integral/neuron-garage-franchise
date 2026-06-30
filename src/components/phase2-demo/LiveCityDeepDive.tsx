@@ -496,32 +496,8 @@ interface Props {
  * preview-only (v1.0): they change the in-memory weight blend without
  * persisting, so users can sanity-check sensitivity.
  */
-/**
- * Strict Camp View — classifies a provider row as a non-camp so headline
- * counts and the catch-up scanner only operate on real summer camps. The
- * raw row is never deleted; it just moves to the "Excluded Locations"
- * drawer below the providers table.
- *
- * Returns null when the row IS a real summer camp.
- */
-function classifyExclusion(p: any): { reason: string; label: string } | null {
-  const cat = String(p?.category_classified ?? "").toLowerCase().replace(/[^a-z]/g, "");
-  if (cat === "childcareexcluded") {
-    return { reason: "Baby Daycare / Year-round Childcare", label: "Daycare" };
-  }
-  const name = String(p?.name ?? "").toLowerCase();
-  const isCampish = /(camp|academy|school|studio|gym|dance|art|stem|music|tutor|after[- ]?school)/i.test(p?.name ?? "");
-  if (/\b(park|garden|zoo|harbor|harbour|beach|reservation|sanctuary|public\s+library)\b/.test(name) && !isCampish) {
-    return { reason: "Public Park / Public Space", label: "Public Space" };
-  }
-  if (/\b(home\s*depot|lowe'?s|michael'?s|apple\s+store|barnes\s*&?\s*noble)\b/.test(name)) {
-    return { reason: "Free Retail Workshop", label: "Retail Workshop" };
-  }
-  if (/\bboys\s*&?\s*girls\s+club\b/.test(name)) {
-    return { reason: "Free / Charity Drop-in Club", label: "Charity Club" };
-  }
-  return null;
-}
+// Strict Camp View helper is shared with Provider Evidence Review.
+// See src/lib/mvs/classifyExclusion.ts
 
 export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) {
   const [weights, setWeights] = useState<Record<string, number>>({ ...DEFAULT_WEIGHTS });

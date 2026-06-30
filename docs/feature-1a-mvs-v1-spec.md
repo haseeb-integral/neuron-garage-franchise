@@ -190,7 +190,7 @@ Status values on `mvs_pipeline_runs`: `running`, `done`, `done_stale` (soft-fail
   * Trust: per-pillar confidence (e.g. "Medium confidence — 8 of 12 providers had readable prices") with its own reason per card.
   * Weight preview slider: shows "Contributes X.X of 100 to MVS" with live delta, MVS preview only.
   * Collapsibles renamed: "How this score is calculated", "Where the data comes from (N)".
-* **Freshness controls:** 0–30 days → auto-skip with toast and persistent amber row badge; 31–60 days → `AlertDialog` prompt "use saved or run fresh"; >60 → fresh crawl. Backend hard-guard enforces same rules. `done_stale` runs use `fallback_data_date` (not `finished_at`) so age math reflects the real data.
+* **Freshness controls:** 0–90 days → auto-skip with toast and persistent amber row badge; 91–120 days → `AlertDialog` prompt "use saved or run fresh"; >120 → fresh crawl. Backend hard-guard enforces same rules. `done_stale` runs use `fallback_data_date` (not `finished_at`) so age math reflects the real data.
 * **Known limitations panel** on the page (collapsible) explains what data we don't have.
 * **PDF Market Brief:** unchanged in structure — 1-page Exec Summary in v1.0, fuller 12-section brief deferred.
 

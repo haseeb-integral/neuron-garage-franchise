@@ -108,7 +108,9 @@ function CityRow({
   }, [city, composite, onComposite]);
 
   const status = latestRun?.status ?? null;
-  const inFlight = status === "queued" || status === "running";
+  const catchupMetaCheck = (latestRun?.source_counts as any)?.catchup;
+  const isCatchingUpCheck = status === "done" && catchupMetaCheck && (catchupMetaCheck.batches_completed ?? 0) < (catchupMetaCheck.batches_total ?? 0);
+  const inFlight = status === "queued" || status === "running" || isCatchingUpCheck;
   const isInvoking = invokingCity === city;
   const canRun = !anyRunning && !invokingCity;
 
@@ -461,7 +463,15 @@ export default function MarketValidationRollout() {
   );
 
   const anyRunning = useMemo(
-    () => Object.values(latestRuns).some((r) => r?.status === "queued" || r?.status === "running"),
+    () => Object.values(latestRuns).some((r) => {
+      if (!r) return false;
+      if (r.status === "queued" || r.status === "running") return true;
+      if (r.status === "done") {
+        const catchup = (r.source_counts as any)?.catchup;
+        if (catchup && (catchup.batches_completed ?? 0) < (catchup.batches_total ?? 0)) return true;
+      }
+      return false;
+    }),
     [latestRuns],
   );
 

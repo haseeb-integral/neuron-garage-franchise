@@ -517,9 +517,10 @@ export default function MVSMethodology() {
             </p>
           </section>
 
-          {/* Section 6 — Notes */}
+          {/* Section 7 — Notes */}
           <section className="mb-2">
-            <SectionTitle n={6}>Important Notes</SectionTitle>
+            <SectionTitle n={7}>Important Notes</SectionTitle>
+
             <div className="space-y-3">
               {MVS_NOTES.map((note, i) => (
                 <div

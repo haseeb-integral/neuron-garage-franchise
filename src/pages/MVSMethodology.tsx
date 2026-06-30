@@ -405,9 +405,78 @@ export default function MVSMethodology() {
             </div>
           </section>
 
-          {/* Section 5 — Shared infra */}
+          {/* Section 5 — Crawler Evolution */}
           <section className="mb-10">
-            <SectionTitle n={5}>Shared Data & Tooling Stack</SectionTitle>
+            <SectionTitle n={5}>Crawler Evolution — Old (3 steps) vs New (8 steps)</SectionTitle>
+            <p className="text-[13px] leading-relaxed text-[#1a2540] mb-3">
+              Before June 26, 2026 the crawler used a strict 3-step flow. It missed prices whenever the
+              camp's own website hid the number behind a login wall or a "Book Now" button. The new
+              8-step flow adds a plain-English Google catch-up search and reads marketplace listings
+              (Sawyer, ActivityHero, Yelp). Real impact: Columbus jumped from <strong>53 priced camps to 207</strong>{" "}
+              (23% → 91% coverage) without any human edits.
+            </p>
+
+            <div className="rounded-md border border-[#eef2f7] bg-white overflow-hidden">
+              <table className="w-full text-[13px]">
+                <thead className="bg-[#fafbfd] text-[#526078]">
+                  <tr>
+                    <th className="text-left px-4 py-2 font-semibold w-1/2">Old crawler — 3 steps (retired)</th>
+                    <th className="text-left px-4 py-2 font-semibold w-1/2">New crawler — 8 steps (live)</th>
+                  </tr>
+                </thead>
+                <tbody className="text-[#1a2540] align-top">
+                  <tr className="border-t border-[#eef2f7]">
+                    <td className="px-4 py-2"><strong>1.</strong> Google Maps lookup — find the camp's name, website, address.</td>
+                    <td className="px-4 py-2"><strong>1.</strong> Google Maps lookup. <em>Same as before.</em></td>
+                  </tr>
+                  <tr className="border-t border-[#eef2f7]">
+                    <td className="px-4 py-2"><strong>2.</strong> Scrape the camp's own website with Firecrawl.</td>
+                    <td className="px-4 py-2"><strong>2.</strong> Scrape the camp's own website. <em>Same as before.</em></td>
+                  </tr>
+                  <tr className="border-t border-[#eef2f7]">
+                    <td className="px-4 py-2"><strong>3.</strong> Strict rule: the dollar sign and number <em>must</em> appear directly in the markdown of that page. If not → save price = null and stop.</td>
+                    <td className="px-4 py-2"><strong>3. NEW —</strong> Catch-up Google search in plain English (e.g. <em>"Steve &amp; Kate's Camp Austin summer camp tuition price per week 2026"</em>).</td>
+                  </tr>
+                  <tr className="border-t border-[#eef2f7]">
+                    <td className="px-4 py-2 text-[#526078] italic">—</td>
+                    <td className="px-4 py-2"><strong>4. NEW —</strong> Read marketplace listings the search returned (ActivityHero, Sawyer, Yelp listings, news articles, the camp's own PDF).</td>
+                  </tr>
+                  <tr className="border-t border-[#eef2f7]">
+                    <td className="px-4 py-2 text-[#526078] italic">—</td>
+                    <td className="px-4 py-2"><strong>5. NEW —</strong> Relaxed source rule: if a dollar number appears on any trusted source and ties to this camp by name, accept it.</td>
+                  </tr>
+                  <tr className="border-t border-[#eef2f7]">
+                    <td className="px-4 py-2 text-[#526078] italic">—</td>
+                    <td className="px-4 py-2"><strong>6. NEW —</strong> Price-rules guard: must be between <strong>$50 and $5,000</strong>, must be weekly tuition (not a deposit, membership, or t-shirt fee).</td>
+                  </tr>
+                  <tr className="border-t border-[#eef2f7]">
+                    <td className="px-4 py-2 text-[#526078] italic">—</td>
+                    <td className="px-4 py-2"><strong>7.</strong> Save with full proof: price, platform, clickable <code>source_listing_url</code>, confidence score.</td>
+                  </tr>
+                  <tr className="border-t border-[#eef2f7]">
+                    <td className="px-4 py-2 text-[#526078] italic">—</td>
+                    <td className="px-4 py-2"><strong>8.</strong> Tier-classify the provider (Premium / Mid / Budget / Community) using the rules in Section 4.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-5 rounded-md border border-[#cfdcff] bg-[#f4f8ff] p-4">
+              <p className="text-[12px] font-bold uppercase tracking-wider text-[#174be8] mb-2">
+                Worked example — Steve &amp; Kate's Camp, Austin TX
+              </p>
+              <ul className="list-disc pl-5 space-y-1.5 text-[13px] leading-relaxed text-[#1a2540]">
+                <li><strong>Old crawler result:</strong> price = null. Their site shows pictures and a "Book Now" button but no dollar number — it sits behind a login wall. Old strict rule gave up and marked the camp as "missing price" forever (unless a human fixed it).</li>
+                <li><strong>New crawler result:</strong> Step 3 fired the catch-up Google search. Step 4 read the ActivityHero listing for that exact camp. <strong>$2,190/week</strong> was openly shown. Step 6 guard passed ($50–$5,000, weekly). Step 7 saved with the clickable ActivityHero URL and confidence 0.95. Step 8 classified as <strong>Premium</strong> (well above Austin's ~$400/week median).</li>
+                <li><strong>Human verification time:</strong> ~5 seconds — click the saved link and see the price on the page.</li>
+              </ul>
+            </div>
+          </section>
+
+          {/* Section 6 — Shared infra */}
+          <section className="mb-10">
+            <SectionTitle n={6}>Shared Data & Tooling Stack</SectionTitle>
+
             <p className="text-[13px] leading-relaxed text-[#1a2540] mb-3">
               A single scrape per shortlisted city powers Scores 1, 2, 4, 5 and the provider denominator
               for Scores 3 and 6. Demographic inputs reuse the Census ACS pipeline already wired in v1.0.
@@ -448,9 +517,10 @@ export default function MVSMethodology() {
             </p>
           </section>
 
-          {/* Section 6 — Notes */}
+          {/* Section 7 — Notes */}
           <section className="mb-2">
-            <SectionTitle n={6}>Important Notes</SectionTitle>
+            <SectionTitle n={7}>Important Notes</SectionTitle>
+
             <div className="space-y-3">
               {MVS_NOTES.map((note, i) => (
                 <div

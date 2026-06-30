@@ -175,7 +175,7 @@ Tier labels: ≥350 Underserved · 200–349 Balanced · 100–199 Competitive �
 | mvs_city_overlap_overrides | Active | city, state, operator_name, overlap |
 | mvs_pipeline_runs | Active | run_id, city, state, triggered_by, started_at, finished_at, status, error, provider_count, firecrawl_calls, **fallback_data_date** |
 
-Status values on `mvs_pipeline_runs`: `running`, `done`, `done_stale` (soft-fail fallback in use), `failed_no_data` (no usable saved data within 60d).
+Status values on `mvs_pipeline_runs`: `running`, `done`, `done_stale` (soft-fail fallback in use), `failed_no_data` (no usable saved data within 120d).
 
 **No mvs_city_scores table.** Composite + sub-scores are always recomputed from `mvs_providers` + ACS via the shared helper. Brett's "one calibrated number everywhere" rule.
 
@@ -200,7 +200,7 @@ Status values on `mvs_pipeline_runs`: `running`, `done`, `done_stale` (soft-fail
 
 | Function | Status | Purpose | Secrets |
 | :---- | :---- | :---- | :---- |
-| mvs-run-pipeline | Active | Orchestrates Stages 1–3, enforces freshness pre-check + soft-fail fallback, applies 50-call cap + sub-caps, refuses crawl <30d old unless `forceFresh: true` | FIRECRAWL_API_KEY, LOVABLE_API_KEY |
+| mvs-run-pipeline | Active | Orchestrates Stages 1–3, enforces freshness pre-check + soft-fail fallback, applies 50-call cap + sub-caps, refuses crawl <90d old unless `forceFresh: true` | FIRECRAWL_API_KEY, LOVABLE_API_KEY |
 | mvs-discover-providers | Active | Stage 1 multi-source discovery | FIRECRAWL_API_KEY |
 | mvs-classify-tier | Active | Stage 2 — parallel waves of 5 | LOVABLE_API_KEY |
 | mvs-enrich-websites | Active | Optional enrichment | FIRECRAWL_API_KEY |
@@ -216,7 +216,7 @@ Client never holds Firecrawl or Lovable AI Gateway keys. Every function checks `
 * **Hard per-run cap of 50 Firecrawl calls** on the orchestrator, with sub-caps (discover 25, classify 15, extract 15). Sub-caps fail fast with a clear error rather than letting one step burn the whole budget.
 * **Classification is parallel** in waves of 5 (was sequential).
 * **Freshness pre-check is shared** via `src/lib/mvs/preCrawlFreshness.ts` and called from both the shortlist table and the deep-dive Run button. Backend re-checks the same rules so a UI bypass cannot cause a crawl.
-* **Soft-fail fallback:** if a fresh crawl fails and saved data ≤60d exists, the run finishes as `done_stale` with `fallback_data_date` set; the UI shows an amber banner and the score stays visible.
+* **Soft-fail fallback:** if a fresh crawl fails and saved data ≤120d exists, the run finishes as `done_stale` with `fallback_data_date` set; the UI shows an amber banner and the score stays visible.
 * **Run traceability:** every invocation opens an `mvs_pipeline_runs` row, updates `firecrawl_calls`, closes with `done` / `done_stale` / `failed_no_data` + `error`.
 
 ---

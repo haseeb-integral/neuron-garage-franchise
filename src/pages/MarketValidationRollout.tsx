@@ -606,6 +606,21 @@ export default function MarketValidationRollout() {
     [startCrawl],
   );
 
+  const handleStop = useCallback(
+    async (city: string) => {
+      const run = latestRuns[city];
+      if (!run) return;
+      toast.info(`Cancelling pipeline run for ${city}...`);
+      await supabase
+        .from("mvs_pipeline_runs")
+        .update({ status: "failed", error: "Cancelled by user" })
+        .eq("id", run.id);
+      setInvokingCity(null);
+      await fetchAll();
+    },
+    [latestRuns, fetchAll],
+  );
+
   // When a previously-running row finishes, auto-promote the city to live
   // so the Market Validation page picks up the new composite.
   useEffect(() => {
@@ -754,6 +769,7 @@ export default function MarketValidationRollout() {
                 skipInfo={skipInfos[c.city] ?? null}
                 onRun={() => handleRun(c.city, c.state)}
                 onForceFresh={() => handleForceFresh(c.city)}
+                onStop={() => handleStop(c.city)}
                 onComposite={reportComposite}
               />
             ))}

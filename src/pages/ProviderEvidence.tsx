@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Download, ExternalLink, Loader2, MapPin, Search } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useProviderEvidence, type EvidenceRow } from "@/lib/mvs/useProviderEvidence";
+import { classifyExclusion } from "@/lib/mvs/classifyExclusion";
 import {
   Sheet,
   SheetContent,
@@ -51,30 +52,51 @@ export default function ProviderEvidence() {
   const [selected, setSelected] = useState<EvidenceRow | null>(null);
   const [queryFilter, setQueryFilter] = useState<string>("all");
   const [keptFilter, setKeptFilter] = useState<string>("all");
+  const [showExcluded, setShowExcluded] = useState(false);
+
+  // Strict Camp View — tag each row with its exclusion reason (or null).
+  const rowsWithExclusion = useMemo(
+    () => rows.map((r) => ({ row: r, exclusion: classifyExclusion(r) })),
+    [rows],
+  );
+  const activeCount = useMemo(
+    () => rowsWithExclusion.filter((x) => x.exclusion === null).length,
+    [rowsWithExclusion],
+  );
+  const excludedBreakdown = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const x of rowsWithExclusion) {
+      if (x.exclusion) m.set(x.exclusion.label, (m.get(x.exclusion.label) ?? 0) + 1);
+    }
+    return Array.from(m.entries()).sort((a, b) => b[1] - a[1]);
+  }, [rowsWithExclusion]);
+  const excludedTotal = rows.length - activeCount;
 
   const filtered = useMemo(() => {
     const ql = q.trim().toLowerCase();
-    return rows.filter((r) => {
-      if (queryFilter !== "all") {
-        if (queryFilter === "__none__") {
-          if (r.matched_query) return false;
-        } else if (r.matched_query?.query !== queryFilter) {
-          return false;
+    return rowsWithExclusion
+      .filter((x) => (showExcluded ? true : x.exclusion === null))
+      .filter(({ row: r }) => {
+        if (queryFilter !== "all") {
+          if (queryFilter === "__none__") {
+            if (r.matched_query) return false;
+          } else if (r.matched_query?.query !== queryFilter) {
+            return false;
+          }
         }
-      }
-      const k = priceKept(r).tone;
-      if (keptFilter !== "all" && k !== keptFilter) return false;
-      if (!ql) return true;
-      const cat = r.category_classified || r.category_raw || "";
-      return (
-        (r.name ?? "").toLowerCase().includes(ql) ||
-        cat.toLowerCase().includes(ql) ||
-        (r.source_listing_url ?? "").toLowerCase().includes(ql) ||
-        (r.website_url ?? "").toLowerCase().includes(ql) ||
-        (r.matched_query?.query ?? "").toLowerCase().includes(ql)
-      );
-    });
-  }, [rows, q, queryFilter, keptFilter]);
+        const k = priceKept(r).tone;
+        if (keptFilter !== "all" && k !== keptFilter) return false;
+        if (!ql) return true;
+        const cat = r.category_classified || r.category_raw || "";
+        return (
+          (r.name ?? "").toLowerCase().includes(ql) ||
+          cat.toLowerCase().includes(ql) ||
+          (r.source_listing_url ?? "").toLowerCase().includes(ql) ||
+          (r.website_url ?? "").toLowerCase().includes(ql) ||
+          (r.matched_query?.query ?? "").toLowerCase().includes(ql)
+        );
+      });
+  }, [rowsWithExclusion, q, queryFilter, keptFilter, showExcluded]);
 
   const exportCsv = () => {
     const headers = [
@@ -91,9 +113,10 @@ export default function ProviderEvidence() {
       "website_url",
       "extraction_phase",
       "discovered_at",
+      "exclusion_reason",
     ];
     const lines = [headers.join(",")];
-    for (const r of filtered) {
+    for (const { row: r, exclusion } of filtered) {
       const kept = priceKept(r);
       const sourceUrl =
         r.matched_provider_entry?.url || r.source_listing_url || r.url || "";
@@ -112,6 +135,7 @@ export default function ProviderEvidence() {
           csvEscape(r.website_url),
           csvEscape("Phase 2"),
           csvEscape(r.created_at),
+          csvEscape(exclusion?.reason ?? ""),
         ].join(",")
       );
     }
@@ -154,14 +178,23 @@ export default function ProviderEvidence() {
           <strong>{city || "—"}</strong>
           {state && <span style={{ color: MUTED }}>, {state}</span>}
         </div>
-        <div className="ml-auto text-[11px]" style={{ color: MUTED }}>
+        <div className="ml-auto flex items-center gap-2 text-[11px]" style={{ color: MUTED }}>
           {loading
             ? "Loading…"
-            : `${filtered.length} of ${rows.length} provider${rows.length === 1 ? "" : "s"}`}
-          {runCreatedAt && (
-            <span className="ml-2">
-              · Debug from run {new Date(runCreatedAt).toLocaleString()}
+            : `${filtered.length} of ${
+                showExcluded ? rows.length : activeCount
+              } ${showExcluded ? "rows" : "active camps"}`}
+          {!loading && excludedTotal > 0 && (
+            <span
+              className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+              style={{ backgroundColor: "#eef2f7", color: MUTED }}
+              title={excludedBreakdown.map(([l, n]) => `${l}: ${n}`).join(" · ")}
+            >
+              +{excludedTotal} excluded
             </span>
+          )}
+          {runCreatedAt && (
+            <span>· Debug from run {new Date(runCreatedAt).toLocaleString()}</span>
           )}
         </div>
         <button
@@ -228,6 +261,21 @@ export default function ProviderEvidence() {
           <option value="dropped">Dropped by guard</option>
           <option value="none">No price found</option>
         </select>
+        <label
+          className="ml-auto inline-flex items-center gap-1.5 text-[12px]"
+          style={{ color: NAVY }}
+          title="Daycares, parks, retail workshops and charity drop-in clubs are hidden by default."
+        >
+          <input
+            type="checkbox"
+            checked={showExcluded}
+            onChange={(e) => setShowExcluded(e.target.checked)}
+          />
+          Show excluded locations
+          {excludedTotal > 0 && (
+            <span style={{ color: MUTED }}>({excludedTotal})</span>
+          )}
+        </label>
       </div>
 
       {error && (
@@ -291,7 +339,7 @@ export default function ProviderEvidence() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((r) => {
+              {filtered.map(({ row: r, exclusion }) => {
                 const kept = priceKept(r);
                 const sourceUrl =
                   r.matched_provider_entry?.url || r.source_listing_url || r.url || null;
@@ -300,6 +348,7 @@ export default function ProviderEvidence() {
                     key={r.id}
                     className="cursor-pointer align-top hover:bg-[#f7faff]"
                     onClick={() => setSelected(r)}
+                    style={exclusion ? { backgroundColor: "#fafafa" } : undefined}
                   >
                     <td
                       className="border-b px-3 py-2 font-semibold"
@@ -388,12 +437,22 @@ export default function ProviderEvidence() {
                     </td>
                     <td className="border-b px-3 py-2" style={{ borderColor: BORDER }}>
                       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                        <span
-                          className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
-                          style={{ backgroundColor: "#eef2f7", color: MUTED }}
-                        >
-                          Needs review
-                        </span>
+                        {exclusion ? (
+                          <span
+                            className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                            style={{ backgroundColor: "#eef2f7", color: MUTED }}
+                            title={exclusion.reason}
+                          >
+                            Excluded — {exclusion.label}
+                          </span>
+                        ) : (
+                          <span
+                            className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                            style={{ backgroundColor: "#eef2f7", color: MUTED }}
+                          >
+                            Needs review
+                          </span>
+                        )}
                         <button
                           type="button"
                           disabled

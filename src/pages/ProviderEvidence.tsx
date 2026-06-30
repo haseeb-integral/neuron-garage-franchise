@@ -261,6 +261,21 @@ export default function ProviderEvidence() {
           <option value="dropped">Dropped by guard</option>
           <option value="none">No price found</option>
         </select>
+        <label
+          className="ml-auto inline-flex items-center gap-1.5 text-[12px]"
+          style={{ color: NAVY }}
+          title="Daycares, parks, retail workshops and charity drop-in clubs are hidden by default."
+        >
+          <input
+            type="checkbox"
+            checked={showExcluded}
+            onChange={(e) => setShowExcluded(e.target.checked)}
+          />
+          Show excluded locations
+          {excludedTotal > 0 && (
+            <span style={{ color: MUTED }}>({excludedTotal})</span>
+          )}
+        </label>
       </div>
 
       {error && (

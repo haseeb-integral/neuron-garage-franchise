@@ -1455,7 +1455,21 @@ ${PRICE_RULES}
             const sc = (runRow.source_counts ?? {}) as Record<string, any>;
             const catchupMeta = (sc.catchup ?? { batches_total: 0, batches_completed: 0 }) as Record<string, any>;
             const completed = (catchupMeta.batches_completed ?? 0) + 1;
+            const total = catchupMeta.batches_total ?? 0;
             sc.catchup = { ...catchupMeta, batches_completed: completed };
+
+            // B1: when this is the final worker, run brand price propagation
+            // for the city before we mark the run finished.
+            if (total > 0 && completed >= total) {
+              try {
+                const propagation = await propagateBrandPricesForCity(admin, city);
+                sc.brand_propagation = propagation;
+                console.log("[mvs-discover-providers] brand propagation", city, propagation);
+              } catch (propErr) {
+                console.warn("[mvs-discover-providers] brand propagation failed:", propErr);
+              }
+            }
+
             await admin.from("mvs_pipeline_runs").update({
               source_counts: sc,
               firecrawl_calls: (runRow.firecrawl_calls ?? 0) + totalFirecrawl,

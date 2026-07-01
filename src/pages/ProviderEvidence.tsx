@@ -341,6 +341,28 @@ export default function ProviderEvidence() {
         </button>
       </div>
 
+      {!loading && rows.length > 0 && (
+        <div className="mb-3 text-[11px]" style={{ color: MUTED }}>
+          <span style={{ color: GREEN, fontWeight: 600 }}>{statusCounts.in_score} in score</span>
+          <span> · </span>
+          <span style={{ color: AMBER, fontWeight: 600 }}>
+            {statusCounts.needs_review} need human review
+          </span>
+          <span> · </span>
+          <span>{statusCounts.rejected} rejected</span>
+          <span> · </span>
+          <span>{statusCounts.no_price} no price</span>
+          {excludedTotal > 0 && (
+            <>
+              <span> · </span>
+              <span>{excludedTotal} excluded</span>
+            </>
+          )}
+        </div>
+      )}
+
+
+
       {!loading && guardSummary.dropCount > 0 && (
         <div className="mb-3">
           <Popover>

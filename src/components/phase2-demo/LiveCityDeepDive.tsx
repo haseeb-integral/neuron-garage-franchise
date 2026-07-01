@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 import { classifyExclusion } from "@/lib/mvs/classifyExclusion";
 import { unpricedBreakdown } from "@/lib/mvs/unpricedReason";
+import { CrawlerTelemetryCard } from "@/components/phase2-demo/CrawlerTelemetryCard";
 
 
 

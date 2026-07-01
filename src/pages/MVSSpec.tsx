@@ -8,7 +8,7 @@ const SPEC_MD = `# Feature 1A Market Validation Spec doc by Lovable
 
 # **Feature 1A — Market Validation Engine**
 
-## **v1.2 Spec (Lovable internal — updated 2026-06-26)**
+## **v1.5 Spec (Lovable internal — updated 2026-07-01)**
 
 **Status:** Shipped, evolving. **Source of truth:** This chat + MVS Methodology doc. **Naming:** MVS (Market Validation Score). Do not surface PEES anywhere in the app or PDF.
 
@@ -32,7 +32,7 @@ Not in scope: predicting any individual Neuron Garage location's success. Site-l
 
 ---
 
-## **2. v1.2 scope (current)**
+## **2. v1.5 scope (current)**
 
 | Decision | Current behavior | Deferred |
 | :---- | :---- | :---- |
@@ -50,7 +50,7 @@ Not in scope: predicting any individual Neuron Garage location's success. Site-l
 
 ---
 
-## **3. MVS composite — v1.2**
+## **3. MVS composite — v1.5**
 
 \`\`\`
 MVS = 0.2667 × Pricing Acceptance
@@ -86,7 +86,7 @@ Stage 4 → Score calculation            → 5 sub-scores → MVS composite
 
 #### Pricing crawler — 9 steps (expanded from the original 3)
 
-For each provider found in Stage 1, the pricing sub-crawler runs up to 9 steps. It stops at the first step that produces a valid price. The old crawler (before 2026-06-26) stopped at step 3 and marked most camps as "missing price."
+For each provider found in Stage 1, the pricing sub-crawler runs up to 9 steps. It stops at the first step that produces a valid price. The old crawler (before 2026-07-01) stopped at step 3 and marked most camps as "missing price."
 
 1. **Google Maps lookup** — get name, website, address.
 2. **Read the camp's own website** with Firecrawl.
@@ -129,7 +129,7 @@ See §5. All math lives in one helper. No stored composite scores — always rec
 
 ---
 
-## **5. Sub-score formulas + v1.2 reference ranges**
+## **5. Sub-score formulas + v1.5 reference ranges**
 
 Normalization is **min-max against fixed reference ranges** (capped 0–100). Ranges below come from the methodology doc.
 
@@ -143,7 +143,7 @@ Normalization is **min-max against fixed reference ranges** (capped 0–100). Ra
 
 ### Score 2 — Market Absorption — RETIRED (weight 0)
 
-> **Deprecated in v1.2.** Removed because sellout-rate scraping was unreliable. Formula preserved below for audit only.
+> **Deprecated in v1.5.** Removed because sellout-rate scraping was unreliable. Formula preserved below for audit only.
 
 \`\`\`
 Sellout Rate            = (sold_out weeks + waitlist weeks) ÷ total weeks scraped
@@ -259,7 +259,7 @@ Client never holds Firecrawl or Lovable AI Gateway keys. Every function checks \
 
 ---
 
-## **10. Out of scope for v1.2 (do not drift)**
+## **10. Out of scope for v1.5 (do not drift)**
 
 * Apify Google Maps actor as a separate discovery source.
 * Inngest/Trigger.dev scheduling.
@@ -340,7 +340,7 @@ const FORMULAS: Array<{ title: string; weight: string; body: string; note?: stri
     weight: "RETIRED (weight 0)",
     body: `Sellout Rate            = (sold_out weeks + waitlist weeks) ÷ total weeks scraped
 Market Absorption Score = normalize(Sellout Rate, range 0%–80%)`,
-    note: "Deprecated in v1.2. Removed because sellout-rate scraping was unreliable. Formula preserved for audit only.",
+    note: "Deprecated in v1.5. Removed because sellout-rate scraping was unreliable. Formula preserved for audit only.",
   },
   {
     title: "Score 3 — Scaled Operator",
@@ -424,9 +424,9 @@ const UI_BEHAVIOR = [
 export default function MVSSpec() {
   return (
     <DocShell
-      eyebrow="Feature 1A · v1.2 Spec"
+      eyebrow="Feature 1A · v1.5 Spec"
       eyebrowIcon={ShieldCheck}
-      title="Market Validation Engine — v1.2 Full Spec"
+      title="Market Validation Engine — v1.5 Full Spec"
       subtitle="Every detail of how MVS works and what is shipped. Source of truth: this page + MVS Methodology + this chat. Re-read before starting any new turn."
       action={<DownloadMDButton content={SPEC_MD} filename="feature-1a-mvs-v1-spec.md" />}
     >
@@ -465,7 +465,7 @@ export default function MVSSpec() {
 
           {/* 2. Scope table */}
           <section>
-            <h2 className="text-lg font-bold text-[#07142f] mb-3">2. v1.2 scope (current)</h2>
+            <h2 className="text-lg font-bold text-[#07142f] mb-3">2. v1.5 scope (current)</h2>
             <div className="overflow-hidden rounded-md border border-[#cfdcff]">
               <table className="w-full text-[13px]">
                 <thead className="bg-[#f4f8ff] text-[#174be8]">
@@ -553,7 +553,7 @@ Stage 4 → Score calculation            → 5 sub-scores → MVS composite`}
 
             <h3 className="text-[15px] font-bold text-[#07142f] mt-6 mb-2">Pricing crawler — 9 steps (expanded from the original 3)</h3>
             <p className="mb-3">
-              For each provider found in Stage 1, the pricing sub-crawler runs up to 9 steps. It stops at the first step that produces a valid price. The old crawler (before 2026-06-26) stopped at step 3 and marked most camps as "missing price."
+              For each provider found in Stage 1, the pricing sub-crawler runs up to 9 steps. It stops at the first step that produces a valid price. The old crawler (before 2026-07-01) stopped at step 3 and marked most camps as "missing price."
             </p>
             <ol className="space-y-2 mb-4">
               {PRICING_STEPS.map((s) => (
@@ -602,7 +602,7 @@ Stage 4 → Score calculation            → 5 sub-scores → MVS composite`}
 
           {/* 5. Sub-score formulas */}
           <section>
-            <h2 className="text-lg font-bold text-[#07142f] mb-3">5. Sub-score formulas + v1.2 reference ranges</h2>
+            <h2 className="text-lg font-bold text-[#07142f] mb-3">5. Sub-score formulas + v1.5 reference ranges</h2>
             <p className="mb-3">Normalization is <strong>min-max against fixed reference ranges</strong> (capped 0–100). Ranges below come from the methodology doc.</p>
             <div className="space-y-4">
               {FORMULAS.map((f) => (
@@ -718,7 +718,7 @@ Stage 4 → Score calculation            → 5 sub-scores → MVS composite`}
 
           {/* 10. Out of scope */}
           <section>
-            <h2 className="text-lg font-bold text-[#07142f] mb-3">10. Out of scope for v1.2 (do not drift)</h2>
+            <h2 className="text-lg font-bold text-[#07142f] mb-3">10. Out of scope for v1.5 (do not drift)</h2>
             <ul className="space-y-2">
               {EXCLUDED.map((item) => (
                 <li key={item} className="flex gap-2">

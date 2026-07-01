@@ -1284,7 +1284,10 @@ ${PRICE_RULES}
         await Promise.all(batchRows.map(async (p) => {
           const generalQuery = `${p.name} ${cleanCity} ${stateAbbr} summer camp price tuition per week 2026`;
           const bookingQuery = `${p.name} ${cleanCity} ${stateAbbr} summer camp register schedule tuition rates`;
-          const qDebug: Record<string, unknown> = { provider_id: p.id, provider_name: p.name, queries: [bookingQuery, generalQuery] };
+          // B2: directory-first query — marketplaces almost always publish real dollar prices,
+          // so we hit them explicitly before the generic Google fallback.
+          const directoryQuery = `${p.name} ${cleanCity} price (site:activityhero.com OR site:hisawyer.com OR site:sawyer.com OR site:campspot.com OR site:peerspace.com OR site:winnetka.com OR site:yelp.com OR site:facebook.com)`;
+          const qDebug: Record<string, unknown> = { provider_id: p.id, provider_name: p.name, queries: [directoryQuery, bookingQuery, generalQuery] };
           try {
             // Atomic DB Lock guard to prevent duplicate background workers checking the same camp
             const { data: lockRow } = await admin.from("mvs_providers")

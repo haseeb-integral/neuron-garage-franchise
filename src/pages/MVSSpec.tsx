@@ -12,7 +12,7 @@ const SPEC_MD = `# Feature 1A Market Validation Spec doc by Lovable
 
 **Status:** Shipped, evolving. **Source of truth:** This chat + MVS Methodology doc. **Naming:** MVS (Market Validation Score). Do not surface PEES anywhere in the app or PDF.
 
-> **What changed since the original v1.0 spec:** discovery expanded from Sawyer-only to 5 sources; Market Absorption pillar retired; registration-page scraping (Stage 3) retired; per-pillar confidence replaced the global low-confidence badge; Firecrawl cap raised to 50 with per-step sub-caps; freshness rules (0–30 skip / 31–60 prompt / >60 fresh) and soft-fail fallback (\`done_stale\`) added; cards redesigned to Result → Evidence → Trust.
+> **What changed since the original v1.0 spec:** discovery expanded from Sawyer-only to 5 sources; Market Absorption pillar retired; registration-page scraping (Stage 3) retired; per-pillar confidence replaced the global low-confidence badge; Firecrawl cap raised to 50 with per-step sub-caps; freshness rules (0–90 skip / 91–120 prompt / >120 fresh) and soft-fail fallback (\`done_stale\`) added; cards redesigned to Result → Evidence → Trust; **pricing crawler expanded from 3 steps to 9 steps** (catch-up Google search, marketplace listing reads, relaxed "trusted source" price rule, brand price propagation, directory-first queries, Google AI Overview fallback, manual Verify/Reject/Edit for uncertain prices).
 
 ---
 
@@ -40,8 +40,8 @@ Not in scope: predicting any individual Neuron Garage location's success. Site-l
 | Scheduling | **Manual trigger** ("Run Pipeline" button per city) | Inngest/Trigger.dev post-client-meeting |
 | Cities in scope | **Any city** can be added; freshness rules apply uniformly | — |
 | Scrape cadence | **1 run per click**, gated by freshness rules below | Multi-scrape history once cadence is automated |
-| Freshness rules | **0–30 days: auto-skip (use saved). 31–60: prompt user. >60: fresh crawl. "Force fresh" always overrides.** Backend hard-guard enforces this even if UI is bypassed. | — |
-| Soft-fail fallback | If a fresh crawl fails but saved data ≤60 days exists → status \`done_stale\`, score stays visible, amber banner shown | — |
+| Freshness rules | **0–90 days: auto-skip (use saved). 91–120: prompt user. >120: fresh crawl. "Force fresh" always overrides.** Backend hard-guard enforces this even if UI is bypassed. | — |
+| Soft-fail fallback | If a fresh crawl fails but saved data ≤120 days exists → status \`done_stale\`, score stays visible, amber banner shown | — |
 | Market Absorption | **Removed from composite (weight 0)** | Not planned |
 | Registration-page scraping (old Stage 3) | **Retired.** \`mvs-extract-weeks\` is a no-op shell. No week rows are written. | Not planned |
 | Normalization | **Fixed reference ranges** (see §5) | Across-shortlist normalization once ≥20 cities have live data |
@@ -83,6 +83,27 @@ Stage 4 → Score calculation            → 5 sub-scores → MVS composite
 * **Extract per provider:** name, weekly price (if visible), category (raw), listing URL, site count in metro, platform.
 * **Persist:** \`mvs_providers\` row per provider. Where Firecrawl returns a listing-page screenshot (e.g. the Sawyer search-results page), the file is stored once in the private \`mvs-screenshots\` bucket and its path is written to \`screenshot_url\` on every provider discovered on that page. Raw HTML is NOT saved. Per-provider website screenshots are NOT captured.
 * **Sub-cap:** ≤25 Firecrawl calls in this stage.
+
+#### Pricing crawler — 9 steps (expanded from the original 3)
+
+For each provider found in Stage 1, the pricing sub-crawler runs up to 9 steps. It stops at the first step that produces a valid price. The old crawler (before 2026-06-26) stopped at step 3 and marked most camps as "missing price."
+
+1. **Google Maps lookup** — get name, website, address.
+2. **Read the camp's own website** with Firecrawl.
+3. **Catch-up Google search** in plain English (e.g. *"Steve & Kate's Camp Austin summer camp tuition price per week 2026"*). *NEW.*
+4. **Read marketplace listings** returned by that search — Sawyer, ActivityHero, Yelp, news pages, camp PDFs. *NEW.*
+5. **Relaxed price rule** — a dollar number on any trusted source that ties to this camp by name is accepted. The old strict "$ must be in the camp's own markdown" rule is retired. *NEW.*
+6. **Guards** — price must be $50–$5,000 per week, weekly cadence, tied to the camp name. Bad prices are dropped with a reason chip. *NEW.*
+7. **Save with proof** — clickable source URL, matched query, confidence score. *NEW.*
+8. **Tier classify** — Premium / Mid / Budget / Community. *NEW.*
+9. **Google AI Overview fallback (Phase B3)** — last resort, reads the Google AI answer box via Apify. Prices found this way are flagged **"Needs human review"** (amber chip); a person must click Verify before they count in the score. *NEW.*
+
+**Related fallbacks that plug into this flow:**
+- **B1 — Brand price propagation:** if 3+ sibling locations of the same brand have prices, the median is proposed for unpriced siblings and flagged for human review.
+- **B2 — Directory-first queries:** the catch-up search prefers Sawyer/ActivityHero listing URLs when available.
+- **B4 — Manual Verify / Reject / Edit:** all uncertain prices surface in the Provider Evidence Review page with quiet chips for auto-kept crawler prices and loud action buttons only for rows that need human review.
+
+
 
 ### Stage 2 — Premium tier classification (Gemini 2.0 Flash via Lovable AI Gateway)
 
@@ -254,9 +275,10 @@ const LOCKED_IN = [
   "5 active sub-scores, normalized 0–100 against fixed reference ranges (Market Absorption retired)",
   "Market Balance INSIDE the composite at 20%",
   "5 discovery sources: Sawyer, ActivityHero, Google Maps, Yelp, Google Search",
+  "Pricing crawler: 9 steps (was 3) — catch-up Google search, marketplace reads, relaxed trusted-source rule, brand propagation, directory-first queries, Google AI Overview fallback, manual Verify/Reject/Edit",
   "Manual trigger only — manager-only Run Pipeline button, with freshness pre-check",
-  "Freshness rules: 0–30 skip, 31–60 prompt, >60 fresh, Force fresh override — enforced in both UI and backend",
-  "Soft-fail fallback: failed fresh crawl with ≤60d saved data → status done_stale, score stays visible",
+  "Freshness rules: 0–90 skip, 91–120 prompt, >120 fresh, Force fresh override — enforced in both UI and backend",
+  "Soft-fail fallback: failed fresh crawl with ≤120d saved data → status done_stale, score stays visible",
   "Firecrawl cap: 50 calls/run total + sub-caps (discover 25, classify 15, extract 15)",
   "Cards: Result → Evidence → Trust → Weight preview, with proof popovers and per-pillar confidence",
 ];

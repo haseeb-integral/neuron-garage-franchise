@@ -361,7 +361,12 @@ export default function ProviderEvidence() {
               {filtered.map(({ row: r, exclusion }) => {
                 const kept = priceKept(r);
                 const sourceUrl =
-                  r.matched_provider_entry?.url || r.source_listing_url || r.url || null;
+                  r.matched_provider_entry?.url ||
+                  r.source_listing_url ||
+                  r.url ||
+                  r.website_url ||
+                  null;
+                const fallbackPlatform = (r as any).platform as string | null | undefined;
                 return (
                   <tr
                     key={r.id}
@@ -393,12 +398,27 @@ export default function ProviderEvidence() {
                             ? r.matched_query.query.slice(0, 70) + "…"
                             : r.matched_query.query}
                         </span>
+                      ) : fallbackPlatform ? (
+                        <span
+                          style={{ color: MUTED }}
+                          title="No debug query recorded for this row — showing discovery platform instead."
+                        >
+                          {fallbackPlatform}
+                        </span>
                       ) : (
                         <span style={{ color: MUTED }}>—</span>
                       )}
                     </td>
                     <td className="border-b px-3 py-2" style={{ borderColor: BORDER, color: MUTED }}>
-                      {r.matched_query?.source_type || "—"}
+                      {r.matched_query?.source_type ? (
+                        r.matched_query.source_type
+                      ) : fallbackPlatform ? (
+                        <span title="No debug source_type recorded — showing discovery platform instead.">
+                          {fallbackPlatform}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
                     </td>
                     <td className="border-b px-3 py-2" style={{ borderColor: BORDER }}>
                       {sourceUrl ? (

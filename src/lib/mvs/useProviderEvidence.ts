@@ -20,6 +20,9 @@ export type EvidenceProvider = {
   source_run_id: string | null;
   created_at: string;
   updated_at: string;
+  price_derived_from_brand?: boolean | null;
+  price_needs_review?: boolean | null;
+  price_derivation_meta?: Record<string, unknown> | null;
 };
 
 export type DroppedPrice = {

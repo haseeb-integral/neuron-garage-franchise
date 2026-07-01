@@ -369,7 +369,7 @@ export default function MarketValidationRollout() {
   }, []);
 
 
-  const { rows: additions, addCity } = useShortlistAdditions();
+  const { rows: additions, addCity, refresh: refreshShortlist } = useShortlistAdditions();
   const SHORTLISTED_CITIES = useMemo<{ city: string; state: string }[]>(
     () => {
       const merged = [

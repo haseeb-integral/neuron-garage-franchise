@@ -1287,7 +1287,36 @@ ${PRICE_RULES}
           // B2: directory-first query — marketplaces almost always publish real dollar prices,
           // so we hit them explicitly before the generic Google fallback.
           const directoryQuery = `${p.name} ${cleanCity} price (site:activityhero.com OR site:hisawyer.com OR site:sawyer.com OR site:campspot.com OR site:peerspace.com OR site:winnetka.com OR site:yelp.com OR site:facebook.com)`;
-          const qDebug: Record<string, unknown> = { provider_id: p.id, provider_name: p.name, queries: [directoryQuery, bookingQuery, generalQuery] };
+
+          // B2.2: hybrid brand+directory query. When this provider matches a
+          // known brand token with priced siblings elsewhere, add a brand-level
+          // marketplace search AND feed sibling price context to the extractor.
+          // Marketplaces often list the parent brand's typical price even when
+          // this specific location is missing.
+          const brandTok = brandTokenOf(p.name);
+          let brandQuery: string | null = null;
+          let siblingPriceHint = "";
+          if (brandTok && brandTok.split(/\s+/).length >= 2) {
+            const { data: siblings } = await admin
+              .from("mvs_providers")
+              .select("name, price_min, price_max")
+              .neq("id", p.id)
+              .not("price_min", "is", null)
+              .not("price_max", "is", null)
+              .eq("price_derived_from_brand", false)
+              .ilike("name", `%${brandTok}%`)
+              .limit(6);
+            const priced = (siblings ?? []).filter((s: any) => s.price_min > 0 && s.price_max > 0);
+            if (priced.length >= 1) {
+              brandQuery = `"${brandTok}" summer camp weekly tuition price (site:activityhero.com OR site:hisawyer.com OR site:sawyer.com OR site:yelp.com OR site:facebook.com OR site:campspot.com)`;
+              const mins = priced.map((s: any) => s.price_min).sort((a: number, b: number) => a - b);
+              const maxs = priced.map((s: any) => s.price_max).sort((a: number, b: number) => a - b);
+              const medMin = mins[Math.floor(mins.length / 2)];
+              const medMax = maxs[Math.floor(maxs.length / 2)];
+              siblingPriceHint = `\nBRAND CONTEXT: "${brandTok}" locations elsewhere charge roughly $${medMin}-$${medMax}/week (n=${priced.length}). Prefer amounts consistent with this range, but ONLY extract a price if it explicitly appears in the search or scrape text below. Do not invent numbers.`;
+            }
+          }
+          const qDebug: Record<string, unknown> = { provider_id: p.id, provider_name: p.name, queries: [directoryQuery, bookingQuery, generalQuery, brandQuery].filter(Boolean), brand_token: brandTok || null, brand_hint_used: !!siblingPriceHint };
           try {
             // Atomic DB Lock guard to prevent duplicate background workers checking the same camp
             const { data: lockRow } = await admin.from("mvs_providers")
@@ -1332,7 +1361,7 @@ ${PRICE_RULES}
 
             // Scrape top 1-2 mapped URLs + execute Priority 3 Booking Search & General Search concurrently
             const selectedMapUrls = mapUrlsToScrape.slice(0, 2);
-            const [mapScrapes, directorySearchRes, bookingSearchRes, generalSearchRes] = await Promise.all([
+            const [mapScrapes, directorySearchRes, bookingSearchRes, generalSearchRes, brandSearchRes] = await Promise.all([
               Promise.all(selectedMapUrls.map(async (sUrl) => {
                 const sRes = await fetchWithTimeout(`${FIRECRAWL_V2}/scrape`, {
                   method: "POST",
@@ -1362,11 +1391,20 @@ ${PRICE_RULES}
                 headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
                 body: JSON.stringify({ query: generalQuery, limit: 3, scrapeOptions: { formats: ["markdown"], onlyMainContent: false } }),
               }, FIRECRAWL_TIMEOUT_MS).catch(() => null),
+              // B2.2: brand hybrid query (only when we have priced siblings)
+              brandQuery
+                ? fetchWithTimeout(`${FIRECRAWL_V2}/search`, {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({ query: brandQuery, limit: 2, scrapeOptions: { formats: ["markdown"], onlyMainContent: false } }),
+                  }, FIRECRAWL_TIMEOUT_MS).catch(() => null)
+                : Promise.resolve(null),
             ]);
 
             if (directorySearchRes && directorySearchRes.ok) totalFirecrawl += 1;
             if (bookingSearchRes && bookingSearchRes.ok) totalFirecrawl += 1;
             if (generalSearchRes && generalSearchRes.ok) totalFirecrawl += 1;
+            if (brandSearchRes && brandSearchRes.ok) totalFirecrawl += 1;
 
             const parseSearch = async (res: Response | null) => {
               if (!res || !res.ok) return [];
@@ -1374,20 +1412,23 @@ ${PRICE_RULES}
               return (Array.isArray(j?.data?.web) ? j.data.web : Array.isArray(j?.data) ? j.data : []) as Array<Record<string, unknown>>;
             };
 
-            const [directoryItems, bookingItems, generalItems] = await Promise.all([
+            const [directoryItems, bookingItems, generalItems, brandItems] = await Promise.all([
               parseSearch(directorySearchRes),
               parseSearch(bookingSearchRes),
               parseSearch(generalSearchRes),
+              parseSearch(brandSearchRes),
             ]);
 
             // Directory items come first — they usually have real dollar prices.
-            const searchItems = [...directoryItems, ...bookingItems, ...generalItems];
+            // Brand items come last as supporting context.
+            const searchItems = [...directoryItems, ...bookingItems, ...generalItems, ...brandItems];
             const searchBlob = searchItems.map((it, idx) => `=== SEARCH RESULT ${idx + 1} ===\nURL: ${it.url ?? ""}\nTITLE: ${it.title ?? ""}\nDESCRIPTION SNIPPET: ${it.description ?? ""}\n\n${String(it.markdown ?? it.content ?? "").slice(0, 6000)}`).join("\n\n");
             const blob = [...mapScrapes.filter(Boolean), searchBlob].filter(Boolean).join("\n\n");
 
             // Prefer a directory URL as the evidence link when one exists — cleaner than a homepage.
             const discoveredUrl = (directoryItems[0]?.url as string) || selectedMapUrls[0] || (bookingItems[0]?.url as string) || (generalItems[0]?.url as string) || null;
             qDebug.directory_hits = directoryItems.length;
+            qDebug.brand_hits = brandItems.length;
 
             const gemRes = await fetchWithTimeout(AI_GATEWAY, {
               method: "POST",
@@ -1396,7 +1437,7 @@ ${PRICE_RULES}
                 model: "google/gemini-3-flash-preview",
                 messages: [
                   { role: "system", content: catchupSys },
-                  { role: "user", content: `Provider Name: ${p.name}\nCity: ${city}\n\nSEARCH & SCRAPE RESULTS MARKDOWN:\n${blob.slice(0, 28000)}` },
+                  { role: "user", content: `Provider Name: ${p.name}\nCity: ${city}${siblingPriceHint}\n\nSEARCH & SCRAPE RESULTS MARKDOWN:\n${blob.slice(0, 28000)}` },
                 ],
                 response_format: { type: "json_object" },
               }),

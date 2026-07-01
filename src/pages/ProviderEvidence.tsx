@@ -726,7 +726,30 @@ function EvidenceDrawer({ row, onClose }: { row: EvidenceRow | null; onClose: ()
               )}
             </div>
 
+            {row.guard_drop && row.guard_drop.length > 0 && (
+              <div className="rounded-xl border p-4" style={{ borderColor: "#f4d8a8", backgroundColor: "#fff7e8" }}>
+                <div className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: AMBER }}>
+                  Prices dropped by the safety guard ({row.guard_drop.length})
+                </div>
+                <ul className="space-y-1.5 text-xs" style={{ color: NAVY }}>
+                  {row.guard_drop.map((d, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="font-mono font-bold shrink-0">
+                        {d.field}={d.value != null ? `$${d.value}` : "—"}
+                      </span>
+                      <span style={{ color: MUTED }}>— {guardReason(d)}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-2 text-[11px]" style={{ color: MUTED }}>
+                  These numbers were extracted from the page but did not pass the
+                  weekly-tuition sanity check, so they do not count toward the score.
+                </div>
+              </div>
+            )}
+
             {/* Section 2: Proof & Website */}
+
             <div className="space-y-3">
               <div className="text-[11px] font-bold uppercase tracking-wider" style={{ color: BLUE }}>
                 Proof & Official Website

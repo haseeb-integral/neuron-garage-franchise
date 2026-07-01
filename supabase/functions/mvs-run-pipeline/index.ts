@@ -76,6 +76,7 @@ Deno.serve(async (req) => {
   const admin = createClient(supabaseUrl, serviceKey);
   const isServiceRole = authHeader.includes(serviceKey);
 
+  let triggeringUserId: string | null = null;
   if (!isServiceRole) {
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
@@ -87,6 +88,7 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    triggeringUserId = userData.user.id;
     const { data: roleRows } = await admin
       .from("user_roles")
       .select("role")

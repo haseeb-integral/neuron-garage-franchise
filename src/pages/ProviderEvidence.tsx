@@ -42,6 +42,25 @@ function priceKept(r: EvidenceRow): { label: string; tone: "kept" | "dropped" | 
   return { label: "No price found", tone: "none" };
 }
 
+// Explain in plain English WHY the guard dropped a price. The dropped record
+// only carries `field` + `value`; the reason is inferred from those two.
+function guardReason(d: DroppedPrice): string {
+  const field = (d.field || "").toLowerCase();
+  const v = typeof d.value === "number" ? d.value : Number(d.value);
+  if (/per[_ ]?day|daily|day_rate/.test(field)) return "Looked like a per-day rate, not per-week";
+  if (/per[_ ]?hour|hourly/.test(field)) return "Looked like a per-hour rate, not per-week";
+  if (/per[_ ]?session|session/.test(field)) return "Looked like a per-session rate, not per-week";
+  if (/month|monthly/.test(field)) return "Looked like a monthly rate, not per-week";
+  if (/annual|year/.test(field)) return "Looked like an annual rate, not per-week";
+  if (/swap|min_gt_max|reversed/.test(field)) return "min was greater than max — could not trust it";
+  if (Number.isFinite(v)) {
+    if (v > 0 && v < 50) return `$${v} is below the $50/week sanity floor`;
+    if (v > 5000) return `$${v} is above the $5,000/week sanity ceiling`;
+  }
+  return "Unit unclear — could not verify it is a weekly tuition figure";
+}
+
+
 export default function ProviderEvidence() {
   const [params] = useSearchParams();
   const city = params.get("city") ?? "";

@@ -407,13 +407,14 @@ export default function MVSMethodology() {
 
           {/* Section 5 — Crawler Evolution */}
           <section className="mb-10">
-            <SectionTitle n={5}>Crawler Evolution — Old (3 steps) vs New (8 steps)</SectionTitle>
+            <SectionTitle n={5}>Crawler Evolution — Old (3 steps) vs New (9 steps)</SectionTitle>
             <p className="text-[13px] leading-relaxed text-[#1a2540] mb-3">
               Before June 26, 2026 the crawler used a strict 3-step flow. It missed prices whenever the
               camp's own website hid the number behind a login wall or a "Book Now" button. The new
-              8-step flow adds a plain-English Google catch-up search and reads marketplace listings
-              (Sawyer, ActivityHero, Yelp). Real impact: Columbus jumped from <strong>53 priced camps to 207</strong>{" "}
-              (23% → 91% coverage) without any human edits.
+              9-step flow adds a plain-English Google catch-up search, reads marketplace listings
+              (Sawyer, ActivityHero, Yelp), and — as the final fallback — reads Google's AI Overview
+              answer box for camps still missing a price. Real impact: Columbus jumped from{" "}
+              <strong>53 priced camps to 207</strong> (23% → 91% coverage) without any human edits.
             </p>
 
             <div className="rounded-md border border-[#eef2f7] bg-white overflow-hidden">
@@ -421,7 +422,7 @@ export default function MVSMethodology() {
                 <thead className="bg-[#fafbfd] text-[#526078]">
                   <tr>
                     <th className="text-left px-4 py-2 font-semibold w-1/2">Old crawler — 3 steps (retired)</th>
-                    <th className="text-left px-4 py-2 font-semibold w-1/2">New crawler — 8 steps (live)</th>
+                    <th className="text-left px-4 py-2 font-semibold w-1/2">New crawler — 9 steps (live)</th>
                   </tr>
                 </thead>
                 <tbody className="text-[#1a2540] align-top">
@@ -456,6 +457,10 @@ export default function MVSMethodology() {
                   <tr className="border-t border-[#eef2f7]">
                     <td className="px-4 py-2 text-[#526078] italic">—</td>
                     <td className="px-4 py-2"><strong>8.</strong> Tier-classify the provider (Premium / Mid / Budget / Community) using the rules in Section 4.</td>
+                  </tr>
+                  <tr className="border-t border-[#eef2f7]">
+                    <td className="px-4 py-2 text-[#526078] italic">—</td>
+                    <td className="px-4 py-2"><strong>9. NEW (Phase B3) —</strong> Last-resort Google <strong>AI Overview</strong> answer box read via Apify. Runs only when steps 3–7 fail. Any price found is saved as <em>"Needs human review"</em> (amber chip) so a person must click Verify before it counts in the score.</td>
                   </tr>
                 </tbody>
               </table>

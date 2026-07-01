@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { AlertTriangle, ArrowLeft, Download, ExternalLink, Loader2, MapPin, Search } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ChevronDown, ChevronRight, Download, ExternalLink, Loader2, MapPin, Search } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useProviderEvidence, type EvidenceRow, type DroppedPrice } from "@/lib/mvs/useProviderEvidence";
 import { classifyExclusion } from "@/lib/mvs/classifyExclusion";
@@ -12,6 +12,16 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ProviderScreenshotButton } from "@/components/phase2-demo/ProviderScreenshotButton";
 import { toast } from "sonner";
@@ -77,6 +87,22 @@ export default function ProviderEvidence() {
   const [keptFilter, setKeptFilter] = useState<string>("all");
   const [showExcluded, setShowExcluded] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [rejectConfirm, setRejectConfirm] = useState<{ label: string; run: () => void } | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
+  useEffect(() => {
+    try {
+      setHelpOpen(localStorage.getItem("mvs.evidence.helpOpen") === "1");
+    } catch { /* ignore */ }
+  }, []);
+  const toggleHelp = () => {
+    setHelpOpen((v) => {
+      const next = !v;
+      try { localStorage.setItem("mvs.evidence.helpOpen", next ? "1" : "0"); } catch { /* ignore */ }
+      return next;
+    });
+  };
+  const confirmReject = (label: string, run: () => void) =>
+    setRejectConfirm({ label, run });
 
   async function handleVerify(r: EvidenceRow, action: VerifyAction, extra?: { min?: number | null; max?: number | null; notes?: string | null }) {
     setBusyId(r.id);
@@ -436,6 +462,69 @@ export default function ProviderEvidence() {
       )}
 
       <div
+        className="mb-3 rounded-md border bg-white"
+        style={{ borderColor: BORDER }}
+      >
+        <button
+          type="button"
+          onClick={toggleHelp}
+          className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-[11px]"
+          style={{ color: NAVY }}
+          aria-expanded={helpOpen}
+        >
+          {helpOpen ? (
+            <ChevronDown className="h-3.5 w-3.5" style={{ color: MUTED }} />
+          ) : (
+            <ChevronRight className="h-3.5 w-3.5" style={{ color: MUTED }} />
+          )}
+          <span className="font-semibold">How to read this table</span>
+          {!helpOpen && (
+            <span className="truncate" style={{ color: MUTED }}>
+              — which camp prices were found, where they came from, and whether they are used in scoring.
+            </span>
+          )}
+        </button>
+        {helpOpen && (
+          <div
+            className="grid gap-3 border-t px-3 py-2.5 text-[11px] sm:grid-cols-2"
+            style={{ borderColor: BORDER, color: NAVY }}
+          >
+            <div>
+              <div className="mb-1 text-[11px] font-semibold" style={{ color: NAVY }}>
+                What the chips mean
+              </div>
+              <ul className="space-y-1" style={{ color: MUTED }}>
+                <li>
+                  <span className="font-semibold" style={{ color: GREEN }}>In score — crawler</span>: price found by the crawler and passed safety checks. Counted.
+                </li>
+                <li>
+                  <span className="font-semibold" style={{ color: GREEN }}>In score — human ✓ / ✎</span>: a person approved (or edited) the price. Counted.
+                </li>
+                <li>
+                  <span className="font-semibold" style={{ color: "#92400e" }}>Needs human review</span>: price guessed from other locations of the same brand. Not counted until a person clicks Verify.
+                </li>
+                <li>
+                  <span className="font-semibold">Not in score — rejected / no price / excluded</span>: not counted. Excluded = non-camp (daycare, park, retail workshop).
+                </li>
+              </ul>
+            </div>
+            <div>
+              <div className="mb-1 text-[11px] font-semibold" style={{ color: NAVY }}>
+                What the columns mean
+              </div>
+              <ul className="space-y-1" style={{ color: MUTED }}>
+                <li><span className="font-semibold" style={{ color: NAVY }}>Source query</span>: the exact search phrase that surfaced this camp.</li>
+                <li><span className="font-semibold" style={{ color: NAVY }}>Source URL</span>: click "Open" to see the page the price came from.</li>
+                <li><span className="font-semibold" style={{ color: NAVY }}>Price/wk</span>: typical weekly tuition for Summer 2026. Amber "guard: N dropped" means the crawler read a suspicious number and threw it away.</li>
+                <li><span className="font-semibold" style={{ color: NAVY }}>Verification</span>: the only column where you take action.</li>
+                <li><span className="font-semibold" style={{ color: NAVY }}>Last seen</span>: when this row was last refreshed.</li>
+              </ul>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div
         className="mb-3 flex flex-wrap items-center gap-2 rounded-md border p-2"
         style={{ borderColor: BORDER, backgroundColor: SOFT }}
       >
@@ -697,7 +786,7 @@ export default function ProviderEvidence() {
                                 <button
                                   type="button"
                                   disabled={busyId === r.id}
-                                  onClick={() => handleVerify(r, "rejected")}
+                                  onClick={() => confirmReject(r.name || "this price", () => handleVerify(r, "rejected"))}
                                   className="text-[10px] font-semibold underline disabled:opacity-50"
                                   style={{ color: MUTED }}
                                   title="Undo — reject this price"
@@ -764,7 +853,7 @@ export default function ProviderEvidence() {
                               <button
                                 type="button"
                                 disabled={busyId === r.id}
-                                onClick={() => handleVerify(r, "rejected")}
+                                onClick={() => confirmReject(r.name || "this price", () => handleVerify(r, "rejected"))}
                                 className="rounded border px-1.5 py-0.5 text-[10px] font-semibold hover:bg-[#fce7ec] disabled:opacity-50"
                                 style={{ borderColor: BORDER, color: "#a3142b" }}
                                 title="Reject and clear this price"
@@ -808,9 +897,48 @@ export default function ProviderEvidence() {
       <EvidenceDrawer
         row={selected}
         onClose={() => setSelected(null)}
-        onAction={(action, extra) => selected && handleVerify(selected, action, extra)}
+        onAction={(action, extra) => {
+          if (!selected) return;
+          if (action === "rejected") {
+            confirmReject(selected.name || "this price", () => handleVerify(selected, "rejected", extra));
+          } else {
+            handleVerify(selected, action, extra);
+          }
+        }}
         busy={!!selected && busyId === selected.id}
       />
+
+      <AlertDialog
+        open={!!rejectConfirm}
+        onOpenChange={(o) => { if (!o) setRejectConfirm(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reject this price?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the price from scoring. You can restore it later.
+              {rejectConfirm?.label && (
+                <span className="mt-1 block text-[11px]" style={{ color: MUTED }}>
+                  Provider: <strong style={{ color: NAVY }}>{rejectConfirm.label}</strong>
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const fn = rejectConfirm?.run;
+                setRejectConfirm(null);
+                fn?.();
+              }}
+              className="bg-[#a3142b] text-white hover:bg-[#8a1024]"
+            >
+              Yes, reject price
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

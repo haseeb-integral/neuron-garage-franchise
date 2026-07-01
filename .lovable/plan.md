@@ -1,42 +1,70 @@
-## Audit: Redundant / low-value columns in Provider Evidence Review
+## Two small UX follow-ups on Provider Evidence Review
 
-Looking at the current Austin screenshot, three columns are pulling their weight poorly:
+### 1. Reject safety — confirmation before clearing a price
 
-### 1. `Source type` — **redundant with `Source query`**
-Every visible row shows the same value in both cells:
-- `google_search` / `google_search`
-- `sawyer` / `sawyer`
+**Where:** every place `handleVerify(r, "rejected")` fires in `src/pages/ProviderEvidence.tsx`. Today that's:
+- The red **Reject** button on `Needs human review` rows.
+- The **Undo** link on `In score — human ✓/✎` rows (also rejects — worth confirming too, since it clears the human-approved price).
 
-`source_type` is just the platform label of the query. It never adds a new fact next to `Source query`. **Recommend: remove the column.** Keep the value inside the drawer only, or merge it as a tiny grey subtitle under the query text.
+**Behaviour:** intercept the click, open a small centered modal, only call the reject mutation on confirm.
 
-### 2. `Phase` — **empty for every row**
-All rows show `—`. This column was reserved for the crawler phase (discover / catch-up / brand-hint), but we never wired real values into the evidence view, so it's dead space. **Recommend: remove the column** from the table. If we ever want it back, it belongs in the drawer under "How we found this price".
+**Copy (exact):**
+> **Reject this price?**
+> This will remove the price from scoring. You can restore it later.
+>
+> [ Cancel ] [ Yes, reject price ]
 
-### 3. `Kept / dropped` — **duplicates the Verification chip**
-- `Kept` = the same thing the green **"In score — crawler"** chip already says.
-- `Dropped` is shown separately as an amber "Guard dropped" pill in the header + drawer.
+**Implementation notes:**
+- Reuse the existing shadcn `AlertDialog` (already installed in `src/components/ui/alert-dialog.tsx`) so styling stays consistent.
+- Local state `const [rejectTarget, setRejectTarget] = useState<EvidenceRow | null>(null)` to hold the row whose reject is pending.
+- Cancel closes without any DB write. Confirm calls the existing `handleVerify(rejectTarget, "rejected")` path — no scoring/DB logic changes.
+- Applies to the table row buttons AND the drawer's Reject button (`Verify / Reject / Edit` panel in `EvidenceDrawer`) so behaviour is consistent everywhere.
 
-So this column repeats info the Verification column already carries, with less nuance. **Recommend: remove the column.** The header status strip (`222 in score · 0 need human review · …`) plus the Verification chip cover it.
+### 2. "How to read this table" — small collapsed help card
 
-### Columns worth keeping (no change)
-- **Provider** — primary key for the human.
-- **Category** — filter + context.
-- **Source query** — the actual query text is the audit trail.
-- **Source URL** — the clickable proof link.
-- **Price/wk** — the number under review.
-- **Verification** — the only column where the human acts.
-- **Last seen** — freshness signal.
+Your instinct is right — a permanent legend clutters the table. I'll do a slightly tighter version of what you sketched.
 
-### What this plan will do
+**Placement:** thin card directly **above the filter row**, below the header counter strip. Collapsed by default. State persisted to `localStorage` (`mvs.evidence.helpOpen`) so once a user opens it, it stays open on their machine — no re-clicking every visit.
 
-- Delete the three columns (`Source type`, `Phase`, `Kept / dropped`) from `src/pages/ProviderEvidence.tsx` — header cells + body cells + colspan on the empty-state row.
-- Leave the underlying data (`platform`, `phase`, `kept/dropped guard drops`) untouched in the DB and in the drawer, so nothing is lost — only the table gets simpler.
-- Update the CSV export? **No** — export keeps all fields so downstream audit is unchanged. Only the on-screen table shrinks.
+**Collapsed look (one line, ~28px tall):**
+> ▸ **How to read this table** — which camp prices were found, where they came from, and whether they are used in scoring.
 
-### Risk / scope
-- **File touched:** `src/pages/ProviderEvidence.tsx` only.
-- **Turns:** 1.
-- **Risk:** very low, pure UI trim, no logic or data changes.
-- **Smoke test:** open Austin Provider Evidence → confirm 7 columns instead of 10, chips + counts unchanged, drawer still shows platform + guard drops, CSV still has every field.
+**Expanded content — two short groups, no long paragraphs:**
 
-Approve and I'll ship it in one turn.
+**What the chips mean**
+- 🟢 **In score — crawler** — price found by the crawler and passed safety checks. Counted.
+- 🟢 **In score — human ✓ / ✎** — a person approved (or edited) the price. Counted.
+- 🟡 **Needs human review** — price guessed from other locations of the same brand. Not counted until a person clicks Verify.
+- ⚪ **Not in score — rejected / no price / excluded** — not counted. Excluded = non-camp (daycare, park, retail workshop).
+
+**What the columns mean**
+- **Source query** — the exact search phrase that surfaced this camp.
+- **Source URL** — click "Open" to see the page the price came from.
+- **Price/wk** — typical weekly tuition for Summer 2026. Amber "guard: N dropped" means the crawler read a suspicious number (too high / too low) and threw it away.
+- **Verification** — the only column where you take action.
+- **Last seen** — when this row was last refreshed.
+
+That's it — no glossary, no scoring math, no long copy. Two bullet groups fit in ~180px when expanded.
+
+### What I will NOT change
+
+- No changes to scoring, DB schema, edge functions, CSV export, drawer contents, or filter behaviour.
+- No new color tokens.
+- No confirmation on **Verify**, **Edit**, or **Restore** — those aren't destructive.
+
+### Files touched
+
+- `src/pages/ProviderEvidence.tsx` — add AlertDialog for reject, add collapsible help card, wire localStorage toggle.
+- (Reuse) `src/components/ui/alert-dialog.tsx` — no change, just imported.
+
+### Turns / risk / test
+
+- **Turns:** 1
+- **Risk:** low — pure UI additions, no data or scoring changes.
+- **Smoke test after ship:**
+  1. On a `Needs human review` row → click **Reject** → confirm dialog appears → Cancel keeps the price → Yes, reject price clears it and flips the chip to "Not in score — rejected".
+  2. On an `In score — human ✓` row → click **Undo** → same confirm dialog appears.
+  3. In the drawer → click **Reject** → same confirm dialog appears.
+  4. Above the filter row → collapsed help card shows one line → click to expand → two bullet groups appear → refresh page → stays expanded (localStorage).
+
+Approve and I'll build both fixes in one turn.

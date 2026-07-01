@@ -4,6 +4,7 @@ import { AlertTriangle, ArrowLeft, Download, ExternalLink, Loader2, MapPin, Sear
 import { PageHeader } from "@/components/PageHeader";
 import { useProviderEvidence, type EvidenceRow, type DroppedPrice } from "@/lib/mvs/useProviderEvidence";
 import { classifyExclusion } from "@/lib/mvs/classifyExclusion";
+import { setProviderVerification, type VerifyAction } from "@/lib/mvs/verifyProvider";
 import {
   Sheet,
   SheetContent,
@@ -13,6 +14,7 @@ import {
 } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ProviderScreenshotButton } from "@/components/phase2-demo/ProviderScreenshotButton";
+import { toast } from "sonner";
 
 
 const NAVY = "#07142f";
@@ -67,13 +69,40 @@ export default function ProviderEvidence() {
   const state = params.get("state") ?? "";
   const cityKey = state ? `${city}, ${state}` : city;
 
-  const { rows, queries, runCreatedAt, loading, error } = useProviderEvidence(cityKey);
+  const { rows, queries, runCreatedAt, loading, error, refetch } = useProviderEvidence(cityKey);
 
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<EvidenceRow | null>(null);
   const [queryFilter, setQueryFilter] = useState<string>("all");
   const [keptFilter, setKeptFilter] = useState<string>("all");
   const [showExcluded, setShowExcluded] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  async function handleVerify(r: EvidenceRow, action: VerifyAction, extra?: { min?: number | null; max?: number | null; notes?: string | null }) {
+    setBusyId(r.id);
+    try {
+      await setProviderVerification({
+        providerId: r.id,
+        action,
+        notes: extra?.notes ?? null,
+        newPriceMin: extra?.min ?? null,
+        newPriceMax: extra?.max ?? null,
+        currentPriceMin: r.price_min,
+        currentPriceMax: r.price_max,
+      });
+      toast.success(
+        action === "verified" ? "Price verified." :
+        action === "rejected" ? "Price rejected and cleared." :
+        "Price updated."
+      );
+      refetch?.();
+      setSelected(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Update failed");
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   // Strict Camp View — tag each row with its exclusion reason (or null).
   const rowsWithExclusion = useMemo(
@@ -616,8 +645,24 @@ export default function ProviderEvidence() {
                       {r.matched_query ? "Phase 2" : "—"}
                     </td>
                     <td className="border-b px-3 py-2" style={{ borderColor: BORDER }}>
-                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                        {exclusion ? (
+                      <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                        {r.verification_status ? (
+                          <span
+                            className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                            style={{
+                              backgroundColor:
+                                r.verification_status === "verified" ? "#e7f7ee" :
+                                r.verification_status === "rejected" ? "#fce7ec" : "#fef3c7",
+                              color:
+                                r.verification_status === "verified" ? GREEN :
+                                r.verification_status === "rejected" ? "#a3142b" : "#92400e",
+                            }}
+                            title={r.verified_at ? `by human on ${new Date(r.verified_at).toLocaleDateString()}` : undefined}
+                          >
+                            {r.verification_status === "verified" ? "✓ Verified" :
+                             r.verification_status === "rejected" ? "✗ Rejected" : "✎ Edited"}
+                          </span>
+                        ) : exclusion ? (
                           <span
                             className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
                             style={{ backgroundColor: "#eef2f7", color: MUTED }}
@@ -635,19 +680,21 @@ export default function ProviderEvidence() {
                         )}
                         <button
                           type="button"
-                          disabled
-                          className="rounded border px-1.5 py-0.5 text-[10px] font-semibold opacity-50"
-                          style={{ borderColor: BORDER, color: MUTED }}
-                          title="Coming in next phase"
+                          disabled={busyId === r.id}
+                          onClick={() => handleVerify(r, "verified")}
+                          className="rounded border px-1.5 py-0.5 text-[10px] font-semibold hover:bg-[#e7f7ee] disabled:opacity-50"
+                          style={{ borderColor: BORDER, color: GREEN }}
+                          title="Mark this price as human-verified"
                         >
                           Verify
                         </button>
                         <button
                           type="button"
-                          disabled
-                          className="rounded border px-1.5 py-0.5 text-[10px] font-semibold opacity-50"
-                          style={{ borderColor: BORDER, color: MUTED }}
-                          title="Coming in next phase"
+                          disabled={busyId === r.id}
+                          onClick={() => handleVerify(r, "rejected")}
+                          className="rounded border px-1.5 py-0.5 text-[10px] font-semibold hover:bg-[#fce7ec] disabled:opacity-50"
+                          style={{ borderColor: BORDER, color: "#a3142b" }}
+                          title="Reject and clear this price"
                         >
                           Reject
                         </button>
@@ -668,16 +715,30 @@ export default function ProviderEvidence() {
       )}
 
       <p className="mt-3 text-[11px]" style={{ color: MUTED }}>
-        Click any row to open the full evidence panel. Verify / Reject / Edit actions are still
-        read-only and will be wired up in a later phase.
+        Click any row to open the full evidence panel. Verify / Reject / Edit save immediately to the database.
       </p>
 
-      <EvidenceDrawer row={selected} onClose={() => setSelected(null)} />
+      <EvidenceDrawer
+        row={selected}
+        onClose={() => setSelected(null)}
+        onAction={(action, extra) => selected && handleVerify(selected, action, extra)}
+        busy={!!selected && busyId === selected.id}
+      />
     </>
   );
 }
 
-function EvidenceDrawer({ row, onClose }: { row: EvidenceRow | null; onClose: () => void }) {
+function EvidenceDrawer({
+  row,
+  onClose,
+  onAction,
+  busy,
+}: {
+  row: EvidenceRow | null;
+  onClose: () => void;
+  onAction: (action: VerifyAction, extra?: { min?: number | null; max?: number | null; notes?: string | null }) => void;
+  busy: boolean;
+}) {
   const open = !!row;
   const q = row?.matched_query ?? null;
   const entry = row?.matched_provider_entry ?? null;
@@ -851,10 +912,7 @@ function EvidenceDrawer({ row, onClose }: { row: EvidenceRow | null; onClose: ()
               </div>
             </div>
 
-            {/* Read-only notice */}
-            <div className="rounded-lg bg-[#f1f5f9] p-3 text-[11px] text-[#64748b] text-center">
-              Manual verify / reject override buttons are read-only and will land in a follow-up phase.
-            </div>
+            <VerifyPanel row={row} onAction={onAction} busy={busy} />
           </div>
         )}
       </SheetContent>
@@ -883,6 +941,135 @@ function KV({ label, value }: { label: string; value: React.ReactNode }) {
         {label}
       </div>
       <div style={{ color: NAVY }}>{value}</div>
+    </div>
+  );
+}
+
+function VerifyPanel({
+  row,
+  onAction,
+  busy,
+}: {
+  row: EvidenceRow;
+  onAction: (action: VerifyAction, extra?: { min?: number | null; max?: number | null; notes?: string | null }) => void;
+  busy: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [min, setMin] = useState<string>(row.price_min?.toString() ?? "");
+  const [max, setMax] = useState<string>(row.price_max?.toString() ?? "");
+  const [notes, setNotes] = useState<string>("");
+
+  const status = row.verification_status;
+  const statusLabel =
+    status === "verified" ? "✓ Verified by human" :
+    status === "rejected" ? "✗ Rejected by human" :
+    status === "edited" ? "✎ Edited by human" : null;
+
+  return (
+    <div className="rounded-xl border p-4" style={{ borderColor: BORDER, backgroundColor: "#f8fafe" }}>
+      <div className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: NAVY }}>
+        Human verification
+      </div>
+      {statusLabel && (
+        <div className="mb-3 text-[12px]" style={{ color: NAVY }}>
+          <span className="font-semibold">{statusLabel}</span>
+          {row.verified_at && (
+            <span style={{ color: MUTED }}> · {new Date(row.verified_at).toLocaleString()}</span>
+          )}
+          {row.verification_notes && (
+            <div className="mt-1 text-[11px]" style={{ color: MUTED }}>"{row.verification_notes}"</div>
+          )}
+          {(row.price_original_min != null || row.price_original_max != null) && (
+            <div className="mt-1 text-[11px]" style={{ color: MUTED }}>
+              Original price before override: {fmtPrice(row.price_original_min, row.price_original_max)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {editing ? (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <label className="text-[11px]" style={{ color: MUTED }}>Min $</label>
+            <input
+              type="number"
+              value={min}
+              onChange={(e) => setMin(e.target.value)}
+              className="w-24 rounded border px-2 py-1 text-[12px]"
+              style={{ borderColor: BORDER }}
+            />
+            <label className="text-[11px]" style={{ color: MUTED }}>Max $</label>
+            <input
+              type="number"
+              value={max}
+              onChange={(e) => setMax(e.target.value)}
+              className="w-24 rounded border px-2 py-1 text-[12px]"
+              style={{ borderColor: BORDER }}
+            />
+          </div>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Optional note (source URL, why you changed it, etc.)"
+            className="w-full rounded border px-2 py-1 text-[12px]"
+            style={{ borderColor: BORDER }}
+            rows={2}
+          />
+          <div className="flex items-center gap-2">
+            <button
+              disabled={busy}
+              onClick={() => {
+                const mn = min === "" ? null : Number(min);
+                const mx = max === "" ? null : Number(max);
+                onAction("edited", { min: mn, max: mx, notes: notes || null });
+              }}
+              className="rounded px-3 py-1 text-[12px] font-semibold text-white disabled:opacity-50"
+              style={{ backgroundColor: BLUE }}
+            >
+              Save price
+            </button>
+            <button
+              disabled={busy}
+              onClick={() => setEditing(false)}
+              className="rounded border px-3 py-1 text-[12px] font-semibold disabled:opacity-50"
+              style={{ borderColor: BORDER, color: MUTED }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            disabled={busy}
+            onClick={() => onAction("verified")}
+            className="rounded px-3 py-1 text-[12px] font-semibold text-white disabled:opacity-50"
+            style={{ backgroundColor: GREEN }}
+          >
+            ✓ Verify price
+          </button>
+          <button
+            disabled={busy}
+            onClick={() => onAction("rejected")}
+            className="rounded px-3 py-1 text-[12px] font-semibold text-white disabled:opacity-50"
+            style={{ backgroundColor: "#a3142b" }}
+          >
+            ✗ Reject price
+          </button>
+          <button
+            disabled={busy}
+            onClick={() => setEditing(true)}
+            className="rounded border px-3 py-1 text-[12px] font-semibold disabled:opacity-50"
+            style={{ borderColor: BORDER, color: NAVY }}
+          >
+            ✎ Edit price
+          </button>
+          {busy && <Loader2 className="h-3 w-3 animate-spin" />}
+        </div>
+      )}
+      <p className="mt-2 text-[11px]" style={{ color: MUTED }}>
+        Verify keeps the current price and flags it as human-approved. Reject clears the price so it stops counting in scoring. Edit lets you type in the real number from the camp's website.
+      </p>
     </div>
   );
 }

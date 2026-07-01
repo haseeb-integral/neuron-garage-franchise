@@ -1472,6 +1472,8 @@ export type Database = {
           price_max: number | null
           price_min: number | null
           price_needs_review: boolean
+          price_original_max: number | null
+          price_original_min: number | null
           screenshot_url: string | null
           source_listing_url: string | null
           source_run_id: string | null
@@ -1479,6 +1481,10 @@ export type Database = {
           tier: Database["public"]["Enums"]["mvs_tier"] | null
           updated_at: string
           url: string | null
+          verification_notes: string | null
+          verification_status: string | null
+          verified_at: string | null
+          verified_by: string | null
           website_url: string | null
         }
         Insert: {
@@ -1495,6 +1501,8 @@ export type Database = {
           price_max?: number | null
           price_min?: number | null
           price_needs_review?: boolean
+          price_original_max?: number | null
+          price_original_min?: number | null
           screenshot_url?: string | null
           source_listing_url?: string | null
           source_run_id?: string | null
@@ -1502,6 +1510,10 @@ export type Database = {
           tier?: Database["public"]["Enums"]["mvs_tier"] | null
           updated_at?: string
           url?: string | null
+          verification_notes?: string | null
+          verification_status?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
           website_url?: string | null
         }
         Update: {
@@ -1518,6 +1530,8 @@ export type Database = {
           price_max?: number | null
           price_min?: number | null
           price_needs_review?: boolean
+          price_original_max?: number | null
+          price_original_min?: number | null
           screenshot_url?: string | null
           source_listing_url?: string | null
           source_run_id?: string | null
@@ -1525,6 +1539,10 @@ export type Database = {
           tier?: Database["public"]["Enums"]["mvs_tier"] | null
           updated_at?: string
           url?: string | null
+          verification_notes?: string | null
+          verification_status?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
           website_url?: string | null
         }
         Relationships: [

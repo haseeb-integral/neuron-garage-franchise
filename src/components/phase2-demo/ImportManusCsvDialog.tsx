@@ -235,7 +235,7 @@ export function ImportManusCsvDialog({ onImported }: Props) {
           <DialogTitle>Import cities from Manus CSV</DialogTitle>
           <DialogDescription>
             Upload a CSV with <code>city</code>, <code>state</code>, and optional <code>manus_csi_score</code>.
-            Cities are added to the shortlist only — the pipeline is not triggered.
+            Rows are saved to a separate Manus reference table — the human shortlist and the pipeline are not touched.
           </DialogDescription>
         </DialogHeader>
 

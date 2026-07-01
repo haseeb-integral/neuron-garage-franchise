@@ -570,8 +570,20 @@ export default function ProviderEvidence() {
                       className="border-b px-3 py-2 text-right tabular-nums"
                       style={{ borderColor: BORDER, color: NAVY }}
                     >
-                      {fmtPrice(r.price_min, r.price_max)}
+                      <div>{fmtPrice(r.price_min, r.price_max)}</div>
+                      {r.guard_drop && r.guard_drop.length > 0 && (
+                        <div
+                          className="mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                          style={{ backgroundColor: "#fff1d6", color: AMBER }}
+                          title={r.guard_drop
+                            .map((d) => `${d.field}=${d.value} — ${guardReason(d)}`)
+                            .join("\n")}
+                        >
+                          guard: {r.guard_drop.length} dropped
+                        </div>
+                      )}
                     </td>
+
                     <td className="border-b px-3 py-2" style={{ borderColor: BORDER }}>
                       <span
                         className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"

@@ -279,6 +279,68 @@ export default function ProviderEvidence() {
         </button>
       </div>
 
+      {!loading && guardSummary.dropCount > 0 && (
+        <div className="mb-3">
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold hover:bg-[#fff7e8]"
+                style={{ borderColor: "#f4d8a8", backgroundColor: "#fff7e8", color: AMBER }}
+                title="Click to see every price the safety guard threw out and why"
+              >
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Guard dropped: {guardSummary.dropCount} price{guardSummary.dropCount === 1 ? "" : "s"} across {guardSummary.providerCount} provider{guardSummary.providerCount === 1 ? "" : "s"}
+                <span className="text-[10px] font-normal" style={{ color: MUTED }}>
+                  (click to view)
+                </span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-[520px] max-w-[90vw] p-0">
+              <div className="border-b p-3" style={{ borderColor: BORDER }}>
+                <div className="text-[12px] font-bold" style={{ color: NAVY }}>
+                  Prices dropped by the safety guard
+                </div>
+                <div className="text-[11px]" style={{ color: MUTED }}>
+                  The guard blocks numbers that don't look like real weekly tuition
+                  (per-day, per-hour, too low, too high, min &gt; max, etc.).
+                  Nothing here counts toward the score.
+                </div>
+              </div>
+              <div className="max-h-[360px] overflow-y-auto">
+                <table className="w-full text-[11px]">
+                  <thead
+                    className="sticky top-0"
+                    style={{ backgroundColor: SOFT, color: NAVY }}
+                  >
+                    <tr>
+                      <th className="border-b px-3 py-1.5 text-left font-semibold" style={{ borderColor: BORDER }}>Provider</th>
+                      <th className="border-b px-3 py-1.5 text-left font-semibold" style={{ borderColor: BORDER }}>Field</th>
+                      <th className="border-b px-3 py-1.5 text-right font-semibold" style={{ borderColor: BORDER }}>Value</th>
+                      <th className="border-b px-3 py-1.5 text-left font-semibold" style={{ borderColor: BORDER }}>Reason</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {guardSummary.items.map((it, i) => (
+                      <tr key={`${it.providerId}-${i}`}>
+                        <td className="border-b px-3 py-1.5" style={{ borderColor: BORDER, color: NAVY }}>{it.providerName}</td>
+                        <td className="border-b px-3 py-1.5" style={{ borderColor: BORDER, color: MUTED }}>{it.drop.field || "—"}</td>
+                        <td className="border-b px-3 py-1.5 text-right tabular-nums" style={{ borderColor: BORDER, color: NAVY }}>
+                          {it.drop.value != null ? `$${it.drop.value}` : "—"}
+                        </td>
+                        <td className="border-b px-3 py-1.5" style={{ borderColor: BORDER, color: MUTED }}>{it.reason}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+      )}
+
+
+
       {queries.length === 0 && !loading && rows.length > 0 && (
         <div
           className="mb-3 rounded-md border p-3 text-[12px]"

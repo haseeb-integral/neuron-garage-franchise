@@ -23,6 +23,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { SHORTLIST_SEED } from "@/lib/mvs/shortlistSeed";
 import { useShortlistAdditions } from "@/lib/mvs/useShortlistAdditions";
 import { AddCityDialog } from "@/components/phase2-demo/AddCityDialog";
+import { ImportManusCsvDialog } from "@/components/phase2-demo/ImportManusCsvDialog";
 import {
   decideFreshness,
   formatShortDate,
@@ -369,7 +370,7 @@ export default function MarketValidationRollout() {
   }, []);
 
 
-  const { rows: additions, addCity } = useShortlistAdditions();
+  const { rows: additions, addCity, refresh: refreshShortlist } = useShortlistAdditions();
   const SHORTLISTED_CITIES = useMemo<{ city: string; state: string }[]>(
     () => {
       const merged = [
@@ -696,6 +697,7 @@ export default function MarketValidationRollout() {
         </div>
         <div className="flex items-center gap-2">
           <AddCityDialog onAdd={addCity} />
+          <ImportManusCsvDialog onImported={refreshShortlist} />
           <button
             type="button"
             onClick={fetchAll}

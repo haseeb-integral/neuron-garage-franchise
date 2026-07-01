@@ -186,13 +186,14 @@ export function ImportManusCsvDialog({ onImported }: Props) {
       const payload = toInsert.map((r) => ({
         city: r.city,
         state: r.state,
-        added_by: uid,
         manus_csi_score: r.manus_csi_score,
-        manus_imported_at: new Date().toISOString(),
+        rank: r.rank,
+        imported_by: uid,
+        imported_at: new Date().toISOString(),
       }));
-      const { error } = await supabase.from("mvs_shortlist_cities").insert(payload);
+      const { error } = await supabase.from("mvs_manus_cities").insert(payload);
       if (error) throw new Error(error.message);
-      toast.success(`Imported ${toInsert.length} ${toInsert.length === 1 ? "city" : "cities"} from Manus.`);
+      toast.success(`Imported ${toInsert.length} ${toInsert.length === 1 ? "city" : "cities"} into Manus reference table.`);
       onImported();
       setOpen(false);
     } catch (e) {

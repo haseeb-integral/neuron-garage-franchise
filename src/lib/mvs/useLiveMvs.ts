@@ -76,7 +76,7 @@ export async function fetchLiveMvs(cityKey: string): Promise<RawBundle> {
 
   const { data: provRows, error: provErr } = await supabase
     .from("mvs_providers")
-    .select("id, name, tier, price_min, price_max, category_classified, url, website_url, source_listing_url, sources, updated_at")
+    .select("id, name, tier, price_min, price_max, category_classified, url, website_url, source_listing_url, sources, updated_at, price_derived_from_brand, price_needs_review")
     .eq("city", cityKey);
   if (provErr) throw provErr;
 
@@ -154,12 +154,18 @@ export async function fetchLiveMvs(cityKey: string): Promise<RawBundle> {
     } else if (rawSources && typeof rawSources === "object") {
       sources = Object.keys(rawSources);
     }
+    // B1 safety: prices that were copied from same-city brand siblings and
+    // still need human review must NOT influence scoring math (median,
+    // percentile, pct-at-least). We null them out here so score1PricingAcceptance
+    // skips them. The raw values remain in the DB and are still shown in the
+    // Provider Evidence table with an amber "Possible brand price" badge.
+    const needsReview = (p as any).price_needs_review === true;
     return {
       id: p.id,
       name: p.name,
       tier: p.tier as MvsProviderInput["tier"],
-      price_min: p.price_min,
-      price_max: p.price_max,
+      price_min: needsReview ? null : p.price_min,
+      price_max: needsReview ? null : p.price_max,
       category_classified: p.category_classified,
       url: (p as any).url ?? null,
       website_url: (p as any).website_url ?? null,

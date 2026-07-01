@@ -1606,6 +1606,8 @@ export type Database = {
           added_by: string | null
           city: string
           id: string
+          manus_csi_score: number | null
+          manus_imported_at: string | null
           state: string
         }
         Insert: {
@@ -1613,6 +1615,8 @@ export type Database = {
           added_by?: string | null
           city: string
           id?: string
+          manus_csi_score?: number | null
+          manus_imported_at?: string | null
           state: string
         }
         Update: {
@@ -1620,6 +1624,8 @@ export type Database = {
           added_by?: string | null
           city?: string
           id?: string
+          manus_csi_score?: number | null
+          manus_imported_at?: string | null
           state?: string
         }
         Relationships: []

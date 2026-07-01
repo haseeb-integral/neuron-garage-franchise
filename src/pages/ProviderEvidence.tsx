@@ -122,6 +122,37 @@ export default function ProviderEvidence() {
   }, [rowsWithExclusion]);
   const excludedTotal = rows.length - activeCount;
 
+  // Row-level status used by the Verification column + header counter. Only
+  // computed for active (non-excluded) camps, since excluded rows already show
+  // their own chip.
+  type RowStatus =
+    | "in_score_crawler"
+    | "in_score_human"
+    | "needs_review"
+    | "rejected"
+    | "no_price";
+  function rowStatus(r: EvidenceRow): RowStatus {
+    if (r.verification_status === "rejected") return "rejected";
+    const hasPrice = r.price_min != null || r.price_max != null;
+    if (!hasPrice) return "no_price";
+    if (r.verification_status === "verified" || r.verification_status === "edited")
+      return "in_score_human";
+    if (r.price_needs_review) return "needs_review";
+    return "in_score_crawler";
+  }
+  const statusCounts = useMemo(() => {
+    const c = { in_score: 0, needs_review: 0, rejected: 0, no_price: 0 };
+    for (const x of rowsWithExclusion) {
+      if (x.exclusion) continue;
+      const s = rowStatus(x.row);
+      if (s === "in_score_crawler" || s === "in_score_human") c.in_score += 1;
+      else if (s === "needs_review") c.needs_review += 1;
+      else if (s === "rejected") c.rejected += 1;
+      else if (s === "no_price") c.no_price += 1;
+    }
+    return c;
+  }, [rowsWithExclusion]);
+
   // Guard-summary rollup: flatten every dropped price across active camps so we
   // can show "Guard dropped: N prices across M providers" and list them out.
   const guardSummary = useMemo(() => {

@@ -80,7 +80,7 @@ Stage 4 → Score calculation            → 5 sub-scores → MVS composite
 
 #### Pricing crawler — 9 steps (expanded from the original 3)
 
-For each provider found in Stage 1, the pricing sub-crawler runs up to 9 steps. It stops at the first step that produces a valid price. The old crawler (before 2026-07-01) stopped at step 3 and marked most camps as "missing price."
+For each provider found in Stage 1, the pricing sub-crawler runs up to 9 steps. It stops at the first step that produces a valid price. The old crawler (before 2026-06-26) stopped at step 3 and marked most camps as "missing price."
 
 1. **Google Maps lookup** — get name, website, address.
 2. **Read the camp's own website** with Firecrawl.

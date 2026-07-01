@@ -152,7 +152,6 @@ export function ImportManusCsvDialog({ onImported }: Props) {
         return { ...r, status: "invalid", reason: "Invalid state code" };
       }
       const key = `${r.city.toLowerCase()}|${r.state}`;
-      if (existing.has(key)) return { ...r, status: "duplicate" };
       if (seenInFile.has(key)) {
         return { ...r, status: "duplicate_in_file", reason: "Repeated row in CSV" };
       }
@@ -165,6 +164,7 @@ export function ImportManusCsvDialog({ onImported }: Props) {
         return { ...r, status: "below_threshold" };
       }
       seenInFile.add(key);
+      if (existing.has(key)) return { ...r, status: "duplicate" }; // will refresh
       return { ...r, status: "will_add" };
     });
   }, [rows, existing, knownCities, threshold]);
@@ -175,15 +175,17 @@ export function ImportManusCsvDialog({ onImported }: Props) {
     return c;
   }, [preview]);
 
+  const toWriteCount = counts.will_add + counts.duplicate;
+
   const handleImport = async () => {
-    const toInsert = preview.filter((r) => r.status === "will_add");
-    if (toInsert.length === 0) return;
+    const rowsToWrite = preview.filter((r) => r.status === "will_add" || r.status === "duplicate");
+    if (rowsToWrite.length === 0) return;
     setImporting(true);
     try {
       const { data: userRes } = await supabase.auth.getUser();
       const uid = userRes?.user?.id;
       if (!uid) throw new Error("You must be signed in.");
-      const payload = toInsert.map((r) => ({
+      const payload = rowsToWrite.map((r) => ({
         city: r.city,
         state: r.state,
         manus_csi_score: r.manus_csi_score,
@@ -191,9 +193,13 @@ export function ImportManusCsvDialog({ onImported }: Props) {
         imported_by: uid,
         imported_at: new Date().toISOString(),
       }));
-      const { error } = await supabase.from("mvs_manus_cities").insert(payload);
+      const { error } = await supabase
+        .from("mvs_manus_cities")
+        .upsert(payload, { onConflict: "city,state" });
       if (error) throw new Error(error.message);
-      toast.success(`Imported ${toInsert.length} ${toInsert.length === 1 ? "city" : "cities"} into Manus reference table.`);
+      toast.success("Manus reference table updated", {
+        description: `${counts.will_add} added, ${counts.duplicate} refreshed.`,
+      });
       onImported();
       setOpen(false);
     } catch (e) {

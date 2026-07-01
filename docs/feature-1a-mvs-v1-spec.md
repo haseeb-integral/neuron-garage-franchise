@@ -8,6 +8,8 @@
 
 > **What changed since the original v1.0 spec:** discovery expanded from Sawyer-only to 5 sources; Market Absorption pillar retired; registration-page scraping (Stage 3) retired; per-pillar confidence replaced the global low-confidence badge; Firecrawl cap raised to 50 with per-step sub-caps; freshness rules (0–90 skip / 91–120 prompt / >120 fresh) and soft-fail fallback (`done_stale`) added; cards redesigned to Result → Evidence → Trust; **pricing crawler expanded from 3 steps to 9 steps** (catch-up Google search, marketplace listing reads, relaxed "trusted source" price rule, brand price propagation, directory-first queries, Google AI Overview fallback, manual Verify/Reject/Edit for uncertain prices).
 
+> **What changed since v1.5 (this v1.6 pass, 2026-07-01):** added the **"Import from Manus CSV"** button on the Market Validation page for bulk-adding cities to the shortlist. Client-side CSV parse using `papaparse`, preview dialog with per-row status chips (Will add / Already in shortlist / Unknown city / Below CSI / Invalid), state-name normalization (e.g. "Texas" → "TX"), CSI-score threshold slider, dedupe on city + state, and unknown-city warnings matched against `us_cities_scored`. Added two nullable reference-only columns on `mvs_shortlist_cities`: `manus_csi_score` (numeric) and `manus_imported_at` (timestamptz). **Never triggers the pipeline** — imported cities land with the same "Not yet run" state as manual adds. Scoring formula, 9-step crawler, freshness rules, and Firecrawl cap are unchanged.
+
 ---
 
 ## **1. What this feature does**

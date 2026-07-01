@@ -907,6 +907,38 @@ export default function ProviderEvidence() {
         }}
         busy={!!selected && busyId === selected.id}
       />
+
+      <AlertDialog
+        open={!!rejectConfirm}
+        onOpenChange={(o) => { if (!o) setRejectConfirm(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reject this price?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the price from scoring. You can restore it later.
+              {rejectConfirm?.label && (
+                <span className="mt-1 block text-[11px]" style={{ color: MUTED }}>
+                  Provider: <strong style={{ color: NAVY }}>{rejectConfirm.label}</strong>
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const fn = rejectConfirm?.run;
+                setRejectConfirm(null);
+                fn?.();
+              }}
+              className="bg-[#a3142b] text-white hover:bg-[#8a1024]"
+            >
+              Yes, reject price
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

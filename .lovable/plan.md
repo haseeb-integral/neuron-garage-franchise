@@ -1,74 +1,60 @@
-## The bug (short version)
+## What's actually happening
 
-Johns Creek has **7 providers charging $400–$950/week** that are still tagged "mid" in the database. Only 2 rows are tagged "premium", so the "Premium providers — live" card shows just 2.
+I opened the file Brett uploaded (`neuron-garage-lovable-seed-v1.6-...csv`). Manus is right:
 
-Camps stuck as "mid" even though price ≥ $400:
+- **794 data rows** (not 200)
+- **Top CSI = 95.00**, bottom = 5.00
+- **Ranks 1 → 794**
+- **`manus_export_version = v1.6` on every row**
+- **No duplicate city+state pairs**
 
-| Name | price_min | tier (wrong) |
-|---|---|---|
-| E-PLEX GA | $950 | mid |
-| The Art Center | $845 | mid |
-| Goldfish Swim School | $840 | mid |
-| Catch Air | $699 | mid |
-| KidStrong Johns Creek | $599 | mid |
-| Hawaii Fluid Art | $450 | mid |
-| Eye Level Johns Creek | $430 | mid |
+The file is correct. The bug is 100% in our importer (`src/components/phase2-demo/ImportManusCsvDialog.tsx`). Two problems:
 
-## Why it happens
+### Bug 1 — We silently drop any city not in `us_cities_scored`
 
-The pipeline runs steps in this order:
-
-```text
-discover  →  classify (tags tier)  →  acs  →  catch-up (fills missing prices)
+Line 158:
 ```
+if (knownCities.size > 0 && !knownCities.has(key)) {
+  return { ...r, status: "unknown_city", reason: "Not in US cities DB" };
+}
+```
+And line 181 only writes rows with status `will_add` or `duplicate`. So `unknown_city` rows are **thrown away, no toast, no warning**.
 
-The **classify** step runs BEFORE **catch-up**.
+Manus's file is mostly synthetic-sounding city names (Redbudgrove NM, Magnoliacliff IL, Cypressmeadow IN, etc.) — those don't exist in our `us_cities_scored` seed table. Only ~200 rows (real cities like Bloomington, Riverside, Covington) match, get written, and end up with rank ≥ 17 and CSI ≤ 21. That is exactly the "200 rows, max CSI 21.18, ranks 219–794" pattern we kept seeing.
 
-1. First pass: a provider has no price yet, so the classifier falls back to "mid" (rule 6 — unknown price defaults to mid).
-2. Catch-up then finds a $500/wk price and writes it into `price_min`.
-3. Nothing re-runs the classifier after that. The `tier` field stays "mid" forever.
+### Bug 2 — We never read `manus_export_version` from the CSV
 
-The standalone **"Catch-Up Missing Prices"** button on the deep-dive page has the same gap — it fills prices but never re-classifies.
+Line 122–131 only extracts `city`, `state`, `manus_csi_score`, `rank`. The column is dropped on parse, so it stays blank in the DB no matter what Manus sends.
 
-So this is a real logic bug, not a display bug. The premium card is reading the DB correctly; the DB is stale.
+## Plan — 1 phase, 1 turn
 
-## Fix plan (2 small phases)
+**Change only `src/components/phase2-demo/ImportManusCsvDialog.tsx`. No schema change, no other files touched.**
 
-### Phase 1 — Backfill Johns Creek and every other done city (data-only, 1 turn)
+1. **Stop silently dropping "unknown" cities.**
+   - Remove the `us_cities_scored` cross-check entirely. The Manus table is *reference data* — it should hold whatever Manus sends, even if the city name isn't in our US cities seed.
+   - Drop the `knownCities` state and its lookup query.
+   - Remove the `unknown_city` status from the preview.
 
-Run a one-time SQL migration that re-derives `tier` from the current `price_min` / `price_max` / brand rules for every row where the price contradicts the tier. Uses the same thresholds the classifier already uses:
+2. **Read `manus_export_version` from the CSV** and pass it into the upsert payload so the column gets populated on every row.
 
-- `price ≥ $400` → `premium`
-- `price < $200` → `budget`
-- national premium brand regex → `premium`
-- community brand regex → `community`
-- everything else with a real price 200–400 → `mid`
+3. **Add a small diagnostic line under the file summary** — literally what Manus asked for:
+   > `File parsed: 793 rows • version v1.6 • top CSI 95.00 (Redbudgrove, NM)`
+   
+   So next time we can see instantly whether papaparse got the right file.
 
-Community and childcare-excluded rows are left alone. This immediately fixes Johns Creek's card (2 → ~9 premium) and every other city that ran catch-up.
+4. **Keep everything else the same:** CSI threshold, in-file dedup, upsert on `(city, state)`, human-shortlist and pipeline untouched.
 
-### Phase 2 — Stop the bug from coming back (code, 1 turn)
+## Risks / what stays safe
 
-Two small code changes in `supabase/functions/mvs-run-pipeline/index.ts`:
+- Zero impact on human shortlist (`mvs_shortlist_cities`) or the pipeline.
+- Zero impact on any scoring, crawlers, or UI outside this one dialog.
+- Only the Manus reference table (`mvs_manus_cities`) changes — and it will now hold all 793 rows with correct CSI and version.
 
-1. After the catch-up step finishes, invoke `mvs-classify-tier` a second time with `reclassify: true` so any newly-priced rows get re-tiered.
-2. Same fix for the standalone "Catch-Up Missing Prices" flow: after it completes, call the classifier for that city.
+## What Brett tests after
 
-No UI changes. No schema changes. No score-formula changes.
+1. Re-open the Market Validation page → **Import from Manus CSV** → drop the same file.
+2. Preview should show **793 will add/refresh, version v1.6, top CSI 95.00**.
+3. Click Confirm.
+4. I verify the DB: 793 rows, min CSI 5, max CSI 95, ranks 1–794, version v1.6 on every row.
 
-## Files touched
-
-- Phase 1: new SQL migration only.
-- Phase 2: `supabase/functions/mvs-run-pipeline/index.ts` and the client handler that fires the catch-up button (likely in `MarketValidationRollout.tsx` or its shared helper) — one extra edge-function call after catch-up finishes.
-
-## Risk
-
-- Very low. We are only re-deriving `tier` from data that already exists in the same table using the same thresholds the classifier already uses.
-- Score impact: Johns Creek and other catch-up cities will see their **Pricing Acceptance** and **Market Depth** sub-scores jump because more rows now count as premium. That is the correct behavior — we were undercounting before.
-
-## What to test after
-
-1. Johns Creek Provider Evidence page — premium card should show ~9 providers, not 2.
-2. MVS score for Johns Creek should recompute higher.
-3. Force Fresh a small city → confirm catch-up-filled rows now show correct tiers automatically.
-
-Approve and I will do Phase 1 first, then Phase 2.
+Say **go** and I'll ship it.

@@ -566,10 +566,36 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
     } catch (err) {
       console.warn("[Catchup] reclassify failed (non-fatal):", err);
     }
+    // T2 — Regression guard: compare premium count vs previous snapshot.
+    // If it dropped ≥20% we fire a notification via the RPC and show a
+    // small inline warning here.
+    try {
+      const { data: reg } = await supabase.rpc("mvs_check_tier_regression", {
+        _city: cityKey,
+        _trigger: "client_catchup",
+      });
+      if (reg && typeof reg === "object") {
+        const r = reg as any;
+        setRegressionCheck({
+          prev: r.previous?.premium ?? null,
+          curr: r.current?.premium ?? 0,
+          regressed: !!r.regressed,
+          at: new Date().toISOString(),
+        });
+        if (r.regressed) {
+          toast.warning(
+            `Premium count dropped from ${r.previous.premium} to ${r.current.premium} in ${cityDisplay}. Check the notification bell.`,
+          );
+        }
+      }
+    } catch (err) {
+      console.warn("[Catchup] regression check failed (non-fatal):", err);
+    }
     setCatchingUp(false);
     toast.success(`Catch-up finished for ${unpriced.length} camps!`);
     refresh();
   }
+
 
 
   const provCount = activeCamps.length;

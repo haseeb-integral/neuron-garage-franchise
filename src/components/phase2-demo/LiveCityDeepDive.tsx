@@ -549,10 +549,21 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
       setCatchupProgress({ current: Math.min(checked, unpriced.length), total: unpriced.length });
       refresh();
     }
+    // After all prices are filled, re-run tier classification so any newly
+    // priced camps (≥$400 → premium, <$200 → budget) get retagged. Otherwise
+    // freshly priced rows stay stuck at their pre-catchup "mid" default.
+    try {
+      await supabase.functions.invoke("mvs-classify-tier", {
+        body: { city: cityKey, reclassify: true },
+      });
+    } catch (err) {
+      console.warn("[Catchup] reclassify failed (non-fatal):", err);
+    }
     setCatchingUp(false);
     toast.success(`Catch-up finished for ${unpriced.length} camps!`);
     refresh();
   }
+
 
   const provCount = activeCamps.length;
   const excludedCount = excludedProviders.length;

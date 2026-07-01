@@ -1,66 +1,74 @@
-## What I see on your console
+## The bug (short version)
 
-- **4 failed cities** (red): Houston, San Antonio, Philadelphia, Los Angeles — last run failed 6/19. Their scores are stale.
-- **8 done cities** (green) — but many have `3/5 sources` or `2/5 sources` badges, meaning some data providers didn't return data. These likely have missing prices too.
-- **New York, Chicago, Boston, Austin, Columbus** — recently run, healthiest.
+Johns Creek has **7 providers charging $400–$950/week** that are still tagged "mid" in the database. Only 2 rows are tagged "premium", so the "Premium providers — live" card shows just 2.
 
-## Which button to use — simple rule
+Camps stuck as "mid" even though price ≥ $400:
 
-| Situation | Button | Why |
+| Name | price_min | tier (wrong) |
 |---|---|---|
-| City status = **failed** | **Force fresh** | No usable data exists. Must re-crawl from scratch. |
-| City status = **done** but missing prices | **Catch-Up Missing Prices** (on deep dive card) | Keeps existing providers, only fills blanks. Much cheaper and faster. Uses new B1+B2+B3 crawler on unpriced rows only. |
-| City status = **done** and older than 90 days | **Run** (normal) | Uses freshness policy. |
-| City looks totally wrong / bad data | **Force fresh** | Wipes and rebuilds. |
+| E-PLEX GA | $950 | mid |
+| The Art Center | $845 | mid |
+| Goldfish Swim School | $840 | mid |
+| Catch Air | $699 | mid |
+| KidStrong Johns Creek | $599 | mid |
+| Hawaii Fluid Art | $450 | mid |
+| Eye Level Johns Creek | $430 | mid |
 
-**Key point:** Force fresh throws away everything and re-discovers providers (30-45 min, expensive). Catch-Up only touches unpriced rows (3-5 min, cheap). Prefer Catch-Up whenever the city is already `done`.
+## Why it happens
 
-## Recommended order
+The pipeline runs steps in this order:
 
-Run **one city at a time** (the table locks anyway). Group by type:
+```text
+discover  →  classify (tags tier)  →  acs  →  catch-up (fills missing prices)
+```
 
-### Group 1 — Fix failed cities first (Force fresh, one by one)
-These have no usable data. Do them first so the shortlist becomes complete.
+The **classify** step runs BEFORE **catch-up**.
 
-1. **Houston, TX** — Force fresh
-2. **Philadelphia, PA** — Force fresh
-3. **San Antonio, TX** — Force fresh
-4. **Los Angeles, CA** — Force fresh
+1. First pass: a provider has no price yet, so the classifier falls back to "mid" (rule 6 — unknown price defaults to mid).
+2. Catch-up then finds a $500/wk price and writes it into `price_min`.
+3. Nothing re-runs the classifier after that. The `tier` field stays "mid" forever.
 
-Wait for each to finish before starting the next. Each ≈ 30-45 min.
+The standalone **"Catch-Up Missing Prices"** button on the deep-dive page has the same gap — it fills prices but never re-classifies.
 
-### Group 2 — Fill missing prices on done cities (Catch-Up button)
-Go into each city's deep dive and hit **Catch-Up Missing Prices**. Order by lowest coverage first so you see biggest lift:
+So this is a real logic bug, not a display bug. The premium card is reading the DB correctly; the DB is stale.
 
-5. **Johns Creek, GA** (score is `—`, likely very thin)
-6. **San Diego, CA** (43.5, `3/5 sources`)
-7. **Indianapolis, IN** (44.0)
-8. **Denver, CO** (56.5, `3/5 sources`)
-9. **Boston, MA** (60.0, `3/5 sources`) — already caught up recently, may be small lift
-10. **Columbus, OH** (69.9, `3/5 sources`) — already caught up recently
-11. **Chicago, IL** (52.6) — already caught up recently
-12. **Austin, TX** (58.4) — already caught up recently
-13. **New York, NY** (66.9) — check unpriced count first
+## Fix plan (2 small phases)
 
-For Group 2, each Catch-Up run is ~3-5 min.
+### Phase 1 — Backfill Johns Creek and every other done city (data-only, 1 turn)
 
-## What "new crawler" gives you on Catch-Up
+Run a one-time SQL migration that re-derives `tier` from the current `price_min` / `price_max` / brand rules for every row where the price contradicts the tier. Uses the same thresholds the classifier already uses:
 
-The Catch-Up button already uses:
-- **B2** directory-first queries (Sawyer, ActivityHero, CampPage)
-- **B2.2** brand token hints + sibling median ranges
-- **B3** Google AI Overview fallback (Apify)
-- Relaxed price guards + natural language queries
+- `price ≥ $400` → `premium`
+- `price < $200` → `budget`
+- national premium brand regex → `premium`
+- community brand regex → `community`
+- everything else with a real price 200–400 → `mid`
 
-Force fresh uses all of the above **plus** re-discovers providers. So Force fresh helps when the provider list itself is stale or missing camps — not just prices.
+Community and childcare-excluded rows are left alone. This immediately fixes Johns Creek's card (2 → ~9 premium) and every other city that ran catch-up.
 
-## Expected impact
+### Phase 2 — Stop the bug from coming back (code, 1 turn)
 
-- Failed 4 cities → go from `—` to real scores.
-- Catch-Up on done cities → typically +30 to +120 priced providers per city (based on what we saw for Boston, Chicago, Columbus).
+Two small code changes in `supabase/functions/mvs-run-pipeline/index.ts`:
 
-## Recommendation for today
+1. After the catch-up step finishes, invoke `mvs-classify-tier` a second time with `reclassify: true` so any newly-priced rows get re-tiered.
+2. Same fix for the standalone "Catch-Up Missing Prices" flow: after it completes, call the classifier for that city.
 
-Start with **Houston Force fresh** now. While it runs, open **Johns Creek deep dive** and hit **Catch-Up** in a second tab — different city, so no lock conflict.
+No UI changes. No schema changes. No score-formula changes.
 
-Reply **"go"** and I'll wait as you kick off Houston, then guide the next step.
+## Files touched
+
+- Phase 1: new SQL migration only.
+- Phase 2: `supabase/functions/mvs-run-pipeline/index.ts` and the client handler that fires the catch-up button (likely in `MarketValidationRollout.tsx` or its shared helper) — one extra edge-function call after catch-up finishes.
+
+## Risk
+
+- Very low. We are only re-deriving `tier` from data that already exists in the same table using the same thresholds the classifier already uses.
+- Score impact: Johns Creek and other catch-up cities will see their **Pricing Acceptance** and **Market Depth** sub-scores jump because more rows now count as premium. That is the correct behavior — we were undercounting before.
+
+## What to test after
+
+1. Johns Creek Provider Evidence page — premium card should show ~9 providers, not 2.
+2. MVS score for Johns Creek should recompute higher.
+3. Force Fresh a small city → confirm catch-up-filled rows now show correct tiers automatically.
+
+Approve and I will do Phase 1 first, then Phase 2.

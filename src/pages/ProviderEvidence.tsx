@@ -69,13 +69,40 @@ export default function ProviderEvidence() {
   const state = params.get("state") ?? "";
   const cityKey = state ? `${city}, ${state}` : city;
 
-  const { rows, queries, runCreatedAt, loading, error } = useProviderEvidence(cityKey);
+  const { rows, queries, runCreatedAt, loading, error, refetch } = useProviderEvidence(cityKey);
 
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<EvidenceRow | null>(null);
   const [queryFilter, setQueryFilter] = useState<string>("all");
   const [keptFilter, setKeptFilter] = useState<string>("all");
   const [showExcluded, setShowExcluded] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  async function handleVerify(r: EvidenceRow, action: VerifyAction, extra?: { min?: number | null; max?: number | null; notes?: string | null }) {
+    setBusyId(r.id);
+    try {
+      await setProviderVerification({
+        providerId: r.id,
+        action,
+        notes: extra?.notes ?? null,
+        newPriceMin: extra?.min ?? null,
+        newPriceMax: extra?.max ?? null,
+        currentPriceMin: r.price_min,
+        currentPriceMax: r.price_max,
+      });
+      toast.success(
+        action === "verified" ? "Price verified." :
+        action === "rejected" ? "Price rejected and cleared." :
+        "Price updated."
+      );
+      refetch?.();
+      setSelected(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Update failed");
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   // Strict Camp View — tag each row with its exclusion reason (or null).
   const rowsWithExclusion = useMemo(

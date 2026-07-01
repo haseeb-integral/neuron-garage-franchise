@@ -8,13 +8,13 @@ const SPEC_MD = `# Feature 1A Market Validation Spec doc by Lovable
 
 # **Feature 1A — Market Validation Engine**
 
-## **v1.5 Spec (Lovable internal — updated 2026-07-01)**
+## **v1.6 Spec (Lovable internal — updated 2026-07-01)**
 
 **Status:** Shipped, evolving. **Source of truth:** This chat + MVS Methodology doc. **Naming:** MVS (Market Validation Score). Do not surface PEES anywhere in the app or PDF.
 
 > **What changed since the original v1.0 spec:** discovery expanded from Sawyer-only to 5 sources; Market Absorption pillar retired; registration-page scraping (Stage 3) retired; per-pillar confidence replaced the global low-confidence badge; Firecrawl cap raised to 50 with per-step sub-caps; freshness rules (0–90 skip / 91–120 prompt / >120 fresh) and soft-fail fallback (\`done_stale\`) added; cards redesigned to Result → Evidence → Trust; **pricing crawler expanded from 3 steps to 9 steps** (catch-up Google search, marketplace listing reads, relaxed "trusted source" price rule, brand price propagation, directory-first queries, Google AI Overview fallback, manual Verify/Reject/Edit for uncertain prices).
 >
-> **What changed since v1.2 (this v1.5 pass, 2026-07-01):** added the **Crawler Telemetry card** (Direct vs B1 Brand vs B2 Directory vs B3 AI Overview counts per city); added the **Regression Guard** with the new \`mvs_tier_snapshots\` table and header-bell notification when premium count drops ≥20%; added **Tier re-classify after Catch-Up** so newly priced camps get their correct tier (fixes the Johns Creek "stuck mid-tier" bug); added **Unpriced Reasons** chips (Not a camp / Booking wall / No public price / etc.) with a per-city breakdown; added \`price_derived_from_brand\`, \`price_needs_review\`, \`ai_overview_snippet\`, \`ai_overview_source_url\`, \`matched_query\`, \`verified_at\`, \`verified_by\` columns on \`mvs_providers\`; added **Reject-safety confirmation** and the collapsible **"How to read this table"** help card on the Provider Evidence Review page; added the red **Stop** button on active pipeline rows and locked other rows' Run / Force-fresh while one is running.
+> **What changed since v1.2 (this v1.6 pass, 2026-07-01):** added the **Crawler Telemetry card** (Direct vs B1 Brand vs B2 Directory vs B3 AI Overview counts per city); added the **Regression Guard** with the new \`mvs_tier_snapshots\` table and header-bell notification when premium count drops ≥20%; added **Tier re-classify after Catch-Up** so newly priced camps get their correct tier (fixes the Johns Creek "stuck mid-tier" bug); added **Unpriced Reasons** chips (Not a camp / Booking wall / No public price / etc.) with a per-city breakdown; added \`price_derived_from_brand\`, \`price_needs_review\`, \`ai_overview_snippet\`, \`ai_overview_source_url\`, \`matched_query\`, \`verified_at\`, \`verified_by\` columns on \`mvs_providers\`; added **Reject-safety confirmation** and the collapsible **"How to read this table"** help card on the Provider Evidence Review page; added the red **Stop** button on active pipeline rows and locked other rows' Run / Force-fresh while one is running.
 
 ---
 
@@ -34,7 +34,7 @@ Not in scope: predicting any individual Neuron Garage location's success. Site-l
 
 ---
 
-## **2. v1.5 scope (current)**
+## **2. v1.6 scope (current)**
 
 | Decision | Current behavior | Deferred |
 | :---- | :---- | :---- |
@@ -52,7 +52,7 @@ Not in scope: predicting any individual Neuron Garage location's success. Site-l
 
 ---
 
-## **3. MVS composite — v1.5**
+## **3. MVS composite — v1.6**
 
 \`\`\`
 MVS = 0.2667 × Pricing Acceptance
@@ -131,7 +131,7 @@ See §5. All math lives in one helper. No stored composite scores — always rec
 
 ---
 
-## **5. Sub-score formulas + v1.5 reference ranges**
+## **5. Sub-score formulas + v1.6 reference ranges**
 
 Normalization is **min-max against fixed reference ranges** (capped 0–100). Ranges below come from the methodology doc.
 
@@ -145,7 +145,7 @@ Normalization is **min-max against fixed reference ranges** (capped 0–100). Ra
 
 ### Score 2 — Market Absorption — RETIRED (weight 0)
 
-> **Deprecated in v1.5.** Removed because sellout-rate scraping was unreliable. Formula preserved below for audit only.
+> **Deprecated in v1.6.** Removed because sellout-rate scraping was unreliable. Formula preserved below for audit only.
 
 \`\`\`
 Sellout Rate            = (sold_out weeks + waitlist weeks) ÷ total weeks scraped
@@ -261,7 +261,7 @@ Client never holds Firecrawl or Lovable AI Gateway keys. Every function checks \
 
 ---
 
-## **10. Out of scope for v1.5 (do not drift)**
+## **10. Out of scope for v1.6 (do not drift)**
 
 * Apify Google Maps actor as a separate discovery source.
 * Inngest/Trigger.dev scheduling.
@@ -342,7 +342,7 @@ const FORMULAS: Array<{ title: string; weight: string; body: string; note?: stri
     weight: "RETIRED (weight 0)",
     body: `Sellout Rate            = (sold_out weeks + waitlist weeks) ÷ total weeks scraped
 Market Absorption Score = normalize(Sellout Rate, range 0%–80%)`,
-    note: "Deprecated in v1.5. Removed because sellout-rate scraping was unreliable. Formula preserved for audit only.",
+    note: "Deprecated in v1.6. Removed because sellout-rate scraping was unreliable. Formula preserved for audit only.",
   },
   {
     title: "Score 3 — Scaled Operator",
@@ -426,9 +426,9 @@ const UI_BEHAVIOR = [
 export default function MVSSpec() {
   return (
     <DocShell
-      eyebrow="Feature 1A · v1.5 Spec"
+      eyebrow="Feature 1A · v1.6 Spec"
       eyebrowIcon={ShieldCheck}
-      title="Market Validation Engine — v1.5 Full Spec"
+      title="Market Validation Engine — v1.6 Full Spec"
       subtitle="Every detail of how MVS works and what is shipped. Source of truth: this page + MVS Methodology + this chat. Re-read before starting any new turn."
       action={<DownloadMDButton content={SPEC_MD} filename="feature-1a-mvs-v1-spec.md" />}
     >
@@ -445,7 +445,7 @@ export default function MVSSpec() {
               <strong>What changed since original v1.0:</strong> discovery expanded from Sawyer-only to 5 sources; Market Absorption pillar retired; registration-page scraping retired; per-pillar confidence replaced the global low-confidence badge; Firecrawl cap raised to 50 with per-step sub-caps; freshness rules (0–90 skip / 91–120 prompt / &gt;120 fresh) and soft-fail fallback (<code className="bg-white px-1 rounded text-[12px]">done_stale</code>) added; cards redesigned to Result → Evidence → Trust; <strong>pricing crawler expanded from 3 steps to 9 steps</strong>.
             </p>
             <p className="mt-2 text-[13px]">
-              <strong>What changed since v1.2 (this v1.5 pass, 2026-07-01):</strong> added the <strong>Crawler Telemetry card</strong> (Direct vs B1 Brand vs B2 Directory vs B3 AI Overview counts per city); added the <strong>Regression Guard</strong> with the new <code className="bg-white px-1 rounded text-[12px]">mvs_tier_snapshots</code> table and header-bell notification when premium count drops ≥20%; added <strong>Tier re-classify after Catch-Up</strong> so newly priced camps get their correct tier (fixes the Johns Creek "stuck mid-tier" bug); added <strong>Unpriced Reasons</strong> chips with a per-city breakdown; added <code className="bg-white px-1 rounded text-[12px]">price_derived_from_brand</code>, <code className="bg-white px-1 rounded text-[12px]">price_needs_review</code>, <code className="bg-white px-1 rounded text-[12px]">ai_overview_snippet</code>, <code className="bg-white px-1 rounded text-[12px]">ai_overview_source_url</code>, <code className="bg-white px-1 rounded text-[12px]">matched_query</code>, <code className="bg-white px-1 rounded text-[12px]">verified_at</code>, <code className="bg-white px-1 rounded text-[12px]">verified_by</code> columns on <code className="bg-white px-1 rounded text-[12px]">mvs_providers</code>; added <strong>Reject-safety confirmation</strong> and the collapsible <strong>"How to read this table"</strong> help card on the Provider Evidence Review page; added the red <strong>Stop</strong> button on active pipeline rows and locked other rows' Run / Force-fresh while one is running.
+              <strong>What changed since v1.2 (this v1.6 pass, 2026-07-01):</strong> added the <strong>Crawler Telemetry card</strong> (Direct vs B1 Brand vs B2 Directory vs B3 AI Overview counts per city); added the <strong>Regression Guard</strong> with the new <code className="bg-white px-1 rounded text-[12px]">mvs_tier_snapshots</code> table and header-bell notification when premium count drops ≥20%; added <strong>Tier re-classify after Catch-Up</strong> so newly priced camps get their correct tier (fixes the Johns Creek "stuck mid-tier" bug); added <strong>Unpriced Reasons</strong> chips with a per-city breakdown; added <code className="bg-white px-1 rounded text-[12px]">price_derived_from_brand</code>, <code className="bg-white px-1 rounded text-[12px]">price_needs_review</code>, <code className="bg-white px-1 rounded text-[12px]">ai_overview_snippet</code>, <code className="bg-white px-1 rounded text-[12px]">ai_overview_source_url</code>, <code className="bg-white px-1 rounded text-[12px]">matched_query</code>, <code className="bg-white px-1 rounded text-[12px]">verified_at</code>, <code className="bg-white px-1 rounded text-[12px]">verified_by</code> columns on <code className="bg-white px-1 rounded text-[12px]">mvs_providers</code>; added <strong>Reject-safety confirmation</strong> and the collapsible <strong>"How to read this table"</strong> help card on the Provider Evidence Review page; added the red <strong>Stop</strong> button on active pipeline rows and locked other rows' Run / Force-fresh while one is running.
             </p>
           </section>
 
@@ -470,7 +470,7 @@ export default function MVSSpec() {
 
           {/* 2. Scope table */}
           <section>
-            <h2 className="text-lg font-bold text-[#07142f] mb-3">2. v1.5 scope (current)</h2>
+            <h2 className="text-lg font-bold text-[#07142f] mb-3">2. v1.6 scope (current)</h2>
             <div className="overflow-hidden rounded-md border border-[#cfdcff]">
               <table className="w-full text-[13px]">
                 <thead className="bg-[#f4f8ff] text-[#174be8]">
@@ -607,7 +607,7 @@ Stage 4 → Score calculation            → 5 sub-scores → MVS composite`}
 
           {/* 5. Sub-score formulas */}
           <section>
-            <h2 className="text-lg font-bold text-[#07142f] mb-3">5. Sub-score formulas + v1.5 reference ranges</h2>
+            <h2 className="text-lg font-bold text-[#07142f] mb-3">5. Sub-score formulas + v1.6 reference ranges</h2>
             <p className="mb-3">Normalization is <strong>min-max against fixed reference ranges</strong> (capped 0–100). Ranges below come from the methodology doc.</p>
             <div className="space-y-4">
               {FORMULAS.map((f) => (
@@ -723,7 +723,7 @@ Stage 4 → Score calculation            → 5 sub-scores → MVS composite`}
 
           {/* 10. Out of scope */}
           <section>
-            <h2 className="text-lg font-bold text-[#07142f] mb-3">10. Out of scope for v1.5 (do not drift)</h2>
+            <h2 className="text-lg font-bold text-[#07142f] mb-3">10. Out of scope for v1.6 (do not drift)</h2>
             <ul className="space-y-2">
               {EXCLUDED.map((item) => (
                 <li key={item} className="flex gap-2">

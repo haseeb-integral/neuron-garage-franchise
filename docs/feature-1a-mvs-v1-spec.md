@@ -2,7 +2,7 @@
 
 # **Feature 1A — Market Validation Engine**
 
-## **v1.5 Spec (Lovable internal — updated 2026-07-01)**
+## **v1.6 Spec (Lovable internal — updated 2026-07-01)**
 
 **Status:** Shipped, evolving. **Source of truth:** This chat + MVS Methodology doc. **Naming:** MVS (Market Validation Score). Do not surface PEES anywhere in the app or PDF.
 
@@ -26,7 +26,7 @@ Not in scope: predicting any individual Neuron Garage location's success. Site-l
 
 ---
 
-## **2. v1.5 scope (current)**
+## **2. v1.6 scope (current)**
 
 | Decision | Current behavior | Deferred |
 | :---- | :---- | :---- |
@@ -44,7 +44,7 @@ Not in scope: predicting any individual Neuron Garage location's success. Site-l
 
 ---
 
-## **3. MVS composite — v1.5**
+## **3. MVS composite — v1.6**
 
 ```
 MVS = 0.2667 × Pricing Acceptance
@@ -122,7 +122,7 @@ See §5. All math lives in one helper. No stored composite scores — always rec
 
 ---
 
-## **5. Sub-score formulas + v1.5 reference ranges**
+## **5. Sub-score formulas + v1.6 reference ranges**
 
 Normalization is **min-max against fixed reference ranges** (capped 0–100). Ranges below come from the methodology doc.
 
@@ -136,7 +136,7 @@ Normalization is **min-max against fixed reference ranges** (capped 0–100). Ra
 
 ### Score 2 — Market Absorption — RETIRED (weight 0)
 
-> **Deprecated in v1.5.** Removed because sellout-rate scraping was unreliable. Formula preserved below for audit only.
+> **Deprecated in v1.6.** Removed because sellout-rate scraping was unreliable. Formula preserved below for audit only.
 
 ```
 Sellout Rate            = (sold_out weeks + waitlist weeks) ÷ total weeks scraped
@@ -252,7 +252,7 @@ Client never holds Firecrawl or Lovable AI Gateway keys. Every function checks `
 
 ---
 
-## **10. Out of scope for v1.5 (do not drift)**
+## **10. Out of scope for v1.6 (do not drift)**
 
 * Apify Google Maps actor as a separate discovery source.
 * Inngest/Trigger.dev scheduling.

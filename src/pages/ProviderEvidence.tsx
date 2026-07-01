@@ -93,6 +93,29 @@ export default function ProviderEvidence() {
   }, [rowsWithExclusion]);
   const excludedTotal = rows.length - activeCount;
 
+  // Guard-summary rollup: flatten every dropped price across active camps so we
+  // can show "Guard dropped: N prices across M providers" and list them out.
+  const guardSummary = useMemo(() => {
+    const items: Array<{ providerName: string; providerId: string; drop: DroppedPrice; reason: string }> = [];
+    const providerIds = new Set<string>();
+    for (const x of rowsWithExclusion) {
+      if (x.exclusion) continue; // only count active camps
+      const r = x.row;
+      if (!r.guard_drop || r.guard_drop.length === 0) continue;
+      providerIds.add(r.id);
+      for (const d of r.guard_drop) {
+        items.push({
+          providerName: r.name || "—",
+          providerId: r.id,
+          drop: d,
+          reason: guardReason(d),
+        });
+      }
+    }
+    return { items, providerCount: providerIds.size, dropCount: items.length };
+  }, [rowsWithExclusion]);
+
+
   const filtered = useMemo(() => {
     const ql = q.trim().toLowerCase();
     return rowsWithExclusion

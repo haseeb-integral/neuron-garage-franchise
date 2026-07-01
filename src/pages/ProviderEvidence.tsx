@@ -790,7 +790,7 @@ export default function ProviderEvidence() {
                               <button
                                 type="button"
                                 disabled={busyId === r.id}
-                                onClick={() => handleVerify(r, "rejected")}
+                                onClick={() => confirmReject(r.name || "this price", () => handleVerify(r, "rejected"))}
                                 className="rounded border px-1.5 py-0.5 text-[10px] font-semibold hover:bg-[#fce7ec] disabled:opacity-50"
                                 style={{ borderColor: BORDER, color: "#a3142b" }}
                                 title="Reject and clear this price"

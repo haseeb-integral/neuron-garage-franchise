@@ -1,7 +1,6 @@
-// Import from Manus CSV — Phase 2 of the Manus import feature.
-// Client-side CSV parse + preview with dedupe and US-cities-DB lookup.
-// Does NOT trigger the pipeline. Confirming just inserts rows into
-// mvs_shortlist_cities with manus_csi_score + manus_imported_at set.
+// Import from Manus CSV — writes to the standalone `mvs_manus_cities`
+// reference table. Does NOT touch the human shortlist (mvs_shortlist_cities)
+// and does NOT trigger the pipeline. Pure reference data.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Papa from "papaparse";

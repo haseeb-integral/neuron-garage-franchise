@@ -23,6 +23,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { SHORTLIST_SEED } from "@/lib/mvs/shortlistSeed";
 import { useShortlistAdditions } from "@/lib/mvs/useShortlistAdditions";
 import { AddCityDialog } from "@/components/phase2-demo/AddCityDialog";
+import { ImportManusCsvDialog } from "@/components/phase2-demo/ImportManusCsvDialog";
 import {
   decideFreshness,
   formatShortDate,

@@ -1,115 +1,63 @@
+## What I checked first
 
-## What is left in Phase B
+**Q1 — Is B1 / B3 wired into the "Catch-Up Missing Prices" UI button?**
 
-Here is the score card for Phase B:
+- The UI button in `LiveCityDeepDive.tsx` calls `mvs-discover-providers` with `{ city, catchupBatch: [ids] }`.
+- Inside the edge function's catchup block:
+  - **B3 (Google AI Overview) IS wired in.** It fires as the final fallback (line 1528), but ONLY when Firecrawl + Gemini extraction returned no price at all.
+  - **B1 (Brand Price Propagation) is NOT wired into catch-up.** It only runs at the start of a Force Fresh full pipeline (`propagateBrandPrices` at top of file).
+- Chicago database check: `ai_overview_snippet=0`, `price_derived_from_brand=0`, `platform='google_ai_overview'=0`, `price_needs_review=0` out of 194 rows.
+- So B3 code did run, but Apify either returned no AI Overview box for those queries, OR the earlier Firecrawl steps already found a price and B3 was skipped. B1 never ran because the button skips the brand-propagation step.
 
-| Phase | What it does | Status |
-|---|---|---|
-| B1 | Brand price propagation (amber "possible brand price") | ✅ Done |
-| B2 | Directory-first queries (ActivityHero, Sawyer, CampPage) | ✅ Done |
-| B2.2 | Hybrid brand + directory hints to Gemini | ✅ Done |
-| B3 | **Google AI Overview / Answer Box scraper (Apify)** | ❌ **Not built — only remaining piece** |
-| B4 | Manual Verify / Reject / Edit UI | ✅ Done |
-| G | Guard-dropped pills in table + CSV | ✅ Done |
-| UX-1 | Quiet chips + loud actions only on amber rows | ✅ Done |
-
-So the only thing left is **B3**.
+**Q2 — Are `ai_overview_snippet` and `ai_overview_source_url` on the table?** Yes, confirmed on `mvs_providers`. The drawer already reads them. They are simply empty because no B3 hits landed for Chicago.
 
 ---
 
-## Plan for B3 — Google AI Overview scraper
+## Plan (2 small phases)
 
-### What it is in plain words
+### Phase 1 — "Why unpriced?" reason chip in the UI
 
-When you Google "Code Ninjas Chicago summer camp price per week", Google now shows a small AI summary box at the top that often says the price directly, even when the actual website hides it behind a booking wall.
+Goal: every unpriced camp shows one short reason so the reader knows why. Hide the whole line/section when the count is 0.
 
-Right now our crawler asks Firecrawl to search the web and read pages. It does **not** read that AI summary box. Apify has a ready-made scraper ("Google Search Scraper" / AI Overview actor) that pulls that box as clean text.
+**Reason categories (computed client-side from existing columns, no schema change):**
 
-**We will add a new fallback step:** when a provider still has no price after Firecrawl + directory + brand steps, we ask Apify for the AI Overview text, then send that text to Gemini for a price. If Gemini finds one, we save it as `price_needs_review = true` (amber "Needs human review") — same safety net as brand propagation.
+| Reason chip | Rule |
+|---|---|
+| Excluded (non-camp) | `classifyExclusion()` says excluded |
+| No website on file | `website_url` and `url` both empty |
+| Booking wall (JS-only site) | domain in Sawyer / Enrollsy / ActivityHero list AND no price |
+| Directory-only, no price shown | has listing_url but no price_min |
+| Tried all sources, no price found | has website, catchup ran, still null |
+| Needs human review | `price_needs_review = true` |
 
-### Why this should lift the missing count
+**Where the chip shows:**
+1. **Provider Evidence table** (`ProviderEvidence.tsx`): a small muted "Why unpriced" pill in the price cell for rows where `price_min IS NULL AND not excluded`.
+2. **Evidence Drawer**: one sentence under the Tuition Truth block: "Why we have no price: <reason>".
+3. **LiveCityDeepDive** unpriced summary card: a small breakdown like "12 no website · 8 booking wall · 5 needs review". Whole block hidden when unpriced total = 0.
 
-Today's crawler fails on 3 kinds of camps:
-1. Sites with a booking wall (Sawyer, Enrollsy, Jovial) — Firecrawl gets a login page.
-2. Facebook / Instagram / Nextdoor listings — no clean markdown.
-3. Sites where the price is a PDF or an image.
+**Files touched:**
+- `src/lib/mvs/unpricedReason.ts` (new pure helper).
+- `src/pages/ProviderEvidence.tsx` (chip + drawer line).
+- `src/components/phase2-demo/LiveCityDeepDive.tsx` (summary breakdown, hidden when 0).
 
-Google's AI Overview already reads these for us and writes one sentence like "Code Ninjas Chicago summer camps are $349/week." That is exactly what we need.
+**Turns:** 1
 
-Expected lift on a fresh city: **+15 to +35 priced camps** on top of what Firecrawl+brand+directory finds. Rows land as amber "Needs human review" so a person confirms them.
+### Phase 2 — Wire B1 brand propagation into the catch-up path (optional, ask first)
 
-### Files to touch
+Not requested in this message. Flagging it so you decide later. Right now brand-derived prices only appear after a full Force Fresh. If you want the UI Catch-Up button to also copy sibling brand prices, that's a separate ~1 turn change to `mvs-discover-providers`.
 
-1. **New secret**: `APIFY_API_TOKEN` (I will request it via `add_secret` before writing code).
-2. **`supabase/functions/mvs-discover-providers/index.ts`**
-   - Add `fetchAiOverview(query)` helper that calls Apify actor `apify/google-search-scraper` with `resultsPerPage=1` and `saveHtml=false`, returns the `aiOverview.content` string.
-   - Add new step **B3** in the catch-up loop, after brand + directory: if still unpriced, call `fetchAiOverview` with `"{provider name} {city} summer camp price per week 2026"`, then reuse the existing Gemini extractor with a small prompt tweak (`source: "google_ai_overview"`).
-   - Mark saved rows: `platform = 'google_ai_overview'`, `price_needs_review = true`, `matched_query = the AI Overview text` (so the drawer shows the exact sentence and the user can verify).
-3. **`src/pages/ProviderEvidence.tsx`**
-   - Add `google_ai_overview` to the platform label map so the drawer says "Google AI Overview" not a blank.
-   - No new columns.
-4. **`src/pages/MVSMethodology.tsx`**
-   - Add one line to Section 5 (Crawler Evolution) noting Step 9 = AI Overview fallback.
-
-### Safety guards (kept from earlier phases)
-
-- Apify call is wrapped in try/catch + 20-sec timeout. If it fails or returns no AI Overview, we skip and move on — nothing crashes.
-- Extracted price still goes through `PRICE_RULES` guards (min $50, max $2500/wk, no phone numbers, etc.).
-- Every B3 price is stored as `price_needs_review = true` → shows as amber "Needs human review" chip → user must click Verify. Nothing sneaks into the score silently.
-- Budget guard: only run B3 on providers still unpriced after B1 + B2 (small subset, ~20-40 per city). Cost is ~$0.005 per call.
-
-### Turns estimate
-
-- 1 turn: add secret + write edge function change + typecheck + deploy.
-- 1 turn (optional): update methodology doc + drawer label.
-
-Total: **1-2 turns**.
+**Not doing this now unless you say so.**
 
 ---
 
-## Your testing questions
+## Risks / not touched
+- No DB schema changes.
+- No edge function changes in Phase 1 (pure UI).
+- Existing Verify/Reject flow, CSV export, and scoring math unchanged.
 
-### Force Fresh vs Catch-Up Missing Prices button — which to hit?
+## What to test after Phase 1
+- Open Chicago Evidence — each unpriced row shows a reason chip; priced rows unchanged.
+- Chicago has 0 rows with `ai_overview_snippet` → the "Google AI Overview" description block stays hidden (already the case).
+- If a city has 0 unpriced camps, the "Why unpriced" summary block does not render at all.
 
-**Hit "Catch-Up Missing Prices"** — do NOT Force Fresh.
-
-Reason:
-- Force Fresh throws away the current 200+ good priced camps and rebuilds the whole city from zero (30-45 min, uses a lot of Firecrawl credits).
-- Catch-Up only runs on the ~20-40 rows that still say "no price" and appends B3 as the new final step. Takes ~3-5 min, no risk to existing good data.
-- If B3 lifts the priced count, you keep all the old wins AND get the new ones.
-
-### Which city to test on?
-
-**Chicago.** Reasons:
-- Big city → lots of providers → good sample size to see the lift.
-- We have not run catch-up there since B2.2 shipped, so the "before" number is a clean baseline.
-- Not Austin (already at 6 unpriced, no room to show lift) and not Columbus/Boston (already fully cooked, small residual).
-
-### How B3 lifts prices differently vs existing crawler
-
-| Step | Existing crawler | New with B3 |
-|---|---|---|
-| Booking-wall sites (Sawyer, Jovial) | Gets login page → drops | Reads Google's AI summary → gets price |
-| Facebook / Instagram listings | No markdown → drops | AI Overview quotes the post → gets price |
-| PDF price sheets | Firecrawl skips | Google indexed the PDF → AI Overview quotes it |
-| Sites where price is an image | Blank → drops | Google OCR'd it → AI Overview has the number |
-
-Concretely on Chicago I expect: current unpriced ~30-50 → after B3 catch-up ~10-20 unpriced, with 15-30 new **amber rows** for you to Verify with one click.
-
----
-
-## What I will NOT touch
-
-- Force Fresh flow (unchanged).
-- Existing scoring, Provider Explorer, Evidence Drawer layout, UX-1 chips.
-- Any other city's data.
-- The 90/120 day freshness policy.
-
----
-
-## Ask for approval
-
-Reply **"go B3"** and I will:
-1. Request the `APIFY_API_TOKEN` secret.
-2. Ship the edge function change + drawer label + methodology line in one turn.
-3. Tell you exactly which button to hit on Chicago and watch the before/after with you.
+Reply **"go phase 1"** to build. Say **"also B1 in catch-up"** if you want Phase 2 too.

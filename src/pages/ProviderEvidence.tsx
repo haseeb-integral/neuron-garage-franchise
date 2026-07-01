@@ -4,6 +4,7 @@ import { AlertTriangle, ArrowLeft, ChevronDown, ChevronRight, Download, External
 import { PageHeader } from "@/components/PageHeader";
 import { useProviderEvidence, type EvidenceRow, type DroppedPrice } from "@/lib/mvs/useProviderEvidence";
 import { classifyExclusion } from "@/lib/mvs/classifyExclusion";
+import { unpricedReason } from "@/lib/mvs/unpricedReason";
 import { setProviderVerification, type VerifyAction } from "@/lib/mvs/verifyProvider";
 import {
   Sheet,
@@ -738,6 +739,21 @@ export default function ProviderEvidence() {
                           guard: {r.guard_drop.length} dropped
                         </div>
                       )}
+                      {(() => {
+                        // Only show reason chip for truly unpriced, non-excluded rows.
+                        if (exclusion) return null;
+                        const reason = unpricedReason(r);
+                        if (!reason) return null;
+                        return (
+                          <div
+                            className="mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold text-left"
+                            style={{ backgroundColor: "#eef2f7", color: MUTED }}
+                            title={reason.long}
+                          >
+                            Why: {reason.short}
+                          </div>
+                        );
+                      })()}
                     </td>
 
 
@@ -1000,9 +1016,19 @@ function EvidenceDrawer({
                   <span>Our AI guessed a price, but our safety rule blocked it because the exact tuition dollar amount wasn't clearly written in the camp's public text.</span>
                 </div>
               ) : (
-                <div className="text-xs text-[#526078] bg-white border border-[#eef2f7] rounded-lg p-2.5">
-                  No weekly tuition price found yet. Our targeted search will keep checking their official website and registration forms.
-                </div>
+                (() => {
+                  const reason = unpricedReason(row);
+                  return (
+                    <div className="text-xs text-[#526078] bg-white border border-[#eef2f7] rounded-lg p-2.5 space-y-1">
+                      <div>No weekly tuition price found yet. Our targeted search will keep checking their official website and registration forms.</div>
+                      {reason && (
+                        <div className="pt-1 border-t border-[#eef2f7]">
+                          <span className="font-bold">Why we have no price:</span> {reason.long}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()
               )}
             </div>
 

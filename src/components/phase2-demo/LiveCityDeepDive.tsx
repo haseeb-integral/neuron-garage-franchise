@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 import { classifyExclusion } from "@/lib/mvs/classifyExclusion";
+import { unpricedBreakdown } from "@/lib/mvs/unpricedReason";
 
 
 
@@ -685,6 +686,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
     () => activeCamps.filter((p) => (p.price_min ?? null) == null && (p.price_max ?? null) == null).length,
     [activeCamps],
   );
+  const unpricedReasons = useMemo(() => unpricedBreakdown(activeCamps), [activeCamps]);
 
   if (loading) {
     return (
@@ -711,33 +713,50 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
 
   return (
     <>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#dbe4f2] bg-[#f0f5ff] p-3 shadow-sm">
-        <div className="flex items-center gap-2">
-          <span className="inline-flex h-2 w-2 rounded-full bg-[#174be8]"></span>
-          <span className="text-xs font-bold text-[#07142f]">Missing Prices Catch-Up Queue</span>
-          <span className="rounded-full bg-[#dceaff] px-2 py-0.5 text-[10px] font-bold text-[#174be8]">
-            {nMissingPriceTotal} unpriced
-          </span>
-        </div>
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          {catchingUp && (
-            <div className="flex flex-1 sm:w-48 flex-col gap-1">
-              <div className="flex justify-between text-[10px] font-semibold text-[#526078]">
-                <span>Scanning Google…</span>
-                <span>{catchupProgress.current} / {catchupProgress.total}</span>
+      <div className="mb-4 rounded-lg border border-[#dbe4f2] bg-[#f0f5ff] p-3 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex h-2 w-2 rounded-full bg-[#174be8]"></span>
+            <span className="text-xs font-bold text-[#07142f]">Missing Prices Catch-Up Queue</span>
+            <span className="rounded-full bg-[#dceaff] px-2 py-0.5 text-[10px] font-bold text-[#174be8]">
+              {nMissingPriceTotal} unpriced
+            </span>
+          </div>
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            {catchingUp && (
+              <div className="flex flex-1 sm:w-48 flex-col gap-1">
+                <div className="flex justify-between text-[10px] font-semibold text-[#526078]">
+                  <span>Scanning Google…</span>
+                  <span>{catchupProgress.current} / {catchupProgress.total}</span>
+                </div>
+                <Progress value={catchupProgress.total > 0 ? (catchupProgress.current / catchupProgress.total) * 100 : 0} className="h-2" />
               </div>
-              <Progress value={catchupProgress.total > 0 ? (catchupProgress.current / catchupProgress.total) * 100 : 0} className="h-2" />
-            </div>
-          )}
-          <button
-            onClick={runClientCatchup}
-            disabled={catchingUp || nMissingPriceTotal === 0}
-            className="inline-flex items-center gap-1.5 rounded-md bg-[#174be8] px-3 py-1.5 text-xs font-bold text-white shadow hover:bg-[#123bb8] disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
-          >
-            {catchingUp && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            {catchingUp ? "Running Catch-Up…" : `Run Missing Prices Catch-Up (${nMissingPriceTotal})`}
-          </button>
+            )}
+            <button
+              onClick={runClientCatchup}
+              disabled={catchingUp || nMissingPriceTotal === 0}
+              className="inline-flex items-center gap-1.5 rounded-md bg-[#174be8] px-3 py-1.5 text-xs font-bold text-white shadow hover:bg-[#123bb8] disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
+            >
+              {catchingUp && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {catchingUp ? "Running Catch-Up…" : `Run Missing Prices Catch-Up (${nMissingPriceTotal})`}
+            </button>
+          </div>
         </div>
+        {nMissingPriceTotal > 0 && unpricedReasons.length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-[#dbe4f2] pt-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#526078]">
+              Why unpriced:
+            </span>
+            {unpricedReasons.map((r) => (
+              <span
+                key={r.key}
+                className="inline-block rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-[#07142f] border border-[#dbe4f2]"
+              >
+                {r.count} {r.short.toLowerCase()}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       <RunPipelineButton city={cityKey} onComplete={refresh} />

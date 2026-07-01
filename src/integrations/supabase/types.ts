@@ -1385,6 +1385,45 @@ export type Database = {
         }
         Relationships: []
       }
+      mvs_manus_cities: {
+        Row: {
+          city: string
+          created_at: string
+          id: string
+          imported_at: string
+          imported_by: string | null
+          manus_csi_score: number | null
+          manus_export_version: string | null
+          rank: number | null
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          city: string
+          created_at?: string
+          id?: string
+          imported_at?: string
+          imported_by?: string | null
+          manus_csi_score?: number | null
+          manus_export_version?: string | null
+          rank?: number | null
+          state: string
+          updated_at?: string
+        }
+        Update: {
+          city?: string
+          created_at?: string
+          id?: string
+          imported_at?: string
+          imported_by?: string | null
+          manus_csi_score?: number | null
+          manus_export_version?: string | null
+          rank?: number | null
+          state?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       mvs_operator_watchlist: {
         Row: {
           created_at: string
@@ -1606,8 +1645,6 @@ export type Database = {
           added_by: string | null
           city: string
           id: string
-          manus_csi_score: number | null
-          manus_imported_at: string | null
           state: string
         }
         Insert: {
@@ -1615,8 +1652,6 @@ export type Database = {
           added_by?: string | null
           city: string
           id?: string
-          manus_csi_score?: number | null
-          manus_imported_at?: string | null
           state: string
         }
         Update: {
@@ -1624,8 +1659,6 @@ export type Database = {
           added_by?: string | null
           city?: string
           id?: string
-          manus_csi_score?: number | null
-          manus_imported_at?: string | null
           state?: string
         }
         Relationships: []

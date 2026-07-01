@@ -1,7 +1,6 @@
-// Import from Manus CSV — Phase 2 of the Manus import feature.
-// Client-side CSV parse + preview with dedupe and US-cities-DB lookup.
-// Does NOT trigger the pipeline. Confirming just inserts rows into
-// mvs_shortlist_cities with manus_csi_score + manus_imported_at set.
+// Import from Manus CSV — writes to the standalone `mvs_manus_cities`
+// reference table. Does NOT touch the human shortlist (mvs_shortlist_cities)
+// and does NOT trigger the pipeline. Pure reference data.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Papa from "papaparse";
@@ -92,7 +91,7 @@ export function ImportManusCsvDialog({ onImported }: Props) {
     if (!open) return;
     void (async () => {
       const [{ data: existingData }, { data: cityData }] = await Promise.all([
-        supabase.from("mvs_shortlist_cities").select("city, state"),
+        supabase.from("mvs_manus_cities").select("city, state"),
         supabase.from("us_cities_scored").select("city_name, state_abbr").limit(50000),
       ]);
       const ex = new Set<string>();
@@ -187,13 +186,14 @@ export function ImportManusCsvDialog({ onImported }: Props) {
       const payload = toInsert.map((r) => ({
         city: r.city,
         state: r.state,
-        added_by: uid,
         manus_csi_score: r.manus_csi_score,
-        manus_imported_at: new Date().toISOString(),
+        rank: r.rank,
+        imported_by: uid,
+        imported_at: new Date().toISOString(),
       }));
-      const { error } = await supabase.from("mvs_shortlist_cities").insert(payload);
+      const { error } = await supabase.from("mvs_manus_cities").insert(payload);
       if (error) throw new Error(error.message);
-      toast.success(`Imported ${toInsert.length} ${toInsert.length === 1 ? "city" : "cities"} from Manus.`);
+      toast.success(`Imported ${toInsert.length} ${toInsert.length === 1 ? "city" : "cities"} into Manus reference table.`);
       onImported();
       setOpen(false);
     } catch (e) {
@@ -208,7 +208,7 @@ export function ImportManusCsvDialog({ onImported }: Props) {
       case "will_add":
         return <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700"><CheckCircle2 className="h-3 w-3" />Will add</span>;
       case "duplicate":
-        return <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600"><SkipForward className="h-3 w-3" />Already in shortlist</span>;
+        return <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600"><SkipForward className="h-3 w-3" />Already imported</span>;
       case "duplicate_in_file":
         return <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600"><SkipForward className="h-3 w-3" />Duplicate in file</span>;
       case "unknown_city":
@@ -235,7 +235,7 @@ export function ImportManusCsvDialog({ onImported }: Props) {
           <DialogTitle>Import cities from Manus CSV</DialogTitle>
           <DialogDescription>
             Upload a CSV with <code>city</code>, <code>state</code>, and optional <code>manus_csi_score</code>.
-            Cities are added to the shortlist only — the pipeline is not triggered.
+            Rows are saved to a separate Manus reference table — the human shortlist and the pipeline are not touched.
           </DialogDescription>
         </DialogHeader>
 
@@ -270,7 +270,7 @@ export function ImportManusCsvDialog({ onImported }: Props) {
               <span className="font-semibold text-slate-700">{fileName}</span>
               <span className="text-slate-400">•</span>
               <span className="text-emerald-700">{counts.will_add} will add</span>
-              {counts.duplicate > 0 && <span className="text-slate-600">{counts.duplicate} already in shortlist</span>}
+              {counts.duplicate > 0 && <span className="text-slate-600">{counts.duplicate} already imported</span>}
               {counts.duplicate_in_file > 0 && <span className="text-slate-600">{counts.duplicate_in_file} duplicates in file</span>}
               {counts.unknown_city > 0 && <span className="text-amber-700">{counts.unknown_city} unknown</span>}
               {counts.below_threshold > 0 && <span className="text-slate-500">{counts.below_threshold} below CSI</span>}

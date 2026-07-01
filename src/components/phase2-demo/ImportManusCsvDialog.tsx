@@ -4,7 +4,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Papa from "papaparse";
-import { Upload, Loader2, CheckCircle2, SkipForward, AlertTriangle, X } from "lucide-react";
+import { Upload, Loader2, CheckCircle2, SkipForward, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -24,9 +24,10 @@ type ParsedRow = {
   state: string;
   manus_csi_score: number | null;
   rank: number | null;
+  manus_export_version: string | null;
 };
 
-type RowStatus = "will_add" | "duplicate" | "duplicate_in_file" | "unknown_city" | "below_threshold" | "invalid";
+type RowStatus = "will_add" | "duplicate" | "duplicate_in_file" | "below_threshold" | "invalid";
 
 type PreviewRow = ParsedRow & {
   status: RowStatus;
@@ -64,13 +65,18 @@ function normNum(raw: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function normStr(raw: unknown): string | null {
+  if (raw === null || raw === undefined) return null;
+  const s = String(raw).trim();
+  return s === "" ? null : s;
+}
+
 export function ImportManusCsvDialog({ onImported }: Props) {
   const [open, setOpen] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const [parsing, setParsing] = useState(false);
   const [rows, setRows] = useState<ParsedRow[]>([]);
   const [existing, setExisting] = useState<Set<string>>(new Set()); // "city|ST"
-  const [knownCities, setKnownCities] = useState<Set<string>>(new Set()); // "city|ST" from us_cities_scored
   const [threshold, setThreshold] = useState<number>(0);
   const [importing, setImporting] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
@@ -86,24 +92,16 @@ export function ImportManusCsvDialog({ onImported }: Props) {
     if (!open) reset();
   }, [open, reset]);
 
-  // Load lookups when dialog opens
+  // Load existing Manus rows so we can show "will refresh" vs "will add"
   useEffect(() => {
     if (!open) return;
     void (async () => {
-      const [{ data: existingData }, { data: cityData }] = await Promise.all([
-        supabase.from("mvs_manus_cities").select("city, state"),
-        supabase.from("us_cities_scored").select("city_name, state_abbr").limit(50000),
-      ]);
+      const { data } = await supabase.from("mvs_manus_cities").select("city, state");
       const ex = new Set<string>();
-      (existingData ?? []).forEach((r: { city: string; state: string }) => {
+      (data ?? []).forEach((r: { city: string; state: string }) => {
         ex.add(`${r.city.toLowerCase()}|${r.state.toUpperCase()}`);
       });
       setExisting(ex);
-      const known = new Set<string>();
-      (cityData ?? []).forEach((r: { city_name: string; state_abbr: string }) => {
-        known.add(`${r.city_name.toLowerCase()}|${r.state_abbr.toUpperCase()}`);
-      });
-      setKnownCities(known);
     })();
   }, [open]);
 
@@ -114,7 +112,7 @@ export function ImportManusCsvDialog({ onImported }: Props) {
     Papa.parse<Record<string, string>>(file, {
       header: true,
       skipEmptyLines: true,
-      transformHeader: (h) => h.trim().toLowerCase().replace(/\s+/g, "_"),
+      transformHeader: (h) => h.trim().toLowerCase().replace(/\ufeff/g, "").replace(/\s+/g, "_"),
       complete: (result) => {
         setParsing(false);
         try {
@@ -128,11 +126,20 @@ export function ImportManusCsvDialog({ onImported }: Props) {
               state: normState(stateRaw),
               manus_csi_score: normNum(raw.manus_csi_score ?? raw.csi_score ?? raw.csi),
               rank: normNum(raw.rank),
+              manus_export_version: normStr(raw.manus_export_version ?? raw.export_version ?? raw.version),
             });
           }
           if (parsed.length === 0) {
             setParseError("No valid rows found. Make sure the CSV has 'city' and 'state' headers.");
           }
+          // Diagnostic log for future debugging (Manus asked for this)
+          // eslint-disable-next-line no-console
+          console.log("[ManusImport] parsed", {
+            fileName: file.name,
+            rowCount: parsed.length,
+            firstRow: parsed[0],
+            versionOnFirstRow: parsed[0]?.manus_export_version,
+          });
           setRows(parsed);
         } catch (e) {
           setParseError((e as Error).message);
@@ -155,10 +162,6 @@ export function ImportManusCsvDialog({ onImported }: Props) {
       if (seenInFile.has(key)) {
         return { ...r, status: "duplicate_in_file", reason: "Repeated row in CSV" };
       }
-      if (knownCities.size > 0 && !knownCities.has(key)) {
-        seenInFile.add(key);
-        return { ...r, status: "unknown_city", reason: "Not in US cities DB" };
-      }
       if (r.manus_csi_score !== null && r.manus_csi_score < threshold) {
         seenInFile.add(key);
         return { ...r, status: "below_threshold" };
@@ -167,15 +170,30 @@ export function ImportManusCsvDialog({ onImported }: Props) {
       if (existing.has(key)) return { ...r, status: "duplicate" }; // will refresh
       return { ...r, status: "will_add" };
     });
-  }, [rows, existing, knownCities, threshold]);
+  }, [rows, existing, threshold]);
 
   const counts = useMemo(() => {
-    const c = { will_add: 0, duplicate: 0, duplicate_in_file: 0, unknown_city: 0, below_threshold: 0, invalid: 0 };
+    const c = { will_add: 0, duplicate: 0, duplicate_in_file: 0, below_threshold: 0, invalid: 0 };
     preview.forEach((r) => { c[r.status]++; });
     return c;
   }, [preview]);
 
   const toWriteCount = counts.will_add + counts.duplicate;
+
+  // Diagnostic: file summary for quick "did the right file arrive?" check
+  const diagnostic = useMemo(() => {
+    if (rows.length === 0) return null;
+    const sorted = [...rows].filter((r) => r.manus_csi_score !== null)
+      .sort((a, b) => (b.manus_csi_score ?? 0) - (a.manus_csi_score ?? 0));
+    const top = sorted[0];
+    const versions = new Set(rows.map((r) => r.manus_export_version).filter(Boolean));
+    return {
+      count: rows.length,
+      version: versions.size === 0 ? "(none)" : Array.from(versions).join(", "),
+      topCsi: top?.manus_csi_score ?? null,
+      topCity: top ? `${top.city}, ${top.state}` : null,
+    };
+  }, [rows]);
 
   const handleImport = async () => {
     const rowsToWrite = preview.filter((r) => r.status === "will_add" || r.status === "duplicate");
@@ -190,13 +208,19 @@ export function ImportManusCsvDialog({ onImported }: Props) {
         state: r.state,
         manus_csi_score: r.manus_csi_score,
         rank: r.rank,
+        manus_export_version: r.manus_export_version,
         imported_by: uid,
         imported_at: new Date().toISOString(),
       }));
-      const { error } = await supabase
-        .from("mvs_manus_cities")
-        .upsert(payload, { onConflict: "city,state" });
-      if (error) throw new Error(error.message);
+      // Chunk to keep payload sizes safe on large files
+      const CHUNK = 500;
+      for (let i = 0; i < payload.length; i += CHUNK) {
+        const slice = payload.slice(i, i + CHUNK);
+        const { error } = await supabase
+          .from("mvs_manus_cities")
+          .upsert(slice, { onConflict: "city,state" });
+        if (error) throw new Error(error.message);
+      }
       toast.success("Manus reference table updated", {
         description: `${counts.will_add} added, ${counts.duplicate} refreshed.`,
       });
@@ -217,8 +241,6 @@ export function ImportManusCsvDialog({ onImported }: Props) {
         return <span className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700"><CheckCircle2 className="h-3 w-3" />Will refresh</span>;
       case "duplicate_in_file":
         return <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600"><SkipForward className="h-3 w-3" />Duplicate in file</span>;
-      case "unknown_city":
-        return <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700"><AlertTriangle className="h-3 w-3" />Unknown city</span>;
       case "below_threshold":
         return <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">Below CSI</span>;
       case "invalid":
@@ -240,7 +262,7 @@ export function ImportManusCsvDialog({ onImported }: Props) {
         <DialogHeader>
           <DialogTitle>Import cities from Manus CSV</DialogTitle>
           <DialogDescription>
-            Upload a CSV with <code>city</code>, <code>state</code>, and optional <code>manus_csi_score</code>.
+            Upload a CSV with <code>city</code>, <code>state</code>, and optional <code>manus_csi_score</code>, <code>rank</code>, <code>manus_export_version</code>.
             Rows are saved to a separate Manus reference table — the human shortlist and the pipeline are not touched.
           </DialogDescription>
         </DialogHeader>
@@ -263,7 +285,7 @@ export function ImportManusCsvDialog({ onImported }: Props) {
               </span>
             </label>
             <p className="mt-2 text-[11px] text-slate-500">
-              Required headers: <code>city</code>, <code>state</code> (2-letter). Optional: <code>manus_csi_score</code>, <code>rank</code>.
+              Required headers: <code>city</code>, <code>state</code> (2-letter). Optional: <code>manus_csi_score</code>, <code>rank</code>, <code>manus_export_version</code>.
             </p>
             {parseError && <p className="mt-2 text-[12px] text-rose-600">{parseError}</p>}
           </div>
@@ -271,6 +293,17 @@ export function ImportManusCsvDialog({ onImported }: Props) {
 
         {rows.length > 0 && (
           <>
+            {/* Diagnostic — quick "did the right file arrive?" line */}
+            {diagnostic && (
+              <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-700">
+                <span className="font-semibold">File parsed:</span>{" "}
+                {diagnostic.count} rows • version <span className="font-mono">{diagnostic.version}</span>
+                {diagnostic.topCsi !== null && (
+                  <> • top CSI <span className="font-semibold">{diagnostic.topCsi}</span> ({diagnostic.topCity})</>
+                )}
+              </div>
+            )}
+
             {/* Summary */}
             <div className="flex flex-wrap items-center gap-3 rounded-md bg-slate-50 px-3 py-2 text-[12px]">
               <span className="font-semibold text-slate-700">{fileName}</span>
@@ -278,7 +311,6 @@ export function ImportManusCsvDialog({ onImported }: Props) {
               {counts.will_add > 0 && <span className="text-emerald-700">{counts.will_add} new</span>}
               {counts.duplicate > 0 && <span className="text-blue-700">{counts.duplicate} will refresh</span>}
               {counts.duplicate_in_file > 0 && <span className="text-slate-600">{counts.duplicate_in_file} duplicates in file</span>}
-              {counts.unknown_city > 0 && <span className="text-amber-700">{counts.unknown_city} unknown</span>}
               {counts.below_threshold > 0 && <span className="text-slate-500">{counts.below_threshold} below CSI</span>}
               {counts.invalid > 0 && <span className="text-rose-600">{counts.invalid} invalid</span>}
               <button
@@ -313,20 +345,31 @@ export function ImportManusCsvDialog({ onImported }: Props) {
                     <th className="px-2 py-1.5 text-left">City</th>
                     <th className="px-2 py-1.5 text-left">State</th>
                     <th className="px-2 py-1.5 text-right">Manus CSI</th>
+                    <th className="px-2 py-1.5 text-right">Rank</th>
                     <th className="px-2 py-1.5 text-left">Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {preview.map((r, i) => (
+                  {preview.slice(0, 500).map((r, i) => (
                     <tr key={i} className="border-t border-slate-100">
                       <td className="px-2 py-1">{r.city}</td>
                       <td className="px-2 py-1">{r.state}</td>
                       <td className="px-2 py-1 text-right tabular-nums text-slate-600">
                         {r.manus_csi_score ?? "—"}
                       </td>
+                      <td className="px-2 py-1 text-right tabular-nums text-slate-500">
+                        {r.rank ?? "—"}
+                      </td>
                       <td className="px-2 py-1">{statusBadge(r.status)}</td>
                     </tr>
                   ))}
+                  {preview.length > 500 && (
+                    <tr className="border-t border-slate-100">
+                      <td colSpan={5} className="px-2 py-1.5 text-center text-[11px] text-slate-500">
+                        … showing first 500 of {preview.length} rows. All will be imported.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

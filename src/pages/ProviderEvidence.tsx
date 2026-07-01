@@ -246,6 +246,8 @@ export default function ProviderEvidence() {
       "exclusion_reason",
       "guard_dropped_count",
       "guard_dropped_details",
+      "ai_overview_snippet",
+      "ai_overview_source_url",
     ];
     const lines = [headers.join(",")];
     for (const { row: r, exclusion } of filtered) {
@@ -284,6 +286,8 @@ export default function ProviderEvidence() {
           csvEscape(exclusion?.reason ?? ""),
           csvEscape(r.guard_drop?.length ?? 0),
           csvEscape(guardDetails),
+          csvEscape(r.ai_overview_snippet ?? ""),
+          csvEscape(r.ai_overview_source_url ?? ""),
         ].join(",")
       );
     }
@@ -1091,9 +1095,11 @@ function EvidenceDrawer({
                   const isAiOverview = plat === "google_ai_overview";
 
                   if (isAiOverview) {
-                    const linkText = sourceUrl ? ` Source cited by Google: ${sourceUrl}.` : "";
+                    const snippet = row.ai_overview_snippet || "";
+                    const citeUrl = row.ai_overview_source_url || sourceUrl || "";
+                    const linkText = citeUrl ? ` Source cited by Google: ${citeUrl}.` : "";
                     const priceText = hasPrice ? ` Quoted tuition: ${fmtPrice(row.price_min, row.price_max)}/week.` : "";
-                    const quote = q && q.query ? ` Answer text: “${String(q.query).slice(0, 240)}${String(q.query).length > 240 ? "…" : ""}”` : "";
+                    const quote = snippet ? ` Answer text: “${snippet.slice(0, 240)}${snippet.length > 240 ? "…" : ""}”` : "";
                     return `Google AI Overview answer box for “${row.name}”.${quote}${linkText}${priceText} This price needs a human to click Verify before it counts in the score.`;
                   }
                   if (isSawyer) {

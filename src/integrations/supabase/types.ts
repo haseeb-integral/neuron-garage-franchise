@@ -1467,8 +1467,11 @@ export type Database = {
           id: string
           name: string
           platform: string
+          price_derivation_meta: Json | null
+          price_derived_from_brand: boolean
           price_max: number | null
           price_min: number | null
+          price_needs_review: boolean
           screenshot_url: string | null
           source_listing_url: string | null
           source_run_id: string | null
@@ -1487,8 +1490,11 @@ export type Database = {
           id?: string
           name: string
           platform: string
+          price_derivation_meta?: Json | null
+          price_derived_from_brand?: boolean
           price_max?: number | null
           price_min?: number | null
+          price_needs_review?: boolean
           screenshot_url?: string | null
           source_listing_url?: string | null
           source_run_id?: string | null
@@ -1507,8 +1513,11 @@ export type Database = {
           id?: string
           name?: string
           platform?: string
+          price_derivation_meta?: Json | null
+          price_derived_from_brand?: boolean
           price_max?: number | null
           price_min?: number | null
+          price_needs_review?: boolean
           screenshot_url?: string | null
           source_listing_url?: string | null
           source_run_id?: string | null

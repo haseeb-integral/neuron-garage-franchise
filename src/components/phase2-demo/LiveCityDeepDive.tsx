@@ -769,7 +769,9 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
             ))}
           </div>
         )}
+        <CrawlerTelemetryCard providers={activeCamps as any} cityDisplay={cityDisplay} />
       </div>
+
 
       <RunPipelineButton city={cityKey} onComplete={refresh} />
       {/* Composite hero card */}

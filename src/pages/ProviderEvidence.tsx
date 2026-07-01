@@ -283,16 +283,16 @@ export default function ProviderEvidence() {
         <label
           className="ml-auto inline-flex items-center gap-1.5 text-[12px]"
           style={{ color: NAVY }}
-          title="Daycares, parks, retail workshops and charity drop-in clubs are hidden by default."
+          title="When ticked, the excluded non-camp locations (daycares, parks, retail workshops, charity drop-in clubs) are added below the active camps. When unticked, only active camps are shown."
         >
           <input
             type="checkbox"
             checked={showExcluded}
             onChange={(e) => setShowExcluded(e.target.checked)}
           />
-          Show excluded locations
+          Include excluded locations
           {excludedTotal > 0 && (
-            <span style={{ color: MUTED }}>({excludedTotal})</span>
+            <span style={{ color: MUTED }}>(+{excludedTotal})</span>
           )}
         </label>
       </div>

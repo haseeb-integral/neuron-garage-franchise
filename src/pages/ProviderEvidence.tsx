@@ -384,6 +384,21 @@ export default function ProviderEvidence() {
                           {r.tier}
                         </div>
                       )}
+                      {(r as any).price_derived_from_brand && (
+                        <div
+                          className="mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                          style={{ backgroundColor: "#fef3c7", color: "#92400e" }}
+                          title={(() => {
+                            const m = (r as any).price_derivation_meta ?? {};
+                            const brand = m.brand_token ?? "brand";
+                            const n = Array.isArray(m.source_ids) ? m.source_ids.length : "?";
+                            const agree = m.agreement_pct != null ? `${m.agreement_pct}%` : "?";
+                            return `Copied from ${n} other "${brand}" locations in this city (agreement ${agree}). Excluded from scoring until verified.`;
+                          })()}
+                        >
+                          Possible brand price — needs review
+                        </div>
+                      )}
                     </td>
                     <td className="border-b px-3 py-2" style={{ borderColor: BORDER, color: NAVY }}>
                       {r.category_classified || r.category_raw || "—"}

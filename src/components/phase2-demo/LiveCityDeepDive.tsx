@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 import { classifyExclusion } from "@/lib/mvs/classifyExclusion";
+import { unpricedBreakdown } from "@/lib/mvs/unpricedReason";
 
 
 
@@ -685,6 +686,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
     () => activeCamps.filter((p) => (p.price_min ?? null) == null && (p.price_max ?? null) == null).length,
     [activeCamps],
   );
+  const unpricedReasons = useMemo(() => unpricedBreakdown(activeCamps), [activeCamps]);
 
   if (loading) {
     return (

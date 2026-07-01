@@ -715,16 +715,30 @@ export default function ProviderEvidence() {
       )}
 
       <p className="mt-3 text-[11px]" style={{ color: MUTED }}>
-        Click any row to open the full evidence panel. Verify / Reject / Edit actions are still
-        read-only and will be wired up in a later phase.
+        Click any row to open the full evidence panel. Verify / Reject / Edit save immediately to the database.
       </p>
 
-      <EvidenceDrawer row={selected} onClose={() => setSelected(null)} />
+      <EvidenceDrawer
+        row={selected}
+        onClose={() => setSelected(null)}
+        onAction={(action, extra) => selected && handleVerify(selected, action, extra)}
+        busy={!!selected && busyId === selected.id}
+      />
     </>
   );
 }
 
-function EvidenceDrawer({ row, onClose }: { row: EvidenceRow | null; onClose: () => void }) {
+function EvidenceDrawer({
+  row,
+  onClose,
+  onAction,
+  busy,
+}: {
+  row: EvidenceRow | null;
+  onClose: () => void;
+  onAction: (action: VerifyAction, extra?: { min?: number | null; max?: number | null; notes?: string | null }) => void;
+  busy: boolean;
+}) {
   const open = !!row;
   const q = row?.matched_query ?? null;
   const entry = row?.matched_provider_entry ?? null;

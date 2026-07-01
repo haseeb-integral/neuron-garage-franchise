@@ -379,17 +379,19 @@ Deno.serve(async (req) => {
         .eq("id", run.id);
 
       // Phase 2: Send failure notification
-      try {
-        await admin.from("notifications").insert({
-          user_id: triggeringUserId,
-          kind: "system",
-          title: `Market Validation failed for ${city}`,
-          message: fallbackStatus === "done_stale" ? `Crawl encountered an error; falling back to saved data. ${msg}`.slice(0, 250) : `Pipeline failed: ${msg}`.slice(0, 250),
-          link: `/city-competitors?city=${encodeURIComponent(city)}`,
-          created_at: new Date().toISOString(),
-        });
-      } catch (notifErr) {
-        console.warn("[mvs-run-pipeline] failed to insert failure notification:", notifErr);
+      if (triggeringUserId) {
+        try {
+          await admin.from("notifications").insert({
+            user_id: triggeringUserId,
+            kind: "system",
+            title: `Market Validation failed for ${city}`,
+            message: fallbackStatus === "done_stale" ? `Crawl encountered an error; falling back to saved data. ${msg}`.slice(0, 250) : `Pipeline failed: ${msg}`.slice(0, 250),
+            link: `/city-competitors?city=${encodeURIComponent(city)}`,
+            created_at: new Date().toISOString(),
+          });
+        } catch (notifErr) {
+          console.warn("[mvs-run-pipeline] failed to insert failure notification:", notifErr);
+        }
       }
     }
 

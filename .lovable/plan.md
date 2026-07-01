@@ -1,81 +1,140 @@
-# Plan: Phase B2 + IDEA Lab price-swap fix
+# Plan — Guard Summary + B4 Verify UI + B2.2 Hybrid Queries
 
-Two things bundled together because they both live in the same catch-up loop inside `mvs-discover-providers` and both touch how a price gets attached to a provider row. Small, safe, one shot.
-
----
-
-## Part 1 — Phase B2: Directory-First Catch-Up Queries
-
-### What we're changing and why
-Today the "missing prices" catch-up loop searches Google in a generic order: mostly natural-language queries like *"Camp X tuition price per week 2026"*. That works for indie camps but keeps missing franchise/JS-walled brands (Little Gym, Goldfish, KidStrong, Snapology, Steve & Kate's outside big cities). We already know these brands almost always publish real dollar prices on a small set of marketplaces (ActivityHero, Sawyer, CampSpot, Peerspace, Winnetka, Yelp, Facebook Events).
-
-B2 flips the order: **hit those known directories FIRST for every unpriced camp, then fall back to the generic Google query only if directories come up empty.** Same crawler, same guards, same amber "needs review" logic — just a smarter query order and a `platform` tag on the result so we know where it came from.
-
-### Which parts of the app get touched
-- `supabase/functions/mvs-discover-providers/index.ts` — catch-up loop query builder + ordering only. No change to discovery Phase 1, classification, scoring, or the pipeline runner.
-- `src/pages/ProviderEvidence.tsx` — Evidence drawer already shows `platform`; will now more often show `ActivityHero` / `Sawyer` / etc. instead of `Google Search`. No new UI, just better data flowing in.
-- No DB schema change. No RLS change. No scoring math change.
-
-### How it fits without breaking anything
-- Catch-up is opt-in per city (only runs on the "Missing Prices" button or as the tail of Force Fresh).
-- Directory queries are *additive*: if none return a hit, we fall through to the exact same generic query we run today, so worst case the loop behaves identically to now.
-- No overwrites: `price_needs_review=false` rows are still skipped, same as B1.
-- No cost blow-up: same Firecrawl `/search` endpoint, same per-camp cap.
-
-### Phases and Lovable turns
-- **B2.1 (1 turn):** Add `buildDirectoryQueries(name, city)` helper in the edge function. Prepend its 6–8 queries (site:activityhero.com, site:sawyer.com, site:campspot.com, site:peerspace.com, site:yelp.com/biz, site:facebook.com/events, plus 1–2 city-specific summer-camp directory queries) to the existing generic queries. Tag every extracted price with the source `platform` so the drawer shows it. Ship + I'll manually run Austin "Missing Prices" to compare before/after.
-- **B2.2 (only if B2.1 shows weak lift, ~50% chance we skip):** Add a second pass of natural-language + directory hybrid ("Camp X ActivityHero price"). Only if numbers underwhelm.
-
-Estimate: **1 turn, possibly 2.**
-
-### Risks / what NOT to touch
-- Do not change discovery Phase 1 (that's what feeds the total 295 count for Boston). B2 only affects the catch-up loop.
-- Do not change the price sanity guards (`PRICE_RULES`, regex). Bad prices from directories must still get dropped.
-- Do not touch composite MVS scoring, weights, or freshness.
-- Risk: a directory query occasionally returns a stale/wrong price. Mitigated because guards still run and B1's amber flag still applies to derived prices — direct-scrape prices from ActivityHero/Sawyer count as "trusted source" and stay green, same as today.
-
-### What to test after B2.1 ships
-- Run "Missing Prices" on Austin. Baseline is your current count after today's run (I'll snapshot the number before it starts).
-- Compare: priced % before → after, and how many new rows show `platform: ActivityHero / Sawyer` in the Evidence drawer.
-- Spot-check 3 franchise rows (Little Gym Austin, Goldfish Austin, KidStrong Austin if present) — did any of them fill?
+Three small phases, shipped in order. All approved before I touch code.
 
 ---
 
-## Part 2 — IDEA Lab Kids price-swap bug fix
+## Phase G — Show what the guard dropped (Provider Evidence screen)
 
-### What's broken
-In Austin, "IDEA Lab Kids" has a duplicate brand row where `price_min = $415` and `price_max = $45` got swapped somewhere in the extraction path. Because it's a duplicate brand row, it's also blocking B1's brand propagation from filling the other IDEA Lab locations (B1 requires ≥2 sibling agreement within ±15% — the swapped row poisons the median).
+**Why:** Right now the "Dropped by guard" filter exists but the user cannot see *what* was dropped or *why*. It feels invisible.
 
-### Root cause (from earlier audit)
-Two paths converge:
-1. **Extraction bug:** when a source page lists a range like "$45–$415 for the week", our parser occasionally assigns min/max backwards if the dollar signs are on different lines or the em-dash is a weird unicode char. Not caught by the sanity guard because both numbers are individually plausible camp prices.
-2. **Duplicate-row bug:** we created a second row for the same brand+city instead of updating the existing one, so now there are two IDEA Lab Kids rows for Austin.
+**What I will add on `/provider-evidence?city=...`:**
 
-### The fix — 3 small changes
-1. **Extraction guard (edge function):** in `mvs-discover-providers` add a post-parse sanity check: `if (price_min > price_max) swap them`. One line, catches this class of bug forever.
-2. **De-dupe SQL (one-shot):** merge the duplicate Austin IDEA Lab row — keep the row with the more-cited source, delete the swapped-price row, then re-run B1 propagation for Austin so sibling locations can fill.
-3. **Unique guard (DB):** add a partial unique index on `(city, lower(name))` where `name IS NOT NULL` so this can't happen again. If a future run tries to insert a dup, upsert wins instead.
+1. **A small "Guard summary" strip** at the top of the page, right under the header row (next to "228 active camps · 38 excluded"):
+   - `Guard dropped: 14 prices across 9 providers` (blue pill)
+   - Click → opens a small popover listing each dropped item: provider name, the dollar value that was thrown out, the field it came from (`price_min` / `price_max` / `per_day` / `per_hour` etc.), and a one-line reason ("looked like per-day", "below $50 floor", "above $5000 ceiling", "min > max swap", "unit unclear").
 
-### Which parts get touched
-- `supabase/functions/mvs-discover-providers/index.ts` — one-line min/max swap guard.
-- New migration — one-shot cleanup UPDATE/DELETE for the Austin IDEA Lab row + partial unique index on `mvs_providers(city, lower(name))`.
-- No UI change. Evidence drawer will just show the corrected price after the next Austin run.
+2. **Per-row hint** — when a row's `guard_drop` array is non-empty, show a tiny amber "guard: 2 dropped" chip in the Price column so the user can spot which providers were touched without opening the drawer.
 
-### Phases
-- **Fix.1 (1 turn):** Ship the swap guard + migration + de-dupe. I'll verify the Austin IDEA Lab row shows the right min/max and B1 propagation now fills the sibling locations.
+3. **In the existing drawer** — a new "Prices dropped by guard" section listing the same items with reason strings.
 
-Estimate: **1 turn.** Bundled in the same turn as B2.1 if it fits cleanly, otherwise the very next turn.
+4. **CSV export** — add two columns: `guard_dropped_count`, `guard_dropped_details` (semicolon-joined).
 
-### Risks
-- The unique index could theoretically block a legitimate second listing (e.g. two truly different providers with the same name in one city — rare but possible). Mitigation: index is on `lower(name)` only, so trailing modifiers like "IDEA Lab Kids (North Austin)" vs "IDEA Lab Kids (South Austin)" stay distinct. If we hit a false conflict, easy to drop the index — no data loss.
-- One-shot SQL cleanup is scoped to Austin only for now. If we discover the same swap in other cities later, we can run the same cleanup per-city.
+**Files touched (frontend only):**
+- `src/pages/ProviderEvidence.tsx` — summary strip, per-row chip, CSV columns
+- `src/components/phase2-demo/EvidenceDrawer.tsx` (or wherever the drawer lives) — new section
+- `src/lib/mvs/useProviderEvidence.ts` — expose an aggregated `guardSummary` (already has `guard_drop` per row, just needs a rollup)
+
+**Not touched:** database, edge functions, scoring math.
+
+**Turns:** 1
+**Risk:** low. Purely additive UI over data we already collect.
+**Test:** open Austin evidence page → confirm summary pill shows a number → click → see the dropped list → confirm per-row chip appears on ≥1 row → export CSV → check new columns.
 
 ---
 
-## Combined ship order (if you approve)
-1. **Turn 1:** B2.1 directory-first queries + IDEA Lab swap guard + Austin one-shot cleanup migration + unique index. Ship together.
-2. **You run:** "Missing Prices" on Austin. Compare before/after. Confirm IDEA Lab row is corrected and siblings now fill via B1.
-3. **Turn 2 (only if needed):** B2.2 hybrid queries.
-4. **Then:** move to B4 (Manual Verify UI), then B3 (Apify AI Overview scraper — using your idea, not the original Firecrawl-SERP idea).
+## Phase B4 — Manual Verify UI for amber "needs review" prices
 
-Waiting for your approval before I touch any code.
+**Why:** B1 (brand propagation) and later B3 (AI Overview) both write `price_needs_review = true`. Right now those amber prices sit forever with no way for a human to confirm or reject. B4 unlocks them.
+
+**What I will add:**
+
+1. **New DB columns on `mvs_providers`** (tiny migration):
+   - `verification_status` text — one of `unverified` (default), `verified`, `rejected`
+   - `verified_by` uuid nullable — references `auth.users`
+   - `verified_at` timestamptz nullable
+   - `verification_note` text nullable
+
+2. **Two RPC-style edge function endpoints** (or one function with an `action` field) inside a new `mvs-verify-price` edge function:
+   - `verify` → sets `price_needs_review = false`, `verification_status = 'verified'`, stamps user+time.
+   - `reject` → nulls `price_min` / `price_max`, sets `verification_status = 'rejected'`, stamps user+time. Rejected rows are skipped by future catch-up runs (I will add a `WHERE verification_status IS DISTINCT FROM 'rejected'` guard in `mvs-discover-providers`).
+   - `edit` → user types a corrected `price_min` / `price_max`, marks verified.
+
+3. **UI in the Evidence drawer** — three buttons on any row where `price_needs_review = true`:
+   - ✅ **Verify** (green) — one click, price flips from amber to normal.
+   - ✏️ **Edit & Verify** (blue) — inline min/max inputs, save marks verified.
+   - ❌ **Reject** (red) — nulls the price, row moves to "no price" bucket.
+
+4. **Also in the main Evidence table** — a new "Verification" column showing `Unverified` / `Verified ✓` / `Rejected` badges, plus a new filter: `All / Needs review only / Verified only / Rejected`.
+
+5. **Scoring impact:** verified prices already count (they were already stored). Rejected prices now correctly do **not** count. No change to the score formula.
+
+**Files touched:**
+- New migration for the 4 columns
+- New edge function `supabase/functions/mvs-verify-price/index.ts`
+- `supabase/functions/mvs-discover-providers/index.ts` — skip `verification_status = 'rejected'` in catch-up
+- `src/pages/ProviderEvidence.tsx` — new column + filter
+- Evidence drawer component — 3 buttons + edit inputs
+- `src/lib/mvs/useProviderEvidence.ts` — surface new columns
+
+**Turns:** 2 (1 = migration + edge function; 2 = UI wiring after types regenerate)
+**Risk:** low-medium. Only humans trigger writes; RLS restricts to authenticated users. Rejected-skip in crawler is one added `WHERE` clause.
+**Test:** open Austin → find an amber "Possible brand price" row → click Verify → amber chip disappears → refresh → still verified. Repeat for Reject → price gone, row shows Rejected badge. Run Missing Prices → rejected row is not re-tried.
+
+---
+
+## Phase B2.2 — Hybrid directory + brand queries (optional lift)
+
+**Why:** B2.1 (directory-first) already shipped. B2.2 adds one more query variant for the 6 stubborn Austin unpriced camps and future cities.
+
+**What changes in `mvs-discover-providers` catch-up loop only:**
+
+1. **Add a 4th parallel query** — a **hybrid brand + city + "starting at" phrasing** query:
+   `"{brand name}" summer camp "starting at" OR "from $" {city} {state}`
+   Reason: franchises often bury a "starting at $X" line in blog posts, press releases, or local news. Generic queries miss these; the phrase-anchor query catches them.
+
+2. **Add a 5th parallel query** — a **review-site query**:
+   `{brand} {city} camp cost site:reddit.com OR site:mommypoppins.com OR site:redtri.com OR site:citymomsblog.com`
+   Reason: parent blogs and Reddit threads often quote real prices when the provider's own site hides them.
+
+3. **Extraction prompt tweak:** when the source is a review/blog, tag `platform = 'ParentBlog'` and mark `price_needs_review = true` (so B4 humans confirm before it counts).
+
+4. **No UI changes.** No DB changes beyond what B4 already added.
+
+**Files touched:**
+- `supabase/functions/mvs-discover-providers/index.ts` only
+
+**Turns:** 1
+**Risk:** low. Two extra Firecrawl search calls per unpriced camp (cost ~$0.002 per camp per run). Amber flag ensures no bad price scores until a human confirms.
+**Test:** run "Missing Prices Catch-up" on Austin's remaining 6 unpriced → check debug for `starting_at_hits` and `blog_hits` counters → open Evidence → look for new amber rows with `platform: ParentBlog` badge → Verify or Reject via B4.
+
+---
+
+## Suggested build order & turn count
+
+| Order | Phase | Turns |
+|---|---|---|
+| 1 | G — Guard summary strip + chip + drawer + CSV | 1 |
+| 2 | B4 — migration + edge function + UI | 2 |
+| 3 | B2.2 — hybrid queries (only after B4 so amber rows are usable) | 1 |
+
+**Total: 4 turns.**
+
+---
+
+## What is remaining AFTER these 3 phases
+
+Only **B3 — Google AI Overview / Apify AI Mode scraper** is left from Phase B.
+
+- Adds an Apify actor call (`apify/google-search-scraper` with AI Overview enabled) as a 6th parallel query in the catch-up loop.
+- Reads the AI-summary text, extracts the dollar figure, visits one cited page to confirm the number literally appears, saves as `platform = 'AIOverview'` with `price_needs_review = true`.
+- Needs a new secret (`APIFY_TOKEN`) and a health check because Google layout can change.
+- Estimated 2 turns.
+- Best done last because it depends on B4's Verify UI to be useful, and costs a bit more (~$3–$6 per shortlist pass).
+
+**After B3, Phase B is fully done.** Then the open items in the backlog are:
+- **Austin data cleanup sweep** — any remaining duplicate brand rows besides IDEA Lab (spot-check only)
+- **Score-formula sensitivity check** — do the newly-priced 200+ camps push any city's Pricing Acceptance sub-score into a different band? (analytics task, no build)
+- Any Notifications-system Phase 1 hookups still pending (candidate_assigned, city_scoring_finished triggers)
+
+---
+
+## What I will NOT touch
+
+- Scoring math / `computeMvs.ts`
+- `mvs_pipeline_runs` structure
+- The catch-up loop's outer polling in `MarketValidationRollout.tsx`
+- Any Force Fresh / Run Pipeline button behavior
+- Design tokens / colors (keep existing navy/blue/amber palette)
+
+Approve and I'll ship **Phase G first** in one turn.

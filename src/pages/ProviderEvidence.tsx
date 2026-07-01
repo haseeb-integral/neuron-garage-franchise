@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Download, ExternalLink, Loader2, MapPin, Search } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Download, ExternalLink, Loader2, MapPin, Search } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
-import { useProviderEvidence, type EvidenceRow } from "@/lib/mvs/useProviderEvidence";
+import { useProviderEvidence, type EvidenceRow, type DroppedPrice } from "@/lib/mvs/useProviderEvidence";
 import { classifyExclusion } from "@/lib/mvs/classifyExclusion";
 import {
   Sheet,
@@ -11,7 +11,9 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ProviderScreenshotButton } from "@/components/phase2-demo/ProviderScreenshotButton";
+
 
 const NAVY = "#07142f";
 const MUTED = "#526078";
@@ -39,6 +41,25 @@ function priceKept(r: EvidenceRow): { label: string; tone: "kept" | "dropped" | 
   if (r.guard_drop && r.guard_drop.length > 0) return { label: "Dropped by guard", tone: "dropped" };
   return { label: "No price found", tone: "none" };
 }
+
+// Explain in plain English WHY the guard dropped a price. The dropped record
+// only carries `field` + `value`; the reason is inferred from those two.
+function guardReason(d: DroppedPrice): string {
+  const field = (d.field || "").toLowerCase();
+  const v = typeof d.value === "number" ? d.value : Number(d.value);
+  if (/per[_ ]?day|daily|day_rate/.test(field)) return "Looked like a per-day rate, not per-week";
+  if (/per[_ ]?hour|hourly/.test(field)) return "Looked like a per-hour rate, not per-week";
+  if (/per[_ ]?session|session/.test(field)) return "Looked like a per-session rate, not per-week";
+  if (/month|monthly/.test(field)) return "Looked like a monthly rate, not per-week";
+  if (/annual|year/.test(field)) return "Looked like an annual rate, not per-week";
+  if (/swap|min_gt_max|reversed/.test(field)) return "min was greater than max — could not trust it";
+  if (Number.isFinite(v)) {
+    if (v > 0 && v < 50) return `$${v} is below the $50/week sanity floor`;
+    if (v > 5000) return `$${v} is above the $5,000/week sanity ceiling`;
+  }
+  return "Unit unclear — could not verify it is a weekly tuition figure";
+}
+
 
 export default function ProviderEvidence() {
   const [params] = useSearchParams();
@@ -71,6 +92,29 @@ export default function ProviderEvidence() {
     return Array.from(m.entries()).sort((a, b) => b[1] - a[1]);
   }, [rowsWithExclusion]);
   const excludedTotal = rows.length - activeCount;
+
+  // Guard-summary rollup: flatten every dropped price across active camps so we
+  // can show "Guard dropped: N prices across M providers" and list them out.
+  const guardSummary = useMemo(() => {
+    const items: Array<{ providerName: string; providerId: string; drop: DroppedPrice; reason: string }> = [];
+    const providerIds = new Set<string>();
+    for (const x of rowsWithExclusion) {
+      if (x.exclusion) continue; // only count active camps
+      const r = x.row;
+      if (!r.guard_drop || r.guard_drop.length === 0) continue;
+      providerIds.add(r.id);
+      for (const d of r.guard_drop) {
+        items.push({
+          providerName: r.name || "—",
+          providerId: r.id,
+          drop: d,
+          reason: guardReason(d),
+        });
+      }
+    }
+    return { items, providerCount: providerIds.size, dropCount: items.length };
+  }, [rowsWithExclusion]);
+
 
   const filtered = useMemo(() => {
     const ql = q.trim().toLowerCase();
@@ -114,6 +158,8 @@ export default function ProviderEvidence() {
       "extraction_phase",
       "discovered_at",
       "exclusion_reason",
+      "guard_dropped_count",
+      "guard_dropped_details",
     ];
     const lines = [headers.join(",")];
     for (const { row: r, exclusion } of filtered) {
@@ -131,6 +177,9 @@ export default function ProviderEvidence() {
         r.url ||
         r.website_url ||
         "";
+      const guardDetails = (r.guard_drop ?? [])
+        .map((d) => `${d.field}=${d.value} (${guardReason(d)})`)
+        .join("; ");
       lines.push(
         [
           csvEscape(r.name),
@@ -147,9 +196,12 @@ export default function ProviderEvidence() {
           csvEscape("Phase 2"),
           csvEscape(r.created_at),
           csvEscape(exclusion?.reason ?? ""),
+          csvEscape(r.guard_drop?.length ?? 0),
+          csvEscape(guardDetails),
         ].join(",")
       );
     }
+
     const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -226,6 +278,68 @@ export default function ProviderEvidence() {
           <Download className="h-3 w-3" /> Export CSV
         </button>
       </div>
+
+      {!loading && guardSummary.dropCount > 0 && (
+        <div className="mb-3">
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold hover:bg-[#fff7e8]"
+                style={{ borderColor: "#f4d8a8", backgroundColor: "#fff7e8", color: AMBER }}
+                title="Click to see every price the safety guard threw out and why"
+              >
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Guard dropped: {guardSummary.dropCount} price{guardSummary.dropCount === 1 ? "" : "s"} across {guardSummary.providerCount} provider{guardSummary.providerCount === 1 ? "" : "s"}
+                <span className="text-[10px] font-normal" style={{ color: MUTED }}>
+                  (click to view)
+                </span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-[520px] max-w-[90vw] p-0">
+              <div className="border-b p-3" style={{ borderColor: BORDER }}>
+                <div className="text-[12px] font-bold" style={{ color: NAVY }}>
+                  Prices dropped by the safety guard
+                </div>
+                <div className="text-[11px]" style={{ color: MUTED }}>
+                  The guard blocks numbers that don't look like real weekly tuition
+                  (per-day, per-hour, too low, too high, min &gt; max, etc.).
+                  Nothing here counts toward the score.
+                </div>
+              </div>
+              <div className="max-h-[360px] overflow-y-auto">
+                <table className="w-full text-[11px]">
+                  <thead
+                    className="sticky top-0"
+                    style={{ backgroundColor: SOFT, color: NAVY }}
+                  >
+                    <tr>
+                      <th className="border-b px-3 py-1.5 text-left font-semibold" style={{ borderColor: BORDER }}>Provider</th>
+                      <th className="border-b px-3 py-1.5 text-left font-semibold" style={{ borderColor: BORDER }}>Field</th>
+                      <th className="border-b px-3 py-1.5 text-right font-semibold" style={{ borderColor: BORDER }}>Value</th>
+                      <th className="border-b px-3 py-1.5 text-left font-semibold" style={{ borderColor: BORDER }}>Reason</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {guardSummary.items.map((it, i) => (
+                      <tr key={`${it.providerId}-${i}`}>
+                        <td className="border-b px-3 py-1.5" style={{ borderColor: BORDER, color: NAVY }}>{it.providerName}</td>
+                        <td className="border-b px-3 py-1.5" style={{ borderColor: BORDER, color: MUTED }}>{it.drop.field || "—"}</td>
+                        <td className="border-b px-3 py-1.5 text-right tabular-nums" style={{ borderColor: BORDER, color: NAVY }}>
+                          {it.drop.value != null ? `$${it.drop.value}` : "—"}
+                        </td>
+                        <td className="border-b px-3 py-1.5" style={{ borderColor: BORDER, color: MUTED }}>{it.reason}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+      )}
+
+
 
       {queries.length === 0 && !loading && rows.length > 0 && (
         <div
@@ -456,8 +570,20 @@ export default function ProviderEvidence() {
                       className="border-b px-3 py-2 text-right tabular-nums"
                       style={{ borderColor: BORDER, color: NAVY }}
                     >
-                      {fmtPrice(r.price_min, r.price_max)}
+                      <div>{fmtPrice(r.price_min, r.price_max)}</div>
+                      {r.guard_drop && r.guard_drop.length > 0 && (
+                        <div
+                          className="mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                          style={{ backgroundColor: "#fff1d6", color: AMBER }}
+                          title={r.guard_drop
+                            .map((d) => `${d.field}=${d.value} — ${guardReason(d)}`)
+                            .join("\n")}
+                        >
+                          guard: {r.guard_drop.length} dropped
+                        </div>
+                      )}
                     </td>
+
                     <td className="border-b px-3 py-2" style={{ borderColor: BORDER }}>
                       <span
                         className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
@@ -600,7 +726,30 @@ function EvidenceDrawer({ row, onClose }: { row: EvidenceRow | null; onClose: ()
               )}
             </div>
 
+            {row.guard_drop && row.guard_drop.length > 0 && (
+              <div className="rounded-xl border p-4" style={{ borderColor: "#f4d8a8", backgroundColor: "#fff7e8" }}>
+                <div className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: AMBER }}>
+                  Prices dropped by the safety guard ({row.guard_drop.length})
+                </div>
+                <ul className="space-y-1.5 text-xs" style={{ color: NAVY }}>
+                  {row.guard_drop.map((d, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="font-mono font-bold shrink-0">
+                        {d.field}={d.value != null ? `$${d.value}` : "—"}
+                      </span>
+                      <span style={{ color: MUTED }}>— {guardReason(d)}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-2 text-[11px]" style={{ color: MUTED }}>
+                  These numbers were extracted from the page but did not pass the
+                  weekly-tuition sanity check, so they do not count toward the score.
+                </div>
+              </div>
+            )}
+
             {/* Section 2: Proof & Website */}
+
             <div className="space-y-3">
               <div className="text-[11px] font-bold uppercase tracking-wider" style={{ color: BLUE }}>
                 Proof & Official Website

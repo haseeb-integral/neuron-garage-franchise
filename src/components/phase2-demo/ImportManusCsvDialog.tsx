@@ -214,7 +214,7 @@ export function ImportManusCsvDialog({ onImported }: Props) {
       case "will_add":
         return <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700"><CheckCircle2 className="h-3 w-3" />Will add</span>;
       case "duplicate":
-        return <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600"><SkipForward className="h-3 w-3" />Already imported</span>;
+        return <span className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700"><CheckCircle2 className="h-3 w-3" />Will refresh</span>;
       case "duplicate_in_file":
         return <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600"><SkipForward className="h-3 w-3" />Duplicate in file</span>;
       case "unknown_city":

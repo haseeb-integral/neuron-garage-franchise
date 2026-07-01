@@ -1530,6 +1530,15 @@ ${PRICE_RULES}
           catchupDebug = { spawned_background: true, batches: slices.length, total_camps: allMissingIds.length };
         } else {
           catchupDebug = { skipped: true, reason: "no missing prices found" };
+          // B1: even when no catchup was needed, still try brand propagation
+          // once — it's a cheap same-city SQL sweep and may fill gaps left
+          // by earlier runs.
+          try {
+            const propagation = await propagateBrandPricesForCity(admin, city);
+            (catchupDebug as any).brand_propagation = propagation;
+          } catch (propErr) {
+            console.warn("[mvs-discover-providers] brand propagation (skip branch) failed:", propErr);
+          }
         }
       } catch (e) {
         catchupDebug = { error: e instanceof Error ? e.message : String(e) };

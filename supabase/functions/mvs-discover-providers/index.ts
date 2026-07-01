@@ -468,6 +468,50 @@ ${PRICE_RULES}`;
   return { platform: "activityhero", providers: collected, firecrawlCalls, debug };
 }
 
+// ----------------- Phase B3: Google AI Overview via Apify -----------------
+// When Firecrawl + directory + brand hints all fail to find a price, we ask
+// Apify's google-search-scraper for the AI Overview answer box that Google
+// now shows above results. It often quotes prices that are hidden behind
+// booking walls (Sawyer/Jovial), inside PDFs, or on Facebook posts.
+// Returned prices are always marked price_needs_review=true so a human
+// confirms before they count in the score.
+async function fetchGoogleAiOverview(query: string): Promise<{ text: string; sources: string[] } | null> {
+  const token = Deno.env.get("APIFY_API_TOKEN");
+  if (!token) return null;
+  try {
+    const url = `https://api.apify.com/v2/acts/apify~google-search-scraper/run-sync-get-dataset-items?token=${encodeURIComponent(token)}&timeout=45&memory=1024`;
+    const body = {
+      queries: query,
+      resultsPerPage: 10,
+      maxPagesPerQuery: 1,
+      countryCode: "us",
+      languageCode: "en",
+      includeUnfilteredResults: false,
+      saveHtml: false,
+    };
+    const res = await fetchWithTimeout(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }, 45_000);
+    if (!res.ok) return null;
+    const items: unknown[] = await res.json().catch(() => []);
+    if (!Array.isArray(items) || items.length === 0) return null;
+    const first = items[0] as Record<string, unknown>;
+    const ai = first.aiOverview as Record<string, unknown> | undefined;
+    if (!ai) return null;
+    const text = String(ai.content ?? ai.text ?? "").trim();
+    if (!text) return null;
+    const sourcesRaw = (ai.source ?? ai.sources ?? []) as Array<Record<string, unknown>>;
+    const sources = Array.isArray(sourcesRaw)
+      ? sourcesRaw.map((s) => String(s.url ?? "")).filter(Boolean).slice(0, 3)
+      : [];
+    return { text, sources };
+  } catch {
+    return null;
+  }
+}
+
 // ----------------- Source: Google Maps via Apify -----------------
 async function runGoogleMaps(args: {
   city: string;

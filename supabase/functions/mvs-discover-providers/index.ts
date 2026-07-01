@@ -1332,7 +1332,7 @@ ${PRICE_RULES}
 
             // Scrape top 1-2 mapped URLs + execute Priority 3 Booking Search & General Search concurrently
             const selectedMapUrls = mapUrlsToScrape.slice(0, 2);
-            const [mapScrapes, bookingSearchRes, generalSearchRes] = await Promise.all([
+            const [mapScrapes, directorySearchRes, bookingSearchRes, generalSearchRes] = await Promise.all([
               Promise.all(selectedMapUrls.map(async (sUrl) => {
                 const sRes = await fetchWithTimeout(`${FIRECRAWL_V2}/scrape`, {
                   method: "POST",
@@ -1346,6 +1346,12 @@ ${PRICE_RULES}
                 }
                 return null;
               })),
+              // B2: directory-first — hit ActivityHero/Sawyer/etc before generic Google.
+              fetchWithTimeout(`${FIRECRAWL_V2}/search`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ query: directoryQuery, limit: 3, scrapeOptions: { formats: ["markdown"], onlyMainContent: false } }),
+              }, FIRECRAWL_TIMEOUT_MS).catch(() => null),
               fetchWithTimeout(`${FIRECRAWL_V2}/search`, {
                 method: "POST",
                 headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
@@ -1358,6 +1364,7 @@ ${PRICE_RULES}
               }, FIRECRAWL_TIMEOUT_MS).catch(() => null),
             ]);
 
+            if (directorySearchRes && directorySearchRes.ok) totalFirecrawl += 1;
             if (bookingSearchRes && bookingSearchRes.ok) totalFirecrawl += 1;
             if (generalSearchRes && generalSearchRes.ok) totalFirecrawl += 1;
 
@@ -1367,17 +1374,20 @@ ${PRICE_RULES}
               return (Array.isArray(j?.data?.web) ? j.data.web : Array.isArray(j?.data) ? j.data : []) as Array<Record<string, unknown>>;
             };
 
-            const [bookingItems, generalItems] = await Promise.all([
+            const [directoryItems, bookingItems, generalItems] = await Promise.all([
+              parseSearch(directorySearchRes),
               parseSearch(bookingSearchRes),
               parseSearch(generalSearchRes),
             ]);
 
-            const searchItems = [...bookingItems, ...generalItems];
+            // Directory items come first — they usually have real dollar prices.
+            const searchItems = [...directoryItems, ...bookingItems, ...generalItems];
             const searchBlob = searchItems.map((it, idx) => `=== SEARCH RESULT ${idx + 1} ===\nURL: ${it.url ?? ""}\nTITLE: ${it.title ?? ""}\nDESCRIPTION SNIPPET: ${it.description ?? ""}\n\n${String(it.markdown ?? it.content ?? "").slice(0, 6000)}`).join("\n\n");
             const blob = [...mapScrapes.filter(Boolean), searchBlob].filter(Boolean).join("\n\n");
 
-            // Identify best direct link for evidence verification drawer
-            const discoveredUrl = selectedMapUrls[0] || (bookingItems[0]?.url as string) || (generalItems[0]?.url as string) || null;
+            // Prefer a directory URL as the evidence link when one exists — cleaner than a homepage.
+            const discoveredUrl = (directoryItems[0]?.url as string) || selectedMapUrls[0] || (bookingItems[0]?.url as string) || (generalItems[0]?.url as string) || null;
+            qDebug.directory_hits = directoryItems.length;
 
             const gemRes = await fetchWithTimeout(AI_GATEWAY, {
               method: "POST",

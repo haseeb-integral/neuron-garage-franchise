@@ -27,7 +27,7 @@ type ParsedRow = {
   rank: number | null;
 };
 
-type RowStatus = "will_add" | "duplicate" | "unknown_city" | "below_threshold" | "invalid";
+type RowStatus = "will_add" | "duplicate" | "duplicate_in_file" | "unknown_city" | "below_threshold" | "invalid";
 
 type PreviewRow = ParsedRow & {
   status: RowStatus;
@@ -147,24 +147,31 @@ export function ImportManusCsvDialog({ onImported }: Props) {
   };
 
   const preview: PreviewRow[] = useMemo(() => {
+    const seenInFile = new Set<string>();
     return rows.map((r) => {
       if (r.state.length !== 2) {
         return { ...r, status: "invalid", reason: "Invalid state code" };
       }
       const key = `${r.city.toLowerCase()}|${r.state}`;
       if (existing.has(key)) return { ...r, status: "duplicate" };
+      if (seenInFile.has(key)) {
+        return { ...r, status: "duplicate_in_file", reason: "Repeated row in CSV" };
+      }
       if (knownCities.size > 0 && !knownCities.has(key)) {
+        seenInFile.add(key);
         return { ...r, status: "unknown_city", reason: "Not in US cities DB" };
       }
       if (r.manus_csi_score !== null && r.manus_csi_score < threshold) {
+        seenInFile.add(key);
         return { ...r, status: "below_threshold" };
       }
+      seenInFile.add(key);
       return { ...r, status: "will_add" };
     });
   }, [rows, existing, knownCities, threshold]);
 
   const counts = useMemo(() => {
-    const c = { will_add: 0, duplicate: 0, unknown_city: 0, below_threshold: 0, invalid: 0 };
+    const c = { will_add: 0, duplicate: 0, duplicate_in_file: 0, unknown_city: 0, below_threshold: 0, invalid: 0 };
     preview.forEach((r) => { c[r.status]++; });
     return c;
   }, [preview]);
@@ -202,6 +209,8 @@ export function ImportManusCsvDialog({ onImported }: Props) {
         return <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700"><CheckCircle2 className="h-3 w-3" />Will add</span>;
       case "duplicate":
         return <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600"><SkipForward className="h-3 w-3" />Already in shortlist</span>;
+      case "duplicate_in_file":
+        return <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600"><SkipForward className="h-3 w-3" />Duplicate in file</span>;
       case "unknown_city":
         return <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700"><AlertTriangle className="h-3 w-3" />Unknown city</span>;
       case "below_threshold":
@@ -261,7 +270,8 @@ export function ImportManusCsvDialog({ onImported }: Props) {
               <span className="font-semibold text-slate-700">{fileName}</span>
               <span className="text-slate-400">•</span>
               <span className="text-emerald-700">{counts.will_add} will add</span>
-              {counts.duplicate > 0 && <span className="text-slate-600">{counts.duplicate} duplicates</span>}
+              {counts.duplicate > 0 && <span className="text-slate-600">{counts.duplicate} already in shortlist</span>}
+              {counts.duplicate_in_file > 0 && <span className="text-slate-600">{counts.duplicate_in_file} duplicates in file</span>}
               {counts.unknown_city > 0 && <span className="text-amber-700">{counts.unknown_city} unknown</span>}
               {counts.below_threshold > 0 && <span className="text-slate-500">{counts.below_threshold} below CSI</span>}
               {counts.invalid > 0 && <span className="text-rose-600">{counts.invalid} invalid</span>}

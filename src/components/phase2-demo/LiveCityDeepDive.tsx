@@ -802,7 +802,26 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
           </div>
         )}
         <CrawlerTelemetryCard providers={activeCamps as any} cityDisplay={cityDisplay} />
+        {regressionCheck && (
+          <div
+            className={`mt-2 rounded-md border px-3 py-1.5 text-[11px] ${
+              regressionCheck.regressed
+                ? "border-[#f5c2c7] bg-[#fdecea] text-[#a3142b]"
+                : "border-[#c8e6d0] bg-[#eaf7ee] text-[#1d6b32]"
+            }`}
+          >
+            <strong>Regression check:</strong>{" "}
+            {regressionCheck.regressed ? "⚠ " : "✓ "}
+            Premium tier{" "}
+            {regressionCheck.prev != null ? `${regressionCheck.prev} → ` : ""}
+            {regressionCheck.curr}
+            {regressionCheck.regressed
+              ? " — sharp drop detected. See notification bell."
+              : " — no regression."}
+          </div>
+        )}
       </div>
+
 
 
       <RunPipelineButton city={cityKey} onComplete={refresh} />

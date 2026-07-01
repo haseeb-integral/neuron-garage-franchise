@@ -313,7 +313,7 @@ Deno.serve(async (req) => {
       // Phase 2: Send in-app header bell notification to the user who triggered the run
       try {
         await admin.from("notifications").insert({
-          user_id: userData.user.id,
+          user_id: triggeringUserId,
           kind: "city_scoring_finished",
           title: `Market Validation finished for ${city}`,
           message: `Processed providers and refreshed live scores. Used ${totalCalls} search calls.`,
@@ -379,7 +379,7 @@ Deno.serve(async (req) => {
       // Phase 2: Send failure notification
       try {
         await admin.from("notifications").insert({
-          user_id: userData.user.id,
+          user_id: triggeringUserId,
           kind: "system",
           title: `Market Validation failed for ${city}`,
           message: fallbackStatus === "done_stale" ? `Crawl encountered an error; falling back to saved data. ${msg}`.slice(0, 250) : `Pipeline failed: ${msg}`.slice(0, 250),

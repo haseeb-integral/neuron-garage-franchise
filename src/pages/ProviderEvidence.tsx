@@ -87,6 +87,22 @@ export default function ProviderEvidence() {
   const [keptFilter, setKeptFilter] = useState<string>("all");
   const [showExcluded, setShowExcluded] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [rejectConfirm, setRejectConfirm] = useState<{ label: string; run: () => void } | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
+  useEffect(() => {
+    try {
+      setHelpOpen(localStorage.getItem("mvs.evidence.helpOpen") === "1");
+    } catch { /* ignore */ }
+  }, []);
+  const toggleHelp = () => {
+    setHelpOpen((v) => {
+      const next = !v;
+      try { localStorage.setItem("mvs.evidence.helpOpen", next ? "1" : "0"); } catch { /* ignore */ }
+      return next;
+    });
+  };
+  const confirmReject = (label: string, run: () => void) =>
+    setRejectConfirm({ label, run });
 
   async function handleVerify(r: EvidenceRow, action: VerifyAction, extra?: { min?: number | null; max?: number | null; notes?: string | null }) {
     setBusyId(r.id);

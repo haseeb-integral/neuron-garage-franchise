@@ -300,22 +300,8 @@ export default function ProviderEvidence() {
           <MapPin className="h-3.5 w-3.5" style={{ color: BLUE }} />
           <strong>{city || "—"}</strong>
           {state && <span style={{ color: MUTED }}>, {state}</span>}
-      </div>
-
-      {!loading && rows.length > 0 && (
-        <div
-          className="mb-3 text-[11px]"
-          style={{ color: MUTED }}
-        >
-          <span style={{ color: GREEN, fontWeight: 600 }}>{statusCounts.in_score} in score</span>
-          <span> · </span>
-          <span style={{ color: AMBER, fontWeight: 600 }}>{statusCounts.needs_review} need human review</span>
-          <span> · </span>
-          <span>{statusCounts.rejected} rejected</span>
-          <span> · </span>
-          <span>{statusCounts.no_price} no price</span>
         </div>
-      )}
+
 
         <div className="ml-auto flex items-center gap-2 text-[11px]" style={{ color: MUTED }}>
           {loading ? (

@@ -548,7 +548,8 @@ export default function ProviderEvidence() {
             </thead>
             <tbody>
               {filtered.map(({ row: r, exclusion }) => {
-                const kept = priceKept(r);
+                const _kept = priceKept(r);
+                void _kept;
                 const sourceUrl =
                   r.matched_provider_entry?.url ||
                   r.source_listing_url ||

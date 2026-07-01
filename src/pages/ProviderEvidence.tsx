@@ -613,17 +613,6 @@ export default function ProviderEvidence() {
                         <span style={{ color: MUTED }}>—</span>
                       )}
                     </td>
-                    <td className="border-b px-3 py-2" style={{ borderColor: BORDER, color: MUTED }}>
-                      {r.matched_query?.source_type ? (
-                        r.matched_query.source_type
-                      ) : fallbackPlatform ? (
-                        <span title="No debug source_type recorded — showing discovery platform instead.">
-                          {fallbackPlatform}
-                        </span>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
                     <td className="border-b px-3 py-2" style={{ borderColor: BORDER }}>
                       {sourceUrl ? (
                         <a

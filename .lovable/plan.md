@@ -1,63 +1,66 @@
-## What I checked first
+## What I see on your console
 
-**Q1 — Is B1 / B3 wired into the "Catch-Up Missing Prices" UI button?**
+- **4 failed cities** (red): Houston, San Antonio, Philadelphia, Los Angeles — last run failed 6/19. Their scores are stale.
+- **8 done cities** (green) — but many have `3/5 sources` or `2/5 sources` badges, meaning some data providers didn't return data. These likely have missing prices too.
+- **New York, Chicago, Boston, Austin, Columbus** — recently run, healthiest.
 
-- The UI button in `LiveCityDeepDive.tsx` calls `mvs-discover-providers` with `{ city, catchupBatch: [ids] }`.
-- Inside the edge function's catchup block:
-  - **B3 (Google AI Overview) IS wired in.** It fires as the final fallback (line 1528), but ONLY when Firecrawl + Gemini extraction returned no price at all.
-  - **B1 (Brand Price Propagation) is NOT wired into catch-up.** It only runs at the start of a Force Fresh full pipeline (`propagateBrandPrices` at top of file).
-- Chicago database check: `ai_overview_snippet=0`, `price_derived_from_brand=0`, `platform='google_ai_overview'=0`, `price_needs_review=0` out of 194 rows.
-- So B3 code did run, but Apify either returned no AI Overview box for those queries, OR the earlier Firecrawl steps already found a price and B3 was skipped. B1 never ran because the button skips the brand-propagation step.
+## Which button to use — simple rule
 
-**Q2 — Are `ai_overview_snippet` and `ai_overview_source_url` on the table?** Yes, confirmed on `mvs_providers`. The drawer already reads them. They are simply empty because no B3 hits landed for Chicago.
+| Situation | Button | Why |
+|---|---|---|
+| City status = **failed** | **Force fresh** | No usable data exists. Must re-crawl from scratch. |
+| City status = **done** but missing prices | **Catch-Up Missing Prices** (on deep dive card) | Keeps existing providers, only fills blanks. Much cheaper and faster. Uses new B1+B2+B3 crawler on unpriced rows only. |
+| City status = **done** and older than 90 days | **Run** (normal) | Uses freshness policy. |
+| City looks totally wrong / bad data | **Force fresh** | Wipes and rebuilds. |
 
----
+**Key point:** Force fresh throws away everything and re-discovers providers (30-45 min, expensive). Catch-Up only touches unpriced rows (3-5 min, cheap). Prefer Catch-Up whenever the city is already `done`.
 
-## Plan (2 small phases)
+## Recommended order
 
-### Phase 1 — "Why unpriced?" reason chip in the UI
+Run **one city at a time** (the table locks anyway). Group by type:
 
-Goal: every unpriced camp shows one short reason so the reader knows why. Hide the whole line/section when the count is 0.
+### Group 1 — Fix failed cities first (Force fresh, one by one)
+These have no usable data. Do them first so the shortlist becomes complete.
 
-**Reason categories (computed client-side from existing columns, no schema change):**
+1. **Houston, TX** — Force fresh
+2. **Philadelphia, PA** — Force fresh
+3. **San Antonio, TX** — Force fresh
+4. **Los Angeles, CA** — Force fresh
 
-| Reason chip | Rule |
-|---|---|
-| Excluded (non-camp) | `classifyExclusion()` says excluded |
-| No website on file | `website_url` and `url` both empty |
-| Booking wall (JS-only site) | domain in Sawyer / Enrollsy / ActivityHero list AND no price |
-| Directory-only, no price shown | has listing_url but no price_min |
-| Tried all sources, no price found | has website, catchup ran, still null |
-| Needs human review | `price_needs_review = true` |
+Wait for each to finish before starting the next. Each ≈ 30-45 min.
 
-**Where the chip shows:**
-1. **Provider Evidence table** (`ProviderEvidence.tsx`): a small muted "Why unpriced" pill in the price cell for rows where `price_min IS NULL AND not excluded`.
-2. **Evidence Drawer**: one sentence under the Tuition Truth block: "Why we have no price: <reason>".
-3. **LiveCityDeepDive** unpriced summary card: a small breakdown like "12 no website · 8 booking wall · 5 needs review". Whole block hidden when unpriced total = 0.
+### Group 2 — Fill missing prices on done cities (Catch-Up button)
+Go into each city's deep dive and hit **Catch-Up Missing Prices**. Order by lowest coverage first so you see biggest lift:
 
-**Files touched:**
-- `src/lib/mvs/unpricedReason.ts` (new pure helper).
-- `src/pages/ProviderEvidence.tsx` (chip + drawer line).
-- `src/components/phase2-demo/LiveCityDeepDive.tsx` (summary breakdown, hidden when 0).
+5. **Johns Creek, GA** (score is `—`, likely very thin)
+6. **San Diego, CA** (43.5, `3/5 sources`)
+7. **Indianapolis, IN** (44.0)
+8. **Denver, CO** (56.5, `3/5 sources`)
+9. **Boston, MA** (60.0, `3/5 sources`) — already caught up recently, may be small lift
+10. **Columbus, OH** (69.9, `3/5 sources`) — already caught up recently
+11. **Chicago, IL** (52.6) — already caught up recently
+12. **Austin, TX** (58.4) — already caught up recently
+13. **New York, NY** (66.9) — check unpriced count first
 
-**Turns:** 1
+For Group 2, each Catch-Up run is ~3-5 min.
 
-### Phase 2 — Wire B1 brand propagation into the catch-up path (optional, ask first)
+## What "new crawler" gives you on Catch-Up
 
-Not requested in this message. Flagging it so you decide later. Right now brand-derived prices only appear after a full Force Fresh. If you want the UI Catch-Up button to also copy sibling brand prices, that's a separate ~1 turn change to `mvs-discover-providers`.
+The Catch-Up button already uses:
+- **B2** directory-first queries (Sawyer, ActivityHero, CampPage)
+- **B2.2** brand token hints + sibling median ranges
+- **B3** Google AI Overview fallback (Apify)
+- Relaxed price guards + natural language queries
 
-**Not doing this now unless you say so.**
+Force fresh uses all of the above **plus** re-discovers providers. So Force fresh helps when the provider list itself is stale or missing camps — not just prices.
 
----
+## Expected impact
 
-## Risks / not touched
-- No DB schema changes.
-- No edge function changes in Phase 1 (pure UI).
-- Existing Verify/Reject flow, CSV export, and scoring math unchanged.
+- Failed 4 cities → go from `—` to real scores.
+- Catch-Up on done cities → typically +30 to +120 priced providers per city (based on what we saw for Boston, Chicago, Columbus).
 
-## What to test after Phase 1
-- Open Chicago Evidence — each unpriced row shows a reason chip; priced rows unchanged.
-- Chicago has 0 rows with `ai_overview_snippet` → the "Google AI Overview" description block stays hidden (already the case).
-- If a city has 0 unpriced camps, the "Why unpriced" summary block does not render at all.
+## Recommendation for today
 
-Reply **"go phase 1"** to build. Say **"also B1 in catch-up"** if you want Phase 2 too.
+Start with **Houston Force fresh** now. While it runs, open **Johns Creek deep dive** and hit **Catch-Up** in a second tab — different city, so no lock conflict.
+
+Reply **"go"** and I'll wait as you kick off Houston, then guide the next step.

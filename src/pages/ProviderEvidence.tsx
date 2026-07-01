@@ -190,19 +190,27 @@ export default function ProviderEvidence() {
           {state && <span style={{ color: MUTED }}>, {state}</span>}
         </div>
         <div className="ml-auto flex items-center gap-2 text-[11px]" style={{ color: MUTED }}>
-          {loading
-            ? "Loading…"
-            : `${filtered.length} of ${
-                showExcluded ? rows.length : activeCount
-              } ${showExcluded ? "rows" : "active camps"}`}
-          {!loading && excludedTotal > 0 && (
-            <span
-              className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
-              style={{ backgroundColor: "#eef2f7", color: MUTED }}
-              title={excludedBreakdown.map(([l, n]) => `${l}: ${n}`).join(" · ")}
-            >
-              +{excludedTotal} excluded
+          {loading ? (
+            "Loading…"
+          ) : showExcluded ? (
+            <span>
+              {activeCount} active + {excludedTotal} excluded = {rows.length} shown
             </span>
+          ) : (
+            <>
+              <span>
+                {filtered.length} of {activeCount} active camps
+              </span>
+              {excludedTotal > 0 && (
+                <span
+                  className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                  style={{ backgroundColor: "#eef2f7", color: MUTED }}
+                  title={excludedBreakdown.map(([l, n]) => `${l}: ${n}`).join(" · ")}
+                >
+                  +{excludedTotal} excluded (hidden)
+                </span>
+              )}
+            </>
           )}
           {runCreatedAt && (
             <span>· Debug from run {new Date(runCreatedAt).toLocaleString()}</span>

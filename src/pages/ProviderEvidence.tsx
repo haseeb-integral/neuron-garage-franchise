@@ -533,19 +533,10 @@ export default function ProviderEvidence() {
                   Source query
                 </th>
                 <th className="border-b px-3 py-2 text-left font-semibold" style={{ borderColor: BORDER }}>
-                  Source type
-                </th>
-                <th className="border-b px-3 py-2 text-left font-semibold" style={{ borderColor: BORDER }}>
                   Source URL
                 </th>
                 <th className="border-b px-3 py-2 text-right font-semibold" style={{ borderColor: BORDER }}>
                   Price/wk
-                </th>
-                <th className="border-b px-3 py-2 text-left font-semibold" style={{ borderColor: BORDER }}>
-                  Kept / dropped
-                </th>
-                <th className="border-b px-3 py-2 text-left font-semibold" style={{ borderColor: BORDER }}>
-                  Phase
                 </th>
                 <th className="border-b px-3 py-2 text-left font-semibold" style={{ borderColor: BORDER }}>
                   Verification

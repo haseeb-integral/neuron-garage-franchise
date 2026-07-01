@@ -510,6 +510,12 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
   const [catchingUp, setCatchingUp] = useState(false);
   const [catchupProgress, setCatchupProgress] = useState({ current: 0, total: 0 });
   const [showExcluded, setShowExcluded] = useState(false);
+  const [regressionCheck, setRegressionCheck] = useState<{
+    prev: number | null;
+    curr: number;
+    regressed: boolean;
+    at: string;
+  } | null>(null);
 
   // Strict Camp View — split providers into real camps vs non-camps. Raw
   // rows are preserved in the DB; this only affects headline counters and

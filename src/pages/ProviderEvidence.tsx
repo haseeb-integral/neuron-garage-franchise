@@ -533,19 +533,10 @@ export default function ProviderEvidence() {
                   Source query
                 </th>
                 <th className="border-b px-3 py-2 text-left font-semibold" style={{ borderColor: BORDER }}>
-                  Source type
-                </th>
-                <th className="border-b px-3 py-2 text-left font-semibold" style={{ borderColor: BORDER }}>
                   Source URL
                 </th>
                 <th className="border-b px-3 py-2 text-right font-semibold" style={{ borderColor: BORDER }}>
                   Price/wk
-                </th>
-                <th className="border-b px-3 py-2 text-left font-semibold" style={{ borderColor: BORDER }}>
-                  Kept / dropped
-                </th>
-                <th className="border-b px-3 py-2 text-left font-semibold" style={{ borderColor: BORDER }}>
-                  Phase
                 </th>
                 <th className="border-b px-3 py-2 text-left font-semibold" style={{ borderColor: BORDER }}>
                   Verification
@@ -557,7 +548,6 @@ export default function ProviderEvidence() {
             </thead>
             <tbody>
               {filtered.map(({ row: r, exclusion }) => {
-                const kept = priceKept(r);
                 const sourceUrl =
                   r.matched_provider_entry?.url ||
                   r.source_listing_url ||
@@ -622,17 +612,6 @@ export default function ProviderEvidence() {
                         <span style={{ color: MUTED }}>—</span>
                       )}
                     </td>
-                    <td className="border-b px-3 py-2" style={{ borderColor: BORDER, color: MUTED }}>
-                      {r.matched_query?.source_type ? (
-                        r.matched_query.source_type
-                      ) : fallbackPlatform ? (
-                        <span title="No debug source_type recorded — showing discovery platform instead.">
-                          {fallbackPlatform}
-                        </span>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
                     <td className="border-b px-3 py-2" style={{ borderColor: BORDER }}>
                       {sourceUrl ? (
                         <a
@@ -668,37 +647,7 @@ export default function ProviderEvidence() {
                       )}
                     </td>
 
-                    <td className="border-b px-3 py-2" style={{ borderColor: BORDER }}>
-                      <span
-                        className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
-                        style={{
-                          backgroundColor:
-                            kept.tone === "kept"
-                              ? "#e7f7ee"
-                              : kept.tone === "dropped"
-                              ? "#fff1d6"
-                              : "#eef2f7",
-                          color:
-                            kept.tone === "kept"
-                              ? GREEN
-                              : kept.tone === "dropped"
-                              ? AMBER
-                              : MUTED,
-                        }}
-                        title={
-                          kept.tone === "dropped" && r.guard_drop.length > 0
-                            ? `Guard dropped: ${r.guard_drop
-                                .map((d) => `${d.field}=${d.value}`)
-                                .join(", ")}`
-                            : undefined
-                        }
-                      >
-                        {kept.label}
-                      </span>
-                    </td>
-                    <td className="border-b px-3 py-2" style={{ borderColor: BORDER, color: MUTED }}>
-                      {r.matched_query ? "Phase 2" : "—"}
-                    </td>
+
                     <td className="border-b px-3 py-2" style={{ borderColor: BORDER }}>
                       <div
                         className="flex items-center gap-1 flex-wrap"

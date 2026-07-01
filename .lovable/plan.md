@@ -1,51 +1,42 @@
-## Phase UX-1 — Simplify Verification column (approved-style plan)
+## Audit: Redundant / low-value columns in Provider Evidence Review
 
-**Goal:** Stop shouting "Verify / Reject" at the user on all 228 rows. Only ask for human help on the small risky group.
+Looking at the current Austin screenshot, three columns are pulling their weight poorly:
 
-### New states for the "Verification" column (one chip per row, no extra buttons unless needed)
+### 1. `Source type` — **redundant with `Source query`**
+Every visible row shows the same value in both cells:
+- `google_search` / `google_search`
+- `sawyer` / `sawyer`
 
-| Row condition | Chip shown | Buttons shown |
-|---|---|---|
-| Kept price, not brand-derived, not human-touched | **In score — crawler** (green) | none |
-| Kept price with `price_needs_review = true` (B1 brand-derived / future B3 AI Overview) | **Needs human review** (amber) | **Verify** · **Reject** · **Edit** |
-| `verification_status = verified` or `edited` | **In score — human ✓** (green) | tiny "Undo" link only |
-| `verification_status = rejected` | **Not in score — rejected** (grey) | tiny "Restore" link only |
-| No price at all (`price_min` null, not excluded) | **Not in score — no price** (grey) | none |
-| Excluded (non-camp, year-round, etc.) | **Not in score — excluded** (grey, with reason tooltip) | none |
+`source_type` is just the platform label of the query. It never adds a new fact next to `Source query`. **Recommend: remove the column.** Keep the value inside the drawer only, or merge it as a tiny grey subtitle under the query text.
 
-### Header counters (small text, above the table)
+### 2. `Phase` — **empty for every row**
+All rows show `—`. This column was reserved for the crawler phase (discover / catch-up / brand-hint), but we never wired real values into the evidence view, so it's dead space. **Recommend: remove the column** from the table. If we ever want it back, it belongs in the drawer under "How we found this price".
 
-Add one line under the existing "228 of 228 active camps" row:
+### 3. `Kept / dropped` — **duplicates the Verification chip**
+- `Kept` = the same thing the green **"In score — crawler"** chip already says.
+- `Dropped` is shown separately as an amber "Guard dropped" pill in the header + drawer.
 
-> `210 in score · 12 need human review · 4 rejected · 2 no price`
+So this column repeats info the Verification column already carries, with less nuance. **Recommend: remove the column.** The header status strip (`222 in score · 0 need human review · …`) plus the Verification chip cover it.
 
-So the user instantly sees the tiny number that actually needs their attention.
+### Columns worth keeping (no change)
+- **Provider** — primary key for the human.
+- **Category** — filter + context.
+- **Source query** — the actual query text is the audit trail.
+- **Source URL** — the clickable proof link.
+- **Price/wk** — the number under review.
+- **Verification** — the only column where the human acts.
+- **Last seen** — freshness signal.
 
-### What I will NOT do
+### What this plan will do
 
-- No legend strip (keep it simple, chips are self-explanatory).
-- No "Override" hidden action on green crawler rows (you said keep it simple — I agree, drop it).
-- No changes to scoring, DB, edge functions, drawer contents, or CSV export in this phase.
-- No color/design-token changes.
+- Delete the three columns (`Source type`, `Phase`, `Kept / dropped`) from `src/pages/ProviderEvidence.tsx` — header cells + body cells + colspan on the empty-state row.
+- Leave the underlying data (`platform`, `phase`, `kept/dropped guard drops`) untouched in the DB and in the drawer, so nothing is lost — only the table gets simpler.
+- Update the CSV export? **No** — export keeps all fields so downstream audit is unchanged. Only the on-screen table shrinks.
 
-### File touched
+### Risk / scope
+- **File touched:** `src/pages/ProviderEvidence.tsx` only.
+- **Turns:** 1.
+- **Risk:** very low, pure UI trim, no logic or data changes.
+- **Smoke test:** open Austin Provider Evidence → confirm 7 columns instead of 10, chips + counts unchanged, drawer still shows platform + guard drops, CSV still has every field.
 
-- `src/pages/ProviderEvidence.tsx` only — swap the current chip + always-on Verify/Reject buttons for the conditional logic above, and add the header counter line.
-
-### Turns / risk / test
-
-- **Turns:** 1
-- **Risk:** very low — pure UI relabel + conditional render. All underlying data already exists (`price_needs_review`, `verification_status`, `price_min`, `exclusion`).
-- **Manual smoke test after ship:**
-  1. Open Austin Provider Evidence.
-  2. Confirm most rows show green **"In score — crawler"** with **no buttons**.
-  3. Filter for amber rows (or find one flagged by B1) → confirm **"Needs human review"** chip + Verify / Reject / Edit buttons appear only there.
-  4. Click Verify on one → chip flips to **"In score — human ✓"**, buttons collapse to a small "Undo".
-  5. Click Reject on another → chip flips to **"Not in score — rejected"**, price is cleared.
-  6. Header counter numbers update to match the new mix.
-
-### Order of work
-
-Ship UX-1 alone in one turn. B3 (Apify AI Overview) still parked until you say go.
-
-Approve and I'll build it.
+Approve and I'll ship it in one turn.

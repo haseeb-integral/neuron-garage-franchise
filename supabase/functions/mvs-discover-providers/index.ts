@@ -176,6 +176,7 @@ async function propagateBrandPricesForCity(
     summary.error = e instanceof Error ? e.message : String(e);
   }
   return summary;
+}
 
 // Source priority for dedupe: when the same provider appears in multiple
 // sources, the row is tagged with the highest-priority platform.

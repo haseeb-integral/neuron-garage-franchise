@@ -23,6 +23,12 @@ export type EvidenceProvider = {
   price_derived_from_brand?: boolean | null;
   price_needs_review?: boolean | null;
   price_derivation_meta?: Record<string, unknown> | null;
+  verification_status?: "verified" | "rejected" | "edited" | null;
+  verified_by?: string | null;
+  verified_at?: string | null;
+  verification_notes?: string | null;
+  price_original_min?: number | null;
+  price_original_max?: number | null;
 };
 
 export type DroppedPrice = {

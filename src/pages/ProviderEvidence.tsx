@@ -912,10 +912,7 @@ function EvidenceDrawer({
               </div>
             </div>
 
-            {/* Read-only notice */}
-            <div className="rounded-lg bg-[#f1f5f9] p-3 text-[11px] text-[#64748b] text-center">
-              Manual verify / reject override buttons are read-only and will land in a follow-up phase.
-            </div>
+            <VerifyPanel row={row} onAction={onAction} busy={busy} />
           </div>
         )}
       </SheetContent>

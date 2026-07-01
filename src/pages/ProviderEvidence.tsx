@@ -834,7 +834,14 @@ export default function ProviderEvidence() {
       <EvidenceDrawer
         row={selected}
         onClose={() => setSelected(null)}
-        onAction={(action, extra) => selected && handleVerify(selected, action, extra)}
+        onAction={(action, extra) => {
+          if (!selected) return;
+          if (action === "rejected") {
+            confirmReject(selected.name || "this price", () => handleVerify(selected, "rejected", extra));
+          } else {
+            handleVerify(selected, action, extra);
+          }
+        }}
         busy={!!selected && busyId === selected.id}
       />
     </>

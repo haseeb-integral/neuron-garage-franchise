@@ -270,7 +270,7 @@ export function ImportManusCsvDialog({ onImported }: Props) {
               <span className="font-semibold text-slate-700">{fileName}</span>
               <span className="text-slate-400">•</span>
               <span className="text-emerald-700">{counts.will_add} will add</span>
-              {counts.duplicate > 0 && <span className="text-slate-600">{counts.duplicate} already in shortlist</span>}
+              {counts.duplicate > 0 && <span className="text-slate-600">{counts.duplicate} already imported</span>}
               {counts.duplicate_in_file > 0 && <span className="text-slate-600">{counts.duplicate_in_file} duplicates in file</span>}
               {counts.unknown_city > 0 && <span className="text-amber-700">{counts.unknown_city} unknown</span>}
               {counts.below_threshold > 0 && <span className="text-slate-500">{counts.below_threshold} below CSI</span>}

@@ -700,61 +700,144 @@ export default function ProviderEvidence() {
                       {r.matched_query ? "Phase 2" : "—"}
                     </td>
                     <td className="border-b px-3 py-2" style={{ borderColor: BORDER }}>
-                      <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
-                        {r.verification_status ? (
-                          <span
-                            className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
-                            style={{
-                              backgroundColor:
-                                r.verification_status === "verified" ? "#e7f7ee" :
-                                r.verification_status === "rejected" ? "#fce7ec" : "#fef3c7",
-                              color:
-                                r.verification_status === "verified" ? GREEN :
-                                r.verification_status === "rejected" ? "#a3142b" : "#92400e",
-                            }}
-                            title={r.verified_at ? `by human on ${new Date(r.verified_at).toLocaleDateString()}` : undefined}
-                          >
-                            {r.verification_status === "verified" ? "✓ Verified" :
-                             r.verification_status === "rejected" ? "✗ Rejected" : "✎ Edited"}
-                          </span>
-                        ) : exclusion ? (
-                          <span
-                            className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
-                            style={{ backgroundColor: "#eef2f7", color: MUTED }}
-                            title={exclusion.reason}
-                          >
-                            Excluded — {exclusion.label}
-                          </span>
-                        ) : (
-                          <span
-                            className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
-                            style={{ backgroundColor: "#eef2f7", color: MUTED }}
-                          >
-                            Needs review
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          disabled={busyId === r.id}
-                          onClick={() => handleVerify(r, "verified")}
-                          className="rounded border px-1.5 py-0.5 text-[10px] font-semibold hover:bg-[#e7f7ee] disabled:opacity-50"
-                          style={{ borderColor: BORDER, color: GREEN }}
-                          title="Mark this price as human-verified"
-                        >
-                          Verify
-                        </button>
-                        <button
-                          type="button"
-                          disabled={busyId === r.id}
-                          onClick={() => handleVerify(r, "rejected")}
-                          className="rounded border px-1.5 py-0.5 text-[10px] font-semibold hover:bg-[#fce7ec] disabled:opacity-50"
-                          style={{ borderColor: BORDER, color: "#a3142b" }}
-                          title="Reject and clear this price"
-                        >
-                          Reject
-                        </button>
+                      <div
+                        className="flex items-center gap-1 flex-wrap"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {(() => {
+                          // Excluded rows: single grey chip, no buttons.
+                          if (exclusion) {
+                            return (
+                              <span
+                                className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                                style={{ backgroundColor: "#eef2f7", color: MUTED }}
+                                title={exclusion.reason}
+                              >
+                                Not in score — excluded
+                              </span>
+                            );
+                          }
+                          const status = rowStatus(r);
+                          if (status === "in_score_crawler") {
+                            return (
+                              <span
+                                className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                                style={{ backgroundColor: "#e7f7ee", color: GREEN }}
+                                title="Crawler read this price and it passed the safety guards. Counted in the Market Validation score."
+                              >
+                                In score — crawler
+                              </span>
+                            );
+                          }
+                          if (status === "in_score_human") {
+                            const label =
+                              r.verification_status === "edited" ? "In score — human ✎" : "In score — human ✓";
+                            return (
+                              <>
+                                <span
+                                  className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                                  style={{ backgroundColor: "#e7f7ee", color: GREEN }}
+                                  title={
+                                    r.verified_at
+                                      ? `Human-approved on ${new Date(r.verified_at).toLocaleDateString()}`
+                                      : "Human-approved"
+                                  }
+                                >
+                                  {label}
+                                </span>
+                                <button
+                                  type="button"
+                                  disabled={busyId === r.id}
+                                  onClick={() => handleVerify(r, "rejected")}
+                                  className="text-[10px] font-semibold underline disabled:opacity-50"
+                                  style={{ color: MUTED }}
+                                  title="Undo — reject this price"
+                                >
+                                  Undo
+                                </button>
+                              </>
+                            );
+                          }
+                          if (status === "rejected") {
+                            return (
+                              <>
+                                <span
+                                  className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                                  style={{ backgroundColor: "#eef2f7", color: MUTED }}
+                                  title="A human rejected this price. It is NOT counted in the score."
+                                >
+                                  Not in score — rejected
+                                </span>
+                                <button
+                                  type="button"
+                                  disabled={busyId === r.id}
+                                  onClick={() => handleVerify(r, "verified")}
+                                  className="text-[10px] font-semibold underline disabled:opacity-50"
+                                  style={{ color: MUTED }}
+                                  title="Restore verification (does not bring back the original price)"
+                                >
+                                  Restore
+                                </button>
+                              </>
+                            );
+                          }
+                          if (status === "no_price") {
+                            return (
+                              <span
+                                className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                                style={{ backgroundColor: "#eef2f7", color: MUTED }}
+                                title="No price was found. Not counted in the score."
+                              >
+                                Not in score — no price
+                              </span>
+                            );
+                          }
+                          // needs_review — the only place we show loud action buttons.
+                          return (
+                            <>
+                              <span
+                                className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                                style={{ backgroundColor: "#fef3c7", color: "#92400e" }}
+                                title="Price was guessed from other locations of the same brand. Please Verify, Reject, or Edit."
+                              >
+                                Needs human review
+                              </span>
+                              <button
+                                type="button"
+                                disabled={busyId === r.id}
+                                onClick={() => handleVerify(r, "verified")}
+                                className="rounded border px-1.5 py-0.5 text-[10px] font-semibold hover:bg-[#e7f7ee] disabled:opacity-50"
+                                style={{ borderColor: BORDER, color: GREEN }}
+                                title="Mark this price as human-verified"
+                              >
+                                Verify
+                              </button>
+                              <button
+                                type="button"
+                                disabled={busyId === r.id}
+                                onClick={() => handleVerify(r, "rejected")}
+                                className="rounded border px-1.5 py-0.5 text-[10px] font-semibold hover:bg-[#fce7ec] disabled:opacity-50"
+                                style={{ borderColor: BORDER, color: "#a3142b" }}
+                                title="Reject and clear this price"
+                              >
+                                Reject
+                              </button>
+                              <button
+                                type="button"
+                                disabled={busyId === r.id}
+                                onClick={() => setSelected(r)}
+                                className="rounded border px-1.5 py-0.5 text-[10px] font-semibold hover:bg-[#eef2ff] disabled:opacity-50"
+                                style={{ borderColor: BORDER, color: BLUE }}
+                                title="Open drawer to edit the price"
+                              >
+                                Edit
+                              </button>
+                            </>
+                          );
+                        })()}
                       </div>
                     </td>
+
                     <td
                       className="border-b px-3 py-2 text-right"
                       style={{ borderColor: BORDER, color: MUTED }}

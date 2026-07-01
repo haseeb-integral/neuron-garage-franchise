@@ -340,10 +340,10 @@ export function ImportManusCsvDialog({ onImported }: Props) {
           <Button
             type="button"
             onClick={handleImport}
-            disabled={importing || counts.will_add === 0}
+            disabled={importing || toWriteCount === 0}
           >
             {importing && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-            Confirm import ({counts.will_add})
+            Confirm import ({toWriteCount})
           </Button>
         </DialogFooter>
       </DialogContent>

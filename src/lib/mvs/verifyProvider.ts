@@ -20,12 +20,10 @@ export async function setProviderVerification(opts: {
     verified_by: uid,
     verified_at: new Date().toISOString(),
     verification_notes: opts.notes ?? null,
-    // Once a human touches it, it no longer "needs review".
     price_needs_review: false,
   };
 
   if (opts.action === "rejected") {
-    // Snapshot old price then clear it so it stops counting in scoring.
     if (opts.currentPriceMin != null) patch.price_original_min = opts.currentPriceMin;
     if (opts.currentPriceMax != null) patch.price_original_max = opts.currentPriceMax;
     patch.price_min = null;
@@ -41,7 +39,7 @@ export async function setProviderVerification(opts: {
 
   const { error } = await supabase
     .from("mvs_providers")
-    .update(patch)
+    .update(patch as never)
     .eq("id", opts.providerId);
   if (error) throw error;
 }

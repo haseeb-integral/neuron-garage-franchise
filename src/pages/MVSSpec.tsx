@@ -275,9 +275,10 @@ const LOCKED_IN = [
   "5 active sub-scores, normalized 0–100 against fixed reference ranges (Market Absorption retired)",
   "Market Balance INSIDE the composite at 20%",
   "5 discovery sources: Sawyer, ActivityHero, Google Maps, Yelp, Google Search",
+  "Pricing crawler: 9 steps (was 3) — catch-up Google search, marketplace reads, relaxed trusted-source rule, brand propagation, directory-first queries, Google AI Overview fallback, manual Verify/Reject/Edit",
   "Manual trigger only — manager-only Run Pipeline button, with freshness pre-check",
-  "Freshness rules: 0–30 skip, 31–60 prompt, >60 fresh, Force fresh override — enforced in both UI and backend",
-  "Soft-fail fallback: failed fresh crawl with ≤60d saved data → status done_stale, score stays visible",
+  "Freshness rules: 0–90 skip, 91–120 prompt, >120 fresh, Force fresh override — enforced in both UI and backend",
+  "Soft-fail fallback: failed fresh crawl with ≤120d saved data → status done_stale, score stays visible",
   "Firecrawl cap: 50 calls/run total + sub-caps (discover 25, classify 15, extract 15)",
   "Cards: Result → Evidence → Trust → Weight preview, with proof popovers and per-pillar confidence",
 ];

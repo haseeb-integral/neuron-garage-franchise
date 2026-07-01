@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Download, ExternalLink, Loader2, MapPin, Search } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Download, ExternalLink, Loader2, MapPin, Search } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
-import { useProviderEvidence, type EvidenceRow } from "@/lib/mvs/useProviderEvidence";
+import { useProviderEvidence, type EvidenceRow, type DroppedPrice } from "@/lib/mvs/useProviderEvidence";
 import { classifyExclusion } from "@/lib/mvs/classifyExclusion";
 import {
   Sheet,
@@ -11,7 +11,9 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ProviderScreenshotButton } from "@/components/phase2-demo/ProviderScreenshotButton";
+
 
 const NAVY = "#07142f";
 const MUTED = "#526078";

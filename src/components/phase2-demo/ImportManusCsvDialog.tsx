@@ -152,7 +152,6 @@ export function ImportManusCsvDialog({ onImported }: Props) {
         return { ...r, status: "invalid", reason: "Invalid state code" };
       }
       const key = `${r.city.toLowerCase()}|${r.state}`;
-      if (existing.has(key)) return { ...r, status: "duplicate" };
       if (seenInFile.has(key)) {
         return { ...r, status: "duplicate_in_file", reason: "Repeated row in CSV" };
       }
@@ -165,6 +164,7 @@ export function ImportManusCsvDialog({ onImported }: Props) {
         return { ...r, status: "below_threshold" };
       }
       seenInFile.add(key);
+      if (existing.has(key)) return { ...r, status: "duplicate" }; // will refresh
       return { ...r, status: "will_add" };
     });
   }, [rows, existing, knownCities, threshold]);
@@ -175,15 +175,17 @@ export function ImportManusCsvDialog({ onImported }: Props) {
     return c;
   }, [preview]);
 
+  const toWriteCount = counts.will_add + counts.duplicate;
+
   const handleImport = async () => {
-    const toInsert = preview.filter((r) => r.status === "will_add");
-    if (toInsert.length === 0) return;
+    const rowsToWrite = preview.filter((r) => r.status === "will_add" || r.status === "duplicate");
+    if (rowsToWrite.length === 0) return;
     setImporting(true);
     try {
       const { data: userRes } = await supabase.auth.getUser();
       const uid = userRes?.user?.id;
       if (!uid) throw new Error("You must be signed in.");
-      const payload = toInsert.map((r) => ({
+      const payload = rowsToWrite.map((r) => ({
         city: r.city,
         state: r.state,
         manus_csi_score: r.manus_csi_score,
@@ -191,9 +193,13 @@ export function ImportManusCsvDialog({ onImported }: Props) {
         imported_by: uid,
         imported_at: new Date().toISOString(),
       }));
-      const { error } = await supabase.from("mvs_manus_cities").insert(payload);
+      const { error } = await supabase
+        .from("mvs_manus_cities")
+        .upsert(payload, { onConflict: "city,state" });
       if (error) throw new Error(error.message);
-      toast.success(`Imported ${toInsert.length} ${toInsert.length === 1 ? "city" : "cities"} into Manus reference table.`);
+      toast.success("Manus reference table updated", {
+        description: `${counts.will_add} added, ${counts.duplicate} refreshed.`,
+      });
       onImported();
       setOpen(false);
     } catch (e) {
@@ -208,7 +214,7 @@ export function ImportManusCsvDialog({ onImported }: Props) {
       case "will_add":
         return <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700"><CheckCircle2 className="h-3 w-3" />Will add</span>;
       case "duplicate":
-        return <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600"><SkipForward className="h-3 w-3" />Already imported</span>;
+        return <span className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700"><CheckCircle2 className="h-3 w-3" />Will refresh</span>;
       case "duplicate_in_file":
         return <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600"><SkipForward className="h-3 w-3" />Duplicate in file</span>;
       case "unknown_city":
@@ -269,8 +275,8 @@ export function ImportManusCsvDialog({ onImported }: Props) {
             <div className="flex flex-wrap items-center gap-3 rounded-md bg-slate-50 px-3 py-2 text-[12px]">
               <span className="font-semibold text-slate-700">{fileName}</span>
               <span className="text-slate-400">•</span>
-              <span className="text-emerald-700">{counts.will_add} will add</span>
-              {counts.duplicate > 0 && <span className="text-slate-600">{counts.duplicate} already imported</span>}
+              {counts.will_add > 0 && <span className="text-emerald-700">{counts.will_add} new</span>}
+              {counts.duplicate > 0 && <span className="text-blue-700">{counts.duplicate} will refresh</span>}
               {counts.duplicate_in_file > 0 && <span className="text-slate-600">{counts.duplicate_in_file} duplicates in file</span>}
               {counts.unknown_city > 0 && <span className="text-amber-700">{counts.unknown_city} unknown</span>}
               {counts.below_threshold > 0 && <span className="text-slate-500">{counts.below_threshold} below CSI</span>}
@@ -334,10 +340,10 @@ export function ImportManusCsvDialog({ onImported }: Props) {
           <Button
             type="button"
             onClick={handleImport}
-            disabled={importing || counts.will_add === 0}
+            disabled={importing || toWriteCount === 0}
           >
             {importing && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-            Confirm import ({counts.will_add})
+            Confirm import ({toWriteCount})
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -190,19 +190,27 @@ export default function ProviderEvidence() {
           {state && <span style={{ color: MUTED }}>, {state}</span>}
         </div>
         <div className="ml-auto flex items-center gap-2 text-[11px]" style={{ color: MUTED }}>
-          {loading
-            ? "Loading…"
-            : `${filtered.length} of ${
-                showExcluded ? rows.length : activeCount
-              } ${showExcluded ? "rows" : "active camps"}`}
-          {!loading && excludedTotal > 0 && (
-            <span
-              className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
-              style={{ backgroundColor: "#eef2f7", color: MUTED }}
-              title={excludedBreakdown.map(([l, n]) => `${l}: ${n}`).join(" · ")}
-            >
-              +{excludedTotal} excluded
+          {loading ? (
+            "Loading…"
+          ) : showExcluded ? (
+            <span>
+              {activeCount} active + {excludedTotal} excluded = {rows.length} shown
             </span>
+          ) : (
+            <>
+              <span>
+                {filtered.length} of {activeCount} active camps
+              </span>
+              {excludedTotal > 0 && (
+                <span
+                  className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                  style={{ backgroundColor: "#eef2f7", color: MUTED }}
+                  title={excludedBreakdown.map(([l, n]) => `${l}: ${n}`).join(" · ")}
+                >
+                  +{excludedTotal} excluded (hidden)
+                </span>
+              )}
+            </>
           )}
           {runCreatedAt && (
             <span>· Debug from run {new Date(runCreatedAt).toLocaleString()}</span>
@@ -275,16 +283,16 @@ export default function ProviderEvidence() {
         <label
           className="ml-auto inline-flex items-center gap-1.5 text-[12px]"
           style={{ color: NAVY }}
-          title="Daycares, parks, retail workshops and charity drop-in clubs are hidden by default."
+          title="When ticked, the excluded non-camp locations (daycares, parks, retail workshops, charity drop-in clubs) are added below the active camps. When unticked, only active camps are shown."
         >
           <input
             type="checkbox"
             checked={showExcluded}
             onChange={(e) => setShowExcluded(e.target.checked)}
           />
-          Show excluded locations
+          Include excluded locations
           {excludedTotal > 0 && (
-            <span style={{ color: MUTED }}>({excludedTotal})</span>
+            <span style={{ color: MUTED }}>(+{excludedTotal})</span>
           )}
         </label>
       </div>
@@ -353,7 +361,12 @@ export default function ProviderEvidence() {
               {filtered.map(({ row: r, exclusion }) => {
                 const kept = priceKept(r);
                 const sourceUrl =
-                  r.matched_provider_entry?.url || r.source_listing_url || r.url || null;
+                  r.matched_provider_entry?.url ||
+                  r.source_listing_url ||
+                  r.url ||
+                  r.website_url ||
+                  null;
+                const fallbackPlatform = (r as any).platform as string | null | undefined;
                 return (
                   <tr
                     key={r.id}
@@ -385,12 +398,27 @@ export default function ProviderEvidence() {
                             ? r.matched_query.query.slice(0, 70) + "…"
                             : r.matched_query.query}
                         </span>
+                      ) : fallbackPlatform ? (
+                        <span
+                          style={{ color: MUTED }}
+                          title="No debug query recorded for this row — showing discovery platform instead."
+                        >
+                          {fallbackPlatform}
+                        </span>
                       ) : (
                         <span style={{ color: MUTED }}>—</span>
                       )}
                     </td>
                     <td className="border-b px-3 py-2" style={{ borderColor: BORDER, color: MUTED }}>
-                      {r.matched_query?.source_type || "—"}
+                      {r.matched_query?.source_type ? (
+                        r.matched_query.source_type
+                      ) : fallbackPlatform ? (
+                        <span title="No debug source_type recorded — showing discovery platform instead.">
+                          {fallbackPlatform}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
                     </td>
                     <td className="border-b px-3 py-2" style={{ borderColor: BORDER }}>
                       {sourceUrl ? (

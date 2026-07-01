@@ -29,6 +29,8 @@ export type EvidenceProvider = {
   verification_notes?: string | null;
   price_original_min?: number | null;
   price_original_max?: number | null;
+  ai_overview_snippet?: string | null;
+  ai_overview_source_url?: string | null;
 };
 
 export type DroppedPrice = {

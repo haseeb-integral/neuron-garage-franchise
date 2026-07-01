@@ -32,7 +32,7 @@ const docsNavItems = [
   { title: "Guardrails", url: "/docs/guardrails", icon: ShieldCheck },
   { title: "Scoring Method", url: "/scoring-method", icon: Gauge },
   { title: "CSI Methodology", url: "/methodology", icon: Calculator },
-  { title: "MVS v1.0 Spec", url: "/mvs-spec", icon: ShieldCheck },
+  { title: "MVS v1.5 Spec", url: "/mvs-spec", icon: ShieldCheck },
   { title: "MVS Methodology", url: "/mvs-methodology", icon: BarChart3 },
   
   { title: "SAS Methodology", url: "/sas-methodology", icon: MapPin },

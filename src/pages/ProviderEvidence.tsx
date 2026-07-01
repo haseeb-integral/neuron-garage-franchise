@@ -944,3 +944,132 @@ function KV({ label, value }: { label: string; value: React.ReactNode }) {
     </div>
   );
 }
+
+function VerifyPanel({
+  row,
+  onAction,
+  busy,
+}: {
+  row: EvidenceRow;
+  onAction: (action: VerifyAction, extra?: { min?: number | null; max?: number | null; notes?: string | null }) => void;
+  busy: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [min, setMin] = useState<string>(row.price_min?.toString() ?? "");
+  const [max, setMax] = useState<string>(row.price_max?.toString() ?? "");
+  const [notes, setNotes] = useState<string>("");
+
+  const status = row.verification_status;
+  const statusLabel =
+    status === "verified" ? "✓ Verified by human" :
+    status === "rejected" ? "✗ Rejected by human" :
+    status === "edited" ? "✎ Edited by human" : null;
+
+  return (
+    <div className="rounded-xl border p-4" style={{ borderColor: BORDER, backgroundColor: "#f8fafe" }}>
+      <div className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: NAVY }}>
+        Human verification
+      </div>
+      {statusLabel && (
+        <div className="mb-3 text-[12px]" style={{ color: NAVY }}>
+          <span className="font-semibold">{statusLabel}</span>
+          {row.verified_at && (
+            <span style={{ color: MUTED }}> · {new Date(row.verified_at).toLocaleString()}</span>
+          )}
+          {row.verification_notes && (
+            <div className="mt-1 text-[11px]" style={{ color: MUTED }}>"{row.verification_notes}"</div>
+          )}
+          {(row.price_original_min != null || row.price_original_max != null) && (
+            <div className="mt-1 text-[11px]" style={{ color: MUTED }}>
+              Original price before override: {fmtPrice(row.price_original_min, row.price_original_max)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {editing ? (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <label className="text-[11px]" style={{ color: MUTED }}>Min $</label>
+            <input
+              type="number"
+              value={min}
+              onChange={(e) => setMin(e.target.value)}
+              className="w-24 rounded border px-2 py-1 text-[12px]"
+              style={{ borderColor: BORDER }}
+            />
+            <label className="text-[11px]" style={{ color: MUTED }}>Max $</label>
+            <input
+              type="number"
+              value={max}
+              onChange={(e) => setMax(e.target.value)}
+              className="w-24 rounded border px-2 py-1 text-[12px]"
+              style={{ borderColor: BORDER }}
+            />
+          </div>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Optional note (source URL, why you changed it, etc.)"
+            className="w-full rounded border px-2 py-1 text-[12px]"
+            style={{ borderColor: BORDER }}
+            rows={2}
+          />
+          <div className="flex items-center gap-2">
+            <button
+              disabled={busy}
+              onClick={() => {
+                const mn = min === "" ? null : Number(min);
+                const mx = max === "" ? null : Number(max);
+                onAction("edited", { min: mn, max: mx, notes: notes || null });
+              }}
+              className="rounded px-3 py-1 text-[12px] font-semibold text-white disabled:opacity-50"
+              style={{ backgroundColor: BLUE }}
+            >
+              Save price
+            </button>
+            <button
+              disabled={busy}
+              onClick={() => setEditing(false)}
+              className="rounded border px-3 py-1 text-[12px] font-semibold disabled:opacity-50"
+              style={{ borderColor: BORDER, color: MUTED }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            disabled={busy}
+            onClick={() => onAction("verified")}
+            className="rounded px-3 py-1 text-[12px] font-semibold text-white disabled:opacity-50"
+            style={{ backgroundColor: GREEN }}
+          >
+            ✓ Verify price
+          </button>
+          <button
+            disabled={busy}
+            onClick={() => onAction("rejected")}
+            className="rounded px-3 py-1 text-[12px] font-semibold text-white disabled:opacity-50"
+            style={{ backgroundColor: "#a3142b" }}
+          >
+            ✗ Reject price
+          </button>
+          <button
+            disabled={busy}
+            onClick={() => setEditing(true)}
+            className="rounded border px-3 py-1 text-[12px] font-semibold disabled:opacity-50"
+            style={{ borderColor: BORDER, color: NAVY }}
+          >
+            ✎ Edit price
+          </button>
+          {busy && <Loader2 className="h-3 w-3 animate-spin" />}
+        </div>
+      )}
+      <p className="mt-2 text-[11px]" style={{ color: MUTED }}>
+        Verify keeps the current price and flags it as human-approved. Reject clears the price so it stops counting in scoring. Edit lets you type in the real number from the camp's website.
+      </p>
+    </div>
+  );
+}

@@ -468,6 +468,50 @@ ${PRICE_RULES}`;
   return { platform: "activityhero", providers: collected, firecrawlCalls, debug };
 }
 
+// ----------------- Phase B3: Google AI Overview via Apify -----------------
+// When Firecrawl + directory + brand hints all fail to find a price, we ask
+// Apify's google-search-scraper for the AI Overview answer box that Google
+// now shows above results. It often quotes prices that are hidden behind
+// booking walls (Sawyer/Jovial), inside PDFs, or on Facebook posts.
+// Returned prices are always marked price_needs_review=true so a human
+// confirms before they count in the score.
+async function fetchGoogleAiOverview(query: string): Promise<{ text: string; sources: string[] } | null> {
+  const token = Deno.env.get("APIFY_API_TOKEN");
+  if (!token) return null;
+  try {
+    const url = `https://api.apify.com/v2/acts/apify~google-search-scraper/run-sync-get-dataset-items?token=${encodeURIComponent(token)}&timeout=45&memory=1024`;
+    const body = {
+      queries: query,
+      resultsPerPage: 10,
+      maxPagesPerQuery: 1,
+      countryCode: "us",
+      languageCode: "en",
+      includeUnfilteredResults: false,
+      saveHtml: false,
+    };
+    const res = await fetchWithTimeout(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }, 45_000);
+    if (!res.ok) return null;
+    const items: unknown[] = await res.json().catch(() => []);
+    if (!Array.isArray(items) || items.length === 0) return null;
+    const first = items[0] as Record<string, unknown>;
+    const ai = first.aiOverview as Record<string, unknown> | undefined;
+    if (!ai) return null;
+    const text = String(ai.content ?? ai.text ?? "").trim();
+    if (!text) return null;
+    const sourcesRaw = (ai.source ?? ai.sources ?? []) as Array<Record<string, unknown>>;
+    const sources = Array.isArray(sourcesRaw)
+      ? sourcesRaw.map((s) => String(s.url ?? "")).filter(Boolean).slice(0, 3)
+      : [];
+    return { text, sources };
+  } catch {
+    return null;
+  }
+}
+
 // ----------------- Source: Google Maps via Apify -----------------
 async function runGoogleMaps(args: {
   city: string;
@@ -1475,7 +1519,56 @@ ${PRICE_RULES}
             }
 
             qDebug.extracted = { price_min: finalMin, price_max: finalMax, discovered_url: discoveredUrl };
+
+            // Phase B3: Google AI Overview fallback. Only runs when everything
+            // above failed. Prices land as price_needs_review=true so a person
+            // must click Verify before they count in the score.
+            let b3Source: string | null = null;
+            let b3Text: string | null = null;
+            if (finalMin == null && finalMax == null) {
+              const aiQuery = `${p.name} ${cleanCity} ${stateAbbr} summer camp price per week 2026`;
+              const ai = await fetchGoogleAiOverview(aiQuery);
+              qDebug.b3_ai_overview_hit = !!ai;
+              if (ai && ai.text) {
+                b3Text = ai.text;
+                b3Source = ai.sources[0] || null;
+                const gemRes2 = await fetchWithTimeout(AI_GATEWAY, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", "Lovable-API-Key": lovableKey },
+                  body: JSON.stringify({
+                    model: "google/gemini-3-flash-preview",
+                    messages: [
+                      { role: "system", content: catchupSys },
+                      { role: "user", content: `Provider Name: ${p.name}\nCity: ${city}\n\nGOOGLE AI OVERVIEW ANSWER TEXT:\n${ai.text.slice(0, 6000)}` },
+                    ],
+                    response_format: { type: "json_object" },
+                  }),
+                }, GEMINI_TIMEOUT_MS).catch(() => null);
+                if (gemRes2 && gemRes2.ok) {
+                  const gj = await gemRes2.json().catch(() => ({}));
+                  const parsed2 = JSON.parse(gj?.choices?.[0]?.message?.content ?? "{}") as { price_min?: number | null; price_max?: number | null; category_raw?: string | null };
+                  const valid = (v?: number | null) => typeof v === "number" && Number.isFinite(v) && v >= 40 && v <= 2500;
+                  const cands: number[] = [];
+                  if (valid(parsed2.price_min)) cands.push(parsed2.price_min!);
+                  if (valid(parsed2.price_max)) cands.push(parsed2.price_max!);
+                  for (const m of ai.text.matchAll(/\$\s?(\d{1,3}(?:[,]?\d{3})*|\d+)/g)) {
+                    const num = Number(m[1].replace(/,/g, ""));
+                    if (Number.isFinite(num) && num >= 40 && num <= 2500) cands.push(num);
+                  }
+                  if (cands.length > 0) {
+                    finalMax = Math.max(...cands);
+                    finalMin = Math.min(...cands);
+                    if (finalMin < 100 && finalMax >= 150) finalMin = finalMax;
+                    finalCat = parsed2.category_raw ?? finalCat;
+                    finalConf = 0.6;
+                    qDebug.b3_extracted = { price_min: finalMin, price_max: finalMax };
+                  }
+                }
+              }
+            }
+
             if (finalMin != null || finalMax != null) {
+              const isB3 = !!b3Text;
               const patch: Record<string, unknown> = {
                 price_min: finalMin ?? finalMax,
                 price_max: finalMax ?? finalMin,
@@ -1483,11 +1576,17 @@ ${PRICE_RULES}
                 confidence: finalConf,
                 updated_at: new Date().toISOString(),
               };
-              if (!p.source_listing_url && discoveredUrl) {
+              if (isB3) {
+                patch.platform = "google_ai_overview";
+                patch.price_needs_review = true;
+                patch.matched_query = b3Text!.slice(0, 500);
+                if (b3Source && !p.source_listing_url) patch.source_listing_url = b3Source;
+              } else if (!p.source_listing_url && discoveredUrl) {
                 patch.source_listing_url = discoveredUrl;
               }
               await admin.from("mvs_providers").update(patch).eq("id", p.id);
               qDebug.updated = true;
+              qDebug.b3_saved = isB3;
             } else {
               // No price found, revert lock so future runs can check again
               await admin.from("mvs_providers").update({ price_min: null, updated_at: new Date().toISOString() }).eq("id", p.id).eq("price_min", -1);

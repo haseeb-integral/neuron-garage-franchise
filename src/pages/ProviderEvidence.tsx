@@ -1088,7 +1088,14 @@ function EvidenceDrawer({
                   const isEnrollsy = plat === "enrollsy" || (sourceUrl || "").includes("enrollsy.com");
                   const isActivityHero = plat === "activityhero" || (sourceUrl || "").includes("activityhero.com");
                   const isMapsOrYelp = plat === "google_maps" || plat === "yelp" || plat === "maps";
+                  const isAiOverview = plat === "google_ai_overview";
 
+                  if (isAiOverview) {
+                    const linkText = sourceUrl ? ` Source cited by Google: ${sourceUrl}.` : "";
+                    const priceText = hasPrice ? ` Quoted tuition: ${fmtPrice(row.price_min, row.price_max)}/week.` : "";
+                    const quote = q && q.query ? ` Answer text: “${String(q.query).slice(0, 240)}${String(q.query).length > 240 ? "…" : ""}”` : "";
+                    return `Google AI Overview answer box for “${row.name}”.${quote}${linkText}${priceText} This price needs a human to click Verify before it counts in the score.`;
+                  }
                   if (isSawyer) {
                     const linkText = sourceUrl ? ` Direct Sawyer booking link: ${sourceUrl}.` : "";
                     const priceText = hasPrice ? ` Verified tuition: ${fmtPrice(row.price_min, row.price_max)}/week.` : "";

@@ -462,6 +462,69 @@ export default function ProviderEvidence() {
       )}
 
       <div
+        className="mb-3 rounded-md border bg-white"
+        style={{ borderColor: BORDER }}
+      >
+        <button
+          type="button"
+          onClick={toggleHelp}
+          className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-[11px]"
+          style={{ color: NAVY }}
+          aria-expanded={helpOpen}
+        >
+          {helpOpen ? (
+            <ChevronDown className="h-3.5 w-3.5" style={{ color: MUTED }} />
+          ) : (
+            <ChevronRight className="h-3.5 w-3.5" style={{ color: MUTED }} />
+          )}
+          <span className="font-semibold">How to read this table</span>
+          {!helpOpen && (
+            <span className="truncate" style={{ color: MUTED }}>
+              — which camp prices were found, where they came from, and whether they are used in scoring.
+            </span>
+          )}
+        </button>
+        {helpOpen && (
+          <div
+            className="grid gap-3 border-t px-3 py-2.5 text-[11px] sm:grid-cols-2"
+            style={{ borderColor: BORDER, color: NAVY }}
+          >
+            <div>
+              <div className="mb-1 text-[11px] font-semibold" style={{ color: NAVY }}>
+                What the chips mean
+              </div>
+              <ul className="space-y-1" style={{ color: MUTED }}>
+                <li>
+                  <span className="font-semibold" style={{ color: GREEN }}>In score — crawler</span>: price found by the crawler and passed safety checks. Counted.
+                </li>
+                <li>
+                  <span className="font-semibold" style={{ color: GREEN }}>In score — human ✓ / ✎</span>: a person approved (or edited) the price. Counted.
+                </li>
+                <li>
+                  <span className="font-semibold" style={{ color: "#92400e" }}>Needs human review</span>: price guessed from other locations of the same brand. Not counted until a person clicks Verify.
+                </li>
+                <li>
+                  <span className="font-semibold">Not in score — rejected / no price / excluded</span>: not counted. Excluded = non-camp (daycare, park, retail workshop).
+                </li>
+              </ul>
+            </div>
+            <div>
+              <div className="mb-1 text-[11px] font-semibold" style={{ color: NAVY }}>
+                What the columns mean
+              </div>
+              <ul className="space-y-1" style={{ color: MUTED }}>
+                <li><span className="font-semibold" style={{ color: NAVY }}>Source query</span>: the exact search phrase that surfaced this camp.</li>
+                <li><span className="font-semibold" style={{ color: NAVY }}>Source URL</span>: click "Open" to see the page the price came from.</li>
+                <li><span className="font-semibold" style={{ color: NAVY }}>Price/wk</span>: typical weekly tuition for Summer 2026. Amber "guard: N dropped" means the crawler read a suspicious number and threw it away.</li>
+                <li><span className="font-semibold" style={{ color: NAVY }}>Verification</span>: the only column where you take action.</li>
+                <li><span className="font-semibold" style={{ color: NAVY }}>Last seen</span>: when this row was last refreshed.</li>
+              </ul>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div
         className="mb-3 flex flex-wrap items-center gap-2 rounded-md border p-2"
         style={{ borderColor: BORDER, backgroundColor: SOFT }}
       >

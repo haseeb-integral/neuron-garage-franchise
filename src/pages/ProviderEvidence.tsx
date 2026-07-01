@@ -4,6 +4,7 @@ import { AlertTriangle, ArrowLeft, Download, ExternalLink, Loader2, MapPin, Sear
 import { PageHeader } from "@/components/PageHeader";
 import { useProviderEvidence, type EvidenceRow, type DroppedPrice } from "@/lib/mvs/useProviderEvidence";
 import { classifyExclusion } from "@/lib/mvs/classifyExclusion";
+import { setProviderVerification, type VerifyAction } from "@/lib/mvs/verifyProvider";
 import {
   Sheet,
   SheetContent,
@@ -13,6 +14,7 @@ import {
 } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ProviderScreenshotButton } from "@/components/phase2-demo/ProviderScreenshotButton";
+import { toast } from "sonner";
 
 
 const NAVY = "#07142f";

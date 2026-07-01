@@ -1172,8 +1172,9 @@ Deno.serve(async (req) => {
         url: website_url ?? source_listing_url,
         website_url,
         source_listing_url,
-        price_min: m.price_min ?? null,
-        price_max: m.price_max ?? null,
+        // B-fix: guard against extraction assigning min>max (e.g. "$45–$415" parsed backwards).
+        price_min: (m.price_min != null && m.price_max != null && m.price_min > m.price_max) ? m.price_max : (m.price_min ?? null),
+        price_max: (m.price_min != null && m.price_max != null && m.price_min > m.price_max) ? m.price_min : (m.price_max ?? null),
         category_raw: m.category_raw ?? null,
         screenshot_url: screenshotPath,
         confidence: Math.max(0, Math.min(1, m.confidence ?? 0.5)),

@@ -300,6 +300,17 @@ Deno.serve(async (req) => {
         console.warn("[mvs-run-pipeline] missing prices catchup failed (non-fatal):", catchErr);
       }
 
+      // Stage 6: Re-classify tiers. Catch-up fills price_min/price_max on rows
+      // that were tagged "mid" (default when price unknown). Without this
+      // second classify pass, a camp priced $500/wk stays tagged "mid" and
+      // never counts toward Premium Providers.
+      try {
+        await invokeStep("classify", { city, reclassify: true });
+      } catch (reclErr) {
+        console.warn("[mvs-run-pipeline] post-catchup reclassify failed (non-fatal):", reclErr);
+      }
+
+
       await admin
         .from("mvs_pipeline_runs")
         .update({

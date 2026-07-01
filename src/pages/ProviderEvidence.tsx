@@ -122,6 +122,37 @@ export default function ProviderEvidence() {
   }, [rowsWithExclusion]);
   const excludedTotal = rows.length - activeCount;
 
+  // Row-level status used by the Verification column + header counter. Only
+  // computed for active (non-excluded) camps, since excluded rows already show
+  // their own chip.
+  type RowStatus =
+    | "in_score_crawler"
+    | "in_score_human"
+    | "needs_review"
+    | "rejected"
+    | "no_price";
+  function rowStatus(r: EvidenceRow): RowStatus {
+    if (r.verification_status === "rejected") return "rejected";
+    const hasPrice = r.price_min != null || r.price_max != null;
+    if (!hasPrice) return "no_price";
+    if (r.verification_status === "verified" || r.verification_status === "edited")
+      return "in_score_human";
+    if (r.price_needs_review) return "needs_review";
+    return "in_score_crawler";
+  }
+  const statusCounts = useMemo(() => {
+    const c = { in_score: 0, needs_review: 0, rejected: 0, no_price: 0 };
+    for (const x of rowsWithExclusion) {
+      if (x.exclusion) continue;
+      const s = rowStatus(x.row);
+      if (s === "in_score_crawler" || s === "in_score_human") c.in_score += 1;
+      else if (s === "needs_review") c.needs_review += 1;
+      else if (s === "rejected") c.rejected += 1;
+      else if (s === "no_price") c.no_price += 1;
+    }
+    return c;
+  }, [rowsWithExclusion]);
+
   // Guard-summary rollup: flatten every dropped price across active camps so we
   // can show "Guard dropped: N prices across M providers" and list them out.
   const guardSummary = useMemo(() => {
@@ -270,6 +301,8 @@ export default function ProviderEvidence() {
           <strong>{city || "—"}</strong>
           {state && <span style={{ color: MUTED }}>, {state}</span>}
         </div>
+
+
         <div className="ml-auto flex items-center gap-2 text-[11px]" style={{ color: MUTED }}>
           {loading ? (
             "Loading…"
@@ -307,6 +340,28 @@ export default function ProviderEvidence() {
           <Download className="h-3 w-3" /> Export CSV
         </button>
       </div>
+
+      {!loading && rows.length > 0 && (
+        <div className="mb-3 text-[11px]" style={{ color: MUTED }}>
+          <span style={{ color: GREEN, fontWeight: 600 }}>{statusCounts.in_score} in score</span>
+          <span> · </span>
+          <span style={{ color: AMBER, fontWeight: 600 }}>
+            {statusCounts.needs_review} need human review
+          </span>
+          <span> · </span>
+          <span>{statusCounts.rejected} rejected</span>
+          <span> · </span>
+          <span>{statusCounts.no_price} no price</span>
+          {excludedTotal > 0 && (
+            <>
+              <span> · </span>
+              <span>{excludedTotal} excluded</span>
+            </>
+          )}
+        </div>
+      )}
+
+
 
       {!loading && guardSummary.dropCount > 0 && (
         <div className="mb-3">
@@ -645,61 +700,144 @@ export default function ProviderEvidence() {
                       {r.matched_query ? "Phase 2" : "—"}
                     </td>
                     <td className="border-b px-3 py-2" style={{ borderColor: BORDER }}>
-                      <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
-                        {r.verification_status ? (
-                          <span
-                            className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
-                            style={{
-                              backgroundColor:
-                                r.verification_status === "verified" ? "#e7f7ee" :
-                                r.verification_status === "rejected" ? "#fce7ec" : "#fef3c7",
-                              color:
-                                r.verification_status === "verified" ? GREEN :
-                                r.verification_status === "rejected" ? "#a3142b" : "#92400e",
-                            }}
-                            title={r.verified_at ? `by human on ${new Date(r.verified_at).toLocaleDateString()}` : undefined}
-                          >
-                            {r.verification_status === "verified" ? "✓ Verified" :
-                             r.verification_status === "rejected" ? "✗ Rejected" : "✎ Edited"}
-                          </span>
-                        ) : exclusion ? (
-                          <span
-                            className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
-                            style={{ backgroundColor: "#eef2f7", color: MUTED }}
-                            title={exclusion.reason}
-                          >
-                            Excluded — {exclusion.label}
-                          </span>
-                        ) : (
-                          <span
-                            className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
-                            style={{ backgroundColor: "#eef2f7", color: MUTED }}
-                          >
-                            Needs review
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          disabled={busyId === r.id}
-                          onClick={() => handleVerify(r, "verified")}
-                          className="rounded border px-1.5 py-0.5 text-[10px] font-semibold hover:bg-[#e7f7ee] disabled:opacity-50"
-                          style={{ borderColor: BORDER, color: GREEN }}
-                          title="Mark this price as human-verified"
-                        >
-                          Verify
-                        </button>
-                        <button
-                          type="button"
-                          disabled={busyId === r.id}
-                          onClick={() => handleVerify(r, "rejected")}
-                          className="rounded border px-1.5 py-0.5 text-[10px] font-semibold hover:bg-[#fce7ec] disabled:opacity-50"
-                          style={{ borderColor: BORDER, color: "#a3142b" }}
-                          title="Reject and clear this price"
-                        >
-                          Reject
-                        </button>
+                      <div
+                        className="flex items-center gap-1 flex-wrap"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {(() => {
+                          // Excluded rows: single grey chip, no buttons.
+                          if (exclusion) {
+                            return (
+                              <span
+                                className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                                style={{ backgroundColor: "#eef2f7", color: MUTED }}
+                                title={exclusion.reason}
+                              >
+                                Not in score — excluded
+                              </span>
+                            );
+                          }
+                          const status = rowStatus(r);
+                          if (status === "in_score_crawler") {
+                            return (
+                              <span
+                                className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                                style={{ backgroundColor: "#e7f7ee", color: GREEN }}
+                                title="Crawler read this price and it passed the safety guards. Counted in the Market Validation score."
+                              >
+                                In score — crawler
+                              </span>
+                            );
+                          }
+                          if (status === "in_score_human") {
+                            const label =
+                              r.verification_status === "edited" ? "In score — human ✎" : "In score — human ✓";
+                            return (
+                              <>
+                                <span
+                                  className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                                  style={{ backgroundColor: "#e7f7ee", color: GREEN }}
+                                  title={
+                                    r.verified_at
+                                      ? `Human-approved on ${new Date(r.verified_at).toLocaleDateString()}`
+                                      : "Human-approved"
+                                  }
+                                >
+                                  {label}
+                                </span>
+                                <button
+                                  type="button"
+                                  disabled={busyId === r.id}
+                                  onClick={() => handleVerify(r, "rejected")}
+                                  className="text-[10px] font-semibold underline disabled:opacity-50"
+                                  style={{ color: MUTED }}
+                                  title="Undo — reject this price"
+                                >
+                                  Undo
+                                </button>
+                              </>
+                            );
+                          }
+                          if (status === "rejected") {
+                            return (
+                              <>
+                                <span
+                                  className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                                  style={{ backgroundColor: "#eef2f7", color: MUTED }}
+                                  title="A human rejected this price. It is NOT counted in the score."
+                                >
+                                  Not in score — rejected
+                                </span>
+                                <button
+                                  type="button"
+                                  disabled={busyId === r.id}
+                                  onClick={() => handleVerify(r, "verified")}
+                                  className="text-[10px] font-semibold underline disabled:opacity-50"
+                                  style={{ color: MUTED }}
+                                  title="Restore verification (does not bring back the original price)"
+                                >
+                                  Restore
+                                </button>
+                              </>
+                            );
+                          }
+                          if (status === "no_price") {
+                            return (
+                              <span
+                                className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                                style={{ backgroundColor: "#eef2f7", color: MUTED }}
+                                title="No price was found. Not counted in the score."
+                              >
+                                Not in score — no price
+                              </span>
+                            );
+                          }
+                          // needs_review — the only place we show loud action buttons.
+                          return (
+                            <>
+                              <span
+                                className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                                style={{ backgroundColor: "#fef3c7", color: "#92400e" }}
+                                title="Price was guessed from other locations of the same brand. Please Verify, Reject, or Edit."
+                              >
+                                Needs human review
+                              </span>
+                              <button
+                                type="button"
+                                disabled={busyId === r.id}
+                                onClick={() => handleVerify(r, "verified")}
+                                className="rounded border px-1.5 py-0.5 text-[10px] font-semibold hover:bg-[#e7f7ee] disabled:opacity-50"
+                                style={{ borderColor: BORDER, color: GREEN }}
+                                title="Mark this price as human-verified"
+                              >
+                                Verify
+                              </button>
+                              <button
+                                type="button"
+                                disabled={busyId === r.id}
+                                onClick={() => handleVerify(r, "rejected")}
+                                className="rounded border px-1.5 py-0.5 text-[10px] font-semibold hover:bg-[#fce7ec] disabled:opacity-50"
+                                style={{ borderColor: BORDER, color: "#a3142b" }}
+                                title="Reject and clear this price"
+                              >
+                                Reject
+                              </button>
+                              <button
+                                type="button"
+                                disabled={busyId === r.id}
+                                onClick={() => setSelected(r)}
+                                className="rounded border px-1.5 py-0.5 text-[10px] font-semibold hover:bg-[#eef2ff] disabled:opacity-50"
+                                style={{ borderColor: BORDER, color: BLUE }}
+                                title="Open drawer to edit the price"
+                              >
+                                Edit
+                              </button>
+                            </>
+                          );
+                        })()}
                       </div>
                     </td>
+
                     <td
                       className="border-b px-3 py-2 text-right"
                       style={{ borderColor: BORDER, color: MUTED }}

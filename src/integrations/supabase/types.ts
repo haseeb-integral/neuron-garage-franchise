@@ -1624,6 +1624,39 @@ export type Database = {
         }
         Relationships: []
       }
+      mvs_tier_snapshots: {
+        Row: {
+          budget_count: number
+          city: string
+          created_at: string
+          id: string
+          mid_count: number
+          premium_count: number
+          total_priced: number
+          trigger_source: string | null
+        }
+        Insert: {
+          budget_count?: number
+          city: string
+          created_at?: string
+          id?: string
+          mid_count?: number
+          premium_count?: number
+          total_priced?: number
+          trigger_source?: string | null
+        }
+        Update: {
+          budget_count?: number
+          city?: string
+          created_at?: string
+          id?: string
+          mid_count?: number
+          premium_count?: number
+          total_priced?: number
+          trigger_source?: string | null
+        }
+        Relationships: []
+      }
       mvs_weeks: {
         Row: {
           confidence: number | null
@@ -3193,6 +3226,10 @@ export type Database = {
           source_queue: string
         }
         Returns: number
+      }
+      mvs_check_tier_regression: {
+        Args: { _city: string; _trigger?: string }
+        Returns: Json
       }
       mvs_qa_resolve: {
         Args: {

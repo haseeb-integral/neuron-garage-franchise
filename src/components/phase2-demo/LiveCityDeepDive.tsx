@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 import { classifyExclusion } from "@/lib/mvs/classifyExclusion";
 import { unpricedBreakdown } from "@/lib/mvs/unpricedReason";
+import { CrawlerTelemetryCard } from "@/components/phase2-demo/CrawlerTelemetryCard";
 
 
 
@@ -509,6 +510,12 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
   const [catchingUp, setCatchingUp] = useState(false);
   const [catchupProgress, setCatchupProgress] = useState({ current: 0, total: 0 });
   const [showExcluded, setShowExcluded] = useState(false);
+  const [regressionCheck, setRegressionCheck] = useState<{
+    prev: number | null;
+    curr: number;
+    regressed: boolean;
+    at: string;
+  } | null>(null);
 
   // Strict Camp View — split providers into real camps vs non-camps. Raw
   // rows are preserved in the DB; this only affects headline counters and
@@ -559,10 +566,36 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
     } catch (err) {
       console.warn("[Catchup] reclassify failed (non-fatal):", err);
     }
+    // T2 — Regression guard: compare premium count vs previous snapshot.
+    // If it dropped ≥20% we fire a notification via the RPC and show a
+    // small inline warning here.
+    try {
+      const { data: reg } = await supabase.rpc("mvs_check_tier_regression", {
+        _city: cityKey,
+        _trigger: "client_catchup",
+      });
+      if (reg && typeof reg === "object") {
+        const r = reg as any;
+        setRegressionCheck({
+          prev: r.previous?.premium ?? null,
+          curr: r.current?.premium ?? 0,
+          regressed: !!r.regressed,
+          at: new Date().toISOString(),
+        });
+        if (r.regressed) {
+          toast.warning(
+            `Premium count dropped from ${r.previous.premium} to ${r.current.premium} in ${cityDisplay}. Check the notification bell.`,
+          );
+        }
+      }
+    } catch (err) {
+      console.warn("[Catchup] regression check failed (non-fatal):", err);
+    }
     setCatchingUp(false);
     toast.success(`Catch-up finished for ${unpriced.length} camps!`);
     refresh();
   }
+
 
 
   const provCount = activeCamps.length;
@@ -768,7 +801,28 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
             ))}
           </div>
         )}
+        <CrawlerTelemetryCard providers={activeCamps as any} cityDisplay={cityDisplay} />
+        {regressionCheck && (
+          <div
+            className={`mt-2 rounded-md border px-3 py-1.5 text-[11px] ${
+              regressionCheck.regressed
+                ? "border-[#f5c2c7] bg-[#fdecea] text-[#a3142b]"
+                : "border-[#c8e6d0] bg-[#eaf7ee] text-[#1d6b32]"
+            }`}
+          >
+            <strong>Regression check:</strong>{" "}
+            {regressionCheck.regressed ? "⚠ " : "✓ "}
+            Premium tier{" "}
+            {regressionCheck.prev != null ? `${regressionCheck.prev} → ` : ""}
+            {regressionCheck.curr}
+            {regressionCheck.regressed
+              ? " — sharp drop detected. See notification bell."
+              : " — no regression."}
+          </div>
+        )}
       </div>
+
+
 
       <RunPipelineButton city={cityKey} onComplete={refresh} />
       {/* Composite hero card */}

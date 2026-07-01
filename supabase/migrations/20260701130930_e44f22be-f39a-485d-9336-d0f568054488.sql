@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.mvs_check_tier_regression(text, text) FROM PUBLIC, anon;

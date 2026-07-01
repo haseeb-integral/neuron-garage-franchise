@@ -2,11 +2,13 @@
 
 # **Feature 1A — Market Validation Engine**
 
-## **v1.5 Spec (Lovable internal — updated 2026-07-01)**
+## **v1.6 Spec (Lovable internal — updated 2026-07-01)**
 
 **Status:** Shipped, evolving. **Source of truth:** This chat + MVS Methodology doc. **Naming:** MVS (Market Validation Score). Do not surface PEES anywhere in the app or PDF.
 
 > **What changed since the original v1.0 spec:** discovery expanded from Sawyer-only to 5 sources; Market Absorption pillar retired; registration-page scraping (Stage 3) retired; per-pillar confidence replaced the global low-confidence badge; Firecrawl cap raised to 50 with per-step sub-caps; freshness rules (0–90 skip / 91–120 prompt / >120 fresh) and soft-fail fallback (`done_stale`) added; cards redesigned to Result → Evidence → Trust; **pricing crawler expanded from 3 steps to 9 steps** (catch-up Google search, marketplace listing reads, relaxed "trusted source" price rule, brand price propagation, directory-first queries, Google AI Overview fallback, manual Verify/Reject/Edit for uncertain prices).
+
+> **What changed since v1.5 (this v1.6 pass, 2026-07-01):** added the **"Import from Manus CSV"** button on the Market Validation page for bulk-adding cities to the shortlist. Client-side CSV parse using `papaparse`, preview dialog with per-row status chips (Will add / Already in shortlist / Unknown city / Below CSI / Invalid), state-name normalization (e.g. "Texas" → "TX"), CSI-score threshold slider, dedupe on city + state, and unknown-city warnings matched against `us_cities_scored`. Added two nullable reference-only columns on `mvs_shortlist_cities`: `manus_csi_score` (numeric) and `manus_imported_at` (timestamptz). **Never triggers the pipeline** — imported cities land with the same "Not yet run" state as manual adds. Scoring formula, 9-step crawler, freshness rules, and Firecrawl cap are unchanged.
 
 ---
 
@@ -26,7 +28,7 @@ Not in scope: predicting any individual Neuron Garage location's success. Site-l
 
 ---
 
-## **2. v1.5 scope (current)**
+## **2. v1.6 scope (current)**
 
 | Decision | Current behavior | Deferred |
 | :---- | :---- | :---- |
@@ -44,7 +46,7 @@ Not in scope: predicting any individual Neuron Garage location's success. Site-l
 
 ---
 
-## **3. MVS composite — v1.5**
+## **3. MVS composite — v1.6**
 
 ```
 MVS = 0.2667 × Pricing Acceptance
@@ -122,7 +124,7 @@ See §5. All math lives in one helper. No stored composite scores — always rec
 
 ---
 
-## **5. Sub-score formulas + v1.5 reference ranges**
+## **5. Sub-score formulas + v1.6 reference ranges**
 
 Normalization is **min-max against fixed reference ranges** (capped 0–100). Ranges below come from the methodology doc.
 
@@ -136,7 +138,7 @@ Normalization is **min-max against fixed reference ranges** (capped 0–100). Ra
 
 ### Score 2 — Market Absorption — RETIRED (weight 0)
 
-> **Deprecated in v1.5.** Removed because sellout-rate scraping was unreliable. Formula preserved below for audit only.
+> **Deprecated in v1.6.** Removed because sellout-rate scraping was unreliable. Formula preserved below for audit only.
 
 ```
 Sellout Rate            = (sold_out weeks + waitlist weeks) ÷ total weeks scraped
@@ -252,7 +254,7 @@ Client never holds Firecrawl or Lovable AI Gateway keys. Every function checks `
 
 ---
 
-## **10. Out of scope for v1.5 (do not drift)**
+## **10. Out of scope for v1.6 (do not drift)**
 
 * Apify Google Maps actor as a separate discovery source.
 * Inngest/Trigger.dev scheduling.

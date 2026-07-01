@@ -27,7 +27,7 @@ type ParsedRow = {
   rank: number | null;
 };
 
-type RowStatus = "will_add" | "duplicate" | "unknown_city" | "below_threshold" | "invalid";
+type RowStatus = "will_add" | "duplicate" | "duplicate_in_file" | "unknown_city" | "below_threshold" | "invalid";
 
 type PreviewRow = ParsedRow & {
   status: RowStatus;

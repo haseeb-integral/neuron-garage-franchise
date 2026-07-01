@@ -478,6 +478,26 @@ export default function MVSMethodology() {
             </div>
           </section>
 
+          {/* Section 5b — Manus CSV import (v1.6) */}
+          <section className="mb-10">
+            <SectionTitle n={5.5 as unknown as number}>Shortlist Intake — Manus CSV Import (v1.6)</SectionTitle>
+            <p className="text-[13px] leading-relaxed text-[#1a2540] mb-3">
+              New in v1.6: an <strong>"Import from Manus CSV"</strong> button on the Market Validation page.
+              It lets you bulk-add cities to the MVS shortlist from a Manus CSI export instead of typing
+              them in one by one. This is an <strong>intake convenience only</strong> — it does not touch
+              the scoring formula, the 9-step pricing crawler, freshness rules, or the Firecrawl cap.
+            </p>
+            <ul className="list-disc pl-5 space-y-1.5 text-[13px] leading-relaxed text-[#1a2540]">
+              <li><strong>Required CSV headers:</strong> <code>city</code>, <code>state</code> (2-letter USPS code — full names like "Texas" are auto-converted). Optional: <code>manus_csi_score</code>, <code>rank</code>. Any other columns Manus exports are silently ignored.</li>
+              <li><strong>Preview before save:</strong> the dialog parses the file client-side (via <code>papaparse</code>) and shows a per-row status chip — ✅ Will add / ⏭ Already in shortlist / ⚠ Unknown city / Below CSI / Invalid.</li>
+              <li><strong>Dedupe:</strong> matched on <em>city + state</em> together against existing <code>mvs_shortlist_cities</code> rows. Never modifies or overwrites existing rows.</li>
+              <li><strong>Unknown-city guard:</strong> each row is checked against <code>us_cities_scored</code>. Unrecognized cities are flagged and skipped so misspellings never enter the shortlist.</li>
+              <li><strong>CSI threshold slider:</strong> live-filters the preview so you can pre-screen a large Manus file (e.g. 800 rows) down to only the cities above your minimum score.</li>
+              <li><strong>Two nullable reference columns</strong> on <code>mvs_shortlist_cities</code>: <code>manus_csi_score</code> (numeric) and <code>manus_imported_at</code> (timestamptz). Stored for audit only — never fed into any MVS calculation.</li>
+              <li><strong>Never triggers the pipeline.</strong> Imported cities land with the same "Not yet run" state as manual adds. You still click Run Pipeline per city, exactly as before.</li>
+            </ul>
+          </section>
+
           {/* Section 6 — Shared infra */}
           <section className="mb-10">
             <SectionTitle n={6}>Shared Data & Tooling Stack</SectionTitle>

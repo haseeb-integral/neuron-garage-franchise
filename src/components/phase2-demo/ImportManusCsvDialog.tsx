@@ -91,7 +91,7 @@ export function ImportManusCsvDialog({ onImported }: Props) {
     if (!open) return;
     void (async () => {
       const [{ data: existingData }, { data: cityData }] = await Promise.all([
-        supabase.from("mvs_shortlist_cities").select("city, state"),
+        supabase.from("mvs_manus_cities").select("city, state"),
         supabase.from("us_cities_scored").select("city_name, state_abbr").limit(50000),
       ]);
       const ex = new Set<string>();

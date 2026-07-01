@@ -645,8 +645,24 @@ export default function ProviderEvidence() {
                       {r.matched_query ? "Phase 2" : "—"}
                     </td>
                     <td className="border-b px-3 py-2" style={{ borderColor: BORDER }}>
-                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                        {exclusion ? (
+                      <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                        {r.verification_status ? (
+                          <span
+                            className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                            style={{
+                              backgroundColor:
+                                r.verification_status === "verified" ? "#e7f7ee" :
+                                r.verification_status === "rejected" ? "#fce7ec" : "#fef3c7",
+                              color:
+                                r.verification_status === "verified" ? GREEN :
+                                r.verification_status === "rejected" ? "#a3142b" : "#92400e",
+                            }}
+                            title={r.verified_at ? `by human on ${new Date(r.verified_at).toLocaleDateString()}` : undefined}
+                          >
+                            {r.verification_status === "verified" ? "✓ Verified" :
+                             r.verification_status === "rejected" ? "✗ Rejected" : "✎ Edited"}
+                          </span>
+                        ) : exclusion ? (
                           <span
                             className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
                             style={{ backgroundColor: "#eef2f7", color: MUTED }}
@@ -664,19 +680,21 @@ export default function ProviderEvidence() {
                         )}
                         <button
                           type="button"
-                          disabled
-                          className="rounded border px-1.5 py-0.5 text-[10px] font-semibold opacity-50"
-                          style={{ borderColor: BORDER, color: MUTED }}
-                          title="Coming in next phase"
+                          disabled={busyId === r.id}
+                          onClick={() => handleVerify(r, "verified")}
+                          className="rounded border px-1.5 py-0.5 text-[10px] font-semibold hover:bg-[#e7f7ee] disabled:opacity-50"
+                          style={{ borderColor: BORDER, color: GREEN }}
+                          title="Mark this price as human-verified"
                         >
                           Verify
                         </button>
                         <button
                           type="button"
-                          disabled
-                          className="rounded border px-1.5 py-0.5 text-[10px] font-semibold opacity-50"
-                          style={{ borderColor: BORDER, color: MUTED }}
-                          title="Coming in next phase"
+                          disabled={busyId === r.id}
+                          onClick={() => handleVerify(r, "rejected")}
+                          className="rounded border px-1.5 py-0.5 text-[10px] font-semibold hover:bg-[#fce7ec] disabled:opacity-50"
+                          style={{ borderColor: BORDER, color: "#a3142b" }}
+                          title="Reject and clear this price"
                         >
                           Reject
                         </button>

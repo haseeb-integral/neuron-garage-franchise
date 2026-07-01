@@ -180,7 +180,7 @@ export function useProviderEvidence(cityKey: string): EvidenceData {
     return () => {
       cancelled = true;
     };
-  }, [cityKey]);
+  }, [cityKey, nonce]);
 
-  return data;
+  return { ...data, refetch: () => setNonce((n) => n + 1) };
 }

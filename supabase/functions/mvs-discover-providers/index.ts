@@ -35,6 +35,148 @@ async function fetchWithTimeout(url: string, opts: RequestInit, ms: number): Pro
   }
 }
 
+// ---------------------------------------------------------------------------
+// B1: Brand price propagation (same-city siblings)
+// ---------------------------------------------------------------------------
+// When a well-known brand has ≥2 same-city locations with prices that agree
+// within ±15%, we copy the median price into any UNPRICED same-city sibling
+// of that brand. The copied row is flagged `price_derived_from_brand=true`
+// and `price_needs_review=true`; the useLiveMvs mapper nulls those prices
+// out before feeding computeMvs, so scoring math is unaffected until a
+// human confirms. One-line revert (per city):
+//   UPDATE public.mvs_providers
+//      SET price_min=NULL, price_max=NULL, price_derived_from_brand=false,
+//          price_needs_review=false, price_derivation_meta=NULL
+//    WHERE city = '<City, ST>' AND price_derived_from_brand = true;
+function brandTokenOf(name: string | null | undefined): string {
+  if (!name) return "";
+  // Strip common location-suffix patterns then normalize.
+  let s = String(name).toLowerCase();
+  s = s.split(/\s+[-–—@|]\s+/)[0]; // "Steve & Kate's Camp - Central Austin"
+  s = s.split(/\s+\bat\b\s+/)[0];   // "The Little Gym at Bee Cave"
+  s = s.split(/\s*\(/)[0];            // "School of Rock (Gahanna)"
+  s = s.split(/\s*,\s*/)[0];          // "Camp Foo, North Campus"
+  s = s.replace(/['’`]/g, "");
+  s = s.replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+  return s;
+}
+
+function medianNum(arr: number[]): number {
+  const s = [...arr].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+
+async function propagateBrandPricesForCity(
+  admin: any,
+  city: string,
+): Promise<Record<string, unknown>> {
+  const summary: Record<string, unknown> = { brands_checked: 0, brands_applied: 0, rows_updated: 0, skipped: [] as any[] };
+  try {
+    const { data: rows, error } = await admin
+      .from("mvs_providers")
+      .select("id, name, price_min, price_max, price_needs_review, price_derived_from_brand")
+      .eq("city", city);
+    if (error) throw error;
+
+    // Group by brand token.
+    const byBrand = new Map<string, Array<any>>();
+    for (const r of rows ?? []) {
+      const tok = brandTokenOf(r.name);
+      // Require multi-word brand token to avoid accidental collisions on generic single words.
+      if (!tok || tok.split(" ").length < 2) continue;
+      if (!byBrand.has(tok)) byBrand.set(tok, []);
+      byBrand.get(tok)!.push(r);
+    }
+
+    const skipped: any[] = [];
+    let rowsUpdated = 0;
+    let brandsApplied = 0;
+
+    for (const [brand, group] of byBrand.entries()) {
+      if (group.length < 2) continue; // need siblings to compare
+      summary.brands_checked = (summary.brands_checked as number) + 1;
+
+      // Priced, human-trusted siblings only.
+      const priced = group.filter(
+        (r) =>
+          !r.price_needs_review &&
+          !r.price_derived_from_brand &&
+          (r.price_min != null || r.price_max != null),
+      );
+      // Unpriced siblings that we might fill.
+      const unpriced = group.filter(
+        (r) => r.price_min == null && r.price_max == null,
+      );
+
+      if (priced.length < 2 || unpriced.length === 0) continue;
+
+      // Use price_min when present else price_max (matches scoring proxy).
+      const proxy = (r: any): number | null => {
+        const v = r.price_min != null ? r.price_min : r.price_max;
+        return v != null && Number.isFinite(Number(v)) ? Number(v) : null;
+      };
+      const priceVals = priced.map(proxy).filter((v): v is number => v != null);
+      if (priceVals.length < 2) continue;
+
+      // Agreement guard: max/min ratio within 1.15.
+      const lo = Math.min(...priceVals);
+      const hi = Math.max(...priceVals);
+      if (lo <= 0) continue;
+      const ratio = hi / lo;
+      if (ratio > 1.15) {
+        skipped.push({ brand, reason: "disagreement", ratio: Number(ratio.toFixed(3)), n: priceVals.length });
+        continue;
+      }
+
+      const med = medianNum(priceVals);
+      const medMax = medianNum(
+        priced
+          .map((r) => (r.price_max != null && Number.isFinite(Number(r.price_max)) ? Number(r.price_max) : null))
+          .filter((v): v is number => v != null),
+      );
+      const agreementPct = Number(((1 - (hi - lo) / hi) * 100).toFixed(1));
+      const sourceIds = priced.map((r) => r.id);
+
+      for (const u of unpriced) {
+        // Never overwrite: only touch rows where both prices are null.
+        const { error: upErr } = await admin
+          .from("mvs_providers")
+          .update({
+            price_min: med,
+            price_max: Number.isFinite(medMax) && medMax >= med ? medMax : null,
+            price_derived_from_brand: true,
+            price_needs_review: true,
+            confidence: 0.5,
+            price_derivation_meta: {
+              brand_token: brand,
+              source_ids: sourceIds,
+              siblings_count: priceVals.length,
+              agreement_pct: agreementPct,
+              ratio: Number(ratio.toFixed(3)),
+              median_price_min: med,
+              median_price_max: Number.isFinite(medMax) ? medMax : null,
+              city,
+              derived_at: new Date().toISOString(),
+            },
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", u.id)
+          .is("price_min", null)
+          .is("price_max", null);
+        if (!upErr) rowsUpdated += 1;
+      }
+      brandsApplied += 1;
+    }
+
+    summary.brands_applied = brandsApplied;
+    summary.rows_updated = rowsUpdated;
+    summary.skipped = skipped;
+  } catch (e) {
+    summary.error = e instanceof Error ? e.message : String(e);
+  }
+  return summary;
+
 // Source priority for dedupe: when the same provider appears in multiple
 // sources, the row is tagged with the highest-priority platform.
 type Platform = "sawyer" | "activityhero" | "google_search" | "google_maps" | "yelp";

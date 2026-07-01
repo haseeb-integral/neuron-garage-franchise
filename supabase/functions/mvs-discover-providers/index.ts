@@ -1579,8 +1579,10 @@ ${PRICE_RULES}
               if (isB3) {
                 patch.platform = "google_ai_overview";
                 patch.price_needs_review = true;
-                patch.matched_query = b3Text!.slice(0, 500);
-                if (b3Source && !p.source_listing_url) patch.source_listing_url = b3Source;
+                // B3 evidence lives in dedicated columns so it never gets
+                // confused with a search query text.
+                patch.ai_overview_snippet = b3Text!.slice(0, 1000);
+                if (b3Source) patch.ai_overview_source_url = b3Source;
               } else if (!p.source_listing_url && discoveredUrl) {
                 patch.source_listing_url = discoveredUrl;
               }

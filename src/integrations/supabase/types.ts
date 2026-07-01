@@ -1459,6 +1459,8 @@ export type Database = {
       }
       mvs_providers: {
         Row: {
+          ai_overview_snippet: string | null
+          ai_overview_source_url: string | null
           category_classified: string | null
           category_raw: string | null
           city: string
@@ -1488,6 +1490,8 @@ export type Database = {
           website_url: string | null
         }
         Insert: {
+          ai_overview_snippet?: string | null
+          ai_overview_source_url?: string | null
           category_classified?: string | null
           category_raw?: string | null
           city: string
@@ -1517,6 +1521,8 @@ export type Database = {
           website_url?: string | null
         }
         Update: {
+          ai_overview_snippet?: string | null
+          ai_overview_source_url?: string | null
           category_classified?: string | null
           category_raw?: string | null
           city?: string

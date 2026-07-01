@@ -158,6 +158,8 @@ export default function ProviderEvidence() {
       "extraction_phase",
       "discovered_at",
       "exclusion_reason",
+      "guard_dropped_count",
+      "guard_dropped_details",
     ];
     const lines = [headers.join(",")];
     for (const { row: r, exclusion } of filtered) {
@@ -175,6 +177,9 @@ export default function ProviderEvidence() {
         r.url ||
         r.website_url ||
         "";
+      const guardDetails = (r.guard_drop ?? [])
+        .map((d) => `${d.field}=${d.value} (${guardReason(d)})`)
+        .join("; ");
       lines.push(
         [
           csvEscape(r.name),
@@ -191,9 +196,12 @@ export default function ProviderEvidence() {
           csvEscape("Phase 2"),
           csvEscape(r.created_at),
           csvEscape(exclusion?.reason ?? ""),
+          csvEscape(r.guard_drop?.length ?? 0),
+          csvEscape(guardDetails),
         ].join(",")
       );
     }
+
     const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");

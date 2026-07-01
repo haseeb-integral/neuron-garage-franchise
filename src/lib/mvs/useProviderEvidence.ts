@@ -71,6 +71,7 @@ export type EvidenceData = {
   runCreatedAt: string | null;
   loading: boolean;
   error: string | null;
+  refetch?: () => void;
 };
 
 function norm(s: string | null | undefined): string {
@@ -78,6 +79,7 @@ function norm(s: string | null | undefined): string {
 }
 
 export function useProviderEvidence(cityKey: string): EvidenceData {
+  const [nonce, setNonce] = useState(0);
   const [data, setData] = useState<EvidenceData>({
     rows: [],
     queries: [],

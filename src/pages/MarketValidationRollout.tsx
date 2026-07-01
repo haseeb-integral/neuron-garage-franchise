@@ -697,6 +697,7 @@ export default function MarketValidationRollout() {
         </div>
         <div className="flex items-center gap-2">
           <AddCityDialog onAdd={addCity} />
+          <ImportManusCsvDialog onImported={refreshShortlist} />
           <button
             type="button"
             onClick={fetchAll}

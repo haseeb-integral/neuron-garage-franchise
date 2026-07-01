@@ -273,7 +273,7 @@ export default function MVSMethodology() {
       eyebrow="Methodology"
       eyebrowIcon={BarChart3}
       title={<>How the MVS (Market Validation Score) is Calculated</>}
-      subtitle="Methodology & Data Documentation — Feature 1A · Market Validation Engine"
+      subtitle="Methodology & Data Documentation — Feature 1A · Market Validation Engine · v1.6 (2026-07-01)"
       action={
         <DownloadMDButton
           content={generateMVSMarkdown()}

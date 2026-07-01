@@ -723,7 +723,7 @@ export default function ProviderEvidence() {
                                 <button
                                   type="button"
                                   disabled={busyId === r.id}
-                                  onClick={() => handleVerify(r, "rejected")}
+                                  onClick={() => confirmReject(r.name || "this price", () => handleVerify(r, "rejected"))}
                                   className="text-[10px] font-semibold underline disabled:opacity-50"
                                   style={{ color: MUTED }}
                                   title="Undo — reject this price"

@@ -69,7 +69,13 @@ Each entry below names the **secret** that the corresponding key is stored under
 
 ### US Census ACS
 - **Secret name:** `CENSUS_API_KEY`
-- **Edge functions:** `seed-cities-database`, `backfill-census-gaps`
+- **Edge functions:** `seed-cities-database`, `backfill-census-gaps`, `_shared/metricFetchers.ts` (SOW sprint metrics), `mvs-acs-pull`, `_shared/census.ts` (tract-level site analysis)
+- **Vintage in use:** ACS 5-year **2024** (data span 2020–2024) for city-place pulls (`seed-cities-database`, `backfill-census-gaps`, `_shared/metricFetchers.ts`). Tract/county pulls for Site Analysis (`_shared/census.ts`, `mvs-acs-pull`) currently use vintage 2022 — bump when refreshed.
+- **% Dual-Income Households formula:** `B23007_006E / B23007_002E`
+  - Numerator `B23007_006E` = married-couple family with own children <18, husband in labor force (employed/AF) **AND** wife in labor force.
+  - Denominator `B23007_002E` = ALL family types (married + single-parent) with own children <18.
+  - Single-parent families stay in the denominator by design — this measures the prevalence of the dual-earner family profile in the market, not the employment rate among married couples.
+  - The earlier formula `(B23007_006E + B23007_011E) / B23007_002E` produced inflated values in low-employment cities and was retired 2026-07.
 
 ### BLS
 - **Secret name:** `BLS_API_KEY`

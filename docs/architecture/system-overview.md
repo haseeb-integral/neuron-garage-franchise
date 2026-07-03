@@ -63,7 +63,7 @@ One row per screen. "Beta-hidden" means the surface exists in code but has no vi
 
 | Source | Status | Feeds |
 |---|---|---|
-| US Census ACS | 🟢 Live | City demographics, income, age structure |
+| US Census ACS (5-yr **2024** vintage, place-level; 2022 for tract/county) | 🟢 Live | City demographics, income, age structure. See [APIs & data sources](./apis-and-data-sources.md#us-census-acs) for the exact % Dual-Income formula (`B23007_006E / B23007_002E`). |
 | BLS (Bureau of Labor Statistics) | 🟢 Live | Employment data |
 | BEA (Bureau of Economic Analysis) | 🟢 Live | Regional economic indicators |
 | FRED (St. Louis Fed) | 🟢 Live | Macro indicators |

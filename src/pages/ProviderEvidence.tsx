@@ -219,6 +219,9 @@ export default function ProviderEvidence() {
         }
         const k = priceKept(r).tone;
         if (keptFilter !== "all" && k !== keptFilter) return false;
+        const isAi = (r as any).platform === "google_ai_overview";
+        if (sourceTypeFilter === "ai_only" && !isAi) return false;
+        if (sourceTypeFilter === "ai_hidden" && isAi) return false;
         if (!ql) return true;
         const cat = r.category_classified || r.category_raw || "";
         return (
@@ -229,7 +232,8 @@ export default function ProviderEvidence() {
           (r.matched_query?.query ?? "").toLowerCase().includes(ql)
         );
       });
-  }, [rowsWithExclusion, q, queryFilter, keptFilter, showExcluded]);
+  }, [rowsWithExclusion, q, queryFilter, keptFilter, sourceTypeFilter, showExcluded]);
+
 
   const exportCsv = () => {
     const headers = [

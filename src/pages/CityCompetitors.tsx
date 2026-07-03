@@ -54,6 +54,8 @@ export default function CityCompetitors() {
   const [q, setQ] = useState("");
   const [tierFilter, setTierFilter] = useState<string>("all");
   const [catFilter, setCatFilter] = useState<string>("all");
+  const [sourceTypeFilter, setSourceTypeFilter] = useState<"all" | "ai_only" | "ai_hidden">("all");
+
 
   useEffect(() => {
     let cancelled = false;

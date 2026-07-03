@@ -54,6 +54,8 @@ export default function CityCompetitors() {
   const [q, setQ] = useState("");
   const [tierFilter, setTierFilter] = useState<string>("all");
   const [catFilter, setCatFilter] = useState<string>("all");
+  const [sourceTypeFilter, setSourceTypeFilter] = useState<"all" | "ai_only" | "ai_hidden">("all");
+
 
   useEffect(() => {
     let cancelled = false;
@@ -94,6 +96,9 @@ export default function CityCompetitors() {
       if (tierFilter !== "all" && r.tier !== tierFilter) return false;
       const c = r.category_classified || r.category_raw || "";
       if (catFilter !== "all" && c !== catFilter) return false;
+      const isAi = r.platform === "google_ai_overview";
+      if (sourceTypeFilter === "ai_only" && !isAi) return false;
+      if (sourceTypeFilter === "ai_hidden" && isAi) return false;
       if (!ql) return true;
       return (
         (r.name ?? "").toLowerCase().includes(ql) ||
@@ -102,7 +107,8 @@ export default function CityCompetitors() {
         (r.website_url ?? "").toLowerCase().includes(ql)
       );
     });
-  }, [rows, q, tierFilter, catFilter]);
+  }, [rows, q, tierFilter, catFilter, sourceTypeFilter]);
+
 
   const exportCsv = () => {
     const headers = [
@@ -222,7 +228,19 @@ export default function CityCompetitors() {
             </option>
           ))}
         </select>
+        <select
+          value={sourceTypeFilter}
+          onChange={(e) => setSourceTypeFilter(e.target.value as "all" | "ai_only" | "ai_hidden")}
+          className="rounded-md border bg-white px-2 py-1 text-[12px]"
+          style={{ borderColor: BORDER, color: NAVY }}
+          title="Show, isolate, or hide rows whose price came from Google's AI Overview answer box"
+        >
+          <option value="all">All sources</option>
+          <option value="ai_only">Only AI Overview</option>
+          <option value="ai_hidden">Hide AI Overview</option>
+        </select>
       </div>
+
 
       {error && (
         <div className="mb-3 rounded-md border p-3 text-[12px]" style={{ borderColor: "#f5c2cd", backgroundColor: "#fce7ec", color: "#a3142b" }}>
@@ -256,10 +274,24 @@ export default function CityCompetitors() {
             </thead>
             <tbody>
               {filtered.map((r) => (
-                <tr key={r.id} className="hover:bg-[#f7faff]">
+                <tr
+                  key={r.id}
+                  className="hover:bg-[#f7faff]"
+                  style={r.platform === "google_ai_overview" ? { backgroundColor: "#fffbea" } : undefined}
+                >
                   <td className="border-b px-3 py-2 align-top font-semibold" style={{ borderColor: BORDER, color: NAVY }}>
                     {r.name || "—"}
+                    {r.platform === "google_ai_overview" && (
+                      <div
+                        className="mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                        style={{ backgroundColor: "#fef9c3", color: "#713f12" }}
+                        title="Price came from Google's AI Overview answer box."
+                      >
+                        AI Overview
+                      </div>
+                    )}
                   </td>
+
                   <td className="border-b px-3 py-2 align-top" style={{ borderColor: BORDER, color: NAVY }}>
                     {r.tier || "—"}
                   </td>

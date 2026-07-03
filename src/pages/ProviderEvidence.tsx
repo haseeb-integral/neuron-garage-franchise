@@ -86,7 +86,9 @@ export default function ProviderEvidence() {
   const [selected, setSelected] = useState<EvidenceRow | null>(null);
   const [queryFilter, setQueryFilter] = useState<string>("all");
   const [keptFilter, setKeptFilter] = useState<string>("all");
+  const [sourceTypeFilter, setSourceTypeFilter] = useState<"all" | "ai_only" | "ai_hidden">("all");
   const [showExcluded, setShowExcluded] = useState(false);
+
   const [busyId, setBusyId] = useState<string | null>(null);
   const [rejectConfirm, setRejectConfirm] = useState<{ label: string; run: () => void } | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -217,6 +219,9 @@ export default function ProviderEvidence() {
         }
         const k = priceKept(r).tone;
         if (keptFilter !== "all" && k !== keptFilter) return false;
+        const isAi = (r as any).platform === "google_ai_overview";
+        if (sourceTypeFilter === "ai_only" && !isAi) return false;
+        if (sourceTypeFilter === "ai_hidden" && isAi) return false;
         if (!ql) return true;
         const cat = r.category_classified || r.category_raw || "";
         return (
@@ -227,7 +232,8 @@ export default function ProviderEvidence() {
           (r.matched_query?.query ?? "").toLowerCase().includes(ql)
         );
       });
-  }, [rowsWithExclusion, q, queryFilter, keptFilter, showExcluded]);
+  }, [rowsWithExclusion, q, queryFilter, keptFilter, sourceTypeFilter, showExcluded]);
+
 
   const exportCsv = () => {
     const headers = [
@@ -572,6 +578,18 @@ export default function ProviderEvidence() {
           <option value="dropped">Dropped by guard</option>
           <option value="none">No price found</option>
         </select>
+        <select
+          value={sourceTypeFilter}
+          onChange={(e) => setSourceTypeFilter(e.target.value as "all" | "ai_only" | "ai_hidden")}
+          className="rounded-md border bg-white px-2 py-1 text-[12px]"
+          style={{ borderColor: BORDER, color: NAVY }}
+          title="Show, isolate, or hide rows whose price came from Google's AI Overview answer box"
+        >
+          <option value="all">All sources</option>
+          <option value="ai_only">Only AI Overview</option>
+          <option value="ai_hidden">Hide AI Overview</option>
+        </select>
+
         <label
           className="ml-auto inline-flex items-center gap-1.5 text-[12px]"
           style={{ color: NAVY }}
@@ -654,7 +672,13 @@ export default function ProviderEvidence() {
                     key={r.id}
                     className="cursor-pointer align-top hover:bg-[#f7faff]"
                     onClick={() => setSelected(r)}
-                    style={exclusion ? { backgroundColor: "#fafafa" } : undefined}
+                    style={
+                      exclusion
+                        ? { backgroundColor: "#fafafa" }
+                        : fallbackPlatform === "google_ai_overview"
+                          ? { backgroundColor: "#fffbea" }
+                          : undefined
+                    }
                   >
                     <td
                       className="border-b px-3 py-2 font-semibold"
@@ -664,6 +688,15 @@ export default function ProviderEvidence() {
                       {r.tier && (
                         <div className="text-[10px] font-normal" style={{ color: MUTED }}>
                           {r.tier}
+                        </div>
+                      )}
+                      {fallbackPlatform === "google_ai_overview" && (
+                        <div
+                          className="mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                          style={{ backgroundColor: "#fef9c3", color: "#713f12" }}
+                          title="Price came from Google's AI Overview answer box. Counted in the score right away; edit or reject in the details panel if it looks wrong."
+                        >
+                          AI Overview
                         </div>
                       )}
                       {(r as any).price_derived_from_brand && (
@@ -682,6 +715,7 @@ export default function ProviderEvidence() {
                         </div>
                       )}
                     </td>
+
                     <td className="border-b px-3 py-2" style={{ borderColor: BORDER, color: NAVY }}>
                       {r.category_classified || r.category_raw || "—"}
                     </td>

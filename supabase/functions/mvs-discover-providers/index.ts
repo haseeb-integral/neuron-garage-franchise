@@ -1578,11 +1578,15 @@ ${PRICE_RULES}
               };
               if (isB3) {
                 patch.platform = "google_ai_overview";
-                patch.price_needs_review = true;
+                // AI Overview prices count in the MVS score right away (no
+                // human-review gate). Row is still visually flagged via
+                // platform=google_ai_overview so the UI can tint it.
+                patch.price_needs_review = false;
                 // B3 evidence lives in dedicated columns so it never gets
                 // confused with a search query text.
                 patch.ai_overview_snippet = b3Text!.slice(0, 1000);
                 if (b3Source) patch.ai_overview_source_url = b3Source;
+
               } else if (!p.source_listing_url && discoveredUrl) {
                 patch.source_listing_url = discoveredUrl;
               }

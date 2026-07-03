@@ -86,7 +86,9 @@ export default function ProviderEvidence() {
   const [selected, setSelected] = useState<EvidenceRow | null>(null);
   const [queryFilter, setQueryFilter] = useState<string>("all");
   const [keptFilter, setKeptFilter] = useState<string>("all");
+  const [sourceTypeFilter, setSourceTypeFilter] = useState<"all" | "ai_only" | "ai_hidden">("all");
   const [showExcluded, setShowExcluded] = useState(false);
+
   const [busyId, setBusyId] = useState<string | null>(null);
   const [rejectConfirm, setRejectConfirm] = useState<{ label: string; run: () => void } | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);

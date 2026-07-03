@@ -672,7 +672,13 @@ export default function ProviderEvidence() {
                     key={r.id}
                     className="cursor-pointer align-top hover:bg-[#f7faff]"
                     onClick={() => setSelected(r)}
-                    style={exclusion ? { backgroundColor: "#fafafa" } : undefined}
+                    style={
+                      exclusion
+                        ? { backgroundColor: "#fafafa" }
+                        : fallbackPlatform === "google_ai_overview"
+                          ? { backgroundColor: "#fffbea" }
+                          : undefined
+                    }
                   >
                     <td
                       className="border-b px-3 py-2 font-semibold"
@@ -682,6 +688,15 @@ export default function ProviderEvidence() {
                       {r.tier && (
                         <div className="text-[10px] font-normal" style={{ color: MUTED }}>
                           {r.tier}
+                        </div>
+                      )}
+                      {fallbackPlatform === "google_ai_overview" && (
+                        <div
+                          className="mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                          style={{ backgroundColor: "#fef9c3", color: "#713f12" }}
+                          title="Price came from Google's AI Overview answer box. Counted in the score right away; edit or reject in the details panel if it looks wrong."
+                        >
+                          AI Overview
                         </div>
                       )}
                       {(r as any).price_derived_from_brand && (
@@ -700,6 +715,7 @@ export default function ProviderEvidence() {
                         </div>
                       )}
                     </td>
+
                     <td className="border-b px-3 py-2" style={{ borderColor: BORDER, color: NAVY }}>
                       {r.category_classified || r.category_raw || "—"}
                     </td>

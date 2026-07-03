@@ -21,12 +21,18 @@ function resolveStateAbbr(state: string): string | null {
 
 export type CensusSprintMetrics = {
   young_family_growth_rate_pct: number | null   // % change households w/ kids 2017→2022
-  dual_income_household_pct: number | null       // B23007_004 / B23007_003 * 100
+  // % Dual-Income Households — share of ALL families with own children under 18
+  // that are married-couple families with BOTH spouses in the labor force.
+  // Single-parent families remain in the denominator by design (this measures
+  // the prevalence of the dual-earner family profile in the market, not the
+  // employment rate among married couples). See the fetch block below for the
+  // exact ACS B23007 variable IDs and their label paths.
+  dual_income_household_pct: number | null
   commute_sprawl_index_pct: number | null        // (B08303_011..013) / B08303_001 * 100
   hh_kids_2022: number | null
   hh_kids_2017: number | null
-  married_kids: number | null
-  dual_income: number | null
+  families_with_kids: number | null              // B23007_002E — all family types w/ own children <18
+  dual_income: number | null                     // B23007_006E + _011E — married, husband LF, wife LF
   commute_total: number | null
   long_commute: number | null
   state_fips: string | null
@@ -67,12 +73,22 @@ export async function fetchCensusSprintMetrics(
 
     const vars = [
       'B11005_002E', // 0  households with people under 18 (2022)
-      'B23007_003E', // 1  married-couple families w/ own children under 18
-      'B23007_004E', // 2  ...with husband in labor force (proxy for dual-income numerator)
-      'B08303_001E', // 3  commute total workers
-      'B08303_011E', // 4  commute 45-59 min
-      'B08303_012E', // 5  commute 60-89 min
-      'B08303_013E', // 6  commute 90+ min
+      // ---- % Dual-Income Households, ACS B23007 (2022 5-year) ----
+      // Denominator — top-level "with own children under 18" across ALL family
+      // types (married-couple + single-parent), so single-parent families
+      // remain in the denominator by design:
+      'B23007_002E', // 1  Total: With own children under 18 years:
+      // Numerator — married-couple families with own children under 18 where
+      // BOTH husband and wife are in the labor force. In B23007's tree, the
+      // "wife in labor force" line splits by husband's employment status, so
+      // the numerator is the sum of the two "wife in LF" lines under
+      // "husband in labor force" (employed OR unemployed):
+      'B23007_006E', // 2  ...Opposite-sex married-couple family: Husband in LF: Employed/AF: Wife in LF:
+      'B23007_011E', // 3  ...Opposite-sex married-couple family: Husband in LF: Unemployed: Wife in LF:
+      'B08303_001E', // 4  commute total workers
+      'B08303_011E', // 5  commute 45-59 min
+      'B08303_012E', // 6  commute 60-89 min
+      'B08303_013E', // 7  commute 90+ min
     ]
     const dataUrl = `https://api.census.gov/data/2022/acs/acs5?get=${vars.join(',')}&for=place:${placeFips}&in=state:${stateFips}&key=${key}`
     const dataRes = await fetch(dataUrl)
@@ -85,11 +101,11 @@ export async function fetchCensusSprintMetrics(
     if (!row) return { data: null, error: `Census ACS sprint: empty row for place ${placeFips} state ${stateFips}` }
     const num = (v: string) => { const n = Number(v); return Number.isFinite(n) && n >= 0 ? n : null }
     const hhKids2022 = num(row[0])
-    const marriedKids = num(row[1])
-    const dualIncome = num(row[2])
-    const commuteTotal = num(row[3])
-    const longCommute = (num(row[4]) ?? 0) + (num(row[5]) ?? 0) + (num(row[6]) ?? 0)
-    console.log('[fetchCensusSprintMetrics]', { city, state, placeFips, stateFips, hhKids2022, marriedKids, dualIncome, commuteTotal, longCommute })
+    const familiesWithKids = num(row[1])                         // B23007_002E — denominator
+    const dualIncome = (num(row[2]) ?? 0) + (num(row[3]) ?? 0)   // B23007_006E + _011E — numerator
+    const commuteTotal = num(row[4])
+    const longCommute = (num(row[5]) ?? 0) + (num(row[6]) ?? 0) + (num(row[7]) ?? 0)
+    console.log('[fetchCensusSprintMetrics]', { city, state, placeFips, stateFips, hhKids2022, familiesWithKids, dualIncome, commuteTotal, longCommute })
 
     let hhKids2017: number | null = null
     try {
@@ -104,9 +120,17 @@ export async function fetchCensusSprintMetrics(
     const youngFamiliesGrowth = (hhKids2022 != null && hhKids2017 != null && hhKids2017 > 0)
       ? Math.round(((hhKids2022 - hhKids2017) / hhKids2017) * 1000) / 10
       : null
-    const dualIncomePct = (marriedKids != null && marriedKids > 0 && dualIncome != null)
-      ? Math.round((dualIncome / marriedKids) * 1000) / 10
+    // pctDualIncome = (married, husband LF, wife LF) / (all families with own children <18)
+    // Realistic range nationally is roughly 55–70%. Anything outside 15–85%
+    // gets a warning so a hierarchy-level bug can't silently ship again.
+    const dualIncomePct = (familiesWithKids != null && familiesWithKids > 0 && dualIncome > 0)
+      ? Math.round((dualIncome / familiesWithKids) * 1000) / 10
       : null
+    if (dualIncomePct != null && (dualIncomePct > 85 || dualIncomePct < 15)) {
+      console.warn('[fetchCensusSprintMetrics] dual_income_household_pct out of expected 15–85 band', {
+        city, state, dualIncomePct, dualIncome, familiesWithKids,
+      })
+    }
     const commuteSprawlPct = (commuteTotal != null && commuteTotal > 0)
       ? Math.round((longCommute / commuteTotal) * 1000) / 10
       : null
@@ -118,7 +142,7 @@ export async function fetchCensusSprintMetrics(
         commute_sprawl_index_pct: commuteSprawlPct,
         hh_kids_2022: hhKids2022,
         hh_kids_2017: hhKids2017,
-        married_kids: marriedKids,
+        families_with_kids: familiesWithKids,
         dual_income: dualIncome,
         commute_total: commuteTotal,
         long_commute: longCommute,

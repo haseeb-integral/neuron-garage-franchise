@@ -1,60 +1,57 @@
+# Fix % Dual-Income Households + Bump Census Vintage to 2024
 
-## Goal
+## What changes and why
 
-Change Step 9 (Google AI Overview via Apify) prices so they count in the MVS score right away. No human review gate. Keep those rows visually marked with a light yellow background and add a filter above the table to isolate them.
+**1. Formula fix**
+- Old numerator: `B23007_006E + B23007_011E` (married, husband in LF, wife in LF **plus** husband not in LF, wife in LF)
+- New numerator: `B23007_006E` only (married, **husband in labor force AND wife in labor force**)
+- Denominator stays: `B23007_002E` (all family types with own children under 18)
+- Reason: you want strictly dual-earner married couples, not "wife works but husband is out of the labor force."
 
-## What changes (plain English)
+**2. Vintage bump 2023 → 2024**
+- ACS 5-year 2024 is live (I checked the API — returns data). Since we are in 2026, the 2024 5-year is the newest release.
+- This is a global switch — **every Census metric refreshes**, not just dual-income:
+  - population, children_5_12, median_household_income, college_degree_pct, labor_force_participation, dual_working_families_pct
+- Values will shift slightly for every city (usually 1–3%). This is expected and correct — it is fresher data.
 
-1. **Scoring rule flip**
-   - Today: `useLiveMvs` nulls out `price_min`/`price_max` when `price_needs_review = true`, so AI Overview prices are skipped in the score.
-   - New: keep the prices as-is. AI Overview prices count in median, percentile, and pct-at-least math the same as any other price.
+## Southaven, MS preview with new formula + 2024 vintage
+- B23007_002E = 7,040
+- B23007_006E = 2,762
+- New % = 2,762 / 7,040 = **39.2%** (was 36.5% under old formula on 2023 data)
 
-2. **New crawls**
-   - `mvs-discover-providers` will stop setting `price_needs_review = true` for AI Overview rows. It will still tag `platform = 'google_ai_overview'` and store the snippet + source URL as proof. That tag is how we know to tint the row.
+## Files touched (code only, no schema)
+- `src/lib/sowMetricRegistry.ts` — update the metric description text.
+- `supabase/functions/_shared/metricFetchers.ts` — drop `_011E`, bump vintage constant.
+- `supabase/functions/backfill-census-gaps/index.ts` — same.
+- `supabase/functions/seed-cities-database/index.ts` — same.
+- Any other file with `"2023"` ACS vintage — I will grep and update all.
 
-3. **Backfill existing rows**
-   - One-time UPDATE: set `price_needs_review = false` on every row where it is currently `true`. After this, scores across all cities recompute using those prices automatically (React Query invalidation on next load).
+## Phases
 
-4. **Row color**
-   - In Provider Evidence table and the "All competitors" table (`CityCompetitors.tsx`), rows where `platform = 'google_ai_overview'` get a very light yellow background (`#fffbea` style). No amber "Needs review" chip anymore — replace with a small neutral "AI Overview" label so people still know the source.
+**Phase 1 — Code change (1 turn)**
+Update the 4 files above: new formula + vintage 2024. Update the sanity-check log too.
 
-5. **Filter control above the table**
-   - Add a dropdown (or checkbox) above Provider Evidence with options: All sources / Only AI Overview / Hide AI Overview. Same control added to `CityCompetitors.tsx`. Default = All sources.
+**Phase 2 — Recompute all cities (1–2 turns)**
+Call `backfill-census-gaps` in batches to refresh all ~817 cities against ACS 2024. This will overwrite `population`, `median_household_income`, `children_5_12`, `college_degree_pct`, `labor_force_participation`, `dual_working_families_pct`, `census_last_updated`.
 
-6. **Verify / Edit / Reject**
-   - Keep the Verify + Edit + Reject buttons working. If someone edits or rejects an AI Overview row later, the score updates as it does today. AI Overview price is "final unless someone edits."
+Note: current `backfill-census-gaps` only fills **null** fields. I will add a `force=true` mode so it overwrites existing values for this refresh. (Safe — it only rewrites Census-derived columns, nothing user-edited.)
 
-## Files touched
+**Phase 3 — Verify (same turn as Phase 2)**
+Show old vs. new % for 5 diverse cities:
+- Southaven, MS
+- Bothell, WA (affluent)
+- Downers Grove, IL (affluent)
+- Detroit, MI (lower-income)
+- Newton, MA (affluent)
 
-- `src/lib/mvs/useLiveMvs.ts` — remove the `needsReview` null-out block.
-- `supabase/functions/mvs-discover-providers/index.ts` — stop writing `price_needs_review = true` for AI Overview inserts.
-- Data update (one-time): `UPDATE mvs_providers SET price_needs_review = false WHERE price_needs_review = true;`
-- `src/pages/ProviderEvidence.tsx` (+ any sub-component that renders the row / the amber chip) — row tint, replace chip with neutral label, add filter dropdown.
-- `src/pages/CityCompetitors.tsx` — row tint + filter dropdown.
-- Possibly `src/lib/mvs/useProviderEvidence.ts` if row-shape needs `platform` surfaced.
+## Risks / what NOT to touch
+- Composite scores may shift a little because underlying Census inputs change. This is intended.
+- No weight changes, no UI changes, no changes to non-Census metrics (competitors, franchisee supply, weather, etc.).
+- Tier assignments may move for a handful of borderline cities — normal after a data refresh.
 
-## What is NOT touched
+## What you should test after Phase 2
+- Open City Search, click Southaven MS, confirm dual-income shows ~39%.
+- Spot-check 2–3 other cities in the table for realistic values (15–75% range).
+- Check that no city shows null/blank for dual-income.
 
-- Score math in `computeMvs.ts` — unchanged.
-- Verify / Edit / Reject logic in `verifyProvider.ts` — unchanged.
-- Amber "Possible brand price" (`price_derived_from_brand`) badge — that is a different flag, stays as-is.
-- Other pages, sidebar, sidebar counts, MVS QA Queue.
-
-## Phases and turns
-
-- **Phase 1 (1 turn)** — Backend: flip scoring rule in `useLiveMvs`, remove `price_needs_review = true` write in `mvs-discover-providers`, run the one-time UPDATE to flip existing rows.
-- **Phase 2 (1 turn)** — UI: light-yellow tint + neutral "AI Overview" label + filter dropdown in Provider Evidence and CityCompetitors.
-
-Total: **2 turns**.
-
-## Risks
-
-- MVS scores for cities that have AI Overview prices will change on next load — some may go up or down. Expected and desired.
-- Anyone mid-review of an AI Overview row will see it as "counting" already; the Verify button still works if they want to explicitly bless it.
-
-## Testing after each phase
-
-- Phase 1: open a city that has AI Overview rows, confirm the score number changes vs. before, confirm no console errors.
-- Phase 2: confirm AI Overview rows are light yellow, filter dropdown shows/hides them, other rows look normal.
-
-Approve and I will start with Phase 1.
+Waiting for approval before I start Phase 1.

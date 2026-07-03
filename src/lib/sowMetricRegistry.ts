@@ -51,17 +51,17 @@ export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
     description: "Typical family earnings. Above ~$90k starts to support discretionary camp spend.",
     enabled: true,  weight_within_category: 0.25, status: "live",
     source: "U.S. Census Bureau API — ACS 5-yr (B19013_001)",
-    sourceUrl: "https://data.census.gov/table/ACSDT5Y2022.B19013" },
+    sourceUrl: "https://data.census.gov/table/ACSDT5Y2024.B19013" },
   { key: "dual_income_household_pct", category: "demand", label: "% Dual-Income Households",
-    description: "Share of families with children under 18 that are married-couple families with BOTH spouses in the labor force. Single-parent families remain in the denominator.",
+    description: "Share of families with own children under 18 that are married-couple families where the husband is in the labor force (employed) AND the wife is in the labor force. Single-parent families remain in the denominator.",
     enabled: true,  weight_within_category: 0.20, status: "live",
-    source: "U.S. Census Bureau API — ACS 5-yr (B23007: (_006 + _011) / _002)",
-    sourceUrl: "https://data.census.gov/table/ACSDT5Y2022.B23007" },
+    source: "U.S. Census Bureau API — ACS 5-yr (B23007: _006 / _002)",
+    sourceUrl: "https://data.census.gov/table/ACSDT5Y2024.B23007" },
   { key: "education_bachelors_plus_pct", category: "demand", label: "Parent Education / Bachelor's+",
     description: "Share of adults with a college degree. Educated parents over-index on enrichment spending.",
     enabled: true,  weight_within_category: 0.25, status: "live",
     source: "U.S. Census Bureau API — ACS 5-yr (B15003_022–025)",
-    sourceUrl: "https://data.census.gov/table/ACSDT5Y2022.B15003" },
+    sourceUrl: "https://data.census.gov/table/ACSDT5Y2024.B15003" },
 
   // Pricing Power, Ease of Operations, and Parent Mindset metrics were
   // retired in the May 21, 2026 6→3 category reshape (final purge).

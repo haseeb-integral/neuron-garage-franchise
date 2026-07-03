@@ -20,19 +20,17 @@ function resolveStateAbbr(state: string): string | null {
 }
 
 export type CensusSprintMetrics = {
-  young_family_growth_rate_pct: number | null   // % change households w/ kids 2017→2022
+  young_family_growth_rate_pct: number | null   // % change households w/ kids 2017→2024
   // % Dual-Income Households — share of ALL families with own children under 18
-  // that are married-couple families with BOTH spouses in the labor force.
-  // Single-parent families remain in the denominator by design (this measures
-  // the prevalence of the dual-earner family profile in the market, not the
-  // employment rate among married couples). See the fetch block below for the
-  // exact ACS B23007 variable IDs and their label paths.
+  // that are married-couple families where the husband is in the labor force
+  // (employed/AF) AND the wife is in the labor force. Single-parent families
+  // remain in the denominator by design. Numerator is B23007_006E ONLY.
   dual_income_household_pct: number | null
   commute_sprawl_index_pct: number | null        // (B08303_011..013) / B08303_001 * 100
-  hh_kids_2022: number | null
+  hh_kids_2024: number | null
   hh_kids_2017: number | null
   families_with_kids: number | null              // B23007_002E — all family types w/ own children <18
-  dual_income: number | null                     // B23007_006E + _011E — married, husband LF, wife LF
+  dual_income: number | null                     // B23007_006E — married, husband LF employed, wife LF
   commute_total: number | null
   long_commute: number | null
   state_fips: string | null
@@ -55,7 +53,7 @@ export async function fetchCensusSprintMetrics(
   try {
     let placeFips = precomputedPlaceFips ?? null
     if (!placeFips) {
-      const placeListUrl = `https://api.census.gov/data/2022/acs/acs5?get=NAME&for=place:*&in=state:${stateFips}&key=${key}`
+      const placeListUrl = `https://api.census.gov/data/2024/acs/acs5?get=NAME&for=place:*&in=state:${stateFips}&key=${key}`
       const listRes = await fetch(placeListUrl)
       if (!listRes.ok) return { data: null, error: `Census place list ${listRes.status}` }
       const listData = await listRes.json() as string[][]
@@ -72,25 +70,22 @@ export async function fetchCensusSprintMetrics(
     }
 
     const vars = [
-      'B11005_002E', // 0  households with people under 18 (2022)
-      // ---- % Dual-Income Households, ACS B23007 (2022 5-year) ----
+      'B11005_002E', // 0  households with people under 18 (2024)
+      // ---- % Dual-Income Households, ACS B23007 (2024 5-year) ----
       // Denominator — top-level "with own children under 18" across ALL family
       // types (married-couple + single-parent), so single-parent families
       // remain in the denominator by design:
       'B23007_002E', // 1  Total: With own children under 18 years:
-      // Numerator — married-couple families with own children under 18 where
-      // BOTH husband and wife are in the labor force. In B23007's tree, the
-      // "wife in labor force" line splits by husband's employment status, so
-      // the numerator is the sum of the two "wife in LF" lines under
-      // "husband in labor force" (employed OR unemployed):
+      // Numerator — married-couple family with own children under 18 where the
+      // husband is in the labor force (employed/AF) AND the wife is in the
+      // labor force. This is the "true dual-earner married" cell.
       'B23007_006E', // 2  ...Opposite-sex married-couple family: Husband in LF: Employed/AF: Wife in LF:
-      'B23007_011E', // 3  ...Opposite-sex married-couple family: Husband in LF: Unemployed: Wife in LF:
-      'B08303_001E', // 4  commute total workers
-      'B08303_011E', // 5  commute 45-59 min
-      'B08303_012E', // 6  commute 60-89 min
-      'B08303_013E', // 7  commute 90+ min
+      'B08303_001E', // 3  commute total workers
+      'B08303_011E', // 4  commute 45-59 min
+      'B08303_012E', // 5  commute 60-89 min
+      'B08303_013E', // 6  commute 90+ min
     ]
-    const dataUrl = `https://api.census.gov/data/2022/acs/acs5?get=${vars.join(',')}&for=place:${placeFips}&in=state:${stateFips}&key=${key}`
+    const dataUrl = `https://api.census.gov/data/2024/acs/acs5?get=${vars.join(',')}&for=place:${placeFips}&in=state:${stateFips}&key=${key}`
     const dataRes = await fetch(dataUrl)
     if (!dataRes.ok) {
       const body = await dataRes.text().catch(() => '')
@@ -100,12 +95,12 @@ export async function fetchCensusSprintMetrics(
     const row = arr?.[1]
     if (!row) return { data: null, error: `Census ACS sprint: empty row for place ${placeFips} state ${stateFips}` }
     const num = (v: string) => { const n = Number(v); return Number.isFinite(n) && n >= 0 ? n : null }
-    const hhKids2022 = num(row[0])
-    const familiesWithKids = num(row[1])                         // B23007_002E — denominator
-    const dualIncome = (num(row[2]) ?? 0) + (num(row[3]) ?? 0)   // B23007_006E + _011E — numerator
-    const commuteTotal = num(row[4])
-    const longCommute = (num(row[5]) ?? 0) + (num(row[6]) ?? 0) + (num(row[7]) ?? 0)
-    console.log('[fetchCensusSprintMetrics]', { city, state, placeFips, stateFips, hhKids2022, familiesWithKids, dualIncome, commuteTotal, longCommute })
+    const hhKids2024 = num(row[0])
+    const familiesWithKids = num(row[1])       // B23007_002E — denominator
+    const dualIncome = num(row[2])             // B23007_006E — numerator (husband LF employed, wife LF)
+    const commuteTotal = num(row[3])
+    const longCommute = (num(row[4]) ?? 0) + (num(row[5]) ?? 0) + (num(row[6]) ?? 0)
+    console.log('[fetchCensusSprintMetrics]', { city, state, placeFips, stateFips, hhKids2024, familiesWithKids, dualIncome, commuteTotal, longCommute })
 
     let hhKids2017: number | null = null
     try {
@@ -117,17 +112,17 @@ export async function fetchCensusSprintMetrics(
       }
     } catch (_) { /* non-fatal */ }
 
-    const youngFamiliesGrowth = (hhKids2022 != null && hhKids2017 != null && hhKids2017 > 0)
-      ? Math.round(((hhKids2022 - hhKids2017) / hhKids2017) * 1000) / 10
+    const youngFamiliesGrowth = (hhKids2024 != null && hhKids2017 != null && hhKids2017 > 0)
+      ? Math.round(((hhKids2024 - hhKids2017) / hhKids2017) * 1000) / 10
       : null
-    // pctDualIncome = (married, husband LF, wife LF) / (all families with own children <18)
-    // Realistic range nationally is roughly 55–70%. Anything outside 15–85%
+    // pctDualIncome = (married, husband LF employed, wife LF) / (all families with own children <18)
+    // Realistic range nationally is roughly 40–60%. Anything outside 10–75%
     // gets a warning so a hierarchy-level bug can't silently ship again.
-    const dualIncomePct = (familiesWithKids != null && familiesWithKids > 0 && dualIncome > 0)
+    const dualIncomePct = (familiesWithKids != null && familiesWithKids > 0 && dualIncome != null && dualIncome > 0)
       ? Math.round((dualIncome / familiesWithKids) * 1000) / 10
       : null
-    if (dualIncomePct != null && (dualIncomePct > 85 || dualIncomePct < 15)) {
-      console.warn('[fetchCensusSprintMetrics] dual_income_household_pct out of expected 15–85 band', {
+    if (dualIncomePct != null && (dualIncomePct > 75 || dualIncomePct < 10)) {
+      console.warn('[fetchCensusSprintMetrics] dual_income_household_pct out of expected 10–75 band', {
         city, state, dualIncomePct, dualIncome, familiesWithKids,
       })
     }
@@ -140,7 +135,7 @@ export async function fetchCensusSprintMetrics(
         young_family_growth_rate_pct: youngFamiliesGrowth,
         dual_income_household_pct: dualIncomePct,
         commute_sprawl_index_pct: commuteSprawlPct,
-        hh_kids_2022: hhKids2022,
+        hh_kids_2024: hhKids2024,
         hh_kids_2017: hhKids2017,
         families_with_kids: familiesWithKids,
         dual_income: dualIncome,
@@ -148,7 +143,7 @@ export async function fetchCensusSprintMetrics(
         long_commute: longCommute,
         state_fips: stateFips,
         place_fips: placeFips,
-        source_url: `https://api.census.gov/data/2022/acs/acs5?get=NAME&for=place:${placeFips}&in=state:${stateFips}`,
+        source_url: `https://api.census.gov/data/2024/acs/acs5?get=NAME&for=place:${placeFips}&in=state:${stateFips}`,
       },
       error: null,
     }

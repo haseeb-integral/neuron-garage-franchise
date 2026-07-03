@@ -1,11 +1,10 @@
-// Phase A1: Backfill Census ACS demographic gaps for cities where
-// children_5_12 / median_household_income / dual_working_families_pct /
-// college_degree_pct / labor_force_participation / population are NULL.
-//
-// Uses the same Census ACS 5-year vintage 2023 endpoints and variable list
-// as seed-cities-database/index.ts. Reads real Census data only — never
-// invents values. Cities whose place name cannot be resolved are skipped
-// and reported in the response.
+// Backfill Census ACS demographic values for cities.
+// Fills NULLs by default. When called with { force: true }, overwrites the
+// existing Census-derived columns (population, children_5_12,
+// median_household_income, college_degree_pct, dual_working_families_pct,
+// labor_force_participation, census_last_updated) for every city.
+// Supports { limit, offset } to chunk large refreshes under the edge
+// function timeout. Uses ACS 5-year vintage 2024 (data 2020-2024).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -27,8 +26,8 @@ const STATE_FIPS: Record<string, string> = {
   SC:"45",SD:"46",TN:"47",TX:"48",UT:"49",VT:"50",VA:"51",WA:"53",WV:"54",WI:"55",WY:"56",
 };
 
-const CENSUS_VINTAGE = "2023";
-const CENSUS_VINTAGE_DATE = "2023-12-31";
+const CENSUS_VINTAGE = "2024";
+const CENSUS_VINTAGE_DATE = "2024-12-31";
 
 function ok(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -51,13 +50,13 @@ async function fetchCensusForPlace(stateFips: string, placeFips: string) {
     "B01001_004E","B01001_005E","B01001_028E","B01001_029E",
     "B19013_001E",
     "B15003_022E","B15003_023E","B15003_024E","B15003_025E","B15003_001E",
-    // % Dual-Income Households — ACS B23007. Denominator is the top-level
-    // "with own children under 18" (ALL family types, including single-parent).
-    // Numerator is "married-couple family, husband in labor force, wife in
-    // labor force" = B23007_006E (husband employed/AF + wife LF) + B23007_011E
-    // (husband unemployed + wife LF). See _shared/metricFetchers.ts for the
-    // full label paths and rationale.
-    "B23007_002E","B23007_006E","B23007_011E",
+    // % Dual-Income Households — ACS B23007.
+    // Denominator: B23007_002E (all family types with own children <18).
+    // Numerator: B23007_006E ONLY — married-couple family, husband in labor
+    // force AND wife in labor force (husband employed/AF branch). We
+    // intentionally exclude B23007_011E (husband NOT in labor force) so this
+    // measures true dual-earner married couples.
+    "B23007_002E","B23007_006E",
     "B23025_002E","B23025_001E",
   ];
   const url = `https://api.census.gov/data/${CENSUS_VINTAGE}/acs/acs5?get=${vars.join(",")}&for=place:${placeFips}&in=state:${stateFips}&key=${CENSUS_KEY}`;
@@ -77,17 +76,17 @@ async function fetchCensusForPlace(stateFips: string, placeFips: string) {
   const bachelors = (num(row[6]) ?? 0) + (num(row[7]) ?? 0) + (num(row[8]) ?? 0) + (num(row[9]) ?? 0);
   const total_25 = num(row[10]);
   const college_degree_pct = pct(bachelors, total_25);
-  const families_with_kids = num(row[11]);                       // B23007_002E — all family types w/ own children <18
-  const dual_kids = (num(row[12]) ?? 0) + (num(row[13]) ?? 0);   // B23007_006E + _011E — married, husband LF, wife LF
-  const dual_working_families_pct = families_with_kids && families_with_kids > 0 && dual_kids > 0
+  const families_with_kids = num(row[11]);            // B23007_002E — denominator
+  const dual_kids = num(row[12]);                     // B23007_006E — numerator (husband LF employed, wife LF)
+  const dual_working_families_pct = families_with_kids && families_with_kids > 0 && dual_kids != null && dual_kids > 0
     ? Math.round((dual_kids / families_with_kids) * 1000) / 10
     : null;
-  if (dual_working_families_pct != null && (dual_working_families_pct > 85 || dual_working_families_pct < 15)) {
-    console.warn("[backfill-census-gaps] dual_working_families_pct out of expected 15–85 band",
+  if (dual_working_families_pct != null && (dual_working_families_pct > 75 || dual_working_families_pct < 10)) {
+    console.warn("[backfill-census-gaps] dual_working_families_pct out of expected 10–75 band",
       { placeFips, stateFips, dual_working_families_pct, dual_kids, families_with_kids });
   }
-  const labor_force = num(row[14]);
-  const pop_16 = num(row[15]);
+  const labor_force = num(row[13]);
+  const pop_16 = num(row[14]);
   const labor_force_participation = pct(labor_force, pop_16);
   return {
     data: {
@@ -150,13 +149,24 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return ok({ error: "POST only" }, 405);
   if (!CENSUS_KEY) return ok({ error: "CENSUS_API_KEY missing" }, 500);
 
+  let body: any = {};
+  try { body = await req.json(); } catch { /* empty body ok */ }
+  const force = body?.force === true;
+  const limit = Number.isFinite(Number(body?.limit)) ? Math.min(Math.max(1, Number(body.limit)), 1000) : 300;
+  const offset = Number.isFinite(Number(body?.offset)) ? Math.max(0, Number(body.offset)) : 0;
+
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
 
-  // Find rows with at least one census gap.
-  const { data: gaps, error: gapErr } = await supabase
+  // Force mode = refresh every city (chunked). Default mode = only NULL rows.
+  let q = supabase
     .from("us_cities_scored")
     .select("id, city_name, state_abbr, children_5_12, median_household_income, dual_working_families_pct, college_degree_pct, population, labor_force_participation")
-    .or("children_5_12.is.null,dual_working_families_pct.is.null,college_degree_pct.is.null,median_household_income.is.null");
+    .order("id", { ascending: true })
+    .range(offset, offset + limit - 1);
+  if (!force) {
+    q = q.or("children_5_12.is.null,dual_working_families_pct.is.null,college_degree_pct.is.null,median_household_income.is.null");
+  }
+  const { data: gaps, error: gapErr } = await q;
   if (gapErr) return ok({ error: gapErr.message }, 500);
 
   const rows = gaps ?? [];
@@ -171,14 +181,24 @@ Deno.serve(async (req) => {
     const { data: c, error } = await fetchCensusForPlace(stateFips, placeFips);
     if (error || !c) { skipped.push({ city: r.city_name, state: r.state_abbr, reason: error ?? "no data" }); continue; }
 
-    // Only fill nulls — never overwrite existing real values.
     const patch: Record<string, any> = { updated_at: new Date().toISOString() };
-    if (r.children_5_12 == null && c.children_5_12 != null) patch.children_5_12 = c.children_5_12;
-    if (r.median_household_income == null && c.median_household_income != null) patch.median_household_income = c.median_household_income;
-    if (r.dual_working_families_pct == null && c.dual_working_families_pct != null) patch.dual_working_families_pct = c.dual_working_families_pct;
-    if (r.college_degree_pct == null && c.college_degree_pct != null) patch.college_degree_pct = c.college_degree_pct;
-    if (r.population == null && c.population != null) patch.population = c.population;
-    if (r.labor_force_participation == null && c.labor_force_participation != null) patch.labor_force_participation = c.labor_force_participation;
+    if (force) {
+      // Overwrite every Census-derived column with the fresh vintage.
+      if (c.children_5_12 != null) patch.children_5_12 = c.children_5_12;
+      if (c.median_household_income != null) patch.median_household_income = c.median_household_income;
+      if (c.dual_working_families_pct != null) patch.dual_working_families_pct = c.dual_working_families_pct;
+      if (c.college_degree_pct != null) patch.college_degree_pct = c.college_degree_pct;
+      if (c.population != null) patch.population = c.population;
+      if (c.labor_force_participation != null) patch.labor_force_participation = c.labor_force_participation;
+    } else {
+      // Only fill nulls — never overwrite existing real values.
+      if (r.children_5_12 == null && c.children_5_12 != null) patch.children_5_12 = c.children_5_12;
+      if (r.median_household_income == null && c.median_household_income != null) patch.median_household_income = c.median_household_income;
+      if (r.dual_working_families_pct == null && c.dual_working_families_pct != null) patch.dual_working_families_pct = c.dual_working_families_pct;
+      if (r.college_degree_pct == null && c.college_degree_pct != null) patch.college_degree_pct = c.college_degree_pct;
+      if (r.population == null && c.population != null) patch.population = c.population;
+      if (r.labor_force_participation == null && c.labor_force_participation != null) patch.labor_force_participation = c.labor_force_participation;
+    }
     patch.census_last_updated = c.census_last_updated;
 
     if (Object.keys(patch).length > 1) {
@@ -188,5 +208,5 @@ Deno.serve(async (req) => {
     }
   }
 
-  return ok({ candidates: rows.length, updated, skipped });
+  return ok({ force, limit, offset, candidates: rows.length, updated, skipped, next_offset: offset + rows.length });
 });

@@ -96,6 +96,9 @@ export default function CityCompetitors() {
       if (tierFilter !== "all" && r.tier !== tierFilter) return false;
       const c = r.category_classified || r.category_raw || "";
       if (catFilter !== "all" && c !== catFilter) return false;
+      const isAi = r.platform === "google_ai_overview";
+      if (sourceTypeFilter === "ai_only" && !isAi) return false;
+      if (sourceTypeFilter === "ai_hidden" && isAi) return false;
       if (!ql) return true;
       return (
         (r.name ?? "").toLowerCase().includes(ql) ||
@@ -104,7 +107,8 @@ export default function CityCompetitors() {
         (r.website_url ?? "").toLowerCase().includes(ql)
       );
     });
-  }, [rows, q, tierFilter, catFilter]);
+  }, [rows, q, tierFilter, catFilter, sourceTypeFilter]);
+
 
   const exportCsv = () => {
     const headers = [

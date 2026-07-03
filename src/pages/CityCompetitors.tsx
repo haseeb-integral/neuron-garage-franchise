@@ -228,7 +228,19 @@ export default function CityCompetitors() {
             </option>
           ))}
         </select>
+        <select
+          value={sourceTypeFilter}
+          onChange={(e) => setSourceTypeFilter(e.target.value as "all" | "ai_only" | "ai_hidden")}
+          className="rounded-md border bg-white px-2 py-1 text-[12px]"
+          style={{ borderColor: BORDER, color: NAVY }}
+          title="Show, isolate, or hide rows whose price came from Google's AI Overview answer box"
+        >
+          <option value="all">All sources</option>
+          <option value="ai_only">Only AI Overview</option>
+          <option value="ai_hidden">Hide AI Overview</option>
+        </select>
       </div>
+
 
       {error && (
         <div className="mb-3 rounded-md border p-3 text-[12px]" style={{ borderColor: "#f5c2cd", backgroundColor: "#fce7ec", color: "#a3142b" }}>

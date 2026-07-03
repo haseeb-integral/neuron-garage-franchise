@@ -274,10 +274,24 @@ export default function CityCompetitors() {
             </thead>
             <tbody>
               {filtered.map((r) => (
-                <tr key={r.id} className="hover:bg-[#f7faff]">
+                <tr
+                  key={r.id}
+                  className="hover:bg-[#f7faff]"
+                  style={r.platform === "google_ai_overview" ? { backgroundColor: "#fffbea" } : undefined}
+                >
                   <td className="border-b px-3 py-2 align-top font-semibold" style={{ borderColor: BORDER, color: NAVY }}>
                     {r.name || "—"}
+                    {r.platform === "google_ai_overview" && (
+                      <div
+                        className="mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                        style={{ backgroundColor: "#fef9c3", color: "#713f12" }}
+                        title="Price came from Google's AI Overview answer box."
+                      >
+                        AI Overview
+                      </div>
+                    )}
                   </td>
+
                   <td className="border-b px-3 py-2 align-top" style={{ borderColor: BORDER, color: NAVY }}>
                     {r.tier || "—"}
                   </td>

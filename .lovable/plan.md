@@ -1,60 +1,60 @@
-## What's actually happening
 
-I opened the file Brett uploaded (`neuron-garage-lovable-seed-v1.6-...csv`). Manus is right:
+## Goal
 
-- **794 data rows** (not 200)
-- **Top CSI = 95.00**, bottom = 5.00
-- **Ranks 1 → 794**
-- **`manus_export_version = v1.6` on every row**
-- **No duplicate city+state pairs**
+Change Step 9 (Google AI Overview via Apify) prices so they count in the MVS score right away. No human review gate. Keep those rows visually marked with a light yellow background and add a filter above the table to isolate them.
 
-The file is correct. The bug is 100% in our importer (`src/components/phase2-demo/ImportManusCsvDialog.tsx`). Two problems:
+## What changes (plain English)
 
-### Bug 1 — We silently drop any city not in `us_cities_scored`
+1. **Scoring rule flip**
+   - Today: `useLiveMvs` nulls out `price_min`/`price_max` when `price_needs_review = true`, so AI Overview prices are skipped in the score.
+   - New: keep the prices as-is. AI Overview prices count in median, percentile, and pct-at-least math the same as any other price.
 
-Line 158:
-```
-if (knownCities.size > 0 && !knownCities.has(key)) {
-  return { ...r, status: "unknown_city", reason: "Not in US cities DB" };
-}
-```
-And line 181 only writes rows with status `will_add` or `duplicate`. So `unknown_city` rows are **thrown away, no toast, no warning**.
+2. **New crawls**
+   - `mvs-discover-providers` will stop setting `price_needs_review = true` for AI Overview rows. It will still tag `platform = 'google_ai_overview'` and store the snippet + source URL as proof. That tag is how we know to tint the row.
 
-Manus's file is mostly synthetic-sounding city names (Redbudgrove NM, Magnoliacliff IL, Cypressmeadow IN, etc.) — those don't exist in our `us_cities_scored` seed table. Only ~200 rows (real cities like Bloomington, Riverside, Covington) match, get written, and end up with rank ≥ 17 and CSI ≤ 21. That is exactly the "200 rows, max CSI 21.18, ranks 219–794" pattern we kept seeing.
+3. **Backfill existing rows**
+   - One-time UPDATE: set `price_needs_review = false` on every row where it is currently `true`. After this, scores across all cities recompute using those prices automatically (React Query invalidation on next load).
 
-### Bug 2 — We never read `manus_export_version` from the CSV
+4. **Row color**
+   - In Provider Evidence table and the "All competitors" table (`CityCompetitors.tsx`), rows where `platform = 'google_ai_overview'` get a very light yellow background (`#fffbea` style). No amber "Needs review" chip anymore — replace with a small neutral "AI Overview" label so people still know the source.
 
-Line 122–131 only extracts `city`, `state`, `manus_csi_score`, `rank`. The column is dropped on parse, so it stays blank in the DB no matter what Manus sends.
+5. **Filter control above the table**
+   - Add a dropdown (or checkbox) above Provider Evidence with options: All sources / Only AI Overview / Hide AI Overview. Same control added to `CityCompetitors.tsx`. Default = All sources.
 
-## Plan — 1 phase, 1 turn
+6. **Verify / Edit / Reject**
+   - Keep the Verify + Edit + Reject buttons working. If someone edits or rejects an AI Overview row later, the score updates as it does today. AI Overview price is "final unless someone edits."
 
-**Change only `src/components/phase2-demo/ImportManusCsvDialog.tsx`. No schema change, no other files touched.**
+## Files touched
 
-1. **Stop silently dropping "unknown" cities.**
-   - Remove the `us_cities_scored` cross-check entirely. The Manus table is *reference data* — it should hold whatever Manus sends, even if the city name isn't in our US cities seed.
-   - Drop the `knownCities` state and its lookup query.
-   - Remove the `unknown_city` status from the preview.
+- `src/lib/mvs/useLiveMvs.ts` — remove the `needsReview` null-out block.
+- `supabase/functions/mvs-discover-providers/index.ts` — stop writing `price_needs_review = true` for AI Overview inserts.
+- Data update (one-time): `UPDATE mvs_providers SET price_needs_review = false WHERE price_needs_review = true;`
+- `src/pages/ProviderEvidence.tsx` (+ any sub-component that renders the row / the amber chip) — row tint, replace chip with neutral label, add filter dropdown.
+- `src/pages/CityCompetitors.tsx` — row tint + filter dropdown.
+- Possibly `src/lib/mvs/useProviderEvidence.ts` if row-shape needs `platform` surfaced.
 
-2. **Read `manus_export_version` from the CSV** and pass it into the upsert payload so the column gets populated on every row.
+## What is NOT touched
 
-3. **Add a small diagnostic line under the file summary** — literally what Manus asked for:
-   > `File parsed: 793 rows • version v1.6 • top CSI 95.00 (Redbudgrove, NM)`
-   
-   So next time we can see instantly whether papaparse got the right file.
+- Score math in `computeMvs.ts` — unchanged.
+- Verify / Edit / Reject logic in `verifyProvider.ts` — unchanged.
+- Amber "Possible brand price" (`price_derived_from_brand`) badge — that is a different flag, stays as-is.
+- Other pages, sidebar, sidebar counts, MVS QA Queue.
 
-4. **Keep everything else the same:** CSI threshold, in-file dedup, upsert on `(city, state)`, human-shortlist and pipeline untouched.
+## Phases and turns
 
-## Risks / what stays safe
+- **Phase 1 (1 turn)** — Backend: flip scoring rule in `useLiveMvs`, remove `price_needs_review = true` write in `mvs-discover-providers`, run the one-time UPDATE to flip existing rows.
+- **Phase 2 (1 turn)** — UI: light-yellow tint + neutral "AI Overview" label + filter dropdown in Provider Evidence and CityCompetitors.
 
-- Zero impact on human shortlist (`mvs_shortlist_cities`) or the pipeline.
-- Zero impact on any scoring, crawlers, or UI outside this one dialog.
-- Only the Manus reference table (`mvs_manus_cities`) changes — and it will now hold all 793 rows with correct CSI and version.
+Total: **2 turns**.
 
-## What Brett tests after
+## Risks
 
-1. Re-open the Market Validation page → **Import from Manus CSV** → drop the same file.
-2. Preview should show **793 will add/refresh, version v1.6, top CSI 95.00**.
-3. Click Confirm.
-4. I verify the DB: 793 rows, min CSI 5, max CSI 95, ranks 1–794, version v1.6 on every row.
+- MVS scores for cities that have AI Overview prices will change on next load — some may go up or down. Expected and desired.
+- Anyone mid-review of an AI Overview row will see it as "counting" already; the Verify button still works if they want to explicitly bless it.
 
-Say **go** and I'll ship it.
+## Testing after each phase
+
+- Phase 1: open a city that has AI Overview rows, confirm the score number changes vs. before, confirm no console errors.
+- Phase 2: confirm AI Overview rows are light yellow, filter dropdown shows/hides them, other rows look normal.
+
+Approve and I will start with Phase 1.

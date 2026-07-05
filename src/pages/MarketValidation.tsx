@@ -163,6 +163,9 @@ function LiveOverlayProbe({
   const diversity = r?.scores.enrichmentDiversity ?? null;
   const depth = r?.scores.marketDepth ?? null;
   const balance = r?.scores.marketBalance ?? null;
+  const enrichmentThinMarket =
+    typeof r?.inputs.enrichmentDiversity?.premiumProviderCount === "number" &&
+    r.inputs.enrichmentDiversity.premiumProviderCount < 4;
 
   useEffect(() => {
     if (r) {
@@ -176,11 +179,12 @@ function LiveOverlayProbe({
         // low_confidence_badge was tied to a retired signal (no_reg_page_pct);
         // force false to stop the false warning.
         lowConfidence: false,
+        enrichmentThinMarket,
       });
     } else {
       onOverlay(rowId, null);
     }
-  }, [rowId, r, composite, pricing, scaledOperator, diversity, depth, balance, onOverlay]);
+  }, [rowId, r, composite, pricing, scaledOperator, diversity, depth, balance, enrichmentThinMarket, onOverlay]);
 
   useEffect(() => {
     onBundle(rowId, { cachedAt: bundle.cachedAt, loading: bundle.loading });
@@ -247,7 +251,8 @@ export default function MarketValidation() {
         existing.diversity === overlay.diversity &&
         existing.depth === overlay.depth &&
         existing.balance === overlay.balance &&
-        existing.lowConfidence === overlay.lowConfidence
+        existing.lowConfidence === overlay.lowConfidence &&
+        existing.enrichmentThinMarket === overlay.enrichmentThinMarket
       ) {
         return prev;
       }

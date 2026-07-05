@@ -14,6 +14,8 @@ export type LiveOverlay = {
   depth: number | null;
   balance: number | null;
   lowConfidence: boolean;
+  /** Enrichment Diversity thin-market flag: premium provider count < 4. Display only. */
+  enrichmentThinMarket?: boolean;
 };
 
 const NAVY = "#07142f";
@@ -250,7 +252,26 @@ export function ShortlistTable({ rows, activeCityId, onSelectCity, liveOverlays 
                   <td className="px-2 py-2 text-right font-black tabular-nums" style={{ color: isLive ? NAVY : MUTED }}>{fmt(overlay?.composite)}</td>
                   <td className="px-2 py-2 text-right tabular-nums" style={{ color: isLive ? NAVY : MUTED }}>{fmt(overlay?.pricing)}</td>
                   <td className="px-2 py-2 text-right tabular-nums" style={{ color: isLive ? NAVY : MUTED }}>{fmt(overlay?.scaledOperator)}</td>
-                  <td className="px-2 py-2 text-right tabular-nums" style={{ color: isLive ? NAVY : MUTED }}>{fmt(overlay?.diversity)}</td>
+                  <td className="px-2 py-2 text-right tabular-nums" style={{ color: isLive ? NAVY : MUTED }}>
+                    <span className="inline-flex items-center gap-1 justify-end">
+                      {fmt(overlay?.diversity)}
+                      {overlay?.enrichmentThinMarket && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span
+                              className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold cursor-help"
+                              style={{ backgroundColor: "#fff3d6", color: "#8a5a00" }}
+                            >
+                              Thin
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs text-[12px] leading-relaxed">
+                            Thin market — low confidence. Fewer than 4 premium providers found in this city, so the enrichment breadth signal is weak.
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </span>
+                  </td>
                   <td className="px-2 py-2 text-right tabular-nums" style={{ color: isLive ? NAVY : MUTED }}>{fmt(overlay?.depth)}</td>
                   <td className="px-2 py-2">
                     {isLive && overlay?.balance != null ? (

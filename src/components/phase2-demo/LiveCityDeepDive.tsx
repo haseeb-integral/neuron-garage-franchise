@@ -215,9 +215,8 @@ function bandWhyFor(
   }
   if (key === "enrichmentDiversity") {
     const cc = input?.categoryCount;
-    const dr = input?.diversityRatio;
-    if (cc == null || dr == null) return null;
-    return `Why: ${cc} categor${cc === 1 ? "y" : "ies"} represented with diversity ratio ${fmt(dr, 2)} gives a ${word} score of ${s} (${thr}).`;
+    if (cc == null) return null;
+    return `Why: ${cc} enrichment categor${cc === 1 ? "y" : "ies"} represented gives a ${word} score of ${s} (${thr}).`;
   }
   if (key === "marketDepth") {
     const pc = input?.premiumProviderCount;

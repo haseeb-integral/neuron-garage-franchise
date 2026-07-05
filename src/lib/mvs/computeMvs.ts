@@ -343,6 +343,14 @@ function score3ScaledOperator(
   };
 }
 
+// Enrichment Diversity measures enrichment BREADTH — how many distinct
+// eligible categories a city's premium providers cover. Deep-but-narrow
+// markets (e.g. 10 robotics camps and nothing else) floor automatically
+// via a low category count, so we no longer blend in a categories/providers
+// ratio (which quietly punished large healthy markets).
+// `premiumProviderCount` is still returned in `inputs` for display purposes
+// (thin-market flag) and for other cards that read it — it does NOT enter
+// the math.
 function score4EnrichmentDiversity(
   providers: MvsProviderInput[],
 ): { score: number | null; inputs: MvsScoreInputs["enrichmentDiversity"] } {
@@ -361,21 +369,18 @@ function score4EnrichmentDiversity(
   }
 
   const categoryCount = categories.size;
-  const diversityRatio = categoryCount / premium.length;
+  const clamped = Math.max(
+    MVS_ENRICHMENT_MIN_CATEGORIES,
+    Math.min(MVS_ENRICHMENT_MAX_CATEGORIES, categoryCount),
+  );
+  const score = normalize(clamped, MVS_ENRICHMENT_MIN_CATEGORIES, MVS_ENRICHMENT_MAX_CATEGORIES);
 
-  const nCount = normalize(categoryCount, 2, 10);
-  const nRatio = normalize(diversityRatio, 0.1, 0.6);
+  // diversityRatio is retained in the payload shape for backward compatibility
+  // with any consumer that still reads it, but is no longer part of the score.
+  const diversityRatio = premium.length > 0 ? categoryCount / premium.length : null;
 
-  if (nCount == null || nRatio == null) {
-    return {
-      score: null,
-      inputs: { categoryCount, diversityRatio, premiumProviderCount: premium.length },
-    };
-  }
-
-  const score = 0.70 * nCount + 0.30 * nRatio;
   return {
-    score: Math.max(0, Math.min(100, score)),
+    score: score != null ? Math.max(0, Math.min(100, score)) : null,
     inputs: { categoryCount, diversityRatio, premiumProviderCount: premium.length },
   };
 }

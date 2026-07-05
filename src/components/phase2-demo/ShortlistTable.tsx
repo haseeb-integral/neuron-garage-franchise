@@ -14,6 +14,8 @@ export type LiveOverlay = {
   depth: number | null;
   balance: number | null;
   lowConfidence: boolean;
+  /** Enrichment Diversity thin-market flag: premium provider count < 4. Display only. */
+  enrichmentThinMarket?: boolean;
 };
 
 const NAVY = "#07142f";

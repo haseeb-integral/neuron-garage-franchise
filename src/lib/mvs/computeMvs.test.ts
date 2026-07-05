@@ -218,11 +218,9 @@ describe("Score 4: Enrichment Diversity", () => {
     expect(r.scores.enrichmentDiversity).toBeNull();
   });
 
-  it("rewards breadth and penalizes deep-but-narrow", () => {
+  it("scores by category count only (breadth), ignoring provider count", () => {
     // 5 providers, 3 distinct categories
-    // categoryCount = 3 → normalize(3, 2, 10) = (1/8)*100 = 12.5
-    // diversityRatio = 3/5 = 0.6 → normalize(0.6, 0.1, 0.6) = 100
-    // score = 0.70*12.5 + 0.30*100 = 8.75 + 30 = 38.75
+    // clamp(3, 2, 10) = 3 → normalize(3, 2, 10) = (1/8)*100 = 12.5
     const providers = [
       makeProvider({ category_classified: "STEM" }),
       makeProvider({ category_classified: "Art" }),
@@ -231,9 +229,42 @@ describe("Score 4: Enrichment Diversity", () => {
       makeProvider({ category_classified: "Art" }),
     ];
     const r = computeMvs(providers, [], defaultAcs);
-    expect(r.scores.enrichmentDiversity).toBeCloseTo(38.75, 1);
+    expect(r.scores.enrichmentDiversity).toBeCloseTo(12.5, 1);
     expect(r.inputs.enrichmentDiversity.categoryCount).toBe(3);
-    expect(r.inputs.enrichmentDiversity.diversityRatio).toBeCloseTo(0.6, 2);
+    expect(r.inputs.enrichmentDiversity.premiumProviderCount).toBe(5);
+  });
+
+  it("does not penalize large healthy markets (many providers, ~9 categories)", () => {
+    // 20 providers spanning 9 categories → clamp(9, 2, 10) = 9
+    // normalize(9, 2, 10) = (7/8)*100 = 87.5
+    const cats = ["stem", "art", "music", "coding", "robotics", "dance", "theater", "sports", "chess"];
+    const providers = [
+      ...cats.map((c) => makeProvider({ category_classified: c })),
+      ...Array.from({ length: 11 }, () => makeProvider({ category_classified: "stem" })),
+    ];
+    const r = computeMvs(providers, [], defaultAcs);
+    expect(r.inputs.enrichmentDiversity.categoryCount).toBe(9);
+    expect(r.scores.enrichmentDiversity).toBeCloseTo(87.5, 1);
+  });
+
+  it("floors at 0 when only 1 category is present (clamped to min=2)", () => {
+    const providers = [
+      makeProvider({ category_classified: "STEM" }),
+      makeProvider({ category_classified: "STEM" }),
+    ];
+    const r = computeMvs(providers, [], defaultAcs);
+    expect(r.inputs.enrichmentDiversity.categoryCount).toBe(1);
+    expect(r.scores.enrichmentDiversity).toBe(0);
+    // Thin-market flag data available to UI
+    expect(r.inputs.enrichmentDiversity.premiumProviderCount).toBe(2);
+  });
+
+  it("caps at 100 when category count exceeds max (10)", () => {
+    const cats = ["stem", "art", "music", "coding", "robotics", "dance", "theater", "sports", "chess", "cooking", "language", "swim"];
+    const providers = cats.map((c) => makeProvider({ category_classified: c }));
+    const r = computeMvs(providers, [], defaultAcs);
+    expect(r.inputs.enrichmentDiversity.categoryCount).toBe(12);
+    expect(r.scores.enrichmentDiversity).toBe(100);
   });
 
   it("normalizes fuzzy category matching", () => {

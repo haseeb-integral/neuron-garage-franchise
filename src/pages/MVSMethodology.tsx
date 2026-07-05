@@ -103,13 +103,13 @@ Scaled Operator Score =
     weight: "13.33%",
     question: "Do families in this market invest across a variety of enrichment categories?",
     formula: `Category Count   = number of distinct enrichment categories with ≥1 premium provider
-Diversity Ratio  = Category Count ÷ Premium Provider Count
 
 Enrichment Diversity Score =
-  0.70 × normalize(Category Count,   range 2–10)
-+ 0.30 × normalize(Diversity Ratio,  range 0.1–0.6)`,
+  normalize( clamp(Category Count, 2, 10), 2, 10 ) × 100
+
+Display-only flag: if Premium Provider Count < 4, show "Thin market — low confidence" next to the score.`,
     detail:
-      "Category Count rewards breadth. Diversity Ratio penalizes deep-but-narrow markets (e.g. 10 robotics camps and nothing else). Eligible categories (19 in the live classifier): STEM, Robotics, Coding, Science, Maker, Art, Theater, Music, Academic Enrichment, Debate, Chess, Entrepreneurship, Dance, Language, Sports, Swim, Gymnastics, Cooking, Outdoor.",
+      "This score measures enrichment breadth only. Deep-but-narrow markets floor automatically via low category count — we no longer penalise large healthy markets with a category-to-provider ratio. Eligible categories (19 in the live classifier): STEM, Robotics, Coding, Science, Maker, Art, Theater, Music, Academic Enrichment, Debate, Chess, Entrepreneurship, Dance, Language, Sports, Swim, Gymnastics, Cooking, Outdoor.",
     sources: [
       "Same premium-provider universe from Apify + Firecrawl",
       "Category classification by Gemini 2.0 Flash against the eligible category list",

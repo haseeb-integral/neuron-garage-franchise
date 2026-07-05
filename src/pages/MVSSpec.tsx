@@ -169,11 +169,11 @@ Operator watchlist (seed, editable in UI): Galileo, Steve & Kate's, Camp Inventi
 ### Score 4 — Enrichment Diversity (13.33%)
 
 \`\`\`
-Category Count  = distinct eligible categories with ≥1 premium provider (of 19)
-Diversity Ratio = Category Count ÷ Premium Provider Count
+Category Count = distinct eligible categories with ≥1 premium provider (of 19)
 
-Score = 0.70 × normalize(Category Count, 2–10)
-      + 0.30 × normalize(Diversity Ratio, 0.1–0.6)
+Score = normalize( clamp(Category Count, 2, 10), 2, 10 ) × 100
+
+Display-only flag: if Premium Provider Count < 4, show "Thin market — low confidence" next to the score.
 \`\`\`
 
 ### Score 5 — Market Depth (13.33%)

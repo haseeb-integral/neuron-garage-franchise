@@ -1009,6 +1009,17 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                         {band.label}
                       </span>
                     )}
+                    {meta.key === "enrichmentDiversity" &&
+                      typeof input?.premiumProviderCount === "number" &&
+                      input.premiumProviderCount < 4 && (
+                        <span
+                          className={CHIP}
+                          style={{ backgroundColor: "#fff3d6", color: "#8a5a00" }}
+                          title="Fewer than 4 premium providers found; enrichment breadth signal is weak."
+                        >
+                          Thin market — low confidence
+                        </span>
+                      )}
                   </div>
                   <p className="mt-0.5 text-[11px]" style={{ color: MUTED }}>
                     {meta.subtitle}

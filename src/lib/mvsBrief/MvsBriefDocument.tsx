@@ -449,6 +449,10 @@ const PillarPages: React.FC<{ args: MvsBriefArgs; headerText: string }> = ({ arg
             }
             return [k, val];
           });
+        const thinMarket =
+          p.key === "enrichmentDiversity" &&
+          typeof (inputs as any)?.premiumProviderCount === "number" &&
+          ((inputs as any).premiumProviderCount as number) < 4;
         return (
           <View key={p.key} style={s.pillarBlock} wrap={false}>
             <SectionTitle n={3 + idx} label={p.title} sub={p.subtitle} />
@@ -465,6 +469,11 @@ const PillarPages: React.FC<{ args: MvsBriefArgs; headerText: string }> = ({ arg
                 pts to composite
               </Text>
             </View>
+            {thinMarket ? (
+              <Text style={{ fontSize: 9, color: "#8a5a00", marginBottom: 4 }}>
+                Thin market — low confidence (fewer than 4 premium providers).
+              </Text>
+            ) : null}
             {rows.length > 0 ? (
               <Kv rows={rows} />
             ) : (

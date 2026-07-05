@@ -1,6 +1,14 @@
 // Pure helper: computes MVS + 6 sub-scores from live pipeline data.
 // Brett's rule — "one calibrated number everywhere". No DB writes.
 
+// Enrichment Diversity clamp bounds — see score4EnrichmentDiversity.
+export const MVS_ENRICHMENT_MIN_CATEGORIES = 2;
+export const MVS_ENRICHMENT_MAX_CATEGORIES = 10;
+// Below this premium-provider count, UI should show a "Thin market — low
+// confidence" pill next to the Enrichment Diversity score. Display-only;
+// the math does not change.
+export const MVS_ENRICHMENT_THIN_MARKET_THRESHOLD = 4;
+
 export const MVS_NORMALIZATION_VERSION = "1.0-fixed";
 
 // Market Absorption (formerly 0.25) was removed June 24, 2026. Remaining

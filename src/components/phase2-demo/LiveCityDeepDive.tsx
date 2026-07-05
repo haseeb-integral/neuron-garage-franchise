@@ -75,7 +75,7 @@ const SUB_SCORE_META: {
     title: "Enrichment Diversity",
     subtitle: "Do families invest across multiple categories?",
     formula:
-      "0.70 × normalize(Category Count, 2–10) + 0.30 × normalize(Diversity Ratio, 0.1–0.6)",
+      "normalize(clamp(Category Count, 2, 10), 2, 10) × 100",
     sources: [
       { label: "Category classifier", detail: "Each provider classified into STEM / Arts / Sports / Academic / Specialty by AI extractor over scraped descriptions." },
       { label: "mvs_providers table", detail: "Same premium provider rows as Pricing — category_classified column." },
@@ -215,9 +215,8 @@ function bandWhyFor(
   }
   if (key === "enrichmentDiversity") {
     const cc = input?.categoryCount;
-    const dr = input?.diversityRatio;
-    if (cc == null || dr == null) return null;
-    return `Why: ${cc} categor${cc === 1 ? "y" : "ies"} represented with diversity ratio ${fmt(dr, 2)} gives a ${word} score of ${s} (${thr}).`;
+    if (cc == null) return null;
+    return `Why: ${cc} enrichment categor${cc === 1 ? "y" : "ies"} represented gives a ${word} score of ${s} (${thr}).`;
   }
   if (key === "marketDepth") {
     const pc = input?.premiumProviderCount;
@@ -1010,6 +1009,17 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                         {band.label}
                       </span>
                     )}
+                    {meta.key === "enrichmentDiversity" &&
+                      typeof input?.premiumProviderCount === "number" &&
+                      input.premiumProviderCount < 4 && (
+                        <span
+                          className={CHIP}
+                          style={{ backgroundColor: "#fff3d6", color: "#8a5a00" }}
+                          title="Fewer than 4 premium providers found; enrichment breadth signal is weak."
+                        >
+                          Thin market — low confidence
+                        </span>
+                      )}
                   </div>
                   <p className="mt-0.5 text-[11px]" style={{ color: MUTED }}>
                     {meta.subtitle}

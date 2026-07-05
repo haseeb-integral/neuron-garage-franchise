@@ -49,7 +49,7 @@ const PILLARS: {
   { key: "scaledOperator", title: "Scaled Operator", subtitle: "Validated vs saturated by national operators?",
     formula: "0.65 × norm(Validation, 0–8) + 0.35 × (100 − norm(DirectLoad per 10k, 0–5))" },
   { key: "enrichmentDiversity", title: "Enrichment Diversity", subtitle: "Do families invest across multiple categories?",
-    formula: "0.70 × norm(CategoryCount, 2–10) + 0.30 × norm(DiversityRatio, 0.1–0.6)" },
+    formula: "norm(clamp(CategoryCount, 2, 10), 2, 10) × 100" },
   { key: "marketDepth", title: "Market Depth", subtitle: "How large is the premium ecosystem?",
     formula: "norm(PremiumProviderCount, 4–40)" },
   { key: "marketBalance", title: "Market Balance Index", subtitle: "Is there still room in this market?",
@@ -453,6 +453,11 @@ export default function MarketBrief() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
             {PILLARS.map((p, idx) => {
               const score = result.scores[p.key];
+              const pillarInputs = (result.inputs as any)[p.key] as Record<string, unknown> | undefined;
+              const thinMarket =
+                p.key === "enrichmentDiversity" &&
+                typeof pillarInputs?.premiumProviderCount === "number" &&
+                (pillarInputs.premiumProviderCount as number) < 4;
               return (
                 <div key={p.key} className="mb-avoid-break" style={{
                   padding: 18, borderRadius: 10, border: "1px solid var(--mb-line)", background: "white",
@@ -466,6 +471,14 @@ export default function MarketBrief() {
                         {p.title}
                       </div>
                       <div style={{ fontSize: 11, color: "var(--mb-muted)", marginTop: 2 }}>{p.subtitle}</div>
+                      {thinMarket && (
+                        <div style={{
+                          display: "inline-block", marginTop: 4, padding: "2px 8px", borderRadius: 999,
+                          background: "#fff3d6", color: "#8a5a00", fontSize: 10, fontWeight: 600,
+                        }}>
+                          Thin market — low confidence
+                        </div>
+                      )}
                     </div>
                     <div className="mb-mono" style={{ fontSize: 28, fontWeight: 700, color: "var(--mb-navy)", lineHeight: 1 }}>
                       {fmt(score)}

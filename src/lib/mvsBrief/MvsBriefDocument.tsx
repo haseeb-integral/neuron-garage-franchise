@@ -249,7 +249,7 @@ const PILLARS: {
     title: "Enrichment Diversity",
     subtitle: "Do families invest across multiple categories?",
     formula:
-      "0.70 * norm(CategoryCount, 2-10) + 0.30 * norm(DiversityRatio, 0.1-0.6)",
+      "norm(clamp(CategoryCount, 2, 10), 2, 10) * 100",
   },
   {
     key: "marketDepth",

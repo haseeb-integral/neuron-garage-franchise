@@ -75,7 +75,7 @@ const SUB_SCORE_META: {
     title: "Enrichment Diversity",
     subtitle: "Do families invest across multiple categories?",
     formula:
-      "0.70 × normalize(Category Count, 2–10) + 0.30 × normalize(Diversity Ratio, 0.1–0.6)",
+      "normalize(clamp(Category Count, 2, 10), 2, 10) × 100",
     sources: [
       { label: "Category classifier", detail: "Each provider classified into STEM / Arts / Sports / Academic / Specialty by AI extractor over scraped descriptions." },
       { label: "mvs_providers table", detail: "Same premium provider rows as Pricing — category_classified column." },

@@ -49,7 +49,7 @@ const PILLARS: {
   { key: "scaledOperator", title: "Scaled Operator", subtitle: "Validated vs saturated by national operators?",
     formula: "0.65 × norm(Validation, 0–8) + 0.35 × (100 − norm(DirectLoad per 10k, 0–5))" },
   { key: "enrichmentDiversity", title: "Enrichment Diversity", subtitle: "Do families invest across multiple categories?",
-    formula: "0.70 × norm(CategoryCount, 2–10) + 0.30 × norm(DiversityRatio, 0.1–0.6)" },
+    formula: "norm(clamp(CategoryCount, 2, 10), 2, 10) × 100" },
   { key: "marketDepth", title: "Market Depth", subtitle: "How large is the premium ecosystem?",
     formula: "norm(PremiumProviderCount, 4–40)" },
   { key: "marketBalance", title: "Market Balance Index", subtitle: "Is there still room in this market?",

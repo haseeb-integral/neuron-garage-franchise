@@ -251,7 +251,8 @@ export default function MarketValidation() {
         existing.diversity === overlay.diversity &&
         existing.depth === overlay.depth &&
         existing.balance === overlay.balance &&
-        existing.lowConfidence === overlay.lowConfidence
+        existing.lowConfidence === overlay.lowConfidence &&
+        existing.enrichmentThinMarket === overlay.enrichmentThinMarket
       ) {
         return prev;
       }

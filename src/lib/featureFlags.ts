@@ -10,6 +10,11 @@ export const FEATURE_FLAGS = {
   FF_SCORE_OVERRIDE: true,   // T3-04 manual score override (Phase D)
   FF_MANUAL_VOTES: true,     // T2-03 record committee votes for members without accounts
   FF_CANDIDATE_PROCESS_V1: true, // 7-step franchisee interview process tab
+
+  // Demand pillar: Affluent Families with Children sub-metric (B19131).
+  // OFF by default in Phase 1 — flag flips ON in Phase 3 after backfill.
+  // Flip to false at any time to instantly revert to the old 4-metric Demand math.
+  FEATURE_AFFLUENT_FAMILIES: false,
 } as const;
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;

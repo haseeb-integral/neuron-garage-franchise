@@ -80,10 +80,14 @@ Deno.serve(async (req) => {
       }))
       .filter((c: CityInput) => c.city && c.state);
   } else if (body?.all === true) {
+    const offset = Number.isFinite(body?.offset) ? Number(body.offset) : 0;
+    const limit = Number.isFinite(body?.limit) ? Number(body.limit) : 1000;
     const { data, error } = await admin
       .from("us_cities_scored")
       .select("city_name, state_abbr")
-      .order("state_abbr");
+      .order("state_abbr")
+      .order("city_name")
+      .range(offset, offset + limit - 1);
     if (error) {
       return new Response(
         JSON.stringify({ error: "failed to list cities", detail: error.message }),

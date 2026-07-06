@@ -2944,6 +2944,10 @@ export type Database = {
       }
       us_cities_scored: {
         Row: {
+          affluent_families_count: number | null
+          affluent_families_effective_threshold: number | null
+          affluent_families_share: number | null
+          affluent_families_snapped_bracket: number | null
           apify_last_updated: string | null
           avg_elementary_teacher_salary_usd: number | null
           avg_peak_summer_temperature: number | null
@@ -3010,6 +3014,10 @@ export type Database = {
           weather_last_updated: string | null
         }
         Insert: {
+          affluent_families_count?: number | null
+          affluent_families_effective_threshold?: number | null
+          affluent_families_share?: number | null
+          affluent_families_snapped_bracket?: number | null
           apify_last_updated?: string | null
           avg_elementary_teacher_salary_usd?: number | null
           avg_peak_summer_temperature?: number | null
@@ -3076,6 +3084,10 @@ export type Database = {
           weather_last_updated?: string | null
         }
         Update: {
+          affluent_families_count?: number | null
+          affluent_families_effective_threshold?: number | null
+          affluent_families_share?: number | null
+          affluent_families_snapped_bracket?: number | null
           apify_last_updated?: string | null
           avg_elementary_teacher_salary_usd?: number | null
           avg_peak_summer_temperature?: number | null

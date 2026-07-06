@@ -80,10 +80,14 @@ Deno.serve(async (req) => {
       }))
       .filter((c: CityInput) => c.city && c.state);
   } else if (body?.all === true) {
+    const offset = Number.isFinite(body?.offset) ? Number(body.offset) : 0;
+    const limit = Number.isFinite(body?.limit) ? Number(body.limit) : 1000;
     const { data, error } = await admin
       .from("us_cities_scored")
       .select("city_name, state_abbr")
-      .order("state_abbr");
+      .order("state_abbr")
+      .order("city_name")
+      .range(offset, offset + limit - 1);
     if (error) {
       return new Response(
         JSON.stringify({ error: "failed to list cities", detail: error.message }),
@@ -121,51 +125,68 @@ Deno.serve(async (req) => {
     return v;
   }
 
+  const async_mode = body?.async === true;
+
+  async function processAll() {
+    for (const { city, state } of cities) {
+      const rpp = await getRpp(state);
+      const m = await fetchB19131AffluentFamilies(city, state, rpp);
+
+      const { data: scored } = await admin
+        .from("us_cities_scored")
+        .select("id")
+        .ilike("city_name", city)
+        .eq("state_abbr", state)
+        .maybeSingle();
+
+      if (scored && m.error === null) {
+        await admin
+          .from("us_cities_scored")
+          .update({
+            affluent_families_count: m.affluent_families_count,
+            affluent_families_share: m.affluent_families_share,
+            affluent_families_snapped_bracket: m.affluent_families_snapped_bracket,
+            affluent_families_effective_threshold:
+              m.affluent_families_effective_threshold,
+          })
+          .eq("id", scored.id);
+      }
+      if (!async_mode) {
+        results.push({
+          city: `${city}, ${state}`,
+          rpp_used: rpp,
+          effective_threshold: m.affluent_families_effective_threshold,
+          snapped_bracket: m.affluent_families_snapped_bracket,
+          affluent_count: m.affluent_families_count,
+          affluent_share: m.affluent_families_share,
+          families_with_own_children_total: m.families_with_own_children_total,
+          patched: !!scored && m.error === null,
+          row_found: !!scored,
+          error: m.error,
+        });
+      }
+      await new Promise((r) => setTimeout(r, 30));
+    }
+  }
+
   const results: any[] = [];
 
-  for (const { city, state } of cities) {
-    const rpp = await getRpp(state);
-    const m = await fetchB19131AffluentFamilies(city, state, rpp);
-
-    // Find the row to update.
-    const { data: scored } = await admin
-      .from("us_cities_scored")
-      .select("id")
-      .ilike("city_name", city)
-      .eq("state_abbr", state)
-      .maybeSingle();
-
-    let patched = false;
-    if (scored && m.error === null) {
-      const { error: updErr } = await admin
-        .from("us_cities_scored")
-        .update({
-          affluent_families_count: m.affluent_families_count,
-          affluent_families_share: m.affluent_families_share,
-          affluent_families_snapped_bracket: m.affluent_families_snapped_bracket,
-          affluent_families_effective_threshold:
-            m.affluent_families_effective_threshold,
-        })
-        .eq("id", scored.id);
-      patched = !updErr;
+  if (async_mode) {
+    // Fire-and-forget background task. Response returns immediately.
+    // deno-lint-ignore no-explicit-any
+    const runtime: any = (globalThis as any).EdgeRuntime;
+    if (runtime?.waitUntil) {
+      runtime.waitUntil(processAll());
+    } else {
+      processAll();
     }
-
-    results.push({
-      city: `${city}, ${state}`,
-      rpp_used: rpp,
-      effective_threshold: m.affluent_families_effective_threshold,
-      snapped_bracket: m.affluent_families_snapped_bracket,
-      affluent_count: m.affluent_families_count,
-      affluent_share: m.affluent_families_share,
-      families_with_own_children_total: m.families_with_own_children_total,
-      patched,
-      row_found: !!scored,
-      error: m.error,
-    });
-
-    // Gentle pacing to keep well under Census rate limits during Phase 3.
-    await new Promise((r) => setTimeout(r, 120));
+    return new Response(
+      JSON.stringify({ ok: true, started: true, count: cities.length }),
+      { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   }
+
+  await processAll();
 
   return new Response(
     JSON.stringify({ ok: true, count: results.length, results }),

@@ -165,7 +165,7 @@ Deno.serve(async (req) => {
           error: m.error,
         });
       }
-      await new Promise((r) => setTimeout(r, 120));
+      await new Promise((r) => setTimeout(r, 30));
     }
   }
 

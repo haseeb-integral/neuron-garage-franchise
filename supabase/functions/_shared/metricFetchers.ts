@@ -828,3 +828,181 @@ export async function fetchBlsOewsWages(
     return { teacher_annual: EMPTY_METRIC, childcare_hourly: EMPTY_METRIC, source_url: null, error: (e as Error).message }
   }
 }
+
+// ─────────── Affluent Families with Children (B19131) ───────────
+// New Demand pillar sub-metric. See src/lib/affluentFamilies.ts for the
+// client-side snap helper; this fetcher owns the server-side pull.
+//
+// Approach: fetch table B19131 with group() to get ALL columns for the city
+// in one call. Then fetch the group's variable labels (metadata) once and
+// use them to (a) identify columns that represent families WITH OWN
+// CHILDREN UNDER 18 PRESENT and (b) extract the income bracket lower bound
+// from each column label. Sum estimates across the qualifying columns whose
+// bracket lower bound >= the snapped threshold.
+//
+// Nullable-safe: any failure returns { data: null, error }. The DB columns
+// stay null for that city and the frontend scoring falls back to the old
+// 4-metric Demand math automatically.
+
+// PLACEHOLDER — must match src/lib/affluentFamilies.ts. Kept as a local copy
+// because edge functions cannot import from `src/`.
+const AFFLUENCE_THRESHOLD_BASE_EDGE = 150000
+const B19131_BRACKET_BOUNDARIES_EDGE: number[] = [
+  10000, 15000, 20000, 25000, 30000, 35000, 40000, 45000,
+  50000, 60000, 75000, 100000, 125000, 150000, 200000,
+]
+
+function snapToBracketEdge(effectiveThreshold: number): number {
+  let best = B19131_BRACKET_BOUNDARIES_EDGE[0]
+  let bestDist = Math.abs(effectiveThreshold - best)
+  for (const b of B19131_BRACKET_BOUNDARIES_EDGE) {
+    const d = Math.abs(effectiveThreshold - b)
+    if (d < bestDist || (d === bestDist && b < best)) { best = b; bestDist = d }
+  }
+  return best
+}
+
+// Parse an ACS B19131 variable label into (has_own_children_under_18, bracket_lower_bound_dollars).
+// Labels look like: "Estimate!!Total:!!Married-couple family:!!With own children under 18 years:!!$75,000 to $99,999"
+// or                "Estimate!!Total:!!Married-couple family:!!No own children under 18 years:!!$200,000 or more"
+function parseB19131Label(label: string): { hasOwnKids: boolean; bracketLower: number | null } {
+  const l = label.toLowerCase()
+  const hasOwnKids = l.includes('with own children under 18')
+  // Match dollar bracket at the end of the label.
+  const m = label.match(/\$([\d,]+)(?:\s+to\s+\$[\d,]+)?(?:\s+or\s+more)?\s*$/i)
+  if (!m) return { hasOwnKids, bracketLower: null }
+  const lower = Number(m[1].replace(/,/g, ''))
+  return { hasOwnKids, bracketLower: Number.isFinite(lower) ? lower : null }
+}
+
+// Cache the B19131 variable labels for the process lifetime — they don't change per city.
+let _b19131VarCache: Record<string, string> | null = null
+async function fetchB19131VariableLabels(year: number): Promise<Record<string, string>> {
+  if (_b19131VarCache) return _b19131VarCache
+  const url = `https://api.census.gov/data/${year}/acs/acs5/groups/B19131.json`
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`Census B19131 metadata HTTP ${res.status}`)
+  const body = await res.json() as { variables: Record<string, { label: string }> }
+  const out: Record<string, string> = {}
+  for (const [k, v] of Object.entries(body.variables ?? {})) out[k] = v?.label ?? ''
+  _b19131VarCache = out
+  return out
+}
+
+export type AffluentFamiliesMetric = {
+  affluent_families_count: number | null
+  affluent_families_share: number | null       // 0..1
+  affluent_families_snapped_bracket: number | null
+  affluent_families_effective_threshold: number | null
+  families_with_own_children_total: number | null
+  rpp_used: number | null                       // null → threshold unadjusted
+  source_url: string | null
+  error: string | null
+}
+
+export async function fetchB19131AffluentFamilies(
+  city: string,
+  state: string,
+  rpp: number | null,
+  precomputedPlaceFips?: string | null,
+  precomputedStateFips?: string | null,
+  year = 2024,
+): Promise<AffluentFamiliesMetric> {
+  const empty: AffluentFamiliesMetric = {
+    affluent_families_count: null,
+    affluent_families_share: null,
+    affluent_families_snapped_bracket: null,
+    affluent_families_effective_threshold: null,
+    families_with_own_children_total: null,
+    rpp_used: rpp ?? null,
+    source_url: null,
+    error: null,
+  }
+
+  const key = Deno.env.get('CENSUS_API_KEY')
+  if (!key) return { ...empty, error: 'CENSUS_API_KEY missing' }
+  const abbr = resolveStateAbbr(state)
+  if (!abbr) return { ...empty, error: `Unknown state: ${state}` }
+  const stateFips = precomputedStateFips ?? STATE_FIPS[abbr]
+
+  // Compute effective threshold + snap.
+  const effective = rpp && Number.isFinite(rpp)
+    ? Math.round(AFFLUENCE_THRESHOLD_BASE_EDGE * (rpp / 100))
+    : AFFLUENCE_THRESHOLD_BASE_EDGE
+  const snapped = snapToBracketEdge(effective)
+
+  try {
+    // Resolve place FIPS if not passed in.
+    let placeFips = precomputedPlaceFips ?? null
+    if (!placeFips) {
+      const placeListUrl = `https://api.census.gov/data/${year}/acs/acs5?get=NAME&for=place:*&in=state:${stateFips}&key=${key}`
+      const listRes = await fetch(placeListUrl)
+      if (!listRes.ok) return { ...empty, error: `Census place list ${listRes.status}` }
+      const listData = await listRes.json() as string[][]
+      const target = city.toLowerCase().trim()
+      const header = listData[0]
+      const placeIdx = header.indexOf('place')
+      const nameIdx = header.indexOf('NAME')
+      for (let i = 1; i < listData.length; i++) {
+        const row = listData[i]
+        const nm = row[nameIdx].toLowerCase()
+        if (nm.startsWith(target + ',') || nm.startsWith(target + ' city,') || nm.startsWith(target + ' town,')) {
+          placeFips = row[placeIdx]; break
+        }
+      }
+      if (!placeFips) return { ...empty, error: `Place not found for ${city}, ${abbr}` }
+    }
+
+    // Pull ALL B19131 columns for this place with group().
+    const dataUrl = `https://api.census.gov/data/${year}/acs/acs5?get=group(B19131)&for=place:${placeFips}&in=state:${stateFips}&key=${key}`
+    const [labels, dataRes] = await Promise.all([
+      fetchB19131VariableLabels(year),
+      fetch(dataUrl),
+    ])
+    if (!dataRes.ok) return { ...empty, error: `Census B19131 HTTP ${dataRes.status}` }
+    const rows = await dataRes.json() as string[][]
+    if (!rows || rows.length < 2) return { ...empty, error: 'Census B19131 returned no rows' }
+    const header = rows[0]
+    const values = rows[1]
+
+    let totalFamiliesWithKids = 0
+    let affluentCount = 0
+    let anyColumnMatched = false
+
+    for (let i = 0; i < header.length; i++) {
+      const varId = header[i]
+      // Only sum leaf estimate columns.
+      if (!/^B19131_\d+E$/.test(varId)) continue
+      const label = labels[varId]
+      if (!label) continue
+      const parsed = parseB19131Label(label)
+      // The bracket-level rows (leaves) have a numeric bracket_lower.
+      // Rollup rows like "With own children under 18 years:" have no bracket
+      // and would otherwise double-count — skip them.
+      if (parsed.bracketLower === null) continue
+      if (!parsed.hasOwnKids) continue
+      const est = Number(values[i])
+      if (!Number.isFinite(est)) continue
+      anyColumnMatched = true
+      totalFamiliesWithKids += est
+      if (parsed.bracketLower >= snapped) affluentCount += est
+    }
+
+    if (!anyColumnMatched) return { ...empty, error: 'No B19131 columns matched — label parser may need updating' }
+
+    const share = totalFamiliesWithKids > 0 ? affluentCount / totalFamiliesWithKids : null
+
+    return {
+      affluent_families_count: Math.round(affluentCount),
+      affluent_families_share: share === null ? null : Math.round(share * 10000) / 10000,
+      affluent_families_snapped_bracket: snapped,
+      affluent_families_effective_threshold: effective,
+      families_with_own_children_total: Math.round(totalFamiliesWithKids),
+      rpp_used: rpp ?? null,
+      source_url: `https://api.census.gov/data/${year}/acs/acs5/groups/B19131.html`,
+      error: null,
+    }
+  } catch (e) {
+    return { ...empty, error: (e as Error).message }
+  }
+}

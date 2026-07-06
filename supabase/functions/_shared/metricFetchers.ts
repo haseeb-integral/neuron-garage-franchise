@@ -959,7 +959,7 @@ export async function fetchB19131AffluentFamilies(
       fetchB19131VariableLabels(year),
       fetch(dataUrl),
     ])
-    if (!dataRes.ok) return { ...empty, effective_threshold_debug: undefined as any, error: `Census B19131 HTTP ${dataRes.status}` }
+    if (!dataRes.ok) return { ...empty, error: `Census B19131 HTTP ${dataRes.status}` }
     const rows = await dataRes.json() as string[][]
     if (!rows || rows.length < 2) return { ...empty, error: 'Census B19131 returned no rows' }
     const header = rows[0]

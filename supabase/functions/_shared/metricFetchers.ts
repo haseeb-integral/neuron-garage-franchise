@@ -867,7 +867,11 @@ function snapToBracketEdge(effectiveThreshold: number): number {
 // or                "Estimate!!Total:!!Married-couple family:!!No own children under 18 years:!!$200,000 or more"
 function parseB19131Label(label: string): { hasOwnKids: boolean; bracketLower: number | null } {
   const l = label.toLowerCase()
-  const hasOwnKids = l.includes('with own children under 18')
+  // Census phrasing is "With own children of the householder under 18 years".
+  // Older years used "With own children under 18 years". Accept both, and
+  // explicitly exclude the "No own children..." branch.
+  const hasOwnKids = /with own children (?:of the householder )?under 18/.test(l)
+    && !/no own children/.test(l)
   // Match dollar bracket at the end of the label.
   const m = label.match(/\$([\d,]+)(?:\s+to\s+\$[\d,]+)?(?:\s+or\s+more)?\s*$/i)
   if (!m) return { hasOwnKids, bracketLower: null }

@@ -19,11 +19,16 @@ export const RETIRED_CATEGORY_KEYS = [
   "parentMindset",
 ] as const;
 
+// Tier 1 rework Phase 2 (Sam+Brett 2026-07-07): composite = Demand + TAM only.
+// Demand 40 : franchiseeSupply 30 → rescale to sum to 100 → 57 / 43.
+// competitiveLandscape kept in the type for now (Phase 3 removes the UI),
+// but its weight is 0 and `recomputeComposite` force-drops it either way.
 export const DEFAULT_WEIGHTS: Record<CategoryKey, number> = {
-  demand: 40,
-  competitiveLandscape: 30,
-  franchiseeSupply: 30,
+  demand: 57,
+  competitiveLandscape: 0,
+  franchiseeSupply: 43,
 };
+
 
 export type SubWeights = Record<CategoryKey, Record<string, number>>;
 

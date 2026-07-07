@@ -131,31 +131,43 @@ export type CompositeRecomputeResult = {
   perCategoryShares: Record<CategoryKey, number>; // master share, 0..1
 };
 
+// Composite formula (Sam+Brett 2026-07-07 Tier 1 rework, Phase 2):
+// Only `demand` and `franchiseeSupply` (TAM Teachers) count toward the composite.
+// The CSI-derived `competitiveLandscape` pillar is force-dropped here — its
+// weight is zeroed regardless of what the stored config or preset says, and
+// the remaining two categories are rescaled so their master shares sum to 1.
+// This is the single chokepoint for the "Demand + TAM only" rule; the CSI
+// slider in the Scoring Method UI has no effect on the composite until
+// Phase 3 removes it visually.
+const COMPOSITE_CATEGORY_KEYS: readonly CategoryKey[] = ["demand", "franchiseeSupply"];
+
 export function recomputeComposite(
   categoryScores: Partial<Record<CategoryKey, number | null>>,
   masterWeights: Record<CategoryKey, number>,
 ): CompositeRecomputeResult {
   let masterTotal = 0;
-  (Object.keys(masterWeights) as CategoryKey[]).forEach((k) => {
-    if (typeof categoryScores[k] === "number") masterTotal += masterWeights[k];
+  COMPOSITE_CATEGORY_KEYS.forEach((k) => {
+    if (typeof categoryScores[k] === "number") masterTotal += masterWeights[k] ?? 0;
   });
 
   const perCategoryShares = {} as Record<CategoryKey, number>;
+  (Object.keys(masterWeights) as CategoryKey[]).forEach((k) => (perCategoryShares[k] = 0));
+
   if (masterTotal <= 0) {
-    (Object.keys(masterWeights) as CategoryKey[]).forEach((k) => (perCategoryShares[k] = 0));
     return { composite: 0, perCategoryShares };
   }
 
   let sum = 0;
-  (Object.keys(masterWeights) as CategoryKey[]).forEach((k) => {
+  COMPOSITE_CATEGORY_KEYS.forEach((k) => {
     const v = categoryScores[k];
-    const share = masterWeights[k] / masterTotal;
+    const share = (masterWeights[k] ?? 0) / masterTotal;
     perCategoryShares[k] = share;
     if (typeof v === "number") sum += v * share;
   });
 
   return { composite: Math.round(sum), perCategoryShares };
 }
+
 
 // Plain-English summary of a category recompute. Drives the "human-readable"
 // block above the math table in the Show Formula panel.

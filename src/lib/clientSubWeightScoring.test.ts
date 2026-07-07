@@ -103,30 +103,44 @@ describe("recomputeCategoryScore", () => {
 });
 
 describe("recomputeComposite", () => {
-  it("weights category scores by master shares", () => {
+  // Phase 2 (Sam+Brett 2026-07-07): composite = Demand + TAM (franchiseeSupply) only.
+  // The CSI-derived `competitiveLandscape` pillar is force-dropped regardless
+  // of its stored weight or score.
+  it("uses only demand + franchiseeSupply and rescales their shares to 1", () => {
     const { composite } = recomputeComposite(
       { demand: 80, competitiveLandscape: 60, franchiseeSupply: 40 },
       { demand: 50, competitiveLandscape: 25, franchiseeSupply: 25 },
     );
-    // 80*0.5 + 60*0.25 + 40*0.25 = 65
-    expect(composite).toBe(65);
+    // Effective shares: demand 50/(50+25) = 2/3, supply 25/(50+25) = 1/3
+    // → 80 * 2/3 + 40 * 1/3 = 53.33 + 13.33 = 66.67 → 67
+    expect(composite).toBe(67);
+  });
+
+  it("ignores competitiveLandscape even when its weight is heavy", () => {
+    const { composite } = recomputeComposite(
+      { demand: 80, competitiveLandscape: 100, franchiseeSupply: 40 },
+      { demand: 40, competitiveLandscape: 90, franchiseeSupply: 30 },
+    );
+    // CSI dropped. demand 40/(40+30), supply 30/(40+30) → 80*0.571 + 40*0.429 = 62.86 → 63
+    expect(composite).toBe(63);
   });
 
   it("skips null category scores instead of treating them as zero", () => {
     const { composite } = recomputeComposite(
-      { demand: 80, competitiveLandscape: null, franchiseeSupply: 40 },
+      { demand: 80, competitiveLandscape: null, franchiseeSupply: null },
       { demand: 50, competitiveLandscape: 25, franchiseeSupply: 25 },
     );
-    // Effective shares: demand 50/75, supply 25/75 → 80*0.667 + 40*0.333 = 66.67 → 67
-    // (i.e. null category is NOT counted as a 0 — it drops out of the denominator)
-    expect(composite).toBe(67);
+    // Only demand has a score, so composite = demand = 80
+    expect(composite).toBe(80);
   });
 
-  it("returns composite 0 when no category has a score", () => {
+  it("returns composite 0 when no eligible category has a score", () => {
     const { composite } = recomputeComposite(
-      { demand: null, competitiveLandscape: null, franchiseeSupply: null },
+      { demand: null, competitiveLandscape: 90, franchiseeSupply: null },
       { demand: 50, competitiveLandscape: 25, franchiseeSupply: 25 },
     );
+    // competitiveLandscape is force-dropped even though it has a score.
     expect(composite).toBe(0);
   });
 });
+

@@ -728,6 +728,27 @@ export default function MarketValidationRollout() {
   const totalCount = SHORTLISTED_CITIES.length;
   const allDone = doneCount === totalCount;
 
+  // Trust banner: cities whose latest run has a critical source (Google Maps
+  // or Google Search) confirmed empty after 3 retries.
+  const CRITICAL = new Set(["google_maps", "google_search"]);
+  const readCount = (raw: any): number => {
+    if (raw == null) return 0;
+    if (typeof raw === "number") return raw;
+    if (typeof raw === "object") return Number(raw.count ?? 0);
+    return 0;
+  };
+  const redCities: string[] = [];
+  const yellowCities: string[] = [];
+  for (const c of SHORTLISTED_CITIES) {
+    const run = latestRuns[c.city];
+    const disc = (run?.source_counts as any)?.discover;
+    if (!disc) continue;
+    const critEmpty = ["google_maps", "google_search"].some((k) => readCount(disc[k]) === 0);
+    const secEmpty = ["sawyer", "activityhero", "yelp"].some((k) => readCount(disc[k]) === 0);
+    if (critEmpty) redCities.push(c.city);
+    else if (secEmpty) yellowCities.push(c.city);
+  }
+
   return (
     <div className="mx-auto max-w-[1200px] p-6">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -778,6 +799,32 @@ export default function MarketValidationRollout() {
       </div>
 
 
+
+      {/* Trust banner: red cities need a re-run */}
+      {redCities.length > 0 && (
+        <div className="mb-4 rounded-lg border border-red-300 bg-red-50 p-3 text-[12px] text-red-900">
+          <div className="mb-1 font-bold uppercase tracking-wide text-[11px] text-red-800">
+            ⚠ Score trust warning — {redCities.length} {redCities.length === 1 ? "city" : "cities"}
+          </div>
+          <div className="leading-relaxed">
+            Google Maps or Google Search returned 0 providers after 3 tries for:{" "}
+            <span className="font-semibold">{redCities.join(", ")}</span>.
+            Composite scores for these cities may be missing pricey established operators.
+            Click <em>Force Fresh</em> to re-run, or investigate the Google discover step if it stays red.
+          </div>
+        </div>
+      )}
+      {redCities.length === 0 && yellowCities.length > 0 && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-[12px] text-amber-900">
+          <div className="mb-1 font-bold uppercase tracking-wide text-[11px] text-amber-800">
+            {yellowCities.length} {yellowCities.length === 1 ? "city has" : "cities have"} 1–2 secondary sources empty
+          </div>
+          <div className="leading-relaxed">
+            Score is still usable but not full-fidelity for:{" "}
+            <span className="font-semibold">{yellowCities.join(", ")}</span>.
+          </div>
+        </div>
+      )}
 
       {/* Progress strip */}
       <div className="mb-5 rounded-lg border border-[#e5eaf2] bg-white p-4 shadow-sm">

@@ -53,8 +53,6 @@ const KEY_METRIC_KEYS: ReadonlySet<string> = new Set([
   "public_elementary_enrollment",
   "col_salary_index",
   "csi_national_brand_supply",
-  "csi_local_camp_estimate",
-  "csi_demand_adjusted_market",
 ]);
 
 function buildSeededFallbackSignals(market: CityData): LiveSignal[] {

@@ -52,14 +52,6 @@ export const SIGNAL_EXPLAIN: Record<string, { good: string; mid: string; bad: st
     mid: "Some national-brand competitors are present — entry is workable but requires sharper positioning.",
     bad: "The market is saturated with national-brand competitors — a new entrant needs a clear differentiator to win share.",
   },
-  csi_local_camp_estimate: {
-    good: "Few local camp and enrichment alternatives — local competitive pressure is limited.",
-    mid: "A moderate field of local camp and enrichment alternatives — some competitive pressure on share of wallet.",
-    bad: "Many local camp and enrichment alternatives — families already have plenty of substitutes for share of wallet.",
-  },
-  csi_demand_adjusted_market: {
-    good: "Demand-adjusted market size (enrollment × income index) is large — the underlying spendable market is strong.",
-    mid: "Demand-adjusted market size is moderate — workable but not a standout.",
-    bad: "Demand-adjusted market size is small — the spendable market is limited relative to top metros.",
-  },
+  // csi_local_camp_estimate and csi_demand_adjusted_market removed 2026-07-07
+  // (Prompt 1 CSI refactor). CSI now uses only real counted national-brand supply.
 };

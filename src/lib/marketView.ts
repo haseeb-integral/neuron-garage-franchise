@@ -153,16 +153,30 @@ export function buildPillarView(
 }
 
 // ─── Competitive Opportunity helper ────────────────────────────────────────
-// Manus' CSI saturation score is LOWER = better. Every UI surface that wants
-// the friendly "Competitive Opportunity" pillar (higher = better) MUST flip
-// through this single helper — never inline `100 - score_csi` again. Returns
-// a RAW pillar value (0–100, higher = more opportunity). Pass through
-// calibratePillarForDisplay() for the user-facing number.
+// CSI (Competitive Saturation Index) has been refactored (2026-07-07,
+// Brett-approved). The old formula divided a supply term — real national
+// brand counts PLUS an enrollment×0.003 "local provider" guess — by a demand
+// denominator (enrollment × income/65k). Two problems, per Sam:
+//   1. The local-provider guess averaged ~72% of total supply and drowned
+//      the real counted competitors it was supposed to supplement.
+//   2. The demand denominator duplicated the Demand pillar, so city size
+//      and income were counted twice in the final ranking.
+// The new raw supply is real counted competition only:
+//     csi_raw_supply = (STEM brand locations × 2.0) + (general brand × 1.0)
+// This is already stored pre-weighted in the DB column
+// `csi_national_brand_count_weighted` and mirrored into `csi_raw_supply`.
+// `score_csi` (0–100, higher = more saturated) is now the percentile rank
+// of csi_raw_supply across all cities in the DB. This helper flips it into
+// the friendly "Competitive Opportunity" pillar (higher = better). Every UI
+// surface MUST go through this helper — never inline `100 - score_csi`.
+export const CSI_STEM_WEIGHT = 2.0;
+export const CSI_GENERAL_WEIGHT = 1.0;
 export function competitiveOpportunityFromCsi(csi: number | null | undefined): number | null {
   if (csi == null || !Number.isFinite(Number(csi))) return null;
   const v = 100 - Number(csi);
   return Math.max(0, Math.min(100, v));
 }
+
 
 // ─── Market view ──────────────────────────────────────────────────────────
 // One object per market per render. Everything the UI needs, frozen.

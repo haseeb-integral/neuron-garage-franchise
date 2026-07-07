@@ -145,11 +145,11 @@ export const COLUMNS: ColDef[] = [
   // Competitive Landscape (Manus-owned)
   { key: "csi_brand", label: "Nat'l Brand Supply (wtd)", align: "right", group: "Competitive Landscape", get: (m) => row(m).csi_national_brand_count_weighted ?? null, render: (m) => fmtNum2(row(m).csi_national_brand_count_weighted) },
   { key: "csi_local", label: "Local Provider Est.", align: "right", group: "Competitive Landscape", get: (m) => row(m).csi_local_provider_estimate ?? null, render: (m) => fmtNum2(row(m).csi_local_provider_estimate) },
-  { key: "csi_dam", label: "Demand-Adj. Market", align: "right", group: "Competitive Landscape", get: (m) => row(m).csi_demand_adjusted_market ?? null, render: (m) => fmtInt(row(m).csi_demand_adjusted_market) },
+  // csi_dam (Demand-Adjusted Market) column removed 2026-07-07 — Prompt 1 CSI refactor.
   {
     key: "csi_raw", label: "CSI (raw)", align: "right", group: "Competitive Landscape",
     get: (m) => row(m).csi_score ?? null,
     render: (m) => fmtNum3(row(m).csi_score),
   },
-  { key: "csi_sat", label: "Saturation", align: "left", group: "Competitive Landscape", get: (m) => row(m).csi_saturation_category ?? "", render: (m) => <span className="text-[#526078]">{row(m).csi_saturation_category ?? "—"}</span> },
+  { key: "csi_sat", label: "Saturation", align: "left", group: "Competitive Landscape", get: (m) => row(m).csi_saturation_category ?? "", render: (m) => <span className="text-[#8a6a00] italic">{row(m).csi_saturation_category ?? "—"}</span> },
 ];

@@ -141,6 +141,8 @@ export const TILE_SOURCE_KEY: Record<string, ProvKey> = {
   "Median HHI · 10m": "affluence",
   "Median HHI · 15m": "affluence",
   "HH >$150k · 10m": "affluence",
+  "HH >$200k · 10m": "affluence",
+  "HH >$200k · 10m (count)": "affluence",
   "Kids 5-12 · 10m": "familyDensity",
   "Pop · 15m": "popReachable",
   "Drive to hwy": "accessibilityHwy",

@@ -151,7 +151,7 @@ export function buildCompareWorkbook(
   };
   (Object.keys(catLabels) as CategoryKey[]).forEach((k) => {
     const raw = appliedWeights[k] ?? 0;
-    snapAoa.push([catLabels[k], raw, Number(((raw / masterTotal) * 100).toFixed(2))]);
+    snapAoa.push([catLabels[k]!, raw, Number(((raw / masterTotal) * 100).toFixed(2))]);
   });
   snapAoa.push([]);
   snapAoa.push(["Category", "Metric", "Sub-weight (raw)", "Normalized Share %"]);
@@ -162,12 +162,12 @@ export function buildCompareWorkbook(
     );
     const subTotal = enabled.reduce((s, m) => s + (subs[m.key] ?? 0), 0) || 1;
     if (enabled.length === 0) {
-      snapAoa.push([catLabels[k], "(no enabled metrics)", 0, 0]);
+      snapAoa.push([catLabels[k]!, "(no enabled metrics)", 0, 0]);
     } else {
       enabled.forEach((m) => {
         const w = subs[m.key] ?? 0;
         snapAoa.push([
-          catLabels[k],
+          catLabels[k]!,
           m.label,
           w,
           Number(((w / subTotal) * 100).toFixed(2)),

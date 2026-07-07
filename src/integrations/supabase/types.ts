@@ -14,33 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      _mvs_v17_staging: {
-        Row: {
-          city: string
-          general_count: number
-          mvs_grade: string | null
-          mvs_score: number | null
-          state_abbr: string
-          stem_count: number
-        }
-        Insert: {
-          city: string
-          general_count: number
-          mvs_grade?: string | null
-          mvs_score?: number | null
-          state_abbr: string
-          stem_count: number
-        }
-        Update: {
-          city?: string
-          general_count?: number
-          mvs_grade?: string | null
-          mvs_score?: number | null
-          state_abbr?: string
-          stem_count?: number
-        }
-        Relationships: []
-      }
       ai_action_log: {
         Row: {
           action_type: string

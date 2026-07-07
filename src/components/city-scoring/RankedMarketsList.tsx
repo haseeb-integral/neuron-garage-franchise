@@ -11,7 +11,7 @@ import type { RankedMarket } from "@/lib/cityScoringLiveData";
 import { TierBadge } from "@/components/city-scoring/TierBadge";
 import { RowScorePopover } from "@/components/city-scoring/RowScorePopover";
 import { sampleCities } from "@/data/cityData";
-import { sameMarket, VISIBLE_CATEGORIES } from "@/lib/cityScoringPageHelpers";
+import { sameMarket, COMPOSITE_CATEGORIES } from "@/lib/cityScoringPageHelpers";
 import { buildMarketView, buildPillarView } from "@/lib/marketView";
 
 type Props = {
@@ -132,7 +132,7 @@ function RankedMarketsListImpl({
       )}
 
       <div className="overflow-hidden flex-1">
-        <div className="grid grid-cols-[16px_22px_minmax(0,1fr)_42px_70px_30px_30px_30px_28px_16px] items-center gap-x-2 px-1 py-2 text-[9.5px] uppercase tracking-wide text-[#8794ab] border-b border-[#eef2f7]">
+        <div className="grid grid-cols-[16px_22px_minmax(0,1fr)_42px_70px_30px_30px_28px_16px] items-center gap-x-2 px-1 py-2 text-[9.5px] uppercase tracking-wide text-[#8794ab] border-b border-[#eef2f7]">
           <span></span>
           <span>Rank</span>
           <span>Market</span>
@@ -140,10 +140,10 @@ function RankedMarketsListImpl({
           <span>Score</span>
           <span className="text-right" title="Demand category score">Dem</span>
           <span className="text-right" title="TAM Teachers category score">TAM</span>
-          <span className="text-right" title="Competitive Opportunity (higher = less saturated). Opportunity = 100 − CSI. CSI counts national brands + a baseline local-camp estimate; national-brand presence is what differentiates markets.">Opp</span>
           <span className="text-right">Tier</span>
           <span></span>
         </div>
+
         {pageItems.length === 0 && watchlistOnly && (
           <div className="px-2 py-8 text-center text-[11px] text-[#8794ab]">
             No saved markets yet — click the bookmark on any city to save it.
@@ -179,7 +179,8 @@ function RankedMarketsListImpl({
                 const sample = sampleCities.find((s) => sameMarket(s.city, s.state, c.city, c.state));
                 pickMarket({ city: c.city, state: c.state, id: sample?.id ?? c.id });
               }}
-              className={`grid grid-cols-[16px_22px_minmax(0,1fr)_42px_70px_30px_30px_30px_28px_16px] items-center gap-x-2 px-1 py-2.5 text-[11px] cursor-pointer border-b border-[#f3f5f9] last:border-0 ${isSel ? "bg-[#eaf0ff]" : "hover:bg-[#f7faff]"}`}
+              className={`grid grid-cols-[16px_22px_minmax(0,1fr)_42px_70px_30px_30px_28px_16px] items-center gap-x-2 px-1 py-2.5 text-[11px] cursor-pointer border-b border-[#f3f5f9] last:border-0 ${isSel ? "bg-[#eaf0ff]" : "hover:bg-[#f7faff]"}`}
+
             >
               <span className={compareMode ? "rounded ring-2 ring-[#174be8] ring-offset-1 ring-offset-white" : ""}>
                 <Checkbox checked={isCmp} onCheckedChange={() => toggleCompare(c.id)} onClick={(e) => e.stopPropagation()} />
@@ -211,7 +212,7 @@ function RankedMarketsListImpl({
                         <RowScorePopover
                           city={c.city}
                           state={c.state}
-                          categories={VISIBLE_CATEGORIES.map((cc) => ({ key: cc.key, label: cc.label }))}
+                          categories={COMPOSITE_CATEGORIES.map((cc) => ({ key: cc.key, label: cc.label }))}
                           categoryScores={c.categoryScores ?? {}}
                           appliedWeights={appliedWeights}
                           rawComposite={view.rawComposite}
@@ -242,9 +243,9 @@ function RankedMarketsListImpl({
                   <>
                     {cell(pillars.demand, "Demand score (calibrated)")}
                     {cell(pillars.franchiseeSupply, "TAM Teachers score (calibrated)")}
-                    {cell(pillars.competitiveLandscape, "Competitive Opportunity (calibrated, higher = less saturated)")}
                   </>
                 );
+
               })()}
               {c.hasLiveData ? (
                 <span className="justify-self-end">

@@ -115,6 +115,7 @@ type CategoryKey =
 import {
   CATEGORIES,
   VISIBLE_CATEGORIES,
+  COMPOSITE_CATEGORIES,
   SOURCES,
   normalizeMarketState,
   sameMarket,
@@ -124,6 +125,7 @@ import {
   type Category,
 } from "@/lib/cityScoringPageHelpers";
 void VISIBLE_CATEGORIES; void SOURCES; void CATEGORIES;
+
 void normalizeMarketState; void sameMarket; void categoryScores;
 
 type TierLetter = _TierLetter;
@@ -1548,13 +1550,14 @@ const CityScoring = () => {
         csiRawScore={(selected as any)?.scoredRow?.csi_score ?? null}
         csiSaturationCategory={(selected as any)?.scoredRow?.csi_saturation_category ?? null}
         overallFormula={{
-          parts: VISIBLE_CATEGORIES.map((c) => ({
+          parts: COMPOSITE_CATEGORIES.map((c) => ({
             key: c.key,
             label: c.label,
             score: detailCategoryScores[c.key] ?? null,
             weightPct: appliedTotal > 0 ? (appliedWeights[c.key] / appliedTotal) * 100 : 0,
           })),
           composite: weightedComposite ?? null,
+
         }}
       />
 

@@ -7,7 +7,7 @@ import { useShortlistAdditions } from "@/lib/mvs/useShortlistAdditions";
 import { toStateAbbr } from "@/lib/usStates";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { VISIBLE_CATEGORIES, type Category } from "@/lib/cityScoringPageHelpers";
+import { COMPOSITE_CATEGORIES, VISIBLE_CATEGORIES, type Category } from "@/lib/cityScoringPageHelpers";
 import type { RankedMarket } from "@/lib/cityScoringLiveData";
 import { buildPillarView, type PillarKey } from "@/lib/marketView";
 import { bandFromDisplayScore } from "@/lib/cityTiers";
@@ -139,11 +139,12 @@ function SelectedMarketPanelImpl({
         </svg>
         <p className="-mt-1 text-[13px] font-semibold" style={{ color: selectedHasLiveData ? tierBadge.fg : "#8794ab" }}>{selectedHasLiveData ? opportunityLabel : "No live data"}</p>
         {selectedHasLiveData && (() => {
-          const enriched = VISIBLE_CATEGORIES.map((c) => {
+          const enriched = COMPOSITE_CATEGORIES.map((c) => {
             const score = Math.round(calibratedScore(c.key));
             const weight = appliedWeights[c.key] ?? 0;
             return { label: c.label, score, weight, contribution: score * weight };
           }).filter((x) => x.weight > 0);
+
           if (enriched.length === 0) return null;
           const sorted = [...enriched].sort((a, b) => b.contribution - a.contribution);
           const drivers = sorted.slice(0, Math.min(2, sorted.length));
@@ -179,7 +180,7 @@ function SelectedMarketPanelImpl({
               </div>
               {(() => {
                 const total = appliedTotal > 0 ? appliedTotal : 1;
-                const rows = VISIBLE_CATEGORIES.map((c) => {
+                const rows = COMPOSITE_CATEGORIES.map((c) => {
                   const weightPct = (appliedWeights[c.key] / total) * 100;
                   // Use RAW (math) pillar value — same number the Edit Config drawer
                   // shows. The composite is computed from raw pillars, then the
@@ -189,6 +190,7 @@ function SelectedMarketPanelImpl({
                   return { key: c.key, label: c.label, weightPct, rawPillar, contribution };
                 });
                 const rawWci = rows.reduce((s, r) => s + r.contribution, 0);
+
                 return (
                   <>
                     <div className="rounded border border-[#eef2f7] overflow-hidden">
@@ -274,7 +276,7 @@ function SelectedMarketPanelImpl({
         <div className="mt-4 w-full text-left">
           <p className="mb-2.5 text-[13px] font-semibold text-[#07142f]">Category Scores</p>
           <div className="space-y-2">
-            {VISIBLE_CATEGORIES.map((cat) => {
+            {COMPOSITE_CATEGORIES.map((cat) => {
               const v = selectedHasLiveData ? Math.round(calibratedScore(cat.key)) : null;
               const rawV = selectedHasLiveData ? pillars[cat.key as PillarKey]?.raw ?? null : null;
               const wPct = appliedTotal > 0 ? (appliedWeights[cat.key] / appliedTotal) * 100 : 0;

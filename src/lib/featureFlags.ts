@@ -15,7 +15,14 @@ export const FEATURE_FLAGS = {
   // OFF by default in Phase 1 — flag flips ON in Phase 3 after backfill.
   // Flip to false at any time to instantly revert to the old 4-metric Demand math.
   FEATURE_AFFLUENT_FAMILIES: false,
+
+  // Tier 1 rework (Sam+Brett 2026-07-07) — Provider Count column + drill-in on
+  // City Search + Selected Market panel. Flip to false to instantly hide the
+  // new column and popover without a code revert. Independent of the CSI
+  // removal in Phase 3 (once CSI is gone from the UI it stays gone).
+  FF_PROVIDER_COUNT: true,
 } as const;
+
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;
 

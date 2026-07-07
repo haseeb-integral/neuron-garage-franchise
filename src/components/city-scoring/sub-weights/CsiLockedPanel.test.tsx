@@ -10,8 +10,6 @@ import { CsiLockedPanel } from "./CsiLockedPanel";
 
 const metrics: any[] = [
   { key: "csi_national_brand_supply", label: "National brand supply", category: "competitiveLandscape", source: "Manus", status: "live", enabled: true },
-  { key: "csi_local_camp_estimate",   label: "Local camp estimate",   category: "competitiveLandscape", source: "Manus", status: "live", enabled: true },
-  { key: "csi_demand_adjusted_market", label: "Demand-adjusted market", category: "competitiveLandscape", source: "Manus", status: "live", enabled: true },
 ];
 
 describe("CsiLockedPanel", () => {

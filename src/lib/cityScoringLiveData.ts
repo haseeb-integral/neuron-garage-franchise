@@ -379,12 +379,10 @@ export function buildSeededFallbackSignalsFromScored(
     seeded("median_household_income", "Median Household Income", scoredRow.median_household_income, "demand", true),
     seeded("dual_income_household_pct", "% Dual-Income Households", scoredRow.dual_working_families_pct, "demand", true),
     seeded("education_bachelors_plus_pct", "Bachelor's+ Attainment", scoredRow.college_degree_pct, "demand", true),
-    // CSI — Manus-owned (Brett+Haseeb 2026-05-21). Inputs from Brett's
-    // 2026-05-21 Manus upload. Raw csi_score (saturation) is shown on the
-    // card; here we expose the three contributing inputs.
+    // CSI — single input after 2026-07-07 refactor (Prompt 1). Local-provider
+    // estimate and demand-adjusted market removed: the first was a guess that
+    // drowned real counts, the second duplicated the Demand pillar.
     seeded("csi_national_brand_supply", "National Brand Supply (weighted)", scoredRow.csi_national_brand_count_weighted, "competitive_landscape", true),
-    seeded("csi_local_camp_estimate", "Local Camp Supply (estimated)", scoredRow.csi_local_provider_estimate, "competitive_landscape", true),
-    seeded("csi_demand_adjusted_market", "Demand-Adjusted Market (DAM)", scoredRow.csi_demand_adjusted_market, "competitive_landscape", true),
     // TAM Teachers — 5-metric lock (Brett+Haseeb 2026-05-21)
     seeded("public_elementary_school_count", "Public Elementary Schools", scoredRow.public_elementary_count, "franchisee_supply", true),
     seeded("public_elementary_teacher_count", "Public Elementary Teachers (NCES FTE)", scoredRow.public_elementary_teacher_count, "franchisee_supply", true),

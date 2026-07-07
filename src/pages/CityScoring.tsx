@@ -1230,10 +1230,8 @@ const CityScoring = () => {
     "private_charter_school_count",
     "public_elementary_enrollment",
     "col_salary_index",
-    // Competitive Landscape (3)
+    // Competitive Landscape (single input after Prompt 1 refactor 2026-07-07)
     "csi_national_brand_supply",
-    "csi_local_camp_estimate",
-    "csi_demand_adjusted_market",
   ];
 
   const KEY_SIGNAL_META: Record<string, { label: string; source: string; sourceUrl?: string }> = (() => {
@@ -1275,8 +1273,6 @@ const CityScoring = () => {
     public_elementary_enrollment:  { format: "int",     thresholds: [2000, 10000],   higherIsBetter: true },
     col_salary_index:              { format: "decimal", thresholds: [50000, 80000],  higherIsBetter: true },
     csi_national_brand_supply:     { format: "int",     thresholds: [3, 10],         higherIsBetter: false, goodLabel: "Wide open", badLabel: "Saturated" },
-    csi_local_camp_estimate:       { format: "int",     thresholds: [3, 10],         higherIsBetter: false, goodLabel: "Few local rivals", badLabel: "Many local rivals" },
-    csi_demand_adjusted_market:    { format: "decimal", thresholds: [3000, 8000],    higherIsBetter: true },
   };
 
   const formatSignalValue = (raw: string | number, format: "int" | "money" | "pct" | "decimal"): string => {
@@ -1319,11 +1315,7 @@ const CityScoring = () => {
     const isEmpty = rawVal === undefined || rawVal === null || rawVal === "" ;
     const cfg = SIGNAL_DISPLAY[key];
     const value = isEmpty ? "—" : (cfg ? formatSignalValue(rawVal, cfg.format) : String(rawVal));
-    let benchmark = isEmpty ? null : benchmarkBand(String(rawVal), cfg);
-    // Every city has many summer camps — show as neutral/yellow until we have better data.
-    if (key === "csi_local_camp_estimate" && !isEmpty) {
-      benchmark = { label: "Many Local Summer Camps", tone: "mid" };
-    }
+    const benchmark = isEmpty ? null : benchmarkBand(String(rawVal), cfg);
     return {
       key,
       label: meta?.label ?? key,

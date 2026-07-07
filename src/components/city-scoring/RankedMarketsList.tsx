@@ -243,9 +243,9 @@ function RankedMarketsListImpl({
                   <>
                     {cell(pillars.demand, "Demand score (calibrated)")}
                     {cell(pillars.franchiseeSupply, "TAM Teachers score (calibrated)")}
-                    {cell(pillars.competitiveLandscape, "Competitive Opportunity (calibrated, higher = less saturated)")}
                   </>
                 );
+
               })()}
               {c.hasLiveData ? (
                 <span className="justify-self-end">

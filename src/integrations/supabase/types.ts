@@ -14,27 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      _csi_import_staging: {
-        Row: {
-          brand_detail: string | null
-          city: string
-          state_abbr: string
-          weighted: number
-        }
-        Insert: {
-          brand_detail?: string | null
-          city: string
-          state_abbr: string
-          weighted: number
-        }
-        Update: {
-          brand_detail?: string | null
-          city?: string
-          state_abbr?: string
-          weighted?: number
-        }
-        Relationships: []
-      }
       ai_action_log: {
         Row: {
           action_type: string

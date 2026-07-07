@@ -1075,7 +1075,7 @@ Deno.serve(async (req) => {
   let screenshotPath: string | null = null;
 
   try {
-    let sourceCounts: Record<string, number> = {};
+    let sourceCounts: Record<string, any> = {};
     let inserted = 0;
     let updated = 0;
     let rows: any[] = [];

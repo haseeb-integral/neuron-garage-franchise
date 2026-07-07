@@ -177,6 +177,8 @@ function CityRow({
   // Keys must match what mvs-discover-providers writes into source_counts.discover
   // (Platform type in that function): sawyer | activityhero | google_maps | google_search | yelp.
   const DISCOVER_SOURCES = ["sawyer", "activityhero", "google_maps", "yelp", "google_search"] as const;
+  // Critical sources: a confirmed 0 here means we can't trust the composite score for this city.
+  const CRITICAL_SOURCES = new Set<string>(["google_maps", "google_search"]);
   const SOURCE_LABELS: Record<(typeof DISCOVER_SOURCES)[number], string> = {
     sawyer: "Sawyer",
     activityhero: "ActivityHero",
@@ -185,12 +187,34 @@ function CityRow({
     google_search: "Google Search",
   };
   const sourceCounts = latestRun?.source_counts ?? null;
-  const discoverCounts = sourceCounts && typeof sourceCounts === "object" && (sourceCounts as any).discover
-    ? ((sourceCounts as any).discover as Record<string, number>)
+  const discoverRaw = sourceCounts && typeof sourceCounts === "object" && (sourceCounts as any).discover
+    ? ((sourceCounts as any).discover as Record<string, any>)
     : null;
-  const sourcesHit = discoverCounts
-    ? DISCOVER_SOURCES.filter((s) => Number(discoverCounts[s] ?? 0) > 0).length
+  // Normalize both shapes:
+  //  - legacy: { google_maps: 5 }
+  //  - new:    { google_maps: { count: 5, attempts: 1, empty_confirmed: false } }
+  const readSource = (s: string): { count: number; attempts: number } | null => {
+    if (!discoverRaw) return null;
+    const raw = discoverRaw[s];
+    if (raw == null) return null;
+    if (typeof raw === "number") return { count: raw, attempts: 1 };
+    if (typeof raw === "object") {
+      return { count: Number((raw as any).count ?? 0), attempts: Number((raw as any).attempts ?? 1) };
+    }
+    return null;
+  };
+  const sourcesHit = discoverRaw
+    ? DISCOVER_SOURCES.filter((s) => (readSource(s)?.count ?? 0) > 0).length
     : null;
+  const criticalEmpty = discoverRaw
+    ? DISCOVER_SOURCES.filter((s) => CRITICAL_SOURCES.has(s) && (readSource(s)?.count ?? 0) === 0).length
+    : 0;
+  const secondaryEmpty = discoverRaw
+    ? DISCOVER_SOURCES.filter((s) => !CRITICAL_SOURCES.has(s) && (readSource(s)?.count ?? 0) === 0).length
+    : 0;
+  // Red = any critical source empty. Yellow = only secondary sources empty. Green = all filled.
+  const pillTone: "green" | "yellow" | "red" =
+    criticalEmpty > 0 ? "red" : secondaryEmpty > 0 ? "yellow" : "green";
 
   return (
     <tr className="border-b border-[#e5eaf2] last:border-b-0">
@@ -202,9 +226,9 @@ function CityRow({
               <TooltipTrigger asChild>
                 <span
                   className={`inline-flex cursor-help items-center rounded-full border px-1.5 py-0.5 text-[10px] font-semibold ${
-                    sourcesHit === DISCOVER_SOURCES.length
+                    pillTone === "green"
                       ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                      : sourcesHit >= 3
+                      : pillTone === "yellow"
                       ? "border-amber-200 bg-amber-50 text-amber-800"
                       : "border-red-200 bg-red-50 text-red-800"
                   }`}
@@ -214,14 +238,32 @@ function CityRow({
               </TooltipTrigger>
               <TooltipContent className="max-w-xs text-[12px] leading-relaxed">
                 <div className="font-semibold mb-1">Discover source results</div>
+                {pillTone === "red" && (
+                  <div className="mb-1.5 rounded bg-red-50 px-1.5 py-1 text-[11px] text-red-800">
+                    Google Maps or Google Search returned 0 after 3 tries. Score may be untrustworthy — re-run this city.
+                  </div>
+                )}
+                {pillTone === "yellow" && (
+                  <div className="mb-1.5 rounded bg-amber-50 px-1.5 py-1 text-[11px] text-amber-800">
+                    One or two secondary sources came back empty. Score is still usable.
+                  </div>
+                )}
                 <ul className="space-y-0.5 text-[11px]">
                   {DISCOVER_SOURCES.map((s) => {
-                    const n = Number(discoverCounts?.[s] ?? 0);
+                    const info = readSource(s);
+                    const n = info?.count ?? 0;
+                    const attempts = info?.attempts ?? 1;
+                    const isCritical = CRITICAL_SOURCES.has(s);
                     return (
                       <li key={s} className="flex items-center justify-between gap-3">
-                        <span>{SOURCE_LABELS[s]}</span>
-                        <span className={n > 0 ? "text-emerald-700" : "text-red-700"}>
-                          {n > 0 ? `${n} providers` : "empty"}
+                        <span>
+                          {SOURCE_LABELS[s]}
+                          {isCritical && <span className="ml-1 text-[9px] text-slate-500">(critical)</span>}
+                        </span>
+                        <span className={n > 0 ? "text-emerald-700" : isCritical ? "text-red-700 font-semibold" : "text-amber-700"}>
+                          {n > 0
+                            ? `${n} providers${attempts > 1 ? ` (took ${attempts} tries)` : ""}`
+                            : `empty${attempts >= 3 ? " (tried 3×)" : ""}`}
                         </span>
                       </li>
                     );

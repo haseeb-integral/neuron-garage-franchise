@@ -44,8 +44,8 @@ describe("compareExport", () => {
     const wb = buildCompareWorkbook(markets, subs, masters, "Demand Heavy");
     expect(wb.SheetNames).toEqual(["Overview", "Key Market Signals", "Weights Snapshot"]);
     const overview = XLSX.utils.sheet_to_json<string[]>(wb.Sheets.Overview, { header: 1 });
-    // header row + Overall + Tier + 3 pillars = 6 rows
-    expect(overview.length).toBeGreaterThanOrEqual(6);
+    // header row + Overall + Tier + 2 pillars (Demand, TAM) = 5 rows
+    expect(overview.length).toBeGreaterThanOrEqual(5);
     expect(overview[0].some((h) => String(h).startsWith("Nashville"))).toBe(true);
   });
 

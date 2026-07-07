@@ -11,7 +11,12 @@ import {
   SCORING_PRESETS, PRESET_DESCRIPTIONS, PRESET_TAGLINES, PRESET_TILE_ORDER,
   detectPreset, type PresetName,
 } from "@/lib/scoringPresets";
-import { VISIBLE_CATEGORIES, rebalanceWeights } from "@/lib/cityScoringPageHelpers";
+import { COMPOSITE_CATEGORIES, rebalanceWeights } from "@/lib/cityScoringPageHelpers";
+
+// Tier 1 rework (2026-07-07) Phase 3b: this panel now renders ONLY the
+// categories that actually count toward the composite (Demand + TAM). The
+// CSI slider was removed — it had no effect after Phase 2.
+const VISIBLE_CATEGORIES = COMPOSITE_CATEGORIES;
 import type { TierCounts } from "@/components/city-scoring/TierCountsBar";
 import type { CategoryKey } from "@/stores/cityScoringStore";
 
@@ -84,7 +89,7 @@ export function CityWeightsPanel({
           <div className="min-w-0">
             <h3 className="text-sm font-bold text-[#07142f]">How should we rank cities?</h3>
             <p className="text-[11px] text-[#07142f] leading-snug mt-1 max-w-[640px]">
-              Every city gets one overall score (0–100) built from three things: <strong style={{ color: VISIBLE_CATEGORIES[0].color }}>Demand</strong> (are families looking for tutoring?), <strong style={{ color: VISIBLE_CATEGORIES[1].color }}>TAM Teachers</strong> (can you hire enough tutors?), and <strong style={{ color: VISIBLE_CATEGORIES[2].color }}>Competitive Opportunity</strong> (is the market open or already crowded?). The sliders below decide how much each one counts — they always add up to 100%.
+              Every city gets one overall score (0–100) built from two things: <strong style={{ color: VISIBLE_CATEGORIES[0].color }}>Demand</strong> (are families looking for tutoring?) and <strong style={{ color: VISIBLE_CATEGORIES[1].color }}>TAM Teachers</strong> (can you hire enough tutors?). The sliders below decide how much each one counts — they always add up to 100%.
             </p>
             <p className="text-[10px] text-[#8794ab] leading-snug mt-1">
               Each of the three categories is built from several signals (population, income, competitor density, etc). Pick a preset to start, or fine-tune any category with <span className="font-medium">Configure metrics</span>.
@@ -198,7 +203,6 @@ export function CityWeightsPanel({
                 <div className="mt-1 flex items-center justify-between text-[9.5px] tabular-nums text-[#8794ab] font-semibold">
                   <span style={{ color: VISIBLE_CATEGORIES[0].color }}>{w.demand}</span>
                   <span style={{ color: VISIBLE_CATEGORIES[1].color }}>{w.franchiseeSupply}</span>
-                  <span style={{ color: VISIBLE_CATEGORIES[2].color }}>{w.competitiveLandscape}</span>
                 </div>
                 {isActive && (
                   <span

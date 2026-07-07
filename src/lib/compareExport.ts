@@ -24,10 +24,12 @@ import { METRICS_BY_CATEGORY } from "@/lib/sowMetricRegistry";
 import { formatMetric } from "@/lib/numberFormat";
 import type { CategoryKey } from "@/stores/cityScoringStore";
 
+// Tier 1 rework (2026-07-07) Phase 3b: CSI-derived Competitive Opportunity
+// was removed from the composite, so the compare export drops that column
+// too — it would show a score that no longer influences the total.
 const PILLARS: { key: PillarKey; label: string }[] = [
   { key: "demand", label: "Demand" },
   { key: "franchiseeSupply", label: "TAM Teachers" },
-  { key: "competitiveLandscape", label: "Competitive Opportunity" },
 ];
 
 const SHORT_STATE: Record<string, string> = { Texas: "TX", Florida: "FL" };
@@ -143,14 +145,13 @@ export function buildCompareWorkbook(
   snapAoa.push([`Active preset: ${presetName ?? "Custom"}`]);
   snapAoa.push([]);
   snapAoa.push(["Category", "Master Weight (raw)", "Master Weight % (normalized)"]);
-  const catLabels: Record<CategoryKey, string> = {
+  const catLabels: Partial<Record<CategoryKey, string>> = {
     demand: "Demand",
     franchiseeSupply: "TAM Teachers",
-    competitiveLandscape: "Competitive Opportunity",
   };
   (Object.keys(catLabels) as CategoryKey[]).forEach((k) => {
     const raw = appliedWeights[k] ?? 0;
-    snapAoa.push([catLabels[k], raw, Number(((raw / masterTotal) * 100).toFixed(2))]);
+    snapAoa.push([catLabels[k]!, raw, Number(((raw / masterTotal) * 100).toFixed(2))]);
   });
   snapAoa.push([]);
   snapAoa.push(["Category", "Metric", "Sub-weight (raw)", "Normalized Share %"]);
@@ -161,12 +162,12 @@ export function buildCompareWorkbook(
     );
     const subTotal = enabled.reduce((s, m) => s + (subs[m.key] ?? 0), 0) || 1;
     if (enabled.length === 0) {
-      snapAoa.push([catLabels[k], "(no enabled metrics)", 0, 0]);
+      snapAoa.push([catLabels[k]!, "(no enabled metrics)", 0, 0]);
     } else {
       enabled.forEach((m) => {
         const w = subs[m.key] ?? 0;
         snapAoa.push([
-          catLabels[k],
+          catLabels[k]!,
           m.label,
           w,
           Number(((w / subTotal) * 100).toFixed(2)),

@@ -53,6 +53,7 @@ export type ScoredCityRow = {
   col_salary_index: number | string | null;
   is_registration_state: boolean | null;
   scored_at: string | null;
+  provider_count: number | string | null;
   // Per-source freshness columns are read by `getCitySourceData` via a
   // narrower SELECT; not required on the main scored-row union.
 };
@@ -85,6 +86,10 @@ export type RankedMarket = {
   lastScrapedAt?: string | null;
   source: "live" | "sample";
   hasLiveData: boolean;
+  // Count of providers detected in this city (from mvs_providers).
+  // Populated for the 16 pilot cities; null for others until v1.8. Phase 4
+  // of the Tier 1 rework (2026-07-07).
+  providerCount: number | null;
   categoryScores?: Partial<Record<CategoryKey, number>>;
   scoredRow?: ScoredCityRow | null;
   sample?: CityData;
@@ -161,6 +166,7 @@ export function mapSampleCityToRankedMarket(city: CityData): RankedMarket {
     isNonRegistration: city.isNonRegistration,
     source: "sample",
     hasLiveData: false,
+    providerCount: null,
     sample: city,
   };
 }
@@ -184,7 +190,7 @@ export async function loadLiveRankedMarkets(_opts?: { includeExtras?: boolean })
       // 2026-05-22 — 0/817 populated; CSI is fully covered by
       // csi_national_brand_count_weighted, csi_local_provider_estimate, and
       // csi_demand_adjusted_market (all 817/817 from Manus).
-      "id, city_name, state_name, state_abbr, metro_area, county_name, metro_counties, population, population_density, children_5_12, median_household_income, dual_working_families_pct, college_degree_pct, cost_of_living_index, public_school_count, public_school_enrollment, public_elementary_count, public_elementary_enrollment, public_elementary_teacher_count, private_elementary_count, charter_elementary_count, composite_score_default, score_demand, score_csi, score_tam_teachers, csi_score, csi_saturation_category, csi_confidence, csi_national_brand_count_weighted, csi_local_provider_estimate, csi_demand_adjusted_market, csi_brand_detail, csi_last_updated, place_type, census_population_2020, avg_elementary_teacher_salary_usd, col_salary_index, is_registration_state, scored_at",
+      "id, city_name, state_name, state_abbr, metro_area, county_name, metro_counties, population, population_density, children_5_12, median_household_income, dual_working_families_pct, college_degree_pct, cost_of_living_index, public_school_count, public_school_enrollment, public_elementary_count, public_elementary_enrollment, public_elementary_teacher_count, private_elementary_count, charter_elementary_count, composite_score_default, score_demand, score_csi, score_tam_teachers, csi_score, csi_saturation_category, csi_confidence, csi_national_brand_count_weighted, csi_local_provider_estimate, csi_demand_adjusted_market, csi_brand_detail, csi_last_updated, place_type, census_population_2020, avg_elementary_teacher_salary_usd, col_salary_index, is_registration_state, scored_at, provider_count",
     )
     .order("composite_score_default", { ascending: false, nullsFirst: false })
     .limit(2000);
@@ -262,6 +268,7 @@ export async function loadLiveRankedMarkets(_opts?: { includeExtras?: boolean })
       lastScrapedAt: row.scored_at ?? null,
       source: "live",
       hasLiveData,
+      providerCount: row.provider_count == null ? null : Number(row.provider_count),
       scoredRow: row,
       categoryScores: {
         demand: row.score_demand == null ? undefined : toNumber(row.score_demand, 0),

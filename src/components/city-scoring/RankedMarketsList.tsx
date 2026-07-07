@@ -13,6 +13,7 @@ import { RowScorePopover } from "@/components/city-scoring/RowScorePopover";
 import { sampleCities } from "@/data/cityData";
 import { sameMarket, COMPOSITE_CATEGORIES } from "@/lib/cityScoringPageHelpers";
 import { buildMarketView, buildPillarView } from "@/lib/marketView";
+import { FEATURE_FLAGS } from "@/lib/featureFlags";
 
 type Props = {
   filteredCount: number;
@@ -132,7 +133,7 @@ function RankedMarketsListImpl({
       )}
 
       <div className="overflow-hidden flex-1">
-        <div className="grid grid-cols-[16px_22px_minmax(0,1fr)_42px_70px_30px_30px_28px_16px] items-center gap-x-2 px-1 py-2 text-[9.5px] uppercase tracking-wide text-[#8794ab] border-b border-[#eef2f7]">
+        <div className={`grid ${FEATURE_FLAGS.FF_PROVIDER_COUNT ? "grid-cols-[16px_22px_minmax(0,1fr)_42px_70px_30px_30px_34px_28px_16px]" : "grid-cols-[16px_22px_minmax(0,1fr)_42px_70px_30px_30px_28px_16px]"} items-center gap-x-2 px-1 py-2 text-[9.5px] uppercase tracking-wide text-[#8794ab] border-b border-[#eef2f7]`}>
           <span></span>
           <span>Rank</span>
           <span>Market</span>
@@ -140,6 +141,9 @@ function RankedMarketsListImpl({
           <span>Score</span>
           <span className="text-right" title="Demand category score">Dem</span>
           <span className="text-right" title="TAM Teachers category score">TAM</span>
+          {FEATURE_FLAGS.FF_PROVIDER_COUNT && (
+            <span className="text-right" title="Number of providers detected in this city (from mvs_providers). Only 16 pilot cities have data today.">Prov</span>
+          )}
           <span className="text-right">Tier</span>
           <span></span>
         </div>
@@ -179,7 +183,7 @@ function RankedMarketsListImpl({
                 const sample = sampleCities.find((s) => sameMarket(s.city, s.state, c.city, c.state));
                 pickMarket({ city: c.city, state: c.state, id: sample?.id ?? c.id });
               }}
-              className={`grid grid-cols-[16px_22px_minmax(0,1fr)_42px_70px_30px_30px_28px_16px] items-center gap-x-2 px-1 py-2.5 text-[11px] cursor-pointer border-b border-[#f3f5f9] last:border-0 ${isSel ? "bg-[#eaf0ff]" : "hover:bg-[#f7faff]"}`}
+              className={`grid ${FEATURE_FLAGS.FF_PROVIDER_COUNT ? "grid-cols-[16px_22px_minmax(0,1fr)_42px_70px_30px_30px_34px_28px_16px]" : "grid-cols-[16px_22px_minmax(0,1fr)_42px_70px_30px_30px_28px_16px]"} items-center gap-x-2 px-1 py-2.5 text-[11px] cursor-pointer border-b border-[#f3f5f9] last:border-0 ${isSel ? "bg-[#eaf0ff]" : "hover:bg-[#f7faff]"}`}
 
             >
               <span className={compareMode ? "rounded ring-2 ring-[#174be8] ring-offset-1 ring-offset-white" : ""}>
@@ -247,6 +251,19 @@ function RankedMarketsListImpl({
                 );
 
               })()}
+              {FEATURE_FLAGS.FF_PROVIDER_COUNT && (
+                c.providerCount == null ? (
+                  <span
+                    className="justify-self-end text-[10.5px] text-[#cbd5e1] tabular-nums"
+                    title="No provider count yet — outside the 16 pilot cities. Waiting on v1.8."
+                  >—</span>
+                ) : (
+                  <span
+                    className="justify-self-end text-[10.5px] font-semibold tabular-nums text-[#07142f]"
+                    title={`${c.providerCount} providers detected in ${c.city} (from mvs_providers)`}
+                  >{c.providerCount}</span>
+                )
+              )}
               {c.hasLiveData ? (
                 <span className="justify-self-end">
                   <TierBadge

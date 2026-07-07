@@ -52,7 +52,7 @@ export function CsiLockedPanel({
             Competitive Opportunity · Raw CSI (Saturation) {selectedCityLabel ? `· ${selectedCityLabel}` : ""}
           </div>
           {csiSaturationCategory && (
-            <span className="text-[10.5px] font-semibold rounded px-1.5 py-0.5 bg-[#fff6dc] text-[#8a6a00]">
+            <span className={csiTierBadgeClass(csiSaturationCategory)}>
               {csiSaturationCategory}
             </span>
           )}

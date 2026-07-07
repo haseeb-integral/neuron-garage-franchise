@@ -30,7 +30,7 @@ const SmartLeadSpec = lazyWithPreload(() => import("./pages/SmartLeadSpec"));
 const EmailOutreachDocs = lazyWithPreload(() => import("./pages/EmailOutreachDocs"));
 const UserGuide = lazyWithPreload(() => import("./pages/UserGuide"));
 const DemographicsMethodology = lazyWithPreload(() => import("./pages/DemographicsMethodology"));
-const Methodology = lazyWithPreload(() => import("./pages/Methodology"));
+
 const MVSMethodology = lazyWithPreload(() => import("./pages/MVSMethodology"));
 const MVSSpec = lazyWithPreload(() => import("./pages/MVSSpec"));
 const MVSQAQueue = lazyWithPreload(() => import("./pages/MVSQAQueue"));
@@ -71,7 +71,7 @@ registerRoutePrefetch("/spec", Spec.preload);
 registerRoutePrefetch("/smartlead-spec", SmartLeadSpec.preload);
 registerRoutePrefetch("/email-outreach-docs", EmailOutreachDocs.preload);
 registerRoutePrefetch("/demographics-methodology", DemographicsMethodology.preload);
-registerRoutePrefetch("/methodology", Methodology.preload);
+
 registerRoutePrefetch("/mvs-methodology", MVSMethodology.preload);
 registerRoutePrefetch("/mvs-spec", MVSSpec.preload);
 registerRoutePrefetch("/mvs-qa-queue", MVSQAQueue.preload);
@@ -124,7 +124,7 @@ const App = () => (
                 <Route path="/smartlead-spec" element={<SmartLeadSpec />} />
                 <Route path="/email-outreach-docs" element={<EmailOutreachDocs />} />
                 <Route path="/demographics-methodology" element={<DemographicsMethodology />} />
-                <Route path="/methodology" element={<Methodology />} />
+                
                 <Route path="/mvs-methodology" element={<MVSMethodology />} />
                 <Route path="/mvs-spec" element={<MVSSpec />} />
                 <Route path="/mvs-qa-queue" element={<MVSQAQueue />} />

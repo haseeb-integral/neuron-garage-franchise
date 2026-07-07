@@ -124,7 +124,7 @@ const App = () => (
                 <Route path="/smartlead-spec" element={<SmartLeadSpec />} />
                 <Route path="/email-outreach-docs" element={<EmailOutreachDocs />} />
                 <Route path="/demographics-methodology" element={<DemographicsMethodology />} />
-                <Route path="/methodology" element={<Methodology />} />
+                
                 <Route path="/mvs-methodology" element={<MVSMethodology />} />
                 <Route path="/mvs-spec" element={<MVSSpec />} />
                 <Route path="/mvs-qa-queue" element={<MVSQAQueue />} />

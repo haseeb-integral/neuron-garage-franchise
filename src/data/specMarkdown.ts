@@ -533,7 +533,7 @@ The sidebar's "Methodology & Docs" group exposes the reference surface:
 | \`/handover\` | Account/credential handover sheet. |
 | \`/system-overview\` | Architecture diagram + boundaries. |
 | \`/scoring-method\` | City Search scoring math, end-to-end. |
-| \`/methodology\` | Cross-feature methodology. |
+
 | \`/demographics-methodology\` | Census / NCES sourcing decisions. |
 | \`/apis-and-data-sources\` | Live registry of every API + secret. |
 | \`/prompts-and-ai-workflows\` | System prompts for every AI workflow. |

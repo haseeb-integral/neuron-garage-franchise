@@ -95,24 +95,23 @@ export default function ScoringMethod() {
         <SectionTitle n={2}>How the Weighted Composite Index is calculated</SectionTitle>
         <div className="space-y-3 text-[13.5px] leading-relaxed text-[#1a2540]">
           <p>
-            The Index is a weighted sum of three pillar scores, each on a 0–100 scale where
+            The Index is a weighted sum of two pillar scores, each on a 0–100 scale where
             <strong> higher = better</strong>:
           </p>
           <ul className="list-disc pl-5 space-y-1">
             <li><strong>Demand</strong> — child population, dual-income families, household income, college-educated parents.</li>
             <li><strong>TAM Teachers</strong> — elementary teacher supply, school counts, cost-of-living-adjusted salaries.</li>
-            <li>
-              <strong>Competitive Opportunity</strong> — derived from Manus' CSI saturation score
-              by the single shared helper <code>competitiveOpportunityFromCsi(csi) = 100 − csi</code>.
-              CSI is lower-is-better; this flip aligns it with Demand and TAM (higher-is-better).
-            </li>
           </ul>
           <FormulaBlock>{`Weighted Composite Index
-  = (master_weight_demand   × DemandScore)
-  + (master_weight_tam      × TAMTeachersScore)
-  + (master_weight_csi_opp  × CompetitiveOpportunityScore)
+  = (master_weight_demand × DemandScore)
+  + (master_weight_tam    × TAMTeachersScore)
 
 where master weights are normalized to sum to 100%.`}</FormulaBlock>
+          <p className="text-[12.5px] text-[#526078] italic">
+            Note (2026-07-07): the CSI-derived Competitive Opportunity pillar was removed from
+            the composite. Provider counts and saturation still appear as reference data on the
+            selected-market panel, but they no longer influence the score or the rank.
+          </p>
           <p>
             The Index is stored in the database (<code>composite_score_default</code>) so the
             national ranking is instant at query time. When a user adjusts master weights or
@@ -243,11 +242,6 @@ where master weights are normalized to sum to 100%.`}</FormulaBlock>
               <code> src/lib/marketView.ts</code>. Components never compute, never re-derive, and
               never round either value inside JSX. The branded <code>CompositeScore</code>
               TypeScript type enforces this at compile time.
-            </li>
-            <li>
-              <strong>One CSI flip.</strong> The single shared helper
-              <code> competitiveOpportunityFromCsi(csi)</code> is the only place CSI's polarity is
-              inverted. No surface inlines <code>100 − score_csi</code>.
             </li>
             <li>
               <strong>Drift detector.</strong> In dev, a guard rail throws a red console error if

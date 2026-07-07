@@ -132,7 +132,7 @@ function RankedMarketsListImpl({
       )}
 
       <div className="overflow-hidden flex-1">
-        <div className="grid grid-cols-[16px_22px_minmax(0,1fr)_42px_70px_30px_30px_30px_28px_16px] items-center gap-x-2 px-1 py-2 text-[9.5px] uppercase tracking-wide text-[#8794ab] border-b border-[#eef2f7]">
+        <div className="grid grid-cols-[16px_22px_minmax(0,1fr)_42px_70px_30px_30px_28px_16px] items-center gap-x-2 px-1 py-2 text-[9.5px] uppercase tracking-wide text-[#8794ab] border-b border-[#eef2f7]">
           <span></span>
           <span>Rank</span>
           <span>Market</span>
@@ -140,10 +140,10 @@ function RankedMarketsListImpl({
           <span>Score</span>
           <span className="text-right" title="Demand category score">Dem</span>
           <span className="text-right" title="TAM Teachers category score">TAM</span>
-          <span className="text-right" title="Competitive Opportunity (higher = less saturated). Opportunity = 100 − CSI. CSI counts national brands + a baseline local-camp estimate; national-brand presence is what differentiates markets.">Opp</span>
           <span className="text-right">Tier</span>
           <span></span>
         </div>
+
         {pageItems.length === 0 && watchlistOnly && (
           <div className="px-2 py-8 text-center text-[11px] text-[#8794ab]">
             No saved markets yet — click the bookmark on any city to save it.

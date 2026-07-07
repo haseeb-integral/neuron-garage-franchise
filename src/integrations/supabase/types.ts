@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      _mvs_v17_staging: {
+        Row: {
+          city: string
+          general_count: number
+          mvs_grade: string | null
+          mvs_score: number | null
+          state_abbr: string
+          stem_count: number
+        }
+        Insert: {
+          city: string
+          general_count: number
+          mvs_grade?: string | null
+          mvs_score?: number | null
+          state_abbr: string
+          stem_count: number
+        }
+        Update: {
+          city?: string
+          general_count?: number
+          mvs_grade?: string | null
+          mvs_score?: number | null
+          state_abbr?: string
+          stem_count?: number
+        }
+        Relationships: []
+      }
       ai_action_log: {
         Row: {
           action_type: string
@@ -3007,6 +3034,7 @@ export type Database = {
           dual_working_families_pct: number | null
           firecrawl_last_updated: string | null
           fred_last_updated: string | null
+          general_brand_locations: number | null
           greatschools_last_updated: string | null
           id: string
           is_registration_state: boolean
@@ -3016,6 +3044,8 @@ export type Database = {
           median_household_income: number | null
           metro_area: string | null
           metro_counties: string[] | null
+          mvs_grade: string | null
+          mvs_score: number | null
           nces_last_updated: string | null
           notes: string | null
           place_type: string | null
@@ -3038,6 +3068,7 @@ export type Database = {
           seed_run_id: string | null
           state_abbr: string
           state_name: string
+          stem_brand_locations: number | null
           stem_job_concentration: number | null
           summer_precip_days: number | null
           summer_weather_index: number | null
@@ -3078,6 +3109,7 @@ export type Database = {
           dual_working_families_pct?: number | null
           firecrawl_last_updated?: string | null
           fred_last_updated?: string | null
+          general_brand_locations?: number | null
           greatschools_last_updated?: string | null
           id?: string
           is_registration_state?: boolean
@@ -3087,6 +3119,8 @@ export type Database = {
           median_household_income?: number | null
           metro_area?: string | null
           metro_counties?: string[] | null
+          mvs_grade?: string | null
+          mvs_score?: number | null
           nces_last_updated?: string | null
           notes?: string | null
           place_type?: string | null
@@ -3109,6 +3143,7 @@ export type Database = {
           seed_run_id?: string | null
           state_abbr: string
           state_name: string
+          stem_brand_locations?: number | null
           stem_job_concentration?: number | null
           summer_precip_days?: number | null
           summer_weather_index?: number | null
@@ -3149,6 +3184,7 @@ export type Database = {
           dual_working_families_pct?: number | null
           firecrawl_last_updated?: string | null
           fred_last_updated?: string | null
+          general_brand_locations?: number | null
           greatschools_last_updated?: string | null
           id?: string
           is_registration_state?: boolean
@@ -3158,6 +3194,8 @@ export type Database = {
           median_household_income?: number | null
           metro_area?: string | null
           metro_counties?: string[] | null
+          mvs_grade?: string | null
+          mvs_score?: number | null
           nces_last_updated?: string | null
           notes?: string | null
           place_type?: string | null
@@ -3180,6 +3218,7 @@ export type Database = {
           seed_run_id?: string | null
           state_abbr?: string
           state_name?: string
+          stem_brand_locations?: number | null
           stem_job_concentration?: number | null
           summer_precip_days?: number | null
           summer_weather_index?: number | null

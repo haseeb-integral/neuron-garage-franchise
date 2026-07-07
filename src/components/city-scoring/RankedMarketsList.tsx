@@ -13,6 +13,7 @@ import { RowScorePopover } from "@/components/city-scoring/RowScorePopover";
 import { sampleCities } from "@/data/cityData";
 import { sameMarket, COMPOSITE_CATEGORIES } from "@/lib/cityScoringPageHelpers";
 import { buildMarketView, buildPillarView } from "@/lib/marketView";
+import { FEATURE_FLAGS } from "@/lib/featureFlags";
 
 type Props = {
   filteredCount: number;

@@ -166,6 +166,7 @@ export function mapSampleCityToRankedMarket(city: CityData): RankedMarket {
     isNonRegistration: city.isNonRegistration,
     source: "sample",
     hasLiveData: false,
+    providerCount: null,
     sample: city,
   };
 }

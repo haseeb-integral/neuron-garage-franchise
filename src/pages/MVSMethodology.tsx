@@ -438,7 +438,7 @@ export default function MVSMethodology() {
 
           {/* Section 3 — Composite */}
           <section className="mb-10">
-            <SectionTitle n={4}>The Composite Formula</SectionTitle>
+            <SectionTitle n={3}>The Composite Formula</SectionTitle>
             <FormulaBlock>{`MVS = 0.2667 × Pricing Acceptance Score
     + 0.2667 × Scaled Operator Score
     + 0.1333 × Enrichment Diversity Score
@@ -455,7 +455,7 @@ export default function MVSMethodology() {
 
           {/* Section 3 — Sub-scores */}
           <section className="mb-10">
-            <SectionTitle n={5}>The Six Sub-Scores</SectionTitle>
+            <SectionTitle n={4}>The Six Sub-Scores</SectionTitle>
             <div className="space-y-6">
               {SUB_SCORES.map((s) => (
                 <div key={s.n} className="rounded-md border border-[#eef2f7] bg-white overflow-hidden">
@@ -494,7 +494,7 @@ export default function MVSMethodology() {
 
           {/* Section 4 — Premium definition */}
           <section className="mb-10">
-            <SectionTitle n={6}>Premium Provider Definition</SectionTitle>
+            <SectionTitle n={5}>Premium Provider Definition</SectionTitle>
             <p className="text-[13px] leading-relaxed text-[#1a2540] mb-3">
               Rather than excluding non-premium camps from data collection, the engine collects the{" "}
               <strong>full</strong> camp universe in each shortlisted city and tier-classifies each provider
@@ -532,7 +532,7 @@ export default function MVSMethodology() {
 
           {/* Section 5 — Crawler Evolution */}
           <section className="mb-10">
-            <SectionTitle n={7}>Crawler Evolution — Old (3 steps) vs New (9 steps)</SectionTitle>
+            <SectionTitle n={6}>Crawler Evolution — Old (3 steps) vs New (9 steps)</SectionTitle>
             <p className="text-[13px] leading-relaxed text-[#1a2540] mb-3">
               Before June 26, 2026 the crawler used a strict 3-step flow. It missed prices whenever the
               camp's own website hid the number behind a login wall or a "Book Now" button. The new
@@ -605,7 +605,7 @@ export default function MVSMethodology() {
 
           {/* Section 5b — Manus CSV import (v1.6) */}
           <section className="mb-10">
-            <SectionTitle n={7.5 as unknown as number}>Shortlist Intake — Manus CSV Import (v1.6)</SectionTitle>
+            <SectionTitle n={6.5 as unknown as number}>Shortlist Intake — Manus CSV Import (v1.6)</SectionTitle>
             <p className="text-[13px] leading-relaxed text-[#1a2540] mb-3">
               New in v1.6: an <strong>"Import from Manus CSV"</strong> button on the Market Validation page.
               It lets you bulk-add cities to the MVS shortlist from a Manus CSI export instead of typing
@@ -625,7 +625,7 @@ export default function MVSMethodology() {
 
           {/* Section 6 — Shared infra */}
           <section className="mb-10">
-            <SectionTitle n={8}>Shared Data & Tooling Stack</SectionTitle>
+            <SectionTitle n={7}>Shared Data & Tooling Stack</SectionTitle>
 
             <p className="text-[13px] leading-relaxed text-[#1a2540] mb-3">
               A single scrape per shortlisted city powers Scores 1, 2, 4, 5 and the provider denominator
@@ -660,7 +660,7 @@ export default function MVSMethodology() {
 
           {/* Section 7 — Notes */}
           <section className="mb-2">
-            <SectionTitle n={9}>Important Notes</SectionTitle>
+            <SectionTitle n={8}>Important Notes</SectionTitle>
 
             <div className="space-y-3">
               {MVS_NOTES.map((note, i) => (

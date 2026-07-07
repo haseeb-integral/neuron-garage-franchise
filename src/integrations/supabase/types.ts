@@ -3243,6 +3243,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      compute_csi_tiers: { Args: never; Returns: undefined }
       db_health_history_for: {
         Args: { _days?: number; _domain: string }
         Returns: {

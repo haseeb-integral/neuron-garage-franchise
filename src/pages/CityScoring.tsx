@@ -840,7 +840,7 @@ const CityScoring = () => {
         "composite_score_default",
         "score_demand",
         "score_tam_teachers",
-        "score_csi",
+        // score_csi and csi_* columns removed 2026-07-07 — CSI is no longer part of the composite.
         "population",
         "children_5_12",
         "median_household_income",
@@ -857,12 +857,6 @@ const CityScoring = () => {
         "col_salary_index",
         "avg_elementary_teacher_salary_usd",
         // "summer_camp_count" dropped from export 2026-05-22 — 0/817 populated.
-        "csi_score",
-        "csi_saturation_category",
-        "csi_national_brand_count_weighted",
-        "csi_local_provider_estimate",
-        "csi_demand_adjusted_market",
-        "csi_confidence",
         "scored_at",
         "census_last_updated",
       ];

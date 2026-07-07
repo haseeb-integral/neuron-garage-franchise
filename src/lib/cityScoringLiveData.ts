@@ -86,6 +86,10 @@ export type RankedMarket = {
   lastScrapedAt?: string | null;
   source: "live" | "sample";
   hasLiveData: boolean;
+  // Count of providers detected in this city (from mvs_providers).
+  // Populated for the 16 pilot cities; null for others until v1.8. Phase 4
+  // of the Tier 1 rework (2026-07-07).
+  providerCount: number | null;
   categoryScores?: Partial<Record<CategoryKey, number>>;
   scoredRow?: ScoredCityRow | null;
   sample?: CityData;

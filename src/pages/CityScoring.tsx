@@ -1213,7 +1213,7 @@ const CityScoring = () => {
   const opportunityLabel =
     displayTier === "A" ? "Top Priority Market" :
     displayTier === "B" ? "Strong Market" :
-    displayTier === "C" ? "Watch Market" : "Skip Market";
+    displayTier === "C" ? "Watch Market" : "Saturated Market";
 
   // Key Market Signals — locked to the 12 metrics that power the 3 visible
   // categories (Demand 4 + TAM Teachers 5 + Competitive Landscape 3).

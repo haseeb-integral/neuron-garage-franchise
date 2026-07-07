@@ -210,6 +210,12 @@ export const useCityScoringStore = create<CityScoringState>()(
           // stale checked rows from a prior session.
           delete persisted.selectedForCompare;
         }
+        if (version < 11) {
+          // v11 (Jul 7, 2026): default minPop raised from 0 → 34000 so the
+          // City Search table + exports match the Manus 817-city universe.
+          // Force-reset any persisted value so returning users see 817 too.
+          persisted.minPop = "34000";
+        }
         return persisted;
       },
       partialize: (s) => ({

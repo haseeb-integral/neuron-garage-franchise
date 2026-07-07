@@ -1430,6 +1430,9 @@ const CityScoring = () => {
           <Button variant="outline" className="h-9 border-[#e5eaf2] text-[#14233b] gap-1.5 font-normal" onClick={() => setAddCritOpen(true)}>
             <Plus size={14} /> Add Criteria
           </Button>
+          {isManager && (
+            <ImportManusCsvDialog onImported={() => toast.success("Manus reference data updated.")} />
+          )}
           <TooltipProvider delayDuration={150}>
             <Tooltip>
               <TooltipTrigger asChild>

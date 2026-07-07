@@ -61,6 +61,8 @@ import {
 import { useCityScoringStore, DEFAULT_WEIGHTS } from "@/stores/cityScoringStore";
 import { DEFAULT_SUB_WEIGHTS, SOW_METRIC_REGISTRY } from "@/lib/sowMetricRegistry";
 import { SubMetricWeightsDrawer } from "@/components/city-scoring/SubMetricWeightsDrawer";
+import { ImportManusCsvDialog } from "@/components/phase2-demo/ImportManusCsvDialog";
+import { useIsManager } from "@/hooks/dbHealth/useIsManager";
 
 import { Settings2 } from "lucide-react";
 import { METRICS_BY_CATEGORY } from "@/lib/sowMetricRegistry";

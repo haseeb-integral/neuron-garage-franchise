@@ -211,7 +211,7 @@ function RankedMarketsListImpl({
                         <RowScorePopover
                           city={c.city}
                           state={c.state}
-                          categories={VISIBLE_CATEGORIES.map((cc) => ({ key: cc.key, label: cc.label }))}
+                          categories={COMPOSITE_CATEGORIES.map((cc) => ({ key: cc.key, label: cc.label }))}
                           categoryScores={c.categoryScores ?? {}}
                           appliedWeights={appliedWeights}
                           rawComposite={view.rawComposite}

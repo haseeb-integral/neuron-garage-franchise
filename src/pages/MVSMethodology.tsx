@@ -155,6 +155,64 @@ Market Balance Index = normalize(Coverage Ratio, range 50–500)
   },
 ];
 
+type DiscoverSource = {
+  key: string;
+  name: string;
+  tool: string;
+  query: string;
+  retry: string;
+  confirmedEmpty: string;
+  failureModes: string;
+};
+
+const DISCOVER_SOURCES: DiscoverSource[] = [
+  {
+    key: "google_maps",
+    name: "Google Maps",
+    tool: "Apify Google Maps actor",
+    query: "Two search strings: 'kids summer camp [City] [ST]' and 'kids classes [City] [ST]', scoped to the city metro.",
+    retry: "3 tries. If attempt 1 returns 0 providers, wait 15 seconds. If attempt 2 still returns 0, wait 60 seconds and try once more.",
+    confirmedEmpty: "0 providers after all 3 attempts. This is a critical source, so it triggers a red pill on the city row.",
+    failureModes: "Google rate-limits or blocks the Apify actor; the actor times out; the location query returns no mapped places for this metro.",
+  },
+  {
+    key: "google_search",
+    name: "Google Search",
+    tool: "Firecrawl /v2/search",
+    query: "Plain-English listicle searches like 'best summer camps for kids in [City] [ST] 2026', 'best kids activities classes [City] [ST]', '[City] [ST] after school programs enrichment kids', etc. Social and marketplace sites are filtered out.",
+    retry: "3 tries with 15s and 60s waits between attempts when 0 providers are returned.",
+    confirmedEmpty: "0 providers after 3 attempts. This is a critical source, so it triggers a red pill.",
+    failureModes: "Google blocks or CAPTCHAs the search; Firecrawl rate-limits or times out; all returned pages are filtered-out social sites or directories.",
+  },
+  {
+    key: "yelp",
+    name: "Yelp",
+    tool: "Firecrawl /v2/scrape",
+    query: "Yelp search page for 'Kids Activities' in [City], [ST].",
+    retry: "3 tries with 15s and 60s waits.",
+    confirmedEmpty: "0 providers after 3 attempts. This is a secondary source, so it contributes to a yellow pill only if 1–2 secondary sources are empty.",
+    failureModes: "Yelp anti-bot blocks Firecrawl; the page renders without business listings; Yelp's '$', '$$', '$$$' symbols are ignored as prices.",
+  },
+  {
+    key: "sawyer",
+    name: "Sawyer",
+    tool: "Firecrawl /v2/scrape with a 3-second JS render wait",
+    query: "hisawyer.com marketplace URLs for camps and classes inside a metro bounding box around [City]. We run 3 search variants (camp + STEM categories, general camp, and class).",
+    retry: "3 tries with 15s and 60s waits.",
+    confirmedEmpty: "0 providers after 3 attempts. Secondary source — contributes to a yellow pill if 1–2 secondary sources are empty.",
+    failureModes: "Sawyer is a JS-heavy single-page app; the render wait may miss listings; the metro bounding box may not cover the entire market; individual activity-detail pages may be expired.",
+  },
+  {
+    key: "activityhero",
+    name: "ActivityHero",
+    tool: "Firecrawl /v2/scrape with a 5-second JS render wait",
+    query: "activityhero.com/camps/[city]-[state], activityhero.com/classes/[city]-[state], and a search for 'kids' in [City] [ST].",
+    retry: "3 tries with 15s and 60s waits.",
+    confirmedEmpty: "0 providers after 3 attempts. Secondary source — contributes to a yellow pill if 1–2 secondary sources are empty.",
+    failureModes: "ActivityHero's SPA shell can load blank; anti-bot blocks the scrape; expired or unlisted activities return empty pages; marketplace links are rewritten to a Google search so users land on real sites.",
+  },
+];
+
 const MVS_NOTES = [
   "Every sub-score is normalized 0–100 across the shortlisted cities, not nationally. The MVS is a comparative score for the cities that survived Feature 1, not a universal market grade.",
   "Market Absorption (Score 2) is permanently retired. The weekly sellout/registration-page scrape (mvs-extract-weeks) and its 5-scrape cadence (Jan / Feb / Mar / Apr / May via Inngest / Trigger.dev) have been turned off. Sellout Rate, Time-to-Sellout, and YoY Velocity are no longer computed. The remaining five pillars were re-normalized so weights still sum to 1.0.",
@@ -213,7 +271,24 @@ function generateMVSMarkdown(): string {
   lines.push(`Naming history: this score has previously been referred to as PEE (Premium Enrichment Ecosystem Score) and PCC (Per City Composite). The canonical name is now **MVS**.`);
   lines.push("");
 
-  lines.push(`## Section 2: The Composite Formula`);
+  lines.push(`## Section 2: How We Scrape Each of the 5 Discover Sources`);
+  lines.push("");
+  lines.push(`Every city run fans out across five independent sources. Each source is scraped in parallel, and each source that returns 0 providers is retried up to two more times before it is marked as confirmed empty. Google Maps and Google Search are treated as critical — if either is confirmed empty, the city shows a red pill. Yelp, Sawyer, and ActivityHero are secondary — one or two of them empty produces a yellow pill.`);
+  lines.push("");
+  DISCOVER_SOURCES.forEach((s) => {
+    lines.push(`### ${s.name} (${s.tool})`);
+    lines.push("");
+    lines.push(`**What we ask for:** ${s.query}`);
+    lines.push("");
+    lines.push(`**Retry rule:** ${s.retry}`);
+    lines.push("");
+    lines.push(`**Confirmed empty:** ${s.confirmedEmpty}`);
+    lines.push("");
+    lines.push(`**Known failure modes:** ${s.failureModes}`);
+    lines.push("");
+  });
+
+  lines.push(`## Section 3: The Composite Formula`);
   lines.push("");
   lines.push("```");
   lines.push(`MVS = 0.2667 × Pricing Acceptance Score`);
@@ -226,7 +301,7 @@ function generateMVSMarkdown(): string {
   lines.push(`Every sub-score is normalized 0–100 across the shortlisted cities, then weight-blended into the composite. Weights are exposed as sliders in the UI with "Show Formula" drawers per the v1.0 doctrine. **Market Absorption was removed from the composite in v1.1** (weight set to 0) because sellout-rate scraping was unreliable; the remaining five pillars were proportionally re-normalized so the weights still sum to 1.0.`);
   lines.push("");
 
-  lines.push(`## Section 3: The Six Sub-Scores`);
+  lines.push(`## Section 4: The Six Sub-Scores`);
   lines.push("");
   SUB_SCORES.forEach((s) => {
     lines.push(`### Score ${s.n}: ${s.name} (Weight ${s.weight})`);
@@ -245,7 +320,7 @@ function generateMVSMarkdown(): string {
     lines.push("");
   });
 
-  lines.push(`## Section 4: Premium Provider Definition`);
+  lines.push(`## Section 5: Premium Provider Definition`);
   lines.push("");
   lines.push(`Rather than excluding non-premium camps from data collection, the engine collects the **full** camp universe in each shortlisted city and tier-classifies each provider at ingest. Only providers tagged **Premium** flow into the six sub-scores.`);
   lines.push("");
@@ -254,7 +329,7 @@ function generateMVSMarkdown(): string {
   MVS_PREMIUM_TIERS.forEach(([tier, def]) => lines.push(`| ${tier} | ${def} |`));
   lines.push("");
 
-  lines.push(`## Section 5: Shared Data & Tooling Stack`);
+  lines.push(`## Section 6: Shared Data & Tooling Stack`);
   lines.push("");
   lines.push(`A single scrape per shortlisted city powers Scores 1, 2, 4, 5 and the provider denominator for Scores 3 and 6. Demographic inputs reuse the Census ACS pipeline already wired in v1.0.`);
   lines.push("");
@@ -265,7 +340,7 @@ function generateMVSMarkdown(): string {
   lines.push(`**Cost envelope:** ~$3–6 per scrape per city. Five scrapes per active city per year ≈ $15–30/city/year. A 25-city shortlist runs ~$400–750/year for the full camp-scraping pipeline, plus 1–2 hours of human QA per scrape cycle across the shortlist.`);
   lines.push("");
 
-  lines.push(`## Section 6: Important Notes`);
+  lines.push(`## Section 7: Important Notes`);
   lines.push("");
   MVS_NOTES.forEach((note) => lines.push(`- ${note}`));
   lines.push("");
@@ -319,9 +394,51 @@ export default function MVSMethodology() {
             </div>
           </section>
 
-          {/* Section 2 — Composite */}
+          {/* Section 2 — Discover sources */}
           <section className="mb-10">
-            <SectionTitle n={2}>The Composite Formula</SectionTitle>
+            <SectionTitle n={2}>How We Scrape Each of the 5 Discover Sources</SectionTitle>
+            <p className="text-[13px] leading-relaxed text-[#1a2540] mb-3">
+              Every city run fans out across five independent sources. Each source is scraped in parallel,
+              and each source that returns 0 providers is retried up to two more times before we mark it
+              as confirmed empty. Google Maps and Google Search are treated as critical — if either is
+              confirmed empty, the city shows a red pill. Yelp, Sawyer, and ActivityHero are secondary —
+              one or two of them empty produces a yellow pill.
+            </p>
+            <div className="space-y-4">
+              {DISCOVER_SOURCES.map((s) => (
+                <div key={s.key} className="rounded-md border border-[#eef2f7] bg-white overflow-hidden">
+                  <div className="flex items-center justify-between border-b border-[#eef2f7] bg-[#f8fafe] px-4 py-2.5">
+                    <div className="flex items-baseline gap-2">
+                      <h3 className="text-[14px] font-bold text-[#07142f]">{s.name}</h3>
+                      <span className="text-[11px] text-[#526078]">{s.tool}</span>
+                    </div>
+                  </div>
+                  <div className="px-4 py-3.5 grid grid-cols-1 md:grid-cols-2 gap-4 text-[13px] leading-relaxed text-[#1a2540]">
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-[#526078] mb-1">What we ask for</p>
+                      <p>{s.query}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-[#526078] mb-1">Retry rule</p>
+                      <p>{s.retry}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-[#526078] mb-1">Confirmed empty</p>
+                      <p>{s.confirmedEmpty}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-[#526078] mb-1">Known failure modes</p>
+                      <p>{s.failureModes}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Section 3 — Composite */}
+          <section className="mb-10">
+            <SectionTitle n={4}>The Composite Formula</SectionTitle>
             <FormulaBlock>{`MVS = 0.2667 × Pricing Acceptance Score
     + 0.2667 × Scaled Operator Score
     + 0.1333 × Enrichment Diversity Score
@@ -338,7 +455,7 @@ export default function MVSMethodology() {
 
           {/* Section 3 — Sub-scores */}
           <section className="mb-10">
-            <SectionTitle n={3}>The Six Sub-Scores</SectionTitle>
+            <SectionTitle n={5}>The Six Sub-Scores</SectionTitle>
             <div className="space-y-6">
               {SUB_SCORES.map((s) => (
                 <div key={s.n} className="rounded-md border border-[#eef2f7] bg-white overflow-hidden">
@@ -377,7 +494,7 @@ export default function MVSMethodology() {
 
           {/* Section 4 — Premium definition */}
           <section className="mb-10">
-            <SectionTitle n={4}>Premium Provider Definition</SectionTitle>
+            <SectionTitle n={6}>Premium Provider Definition</SectionTitle>
             <p className="text-[13px] leading-relaxed text-[#1a2540] mb-3">
               Rather than excluding non-premium camps from data collection, the engine collects the{" "}
               <strong>full</strong> camp universe in each shortlisted city and tier-classifies each provider
@@ -415,7 +532,7 @@ export default function MVSMethodology() {
 
           {/* Section 5 — Crawler Evolution */}
           <section className="mb-10">
-            <SectionTitle n={5}>Crawler Evolution — Old (3 steps) vs New (9 steps)</SectionTitle>
+            <SectionTitle n={7}>Crawler Evolution — Old (3 steps) vs New (9 steps)</SectionTitle>
             <p className="text-[13px] leading-relaxed text-[#1a2540] mb-3">
               Before June 26, 2026 the crawler used a strict 3-step flow. It missed prices whenever the
               camp's own website hid the number behind a login wall or a "Book Now" button. The new
@@ -488,7 +605,7 @@ export default function MVSMethodology() {
 
           {/* Section 5b — Manus CSV import (v1.6) */}
           <section className="mb-10">
-            <SectionTitle n={5.5 as unknown as number}>Shortlist Intake — Manus CSV Import (v1.6)</SectionTitle>
+            <SectionTitle n={7.5 as unknown as number}>Shortlist Intake — Manus CSV Import (v1.6)</SectionTitle>
             <p className="text-[13px] leading-relaxed text-[#1a2540] mb-3">
               New in v1.6: an <strong>"Import from Manus CSV"</strong> button on the Market Validation page.
               It lets you bulk-add cities to the MVS shortlist from a Manus CSI export instead of typing
@@ -508,7 +625,7 @@ export default function MVSMethodology() {
 
           {/* Section 6 — Shared infra */}
           <section className="mb-10">
-            <SectionTitle n={6}>Shared Data & Tooling Stack</SectionTitle>
+            <SectionTitle n={8}>Shared Data & Tooling Stack</SectionTitle>
 
             <p className="text-[13px] leading-relaxed text-[#1a2540] mb-3">
               A single scrape per shortlisted city powers Scores 1, 2, 4, 5 and the provider denominator
@@ -543,7 +660,7 @@ export default function MVSMethodology() {
 
           {/* Section 7 — Notes */}
           <section className="mb-2">
-            <SectionTitle n={7}>Important Notes</SectionTitle>
+            <SectionTitle n={9}>Important Notes</SectionTitle>
 
             <div className="space-y-3">
               {MVS_NOTES.map((note, i) => (

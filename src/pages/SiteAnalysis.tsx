@@ -658,6 +658,8 @@ function MetricTiles({ signals }: { signals?: SiteScoreSignals }) {
       <Tile label="Median HHI · 10m" value={fmtMoney(acs10.medianHhi)} source={prov?.affluence} />
       <Tile label="Median HHI · 15m" value={fmtMoney(acs15.medianHhi)} source={prov?.affluence} />
       <Tile label="HH >$150k · 10m" value={fmtPct(acs10.pctAbove150k)} source={prov?.affluence} />
+      <Tile label="HH >$200k · 10m" value={fmtPct(acs10.pctAbove200k)} source={prov?.affluence} />
+      <Tile label="HH >$200k · 10m (count)" value={fmtCount(acs10.hhAbove200k)} source={prov?.affluence} />
       <Tile label="Kids 5-12 · 10m" value={fmtCount(acs10.children5to12, "children")} source={prov?.familyDensity} />
       <Tile label="Pop · 15m" value={fmtCount(acs15.totalPop, "people")} source={prov?.popReachable} />
       <Tile

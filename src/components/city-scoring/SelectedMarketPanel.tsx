@@ -180,7 +180,7 @@ function SelectedMarketPanelImpl({
               </div>
               {(() => {
                 const total = appliedTotal > 0 ? appliedTotal : 1;
-                const rows = VISIBLE_CATEGORIES.map((c) => {
+                const rows = COMPOSITE_CATEGORIES.map((c) => {
                   const weightPct = (appliedWeights[c.key] / total) * 100;
                   // Use RAW (math) pillar value — same number the Edit Config drawer
                   // shows. The composite is computed from raw pillars, then the
@@ -190,6 +190,7 @@ function SelectedMarketPanelImpl({
                   return { key: c.key, label: c.label, weightPct, rawPillar, contribution };
                 });
                 const rawWci = rows.reduce((s, r) => s + r.contribution, 0);
+
                 return (
                   <>
                     <div className="rounded border border-[#eef2f7] overflow-hidden">

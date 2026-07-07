@@ -102,6 +102,19 @@ export const CATEGORIES: Category[] = [
 // May 21, 2026 final purge, every entry in CATEGORIES is visible.
 export const VISIBLE_CATEGORIES = CATEGORIES;
 
+// Composite categories — the ones that actually count toward the overall
+// score. Tier 1 rework (Sam+Brett 2026-07-07) Phase 3: CSI-derived
+// Competitive Opportunity is excluded here to match the composite math in
+// `recomputeComposite`. Use this list for row popovers, the selected-market
+// formula panel, the Category Scores bars, and the compare modal — anywhere
+// the UI implies "these numbers add up to the score". Continue using
+// VISIBLE_CATEGORIES only where the third category is genuinely still
+// relevant (e.g. legacy Scoring Method sliders removed in Turn 3b).
+export const COMPOSITE_CATEGORIES: Category[] = CATEGORIES.filter(
+  (c) => c.key !== "competitiveLandscape",
+);
+
+
 // Map mock data scoreBreakdown into our 3 category scores deterministically.
 export function categoryScoresFromSample(c: CityData): Record<CategoryKey, number> {
   const b = c.scoreBreakdown;

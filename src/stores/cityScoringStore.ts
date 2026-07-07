@@ -168,7 +168,7 @@ export const useCityScoringStore = create<CityScoringState>()(
     {
       name: "ng:city-scoring-v1",
       storage: createJSONStorage(() => localStorage),
-      version: 10,
+      version: 11,
       migrate: (persisted: any, version) => {
         if (!persisted) return persisted;
         if (version < 2) {

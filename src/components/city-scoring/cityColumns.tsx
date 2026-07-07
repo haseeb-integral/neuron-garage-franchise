@@ -1,5 +1,6 @@
 import type { RankedMarket } from "@/lib/cityScoringLiveData";
 import { buildMarketView, buildPillarView, type PillarKey } from "@/lib/marketView";
+import { csiTierTextClass } from "@/lib/csiTierStyle";
 
 
 export type ColDef = {
@@ -151,5 +152,8 @@ export const COLUMNS: ColDef[] = [
     get: (m) => row(m).csi_score ?? null,
     render: (m) => fmtNum3(row(m).csi_score),
   },
-  { key: "csi_sat", label: "Saturation", align: "left", group: "Competitive Landscape", get: (m) => row(m).csi_saturation_category ?? "", render: (m) => <span className="text-[#8a6a00] italic">{row(m).csi_saturation_category ?? "—"}</span> },
+  { key: "csi_sat", label: "Saturation", align: "left", group: "Competitive Landscape", get: (m) => row(m).csi_saturation_category ?? "", render: (m) => {
+      const t = row(m).csi_saturation_category;
+      return t ? <span className={csiTierTextClass(t)}>{t}</span> : <span className="text-[#8794ab]">—</span>;
+    } },
 ];

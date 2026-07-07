@@ -219,7 +219,7 @@ function CityRow({
                     const n = Number(discoverCounts?.[s] ?? 0);
                     return (
                       <li key={s} className="flex items-center justify-between gap-3">
-                        <span className="capitalize">{s}</span>
+                        <span>{SOURCE_LABELS[s]}</span>
                         <span className={n > 0 ? "text-emerald-700" : "text-red-700"}>
                           {n > 0 ? `${n} providers` : "empty"}
                         </span>

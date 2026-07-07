@@ -251,6 +251,19 @@ function RankedMarketsListImpl({
                 );
 
               })()}
+              {FEATURE_FLAGS.FF_PROVIDER_COUNT && (
+                c.providerCount == null ? (
+                  <span
+                    className="justify-self-end text-[10.5px] text-[#cbd5e1] tabular-nums"
+                    title="No provider count yet — outside the 16 pilot cities. Waiting on v1.8."
+                  >—</span>
+                ) : (
+                  <span
+                    className="justify-self-end text-[10.5px] font-semibold tabular-nums text-[#07142f]"
+                    title={`${c.providerCount} providers detected in ${c.city} (from mvs_providers)`}
+                  >{c.providerCount}</span>
+                )
+              )}
               {c.hasLiveData ? (
                 <span className="justify-self-end">
                   <TierBadge

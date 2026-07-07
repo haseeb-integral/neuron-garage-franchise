@@ -728,6 +728,27 @@ export default function MarketValidationRollout() {
   const totalCount = SHORTLISTED_CITIES.length;
   const allDone = doneCount === totalCount;
 
+  // Trust banner: cities whose latest run has a critical source (Google Maps
+  // or Google Search) confirmed empty after 3 retries.
+  const CRITICAL = new Set(["google_maps", "google_search"]);
+  const readCount = (raw: any): number => {
+    if (raw == null) return 0;
+    if (typeof raw === "number") return raw;
+    if (typeof raw === "object") return Number(raw.count ?? 0);
+    return 0;
+  };
+  const redCities: string[] = [];
+  const yellowCities: string[] = [];
+  for (const c of SHORTLISTED_CITIES) {
+    const run = latestRuns[c.city];
+    const disc = (run?.source_counts as any)?.discover;
+    if (!disc) continue;
+    const critEmpty = ["google_maps", "google_search"].some((k) => readCount(disc[k]) === 0);
+    const secEmpty = ["sawyer", "activityhero", "yelp"].some((k) => readCount(disc[k]) === 0);
+    if (critEmpty) redCities.push(c.city);
+    else if (secEmpty) yellowCities.push(c.city);
+  }
+
   return (
     <div className="mx-auto max-w-[1200px] p-6">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">

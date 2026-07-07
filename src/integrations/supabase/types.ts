@@ -3026,6 +3026,7 @@ export type Database = {
           population_density: number | null
           private_charter_share_pct: number | null
           private_elementary_count: number | null
+          provider_count: number | null
           public_elementary_count: number | null
           public_elementary_enrollment: number | null
           public_elementary_teacher_count: number | null
@@ -3101,6 +3102,7 @@ export type Database = {
           population_density?: number | null
           private_charter_share_pct?: number | null
           private_elementary_count?: number | null
+          provider_count?: number | null
           public_elementary_count?: number | null
           public_elementary_enrollment?: number | null
           public_elementary_teacher_count?: number | null
@@ -3176,6 +3178,7 @@ export type Database = {
           population_density?: number | null
           private_charter_share_pct?: number | null
           private_elementary_count?: number | null
+          provider_count?: number | null
           public_elementary_count?: number | null
           public_elementary_enrollment?: number | null
           public_elementary_teacher_count?: number | null

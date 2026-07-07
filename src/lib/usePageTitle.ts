@@ -15,6 +15,7 @@ const TITLES: Record<string, string> = {
   "/users-guide": "User's Guide",
   "/spec": "Full Specification",
   "/city-search-spec": "City Search Spec",
+  "/city-search-guide": "City Search Guide",
   "/smartlead-spec": "SmartLead API Spec",
   "/email-outreach-docs": "Outreach Guide",
   "/demographics-methodology": "Demographics Method",

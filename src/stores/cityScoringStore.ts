@@ -114,7 +114,7 @@ export const useCityScoringStore = create<CityScoringState>()(
       searchTerm: "",
       scoringModel: "Affluent Suburbs Model",
       stateFilter: "All",
-      minPop: "0",
+      minPop: "34000",
       minScore: 0,
       tierFilter: "All",
       nonRegOnly: false,

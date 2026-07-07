@@ -133,7 +133,7 @@ function RankedMarketsListImpl({
       )}
 
       <div className="overflow-hidden flex-1">
-        <div className="grid grid-cols-[16px_22px_minmax(0,1fr)_42px_70px_30px_30px_28px_16px] items-center gap-x-2 px-1 py-2 text-[9.5px] uppercase tracking-wide text-[#8794ab] border-b border-[#eef2f7]">
+        <div className={`grid ${FEATURE_FLAGS.FF_PROVIDER_COUNT ? "grid-cols-[16px_22px_minmax(0,1fr)_42px_70px_30px_30px_34px_28px_16px]" : "grid-cols-[16px_22px_minmax(0,1fr)_42px_70px_30px_30px_28px_16px]"} items-center gap-x-2 px-1 py-2 text-[9.5px] uppercase tracking-wide text-[#8794ab] border-b border-[#eef2f7]`}>
           <span></span>
           <span>Rank</span>
           <span>Market</span>
@@ -141,6 +141,9 @@ function RankedMarketsListImpl({
           <span>Score</span>
           <span className="text-right" title="Demand category score">Dem</span>
           <span className="text-right" title="TAM Teachers category score">TAM</span>
+          {FEATURE_FLAGS.FF_PROVIDER_COUNT && (
+            <span className="text-right" title="Number of providers detected in this city (from mvs_providers). Only 16 pilot cities have data today.">Prov</span>
+          )}
           <span className="text-right">Tier</span>
           <span></span>
         </div>

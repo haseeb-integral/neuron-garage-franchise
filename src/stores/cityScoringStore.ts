@@ -114,7 +114,7 @@ export const useCityScoringStore = create<CityScoringState>()(
       searchTerm: "",
       scoringModel: "Affluent Suburbs Model",
       stateFilter: "All",
-      minPop: "0",
+      minPop: "34000",
       minScore: 0,
       tierFilter: "All",
       nonRegOnly: false,
@@ -168,7 +168,7 @@ export const useCityScoringStore = create<CityScoringState>()(
     {
       name: "ng:city-scoring-v1",
       storage: createJSONStorage(() => localStorage),
-      version: 10,
+      version: 11,
       migrate: (persisted: any, version) => {
         if (!persisted) return persisted;
         if (version < 2) {
@@ -209,6 +209,12 @@ export const useCityScoringStore = create<CityScoringState>()(
           // Drop any leftover ids so the Compare modal can never open with
           // stale checked rows from a prior session.
           delete persisted.selectedForCompare;
+        }
+        if (version < 11) {
+          // v11 (Jul 7, 2026): default minPop raised from 0 → 34000 so the
+          // City Search table + exports match the Manus 817-city universe.
+          // Force-reset any persisted value so returning users see 817 too.
+          persisted.minPop = "34000";
         }
         return persisted;
       },

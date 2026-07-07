@@ -53,6 +53,7 @@ export type ScoredCityRow = {
   col_salary_index: number | string | null;
   is_registration_state: boolean | null;
   scored_at: string | null;
+  provider_count: number | string | null;
   // Per-source freshness columns are read by `getCitySourceData` via a
   // narrower SELECT; not required on the main scored-row union.
 };

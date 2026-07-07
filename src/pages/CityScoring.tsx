@@ -115,6 +115,7 @@ type CategoryKey =
 import {
   CATEGORIES,
   VISIBLE_CATEGORIES,
+  COMPOSITE_CATEGORIES,
   SOURCES,
   normalizeMarketState,
   sameMarket,
@@ -124,6 +125,7 @@ import {
   type Category,
 } from "@/lib/cityScoringPageHelpers";
 void VISIBLE_CATEGORIES; void SOURCES; void CATEGORIES;
+
 void normalizeMarketState; void sameMarket; void categoryScores;
 
 type TierLetter = _TierLetter;

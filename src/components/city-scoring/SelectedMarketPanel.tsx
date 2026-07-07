@@ -276,7 +276,7 @@ function SelectedMarketPanelImpl({
         <div className="mt-4 w-full text-left">
           <p className="mb-2.5 text-[13px] font-semibold text-[#07142f]">Category Scores</p>
           <div className="space-y-2">
-            {VISIBLE_CATEGORIES.map((cat) => {
+            {COMPOSITE_CATEGORIES.map((cat) => {
               const v = selectedHasLiveData ? Math.round(calibratedScore(cat.key)) : null;
               const rawV = selectedHasLiveData ? pillars[cat.key as PillarKey]?.raw ?? null : null;
               const wPct = appliedTotal > 0 ? (appliedWeights[cat.key] / appliedTotal) * 100 : 0;

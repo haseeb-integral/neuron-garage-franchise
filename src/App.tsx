@@ -34,6 +34,7 @@ const DemographicsMethodology = lazyWithPreload(() => import("./pages/Demographi
 const MVSMethodology = lazyWithPreload(() => import("./pages/MVSMethodology"));
 const MVSSpec = lazyWithPreload(() => import("./pages/MVSSpec"));
 const MVSQAQueue = lazyWithPreload(() => import("./pages/MVSQAQueue"));
+const CitySearchSpec = lazyWithPreload(() => import("./pages/CitySearchSpec"));
 const MarketBrief = lazyWithPreload(() => import("./pages/MarketBrief"));
 const SiteBrief = lazyWithPreload(() => import("./pages/SiteBrief"));
 
@@ -68,6 +69,7 @@ registerRoutePrefetch("/users", TeamMembers.preload);
 registerRoutePrefetch("/handover", Handover.preload);
 registerRoutePrefetch("/users-guide", UserGuide.preload);
 registerRoutePrefetch("/spec", Spec.preload);
+registerRoutePrefetch("/city-search-spec", CitySearchSpec.preload);
 registerRoutePrefetch("/smartlead-spec", SmartLeadSpec.preload);
 registerRoutePrefetch("/email-outreach-docs", EmailOutreachDocs.preload);
 registerRoutePrefetch("/demographics-methodology", DemographicsMethodology.preload);
@@ -128,6 +130,7 @@ const App = () => (
                 <Route path="/mvs-methodology" element={<MVSMethodology />} />
                 <Route path="/mvs-spec" element={<MVSSpec />} />
                 <Route path="/mvs-qa-queue" element={<MVSQAQueue />} />
+                <Route path="/city-search-spec" element={<CitySearchSpec />} />
                 <Route path="/market-brief" element={<MarketBrief />} />
                 <Route path="/sas-brief" element={<SiteBrief />} />
                 

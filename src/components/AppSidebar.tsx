@@ -31,6 +31,7 @@ const docsNavItems = [
   { title: "APIs & Data Sources", url: "/docs/apis", icon: Plug },
   { title: "Guardrails", url: "/docs/guardrails", icon: ShieldCheck },
   { title: "Scoring Method", url: "/scoring-method", icon: Gauge },
+  { title: "City Search Spec", url: "/city-search-spec", icon: Map },
   
   { title: "MVS v1.6 Spec", url: "/mvs-spec", icon: ShieldCheck },
   { title: "MVS Methodology", url: "/mvs-methodology", icon: BarChart3 },

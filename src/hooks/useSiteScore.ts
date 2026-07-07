@@ -15,6 +15,8 @@ export interface SiteScoreSignals {
   acs10?: {
     medianHhi?: number;
     pctAbove150k?: number;
+    pctAbove200k?: number;
+    hhAbove200k?: number;
     pctDualIncome?: number;
     children5to12?: number;
     familiesWithKids?: number;
@@ -23,6 +25,8 @@ export interface SiteScoreSignals {
   acs15?: {
     medianHhi?: number;
     pctAbove150k?: number;
+    pctAbove200k?: number;
+    hhAbove200k?: number;
     children5to12?: number;
     totalPop?: number;
   };

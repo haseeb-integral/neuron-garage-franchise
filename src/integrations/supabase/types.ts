@@ -2291,11 +2291,13 @@ export type Database = {
           created_at: string
           expires_at: string
           families_with_kids_5_12: number | null
+          hh_above_200k: number | null
           id: string
           median_hhi: number | null
           minutes: number
           pct_dual_income: number | null
           pct_hh_above_150k: number | null
+          pct_hh_above_200k: number | null
           polygon_hash: string
           raw: Json
           total_population: number | null
@@ -2306,11 +2308,13 @@ export type Database = {
           created_at?: string
           expires_at?: string
           families_with_kids_5_12?: number | null
+          hh_above_200k?: number | null
           id?: string
           median_hhi?: number | null
           minutes: number
           pct_dual_income?: number | null
           pct_hh_above_150k?: number | null
+          pct_hh_above_200k?: number | null
           polygon_hash: string
           raw?: Json
           total_population?: number | null
@@ -2321,11 +2325,13 @@ export type Database = {
           created_at?: string
           expires_at?: string
           families_with_kids_5_12?: number | null
+          hh_above_200k?: number | null
           id?: string
           median_hhi?: number | null
           minutes?: number
           pct_dual_income?: number | null
           pct_hh_above_150k?: number | null
+          pct_hh_above_200k?: number | null
           polygon_hash?: string
           raw?: Json
           total_population?: number | null

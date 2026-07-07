@@ -156,6 +156,8 @@ Deno.serve(async (req) => {
       return [
         c.median_hhi,
         c.pct_hh_above_150k,
+        c.pct_hh_above_200k,
+        c.hh_above_200k,
         c.pct_dual_income,
         c.children_5_12,
         c.families_with_kids_5_12,
@@ -181,6 +183,8 @@ Deno.serve(async (req) => {
         return {
           medianHhi: Number(cached.median_hhi),
           pctAbove150k: Number(cached.pct_hh_above_150k),
+          pctAbove200k: Number((cached as Record<string, unknown>).pct_hh_above_200k),
+          hhAbove200k: Number((cached as Record<string, unknown>).hh_above_200k),
           pctDualIncome: Number(cached.pct_dual_income),
           children5to12: Number(cached.children_5_12),
           familiesWithKids: Number(cached.families_with_kids_5_12),
@@ -192,7 +196,7 @@ Deno.serve(async (req) => {
         };
       }
       const agg = await aggregateAcs(samplePoints(poly, 5));
-      const fields = [agg.medianHhi, agg.pctAbove150k, agg.pctDualIncome, agg.children5to12, agg.familiesWithKids, agg.totalPop];
+      const fields = [agg.medianHhi, agg.pctAbove150k, agg.pctAbove200k, agg.hhAbove200k, agg.pctDualIncome, agg.children5to12, agg.familiesWithKids, agg.totalPop];
       if (!fields.every((n) => Number.isFinite(n))) {
         throw new Error(`ACS aggregation incomplete for ${minutes}-min ring — refusing to fabricate zeros`);
       }
@@ -202,6 +206,8 @@ Deno.serve(async (req) => {
           minutes,
           median_hhi: agg.medianHhi,
           pct_hh_above_150k: agg.pctAbove150k,
+          pct_hh_above_200k: agg.pctAbove200k,
+          hh_above_200k: agg.hhAbove200k,
           pct_dual_income: agg.pctDualIncome,
           children_5_12: agg.children5to12,
           families_with_kids_5_12: agg.familiesWithKids,

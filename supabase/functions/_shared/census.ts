@@ -31,6 +31,10 @@ interface TractAcs {
   totalPop: number;
   medianHhi: number;
   pctAbove150k: number;
+  /** Percent of households with income >= $200k (B19001_017E / B19001_001E). */
+  pctAbove200k: number;
+  /** Raw households >= $200k in this tract (B19001_017E). */
+  hhAbove200k: number;
   pctDualIncome: number;
   children5to12: number;
   familiesWithKids: number;

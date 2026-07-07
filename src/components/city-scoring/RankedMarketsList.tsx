@@ -11,7 +11,7 @@ import type { RankedMarket } from "@/lib/cityScoringLiveData";
 import { TierBadge } from "@/components/city-scoring/TierBadge";
 import { RowScorePopover } from "@/components/city-scoring/RowScorePopover";
 import { sampleCities } from "@/data/cityData";
-import { sameMarket, VISIBLE_CATEGORIES } from "@/lib/cityScoringPageHelpers";
+import { sameMarket, COMPOSITE_CATEGORIES } from "@/lib/cityScoringPageHelpers";
 import { buildMarketView, buildPillarView } from "@/lib/marketView";
 
 type Props = {

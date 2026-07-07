@@ -7,7 +7,7 @@ import { useShortlistAdditions } from "@/lib/mvs/useShortlistAdditions";
 import { toStateAbbr } from "@/lib/usStates";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { VISIBLE_CATEGORIES, type Category } from "@/lib/cityScoringPageHelpers";
+import { COMPOSITE_CATEGORIES, VISIBLE_CATEGORIES, type Category } from "@/lib/cityScoringPageHelpers";
 import type { RankedMarket } from "@/lib/cityScoringLiveData";
 import { buildPillarView, type PillarKey } from "@/lib/marketView";
 import { bandFromDisplayScore } from "@/lib/cityTiers";

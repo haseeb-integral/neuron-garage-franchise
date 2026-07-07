@@ -165,18 +165,26 @@ const MVS_NOTES = [
   "Soft-fail fallback keeps a score visible when a fresh crawl fails. If saved provider data ≤ 120 days exists, the run status becomes done_stale, the saved score stays on the page, and an amber banner shows the fallback date. If saved data is > 120 days the status becomes failed_no_data with a red pill and the real error in the tooltip. Freshness age is computed from fallback_data_date for done_stale runs (not finished_at), so a stale fallback never looks \"new\".",
   "Pipeline runs are manager-gated — every edge function enforces a manager/admin role check before spending a Firecrawl call. The total Firecrawl cap per run is 50, with per-step sub-caps (discover ≤ 25, classify ≤ 15, extract ≤ 15) so no single step can run away. Classification runs in parallel waves of 5 to prevent timeouts.",
   "QA queue is for live extraction flags only (e.g. low-confidence pricing parses). The retired \"no registration page found\" reason is filtered out of the queue and the QA count pill so it can't inflate confidence numbers.",
+  "v1.6 — Crawler Telemetry card. Each city detail panel shows a small telemetry card counting where its prices came from: Direct (camp's own site), B1 Brand-propagated (median of ≥3 sibling locations), B2 Directory (Sawyer/ActivityHero listing), B3 Google AI Overview (needs human verify). Lets us see, per city, how much of the price data is high-trust vs needs-review.",
+  "v1.6 — Regression Guard. After every pipeline run we write a row to mvs_tier_snapshots (per-tier premium/mid/budget counts). If premium count drops ≥ 20% vs the last snapshot, the header notification bell fires a system notification for the user who ran the pipeline. Prevents silent regressions when a source changes shape.",
+  "v1.6 — Tier re-classify after Catch-Up. When steps 3–9 of the pricing crawler find a price for a camp that was previously priced-null or mid-tier, the tier classifier re-runs so the camp lands in its correct tier. Fixes the Johns Creek bug where camps stayed \"mid\" after their real premium price was discovered late.",
+  "v1.6 — Unpriced Reasons. Camps that end the run with no price now carry a reason chip: Not a camp / Booking wall / No public price / Steps 3–9 exhausted / AI Overview blocked. The city panel shows a per-city breakdown so you know why coverage is what it is instead of a generic \"missing price\".",
+  "v1.6 — Stop button + row lock. The active pipeline row shows a red Stop button that cancels the run cleanly. While any row is running, other rows' Run and Force-fresh buttons are locked so two runs can't collide on the Firecrawl budget.",
+  "v1.6 — Manual Verify / Reject / Edit with reject-safety. The Provider Evidence Review page uses quiet chips for auto-kept crawler prices and loud action buttons only for rows that need human review (B3 AI Overview and other price_needs_review = true rows). Reject requires a confirmation step so a stray click can't wipe a real price. A collapsible \"How to read this table\" help card explains the chip/button system.",
 ];
 
 
 const MVS_SHARED_INFRA = [
-  ["Apify Google Maps actor", "Provider discovery", "Reused from v1.0"],
-  ["Firecrawl", "Page fetch + listing-page screenshots (JS render)", "Reused from v1.0 — cap 50 per run, sub-caps 25/15/15"],
-  ["Gemini 2.0 Flash (Lovable AI Gateway)", "Structured JSON extraction + tier classification", "Reused from v1.0"],
-  ["Supabase Postgres", "Provider data store + run history", "Reused from v1.0"],
-  ["Supabase Storage", "Listing-page screenshot archive (private, audit trail). No raw HTML, no per-provider website screenshots.", "Reused from v1.0"],
-  ["Census ACS", "Demographics for Market Balance + Operator denominator", "Reused from v1.0"],
-  ["Inngest or Trigger.dev (scrape cadence)", "5-scrape weekly cadence for Market Absorption", "Retired with Market Absorption (v1.1)"],
-  ["Internal QA review UI", "Live extraction-confidence review queue", "Live (retired QA reasons filtered out)"],
+  ["Discovery: Sawyer, ActivityHero, Google Maps, Yelp, Google Search (Firecrawl + APIs)", "Provider discovery — 5 sources", "Live (v1.6)"],
+  ["Firecrawl", "Page fetch + listing-page screenshots (JS render)", "Live — cap 50 per run, sub-caps 25 / 15 / 15"],
+  ["Gemini 2.0 Flash (Lovable AI Gateway)", "Structured JSON extraction + tier classification (parallel waves of 5)", "Live"],
+  ["Google AI Overview via Apify (B3 fallback)", "Last-resort price lookup — prices flagged 'Needs human review'", "Live (v1.6)"],
+  ["Supabase Postgres", "Provider data store, pipeline runs, tier snapshots (mvs_tier_snapshots)", "Live"],
+  ["Supabase Storage", "Listing-page screenshot archive (private, audit trail). No raw HTML, no per-provider website screenshots.", "Live"],
+  ["Census ACS", "Demographics for Market Balance + Operator denominator", "Live"],
+  ["Header notification bell (Regression Guard)", "Fires when premium count drops ≥ 20% vs previous snapshot", "Live (v1.6)"],
+  ["Inngest / Trigger.dev (scheduled scrape cadence)", "Was planned for the retired 5-scrape weekly cadence", "Deferred — manual trigger only"],
+  ["Internal QA review UI (absorption flow)", "Was the low-confidence week correction queue", "Retired — page shows retired notice"],
 ];
 
 const MVS_PREMIUM_TIERS = [
@@ -273,7 +281,7 @@ export default function MVSMethodology() {
       eyebrow="Methodology"
       eyebrowIcon={BarChart3}
       title={<>How the MVS (Market Validation Score) is Calculated</>}
-      subtitle="Methodology & Data Documentation — Feature 1A · Market Validation Engine · v1.6 (2026-07-01)"
+      subtitle="Methodology & Data Documentation — Feature 1A · Market Validation Engine · v1.6 (updated 2026-07-07)"
       action={
         <DownloadMDButton
           content={generateMVSMarkdown()}
@@ -516,16 +524,7 @@ export default function MVSMethodology() {
                   </tr>
                 </thead>
                 <tbody className="text-[#1a2540]">
-                  {[
-                    ["Apify Google Maps actor", "Provider discovery", "Reused from v1.0"],
-                    ["Firecrawl", "Page fetch + listing-page screenshots (JS render)", "Reused from v1.0"],
-                    ["Gemini 2.0 Flash (Lovable AI Gateway)", "Structured JSON extraction", "Reused from v1.0"],
-                    ["Supabase Postgres", "Week-level + provider data store", "Reused from v1.0"],
-                    ["Supabase Storage", "Listing-page screenshot archive (private). No raw HTML, no per-provider websites.", "Reused from v1.0"],
-                    ["Census ACS", "Demographics for Market Balance + Operator denominator", "Reused from v1.0"],
-                    ["Inngest or Trigger.dev", "Scheduled scrape cadence", "New (~$20–50/mo)"],
-                    ["Internal QA review UI", "Low-confidence week correction queue", "New (~3–5 dev-days)"],
-                  ].map(([tool, role, status]) => (
+                  {MVS_SHARED_INFRA.map(([tool, role, status]) => (
                     <tr key={tool} className="border-t border-[#eef2f7]">
                       <td className="px-4 py-2 font-semibold text-[#07142f]">{tool}</td>
                       <td className="px-4 py-2">{role}</td>

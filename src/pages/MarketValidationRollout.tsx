@@ -174,7 +174,16 @@ function CityRow({
 
   // Discover sources we always try. If the latest run finished without filling
   // source_counts (older runs from before this column existed), the chip is hidden.
-  const DISCOVER_SOURCES = ["sawyer", "activityhero", "googlemaps", "yelp", "googlesearch"] as const;
+  // Keys must match what mvs-discover-providers writes into source_counts.discover
+  // (Platform type in that function): sawyer | activityhero | google_maps | google_search | yelp.
+  const DISCOVER_SOURCES = ["sawyer", "activityhero", "google_maps", "yelp", "google_search"] as const;
+  const SOURCE_LABELS: Record<(typeof DISCOVER_SOURCES)[number], string> = {
+    sawyer: "Sawyer",
+    activityhero: "ActivityHero",
+    google_maps: "Google Maps",
+    yelp: "Yelp",
+    google_search: "Google Search",
+  };
   const sourceCounts = latestRun?.source_counts ?? null;
   const discoverCounts = sourceCounts && typeof sourceCounts === "object" && (sourceCounts as any).discover
     ? ((sourceCounts as any).discover as Record<string, number>)
@@ -210,7 +219,7 @@ function CityRow({
                     const n = Number(discoverCounts?.[s] ?? 0);
                     return (
                       <li key={s} className="flex items-center justify-between gap-3">
-                        <span className="capitalize">{s}</span>
+                        <span>{SOURCE_LABELS[s]}</span>
                         <span className={n > 0 ? "text-emerald-700" : "text-red-700"}>
                           {n > 0 ? `${n} providers` : "empty"}
                         </span>

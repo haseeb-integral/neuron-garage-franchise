@@ -941,6 +941,30 @@ export type Database = {
         }
         Relationships: []
       }
+      csi_tier_thresholds: {
+        Row: {
+          city_count: number | null
+          computed_at: string | null
+          id: boolean
+          p60_ratio: number | null
+          p85_ratio: number | null
+        }
+        Insert: {
+          city_count?: number | null
+          computed_at?: string | null
+          id?: boolean
+          p60_ratio?: number | null
+          p85_ratio?: number | null
+        }
+        Update: {
+          city_count?: number | null
+          computed_at?: string | null
+          id?: boolean
+          p60_ratio?: number | null
+          p85_ratio?: number | null
+        }
+        Relationships: []
+      }
       custom_criteria: {
         Row: {
           category: string
@@ -2976,6 +3000,7 @@ export type Database = {
           csi_last_updated: string | null
           csi_local_provider_estimate: number | null
           csi_national_brand_count_weighted: number | null
+          csi_raw_supply: number | null
           csi_saturation_category: string | null
           csi_score: number | null
           days_above_90f: number | null
@@ -3046,6 +3071,7 @@ export type Database = {
           csi_last_updated?: string | null
           csi_local_provider_estimate?: number | null
           csi_national_brand_count_weighted?: number | null
+          csi_raw_supply?: number | null
           csi_saturation_category?: string | null
           csi_score?: number | null
           days_above_90f?: number | null
@@ -3116,6 +3142,7 @@ export type Database = {
           csi_last_updated?: string | null
           csi_local_provider_estimate?: number | null
           csi_national_brand_count_weighted?: number | null
+          csi_raw_supply?: number | null
           csi_saturation_category?: string | null
           csi_score?: number | null
           days_above_90f?: number | null

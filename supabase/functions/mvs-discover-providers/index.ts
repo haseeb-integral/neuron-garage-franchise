@@ -1173,7 +1173,11 @@ Deno.serve(async (req) => {
       totalFirecrawl += r.firecrawlCalls;
       if (r.screenshotPath && !screenshotPath) screenshotPath = r.screenshotPath;
       debug[r.platform] = r.debug;
-      sourceCounts[r.platform] = r.providers.length;
+      sourceCounts[r.platform] = {
+        count: r.providers.length,
+        attempts: attemptsBySource[r.platform] ?? 1,
+        empty_confirmed: r.providers.length === 0 && (attemptsBySource[r.platform] ?? 1) >= 3,
+      };
     }
 
 

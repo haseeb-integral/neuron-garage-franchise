@@ -85,10 +85,12 @@ export async function tractAcs(
     const medianHhi = n(1);
     const totalHh = n(2);
     const above150 = n(5) + n(6); // 150-200k + 200k+
+    const above200 = n(6); // 200k+
     const above100 = n(3) + n(4) + n(5) + n(6); // not used directly but kept for raw
     const totalWorkers = n(7);
     const dual = n(8) + n(9);
     const pctAbove150k = totalHh > 0 ? (above150 / totalHh) * 100 : 0;
+    const pctAbove200k = totalHh > 0 ? (above200 / totalHh) * 100 : 0;
     const pctDualIncome = totalWorkers > 0 ? (dual / totalWorkers) * 100 : 0;
     // children 5-12 = (age 3-5 * 1/3) + age 6-8 + age 9-11 + (age 12-14 * 1/3)
     const children5to12 = Math.round(n(10) / 3 + n(11) + n(12) + n(13) / 3);
@@ -99,6 +101,8 @@ export async function tractAcs(
       totalPop,
       medianHhi,
       pctAbove150k,
+      pctAbove200k,
+      hhAbove200k: above200,
       pctDualIncome,
       children5to12,
       familiesWithKids,

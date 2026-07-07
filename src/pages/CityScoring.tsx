@@ -61,6 +61,8 @@ import {
 import { useCityScoringStore, DEFAULT_WEIGHTS } from "@/stores/cityScoringStore";
 import { DEFAULT_SUB_WEIGHTS, SOW_METRIC_REGISTRY } from "@/lib/sowMetricRegistry";
 import { SubMetricWeightsDrawer } from "@/components/city-scoring/SubMetricWeightsDrawer";
+import { ImportManusCsvDialog } from "@/components/phase2-demo/ImportManusCsvDialog";
+import { useIsManager } from "@/hooks/dbHealth/useIsManager";
 
 import { Settings2 } from "lucide-react";
 import { METRICS_BY_CATEGORY } from "@/lib/sowMetricRegistry";
@@ -136,6 +138,7 @@ const CityScoring = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { profile, user, role, signOut, session } = useAuth();
+  const { isManager } = useIsManager();
 
   const displayName = profile?.full_name || profile?.email || user?.email || "Account";
   const initials = (displayName.match(/\b\w/g) || []).slice(0, 1).join("").toUpperCase() || "U";
@@ -1427,6 +1430,9 @@ const CityScoring = () => {
           <Button variant="outline" className="h-9 border-[#e5eaf2] text-[#14233b] gap-1.5 font-normal" onClick={() => setAddCritOpen(true)}>
             <Plus size={14} /> Add Criteria
           </Button>
+          {isManager && (
+            <ImportManusCsvDialog onImported={() => toast.success("Manus reference data updated.")} />
+          )}
           <TooltipProvider delayDuration={150}>
             <Tooltip>
               <TooltipTrigger asChild>

@@ -1,5 +1,6 @@
 import type { RankedMarket } from "@/lib/cityScoringLiveData";
 import { buildMarketView, buildPillarView, type PillarKey } from "@/lib/marketView";
+import { csiTierTextClass } from "@/lib/csiTierStyle";
 
 
 export type ColDef = {

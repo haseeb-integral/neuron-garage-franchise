@@ -4,6 +4,7 @@
 // button. Extracted from SubMetricWeightsDrawer.tsx.
 
 import type { SowMetricEntry } from "@/lib/sowMetricRegistry";
+import { csiTierBadgeClass } from "@/lib/csiTierStyle";
 
 interface CsiLockedPanelProps {
   metrics: SowMetricEntry[];

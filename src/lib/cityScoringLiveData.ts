@@ -268,6 +268,7 @@ export async function loadLiveRankedMarkets(_opts?: { includeExtras?: boolean })
       lastScrapedAt: row.scored_at ?? null,
       source: "live",
       hasLiveData,
+      providerCount: row.provider_count == null ? null : Number(row.provider_count),
       scoredRow: row,
       categoryScores: {
         demand: row.score_demand == null ? undefined : toNumber(row.score_demand, 0),

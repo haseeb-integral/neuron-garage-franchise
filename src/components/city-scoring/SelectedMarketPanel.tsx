@@ -139,11 +139,12 @@ function SelectedMarketPanelImpl({
         </svg>
         <p className="-mt-1 text-[13px] font-semibold" style={{ color: selectedHasLiveData ? tierBadge.fg : "#8794ab" }}>{selectedHasLiveData ? opportunityLabel : "No live data"}</p>
         {selectedHasLiveData && (() => {
-          const enriched = VISIBLE_CATEGORIES.map((c) => {
+          const enriched = COMPOSITE_CATEGORIES.map((c) => {
             const score = Math.round(calibratedScore(c.key));
             const weight = appliedWeights[c.key] ?? 0;
             return { label: c.label, score, weight, contribution: score * weight };
           }).filter((x) => x.weight > 0);
+
           if (enriched.length === 0) return null;
           const sorted = [...enriched].sort((a, b) => b.contribution - a.contribution);
           const drivers = sorted.slice(0, Math.min(2, sorted.length));

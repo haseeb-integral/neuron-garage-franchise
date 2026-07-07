@@ -66,6 +66,8 @@ export function CsiLockedPanel({
           Lower = less crowded = better opportunity. The score is the city's percentile rank
           of real counted national-brand supply (STEM ×2.0 + general ×1.0) across all 817 cities.
           Composite uses <span className="font-mono">(100 − score)</span> so high contribution = good.
+          The tier badge is calibrated relative to demand: bottom 60% of supply-per-demand = <strong>Open</strong>,
+          60–85th percentile = <strong>Competitive</strong>, top 15% = <strong>Saturated</strong>.
         </p>
       </div>
 

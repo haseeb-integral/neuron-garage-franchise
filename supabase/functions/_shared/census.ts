@@ -118,6 +118,8 @@ export async function aggregateAcs(
 ): Promise<{
   medianHhi: number;
   pctAbove150k: number;
+  pctAbove200k: number;
+  hhAbove200k: number;
   pctDualIncome: number;
   children5to12: number; // SCALED by tract count (proxy for sum)
   familiesWithKids: number; // SCALED by tract count
@@ -145,6 +147,8 @@ export async function aggregateAcs(
     return {
       medianHhi: 0,
       pctAbove150k: 0,
+      pctAbove200k: 0,
+      hhAbove200k: 0,
       pctDualIncome: 0,
       children5to12: 0,
       familiesWithKids: 0,
@@ -159,6 +163,8 @@ export async function aggregateAcs(
   return {
     medianHhi: avg((a) => a.medianHhi),
     pctAbove150k: avg((a) => a.pctAbove150k),
+    pctAbove200k: avg((a) => a.pctAbove200k),
+    hhAbove200k: sum((a) => a.hhAbove200k),
     pctDualIncome: avg((a) => a.pctDualIncome),
     children5to12: sum((a) => a.children5to12),
     familiesWithKids: sum((a) => a.familiesWithKids),

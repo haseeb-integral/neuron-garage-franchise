@@ -1084,14 +1084,49 @@ Deno.serve(async (req) => {
     if (catchupBatch && Array.isArray(catchupBatch) && catchupBatch.length > 0) {
       // jump straight to catchup block
     } else {
+      // Retry-on-zero wrapper. If a source returns 0 providers on the first
+      // try, wait and try again (up to 3 total attempts). Waits: 15s, then 60s.
+      // Google Maps + Google Search are the critical sources — a real 0 from
+      // them is very rare, so a transient failure is the likely cause. Yelp,
+      // Sawyer, ActivityHero also get retries so trust is consistent.
+      const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+      const attemptsBySource: Record<string, number> = {};
+      const runWithRetry = async <T extends SourceResult>(
+        name: string,
+        fn: () => Promise<T>,
+      ): Promise<T> => {
+        const waits = [15_000, 60_000]; // between attempt 1→2 and 2→3
+        let last: T = await fn();
+        attemptsBySource[name] = 1;
+        for (let i = 0; i < waits.length; i++) {
+          if (last.providers.length > 0) break;
+          console.log(`[discover-retry] ${name} returned 0 on attempt ${i + 1}, sleeping ${waits[i] / 1000}s before retry`);
+          await sleep(waits[i]);
+          try {
+            const next = await fn();
+            attemptsBySource[name] = i + 2;
+            last = next;
+            if (next.providers.length > 0) {
+              console.log(`[discover-retry] ${name} succeeded on attempt ${i + 2} with ${next.providers.length} providers`);
+            }
+          } catch (retryErr) {
+            console.warn(`[discover-retry] ${name} retry attempt ${i + 2} threw:`, retryErr);
+          }
+        }
+        if (last.providers.length === 0) {
+          console.warn(`[discover-retry] ${name} confirmed empty after ${attemptsBySource[name]} attempts`);
+        }
+        return last;
+      };
+
       // Run all 5 sources in parallel — sequential calls exceeded the 150s edge function idle timeout.
       const sourceResults: SourceResult[] = await Promise.all([
-      runSawyer({ city, box, firecrawlKey, lovableKey, admin, runId }),
-      runActivityHero({ city, state: stateAbbr, firecrawlKey, lovableKey }),
-      runGoogleMaps({ city, state: stateAbbr }),
-      runYelp({ city, state: stateAbbr, firecrawlKey, lovableKey }),
-      runGoogleSearch({ city, state: stateAbbr, firecrawlKey, lovableKey }),
-    ]);
+        runWithRetry("sawyer", () => runSawyer({ city, box, firecrawlKey, lovableKey, admin, runId })),
+        runWithRetry("activityhero", () => runActivityHero({ city, state: stateAbbr, firecrawlKey, lovableKey })),
+        runWithRetry("google_maps", () => runGoogleMaps({ city, state: stateAbbr })),
+        runWithRetry("yelp", () => runYelp({ city, state: stateAbbr, firecrawlKey, lovableKey })),
+        runWithRetry("google_search", () => runGoogleSearch({ city, state: stateAbbr, firecrawlKey, lovableKey })),
+      ]);
 
     // Phase 3.3: targeted price scrape — re-scrape up to 5 already-discovered
     // URLs that look price-relevant, with onlyMainContent:false + screenshot.

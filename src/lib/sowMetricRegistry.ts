@@ -3,6 +3,8 @@
 // Keep in sync if the backend registry changes.
 
 import type { CategoryKey } from "@/stores/cityScoringStore";
+import { isEnabled } from "@/lib/featureFlags";
+
 
 export type MetricStatus = "live" | "proxy" | "missing" | "blocked";
 export type RegistryCategory =

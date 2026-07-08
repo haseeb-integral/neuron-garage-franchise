@@ -1271,6 +1271,7 @@ const CityScoring = () => {
     }
   > = {
     children_5_12_count:           { format: "int",     thresholds: [3000, 15000],   higherIsBetter: true },
+    affluent_families_score:       { format: "decimal", thresholds: [40, 70],        higherIsBetter: true },
     median_household_income:       { format: "money",   thresholds: [60000, 100000], higherIsBetter: true },
     dual_income_household_pct:     { format: "pct",     thresholds: [60, 80],        higherIsBetter: true },
     education_bachelors_plus_pct:  { format: "pct",     thresholds: [30, 50],        higherIsBetter: true },

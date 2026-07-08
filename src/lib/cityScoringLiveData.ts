@@ -120,7 +120,10 @@ export type SeededFallbackSignal = {
     status: "proxy";
     used_in_score: boolean;
     metric_category: SeededMetricCategory;
+    display_value?: string | null;
+    [key: string]: unknown;
   };
+
 };
 
 export type RankedMarketFilters = {

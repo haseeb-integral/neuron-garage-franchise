@@ -26,10 +26,14 @@ interface Props {
 }
 
 export function MetricRow({ metric, signal, status }: Props) {
+  const displayOverride = signal?.raw_data && typeof (signal.raw_data as any).display_value === "string"
+    ? ((signal.raw_data as any).display_value as string)
+    : null;
   const value =
     signal && status !== "missing"
-      ? formatMetric(signal.value, signal.signal_key ?? metric.key)
+      ? (displayOverride ?? formatMetric(signal.value, signal.signal_key ?? metric.key))
       : "—";
+
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-[#f1f4f9] px-2 py-1 last:border-0">
       <div className="min-w-0">

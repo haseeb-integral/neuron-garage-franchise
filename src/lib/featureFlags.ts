@@ -12,9 +12,10 @@ export const FEATURE_FLAGS = {
   FF_CANDIDATE_PROCESS_V1: true, // 7-step franchisee interview process tab
 
   // Demand pillar: Affluent Families with Children sub-metric (B19131).
-  // OFF by default in Phase 1 — flag flips ON in Phase 3 after backfill.
-  // Flip to false at any time to instantly revert to the old 4-metric Demand math.
-  FEATURE_AFFLUENT_FAMILIES: false,
+  // Phase 3 (2026-07-08): flipped ON after full 817-city backfill. Flip to
+  // false to instantly revert to the old 4-metric Demand math.
+  FEATURE_AFFLUENT_FAMILIES: true,
+
 
   // Tier 1 rework (Sam+Brett 2026-07-07) — Provider Count column + drill-in on
   // City Search + Selected Market panel. Flip to false to instantly hide the

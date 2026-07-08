@@ -168,7 +168,7 @@ export const useCityScoringStore = create<CityScoringState>()(
     {
       name: "ng:city-scoring-v1",
       storage: createJSONStorage(() => localStorage),
-      version: 11,
+      version: 12,
       migrate: (persisted: any, version) => {
         if (!persisted) return persisted;
         if (version < 2) {
@@ -216,6 +216,19 @@ export const useCityScoringStore = create<CityScoringState>()(
           // Force-reset any persisted value so returning users see 817 too.
           persisted.minPop = "34000";
         }
+        if (version < 12) {
+          // v12 (Jul 8, 2026, Phase 3): Affluent Families with Children joined
+          // the Demand pillar. Reset ONLY Demand sub-weights to the new 5-key
+          // defaults (30/30/25/10/5); leave Competitive + TAM untouched.
+          const nextDemand = { ...DEFAULT_SUB_WEIGHTS.demand };
+          if (persisted.subWeights && typeof persisted.subWeights === "object") {
+            persisted.subWeights.demand = nextDemand;
+          }
+          if (persisted.appliedSubWeights && typeof persisted.appliedSubWeights === "object") {
+            persisted.appliedSubWeights.demand = { ...nextDemand };
+          }
+        }
+
         return persisted;
       },
       partialize: (s) => ({

@@ -54,6 +54,14 @@ export type ScoredCityRow = {
   is_registration_state: boolean | null;
   scored_at: string | null;
   provider_count: number | string | null;
+  // Affluent Families with Children (B19131, RPP-adjusted). Populated by
+  // backfill-affluent-families edge function; null cities fall back to
+  // 4-metric Demand automatically.
+  affluent_families_count: number | string | null;
+  affluent_families_share: number | string | null;
+  affluent_families_snapped_bracket: number | string | null;
+  affluent_families_effective_threshold: number | string | null;
+
   // Per-source freshness columns are read by `getCitySourceData` via a
   // narrower SELECT; not required on the main scored-row union.
 };
@@ -190,7 +198,7 @@ export async function loadLiveRankedMarkets(_opts?: { includeExtras?: boolean })
       // 2026-05-22 — 0/817 populated; CSI is fully covered by
       // csi_national_brand_count_weighted, csi_local_provider_estimate, and
       // csi_demand_adjusted_market (all 817/817 from Manus).
-      "id, city_name, state_name, state_abbr, metro_area, county_name, metro_counties, population, population_density, children_5_12, median_household_income, dual_working_families_pct, college_degree_pct, cost_of_living_index, public_school_count, public_school_enrollment, public_elementary_count, public_elementary_enrollment, public_elementary_teacher_count, private_elementary_count, charter_elementary_count, composite_score_default, score_demand, score_csi, score_tam_teachers, csi_score, csi_saturation_category, csi_confidence, csi_national_brand_count_weighted, csi_local_provider_estimate, csi_demand_adjusted_market, csi_brand_detail, csi_last_updated, place_type, census_population_2020, avg_elementary_teacher_salary_usd, col_salary_index, is_registration_state, scored_at, provider_count",
+      "id, city_name, state_name, state_abbr, metro_area, county_name, metro_counties, population, population_density, children_5_12, median_household_income, dual_working_families_pct, college_degree_pct, cost_of_living_index, public_school_count, public_school_enrollment, public_elementary_count, public_elementary_enrollment, public_elementary_teacher_count, private_elementary_count, charter_elementary_count, composite_score_default, score_demand, score_csi, score_tam_teachers, csi_score, csi_saturation_category, csi_confidence, csi_national_brand_count_weighted, csi_local_provider_estimate, csi_demand_adjusted_market, csi_brand_detail, csi_last_updated, place_type, census_population_2020, avg_elementary_teacher_salary_usd, col_salary_index, is_registration_state, scored_at, provider_count, affluent_families_count, affluent_families_share, affluent_families_snapped_bracket, affluent_families_effective_threshold",
     )
     .order("composite_score_default", { ascending: false, nullsFirst: false })
     .limit(2000);
@@ -379,13 +387,32 @@ export function buildSeededFallbackSignalsFromScored(
     raw_data: { status: "proxy", used_in_score, metric_category },
   });
 
+  // Affluent Families blended sub-score: 50% normalize(count) + 50% normalize(share).
+  // Ranges chosen from real US-city distribution so top metros don't saturate.
+  //   count: 200 → 40000 families with own kids <18 above the RPP-adjusted threshold
+  //   share: 3% → 45% of families-with-own-children
+  const affCount = toNumber(scoredRow.affluent_families_count, NaN);
+  const affShareRaw = toNumber(scoredRow.affluent_families_share, NaN);
+  // Share is persisted as a 0..1 fraction (Plano ≈ 0.475). Convert to percent.
+  const affSharePct = Number.isFinite(affShareRaw) ? affShareRaw * 100 : NaN;
+  let affluentBlended: number | null = null;
+  if (Number.isFinite(affCount) && Number.isFinite(affSharePct)) {
+    const nCount = Math.max(0, Math.min(100, ((affCount - 200) / (40000 - 200)) * 100));
+    const nShare = Math.max(0, Math.min(100, ((affSharePct - 3) / (45 - 3)) * 100));
+    affluentBlended = Math.round((nCount + nShare) / 2);
+  }
+
+
   return [
     seeded("total_population", "Total Population", scoredRow.population, "demand", false),
-    // Demand — 4-metric lock (Brett+Haseeb 2026-05-21)
+    // Demand — Phase 3 (2026-07-08): 5-metric mix (30/30/25/10/5) when
+    // FEATURE_AFFLUENT_FAMILIES is ON. Falls back to 4-metric lock when OFF.
     seeded("children_5_12_count", "Children Ages 5–12", scoredRow.children_5_12, "demand", true),
+    seeded("affluent_families_score", "Affluent Families with Children (blended)", affluentBlended, "demand", true),
     seeded("median_household_income", "Median Household Income", scoredRow.median_household_income, "demand", true),
     seeded("dual_income_household_pct", "% Dual-Income Households", scoredRow.dual_working_families_pct, "demand", true),
     seeded("education_bachelors_plus_pct", "Bachelor's+ Attainment", scoredRow.college_degree_pct, "demand", true),
+
     // CSI — single input after 2026-07-07 refactor (Prompt 1). Local-provider
     // estimate and demand-adjusted market removed: the first was a guess that
     // drowned real counts, the second duplicated the Demand pillar.

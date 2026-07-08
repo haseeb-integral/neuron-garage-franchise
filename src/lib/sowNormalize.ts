@@ -27,6 +27,11 @@ export const NORMALIZATION_RANGES: Record<string, NormalizationRange> = {
   median_household_income:             { lo: 45000, hi: 150000, invert: false },
   dual_income_household_pct:           { lo: 85,    hi: 98,     invert: false },
   education_bachelors_plus_pct:        { lo: 15,    hi: 70,     invert: false },
+  // Affluent Families sub-score arrives pre-blended (50% count + 50% share,
+  // each normalized) as a 0..100 value from buildSeededFallbackSignalsFromScored.
+  // Passthrough range so the drawer echoes the same number.
+  affluent_families_score:             { lo: 0,     hi: 100,    invert: false },
+
   // Pricing power
   childcare_nanny_hourly_rate_proxy:   { lo: 25000, hi: 60000, invert: false },
   household_discretionary_income_proxy:{ lo: 20000, hi: 150000, invert: false },

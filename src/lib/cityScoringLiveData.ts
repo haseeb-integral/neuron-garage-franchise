@@ -403,7 +403,9 @@ export function buildSeededFallbackSignalsFromScored(
     const nCount = Math.max(0, Math.min(100, ((affCount - 200) / (40000 - 200)) * 100));
     const nShare = Math.max(0, Math.min(100, ((affSharePct - 3) / (45 - 3)) * 100));
     affluentBlended = Math.round((nCount + nShare) / 2);
+  }
   // Human-readable display for the drawer row (e.g. "16,188 · 47.5%").
+
   // The numeric `value` remains the 0–100 blended sub-score so scoring math
   // is unchanged; MetricRow prefers `raw_data.display_value` when present.
   let affluentDisplay: string | null = null;

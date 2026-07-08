@@ -1801,7 +1801,12 @@ const CityScoring = () => {
             </div>
             {hasLiveSignals ? (
               <div className="flex flex-col divide-y divide-[#f1f4f9]">
-                {sigRows.map((r) => (
+                {sigRows.map((r) => {
+                  const isCompetitive = r.key === "csi_national_brand_supply";
+                  const providersHref = isCompetitive
+                    ? `/market-validation/competitors?city=${encodeURIComponent(selected.city)}&state=${encodeURIComponent(selected.state)}`
+                    : null;
+                  return (
                   <div key={r.key} className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 py-1.5">
                     <div className="min-w-0">
                       <p className="text-[11.5px] font-medium text-[#07142f] leading-tight truncate" title={r.label}>{r.label}</p>
@@ -1819,10 +1824,35 @@ const CityScoring = () => {
                       ) : (
                         <p className="text-[10px] text-[#8794ab] leading-tight truncate" title={r.source}>{r.source}</p>
                       )}
+                      {providersHref && r.value !== "—" ? (
+                        <a
+                          href={providersHref}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-[10px] text-[#174be8] hover:underline leading-tight truncate block"
+                          title={`View the ${r.value} provider${r.value === "1" ? "" : "s"} for ${selected.city}, ${selected.state}`}
+                        >
+                          View provider list ↗
+                        </a>
+                      ) : null}
                     </div>
-                    <span className="text-right text-[11.5px] font-bold text-[#07142f] tabular-nums whitespace-nowrap">{r.value}</span>
+                    {providersHref && r.value !== "—" ? (
+                      <a
+                        href={providersHref}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-right text-[11.5px] font-bold text-[#174be8] hover:underline tabular-nums whitespace-nowrap"
+                      >
+                        {r.value}
+                      </a>
+                    ) : (
+                      <span className="text-right text-[11.5px] font-bold text-[#07142f] tabular-nums whitespace-nowrap">{r.value}</span>
+                    )}
                   </div>
-                ))}
+                  );
+                })}
                 <button
                   type="button"
                   onClick={() => setDetailDrawerOpen(true)}

@@ -54,6 +54,14 @@ export type ScoredCityRow = {
   is_registration_state: boolean | null;
   scored_at: string | null;
   provider_count: number | string | null;
+  // Affluent Families with Children (B19131, RPP-adjusted). Populated by
+  // backfill-affluent-families edge function; null cities fall back to
+  // 4-metric Demand automatically.
+  affluent_families_count: number | string | null;
+  affluent_families_share: number | string | null;
+  affluent_families_snapped_bracket: number | string | null;
+  affluent_families_effective_threshold: number | string | null;
+
   // Per-source freshness columns are read by `getCitySourceData` via a
   // narrower SELECT; not required on the main scored-row union.
 };

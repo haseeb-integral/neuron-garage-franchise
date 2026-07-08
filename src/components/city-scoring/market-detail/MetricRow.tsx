@@ -1,4 +1,5 @@
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { SowMetricEntry } from "@/lib/sowMetricRegistry";
 import { formatMetric } from "@/lib/numberFormat";
 

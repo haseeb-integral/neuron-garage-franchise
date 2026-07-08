@@ -1214,12 +1214,14 @@ const CityScoring = () => {
     displayTier === "B" ? "Strong Market" :
     displayTier === "C" ? "Watch Market" : "Saturated Market";
 
-  // Key Market Signals — locked to the 12 metrics that power the 3 visible
-  // categories (Demand 4 + TAM Teachers 5 + Competitive Landscape 3).
+  // Key Market Signals — locked to the metrics that power the 3 visible
+  // categories (Demand 5 + TAM Teachers 5 + Competitive Landscape 1).
   // Per Brett 2026-05-21: simple plain UI, no chips, source as subtitle.
+  // Phase 3 (2026-07-08): Affluent Families with Children added to Demand.
   const KEY_SIGNAL_KEYS: readonly string[] = [
-    // Demand (4)
+    // Demand (5)
     "children_5_12_count",
+    "affluent_families_score",
     "median_household_income",
     "dual_income_household_pct",
     "education_bachelors_plus_pct",

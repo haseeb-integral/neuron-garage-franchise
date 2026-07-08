@@ -387,13 +387,29 @@ export function buildSeededFallbackSignalsFromScored(
     raw_data: { status: "proxy", used_in_score, metric_category },
   });
 
+  // Affluent Families blended sub-score: 50% normalize(count) + 50% normalize(share).
+  // Ranges chosen from real US-city distribution so top metros don't saturate.
+  //   count: 200 → 40000 families with own kids <18 above the RPP-adjusted threshold
+  //   share: 3% → 45% of families-with-own-children
+  const affCount = toNumber(scoredRow.affluent_families_count, NaN);
+  const affShare = toNumber(scoredRow.affluent_families_share, NaN);
+  let affluentBlended: number | null = null;
+  if (Number.isFinite(affCount) && Number.isFinite(affShare)) {
+    const nCount = Math.max(0, Math.min(100, ((affCount - 200) / (40000 - 200)) * 100));
+    const nShare = Math.max(0, Math.min(100, ((affShare - 3) / (45 - 3)) * 100));
+    affluentBlended = Math.round((nCount + nShare) / 2);
+  }
+
   return [
     seeded("total_population", "Total Population", scoredRow.population, "demand", false),
-    // Demand — 4-metric lock (Brett+Haseeb 2026-05-21)
+    // Demand — Phase 3 (2026-07-08): 5-metric mix (30/30/25/10/5) when
+    // FEATURE_AFFLUENT_FAMILIES is ON. Falls back to 4-metric lock when OFF.
     seeded("children_5_12_count", "Children Ages 5–12", scoredRow.children_5_12, "demand", true),
+    seeded("affluent_families_score", "Affluent Families with Children (blended)", affluentBlended, "demand", true),
     seeded("median_household_income", "Median Household Income", scoredRow.median_household_income, "demand", true),
     seeded("dual_income_household_pct", "% Dual-Income Households", scoredRow.dual_working_families_pct, "demand", true),
     seeded("education_bachelors_plus_pct", "Bachelor's+ Attainment", scoredRow.college_degree_pct, "demand", true),
+
     // CSI — single input after 2026-07-07 refactor (Prompt 1). Local-provider
     // estimate and demand-adjusted market removed: the first was a guess that
     // drowned real counts, the second duplicated the Demand pillar.

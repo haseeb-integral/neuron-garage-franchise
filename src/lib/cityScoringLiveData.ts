@@ -392,13 +392,16 @@ export function buildSeededFallbackSignalsFromScored(
   //   count: 200 → 40000 families with own kids <18 above the RPP-adjusted threshold
   //   share: 3% → 45% of families-with-own-children
   const affCount = toNumber(scoredRow.affluent_families_count, NaN);
-  const affShare = toNumber(scoredRow.affluent_families_share, NaN);
+  const affShareRaw = toNumber(scoredRow.affluent_families_share, NaN);
+  // Share is persisted as a 0..1 fraction (Plano ≈ 0.475). Convert to percent.
+  const affSharePct = Number.isFinite(affShareRaw) ? affShareRaw * 100 : NaN;
   let affluentBlended: number | null = null;
-  if (Number.isFinite(affCount) && Number.isFinite(affShare)) {
+  if (Number.isFinite(affCount) && Number.isFinite(affSharePct)) {
     const nCount = Math.max(0, Math.min(100, ((affCount - 200) / (40000 - 200)) * 100));
-    const nShare = Math.max(0, Math.min(100, ((affShare - 3) / (45 - 3)) * 100));
+    const nShare = Math.max(0, Math.min(100, ((affSharePct - 3) / (45 - 3)) * 100));
     affluentBlended = Math.round((nCount + nShare) / 2);
   }
+
 
   return [
     seeded("total_population", "Total Population", scoredRow.population, "demand", false),

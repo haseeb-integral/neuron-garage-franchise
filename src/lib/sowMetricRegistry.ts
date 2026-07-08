@@ -40,30 +40,44 @@ export const CATEGORY_PURPOSE: Record<CategoryKey, string> = {
   franchiseeSupply: "Are there enough teachers here to recruit as franchise operators?",
 };
 
+const AFFLUENT_ON = isEnabled("FEATURE_AFFLUENT_FAMILIES");
+
 export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
-  // ─────────── DEMAND (4-metric lock — Brett+Haseeb 2026-05-21) ───────────
-  // Locked to 4 Census ACS sub-metrics. Default sub-weights 30/25/20/25.
-  // Ranges in sowNormalize.ts mirror real p5/p95 across 935 scored cities.
+  // ─────────── DEMAND ───────────
+  // When FEATURE_AFFLUENT_FAMILIES is ON (Phase 3, 2026-07-08): 5-metric mix
+  //   Children 30 / Affluent Families 30 / Bachelors+ 25 / Dual-Income 10 / Median Income 5
+  // Median Income demoted to 5% because Affluent Families (B19131, cost-of-
+  // living-adjusted) is a far tighter signal for "premium fit". Median Income
+  // stays visible as a sanity check. Flip the flag to false to instantly
+  // restore the pre-Phase-3 4-metric lock (30/25/20/25).
   { key: "children_5_12_count", category: "demand", label: "Children Ages 5–12",
     description: "Raw count of kids in the camp's target age range. Bigger pool = more potential customers.",
     enabled: true,  weight_within_category: 0.30, status: "live",
     source: "U.S. Census Bureau API — ACS 5-yr (vars B01001_004/005/028/029)",
     sourceUrl: "https://data.census.gov/table/ACSDT5Y2022.B01001" },
-  { key: "median_household_income", category: "demand", label: "Median Household Income",
-    description: "Typical family earnings. Above ~$90k starts to support discretionary camp spend.",
-    enabled: true,  weight_within_category: 0.25, status: "live",
-    source: "U.S. Census Bureau API — ACS 5-yr (B19013_001)",
-    sourceUrl: "https://data.census.gov/table/ACSDT5Y2024.B19013" },
-  { key: "dual_income_household_pct", category: "demand", label: "% Dual-Income Households",
-    description: "Share of families with own children under 18 that are married-couple families where the husband is in the labor force (employed) AND the wife is in the labor force. Single-parent families remain in the denominator.",
-    enabled: true,  weight_within_category: 0.20, status: "live",
-    source: "U.S. Census Bureau API — ACS 5-yr (B23007: _006 / _002)",
-    sourceUrl: "https://data.census.gov/table/ACSDT5Y2024.B23007" },
+  ...(AFFLUENT_ON ? [{
+    key: "affluent_families_score", category: "demand" as const, label: "Affluent Families with Children",
+    description: "Cost-of-living-adjusted count + share of families with own children under 18 above the local affluence threshold ($150k × state RPP, snapped to the nearest ACS B19131 bracket). Blended 50/50 of the normalized count and normalized share.",
+    enabled: true,  weight_within_category: 0.30, status: "live" as const,
+    source: "U.S. Census Bureau API — ACS 5-yr B19131 × BEA Regional Price Parity",
+    sourceUrl: "https://data.census.gov/table/ACSDT5Y2022.B19131",
+  }] : []),
   { key: "education_bachelors_plus_pct", category: "demand", label: "Parent Education / Bachelor's+",
     description: "Share of adults with a college degree. Educated parents over-index on enrichment spending.",
-    enabled: true,  weight_within_category: 0.25, status: "live",
+    enabled: true,  weight_within_category: AFFLUENT_ON ? 0.25 : 0.25, status: "live",
     source: "U.S. Census Bureau API — ACS 5-yr (B15003_022–025)",
     sourceUrl: "https://data.census.gov/table/ACSDT5Y2024.B15003" },
+  { key: "dual_income_household_pct", category: "demand", label: "% Dual-Income Households",
+    description: "Share of families with own children under 18 that are married-couple families where the husband is in the labor force (employed) AND the wife is in the labor force. Single-parent families remain in the denominator.",
+    enabled: true,  weight_within_category: AFFLUENT_ON ? 0.10 : 0.20, status: "live",
+    source: "U.S. Census Bureau API — ACS 5-yr (B23007: _006 / _002)",
+    sourceUrl: "https://data.census.gov/table/ACSDT5Y2024.B23007" },
+  { key: "median_household_income", category: "demand", label: "Median Household Income",
+    description: "Typical family earnings. Kept as a sanity check; Affluent Families is the primary premium-fit signal when enabled.",
+    enabled: true,  weight_within_category: AFFLUENT_ON ? 0.05 : 0.25, status: "live",
+    source: "U.S. Census Bureau API — ACS 5-yr (B19013_001)",
+    sourceUrl: "https://data.census.gov/table/ACSDT5Y2024.B19013" },
+
 
   // Pricing Power, Ease of Operations, and Parent Mindset metrics were
   // retired in the May 21, 2026 6→3 category reshape (final purge).

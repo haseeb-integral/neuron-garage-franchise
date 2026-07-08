@@ -40,10 +40,12 @@ const SOW_CATEGORIES: { key: MetricCategory; label: string }[] = [
   { key: "competitive_landscape", label: "Competitive Opportunity" },
 ];
 
-// 12-metric whitelist (Demand 4 + TAM Teachers 5 + Competitive Landscape 3)
-// — locks the drawer to the same inputs shown in Key Market Signals.
+// Whitelist: Demand 5 (incl. Affluent Families, Phase 3 2026-07-08) +
+// TAM Teachers 5 + Competitive 1 — locks drawer to inputs shown in
+// Key Market Signals.
 const KEY_METRIC_KEYS: ReadonlySet<string> = new Set([
   "children_5_12_count",
+  "affluent_families_score",
   "median_household_income",
   "dual_income_household_pct",
   "education_bachelors_plus_pct",

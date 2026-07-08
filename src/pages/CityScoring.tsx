@@ -1322,7 +1322,7 @@ const CityScoring = () => {
     const rawVal = sig?.value;
     const isEmpty = rawVal === undefined || rawVal === null || rawVal === "" ;
     const cfg = SIGNAL_DISPLAY[key];
-    const value = isEmpty ? "—" : (cfg ? formatSignalValue(rawVal, cfg.format) : String(rawVal));
+    const value = isEmpty ? "—" : (sig?.displayValue ?? (cfg ? formatSignalValue(rawVal, cfg.format) : String(rawVal)));
     const benchmark = isEmpty ? null : benchmarkBand(String(rawVal), cfg);
     return {
       key,

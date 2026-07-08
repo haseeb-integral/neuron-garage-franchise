@@ -1214,12 +1214,14 @@ const CityScoring = () => {
     displayTier === "B" ? "Strong Market" :
     displayTier === "C" ? "Watch Market" : "Saturated Market";
 
-  // Key Market Signals — locked to the 12 metrics that power the 3 visible
-  // categories (Demand 4 + TAM Teachers 5 + Competitive Landscape 3).
+  // Key Market Signals — locked to the metrics that power the 3 visible
+  // categories (Demand 5 + TAM Teachers 5 + Competitive Landscape 1).
   // Per Brett 2026-05-21: simple plain UI, no chips, source as subtitle.
+  // Phase 3 (2026-07-08): Affluent Families with Children added to Demand.
   const KEY_SIGNAL_KEYS: readonly string[] = [
-    // Demand (4)
+    // Demand (5)
     "children_5_12_count",
+    "affluent_families_score",
     "median_household_income",
     "dual_income_household_pct",
     "education_bachelors_plus_pct",
@@ -1242,9 +1244,15 @@ const CityScoring = () => {
   })();
 
   const signalsByKey = useMemo(() => {
-    const out: Record<string, { value: string }> = {};
+    const out: Record<string, { value: string; displayValue?: string }> = {};
     for (const s of signalsForDisplay) {
-      if (s?.signal_key) out[s.signal_key] = { value: s.value == null ? "" : String(s.value) };
+      if (s?.signal_key) {
+        const displayValue = (s as any)?.raw_data?.display_value as string | undefined;
+        out[s.signal_key] = {
+          value: s.value == null ? "" : String(s.value),
+          displayValue: displayValue || undefined,
+        };
+      }
     }
     return out;
   }, [signalsForDisplay]);
@@ -1263,6 +1271,7 @@ const CityScoring = () => {
     }
   > = {
     children_5_12_count:           { format: "int",     thresholds: [3000, 15000],   higherIsBetter: true },
+    affluent_families_score:       { format: "decimal", thresholds: [40, 70],        higherIsBetter: true },
     median_household_income:       { format: "money",   thresholds: [60000, 100000], higherIsBetter: true },
     dual_income_household_pct:     { format: "pct",     thresholds: [60, 80],        higherIsBetter: true },
     education_bachelors_plus_pct:  { format: "pct",     thresholds: [30, 50],        higherIsBetter: true },
@@ -1313,7 +1322,7 @@ const CityScoring = () => {
     const rawVal = sig?.value;
     const isEmpty = rawVal === undefined || rawVal === null || rawVal === "" ;
     const cfg = SIGNAL_DISPLAY[key];
-    const value = isEmpty ? "—" : (cfg ? formatSignalValue(rawVal, cfg.format) : String(rawVal));
+    const value = isEmpty ? "—" : (sig?.displayValue ?? (cfg ? formatSignalValue(rawVal, cfg.format) : String(rawVal)));
     const benchmark = isEmpty ? null : benchmarkBand(String(rawVal), cfg);
     return {
       key,

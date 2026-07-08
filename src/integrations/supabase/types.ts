@@ -1418,6 +1418,8 @@ export type Database = {
           imported_by: string | null
           manus_csi_score: number | null
           manus_export_version: string | null
+          provider_count: number | null
+          provider_names: string | null
           rank: number | null
           state: string
           updated_at: string
@@ -1430,6 +1432,8 @@ export type Database = {
           imported_by?: string | null
           manus_csi_score?: number | null
           manus_export_version?: string | null
+          provider_count?: number | null
+          provider_names?: string | null
           rank?: number | null
           state: string
           updated_at?: string
@@ -1442,6 +1446,8 @@ export type Database = {
           imported_by?: string | null
           manus_csi_score?: number | null
           manus_export_version?: string | null
+          provider_count?: number | null
+          provider_names?: string | null
           rank?: number | null
           state?: string
           updated_at?: string

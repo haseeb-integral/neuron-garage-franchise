@@ -1244,9 +1244,15 @@ const CityScoring = () => {
   })();
 
   const signalsByKey = useMemo(() => {
-    const out: Record<string, { value: string }> = {};
+    const out: Record<string, { value: string; displayValue?: string }> = {};
     for (const s of signalsForDisplay) {
-      if (s?.signal_key) out[s.signal_key] = { value: s.value == null ? "" : String(s.value) };
+      if (s?.signal_key) {
+        const displayValue = (s as any)?.raw_data?.display_value as string | undefined;
+        out[s.signal_key] = {
+          value: s.value == null ? "" : String(s.value),
+          displayValue: displayValue || undefined,
+        };
+      }
     }
     return out;
   }, [signalsForDisplay]);

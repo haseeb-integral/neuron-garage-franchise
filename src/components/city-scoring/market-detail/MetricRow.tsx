@@ -1,4 +1,5 @@
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { SowMetricEntry } from "@/lib/sowMetricRegistry";
 import { formatMetric } from "@/lib/numberFormat";
 
@@ -29,6 +30,9 @@ export function MetricRow({ metric, signal, status }: Props) {
   const displayOverride = signal?.raw_data && typeof (signal.raw_data as any).display_value === "string"
     ? ((signal.raw_data as any).display_value as string)
     : null;
+  const tooltipText = signal?.raw_data && typeof (signal.raw_data as any).tooltip === "string"
+    ? ((signal.raw_data as any).tooltip as string)
+    : null;
   const value =
     signal && status !== "missing"
       ? (displayOverride ?? formatMetric(signal.value, signal.signal_key ?? metric.key))
@@ -37,9 +41,25 @@ export function MetricRow({ metric, signal, status }: Props) {
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-[#f1f4f9] px-2 py-1 last:border-0">
       <div className="min-w-0">
-        <p className="text-[11.5px] font-medium text-[#07142f] truncate" title={metric.label}>
-          {metric.label}
-        </p>
+        <div className="flex items-center gap-1">
+          <p className="text-[11.5px] font-medium text-[#07142f] truncate" title={metric.label}>
+            {metric.label}
+          </p>
+          {tooltipText ? (
+            <TooltipProvider delayDuration={150}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button type="button" className="text-[#8794ab] hover:text-[#174be8] shrink-0" aria-label="Metric details">
+                    <Info size={11} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-[280px] text-[11px] leading-snug">
+                  {tooltipText}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : null}
+        </div>
         <p className="text-[10px] text-[#8794ab] truncate" title={metric.source}>
           {metric.source}
         </p>

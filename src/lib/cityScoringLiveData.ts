@@ -405,7 +405,6 @@ export function buildSeededFallbackSignalsFromScored(
     affluentBlended = Math.round((nCount + nShare) / 2);
   }
   // Human-readable display for the drawer row (e.g. "16,188 · 47.5%").
-
   // The numeric `value` remains the 0–100 blended sub-score so scoring math
   // is unchanged; MetricRow prefers `raw_data.display_value` when present.
   let affluentDisplay: string | null = null;
@@ -413,6 +412,12 @@ export function buildSeededFallbackSignalsFromScored(
     affluentDisplay = `${Math.round(affCount).toLocaleString()} · ${affSharePct.toFixed(1)}%`;
   }
 
+  const affSnapped = toNumber(scoredRow.affluent_families_snapped_bracket, NaN);
+  const affThreshold = toNumber(scoredRow.affluent_families_effective_threshold, NaN);
+  const fmtUsd = (n: number) => `$${Math.round(n).toLocaleString()}`;
+  const affluentTooltip = Number.isFinite(affSnapped) && Number.isFinite(affThreshold)
+    ? `Counts families with own children under 18 earning above the RPP-adjusted threshold of ${fmtUsd(affThreshold)}, snapped to the nearest Census B19131 bracket at ${fmtUsd(affSnapped)}. Sub-score = 50/50 blend of normalized count and share.`
+    : null;
 
   return [
     seeded("total_population", "Total Population", scoredRow.population, "demand", false),
@@ -429,8 +434,11 @@ export function buildSeededFallbackSignalsFromScored(
         used_in_score: true,
         metric_category: "demand",
         display_value: affluentDisplay,
+        tooltip: affluentTooltip,
         affluent_families_count: Number.isFinite(affCount) ? affCount : null,
         affluent_families_share_pct: Number.isFinite(affSharePct) ? affSharePct : null,
+        affluent_families_snapped_bracket: Number.isFinite(affSnapped) ? affSnapped : null,
+        affluent_families_effective_threshold: Number.isFinite(affThreshold) ? affThreshold : null,
       },
     },
 

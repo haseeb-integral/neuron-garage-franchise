@@ -273,6 +273,18 @@ export function MarketDetailDrawer({
                         <MetricRow key={`reg-${metric.key}`} metric={metric} signal={signal} status={status} />
                       ))
                     )}
+                    {category.key === "competitive_landscape" && (
+                      <div className="border-t border-[#eef2f7] px-3 py-2">
+                        <a
+                          href={`/market-validation/competitors?city=${encodeURIComponent(market.city)}&state=${encodeURIComponent(stateAbbr ?? "")}`}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#174be8] hover:underline"
+                        >
+                          View full provider list ↗
+                        </a>
+                      </div>
+                    )}
                   </div>
                 </div>
               );

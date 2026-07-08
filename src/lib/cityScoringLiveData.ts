@@ -120,7 +120,10 @@ export type SeededFallbackSignal = {
     status: "proxy";
     used_in_score: boolean;
     metric_category: SeededMetricCategory;
+    display_value?: string | null;
+    [key: string]: unknown;
   };
+
 };
 
 export type RankedMarketFilters = {
@@ -401,6 +404,14 @@ export function buildSeededFallbackSignalsFromScored(
     const nShare = Math.max(0, Math.min(100, ((affSharePct - 3) / (45 - 3)) * 100));
     affluentBlended = Math.round((nCount + nShare) / 2);
   }
+  // Human-readable display for the drawer row (e.g. "16,188 · 47.5%").
+
+  // The numeric `value` remains the 0–100 blended sub-score so scoring math
+  // is unchanged; MetricRow prefers `raw_data.display_value` when present.
+  let affluentDisplay: string | null = null;
+  if (Number.isFinite(affCount) && Number.isFinite(affSharePct)) {
+    affluentDisplay = `${Math.round(affCount).toLocaleString()} · ${affSharePct.toFixed(1)}%`;
+  }
 
 
   return [
@@ -408,7 +419,21 @@ export function buildSeededFallbackSignalsFromScored(
     // Demand — Phase 3 (2026-07-08): 5-metric mix (30/30/25/10/5) when
     // FEATURE_AFFLUENT_FAMILIES is ON. Falls back to 4-metric lock when OFF.
     seeded("children_5_12_count", "Children Ages 5–12", scoredRow.children_5_12, "demand", true),
-    seeded("affluent_families_score", "Affluent Families with Children (blended)", affluentBlended, "demand", true),
+    {
+      signal_key: "affluent_families_score",
+      label: "Affluent Families with Children (blended)",
+      value: affluentBlended,
+      source: "Pre-seeded",
+      raw_data: {
+        status: "proxy",
+        used_in_score: true,
+        metric_category: "demand",
+        display_value: affluentDisplay,
+        affluent_families_count: Number.isFinite(affCount) ? affCount : null,
+        affluent_families_share_pct: Number.isFinite(affSharePct) ? affSharePct : null,
+      },
+    },
+
     seeded("median_household_income", "Median Household Income", scoredRow.median_household_income, "demand", true),
     seeded("dual_income_household_pct", "% Dual-Income Households", scoredRow.dual_working_families_pct, "demand", true),
     seeded("education_bachelors_plus_pct", "Bachelor's+ Attainment", scoredRow.college_degree_pct, "demand", true),

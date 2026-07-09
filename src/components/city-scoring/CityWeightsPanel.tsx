@@ -269,7 +269,12 @@ export function CityWeightsPanel({
                         if (!Number.isFinite(parsed)) return;
                         const clamped = Math.max(0, Math.min(100, Math.round(parsed)));
                         setWeights((w) => {
-                          const next = rebalanceWeights(w, cat.key, clamped);
+                          const subset = VISIBLE_CATEGORIES.reduce((acc, c) => {
+                            acc[c.key] = w[c.key] || 0;
+                            return acc;
+                          }, {} as Record<CategoryKey, number>);
+                          const rebalanced = rebalanceWeights(subset, cat.key, clamped);
+                          const next = { ...w, ...rebalanced, competitiveLandscape: 0 };
                           const detected = detectPreset(next);
                           if (detected !== scoringModel) setScoringModel(detected);
                           return next;
@@ -291,7 +296,12 @@ export function CityWeightsPanel({
                   value={[weights[cat.key]]}
                   onValueChange={([v]) => {
                     setWeights((w) => {
-                      const next = rebalanceWeights(w, cat.key, v);
+                      const subset = VISIBLE_CATEGORIES.reduce((acc, c) => {
+                        acc[c.key] = w[c.key] || 0;
+                        return acc;
+                      }, {} as Record<CategoryKey, number>);
+                      const rebalanced = rebalanceWeights(subset, cat.key, v);
+                      const next = { ...w, ...rebalanced, competitiveLandscape: 0 };
                       const detected = detectPreset(next);
                       if (detected !== scoringModel) setScoringModel(detected);
                       return next;

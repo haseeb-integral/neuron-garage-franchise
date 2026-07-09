@@ -1064,7 +1064,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                   </div>
                   <ul className="space-y-1">
                     {Object.entries(input).map(([k, v]) => {
-                      if (v == null || k === "year2Signal") return null;
+                      if (v == null || k === "year2Signal" || k === "diversityRatio") return null;
                       const display =
                         typeof v === "number" ? (Number.isInteger(v) ? v : v.toFixed(2)) : String(v);
                       const proof = proofForInput(k, premiumProviders, categoryCounts, watchlist, overrides, acs, cityDisplay);

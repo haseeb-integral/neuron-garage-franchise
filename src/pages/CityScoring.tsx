@@ -176,8 +176,18 @@ const CityScoring = () => {
   useEffect(() => {
     if (hydratedConfig || !scoringConfigRow) return;
     if (scoringConfigRow.master_weights) {
-      setWeights(scoringConfigRow.master_weights);
-      setAppliedWeights(scoringConfigRow.master_weights);
+      // Sanitize legacy rows that still carry a non-zero competitiveLandscape
+      // weight. Post Phase 3b the composite only uses Demand + TAM Teachers,
+      // so we force CL to 0 and rescale the two visible sliders to sum to 100.
+      const raw = scoringConfigRow.master_weights;
+      const d = Math.max(0, raw.demand ?? 0);
+      const t = Math.max(0, raw.franchiseeSupply ?? 0);
+      const sum = d + t;
+      const sanitized = sum > 0
+        ? { demand: Math.round((d / sum) * 100), franchiseeSupply: 100 - Math.round((d / sum) * 100), competitiveLandscape: 0 }
+        : { ...DEFAULT_WEIGHTS };
+      setWeights(sanitized);
+      setAppliedWeights(sanitized);
     }
     if (scoringConfigRow.preset_name) setScoringModel(scoringConfigRow.preset_name);
     setHydratedConfig(true);

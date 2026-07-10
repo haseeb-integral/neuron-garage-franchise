@@ -131,7 +131,7 @@ function milesBetween(aLat: number, aLng: number, bLat: number, bLng: number): n
   return 2 * R * Math.asin(Math.sqrt(s));
 }
 
-async function runBatch(batchId: string, dryRun: boolean) {
+async function runBatch(batchId: string, dryRun: boolean, resume: boolean) {
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -166,11 +166,32 @@ async function runBatch(batchId: string, dryRun: boolean) {
     .select("id, city_name, state_abbr, latitude, longitude");
   if (cityErr) throw new Error(`load cities: ${cityErr.message}`);
 
-  console.log(`[pss-seed ${batchId}] processing ${cities?.length ?? 0} cities (dry_run=${dryRun})`);
+  // Resume mode: skip cities that already have a 'done' row from any prior live batch.
+  let skipIds = new Set<string>();
+  if (resume && !dryRun) {
+    let from = 0;
+    const pageSize = 1000;
+    while (true) {
+      const { data, error } = await supabase
+        .from("private_elementary_seed_runs")
+        .select("city_id")
+        .eq("status", "done")
+        .range(from, from + pageSize - 1);
+      if (error) throw new Error(`load resume state: ${error.message}`);
+      if (!data || data.length === 0) break;
+      for (const r of data) if (r.city_id) skipIds.add(r.city_id as string);
+      if (data.length < pageSize) break;
+      from += pageSize;
+    }
+    console.log(`[pss-seed ${batchId}] resume: ${skipIds.size} cities already done, will skip`);
+  }
+
+  console.log(`[pss-seed ${batchId}] processing ${cities?.length ?? 0} cities (dry_run=${dryRun}, resume=${resume})`);
 
   const RADIUS_MI = 5;
 
   for (const c of cities ?? []) {
+    if (skipIds.has(c.id as string)) continue;
     const state = String(c.state_abbr || "").toUpperCase();
     const cityNorm = normCity(String(c.city_name || ""));
     if (!state || !cityNorm) continue;
@@ -292,10 +313,11 @@ Deno.serve(async (req) => {
 
     const url = new URL(req.url);
     const dryRun = url.searchParams.get("dry_run") === "1";
+    const resume = url.searchParams.get("resume") === "1";
     const batchId = crypto.randomUUID();
 
     // @ts-ignore EdgeRuntime is provided by Supabase runtime.
-    EdgeRuntime.waitUntil(runBatch(batchId, dryRun).catch(async (e) => {
+    EdgeRuntime.waitUntil(runBatch(batchId, dryRun, resume).catch(async (e) => {
       console.error(`[pss-seed ${batchId}] fatal:`, e);
       try {
         await svc.from("private_elementary_seed_runs").insert({

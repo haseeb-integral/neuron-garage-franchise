@@ -24,7 +24,7 @@ type RunRow = {
 
 export default function AdminPrivateSchoolsSeed() {
   const { loading, isManager, isAdmin } = useIsManager();
-  const [busy, setBusy] = useState<null | "dry" | "live">(null);
+  const [busy, setBusy] = useState<null | "dry" | "live" | "resume">(null);
   const [lastResponse, setLastResponse] = useState<any>(null);
   const [rows, setRows] = useState<RunRow[]>([]);
   const [summary, setSummary] = useState<{
@@ -35,20 +35,26 @@ export default function AdminPrivateSchoolsSeed() {
     errors: number;
     zeroMatch: number;
   } | null>(null);
+  const [liveDoneCount, setLiveDoneCount] = useState<number | null>(null);
 
-  const trigger = async (dry: boolean) => {
-    setBusy(dry ? "dry" : "live");
+  const trigger = async (mode: "dry" | "live" | "resume") => {
+    setBusy(mode);
     setLastResponse(null);
     try {
-      const path = dry
-        ? "seed-private-elementary-counts?dry_run=1"
-        : "seed-private-elementary-counts";
+      const path =
+        mode === "dry"
+          ? "seed-private-elementary-counts?dry_run=1"
+          : mode === "resume"
+          ? "seed-private-elementary-counts?resume=1"
+          : "seed-private-elementary-counts";
       const { data, error } = await supabase.functions.invoke(path, { method: "POST" });
       if (error) throw error;
       setLastResponse(data);
       toast.success(
-        dry
+        mode === "dry"
           ? "Dry run started. Results will appear below in 1-3 minutes."
+          : mode === "resume"
+          ? "Resume started. It will skip cities already done and continue."
           : "Live run started. Results will appear below in 1-3 minutes.",
       );
     } catch (e: any) {
@@ -81,6 +87,13 @@ export default function AdminPrivateSchoolsSeed() {
       errors: inBatch.filter((r) => r.status === "error" || r.status === "failed").length,
       zeroMatch: inBatch.filter((r) => (r.count ?? 0) === 0).length,
     });
+
+    // Count total distinct cities marked 'done' across ALL live batches (for resume progress).
+    const { count } = await supabase
+      .from("private_elementary_seed_runs")
+      .select("city_id", { count: "exact", head: true })
+      .eq("status", "done");
+    setLiveDoneCount(count ?? 0);
   };
 
   useEffect(() => {
@@ -116,7 +129,7 @@ export default function AdminPrivateSchoolsSeed() {
             <code className="mx-1 rounded bg-muted px-1">private_elementary_seed_runs</code>.
             No changes to city scores. Takes 1-3 minutes.
           </div>
-          <Button onClick={() => trigger(true)} disabled={busy !== null}>
+          <Button onClick={() => trigger("dry")} disabled={busy !== null}>
             {busy === "dry" ? "Starting..." : "Run dry run"}
           </Button>
         </div>
@@ -127,9 +140,18 @@ export default function AdminPrivateSchoolsSeed() {
             Only run this after reviewing the dry-run summary below and confirming match quality
             looks good (e.g., most cities matched by name, few zero-match cities).
           </div>
-          <Button variant="destructive" onClick={() => trigger(false)} disabled={busy !== null}>
-            {busy === "live" ? "Starting..." : "Run live seed"}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="destructive" onClick={() => trigger("live")} disabled={busy !== null}>
+              {busy === "live" ? "Starting..." : "Run live seed (fresh)"}
+            </Button>
+            <Button variant="outline" onClick={() => trigger("resume")} disabled={busy !== null}>
+              {busy === "resume" ? "Starting..." : `Resume live seed${liveDoneCount != null ? ` (${liveDoneCount}/817 done)` : ""}`}
+            </Button>
+          </div>
+          <div className="text-xs text-muted-foreground mt-2">
+            Use <b>Resume</b> if a previous live run stopped early. It skips cities already marked
+            done and continues with the rest. Safe to click again if it stops again.
+          </div>
         </div>
 
         {lastResponse && (

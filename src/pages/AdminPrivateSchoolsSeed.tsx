@@ -87,6 +87,13 @@ export default function AdminPrivateSchoolsSeed() {
       errors: inBatch.filter((r) => r.status === "error" || r.status === "failed").length,
       zeroMatch: inBatch.filter((r) => (r.count ?? 0) === 0).length,
     });
+
+    // Count total distinct cities marked 'done' across ALL live batches (for resume progress).
+    const { count } = await supabase
+      .from("private_elementary_seed_runs")
+      .select("city_id", { count: "exact", head: true })
+      .eq("status", "done");
+    setLiveDoneCount(count ?? 0);
   };
 
   useEffect(() => {

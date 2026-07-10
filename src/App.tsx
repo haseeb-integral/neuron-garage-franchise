@@ -153,6 +153,8 @@ const App = () => (
 
 
                 <Route path="/db-health" element={<Observability />} />
+                <Route path="/admin/private-schools-seed" element={<AdminPrivateSchoolsSeed />} />
+
 
               </Route>
               <Route path="*" element={<NotFound />} />

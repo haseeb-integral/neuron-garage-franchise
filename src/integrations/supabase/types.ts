@@ -1960,6 +1960,24 @@ export type Database = {
           },
         ]
       }
+      private_elementary_count_backup: {
+        Row: {
+          city_id: string
+          old_value: number | null
+          snapshot_at: string
+        }
+        Insert: {
+          city_id: string
+          old_value?: number | null
+          snapshot_at?: string
+        }
+        Update: {
+          city_id?: string
+          old_value?: number | null
+          snapshot_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string

@@ -1978,6 +1978,45 @@ export type Database = {
         }
         Relationships: []
       }
+      private_elementary_seed_runs: {
+        Row: {
+          batch_id: string
+          city_id: string | null
+          city_name: string | null
+          count: number | null
+          created_at: string
+          error: string | null
+          id: string
+          matched_by: string | null
+          state_abbr: string | null
+          status: string
+        }
+        Insert: {
+          batch_id: string
+          city_id?: string | null
+          city_name?: string | null
+          count?: number | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          matched_by?: string | null
+          state_abbr?: string | null
+          status: string
+        }
+        Update: {
+          batch_id?: string
+          city_id?: string | null
+          city_name?: string | null
+          count?: number | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          matched_by?: string | null
+          state_abbr?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string

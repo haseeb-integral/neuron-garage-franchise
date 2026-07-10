@@ -56,6 +56,7 @@ const Handover = lazyWithPreload(() => import("./pages/Handover"));
 const Glossary = lazyWithPreload(() => import("./pages/Glossary"));
 const Unsubscribe = lazyWithPreload(() => import("./pages/Unsubscribe"));
 const NotFound = lazyWithPreload(() => import("./pages/NotFound"));
+const AdminPrivateSchoolsSeed = lazyWithPreload(() => import("./pages/AdminPrivateSchoolsSeed"));
 
 // Register route -> preload mapping for hover/idle prefetch.
 registerRoutePrefetch("/city-scoring", CityScoring.preload);

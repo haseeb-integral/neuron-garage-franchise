@@ -131,7 +131,7 @@ function milesBetween(aLat: number, aLng: number, bLat: number, bLng: number): n
   return 2 * R * Math.asin(Math.sqrt(s));
 }
 
-async function runBatch(batchId: string, dryRun: boolean) {
+async function runBatch(batchId: string, dryRun: boolean, resume: boolean) {
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,

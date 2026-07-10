@@ -122,7 +122,7 @@ export default function AdminPrivateSchoolsSeed() {
             <code className="mx-1 rounded bg-muted px-1">private_elementary_seed_runs</code>.
             No changes to city scores. Takes 1-3 minutes.
           </div>
-          <Button onClick={() => trigger(true)} disabled={busy !== null}>
+          <Button onClick={() => trigger("dry")} disabled={busy !== null}>
             {busy === "dry" ? "Starting..." : "Run dry run"}
           </Button>
         </div>
@@ -133,9 +133,18 @@ export default function AdminPrivateSchoolsSeed() {
             Only run this after reviewing the dry-run summary below and confirming match quality
             looks good (e.g., most cities matched by name, few zero-match cities).
           </div>
-          <Button variant="destructive" onClick={() => trigger(false)} disabled={busy !== null}>
-            {busy === "live" ? "Starting..." : "Run live seed"}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="destructive" onClick={() => trigger("live")} disabled={busy !== null}>
+              {busy === "live" ? "Starting..." : "Run live seed (fresh)"}
+            </Button>
+            <Button variant="outline" onClick={() => trigger("resume")} disabled={busy !== null}>
+              {busy === "resume" ? "Starting..." : `Resume live seed${liveDoneCount != null ? ` (${liveDoneCount}/817 done)` : ""}`}
+            </Button>
+          </div>
+          <div className="text-xs text-muted-foreground mt-2">
+            Use <b>Resume</b> if a previous live run stopped early. It skips cities already marked
+            done and continues with the rest. Safe to click again if it stops again.
+          </div>
         </div>
 
         {lastResponse && (

@@ -78,7 +78,7 @@ export default function AdminPrivateSchoolsSeed() {
       matchedName: inBatch.filter((r) => r.matched_by === "name").length,
       matchedCentroid: inBatch.filter((r) => r.matched_by === "centroid").length,
       none: inBatch.filter((r) => r.matched_by === "none" || r.matched_by == null).length,
-      errors: inBatch.filter((r) => r.status && r.status !== "ok" && r.status !== "success").length,
+      errors: inBatch.filter((r) => r.status === "error" || r.status === "failed").length,
       zeroMatch: inBatch.filter((r) => (r.count ?? 0) === 0).length,
     });
   };

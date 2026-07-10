@@ -908,6 +908,59 @@ export type Database = {
         }
         Relationships: []
       }
+      city_private_elementary_schools: {
+        Row: {
+          city_id: string
+          created_at: string
+          enrollment: number | null
+          id: string
+          lat: number | null
+          level: string | null
+          lng: number | null
+          matched_by: string
+          name: string
+          ppin: string
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          city_id: string
+          created_at?: string
+          enrollment?: number | null
+          id?: string
+          lat?: number | null
+          level?: string | null
+          lng?: number | null
+          matched_by: string
+          name: string
+          ppin: string
+          source?: string
+          updated_at?: string
+        }
+        Update: {
+          city_id?: string
+          created_at?: string
+          enrollment?: number | null
+          id?: string
+          lat?: number | null
+          level?: string | null
+          lng?: number | null
+          matched_by?: string
+          name?: string
+          ppin?: string
+          source?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_private_elementary_schools_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "us_cities_scored"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       city_seed_runs: {
         Row: {
           cities_failed: number

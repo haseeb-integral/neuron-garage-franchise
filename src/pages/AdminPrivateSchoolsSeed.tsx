@@ -1,0 +1,211 @@
+// ============================================================================
+// Admin-only page to trigger the private-elementary-schools seed function.
+// Isolated route (`/admin/private-schools-seed`). To unwind: delete this file
+// and its route entry in App.tsx.
+// ============================================================================
+
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useIsManager } from "@/hooks/dbHealth/useIsManager";
+import { PageHeader } from "@/components/PageHeader";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+
+type RunRow = {
+  id: string;
+  batch_id: string;
+  city_name: string;
+  state_abbr: string;
+  count: number | null;
+  matched_by: string | null;
+  status: string | null;
+  created_at: string;
+};
+
+export default function AdminPrivateSchoolsSeed() {
+  const { loading, isManager, isAdmin } = useIsManager();
+  const [busy, setBusy] = useState<null | "dry" | "live">(null);
+  const [lastResponse, setLastResponse] = useState<any>(null);
+  const [rows, setRows] = useState<RunRow[]>([]);
+  const [summary, setSummary] = useState<{
+    total: number;
+    matchedName: number;
+    matchedCentroid: number;
+    none: number;
+    errors: number;
+    zeroMatch: number;
+  } | null>(null);
+
+  const trigger = async (dry: boolean) => {
+    setBusy(dry ? "dry" : "live");
+    setLastResponse(null);
+    try {
+      const path = dry
+        ? "seed-private-elementary-counts?dry_run=1"
+        : "seed-private-elementary-counts";
+      const { data, error } = await supabase.functions.invoke(path, { method: "POST" });
+      if (error) throw error;
+      setLastResponse(data);
+      toast.success(
+        dry
+          ? "Dry run started. Results will appear below in 1-3 minutes."
+          : "Live run started. Results will appear below in 1-3 minutes.",
+      );
+    } catch (e: any) {
+      toast.error(`Failed: ${e?.message ?? String(e)}`);
+      setLastResponse({ error: e?.message ?? String(e) });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const refresh = async () => {
+    const { data } = await supabase
+      .from("private_elementary_seed_runs")
+      .select("id,batch_id,city_name,state_abbr,count,matched_by,status,created_at")
+      .order("created_at", { ascending: false })
+      .limit(1000);
+    const list = (data ?? []) as RunRow[];
+    setRows(list);
+    if (list.length === 0) {
+      setSummary(null);
+      return;
+    }
+    const latestBatch = list[0].batch_id;
+    const inBatch = list.filter((r) => r.batch_id === latestBatch);
+    setSummary({
+      total: inBatch.length,
+      matchedName: inBatch.filter((r) => r.matched_by === "name").length,
+      matchedCentroid: inBatch.filter((r) => r.matched_by === "centroid").length,
+      none: inBatch.filter((r) => r.matched_by === "none" || r.matched_by == null).length,
+      errors: inBatch.filter((r) => r.status && r.status !== "ok" && r.status !== "success").length,
+      zeroMatch: inBatch.filter((r) => (r.count ?? 0) === 0).length,
+    });
+  };
+
+  useEffect(() => {
+    refresh();
+    const t = setInterval(refresh, 10000);
+    return () => clearInterval(t);
+  }, []);
+
+  if (loading) return <div className="p-8 text-sm text-muted-foreground">Loading...</div>;
+  if (!isManager && !isAdmin) {
+    return (
+      <div className="p-8">
+        <PageHeader title="Not authorized" subtitle="Admin/manager role required." />
+      </div>
+    );
+  }
+
+  const latestBatch = rows[0]?.batch_id ?? null;
+  const latestRows = latestBatch ? rows.filter((r) => r.batch_id === latestBatch) : [];
+
+  return (
+    <div className="p-6 md:p-8 space-y-6 max-w-5xl">
+      <PageHeader
+        title="Private Elementary Schools Seed"
+        subtitle="Admin-only. Loads private elementary school counts from NCES PSS 2021-22 into the 817 scored cities."
+      />
+
+      <div className="rounded-lg border bg-card p-5 space-y-4">
+        <div>
+          <div className="text-sm font-semibold mb-1">Step 1 — Dry run (safe, no writes)</div>
+          <div className="text-sm text-muted-foreground mb-3">
+            Runs the matcher and logs how many schools it would match per city into
+            <code className="mx-1 rounded bg-muted px-1">private_elementary_seed_runs</code>.
+            No changes to city scores. Takes 1-3 minutes.
+          </div>
+          <Button onClick={() => trigger(true)} disabled={busy !== null}>
+            {busy === "dry" ? "Starting..." : "Run dry run"}
+          </Button>
+        </div>
+
+        <div className="border-t pt-4">
+          <div className="text-sm font-semibold mb-1">Step 2 — Live run (writes real data)</div>
+          <div className="text-sm text-muted-foreground mb-3">
+            Only run this after reviewing the dry-run summary below and confirming match quality
+            looks good (e.g., most cities matched by name, few zero-match cities).
+          </div>
+          <Button variant="destructive" onClick={() => trigger(false)} disabled={busy !== null}>
+            {busy === "live" ? "Starting..." : "Run live seed"}
+          </Button>
+        </div>
+
+        {lastResponse && (
+          <pre className="mt-2 rounded bg-muted p-3 text-xs overflow-auto">
+            {JSON.stringify(lastResponse, null, 2)}
+          </pre>
+        )}
+      </div>
+
+      <div className="rounded-lg border bg-card p-5">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <div className="text-sm font-semibold">Latest run summary</div>
+            <div className="text-xs text-muted-foreground">
+              Auto-refreshes every 10 seconds. Batch id: {latestBatch ?? "(none yet)"}
+            </div>
+          </div>
+          <Button variant="outline" size="sm" onClick={refresh}>Refresh</Button>
+        </div>
+
+        {summary ? (
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-3 text-sm">
+            <Stat label="Cities processed" value={summary.total} />
+            <Stat label="Matched by name" value={summary.matchedName} />
+            <Stat label="Matched by centroid" value={summary.matchedCentroid} />
+            <Stat label="No match" value={summary.none} />
+            <Stat label="Zero schools" value={summary.zeroMatch} />
+            <Stat label="Errors" value={summary.errors} tone={summary.errors > 0 ? "bad" : "ok"} />
+          </div>
+        ) : (
+          <div className="text-sm text-muted-foreground">No runs yet. Click "Run dry run" above.</div>
+        )}
+
+        {latestRows.length > 0 && (
+          <details className="mt-4">
+            <summary className="cursor-pointer text-sm font-medium">
+              Show all {latestRows.length} rows in this batch
+            </summary>
+            <div className="mt-2 max-h-96 overflow-auto border rounded">
+              <table className="w-full text-xs">
+                <thead className="bg-muted sticky top-0">
+                  <tr>
+                    <th className="text-left p-2">City</th>
+                    <th className="text-left p-2">State</th>
+                    <th className="text-right p-2">Count</th>
+                    <th className="text-left p-2">Matched by</th>
+                    <th className="text-left p-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {latestRows.map((r) => (
+                    <tr key={r.id} className="border-t">
+                      <td className="p-2">{r.city_name}</td>
+                      <td className="p-2">{r.state_abbr}</td>
+                      <td className="p-2 text-right">{r.count ?? "-"}</td>
+                      <td className="p-2">{r.matched_by ?? "-"}</td>
+                      <td className="p-2">{r.status ?? "-"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Stat({ label, value, tone }: { label: string; value: number; tone?: "ok" | "bad" }) {
+  return (
+    <div className="rounded border p-3">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className={`text-lg font-semibold ${tone === "bad" ? "text-destructive" : ""}`}>
+        {value.toLocaleString()}
+      </div>
+    </div>
+  );
+}

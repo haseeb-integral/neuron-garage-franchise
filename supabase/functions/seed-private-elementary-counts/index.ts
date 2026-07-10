@@ -166,7 +166,27 @@ async function runBatch(batchId: string, dryRun: boolean, resume: boolean) {
     .select("id, city_name, state_abbr, latitude, longitude");
   if (cityErr) throw new Error(`load cities: ${cityErr.message}`);
 
-  console.log(`[pss-seed ${batchId}] processing ${cities?.length ?? 0} cities (dry_run=${dryRun})`);
+  // Resume mode: skip cities that already have a 'done' row from any prior live batch.
+  let skipIds = new Set<string>();
+  if (resume && !dryRun) {
+    let from = 0;
+    const pageSize = 1000;
+    while (true) {
+      const { data, error } = await supabase
+        .from("private_elementary_seed_runs")
+        .select("city_id")
+        .eq("status", "done")
+        .range(from, from + pageSize - 1);
+      if (error) throw new Error(`load resume state: ${error.message}`);
+      if (!data || data.length === 0) break;
+      for (const r of data) if (r.city_id) skipIds.add(r.city_id as string);
+      if (data.length < pageSize) break;
+      from += pageSize;
+    }
+    console.log(`[pss-seed ${batchId}] resume: ${skipIds.size} cities already done, will skip`);
+  }
+
+  console.log(`[pss-seed ${batchId}] processing ${cities?.length ?? 0} cities (dry_run=${dryRun}, resume=${resume})`);
 
   const RADIUS_MI = 5;
 

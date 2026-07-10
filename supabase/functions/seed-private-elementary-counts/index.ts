@@ -191,6 +191,7 @@ async function runBatch(batchId: string, dryRun: boolean, resume: boolean) {
   const RADIUS_MI = 5;
 
   for (const c of cities ?? []) {
+    if (skipIds.has(c.id as string)) continue;
     const state = String(c.state_abbr || "").toUpperCase();
     const cityNorm = normCity(String(c.city_name || ""));
     if (!state || !cityNorm) continue;

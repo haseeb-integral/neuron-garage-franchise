@@ -313,10 +313,11 @@ Deno.serve(async (req) => {
 
     const url = new URL(req.url);
     const dryRun = url.searchParams.get("dry_run") === "1";
+    const resume = url.searchParams.get("resume") === "1";
     const batchId = crypto.randomUUID();
 
     // @ts-ignore EdgeRuntime is provided by Supabase runtime.
-    EdgeRuntime.waitUntil(runBatch(batchId, dryRun).catch(async (e) => {
+    EdgeRuntime.waitUntil(runBatch(batchId, dryRun, resume).catch(async (e) => {
       console.error(`[pss-seed ${batchId}] fatal:`, e);
       try {
         await svc.from("private_elementary_seed_runs").insert({

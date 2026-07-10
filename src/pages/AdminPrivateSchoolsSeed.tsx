@@ -24,7 +24,7 @@ type RunRow = {
 
 export default function AdminPrivateSchoolsSeed() {
   const { loading, isManager, isAdmin } = useIsManager();
-  const [busy, setBusy] = useState<null | "dry" | "live">(null);
+  const [busy, setBusy] = useState<null | "dry" | "live" | "resume">(null);
   const [lastResponse, setLastResponse] = useState<any>(null);
   const [rows, setRows] = useState<RunRow[]>([]);
   const [summary, setSummary] = useState<{
@@ -35,20 +35,26 @@ export default function AdminPrivateSchoolsSeed() {
     errors: number;
     zeroMatch: number;
   } | null>(null);
+  const [liveDoneCount, setLiveDoneCount] = useState<number | null>(null);
 
-  const trigger = async (dry: boolean) => {
-    setBusy(dry ? "dry" : "live");
+  const trigger = async (mode: "dry" | "live" | "resume") => {
+    setBusy(mode);
     setLastResponse(null);
     try {
-      const path = dry
-        ? "seed-private-elementary-counts?dry_run=1"
-        : "seed-private-elementary-counts";
+      const path =
+        mode === "dry"
+          ? "seed-private-elementary-counts?dry_run=1"
+          : mode === "resume"
+          ? "seed-private-elementary-counts?resume=1"
+          : "seed-private-elementary-counts";
       const { data, error } = await supabase.functions.invoke(path, { method: "POST" });
       if (error) throw error;
       setLastResponse(data);
       toast.success(
-        dry
+        mode === "dry"
           ? "Dry run started. Results will appear below in 1-3 minutes."
+          : mode === "resume"
+          ? "Resume started. It will skip cities already done and continue."
           : "Live run started. Results will appear below in 1-3 minutes.",
       );
     } catch (e: any) {

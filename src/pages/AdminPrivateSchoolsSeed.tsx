@@ -88,11 +88,13 @@ export default function AdminPrivateSchoolsSeed() {
       zeroMatch: inBatch.filter((r) => (r.count ?? 0) === 0).length,
     });
 
-    // Count total distinct cities marked 'done' across ALL live batches (for resume progress).
+    // Count distinct cities that actually have a real value written to us_cities_scored.
+    // This is the true source of truth — avoids double-counting cities that appear in
+    // multiple live batches (fresh + resume) in private_elementary_seed_runs.
     const { count } = await supabase
-      .from("private_elementary_seed_runs")
-      .select("city_id", { count: "exact", head: true })
-      .eq("status", "done");
+      .from("us_cities_scored")
+      .select("id", { count: "exact", head: true })
+      .not("private_elementary_count", "is", null);
     setLiveDoneCount(count ?? 0);
   };
 

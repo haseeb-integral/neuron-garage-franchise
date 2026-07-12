@@ -947,13 +947,29 @@ export async function fetchB19131AffluentFamilies(
       const header = listData[0]
       const placeIdx = header.indexOf('place')
       const nameIdx = header.indexOf('NAME')
+      // Match strategies (in order):
+      //   1. Whole-word prefix: name starts with `<target>` followed by a
+      //      non-alphanumeric separator (space, comma, hyphen, slash). This
+      //      catches "Indianapolis city (balance)", "Nashville-Davidson metropolitan…",
+      //      "Louisville/Jefferson County…", "Schaumburg village", "Urban Honolulu CDP", etc.
+      //   2. Parenthetical alias: name contains "(<target>)" — for renamed
+      //      places like "San Buenaventura (Ventura) city".
+      const sepRe = /[\s,\-\/]/
+      let fallbackFips: string | null = null
       for (let i = 1; i < listData.length; i++) {
         const row = listData[i]
         const nm = row[nameIdx].toLowerCase()
-        if (nm.startsWith(target + ',') || nm.startsWith(target + ' city,') || nm.startsWith(target + ' town,')) {
-          placeFips = row[placeIdx]; break
+        if (nm.startsWith(target)) {
+          const nextCh = nm.charAt(target.length)
+          if (nextCh === '' || sepRe.test(nextCh)) {
+            placeFips = row[placeIdx]; break
+          }
+        }
+        if (!fallbackFips && nm.includes(`(${target})`)) {
+          fallbackFips = row[placeIdx]
         }
       }
+      if (!placeFips && fallbackFips) placeFips = fallbackFips
       if (!placeFips) return { ...empty, error: `Place not found for ${city}, ${abbr}` }
     }
 

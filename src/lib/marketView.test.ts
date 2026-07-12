@@ -142,8 +142,8 @@ describe("Phase 3 — cross-surface render agreement", () => {
       assertNoCompositeDrift(buildMarketView(baseMarket), wHash).composite,
     );
     expect(new Set(composites).size).toBe(1);
-    // Raw 82 calibrated → 100 (anchor 74→100, 100→100).
-    expect(composites[0]).toBe(100);
+    // New anchors (2026-07-12): raw 82 → 96 (between [80,95] and [93,100]).
+    expect(composites[0]).toBe(96);
     expect(errorSpy).not.toHaveBeenCalled();
   });
 

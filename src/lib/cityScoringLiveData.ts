@@ -62,6 +62,12 @@ export type ScoredCityRow = {
   affluent_families_snapped_bracket: number | string | null;
   affluent_families_effective_threshold: number | string | null;
 
+  // TAM Teachers rebuild 2026-07-12 — percentile rank columns across all
+  // scored cities. Pre-computed by the Phase 1 migration; recomputed by any
+  // future TAM rescore. Nullable when the underlying raw signal is null.
+  pct_rank_teacher_fte: number | string | null;
+  pct_rank_private_elem: number | string | null;
+
   // Per-source freshness columns are read by `getCitySourceData` via a
   // narrower SELECT; not required on the main scored-row union.
 };

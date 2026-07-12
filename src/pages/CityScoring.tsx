@@ -1235,12 +1235,11 @@ const CityScoring = () => {
     "median_household_income",
     "dual_income_household_pct",
     "education_bachelors_plus_pct",
-    // TAM Teachers (5)
-    "public_elementary_school_count",
+    // TAM Teachers (3-metric rebuild 2026-07-12 — Brett+Haseeb).
+    // Public Elementary Schools + Public Elementary Enrollment removed.
     "public_elementary_teacher_count",
-    "private_charter_school_count",
-    "public_elementary_enrollment",
     "col_salary_index",
+    "private_charter_school_count",
     // Competitive Landscape (single input after Prompt 1 refactor 2026-07-07)
     "csi_national_brand_supply",
   ];

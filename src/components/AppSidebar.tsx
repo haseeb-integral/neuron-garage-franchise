@@ -33,6 +33,7 @@ const docsNavItems = [
   { title: "Scoring Method", url: "/scoring-method", icon: Gauge },
   { title: "City Search Spec", url: "/city-search-spec", icon: Map },
   { title: "City Search Guide", url: "/city-search-guide", icon: BookOpen },
+  { title: "City Search Methodology", url: "/city-search-methodology", icon: Map },
   
   { title: "MVS v1.6 Spec", url: "/mvs-spec", icon: ShieldCheck },
   { title: "MVS Methodology", url: "/mvs-methodology", icon: BarChart3 },

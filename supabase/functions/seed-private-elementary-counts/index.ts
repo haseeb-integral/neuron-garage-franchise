@@ -176,9 +176,10 @@ async function runBatch(batchId: string, dryRun: boolean, resume: boolean, cityI
   const { data: cities, error: cityErr } = await citiesQuery;
   if (cityErr) throw new Error(`load cities: ${cityErr.message}`);
 
-  // Resume mode: skip cities that already have a 'done' row from any prior live batch.
+  // Resume mode: skip cities that already have a 'done' row. When a specific
+  // city_ids list is passed, we're explicitly re-running them, so don't skip.
   let skipIds = new Set<string>();
-  if (resume && !dryRun) {
+  if (resume && !dryRun && !(cityIds && cityIds.length > 0)) {
     let from = 0;
     const pageSize = 1000;
     while (true) {

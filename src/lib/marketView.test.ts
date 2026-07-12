@@ -28,8 +28,8 @@ const baseMarket = {
 
 describe("buildMarketView", () => {
   it("clamps + applies display calibration into a branded CompositeScore", () => {
-    // Calibration anchors: 74→100, 100→100. Raw 82 / 82.6 land at 100.
-    expect(buildMarketView({ ...baseMarket, compositeScore: 82.6 }).composite).toBe(100);
+    // New anchors (2026-07-12): [80,95] → [93,100]. Raw 82.6 lands at 96.
+    expect(buildMarketView({ ...baseMarket, compositeScore: 82.6 }).composite).toBe(96);
     expect(buildMarketView({ ...baseMarket, compositeScore: -5 }).composite).toBe(0);
     expect(buildMarketView({ ...baseMarket, compositeScore: 250 }).composite).toBe(100);
     expect(buildMarketView({ ...baseMarket, compositeScore: NaN }).composite).toBe(0);
@@ -111,9 +111,9 @@ describe("assertNoCompositeDrift", () => {
 
 describe("brand", () => {
   it("unsafeAsCompositeScore is the only other path to a CompositeScore", () => {
-    // Raw 77.4 lands between anchors 74→100 and 100→100, calibrated to 100.
+    // New anchors (2026-07-12): raw 77.4 lands between [70,90] and [80,95] → 93.7 → 94.
     const c = unsafeAsCompositeScore(77.4);
-    expect(c).toBe(100);
+    expect(c).toBe(94);
   });
 });
 
@@ -142,8 +142,8 @@ describe("Phase 3 — cross-surface render agreement", () => {
       assertNoCompositeDrift(buildMarketView(baseMarket), wHash).composite,
     );
     expect(new Set(composites).size).toBe(1);
-    // Raw 82 calibrated → 100 (anchor 74→100, 100→100).
-    expect(composites[0]).toBe(100);
+    // New anchors (2026-07-12): raw 82 → 96 (between [80,95] and [93,100]).
+    expect(composites[0]).toBe(96);
     expect(errorSpy).not.toHaveBeenCalled();
   });
 
@@ -158,8 +158,8 @@ describe("Phase 3 — cross-surface render agreement", () => {
       wHash,
     );
     expect(errorSpy).toHaveBeenCalledTimes(1);
-    // Raw 82→100, raw 23→44 after calibration. Drift detector reports both.
-    expect(String(errorSpy.mock.calls[0][0])).toMatch(/100.*44|44.*100/);
+    // Raw 82→96 (new anchors 2026-07-12), raw 23→44. Drift detector reports both.
+    expect(String(errorSpy.mock.calls[0][0])).toMatch(/96.*44|44.*96/);
   });
 });
 

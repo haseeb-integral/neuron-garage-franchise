@@ -473,7 +473,7 @@ export function buildSeededFallbackSignalsFromScored(
         value: Number.isFinite(pct) ? Math.round(pct * 10) / 10 : null,
         source: "Pre-seeded",
         raw_data: {
-          status: "live" as const,
+          status: "proxy" as const,
           used_in_score: true,
           metric_category: "franchisee_supply" as const,
           display_value: rawDisplay,
@@ -493,7 +493,7 @@ export function buildSeededFallbackSignalsFromScored(
         value: Number.isFinite(pct) ? Math.round(pct * 10) / 10 : null,
         source: "Pre-seeded",
         raw_data: {
-          status: "live" as const,
+          status: "proxy" as const,
           used_in_score: true,
           metric_category: "franchisee_supply" as const,
           display_value: rawDisplay,

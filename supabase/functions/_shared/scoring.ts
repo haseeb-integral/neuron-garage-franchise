@@ -244,12 +244,16 @@ export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
   { key: "csi_local_camp_estimate",    category: "competitive_landscape", label: "Local Camp Supply (estimated)",          enabled: true, weight_within_category: 0.33, status: "proxy" },
   { key: "csi_demand_adjusted_market", category: "competitive_landscape", label: "Demand-Adjusted Market (DAM)",           enabled: true, weight_within_category: 0.33, status: "live"  },
 
-  // ─────────── TAM TEACHERS (5-metric lock — Brett+Haseeb 2026-05-21) ───────────
-  { key: "public_elementary_school_count",      category: "franchisee_supply", label: "Public Elementary Schools",                     enabled: true,  weight_within_category: 0.20, status: "live"    },
-  { key: "public_elementary_teacher_count",     category: "franchisee_supply", label: "Public Elementary Teachers (NCES FTE)",         enabled: true,  weight_within_category: 0.25, status: "live"    },
-  { key: "private_charter_school_count",        category: "franchisee_supply", label: "Private + Charter Elementary Schools",          enabled: true,  weight_within_category: 0.15, status: "live"    },
-  { key: "public_elementary_enrollment",        category: "franchisee_supply", label: "Public Elementary Enrollment",                  enabled: true,  weight_within_category: 0.15, status: "live"    },
-  { key: "col_salary_index",                    category: "franchisee_supply", label: "Teacher Salary × Cost of Living Index",         enabled: true,  weight_within_category: 0.25, status: "proxy"   },
+  // ─────────── TAM TEACHERS (3-metric rebuild — Brett+Haseeb 2026-07-12) ───────────
+  // Public Elementary Schools + Public Elementary Enrollment removed — they
+  // duplicated the FTE signal. Teacher FTE and Private Elementary Schools now
+  // score via percentile rank across all scored cities (see pct_rank_teacher_fte
+  // / pct_rank_private_elem columns on us_cities_scored). Recruitability
+  // (col_salary_index) keeps inverted min–max — worse pay = higher score,
+  // don't fix, that's the whole point of the signal.
+  { key: "public_elementary_teacher_count",     category: "franchisee_supply", label: "Public Elementary Teachers (NCES FTE)",         enabled: true,  weight_within_category: TAM_WEIGHT_FTE,           status: "live"  },
+  { key: "col_salary_index",                    category: "franchisee_supply", label: "Teacher Salary × Cost of Living Index",         enabled: true,  weight_within_category: TAM_WEIGHT_RECRUITABILITY, status: "proxy" },
+  { key: "private_charter_school_count",        category: "franchisee_supply", label: "Private Elementary Schools",                    enabled: true,  weight_within_category: TAM_WEIGHT_PRIVATE,       status: "live"  },
 
   // ─────────── EASE OF OPERATIONS ───────────
   { key: "rental_venue_count",                  category: "ease_of_operations", label: "Rental Venues (Schools / Churches / Rec)",     enabled: true,  weight_within_category: 0.45, status: "proxy" },

@@ -145,7 +145,7 @@ TAM Teachers ("Franchisee Supply") measures the size and squeeze of the local te
 
 
 
-## 8. Related Docs
+## 9. Related Docs
 
 - [City Search Spec](/city-search-spec) — full engineering specification
 - [City Search Guide](/city-search-guide) — end-user walkthrough

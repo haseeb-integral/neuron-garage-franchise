@@ -220,6 +220,12 @@ export type SowMetricEntry = {
 // exists in the current pipeline (Census, BLS, or Apify-derived counts).
 // Weights are placeholders for the future registry-driven composite; they are
 // NOT applied today. Total per category is informational only.
+// TAM Teachers rebuild 2026-07-12 (Brett+Haseeb). Three sub-metrics only.
+// Keep the frontend mirror in src/lib/sowMetricRegistry.ts in sync.
+export const TAM_WEIGHT_FTE            = 0.45; // pct_rank_teacher_fte (percentile)
+export const TAM_WEIGHT_RECRUITABILITY = 0.35; // col_salary_index inverted min-max (worse pay = higher score, don't fix)
+export const TAM_WEIGHT_PRIVATE        = 0.20; // pct_rank_private_elem (percentile)
+
 export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
   // ─────────── DEMAND (4-metric lock — Brett+Haseeb 2026-05-21) ───────────
   { key: "children_5_12_count",                 category: "demand", label: "Children Ages 5–12",                       enabled: true,  weight_within_category: 0.30, status: "live"  },

@@ -3137,6 +3137,8 @@ export type Database = {
           mvs_score: number | null
           nces_last_updated: string | null
           notes: string | null
+          pct_rank_private_elem: number | null
+          pct_rank_teacher_fte: number | null
           place_type: string | null
           population: number | null
           population_density: number | null
@@ -3213,6 +3215,8 @@ export type Database = {
           mvs_score?: number | null
           nces_last_updated?: string | null
           notes?: string | null
+          pct_rank_private_elem?: number | null
+          pct_rank_teacher_fte?: number | null
           place_type?: string | null
           population?: number | null
           population_density?: number | null
@@ -3289,6 +3293,8 @@ export type Database = {
           mvs_score?: number | null
           nces_last_updated?: string | null
           notes?: string | null
+          pct_rank_private_elem?: number | null
+          pct_rank_teacher_fte?: number | null
           place_type?: string | null
           population?: number | null
           population_density?: number | null

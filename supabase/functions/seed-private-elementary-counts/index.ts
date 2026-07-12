@@ -167,9 +167,13 @@ async function runBatch(batchId: string, dryRun: boolean, resume: boolean, cityI
     arr.push(s);
   }
 
-  const { data: cities, error: cityErr } = await supabase
+  let citiesQuery = supabase
     .from("us_cities_scored")
     .select("id, city_name, state_abbr, latitude, longitude");
+  if (cityIds && cityIds.length > 0) {
+    citiesQuery = citiesQuery.in("id", cityIds);
+  }
+  const { data: cities, error: cityErr } = await citiesQuery;
   if (cityErr) throw new Error(`load cities: ${cityErr.message}`);
 
   // Resume mode: skip cities that already have a 'done' row from any prior live batch.

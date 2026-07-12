@@ -179,6 +179,9 @@ export default function AdminPrivateSchoolsSeed() {
             <Button variant="outline" onClick={() => trigger("resume")} disabled={busy !== null}>
               {busy === "resume" ? "Starting..." : `Resume live seed${liveDoneCount != null ? ` (${liveDoneCount}/817 done)` : ""}`}
             </Button>
+            <Button variant="secondary" onClick={reprocessTargeted} disabled={busy !== null}>
+              Re-seed 6 fixed cities
+            </Button>
           </div>
           <div className="text-xs text-muted-foreground mt-2">
             Use <b>Resume</b> if a previous live run stopped early. It skips cities already marked

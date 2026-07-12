@@ -65,6 +65,36 @@ export default function AdminPrivateSchoolsSeed() {
     }
   };
 
+  // Re-process a small hand-picked list of cities that need the new name
+  // normalizer (strips "Town", "City", "Urban", etc.) or that were missing
+  // coordinates before we backfilled them.
+  const reprocessTargeted = async () => {
+    setBusy("live");
+    setLastResponse(null);
+    try {
+      const cityIds = [
+        "f89f8d3d-e70a-40c2-a60c-ae64a174b132", // Hempstead, NY
+        "2576a5dd-40ab-4a6b-80bd-69418d88925c", // Methuen, MA
+        "8eb84c6a-657f-4233-802f-4e502bcba2d0", // Milford, CT
+        "a1932547-2c42-4f64-8b16-9d33e4762efc", // Urban Honolulu, HI
+        "ca341320-8ac0-4af6-b7ee-58ef2690cdef", // Ventura, CA
+        "c96bda30-f9c1-447f-bb65-89a67ef9dc6f", // Weymouth Town, MA
+      ];
+      const { data, error } = await supabase.functions.invoke(
+        "seed-private-elementary-counts",
+        { method: "POST", body: { city_ids: cityIds } },
+      );
+      if (error) throw error;
+      setLastResponse(data);
+      toast.success("Targeted re-seed started for 6 cities. Check results in ~1 min.");
+    } catch (e: any) {
+      toast.error(`Failed: ${e?.message ?? String(e)}`);
+      setLastResponse({ error: e?.message ?? String(e) });
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const refresh = async () => {
     const { data } = await supabase
       .from("private_elementary_seed_runs")

@@ -28,8 +28,8 @@ const baseMarket = {
 
 describe("buildMarketView", () => {
   it("clamps + applies display calibration into a branded CompositeScore", () => {
-    // Calibration anchors: 74→100, 100→100. Raw 82 / 82.6 land at 100.
-    expect(buildMarketView({ ...baseMarket, compositeScore: 82.6 }).composite).toBe(100);
+    // New anchors (2026-07-12): [80,95] → [93,100]. Raw 82.6 lands at 96.
+    expect(buildMarketView({ ...baseMarket, compositeScore: 82.6 }).composite).toBe(96);
     expect(buildMarketView({ ...baseMarket, compositeScore: -5 }).composite).toBe(0);
     expect(buildMarketView({ ...baseMarket, compositeScore: 250 }).composite).toBe(100);
     expect(buildMarketView({ ...baseMarket, compositeScore: NaN }).composite).toBe(0);

@@ -1,4 +1,4 @@
-// backfill-affluent-families — Phase 2 (3 test cities) & Phase 3 (full 817)
+// backfill-affluent-families — Phase 2 (3 test cities) & Phase 3 (full 817) [v2: broader place matcher]
 //
 // For each requested city:
 //   1. Fetch BEA RPP for its state (already used by TAM pillar).

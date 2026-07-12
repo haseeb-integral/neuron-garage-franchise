@@ -41,19 +41,17 @@ const SOW_CATEGORIES: { key: MetricCategory; label: string }[] = [
 ];
 
 // Whitelist: Demand 5 (incl. Affluent Families, Phase 3 2026-07-08) +
-// TAM Teachers 5 + Competitive 1 — locks drawer to inputs shown in
-// Key Market Signals.
+// TAM Teachers 3 (rebuild 2026-07-12) + Competitive 1 — locks drawer to
+// inputs shown in Key Market Signals.
 const KEY_METRIC_KEYS: ReadonlySet<string> = new Set([
   "children_5_12_count",
   "affluent_families_score",
   "median_household_income",
   "dual_income_household_pct",
   "education_bachelors_plus_pct",
-  "public_elementary_school_count",
   "public_elementary_teacher_count",
-  "private_charter_school_count",
-  "public_elementary_enrollment",
   "col_salary_index",
+  "private_charter_school_count",
   "csi_national_brand_supply",
 ]);
 

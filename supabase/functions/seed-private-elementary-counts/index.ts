@@ -40,6 +40,12 @@ function normCity(s: string): string {
     .replace(/\bmt\./g, "mt")
     .replace(/[^\w\s]/g, " ")
     .replace(/\s+/g, " ")
+    .trim()
+    // Strip Census/CDP suffixes so "Weymouth Town" matches NCES "Weymouth",
+    // "Urban Honolulu" matches "Honolulu", etc.
+    .replace(/\b(town|city|village|township|borough|cdp|municipality)\b/g, "")
+    .replace(/\burban\b/g, "")
+    .replace(/\s+/g, " ")
     .trim();
 }
 

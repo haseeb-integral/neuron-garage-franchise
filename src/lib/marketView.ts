@@ -49,22 +49,26 @@ export type CompositeScore = number & { readonly [__compositeBrand]: "CompositeS
 // MarketView consumer sees the same calibrated number with zero per-component
 // risk. Raw composite_score_default in the DB is NOT modified.
 //
-// Anchors re-tuned May 24, 2026 (Brett+Haseeb) so the display score actually
-// SPANS the A–F school-grade range and tier cutoffs can be score-based:
-//   Tier A = display ≥ 90  (≈ top 5%   of live scored, raw ≥ 59)
-//   Tier B = display ≥ 80  (≈ next 15%, raw ≥ 50)
-//   Tier C = display ≥ 70  (≈ next 30%, raw ≥ 41 — at the raw median)
-//   Tier D = display  < 70 (≈ bottom 50%, raw < 41)
+// Anchors re-tuned 2026-07-12 (Brett+Haseeb) AFTER the TAM Teachers 3-metric
+// rebuild widened the raw composite ceiling from 74 → 93. The old top anchor
+// (raw 74 → 100) had every strong city saturating at a tied 100, which killed
+// visual spread among Nashville/Louisville/Honolulu/Chicago/etc. The new
+// anchors keep the tier boundaries (Tier A ≥ 90, Tier B ≥ 80, Tier C ≥ 70)
+// but stretch the top so cities from raw 70–93 span display 90–100 with real
+// differentiation.
 //
-// Anchors fitted to the live distribution (min raw 21, median 41, p80 50,
-// p95 59, p99 69, observed max 74):
+// Post-rebuild raw distribution (composite, n≈935 scored cities):
+//   min 10 · p50 38 · p80 55 · p95 70 · p99 81 · max 93
+//
+// New anchors:
 //   raw  0 → 0
 //   raw 20 → 40
 //   raw 35 → 60
-//   raw 41 → 70    ← Tier C boundary
-//   raw 50 → 80    ← Tier B boundary
-//   raw 59 → 90    ← Tier A boundary
-//   raw 74 → 100   (top of observed range pins to a perfect 100)
+//   raw 41 → 70    ← Tier C boundary (unchanged, at raw median)
+//   raw 55 → 80    ← Tier B boundary (was raw 50 → 80; now at p80)
+//   raw 70 → 90    ← Tier A boundary (was raw 59 → 90; now at p95)
+//   raw 80 → 95    ← NEW mid-A anchor for top-end spread
+//   raw 93 → 100   (top of observed raw composite pins to perfect 100)
 //   raw 100 → 100
 // Change these anchors only after Brett/Haseeb sign off; ordering stays
 // invariant as long as the sequence is strictly increasing in both axes.
@@ -73,9 +77,10 @@ export const CALIBRATION_ANCHORS: ReadonlyArray<readonly [number, number]> = [
   [20, 40],
   [35, 60],
   [41, 70],
-  [50, 80],
-  [59, 90],
-  [74, 100],
+  [55, 80],
+  [70, 90],
+  [80, 95],
+  [93, 100],
   [100, 100],
 ];
 

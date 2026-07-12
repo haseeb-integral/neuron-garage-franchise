@@ -324,10 +324,19 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const dryRun = url.searchParams.get("dry_run") === "1";
     const resume = url.searchParams.get("resume") === "1";
+    let cityIds: string[] | null = null;
+    if (req.method === "POST") {
+      try {
+        const body = await req.json();
+        if (Array.isArray(body?.city_ids) && body.city_ids.length > 0) {
+          cityIds = body.city_ids.map((x: unknown) => String(x));
+        }
+      } catch (_) { /* no body */ }
+    }
     const batchId = crypto.randomUUID();
 
     // @ts-ignore EdgeRuntime is provided by Supabase runtime.
-    EdgeRuntime.waitUntil(runBatch(batchId, dryRun, resume).catch(async (e) => {
+    EdgeRuntime.waitUntil(runBatch(batchId, dryRun, resume, cityIds).catch(async (e) => {
       console.error(`[pss-seed ${batchId}] fatal:`, e);
       try {
         await svc.from("private_elementary_seed_runs").insert({

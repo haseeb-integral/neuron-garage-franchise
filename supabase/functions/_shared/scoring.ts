@@ -337,12 +337,15 @@ export function normalizeSowMetric(
     case "csi_national_brand_supply":         return lin(v, 0, 25,    true);
     case "csi_local_camp_estimate":           return lin(v, 0, 125,   true);
     case "csi_demand_adjusted_market":        return lin(v, 0, 45000, false);
-    // TAM Teachers (5 sub-metrics, lock 2026-05-21)
-    case "public_elementary_school_count":    return lin(v, 0, 250);
-    case "public_elementary_teacher_count":   return lin(v, 0, 6000);
-    case "private_charter_school_count":      return lin(v, 0, 180);
-    case "public_elementary_enrollment":      return lin(v, 0, 90000);
-    case "col_salary_index":                  return lin(v, 30000, 120000, true); // salary*COL/100; lower = stronger recruiting pull
+    // TAM Teachers (3-metric rebuild 2026-07-12). Teacher FTE and Private
+    // Elementary Schools now score by percentile rank across all scored
+    // cities — the caller must pass the pre-computed pct_rank_* value
+    // (already 0..100) from us_cities_scored, so normalize is a passthrough.
+    // Recruitability (col_salary_index) stays inverted min–max: worse pay =
+    // higher score, that's the whole point of the signal, don't fix.
+    case "public_elementary_teacher_count":   return lin(v, 0, 100); // passthrough percentile
+    case "private_charter_school_count":      return lin(v, 0, 100); // passthrough percentile
+    case "col_salary_index":                  return lin(v, 30000, 120000, true);
 
     // Backstop: bare COL when col_salary_index not yet computed (Manus salary pending)
     case "cost_of_living_index":              return lin(v, 80, 180, true);

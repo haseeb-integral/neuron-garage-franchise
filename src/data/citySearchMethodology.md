@@ -120,6 +120,31 @@ We only import signals we can source, refresh, and defend. We say **no** to:
 
 ---
 
+## 8. TAM Teachers Pillar (Rebuild 2026-07-12)
+
+TAM Teachers ("Franchisee Supply") measures the size and squeeze of the local teacher pool we can recruit franchisees from. As of **2026-07-12** it is exactly **three** sub-metrics — Public Elementary Schools and Public Elementary Enrollment were removed because they duplicated the FTE signal.
+
+| # | Sub-metric | Weight | Scale | Direction |
+|---|------------|--------|-------|-----------|
+| 1 | Public Elementary Teachers (NCES FTE) | **45%** | Percentile rank vs. all scored US cities | Higher pool = higher score |
+| 2 | Teacher Salary × Cost of Living Index | **35%** | Inverted min–max, $30k–$120k | **Worse pay = higher score.** That's the whole point — squeezed teachers are more recruitable. Don't "fix" the direction. |
+| 3 | Private Elementary Schools | **20%** | Percentile rank vs. all scored US cities | More facility supply = higher score |
+
+**Constants live in one place per side:**
+
+- Backend: `TAM_WEIGHT_FTE / TAM_WEIGHT_RECRUITABILITY / TAM_WEIGHT_PRIVATE` in `supabase/functions/_shared/scoring.ts`.
+- Frontend mirror: same names in `src/lib/sowMetricRegistry.ts`.
+
+**Percentile columns** on `us_cities_scored`: `pct_rank_teacher_fte`, `pct_rank_private_elem`. Recomputed on every TAM rescore.
+
+**Null-safety:** partial coverage still produces a score. If a city is missing one of the three inputs, the remaining weights are re-normalized; if all three are missing, the pillar falls back to a neutral 50.
+
+**Default weights locked: 2026-07-12** (Brett + Haseeb approved).
+
+---
+
+
+
 ## 8. Related Docs
 
 - [City Search Spec](/city-search-spec) — full engineering specification

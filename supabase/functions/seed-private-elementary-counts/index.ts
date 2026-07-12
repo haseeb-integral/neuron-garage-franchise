@@ -137,7 +137,7 @@ function milesBetween(aLat: number, aLng: number, bLat: number, bLng: number): n
   return 2 * R * Math.asin(Math.sqrt(s));
 }
 
-async function runBatch(batchId: string, dryRun: boolean, resume: boolean) {
+async function runBatch(batchId: string, dryRun: boolean, resume: boolean, cityIds: string[] | null) {
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -167,14 +167,19 @@ async function runBatch(batchId: string, dryRun: boolean, resume: boolean) {
     arr.push(s);
   }
 
-  const { data: cities, error: cityErr } = await supabase
+  let citiesQuery = supabase
     .from("us_cities_scored")
     .select("id, city_name, state_abbr, latitude, longitude");
+  if (cityIds && cityIds.length > 0) {
+    citiesQuery = citiesQuery.in("id", cityIds);
+  }
+  const { data: cities, error: cityErr } = await citiesQuery;
   if (cityErr) throw new Error(`load cities: ${cityErr.message}`);
 
-  // Resume mode: skip cities that already have a 'done' row from any prior live batch.
+  // Resume mode: skip cities that already have a 'done' row. When a specific
+  // city_ids list is passed, we're explicitly re-running them, so don't skip.
   let skipIds = new Set<string>();
-  if (resume && !dryRun) {
+  if (resume && !dryRun && !(cityIds && cityIds.length > 0)) {
     let from = 0;
     const pageSize = 1000;
     while (true) {
@@ -320,10 +325,19 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const dryRun = url.searchParams.get("dry_run") === "1";
     const resume = url.searchParams.get("resume") === "1";
+    let cityIds: string[] | null = null;
+    if (req.method === "POST") {
+      try {
+        const body = await req.json();
+        if (Array.isArray(body?.city_ids) && body.city_ids.length > 0) {
+          cityIds = body.city_ids.map((x: unknown) => String(x));
+        }
+      } catch (_) { /* no body */ }
+    }
     const batchId = crypto.randomUUID();
 
     // @ts-ignore EdgeRuntime is provided by Supabase runtime.
-    EdgeRuntime.waitUntil(runBatch(batchId, dryRun, resume).catch(async (e) => {
+    EdgeRuntime.waitUntil(runBatch(batchId, dryRun, resume, cityIds).catch(async (e) => {
       console.error(`[pss-seed ${batchId}] fatal:`, e);
       try {
         await svc.from("private_elementary_seed_runs").insert({

@@ -97,32 +97,29 @@ export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
     source: "Manus 2026-05-21 v2 — 15-brand scrape, STEM 2.0× / Other 1.0× weighting" },
 
 
-  // ─────────── TAM TEACHERS (5-metric lock — Brett+Haseeb 2026-05-21) ───────────
-  { key: "public_elementary_school_count", category: "franchisee_supply", label: "Public Elementary Schools",
-    description: "Count of K-5 public schools in the city. Direct proxy for the size of the local elementary-teacher recruiting pool.",
-    enabled: true,  weight_within_category: 0.20, status: "live",
-    source: "NCES Common Core of Data — elementary-serving public schools rolled up to city",
-    sourceUrl: "https://nces.ed.gov/ccd/schoolsearch/" },
+  // ─────────── TAM TEACHERS (3-metric rebuild — Brett+Haseeb 2026-07-12) ───────────
+  // Public Elementary Schools + Public Elementary Enrollment removed — they
+  // duplicated the FTE signal. Teacher FTE and Private Elementary Schools now
+  // score by percentile rank across all scored cities (columns
+  // pct_rank_teacher_fte / pct_rank_private_elem on us_cities_scored).
+  // Recruitability (col_salary_index) stays inverted min-max — worse pay =
+  // higher score, that's the whole point of the signal, don't fix.
+  // Keep in sync with supabase/functions/_shared/scoring.ts.
   { key: "public_elementary_teacher_count", category: "franchisee_supply", label: "Public Elementary Teachers (NCES FTE)",
-    description: "Sum of full-time-equivalent teachers across all elementary-serving public schools in the city. Real NCES values — not estimated.",
-    enabled: true,  weight_within_category: 0.25, status: "live",
-    source: "NCES CCD teachers_fte field, aggregated from public_schools table",
-    sourceUrl: "https://nces.ed.gov/ccd/schoolsearch/" },
-  { key: "private_charter_school_count", category: "franchisee_supply", label: "Private Elementary Schools",
-    description: "Count of private elementary schools (K–5). These teachers are often more entrepreneurial and open to franchise ownership.",
-    enabled: true,  weight_within_category: 0.15, status: "live",
-    source: "Manus AI batch — NCES Private School Universe (PSS)",
-    sourceUrl: "https://nces.ed.gov/surveys/pss/privateschoolsearch/" },
-  { key: "public_elementary_enrollment", category: "franchisee_supply", label: "Public Elementary Enrollment",
-    description: "Total K-5 students enrolled in public schools city-wide. Cross-checks teacher count and indicates market scale.",
-    enabled: true,  weight_within_category: 0.15, status: "live",
-    source: "NCES Common Core of Data — enrollment field, aggregated to city",
+    description: "Percentile rank of full-time-equivalent public elementary teachers vs. all scored US cities. Bigger recruiting pool = higher percentile = higher score.",
+    enabled: true,  weight_within_category: TAM_WEIGHT_FTE, status: "live",
+    source: "NCES CCD teachers_fte field, aggregated from public_schools table (percentile-ranked)",
     sourceUrl: "https://nces.ed.gov/ccd/schoolsearch/" },
   { key: "col_salary_index", category: "franchisee_supply", label: "Teacher Salary × Cost of Living Index",
-    description: "Average elementary teacher salary normalized by local cost-of-living index (salary × 100 / COL). Lower value = stronger pull toward summer income and franchise ownership.",
-    enabled: true,  weight_within_category: 0.25, status: "live",
+    description: "Average elementary teacher salary normalized by local cost-of-living index (salary × 100 / COL). Lower value = teachers are squeezed = stronger pull toward summer income and franchise ownership. Inverted so squeezed markets score higher.",
+    enabled: true,  weight_within_category: TAM_WEIGHT_RECRUITABILITY, status: "live",
     source: "BLS OEWS May 2025 SOC 25-2021 (Manus batch, 817 cities) × BEA Regional Price Parity",
     sourceUrl: "https://www.bls.gov/oes/current/oes252021.htm" },
+  { key: "private_charter_school_count", category: "franchisee_supply", label: "Private Elementary Schools",
+    description: "Percentile rank of private elementary school count vs. all scored US cities. More private-school facility supply = higher percentile = higher score.",
+    enabled: true,  weight_within_category: TAM_WEIGHT_PRIVATE, status: "live",
+    source: "Manus AI batch — NCES Private School Universe (PSS), percentile-ranked",
+    sourceUrl: "https://nces.ed.gov/surveys/pss/privateschoolsearch/" },
 
 ];
 

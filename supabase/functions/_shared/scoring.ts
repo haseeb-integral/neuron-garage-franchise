@@ -220,6 +220,12 @@ export type SowMetricEntry = {
 // exists in the current pipeline (Census, BLS, or Apify-derived counts).
 // Weights are placeholders for the future registry-driven composite; they are
 // NOT applied today. Total per category is informational only.
+// TAM Teachers rebuild 2026-07-12 (Brett+Haseeb). Three sub-metrics only.
+// Keep the frontend mirror in src/lib/sowMetricRegistry.ts in sync.
+export const TAM_WEIGHT_FTE            = 0.45; // pct_rank_teacher_fte (percentile)
+export const TAM_WEIGHT_RECRUITABILITY = 0.35; // col_salary_index inverted min-max (worse pay = higher score, don't fix)
+export const TAM_WEIGHT_PRIVATE        = 0.20; // pct_rank_private_elem (percentile)
+
 export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
   // ─────────── DEMAND (4-metric lock — Brett+Haseeb 2026-05-21) ───────────
   { key: "children_5_12_count",                 category: "demand", label: "Children Ages 5–12",                       enabled: true,  weight_within_category: 0.30, status: "live"  },
@@ -244,12 +250,16 @@ export const SOW_METRIC_REGISTRY: readonly SowMetricEntry[] = [
   { key: "csi_local_camp_estimate",    category: "competitive_landscape", label: "Local Camp Supply (estimated)",          enabled: true, weight_within_category: 0.33, status: "proxy" },
   { key: "csi_demand_adjusted_market", category: "competitive_landscape", label: "Demand-Adjusted Market (DAM)",           enabled: true, weight_within_category: 0.33, status: "live"  },
 
-  // ─────────── TAM TEACHERS (5-metric lock — Brett+Haseeb 2026-05-21) ───────────
-  { key: "public_elementary_school_count",      category: "franchisee_supply", label: "Public Elementary Schools",                     enabled: true,  weight_within_category: 0.20, status: "live"    },
-  { key: "public_elementary_teacher_count",     category: "franchisee_supply", label: "Public Elementary Teachers (NCES FTE)",         enabled: true,  weight_within_category: 0.25, status: "live"    },
-  { key: "private_charter_school_count",        category: "franchisee_supply", label: "Private + Charter Elementary Schools",          enabled: true,  weight_within_category: 0.15, status: "live"    },
-  { key: "public_elementary_enrollment",        category: "franchisee_supply", label: "Public Elementary Enrollment",                  enabled: true,  weight_within_category: 0.15, status: "live"    },
-  { key: "col_salary_index",                    category: "franchisee_supply", label: "Teacher Salary × Cost of Living Index",         enabled: true,  weight_within_category: 0.25, status: "proxy"   },
+  // ─────────── TAM TEACHERS (3-metric rebuild — Brett+Haseeb 2026-07-12) ───────────
+  // Public Elementary Schools + Public Elementary Enrollment removed — they
+  // duplicated the FTE signal. Teacher FTE and Private Elementary Schools now
+  // score via percentile rank across all scored cities (see pct_rank_teacher_fte
+  // / pct_rank_private_elem columns on us_cities_scored). Recruitability
+  // (col_salary_index) keeps inverted min–max — worse pay = higher score,
+  // don't fix, that's the whole point of the signal.
+  { key: "public_elementary_teacher_count",     category: "franchisee_supply", label: "Public Elementary Teachers (NCES FTE)",         enabled: true,  weight_within_category: TAM_WEIGHT_FTE,           status: "live"  },
+  { key: "col_salary_index",                    category: "franchisee_supply", label: "Teacher Salary × Cost of Living Index",         enabled: true,  weight_within_category: TAM_WEIGHT_RECRUITABILITY, status: "proxy" },
+  { key: "private_charter_school_count",        category: "franchisee_supply", label: "Private Elementary Schools",                    enabled: true,  weight_within_category: TAM_WEIGHT_PRIVATE,       status: "live"  },
 
   // ─────────── EASE OF OPERATIONS ───────────
   { key: "rental_venue_count",                  category: "ease_of_operations", label: "Rental Venues (Schools / Churches / Rec)",     enabled: true,  weight_within_category: 0.45, status: "proxy" },
@@ -327,12 +337,15 @@ export function normalizeSowMetric(
     case "csi_national_brand_supply":         return lin(v, 0, 25,    true);
     case "csi_local_camp_estimate":           return lin(v, 0, 125,   true);
     case "csi_demand_adjusted_market":        return lin(v, 0, 45000, false);
-    // TAM Teachers (5 sub-metrics, lock 2026-05-21)
-    case "public_elementary_school_count":    return lin(v, 0, 250);
-    case "public_elementary_teacher_count":   return lin(v, 0, 6000);
-    case "private_charter_school_count":      return lin(v, 0, 180);
-    case "public_elementary_enrollment":      return lin(v, 0, 90000);
-    case "col_salary_index":                  return lin(v, 30000, 120000, true); // salary*COL/100; lower = stronger recruiting pull
+    // TAM Teachers (3-metric rebuild 2026-07-12). Teacher FTE and Private
+    // Elementary Schools now score by percentile rank across all scored
+    // cities — the caller must pass the pre-computed pct_rank_* value
+    // (already 0..100) from us_cities_scored, so normalize is a passthrough.
+    // Recruitability (col_salary_index) stays inverted min–max: worse pay =
+    // higher score, that's the whole point of the signal, don't fix.
+    case "public_elementary_teacher_count":   return lin(v, 0, 100); // passthrough percentile
+    case "private_charter_school_count":      return lin(v, 0, 100); // passthrough percentile
+    case "col_salary_index":                  return lin(v, 30000, 120000, true);
 
     // Backstop: bare COL when col_salary_index not yet computed (Manus salary pending)
     case "cost_of_living_index":              return lin(v, 80, 180, true);

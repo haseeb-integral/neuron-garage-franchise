@@ -62,6 +62,12 @@ export type ScoredCityRow = {
   affluent_families_snapped_bracket: number | string | null;
   affluent_families_effective_threshold: number | string | null;
 
+  // TAM Teachers rebuild 2026-07-12 — percentile rank columns across all
+  // scored cities. Pre-computed by the Phase 1 migration; recomputed by any
+  // future TAM rescore. Nullable when the underlying raw signal is null.
+  pct_rank_teacher_fte: number | string | null;
+  pct_rank_private_elem: number | string | null;
+
   // Per-source freshness columns are read by `getCitySourceData` via a
   // narrower SELECT; not required on the main scored-row union.
 };
@@ -201,7 +207,7 @@ export async function loadLiveRankedMarkets(_opts?: { includeExtras?: boolean })
       // 2026-05-22 — 0/817 populated; CSI is fully covered by
       // csi_national_brand_count_weighted, csi_local_provider_estimate, and
       // csi_demand_adjusted_market (all 817/817 from Manus).
-      "id, city_name, state_name, state_abbr, metro_area, county_name, metro_counties, population, population_density, children_5_12, median_household_income, dual_working_families_pct, college_degree_pct, cost_of_living_index, public_school_count, public_school_enrollment, public_elementary_count, public_elementary_enrollment, public_elementary_teacher_count, private_elementary_count, charter_elementary_count, composite_score_default, score_demand, score_csi, score_tam_teachers, csi_score, csi_saturation_category, csi_confidence, csi_national_brand_count_weighted, csi_local_provider_estimate, csi_demand_adjusted_market, csi_brand_detail, csi_last_updated, place_type, census_population_2020, avg_elementary_teacher_salary_usd, col_salary_index, is_registration_state, scored_at, provider_count, affluent_families_count, affluent_families_share, affluent_families_snapped_bracket, affluent_families_effective_threshold",
+      "id, city_name, state_name, state_abbr, metro_area, county_name, metro_counties, population, population_density, children_5_12, median_household_income, dual_working_families_pct, college_degree_pct, cost_of_living_index, public_school_count, public_school_enrollment, public_elementary_count, public_elementary_enrollment, public_elementary_teacher_count, private_elementary_count, charter_elementary_count, composite_score_default, score_demand, score_csi, score_tam_teachers, csi_score, csi_saturation_category, csi_confidence, csi_national_brand_count_weighted, csi_local_provider_estimate, csi_demand_adjusted_market, csi_brand_detail, csi_last_updated, place_type, census_population_2020, avg_elementary_teacher_salary_usd, col_salary_index, is_registration_state, scored_at, provider_count, affluent_families_count, affluent_families_share, affluent_families_snapped_bracket, affluent_families_effective_threshold, pct_rank_teacher_fte, pct_rank_private_elem",
     )
     .order("composite_score_default", { ascending: false, nullsFirst: false })
     .limit(2000);
@@ -450,12 +456,52 @@ export function buildSeededFallbackSignalsFromScored(
     // estimate and demand-adjusted market removed: the first was a guess that
     // drowned real counts, the second duplicated the Demand pillar.
     seeded("csi_national_brand_supply", "National Brand Supply (weighted)", scoredRow.csi_national_brand_count_weighted, "competitive_landscape", true),
-    // TAM Teachers — 5-metric lock (Brett+Haseeb 2026-05-21)
-    seeded("public_elementary_school_count", "Public Elementary Schools", scoredRow.public_elementary_count, "franchisee_supply", true),
-    seeded("public_elementary_teacher_count", "Public Elementary Teachers (NCES FTE)", scoredRow.public_elementary_teacher_count, "franchisee_supply", true),
-    seeded("private_charter_school_count", "Private Elementary Schools", scoredRow.private_elementary_count, "franchisee_supply", true),
-    seeded("public_elementary_enrollment", "Public Elementary Enrollment", scoredRow.public_elementary_enrollment, "franchisee_supply", true),
+    // TAM Teachers — 3-metric rebuild (Brett+Haseeb 2026-07-12).
+    // Public Elementary Schools + Public Elementary Enrollment dropped —
+    // they duplicated the FTE signal. Teacher FTE + Private Elementary
+    // Schools now feed the pillar via their pre-computed percentile ranks
+    // (columns pct_rank_teacher_fte / pct_rank_private_elem). The numeric
+    // `value` is the 0..100 percentile so normalize is a passthrough; the
+    // drawer still shows the raw count via raw_data.display_value.
+    (() => {
+      const pct = toNumber(scoredRow.pct_rank_teacher_fte, NaN);
+      const raw = toNumber(scoredRow.public_elementary_teacher_count, NaN);
+      const rawDisplay = Number.isFinite(raw) ? `${Math.round(raw).toLocaleString()} FTE` : null;
+      return {
+        signal_key: "public_elementary_teacher_count",
+        label: "Public Elementary Teachers (NCES FTE)",
+        value: Number.isFinite(pct) ? Math.round(pct * 10) / 10 : null,
+        source: "Pre-seeded",
+        raw_data: {
+          status: "proxy" as const,
+          used_in_score: true,
+          metric_category: "franchisee_supply" as const,
+          display_value: rawDisplay,
+          raw_teacher_fte: Number.isFinite(raw) ? raw : null,
+          pct_rank_teacher_fte: Number.isFinite(pct) ? pct : null,
+        },
+      };
+    })(),
     seeded("col_salary_index", "Teacher Salary × Cost of Living Index", scoredRow.col_salary_index ?? scoredRow.cost_of_living_index, "franchisee_supply", true),
+    (() => {
+      const pct = toNumber(scoredRow.pct_rank_private_elem, NaN);
+      const raw = toNumber(scoredRow.private_elementary_count, NaN);
+      const rawDisplay = Number.isFinite(raw) ? `${Math.round(raw).toLocaleString()} schools` : null;
+      return {
+        signal_key: "private_charter_school_count",
+        label: "Private Elementary Schools",
+        value: Number.isFinite(pct) ? Math.round(pct * 10) / 10 : null,
+        source: "Pre-seeded",
+        raw_data: {
+          status: "proxy" as const,
+          used_in_score: true,
+          metric_category: "franchisee_supply" as const,
+          display_value: rawDisplay,
+          raw_private_elementary_count: Number.isFinite(raw) ? raw : null,
+          pct_rank_private_elem: Number.isFinite(pct) ? pct : null,
+        },
+      };
+    })(),
     // Retired/orphan metrics removed 2026-05-22:
     //   avg_camp_price_per_hour (pricing category retired May 15),
     //   summer_weather_index / avg_peak_summer_temperature / days_above_90f /

@@ -50,13 +50,14 @@ export const NORMALIZATION_RANGES: Record<string, NormalizationRange> = {
   // Ranges widened 2026-05-21b to ~p99 of real US-city distribution so big
   // metros (Denver, Houston, Phoenix, NYC) actually spread out instead of
   // all saturating at 100. Source distribution from us_cities_scored.
-  elementary_school_count:             { lo: 0, hi: 250, invert: false },
-  public_elementary_school_count:      { lo: 0, hi: 250, invert: false },
-  teacher_salary_proxy:                { lo: 45000, hi: 90000, invert: true },
-  public_elementary_teacher_count:     { lo: 0, hi: 6000, invert: false },
-  public_elementary_enrollment:        { lo: 0, hi: 90000, invert: false },
-  private_charter_montessori_teacher_count: { lo: 0, hi: 800, invert: false },
-  private_charter_school_count:        { lo: 0, hi: 180, invert: false },
+  // TAM Teachers (3-metric rebuild 2026-07-12 — Brett+Haseeb). Teacher FTE
+  // and Private Elementary Schools now score by percentile rank across all
+  // scored cities. The caller passes the pre-computed pct_rank_* value
+  // (already 0..100) from us_cities_scored, so normalize is a passthrough.
+  // Recruitability (col_salary_index) stays inverted min-max — worse pay =
+  // higher score, that's the whole point of the signal, don't fix.
+  public_elementary_teacher_count:     { lo: 0, hi: 100, invert: false }, // percentile passthrough
+  private_charter_school_count:        { lo: 0, hi: 100, invert: false }, // percentile passthrough
 
   cost_of_living_index:                { lo: 80, hi: 180, invert: true },
   // col_salary_index is normalized adaptively in normalizeSowMetric() —

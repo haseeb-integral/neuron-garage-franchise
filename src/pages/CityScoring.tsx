@@ -1235,12 +1235,11 @@ const CityScoring = () => {
     "median_household_income",
     "dual_income_household_pct",
     "education_bachelors_plus_pct",
-    // TAM Teachers (5)
-    "public_elementary_school_count",
+    // TAM Teachers (3-metric rebuild 2026-07-12 — Brett+Haseeb).
+    // Public Elementary Schools + Public Elementary Enrollment removed.
     "public_elementary_teacher_count",
-    "private_charter_school_count",
-    "public_elementary_enrollment",
     "col_salary_index",
+    "private_charter_school_count",
     // Competitive Landscape (single input after Prompt 1 refactor 2026-07-07)
     "csi_national_brand_supply",
   ];
@@ -1285,10 +1284,11 @@ const CityScoring = () => {
     median_household_income:       { format: "money",   thresholds: [60000, 100000], higherIsBetter: true },
     dual_income_household_pct:     { format: "pct",     thresholds: [60, 80],        higherIsBetter: true },
     education_bachelors_plus_pct:  { format: "pct",     thresholds: [30, 50],        higherIsBetter: true },
-    public_elementary_school_count:{ format: "int",     thresholds: [5, 20],         higherIsBetter: true },
-    public_elementary_teacher_count:{format: "int",     thresholds: [100, 500],      higherIsBetter: true },
-    private_charter_school_count:  { format: "int",     thresholds: [2, 10],         higherIsBetter: true },
-    public_elementary_enrollment:  { format: "int",     thresholds: [2000, 10000],   higherIsBetter: true },
+    // TAM Teachers (3-metric rebuild 2026-07-12). FTE + Private now score by
+    // percentile rank across all scored cities; the seeded signal `value` is
+    // the 0..100 percentile. Thresholds are on the percentile scale.
+    public_elementary_teacher_count:{format: "decimal", thresholds: [50, 80],        higherIsBetter: true },
+    private_charter_school_count:  { format: "decimal", thresholds: [50, 80],        higherIsBetter: true },
     col_salary_index:              { format: "decimal", thresholds: [50000, 80000],  higherIsBetter: true },
     csi_national_brand_supply:     { format: "int",     thresholds: [3, 10],         higherIsBetter: false, goodLabel: "Wide open", badLabel: "Saturated" },
   };

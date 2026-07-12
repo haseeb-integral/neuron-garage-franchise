@@ -22,25 +22,18 @@ export const SIGNAL_EXPLAIN: Record<string, { good: string; mid: string; bad: st
     mid: "Parent education levels are average — receptive but not a standout driver.",
     bad: "Parent education levels are below benchmark — expect more friction explaining the value proposition.",
   },
-  public_elementary_school_count: {
-    good: "A dense network of elementary schools — many natural marketing and partnership channels.",
-    mid: "A moderate elementary school footprint — workable for school-channel marketing.",
-    bad: "A sparse elementary school footprint — fewer obvious distribution channels into families.",
-  },
+  // TAM Teachers rebuild 2026-07-12: Teacher FTE and Private Elementary
+  // Schools are scored as percentile rank across all scored US cities.
+  // Public Elementary Schools + Public Elementary Enrollment dropped.
   public_elementary_teacher_count: {
-    good: "A large pool of public-elementary teachers to recruit instructors and operators from.",
-    mid: "An adequate teacher pool — hiring is possible but not abundant.",
-    bad: "A small teacher pool — instructor and operator hiring will likely be the constraint.",
+    good: "Top-tier recruiting pool — this city has more elementary teacher FTEs than most US cities we score.",
+    mid: "A middle-of-the-pack teacher pool — hiring is workable but not a standout advantage.",
+    bad: "A small teacher pool relative to peer cities — instructor and operator hiring will likely be the constraint.",
   },
   private_charter_school_count: {
-    good: "Many private and charter schools — secondary partnership and enrollment channels are deep.",
-    mid: "A moderate private/charter footprint — useful but not a primary driver.",
-    bad: "Few private or charter schools — limited alternative distribution channels.",
-  },
-  public_elementary_enrollment: {
-    good: "Total elementary enrollment is large — the addressable market of in-school children is substantial.",
-    mid: "Elementary enrollment is moderate — workable addressable base.",
-    bad: "Elementary enrollment is small — the in-school addressable base is limited.",
+    good: "Deep private-elementary supply — top-tier facility partners and a secondary channel to families.",
+    mid: "A moderate private-elementary footprint — useful but not a primary driver.",
+    bad: "Sparse private-elementary supply — limited alternative facility and enrollment channels.",
   },
   col_salary_index: {
     good: "Teacher salaries (cost-of-living adjusted) are favorable for recruiting at our payable wage.",

@@ -19,7 +19,12 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const PROMPT_VERSION = "v1";
+// Bump this to invalidate the cache and force re-generation with a new
+// prompt. To ROLL BACK Phase B: change this back to "v1" and swap the
+// systemPrompt string below back to PROMPT_V1. Every city then serves
+// its previous cached narrative instantly (v1 rows are still in the
+// city_narratives table).
+const PROMPT_VERSION = "v2";
 const DEFAULT_MODEL = "google/gemini-3-flash-preview";
 const PRO_MODEL = "google/gemini-2.5-pro";
 

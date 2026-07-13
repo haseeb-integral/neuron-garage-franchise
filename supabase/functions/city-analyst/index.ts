@@ -48,6 +48,185 @@ function tierFromScore(s: number): "A" | "B" | "C" | "D" {
   return "D";
 }
 
+// Percentile rank of `value` within `values` (higher = better).
+// Returns integer 0–100 or null when value/universe missing.
+function percentile(value: number | null, values: number[]): number | null {
+  if (value == null || !Number.isFinite(value)) return null;
+  const arr = values.filter((v) => Number.isFinite(v));
+  if (arr.length === 0) return null;
+  const below = arr.filter((v) => v < value).length;
+  const equal = arr.filter((v) => v === value).length;
+  // midrank convention
+  const pct = ((below + 0.5 * equal) / arr.length) * 100;
+  return Math.round(Math.max(0, Math.min(100, pct)));
+}
+
+const REFERENCE_CITIES: Array<{ name: string; state: string }> = [
+  { name: "Austin", state: "TX" },
+  { name: "Plano", state: "TX" },
+  { name: "Houston", state: "TX" },
+];
+
+// Fields we percentile-rank across the scored universe.
+const PCTL_FIELDS = [
+  "children_5_12",
+  "median_household_income",
+  "dual_working_families_pct",
+  "college_degree_pct",
+  "affluent_families_count",
+  "affluent_families_share",
+  "public_elementary_teacher_count",
+  "public_elementary_count",
+  "private_elementary_count",
+  "charter_elementary_count",
+  "public_elementary_enrollment",
+  "avg_elementary_teacher_salary_usd",
+  "col_salary_index",
+  "cost_of_living_index",
+  "csi_national_brand_count_weighted",
+  "csi_local_provider_estimate",
+  "csi_demand_adjusted_market",
+] as const;
+
+type ScoredRow = Record<string, unknown> & {
+  id: string;
+  city_name: string;
+  state_abbr: string;
+};
+
+// Build a per-signal object with value, percentile, and any drivers/flags.
+function buildSignalBlock(
+  row: ScoredRow,
+  universe: Record<string, number[]>,
+) {
+  const v = (k: string) => num(row[k]);
+  const p = (k: string) => percentile(v(k), universe[k] ?? []);
+  const population = v("population");
+  const children = v("children_5_12");
+  const affluentCount = v("affluent_families_count");
+  const affluentShare = v("affluent_families_share");
+  const privateCount = v("private_elementary_count") ?? 0;
+  const charterCount = v("charter_elementary_count") ?? 0;
+
+  return {
+    demand: {
+      children_5_12: {
+        label: "Children ages 5–12",
+        value: fmtInt(children),
+        raw: children,
+        percentile: p("children_5_12"),
+        drivers: {
+          share_of_population:
+            children != null && population && population > 0
+              ? `${((children / population) * 100).toFixed(1)}%`
+              : "n/a",
+        },
+      },
+      median_household_income: {
+        label: "Median household income",
+        value: fmtUSD(v("median_household_income")),
+        raw: v("median_household_income"),
+        percentile: p("median_household_income"),
+      },
+      affluent_families: {
+        label: "Affluent families (≥$150k)",
+        count: fmtInt(affluentCount),
+        share:
+          affluentShare != null
+            ? `${(affluentShare * (affluentShare <= 1 ? 100 : 1)).toFixed(1)}%`
+            : "n/a",
+        count_percentile: p("affluent_families_count"),
+        share_percentile: p("affluent_families_share"),
+        effective_threshold: fmtUSD(v("affluent_families_effective_threshold")),
+        snapped_bracket: v("affluent_families_snapped_bracket"),
+        flags: affluentCount == null ? ["thin data — affluent_families_count missing"] : [],
+      },
+      dual_income_share: {
+        label: "Dual-income household share",
+        value: fmtPct(v("dual_working_families_pct")),
+        percentile: p("dual_working_families_pct"),
+      },
+      bachelors_or_higher: {
+        label: "Adults with bachelor's degree or higher",
+        value: fmtPct(v("college_degree_pct")),
+        percentile: p("college_degree_pct"),
+      },
+    },
+    supply: {
+      public_elementary_teachers: {
+        label: "Public elementary teachers",
+        value: fmtInt(v("public_elementary_teacher_count")),
+        percentile: p("public_elementary_teacher_count"),
+      },
+      teacher_salary: {
+        label: "Average elementary teacher salary",
+        value: fmtUSD(v("avg_elementary_teacher_salary_usd")),
+        percentile: p("avg_elementary_teacher_salary_usd"),
+      },
+      col_salary_index: {
+        label: "Cost-of-living adjusted salary index",
+        value: num(row["col_salary_index"])?.toFixed(2) ?? "n/a",
+        percentile: p("col_salary_index"),
+      },
+      cost_of_living_index: {
+        label: "Cost of living index",
+        value: num(row["cost_of_living_index"])?.toFixed(1) ?? "n/a",
+        percentile: p("cost_of_living_index"),
+      },
+      public_elementary_schools: {
+        label: "Public elementary schools",
+        value: fmtInt(v("public_elementary_count")),
+        percentile: p("public_elementary_count"),
+      },
+      private_and_charter_schools: {
+        label: "Private and charter elementary schools",
+        value: fmtInt(privateCount + charterCount),
+        private_count: fmtInt(privateCount),
+        charter_count: fmtInt(charterCount),
+      },
+      public_elementary_enrollment: {
+        label: "Public elementary enrollment",
+        value: fmtInt(v("public_elementary_enrollment")),
+        percentile: p("public_elementary_enrollment"),
+      },
+    },
+    competition: {
+      national_brand_weighted: {
+        label: "National brand competitor count (weighted)",
+        value: num(row["csi_national_brand_count_weighted"])?.toFixed(1) ?? "n/a",
+        percentile: p("csi_national_brand_count_weighted"),
+      },
+      local_provider_estimate: {
+        label: "Local camp / provider count",
+        value: fmtInt(v("csi_local_provider_estimate")),
+        percentile: p("csi_local_provider_estimate"),
+      },
+      saturation_category: {
+        label: "Competitive saturation category",
+        value: (row["csi_saturation_category"] as string | null) ?? "n/a",
+      },
+      demand_adjusted_market: {
+        label: "Demand-adjusted addressable market",
+        value: fmtInt(v("csi_demand_adjusted_market")),
+        percentile: p("csi_demand_adjusted_market"),
+      },
+    },
+  };
+}
+
+function collectFlags(row: ScoredRow): string[] {
+  const flags: string[] = [];
+  const sat = (row["csi_saturation_category"] as string | null) ?? "";
+  if (/saturat/i.test(sat)) flags.push("Saturated");
+  if (/unproven/i.test(sat)) flags.push("Unproven camp culture");
+  if (num(row["affluent_families_count"]) == null) {
+    flags.push("thin data — affluent_families_count missing");
+  }
+  const csiConf = num(row["csi_confidence"]);
+  if (csiConf != null && csiConf < 0.5) flags.push("pending calibration — csi_confidence low");
+  return flags;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });

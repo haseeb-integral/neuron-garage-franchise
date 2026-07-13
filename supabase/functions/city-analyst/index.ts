@@ -386,6 +386,24 @@ Deno.serve(async (req) => {
       reference_cities: referenceCityRows,
     };
 
+    // Phase A verification log — one line, remove after Phase B ships.
+    console.log(
+      "[city-analyst] phase-a payload enriched",
+      JSON.stringify({
+        city: `${city.city_name}, ${city.state_abbr}`,
+        universe_size: rows.length,
+        flags,
+        reference_cities_found: referenceCityRows.filter((r) => r.available).map((r) => r.city),
+        sample_percentiles: {
+          children_5_12: signalsDetailed.demand.children_5_12.percentile,
+          affluent_families_count: signalsDetailed.demand.affluent_families.count_percentile,
+          teacher_salary: signalsDetailed.supply.teacher_salary.percentile,
+        },
+      }),
+    );
+
+
+
 
     const systemPrompt = `${KB_FULL_CONTEXT}
 

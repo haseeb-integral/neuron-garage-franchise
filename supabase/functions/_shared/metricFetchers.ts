@@ -228,10 +228,48 @@ export type CompetitorSignals = {
   error: string | null
 }
 
-const NATIONAL_BRANDS = [
+// Hard-coded fallback used only if the mvs_operator_watchlist read fails.
+// Source of truth = public.mvs_operator_watchlist (name + aliases).
+const NATIONAL_BRANDS_FALLBACK = [
   'KidStrong', 'Bricks 4 Kidz', 'Bricks4Kidz', 'Mad Science',
   'Code Ninjas', 'iD Tech', 'Galileo', 'Camp Invention', 'Snapology',
 ]
+
+// Cached per edge-function warm instance. Each entry is one search term
+// (brand name or alias) plus the canonical brand name to record when matched.
+type BrandTerm = { term: string; canonical: string }
+let _brandTermsCache: BrandTerm[] | null = null
+
+async function loadNationalBrandTerms(): Promise<BrandTerm[]> {
+  if (_brandTermsCache) return _brandTermsCache
+  const url = Deno.env.get('SUPABASE_URL')
+  const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  if (!url || !key) {
+    _brandTermsCache = NATIONAL_BRANDS_FALLBACK.map((b) => ({ term: b, canonical: b }))
+    return _brandTermsCache
+  }
+  try {
+    const res = await fetch(
+      `${url}/rest/v1/mvs_operator_watchlist?select=name,aliases`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}` } },
+    )
+    if (!res.ok) throw new Error(`watchlist ${res.status}`)
+    const rows = (await res.json()) as Array<{ name: string; aliases: string[] | null }>
+    const terms: BrandTerm[] = []
+    for (const r of rows) {
+      if (r.name) terms.push({ term: r.name, canonical: r.name })
+      for (const a of r.aliases ?? []) {
+        if (a) terms.push({ term: a, canonical: r.name })
+      }
+    }
+    if (terms.length === 0) throw new Error('watchlist empty')
+    _brandTermsCache = terms
+    return terms
+  } catch {
+    _brandTermsCache = NATIONAL_BRANDS_FALLBACK.map((b) => ({ term: b, canonical: b }))
+    return _brandTermsCache
+  }
+}
 
 // ---- Firecrawl URL discovery: find actual camp pricing pages for a city ----
 // Uses Firecrawl /v2/search (web search) with pricing-intent queries, then

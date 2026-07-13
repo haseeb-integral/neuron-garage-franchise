@@ -296,6 +296,51 @@ Deno.serve(async (req) => {
       ? context.tier.replace(/^Tier\s+/i, "")
       : tierFromScore(composite);
 
+    // ─── Universe pull for percentiles + reference cities (Phase A) ─────
+    // One query, all scored cities, only the columns we need. Small enough
+    // (<2k rows) to compute percentiles in-memory here.
+    const universeCols = [
+      "id",
+      "city_name",
+      "state_abbr",
+      "population",
+      "csi_saturation_category",
+      "csi_confidence",
+      "affluent_families_effective_threshold",
+      "affluent_families_snapped_bracket",
+      ...PCTL_FIELDS,
+    ];
+    const { data: universeRows } = await supabase
+      .from("us_cities_scored")
+      .select(universeCols.join(","));
+
+    const rows = (universeRows ?? []) as ScoredRow[];
+    const universe: Record<string, number[]> = {};
+    for (const f of PCTL_FIELDS) {
+      universe[f] = rows
+        .map((r) => num(r[f]))
+        .filter((n): n is number => n != null);
+    }
+
+    const referenceCityRows = REFERENCE_CITIES.map((ref) => {
+      const match = rows.find(
+        (r) =>
+          r.city_name?.toLowerCase() === ref.name.toLowerCase() &&
+          r.state_abbr === ref.state,
+      );
+      if (!match) return { city: `${ref.name}, ${ref.state}`, available: false };
+      return {
+        city: `${ref.name}, ${ref.state}`,
+        available: true,
+        composite_score: Math.round(num(match["composite_score_default"]) ?? 0),
+        signals: buildSignalBlock(match, universe),
+        flags: collectFlags(match),
+      };
+    });
+
+    const signalsDetailed = buildSignalBlock(city as ScoredRow, universe);
+    const flags = collectFlags(city as ScoredRow);
+
     const payload = {
       city: city.city_name,
       state: city.state_name,
@@ -308,6 +353,8 @@ Deno.serve(async (req) => {
         tam_teachers: pillarTam,
         competitive_opportunity: pillarOpp,
       },
+      // v1 prompt still reads `signals` — keep this exactly as it was so
+      // cached output does not change until the prompt is bumped to v2.
       signals: context?.signals?.length
         ? context.signals
         : {
@@ -330,7 +377,15 @@ Deno.serve(async (req) => {
             "Competitive saturation category": city.csi_saturation_category ?? "n/a",
             "Demand-adjusted addressable market": fmtInt(num(city.csi_demand_adjusted_market)),
           },
+      // New fields (Phase A) — the v1 prompt does not reference these,
+      // so their addition to the payload does not change model output yet.
+      // The v2 prompt (Phase B) will read from them.
+      universe_size: rows.length,
+      signals_detailed: signalsDetailed,
+      flags,
+      reference_cities: referenceCityRows,
     };
+
 
     const systemPrompt = `${KB_FULL_CONTEXT}
 

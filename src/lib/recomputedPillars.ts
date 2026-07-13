@@ -2,7 +2,7 @@
 //
 // Background (May 26, 2026 incident, Brett-approved fix):
 // The center "Selected Market" panel, drawer, and Market Report recompute
-// each pillar (Demand / TAM Teachers / Competitive Opportunity) on the fly
+// each pillar (Demand / Operator & Venue Supply / Competitive Opportunity) on the fly
 // from the underlying signal values + the user's applied sub-weights, then
 // pass the result through buildPillarView() to calibrate for display.
 //

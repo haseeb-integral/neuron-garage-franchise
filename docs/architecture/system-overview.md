@@ -25,7 +25,7 @@ The job of the app moves left → right. Each screen hands a clean payload to th
 | 1. City Search — `/city-scoring` | 2. Teacher Search — `/teacher-prospects` | 3. Email Outreach — `/email-outreach` | 4. Candidate Pipeline — `/candidate-pipeline` |
 |---|---|---|---|
 | Rank markets | Find teachers | Start the conversation | Qualify, vote, sign |
-| Scores 817+ US cities on Demand, Competitive Opportunity, TAM Teachers. | Scores teachers in the chosen city on fit. | Multi-step AI-personalized campaigns over SmartLead. | Kanban with 7 stages; Selection Committee votes during Immersion. |
+| Scores 817+ US cities on Demand, Competitive Opportunity, Operator & Venue Supply. | Scores teachers in the chosen city on fit. | Multi-step AI-personalized campaigns over SmartLead. | Kanban with 7 stages; Selection Committee votes during Immersion. |
 | → *Find Teachers in this City* opens Teacher Search pre-filtered. | → *Promote* creates a New Lead card. → *Add to Campaign* sends to Outreach. | → Reply tagged Interested → *Promote to Pipeline*. | Final stage Signing is hard-gated by Confirmation. |
 
 ### 3. AI models we use

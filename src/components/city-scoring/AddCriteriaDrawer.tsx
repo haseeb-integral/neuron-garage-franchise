@@ -9,7 +9,7 @@ import { useAddCustomCriterion } from "@/hooks/useCustomCriteria";
 
 export const SCORING_CATEGORIES = [
   "Demand",
-  "TAM Teachers",
+  "Operator & Venue Supply",
   "Competitive Opportunity",
 ] as const;
 

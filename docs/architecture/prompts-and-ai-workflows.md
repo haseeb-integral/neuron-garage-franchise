@@ -57,7 +57,7 @@ These are safe, small changes. Ask in plain English in the Lovable chat:
 
 Not because you can't — but because these affect everyone and a mistake is hard to undo. Send them a Slack/message and copy the request you'd give to Lovable.
 
-- Anything that changes **scoring math** or **tier cutoffs** (the A / B / C / D thresholds, the weights between Demand / TAM / Competitive Opportunity, what counts as a "good" market).
+- Anything that changes **scoring math** or **tier cutoffs** (the A / B / C / D thresholds, the weights between Demand / Operator & Venue Supply / Competitive Opportunity, what counts as a "good" market).
 - Adding, renaming, or deleting **columns in the database**.
 - Anything about **login, accounts, or who can see what**.
 - Swapping the **AI model** behind a feature (e.g. moving from Gemini to GPT).

@@ -132,7 +132,7 @@ export type CompositeRecomputeResult = {
 };
 
 // Composite formula (Sam+Brett 2026-07-07 Tier 1 rework, Phase 2):
-// Only `demand` and `franchiseeSupply` (TAM Teachers) count toward the composite.
+// Only `demand` and `franchiseeSupply` (Operator & Venue Supply) count toward the composite.
 // The CSI-derived `competitiveLandscape` pillar is force-dropped here — its
 // weight is zeroed regardless of what the stored config or preset says, and
 // the remaining two categories are rescaled so their master shares sum to 1.

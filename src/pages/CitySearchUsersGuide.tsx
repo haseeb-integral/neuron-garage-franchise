@@ -21,7 +21,7 @@ Every city gets a **Total Score from 0 to 100**. Higher is better.
 The score is made from two big pillars:
 
 - **Demand** — how many target families live there (families with kids ages 5–12 and household income $150k+, plus growth).
-- **TAM Teachers** — how big the teacher pool is (people we can recruit to teach at a Neuron Garage).
+- **Operator & Venue Supply** — how big the teacher pool is (people we can recruit to teach at a Neuron Garage).
 
 You control how much each pillar counts by dragging the two sliders at the top of the page.
 
@@ -46,9 +46,9 @@ Change the sliders and you'll see the counts shift — "+10 Tier A" means ten mo
 
 At the top of the weights panel are three one-click recipes:
 
-- **Balanced** — Demand 50, TAM Teachers 50. Default. Good starting point.
-- **Demand-Heavy** — Demand 70, TAM Teachers 30. Cities with lots of target families rise.
-- **TAM-Heavy** — Demand 30, TAM Teachers 70. Cities with a large teacher pool rise.
+- **Balanced** — Demand 50, Operator & Venue Supply 50. Default. Good starting point.
+- **Demand-Heavy** — Demand 70, Operator & Venue Supply 30. Cities with lots of target families rise.
+- **Operator-Heavy** — Demand 30, Operator & Venue Supply 70. Cities with a large teacher pool rise.
 
 If you drag the sliders to something that doesn't match a tile, the app shows **Custom** — that's normal.
 
@@ -88,7 +88,7 @@ Click any row and a panel opens below with:
 
 - The city name, state, score, tier, and population.
 - A short **Executive Summary** in plain English.
-- **Pillar cards** for Demand and TAM Teachers with the actual signal numbers.
+- **Pillar cards** for Demand and Operator & Venue Supply with the actual signal numbers.
 - **Key Market Signals** — families, income, teachers, licensed workers, etc. with source labels.
 - Buttons to **Compare**, **Add to Watchlist**, or **Open the PDF report**.
 
@@ -209,7 +209,7 @@ export default function CitySearchUsersGuide() {
             <p className="mb-3">Every city gets a <strong>Total Score from 0 to 100</strong>. Higher is better. The score is made from two big pillars:</p>
             <ul className="list-disc pl-6 space-y-1">
               <li><strong>Demand</strong> — how many target families live there (families with kids ages 5–12 and household income $150k+, plus growth).</li>
-              <li><strong>TAM Teachers</strong> — how big the teacher pool is (people we can recruit to teach at a Neuron Garage).</li>
+              <li><strong>Operator & Venue Supply</strong> — how big the teacher pool is (people we can recruit to teach at a Neuron Garage).</li>
             </ul>
             <p className="mt-3">You control how much each pillar counts by dragging the two sliders at the top of the page.</p>
             <p className="mt-3 text-[13px] text-[#526078]">
@@ -233,9 +233,9 @@ export default function CitySearchUsersGuide() {
             <H2>3. The three preset tiles</H2>
             <p className="mb-3">At the top of the weights panel are three one-click recipes:</p>
             <ul className="list-disc pl-6 space-y-1">
-              <li><strong>Balanced</strong> — Demand 50, TAM Teachers 50. Default. Good starting point.</li>
-              <li><strong>Demand-Heavy</strong> — Demand 70, TAM Teachers 30. Cities with lots of target families rise.</li>
-              <li><strong>TAM-Heavy</strong> — Demand 30, TAM Teachers 70. Cities with a large teacher pool rise.</li>
+              <li><strong>Balanced</strong> — Demand 50, Operator & Venue Supply 50. Default. Good starting point.</li>
+              <li><strong>Demand-Heavy</strong> — Demand 70, Operator & Venue Supply 30. Cities with lots of target families rise.</li>
+              <li><strong>Operator-Heavy</strong> — Demand 30, Operator & Venue Supply 70. Cities with a large teacher pool rise.</li>
             </ul>
             <p className="mt-3">If you drag the sliders to something that doesn't match a tile, the app shows <strong>Custom</strong> — that's normal.</p>
             <p className="mt-3">Clicking a preset also <strong>resets any deeper sub-signal tweaks</strong> so you know exactly what you're looking at.</p>
@@ -273,7 +273,7 @@ export default function CitySearchUsersGuide() {
             <ul className="list-disc pl-6 space-y-1">
               <li>The city name, state, score, tier, and population.</li>
               <li>A short <strong>Executive Summary</strong> in plain English.</li>
-              <li><strong>Pillar cards</strong> for Demand and TAM Teachers with the actual signal numbers.</li>
+              <li><strong>Pillar cards</strong> for Demand and Operator & Venue Supply with the actual signal numbers.</li>
               <li><strong>Key Market Signals</strong> — families, income, teachers, licensed workers, etc. with source labels.</li>
               <li>Buttons to <strong>Compare</strong>, <strong>Add to Watchlist</strong>, or <strong>Open the PDF report</strong>.</li>
             </ul>

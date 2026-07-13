@@ -100,7 +100,7 @@ export function FormulaPanel({
             </div>
           </div>
           <p className="text-[10.5px] text-[#8794ab] italic mt-3 leading-snug">
-            Bridge: <span className="font-mono">Competitive Opportunity = 100 − CSI</span>. Low CSI / low saturation = high opportunity. The composite uses <span className="font-mono">Opportunity × Competitive Opportunity master weight</span>, so high contribution = good (matching Demand and TAM Teachers).
+            Bridge: <span className="font-mono">Competitive Opportunity = 100 − CSI</span>. Low CSI / low saturation = high opportunity. The composite uses <span className="font-mono">Opportunity × Competitive Opportunity master weight</span>, so high contribution = good (matching Demand and Operator & Venue Supply).
           </p>
         </section>
 

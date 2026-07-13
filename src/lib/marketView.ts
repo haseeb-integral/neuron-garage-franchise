@@ -49,7 +49,7 @@ export type CompositeScore = number & { readonly [__compositeBrand]: "CompositeS
 // MarketView consumer sees the same calibrated number with zero per-component
 // risk. Raw composite_score_default in the DB is NOT modified.
 //
-// Anchors re-tuned 2026-07-12 (Brett+Haseeb) AFTER the TAM Teachers 3-metric
+// Anchors re-tuned 2026-07-12 (Brett+Haseeb) AFTER the Operator & Venue Supply 3-metric
 // rebuild widened the raw composite ceiling from 74 → 93. The old top anchor
 // (raw 74 → 100) had every strong city saturating at a tied 100, which killed
 // visual spread among Nashville/Louisville/Honolulu/Chicago/etc. The new

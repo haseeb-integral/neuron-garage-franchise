@@ -34,7 +34,7 @@ interface Props {
 const CAT_LABELS: { key: PillarKey; label: string }[] = [
   { key: "demand", label: "Demand" },
   { key: "competitiveLandscape", label: "Competitive Opportunity" },
-  { key: "franchiseeSupply", label: "TAM Teachers" },
+  { key: "franchiseeSupply", label: "Operator & Venue Supply" },
 ];
 
 const csvEscape = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;

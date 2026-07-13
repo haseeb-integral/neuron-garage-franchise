@@ -13,12 +13,12 @@ import { formatMetric } from "@/lib/numberFormat";
 import { buildCompareWorkbook, buildComparePdf, buildCompareFilename } from "@/lib/compareExport";
 import type { CategoryKey } from "@/stores/cityScoringStore";
 
-// Tier 1 rework Phase 3 (Sam+Brett 2026-07-07): only Demand + TAM Teachers
+// Tier 1 rework Phase 3 (Sam+Brett 2026-07-07): only Demand + Operator & Venue Supply
 // count toward the composite, so the Compare modal shows only those two
 // category rows. CSI-derived Competitive Opportunity was removed here.
 const CATEGORY_ROWS: { key: PillarKey; label: string }[] = [
   { key: "demand", label: "Demand" },
-  { key: "franchiseeSupply", label: "TAM Teachers" },
+  { key: "franchiseeSupply", label: "Operator & Venue Supply" },
 ];
 
 

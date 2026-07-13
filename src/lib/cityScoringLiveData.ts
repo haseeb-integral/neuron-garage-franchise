@@ -62,7 +62,7 @@ export type ScoredCityRow = {
   affluent_families_snapped_bracket: number | string | null;
   affluent_families_effective_threshold: number | string | null;
 
-  // TAM Teachers rebuild 2026-07-12 — percentile rank columns across all
+  // Operator & Venue Supply rebuild 2026-07-12 — percentile rank columns across all
   // scored cities. Pre-computed by the Phase 1 migration; recomputed by any
   // future TAM rescore. Nullable when the underlying raw signal is null.
   pct_rank_teacher_fte: number | string | null;
@@ -456,7 +456,7 @@ export function buildSeededFallbackSignalsFromScored(
     // estimate and demand-adjusted market removed: the first was a guess that
     // drowned real counts, the second duplicated the Demand pillar.
     seeded("csi_national_brand_supply", "National Brand Supply (weighted)", scoredRow.csi_national_brand_count_weighted, "competitive_landscape", true),
-    // TAM Teachers — 3-metric rebuild (Brett+Haseeb 2026-07-12).
+    // Operator & Venue Supply — 3-metric rebuild (Brett+Haseeb 2026-07-12).
     // Public Elementary Schools + Public Elementary Enrollment dropped —
     // they duplicated the FTE signal. Teacher FTE + Private Elementary
     // Schools now feed the pillar via their pre-computed percentile ranks

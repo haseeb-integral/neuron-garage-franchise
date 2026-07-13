@@ -42,7 +42,7 @@ export const CATEGORY_PURPOSE: Record<CategoryKey, string> = {
 
 const AFFLUENT_ON = isEnabled("FEATURE_AFFLUENT_FAMILIES");
 
-// TAM Teachers rebuild 2026-07-12 (Brett+Haseeb). Three sub-metrics only.
+// Operator & Venue Supply rebuild 2026-07-12 (Brett+Haseeb). Three sub-metrics only.
 // Keep in sync with supabase/functions/_shared/scoring.ts.
 export const TAM_WEIGHT_FTE            = 0.45; // pct_rank_teacher_fte (percentile)
 export const TAM_WEIGHT_RECRUITABILITY = 0.35; // col_salary_index inverted min-max (worse pay = higher score, don't fix)

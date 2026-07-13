@@ -36,12 +36,12 @@ type MetricCategory = "demand" | "competitive_landscape" | "franchisee_supply";
 
 const SOW_CATEGORIES: { key: MetricCategory; label: string }[] = [
   { key: "demand", label: "Demand" },
-  { key: "franchisee_supply", label: "TAM Teachers" },
+  { key: "franchisee_supply", label: "Operator & Venue Supply" },
   { key: "competitive_landscape", label: "Competitive Opportunity" },
 ];
 
 // Whitelist: Demand 5 (incl. Affluent Families, Phase 3 2026-07-08) +
-// TAM Teachers 3 (rebuild 2026-07-12) + Competitive 1 — locks drawer to
+// Operator & Venue Supply 3 (rebuild 2026-07-12) + Competitive 1 — locks drawer to
 // inputs shown in Key Market Signals.
 const KEY_METRIC_KEYS: ReadonlySet<string> = new Set([
   "children_5_12_count",

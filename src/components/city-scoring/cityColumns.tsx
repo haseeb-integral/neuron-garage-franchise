@@ -116,7 +116,7 @@ export const COLUMNS: ColDef[] = [
     },
   },
   { key: "score_demand", label: "Demand", align: "right", group: "Scores", get: (m) => pillarDisplay(m, "demand"), render: (m) => fmtScore(pillarDisplay(m, "demand")) },
-  { key: "score_tam", label: "TAM Teachers", align: "right", group: "Scores", get: (m) => pillarDisplay(m, "franchiseeSupply"), render: (m) => fmtScore(pillarDisplay(m, "franchiseeSupply")) },
+  { key: "score_tam", label: "Operator & Venue Supply", align: "right", group: "Scores", get: (m) => pillarDisplay(m, "franchiseeSupply"), render: (m) => fmtScore(pillarDisplay(m, "franchiseeSupply")) },
   { key: "score_csi_opp", label: "Comp. Opportunity", align: "right", group: "Scores", get: (m) => pillarDisplay(m, "competitiveLandscape"), render: (m) => fmtScore(pillarDisplay(m, "competitiveLandscape")) },
 
   // Demand inputs
@@ -125,10 +125,10 @@ export const COLUMNS: ColDef[] = [
   { key: "median_income", label: "Median HH Income", align: "right", group: "Demand", get: (m) => row(m).median_household_income ?? null, render: (m) => <span className="font-medium">{fmtMoney(row(m).median_household_income)}</span> },
   { key: "dual_income_pct", label: "Dual-Income %", align: "right", group: "Demand", get: (m) => row(m).dual_working_families_pct ?? null, render: (m) => fmtPct(row(m).dual_working_families_pct) },
   { key: "college_pct", label: "College %", align: "right", group: "Demand", get: (m) => row(m).college_degree_pct ?? null, render: (m) => fmtPct(row(m).college_degree_pct) },
-  // TAM Teachers
-  { key: "elem_schools", label: "Public Elem. Schools", align: "right", group: "TAM Teachers", get: (m) => row(m).public_elementary_count ?? null, render: (m) => fmtInt(row(m).public_elementary_count) },
+  // Operator & Venue Supply
+  { key: "elem_schools", label: "Public Elem. Schools", align: "right", group: "Operator & Venue Supply", get: (m) => row(m).public_elementary_count ?? null, render: (m) => fmtInt(row(m).public_elementary_count) },
   {
-    key: "priv_charter", label: "Private+Charter Elem.", align: "right", group: "TAM Teachers",
+    key: "priv_charter", label: "Private+Charter Elem.", align: "right", group: "Operator & Venue Supply",
     get: (m) => {
       const r = row(m);
       const v = (r.private_elementary_count ?? 0) + (r.charter_elementary_count ?? 0);
@@ -140,9 +140,9 @@ export const COLUMNS: ColDef[] = [
       return fmtInt(v || null);
     },
   },
-  { key: "elem_teachers", label: "Elem. Teachers (FTE)", align: "right", group: "TAM Teachers", get: (m) => row(m).public_elementary_teacher_count ?? null, render: (m) => fmtInt(row(m).public_elementary_teacher_count) },
-  { key: "elem_enrollment", label: "Elem. Enrollment", align: "right", group: "TAM Teachers", get: (m) => row(m).public_elementary_enrollment ?? null, render: (m) => fmtInt(row(m).public_elementary_enrollment) },
-  { key: "col_index", label: "COL Index", align: "right", group: "TAM Teachers", get: (m) => row(m).cost_of_living_index ?? null, render: (m) => fmtNum1(row(m).cost_of_living_index) },
+  { key: "elem_teachers", label: "Elem. Teachers (FTE)", align: "right", group: "Operator & Venue Supply", get: (m) => row(m).public_elementary_teacher_count ?? null, render: (m) => fmtInt(row(m).public_elementary_teacher_count) },
+  { key: "elem_enrollment", label: "Elem. Enrollment", align: "right", group: "Operator & Venue Supply", get: (m) => row(m).public_elementary_enrollment ?? null, render: (m) => fmtInt(row(m).public_elementary_enrollment) },
+  { key: "col_index", label: "COL Index", align: "right", group: "Operator & Venue Supply", get: (m) => row(m).cost_of_living_index ?? null, render: (m) => fmtNum1(row(m).cost_of_living_index) },
   // Competitive Landscape (Manus-owned)
   { key: "csi_brand", label: "Nat'l Brand Supply (wtd)", align: "right", group: "Competitive Landscape", get: (m) => row(m).csi_national_brand_count_weighted ?? null, render: (m) => fmtNum2(row(m).csi_national_brand_count_weighted) },
   { key: "csi_local", label: "Local Provider Est.", align: "right", group: "Competitive Landscape", get: (m) => row(m).csi_local_provider_estimate ?? null, render: (m) => fmtNum2(row(m).csi_local_provider_estimate) },

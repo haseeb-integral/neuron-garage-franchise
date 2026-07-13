@@ -89,7 +89,7 @@ export function CityWeightsPanel({
           <div className="min-w-0">
             <h3 className="text-sm font-bold text-[#07142f]">How should we rank cities?</h3>
             <p className="text-[11px] text-[#07142f] leading-snug mt-1 max-w-[640px]">
-              Every city gets one overall score (0–100) built from two things: <strong style={{ color: VISIBLE_CATEGORIES[0].color }}>Demand</strong> (are families looking for tutoring?) and <strong style={{ color: VISIBLE_CATEGORIES[1].color }}>TAM Teachers</strong> (can you hire enough tutors?). The sliders below decide how much each one counts — they always add up to 100%.
+              Every city gets one overall score (0–100) built from two things: <strong style={{ color: VISIBLE_CATEGORIES[0].color }}>Demand</strong> (are families looking for tutoring?) and <strong style={{ color: VISIBLE_CATEGORIES[1].color }}>Operator & Venue Supply</strong> (can you hire enough tutors?). The sliders below decide how much each one counts — they always add up to 100%.
             </p>
             <p className="text-[10px] text-[#8794ab] leading-snug mt-1">
               Each of the three categories is built from several signals (population, income, competitor density, etc). Pick a preset to start, or fine-tune any category with <span className="font-medium">Configure metrics</span>.
@@ -162,7 +162,7 @@ export function CityWeightsPanel({
             )}
           </div>
           <p className="text-[11.5px] text-[#526078] leading-snug">
-            Each preset is a recipe that sets the three sliders for you. For example, <span className="font-semibold text-[#07142f]">Demand-Heavy</span> makes Demand worth 60% of every city's overall score — so cities with lots of families looking for tutoring rise to the top, while TAM and Competition act as tie-breakers. Clicking a preset <span className="font-semibold">previews</span> the new ranking; click <span className="font-semibold">Apply Weights</span> to commit it. Drag any slider yourself and the strategy switches to <span className="font-semibold text-[#7c3aed]">Custom</span>.
+            Each preset is a recipe that sets the three sliders for you. For example, <span className="font-semibold text-[#07142f]">Demand-Heavy</span> makes Demand worth 60% of every city's overall score — so cities with lots of families looking for tutoring rise to the top, while Operator & Venue Supply and Competition act as tie-breakers. Clicking a preset <span className="font-semibold">previews</span> the new ranking; click <span className="font-semibold">Apply Weights</span> to commit it. Drag any slider yourself and the strategy switches to <span className="font-semibold text-[#7c3aed]">Custom</span>.
           </p>
         </div>
 

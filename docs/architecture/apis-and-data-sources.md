@@ -19,8 +19,8 @@ This is the single page that lists every external service Neuron Garage talks to
 | **Deepgram** | Text-to-speech voice for the AI assistant. | Neuron AI panel (voice replies) | Paid | Brett |
 | **Lovable AI Gateway** | One door to every AI model the app uses (Gemini, GPT-5 family). No third-party AI keys live in this project. | Every AI surface — City Ask-AI, Teacher Search AI, Observability AI, User's Guide chatbot, Neuron AI, reply classifier, CSV mapper, email body generation | Paid (Lovable plan) | Managed by Lovable |
 | **Resend** | Sends transactional email — password resets, weekly digests, system notifications. | Auth flows, Data Health weekly digest | Paid | Brett |
-| **US Census ACS** | Population, children, income, age, density for every US city. | City Search (Demand + TAM pillars) | Free (key required) | Brett |
-| **BLS** (Bureau of Labor Statistics) | STEM jobs and labor force per metro. | City Search (TAM pillar) | Free (key required) | Brett |
+| **US Census ACS** | Population, children, income, age, density for every US city. | City Search (Demand + Operator & Venue Supply pillars) | Free (key required) | Brett |
+| **BLS** (Bureau of Labor Statistics) | STEM jobs and labor force per metro. | City Search (Operator & Venue Supply pillar) | Free (key required) | Brett |
 | **BEA** (Bureau of Economic Analysis) | Regional income indicators. | City Search (Demand pillar) | Free (key required) | Brett |
 | **FRED** (St. Louis Fed) | Median income, cost-of-living index. | City Search (Demand pillar) | Free (no key) | — |
 | **NCES CCD** (via Urban Institute) | Every public K–12 school in the US — name, address, grades, enrollment. | City Search (school counts), `public_schools` table | Free (no key) | — |

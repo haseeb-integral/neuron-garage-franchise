@@ -140,7 +140,7 @@ function RankedMarketsListImpl({
           <span>Type</span>
           <span>Score</span>
           <span className="text-right" title="Demand category score">Dem</span>
-          <span className="text-right" title="TAM Teachers category score">TAM</span>
+          <span className="text-right" title="Operator & Venue Supply category score">Op/Venue</span>
           {FEATURE_FLAGS.FF_PROVIDER_COUNT && (
             <span className="text-right" title="Number of providers detected in this city (from mvs_providers). Only 16 pilot cities have data today.">Prov</span>
           )}
@@ -246,7 +246,7 @@ function RankedMarketsListImpl({
                 return (
                   <>
                     {cell(pillars.demand, "Demand score (calibrated)")}
-                    {cell(pillars.franchiseeSupply, "TAM Teachers score (calibrated)")}
+                    {cell(pillars.franchiseeSupply, "Operator & Venue Supply score (calibrated)")}
                   </>
                 );
 

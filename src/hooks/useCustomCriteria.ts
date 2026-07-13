@@ -25,7 +25,7 @@ export const CATEGORY_LABEL_TO_KEY: Record<string, CategoryKey> = {
   "Competitive Opportunity": "competitiveLandscape",
   "Competitive Landscape": "competitiveLandscape", // legacy label kept for rows persisted before 2026-05-22 rename
   "Franchisee Supply": "franchiseeSupply",
-  "TAM Teachers": "franchiseeSupply",
+  "Operator & Venue Supply": "franchiseeSupply",
 };
 
 const QUERY_KEY = ["custom_criteria"] as const;

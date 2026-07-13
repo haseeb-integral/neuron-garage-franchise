@@ -194,10 +194,10 @@ Row click opens a right-side sheet with:
 
 Natural-language query → \`ai-city-query\` edge function. Behavior:
 
-- **3-tier TAM intent rule** (locked in the system prompt):
-  - **Tier 1** — "which of these markets are good for TAM" / "of these" → NO master-weight change; AI nudges teacher-supply sub-metrics +8 to +12. Never goes above 50% on the named pillar.
-  - **Tier 2** — "rank by TAM" / "focus on" → TAM ~55–60%, others reduced but all > 0.
-  - **Tier 3** — "only TAM" / "100% TAM" / "ignore the rest" → TAM 100%, others 0%.
+- **3-tier Operator & Venue Supply intent rule** (locked in the system prompt). Legacy "TAM" phrasing still recognized:
+  - **Tier 1** — "which of these markets are good for Operator & Venue Supply" (or "for TAM") / "of these" → NO master-weight change; AI nudges teacher-supply sub-metrics +8 to +12. Never goes above 50% on the named pillar.
+  - **Tier 2** — "rank by Operator & Venue Supply" (or "rank by TAM") / "focus on" → named pillar ~55–60%, others reduced but all > 0.
+  - **Tier 3** — "only Operator & Venue Supply" / "only TAM" / "100% teachers" / "ignore the rest" → named pillar 100%, others 0%.
   - When in doubt, picks Tier 1.
 - **Session context.** Every request sends current applied filters, current pillar weights, visible-vs-total market count, watchlist size.
 - **Sub-metric boosts.** Edge function may return \`subMetricBoosts: [{ key, delta, pillar, label }]\`; frontend applies them to per-pillar sub-weights and re-normalizes so each pillar still sums to 100. This is the lever that makes Tier 1 work.

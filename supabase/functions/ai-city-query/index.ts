@@ -69,6 +69,11 @@ function scrubPillarKeys(text: string): string {
     // Match the bare key as a whole word (not as a substring of another id).
     out = out.replace(new RegExp(`\\b${key}\\b`, "gi"), label);
   }
+  // Defense-in-depth: scrub legacy pillar label "TAM Teachers" and the bare
+  // acronym "TAM" out of user-facing prose. Renamed 2026-07-13 to
+  // "Operator & Venue Supply" — old habits linger in the model.
+  out = out.replace(/\bTAM Teachers\b/gi, "Operator & Venue Supply");
+  out = out.replace(/\bTAM\b/g, "Operator & Venue Supply");
   return out;
 }
 

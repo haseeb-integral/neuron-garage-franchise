@@ -431,10 +431,10 @@ export async function fetchCompetitorWaitlistSignals(urls: string[]): Promise<Co
         }
       }
 
-      // Brand detection
-      for (const brand of NATIONAL_BRANDS) {
-        const re = new RegExp(`\\b${brand.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}\\b`, 'i')
-        if (re.test(md)) brandsSet.add(brand.replace(/\s+/g, ''))
+      // Brand detection — matches any watchlist name/alias, records canonical name.
+      for (const { term, canonical } of brandTerms) {
+        const re = new RegExp(`\\b${term.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}\\b`, 'i')
+        if (re.test(md)) brandsSet.add(canonical.replace(/\s+/g, ''))
       }
 
       // School-hosted

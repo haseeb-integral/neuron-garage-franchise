@@ -22,7 +22,7 @@ export const SIGNAL_EXPLAIN: Record<string, { good: string; mid: string; bad: st
     mid: "Parent education levels are average — receptive but not a standout driver.",
     bad: "Parent education levels are below benchmark — expect more friction explaining the value proposition.",
   },
-  // TAM Teachers rebuild 2026-07-12: Teacher FTE and Private Elementary
+  // Operator & Venue Supply rebuild 2026-07-12: Teacher FTE and Private Elementary
   // Schools are scored as percentile rank across all scored US cities.
   // Public Elementary Schools + Public Elementary Enrollment dropped.
   public_elementary_teacher_count: {

@@ -56,7 +56,7 @@ The product is a React + TypeScript single-page app, backed by Lovable Cloud (ma
 
 - **817 U.S. cities** pre-scored in \`us_cities_scored\` (population ≥ 50,000).
 - **38,196 public K–12 schools** in \`public_schools\` (NCES CCD).
-- **12 live SOW metrics** across 3 categories (Demand · TAM Teachers · Competitive Opportunity).
+- **12 live SOW metrics** across 3 categories (Demand · Operator & Venue Supply · Competitive Opportunity).
 - **30 deployed edge functions** (§19).
 
 ### Goals
@@ -141,7 +141,7 @@ Mobile (< sm): sidebar collapses to an icon rail; drawers go full-width.
 | Category | Sub-metrics | Master slider |
 |---|---|---|
 | Demand | 4 (Census ACS) | adjustable, auto-rebalances |
-| TAM Teachers | 5 (NCES + BLS/BEA) | adjustable, auto-rebalances |
+| Operator & Venue Supply | 5 (NCES + BLS/BEA) | adjustable, auto-rebalances |
 | Competitive Opportunity (CSI) | 3 (Manus v2, read-only) | adjustable, auto-rebalances |
 
 **Math** (computed client-side in \`src/lib/clientSubWeightScoring.ts\`):
@@ -182,7 +182,7 @@ Every widget with a calculated number exposes a **Show Formula** affordance that
 Row click opens a right-side sheet with:
 
 - **Hero summary** (\`DrawerHeroSummary\`) — total composite, tier, all three pillar scores, deterministic bottom-line sentence. Numbers come from the same recomputed helper as the row.
-- **Coverage panel** — 12 key metrics grouped by category (Demand · TAM Teachers · Competitive Opportunity) with a "N of M seeded" header per category. Each row carries a status (live / proxy / blocked / missing), source URL, last-updated timestamp.
+- **Coverage panel** — 12 key metrics grouped by category (Demand · Operator & Venue Supply · Competitive Opportunity) with a "N of M seeded" header per category. Each row carries a status (live / proxy / blocked / missing), source URL, last-updated timestamp.
 - **City Notes editor** (\`CityNotesEditor\`) — per-city free-text notes persisted in the database.
 - **Manus-upload banner** — appears when the row was loaded from Brett's 2026-05-21 Manus CSI upload and joined on the non-canonical Census name. Tells the user the Census/NCES values live on the sibling row in \`us_cities_scored\` and have not been merged yet.
 - **Find Teachers in this City** button → navigates to Teacher Search pre-filtered.
@@ -202,7 +202,7 @@ Natural-language query → \`ai-city-query\` edge function. Behavior:
 - **Session context.** Every request sends current applied filters, current pillar weights, visible-vs-total market count, watchlist size.
 - **Sub-metric boosts.** Edge function may return \`subMetricBoosts: [{ key, delta, pillar, label }]\`; frontend applies them to per-pillar sub-weights and re-normalizes so each pillar still sums to 100. This is the lever that makes Tier 1 work.
 - **"Never invent a state"** — model must leave \`filters.state\` null unless the user names a US state explicitly.
-- **Answer card** (\`AiAnswerCard\`): "Searched: <your query>" header in purple, the AI's plain-English summary, a "What changed: Demand 40 → 25 · TAM Teachers 30 → 60 · Competitive Opportunity 30 → 15" diff line, and a reasoning panel that opens by default. Internal scoring keys (\`franchiseeSupply\`, \`competitiveLandscape\`) are never shown to the user.
+- **Answer card** (\`AiAnswerCard\`): "Searched: <your query>" header in purple, the AI's plain-English summary, a "What changed: Demand 40 → 25 · Operator & Venue Supply 30 → 60 · Competitive Opportunity 30 → 15" diff line, and a reasoning panel that opens by default. Internal scoring keys (\`franchiseeSupply\`, \`competitiveLandscape\`) are never shown to the user.
 - **Crash guard.** Factual queries return no \`filters\` block; the page now defaults to \`{ state: null, tier: null, minScore: null }\`.
 - **0-results empty state.** When applied filters return 0 markets, the ranked list shows "0 markets match your filters. Tier: A · State: TX." with a one-click "Clear filters" button — never silently looks broken.
 
@@ -775,7 +775,7 @@ Tight summary of what shipped between **May 21 → May 31, 2026** (~1,400 commit
 - \`city_market_signals\` table severed 2026-05-21; live evidence rows now synthesized from \`us_cities_scored\` columns.
 - 12-metric Key Market Signals whitelist locks the drawer to the same inputs as the row scoring.
 - \`MarketDetailDrawer\` rewritten with hero summary, per-pillar coverage panel, City Notes editor, Manus-upload sibling-row banner, Export Raw Signals.
-- Ask AI: 3-tier TAM intent rule, session context, sub-metric boosts applied, "Searched" header, "What changed" weight diff, "never invent a state" rule, default-open reasoning, internal-key leak fixed (\`franchiseeSupply\` → "TAM Teachers").
+- Ask AI: 3-tier TAM intent rule, session context, sub-metric boosts applied, "Searched" header, "What changed" weight diff, "never invent a state" rule, default-open reasoning, internal-key leak fixed (\`franchiseeSupply\` → "Operator & Venue Supply").
 - 0-results empty state with one-click "Clear filters".
 - Crash guard on factual-answer responses with no \`filters\` block.
 - Corrected canonical city count to **817** (was 948/960 in v1.3).

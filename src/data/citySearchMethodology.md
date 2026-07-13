@@ -120,9 +120,9 @@ We only import signals we can source, refresh, and defend. We say **no** to:
 
 ---
 
-## 8. TAM Teachers Pillar (Rebuild 2026-07-12)
+## 8. Operator & Venue Supply Pillar (Rebuild 2026-07-12)
 
-TAM Teachers ("Franchisee Supply") measures the size and squeeze of the local teacher pool we can recruit franchisees from. As of **2026-07-12** it is exactly **three** sub-metrics — Public Elementary Schools and Public Elementary Enrollment were removed because they duplicated the FTE signal.
+Operator & Venue Supply ("Franchisee Supply") measures the size and squeeze of the local teacher pool we can recruit franchisees from. As of **2026-07-12** it is exactly **three** sub-metrics — Public Elementary Schools and Public Elementary Enrollment were removed because they duplicated the FTE signal.
 
 | # | Sub-metric | Weight | Scale | Direction |
 |---|------------|--------|-------|-----------|

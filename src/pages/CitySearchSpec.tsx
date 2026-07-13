@@ -42,7 +42,7 @@ Not in scope: live scraping, provider counts (that's Feature 1A), site-level ana
 \`\`\`
 Composite (0–100) =
     Demand weight            × Demand pillar score
-  + Franchisee-Supply weight × TAM Teachers pillar score
+  + Franchisee-Supply weight × Operator & Venue Supply pillar score
   + 0                        × Competitive Landscape  (retired from composite)
 \`\`\`
 
@@ -72,11 +72,11 @@ Because the cutoffs are absolute, tier counts respond to weight changes — bump
 
 Three tiles at the top of the weights panel. Clicking one snaps both sliders and clears any sub-weight overrides.
 
-| Preset | Demand | TAM Teachers | Meaning |
+| Preset | Demand | Operator & Venue Supply | Meaning |
 | :--- | ---: | ---: | :--- |
 | Balanced | 50 | 50 | Equal weight — the default |
 | Demand-Heavy | 70 | 30 | Cities with more target families rise |
-| TAM-Heavy | 30 | 70 | Cities with a large teacher pool rise |
+| Operator-Heavy | 30 | 70 | Cities with a large teacher pool rise |
 | Custom | — | — | Auto-selected when sliders don't match a tile |
 
 The three CSI-heavy legacy presets (Blue Ocean, Quick Launch, High Upside) were removed on 2026-07-07 with CSI leaving the composite.
@@ -124,7 +124,7 @@ Opens under the ranked list when a row is clicked. Sections:
 
 - **Header:** city, state, composite score, tier letter, population, watchlist toggle.
 - **Executive summary:** short narrative built from pillar bands (strong ≥ 90, moderate 70–89, weak < 70).
-- **Pillar cards:** Demand and TAM Teachers, each with sub-signal evidence and a source-data popover.
+- **Pillar cards:** Demand and Operator & Venue Supply, each with sub-signal evidence and a source-data popover.
 - **Key Market Signals:** the underlying signals (families with kids 5–12, HH income, teacher counts, licensed-worker counts, etc.) with source labels.
 - **Actions:** Compare, Add to watchlist, Open PDF report.
 
@@ -184,7 +184,7 @@ Bell in the top header (\`PageHeader.tsx\` / \`CityTopBar.tsx\`) — see the *No
 | Pillar | Primary source | Notes |
 | :--- | :--- | :--- |
 | Demand | US Census ACS (families with kids 5–12, HH income ≥ $150k, growth) | Reused across features |
-| TAM Teachers | US Census ACS + BLS OES (teacher counts by occupation) | The "franchisee supply" number |
+| Operator & Venue Supply | US Census ACS + BLS OES (teacher counts by occupation) | The "franchisee supply" number |
 | Competitive Landscape | CSI counts (legacy) | Displayed only — weight 0 |
 
 Full signal-level details live in **Demographics Method** and **Scoring Method**.
@@ -193,7 +193,7 @@ Full signal-level details live in **Demographics Method** and **Scoring Method**
 
 ## 17. Locked-in behavior (do not change without approval)
 
-- Composite = Demand + TAM Teachers only. CSI does not count.
+- Composite = Demand + Operator & Venue Supply only. CSI does not count.
 - Tier cutoffs are absolute display-score (A ≥ 90, B ≥ 80, C ≥ 70, D < 70).
 - Every rendered composite reads through \`buildMarketView()\` — no raw stored composite reads outside the data-shaping layer.
 - Presets clear sub-weight overrides on click.
@@ -213,7 +213,7 @@ Full signal-level details live in **Demographics Method** and **Scoring Method**
 const PRESETS = [
   { name: "Balanced", demand: "50", tam: "50", tagline: "Equal weight — the default" },
   { name: "Demand-Heavy", demand: "70", tam: "30", tagline: "Cities with more target families rise" },
-  { name: "TAM-Heavy", demand: "30", tam: "70", tagline: "Cities with a large teacher pool rise" },
+  { name: "Operator-Heavy", demand: "30", tam: "70", tagline: "Cities with a large teacher pool rise" },
   { name: "Custom", demand: "—", tam: "—", tagline: "Auto-selected when sliders don't match a tile" },
 ];
 
@@ -227,7 +227,7 @@ const TIERS = [
 const SURFACES = [
   { label: "Ranked list", detail: "Sortable columns: city, state, composite, tier, each pillar. Row click opens the Selected Market panel. Star toggles watchlist. Compare checkbox adds to the Compare set (max 4)." },
   { label: "Row-level score popover", detail: "Shows the recomputed formula for that city — pillar × weight = contribution — using the shared marketView helper." },
-  { label: "Selected Market panel", detail: "Header, executive summary narrative, pillar cards (Demand + TAM Teachers), Key Market Signals, actions (Compare, Watchlist, Open PDF)." },
+  { label: "Selected Market panel", detail: "Header, executive summary narrative, pillar cards (Demand + Operator & Venue Supply), Key Market Signals, actions (Compare, Watchlist, Open PDF)." },
   { label: "Compare modal", detail: "Up to 4 cities side-by-side. Rows for composite, tier, each pillar, each key signal. CSV export." },
   { label: "Ask AI bar", detail: "Natural language → filter + weight changes via ai-city-query edge function. Shows before/after weights diff." },
   { label: "Saved searches", detail: "Per-user (RLS). Stores filters + master weights + preset name. Load restores the full view." },
@@ -248,7 +248,7 @@ const FILTERS = [
 ];
 
 const LOCKED_IN = [
-  "Composite = Demand + TAM Teachers only. CSI does not count.",
+  "Composite = Demand + Operator & Venue Supply only. CSI does not count.",
   "Tier cutoffs are absolute display-score (A ≥ 90, B ≥ 80, C ≥ 70, D < 70).",
   "Every rendered composite reads through buildMarketView() — no raw stored composite reads outside the data-shaping layer.",
   "Presets clear sub-weight overrides on click.",
@@ -329,7 +329,7 @@ export default function CitySearchSpec() {
           <Section title="3. The composite formula">
             <Formula>{`Composite (0–100) =
     Demand weight            × Demand pillar score
-  + Franchisee-Supply weight × TAM Teachers pillar score
+  + Franchisee-Supply weight × Operator & Venue Supply pillar score
   + 0                        × Competitive Landscape  (retired from composite)`}</Formula>
             <ul className="list-disc pl-6 space-y-1">
               <li>Weights sum to 100 and are exposed as two sliders.</li>
@@ -374,7 +374,7 @@ export default function CitySearchSpec() {
                   <tr>
                     <th className="text-left px-4 py-2 font-semibold">Preset</th>
                     <th className="text-right px-4 py-2 font-semibold w-24">Demand</th>
-                    <th className="text-right px-4 py-2 font-semibold w-32">TAM Teachers</th>
+                    <th className="text-right px-4 py-2 font-semibold w-32">Operator & Venue Supply</th>
                     <th className="text-left px-4 py-2 font-semibold">Meaning</th>
                   </tr>
                 </thead>
@@ -452,7 +452,7 @@ export default function CitySearchSpec() {
                     <td className="px-4 py-2 text-[12.5px] text-[#526078]">Reused across features</td>
                   </tr>
                   <tr className="border-t border-[#eef2f7]">
-                    <td className="px-4 py-2 font-semibold text-[#07142f]">TAM Teachers</td>
+                    <td className="px-4 py-2 font-semibold text-[#07142f]">Operator & Venue Supply</td>
                     <td className="px-4 py-2">US Census ACS + BLS OES (teacher counts by occupation)</td>
                     <td className="px-4 py-2 text-[12.5px] text-[#526078]">The "franchisee supply" number</td>
                   </tr>

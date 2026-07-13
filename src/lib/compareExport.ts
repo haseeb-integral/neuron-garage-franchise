@@ -29,7 +29,7 @@ import type { CategoryKey } from "@/stores/cityScoringStore";
 // too — it would show a score that no longer influences the total.
 const PILLARS: { key: PillarKey; label: string }[] = [
   { key: "demand", label: "Demand" },
-  { key: "franchiseeSupply", label: "TAM Teachers" },
+  { key: "franchiseeSupply", label: "Operator & Venue Supply" },
 ];
 
 const SHORT_STATE: Record<string, string> = { Texas: "TX", Florida: "FL" };
@@ -147,7 +147,7 @@ export function buildCompareWorkbook(
   snapAoa.push(["Category", "Master Weight (raw)", "Master Weight % (normalized)"]);
   const catLabels: Partial<Record<CategoryKey, string>> = {
     demand: "Demand",
-    franchiseeSupply: "TAM Teachers",
+    franchiseeSupply: "Operator & Venue Supply",
   };
   (Object.keys(catLabels) as CategoryKey[]).forEach((k) => {
     const raw = appliedWeights[k] ?? 0;

@@ -20,7 +20,7 @@ export type AiResult = {
 const CATEGORY_LABELS: Record<string, string> = {
   demand: "Demand",
   competitiveLandscape: "Competitive Opportunity",
-  franchiseeSupply: "TAM Teachers",
+  franchiseeSupply: "Operator & Venue Supply",
 };
 
 export interface AiAnswerCardProps {
@@ -36,7 +36,7 @@ export interface AiAnswerCardProps {
   appliedWeights?: Record<string, number>;
   /**
    * Weights snapshot from BEFORE this AI turn applied changes. Used to render
-   * a one-line "what changed" diff like "Demand 40 → 25 · TAM Teachers 30 → 60".
+   * a one-line "what changed" diff like "Demand 40 → 25 · Operator & Venue Supply 30 → 60".
    */
   priorWeights?: Record<string, number>;
 }
@@ -72,7 +72,7 @@ export function AiAnswerCard({ result, query, turnCount, onRefine, loading, appl
   const atCap = turnCount >= 6;
 
   // Build "what changed" diff. Only show when weights actually moved AND we
-  // have a prior snapshot. Format: "Demand 40 → 25 · TAM Teachers 30 → 60".
+  // have a prior snapshot. Format: "Demand 40 → 25 · Operator & Venue Supply 30 → 60".
   const weightDiff: string[] = [];
   if (priorWeights && appliedWeights) {
     for (const k of Object.keys(appliedWeights)) {

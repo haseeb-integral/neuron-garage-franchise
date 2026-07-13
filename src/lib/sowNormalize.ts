@@ -44,13 +44,13 @@ export const NORMALIZATION_RANGES: Record<string, NormalizationRange> = {
   // score_csi from the DB (percentile-rank of csi_raw_supply) — sub-weights
   // are 0 so this normalize range is display-only in the Show Formula panel.
   csi_national_brand_supply:           { lo: 0, hi: 60,     invert: true },
-  // TAM Teachers (5-metric lock 2026-05-21) — ranges MUST match backend
+  // Operator & Venue Supply (5-metric lock 2026-05-21) — ranges MUST match backend
   // supabase/functions/_shared/scoring.ts:normalizeSowMetric exactly so the
   // "Show Formula" drawer reproduces the same score the backend stored.
   // Ranges widened 2026-05-21b to ~p99 of real US-city distribution so big
   // metros (Denver, Houston, Phoenix, NYC) actually spread out instead of
   // all saturating at 100. Source distribution from us_cities_scored.
-  // TAM Teachers (3-metric rebuild 2026-07-12 — Brett+Haseeb). Teacher FTE
+  // Operator & Venue Supply (3-metric rebuild 2026-07-12 — Brett+Haseeb). Teacher FTE
   // and Private Elementary Schools now score by percentile rank across all
   // scored cities. The caller passes the pre-computed pct_rank_* value
   // (already 0..100) from us_cities_scored, so normalize is a passthrough.

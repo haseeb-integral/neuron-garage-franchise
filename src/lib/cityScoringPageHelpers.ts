@@ -92,7 +92,7 @@ export interface Category {
 export const CATEGORIES: Category[] = [
   { key: "demand", label: "Demand", icon: Users, color: "#174be8", bg: "#eaf0ff",
     description: "Size of the target-family market and signal strength of program demand — kids in the right age band, household income, parent intent.", defaultWeight: 40 },
-  { key: "franchiseeSupply", label: "TAM Teachers", icon: UserCheck, color: "#7c3aed", bg: "#f1ebff",
+  { key: "franchiseeSupply", label: "Operator & Venue Supply", icon: UserCheck, color: "#7c3aed", bg: "#f1ebff",
     description: "Pool of teachers available locally to recruit as franchise operators — credentialed, in-area, plausible to convert into owners.", defaultWeight: 30 },
   { key: "competitiveLandscape", label: "Competitive Opportunity", icon: Trophy, color: "#b8860b", bg: "#fff6dc",
     description: "How wide-open the market is — fewer national-brand competitors, less saturation, more room for a new operator to win share.", defaultWeight: 30 },

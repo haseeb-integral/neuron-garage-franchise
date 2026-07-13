@@ -177,7 +177,7 @@ const CityScoring = () => {
     if (hydratedConfig || !scoringConfigRow) return;
     if (scoringConfigRow.master_weights) {
       // Sanitize legacy rows that still carry a non-zero competitiveLandscape
-      // weight. Post Phase 3b the composite only uses Demand + TAM Teachers,
+      // weight. Post Phase 3b the composite only uses Demand + Operator & Venue Supply,
       // so we force CL to 0 and rescale the two visible sliders to sum to 100.
       const raw = scoringConfigRow.master_weights;
       const d = Math.max(0, raw.demand ?? 0);
@@ -1225,7 +1225,7 @@ const CityScoring = () => {
     displayTier === "C" ? "Watch Market" : "Saturated Market";
 
   // Key Market Signals — locked to the metrics that power the 3 visible
-  // categories (Demand 5 + TAM Teachers 5 + Competitive Landscape 1).
+  // categories (Demand 5 + Operator & Venue Supply 5 + Competitive Landscape 1).
   // Per Brett 2026-05-21: simple plain UI, no chips, source as subtitle.
   // Phase 3 (2026-07-08): Affluent Families with Children added to Demand.
   const KEY_SIGNAL_KEYS: readonly string[] = [
@@ -1235,7 +1235,7 @@ const CityScoring = () => {
     "median_household_income",
     "dual_income_household_pct",
     "education_bachelors_plus_pct",
-    // TAM Teachers (3-metric rebuild 2026-07-12 — Brett+Haseeb).
+    // Operator & Venue Supply (3-metric rebuild 2026-07-12 — Brett+Haseeb).
     // Public Elementary Schools + Public Elementary Enrollment removed.
     "public_elementary_teacher_count",
     "col_salary_index",
@@ -1284,7 +1284,7 @@ const CityScoring = () => {
     median_household_income:       { format: "money",   thresholds: [60000, 100000], higherIsBetter: true },
     dual_income_household_pct:     { format: "pct",     thresholds: [60, 80],        higherIsBetter: true },
     education_bachelors_plus_pct:  { format: "pct",     thresholds: [30, 50],        higherIsBetter: true },
-    // TAM Teachers (3-metric rebuild 2026-07-12). FTE + Private now score by
+    // Operator & Venue Supply (3-metric rebuild 2026-07-12). FTE + Private now score by
     // percentile rank across all scored cities; the seeded signal `value` is
     // the 0..100 percentile. Thresholds are on the percentile scale.
     public_elementary_teacher_count:{format: "decimal", thresholds: [50, 80],        higherIsBetter: true },

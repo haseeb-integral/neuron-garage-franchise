@@ -100,7 +100,7 @@ export default function ScoringMethod() {
           </p>
           <ul className="list-disc pl-5 space-y-1">
             <li><strong>Demand</strong> — child population, dual-income families, household income, college-educated parents.</li>
-            <li><strong>TAM Teachers</strong> — elementary teacher supply, school counts, cost-of-living-adjusted salaries.</li>
+            <li><strong>Operator & Venue Supply</strong> — elementary teacher supply, school counts, cost-of-living-adjusted salaries.</li>
           </ul>
           <FormulaBlock>{`Weighted Composite Index
   = (master_weight_demand × DemandScore)

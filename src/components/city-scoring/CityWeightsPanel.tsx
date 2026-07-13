@@ -89,7 +89,7 @@ export function CityWeightsPanel({
           <div className="min-w-0">
             <h3 className="text-sm font-bold text-[#07142f]">How should we rank cities?</h3>
             <p className="text-[11px] text-[#07142f] leading-snug mt-1 max-w-[640px]">
-              Every city gets one overall score (0–100) built from two things: <strong style={{ color: VISIBLE_CATEGORIES[0].color }}>Demand</strong> (are families looking for tutoring?) and <strong style={{ color: VISIBLE_CATEGORIES[1].color }}>TAM Teachers</strong> (can you hire enough tutors?). The sliders below decide how much each one counts — they always add up to 100%.
+              Every city gets one overall score (0–100) built from two things: <strong style={{ color: VISIBLE_CATEGORIES[0].color }}>Demand</strong> (are families looking for tutoring?) and <strong style={{ color: VISIBLE_CATEGORIES[1].color }}>Operator & Venue Supply</strong> (can you hire enough tutors?). The sliders below decide how much each one counts — they always add up to 100%.
             </p>
             <p className="text-[10px] text-[#8794ab] leading-snug mt-1">
               Each of the three categories is built from several signals (population, income, competitor density, etc). Pick a preset to start, or fine-tune any category with <span className="font-medium">Configure metrics</span>.

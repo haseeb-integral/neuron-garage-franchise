@@ -58,7 +58,7 @@ From "we don't know that city" to "welcome to the family" — usually in a few w
 
 > **"Where should we open next?"**
 
-Type a city, get a score out of 100. We look at the live SOW signals (12 metrics across 3 categories — Demand, TAM Teachers, Competitive Opportunity) plus demographics, schools, incomes, and growth, and rank **817 U.S. cities** (population ≥ 50,000) so you spend your time on the right places.
+Type a city, get a score out of 100. We look at the live SOW signals (12 metrics across 3 categories — Demand, Operator & Venue Supply, Competitive Opportunity) plus demographics, schools, incomes, and growth, and rank **817 U.S. cities** (population ≥ 50,000) so you spend your time on the right places.
 
 ### What you can do
 

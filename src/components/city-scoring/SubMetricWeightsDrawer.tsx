@@ -71,7 +71,7 @@ const STATUS_PILL: Record<SowMetricEntry["status"], { label: string; cls: string
 };
 
 // Provenance line shown at the top of each drawer so anyone reading knows
-// where the default sub-weights came from. TAM Teachers: locked May 21 2026
+// where the default sub-weights came from. Operator & Venue Supply: locked May 21 2026
 // by Brett + Haseeb (see sowMetricRegistry.ts line ~162).
 const PROVENANCE_BY_CATEGORY: Partial<Record<CategoryKey, string>> = {
   franchiseeSupply:

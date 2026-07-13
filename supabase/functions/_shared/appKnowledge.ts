@@ -23,7 +23,7 @@ cities who could become franchise operators, run outreach to those teachers,
 and shepherd interested ones through a candidate pipeline until they sign.
 
 The app today covers 817 pre-scored US cities, scored on three pillars:
-Demand, Competitive Opportunity, and TAM Teachers (the supply of teachers
+Demand, Competitive Opportunity, and Operator & Venue Supply (the supply of teachers
 who could become franchisees).
 
 # The 4 main screens
@@ -68,7 +68,7 @@ sheet, stage history.
 - Tier A / B / C / D — quartile labels on the composite. A is the strongest.
 - Demand — affluent families with right-aged kids in the city.
 - Competitive Opportunity — 100 minus market saturation; higher = less crowded.
-- TAM Teachers — total addressable market of teachers who could become franchisees.
+- Operator & Venue Supply — total addressable market of teachers who could become franchisees.
 - Watchlist — a user's personal saved list of cities they care about.
 - Promote — move a teacher from prospect to candidate, opens a card in the pipeline.
 

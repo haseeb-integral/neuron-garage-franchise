@@ -194,10 +194,10 @@ Row click opens a right-side sheet with:
 
 Natural-language query → \`ai-city-query\` edge function. Behavior:
 
-- **3-tier TAM intent rule** (locked in the system prompt):
-  - **Tier 1** — "which of these markets are good for TAM" / "of these" → NO master-weight change; AI nudges teacher-supply sub-metrics +8 to +12. Never goes above 50% on the named pillar.
-  - **Tier 2** — "rank by TAM" / "focus on" → TAM ~55–60%, others reduced but all > 0.
-  - **Tier 3** — "only TAM" / "100% TAM" / "ignore the rest" → TAM 100%, others 0%.
+- **3-tier Operator & Venue Supply intent rule** (locked in the system prompt). Legacy "TAM" phrasing still recognized:
+  - **Tier 1** — "which of these markets are good for Operator & Venue Supply" (or "for TAM") / "of these" → NO master-weight change; AI nudges teacher-supply sub-metrics +8 to +12. Never goes above 50% on the named pillar.
+  - **Tier 2** — "rank by Operator & Venue Supply" (or "rank by TAM") / "focus on" → named pillar ~55–60%, others reduced but all > 0.
+  - **Tier 3** — "only Operator & Venue Supply" / "only TAM" / "100% teachers" / "ignore the rest" → named pillar 100%, others 0%.
   - When in doubt, picks Tier 1.
 - **Session context.** Every request sends current applied filters, current pillar weights, visible-vs-total market count, watchlist size.
 - **Sub-metric boosts.** Edge function may return \`subMetricBoosts: [{ key, delta, pillar, label }]\`; frontend applies them to per-pillar sub-weights and re-normalizes so each pillar still sums to 100. This is the lever that makes Tier 1 work.
@@ -446,7 +446,7 @@ First-time visitors see a Driver.js tour that highlights each main sidebar item.
 ### What it does (v1)
 
 - **Answer factual questions** scoped to the current screen and the global knowledge brain.
-- **Navigate + apply state** — "show me Tier A cities in Florida with TAM weight 60" routes to City Search, applies filters, sets weights.
+- **Navigate + apply state** — "show me Tier A cities in Florida with Operator & Venue Supply weight 60" routes to City Search, applies filters, sets weights.
 - **Propose cheap write actions** behind a Confirm preview — watchlist add/remove, candidate stage change, queue an email, snooze a reply.
 - **Ask a clarifying question** when intent is ambiguous instead of guessing.
 - **Log every write** to the \`ai_action_log\` table.
@@ -775,7 +775,7 @@ Tight summary of what shipped between **May 21 → May 31, 2026** (~1,400 commit
 - \`city_market_signals\` table severed 2026-05-21; live evidence rows now synthesized from \`us_cities_scored\` columns.
 - 12-metric Key Market Signals whitelist locks the drawer to the same inputs as the row scoring.
 - \`MarketDetailDrawer\` rewritten with hero summary, per-pillar coverage panel, City Notes editor, Manus-upload sibling-row banner, Export Raw Signals.
-- Ask AI: 3-tier TAM intent rule, session context, sub-metric boosts applied, "Searched" header, "What changed" weight diff, "never invent a state" rule, default-open reasoning, internal-key leak fixed (\`franchiseeSupply\` → "Operator & Venue Supply").
+- Ask AI: 3-tier Operator & Venue Supply intent rule, session context, sub-metric boosts applied, "Searched" header, "What changed" weight diff, "never invent a state" rule, default-open reasoning, internal-key leak fixed (\`franchiseeSupply\` → "Operator & Venue Supply").
 - 0-results empty state with one-click "Clear filters".
 - Crash guard on factual-answer responses with no \`filters\` block.
 - Corrected canonical city count to **817** (was 948/960 in v1.3).

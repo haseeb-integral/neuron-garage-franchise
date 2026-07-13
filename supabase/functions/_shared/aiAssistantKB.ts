@@ -21,7 +21,7 @@ and walk them all the way to signing as franchisees.
 ## Key numbers (May 31, 2026)
 - 817 U.S. cities pre-scored in us_cities_scored (population >= 50,000).
 - 38,196 public K-12 schools (NCES CCD).
-- 12 live SOW metrics across 3 categories: Demand, TAM Teachers,
+- 12 live SOW metrics across 3 categories: Demand, Operator & Venue Supply,
   Competitive Opportunity.
 - 30 deployed edge functions.
 
@@ -29,7 +29,7 @@ and walk them all the way to signing as franchisees.
 
 ### 1. City Search - "Where should we open next?"
 - Type a city or browse all U.S. metros. Each gets a score out of 100.
-- 12 SOW metrics in 3 categories (Demand, TAM Teachers, Competitive
+- 12 SOW metrics in 3 categories (Demand, Operator & Venue Supply, Competitive
   Opportunity), plus demographics, schools, incomes, growth.
 - Filter by state, Tier (A / B / C / D), or registration status.
 - Open any city to see the full breakdown - every number, every source.
@@ -41,7 +41,7 @@ and walk them all the way to signing as franchisees.
 - 38 non-registration states are hard-coded business logic.
 - City Notes: teammates leave shared comments on a city's drawer.
 - Export Raw Signals as XLSX.
-- Ask AI on a city follows the 3-tier TAM rule so the AI quotes the same
+- Ask AI on a city follows the 3-tier Operator & Venue Supply rule so the AI quotes the same
   number you see on screen.
 - ONE CALIBRATED NUMBER EVERYWHERE: pillar + composite scores on the
   table, "Why this tier?" popover, selected-market right panel, Compare

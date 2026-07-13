@@ -357,6 +357,7 @@ export async function fetchCompetitorWaitlistSignals(urls: string[]): Promise<Co
   // School-hosted flags
   const SCHOOL_RE = /school hosts|hosted at [a-z][\w .'-]*?\b(?:elementary|school)\b|elementary school camp|hosted by [a-z][\w .'-]*?\b(?:isd|school district|elementary)\b/i
 
+  const brandTerms = await loadNationalBrandTerms()
   const brandsSet = new Set<string>()
   const out: CompetitorSignals = { ...empty, scanned: targets.length, weekly_prices: [], premium_prices: [], hourly_rates: [], brands_found: [] }
   const errs: string[] = []
